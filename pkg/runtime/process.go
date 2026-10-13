@@ -62,7 +62,7 @@ func (c *commands) Operation(name string) Function {
 		return Alternative{result, "error", []Value{Alternative{"@std/CommandError", tag, fields}}}
 	}
 	return NewFunction([]string{"program", "arguments", "input", "max_output_bytes", "timeout"}, result, func(ctx *Execution, args []Value) Value {
-		normalized, valid := nativeOptions("run", []LibraryParam{{"program", "String"}, {"arguments", "List[String]"}, {"input", "Bytes"}, {"max_output_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}, args)
+		normalized, valid := nativeOptions("run", []LibraryParam{{"program", "String"}, {"arguments", "List[String]"}, {"input", "Bytes"}, {"max_output_bytes", "Optional[Int64]"}, {"timeout", "Optional[Duration]"}}, args)
 		if !valid {
 			return failure("InvalidInput", "")
 		}

@@ -15,7 +15,7 @@ type Regex:
     fn matches(text: String) -> Bool:
     fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
     fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
-    fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+    fn replace(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
 ```
 
 ### Regex.replace
@@ -23,7 +23,7 @@ type Regex:
 Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
 
 ```manuscript
-fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+fn replace(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
 ```
 
 ### Regex.replace_all

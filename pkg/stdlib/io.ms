@@ -5,7 +5,7 @@ import Bytes from "@std/bytes.ms"
 # A file-like byte stream that returns `none` at end of input.
 export interface File:
     fn close() -> Unit
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], IoError]
 
 # Opens read-only file resources using the current host's default filesystem.
 # Native open failures (including missing paths and permission denial) become IoError.Unavailable.
@@ -24,7 +24,7 @@ export type IoError:
 # A readable byte stream. Each read returns a chunk or `none` at end of stream.
 export interface ReadStream:
     fn close() -> Unit
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], IoError]
 
 # A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
 # Buffering/flush depends on the implementation: native stdout/stderr are unbuffered (flush is a no-op),
@@ -39,19 +39,19 @@ export interface WriteStream:
 export fn copy(
     input: ReadStream,
     output: WriteStream,
-    max_bytes: Optional[Int] = none
-) -> Result[Int, IoError]:
+    max_bytes: Optional[Int64] = none
+) -> Result[Int64, IoError]:
 
 # Reads a stream completely into memory. Supply a limit for untrusted streams.
 export fn read_all(
     input: ReadStream,
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ) -> Result[Bytes, IoError]:
 
 # Reads one line, omitting its line ending; returns `none` at end of stream.
 export fn read_line(
     input: ReadStream,
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ) -> Result[Optional[String], IoError]:
 
 impl Error for IoError:

@@ -25,7 +25,7 @@ func TestWideNumericStandalone(t *testing.T) {
 	if err := compiler.Build(source, executable); err != nil {
 		t.Fatal(err)
 	}
-	if data, err := commandOutput(t, executable); err != nil || !strings.Contains(string(data), "4 tests, 0 failed") {
+	if data, err := commandOutput(t, executable); err != nil || !strings.Contains(string(data), "5 tests, 0 failed") {
 		t.Fatalf("wide standalone transcript %q, error %v", data, err)
 	}
 }

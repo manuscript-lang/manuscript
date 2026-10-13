@@ -47,6 +47,6 @@ Encodes rows as CSV with comma delimiters and LF endings by default.
 Quotes cells when required by the delimiter or line ending.
 
 ```manuscript
-fn stringify(rows: List[List[String]], options: CsvOptions = CsvOptions(), max_bytes: Optional[Int] = none) -> Result[String, CsvError]:
+fn stringify(rows: List[List[String]], options: CsvOptions = CsvOptions(), max_bytes: Optional[Int64] = none) -> Result[String, CsvError]:
 ```
 

@@ -15,11 +15,11 @@ counters for one logical CPU. irq includes hardware and software interrupt time.
 type CpuInfo:
     model: String
     speed_mhz: Int
-    user: Int
-    nice: Int
-    system: Int
-    idle: Int
-    irq: Int
+    user: Int64
+    nice: Int64
+    system: Int64
+    idle: Int64
+    irq: Int64
 ```
 
 ### CpuInfo.speed_mhz
@@ -35,7 +35,7 @@ speed_mhz: Int
 The user, nice, system, idle, and irq fields are cumulative milliseconds.
 
 ```manuscript
-user: Int
+user: Int64
 ```
 
 ## NetworkInterface {data-api-kind="Record"}
@@ -166,11 +166,11 @@ Host measurements: memory fields are bytes; load_average is 1/5/15-minute load
 
 ```manuscript
 type SystemMetrics:
-    total_memory: Int
-    free_memory: Int
-    available_memory: Int
+    total_memory: Int64
+    free_memory: Int64
+    available_memory: Int64
     uptime: Duration
-    load_average: List[Float]
+    load_average: List[Float64]
     available_parallelism: Int
 ```
 
@@ -189,8 +189,8 @@ User name, numeric identity, home directory, and login shell.
 ```manuscript
 type UserInfo:
     username: String
-    uid: Int
-    gid: Int
+    uid: Int64
+    gid: Int64
     home: String
     shell: String
 ```

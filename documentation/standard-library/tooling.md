@@ -63,6 +63,6 @@ A custom transport implements the ordinary `Transport` interface: `write(data: B
 
 ## Record limits
 
-`create` accepts `max_bytes: Optional[Int] = none`. Omission or `none` imposes no record limit. A supplied nonnegative limit counts the entire UTF-8 JSON line, including LF. An exact fit succeeds. Excess returns `LimitExceeded` before writing, and a negative limit returns `InvalidInput` during creation. A zero limit rejects every enabled record. Filtering happens before the record budget is checked.
+`create` accepts `max_bytes: Optional[Int64] = none`. Omission or `none` imposes no record limit. A supplied nonnegative limit counts the entire UTF-8 JSON line, including LF. An exact fit succeeds. Excess returns `LimitExceeded` before writing, and a negative limit returns `InvalidInput` during creation. A zero limit rejects every enabled record. Filtering happens before the record budget is checked.
 
 The caller chooses fields and their sensitivity; automatic redaction and object inspection are not part of this API. Bound untrusted inputs when necessary: serialization checks the supplied output budget, but the input collections and escaped string temporaries may already occupy memory.

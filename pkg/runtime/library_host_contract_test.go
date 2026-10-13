@@ -20,9 +20,9 @@ func TestExpandedSystemAndProcessMonotonicNanoseconds(t *testing.T) {
 	// Bracket against time.Duration's nanosecond representation and origin,
 	// rather than inferring units from the public method name or a loose delay.
 	for range 3 {
-		before := int64(time.Since(libraryProcessStarted))
-		reading := control.Operation("monotonic_time").Body(ctx, nil).(int64)
-		after := int64(time.Since(libraryProcessStarted))
+		before := Int64(time.Since(libraryProcessStarted))
+		reading := control.Operation("monotonic_time").Body(ctx, nil).(Int64)
+		after := Int64(time.Since(libraryProcessStarted))
 		if reading < before || reading > after {
 			t.Fatalf("monotonic_time = %d; want elapsed nanoseconds in [%d, %d]", reading, before, after)
 		}

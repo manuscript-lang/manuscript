@@ -1039,7 +1039,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				return i
 			}
 		}
-		if receiver.Type.ID == "Int" && (e.Text == "seconds" || e.Text == "milliseconds" || e.Text == "minutes") {
+		if (receiver.Type.ID == "Int" || receiver.Type.ID == "Int64") && (e.Text == "seconds" || e.Text == "milliseconds" || e.Text == "minutes") {
 			i.Type = standard("Duration")
 			i.Native = e.Text
 			return i

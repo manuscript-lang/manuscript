@@ -18,10 +18,15 @@ export type BigInt:
     fn bit_or(right: BigInt) -> BigInt:
     fn bit_xor(right: BigInt) -> BigInt:
     fn to_int() -> Optional[Int]:
+    # Returns the exact value when it fits signed64, otherwise none.
+    fn to_int64() -> Optional[Int64]:
     fn to_string(radix: Int) -> String:
 
 # Converts a machine-sized integer without loss.
 export fn from_int(value: Int) -> BigInt:
+
+# Converts an explicit signed64 integer without loss.
+export fn from_int64(value: Int64) -> BigInt:
 
 # Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
 export fn parse(

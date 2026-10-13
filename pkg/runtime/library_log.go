@@ -25,7 +25,7 @@ func init() {
 		LibraryMethod{"Transport", "flush", result, nil},
 		LibraryMethod{"Transport", "close", "Unit", nil},
 	)
-	libraryAdd("log", "create", libraryResult("Logger", "LogError"), []LibraryParam{p("transport", "Transport"), p("level", "Optional[LogLevel]"), p("bindings", "Optional[Map[String][JsonValue]]"), p("timestamp", "Optional[Bool]"), p("max_bytes", "Optional[Int]")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("log", "create", libraryResult("Logger", "LogError"), []LibraryParam{p("transport", "Transport"), p("level", "Optional[LogLevel]"), p("bindings", "Optional[Map[String][JsonValue]]"), p("timestamp", "Optional[Bool]"), p("max_bytes", "Optional[Int64]")}, func(_ *Execution, r string, a []Value) Value {
 		level := logLevel(logOption(a[1], Alternative{Type: "@std/LogLevel", Tag: "Info"}))
 		if level < 0 || a[4].(int64) < 0 {
 			return libraryError(r, "InvalidInput", "")

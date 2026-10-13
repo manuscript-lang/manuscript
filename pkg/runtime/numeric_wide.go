@@ -13,7 +13,7 @@ type Int64 int64
 type Float64 float64
 
 func wideOverflow(operation string) Value {
-	return Panic("Int64 " + operation + ": result outside signed 64-bit range; bound the operands or use BigInt")
+	return Panic("Int64 " + operation + " overflow: result outside signed 64-bit range; bound the operands or use BigInt")
 }
 
 func integer64Binary(op string, x, y Int64) Value {
@@ -44,7 +44,7 @@ func integer64Binary(op string, x, y Int64) Value {
 		return r
 	case "/", "%":
 		if y == 0 {
-			return Panic(fmt.Sprintf("Int64 %s: divisor must be nonzero, found 0", op))
+			return Panic(fmt.Sprintf("Int64 %s: division by zero; divisor must be nonzero, found 0", op))
 		}
 		if op == "%" {
 			return x % y

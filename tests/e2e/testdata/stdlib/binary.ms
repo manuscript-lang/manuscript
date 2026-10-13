@@ -13,15 +13,17 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 test "binary integer boundaries and both byte orders":
+    let numbers: List[Int64] = [
+        -9223372036854775808,
+        -32768,
+        -1,
+        0,
+        32767,
+        9223372036854775807
+    ]
+
     for little in [false, true]:
-        for number in [
-            -9223372036854775808,
-            -32768,
-            -1,
-            0,
-            32767,
-            9223372036854775807
-        ]:
+        for number in numbers:
             let data = value(
                 write_integer(
                     value: number,
@@ -88,7 +90,7 @@ test "binary errors preserve domain and range":
         ) != range_error
     ): return panic("negative unsigned")
 
-    let invalid: Result[Int, BinaryError] = error(BinaryError.OutOfRange)
+    let invalid: Result[Int64, BinaryError] = error(BinaryError.OutOfRange)
     if (
         read_integer(
             data: Bytes([0]),

@@ -87,8 +87,8 @@ Optional limits applied while unpacking untrusted archive data.
 ```manuscript
 type ArchiveLimits:
     max_entries: Optional[Int] = none
-    max_entry_bytes: Optional[Int] = none
-    max_total_bytes: Optional[Int] = none
+    max_entry_bytes: Optional[Int64] = none
+    max_total_bytes: Optional[Int64] = none
 ```
 
 ## pack {data-api-kind="Function"}
@@ -96,7 +96,7 @@ type ArchiveLimits:
 Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.
 
 ```manuscript
-fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int64] = none) -> Result[Bytes, ArchiveError]:
 ```
 
 ## unpack {data-api-kind="Function"}

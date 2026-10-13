@@ -21,14 +21,24 @@ export fn read_integer(
     width: Int,
     signed: Bool,
     little_endian: Bool
-) -> Result[Int, BinaryError]:
+) -> Result[Int64, BinaryError]:
 
 # Encodes a 32-bit floating-point value using the selected byte order.
 export fn write_float(value: Float, little_endian: Bool) -> Bytes:
 
+# Reads an IEEE binary64 value at `offset` without rounding through Float.
+export fn read_float64(
+    data: Bytes,
+    offset: Int,
+    little_endian: Bool
+) -> Result[Float64, BinaryError]:
+
+# Encodes an IEEE binary64 value using the selected byte order.
+export fn write_float64(value: Float64, little_endian: Bool) -> Bytes:
+
 # Encodes an integer into `width` bytes, returning an error when it does not fit.
 export fn write_integer(
-    value: Int,
+    value: Int64,
     width: Int,
     signed: Bool,
     little_endian: Bool

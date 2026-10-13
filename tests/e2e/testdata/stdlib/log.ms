@@ -174,7 +174,7 @@ test "limits and invalid JSON reject before writing":
             create(
                 transport: transport,
                 timestamp: false,
-                max_bytes: (record.to_bytes().length())
+                max_bytes: (record.to_bytes().length().to_int64())
             )
         )
         let written = value(logger.info(message: "x"))

@@ -9,12 +9,17 @@ export type MemoryStream:
     closed: Bool
 
 impl ReadStream for MemoryStream:
-    fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Optional[Int64]) -> Result[Optional[Bytes], IoError]:
         if self.closed: return error(IoError.Closed)
         if self.offset == self.data.length(): return ok(none)
 
-        let count = max_bytes.unwrap_or(self.data.length() - self.offset)
-        if count <= 0: return error(IoError.InvalidInput)
+        let remaining = self.data.length() - self.offset
+        let requested = max_bytes.unwrap_or(remaining.to_int64())
+        if requested <= 0: return error(IoError.InvalidInput)
+
+        var count = remaining
+
+        if requested < remaining.to_int64(): count = requested.to_int().unwrap()
 
         var end = self.offset + count
 

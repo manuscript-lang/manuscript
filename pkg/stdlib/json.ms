@@ -11,7 +11,7 @@ export type JsonError:
 
 # Optional bounds for JSON input bytes, nesting depth, and parsed values.
 export type JsonLimits:
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
     max_depth: Optional[Int] = none
     max_values: Optional[Int] = none
 
@@ -33,7 +33,7 @@ export fn parse(
 # Serializes a JSON value. `max_bytes` bounds output when supplied.
 export fn stringify(
     value: JsonValue,
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ) -> Result[String, JsonError]:
 
 impl Error for JsonError:

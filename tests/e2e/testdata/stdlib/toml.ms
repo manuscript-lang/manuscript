@@ -17,7 +17,7 @@ fn items(value: TomlValue) -> List[TomlValue]:
         _: return panic("expected TOML array")
 
 fn limits(
-    bytes: Optional[Int],
+    bytes: Optional[Int64],
     depth: Optional[Int],
     values: Optional[Int]
 ) -> Optional[TomlLimits]:

@@ -220,6 +220,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"bit_and":   "bigint/bit_and",
 		"bit_or":    "bigint/bit_or",
 		"bit_xor":   "bigint/bit_xor",
+		"to_int64":  "bigint/to_int64",
 		"to_int":    "bigint/to_int",
 		"to_string": "bigint/format",
 	},

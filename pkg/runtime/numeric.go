@@ -266,7 +266,7 @@ func duration(value Value, name string) Value {
 	if name == "minutes" {
 		scale = 60000000000
 	}
-	n := value.(int64)
+	n := nativeInteger(value)
 	if n < math.MinInt64/scale || n > math.MaxInt64/scale {
 		return libraryRangeFault("Int."+name, "value", n, math.MinInt64/scale, math.MaxInt64/scale)
 	}

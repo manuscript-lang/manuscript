@@ -28,7 +28,7 @@ Optional bounds for JSON input bytes, nesting depth, and parsed values.
 
 ```manuscript
 type JsonLimits:
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
     max_depth: Optional[Int] = none
     max_values: Optional[Int] = none
 ```
@@ -60,6 +60,6 @@ fn parse(text: String, limits: Optional[JsonLimits] = none) -> Result[JsonValue,
 Serializes a JSON value. `max_bytes` bounds output when supplied.
 
 ```manuscript
-fn stringify(value: JsonValue, max_bytes: Optional[Int] = none) -> Result[String, JsonError]:
+fn stringify(value: JsonValue, max_bytes: Optional[Int64] = none) -> Result[String, JsonError]:
 ```
 

@@ -54,6 +54,8 @@ func TestWideLiteralContexts(t *testing.T) {
 		"known left":        "fn f(value: Int64) -> Int64: value + 3000000000\n",
 		"known right":       "fn f(value: Int64) -> Int64: 3000000000 + value\n",
 		"callback":          "fn f() -> fn() -> Float64: fn(): 1e300\n",
+		"function result":   "fn thunk[T](value: T) -> fn() -> T: fn(): value\nfn f() -> fn() -> Float64: thunk(1e300)\n",
+		"producer evidence": "fn choose[T](value: T, producer: fn() -> T) -> T: value\nfn f() -> Unit:\n    let wide = choose(1e300, fn() -> Float64: 1e300)\n    let checked: Float64 = wide\n",
 		"match":             "fn f(value: Optional[Int]) -> Float64:\n    return match value:\n        some(_): 1e300\n        none: 2e300\n",
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -15,7 +15,7 @@ interface Connection:
     fn close() -> Unit
     fn local_address() -> String
     fn peer_address() -> String
-    fn read(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[Optional[Bytes], IoError]
     fn shutdown_write() -> Result[Unit, NetworkError]
     fn tls_info() -> Result[TlsInfo, TlsError]
     fn write(data: Bytes, timeout: Optional[Duration] = none) -> Result[Unit, IoError]
@@ -26,7 +26,7 @@ interface Connection:
 Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
 
 ```manuscript
-fn read(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Optional[Bytes], IoError]
+fn read(max_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[Optional[Bytes], IoError]
 ```
 
 ### Connection.write
@@ -63,7 +63,7 @@ A connectionless socket for sending and receiving datagrams.
 interface DatagramSocket:
     fn address() -> String
     fn close() -> Unit
-    fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]
+    fn receive(max_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]
     fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) -> Result[Unit, NetworkError]
 ```
 
@@ -116,10 +116,10 @@ interface Network:
     fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Optional[Duration] = none) -> Result[Listener, NetworkError]
     fn listen_unix(path: String) -> Result[Listener, NetworkError]
     fn lookup(name: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[String], NetworkError]
-    fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ClientResponse, HttpError]
+    fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[ClientResponse, HttpError]
     fn resolve(name: String, kind: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[DnsRecord], NetworkError]
     fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network, NetworkError]
-    fn serve(address: String, handler: fn(request: HttpRequest) -> HttpResponse, limit: Optional[Int] = none, max_body_bytes: Optional[Int] = none, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none, grace: Optional[Duration] = none) -> Result[HttpServer, IoError]
+    fn serve(address: String, handler: fn(request: HttpRequest) -> HttpResponse, limit: Optional[Int] = none, max_body_bytes: Optional[Int64] = none, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none, grace: Optional[Duration] = none) -> Result[HttpServer, IoError]
     fn serve_stream(address: String, handler: fn(exchange: HttpExchange) -> Result[Unit, HttpError], options: HttpServerOptions) -> Result[HttpServer, HttpError]
     fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket, WebSocketError]
     fn with_resolver(address: String) -> Result[Network, NetworkError]

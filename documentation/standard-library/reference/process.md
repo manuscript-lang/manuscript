@@ -41,7 +41,7 @@ Runs child programs with empty input by default, optional output bounds and time
 
 ```manuscript
 interface Commands:
-    fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(), max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
+    fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(), max_output_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
 ```
 
 ## CpuUsage {data-api-kind="Record"}
@@ -50,8 +50,8 @@ Cumulative CPU time consumed by the current process, in integer microseconds.
 
 ```manuscript
 type CpuUsage:
-    user_microseconds: Int
-    system_microseconds: Int
+    user_microseconds: Int64
+    system_microseconds: Int64
 ```
 
 ### CpuUsage.system_microseconds
@@ -59,7 +59,7 @@ type CpuUsage:
 Kernel CPU time in microseconds.
 
 ```manuscript
-system_microseconds: Int
+system_microseconds: Int64
 ```
 
 ### CpuUsage.user_microseconds
@@ -67,7 +67,7 @@ system_microseconds: Int
 User CPU time in microseconds.
 
 ```manuscript
-user_microseconds: Int
+user_microseconds: Int64
 ```
 
 ## MemoryUsage {data-api-kind="Record"}
@@ -76,11 +76,11 @@ Memory statistics for the current process; every field is bytes.
 
 ```manuscript
 type MemoryUsage:
-    heap_used: Int
-    heap_total: Int
-    heap_system: Int
-    external: Int
-    resident: Int
+    heap_used: Int64
+    heap_total: Int64
+    heap_system: Int64
+    external: Int64
+    resident: Int64
 ```
 
 ## ProcessControl {data-api-kind="Interface"}
@@ -92,10 +92,10 @@ and finish shutdown work directly in the shielded close call after joining cance
 
 ```manuscript
 interface ProcessControl:
-    fn monotonic_time() -> Int
+    fn monotonic_time() -> Int64
     fn watch_signals(signals: List[Int], capacity: Optional[Int] = none) -> Result[SignalStream, ProcessError]
-    fn constrained_memory() -> Result[Int, ProcessError]
-    fn available_memory() -> Result[Int, ProcessError]
+    fn constrained_memory() -> Result[Int64, ProcessError]
+    fn available_memory() -> Result[Int64, ProcessError]
     fn title() -> Result[String, ProcessError]
     fn set_title(title: String) -> Result[Unit, ProcessError]
     fn initialize_groups(username: String, gid: Int) -> Result[Unit, ProcessError]
@@ -106,7 +106,7 @@ interface ProcessControl:
     fn uptime() -> Result[Duration, ProcessError]
     fn environment() -> Result[Map[String, String], ProcessError]
     fn set_environment(name: String, value: Optional[String]) -> Result[Unit, ProcessError]
-    fn load_environment(path: String, max_bytes: Optional[Int] = none) -> Result[Unit, ProcessError]
+    fn load_environment(path: String, max_bytes: Optional[Int64] = none) -> Result[Unit, ProcessError]
     fn working_directory() -> Result[String, ProcessError]
     fn change_directory(path: String) -> Result[Unit, ProcessError]
     fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
@@ -131,7 +131,7 @@ Elapsed nanoseconds since native runtime initialization, sharing the uptime() or
 This is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing.
 
 ```manuscript
-fn monotonic_time() -> Int
+fn monotonic_time() -> Int64
 ```
 
 ### ProcessControl.send_signal
@@ -223,10 +223,10 @@ type ProcessInfo:
     arguments: List[String]
     os: String
     architecture: String
-    uid: Int
-    gid: Int
-    effective_uid: Int
-    effective_gid: Int
+    uid: Int64
+    gid: Int64
+    effective_uid: Int64
+    effective_gid: Int64
 ```
 
 ### ProcessInfo.arguments
@@ -246,15 +246,15 @@ Unavailable Windows fault/context-switch counters are zero.
 
 ```manuscript
 type ResourceUsage:
-    user_microseconds: Int
-    system_microseconds: Int
-    max_resident_bytes: Int
-    minor_faults: Int
-    major_faults: Int
-    filesystem_reads: Int
-    filesystem_writes: Int
-    voluntary_switches: Int
-    involuntary_switches: Int
+    user_microseconds: Int64
+    system_microseconds: Int64
+    max_resident_bytes: Int64
+    minor_faults: Int64
+    major_faults: Int64
+    filesystem_reads: Int64
+    filesystem_writes: Int64
+    voluntary_switches: Int64
+    involuntary_switches: Int64
 ```
 
 ## SignalStream {data-api-kind="Interface"}

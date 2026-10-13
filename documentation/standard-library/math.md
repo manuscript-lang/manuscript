@@ -33,7 +33,7 @@ The three precision-formatting operations return `Result[String, NumberError]`; 
 
 ## Arbitrary-precision integers
 
-`BigInt` is opaque, immutable, and comparable for equality. Create it with `from_int` or `parse`; there is no source constructor, literal, arithmetic operator, or hashing guarantee. Arithmetic functions leave both operands unchanged. Conversion between `Int` and `BigInt` is explicit.
+`BigInt` is opaque, immutable, and comparable for equality. Create it with `from_int`, `from_int64`, or `parse`; there is no source constructor, literal, arithmetic operator, or hashing guarantee. Arithmetic functions leave both operands unchanged. Conversion between machine integers and BigInt is explicit. `to_int64` returns the exact integer when it fits signed64 and `none` otherwise; `from_int64` preserves the complete wider integer.
 
 | Operation | Behavior |
 | --- | --- |

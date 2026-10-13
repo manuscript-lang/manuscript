@@ -10,7 +10,7 @@ import (
 
 func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
-		{"Network", "request", libraryResult("ClientResponse", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"Network", "request", libraryResult("ClientResponse", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Optional[Int64]"}, {"timeout", "Optional[Duration]"}}},
 		{"Network", "lookup", libraryResult("List[String]", "NetworkError"), []LibraryParam{{"name", "String"}, {"max_records", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
 	}...)
 }

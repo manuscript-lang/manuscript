@@ -29,7 +29,7 @@ Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
 
 ```manuscript
 type YamlLimits:
-    max_bytes: Optional[Int]
+    max_bytes: Optional[Int64]
     max_depth: Optional[Int]
     max_values: Optional[Int]
 ```

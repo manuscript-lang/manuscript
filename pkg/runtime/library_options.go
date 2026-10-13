@@ -20,6 +20,10 @@ func nativeOption(value Value, typ string, fallback Value) (Value, bool) {
 		}
 		value = option.Fields[0]
 		switch v := value.(type) {
+		case Int64:
+			if v < 0 {
+				return nil, false
+			}
 		case int64:
 			if v < 0 {
 				return nil, false
@@ -30,12 +34,15 @@ func nativeOption(value Value, typ string, fallback Value) (Value, bool) {
 			}
 		}
 	}
+	if value, ok := value.(Int64); ok {
+		return int64(value), true
+	}
 	return value, true
 }
 
 func nativeDefault(name, typ, operation string) Value {
 	switch typ {
-	case "Int":
+	case "Int", "Int64":
 		if name == "max_replacements" {
 			return int64(1)
 		}
@@ -63,7 +70,7 @@ func nativeDefault(name, typ, operation string) Value {
 func nativeParamsNeedOptions(params []LibraryParam) bool {
 	for _, p := range params {
 		switch p.Type {
-		case "Optional[Int]", "Optional[Duration]", "Optional[JsonLimits]", "Optional[ArchiveLimits]", "Optional[HtmlLimits]":
+		case "Optional[Int]", "Optional[Int64]", "Optional[Duration]", "Optional[JsonLimits]", "Optional[ArchiveLimits]", "Optional[HtmlLimits]":
 			return true
 		}
 		if nativeOptionRecords[libraryRuntimeType(p.Type)] != nil {
@@ -80,7 +87,7 @@ func nativeOptions(operation string, params []LibraryParam, args []Value) ([]Val
 	}
 	for i, p := range params {
 		typ := p.Type
-		if typ == "Optional[Int]" || typ == "Optional[Duration]" || typ == "Optional[JsonLimits]" || typ == "Optional[ArchiveLimits]" || typ == "Optional[HtmlLimits]" {
+		if typ == "Optional[Int]" || typ == "Optional[Int64]" || typ == "Optional[Duration]" || typ == "Optional[JsonLimits]" || typ == "Optional[ArchiveLimits]" || typ == "Optional[HtmlLimits]" {
 			typ = strings.TrimSuffix(strings.TrimPrefix(typ, "Optional["), "]")
 			var ok bool
 			out[i], ok = nativeOption(out[i], typ, nativeDefault(p.Name, typ, operation))
@@ -100,7 +107,7 @@ func nativeOptions(operation string, params []LibraryParam, args []Value) ([]Val
 				copy[name] = value
 			}
 			for name, fieldType := range fields {
-				if fieldType != "Int" && fieldType != "Duration" {
+				if fieldType != "Int" && fieldType != "Int64" && fieldType != "Duration" {
 					continue
 				}
 				value, valid := nativeOption(copy[name], fieldType, nativeDefault(name, fieldType, operation))
@@ -129,6 +136,10 @@ func nativeOptionFailure(result, operation string, params []LibraryParam, args [
 			continue
 		}
 		switch v := option.Fields[0].(type) {
+		case Int64:
+			if v < 0 {
+				return Panic(fmt.Sprintf("%s: %s must be nonnegative, found %d", operation, p.Name, v))
+			}
 		case int64:
 			if v < 0 {
 				return Panic(fmt.Sprintf("%s: %s must be nonnegative, found %d", operation, p.Name, v))

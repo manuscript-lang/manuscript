@@ -23,17 +23,17 @@ A span of elapsed time.
 type Duration:
     fn add(right: Duration) -> Duration:
     fn subtract(right: Duration) -> Duration:
-    fn multiply(factor: Int) -> Duration:
-    fn divide(divisor: Int) -> Duration:
+    fn multiply(factor: Int64) -> Duration:
+    fn divide(divisor: Int64) -> Duration:
     fn negate() -> Duration:
     fn abs() -> Duration:
     fn compare(right: Duration) -> Int:
-    fn to_nanoseconds() -> Int:
-    fn to_microseconds() -> Int:
-    fn to_milliseconds() -> Int:
-    fn to_seconds() -> Float:
-    fn to_minutes() -> Float:
-    fn to_hours() -> Float:
+    fn to_nanoseconds() -> Int64:
+    fn to_microseconds() -> Int64:
+    fn to_milliseconds() -> Int64:
+    fn to_seconds() -> Float64:
+    fn to_minutes() -> Float64:
+    fn to_hours() -> Float64:
 ```
 
 ### Duration.add
@@ -49,7 +49,7 @@ fn add(right: Duration) -> Duration:
 Converts this duration to an integer number of microseconds.
 
 ```manuscript
-fn to_microseconds() -> Int:
+fn to_microseconds() -> Int64:
 ```
 
 ### Duration.to_milliseconds
@@ -57,7 +57,7 @@ fn to_microseconds() -> Int:
 Converts this duration to an integer number of milliseconds.
 
 ```manuscript
-fn to_milliseconds() -> Int:
+fn to_milliseconds() -> Int64:
 ```
 
 ### Duration.to_nanoseconds
@@ -65,7 +65,7 @@ fn to_milliseconds() -> Int:
 Converts this duration to an integer number of nanoseconds.
 
 ```manuscript
-fn to_nanoseconds() -> Int:
+fn to_nanoseconds() -> Int64:
 ```
 
 ### Duration.to_seconds
@@ -73,7 +73,7 @@ fn to_nanoseconds() -> Int:
 Converts this duration to floating-point seconds.
 
 ```manuscript
-fn to_seconds() -> Float:
+fn to_seconds() -> Float64:
 ```
 
 ## Instant {data-api-kind="Native type"}
@@ -127,7 +127,7 @@ A wall-clock time with Unix seconds and nanoseconds.
 ```manuscript
 type Timestamp:
     fn to_string() -> String:
-    fn unix_seconds() -> Int:
+    fn unix_seconds() -> Int64:
     fn nanoseconds() -> Int:
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
     fn difference(right: Timestamp) -> Result[Duration, TimeError]:
@@ -171,7 +171,7 @@ fn to_string() -> String:
 Returns the whole Unix seconds represented by this timestamp.
 
 ```manuscript
-fn unix_seconds() -> Int:
+fn unix_seconds() -> Int64:
 ```
 
 ## WallClock {data-api-kind="Interface"}
@@ -196,7 +196,7 @@ fn clock() -> Clock:
 Constructs a duration from a number of nanoseconds.
 
 ```manuscript
-fn duration(nanoseconds: Int) -> Duration:
+fn duration(nanoseconds: Int64) -> Duration:
 ```
 
 ## parse_timestamp {data-api-kind="Function"}
@@ -220,7 +220,7 @@ fn sleep(duration: Duration) -> Unit:
 Constructs a timestamp from Unix seconds and a nanosecond adjustment.
 
 ```manuscript
-fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]:
+fn timestamp(seconds: Int64, nanoseconds: Int64) -> Result[Timestamp, TimeError]:
 ```
 
 ## wall_clock {data-api-kind="Function"}

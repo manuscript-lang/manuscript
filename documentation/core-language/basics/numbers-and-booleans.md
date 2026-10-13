@@ -64,7 +64,7 @@ There is no new literal suffix or built-in constructor. `parse_int64(text, radix
 | --- | --- |
 | `Int` | `to_int64() -> Int64`; `to_float() -> Float`; `to_float64() -> Float64`; `to_decimal() -> Decimal` |
 | `Float` | `to_float64() -> Float64`; `truncate_to_int() -> Optional[Int]`; `truncate_to_int64() -> Optional[Int64]` |
-| `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
+| `Decimal` | `to_float() -> Float`; `to_float64() -> Float64`; `truncate_to_int() -> Optional[Int]`; `truncate_to_int64() -> Optional[Int64]` |
 | `Int64` | `to_int() -> Optional[Int]`; `to_float() -> Float`; `to_float64() -> Float64`; `to_decimal() -> Decimal` |
 | `Float64` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]`; `truncate_to_int64() -> Optional[Int64]` |
 
@@ -162,9 +162,9 @@ A Boolean value controls an [if statement](../control-flow/conditionals.md) or [
 
 ## Durations
 
-`milliseconds`, `seconds`, and `minutes` are Int members: `500.milliseconds` and `2.seconds` have type `Duration`. They also work on nonliteral Int expressions; `Instant` represents a monotonic clock instant. They are used by [timeouts and deadlines](../../concurrency/cancellation.md).
+`milliseconds`, `seconds`, and `minutes` are Int and Int64 members: `500.milliseconds` and `2.seconds` have type `Duration`. They also work on nonliteral Int expressions; `Instant` represents a monotonic clock instant. They are used by [timeouts and deadlines](../../concurrency/cancellation.md).
 
-`Duration` is a signed 64-bit count of nanoseconds. The three unit members work on any Int expression and multiply by 1,000,000, 1,000,000,000, or 60,000,000,000 with overflow checks. Import `duration` from `@std/time.ms` to construct an exact interval from nanoseconds. Integer unit conversions truncate toward zero; floating conversions retain fractional units with binary64 rounding. `Instant` is an opaque monotonic instant in the current run's clock domain; it has no source constructor. Clock adapters and injected test clocks must preserve a single comparable domain within a run. Cross-domain comparison or subtraction faults. Duration arithmetic and Instant shifts/differences check overflow; these compiler-defined operations are enumerated in the [operator table](expressions.md).
+`Duration` is a signed 64-bit count of nanoseconds. The three unit members work on any Int or Int64 expression and multiply by 1,000,000, 1,000,000,000, or 60,000,000,000 with overflow checks. Import `duration` from `@std/time.ms` to construct an exact interval from nanoseconds. Integer unit conversions return Int64 and truncate toward zero; floating conversions return Float64 with binary64 rounding. `duration` takes Int64 nanoseconds, and Duration scaling/division take explicit Int64 operands. Timestamp Unix seconds and construction also retain Int64; its nanosecond component fits Int. `Instant` is an opaque monotonic instant in the current run's clock domain; it has no source constructor. Clock adapters and injected test clocks must preserve a single comparable domain within a run. Cross-domain comparison or subtraction faults. Duration arithmetic and Instant shifts/differences check overflow; these compiler-defined operations are enumerated in the [operator table](expressions.md).
 
 Duration and Instant overflow diagnostics name the arithmetic operation, the operands in nanoseconds, and the signed 64-bit result range; multiplication factors and divisors remain dimensionless. Duration `divide` names an invalid divisor. Unit-member conversion and Duration `negate`/`abs` faults give the allowed input range and original value. The arithmetic, rounding, clock-domain, and cancellation rules remain unchanged.
 

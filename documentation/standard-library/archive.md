@@ -48,7 +48,7 @@ Gzip output has a zero timestamp and no platform or name metadata.
 
 ## Archive records and limits
 
-`ArchiveEntry` contains `path: String`, `data: Bytes`, and `directory: Bool`. `ArchiveLimits` contains `max_entries: Optional[Int]`, `max_entry_bytes: Optional[Int]`, and `max_total_bytes: Optional[Int]`. All limits are nonnegative and count expanded content.
+`ArchiveEntry` contains `path: String`, `data: Bytes`, and `directory: Bool`. `ArchiveLimits` contains `max_entries: Optional[Int]`, `max_entry_bytes: Optional[Int64]`, and `max_total_bytes: Optional[Int64]`. All limits are nonnegative and count expanded content.
 
 Pack and unpack accept exactly the case-sensitive strings `zip` and `tar`; other formats return `ArchiveError.Unsupported`. Both support regular files and directories. Names must be UTF-8 portable relative paths. They reject absolute roots, backslashes, colons, NUL, and empty, dot, or dot-dot components. Duplicate normalized paths are rejected. Directory data must be empty.
 

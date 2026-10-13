@@ -146,8 +146,8 @@
           "type": "ArchiveLimits",
           "fields": [
             "max_entries: Optional[Int]",
-            "max_entry_bytes: Optional[Int]",
-            "max_total_bytes: Optional[Int]"
+            "max_entry_bytes: Optional[Int64]",
+            "max_total_bytes: Optional[Int64]"
           ],
           "members": [
             {
@@ -159,13 +159,13 @@
             {
               "name": "max_entry_bytes",
               "kind": "field",
-              "signature": "max_entry_bytes: Optional[Int] = none",
+              "signature": "max_entry_bytes: Optional[Int64] = none",
               "doc": ""
             },
             {
               "name": "max_total_bytes",
               "kind": "field",
-              "signature": "max_total_bytes: Optional[Int] = none",
+              "signature": "max_total_bytes: Optional[Int64] = none",
               "doc": ""
             }
           ]
@@ -174,7 +174,7 @@
           "name": "pack",
           "doc": "Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.",
           "kind": "fn",
-          "type": "fn(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, ArchiveError]"
+          "type": "fn(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, ArchiveError]"
         },
         {
           "name": "unpack",
@@ -202,6 +202,7 @@
             "multiply: fn(right: BigInt)-\u003eBigInt",
             "remainder: fn(right: BigInt)-\u003eResult[BigInt, BigIntError]",
             "subtract: fn(right: BigInt)-\u003eBigInt",
+            "to_int64: fn()-\u003eOptional[Int64]",
             "to_int: fn()-\u003eOptional[Int]",
             "to_string: fn(radix: Int)-\u003eString"
           ],
@@ -267,6 +268,12 @@
               "doc": ""
             },
             {
+              "name": "to_int64",
+              "kind": "operation",
+              "signature": "fn to_int64() -\u003e Optional[Int64]:",
+              "doc": "Returns the exact value when it fits signed64, otherwise none."
+            },
+            {
               "name": "to_string",
               "kind": "operation",
               "signature": "fn to_string(radix: Int) -\u003e String:",
@@ -325,6 +332,12 @@
           "type": "fn(value: Int)-\u003eBigInt"
         },
         {
+          "name": "from_int64",
+          "doc": "Converts an explicit signed64 integer without loss.",
+          "kind": "fn",
+          "type": "fn(value: Int64)-\u003eBigInt"
+        },
+        {
           "name": "parse",
           "doc": "Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.",
           "kind": "fn",
@@ -379,10 +392,16 @@
           "type": "fn(data: Bytes, offset: Int, little_endian: Bool)-\u003eResult[Float, BinaryError]"
         },
         {
+          "name": "read_float64",
+          "doc": "Reads an IEEE binary64 value at `offset` without rounding through Float.",
+          "kind": "fn",
+          "type": "fn(data: Bytes, offset: Int, little_endian: Bool)-\u003eResult[Float64, BinaryError]"
+        },
+        {
           "name": "read_integer",
           "doc": "Reads an integer of `width` bytes. Signed values use two's-complement encoding.",
           "kind": "fn",
-          "type": "fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)-\u003eResult[Int, BinaryError]"
+          "type": "fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)-\u003eResult[Int64, BinaryError]"
         },
         {
           "name": "write_float",
@@ -391,10 +410,16 @@
           "type": "fn(value: Float, little_endian: Bool)-\u003eBytes"
         },
         {
+          "name": "write_float64",
+          "doc": "Encodes an IEEE binary64 value using the selected byte order.",
+          "kind": "fn",
+          "type": "fn(value: Float64, little_endian: Bool)-\u003eBytes"
+        },
+        {
           "name": "write_integer",
           "doc": "Encodes an integer into `width` bytes, returning an error when it does not fit.",
           "kind": "fn",
-          "type": "fn(value: Int, width: Int, signed: Bool, little_endian: Bool)-\u003eResult[Bytes, BinaryError]"
+          "type": "fn(value: Int64, width: Int, signed: Bool, little_endian: Bool)-\u003eResult[Bytes, BinaryError]"
         }
       ]
     },
@@ -1628,13 +1653,13 @@
           "name": "compress",
           "doc": "Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).\nOther formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.\n`max_bytes` bounds the encoded output when supplied.",
           "kind": "fn",
-          "type": "fn(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
+          "type": "fn(data: Bytes, format: String, level: Int, max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, CompressionError]"
         },
         {
           "name": "decompress",
           "doc": "Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.\nStops when the supplied output limit is reached.",
           "kind": "fn",
-          "type": "fn(data: Bytes, format: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
+          "type": "fn(data: Bytes, format: String, max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, CompressionError]"
         }
       ]
     },
@@ -1881,7 +1906,7 @@
           "name": "stringify",
           "doc": "Encodes rows as CSV with comma delimiters and LF endings by default.\nQuotes cells when required by the delimiter or line ending.",
           "kind": "fn",
-          "type": "fn(rows: List[List[String]], options: CsvOptions = ..., max_bytes: Optional[Int] = ...)-\u003eResult[String, CsvError]"
+          "type": "fn(rows: List[List[String]], options: CsvOptions = ..., max_bytes: Optional[Int64] = ...)-\u003eResult[String, CsvError]"
         }
       ]
     },
@@ -1896,7 +1921,9 @@
           "operations": [
             "round: fn(places: Int, mode: Optional[RoundingMode] = ...)-\u003eResult[Decimal, NumberError]",
             "to_fixed: fn(digits: Int, mode: Optional[RoundingMode] = ...)-\u003eResult[String, NumberError]",
+            "to_float64: fn()-\u003eFloat64",
             "to_float: fn()-\u003eFloat",
+            "truncate_to_int64: fn()-\u003eOptional[Int64]",
             "truncate_to_int: fn()-\u003eOptional[Int]"
           ],
           "members": [
@@ -1919,10 +1946,22 @@
               "doc": ""
             },
             {
+              "name": "to_float64",
+              "kind": "operation",
+              "signature": "fn to_float64() -\u003e Float64:",
+              "doc": "Rounds directly to IEEE binary64, without a default Float intermediate."
+            },
+            {
               "name": "truncate_to_int",
               "kind": "operation",
               "signature": "fn truncate_to_int() -\u003e Optional[Int]:",
               "doc": ""
+            },
+            {
+              "name": "truncate_to_int64",
+              "kind": "operation",
+              "signature": "fn truncate_to_int64() -\u003e Optional[Int64]:",
+              "doc": "Truncates exactly toward zero, returning none outside signed64."
             }
           ]
         },
@@ -2024,7 +2063,7 @@
           "name": "base64_decode",
           "doc": "Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.",
           "kind": "fn",
-          "type": "fn(text: String, url_safe: Bool = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, EncodingError]"
+          "type": "fn(text: String, url_safe: Bool = ..., max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, EncodingError]"
         },
         {
           "name": "base64_encode",
@@ -2036,7 +2075,7 @@
           "name": "hex_decode",
           "doc": "Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.",
           "kind": "fn",
-          "type": "fn(text: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, EncodingError]"
+          "type": "fn(text: String, max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, EncodingError]"
         },
         {
           "name": "hex_encode",
@@ -2221,7 +2260,7 @@
             "verbatim_symlinks: Bool",
             "clone: String",
             "max_entries: Optional[Int]",
-            "max_bytes: Optional[Int]"
+            "max_bytes: Optional[Int64]"
           ],
           "members": [
             {
@@ -2245,7 +2284,7 @@
             {
               "name": "max_bytes",
               "kind": "field",
-              "signature": "max_bytes: Optional[Int] = none",
+              "signature": "max_bytes: Optional[Int64] = none",
               "doc": ""
             },
             {
@@ -2377,21 +2416,21 @@
             "chown: fn(uid: Int, gid: Int)-\u003eResult[Unit, FileSystemError]",
             "close: fn()-\u003eUnit",
             "data_sync: fn()-\u003eResult[Unit, FileSystemError]",
-            "read: fn(max_bytes: Optional[Int] = ...)-\u003eResult[Optional[Bytes], FileSystemError]",
-            "read_at: fn(offset: Int, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, FileSystemError]",
-            "read_file: fn(max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, FileSystemError]",
-            "read_lines: fn(max_bytes: Optional[Int] = ..., max_lines: Optional[Int] = ...)-\u003eResult[List[String], FileSystemError]",
-            "read_vectors: fn(sizes: List[Int], offset: Int)-\u003eResult[List[Bytes], FileSystemError]",
+            "read: fn(max_bytes: Optional[Int64] = ...)-\u003eResult[Optional[Bytes], FileSystemError]",
+            "read_at: fn(offset: Int64, max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, FileSystemError]",
+            "read_file: fn(max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, FileSystemError]",
+            "read_lines: fn(max_bytes: Optional[Int64] = ..., max_lines: Optional[Int] = ...)-\u003eResult[List[String], FileSystemError]",
+            "read_vectors: fn(sizes: List[Int], offset: Int64)-\u003eResult[List[Bytes], FileSystemError]",
             "reader: fn()-\u003eReadStream",
-            "seek: fn(offset: Int, origin: Int)-\u003eResult[Int, FileSystemError]",
+            "seek: fn(offset: Int64, origin: Int)-\u003eResult[Int64, FileSystemError]",
             "set_times: fn(accessed: Timestamp, modified: Timestamp)-\u003eResult[Unit, FileSystemError]",
             "stat: fn()-\u003eResult[FileInfo, FileSystemError]",
             "sync: fn()-\u003eResult[Unit, FileSystemError]",
-            "truncate: fn(size: Int)-\u003eResult[Unit, FileSystemError]",
-            "write: fn(data: Bytes)-\u003eResult[Int, FileSystemError]",
-            "write_at: fn(offset: Int, data: Bytes)-\u003eResult[Int, FileSystemError]",
+            "truncate: fn(size: Int64)-\u003eResult[Unit, FileSystemError]",
+            "write: fn(data: Bytes)-\u003eResult[Int64, FileSystemError]",
+            "write_at: fn(offset: Int64, data: Bytes)-\u003eResult[Int64, FileSystemError]",
             "write_file: fn(data: Bytes)-\u003eResult[Unit, FileSystemError]",
-            "write_vectors: fn(buffers: List[Bytes], offset: Int)-\u003eResult[Int, FileSystemError]",
+            "write_vectors: fn(buffers: List[Bytes], offset: Int64)-\u003eResult[Int64, FileSystemError]",
             "writer: fn()-\u003eWriteStream"
           ],
           "members": [
@@ -2428,31 +2467,31 @@
             {
               "name": "read",
               "kind": "operation",
-              "signature": "fn read(max_bytes: Optional[Int] = none) -\u003e Result[Optional[Bytes], FileSystemError]",
+              "signature": "fn read(max_bytes: Optional[Int64] = none) -\u003e Result[Optional[Bytes], FileSystemError]",
               "doc": "Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive."
             },
             {
               "name": "read_at",
               "kind": "operation",
-              "signature": "fn read_at(offset: Int, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, FileSystemError]",
+              "signature": "fn read_at(offset: Int64, max_bytes: Optional[Int64] = none) -\u003e Result[Bytes, FileSystemError]",
               "doc": "Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF."
             },
             {
               "name": "read_file",
               "kind": "operation",
-              "signature": "fn read_file(max_bytes: Optional[Int] = none) -\u003e Result[Bytes, FileSystemError]",
+              "signature": "fn read_file(max_bytes: Optional[Int64] = none) -\u003e Result[Bytes, FileSystemError]",
               "doc": "Reads remaining bytes from the current position; EOF returns empty Bytes."
             },
             {
               "name": "read_lines",
               "kind": "operation",
-              "signature": "fn read_lines(max_bytes: Optional[Int] = none, max_lines: Optional[Int] = none) -\u003e Result[List[String], FileSystemError]",
+              "signature": "fn read_lines(max_bytes: Optional[Int64] = none, max_lines: Optional[Int] = none) -\u003e Result[List[String], FileSystemError]",
               "doc": ""
             },
             {
               "name": "read_vectors",
               "kind": "operation",
-              "signature": "fn read_vectors(sizes: List[Int], offset: Int) -\u003e Result[List[Bytes], FileSystemError]",
+              "signature": "fn read_vectors(sizes: List[Int], offset: Int64) -\u003e Result[List[Bytes], FileSystemError]",
               "doc": ""
             },
             {
@@ -2464,7 +2503,7 @@
             {
               "name": "seek",
               "kind": "operation",
-              "signature": "fn seek(offset: Int, origin: Int) -\u003e Result[Int, FileSystemError]",
+              "signature": "fn seek(offset: Int64, origin: Int) -\u003e Result[Int64, FileSystemError]",
               "doc": "Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).\nOther origins return InvalidInput; the OS validates the resulting offset."
             },
             {
@@ -2488,19 +2527,19 @@
             {
               "name": "truncate",
               "kind": "operation",
-              "signature": "fn truncate(size: Int) -\u003e Result[Unit, FileSystemError]",
+              "signature": "fn truncate(size: Int64) -\u003e Result[Unit, FileSystemError]",
               "doc": ""
             },
             {
               "name": "write",
               "kind": "operation",
-              "signature": "fn write(data: Bytes) -\u003e Result[Int, FileSystemError]",
+              "signature": "fn write(data: Bytes) -\u003e Result[Int64, FileSystemError]",
               "doc": "Writes all bytes on success and returns their count; errors can leave a prefix without a count."
             },
             {
               "name": "write_at",
               "kind": "operation",
-              "signature": "fn write_at(offset: Int, data: Bytes) -\u003e Result[Int, FileSystemError]",
+              "signature": "fn write_at(offset: Int64, data: Bytes) -\u003e Result[Int64, FileSystemError]",
               "doc": "Writes all bytes at a nonnegative offset without moving the position; returns the full count."
             },
             {
@@ -2512,7 +2551,7 @@
             {
               "name": "write_vectors",
               "kind": "operation",
-              "signature": "fn write_vectors(buffers: List[Bytes], offset: Int) -\u003e Result[Int, FileSystemError]",
+              "signature": "fn write_vectors(buffers: List[Bytes], offset: Int64) -\u003e Result[Int64, FileSystemError]",
               "doc": "Writes every buffer and returns the total byte count; offset -1 uses the current position."
             },
             {
@@ -2530,7 +2569,7 @@
           "type": "FileInfo",
           "fields": [
             "name: String",
-            "size: Int",
+            "size: Int64",
             "directory: Bool",
             "symlink: Bool",
             "modified: Timestamp",
@@ -2539,20 +2578,20 @@
             "mode: Int",
             "permissions: Int",
             "created: Optional[Timestamp]",
-            "block_size: Int",
-            "blocks: Int",
-            "rdev: Int",
+            "block_size: Int64",
+            "blocks: Int64",
+            "rdev: Int64",
             "fifo: Bool",
             "socket: Bool",
             "block_device: Bool",
             "char_device: Bool",
             "exact: Map[String, BigInt]",
             "regular: Bool",
-            "device: Int",
-            "inode: Int",
-            "links: Int",
-            "uid: Int",
-            "gid: Int"
+            "device: Int64",
+            "inode: Int64",
+            "links: Int64",
+            "uid: Int64",
+            "gid: Int64"
           ],
           "members": [
             {
@@ -2570,13 +2609,13 @@
             {
               "name": "block_size",
               "kind": "field",
-              "signature": "block_size: Int",
+              "signature": "block_size: Int64",
               "doc": "Preferred I/O block size in bytes; unavailable fields are zero."
             },
             {
               "name": "blocks",
               "kind": "field",
-              "signature": "blocks: Int",
+              "signature": "blocks: Int64",
               "doc": "Allocated 512-byte blocks on POSIX hosts; unavailable fields are zero."
             },
             {
@@ -2600,7 +2639,7 @@
             {
               "name": "device",
               "kind": "field",
-              "signature": "device: Int",
+              "signature": "device: Int64",
               "doc": ""
             },
             {
@@ -2624,19 +2663,19 @@
             {
               "name": "gid",
               "kind": "field",
-              "signature": "gid: Int",
+              "signature": "gid: Int64",
               "doc": ""
             },
             {
               "name": "inode",
               "kind": "field",
-              "signature": "inode: Int",
+              "signature": "inode: Int64",
               "doc": ""
             },
             {
               "name": "links",
               "kind": "field",
-              "signature": "links: Int",
+              "signature": "links: Int64",
               "doc": ""
             },
             {
@@ -2666,7 +2705,7 @@
             {
               "name": "rdev",
               "kind": "field",
-              "signature": "rdev: Int",
+              "signature": "rdev: Int64",
               "doc": ""
             },
             {
@@ -2678,7 +2717,7 @@
             {
               "name": "size",
               "kind": "field",
-              "signature": "size: Int",
+              "signature": "size: Int64",
               "doc": "File length in bytes."
             },
             {
@@ -2696,7 +2735,7 @@
             {
               "name": "uid",
               "kind": "field",
-              "signature": "uid: Int",
+              "signature": "uid: Int64",
               "doc": ""
             }
           ]
@@ -2714,8 +2753,8 @@
             "chmod_link: fn(path: String, mode: Int)-\u003eResult[Unit, FileSystemError]",
             "chown: fn(path: String, uid: Int, gid: Int, follow_links: Bool)-\u003eResult[Unit, FileSystemError]",
             "copy: fn(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String)-\u003eBool])-\u003eResult[Unit, FileSystemError]",
-            "copy_file: fn(source: String, destination: String, replace: Bool = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Unit, FileSystemError]",
-            "copy_tree: fn(source: String, destination: String, replace: Bool = ..., max_entries: Optional[Int] = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Unit, FileSystemError]",
+            "copy_file: fn(source: String, destination: String, replace: Bool = ..., max_bytes: Optional[Int64] = ...)-\u003eResult[Unit, FileSystemError]",
+            "copy_tree: fn(source: String, destination: String, replace: Bool = ..., max_entries: Optional[Int] = ..., max_bytes: Optional[Int64] = ...)-\u003eResult[Unit, FileSystemError]",
             "create_directory: fn(path: String, recursive: Bool = ...)-\u003eResult[Unit, FileSystemError]",
             "create_link: fn(path: String, target: String)-\u003eResult[Unit, FileSystemError]",
             "glob: fn(path: String, pattern: String, max_entries: Optional[Int] = ...)-\u003eResult[List[String], FileSystemError]",
@@ -2725,7 +2764,7 @@
             "open: fn(path: String, flags: String, mode: Int)-\u003eResult[FileHandle, FileSystemError]",
             "open_directory: fn(path: String)-\u003eResult[Directory, FileSystemError]",
             "open_flags: fn(path: String, flags: Int, mode: Int)-\u003eResult[FileHandle, FileSystemError]",
-            "read_file: fn(path: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, FileSystemError]",
+            "read_file: fn(path: String, max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, FileSystemError]",
             "read_link: fn(path: String)-\u003eResult[String, FileSystemError]",
             "remove: fn(path: String, recursive: Bool = ...)-\u003eResult[Unit, FileSystemError]",
             "rename: fn(source: String, destination: String)-\u003eResult[Unit, FileSystemError]",
@@ -2734,7 +2773,7 @@
             "stat_filesystem: fn(path: String)-\u003eResult[FileSystemInfo, FileSystemError]",
             "temporary: fn(prefix: String)-\u003eResult[TemporaryDirectory, FileSystemError]",
             "temporary_directory: fn(prefix: String)-\u003eResult[String, FileSystemError]",
-            "truncate: fn(path: String, size: Int)-\u003eResult[Unit, FileSystemError]",
+            "truncate: fn(path: String, size: Int64)-\u003eResult[Unit, FileSystemError]",
             "watch: fn(path: String, recursive: Bool, interval: Duration, max_entries: Optional[Int] = ...)-\u003eResult[FileWatcher, FileSystemError]",
             "watch_native: fn(path: String, recursive: Bool, max_entries: Optional[Int] = ..., max_events: Optional[Int] = ..., overflow: String)-\u003eResult[FileWatcher, FileSystemError]",
             "write_file: fn(path: String, data: Bytes, replace: Bool = ...)-\u003eResult[Unit, FileSystemError]"
@@ -2785,13 +2824,13 @@
             {
               "name": "copy_file",
               "kind": "operation",
-              "signature": "fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int] = none) -\u003e Result[Unit, FileSystemError]",
+              "signature": "fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int64] = none) -\u003e Result[Unit, FileSystemError]",
               "doc": "Copies one file; replace defaults to false, refusing an existing destination."
             },
             {
               "name": "copy_tree",
               "kind": "operation",
-              "signature": "fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -\u003e Result[Unit, FileSystemError]",
+              "signature": "fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int64] = none) -\u003e Result[Unit, FileSystemError]",
               "doc": "Copies a tree; replace defaults to false, refusing existing destinations.\nEntry and byte limits remain separate and apply cumulatively across the copy."
             },
             {
@@ -2851,7 +2890,7 @@
             {
               "name": "read_file",
               "kind": "operation",
-              "signature": "fn read_file(path: String, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, FileSystemError]",
+              "signature": "fn read_file(path: String, max_bytes: Optional[Int64] = none) -\u003e Result[Bytes, FileSystemError]",
               "doc": "Reads a file fully into memory. Supply `max_bytes` for untrusted or large files."
             },
             {
@@ -2905,7 +2944,7 @@
             {
               "name": "truncate",
               "kind": "operation",
-              "signature": "fn truncate(path: String, size: Int) -\u003e Result[Unit, FileSystemError]",
+              "signature": "fn truncate(path: String, size: Int64) -\u003e Result[Unit, FileSystemError]",
               "doc": "Sets the target size in bytes; follows a final symbolic link."
             },
             {
@@ -3033,55 +3072,55 @@
           "kind": "record",
           "type": "FileSystemInfo",
           "fields": [
-            "type_id: Int",
-            "block_size: Int",
-            "blocks: Int",
-            "blocks_free: Int",
-            "blocks_available: Int",
-            "files: Int",
-            "files_free: Int"
+            "type_id: Int64",
+            "block_size: Int64",
+            "blocks: Int64",
+            "blocks_free: Int64",
+            "blocks_available: Int64",
+            "files: Int64",
+            "files_free: Int64"
           ],
           "members": [
             {
               "name": "block_size",
               "kind": "field",
-              "signature": "block_size: Int",
+              "signature": "block_size: Int64",
               "doc": ""
             },
             {
               "name": "blocks",
               "kind": "field",
-              "signature": "blocks: Int",
+              "signature": "blocks: Int64",
               "doc": ""
             },
             {
               "name": "blocks_available",
               "kind": "field",
-              "signature": "blocks_available: Int",
+              "signature": "blocks_available: Int64",
               "doc": ""
             },
             {
               "name": "blocks_free",
               "kind": "field",
-              "signature": "blocks_free: Int",
+              "signature": "blocks_free: Int64",
               "doc": ""
             },
             {
               "name": "files",
               "kind": "field",
-              "signature": "files: Int",
+              "signature": "files: Int64",
               "doc": ""
             },
             {
               "name": "files_free",
               "kind": "field",
-              "signature": "files_free: Int",
+              "signature": "files_free: Int64",
               "doc": ""
             },
             {
               "name": "type_id",
               "kind": "field",
-              "signature": "type_id: Int",
+              "signature": "type_id: Int64",
               "doc": ""
             }
           ]
@@ -3301,7 +3340,7 @@
           "kind": "record",
           "type": "HtmlLimits",
           "fields": [
-            "max_bytes: Optional[Int]",
+            "max_bytes: Optional[Int64]",
             "max_depth: Optional[Int]",
             "max_nodes: Optional[Int]"
           ],
@@ -3309,7 +3348,7 @@
             {
               "name": "max_bytes",
               "kind": "field",
-              "signature": "max_bytes: Optional[Int] = none",
+              "signature": "max_bytes: Optional[Int64] = none",
               "doc": ""
             },
             {
@@ -3492,8 +3531,8 @@
           "type": "HttpClient",
           "operations": [
             "close: fn()-\u003eUnit",
-            "send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ResponseBody, HttpError]",
-            "send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ResponseBody, HttpError]"
+            "send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int64] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ResponseBody, HttpError]",
+            "send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int64] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ResponseBody, HttpError]"
           ],
           "members": [
             {
@@ -3505,13 +3544,13 @@
             {
               "name": "send",
               "kind": "operation",
-              "signature": "fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ResponseBody, HttpError]",
+              "signature": "fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -\u003e Result[ResponseBody, HttpError]",
               "doc": ""
             },
             {
               "name": "send_stream",
               "kind": "operation",
-              "signature": "fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ResponseBody, HttpError]",
+              "signature": "fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -\u003e Result[ResponseBody, HttpError]",
               "doc": ""
             }
           ]
@@ -3524,7 +3563,7 @@
           "fields": [
             "max_redirects: Optional[Int]",
             "max_idle_connections: Optional[Int]",
-            "max_header_bytes: Optional[Int]",
+            "max_header_bytes: Optional[Int64]",
             "idle_timeout: Optional[Duration]",
             "decompress: Bool",
             "cookies: Bool",
@@ -3552,7 +3591,7 @@
             {
               "name": "max_header_bytes",
               "kind": "field",
-              "signature": "max_header_bytes: Optional[Int] = none",
+              "signature": "max_header_bytes: Optional[Int64] = none",
               "doc": ""
             },
             {
@@ -3664,9 +3703,9 @@
             "method: fn()-\u003eString",
             "path: fn()-\u003eString",
             "query: fn()-\u003eString",
-            "read: fn(max_bytes: Optional[Int] = ...)-\u003eResult[Optional[Bytes], IoError]",
+            "read: fn(max_bytes: Optional[Int64] = ...)-\u003eResult[Optional[Bytes], IoError]",
             "send_headers: fn(status: Int, headers: Map[String, List[String]])-\u003eResult[Unit, HttpError]",
-            "upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int] = ...)-\u003eResult[WebSocket, WebSocketError]",
+            "upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int64] = ...)-\u003eResult[WebSocket, WebSocketError]",
             "write: fn(data: Bytes)-\u003eResult[Unit, IoError]"
           ],
           "members": [
@@ -3703,7 +3742,7 @@
             {
               "name": "read",
               "kind": "operation",
-              "signature": "fn read(max_bytes: Optional[Int] = none) -\u003e Result[Optional[Bytes], IoError]",
+              "signature": "fn read(max_bytes: Optional[Int64] = none) -\u003e Result[Optional[Bytes], IoError]",
               "doc": ""
             },
             {
@@ -3715,7 +3754,7 @@
             {
               "name": "upgrade",
               "kind": "operation",
-              "signature": "fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int] = none) -\u003e Result[WebSocket, WebSocketError]",
+              "signature": "fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int64] = none) -\u003e Result[WebSocket, WebSocketError]",
               "doc": ""
             },
             {
@@ -3849,9 +3888,9 @@
           "type": "HttpServerOptions",
           "fields": [
             "max_requests: Optional[Int]",
-            "max_body_bytes: Optional[Int]",
-            "max_response_bytes: Optional[Int]",
-            "max_header_bytes: Optional[Int]",
+            "max_body_bytes: Optional[Int64]",
+            "max_response_bytes: Optional[Int64]",
+            "max_header_bytes: Optional[Int64]",
             "timeout: Optional[Duration]",
             "grace: Optional[Duration]",
             "tls: Optional[TlsOptions]"
@@ -3866,13 +3905,13 @@
             {
               "name": "max_body_bytes",
               "kind": "field",
-              "signature": "max_body_bytes: Optional[Int] = none",
+              "signature": "max_body_bytes: Optional[Int64] = none",
               "doc": ""
             },
             {
               "name": "max_header_bytes",
               "kind": "field",
-              "signature": "max_header_bytes: Optional[Int] = none",
+              "signature": "max_header_bytes: Optional[Int64] = none",
               "doc": ""
             },
             {
@@ -3884,7 +3923,7 @@
             {
               "name": "max_response_bytes",
               "kind": "field",
-              "signature": "max_response_bytes: Optional[Int] = none",
+              "signature": "max_response_bytes: Optional[Int64] = none",
               "doc": ""
             },
             {
@@ -3909,7 +3948,7 @@
           "operations": [
             "close: fn()-\u003eUnit",
             "headers: fn()-\u003eMap[String, List[String]]",
-            "read: fn(max_bytes: Optional[Int] = ...)-\u003eResult[Optional[Bytes], IoError]",
+            "read: fn(max_bytes: Optional[Int64] = ...)-\u003eResult[Optional[Bytes], IoError]",
             "status: fn()-\u003eInt"
           ],
           "members": [
@@ -3928,7 +3967,7 @@
             {
               "name": "read",
               "kind": "operation",
-              "signature": "fn read(max_bytes: Optional[Int] = none) -\u003e Result[Optional[Bytes], IoError]",
+              "signature": "fn read(max_bytes: Optional[Int64] = none) -\u003e Result[Optional[Bytes], IoError]",
               "doc": ""
             },
             {
@@ -3957,7 +3996,7 @@
           "type": "File",
           "operations": [
             "close: fn()-\u003eUnit",
-            "read: fn(max_bytes: Optional[Int] = ...)-\u003eResult[Optional[Bytes], IoError]"
+            "read: fn(max_bytes: Optional[Int64] = ...)-\u003eResult[Optional[Bytes], IoError]"
           ],
           "members": [
             {
@@ -3969,7 +4008,7 @@
             {
               "name": "read",
               "kind": "operation",
-              "signature": "fn read(max_bytes: Optional[Int] = none) -\u003e Result[Optional[Bytes], IoError]",
+              "signature": "fn read(max_bytes: Optional[Int64] = none) -\u003e Result[Optional[Bytes], IoError]",
               "doc": ""
             }
           ]
@@ -4069,7 +4108,7 @@
           "type": "ReadStream",
           "operations": [
             "close: fn()-\u003eUnit",
-            "read: fn(max_bytes: Optional[Int] = ...)-\u003eResult[Optional[Bytes], IoError]"
+            "read: fn(max_bytes: Optional[Int64] = ...)-\u003eResult[Optional[Bytes], IoError]"
           ],
           "members": [
             {
@@ -4081,7 +4120,7 @@
             {
               "name": "read",
               "kind": "operation",
-              "signature": "fn read(max_bytes: Optional[Int] = none) -\u003e Result[Optional[Bytes], IoError]",
+              "signature": "fn read(max_bytes: Optional[Int64] = none) -\u003e Result[Optional[Bytes], IoError]",
               "doc": ""
             }
           ]
@@ -4121,7 +4160,7 @@
           "name": "copy",
           "doc": "Copies bytes until end of input or the supplied byte limit; returns bytes copied.",
           "kind": "fn",
-          "type": "fn(input: ReadStream, output: WriteStream, max_bytes: Optional[Int] = ...)-\u003eResult[Int, IoError]"
+          "type": "fn(input: ReadStream, output: WriteStream, max_bytes: Optional[Int64] = ...)-\u003eResult[Int64, IoError]"
         },
         {
           "name": "files",
@@ -4133,13 +4172,13 @@
           "name": "read_all",
           "doc": "Reads a stream completely into memory. Supply a limit for untrusted streams.",
           "kind": "fn",
-          "type": "fn(input: ReadStream, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, IoError]"
+          "type": "fn(input: ReadStream, max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, IoError]"
         },
         {
           "name": "read_line",
           "doc": "Reads one line, omitting its line ending; returns `none` at end of stream.",
           "kind": "fn",
-          "type": "fn(input: ReadStream, max_bytes: Optional[Int] = ...)-\u003eResult[Optional[String], IoError]"
+          "type": "fn(input: ReadStream, max_bytes: Optional[Int64] = ...)-\u003eResult[Optional[String], IoError]"
         },
         {
           "name": "stderr",
@@ -4214,7 +4253,7 @@
           "kind": "record",
           "type": "JsonLimits",
           "fields": [
-            "max_bytes: Optional[Int]",
+            "max_bytes: Optional[Int64]",
             "max_depth: Optional[Int]",
             "max_values: Optional[Int]"
           ],
@@ -4222,7 +4261,7 @@
             {
               "name": "max_bytes",
               "kind": "field",
-              "signature": "max_bytes: Optional[Int] = none",
+              "signature": "max_bytes: Optional[Int64] = none",
               "doc": ""
             },
             {
@@ -4331,7 +4370,7 @@
           "name": "stringify",
           "doc": "Serializes a JSON value. `max_bytes` bounds output when supplied.",
           "kind": "fn",
-          "type": "fn(value: JsonValue, max_bytes: Optional[Int] = ...)-\u003eResult[String, JsonError]"
+          "type": "fn(value: JsonValue, max_bytes: Optional[Int64] = ...)-\u003eResult[String, JsonError]"
         }
       ]
     },
@@ -4603,7 +4642,7 @@
           "name": "create",
           "doc": "Creates a logger. Defaults to `Info`, no bound fields, timestamps enabled, and no record-size limit.",
           "kind": "fn",
-          "type": "fn(transport: Transport, level: Optional[LogLevel] = ..., bindings: Optional[Map[String, JsonValue]] = ..., timestamp: Optional[Bool] = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Logger, LogError]"
+          "type": "fn(transport: Transport, level: Optional[LogLevel] = ..., bindings: Optional[Map[String, JsonValue]] = ..., timestamp: Optional[Bool] = ..., max_bytes: Optional[Int64] = ...)-\u003eResult[Logger, LogError]"
         },
         {
           "name": "file_transport",
@@ -4810,7 +4849,7 @@
             "close: fn()-\u003eUnit",
             "local_address: fn()-\u003eString",
             "peer_address: fn()-\u003eString",
-            "read: fn(max_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[Optional[Bytes], IoError]",
+            "read: fn(max_bytes: Optional[Int64] = ..., timeout: Optional[Duration] = ...)-\u003eResult[Optional[Bytes], IoError]",
             "shutdown_write: fn()-\u003eResult[Unit, NetworkError]",
             "tls_info: fn()-\u003eResult[TlsInfo, TlsError]",
             "write: fn(data: Bytes, timeout: Optional[Duration] = ...)-\u003eResult[Unit, IoError]"
@@ -4837,7 +4876,7 @@
             {
               "name": "read",
               "kind": "operation",
-              "signature": "fn read(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[Optional[Bytes], IoError]",
+              "signature": "fn read(max_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -\u003e Result[Optional[Bytes], IoError]",
               "doc": "Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout."
             },
             {
@@ -4892,7 +4931,7 @@
           "operations": [
             "address: fn()-\u003eString",
             "close: fn()-\u003eUnit",
-            "receive: fn(max_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[Datagram, NetworkError]",
+            "receive: fn(max_bytes: Optional[Int64] = ..., timeout: Optional[Duration] = ...)-\u003eResult[Datagram, NetworkError]",
             "send: fn(data: Bytes, address: String, timeout: Optional[Duration] = ...)-\u003eResult[Unit, NetworkError]"
           ],
           "members": [
@@ -4911,7 +4950,7 @@
             {
               "name": "receive",
               "kind": "operation",
-              "signature": "fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[Datagram, NetworkError]",
+              "signature": "fn receive(max_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -\u003e Result[Datagram, NetworkError]",
               "doc": ""
             },
             {
@@ -5015,10 +5054,10 @@
             "listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Optional[Duration] = ...)-\u003eResult[Listener, NetworkError]",
             "listen_unix: fn(path: String)-\u003eResult[Listener, NetworkError]",
             "lookup: fn(name: String, max_records: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[List[String], NetworkError]",
-            "request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ClientResponse, HttpError]",
+            "request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int64] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ClientResponse, HttpError]",
             "resolve: fn(name: String, kind: String, max_records: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[List[DnsRecord], NetworkError]",
             "restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)-\u003eResult[Network, NetworkError]",
-            "serve: fn(address: String, handler: fn(request: HttpRequest)-\u003eHttpResponse, limit: Optional[Int] = ..., max_body_bytes: Optional[Int] = ..., max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ..., grace: Optional[Duration] = ...)-\u003eResult[HttpServer, IoError]",
+            "serve: fn(address: String, handler: fn(request: HttpRequest)-\u003eHttpResponse, limit: Optional[Int] = ..., max_body_bytes: Optional[Int64] = ..., max_response_bytes: Optional[Int64] = ..., timeout: Optional[Duration] = ..., grace: Optional[Duration] = ...)-\u003eResult[HttpServer, IoError]",
             "serve_stream: fn(address: String, handler: fn(exchange: HttpExchange)-\u003eResult[Unit, HttpError], options: HttpServerOptions)-\u003eResult[HttpServer, HttpError]",
             "web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)-\u003eResult[WebSocket, WebSocketError]",
             "with_resolver: fn(address: String)-\u003eResult[Network, NetworkError]"
@@ -5093,7 +5132,7 @@
             {
               "name": "request",
               "kind": "operation",
-              "signature": "fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ClientResponse, HttpError]",
+              "signature": "fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -\u003e Result[ClientResponse, HttpError]",
               "doc": ""
             },
             {
@@ -5111,7 +5150,7 @@
             {
               "name": "serve",
               "kind": "operation",
-              "signature": "fn serve(address: String, handler: fn(request: HttpRequest) -\u003e HttpResponse, limit: Optional[Int] = none, max_body_bytes: Optional[Int] = none, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none, grace: Optional[Duration] = none) -\u003e Result[HttpServer, IoError]",
+              "signature": "fn serve(address: String, handler: fn(request: HttpRequest) -\u003e HttpResponse, limit: Optional[Int] = none, max_body_bytes: Optional[Int64] = none, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none, grace: Optional[Duration] = none) -\u003e Result[HttpServer, IoError]",
               "doc": ""
             },
             {
@@ -5829,13 +5868,13 @@
           "kind": "interface",
           "type": "Commands",
           "operations": [
-            "run: fn(program: String, arguments: List[String], input: Bytes = ..., max_output_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[CommandOutput, CommandError]"
+            "run: fn(program: String, arguments: List[String], input: Bytes = ..., max_output_bytes: Optional[Int64] = ..., timeout: Optional[Duration] = ...)-\u003eResult[CommandOutput, CommandError]"
           ],
           "members": [
             {
               "name": "run",
               "kind": "operation",
-              "signature": "fn run(program: String, arguments: List[String], input: Bytes = \"\".to_bytes(), max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[CommandOutput, CommandError]",
+              "signature": "fn run(program: String, arguments: List[String], input: Bytes = \"\".to_bytes(), max_output_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -\u003e Result[CommandOutput, CommandError]",
               "doc": ""
             }
           ]
@@ -5846,20 +5885,20 @@
           "kind": "record",
           "type": "CpuUsage",
           "fields": [
-            "user_microseconds: Int",
-            "system_microseconds: Int"
+            "user_microseconds: Int64",
+            "system_microseconds: Int64"
           ],
           "members": [
             {
               "name": "system_microseconds",
               "kind": "field",
-              "signature": "system_microseconds: Int",
+              "signature": "system_microseconds: Int64",
               "doc": "Kernel CPU time in microseconds."
             },
             {
               "name": "user_microseconds",
               "kind": "field",
-              "signature": "user_microseconds: Int",
+              "signature": "user_microseconds: Int64",
               "doc": "User CPU time in microseconds."
             }
           ]
@@ -5870,41 +5909,41 @@
           "kind": "record",
           "type": "MemoryUsage",
           "fields": [
-            "heap_used: Int",
-            "heap_total: Int",
-            "heap_system: Int",
-            "external: Int",
-            "resident: Int"
+            "heap_used: Int64",
+            "heap_total: Int64",
+            "heap_system: Int64",
+            "external: Int64",
+            "resident: Int64"
           ],
           "members": [
             {
               "name": "external",
               "kind": "field",
-              "signature": "external: Int",
+              "signature": "external: Int64",
               "doc": ""
             },
             {
               "name": "heap_system",
               "kind": "field",
-              "signature": "heap_system: Int",
+              "signature": "heap_system: Int64",
               "doc": ""
             },
             {
               "name": "heap_total",
               "kind": "field",
-              "signature": "heap_total: Int",
+              "signature": "heap_total: Int64",
               "doc": ""
             },
             {
               "name": "heap_used",
               "kind": "field",
-              "signature": "heap_used: Int",
+              "signature": "heap_used: Int64",
               "doc": ""
             },
             {
               "name": "resident",
               "kind": "field",
-              "signature": "resident: Int",
+              "signature": "resident: Int64",
               "doc": ""
             }
           ]
@@ -5915,17 +5954,17 @@
           "kind": "interface",
           "type": "ProcessControl",
           "operations": [
-            "available_memory: fn()-\u003eResult[Int, ProcessError]",
+            "available_memory: fn()-\u003eResult[Int64, ProcessError]",
             "change_directory: fn(path: String)-\u003eResult[Unit, ProcessError]",
-            "constrained_memory: fn()-\u003eResult[Int, ProcessError]",
+            "constrained_memory: fn()-\u003eResult[Int64, ProcessError]",
             "cpu_usage: fn()-\u003eResult[CpuUsage, ProcessError]",
             "environment: fn()-\u003eResult[Map[String, String], ProcessError]",
             "groups: fn()-\u003eResult[List[Int], ProcessError]",
             "info: fn()-\u003eResult[ProcessInfo, ProcessError]",
             "initialize_groups: fn(username: String, gid: Int)-\u003eResult[Unit, ProcessError]",
-            "load_environment: fn(path: String, max_bytes: Optional[Int] = ...)-\u003eResult[Unit, ProcessError]",
+            "load_environment: fn(path: String, max_bytes: Optional[Int64] = ...)-\u003eResult[Unit, ProcessError]",
             "memory_usage: fn()-\u003eResult[MemoryUsage, ProcessError]",
-            "monotonic_time: fn()-\u003eInt",
+            "monotonic_time: fn()-\u003eInt64",
             "replace: fn(program: String, arguments: List[String], environment: Map[String, String])-\u003eResult[Unit, ProcessError]",
             "resource_usage: fn()-\u003eResult[ResourceUsage, ProcessError]",
             "send_signal: fn(pid: Int, signal: Int)-\u003eResult[Unit, ProcessError]",
@@ -5943,7 +5982,7 @@
             {
               "name": "available_memory",
               "kind": "operation",
-              "signature": "fn available_memory() -\u003e Result[Int, ProcessError]",
+              "signature": "fn available_memory() -\u003e Result[Int64, ProcessError]",
               "doc": ""
             },
             {
@@ -5955,7 +5994,7 @@
             {
               "name": "constrained_memory",
               "kind": "operation",
-              "signature": "fn constrained_memory() -\u003e Result[Int, ProcessError]",
+              "signature": "fn constrained_memory() -\u003e Result[Int64, ProcessError]",
               "doc": ""
             },
             {
@@ -5991,7 +6030,7 @@
             {
               "name": "load_environment",
               "kind": "operation",
-              "signature": "fn load_environment(path: String, max_bytes: Optional[Int] = none) -\u003e Result[Unit, ProcessError]",
+              "signature": "fn load_environment(path: String, max_bytes: Optional[Int64] = none) -\u003e Result[Unit, ProcessError]",
               "doc": ""
             },
             {
@@ -6003,7 +6042,7 @@
             {
               "name": "monotonic_time",
               "kind": "operation",
-              "signature": "fn monotonic_time() -\u003e Int",
+              "signature": "fn monotonic_time() -\u003e Int64",
               "doc": "Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.\nThis is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing."
             },
             {
@@ -6184,10 +6223,10 @@
             "arguments: List[String]",
             "os: String",
             "architecture: String",
-            "uid: Int",
-            "gid: Int",
-            "effective_uid: Int",
-            "effective_gid: Int"
+            "uid: Int64",
+            "gid: Int64",
+            "effective_uid: Int64",
+            "effective_gid: Int64"
           ],
           "members": [
             {
@@ -6205,13 +6244,13 @@
             {
               "name": "effective_gid",
               "kind": "field",
-              "signature": "effective_gid: Int",
+              "signature": "effective_gid: Int64",
               "doc": ""
             },
             {
               "name": "effective_uid",
               "kind": "field",
-              "signature": "effective_uid: Int",
+              "signature": "effective_uid: Int64",
               "doc": ""
             },
             {
@@ -6223,7 +6262,7 @@
             {
               "name": "gid",
               "kind": "field",
-              "signature": "gid: Int",
+              "signature": "gid: Int64",
               "doc": ""
             },
             {
@@ -6247,7 +6286,7 @@
             {
               "name": "uid",
               "kind": "field",
-              "signature": "uid: Int",
+              "signature": "uid: Int64",
               "doc": ""
             }
           ]
@@ -6258,69 +6297,69 @@
           "kind": "record",
           "type": "ResourceUsage",
           "fields": [
-            "user_microseconds: Int",
-            "system_microseconds: Int",
-            "max_resident_bytes: Int",
-            "minor_faults: Int",
-            "major_faults: Int",
-            "filesystem_reads: Int",
-            "filesystem_writes: Int",
-            "voluntary_switches: Int",
-            "involuntary_switches: Int"
+            "user_microseconds: Int64",
+            "system_microseconds: Int64",
+            "max_resident_bytes: Int64",
+            "minor_faults: Int64",
+            "major_faults: Int64",
+            "filesystem_reads: Int64",
+            "filesystem_writes: Int64",
+            "voluntary_switches: Int64",
+            "involuntary_switches: Int64"
           ],
           "members": [
             {
               "name": "filesystem_reads",
               "kind": "field",
-              "signature": "filesystem_reads: Int",
+              "signature": "filesystem_reads: Int64",
               "doc": ""
             },
             {
               "name": "filesystem_writes",
               "kind": "field",
-              "signature": "filesystem_writes: Int",
+              "signature": "filesystem_writes: Int64",
               "doc": ""
             },
             {
               "name": "involuntary_switches",
               "kind": "field",
-              "signature": "involuntary_switches: Int",
+              "signature": "involuntary_switches: Int64",
               "doc": ""
             },
             {
               "name": "major_faults",
               "kind": "field",
-              "signature": "major_faults: Int",
+              "signature": "major_faults: Int64",
               "doc": ""
             },
             {
               "name": "max_resident_bytes",
               "kind": "field",
-              "signature": "max_resident_bytes: Int",
+              "signature": "max_resident_bytes: Int64",
               "doc": ""
             },
             {
               "name": "minor_faults",
               "kind": "field",
-              "signature": "minor_faults: Int",
+              "signature": "minor_faults: Int64",
               "doc": ""
             },
             {
               "name": "system_microseconds",
               "kind": "field",
-              "signature": "system_microseconds: Int",
+              "signature": "system_microseconds: Int64",
               "doc": ""
             },
             {
               "name": "user_microseconds",
               "kind": "field",
-              "signature": "user_microseconds: Int",
+              "signature": "user_microseconds: Int64",
               "doc": ""
             },
             {
               "name": "voluntary_switches",
               "kind": "field",
-              "signature": "voluntary_switches: Int",
+              "signature": "voluntary_switches: Int64",
               "doc": ""
             }
           ]
@@ -6590,7 +6629,7 @@
           "operations": [
             "find_all: fn(text: String, max_matches: Optional[Int] = ...)-\u003eResult[List[String], RegexError]",
             "matches: fn(text: String)-\u003eBool",
-            "replace: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]",
+            "replace: fn(text: String, replacement: String, max_bytes: Optional[Int64] = ...)-\u003eResult[String, RegexError]",
             "replace_all: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]"
           ],
           "members": [
@@ -6609,7 +6648,7 @@
             {
               "name": "replace",
               "kind": "operation",
-              "signature": "fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -\u003e Result[String, RegexError]:",
+              "signature": "fn replace(text: String, replacement: String, max_bytes: Optional[Int64] = none) -\u003e Result[String, RegexError]:",
               "doc": "Compatibility spelling for replace_all; replaces every match, with identical limits and errors."
             },
             {
@@ -7000,23 +7039,23 @@
           "fields": [
             "model: String",
             "speed_mhz: Int",
-            "user: Int",
-            "nice: Int",
-            "system: Int",
-            "idle: Int",
-            "irq: Int"
+            "user: Int64",
+            "nice: Int64",
+            "system: Int64",
+            "idle: Int64",
+            "irq: Int64"
           ],
           "members": [
             {
               "name": "idle",
               "kind": "field",
-              "signature": "idle: Int",
+              "signature": "idle: Int64",
               "doc": ""
             },
             {
               "name": "irq",
               "kind": "field",
-              "signature": "irq: Int",
+              "signature": "irq: Int64",
               "doc": ""
             },
             {
@@ -7028,7 +7067,7 @@
             {
               "name": "nice",
               "kind": "field",
-              "signature": "nice: Int",
+              "signature": "nice: Int64",
               "doc": ""
             },
             {
@@ -7040,13 +7079,13 @@
             {
               "name": "system",
               "kind": "field",
-              "signature": "system: Int",
+              "signature": "system: Int64",
               "doc": ""
             },
             {
               "name": "user",
               "kind": "field",
-              "signature": "user: Int",
+              "signature": "user: Int64",
               "doc": "The user, nice, system, idle, and irq fields are cumulative milliseconds."
             }
           ]
@@ -7354,18 +7393,18 @@
           "kind": "record",
           "type": "SystemMetrics",
           "fields": [
-            "total_memory: Int",
-            "free_memory: Int",
-            "available_memory: Int",
+            "total_memory: Int64",
+            "free_memory: Int64",
+            "available_memory: Int64",
             "uptime: Duration",
-            "load_average: List[Float]",
+            "load_average: List[Float64]",
             "available_parallelism: Int"
           ],
           "members": [
             {
               "name": "available_memory",
               "kind": "field",
-              "signature": "available_memory: Int",
+              "signature": "available_memory: Int64",
               "doc": ""
             },
             {
@@ -7377,19 +7416,19 @@
             {
               "name": "free_memory",
               "kind": "field",
-              "signature": "free_memory: Int",
+              "signature": "free_memory: Int64",
               "doc": ""
             },
             {
               "name": "load_average",
               "kind": "field",
-              "signature": "load_average: List[Float]",
+              "signature": "load_average: List[Float64]",
               "doc": ""
             },
             {
               "name": "total_memory",
               "kind": "field",
-              "signature": "total_memory: Int",
+              "signature": "total_memory: Int64",
               "doc": ""
             },
             {
@@ -7407,8 +7446,8 @@
           "type": "UserInfo",
           "fields": [
             "username: String",
-            "uid: Int",
-            "gid: Int",
+            "uid: Int64",
+            "gid: Int64",
             "home: String",
             "shell: String"
           ],
@@ -7416,7 +7455,7 @@
             {
               "name": "gid",
               "kind": "field",
-              "signature": "gid: Int",
+              "signature": "gid: Int64",
               "doc": ""
             },
             {
@@ -7434,7 +7473,7 @@
             {
               "name": "uid",
               "kind": "field",
-              "signature": "uid: Int",
+              "signature": "uid: Int64",
               "doc": ""
             },
             {
@@ -7884,16 +7923,16 @@
             "abs: fn()-\u003eDuration",
             "add: fn(right: Duration)-\u003eDuration",
             "compare: fn(right: Duration)-\u003eInt",
-            "divide: fn(divisor: Int)-\u003eDuration",
-            "multiply: fn(factor: Int)-\u003eDuration",
+            "divide: fn(divisor: Int64)-\u003eDuration",
+            "multiply: fn(factor: Int64)-\u003eDuration",
             "negate: fn()-\u003eDuration",
             "subtract: fn(right: Duration)-\u003eDuration",
-            "to_hours: fn()-\u003eFloat",
-            "to_microseconds: fn()-\u003eInt",
-            "to_milliseconds: fn()-\u003eInt",
-            "to_minutes: fn()-\u003eFloat",
-            "to_nanoseconds: fn()-\u003eInt",
-            "to_seconds: fn()-\u003eFloat"
+            "to_hours: fn()-\u003eFloat64",
+            "to_microseconds: fn()-\u003eInt64",
+            "to_milliseconds: fn()-\u003eInt64",
+            "to_minutes: fn()-\u003eFloat64",
+            "to_nanoseconds: fn()-\u003eInt64",
+            "to_seconds: fn()-\u003eFloat64"
           ],
           "members": [
             {
@@ -7917,13 +7956,13 @@
             {
               "name": "divide",
               "kind": "operation",
-              "signature": "fn divide(divisor: Int) -\u003e Duration:",
+              "signature": "fn divide(divisor: Int64) -\u003e Duration:",
               "doc": ""
             },
             {
               "name": "multiply",
               "kind": "operation",
-              "signature": "fn multiply(factor: Int) -\u003e Duration:",
+              "signature": "fn multiply(factor: Int64) -\u003e Duration:",
               "doc": ""
             },
             {
@@ -7941,37 +7980,37 @@
             {
               "name": "to_hours",
               "kind": "operation",
-              "signature": "fn to_hours() -\u003e Float:",
+              "signature": "fn to_hours() -\u003e Float64:",
               "doc": ""
             },
             {
               "name": "to_microseconds",
               "kind": "operation",
-              "signature": "fn to_microseconds() -\u003e Int:",
+              "signature": "fn to_microseconds() -\u003e Int64:",
               "doc": "Converts this duration to an integer number of microseconds."
             },
             {
               "name": "to_milliseconds",
               "kind": "operation",
-              "signature": "fn to_milliseconds() -\u003e Int:",
+              "signature": "fn to_milliseconds() -\u003e Int64:",
               "doc": "Converts this duration to an integer number of milliseconds."
             },
             {
               "name": "to_minutes",
               "kind": "operation",
-              "signature": "fn to_minutes() -\u003e Float:",
+              "signature": "fn to_minutes() -\u003e Float64:",
               "doc": ""
             },
             {
               "name": "to_nanoseconds",
               "kind": "operation",
-              "signature": "fn to_nanoseconds() -\u003e Int:",
+              "signature": "fn to_nanoseconds() -\u003e Int64:",
               "doc": "Converts this duration to an integer number of nanoseconds."
             },
             {
               "name": "to_seconds",
               "kind": "operation",
-              "signature": "fn to_seconds() -\u003e Float:",
+              "signature": "fn to_seconds() -\u003e Float64:",
               "doc": "Converts this duration to floating-point seconds."
             }
           ]
@@ -8069,7 +8108,7 @@
             "nanoseconds: fn()-\u003eInt",
             "shift: fn(duration: Duration)-\u003eResult[Timestamp, TimeError]",
             "to_string: fn()-\u003eString",
-            "unix_seconds: fn()-\u003eInt"
+            "unix_seconds: fn()-\u003eInt64"
           ],
           "members": [
             {
@@ -8105,7 +8144,7 @@
             {
               "name": "unix_seconds",
               "kind": "operation",
-              "signature": "fn unix_seconds() -\u003e Int:",
+              "signature": "fn unix_seconds() -\u003e Int64:",
               "doc": "Returns the whole Unix seconds represented by this timestamp."
             }
           ]
@@ -8137,7 +8176,7 @@
           "name": "duration",
           "doc": "Constructs a duration from a number of nanoseconds.",
           "kind": "fn",
-          "type": "fn(nanoseconds: Int)-\u003eDuration"
+          "type": "fn(nanoseconds: Int64)-\u003eDuration"
         },
         {
           "name": "parse_timestamp",
@@ -8155,7 +8194,7 @@
           "name": "timestamp",
           "doc": "Constructs a timestamp from Unix seconds and a nanosecond adjustment.",
           "kind": "fn",
-          "type": "fn(seconds: Int, nanoseconds: Int)-\u003eResult[Timestamp, TimeError]"
+          "type": "fn(seconds: Int64, nanoseconds: Int64)-\u003eResult[Timestamp, TimeError]"
         },
         {
           "name": "wall_clock",
@@ -8453,7 +8492,7 @@
           "kind": "record",
           "type": "TomlLimits",
           "fields": [
-            "max_bytes: Optional[Int]",
+            "max_bytes: Optional[Int64]",
             "max_depth: Optional[Int]",
             "max_values: Optional[Int]"
           ],
@@ -8461,7 +8500,7 @@
             {
               "name": "max_bytes",
               "kind": "field",
-              "signature": "max_bytes: Optional[Int]",
+              "signature": "max_bytes: Optional[Int64]",
               "doc": ""
             },
             {
@@ -8485,8 +8524,8 @@
           "type": "TomlValue",
           "cases": [
             "StringValue(value: String)",
-            "IntValue(value: Int)",
-            "FloatValue(value: Float)",
+            "IntValue(value: Int64)",
+            "FloatValue(value: Float64)",
             "BoolValue(value: Bool)",
             "DateTimeValue(text: String)",
             "ArrayValue(values: List[TomlValue])",
@@ -8514,13 +8553,13 @@
             {
               "name": "FloatValue",
               "kind": "case",
-              "signature": "case FloatValue(value: Float)",
+              "signature": "case FloatValue(value: Float64)",
               "doc": ""
             },
             {
               "name": "IntValue",
               "kind": "case",
-              "signature": "case IntValue(value: Int)",
+              "signature": "case IntValue(value: Int64)",
               "doc": ""
             },
             {
@@ -8556,13 +8595,13 @@
             {
               "name": "FloatValue.value",
               "kind": "field",
-              "signature": "value: Float",
+              "signature": "value: Float64",
               "doc": ""
             },
             {
               "name": "IntValue.value",
               "kind": "field",
-              "signature": "value: Int",
+              "signature": "value: Int64",
               "doc": ""
             },
             {
@@ -8910,7 +8949,7 @@
           "kind": "record",
           "type": "WebSocketOptions",
           "fields": [
-            "max_message_bytes: Optional[Int]",
+            "max_message_bytes: Optional[Int64]",
             "timeout: Optional[Duration]",
             "tls: TlsOptions",
             "compression: Bool"
@@ -8925,7 +8964,7 @@
             {
               "name": "max_message_bytes",
               "kind": "field",
-              "signature": "max_message_bytes: Optional[Int] = none",
+              "signature": "max_message_bytes: Optional[Int64] = none",
               "doc": ""
             },
             {
@@ -9034,7 +9073,7 @@
           "kind": "record",
           "type": "YamlLimits",
           "fields": [
-            "max_bytes: Optional[Int]",
+            "max_bytes: Optional[Int64]",
             "max_depth: Optional[Int]",
             "max_values: Optional[Int]"
           ],
@@ -9042,7 +9081,7 @@
             {
               "name": "max_bytes",
               "kind": "field",
-              "signature": "max_bytes: Optional[Int]",
+              "signature": "max_bytes: Optional[Int64]",
               "doc": ""
             },
             {
@@ -10169,13 +10208,13 @@
             "length: fn()-\u003eInt",
             "lines: fn()-\u003eList[String]",
             "lower: fn()-\u003eString",
-            "normalize: fn(form: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
-            "pad_end: fn(target_length: Int, padding: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
-            "pad_start: fn(target_length: Int, padding: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
+            "normalize: fn(form: String, max_bytes: Optional[Int64] = ...)-\u003eResult[String, StringError]",
+            "pad_end: fn(target_length: Int, padding: String, max_bytes: Optional[Int64] = ...)-\u003eResult[String, StringError]",
+            "pad_start: fn(target_length: Int, padding: String, max_bytes: Optional[Int64] = ...)-\u003eResult[String, StringError]",
             "parse_int: fn()-\u003eOptional[Int]",
-            "repeat: fn(count: Int, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
+            "repeat: fn(count: Int, max_bytes: Optional[Int64] = ...)-\u003eResult[String, StringError]",
             "replace: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
-            "replace_all: fn(old: String, new: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
+            "replace_all: fn(old: String, new: String, max_bytes: Optional[Int64] = ...)-\u003eResult[String, StringError]",
             "replace_first: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
             "reverse: fn()-\u003eString",
             "scalar_at: fn(index: Int)-\u003eOptional[Int]",
@@ -10274,19 +10313,19 @@
             {
               "name": "normalize",
               "kind": "operation",
-              "signature": "fn normalize(form: String, max_bytes: Optional[Int] = none) -\u003e Result[String, StringError]",
+              "signature": "fn normalize(form: String, max_bytes: Optional[Int64] = none) -\u003e Result[String, StringError]",
               "doc": "Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes optionally bounds UTF-8 output.\nInvalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded."
             },
             {
               "name": "pad_end",
               "kind": "operation",
-              "signature": "fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -\u003e Result[String, StringError]",
+              "signature": "fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int64] = none) -\u003e Result[String, StringError]",
               "doc": "Pads on the right until the scalar length reaches `target_length`.\nEmpty padding or a shorter target leaves text unchanged; negative targets/budgets return InvalidInput."
             },
             {
               "name": "pad_start",
               "kind": "operation",
-              "signature": "fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -\u003e Result[String, StringError]",
+              "signature": "fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int64] = none) -\u003e Result[String, StringError]",
               "doc": "Pads on the left until the scalar length reaches `target_length`.\nEmpty padding or a shorter target leaves text unchanged; max_bytes still bounds UTF-8 output."
             },
             {
@@ -10298,7 +10337,7 @@
             {
               "name": "repeat",
               "kind": "operation",
-              "signature": "fn repeat(count: Int, max_bytes: Optional[Int] = none) -\u003e Result[String, StringError]",
+              "signature": "fn repeat(count: Int, max_bytes: Optional[Int64] = none) -\u003e Result[String, StringError]",
               "doc": "Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded."
             },
             {
@@ -10310,7 +10349,7 @@
             {
               "name": "replace_all",
               "kind": "operation",
-              "signature": "fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -\u003e Result[String, StringError]",
+              "signature": "fn replace_all(old: String, new: String, max_bytes: Optional[Int64] = none) -\u003e Result[String, StringError]",
               "doc": "Replaces every nonoverlapping occurrence; empty old matches at each scalar boundary.\nmax_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion returns LimitExceeded."
             },
             {

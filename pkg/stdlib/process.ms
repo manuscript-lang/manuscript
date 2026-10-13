@@ -25,7 +25,7 @@ export interface Commands:
         program: String,
         arguments: List[String],
         input: Bytes = "".to_bytes(),
-        max_output_bytes: Optional[Int] = none,
+        max_output_bytes: Optional[Int64] = none,
         timeout: Optional[Duration] = none
     ) -> Result[CommandOutput, CommandError]
 
@@ -36,7 +36,7 @@ export interface Commands:
 export interface ProcessControl:
     # Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
     # This is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing.
-    fn monotonic_time() -> Int
+    fn monotonic_time() -> Int64
     # Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
     # Capacity must be 1..1048576; omission/none uses 128 buffered signals.
     # Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
@@ -45,8 +45,8 @@ export interface ProcessControl:
         signals: List[Int],
         capacity: Optional[Int] = none
     ) -> Result[SignalStream, ProcessError]
-    fn constrained_memory() -> Result[Int, ProcessError]
-    fn available_memory() -> Result[Int, ProcessError]
+    fn constrained_memory() -> Result[Int64, ProcessError]
+    fn available_memory() -> Result[Int64, ProcessError]
     fn title() -> Result[String, ProcessError]
     fn set_title(title: String) -> Result[Unit, ProcessError]
     fn initialize_groups(username: String, gid: Int) -> Result[Unit, ProcessError]
@@ -68,7 +68,7 @@ export interface ProcessControl:
     ) -> Result[Unit, ProcessError]
     fn load_environment(
         path: String,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[Unit, ProcessError]
     # Reads the live process directory, preserving OS failures as ProcessError.
     fn working_directory() -> Result[String, ProcessError]
@@ -94,40 +94,40 @@ export type ProcessInfo:
     arguments: List[String]
     os: String
     architecture: String
-    uid: Int
-    gid: Int
-    effective_uid: Int
-    effective_gid: Int
+    uid: Int64
+    gid: Int64
+    effective_uid: Int64
+    effective_gid: Int64
 
 # Memory statistics for the current process; every field is bytes.
 export type MemoryUsage:
-    heap_used: Int
-    heap_total: Int
-    heap_system: Int
-    external: Int
-    resident: Int
+    heap_used: Int64
+    heap_total: Int64
+    heap_system: Int64
+    external: Int64
+    resident: Int64
 
 # Cumulative CPU time consumed by the current process, in integer microseconds.
 export type CpuUsage:
     # User CPU time in microseconds.
-    user_microseconds: Int
+    user_microseconds: Int64
     # Kernel CPU time in microseconds.
-    system_microseconds: Int
+    system_microseconds: Int64
 
 # Kernel resource counters for the current process. CPU times are integer microseconds;
 # max_resident_bytes is bytes; other fields are counts, not durations or byte totals.
 # Filesystem reads/writes count native block I/O on Unix and I/O operations on Windows.
 # Unavailable Windows fault/context-switch counters are zero.
 export type ResourceUsage:
-    user_microseconds: Int
-    system_microseconds: Int
-    max_resident_bytes: Int
-    minor_faults: Int
-    major_faults: Int
-    filesystem_reads: Int
-    filesystem_writes: Int
-    voluntary_switches: Int
-    involuntary_switches: Int
+    user_microseconds: Int64
+    system_microseconds: Int64
+    max_resident_bytes: Int64
+    minor_faults: Int64
+    major_faults: Int64
+    filesystem_reads: Int64
+    filesystem_writes: Int64
+    voluntary_switches: Int64
+    involuntary_switches: Int64
 
 # A cancellable observer of operating-system signals selected by `watch_signals`.
 # SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.

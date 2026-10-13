@@ -17,7 +17,7 @@ export fn compress(
     data: Bytes,
     format: String,
     level: Int,
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ) -> Result[Bytes, CompressionError]:
 
 # Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
@@ -25,7 +25,7 @@ export fn compress(
 export fn decompress(
     data: Bytes,
     format: String,
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ) -> Result[Bytes, CompressionError]:
 
 impl Error for CompressionError:

@@ -38,8 +38,8 @@ export type SystemInfo:
 # User name, numeric identity, home directory, and login shell.
 export type UserInfo:
     username: String
-    uid: Int
-    gid: Int
+    uid: Int64
+    gid: Int64
     home: String
     shell: String
 
@@ -61,21 +61,21 @@ export type CpuInfo:
     # Integer megahertz, not a time interval.
     speed_mhz: Int
     # The user, nice, system, idle, and irq fields are cumulative milliseconds.
-    user: Int
-    nice: Int
-    system: Int
-    idle: Int
-    irq: Int
+    user: Int64
+    nice: Int64
+    system: Int64
+    idle: Int64
+    irq: Int64
 
 # Host measurements: memory fields are bytes; load_average is 1/5/15-minute load
 # (three zeros on Windows); available_parallelism is a usable logical-processor count.
 export type SystemMetrics:
-    total_memory: Int
-    free_memory: Int
-    available_memory: Int
+    total_memory: Int64
+    free_memory: Int64
+    available_memory: Int64
     # Host boot uptime as a Duration with whole-second native resolution; not process uptime.
     uptime: Duration
-    load_average: List[Float]
+    load_average: List[Float64]
     available_parallelism: Int
 
 # Returns exactly `LE` or `BE` for the host's native byte order.

@@ -775,12 +775,12 @@ type String:
     fn reverse() -> String:
     fn compare(other: String) -> Int:
     fn lines() -> List[String]:
-    fn normalize(form: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn normalize(form: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
     fn concat(values: String) -> String:
     fn contains(text: String) -> Bool:
     fn ends_with(suffix: String) -> Bool:
     fn lower() -> String:
-    fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn repeat(count: Int, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
     fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
@@ -796,9 +796,9 @@ type String:
     fn last_index_of(value: String) -> Optional[Int]:
     fn trim_start() -> String:
     fn trim_end() -> String:
-    fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
-    fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
-    fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
+    fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
+    fn replace_all(old: String, new: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
     fn slice(start: Int, end: Int) -> String:
     fn substring(start: Int, end: Int) -> String:
     fn byte_length() -> Int:
@@ -917,7 +917,7 @@ Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes opt
 Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
 
 ```manuscript
-fn normalize(form: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+fn normalize(form: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]
 ```
 
 ### String.pad_end
@@ -926,7 +926,7 @@ Pads on the right until the scalar length reaches `target_length`.
 Empty padding or a shorter target leaves text unchanged; negative targets/budgets return InvalidInput.
 
 ```manuscript
-fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]
 ```
 
 ### String.pad_start
@@ -935,7 +935,7 @@ Pads on the left until the scalar length reaches `target_length`.
 Empty padding or a shorter target leaves text unchanged; max_bytes still bounds UTF-8 output.
 
 ```manuscript
-fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]
 ```
 
 ### String.parse_int
@@ -951,7 +951,7 @@ fn parse_int() -> Optional[Int]
 Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded.
 
 ```manuscript
-fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+fn repeat(count: Int, max_bytes: Optional[Int64] = none) -> Result[String, StringError]
 ```
 
 ### String.replace
@@ -968,7 +968,7 @@ Replaces every nonoverlapping occurrence; empty old matches at each scalar bound
 max_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion returns LimitExceeded.
 
 ```manuscript
-fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+fn replace_all(old: String, new: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]
 ```
 
 ### String.replace_first

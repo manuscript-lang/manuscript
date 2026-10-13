@@ -401,6 +401,12 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			}
 		case Decimal:
 			switch name {
+			case "to_float64":
+				f, _ := v.Value.Float64()
+				return Float64(f)
+			case "truncate_to_int64":
+				q := new(big.Int).Quo(v.Value.Num(), v.Value.Denom())
+				return optional("Int64", Int64(q.Int64()), q.IsInt64())
 			case "to_float":
 				f, _ := v.Value.Float64()
 				return f

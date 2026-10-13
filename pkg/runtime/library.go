@@ -26,13 +26,13 @@ func libraryAdd(module, name, result string, params []LibraryParam, body func(*E
 		// Ordinary native calls already have their ordered argument slots.
 		// Only adapters (or direct callers with missing slots) need a copy.
 		if !adaptOptions && len(args) >= len(params) {
-			return original(ctx, result, args)
+			return nativeNumericResult(result, original(ctx, result, args))
 		}
 		normalized, ok := nativeOptions(name, params, args)
 		if !ok {
 			return nativeOptionFailure(result, name, params, args)
 		}
-		return original(ctx, result, normalized)
+		return nativeNumericResult(result, original(ctx, result, normalized))
 	}
 	spec := LibrarySpec{Module: module, Name: name, Result: result, Params: params, Body: body}
 	Library = append(Library, spec)
@@ -82,7 +82,9 @@ func invokeLibrary(spec LibrarySpec, ctx *Execution, result string, args []Value
 	}
 	return spec.Body(ctx, result, args)
 }
-func libraryOK(result string, value Value) Value { return Alternative{result, "ok", []Value{value}} }
+func libraryOK(result string, value Value) Value {
+	return Alternative{result, "ok", []Value{nativeNumericResult(result, value)}}
+}
 func libraryError(result, code, message string) Value {
 	var fields []Value
 	if code == "Failed" {

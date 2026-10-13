@@ -12,7 +12,7 @@ export type EncodingError:
 export fn base64_decode(
     text: String,
     url_safe: Bool = false,
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ) -> Result[Bytes, EncodingError]:
 
 # Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
@@ -21,7 +21,7 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) -> String:
 # Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 export fn hex_decode(
     text: String,
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ) -> Result[Bytes, EncodingError]:
 
 # Encodes each byte as two lowercase hexadecimal digits.

@@ -10,7 +10,7 @@ export type HtmlError:
 
 # Optional bounds for HTML input bytes, tree depth, and node count.
 export type HtmlLimits:
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
     max_depth: Optional[Int] = none
     max_nodes: Optional[Int] = none
 

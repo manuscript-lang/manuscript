@@ -96,10 +96,10 @@ test "one scheduler admits and schedules work":
             error(_): return panic("unbounded admission failed")
 
 type EmptyReader:
-    requested: Int
+    requested: Int64
 
 impl ReadStream for EmptyReader:
-    fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Optional[Int64]) -> Result[Optional[Bytes], IoError]:
         match max_bytes:
             none: self.requested = 0
             some(value): self.requested = value

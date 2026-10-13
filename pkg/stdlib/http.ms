@@ -50,7 +50,7 @@ export interface HttpClient:
         url: String,
         headers: Map[String, String],
         body: Bytes,
-        max_response_bytes: Optional[Int] = none,
+        max_response_bytes: Optional[Int64] = none,
         timeout: Optional[Duration] = none
     ) -> Result[ResponseBody, HttpError]
     fn send_stream(
@@ -58,7 +58,7 @@ export interface HttpClient:
         url: String,
         headers: Map[String, String],
         body: ReadStream,
-        max_response_bytes: Optional[Int] = none,
+        max_response_bytes: Optional[Int64] = none,
         timeout: Optional[Duration] = none
     ) -> Result[ResponseBody, HttpError]
 
@@ -66,7 +66,7 @@ export interface HttpClient:
 export type HttpClientOptions:
     max_redirects: Optional[Int] = none
     max_idle_connections: Optional[Int] = none
-    max_header_bytes: Optional[Int] = none
+    max_header_bytes: Optional[Int64] = none
     idle_timeout: Optional[Duration] = none
     decompress: Bool
     cookies: Bool
@@ -81,7 +81,7 @@ export interface HttpExchange:
     fn method() -> String
     fn path() -> String
     fn query() -> String
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], IoError]
     fn send_headers(
         status: Int,
         headers: Map[String, List[String]]
@@ -89,7 +89,7 @@ export interface HttpExchange:
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
-        max_message_bytes: Optional[Int] = none
+        max_message_bytes: Optional[Int64] = none
     ) -> Result[WebSocket, WebSocketError]
     fn write(data: Bytes) -> Result[Unit, IoError]
 
@@ -122,9 +122,9 @@ export interface HttpServer:
 # Request and response limits, deadlines, graceful shutdown, and TLS server settings.
 export type HttpServerOptions:
     max_requests: Optional[Int] = none
-    max_body_bytes: Optional[Int] = none
-    max_response_bytes: Optional[Int] = none
-    max_header_bytes: Optional[Int] = none
+    max_body_bytes: Optional[Int64] = none
+    max_response_bytes: Optional[Int64] = none
+    max_header_bytes: Optional[Int64] = none
     timeout: Optional[Duration] = none
     grace: Optional[Duration] = none
     tls: Optional[TlsOptions]
@@ -134,7 +134,7 @@ export type HttpServerOptions:
 export interface ResponseBody:
     fn close() -> Unit
     fn headers() -> Map[String, List[String]]
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], IoError]
     fn status() -> Int
 
 impl Error for HttpError:

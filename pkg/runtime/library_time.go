@@ -8,8 +8,8 @@ import (
 
 func init() {
 	p := func(name, typ string) LibraryParam { return LibraryParam{name, typ} }
-	libraryAdd("time", "duration", "Duration", []LibraryParam{p("nanoseconds", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		return Duration(a[0].(int64))
+	libraryAdd("time", "duration", "Duration", []LibraryParam{p("nanoseconds", "Int64")}, func(_ *Execution, _ string, a []Value) Value {
+		return Duration(nativeInteger(a[0]))
 	})
 	for _, operation := range []struct{ name, operator string }{{"add", "+"}, {"subtract", "-"}} {
 		libraryAdd("time", "duration_"+operation.name, "Duration", []LibraryParam{p("left", "Duration"), p("right", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
@@ -20,11 +20,11 @@ func init() {
 			return Duration(checkedTimeSub("Duration.subtract", "value", "right", left, right))
 		})
 	}
-	libraryAdd("time", "duration_multiply", "Duration", []LibraryParam{p("value", "Duration"), p("factor", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		return Duration(checkedTimeMul("Duration.multiply", int64(a[0].(Duration)), a[1].(int64)))
+	libraryAdd("time", "duration_multiply", "Duration", []LibraryParam{p("value", "Duration"), p("factor", "Int64")}, func(_ *Execution, _ string, a []Value) Value {
+		return Duration(checkedTimeMul("Duration.multiply", int64(a[0].(Duration)), nativeInteger(a[1])))
 	})
-	libraryAdd("time", "duration_divide", "Duration", []LibraryParam{p("value", "Duration"), p("divisor", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		value, divisor := int64(a[0].(Duration)), a[1].(int64)
+	libraryAdd("time", "duration_divide", "Duration", []LibraryParam{p("value", "Duration"), p("divisor", "Int64")}, func(_ *Execution, _ string, a []Value) Value {
+		value, divisor := int64(a[0].(Duration)), nativeInteger(a[1])
 		if divisor == 0 {
 			return Panic("Duration.divide: division by zero; divisor must be nonzero, found 0")
 		}
@@ -57,7 +57,7 @@ func init() {
 		name  string
 		scale int64
 	}{{"nanoseconds", 1}, {"microseconds", 1000}, {"milliseconds", 1000000}} {
-		libraryAdd("time", "duration_"+unit.name, "Int", []LibraryParam{p("value", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
+		libraryAdd("time", "duration_"+unit.name, "Int64", []LibraryParam{p("value", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
 			return int64(a[0].(Duration)) / unit.scale
 		})
 	}
@@ -65,7 +65,7 @@ func init() {
 		name  string
 		scale time.Duration
 	}{{"seconds", time.Second}, {"minutes", time.Minute}, {"hours", time.Hour}} {
-		libraryAdd("time", "duration_"+unit.name, "Float", []LibraryParam{p("value", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
+		libraryAdd("time", "duration_"+unit.name, "Float64", []LibraryParam{p("value", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
 			return float64(a[0].(Duration)) / float64(unit.scale)
 		})
 	}

@@ -16,21 +16,21 @@ export type Duration:
     # Adds another duration.
     fn add(right: Duration) -> Duration:
     fn subtract(right: Duration) -> Duration:
-    fn multiply(factor: Int) -> Duration:
-    fn divide(divisor: Int) -> Duration:
+    fn multiply(factor: Int64) -> Duration:
+    fn divide(divisor: Int64) -> Duration:
     fn negate() -> Duration:
     fn abs() -> Duration:
     fn compare(right: Duration) -> Int:
     # Converts this duration to an integer number of nanoseconds.
-    fn to_nanoseconds() -> Int:
+    fn to_nanoseconds() -> Int64:
     # Converts this duration to an integer number of microseconds.
-    fn to_microseconds() -> Int:
+    fn to_microseconds() -> Int64:
     # Converts this duration to an integer number of milliseconds.
-    fn to_milliseconds() -> Int:
+    fn to_milliseconds() -> Int64:
     # Converts this duration to floating-point seconds.
-    fn to_seconds() -> Float:
-    fn to_minutes() -> Float:
-    fn to_hours() -> Float:
+    fn to_seconds() -> Float64:
+    fn to_minutes() -> Float64:
+    fn to_hours() -> Float64:
 
 # An instant on a monotonic clock; it is not a calendar timestamp.
 export type Instant:
@@ -45,7 +45,7 @@ export type Timestamp:
     # Formats this timestamp in RFC 3339 form.
     fn to_string() -> String:
     # Returns the whole Unix seconds represented by this timestamp.
-    fn unix_seconds() -> Int:
+    fn unix_seconds() -> Int64:
     # Returns this timestamp's nanosecond component.
     fn nanoseconds() -> Int:
     # Adds a duration to this wall-clock timestamp.
@@ -59,7 +59,7 @@ export interface WallClock:
     fn now() -> Timestamp
 
 # Constructs a duration from a number of nanoseconds.
-export fn duration(nanoseconds: Int) -> Duration:
+export fn duration(nanoseconds: Int64) -> Duration:
 
 # Parses an RFC 3339 timestamp with an explicit time zone.
 export fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]:
@@ -68,7 +68,7 @@ export fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]:
 export fn sleep(duration: Duration) -> Unit:
 
 # Constructs a timestamp from Unix seconds and a nanosecond adjustment.
-export fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]:
+export fn timestamp(seconds: Int64, nanoseconds: Int64) -> Result[Timestamp, TimeError]:
 
 impl Error for TimeError:
     fn message() -> String:

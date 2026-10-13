@@ -17,7 +17,7 @@ fn items(value: YamlValue) -> List[YamlValue]:
         _: return panic("expected YAML sequence")
 
 fn limits(
-    bytes: Optional[Int],
+    bytes: Optional[Int64],
     depth: Optional[Int],
     values: Optional[Int]
 ) -> Optional[YamlLimits]:
@@ -193,7 +193,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
             parse(
                 text: text,
                 limits: limits(
-                    bytes: text.byte_length(),
+                    bytes: text.byte_length().to_int64(),
                     depth: 2,
                     values: 2
                 )
@@ -207,7 +207,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         parse(
             text: text,
             limits: limits(
-                bytes: text.byte_length() - 1,
+                bytes: text.byte_length().to_int64() - 1,
                 depth: none,
                 values: none
             )

@@ -22,11 +22,11 @@ import (
 func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "http_client", libraryResult("HttpClient", "HttpError"), []LibraryParam{{"options", "HttpClientOptions"}}},
-		{"HttpClient", "send", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
-		{"HttpClient", "send_stream", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "ReadStream"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"HttpClient", "send", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Optional[Int64]"}, {"timeout", "Optional[Duration]"}}},
+		{"HttpClient", "send_stream", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "ReadStream"}, {"max_response_bytes", "Optional[Int64]"}, {"timeout", "Optional[Duration]"}}},
 		{"HttpClient", "close", "Unit", nil},
 		{"ResponseBody", "status", "Int", nil}, {"ResponseBody", "headers", "Map[String][List[String]]", nil},
-		{"ResponseBody", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int]"}}},
+		{"ResponseBody", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int64]"}}},
 		{"ResponseBody", "close", "Unit", nil},
 	}...)
 }

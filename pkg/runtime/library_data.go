@@ -136,7 +136,7 @@ func init() {
 	})
 	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return scalarCount(a[0].(string)) })
 	add("encoding", "hex_encode", "String", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return hex.EncodeToString(a[0].(Bytes).Items) })
-	add("encoding", "hex_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("max_bytes", "Optional[Int]")}, func(_ *Execution, result string, a []Value) Value {
+	add("encoding", "hex_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("max_bytes", "Optional[Int64]")}, func(_ *Execution, result string, a []Value) Value {
 		n := a[1].(int64)
 		if v := libraryBound(result, n); v != nil {
 			return v
@@ -158,7 +158,7 @@ func init() {
 		}
 		return enc.EncodeToString(a[0].(Bytes).Items)
 	})
-	add("encoding", "base64_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("url_safe", "Bool"), p("max_bytes", "Optional[Int]")}, func(_ *Execution, result string, a []Value) Value {
+	add("encoding", "base64_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("url_safe", "Bool"), p("max_bytes", "Optional[Int64]")}, func(_ *Execution, result string, a []Value) Value {
 		text := a[0].(string)
 		n := a[2].(int64)
 		if v := libraryBound(result, n); v != nil {
@@ -240,6 +240,7 @@ func init() {
 	})
 	add("numbers", "format_float", "String", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return formatFloat(a[0].(float64)) })
 	add("bigint", "from_int", "BigInt", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value { return libraryBigInt{big.NewInt(a[0].(int64))} })
+	add("bigint", "from_int64", "BigInt", []LibraryParam{p("value", "Int64")}, func(_ *Execution, _ string, a []Value) Value { return libraryBigInt{big.NewInt(nativeInteger(a[0]))} })
 	add("bigint", "parse", libraryResult("BigInt", "BigIntError"), []LibraryParam{p("text", "String"), p("radix", "Int"), p("max_digits", "Optional[Int]")}, func(_ *Execution, r string, a []Value) Value {
 		text := a[0].(string)
 		radix, n := a[1].(int64), a[2].(int64)
@@ -293,8 +294,12 @@ func init() {
 		n := a[0].(libraryBigInt).n
 		return optional("Int", n.Int64(), n.IsInt64())
 	})
-	add("binary", "read_integer", libraryResult("Int", "BinaryError"), []LibraryParam{p("data", "Bytes"), p("offset", "Int"), p("width", "Int"), p("signed", "Bool"), p("little_endian", "Bool")}, libraryReadInteger)
-	add("binary", "write_integer", libraryResult("Bytes", "BinaryError"), []LibraryParam{p("value", "Int"), p("width", "Int"), p("signed", "Bool"), p("little_endian", "Bool")}, libraryWriteInteger)
+	add("bigint", "to_int64", "Optional[Int64]", []LibraryParam{p("value", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
+		n := a[0].(libraryBigInt).n
+		return optional("Int64", Int64(n.Int64()), n.IsInt64())
+	})
+	add("binary", "read_integer", libraryResult("Int64", "BinaryError"), []LibraryParam{p("data", "Bytes"), p("offset", "Int"), p("width", "Int"), p("signed", "Bool"), p("little_endian", "Bool")}, libraryReadInteger)
+	add("binary", "write_integer", libraryResult("Bytes", "BinaryError"), []LibraryParam{p("value", "Int64"), p("width", "Int"), p("signed", "Bool"), p("little_endian", "Bool")}, libraryWriteInteger)
 	add("binary", "read_float", libraryResult("Float", "BinaryError"), []LibraryParam{p("data", "Bytes"), p("offset", "Int"), p("little_endian", "Bool")}, func(_ *Execution, r string, a []Value) Value {
 		b := a[0].(Bytes).Items
 		offset := a[1].(int64)
@@ -306,6 +311,19 @@ func init() {
 	add("binary", "write_float", "Bytes", []LibraryParam{p("value", "Float"), p("little_endian", "Bool")}, func(_ *Execution, _ string, a []Value) Value {
 		b := make([]byte, 8)
 		libraryOrder(a[1]).PutUint64(b, math.Float64bits(a[0].(float64)))
+		return Bytes{b}
+	})
+	add("binary", "read_float64", libraryResult("Float64", "BinaryError"), []LibraryParam{p("data", "Bytes"), p("offset", "Int"), p("little_endian", "Bool")}, func(_ *Execution, r string, a []Value) Value {
+		b := a[0].(Bytes).Items
+		offset := a[1].(int64)
+		if offset < 0 || offset > int64(len(b))-8 {
+			return libraryError(r, "OutOfRange", "")
+		}
+		return libraryOK(r, math.Float64frombits(libraryOrder(a[2]).Uint64(b[offset:offset+8])))
+	})
+	add("binary", "write_float64", "Bytes", []LibraryParam{p("value", "Float64"), p("little_endian", "Bool")}, func(_ *Execution, _ string, a []Value) Value {
+		b := make([]byte, 8)
+		libraryOrder(a[1]).PutUint64(b, math.Float64bits(float64(a[0].(Float64))))
 		return Bytes{b}
 	})
 	add("regex", "compile", libraryResult("Regex", "RegexError"), []LibraryParam{p("pattern", "String")}, func(_ *Execution, r string, a []Value) Value {
@@ -419,7 +437,7 @@ func libraryReadInteger(_ *Execution, r string, a []Value) Value {
 	return libraryOK(r, int64(n))
 }
 func libraryWriteInteger(_ *Execution, r string, a []Value) Value {
-	n, w := a[0].(int64), a[1].(int64)
+	n, w := nativeInteger(a[0]), a[1].(int64)
 	if w != 1 && w != 2 && w != 4 && w != 8 {
 		return libraryError(r, "InvalidInput", "")
 	}

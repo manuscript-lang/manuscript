@@ -32,7 +32,7 @@ export type DirectoryEntry:
 export type FileInfo:
     name: String
     # File length in bytes.
-    size: Int
+    size: Int64
     directory: Bool
     symlink: Bool
     modified: Timestamp
@@ -42,21 +42,21 @@ export type FileInfo:
     permissions: Int
     created: Optional[Timestamp]
     # Preferred I/O block size in bytes; unavailable fields are zero.
-    block_size: Int
+    block_size: Int64
     # Allocated 512-byte blocks on POSIX hosts; unavailable fields are zero.
-    blocks: Int
-    rdev: Int
+    blocks: Int64
+    rdev: Int64
     fifo: Bool
     socket: Bool
     block_device: Bool
     char_device: Bool
     exact: Map[String, BigInt]
     regular: Bool
-    device: Int
-    inode: Int
-    links: Int
-    uid: Int
-    gid: Int
+    device: Int64
+    inode: Int64
+    links: Int64
+    uid: Int64
+    gid: Int64
 
 # Filesystem operations and resource factories for the current host.
 export interface FileSystem:
@@ -105,7 +105,7 @@ export interface FileSystem:
         source: String,
         destination: String,
         replace: Bool = false,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[Unit, FileSystemError]
     # Creates one directory; recursive defaults to false, requiring its parent to exist.
     fn create_directory(
@@ -122,7 +122,7 @@ export interface FileSystem:
     # Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
     fn read_file(
         path: String,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[Bytes, FileSystemError]
     fn read_link(path: String) -> Result[String, FileSystemError]
     # Removes a file or empty directory; recursive defaults to false, retaining nonempty trees.
@@ -151,7 +151,7 @@ export interface FileSystem:
         follow_links: Bool
     ) -> Result[Unit, FileSystemError]
     # Sets the target size in bytes; follows a final symbolic link.
-    fn truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
+    fn truncate(path: String, size: Int64) -> Result[Unit, FileSystemError]
     fn set_times(
         path: String,
         accessed: Timestamp,
@@ -174,7 +174,7 @@ export interface FileSystem:
         destination: String,
         replace: Bool = false,
         max_entries: Optional[Int] = none,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[Unit, FileSystemError]
     fn glob(
         path: String,
@@ -202,33 +202,38 @@ export interface FileHandle:
     fn writer() -> WriteStream
     fn close() -> Unit
     # Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
+    fn read(
+        max_bytes: Optional[Int64] = none
+    ) -> Result[Optional[Bytes], FileSystemError]
     # Writes all bytes on success and returns their count; errors can leave a prefix without a count.
-    fn write(data: Bytes) -> Result[Int, FileSystemError]
+    fn write(data: Bytes) -> Result[Int64, FileSystemError]
     # Writes at the current position; appends only when the handle was opened in append mode.
     fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
     # Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
     fn read_at(
-        offset: Int,
-        max_bytes: Optional[Int] = none
+        offset: Int64,
+        max_bytes: Optional[Int64] = none
     ) -> Result[Bytes, FileSystemError]
     # Writes all bytes at a nonnegative offset without moving the position; returns the full count.
-    fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
+    fn write_at(offset: Int64, data: Bytes) -> Result[Int64, FileSystemError]
     # Reads remaining bytes from the current position; EOF returns empty Bytes.
-    fn read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+    fn read_file(max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
     # Writes all bytes at the current position; does not truncate or reposition this handle.
     fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
     fn read_vectors(
         sizes: List[Int],
-        offset: Int
+        offset: Int64
     ) -> Result[List[Bytes], FileSystemError]
     # Writes every buffer and returns the total byte count; offset -1 uses the current position.
-    fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
+    fn write_vectors(
+        buffers: List[Bytes],
+        offset: Int64
+    ) -> Result[Int64, FileSystemError]
     # Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).
     # Other origins return InvalidInput; the OS validates the resulting offset.
-    fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
+    fn seek(offset: Int64, origin: Int) -> Result[Int64, FileSystemError]
     fn stat() -> Result[FileInfo, FileSystemError]
-    fn truncate(size: Int) -> Result[Unit, FileSystemError]
+    fn truncate(size: Int64) -> Result[Unit, FileSystemError]
     fn sync() -> Result[Unit, FileSystemError]
     fn data_sync() -> Result[Unit, FileSystemError]
     fn chmod(mode: Int) -> Result[Unit, FileSystemError]
@@ -238,7 +243,7 @@ export interface FileHandle:
         modified: Timestamp
     ) -> Result[Unit, FileSystemError]
     fn read_lines(
-        max_bytes: Optional[Int] = none,
+        max_bytes: Optional[Int64] = none,
         max_lines: Optional[Int] = none
     ) -> Result[List[String], FileSystemError]
 
@@ -267,13 +272,13 @@ export type FileEvent:
 # Capacity/free-space statistics: block_size is bytes, blocks/free/available are counts
 # in those blocks, and files/files_free are native file-node counts (zero if unavailable).
 export type FileSystemInfo:
-    type_id: Int
-    block_size: Int
-    blocks: Int
-    blocks_free: Int
-    blocks_available: Int
-    files: Int
-    files_free: Int
+    type_id: Int64
+    block_size: Int64
+    blocks: Int64
+    blocks_free: Int64
+    blocks_available: Int64
+    files: Int64
+    files_free: Int64
 
 # Returns this host's filesystem flag, mode, and permission constants by name.
 # Names and values vary by host; absent entries are not supported constants or portable enum cases.
@@ -291,7 +296,7 @@ export type CopyOptions:
     # try falls back to byte copying; force requires a native clone operation.
     clone: String
     max_entries: Optional[Int] = none
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 
 # A matched path together with its filesystem entry metadata.
 export type PathEntry:

@@ -21,7 +21,7 @@ export type YamlError:
 
 # Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
 export type YamlLimits:
-    max_bytes: Optional[Int]
+    max_bytes: Optional[Int64]
     max_depth: Optional[Int]
     max_values: Optional[Int]
 
@@ -52,6 +52,11 @@ fn within(value: Int, limit: Optional[Int]) -> Bool:
     match limit:
         none: return true
         some(maximum): return value <= maximum
+
+fn within_bytes(value: Int, limit: Optional[Int64]) -> Bool:
+    match limit:
+        none: return true
+        some(bound): return value.to_int64() <= bound
 
 fn count(context: Context, depth: Int) -> Result[Unit, YamlError]:
     if not within(value: depth, limit: context.limits.max_depth): return error(
@@ -1158,14 +1163,18 @@ export fn parse(
         none: let ignored = unit
         some(value): options = value
 
-    for limit in [options.max_bytes, options.max_depth, options.max_values]:
+    if not within_bytes(value: 0, limit: options.max_bytes): return error(
+        YamlError.InvalidInput
+    )
+
+    for limit in [options.max_depth, options.max_values]:
         match limit:
             none: let ignored = unit
 
             some(value):
                 if value < 0: return error(YamlError.InvalidInput)
 
-    if not within(
+    if not within_bytes(
         value: text.byte_length(),
         limit: options.max_bytes
     ): return error(YamlError.LimitExceeded)

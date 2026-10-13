@@ -52,3 +52,45 @@ func TestWideFloatConversionChecksBeforeHostCast(t *testing.T) {
 		}
 	}
 }
+
+func TestWideNativeResultsAndFreshHostFields(t *testing.T) {
+	const count = int64(3000000000)
+	for typ, fields := range nativeWideHostFields {
+		values := map[string]Value{}
+		for _, field := range fields {
+			values[field] = count
+		}
+		record := nativeHostRecord(typ, values)
+		for _, field := range fields {
+			if value, ok := record.Fields[field].(Int64); !ok || value != Int64(count) {
+				t.Fatalf("%s.%s narrowed or lost Int64 identity: %#v", typ, field, record.Fields[field])
+			}
+		}
+	}
+	if nativeNumericResult("@std/Result[Int64][@std/IoError]", count) != Int64(count) {
+		t.Fatal("wide count result narrowed")
+	}
+	if nativeNumericResult("Float64", 1e300) != Float64(1e300) {
+		t.Fatal("wide host Float narrowed")
+	}
+}
+
+func TestWideEqualViews(t *testing.T) {
+	ctx := RootExecution()
+	for _, value := range []Value{Int64(3), Float64(3)} {
+		view := ViewOf("@std/Equal", value)
+		for _, pair := range [][2]Value{{value, view}, {view, value}, {view, view}} {
+			if !EqualIn(ctx, pair[0], pair[1]) {
+				t.Fatalf("equal wide views compare false: %#v, %#v", pair[0], pair[1])
+			}
+		}
+		if !Invoke(ctx, NativeMember(value, "equals"), []Argument{{"other", view}}).(bool) {
+			t.Fatal("wide equals method erased its viewed argument")
+		}
+	}
+	values := &Set{Type: "@std/Set[Int64]"}
+	values.add(ctx, ViewOf("@std/Equal", Int64(3)))
+	if values.find(ctx, ViewOf("@std/Equal", Int64(3))) < 0 {
+		t.Fatal("viewed wide hash membership lost equal key")
+	}
+}

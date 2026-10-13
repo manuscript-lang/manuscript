@@ -118,8 +118,8 @@ Optional limits applied while unpacking untrusted archive data.
 ```manuscript
 type ArchiveLimits:
     max_entries: Optional[Int] = none
-    max_entry_bytes: Optional[Int] = none
-    max_total_bytes: Optional[Int] = none
+    max_entry_bytes: Optional[Int64] = none
+    max_total_bytes: Optional[Int64] = none
 ```
 
 ## pack
@@ -129,7 +129,7 @@ type ArchiveLimits:
 Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.
 
 ```manuscript
-fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int64] = none) -> Result[Bytes, ArchiveError]:
 ```
 
 ## unpack
@@ -165,7 +165,16 @@ type BigInt:
     fn bit_or(right: BigInt) -> BigInt:
     fn bit_xor(right: BigInt) -> BigInt:
     fn to_int() -> Optional[Int]:
+    fn to_int64() -> Optional[Int64]:
     fn to_string(radix: Int) -> String:
+```
+
+### BigInt.to_int64
+
+Returns the exact value when it fits signed64, otherwise none.
+
+```manuscript
+fn to_int64() -> Optional[Int64]:
 ```
 
 ## BigIntError
@@ -194,6 +203,16 @@ Converts a machine-sized integer without loss.
 
 ```manuscript
 fn from_int(value: Int) -> BigInt:
+```
+
+## from_int64
+
+**Function**
+
+Converts an explicit signed64 integer without loss.
+
+```manuscript
+fn from_int64(value: Int64) -> BigInt:
 ```
 
 ## parse
@@ -237,6 +256,16 @@ Reads a 32-bit floating-point value at `offset` using the selected byte order.
 fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]:
 ```
 
+## read_float64
+
+**Function**
+
+Reads an IEEE binary64 value at `offset` without rounding through Float.
+
+```manuscript
+fn read_float64(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float64, BinaryError]:
+```
+
 ## read_integer
 
 **Function**
@@ -244,7 +273,7 @@ fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, Bi
 Reads an integer of `width` bytes. Signed values use two's-complement encoding.
 
 ```manuscript
-fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, BinaryError]:
+fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int64, BinaryError]:
 ```
 
 ## write_float
@@ -257,6 +286,16 @@ Encodes a 32-bit floating-point value using the selected byte order.
 fn write_float(value: Float, little_endian: Bool) -> Bytes:
 ```
 
+## write_float64
+
+**Function**
+
+Encodes an IEEE binary64 value using the selected byte order.
+
+```manuscript
+fn write_float64(value: Float64, little_endian: Bool) -> Bytes:
+```
+
 ## write_integer
 
 **Function**
@@ -264,7 +303,7 @@ fn write_float(value: Float, little_endian: Bool) -> Bytes:
 Encodes an integer into `width` bytes, returning an error when it does not fit.
 
 ```manuscript
-fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]:
+fn write_integer(value: Int64, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]:
 ```
 
 # @std/bytes.ms
@@ -1302,7 +1341,7 @@ Other formats return Unsupported; level must be 0..9 (0 stores data), else Inval
 `max_bytes` bounds the encoded output when supplied.
 
 ```manuscript
-fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ## decompress
@@ -1313,7 +1352,7 @@ Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others r
 Stops when the supplied output limit is reached.
 
 ```manuscript
-fn decompress(data: Bytes, format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+fn decompress(data: Bytes, format: String, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 # @std/crypto.ms
@@ -1558,7 +1597,7 @@ Encodes rows as CSV with comma delimiters and LF endings by default.
 Quotes cells when required by the delimiter or line ending.
 
 ```manuscript
-fn stringify(rows: List[List[String]], options: CsvOptions = CsvOptions(), max_bytes: Optional[Int] = none) -> Result[String, CsvError]:
+fn stringify(rows: List[List[String]], options: CsvOptions = CsvOptions(), max_bytes: Optional[Int64] = none) -> Result[String, CsvError]:
 ```
 
 # @std/decimal.ms
@@ -1574,7 +1613,9 @@ An exact decimal value. Conversions are explicit because binary floats may round
 ```manuscript
 type Decimal:
     fn to_float() -> Float:
+    fn to_float64() -> Float64:
     fn truncate_to_int() -> Optional[Int]:
+    fn truncate_to_int64() -> Optional[Int64]:
     fn round(places: Int, mode: Optional[RoundingMode] = none) -> Result[Decimal, NumberError]:
     fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
 ```
@@ -1598,6 +1639,22 @@ HalfEven is the default; rounded zero has no minus sign. Trailing zeros are reta
 
 ```manuscript
 fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
+```
+
+### Decimal.to_float64
+
+Rounds directly to IEEE binary64, without a default Float intermediate.
+
+```manuscript
+fn to_float64() -> Float64:
+```
+
+### Decimal.truncate_to_int64
+
+Truncates exactly toward zero, returning none outside signed64.
+
+```manuscript
+fn truncate_to_int64() -> Optional[Int64]:
 ```
 
 ## RoundingMode
@@ -1684,7 +1741,7 @@ impl Error for EncodingError:
 Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
 
 ```manuscript
-fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
+fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Optional[Int64] = none) -> Result[Bytes, EncodingError]:
 ```
 
 ## base64_encode
@@ -1704,7 +1761,7 @@ fn base64_encode(data: Bytes, url_safe: Bool = false) -> String:
 Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 
 ```manuscript
-fn hex_decode(text: String, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
+fn hex_decode(text: String, max_bytes: Optional[Int64] = none) -> Result[Bytes, EncodingError]:
 ```
 
 ## hex_encode
@@ -1934,7 +1991,7 @@ type CopyOptions:
     verbatim_symlinks: Bool
     clone: String
     max_entries: Optional[Int] = none
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ```
 
 ### CopyOptions.clone
@@ -2003,24 +2060,24 @@ interface FileHandle:
     fn reader() -> ReadStream
     fn writer() -> WriteStream
     fn close() -> Unit
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
-    fn write(data: Bytes) -> Result[Int, FileSystemError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], FileSystemError]
+    fn write(data: Bytes) -> Result[Int64, FileSystemError]
     fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
-    fn read_at(offset: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
-    fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
-    fn read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+    fn read_at(offset: Int64, max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
+    fn write_at(offset: Int64, data: Bytes) -> Result[Int64, FileSystemError]
+    fn read_file(max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
     fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
-    fn read_vectors(sizes: List[Int], offset: Int) -> Result[List[Bytes], FileSystemError]
-    fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
-    fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
+    fn read_vectors(sizes: List[Int], offset: Int64) -> Result[List[Bytes], FileSystemError]
+    fn write_vectors(buffers: List[Bytes], offset: Int64) -> Result[Int64, FileSystemError]
+    fn seek(offset: Int64, origin: Int) -> Result[Int64, FileSystemError]
     fn stat() -> Result[FileInfo, FileSystemError]
-    fn truncate(size: Int) -> Result[Unit, FileSystemError]
+    fn truncate(size: Int64) -> Result[Unit, FileSystemError]
     fn sync() -> Result[Unit, FileSystemError]
     fn data_sync() -> Result[Unit, FileSystemError]
     fn chmod(mode: Int) -> Result[Unit, FileSystemError]
     fn chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]
     fn set_times(accessed: Timestamp, modified: Timestamp) -> Result[Unit, FileSystemError]
-    fn read_lines(max_bytes: Optional[Int] = none, max_lines: Optional[Int] = none) -> Result[List[String], FileSystemError]
+    fn read_lines(max_bytes: Optional[Int64] = none, max_lines: Optional[Int] = none) -> Result[List[String], FileSystemError]
 ```
 
 ### FileHandle.append_file
@@ -2036,7 +2093,7 @@ fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
 Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
 
 ```manuscript
-fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
+fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], FileSystemError]
 ```
 
 ### FileHandle.read_at
@@ -2044,7 +2101,7 @@ fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemEr
 Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
 
 ```manuscript
-fn read_at(offset: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+fn read_at(offset: Int64, max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
 ```
 
 ### FileHandle.read_file
@@ -2052,7 +2109,7 @@ fn read_at(offset: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSy
 Reads remaining bytes from the current position; EOF returns empty Bytes.
 
 ```manuscript
-fn read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+fn read_file(max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
 ```
 
 ### FileHandle.reader
@@ -2069,7 +2126,7 @@ Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).
 Other origins return InvalidInput; the OS validates the resulting offset.
 
 ```manuscript
-fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
+fn seek(offset: Int64, origin: Int) -> Result[Int64, FileSystemError]
 ```
 
 ### FileHandle.write
@@ -2077,7 +2134,7 @@ fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
 Writes all bytes on success and returns their count; errors can leave a prefix without a count.
 
 ```manuscript
-fn write(data: Bytes) -> Result[Int, FileSystemError]
+fn write(data: Bytes) -> Result[Int64, FileSystemError]
 ```
 
 ### FileHandle.write_at
@@ -2085,7 +2142,7 @@ fn write(data: Bytes) -> Result[Int, FileSystemError]
 Writes all bytes at a nonnegative offset without moving the position; returns the full count.
 
 ```manuscript
-fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
+fn write_at(offset: Int64, data: Bytes) -> Result[Int64, FileSystemError]
 ```
 
 ### FileHandle.write_file
@@ -2101,7 +2158,7 @@ fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
 Writes every buffer and returns the total byte count; offset -1 uses the current position.
 
 ```manuscript
-fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
+fn write_vectors(buffers: List[Bytes], offset: Int64) -> Result[Int64, FileSystemError]
 ```
 
 ### FileHandle.writer
@@ -2121,7 +2178,7 @@ File metadata, including portable fields and exact platform-specific numeric val
 ```manuscript
 type FileInfo:
     name: String
-    size: Int
+    size: Int64
     directory: Bool
     symlink: Bool
     modified: Timestamp
@@ -2130,20 +2187,20 @@ type FileInfo:
     mode: Int
     permissions: Int
     created: Optional[Timestamp]
-    block_size: Int
-    blocks: Int
-    rdev: Int
+    block_size: Int64
+    blocks: Int64
+    rdev: Int64
     fifo: Bool
     socket: Bool
     block_device: Bool
     char_device: Bool
     exact: Map[String, BigInt]
     regular: Bool
-    device: Int
-    inode: Int
-    links: Int
-    uid: Int
-    gid: Int
+    device: Int64
+    inode: Int64
+    links: Int64
+    uid: Int64
+    gid: Int64
 ```
 
 ### FileInfo.block_size
@@ -2151,7 +2208,7 @@ type FileInfo:
 Preferred I/O block size in bytes; unavailable fields are zero.
 
 ```manuscript
-block_size: Int
+block_size: Int64
 ```
 
 ### FileInfo.blocks
@@ -2159,7 +2216,7 @@ block_size: Int
 Allocated 512-byte blocks on POSIX hosts; unavailable fields are zero.
 
 ```manuscript
-blocks: Int
+blocks: Int64
 ```
 
 ### FileInfo.size
@@ -2167,7 +2224,7 @@ blocks: Int
 File length in bytes.
 
 ```manuscript
-size: Int
+size: Int64
 ```
 
 ## FileSystem
@@ -2183,11 +2240,11 @@ interface FileSystem:
     fn copy(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String) -> Bool]) -> Result[Unit, FileSystemError]
     fn watch_native(path: String, recursive: Bool, max_entries: Optional[Int] = none, max_events: Optional[Int] = none, overflow: String) -> Result[FileWatcher, FileSystemError]
     fn canonicalize(path: String) -> Result[String, FileSystemError]
-    fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+    fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int64] = none) -> Result[Unit, FileSystemError]
     fn create_directory(path: String, recursive: Bool = false) -> Result[Unit, FileSystemError]
     fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
     fn list(path: String, max_entries: Optional[Int] = none) -> Result[List[DirectoryEntry], FileSystemError]
-    fn read_file(path: String, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+    fn read_file(path: String, max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
     fn read_link(path: String) -> Result[String, FileSystemError]
     fn remove(path: String, recursive: Bool = false) -> Result[Unit, FileSystemError]
     fn rename(source: String, destination: String) -> Result[Unit, FileSystemError]
@@ -2198,12 +2255,12 @@ interface FileSystem:
     fn append_file(path: String, data: Bytes) -> Result[Unit, FileSystemError]
     fn chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
     fn chown(path: String, uid: Int, gid: Int, follow_links: Bool) -> Result[Unit, FileSystemError]
-    fn truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
+    fn truncate(path: String, size: Int64) -> Result[Unit, FileSystemError]
     fn set_times(path: String, accessed: Timestamp, modified: Timestamp, follow_links: Bool) -> Result[Unit, FileSystemError]
     fn hard_link(source: String, destination: String) -> Result[Unit, FileSystemError]
     fn open(path: String, flags: String, mode: Int) -> Result[FileHandle, FileSystemError]
     fn open_directory(path: String) -> Result[Directory, FileSystemError]
-    fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+    fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int64] = none) -> Result[Unit, FileSystemError]
     fn glob(path: String, pattern: String, max_entries: Optional[Int] = none) -> Result[List[String], FileSystemError]
     fn watch(path: String, recursive: Bool, interval: Duration, max_entries: Optional[Int] = none) -> Result[FileWatcher, FileSystemError]
     fn temporary(prefix: String) -> Result[TemporaryDirectory, FileSystemError]
@@ -2257,7 +2314,7 @@ fn copy(source: String, destination: String, options: CopyOptions, filter: Optio
 Copies one file; replace defaults to false, refusing an existing destination.
 
 ```manuscript
-fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int64] = none) -> Result[Unit, FileSystemError]
 ```
 
 ### FileSystem.copy_tree
@@ -2266,7 +2323,7 @@ Copies a tree; replace defaults to false, refusing existing destinations.
 Entry and byte limits remain separate and apply cumulatively across the copy.
 
 ```manuscript
-fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int64] = none) -> Result[Unit, FileSystemError]
 ```
 
 ### FileSystem.create_directory
@@ -2324,7 +2381,7 @@ fn open_flags(path: String, flags: Int, mode: Int) -> Result[FileHandle, FileSys
 Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
 
 ```manuscript
-fn read_file(path: String, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+fn read_file(path: String, max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
 ```
 
 ### FileSystem.remove
@@ -2358,7 +2415,7 @@ fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
 Sets the target size in bytes; follows a final symbolic link.
 
 ```manuscript
-fn truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
+fn truncate(path: String, size: Int64) -> Result[Unit, FileSystemError]
 ```
 
 ### FileSystem.watch_native
@@ -2412,13 +2469,13 @@ in those blocks, and files/files_free are native file-node counts (zero if unava
 
 ```manuscript
 type FileSystemInfo:
-    type_id: Int
-    block_size: Int
-    blocks: Int
-    blocks_free: Int
-    blocks_available: Int
-    files: Int
-    files_free: Int
+    type_id: Int64
+    block_size: Int64
+    blocks: Int64
+    blocks_free: Int64
+    blocks_available: Int64
+    files: Int64
+    files_free: Int64
 ```
 
 ## FileWatcher
@@ -2536,7 +2593,7 @@ Optional bounds for HTML input bytes, tree depth, and node count.
 
 ```manuscript
 type HtmlLimits:
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
     max_depth: Optional[Int] = none
     max_nodes: Optional[Int] = none
 ```
@@ -2616,8 +2673,8 @@ Outbound case-equivalent header keys append values in Map insertion order.
 ```manuscript
 interface HttpClient:
     fn close() -> Unit
-    fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
-    fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+    fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+    fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
 ```
 
 ## HttpClientOptions
@@ -2630,7 +2687,7 @@ Connection, redirect, cookie, decompression, and TLS settings for an HTTP client
 type HttpClientOptions:
     max_redirects: Optional[Int] = none
     max_idle_connections: Optional[Int] = none
-    max_header_bytes: Optional[Int] = none
+    max_header_bytes: Optional[Int64] = none
     idle_timeout: Optional[Duration] = none
     decompress: Bool
     cookies: Bool
@@ -2674,9 +2731,9 @@ interface HttpExchange:
     fn method() -> String
     fn path() -> String
     fn query() -> String
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], IoError]
     fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, HttpError]
-    fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int] = none) -> Result[WebSocket, WebSocketError]
+    fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int64] = none) -> Result[WebSocket, WebSocketError]
     fn write(data: Bytes) -> Result[Unit, IoError]
 ```
 
@@ -2743,9 +2800,9 @@ Request and response limits, deadlines, graceful shutdown, and TLS server settin
 ```manuscript
 type HttpServerOptions:
     max_requests: Optional[Int] = none
-    max_body_bytes: Optional[Int] = none
-    max_response_bytes: Optional[Int] = none
-    max_header_bytes: Optional[Int] = none
+    max_body_bytes: Optional[Int64] = none
+    max_response_bytes: Optional[Int64] = none
+    max_header_bytes: Optional[Int64] = none
     timeout: Optional[Duration] = none
     grace: Optional[Duration] = none
     tls: Optional[TlsOptions]
@@ -2762,7 +2819,7 @@ canonical spelling; Map lookup is case-sensitive. Lists keep received order.
 interface ResponseBody:
     fn close() -> Unit
     fn headers() -> Map[String, List[String]]
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], IoError]
     fn status() -> Int
 ```
 
@@ -2791,7 +2848,7 @@ A file-like byte stream that returns `none` at end of input.
 ```manuscript
 interface File:
     fn close() -> Unit
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], IoError]
 ```
 
 ## Files
@@ -2836,7 +2893,7 @@ A readable byte stream. Each read returns a chunk or `none` at end of stream.
 ```manuscript
 interface ReadStream:
     fn close() -> Unit
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], IoError]
 ```
 
 ## WriteStream
@@ -2869,7 +2926,7 @@ fn write(data: Bytes) -> Result[Unit, IoError]
 Copies bytes until end of input or the supplied byte limit; returns bytes copied.
 
 ```manuscript
-fn copy(input: ReadStream, output: WriteStream, max_bytes: Optional[Int] = none) -> Result[Int, IoError]:
+fn copy(input: ReadStream, output: WriteStream, max_bytes: Optional[Int64] = none) -> Result[Int64, IoError]:
 ```
 
 ## files
@@ -2889,7 +2946,7 @@ fn files() -> Files:
 Reads a stream completely into memory. Supply a limit for untrusted streams.
 
 ```manuscript
-fn read_all(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Bytes, IoError]:
+fn read_all(input: ReadStream, max_bytes: Optional[Int64] = none) -> Result[Bytes, IoError]:
 ```
 
 ## read_line
@@ -2899,7 +2956,7 @@ fn read_all(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Bytes,
 Reads one line, omitting its line ending; returns `none` at end of stream.
 
 ```manuscript
-fn read_line(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Optional[String], IoError]:
+fn read_line(input: ReadStream, max_bytes: Optional[Int64] = none) -> Result[Optional[String], IoError]:
 ```
 
 ## stderr
@@ -2962,7 +3019,7 @@ Optional bounds for JSON input bytes, nesting depth, and parsed values.
 
 ```manuscript
 type JsonLimits:
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
     max_depth: Optional[Int] = none
     max_values: Optional[Int] = none
 ```
@@ -3000,7 +3057,7 @@ fn parse(text: String, limits: Optional[JsonLimits] = none) -> Result[JsonValue,
 Serializes a JSON value. `max_bytes` bounds output when supplied.
 
 ```manuscript
-fn stringify(value: JsonValue, max_bytes: Optional[Int] = none) -> Result[String, JsonError]:
+fn stringify(value: JsonValue, max_bytes: Optional[Int64] = none) -> Result[String, JsonError]:
 ```
 
 # @std/log.ms
@@ -3111,7 +3168,7 @@ interface Transport:
 Creates a logger. Defaults to `Info`, no bound fields, timestamps enabled, and no record-size limit.
 
 ```manuscript
-fn create(transport: Transport, level: Optional[LogLevel] = none, bindings: Optional[Map[String, JsonValue]] = none, timestamp: Optional[Bool] = none, max_bytes: Optional[Int] = none) -> Result[Logger, LogError]:
+fn create(transport: Transport, level: Optional[LogLevel] = none, bindings: Optional[Map[String, JsonValue]] = none, timestamp: Optional[Bool] = none, max_bytes: Optional[Int64] = none) -> Result[Logger, LogError]:
 ```
 
 ## file_transport
@@ -3443,7 +3500,7 @@ interface Connection:
     fn close() -> Unit
     fn local_address() -> String
     fn peer_address() -> String
-    fn read(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[Optional[Bytes], IoError]
     fn shutdown_write() -> Result[Unit, NetworkError]
     fn tls_info() -> Result[TlsInfo, TlsError]
     fn write(data: Bytes, timeout: Optional[Duration] = none) -> Result[Unit, IoError]
@@ -3454,7 +3511,7 @@ interface Connection:
 Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
 
 ```manuscript
-fn read(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Optional[Bytes], IoError]
+fn read(max_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[Optional[Bytes], IoError]
 ```
 
 ### Connection.write
@@ -3495,7 +3552,7 @@ A connectionless socket for sending and receiving datagrams.
 interface DatagramSocket:
     fn address() -> String
     fn close() -> Unit
-    fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]
+    fn receive(max_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]
     fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) -> Result[Unit, NetworkError]
 ```
 
@@ -3554,10 +3611,10 @@ interface Network:
     fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Optional[Duration] = none) -> Result[Listener, NetworkError]
     fn listen_unix(path: String) -> Result[Listener, NetworkError]
     fn lookup(name: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[String], NetworkError]
-    fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ClientResponse, HttpError]
+    fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[ClientResponse, HttpError]
     fn resolve(name: String, kind: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[DnsRecord], NetworkError]
     fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network, NetworkError]
-    fn serve(address: String, handler: fn(request: HttpRequest) -> HttpResponse, limit: Optional[Int] = none, max_body_bytes: Optional[Int] = none, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none, grace: Optional[Duration] = none) -> Result[HttpServer, IoError]
+    fn serve(address: String, handler: fn(request: HttpRequest) -> HttpResponse, limit: Optional[Int] = none, max_body_bytes: Optional[Int64] = none, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none, grace: Optional[Duration] = none) -> Result[HttpServer, IoError]
     fn serve_stream(address: String, handler: fn(exchange: HttpExchange) -> Result[Unit, HttpError], options: HttpServerOptions) -> Result[HttpServer, HttpError]
     fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket, WebSocketError]
     fn with_resolver(address: String) -> Result[Network, NetworkError]
@@ -4080,7 +4137,7 @@ Runs child programs with empty input by default, optional output bounds and time
 
 ```manuscript
 interface Commands:
-    fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(), max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
+    fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(), max_output_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
 ```
 
 ## CpuUsage
@@ -4091,8 +4148,8 @@ Cumulative CPU time consumed by the current process, in integer microseconds.
 
 ```manuscript
 type CpuUsage:
-    user_microseconds: Int
-    system_microseconds: Int
+    user_microseconds: Int64
+    system_microseconds: Int64
 ```
 
 ### CpuUsage.system_microseconds
@@ -4100,7 +4157,7 @@ type CpuUsage:
 Kernel CPU time in microseconds.
 
 ```manuscript
-system_microseconds: Int
+system_microseconds: Int64
 ```
 
 ### CpuUsage.user_microseconds
@@ -4108,7 +4165,7 @@ system_microseconds: Int
 User CPU time in microseconds.
 
 ```manuscript
-user_microseconds: Int
+user_microseconds: Int64
 ```
 
 ## MemoryUsage
@@ -4119,11 +4176,11 @@ Memory statistics for the current process; every field is bytes.
 
 ```manuscript
 type MemoryUsage:
-    heap_used: Int
-    heap_total: Int
-    heap_system: Int
-    external: Int
-    resident: Int
+    heap_used: Int64
+    heap_total: Int64
+    heap_system: Int64
+    external: Int64
+    resident: Int64
 ```
 
 ## ProcessControl
@@ -4137,10 +4194,10 @@ and finish shutdown work directly in the shielded close call after joining cance
 
 ```manuscript
 interface ProcessControl:
-    fn monotonic_time() -> Int
+    fn monotonic_time() -> Int64
     fn watch_signals(signals: List[Int], capacity: Optional[Int] = none) -> Result[SignalStream, ProcessError]
-    fn constrained_memory() -> Result[Int, ProcessError]
-    fn available_memory() -> Result[Int, ProcessError]
+    fn constrained_memory() -> Result[Int64, ProcessError]
+    fn available_memory() -> Result[Int64, ProcessError]
     fn title() -> Result[String, ProcessError]
     fn set_title(title: String) -> Result[Unit, ProcessError]
     fn initialize_groups(username: String, gid: Int) -> Result[Unit, ProcessError]
@@ -4151,7 +4208,7 @@ interface ProcessControl:
     fn uptime() -> Result[Duration, ProcessError]
     fn environment() -> Result[Map[String, String], ProcessError]
     fn set_environment(name: String, value: Optional[String]) -> Result[Unit, ProcessError]
-    fn load_environment(path: String, max_bytes: Optional[Int] = none) -> Result[Unit, ProcessError]
+    fn load_environment(path: String, max_bytes: Optional[Int64] = none) -> Result[Unit, ProcessError]
     fn working_directory() -> Result[String, ProcessError]
     fn change_directory(path: String) -> Result[Unit, ProcessError]
     fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
@@ -4176,7 +4233,7 @@ Elapsed nanoseconds since native runtime initialization, sharing the uptime() or
 This is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing.
 
 ```manuscript
-fn monotonic_time() -> Int
+fn monotonic_time() -> Int64
 ```
 
 ### ProcessControl.send_signal
@@ -4270,10 +4327,10 @@ type ProcessInfo:
     arguments: List[String]
     os: String
     architecture: String
-    uid: Int
-    gid: Int
-    effective_uid: Int
-    effective_gid: Int
+    uid: Int64
+    gid: Int64
+    effective_uid: Int64
+    effective_gid: Int64
 ```
 
 ### ProcessInfo.arguments
@@ -4295,15 +4352,15 @@ Unavailable Windows fault/context-switch counters are zero.
 
 ```manuscript
 type ResourceUsage:
-    user_microseconds: Int
-    system_microseconds: Int
-    max_resident_bytes: Int
-    minor_faults: Int
-    major_faults: Int
-    filesystem_reads: Int
-    filesystem_writes: Int
-    voluntary_switches: Int
-    involuntary_switches: Int
+    user_microseconds: Int64
+    system_microseconds: Int64
+    max_resident_bytes: Int64
+    minor_faults: Int64
+    major_faults: Int64
+    filesystem_reads: Int64
+    filesystem_writes: Int64
+    voluntary_switches: Int64
+    involuntary_switches: Int64
 ```
 
 ## SignalStream
@@ -4503,7 +4560,7 @@ type Regex:
     fn matches(text: String) -> Bool:
     fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
     fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
-    fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+    fn replace(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
 ```
 
 ### Regex.replace
@@ -4511,7 +4568,7 @@ type Regex:
 Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
 
 ```manuscript
-fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+fn replace(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
 ```
 
 ### Regex.replace_all
@@ -4796,11 +4853,11 @@ counters for one logical CPU. irq includes hardware and software interrupt time.
 type CpuInfo:
     model: String
     speed_mhz: Int
-    user: Int
-    nice: Int
-    system: Int
-    idle: Int
-    irq: Int
+    user: Int64
+    nice: Int64
+    system: Int64
+    idle: Int64
+    irq: Int64
 ```
 
 ### CpuInfo.speed_mhz
@@ -4816,7 +4873,7 @@ speed_mhz: Int
 The user, nice, system, idle, and irq fields are cumulative milliseconds.
 
 ```manuscript
-user: Int
+user: Int64
 ```
 
 ## NetworkInterface
@@ -4957,11 +5014,11 @@ Host measurements: memory fields are bytes; load_average is 1/5/15-minute load
 
 ```manuscript
 type SystemMetrics:
-    total_memory: Int
-    free_memory: Int
-    available_memory: Int
+    total_memory: Int64
+    free_memory: Int64
+    available_memory: Int64
     uptime: Duration
-    load_average: List[Float]
+    load_average: List[Float64]
     available_parallelism: Int
 ```
 
@@ -4982,8 +5039,8 @@ User name, numeric identity, home directory, and login shell.
 ```manuscript
 type UserInfo:
     username: String
-    uid: Int
-    gid: Int
+    uid: Int64
+    gid: Int64
     home: String
     shell: String
 ```
@@ -5218,17 +5275,17 @@ A span of elapsed time.
 type Duration:
     fn add(right: Duration) -> Duration:
     fn subtract(right: Duration) -> Duration:
-    fn multiply(factor: Int) -> Duration:
-    fn divide(divisor: Int) -> Duration:
+    fn multiply(factor: Int64) -> Duration:
+    fn divide(divisor: Int64) -> Duration:
     fn negate() -> Duration:
     fn abs() -> Duration:
     fn compare(right: Duration) -> Int:
-    fn to_nanoseconds() -> Int:
-    fn to_microseconds() -> Int:
-    fn to_milliseconds() -> Int:
-    fn to_seconds() -> Float:
-    fn to_minutes() -> Float:
-    fn to_hours() -> Float:
+    fn to_nanoseconds() -> Int64:
+    fn to_microseconds() -> Int64:
+    fn to_milliseconds() -> Int64:
+    fn to_seconds() -> Float64:
+    fn to_minutes() -> Float64:
+    fn to_hours() -> Float64:
 ```
 
 ### Duration.add
@@ -5244,7 +5301,7 @@ fn add(right: Duration) -> Duration:
 Converts this duration to an integer number of microseconds.
 
 ```manuscript
-fn to_microseconds() -> Int:
+fn to_microseconds() -> Int64:
 ```
 
 ### Duration.to_milliseconds
@@ -5252,7 +5309,7 @@ fn to_microseconds() -> Int:
 Converts this duration to an integer number of milliseconds.
 
 ```manuscript
-fn to_milliseconds() -> Int:
+fn to_milliseconds() -> Int64:
 ```
 
 ### Duration.to_nanoseconds
@@ -5260,7 +5317,7 @@ fn to_milliseconds() -> Int:
 Converts this duration to an integer number of nanoseconds.
 
 ```manuscript
-fn to_nanoseconds() -> Int:
+fn to_nanoseconds() -> Int64:
 ```
 
 ### Duration.to_seconds
@@ -5268,7 +5325,7 @@ fn to_nanoseconds() -> Int:
 Converts this duration to floating-point seconds.
 
 ```manuscript
-fn to_seconds() -> Float:
+fn to_seconds() -> Float64:
 ```
 
 ## Instant
@@ -5328,7 +5385,7 @@ A wall-clock time with Unix seconds and nanoseconds.
 ```manuscript
 type Timestamp:
     fn to_string() -> String:
-    fn unix_seconds() -> Int:
+    fn unix_seconds() -> Int64:
     fn nanoseconds() -> Int:
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
     fn difference(right: Timestamp) -> Result[Duration, TimeError]:
@@ -5372,7 +5429,7 @@ fn to_string() -> String:
 Returns the whole Unix seconds represented by this timestamp.
 
 ```manuscript
-fn unix_seconds() -> Int:
+fn unix_seconds() -> Int64:
 ```
 
 ## WallClock
@@ -5403,7 +5460,7 @@ fn clock() -> Clock:
 Constructs a duration from a number of nanoseconds.
 
 ```manuscript
-fn duration(nanoseconds: Int) -> Duration:
+fn duration(nanoseconds: Int64) -> Duration:
 ```
 
 ## parse_timestamp
@@ -5433,7 +5490,7 @@ fn sleep(duration: Duration) -> Unit:
 Constructs a timestamp from Unix seconds and a nanosecond adjustment.
 
 ```manuscript
-fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]:
+fn timestamp(seconds: Int64, nanoseconds: Int64) -> Result[Timestamp, TimeError]:
 ```
 
 ## wall_clock
@@ -5566,7 +5623,7 @@ Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
 
 ```manuscript
 type TomlLimits:
-    max_bytes: Optional[Int]
+    max_bytes: Optional[Int64]
     max_depth: Optional[Int]
     max_values: Optional[Int]
 ```
@@ -5580,8 +5637,8 @@ A TOML value. Date and time values retain their original TOML text.
 ```manuscript
 type TomlValue:
     case StringValue(value: String)
-    case IntValue(value: Int)
-    case FloatValue(value: Float)
+    case IntValue(value: Int64)
+    case FloatValue(value: Float64)
     case BoolValue(value: Bool)
     case DateTimeValue(text: String)
     case ArrayValue(values: List[TomlValue])
@@ -5779,7 +5836,7 @@ WebSocket message, timeout, TLS, and per-message compression settings.
 
 ```manuscript
 type WebSocketOptions:
-    max_message_bytes: Optional[Int] = none
+    max_message_bytes: Optional[Int64] = none
     timeout: Optional[Duration] = none
     tls: TlsOptions
     compression: Bool
@@ -5816,7 +5873,7 @@ Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
 
 ```manuscript
 type YamlLimits:
-    max_bytes: Optional[Int]
+    max_bytes: Optional[Int64]
     max_depth: Optional[Int]
     max_values: Optional[Int]
 ```
@@ -6648,12 +6705,12 @@ type String:
     fn reverse() -> String:
     fn compare(other: String) -> Int:
     fn lines() -> List[String]:
-    fn normalize(form: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn normalize(form: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
     fn concat(values: String) -> String:
     fn contains(text: String) -> Bool:
     fn ends_with(suffix: String) -> Bool:
     fn lower() -> String:
-    fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn repeat(count: Int, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
     fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
@@ -6669,9 +6726,9 @@ type String:
     fn last_index_of(value: String) -> Optional[Int]:
     fn trim_start() -> String:
     fn trim_end() -> String:
-    fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
-    fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
-    fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
+    fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
+    fn replace_all(old: String, new: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
     fn slice(start: Int, end: Int) -> String:
     fn substring(start: Int, end: Int) -> String:
     fn byte_length() -> Int:
@@ -6790,7 +6847,7 @@ Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes opt
 Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
 
 ```manuscript
-fn normalize(form: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+fn normalize(form: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]
 ```
 
 ### String.pad_end
@@ -6799,7 +6856,7 @@ Pads on the right until the scalar length reaches `target_length`.
 Empty padding or a shorter target leaves text unchanged; negative targets/budgets return InvalidInput.
 
 ```manuscript
-fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]
 ```
 
 ### String.pad_start
@@ -6808,7 +6865,7 @@ Pads on the left until the scalar length reaches `target_length`.
 Empty padding or a shorter target leaves text unchanged; max_bytes still bounds UTF-8 output.
 
 ```manuscript
-fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]
 ```
 
 ### String.parse_int
@@ -6824,7 +6881,7 @@ fn parse_int() -> Optional[Int]
 Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded.
 
 ```manuscript
-fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+fn repeat(count: Int, max_bytes: Optional[Int64] = none) -> Result[String, StringError]
 ```
 
 ### String.replace
@@ -6841,7 +6898,7 @@ Replaces every nonoverlapping occurrence; empty old matches at each scalar bound
 max_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion returns LimitExceeded.
 
 ```manuscript
-fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+fn replace_all(old: String, new: String, max_bytes: Optional[Int64] = none) -> Result[String, StringError]
 ```
 
 ### String.replace_first

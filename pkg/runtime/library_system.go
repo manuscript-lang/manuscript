@@ -39,9 +39,9 @@ func init() {
 		return libraryConstants(values)
 	})
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
-		{"ProcessControl", "monotonic_time", "Int", nil},
-		{"ProcessControl", "constrained_memory", libraryResult("Int", "ProcessError"), nil},
-		{"ProcessControl", "available_memory", libraryResult("Int", "ProcessError"), nil},
+		{"ProcessControl", "monotonic_time", "Int64", nil},
+		{"ProcessControl", "constrained_memory", libraryResult("Int64", "ProcessError"), nil},
+		{"ProcessControl", "available_memory", libraryResult("Int64", "ProcessError"), nil},
 		{"ProcessControl", "title", libraryResult("String", "ProcessError"), nil},
 		{"ProcessControl", "set_title", libraryResult("Unit", "ProcessError"), []LibraryParam{{"title", "String"}}},
 		{"ProcessControl", "initialize_groups", libraryResult("Unit", "ProcessError"), []LibraryParam{{"username", "String"}, {"gid", "Int"}}},
@@ -64,7 +64,7 @@ func init() {
 		{"ProcessControl", "uptime", libraryResult("Duration", "ProcessError"), []LibraryParam{}},
 		{"ProcessControl", "environment", libraryResult("Map[String][String]", "ProcessError"), []LibraryParam{}},
 		{"ProcessControl", "set_environment", libraryResult("Unit", "ProcessError"), []LibraryParam{{"name", "String"}, {"value", "Optional[String]"}}},
-		{"ProcessControl", "load_environment", libraryResult("Unit", "ProcessError"), []LibraryParam{{"path", "String"}, {"max_bytes", "Optional[Int]"}}},
+		{"ProcessControl", "load_environment", libraryResult("Unit", "ProcessError"), []LibraryParam{{"path", "String"}, {"max_bytes", "Optional[Int64]"}}},
 		{"ProcessControl", "working_directory", libraryResult("String", "ProcessError"), []LibraryParam{}},
 		{"ProcessControl", "change_directory", libraryResult("Unit", "ProcessError"), []LibraryParam{{"path", "String"}}},
 		{"ProcessControl", "send_signal", libraryResult("Unit", "ProcessError"), []LibraryParam{{"pid", "Int"}, {"signal", "Int"}}},
@@ -144,7 +144,7 @@ func (s *librarySystem) extended(ctx *Execution, r, name string, a []Value) Valu
 		if !utf8.ValidString(u.Username + u.Home + shell) {
 			return libraryError(r, "Unsupported", "")
 		}
-		return libraryOK(r, Record{"@std/UserInfo", map[string]Value{"username": u.Username, "uid": uid, "gid": gid, "home": u.Home, "shell": shell}})
+		return libraryOK(r, nativeHostRecord("@std/UserInfo", map[string]Value{"username": u.Username, "uid": uid, "gid": gid, "home": u.Home, "shell": shell}))
 	case "network_interfaces":
 		interfaces, err := net.Interfaces()
 		if err != nil {
@@ -208,20 +208,20 @@ func librarySystemMetrics(ctx *Execution, r string) Value {
 	if err != nil {
 		return libraryOSResult(r, nil, err)
 	}
-	loads := []Value{float64(0), float64(0), float64(0)}
+	loads := []Value{Float64(0), Float64(0), Float64(0)}
 	if goruntime.GOOS != "windows" {
 		load, err := loadstats.AvgWithContext(ctx.Context)
 		CheckCancelled(ctx)
 		if err != nil {
 			return libraryOSResult(r, nil, err)
 		}
-		loads = []Value{load.Load1, load.Load5, load.Load15}
+		loads = []Value{Float64(load.Load1), Float64(load.Load5), Float64(load.Load15)}
 	}
 	parallelism, err := hostos.AvailableParallelism()
 	if err != nil {
 		return libraryOSResult(r, nil, err)
 	}
-	return libraryOK(r, Record{"@std/SystemMetrics", map[string]Value{"total_memory": int64(memory.Total), "free_memory": int64(memory.Free), "available_memory": int64(memory.Available), "uptime": Duration(time.Duration(uptime) * time.Second), "load_average": libraryList("Float", loads), "available_parallelism": int64(parallelism)}})
+	return libraryOK(r, nativeHostRecord("@std/SystemMetrics", map[string]Value{"total_memory": int64(memory.Total), "free_memory": int64(memory.Free), "available_memory": int64(memory.Available), "uptime": Duration(time.Duration(uptime) * time.Second), "load_average": libraryList("Float64", loads), "available_parallelism": int64(parallelism)}))
 }
 func libraryCPUs(ctx *Execution, r string) Value {
 	infos, err := cpustats.InfoWithContext(ctx.Context)
@@ -247,7 +247,7 @@ func libraryCPUs(ctx *Execution, r string) Value {
 		if !utf8.ValidString(info.ModelName) {
 			return libraryError(r, "Unsupported", "")
 		}
-		items = append(items, Record{"@std/CpuInfo", map[string]Value{"model": info.ModelName, "speed_mhz": int64(info.Mhz), "user": int64(usage.User * 1000), "nice": int64(usage.Nice * 1000), "system": int64(usage.System * 1000), "idle": int64(usage.Idle * 1000), "irq": int64((usage.Irq + usage.Softirq) * 1000)}})
+		items = append(items, nativeHostRecord("@std/CpuInfo", map[string]Value{"model": info.ModelName, "speed_mhz": int64(info.Mhz), "user": int64(usage.User * 1000), "nice": int64(usage.Nice * 1000), "system": int64(usage.System * 1000), "idle": int64(usage.Idle * 1000), "irq": int64((usage.Irq + usage.Softirq) * 1000)}))
 	}
 	return libraryOK(r, libraryList("@std/CpuInfo", items))
 }
@@ -274,7 +274,7 @@ func (libraryProcessControl) Operation(name string) Function {
 			if metrics.Tag != "ok" {
 				return metrics
 			}
-			available := metrics.Fields[0].(Record).Fields["available_memory"].(int64)
+			available := int64(metrics.Fields[0].(Record).Fields["available_memory"].(Int64))
 			if limit > 0 {
 				remaining := max(limit-current, 0)
 				available = min(available, remaining)
@@ -343,7 +343,7 @@ func (libraryProcessControl) Operation(name string) Function {
 			if err != nil {
 				return libraryOSResult(r, nil, err)
 			}
-			return libraryOK(r, Record{"@std/ResourceUsage", map[string]Value{"user_microseconds": u.User, "system_microseconds": u.System, "max_resident_bytes": u.MaxRSS, "minor_faults": u.MinorFaults, "major_faults": u.MajorFaults, "filesystem_reads": u.Reads, "filesystem_writes": u.Writes, "voluntary_switches": u.VoluntarySwitches, "involuntary_switches": u.InvoluntarySwitches}})
+			return libraryOK(r, nativeHostRecord("@std/ResourceUsage", map[string]Value{"user_microseconds": u.User, "system_microseconds": u.System, "max_resident_bytes": u.MaxRSS, "minor_faults": u.MinorFaults, "major_faults": u.MajorFaults, "filesystem_reads": u.Reads, "filesystem_writes": u.Writes, "voluntary_switches": u.VoluntarySwitches, "involuntary_switches": u.InvoluntarySwitches}))
 		case "umask":
 			mask := a[0].(int64)
 			if mask < 0 || mask > 0777 {
@@ -381,7 +381,7 @@ func (libraryProcessControl) Operation(name string) Function {
 			if !utf8.ValidString(executable + strings.Join(os.Args, "")) {
 				return libraryError(r, "Unsupported", "")
 			}
-			return libraryOK(r, Record{"@std/ProcessInfo", map[string]Value{"pid": int64(os.Getpid()), "parent_pid": int64(os.Getppid()), "executable": executable, "arguments": libraryStrings(os.Args), "os": goruntime.GOOS, "architecture": goruntime.GOARCH, "uid": int64(os.Getuid()), "gid": int64(os.Getgid()), "effective_uid": int64(os.Geteuid()), "effective_gid": int64(os.Getegid())}})
+			return libraryOK(r, nativeHostRecord("@std/ProcessInfo", map[string]Value{"pid": int64(os.Getpid()), "parent_pid": int64(os.Getppid()), "executable": executable, "arguments": libraryStrings(os.Args), "os": goruntime.GOOS, "architecture": goruntime.GOARCH, "uid": int64(os.Getuid()), "gid": int64(os.Getgid()), "effective_uid": int64(os.Geteuid()), "effective_gid": int64(os.Getegid())}))
 		case "uptime":
 			return libraryOK(r, Duration(time.Since(libraryProcessStarted)))
 		case "memory_usage":
@@ -397,13 +397,13 @@ func (libraryProcessControl) Operation(name string) Function {
 				return libraryOSResult(r, nil, err)
 			}
 			resident := int64(memory.RSS)
-			return libraryOK(r, Record{"@std/MemoryUsage", map[string]Value{"heap_used": int64(mem.HeapAlloc), "heap_total": int64(mem.HeapInuse), "heap_system": int64(mem.HeapSys), "external": int64(mem.Sys - mem.HeapSys), "resident": resident}})
+			return libraryOK(r, nativeHostRecord("@std/MemoryUsage", map[string]Value{"heap_used": int64(mem.HeapAlloc), "heap_total": int64(mem.HeapInuse), "heap_system": int64(mem.HeapSys), "external": int64(mem.Sys - mem.HeapSys), "resident": resident}))
 		case "cpu_usage":
 			usage, err := hostos.ResourceUsage()
 			if err != nil {
 				return libraryOSResult(r, nil, err)
 			}
-			return libraryOK(r, Record{"@std/CpuUsage", map[string]Value{"user_microseconds": usage.User, "system_microseconds": usage.System}})
+			return libraryOK(r, nativeHostRecord("@std/CpuUsage", map[string]Value{"user_microseconds": usage.User, "system_microseconds": usage.System}))
 		case "environment":
 			libraryEnvironmentMu.Lock()
 			defer libraryEnvironmentMu.Unlock()

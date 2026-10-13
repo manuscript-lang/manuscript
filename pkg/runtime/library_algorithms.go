@@ -78,7 +78,7 @@ func init() {
 			return &Set{Type: r, Items: out}
 		})
 	}
-	libraryAdd("io", "copy", libraryResult("Int", "IoError"), []LibraryParam{p("input", "ReadStream"), p("output", "WriteStream"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "copy", libraryResult("Int64", "IoError"), []LibraryParam{p("input", "ReadStream"), p("output", "WriteStream"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[2].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -112,7 +112,7 @@ func init() {
 			total += int64(len(data.Items))
 		}
 	})
-	libraryAdd("io", "read_all", libraryResult("Bytes", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "read_all", libraryResult("Bytes", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[1].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")

@@ -100,7 +100,7 @@ interface Transport:
 Creates a logger. Defaults to `Info`, no bound fields, timestamps enabled, and no record-size limit.
 
 ```manuscript
-fn create(transport: Transport, level: Optional[LogLevel] = none, bindings: Optional[Map[String, JsonValue]] = none, timestamp: Optional[Bool] = none, max_bytes: Optional[Int] = none) -> Result[Logger, LogError]:
+fn create(transport: Transport, level: Optional[LogLevel] = none, bindings: Optional[Map[String, JsonValue]] = none, timestamp: Optional[Bool] = none, max_bytes: Optional[Int64] = none) -> Result[Logger, LogError]:
 ```
 
 ## file_transport {data-api-kind="Function"}

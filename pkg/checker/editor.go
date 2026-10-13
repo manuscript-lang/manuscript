@@ -98,7 +98,7 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 			fields[field.Name] = true
 		}
 	}
-	if receiver.ID == "Int" {
+	if receiver.ID == "Int" || receiver.ID == "Int64" {
 		for _, name := range []string{"seconds", "milliseconds", "minutes"} {
 			result = append(result, Member{name, "field", standard("Duration"), nil})
 		}

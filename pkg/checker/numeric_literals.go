@@ -32,18 +32,29 @@ func numericLiteralContext(e *syntax.Expression, expected *Type) *Type {
 }
 
 func containsWideNumeric(t *Type) bool {
-	if t == nil {
-		return false
-	}
-	if t.ID == "Int64" || t.ID == "Float64" {
-		return true
-	}
-	for _, arg := range t.Args {
-		if containsWideNumeric(arg) {
+	seen := map[*Type]bool{}
+	var visit func(*Type) bool
+	visit = func(t *Type) bool {
+		if t == nil || seen[t] {
+			return false
+		}
+		seen[t] = true
+		if t.ID == "Int64" || t.ID == "Float64" {
 			return true
 		}
+		for _, arg := range t.Args {
+			if visit(arg) {
+				return true
+			}
+		}
+		for _, param := range t.Params {
+			if visit(param.Type) {
+				return true
+			}
+		}
+		return visit(t.Result)
 	}
-	return false
+	return visit(t)
 }
 
 func (c *checker) numericOperands(e *syntax.Expression, expected *Type) (*Info, *Info) {

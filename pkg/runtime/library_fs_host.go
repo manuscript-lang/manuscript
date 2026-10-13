@@ -18,7 +18,7 @@ func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"FileSystem", "stat_filesystem", libraryResult("FileSystemInfo", "FileSystemError"), []LibraryParam{{"path", "String"}}},
 		{"FileSystem", "chmod_link", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"mode", "Int"}}},
-		{"FileHandle", "read_lines", libraryResult("List[String]", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int]"}, {"max_lines", "Optional[Int]"}}},
+		{"FileHandle", "read_lines", libraryResult("List[String]", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int64]"}, {"max_lines", "Optional[Int]"}}},
 		{"FileHandle", "reader", "ReadStream", nil},
 		{"FileHandle", "writer", "WriteStream", nil},
 	}...)

@@ -16,7 +16,7 @@ The bounded subprocess facility is exported by `@std/process.ms`. Import `comman
 ```manuscript
 # Commands
 fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(),
-       max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
+       max_output_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
 
 type CommandOutput:
     exit_code: Int

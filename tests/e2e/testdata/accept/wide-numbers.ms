@@ -2,6 +2,8 @@ import panic from "@std/faults.ms"
 import Decimal from "@std/decimal.ms"
 import parse_int64 from "@std/numbers.ms"
 import parse_float64 from "@std/numbers.ms"
+import Equal from "@std/equality.ms"
+import Set from "@std/collections.ms"
 
 type WideRecord:
     count: Int64
@@ -9,6 +11,9 @@ type WideRecord:
 
 fn identity[T](value: T) -> T:
     return value
+
+fn equal_value[T: Equal](left: T, right: T) -> Bool:
+    return left.equals(Equal(right))
 
 test "explicit wide literals arithmetic and boundaries":
     let largest: Int64 = 9223372036854775807
@@ -132,3 +137,21 @@ test "wide parsing skips default-width intermediate values":
         or parse_float64("-0").unwrap().toString() != "-0"
     ):
         return panic("wide parser lost IEEE values")
+
+test "wide equality retains explicit and generic views":
+    let integer: Int64 = 3
+    let floating: Float64 = 3.0
+    if not integer.equals(Equal(integer)) or not floating.equals(Equal(floating)):
+        return panic("wide equals method lost its viewed argument")
+    if (
+        not Equal(integer).equals(Equal(integer))
+        or not Equal(floating).equals(Equal(floating))
+    ):
+        return panic("wide interface receivers lost equality")
+    if not equal_value(integer, integer) or not equal_value(floating, floating):
+        return panic("generic Equal boundary lost wide equality")
+
+    let keys = Set[Int64]()
+    keys.with_value(integer)
+    if not keys.contains(integer) or not keys.contains(identity(integer)):
+        return panic("wide hash collection membership changed")

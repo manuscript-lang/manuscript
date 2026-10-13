@@ -61,7 +61,7 @@ func TestLibraryCodecsAndNumbers(t *testing.T) {
 		for _, n := range []int64{-9223372036854775808, -32768, -1, 0, 32767, 9223372036854775807} {
 			data := librarySuccess(t, libraryCall(t, "binary/write_integer", n, int64(8), true, little))
 			got := librarySuccess(t, libraryCall(t, "binary/read_integer", data, int64(0), int64(8), true, little))
-			if got != n {
+			if got != Int64(n) {
 				t.Fatal(n, got)
 			}
 		}

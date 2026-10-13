@@ -13,7 +13,9 @@ An exact decimal value. Conversions are explicit because binary floats may round
 ```manuscript
 type Decimal:
     fn to_float() -> Float:
+    fn to_float64() -> Float64:
     fn truncate_to_int() -> Optional[Int]:
+    fn truncate_to_int64() -> Optional[Int64]:
     fn round(places: Int, mode: Optional[RoundingMode] = none) -> Result[Decimal, NumberError]:
     fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
 ```
@@ -37,6 +39,22 @@ HalfEven is the default; rounded zero has no minus sign. Trailing zeros are reta
 
 ```manuscript
 fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
+```
+
+### Decimal.to_float64
+
+Rounds directly to IEEE binary64, without a default Float intermediate.
+
+```manuscript
+fn to_float64() -> Float64:
+```
+
+### Decimal.truncate_to_int64
+
+Truncates exactly toward zero, returning none outside signed64.
+
+```manuscript
+fn truncate_to_int64() -> Optional[Int64]:
 ```
 
 ## RoundingMode {data-api-kind="Alternative"}

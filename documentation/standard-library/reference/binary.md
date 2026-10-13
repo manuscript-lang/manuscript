@@ -29,12 +29,20 @@ Reads a 32-bit floating-point value at `offset` using the selected byte order.
 fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]:
 ```
 
+## read_float64 {data-api-kind="Function"}
+
+Reads an IEEE binary64 value at `offset` without rounding through Float.
+
+```manuscript
+fn read_float64(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float64, BinaryError]:
+```
+
 ## read_integer {data-api-kind="Function"}
 
 Reads an integer of `width` bytes. Signed values use two's-complement encoding.
 
 ```manuscript
-fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, BinaryError]:
+fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int64, BinaryError]:
 ```
 
 ## write_float {data-api-kind="Function"}
@@ -45,11 +53,19 @@ Encodes a 32-bit floating-point value using the selected byte order.
 fn write_float(value: Float, little_endian: Bool) -> Bytes:
 ```
 
+## write_float64 {data-api-kind="Function"}
+
+Encodes an IEEE binary64 value using the selected byte order.
+
+```manuscript
+fn write_float64(value: Float64, little_endian: Bool) -> Bytes:
+```
+
 ## write_integer {data-api-kind="Function"}
 
 Encodes an integer into `width` bytes, returning an error when it does not fit.
 
 ```manuscript
-fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]:
+fn write_integer(value: Int64, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]:
 ```
 

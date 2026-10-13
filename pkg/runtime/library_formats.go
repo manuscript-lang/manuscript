@@ -18,9 +18,9 @@ func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	add := libraryAdd
 	add("json", "parse", libraryResult("JsonValue", "JsonError"), []LibraryParam{p("text", "String"), p("limits", "Optional[JsonLimits]")}, libraryJSONParse)
-	add("json", "stringify", libraryResult("String", "JsonError"), []LibraryParam{p("value", "JsonValue"), p("max_bytes", "Optional[Int]")}, libraryJSONStringify)
+	add("json", "stringify", libraryResult("String", "JsonError"), []LibraryParam{p("value", "JsonValue"), p("max_bytes", "Optional[Int64]")}, libraryJSONStringify)
 	add("csv", "parse", libraryResult("List[List[String]]", "CsvError"), []LibraryParam{p("text", "String"), p("options", "CsvOptions"), p("max_rows", "Optional[Int]"), p("max_cells", "Optional[Int]")}, libraryCSVParse)
-	add("csv", "stringify", libraryResult("String", "CsvError"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Optional[Int]")}, libraryCSVStringify)
+	add("csv", "stringify", libraryResult("String", "CsvError"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Optional[Int64]")}, libraryCSVStringify)
 	add("html", "escape", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return html.EscapeString(a[0].(string)) })
 	add("html", "unescape", "String", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, args []Value) Value {
 		CheckCancelled(ctx)

@@ -13,7 +13,7 @@ import (
 
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("archive", "pack", libraryResult("Bytes", "ArchiveError"), []LibraryParam{p("entries", "List[ArchiveEntry]"), p("format", "String"), p("max_bytes", "Optional[Int]")}, libraryArchivePack)
+	libraryAdd("archive", "pack", libraryResult("Bytes", "ArchiveError"), []LibraryParam{p("entries", "List[ArchiveEntry]"), p("format", "String"), p("max_bytes", "Optional[Int64]")}, libraryArchivePack)
 	libraryAdd("archive", "unpack", libraryResult("List[ArchiveEntry]", "ArchiveError"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("limits", "Optional[ArchiveLimits]")}, libraryArchiveUnpack)
 }
 func libraryArchivePath(s string, directory bool) bool {

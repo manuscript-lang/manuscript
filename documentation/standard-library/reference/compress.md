@@ -85,7 +85,7 @@ Other formats return Unsupported; level must be 0..9 (0 stores data), else Inval
 `max_bytes` bounds the encoded output when supplied.
 
 ```manuscript
-fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ## decompress {data-api-kind="Function"}
@@ -94,6 +94,6 @@ Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others r
 Stops when the supplied output limit is reached.
 
 ```manuscript
-fn decompress(data: Bytes, format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+fn decompress(data: Bytes, format: String, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 

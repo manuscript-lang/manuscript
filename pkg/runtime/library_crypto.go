@@ -81,8 +81,8 @@ func init() {
 		}
 		return ed25519.Verify(key, a[1].(Bytes).Items, a[2].(Bytes).Items)
 	})
-	libraryAdd("compress", "compress", libraryResult("Bytes", "CompressionError"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("level", "Int"), p("max_bytes", "Optional[Int]")}, libraryCompress)
-	libraryAdd("compress", "decompress", libraryResult("Bytes", "CompressionError"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("max_bytes", "Optional[Int]")}, libraryDecompress)
+	libraryAdd("compress", "compress", libraryResult("Bytes", "CompressionError"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("level", "Int"), p("max_bytes", "Optional[Int64]")}, libraryCompress)
+	libraryAdd("compress", "decompress", libraryResult("Bytes", "CompressionError"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("max_bytes", "Optional[Int64]")}, libraryDecompress)
 }
 func libraryHash(algorithm string) hash.Hash {
 	switch algorithm {

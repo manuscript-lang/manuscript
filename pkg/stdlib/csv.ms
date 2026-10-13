@@ -27,7 +27,7 @@ export fn parse(
 export fn stringify(
     rows: List[List[String]],
     options: CsvOptions = CsvOptions(),
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ) -> Result[String, CsvError]:
 
 impl Error for CsvError:

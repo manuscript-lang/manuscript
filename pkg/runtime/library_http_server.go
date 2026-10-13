@@ -17,10 +17,10 @@ func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "serve_stream", libraryResult("HttpServer", "HttpError"), []LibraryParam{{"address", "String"}, {"handler", "fn(exchange:HttpExchange)->Result[Unit][HttpError]"}, {"options", "HttpServerOptions"}}},
 		{"HttpExchange", "method", "String", nil}, {"HttpExchange", "path", "String", nil}, {"HttpExchange", "query", "String", nil}, {"HttpExchange", "headers", "Map[String][List[String]]", nil},
-		{"HttpExchange", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int]"}}},
+		{"HttpExchange", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int64]"}}},
 		{"HttpExchange", "send_headers", libraryResult("Unit", "HttpError"), []LibraryParam{{"status", "Int"}, {"headers", "Map[String][List[String]]"}}},
 		{"HttpExchange", "write", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}}},
-		{"HttpExchange", "upgrade", libraryResult("WebSocket", "WebSocketError"), []LibraryParam{{"allowed_origins", "List[String]"}, {"subprotocols", "List[String]"}, {"max_message_bytes", "Optional[Int]"}}},
+		{"HttpExchange", "upgrade", libraryResult("WebSocket", "WebSocketError"), []LibraryParam{{"allowed_origins", "List[String]"}, {"subprotocols", "List[String]"}, {"max_message_bytes", "Optional[Int64]"}}},
 		{"HttpExchange", "close", "Unit", nil},
 	}...)
 }

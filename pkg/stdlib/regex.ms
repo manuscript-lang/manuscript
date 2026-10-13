@@ -26,7 +26,7 @@ export type Regex:
     fn replace(
         text: String,
         replacement: String,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[String, RegexError]:
 
 # Compiles a regular expression. Invalid pattern syntax is returned as an error.

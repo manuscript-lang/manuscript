@@ -24,27 +24,27 @@ func init() {
 		{"FileSystem", "append_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"data", "Bytes"}}},
 		{"FileSystem", "chmod", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"mode", "Int"}}},
 		{"FileSystem", "chown", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"uid", "Int"}, {"gid", "Int"}, {"follow_links", "Bool"}}},
-		{"FileSystem", "truncate", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"size", "Int"}}},
+		{"FileSystem", "truncate", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"size", "Int64"}}},
 		{"FileSystem", "set_times", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"accessed", "Timestamp"}, {"modified", "Timestamp"}, {"follow_links", "Bool"}}},
 		{"FileSystem", "hard_link", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}}},
 		{"FileSystem", "open", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "String"}, {"mode", "Int"}}},
 		{"FileSystem", "open_directory", libraryResult("Directory", "FileSystemError"), []LibraryParam{{"path", "String"}}},
-		{"FileSystem", "copy_tree", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}, {"replace", "Bool"}, {"max_entries", "Optional[Int]"}, {"max_bytes", "Optional[Int]"}}},
+		{"FileSystem", "copy_tree", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}, {"replace", "Bool"}, {"max_entries", "Optional[Int]"}, {"max_bytes", "Optional[Int64]"}}},
 		{"FileSystem", "glob", libraryResult("List[String]", "FileSystemError"), []LibraryParam{{"path", "String"}, {"pattern", "String"}, {"max_entries", "Optional[Int]"}}},
 		{"FileSystem", "watch", libraryResult("FileWatcher", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}, {"interval", "Duration"}, {"max_entries", "Optional[Int]"}}},
 		{"FileSystem", "temporary", libraryResult("TemporaryDirectory", "FileSystemError"), []LibraryParam{{"prefix", "String"}}},
 		{"FileHandle", "close", "Unit", []LibraryParam{}},
-		{"FileHandle", "read", libraryResult("Optional[Bytes]", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int]"}}},
-		{"FileHandle", "write", libraryResult("Int", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
-		{"FileHandle", "read_at", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"offset", "Int"}, {"max_bytes", "Optional[Int]"}}},
-		{"FileHandle", "write_at", libraryResult("Int", "FileSystemError"), []LibraryParam{{"offset", "Int"}, {"data", "Bytes"}}},
-		{"FileHandle", "read_file", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int]"}}},
+		{"FileHandle", "read", libraryResult("Optional[Bytes]", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int64]"}}},
+		{"FileHandle", "write", libraryResult("Int64", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
+		{"FileHandle", "read_at", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"offset", "Int64"}, {"max_bytes", "Optional[Int64]"}}},
+		{"FileHandle", "write_at", libraryResult("Int64", "FileSystemError"), []LibraryParam{{"offset", "Int64"}, {"data", "Bytes"}}},
+		{"FileHandle", "read_file", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int64]"}}},
 		{"FileHandle", "write_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
-		{"FileHandle", "read_vectors", libraryResult("List[Bytes]", "FileSystemError"), []LibraryParam{{"sizes", "List[Int]"}, {"offset", "Int"}}},
-		{"FileHandle", "write_vectors", libraryResult("Int", "FileSystemError"), []LibraryParam{{"buffers", "List[Bytes]"}, {"offset", "Int"}}},
-		{"FileHandle", "seek", libraryResult("Int", "FileSystemError"), []LibraryParam{{"offset", "Int"}, {"origin", "Int"}}},
+		{"FileHandle", "read_vectors", libraryResult("List[Bytes]", "FileSystemError"), []LibraryParam{{"sizes", "List[Int]"}, {"offset", "Int64"}}},
+		{"FileHandle", "write_vectors", libraryResult("Int64", "FileSystemError"), []LibraryParam{{"buffers", "List[Bytes]"}, {"offset", "Int64"}}},
+		{"FileHandle", "seek", libraryResult("Int64", "FileSystemError"), []LibraryParam{{"offset", "Int64"}, {"origin", "Int"}}},
 		{"FileHandle", "stat", libraryResult("FileInfo", "FileSystemError"), []LibraryParam{}},
-		{"FileHandle", "truncate", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"size", "Int"}}},
+		{"FileHandle", "truncate", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"size", "Int64"}}},
 		{"FileHandle", "sync", libraryResult("Unit", "FileSystemError"), []LibraryParam{}},
 		{"FileHandle", "data_sync", libraryResult("Unit", "FileSystemError"), []LibraryParam{}},
 		{"FileHandle", "chmod", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"mode", "Int"}}},
@@ -177,7 +177,7 @@ func libraryFileInfo(info os.FileInfo) Record {
 		exact.Entries = append(exact.Entries, Entry{name, libraryBigInt{number}})
 	}
 	fields["exact"] = exact
-	return Record{"@std/FileInfo", fields}
+	return nativeHostRecord("@std/FileInfo", fields)
 }
 func libraryFileInfoBirth(record Record, birth time.Time) Record {
 	if !birth.IsZero() {
@@ -228,21 +228,21 @@ func libraryOpenFlags(flags string) (int, bool) {
 func (f *libraryFileSystem) extended(ctx *Execution, r, name, p string, a []Value) Value {
 	switch name {
 	case "watch_native":
-		return libraryNewNativeWatch(ctx, r, p, a[1].(bool), a[2].(int64), a[3].(int64), a[4].(string))
+		return libraryNewNativeWatch(ctx, r, p, a[1].(bool), nativeInteger(a[2]), nativeInteger(a[3]), a[4].(string))
 	case "stat_filesystem":
 		info, err := hostos.StatFS(p)
 		if err != nil {
 			return libraryOSResult(r, nil, err)
 		}
-		return libraryOK(r, Record{"@std/FileSystemInfo", map[string]Value{"type_id": info.Type, "block_size": info.BlockSize, "blocks": info.Blocks, "blocks_free": info.BlocksFree, "blocks_available": info.BlocksAvailable, "files": info.Files, "files_free": info.FilesFree}})
+		return libraryOK(r, nativeHostRecord("@std/FileSystemInfo", map[string]Value{"type_id": info.Type, "block_size": info.BlockSize, "blocks": info.Blocks, "blocks_free": info.BlocksFree, "blocks_available": info.BlocksAvailable, "files": info.Files, "files_free": info.FilesFree}))
 	case "chmod_link":
-		mode := a[1].(int64)
+		mode := nativeInteger(a[1])
 		if mode < 0 || mode > 07777 {
 			return libraryError(r, "InvalidInput", "")
 		}
 		return libraryOSResult(r, Unit{}, hostos.LinkMode(p, uint32(mode)))
 	case "access":
-		mode := a[1].(int64)
+		mode := nativeInteger(a[1])
 		if mode < 0 || mode > 7 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -259,13 +259,13 @@ func (f *libraryFileSystem) extended(ctx *Execution, r, name, p string, a []Valu
 		}
 		return libraryOSResult(r, Unit{}, err)
 	case "chmod":
-		mode := a[1].(int64)
+		mode := nativeInteger(a[1])
 		if mode < 0 || mode > 07777 {
 			return libraryError(r, "InvalidInput", "")
 		}
 		return libraryOSResult(r, Unit{}, os.Chmod(p, libraryFileMode(mode)))
 	case "chown":
-		uid, gid := a[1].(int64), a[2].(int64)
+		uid, gid := nativeInteger(a[1]), nativeInteger(a[2])
 		if uid < -1 || gid < -1 || uid > 2147483647 || gid > 2147483647 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -282,7 +282,7 @@ func (f *libraryFileSystem) extended(ctx *Execution, r, name, p string, a []Valu
 		}
 		return libraryOSResult(r, Unit{}, os.Chtimes(p, a[1].(libraryTimestamp).t, a[2].(libraryTimestamp).t))
 	case "truncate":
-		size := a[1].(int64)
+		size := nativeInteger(a[1])
 		if size < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -298,14 +298,14 @@ func (f *libraryFileSystem) extended(ctx *Execution, r, name, p string, a []Valu
 		if name == "open" {
 			flags, ok = libraryOpenFlags(a[1].(string))
 		} else {
-			value := a[1].(int64)
+			value := nativeInteger(a[1])
 			if value < 0 || value > 2147483647 {
 				ok = false
 			} else {
 				flags = int(value)
 			}
 		}
-		mode := a[2].(int64)
+		mode := nativeInteger(a[2])
 		if !ok || mode < 0 || mode > 07777 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -338,7 +338,7 @@ func (f *libraryFileSystem) extended(ctx *Execution, r, name, p string, a []Valu
 		return libraryOK(r, ViewOf("@std/Directory", &libraryDirectory{file: file}))
 	case "copy_tree":
 		dest, ok := f.path(a[1].(string))
-		entries, bytes := a[3].(int64), a[4].(int64)
+		entries, bytes := nativeInteger(a[3]), nativeInteger(a[4])
 		if !ok || entries < 0 || bytes < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -383,7 +383,7 @@ func (f *libraryFileSystem) extended(ctx *Execution, r, name, p string, a []Valu
 		return libraryOSResult(r, Unit{}, err)
 	case "glob":
 		pattern := a[1].(string)
-		max := a[2].(int64)
+		max := nativeInteger(a[2])
 		if max < 0 || !libraryValidGlob(pattern) {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -421,7 +421,7 @@ func (f *libraryFileSystem) extended(ctx *Execution, r, name, p string, a []Valu
 		return libraryOK(r, libraryStrings(items))
 	case "watch":
 		interval := a[2].(Duration)
-		max := a[3].(int64)
+		max := nativeInteger(a[3])
 		if interval <= 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -594,7 +594,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			return ViewOf(typ, libraryHandleStream{handle: h, write: name == "writer"})
 		}
 		if name == "read_lines" {
-			max, lines := a[0].(int64), a[1].(int64)
+			max, lines := nativeInteger(a[0]), nativeInteger(a[1])
 			if max < 0 || lines < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -676,10 +676,10 @@ func (h *libraryFileHandle) Operation(name string) Function {
 		switch name {
 		case "read", "read_at":
 			at := int64(0)
-			n := a[0].(int64)
+			n := nativeInteger(a[0])
 			if name == "read_at" {
 				at = n
-				n = a[1].(int64)
+				n = nativeInteger(a[1])
 			}
 			if n <= 0 || at < 0 {
 				return libraryError(r, "InvalidInput", "")
@@ -704,7 +704,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			}
 			return finish(Bytes{data[:count]}, err)
 		case "read_file":
-			n := a[0].(int64)
+			n := nativeInteger(a[0])
 			if n < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -717,7 +717,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			var offset *int64
 			data := a[0]
 			if name == "write_at" {
-				v := a[0].(int64)
+				v := nativeInteger(a[0])
 				if v < 0 {
 					return libraryError(r, "InvalidInput", "")
 				}
@@ -731,7 +731,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			return finish(n, err)
 		case "read_vectors":
 			sizes := a[0].(*List).Items
-			offset := a[1].(int64)
+			offset := nativeInteger(a[1])
 			var total int64
 			if offset < -1 {
 				return libraryError(r, "InvalidInput", "")
@@ -762,7 +762,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			}
 			return finish(libraryList("@std/Bytes", result), nil)
 		case "write_vectors":
-			offset := a[1].(int64)
+			offset := nativeInteger(a[1])
 			if offset < -1 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -783,14 +783,14 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			}
 			return finish(total, nil)
 		case "seek":
-			origin := a[1].(int64)
+			origin := nativeInteger(a[1])
 			if origin < 0 || origin > 2 {
 				return libraryError(r, "InvalidInput", "")
 			}
-			if a[0].(int64) < 0 && origin == 0 {
+			if nativeInteger(a[0]) < 0 && origin == 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
-			n, err := h.file.Seek(a[0].(int64), int(origin))
+			n, err := h.file.Seek(nativeInteger(a[0]), int(origin))
 			return finish(n, err)
 		case "stat":
 			info, err := h.file.Stat()
@@ -809,7 +809,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			h.mu.Unlock()
 			return finish(libraryFileInfoBirth(libraryFileInfo(info), birth), nil)
 		case "truncate":
-			n := a[0].(int64)
+			n := nativeInteger(a[0])
 			if n < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -826,13 +826,13 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			h.mu.Unlock()
 			return finish(Unit{}, err)
 		case "chmod":
-			n := a[0].(int64)
+			n := nativeInteger(a[0])
 			if n < 0 || n > 07777 {
 				return libraryError(r, "InvalidInput", "")
 			}
 			return finish(Unit{}, h.file.Chmod(libraryFileMode(n)))
 		case "chown":
-			uid, gid := a[0].(int64), a[1].(int64)
+			uid, gid := nativeInteger(a[0]), nativeInteger(a[1])
 			if uid < -1 || gid < -1 || uid > 2147483647 || gid > 2147483647 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -1066,7 +1066,7 @@ func (s libraryHandleStream) Operation(name string) Function {
 			s.handle.mu.Lock()
 			if ahead := s.handle.ahead; len(ahead) > 0 {
 				take := len(ahead)
-				if n, ok := a[0].(int64); ok && n > 0 && int(n) < take {
+				if n, ok := nativeIntegerValue(a[0]); ok && n > 0 && int(n) < take {
 					take = int(n)
 				}
 				s.handle.ahead = ahead[take:]

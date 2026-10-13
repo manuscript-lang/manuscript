@@ -86,7 +86,7 @@ func (n *network) Operation(name string) Function {
 	}
 	result := "@std/Result[@std/HttpServer][@std/IoError]"
 	return NewAcquisition([]string{"address", "handler", "limit", "max_body_bytes", "max_response_bytes", "timeout", "grace"}, result, func(ctx *Execution, args []Value) Value {
-		params := []LibraryParam{{"address", "String"}, {"handler", ""}, {"limit", "Optional[Int]"}, {"max_body_bytes", "Optional[Int]"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}, {"grace", "Optional[Duration]"}}
+		params := []LibraryParam{{"address", "String"}, {"handler", ""}, {"limit", "Optional[Int]"}, {"max_body_bytes", "Optional[Int64]"}, {"max_response_bytes", "Optional[Int64]"}, {"timeout", "Optional[Duration]"}, {"grace", "Optional[Duration]"}}
 		normalized, valid := nativeOptions("serve", params, args)
 		if !valid {
 			return ioError(result, "InvalidInput", "")

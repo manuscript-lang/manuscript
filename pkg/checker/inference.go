@@ -50,6 +50,15 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 	}
 	for _, arg := range args {
 		if arg.Value.Kind == syntax.KindLambda {
+			// An explicitly wide zero-input producer is complete evidence.
+			// Check it before a numeric token commits its fallback width.
+			if len(arg.Value.Params) == 0 && arg.Value.Result != nil &&
+				containsWideNumeric(c.resolve(arg.Value.Result, false)) {
+				if actual := c.independentArgument(arg.Value); actual != nil {
+					contribute(arg, actual)
+					continue
+				}
+			}
 			pending = append(pending, arg)
 		} else if numericLiteralExpression(arg.Value) {
 			numeric = append(numeric, arg)

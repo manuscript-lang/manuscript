@@ -18,7 +18,11 @@ export type RoundingMode:
 # An exact decimal value. Conversions are explicit because binary floats may round.
 export type Decimal:
     fn to_float() -> Float:
+    # Rounds directly to IEEE binary64, without a default Float intermediate.
+    fn to_float64() -> Float64:
     fn truncate_to_int() -> Optional[Int]:
+    # Truncates exactly toward zero, returning none outside signed64.
+    fn truncate_to_int64() -> Optional[Int64]:
     # Rounds exactly to a multiple of `10^-places`, without converting to Float.
     # Places range from -6144 through 6176; negative places round tens, hundreds, etc.
     # Invalid places return InvalidInput; an unrepresentable result returns OutOfRange.

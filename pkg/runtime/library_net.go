@@ -20,13 +20,13 @@ func init() {
 		{"Network", "connect_tls", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"server_name", "String"}, {"timeout", "Optional[Duration]"}}},
 		{"Network", "listen", libraryResult("Listener", "NetworkError"), []LibraryParam{{"address", "String"}}},
 		{"Network", "bind_datagram", libraryResult("DatagramSocket", "NetworkError"), []LibraryParam{{"address", "String"}}},
-		{"Connection", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"Connection", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int64]"}, {"timeout", "Optional[Duration]"}}},
 		{"Connection", "write", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}, {"timeout", "Optional[Duration]"}}},
 		{"Connection", "shutdown_write", libraryResult("Unit", "NetworkError"), nil},
 		{"Connection", "local_address", "String", nil}, {"Connection", "peer_address", "String", nil}, {"Connection", "close", "Unit", nil},
 		{"Listener", "accept", libraryResult("Connection", "NetworkError"), []LibraryParam{{"timeout", "Optional[Duration]"}}}, {"Listener", "address", "String", nil}, {"Listener", "close", "Unit", nil},
 		{"DatagramSocket", "send", libraryResult("Unit", "NetworkError"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}, {"timeout", "Optional[Duration]"}}},
-		{"DatagramSocket", "receive", libraryResult("Datagram", "NetworkError"), []LibraryParam{{"max_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"DatagramSocket", "receive", libraryResult("Datagram", "NetworkError"), []LibraryParam{{"max_bytes", "Optional[Int64]"}, {"timeout", "Optional[Duration]"}}},
 		{"DatagramSocket", "address", "String", nil}, {"DatagramSocket", "close", "Unit", nil},
 	}...)
 }

@@ -55,7 +55,7 @@ WebSocket message, timeout, TLS, and per-message compression settings.
 
 ```manuscript
 type WebSocketOptions:
-    max_message_bytes: Optional[Int] = none
+    max_message_bytes: Optional[Int64] = none
     timeout: Optional[Duration] = none
     tls: TlsOptions
     compression: Bool

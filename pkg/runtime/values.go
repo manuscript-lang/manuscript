@@ -543,6 +543,11 @@ func equal(a, b Value, state *equalityState) bool {
 	if view, ok := b.(View); ok {
 		b = view.Receiver
 	}
+	// Views carry implementation selection; primitive identities still use
+	// their builtin equality after the receivers have been unwrapped.
+	if result, ok := primitiveEqual(a, b); ok {
+		return result
+	}
 	if state.ctx != nil {
 		if method, ok := implementationFunction(a, "@std/Equal", "equals", state.scope); ok {
 			return Invoke(state.ctx, method, []Argument{{"other", ViewOf("@std/Equal", b, state.scope)}}).(bool)

@@ -135,7 +135,7 @@ func TestExpandedFileHandles(t *testing.T) {
 	librarySuccess(t, op("sync"))
 	librarySuccess(t, op("data_sync"))
 	info := librarySuccess(t, op("stat")).(Record).Fields
-	if info["size"] != int64(4) || info["regular"] != true {
+	if info["size"] != Int64(4) || info["regular"] != true {
 		t.Fatal(info)
 	}
 	libraryFailure(t, op("read_at", int64(-1), int64(5)), "InvalidInput")
@@ -185,7 +185,7 @@ func TestExpandedFileSystem(t *testing.T) {
 	if goruntime.GOOS != "windows" {
 		librarySuccess(t, call("chmod", "copy/sub/a.txt", int64(0400)))
 		stat := librarySuccess(t, call("stat_filesystem", "copy")).(Record)
-		if stat.Fields["block_size"].(int64) <= 0 {
+		if stat.Fields["block_size"].(Int64) <= 0 {
 			t.Fatal(stat)
 		}
 	}
@@ -732,7 +732,7 @@ func TestFileStatMetadataAndNativeFlags(t *testing.T) {
 		t.Fatal("missing exact metadata")
 	}
 	if goruntime.GOOS == "linux" {
-		if info.Fields["blocks"].(int64) < 0 || info.Fields["block_size"].(int64) <= 0 {
+		if info.Fields["blocks"].(Int64) < 0 || info.Fields["block_size"].(Int64) <= 0 {
 			t.Fatal("missing allocation metadata")
 		}
 	}
@@ -762,8 +762,8 @@ func TestNativeFileWatchPersistentEvent(t *testing.T) {
 func TestProcessSignalStreamAndMonotonicTime(t *testing.T) {
 	ctx := RootExecution()
 	control := libraryProcessControl{}
-	first := control.Operation("monotonic_time").Body(ctx, nil).(int64)
-	second := control.Operation("monotonic_time").Body(ctx, nil).(int64)
+	first := control.Operation("monotonic_time").Body(ctx, nil).(Int64)
+	second := control.Operation("monotonic_time").Body(ctx, nil).(Int64)
 	if second < first {
 		t.Fatal("monotonic process clock moved backwards")
 	}

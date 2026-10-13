@@ -20,14 +20,14 @@ export type ArchiveEntry:
 # Optional limits applied while unpacking untrusted archive data.
 export type ArchiveLimits:
     max_entries: Optional[Int] = none
-    max_entry_bytes: Optional[Int] = none
-    max_total_bytes: Optional[Int] = none
+    max_entry_bytes: Optional[Int64] = none
+    max_total_bytes: Optional[Int64] = none
 
 # Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.
 export fn pack(
     entries: List[ArchiveEntry],
     format: String,
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ) -> Result[Bytes, ArchiveError]:
 
 # Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.

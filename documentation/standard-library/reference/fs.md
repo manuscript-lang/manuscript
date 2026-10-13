@@ -20,7 +20,7 @@ type CopyOptions:
     verbatim_symlinks: Bool
     clone: String
     max_entries: Optional[Int] = none
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ```
 
 ### CopyOptions.clone
@@ -81,24 +81,24 @@ interface FileHandle:
     fn reader() -> ReadStream
     fn writer() -> WriteStream
     fn close() -> Unit
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
-    fn write(data: Bytes) -> Result[Int, FileSystemError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], FileSystemError]
+    fn write(data: Bytes) -> Result[Int64, FileSystemError]
     fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
-    fn read_at(offset: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
-    fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
-    fn read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+    fn read_at(offset: Int64, max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
+    fn write_at(offset: Int64, data: Bytes) -> Result[Int64, FileSystemError]
+    fn read_file(max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
     fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
-    fn read_vectors(sizes: List[Int], offset: Int) -> Result[List[Bytes], FileSystemError]
-    fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
-    fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
+    fn read_vectors(sizes: List[Int], offset: Int64) -> Result[List[Bytes], FileSystemError]
+    fn write_vectors(buffers: List[Bytes], offset: Int64) -> Result[Int64, FileSystemError]
+    fn seek(offset: Int64, origin: Int) -> Result[Int64, FileSystemError]
     fn stat() -> Result[FileInfo, FileSystemError]
-    fn truncate(size: Int) -> Result[Unit, FileSystemError]
+    fn truncate(size: Int64) -> Result[Unit, FileSystemError]
     fn sync() -> Result[Unit, FileSystemError]
     fn data_sync() -> Result[Unit, FileSystemError]
     fn chmod(mode: Int) -> Result[Unit, FileSystemError]
     fn chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]
     fn set_times(accessed: Timestamp, modified: Timestamp) -> Result[Unit, FileSystemError]
-    fn read_lines(max_bytes: Optional[Int] = none, max_lines: Optional[Int] = none) -> Result[List[String], FileSystemError]
+    fn read_lines(max_bytes: Optional[Int64] = none, max_lines: Optional[Int] = none) -> Result[List[String], FileSystemError]
 ```
 
 ### FileHandle.append_file
@@ -114,7 +114,7 @@ fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
 Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
 
 ```manuscript
-fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
+fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], FileSystemError]
 ```
 
 ### FileHandle.read_at
@@ -122,7 +122,7 @@ fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemEr
 Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
 
 ```manuscript
-fn read_at(offset: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+fn read_at(offset: Int64, max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
 ```
 
 ### FileHandle.read_file
@@ -130,7 +130,7 @@ fn read_at(offset: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSy
 Reads remaining bytes from the current position; EOF returns empty Bytes.
 
 ```manuscript
-fn read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+fn read_file(max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
 ```
 
 ### FileHandle.reader
@@ -147,7 +147,7 @@ Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).
 Other origins return InvalidInput; the OS validates the resulting offset.
 
 ```manuscript
-fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
+fn seek(offset: Int64, origin: Int) -> Result[Int64, FileSystemError]
 ```
 
 ### FileHandle.write
@@ -155,7 +155,7 @@ fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
 Writes all bytes on success and returns their count; errors can leave a prefix without a count.
 
 ```manuscript
-fn write(data: Bytes) -> Result[Int, FileSystemError]
+fn write(data: Bytes) -> Result[Int64, FileSystemError]
 ```
 
 ### FileHandle.write_at
@@ -163,7 +163,7 @@ fn write(data: Bytes) -> Result[Int, FileSystemError]
 Writes all bytes at a nonnegative offset without moving the position; returns the full count.
 
 ```manuscript
-fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
+fn write_at(offset: Int64, data: Bytes) -> Result[Int64, FileSystemError]
 ```
 
 ### FileHandle.write_file
@@ -179,7 +179,7 @@ fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
 Writes every buffer and returns the total byte count; offset -1 uses the current position.
 
 ```manuscript
-fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
+fn write_vectors(buffers: List[Bytes], offset: Int64) -> Result[Int64, FileSystemError]
 ```
 
 ### FileHandle.writer
@@ -197,7 +197,7 @@ File metadata, including portable fields and exact platform-specific numeric val
 ```manuscript
 type FileInfo:
     name: String
-    size: Int
+    size: Int64
     directory: Bool
     symlink: Bool
     modified: Timestamp
@@ -206,20 +206,20 @@ type FileInfo:
     mode: Int
     permissions: Int
     created: Optional[Timestamp]
-    block_size: Int
-    blocks: Int
-    rdev: Int
+    block_size: Int64
+    blocks: Int64
+    rdev: Int64
     fifo: Bool
     socket: Bool
     block_device: Bool
     char_device: Bool
     exact: Map[String, BigInt]
     regular: Bool
-    device: Int
-    inode: Int
-    links: Int
-    uid: Int
-    gid: Int
+    device: Int64
+    inode: Int64
+    links: Int64
+    uid: Int64
+    gid: Int64
 ```
 
 ### FileInfo.block_size
@@ -227,7 +227,7 @@ type FileInfo:
 Preferred I/O block size in bytes; unavailable fields are zero.
 
 ```manuscript
-block_size: Int
+block_size: Int64
 ```
 
 ### FileInfo.blocks
@@ -235,7 +235,7 @@ block_size: Int
 Allocated 512-byte blocks on POSIX hosts; unavailable fields are zero.
 
 ```manuscript
-blocks: Int
+blocks: Int64
 ```
 
 ### FileInfo.size
@@ -243,7 +243,7 @@ blocks: Int
 File length in bytes.
 
 ```manuscript
-size: Int
+size: Int64
 ```
 
 ## FileSystem {data-api-kind="Interface"}
@@ -257,11 +257,11 @@ interface FileSystem:
     fn copy(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String) -> Bool]) -> Result[Unit, FileSystemError]
     fn watch_native(path: String, recursive: Bool, max_entries: Optional[Int] = none, max_events: Optional[Int] = none, overflow: String) -> Result[FileWatcher, FileSystemError]
     fn canonicalize(path: String) -> Result[String, FileSystemError]
-    fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+    fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int64] = none) -> Result[Unit, FileSystemError]
     fn create_directory(path: String, recursive: Bool = false) -> Result[Unit, FileSystemError]
     fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
     fn list(path: String, max_entries: Optional[Int] = none) -> Result[List[DirectoryEntry], FileSystemError]
-    fn read_file(path: String, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+    fn read_file(path: String, max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
     fn read_link(path: String) -> Result[String, FileSystemError]
     fn remove(path: String, recursive: Bool = false) -> Result[Unit, FileSystemError]
     fn rename(source: String, destination: String) -> Result[Unit, FileSystemError]
@@ -272,12 +272,12 @@ interface FileSystem:
     fn append_file(path: String, data: Bytes) -> Result[Unit, FileSystemError]
     fn chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
     fn chown(path: String, uid: Int, gid: Int, follow_links: Bool) -> Result[Unit, FileSystemError]
-    fn truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
+    fn truncate(path: String, size: Int64) -> Result[Unit, FileSystemError]
     fn set_times(path: String, accessed: Timestamp, modified: Timestamp, follow_links: Bool) -> Result[Unit, FileSystemError]
     fn hard_link(source: String, destination: String) -> Result[Unit, FileSystemError]
     fn open(path: String, flags: String, mode: Int) -> Result[FileHandle, FileSystemError]
     fn open_directory(path: String) -> Result[Directory, FileSystemError]
-    fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+    fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int64] = none) -> Result[Unit, FileSystemError]
     fn glob(path: String, pattern: String, max_entries: Optional[Int] = none) -> Result[List[String], FileSystemError]
     fn watch(path: String, recursive: Bool, interval: Duration, max_entries: Optional[Int] = none) -> Result[FileWatcher, FileSystemError]
     fn temporary(prefix: String) -> Result[TemporaryDirectory, FileSystemError]
@@ -331,7 +331,7 @@ fn copy(source: String, destination: String, options: CopyOptions, filter: Optio
 Copies one file; replace defaults to false, refusing an existing destination.
 
 ```manuscript
-fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int64] = none) -> Result[Unit, FileSystemError]
 ```
 
 ### FileSystem.copy_tree
@@ -340,7 +340,7 @@ Copies a tree; replace defaults to false, refusing existing destinations.
 Entry and byte limits remain separate and apply cumulatively across the copy.
 
 ```manuscript
-fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int64] = none) -> Result[Unit, FileSystemError]
 ```
 
 ### FileSystem.create_directory
@@ -398,7 +398,7 @@ fn open_flags(path: String, flags: Int, mode: Int) -> Result[FileHandle, FileSys
 Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
 
 ```manuscript
-fn read_file(path: String, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+fn read_file(path: String, max_bytes: Optional[Int64] = none) -> Result[Bytes, FileSystemError]
 ```
 
 ### FileSystem.remove
@@ -432,7 +432,7 @@ fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
 Sets the target size in bytes; follows a final symbolic link.
 
 ```manuscript
-fn truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
+fn truncate(path: String, size: Int64) -> Result[Unit, FileSystemError]
 ```
 
 ### FileSystem.watch_native
@@ -482,13 +482,13 @@ in those blocks, and files/files_free are native file-node counts (zero if unava
 
 ```manuscript
 type FileSystemInfo:
-    type_id: Int
-    block_size: Int
-    blocks: Int
-    blocks_free: Int
-    blocks_available: Int
-    files: Int
-    files_free: Int
+    type_id: Int64
+    block_size: Int64
+    blocks: Int64
+    blocks_free: Int64
+    blocks_available: Int64
+    files: Int64
+    files_free: Int64
 ```
 
 ## FileWatcher {data-api-kind="Interface"}

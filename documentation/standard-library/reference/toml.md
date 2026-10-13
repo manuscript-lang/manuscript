@@ -28,7 +28,7 @@ Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
 
 ```manuscript
 type TomlLimits:
-    max_bytes: Optional[Int]
+    max_bytes: Optional[Int64]
     max_depth: Optional[Int]
     max_values: Optional[Int]
 ```
@@ -40,8 +40,8 @@ A TOML value. Date and time values retain their original TOML text.
 ```manuscript
 type TomlValue:
     case StringValue(value: String)
-    case IntValue(value: Int)
-    case FloatValue(value: Float)
+    case IntValue(value: Int64)
+    case FloatValue(value: Float64)
     case BoolValue(value: Bool)
     case DateTimeValue(text: String)
     case ArrayValue(values: List[TomlValue])

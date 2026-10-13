@@ -8,7 +8,7 @@ import (
 
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("io", "read_line", libraryResult("Optional[String]", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "read_line", libraryResult("Optional[String]", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[1].(int64)
 		if max <= 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -92,7 +92,7 @@ func init() {
 		}
 		return libraryOK(r, optional("String", string(b), true))
 	})
-	libraryAdd("string", "repeat", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("count", "Int"), p("max_bytes", "Optional[Int]")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("string", "repeat", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("count", "Int"), p("max_bytes", "Optional[Int64]")}, func(_ *Execution, r string, a []Value) Value {
 		s := a[0].(string)
 		count, max := a[1].(int64), a[2].(int64)
 		if count < 0 || max < 0 {
@@ -107,7 +107,7 @@ func init() {
 		}
 		return libraryOK(r, strings.Repeat(s, int(count)))
 	})
-	libraryAdd("regex", "replace", libraryResult("String", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("replacement", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("regex", "replace", libraryResult("String", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("replacement", "String"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[3].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")

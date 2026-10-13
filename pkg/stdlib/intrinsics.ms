@@ -34,7 +34,7 @@ interface StringOperations:
     # Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
     fn normalize(
         form: String,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[String, StringError]
     # Concatenates text without changing either operand.
     fn concat(values: String) -> String
@@ -47,7 +47,7 @@ interface StringOperations:
     # Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded.
     fn repeat(
         count: Int,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[String, StringError]
     # Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.
     # An empty old matches at scalar boundaries, and inserted text is not searched again.
@@ -96,21 +96,21 @@ interface StringOperations:
     fn pad_start(
         target_length: Int,
         padding: String,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[String, StringError]
     # Pads on the right until the scalar length reaches `target_length`.
     # Empty padding or a shorter target leaves text unchanged; negative targets/budgets return InvalidInput.
     fn pad_end(
         target_length: Int,
         padding: String,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[String, StringError]
     # Replaces every nonoverlapping occurrence; empty old matches at each scalar boundary.
     # max_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion returns LimitExceeded.
     fn replace_all(
         old: String,
         new: String,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[String, StringError]
     # Selects [start, end) in scalars: negative bounds are relative to the end, then clamp to 0..scalar_length().
     # An inverted adjusted range yields empty text; the receiver is unchanged.

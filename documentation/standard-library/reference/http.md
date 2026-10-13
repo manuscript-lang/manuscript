@@ -26,8 +26,8 @@ Outbound case-equivalent header keys append values in Map insertion order.
 ```manuscript
 interface HttpClient:
     fn close() -> Unit
-    fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
-    fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+    fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+    fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int64] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
 ```
 
 ## HttpClientOptions {data-api-kind="Record"}
@@ -38,7 +38,7 @@ Connection, redirect, cookie, decompression, and TLS settings for an HTTP client
 type HttpClientOptions:
     max_redirects: Optional[Int] = none
     max_idle_connections: Optional[Int] = none
-    max_header_bytes: Optional[Int] = none
+    max_header_bytes: Optional[Int64] = none
     idle_timeout: Optional[Duration] = none
     decompress: Bool
     cookies: Bool
@@ -78,9 +78,9 @@ interface HttpExchange:
     fn method() -> String
     fn path() -> String
     fn query() -> String
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], IoError]
     fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, HttpError]
-    fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int] = none) -> Result[WebSocket, WebSocketError]
+    fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int64] = none) -> Result[WebSocket, WebSocketError]
     fn write(data: Bytes) -> Result[Unit, IoError]
 ```
 
@@ -139,9 +139,9 @@ Request and response limits, deadlines, graceful shutdown, and TLS server settin
 ```manuscript
 type HttpServerOptions:
     max_requests: Optional[Int] = none
-    max_body_bytes: Optional[Int] = none
-    max_response_bytes: Optional[Int] = none
-    max_header_bytes: Optional[Int] = none
+    max_body_bytes: Optional[Int64] = none
+    max_response_bytes: Optional[Int64] = none
+    max_header_bytes: Optional[Int64] = none
     timeout: Optional[Duration] = none
     grace: Optional[Duration] = none
     tls: Optional[TlsOptions]
@@ -156,7 +156,7 @@ canonical spelling; Map lookup is case-sensitive. Lists keep received order.
 interface ResponseBody:
     fn close() -> Unit
     fn headers() -> Map[String, List[String]]
-    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int64] = none) -> Result[Optional[Bytes], IoError]
     fn status() -> Int
 ```
 

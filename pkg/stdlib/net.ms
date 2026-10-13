@@ -39,7 +39,7 @@ export interface Connection:
     fn peer_address() -> String
     # Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
     fn read(
-        max_bytes: Optional[Int] = none,
+        max_bytes: Optional[Int64] = none,
         timeout: Optional[Duration] = none
     ) -> Result[Optional[Bytes], IoError]
     fn shutdown_write() -> Result[Unit, NetworkError]
@@ -58,7 +58,7 @@ export interface DatagramSocket:
     fn address() -> String
     fn close() -> Unit
     fn receive(
-        max_bytes: Optional[Int] = none,
+        max_bytes: Optional[Int64] = none,
         timeout: Optional[Duration] = none
     ) -> Result[Datagram, NetworkError]
     fn send(
@@ -134,7 +134,7 @@ export interface Network:
         url: String,
         headers: Map[String, String],
         body: Bytes,
-        max_response_bytes: Optional[Int] = none,
+        max_response_bytes: Optional[Int64] = none,
         timeout: Optional[Duration] = none
     ) -> Result[ClientResponse, HttpError]
     # Accepts A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV, case-insensitively; others return InvalidInput.
@@ -154,8 +154,8 @@ export interface Network:
         address: String,
         handler: fn(request: HttpRequest) -> HttpResponse,
         limit: Optional[Int] = none,
-        max_body_bytes: Optional[Int] = none,
-        max_response_bytes: Optional[Int] = none,
+        max_body_bytes: Optional[Int64] = none,
+        max_response_bytes: Optional[Int64] = none,
         timeout: Optional[Duration] = none,
         grace: Optional[Duration] = none
     ) -> Result[HttpServer, IoError]

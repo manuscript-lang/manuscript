@@ -78,7 +78,7 @@ export fn create(
     level: Optional[LogLevel] = none,
     bindings: Optional[Map[String, JsonValue]] = none,
     timestamp: Optional[Bool] = none,
-    max_bytes: Optional[Int] = none
+    max_bytes: Optional[Int64] = none
 ) -> Result[Logger, LogError]:
 
 # Writes log records to an existing byte stream.

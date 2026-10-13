@@ -22,7 +22,16 @@ type BigInt:
     fn bit_or(right: BigInt) -> BigInt:
     fn bit_xor(right: BigInt) -> BigInt:
     fn to_int() -> Optional[Int]:
+    fn to_int64() -> Optional[Int64]:
     fn to_string(radix: Int) -> String:
+```
+
+### BigInt.to_int64
+
+Returns the exact value when it fits signed64, otherwise none.
+
+```manuscript
+fn to_int64() -> Optional[Int64]:
 ```
 
 ## BigIntError {data-api-kind="Alternative"}
@@ -47,6 +56,14 @@ Converts a machine-sized integer without loss.
 
 ```manuscript
 fn from_int(value: Int) -> BigInt:
+```
+
+## from_int64 {data-api-kind="Function"}
+
+Converts an explicit signed64 integer without loss.
+
+```manuscript
+fn from_int64(value: Int64) -> BigInt:
 ```
 
 ## parse {data-api-kind="Function"}

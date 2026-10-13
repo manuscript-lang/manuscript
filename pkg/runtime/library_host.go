@@ -29,14 +29,14 @@ type LibraryMethod struct {
 }
 
 var LibraryMethods = []LibraryMethod{
-	{"FileSystem", "read_file", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"path", "String"}, {"max_bytes", "Optional[Int]"}}},
+	{"FileSystem", "read_file", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"path", "String"}, {"max_bytes", "Optional[Int64]"}}},
 	{"FileSystem", "write_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"data", "Bytes"}, {"replace", "Bool"}}},
 	{"FileSystem", "stat", libraryResult("FileInfo", "FileSystemError"), []LibraryParam{{"path", "String"}, {"follow_links", "Bool"}}},
 	{"FileSystem", "list", libraryResult("List[DirectoryEntry]", "FileSystemError"), []LibraryParam{{"path", "String"}, {"max_entries", "Optional[Int]"}}},
 	{"FileSystem", "create_directory", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}}},
 	{"FileSystem", "remove", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}}},
 	{"FileSystem", "rename", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}}},
-	{"FileSystem", "copy_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}, {"replace", "Bool"}, {"max_bytes", "Optional[Int]"}}},
+	{"FileSystem", "copy_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}, {"replace", "Bool"}, {"max_bytes", "Optional[Int64]"}}},
 	{"FileSystem", "canonicalize", libraryResult("String", "FileSystemError"), []LibraryParam{{"path", "String"}}},
 	{"FileSystem", "read_link", libraryResult("String", "FileSystemError"), []LibraryParam{{"path", "String"}}},
 	{"FileSystem", "create_link", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"target", "String"}}},
@@ -61,7 +61,7 @@ func libraryMethod(receiver, name string, body func(*Execution, string, []Value)
 				if !ok {
 					return nativeOptionFailure(result, name, spec.Params, a)
 				}
-				return body(ctx, result, normalized)
+				return nativeNumericResult(result, body(ctx, result, normalized))
 			}
 			if receiver == "ProcessControl" && name == "watch_signals" {
 				return NewAcquisition(labels, result, implementation, libraryDisposeResource)
@@ -490,8 +490,8 @@ func init() {
 		data[8] = data[8]&63 | 128
 		return libraryOK(r, fmt.Sprintf("%x-%x-%x-%x-%x", data[:4], data[4:6], data[6:8], data[8:10], data[10:]))
 	})
-	libraryAdd("time", "timestamp", libraryResult("Timestamp", "TimeError"), []LibraryParam{p("seconds", "Int"), p("nanoseconds", "Int")}, func(_ *Execution, r string, a []Value) Value {
-		seconds, ns := a[0].(int64), a[1].(int64)
+	libraryAdd("time", "timestamp", libraryResult("Timestamp", "TimeError"), []LibraryParam{p("seconds", "Int64"), p("nanoseconds", "Int64")}, func(_ *Execution, r string, a []Value) Value {
+		seconds, ns := nativeInteger(a[0]), nativeInteger(a[1])
 		if ns < 0 || ns >= 1e9 || seconds < -62135596800 || seconds > 253402300799 {
 			return libraryError(r, "OutOfRange", "")
 		}
@@ -520,7 +520,7 @@ func init() {
 	libraryAdd("time", "format_timestamp", "String", []LibraryParam{p("value", "Timestamp")}, func(_ *Execution, _ string, a []Value) Value {
 		return a[0].(libraryTimestamp).t.UTC().Format(time.RFC3339Nano)
 	})
-	libraryAdd("time", "unix_seconds", "Int", []LibraryParam{p("value", "Timestamp")}, func(_ *Execution, _ string, a []Value) Value { return a[0].(libraryTimestamp).t.Unix() })
+	libraryAdd("time", "unix_seconds", "Int64", []LibraryParam{p("value", "Timestamp")}, func(_ *Execution, _ string, a []Value) Value { return a[0].(libraryTimestamp).t.Unix() })
 	libraryAdd("time", "nanoseconds", "Int", []LibraryParam{p("value", "Timestamp")}, func(_ *Execution, _ string, a []Value) Value { return int64(a[0].(libraryTimestamp).t.Nanosecond()) })
 	libraryAdd("time", "shift", libraryResult("Timestamp", "TimeError"), []LibraryParam{p("value", "Timestamp"), p("duration", "Duration")}, func(_ *Execution, r string, a []Value) Value {
 		t := a[0].(libraryTimestamp).t.Add(time.Duration(a[1].(Duration)))
