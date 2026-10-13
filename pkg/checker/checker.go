@@ -474,6 +474,9 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		return false, false
 	case syntax.KindCall:
 		i := c.expression(s.Value, nil)
+		if s.Value.Kind == syntax.KindUnary && s.Value.Text == "try" && i.Type.ID != "Unit" && i.Type.ID != "<invalid>" {
+			c.error(s.Value.Pos, "type", "standalone try requires a Unit success value, found "+i.Type.String()+"; use 'let name = try ...' to keep the value or 'return try ...' to return it")
+		}
 		return !i.NoReturn, i.Breaks
 	case syntax.KindBreak, syntax.KindContinue:
 		if c.loops == 0 {
