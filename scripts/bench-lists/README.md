@@ -220,6 +220,12 @@ candidate for the next literal experiment. A combined implementation must run
 as well as build wall time/RSS/binary size, before promotion. Preserve fresh
 mutable handles/storage, alias updates and ordered effects. Faster synthetic
 typed copies are insufficient evidence to accept a literal-lowering replacement.
+Exploratory medians on this host were 51 microseconds / 131,128 bytes at 16K and
+233 microseconds / 802,872 bytes at 100K for typed copies, versus 328 microseconds /
+262,193 bytes and 1,457 microseconds / 1,605,684 bytes for boxed copies. The typed
+prototype adds one small backing-handle allocation (three allocations versus
+two). These three sequential smoke samples are retained in
+`results/literal-copy-control.txt`; they are not paired confidence evidence.
 
 Acceptance for the broader representation requires fresh before/after native
 and allocation/RSS measurements at 1M/4M elements, indexing, iteration, callback
