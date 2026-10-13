@@ -18,19 +18,38 @@ effectful/mixed lists, other excluded constants and nested-depth scope remain.
 
 ## Build-mode design and compatibility
 
-CompileSource/CompileFile keep their existing default Go in Result.Source.
-A private per-result recipe retains checked program, entry and launcher options;
-BuildCheckedWithType(Debug) re-lowers at the point where mode is known. No Options
-field or new public build API is required. Existing BuildChecked(result, ..., true)
-works. Source overrides and manual Result values build their supplied Go; source
-and Program identity guards prevent discarding caller edits. Caller Result is
-never mutated. Checked program state is read-only. Cache identity uses the
-selected source and existing build-mode/source-root keys.
+`CompileSourceForBuild`/`CompileFileForBuild` take the build kind before lowering.
+The CLI passes its selected kind through this additive API and lowers once.
+`CompileSource`/`CompileFile` keep ordinary default Go. Their existing
+`BuildChecked(result, ..., true)` flow stays valid and uses ordinary lowering;
+legacy callers do not automatically gain the Debug list optimization.
+`Result` keeps all six original fields in the original order, including external
+unkeyed struct-literal compatibility. No Options field, prepared wrapper,
+retained recipe, global side table, or additional checked-program lifetime is
+introduced. Builders always use the caller's supplied Source; edits and manual
+results need no provenance guard. Cache identity uses supplied source plus
+the existing build-mode/source-root keys. Match the explicit compile and build
+kinds when selecting a representation.
 
-Adding a private Result field means external unkeyed Result struct literals no
-longer compile; keyed literals and existing call signatures remain supported.
-That compatibility cost needs parent design review. Deep caller mutation of a
-retained checked program is outside the read-only recipe contract.
+The external compatibility fixture is
+`pkg/compiler/testdata/debug-literals/result-compatible.go`, compiled with the
+bundled SDK. Native tests cover edits to both legacy and Debug-generated Source.
+
+CLI path selection is explicit:
+
+| Path | Default lowering/native kind | Debug selection |
+| --- | --- | --- |
+| build/run/test, including run/test --watch | Release | --debug or --build-type Debug |
+| debug | Debug | Always; conflicting kinds rejected |
+| profile | RelWithDebInfo | Explicit --build-type Debug |
+| VS Code source launch | Debug | Adapter invokes `ms build --debug` |
+| dap attach/launch of existing executable | Existing artifact | No compilation |
+| emit | Ordinary Release source | Build-kind flags rejected |
+| check/lint/inspect/diagram/lock/doc | Source analysis | No Go generation |
+| Legacy CompileSource/File -> BuildChecked(Debug) | Ordinary representation, Debug native flags | Correct semantics without this optimization |
+
+Thus default build/run/test/watch and default profiles do not incur the Debug
+table's fixed rooted data or construction tradeoff.
 
 Debug copy remains a single expression on the source statement. A copy IIFE
 caused false source breakpoint/step frames; generated-file directives inside it

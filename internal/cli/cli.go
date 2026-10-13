@@ -296,7 +296,7 @@ func Run(args []string) int {
 	if watch {
 		return watchProgram(command, filename, options, kind, "", arguments)
 	}
-	result := compiler.CompileFile(filename, options)
+	result := compiler.CompileFileForBuild(filename, options, kind)
 	if structured && command == "check" || structured && command == "lint" && !result.Success() {
 		if result.Diagnostics == nil {
 			result.Diagnostics = []syntax.Diagnostic{}

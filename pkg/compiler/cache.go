@@ -264,12 +264,8 @@ func BuildCheckedWithType(result Result, output, cacheDir string, kind BuildType
 	for _, module := range result.Program.Modules {
 		metadata.Sources[module.File] = digest([]byte(module.Source))
 	}
-	source, err := result.sourceForBuild(kind)
-	if err != nil {
-		return BuildMetadata{}, err
-	}
+	source := result.Source
 	if kind.sourcePaths() {
-		result.Source = source
 		source = debugSource(result)
 		metadata.SourceRoot = result.SourceRoot
 	}

@@ -19,7 +19,7 @@ func debugLiteralSource() string {
 	return "import List from \"@std/collections.ms\"\nfn values() -> List[Int]:\n    return [" + strings.TrimSuffix(strings.Repeat("7, ", 1100), ", ") + "]\nexport fn main() -> Int:\n    return values().length() - 1100\n"
 }
 
-func TestDebugLiteralBuildRecipe(t *testing.T) {
+func TestDebugLiteralBuildSelection(t *testing.T) {
 	r := CompileSource("literal.ms", debugLiteralSource(), Options{Entry: true})
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
@@ -54,14 +54,14 @@ func TestDebugLiteralBuildRecipe(t *testing.T) {
 		t.Fatal("default lowering changed from the independent baseline", got)
 	}
 	for _, kind := range []BuildType{Release, RelWithDebInfo, MinSizeRel} {
-		got, err := r.sourceForBuild(kind)
-		if err != nil || got != original {
-			t.Fatalf("%s changed default source: %v", kind, err)
+		got := CompileSourceForBuild("literal.ms", debugLiteralSource(), Options{Entry: true}, kind)
+		if !got.Success() || got.Source != original {
+			t.Fatalf("%s changed default source: %v", kind, got.Diagnostics)
 		}
 	}
-	debug, err := r.sourceForBuild(Debug)
-	if err != nil || !strings.Contains(debug, "debugLiteralData1") || strings.Contains(original, "debugLiteralData") {
-		t.Fatal("incorrect mode selection", err)
+	debug := CompileSourceForBuild("literal.ms", debugLiteralSource(), Options{Entry: true}, Debug)
+	if !debug.Success() || !strings.Contains(debug.Source, "debugLiteralData1") || strings.Contains(original, "debugLiteralData") {
+		t.Fatal("incorrect mode selection", debug.Diagnostics)
 	}
 	sourceOnly := func(source string) []string {
 		var directives []string
@@ -72,29 +72,16 @@ func TestDebugLiteralBuildRecipe(t *testing.T) {
 		}
 		return directives
 	}
-	if !reflect.DeepEqual(sourceOnly(debug), sourceOnly(original)) {
+	if !reflect.DeepEqual(sourceOnly(debug.Source), sourceOnly(original)) {
 		t.Fatal("source directive order changed")
 	}
-	again, err := r.sourceForBuild(Debug)
-	if err != nil || again != debug || r.Source != original {
-		t.Fatal("nondeterministic lowering or result mutation", err)
+	again := CompileSourceForBuild("literal.ms", debugLiteralSource(), Options{Entry: true}, Debug)
+	if !again.Success() || again.Source != debug.Source || r.Source != original {
+		t.Fatal("nondeterministic lowering or result mutation")
 	}
-	for _, source := range []string{original + "\n// caller edit\n", strings.Replace(original, "os.Exit(", "os.Exit(17 + ", 1)} {
-		changed := r
-		changed.Source = source
-		got, err := changed.sourceForBuild(Debug)
-		if err != nil || got != source {
-			t.Fatal("caller-edited Go was discarded", err)
-		}
-	}
-	manual := Result{Program: r.Program, Source: original}
-	if got, err := manual.sourceForBuild(Debug); err != nil || got != original {
-		t.Fatal("manual result was regenerated", err)
-	}
-	changedProgram := r
-	changedProgram.Program = nil
-	if got, err := changedProgram.sourceForBuild(Debug); err != nil || got != original {
-		t.Fatal("replaced checked program was regenerated", err)
+	invalid := CompileSourceForBuild("literal.ms", debugLiteralSource(), Options{Entry: true}, "Fast")
+	if invalid.Success() || len(invalid.Diagnostics) != 1 || !strings.Contains(invalid.Diagnostics[0].Message, "unknown build type") {
+		t.Fatal("invalid kind was accepted", invalid.Diagnostics)
 	}
 }
 
@@ -105,9 +92,9 @@ func TestDebugLiteralBoundaryAndIneligibleSource(t *testing.T) {
 		if !r.Success() {
 			t.Fatal(r.Diagnostics)
 		}
-		debug, err := r.sourceForBuild(Debug)
-		if err != nil || strings.Contains(debug, "debugLiteralData") != (n > debugListThreshold) {
-			t.Fatal("incorrect boundary", n, err)
+		debug := CompileSourceForBuild("literal.ms", source, Options{Entry: true}, Debug)
+		if !debug.Success() || strings.Contains(debug.Source, "debugLiteralData") != (n > debugListThreshold) {
+			t.Fatal("incorrect boundary", n, debug.Diagnostics)
 		}
 	}
 	// One effectful entry leaves the entire flat list on the existing ordered
@@ -118,8 +105,8 @@ func TestDebugLiteralBoundaryAndIneligibleSource(t *testing.T) {
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	if debug, err := r.sourceForBuild(Debug); err != nil || debug != r.Source {
-		t.Fatal("effectful list changed", err)
+	if debug := CompileSourceForBuild("literal.ms", source, Options{Entry: true}, Debug); !debug.Success() || debug.Source != r.Source {
+		t.Fatal("effectful list changed", debug.Diagnostics)
 	}
 }
 
@@ -140,9 +127,9 @@ func TestDebugLiteralEligibility(t *testing.T) {
 			if !r.Success() {
 				t.Fatal(r.Diagnostics)
 			}
-			debug, err := r.sourceForBuild(Debug)
-			if err != nil || strings.Contains(debug, "debugLiteralData") != tc.table {
-				t.Fatal("eligibility mismatch", err)
+			debug := CompileSourceForBuild("literal.ms", s, Options{}, Debug)
+			if !debug.Success() || strings.Contains(debug.Source, "debugLiteralData") != tc.table {
+				t.Fatal("eligibility mismatch", debug.Diagnostics)
 			}
 			if strings.Contains(r.Source, "debugLiteralData") {
 				t.Fatal("default lowering changed")
@@ -160,8 +147,12 @@ func TestDebugLiteralNativeCompatibility(t *testing.T) {
 	root := t.TempDir()
 	cache := filepath.Join(root, "cache")
 	for _, kind := range []BuildType{Release, Debug, RelWithDebInfo, MinSizeRel} {
+		selected := CompileSourceForBuild("literal.ms", source, Options{Entry: true}, kind)
+		if !selected.Success() {
+			t.Fatal(selected.Diagnostics)
+		}
 		binary := filepath.Join(root, string(kind))
-		meta, err := BuildCheckedWithType(r, binary, cache, kind)
+		meta, err := BuildCheckedWithType(selected, binary, cache, kind)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -169,7 +160,7 @@ func TestDebugLiteralNativeCompatibility(t *testing.T) {
 			t.Fatalf("%s: %v\n%s", kind, err, data)
 		}
 		restored := filepath.Join(root, string(kind)+"-restored")
-		copy, err := BuildCheckedWithType(r, restored, cache, kind)
+		copy, err := BuildCheckedWithType(selected, restored, cache, kind)
 		if err != nil || copy.BuildID != meta.BuildID || copy.ExecutableSHA256 != meta.ExecutableSHA256 {
 			t.Fatal("cache did not retain build mode", err)
 		}
@@ -178,15 +169,27 @@ func TestDebugLiteralNativeCompatibility(t *testing.T) {
 	if _, err := BuildChecked(r, filepath.Join(root, "boolean-debug"), cache, true); err != nil {
 		t.Fatal(err)
 	}
-	changed := r
-	changed.Source += "\nfunc init() { os.Exit(17) }\n"
-	binary := filepath.Join(root, "edited-debug")
-	if _, err := BuildCheckedWithType(changed, binary, "", Debug); err != nil {
+	if strings.Contains(r.Source, "debugLiteralData") {
+		t.Fatal("legacy compiler representation changed")
+	}
+	manual := Result{SourceRoot: r.SourceRoot, Program: r.Program, Source: r.Source}
+	if _, err := BuildChecked(manual, filepath.Join(root, "manual-debug"), cache, true); err != nil {
 		t.Fatal(err)
 	}
-	err := exec.Command(binary).Run()
-	if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 17 {
-		t.Fatal("edited source behavior lost", err)
+	for _, original := range []Result{r, CompileSourceForBuild("literal.ms", source, Options{Entry: true}, Debug)} {
+		changed := original
+		changed.Source += "\nfunc init() { os.Exit(17) }\n"
+		binary := filepath.Join(root, "edited-debug")
+		if _, err := BuildCheckedWithType(changed, binary, "", Debug); err != nil {
+			t.Fatal(err)
+		}
+		err := exec.Command(binary).Run()
+		if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 17 {
+			t.Fatal("edited source behavior lost", err)
+		}
+		if changed.Source != original.Source+"\nfunc init() { os.Exit(17) }\n" {
+			t.Fatal("builder changed supplied Source")
+		}
 	}
 }
 
@@ -214,6 +217,10 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
 		t.Fatal(r.Diagnostics)
 	}
 	for _, kind := range []BuildType{Release, Debug} {
+		r = CompileSourceForBuild("debug-fresh.ms", source, Options{Tests: true}, kind)
+		if !r.Success() {
+			t.Fatal(r.Diagnostics)
+		}
 		binary := filepath.Join(t.TempDir(), "program")
 		if _, err := BuildCheckedWithType(r, binary, "", kind); err != nil {
 			t.Fatal(err)
@@ -230,6 +237,10 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
 	}
 	var transcripts []string
 	for _, kind := range []BuildType{Release, Debug} {
+		r = CompileSourceForBuild("debug-fault.ms", fault, Options{Entry: true}, kind)
+		if !r.Success() {
+			t.Fatal(r.Diagnostics)
+		}
 		binary := filepath.Join(t.TempDir(), "program")
 		if _, err := BuildCheckedWithType(r, binary, "", kind); err != nil {
 			t.Fatal(err)
@@ -245,17 +256,13 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
 	}
 }
 
-func TestDebugLiteralRecipeRetainsLauncherOptions(t *testing.T) {
-	r := CompileSource("profile.ms", debugLiteralSource(), Options{Entry: true, CPUProfile: "cpu.pprof", HeapProfile: "heap.pprof", Trace: "trace.out"})
-	if !r.Success() {
-		t.Fatal(r.Diagnostics)
+func TestDebugLiteralLauncherOptions(t *testing.T) {
+	r := CompileSourceForBuild("profile.ms", debugLiteralSource(), Options{Entry: true, CPUProfile: "cpu.pprof", HeapProfile: "heap.pprof", Trace: "trace.out"}, Debug)
+	if !r.Success() || !strings.Contains(r.Source, `rt.Profile("cpu.pprof", "heap.pprof", "trace.out"`) || !strings.Contains(r.Source, "debugLiteralData1") {
+		t.Fatal("profile launcher lost", r.Diagnostics)
 	}
-	debug, err := r.sourceForBuild(Debug)
-	if err != nil || !strings.Contains(debug, `rt.Profile("cpu.pprof", "heap.pprof", "trace.out"`) {
-		t.Fatal("profile launcher lost", err)
-	}
-	analyzed := CompileSource("check.ms", debugLiteralSource(), Options{AnalyzeOnly: true})
-	if !analyzed.Success() || analyzed.Source != "" || analyzed.lowering != nil {
-		t.Fatal("source-only checking retained executable recipe")
+	analyzed := CompileSourceForBuild("check.ms", debugLiteralSource(), Options{AnalyzeOnly: true}, Debug)
+	if !analyzed.Success() || analyzed.Source != "" {
+		t.Fatal("source-only checking generated Go")
 	}
 }

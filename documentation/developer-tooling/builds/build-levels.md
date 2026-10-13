@@ -69,10 +69,12 @@ selection. `Build` defaults to Release; the existing `BuildChecked` boolean
 selects Debug when true and Release otherwise. Build levels share `ms.lock`
 toolchain pins but have distinct artifact cache identities.
 
-`CompileSource` and `CompileFile` return the default generated Go in
-`Result.Source`. An untouched compiler result retains the checked lowering
-recipe so `BuildCheckedWithType(..., Debug)` can select the Debug representation
-at build time. Editing `Result.Source` or constructing a result manually keeps
-that supplied Go as the build input, including for Debug. Building does not
-mutate the caller's result. The checked program retained by a compiler result
-is read-only compiler state.
+`CompileSource` and `CompileFile` return the ordinary generated Go in
+`Result.Source`. Use `CompileSourceForBuild` or `CompileFileForBuild` with a
+build kind to select its lowering before generation, then pass the result and
+matching kind to `BuildCheckedWithType`. Native CLI commands use this explicit
+path. The existing `CompileSource` to `BuildChecked(..., true)` flow remains
+valid and uses ordinary lowering. `Result` keeps its original layout; there is
+no retained lowering recipe. Building always uses the supplied `Result.Source`,
+including caller edits and manually constructed results, and does not mutate
+the caller's result.
