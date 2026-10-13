@@ -310,15 +310,29 @@ func sourceIndex(result compiler.Result) []occurrence {
 			continue
 		}
 		called := program.Expressions[call.Left]
-		if called == nil || called.Type == nil || len(called.Type.Params) <= 1 {
-			continue
-		}
 		var decl *syntax.Declaration
-		if called.Symbol != nil {
-			decl = called.Symbol.Decl
+		arity := 0
+		if info.Constructor != nil {
+			if info.Case == "" {
+				arity = len(checker.Fields(info.Constructor))
+			} else {
+				for _, cs := range checker.Cases(info.Constructor) {
+					if cs.Name == info.Case {
+						arity = len(cs.Fields)
+					}
+				}
+			}
+		} else if called != nil && called.Type != nil {
+			arity = len(called.Type.Params)
+			if called.Symbol != nil {
+				decl = called.Symbol.Decl
+			}
+			if called.Method != nil {
+				decl = called.Method.Decl
+			}
 		}
-		if called.Method != nil {
-			decl = called.Method.Decl
+		if arity <= 1 {
+			continue
 		}
 		for at, arg := range call.Args {
 			label := info.Arguments[at].Name
@@ -337,6 +351,9 @@ func sourceIndex(result compiler.Result) []occurrence {
 				valueKey = symbolKey(value.Symbol)
 			}
 			labelKey := ""
+			if info.Constructor != nil && info.Constructor.Kind == syntax.KindRecord && info.Constructor.Def != nil {
+				labelKey = "field:" + symbolKey(info.Constructor.Def.Symbol) + ":" + label
+			}
 			if decl != nil {
 				for n, param := range decl.Params {
 					if param.Name == label && n < len(program.Parameters[decl]) {

@@ -49,3 +49,31 @@ func TestPositionalIdentifierRenamePreservesBinding(t *testing.T) {
 		}
 	}
 }
+
+func TestConstructorIdentifierRenamePreservesBinding(t *testing.T) {
+	for _, tc := range []struct{ declarations, call, at, expanded string }{
+		{"type Pair:\n    first: Int\n    second: Int\n", "Pair(number, 3).first", "let number", "first: total"},
+		{"type Pair:\n    first: Int\n    second: Int\n", "Pair(number, 3).first", "first: Int", "total: number"},
+		{"type Pair:\n    case Values(first: Int, second: Int)\n", "Pair.Values(number, 3)", "let number", "first: total"},
+	} {
+		source := tc.declarations + "fn run() -> Unit:\n    let number = 10\n    let pair = " + tc.call + "\n"
+		d := document{fileURI(filepath.Join(t.TempDir(), "constructor.ms")), source, 1}
+		docs := map[string]document{d.URI: d}
+		result := analyze(d, docs)
+		if !result.Success() {
+			t.Fatal(result.Diagnostics)
+		}
+		offset := strings.Index(source, tc.at)
+		if strings.HasPrefix(tc.at, "let ") {
+			offset += 4
+		}
+		edit, err := rename(result, d, Position(source, offset), "total", docs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := json.Marshal(edit)
+		if err != nil || !strings.Contains(string(data), tc.expanded) {
+			t.Fatal(string(data), err)
+		}
+	}
+}
