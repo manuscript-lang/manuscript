@@ -86,7 +86,7 @@ func TestTestJSONCompileFailureAndUnsupportedModes(t *testing.T) {
 	if status != 1 || stderr != "" || json.Unmarshal([]byte(output), &doc) != nil || doc.Completed || doc.Reason != "compile_error" || len(doc.Diagnostics) == 0 || doc.Diagnostics[0].Position.Line != 2 {
 		t.Fatalf("compile JSON: %d %s %s", status, output, stderr)
 	}
-	for _, args := range [][]string{{"test", file, "--json", "--watch"}, {"test", file, "--json=true"}, {"build", file, "--json"}, {"fmt", file, "--json"}} {
+	for _, args := range [][]string{{"test", file, "--json", "--watch"}, {"test", file, "--json=true"}, {"run", file, "--json"}, {"fmt", file, "--json"}} {
 		status, output, stderr := invoke(t, args...)
 		if status != 2 || output != "" || stderr == "" {
 			t.Fatalf("unsupported JSON %v: %d %s %s", args, status, output, stderr)

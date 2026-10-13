@@ -27,6 +27,9 @@ to build types, test timeouts/filters, and profile paths. Required values cannot
 be empty. Arguments after `--` and options for `ms pprof`/`ms trace` are forwarded
 to their existing consumers.
 
+`ms version` and `ms --version` print the same compiler version. Both reject
+extra arguments with usage status 2; `ms version --help` shows command help.
+
 Commands that take one source input also accept a project directory containing
 `ms.toml`, including `doc`; native commands select one application entrypoint.
 `fmt` selects multiple files or recursively discovers directories as described
@@ -102,6 +105,41 @@ continues to require no input targets. If one physical module has different API
 snapshots in separate input graphs (for example, different local interface
 implementations), doc rejects the conflicting descriptions. Select one input
 or a project manifest defining one complete graph instead.
+
+## Machine-readable native results
+
+`ms build <input> --json` and `ms profile <input> --json` emit one `format: 1`
+JSON document on stdout. Human output remains the default. Usage errors return
+2 on stderr without JSON, matching the other structured commands. Source and
+operational failures return a document with their normal status. Stderr remains
+stderr; profile captures application stdout without truncation.
+
+| Field | Meaning |
+| --- | --- |
+| `command`, `build_type` | `build` or `profile`, and the selected native build level |
+| `source_root`, `output` | Source root and absolute executable/bundle destination |
+| `completed`, `exit_code` | Build success or normal native process completion, and observable CLI status |
+| `reason` | Optional `compile_error`, `build_error`, `artifact_error`, `execution_error`, `output_error`, `program_exit`, or `interrupted` |
+| `artifacts` | Planned artifacts in stable order, each with `kind`, absolute `path`, and `state` |
+| `stdout`, `stdout_base64` | Captured application text, or base64 for invalid UTF-8 (then `stdout` is empty) |
+| `diagnostics` | Existing source diagnostic shapes, or `MSN001` operational errors; an array even when empty |
+
+Artifact states are `verified` after a successful builder/reference step,
+`written` for a newly created or changed file, `preserved` for an unchanged
+existing file, `missing` for an absent file, or `unavailable` when a path cannot
+be read as a regular file. This inventory describes partial failures without
+claiming that an old output belongs to a failed source check. A failed check
+preserves prior files and creates no capture directory. Build publication can
+produce an executable before metadata fails; the result identifies that partial
+output. Only a completed successful build establishes a valid executable and
+metadata pair.
+
+Profile retains CPU/heap by default; `--trace` adds trace to the manifest and
+inventory. A normal nonzero application exit retains its status, has
+`completed: true` and `reason: "program_exit"`, and does not invent a source
+diagnostic. A process terminated by a signal has `completed: false` and
+`reason: "interrupted"`; its existing observable status is preserved. Arguments
+after `--` are passed unchanged, and profiles still require a new directory.
 
 ## Machine-readable checks and tests
 
@@ -253,11 +291,11 @@ Profiling still changes execution time and allocation behavior. CPU capture also
 
 The checker analyzes each affected module rather than incrementally reusing individual syntax/type nodes. Public rename is conservative about identifier collisions. The debugger retains native runtime frames as subdued entries, and complex watch expressions retain native Go syntax. These behaviors are explicit rather than hidden by unsupported capabilities.
 
-`ms profile module-or-project -o new-directory` captures `cpu.pprof` and `heap.pprof` and retains the optimized executable, build/source metadata, static inspection, and a bundle manifest for reproducible symbolization. Add `--trace` to also capture `trace.out`. Trace capture is now opt-in: the default bundle omits the trace file and its manifest entry. Existing directories are rejected. For individual output paths, use the existing `ms run … --cpu-profile path --heap-profile path --trace path` options; every requested output is captured.
+`ms profile module-or-project --out-dir new-directory` captures `cpu.pprof` and `heap.pprof` and retains the optimized executable, build/source metadata, static inspection, and a bundle manifest for reproducible symbolization. `-o` and `--output` remain compatible aliases for `--out-dir`. Add `--trace` to also capture `trace.out`. Trace capture is now opt-in: the default bundle omits the trace file and its manifest entry. Existing directories are rejected. For individual output paths, use the existing `ms run … --cpu-profile path --heap-profile path --trace path` options; every requested output is captured.
 
 ```sh
-ms profile main.ms -o samples
-ms profile main.ms -o traced-samples --trace
+ms profile main.ms --out-dir samples
+ms profile main.ms --out-dir traced-samples --trace
 ms pprof -top samples/cpu.pprof
 ms trace -http=127.0.0.1:8080 traced-samples/trace.out
 ```
