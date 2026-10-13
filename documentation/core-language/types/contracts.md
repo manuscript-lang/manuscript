@@ -18,7 +18,9 @@ The caller can see the amount accepted, the receipt returned on success, and the
 
 ## Explicit implementations
 
-Operation contracts support explicit implementations through `impl Contract for DataType`; implementations bind `self` to the receiver. Contracts have no inheritance or default implementations.
+User-defined methods exist through explicit interface implementations: write `impl Contract for DataType:`, with methods inside that block. Manuscript has no user-defined inherent methods, so `impl DataType:` is unsupported and a source record cannot declare its own method bodies. Implementations bind `self` to the receiver. Contracts have no inheritance or default implementations.
+
+An ordinary free function remains a function call, such as `reset(counter)`: declaring `fn reset(counter: Counter) -> Unit` does not make `counter.reset()` a method. See the [complete counter example](../../learn/tour.md#behavior-on-types). Built-in operations such as `.clone()` and native standard declarations have their own supported receiver surfaces; they do not add an inherent-method declaration form for application code.
 
 An implementation supplies the contract's operations for the named data type. The implementation relationship is declared explicitly rather than inferred from coincidentally similar operation names.
 
