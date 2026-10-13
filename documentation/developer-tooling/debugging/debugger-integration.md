@@ -23,7 +23,9 @@ Delve v1.25.2 is pinned and vendored. Manuscript imports the public
 `service/rpccommon`, `service/rpc2`, and `pkg/terminal` packages.
 DAP uses `NewSession`/`ServeDAPCodec`/`Close` directly, joining the request loop
 before exit. Launches use `outputMode: "remote"` for DAP output events; any local
-target output goes to stderr so it cannot corrupt the protocol. These paths are
+target output goes to stderr so it cannot corrupt the protocol. Target stdin is
+redirected to the null device, as with the previous editor adapter; the protocol
+input pipe must never be inherited as application input. These paths are
 outside Delve’s `internal` directories: [Go’s internal-package rule](https://go.dev/doc/go1.4#internalpackages)
 would forbid importing those implementation directories directly. The terminal
 uses an in-process RPC pipe, with no listening network socket. No `dlv` process

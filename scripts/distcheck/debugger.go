@@ -44,20 +44,21 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	if _, err := run(cli, "build", source, "--debug", "-o", binary); err != nil {
 		return err
 	}
-	if err := checkDAP(cli, directory, environment, binary, source, true); err != nil {
+	if err := checkDAP(cli, directory, environment, binary, source, 3, true); err != nil {
 		return err
 	}
 	// Stop while running too: EOF must halt and reap a target, not just close a
-	// connection while the target remains alive. Preserve the first mapped lines.
+	// connection while the target remains alive. Reading stdin before the source
+	// breakpoint must see EOF, never block on or consume the DAP protocol pipe.
 	runningSource := filepath.Join(directory, "debug running.ms")
-	if err := os.WriteFile(runningSource, []byte("export fn main() -> Int:\n    let number = 41\n    var result = number + 1\n\n    while result == 42:\n        result = result + 0\n    return result - 42\n"), 0600); err != nil {
+	if err := os.WriteFile(runningSource, []byte("import stdin from \"@std/io.ms\"\nexport fn main() -> Int:\n    let input = stdin().read(max_bytes: 1)\n    let number = 41\n    var result = number + 1\n\n    while result == 42:\n        result = result + 0\n    return result - 42\n"), 0600); err != nil {
 		return err
 	}
 	runningBinary := binary + "-running"
 	if _, err := run(cli, "build", runningSource, "--debug", "-o", runningBinary); err != nil {
 		return err
 	}
-	if err := checkDAP(cli, directory, environment, runningBinary, runningSource, false); err != nil {
+	if err := checkDAP(cli, directory, environment, runningBinary, runningSource, 5, false); err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -77,7 +78,7 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	return nil
 }
 
-func checkDAP(cli, directory string, environment []string, binary, source string, disconnect bool) (resultErr error) {
+func checkDAP(cli, directory string, environment []string, binary, source string, breakpointLine int, disconnect bool) (resultErr error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, cli, "dap")
@@ -162,7 +163,7 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 	if _, err := receive(func(m dap.Message) bool { _, ok := m.(*dap.InitializedEvent); return ok }); err != nil {
 		return err
 	}
-	if err := request("setBreakpoints", map[string]any{"source": map[string]string{"path": source}, "breakpoints": []map[string]int{{"line": 3}}}); err != nil {
+	if err := request("setBreakpoints", map[string]any{"source": map[string]string{"path": source}, "breakpoints": []map[string]int{{"line": breakpointLine}}}); err != nil {
 		return err
 	}
 	reply, err := response("setBreakpoints")
@@ -195,7 +196,7 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 		return err
 	}
 	frames := reply.(*dap.StackTraceResponse).Body.StackFrames
-	if len(frames) == 0 || frames[0].Source == nil || frames[0].Source.Path != source || (frames[0].Line < 4 || frames[0].Line > 5) {
+	if len(frames) == 0 || frames[0].Source == nil || frames[0].Source.Path != source || (frames[0].Line <= breakpointLine || frames[0].Line > breakpointLine+2) {
 		return fmt.Errorf("source step mismatch: %+v", frames)
 	}
 	if err := request("scopes", map[string]any{"frameId": frames[0].Id}); err != nil {

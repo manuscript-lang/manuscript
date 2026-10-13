@@ -4,6 +4,7 @@ package debugger
 import (
 	"context"
 	"io"
+	"os"
 
 	"github.com/go-delve/delve/pkg/config"
 	"github.com/go-delve/delve/pkg/terminal"
@@ -19,7 +20,10 @@ import (
 // the first request. A launched target is halted, killed and reaped by Close.
 func DAP(ctx context.Context, transport io.ReadWriteCloser) {
 	cfg := &dap.Config{Config: &service.Config{
-		Debugger: delve.Config{Backend: "default", CheckGoVersion: true},
+		// The protocol owns stdin. In particular Windows inherits this handle
+		// even for background targets; sharing it can block target startup or let
+		// a target consume DAP requests. Match the old adapter's ignored stdin.
+		Debugger: delve.Config{Backend: "default", CheckGoVersion: true, Stdin: os.DevNull},
 	}, StopTriggered: make(chan struct{})}
 	session := dap.NewSession(transport, cfg, nil)
 	done := make(chan struct{})
