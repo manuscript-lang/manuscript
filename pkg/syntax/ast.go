@@ -16,6 +16,17 @@ type Diagnostic struct {
 	Position Position `json:"position"`
 	Phase    string   `json:"phase"`
 	Message  string   `json:"message"`
+	// End is exclusive and omitted when the diagnostic has no known range.
+	End *Position      `json:"end,omitempty"`
+	Fix *DiagnosticFix `json:"fix,omitempty"`
+}
+
+// DiagnosticFix replaces one exact source range. Absence means human judgment
+// is required; a prose suggestion alone is not a machine-applicable fix.
+type DiagnosticFix struct {
+	Position    Position `json:"position"`
+	End         Position `json:"end"`
+	Replacement string   `json:"replacement"`
 }
 
 func (d Diagnostic) Error() string { return fmt.Sprintf("%s: %s: %s", d.Position, d.Phase, d.Message) }
