@@ -49,6 +49,8 @@ Completed external writes remain completed. Cancellation does not provide rollba
 
 Cleanup is shielded from the initiating cancellation and expired work deadline. It may exceed that deadline; it retains capability authority and remains subject to [host escalation](../contributing/concurrent-runtime.md#host-escalation). See [foreign cancellation](../contributing/compiler/adapters/cancellation.md) and [cleanup faults](../core-language/cleanup/cleanup-faults.md).
 
+For native application shutdown, use registered `with` cleanup; observing SIGINT/SIGTERM does not claim the signal or protect code after `SignalStream.next()`. See the [shutdown cookbook](shutdown.md) for a runnable server, cancelled-worker ordering, and current host limitations.
+
 ## Waiting for a synchronized value
 
 `Synchronized.lock()` waits cooperatively and observes cancellation. If cancellation wins before the guard is delivered, the runtime releases that acquisition. Use `with locked = cell.lock()` so a delivered guard is registered for cleanup before another checkpoint.
