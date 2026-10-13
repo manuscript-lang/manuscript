@@ -5,7 +5,11 @@ import "sync"
 // Nodes describe actual lock waits, joins and admitted work, not ancestry.
 // Dependencies are protected by workWaits. Component locks may precede it;
 // nothing under workWaits acquires a component lock or invokes user code.
+// Keep the common single destination inline; distinct destinations spill
+// into the counted map. Every admitted edge still exists eagerly.
 type workWaitNode struct {
+	first        *workWaitNode
+	firstCount   int
 	dependencies map[*workWaitNode]int
 }
 
@@ -25,7 +29,7 @@ type cancellableWorkWait struct {
 
 func addCancellableWorkDependency(from, to *workWaitNode, cancelled <-chan struct{}) func() {
 	if cancelled == nil {
-		return addWorkDependency(from, to)
+		return addWorkDependency(from, to).remove
 	}
 	if from == nil || to == nil {
 		return func() {}
@@ -63,22 +67,67 @@ func lifetimeWaitNode(lifetime *workLifetime) *workWaitNode {
 	return &lifetime.waits
 }
 
-func addWorkDependency(from, to *workWaitNode) func() {
+// One owner removes each value token once. Cancellation-aware tokens above
+// retain shared active state so pruning and deferred removal stay idempotent.
+type workDependency struct {
+	from, to *workWaitNode
+}
+
+// Both admission edges precede the worker's start. Publish and retire them
+// together without changing which work is included in a task/service join.
+type workAdmission struct {
+	first, second, child *workWaitNode
+}
+
+func addWorkAdmission(first, second, child *workWaitNode) workAdmission {
+	workWaits.Lock()
+	addWorkDependencyLocked(first, child)
+	addWorkDependencyLocked(second, child)
+	detectAncestorLockCyclesLocked()
+	workWaits.Unlock()
+	return workAdmission{first: first, second: second, child: child}
+}
+
+func (admission workAdmission) remove() {
+	workWaits.Lock()
+	removeWorkDependencyLocked(admission.first, admission.child)
+	removeWorkDependencyLocked(admission.second, admission.child)
+	workWaits.Unlock()
+}
+
+func addWorkDependency(from, to *workWaitNode) workDependency {
 	if from == nil || to == nil {
-		return func() {}
+		return workDependency{}
 	}
 	workWaits.Lock()
 	addWorkDependencyLocked(from, to)
 	detectAncestorLockCyclesLocked()
 	workWaits.Unlock()
-	return func() {
-		workWaits.Lock()
-		removeWorkDependencyLocked(from, to)
-		workWaits.Unlock()
+	return workDependency{from: from, to: to}
+}
+
+func (dependency workDependency) remove() {
+	if dependency.from == nil {
+		return
 	}
+	workWaits.Lock()
+	removeWorkDependencyLocked(dependency.from, dependency.to)
+	workWaits.Unlock()
 }
 
 func addWorkDependencyLocked(from, to *workWaitNode) {
+	if from.first == to {
+		from.firstCount++
+		return
+	}
+	if from.dependencies[to] != 0 {
+		from.dependencies[to]++
+		return
+	}
+	if from.first == nil {
+		from.first, from.firstCount = to, 1
+		return
+	}
 	if from.dependencies == nil {
 		from.dependencies = make(map[*workWaitNode]int)
 	}
@@ -86,6 +135,13 @@ func addWorkDependencyLocked(from, to *workWaitNode) {
 }
 
 func removeWorkDependencyLocked(from, to *workWaitNode) {
+	if from.first == to {
+		from.firstCount--
+		if from.firstCount == 0 {
+			from.first = nil
+		}
+		return
+	}
 	if from.dependencies[to] == 1 {
 		delete(from.dependencies, to)
 	} else {
@@ -110,6 +166,9 @@ func workReachesLocked(from, to *workWaitNode) bool {
 			continue
 		}
 		seen[node] = true
+		if node.first != nil {
+			pending = append(pending, node.first)
+		}
 		for dependency := range node.dependencies {
 			pending = append(pending, dependency)
 		}

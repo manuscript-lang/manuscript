@@ -25,7 +25,7 @@ type schedulerJob struct {
 type completionReport struct {
 	failure Alternative
 	child   *Execution
-	release func()
+	release workDependency
 }
 type Scheduler struct {
 	mu                  sync.Mutex
@@ -167,8 +167,7 @@ func (b *Scheduler) startScheduled(ctx *Execution, operation Value, schedule *sc
 	jobContext, cancel := context.WithCancel(b.context)
 	job := &schedulerJob{id: id, stop: cancel, done: make(chan struct{})}
 	child := newExecution(owned(b.parent, jobContext, b), jobContext)
-	releaseJob := addWorkDependency(&job.waits, lifetimeWaitNode(child.Lifetime))
-	releaseService := addWorkDependency(&b.waits, lifetimeWaitNode(child.Lifetime))
+	releaseAdmission := addWorkAdmission(&job.waits, &b.waits, lifetimeWaitNode(child.Lifetime))
 	if schedule != nil {
 		b.schedules[id] = *schedule
 	}
@@ -179,8 +178,7 @@ func (b *Scheduler) startScheduled(ctx *Execution, operation Value, schedule *sc
 	go func() {
 		defer b.jobs.Done()
 		defer close(job.done)
-		defer releaseJob()
-		defer releaseService()
+		defer releaseAdmission.remove()
 		var outcome Value
 		var failed any
 		func() {
@@ -274,8 +272,8 @@ func (b *Scheduler) reportLoop() {
 		b.reports = b.reports[1:]
 		b.mu.Unlock()
 		func() {
-			if report.release != nil {
-				defer report.release()
+			if report.release.from != nil {
+				defer report.release.remove()
 			}
 			defer func() {
 				if r := recover(); r != nil {
@@ -299,7 +297,7 @@ func (b *Scheduler) close(ctx *Execution) {
 	if ctx.Owners[b] {
 		Panic("a Scheduler operation or reporter cannot close its own service")
 	}
-	defer addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &b.waits)()
+	defer addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &b.waits).remove()
 	b.mu.Lock()
 	if b.closing {
 		done := b.done

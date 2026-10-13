@@ -13,7 +13,7 @@ func requireWorkWaitsClear(t *testing.T, root *Execution, nodes ...*workWaitNode
 	workWaits.Lock()
 	defer workWaits.Unlock()
 	for _, node := range append(nodes, lifetimeWaitNode(root.Lifetime)) {
-		if len(node.dependencies) != 0 {
+		if node.first != nil || node.firstCount != 0 || len(node.dependencies) != 0 {
 			t.Error("completed work retained dependencies", len(node.dependencies))
 		}
 	}
@@ -536,7 +536,7 @@ type restartWaitContext struct {
 
 func (c *restartWaitContext) Done() <-chan struct{} {
 	workWaits.Lock()
-	registered := c.from.dependencies[c.to] > 0
+	registered := workDependencyCountLocked(c.from, c.to) > 0
 	workWaits.Unlock()
 	if registered {
 		c.once.Do(func() { close(c.entered); <-c.resume })
@@ -632,4 +632,48 @@ func testSynchronizedCancelledRestart(t *testing.T, before bool) {
 	}
 	service.close(root)
 	requireWorkWaitsClear(t, root, &service.waits, &job.waits)
+}
+
+func workDependencyCountLocked(from, to *workWaitNode) int {
+	if from.first == to {
+		return from.firstCount
+	}
+	return from.dependencies[to]
+}
+
+func TestSynchronizedInlineEdgeMultiplicity(t *testing.T) {
+	workWaits.Lock()
+	defer workWaits.Unlock()
+	a, b, c, d := new(workWaitNode), new(workWaitNode), new(workWaitNode), new(workWaitNode)
+	for _, target := range []*workWaitNode{b, b, c, c, d} {
+		addWorkDependencyLocked(a, target)
+	}
+	removeWorkDependencyLocked(a, b)
+	if !workReachesLocked(a, b) || workDependencyCountLocked(a, b) != 1 {
+		t.Fatal("removed aliased inline edge too early")
+	}
+	removeWorkDependencyLocked(a, b)
+	if workReachesLocked(a, b) {
+		t.Fatal("retained inline edge")
+	}
+	addWorkDependencyLocked(a, c) // Existing overflow edge while inline slot is free.
+	addWorkDependencyLocked(a, b)
+	for range 2 {
+		removeWorkDependencyLocked(a, c)
+	}
+	if !workReachesLocked(a, c) || workDependencyCountLocked(a, c) != 1 {
+		t.Fatal("removed aliased overflow edge too early")
+	}
+	removeWorkDependencyLocked(a, c)
+	if workReachesLocked(a, c) {
+		t.Fatal("retained overflow edge")
+	}
+	if !workReachesLocked(a, b) || !workReachesLocked(a, d) {
+		t.Fatal("lost other edges")
+	}
+	removeWorkDependencyLocked(a, b)
+	removeWorkDependencyLocked(a, d)
+	if a.first != nil || a.firstCount != 0 || a.dependencies != nil {
+		t.Fatal("empty node retained storage")
+	}
 }

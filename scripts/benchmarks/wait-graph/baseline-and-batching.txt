@@ -1,0 +1,186 @@
+VARIANT baseline ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended 	 6781269	       171.5 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup   	  381928	      2998 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	3.526s
+VARIANT batched ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended 	 7151024	       171.7 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup   	  360231	      3427 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.672s
+VARIANT batched ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended 	 7097674	       170.3 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup   	  352926	      3311 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.589s
+VARIANT baseline ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended 	 6363102	       183.7 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup   	  386534	      2990 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.561s
+VARIANT baseline ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended 	 7121552	       167.5 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup   	  386902	      3041 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.578s
+VARIANT batched ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended 	 7102905	       170.5 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup   	  333585	      3495 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.591s
+VARIANT batched ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended 	 7111968	       169.3 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup   	  353665	      3426 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.627s
+VARIANT baseline ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended 	 7166006	       169.6 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup   	  373324	      3098 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.581s
+VARIANT baseline ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended 	 7086818	       167.6 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup   	  375002	      3116 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.567s
+VARIANT batched ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended 	 6850360	       173.1 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup   	  355184	      3282 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.571s
+VARIANT tokens CORES 4 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-4   	  636295	      2400 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.154s
+VARIANT batched CORES 4 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-4   	  550629	      2315 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.928s
+VARIANT batched CORES 4 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-4   	  533232	      2362 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.996s
+VARIANT tokens CORES 4 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-4   	  504685	      2319 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.903s
+VARIANT tokens CORES 4 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-4   	  539793	      2364 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.887s
+VARIANT batched CORES 4 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-4   	  575264	      2068 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.925s
+VARIANT tokens CORES 16 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-16    	  398522	      3025 ns/op	    2219 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.022s
+VARIANT batched CORES 16 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-16    	  469528	      2263 ns/op	    2219 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.097s
+VARIANT batched CORES 16 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-16    	  461761	      2947 ns/op	    2219 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.326s
+VARIANT tokens CORES 16 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-16    	  408543	      2855 ns/op	    2219 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.072s
+VARIANT tokens CORES 16 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-16    	  382099	      2876 ns/op	    2219 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.140s
+VARIANT batched CORES 16 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148IndependentTaskThroughput-16    	  451137	      2805 ns/op	    2219 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.220s

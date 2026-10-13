@@ -126,16 +126,14 @@ func (g *TaskGroup) start(ctx *Execution, typ string, operation Value) Value {
 		child.TaskGroups[ancestor] = owned
 	}
 	child.TaskGroups[g] = true
-	releaseTask := addWorkDependency(&task.waits, lifetimeWaitNode(child.Lifetime))
-	releaseGroup := addWorkDependency(&g.waits, lifetimeWaitNode(child.Lifetime))
+	releaseAdmission := addWorkAdmission(&task.waits, &g.waits, lifetimeWaitNode(child.Lifetime))
 	g.active++
 	g.workers.Add(1)
 	g.mu.Unlock()
 	markConcurrent()
 	go func() {
 		defer g.workers.Done()
-		defer releaseTask()
-		defer releaseGroup()
+		defer releaseAdmission.remove()
 		var value Value
 		var fault any
 		func() {
@@ -197,7 +195,7 @@ func (g *TaskGroup) wait(ctx *Execution) {
 	done := g.sealLocked()
 	releaseWait := addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &g.waits)
 	g.mu.Unlock()
-	defer releaseWait()
+	defer releaseWait.remove()
 	select {
 	case <-done:
 	case <-ctx.Context.Done():
@@ -221,7 +219,7 @@ func (g *TaskGroup) join(ctx *Execution, result string) Value {
 }
 func (t *Task) join(ctx *Execution, result string) Value {
 	t.group.rejectSelf(ctx)
-	defer addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &t.waits)()
+	defer addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &t.waits).remove()
 	select {
 	case <-t.done:
 	case <-ctx.Context.Done():
@@ -254,7 +252,7 @@ func (g *TaskGroup) close(ctx *Execution) {
 		done := g.closedDone
 		releaseWait := addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &g.waits)
 		g.mu.Unlock()
-		defer releaseWait()
+		defer releaseWait.remove()
 		<-done
 		return
 	}
@@ -267,7 +265,7 @@ func (g *TaskGroup) close(ctx *Execution) {
 	done := g.sealLocked()
 	releaseWait := addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &g.waits)
 	g.mu.Unlock()
-	defer releaseWait()
+	defer releaseWait.remove()
 	<-done
 	g.mu.Lock()
 	g.closed = true
