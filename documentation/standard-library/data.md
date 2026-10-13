@@ -52,6 +52,9 @@ String indexing and search count Unicode scalars. The [text rules](../core-langu
 | `trim`, `trim_start`, `trim_end` | Remove Unicode whitespace from both ends, the start, or the end. Whitespace is U+0009–U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, and U+3000. |
 | `upper`, `lower` | Apply locale-independent full Unicode case mapping; the scalar length can change. |
 | `scalar_length`, `scalar_values` | Count Unicode scalars or return their integer code points. |
+| `length`, `is_empty`, `chars`, `reverse` | Count/test text, collect one String per scalar, or reverse scalar order; returned lists have fresh storage. |
+| `compare` | Return -1/0/1 in case-sensitive lexical scalar order without locale or normalization. |
+| `lines` | Split LF/CRLF terminators, retaining interior empty lines and standalone CR; omit an extra trailing item. See the exact [text rules](../core-language/basics/text-and-bytes.md#indexing-and-character-boundaries). |
 | `pad_start`, `pad_end` | Repeat and truncate `padding` on scalar boundaries until `target_length` scalars are reached. A shorter target or empty padding leaves the text unchanged. Negative targets return `InvalidInput`. |
 | `replace` | Replace the first occurrence by default (omitted or `none` cap); a supplied `max_replacements` caps replacements, and zero leaves text unchanged. Negative caps fault. |
 | `replace_all` | Replace every nonoverlapping occurrence. Return `StringError.LimitExceeded` if the UTF-8 output exceeds a supplied `max_bytes`, or `InvalidInput` for a negative budget. |
@@ -76,3 +79,7 @@ Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed 
 | `to_text` | Decode valid UTF-8 or return `none`. |
 
 Bytes stay immutable even when a native slice shares storage. Construction and extraction copy values, as described in [encoding and parsing](../core-language/basics/text-and-bytes.md#encoding-and-parsing).
+
+## Base64 encoding
+
+`base64_encode(data: bytes)` and `base64_decode(text: "/w==")` use the standard alphabet by default. Pass `url_safe: true` for the URL-safe alphabet (`_w==` for the same byte). Decoding still validates the selected alphabet and an explicit `max_bytes` output budget; zero is a supplied budget.

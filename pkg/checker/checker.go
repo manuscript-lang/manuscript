@@ -70,7 +70,48 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 }
 func check(modules []*syntax.Module, imports map[*syntax.Import]string, options CheckOptions) *Program {
 	modules, dependencyDiagnostics := sourceStandardDependencies(modules)
-	p := &Program{Diagnostics: dependencyDiagnostics, Flow: map[*syntax.Statement]Flow{}, TypeReferences: map[*syntax.Type]*Type{}, Scopes: map[*syntax.Expression]ScopeState{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
+	p := newProgram(modules)
+	p.Diagnostics = dependencyDiagnostics
+	if standardDefaults != nil {
+		// Immutable checked native defaults are shared; analysis maps themselves
+		// remain program-local. Their binding IDs have a separate namespace.
+		for e, info := range standardDefaults.Expressions {
+			p.Expressions[e] = info
+		}
+		for d, bindings := range standardDefaults.Parameters {
+			p.Parameters[d] = bindings
+		}
+		for e, bindings := range standardDefaults.LambdaParameters {
+			p.LambdaParameters[e] = bindings
+		}
+		for pattern, binding := range standardDefaults.Bindings {
+			p.Bindings[pattern] = binding
+		}
+		for s, binding := range standardDefaults.LoopBindings {
+			p.LoopBindings[s] = binding
+		}
+		for arm, bindings := range standardDefaults.ArmBindings {
+			p.ArmBindings[arm] = bindings
+		}
+		for arm, typ := range standardDefaults.ContractPatterns {
+			p.ContractPatterns[arm] = typ
+		}
+		for s, method := range standardDefaults.Cleanups {
+			p.Cleanups[s] = method
+		}
+		for s, flow := range standardDefaults.Flow {
+			p.Flow[s] = flow
+		}
+		for e, binding := range standardDefaults.Assignments {
+			p.Assignments[e] = binding
+		}
+		for e, scope := range standardDefaults.Scopes {
+			p.Scopes[e] = scope
+		}
+		for arm, conflicts := range standardDefaults.ArmNameConflicts {
+			p.ArmNameConflicts[arm] = conflicts
+		}
+	}
 	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}
 	for _, module := range modules {
 		for _, d := range module.Declarations {
@@ -83,8 +124,6 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 		return p
 	}
 	p.Methods = append(p.Methods, standardImplementations...)
-	p.ContractPatterns = map[*syntax.Arm]*Type{}
-	p.ArmNameConflicts = map[*syntax.Arm][]*Info{}
 	for _, module := range modules {
 		c.module = module
 		c.names = map[string]*Symbol{}
@@ -240,8 +279,15 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 	}
 	return p
 }
+
+func newProgram(modules []*syntax.Module) *Program {
+	return &Program{Flow: map[*syntax.Statement]Flow{}, TypeReferences: map[*syntax.Type]*Type{}, Scopes: map[*syntax.Expression]ScopeState{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, ContractPatterns: map[*syntax.Arm]*Type{}, ArmNameConflicts: map[*syntax.Arm][]*Info{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
+}
 func (c *checker) unique(prefix string) string {
 	c.serial++
+	if c.standardDeclarations {
+		prefix = "standard_" + prefix
+	}
 	return fmt.Sprintf("%s%d", prefix, c.serial)
 }
 

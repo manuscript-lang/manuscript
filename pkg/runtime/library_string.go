@@ -58,6 +58,64 @@ func stringScalarAt(text string, index int64, result string, asInt bool) Value {
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	add := libraryAdd
+	add("string", "length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, args []Value) Value {
+		return scalarCount(args[0].(string))
+	})
+	add("string", "is_empty", "Bool", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, args []Value) Value {
+		return len(args[0].(string)) == 0
+	})
+	add("string", "compare", "Int", []LibraryParam{p("text", "String"), p("other", "String")}, func(_ *Execution, _ string, args []Value) Value {
+		return int64(strings.Compare(args[0].(string), args[1].(string)))
+	})
+	add("string", "chars", "List[String]", []LibraryParam{p("text", "String")}, func(ctx *Execution, result string, args []Value) Value {
+		var items []Value
+		count := 0
+		for _, scalar := range args[0].(string) {
+			if count%1024 == 0 {
+				CheckCancelled(ctx)
+			}
+			items = append(items, string(scalar))
+			count++
+		}
+		return &List{Type: result, Items: items}
+	})
+	add("string", "reverse", "String", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, args []Value) Value {
+		remaining := args[0].(string)
+		var out strings.Builder
+		out.Grow(len(remaining))
+		for count := 0; len(remaining) > 0; count++ {
+			if count%1024 == 0 {
+				CheckCancelled(ctx)
+			}
+			scalar, width := utf8.DecodeLastRuneInString(remaining)
+			out.WriteRune(scalar)
+			remaining = remaining[:len(remaining)-width]
+		}
+		return out.String()
+	})
+	add("string", "lines", "List[String]", []LibraryParam{p("text", "String")}, func(ctx *Execution, result string, args []Value) Value {
+		text := args[0].(string)
+		var items []Value
+		start := 0
+		for i := 0; i < len(text); i++ {
+			if i%4096 == 0 {
+				CheckCancelled(ctx)
+			}
+			if text[i] != '\n' {
+				continue
+			}
+			end := i
+			if end > start && text[end-1] == '\r' {
+				end--
+			}
+			items = append(items, text[start:end])
+			start = i + 1
+		}
+		if start < len(text) {
+			items = append(items, text[start:])
+		}
+		return &List{Type: result, Items: items}
+	})
 	for _, spec := range []struct {
 		name, label string
 		format      byte

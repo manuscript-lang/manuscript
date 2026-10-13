@@ -1254,32 +1254,34 @@ impl Error for CsvError:
 
 **Record**
 
-Delimiter and line ending used when parsing or writing CSV.
+Delimiter and line ending used when parsing or writing CSV; defaults are comma and LF.
 
 ```manuscript
 type CsvOptions:
-    delimiter: String
-    line_ending: String
+    delimiter: String = ","
+    line_ending: String = "\n"
 ```
 
 ## parse
 
 **Function**
 
-Parses CSV into rows of cells. Optional row and cell limits bound large inputs.
+Parses CSV into rows of cells, using fresh default options when omitted.
+Optional row and cell limits bound large inputs.
 
 ```manuscript
-fn parse(text: String, options: CsvOptions, max_rows: Optional[Int] = none, max_cells: Optional[Int] = none) -> Result[List[List[String]], CsvError]:
+fn parse(text: String, options: CsvOptions = CsvOptions(), max_rows: Optional[Int] = none, max_cells: Optional[Int] = none) -> Result[List[List[String]], CsvError]:
 ```
 
 ## stringify
 
 **Function**
 
-Encodes rows as CSV, quoting cells when required by the delimiter or line ending.
+Encodes rows as CSV with comma delimiters and LF endings by default.
+Quotes cells when required by the delimiter or line ending.
 
 ```manuscript
-fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Optional[Int] = none) -> Result[String, CsvError]:
+fn stringify(rows: List[List[String]], options: CsvOptions = CsvOptions(), max_bytes: Optional[Int] = none) -> Result[String, CsvError]:
 ```
 
 # @std/decimal.ms
@@ -1402,20 +1404,20 @@ impl Error for EncodingError:
 
 **Function**
 
-Decodes standard or URL-safe Base64 text into bytes.
+Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
 
 ```manuscript
-fn base64_decode(text: String, url_safe: Bool, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
+fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
 ```
 
 ## base64_encode
 
 **Function**
 
-Encodes bytes as standard or URL-safe Base64 text.
+Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
 
 ```manuscript
-fn base64_encode(data: Bytes, url_safe: Bool) -> String:
+fn base64_encode(data: Bytes, url_safe: Bool = false) -> String:
 ```
 
 ## hex_decode
@@ -2335,6 +2337,18 @@ interface ResponseBody:
     fn headers() -> Map[String, List[String]]
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
     fn status() -> Int
+```
+
+## header_values
+
+**Function**
+
+Finds all values under ASCII case-equivalent names without changing Map keys.
+Returns none if absent, or some(empty) for a present empty list. Copies list
+membership and preserves Map insertion order followed by each list's order.
+
+```manuscript
+fn header_values(headers: Map[String, List[String]], name: String) -> Optional[List[String]]:
 ```
 
 # @std/io.ms
@@ -3615,11 +3629,11 @@ type CommandOutput:
 
 **Interface**
 
-Runs child programs with explicit input, output bounds, and an optional timeout.
+Runs child programs with empty input by default, optional output bounds and timeout.
 
 ```manuscript
 interface Commands:
-    fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
+    fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(), max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
 ```
 
 ## CpuUsage
@@ -6010,6 +6024,12 @@ fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 
 ```manuscript
 type String:
+    fn length() -> Int:
+    fn is_empty() -> Bool:
+    fn chars() -> List[String]:
+    fn reverse() -> String:
+    fn compare(other: String) -> Int:
+    fn lines() -> List[String]:
     fn normalize(form: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
     fn concat(values: String) -> String:
     fn contains(text: String) -> Bool:
@@ -6056,6 +6076,22 @@ Returns the UTF-8 encoded byte length.
 fn byte_length() -> Int
 ```
 
+### String.chars
+
+Returns a fresh list with one String for each Unicode scalar, in order.
+
+```manuscript
+fn chars() -> List[String]
+```
+
+### String.compare
+
+Returns -1, 0 or 1 in lexical scalar order, without locale or normalization.
+
+```manuscript
+fn compare(other: String) -> Int
+```
+
 ### String.concat
 
 Concatenates text without changing either operand.
@@ -6088,12 +6124,37 @@ Returns the first matching Unicode scalar index or none; empty value matches at 
 fn index_of(value: String) -> Optional[Int]
 ```
 
+### String.is_empty
+
+Reports whether the text contains no scalars.
+
+```manuscript
+fn is_empty() -> Bool
+```
+
 ### String.last_index_of
 
 Returns the last matching Unicode scalar index or none; empty value matches at scalar_length().
 
 ```manuscript
 fn last_index_of(value: String) -> Optional[Int]
+```
+
+### String.length
+
+Counts Unicode scalars, with the same unit as scalar_length.
+
+```manuscript
+fn length() -> Int
+```
+
+### String.lines
+
+Splits LF and CRLF lines, preserving interior empty lines and standalone CR.
+Omits a final extra empty item; empty text returns a fresh empty list.
+
+```manuscript
+fn lines() -> List[String]
 ```
 
 ### String.lower
@@ -6163,6 +6224,14 @@ max_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion retu
 
 ```manuscript
 fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+```
+
+### String.reverse
+
+Reverses Unicode scalar order; combining sequences/graphemes may change.
+
+```manuscript
+fn reverse() -> String
 ```
 
 ### String.scalar_at

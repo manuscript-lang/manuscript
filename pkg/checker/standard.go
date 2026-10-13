@@ -23,6 +23,7 @@ var standardSourceMethods []*Method
 var standardOperationVariables = map[string][]*Type{}
 var standardReceiverBindings map[string]string
 var standardReceiverRequirements map[string][]receiverRequirement
+var standardDefaults *Program
 
 type receiverRequirement struct {
 	Variable, Constraint *Type
@@ -174,7 +175,7 @@ func loadStandardSources() error {
 			standardModules[module.File][d.Name] = s
 		}
 	}
-	c := &checker{standardDeclarations: true, Program: &Program{TypeReferences: map[*syntax.Type]*Type{}}, captures: map[int]map[*Binding]bool{}}
+	c := &checker{standardDeclarations: true, Program: newProgram(nil), captures: map[int]map[*Binding]bool{}}
 	scopeModule := func(module *syntax.Module) {
 		c.module = module
 		c.names = map[string]*Symbol{}
@@ -278,27 +279,6 @@ func loadStandardSources() error {
 			}
 		}
 	}
-	// Native adapters implement one omission value: Optional.none. Keep this
-	// source contract explicit instead of inferring defaults from field names.
-	for _, module := range standardSources {
-		if standardSourceModules[module.File] != nil {
-			continue
-		}
-		for _, declaration := range module.Declarations {
-			parameters := append(append([]syntax.Parameter{}, declaration.Params...), declaration.Fields...)
-			for _, method := range declaration.Methods {
-				parameters = append(parameters, method.Params...)
-			}
-			for _, parameter := range parameters {
-				if parameter.Default == nil {
-					continue
-				}
-				if parameter.Type.Name != "Optional" || parameter.Default.Kind != syntax.KindName || parameter.Default.Text != "none" {
-					return fmt.Errorf("native defaults must be Optional.none: %s", parameter.Pos)
-				}
-			}
-		}
-	}
 	used := map[string]bool{}
 	for _, module := range standardSources {
 		if standardSourceModules[module.File] != nil {
@@ -384,6 +364,35 @@ func loadStandardSources() error {
 	for key := range bindings.ReceiverRequirements {
 		return fmt.Errorf("unused native receiver requirement: %s", key)
 	}
+	// Check native default expressions with the ordinary expression checker.
+	// Lowering prepares concrete slots before native dispatch; the runtime does
+	// not own a second default-expression schema.
+	for _, module := range standardSources {
+		if standardSourceModules[module.File] != nil {
+			continue
+		}
+		scopeModule(module)
+		for _, declaration := range module.Declarations {
+			if declaration.Kind == syntax.KindImpl {
+				continue
+			}
+			symbol := standardModules[module.File][declaration.Name]
+			if symbol.Kind == syntax.KindFn {
+				c.checkNativeDefaults(declaration, declaration.Params, symbol.Type, symbol.Variables)
+			} else {
+				c.checkNativeDefaults(declaration, declaration.Fields, ConstructorSignature(symbol.Type), symbol.Variables)
+				for _, operation := range symbol.Type.Def.Operations {
+					method := standardMethodDeclaration(symbol.Type, operation.Name)
+					variables := append(append([]*Type{}, symbol.Variables...), standardOperationVariables[symbol.ID+"/"+operation.Name]...)
+					c.checkNativeDefaults(method, method.Params, operation.Type, variables, symbol.Type.Kind == "contract")
+				}
+			}
+		}
+	}
+	standardDefaults = c.Program
+	if len(c.Diagnostics) > 0 {
+		return fmt.Errorf("invalid standard defaults: %v", c.Diagnostics)
+	}
 	// Check all bundled source implementations once to publish documentation and
 	// editor symbols. Each application checks its reachable modules afresh so
 	// generated identities and mutable analysis maps remain program-local.
@@ -410,6 +419,79 @@ func loadStandardSources() error {
 	}
 	standardSourceMethods = program.Methods[len(standardImplementations):]
 	return nil
+}
+
+func (c *checker) checkNativeDefaults(d *syntax.Declaration, params []syntax.Parameter, t *Type, variables []*Type, contract ...bool) {
+	if !hasExtendedDefaults(params) {
+		// Existing Optional.none adapters retain their allocation-free path.
+		for _, parameter := range params {
+			if parameter.Default != nil && parameter.Type.Name != "Optional" {
+				c.error(parameter.Pos, "type", "none default requires Optional; use a value matching the declared type")
+			}
+		}
+		return
+	}
+	// Keep this first native-default slice bounded. Source generic defaults and
+	// generic calls through nongeneric standard contracts retain their existing
+	// rules; native generic expression defaults need a substitution design.
+	if len(variables) != 0 {
+		c.error(d.Pos, "type", "native generic expression defaults are not supported; keep '= none' on Optional parameters or use a source wrapper")
+		return
+	}
+	if d.Kind == syntax.KindRecord && t.Result.Kind != syntax.KindRecord {
+		c.error(d.Pos, "type", "native opaque constructor expression defaults need a delivery/disposal design; keep Optional.none defaults or use a source wrapper")
+		return
+	}
+	oldScope, oldResult, oldFunction := c.scope, c.result, c.function
+	c.scope = c.variableScope(variables)
+	c.result = t.Result
+	c.serial++
+	c.function = c.serial
+	c.checkParameters(d, params, t.Params)
+	if len(contract) > 0 && contract[0] {
+		// Inherited preparation precedes an implementation's own defaults.
+		// Keep this bounded interface slice independent and free of effects;
+		// combining dependent/effectful defaults needs one ordered prologue.
+		for _, parameter := range params {
+			if e := parameter.Default; e != nil && !c.closedInterfaceDefault(e) {
+				c.error(parameter.Pos, "type", "standard interface expression defaults must be closed literals or bytes from literal text; use a source wrapper for dependent or effectful defaults")
+			}
+		}
+	}
+	c.scope, c.result, c.function = oldScope, oldResult, oldFunction
+}
+
+func (c *checker) closedInterfaceDefault(e *syntax.Expression) bool {
+	switch e.Kind {
+	case syntax.KindBool, syntax.KindNumber, syntax.KindUnit:
+		return true
+	case syntax.KindName:
+		info := c.Expressions[e]
+		return e.Text == "none" && info != nil && info.Binding == nil && info.Constructor != nil && info.Constructor.ID == "@std/Optional" && info.Case == "none"
+	case syntax.KindText:
+		for _, part := range e.Parts {
+			if part.Value != nil {
+				return false
+			}
+		}
+		return true
+	case syntax.KindCall:
+		if e.Left.Kind == syntax.KindMember && len(e.Args) == 0 {
+			info := c.Expressions[e.Left]
+			return info != nil && info.Method != nil && info.Method.Native == "to_bytes" && info.Method.Receiver.ID == "String" && c.closedInterfaceDefault(e.Left.Left)
+		}
+	}
+	return false
+}
+
+// Extended defaults need source preparation rather than the native none adapter.
+func hasExtendedDefaults(params []syntax.Parameter) bool {
+	for _, parameter := range params {
+		if e := parameter.Default; e != nil && (e.Kind != syntax.KindName || e.Text != "none") {
+			return true
+		}
+	}
+	return false
 }
 
 // sourceStandardDependencies adds reachable bundled implementations in dependency

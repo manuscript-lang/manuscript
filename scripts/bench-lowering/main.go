@@ -18,7 +18,7 @@ import (
 	"github.com/manuscript-lang/manuscript/scripts/internal/devtool"
 )
 
-//go:embed program.ms harness.go.txt production.ms production.go.txt
+//go:embed program.ms harness.go.txt production.ms production.go.txt native-defaults.ms native-defaults.go.txt
 var inputs embed.FS
 
 func main() {
@@ -32,6 +32,8 @@ func run() error {
 	count := flag.Int("count", 5, "benchmark repetitions")
 	benchtime := flag.String("benchtime", "1s", "time per benchmark")
 	production := flag.Bool("production", false, "benchmark primitive equality and callable cleanup in generated code")
+	nativeDefaults := flag.Bool("native-defaults", false, "benchmark generated native defaults, including callable construction")
+	baseline := flag.Bool("baseline", false, "spell defaulted arguments explicitly for a main-branch comparison")
 	flag.Parse()
 	program, harnessFile := "program.ms", "harness.go.txt"
 	names := []string{"scalar", "calls", "items", "add"}
@@ -39,9 +41,21 @@ func run() error {
 		program, harnessFile = "production.ms", "production.go.txt"
 		names = []string{"empty", "kept", "ints", "floats", "bools", "strings"}
 	}
+	if *nativeDefaults {
+		program, harnessFile = "native-defaults.ms", "native-defaults.go.txt"
+		names = []string{"direct_explicit", "direct_omitted", "bound_explicit", "bound_omitted", "encode_bind", "csv_explicit", "csv_omitted", "command_explicit", "command_omitted", "command_bind"}
+	}
 	source, err := inputs.ReadFile(program)
 	if err != nil {
 		return err
+	}
+	if *nativeDefaults && *baseline {
+		source = []byte(strings.NewReplacer(
+			"base64_encode(data)", "base64_encode(data, false)",
+			"encode(data)", "encode(data, false)",
+			"CsvOptions()", "CsvOptions(\",\", \"\\n\")",
+			"arguments: [])", "arguments: [], input: \"\".to_bytes())",
+		).Replace(string(source)))
 	}
 	result := compiler.CompileSource("benchmark.ms", string(source), compiler.Options{})
 	if !result.Success() {
@@ -52,6 +66,9 @@ func run() error {
 		return err
 	}
 	var replacements []string
+	if *nativeDefaults {
+		replacements = append(replacements, "@@baseline@@", strconv.FormatBool(*baseline))
+	}
 	for _, name := range names {
 		symbol := result.Program.Symbols["benchmark.ms"][name]
 		replacements = append(replacements, "@@"+name+"@@", symbol.ID, "@@"+name+"Position@@", strconv.Quote(symbol.Decl.Result.Pos.String()))
@@ -76,7 +93,13 @@ func run() error {
 		}
 	}
 	fmt.Println("Generated source and benchmark harness:", directory)
-	command := exec.Command(devtool.Go(), "test", "-mod=vendor", "-tags=ms_lean", "-run", "^TestBenchmarkParity$", "-bench", "^BenchmarkLowering$", "-benchmem", "-benchtime="+*benchtime, "-count="+strconv.Itoa(*count), directory)
+	arguments := []string{"test", "-mod=vendor", "-run", "^TestBenchmarkParity$", "-bench", "^BenchmarkLowering$", "-benchmem", "-benchtime=" + *benchtime, "-count=" + strconv.Itoa(*count)}
+	if !*nativeDefaults {
+		arguments = append(arguments, "-tags=ms_lean")
+	} else {
+		arguments = append(arguments, "-cpu=1")
+	}
+	command := exec.Command(devtool.Go(), append(arguments, directory)...)
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	return command.Run()
 }
