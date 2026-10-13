@@ -44,6 +44,11 @@ strongest evidence here. No wall-time speedup is promised by these experiments.
 The bounded slice was rebased onto main `93fcb4fe`; repeated generated-operation
 benchmarks retain the same allocation counts. The two baselines' raw runs are
 retained separately rather than relabeling the earlier samples.
+Final integration base is `7bd79bb0`, including #244's additional Map/Set
+callback/output evidence and #214's source-call depth, record and fault handling.
+Fresh before/after operation samples on that base retain the 1 MiB membership
+allocation reduction; they are separate files under `results`. New source-call
+wrappers materially change timing, so the earlier wall samples remain historical.
 
 Separate fresh Release programs on unmodified `93fcb4fe` (three samples, CPU 1,
 default GC) measured:
@@ -178,6 +183,10 @@ Migrate in reviewable stages:
    and cancellation. An arbitrary user comparator cannot be replaced with a
    built-in numeric order. Public sort/API expansion remains #166's scope.
 
+The typed source-call ABI must also retain #214's call-depth accounting and
+control-transfer/fault bookkeeping. Returning a typed scalar is not permission
+to bypass those source-call guards or the current checked record-field boundary.
+
 ## Integration risks and acceptance gates
 
 - **Go ABI:** exported `List.Items` is used by generated composites, embedded
@@ -236,13 +245,10 @@ parent reviews the evidence and migration plan.
 
 ## Verification
 
-The bounded slice passes runtime unit/differential tests, called native cases,
-native fault/source-frame/cancellation checks, standalone emission/execution,
-the full runtime race suite, the complete compiler suite, and routine formatting, vet,
-lint, repository invariants, unit, standard-source, examples and license gates.
-`make verify` additionally checks generated documentation. Four Decimal/reference
-artifacts are stale on both this branch and the unmodified `93fcb4fe` worktree:
-`documentation/standard-library/reference/{decimal,numbers}.md` and
-`website/static/stdlib.{md,json}`. This slice does not change standard declarations
-or generated API references. That existing gate failure remains separate from
-the numeric-storage work.
+On integration base `7bd79bb0`, `make verify`, called native cases, native
+fault/source-frame/cancellation checks, standalone emission/execution and focused
+snapshot/alias/synchronized/recursive race tests pass. The complete compiler and
+full runtime race suites also passed on the prior `93fcb4fe` integration base.
+That prior base's four stale Decimal/reference artifacts reproduced in an
+unmodified worktree; #244's combined reference regeneration cleared the drift.
+No standard declarations or generated API references were changed by this slice.

@@ -16,7 +16,9 @@
     "baseline-5b482774-native.json": "9368d5f74ebc157880189a506e7c9eecfed110126736de858ea33a162aba813a",
     "baseline-93fcb4fe-memory.json": "9e8f7283dba676d04ac9c9defb0967a62745ee36126c6ff5fe2a00d2ce10f3f7",
     "callbacks-alternating.txt": "c67e76c3f2f2865d253743513041aa53613646f2a4643bd77840a70356053146",
+    "baseline-7bd79bb0-bench.txt": "2dfbead680fc4484afd0b83b03425dd229a699145fee5138eaf67cbd5cd0bd62",
     "baseline-5b482774-bench.txt": "cd20a96f4fa6ee5715d81e2db2c74a3b8459ee4711383a21c76e97bd7de4611e",
+    "after-7bd79bb0-bench.txt": "7b2c6ea4b0bbfbba24302ff1a1f4d4a06ea11c772e40b4bb2a64853408418f2d",
     "baseline-93fcb4fe-bench.txt": "b72283c9f6f51ba0e2669c8ed6a48a037ca9bd7e385ab5046995b3d29b3cb8e3",
     "literal-copy-control.txt": "76ca0532d3179536310ed37add73da3f3e7a5a5b1d913daca3cdd78d0cc6ac88",
     "snapshot-bench.txt": "5a0bf69b1ae9a32399169d1a32706b763d27e8921ea14021f8d756d6118fc089"
@@ -43,5 +45,10 @@
     "scripts/bench-lists/program.ms": "f135a8ef5d971fd110b2443feba623bf55fb406f67c8ff5d94624d8027c22ec7",
     "scripts/bench-lists/memory.py": "5f0b206aa0262f5f9d018975976a9a2ae71dc945d65c50bd1d89c4d0810868b4"
   },
-  "literal_copy_limit": "Synthetic prebuilt heap tables; not a matched actual source/static literal benchmark, so it cannot approve a #238 replacement."
+  "literal_copy_limit": "Synthetic prebuilt heap tables; not a matched actual source/static literal benchmark, so it cannot approve a #238 replacement.",
+  "final_integration_base": "7bd79bb027f5aeb60fda55f25671f3d0c309d245",
+  "final_benchmark_runs": 3,
+  "final_benchmark_benchtime": "100ms",
+  "final_before_binary_sha256": "2c26c54f02882e902eec5ee867f50fdf0250b5a41b01e3e49cafb549bd3b1deb",
+  "final_after_binary_sha256": "a58834e2c822ea140564b3af5b77440318a8c25ffd62a9ee6f89cda37b3be5fe"
 }
