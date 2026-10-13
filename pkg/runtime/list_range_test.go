@@ -240,7 +240,7 @@ func TestListTraversalDoesNotAllocateOrMutateHeader(t *testing.T) {
 	fn := NewFunction([]string{"value"}, "Unit", func(*Execution, []Value) Value { return Unit{} })
 	args := []Value{list, fn}
 	spec := libraryFunctions["collections/for_each"]
-	if n := testing.AllocsPerRun(100, func() { listRangeBenchmarkSink = Iterate(list); invokeLibrary(spec, ctx, "Unit", args) }); n != 0 {
+	if n := testing.AllocsPerRun(100, func() { listRangeBenchmarkSink = CaptureList(list); invokeLibrary(spec, ctx, "Unit", args) }); n != 0 {
 		t.Fatalf("traversal allocates %v", n)
 	}
 	if len(list.Items) != 0 || cap(list.Items) != 8 {
@@ -252,8 +252,8 @@ func BenchmarkListRangeCapture(b *testing.B) {
 	list := &List{Type: "@std/List[Int]", Items: make([]Value, 65536)}
 	b.ReportAllocs()
 	for b.Loop() {
-		listRangeBenchmarkSink = Iterate(list)
+		listRangeBenchmarkSink = CaptureList(list)
 	}
 }
 
-var listRangeBenchmarkSink []Value
+var listRangeBenchmarkSink ListRange

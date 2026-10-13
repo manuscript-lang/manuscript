@@ -730,7 +730,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			}
 			return finish(n, err)
 		case "read_vectors":
-			sizes := a[0].(*List).Items
+			sizes := a[0].(*List).Boxed()
 			offset := a[1].(int64)
 			var total int64
 			if offset < -1 {
@@ -767,7 +767,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 				return libraryError(r, "InvalidInput", "")
 			}
 			var total int64
-			for _, v := range a[0].(*List).Items {
+			for _, v := range a[0].(*List).Boxed() {
 				var ptr *int64
 				if offset != -1 {
 					ptr = &offset

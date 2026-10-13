@@ -26,7 +26,7 @@ func libraryNewSignalStream(ctx *Execution, r string, a []Value) Value {
 		return libraryError(r, "InvalidInput", "")
 	}
 	var signals []os.Signal
-	for _, value := range a[0].(*List).Items {
+	for _, value := range a[0].(*List).Boxed() {
 		n := value.(int64)
 		if n <= 0 || n > 64 || n == int64(syscall.SIGKILL) || n == hostos.Constants()["SIGSTOP"] {
 			return libraryError(r, "InvalidInput", "")

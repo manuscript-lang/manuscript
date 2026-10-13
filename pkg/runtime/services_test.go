@@ -10,7 +10,7 @@ func TestBuilderSealAndSnapshot(t *testing.T) {
 	Invoke(root, builder.Operation("append"), []Argument{{"value", int64(1)}})
 	snapshot := Invoke(root, builder.Operation("freeze"), nil).(*List)
 	failure := recovered(func() { Invoke(root, builder.Operation("append"), []Argument{{"value", int64(2)}}) })
-	if _, ok := failure.(Fault); !ok || len(snapshot.Items) != 1 {
+	if _, ok := failure.(Fault); !ok || snapshot.Len() != 1 {
 		t.Fatal("sealed builder mutation changed snapshot")
 	}
 }

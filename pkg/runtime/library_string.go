@@ -64,7 +64,7 @@ func init() {
 			items = append(items, string(scalar))
 			count++
 		}
-		return &List{Type: result, Items: items}
+		return NewList(result, items)
 	})
 	add("string", "reverse", "String", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, args []Value) Value {
 		remaining := args[0].(string)
@@ -101,7 +101,7 @@ func init() {
 		if start < len(text) {
 			items = append(items, text[start:])
 		}
-		return &List{Type: result, Items: items}
+		return NewList(result, items)
 	})
 	for _, spec := range []struct {
 		name, label string
@@ -361,7 +361,7 @@ func libraryBytesSplit(ctx *Execution, result string, args []Value) Value {
 	if limit < 0 {
 		return Panic("split: max_parts must be nonnegative, found " + strconv.FormatInt(limit, 10))
 	}
-	out := &List{Type: result}
+	out := NewList(result, nil)
 	if len(separator) == 0 {
 		for i := 0; i < len(data) && int64(len(out.Items)) < limit; i++ {
 			if i%1024 == 0 {
