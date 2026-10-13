@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNativeCallExperiment/PreparedBody         	 7039694	       545.9 ns/op	      40 B/op	       2 allocs/op
+BenchmarkNativeCallExperiment/PreparedBody         	 3931201	       454.8 ns/op	      40 B/op	       2 allocs/op
+BenchmarkNativeCallExperiment/PreparedBody         	 3834120	       279.0 ns/op	      40 B/op	       2 allocs/op
+BenchmarkNativeCallExperiment/TypedGuarded         	11901591	       105.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeCallExperiment/TypedGuarded         	12485719	        95.52 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNativeCallExperiment/TypedGuarded         	10962178	       101.9 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	10.346s

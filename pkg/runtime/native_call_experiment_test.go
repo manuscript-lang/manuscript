@@ -1,0 +1,172 @@
+package msruntime
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+	"testing"
+)
+
+// Test-only ABI experiment. It does not alter production execution or select
+// numeric representations. A future lowering entry must use checked identities.
+func experimentSourceCall[T any](ctx *Execution, result string, body func() T) (value T) {
+	CheckCancelled(ctx)
+	if ctx != nil && ctx.calls != nil {
+		calls := ctx.calls
+		if calls.depth.Add(1) > MaxCallDepth {
+			calls.depth.Add(-1)
+			Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
+		}
+		defer func() {
+			if calls.depth.Add(-1) == 0 {
+				calls.traceFull.Store(false)
+			}
+		}()
+	}
+	completed := false
+	defer func() {
+		if controlPanics.Load() != 0 {
+			if failure := recover(); failure != nil {
+				switch failure := failure.(type) {
+				case sourceReturn:
+					controlPanics.Add(-1)
+					value = failure.value.(T)
+					completed = true
+				case propagation:
+					controlPanics.Add(-1)
+					CheckCancelled(ctx)
+					value = any(Alternative{Type: result, Tag: "error", Fields: []Value{failure.Cause}}).(T)
+					return
+				default:
+					panic(failure)
+				}
+			}
+		}
+		if completed && ctx != nil && ctx.Context.Err() != nil {
+			panic(cancelled{})
+		}
+	}()
+	value = body()
+	completed = true
+	return value
+}
+
+var experimentBoxedAdd = NewSourceFunction([]string{"left", "right"}, "Int", "experiment.ms:1:1", func(ctx *Execution, args []Value) Value {
+	position := "experiment.ms:1:1"
+	defer TraceSource(ctx, &position, "add")
+	return IntAdd(IntValue(args[0]), SourceAt(&position, "experiment.ms:1:41", IntValue(args[1])))
+})
+
+func experimentTypedAdd(ctx *Execution, left, right int64) int64 {
+	// Keep the existing first-class wrapper/profiling boundary as a fallback.
+	if sourceProfiling.Load() {
+		return IntValue(experimentBoxedAdd.Body(ctx, []Value{left, right}))
+	}
+	return experimentSourceCall(ctx, "Int", func() int64 {
+		position := "experiment.ms:1:1"
+		defer TraceSource(ctx, &position, "add")
+		return IntAdd(left, SourceAt(&position, "experiment.ms:1:41", right))
+	})
+}
+
+func TestNativeCallExperimentParity(t *testing.T) {
+	defer sourceProfiling.Store(false)
+	for _, profiling := range []bool{false, true} {
+		sourceProfiling.Store(profiling)
+		ctx := RootExecution()
+		if got, want := experimentTypedAdd(ctx, 1024, 2048), experimentBoxedAdd.Body(ctx, []Value{int64(1024), int64(2048)}); got != want {
+			t.Fatalf("profiling=%v: got %v want %v", profiling, got, want)
+		}
+		FinishExecution(ctx)
+	}
+	sourceProfiling.Store(false)
+	for _, returned := range []bool{false, true} {
+		ctx := RootExecution()
+		var cancel context.CancelFunc
+		ctx.Context, cancel = context.WithCancel(ctx.Context)
+		failure := experimentFailure(func() {
+			experimentSourceCall(ctx, "Int", func() int64 {
+				cancel()
+				if returned {
+					Return(int64(1))
+				}
+				return 1
+			})
+		})
+		if _, ok := failure.(cancelled); !ok {
+			t.Fatalf("delivery: %T %v", failure, failure)
+		}
+		if ctx.calls.depth.Load() != 0 {
+			t.Fatal("call depth leaked")
+		}
+		FinishExecution(ctx)
+	}
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	got := experimentSourceCall[Value](ctx, "@std/Result[Int][String]", func() Value {
+		return Try(Alternative{Type: "@std/Result[Int][String]", Tag: "error", Fields: []Value{"bad"}})
+	})
+	want := NewSourceFunction(nil, "@std/Result[Int][String]", "experiment.ms:1:1", func(*Execution, []Value) Value {
+		return Try(Alternative{Type: "@std/Result[Int][String]", Tag: "error", Fields: []Value{"bad"}})
+	}).Body(ctx, nil)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("propagation: got %#v want %#v", got, want)
+	}
+	ctx.calls.depth.Store(MaxCallDepth)
+	failure := experimentFailure(func() { experimentTypedAdd(ctx, 1, 1) })
+	if _, ok := failure.(Fault); !ok {
+		t.Fatalf("depth limit: %T %v", failure, failure)
+	}
+	if ctx.calls.depth.Load() != MaxCallDepth {
+		t.Fatal("failed admission changed depth")
+	}
+	ctx.calls.depth.Store(0)
+	// Ordinary faults must not be replaced by a cancellation arriving in the
+	// body. Cleanup and trace defers execute inside the source boundary.
+	var cancel context.CancelFunc
+	ctx.Context, cancel = context.WithCancel(ctx.Context)
+	cleaned := false
+	failure = experimentFailure(func() {
+		experimentSourceCall(ctx, "Int", func() int64 {
+			position := "experiment.ms:2:7"
+			defer TraceSource(ctx, &position, "fault")
+			defer func() { cleaned = true }()
+			cancel()
+			Panic("original")
+			return 0
+		})
+	})
+	fault, ok := failure.(Fault)
+	if !ok || fault.Message != "original" || !reflect.DeepEqual(fault.Frames, []string{"experiment.ms:2:7 in fault"}) || !cleaned {
+		t.Fatalf("fault/cleanup changed: %#v cleaned=%v", failure, cleaned)
+	}
+	if ctx.calls.depth.Load() != 0 {
+		t.Fatal("fault leaked depth")
+	}
+}
+
+func experimentFailure(body func()) (failure any) {
+	defer func() { failure = recover() }()
+	body()
+	return
+}
+
+var experimentResult Value
+var experimentNativeResult int64
+
+func BenchmarkNativeCallExperiment(b *testing.B) {
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	b.Run("PreparedBody", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			experimentResult = experimentBoxedAdd.Body(ctx, []Value{int64(1024), int64(2048)})
+		}
+	})
+	b.Run("TypedGuarded", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			experimentNativeResult = experimentTypedAdd(ctx, 1024, 2048)
+		}
+	})
+}
