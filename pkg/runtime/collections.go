@@ -27,6 +27,7 @@ func spliceList(list *List, start, count int, replacement *List) {
 	if list == replacement {
 		items = append([]Value{}, items...)
 	}
+	list.ownItems()
 	oldLength := len(list.Items)
 	newLength := oldLength - count + len(items)
 	if newLength < oldLength-count {
@@ -84,6 +85,27 @@ func constructor(typ string, args []Argument) Value {
 	return NewRecord(typ, args)
 }
 func Construct(typ string, args []Argument) Value { return constructor(typ, args) }
+
+// CollectionLength is the direct path for List, Map, and Set length calls.
+func CollectionLength(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	switch v := receiver.(type) {
+	case *List:
+		return int64(len(v.Items))
+	case *Map:
+		return int64(len(v.Entries))
+	case *Set:
+		return int64(len(v.Items))
+	}
+	return Panic("runtime invariant: collection receiver")
+}
+
+// StringByteLength is the direct path for String.byte_length calls.
+func StringByteLength(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	return int64(len(receiver.(string)))
+}
+
 func NativeMember(receiver Value, name string) Value {
 	return NativeMemberResult(receiver, name, "")
 }
@@ -155,7 +177,7 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				v.Items = append(v.Items, args[0])
 				return v
 			case "concat":
-				return &List{v.Type, append(append([]Value{}, v.Items...), args[0].(*List).Items...)}
+				return &List{Type: v.Type, Items: append(append([]Value{}, v.Items...), args[0].(*List).Items...)}
 			}
 		case *Map:
 			typ := typeArguments(v.Type)[1]
@@ -164,11 +186,8 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				key = args[0]
 			}
 			found := -1
-			for i, e := range v.Entries {
-				if EqualIn(ctx, e.Key, key) {
-					found = i
-					break
-				}
+			if name != "length" {
+				found = v.find(ctx, key)
 			}
 			switch name {
 			case "length":
@@ -181,22 +200,18 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				}
 				return optional(typ, v.Entries[found].Value, true)
 			case "with_entry":
-				entries := v.Entries
 				if found >= 0 {
-					entries[found].Value = args[1]
+					v.ownEntries()
+					v.Entries[found].Value = args[1]
 				} else {
-					entries = append(entries, Entry{key, args[1]})
+					v.Entries = append(v.Entries, Entry{key, args[1]})
+					keyAppended(ctx, v)
 				}
-				v.Entries = entries
 				return v
 			case "without":
-				entries := v.Entries
 				if found >= 0 {
-					copy(entries[found:], entries[found+1:])
-					entries[len(entries)-1] = Entry{}
-					entries = entries[:len(entries)-1]
+					v.removeAt(ctx, found)
 				}
-				v.Entries = entries
 				return v
 			}
 		case *Set:
@@ -204,27 +219,25 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			if len(args) > 0 {
 				value = args[0]
 			}
-			found := indexOfIn(ctx, v.Items, value)
+			found := -1
+			if name != "length" {
+				found = v.find(ctx, value)
+			}
 			switch name {
 			case "length":
 				return int64(len(v.Items))
 			case "contains":
 				return found >= 0
 			case "with_value":
-				items := v.Items
 				if found < 0 {
-					items = append(items, value)
+					v.Items = append(v.Items, value)
+					keyAppended(ctx, v)
 				}
-				v.Items = items
 				return v
 			case "without":
-				items := v.Items
 				if found >= 0 {
-					copy(items[found:], items[found+1:])
-					items[len(items)-1] = nil
-					items = items[:len(items)-1]
+					v.removeAt(ctx, found)
 				}
-				v.Items = items
 				return v
 			}
 		case string:

@@ -56,3 +56,88 @@ impl At for Custom:
 		}
 	}
 }
+
+func TestDirectLengthLowering(t *testing.T) {
+	result := compiler.CompileSource("length.ms", `import {List, Map, Set} from "@std/collections.ms"
+type Sized:
+    items: List[Int]
+interface Measure:
+    fn length() -> Int
+impl Measure for Sized:
+    fn length() -> Int: return self.items.length()
+fn sizes(values: List[Int], pairs: Map[String, Int], names: Set[String], text: String, sized: Sized) -> Int:
+    let measure = Measure(value: sized)
+    let length = values.length
+    return values.length() + pairs.length() + names.length() + text.byte_length() + measure.length() + length()
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	if strings.Count(result.Source, "rt.CollectionLength(") != 4 || strings.Count(result.Source, "rt.StringByteLength(") != 1 {
+		t.Fatalf("expected direct length calls only for built-in receivers:\n%s", result.Source)
+	}
+	if !strings.Contains(result.Source, "rt.NativeMemberResult(") {
+		t.Fatal("bound method reference must keep ordinary callable dispatch")
+	}
+}
+
+func TestStatementMatchLowersWithoutClosure(t *testing.T) {
+	result := compiler.CompileSource("statement-match.ms", `fn pick(value: Optional[Int]) -> Int:
+    match value:
+        none: return 0
+        some(inner): return inner
+    return -1
+fn total(values: Optional[Int]) -> Int:
+    let doubled = match values:
+        none: 0
+        some(inner): inner * 2
+    return doubled
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	if strings.Count(result.Source, "rt.Return(") != 0 {
+		t.Fatalf("statement match returns must be native Go returns:\n%s", result.Source)
+	}
+	if strings.Count(result.Source, "func() rt.Value {") < 1 {
+		t.Fatal("a match used as a value keeps its closure")
+	}
+}
+
+func TestStatementTryReturnsInline(t *testing.T) {
+	result := compiler.CompileSource("try.ms", `fn parse(n: Int) -> Result[Int, String]:
+    if n < 0:
+        return error("neg")
+    return ok(n)
+fn bound(n: Int) -> Result[Int, String]:
+    let v = try parse(n: n)
+    return ok(v + 1)
+fn nested(n: Int) -> Result[Int, String]:
+    return ok((try parse(n: n)) + 1)
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	if strings.Count(result.Source, "rt.Try(") != 1 {
+		t.Fatalf("only the nested try keeps the panic form:\n%s", result.Source)
+	}
+}
+
+func TestStaticSpecializationIsHoisted(t *testing.T) {
+	result := compiler.CompileSource("hoist.ms", `fn ident[T](x: T) -> T:
+    return x
+fn twice[T](x: T) -> T:
+    return ident(x: ident(x: x))
+fn use() -> Int:
+    return ident(x: 1) + ident(x: 2)
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	if strings.Count(result.Source, "var specialized1 rt.Lazy") != 1 || strings.Contains(result.Source, "specialized2") {
+		t.Fatalf("one hoisted specialization expected for the shared Int call sites:\n%s", result.Source)
+	}
+	if strings.Count(result.Source, "rt.Specialize(") != 4 {
+		t.Fatalf("static Int sites share a Lazy; type-variable sites stay dynamic:\n%s", result.Source)
+	}
+}

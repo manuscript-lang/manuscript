@@ -22,6 +22,8 @@ These are type expressions: a list of text, a map from text to integers, optiona
 
 `T: Equal` means values of `T` can be compared with `==` and `!=`; `T: Hashable` supplies hashing for map keys and set elements, which also require Equal. These are standard interfaces with built-in value implementations and explicit domain implementations. See [equality and hashing](equality-and-hashing.md) for examples. Generic declarations use `[T, U]`, with bounds such as `T: Equal` or `T: Read & Closeable`.
 
+A bound must resolve to an interface. Type parameters are in scope in their bounds, so `T: Compare[T]` is valid when `Compare` is an interface, but `T: T` is not. A parameter named `Error` shadows the prelude interface: use `E: Error` rather than `Error: Error`.
+
 | Bound | Required property |
 | --- | --- |
 | `Equal` | Values can be compared by their contents with `==` and `!=` |

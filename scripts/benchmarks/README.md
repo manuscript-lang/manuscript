@@ -3,7 +3,7 @@
 Build CLIs at each revision, then run (from this directory):
 
 ```sh
-MANUSCRIPT_GO=/path/to/go python3 benchmark.py \
+python3 benchmark.py \
   --before /path/to/ms-before --after /path/to/ms-after \
   --output /tmp/manuscript-benchmark --runs 3
 ```

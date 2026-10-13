@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"strings"
 	"sync"
 )
 
@@ -110,6 +111,8 @@ type Builder struct {
 	mu     sync.Mutex
 	typ    string
 	value  Value
+	text   strings.Builder
+	bytes  []byte
 	sealed bool
 }
 
@@ -118,11 +121,11 @@ func newBuilder(typ string) *Builder {
 	b := &Builder{typ: typ}
 	switch name {
 	case "@std/ListBuilder":
-		b.value = &List{"@std/List[" + args[0] + "]", nil}
+		b.value = &List{Type: "@std/List[" + args[0] + "]", Items: nil}
 	case "@std/MapBuilder":
-		b.value = &Map{"@std/Map[" + args[0] + "][" + args[1] + "]", nil}
+		b.value = &Map{Type: "@std/Map[" + args[0] + "][" + args[1] + "]"}
 	case "@std/SetBuilder":
-		b.value = &Set{"@std/Set[" + args[0] + "]", nil}
+		b.value = &Set{Type: "@std/Set[" + args[0] + "]"}
 	case "@std/BytesBuilder":
 		b.value = Bytes{}
 	case "@std/StringBuilder":
@@ -146,6 +149,12 @@ func (b *Builder) Operation(name string) Function {
 		defer b.mu.Unlock()
 		if name == "freeze" {
 			b.sealed = true
+			switch b.value.(type) {
+			case Bytes:
+				b.value = Bytes{Items: b.bytes}
+			case string:
+				b.value = b.text.String()
+			}
 			return b.value
 		}
 		if b.sealed {
@@ -163,17 +172,16 @@ func (b *Builder) Operation(name string) Function {
 			b.value = Invoke(ctx, NativeMember(value, name), named)
 		case Bytes:
 			if name == "concat" {
-				value.Items = append(append([]byte{}, value.Items...), args[0].(Bytes).Items...)
+				b.bytes = append(b.bytes, args[0].(Bytes).Items...)
 			} else {
 				n := args[0].(int64)
 				if n < 0 || n > 255 {
 					return Panic("byte value must be between 0 and 255; clamp or validate the Int before storing it as a byte")
 				}
-				value.Items = append(append([]byte{}, value.Items...), byte(n))
+				b.bytes = append(b.bytes, byte(n))
 			}
-			b.value = value
 		case string:
-			b.value = value + args[0].(string)
+			b.text.WriteString(args[0].(string))
 		}
 		return Unit{}
 	})

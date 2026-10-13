@@ -62,7 +62,7 @@ func TestVerificationTargetsExecuteTheirContracts(t *testing.T) {
 	for target, expected := range map[string][]string{
 		"verify":   {"vet ./...", "staticcheck ./...", "run ./scripts/repo-check\n", "test ./tests/examples", "maintenance licenses -check"},
 		"coverage": {"test -covermode=atomic", "-coverprofile=", "tool cover -html"},
-		"build":    {"run ./scripts/mktoolchain", "-tags bundled_toolchain"},
+		"build":    {"run ./scripts/mktoolchain", "-tags exp.winarm64"},
 		"race":     {"test -race"}, "fuzz": {"-fuzz '^FuzzCompile$'"}, "e2e": {"test  ./tests/e2e"},
 	} {
 		t.Run(target, func(t *testing.T) {

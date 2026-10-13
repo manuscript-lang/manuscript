@@ -2,11 +2,16 @@
 package msruntime
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"reflect"
+	goruntime "runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 type Value = any
@@ -43,15 +48,32 @@ type Alternative struct {
 type List struct {
 	Type  string
 	Items []Value
+	// shared marks Items as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
+
+// ownItems gives the list a private backing array before an in-place write.
+func (l *List) ownItems() {
+	if l.shared {
+		l.Items = append([]Value(nil), l.Items...)
+		l.shared = false
+	}
+}
+
 type Map struct {
 	Type    string
 	Entries []Entry
+	keys    keyIndex
+	// shared marks Entries as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
 type Entry struct{ Key, Value Value }
 type Set struct {
 	Type  string
 	Items []Value
+	keys  keyIndex
+	// shared marks Items as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
 type Bytes struct{ Items []byte }
 type Duration int64
@@ -136,10 +158,40 @@ func Invoke(ctx *Execution, callee Value, args []Argument) Value {
 	CheckCancelled(ctx)
 	return f.Body(ctx, ordered)
 }
+
+// Lazy holds a value built on first use; generated code keeps one per call site
+// whose type arguments are known statically, so repeated calls skip Specialize.
+type Lazy struct {
+	once  sync.Once
+	value Value
+}
+
+func (l *Lazy) Get(build func() Value) Value {
+	l.once.Do(func() { l.value = build() })
+	return l.value
+}
+
 func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 	g, ok := value.(Generic)
 	if !ok {
 		return value
+	}
+	var key string
+	cache := genericCache(g)
+	if cache != nil {
+		var b strings.Builder
+		for i, arg := range args {
+			b.WriteString(arg)
+			b.WriteByte(0)
+			if i < len(scopes) {
+				writeScopeKey(&b, scopes[i])
+			}
+			b.WriteByte(1)
+		}
+		key = b.String()
+		if cached, ok := cache.Load(key); ok {
+			return cached.(Function)
+		}
 	}
 	sub := map[string]string{}
 	typeScopes := map[string]TypeScope{}
@@ -149,7 +201,37 @@ func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 			typeScopes[v] = scopes[i]
 		}
 	}
-	return g.Build(sub, typeScopes)
+	built := g.Build(sub, typeScopes)
+	if cache != nil {
+		cache.Store(key, built)
+	}
+	return built
+}
+
+// genericCaches holds one instantiation cache per Generic, keyed by the address
+// of its Variables backing array, which every copy of the value shares.
+var genericCaches sync.Map
+
+func genericCache(g Generic) *sync.Map {
+	if len(g.Variables) == 0 {
+		return nil
+	}
+	key := &g.Variables[0]
+	if cache, ok := genericCaches.Load(key); ok {
+		return cache.(*sync.Map)
+	}
+	cache, _ := genericCaches.LoadOrStore(key, new(sync.Map))
+	return cache.(*sync.Map)
+}
+
+func writeScopeKey(b *strings.Builder, scope TypeScope) {
+	b.WriteString(scope.Module)
+	b.WriteByte('(')
+	for _, arg := range scope.Args {
+		writeScopeKey(b, arg)
+		b.WriteByte(',')
+	}
+	b.WriteByte(')')
 }
 func Try(value Value, scopes ...TypeScope) Value {
 	v := value.(Alternative)
@@ -211,14 +293,19 @@ func Positions(value Value, length int) []Value {
 func Iterate(value Value) []Value {
 	switch v := value.(type) {
 	case *List:
-		return append([]Value{}, v.Items...)
+		// Loops see the elements as of loop start. Appends land beyond the captured
+		// length; in-place writes call ownItems and leave this slice untouched.
+		v.shared = true
+		return v.Items[:len(v.Items):len(v.Items)]
 	case *Set:
-		return append([]Value{}, v.Items...)
+		v.shared = true
+		return v.Items[:len(v.Items):len(v.Items)]
 	case *Map:
 		values := make([]Value, len(v.Entries))
 		args := typeArguments(v.Type)
+		entryType := "@std/MapEntry[" + args[0] + "][" + args[1] + "]"
 		for i, e := range v.Entries {
-			values[i] = Record{"@std/MapEntry[" + args[0] + "][" + args[1] + "]", map[string]Value{"key": e.Key, "value": e.Value}}
+			values[i] = Record{entryType, map[string]Value{"key": e.Key, "value": e.Value}}
 		}
 		return values
 	}
@@ -350,9 +437,37 @@ func equalityID(value Value) (equalityIdentity, bool) {
 	return equalityIdentity{}, false
 }
 
+// primitiveEqual compares Int, Float, String, and Bool operands directly. These
+// types cannot carry a user Equal implementation, so it needs no scope, cycle
+// bookkeeping, or state allocation.
+func primitiveEqual(a, b Value) (result, ok bool) {
+	switch x := a.(type) {
+	case int64:
+		if y, same := b.(int64); same {
+			return x == y, true
+		}
+	case string:
+		if y, same := b.(string); same {
+			return x == y, true
+		}
+	case bool:
+		if y, same := b.(bool); same {
+			return x == y, true
+		}
+	case float64:
+		if y, same := b.(float64); same {
+			return x == y, true
+		}
+	}
+	return false, false
+}
+
 func Equal(a, b Value) bool                   { return equal(a, b, &equalityState{}) }
 func EqualIn(ctx *Execution, a, b Value) bool { return EqualSelected(ctx, a, b, ctx.EqualityScope) }
 func EqualSelected(ctx *Execution, a, b Value, scope TypeScope) bool {
+	if result, ok := primitiveEqual(a, b); ok {
+		return result
+	}
 	return equal(a, b, &equalityState{ctx: ctx, scope: scope})
 }
 func Equality(ctx *Execution, operator string, a, b Value, scope TypeScope) Value {
@@ -363,6 +478,9 @@ func Equality(ctx *Execution, operator string, a, b Value, scope TypeScope) Valu
 	return result
 }
 func equal(a, b Value, state *equalityState) bool {
+	if result, ok := primitiveEqual(a, b); ok {
+		return result
+	}
 	if view, ok := a.(View); ok {
 		a = view.Receiver
 		stateCopy := *state
@@ -584,7 +702,13 @@ type Implementation struct {
 
 var implementations []Implementation
 
+// implementationsByName indexes implementations by method name so a lookup
+// visits only candidates instead of the whole registry.
+var implementationsByName = map[string][]int{}
+
 func Register(implementation Implementation) {
+	implementationCache.Clear()
+	implementationsByName[implementation.Name] = append(implementationsByName[implementation.Name], len(implementations))
 	implementations = append(implementations, implementation)
 }
 func ViewOf(contract string, receiver Value, scopes ...TypeScope) Value {
@@ -663,36 +787,132 @@ type Test struct {
 	Run  Function
 }
 
-func RunTests(tests []Test) int {
+// DefaultTestTimeout bounds each test run by the generated test executable
+// so one deadlocked test cannot hang the whole run silently.
+const DefaultTestTimeout = 60 * time.Second
+
+// testCancelGrace is how long a timed-out test gets to unwind after
+// cancellation before the runner abandons it and moves on.
+const testCancelGrace = 2 * time.Second
+
+// TestOptions selects and bounds the tests a run executes. A zero Timeout
+// disables the per-test limit; a non-empty Filter keeps tests whose full
+// name (module::name) contains it.
+type TestOptions struct {
+	Timeout time.Duration
+	Filter  string
+}
+
+// ParseTestArgs reads --timeout=<duration> and --filter=<text> from the test
+// executable's arguments; other arguments are ignored.
+func ParseTestArgs(args []string) (TestOptions, error) {
+	options := TestOptions{Timeout: DefaultTestTimeout}
+	for _, arg := range args {
+		switch {
+		case strings.HasPrefix(arg, "--timeout="):
+			timeout, err := time.ParseDuration(strings.TrimPrefix(arg, "--timeout="))
+			if err != nil || timeout < 0 {
+				return options, fmt.Errorf("invalid --timeout %q; use a duration such as 30s or 2m, or 0 to disable", strings.TrimPrefix(arg, "--timeout="))
+			}
+			options.Timeout = timeout
+		case strings.HasPrefix(arg, "--filter="):
+			options.Filter = strings.TrimPrefix(arg, "--filter=")
+		}
+	}
+	return options, nil
+}
+
+// RunTestsArgs runs tests with the options encoded in the executable's arguments.
+func RunTestsArgs(tests []Test, args []string) int {
+	options, err := ParseTestArgs(args)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
+	return RunTestsWith(tests, options)
+}
+
+func RunTests(tests []Test) int { return RunTestsWith(tests, TestOptions{}) }
+
+func RunTestsWith(tests []Test, options TestOptions) int {
+	total := len(tests)
+	if options.Filter != "" {
+		var selected []Test
+		for _, test := range tests {
+			if strings.Contains(test.Name, options.Filter) {
+				selected = append(selected, test)
+			}
+		}
+		tests = selected
+		if len(tests) == 0 {
+			fmt.Printf("no tests match filter %q (%d tests available); the filter matches any part of a test's module::name\n", options.Filter, total)
+			return 1
+		}
+	}
 	failed := 0
 	for _, test := range tests {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					failed++
-					fmt.Printf("FAIL %s: %v\n", test.Name, r)
-				}
-			}()
-			func() {
-				execution := RootExecution()
-				if err := execution.Host.initialize(); err != nil {
-					Panic(err.Error())
-				}
-				defer Cleanup(execution, hostValue(execution, "stdin"))
-				defer Cleanup(execution, hostValue(execution, "stdout"))
-				defer Cleanup(execution, hostValue(execution, "stderr"))
-				defer Cleanup(execution, hostValue(execution, "network"))
-				defer FinishExecution(execution)
-				Invoke(execution, test.Run, nil)
-			}()
-			fmt.Printf("PASS %s\n", test.Name)
-		}()
+		fmt.Printf("RUN %s\n", test.Name)
+		if failure := runTest(test, options.Timeout); failure != nil {
+			failed++
+			fmt.Printf("FAIL %s: %v\n", test.Name, failure)
+			continue
+		}
+		fmt.Printf("PASS %s\n", test.Name)
 	}
 	if len(tests) == 0 {
 		fmt.Println("no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file")
 	}
 	fmt.Printf("%d tests, %d failed\n", len(tests), failed)
 	return failed
+}
+
+// runTest executes one test on its own root execution and returns its failure.
+// When the timeout elapses the execution is cancelled; a test that still does
+// not stop is abandoned after a goroutine dump so later tests can run.
+func runTest(test Test, timeout time.Duration) any {
+	execution := RootExecution()
+	cancelled, cancel := context.WithCancel(execution.Context)
+	defer cancel()
+	execution.Context = cancelled
+	done := make(chan any, 1)
+	go func() {
+		var failure any
+		defer func() { done <- failure }()
+		defer func() {
+			if r := recover(); r != nil {
+				failure = r
+			}
+		}()
+		if err := execution.Host.initialize(); err != nil {
+			Panic(err.Error())
+		}
+		defer Cleanup(execution, hostValue(execution, "stdin"))
+		defer Cleanup(execution, hostValue(execution, "stdout"))
+		defer Cleanup(execution, hostValue(execution, "stderr"))
+		defer Cleanup(execution, hostValue(execution, "network"))
+		defer FinishExecution(execution)
+		Invoke(execution, test.Run, nil)
+	}()
+	if timeout <= 0 {
+		return <-done
+	}
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case failure := <-done:
+		return failure
+	case <-timer.C:
+	}
+	cancel()
+	select {
+	case <-done:
+		return fmt.Sprintf("timed out after %s; the test was cancelled (use --timeout to change the limit, 0 disables it)", timeout)
+	case <-time.After(testCancelGrace):
+	}
+	stacks := make([]byte, 1<<20)
+	stacks = stacks[:goruntime.Stack(stacks, true)]
+	fmt.Fprintf(os.Stderr, "goroutines after timeout in %s:\n%s\n", test.Name, stacks)
+	return fmt.Sprintf("timed out after %s and did not stop when cancelled; goroutine dump is on stderr", timeout)
 }
 
 type sourceReturn struct{ value Value }
@@ -717,10 +937,46 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 	})
 }
 
+type implementationKey struct {
+	typ, contract, name, module, args string
+}
+
+// resolvedImplementation is the receiver-independent outcome of a lookup.
+type resolvedImplementation struct {
+	impl       *Implementation
+	sub        map[string]string
+	typeScopes map[string]TypeScope
+}
+
+// implementationCache memoizes lookups; Register discards it.
+var implementationCache sync.Map
+
 func implementationFunction(receiver Value, contract, name string, scope TypeScope) (Function, bool) {
-	typ := ConcreteType(receiver)
-	for _, m := range implementations {
-		if m.Name != name || m.Scope != "" && m.Scope != scope.Module {
+	key := implementationKey{typ: ConcreteType(receiver), contract: contract, name: name, module: scope.Module}
+	if len(scope.Args) > 0 {
+		var b strings.Builder
+		writeScopeKey(&b, scope)
+		key.args = b.String()
+	}
+	if cached, ok := implementationCache.Load(key); ok {
+		resolved := cached.(*resolvedImplementation)
+		if resolved == nil {
+			return Function{}, false
+		}
+		return resolved.impl.Build(receiver, resolved.sub, resolved.typeScopes), true
+	}
+	resolved := resolveImplementation(key.typ, contract, name, scope)
+	implementationCache.Store(key, resolved)
+	if resolved == nil {
+		return Function{}, false
+	}
+	return resolved.impl.Build(receiver, resolved.sub, resolved.typeScopes), true
+}
+
+func resolveImplementation(typ, contract, name string, scope TypeScope) *resolvedImplementation {
+	for _, at := range implementationsByName[name] {
+		m := &implementations[at]
+		if m.Scope != "" && m.Scope != scope.Module {
 			continue
 		}
 		vars := map[string]bool{}
@@ -731,10 +987,10 @@ func implementationFunction(receiver Value, contract, name string, scope TypeSco
 		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == contract) {
 			typeScopes := map[string]TypeScope{}
 			implementationScopes(m.Receiver, scope, vars, typeScopes)
-			return m.Build(receiver, sub, typeScopes), true
+			return &resolvedImplementation{m, sub, typeScopes}
 		}
 	}
-	return Function{}, false
+	return nil
 }
 
 func indexOfIn(ctx *Execution, items []Value, value Value) int {

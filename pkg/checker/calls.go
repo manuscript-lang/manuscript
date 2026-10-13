@@ -6,12 +6,17 @@ import (
 	"strings"
 )
 
+type checkedArgument struct {
+	info        *Info
+	diagnostics []syntax.Diagnostic
+}
+
 func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
-	// Successful independent checks belong to this call only. Nested calls
-	// own their own evidence; callbacks and failed probes still need context.
-	previous := c.independentArguments
-	c.independentArguments = map[*syntax.Expression]*Info{}
-	defer func() { c.independentArguments = previous }()
+	// Argument checks belong to this call only. Nested calls own
+	// their own evidence; callback reuse also requires the same final context.
+	previous := c.checkedArguments
+	c.checkedArguments = map[*syntax.Expression]checkedArgument{}
+	defer func() { c.checkedArguments = previous }()
 	i := &Info{}
 	callee := e.Left
 	if typ := c.typeExpression(callee); typ != nil {
@@ -118,7 +123,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			context := &callInferenceContext{result: signature.Result, expected: expected, pos: e.Pos}
 			if !explicit {
 				sub := map[string]*Type{}
-				c.inferArguments(functionArguments(e.Args, signature.Params), signature.Params, s.Variables, sub, context)
+				c.inferArguments(positionalArguments(functionArguments(e.Args, signature.Params), signature.Params), signature.Params, s.Variables, sub, context)
 				for _, v := range s.Variables {
 					supplied = append(supplied, sub[v.ID])
 				}
@@ -187,6 +192,83 @@ func functionArguments(args []syntax.Argument, params []Param) []syntax.Argument
 	return resolved
 }
 
+// positionalArguments labels unlabeled arguments by position when the count
+// matches, so inference can proceed while the missing labels are reported once.
+func positionalArguments(args []syntax.Argument, params []Param) []syntax.Argument {
+	if len(args) != len(params) {
+		return args
+	}
+	resolved := append([]syntax.Argument(nil), args...)
+	for index := range resolved {
+		if resolved[index].Name == "" {
+			resolved[index].Name = params[index].Name
+		}
+	}
+	return resolved
+}
+
+// argumentSource returns the source text of the argument starting at pos.
+func (c *checker) argumentSource(pos syntax.Position) string {
+	source := c.module.Source
+	start := pos.Offset
+	if start < 0 || start >= len(source) {
+		return ""
+	}
+	depth, quote := 0, false
+	for i := start; i < len(source); i++ {
+		ch := source[i]
+		switch {
+		case quote:
+			if ch == '\\' {
+				i++
+			} else if ch == '"' {
+				quote = false
+			}
+		case ch == '"':
+			quote = true
+		case ch == '(' || ch == '[' || ch == '{':
+			depth++
+		case ch == ')' || ch == ']' || ch == '}':
+			if depth == 0 {
+				return strings.TrimSpace(source[start:i])
+			}
+			depth--
+		case ch == ',' && depth == 0, ch == '\n':
+			return strings.TrimSpace(source[start:i])
+		}
+	}
+	return strings.TrimSpace(source[start:])
+}
+
+// missingLabels explains every unlabeled argument of one call at once.
+func (c *checker) missingLabels(callName string, args []syntax.Argument, params []Param) string {
+	message := "argument labels are required for this call"
+	var parts []string
+	for index, arg := range args {
+		if index >= len(params) {
+			return message
+		}
+		text := c.argumentSource(arg.Pos)
+		switch {
+		case arg.Name == "":
+			if text == "" {
+				text = "..."
+			}
+			parts = append(parts, params[index].Name+": "+text)
+		case text != "" && !strings.HasPrefix(text, arg.Name+":") && text != arg.Name:
+			parts = append(parts, arg.Name+": "+text)
+		case text != "":
+			parts = append(parts, text)
+		default:
+			parts = append(parts, arg.Name+": ...")
+		}
+	}
+	if callName == "" {
+		return message + "; write " + strings.Join(parts, ", ")
+	}
+	return message + "; write " + callName + "(" + strings.Join(parts, ", ") + ")"
+}
+
 // argumentsFor checks a call to the named callable. A missing argument is
 // reported at the call, not at the module start, and names the callee.
 func (c *checker) argumentsFor(name string, pos syntax.Position, args []syntax.Argument, params []Param, defaults ...map[string]bool) bool {
@@ -244,14 +326,16 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 	c.callName, c.callPos = "", syntax.Position{}
 	seen := map[string]bool{}
 	noReturn := false
+	reportedLabels := false
 	for index, arg := range args {
 		if arg.Name == "" {
-			message := "argument labels are required for this call"
 			if index < len(params) {
-				message += "; write " + params[index].Name + ": ..."
 				seen[params[index].Name] = true
 			}
-			c.error(arg.Pos, "type", message)
+			if !reportedLabels {
+				reportedLabels = true
+				c.error(arg.Pos, "type", c.missingLabels(callName, args, params))
+			}
 			v := c.expression(arg.Value, nil)
 			noReturn = noReturn || v.NoReturn
 			continue
@@ -301,11 +385,14 @@ func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, n
 			a = args[index]
 		}
 		if a == nil {
-			c.error(pos, "type", missingTypeArgumentHint(name, v.Name, vars, args))
+			if !c.labelMismatch {
+				c.error(pos, "type", missingTypeArgumentHint(name, v.Name, vars, args))
+			}
 			a = primitive("<invalid>")
 		}
 		sub[v.ID] = a
 	}
+	c.labelMismatch = false
 	for _, v := range vars {
 		for _, bound := range v.Bounds {
 			if !invalidType(sub[v.ID]) && !c.satisfies(sub[v.ID], Sub(bound, sub)) {
@@ -357,7 +444,14 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 // context (including empty lists and incomplete data constructors), then wrap
 // only the supplied argument. Ordinary expression compatibility stays exact.
 func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info {
-	info := c.independentArguments[e]
+	checked := c.checkedArguments[e]
+	info := checked.info
+	if e.Kind == syntax.KindLambda && info != nil && !Same(info.Type, callbackContext(expected)) {
+		info = nil // Later inference changed the callback's required signature.
+	}
+	if info != nil {
+		c.Diagnostics = append(c.Diagnostics, checked.diagnostics...)
+	}
 	if !std(expected, "Optional") || len(expected.Args) != 1 {
 		if info != nil {
 			return c.checkExpression(e, info, expected)
@@ -427,8 +521,8 @@ func (c *checker) independentArgument(e *syntax.Expression) *Info {
 		c.Diagnostics = c.Diagnostics[:checkpoint]
 		return nil
 	}
-	if c.independentArguments != nil {
-		c.independentArguments[e] = info
+	if c.checkedArguments != nil {
+		c.checkedArguments[e] = checkedArgument{info: info}
 	}
 	return info
 }

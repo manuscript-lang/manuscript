@@ -130,7 +130,7 @@ func init() {
 		}
 		return libraryOK(result, string(r[s:e]))
 	})
-	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return int64(utf8.RuneCountInString(a[0].(string))) })
+	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return scalarCount(a[0].(string)) })
 	add("encoding", "hex_encode", "String", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return hex.EncodeToString(a[0].(Bytes).Items) })
 	add("encoding", "hex_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("max_bytes", "Optional[Int]")}, func(_ *Execution, result string, a []Value) Value {
 		n := a[1].(int64)
@@ -187,7 +187,8 @@ func init() {
 		b := a[0].(Bytes).Items
 		s, e := a[1].(int64), a[2].(int64)
 		librarySlice(len(b), s, e)
-		return Bytes{append([]byte{}, b[s:e]...)}
+		// Bytes are immutable, so the slice shares storage; the capacity limit keeps appends from touching the parent.
+		return Bytes{b[s:e:e]}
 	})
 	add("bytes", "values", "List[Int]", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value {
 		b := a[0].(Bytes).Items
@@ -343,7 +344,7 @@ func init() {
 		v := a[0].(*List)
 		s, e := a[1].(int64), a[2].(int64)
 		librarySlice(len(v.Items), s, e)
-		return &List{v.Type, append([]Value{}, v.Items[s:e]...)}
+		return &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)}
 	})
 }
 

@@ -1,9 +1,14 @@
 package compiler
 
 import (
+	"bytes"
+	"go/format"
+	"go/token"
+	"strconv"
+	"testing"
+
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	rt "github.com/manuscript-lang/manuscript/pkg/runtime"
-	"testing"
 )
 
 func TestGeneratedTypeKeys(t *testing.T) {
@@ -32,11 +37,15 @@ func TestGeneratedTypeKeys(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			key := checker.TypeKey(test.typ)
-			want := quote(key)
+			want := strconv.Quote(key)
 			if test.dynamic {
 				want = "rt.ResolveType(" + want + ", typeArgs)"
 			}
-			if got := (&generator{}).key(test.typ); got != want {
+			var output bytes.Buffer
+			if err := format.Node(&output, token.NewFileSet(), (&generator{}).key(test.typ)); err != nil {
+				t.Fatal(err)
+			}
+			if got := output.String(); got != want {
 				t.Fatalf("key = %s, want %s", got, want)
 			}
 			if !test.dynamic && rt.ResolveType(key, map[string]string{"T": "String"}) != key {

@@ -85,6 +85,8 @@ type Info struct {
 	Arguments []syntax.Argument
 	// OptionalArgument wraps this supplied argument once without changing its source type.
 	OptionalArgument *Type
+	// inferenceDeferred records body checks that need a later callback result context.
+	inferenceDeferred bool
 }
 type Flow struct{ FallsThrough bool }
 type Program struct {

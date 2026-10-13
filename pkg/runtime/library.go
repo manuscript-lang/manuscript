@@ -88,8 +88,10 @@ func libraryErrorFields(result, code string, fields []Value) Value {
 	errorType := result[start+2 : len(result)-1]
 	return Alternative{result, "error", []Value{Alternative{errorType, code, fields}}}
 }
-func libraryResult(typ, errorType string) string   { return "Result[" + typ + "][" + errorType + "]" }
-func libraryList(typ string, values []Value) *List { return &List{"@std/List[" + typ + "]", values} }
+func libraryResult(typ, errorType string) string { return "Result[" + typ + "][" + errorType + "]" }
+func libraryList(typ string, values []Value) *List {
+	return &List{Type: "@std/List[" + typ + "]", Items: values}
+}
 func libraryStrings(values []string) *List {
 	items := make([]Value, len(values))
 	for i, s := range values {

@@ -65,11 +65,13 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 	if nativeMethod(receiver, "clone") != nil {
 		candidates["clone"] = true
 	}
+	seen := map[*Type]bool{}
 	var collect func(*Type)
 	collect = func(t *Type) {
-		if t == nil {
+		if t == nil || seen[t] {
 			return
 		}
+		seen[t] = true
 		if t.Def != nil {
 			for _, op := range t.Def.Operations {
 				candidates[op.Name] = true

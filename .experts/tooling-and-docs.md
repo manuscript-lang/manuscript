@@ -1,5 +1,28 @@
 # Tooling and documentation lessons
 
+### Generated Go serves performance; lowering code serves maintainability
+
+Decision: the user wants highly optimized generated Go and explicitly permits
+mechanical, non-idiomatic output. Erase high-level abstractions using checked
+facts where semantics allow; readability of emitted Go is not a constraint.
+Maintainable compiler code, precise source/debugger mapping, and supported
+platform behavior remain requirements. Unsafe or runtime-internal techniques
+need documented invariants and tests.
+
+Verified: concrete scalar locals can eliminate repeated boxing in arithmetic
+loops, but unboxing a source-call result and reboxing it for the next call can
+increase allocations. Classify uses and ABI boundaries before choosing a local
+representation; Go's optimizer does not reliably remove those allocations.
+
+Apply when: optimizing Go lowering, representations, calls, or collection access.
+Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
+[lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),
+and [generated/handwritten comparison](../scripts/bench-lowering/harness.go.txt).
+Verify: run `go run ./scripts/bench-lowering` with the pinned SDK, inspect the
+retained generated Go and escape analysis, and compare allocation counts as well
+as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
+when promoting a benchmark candidate into production lowering.
+
 ### Readable formatting needs paragraphs while retaining inline guards
 
 Decision: the user's formatter request keeps inline `if` bodies and introduces
@@ -113,7 +136,7 @@ Verified: a `manuscript-example` annotation alone does not put a chapter into th
 
 ### User tooling must work in the shipped binary
 
-Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
+Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. The later requirement makes the bundled toolchain mandatory: no external override, PATH fallback, or ambient Go configuration may select another tool. OS-specific prerequisites such as Apple debugserver remain permitted. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
 
 Apply when: adding CLI tooling or making claims about installation requirements.
 Evidence: [ms doc request](codex://threads/01a12d4a-0182-7672-aa00-53f2bdfde033); [native build contract](../documentation/developer-tooling/builds/reproducibility.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
@@ -130,6 +153,8 @@ Evidence: [embedded services](../internal/debugger/debugger.go),
 [shutdown race regressions](../internal/debugger/debugger_test.go),
 [copied-binary debugger checks](../scripts/distcheck/debugger.go), and
 [platform contract](../documentation/developer-tooling/debugging/debugger-integration.md).
+Verified: the DAP Go-source launch modes, terminal Go-module path guessing, and an obsolete DWARF compatibility probe could still invoke external Go despite embedding Delve. The transport/client now exclude those routes; [vendor refresh](../scripts/maintenance/delve.go) reapplies the small compatibility-probe patch. Profile viewers are prebuilt into the SDK payload, not compiled on first use.
+
 Verify: run the shutdown tests with `-race`, the native editor test, and the
 six-target standalone distribution checks after changing Delve or its transport.
 

@@ -164,7 +164,7 @@ func goBuild(dir, output string, kind BuildType, tags []string) error {
 	if err != nil {
 		hint := ""
 		if bytes.Contains(data, []byte("requires go >=")) {
-			hint = "\nhint: the selected Go is too old for this build; set MANUSCRIPT_GO to a newer go executable (ms does not switch toolchains automatically)"
+			hint = "\nhint: the bundled toolchain is too old for this build; update ms"
 		} else if bytes.Contains(data, []byte("cannot find package")) || bytes.Contains(data, []byte("no required module provides")) {
 			hint = "\nhint: the build could not find a dependency, which usually means a stale cache; remove the MANUSCRIPT_CACHE_DIR directory and retry"
 		} else {

@@ -233,6 +233,10 @@ func Lex(file, source string) (tokens []Token, err error) {
 				s.emit(string(b), string(b), p)
 				continue
 			}
+			if b >= utf8.RuneSelf {
+				r, _ := utf8.DecodeRuneInString(s.source[s.offset:])
+				s.fail(fmt.Sprintf("unexpected source character %q; non-ASCII characters are only allowed inside text and '#' comments, and identifiers are ASCII", r))
+			}
 			s.fail(fmt.Sprintf("unexpected source character %q%s", b, characterHint(b)))
 		}
 		if len(s.tokens) > lineStart {
