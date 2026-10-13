@@ -8,12 +8,16 @@ Import each required symbol with `import Name from "@std/time.ms"`.
 
 ## Clock {data-api-kind="Interface"}
 
+A monotonic clock whose readings are suitable for measuring elapsed time.
+
 ```manuscript
 interface Clock:
     fn now() -> Instant
 ```
 
 ## Duration {data-api-kind="Native type"}
+
+A span of elapsed time.
 
 ```manuscript
 type Duration:
@@ -34,6 +38,8 @@ type Duration:
 
 ## Instant {data-api-kind="Native type"}
 
+An instant on a monotonic clock; it is not a calendar timestamp.
+
 ```manuscript
 type Instant:
     fn shift(duration: Duration) -> Instant:
@@ -42,6 +48,8 @@ type Instant:
 ```
 
 ## TimeError {data-api-kind="Alternative"}
+
+Errors returned by timestamp parsing, arithmetic, or range conversion.
 
 ```manuscript
 type TimeError:
@@ -58,6 +66,8 @@ impl Error for TimeError:
 
 ## Timestamp {data-api-kind="Native type"}
 
+A wall-clock time with Unix seconds and nanoseconds.
+
 ```manuscript
 type Timestamp:
     fn to_string() -> String:
@@ -70,6 +80,8 @@ type Timestamp:
 
 ## WallClock {data-api-kind="Interface"}
 
+A clock that reports calendar time.
+
 ```manuscript
 interface WallClock:
     fn now() -> Timestamp
@@ -77,11 +89,15 @@ interface WallClock:
 
 ## clock {data-api-kind="Function"}
 
+Returns the monotonic clock used for elapsed-time measurements.
+
 ```manuscript
 fn clock() -> Clock:
 ```
 
 ## duration {data-api-kind="Function"}
+
+Constructs a duration from a number of nanoseconds.
 
 ```manuscript
 fn duration(nanoseconds: Int) -> Duration:
@@ -89,11 +105,15 @@ fn duration(nanoseconds: Int) -> Duration:
 
 ## parse_timestamp {data-api-kind="Function"}
 
+Parses an RFC 3339 timestamp with an explicit time zone.
+
 ```manuscript
 fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]:
 ```
 
 ## sleep {data-api-kind="Function"}
+
+Suspends the current task for at least the requested duration.
 
 ```manuscript
 fn sleep(duration: Duration) -> Unit:
@@ -101,11 +121,15 @@ fn sleep(duration: Duration) -> Unit:
 
 ## timestamp {data-api-kind="Function"}
 
+Constructs a timestamp from Unix seconds and a nanosecond adjustment.
+
 ```manuscript
 fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]:
 ```
 
 ## wall_clock {data-api-kind="Function"}
+
+Returns the wall clock used for calendar timestamps.
 
 ```manuscript
 fn wall_clock() -> WallClock:

@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/process.ms"`.
 
 ## CommandError {data-api-kind="Alternative"}
 
+Errors returned when a process cannot start, times out, or exceeds an output bound.
+
 ```manuscript
 type CommandError:
     case InvalidInput
@@ -24,6 +26,8 @@ impl Error for CommandError:
 
 ## CommandOutput {data-api-kind="Record"}
 
+Captured exit status and standard output/error from a completed command.
+
 ```manuscript
 type CommandOutput:
     exit_code: Int
@@ -33,12 +37,16 @@ type CommandOutput:
 
 ## Commands {data-api-kind="Interface"}
 
+Runs child programs with explicit input, output bounds, and an optional timeout.
+
 ```manuscript
 interface Commands:
     fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
 ```
 
 ## CpuUsage {data-api-kind="Record"}
+
+CPU time consumed by the current process.
 
 ```manuscript
 type CpuUsage:
@@ -47,6 +55,8 @@ type CpuUsage:
 ```
 
 ## MemoryUsage {data-api-kind="Record"}
+
+Memory statistics for the current process.
 
 ```manuscript
 type MemoryUsage:
@@ -58,6 +68,8 @@ type MemoryUsage:
 ```
 
 ## ProcessControl {data-api-kind="Interface"}
+
+Process and operating-system controls for the current process.
 
 ```manuscript
 interface ProcessControl:
@@ -88,6 +100,8 @@ interface ProcessControl:
 
 ## ProcessError {data-api-kind="Alternative"}
 
+Errors returned by process-control operations.
+
 ```manuscript
 type ProcessError:
     case InvalidInput
@@ -108,6 +122,8 @@ impl Error for ProcessError:
 
 ## ProcessInfo {data-api-kind="Record"}
 
+Identity and invocation details for the current process.
+
 ```manuscript
 type ProcessInfo:
     pid: Int
@@ -124,6 +140,8 @@ type ProcessInfo:
 
 ## ResourceUsage {data-api-kind="Record"}
 
+Kernel resource counters for the current process.
+
 ```manuscript
 type ResourceUsage:
     user_microseconds: Int
@@ -139,6 +157,8 @@ type ResourceUsage:
 
 ## SignalStream {data-api-kind="Interface"}
 
+A stream of operating-system signals selected by `watch_signals`.
+
 ```manuscript
 interface SignalStream:
     fn close() -> Unit
@@ -147,11 +167,15 @@ interface SignalStream:
 
 ## commands {data-api-kind="Function"}
 
+Returns child-process operations for the current host.
+
 ```manuscript
 fn commands() -> Commands:
 ```
 
 ## control {data-api-kind="Function"}
+
+Returns controls and process information for the current process.
 
 ```manuscript
 fn control() -> ProcessControl:
