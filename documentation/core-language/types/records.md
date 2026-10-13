@@ -113,6 +113,35 @@ type DeferredNode:
     build: fn() -> DeferredNode  # Allowed: function value is indirect.
 ```
 
+For recursive alternatives, put recursive children in a collection. This expression tree uses a sum of any number of terms, so its `List[Expr]` payload expresses the intended arity:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import List from "@std/collections.ms"
+import panic from "@std/faults.ms"
+
+type Expr:
+    case Num(value: Int)
+    case Sum(terms: List[Expr])
+
+fn evaluate(expr: Expr) -> Int:
+    match expr:
+        Num(value):
+            return value
+        Sum(terms):
+            var total = 0
+            for term in terms:
+                total = total + evaluate(term)
+            return total
+
+test "recursive expression":
+    let expr = Expr.Sum([Expr.Num(1), Expr.Sum([Expr.Num(2), Expr.Num(3)])])
+    if evaluate(expr) != 6:
+        panic("unexpected expression value")
+```
+
+A fixed binary payload such as `Add(left: Expr, right: Expr)` is rejected by the same inline-layout rule. Using `operands: List[Expr]` is supported, but does not enforce a length of two; validate that invariant when constructing or consuming the value. Wrapping the recursive field in `Optional` does not break the cycle.
+
 Container element/key bounds still apply. A `Set[Node]` does not become valid just because it guards recursion: its element must be hashable. Generic recursive cycles must preserve the same type parameters; expanding recursion such as `Grow[T]` containing `List[Grow[List[T]]]` is rejected. See [generic well-formedness](generics.md) and [structural equality](equality-and-hashing.md).
 
 ## Resource fields
