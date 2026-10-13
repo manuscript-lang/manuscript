@@ -11,7 +11,7 @@ Use compress for a byte stream and archive for named file or directory entries. 
 
 ## Typed format selection
 
-Choose `CompressionFormat.Gzip`, `Zlib`, or `Deflate` and call its `compress`/`decompress` operations. Choose `ArchiveFormat.Zip` or `Tar` and call its `pack`/`unpack` operations. These alternatives check the format selection in source while sharing the existing implementations, limits, domain errors, and cancellation. Compression level remains explicit; no configuration or security default changes. Existing string-based functions retain their contracts.
+Choose `CompressionFormat.Gzip`, `Zlib`, or `Deflate` and call its `compress`/`decompress` operations. Choose `ArchiveFormat.Zip` or `Tar` and call its `pack`/`unpack` operations. These alternatives check the format selection in source while sharing the existing implementations, limits, domain errors, and cancellation. Both compression forms default to level 6, a balanced DEFLATE setting. Explicit levels 0..9 retain their behavior; level 0 stores data. Output-byte limits remain independent of the compression level. Existing explicit string-based calls retain their contracts.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -21,7 +21,7 @@ import panic from "@std/faults.ms"
 test "use a typed compression format":
     let format = CompressionFormat.Gzip
     let input = "hello".to_bytes()
-    let encoded = format.compress(input, 6).unwrap()
+    let encoded = format.compress(input).unwrap()
     let decoded = format.decompress(encoded, max_bytes: 5).unwrap()
     if decoded != input: return panic("compression roundtrip")
 ```

@@ -102,6 +102,14 @@ func init() {
 		return strings.Replace(a[0].(string), a[1].(string), a[2].(string), int(n))
 	})
 	libraryAlias("string", "replace_first", "replace")
+	// A required count has its own ABI shape, while the prepared legacy body
+	// retains explicit-cap normalization, bounds faults and scalar matching.
+	replace := libraryFunctions["string/replace"].Body
+	add("string", "replace_n", "String", []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_replacements", "Int")}, func(ctx *Execution, result string, args []Value) Value {
+		// The legacy option validator rejects a negative explicit Some. Raw
+		// required Ints otherwise reach the primitive's different fault path.
+		return replace(ctx, result, []Value{args[0], args[1], args[2], optional("Int", args[3], true)})
+	})
 	add("string", "scalar_values", "List[Int]", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, a []Value) Value {
 		var items []Value
 		for i, r := range a[0].(string) {
@@ -373,6 +381,31 @@ func init() {
 		librarySlice("List.slice", len(v.Items), s, e)
 		return &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)}
 	})
+	for _, name := range []string{"take", "drop"} {
+		libraryGeneric("collections", name, "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("count", "Int")}, func(ctx *Execution, _ string, args []Value) Value {
+			values := args[0].(*List)
+			count := nativeInteger(args[1])
+			if count < 0 {
+				return Panic("List." + name + ": count must be nonnegative, found " + strconv.FormatInt(count, 10))
+			}
+			source := values.Items
+			if count > int64(len(source)) {
+				count = int64(len(source))
+			}
+			start, end := 0, int(count)
+			if name == "drop" {
+				start, end = int(count), len(source)
+			}
+			items := make([]Value, end-start)
+			for i := range items {
+				if i%1024 == 0 {
+					CheckCancelled(ctx)
+				}
+				items[i] = source[start+i]
+			}
+			return &List{Type: values.Type, Items: items}
+		})
+	}
 }
 
 var libraryFloatSyntax = regexp.MustCompile(`^[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$`)

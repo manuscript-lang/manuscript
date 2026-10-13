@@ -748,6 +748,8 @@ type List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> List[T]:
+    fn take(count: Int) -> List[T]:
+    fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
     fn reversed() -> List[T]:
     fn reverse() -> List[T]:
@@ -791,6 +793,15 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.drop
+
+Copies the remainder after min(count, length) into fresh shallow List storage.
+Leaves the receiver unchanged; negative count is a programming fault.
+
+```manuscript
+fn drop(count: Int) -> List[T]:
 ```
 
 ### List.every
@@ -923,6 +934,15 @@ Returns a new list sorted by negative/zero/positive comparator results.
 
 ```manuscript
 fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+```
+
+### List.take
+
+Copies the first min(count, length) elements into fresh shallow List storage.
+Leaves the receiver unchanged; negative count is a programming fault.
+
+```manuscript
+fn take(count: Int) -> List[T]:
 ```
 
 ### List.with_value
@@ -1505,7 +1525,7 @@ type CompressionFormat:
     case Gzip
     case Zlib
     case Deflate
-    fn compress(data: Bytes, level: Int, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
+    fn compress(data: Bytes, level: Int = 6, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
     fn decompress(data: Bytes, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
@@ -1535,10 +1555,11 @@ case Zlib
 
 ### CompressionFormat.compress
 
-Compresses with level 0..9 and the same optional output budget/domain errors as compress.
+Compresses with level 6 by default; explicit levels remain 0..9 (0 stores data).
+Uses the same optional output budget/domain errors as compress.
 
 ```manuscript
-fn compress(data: Bytes, level: Int, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
+fn compress(data: Bytes, level: Int = 6, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ### CompressionFormat.decompress
@@ -1554,11 +1575,12 @@ fn decompress(data: Bytes, max_bytes: Optional[Int64] = none) -> Result[Bytes, C
 **Function**
 
 Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
-Other formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.
+Other formats return Unsupported; level defaults to 6 (balanced DEFLATE compression).
+Explicit levels must be 0..9 (0 stores data), else InvalidInput.
 `max_bytes` bounds the encoded output when supplied.
 
 ```manuscript
-fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
+fn compress(data: Bytes, format: String, level: Int = 6, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ## decompress
@@ -8221,6 +8243,8 @@ type List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> List[T]:
+    fn take(count: Int) -> List[T]:
+    fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
     fn reversed() -> List[T]:
     fn reverse() -> List[T]:
@@ -8264,6 +8288,15 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.drop
+
+Copies the remainder after min(count, length) into fresh shallow List storage.
+Leaves the receiver unchanged; negative count is a programming fault.
+
+```manuscript
+fn drop(count: Int) -> List[T]:
 ```
 
 ### List.every
@@ -8396,6 +8429,15 @@ Returns a new list sorted by negative/zero/positive comparator results.
 
 ```manuscript
 fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+```
+
+### List.take
+
+Copies the first min(count, length) elements into fresh shallow List storage.
+Leaves the receiver unchanged; negative count is a programming fault.
+
+```manuscript
+fn take(count: Int) -> List[T]:
 ```
 
 ### List.with_value
@@ -8880,6 +8922,7 @@ type String:
     fn lower() -> String:
     fn repeat(count: Int, max_bytes: Optional[Int64] = none) -> Result[String, StringError]:
     fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
+    fn replace_n(old: String, new: String, max_replacements: Int) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
     fn scalar_values() -> List[Int]:
@@ -9071,12 +9114,23 @@ fn replace_all(old: String, new: String, max_bytes: Optional[Int64] = none) -> R
 
 ### String.replace_first
 
-Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.
+Transitional compatibility name: omitted or none replaces the first occurrence; an explicit cap can replace more.
+Use replace_n for a required finite cap; this retained signature has not become a strict first-only operation.
 An empty old matches at scalar boundaries, and inserted text is not searched again.
 Zero changes nothing; negative caps retain replace's programming fault.
 
 ```manuscript
 fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String
+```
+
+### String.replace_n
+
+Replaces at most the required number of nonoverlapping literal occurrences; zero leaves text unchanged.
+Empty old matches at scalar boundaries, inserted text is not rescanned, and negative caps retain replace's programming fault.
+The count limits replacements, not UTF-8 output bytes; there is no additional allocation budget.
+
+```manuscript
+fn replace_n(old: String, new: String, max_replacements: Int) -> String
 ```
 
 ### String.reverse
