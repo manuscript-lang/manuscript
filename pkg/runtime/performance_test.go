@@ -3,6 +3,7 @@ package msruntime
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -434,4 +435,68 @@ func TestSourceDirectMatchesBoundFunctionContract(t *testing.T) {
 			direct(ctx, nil, nil)
 		}()
 	}
+}
+
+// Direct and bound calls of one registered body must agree on every outcome,
+// with and without source profiling.
+func TestCallMethodMatchesBoundCallOutcomes(t *testing.T) {
+	result := "@std/Result[Int][String]"
+	cases := map[string]func(cancel func()) func(*Execution, Value, []Value) Value{
+		"value": func(func()) func(*Execution, Value, []Value) Value {
+			return func(*Execution, Value, []Value) Value { return int64(1) }
+		},
+		"propagation": func(func()) func(*Execution, Value, []Value) Value {
+			return func(*Execution, Value, []Value) Value { panic(propagation{Cause: "bad"}) }
+		},
+		"cancelled": func(cancel func()) func(*Execution, Value, []Value) Value {
+			return func(*Execution, Value, []Value) Value { cancel(); return int64(1) }
+		},
+		"cancelled return": func(cancel func()) func(*Execution, Value, []Value) Value {
+			return func(*Execution, Value, []Value) Value { cancel(); panic(sourceReturn{value: int64(1)}) }
+		},
+	}
+	outcome := func(run func(*Execution) Value, ctx *Execution) (value Value, failure any) {
+		defer func() { failure = recover() }()
+		return run(ctx), nil
+	}
+	for _, profiling := range []bool{false, true} {
+		sourceProfiling.Store(profiling)
+		for name, make := range cases {
+			var directOut, boundOut string
+			for _, bound := range []bool{false, true} {
+				cancelCtx, cancel := context.WithCancel(context.Background())
+				ctx := &Execution{Context: cancelCtx}
+				direct := SourceDirect("p.ms:1:1", result, make(cancel))
+				var run func(*Execution) Value
+				if bound {
+					run = func(ctx *Execution) Value { return BoundDirect(nil, nil, result, direct).Body(ctx, nil) }
+				} else {
+					name := fmt.Sprintf("outcome/%v/%s", profiling, name)
+					registerDirectProbeBody(name, direct)
+					var site MethodSite
+					run = func(ctx *Execution) Value {
+						return CallMethod(ctx, &site, Record{Type: name}, "probe/Speak", "speak", TypeScope{Module: "probe.ms"}, nil)
+					}
+				}
+				v, f := outcome(run, ctx)
+				got := fmt.Sprintf("%#v / %#v", v, f)
+				if bound {
+					boundOut = got
+				} else {
+					directOut = got
+				}
+			}
+			if directOut != boundOut {
+				t.Errorf("profiling=%v %s: direct %s, bound %s", profiling, name, directOut, boundOut)
+			}
+		}
+	}
+	sourceProfiling.Store(false)
+}
+
+func registerDirectProbeBody(typ string, direct func(*Execution, Value, []Value) Value) {
+	Register(Implementation{Receiver: typ, Contract: "probe/Speak", Name: "speak", Scope: "probe.ms", Direct: direct,
+		Build: func(receiver Value, _ map[string]string, _ map[string]TypeScope) Function {
+			return BoundDirect(receiver, nil, "Int", direct)
+		}})
 }

@@ -118,6 +118,10 @@ fn run_direct(chain: Chain, n: Int) -> Int:
 fn run_view(chain: Chain, n: Int) -> Int:
     return code(r: Step(value: chain).step(n: n))
 
+fn run_bound(chain: Chain, n: Int) -> Int:
+    let callback = chain.step
+    return code(r: callback(n: n))
+
 test "nested try in a direct method becomes an error result":
     let chain = Chain(parser: Parser(base: 10))
     if not (run_direct(chain: chain, n: 5) == 16):
@@ -126,3 +130,7 @@ test "nested try in a direct method becomes an error result":
         return panic(message: "direct error result")
     if not (run_view(chain: chain, n: -5) == -1):
         return panic(message: "view error result")
+    if not (run_bound(chain: chain, n: -5) == -1):
+        return panic(message: "bound error result")
+    if not (run_bound(chain: chain, n: 5) == 16):
+        return panic(message: "bound ok")
