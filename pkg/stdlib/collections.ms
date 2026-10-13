@@ -69,12 +69,23 @@ export type Map[T: Hashable, U]:
     # Copies matching entries in insertion order, retaining payload references.
     # Callbacks traverse a snapshot even when they mutate the receiver.
     fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+    # Transforms values in snapshot insertion order, retaining original keys.
+    # Returns independent outer storage with shallow key and result references.
+    fn map[W](transform: fn(key: T, value: U) -> W) -> Map[T, W]:
+    # Transforms keys in snapshot insertion order, retaining value references.
+    # Equal outputs keep the first key/position and the last input value.
+    fn map_keys[W: Hashable](transform: fn(key: T, value: U) -> W) -> Map[W, U]:
     # Returns the stored value or an eagerly evaluated fallback without inserting.
     fn get_or(key: T, fallback: U) -> U:
     # Reduces an entry snapshot in insertion order, starting with initial.
     fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    # Reduces an entry snapshot in reverse insertion order, starting with initial.
+    fn fold_right[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
     # Returns the first matching entry as a fresh record with shallow references.
     fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    # Searches a snapshot from the end, stopping at the last matching entry.
+    # Returns a fresh entry record retaining its original key/value references.
+    fn find_last(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
     # Stops at the first matching entry; empty maps return false.
     fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     # Stops at the first nonmatching entry; empty maps return true.
@@ -113,8 +124,12 @@ export type Set[T: Hashable]:
     fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
     # Reduces an element snapshot in insertion order, starting with initial.
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    # Reduces an element snapshot in reverse insertion order, starting with initial.
+    fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     # Returns the original first matching element, or none.
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    # Searches a snapshot from the end, returning the original last matching element.
+    fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
     # Stops at the first matching element; empty sets return false.
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     # Stops at the first nonmatching element; empty sets return true.
