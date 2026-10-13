@@ -49,6 +49,7 @@ type checker struct {
 	result                  *Type
 	returnInference         *callbackReturns
 	inferenceVariables      map[string]bool
+	independentArguments    map[*syntax.Expression]*Info
 	function, serial, loops int
 	unknownType             bool
 	callName                string
@@ -226,6 +227,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 		}
 		c.declarationChecks(module)
 	}
+	c.finiteTypeApplications()
 	c.finiteApplications()
 	if len(c.Diagnostics) == 0 {
 		c.effectSummaries()

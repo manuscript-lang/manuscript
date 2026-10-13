@@ -18,7 +18,7 @@ The frontend enforces semantics that Go representations do not provide:
 | Immutable bytes | Encapsulated storage; copies or exclusive adapter transfer |
 | Ordered maps and sets | Ordered wrappers |
 | Tagged alternatives | Generated typed tags and payloads; exhaustive frontend checking |
-| Guarded recursive data | Records/alternatives with collection indirection; reject invalid layouts before Go emission |
+| Recursive data | Record maps and alternative payload slices retain references; direct and mutual recursion require no extra wrapper; reject expanding generic families before Go emission |
 | Value equality and hashing | Generated operations for eligible types |
 | Explicit contract implementation | Frontend selection of a unique applicable concrete/generic implementation, then Go interfaces and wrappers |
 | Closures and resource references | GC-retained environments, snapshot captures, and synchronized native closed-state checks |

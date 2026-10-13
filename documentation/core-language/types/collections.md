@@ -64,7 +64,7 @@ let unknown = []
 
 An expected `List[List[Int]]` propagates to the inner literals. Without context, a nonempty literal infers one element type from independently typed elements and checks every element against it. Context-dependent elements such as `none` cannot invent a payload type; another element or enclosing context must determine it. For example `[none, some(value: 1)]` is `List[Optional[Int]]`, while `[none]` without context is rejected.
 
-Collection storage can guard [recursive data](records.md#recursive-data). This does not waive element bounds or confer hashing on the container itself.
+Collections can hold [recursive data](records.md#recursive-data). Element bounds still apply, and the containers do not derive hashing.
 
 ## Iteration
 

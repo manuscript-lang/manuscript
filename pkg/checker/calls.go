@@ -7,6 +7,11 @@ import (
 )
 
 func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
+	// Successful independent checks belong to this call only. Nested calls
+	// own their own evidence; callbacks and failed probes still need context.
+	previous := c.independentArguments
+	c.independentArguments = map[*syntax.Expression]*Info{}
+	defer func() { c.independentArguments = previous }()
 	i := &Info{}
 	callee := e.Left
 	if typ := c.typeExpression(callee); typ != nil {
@@ -352,11 +357,17 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 // context (including empty lists and incomplete data constructors), then wrap
 // only the supplied argument. Ordinary expression compatibility stays exact.
 func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info {
+	info := c.independentArguments[e]
 	if !std(expected, "Optional") || len(expected.Args) != 1 {
+		if info != nil {
+			return c.checkExpression(e, info, expected)
+		}
 		return c.expression(e, expected)
 	}
 	checkpoint := len(c.Diagnostics)
-	info := c.infer(e, expected)
+	if info == nil {
+		info = c.infer(e, expected)
+	}
 	payload := expected.Args[0]
 	if compatible(info.Type, expected) {
 		return c.checkExpression(e, info, expected)
@@ -415,6 +426,9 @@ func (c *checker) independentArgument(e *syntax.Expression) *Info {
 	if len(c.Diagnostics) != checkpoint {
 		c.Diagnostics = c.Diagnostics[:checkpoint]
 		return nil
+	}
+	if c.independentArguments != nil {
+		c.independentArguments[e] = info
 	}
 	return info
 }

@@ -544,16 +544,16 @@ test "recursive collection":
         return panic(message: "check failed")
 ```
 
-Accept: removing the `List` storage edge leaves no inline record/alternative cycle, and recursive applications preserve `T` unchanged.
+Accept: recursive applications preserve `T` unchanged. Direct recursive fields and alternative payloads are also supported.
 
 | Independent variant | Expected outcome |
 | --- | --- |
-| Replace the `children` field type with `Tree[T]` | Type rejection at declaration: unguarded inline cycle |
-| Replace it with `Optional[Tree[T]]` | Type rejection at declaration: `Optional` does not provide storage indirection |
-| Replace it with `Result[Tree[T], String]` | Type rejection at declaration: `Result` does not provide storage indirection |
+| Replace the `children` field type with `Tree[T]` | Declaration accepted; the shown `[]` constructor argument must be replaced by an initialized `Tree[T]` |
+| Replace it with `Optional[Tree[T]]` | Declaration accepted; use `none` for a leaf and `some(child)` for a successor |
+| Replace it with `Result[Tree[T], String]` | Declaration accepted; use an appropriate `ok(child)` or `error(message)` payload |
 | Replace it with `List[Tree[List[T]]]` | Type rejection at declaration: recursive application expands the type parameter |
 
-The declaration check must reject the offending type before constructor errors in the test obscure the cycle. Mutual-recursion fixtures within one module must apply the same graph rule across every participating record/alternative. An import cycle is a separate module rejection, not a substitute for the inline-layout check.
+Check declaration-only variants separately from construction so argument errors do not obscure recursive type acceptance. Mutual recursive records and alternatives follow the same finite-application rule. Expanding cycles must fail even through function or interface signatures; import cycles remain a separate module rejection. Native fixtures exercise direct trees, cyclic equality, shallow clones, and explicit recursive key identity.
 
 ## CL-12: Collection iteration has concrete element types
 

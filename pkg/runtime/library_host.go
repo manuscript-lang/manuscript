@@ -160,6 +160,9 @@ func (libraryEntropy) Operation(name string) Function {
 type libraryFileSystem struct{ directory string }
 
 func (f *libraryFileSystem) path(s string) (string, bool) {
+	if s == "" {
+		return "", false
+	}
 	return libraryHostPath(f.directory, s)
 }
 func libraryOSResult(r string, value Value, err error) Value {
@@ -168,6 +171,8 @@ func libraryOSResult(r string, value Value, err error) Value {
 	}
 	code := "Failed"
 	switch {
+	case errors.Is(err, errLibraryInput):
+		code = "InvalidInput"
 	case errors.Is(err, errors.ErrUnsupported):
 		code = "Unsupported"
 	case errors.Is(err, os.ErrNotExist):
@@ -307,7 +312,10 @@ func (f *libraryFileSystem) Operation(name string) Function {
 			}
 			return libraryOSResult(r, Unit{}, err)
 		case "remove":
-			var err error
+			p, err := f.removalPath(a[0].(string))
+			if err != nil {
+				return libraryOSResult(r, nil, err)
+			}
 			if a[1].(bool) {
 				err = libraryRemoveTree(ctx, p)
 			} else {
@@ -350,7 +358,7 @@ func (f *libraryFileSystem) Operation(name string) Function {
 			return libraryOSResult(r, s, err)
 		case "create_link":
 			target := a[1].(string)
-			if strings.ContainsRune(target, 0) {
+			if target == "" || strings.ContainsRune(target, 0) {
 				return libraryError(r, "InvalidInput", "")
 			}
 			return libraryOSResult(r, Unit{}, os.Symlink(target, p))
@@ -375,7 +383,14 @@ func libraryRemoveTree(ctx *Execution, p string) error {
 		return err
 	}
 	defer root.Close()
-	return libraryRemoveRoot(ctx, root, ".")
+	if err := libraryRemoveRoot(ctx, root, "."); err != nil {
+		return err
+	}
+	// Windows cannot remove the root directory while its handle is open.
+	if err := root.Close(); err != nil {
+		return err
+	}
+	return os.Remove(p)
 }
 func libraryRemoveRoot(ctx *Execution, root *os.Root, p string) error {
 	CheckCancelled(ctx)
@@ -406,8 +421,11 @@ func libraryRemoveRoot(ctx *Execution, root *os.Root, p string) error {
 		}
 		CheckCancelled(ctx)
 	}
+	if err := file.Close(); err != nil {
+		return err
+	}
 	if p == "." {
-		return os.Remove(root.Name())
+		return nil
 	}
 	return root.Remove(p)
 }
