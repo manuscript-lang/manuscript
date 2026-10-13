@@ -485,6 +485,9 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 		} else {
 			tryCall := e.Kind == syntax.KindUnary && e.Text == "try" && e.Right.Kind == syntax.KindCall
 			if !p.inlineReturn && e.Kind != syntax.KindCall && e.Kind != syntax.KindMatch && !tryCall && len(allowValue) == 0 {
+				if e.Kind == syntax.KindName && e.Text == "pass" {
+					p.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm")
+				}
 				p.fail(t, "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function")
 			}
 			s.Kind = syntax.KindCall
@@ -656,6 +659,9 @@ func (p *Parser) primary() *syntax.Expression {
 		}
 		e.Body = p.statementSuite(true)
 	default:
+		if t.Kind == "if" {
+			p.fail(t, "'if' is a statement, not an expression; declare 'var name = ...' and assign it in each branch, or use 'match'")
+		}
 		p.fail(t, "expected an expression, found "+describe(t)+"; write a value, name, call, or literal here")
 	}
 	links := 0
@@ -760,34 +766,47 @@ func (p *Parser) text(token lexer.Token) *syntax.Expression {
 			i++
 		}
 		source := raw[start : i-1]
-		tokens, err := lexer.Lex(token.Pos.File, "("+source+")")
-		shift := func(position syntax.Position) syntax.Position {
-			offset := position.Offset
-			if offset > len(source)+1 {
-				offset = len(source) + 1
+		value := func() *syntax.Expression {
+			// A failure inside the braces is often a literal brace the writer
+			// forgot to escape, so every such failure also states the escape.
+			defer func() {
+				if r := recover(); r != nil {
+					if diagnostic, ok := r.(syntax.Diagnostic); ok {
+						diagnostic.Message += fmt.Sprintf(" ('{' at column %d starts an interpolation; write \\{ and \\} for literal braces)", token.Pos.Column+start)
+						panic(diagnostic)
+					}
+					panic(r)
+				}
+			}()
+			tokens, err := lexer.Lex(token.Pos.File, "("+source+")")
+			shift := func(position syntax.Position) syntax.Position {
+				offset := position.Offset
+				if offset > len(source)+1 {
+					offset = len(source) + 1
+				}
+				position.Line = token.Pos.Line
+				position.Column = token.Pos.Column + start + offset
+				position.Offset = token.Pos.Offset + start + offset
+				return position
 			}
-			position.Line = token.Pos.Line
-			position.Column = token.Pos.Column + start + offset
-			position.Offset = token.Pos.Offset + start + offset
-			return position
-		}
-		if err != nil {
-			diagnostic := err.(syntax.Diagnostic)
-			diagnostic.Position = shift(diagnostic.Position)
-			panic(diagnostic)
-		}
-		// The wrapper disables statement layout while preserving spaces inside braces.
-		closing := len(tokens) - 3
-		tokens = append(tokens[1:closing], tokens[closing+1:]...)
-		for index := range tokens {
-			tokens[index].Pos = shift(tokens[index].Pos)
-			tokens[index].End = shift(tokens[index].End)
-		}
-		nested := &Parser{tokens: tokens, depth: p.depth}
-		value := nested.expression(0)
-		nested.newlines()
-		nested.need(lexer.EOF)
-
+			if err != nil {
+				diagnostic := err.(syntax.Diagnostic)
+				diagnostic.Position = shift(diagnostic.Position)
+				panic(diagnostic)
+			}
+			// The wrapper disables statement layout while preserving spaces inside braces.
+			closing := len(tokens) - 3
+			tokens = append(tokens[1:closing], tokens[closing+1:]...)
+			for index := range tokens {
+				tokens[index].Pos = shift(tokens[index].Pos)
+				tokens[index].End = shift(tokens[index].End)
+			}
+			nested := &Parser{tokens: tokens, depth: p.depth}
+			value := nested.expression(0)
+			nested.newlines()
+			nested.need(lexer.EOF)
+			return value
+		}()
 		e.Parts = append(e.Parts, syntax.TextPart{Value: value})
 	}
 	flush()
