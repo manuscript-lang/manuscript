@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
@@ -99,7 +100,7 @@ func TestTutorialExamples(t *testing.T) {
 					t.Fatal(result.Diagnostics)
 				}
 				binary := filepath.Join(t.TempDir(), "example")
-				if err := compiler.Build(result.Source, binary); err != nil {
+				if err := build.Build(result.Source, binary); err != nil {
 					t.Fatal(err)
 				}
 				for index, run := range append([]exampleRun{spec.exampleRun}, spec.Cases...) {

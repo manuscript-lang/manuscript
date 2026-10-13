@@ -39,7 +39,7 @@ Compound assignment (`+=`, `-=`, `*=`, `/=`, `%=`) points at the full operator a
 | Interface implementations | The missing or extra operation with its expected signature. |
 | `expected X, found Y` | Unchanged; the position is the expression. |
 
-## Modules, projects, and builds (`pkg/frontend`, `pkg/project`, `pkg/compiler`)
+## Modules, projects, and builds (`pkg/frontend`, `pkg/project`, `pkg/compiler`, `pkg/build`)
 
 Missing files and modules name the path searched. Manifest errors include the `ms.toml` line and the corrected form. Import alias errors list declared aliases. A wrong entry point says which of missing, private, generic, parameterized, or non-`Int` `main` applies and is reported at that declaration. Lock, cache, toolchain, and Go-build failures say how to regenerate the lock, which environment variable selects a toolchain, and when to report a compiler bug.
 

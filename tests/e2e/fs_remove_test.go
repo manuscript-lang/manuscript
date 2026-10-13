@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
@@ -40,7 +41,7 @@ export fn main() -> Int:
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
-	if err := compiler.Build(result.Source, executable); err != nil {
+	if err := build.Build(result.Source, executable); err != nil {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()

@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"unicode/utf8"
 
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
@@ -139,7 +140,7 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 			options.Trace = filepath.Join(output, "trace.out")
 		}
 	}
-	go compiler.CurrentPin()
+	go build.CurrentPin()
 	result := compiler.CompileFileForBuild(filename, options, kind)
 	document.SourceRoot = result.SourceRoot
 	if !result.Success() {
@@ -167,7 +168,7 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 		if cache == "" {
 			cache = filepath.Join(filepath.Dir(output), ".ms-cache")
 		}
-		if _, err := compiler.BuildCheckedWithType(result, output, cache, kind); err != nil {
+		if _, err := build.BuildCheckedWithType(result, output, cache, kind); err != nil {
 			return fail("build", err)
 		}
 		verified["executable"], verified["build_metadata"] = true, true
@@ -182,7 +183,7 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 	}
 	if cache == "" {
 		var err error
-		cache, err = compiler.DefaultBuildCacheDir()
+		cache, err = build.DefaultBuildCacheDir()
 		if err != nil {
 			return fail("build", err)
 		}
@@ -196,7 +197,7 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
-	if _, err := compiler.BuildCheckedWithType(result, executable, cache, kind); err != nil {
+	if _, err := build.BuildCheckedWithType(result, executable, cache, kind); err != nil {
 		return fail("build", err)
 	}
 	verified["executable"], verified["build_metadata"] = true, true
