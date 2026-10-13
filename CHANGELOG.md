@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- List loops and callbacks follow Go slice range behavior without traversal copies: capture backing and initial length once, observe in-place writes, and do not extend traversal on append. Shrinking shifts/reslices without clearing valid tail values; removed references can remain in spare capacity. Explicit clones/slices and Map/Set membership snapshots retain their contracts.
 - Add MSL108 advisories for equivalent preferred collection mutation, byte-copy reversal and regex replacement names, including stored methods; preserve user methods, callable fields and existing execution.
 - Add preferred `List.set`/`remove`/`reverse_in_place`, copying `List.reversed`/`Bytes.reversed`, `Set.add`/`remove`, `String.replace_first`, and `Regex.replace_all` spellings. Existing names remain compatible, including receiver returns, replacement caps, limits, and errors.
 - Report duration-unit property faults at the member token after evaluating the receiver, preserving source order and numeric widths.

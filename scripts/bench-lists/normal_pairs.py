@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Paired normal-GC source-runtime comparison of the narrow COW change."""
+"""Paired normal-GC source-runtime comparison of List traversal changes."""
 import argparse
 import hashlib
 import json
