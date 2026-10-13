@@ -77,6 +77,7 @@ func LintProgram(program *checker.Program) []LintFinding {
 	}
 	findings = append(findings, lintDiscardedResults(program)...)
 	findings = append(findings, lintSharedCaptures(program)...)
+	findings = append(findings, lintPatternBindings(program)...)
 	findings = append(findings, lintNestedMatches(program)...)
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i].Position, findings[j].Position

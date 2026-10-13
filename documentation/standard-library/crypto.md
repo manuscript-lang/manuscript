@@ -16,7 +16,7 @@ Cryptographic transforms are pure functions. Obtain random keys and nonces throu
 | Task | Operation and algorithm |
 | --- | --- |
 | Hash bytes | `sha256`, `sha384`, or `sha512`. |
-| Authenticate bytes with a key | HMAC with SHA-256, SHA-384, or SHA-512. Unsupported algorithm names return `Unsupported`. |
+| Authenticate bytes with a key | HMAC with the exact case-sensitive strings `sha256`, `sha384`, or `sha512`. Other names return `CryptoError.Unsupported`. |
 | Derive key bytes from a password | `derive_key`, using PBKDF2-HMAC-SHA256. |
 | Encrypt and authenticate | `seal` / `open`, using AES-256-GCM. |
 | Sign and verify | Ed25519 with `sign` / `verify`. |

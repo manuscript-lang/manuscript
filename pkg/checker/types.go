@@ -108,6 +108,9 @@ type Program struct {
 	Assignments      map[*syntax.Expression]*Binding
 	Methods          []*Method
 	Diagnostics      []syntax.Diagnostic
+	// ArmNameConflicts retains type/case identities before payload names bind.
+	// Entries parallel Arm.Names; lexical values and type variables yield nil.
+	ArmNameConflicts map[*syntax.Arm][]*Info
 }
 
 func (t *Type) String() string {
