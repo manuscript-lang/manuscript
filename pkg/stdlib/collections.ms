@@ -34,6 +34,12 @@ export type List[T]:
     # Returns a new shallow List containing [start, end); outer storage is independent.
     # Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
     fn slice(start: Int, end: Int) -> List[T]:
+    # Copies the first min(count, length) elements into fresh shallow List storage.
+    # Leaves the receiver unchanged; negative count is a programming fault.
+    fn take(count: Int) -> List[T]:
+    # Copies the remainder after min(count, length) into fresh shallow List storage.
+    # Leaves the receiver unchanged; negative count is a programming fault.
+    fn drop(count: Int) -> List[T]:
     # Reverses this list in place and returns the same instance.
     fn reverse_in_place() -> List[T]:
     # Returns a reversed shallow copy with independent outer storage; nested references remain shared.

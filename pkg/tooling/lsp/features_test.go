@@ -409,6 +409,7 @@ func TestPreferredNativeNamesHoverAndNavigation(t *testing.T) {
 		{"add", "Set[Int]", "Adds a value in place", "collections.ms"},
 		{"remove", "Set[Int]", "Removes an equal value in place", "collections.ms"},
 		{"replace_first", "String", "an explicit cap can replace more", "intrinsics.ms"},
+		{"replace_n", "String", "count limits replacements", "intrinsics.ms"},
 		{"replace_all", "Regex", "literal replacement text", "regex.ms"},
 	} {
 		t.Run(tc.receiver+"/"+tc.name, func(t *testing.T) {

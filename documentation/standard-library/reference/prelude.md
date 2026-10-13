@@ -169,6 +169,8 @@ type List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> List[T]:
+    fn take(count: Int) -> List[T]:
+    fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
     fn reversed() -> List[T]:
     fn reverse() -> List[T]:
@@ -213,6 +215,15 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.drop
+
+Copies the remainder after min(count, length) into fresh shallow List storage.
+Leaves the receiver unchanged; negative count is a programming fault.
+
+```manuscript
+fn drop(count: Int) -> List[T]:
 ```
 
 ### List.every
@@ -356,6 +367,15 @@ Shrinking retains prior values in spare backing capacity, following captured Go 
 
 ```manuscript
 fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+```
+
+### List.take
+
+Copies the first min(count, length) elements into fresh shallow List storage.
+Leaves the receiver unchanged; negative count is a programming fault.
+
+```manuscript
+fn take(count: Int) -> List[T]:
 ```
 
 ### List.with_value
@@ -848,6 +868,7 @@ type String:
     fn lower() -> String:
     fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
     fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
+    fn replace_n(old: String, new: String, max_replacements: Int) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
     fn scalar_values() -> List[Int]:
@@ -1039,12 +1060,23 @@ fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Res
 
 ### String.replace_first
 
-Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.
+Transitional compatibility name: omitted or none replaces the first occurrence; an explicit cap can replace more.
+Use replace_n for a required finite cap; this retained signature has not become a strict first-only operation.
 An empty old matches at scalar boundaries, and inserted text is not searched again.
 Zero changes nothing; negative caps retain replace's programming fault.
 
 ```manuscript
 fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String
+```
+
+### String.replace_n
+
+Replaces at most the required number of nonoverlapping literal occurrences; zero leaves text unchanged.
+Empty old matches at scalar boundaries, inserted text is not rescanned, and negative caps retain replace's programming fault.
+The count limits replacements, not UTF-8 output bytes; there is no additional allocation budget.
+
+```manuscript
+fn replace_n(old: String, new: String, max_replacements: Int) -> String
 ```
 
 ### String.reverse

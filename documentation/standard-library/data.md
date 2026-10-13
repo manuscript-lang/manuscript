@@ -22,6 +22,8 @@ List, Map and Set mutation is visible through aliases. `.clone()` makes a separa
 
 ## Transform and search lists
 
+`take(count:)` returns a shallow copy of the first `count` elements; `drop(count:)` returns a shallow copy after them. Counts above `length()` are clamped: taking copies the whole list, dropping returns an empty list. Zero takes an empty list or drops nothing; a negative count produces a programming fault naming the operation, parameter and original count. Both return fresh mutable List storage even for empty or whole-list copies, preserve element order and payload references, and leave the receiver unchanged. They are explicit copy operations and do not change loop or callback traversal behavior.
+
 `map` transforms each element, `filter` keeps matching elements, and `flat_map` combines the lists returned by its callback. These operations return new lists. Callbacks run sequentially and may wait for operations.
 
 Inside a function or test:
@@ -57,10 +59,13 @@ String indexing and search count Unicode scalars. The [text rules](../core-langu
 | `lines` | Split LF/CRLF terminators, retaining interior empty lines and standalone CR; omit an extra trailing item. See the exact [text rules](../core-language/basics/text-and-bytes.md#indexing-and-character-boundaries). |
 | `pad_start`, `pad_end` | Repeat and truncate `padding` on scalar boundaries until `target_length` scalars are reached. A shorter target or empty padding leaves the text unchanged. Negative targets return `InvalidInput`. |
 | `replace_first` | Replace the first occurrence by default (omitted or `none` cap); a supplied `max_replacements` can replace more than one occurrence, and zero leaves text unchanged. Negative caps fault. `replace` remains a compatible spelling with identical defaults, caps, and faults. |
+| `replace_n` | Replace at most the required `max_replacements: Int` nonoverlapping literal occurrences. Zero leaves text unchanged; negative counts retain replace's programming fault. This count is not a UTF-8 byte budget. |
 | `replace_all` | Replace every nonoverlapping occurrence. Return `StringError.LimitExceeded` if the UTF-8 output exceeds a supplied `max_bytes`, or `InvalidInput` for a negative budget. |
 | `split` | Split on exact separators and truncate to a supplied `max_parts`; zero returns no parts and negative limits fault. Empty text split on a nonempty separator returns `[""]`; an empty separator splits into scalars, giving no parts for empty text. |
 
-An empty `old` in `replace_first` (or `replace`) and `replace_all` matches before the first scalar and after each scalar, including the end. Replacement does not scan newly inserted text. `repeat`, `normalize`, `pad_start`, and `pad_end` also accept optional UTF-8 output budgets: omitted or `none` budgets impose no cap, zero permits only empty output, negatives return `StringError.InvalidInput`, and exceeding a supplied budget returns `StringError.LimitExceeded`. Even unchanged padding results must fit the supplied budget. Normalization accepts exactly the case-sensitive strings `NFC`, `NFD`, `NFKC`, or `NFKD`; other forms return `StringError.InvalidInput`.
+For a finite cap, use `text.replace_n(old: "a", new: "b", max_replacements: 2)`. Current `replace_first` is a transitional compatibility spelling: its retained count parameter can replace more than one match. Its signature remains supported; a future strict first-only shape requires a separate reviewed migration. `replace_n` has no additional output-byte/allocation budget, and replacement text can grow the result; `replace_all` provides a separate byte-budgeted operation.
+
+An empty `old` in `replace_first` (or `replace`), `replace_n` and `replace_all` matches before the first scalar and after each scalar, including the end. Replacement does not scan newly inserted text. `repeat`, `normalize`, `pad_start`, and `pad_end` also accept optional UTF-8 output budgets: omitted or `none` budgets impose no cap, zero permits only empty output, negatives return `StringError.InvalidInput`, and exceeding a supplied budget returns `StringError.LimitExceeded`. Even unchanged padding results must fit the supplied budget. Normalization accepts exactly the case-sensitive strings `NFC`, `NFD`, `NFKC`, or `NFKD`; other forms return `StringError.InvalidInput`.
 
 Use `NormalizationForm.Nfc`, `Nfd`, `Nfkc`, or `Nfkd` from `@std/string.ms` to select a form with a checked alternative. Its `normalize(text, max_bytes = none)` operation shares the existing String implementation, UTF-8 byte budgets, errors, and cancellation. Canonical forms compose/decompose canonically equivalent text; compatibility forms also normalize compatibility characters such as ligatures.
 

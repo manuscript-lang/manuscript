@@ -663,6 +663,7 @@
             "concat: fn(values: List[T])-\u003eList[T]",
             "contains: fn(value: T)-\u003eBool",
             "copy_within: fn(target: Int, start: Int, end: Int)-\u003eList[T]",
+            "drop: fn(count: Int)-\u003eList[T]",
             "entries: fn()-\u003eList[ListEntry[T]]",
             "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "fill: fn(value: T, start: Int, end: Int)-\u003eList[T]",
@@ -695,6 +696,7 @@
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
             "splice: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
+            "take: fn(count: Int)-\u003eList[T]",
             "to_set: fn()-\u003eSet[T]",
             "with_value: fn(index: Int, value: T)-\u003eList[T]",
             "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
@@ -736,6 +738,12 @@
               "kind": "operation",
               "signature": "fn copy_within(target: Int, start: Int, end: Int) -\u003e List[T]:",
               "doc": ""
+            },
+            {
+              "name": "drop",
+              "kind": "operation",
+              "signature": "fn drop(count: Int) -\u003e List[T]:",
+              "doc": "Copies the remainder after min(count, length) into fresh shallow List storage.\nLeaves the receiver unchanged; negative count is a programming fault."
             },
             {
               "name": "entries",
@@ -928,6 +936,12 @@
               "kind": "operation",
               "signature": "fn splice(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
               "doc": "Replaces delete_count elements starting at start, mutating and returning this List.\nRequires 0 \u003c= start \u003c= length and 0 \u003c= delete_count \u003c= length - start; invalid bounds fault without clamping.\nReplacement references stay shallow; using this same List as replacement stages its prior values.\nShrinking retains prior values in spare backing capacity, following captured Go slice traversal."
+            },
+            {
+              "name": "take",
+              "kind": "operation",
+              "signature": "fn take(count: Int) -\u003e List[T]:",
+              "doc": "Copies the first min(count, length) elements into fresh shallow List storage.\nLeaves the receiver unchanged; negative count is a programming fault."
             },
             {
               "name": "to_set",
@@ -1602,7 +1616,7 @@
             "Deflate"
           ],
           "operations": [
-            "compress: fn(data: Bytes, level: Int, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]",
+            "compress: fn(data: Bytes, level: Int = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]",
             "decompress: fn(data: Bytes, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
           ],
           "members": [
@@ -1627,8 +1641,8 @@
             {
               "name": "compress",
               "kind": "operation",
-              "signature": "fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, CompressionError]:",
-              "doc": "Compresses with level 0..9 and the same optional output budget/domain errors as compress."
+              "signature": "fn compress(data: Bytes, level: Int = 6, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, CompressionError]:",
+              "doc": "Compresses with level 6 by default; explicit levels remain 0..9 (0 stores data).\nUses the same optional output budget/domain errors as compress."
             },
             {
               "name": "decompress",
@@ -1640,9 +1654,9 @@
         },
         {
           "name": "compress",
-          "doc": "Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).\nOther formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.\n`max_bytes` bounds the encoded output when supplied.",
+          "doc": "Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).\nOther formats return Unsupported; level defaults to 6 (balanced DEFLATE compression).\nExplicit levels must be 0..9 (0 stores data), else InvalidInput.\n`max_bytes` bounds the encoded output when supplied.",
           "kind": "fn",
-          "type": "fn(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
+          "type": "fn(data: Bytes, format: String, level: Int = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
         },
         {
           "name": "decompress",
@@ -9316,6 +9330,7 @@
             "concat: fn(values: List[T])-\u003eList[T]",
             "contains: fn(value: T)-\u003eBool",
             "copy_within: fn(target: Int, start: Int, end: Int)-\u003eList[T]",
+            "drop: fn(count: Int)-\u003eList[T]",
             "entries: fn()-\u003eList[ListEntry[T]]",
             "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "fill: fn(value: T, start: Int, end: Int)-\u003eList[T]",
@@ -9348,6 +9363,7 @@
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
             "splice: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
+            "take: fn(count: Int)-\u003eList[T]",
             "to_set: fn()-\u003eSet[T]",
             "with_value: fn(index: Int, value: T)-\u003eList[T]",
             "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
@@ -9389,6 +9405,12 @@
               "kind": "operation",
               "signature": "fn copy_within(target: Int, start: Int, end: Int) -\u003e List[T]:",
               "doc": ""
+            },
+            {
+              "name": "drop",
+              "kind": "operation",
+              "signature": "fn drop(count: Int) -\u003e List[T]:",
+              "doc": "Copies the remainder after min(count, length) into fresh shallow List storage.\nLeaves the receiver unchanged; negative count is a programming fault."
             },
             {
               "name": "entries",
@@ -9581,6 +9603,12 @@
               "kind": "operation",
               "signature": "fn splice(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
               "doc": "Replaces delete_count elements starting at start, mutating and returning this List.\nRequires 0 \u003c= start \u003c= length and 0 \u003c= delete_count \u003c= length - start; invalid bounds fault without clamping.\nReplacement references stay shallow; using this same List as replacement stages its prior values.\nShrinking retains prior values in spare backing capacity, following captured Go slice traversal."
+            },
+            {
+              "name": "take",
+              "kind": "operation",
+              "signature": "fn take(count: Int) -\u003e List[T]:",
+              "doc": "Copies the first min(count, length) elements into fresh shallow List storage.\nLeaves the receiver unchanged; negative count is a programming fault."
             },
             {
               "name": "to_set",
@@ -10054,6 +10082,7 @@
             "replace: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
             "replace_all: fn(old: String, new: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
             "replace_first: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
+            "replace_n: fn(old: String, new: String, max_replacements: Int)-\u003eString",
             "reverse: fn()-\u003eString",
             "scalar_at: fn(index: Int)-\u003eOptional[Int]",
             "scalar_length: fn()-\u003eInt",
@@ -10194,7 +10223,13 @@
               "name": "replace_first",
               "kind": "operation",
               "signature": "fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -\u003e String",
-              "doc": "Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.\nAn empty old matches at scalar boundaries, and inserted text is not searched again.\nZero changes nothing; negative caps retain replace's programming fault."
+              "doc": "Transitional compatibility name: omitted or none replaces the first occurrence; an explicit cap can replace more.\nUse replace_n for a required finite cap; this retained signature has not become a strict first-only operation.\nAn empty old matches at scalar boundaries, and inserted text is not searched again.\nZero changes nothing; negative caps retain replace's programming fault."
+            },
+            {
+              "name": "replace_n",
+              "kind": "operation",
+              "signature": "fn replace_n(old: String, new: String, max_replacements: Int) -\u003e String",
+              "doc": "Replaces at most the required number of nonoverlapping literal occurrences; zero leaves text unchanged.\nEmpty old matches at scalar boundaries, inserted text is not rescanned, and negative caps retain replace's programming fault.\nThe count limits replacements, not UTF-8 output bytes; there is no additional allocation budget."
             },
             {
               "name": "reverse",
