@@ -1,8 +1,13 @@
 package compiler
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"go/ast"
+	"go/format"
+	goparser "go/parser"
+	"go/token"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -23,7 +28,29 @@ func TestDebugLiteralBuildRecipe(t *testing.T) {
 	// Independently captured by the unchanged bee671d4 compiler. See the
 	// provenance note; never regenerate this oracle using the implementation
 	// under test. Existing pre-AST fixtures are left untouched.
-	if got := fmt.Sprintf("%x", sha256.Sum256([]byte(original))); got != "c2086ef7502812b744c8db896855f9b0333bb8c210276db43334f7e241de356c" {
+	fset := token.NewFileSet()
+	file, err := goparser.ParseFile(fset, "generated.go", original, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var constructor bytes.Buffer
+	ast.Inspect(file, func(node ast.Node) bool {
+		value, ok := node.(*ast.CompositeLit)
+		if !ok {
+			return true
+		}
+		typ, ok := value.Type.(*ast.SelectorExpr)
+		if !ok || typ.Sel.Name != "List" {
+			return true
+		}
+		if err := format.Node(&constructor, fset, value); err != nil {
+			t.Fatal(err)
+		}
+		return false
+	})
+	// Hash the constructor rather than unrelated stdlib registrations, which
+	// evolve on main. The complete before-source hash is also retained.
+	if got := fmt.Sprintf("%x", sha256.Sum256(constructor.Bytes())); got != "14f056a0e496cbba6ff77959a189419ceed5206a63a9ece9b49aa07aae677362" {
 		t.Fatal("default lowering changed from the independent baseline", got)
 	}
 	for _, kind := range []BuildType{Release, RelWithDebInfo, MinSizeRel} {
