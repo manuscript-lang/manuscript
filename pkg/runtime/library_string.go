@@ -26,6 +26,35 @@ func clampedIndex(length int, index int64, relative bool) int64 {
 	return index
 }
 
+// StringAt is the direct path for String.at calls.
+func StringAt(ctx *Execution, text, index Value, result string) Value {
+	CheckCancelled(ctx)
+	return stringScalarAt(text.(string), index.(int64), result, false)
+}
+
+func stringScalarAt(text string, index int64, result string, asInt bool) Value {
+	ascii := isASCII(text)
+	count := len(text)
+	if !ascii {
+		count = utf8.RuneCountInString(text)
+	}
+	i := relativeIndex(count, index)
+	if i < 0 || i >= int64(count) {
+		return Alternative{Type: result, Tag: "none"}
+	}
+	var scalar rune
+	if ascii {
+		scalar = rune(text[i])
+	} else {
+		scalar, _ = utf8.DecodeRuneInString(text[scalarOffset(text, int(i)):])
+	}
+	var value Value = string(scalar)
+	if asInt {
+		value = int64(scalar)
+	}
+	return Alternative{result, "some", []Value{value}}
+}
+
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	add := libraryAdd
@@ -90,27 +119,7 @@ func init() {
 			result = "Optional[Int]"
 		}
 		add("string", name, result, []LibraryParam{p("text", "String"), p("index", "Int")}, func(_ *Execution, r string, a []Value) Value {
-			text := a[0].(string)
-			ascii := isASCII(text)
-			count := len(text)
-			if !ascii {
-				count = utf8.RuneCountInString(text)
-			}
-			i := relativeIndex(count, a[1].(int64))
-			if i < 0 || i >= int64(count) {
-				return Alternative{Type: r, Tag: "none"}
-			}
-			var scalar rune
-			if ascii {
-				scalar = rune(text[i])
-			} else {
-				scalar, _ = utf8.DecodeRuneInString(text[scalarOffset(text, int(i)):])
-			}
-			var value Value = string(scalar)
-			if name == "scalar_at" {
-				value = int64(scalar)
-			}
-			return Alternative{r, "some", []Value{value}}
+			return stringScalarAt(a[0].(string), a[1].(int64), r, name == "scalar_at")
 		})
 	}
 	for _, name := range []string{"index_of", "last_index_of"} {
@@ -165,6 +174,7 @@ func init() {
 			if target < 0 || max < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
+			max = min(max, nativeMaxBytes)
 			if int64(len(text)) > max {
 				return libraryError(r, "LimitExceeded", "")
 			}

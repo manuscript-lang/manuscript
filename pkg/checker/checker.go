@@ -592,7 +592,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 	case syntax.KindWith:
 		i := c.expression(s.Value, nil)
 		if !c.closeable(i.Type) {
-			c.error(s.Pos, "type", "with requires an explicit Closeable implementation or a contract declaring close() -> Unit; "+i.Type.String()+" has none, so add 'impl Closeable for "+i.Type.String()+":' with fn close() -> Unit")
+			c.error(s.Pos, "type", c.withNotCloseableMessage(i.Type))
 		}
 		methods := c.methods(i.Type, "close")
 		var candidates []*Method

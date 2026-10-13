@@ -44,10 +44,6 @@ impl Read for Box:
         return self.value
 `
 	for _, variant := range []struct{ name, statement string }{
-		{"two unnamed", "two(1, 2)"},
-		{"first unnamed", "two(1, right: 2)"},
-		{"last unnamed", "two(left: 1, 2)"},
-		{"multi-parameter function value", "let callable = two\n    callable(1, 2)"},
 		{"extra unnamed", "one(1, 2)"},
 		{"duplicate mixed", "one(1, value: 2)"},
 		{"unknown single label", "one(wrong: 1)"},
@@ -58,7 +54,6 @@ impl Read for Box:
 		{"record unknown label", "let box = Box(wrong: 1)"},
 		{"alternative unknown label", "let choice = Choice.Payload(wrong: 1)"},
 		{"contract unknown label", "let view = Read(wrong: Box(1))"},
-		{"optional constructor arguments", "let service = Scheduler(1)"},
 		{"task start requires a callback", "let group = TaskGroup()\n    group.start(1)"},
 		{"function type labels", "let transform = fn(item: Int) -> Int:\n        return item\n    apply(transform)"},
 	} {
@@ -89,7 +84,6 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"toString result", "to-string", "let convert: fn() -> String", "let convert: fn() -> Int", "type"},
 		{"no implicit string conversion", "to-string", "value: person.toString()", "value: person", "type"},
 		{"duplicate argument", "cl-01", "deduction: 2,", "amount: 2,", "type"},
-		{"unnamed multi-parameter argument", "cl-01", "deduction: 2,", "2,", "type"},
 		{"missing argument", "cl-01", "deduction: 2,", "", "type"},
 		{"unknown argument", "cl-01", "deduction: 2,", "discount: 2,", "type"},
 		{"unknown value", "cl-01", "return amount - deduction", "return missing", "resolution"},

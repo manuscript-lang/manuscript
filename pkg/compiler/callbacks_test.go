@@ -72,15 +72,12 @@ func TestContextualCallbacks(t *testing.T) {
 
 func TestCallbackInferenceRejections(t *testing.T) {
 	for _, body := range []string{
-		`let pair = Pair(1)`,
 		`let original = fn(item: Int): item
     let incompatible: fn(value: Int) -> Int = original`,
 		`let callback: fn(left: Int, right: Int) -> Int = fn(a, b): a - b
     callback(a: 1, b: 2)`,
 		`let callback: fn(value: Int) -> Int = fn(item: Int = 4): item
     callback()`,
-		`let pair = TwoPayloads.Pair(1, 2)`,
-		`let pair = TwoPayloads.Pair(first: 1, 2)`,
 		`let callback = fn(value): value`,
 		`let callback = result(fn(): error("failed"))`,
 

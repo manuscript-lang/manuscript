@@ -49,5 +49,11 @@ test "stale synchronized guard faults":
 test "invalid list slice faults":
     let impossible = ([1, 2]).slice(start: 0, end: 3)
 
+test "negative split limit faults":
+    let impossible = "a,b,c".split(separator: ",", max_parts: -1)
+
+test "negative replace limit faults":
+    let impossible = "aaa".replace(old: "a", new: "b", max_replacements: -1)
+
 test "runner continues with fresh roots after faults":
     emit("fresh root after stdlib faults\n")

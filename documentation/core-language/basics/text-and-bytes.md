@@ -138,6 +138,8 @@ For a finite nonzero Float, choose the decimal significand with the fewest signi
 
 For Decimal, use the exact stored numerical value rather than an intermediate Float conversion. Remove trailing fractional/significand zeros without changing the number, and use the same decimal-point rule. Any Decimal zero formats as `0`. Formatting does not round a Decimal to a smaller precision or preserve its source spelling: `1.00d` formats as `1`.
 
+For a chosen number of fractional digits, use Decimal's [scale rounding and fixed-place formatting](numbers-and-booleans.md#scale-rounding-and-fixed-places). `25.50d.to_fixed(digits: 2)` returns `ok("25.50")`; interpolation and `toString()` retain the normalized representation above.
+
 For either finite numerical decimal, let e be the base-ten exponent of its first nonzero digit in scientific notation. Use plain decimal notation when -6 ≤ e ≤ 20, adding zeros as necessary. Otherwise use one digit before the decimal point, remaining significant digits after it (omit the point if there are none), followed by lowercase `e`, an explicit `+` or `-`, and the exponent magnitude without leading zeros. For example, `0.000001` uses plain notation and an exponent of -7 uses `1e-7`; an exponent of 21 uses `1e+21`.
 
 Non-finite Float values format as `NaN`, `Infinity`, or `-Infinity`; NaN payloads and signs do not affect that text. The [numeric rules](numbers-and-booleans.md#runtime-numeric-outcomes) define how these values arise; they have no source literal spelling.

@@ -2,6 +2,7 @@ package msruntime
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -113,11 +114,32 @@ func nativeOptions(operation string, params []LibraryParam, args []Value) ([]Val
 	}
 	return out, true
 }
-func nativeOptionFailure(result string) Value {
+func nativeOptionFailure(result, operation string, params []LibraryParam, args []Value) Value {
 	if strings.Contains(result, "Result[") {
 		return libraryError(result, "InvalidInput", "")
 	}
-	return Panic("invalid optional limit or timeout")
+	// Name the operation and parameter so a limit that came from user input
+	// is diagnosable from the fault text alone.
+	for i, p := range params {
+		if i >= len(args) {
+			break
+		}
+		option, ok := args[i].(Alternative)
+		if !ok || option.Tag != "some" || !strings.HasPrefix(option.Type, "@std/Optional[") {
+			continue
+		}
+		switch v := option.Fields[0].(type) {
+		case int64:
+			if v < 0 {
+				return Panic(fmt.Sprintf("%s: %s must be nonnegative, found %d", operation, p.Name, v))
+			}
+		case Duration:
+			if v < 0 {
+				return Panic(fmt.Sprintf("%s: %s must be nonnegative, found %d", operation, p.Name, int64(v)))
+			}
+		}
+	}
+	return Panic(operation + ": invalid optional limit or timeout; limits and timeouts must be nonnegative")
 }
 func nativeContextTimeout(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
 	if timeout < 0 {

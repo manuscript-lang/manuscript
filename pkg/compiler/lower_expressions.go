@@ -14,7 +14,10 @@ import (
 func (g *generator) arguments(args []syntax.Argument) ast.Expr {
 	var values []ast.Expr
 	for _, a := range args {
-		values = append(values, composite(nil, keyed("Name", textLiteral(a.Name)), keyed("Value", g.argumentValue(a))))
+		// Go orders calls, but a later argument can mutate a plain local value.
+		// Capture each supplied value before evaluating the next argument.
+		value := runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(a.Pos.String()), g.argumentValue(a))
+		values = append(values, composite(nil, keyed("Name", textLiteral(a.Name)), keyed("Value", value)))
 	}
 	return sliceLiteral(runtimeName("Argument"), values...)
 }
@@ -97,7 +100,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 	case syntax.KindName, syntax.KindApply:
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
 			member := e.Left
-			return runtimeCall("NativeMemberResult", g.expression(member.Left), textLiteral(member.Text), g.key(info.Type.Result))
+			return g.nativeReceiverMember(member, info)
 		}
 		if info.Binding != nil {
 			return g.binding(info.Binding)
@@ -120,7 +123,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			return runtimeCall("NewAlternative", g.key(info.Constructor), textLiteral(info.Case), ident("nil"), ident("nil"))
 		}
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
-			return runtimeCall("NativeMemberResult", g.expression(e.Left), textLiteral(e.Text), g.key(info.Type.Result), g.typeScope(g.program.Expressions[e.Left].Type))
+			return g.nativeReceiverMember(e, info)
 		}
 		if info.Method != nil {
 			return runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Expressions[e.Left].Type))
@@ -176,7 +179,8 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 				}
 			}
 		} else {
-			callable = g.expression(e.Left)
+			// Capture a dynamic callable before arguments that may replace it.
+			callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.expression(e.Left))
 		}
 		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 	case syntax.KindList:
@@ -212,6 +216,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			return &ast.BinaryExpr{X: runtimeCall("Bool", g.expression(e.Left)), Op: op, Y: runtimeCall("Bool", g.expression(e.Right))}
 		}
 		if e.Text == "==" || e.Text == "!=" {
+			if value := g.primitiveEquality(e); value != nil {
+				return value
+			}
 			return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.program.Expressions[e.Left].Type))
 		}
 		if value := g.numericBinary(e); value != nil {

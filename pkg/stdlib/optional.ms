@@ -14,3 +14,9 @@ export type Optional[T]:
     fn unwrap_or(fallback: T) -> T:
     # Computes a fallback only when this is `none`.
     fn unwrap_or_else(create: fn() -> T) -> T:
+    # Transforms a present payload; none remains absent.
+    fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
+    # Calls transform only when present, returning its Optional unchanged.
+    fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
+    # Calls create once only when absent, returning its Optional unchanged.
+    fn or_else(create: fn() -> Optional[T]) -> Optional[T]:

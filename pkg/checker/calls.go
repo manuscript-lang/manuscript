@@ -33,7 +33,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			typ = c.instantiate(typ, nil, nil, expected, e.Pos)
 			i.Arguments = constructorArguments(e.Args, []Param{{Name: "value"}})
 			if len(i.Arguments) != 1 || i.Arguments[0].Name != "value" {
-				c.error(e.Pos, "type", "contract view requires exactly value: receiver; write "+typ.String()+"(value: x) with one argument labeled value")
+				c.error(e.Pos, "type", "contract view requires exactly one receiver; write "+typ.String()+"(x) or "+typ.String()+"(value: x)")
 				return i
 			}
 			receiver := c.expression(e.Args[0].Value, nil)
@@ -128,7 +128,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			context := &callInferenceContext{result: signature.Result, expected: expected, pos: e.Pos}
 			if !explicit {
 				sub := map[string]*Type{}
-				c.inferArguments(positionalArguments(functionArguments(e.Args, signature.Params), signature.Params), signature.Params, s.Variables, sub, context)
+				c.inferArguments(functionArguments(e.Args, signature.Params), signature.Params, s.Variables, sub, context)
 				for _, v := range s.Variables {
 					supplied = append(supplied, sub[v.ID])
 				}
@@ -176,102 +176,35 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	return i
 }
 
-// Single-parameter calls omit any label; multi-parameter calls allow name shorthand.
-// Keep the source AST intact for tools and repeated checking.
+// Resolve labels without changing source syntax or written evaluation order.
+// Explicit labels and existing matching-name shorthand select their parameter.
+// Other values fill the first parameter not supplied by an earlier argument.
 func functionArguments(args []syntax.Argument, params []Param) []syntax.Argument {
 	resolved := append([]syntax.Argument(nil), args...)
+	seen := make(map[string]bool, len(params))
 	for index := range resolved {
-		if resolved[index].Name == "" {
-			if len(params) == 1 {
-				resolved[index].Name = params[0].Name
-			} else if value := resolved[index].Value; value.Kind == syntax.KindName && value.Pos == resolved[index].Pos {
+		arg := &resolved[index]
+		if arg.Name == "" {
+			if value := arg.Value; len(params) > 1 && value.Kind == syntax.KindName && value.Pos == arg.Pos {
 				for _, param := range params {
 					if param.Name == value.Text {
-						resolved[index].Name = value.Text
+						arg.Name = value.Text
+						break
+					}
+				}
+			}
+			if arg.Name == "" {
+				for _, param := range params {
+					if !seen[param.Name] {
+						arg.Name = param.Name
 						break
 					}
 				}
 			}
 		}
+		seen[arg.Name] = true
 	}
 	return resolved
-}
-
-// positionalArguments labels unlabeled arguments by position when the count
-// matches, so inference can proceed while the missing labels are reported once.
-func positionalArguments(args []syntax.Argument, params []Param) []syntax.Argument {
-	if len(args) != len(params) {
-		return args
-	}
-	resolved := append([]syntax.Argument(nil), args...)
-	for index := range resolved {
-		if resolved[index].Name == "" {
-			resolved[index].Name = params[index].Name
-		}
-	}
-	return resolved
-}
-
-// argumentSource returns the source text of the argument starting at pos.
-func (c *checker) argumentSource(pos syntax.Position) string {
-	source := c.module.Source
-	start := pos.Offset
-	if start < 0 || start >= len(source) {
-		return ""
-	}
-	depth, quote := 0, false
-	for i := start; i < len(source); i++ {
-		ch := source[i]
-		switch {
-		case quote:
-			if ch == '\\' {
-				i++
-			} else if ch == '"' {
-				quote = false
-			}
-		case ch == '"':
-			quote = true
-		case ch == '(' || ch == '[' || ch == '{':
-			depth++
-		case ch == ')' || ch == ']' || ch == '}':
-			if depth == 0 {
-				return strings.TrimSpace(source[start:i])
-			}
-			depth--
-		case ch == ',' && depth == 0, ch == '\n':
-			return strings.TrimSpace(source[start:i])
-		}
-	}
-	return strings.TrimSpace(source[start:])
-}
-
-// missingLabels explains every unlabeled argument of one call at once.
-func (c *checker) missingLabels(callName string, args []syntax.Argument, params []Param) string {
-	message := "argument labels are required for this call"
-	var parts []string
-	for index, arg := range args {
-		if index >= len(params) {
-			return message
-		}
-		text := c.argumentSource(arg.Pos)
-		switch {
-		case arg.Name == "":
-			if text == "" {
-				text = "..."
-			}
-			parts = append(parts, params[index].Name+": "+text)
-		case text != "" && !strings.HasPrefix(text, arg.Name+":") && text != arg.Name:
-			parts = append(parts, arg.Name+": "+text)
-		case text != "":
-			parts = append(parts, text)
-		default:
-			parts = append(parts, arg.Name+": ...")
-		}
-	}
-	if callName == "" {
-		return message + "; write " + strings.Join(parts, ", ")
-	}
-	return message + "; write " + callName + "(" + strings.Join(parts, ", ") + ")"
 }
 
 // argumentsFor checks a call to the named callable. A missing argument is
@@ -331,16 +264,9 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 	c.callName, c.callPos = "", syntax.Position{}
 	seen := map[string]bool{}
 	noReturn := false
-	reportedLabels := false
-	for index, arg := range args {
+	for _, arg := range args {
 		if arg.Name == "" {
-			if index < len(params) {
-				seen[params[index].Name] = true
-			}
-			if !reportedLabels {
-				reportedLabels = true
-				c.error(arg.Pos, "type", c.missingLabels(callName, args, params))
-			}
+			c.error(arg.Pos, "type", "too many positional arguments; every parameter is already supplied, so remove this argument")
 			v := c.expression(arg.Value, nil)
 			noReturn = noReturn || v.NoReturn
 			continue
@@ -491,10 +417,12 @@ func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info
 	return info
 }
 
-// Inference matches the complete optional first, then its payload. Failed
-// attempts must not leave substitutions that constrain the second attempt.
+// Match exactly before trying the existing Result error widening or a single
+// Optional argument wrapper. Result successes and nested applications remain
+// invariant. Each attempt commits substitutions only after its whole boundary
+// is valid; final argument checking retains the selected Error evidence.
 func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub map[string]*Type) bool {
-	attempt := func(target *Type) bool {
+	fresh := func() map[string]*Type {
 		trial := map[string]*Type{}
 		for key, value := range sub {
 			// A prior failed argument supplies no constraint on later evidence.
@@ -502,8 +430,18 @@ func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub
 				trial[key] = value
 			}
 		}
+		return trial
+	}
+	attempt := func(target *Type) bool {
+		trial := fresh()
 		if !unify(target, actual, vars, trial) {
-			return false
+			if !std(target, "Result") || !std(actual, "Result") || len(target.Args) != 2 || len(actual.Args) != 2 {
+				return false
+			}
+			trial = fresh()
+			if !unify(target.Args[0], actual.Args[0], vars, trial) || !c.errorAssignable(actual, Sub(target, trial)) {
+				return false
+			}
 		}
 		for key, value := range trial {
 			sub[key] = value
@@ -555,10 +493,7 @@ func missingArgumentHint(param Param, callee string) string {
 	return ": " + param.Type.String() + in + "; add '" + param.Name + ": <" + param.Type.String() + ">'"
 }
 
-// Constructor shorthand is limited to exactly one declared payload.
+// Constructors use the same binding rule as functions.
 func constructorArguments(args []syntax.Argument, params []Param) []syntax.Argument {
-	if len(params) == 1 {
-		return functionArguments(args, params)
-	}
-	return args
+	return functionArguments(args, params)
 }

@@ -35,7 +35,6 @@ func TestOptionalArgumentBoundaries(t *testing.T) {
 		{"missing result context", "fn f[T](value: Optional[T]) -> T: return value.unwrap()\nfn call() -> Unit: let value = f(none)\n", "cannot infer type argument T"},
 		{"collection elements stay exact", "fn f(values: List[Optional[Int]]) -> Unit: return\nfn call() -> Unit: f([4])\n", "expected Optional[Int], found Int"},
 		{"function identity stays exact", "fn f(value: Int) -> Int: return value\nfn call() -> Unit:\n    let callback: fn(value: Optional[Int]) -> Int = f\n", "expected fn(value: Optional[Int])"},
-		{"labels still required", "fn f(first: Optional[Int], second: Int = 0) -> Unit: return\nfn call() -> Unit: f(4)\n", "argument labels are required"},
 		{"unknown label", "fn f(value: Optional[Int]) -> Unit: return\nfn call() -> Unit: f(other: 4)\n", "unknown argument other"},
 		{"duplicate label", "fn f(value: Optional[Int]) -> Unit: return\nfn call() -> Unit: f(4, value: 5)\n", "duplicate argument value"},
 	} {
@@ -78,9 +77,9 @@ fn wrong(value: Optional[Int]) -> Int:
 fn wrong(value: Optional[Optional[Int]]) -> Int:
     return value.unwrap()
 `,
-		"result does not inherit optional methods": `import Result from "@std/result.ms"
-fn wrong(value: Result[Int, String]) -> Int:
-    return value.unwrap()
+		"result does not inherit optional predicates": `import Result from "@std/result.ms"
+fn wrong(value: Result[Int, String]) -> Bool:
+    return value.is_some()
 `,
 		"local names do not inherit native methods": `type Optional[T]:
     case some(value: T)

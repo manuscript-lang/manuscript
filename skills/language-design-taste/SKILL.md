@@ -7,7 +7,7 @@ description: Apply Chinmay's design preferences when proposing or reviewing prog
 
 - Optimize for AI writing code and humans understanding it: readable source, visible dependencies, clear system boundaries, and explainable execution flows.
 - Prefer a few consistent, composable concepts. Before adding syntax, types, or rules, show the concrete problem and whether an existing mechanism can solve it.
-- Use familiar names and syntax: `fn`, `type`, `String`, grouped imports, and JavaScript-style destructuring. Use matching-name shorthand or explicit labels for multi-parameter calls; allow omitted labels for single-parameter calls. Favor one obvious spelling over clever alternatives.
+- Use familiar names and syntax: `fn`, `type`, `String`, grouped imports, and JavaScript-style destructuring. Allow positional invocation with optional labels, preserving matching-name shorthand and written evaluation order. Favor one obvious spelling over clever alternatives.
 - Make public contracts explicit and infer local details. For Manuscript, use explicit `impl` relationships and contract conversions; avoid accidental conformance and invisible coercions.
 - Keep intrinsics, compiler bounds, and ambient names small. Keep `Optional`, `Result`, `Error`, and their cases in the prelude; other standard types, utilities, and concurrency APIs remain explicitly importable. Runtime support does not require a language keyword.
 - Keep one function kind; ordinary functions may suspend. Execution is sequential unless concurrency is explicitly requested through standard APIs. Do not restore removed concurrent collection-mapping helpers.

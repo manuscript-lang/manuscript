@@ -33,13 +33,14 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"unimported Map call", "fn f() -> Int:\n    let m = Map[String, Int]()\n    return 0\n", []string{"unknown binding Map", "import Map from \"@std/collections.ms\""}, 1},
 		{"unimported Set call", "fn f() -> Int:\n    let s = Set[String]()\n    return 0\n", []string{"unknown binding Set", "import Set from \"@std/collections.ms\""}, 1},
 		{"unimported List annotation and literal", "fn f() -> Int:\n    var xs: List[Int] = []\n    return 0\n", []string{"unknown type List", "import List from \"@std/collections.ms\""}, 1},
-		{"missing labels on generic call", "import List from \"@std/collections.ms\"\nfn pick[T](items: List[T], keep: fn(value: T) -> Bool) -> Optional[T]:\n    return none\nfn f() -> Int:\n    let nums = [1, 2]\n    let hit = pick(nums, fn(value: Int) -> Bool: value > 1)\n    return hit.unwrap_or(0)\n", []string{"write pick(items: nums, keep: fn(value: Int) -> Bool: value > 1)"}, 1},
+		{"positional generic call", "import List from \"@std/collections.ms\"\nfn pick[T](items: List[T], keep: fn(value: T) -> Bool) -> Optional[T]:\n    return none\nfn f() -> Int:\n    let nums = [1, 2]\n    let hit = pick(nums, fn(value: Int) -> Bool: value > 1)\n    return hit.unwrap_or(0)\n", nil, 0},
 		{"member synonym on String", "fn f() -> Int:\n    let n = \"abc\".length()\n    return 0\n", []string{"did you mean 'byte_length' or 'scalar_length'?"}, 1},
 		{"member list is complete", "fn f() -> Int:\n    let n = \"abc\".foo()\n    return 0\n", []string{"available: at,", "upper"}, 1},
 		{"join on non-String list", "import List from \"@std/collections.ms\"\nfn f() -> String:\n    return [1].join(separator: \",\")\n", []string{"only available on List[String]", "separator"}, 1},
 		{"callback label mismatch is one error", "import List from \"@std/collections.ms\"\nfn double(n: Int) -> Int:\n    return n * 2\nfn f() -> Int:\n    return [1, 2].map(double).length()\n", []string{"the function's parameter is named n", "expects value"}, 1},
 		{"non-generic callback label mismatch", "import List from \"@std/collections.ms\"\nfn positive(n: Int) -> Bool:\n    return n > 0\nfn f() -> Int:\n    return [1].filter(positive).length()\n", []string{"expected fn(value: Int)->Bool", "expects value"}, 1},
 		{"binding catch-all arm", "type S:\n    case A\n    case B\nfn f(s: S) -> Int:\n    match s:\n        A:\n            return 1\n        other:\n            return 2\n", []string{"'other' is not a case of S", "use '_'"}, 1},
+		{"with on Result suggests unwrapping", "import Closeable from \"@std/cleanup.ms\"\ntype R:\n    n: Int\nimpl Closeable for R:\n    fn close() -> Unit:\n        return unit\nfn mk() -> Result[R, String]:\n    return ok(R(n: 1))\nfn f() -> Int:\n    with x = mk():\n        return 1\n    return 0\n", []string{"with needs a Closeable value", "Result[R, String]", "'try'", "'match'"}, 1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("hints.ms", tt.source)
@@ -49,6 +50,9 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 			p := checker.Check([]*syntax.Module{m}, nil)
 			if len(p.Diagnostics) != tt.count {
 				t.Fatalf("expected %d diagnostics, got %v", tt.count, p.Diagnostics)
+			}
+			if tt.count == 0 {
+				return
 			}
 			message := p.Diagnostics[0].Message
 			for _, want := range tt.want {

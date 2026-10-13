@@ -582,3 +582,17 @@ func (c *checker) unsatisfiedMessage(t, bound *Type, alternative string) string 
 	}
 	return prefix + alternative
 }
+
+// withNotCloseableMessage explains a failed with binding. Built-in and
+// wrapper types cannot receive an implementation, so suggesting one would send
+// the user to a second error; they need to unwrap the value first.
+func (c *checker) withNotCloseableMessage(t *Type) string {
+	name := t.String()
+	if std(t, "Result") || std(t, "Optional") {
+		return "with needs a Closeable value, but this expression is " + name + "; unwrap it first with 'try' (inside a function that returns a compatible Result) or a 'match'"
+	}
+	if t.Def == nil || t.Def.Symbol == nil || t.Def.Symbol.Native != "" || (t.Kind != syntax.KindRecord && t.Kind != "alternative") {
+		return "with needs a Closeable value, but this expression is " + name + ", which cannot implement Closeable; bind a source type that has 'impl Closeable' or declares close() -> Unit"
+	}
+	return "with requires an explicit Closeable implementation or a contract declaring close() -> Unit; " + name + " has none, so add 'impl Closeable for " + name + ":' with fn close() -> Unit"
+}

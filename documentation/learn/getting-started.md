@@ -49,7 +49,7 @@ export fn main() -> Int:
 - `stdout().write(data: ...)` writes bytes, so `to_bytes()` converts the text first.
 - `write` returns a `Result`. The `match` handles both outcomes: success returns `0`, and failure returns `1`. `_` ignores the outcome's payload.
 
-Four spaces start each nested block. Functions with multiple parameters name every supplied argument; a single-parameter call may omit its label.
+Four spaces start each nested block. Function calls accept positional arguments; labels are optional and can make a call clearer.
 
 ## Understand the project
 
@@ -64,6 +64,19 @@ entry = "./src/main.ms"
 
 Paths are relative to the manifest. See [project configuration](../developer-tooling/builds/project-configuration.md) when setting up your own application.
 
+## Create your own project
+
+```sh
+ms init hello
+cd hello
+ms run ms.toml -- first second
+ms test ms.toml
+```
+
+`ms init [directory]` writes `ms.toml`, `src/main.ms` (the program above), `test.ms`, and a `.gitignore`. It stops without writing anything if one of those files already exists. A project is just that manifest plus an entry module exporting `main() -> Int`, so you can also create the files by hand.
+
+The first `ms run` or `ms build` writes two things next to `ms.toml`. `ms.lock` records the compiler, runtime, and toolchain pins the build used: commit it. `.ms-cache/` holds build artifacts, several megabytes per project: keep it out of version control (`ms init` adds it to `.gitignore`). A `ms` built from a source checkout has different pins than a release, so running `ms lock` or `ms run` on a project such as `examples/hello` with it rewrites the checked-in `ms.lock`; discard that change rather than committing it.
+
 ## Build and test
 
 ```sh
@@ -73,6 +86,6 @@ Paths are relative to the manifest. See [project configuration](../developer-too
 ./ms fmt examples/hello/src/main.ms --check
 ```
 
-`build` leaves a native executable that runs independently of Manuscript. `test` runs test blocks in the given module; `ms test ms.toml` also runs every `test.ms` and `*_test.ms` file in the project. Each test prints `RUN` before it starts; a test that exceeds `--timeout` (default 60s, `0` disables) fails by name, and `--filter text` runs only tests whose `module::name` contains the text. `fmt --check` reports formatting changes without writing them. Use `./ms --help` to list commands or `./ms help run` for a command's options.
+`build` leaves a native executable that runs independently of Manuscript. `test` runs test blocks in the given module, with the project directory (the one holding `ms.toml`, or the test file's directory for a single file) as the working directory, so fixtures such as `golden/input.txt` resolve the same wherever you invoke `ms`; `ms test ms.toml` also runs every `test.ms` and `*_test.ms` file in the project. Each test prints `RUN` before it starts; a test that exceeds `--timeout` (default 60s, `0` disables) fails by name, and `--filter text` runs only tests whose `module::name` contains the text. `fmt --check` reports formatting changes without writing them. Use `./ms --help` to list commands or `./ms help run` for a command's options.
 
 Continue with [the language tour](tour.md). The [developer tools](../developer-tooling/implementation.md) cover editor setup, inspection, API documentation, and debugging.

@@ -12,15 +12,15 @@ jobs:
     name: Fast feedback
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             toolchain/
@@ -36,21 +36,21 @@ jobs:
     needs: fast
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: toolchain/
           key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
       - name: Unit and native end-to-end coverage, including dependency packages
         run: make coverage
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: language-coverage
           path: .artifacts/coverage/
@@ -60,7 +60,7 @@ jobs:
           ./ms check examples/hello/ms.toml
           ./ms lock examples/hello/ms.toml
           ./ms run examples/hello/ms.toml -- first second
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: manuscript-test-cli
           path: ms
@@ -75,12 +75,12 @@ jobs:
         check: [race, fuzz]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: toolchain/
           key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
@@ -92,17 +92,17 @@ jobs:
     needs: conformance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
           cache-dependency-path: extensions/vscode/package-lock.json
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: manuscript-test-cli
       - name: Prepare embedded debugger CLI
@@ -117,7 +117,7 @@ jobs:
         working-directory: extensions/vscode
         run: |
           MANUSCRIPT_DAP_TEST=1 MANUSCRIPT_MS="$GITHUB_WORKSPACE/ms" MANUSCRIPT_DAP_ADAPTER="$PWD/dist/debug-adapter.js" node tests/debug-adapter.test.js
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: manuscript-vscode
           path: extensions/vscode/*.vsix
@@ -132,12 +132,12 @@ jobs:
     env:
       CGO_ENABLED: '0'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
       - name: Native host compatibility and Node.js coverage

@@ -14,12 +14,17 @@ type Bool:
 
 ## Equal {data-api-kind="Interface"}
 
+Equality and hashing are ordinary operation interfaces. Built-in data retains
+its value semantics; an explicit implementation selects domain identity.
+
 ```manuscript
 interface Equal:
     fn equals(other: Equal) -> Bool
 ```
 
 ## Error {data-api-kind="Interface"}
+
+A contract for expected failures that can provide a human-readable message.
 
 ```manuscript
 interface Error:
@@ -40,6 +45,8 @@ type Float:
 ```
 
 ## Hashable {data-api-kind="Interface"}
+
+A type with a stable hash consistent with its `Equal` implementation.
 
 ```manuscript
 interface Hashable:
@@ -63,6 +70,8 @@ type Never:
 
 ## Optional {data-api-kind="Alternative"}
 
+Represents a value that may be absent: `some(value)` or `none`.
+
 ```manuscript
 type Optional[T]:
     case some(value: T)
@@ -72,14 +81,27 @@ type Optional[T]:
     fn unwrap() -> T:
     fn unwrap_or(fallback: T) -> T:
     fn unwrap_or_else(create: fn() -> T) -> T:
+    fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
+    fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
+    fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
 ```
 
 ## Result {data-api-kind="Alternative"}
 
+Holds either a successful value (`ok`) or an expected failure (`error`).
+
 ```manuscript
-type Result[T, U]:
+type Result[T, E]:
     case ok(value: T)
-    case error(cause: U)
+    case error(cause: E)
+    fn is_ok() -> Bool:
+    fn is_error() -> Bool:
+    fn unwrap() -> T:
+    fn unwrap_error() -> E:
+    fn unwrap_or(fallback: T) -> T:
+    fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
+    fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
+    fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
 ```
 
 ## String {data-api-kind="Type"}

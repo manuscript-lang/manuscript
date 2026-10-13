@@ -76,6 +76,8 @@ func TestStandardLibraryFaults(t *testing.T) {
 		"negative queue capacity faults":  "Queue capacity must be positive",
 		"stale synchronized guard faults": "Synchronized guard is closed",
 		"invalid list slice faults":       "invalid half-open slice bounds",
+		"negative split limit faults":     "split: max_parts must be nonnegative, found -1",
+		"negative replace limit faults":   "replace: max_replacements must be nonnegative, found -1",
 	}
 	for _, declaration := range module.Declarations {
 		if declaration.Kind != syntax.KindTest {
@@ -97,7 +99,7 @@ func TestStandardLibraryFaults(t *testing.T) {
 			t.Errorf("missing %s%s:\n%s", prefix, declaration.Name, output)
 		}
 	}
-	for _, expected := range []string{"fault cleanup completed\n", "fresh root after stdlib faults\n", "8 tests, 7 failed"} {
+	for _, expected := range []string{"fault cleanup completed\n", "fresh root after stdlib faults\n", "10 tests, 9 failed"} {
 		if !strings.Contains(output, expected) {
 			t.Errorf("missing transcript %q:\n%s", expected, output)
 		}

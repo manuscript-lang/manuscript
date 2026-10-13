@@ -57,7 +57,7 @@ Decision: the user rejected both deeply nested Result matches and the elaborate 
 
 Apply when: adding Result adapters or rewriting examples that combine execution and domain errors.
 Evidence: the user's removal request; [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [task group example](../documentation/concurrency/task-groups.md).
-Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. The standard Result module exports only its type, and regenerated API references agree with its declarations.
+Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. Result's success-only `map` and same-error `and_then` retain the original error payload; they do not add an error-translation helper. The standard Result module exports only its type, and regenerated API references agree with its declarations. [Called composition tests](../tests/e2e/testdata/stdlib/core-parity.ms) distinguish success transformation from error translation.
 
 ### Equality and hashing are source interfaces
 
@@ -72,12 +72,11 @@ Evidence: [sharing rules](../documentation/concurrency/sharing.md).
 
 ### Syntax improvements need examples across their boundaries
 
-Decision: support grouped symbol imports, and allow an omitted call label for a function with one parameter. The later token-cost request permits matching-name shorthand for multi-parameter functions and brace Map literals. Other multi-parameter expressions retain explicit labels. The latest correction also allows omitted labels on single-payload record/case constructors and contract views; multi-payload constructors retain labels. The single-parameter request measures declaration arity, not the number of arguments supplied. These are user decisions; verify their availability in the branch being changed.
+Decision: support grouped symbol imports and brace Map literals. The user's newer explicit request to “remove mandatory labels for invoking functions” supersedes the prior restriction to single-parameter unlabeled calls. Invocation labels are optional across functions, methods, function values and constructors. Preserve existing matching-name shorthand; changing every bare identifier to positional would silently change valid reordered calls. Keep callback function-type label identity separate from invocation syntax, including the contextual-lambda label adoption rule.
 
-Apply when: changing imports, calls, grammar, or editor assistance.
-Evidence for the newer rule: [call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names), [Map literals](../documentation/core-language/types/collections.md#map-literals), and [native terse syntax fixture](../tests/e2e/testdata/accept/terse-data.ms).
-Evidence: [grouped-import request](codex://threads/01a12e1a-7d2d-7646-b5fc-2dc8fdd60038); [single-parameter request](codex://threads/01a12e4a-98e8-775e-9e6c-c101a8ac300d).
-Verify: grouped imports resolve each symbol and its editor location; one-parameter calls exercise both spellings, multi-parameter calls accept matching bare names in any order and reject other unlabeled expressions, and missing arguments still fail. Consult current grammar and compatibility rules for methods, constructors, and function values rather than assuming identical boundaries.
+Apply when: changing calls, grammar, inference or editor assistance.
+Evidence: [explicit user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df); [canonical call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names); [binding/source preservation tests](../pkg/checker/positional_arguments_test.go); [native calls](../tests/e2e/testdata/accept/positional-arguments.ms).
+Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding.
 
 ### Recover concrete contract receivers through checked matching
 
@@ -166,6 +165,8 @@ Verify: use `items[index].unwrap_or(0)` for absent indexes, keep `identity[Int]`
 Decision: the user explicitly permits callback parameter and result inference. Known function contexts supply omitted parameter types; callback bodies can supply generic output evidence after inputs are known, including success types within a partially known Result context. Named public signatures stay explicit, and callable argument labels retain their existing function identity. Following [issue #81](https://github.com/manuscript-lang/manuscript/issues/81), contextual anonymous functions adopt the expected call labels independently of local parameter names; lowering must dispatch using those context labels while binding body names by position. Use existing argument/field defaults to omit redundant values; do not treat every Optional parameter as implicitly defaulted.
 
 Decision: the [user approved](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df) unambiguous generic inference from the expected result to address [issue #98](https://github.com/manuscript-lang/manuscript/issues/98), superseding the argument-only restriction. Preserve argument evidence and explicit specialization; use result context before deferred callbacks, without widening ordinary nominal/function types or adding Optional return wrapping. Existing Error boundaries retain concrete error evidence. Inferred function types still erase default omission permissions.
+
+Verified: argument inference must apply Result error widening within each transactional match, including the single Optional payload attempt, and check the completed target after substitution. A separate root-only fallback missed Optional wrapping and an error parameter already determined as Error; committing a failed success prefix would constrain unrelated later evidence. Keep success types and nested applications invariant, then let final argument checking retain scoped Error evidence. Evidence: [conversion and rollback checks](../pkg/compiler/result_argument_inference_test.go), [native identity and order](../tests/e2e/testdata/accept/result-argument-inference.ms), and [local implementation boundaries](../tests/e2e/result_argument_scope_test.go).
 
 Verify: source and native callbacks cover generic map results, callbacks listed before their inference inputs, optional callbacks, nested closures, constructors, and editor parameter navigation. Expected-result tests also cover return/binding contexts, bounds, conflicting evidence, concrete Error conversion, and nested call order. Preserve explicit annotations where incomplete Result construction or `try` lacks a known result context.
 

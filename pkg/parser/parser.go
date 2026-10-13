@@ -16,6 +16,31 @@ type Parser struct {
 	inlineStatement bool
 	inlineReturn    bool
 	blockLambda     bool
+	depth           int
+}
+
+// maxNesting bounds recursive descent so generated or hostile input produces a
+// diagnostic instead of exhausting the Go stack, which cannot be recovered.
+const maxNesting = 1000
+
+// maxChain bounds left-nested operator, member, call, and index chains, which
+// build deep trees without recursive descent.
+const maxChain = 10000
+
+func (p *Parser) link(links *int) {
+	*links++
+	if *links > maxChain {
+		p.fail(p.peek(), fmt.Sprintf("expression chain exceeds %d operators or accesses; split it into named parts", maxChain))
+	}
+}
+
+// enter counts one level of syntactic nesting; the returned function leaves it.
+func (p *Parser) enter() func() {
+	p.depth++
+	if p.depth > maxNesting {
+		p.fail(p.peek(), fmt.Sprintf("nesting exceeds %d levels; split the expression, type, or block into named parts", maxNesting))
+	}
+	return func() { p.depth-- }
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
@@ -215,6 +240,7 @@ func (p *Parser) typeArgs() []*syntax.Type {
 	return types
 }
 func (p *Parser) typ() *syntax.Type {
+	defer p.enter()()
 	if p.take("fn") {
 		pos := p.previous().Pos
 		params := p.parameters(false, false)
@@ -358,6 +384,7 @@ func (p *Parser) suite() []*syntax.Statement {
 	return p.statementSuite(false)
 }
 func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statement {
+	defer p.enter()()
 	outer, outerReturn, outerLambda := p.inlineStatement, p.inlineReturn, p.blockLambda
 	defer func() { p.inlineStatement, p.inlineReturn, p.blockLambda = outer, outerReturn, outerLambda }()
 	p.need(":")
@@ -474,6 +501,7 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 	return s
 }
 func (p *Parser) pattern() *syntax.Pattern {
+	defer p.enter()()
 	t := p.peek()
 	r := &syntax.Pattern{Pos: t.Pos}
 	if t.Kind == "unit" {
@@ -526,6 +554,7 @@ func (p *Parser) pattern() *syntax.Pattern {
 var precedence = map[string]int{"or": 1, "and": 2, "==": 4, "!=": 4, "<": 4, ">": 4, "<=": 4, ">=": 4, "+": 5, "-": 5, "*": 6, "/": 6, "%": 6}
 
 func (p *Parser) expression(min int) *syntax.Expression {
+	defer p.enter()()
 	t := p.peek()
 	var e *syntax.Expression
 	if t.Kind == "not" && min > 3 {
@@ -539,6 +568,7 @@ func (p *Parser) expression(min int) *syntax.Expression {
 		e = p.primary()
 	}
 	compared := false
+	links := 0
 	for {
 		op := p.peek()
 		if p.compoundAssignment() {
@@ -552,6 +582,7 @@ func (p *Parser) expression(min int) *syntax.Expression {
 			p.fail(op, "comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < c")
 		}
 		p.at++
+		p.link(&links)
 		e = &syntax.Expression{Kind: syntax.KindBinary, Text: op.Text, Pos: op.Pos, Left: e, Right: p.expression(level + 1)}
 		if level == 4 {
 			compared = true
@@ -633,13 +664,17 @@ func (p *Parser) primary() *syntax.Expression {
 		}
 		p.fail(t, "expected an expression, found "+describe(t)+"; write a value, name, call, or literal here")
 	}
+	links := 0
 	for {
 		if p.take(".") {
+			p.link(&links)
 			name := p.need(lexer.Name)
 			e = &syntax.Expression{Kind: syntax.KindMember, Pos: name.Pos, Text: name.Text, Left: e}
 		} else if p.take("[") {
+			p.link(&links)
 			e = p.bracket(e)
 		} else if p.take("(") {
+			p.link(&links)
 			call := &syntax.Expression{Kind: syntax.KindCall, Pos: e.Pos, Left: e}
 			if !p.take(")") {
 				for {
@@ -766,7 +801,7 @@ func (p *Parser) text(token lexer.Token) *syntax.Expression {
 				tokens[index].Pos = shift(tokens[index].Pos)
 				tokens[index].End = shift(tokens[index].End)
 			}
-			nested := &Parser{tokens: tokens}
+			nested := &Parser{tokens: tokens, depth: p.depth}
 			value := nested.expression(0)
 			nested.newlines()
 			nested.need(lexer.EOF)

@@ -45,6 +45,18 @@ test "strings honor omitted none zero and explicit output limits":
     if value("x".pad_end(target_length: 3, padding: "ab")) != "xab": return panic(
         "pad end"
     )
+    if "ab".repeat(count: 4611686018427387904) != limited: return panic("repeat huge")
+    if "ab".pad_start(
+        target_length: 9223372036854775807,
+        padding: "x"
+    ) != limited: return panic("pad start huge")
+    if (
+        "ab".pad_end(
+            target_length: 4611686018427387904,
+            padding: "xyz",
+            max_bytes: 9223372036854775807
+        ) != limited
+    ): return panic("pad end huge")
     if value("aa".replace_all(old: "a", new: "xy")) != "xyxy": return panic(
         "replace all"
     )
@@ -97,3 +109,19 @@ test "string and bytes builders freeze idempotently":
         bytes.freeze() != Bytes([0, 255, 1])
         or bytes.freeze() != Bytes([0, 255, 1])
     ): return panic("bytes freeze")
+
+test "empty text splits into one part and case mapping is full Unicode":
+    if "".split(separator: ",") != [""]: return panic("empty split")
+
+    let none_requested: List[String] = []
+    if "".split(separator: "") != none_requested: return panic(
+        "empty text has no scalars"
+    )
+    if "".split(separator: ",", max_parts: 0) != none_requested: return panic(
+        "zero parts"
+    )
+    if "ß".upper() != "SS": return panic("sharp s upper")
+    if "ﬁ".upper() != "FI": return panic("ligature upper")
+    if "ΑΣ".lower() != "ας": return panic("final sigma")
+    if "İ".lower() != "i\u{307}": return panic("dotted capital I")
+    if "Maße".upper() != "MASSE": return panic("upper mixed")

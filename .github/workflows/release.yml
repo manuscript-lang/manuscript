@@ -32,7 +32,7 @@ jobs:
         os: [linux, darwin, windows]
         arch: [amd64, arm64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check release tag version
         if: startsWith(github.ref, 'refs/tags/v')
         env:
@@ -40,7 +40,7 @@ jobs:
         run: test "${RELEASE_TAG#v}" = "$(cat .msversion)"
       - name: Build self-contained archive
         run: sh scripts/package.sh "${{ matrix.os }}" "${{ matrix.arch }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
           path: |
@@ -75,13 +75,13 @@ jobs:
             runner: windows-11-arm
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Go runs the test harness only; the packaged CLI receives no host Go PATH.
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
           path: archives
@@ -105,7 +105,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: manuscript-*
           path: dist
