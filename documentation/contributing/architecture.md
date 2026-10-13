@@ -31,9 +31,24 @@ flowchart LR
 4. `frontend.Parse` selects strict or recovering parsing for compilation, formatting, and completion. `lexer` produces layout-aware UTF-8 tokens with original source positions; `parser` produces `syntax.Module` trees. Compilation permits recovery only with `AnalyzeOnly`. Recovered ASTs retain diagnostics, which prevent generated output. Standard declarations use the same syntax and parser as application source; `checker` loads their pinned runtime bindings.
 5. `checker` loads standard declarations on first use, so commands that never check source start without that cost. It resolves declarations, nominal types, bounds, selected implementations, control flow, captures, cleanup, and effects. Its checked program retains the information used by lowering, documentation, and editor tools.
 6. Check, lint, inspection, diagrams, documentation, and lock commands stop after checking. Application entry validation can run without lowering; editor analysis can omit that requirement. Formatting uses only the shared parsing stage.
-7. `compiler.optimize` derives a lowering view from a successful checked program. It folds literal boolean expressions, including short-circuiting, without rewriting source nodes or discarding checked identities and effects. An effectful left operand still runs: `operation() and false` cannot become `false`. Numeric operations retain runtime fault behavior. Go performs native optimization according to the selected build type.
-8. `compiler.lowerGo` consumes the checked program and optimization facts, constructing Go AST expressions, statements, declarations, and a file directly. Module assembly, function bodies, statements, and expressions have focused implementation files. One printer boundary formats the tree and materializes its source directives; see [structured Go generation](compiler/lowering/_index.md#structured-go-generation). `Standalone` merges generated output and the embedded runtime without a runtime package dependency.
+7. `lower.optimize` derives a lowering view from a successful checked program. It folds literal boolean expressions, including short-circuiting, without rewriting source nodes or discarding checked identities and effects. An effectful left operand still runs: `operation() and false` cannot become `false`. Numeric operations retain runtime fault behavior. Go performs native optimization according to the selected build type.
+8. `lower.Go` consumes the checked program and optimization facts, constructing Go AST expressions, statements, declarations, and a file directly. Module assembly, function bodies, statements, and expressions have focused implementation files. One printer boundary formats the tree and materializes its source directives; see [structured Go generation](compiler/lowering/_index.md#structured-go-generation). `Standalone` merges generated output and the embedded runtime without a runtime package dependency.
 9. Native builds compile the embedded runtime as a separate package in a shared, content-addressed workspace module, select a lean runtime variant when the program imports no network, system, or process module, replay the recorded compile and link commands when the application imports are unchanged, disable VCS stamping, query the selected toolchain once per process (native CLI commands start that query and the implementation digest while checking), use that same pin for project verification and artifact metadata, and check cache hashes. Pin and metadata comparison operates on typed values rather than serializing both sides back to JSON. Builds embed vendored dependency sources and write executable metadata. Standalone execution commands use a per-user artifact cache; projects use `.ms-cache`. Only the lock command needs a toolchain query among the source commands.
+
+## Respect the layers
+
+Each layer imports only layers above it in this list; `scripts/repo-check/policy.json` enforces the exact edges.
+
+1. Foundation: `syntax`, `lexer`, `parser`, `project`, `stdlib`
+2. `frontend`: parsing and module graph
+3. `checker`: types and semantic facts
+4. `lower`: checked program to Go source (no native tools, no runtime import)
+5. `compiler`: the source-to-Go pipeline facade
+6. `build`: native builds, caches, pins, and toolchains
+7. Tooling: `tooling`, `tooling/docgen`, `tooling/lsp`
+8. `internal/cli` and `cmd/ms`
+
+`runtime` and the `internal/` helpers it embeds form a separate leaf stack that generated programs link against.
 
 ## Know what each package owns
 
@@ -45,7 +60,9 @@ flowchart LR
 | `pkg/frontend/` | Shared parsing and in-memory AST loading in `source.go`; project/module graph loading, canonical snapshots, and import diagnostics in `modules.go` |
 | `pkg/checker/` | Checking entry point in `checker.go`; calls, contracts, recursion, effects, standard loading, editor queries, and declaration documentation in focused files |
 | `pkg/project/` | Manifest parsing in `manifest.go`; confined import and overlay resolution in `paths.go` |
-| `pkg/compiler/` | Shared pipeline in `compiler.go`; optimization facts in `optimize.go`; Go module assembly in `generate.go` and lowering in `lower_*.go`; native source assembly in `build.go`; pin/artifact identity in `cache.go`; SDK selection/materialization in `toolchain*.go` |
+| `pkg/compiler/` | Source-to-checked-program pipeline in `compiler.go` (frontend, checker, entry validation, then `lower.Go`); build kinds in `build_type.go`. It never touches native tools |
+| `pkg/lower/` | Checked program to Go source: optimization facts in `optimize.go`; module assembly in `generate.go`; lowering in `lower_*.go`; Go AST builders and printing in `go_ast.go` and `print_go.go`. It consumes only checker identities |
+| `pkg/build/` | Native builds from compiler results: source assembly in `build.go`; pin/artifact identity in `cache.go`; command replay in `replay.go`; shared workspace in `workspace.go`; runtime variant in `variant.go`; SDK selection/materialization in `toolchain*.go` |
 | `pkg/runtime/` | Value and numeric semantics; work lifetimes in `tasks.go`, `scheduler.go`, and `lifetime.go`; cleanup, synchronization, services, and host implementations; domain-specific native standard-library operations in `library_*.go` |
 | `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native identities, and embedded sources. This is the standard signature authority |
 | `pkg/tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
@@ -99,7 +116,7 @@ Keep generated sources reproducible through their generator. Do not edit HTML to
 | Documentation | Canonical Markdown or generator → `make docs-check` → `make book-check` → `make book`; source freshness alone does not establish published freshness |
 | Build packaging | Embedded source/dependency/toolchain inputs → pins and cache → copied standalone binary; `make dist-check` removes host Go and disables package downloads |
 
-Implementation hashes include source from `frontend` and `project` as well as syntax, parsing, checking, the compiler, runtime, standard declarations, and dependency bundle. When moving build-affecting behavior to a new package, include that package's embedded implementation sources in pin identity. Otherwise an implementation update can silently retain stale build pins.
+Implementation hashes include source from `frontend`, `project`, `lower`, and `build` as well as syntax, parsing, checking, the compiler, runtime, standard declarations, and dependency bundle. When moving build-affecting behavior to a new package, include that package's embedded implementation sources in pin identity. Otherwise an implementation update can silently retain stale build pins.
 
 ## Read the evidence correctly
 

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/manuscript-lang/manuscript/internal/debugger"
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
@@ -41,7 +42,7 @@ func Run(args []string) int {
 		return 0
 	}
 	if args[0] == "pprof" || args[0] == "trace" {
-		command, err := compiler.ProfileCommand(args[0], args[1:]...)
+		command, err := build.ProfileCommand(args[0], args[1:]...)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
@@ -315,7 +316,7 @@ func Run(args []string) int {
 	case "run", "test", "debug":
 		// Native commands need the build pin; query the toolchain and hash
 		// embedded inputs while the source is parsed and checked.
-		go compiler.CurrentPin()
+		go build.CurrentPin()
 	}
 	if watch {
 		return watchProgram(command, filename, options, kind, "", arguments)
@@ -341,7 +342,7 @@ func Run(args []string) int {
 			fmt.Fprintln(os.Stderr, "lock requires a project ms.toml, not a single .ms file; run ms lock path/to/ms.toml (a manifest declares [project] name and source, plus entry for an executable)")
 			return 2
 		}
-		if err := compiler.WritePin(result.ProjectRoot); err != nil {
+		if err := build.WritePin(result.ProjectRoot); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
@@ -362,7 +363,7 @@ func Run(args []string) int {
 		}
 		return writeOutput(output, []byte(source))
 	case "emit":
-		source, err := compiler.Standalone(result.Source)
+		source, err := build.Standalone(result.Source)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
@@ -371,7 +372,7 @@ func Run(args []string) int {
 	default:
 		if cache == "" {
 			var err error
-			cache, err = compiler.DefaultBuildCacheDir()
+			cache, err = build.DefaultBuildCacheDir()
 			if err != nil {
 				if structured && command == "test" {
 					return testJSONError(filename, result, "build", err)
@@ -394,7 +395,7 @@ func Run(args []string) int {
 			executable += ".exe"
 		}
 
-		if _, err := compiler.BuildCheckedWithType(result, executable, cache, kind); err != nil {
+		if _, err := build.BuildCheckedWithType(result, executable, cache, kind); err != nil {
 			if structured && command == "test" {
 				return testJSONError(filename, result, "build", err)
 			}

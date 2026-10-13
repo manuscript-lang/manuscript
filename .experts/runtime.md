@@ -19,9 +19,9 @@ so omitting it preserves the surrounding source tracing, return/propagation and
 cancellation wrappers.
 
 Apply when: changing generated cleanup setup or adding lowering scopes.
-Evidence: [callable lowering](../pkg/compiler/lower_functions.go),
-[ownership tests](../pkg/compiler/lower_scalar_test.go),
-[native cancellation/fault checks](../pkg/compiler/lower_scalar_native_test.go),
+Evidence: [callable lowering](../pkg/lower/lower_functions.go),
+[ownership tests](../pkg/lower/lower_scalar_test.go),
+[native cancellation/fault checks](../pkg/build/lower_scalar_native_test.go),
 and [runtime unwind](../pkg/runtime/tasks.go).
 Verify: conditional/default/match registrations retain stacks; a nested source
 closure does not force an unused parent stack; return, propagation, fault and
@@ -48,7 +48,7 @@ Verified: allocating pprof labels, derived executions, and trace regions for eve
 Verified: attribution runs on the same execution and goroutine. Preserve the full execution state when changing its context; the work-inheritance helper can intentionally start new call accounting. Resetting that state for source labels changes admission at the depth limit and fault-frame bookkeeping. The profiling depth-limit regression distinguishes these cases.
 
 Apply when: changing source-call wrappers, profiling, work-context inheritance, or capture defaults.
-Evidence: [profiling implementation](../pkg/runtime/profile.go), [boundary/allocation and repeated-run regressions](../pkg/runtime/profile_test.go), [native exit/flush checks](../pkg/compiler/profile_test.go), and [profiling contract](../documentation/developer-tooling/implementation.md#debugging-and-profiling).
+Evidence: [profiling implementation](../pkg/runtime/profile.go), [boundary/allocation and repeated-run regressions](../pkg/runtime/profile_test.go), [native exit/flush checks](../pkg/build/profile_test.go), and [profiling contract](../documentation/developer-tooling/implementation.md#debugging-and-profiling).
 Verify: measure unprofiled execution separately from capture setup/flush; repeat CPU/heap/trace modes. Preserve cancellation/lifetime and caller-label restoration, including faults. Validate all requested outputs with bundled viewers and keep default artifact changes explicit in help, docs, and manifest tests.
 
 ### Newer stdlib direction needs checkout reconciliation
@@ -144,7 +144,7 @@ Verify: omit a cap and admit more work; supplied caps still reject excess. Resta
 Verified: tar EOF can precede the gzip trailer. A complete tar payload with a truncated trailer must not become a ready toolchain. Extraction now drains the compressed reader before publication, validating truncation and checksum; retries retain no partial cache.
 
 Apply when: changing SDK extraction or cache publication.
-Evidence: [extractor](../pkg/compiler/toolchain_cache.go), [interrupted archive and concurrent publication tests](../pkg/compiler/toolchain_test.go).
+Evidence: [extractor](../pkg/build/toolchain_cache.go), [interrupted archive and concurrent publication tests](../pkg/build/toolchain_test.go).
 Verify: truncated archives fail, leave no published/staging cache, and permit a complete retry; concurrent valid callers reuse one immutable result.
 
 ### Native option adapters must respect declared parameter types
@@ -179,7 +179,7 @@ Verify: round-trip consecutive single empty fields with LF/CRLF and alternate de
 Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map and Map.map_keys deduplicate output elements/keys, whose scope can differ from the input element/key scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep Map/Set callback membership snapshots at the native invocation boundary and payload references shallow.
 
 Apply when: adding native transformations with output bounds or changing receiver specialization.
-Evidence: [receiver lowering](../pkg/compiler/lower_collections.go), [native dispatch](../pkg/runtime/collections.go), [cross-module output evidence](../tests/e2e/testdata/projects/core_parity/main.ms), and [callback mutation conformance](../tests/e2e/testdata/stdlib/core-parity.ms).
+Evidence: [receiver lowering](../pkg/lower/lower_collections.go), [native dispatch](../pkg/runtime/collections.go), [cross-module output evidence](../tests/e2e/testdata/projects/core_parity/main.ms), and [callback mutation conformance](../tests/e2e/testdata/stdlib/core-parity.ms).
 Verify: a generic input forwarded from another module still maps to a set deduplicated by the defining output module's equality; two modules can select different implementations for the same type. A bound specialized method retains its defining module, and callback removals or clearing do not alter the traversal's original membership.
 
 ### Typed task handles replace heterogeneous aggregation

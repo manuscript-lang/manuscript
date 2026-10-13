@@ -5,7 +5,7 @@
 Verified: editor overlays may create a file beneath an existing confined directory, but a dangling symlink remains a filesystem entry whose target identity must be respected. Treating every `EvalSymlinks` not-found result as an unsaved file allowed an overlay to hide an unresolved external target. Source path resolution now rejects that fallback for existing entries.
 
 Apply when: changing project resolution, filesystem identity, or editor overlays.
-Evidence: [source path resolution](../pkg/project/paths.go), [symlink/overlay regressions](../pkg/project/project_test.go), and [strict versus recovery compilation](../pkg/compiler/metadata_test.go).
+Evidence: [source path resolution](../pkg/project/paths.go), [symlink/overlay regressions](../pkg/project/project_test.go), and [strict versus recovery compilation](../pkg/build/metadata_test.go).
 Verify: new confined overlay files compile without being written to disk; overlays for outside paths, dangling external links, or symlinked external parents are rejected. Normalize accepted overlay keys to canonical file identity so symlinked workspace directories retain unsaved content; reject conflicting snapshots of one file. Recovery keeps valid declarations while diagnostics still prevent generated executable source.
 
 ### String conversion is available on every value
@@ -87,7 +87,7 @@ Decision: a common Error contract must allow generic diagnostics and specific ha
 Verified: direct or stored standard error `message` methods dispatch through the registered Error implementation, rather than intrinsic receiver dispatch. Receiver type parameters belong to the implementation, not method-level inference. The [compiled error fixture](../tests/e2e/testdata/accept/library-errors.ms) exercises direct and stored diagnostics alongside generic error views.
 
 Apply when: changing Error boundaries, contract views, matching, or native standard implementations.
-Evidence: [contract type patterns](../documentation/core-language/control-flow/pattern-matching.md#contract-type-patterns); [common error boundary](../documentation/core-language/errors/results.md#a-common-error-boundary); [compiled errors and generic patterns](../tests/e2e/testdata/accept/library-errors.ms); [invalid contract patterns](../pkg/compiler/library_test.go).
+Evidence: [contract type patterns](../documentation/core-language/control-flow/pattern-matching.md#contract-type-patterns); [common error boundary](../documentation/core-language/errors/results.md#a-common-error-boundary); [compiled errors and generic patterns](../tests/e2e/testdata/accept/library-errors.ms); [invalid contract patterns](../pkg/build/library_test.go).
 Verify: exact nominal identities and generic arguments determine a match; the receiver and payload survive conversion and propagation; missing implementations, incomplete generic patterns, and missing fallbacks are rejected.
 
 ### Default arguments must not leak across callable replacement
@@ -180,5 +180,5 @@ Evidence: [callback rules](../documentation/core-language/functions/function-val
 Verified: Go orders function calls left to right but does not guarantee that a plain variable argument is read before a later call. Replacing bound-method construction with `ListAt(ctx, receiver, indexExpression, ...)` let a match expression in the index reassign the receiver before it was captured. An inline `SourceAt` call captures the receiver first while preserving fault attribution; direct scalar lowering likewise extracts operands through calls.
 
 Apply when: removing bound-call wrappers or lowering expressions directly to Go operations.
-Evidence: [direct collection lowering](../pkg/compiler/lower_collections.go), [receiver reassignment regression](../tests/e2e/testdata/accept/collection-call-order.ms), and [evaluation-order contract](../documentation/contributing/compiler/lowering/evaluation-order.md).
+Evidence: [direct collection lowering](../pkg/lower/lower_collections.go), [receiver reassignment regression](../tests/e2e/testdata/accept/collection-call-order.ms), and [evaluation-order contract](../documentation/contributing/compiler/lowering/evaluation-order.md).
 Verify: a list receiver initially containing 7 still returns 7 when its index expression reassigns the local to a list containing 9; receiver and argument expressions each execute once in written order.

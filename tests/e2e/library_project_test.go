@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/build"
 )
 
 func TestLibraryProjectCommandsAndCache(t *testing.T) {
@@ -64,11 +64,11 @@ test "root":
 	if err != nil {
 		t.Fatal(err)
 	}
-	var pin compiler.BuildPin
+	var pin build.BuildPin
 	if err := json.Unmarshal(pinData, &pin); err != nil || pin.Format != 1 || pin.Compiler == "" || pin.ImplementationSHA256 == "" || pin.Toolchain["CGO_ENABLED"] != "0" {
 		t.Fatalf("invalid library lock: %+v %v", pin, err)
 	}
-	if err := compiler.CheckPin(root); err != nil {
+	if err := build.CheckPin(root); err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {

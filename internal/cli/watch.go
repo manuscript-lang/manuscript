@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"os"
 	"os/exec"
@@ -57,14 +58,14 @@ func watchProgram(command, filename string, options compiler.Options, kind compi
 			buildCache = filepath.Join(result.ProjectRoot, ".ms-cache")
 		}
 		if buildCache == "" {
-			if buildCache, err = compiler.DefaultBuildCacheDir(); err != nil {
+			if buildCache, err = build.DefaultBuildCacheDir(); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				return
 			}
 		}
 		generation++
 		executable := filepath.Join(directory, fmt.Sprintf("program-%d", generation))
-		if _, err := compiler.BuildCheckedWithType(result, executable, buildCache, kind); err != nil {
+		if _, err := build.BuildCheckedWithType(result, executable, buildCache, kind); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			fmt.Fprintln(os.Stderr, "ms: waiting for changes")
 			return
