@@ -34,7 +34,8 @@
       "pkg/project",
       "pkg/stdlib",
       "pkg/runtime",
-      "pkg/frontend"
+      "pkg/frontend",
+      "internal/gotoolchain"
     ],
     "pkg/tooling": [
       "pkg/syntax",
@@ -71,6 +72,13 @@
       "pkg/syntax",
       "pkg/parser",
       "pkg/project"
+    ],
+    "internal/gotoolchain": [
+      "internal/gotoolchain/cmd/asm",
+      "internal/gotoolchain/cmd/compile",
+      "internal/gotoolchain/cmd/link",
+      "internal/gotoolchain/internal/buildcfg",
+      "internal/gotoolchain/internal/goversion"
     ]
   },
   "pinned": [
@@ -82,11 +90,15 @@
     "pkg/project",
     "pkg/compiler",
     "pkg/runtime",
-    "pkg/stdlib"
+    "pkg/stdlib",
+    "internal/gotoolchain"
   ],
   "bundled": [
     "internal/decimal",
     "internal/nativeabi",
     "internal/hostos"
+  ],
+  "copied": [
+    "internal/gotoolchain"
   ]
 }

@@ -30,16 +30,33 @@ func ParseBuildType(name string) (BuildType, error) {
 
 func (kind BuildType) sourcePaths() bool { return kind == Debug || kind == RelWithDebInfo }
 
-func (kind BuildType) nativeFlags() []string {
+// goFlags reports the go command's -gcflags and -ldflags settings and
+// whether paths are trimmed for a build type.
+func (kind BuildType) goFlags() (gcflags, ldflags string, trimpath bool) {
 	switch kind {
 	case Debug:
 		// Uncompressed DWARF links faster; Debug artifacts favor rebuild time.
-		return []string{"-gcflags=all=-N -l", "-ldflags=-compressdwarf=false"}
+		return "all=-N -l", "-compressdwarf=false", false
 	case RelWithDebInfo:
-		return nil
+		return "", "", false
 	default:
 		// Go has no size-specific optimizer; both release types use its
 		// normal optimizer and omit symbol tables and DWARF information.
-		return []string{"-trimpath", "-ldflags=-s -w"}
+		return "", "-s -w", true
 	}
+}
+
+func (kind BuildType) nativeFlags() []string {
+	gcflags, ldflags, trimpath := kind.goFlags()
+	var flags []string
+	if trimpath {
+		flags = append(flags, "-trimpath")
+	}
+	if gcflags != "" {
+		flags = append(flags, "-gcflags="+gcflags)
+	}
+	if ldflags != "" {
+		flags = append(flags, "-ldflags="+ldflags)
+	}
+	return flags
 }

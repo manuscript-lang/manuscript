@@ -29,6 +29,15 @@ func workspaceIdentity() string {
 	}{{"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}})
 }
 
+// archiveCache holds compiled Go package archives shared by every workspace.
+func archiveCache() (string, error) {
+	cache, err := userCacheRoot()
+	if err != nil {
+		cache = filepath.Join(os.TempDir(), "manuscript-cache")
+	}
+	return filepath.Join(cache, "manuscript", "archives"), nil
+}
+
 func workspaceRoot() (string, error) {
 	cache, err := userCacheRoot()
 	if err != nil {

@@ -60,7 +60,8 @@ func TestVerificationTargetsExecuteTheirContracts(t *testing.T) {
 	}
 	t.Chdir("../..")
 	for target, expected := range map[string][]string{
-		"verify":   {"vet ./...", "staticcheck ./...", "run ./scripts/repo-check\n", "test ./tests/examples", "maintenance licenses -check"},
+		// Vet and lint cover every package except Go's copied tools.
+		"verify":   {"vet $(", "staticcheck $(", "list ./... | grep -v '/internal/gotoolchain/'", "run ./scripts/repo-check\n", "test ./tests/examples", "maintenance licenses -check"},
 		"coverage": {"test -covermode=atomic", "-coverprofile=", "tool cover -html"},
 		"build":    {"run ./scripts/mktoolchain", "-tags bundled_toolchain"},
 		"race":     {"test -race"}, "fuzz": {"-fuzz '^FuzzCompile$'"}, "e2e": {"test  ./tests/e2e"},

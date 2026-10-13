@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -81,18 +80,19 @@ func TestToolchainCacheConcurrentPublicationAndReuse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := os.Stat(goExecutable(root))
+	version := filepath.Join(root, "VERSION")
+	first, err := os.Stat(version)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if data, err := os.ReadFile(goExecutable(root)); err != nil || string(data) != "compiler" {
+	if data, err := os.ReadFile(version); err != nil || string(data) != "go1.25.1" {
 		t.Fatalf("incomplete extraction: %q, %v", data, err)
 	}
 	secondRoot, err := materializeToolchain(archive, cache)
 	if err != nil || secondRoot != root {
 		t.Fatalf("cache not reused: %s, %v", secondRoot, err)
 	}
-	second, _ := os.Stat(goExecutable(root))
+	second, _ := os.Stat(version)
 	if first.ModTime() != second.ModTime() {
 		t.Fatal("cached toolchain was rewritten")
 	}
@@ -130,18 +130,7 @@ func TestIncompleteToolchainNotPublished(t *testing.T) {
 
 func completeToolchainArchive(t *testing.T) []byte {
 	t.Helper()
-	name := "go/bin/go"
-	if runtime.GOOS == "windows" {
-		name += ".exe"
-	}
-	files := map[string]string{name: "compiler", "go/VERSION": "go1.25.1", "go/src/runtime/runtime.go": "package runtime"}
-	for _, tool := range []string{"compile", "link", "asm"} {
-		if runtime.GOOS == "windows" {
-			tool += ".exe"
-		}
-		files["go/pkg/tool/"+runtime.GOOS+"_"+runtime.GOARCH+"/"+tool] = "tool"
-	}
-	return testArchive(t, files)
+	return testArchive(t, map[string]string{"go/VERSION": "go1.25.1", "go/src/runtime/runtime.go": "package runtime", "go/pkg/include/textflag.h": "#define NOSPLIT 4"})
 }
 
 func TestTruncatedToolchainNeverPublishesAndCanRetry(t *testing.T) {

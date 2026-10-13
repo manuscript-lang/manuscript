@@ -95,7 +95,7 @@ func command(dir, name string, args ...string) error {
 }
 func licenses(check bool) error {
 	var notices []notice
-	for _, root := range []string{"vendor", "website/themes/hugo-book", "skills"} {
+	for _, root := range []string{"vendor", "internal/gotoolchain", "website/themes/hugo-book", "skills"} {
 		err := filepath.WalkDir(root, func(path string, e fs.DirEntry, err error) error {
 			if err != nil {
 				return err

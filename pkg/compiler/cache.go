@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	support "github.com/manuscript-lang/manuscript"
+	"github.com/manuscript-lang/manuscript/internal/gotoolchain"
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/frontend"
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
@@ -50,7 +51,7 @@ var implementation = sync.OnceValue(func() string {
 	bundles := []struct {
 		name  string
 		files fs.FS
-	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"frontend", frontend.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"project", project.ImplementationSources}, {"compiler", ImplementationSources}, {"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}, {"stdlib", stdlib.Sources}}
+	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"frontend", frontend.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"project", project.ImplementationSources}, {"compiler", ImplementationSources}, {"gotoolchain", gotoolchain.ImplementationSources}, {"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}, {"stdlib", stdlib.Sources}}
 	return bundleDigest(bundles)
 })
 

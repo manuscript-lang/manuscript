@@ -3,6 +3,7 @@ package compiler
 import (
 	"bytes"
 	"fmt"
+	"github.com/manuscript-lang/manuscript/internal/gotoolchain"
 	msruntime "github.com/manuscript-lang/manuscript/pkg/runtime"
 	"go/ast"
 	"go/build/constraint"
@@ -10,7 +11,6 @@ import (
 	"go/parser"
 	"go/scanner"
 	"go/token"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -102,7 +102,7 @@ func Standalone(source string) (string, error) {
 	return string(formatted), err
 }
 
-// Build invokes the selected Go toolchain without obtaining external dependencies.
+// Build compiles generated source natively without obtaining external dependencies.
 func Build(source, output string) error { return BuildWithType(source, output, Release) }
 
 // BuildWithType builds unchecked generated source with an explicit native build type.
@@ -127,27 +127,29 @@ func buildNative(source, output string, kind BuildType, tags []string) error {
 	if err != nil {
 		return err
 	}
-	packagePath := workspaceModule + "/apps/" + filepath.Base(dir)
-	imports, importErr := sourceImports(source)
-	key, keyErr := replayKey(kind, tags)
-	replayable := importErr == nil && keyErr == nil
-	if replayable {
-		if profile, ok := loadReplay(root, key, imports); ok {
-			if profile.replay(dir, packagePath, output) == nil {
-				return nil
-			}
-			// Go may reuse its cached compilation of this exact source, leaving
-			// nothing to capture; do not retry a failing replay meanwhile.
-			os.Remove(replayPath(root, key))
-		}
-		if err := captureBuild(root, key, dir, packagePath, imports, output, kind, tags); err == nil {
-			return nil
-		}
-		// Report diagnostics from an ordinary build without command tracing.
+	goroot, environment, native := nativeToolchain()
+	if !native {
+		return goBuild(dir, output, kind, tags)
 	}
-	return goBuild(dir, output, kind, tags)
+	cache, err := archiveCache()
+	if err != nil {
+		return err
+	}
+	gcflags, ldflags, trimpath := kind.goFlags()
+	err = gotoolchain.Build(gotoolchain.Config{
+		GOROOT: goroot, ModuleRoot: root, ModulePath: workspaceModule,
+		Dir: dir, ImportPath: workspaceModule + "/apps/" + filepath.Base(dir), Tags: tags,
+		GCFlags: gcflags, LDFlags: ldflags, Trimpath: trimpath,
+		Cache: cache, Environment: environment, Output: output,
+	})
+	if err != nil {
+		return fmt.Errorf("Go build failed: %w", err)
+	}
+	return nil
 }
 
+// goBuild runs an installed go command whose release differs from ms's
+// built-in Go tools.
 func goBuild(dir, output string, kind BuildType, tags []string) error {
 	arguments := append(buildArguments(kind, tags), kind.nativeFlags()...)
 	// Build the application package, rather than a file with the synthetic
@@ -163,27 +165,6 @@ func goBuild(dir, output string, kind BuildType, tags []string) error {
 	data, err := command.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("Go build failed: %w\n%s", err, data)
-	}
-	return nil
-}
-
-// captureBuild runs go build with command tracing and records a replay profile.
-func captureBuild(root, key, dir, packagePath string, imports []string, output string, kind BuildType, tags []string) error {
-	arguments := append(append(buildArguments(kind, tags), "-x", "-work"), kind.nativeFlags()...)
-	command, err := goCommand(append(arguments, "-o", output, ".")...)
-	if err != nil {
-		return err
-	}
-	command.Dir = dir
-	trace, err := command.CombinedOutput()
-	if work := traceWork(trace); work != "" {
-		defer os.RemoveAll(work)
-	}
-	if err != nil {
-		return err
-	}
-	if profile, ok := captureReplay(trace, dir, packagePath, imports); ok {
-		saveReplay(root, key, profile)
 	}
 	return nil
 }

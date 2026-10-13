@@ -13,7 +13,7 @@ Use the checkout SDK for maintenance commands. Make sets `MANUSCRIPT_GO` and PAT
 
 | Change | Command and result |
 | --- | --- |
-| Go SDK | `toolchain/go/bin/go run ./scripts/maintenance go 1.25.1` reads the official release catalog and updates `.go-version`, all six archive checksums, and the module's Go language version. Substitute the desired exact version, then run `make setup` |
+| Go SDK | `toolchain/go/bin/go run ./scripts/maintenance go 1.25.1` reads the official release catalog and updates `.go-version`, all six archive checksums, and the module's Go language version. Substitute the desired exact version, then run `make setup` and `toolchain/go/bin/go run ./scripts/mkgotoolchain` to replace the copied compiler, assembler, and linker in `internal/gotoolchain`. Compare that package's compile, asm, and link arguments with the new release's `cmd/go/internal/work/gc.go` |
 | Node | `toolchain/go/bin/go run ./scripts/maintenance node 24.13.0` updates `.node-version`, shared by CI. Install that version, then run `npm ci` in `extensions/vscode` |
 | Go dependencies | Edit requirements or review a dependency PR, then run `make vendor-refresh` to tidy the module, rebuild `vendor/`, and refresh the notice inventory |
 | Extension dependencies | Update `extensions/vscode/package.json`, run `npm install --package-lock-only --ignore-scripts` there, then `npm ci` and `npm run package -- --allow-missing-repository` |

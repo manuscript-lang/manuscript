@@ -1,5 +1,7 @@
-// mktoolchain trims a verified Go SDK to the tools and source references needed
-// by Manuscript's runtime. Package discovery comes from Go, not a manual list.
+// mktoolchain trims a verified Go SDK to the standard library sources and
+// assembly headers that ms's built-in Go tools compile Manuscript's runtime
+// from. The payload holds no executables, so one payload serves every target.
+// Package discovery comes from Go, not a manual list.
 package main
 
 import (
@@ -24,10 +26,10 @@ func main() {
 }
 
 func build() error {
-	if len(os.Args) != 5 {
-		return fmt.Errorf("usage: mktoolchain <sdk-root> <output.tar.gz> <target-os> <target-arch>")
+	if len(os.Args) != 3 {
+		return fmt.Errorf("usage: mktoolchain <sdk-root> <output.tar.gz>")
 	}
-	root, output, targetOS, targetArch := os.Args[1], os.Args[2], os.Args[3], os.Args[4]
+	root, output := os.Args[1], os.Args[2]
 	files := map[string]bool{}
 	addDirectory := func(directory string) error {
 		entries, err := os.ReadDir(filepath.Join(root, directory))
@@ -92,14 +94,6 @@ func build() error {
 	for _, name := range []string{"LICENSE", "PATENTS", "VERSION", "go.env", "src/go.mod", "src/go.sum", "lib/time/zoneinfo.zip"} {
 		files[filepath.FromSlash(name)] = true
 	}
-	extension := ""
-	if targetOS == "windows" {
-		extension = ".exe"
-	}
-	files[filepath.Join("bin", "go"+extension)] = true
-	for _, tool := range []string{"compile", "link", "asm"} {
-		files[filepath.Join("pkg", "tool", targetOS+"_"+targetArch, tool+extension)] = true
-	}
 	if err := addDirectory("pkg/include"); err != nil {
 		return err
 	}
@@ -162,7 +156,7 @@ func build() error {
 	if err := file.Close(); err != nil {
 		return err
 	}
-	// Overlay selects a target payload without mutating the host payload or SDK.
+	// Overlay embeds the payload without mutating the checkout's copy.
 	absolute, err := filepath.Abs(output)
 	if err != nil {
 		return err

@@ -29,16 +29,11 @@ func goExecutable(root string) string {
 	return filepath.Join(root, "bin", name)
 }
 
+// validateToolchain checks a bundled SDK for the sources and assembly
+// headers ms's built-in Go tools build from; it contains no executables.
 func validateToolchain(root string) error {
-	files := []string{goExecutable(root), filepath.Join(root, "VERSION"), filepath.Join(root, "src", "runtime", "runtime.go")}
-	for _, tool := range []string{"compile", "link", "asm"} {
-		if runtime.GOOS == "windows" {
-			tool += ".exe"
-		}
-		files = append(files, filepath.Join(root, "pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH, tool))
-	}
-	for _, name := range files {
-		info, err := os.Stat(name)
+	for _, name := range []string{"VERSION", filepath.Join("src", "runtime", "runtime.go"), filepath.Join("pkg", "include", "textflag.h")} {
+		info, err := os.Stat(filepath.Join(root, name))
 		if err != nil {
 			return err
 		}

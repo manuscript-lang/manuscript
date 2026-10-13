@@ -35,13 +35,8 @@ bundle="$staging/$name"
 mkdir -p "$bundle"
 executable=ms
 if [ "$target_os" = windows ]; then executable=ms.exe; fi
-if [ "$target_os/$target_arch" = "$("$host_go" env GOHOSTOS)/$("$host_go" env GOHOSTARCH)" ]; then
-    target_sdk="$GOROOT"
-else
-    sh scripts/bootstrap-go.sh "$target_os" "$target_arch" "$staging/sdk"
-    target_sdk="$staging/sdk/go"
-fi
-"$host_go" run ./scripts/mktoolchain "$target_sdk" "$staging/build-payload.tar.gz" "$target_os" "$target_arch"
+# The payload holds SDK sources only, so the host SDK serves every target.
+"$host_go" run ./scripts/mktoolchain "$GOROOT" "$staging/build-payload.tar.gz"
 GOOS="$target_os" GOARCH="$target_arch" "$host_go" build -tags bundled_toolchain -overlay "$staging/build-payload.tar.gz.overlay.json" -trimpath -mod=vendor -o "$bundle/$executable" ./cmd/ms
 mkdir -p "$bundle/examples/hello/src" "$bundle/licenses"
 cp examples/hello/ms.toml "$bundle/examples/hello/"
@@ -52,8 +47,8 @@ find vendor -type f \( -name 'LICENSE*' -o -name 'COPYING*' -o -name 'PATENTS*' 
     mkdir -p "$(dirname "$destination")"
     cp "$notice" "$destination"
 done
-cp "$target_sdk/LICENSE" "$bundle/licenses/go.txt"
-cp "$target_sdk/PATENTS" "$bundle/licenses/go-PATENTS.txt"
+cp "$GOROOT/LICENSE" "$bundle/licenses/go.txt"
+cp "$GOROOT/PATENTS" "$bundle/licenses/go-PATENTS.txt"
 cp scripts/distribution-README.txt "$bundle/README.txt"
 cp examples/hello/test.ms "$bundle/examples/hello/"
 

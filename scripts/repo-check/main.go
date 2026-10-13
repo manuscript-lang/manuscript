@@ -28,6 +28,9 @@ const module = "github.com/manuscript-lang/manuscript"
 type policy struct {
 	Dependencies    map[string][]string `json:"dependencies"`
 	Pinned, Bundled []string
+	// Copied names directories of generated copies of external code. Their
+	// packages may import only packages beneath the same directory.
+	Copied []string
 }
 type pkg struct {
 	ImportPath, Dir                              string
@@ -292,6 +295,14 @@ func dependencyIssues(rules policy, packages map[string]pkg) []string {
 		if strings.HasPrefix(name, "scripts/") || strings.HasPrefix(name, "tests/") || name == "." {
 			continue
 		}
+		if root := copiedRoot(rules, name); root != "" {
+			for _, dependency := range p.Imports {
+				if strings.HasPrefix(dependency, module+"/") && !strings.HasPrefix(dependency, module+"/"+root+"/") {
+					issues = append(issues, name+" imports outside its copied tree: "+dependency)
+				}
+			}
+			continue
+		}
 		if _, ok := rules.Dependencies[name]; !ok {
 			issues = append(issues, "package needs an explicit dependency policy: "+name)
 		}
@@ -305,6 +316,17 @@ func dependencyIssues(rules policy, packages map[string]pkg) []string {
 		}
 	}
 	return issues
+}
+
+// copiedRoot returns the copied directory containing package name, if any.
+// The directory's own package is maintained by hand and needs a policy.
+func copiedRoot(rules policy, name string) string {
+	for _, root := range rules.Copied {
+		if strings.HasPrefix(name, root+"/") {
+			return root
+		}
+	}
+	return ""
 }
 
 func missingKinds(path, function string, kinds []string) ([]string, error) {

@@ -6,6 +6,9 @@ BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export MANUSCRIPT_GO ?= $(GO)
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
+# Go's compiler, linker, and assembler are copied unchanged from the pinned SDK
+# (scripts/mkgotoolchain); vet, lint, and coverage cover only our own packages.
+OWN_PACKAGES = $$("$(GO)" list ./... | grep -v '/internal/gotoolchain/')
 
 .PHONY: toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check book book-check vendor-refresh
 
@@ -29,11 +32,11 @@ verify-full: verify coverage race fuzz book-check dist-check
 
 check:
 	"$(GO)" run ./scripts/repo-check -format
-	"$(GO)" vet ./...
+	"$(GO)" vet $(OWN_PACKAGES)
 
 lint:
 	@test -x .tools/staticcheck -a -x .tools/actionlint -a -x .tools/shellcheck || (echo 'Run make setup to install pinned linters'; exit 1)
-	.tools/staticcheck ./...
+	.tools/staticcheck $(OWN_PACKAGES)
 	.tools/actionlint -shellcheck .tools/shellcheck
 	.tools/shellcheck -x scripts/*.sh
 
@@ -59,7 +62,7 @@ licenses-check:
 	"$(GO)" run ./scripts/maintenance licenses -check
 
 payload: | toolchain
-	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz $$("$(GO)" env GOHOSTOS) $$("$(GO)" env GOHOSTARCH)
+	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz
 
 build: payload
 	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags bundled_toolchain -o ms ./cmd/ms
@@ -75,7 +78,7 @@ race:
 
 coverage:
 	@mkdir -p .artifacts/coverage
-	MANUSCRIPT_EXAMPLES_NATIVE=1 "$(GO)" test -covermode=atomic -coverpkg="$$("$(GO)" list ./... | paste -sd, -)" -coverprofile=.artifacts/coverage/coverage.out ./...
+	MANUSCRIPT_EXAMPLES_NATIVE=1 "$(GO)" test -covermode=atomic -coverpkg="$$(echo $(OWN_PACKAGES) | tr ' ' ,)" -coverprofile=.artifacts/coverage/coverage.out ./...
 	"$(GO)" tool cover -func=.artifacts/coverage/coverage.out
 	"$(GO)" tool cover -html=.artifacts/coverage/coverage.out -o .artifacts/coverage/index.html
 
