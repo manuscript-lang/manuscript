@@ -270,4 +270,18 @@ func TestAnalysisDocRejectsConflictingModuleSnapshots(t *testing.T) {
 	if status != 1 || stdout != "" || !strings.Contains(stderr, "conflicting API descriptions for shared.ms") || err != nil || string(data) != "preserve previous reference" {
 		t.Fatalf("silently selected one module context: %d, %q, %q, %s, %v", status, stdout, stderr, data, err)
 	}
+	// Equivalent complete graphs may load implementations in different orders.
+	analysisFiles(t, root, map[string]string{
+		"first.ms":  "import Left from \"./left.ms\"\nimport Right from \"./right.ms\"\nexport fn main() -> Int:\n    return 0\n",
+		"second.ms": "import Right from \"./right.ms\"\nimport Left from \"./left.ms\"\nexport fn main() -> Int:\n    return 0\n",
+	})
+	status, stdout, stderr = invoke(t, "doc", "second.ms", "first.ms", "--json")
+	var reference struct{ Modules []checker.APIModule }
+	if status != 0 || stderr != "" || json.Unmarshal([]byte(stdout), &reference) != nil || len(reference.Modules) != 5 {
+		t.Fatalf("equivalent graphs conflicted: %d, %q, %q", status, stdout, stderr)
+	}
+	shared := reference.Modules[4]
+	if shared.Path != "shared.ms" || len(shared.Declarations) != 1 || len(shared.Declarations[0].Implements) != 2 {
+		t.Fatalf("missing complete shared snapshot: %+v", shared)
+	}
 }
