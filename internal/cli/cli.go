@@ -326,10 +326,17 @@ func Run(args []string) int {
 	switch command {
 	case "lint":
 		findings := []tooling.LintFinding{}
+		// Bundled standard modules are not the user's to fix.
 		for _, module := range result.Program.Modules {
-			findings = append(findings, tooling.Lint(module.File, module.Source)...)
+			if !strings.HasPrefix(module.File, "@std/") {
+				findings = append(findings, tooling.Lint(module.File, module.Source)...)
+			}
 		}
-		findings = append(findings, tooling.LintProgram(result.Program)...)
+		for _, finding := range tooling.LintProgram(result.Program) {
+			if !strings.HasPrefix(finding.Position.File, "@std/") {
+				findings = append(findings, finding)
+			}
+		}
 		if structured {
 			data, _ := json.Marshal(struct {
 				Format      int                   `json:"format"`
