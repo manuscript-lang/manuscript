@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"fmt"
 	"github.com/manuscript-lang/manuscript/internal/decimal"
 	"math"
 	"math/big"
@@ -157,7 +158,7 @@ func Binary(op string, a, b Value) Value {
 			}
 			result.Quo(x.Value, y.Value)
 		}
-		return roundDecimal(result)
+		return roundDecimal(result, op, x, y)
 	case Duration:
 		y := b.(Duration)
 		switch op {
@@ -296,7 +297,7 @@ func decimalExponent(r *big.Rat) int {
 	}
 	return e
 }
-func roundDecimal(r *big.Rat) Decimal {
+func roundDecimal(r *big.Rat, operation string, left, right Decimal) Decimal {
 	if r.Sign() == 0 {
 		return Decimal{new(big.Rat)}
 	}
@@ -328,7 +329,7 @@ func roundDecimal(r *big.Rat) Decimal {
 		out.Quo(out, new(big.Rat).SetInt(pow10(-q)))
 	}
 	if out.Sign() != 0 && decimalExponent(out) > 6144 {
-		Panic("Decimal overflow")
+		Panic(fmt.Sprintf("Decimal.%s: overflow; found left %s and right %s; rounded magnitude must be at most 9.999999999999999999999999999999999e6144 (34 significant digits)", operation, left.String(), right.String()))
 	}
 	return Decimal{out}
 }
