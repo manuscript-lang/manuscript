@@ -136,6 +136,9 @@ func importHint(name string) string {
 func (c *checker) unknownName(name string) string {
 	c.unknownType = true // later "<invalid>" diagnostics only restate this one
 	message := "unknown binding " + name
+	if name == "this" && c.scope.binding("self") != nil {
+		return message + "; the receiver in an impl method is 'self'; write self instead of this"
+	}
 	if hint := didYouMean(name, c.valueNames()); hint != "" {
 		return message + hint
 	}
@@ -270,4 +273,23 @@ func signatureText(t *Type) string {
 		parts[i] = p.Name + ": " + p.Type.String()
 	}
 	return "(" + strings.Join(parts, ", ") + ") -> " + t.Result.String()
+}
+
+// assignmentMismatch adds a view hint only when the expected type itself is
+// an interface. Collections and other invariant containers need their own
+// element conversions and cannot be converted by wrapping the whole value.
+func (c *checker) assignmentMismatch(actual, expected *Type) string {
+	message := formatMismatch(actual, expected)
+	if expected.Kind != "contract" || actual == nil || actual.ID == "<invalid>" {
+		return message
+	}
+	if c.implements(actual, expected) {
+		return message + "; " + actual.String() + " implements " + expected.String() + "; write " + expected.String() + "(value: ...) to create an explicit interface view"
+	}
+	return message + "; no applicable 'impl " + expected.String() + " for " + actual.String() + "' is visible; declare an implementation before creating an interface view"
+}
+
+func (c *checker) interfaceTypeMember(typ *Type) string {
+	c.unknownType = true
+	return typ.String() + " is an interface, not an alternative; declare a concrete type and 'impl " + typ.String() + " for <Type>:', then construct that concrete type"
 }

@@ -63,6 +63,10 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	if callee.Kind == syntax.KindMember {
 		alternative = c.typeExpression(callee.Left)
 		if alternative != nil {
+			if alternative.Kind == "contract" {
+				c.error(e.Pos, "resolution", c.interfaceTypeMember(alternative))
+				return i
+			}
 			var ok bool
 			cs, ok = caseOf(alternative, callee.Text)
 			if !ok {

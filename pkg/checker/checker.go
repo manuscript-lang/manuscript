@@ -742,7 +742,7 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 			i.ScopedError = c.errorNeedsScope(cause)
 			i.Type = expected
 		} else {
-			c.error(e.Pos, "type", formatMismatch(i.Type, expected))
+			c.error(e.Pos, "type", c.assignmentMismatch(i.Type, expected))
 		}
 	}
 	if expected != nil && expected.Kind == "function" && Same(i.Type, expected) {
@@ -875,6 +875,10 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 	case syntax.KindMember:
 		if typ := c.typeExpression(e.Left); typ != nil {
+			if typ.Kind == "contract" {
+				c.error(e.Pos, "resolution", c.interfaceTypeMember(typ))
+				return i
+			}
 			cs, ok := caseOf(typ, e.Text)
 			if ok && len(cs.Fields) == 0 {
 				i.Constructor = c.instantiate(typ, nil, nil, expected, e.Pos)
