@@ -3,6 +3,7 @@ package msruntime
 import (
 	"math"
 	"math/rand"
+	"strings"
 	"sync/atomic"
 	"testing"
 )
@@ -86,17 +87,16 @@ func TestSetIndexSurvivesDirectEdits(t *testing.T) {
 	}
 }
 
-func TestUnhashableKeysFallBackToScan(t *testing.T) {
+func TestUnhashableKeyIsAnInvariantViolation(t *testing.T) {
 	ctx := RootExecution()
 	s := &Set{Type: "@std/Set[@std/List[Int]]"}
-	one := &List{Type: "@std/List[Int]", Items: []Value{int64(1)}}
-	s.add(ctx, one)
-	if s.add(ctx, &List{Type: "@std/List[Int]", Items: []Value{int64(1)}}) {
-		t.Fatal("equal list added twice")
-	}
-	if s.find(ctx, &List{Type: "@std/List[Int]", Items: []Value{int64(2)}}) >= 0 {
-		t.Fatal("unequal list found")
-	}
+	defer func() {
+		fault, ok := recover().(Fault)
+		if !ok || !strings.Contains(fault.Message, "not Hashable") {
+			t.Fatalf("expected a not-Hashable fault, got %v", fault)
+		}
+	}()
+	s.add(ctx, &List{Type: "@std/List[Int]", Items: []Value{int64(1)}})
 }
 
 func TestDocumentedKeyMutationProtocol(t *testing.T) {

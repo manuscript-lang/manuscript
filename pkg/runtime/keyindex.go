@@ -8,13 +8,13 @@ import "hash/maphash"
 // describes was replaced or resized behind its back.
 //
 // Int and String keys are indexed exactly. Other keys use the Hashable hash
-// (a user implementation when present) and are confirmed with equality.
-// Collections holding a key that cannot be hashed fall back to a linear scan.
+// (a user implementation when present) and are confirmed with equality. The
+// checker rejects key types that are not Hashable, so an unhashable key at run
+// time is an invariant violation.
 type keyIndex struct {
 	ints  map[int64]int
 	strs  map[string]int
 	other map[uint64][]int
-	scan  bool
 	n     int // number of keys the index covers; -1 forces a rebuild
 	base  any // address of the first key when the index was built
 }
@@ -37,59 +37,62 @@ func mixHash(x uint64) uint64 {
 	return x
 }
 
-// keyHash hashes a key consistently with equality. ok is false when the key
-// has no usable hash and lookups must scan.
-func keyHash(ctx *Execution, v Value) (uint64, bool) {
+// keyHash hashes a key consistently with equality.
+func keyHash(ctx *Execution, v Value) uint64 {
 	switch x := v.(type) {
 	case int64:
-		return mixHash(uint64(x)), true
+		return mixHash(uint64(x))
 	case string:
-		return maphash.String(hashSeed, x), true
+		return maphash.String(hashSeed, x)
 	case bool:
 		if x {
-			return 0x9e3779b97f4a7c15, true
+			return 0x9e3779b97f4a7c15
 		}
-		return 0x7f4a7c159e3779b9, true
+		return 0x7f4a7c159e3779b9
 	case Unit:
-		return 0x51ed270b, true
+		return 0x51ed270b
 	case Duration:
-		return mixHash(uint64(x) ^ 0xd6e8feb86659fd93), true
+		return mixHash(uint64(x) ^ 0xd6e8feb86659fd93)
+	case Instant:
+		// Equality also checks the clock domain, which faults on a mismatch.
+		return mixHash(uint64(x.Tick) ^ 0x2545f4914f6cdd1d)
+	case libraryBigInt:
+		return maphash.String(hashSeed, x.n.String())
+	case libraryTimestamp:
+		return mixHash(uint64(x.t.UnixNano()))
 	case Decimal:
-		return maphash.String(hashSeed, x.Value.RatString()), true
+		return maphash.String(hashSeed, x.Value.RatString())
 	case Bytes:
-		return maphash.Bytes(hashSeed, x.Items), true
+		return maphash.Bytes(hashSeed, x.Items)
+	case View:
+		child := *ctx
+		child.EqualityScope = x.Scope
+		return keyHash(&child, x.Receiver)
 	case Record, Alternative:
 		scope := ctx.EqualityScope
 		if method, ok := implementationFunction(v, "@std/Hashable", "hash", scope); ok {
-			return mixHash(uint64(Invoke(ctx, method, nil).(int64))), true
+			return mixHash(uint64(Invoke(ctx, method, nil).(int64)))
 		}
 		if _, custom := implementationFunction(v, "@std/Equal", "equals", scope); custom {
-			return 0, false
+			Panic("runtime invariant: key type overrides Equal without Hashable")
 		}
 		if record, ok := v.(Record); ok {
 			h := maphash.String(hashSeed, record.Type)
 			for name, field := range record.Fields {
-				fh, ok := keyHash(ctx, field)
-				if !ok {
-					return 0, false
-				}
 				// Field order is unspecified, so combine commutatively.
-				h += mixHash(maphash.String(hashSeed, name) ^ fh)
+				h += mixHash(maphash.String(hashSeed, name) ^ keyHash(ctx, field))
 			}
-			return h, true
+			return h
 		}
 		alt := v.(Alternative)
 		h := maphash.String(hashSeed, alt.Type) ^ mixHash(maphash.String(hashSeed, alt.Tag))
 		for _, field := range alt.Fields {
-			fh, ok := keyHash(ctx, field)
-			if !ok {
-				return 0, false
-			}
-			h = mixHash(h*31 + fh)
+			h = mixHash(h*31 + keyHash(ctx, field))
 		}
-		return h, true
+		return h
 	}
-	return 0, false
+	Panic("runtime invariant: map key or set element is not Hashable")
+	return 0
 }
 
 func (ix *keyIndex) valid(c keyed) bool {
@@ -101,15 +104,12 @@ func (ix *keyIndex) rebuild(ctx *Execution, c keyed) {
 	n := c.count()
 	*ix = keyIndex{n: n, base: c.first()}
 	for i := 0; i < n; i++ {
-		if !ix.insert(ctx, c.keyAt(i), i) {
-			*ix = keyIndex{scan: true, n: n, base: c.first()}
-			return
-		}
+		ix.insert(ctx, c.keyAt(i), i)
 	}
 }
 
 // insert records key at position i, keeping the first position for duplicates.
-func (ix *keyIndex) insert(ctx *Execution, key Value, i int) bool {
+func (ix *keyIndex) insert(ctx *Execution, key Value, i int) {
 	switch k := key.(type) {
 	case int64:
 		if ix.ints == nil {
@@ -126,25 +126,12 @@ func (ix *keyIndex) insert(ctx *Execution, key Value, i int) bool {
 			ix.strs[k] = i
 		}
 	default:
-		h, ok := keyHash(ctx, key)
-		if !ok {
-			return false
-		}
+		h := keyHash(ctx, key)
 		if ix.other == nil {
 			ix.other = map[uint64][]int{}
 		}
 		ix.other[h] = append(ix.other[h], i)
 	}
-	return true
-}
-
-func scanKeys(ctx *Execution, c keyed, key Value) int {
-	for i, n := 0, c.count(); i < n; i++ {
-		if EqualIn(ctx, c.keyAt(i), key) {
-			return i
-		}
-	}
-	return -1
 }
 
 // lookupKey returns the position of the first key equal to key, or -1.
@@ -155,9 +142,6 @@ func lookupKey(ctx *Execution, c keyed, key Value) int {
 	ix := c.index()
 	if !ix.valid(c) {
 		ix.rebuild(ctx, c)
-	}
-	if ix.scan {
-		return scanKeys(ctx, c, key)
 	}
 	switch k := key.(type) {
 	case int64:
@@ -171,11 +155,7 @@ func lookupKey(ctx *Execution, c keyed, key Value) int {
 		}
 		return -1
 	}
-	h, ok := keyHash(ctx, key)
-	if !ok {
-		return scanKeys(ctx, c, key)
-	}
-	for _, i := range ix.other[h] {
+	for _, i := range ix.other[keyHash(ctx, key)] {
 		if EqualIn(ctx, c.keyAt(i), key) {
 			return i
 		}
@@ -193,9 +173,7 @@ func keyAppended(ctx *Execution, c keyed) {
 		return
 	}
 	ix.n, ix.base = last+1, c.first()
-	if !ix.scan && !ix.insert(ctx, c.keyAt(last), last) {
-		*ix = keyIndex{scan: true, n: last + 1, base: c.first()}
-	}
+	ix.insert(ctx, c.keyAt(last), last)
 }
 
 // keyRemoved updates the index after the key at pos was shifted out of c.
@@ -207,7 +185,7 @@ func keyRemoved(ctx *Execution, c keyed, pos int, removed Value) {
 		return
 	}
 	ix.n, ix.base = n, c.first()
-	if ix.scan || n == 0 {
+	if n == 0 {
 		return
 	}
 	switch k := removed.(type) {
