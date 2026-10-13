@@ -12,37 +12,46 @@ fn area(shape: Shape) -> Int:
         Circle(r): return 3 * r * r
         Rect(w, h): return w * h
         Dot: return 0
+
     return -1
 
 fn first_positive(values: List[Optional[Int]]) -> Int:
     var index = 0
+
     while index < values.length():
         let item = values.at(index).unwrap()
         index = index + 1
+
         match item:
             none: continue
             some(value):
                 if value > 0:
                     return value
+
     return -1
 
 fn nested(rows: List[List[Optional[Int]]]) -> Int:
     var total = 0
+
     for row in rows:
         for item in row:
             match item:
                 none: break
                 some(value): total = total + value
+
         total = total + 1000
+
     return total
 
 fn side_effects(shape: Shape) -> Int:
     var count = 0
+
     match shape:
         Circle(r):
             count = count + r
         _:
             count = count + 100
+
     return count
 
 test "statement match returns from the enclosing function":
@@ -59,7 +68,11 @@ test "statement match controls the nearest loop":
         return panic(message: "first positive")
     if not (first_positive(values: [none, some(-1)]) == -1):
         return panic(message: "no positive")
-    let rows: List[List[Optional[Int]]] = [[some(1), none, some(100)], [some(2), some(3)]]
+
+    let rows: List[List[Optional[Int]]] = [
+        [some(1), none, some(100)],
+        [some(2), some(3)]
+    ]
     if not (nested(rows: rows) == 2006):
         return panic(message: "nested")
 
