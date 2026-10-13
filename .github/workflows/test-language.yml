@@ -9,21 +9,21 @@ permissions:
 
 # Each unit of work runs exactly once. Jobs are grouped by shared inputs, not by
 # topic: static checks share the pinned linters, Go tests share one sharded
-# race+coverage run, and the distribution checks share the packaged CLI.
+# race+coverage run, and the editor tests reuse the CLI built for the hello run.
 jobs:
-  # Format, vet, lint, repo rules, licenses, generated docs, and the book.
+  # Format, vet, lint, repo rules, and license freshness. Generated docs and the
+  # book are checked once, by "Build design book" in cicd.yml.
   static:
-    name: Static checks and docs book
+    name: Static checks
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .node-version
       - uses: actions/cache@v6
         with:
           path: |
@@ -32,20 +32,8 @@ jobs:
           key: devtools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256', 'scripts/devtools.env', 'scripts/devtools.sha256') }}
       - name: Prepare verified SDK and pinned linters
         run: make setup
-      - name: Format, vet, lint, repo rules, generated docs, licenses
-        run: make check lint repo-check docs-check licenses-check
-      - uses: peaceiris/actions-hugo@v3
-        with:
-          hugo-version: '0.146.7'
-          extended: true
-      - name: Validate project URL prefixes and production output
-        run: |
-          make book-check
-          make book
-          node --test tests/docs/publication.test.cjs
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: .artifacts/book
+      - name: Format, vet, lint, repo rules, licenses
+        run: make check lint repo-check licenses-check
 
   # Every Go test runs once: unit, stdlib, examples, and native end-to-end, with
   # coverage; in-process packages also run under the race detector.
@@ -58,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
@@ -80,10 +70,12 @@ jobs:
 
   # The bundled CLI, built once and reused by the editor tests.
   dist:
-    name: CLI, distribution, fuzz, and editor
+    name: CLI, fuzz, and editor
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
@@ -103,8 +95,7 @@ jobs:
           ./ms check examples/hello/ms.toml
           ./ms lock examples/hello/ms.toml
           ./ms run examples/hello/ms.toml -- first second
-      - name: Verify offline standalone distribution
-        run: make dist-check
+      # Standalone distribution checks run once, per target, in release.yml.
       - name: Parser and compiler fuzzing
         run: make fuzz
       - name: Validate and package VS Code extension
@@ -132,6 +123,8 @@ jobs:
       CGO_ENABLED: '0'
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version

@@ -4,16 +4,8 @@ on:
   push:
     tags: ['v*']
   pull_request:
-    paths:
-      - '**/*.go'
-      - '.github/workflows/release.yml'
-      - '.go-version'
-      - 'scripts/**'
-      - 'pkg/stdlib/**'
-      - 'go.mod'
-      - 'go.sum'
-      - 'vendor/**'
-      - 'examples/hello/**'
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 permissions:
@@ -24,27 +16,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Pull requests cross-build every target in one job; linux/amd64 is verified
-  # end to end by `make dist-check` in the Language workflow.
-  cross-build:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/cache@v6
-        with:
-          path: toolchain/
-          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
-      - name: Build every distribution target
-        run: |
-          for os in linux darwin windows; do
-            for arch in amd64 arm64; do
-              sh scripts/package.sh "$os" "$arch"
-            done
-          done
-
   package:
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -53,6 +25,8 @@ jobs:
         arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
       - name: Check release tag version
         if: startsWith(github.ref, 'refs/tags/v')
         env:
@@ -71,7 +45,6 @@ jobs:
 
   verify:
     needs: package
-    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -97,6 +70,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
       # Go runs the test harness only; the packaged CLI receives no host Go PATH.
       - uses: actions/setup-go@v7
         with:
@@ -118,6 +93,19 @@ jobs:
       - name: Verify standalone compilation and tooling without system Go
         shell: bash
         run: go run ./scripts/distcheck 'extracted distribution/manuscript-${{ matrix.os }}-${{ matrix.arch }}'
+
+  test:
+    name: Distribution checks
+    needs: [package, verify]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all packages and standalone verifications
+        env:
+          PACKAGE_RESULT: ${{ needs.package.result }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+        run: test "$PACKAGE_RESULT" = success && test "$VERIFY_RESULT" = success
 
   publish:
     needs: verify
