@@ -412,10 +412,12 @@ func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info
 	return info
 }
 
-// Inference matches the complete optional first, then its payload. Failed
-// attempts must not leave substitutions that constrain the second attempt.
+// Match exactly before trying the existing Result error widening or a single
+// Optional argument wrapper. Result successes and nested applications remain
+// invariant. Each attempt commits substitutions only after its whole boundary
+// is valid; final argument checking retains the selected Error evidence.
 func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub map[string]*Type) bool {
-	attempt := func(target, evidence *Type) bool {
+	fresh := func() map[string]*Type {
 		trial := map[string]*Type{}
 		for key, value := range sub {
 			// A prior failed argument supplies no constraint on later evidence.
@@ -423,25 +425,29 @@ func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub
 				trial[key] = value
 			}
 		}
-		if !unify(target, evidence, vars, trial) {
-			return false
+		return trial
+	}
+	attempt := func(target *Type) bool {
+		trial := fresh()
+		if !unify(target, actual, vars, trial) {
+			if !std(target, "Result") || !std(actual, "Result") || len(target.Args) != 2 || len(actual.Args) != 2 {
+				return false
+			}
+			trial = fresh()
+			if !unify(target.Args[0], actual.Args[0], vars, trial) || !c.errorAssignable(actual, Sub(target, trial)) {
+				return false
+			}
 		}
 		for key, value := range trial {
 			sub[key] = value
 		}
 		return true
 	}
-	if attempt(pattern, actual) {
+	if attempt(pattern) {
 		return true
 	}
-	// A Result[X, E] widens its error to Error while keeping the success type,
-	// so match the success side alone when the parameter's error is Error.
-	if std(pattern, "Result") && std(actual, "Result") && len(pattern.Args) == 2 && len(actual.Args) == 2 &&
-		std(pattern.Args[1], "Error") && c.implements(actual.Args[1], pattern.Args[1]) {
-		return attempt(pattern.Args[0], actual.Args[0])
-	}
 	return std(pattern, "Optional") && len(pattern.Args) == 1 &&
-		(c.errorAssignable(actual, Sub(pattern.Args[0], sub)) || attempt(pattern.Args[0], actual))
+		(c.errorAssignable(actual, Sub(pattern.Args[0], sub)) || attempt(pattern.Args[0]))
 }
 
 // Only complete, independently typed arguments contribute inference evidence.
