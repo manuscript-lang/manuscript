@@ -96,6 +96,8 @@ A limit on a function's output does not bound input already allocated by the cal
 | --- | --- |
 | JSON | Supplied depth budgets are respected; cycles cannot be serialized. |
 | HTTP | Header limits are optional; the native reader remains constrained by integer representability. |
+| Allocated lists | `filled` and `range` return `LimitExceeded` beyond 2^28 items, even with a larger `max_items`. |
+| Allocated strings | `repeat`, `pad_start` and `pad_end` return `LimitExceeded` beyond 1 GiB, even with a larger `max_bytes`. |
 | Entropy | 16 MiB per call. |
 | UDP receive | At most 65535 bytes. |
 

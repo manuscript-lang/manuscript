@@ -128,3 +128,11 @@ func libraryDisposeResource(ctx *Execution, value Value) {
 	}
 	Invoke(Shield(ctx), Bind(value, "", "close"), nil)
 }
+
+// Native allocation ceilings apply even when a caller supplies no limit or a
+// larger one, so a huge count returns LimitExceeded instead of exhausting
+// memory or reaching a Go allocation panic.
+const (
+	nativeMaxItems = 1 << 28
+	nativeMaxBytes = 1 << 30
+)

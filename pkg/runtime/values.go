@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -90,10 +91,17 @@ type View struct {
 	Scope    TypeScope
 }
 type propagation struct{ Cause Value }
+
+// controlPanics counts in-flight propagation, source-return and loop-exit
+// panics. Layers that only consume those skip recover when none exist, since
+// a recover-and-repanic at every frame makes unwinding a deep stack quadratic.
+var controlPanics atomic.Int64
+
 type Fault struct {
 	Message   string
 	Secondary []string
 	Frames    []string
+	Truncated bool
 }
 
 func (f Fault) Error() string {
@@ -103,6 +111,9 @@ func (f Fault) Error() string {
 	}
 	if len(f.Frames) > 0 {
 		message += "\n  at " + strings.Join(f.Frames, "\n  at ")
+	}
+	if f.Truncated {
+		message += "\n  ... outer frames omitted"
 	}
 	return message
 }
@@ -124,8 +135,12 @@ func NewAcquisition(labels []string, result string, body func(*Execution, []Valu
 func newFunction(labels []string, result string, body func(*Execution, []Value) Value, dispose func(*Execution, Value)) Function {
 	return Function{labels, result, func(ctx *Execution, args []Value) (value Value) {
 		defer func() {
+			if controlPanics.Load() == 0 {
+				return
+			}
 			if r := recover(); r != nil {
 				if p, ok := r.(propagation); ok {
+					controlPanics.Add(-1)
 					CheckCancelled(ctx)
 					value = Alternative{Type: result, Tag: "error", Fields: []Value{p.Cause}}
 				} else {
@@ -244,6 +259,7 @@ func Try(value Value, scopes ...TypeScope) Value {
 		if len(scopes) > 0 {
 			cause = ViewOf("@std/Error", cause, scopes[0])
 		}
+		controlPanics.Add(1)
 		panic(propagation{cause})
 	}
 	return v.Fields[0]
@@ -277,8 +293,8 @@ func NewAlternative(typ, tag string, labels []string, args []Argument) Value {
 	}
 	return Alternative{typ, tag, values}
 }
-func Field(value Value, name string) Value           { return value.(Record).Fields[name] }
-func SetField(value Value, name string, field Value) { value.(Record).Fields[name] = field }
+func Field(value Value, name string) Value           { return readField(value.(Record).Fields, name) }
+func SetField(value Value, name string, field Value) { writeField(value.(Record).Fields, name, field) }
 func Tag(value Value) string                         { return value.(Alternative).Tag }
 func Payload(value Value, index int) Value           { return value.(Alternative).Fields[index] }
 func Positions(value Value, length int) []Value {
@@ -354,14 +370,15 @@ func formatValue(value Value, depth int) string {
 	case Decimal:
 		return v.String()
 	case Record:
-		names := make([]string, 0, len(v.Fields))
-		for name := range v.Fields {
+		fields := fieldsSnapshot(v.Fields)
+		names := make([]string, 0, len(fields))
+		for name := range fields {
 			names = append(names, name)
 		}
 		sort.Strings(names)
 		parts := make([]string, len(names))
 		for i, name := range names {
-			parts[i] = name + ": " + formatValue(v.Fields[name], depth+1)
+			parts[i] = name + ": " + formatValue(fields[name], depth+1)
 		}
 		return displayType(v.Type) + "(" + strings.Join(parts, ", ") + ")"
 	case Alternative:
@@ -560,11 +577,15 @@ func equal(a, b Value, state *equalityState) bool {
 		return true
 	case Record:
 		y, ok := b.(Record)
-		if !ok || x.Type != y.Type || len(x.Fields) != len(y.Fields) {
+		if !ok || x.Type != y.Type {
 			return false
 		}
-		for k, v := range x.Fields {
-			if !equal(v, y.Fields[k], state) {
+		xf, yf := fieldsSnapshot(x.Fields), fieldsSnapshot(y.Fields)
+		if len(xf) != len(yf) {
+			return false
+		}
+		for k, v := range xf {
+			if !equal(v, yf[k], state) {
 				return false
 			}
 		}
@@ -921,13 +942,39 @@ func runTest(test Test, timeout time.Duration) any {
 
 type sourceReturn struct{ value Value }
 
-func Return(value Value) Value { panic(sourceReturn{value}) }
+func Return(value Value) Value {
+	controlPanics.Add(1)
+	panic(sourceReturn{value})
+}
+
+// MaxCallDepth bounds nested source calls per execution so runaway recursion
+// is a fault instead of Go's unrecoverable stack overflow.
+const MaxCallDepth = 200000
+
+// maxFaultFrames bounds the trace kept on a fault; deeper frames are counted.
+const maxFaultFrames = 32
 
 func NewSourceFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
 	return NewFunction(labels, result, func(ctx *Execution, args []Value) (value Value) {
+		if ctx != nil && ctx.calls != nil {
+			calls := ctx.calls
+			if calls.depth.Add(1) > MaxCallDepth {
+				calls.depth.Add(-1)
+				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
+			}
+			defer func() {
+				if calls.depth.Add(-1) == 0 {
+					calls.traceFull.Store(false)
+				}
+			}()
+		}
 		defer func() {
+			if controlPanics.Load() == 0 {
+				return
+			}
 			if failure := recover(); failure != nil {
 				if returned, ok := failure.(sourceReturn); ok {
+					controlPanics.Add(-1)
 					value = returned.value
 					return
 				}
@@ -1018,11 +1065,18 @@ func equalityChild(state *equalityState, index int) *equalityState {
 // loopExit crosses generated expression closures, never a source callable.
 type loopExit struct{ stop bool }
 
-func ExitLoop(stop bool) { panic(loopExit{stop}) }
+func ExitLoop(stop bool) {
+	controlPanics.Add(1)
+	panic(loopExit{stop})
+}
 func LoopBody(body func() Value) (exit int) {
 	defer func() {
+		if controlPanics.Load() == 0 {
+			return
+		}
 		if failure := recover(); failure != nil {
 			if loop, ok := failure.(loopExit); ok {
+				controlPanics.Add(-1)
 				if loop.stop {
 					exit = 1
 				} else {
@@ -1044,10 +1098,19 @@ func SourceAt[T any](position *string, site string, value T) T {
 }
 
 // TraceSource runs once per source function, after its cleanup has completed.
-func TraceSource(position *string, name string) {
+func TraceSource(ctx *Execution, position *string, name string) {
+	if ctx != nil && ctx.calls != nil && ctx.calls.traceFull.Load() {
+		return
+	}
 	if failure := recover(); failure != nil {
 		if fault, ok := failure.(Fault); ok {
 			fault.Frames = append(append([]string{}, fault.Frames...), *position+" in "+name)
+			if len(fault.Frames) >= maxFaultFrames && ctx != nil && ctx.calls != nil {
+				// Re-raising at every frame makes unwinding a deep stack
+				// quadratic, so outer frames are no longer recorded.
+				fault.Truncated = true
+				ctx.calls.traceFull.Store(true)
+			}
 			panic(fault)
 		}
 		panic(failure)

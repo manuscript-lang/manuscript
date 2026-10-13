@@ -119,6 +119,7 @@ func (g *TaskGroup) start(ctx *Execution, typ string, operation Value) Value {
 	g.active++
 	g.workers.Add(1)
 	g.mu.Unlock()
+	markConcurrent()
 	go func() {
 		defer g.workers.Done()
 		var value Value
@@ -164,6 +165,7 @@ func (g *TaskGroup) sealLocked() chan struct{} {
 	if !g.sealed {
 		g.sealed = true
 		g.joined = make(chan struct{})
+		markConcurrent()
 		go func() {
 			g.workers.Wait()
 			g.mu.Lock()

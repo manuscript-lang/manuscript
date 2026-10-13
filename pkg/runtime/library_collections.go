@@ -239,7 +239,7 @@ func init() {
 		if count < 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
-		if count > max {
+		if count > min(max, nativeMaxItems) {
 			return libraryError(r, "LimitExceeded", "")
 		}
 		out := make([]Value, count)
@@ -253,6 +253,17 @@ func init() {
 		start, end, step, max := a[0].(int64), a[1].(int64), a[2].(int64), a[3].(int64)
 		if step == 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
+		}
+		max = min(max, nativeMaxItems)
+		// Count the terms first so a huge range fails before allocating.
+		var span, size uint64
+		if step > 0 && start < end {
+			span, size = uint64(end)-uint64(start), uint64(step)
+		} else if step < 0 && start > end {
+			span, size = uint64(start)-uint64(end), -uint64(step)
+		}
+		if span > 0 && (span-1)/size >= uint64(max) {
+			return libraryError(r, "LimitExceeded", "")
 		}
 		var out []Value
 		for n := start; step > 0 && n < end || step < 0 && n > end; {
