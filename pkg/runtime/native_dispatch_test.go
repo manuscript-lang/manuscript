@@ -47,3 +47,60 @@ func TestNativeOptionAdapterClassification(t *testing.T) {
 		t.Fatal("generic payload must not be normalized")
 	}
 }
+
+func TestDirectNativeListAtAndUnwrap(t *testing.T) {
+	ctx := RootExecution()
+	payload := Record{Type: "local/Item", Fields: map[string]Value{"value": int64(7)}}
+	list := &List{Type: "@std/List[local/Item]", Items: []Value{payload}}
+	result := "@std/Optional[local/Item]"
+	for _, index := range []int64{0, -1, 1, -2, -1 << 63, 1<<63 - 1} {
+		got := ListAt(ctx, list, index, result).(Alternative)
+		wantPresent := index == 0 || index == -1
+		if got.Type != result || (got.Tag == "some") != wantPresent {
+			t.Fatalf("index %d: %#v", index, got)
+		}
+		ordinary := Invoke(ctx, NativeMemberResult(list, "at", result), []Argument{{"index", index}})
+		if !Equal(got, ordinary) {
+			t.Fatalf("direct/ordinary mismatch at %d", index)
+		}
+		if wantPresent {
+			unwrapped := OptionalUnwrap(ctx, got).(Record)
+			unwrapped.Fields["value"] = int64(9)
+			if payload.Fields["value"] != int64(9) {
+				t.Fatal("unwrap copied payload")
+			}
+		} else {
+			directFault := recovered(func() { OptionalUnwrap(ctx, got) }).(Fault)
+			ordinaryFault := recovered(func() { Invoke(ctx, NativeMemberResult(got, "unwrap", "local/Item"), nil) }).(Fault)
+			if directFault.Message != ordinaryFault.Message {
+				t.Fatal("unwrap fault changed")
+			}
+		}
+	}
+	empty := &List{Type: list.Type}
+	for _, method := range []string{"first", "last", "at"} {
+		args := []Argument(nil)
+		if method == "at" {
+			args = []Argument{{"index", int64(-1)}}
+		}
+		if Invoke(ctx, NativeMemberResult(empty, method, result), args).(Alternative).Tag != "none" {
+			t.Fatalf("empty %s", method)
+		}
+	}
+	nested := optional("Int", nil, false)
+	if !Equal(OptionalUnwrap(ctx, optional("@std/Optional[Int]", nested, true)), nested) {
+		t.Fatal("nested optional flattened")
+	}
+	cancelledContext, cancel := context.WithCancel(ctx.Context)
+	cancel()
+	stopped := &Execution{Context: cancelledContext}
+	for _, call := range []func(){
+		func() { ListAt(stopped, list, int64(0), result) },
+		func() { OptionalUnwrap(stopped, optional("Int", int64(1), true)) },
+		func() { OptionalUnwrap(stopped, optional("Int", nil, false)) },
+	} {
+		if _, ok := recovered(call).(cancelled); !ok {
+			t.Fatal("direct call ignored cancellation")
+		}
+	}
+}
