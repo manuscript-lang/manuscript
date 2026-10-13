@@ -14,11 +14,19 @@ export MANUSCRIPT_EXAMPLES_NATIVE=1
 mkdir -p .artifacts/coverage
 coverpkg=$("$go_tool" list ./... | paste -sd, -)
 
+# Packages that exist only after the compiler split are picked up when present.
+optional=''
+for directory in pkg/lower pkg/build; do
+    if [ -d "$directory" ]; then optional="$optional ./$directory"; fi
+done
 # Packages whose tests run under the race detector.
-race_packages=$("$go_tool" list ./internal/debugger ./pkg/runtime ./pkg/checker ./pkg/compiler ./pkg/project ./internal/cli ./pkg/tooling/...)
+# shellcheck disable=SC2086
+race_packages=$("$go_tool" list ./internal/debugger ./pkg/runtime ./pkg/checker ./pkg/compiler $optional ./pkg/project ./internal/cli ./pkg/tooling/...)
 # Packages split across shards because a single test binary dominates wall time.
-split_packages='github.com/manuscript-lang/manuscript/pkg/compiler
-github.com/manuscript-lang/manuscript/tests/e2e'
+split_args='./pkg/compiler ./tests/e2e'
+[ ! -d pkg/build ] || split_args="$split_args ./pkg/build"
+# shellcheck disable=SC2086
+split_packages=$("$go_tool" list $split_args)
 
 # shellcheck disable=SC2329 # invoked through start
 run() { # name, extra flags, packages...
@@ -35,10 +43,14 @@ logs=$(mktemp -d)
 trap 'rm -rf "$logs"' EXIT HUP INT TERM
 pids=''
 start() { # name, command...
-    name=$1
+    group=$1
     shift
-    ("$@" > "$logs/$name.log" 2>&1 && echo 0 > "$logs/$name.status" || echo 1 > "$logs/$name.status") &
-    pids="$pids $name"
+    group_log=$logs/$group.log
+    group_status=$logs/$group.status
+    # The subshell must not inherit the cleanup trap, or the first group to finish
+    # would delete the logs of the others.
+    (trap - EXIT HUP INT TERM; "$@" > "$group_log" 2>&1 && echo 0 > "$group_status" || echo 1 > "$group_status") &
+    pids="$pids $group"
 }
 
 for package in $split_packages; do
@@ -55,7 +67,7 @@ done
 
 # Remaining packages are dealt round-robin across shards.
 mine() { awk -v n="$count" -v k="$shard" '(NR - 1) % n == k'; }
-race_rest=$(printf '%s\n' "$race_packages" | grep -vxF 'github.com/manuscript-lang/manuscript/pkg/compiler' | mine || true)
+race_rest=$(printf '%s\n' "$race_packages" | grep -vxF "$split_packages" | mine || true)
 # shellcheck disable=SC2086
 [ -z "$race_rest" ] || start race-rest "$go_tool" test -race $race_rest
 excluded=$(printf '%s\n%s\n' "$race_packages" "$split_packages")
