@@ -16,6 +16,7 @@ Errors returned when a collection factory exceeds its supplied item limit.
 type CollectionError:
     case InvalidInput
     case LimitExceeded
+    case OutOfRange
 ```
 
 ```manuscript
@@ -42,7 +43,7 @@ type List[T]:
     fn remove(index: Int) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
-    fn slice(start: Int, end: Int) -> List[T]:
+    fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     fn reverse_in_place() -> List[T]:
     fn reversed() -> List[T]:
     fn reverse() -> List[T]:
@@ -197,10 +198,10 @@ fn set(index: Int, value: T) -> List[T]:
 ### List.slice
 
 Returns a new shallow List containing [start, end); outer storage is independent.
-Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
+Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
 
 ```manuscript
-fn slice(start: Int, end: Int) -> List[T]:
+fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
 ```
 
 ### List.some

@@ -47,17 +47,8 @@ test "stale synchronized guard faults":
     guard.close()
     let impossible = guard.get()
 
-test "invalid list slice faults":
-    let impossible = ([1, 2]).slice(start: 0, end: 3)
-
-test "negative list slice faults":
-    let impossible = [1, 2, 3, 4].slice(start: -2, end: 4)
-
-test "negative byte slice faults":
-    let impossible = Bytes([1, 2, 3]).slice(start: -1, end: 3)
-
-test "out of range byte slice faults":
-    let impossible = Bytes([1, 2, 3]).slice(start: 1, end: 10)
+test "unwrapping an out of range slice faults":
+    let impossible = ([1, 2]).slice(start: 0, end: 3).unwrap()
 
 test "negative split limit faults":
     let impossible = "a,b,c".split(separator: ",", max_parts: -1)

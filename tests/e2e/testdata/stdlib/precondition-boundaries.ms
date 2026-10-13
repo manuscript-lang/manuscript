@@ -19,7 +19,7 @@ test "byte updates retain relative bounds and immutable storage":
     if not bytes.at(-3).is_none() or not bytes.at(2).is_none(): return panic(
         "absent byte"
     )
-    if bytes.slice(start: 2, end: 2) != Bytes(values: []): return panic(
+    if bytes.slice(start: 2, end: 2).unwrap() != Bytes(values: []): return panic(
         "empty byte slice"
     )
 

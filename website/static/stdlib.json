@@ -418,7 +418,7 @@
             "length: fn()-\u003eInt",
             "reverse: fn()-\u003eBytes",
             "reversed: fn()-\u003eBytes",
-            "slice: fn(start: Int, end: Int)-\u003eBytes",
+            "slice: fn(start: Int, end: Int)-\u003eResult[Bytes, CollectionError]",
             "split: fn(separator: Bytes, max_parts: Optional[Int] = ...)-\u003eList[Bytes]",
             "starts_with: fn(value: Bytes)-\u003eBool",
             "to_text: fn()-\u003eOptional[String]",
@@ -495,8 +495,8 @@
             {
               "name": "slice",
               "kind": "operation",
-              "signature": "fn slice(start: Int, end: Int) -\u003e Bytes:",
-              "doc": "Selects [start, end) in bytes; faults unless 0 \u003c= start \u003c= end \u003c= length().\nThe immutable result may share storage with the receiver."
+              "signature": "fn slice(start: Int, end: Int) -\u003e Result[Bytes, CollectionError]:",
+              "doc": "Selects [start, end) in bytes; negative bounds are relative to the end.\nBounds outside 0 \u003c= start \u003c= end \u003c= length() return CollectionError.OutOfRange.\nThe immutable result may share storage with the receiver."
             },
             {
               "name": "split",
@@ -618,7 +618,8 @@
           "type": "CollectionError",
           "cases": [
             "InvalidInput",
-            "LimitExceeded"
+            "LimitExceeded",
+            "OutOfRange"
           ],
           "operations": [
             "message: fn()-\u003eString"
@@ -634,6 +635,12 @@
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
+              "doc": ""
+            },
+            {
+              "name": "OutOfRange",
+              "kind": "case",
+              "signature": "case OutOfRange",
               "doc": ""
             },
             {
@@ -691,7 +698,7 @@
             "reverse_in_place: fn()-\u003eList[T]",
             "reversed: fn()-\u003eList[T]",
             "set: fn(index: Int, value: T)-\u003eList[T]",
-            "slice: fn(start: Int, end: Int)-\u003eList[T]",
+            "slice: fn(start: Int, end: Int)-\u003eResult[List[T], CollectionError]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
             "to_set: fn()-\u003eSet[T]",
@@ -907,8 +914,8 @@
             {
               "name": "slice",
               "kind": "operation",
-              "signature": "fn slice(start: Int, end: Int) -\u003e List[T]:",
-              "doc": "Returns a new shallow List containing [start, end); outer storage is independent.\nFaults unless 0 \u003c= start \u003c= end \u003c= length(); negative bounds are not relative."
+              "signature": "fn slice(start: Int, end: Int) -\u003e Result[List[T], CollectionError]:",
+              "doc": "Returns a new shallow List containing [start, end); outer storage is independent.\nNegative bounds are relative to the end; bounds outside 0 \u003c= start \u003c= end \u003c= length() return CollectionError.OutOfRange."
             },
             {
               "name": "some",
@@ -9327,7 +9334,7 @@
             "reverse_in_place: fn()-\u003eList[T]",
             "reversed: fn()-\u003eList[T]",
             "set: fn(index: Int, value: T)-\u003eList[T]",
-            "slice: fn(start: Int, end: Int)-\u003eList[T]",
+            "slice: fn(start: Int, end: Int)-\u003eResult[List[T], CollectionError]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
             "to_set: fn()-\u003eSet[T]",
@@ -9543,8 +9550,8 @@
             {
               "name": "slice",
               "kind": "operation",
-              "signature": "fn slice(start: Int, end: Int) -\u003e List[T]:",
-              "doc": "Returns a new shallow List containing [start, end); outer storage is independent.\nFaults unless 0 \u003c= start \u003c= end \u003c= length(); negative bounds are not relative."
+              "signature": "fn slice(start: Int, end: Int) -\u003e Result[List[T], CollectionError]:",
+              "doc": "Returns a new shallow List containing [start, end); outer storage is independent.\nNegative bounds are relative to the end; bounds outside 0 \u003c= start \u003c= end \u003c= length() return CollectionError.OutOfRange."
             },
             {
               "name": "some",
@@ -10025,11 +10032,10 @@
             "scalar_at: fn(index: Int)-\u003eOptional[Int]",
             "scalar_length: fn()-\u003eInt",
             "scalar_values: fn()-\u003eList[Int]",
-            "slice: fn(start: Int, end: Int)-\u003eString",
+            "slice: fn(start: Int, end: Int)-\u003eResult[String, StringError]",
             "slice_scalars: fn(start: Int, end: Int)-\u003eResult[String, StringError]",
             "split: fn(separator: String, max_parts: Optional[Int] = ...)-\u003eList[String]",
             "starts_with: fn(prefix: String)-\u003eBool",
-            "substring: fn(start: Int, end: Int)-\u003eString",
             "to_bytes: fn()-\u003eBytes",
             "trim: fn()-\u003eString",
             "trim_end: fn()-\u003eString",
@@ -10190,8 +10196,8 @@
             {
               "name": "slice",
               "kind": "operation",
-              "signature": "fn slice(start: Int, end: Int) -\u003e String",
-              "doc": "Selects [start, end) in scalars: negative bounds are relative to the end, then clamp to 0..scalar_length().\nAn inverted adjusted range yields empty text; the receiver is unchanged."
+              "signature": "fn slice(start: Int, end: Int) -\u003e Result[String, StringError]",
+              "doc": "Selects [start, end) in Unicode scalars; negative bounds are relative to the end.\nBounds outside 0 \u003c= start \u003c= end \u003c= scalar_length() return StringError.OutOfRange; the receiver is unchanged."
             },
             {
               "name": "slice_scalars",
@@ -10210,12 +10216,6 @@
               "kind": "operation",
               "signature": "fn starts_with(prefix: String) -\u003e Bool",
               "doc": "Tests whether the receiver begins with this exact prefix."
-            },
-            {
-              "name": "substring",
-              "kind": "operation",
-              "signature": "fn substring(start: Int, end: Int) -\u003e String",
-              "doc": "Selects a scalar range after clamping each bound to 0..scalar_length() (negative becomes zero).\nSwaps inverted adjusted bounds; the receiver is unchanged."
             },
             {
               "name": "to_bytes",

@@ -187,12 +187,14 @@ func init() {
 		}
 		return libraryOK(result, Bytes{b})
 	})
-	add("bytes", "slice", "Bytes", []LibraryParam{p("data", "Bytes"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
+	add("bytes", "slice", libraryResult("Bytes", "CollectionError"), []LibraryParam{p("data", "Bytes"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		b := a[0].(Bytes).Items
-		s, e := a[1].(int64), a[2].(int64)
-		librarySlice("Bytes.slice", len(b), s, e)
+		s, e, ok := librarySliceBounds(len(b), a[1].(int64), a[2].(int64))
+		if !ok {
+			return libraryError(r, "OutOfRange", "")
+		}
 		// Bytes are immutable, so the slice shares storage; the capacity limit keeps appends from touching the parent.
-		return Bytes{b[s:e:e]}
+		return libraryOK(r, Bytes{b[s:e:e]})
 	})
 	add("bytes", "values", "List[Int]", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value {
 		b := a[0].(Bytes).Items
@@ -352,11 +354,13 @@ func init() {
 	libraryGeneric("collections", "reversed", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(ctx *Execution, result string, a []Value) Value {
 		return reverse(ctx, result, []Value{Clone(a[0])})
 	})
-	libraryGeneric("collections", "slice", "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
+	libraryGeneric("collections", "slice", libraryResult("List[T]", "CollectionError"), variable, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		v := a[0].(*List)
-		s, e := a[1].(int64), a[2].(int64)
-		librarySlice("List.slice", len(v.Items), s, e)
-		return &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)}
+		s, e, ok := librarySliceBounds(len(v.Items), a[1].(int64), a[2].(int64))
+		if !ok {
+			return libraryError(r, "OutOfRange", "")
+		}
+		return libraryOK(r, &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)})
 	})
 }
 

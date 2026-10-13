@@ -69,18 +69,15 @@ func TestStandardLibraryFaults(t *testing.T) {
 	}
 	output := string(data)
 	faults := map[string]string{
-		"panic unwinds Closeable":         "intentional stdlib panic",
-		"absent Optional unwrap faults":   "called Optional.unwrap() on none",
-		"sealed builder mutation faults":  "builder is sealed",
-		"zero queue capacity faults":      "Queue: capacity must be between 1 and 9223372036854775807",
-		"negative queue capacity faults":  "Queue: capacity must be between 1 and 9223372036854775807",
-		"stale synchronized guard faults": "Synchronized guard is closed",
-		"invalid list slice faults":       "List.slice: start/end must satisfy",
-		"negative list slice faults":      "List.slice: start/end must satisfy 0 <= start <= end <= 4; found start -2 and end 4",
-		"negative byte slice faults":      "Bytes.slice: start/end must satisfy 0 <= start <= end <= 3; found start -1 and end 3",
-		"out of range byte slice faults":  "Bytes.slice: start/end must satisfy 0 <= start <= end <= 3; found start 1 and end 10",
-		"negative split limit faults":     "split: max_parts must be nonnegative, found -1",
-		"negative replace limit faults":   "replace: max_replacements must be nonnegative, found -1",
+		"panic unwinds Closeable":                 "intentional stdlib panic",
+		"absent Optional unwrap faults":           "called Optional.unwrap() on none",
+		"sealed builder mutation faults":          "builder is sealed",
+		"zero queue capacity faults":              "Queue: capacity must be between 1 and 9223372036854775807",
+		"negative queue capacity faults":          "Queue: capacity must be between 1 and 9223372036854775807",
+		"stale synchronized guard faults":         "Synchronized guard is closed",
+		"unwrapping an out of range slice faults": "called Result.unwrap() on error",
+		"negative split limit faults":             "split: max_parts must be nonnegative, found -1",
+		"negative replace limit faults":           "replace: max_replacements must be nonnegative, found -1",
 	}
 	for _, declaration := range module.Declarations {
 		if declaration.Kind != syntax.KindTest {
@@ -102,7 +99,7 @@ func TestStandardLibraryFaults(t *testing.T) {
 			t.Errorf("missing %s%s:\n%s", prefix, declaration.Name, output)
 		}
 	}
-	for _, expected := range []string{"fault cleanup completed\n", "fresh root after stdlib faults\n", "13 tests, 12 failed"} {
+	for _, expected := range []string{"fault cleanup completed\n", "fresh root after stdlib faults\n", "10 tests, 9 failed"} {
 		if !strings.Contains(output, expected) {
 			t.Errorf("missing transcript %q:\n%s", expected, output)
 		}

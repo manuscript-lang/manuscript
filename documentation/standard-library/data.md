@@ -5,7 +5,7 @@ weight = 5
 
 # Text and collections
 
-Use receiver operations for existing data: `text.split(separator: ",")`, `bytes.slice(start: 0, end: 4)`, `values.map(transform: transform)`, and `left.union(right)`. Standalone functions create or decode values, such as `from_scalars`, `filled`, `range`, `map_from_entries`, and `compile` for a regular expression.
+Use receiver operations for existing data: `text.split(separator: ",")`, `bytes.slice(start: 0, end: 4)` (a `Result`), `values.map(transform: transform)`, and `left.union(right)`. Standalone functions create or decode values, such as `from_scalars`, `filled`, `range`, `map_from_entries`, and `compile` for a regular expression.
 
 | Group | Source module | Reference |
 | --- | --- | --- |
@@ -44,7 +44,7 @@ Maps and sets enumerate in insertion order, while equality ignores order. Replac
 
 ## Text and regular expressions
 
-String indexing and search count Unicode scalars. The [text rules](../core-language/basics/text-and-bytes.md#indexing-and-character-boundaries) specify units and the negative, clamped, swapped, and strict slice bounds. String operations return new text and leave the receiver unchanged.
+String indexing and search count Unicode scalars. The [text rules](../core-language/basics/text-and-bytes.md#indexing-and-character-boundaries) specify units and the relative negative and strict slice bounds. String operations return new text and leave the receiver unchanged.
 
 | String operations | Behavior |
 | --- | --- |
@@ -88,7 +88,7 @@ Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed 
 | `contains`, `starts_with`, `ends_with` | Test byte subsequences, prefixes, or suffixes. |
 | `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length()` respectively. |
 | `split` | Split exact binary separators into a fresh List of immutable Bytes views. `max_parts` truncates returned parts; omitted/`none` is unlimited, zero returns no parts, negatives fault. |
-| `slice` | Select a strict half-open byte range under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
+| `slice` | Select a half-open byte range, returning `OutOfRange` for invalid bounds, under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
 | `with_value`, `reversed`, `reverse`, `concat`, `clone` | Return Bytes without changing the receiver. `reverse` remains a compatible spelling for `reversed`. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
 | `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
 | `to_text` | Decode valid UTF-8 or return `none`. |

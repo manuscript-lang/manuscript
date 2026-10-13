@@ -13,19 +13,6 @@ import (
 	"unsafe"
 )
 
-func clampedIndex(length int, index int64, relative bool) int64 {
-	if relative {
-		index = relativeIndex(length, index)
-	}
-	if index < 0 {
-		return 0
-	}
-	if index > int64(length) {
-		return int64(length)
-	}
-	return index
-}
-
 // StringAt is the direct path for String.at calls.
 func StringAt(ctx *Execution, text, index Value, result string) Value {
 	CheckCancelled(ctx)
@@ -201,30 +188,23 @@ func init() {
 			return strings.TrimRightFunc(a[0].(string), unicode.IsSpace)
 		})
 	}
-	for _, name := range []string{"slice", "substring"} {
-		add("string", name, "String", []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-			text := a[0].(string)
-			ascii := isASCII(text)
-			count := len(text)
-			if !ascii {
-				count = utf8.RuneCountInString(text)
-			}
-			s := clampedIndex(count, a[1].(int64), name == "slice")
-			e := clampedIndex(count, a[2].(int64), name == "slice")
-			if s > e {
-				if name == "substring" {
-					s, e = e, s
-				} else {
-					e = s
-				}
-			}
-			if ascii {
-				return text[s:e]
-			}
-			start := scalarOffset(text, int(s))
-			return text[start : start+scalarOffset(text[start:], int(e-s))]
-		})
-	}
+	add("string", "slice", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
+		text := a[0].(string)
+		ascii := isASCII(text)
+		count := len(text)
+		if !ascii {
+			count = utf8.RuneCountInString(text)
+		}
+		s, e, ok := librarySliceBounds(count, a[1].(int64), a[2].(int64))
+		if !ok {
+			return libraryError(r, "OutOfRange", "")
+		}
+		if ascii {
+			return libraryOK(r, text[s:e])
+		}
+		start := scalarOffset(text, int(s))
+		return libraryOK(r, text[start:start+scalarOffset(text[start:], int(e-s))])
+	})
 	for _, name := range []string{"pad_start", "pad_end"} {
 		add("string", name, libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("target_length", "Int"), p("padding", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 			text, padding := a[0].(string), a[2].(string)

@@ -112,12 +112,9 @@ interface StringOperations:
         new: String,
         max_bytes: Optional[Int] = none
     ) -> Result[String, StringError]
-    # Selects [start, end) in scalars: negative bounds are relative to the end, then clamp to 0..scalar_length().
-    # An inverted adjusted range yields empty text; the receiver is unchanged.
-    fn slice(start: Int, end: Int) -> String
-    # Selects a scalar range after clamping each bound to 0..scalar_length() (negative becomes zero).
-    # Swaps inverted adjusted bounds; the receiver is unchanged.
-    fn substring(start: Int, end: Int) -> String
+    # Selects [start, end) in Unicode scalars; negative bounds are relative to the end.
+    # Bounds outside 0 <= start <= end <= scalar_length() return StringError.OutOfRange; the receiver is unchanged.
+    fn slice(start: Int, end: Int) -> Result[String, StringError]
     # Returns the UTF-8 encoded byte length.
     fn byte_length() -> Int
     # Encodes the string as UTF-8 bytes.

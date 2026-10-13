@@ -4,6 +4,7 @@
 export type CollectionError:
     case InvalidInput
     case LimitExceeded
+    case OutOfRange
 
 # An ordered collection of values with indexing, iteration, and transformation operations.
 export type List[T]:
@@ -31,8 +32,8 @@ export type List[T]:
     # Compatibility spelling for remove; mutates and returns this list.
     fn without(index: Int) -> List[T]:
     # Returns a new shallow List containing [start, end); outer storage is independent.
-    # Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
-    fn slice(start: Int, end: Int) -> List[T]:
+    # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
+    fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     # Reverses this list in place and returns the same instance.
     fn reverse_in_place() -> List[T]:
     # Returns a reversed shallow copy with independent outer storage; nested references remain shared.

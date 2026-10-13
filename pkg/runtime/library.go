@@ -126,6 +126,14 @@ func libraryBound(result string, n int64) Value {
 	}
 	return nil
 }
+
+// librarySliceBounds resolves negative bounds against the end and reports
+// whether 0 <= start <= end <= length holds afterward.
+func librarySliceBounds(length int, start, end int64) (int64, int64, bool) {
+	start, end = relativeIndex(length, start), relativeIndex(length, end)
+	return start, end, start >= 0 && end >= start && end <= int64(length)
+}
+
 func librarySlice(operation string, length int, start, end int64) {
 	if start < 0 || end < start || end > int64(length) {
 		Panic(fmt.Sprintf("%s: start/end must satisfy 0 <= start <= end <= %d; found start %d and end %d", operation, length, start, end))

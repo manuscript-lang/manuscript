@@ -1,5 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
+import CollectionError from "@std/collections.ms"
 import List from "@std/collections.ms"
 
 # An immutable sequence of bytes. Indices and slice bounds are zero-based.
@@ -13,9 +14,10 @@ export type Bytes:
     # Omitted/none max_parts is unlimited; zero returns no parts, negatives fault.
     # A cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data.
     fn split(separator: Bytes, max_parts: Optional[Int] = none) -> List[Bytes]:
-    # Selects [start, end) in bytes; faults unless 0 <= start <= end <= length().
+    # Selects [start, end) in bytes; negative bounds are relative to the end.
+    # Bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
     # The immutable result may share storage with the receiver.
-    fn slice(start: Int, end: Int) -> Bytes:
+    fn slice(start: Int, end: Int) -> Result[Bytes, CollectionError]:
     # Returns an unsigned byte; negative indexes are relative to the end, and out-of-range indexes return `none`.
     fn at(index: Int) -> Optional[Int]:
     # Returns the first matching byte offset or `none`; empty `value` matches at zero.
