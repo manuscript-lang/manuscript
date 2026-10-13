@@ -37,6 +37,18 @@ run() { # name, extra flags, packages...
     "$go_tool" test $flags -covermode=atomic -coverpkg="$coverpkg" -coverprofile=".artifacts/coverage/$name.out" "$@"
 }
 
+# Remaining packages are dealt round-robin across shards.
+mine() { awk -v n="$count" -v k="$shard" '(NR - 1) % n == k'; }
+race_rest=$(printf '%s\n' "$race_packages" | grep -vxF "$split_packages" | mine || true)
+# The runtime package has wall-clock assertions that CPU contention breaks, so it
+# runs alone, before the concurrent groups start.
+runtime_package=github.com/manuscript-lang/manuscript/pkg/runtime
+status=0
+if printf '%s\n' "$race_rest" | grep -qxF "$runtime_package"; then
+    "$go_tool" test -race "$runtime_package" || status=1
+    race_rest=$(printf '%s\n' "$race_rest" | grep -vxF "$runtime_package" || true)
+fi
+
 # Each group runs in the background (the runner has several cores and most test
 # binaries are mostly serial); output is replayed per group afterwards.
 logs=$(mktemp -d)
@@ -65,9 +77,6 @@ for package in $split_packages; do
     fi
 done
 
-# Remaining packages are dealt round-robin across shards.
-mine() { awk -v n="$count" -v k="$shard" '(NR - 1) % n == k'; }
-race_rest=$(printf '%s\n' "$race_packages" | grep -vxF "$split_packages" | mine || true)
 # shellcheck disable=SC2086
 [ -z "$race_rest" ] || start race-rest "$go_tool" test -race $race_rest
 excluded=$(printf '%s\n%s\n' "$race_packages" "$split_packages")
@@ -76,7 +85,6 @@ cover_rest=$("$go_tool" list ./... | grep -vxF "$excluded" | mine || true)
 [ -z "$cover_rest" ] || start cover-rest run rest "" $cover_rest
 
 wait
-status=0
 for name in $pids; do
     echo "::group::$name"
     cat "$logs/$name.log"
