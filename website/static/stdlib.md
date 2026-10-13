@@ -62,6 +62,53 @@ impl Error for ArchiveError:
     fn message() -> String:
 ```
 
+## ArchiveFormat
+
+**Alternative**
+
+Selects a supported archive format without a runtime string spelling check.
+Existing pack/unpack format: String calls remain available.
+
+```manuscript
+type ArchiveFormat:
+    case Zip
+    case Tar
+    fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+    fn unpack(data: Bytes, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
+```
+
+### ArchiveFormat.Tar
+
+TAR files and directories.
+
+```manuscript
+case Tar
+```
+
+### ArchiveFormat.Zip
+
+ZIP files and directories.
+
+```manuscript
+case Zip
+```
+
+### ArchiveFormat.pack
+
+Packs entries with the same optional output budget and path validation as pack.
+
+```manuscript
+fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+```
+
+### ArchiveFormat.unpack
+
+Unpacks in memory with the same entry/byte limits and domain errors as unpack.
+
+```manuscript
+fn unpack(data: Bytes, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
+```
+
 ## ArchiveLimits
 
 **Record**
@@ -1072,6 +1119,62 @@ impl Error for CompressionError:
     fn message() -> String:
 ```
 
+## CompressionFormat
+
+**Alternative**
+
+Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
+Existing compress/decompress format: String calls remain available.
+
+```manuscript
+type CompressionFormat:
+    case Gzip
+    case Zlib
+    case Deflate
+    fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+    fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+```
+
+### CompressionFormat.Deflate
+
+Raw DEFLATE without framing.
+
+```manuscript
+case Deflate
+```
+
+### CompressionFormat.Gzip
+
+GZIP framing.
+
+```manuscript
+case Gzip
+```
+
+### CompressionFormat.Zlib
+
+ZLIB framing.
+
+```manuscript
+case Zlib
+```
+
+### CompressionFormat.compress
+
+Compresses with level 0..9 and the same optional output budget/domain errors as compress.
+
+```manuscript
+fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+```
+
+### CompressionFormat.decompress
+
+Decompresses with the same cumulative output limit and validation as decompress.
+
+```manuscript
+fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+```
+
 ## compress
 
 **Function**
@@ -1115,6 +1218,62 @@ type CryptoError:
 ```manuscript
 impl Error for CryptoError:
     fn message() -> String:
+```
+
+## HashAlgorithm
+
+**Alternative**
+
+Selects a supported SHA-2 algorithm without a runtime string spelling check.
+Existing hash functions and hmac(algorithm: String) remain available.
+
+```manuscript
+type HashAlgorithm:
+    case Sha256
+    case Sha384
+    case Sha512
+    fn digest(data: Bytes) -> Bytes:
+    fn hmac(key: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:
+```
+
+### HashAlgorithm.Sha256
+
+SHA-256.
+
+```manuscript
+case Sha256
+```
+
+### HashAlgorithm.Sha384
+
+SHA-384.
+
+```manuscript
+case Sha384
+```
+
+### HashAlgorithm.Sha512
+
+SHA-512.
+
+```manuscript
+case Sha512
+```
+
+### HashAlgorithm.digest
+
+Computes this algorithm's digest, checking cancellation between chunks.
+
+```manuscript
+fn digest(data: Bytes) -> Bytes:
+```
+
+### HashAlgorithm.hmac
+
+Computes HMAC with this algorithm and retains CryptoError results.
+
+```manuscript
+fn hmac(key: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:
 ```
 
 ## constant_time_equal

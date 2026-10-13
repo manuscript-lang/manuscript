@@ -396,6 +396,12 @@
     "@std/time.ms/Timestamp/nanoseconds": "time/nanoseconds",
     "@std/time.ms/Timestamp/shift": "time/shift",
     "@std/time.ms/Timestamp/to_string": "time/format_timestamp",
-    "@std/time.ms/Timestamp/unix_seconds": "time/unix_seconds"
+    "@std/time.ms/Timestamp/unix_seconds": "time/unix_seconds",
+    "@std/crypto.ms/HashAlgorithm/digest": "crypto/hash_algorithm_digest",
+    "@std/crypto.ms/HashAlgorithm/hmac": "crypto/hash_algorithm_hmac",
+    "@std/compress.ms/CompressionFormat/compress": "compress/format_compress",
+    "@std/compress.ms/CompressionFormat/decompress": "compress/format_decompress",
+    "@std/archive.ms/ArchiveFormat/pack": "archive/format_pack",
+    "@std/archive.ms/ArchiveFormat/unpack": "archive/format_unpack"
   }
 }
