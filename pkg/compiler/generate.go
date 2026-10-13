@@ -83,7 +83,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			// can run it without building a bound Function for each call.
 			name := "direct" + strconv.Itoa(len(initialize)+1)
 			direct := closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("receiver", runtimeName("Value")), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...)
-			initialize = append(initialize, define(name, runtimeCall("SourceDirect", textLiteral(position), direct)))
+			initialize = append(initialize, define(name, runtimeCall("SourceDirect", textLiteral(position), resultKey, direct)))
 			fields = append(fields, keyed("Direct", ident(name)), keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(runtimeCall("BoundDirect", ident("receiver"), stringSlice(labels), resultKey, ident(name))))))
 		} else {
 			fn := runtimeCall("NewSourceFunction", stringSlice(labels), resultKey, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...))

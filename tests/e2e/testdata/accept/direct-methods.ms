@@ -83,3 +83,46 @@ test "views, defaults, and reordered labels keep dispatch":
         ) == 13
     ):
         return panic(message: "ordered")
+
+type Parser:
+    base: Int
+
+interface Parse:
+    fn parse(n: Int) -> Result[Int, String]
+
+impl Parse for Parser:
+    fn parse(n: Int) -> Result[Int, String]:
+        if n < 0:
+            return error("negative")
+
+        return ok(self.base + n)
+
+type Chain:
+    parser: Parser
+
+interface Step:
+    fn step(n: Int) -> Result[Int, String]
+
+impl Step for Chain:
+    fn step(n: Int) -> Result[Int, String]:
+        return ok((try self.parser.parse(n: n)) + 1)
+
+fn code(r: Result[Int, String]) -> Int:
+    match r:
+        ok(value): return value
+        error(_): return -1
+
+fn run_direct(chain: Chain, n: Int) -> Int:
+    return code(r: chain.step(n: n))
+
+fn run_view(chain: Chain, n: Int) -> Int:
+    return code(r: Step(value: chain).step(n: n))
+
+test "nested try in a direct method becomes an error result":
+    let chain = Chain(parser: Parser(base: 10))
+    if not (run_direct(chain: chain, n: 5) == 16):
+        return panic(message: "ok")
+    if not (run_direct(chain: chain, n: -5) == -1):
+        return panic(message: "direct error result")
+    if not (run_view(chain: chain, n: -5) == -1):
+        return panic(message: "view error result")

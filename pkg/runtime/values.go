@@ -960,23 +960,37 @@ type resolvedImplementation struct {
 // implementationGeneration invalidates call-site caches when Register runs.
 var implementationGeneration atomic.Uint64
 
-// SourceDirect wraps a method body like NewSourceFunction wraps a function body:
-// it converts source returns and applies profiling.
-func SourceDirect(position string, body func(*Execution, Value, []Value) Value) func(*Execution, Value, []Value) Value {
+// SourceDirect wraps a method body with everything a bound method gets from
+// NewSourceFunction and newFunction: source returns, profiling, propagation of
+// a nested try into an error Result, and the post-body cancellation checkpoint.
+func SourceDirect(position, result string, body func(*Execution, Value, []Value) Value) func(*Execution, Value, []Value) Value {
 	return func(ctx *Execution, receiver Value, args []Value) (value Value) {
 		defer func() {
 			if failure := recover(); failure != nil {
-				if returned, ok := failure.(sourceReturn); ok {
-					value = returned.value
+				switch f := failure.(type) {
+				case sourceReturn:
+					value = f.value
+				case propagation:
+					CheckCancelled(ctx)
+					value = Alternative{Type: result, Tag: "error", Fields: []Value{f.Cause}}
 					return
+				default:
+					panic(failure)
 				}
-				panic(failure)
+				if ctx != nil && ctx.Context.Err() != nil {
+					panic(cancelled{})
+				}
 			}
 		}()
 		if sourceProfiling.Load() {
-			return profileSource(ctx, position, args, func(ctx *Execution, args []Value) Value { return body(ctx, receiver, args) })
+			value = profileSource(ctx, position, args, func(ctx *Execution, args []Value) Value { return body(ctx, receiver, args) })
+		} else {
+			value = body(ctx, receiver, args)
 		}
-		return body(ctx, receiver, args)
+		if ctx != nil && ctx.Context.Err() != nil {
+			panic(cancelled{})
+		}
+		return value
 	}
 }
 

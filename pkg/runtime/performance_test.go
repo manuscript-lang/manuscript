@@ -403,3 +403,35 @@ func BenchmarkBindInvokeMethod(b *testing.B) {
 		Invoke(ctx, Bind(receiver, "probe/Speak", "speak", scope), nil)
 	}
 }
+
+func TestSourceDirectMatchesBoundFunctionContract(t *testing.T) {
+	result := "@std/Result[Int][String]"
+	propagating := func(*Execution, Value, []Value) Value { panic(propagation{Cause: "bad"}) }
+	got := SourceDirect("p.ms:1:1", result, propagating)(RootExecution(), nil, nil)
+	want := NewSourceFunction(nil, result, "p.ms:1:1", func(*Execution, []Value) Value { panic(propagation{Cause: "bad"}) }).Body(RootExecution(), nil)
+	if alt, ok := got.(Alternative); !ok || alt.Tag != "error" || alt.Type != result || got.(Alternative).Fields[0] != want.(Alternative).Fields[0] {
+		t.Fatalf("propagation: got %#v want %#v", got, want)
+	}
+
+	// Cancellation that arrives during the body is delivered at the checkpoint
+	// after it, for both a normal and a source return.
+	for name, body := range map[string]func(*Execution, Value, []Value) Value{
+		"normal": func(*Execution, Value, []Value) Value { return int64(1) },
+		"return": func(*Execution, Value, []Value) Value { panic(sourceReturn{value: int64(1)}) },
+	} {
+		cancelCtx, cancel := context.WithCancel(context.Background())
+		ctx := &Execution{Context: cancelCtx}
+		direct := SourceDirect("p.ms:1:1", result, func(ctx *Execution, r Value, a []Value) Value {
+			cancel()
+			return body(ctx, r, a)
+		})
+		func() {
+			defer func() {
+				if _, ok := recover().(cancelled); !ok {
+					t.Fatalf("%s: cancellation during the body must unwind", name)
+				}
+			}()
+			direct(ctx, nil, nil)
+		}()
+	}
+}

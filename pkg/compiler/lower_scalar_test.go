@@ -78,10 +78,10 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 		if !ok || (selector.Sel.Name != "NewSourceFunction" && selector.Sel.Name != "SourceDirect") {
 			return true
 		}
-		// Direct method bodies are the second argument of SourceDirect.
+		// Direct method bodies are the third argument of SourceDirect.
 		bodyArg := 3
 		if selector.Sel.Name == "SourceDirect" {
-			bodyArg = 1
+			bodyArg = 2
 		}
 		body := call.Args[bodyArg].(*ast.FuncLit).Body
 		trace := body.List[1].(*ast.DeferStmt).Call.Args[1].(*ast.BasicLit)
