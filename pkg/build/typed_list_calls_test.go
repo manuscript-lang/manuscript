@@ -57,7 +57,11 @@ func verifyTypedCalls(){
  values:=rt.NewIntList("@std/List[Int]",[]int64{10000,20000})
  args:=[]rt.Value{values,int64(-1)}
  if @@read@@.(rt.Function).Body(ctx,args)!=int64(20000) {panic("relative typed read")}
- if allocations:=testing.AllocsPerRun(100,func(){typedResult=@@read@@.(rt.Function).Body(ctx,args)});allocations>1 {panic(fmt.Sprintf("read allocations %g",allocations))}
+ for range 10 {typedResult=@@read@@.(rt.Function).Body(ctx,args)}
+ var before,after runtime.MemStats;runtime.ReadMemStats(&before)
+ for range 1000 {typedResult=@@read@@.(rt.Function).Body(ctx,args)}
+ runtime.ReadMemStats(&after)
+ if allocations:=after.Mallocs-before.Mallocs;allocations>1000 {panic(fmt.Sprintf("read allocations %d per1000",allocations))}
  args[1]=int64(4)
  failure:=caught(func(){@@read@@.(rt.Function).Body(ctx,args)})
  if fault,ok:=failure.(rt.Fault);!ok || !strings.Contains(fault.Message,"Optional.unwrap() on none") || len(fault.Frames)==0 || !strings.Contains(fault.Frames[0],"in read") {panic(fmt.Sprintf("typed absent fault %#v",failure))}
@@ -70,7 +74,7 @@ func verifyTypedCalls(){
  rt.FinishExecution(cancelled)
 }
 `)
-			generated := strings.Replace(result.Source, "package main\n", "package main\nimport (\"context\";\"fmt\";\"math\";\"reflect\";\"strings\";\"testing\")\n", 1)
+			generated := strings.Replace(result.Source, "package main\n", "package main\nimport (\"context\";\"fmt\";\"math\";\"reflect\";\"strings\";\"runtime\")\n", 1)
 			generated = strings.Replace(generated, "\tinitialize()\n", "\tinitialize()\n\tverifyTypedCalls()\n", 1) + harness
 			binary := filepath.Join(t.TempDir(), "program")
 			if err := BuildWithType(generated, binary, kind); err != nil {
