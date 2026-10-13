@@ -23,6 +23,18 @@ When `discount` returns `ok`, `value` contains the `Decimal` payload and the fun
 
 The success types differ: the called function returns a decimal, while the enclosing function returns text. Both use `DiscountError`, so the error can be forwarded unchanged.
 
+A call returning `Result[Unit, E]` can be propagated as a statement, without a throwaway binding:
+
+```manuscript
+fn prepare() -> Result[Unit, String]: ok(unit)
+
+fn ready_label() -> Result[String, String]:
+    try prepare()
+    return ok("ready")
+```
+
+Standalone `try call()` requires a `Unit` success value. For other success types, bind the value with `let name = try call()` or return it with `return try call()`; it cannot be silently discarded.
+
 ## Error compatibility
 
 `try` accepts the same error type as the enclosing function, or a specific error implementing the common `Error` interface when the enclosing function returns `Result[U, Error]`.

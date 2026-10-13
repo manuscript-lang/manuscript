@@ -440,8 +440,9 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 			}
 			s.Value = p.expression(0)
 		} else {
-			if !p.inlineReturn && e.Kind != syntax.KindCall && e.Kind != syntax.KindMatch && len(allowValue) == 0 {
-				p.fail(t, "only a call or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function")
+			tryCall := e.Kind == syntax.KindUnary && e.Text == "try" && e.Right.Kind == syntax.KindCall
+			if !p.inlineReturn && e.Kind != syntax.KindCall && e.Kind != syntax.KindMatch && !tryCall && len(allowValue) == 0 {
+				p.fail(t, "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function")
 			}
 			s.Kind = syntax.KindCall
 			if p.inlineReturn {
