@@ -33,6 +33,8 @@ Import each required symbol with `import Name from "@std/archive.ms"`.
 
 **Record**
 
+One file or directory in an archive. Paths use forward slashes.
+
 ```manuscript
 type ArchiveEntry:
     path: String
@@ -43,6 +45,8 @@ type ArchiveEntry:
 ## ArchiveError
 
 **Alternative**
+
+Errors returned when an archive cannot be read or written.
 
 ```manuscript
 type ArchiveError:
@@ -62,6 +66,8 @@ impl Error for ArchiveError:
 
 **Record**
 
+Optional limits applied while unpacking untrusted archive data.
+
 ```manuscript
 type ArchiveLimits:
     max_entries: Optional[Int] = none
@@ -73,6 +79,8 @@ type ArchiveLimits:
 
 **Function**
 
+Encodes entries as `zip` or `tar` bytes. `max_bytes` bounds output when supplied.
+
 ```manuscript
 fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
 ```
@@ -80,6 +88,8 @@ fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = 
 ## unpack
 
 **Function**
+
+Decodes `zip` or `tar` bytes and applies each supplied entry and total-size limit.
 
 ```manuscript
 fn unpack(data: Bytes, format: String, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
@@ -92,6 +102,8 @@ Import each required symbol with `import Name from "@std/bigint.ms"`.
 ## BigInt
 
 **Native type**
+
+An arbitrary-precision signed integer with explicit arithmetic operations.
 
 ```manuscript
 type BigInt:
@@ -112,6 +124,8 @@ type BigInt:
 
 **Alternative**
 
+Errors returned while parsing or converting arbitrary-precision integers.
+
 ```manuscript
 type BigIntError:
     case InvalidInput
@@ -128,6 +142,8 @@ impl Error for BigIntError:
 
 **Function**
 
+Converts a machine-sized integer without loss.
+
 ```manuscript
 fn from_int(value: Int) -> BigInt:
 ```
@@ -135,6 +151,8 @@ fn from_int(value: Int) -> BigInt:
 ## parse
 
 **Function**
+
+Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
 
 ```manuscript
 fn parse(text: String, radix: Int, max_digits: Optional[Int] = none) -> Result[BigInt, BigIntError]:
@@ -147,6 +165,8 @@ Import each required symbol with `import Name from "@std/binary.ms"`.
 ## BinaryError
 
 **Alternative**
+
+Errors returned when a byte range or numeric representation is invalid.
 
 ```manuscript
 type BinaryError:
@@ -163,6 +183,8 @@ impl Error for BinaryError:
 
 **Function**
 
+Reads a 32-bit floating-point value at `offset` using the selected byte order.
+
 ```manuscript
 fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]:
 ```
@@ -170,6 +192,8 @@ fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, Bi
 ## read_integer
 
 **Function**
+
+Reads an integer of `width` bytes. Signed values use two's-complement encoding.
 
 ```manuscript
 fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, BinaryError]:
@@ -179,6 +203,8 @@ fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endia
 
 **Function**
 
+Encodes a 32-bit floating-point value using the selected byte order.
+
 ```manuscript
 fn write_float(value: Float, little_endian: Bool) -> Bytes:
 ```
@@ -186,6 +212,8 @@ fn write_float(value: Float, little_endian: Bool) -> Bytes:
 ## write_integer
 
 **Function**
+
+Encodes an integer into `width` bytes, returning an error when it does not fit.
 
 ```manuscript
 fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]:
@@ -198,6 +226,8 @@ Import each required symbol with `import Name from "@std/bytes.ms"`.
 ## Bytes
 
 **Native type**
+
+An immutable sequence of bytes. Indices and slice bounds are zero-based.
 
 ```manuscript
 type Bytes:
@@ -222,6 +252,8 @@ type Bytes:
 
 **Native type**
 
+Builds a byte sequence efficiently before freezing it into an immutable value.
+
 ```manuscript
 type BytesBuilder:
     fn append(value: Int) -> Unit:
@@ -232,6 +264,8 @@ type BytesBuilder:
 ## values
 
 **Function**
+
+Returns the byte values as integers in the range 0 through 255.
 
 ```manuscript
 fn values(data: Bytes) -> List[Int]:
@@ -244,6 +278,8 @@ Import each required symbol with `import Name from "@std/cleanup.ms"`.
 ## Closeable
 
 **Interface**
+
+A resource that can be closed. `with` closes a bound resource on every exit.
 
 ```manuscript
 interface Closeable:
@@ -258,6 +294,8 @@ Import each required symbol with `import Name from "@std/cli.ms"`.
 
 **Function**
 
+Returns process arguments, excluding the executable path.
+
 ```manuscript
 fn arguments() -> List[String]:
 ```
@@ -265,6 +303,8 @@ fn arguments() -> List[String]:
 ## environment
 
 **Function**
+
+Returns the process environment as a map of variable names to values.
 
 ```manuscript
 fn environment() -> Map[String, String]:
@@ -277,6 +317,8 @@ Import each required symbol with `import Name from "@std/collections.ms"`.
 ## CollectionError
 
 **Alternative**
+
+Errors returned when a collection factory exceeds its supplied item limit.
 
 ```manuscript
 type CollectionError:
@@ -292,6 +334,8 @@ impl Error for CollectionError:
 ## List
 
 **Native type**
+
+An ordered collection of values with indexing, iteration, and transformation operations.
 
 ```manuscript
 type List[T]:
@@ -338,6 +382,8 @@ type List[T]:
 
 **Native type**
 
+Appends values efficiently before freezing them into a list.
+
 ```manuscript
 type ListBuilder[T]:
     fn append(value: T) -> Unit:
@@ -348,6 +394,8 @@ type ListBuilder[T]:
 
 **Record**
 
+One list index and its corresponding value.
+
 ```manuscript
 type ListEntry[T]:
     index: Int
@@ -357,6 +405,8 @@ type ListEntry[T]:
 ## Map
 
 **Native type**
+
+A mutable key-value collection. Keys use explicit `Hashable` value semantics.
 
 ```manuscript
 type Map[T: Hashable, U]:
@@ -380,6 +430,8 @@ type Map[T: Hashable, U]:
 
 **Native type**
 
+Adds entries efficiently before freezing them into a map.
+
 ```manuscript
 type MapBuilder[T: Hashable, U]:
     fn freeze() -> Map[T, U]:
@@ -390,6 +442,8 @@ type MapBuilder[T: Hashable, U]:
 
 **Record**
 
+One key-value pair returned by `Map.entries`.
+
 ```manuscript
 type MapEntry[T: Hashable, U]:
     key: T
@@ -399,6 +453,8 @@ type MapEntry[T: Hashable, U]:
 ## Set
 
 **Native type**
+
+A mutable collection of unique values using explicit `Hashable` value semantics.
 
 ```manuscript
 type Set[T: Hashable]:
@@ -424,6 +480,8 @@ type Set[T: Hashable]:
 
 **Native type**
 
+Adds unique values efficiently before freezing them into a set.
+
 ```manuscript
 type SetBuilder[T: Hashable]:
     fn freeze() -> Set[T]:
@@ -434,6 +492,8 @@ type SetBuilder[T: Hashable]:
 
 **Function**
 
+Creates a list containing `value` repeated `count` times.
+
 ```manuscript
 fn filled[T](value: T, count: Int, max_items: Optional[Int] = none) -> Result[List[T], CollectionError]:
 ```
@@ -442,6 +502,8 @@ fn filled[T](value: T, count: Int, max_items: Optional[Int] = none) -> Result[Li
 
 **Function**
 
+Builds a map from entries. Later entries replace earlier values for duplicate keys.
+
 ```manuscript
 fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) -> Map[K, V]:
 ```
@@ -449,6 +511,8 @@ fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) -> Map[K, V]:
 ## range
 
 **Function**
+
+Creates integers from `start` up to but excluding `end` using `step`.
 
 ```manuscript
 fn range(start: Int, end: Int, step: Int, max_items: Optional[Int] = none) -> Result[List[Int], CollectionError]:
@@ -461,6 +525,8 @@ Import each required symbol with `import Name from "@std/compress.ms"`.
 ## CompressionError
 
 **Alternative**
+
+Errors returned when compressed data is unsupported, invalid, or exceeds a limit.
 
 ```manuscript
 type CompressionError:
@@ -480,6 +546,9 @@ impl Error for CompressionError:
 
 **Function**
 
+Compresses bytes using `gzip`, `zlib`, or `deflate` at the requested level.
+`max_bytes` bounds the encoded output when supplied.
+
 ```manuscript
 fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
 ```
@@ -487,6 +556,8 @@ fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = 
 ## decompress
 
 **Function**
+
+Decompresses supported data and stops when the supplied output limit is reached.
 
 ```manuscript
 fn decompress(data: Bytes, format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
@@ -499,6 +570,8 @@ Import each required symbol with `import Name from "@std/crypto.ms"`.
 ## CryptoError
 
 **Alternative**
+
+Errors returned when cryptographic input is invalid or an algorithm is unavailable.
 
 ```manuscript
 type CryptoError:
@@ -516,6 +589,8 @@ impl Error for CryptoError:
 
 **Function**
 
+Compares byte strings without making the comparison time depend on their contents.
+
 ```manuscript
 fn constant_time_equal(left: Bytes, right: Bytes) -> Bool:
 ```
@@ -523,6 +598,8 @@ fn constant_time_equal(left: Bytes, right: Bytes) -> Bool:
 ## derive_key
 
 **Function**
+
+Derives a key with PBKDF2-HMAC-SHA-256 using the supplied iteration count and length.
 
 ```manuscript
 fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Result[Bytes, CryptoError]:
@@ -532,6 +609,8 @@ fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Res
 
 **Function**
 
+Computes an HMAC using `sha256`, `sha384`, or `sha512`.
+
 ```manuscript
 fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, CryptoError]:
 ```
@@ -539,6 +618,8 @@ fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, CryptoError
 ## open
 
 **Function**
+
+Authenticates and decrypts a value produced by `seal` using AES-GCM.
 
 ```manuscript
 fn open(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes) -> Result[Bytes, CryptoError]:
@@ -548,6 +629,8 @@ fn open(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes) -> 
 
 **Function**
 
+Derives the Ed25519 public key corresponding to a 32-byte private seed.
+
 ```manuscript
 fn public_key(seed: Bytes) -> Result[Bytes, CryptoError]:
 ```
@@ -555,6 +638,8 @@ fn public_key(seed: Bytes) -> Result[Bytes, CryptoError]:
 ## seal
 
 **Function**
+
+Encrypts and authenticates plaintext with AES-GCM. The caller supplies a unique nonce.
 
 ```manuscript
 fn seal(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes) -> Result[Bytes, CryptoError]:
@@ -564,6 +649,8 @@ fn seal(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes) -> R
 
 **Function**
 
+Returns the SHA-256 digest of the input.
+
 ```manuscript
 fn sha256(data: Bytes) -> Bytes:
 ```
@@ -571,6 +658,8 @@ fn sha256(data: Bytes) -> Bytes:
 ## sha384
 
 **Function**
+
+Returns the SHA-384 digest of the input.
 
 ```manuscript
 fn sha384(data: Bytes) -> Bytes:
@@ -580,6 +669,8 @@ fn sha384(data: Bytes) -> Bytes:
 
 **Function**
 
+Returns the SHA-512 digest of the input.
+
 ```manuscript
 fn sha512(data: Bytes) -> Bytes:
 ```
@@ -588,6 +679,8 @@ fn sha512(data: Bytes) -> Bytes:
 
 **Function**
 
+Signs data with an Ed25519 private seed.
+
 ```manuscript
 fn sign(seed: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:
 ```
@@ -595,6 +688,8 @@ fn sign(seed: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:
 ## verify
 
 **Function**
+
+Verifies an Ed25519 signature with a public key.
 
 ```manuscript
 fn verify(key: Bytes, data: Bytes, signature: Bytes) -> Bool:
@@ -607,6 +702,8 @@ Import each required symbol with `import Name from "@std/csv.ms"`.
 ## CsvError
 
 **Alternative**
+
+Errors returned for malformed CSV input or configured size limits.
 
 ```manuscript
 type CsvError:
@@ -624,6 +721,8 @@ impl Error for CsvError:
 
 **Record**
 
+Delimiter and line ending used when parsing or writing CSV.
+
 ```manuscript
 type CsvOptions:
     delimiter: String
@@ -634,6 +733,8 @@ type CsvOptions:
 
 **Function**
 
+Parses CSV into rows of cells. Optional row and cell limits bound large inputs.
+
 ```manuscript
 fn parse(text: String, options: CsvOptions, max_rows: Optional[Int] = none, max_cells: Optional[Int] = none) -> Result[List[List[String]], CsvError]:
 ```
@@ -641,6 +742,8 @@ fn parse(text: String, options: CsvOptions, max_rows: Optional[Int] = none, max_
 ## stringify
 
 **Function**
+
+Encodes rows as CSV, quoting cells when required by the delimiter or line ending.
 
 ```manuscript
 fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Optional[Int] = none) -> Result[String, CsvError]:
@@ -654,10 +757,27 @@ Import each required symbol with `import Name from "@std/decimal.ms"`.
 
 **Native type**
 
+An exact decimal value. Conversions are explicit because binary floats may round.
+
 ```manuscript
 type Decimal:
     fn to_float() -> Float:
     fn truncate_to_int() -> Optional[Int]:
+    fn round(places: Int, mode: Optional[RoundingMode] = none) -> Result[Decimal, NumberError]:
+    fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
+```
+
+## RoundingMode
+
+**Alternative**
+
+```manuscript
+type RoundingMode:
+    case HalfEven
+    case HalfAwayFromZero
+    case TowardZero
+    case Floor
+    case Ceil
 ```
 
 # @std/encoding.ms
@@ -667,6 +787,8 @@ Import each required symbol with `import Name from "@std/encoding.ms"`.
 ## EncodingError
 
 **Alternative**
+
+Errors returned when encoded text is invalid or exceeds a supplied byte limit.
 
 ```manuscript
 type EncodingError:
@@ -684,6 +806,8 @@ impl Error for EncodingError:
 
 **Function**
 
+Decodes standard or URL-safe Base64 text into bytes.
+
 ```manuscript
 fn base64_decode(text: String, url_safe: Bool, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
 ```
@@ -691,6 +815,8 @@ fn base64_decode(text: String, url_safe: Bool, max_bytes: Optional[Int] = none) 
 ## base64_encode
 
 **Function**
+
+Encodes bytes as standard or URL-safe Base64 text.
 
 ```manuscript
 fn base64_encode(data: Bytes, url_safe: Bool) -> String:
@@ -700,6 +826,8 @@ fn base64_encode(data: Bytes, url_safe: Bool) -> String:
 
 **Function**
 
+Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
+
 ```manuscript
 fn hex_decode(text: String, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
 ```
@@ -707,6 +835,8 @@ fn hex_decode(text: String, max_bytes: Optional[Int] = none) -> Result[Bytes, En
 ## hex_encode
 
 **Function**
+
+Encodes each byte as two lowercase hexadecimal digits.
 
 ```manuscript
 fn hex_encode(data: Bytes) -> String:
@@ -722,6 +852,9 @@ Explicit imports with `import Name from "@std/equality.ms"` remain supported.
 
 **Interface**
 
+Equality and hashing are ordinary operation interfaces. Built-in data retains
+its value semantics; an explicit implementation selects domain identity.
+
 ```manuscript
 interface Equal:
     fn equals(other: Equal) -> Bool
@@ -730,6 +863,8 @@ interface Equal:
 ## Hashable
 
 **Interface**
+
+A type with a stable hash consistent with its `Equal` implementation.
 
 ```manuscript
 interface Hashable:
@@ -746,6 +881,8 @@ Explicit imports with `import Name from "@std/errors.ms"` remain supported.
 
 **Interface**
 
+A contract for expected failures that can provide a human-readable message.
+
 ```manuscript
 interface Error:
     fn message() -> String
@@ -759,6 +896,8 @@ Import each required symbol with `import Name from "@std/faults.ms"`.
 
 **Function**
 
+Raises a programming fault with the supplied message and stops the current operation.
+
 ```manuscript
 fn panic(message: String) -> Never:
 ```
@@ -770,6 +909,8 @@ Import each required symbol with `import Name from "@std/fs.ms"`.
 ## CopyOptions
 
 **Record**
+
+Policies for recursive copies, including replacement, symlinks, and optional limits.
 
 ```manuscript
 type CopyOptions:
@@ -788,6 +929,8 @@ type CopyOptions:
 
 **Interface**
 
+An open directory that yields one child per read and must be closed.
+
 ```manuscript
 interface Directory:
     fn path() -> String
@@ -798,6 +941,8 @@ interface Directory:
 ## DirectoryEntry
 
 **Record**
+
+The name and kind flags for one child returned by a directory listing.
 
 ```manuscript
 type DirectoryEntry:
@@ -810,6 +955,8 @@ type DirectoryEntry:
 
 **Record**
 
+One filesystem change and the affected path.
+
 ```manuscript
 type FileEvent:
     path: String
@@ -819,6 +966,8 @@ type FileEvent:
 ## FileHandle
 
 **Interface**
+
+An open file supporting sequential and positional I/O.
 
 ```manuscript
 interface FileHandle:
@@ -848,6 +997,8 @@ interface FileHandle:
 ## FileInfo
 
 **Record**
+
+File metadata, including portable fields and exact platform-specific numeric values.
 
 ```manuscript
 type FileInfo:
@@ -880,6 +1031,8 @@ type FileInfo:
 ## FileSystem
 
 **Interface**
+
+Filesystem operations and resource factories for the current host.
 
 ```manuscript
 interface FileSystem:
@@ -920,6 +1073,8 @@ interface FileSystem:
 
 **Alternative**
 
+Errors returned by filesystem operations. `Failed` retains the host error text.
+
 ```manuscript
 type FileSystemError:
     case InvalidInput
@@ -942,6 +1097,8 @@ impl Error for FileSystemError:
 
 **Record**
 
+Capacity and free-space statistics for the filesystem containing a path.
+
 ```manuscript
 type FileSystemInfo:
     type_id: Int
@@ -957,6 +1114,8 @@ type FileSystemInfo:
 
 **Interface**
 
+A change stream returned by a filesystem watch operation.
+
 ```manuscript
 interface FileWatcher:
     fn close() -> Unit
@@ -966,6 +1125,8 @@ interface FileWatcher:
 ## GlobOptions
 
 **Record**
+
+Include and exclude patterns and limits used by filesystem glob operations.
 
 ```manuscript
 type GlobOptions:
@@ -980,6 +1141,8 @@ type GlobOptions:
 
 **Record**
 
+A matched path together with its filesystem entry metadata.
+
 ```manuscript
 type PathEntry:
     path: String
@@ -989,6 +1152,8 @@ type PathEntry:
 ## TemporaryDirectory
 
 **Interface**
+
+A temporary directory whose contents are removed when it is closed.
 
 ```manuscript
 interface TemporaryDirectory:
@@ -1000,6 +1165,8 @@ interface TemporaryDirectory:
 
 **Function**
 
+Returns host filesystem flag, mode, and permission constants by name.
+
 ```manuscript
 fn constants() -> Map[String, Int]:
 ```
@@ -1007,6 +1174,8 @@ fn constants() -> Map[String, Int]:
 ## filesystem
 
 **Function**
+
+Returns filesystem operations for the current host.
 
 ```manuscript
 fn filesystem() -> FileSystem:
@@ -1020,6 +1189,8 @@ Import each required symbol with `import Name from "@std/html.ms"`.
 
 **Record**
 
+An HTML attribute, including its namespace and decoded value.
+
 ```manuscript
 type HtmlAttribute:
     name: String
@@ -1030,6 +1201,8 @@ type HtmlAttribute:
 ## HtmlError
 
 **Alternative**
+
+Errors returned for malformed HTML or parser resource limits.
 
 ```manuscript
 type HtmlError:
@@ -1047,6 +1220,8 @@ impl Error for HtmlError:
 
 **Record**
 
+Optional bounds for HTML input bytes, tree depth, and node count.
+
 ```manuscript
 type HtmlLimits:
     max_bytes: Optional[Int] = none
@@ -1057,6 +1232,8 @@ type HtmlLimits:
 ## HtmlNode
 
 **Alternative**
+
+A parsed HTML document tree with document, element, text, comment, and doctype nodes.
 
 ```manuscript
 type HtmlNode:
@@ -1071,6 +1248,8 @@ type HtmlNode:
 
 **Function**
 
+Escapes text for insertion into an HTML text or quoted attribute context.
+
 ```manuscript
 fn escape(text: String) -> String:
 ```
@@ -1078,6 +1257,8 @@ fn escape(text: String) -> String:
 ## parse
 
 **Function**
+
+Parses HTML into a normalized tree and applies the supplied resource limits.
 
 ```manuscript
 fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]:
@@ -1091,6 +1272,8 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 **Record**
 
+Buffered HTTP response metadata and body.
+
 ```manuscript
 type ClientResponse:
     status: Int
@@ -1102,6 +1285,8 @@ type ClientResponse:
 
 **Interface**
 
+Reusable HTTP client with connection pooling and explicit response limits.
+
 ```manuscript
 interface HttpClient:
     fn close() -> Unit
@@ -1112,6 +1297,8 @@ interface HttpClient:
 ## HttpClientOptions
 
 **Record**
+
+Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 
 ```manuscript
 type HttpClientOptions:
@@ -1127,6 +1314,8 @@ type HttpClientOptions:
 ## HttpError
 
 **Alternative**
+
+Errors returned for invalid requests, transport failures, timeouts, and limits.
 
 ```manuscript
 type HttpError:
@@ -1148,6 +1337,8 @@ impl Error for HttpError:
 
 **Interface**
 
+One streaming server exchange. Read or write incrementally and close when done.
+
 ```manuscript
 interface HttpExchange:
     fn close() -> Unit
@@ -1165,6 +1356,8 @@ interface HttpExchange:
 
 **Record**
 
+Buffered request accepted by the simple HTTP server handler.
+
 ```manuscript
 type HttpRequest:
     method: String
@@ -1179,6 +1372,8 @@ type HttpRequest:
 
 **Record**
 
+Buffered response returned by the simple HTTP server handler.
+
 ```manuscript
 type HttpResponse:
     status: Int
@@ -1190,6 +1385,8 @@ type HttpResponse:
 
 **Interface**
 
+A running HTTP server. Close it to stop accepting new requests.
+
 ```manuscript
 interface HttpServer:
     fn address() -> String
@@ -1200,6 +1397,8 @@ interface HttpServer:
 ## HttpServerOptions
 
 **Record**
+
+Request and response limits, deadlines, graceful shutdown, and TLS server settings.
 
 ```manuscript
 type HttpServerOptions:
@@ -1215,6 +1414,8 @@ type HttpServerOptions:
 ## ResponseBody
 
 **Interface**
+
+Streaming response body returned by HTTP client operations.
 
 ```manuscript
 interface ResponseBody:
@@ -1232,6 +1433,8 @@ Import each required symbol with `import Name from "@std/io.ms"`.
 
 **Interface**
 
+A file-like byte stream that returns `none` at end of input.
+
 ```manuscript
 interface File:
     fn close() -> Unit
@@ -1242,6 +1445,8 @@ interface File:
 
 **Interface**
 
+Opens file resources using the current host's default filesystem.
+
 ```manuscript
 interface Files:
     fn open(path: String) -> Result[File, IoError]
@@ -1250,6 +1455,8 @@ interface Files:
 ## IoError
 
 **Alternative**
+
+Errors returned while reading, writing, or closing an I/O resource.
 
 ```manuscript
 type IoError:
@@ -1270,6 +1477,8 @@ impl Error for IoError:
 
 **Interface**
 
+A readable byte stream. Each read returns a chunk or `none` at end of stream.
+
 ```manuscript
 interface ReadStream:
     fn close() -> Unit
@@ -1279,6 +1488,8 @@ interface ReadStream:
 ## WriteStream
 
 **Interface**
+
+A writable byte stream. Flush before relying on buffered data being delivered.
 
 ```manuscript
 interface WriteStream:
@@ -1291,6 +1502,8 @@ interface WriteStream:
 
 **Function**
 
+Copies bytes until end of input or the supplied byte limit; returns bytes copied.
+
 ```manuscript
 fn copy(input: ReadStream, output: WriteStream, max_bytes: Optional[Int] = none) -> Result[Int, IoError]:
 ```
@@ -1298,6 +1511,8 @@ fn copy(input: ReadStream, output: WriteStream, max_bytes: Optional[Int] = none)
 ## files
 
 **Function**
+
+Returns file operations for the current host.
 
 ```manuscript
 fn files() -> Files:
@@ -1307,6 +1522,8 @@ fn files() -> Files:
 
 **Function**
 
+Reads a stream completely into memory. Supply a limit for untrusted streams.
+
 ```manuscript
 fn read_all(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Bytes, IoError]:
 ```
@@ -1314,6 +1531,8 @@ fn read_all(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Bytes,
 ## read_line
 
 **Function**
+
+Reads one line, omitting its line ending; returns `none` at end of stream.
 
 ```manuscript
 fn read_line(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Optional[String], IoError]:
@@ -1323,6 +1542,8 @@ fn read_line(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Optio
 
 **Function**
 
+Returns the process standard-error stream.
+
 ```manuscript
 fn stderr() -> WriteStream:
 ```
@@ -1331,6 +1552,8 @@ fn stderr() -> WriteStream:
 
 **Function**
 
+Returns the process standard-input stream.
+
 ```manuscript
 fn stdin() -> ReadStream:
 ```
@@ -1338,6 +1561,8 @@ fn stdin() -> ReadStream:
 ## stdout
 
 **Function**
+
+Returns the process standard-output stream.
 
 ```manuscript
 fn stdout() -> WriteStream:
@@ -1350,6 +1575,8 @@ Import each required symbol with `import Name from "@std/json.ms"`.
 ## JsonError
 
 **Alternative**
+
+Errors returned for malformed JSON or configured input and nesting limits.
 
 ```manuscript
 type JsonError:
@@ -1367,6 +1594,8 @@ impl Error for JsonError:
 
 **Record**
 
+Optional bounds for JSON input bytes, nesting depth, and parsed values.
+
 ```manuscript
 type JsonLimits:
     max_bytes: Optional[Int] = none
@@ -1377,6 +1606,8 @@ type JsonLimits:
 ## JsonValue
 
 **Alternative**
+
+A JSON value. Number text is retained to avoid losing precision during parsing.
 
 ```manuscript
 type JsonValue:
@@ -1392,6 +1623,8 @@ type JsonValue:
 
 **Function**
 
+Parses one JSON value and applies the supplied input, depth, and value limits.
+
 ```manuscript
 fn parse(text: String, limits: Optional[JsonLimits] = none) -> Result[JsonValue, JsonError]:
 ```
@@ -1399,6 +1632,8 @@ fn parse(text: String, limits: Optional[JsonLimits] = none) -> Result[JsonValue,
 ## stringify
 
 **Function**
+
+Serializes a JSON value. `max_bytes` bounds output when supplied.
 
 ```manuscript
 fn stringify(value: JsonValue, max_bytes: Optional[Int] = none) -> Result[String, JsonError]:
@@ -1411,6 +1646,8 @@ Import each required symbol with `import Name from "@std/log.ms"`.
 ## LogError
 
 **Alternative**
+
+Errors returned while validating or writing a structured log record.
 
 ```manuscript
 type LogError:
@@ -1431,6 +1668,8 @@ impl Error for LogError:
 
 **Alternative**
 
+Severity levels accepted by a logger, ordered from Trace through Fatal.
+
 ```manuscript
 type LogLevel:
     case Trace
@@ -1445,6 +1684,8 @@ type LogLevel:
 ## Logger
 
 **Interface**
+
+A structured logger with level filtering, bound fields, and pluggable transports.
 
 ```manuscript
 interface Logger:
@@ -1466,6 +1707,8 @@ interface Logger:
 
 **Interface**
 
+A destination that accepts encoded log records and can be flushed and closed.
+
 ```manuscript
 interface Transport:
     fn write(data: Bytes) -> Result[Unit, LogError]
@@ -1477,6 +1720,8 @@ interface Transport:
 
 **Function**
 
+Creates a logger. Defaults to `Info`, no bound fields, timestamps enabled, and no record-size limit.
+
 ```manuscript
 fn create(transport: Transport, level: Optional[LogLevel] = none, bindings: Optional[Map[String, JsonValue]] = none, timestamp: Optional[Bool] = none, max_bytes: Optional[Int] = none) -> Result[Logger, LogError]:
 ```
@@ -1484,6 +1729,8 @@ fn create(transport: Transport, level: Optional[LogLevel] = none, bindings: Opti
 ## file_transport
 
 **Function**
+
+Appends log records to a file at `path`.
 
 ```manuscript
 fn file_transport(path: String) -> Result[Transport, LogError]:
@@ -1493,6 +1740,8 @@ fn file_transport(path: String) -> Result[Transport, LogError]:
 
 **Function**
 
+Writes log records to the process standard-output stream.
+
 ```manuscript
 fn stdout_transport() -> Transport:
 ```
@@ -1500,6 +1749,8 @@ fn stdout_transport() -> Transport:
 ## stream_transport
 
 **Function**
+
+Writes log records to an existing byte stream.
 
 ```manuscript
 fn stream_transport(output: WriteStream) -> Transport:
@@ -1513,6 +1764,8 @@ Import each required symbol with `import Name from "@std/math.ms"`.
 
 **Function**
 
+Returns the absolute value of a floating-point number.
+
 ```manuscript
 fn abs(value: Float) -> Float:
 ```
@@ -1520,6 +1773,8 @@ fn abs(value: Float) -> Float:
 ## abs_int
 
 **Function**
+
+Returns the absolute value of an integer.
 
 ```manuscript
 fn abs_int(value: Int) -> Int:
@@ -1529,6 +1784,8 @@ fn abs_int(value: Int) -> Int:
 
 **Function**
 
+Returns the inverse cosine in radians.
+
 ```manuscript
 fn acos(value: Float) -> Float:
 ```
@@ -1536,6 +1793,8 @@ fn acos(value: Float) -> Float:
 ## asin
 
 **Function**
+
+Returns the inverse sine in radians.
 
 ```manuscript
 fn asin(value: Float) -> Float:
@@ -1545,6 +1804,8 @@ fn asin(value: Float) -> Float:
 
 **Function**
 
+Returns the inverse tangent in radians.
+
 ```manuscript
 fn atan(value: Float) -> Float:
 ```
@@ -1552,6 +1813,8 @@ fn atan(value: Float) -> Float:
 ## atan2
 
 **Function**
+
+Returns the angle in radians for `(x, y)`, preserving its quadrant.
 
 ```manuscript
 fn atan2(y: Float, x: Float) -> Float:
@@ -1561,6 +1824,8 @@ fn atan2(y: Float, x: Float) -> Float:
 
 **Function**
 
+Rounds upward to the nearest whole number.
+
 ```manuscript
 fn ceil(value: Float) -> Float:
 ```
@@ -1568,6 +1833,8 @@ fn ceil(value: Float) -> Float:
 ## cos
 
 **Function**
+
+Returns the cosine of an angle in radians.
 
 ```manuscript
 fn cos(value: Float) -> Float:
@@ -1577,6 +1844,8 @@ fn cos(value: Float) -> Float:
 
 **Function**
 
+Returns the hyperbolic cosine.
+
 ```manuscript
 fn cosh(value: Float) -> Float:
 ```
@@ -1584,6 +1853,8 @@ fn cosh(value: Float) -> Float:
 ## e
 
 **Function**
+
+Returns Euler's number, the base of natural logarithms.
 
 ```manuscript
 fn e() -> Float:
@@ -1593,6 +1864,8 @@ fn e() -> Float:
 
 **Function**
 
+Returns e raised to `value`.
+
 ```manuscript
 fn exp(value: Float) -> Float:
 ```
@@ -1600,6 +1873,8 @@ fn exp(value: Float) -> Float:
 ## floor
 
 **Function**
+
+Rounds downward to the nearest whole number.
 
 ```manuscript
 fn floor(value: Float) -> Float:
@@ -1609,6 +1884,8 @@ fn floor(value: Float) -> Float:
 
 **Function**
 
+Returns the length of the hypotenuse for sides `left` and `right`.
+
 ```manuscript
 fn hypot(left: Float, right: Float) -> Float:
 ```
@@ -1616,6 +1893,8 @@ fn hypot(left: Float, right: Float) -> Float:
 ## log
 
 **Function**
+
+Returns the natural logarithm.
 
 ```manuscript
 fn log(value: Float) -> Float:
@@ -1625,6 +1904,8 @@ fn log(value: Float) -> Float:
 
 **Function**
 
+Returns the base-10 logarithm.
+
 ```manuscript
 fn log10(value: Float) -> Float:
 ```
@@ -1632,6 +1913,8 @@ fn log10(value: Float) -> Float:
 ## log2
 
 **Function**
+
+Returns the base-2 logarithm.
 
 ```manuscript
 fn log2(value: Float) -> Float:
@@ -1641,6 +1924,8 @@ fn log2(value: Float) -> Float:
 
 **Function**
 
+Returns the greater of two floating-point values.
+
 ```manuscript
 fn max(left: Float, right: Float) -> Float:
 ```
@@ -1648,6 +1933,8 @@ fn max(left: Float, right: Float) -> Float:
 ## min
 
 **Function**
+
+Returns the lesser of two floating-point values.
 
 ```manuscript
 fn min(left: Float, right: Float) -> Float:
@@ -1657,6 +1944,8 @@ fn min(left: Float, right: Float) -> Float:
 
 **Function**
 
+Returns π, the ratio of a circle's circumference to its diameter.
+
 ```manuscript
 fn pi() -> Float:
 ```
@@ -1664,6 +1953,8 @@ fn pi() -> Float:
 ## pow
 
 **Function**
+
+Returns `base` raised to `exponent`.
 
 ```manuscript
 fn pow(base: Float, exponent: Float) -> Float:
@@ -1673,6 +1964,8 @@ fn pow(base: Float, exponent: Float) -> Float:
 
 **Function**
 
+Returns the floating-point remainder after division.
+
 ```manuscript
 fn remainder(left: Float, right: Float) -> Float:
 ```
@@ -1680,6 +1973,8 @@ fn remainder(left: Float, right: Float) -> Float:
 ## round
 
 **Function**
+
+Rounds to the nearest whole number, with half values away from zero.
 
 ```manuscript
 fn round(value: Float) -> Float:
@@ -1689,6 +1984,8 @@ fn round(value: Float) -> Float:
 
 **Function**
 
+Returns the sine of an angle in radians.
+
 ```manuscript
 fn sin(value: Float) -> Float:
 ```
@@ -1696,6 +1993,8 @@ fn sin(value: Float) -> Float:
 ## sinh
 
 **Function**
+
+Returns the hyperbolic sine.
 
 ```manuscript
 fn sinh(value: Float) -> Float:
@@ -1705,6 +2004,8 @@ fn sinh(value: Float) -> Float:
 
 **Function**
 
+Returns the non-negative square root.
+
 ```manuscript
 fn sqrt(value: Float) -> Float:
 ```
@@ -1712,6 +2013,8 @@ fn sqrt(value: Float) -> Float:
 ## tan
 
 **Function**
+
+Returns the tangent of an angle in radians.
 
 ```manuscript
 fn tan(value: Float) -> Float:
@@ -1721,6 +2024,8 @@ fn tan(value: Float) -> Float:
 
 **Function**
 
+Returns the hyperbolic tangent.
+
 ```manuscript
 fn tanh(value: Float) -> Float:
 ```
@@ -1728,6 +2033,8 @@ fn tanh(value: Float) -> Float:
 ## truncate
 
 **Function**
+
+Truncates a value toward zero.
 
 ```manuscript
 fn truncate(value: Float) -> Float:
@@ -1740,6 +2047,8 @@ Import each required symbol with `import Name from "@std/net.ms"`.
 ## Connection
 
 **Interface**
+
+A connected stream socket, optionally protected by TLS.
 
 ```manuscript
 interface Connection:
@@ -1756,6 +2065,8 @@ interface Connection:
 
 **Record**
 
+One datagram and the address from which it was received.
+
 ```manuscript
 type Datagram:
     data: Bytes
@@ -1765,6 +2076,8 @@ type Datagram:
 ## DatagramSocket
 
 **Interface**
+
+A connectionless socket for sending and receiving datagrams.
 
 ```manuscript
 interface DatagramSocket:
@@ -1777,6 +2090,8 @@ interface DatagramSocket:
 ## DnsRecord
 
 **Record**
+
+DNS record data returned by a typed lookup.
 
 ```manuscript
 type DnsRecord:
@@ -1791,6 +2106,8 @@ type DnsRecord:
 
 **Interface**
 
+A listening socket that accepts incoming connections.
+
 ```manuscript
 interface Listener:
     fn accept(timeout: Optional[Duration] = none) -> Result[Connection, NetworkError]
@@ -1801,6 +2118,8 @@ interface Listener:
 ## Network
 
 **Interface**
+
+Network, DNS, HTTP, and WebSocket operations for the current host.
 
 ```manuscript
 interface Network:
@@ -1828,6 +2147,8 @@ interface Network:
 
 **Alternative**
 
+Errors returned by socket, DNS, and network connection operations.
+
 ```manuscript
 type NetworkError:
     case InvalidInput
@@ -1849,6 +2170,8 @@ impl Error for NetworkError:
 
 **Function**
 
+Reports whether an IP address belongs to a CIDR range.
+
 ```manuscript
 fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]:
 ```
@@ -1856,6 +2179,8 @@ fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]:
 ## network
 
 **Function**
+
+Returns network operations for the current host.
 
 ```manuscript
 fn network() -> Network:
@@ -1865,6 +2190,8 @@ fn network() -> Network:
 
 **Function**
 
+Validates and canonicalizes an IPv4 or IPv6 CIDR range.
+
 ```manuscript
 fn parse_cidr(text: String) -> Result[String, NetworkError]:
 ```
@@ -1872,6 +2199,8 @@ fn parse_cidr(text: String) -> Result[String, NetworkError]:
 ## parse_ip
 
 **Function**
+
+Validates and canonicalizes an IPv4 or IPv6 address.
 
 ```manuscript
 fn parse_ip(text: String) -> Result[String, NetworkError]:
@@ -1884,6 +2213,8 @@ Import each required symbol with `import Name from "@std/numbers.ms"`.
 ## NumberError
 
 **Alternative**
+
+Errors returned when numeric text is malformed or outside the target range.
 
 ```manuscript
 type NumberError:
@@ -1901,6 +2232,8 @@ impl Error for NumberError:
 
 **Function**
 
+Parses a decimal floating-point number using Manuscript's numeric syntax.
+
 ```manuscript
 fn parse_float(text: String) -> Result[Float, NumberError]:
 ```
@@ -1908,6 +2241,8 @@ fn parse_float(text: String) -> Result[Float, NumberError]:
 ## parse_int
 
 **Function**
+
+Parses an integer in a radix from 2 through 36.
 
 ```manuscript
 fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]:
@@ -1922,6 +2257,8 @@ Explicit imports with `import Name from "@std/optional.ms"` remain supported.
 ## Optional
 
 **Alternative**
+
+Represents a value that may be absent: `some(value)` or `none`.
 
 ```manuscript
 type Optional[T]:
@@ -1942,6 +2279,8 @@ Import each required symbol with `import Name from "@std/path.ms"`.
 
 **Alternative**
 
+Errors returned when a path cannot be parsed or resolved.
+
 ```manuscript
 type PathError:
     case InvalidInput
@@ -1955,6 +2294,8 @@ impl Error for PathError:
 ## PathOperations
 
 **Interface**
+
+Path operations using either POSIX or Windows path conventions.
 
 ```manuscript
 interface PathOperations:
@@ -1979,6 +2320,8 @@ interface PathOperations:
 
 **Record**
 
+Parsed path components using the familiar root, directory, base, extension, and name fields.
+
 ```manuscript
 type PathParts:
     root: String
@@ -1992,6 +2335,8 @@ type PathParts:
 
 **Function**
 
+Returns the final path component, excluding trailing separators.
+
 ```manuscript
 fn basename(path: String) -> String:
 ```
@@ -1999,6 +2344,8 @@ fn basename(path: String) -> String:
 ## basename_without
 
 **Function**
+
+Returns the basename with the supplied suffix removed when it matches.
 
 ```manuscript
 fn basename_without(path: String, suffix: String) -> String:
@@ -2008,6 +2355,8 @@ fn basename_without(path: String, suffix: String) -> String:
 
 **Function**
 
+Returns the host's path-list delimiter.
+
 ```manuscript
 fn delimiter() -> String:
 ```
@@ -2015,6 +2364,8 @@ fn delimiter() -> String:
 ## dirname
 
 **Function**
+
+Returns the directory portion of a path.
 
 ```manuscript
 fn dirname(path: String) -> String:
@@ -2024,6 +2375,8 @@ fn dirname(path: String) -> String:
 
 **Function**
 
+Returns the final extension, including its leading dot, or an empty string.
+
 ```manuscript
 fn extension(path: String) -> String:
 ```
@@ -2031,6 +2384,8 @@ fn extension(path: String) -> String:
 ## format
 
 **Function**
+
+Formats parsed path components as a path string.
 
 ```manuscript
 fn format(parts: PathParts) -> String:
@@ -2040,6 +2395,8 @@ fn format(parts: PathParts) -> String:
 
 **Function**
 
+Reports whether a path is absolute according to the host path rules.
+
 ```manuscript
 fn is_absolute(path: String) -> Bool:
 ```
@@ -2047,6 +2404,8 @@ fn is_absolute(path: String) -> Bool:
 ## join
 
 **Function**
+
+Joins path parts using the host separator and normalizes the result.
 
 ```manuscript
 fn join(parts: List[String]) -> String:
@@ -2056,6 +2415,8 @@ fn join(parts: List[String]) -> String:
 
 **Function**
 
+Tests a path against a glob pattern.
+
 ```manuscript
 fn matches_glob(path: String, pattern: String) -> Result[Bool, PathError]:
 ```
@@ -2063,6 +2424,8 @@ fn matches_glob(path: String, pattern: String) -> Result[Bool, PathError]:
 ## normalize
 
 **Function**
+
+Normalizes separators and dot segments without accessing the filesystem.
 
 ```manuscript
 fn normalize(path: String) -> String:
@@ -2072,6 +2435,8 @@ fn normalize(path: String) -> String:
 
 **Function**
 
+Splits a path into its root, directory, base, extension, and name.
+
 ```manuscript
 fn parse(path: String) -> PathParts:
 ```
@@ -2079,6 +2444,8 @@ fn parse(path: String) -> PathParts:
 ## posix
 
 **Function**
+
+Returns path operations using POSIX separators and parsing rules.
 
 ```manuscript
 fn posix() -> PathOperations:
@@ -2088,6 +2455,8 @@ fn posix() -> PathOperations:
 
 **Function**
 
+Computes a relative path from `base` to `target` using host path rules.
+
 ```manuscript
 fn relative(base: String, target: String) -> Result[String, PathError]:
 ```
@@ -2095,6 +2464,8 @@ fn relative(base: String, target: String) -> Result[String, PathError]:
 ## resolve
 
 **Function**
+
+Resolves path parts against a base using host path conventions.
 
 ```manuscript
 fn resolve(base: String, parts: List[String]) -> Result[String, PathError]:
@@ -2104,6 +2475,8 @@ fn resolve(base: String, parts: List[String]) -> Result[String, PathError]:
 
 **Function**
 
+Returns the host's path separator.
+
 ```manuscript
 fn separator() -> String:
 ```
@@ -2112,6 +2485,8 @@ fn separator() -> String:
 
 **Function**
 
+Converts a path to the host's namespaced representation when applicable.
+
 ```manuscript
 fn to_namespaced_path(path: String) -> String:
 ```
@@ -2119,6 +2494,8 @@ fn to_namespaced_path(path: String) -> String:
 ## win32
 
 **Function**
+
+Returns path operations using Windows separators and parsing rules.
 
 ```manuscript
 fn win32() -> PathOperations:
@@ -2131,6 +2508,8 @@ Import each required symbol with `import Name from "@std/process.ms"`.
 ## CommandError
 
 **Alternative**
+
+Errors returned when a process cannot start, times out, or exceeds an output bound.
 
 ```manuscript
 type CommandError:
@@ -2150,6 +2529,8 @@ impl Error for CommandError:
 
 **Record**
 
+Captured exit status and standard output/error from a completed command.
+
 ```manuscript
 type CommandOutput:
     exit_code: Int
@@ -2161,6 +2542,8 @@ type CommandOutput:
 
 **Interface**
 
+Runs child programs with explicit input, output bounds, and an optional timeout.
+
 ```manuscript
 interface Commands:
     fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
@@ -2169,6 +2552,8 @@ interface Commands:
 ## CpuUsage
 
 **Record**
+
+CPU time consumed by the current process.
 
 ```manuscript
 type CpuUsage:
@@ -2179,6 +2564,8 @@ type CpuUsage:
 ## MemoryUsage
 
 **Record**
+
+Memory statistics for the current process.
 
 ```manuscript
 type MemoryUsage:
@@ -2192,6 +2579,8 @@ type MemoryUsage:
 ## ProcessControl
 
 **Interface**
+
+Process and operating-system controls for the current process.
 
 ```manuscript
 interface ProcessControl:
@@ -2224,6 +2613,8 @@ interface ProcessControl:
 
 **Alternative**
 
+Errors returned by process-control operations.
+
 ```manuscript
 type ProcessError:
     case InvalidInput
@@ -2246,6 +2637,8 @@ impl Error for ProcessError:
 
 **Record**
 
+Identity and invocation details for the current process.
+
 ```manuscript
 type ProcessInfo:
     pid: Int
@@ -2264,6 +2657,8 @@ type ProcessInfo:
 
 **Record**
 
+Kernel resource counters for the current process.
+
 ```manuscript
 type ResourceUsage:
     user_microseconds: Int
@@ -2281,6 +2676,8 @@ type ResourceUsage:
 
 **Interface**
 
+A stream of operating-system signals selected by `watch_signals`.
+
 ```manuscript
 interface SignalStream:
     fn close() -> Unit
@@ -2291,6 +2688,8 @@ interface SignalStream:
 
 **Function**
 
+Returns child-process operations for the current host.
+
 ```manuscript
 fn commands() -> Commands:
 ```
@@ -2298,6 +2697,8 @@ fn commands() -> Commands:
 ## control
 
 **Function**
+
+Returns controls and process information for the current process.
 
 ```manuscript
 fn control() -> ProcessControl:
@@ -2310,6 +2711,8 @@ Import each required symbol with `import Name from "@std/queues.ms"`.
 ## PriorityQueue
 
 **Native type**
+
+Negative compare results put left before right; equal priorities remain FIFO.
 
 ```manuscript
 type PriorityQueue[T]:
@@ -2325,6 +2728,8 @@ type PriorityQueue[T]:
 ## Queue
 
 **Native type**
+
+FIFO queue. An omitted capacity creates an unbounded queue.
 
 ```manuscript
 type Queue[T]:
@@ -2344,6 +2749,8 @@ Import each required symbol with `import Name from "@std/random.ms"`.
 
 **Interface**
 
+A source of cryptographically secure random bytes.
+
 ```manuscript
 interface Entropy:
     fn bytes(count: Int) -> Result[Bytes, RandomError]
@@ -2352,6 +2759,8 @@ interface Entropy:
 ## RandomError
 
 **Alternative**
+
+Errors returned when random input is invalid or entropy generation fails.
 
 ```manuscript
 type RandomError:
@@ -2369,6 +2778,8 @@ impl Error for RandomError:
 
 **Function**
 
+Returns the operating system's cryptographic entropy source.
+
 ```manuscript
 fn entropy() -> Entropy:
 ```
@@ -2377,6 +2788,8 @@ fn entropy() -> Entropy:
 
 **Function**
 
+Returns a secure integer at least `min` and below `max_exclusive` when supplied.
+
 ```manuscript
 fn secure_int(entropy: Entropy, min: Int, max_exclusive: Optional[Int] = none) -> Result[Int, RandomError]:
 ```
@@ -2384,6 +2797,8 @@ fn secure_int(entropy: Entropy, min: Int, max_exclusive: Optional[Int] = none) -
 ## uuid_v4
 
 **Function**
+
+Creates a version-4 UUID using the supplied cryptographic entropy source.
 
 ```manuscript
 fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]:
@@ -2397,6 +2812,8 @@ Import each required symbol with `import Name from "@std/regex.ms"`.
 
 **Native type**
 
+A compiled regular expression that can be reused across input strings.
+
 ```manuscript
 type Regex:
     fn matches(text: String) -> Bool:
@@ -2407,6 +2824,8 @@ type Regex:
 ## RegexError
 
 **Alternative**
+
+Errors returned for invalid patterns or configured result limits.
 
 ```manuscript
 type RegexError:
@@ -2424,6 +2843,8 @@ impl Error for RegexError:
 
 **Function**
 
+Compiles a regular expression. Invalid pattern syntax is returned as an error.
+
 ```manuscript
 fn compile(pattern: String) -> Result[Regex, RegexError]:
 ```
@@ -2437,6 +2858,8 @@ Explicit imports with `import Name from "@std/result.ms"` remain supported.
 ## Result
 
 **Alternative**
+
+Holds either a successful value (`ok`) or an expected failure (`error`).
 
 ```manuscript
 type Result[T, U]:
@@ -2452,6 +2875,9 @@ Import each required symbol with `import Name from "@std/string.ms"`.
 
 **Native type**
 
+Mutable builder for constructing a string without repeated intermediate copies.
+Mutable builder for constructing a string without repeated intermediate copies.
+
 ```manuscript
 type StringBuilder:
     fn append(value: String) -> Unit:
@@ -2461,6 +2887,8 @@ type StringBuilder:
 ## StringError
 
 **Alternative**
+
+Errors returned by Unicode scalar conversions and bounded string operations.
 
 ```manuscript
 type StringError:
@@ -2479,6 +2907,8 @@ impl Error for StringError:
 
 **Function**
 
+Builds text from Unicode scalar values. Invalid scalars return `InvalidInput`.
+
 ```manuscript
 fn from_scalars(values: List[Int]) -> Result[String, StringError]:
 ```
@@ -2491,6 +2921,8 @@ Import each required symbol with `import Name from "@std/sync.ms"`.
 
 **Native type**
 
+Protects a value shared across tasks. Lock before reading or updating the value.
+
 ```manuscript
 type Synchronized[T]:
     value: T
@@ -2500,6 +2932,8 @@ type Synchronized[T]:
 ## SynchronizedGuard
 
 **Native type**
+
+Holds a synchronization lock. Closing the guard releases the lock.
 
 ```manuscript
 type SynchronizedGuard[T]:
@@ -2516,6 +2950,8 @@ Import each required symbol with `import Name from "@std/system.ms"`.
 
 **Record**
 
+Model, speed, and cumulative time counters for one logical CPU.
+
 ```manuscript
 type CpuInfo:
     model: String
@@ -2531,6 +2967,8 @@ type CpuInfo:
 
 **Record**
 
+Address and link metadata for one host network interface.
+
 ```manuscript
 type NetworkInterface:
     name: String
@@ -2545,6 +2983,8 @@ type NetworkInterface:
 ## System
 
 **Interface**
+
+Read-only host details and selected controls for the current operating system.
 
 ```manuscript
 interface System:
@@ -2569,6 +3009,8 @@ interface System:
 
 **Alternative**
 
+Errors returned when a requested host operation is unavailable or denied.
+
 ```manuscript
 type SystemError:
     case InvalidInput
@@ -2591,6 +3033,8 @@ impl Error for SystemError:
 
 **Record**
 
+Operating system and processor architecture for the current host.
+
 ```manuscript
 type SystemInfo:
     os: String
@@ -2601,6 +3045,8 @@ type SystemInfo:
 ## SystemMetrics
 
 **Record**
+
+Host memory, uptime, load, and available parallelism measurements.
 
 ```manuscript
 type SystemMetrics:
@@ -2616,6 +3062,8 @@ type SystemMetrics:
 
 **Record**
 
+User name, numeric identity, home directory, and login shell.
+
 ```manuscript
 type UserInfo:
     username: String
@@ -2629,6 +3077,8 @@ type UserInfo:
 
 **Function**
 
+Returns operating-system constants by name.
+
 ```manuscript
 fn constants() -> Map[String, Int]:
 ```
@@ -2636,6 +3086,8 @@ fn constants() -> Map[String, Int]:
 ## dev_null
 
 **Function**
+
+Returns the conventional null-device path for the host.
 
 ```manuscript
 fn dev_null() -> String:
@@ -2645,6 +3097,8 @@ fn dev_null() -> String:
 
 **Function**
 
+Returns the host's line-ending sequence.
+
 ```manuscript
 fn end_of_line() -> String:
 ```
@@ -2652,6 +3106,8 @@ fn end_of_line() -> String:
 ## endianness
 
 **Function**
+
+Returns `little` or `big` for the host's native byte order.
 
 ```manuscript
 fn endianness() -> String:
@@ -2661,6 +3117,8 @@ fn endianness() -> String:
 
 **Function**
 
+Returns the host operating-system family.
+
 ```manuscript
 fn os_type() -> String:
 ```
@@ -2668,6 +3126,8 @@ fn os_type() -> String:
 ## system
 
 **Function**
+
+Returns system information and controls for the current host.
 
 ```manuscript
 fn system() -> System:
@@ -2680,6 +3140,8 @@ Import each required symbol with `import Name from "@std/tasks.ms"`.
 ## ExecutionError
 
 **Alternative**
+
+Why a task or task group did not complete successfully.
 
 ```manuscript
 type ExecutionError:
@@ -2697,6 +3159,8 @@ impl Error for ExecutionError:
 
 **Native type**
 
+Opaque identifier used to inspect, cancel, or restart scheduled work.
+
 ```manuscript
 type OperationId:
 ```
@@ -2704,6 +3168,8 @@ type OperationId:
 ## Scheduler
 
 **Native type**
+
+Runs immediate, delayed, and repeating operations with explicit cancellation.
 
 ```manuscript
 type Scheduler:
@@ -2724,6 +3190,8 @@ type Scheduler:
 
 **Alternative**
 
+A scheduled operation that returned an error or raised a fault.
+
 ```manuscript
 type SchedulerFailure:
     case Failed(operation: OperationId, cause: String)
@@ -2733,6 +3201,8 @@ type SchedulerFailure:
 ## StartError
 
 **Alternative**
+
+Why a scheduler could not start an operation.
 
 ```manuscript
 type StartError:
@@ -2750,6 +3220,8 @@ impl Error for StartError:
 
 **Native type**
 
+A handle to a child task. Join it to collect its result and observe failures.
+
 ```manuscript
 type Task[T]:
     fn join() -> Result[T, ExecutionError]:
@@ -2758,6 +3230,8 @@ type Task[T]:
 ## TaskGroup
 
 **Native type**
+
+Starts child tasks and joins them together with an optional group timeout.
 
 ```manuscript
 type TaskGroup:
@@ -2770,6 +3244,8 @@ type TaskGroup:
 ## WorkStatus
 
 **Alternative**
+
+Current or final state of a scheduled operation.
 
 ```manuscript
 type WorkStatus:
@@ -2785,6 +3261,8 @@ type WorkStatus:
 
 **Function**
 
+Raises the cancellation fault when the current task has been cancelled.
+
 ```manuscript
 fn check_cancelled() -> Unit:
 ```
@@ -2792,6 +3270,8 @@ fn check_cancelled() -> Unit:
 ## yield_now
 
 **Function**
+
+Suspends the current task briefly so other ready work can run.
 
 ```manuscript
 fn yield_now() -> Unit:
@@ -2805,6 +3285,8 @@ Import each required symbol with `import Name from "@std/time.ms"`.
 
 **Interface**
 
+A monotonic clock whose readings are suitable for measuring elapsed time.
+
 ```manuscript
 interface Clock:
     fn now() -> Instant
@@ -2813,6 +3295,8 @@ interface Clock:
 ## Duration
 
 **Native type**
+
+A span of elapsed time.
 
 ```manuscript
 type Duration:
@@ -2835,6 +3319,8 @@ type Duration:
 
 **Native type**
 
+An instant on a monotonic clock; it is not a calendar timestamp.
+
 ```manuscript
 type Instant:
     fn shift(duration: Duration) -> Instant:
@@ -2845,6 +3331,8 @@ type Instant:
 ## TimeError
 
 **Alternative**
+
+Errors returned by timestamp parsing, arithmetic, or range conversion.
 
 ```manuscript
 type TimeError:
@@ -2863,6 +3351,8 @@ impl Error for TimeError:
 
 **Native type**
 
+A wall-clock time with Unix seconds and nanoseconds.
+
 ```manuscript
 type Timestamp:
     fn to_string() -> String:
@@ -2877,6 +3367,8 @@ type Timestamp:
 
 **Interface**
 
+A clock that reports calendar time.
+
 ```manuscript
 interface WallClock:
     fn now() -> Timestamp
@@ -2886,6 +3378,8 @@ interface WallClock:
 
 **Function**
 
+Returns the monotonic clock used for elapsed-time measurements.
+
 ```manuscript
 fn clock() -> Clock:
 ```
@@ -2893,6 +3387,8 @@ fn clock() -> Clock:
 ## duration
 
 **Function**
+
+Constructs a duration from a number of nanoseconds.
 
 ```manuscript
 fn duration(nanoseconds: Int) -> Duration:
@@ -2902,6 +3398,8 @@ fn duration(nanoseconds: Int) -> Duration:
 
 **Function**
 
+Parses an RFC 3339 timestamp with an explicit time zone.
+
 ```manuscript
 fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]:
 ```
@@ -2909,6 +3407,8 @@ fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]:
 ## sleep
 
 **Function**
+
+Suspends the current task for at least the requested duration.
 
 ```manuscript
 fn sleep(duration: Duration) -> Unit:
@@ -2918,6 +3418,8 @@ fn sleep(duration: Duration) -> Unit:
 
 **Function**
 
+Constructs a timestamp from Unix seconds and a nanosecond adjustment.
+
 ```manuscript
 fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]:
 ```
@@ -2925,6 +3427,8 @@ fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]:
 ## wall_clock
 
 **Function**
+
+Returns the wall clock used for calendar timestamps.
 
 ```manuscript
 fn wall_clock() -> WallClock:
@@ -2937,6 +3441,8 @@ Import each required symbol with `import Name from "@std/tls.ms"`.
 ## CertificateInfo
 
 **Record**
+
+Parsed certificate identity, validity range, and original DER bytes.
 
 ```manuscript
 type CertificateInfo:
@@ -2951,6 +3457,8 @@ type CertificateInfo:
 ## TlsError
 
 **Alternative**
+
+Errors returned when TLS configuration, certificates, or peer authentication fail.
 
 ```manuscript
 type TlsError:
@@ -2969,6 +3477,8 @@ impl Error for TlsError:
 
 **Record**
 
+Negotiated TLS version, cipher, protocol, and peer certificate information.
+
 ```manuscript
 type TlsInfo:
     version: Int
@@ -2981,6 +3491,8 @@ type TlsInfo:
 ## TlsOptions
 
 **Record**
+
+Client or server TLS settings, including roots, certificates, and ALPN protocols.
 
 ```manuscript
 type TlsOptions:
@@ -2996,6 +3508,8 @@ type TlsOptions:
 
 **Function**
 
+Parses PEM certificates and optionally limits the number returned.
+
 ```manuscript
 fn parse_certificates(pem: String, max_certificates: Optional[Int] = none) -> Result[List[CertificateInfo], TlsError]:
 ```
@@ -3003,6 +3517,8 @@ fn parse_certificates(pem: String, max_certificates: Optional[Int] = none) -> Re
 ## verify_certificates
 
 **Function**
+
+Verifies a PEM certificate chain against roots, name constraints, and the supplied time.
 
 ```manuscript
 fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]:
@@ -3015,6 +3531,8 @@ Import each required symbol with `import Name from "@std/toml.ms"`.
 ## TomlError
 
 **Alternative**
+
+Errors returned for invalid limits, malformed TOML, or exceeded resource bounds.
 
 ```manuscript
 type TomlError:
@@ -3032,6 +3550,8 @@ impl Error for TomlError:
 
 **Record**
 
+Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
+
 ```manuscript
 type TomlLimits:
     max_bytes: Optional[Int]
@@ -3042,6 +3562,8 @@ type TomlLimits:
 ## TomlValue
 
 **Alternative**
+
+A TOML value. Date and time values retain their original TOML text.
 
 ```manuscript
 type TomlValue:
@@ -3058,6 +3580,8 @@ type TomlValue:
 
 **Function**
 
+Parses a TOML document into a table value and reports source line and column on invalid input.
+
 ```manuscript
 fn parse(text: String, limits: Optional[TomlLimits] = none) -> Result[TomlValue, TomlError]:
 ```
@@ -3070,6 +3594,8 @@ Import each required symbol with `import Name from "@std/url.ms"`.
 
 **Record**
 
+One decoded key and value in a URL query string.
+
 ```manuscript
 type QueryEntry:
     key: String
@@ -3079,6 +3605,8 @@ type QueryEntry:
 ## Url
 
 **Record**
+
+Parsed URL components. A missing port is represented by `none`.
 
 ```manuscript
 type Url:
@@ -3093,6 +3621,8 @@ type Url:
 ## UrlError
 
 **Alternative**
+
+Errors returned for malformed URL text, components, or query limits.
 
 ```manuscript
 type UrlError:
@@ -3110,6 +3640,8 @@ impl Error for UrlError:
 
 **Function**
 
+Decodes one percent-encoded URL component. `+` is not treated as a space.
+
 ```manuscript
 fn decode_component(text: String) -> Result[String, UrlError]:
 ```
@@ -3117,6 +3649,8 @@ fn decode_component(text: String) -> Result[String, UrlError]:
 ## encode_component
 
 **Function**
+
+Percent-encodes one URL component using UTF-8 bytes.
 
 ```manuscript
 fn encode_component(text: String) -> String:
@@ -3126,6 +3660,8 @@ fn encode_component(text: String) -> String:
 
 **Function**
 
+Formats URL components as an absolute or relative URL.
+
 ```manuscript
 fn format(value: Url) -> Result[String, UrlError]:
 ```
@@ -3133,6 +3669,8 @@ fn format(value: Url) -> Result[String, UrlError]:
 ## format_query
 
 **Function**
+
+Encodes query entries as a query string.
 
 ```manuscript
 fn format_query(entries: List[QueryEntry]) -> String:
@@ -3142,6 +3680,8 @@ fn format_query(entries: List[QueryEntry]) -> String:
 
 **Function**
 
+Parses an absolute URL into its components.
+
 ```manuscript
 fn parse(text: String) -> Result[Url, UrlError]:
 ```
@@ -3150,6 +3690,8 @@ fn parse(text: String) -> Result[Url, UrlError]:
 
 **Function**
 
+Parses a query string, preserving duplicate keys and their input order.
+
 ```manuscript
 fn parse_query(text: String, max_entries: Optional[Int] = none) -> Result[List[QueryEntry], UrlError]:
 ```
@@ -3157,6 +3699,8 @@ fn parse_query(text: String, max_entries: Optional[Int] = none) -> Result[List[Q
 ## resolve
 
 **Function**
+
+Resolves a relative reference against a base URL.
 
 ```manuscript
 fn resolve(base: Url, reference: String) -> Result[Url, UrlError]:
@@ -3170,6 +3714,8 @@ Import each required symbol with `import Name from "@std/websocket.ms"`.
 
 **Interface**
 
+A WebSocket connection. Send and receive byte messages with an explicit text flag.
+
 ```manuscript
 interface WebSocket:
     fn close() -> Unit
@@ -3182,6 +3728,8 @@ interface WebSocket:
 ## WebSocketError
 
 **Alternative**
+
+Errors returned by WebSocket handshakes, message limits, timeouts, or closed sockets.
 
 ```manuscript
 type WebSocketError:
@@ -3203,6 +3751,8 @@ impl Error for WebSocketError:
 
 **Record**
 
+A received message and whether its payload is UTF-8 text.
+
 ```manuscript
 type WebSocketMessage:
     data: Bytes
@@ -3212,6 +3762,8 @@ type WebSocketMessage:
 ## WebSocketOptions
 
 **Record**
+
+WebSocket message, timeout, TLS, and per-message compression settings.
 
 ```manuscript
 type WebSocketOptions:
@@ -3228,6 +3780,8 @@ Import each required symbol with `import Name from "@std/yaml.ms"`.
 ## YamlError
 
 **Alternative**
+
+Errors returned for malformed YAML, unsupported features, or exceeded resource limits.
 
 ```manuscript
 type YamlError:
@@ -3246,6 +3800,8 @@ impl Error for YamlError:
 
 **Record**
 
+Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
+
 ```manuscript
 type YamlLimits:
     max_bytes: Optional[Int]
@@ -3256,6 +3812,8 @@ type YamlLimits:
 ## YamlValue
 
 **Alternative**
+
+A YAML value represented as null, boolean, number text, string, array, or object.
 
 ```manuscript
 type YamlValue:
@@ -3270,6 +3828,8 @@ type YamlValue:
 ## parse
 
 **Function**
+
+Parses a YAML document. Unsupported YAML features and invalid input include source locations.
 
 ```manuscript
 fn parse(text: String, limits: Optional[YamlLimits] = none) -> Result[YamlValue, YamlError]:
@@ -3291,6 +3851,9 @@ type Bool:
 
 **Interface**
 
+Equality and hashing are ordinary operation interfaces. Built-in data retains
+its value semantics; an explicit implementation selects domain identity.
+
 ```manuscript
 interface Equal:
     fn equals(other: Equal) -> Bool
@@ -3299,6 +3862,8 @@ interface Equal:
 ## Error
 
 **Interface**
+
+A contract for expected failures that can provide a human-readable message.
 
 ```manuscript
 interface Error:
@@ -3323,6 +3888,8 @@ type Float:
 ## Hashable
 
 **Interface**
+
+A type with a stable hash consistent with its `Equal` implementation.
 
 ```manuscript
 interface Hashable:
@@ -3352,6 +3919,8 @@ type Never:
 
 **Alternative**
 
+Represents a value that may be absent: `some(value)` or `none`.
+
 ```manuscript
 type Optional[T]:
     case some(value: T)
@@ -3366,6 +3935,8 @@ type Optional[T]:
 ## Result
 
 **Alternative**
+
+Holds either a successful value (`ok`) or an expected failure (`error`).
 
 ```manuscript
 type Result[T, U]:

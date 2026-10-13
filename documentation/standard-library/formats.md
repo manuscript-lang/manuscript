@@ -35,7 +35,9 @@ The parser is written in Manuscript. It reads one YAML 1.2 configuration documen
 
 Anchors and previously defined aliases retain the same value references. Forward and recursive aliases fail. Merge keys accept a mapping or a list of mappings; earlier mappings win and explicit entries override merged values. Duplicate explicit keys fail.
 
-This configuration parser does not implement the complete YAML specification: explicit tags, complex/explicit mapping keys, custom directives, multiple documents, and flow sequence mapping shorthand are unsupported. Multiline scalars cover ordinary continuation and folding; specialized empty-line folding and flow indentation rules are not fully implemented. `UnsupportedFeature` identifies explicit tags, complex keys, and unsupported directives; other malformed or unsupported forms return `InvalidData` with a one-based line, column, and reason. Positions identify the offending token: merge-key errors point at the `<<` key and block-scalar header errors at the offending header character.
+Continued plain and quoted scalars fold adjacent lines to a space and retain one newline per intervening blank line. Quoted folding discards surrounding physical whitespace; double-quoted escaped continuations discard the first break while preserving preceding content whitespace. Folded blocks (`>`) use the same paragraph rule between ordinary lines and preserve breaks around more-indented content. Literal blocks (`|`) retain their line breaks. Block chomping controls final breaks, including trailing blank lines; a missing final line ending is not added.
+
+This configuration parser does not implement the complete YAML specification: explicit tags, complex/explicit mapping keys, custom directives, multiple documents, and flow sequence mapping shorthand are unsupported. Specialized flow indentation rules are not fully implemented. `UnsupportedFeature` identifies explicit tags, complex keys, and unsupported directives; other malformed or unsupported forms return `InvalidData` with a one-based line, column, and reason. Positions identify the offending token: merge-key errors point at the `<<` key and block-scalar header errors at the offending header character.
 
 ## TOML behavior
 
@@ -76,6 +78,8 @@ test "parse bounded TOML configuration":
 The delimiter must be one non-NUL ASCII byte other than quote, CR, or LF. `line_ending` is LF or CRLF. Row, cell, and output limits must be nonnegative; `max_cells` counts every returned cell.
 
 CSV quotes are doubled; values are not trimmed or converted to other types, rows may have different widths, and blank lines are ignored. CRLF is normalized, including inside quoted cells. Serialization ends every row with the selected terminator. Formula-like spreadsheet values are left as supplied.
+
+A row containing one empty string is serialized as a quoted empty field (`""`), so parsing retains it. A row with no cells is serialized as a blank line and is skipped on parsing; these two rows have distinct serialized forms. Multiple empty cells retain their delimiters.
 
 Exceeded limits return `LimitExceeded`. The input String is already in memory, and the parser reads one record before checking its row and cell limits. Bound the source read before parsing untrusted CSV.
 

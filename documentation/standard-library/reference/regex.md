@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/regex.ms"`.
 
 ## Regex {data-api-kind="Native type"}
 
+A compiled regular expression that can be reused across input strings.
+
 ```manuscript
 type Regex:
     fn matches(text: String) -> Bool:
@@ -16,6 +18,8 @@ type Regex:
 ```
 
 ## RegexError {data-api-kind="Alternative"}
+
+Errors returned for invalid patterns or configured result limits.
 
 ```manuscript
 type RegexError:
@@ -30,6 +34,8 @@ impl Error for RegexError:
 ```
 
 ## compile {data-api-kind="Function"}
+
+Compiles a regular expression. Invalid pattern syntax is returned as an error.
 
 ```manuscript
 fn compile(pattern: String) -> Result[Regex, RegexError]:

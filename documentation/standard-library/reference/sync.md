@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/sync.ms"`.
 
 ## Synchronized {data-api-kind="Native type"}
 
+Protects a value shared across tasks. Lock before reading or updating the value.
+
 ```manuscript
 type Synchronized[T]:
     value: T
@@ -15,6 +17,8 @@ type Synchronized[T]:
 ```
 
 ## SynchronizedGuard {data-api-kind="Native type"}
+
+Holds a synchronization lock. Closing the guard releases the lock.
 
 ```manuscript
 type SynchronizedGuard[T]:
