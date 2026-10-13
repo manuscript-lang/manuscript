@@ -100,6 +100,20 @@ func CollectionLength(ctx *Execution, receiver Value) Value {
 	return Panic("runtime invariant: collection receiver")
 }
 
+// ListAppend is the direct path for List.append calls.
+func ListAppend(ctx *Execution, receiver, value Value) Value {
+	CheckCancelled(ctx)
+	list := receiver.(*List)
+	list.Items = append(list.Items, value)
+	return list
+}
+
+// ListIsEmpty is the direct path for List.is_empty calls.
+func ListIsEmpty(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	return len(receiver.(*List).Items) == 0
+}
+
 // StringByteLength is the direct path for String.byte_length calls.
 func StringByteLength(ctx *Execution, receiver Value) Value {
 	CheckCancelled(ctx)
