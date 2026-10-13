@@ -16,6 +16,13 @@ Apply when: changing interpolation, member resolution, formatting, or editor mem
 Evidence: [canonical conversion rules](../documentation/core-language/basics/text-and-bytes.md#converting-values-to-string); [native source conformance](../tests/e2e/testdata/accept/to-string.ms); [opaque and cyclic formatting checks](../pkg/runtime/format_test.go).
 Verify: a record and an unconstrained `T` both support `.toString()` and direct interpolation; a closed resource converts without invoking an operation; passing that record directly to a String parameter is still rejected.
 
+### Invalid bounds must not survive recovery
+
+Verified: reporting an invalid bound without removing it lets implementation substitution turn a variable bound into a self-referential graph. Diagnostic hints and editor member discovery must terminate even on malformed bound graphs. Keep valid interface bounds such as `T: Compare[T]`; reject variable bounds such as `T: T` without attaching them as evidence.
+
+Apply when: resolving generic bounds, copying implementation variables, or traversing recovered types for diagnostics and editor queries.
+Evidence: [bounded crash regression](../pkg/checker/bound_recovery_test.go), [editor recovery](../pkg/tooling/lsp/bound_recovery_test.go), and [native interface-bound fixture](../tests/e2e/testdata/accept/recursive-interface-bound.ms).
+
 ### Local implementations must remain selected across module boundaries
 
 Verified: accepting an implementation for an imported source type requires more than relaxing receiver ownership. The checker limits extensions to their declaring module; views, bound methods, cleanup, and generic specialization retain that selection at runtime. A global receiver/contract lookup would silently select another module's extension. Inherited receiver bounds also need their resolved nominal identities, rather than resolving their source spelling again in the extending module.

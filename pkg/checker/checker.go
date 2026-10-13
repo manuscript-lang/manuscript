@@ -274,7 +274,14 @@ func (c *checker) typeVariables(params []syntax.TypeParameter) []*Type {
 		for _, b := range p.Bounds {
 			t := c.resolve(b, true)
 			if t.Kind != "contract" {
-				c.error(b.Pos, "type", "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'")
+				if t.Kind == "variable" {
+					c.error(b.Pos, "type", "a bound must be an interface, but "+b.Name+" resolves to a type parameter; rename the type parameter or name an interface")
+				} else if t.ID != "<invalid>" {
+					c.error(b.Pos, "type", "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'")
+				}
+				// Invalid bounds cannot supply operations or implementation evidence.
+				// Retaining a variable here can create cycles during substitution.
+				continue
 			}
 			vars[i].Bounds = append(vars[i].Bounds, t)
 		}
