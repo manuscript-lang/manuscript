@@ -896,6 +896,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 		receiver := c.expression(e.Left, nil)
 		i.NoReturn = receiver.NoReturn
+		if receiver.Type.ID == "<invalid>" {
+			return i
+		}
 		for _, f := range Fields(receiver.Type) {
 			if receiver.Type.Kind == syntax.KindRecord && f.Name == e.Text && e.Text != "toString" {
 				i.Type = f.Type
