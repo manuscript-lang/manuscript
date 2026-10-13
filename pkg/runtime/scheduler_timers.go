@@ -46,7 +46,8 @@ func (s *Scheduler) restart(ctx *Execution, id OperationId) Value {
 	}
 	s.mu.Unlock()
 	if job != nil {
-		defer addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &job.waits)()
+		cancelled := ctx.Context.Done()
+		defer addCancellableWorkDependency(lifetimeWaitNode(ctx.Lifetime), &job.waits, cancelled)()
 		select {
 		case <-job.done:
 		case <-ctx.Context.Done():

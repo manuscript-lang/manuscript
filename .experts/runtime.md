@@ -33,6 +33,8 @@ Decision: permit ordinary ancestor contention while retaining immediate same-ope
 
 Verified: checking only when a child acquires misses an ancestor that joins afterward. Both lock and join/admission dependencies must be registered atomically, including fixed child identities, failed-task joins that widen to sibling cleanup, nested services and queued reporters. Shielded cleanup survives ordinary cancellation; cancellation never forcibly releases a held guard. Guard release removes dependency edges before waking contenders so an unscheduled waiter cannot create a stale cycle.
 
+Verified: cancellation removes a join edge only if the API actually stops waiting. Scheduler.restart returns immediately when its caller is cancelled, so its token must check/prune cancellation before cycle traversal even while that caller is unscheduled. Task/group joins and close still wait for cleanup and retain their dependencies. The restart regressions cover cancellation before insertion and after insertion before a shielded child lock wait.
+
 Verified: another operation can close a guard alias while the admitting operation is blocked joining. A cycle through that lifetime can therefore be broken by independent release. The accepted scoped policy still faults these potential cycles, as the former guard did; it does not prove a permanent deadlock. Independent-lock/cross-service cycles remain invalid application usage.
 
 Verified: acquisition delivery must use one cancellation observation for both disposal and unwinding. Two final checks can see active then cancelled, discard the result without disposing it, and strand a Synchronized lock. A cancellation arriving after the successful delivery checkpoint belongs to caller cleanup.

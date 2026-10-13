@@ -11,8 +11,50 @@ type workWaitNode struct {
 
 var workWaits = struct {
 	sync.Mutex
-	locks map[*synchronizedWait]struct{}
-}{locks: make(map[*synchronizedWait]struct{})}
+	locks       map[*synchronizedWait]struct{}
+	cancellable map[*cancellableWorkWait]struct{}
+}{locks: make(map[*synchronizedWait]struct{}), cancellable: make(map[*cancellableWorkWait]struct{})}
+
+// Unlike group joins/close, a cancelled restart caller stops waiting for the
+// old job immediately. Its dependency ends at cancellation, not resumption.
+type cancellableWorkWait struct {
+	from, to  *workWaitNode
+	cancelled <-chan struct{}
+	active    bool
+}
+
+func addCancellableWorkDependency(from, to *workWaitNode, cancelled <-chan struct{}) func() {
+	if cancelled == nil {
+		return addWorkDependency(from, to)
+	}
+	if from == nil || to == nil {
+		return func() {}
+	}
+	wait := &cancellableWorkWait{from: from, to: to, cancelled: cancelled}
+	workWaits.Lock()
+	select {
+	case <-cancelled:
+	default:
+		wait.active = true
+		workWaits.cancellable[wait] = struct{}{}
+		addWorkDependencyLocked(from, to)
+		detectAncestorLockCyclesLocked()
+	}
+	workWaits.Unlock()
+	return func() {
+		workWaits.Lock()
+		removeCancellableWorkDependencyLocked(wait)
+		workWaits.Unlock()
+	}
+}
+
+func removeCancellableWorkDependencyLocked(wait *cancellableWorkWait) {
+	if wait.active {
+		removeWorkDependencyLocked(wait.from, wait.to)
+		delete(workWaits.cancellable, wait)
+		wait.active = false
+	}
+}
 
 func lifetimeWaitNode(lifetime *workLifetime) *workWaitNode {
 	if lifetime == nil {
@@ -91,6 +133,13 @@ func strictExecutionAncestor(ancestor, lifetime *workLifetime) bool {
 // outside this guarantee. A later join wakes the waiter instead of faulting
 // the joining ancestor, preserving the task's Crashed reporting boundary.
 func detectAncestorLockCyclesLocked() {
+	for wait := range workWaits.cancellable {
+		select {
+		case <-wait.cancelled:
+			removeCancellableWorkDependencyLocked(wait)
+		default:
+		}
+	}
 	// Cancellation ends an ordinary lock dependency even if its goroutine has
 	// not yet resumed to remove the token. Exclude it from transitive paths too.
 	for wait := range workWaits.locks {

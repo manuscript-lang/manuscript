@@ -22,6 +22,11 @@ func requireWorkWaitsClear(t *testing.T, root *Execution, nodes ...*workWaitNode
 			t.Error("completed work retained a lock waiter")
 		}
 	}
+	for wait := range workWaits.cancellable {
+		if wait.from == lifetimeWaitNode(root.Lifetime) {
+			t.Error("completed work retained a cancellable join")
+		}
+	}
 }
 
 func TestSynchronizedSuccessfulTaskJoinDoesNotJoinSibling(t *testing.T) {
@@ -519,4 +524,112 @@ func TestSynchronizedCancelledTransitiveWaitDoesNotFaultOtherTask(t *testing.T) 
 	firstGroup.close(root)
 	secondGroup.close(root)
 	requireWorkWaitsClear(t, root, &firstGroup.waits, &secondGroup.waits, &first.waits, &second.waits)
+}
+
+type restartWaitContext struct {
+	context.Context
+	from, to *workWaitNode
+	entered  chan struct{}
+	resume   <-chan struct{}
+	once     sync.Once
+}
+
+func (c *restartWaitContext) Done() <-chan struct{} {
+	workWaits.Lock()
+	registered := c.from.dependencies[c.to] > 0
+	workWaits.Unlock()
+	if registered {
+		c.once.Do(func() { close(c.entered); <-c.resume })
+	}
+	return c.Context.Done()
+}
+
+type restartCancelBeforeDependencyContext struct {
+	context.Context
+	cancel context.CancelFunc
+}
+
+func (c *restartCancelBeforeDependencyContext) Done() <-chan struct{} {
+	c.cancel()
+	return c.Context.Done()
+}
+
+func TestSynchronizedCancelledRestartDoesNotRetainJoin(t *testing.T) {
+	for _, before := range []bool{false, true} {
+		name := "cancel after dependency insertion"
+		if before {
+			name = "cancel before dependency insertion"
+		}
+		t.Run(name, func(t *testing.T) { testSynchronizedCancelledRestart(t, before) })
+	}
+}
+
+func testSynchronizedCancelledRestart(t *testing.T, before bool) {
+	root := RootExecution()
+	cell := synchronizedInt()
+	guard := lockCell(root, cell)
+	service := NewScheduler(root, nil).(*Scheduler)
+	cleanup, resume := make(chan struct{}), make(chan struct{})
+	var allowCleanup, allowRestart sync.Once
+	t.Cleanup(func() {
+		guard.close()
+		allowCleanup.Do(func() { close(cleanup) })
+		allowRestart.Do(func() { close(resume) })
+		service.close(root)
+	})
+	started, lockWaiting := make(chan struct{}), make(chan struct{})
+	faults := make(chan any, 1)
+	callback := NewFunction(nil, "@std/Result[Unit][String]", func(child *Execution, _ []Value) Value {
+		defer func() {
+			<-cleanup
+			shield := Shield(child)
+			shield = inherit(shield, &synchronizedLockWaitContext{Context: shield.Context, cell: cell, lifetime: shield.Lifetime, entered: lockWaiting})
+			failure := recovered(func() { locked := lockCell(shield, cell); locked.close() })
+			faults <- failure
+			if failure != nil {
+				panic(failure)
+			}
+		}()
+		close(started)
+		<-child.Context.Done()
+		CheckCancelled(child)
+		return Alternative{"@std/Result[Unit][String]", "ok", []Value{Unit{}}}
+	})
+	result := service.schedule(root, 0, false, callback).(Alternative)
+	id := result.Fields[0].(OperationId)
+	awaitSynchronizedSignal(t, started)
+	service.mu.Lock()
+	job := service.active[id]
+	service.mu.Unlock()
+	active, cancel := context.WithCancel(root.Context)
+	defer cancel()
+	var done <-chan synchronizedCallOutcome
+	if before {
+		service.Operation("cancel").Body(root, []Value{id})
+		allowCleanup.Do(func() { close(cleanup) })
+		awaitSynchronizedSignal(t, lockWaiting)
+		// Done is sampled before insertion, after the restart begins. This
+		// exercises cancellation at that boundary with an existing lock wait.
+		caller := inherit(root, &restartCancelBeforeDependencyContext{Context: active, cancel: cancel})
+		done = synchronizedCall(func() Value { return service.restart(caller, id) })
+	} else {
+		waiting := &restartWaitContext{Context: active, from: lifetimeWaitNode(root.Lifetime), to: &job.waits, entered: make(chan struct{}), resume: resume}
+		done = synchronizedCall(func() Value { return service.restart(inherit(root, waiting), id) })
+		awaitSynchronizedSignal(t, waiting.entered)
+		cancel() // Cancels only the restart caller; construction parent is live.
+		allowCleanup.Do(func() { close(cleanup) })
+		awaitSynchronizedSignal(t, lockWaiting)
+		allowRestart.Do(func() { close(resume) })
+	}
+	outcome := awaitSynchronizedCall(t, done)
+	if _, ok := outcome.failure.(cancelled); !ok {
+		t.Fatal("cancelled restart did not return immediately", outcome)
+	}
+	guard.close()
+	awaitSynchronizedSignal(t, job.done)
+	if failure := <-faults; failure != nil {
+		t.Fatal("cancelled restart left a false join cycle", failure)
+	}
+	service.close(root)
+	requireWorkWaitsClear(t, root, &service.waits, &job.waits)
 }
