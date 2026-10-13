@@ -1,6 +1,9 @@
 package msruntime
 
-import "iter"
+import (
+	"iter"
+	"slices"
+)
 
 // ListRange captures a backing header and its initial length without copying
 // elements. It deliberately retains the old array across receiver reallocation.
@@ -691,4 +694,24 @@ func (r ListRange) EqualAt(ctx *Execution, index int, value Value, scope TypeSco
 		return ok && r.list.strings[index] == v
 	}
 	return EqualSelected(ctx, r.Get(index), value, scope)
+}
+
+// Primitive equality precedes custom implementation dispatch in equal. When
+// both captured headers have matching primitive backing, compare directly
+// instead of allocating a Value payload box for every corresponding cell.
+func equalPrimitiveListRanges(left, right ListRange) (bool, bool) {
+	if left.list.kind != right.list.kind {
+		return false, false
+	}
+	switch left.list.kind {
+	case listInt:
+		return slices.Equal(left.list.ints, right.list.ints), true
+	case listFloat:
+		return slices.Equal(left.list.floats, right.list.floats), true
+	case listBool:
+		return slices.Equal(left.list.bools, right.list.bools), true
+	case listString:
+		return slices.Equal(left.list.strings, right.list.strings), true
+	}
+	return false, false
 }

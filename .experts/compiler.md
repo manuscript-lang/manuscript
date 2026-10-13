@@ -17,7 +17,10 @@ representation; Go's optimizer does not reliably remove those allocations.
 Verified: primitive List storage also needs a use/ABI classification. The
 [numeric List experiment](../scripts/bench-lists/README.md) separates boxed
 storage from scalar-local boxing; its typed storage adds payload allocations
-when fed through the unchanged Optional/comparator ABI. Preserve one authoritative
+when fed through the unchanged Optional/comparator ABI. The production storage
+review also found ordinary iteration/callback payload boxing and constant iterator
+capture allocations; typed controls cannot replace these acceptance workloads.
+See [the explicit allocation ledger](../scripts/bench-lists/typed-storage.md#review-correction-traversal-allocation-regressions). Preserve one authoritative
 mutable handle across typed and generic aliases rather than keeping a boxed mirror.
 
 Apply when: optimizing Go lowering, representations, calls, or collection access.
