@@ -12,13 +12,17 @@ import (
 func (g *generator) arguments(args []syntax.Argument) string {
 	var values []string
 	for _, a := range args {
-		value := g.expression(a.Value)
-		if target := g.program.Expressions[a.Value].OptionalArgument; target != nil {
-			value = "rt.NewAlternative(" + g.key(target) + ",\"some\",[]string{\"value\"},[]rt.Argument{{Name:\"value\",Value:" + value + "}})"
-		}
-		values = append(values, "{Name:"+quote(a.Name)+",Value:"+value+"}")
+		values = append(values, "{Name:"+quote(a.Name)+",Value:"+g.argumentValue(a)+"}")
 	}
 	return "[]rt.Argument{" + strings.Join(values, ",") + "}"
+}
+
+func (g *generator) argumentValue(a syntax.Argument) string {
+	value := g.expression(a.Value)
+	if target := g.program.Expressions[a.Value].OptionalArgument; target != nil {
+		value = "rt.NewAlternative(" + g.key(target) + ",\"some\",[]string{\"value\"},[]rt.Argument{{Name:\"value\",Value:" + value + "}})"
+	}
+	return value
 }
 func (g *generator) expression(e *syntax.Expression) string {
 	if value, ok := g.booleans[e]; ok {
@@ -131,6 +135,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 			arguments = info.Arguments
 		}
 		if value := g.directCollectionCall(e, arguments); value != "" {
+			return value
+		}
+		if value := g.preparedSourceCall(e, arguments); value != "" {
 			return value
 		}
 		args := g.arguments(arguments)
