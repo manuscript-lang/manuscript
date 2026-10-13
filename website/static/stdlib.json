@@ -419,6 +419,7 @@
             "reverse: fn()-\u003eBytes",
             "reversed: fn()-\u003eBytes",
             "slice: fn(start: Int, end: Int)-\u003eBytes",
+            "split: fn(separator: Bytes, max_parts: Optional[Int] = ...)-\u003eList[Bytes]",
             "starts_with: fn(value: Bytes)-\u003eBool",
             "to_text: fn()-\u003eOptional[String]",
             "values: fn()-\u003eList[Int]",
@@ -496,6 +497,12 @@
               "kind": "operation",
               "signature": "fn slice(start: Int, end: Int) -\u003e Bytes:",
               "doc": "Selects [start, end) in bytes; faults unless 0 \u003c= start \u003c= end \u003c= length().\nThe immutable result may share storage with the receiver."
+            },
+            {
+              "name": "split",
+              "kind": "operation",
+              "signature": "fn split(separator: Bytes, max_parts: Optional[Int] = none) -\u003e List[Bytes]:",
+              "doc": "Splits exact byte separators into a fresh list of immutable byte views.\nNonempty separators retain empty parts; empty data then yields one empty Bytes.\nOmitted/none max_parts is unlimited; zero returns no parts, negatives fault.\nA cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data."
             },
             {
               "name": "starts_with",
