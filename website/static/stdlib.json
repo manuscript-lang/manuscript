@@ -702,6 +702,7 @@
             "slice: fn(start: Int, end: Int)-\u003eResult[List[T], CollectionError]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
+            "splice: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
             "take: fn(count: Int)-\u003eList[T]",
             "to_set: fn()-\u003eSet[T]",
             "with_value: fn(index: Int, value: T)-\u003eList[T]",
@@ -938,6 +939,12 @@
               "doc": "Returns a new list sorted by negative/zero/positive comparator results."
             },
             {
+              "name": "splice",
+              "kind": "operation",
+              "signature": "fn splice(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
+              "doc": "Replaces delete_count elements starting at start, mutating and returning this List.\nRequires 0 \u003c= start \u003c= length and 0 \u003c= delete_count \u003c= length - start; invalid bounds fault without clamping.\nReplacement references stay shallow; using this same List as replacement stages its prior values.\nShrinking retains prior values in spare backing capacity, following captured Go slice traversal."
+            },
+            {
               "name": "take",
               "kind": "operation",
               "signature": "fn take(count: Int) -\u003e List[T]:",
@@ -959,7 +966,7 @@
               "name": "with_values",
               "kind": "operation",
               "signature": "fn with_values(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
-              "doc": "Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity."
+              "doc": "Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior."
             },
             {
               "name": "without",
@@ -1053,6 +1060,7 @@
             "map[W]: fn(transform: fn(key: T, value: U)-\u003eW)-\u003eMap[T, W]",
             "map_keys[W: Hashable]: fn(transform: fn(key: T, value: U)-\u003eW)-\u003eMap[W, U]",
             "merge: fn(other: Map[T, U])-\u003eMap[T, U]",
+            "remove: fn(key: T)-\u003eMap[T, U]",
             "some: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eBool",
             "values: fn()-\u003eList[U]",
             "with_default: fn(key: T, value: U)-\u003eMap[T, U]",
@@ -1182,6 +1190,12 @@
               "doc": ""
             },
             {
+              "name": "remove",
+              "kind": "operation",
+              "signature": "fn remove(key: T) -\u003e Map[T, U]:",
+              "doc": "Removes an equal key and returns this same Map; remaining entries retain insertion order.\nAn absent key leaves values and ordering unchanged; lookup uses the selected Equal/Hashable scope."
+            },
+            {
               "name": "some",
               "kind": "operation",
               "signature": "fn some(predicate: fn(key: T, value: U) -\u003e Bool) -\u003e Bool:",
@@ -1215,7 +1229,7 @@
               "name": "without",
               "kind": "operation",
               "signature": "fn without(key: T) -\u003e Map[T, U]:",
-              "doc": ""
+              "doc": "Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return."
             }
           ]
         },
@@ -9355,6 +9369,7 @@
             "slice: fn(start: Int, end: Int)-\u003eResult[List[T], CollectionError]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
+            "splice: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
             "take: fn(count: Int)-\u003eList[T]",
             "to_set: fn()-\u003eSet[T]",
             "with_value: fn(index: Int, value: T)-\u003eList[T]",
@@ -9591,6 +9606,12 @@
               "doc": "Returns a new list sorted by negative/zero/positive comparator results."
             },
             {
+              "name": "splice",
+              "kind": "operation",
+              "signature": "fn splice(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
+              "doc": "Replaces delete_count elements starting at start, mutating and returning this List.\nRequires 0 \u003c= start \u003c= length and 0 \u003c= delete_count \u003c= length - start; invalid bounds fault without clamping.\nReplacement references stay shallow; using this same List as replacement stages its prior values.\nShrinking retains prior values in spare backing capacity, following captured Go slice traversal."
+            },
+            {
               "name": "take",
               "kind": "operation",
               "signature": "fn take(count: Int) -\u003e List[T]:",
@@ -9612,7 +9633,7 @@
               "name": "with_values",
               "kind": "operation",
               "signature": "fn with_values(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
-              "doc": "Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity."
+              "doc": "Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior."
             },
             {
               "name": "without",
@@ -9652,6 +9673,7 @@
             "map[W]: fn(transform: fn(key: T, value: U)-\u003eW)-\u003eMap[T, W]",
             "map_keys[W: Hashable]: fn(transform: fn(key: T, value: U)-\u003eW)-\u003eMap[W, U]",
             "merge: fn(other: Map[T, U])-\u003eMap[T, U]",
+            "remove: fn(key: T)-\u003eMap[T, U]",
             "some: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eBool",
             "values: fn()-\u003eList[U]",
             "with_default: fn(key: T, value: U)-\u003eMap[T, U]",
@@ -9781,6 +9803,12 @@
               "doc": ""
             },
             {
+              "name": "remove",
+              "kind": "operation",
+              "signature": "fn remove(key: T) -\u003e Map[T, U]:",
+              "doc": "Removes an equal key and returns this same Map; remaining entries retain insertion order.\nAn absent key leaves values and ordering unchanged; lookup uses the selected Equal/Hashable scope."
+            },
+            {
               "name": "some",
               "kind": "operation",
               "signature": "fn some(predicate: fn(key: T, value: U) -\u003e Bool) -\u003e Bool:",
@@ -9814,7 +9842,7 @@
               "name": "without",
               "kind": "operation",
               "signature": "fn without(key: T) -\u003e Map[T, U]:",
-              "doc": ""
+              "doc": "Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return."
             }
           ]
         },

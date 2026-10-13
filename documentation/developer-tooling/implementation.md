@@ -218,7 +218,7 @@ See [payload patterns](../core-language/control-flow/pattern-matching.md#payload
 
 MSL107 warns at a match nested structurally inside another match. Use an early-exit payload binding, compatible `try`, or a small helper to keep flow flat. It includes inline callbacks beneath an outer match and preserves checking/runtime behavior. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 
-MSL108 recommends `List.set`, `List.remove`, `List.reverse_in_place`, `Map.add`,
+MSL108 recommends `List.set`, `List.remove`, `List.splice`, `List.reverse_in_place`, `Map.add`, `Map.remove`,
 `Set.add`, `Set.remove`, `Bytes.reversed` and `Regex.replace_all` for their
 equivalent legacy methods. The same arguments retain mutation, receiver returns,
 copy behavior, ordering, equality scopes, limits and faults. It also checks stored

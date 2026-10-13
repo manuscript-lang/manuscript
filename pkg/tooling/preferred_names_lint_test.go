@@ -16,7 +16,9 @@ func TestPreferredNamesFollowResolvedNativeMethods(t *testing.T) {
 		{"List set", "", "List[Int]", "with_value", "set", "index: -1, value: 7", "mutates and returns the receiver"},
 		{"List remove", "", "List[Int]", "without", "remove", "index: -1", "mutates and returns the receiver"},
 		{"List reverse", "", "List[Int]", "reverse", "reverse_in_place", "", "mutates and returns the receiver"},
+		{"List splice", "", "List[Int]", "with_values", "splice", "start: 0, delete_count: 0, replacement: [7]", "mutates and returns the receiver"},
 		{"Map add", "", "Map[Int, Int]", "with_entry", "add", "key: 1, value: 7", "mutates and returns the receiver"},
+		{"Map remove", "", "Map[Int, Int]", "without", "remove", "key: 1", "mutates and returns the receiver"},
 		{"Set add", "import Set from \"@std/collections.ms\"\n", "Set[Int]", "with_value", "add", "value: 7", "mutates and returns the receiver"},
 		{"Set remove", "import Set from \"@std/collections.ms\"\n", "Set[Int]", "without", "remove", "value: 7", "mutates and returns the receiver"},
 		{"Bytes reverse", "import Bytes from \"@std/bytes.ms\"\n", "Bytes", "reverse", "reversed", "", "returns a copy"},
@@ -70,7 +72,7 @@ fn use(value: User, bytes: Bytes, map: Map[Int, Int], mb: MapBuilder[Int, Int], 
     Legacy(value).reverse()
     generic(value)
     let _copy = bytes.with_value(index: 0, value: 1)
-    let _map = map.without(key: 1)
+    let _map = map.remove(key: 1)
     mb.with_entry(key: 1, value: 2)
     sb.with_value(value: 1)
     let replace = "aaa".replace

@@ -72,9 +72,9 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 ## Mutation and copies
 
-`append`, `prepend`, `set`, `remove`, `with_values`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `with_value` and `without` remain compatible spellings for `set` and `remove`, with the same receiver returns and faults. `reverse` remains a compatible spelling for `reverse_in_place`, returning the same list. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
+`append`, `prepend`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `with_value` and `without` remain compatible spellings for `set` and `remove`, with the same receiver returns and faults. `reverse` remains a compatible spelling for `reverse_in_place`, returning the same list. `splice(start:, delete_count:, replacement:)` requires nonnegative bounds with `start <= length()` and `delete_count <= length() - start`; it stages a self-replacement and retains shallow references. Invalid bounds fault without clamping. `with_values` remains its compatible spelling. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
 
-Map `add`, `with_entry`, `without`, `with_default`, `with_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver; `with_value` and `without` remain compatible spellings for `add` and `remove`. Their return values retain that instance for chaining.
+Map `add`, `remove`, `with_entry`, `without`, `with_default`, `with_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver; `with_value` and `without` remain compatible spellings for `add` and `remove`. Map `without` remains compatible with `remove`, including no-op absence, scoped lookup and insertion order. Their return values retain that instance for chaining.
 
 ```manuscript
 let values = [1, 2]
@@ -113,7 +113,7 @@ Map and Set loops and callbacks retain their membership snapshot contract: addit
 | `Map[K, V]` | `find(predicate: fn(key: K, value: V) -> Bool) -> Optional[MapEntry[K, V]]` |
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
 | `Map[K, V]` | `some(predicate: fn(key: K, value: V) -> Bool) -> Bool`; `every` uses the same predicate |
-| `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `without(key: K) -> Map[K, V]` |
+| `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `remove(key: K) -> Map[K, V]` |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
 | `Set[T]` | `is_empty() -> Bool`; `filter(predicate: fn(value: T) -> Bool) -> Set[T]` |
@@ -131,7 +131,7 @@ All existing element and key bounds apply. An empty List/Map/Set constructor req
 
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
 
-Map `get`, `contains`, and `add` and Set `contains` and `add` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. Map `without` and Set `remove` shift later entries to keep insertion order and take time proportional to the collection size. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
+Map `get`, `contains`, and `add` and Set `contains` and `add` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. Map and Set `remove` shift later entries to keep insertion order and take time proportional to the collection size. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
 
 ### Search and enumeration
 

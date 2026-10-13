@@ -55,7 +55,6 @@
     "@std/collections.ms|Map|operation|length|",
     "@std/collections.ms|Map|operation|merge|",
     "@std/collections.ms|Map|operation|values|",
-    "@std/collections.ms|Map|operation|without|",
     "@std/collections.ms|SetBuilder|operation|freeze|",
     "@std/collections.ms|SetBuilder|operation|with_value|",
     "@std/collections.ms|Set|operation|clear|",
@@ -494,7 +493,6 @@
     "prelude|Map|operation|keys|",
     "prelude|Map|operation|length|",
     "prelude|Map|operation|merge|",
-    "prelude|Map|operation|values|",
-    "prelude|Map|operation|without|"
+    "prelude|Map|operation|values|"
   ]
 }
