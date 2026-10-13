@@ -9,8 +9,8 @@ import (
 
 func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checker.Info) ast.Expr {
 	args := []ast.Expr{g.expression(member.Left), textLiteral(member.Text), g.key(info.Type.Result), g.typeScope(g.program.Expressions[member.Left].Type)}
-	if info.Method.Native == "collections/set_map" {
-		// Output deduplication needs the mapped element's lexical evidence,
+	if info.Method.Native == "collections/set_map" || info.Method.Native == "collections/map_transform_keys" {
+		// Output deduplication needs the mapped key/element's lexical evidence,
 		// including when a generic receiver method is explicitly specialized.
 		args = append(args, g.typeScope(info.Type.Result))
 	}

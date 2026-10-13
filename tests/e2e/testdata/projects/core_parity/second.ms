@@ -1,5 +1,12 @@
 import {Key, Cause} from "./domain.ms"
-import {transform_set, locate_map, locate_set, convert} from "./helpers.ms"
+import {
+    transform_set,
+    locate_map,
+    locate_set,
+    convert,
+    remap_keys,
+    remap_values
+} from "./helpers.ms"
 import {Map, Set} from "@std/collections.ms"
 import {Equal, Hashable} from "@std/equality.ms"
 
@@ -59,3 +66,28 @@ export fn second_folded(cause: Cause) -> Error:
         cause,
         fn(acc, key, value): acc
     )
+
+export fn second_key_transform[T: Hashable](input: Map[T, Int]) -> Map[Key, Int]:
+    return remap_keys(
+        input,
+        fn(key, value): Key(
+            0,
+            key.toString()
+        )
+    )
+
+export fn second_bound_keys() -> fn(
+    transform: fn(key: Int, value: Int) -> Key
+) -> Map[Key, Int]:
+    return Map[Int, Int]().with_entry(1, 10).with_entry(2, 20).map_keys[Key]
+
+export fn second_value_transform() -> Int:
+    let input = Map[Key, Int]().with_entry(
+        Key(5, "original"),
+        2
+    )
+    let mapped = remap_values(
+        input,
+        fn(key, value): value + 1
+    )
+    return mapped.get(Key(5, "different")).unwrap_or(0)
