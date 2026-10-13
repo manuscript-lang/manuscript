@@ -75,10 +75,15 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 			return true
 		}
 		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || selector.Sel.Name != "NewSourceFunction" {
+		if !ok || (selector.Sel.Name != "NewSourceFunction" && selector.Sel.Name != "SourceDirect") {
 			return true
 		}
-		body := call.Args[3].(*ast.FuncLit).Body
+		// Direct method bodies are the second argument of SourceDirect.
+		bodyArg := 3
+		if selector.Sel.Name == "SourceDirect" {
+			bodyArg = 1
+		}
+		body := call.Args[bodyArg].(*ast.FuncLit).Body
 		trace := body.List[1].(*ast.DeferStmt).Call.Args[1].(*ast.BasicLit)
 		name, err := strconv.Unquote(trace.Value)
 		if err != nil {
@@ -88,7 +93,7 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 		ast.Inspect(body, func(node ast.Node) bool {
 			if c, ok := node.(*ast.CallExpr); ok {
 				if s, ok := c.Fun.(*ast.SelectorExpr); ok {
-					if s.Sel.Name == "NewSourceFunction" {
+					if s.Sel.Name == "NewSourceFunction" || s.Sel.Name == "SourceDirect" {
 						return false
 					}
 					if s.Sel.Name == "NewCleanupStack" {

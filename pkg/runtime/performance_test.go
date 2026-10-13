@@ -354,3 +354,52 @@ func BenchmarkMapGetDirect(b *testing.B) {
 		MapGet(ctx, m, "a", TypeScope{}, "@std/Optional[Int]")
 	}
 }
+
+func registerDirectProbe(typ string, result int64) {
+	Register(Implementation{Receiver: typ, Contract: "probe/Speak", Name: "speak", Scope: "probe.ms",
+		Direct: func(*Execution, Value, []Value) Value { return result },
+		Build: func(receiver Value, _ map[string]string, _ map[string]TypeScope) Function {
+			return NewFunction(nil, "Int", func(*Execution, []Value) Value { return result })
+		}})
+}
+
+func TestMethodSiteFollowsReceiverTypeAndRegistration(t *testing.T) {
+	ctx := RootExecution()
+	registerDirectProbe("probe/A", 1)
+	registerDirectProbe("probe/B", 2)
+	var site MethodSite
+	scope := TypeScope{Module: "probe.ms"}
+	call := func(typ string) Value {
+		return CallMethod(ctx, &site, Record{Type: typ}, "probe/Speak", "speak", scope, nil)
+	}
+	for i := 0; i < 2; i++ {
+		if call("probe/A") != int64(1) || call("probe/B") != int64(2) {
+			t.Fatal("site must re-resolve when the receiver type changes")
+		}
+	}
+	registerDirectProbe("probe/C", 3)
+	if call("probe/A") != int64(1) || call("probe/C") != int64(3) {
+		t.Fatal("site must survive later registrations")
+	}
+}
+
+func BenchmarkCallMethodSite(b *testing.B) {
+	ctx := RootExecution()
+	registerDirectProbe("probe/Bench", 1)
+	var site MethodSite
+	receiver := Record{Type: "probe/Bench"}
+	scope := TypeScope{Module: "probe.ms"}
+	for i := 0; i < b.N; i++ {
+		CallMethod(ctx, &site, receiver, "probe/Speak", "speak", scope, nil)
+	}
+}
+
+func BenchmarkBindInvokeMethod(b *testing.B) {
+	ctx := RootExecution()
+	registerDirectProbe("probe/BenchBind", 1)
+	receiver := Record{Type: "probe/BenchBind"}
+	scope := TypeScope{Module: "probe.ms", Args: []TypeScope{}}
+	for i := 0; i < b.N; i++ {
+		Invoke(ctx, Bind(receiver, "probe/Speak", "speak", scope), nil)
+	}
+}

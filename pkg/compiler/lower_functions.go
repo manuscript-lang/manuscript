@@ -33,9 +33,18 @@ func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 		returned(runtimeCall("ConstructWithContext", ident("ctx"), g.key(s.Type), sliceLiteral(runtimeName("Argument"), args...))))
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
+	labels, key, position, out := g.functionParts(name, params, result, body, bindings, self, t, tail...)
+	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
+}
+
+// functionParts lowers a callable's labels, result key, source position, and
+// body statements. A method body reads its receiver from the identifier
+// "receiver", which the enclosing closure supplies.
+func (g *generator) functionParts(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ([]string, ast.Expr, string, []ast.Stmt) {
 	oldCleanups, oldLoops, oldLabels, oldDepth, oldResult := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth, g.resultKey
 	oldNeedsCleanup := g.needsCleanup
-	g.resultKey = g.key(t.Result)
+	resultKey := g.key(t.Result)
+	g.resultKey = resultKey
 	g.expressionDepth = 0
 	g.cleanups = nil
 	g.needsCleanup = false
@@ -83,5 +92,5 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 	}
 	out = append(prologue, out...)
 	out = append(out, g.locatedStatement(syntax.Position{File: "manuscript.generated.go", Line: 1}, returned(unit())))
-	return runtimeCall("NewSourceFunction", stringSlice(labels), g.key(t.Result), textLiteral(result.Pos.String()), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
+	return labels, resultKey, result.Pos.String(), out
 }

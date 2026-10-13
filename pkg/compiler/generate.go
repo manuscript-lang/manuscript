@@ -3,6 +3,7 @@ package compiler
 import (
 	"go/ast"
 	"go/token"
+	"strconv"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -76,8 +77,18 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			continue
 		}
 		flushNatives()
-		fn := g.function(m.Receiver.Name+"."+m.Decl.Name, m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type)
-		fields = append(fields, keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(fn))))
+		labels, resultKey, position, body := g.functionParts(m.Receiver.Name+"."+m.Decl.Name, m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type)
+		if len(m.Variables) == 0 && !mentionsTypeBindings(body) {
+			// A nongeneric method body needs only its receiver, so call sites
+			// can run it without building a bound Function for each call.
+			name := "direct" + strconv.Itoa(len(initialize)+1)
+			direct := closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("receiver", runtimeName("Value")), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...)
+			initialize = append(initialize, define(name, runtimeCall("SourceDirect", textLiteral(position), direct)))
+			fields = append(fields, keyed("Direct", ident(name)), keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(runtimeCall("BoundDirect", ident("receiver"), stringSlice(labels), resultKey, ident(name))))))
+		} else {
+			fn := runtimeCall("NewSourceFunction", stringSlice(labels), resultKey, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...))
+			fields = append(fields, keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(fn))))
+		}
 		initialize = append(initialize, evaluated(runtimeCall("Register", composite(runtimeName("Implementation"), fields...))))
 	}
 	flushNatives()
@@ -109,5 +120,23 @@ func (g *generator) file(entry string, options Options) *ast.File {
 	for _, name := range g.hoisted {
 		file.Decls = append(file.Decls, variable(name, runtimeName("Lazy"), nil))
 	}
+	for _, name := range g.sites {
+		file.Decls = append(file.Decls, variable(name, runtimeName("MethodSite"), nil))
+	}
 	return file
+}
+
+// mentionsTypeBindings reports whether lowered statements read the type
+// arguments or scopes that only a bound method build provides.
+func mentionsTypeBindings(body []ast.Stmt) bool {
+	found := false
+	for _, stmt := range body {
+		ast.Inspect(stmt, func(n ast.Node) bool {
+			if id, ok := n.(*ast.Ident); ok && (id.Name == "typeArgs" || id.Name == "typeScopes") {
+				found = true
+			}
+			return !found
+		})
+	}
+	return found
 }

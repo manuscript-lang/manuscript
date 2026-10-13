@@ -143,6 +143,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if value := g.preparedSourceCall(e, arguments); value != nil {
 			return value
 		}
+		if value := g.preparedMethodCall(e, arguments); value != nil {
+			return value
+		}
 		args := g.arguments(arguments)
 		if info.Constructor != nil {
 			if info.Native == "view" {
