@@ -38,6 +38,12 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 			return
 		}
 		if !c.errorAssignable(actual.Type, Sub(pattern, sub)) && !c.unifyArgument(pattern, actual.Type, vars, sub) {
+			if hint := labelMismatchHint(actual.Type, Sub(pattern, sub)); hint != "" {
+				c.error(arg.Pos, "type", "callback mismatch: "+hint)
+				c.unknownType = true
+				c.labelMismatch = true
+				return
+			}
 			c.error(arg.Pos, "type", conflictingInference)
 		}
 	}
