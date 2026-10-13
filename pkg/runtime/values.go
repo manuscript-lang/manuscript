@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"runtime"
+	goruntime "runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -790,7 +790,7 @@ func runTest(test Test, timeout time.Duration) any {
 	case <-time.After(testCancelGrace):
 	}
 	stacks := make([]byte, 1<<20)
-	stacks = stacks[:runtime.Stack(stacks, true)]
+	stacks = stacks[:goruntime.Stack(stacks, true)]
 	fmt.Fprintf(os.Stderr, "goroutines after timeout in %s:\n%s\n", test.Name, stacks)
 	return fmt.Sprintf("timed out after %s and did not stop when cancelled; goroutine dump is on stderr", timeout)
 }
