@@ -248,12 +248,12 @@ func check() error {
 	if _, err := os.Stat(filepath.Join(defaultProfile, "trace.out")); !os.IsNotExist(err) {
 		return fmt.Errorf("default profile unexpectedly captured a trace: %v", err)
 	}
-	data, err := os.ReadFile(filepath.Join(defaultProfile, "manifest.json"))
+	defaultManifest, err := os.ReadFile(filepath.Join(defaultProfile, "manifest.json"))
 	if err != nil {
 		return err
 	}
 	var defaultArtifacts map[string]any
-	if err := json.Unmarshal(data, &defaultArtifacts); err != nil {
+	if err := json.Unmarshal(defaultManifest, &defaultArtifacts); err != nil {
 		return err
 	}
 	if _, ok := defaultArtifacts["trace"]; ok {
