@@ -39,6 +39,9 @@ func checkNestedMatches() error {
 			continue
 		}
 		source, err := os.ReadFile(path)
+		if os.IsNotExist(err) {
+			continue // A tracked file may have been removed in this working tree.
+		}
 		if err != nil {
 			return err
 		}

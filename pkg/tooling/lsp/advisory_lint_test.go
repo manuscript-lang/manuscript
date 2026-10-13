@@ -62,6 +62,9 @@ func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
 						if diagnostic.Severity != 2 || diagnostic.Source != "manuscript-lint" || diagnostic.Range.Start.Line != tc.line {
 							t.Fatalf("wrong advisory: %+v", diagnostic)
 						}
+						if tc.code == "MSL107" && (diagnostic.Range.Start.Character != 12 || diagnostic.Range.End.Line != tc.line || diagnostic.Range.End.Character != 17) {
+							t.Fatalf("nested-match warning did not span the inner keyword: %+v", diagnostic.Range)
+						}
 					}
 				}
 			}
