@@ -24,4 +24,5 @@
 - Separate frontend facts from host runtime implementations and verify native signatures in integration tests.
 - Validate compressed toolchain archives before cache publication, including interrupted downloads.
 - Preserve case-equivalent HTTP header keys as separate values in insertion order, including `Set-Cookie`; reject malformed outgoing header values before emission.
+- Add `http.header_values` for ASCII case-insensitive, value-preserving lookup across list-valued HTTP header maps, with separate returned list membership.
 - Add repeatable dependency/pin maintenance, license inventories, and one shared release version.

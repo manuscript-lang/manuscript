@@ -1465,6 +1465,18 @@ interface ResponseBody:
     fn status() -> Int
 ```
 
+## header_values
+
+**Function**
+
+Finds all values under ASCII case-equivalent names without changing Map keys.
+Returns none if absent, or some(empty) for a present empty list. Copies list
+membership and preserves Map insertion order followed by each list's order.
+
+```manuscript
+fn header_values(headers: Map[String, List[String]], name: String) -> Optional[List[String]]:
+```
+
 # @std/io.ms
 
 Import each required symbol with `import Name from "@std/io.ms"`.
@@ -4033,9 +4045,13 @@ type Map[T: Hashable, U]:
     fn clone() -> Map[T, U]:
     fn is_empty() -> Bool:
     fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+    fn map[W](transform: fn(key: T, value: U) -> W) -> Map[T, W]:
+    fn map_keys[W: Hashable](transform: fn(key: T, value: U) -> W) -> Map[W, U]:
     fn get_or(key: T, fallback: U) -> U:
     fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    fn fold_right[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
     fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    fn find_last(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
     fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn with_default(key: T, value: U) -> Map[T, U]:

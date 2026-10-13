@@ -1,6 +1,20 @@
 package msruntime
 
 func init() {
+	libraryAdd("http", "header_values", "Optional[List[String]]", []LibraryParam{{"headers", "Map[String][List[String]]"}, {"name", "String"}}, func(_ *Execution, result string, args []Value) Value {
+		values := &List{Type: "@std/List[String]"}
+		present := false
+		for _, entry := range args[0].(*Map).Entries {
+			if httpHeaderNameEqual(entry.Key.(string), args[1].(string)) {
+				present = true
+				values.Items = append(values.Items, entry.Value.(*List).Items...)
+			}
+		}
+		if !present {
+			return Alternative{result, "none", nil}
+		}
+		return Alternative{result, "some", []Value{values}}
+	})
 	libraryAdd("http", "request_header", "Optional[Bytes]", []LibraryParam{{"request", "HttpRequest"}, {"name", "String"}}, func(_ *Execution, result string, args []Value) Value {
 		headers := args[0].(Record).Fields["headers"].(*Map)
 		for _, entry := range headers.Entries {
