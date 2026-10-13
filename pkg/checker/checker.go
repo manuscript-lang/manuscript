@@ -1009,7 +1009,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		return c.callback(e, expected)
 	case syntax.KindList:
 		if s := c.names["List"]; s == nil || s != standardSymbols["List"] {
-			c.error(e.Pos, "resolution", "list literal requires the canonical List import; add: import List from \"@std/collections.ms\"")
+			c.error(e.Pos, "resolution", "list literal requires the canonical List type; rename the shadowing List declaration or binding")
 		}
 		var element *Type
 		if std(expected, "List") && len(expected.Args) == 1 {
@@ -1038,7 +1038,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		i.Type = standard("List", element)
 	case syntax.KindMap:
 		if s := c.names["Map"]; s == nil || s != standardSymbols["Map"] {
-			c.error(e.Pos, "resolution", "map literal requires the canonical Map import; add: import Map from \"@std/collections.ms\"")
+			c.error(e.Pos, "resolution", "map literal requires the canonical Map type; rename the shadowing Map declaration or binding")
 		}
 		var types [2]*Type
 		if std(expected, "Map") && len(expected.Args) == 2 {

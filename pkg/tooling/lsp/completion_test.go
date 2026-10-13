@@ -83,11 +83,21 @@ func itemNamed(items []completionItem, name string) *completionItem {
 }
 
 func TestPreludeCompletionNeedsNoImport(t *testing.T) {
-	for _, name := range []string{"Optional", "Result", "Error"} {
+	for _, name := range []string{"Optional", "Result", "Error", "List", "Map"} {
 		items := completeSource(t, "fn work(value: "+name[:2]+"|) -> Unit:\n    return\n")
 		item := itemNamed(items, name)
 		if item == nil || len(item.AdditionalTextEdits) != 0 {
 			t.Fatalf("%s must complete without an import: %+v", name, item)
+		}
+	}
+}
+
+func TestCollectionPreludeExpressionCompletionNeedsNoImport(t *testing.T) {
+	for _, name := range []string{"List", "Map"} {
+		items := completeSource(t, "fn work() -> Unit:\n    "+name[:2]+"|\n")
+		item := itemNamed(items, name)
+		if item == nil || len(item.AdditionalTextEdits) != 0 {
+			t.Fatalf("%s: %+v", name, item)
 		}
 	}
 }
@@ -292,5 +302,36 @@ func TestGroupedImportCompletion(t *testing.T) {
 	items := completeSource(t, "import { List, | } from \"@std/collections.ms\"\n")
 	if itemNamed(items, "List") != nil || itemNamed(items, "Map") == nil {
 		t.Fatal(items)
+	}
+}
+
+func TestCollectionPreludeEditorContracts(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		source := strings.ReplaceAll("fn use(values: List[Int], entries: Map[String, Int]) -> Unit:\n    entries.add(\"a\", 1)\n", "\n", newline)
+		d := document{"file:///tmp/collections.ms", source, 1}
+		r := analyze(d, map[string]document{d.URI: d})
+		if !r.Success() {
+			t.Fatal(r.Diagnostics)
+		}
+		for _, name := range []string{"List", "Map", "add"} {
+			target := navigation(r, d, Position(source, strings.Index(source, name)), "textDocument/definition")
+			if target == nil || target.([]any)[0].(map[string]any)["uri"] != "manuscript-stdlib:///collections.ms" {
+				t.Fatal(name, target)
+			}
+		}
+	}
+	items := completeSource(t, "fn use(entries: Map[String, Int]) -> Unit:\n    entries.ad|\n")
+	item := itemNamed(items, "add")
+	if item == nil || !strings.Contains(item.Detail, "String") || !strings.Contains(item.Detail, "Int") || len(item.AdditionalTextEdits) != 0 {
+		t.Fatal(item)
+	}
+	signature := signatureSource(t, "fn use(entries: Map[String, Int]) -> Unit:\n    entries.add(key: \"a\", value: |\n")
+	label := signature["signatures"].([]any)[0].(map[string]any)["label"].(string)
+	if label != "entries.add(key: String, value: Int) -> Map[String, Int]" || signature["activeParameter"] != 1 {
+		t.Fatal(signature)
+	}
+	local := completeSource(t, "type Map[K,V]:\n    value: V\nfn use(entries: Map[String, Int]) -> Unit:\n    entries.|\n")
+	if itemNamed(local, "add") != nil || itemNamed(local, "value") == nil {
+		t.Fatal(local)
 	}
 }

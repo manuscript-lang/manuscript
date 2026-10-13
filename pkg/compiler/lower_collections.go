@@ -9,8 +9,8 @@ import (
 
 func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checker.Info) ast.Expr {
 	args := []ast.Expr{g.expression(member.Left), textLiteral(member.Text), g.key(info.Type.Result), g.typeScope(g.program.Expressions[member.Left].Type)}
-	if info.Method.Native == "collections/set_map" {
-		// Output deduplication needs the mapped element's lexical evidence,
+	if info.Method.Native == "collections/set_map" || info.Method.Native == "collections/map_transform_keys" {
+		// Output deduplication needs the mapped key/element's lexical evidence,
 		// including when a generic receiver method is explicitly specialized.
 		args = append(args, g.typeScope(info.Type.Result))
 	}
@@ -52,7 +52,7 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 		if len(arguments) == 0 && g.program.Expressions[e.Left.Left].Type.ID == "@std/List" {
 			return g.locatedOperation(e, runtimeName("ListIsEmpty"), ident("ctx"), g.expression(e.Left.Left))
 		}
-	case "collections/contains", "contains", "get", "with_entry", "with_value":
+	case "collections/contains", "contains", "get", "with_entry", "with_value", "collections/map_add":
 		return g.directKeyedCall(e, callee.Method.Native, arguments)
 	case "string/at":
 		if len(arguments) == 1 && g.program.Expressions[e.Left.Left].Type.ID == "String" {
@@ -87,7 +87,7 @@ func (g *generator) directKeyedCall(e *syntax.Expression, native string, argumen
 		name = "MapContains"
 	case "@std/Map/get":
 		name = "MapGet"
-	case "@std/Map/with_entry":
+	case "@std/Map/with_entry", "@std/Map/collections/map_add":
 		name = "MapWithEntry"
 	case "@std/Set/contains":
 		name = "SetContains"

@@ -1,0 +1,300 @@
+{
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "affinity": [
+    1
+  ],
+  "revision": "93fcb4fefaec0613acefca0a8f8a1aae428373aa",
+  "dirty": "?? scripts/bench-lists/\n?? toolchain\n",
+  "go": "go version go1.25.1 linux/amd64",
+  "binary_sha256": "dab27f4506f70e2d27c89691ebf911f482419c44eff1b500a060870b78b112ad",
+  "environment": {
+    "GOMAXPROCS": "default",
+    "GOGC": "default",
+    "GOMEMLIMIT": "default"
+  },
+  "results": [
+    {
+      "mode": "generated",
+      "elements": 1000000,
+      "samples": [
+        {
+          "allocated_bytes": 103994848,
+          "allocations": 1997226,
+          "capacity": 1109504,
+          "elements": 1000000,
+          "heap_sys_bytes": 87752704,
+          "mode": "generated",
+          "retained_heap_bytes": 33708496,
+          "seconds": 0.23384607900015908,
+          "peak_rss_kib": 85820
+        },
+        {
+          "allocated_bytes": 103994880,
+          "allocations": 1997226,
+          "capacity": 1109504,
+          "elements": 1000000,
+          "heap_sys_bytes": 87752704,
+          "mode": "generated",
+          "retained_heap_bytes": 33708496,
+          "seconds": 0.22761121300027298,
+          "peak_rss_kib": 85948
+        },
+        {
+          "allocated_bytes": 103994864,
+          "allocations": 1997226,
+          "capacity": 1109504,
+          "elements": 1000000,
+          "heap_sys_bytes": 87752704,
+          "mode": "generated",
+          "retained_heap_bytes": 33708496,
+          "seconds": 0.23712430999967182,
+          "peak_rss_kib": 85948
+        }
+      ],
+      "medians": {
+        "seconds": 0.23384607900015908,
+        "peak_rss_kib": 85948,
+        "allocated_bytes": 103994864,
+        "allocations": 1997226,
+        "retained_heap_bytes": 33708496,
+        "heap_sys_bytes": 87752704
+      }
+    },
+    {
+      "mode": "boxed",
+      "elements": 1000000,
+      "samples": [
+        {
+          "allocated_bytes": 95996880,
+          "allocations": 997479,
+          "capacity": 1109504,
+          "elements": 1000000,
+          "heap_sys_bytes": 79364096,
+          "mode": "boxed",
+          "retained_heap_bytes": 25731056,
+          "seconds": 0.15731544700020095,
+          "peak_rss_kib": 69052
+        },
+        {
+          "allocated_bytes": 95996880,
+          "allocations": 997479,
+          "capacity": 1109504,
+          "elements": 1000000,
+          "heap_sys_bytes": 79364096,
+          "mode": "boxed",
+          "retained_heap_bytes": 25731056,
+          "seconds": 0.1593881290000354,
+          "peak_rss_kib": 69052
+        },
+        {
+          "allocated_bytes": 95996880,
+          "allocations": 997479,
+          "capacity": 1109504,
+          "elements": 1000000,
+          "heap_sys_bytes": 79364096,
+          "mode": "boxed",
+          "retained_heap_bytes": 25731056,
+          "seconds": 0.15909525300003224,
+          "peak_rss_kib": 69052
+        }
+      ],
+      "medians": {
+        "seconds": 0.15909525300003224,
+        "peak_rss_kib": 69052,
+        "allocated_bytes": 95996880,
+        "allocations": 997479,
+        "retained_heap_bytes": 25731056,
+        "heap_sys_bytes": 79364096
+      }
+    },
+    {
+      "mode": "prototype",
+      "elements": 1000000,
+      "samples": [
+        {
+          "allocated_bytes": 41678136,
+          "allocations": 40,
+          "capacity": 1055744,
+          "elements": 1000000,
+          "heap_sys_bytes": 37421056,
+          "mode": "prototype",
+          "retained_heap_bytes": 8445384,
+          "seconds": 0.028616815000077622,
+          "peak_rss_kib": 35132
+        },
+        {
+          "allocated_bytes": 41678136,
+          "allocations": 40,
+          "capacity": 1055744,
+          "elements": 1000000,
+          "heap_sys_bytes": 37421056,
+          "mode": "prototype",
+          "retained_heap_bytes": 8445384,
+          "seconds": 0.026584345999708603,
+          "peak_rss_kib": 35136
+        },
+        {
+          "allocated_bytes": 41678136,
+          "allocations": 40,
+          "capacity": 1055744,
+          "elements": 1000000,
+          "heap_sys_bytes": 37421056,
+          "mode": "prototype",
+          "retained_heap_bytes": 8445384,
+          "seconds": 0.028791983000246546,
+          "peak_rss_kib": 35260
+        }
+      ],
+      "medians": {
+        "seconds": 0.028616815000077622,
+        "peak_rss_kib": 35136,
+        "allocated_bytes": 41678136,
+        "allocations": 40,
+        "retained_heap_bytes": 8445384,
+        "heap_sys_bytes": 37421056
+      }
+    },
+    {
+      "mode": "generated",
+      "elements": 4000000,
+      "samples": [
+        {
+          "allocated_bytes": 402018848,
+          "allocations": 7989553,
+          "capacity": 4237824,
+          "elements": 4000000,
+          "heap_sys_bytes": 326828032,
+          "mode": "generated",
+          "retained_heap_bytes": 131638752,
+          "seconds": 0.9786168800001178,
+          "peak_rss_kib": 308796
+        },
+        {
+          "allocated_bytes": 402018832,
+          "allocations": 7989553,
+          "capacity": 4237824,
+          "elements": 4000000,
+          "heap_sys_bytes": 326828032,
+          "mode": "generated",
+          "retained_heap_bytes": 131638752,
+          "seconds": 1.2670837529999517,
+          "peak_rss_kib": 308796
+        },
+        {
+          "allocated_bytes": 402018816,
+          "allocations": 7989553,
+          "capacity": 4237824,
+          "elements": 4000000,
+          "heap_sys_bytes": 326828032,
+          "mode": "generated",
+          "retained_heap_bytes": 131638752,
+          "seconds": 1.0682633490000626,
+          "peak_rss_kib": 308796
+        }
+      ],
+      "medians": {
+        "seconds": 1.0682633490000626,
+        "peak_rss_kib": 308796,
+        "allocated_bytes": 402018832,
+        "allocations": 7989553,
+        "retained_heap_bytes": 131638752,
+        "heap_sys_bytes": 326828032
+      }
+    },
+    {
+      "mode": "boxed",
+      "elements": 4000000,
+      "samples": [
+        {
+          "allocated_bytes": 370020832,
+          "allocations": 3989806,
+          "capacity": 4237824,
+          "elements": 4000000,
+          "heap_sys_bytes": 318439424,
+          "mode": "boxed",
+          "retained_heap_bytes": 99722752,
+          "seconds": 0.8680780139998205,
+          "peak_rss_kib": 292284
+        },
+        {
+          "allocated_bytes": 370020832,
+          "allocations": 3989806,
+          "capacity": 4237824,
+          "elements": 4000000,
+          "heap_sys_bytes": 318439424,
+          "mode": "boxed",
+          "retained_heap_bytes": 99722752,
+          "seconds": 0.7438747380001587,
+          "peak_rss_kib": 292156
+        },
+        {
+          "allocated_bytes": 370020832,
+          "allocations": 3989806,
+          "capacity": 4237824,
+          "elements": 4000000,
+          "heap_sys_bytes": 318439424,
+          "mode": "boxed",
+          "retained_heap_bytes": 99722752,
+          "seconds": 0.9391501810000591,
+          "peak_rss_kib": 292156
+        }
+      ],
+      "medians": {
+        "seconds": 0.8680780139998205,
+        "peak_rss_kib": 292156,
+        "allocated_bytes": 370020832,
+        "allocations": 3989806,
+        "retained_heap_bytes": 99722752,
+        "heap_sys_bytes": 318439424
+      }
+    },
+    {
+      "mode": "prototype",
+      "elements": 4000000,
+      "samples": [
+        {
+          "allocated_bytes": 160716088,
+          "allocations": 46,
+          "capacity": 4035584,
+          "elements": 4000000,
+          "heap_sys_bytes": 121274368,
+          "mode": "prototype",
+          "retained_heap_bytes": 32284104,
+          "seconds": 0.11758962300018538,
+          "peak_rss_kib": 109116
+        },
+        {
+          "allocated_bytes": 160716088,
+          "allocations": 46,
+          "capacity": 4035584,
+          "elements": 4000000,
+          "heap_sys_bytes": 121307136,
+          "mode": "prototype",
+          "retained_heap_bytes": 32284104,
+          "seconds": 0.11230776100001094,
+          "peak_rss_kib": 110140
+        },
+        {
+          "allocated_bytes": 160716088,
+          "allocations": 46,
+          "capacity": 4035584,
+          "elements": 4000000,
+          "heap_sys_bytes": 121307136,
+          "mode": "prototype",
+          "retained_heap_bytes": 32284104,
+          "seconds": 0.10351298800014774,
+          "peak_rss_kib": 110140
+        }
+      ],
+      "medians": {
+        "seconds": 0.11230776100001094,
+        "peak_rss_kib": 110140,
+        "allocated_bytes": 160716088,
+        "allocations": 46,
+        "retained_heap_bytes": 32284104,
+        "heap_sys_bytes": 121307136
+      }
+    }
+  ]
+}
