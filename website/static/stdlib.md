@@ -2240,6 +2240,7 @@ type FileSystemError:
     case LimitExceeded
     case NotFound
     case AlreadyExists
+    case NotEmpty
     case PermissionDenied
     case Unsupported
     case Closed

@@ -2846,6 +2846,7 @@
             "LimitExceeded",
             "NotFound",
             "AlreadyExists",
+            "NotEmpty",
             "PermissionDenied",
             "Unsupported",
             "Closed",
@@ -2889,6 +2890,12 @@
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
+              "doc": ""
+            },
+            {
+              "name": "NotEmpty",
+              "kind": "case",
+              "signature": "case NotEmpty",
               "doc": ""
             },
             {
