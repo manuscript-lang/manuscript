@@ -42,6 +42,30 @@ type ArchiveEntry:
     directory: Bool
 ```
 
+### ArchiveEntry.data
+
+File contents as immutable bytes; directory entries must carry empty bytes.
+
+```manuscript
+data: Bytes
+```
+
+### ArchiveEntry.directory
+
+True for a directory entry rather than a regular file; links and special files are not supported.
+
+```manuscript
+directory: Bool
+```
+
+### ArchiveEntry.path
+
+Relative forward-slash path; pack/unpack reject traversal, absolute paths and duplicate normalized names.
+
+```manuscript
+path: String
+```
+
 ## ArchiveError
 
 **Alternative**
@@ -60,6 +84,62 @@ type ArchiveError:
 ```manuscript
 impl Error for ArchiveError:
     fn message() -> String:
+```
+
+### ArchiveError.Failed
+
+An explicit implementation-supplied archive diagnostic; native validation uses specific cases.
+
+```manuscript
+case Failed(message: String)
+```
+
+### ArchiveError.InvalidData
+
+Archive bytes, duplicate paths, extracted entry paths or encoded metadata are invalid.
+
+```manuscript
+case InvalidData
+```
+
+### ArchiveError.InvalidInput
+
+A format argument's entry paths, directory payloads or supplied output/unpack limits are invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### ArchiveError.LimitExceeded
+
+Encoded bytes, entry count or unpacked per-entry/total bytes exceed a supplied budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### ArchiveError.Unsupported
+
+The selected format or an encountered entry kind is unsupported, such as links or special files.
+
+```manuscript
+case Unsupported
+```
+
+### ArchiveError.Failed.message
+
+Original diagnostic text, returned unchanged by message().
+
+```manuscript
+message: String
+```
+
+### ArchiveError.Error.message
+
+Returns original Failed text, or an archive-prefixed diagnostic for other cases.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## ArchiveFormat
@@ -120,6 +200,30 @@ type ArchiveLimits:
     max_entries: Optional[Int] = none
     max_entry_bytes: Optional[Int] = none
     max_total_bytes: Optional[Int] = none
+```
+
+### ArchiveLimits.max_entries
+
+Maximum unpacked entries, including directories; none adds no entry-count budget.
+
+```manuscript
+max_entries: Optional[Int] = none
+```
+
+### ArchiveLimits.max_entry_bytes
+
+Maximum unpacked bytes for each entry; zero admits only empty data.
+
+```manuscript
+max_entry_bytes: Optional[Int] = none
+```
+
+### ArchiveLimits.max_total_bytes
+
+Cumulative unpacked file bytes across all entries; none adds no total-output budget.
+
+```manuscript
+max_total_bytes: Optional[Int] = none
 ```
 
 ## pack
@@ -225,6 +329,30 @@ type BinaryError:
 ```manuscript
 impl Error for BinaryError:
     fn message() -> String:
+```
+
+### BinaryError.InvalidInput
+
+Integer width is unsupported; the native codec accepts only 1, 2, 4 or 8 bytes.
+
+```manuscript
+case InvalidInput
+```
+
+### BinaryError.OutOfRange
+
+A read crosses the byte buffer or a number cannot fit the requested signedness/width or result type.
+
+```manuscript
+case OutOfRange
+```
+
+### BinaryError.Error.message
+
+Returns a binary-prefixed diagnostic without echoing source bytes or numeric input.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## read_float
@@ -1270,6 +1398,62 @@ impl Error for CompressionError:
     fn message() -> String:
 ```
 
+### CompressionError.Failed
+
+An explicit implementation-supplied compression diagnostic; native codecs use specific cases.
+
+```manuscript
+case Failed(message: String)
+```
+
+### CompressionError.InvalidData
+
+Compressed framing, checksum, payload or trailing data is invalid for the chosen format.
+
+```manuscript
+case InvalidData
+```
+
+### CompressionError.InvalidInput
+
+Compression level is outside 0..9, or a supplied encoded/decoded byte budget is negative.
+
+```manuscript
+case InvalidInput
+```
+
+### CompressionError.LimitExceeded
+
+Encoded or decompressed output exceeds the supplied byte budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### CompressionError.Unsupported
+
+A String selector is not exactly gzip, zlib or deflate; typed selectors avoid spelling errors.
+
+```manuscript
+case Unsupported
+```
+
+### CompressionError.Failed.message
+
+Original diagnostic text, returned unchanged by message().
+
+```manuscript
+message: String
+```
+
+### CompressionError.Error.message
+
+Returns original Failed text, or a compression-prefixed diagnostic for other cases.
+
+```manuscript
+fn message() -> String:
+```
+
 ## CompressionFormat
 
 **Alternative**
@@ -1369,6 +1553,38 @@ type CryptoError:
 ```manuscript
 impl Error for CryptoError:
     fn message() -> String:
+```
+
+### CryptoError.AuthenticationFailed
+
+AES-GCM authentication failed, including a wrong key, nonce, associated data or altered ciphertext.
+
+```manuscript
+case AuthenticationFailed
+```
+
+### CryptoError.InvalidInput
+
+Key/seed/nonce length, derivation iteration/count arguments or AES key size is invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### CryptoError.Unsupported
+
+The HMAC String selector is not exactly sha256, sha384 or sha512.
+
+```manuscript
+case Unsupported
+```
+
+### CryptoError.Error.message
+
+Returns a cryptography-prefixed diagnostic without exposing keys, plaintext or ciphertext.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## HashAlgorithm
@@ -1560,6 +1776,38 @@ impl Error for CsvError:
     fn message() -> String:
 ```
 
+### CsvError.InvalidData
+
+Quoting or another CSV record syntax rule is violated by the input.
+
+```manuscript
+case InvalidData
+```
+
+### CsvError.InvalidInput
+
+The delimiter, line ending or a supplied row/cell/output budget is invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### CsvError.LimitExceeded
+
+Parsed row/cell counts or the encoded output exceed a supplied budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### CsvError.Error.message
+
+Returns a CSV-prefixed diagnostic without exposing input cells or parser text.
+
+```manuscript
+fn message() -> String:
+```
+
 ## CsvOptions
 
 **Record**
@@ -1570,6 +1818,22 @@ Delimiter and line ending used when parsing or writing CSV; defaults are comma a
 type CsvOptions:
     delimiter: String = ","
     line_ending: String = "\n"
+```
+
+### CsvOptions.delimiter
+
+One non-NUL ASCII delimiter other than quote, CR or LF; defaults to comma.
+
+```manuscript
+delimiter: String = ","
+```
+
+### CsvOptions.line_ending
+
+Row terminator for encoding, either LF or CRLF; defaults to LF.
+
+```manuscript
+line_ending: String = "\n"
 ```
 
 ## parse
@@ -1708,6 +1972,38 @@ type EncodingError:
 ```manuscript
 impl Error for EncodingError:
     fn message() -> String:
+```
+
+### EncodingError.InvalidData
+
+Hexadecimal digits or strict padded Base64 syntax/characters are invalid.
+
+```manuscript
+case InvalidData
+```
+
+### EncodingError.InvalidInput
+
+A supplied decoded-output byte budget is negative.
+
+```manuscript
+case InvalidInput
+```
+
+### EncodingError.LimitExceeded
+
+The decoded byte count exceeds the supplied output budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### EncodingError.Error.message
+
+Returns an encoding-prefixed diagnostic without echoing the encoded input.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## base64_decode
@@ -2551,6 +2847,30 @@ type HtmlAttribute:
     value: String
 ```
 
+### HtmlAttribute.name
+
+Local attribute name after native HTML parsing and normalization.
+
+```manuscript
+name: String
+```
+
+### HtmlAttribute.namespace
+
+Attribute namespace prefix, or empty text for an unqualified attribute.
+
+```manuscript
+namespace: String
+```
+
+### HtmlAttribute.value
+
+Decoded attribute contents, with character references resolved.
+
+```manuscript
+value: String
+```
+
 ## HtmlError
 
 **Alternative**
@@ -2569,6 +2889,38 @@ impl Error for HtmlError:
     fn message() -> String:
 ```
 
+### HtmlError.InvalidData
+
+Input encoding or a native parser/tree conversion is invalid; HTML syntax can be recovered normally.
+
+```manuscript
+case InvalidData
+```
+
+### HtmlError.InvalidInput
+
+A supplied input-byte, tree-depth or node-count budget is negative.
+
+```manuscript
+case InvalidInput
+```
+
+### HtmlError.LimitExceeded
+
+Input bytes or the normalized returned tree exceed a supplied budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### HtmlError.Error.message
+
+Returns an HTML-prefixed diagnostic without echoing source markup.
+
+```manuscript
+fn message() -> String:
+```
+
 ## HtmlLimits
 
 **Record**
@@ -2580,6 +2932,30 @@ type HtmlLimits:
     max_bytes: Optional[Int] = none
     max_depth: Optional[Int] = none
     max_nodes: Optional[Int] = none
+```
+
+### HtmlLimits.max_bytes
+
+Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
+
+```manuscript
+max_bytes: Optional[Int] = none
+```
+
+### HtmlLimits.max_depth
+
+Maximum normalized node depth; the document is depth zero and direct children depth one.
+
+```manuscript
+max_depth: Optional[Int] = none
+```
+
+### HtmlLimits.max_nodes
+
+Maximum returned nodes, including document/text/comment/doctype and implied element nodes.
+
+```manuscript
+max_nodes: Optional[Int] = none
 ```
 
 ## HtmlNode
@@ -2595,6 +2971,126 @@ type HtmlNode:
     case Text(text: String)
     case Comment(text: String)
     case Doctype(name: String, public_id: String, system_id: String)
+```
+
+### HtmlNode.Comment
+
+An HTML comment retained as a node rather than element text.
+
+```manuscript
+case Comment(text: String)
+```
+
+### HtmlNode.Doctype
+
+A document-type declaration retained from the parsed HTML.
+
+```manuscript
+case Doctype(name: String, public_id: String, system_id: String)
+```
+
+### HtmlNode.Document
+
+Root document node, including any elements implied by HTML tree normalization.
+
+```manuscript
+case Document(children: List[HtmlNode])
+```
+
+### HtmlNode.Element
+
+An element with normalized attributes and its ordered child nodes.
+
+```manuscript
+case Element(tag: String, namespace: String, attributes: List[HtmlAttribute], children: List[HtmlNode])
+```
+
+### HtmlNode.Text
+
+Text node contents after HTML entity decoding and tree normalization.
+
+```manuscript
+case Text(text: String)
+```
+
+### HtmlNode.Comment.text
+
+Comment contents without the opening and closing comment delimiters.
+
+```manuscript
+text: String
+```
+
+### HtmlNode.Doctype.name
+
+Doctype name supplied by the native HTML parser.
+
+```manuscript
+name: String
+```
+
+### HtmlNode.Doctype.public_id
+
+Public identifier, or empty text when no public identifier is present.
+
+```manuscript
+public_id: String
+```
+
+### HtmlNode.Doctype.system_id
+
+System identifier, or empty text when no system identifier is present.
+
+```manuscript
+system_id: String
+```
+
+### HtmlNode.Document.children
+
+Direct child nodes in normalized document order.
+
+```manuscript
+children: List[HtmlNode]
+```
+
+### HtmlNode.Element.attributes
+
+Attributes in parser order, with decoded values and namespace information.
+
+```manuscript
+attributes: List[HtmlAttribute]
+```
+
+### HtmlNode.Element.children
+
+Direct child nodes in normalized tree order; mutable list storage is retained.
+
+```manuscript
+children: List[HtmlNode]
+```
+
+### HtmlNode.Element.namespace
+
+Element namespace, such as svg/math, or empty text for ordinary HTML.
+
+```manuscript
+namespace: String
+```
+
+### HtmlNode.Element.tag
+
+Local element tag name produced by the HTML parser.
+
+```manuscript
+tag: String
+```
+
+### HtmlNode.Text.text
+
+Unicode text belonging to this node, without surrounding markup.
+
+```manuscript
+text: String
 ```
 
 ## escape
@@ -3118,6 +3614,38 @@ impl Error for JsonError:
     fn message() -> String:
 ```
 
+### JsonError.InvalidData
+
+JSON syntax, Unicode escapes, duplicate keys, number text or a cyclic value is invalid.
+
+```manuscript
+case InvalidData
+```
+
+### JsonError.InvalidInput
+
+An explicit input, depth, value-count or output budget is negative.
+
+```manuscript
+case InvalidInput
+```
+
+### JsonError.LimitExceeded
+
+The input, nesting, value count or encoded output exceeds a supplied budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### JsonError.Error.message
+
+Returns a JSON-prefixed diagnostic without echoing input text or number tokens.
+
+```manuscript
+fn message() -> String:
+```
+
 ## JsonLimits
 
 **Record**
@@ -3129,6 +3657,30 @@ type JsonLimits:
     max_bytes: Optional[Int] = none
     max_depth: Optional[Int] = none
     max_values: Optional[Int] = none
+```
+
+### JsonLimits.max_bytes
+
+Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
+
+```manuscript
+max_bytes: Optional[Int] = none
+```
+
+### JsonLimits.max_depth
+
+Maximum container nesting; a root scalar has depth zero, and a root container depth one.
+
+```manuscript
+max_depth: Optional[Int] = none
+```
+
+### JsonLimits.max_values
+
+Maximum parsed containers and scalar values, excluding object keys; none adds no count budget.
+
+```manuscript
+max_values: Optional[Int] = none
 ```
 
 ## JsonValue
@@ -3145,6 +3697,94 @@ type JsonValue:
     case StringValue(value: String)
     case ArrayValue(values: List[JsonValue])
     case ObjectValue(values: Map[String, JsonValue])
+```
+
+### JsonValue.ArrayValue
+
+An ordered JSON array whose mutable list can be updated before serialization.
+
+```manuscript
+case ArrayValue(values: List[JsonValue])
+```
+
+### JsonValue.BoolValue
+
+A JSON true or false value.
+
+```manuscript
+case BoolValue(value: Bool)
+```
+
+### JsonValue.Null
+
+JSON null, represented without a payload value.
+
+```manuscript
+case Null
+```
+
+### JsonValue.NumberValue
+
+An exact JSON number token; parsing does not coerce it into Float.
+
+```manuscript
+case NumberValue(text: String)
+```
+
+### JsonValue.ObjectValue
+
+A JSON object retaining insertion order and rejecting duplicate keys during parsing.
+
+```manuscript
+case ObjectValue(values: Map[String, JsonValue])
+```
+
+### JsonValue.StringValue
+
+A decoded JSON string, with escapes resolved into Unicode text.
+
+```manuscript
+case StringValue(value: String)
+```
+
+### JsonValue.ArrayValue.values
+
+Element values in source order; nested mutable payloads retain their references.
+
+```manuscript
+values: List[JsonValue]
+```
+
+### JsonValue.BoolValue.value
+
+The decoded boolean, without a textual representation requirement.
+
+```manuscript
+value: Bool
+```
+
+### JsonValue.NumberValue.text
+
+Original numeric token text; stringify validates its JSON number syntax.
+
+```manuscript
+text: String
+```
+
+### JsonValue.ObjectValue.values
+
+String-keyed members in insertion order; stringify reads their current values.
+
+```manuscript
+values: Map[String, JsonValue]
+```
+
+### JsonValue.StringValue.value
+
+Decoded UTF-8 text, preserving scalar contents without normalization.
+
+```manuscript
+value: String
 ```
 
 ## parse
@@ -4218,6 +4858,22 @@ impl Error for PathError:
     fn message() -> String:
 ```
 
+### PathError.InvalidInput
+
+Invalid NUL input, a nonabsolute resolve/relative anchor or malformed glob syntax.
+
+```manuscript
+case InvalidInput
+```
+
+### PathError.Error.message
+
+Returns a path-prefixed diagnostic without revealing the supplied paths or pattern.
+
+```manuscript
+fn message() -> String:
+```
+
 ## PathOperations
 
 **Interface**
@@ -4243,6 +4899,127 @@ interface PathOperations:
     fn matches_glob(path: String, pattern: String) -> Result[Bool, PathError]
 ```
 
+### PathOperations.basename
+
+Returns the last component after ignoring trailing separators under this view's path rules.
+
+```manuscript
+fn basename(path: String) -> String
+```
+
+### PathOperations.basename_without
+
+Removes an exact suffix under basename compatibility rules; it does not strip arbitrary extensions.
+
+```manuscript
+fn basename_without(path: String, suffix: String) -> String
+```
+
+### PathOperations.delimiter
+
+Returns colon for POSIX or semicolon for Windows path-list entries.
+
+```manuscript
+fn delimiter() -> String
+```
+
+### PathOperations.dirname
+
+Returns the directory component using the selected POSIX or Windows convention.
+
+```manuscript
+fn dirname(path: String) -> String
+```
+
+### PathOperations.extension
+
+Returns the final dot extension, or empty text for extensionless names and simple dotfiles.
+
+```manuscript
+fn extension(path: String) -> String
+```
+
+### PathOperations.format
+
+Builds a path with directory preferred over root, and base preferred over name plus extension.
+
+```manuscript
+fn format(parts: PathParts) -> String
+```
+
+### PathOperations.is_absolute
+
+Tests absolute-root syntax; a Windows drive-relative spelling is not absolute.
+
+```manuscript
+fn is_absolute(path: String) -> Bool
+```
+
+### PathOperations.join
+
+Joins nonempty parts and normalizes separators/dot segments without filesystem access.
+
+```manuscript
+fn join(parts: List[String]) -> String
+```
+
+### PathOperations.matches_glob
+
+Tests one lexical path against the supported glob syntax; malformed patterns return InvalidInput.
+
+```manuscript
+fn matches_glob(path: String, pattern: String) -> Result[Bool, PathError]
+```
+
+### PathOperations.normalize
+
+Cleans repeated separators and dot segments lexically; it does not resolve symlinks.
+
+```manuscript
+fn normalize(path: String) -> String
+```
+
+### PathOperations.parse
+
+Splits the original spelling into root, directory, base, extension and name without filesystem access.
+
+```manuscript
+fn parse(path: String) -> PathParts
+```
+
+### PathOperations.relative
+
+Computes a lexical relative path from absolute anchors; different roots return the original target.
+Nonabsolute anchors or invalid NUL input return InvalidInput.
+
+```manuscript
+fn relative(base: String, target: String) -> Result[String, PathError]
+```
+
+### PathOperations.resolve
+
+Resolves parts against an explicit absolute base; no process working directory is consulted.
+
+```manuscript
+fn resolve(base: String, parts: List[String]) -> Result[String, PathError]
+```
+
+### PathOperations.separator
+
+Returns slash for POSIX or backslash for Windows path components.
+
+```manuscript
+fn separator() -> String
+```
+
+### PathOperations.to_namespaced_path
+
+Returns a Windows namespaced absolute path when applicable; POSIX paths are unchanged.
+
+```manuscript
+fn to_namespaced_path(path: String) -> String
+```
+
 ## PathParts
 
 **Record**
@@ -4256,6 +5033,46 @@ type PathParts:
     base: String
     extension: String
     name: String
+```
+
+### PathParts.base
+
+Final component with extension; it takes precedence over name/extension during format.
+
+```manuscript
+base: String
+```
+
+### PathParts.directory
+
+Directory portion, including the root when present; it takes precedence over root during format.
+
+```manuscript
+directory: String
+```
+
+### PathParts.extension
+
+Final extension including its dot; simple dotfiles and dot/dot-dot components have no extension.
+
+```manuscript
+extension: String
+```
+
+### PathParts.name
+
+Final component with its extension removed, retaining the original spelling.
+
+```manuscript
+name: String
+```
+
+### PathParts.root
+
+Root prefix under the chosen path rules, including a POSIX slash or Windows drive/UNC root.
+
+```manuscript
+root: String
 ```
 
 ## basename
@@ -4957,6 +5774,23 @@ type Regex:
     fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
 ```
 
+### Regex.find_all
+
+Returns nonoverlapping full-match text in occurrence order, excluding capture groups.
+A supplied cap is a strict budget, not truncation; zero-width matches follow native regexp rules.
+
+```manuscript
+fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
+```
+
+### Regex.matches
+
+Tests whether any match occurs; anchor the pattern explicitly to require a whole-string match.
+
+```manuscript
+fn matches(text: String) -> Bool:
+```
+
 ### Regex.replace
 
 Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
@@ -4967,7 +5801,7 @@ fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -
 
 ### Regex.replace_all
 
-Replaces every nonoverlapping match with literal replacement text (no capture expansion).
+Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.
 max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
 
 ```manuscript
@@ -4990,6 +5824,38 @@ type RegexError:
 ```manuscript
 impl Error for RegexError:
     fn message() -> String:
+```
+
+### RegexError.InvalidData
+
+Pattern syntax is invalid for the native RE2-compatible regular-expression engine.
+
+```manuscript
+case InvalidData
+```
+
+### RegexError.InvalidInput
+
+A supplied match-count or output-byte budget is negative.
+
+```manuscript
+case InvalidInput
+```
+
+### RegexError.LimitExceeded
+
+More matches exist than permitted, or replacement output exceeds its byte budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### RegexError.Error.message
+
+Returns a regular-expression-prefixed diagnostic without echoing pattern or input text.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## compile
@@ -5198,12 +6064,27 @@ fn normalize(text: String, max_bytes: Optional[Int] = none) -> Result[String, St
 **Native type**
 
 Mutable builder for constructing a string without repeated intermediate copies.
-Mutable builder for constructing a string without repeated intermediate copies.
 
 ```manuscript
 type StringBuilder:
     fn append(value: String) -> Unit:
     fn freeze() -> String:
+```
+
+### StringBuilder.append
+
+Appends the supplied text in order; mutation after freeze raises a sealed-builder fault.
+
+```manuscript
+fn append(value: String) -> Unit:
+```
+
+### StringBuilder.freeze
+
+Seals the builder and returns immutable text; repeated freeze returns the same text value.
+
+```manuscript
+fn freeze() -> String:
 ```
 
 ## StringError
@@ -5223,6 +6104,54 @@ type StringError:
 ```manuscript
 impl Error for StringError:
     fn message() -> String:
+```
+
+### StringError.Failed
+
+A string-domain failure with an explicit diagnostic supplied by an implementation.
+
+```manuscript
+case Failed(message: String)
+```
+
+### StringError.InvalidInput
+
+Scalar values, normalization form or a supplied repeat/padding/output budget is invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### StringError.LimitExceeded
+
+UTF-8 output exceeds a supplied byte budget or the native string allocation limit.
+
+```manuscript
+case LimitExceeded
+```
+
+### StringError.OutOfRange
+
+A strict scalar slice bound lies outside the string or its range is inverted.
+
+```manuscript
+case OutOfRange
+```
+
+### StringError.Failed.message
+
+Original diagnostic text, returned unchanged by message().
+
+```manuscript
+message: String
+```
+
+### StringError.Error.message
+
+Returns original Failed text, or a string-prefixed diagnostic for other cases.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## from_scalars
@@ -6082,6 +7011,62 @@ impl Error for TomlError:
     fn message() -> String:
 ```
 
+### TomlError.InvalidData
+
+Invalid syntax, duplicate/conflicting keys, unsupported value forms or numeric range failures.
+
+```manuscript
+case InvalidData(line: Int, column: Int, reason: String)
+```
+
+### TomlError.InvalidInput
+
+One of the supplied input-byte, depth or value-count limits is negative.
+
+```manuscript
+case InvalidInput
+```
+
+### TomlError.LimitExceeded
+
+Input, nesting or parsed/returned value counts exceed a supplied budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### TomlError.InvalidData.column
+
+One-based Unicode scalar column after CRLF normalization.
+
+```manuscript
+column: Int
+```
+
+### TomlError.InvalidData.line
+
+One-based line of the invalid token or conflicting construct.
+
+```manuscript
+line: Int
+```
+
+### TomlError.InvalidData.reason
+
+Parser diagnostic describing the rejected TOML construct.
+
+```manuscript
+reason: String
+```
+
+### TomlError.Error.message
+
+Formats the source line, scalar column and parser reason for a malformed document.
+
+```manuscript
+fn message() -> String:
+```
+
 ## TomlLimits
 
 **Record**
@@ -6093,6 +7078,30 @@ type TomlLimits:
     max_bytes: Optional[Int]
     max_depth: Optional[Int]
     max_values: Optional[Int]
+```
+
+### TomlLimits.max_bytes
+
+Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
+
+```manuscript
+max_bytes: Optional[Int]
+```
+
+### TomlLimits.max_depth
+
+Maximum value depth, including scalar leaves and implicit tables, with the root at one.
+
+```manuscript
+max_depth: Optional[Int]
+```
+
+### TomlLimits.max_values
+
+Maximum containers and leaves, excluding keys; checked during parsing and materialization.
+
+```manuscript
+max_values: Optional[Int]
 ```
 
 ## TomlValue
@@ -6110,6 +7119,118 @@ type TomlValue:
     case DateTimeValue(text: String)
     case ArrayValue(values: List[TomlValue])
     case TableValue(values: Map[String, TomlValue])
+```
+
+### TomlValue.ArrayValue
+
+An ordered array; elements can have different TOML value kinds.
+
+```manuscript
+case ArrayValue(values: List[TomlValue])
+```
+
+### TomlValue.BoolValue
+
+A TOML true or false value; other capitalizations are invalid.
+
+```manuscript
+case BoolValue(value: Bool)
+```
+
+### TomlValue.DateTimeValue
+
+A validated local/offset date or time token, retained as text.
+
+```manuscript
+case DateTimeValue(text: String)
+```
+
+### TomlValue.FloatValue
+
+A parsed floating-point number, including TOML infinity and NaN spellings.
+
+```manuscript
+case FloatValue(value: Float)
+```
+
+### TomlValue.IntValue
+
+A parsed whole number; out-of-range input is rejected rather than truncated.
+
+```manuscript
+case IntValue(value: Int)
+```
+
+### TomlValue.StringValue
+
+Text decoded from TOML basic or literal string syntax.
+
+```manuscript
+case StringValue(value: String)
+```
+
+### TomlValue.TableValue
+
+An insertion-ordered table; parse returns this case even for an empty document.
+
+```manuscript
+case TableValue(values: Map[String, TomlValue])
+```
+
+### TomlValue.ArrayValue.values
+
+Element values in document order, with ordinary mutable list storage.
+
+```manuscript
+values: List[TomlValue]
+```
+
+### TomlValue.BoolValue.value
+
+The decoded boolean from the lowercase TOML token.
+
+```manuscript
+value: Bool
+```
+
+### TomlValue.DateTimeValue.text
+
+Original accepted TOML date/time spelling, without a timezone conversion.
+
+```manuscript
+text: String
+```
+
+### TomlValue.FloatValue.value
+
+Numeric value of the accepted floating token, preserving signed zero.
+
+```manuscript
+value: Float
+```
+
+### TomlValue.IntValue.value
+
+Exact signed integer value of the accepted TOML numeric token.
+
+```manuscript
+value: Int
+```
+
+### TomlValue.StringValue.value
+
+Unicode contents after the applicable escapes and multiline rules.
+
+```manuscript
+value: String
+```
+
+### TomlValue.TableValue.values
+
+String-keyed entries produced by assignments, dotted keys and table headers.
+
+```manuscript
+values: Map[String, TomlValue]
 ```
 
 ## parse
@@ -6138,6 +7259,22 @@ type QueryEntry:
     value: String
 ```
 
+### QueryEntry.key
+
+Decoded query key; duplicate keys retain separate entries in input order.
+
+```manuscript
+key: String
+```
+
+### QueryEntry.value
+
+Decoded query value; a bare key has an empty value and plus decodes as a space.
+
+```manuscript
+value: String
+```
+
 ## Url
 
 **Record**
@@ -6152,6 +7289,54 @@ type Url:
     path: String
     query: String
     fragment: String
+```
+
+### Url.fragment
+
+Decoded fragment contents without the leading hash mark.
+
+```manuscript
+fragment: String
+```
+
+### Url.host
+
+Lowercased hostname, excluding the port and IPv6 brackets; user information is rejected.
+
+```manuscript
+host: String
+```
+
+### Url.path
+
+Escaped path text, retaining escaped separators; format validates its percent escapes and UTF-8.
+
+```manuscript
+path: String
+```
+
+### Url.port
+
+Explicit numeric port in 0..65535, or none when the input has no port.
+
+```manuscript
+port: Optional[Int]
+```
+
+### Url.query
+
+Encoded query contents without the leading question mark; parse_query decodes individual entries.
+
+```manuscript
+query: String
+```
+
+### Url.scheme
+
+URL scheme, lowercased during parsing; native parse rejects missing schemes and opaque URLs.
+
+```manuscript
+scheme: String
 ```
 
 ## UrlError
@@ -6170,6 +7355,38 @@ type UrlError:
 ```manuscript
 impl Error for UrlError:
     fn message() -> String:
+```
+
+### UrlError.InvalidData
+
+URL text, escaped bytes, port syntax or a relative reference is invalid or unsupported.
+
+```manuscript
+case InvalidData
+```
+
+### UrlError.InvalidInput
+
+Constructed URL components or a supplied query-entry budget are invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### UrlError.LimitExceeded
+
+The decoded query has more entries than its supplied budget permits.
+
+```manuscript
+case LimitExceeded
+```
+
+### UrlError.Error.message
+
+Returns a URL-prefixed diagnostic without echoing addresses, query values or credentials.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## decode_component
@@ -6332,6 +7549,86 @@ impl Error for YamlError:
     fn message() -> String:
 ```
 
+### YamlError.InvalidData
+
+Malformed YAML or a form outside the supported parser's accepted grammar.
+
+```manuscript
+case InvalidData(line: Int, column: Int, reason: String)
+```
+
+### YamlError.InvalidInput
+
+One of the supplied byte, depth or value-count limits is negative.
+
+```manuscript
+case InvalidInput
+```
+
+### YamlError.LimitExceeded
+
+Parsing or validating the returned alias-expanded tree exceeds a supplied budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### YamlError.UnsupportedFeature
+
+An explicit tag, complex key or directive unsupported by this configuration parser.
+
+```manuscript
+case UnsupportedFeature(line: Int, reason: String)
+```
+
+### YamlError.InvalidData.column
+
+One-based Unicode scalar column within that source line.
+
+```manuscript
+column: Int
+```
+
+### YamlError.InvalidData.line
+
+One-based source line of the offending token or construct.
+
+```manuscript
+line: Int
+```
+
+### YamlError.InvalidData.reason
+
+Parser diagnostic describing the malformed construct.
+
+```manuscript
+reason: String
+```
+
+### YamlError.UnsupportedFeature.line
+
+One-based source line where the unsupported construct appears.
+
+```manuscript
+line: Int
+```
+
+### YamlError.UnsupportedFeature.reason
+
+Diagnostic identifying the unsupported syntax or feature.
+
+```manuscript
+reason: String
+```
+
+### YamlError.Error.message
+
+Formats parser positions and reason text; match the typed fields for programmatic handling.
+
+```manuscript
+fn message() -> String:
+```
+
 ## YamlLimits
 
 **Record**
@@ -6343,6 +7640,30 @@ type YamlLimits:
     max_bytes: Optional[Int]
     max_depth: Optional[Int]
     max_values: Optional[Int]
+```
+
+### YamlLimits.max_bytes
+
+Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
+
+```manuscript
+max_bytes: Optional[Int]
+```
+
+### YamlLimits.max_depth
+
+Maximum value depth, including scalar leaves, with the root at one.
+
+```manuscript
+max_depth: Optional[Int]
+```
+
+### YamlLimits.max_values
+
+Maximum containers and leaves, excluding keys; aliases count at each checked occurrence.
+
+```manuscript
+max_values: Optional[Int]
 ```
 
 ## YamlValue
@@ -6359,6 +7680,94 @@ type YamlValue:
     case StringValue(value: String)
     case ArrayValue(values: List[YamlValue])
     case ObjectValue(values: Map[String, YamlValue])
+```
+
+### YamlValue.ArrayValue
+
+An ordered YAML sequence with ordinary mutable list storage.
+
+```manuscript
+case ArrayValue(values: List[YamlValue])
+```
+
+### YamlValue.BoolValue
+
+A core-schema true or false value; yes and no remain strings.
+
+```manuscript
+case BoolValue(value: Bool)
+```
+
+### YamlValue.Null
+
+YAML null, including an empty document or a plain null spelling.
+
+```manuscript
+case Null
+```
+
+### YamlValue.NumberValue
+
+Numeric token text retained exactly instead of being coerced into Float.
+
+```manuscript
+case NumberValue(text: String)
+```
+
+### YamlValue.ObjectValue
+
+A textual-key mapping, with insertion order and duplicate-key checks.
+
+```manuscript
+case ObjectValue(values: Map[String, YamlValue])
+```
+
+### YamlValue.StringValue
+
+Text decoded from a quoted, plain or block scalar.
+
+```manuscript
+case StringValue(value: String)
+```
+
+### YamlValue.ArrayValue.values
+
+Sequence entries in document order, retaining nested references.
+
+```manuscript
+values: List[YamlValue]
+```
+
+### YamlValue.BoolValue.value
+
+The decoded boolean selected from YAML core-schema spellings.
+
+```manuscript
+value: Bool
+```
+
+### YamlValue.NumberValue.text
+
+Original numeric spelling, including supported base prefixes and nonfinite spellings.
+
+```manuscript
+text: String
+```
+
+### YamlValue.ObjectValue.values
+
+Decoded string keys and their values; aliases may share nested payloads.
+
+```manuscript
+values: Map[String, YamlValue]
+```
+
+### YamlValue.StringValue.value
+
+Resulting Unicode text after escape decoding, folding and chomping.
+
+```manuscript
+value: String
 ```
 
 ## parse

@@ -22,6 +22,38 @@ impl Error for CryptoError:
     fn message() -> String:
 ```
 
+### CryptoError.AuthenticationFailed
+
+AES-GCM authentication failed, including a wrong key, nonce, associated data or altered ciphertext.
+
+```manuscript
+case AuthenticationFailed
+```
+
+### CryptoError.InvalidInput
+
+Key/seed/nonce length, derivation iteration/count arguments or AES key size is invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### CryptoError.Unsupported
+
+The HMAC String selector is not exactly sha256, sha384 or sha512.
+
+```manuscript
+case Unsupported
+```
+
+### CryptoError.Error.message
+
+Returns a cryptography-prefixed diagnostic without exposing keys, plaintext or ciphertext.
+
+```manuscript
+fn message() -> String:
+```
+
 ## HashAlgorithm {data-api-kind="Alternative"}
 
 Selects a supported SHA-2 algorithm without a runtime string spelling check.

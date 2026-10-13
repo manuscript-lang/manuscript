@@ -17,6 +17,30 @@ type ArchiveEntry:
     directory: Bool
 ```
 
+### ArchiveEntry.data
+
+File contents as immutable bytes; directory entries must carry empty bytes.
+
+```manuscript
+data: Bytes
+```
+
+### ArchiveEntry.directory
+
+True for a directory entry rather than a regular file; links and special files are not supported.
+
+```manuscript
+directory: Bool
+```
+
+### ArchiveEntry.path
+
+Relative forward-slash path; pack/unpack reject traversal, absolute paths and duplicate normalized names.
+
+```manuscript
+path: String
+```
+
 ## ArchiveError {data-api-kind="Alternative"}
 
 Errors returned when an archive cannot be read or written.
@@ -33,6 +57,62 @@ type ArchiveError:
 ```manuscript
 impl Error for ArchiveError:
     fn message() -> String:
+```
+
+### ArchiveError.Failed
+
+An explicit implementation-supplied archive diagnostic; native validation uses specific cases.
+
+```manuscript
+case Failed(message: String)
+```
+
+### ArchiveError.InvalidData
+
+Archive bytes, duplicate paths, extracted entry paths or encoded metadata are invalid.
+
+```manuscript
+case InvalidData
+```
+
+### ArchiveError.InvalidInput
+
+A format argument's entry paths, directory payloads or supplied output/unpack limits are invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### ArchiveError.LimitExceeded
+
+Encoded bytes, entry count or unpacked per-entry/total bytes exceed a supplied budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### ArchiveError.Unsupported
+
+The selected format or an encountered entry kind is unsupported, such as links or special files.
+
+```manuscript
+case Unsupported
+```
+
+### ArchiveError.Failed.message
+
+Original diagnostic text, returned unchanged by message().
+
+```manuscript
+message: String
+```
+
+### ArchiveError.Error.message
+
+Returns original Failed text, or an archive-prefixed diagnostic for other cases.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## ArchiveFormat {data-api-kind="Alternative"}
@@ -89,6 +169,30 @@ type ArchiveLimits:
     max_entries: Optional[Int] = none
     max_entry_bytes: Optional[Int] = none
     max_total_bytes: Optional[Int] = none
+```
+
+### ArchiveLimits.max_entries
+
+Maximum unpacked entries, including directories; none adds no entry-count budget.
+
+```manuscript
+max_entries: Optional[Int] = none
+```
+
+### ArchiveLimits.max_entry_bytes
+
+Maximum unpacked bytes for each entry; zero admits only empty data.
+
+```manuscript
+max_entry_bytes: Optional[Int] = none
+```
+
+### ArchiveLimits.max_total_bytes
+
+Cumulative unpacked file bytes across all entries; none adds no total-output budget.
+
+```manuscript
+max_total_bytes: Optional[Int] = none
 ```
 
 ## pack {data-api-kind="Function"}
