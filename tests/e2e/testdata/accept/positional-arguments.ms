@@ -229,3 +229,16 @@ test "callable expression precedes positional arguments":
         mark(counter, 3)
     )
     if result != -1 or counter.value != 123: return panic("callable expression order")
+
+test "mutable callable value is captured before arguments":
+    var selected = subtract
+    let result = selected(
+        match some(0):
+            some(_):
+                selected = fn(amount: Int, deduction: Int) -> Int: amount + deduction
+                10
+            none: 10
+        ,
+        3
+    )
+    if result != 7: return panic("callable value captured after argument")

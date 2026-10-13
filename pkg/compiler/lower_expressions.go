@@ -14,7 +14,10 @@ import (
 func (g *generator) arguments(args []syntax.Argument) ast.Expr {
 	var values []ast.Expr
 	for _, a := range args {
-		values = append(values, composite(nil, keyed("Name", textLiteral(a.Name)), keyed("Value", g.argumentValue(a))))
+		// Go orders calls, but a later argument can mutate a plain local value.
+		// Capture each supplied value before evaluating the next argument.
+		value := runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(a.Pos.String()), g.argumentValue(a))
+		values = append(values, composite(nil, keyed("Name", textLiteral(a.Name)), keyed("Value", value)))
 	}
 	return sliceLiteral(runtimeName("Argument"), values...)
 }
@@ -176,7 +179,8 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 				}
 			}
 		} else {
-			callable = g.expression(e.Left)
+			// Capture a dynamic callable before arguments that may replace it.
+			callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.expression(e.Left))
 		}
 		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 	case syntax.KindList:
