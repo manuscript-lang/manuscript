@@ -18,6 +18,23 @@ type Regex:
     fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
 ```
 
+### Regex.replace
+
+Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
+
+```manuscript
+fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+```
+
+### Regex.replace_all
+
+Replaces every nonoverlapping match with literal replacement text (no capture expansion).
+max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
+
+```manuscript
+fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+```
+
 ## RegexError {data-api-kind="Alternative"}
 
 Errors returned for invalid patterns or configured result limits.

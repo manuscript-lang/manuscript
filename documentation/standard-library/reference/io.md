@@ -68,6 +68,14 @@ interface WriteStream:
     fn write(data: Bytes) -> Result[Unit, IoError]
 ```
 
+### WriteStream.write
+
+Accepts the complete input on success; a source implementation may buffer until flush.
+
+```manuscript
+fn write(data: Bytes) -> Result[Unit, IoError]
+```
+
 ## copy {data-api-kind="Function"}
 
 Copies bytes until end of input or the supplied byte limit; returns bytes copied.
