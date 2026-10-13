@@ -40,7 +40,7 @@ func (g *generator) primitiveEquality(e *syntax.Expression) ast.Expr {
 	}
 	// Operands that cannot be changed by the other operand compare directly.
 	if isLiteral(e.Left) || isLiteral(e.Right) || g.effectFree(e.Left) && g.effectFree(e.Right) {
-		return sourceAt(e.Pos, &ast.BinaryExpr{X: paren(g.scalar(e.Left, typ)), Op: op, Y: paren(g.scalar(e.Right, typ))})
+		return &ast.BinaryExpr{X: paren(g.scalar(e.Left, typ)), Op: op, Y: paren(g.scalar(e.Right, typ))}
 	}
 	// Capture once in source order. A Go binary expression can read an earlier
 	// local after a later operand's call/match has mutated it. The explicit

@@ -26,7 +26,7 @@ fn fraction(value: Float) -> Float:
 			t.Fatalf("numeric hot path still contains %s", forbidden)
 		}
 	}
-	for _, required := range []string{"int64(-9223372036854775808)", "int64(9)", "rt.IntAdd(", "rt.IntSubtract(", "rt.IntMultiply(", "rt.IntDivide(", "rt.IntRemainder(", "rt.FloatValue("} {
+	for _, required := range []string{"int64(-9223372036854775808)", "int64(9)", "rt.IntAddAt(", "rt.IntSubtractAt(", "rt.IntMultiplyAt(", "rt.IntDivideAt(", "rt.IntRemainderAt(", "rt.FloatValue("} {
 		if !strings.Contains(result.Source, required) {
 			t.Fatalf("missing typed lowering %s", required)
 		}

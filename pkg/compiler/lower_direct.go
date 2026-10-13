@@ -175,13 +175,29 @@ func (g *generator) directCall(e *syntax.Expression) ast.Expr {
 	}
 	values := []ast.Expr{ident("ctx")}
 	for i, arg := range args {
-		// A later match argument can reassign a local used by an earlier
-		// argument. Force each value's capture before evaluating the next.
+		var value ast.Expr
 		if typ := direct.params[i]; typ != "" {
-			values = append(values, sourceAt(arg.Pos, g.scalar(arg.Value, typ)))
+			value = g.scalar(arg.Value, typ)
 		} else {
-			values = append(values, sourceAt(arg.Pos, g.argumentValue(arg)))
+			value = g.argumentValue(arg)
+		}
+		// A later match argument can reassign a local used by an earlier
+		// argument. Force each value's capture before evaluating the next,
+		// unless nothing after it can run code.
+		if g.exprFree(arg.Value) && g.restFree(args[i+1:]) {
+			values = append(values, value)
+		} else {
+			values = append(values, sourceAt(arg.Pos, value))
 		}
 	}
 	return g.locatedOperation(e, ident(direct.name), values...)
+}
+
+func (g *generator) restFree(args []syntax.Argument) bool {
+	for _, a := range args {
+		if !g.exprFree(a.Value) {
+			return false
+		}
+	}
+	return true
 }

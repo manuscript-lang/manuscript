@@ -26,8 +26,9 @@ func (g *generator) numericBinary(e *syntax.Expression) ast.Expr {
 		return &ast.BinaryExpr{X: a, Op: op, Y: b}
 	case "+", "-", "*", "/", "%":
 		if left.ID == "Int" {
-			operation := map[string]string{"+": "IntAdd", "-": "IntSubtract", "*": "IntMultiply", "/": "IntDivide", "%": "IntRemainder"}[e.Text]
-			return g.locatedOperation(e, runtimeName(operation), a, b)
+			// The operation's site travels with it and is recorded only on a fault.
+			operation := map[string]string{"+": "IntAddAt", "-": "IntSubtractAt", "*": "IntMultiplyAt", "/": "IntDivideAt", "%": "IntRemainderAt"}[e.Text]
+			return runtimeCall(operation, a, b, address(ident("sourcePosition")), textLiteral(e.Pos.String()))
 		}
 		if e.Text != "%" {
 			// Explicit rounding preserves each source operation even on FMA targets.

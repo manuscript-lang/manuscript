@@ -11,7 +11,9 @@ import (
 func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 	var out []ast.Stmt
 	for _, s := range body {
-		out = append(out, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String())))
+		if !g.positionFree(s) {
+			out = append(out, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String())))
+		}
 		statements := g.statement(s)
 		statements[0] = g.locatedStatement(s.Pos, statements[0])
 		out = append(out, statements...)
@@ -130,18 +132,21 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
 		g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
 		var loop ast.Stmt
+		tick := g.temp()
+		poll := evaluated(runtimeCall("Poll", ident("ctx"), address(ident(tick))))
 		if s.Kind == syntax.KindWhile {
-			body = append([]ast.Stmt{evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
+			body = append([]ast.Stmt{poll}, body...)
 			loop = &ast.ForStmt{Cond: g.condition(s.Value), Body: block(body...)}
 		} else {
 			b := g.program.LoopBindings[s]
-			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
+			body = append([]ast.Stmt{discard(ident(b.ID)), poll}, body...)
 			loop = &ast.RangeStmt{Key: ident("_"), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
 		}
 		if label.used {
 			loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
 		}
-		return []ast.Stmt{loop}
+		// The counter limits cancellation checks to every 64th iteration.
+		return []ast.Stmt{block(variableStmt(tick, ident("uint32")), loop)}
 	case syntax.KindWith:
 		b := g.program.LoopBindings[s]
 		cleanup := g.temp()
@@ -274,4 +279,38 @@ func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr) {
 	}
 	pre := []ast.Stmt{define(tmp, &ast.TypeAssertExpr{X: g.expression(e.Right), Type: runtimeName("Alternative")}), check}
 	return pre, index(selector(ident(tmp), "Fields"), intLiteral(0))
+}
+
+// positionFree reports whether a statement needs no frame position: it runs
+// no call and no operation that does not carry its own site, so nothing in
+// it can report the enclosing function's position. Scalar arithmetic over
+// typed locals records its own site if it faults.
+func (g *generator) positionFree(s *syntax.Statement) bool {
+	if len(g.cleanups) > 0 {
+		return false
+	}
+	switch s.Kind {
+	case syntax.KindBind:
+		return s.Pattern != nil && s.Pattern.Kind == syntax.KindName && scalarBinding(g.program.Bindings[s.Pattern]) != "" && g.exprFree(s.Value)
+	case syntax.KindAssign:
+		return s.Target == nil && g.typed[g.program.Assignments[s.Value]] != "" && g.exprFree(s.Value)
+	case syntax.KindIf, syntax.KindWhile:
+		return g.exprFree(s.Value)
+	}
+	return false
+}
+
+// exprFree reports whether e is built only from literals, typed locals, and
+// scalar operations, so lowering it runs no call and no unlocated operation.
+func (g *generator) exprFree(e *syntax.Expression) bool {
+	if e == nil || g.nativeType(e) == "" {
+		return false
+	}
+	switch e.Kind {
+	case syntax.KindNumber, syntax.KindBool, syntax.KindName:
+		return true
+	case syntax.KindBinary:
+		return g.exprFree(e.Left) && g.exprFree(e.Right)
+	}
+	return false
 }
