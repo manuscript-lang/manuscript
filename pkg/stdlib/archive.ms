@@ -23,14 +23,15 @@ export type ArchiveLimits:
     max_entry_bytes: Optional[Int] = none
     max_total_bytes: Optional[Int] = none
 
-# Encodes entries as `zip` or `tar` bytes. `max_bytes` bounds output when supplied.
+# Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.
 export fn pack(
     entries: List[ArchiveEntry],
     format: String,
     max_bytes: Optional[Int] = none
 ) -> Result[Bytes, ArchiveError]:
 
-# Decodes `zip` or `tar` bytes and applies each supplied entry and total-size limit.
+# Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.
+# Applies each supplied entry and total-size limit.
 export fn unpack(
     data: Bytes,
     format: String,

@@ -48,15 +48,34 @@ Commands return buffered output. Interactive child-process streams are not avail
 
 ## Current process control
 
-Import `control()` from `@std/process.ms` to query or change the current process. Its [reference](reference/process.md) lists directory, environment, identity, resource, and signal operations. Directory and environment changes affect subsequent host calls; CLI argument and environment accessors retain their startup snapshots.
+Import `control()` from `@std/process.ms` to query or change the current process. Its [reference](reference/process.md) lists directory, environment, identity, resource, and signal operations. Directory and environment changes affect subsequent host calls.
 
-`memory_usage` reports the runtime heap and resident-process memory. `load_environment` accepts an optional `export` prefix, quoted multiline values, and comments outside quotes. It validates every entry before writing; existing variables win. `umask` returns the previous mask. Identity, permission, and priority changes are subject to OS policy.
+| View | Contract |
+| --- | --- |
+| `cli.arguments()` | Host-supplied startup tail, excluding the executable; test roots supply an empty list. |
+| `ProcessInfo.arguments` | Native `os.Args` read by `info()`, including `argv[0]`; it is not the CLI accessor's supplied tail. |
+| `cli.environment()` | Startup map retained by the execution's host roots. Repeated calls return the same mutable map. |
+| `System.environment(name)` | Live OS lookup; absent or non-UTF-8 values return `none`. |
+| `ProcessControl.environment()` | Fresh live OS map; non-UTF-8 entries return `ProcessError.Unsupported`. |
+| `set_environment` / `load_environment` | Mutate the live process environment. They do not refresh the CLI map. |
+| `System.working_directory()` | Live cwd on CLI roots, fixed base on a host constructed with a directory; an OS failure faults. |
+| `ProcessControl.working_directory()` | Live cwd query whose failures are `ProcessError` values. |
+
+The CLI list/map can be changed through ordinary collection mutation; that changes the retained view, not native argv or environment. Clone them when a separate snapshot is required. Directory/environment mutation is process-wide, so concurrent operations can observe changes.
+
+`memory_usage` reports the runtime heap and resident-process memory. `load_environment` accepts an optional `export` prefix, quoted multiline values, and comments outside quotes. It validates every entry before writing; existing variables win. `umask` accepts `0..511` (`0777`) and returns the previous mask. `set_identity` accepts exactly the case-sensitive strings `uid`, `gid`, `euid`, and `egid`, with IDs in `0..2147483647`; other input returns `InvalidInput`. Identity, permission, and priority changes are subject to OS policy.
 
 Linux and macOS support process resource accounting, identities, groups, and umask. Windows supports resource accounting, console titles, and native priority classes; identity/group/umask changes and executable replacement return `Unsupported`.
 
+## Process time and accounting
+
+`uptime()` is a Duration measured since native runtime initialization. `monotonic_time()` is the same elapsed span as an Int in **nanoseconds**, with the same runtime-initialization origin. It is not a Unix timestamp, CPU time, or an Instant from a Clock. `SystemMetrics.uptime` instead measures host boot uptime, at whole-second native resolution. Prefer `clock().now()` and `Instant.difference` for elapsed measurements; see [time values](system.md#time-value-methods).
+
+`CpuUsage.user_microseconds`/`system_microseconds` and the corresponding ResourceUsage fields are cumulative process CPU microseconds. `max_resident_bytes` is peak resident memory in bytes. Fault, filesystem-I/O and context-switch fields are counts: Unix filesystem counters count block I/O, while Windows counters count I/O operations and unavailable fault/context-switch fields are zero. MemoryUsage fields and constrained/available memory are bytes. Host CpuInfo counters use milliseconds, and speed_mhz is integer MHz.
+
 ## Signals
 
-`watch_signals` returns a scoped `SignalStream` with a bounded delivery buffer. OS signal delivery can coalesce or drop repeated signals; SIGKILL and SIGSTOP cannot be observed. The native host still treats SIGINT/SIGTERM as cancellation. A watcher only observes; it cannot claim a signal or protect code after `next()`. Use registered `with`/`Closeable` cleanup for shutdown, and finish required writes directly in the shielded close call after joining cancelled workers. See the [shutdown cookbook](../concurrency/shutdown.md) for runnable examples and limitations. Unix `send_signal` accepts signed PIDs for process groups and signal zero for existence checks. Windows supports existence checks and forced termination for its INT/KILL/TERM mapping; other signals return `Unsupported`.
+`watch_signals` returns a scoped `SignalStream` with a bounded delivery buffer. The signal list must be nonempty; numbers must be `1..64`, excluding SIGKILL and SIGSTOP. A supplied capacity must be `1..1048576` (omission/`none` uses 64). Range validation does not guarantee that every number denotes a supported signal on every OS. Use `system.constants()` and handle absent names. OS signal delivery can coalesce or drop repeated signals; SIGKILL and SIGSTOP cannot be observed. The native host still treats SIGINT/SIGTERM as cancellation. A watcher only observes; it cannot claim a signal or protect code after `next()`. Use registered `with`/`Closeable` cleanup for shutdown, and finish required writes directly in the shielded close call after joining cancelled workers. See the [shutdown cookbook](../concurrency/shutdown.md) for runnable examples and limitations. `send_signal` validates a signed 32-bit PID and signal `0..64`; the native OS decides whether the selected number/target is supported. Unix `send_signal` accepts signed PIDs for process groups and signal zero for existence checks. Windows supports existence checks and forced termination for its INT/KILL/TERM mapping; other signals return `Unsupported`.
 
 ## Titles, memory, and replacement
 

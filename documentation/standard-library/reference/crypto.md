@@ -40,7 +40,8 @@ fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Res
 
 ## hmac {data-api-kind="Function"}
 
-Computes an HMAC using `sha256`, `sha384`, or `sha512`.
+Computes an HMAC using exactly `sha256`, `sha384`, or `sha512` (case-sensitive).
+Other algorithms return CryptoError.Unsupported.
 
 ```manuscript
 fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, CryptoError]:

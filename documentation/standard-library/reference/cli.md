@@ -8,7 +8,8 @@ Import each required symbol with `import Name from "@std/cli.ms"`.
 
 ## arguments {data-api-kind="Function"}
 
-Returns process arguments, excluding the executable path.
+Returns the host-supplied startup arguments, excluding the executable path.
+Repeated calls share the same mutable list; mutations do not rewrite native argv.
 
 ```manuscript
 fn arguments() -> List[String]:
@@ -16,7 +17,8 @@ fn arguments() -> List[String]:
 
 ## environment {data-api-kind="Function"}
 
-Returns the process environment as a map of variable names to values.
+Returns the startup environment snapshot, not the live process environment.
+Repeated calls share the same mutable map; mutations do not call set_environment.
 
 ```manuscript
 fn environment() -> Map[String, String]:
