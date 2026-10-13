@@ -1178,7 +1178,7 @@ case Deflate
 
 ### CompressionFormat.Gzip
 
-GZIP framing.
+DEFLATE data wrapped in GZIP headers and a checksum trailer.
 
 ```manuscript
 case Gzip
@@ -1186,7 +1186,7 @@ case Gzip
 
 ### CompressionFormat.Zlib
 
-ZLIB framing.
+DEFLATE data with ZLIB header and Adler-32 checksum framing.
 
 ```manuscript
 case Zlib
@@ -1271,7 +1271,7 @@ type HashAlgorithm:
 
 ### HashAlgorithm.Sha256
 
-SHA-256.
+SHA-256, producing a 32-byte digest or HMAC.
 
 ```manuscript
 case Sha256
@@ -1279,7 +1279,7 @@ case Sha256
 
 ### HashAlgorithm.Sha384
 
-SHA-384.
+SHA-384, producing a 48-byte digest or HMAC.
 
 ```manuscript
 case Sha384
@@ -1287,7 +1287,7 @@ case Sha384
 
 ### HashAlgorithm.Sha512
 
-SHA-512.
+SHA-512, producing a 64-byte digest or HMAC.
 
 ```manuscript
 case Sha512

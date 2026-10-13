@@ -1546,13 +1546,13 @@
               "name": "Gzip",
               "kind": "case",
               "signature": "case Gzip",
-              "doc": "GZIP framing."
+              "doc": "DEFLATE data wrapped in GZIP headers and a checksum trailer."
             },
             {
               "name": "Zlib",
               "kind": "case",
               "signature": "case Zlib",
-              "doc": "ZLIB framing."
+              "doc": "DEFLATE data with ZLIB header and Adler-32 checksum framing."
             },
             {
               "name": "compress",
@@ -1648,19 +1648,19 @@
               "name": "Sha256",
               "kind": "case",
               "signature": "case Sha256",
-              "doc": "SHA-256."
+              "doc": "SHA-256, producing a 32-byte digest or HMAC."
             },
             {
               "name": "Sha384",
               "kind": "case",
               "signature": "case Sha384",
-              "doc": "SHA-384."
+              "doc": "SHA-384, producing a 48-byte digest or HMAC."
             },
             {
               "name": "Sha512",
               "kind": "case",
               "signature": "case Sha512",
-              "doc": "SHA-512."
+              "doc": "SHA-512, producing a 64-byte digest or HMAC."
             },
             {
               "name": "digest",
