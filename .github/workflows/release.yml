@@ -34,6 +34,18 @@ jobs:
         run: test "${RELEASE_TAG#v}" = "$(cat .msversion)"
       - name: Build self-contained archive
         run: sh scripts/package.sh "${{ matrix.os }}" "${{ matrix.arch }}"
+      # The verifier is cross-built here so the native runners need neither a
+      # checkout nor a Go installation.
+      - name: Cross-build the distribution verifier
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: '0'
+          GOTOOLCHAIN: local
+          GOENV: 'off'
+        run: |
+          mkdir -p verifier
+          GOROOT="$PWD/toolchain/go" toolchain/go/bin/go build -mod=vendor -trimpath -o "verifier/distcheck${{ matrix.os == 'windows' && '.exe' || '' }}" ./scripts/distcheck
       - uses: actions/upload-artifact@v7
         with:
           name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
@@ -41,6 +53,11 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/*.sha256
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: distcheck-${{ matrix.os }}-${{ matrix.arch }}
+          path: verifier/
           if-no-files-found: error
 
   verify:
@@ -68,21 +85,19 @@ jobs:
             arch: arm64
             runner: windows-11-arm
     runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-      # Go runs the test harness only; the packaged CLI receives no host Go PATH.
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: .go-version
-          cache: true
       - uses: actions/download-artifact@v8
         with:
           name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
           path: archives
+      - uses: actions/download-artifact@v8
+        with:
+          name: distcheck-${{ matrix.os }}-${{ matrix.arch }}
+          path: verifier
       - name: Extract distribution into a path containing spaces
-        shell: bash
         run: |
           mkdir -p 'extracted distribution'
           if [ '${{ matrix.os }}' = windows ]; then
@@ -90,9 +105,11 @@ jobs:
           else
             tar -xzf archives/*.tar.gz -C 'extracted distribution'
           fi
+      # Runs with no Go on PATH from the workflow; the packaged CLI is all it uses.
       - name: Verify standalone compilation and tooling without system Go
-        shell: bash
-        run: go run ./scripts/distcheck 'extracted distribution/manuscript-${{ matrix.os }}-${{ matrix.arch }}'
+        run: |
+          chmod +x verifier/distcheck* 2>/dev/null || true
+          ./verifier/distcheck* 'extracted distribution/manuscript-${{ matrix.os }}-${{ matrix.arch }}'
 
   test:
     name: Distribution checks
