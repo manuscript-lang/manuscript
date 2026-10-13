@@ -90,6 +90,6 @@ Generic function inference uses supplied argument types only, as specified in [g
 
 ## Validation boundaries
 
-Every declaration's referenced types must resolve and every application must satisfy arity and bounds. Generic bodies are checked under declared bounds. Public signatures satisfy [public type visibility](records.md#public-data-surfaces), and recursive concrete layouts satisfy [guarded recursion](records.md#recursive-data). These checks happen before native code is generated.
+Every declaration's referenced types must resolve and every application must satisfy arity and bounds. Generic bodies are checked under declared bounds. Public signatures satisfy [public type visibility](records.md#public-data-surfaces), and recursive generic declarations satisfy [finite-application rules](generics.md#finite-recursive-applications). These checks happen before native code is generated.
 
 Runtime cancellation and resource closed-state errors do not alter static assignability. Their separate contracts remain governed by the existing runtime and reference chapters.

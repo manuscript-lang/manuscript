@@ -1,6 +1,7 @@
 package checker_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -9,65 +10,82 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-func TestRecursiveLayoutFieldDiagnostics(t *testing.T) {
-	source := "type Expr:\n    case Num(value: Int)\n    case Add(left: Expr, right: Expr)\n    case Neg(inner: Optional[Expr])\n"
-	module, err := parser.Parse("layout.ms", source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	result := checker.Check([]*syntax.Module{module}, nil)
-	want := []struct {
-		name         string
-		line, column int
-	}{
-		{"Expr.Add.left", 3, 14}, {"Expr.Add.right", 3, 26}, {"Expr.Neg.inner", 4, 14},
-	}
-	if len(result.Diagnostics) != len(want) {
-		t.Fatalf("want %d diagnostics, got %v", len(want), result.Diagnostics)
-	}
-	for i, expected := range want {
-		diagnostic := result.Diagnostics[i]
-		if diagnostic.Position.Line != expected.line || diagnostic.Position.Column != expected.column {
-			t.Errorf("%s: got position %v", expected.name, diagnostic.Position)
-		}
-		for _, text := range []string{"unguarded inline recursive layout", expected.name, "Expr", "List[Expr]"} {
-			if !strings.Contains(diagnostic.Message, text) {
-				t.Errorf("missing %q in %q", text, diagnostic.Message)
-			}
-		}
-		if strings.Contains(diagnostic.Message, "Optional[") {
-			t.Errorf("invalid Optional indirection hint: %s", diagnostic.Message)
-		}
-	}
-}
-
-func TestRecursiveLayoutRulesRemainUnchanged(t *testing.T) {
+func TestRecursiveDataAndFiniteTypeApplications(t *testing.T) {
 	for _, tt := range []struct {
-		name, source, want string
-		count              int
+		name, source string
+		accepted     bool
 	}{
-		{"record", "type Node:\n    next: Node\n", "Node.next", 1},
-		{"mutual", "type A:\n    b: B\ntype B:\n    a: A\n", "unguarded inline recursive layout", 2},
-		{"multiple inline paths in one field", "type Node:\n    next: Result[Node, Node]\n", "Node.next", 1},
-		{"container", "import List from \"@std/collections.ms\"\ntype Node:\n    children: List[Node]\n", "", 0},
-		{"function", "type Node:\n    build: fn() -> Node\n", "", 0},
-		{"generic container", "import List from \"@std/collections.ms\"\ntype Node[T]:\n    value: T\n    children: List[Node[T]]\n", "", 0},
-		{"expanding generic container", "import List from \"@std/collections.ms\"\ntype Node[T]:\n    value: T\n    children: List[Node[List[T]]]\n", "recursive generic applications must preserve their parameters", 1},
+		{"direct alternative", "type Expr:\n    case Num(value: Int)\n    case Add(left: Expr, right: Expr)\n    case Neg(inner: Optional[Expr])\n", true},
+		{"record declaration", "type Node:\n    next: Node\n", true},
+		{"mutual", "type A:\n    case End\n    case Next(value: B)\ntype B:\n    a: A\n", true},
+		{"generic direct", "type Tree[T]:\n    case Leaf(value: T)\n    case Branch(left: Tree[T], right: Tree[T])\n", true},
+		{"generic mutual", "type A[T]:\n    value: T\n    b: Optional[B[T]]\ntype B[U]:\n    a: A[U]\n", true},
+		{"composed identity", "type A[T, U]:\n    b: B[U, T]\ntype B[X, Y]:\n    a: A[Y, X]\n", true},
+		{"phantom argument expansion", "import List from \"@std/collections.ms\"\ntype Phantom[T]:\n    value: Int\ntype Grow[T]:\n    value: Phantom[Grow[List[T]]]\n", false},
+		{"finite nesting", "type Box[T]:\n    value: T\ntype Nested:\n    value: Box[Box[Int]]\n", true},
+		{"regular callback", "type Node[T]:\n    build: fn() -> Node[T]\n", true},
+		{"regular interface", "interface Node[T]:\n    fn build() -> Node[T]\n", true},
+		{"expanding direct", "import List from \"@std/collections.ms\"\ntype Grow[T]:\n    next: Grow[List[T]]\n", false},
+		{"expanding container", "import List from \"@std/collections.ms\"\ntype Grow[T]:\n    next: List[Grow[List[T]]]\n", false},
+		{"expanding mutual", "import List from \"@std/collections.ms\"\ntype A[T]:\n    b: B[List[T]]\ntype B[U]:\n    a: A[U]\n", false},
+		{"expanding callback", "import List from \"@std/collections.ms\"\ntype Grow[T]:\n    next: fn() -> Grow[List[T]]\n", false},
+		{"expanding callback parameter", "import List from \"@std/collections.ms\"\ntype Grow[T]:\n    next: fn(value: Grow[List[T]]) -> Unit\n", false},
+		{"expanding interface", "import List from \"@std/collections.ms\"\ninterface Grow[T]:\n    fn next() -> Grow[List[T]]\n", false},
+		{"concrete substitution", "type Grow[T]:\n    next: Grow[Int]\n", false},
+		{"permutation", "type Flip[T, U]:\n    next: Flip[U, T]\n", false},
+		{"nongeneric bridge", "type Grow[T]:\n    next: Bridge\ntype Bridge:\n    next: Grow[Int]\n", false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			module, err := parser.Parse("layout.ms", tt.source)
+			module, err := parser.Parse("recursion.ms", tt.source)
 			if err != nil {
 				t.Fatal(err)
 			}
 			result := checker.Check([]*syntax.Module{module}, nil)
-			if len(result.Diagnostics) != tt.count {
-				t.Fatalf("want %d diagnostics, got %v", tt.count, result.Diagnostics)
+			if (len(result.Diagnostics) == 0) != tt.accepted {
+				t.Fatalf("accepted=%v, diagnostics=%v", tt.accepted, result.Diagnostics)
 			}
-			for _, diagnostic := range result.Diagnostics {
-				if !strings.Contains(diagnostic.Message, tt.want) {
-					t.Errorf("expected %q: %v", tt.want, diagnostic)
+			for _, d := range result.Diagnostics {
+				if !strings.Contains(d.Message, "recursive generic applications must preserve their parameters") {
+					t.Errorf("unexpected diagnostic: %v", d)
 				}
 			}
 		})
+	}
+}
+
+func TestRecursiveGenericDiagnosticNamesEachFieldOnce(t *testing.T) {
+	source := "type Tree[T]:\n    case Leaf(value: T)\n    case Pair(left: Tree[Int], right: Tree[String])\n"
+	module, err := parser.Parse("recursion.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := checker.Check([]*syntax.Module{module}, nil)
+	if len(result.Diagnostics) != 2 {
+		t.Fatal(result.Diagnostics)
+	}
+	for i, name := range []string{"Tree.Pair.left", "Tree.Pair.right"} {
+		d := result.Diagnostics[i]
+		column := []int{15, 32}[i]
+		if d.Position.Line != 3 || d.Position.Column != column || !strings.Contains(d.Message, name) {
+			t.Errorf("want %s at 3:%d, got %v", name, column, d)
+		}
+	}
+}
+
+func TestFiniteTypeApplicationsShareRepeatedDependencies(t *testing.T) {
+	// A diamond at every level has exponentially many paths, but only a
+	// linear number of declaration/specialization pairs per starting type.
+	var source strings.Builder
+	source.WriteString("type Layer0[T]:\n    value: T\n")
+	for i := 1; i <= 32; i++ {
+		fmt.Fprintf(&source, "type Layer%d[T]:\n    left: Layer%d[T]\n    right: Layer%d[T]\n", i, i-1, i-1)
+	}
+	module, err := parser.Parse("diamond.ms", source.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := checker.Check([]*syntax.Module{module}, nil)
+	if len(result.Diagnostics) != 0 {
+		t.Fatal(result.Diagnostics)
 	}
 }

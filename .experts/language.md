@@ -136,13 +136,15 @@ Verify: false and zero are present; eager defaults evaluate normally; lazy defau
 
 Verified: Optional argument checking retains the expression's source type and records wrapping separately, so editor queries and Boolean folding keep their existing meaning. Reuse an inferred payload type before retrying with context: checking every nested call twice causes exponential work for both accepted and rejected inputs. Evidence: [source/AST regression](../pkg/checker/optional_test.go), [nested call regression](../pkg/compiler/optional_test.go), and [argument checking](../pkg/checker/calls.go).
 
-### Collection storage can guard different recursive element types
+### Recursive data uses references; generic applications still stay finite
 
-Verified: tracking List/Map/Set nominal identities as active generic applications rejected valid recursive trees when a path crossed two collections with different element types. Collection storage is indirect; recurse into its arguments without treating that collection's identity as a user-defined generic cycle. Continue checking active user type identities so genuinely growing generic recursion is rejected.
+Decision: the user approved direct and mutually recursive tree types in the [issue-fix conversation](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df), resolving [issue #97](https://github.com/manuscript-lang/manuscript/issues/97) and superseding the inline-layout restriction. Preserve complete initialization, reference aliasing, shallow cloning, and cycle-safe structural equality. Recursive shapes must not automatically derive Hashable: structural hashing has no cycle guard, while explicit domain identity implementations remain available.
 
-Apply when: changing recursive layout checking or adding recursive data types.
-Evidence: [layout checker](../pkg/checker/contracts.go), [accepted and rejected layout regressions](../pkg/checker/checker_test.go), and [compiled TOML node trees](../tests/e2e/testdata/stdlib/toml.ms).
-Verify: `TestNestedCollectionsGuardRecursiveLayouts` accepts the two Map element types and still rejects `Growing[List[T]]` recursion.
+Verified: declaration dependency cycles distinguish finite nesting such as `Box[Box[Int]]` from expanding generic recursion. Track generic substitutions around declaration cycles rather than recursively expanding storage layouts. The finite-application rule includes references in generic arguments, functions, and interface operations; indirect storage cannot hide an expanding type family. Collection identities are not user declaration cycles.
+
+Apply when: changing recursive data, automatic equality/hashing, or generic regularity checks.
+Evidence: [recursive data rules](../documentation/core-language/types/records.md#recursive-data), [declaration checks](../pkg/checker/type_recursion.go), [compiler regressions](../pkg/compiler/recursive_types_test.go), and [native recursive data fixture](../tests/e2e/testdata/accept/recursive-types.ms).
+Verify: direct and mutual trees execute; cyclic equality terminates; clone retains child references; uninitialized self-references and automatic recursive hashing fail. Finite nested generic applications pass; expanding cycles through fields, callbacks, or interfaces fail.
 
 ### Match is uniformly a value expression; indexing preserves Optional
 

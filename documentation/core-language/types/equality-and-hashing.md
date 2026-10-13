@@ -33,7 +33,7 @@ Strings compare exact Unicode scalar sequences without normalization. Bytes comp
 | `Map[K, V]` | Equal associations, independent of insertion order | Unsupported |
 | `Set[T]` | Equal members, independent of insertion order | Unsupported |
 
-Structural equality terminates on cyclic data. Collections prevent automatic hashing derivation. Functions, resource handles, and service handles have no implicit equality. Interface views expose their declared operations; use `.equals` to compare through an Equal view.
+Structural equality terminates on cyclic data. Collections and recursive data shapes prevent automatic hashing derivation. Recursive values can form mutable cycles; an explicit `Equal`/`Hashable` pair may instead hash a stable domain identity. Functions, resource handles, and service handles have no implicit equality. Interface views expose their declared operations; use `.equals` to compare through an Equal view.
 
 ## Domain identity
 
