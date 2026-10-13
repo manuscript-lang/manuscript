@@ -900,6 +900,8 @@ func runTest(test Test, timeout time.Duration) any {
 	defer cancel()
 	execution.Context = cancelled
 	done := make(chan any, 1)
+	// An abandoned test keeps running beside later tests.
+	markConcurrent()
 	go func() {
 		var failure any
 		defer func() { done <- failure }()
