@@ -476,6 +476,7 @@ func Run(args []string) int {
 			return status
 		}
 		child := exec.Command(executable, arguments...)
+		child.Dir = testWorkingDirectory(command, filename, result)
 		child.Stdin = os.Stdin
 		child.Stdout = os.Stdout
 		child.Stderr = os.Stderr
@@ -615,3 +616,20 @@ type dapStdio struct {
 func (s *dapStdio) Write(p []byte) (int, error) { return s.output.Write(p) }
 
 func (s *dapStdio) Close() error { _ = s.output.Close(); return s.File.Close() }
+
+// Tests run in the project directory (the one holding ms.toml), or beside the
+// test file for a single-file run, so fixtures such as "golden/x.md" resolve the
+// same way wherever ms is invoked. Other commands keep the caller's directory.
+func testWorkingDirectory(command, filename string, result compiler.Result) string {
+	if command != "test" {
+		return ""
+	}
+	directory := result.ProjectRoot
+	if directory == "" {
+		directory = filepath.Dir(filename)
+	}
+	if absolute, err := filepath.Abs(directory); err == nil {
+		return absolute
+	}
+	return ""
+}

@@ -82,7 +82,7 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms run ms.toml -- first second\n  ms run main.ms --watch\n  ms run main.ms --cpu-profile cpu.pprof"
 	case "test":
 		usage = "<file.ms|ms.toml> [--filter text] [--timeout duration] [--build-type level] [--debug] [--watch] [-- program arguments]"
-		description = "Build and execute test blocks in the module and its imported modules.\nEach test prints RUN before it starts and PASS or FAIL after; a test that exceeds the timeout fails by name.\nArguments after -- are passed to the test executable; its exit status is returned."
+		description = "Build and execute test blocks in the module and its imported modules.\nTests run with the project directory (or the test file's directory) as the working directory, so relative fixture paths resolve there.\nEach test prints RUN before it starts and PASS or FAIL after; a test that exceeds the timeout fails by name.\nArguments after -- are passed to the test executable; its exit status is returned."
 		options = "  --filter <text>      Run only tests whose module::name contains text\n  --timeout <duration> Fail a test that runs longer (default 60s; 0 disables)\n  --debug              Alias for --build-type Debug\n  --watch              Rebuild and rerun after each saved source change\n"
 		examples = "ms test test.ms\n  ms test ms.toml --debug\n  ms test ms.toml --filter \"nick collisions\" --timeout 10s"
 	case "fmt":
