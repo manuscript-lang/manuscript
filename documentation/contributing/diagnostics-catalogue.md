@@ -19,7 +19,7 @@ Every message that reaches an author or an agent states the cause, the location,
 
 ## Parsing (`pkg/parser`)
 
-Unexpected tokens are described in source terms (`end of line`, `name 'x'`, `'case'`) instead of internal token kinds. Missing `:`, `->`, closing brackets, and `from` carry the usual fix. Statements at top level, standalone non-call expressions, comparison chains, `case` inside `match`, and indexing with `xs[0]` (use `xs.at(index: 0)`) each say what to write instead.
+Unexpected tokens are described in source terms (`end of line`, `name 'x'`, `'case'`) instead of internal token kinds. Missing `:`, `->`, closing brackets, and `from` carry the usual fix. Statements at top level, standalone non-call expressions, comparison chains, `case` inside `match`, and indexing with `xs[0]` (reported as `xs.at(index: 0)` using the author's own names), and constructing `List(...)` (use a list literal) each say what to write instead.
 
 ## Names, calls, and types (`pkg/checker`)
 

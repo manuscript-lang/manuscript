@@ -40,7 +40,9 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
 		if std(typ, "Task") || std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "List") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
-			c.error(e.Pos, "type", "standard type has no source constructor: "+typ.String()+"; create it with a literal or the standard function documented for it (ms doc)")
+			c.error(e.Pos, "type", "standard type has no source constructor: "+typ.String()+"; "+constructorHint(typ))
+			c.unknownType = true
+			i.Type = primitive("<invalid>")
 			return i
 		}
 		typ = c.instantiate(typ, fields, e.Args, expected, e.Pos)
@@ -443,4 +445,13 @@ func missingArgumentHint(param Param, callee string) string {
 		in = " in call to " + callee
 	}
 	return ": " + param.Type.String() + in + "; add '" + param.Name + ": <" + param.Type.String() + ">'"
+}
+
+// constructorHint says how to create a value of a type without a source constructor.
+func constructorHint(t *Type) string {
+	switch {
+	case std(t, "List"):
+		return "write a list literal such as [1, 2, 3], or an annotated empty list: let xs: List[Int] = []"
+	}
+	return "create it with the standard function that returns it (ms doc --stdlib lists them)"
 }

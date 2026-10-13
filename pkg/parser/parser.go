@@ -628,7 +628,11 @@ func (p *Parser) primary() *syntax.Expression {
 		if p.take(".") {
 			name := p.need(lexer.Name)
 			e = &syntax.Expression{Kind: syntax.KindMember, Pos: name.Pos, Text: name.Text, Left: e}
-		} else if p.take("[") {
+		} else if p.peek().Kind == "[" {
+			if next := p.tokens[p.at+1]; indexLike(next) {
+				p.fail(p.peek(), p.indexMessage(e))
+			}
+			p.at++
 			e = &syntax.Expression{Kind: syntax.KindApply, Pos: t.Pos, Left: e, Types: p.typeArgs()}
 		} else if p.take("(") {
 			call := &syntax.Expression{Kind: syntax.KindCall, Pos: e.Pos, Left: e}
@@ -831,6 +835,65 @@ func needHint(kind string, found lexer.Token) string {
 		return "; end the statement with a line break"
 	case lexer.Indent:
 		return "; indent the block body by four spaces under its header"
+	}
+	return ""
+}
+
+// indexLike reports whether the token after '[' reads as an index, not a type
+// argument: numbers, text, signs, and lowercase names (types are capitalized).
+func indexLike(t lexer.Token) bool {
+	switch t.Kind {
+	case lexer.Number, lexer.String, "-", "+":
+		return true
+	case lexer.Name:
+		return t.Text[0] >= 'a' && t.Text[0] <= 'z' || t.Text[0] == '_'
+	}
+	return false
+}
+
+// indexMessage teaches the supported spelling using the author's own names.
+func (p *Parser) indexMessage(receiver *syntax.Expression) string {
+	index := []string{}
+	depth := 0
+	for at := p.at + 1; at < len(p.tokens); at++ {
+		token := p.tokens[at]
+		if token.Kind == "[" {
+			depth++
+		}
+		if token.Kind == "]" {
+			if depth == 0 {
+				break
+			}
+			depth--
+		}
+		if token.Kind == lexer.Newline || token.Kind == lexer.EOF {
+			break
+		}
+		index = append(index, token.Text)
+	}
+	name := "values"
+	if text := expressionText(receiver); text != "" {
+		name = text
+	}
+	position := strings.Join(index, " ")
+	position = strings.TrimPrefix(strings.Replace(position, "- ", "-", 1), " ")
+	if len(index) > 0 && index[0] != "-" {
+		position = strings.Join(index, " ")
+	}
+	if position == "" {
+		position = "0"
+	}
+	return "indexing with [] is not supported; write " + name + ".at(index: " + position + "), which returns an Optional (negative indexes count from the end), and use .unwrap(), match, or .unwrap_or(fallback: ...) to read the element"
+}
+
+func expressionText(e *syntax.Expression) string {
+	switch e.Kind {
+	case syntax.KindName:
+		return e.Text
+	case syntax.KindMember:
+		if left := expressionText(e.Left); left != "" {
+			return left + "." + e.Text
+		}
 	}
 	return ""
 }
