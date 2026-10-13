@@ -70,7 +70,7 @@ func TestBoundaryRejectsHostRuntimeInFrontend(t *testing.T) {
 
 func TestMissingNodeCannotSilentlyReachLowering(t *testing.T) {
 	t.Chdir("../..")
-	missing, err := missingKinds("pkg/lower/lower_expressions.go", "expressionValue", []string{"lambda", "future-node"})
+	missing, err := missingKinds([]kindHandler{{"pkg/lower/lower_expressions.go", "expressionValue"}, {"pkg/ir/elaborate.go", "Value"}}, []string{"lambda", "future-node"})
 	if err != nil || len(missing) != 1 || missing[0] != "future-node" {
 		t.Fatal(missing, err)
 	}

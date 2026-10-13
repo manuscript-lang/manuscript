@@ -40,7 +40,7 @@ Elaboration is the one step that reads both the AST and `Program`. After it, not
 
 ## Migration order
 
-Each step merges on its own with unchanged generated output.
+Each step merges on its own and keeps observable behavior; generated Go need not be byte-identical.
 
 1. Define `ir` nodes and elaborate expressions that need no cleanup or match: literals, names, calls, member access, collections, text, unary and binary operations.
 2. Move the boolean fold from `optimize` onto IR.
@@ -48,4 +48,4 @@ Each step merges on its own with unchanged generated output.
 4. Elaborate cleanup scopes and function bodies; remove `lower`'s reads of `Program` tables.
 5. Replace the table storage behind `Program` where the IR no longer needs it.
 
-Generated Go is compared before and after each step on the end-to-end programs in `tests/e2e`.
+The `tests/e2e` programs and the lowering tests establish that behavior is unchanged.
