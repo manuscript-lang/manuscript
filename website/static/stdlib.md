@@ -4584,6 +4584,62 @@ fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 
 Import each required symbol with `import Name from "@std/string.ms"`.
 
+## NormalizationForm
+
+**Alternative**
+
+The four Unicode normalization forms, selected without runtime string spelling errors.
+
+```manuscript
+type NormalizationForm:
+    case Nfc
+    case Nfd
+    case Nfkc
+    case Nfkd
+    fn normalize(text: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+```
+
+### NormalizationForm.Nfc
+
+Canonical composition.
+
+```manuscript
+case Nfc
+```
+
+### NormalizationForm.Nfd
+
+Canonical decomposition.
+
+```manuscript
+case Nfd
+```
+
+### NormalizationForm.Nfkc
+
+Compatibility composition.
+
+```manuscript
+case Nfkc
+```
+
+### NormalizationForm.Nfkd
+
+Compatibility decomposition.
+
+```manuscript
+case Nfkd
+```
+
+### NormalizationForm.normalize
+
+Normalizes text with the existing String.normalize budgets and StringError cases.
+Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
+
+```manuscript
+fn normalize(text: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+```
+
 ## StringBuilder
 
 **Native type**

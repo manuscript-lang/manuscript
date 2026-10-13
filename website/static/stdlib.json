@@ -6761,6 +6761,53 @@
       "path": "@std/string.ms",
       "declarations": [
         {
+          "name": "NormalizationForm",
+          "doc": "The four Unicode normalization forms, selected without runtime string spelling errors.",
+          "kind": "alternative",
+          "type": "NormalizationForm",
+          "cases": [
+            "Nfc",
+            "Nfd",
+            "Nfkc",
+            "Nfkd"
+          ],
+          "operations": [
+            "normalize: fn(text: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]"
+          ],
+          "members": [
+            {
+              "name": "Nfc",
+              "kind": "case",
+              "signature": "case Nfc",
+              "doc": "Canonical composition."
+            },
+            {
+              "name": "Nfd",
+              "kind": "case",
+              "signature": "case Nfd",
+              "doc": "Canonical decomposition."
+            },
+            {
+              "name": "Nfkc",
+              "kind": "case",
+              "signature": "case Nfkc",
+              "doc": "Compatibility composition."
+            },
+            {
+              "name": "Nfkd",
+              "kind": "case",
+              "signature": "case Nfkd",
+              "doc": "Compatibility decomposition."
+            },
+            {
+              "name": "normalize",
+              "kind": "operation",
+              "signature": "fn normalize(text: String, max_bytes: Optional[Int] = none) -\u003e Result[String, StringError]:",
+              "doc": "Normalizes text with the existing String.normalize budgets and StringError cases.\nOmission or none adds no output budget; a supplied budget counts UTF-8 bytes."
+            }
+          ]
+        },
+        {
           "name": "StringBuilder",
           "doc": "Mutable builder for constructing a string without repeated intermediate copies.\nMutable builder for constructing a string without repeated intermediate copies.",
           "kind": "native",
