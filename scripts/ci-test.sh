@@ -20,6 +20,7 @@ race_packages=$("$go_tool" list ./internal/debugger ./pkg/runtime ./pkg/checker 
 split_packages='github.com/manuscript-lang/manuscript/pkg/compiler
 github.com/manuscript-lang/manuscript/tests/e2e'
 
+# shellcheck disable=SC2329 # invoked through start
 run() { # name, extra flags, packages...
     name=$1
     flags=$2
