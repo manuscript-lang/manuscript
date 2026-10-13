@@ -286,7 +286,10 @@ func (c *checker) assignmentMismatch(actual, expected *Type) string {
 	if c.implements(actual, expected) {
 		return message + "; " + actual.String() + " implements " + expected.String() + "; write " + expected.String() + "(value: ...) to create an explicit interface view"
 	}
-	return message + "; no applicable 'impl " + expected.String() + " for " + actual.String() + "' is visible; declare an implementation before creating an interface view"
+	if actual.Def != nil && actual.Def.Symbol != nil && actual.Def.Symbol.Native == "" && (actual.Kind == syntax.KindRecord || actual.Kind == "alternative") {
+		return message + "; no applicable 'impl " + expected.String() + " for " + actual.String() + "' is visible; declare an implementation before creating an interface view"
+	}
+	return message + "; use a concrete value implementing " + expected.String() + " and create its explicit interface view with " + expected.String() + "(value: ...)"
 }
 
 func (c *checker) interfaceTypeMember(typ *Type) string {

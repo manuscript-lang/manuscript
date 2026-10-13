@@ -90,3 +90,21 @@ func TestInterfaceViewHintUsesVisibleImplementations(t *testing.T) {
 		t.Fatalf("hidden implementation hint: %v", p.Diagnostics)
 	}
 }
+
+func TestInterfaceHintDoesNotRecommendInvalidImplementationReceivers(t *testing.T) {
+	for _, source := range []string{
+		"interface Shape:\n    fn area() -> Int\nfn f() -> Shape: 1\n",
+		"interface A:\n    fn a() -> Int\ninterface B:\n    fn b() -> Int\nfn f(value: A) -> B: value\n",
+		"interface Shape:\n    fn area() -> Int\nfn f[T](value: T) -> Shape: value\n",
+		"interface Shape:\n    fn area() -> Int\nfn f(value: fn() -> Int) -> Shape: value\n",
+	} {
+		m, err := parser.Parse("view-hint.ms", source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		p := checker.Check([]*syntax.Module{m}, nil)
+		if len(p.Diagnostics) != 1 || strings.Contains(p.Diagnostics[0].Message, "declare an implementation") || !strings.Contains(p.Diagnostics[0].Message, "use a concrete value implementing") {
+			t.Fatalf("invalid implementation hint: %v", p.Diagnostics)
+		}
+	}
+}
