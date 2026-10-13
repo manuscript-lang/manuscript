@@ -21,6 +21,11 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	callee := e.Left
 	if typ := c.typeExpression(callee); typ != nil {
 		if typ.Kind == "primitive" || typ.Kind == "variable" {
+			if c.rejectedNames[typ.Name] {
+				// The declaration reusing this built-in name is already rejected.
+				i.Type = primitive("<invalid>")
+				return i
+			}
 			c.error(e.Pos, "type", "this type has no source constructor: "+typ.String()+" is built in; write a literal or call a standard function that returns it")
 			return i
 		}
@@ -396,7 +401,7 @@ func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, n
 	for _, v := range vars {
 		for _, bound := range v.Bounds {
 			if !invalidType(sub[v.ID]) && !c.satisfies(sub[v.ID], Sub(bound, sub)) {
-				c.error(pos, "type", fmt.Sprintf("%s does not satisfy %s; add 'impl %s for %s:' or pass a type that already implements it", sub[v.ID], Sub(bound, sub), Sub(bound, sub), sub[v.ID]))
+				c.error(pos, "type", c.unsatisfiedMessage(sub[v.ID], Sub(bound, sub), "pass a type that already implements it"))
 			}
 		}
 	}

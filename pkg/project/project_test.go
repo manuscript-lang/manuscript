@@ -196,3 +196,11 @@ func TestManifestDiscoveryKeepsTheClosestProject(t *testing.T) {
 		t.Fatalf("invalid nested project silently used its parent: %s, %v", found, ok)
 	}
 }
+
+func TestAbsoluteImportDiagnosticIsNotARelativeSuggestion(t *testing.T) {
+	p := fixture(t, manifest)
+	_, err := project.ResolveImport(p, p.Entry, "/abs/money.ms", nil)
+	if err == nil || !strings.Contains(err.Error(), "absolute import paths are not supported") || strings.Contains(err.Error(), ".//") {
+		t.Fatalf("unexpected diagnostic: %v", err)
+	}
+}

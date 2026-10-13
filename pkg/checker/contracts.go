@@ -28,6 +28,11 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	receiver := c.resolve(d.Receiver, false)
 	if receiver.Def == nil || receiver.Def.Symbol == nil || receiver.Def.Symbol.Native != "" && !c.standardDeclarations || (receiver.Kind != syntax.KindRecord && receiver.Kind != "alternative") {
 		c.error(d.Pos, "type", "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types")
+		// An impl whose receiver is not valid nominal data must not become
+		// evidence for later conversions; report the receiver's own faults only.
+		c.wellFormed(receiver, d.Pos, map[string]bool{})
+		c.scope = old
+		return
 	}
 	occurs := map[string]bool{}
 	var visit func(*Type)
@@ -488,7 +493,7 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 		for _, v := range t.Def.Variables {
 			for _, b := range v.Bounds {
 				if !c.satisfies(sub[v.ID], Sub(b, sub)) {
-					c.error(pos, "type", sub[v.ID].String()+" does not satisfy "+b.String()+"; add 'impl "+b.String()+" for "+sub[v.ID].String()+":' or use a type that implements it")
+					c.error(pos, "type", c.unsatisfiedMessage(sub[v.ID], Sub(b, sub), "use a type that implements it"))
 				}
 			}
 		}
@@ -557,4 +562,23 @@ func (c *checker) public(t *Type, pos syntax.Position, seen map[string]bool) {
 		c.public(p.Type, pos, seen)
 	}
 	c.public(t.Result, pos, seen)
+}
+
+// unsatisfiedMessage explains a failed bound with a fix the writer can apply.
+// An impl is suggested only for data the module may declare an impl for;
+// built-in and collection types cannot take one, so they are told what to
+// use instead.
+func (c *checker) unsatisfiedMessage(t, bound *Type, alternative string) string {
+	prefix := t.String() + " does not satisfy " + bound.String() + "; "
+	switch {
+	case std(bound, "Hashable") && t.ID == "Float":
+		return t.String() + " does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal"
+	case std(bound, "Hashable") && (std(t, "List") || std(t, "Map") || std(t, "Set")):
+		return prefix + "collections have no Hashable implementation, so use a record key or join the elements into a String"
+	case t.Kind == syntax.KindRecord || t.Kind == "alternative":
+		if t.Def != nil && t.Def.Symbol != nil && (t.Def.Symbol.Native == "" || c.standardDeclarations) {
+			return prefix + "add 'impl " + bound.String() + " for " + t.String() + ":' or " + alternative
+		}
+	}
+	return prefix + alternative
 }

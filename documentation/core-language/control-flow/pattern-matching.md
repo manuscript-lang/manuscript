@@ -38,7 +38,7 @@ fn amount(text: String) -> Result[Int, String]:
 
 This fragment uses the standard `Optional` and `Result` imports. `return` exits the enclosing function, including from a match used inside another expression; lexical cleanup still runs. `break` and `continue` target the enclosing loop. A nested anonymous function retains its own return boundary.
 
-Short arms may place the value after the colon, such as `none: 0`. For an arm used only for effects, finish with `unit` when its last call returns another type. A match has the same typing rules whether its result is used or discarded.
+Short arms may place the value after the colon, such as `none: 0`. For an arm used only for effects, finish with `unit` when its last call returns another type. When a match stands on its own as a statement its result is discarded, so its arms need not agree on a type; when the result is used (a binding, argument, or `return`), every arm must produce that type. An empty arm is written `unit`; `pass` is not a keyword.
 
 ## Payload patterns
 
