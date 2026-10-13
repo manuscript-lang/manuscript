@@ -353,7 +353,7 @@ func main() {
 			})
 		}()},
 	}
-	if rt.RunTests(tests) > 0 {
+	if rt.RunTestsArgs(tests, os.Args[1:]) > 0 {
 		os.Exit(1)
 	}
 }
