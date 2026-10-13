@@ -79,6 +79,14 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 			}
 			checkpoint := len(c.Diagnostics)
 			actual := c.infer(arg.Value, pattern)
+			// Retain complete probe evidence, including root diagnostics. Invalid
+			// slots may be reused only if the final signature has the same slots;
+			// new concrete context forces a fresh check in argumentExpression.
+			// Even a complete signature may need rechecking after deferred returns
+			// or try; they can become valid under the inferred enclosing result.
+			if inferenceTypeResolved(actual.Type, c.inferenceVariables, true) && (!actual.inferenceDeferred || invalidType(actual.Type)) && c.checkedArguments != nil {
+				c.checkedArguments[arg.Value] = checkedArgument{actual, append([]syntax.Diagnostic(nil), c.Diagnostics[checkpoint:]...)}
+			}
 			c.inferenceVariables = previous
 			if len(c.Diagnostics) != checkpoint {
 				c.Diagnostics = c.Diagnostics[:checkpoint]

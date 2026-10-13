@@ -5,9 +5,10 @@ import "github.com/manuscript-lang/manuscript/pkg/syntax"
 // Inferred returns require one exact value type; Never provides no competing
 // value, and normal fallthrough contributes Unit. Nested callbacks own frames.
 type callbackReturns struct {
-	typ        *Type
-	context    *Type
-	unresolved bool
+	typ              *Type
+	context          *Type
+	unresolved       bool
+	contextDependent bool
 }
 
 func (r *callbackReturns) add(c *checker, typ *Type, pos syntax.Position) {
@@ -21,6 +22,7 @@ func (r *callbackReturns) add(c *checker, typ *Type, pos syntax.Position) {
 	if r.typ == nil {
 		r.typ = typ
 	} else if !Same(typ, r.typ) {
+		r.contextDependent = true
 		c.error(pos, "type", "callback returns require the same type: "+formatMismatch(typ, r.typ)+"; make every return in the callback produce one type")
 	}
 }
@@ -36,20 +38,24 @@ func callbackContext(expected *Type) *Type {
 }
 
 func inferenceTypeKnown(t *Type, variables map[string]bool) bool {
-	if t == nil || t.ID == "<invalid>" || variables[t.ID] {
+	return inferenceTypeResolved(t, variables, false)
+}
+
+func inferenceTypeResolved(t *Type, variables map[string]bool, allowInvalid bool) bool {
+	if t == nil || (!allowInvalid && t.ID == "<invalid>") || variables[t.ID] {
 		return false
 	}
 	for _, arg := range t.Args {
-		if !inferenceTypeKnown(arg, variables) {
+		if !inferenceTypeResolved(arg, variables, allowInvalid) {
 			return false
 		}
 	}
 	for _, param := range t.Params {
-		if !inferenceTypeKnown(param.Type, variables) {
+		if !inferenceTypeResolved(param.Type, variables, allowInvalid) {
 			return false
 		}
 	}
-	return t.Result == nil || inferenceTypeKnown(t.Result, variables)
+	return t.Result == nil || inferenceTypeResolved(t.Result, variables, allowInvalid)
 }
 
 func (c *checker) callback(e *syntax.Expression, expected *Type) *Info {
@@ -143,6 +149,9 @@ func (c *checker) callback(e *syntax.Expression, expected *Type) *Info {
 		t.Defaults = defaults
 	}
 	info := &Info{Type: t}
+	if c.returnInference != nil {
+		info.inferenceDeferred = c.returnInference.unresolved || c.returnInference.contextDependent
+	}
 	for binding := range c.captures[c.function] {
 		info.Captures = append(info.Captures, binding)
 		if oldFunction != binding.Function && c.captures[oldFunction] != nil {

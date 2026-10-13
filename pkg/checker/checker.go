@@ -49,7 +49,7 @@ type checker struct {
 	result                  *Type
 	returnInference         *callbackReturns
 	inferenceVariables      map[string]bool
-	independentArguments    map[*syntax.Expression]*Info
+	checkedArguments        map[*syntax.Expression]checkedArgument
 	function, serial, loops int
 	unknownType             bool
 	callName                string
@@ -1012,6 +1012,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			if !std(v.Type, "Result") || len(v.Type.Args) != 2 {
 				c.error(e.Pos, "type", "try requires Result, found "+v.Type.String()+"; apply try only to a call returning Result[T, E]")
 			} else {
+				if c.returnInference != nil {
+					c.returnInference.contextDependent = true
+				}
 				if !std(c.result, "Result") || len(c.result.Args) != 2 {
 					c.error(e.Pos, "type", "try requires an enclosing Result; declare this function to return Result[T, E] or handle the error with match")
 				} else if !Same(c.result.Args[1], v.Type.Args[1]) {
