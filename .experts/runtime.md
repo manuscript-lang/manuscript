@@ -27,19 +27,29 @@ Verify: conditional/default/match registrations retain stacks; a nested source
 closure does not force an unused parent stack; return, propagation, fault and
 cancellation retain cleanup and frame behavior.
 
-### Ancestor lock exclusion is broader than actual wait cycles
+### Synchronized uses cancellable cross-task blocking
 
-Verified: Synchronized checks the holder's work lifetime against the acquiring execution's ancestor chain. It rejects ordinary parent/child overlap even when the parent is not joining. Cancellation does not dissolve a cycle involving shielded cleanup, and must not forcibly release a held guard. The bounded tests cover lock-before-join and join-before-lock, task/group joins, group/execution/scheduler shutdown, and cancellation versus release.
+Decision: the user approved ordinary cross-task blocking for issue 148 after reviewing the automatic cycle detector's measured task overhead. Same-operation reentry faults using execution/work-lifetime identity, including helper and shielded views. Different executions, including descendants, wait. The reviewed graph draft and measurements remain in [superseded PR 256](https://github.com/manuscript-lang/manuscript/pull/256); that proposal was not merged and must not be silently restored.
 
-Open: permitting safe ancestor contention requires choosing an actual-cycle contract. Checking only when a child acquires misses an ancestor that joins afterward. A detector must coordinate both sides of the dependency and preserve fixed construction ancestry, failed-task group joins, and shielded cleanup. Independent-lock and cross-service cycles are currently invalid application usage; do not silently broaden that contract.
+Verified: cancellation stops ordinary lock waits, but it neither forcibly releases an executing holder nor abandons joined cleanup. Shielded cleanup ignores initiating cancellation and expired deadlines, so a cross-task cleanup cycle may remain blocked. Native RunMain has no cleanup watchdog or second-signal escalation. Do not claim universal deadlock detection or guaranteed timeout escape. Preserve task/group/service self-join guards and release held guards before joining dependent work.
 
-Verified: another operation can close a guard alias while the admitting operation is blocked joining. A wait-for cycle through the admitting lifetime can therefore be broken by independent alias release. A narrower policy must specify whether such potential cycles fault; do not describe them as proof of a permanent deadlock.
+Verified: another operation can close a guard alias while its owner is blocked joining. Access/release remains atomic, stale aliases cannot reach a later acquisition, and close stays idempotent. Work lifetime, resource lifetime and sharing remain separate.
 
-Verified: acquisition delivery must use one cancellation observation for both disposal and unwinding. Two final checks can see active then cancelled, discard the result without disposing it, and strand a Synchronized lock. A cancellation arriving after the successful delivery checkpoint belongs to caller cleanup.
+Verified: acquisition delivery uses one final cancellation observation for both disposal and unwind. Two checks can discard an acquired guard without disposing it. Keep PR 230's disposal fix; later cancellation after successful delivery belongs to caller cleanup.
 
-Apply when: changing ancestor lock admission, wait-cycle prevention, task/service joins, or acquisition delivery.
-Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [synchronization contract](../documentation/concurrency/synchronization.md), [bounded regressions](../pkg/runtime/synchronized_ancestor_test.go), [acquisition delivery](../pkg/runtime/values.go), and [undelivered acquisition regression](../pkg/runtime/synchronized_test.go).
-Verify: run the Synchronized and TaskGroup tests repeatedly and with the race detector. Any permissive contract must change the overlapping contention case to wait and return 7 while retaining bounded cycle/cleanup rejection in both orders.
+Apply when: changing lock admission, cancellation, alias release, task/service joining or acquisition delivery.
+Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [user decision](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df), [contract](../documentation/concurrency/synchronization.md), [bounded blocking regressions](../pkg/runtime/synchronized_ancestor_test.go), and [acquisition delivery](../pkg/runtime/values.go).
+Verify: ordinary ancestor overlap returns 7; both lock/join orders block until cooperative cancellation or release. Exercise deadlines, same-operation helper/shield reentry, cancellation/delivery/release races, alias close and use after close. Shielded-cycle tests run in bounded disposable subprocesses and release aliases explicitly; no test relies on cleanup timeout escape.
+
+### Attribute profiling at execution boundaries
+
+Verified: allocating pprof labels, derived executions, and trace regions for every source call can dominate a call-heavy program and create enormous traces. Source boundaries follow immutable context inheritance; task/scheduler work explicitly starts a new boundary. Nested calls keep source mapping in CPU sample stacks while reusing the boundary context. CPU labels and trace tasks/regions must follow their independently requested collectors; heap-only capture needs neither.
+
+Verified: attribution runs on the same execution and goroutine. Preserve the full execution state when changing its context; the work-inheritance helper can intentionally start new call accounting. Resetting that state for source labels changes admission at the depth limit and fault-frame bookkeeping. The profiling depth-limit regression distinguishes these cases.
+
+Apply when: changing source-call wrappers, profiling, work-context inheritance, or capture defaults.
+Evidence: [profiling implementation](../pkg/runtime/profile.go), [boundary/allocation and repeated-run regressions](../pkg/runtime/profile_test.go), [native exit/flush checks](../pkg/compiler/profile_test.go), and [profiling contract](../documentation/developer-tooling/implementation.md#debugging-and-profiling).
+Verify: measure unprofiled execution separately from capture setup/flush; repeat CPU/heap/trace modes. Preserve cancellation/lifetime and caller-label restoration, including faults. Validate all requested outputs with bundled viewers and keep default artifact changes explicit in help, docs, and manifest tests.
 
 ### Newer stdlib direction needs checkout reconciliation
 
@@ -155,7 +165,7 @@ Verify: round-trip consecutive single empty fields with LF/CRLF and alternate de
 
 ### Native transformations need output implementation evidence
 
-Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map and Map.map_keys deduplicate output elements/keys, whose scope can differ from the input element/key scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep callback membership snapshots at the native invocation boundary and payload references shallow.
+Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map and Map.map_keys deduplicate output elements/keys, whose scope can differ from the input element/key scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep Map/Set callback membership snapshots at the native invocation boundary and payload references shallow.
 
 Apply when: adding native transformations with output bounds or changing receiver specialization.
 Evidence: [receiver lowering](../pkg/compiler/lower_collections.go), [native dispatch](../pkg/runtime/collections.go), [cross-module output evidence](../tests/e2e/testdata/projects/core_parity/main.ms), and [callback mutation conformance](../tests/e2e/testdata/stdlib/core-parity.ms).
@@ -177,18 +187,45 @@ Apply when: changing YAML scalar gathering, comment removal, whitespace handling
 Evidence: [YAML parser](../pkg/stdlib/yaml.ms), [called scalar regressions](../tests/e2e/testdata/stdlib/yaml.ms), [YAML contract](../documentation/standard-library/formats.md#yaml-behavior), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
 Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization.
 
-### Collection snapshots require every in-place writer to detach
+### List traversal follows the captured Go slice header
 
-Verified: List callback traversals can retain a capacity-limited header and use
-the existing loop COW flag instead of eagerly copying all membership. Appends
-lie beyond the captured length, but fill, overlapping copy, reverse and other
-prefix writes must detach first. Nested element references remain shared; the
-private membership header must not become a second source-visible alias.
+Decision: the user's later instruction explicitly supersedes List membership
+snapshot/COW guarantees. Capture the slice and initial length once, expose writes
+to shared backing elements, and never extend a traversal on append. Reallocation
+leaves the running traversal on its original array. No traversal-driven List copy
+or hidden shared flag is needed. Map/Set snapshots, closure variable capture,
+explicit shallow clone/slice storage and synchronization contracts remain distinct.
 
-Apply when: changing collection storage, mutators, callback traversal or iteration.
-Evidence: [mutation differential tests](../pkg/runtime/list_snapshot_test.go),
-[called native alias/interop cases](../tests/e2e/testdata/accept/list-snapshots.ms),
-[native fault/cancellation cases](../pkg/compiler/list_snapshot_native_test.go),
-and [measured allocation costs and conservative COW tradeoff](../scripts/bench-lists/README.md).
-Verify: read-only traversal allocates only a header; all existing-element writes
-leave captured membership unchanged, including reentry and saved method calls.
+Decision: shrinking boxed List mutations use non-clearing Go copy/append and
+reslice semantics. Vacated cells keep prior valid values; captured ranges can
+observe shifted/repeated tails. Full splice-to-empty shortens the header, preserving
+backing capacity; an explicit header reset releases that receiver's backing.
+Removed references can remain retained until overwritten/reallocated/released.
+
+Verified: nil clearing in the earlier draft caused an unframed Int conversion
+panic. A `[]Value` nil oracle and a native loop ignoring its binding both missed
+typed-consumption safety. Parent approved non-clearing behavior without implicit
+copies or invented zero values. Evidence: [typed Go oracles](../pkg/runtime/list_shrink_test.go),
+[called consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms),
+[original reproducer now succeeding](../scripts/bench-lists/repro-cleared-tail.ms),
+and [fix/retention review](../scripts/bench-lists/go-range-review.md#non-clearing-shrink).
+
+Apply when: changing List traversal, callbacks, writers or typed numeric storage.
+Evidence: [range/mutation oracle](../pkg/runtime/list_range_test.go),
+[called native Go-range cases](../tests/e2e/testdata/accept/list-go-range.ms),
+[loop contract](../documentation/core-language/control-flow/loops.md#iterable-types-and-binding),
+and [measured no-copy follow-on](../scripts/bench-lists/go-range-review.md).
+Verify: capture once, mutate in place, append with/without growth, shrink, reverse
+and self-splice; observed reads match ordinary Go backing-array behavior. Explicit
+clones stay separate and append-only callbacks visit only the initial length.
+Also consume yielded values after shrink in called native/standalone regressions,
+checking types, source fault frames, cancellation, explicit clone independence,
+and retained memory after clearing/reusing/releasing backing capacity.
+
+Verified: a mutating predicate can shift/replace the current List cell. `find`
+and `find_last` must capture the element before invoking the predicate and return
+that same shallow value when it matches; index variants return the captured index.
+Reloading the cell afterward returned an element the predicate never matched.
+Body-versus-dispatch comparisons share the bug, so use independent expected values
+and Go operation oracles. Evidence: [search regression](../pkg/runtime/list_find_mutation_test.go)
+and [called search/view/alias consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms).

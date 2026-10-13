@@ -36,16 +36,17 @@ test "prelude cases and optional methods need no imports":
         error(cause): return panic(cause.message())
 
 test "prelude Error preserves concrete failures through try":
-    match propagated():
+    let cause = match propagated():
         ok(value): return panic("failure did not propagate")
 
-        error(cause):
-            if cause.message() != "failed": return panic("error receiver lost")
+        error(cause): cause
 
-            match cause:
-                Failure(value):
-                    if value.message_text != "failed": return panic(
-                        "error payload lost"
-                    )
+    if cause.message() != "failed": return panic("error receiver lost")
 
-                _: return panic("concrete error lost")
+    match cause:
+        Failure(value):
+            if value.message_text != "failed": return panic(
+                "error payload lost"
+            )
+
+        _: return panic("concrete error lost")

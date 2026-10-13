@@ -102,16 +102,16 @@ test "collection updates retain identity and clone separates storage":
     if not (set_alias.values() == [2] and set_copy.values() == [1]):
         return panic(message: "set aliases or clone failed")
 
-test "for loop snapshots membership while elements retain references":
+test "for loop captures length and observes backing writes":
     let values = [1, 2, 3]
-    var total = 0
+    let seen: List[Int] = []
 
     for value in values:
-        total = total + value
-        values.without(0)
+        seen.append(value)
+        values.fill(value: 9, start: 0, end: 3)
 
-    if not (total == 6 and values.length() == 0):
-        return panic(message: "iteration membership must be stable")
+    if not (seen == [1, 9, 9] and values == [9, 9, 9]):
+        return panic("range did not observe backing writes")
 
 test "Synchronized protects record mutation without replacement":
     let counter = Synchronized(Val(0))
@@ -139,15 +139,15 @@ test "Synchronized protects record mutation without replacement":
             error(_):
                 return panic(message: "task mutation failed")
 
-test "callbacks snapshot membership while mutating their source":
+test "callbacks capture length while mutating their source":
     let values = [1, 2, 3]
     let result = values.map(
-        transform: fn(value):
-            values.without(0)
+        fn(value):
+            values.fill(value: 9, start: 0, end: 3)
             return value + 1
     )
-    if not (result == [2, 3, 4] and values.length() == 0):
-        return panic(message: "callback traversal lost typed membership")
+    if not (result == [2, 10, 10] and values == [9, 9, 9]):
+        return panic("callback copied backing membership")
 
 test "list growth and saved clone methods preserve current contents":
     let values: List[Int] = []

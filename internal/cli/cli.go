@@ -6,11 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	support "github.com/manuscript-lang/manuscript"
 	"github.com/manuscript-lang/manuscript/internal/debugger"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
-	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 	"github.com/manuscript-lang/manuscript/pkg/tooling/lsp"
 	"io/fs"
@@ -30,16 +28,15 @@ func Run(args []string) int {
 		fmt.Print(help)
 		return 0
 	}
-	if args[0] == "--version" {
-		fmt.Println("Manuscript " + support.Version())
-		return 0
+	if args[0] == "--version" || args[0] == "version" {
+		return runVersion(args[0], args[1:])
 	}
 	usage, known := commandHelp(args[0])
 	if !known {
 		unknownCommand(args[0])
 		return 2
 	}
-	if requestsHelp(args[1:]) {
+	if requestsHelp(args[0], args[1:]) {
 		fmt.Print(usage)
 		return 0
 	}
@@ -113,27 +110,49 @@ func Run(args []string) int {
 		return 2
 	}
 	command, filename := args[0], args[1]
-	if strings.HasPrefix(filename, "-") && filename != "--" {
+	analysis := command == "check" || command == "lint"
+	first, positional := 1, false
+	if analysis && filename == "--" {
+		if len(args) == 2 {
+			fmt.Fprintf(os.Stderr, "ms %s: missing a target; pass .ms files, directories, or ms.toml\n", command)
+			return 2
+		}
+		first, filename, positional = 2, args[2], true
+	}
+	if strings.HasPrefix(filename, "-") && filename != "--" && !positional {
 		fmt.Fprintf(os.Stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (put the file first, then options)\n", filename, command, command)
 		return 2
 	}
-	filename, err := resolveInput(command, filename)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 2
+	if !analysis {
+		var err error
+		filename, err = resolveInput(command, filename)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 2
+		}
 	}
+	targets := []string{filename}
 	output := ""
 	cpuProfile, heapProfile, tracePath := "", "", ""
+	profileTrace := false
 	formatCheck, structured, debug, watch := false, false, false, false
 	buildTypeName := ""
 	buildTypeSet := false
 	testTimeout, testFilter := "", ""
 	var arguments []string
-	for i := 2; i < len(args); i++ {
+	for i := first + 1; i < len(args); i++ {
+		if positional {
+			targets = append(targets, args[i])
+			continue
+		}
 		flag, value, inline := splitCommandValueOption(command, args[i])
 		switch flag {
 		case "--":
-			arguments = args[i+1:]
+			if analysis {
+				targets = append(targets, args[i+1:]...)
+			} else {
+				arguments = args[i+1:]
+			}
 			i = len(args)
 		case "--debug":
 			debug = true
@@ -169,18 +188,28 @@ func Run(args []string) int {
 			formatCheck = true
 		case "--json":
 			structured = true
-		case "-o", "--output", "--cpu-profile", "--heap-profile", "--trace":
+		case "--trace":
+			if command == "profile" {
+				profileTrace = true
+				continue
+			}
+			fallthrough
+		case "-o", "--output", "--out-dir", "--cpu-profile", "--heap-profile":
 			value, ok := requiredValue(args, &i, value, inline)
 			if !ok {
 				message := flag + " requires a path argument, e.g. " + flag + " out.pprof"
-				if flag == "-o" || flag == "--output" {
+				if flag == "-o" || flag == "--output" || flag == "--out-dir" {
 					message = flag + " requires a path argument, e.g. " + flag + " out.go"
 				}
 				fmt.Fprintln(os.Stderr, message)
 				return 2
 			}
 			switch flag {
-			case "-o", "--output":
+			case "-o", "--output", "--out-dir":
+				if flag == "--out-dir" && command != "profile" {
+					fmt.Fprintf(os.Stderr, "--out-dir is valid only for ms profile, not ms %s; use -o for commands that write a file\n", command)
+					return 2
+				}
 				output = value
 			case "--cpu-profile":
 				cpuProfile = value
@@ -191,6 +220,10 @@ func Run(args []string) int {
 			}
 		default:
 			if !strings.HasPrefix(args[i], "-") {
+				if analysis {
+					targets = append(targets, args[i])
+					continue
+				}
 				fmt.Fprintf(os.Stderr, "unexpected extra argument %s (ms %s takes one file; arguments for the program go after --)\n", args[i], command)
 				return 2
 			}
@@ -200,10 +233,10 @@ func Run(args []string) int {
 	}
 	options := compiler.Options{}
 	switch command {
-	case "check", "lint", "inspect", "diagram", "lock":
+	case "check", "lint": // Independent source requests run after flag validation.
+	case "inspect", "diagram", "lock":
 		options.AnalyzeOnly = true
-		options.ProjectSources = command == "check"
-		options.Entry = command != "lint" && filepath.Base(filename) == "ms.toml"
+		options.Entry = filepath.Base(filename) == "ms.toml"
 	case "emit": // Only source emission needs lowering without an entry launcher.
 	case "build", "run", "debug", "profile":
 		options.Entry = true
@@ -239,7 +272,7 @@ func Run(args []string) int {
 		fmt.Fprintf(os.Stderr, "--watch requires run or test, not %s; use ms run <file> --watch or ms test <file> --watch\n", command)
 		return 2
 	}
-	if formatCheck && command != "fmt" || structured && command != "check" && command != "lint" && command != "test" || debug && command != "build" && command != "run" && command != "test" {
+	if formatCheck && command != "fmt" || structured && command != "check" && command != "lint" && command != "test" && command != "build" && command != "profile" || debug && command != "build" && command != "run" && command != "test" {
 		fmt.Fprintf(os.Stderr, "%s; run 'ms help %s' for the options this command accepts\n", invalidFlag(command, formatCheck, structured, debug), command)
 		return 2
 	}
@@ -262,33 +295,24 @@ func Run(args []string) int {
 		kind = compiler.RelWithDebInfo
 	}
 	if (cpuProfile != "" || heapProfile != "" || tracePath != "") && command != "run" {
-		fmt.Fprintf(os.Stderr, "profiling flags (--cpu-profile, --heap-profile, --trace) require run, not %s; use ms run <file> with them, or ms profile <file> to capture all three\n", command)
+		fmt.Fprintf(os.Stderr, "profiling paths (--cpu-profile, --heap-profile, --trace) require run, not %s; use ms run <file> with them, or ms profile <file> [--trace] for a bundle\n", command)
 		return 2
 	}
 	if watch && (cpuProfile != "" || heapProfile != "" || tracePath != "") {
 		fmt.Fprintln(os.Stderr, "--watch cannot be combined with profiling flags; run the profile once without --watch")
 		return 2
 	}
-
-	if command == "profile" {
-		if output == "" {
-			output = "profile"
-		}
-		absolute, err := filepath.Abs(output)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		output = absolute
-		cpuProfile = filepath.Join(output, "cpu.pprof")
-		heapProfile = filepath.Join(output, "heap.pprof")
-		tracePath = filepath.Join(output, "trace.out")
+	if analysis {
+		return runAnalysis(command, targets, structured)
+	}
+	if command == "build" || command == "profile" {
+		return runNativeCommand(command, filename, output, options, kind, arguments, profileTrace, structured)
 	}
 
 	options.CPUProfile, options.HeapProfile, options.Trace = cpuProfile, heapProfile, tracePath
 
 	switch command {
-	case "build", "run", "test", "debug", "profile":
+	case "run", "test", "debug":
 		// Native commands need the build pin; query the toolchain and hash
 		// embedded inputs while the source is parsed and checked.
 		go compiler.CurrentPin()
@@ -296,25 +320,7 @@ func Run(args []string) int {
 	if watch {
 		return watchProgram(command, filename, options, kind, "", arguments)
 	}
-	result := compiler.CompileFile(filename, options)
-	if structured && command == "check" || structured && command == "lint" && !result.Success() {
-		if result.Diagnostics == nil {
-			result.Diagnostics = []syntax.Diagnostic{}
-		}
-		data, err := json.MarshalIndent(struct {
-			Format      int                 `json:"format"`
-			Diagnostics []syntax.Diagnostic `json:"diagnostics"`
-		}{1, result.Diagnostics}, "", "  ")
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		fmt.Println(string(data))
-		if !result.Success() {
-			return 1
-		}
-		return 0
-	}
+	result := compiler.CompileFileForBuild(filename, options, kind)
 	if !result.Success() {
 		if structured && command == "test" {
 			document := newTestResult(result)
@@ -323,12 +329,6 @@ func Run(args []string) int {
 		}
 		return reportDiagnostics(result)
 	}
-	if command == "profile" {
-		if err := os.Mkdir(output, 0700); err != nil {
-			fmt.Fprintf(os.Stderr, "profile directory must be new: %v; choose a path that does not exist with -o <directory>, or delete the old one\n", err)
-			return 1
-		}
-	}
 
 	cache := ""
 	if result.ProjectRoot != "" {
@@ -336,37 +336,6 @@ func Run(args []string) int {
 	}
 
 	switch command {
-	case "lint":
-		findings := []tooling.LintFinding{}
-		// Bundled standard modules are not the user's to fix.
-		for _, module := range result.Program.Modules {
-			if !strings.HasPrefix(module.File, "@std/") {
-				findings = append(findings, tooling.Lint(module.File, module.Source)...)
-			}
-		}
-		for _, finding := range tooling.LintProgram(result.Program) {
-			if !strings.HasPrefix(finding.Position.File, "@std/") {
-				findings = append(findings, finding)
-			}
-		}
-		if structured {
-			data, _ := json.Marshal(struct {
-				Format      int                   `json:"format"`
-				Diagnostics []tooling.LintFinding `json:"diagnostics"`
-			}{1, findings})
-			fmt.Println(string(data))
-		} else {
-			for _, f := range findings {
-				if result.SourceRoot != "" && !filepath.IsAbs(f.Position.File) {
-					f.Position.File = filepath.Join(result.SourceRoot, f.Position.File)
-				}
-				fmt.Fprintf(os.Stderr, "%s: %s: %s\n", f.Position, f.Code, f.Message)
-			}
-		}
-		if len(findings) > 0 {
-			return 1
-		}
-		return 0
 	case "lock":
 		if result.ProjectRoot == "" {
 			fmt.Fprintln(os.Stderr, "lock requires a project ms.toml, not a single .ms file; run ms lock path/to/ms.toml (a manifest declares [project] name and source, plus entry for an executable)")
@@ -392,19 +361,6 @@ func Run(args []string) int {
 			source = string(data) + "\n"
 		}
 		return writeOutput(output, []byte(source))
-	case "check":
-		if result.ProjectRoot != "" {
-			count := 0
-			for _, module := range result.Program.Modules {
-				if !strings.HasPrefix(module.File, "@std/") {
-					count++
-				}
-			}
-			fmt.Printf("Checked %s (%d %s)\n", filename, count, plural(count, "module", "modules"))
-		} else {
-			fmt.Println("Checked", filename)
-		}
-		return 0
 	case "emit":
 		source, err := compiler.Standalone(result.Source)
 		if err != nil {
@@ -412,30 +368,6 @@ func Run(args []string) int {
 			return 1
 		}
 		return writeOutput(output, []byte(source))
-	case "build":
-		if output == "" {
-			output = "program"
-			if runtime.GOOS == "windows" {
-				output += ".exe"
-			}
-		}
-		absolute, err := filepath.Abs(output)
-		if err == nil {
-			if info, statErr := os.Stat(absolute); statErr == nil && info.IsDir() {
-				fmt.Fprintf(os.Stderr, "-o %s is a directory; pass a file path (e.g. -o %s)\n", output, filepath.Join(output, "program"))
-				return 2
-			}
-			if cache == "" {
-				cache = filepath.Join(filepath.Dir(absolute), ".ms-cache")
-			}
-			_, err = compiler.BuildCheckedWithType(result, absolute, cache, kind)
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		fmt.Println("Built", output)
-		return 0
 	default:
 		if cache == "" {
 			var err error
@@ -458,9 +390,6 @@ func Run(args []string) int {
 		}
 		defer os.RemoveAll(directory)
 		executable := filepath.Join(directory, "program")
-		if command == "profile" {
-			executable = filepath.Join(output, "program")
-		}
 		if runtime.GOOS == "windows" {
 			executable += ".exe"
 		}
@@ -471,21 +400,6 @@ func Run(args []string) int {
 			}
 			fmt.Fprintln(os.Stderr, err)
 			return 1
-		}
-		if command == "profile" {
-			manifest, _ := json.MarshalIndent(map[string]any{"format": 1, "source_root": result.SourceRoot, "executable": filepath.Base(executable), "inspection": "inspection.json", "cpu_profile": "cpu.pprof", "heap_profile": "heap.pprof", "trace": "trace.out"}, "", "  ")
-			if err := os.WriteFile(filepath.Join(output, "manifest.json"), manifest, 0600); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				return 1
-			}
-			inspection, err := json.MarshalIndent(tooling.Inspect(result.Program), "", "  ")
-			if err == nil {
-				err = os.WriteFile(filepath.Join(output, "inspection.json"), inspection, 0600)
-			}
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				return 1
-			}
 		}
 		if command == "debug" {
 			ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
@@ -601,7 +515,7 @@ func invalidFlag(command string, formatCheck, structured, debug bool) string {
 	case formatCheck && command != "fmt":
 		return "--check is valid only for ms fmt, not ms " + command
 	case structured:
-		return "--json is valid only for ms check, ms lint, and ms test, not ms " + command
+		return "--json is valid only for ms check, lint, test, build, and profile, not ms " + command
 	case debug:
 		return "--debug is valid only for ms build, run, and test, not ms " + command
 	}

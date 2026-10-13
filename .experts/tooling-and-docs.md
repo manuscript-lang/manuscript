@@ -29,6 +29,13 @@ retained generated Go and escape analysis, and compare allocation counts as well
 as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
 when promoting a benchmark candidate into production lowering.
 
+Verified: immutable boxed literal tables still create fixed GC roots even when
+their source functions never run. Per-construction B/op and Go HeapAlloc omit
+that static data. The bounded Debug prototype measured zero/one/repeated calls,
+multiple literals, child RSS and ELF segments; a lower GC target exposed a
+repeatable construction slowdown despite faster native compilation. Treat those
+as separate review costs. Evidence: [literal memory/runtime controls](../scripts/bench-debug-literals/README.md#current-matched-main-evidence-after-api-review).
+
 Verified: direct native calls must use `argumentValue`, not raw `expression`,
 for supplied arguments. Checking can attach implicit Optional wrapping while
 the expression retains its payload type; bypassing that evidence stored an Int
@@ -38,6 +45,19 @@ expression lowering and composes with the Optional wrapper.
 Evidence: [direct collection lowering](../pkg/compiler/lower_collections.go),
 [generated-form checks](../pkg/compiler/lower_collection_conversions_test.go),
 and [native conversion/order conformance](../tests/e2e/testdata/accept/direct-collection-conversions.ms).
+
+Verified: choose a lowering path before generating its operands. Explicit views
+previously built and abandoned ordinary-call arguments, then lowered the receiver
+again for `ViewOf`. A nested callable or match registered source markers in the
+discarded tree, so checked programs failed the printer's exact-once invariant.
+Lowering mutates generator state even when its resulting expression is discarded;
+eligibility probes must return without lowering operands on an ineligible path.
+Preserve the printer assertion and independent baseline rather than dropping
+unprinted markers or rewriting source to introduce an intermediate binding.
+Evidence: [view lowering](../pkg/compiler/lower_expressions.go),
+[AST marker regressions](../pkg/compiler/lower_views_test.go),
+[native evaluation/capture tests](../tests/e2e/testdata/accept/interface-view-callables.ms),
+and [native DAP regression](../extensions/vscode/tests/interface-view-debug.test.js).
 
 ### Readable formatting needs paragraphs while retaining inline guards
 
@@ -73,6 +93,20 @@ Apply when: changing native optimization, symbol settings, or build caches.
 Evidence: [build level contract](../documentation/developer-tooling/builds/build-levels.md), [native flags](../pkg/compiler/build_type.go), [cache identity](../pkg/compiler/cache.go), and [native artifact checks](../pkg/compiler/build_type_test.go).
 Verify: build all four levels, execute and restore each artifact, check native optimization settings and debug sections, and compare stripped sizes with RelWithDebInfo.
 
+Verified: replacing a large list constructor with an anonymous copy thunk
+added physical Go lines under the preceding Manuscript `//line` directive.
+Delve stopped at a later source breakpoint inside that thunk with missing
+source locals. Giving the thunk a generated-file directive still introduced
+an extra stepping frame. An in-statement `append([]rt.Value(nil), data[:]...)`
+retains fresh storage without that frame; native DAP tests must compare against
+the unchanged baseline, including existing bookkeeping-line coalescing.
+Evidence: [large-list DAP regression](../extensions/vscode/tests/debug-large-literal.test.js),
+[bounded Debug lowering](../pkg/compiler/lower_debug_literals.go), and
+[independent measurement/provenance](../scripts/bench-debug-literals/README.md).
+Verify: break before and after construction, step, inspect source locals and
+watches, and mutate one of two independent evaluations. Default/Release
+generation and caller-edited `Result.Source` must remain unchanged.
+
 ### Repository cleanup must remove duplicated work and layers
 
 Decision: the user's codebase cleanup request includes simplifying the implementation as a whole; reorganizing files alone does not satisfy it. Consolidate duplicated behavior and remove avoidable work before adding abstraction layers.
@@ -95,6 +129,18 @@ position and rebase it during partial parsing. Evidence: [checked name evidence]
 [binding/alias/shadowing regressions](../pkg/tooling/pattern_lint_test.go),
 [recovery positions](../pkg/parser/pattern_positions_test.go), and
 [native binding versus separate payload handling](../tests/e2e/testdata/accept/pattern-binding-capture.ms).
+
+Verified: a preferred-name advisory must identify the checked standard native
+method, including its receiver. User methods and callable fields can share the
+same spelling without sharing its semantics. Equivalent stored-method shapes
+can be advised, but String.replace_first currently retains a cap that can replace
+multiple matches; a blanket replace-to-replace_first migration would obscure
+that contract. Its final first/n/all split is a proposal, not a shipped arity
+change. Evidence: [identity and migration exclusions](../pkg/tooling/preferred_names_lint_test.go),
+[current replacement signature](../pkg/stdlib/intrinsics.ms), and
+[naming proposal](https://github.com/manuscript-lang/manuscript/issues/167#issuecomment-6151772994).
+Verify direct/stored native calls, user implementations, callable-field shadowing,
+and excluded capped calls; preserve CLI checking and exact Unicode editor ranges.
 
 ### Package moves must preserve build identity and publication inputs
 
@@ -206,6 +252,8 @@ Verify: compare authored Markdown with the base branch, keep semantic changes ou
 ### Source freshness does not establish published freshness
 
 Verified: after the concurrency simplification, source declarations and generated Markdown were current while the checked-in website still exposed retired bounds and a removed module route. The user found this in the API reference. A source-generation check alone cannot verify the HTML, downloadable schemas, or search index that readers receive.
+
+Verified: integration can expose an API in an additional reference without changing its declaration. Adding Map to the prelude and then adding Map methods required regenerating the prelude page and both downloads as well as the collections page. GitHub tested the combined merge tree while the local branch still passed freshness; [the failed freshness gate](https://github.com/manuscript-lang/manuscript/actions/runs/38431272729) identified this drift. Run `make docs` and freshness checks after latest-main integration, using the canonical registry rather than editing generated pages by hand.
 
 Apply when: removing or renaming public language/API surface, or reporting a documentation update complete.
 Evidence: the user's follow-up to [the concurrency change](https://github.com/manuscript-lang/manuscript/pull/24); [publication checks](../tests/docs/publication.test.cjs); [publishing workflow](../.github/workflows/cicd.yml).

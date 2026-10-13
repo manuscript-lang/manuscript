@@ -273,3 +273,13 @@ Parses HTML into a normalized tree and applies the supplied resource limits.
 fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]:
 ```
 
+## unescape {data-api-kind="Function"}
+
+Decodes HTML5 named and numeric character references in text context, once.
+Recognized references can omit semicolons; unrecognized text remains literal.
+Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
+
+```manuscript
+fn unescape(text: String) -> String:
+```
+

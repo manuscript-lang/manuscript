@@ -70,6 +70,11 @@ export type HtmlNode:
 # Escapes text for insertion into an HTML text or quoted attribute context.
 export fn escape(text: String) -> String:
 
+# Decodes HTML5 named and numeric character references in text context, once.
+# Recognized references can omit semicolons; unrecognized text remains literal.
+# Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
+export fn unescape(text: String) -> String:
+
 # Parses HTML into a normalized tree and applies the supplied resource limits.
 export fn parse(
     text: String,

@@ -44,6 +44,7 @@ func run() error {
 	if *nativeDefaults {
 		program, harnessFile = "native-defaults.ms", "native-defaults.go.txt"
 		names = []string{"direct_explicit", "direct_omitted", "bound_explicit", "bound_omitted", "encode_bind", "csv_explicit", "csv_omitted", "command_explicit", "command_omitted", "command_bind"}
+		names = append(names, "filesystem_setup", "filesystem_explicit", "filesystem_omitted", "filesystem_bind")
 	}
 	source, err := inputs.ReadFile(program)
 	if err != nil {
@@ -55,6 +56,7 @@ func run() error {
 			"encode(data)", "encode(data, false)",
 			"CsvOptions()", "CsvOptions(\",\", \"\\n\")",
 			"arguments: [])", "arguments: [], input: \"\".to_bytes())",
+			"fs.write_file(\"\", data)", "fs.write_file(\"\", data, false)",
 		).Replace(string(source)))
 	}
 	result := compiler.CompileSource("benchmark.ms", string(source), compiler.Options{})

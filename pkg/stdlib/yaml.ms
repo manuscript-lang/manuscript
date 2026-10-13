@@ -232,7 +232,7 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
                 hex = hex.concat(digit)
                 count = count - 1
 
-            match parse_int(text: hex, radix: 16):
+            let value = match parse_int(text: hex, radix: 16):
                 error(_): return error(
                     flow_invalid(
                         flow: flow,
@@ -240,15 +240,17 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
                     )
                 )
 
-                ok(value):
-                    match from_scalars([value]):
-                        error(_): return error(
-                            flow_invalid(
-                                flow: flow,
-                                reason: "invalid Unicode scalar"
-                            )
-                        )
-                        ok(text): result = result.concat(text)
+                ok(value): value
+
+            match from_scalars([value]):
+                error(_): return error(
+                    flow_invalid(
+                        flow: flow,
+                        reason: "invalid Unicode scalar"
+                    )
+                )
+                ok(text): result = result.concat(text)
+
         else:
             return error(
                 flow_invalid(
@@ -368,7 +370,7 @@ fn merge(
     target: Map[String, YamlValue],
     value: YamlValue
 ) -> Result[Unit, YamlError]:
-    match value:
+    let values = match value:
         ObjectValue(entries):
             for entry in entries:
                 if not target.contains(entry.key): target.with_entry(
@@ -378,25 +380,7 @@ fn merge(
 
             return ok(unit)
 
-        ArrayValue(values):
-            for item in values:
-                match item:
-                    ObjectValue(_): let merged = try merge(
-                        line: line,
-                        column: column,
-                        target: target,
-                        value: item
-                    )
-                    _: return error(
-                        YamlError.InvalidData(
-                            line: line,
-                            column: column,
-                            reason: "merge requires mappings"
-                        )
-                    )
-
-            return ok(unit)
-
+        ArrayValue(values): values
         _: return error(
             YamlError.InvalidData(
                 line: line,
@@ -404,6 +388,24 @@ fn merge(
                 reason: "merge requires mappings"
             )
         )
+
+    for item in values:
+        match item:
+            ObjectValue(_): let merged = try merge(
+                line: line,
+                column: column,
+                target: target,
+                value: item
+            )
+            _: return error(
+                YamlError.InvalidData(
+                    line: line,
+                    column: column,
+                    reason: "merge requires mappings"
+                )
+            )
+
+    return ok(unit)
 
 fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]:
     flow_space(flow)

@@ -1,0 +1,51 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func check(line string) string {
+	type open struct {
+		c   byte
+		pos int
+	}
+	var st []open
+	match := map[byte]byte{')': '(', ']': '[', '}': '{'}
+	for i := 0; i < len(line); i++ {
+		c := line[i]
+		switch c {
+		case '(', '[', '{':
+			st = append(st, open{c, i + 1})
+		case ')', ']', '}':
+			if len(st) == 0 || st[len(st)-1].c != match[c] {
+				return fmt.Sprintf("error %d", i+1)
+			}
+			st = st[:len(st)-1]
+		}
+	}
+	if len(st) > 0 {
+		return fmt.Sprintf("error %d", st[0].pos)
+	}
+	return "ok"
+}
+
+func main() {
+	r := bufio.NewReaderSize(os.Stdin, 1<<20)
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+	for {
+		line, err := r.ReadString('\n')
+		if len(line) == 0 && err != nil {
+			break
+		}
+		if n := len(line); n > 0 && line[n-1] == '\n' {
+			line = line[:n-1]
+		}
+		fmt.Fprintln(w, check(line))
+		if err != nil {
+			break
+		}
+	}
+}

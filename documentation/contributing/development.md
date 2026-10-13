@@ -15,6 +15,8 @@ make verify
 
 `make setup` installs verified Go and checkout-local pinned linters. `make doctor` reports missing or mismatched prerequisites without downloading anything. `make verify` runs read-only formatting/vet, correctness/simplification/unused-code lint, workflow/shell lint, repository invariants, fast unit tests, checked tutorial examples, generated API freshness, and license freshness. Both `make check` and `make repo-check` reject invalid syntax in any `pkg/stdlib/*.ms` file using the ordinary strict frontend, reporting its filename, line, and column. It does not build native conformance executables. Formatting corrections are explicit through `make fmt`; generated sources are explicit through `make docs` and `make licenses`.
 
+`make repo-check` also rejects nested matches in repository Manuscript sources, Markdown code fences (`manuscript`, `ms`, or `text`), and Go source strings, including concatenated literals. It includes untracked files that Git does not ignore. Keep examples, implementation, and suggested diagnostic remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat). A deliberate grammar, checker, lowering, or lint regression may put `# manuscript:allow-nested-match <reason>` immediately before one inner match in a `tests/*.ms` fixture (including subdirectories), or `// manuscript:allow-nested-match <reason>` immediately before a source literal in a Go `_test.go` file. Each allowance applies only to that match or literal; implementation and documentation cannot opt out. Dynamically constructed Go strings still need consumer tests; this guard inspects source syntax rather than executing generators.
+
 For the complete native validation:
 
 ```sh
