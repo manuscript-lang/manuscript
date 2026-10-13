@@ -4,6 +4,7 @@ package main
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -142,11 +143,12 @@ func build() error {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	file, err := os.Create(output)
+	file, err := os.CreateTemp(filepath.Dir(output), ".build-payload-*.tar.gz")
 	if err != nil {
 		return err
 	}
 	defer file.Close()
+	defer os.Remove(file.Name())
 	compressed := gzip.NewWriter(file)
 	archive := tar.NewWriter(compressed)
 	var total int64
@@ -183,6 +185,18 @@ func build() error {
 	}
 	if err := file.Close(); err != nil {
 		return err
+	}
+	// Publish atomically: other developer checks can be embedding this file.
+	// Keep an identical payload untouched so concurrent builds retain its inode.
+	prepared, err := os.ReadFile(file.Name())
+	if err != nil {
+		return err
+	}
+	previous, _ := os.ReadFile(output)
+	if !bytes.Equal(previous, prepared) {
+		if err := os.Rename(file.Name(), output); err != nil {
+			return err
+		}
 	}
 	// Overlay selects a target payload without mutating the host payload or SDK.
 	absolute, err := filepath.Abs(output)
