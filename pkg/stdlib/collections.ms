@@ -9,10 +9,12 @@ export type CollectionError:
 export type List[T]:
     # Returns a shallow copy with independent list storage.
     fn clone() -> List[T]:
-    # Returns the value at a zero-based index, or `none` when out of range.
+    # Returns an element; negative indexes are relative to the end, and out-of-range indexes return none.
     fn at(index: Int) -> Optional[T]:
     fn contains(value: T) -> Bool:
+    # Returns the first equal element's zero-based index, or none; elements require Equal.
     fn index_of(value: T) -> Optional[Int]:
+    # Returns the last equal element's zero-based index, or none; elements require Equal.
     fn last_index_of(value: T) -> Optional[Int]:
     fn first() -> Optional[T]:
     fn last() -> Optional[T]:
@@ -20,7 +22,8 @@ export type List[T]:
     fn prepend(value: T) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
-    # Returns the half-open range from `start` up to but excluding `end`.
+    # Returns a new shallow List containing [start, end); outer storage is independent.
+    # Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
     fn slice(start: Int, end: Int) -> List[T]:
     fn reverse() -> List[T]:
     # Returns a new list sorted by negative/zero/positive comparator results.
@@ -30,11 +33,13 @@ export type List[T]:
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    # Searches from the end and returns the last matching zero-based index, or none.
     fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
     # Returns true when at least one value satisfies the predicate.
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     # Returns true when every value satisfies the predicate; empty lists return true.
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
+    # Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
     fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]:
     fn map[U](transform: fn(value: T) -> U) -> List[U]:
@@ -75,6 +80,7 @@ export type Map[T: Hashable, U]:
     fn values() -> List[U]:
     fn entries() -> List[MapEntry[T, U]]:
     fn merge(other: Map[T, U]) -> Map[T, U]:
+    # Calls operation(key:, value:) sequentially over an insertion-order membership snapshot.
     fn for_each(operation: fn(key: T, value: U) -> Unit) -> Unit:
     fn contains(key: T) -> Bool:
     fn get(key: T) -> Optional[U]:
@@ -100,13 +106,20 @@ export type Set[T: Hashable]:
     fn union(right: Set[T]) -> Set[T]:
     fn intersection(right: Set[T]) -> Set[T]:
     fn difference(right: Set[T]) -> Set[T]:
+    # Returns a new set of values in exactly one operand; leaves both operands unchanged.
     fn symmetric_difference(right: Set[T]) -> Set[T]:
+    # Tests whether every receiver value also occurs in right.
     fn is_subset_of(right: Set[T]) -> Bool:
+    # Tests whether every right value also occurs in the receiver.
     fn is_superset_of(right: Set[T]) -> Bool:
+    # Tests whether the operands have no common values.
     fn is_disjoint_from(right: Set[T]) -> Bool:
     fn clear() -> Set[T]:
+    # Returns a shallow list of values in insertion order.
     fn values() -> List[T]:
+    # Returns a new list of [value, value] lists in insertion order.
     fn entries() -> List[List[T]]:
+    # Calls operation(value:) sequentially over an insertion-order membership snapshot.
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
     fn contains(value: T) -> Bool:
     fn length() -> Int:

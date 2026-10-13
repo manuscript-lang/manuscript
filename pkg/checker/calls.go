@@ -45,23 +45,16 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			c.error(e.Pos, "type", "construct an alternative case rather than its type; call one of "+typ.Name+"'s cases: "+list(caseNames(typ), 8))
 			return i
 		}
-		var fields []Param
-		fields = Fields(typ)
-		if std(typ, "Bytes") {
-			fields = []Param{{"values", standard("List", primitive("Int"))}}
-		}
+		fields := ConstructorSignature(typ).Params
 		if std(typ, "Task") || std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
 			c.error(e.Pos, "type", "standard type has no source constructor: "+typ.String()+"; create it with a literal or the standard function documented for it (ms doc)")
 			return i
 		}
 		i.Arguments = constructorArguments(e.Args, fields)
 		typ = c.instantiate(typ, fields, i.Arguments, expected, e.Pos)
-		fields = Fields(typ)
+		fields = ConstructorSignature(typ).Params
 		if std(typ, "Queue") && len(e.Args) == 0 {
 			fields = nil
-		}
-		if std(typ, "Bytes") {
-			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
 		i.NoReturn = c.argumentsFor(typ.Name, e.Pos, i.Arguments, fields, ConstructorSignature(typ).Defaults)
 		i.Type = typ

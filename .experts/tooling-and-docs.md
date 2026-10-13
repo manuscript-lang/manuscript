@@ -23,6 +23,16 @@ retained generated Go and escape analysis, and compare allocation counts as well
 as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
 when promoting a benchmark candidate into production lowering.
 
+Verified: direct native calls must use `argumentValue`, not raw `expression`,
+for supplied arguments. Checking can attach implicit Optional wrapping while
+the expression retains its payload type; bypassing that evidence stored an Int
+inside `List[Optional[Int]]` and caused an exit-70 conversion crash. Multi-argument
+fast paths also retain ordered capture guards. Error/Result widening remains in
+expression lowering and composes with the Optional wrapper.
+Evidence: [direct collection lowering](../pkg/compiler/lower_collections.go),
+[generated-form checks](../pkg/compiler/lower_collection_conversions_test.go),
+and [native conversion/order conformance](../tests/e2e/testdata/accept/direct-collection-conversions.ms).
+
 ### Readable formatting needs paragraphs while retaining inline guards
 
 Decision: the user's formatter request keeps inline `if` bodies and introduces

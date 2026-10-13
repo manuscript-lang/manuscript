@@ -51,6 +51,8 @@ Apply when: changing closures, task-group work, schedulers, resource wrappers, o
 Evidence: [sharing](../documentation/concurrency/sharing.md); [joined groups](../documentation/concurrency/joining.md); [scope-exit ordering](../documentation/core-language/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
 Verify: exercise use after close and shutdown with work still running. Confirm started work completes cleanup before joining returns and stale resource aliases cannot reach a reused handle.
 
+Verified: SIGINT/SIGTERM observation does not claim the signal; native host cancellation races independently with `SignalStream.next()`. Registered cleanup is shielded, but shielding a close call does not revive workers derived from the cancelled construction parent. Join workers before draining application-owned pending data directly in close while its dependencies remain open. See the [shutdown cookbook](../documentation/concurrency/shutdown.md), [disposable-child signal tests](../tests/e2e/shutdown_cookbook_test.go), and [already-cancelled worker test](../pkg/runtime/shutdown_test.go). The current native host has no cleanup watchdog; do not infer implemented escalation from the contributor policy.
+
 Verified: a queued transport operation can acquire a ready gate even when its lifetime cancellation is also ready. An asynchronous cancellation callback does not guarantee the operation's derived context is cancelled before stream dispatch. Recheck the closed state after acquiring the gate; otherwise queued writes can reach the stream after shutdown starts. See [transport admission](../pkg/runtime/library_log.go) and `TestLogCloseInterruptsActiveAndQueuedWrites` in [logging regressions](../pkg/runtime/library_log_test.go). Repeat the close/caller-cancellation cases under the race detector when changing this path.
 
 ### Networking completeness includes interruption and shutdown
@@ -70,6 +72,14 @@ Decision: keep typed diagnostic information in ordinary domain error fields. The
 Apply when: adding or changing fallible standard APIs, native adapters, or error propagation.
 Evidence: [error contracts](../documentation/standard-library/contracts.md#errors); [native identity and stream-cause regressions](../pkg/runtime/library_test.go); [compiled matching and mapping](../tests/e2e/testdata/accept/library-errors.ms).
 Verify: native error values carry the declared Result's error identity; unrelated domains cannot propagate implicitly; stream helpers preserve the original IoError case and payload.
+
+### Native constructor arguments need not be readable fields
+
+Verified: `Bytes(values: List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field. Removing the bogus field without preserving `ConstructorSignature` also loses editor constructor parameters. Checking and editor queries now share that constructor signature separately from the native `values() -> List[Int]` operation, which uses the existing free function's implementation. Constructor inputs and extracted lists copy byte values, preserving Bytes immutability.
+
+Apply when: describing native schemas or replacing bogus native fields with operations. Preserve dedicated constructor arguments separately from receiver declarations and bindings.
+Evidence: [constructor signatures](../pkg/checker/types.go), [constructor checking](../pkg/checker/calls.go), [byte declarations](../pkg/stdlib/bytes.ms), [native receiver identities](../internal/nativeabi/receivers.go), [editor signature regressions](../pkg/tooling/lsp/features_test.go), and [called extraction and constructor regressions](../tests/e2e/testdata/stdlib/string-bytes.ms).
+Verify: named and positional Bytes construction and direct, stored, and free extraction calls execute; mutating the input or extracted list leaves Bytes unchanged. Editor signature help retains the required values List; generated metadata must list `values` as an operation, with no data field.
 
 ### Keep concurrency collection helpers removed
 

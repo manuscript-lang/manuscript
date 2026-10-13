@@ -220,9 +220,14 @@ func Fields(t *Type) []Param {
 	return result
 }
 
-// ConstructorSignature describes a record's named fields and omission permissions.
+// ConstructorSignature describes constructor inputs and omission permissions.
+// Native constructor inputs need not be readable data fields.
 func ConstructorSignature(t *Type) *Type {
-	signature := function(Fields(t), t)
+	params := Fields(t)
+	if std(t, "Bytes") {
+		params = []Param{{"values", standard("List", primitive("Int"))}}
+	}
+	signature := function(params, t)
 	if t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Decl != nil {
 		for _, field := range t.Def.Symbol.Decl.Fields {
 			if field.Default != nil {
