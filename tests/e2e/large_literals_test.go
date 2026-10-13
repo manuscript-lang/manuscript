@@ -62,7 +62,7 @@ fn tick(box: Box) -> Int:
         return panic("literal string escaping changed")
     let counter = Box(0)
     let values = effects(counter)
-    if counter.value != 1100 or values.at(255).unwrap() != 256 or values.at(256).unwrap() != 257 or values.at(1099).unwrap() != 1100:
+    if counter.value != 1100 or values.at(63).unwrap() != 64 or values.at(64).unwrap() != 65 or values.at(255).unwrap() != 256 or values.at(256).unwrap() != 257 or values.at(1099).unwrap() != 1100:
         return panic("element evaluation order changed")
     counter.value = 0
     let texts = interpolated(counter)

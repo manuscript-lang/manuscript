@@ -54,7 +54,25 @@ and 3 objects per evaluation. No runtime speedup is claimed.
 | 256 assignments per closure | 3.51 s | 410,000 KiB | 6,672,568 |
 | 1024 assignments per closure | 4.82 s | 646,384 KiB | 6,668,472 |
 
-All retain 16,003 evaluation allocations. These measurements select 256 over
-64/1024; arbitrary nested source expressions can still have substantial compile
-cost. Large flat Map literals and nested checker complexity are outside this
-List-literal change. No mutable source object enters a data table.
+All retain 16,003 evaluation allocations. The simple Go call initially favored
+256, but real source-call preparation makes each element larger. Actual
+16,000-element source-call measurements on base 2a9d3144 rejected the old
+composite when its compiler was killed at 12,908,788 KiB RSS. The 64-assignment
+candidate completed in 22.3 s / 2,218,032 KiB / 11,772,088 bytes; 256 took
+53.3 s / 4,185,028 KiB / 11,710,648 bytes (repeat: 58.1 s / 4,207,912 KiB).
+1024 timed out at 90 s. Thus production uses 64, accepting a small code-size
+increase for less native compiler work. Timeout RSS is unavailable because
+terminating the command can prevent it from reaping descendants.
+
+The final scalar copy versus independent base 2a9d3144 retained the same two
+evaluation allocations after #218: 100,000 elements compiled in median
+12.3 s / 1,962,332 KiB before and 1.34 s / 175,400 KiB after; stripped sizes
+were 9,339,064 versus 7,622,840 bytes. Five alternating runtime pairs at 16,000
+elements ranged 61.8–94.3 µs before and 74.2–138.7 µs after (medians 89.8 and
+110.5 µs); both allocate 262,192 B in two objects. Timing ranges overlap, but
+the copied table may add construction/GC cost. The build-time/memory reduction
+is the goal, and this is an explicit runtime tradeoff, not a speedup claim.
+
+Arbitrary nested expressions can still have substantial compile cost. Large
+flat Map literals and nested checker complexity remain outside this List change.
+No mutable source object enters a data table.

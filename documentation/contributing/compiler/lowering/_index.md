@@ -56,7 +56,7 @@ Do not refresh this independent baseline just because output formatting changes.
 
 Lists with more than 1024 elements allocate fresh backing storage and copy
 checked immutable primitive literal data from private package arrays. Remaining
-elements evaluate in source order through closures containing at most 256
+elements evaluate in source order through closures containing at most 64
 assignments. Those closures share the source callable's frame, cleanup stack,
 type evidence and nonlocal control-flow boundaries. Records, nested collections,
 views, Decimal and call results evaluate locally. Negative Float zero retains
@@ -65,7 +65,7 @@ runtime negation because Go constants do not preserve its sign. The separate
 
 Use `scripts/bench-flat-literals` to compare compile wall time, peak RSS,
 evaluation time/allocations and binary size. Its measurements selected scalar
-data copies and 256-assignment closures over typed per-evaluation boxing and
+data copies and 64-assignment closures over typed per-evaluation boxing and
 other chunk sizes. Parsing/checking limits and deeply nested types remain
 separate concerns; this changes only flat List literal lowering.
 

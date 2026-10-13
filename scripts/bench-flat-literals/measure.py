@@ -18,6 +18,7 @@ def measure(source, go, timeout):
     binary = source.with_suffix(".bin")
     source.write_text(source.read_text() + f"\n// forced edit {time.time_ns()}\n")
     start = time.monotonic()
+    timed_out = False
     with source.with_suffix(".build.log").open("w") as log:
         command = subprocess.Popen(
             [str(go), "build", "-p", "2", "-mod=vendor", "-tags=ms_lean",
@@ -29,13 +30,15 @@ def measure(source, go, timeout):
             if pid:
                 break
             if time.monotonic() - start > timeout:
+                timed_out = True
                 os.killpg(command.pid, signal.SIGTERM)
                 _, status, usage = os.wait4(command.pid, 0)
                 break
             time.sleep(0.01)
     command.returncode = os.waitstatus_to_exitcode(status)
     record = dict(source=str(source), wall_s=time.monotonic() - start,
-                  rss_kb=usage.ru_maxrss, exit=command.returncode)
+                  rss_kb=None if timed_out else usage.ru_maxrss,
+                  exit=command.returncode, timed_out=timed_out)
     if command.returncode == 0:
         record["size"] = binary.stat().st_size
         result = subprocess.run([str(binary.resolve())], capture_output=True, check=True)

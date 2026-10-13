@@ -12,11 +12,11 @@ import (
 )
 
 // Measured with bundled Go 1.25.1: small literals do not benefit from a data
-// table; 4K–100K scalars do. For effectful elements, 256 assignments per closure
-// bounds native compiler work without the call/code-size cost of 64 or the SSA
-// cost of 1024. See scripts/bench-flat-literals for the retained comparisons.
+// table; 4K–100K scalars do. Actual source-call elements favor 64 assignments
+// per closure over 256/1024: source-call preparation makes each assignment much
+// larger than a handwritten Go scalar call. See scripts/bench-flat-literals.
 const largeListLiteral = 1024
-const listLiteralChunk = 256
+const listLiteralChunk = 64
 
 func (g *generator) listLiteral(e *syntax.Expression, typ *checker.Type) ast.Expr {
 	var items ast.Expr
