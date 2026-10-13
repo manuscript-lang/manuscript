@@ -259,7 +259,8 @@ impl Error for FileSystemError:
 
 ## FileSystemInfo {data-api-kind="Record"}
 
-Capacity and free-space statistics for the filesystem containing a path.
+Capacity/free-space statistics: block_size is bytes, blocks/free/available are counts
+in those blocks, and files/files_free are native file-node counts (zero if unavailable).
 
 ```manuscript
 type FileSystemInfo:
@@ -317,7 +318,8 @@ interface TemporaryDirectory:
 
 ## constants {data-api-kind="Function"}
 
-Returns host filesystem flag, mode, and permission constants by name.
+Returns this host's filesystem flag, mode, and permission constants by name.
+Names and values vary by host; absent entries are not supported constants or portable enum cases.
 
 ```manuscript
 fn constants() -> Map[String, Int]:
