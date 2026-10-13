@@ -78,3 +78,39 @@ func TestPrimitiveSortingPreservesTypedStableStorage(t *testing.T) {
 		t.Fatal("NaNs first, stable payloads and numeric order")
 	}
 }
+
+func TestPrimitiveSortingCopyAllocationsDoNotGrowPerElement(t *testing.T) {
+	ctx := RootExecution()
+	for _, name := range []string{"sorted_int", "sorted_float", "sorted_strings"} {
+		measure := func(length int) float64 {
+			var input *List
+			switch name {
+			case "sorted_int":
+				values := make([]int64, length)
+				for i := range values {
+					values[i] = int64(i + 1024)
+				}
+				input = NewIntList("@std/List[Int]", values)
+			case "sorted_float":
+				values := make([]float64, length)
+				for i := range values {
+					values[i] = float64(i) + 0.5
+				}
+				input = NewFloatList("@std/List[Float]", values)
+			case "sorted_strings":
+				values := make([]string, length)
+				for i := range values {
+					values[i] = Format(int64(i + 1024))
+				}
+				input = NewStringList("@std/List[String]", values)
+			}
+			args := []Value{input}
+			return testing.AllocsPerRun(5, func() { primitiveListSink = libraryFunctions["collections/"+name].Body(ctx, input.Type, args).(*List) })
+		}
+		small, large := measure(256), measure(4096)
+		t.Logf("%s: 256 elements %.0f allocations, 4096 elements %.0f allocations", name, small, large)
+		if large > small+2 || large > 16 {
+			t.Fatalf("%s copied primitive elements through a boxed boundary: %.0f -> %.0f allocations", name, small, large)
+		}
+	}
+}

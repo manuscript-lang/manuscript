@@ -8,12 +8,13 @@ func init() {
 	} {
 		libraryAdd("collections", operation.name, "List["+operation.element+"]", []LibraryParam{{"values", "List[" + operation.element + "]"}}, func(ctx *Execution, result string, args []Value) Value {
 			CheckCancelled(ctx)
-			out := NewList(result, nil)
-			for i, value := range Iterate(args[0]) {
-				if i%1024 == 0 {
-					CheckCancelled(ctx)
-				}
-				out.Append(value)
+			captured := CaptureList(args[0])
+			out := captured.list.copySliceChecked(ctx, 0, captured.Len())
+			if out.kind == listBoxed {
+				// Normalize legacy boxed primitive input only at this boundary.
+				out = NewList(result, out.Items)
+			} else {
+				out.Type = result
 			}
 			ListSortInPlace(ctx, out, nil)
 			CheckCancelled(ctx)
