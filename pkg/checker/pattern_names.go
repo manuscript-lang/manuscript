@@ -47,5 +47,5 @@ func (c *checker) matchBindingNames(arm *syntax.Arm, fields []Param) {
 			conflicts[index] = &Info{Type: owner, Case: name}
 		}
 	}
-	c.ArmNameConflicts[arm] = conflicts
+	c.armNameConflicts[arm] = conflicts
 }

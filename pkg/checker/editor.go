@@ -40,7 +40,7 @@ func (c *checker) captureScope(e *syntax.Expression) {
 			state.Symbols[name] = s
 		}
 	}
-	c.Scopes[e] = state
+	c.scopes[e] = state
 }
 
 // Member queries use the same resolution and generic-bound rules as calls.

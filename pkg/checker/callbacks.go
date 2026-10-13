@@ -108,12 +108,12 @@ func (c *checker) callback(e *syntax.Expression, expected *Type) *Info {
 	c.serial++
 	c.loops = 0
 	c.captures[c.function] = map[*Binding]bool{}
-	c.LambdaParameters[e] = nil
+	c.lambdaParameters[e] = nil
 	for index, param := range params {
 		if e.Params[index].Default != nil {
 			c.expression(e.Params[index].Default, param.Type)
 		}
-		c.LambdaParameters[e] = append(c.LambdaParameters[e], c.bind(param.Name, param.Type, false, e.Params[index].Pos))
+		c.lambdaParameters[e] = append(c.lambdaParameters[e], c.bind(param.Name, param.Type, false, e.Params[index].Pos))
 	}
 	fall, _ := c.block(e.Body, false)
 	if result == nil {

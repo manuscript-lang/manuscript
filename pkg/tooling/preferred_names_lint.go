@@ -29,7 +29,7 @@ var preferredNativeMethods = map[string]string{
 
 func lintPreferredNames(program *checker.Program) []LintFinding {
 	var findings []LintFinding
-	for expression, info := range program.Expressions {
+	for expression, info := range program.Expressions() {
 		if expression.Kind != syntax.KindMember || info == nil || info.Method == nil || info.Method.Receiver == nil || info.Method.Contract != nil || strings.HasPrefix(expression.Pos.File, "@std/") {
 			continue
 		}

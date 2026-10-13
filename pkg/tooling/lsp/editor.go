@@ -328,7 +328,7 @@ func queryEditor(d document, docs map[string]document, c cursorContext) editorAn
 		result = analyzeOptions(modified, copy, compiler.Options{AnalyzeOnly: true, Recover: true, ScopeMarker: marker})
 		if result.Program != nil {
 			found := false
-			for e := range result.Program.Scopes {
+			for e := range result.Program.ScopeMarkers() {
 				if e.Text == marker {
 					found = true
 					break
@@ -408,7 +408,7 @@ func queryEditor(d document, docs map[string]document, c cursorContext) editorAn
 	}
 	analysis := editorAnalysis{result: result, document: modified, marker: marker}
 	if result.Program != nil {
-		for e, state := range result.Program.Scopes {
+		for e, state := range result.Program.ScopeMarkers() {
 			if e.Pos.File == moduleFile(result, modified) && e.Text == marker {
 				analysis.expression = e
 				analysis.scope = state

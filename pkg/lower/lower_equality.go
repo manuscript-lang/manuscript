@@ -28,8 +28,8 @@ func primitiveEqualityType(t *checker.Type) string {
 }
 
 func (g *generator) primitiveEquality(e *syntax.Expression) ast.Expr {
-	left := g.program.Expressions[e.Left].Type
-	right := g.program.Expressions[e.Right].Type
+	left := g.program.Info(e.Left).Type
+	right := g.program.Info(e.Right).Type
 	typ := primitiveEqualityType(left)
 	if typ == "" || left.ID != right.ID || primitiveEqualityType(right) != typ {
 		return nil

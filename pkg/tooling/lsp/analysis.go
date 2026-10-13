@@ -89,7 +89,7 @@ func at(result compiler.Result, d document, p position, index []occurrence) (*sy
 	}
 	var selected *syntax.Expression
 	var info *checker.Info
-	for e, i := range result.Program.Expressions {
+	for e, i := range result.Program.Expressions() {
 		if e.Pos.File != m.File || e.Text == "" {
 			continue
 		}
@@ -211,7 +211,7 @@ func declaration(result compiler.Result, i *checker.Info) syntax.Position {
 	if i.Binding != nil {
 		// Ordinary locals already resolve through the source index above.
 		// The implicit self binding is anchored at its method declaration.
-		for decl, binding := range result.Program.Self {
+		for decl, binding := range result.Program.SelfBindings() {
 			if binding == i.Binding {
 				return decl.Pos
 			}
