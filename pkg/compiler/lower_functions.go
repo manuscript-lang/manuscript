@@ -48,7 +48,7 @@ func (g *generator) function(params []syntax.Parameter, result *syntax.Type, bod
 	}()
 	var out strings.Builder
 	labels := []string{}
-	for _, p := range params {
+	for _, p := range t.Params {
 		labels = append(labels, p.Name)
 	}
 	out.WriteString("rt.NewSourceFunction(" + stringsGo(labels) + "," + g.key(t.Result) + "," + quote(result.Pos.String()) + ",func(ctx *rt.Execution,args []rt.Value)rt.Value{\ncleanupStack:=rt.NewCleanupStack();defer cleanupStack.Unwind()\n")
@@ -59,7 +59,7 @@ func (g *generator) function(params []syntax.Parameter, result *syntax.Type, bod
 		out.WriteString(fmt.Sprintf("%s := args[%d]; _ = %s\n", b.ID, i, b.ID))
 		// Checked source values are concrete (including Unit and Optional.none);
 		// Invoke leaves nil only for an omitted argument.
-		if params[i].Default == nil && t.Defaults[params[i].Name] && b.Type.ID == "@std/Optional" {
+		if params[i].Default == nil && t.Defaults[t.Params[i].Name] && b.Type.ID == "@std/Optional" {
 			out.WriteString("if " + b.ID + " == nil { " + b.ID + " = rt.NewAlternative(" + g.key(b.Type) + ",\"none\",nil,nil) }\n")
 		}
 		if params[i].Default != nil {
