@@ -16,6 +16,23 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 )
 
+func systemDebugserver() (string, error) {
+	candidates := []string{os.Getenv("DELVE_DEBUGSERVER_PATH"), "/Library/Developer/CommandLineTools/Library/PrivateFrameworks/LLDB.framework/Versions/A/Resources/debugserver"}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if out, err := exec.CommandContext(ctx, "/usr/bin/xcode-select", "--print-path").Output(); err == nil {
+		candidates = append(candidates, filepath.Join(strings.TrimSpace(string(out)), "..", "SharedFrameworks/LLDB.framework/Versions/A/Resources/debugserver"))
+	}
+	for _, name := range candidates {
+		if filepath.IsAbs(name) {
+			if info, err := os.Stat(name); err == nil && info.Mode().IsRegular() && info.Mode()&0111 != 0 {
+				return name, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("macOS native debugger check requires installed Apple debugserver from Xcode command line tools")
+}
+
 // Exercise real native debugging from the copied binary and isolated environment.
 // A missing debugger, Go installation, or download fallback cannot satisfy this.
 func checkDebugger(cli, directory string, environment []string, run func(string, ...string) (string, error)) error {
@@ -27,10 +44,21 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	if _, err := run(cli, "build", source, "--debug", "-o", binary); err != nil {
 		return err
 	}
-	for _, disconnect := range []bool{true, false} {
-		if err := checkDAP(cli, directory, environment, binary, source, disconnect); err != nil {
-			return err
-		}
+	if err := checkDAP(cli, directory, environment, binary, source, true); err != nil {
+		return err
+	}
+	// Stop while running too: EOF must halt and reap a target, not just close a
+	// connection while the target remains alive. Preserve the first mapped lines.
+	runningSource := filepath.Join(directory, "debug running.ms")
+	if err := os.WriteFile(runningSource, []byte("export fn main() -> Int:\n    let number = 41\n    var result = number + 1\n\n    while result == 42:\n        result = result + 0\n    return result - 42\n"), 0600); err != nil {
+		return err
+	}
+	runningBinary := binary + "-running"
+	if _, err := run(cli, "build", runningSource, "--debug", "-o", runningBinary); err != nil {
+		return err
+	}
+	if err := checkDAP(cli, directory, environment, runningBinary, runningSource, false); err != nil {
+		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -198,6 +226,12 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 			return err
 		}
 	} else {
+		if err := request("continue", map[string]any{"threadId": thread}); err != nil {
+			return err
+		}
+		if _, err := response("continue"); err != nil {
+			return err
+		}
 		_ = conn.Close()
 	}
 	err = cmd.Wait()

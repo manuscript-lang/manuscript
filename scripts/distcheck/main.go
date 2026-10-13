@@ -70,6 +70,18 @@ func check() error {
 		"MANUSCRIPT_CACHE_DIR": filepath.Join(directory, "user-cache"),
 		"XDG_CONFIG_HOME":      filepath.Join(directory, "config"),
 	}
+	// Delve's macOS backend requires Apple's separately installed debugserver.
+	// Resolve the documented prerequisite before removing host tools from PATH.
+	// This does not install tools, change signing, or weaken the isolation on
+	// Linux/Windows, where only ms and its embedded native backend are needed.
+	if runtime.GOOS == "darwin" {
+		server, err := systemDebugserver()
+		if err != nil {
+			return err
+		}
+		settings["DELVE_DEBUGSERVER_PATH"] = server
+		fmt.Println("macOS debugging uses installed Apple debugserver:", server)
+	}
 	var environment []string
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")
