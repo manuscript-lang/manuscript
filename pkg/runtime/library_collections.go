@@ -37,6 +37,40 @@ func init() {
 	add := func(name, result string, vars, params []LibraryParam, body func(*Execution, string, []Value) Value) {
 		libraryGeneric("collections", name, result, vars, params, body)
 	}
+	add("map_fold", "A", []LibraryParam{p("K", "Hashable"), p("V", ""), p("A", "")}, []LibraryParam{p("values", "Map[K][V]"), p("initial", "A"), p("step", "fn(accumulator:A;key:K;value:V)->A")}, func(ctx *Execution, _ string, a []Value) Value {
+		accumulator := a[1]
+		for _, entry := range a[0].(*Map).Entries {
+			CheckCancelled(ctx)
+			accumulator = Invoke(ctx, a[2], []Argument{{"accumulator", accumulator}, {"key", entry.Key}, {"value", entry.Value}})
+		}
+		return accumulator
+	})
+	add("set_fold", "A", []LibraryParam{p("T", "Hashable"), p("A", "")}, []LibraryParam{p("values", "Set[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
+		accumulator := a[1]
+		for _, value := range a[0].(*Set).Items {
+			CheckCancelled(ctx)
+			accumulator = Invoke(ctx, a[2], []Argument{{"accumulator", accumulator}, {"value", value}})
+		}
+		return accumulator
+	})
+	for _, kind := range []string{"map", "set"} {
+		for _, name := range []string{"find", "some", "every"} {
+			vars := hash
+			params := []LibraryParam{p("values", "Set[T]"), p("predicate", "fn(value:T)->Bool")}
+			result := "Optional[T]"
+			if kind == "map" {
+				vars = mapVars
+				params = []LibraryParam{p("values", "Map[K][V]"), p("predicate", "fn(key:K;value:V)->Bool")}
+				result = "Optional[MapEntry[K][V]]"
+			}
+			if name != "find" {
+				result = "Bool"
+			}
+			add(kind+"_"+name, result, vars, params, func(ctx *Execution, result string, args []Value) Value {
+				return libraryCollectionQuery(ctx, kind, name, result, args)
+			})
+		}
+	}
 	add("map_is_empty", "Bool", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, _ string, a []Value) Value {
 		return len(a[0].(*Map).Entries) == 0
 	})
@@ -454,4 +488,50 @@ func init() {
 func mapPut(ctx *Execution, values *Map, key, value Value) *Map {
 	values.put(ctx, key, value)
 	return values
+}
+
+// Both receiver families share first-match and short-circuit semantics. The
+// native invocation boundary has already snapshotted membership, retaining
+// payload references; only a found Map entry gets a fresh record shell.
+func libraryCollectionQuery(ctx *Execution, kind, name, result string, args []Value) Value {
+	var entries []Entry
+	var items []Value
+	if kind == "map" {
+		entries = args[0].(*Map).Entries
+	} else {
+		items = args[0].(*Set).Items
+	}
+	for i := 0; i < len(entries)+len(items); i++ {
+		CheckCancelled(ctx)
+		var key, value Value
+		var callbackArgs []Argument
+		if kind == "map" {
+			key, value = entries[i].Key, entries[i].Value
+			callbackArgs = []Argument{{"key", key}, {"value", value}}
+		} else {
+			value = items[i]
+			callbackArgs = []Argument{{"value", value}}
+		}
+		matches := Invoke(ctx, args[1], callbackArgs).(bool)
+		if name == "every" {
+			if !matches {
+				return false
+			}
+		} else if matches {
+			if name == "some" {
+				return true
+			}
+			if kind == "map" {
+				value = Record{Type: typeArguments(result)[0], Fields: map[string]Value{"key": key, "value": value}}
+			}
+			return Alternative{Type: result, Tag: "some", Fields: []Value{value}}
+		}
+	}
+	if name == "every" {
+		return true
+	}
+	if name == "some" {
+		return false
+	}
+	return Alternative{Type: result, Tag: "none"}
 }

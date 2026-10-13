@@ -66,6 +66,17 @@ let text = discount(price: 20d, percent: 10d).map(fn(value): value.toString())
 
 Callbacks run sequentially in the caller's execution context. Their faults and cancellation propagate normally. `unwrap` reports `called Result.unwrap() on error`; use it only when success is established or failure is a programming error. Routine expected failures use a fallback, matching, or `try`.
 
+## Converting success to an Optional
+
+`to_optional() -> Optional[T]` returns `some` with the original successful payload, or `none` for an error. It neither clones nor flattens the payload, invokes error operations, or turns faults and cancellation into absence.
+
+```manuscript
+fn successful_price(outcome: Result[Decimal, String]) -> Optional[Decimal]:
+    return outcome.to_optional()
+```
+
+To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optionals.md#converting-absence-to-a-result).
+
 ## Discarding a result
 
 A standalone call such as `discount(price: 20d, percent: 10d)` evaluates the
