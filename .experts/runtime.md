@@ -186,14 +186,19 @@ leaves the running traversal on its original array. No traversal-driven List cop
 or hidden shared flag is needed. Map/Set snapshots, closure variable capture,
 explicit shallow clone/slice storage and synchronization contracts remain distinct.
 
-Verified blocker in the unmerged no-copy draft: `without` and shrinking splice
-clear vacated `[]Value` cells to nil. A captured range visits them; consuming one
-as source Int produces an unframed conversion panic (exit 70). A Go `[]Value`
-oracle matches the nil, and a native loop ignoring its binding passes, but neither
-establishes valid typed consumption. The cleared-value/fault policy is unresolved;
-do not silently infer Go `[]int64` zero behavior or remove reference clearing.
-Evidence: [called source reproducer](../scripts/bench-lists/repro-cleared-tail.ms)
-and [blocked review](../scripts/bench-lists/go-range-review.md#cleared-cell-blocker).
+Decision: shrinking boxed List mutations use non-clearing Go copy/append and
+reslice semantics. Vacated cells keep prior valid values; captured ranges can
+observe shifted/repeated tails. Full splice-to-empty shortens the header, preserving
+backing capacity; an explicit header reset releases that receiver's backing.
+Removed references can remain retained until overwritten/reallocated/released.
+
+Verified: nil clearing in the earlier draft caused an unframed Int conversion
+panic. A `[]Value` nil oracle and a native loop ignoring its binding both missed
+typed-consumption safety. Parent approved non-clearing behavior without implicit
+copies or invented zero values. Evidence: [typed Go oracles](../pkg/runtime/list_shrink_test.go),
+[called consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms),
+[original reproducer now succeeding](../scripts/bench-lists/repro-cleared-tail.ms),
+and [fix/retention review](../scripts/bench-lists/go-range-review.md#non-clearing-shrink).
 
 Apply when: changing List traversal, callbacks, writers or typed numeric storage.
 Evidence: [range/mutation oracle](../pkg/runtime/list_range_test.go),
@@ -204,4 +209,5 @@ Verify: capture once, mutate in place, append with/without growth, shrink, rever
 and self-splice; observed reads match ordinary Go backing-array behavior. Explicit
 clones stay separate and append-only callbacks visit only the initial length.
 Also consume yielded values after shrink in called native/standalone regressions,
-checking both type behavior and source fault frames after the policy is resolved.
+checking types, source fault frames, cancellation, explicit clone independence,
+and retained memory after clearing/reusing/releasing backing capacity.

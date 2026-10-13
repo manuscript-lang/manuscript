@@ -25,3 +25,21 @@ func TestListGoRangeStandalone(t *testing.T) {
 		t.Fatalf("standalone range/interop cases: %v\n%s", err, output)
 	}
 }
+
+func TestListShrinkConsumersStandalone(t *testing.T) {
+	result := compiler.CompileFile("testdata/accept/list-shrink-consumers.ms", compiler.Options{Tests: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	source, err := compiler.Standalone(result.Source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(t.TempDir(), "shrink")
+	if err := compiler.Build(source, binary); err != nil {
+		t.Fatal(err)
+	}
+	if output, err := commandOutput(t, binary); err != nil || !strings.Contains(string(output), "7 tests, 0 failed") {
+		t.Fatalf("standalone typed shrink consumers: %v\n%s", err, output)
+	}
+}

@@ -218,7 +218,7 @@ func init() {
 			return libraryIndexFault("List.without", len(items), a[1].(int64))
 		}
 		copy(items[i:], items[i+1:])
-		items[len(items)-1] = nil
+		// Do not clear the tail: a running range retains its initial header.
 		a[0].(*List).Items = items[:len(items)-1]
 		return a[0]
 	})

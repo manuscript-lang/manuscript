@@ -122,7 +122,10 @@ regression of about 50% despite the much smaller retained backing storage.
 
 The [Go range review](go-range-review.md) records the authorized List-only
 semantic change, deterministic Go-reference cases, zero-allocation boundary and
-paired normal-runtime evidence. Production List storage remains boxed `[]Value`;
+paired normal-runtime and retained-memory evidence. Shrinking uses non-clearing
+shift-and-reslice semantics; prior values remain in spare capacity until overwritten
+or released, preserving valid typed consumption by a captured traversal.
+Production List storage remains boxed `[]Value`;
 typed storage and numeric-width changes remain separate work.
 
 ## Historical bounded COW change

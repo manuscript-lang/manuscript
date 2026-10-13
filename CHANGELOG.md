@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- List loops and callbacks now follow Go slice range behavior without traversal copies: capture backing and initial length once, observe in-place element writes, and do not extend traversal on append. Explicit clones/slices and Map/Set membership snapshots retain their contracts.
+- List loops and callbacks follow Go slice range behavior without traversal copies: capture backing and initial length once, observe in-place writes, and do not extend traversal on append. Shrinking shifts/reslices without clearing valid tail values; removed references can remain in spare capacity. Explicit clones/slices and Map/Set membership snapshots retain their contracts.
 - Report duration-unit property faults at the member token after evaluating the receiver, preserving source order and numeric widths.
 
 - Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.

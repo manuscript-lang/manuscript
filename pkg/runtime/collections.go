@@ -39,7 +39,8 @@ func spliceList(list *List, start, count int, replacement *List) {
 	copy(list.Items[start+len(items):], list.Items[start+count:oldLength])
 	copy(list.Items[start:], items)
 	if newLength < oldLength {
-		clear(list.Items[newLength:])
+		// A captured Go range still visits the original length. Keep valid
+		// elements in the vacated tail, as ordinary copy-and-reslice does.
 		list.Items = list.Items[:newLength]
 	}
 }

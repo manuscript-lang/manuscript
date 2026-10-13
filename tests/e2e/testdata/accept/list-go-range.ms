@@ -120,15 +120,22 @@ test "nested reverse copy shrink and self splice follow initial headers":
         return panic("copy overlap did not update range backing")
 
     let shrinking = [1, 2, 3]
+    let seen_shrinking: List[Int] = []
     count = 0
 
-    for ignored in shrinking:
+    for value in shrinking:
+        seen_shrinking.append(value + 1)
+
         if not shrinking.is_empty():
             shrinking.without(0)
 
         count = count + 1
 
-    if not (count == 3 and shrinking.is_empty()):
+    if not (
+        count == 3
+        and shrinking.is_empty()
+        and seen_shrinking == [2, 4, 4]
+    ):
         return panic("shrink changed captured traversal length")
 
     let self_list = [1, 2, 3]

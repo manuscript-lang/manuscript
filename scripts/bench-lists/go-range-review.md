@@ -10,29 +10,36 @@ Production storage remains `Items []Value` on the authoritative `*List` handle.
 Map/Set snapshots, explicit clone/slice/sorted-result storage, shallow nested
 references, closure capture and synchronization requirements keep their contracts.
 Self-splice still stages its replacement locally to preserve replacement behavior.
-Existing removal/splice writers clear vacated backing cells: a captured range can
-visit those cells after shrink, just as a Go range over the same `[]Value` does.
-No typed zero-value policy or numeric-width migration is introduced here.
+Removal and shrinking splice use non-clearing Go shift-and-reslice semantics.
+Captured ranges can visit shifted/repeated prior values, including the vacated
+tail. Full splice-to-empty reslices the receiver to zero while retaining backing
+capacity. Removed references can remain retained until overwritten, reallocated
+or released. No typed zero-value policy or numeric-width migration is introduced.
 
-## Cleared-cell blocker
+## Non-clearing shrink
 
-This draft remains unmerged despite green gates on `d8a83a2a`. The independent Go
-oracle observes nil cells after removal; the native shrink fixture currently
-ignores the yielded value. Consuming that cell as source Int instead reproduces
+The earlier draft was held despite green gates on `d8a83a2a`: its Go `[]Value`
+oracle observed nil after removal and native shrink ignored the binding.
+Consuming that cell as source Int instead reproduced
 `interface conversion: interface {} is nil, not int64`, exit 70, with no source
 frame. [Source](repro-cleared-tail.ms) and [raw reproduction](results/go-range/cleared-tail-repro.json)
-are retained. Run the source with the candidate's packaged CLI:
+are retained as historical failure evidence. Parent approved non-clearing shrinking
+mutations in the current boxed representation, preserving valid prior tail values
+without snapshots, traversal copies or invented zero values. The source now checks
+the Go-equivalent sum 7 (`[1, 3, 3]`) and succeeds. Run it with the candidate's CLI:
 
 ```sh
-dist/manuscript-linux-amd64/ms run scripts/bench-lists/repro-cleared-tail.ms
+./ms run scripts/bench-lists/repro-cleared-tail.ms
 ```
 
-Go `[]int64` clearing would yield zero, whereas current `[]Value` clearing yields
-nil. Removing clearing would retain references and change reclamation; type-aware
-zeroing introduces a generic/record/function policy; a framed removed-cell fault
-needs a deliberate checked boundary. Parent must resolve this contract before
-merge. The fix requires consumer-level native/standalone shrink regressions and
-new final-head gates. No unilateral broader representation policy is implemented.
+Consumer-level native/standalone tests exercise Int, Float, String, records,
+alternatives and nested Lists through generic functions, stored callbacks, map
+and left/right folds. Runtime tests consume concrete typed values and compare
+independent ordinary Go append/reslice oracles, including full clear, append reuse
+and external Go header reset. Explicit clones remain independent; retained nested
+references stay shallow. Cancellation and exact source-frame checks now mutate by
+removal and full splice-to-empty. No other existing mutator return/bounds contract
+requires a change; there is currently no public List.clear method.
 
 Main's accepted String and duration-site changes were subsequently integrated;
 the completed `d8a83a2a` gates are evidence for that precise head, not a later head.
@@ -94,3 +101,59 @@ requires the separate numeric-width migration, authoritative-handle ABI review,
 fresh storage/RSS/access/sort measurements and full interop acceptance evidence.
 Exact final-head CI/distribution and postmerge checks are reported on PR #278;
 cancelled or superseded runs never count as passes.
+
+## Approved shrink fix: fresh paired evidence
+
+Fresh baseline is main `694683c0`; after contains the approved non-clearing
+shrinking writers. The generated program/harness is byte-identical, with pinned
+SDK and the same CPU/GC/pairing settings above. Source/runtime/binary hashes and
+dirty-build provenance are in [non-clearing results](results/non-clearing/provenance.json).
+
+| Case | after/before time | paired 95% interval | median bytes before / after | allocations before / after |
+| --- | ---: | --- | ---: | ---: |
+| Read-only callback | 1.007 | 0.995–1.024 | 2,622,749 / 2,622,669 | 131,095 / 131,093 |
+| Write inside callback | 0.924 | 0.907–0.941 | 3,672,037 / 2,623,380 | 131,107 / 131,104 |
+| First write after callback | 0.923 | 0.907–0.945 | 3,671,789 / 2,623,130 | 131,109 / 131,106 |
+
+Writing paths retain the 1 MiB/three-allocation reduction and are faster in 12/12
+and 11/12 pairs. Read-only removes 80 bytes/two allocations; its timing interval
+includes parity, so the new runs establish no read-only speedup. The earlier
+table remains historical evidence for its own code/host period.
+
+## Retained references
+
+The approved semantics deliberately change reclamation after shrinking. A worker
+constructs 4,096 Bytes values with 8,192-byte payloads, touches every OS page using
+ordinary Go writes, then performs actual native List operations. Before is current
+main `694683c0`; after has the no-copy/non-clearing fix. Three fresh processes per
+variant/case use random order, CPU 0, GOMAXPROCS=1, GOGC=100, no GOMEMLIMIT.
+Forced GC plus supported `debug.FreeOSMemory` makes retained heap and post-scavenge
+Linux VmRSS observable. These are diagnostic memory controls, not execution timing.
+
+| Operation | retained heap before / after | post-scavenge RSS before / after (KiB) |
+| --- | ---: | ---: |
+| Splice all values to empty | 65,600 / 33,718,336 B | 7,952 / 40,784 |
+| Delete all but the last value | 73,816 / 33,710,120 B | 7,992 / 40,844 |
+| Remove repeatedly from the end | 65,600 / 33,718,336 B | 7,972 / 40,808 |
+| Clear then overwrite all capacity with explicit empty Bytes | 65,600 / 65,600 B | 7,980 / 7,952 |
+| Clear then explicitly release the Go receiver header | 64 / 64 B | 7,912 / 7,884 |
+
+Non-clearing empty Lists retain about 32.1 MiB more payload/reference heap in this
+control. Peak RSS is about 39.7–40.1 MiB on both sides because construction already
+reaches that high-water mark. Reusing all slots or releasing backing references
+allows reclamation. Dropping all source aliases can release the List and its
+backing; a running captured range independently keeps its array alive until done.
+No implicit copy, capacity trimming, weak references or zero-value policy hides
+this cost. Resource close/lifetime rules remain lexical and independent of GC.
+Raw samples, binary hashes and medians are in [retention.json](results/non-clearing/retention.json).
+
+To rebuild the worker, copy `retention.go.txt` into an ignored directory within
+each checkout's Go module and build it with that checkout's bundled SDK:
+
+```sh
+toolchain/go/bin/go build -mod=vendor -tags=ms_lean \
+  -o .artifacts/list-retention/worker ./.artifacts/list-retention
+python3 scripts/bench-lists/retention.py \
+  --before /path/to/before-worker --after /path/to/after-worker \
+  --output .artifacts/retention --runs 3 --cpu 0
+```

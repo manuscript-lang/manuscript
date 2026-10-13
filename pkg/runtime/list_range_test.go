@@ -26,10 +26,10 @@ func TestListTraversalMatchesGoRange(t *testing.T) {
 		}},
 		{"reverse", "reverse", nil, func(v []Value) []Value { slices.Reverse(v); return v }},
 		{"prepend", "prepend", []Argument{{"value", int64(9)}}, func(v []Value) []Value { v = append(v, nil); copy(v[1:], v[:len(v)-1]); v[0] = int64(9); return v }},
-		{"remove", "without", []Argument{{"index", int64(0)}}, func(v []Value) []Value { copy(v, v[1:]); v[len(v)-1] = nil; return v[:len(v)-1] }},
+		{"remove", "without", []Argument{{"index", int64(0)}}, func(v []Value) []Value { return append(v[:0], v[1:]...) }},
 		{"copy backward", "copy_within", []Argument{{"target", int64(0)}, {"start", int64(1)}, {"end", int64(3)}}, func(v []Value) []Value { copy(v, v[1:3]); return v }},
 		{"copy truncated", "copy_within", []Argument{{"target", int64(2)}, {"start", int64(0)}, {"end", int64(3)}}, func(v []Value) []Value { copy(v[2:], v[:3]); return v }},
-		{"splice shrink", "with_values", []Argument{{"start", int64(1)}, {"delete_count", int64(2)}, {"replacement", &List{Type: "@std/List[Int]", Items: []Value{int64(9)}}}}, func(v []Value) []Value { v[1] = int64(9); clear(v[2:]); return v[:2] }},
+		{"splice shrink", "with_values", []Argument{{"start", int64(1)}, {"delete_count", int64(2)}, {"replacement", &List{Type: "@std/List[Int]", Items: []Value{int64(9)}}}}, func(v []Value) []Value { v[1] = int64(9); return v[:2] }},
 	} {
 		for _, capacity := range []int{3, 8} {
 			for _, callback := range []bool{false, true} {

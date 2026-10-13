@@ -856,13 +856,13 @@
               "name": "with_values",
               "kind": "operation",
               "signature": "fn with_values(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
-              "doc": "Replaces `delete_count` values at `start` with the replacement list."
+              "doc": "Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity."
             },
             {
               "name": "without",
               "kind": "operation",
               "signature": "fn without(index: Int) -\u003e List[T]:",
-              "doc": ""
+              "doc": "Removes an element and returns this list, shifting the suffix without clearing the retained backing tail."
             }
           ]
         },
@@ -9203,13 +9203,13 @@
               "name": "with_values",
               "kind": "operation",
               "signature": "fn with_values(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
-              "doc": "Replaces `delete_count` values at `start` with the replacement list."
+              "doc": "Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity."
             },
             {
               "name": "without",
               "kind": "operation",
               "signature": "fn without(index: Int) -\u003e List[T]:",
-              "doc": ""
+              "doc": "Removes an element and returns this list, shifting the suffix without clearing the retained backing tail."
             }
           ]
         },

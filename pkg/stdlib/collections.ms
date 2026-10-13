@@ -21,6 +21,7 @@ export type List[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
+    # Removes an element and returns this list, shifting the suffix without clearing the retained backing tail.
     fn without(index: Int) -> List[T]:
     # Returns a new shallow List containing [start, end); outer storage is independent.
     # Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
@@ -48,7 +49,7 @@ export type List[T]:
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     # Reduces values from right to left, starting with `initial`.
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
-    # Replaces `delete_count` values at `start` with the replacement list.
+    # Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity.
     fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:

@@ -13,7 +13,7 @@ export fn main() -> Int:
 
         count = count + 1
 
-    if total != 4:
+    if total != 7:
         panic("unexpected sum")
 
     return 0

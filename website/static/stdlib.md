@@ -612,10 +612,18 @@ fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
 
 ### List.with_values
 
-Replaces `delete_count` values at `start` with the replacement list.
+Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity.
 
 ```manuscript
 fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+```
+
+### List.without
+
+Removes an element and returns this list, shifting the suffix without clearing the retained backing tail.
+
+```manuscript
+fn without(index: Int) -> List[T]:
 ```
 
 ## ListBuilder
@@ -5632,10 +5640,18 @@ fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
 
 ### List.with_values
 
-Replaces `delete_count` values at `start` with the replacement list.
+Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity.
 
 ```manuscript
 fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+```
+
+### List.without
+
+Removes an element and returns this list, shifting the suffix without clearing the retained backing tail.
+
+```manuscript
+fn without(index: Int) -> List[T]:
 ```
 
 ## Map
