@@ -266,6 +266,38 @@ func TestSynchronizedAncestorJoinLockCycle(t *testing.T) {
 	}
 }
 
+func TestSynchronizedGuardAliasReleasesWhileOwnerJoins(t *testing.T) {
+	root := RootExecution()
+	cell := synchronizedInt()
+	guard := lockCell(root, cell)
+	group := NewTaskGroup(root, nil).(*TaskGroup)
+	release := make(chan struct{})
+	var allow sync.Once
+	t.Cleanup(func() {
+		guard.close()
+		allow.Do(func() { close(release) })
+		group.close(Shield(root))
+	})
+	task := groupTask(root, group, NewFunction(nil, "Unit", func(child *Execution, _ []Value) Value {
+		<-release
+		// A different operation may release an alias of the owner's guard.
+		// Being blocked in a join does not make the owner the only possible
+		// source of lock release; a cycle policy must account for this fact.
+		Invoke(child, guard.Operation("close"), nil)
+		return Unit{}
+	}))
+	waiting := &synchronizedWaitContext{Context: root.Context, entered: make(chan struct{})}
+	done := synchronizedCall(func() Value { return taskResult(inherit(root, waiting), task) })
+	awaitSynchronizedSignal(t, waiting.entered)
+	allow.Do(func() { close(release) })
+	outcome := awaitSynchronizedCall(t, done)
+	if outcome.failure != nil || outcome.value.(Alternative).Tag != "ok" {
+		t.Fatal("guard alias could not release while its owner joined", outcome)
+	}
+	next := lockCell(root, cell)
+	next.close()
+}
+
 func TestSynchronizedAncestorLockDuringCancelledCleanup(t *testing.T) {
 	base := RootExecution()
 	parentContext, cancel := context.WithCancel(base.Context)
