@@ -35,7 +35,7 @@ This accepts trailing commas and multiline calls while mapping labels to declare
 | Independent variant | Expected outcome |
 | --- | --- |
 | Replace the call with `subtract(amount: 9, deduction: 2)` | Accept; `remaining` is `Int` and equals 7 |
-| Replace it with `subtract(9, 2)` | Type rejection: multi-parameter functions require argument labels |
+| Replace it with `subtract(9, 2)` | Accepted: positional arguments supply parameters in declaration order |
 | Replace it with `subtract(amount: 9, amount: 2)` | Type rejection: duplicate supplied argument and missing `deduction` |
 | Replace it with `subtract(amount: 9)` | Type rejection: missing required `deduction` |
 | Replace it with `subtract(amount: 9, discount: 2)` | Type rejection: unknown argument name `discount` |

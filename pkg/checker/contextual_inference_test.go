@@ -83,3 +83,21 @@ fn first() -> Result[Int, Missing]: fail("empty")
 		t.Fatalf("expected only unresolved result type, got %v", p.Diagnostics)
 	}
 }
+
+func TestGenericResultParameterWidensDomainError(t *testing.T) {
+	source := `type Failure:
+    code: Int
+impl Error for Failure:
+    fn message() -> String: "failure"
+fn failing() -> Result[Int, Failure]: error(Failure(code: 1))
+fn count[T](r: Result[T, Error]) -> Int: 1
+fn use() -> Int: count(r: failing())
+`
+	m, err := parser.Parse("widen-inference.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p := checker.Check([]*syntax.Module{m}, nil); len(p.Diagnostics) != 0 {
+		t.Fatal(p.Diagnostics)
+	}
+}

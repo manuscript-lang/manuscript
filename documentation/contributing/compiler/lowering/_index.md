@@ -49,8 +49,9 @@ to combine them, and debugger path rebinding operates on final line directives.
 Those existing output consumers are outside expression and statement lowering.
 
 The compiler's `testdata/go-ast` fixture retains source and generated Go from
-commit `4d9bce1f`, before AST lowering. Its differential test compares parsed
-executable structure and source directives, then builds and executes both forms.
+commit `9f3ffcee`, before AST lowering. Its differential test compares source
+directives, then builds and executes both forms. Eligibility tests separately
+check the executable AST shapes changed by production optimizations.
 Do not refresh this independent baseline just because output formatting changes.
 
 ## Measure representation choices
@@ -78,17 +79,18 @@ label preparation but still pass `[]rt.Value` through `Function.Body`. Lists sto
 alternative. Generic specialization, contract dispatch, and closure snapshots
 also cross the shared value boundary.
 
-The coordinated first production optimization stage is narrower than changing
-all representations:
+Two bounded production optimizations use checked facts while keeping the shared
+representation and callable ABI:
 
-- Lower equality directly only for matching checked built-in primitive identities
+- Equality lowers directly only for matching checked built-in `Int`, `Float`,
+  `Bool`, and `String` primitive identities
   whose runtime comparison agrees with Go. Source implementations cannot replace
   primitive equality. Keep generic operands, contract views, nominal data,
   Decimal, and time values on their existing paths. Capture both operands once in
   source order, then update the operation's fault site; preserve Float NaN and
   signed-zero behavior. Test side-effecting operands, shadowed type names, and
   local/custom implementations alongside a primitive-equality benchmark.
-- Omit a source function's cleanup stack only when lowering emits no `with`
+- A source function's cleanup stack is omitted only when lowering emits no `with`
   registration owned by that function. Track actual use while building its AST;
   defaults and generated match closures share the owning stack, while nested
   source functions/closures make independent decisions. An empty `Unwind` only
@@ -96,6 +98,16 @@ all representations:
   profiling, and cancellation. Test functions with and without cleanup across
   return, fault, cancellation, match exits, and nested closures, and measure the
   call benchmark with the same ABI before and after.
+
+Run `toolchain/go/bin/go run ./scripts/bench-lowering -production -count=5`
+to retain and measure the actual generated code. It covers an empty callable, a
+callable that must keep cleanup, and 1,024-comparison loops for all four primitive
+types. The equality loops retain a `with` registration to distinguish the hot
+comparison from empty-stack omission. Results, IEEE behavior and cancellation
+are checked before benchmarking. Compare baseline and candidate builds with the
+same runtime/toolchain, alternating unprofiled samples on a quiet host; report
+allocation counts and timing variability rather than extrapolating to a workload
+that was not reproduced.
 
 Next, specialize noncaptured concrete scalar locals whose repeated uses remain
 in arithmetic or comparisons, converting at explicit boundaries. Do not change
