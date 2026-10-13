@@ -90,14 +90,11 @@ func Run(args []string) int {
 		}
 		return 0
 	}
-	if len(args) < 2 {
-		fmt.Fprintf(os.Stderr, "ms %s: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms %s ms.toml\n\n", args[0], args[0])
-		fmt.Fprint(os.Stderr, usage)
-		return 2
-	}
 	if args[0] == "stdlib" {
 		if len(args) != 2 {
-			fmt.Fprintln(os.Stderr, "usage: ms stdlib <directory>; pass exactly one directory to write the standard declarations into")
+			fmt.Fprintln(os.Stderr, "ms stdlib: pass exactly one directory to write the standard declarations into, e.g. ms stdlib ./declarations")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprint(os.Stderr, usage)
 			return 2
 		}
 		if err := stdlib.Materialize(args[1]); err != nil {
@@ -106,7 +103,24 @@ func Run(args []string) int {
 		}
 		return 0
 	}
+	if len(args) < 2 {
+		fmt.Fprintf(os.Stderr, "ms %s: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms %s ms.toml\n\n", args[0], args[0])
+		fmt.Fprint(os.Stderr, usage)
+		return 2
+	}
 	command, filename := args[0], args[1]
+	if strings.HasPrefix(filename, "-") && filename != "--" {
+		fmt.Fprintf(os.Stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (put the file first, then options)\n", filename, command, command)
+		return 2
+	}
+	if info, err := os.Stat(filename); err == nil && info.IsDir() {
+		manifest := filepath.Join(filename, "ms.toml")
+		if _, err := os.Stat(manifest); err != nil {
+			fmt.Fprintf(os.Stderr, "ms %s: %s is a directory without an ms.toml; pass a .ms file or a project ms.toml, e.g. ms %s ms.toml\n", command, filename, command)
+			return 2
+		}
+		filename = manifest
+	}
 	output := ""
 	cpuProfile, heapProfile, tracePath := "", "", ""
 	formatCheck, structured, debug, watch := false, false, false, false
@@ -159,6 +173,10 @@ func Run(args []string) int {
 				tracePath = args[i]
 			}
 		default:
+			if !strings.HasPrefix(args[i], "-") {
+				fmt.Fprintf(os.Stderr, "unexpected extra argument %s (ms %s takes one file; arguments for the program go after --)\n", args[i], command)
+				return 2
+			}
 			fmt.Fprintf(os.Stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (arguments for the program go after --)\n", args[i], command, command)
 			return 2
 		}
@@ -240,7 +258,7 @@ func Run(args []string) int {
 		return watchProgram(command, filename, options, kind, "", arguments)
 	}
 	result := compiler.CompileFile(filename, options)
-	if structured && command == "check" {
+	if structured && command == "check" || structured && command == "lint" && !result.Success() {
 		if result.Diagnostics == nil {
 			result.Diagnostics = []syntax.Diagnostic{}
 		}
@@ -352,6 +370,10 @@ func Run(args []string) int {
 		}
 		absolute, err := filepath.Abs(output)
 		if err == nil {
+			if info, statErr := os.Stat(absolute); statErr == nil && info.IsDir() {
+				fmt.Fprintf(os.Stderr, "-o %s is a directory; pass a file path (e.g. -o %s)\n", output, filepath.Join(output, "program"))
+				return 2
+			}
 			if cache == "" {
 				cache = filepath.Join(filepath.Dir(absolute), ".ms-cache")
 			}
