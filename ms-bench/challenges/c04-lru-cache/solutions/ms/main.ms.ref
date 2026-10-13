@@ -1,0 +1,115 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+
+# Nodes of a doubly linked recency list live in parallel lists indexed by slot;
+# slot -1 means "none". `head` is the most recently used slot.
+type Cache:
+    capacity: Int
+    index: Map[String, Int]
+    keys: List[String]
+    values: List[String]
+    prev: List[Int]
+    next: List[Int]
+    free: List[Int]
+    head: Int
+    tail: Int
+
+fn new_cache(capacity: Int) -> Cache:
+    return Cache(
+        capacity: capacity,
+        index: Map[String, Int](),
+        keys: List[String](),
+        values: List[String](),
+        prev: List[Int](),
+        next: List[Int](),
+        free: List[Int](),
+        head: -1,
+        tail: -1
+    )
+
+fn unlink(c: Cache, slot: Int) -> Unit:
+    let p = c.prev.at(slot).unwrap()
+    let n = c.next.at(slot).unwrap()
+    if p == -1:
+        c.head = n
+    else:
+        c.next.set(p, n)
+    if n == -1:
+        c.tail = p
+    else:
+        c.prev.set(n, p)
+
+fn push_front(c: Cache, slot: Int) -> Unit:
+    c.prev.set(slot, -1)
+    c.next.set(slot, c.head)
+    if c.head != -1:
+        c.prev.set(c.head, slot)
+    c.head = slot
+    if c.tail == -1:
+        c.tail = slot
+
+fn put(c: Cache, key: String, value: String) -> Unit:
+    let found = c.index.get(key)
+    if found.is_some():
+        let slot = found.unwrap()
+        c.values.set(slot, value)
+        unlink(c, slot)
+        push_front(c, slot)
+        return unit
+    var slot = 0
+    if c.free.length() > 0:
+        slot = c.free.at(c.free.length() - 1).unwrap()
+        c.free.remove(c.free.length() - 1)
+        c.keys.set(slot, key)
+        c.values.set(slot, value)
+    else:
+        slot = c.keys.length()
+        c.keys.append(key)
+        c.values.append(value)
+        c.prev.append(-1)
+        c.next.append(-1)
+    c.index.add(key: key, value: slot)
+    push_front(c, slot)
+    if c.index.length() > c.capacity:
+        let last = c.tail
+        unlink(c, last)
+        c.index.without(c.keys.at(last).unwrap())
+        c.free.append(last)
+
+fn run() -> Result[Unit, Error]:
+    var cache = new_cache(1)
+    var configured = false
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let fields = next.unwrap().trim().split(" ")
+        let word = fields.at(0).unwrap()
+        if word.is_empty():
+            continue
+        if not configured:
+            cache = new_cache(word.parse_int().unwrap())
+            configured = true
+        else if word == "put":
+            put(cache, fields.at(1).unwrap(), fields.at(2).unwrap())
+        else if word == "get":
+            let found = cache.index.get(fields.at(1).unwrap())
+            if found.is_none():
+                try stdout().write("miss\n".to_bytes())
+            else:
+                let slot = found.unwrap()
+                unlink(cache, slot)
+                push_front(cache, slot)
+                try stdout().write("{cache.values.at(slot).unwrap()}\n".to_bytes())
+        else if word == "keys":
+            let out = List[String]()
+            var slot = cache.head
+            while slot != -1:
+                out.append(cache.keys.at(slot).unwrap())
+                slot = cache.next.at(slot).unwrap()
+            try stdout().write("{out.join(" ")}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

@@ -1,0 +1,44 @@
+import {stdin, stdout, read_all} from "@std/io.ms"
+import {BytesBuilder} from "@std/bytes.ms"
+import MapEntry from "@std/collections.ms"
+
+fn bump(counts: Map[String, Int], word: BytesBuilder) -> Unit:
+    let w = word.freeze().to_text().unwrap()
+    counts.add(key: w, value: counts.get_or(key: w, fallback: 0) + 1)
+
+fn run() -> Result[Unit, Error]:
+    let data = try read_all(input: stdin())
+    let counts = Map[String, Int]()
+    var word = BytesBuilder()
+    var pending = false
+    for b in data.values():
+        var c = b
+        if c >= 65 and c <= 90:
+            c = c + 32
+        if c >= 97 and c <= 122:
+            word.append(c)
+            pending = true
+        else:
+            if pending:
+                bump(counts, word)
+                word = BytesBuilder()
+                pending = false
+    if pending:
+        bump(counts, word)
+    let ranked = counts.entries().sorted(compare: fn(left: MapEntry[String, Int], right: MapEntry[String, Int]) -> Int:
+        if left.value != right.value:
+            return right.value - left.value
+        return left.key.compare(right.key)
+    )
+    var shown = 0
+    for e in ranked:
+        if shown >= 10:
+            break
+        try stdout().write("{e.key} {e.value}\n".to_bytes())
+        shown = shown + 1
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

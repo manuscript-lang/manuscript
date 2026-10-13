@@ -19,6 +19,7 @@ func main() {
 	flag.Parse()
 	report := docgen.Inventory(checker.StandardLibrary())
 	fmt.Fprintf(os.Stderr, "API descriptions: %d/%d declarations, %d/%d members (including prelude aliases)\n", report.DescribedDeclarations, report.Declarations, report.DescribedMembers, report.Members)
+	fmt.Fprintf(os.Stderr, "Description quality: %d/%d declarations, %d/%d members pass structural checks; semantic review remains required\n", report.QualifiedDeclarations, report.Declarations, report.QualifiedMembers, report.Members)
 	if *coverage != "" {
 		data, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
@@ -33,6 +34,17 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	}
+	policy, err := docgen.StandardDescriptionPolicy()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if problems := docgen.CheckDescriptions(report, policy); len(problems) != 0 {
+		for _, problem := range problems {
+			fmt.Fprintln(os.Stderr, "API description:", problem)
+		}
+		os.Exit(1)
 	}
 	files, err := generate()
 	if err != nil {

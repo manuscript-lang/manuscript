@@ -222,6 +222,9 @@ func check() error {
 	if err := checkAnalysisCollections(cli, directory, environment); err != nil {
 		return err
 	}
+	if err := checkNativeResults(cli, directory, environment); err != nil {
+		return err
+	}
 	profile := filepath.Join(directory, "profile")
 	if data, err := run(cli, "profile", manifest, "-o", profile, "--trace", "--", "first", "second"); err != nil {
 		return err

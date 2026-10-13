@@ -475,6 +475,14 @@ impl Error for FileSystemError:
     fn message() -> String:
 ```
 
+### FileSystemError.NotEmpty
+
+Removal failed because the directory still contains entries.
+
+```manuscript
+case NotEmpty
+```
+
 ## FileSystemInfo {data-api-kind="Record"}
 
 Capacity/free-space statistics: block_size is bytes, blocks/free/available are counts

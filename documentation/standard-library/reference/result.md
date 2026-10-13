@@ -27,6 +27,38 @@ type Result[T, E]:
     fn to_optional() -> Optional[T]:
 ```
 
+### Result.error
+
+An expected failure value; it is distinct from faults and cancellation.
+
+```manuscript
+case error(cause: E)
+```
+
+### Result.ok
+
+A successful result, retaining its payload without a deep copy.
+
+```manuscript
+case ok(value: T)
+```
+
+### Result.error.cause
+
+The original domain error, retained through compatible Result propagation.
+
+```manuscript
+cause: E
+```
+
+### Result.ok.value
+
+The successful value returned by unwrap, matching, or propagation.
+
+```manuscript
+value: T
+```
+
 ### Result.and_then[U]
 
 Calls transform only on success. Its result keeps the same error type.
