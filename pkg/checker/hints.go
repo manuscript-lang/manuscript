@@ -2,6 +2,7 @@ package checker
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -192,13 +193,55 @@ func (c *checker) unknownMember(receiver *Type, name string) string {
 	c.unknownType = true
 	message := "unknown or ambiguous member " + name + " on " + receiver.String()
 	available := c.memberNames(receiver)
+	if std(receiver, "List") && name == "join" {
+		return message + "; join is only available on List[String]; convert the elements first, e.g. xs.map(transform: fn(value: Int) -> String: \"{value}\").join(separator: \",\")"
+	}
+	if hint := synonymHint(name, available); hint != "" {
+		return message + hint
+	}
 	if hint := didYouMean(name, available); hint != "" {
 		return message + hint
 	}
 	if len(available) > 0 {
-		return message + "; available: " + list(available, 12)
+		if len(available) <= 40 {
+			return message + "; available: " + strings.Join(available, ", ")
+		}
+		var same []string
+		for _, candidate := range available {
+			if name != "" && candidate[0] == name[0] {
+				same = append(same, candidate)
+			}
+		}
+		if len(same) > 0 {
+			return message + "; available starting with '" + name[:1] + "': " + strings.Join(same, ", ") + "; " + strconv.Itoa(len(available)) + " members in total"
+		}
+		return message + "; available: " + list(available, 40)
 	}
 	return message + "; this type has no fields or operations"
+}
+
+// memberSynonyms maps names guessed from other languages to the members that
+// usually mean the same thing here.
+var memberSynonyms = map[string][]string{
+	"len": {"length", "byte_length", "scalar_length"}, "size": {"length", "byte_length", "scalar_length"}, "count": {"length", "byte_length", "scalar_length"},
+	"length": {"byte_length", "scalar_length"},
+	"push":   {"append", "with_value", "with_entry"}, "add": {"append", "with_value", "with_entry"}, "insert": {"append", "with_value", "with_entry"},
+	"to_string": {"to_text"}, "decode": {"to_text"}, "toString": {"to_text"},
+}
+
+func synonymHint(name string, available []string) string {
+	var found []string
+	for _, candidate := range memberSynonyms[name] {
+		for _, a := range available {
+			if a == candidate {
+				found = append(found, "'"+candidate+"'")
+			}
+		}
+	}
+	if len(found) == 0 {
+		return ""
+	}
+	return "; did you mean " + strings.Join(found, " or ") + "?"
 }
 
 func paramNames(params []Param) []string {
