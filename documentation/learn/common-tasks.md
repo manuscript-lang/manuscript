@@ -18,7 +18,7 @@ Import `stdout` from `@std/io.ms`, convert text to bytes, and check both writing
 import stdout from "@std/io.ms"
 
 fn run() -> Result[Unit, Error]:
-    let written = try stdout().write("Hello, Manuscript!\n".to_bytes())
+    try stdout().write("Hello, Manuscript!\n".to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
@@ -44,7 +44,7 @@ import stdout from "@std/io.ms"
 
 fn run() -> Result[Unit, Error]:
     for name in arguments():
-        let written = try stdout().write("Hello, {name}!\n".to_bytes())
+        try stdout().write("Hello, {name}!\n".to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
@@ -75,7 +75,7 @@ fn run() -> Result[Unit, Error]:
     let text = bytes.to_text()
     if text.is_none():
         return error(FileSystemError.InvalidData)
-    let written = try stdout().write(text.unwrap().to_bytes())
+    try stdout().write(text.unwrap().to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
@@ -133,7 +133,7 @@ fn run() -> Result[Unit, Error]:
         let line = try read_line(input, max_bytes: 4096)
         if line.is_none():
             break
-        let written = try stdout().write("{line.unwrap()}\n".to_bytes())
+        try stdout().write("{line.unwrap()}\n".to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
@@ -158,7 +158,7 @@ import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 
 fn show(number: Int) -> Result[Unit, Error]:
-    let written = try stdout().write("{number}\n".to_bytes())
+    try stdout().write("{number}\n".to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
@@ -191,7 +191,7 @@ fn run() -> Result[Unit, Error]:
     let text = match value:
         StringValue(text): text
         _: return error(JsonError.InvalidData)
-    let written = try stdout().write("{text}\n".to_bytes())
+    try stdout().write("{text}\n".to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
@@ -231,7 +231,7 @@ fn run() -> Result[Unit, Error]:
     let text = response.body.to_text()
     if text.is_none():
         return error(HttpError.InvalidData)
-    let written = try stdout().write(text.unwrap().to_bytes())
+    try stdout().write(text.unwrap().to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
@@ -265,8 +265,8 @@ fn run() -> Result[Unit, Error]:
             return 6 * 7
         )
         let answer = try task.join()
-        let written = try stdout().write("{answer}\n".to_bytes())
-        let flushed = try stdout().flush()
+        try stdout().write("{answer}\n".to_bytes())
+        try stdout().flush()
     return ok(unit)
 
 export fn main() -> Int:

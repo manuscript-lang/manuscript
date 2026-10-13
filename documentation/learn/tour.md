@@ -16,7 +16,7 @@ Save this complete program as `hello.ms` and run `ms run hello.ms`:
 import stdout from "@std/io.ms"
 
 fn say(text: String) -> Result[Unit, Error]:
-    let written = try stdout().write("{text}\n".to_bytes())
+    try stdout().write("{text}\n".to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
