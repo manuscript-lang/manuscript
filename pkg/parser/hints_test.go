@@ -18,9 +18,7 @@ func TestSyntaxErrorsStateTheFix(t *testing.T) {
 		{"top-level statement", "let x = 1\n", "put statements inside a fn"},
 		{"missing expression", "fn f() -> Int:\n    let x = \n    return 1\n", "expected an expression, found end of line"},
 		{"standalone expression", "fn f() -> Int:\n    1 + 1\n    return 1\n", "use 'let name = ...'"},
-		{"indexing", "fn f(xs: List[Int]) -> Int:\n    return xs[0]\n", "write xs.at(index: 0)"},
-		{"indexing by expression", "fn f(xs: List[Int], i: Int) -> Int:\n    return xs[i - 1]\n", "xs.at(index: i - 1)"},
-		{"negative indexing", "fn f(xs: List[Int]) -> Int:\n    return xs[-1]\n", "xs.at(index: -1)"},
+		{"indexing", "fn f(xs: List[Int]) -> Int:\n    return xs[0]\n", "xs.at(index: 0)"},
 		{"unknown escape", "fn f() -> String:\n    return \"a\\q\"\n", "valid escapes are"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

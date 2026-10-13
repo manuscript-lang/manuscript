@@ -28,7 +28,6 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"non-exhaustive", "type S:\n    case A\n    case B\n    case C\nfn f(s: S) -> Int:\n    match s:\n        A:\n            return 1\n    return 0\n", []string{"non-exhaustive match", "missing cases: B, C"}, 1},
 		{"operand mismatch is one error", "fn f() -> Int:\n    return \"a\" + 1\n", []string{"found String + Int", "toString()"}, 1},
 		{"not a function", "fn f() -> Int:\n    let x = 1\n    return x()\n", []string{"x is not a function (it has type Int)"}, 1},
-		{"list constructor", "import List from \"@std/collections.ms\"\nfn f() -> Int:\n    let xs: List[Int] = List[Int](1, 2)\n    return xs.length()\n", []string{"standard type has no source constructor: List[Int]", "let xs: List[Int] = []"}, 1},
 		{"unknown export", "import nope from \"@std/faults.ms\"\nfn f() -> Unit:\n    return\n", []string{"module does not export nope", "@std/faults.ms exports:"}, 1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

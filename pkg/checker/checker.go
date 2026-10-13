@@ -872,9 +872,6 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 		methods := c.methods(receiver.Type, e.Text)
 		if len(methods) != 1 {
-			if receiver.Type.ID == "<invalid>" {
-				return i // the receiver's own error was already reported
-			}
 			c.error(e.Pos, "resolution", c.unknownMember(receiver.Type, e.Text))
 			return i
 		}
