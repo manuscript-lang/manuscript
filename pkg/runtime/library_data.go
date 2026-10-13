@@ -344,7 +344,7 @@ func init() {
 		v := a[0].(*List)
 		s, e := a[1].(int64), a[2].(int64)
 		librarySlice(len(v.Items), s, e)
-		return &List{v.Type, append([]Value{}, v.Items[s:e]...)}
+		return &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)}
 	})
 }
 

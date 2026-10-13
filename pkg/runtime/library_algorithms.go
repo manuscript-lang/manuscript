@@ -12,7 +12,7 @@ func init() {
 			CheckCancelled(ctx)
 			out[i] = Invoke(ctx, a[1], []Argument{{"value", v}})
 		}
-		return &List{r, out}
+		return &List{Type: r, Items: out}
 	})
 	libraryGeneric("collections", "filter", "List[T]", vars, []LibraryParam{p("values", "List[T]"), p("predicate", "fn(value:T)->Bool")}, func(ctx *Execution, r string, a []Value) Value {
 		var out []Value
@@ -22,7 +22,7 @@ func init() {
 				out = append(out, v)
 			}
 		}
-		return &List{r, out}
+		return &List{Type: r, Items: out}
 	})
 	libraryGeneric("collections", "fold", "A", []LibraryParam{p("T", ""), p("A", "")}, []LibraryParam{p("values", "List[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		acc := a[1]
@@ -38,7 +38,7 @@ func init() {
 			CheckCancelled(ctx)
 			return Invoke(ctx, a[1], []Argument{{"left", out[i]}, {"right", out[j]}}).(int64) < 0
 		})
-		return &List{r, out}
+		return &List{Type: r, Items: out}
 	})
 	libraryGeneric("collections", "map_keys", "List[K]", []LibraryParam{p("K", "Hashable"), p("V", "")}, []LibraryParam{p("values", "Map[K][V]")}, func(ctx *Execution, r string, a []Value) Value {
 		entries := a[0].(*Map).Entries
@@ -46,7 +46,7 @@ func init() {
 		for i, e := range entries {
 			out[i] = e.Key
 		}
-		return &List{r, out}
+		return &List{Type: r, Items: out}
 	})
 	libraryGeneric("collections", "map_values", "List[V]", []LibraryParam{p("K", "Hashable"), p("V", "")}, []LibraryParam{p("values", "Map[K][V]")}, func(ctx *Execution, r string, a []Value) Value {
 		entries := a[0].(*Map).Entries
@@ -54,7 +54,7 @@ func init() {
 		for i, e := range entries {
 			out[i] = e.Value
 		}
-		return &List{r, out}
+		return &List{Type: r, Items: out}
 	})
 	for _, name := range []string{"union", "intersection", "difference"} {
 		libraryGeneric("collections", name, "Set[T]", []LibraryParam{p("T", "Hashable")}, []LibraryParam{p("left", "Set[T]"), p("right", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {

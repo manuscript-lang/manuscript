@@ -121,7 +121,7 @@ func newBuilder(typ string) *Builder {
 	b := &Builder{typ: typ}
 	switch name {
 	case "@std/ListBuilder":
-		b.value = &List{"@std/List[" + args[0] + "]", nil}
+		b.value = &List{Type: "@std/List[" + args[0] + "]", Items: nil}
 	case "@std/MapBuilder":
 		b.value = &Map{"@std/Map[" + args[0] + "][" + args[1] + "]", nil}
 	case "@std/SetBuilder":
