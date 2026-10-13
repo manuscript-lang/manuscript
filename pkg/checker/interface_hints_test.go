@@ -70,3 +70,23 @@ func TestInterfaceHintCorrectionsAndReceiverScope(t *testing.T) {
 		}
 	}
 }
+
+func TestInterfaceViewHintUsesVisibleImplementations(t *testing.T) {
+	data, err := parser.Parse("data.ms", "export type Sq:\n    s: Int\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	extension, err := parser.Parse("extension.ms", "import Sq from \"data.ms\"\nexport interface Shape:\n    fn area() -> Int\nimpl Shape for Sq:\n    fn area() -> Int: self.s * self.s\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	consumer, err := parser.Parse("consumer.ms", "import Sq from \"data.ms\"\nimport Shape from \"extension.ms\"\nfn shape() -> Shape: Sq(2)\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	imports := map[*syntax.Import]string{extension.Imports[0]: "data.ms", consumer.Imports[0]: "data.ms", consumer.Imports[1]: "extension.ms"}
+	p := checker.Check([]*syntax.Module{data, extension, consumer}, imports)
+	if len(p.Diagnostics) != 1 || !strings.Contains(p.Diagnostics[0].Message, "no applicable 'impl Shape for Sq' is visible") {
+		t.Fatalf("hidden implementation hint: %v", p.Diagnostics)
+	}
+}
