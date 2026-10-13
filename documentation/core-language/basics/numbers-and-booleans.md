@@ -73,6 +73,8 @@ For each Decimal operator:
 3. Round the exact value divided by `10^q` to an integer coefficient, ties to even. If it has 35 digits, shift one exact trailing zero into `q`.
 4. Require an equivalent representation with at most 34 coefficient digits and `q` in range. Otherwise overflow faults.
 
+An arithmetic overflow fault identifies the Decimal operator and operands and states the maximum finite magnitude after rounding. These diagnostics preserve the fault category and the existing arithmetic limits.
+
 There is one rounding step per operator. Do not round intermediate coefficients, reassociate operators, or saturate to the maximum finite value. Underflow produces a subnormal or zero without fault. `1d / 3d` is `0.3333333333333333333333333333333333d`. Equality and ordering compare exact stored numerical values, ignoring scale and trailing zeroes.
 
 Decimal literals are accepted only when their exact mathematical value is representable without rounding. Insignificant leading/trailing coefficient zeroes do not count against precision: `1.00d` is exact. A literal requiring 35 significant digits, such as `1.2345678901234567890123456789012345d`, or lying outside the representable grid is a compile error. `1e6144d` and `1e-6176d` are accepted; `1e6145d` and `1e-6177d` are rejected. Unary-negative literal checking follows the same magnitude rules. Runtime conversion and arithmetic are separate from source literal acceptance.

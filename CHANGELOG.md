@@ -7,6 +7,7 @@
 - Reduce Debug native compilation work for large flat primitive literals while retaining fresh list storage; Release lowering is unchanged. Add `CompileSourceForBuild` and `CompileFileForBuild` to select lowering before Go generation. Existing `compiler.Result` layout, source overrides and legacy compile/build calls remain supported. Repeated Debug construction and fixed rooted literal data remain sensitive to GC settings.
 
 - Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
+- Identify Decimal arithmetic overflow by operator, operands and the finite magnitude limit, without changing arithmetic or rounding.
 - Add versioned `fmt --check --json` and `test --json` results, preserving test streams and partial outcomes; display explicit and discovered fmt paths consistently.
 
 - Fix standard-library data bugs: `String.upper()`/`lower()` use full Unicode case mapping (`ß` to `SS`, final sigma, `İ`); negative `split`/`replace` limits fault with the operation and parameter; `bigint.parse(max_digits: 0)` is a real zero budget; TOML and YAML parse errors report the offending line and column.
