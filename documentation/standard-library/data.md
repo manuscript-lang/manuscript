@@ -42,7 +42,7 @@ Import `List` from `@std/collections.ms` for the bracket literal. `find` and `fi
 
 Maps and sets enumerate in insertion order, while equality ignores order. Replacing an existing map key retains its position; removing and adding it puts it at the end. `map_from_entries` uses the last value for duplicate keys and keeps the first insertion position. `merge` mutates the receiving map, replacing matching values and appending new keys.
 
-`with_default_from` calls its creation function only when the key is absent. Set algebra returns new sets: left-side traversal order is retained, followed by right-only values where applicable. Keys and set elements must satisfy [Hashable](../core-language/types/equality-and-hashing.md).
+`add_default_from` calls its creation function only when the key is absent. The legacy spelling `with_default_from` remains compatible; see the [naming migration](../core-language/types/collections.md#naming-and-migration). Set algebra returns new sets: left-side traversal order is retained, followed by right-only values where applicable. Keys and set elements must satisfy [Hashable](../core-language/types/equality-and-hashing.md).
 
 ## Text and regular expressions
 
