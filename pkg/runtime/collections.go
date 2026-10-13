@@ -171,6 +171,20 @@ func MapWithEntry(ctx *Execution, receiver, key, value Value, scope TypeScope) V
 	return m
 }
 
+// MapRemove retains insertion order and returns the mutable receiver.
+func MapRemove(ctx *Execution, receiver, key Value, scope TypeScope) Value {
+	CheckCancelled(ctx)
+	return mapRemove(keyContext(ctx, key, scope), receiver.(*Map), key)
+}
+
+// Bound members already select their key's equality scope.
+func mapRemove(ctx *Execution, m *Map, key Value) Value {
+	if found := m.find(ctx, key); found >= 0 {
+		m.removeAt(ctx, found)
+	}
+	return m
+}
+
 // SetContains is the direct path for Set.contains calls.
 func SetContains(ctx *Execution, receiver, value Value, scope TypeScope) Value {
 	CheckCancelled(ctx)
@@ -293,6 +307,9 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				return &List{Type: v.Type, Items: append(append([]Value{}, v.Items...), args[0].(*List).Items...)}
 			}
 		case *Map:
+			if name == "without" {
+				return mapRemove(ctx, v, args[0])
+			}
 			typ := typeArguments(v.Type)[1]
 			var key Value
 			if len(args) > 0 {
@@ -319,11 +336,6 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				} else {
 					v.Entries = append(v.Entries, Entry{key, args[1]})
 					keyAppended(ctx, v)
-				}
-				return v
-			case "without":
-				if found >= 0 {
-					v.removeAt(ctx, found)
 				}
 				return v
 			}

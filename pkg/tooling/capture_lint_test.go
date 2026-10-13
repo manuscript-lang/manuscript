@@ -69,6 +69,14 @@ type Counter:
     with tasks = TaskGroup():
         let _task = tasks.start(fn(): values.remove(0))
 `, 1},
+		{"list splice", `    let values = [0]
+    with tasks = TaskGroup():
+        let _task = tasks.start(fn(): values.splice(0, 1, [1]))
+`, 1},
+		{"map remove", `    let values = Map[Int, Int]().add(0, 1)
+    with tasks = TaskGroup():
+        let _task = tasks.start(fn(): values.remove(0))
+`, 1},
 		{"set add", `    let values = [0].to_set()
     with tasks = TaskGroup():
         let _task = tasks.start(fn(): values.add(1))

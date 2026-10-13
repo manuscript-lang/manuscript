@@ -11,14 +11,16 @@ import (
 // String.replace is deliberately absent: replace_first still accepts a cap
 // greater than one, so it is not an unambiguous final replacement for that API.
 var preferredNativeMethods = map[string]string{
-	"@std/List/collections/with_value": "List.set",
-	"@std/List/collections/without":    "List.remove",
-	"@std/List/collections/reverse":    "List.reverse_in_place",
-	"@std/Map/with_entry":              "Map.add",
-	"@std/Set/with_value":              "Set.add",
-	"@std/Set/without":                 "Set.remove",
-	"@std/Bytes/bytes/reverse":         "Bytes.reversed",
-	"@std/Regex/regex/replace":         "Regex.replace_all",
+	"@std/List/collections/with_value":  "List.set",
+	"@std/List/collections/without":     "List.remove",
+	"@std/List/collections/reverse":     "List.reverse_in_place",
+	"@std/List/collections/with_values": "List.splice",
+	"@std/Map/with_entry":               "Map.add",
+	"@std/Map/without":                  "Map.remove",
+	"@std/Set/with_value":               "Set.add",
+	"@std/Set/without":                  "Set.remove",
+	"@std/Bytes/bytes/reverse":          "Bytes.reversed",
+	"@std/Regex/regex/replace":          "Regex.replace_all",
 }
 
 func lintPreferredNames(program *checker.Program) []LintFinding {
