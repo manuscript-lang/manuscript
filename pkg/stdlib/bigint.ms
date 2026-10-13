@@ -1,6 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-
 # Errors returned while parsing or converting arbitrary-precision integers.
 export type BigIntError:
     case InvalidInput

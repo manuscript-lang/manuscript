@@ -1,6 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-
 # Errors returned by timestamp parsing, arithmetic, or range conversion.
 export type TimeError:
     case InvalidInput

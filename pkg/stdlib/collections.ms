@@ -1,6 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-
 # Errors returned when a collection factory exceeds its supplied item limit.
 export type CollectionError:
     case InvalidInput
