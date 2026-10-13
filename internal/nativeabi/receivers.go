@@ -70,6 +70,8 @@ var ReceiverBindings = map[string]map[string]string{
 		"prepend":         "collections/prepend",
 		"with_value":      "collections/with_value",
 		"without":         "collections/without",
+		"set":             "collections/set",
+		"remove":          "collections/remove",
 		"slice":           "collections/slice",
 		"reverse":         "collections/reverse",
 		"sorted":          "collections/sorted",
@@ -107,6 +109,8 @@ var ReceiverBindings = map[string]map[string]string{
 		"for_each":          "collections/map_for_each",
 	},
 	"Set": {
+		"add":                  "collections/set_add",
+		"remove":               "collections/set_remove",
 		"is_empty":             "collections/set_is_empty",
 		"filter":               "collections/set_filter",
 		"map":                  "collections/set_map",
@@ -130,6 +134,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"lower":         "string/lower",
 		"repeat":        "string/repeat",
 		"replace":       "string/replace",
+		"replace_first": "string/replace_first",
 		"scalar_length": "string/scalar_length",
 		"scalar_values": "string/scalar_values",
 		"slice_scalars": "string/slice_scalars",
@@ -187,8 +192,9 @@ var ReceiverBindings = map[string]map[string]string{
 		"to_string": "bigint/format",
 	},
 	"Regex": {
-		"matches":  "regex/matches",
-		"find_all": "regex/find_all",
-		"replace":  "regex/replace",
+		"matches":     "regex/matches",
+		"find_all":    "regex/find_all",
+		"replace":     "regex/replace",
+		"replace_all": "regex/replace_all",
 	},
 }

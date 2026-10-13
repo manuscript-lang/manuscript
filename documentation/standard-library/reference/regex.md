@@ -14,6 +14,7 @@ A compiled regular expression that can be reused across input strings.
 type Regex:
     fn matches(text: String) -> Bool:
     fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
+    fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
     fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
 ```
 

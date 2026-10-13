@@ -114,6 +114,7 @@ type String:
     fn ends_with(suffix: String) -> Bool:
     fn lower() -> String:
     fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
     fn scalar_values() -> List[Int]:

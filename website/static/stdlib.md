@@ -348,6 +348,8 @@ type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    fn set(index: Int, value: T) -> List[T]:
+    fn remove(index: Int) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> List[T]:
@@ -478,6 +480,8 @@ type Set[T: Hashable]:
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
     fn contains(value: T) -> Bool:
     fn length() -> Int:
+    fn add(value: T) -> Set[T]:
+    fn remove(value: T) -> Set[T]:
     fn with_value(value: T) -> Set[T]:
     fn without(value: T) -> Set[T]:
 ```
@@ -2834,6 +2838,7 @@ A compiled regular expression that can be reused across input strings.
 type Regex:
     fn matches(text: String) -> Bool:
     fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
+    fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
     fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
 ```
 
@@ -3991,6 +3996,7 @@ type String:
     fn ends_with(suffix: String) -> Bool:
     fn lower() -> String:
     fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
     fn scalar_values() -> List[Int]:

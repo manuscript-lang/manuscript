@@ -176,7 +176,7 @@ func SetContains(ctx *Execution, receiver, value Value, scope TypeScope) Value {
 	return receiver.(*Set).find(keyContext(ctx, value, scope), value) >= 0
 }
 
-// SetWithValue is the direct path for Set.with_value calls.
+// SetWithValue is the direct path for Set.with_value and Set.add calls.
 func SetWithValue(ctx *Execution, receiver, value Value, scope TypeScope) Value {
 	CheckCancelled(ctx)
 	s := receiver.(*Set)
@@ -184,6 +184,17 @@ func SetWithValue(ctx *Execution, receiver, value Value, scope TypeScope) Value 
 	if s.find(child, value) < 0 {
 		s.Items = append(s.Items, value)
 		keyAppended(child, s)
+	}
+	return s
+}
+
+// SetRemove retains insertion order and returns the mutable receiver.
+func SetRemove(ctx *Execution, receiver, value Value, scope TypeScope) Value {
+	CheckCancelled(ctx)
+	s := receiver.(*Set)
+	child := keyContext(ctx, value, scope)
+	if found := s.find(child, value); found >= 0 {
+		s.removeAt(child, found)
 	}
 	return s
 }
@@ -308,6 +319,12 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				return v
 			}
 		case *Set:
+			if name == "with_value" {
+				return SetWithValue(ctx, v, args[0], ctx.EqualityScope)
+			}
+			if name == "without" {
+				return SetRemove(ctx, v, args[0], ctx.EqualityScope)
+			}
 			var value Value
 			if len(args) > 0 {
 				value = args[0]
@@ -321,17 +338,6 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				return int64(len(v.Items))
 			case "contains":
 				return found >= 0
-			case "with_value":
-				if found < 0 {
-					v.Items = append(v.Items, value)
-					keyAppended(ctx, v)
-				}
-				return v
-			case "without":
-				if found >= 0 {
-					v.removeAt(ctx, found)
-				}
-				return v
 			}
 		case string:
 			switch name {

@@ -101,6 +101,7 @@ func init() {
 		}
 		return strings.Replace(a[0].(string), a[1].(string), a[2].(string), int(n))
 	})
+	libraryAlias("string", "replace_first", "replace")
 	add("string", "scalar_values", "List[Int]", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, a []Value) Value {
 		var items []Value
 		for i, r := range a[0].(string) {

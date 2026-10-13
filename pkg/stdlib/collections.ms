@@ -20,7 +20,15 @@ export type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    # Replaces an element in place and returns this list; negative indexes count from the end.
+    # Invalid indexes fault, with the same bounds and diagnostics as with_value.
+    fn set(index: Int, value: T) -> List[T]:
+    # Removes an element in place and returns this list; negative indexes count from the end.
+    # Invalid indexes fault, with the same bounds and diagnostics as without.
+    fn remove(index: Int) -> List[T]:
+    # Compatibility spelling for set; mutates and returns this list.
     fn with_value(index: Int, value: T) -> List[T]:
+    # Compatibility spelling for remove; mutates and returns this list.
     fn without(index: Int) -> List[T]:
     # Returns a new shallow List containing [start, end); outer storage is independent.
     # Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
@@ -123,7 +131,13 @@ export type Set[T: Hashable]:
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
     fn contains(value: T) -> Bool:
     fn length() -> Int:
+    # Adds a value in place and returns this set; an equal value retains its original payload and position.
+    fn add(value: T) -> Set[T]:
+    # Removes an equal value in place and returns this set; an absent value leaves it unchanged.
+    fn remove(value: T) -> Set[T]:
+    # Compatibility spelling for add; mutates and returns this set.
     fn with_value(value: T) -> Set[T]:
+    # Compatibility spelling for remove; mutates and returns this set.
     fn without(value: T) -> Set[T]:
 
 # One list index and its corresponding value.

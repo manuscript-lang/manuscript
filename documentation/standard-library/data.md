@@ -53,15 +53,17 @@ String indexing and search count Unicode scalars. The [text rules](../core-langu
 | `upper`, `lower` | Apply locale-independent full Unicode case mapping; the scalar length can change. |
 | `scalar_length`, `scalar_values` | Count Unicode scalars or return their integer code points. |
 | `pad_start`, `pad_end` | Repeat and truncate `padding` on scalar boundaries until `target_length` scalars are reached. A shorter target or empty padding leaves the text unchanged. Negative targets return `InvalidInput`. |
-| `replace` | Replace the first occurrence by default (omitted or `none` cap); a supplied `max_replacements` caps replacements, and zero leaves text unchanged. Negative caps fault. |
+| `replace_first` | Replace the first occurrence by default (omitted or `none` cap); a supplied `max_replacements` can replace more than one occurrence, and zero leaves text unchanged. Negative caps fault. `replace` remains a compatible spelling with identical defaults, caps, and faults. |
 | `replace_all` | Replace every nonoverlapping occurrence. Return `StringError.LimitExceeded` if the UTF-8 output exceeds a supplied `max_bytes`, or `InvalidInput` for a negative budget. |
 | `split` | Split on exact separators and truncate to a supplied `max_parts`; zero returns no parts and negative limits fault. Empty text split on a nonempty separator returns `[""]`; an empty separator splits into scalars, giving no parts for empty text. |
 
-An empty `old` in `replace` or `replace_all` matches before the first scalar and after each scalar, including the end. Replacement does not scan newly inserted text. `repeat`, `normalize`, `pad_start`, and `pad_end` also accept optional UTF-8 output budgets: omitted or `none` budgets impose no cap, zero permits only empty output, negatives return `StringError.InvalidInput`, and exceeding a supplied budget returns `StringError.LimitExceeded`. Even unchanged padding results must fit the supplied budget. Normalization is explicit (`NFC`, `NFD`, `NFKC`, or `NFKD`).
+An empty `old` in `replace_first` (or `replace`) and `replace_all` matches before the first scalar and after each scalar, including the end. Replacement does not scan newly inserted text. `repeat`, `normalize`, `pad_start`, and `pad_end` also accept optional UTF-8 output budgets: omitted or `none` budgets impose no cap, zero permits only empty output, negatives return `StringError.InvalidInput`, and exceeding a supplied budget returns `StringError.LimitExceeded`. Even unchanged padding results must fit the supplied budget. Normalization is explicit (`NFC`, `NFD`, `NFKC`, or `NFKD`).
 
 Negative `max_parts` and `max_replacements` fault with a message naming the operation and parameter, because these operations return plain values. Full case mapping includes `"ß".upper()` as `"SS"`, `"ﬁ".upper()` as `"FI"`, final sigma `ς` at the end of `"ΑΣ".lower()`, and `"İ".lower()` as `i` followed by U+0307.
 
 Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.
+
+`Regex.replace_all(text:, replacement:, max_bytes:)` replaces every nonoverlapping match with literal text; `$1` does not expand a capture. `Regex.replace` remains a compatible spelling. Omitted or `none` byte budgets impose no cap, zero permits only empty output, negative budgets return `RegexError.InvalidInput`, and output exceeding a supplied budget returns `RegexError.LimitExceeded`. The UTF-8 budget includes unmatched input, even when no match occurs.
 
 ## Byte operations
 

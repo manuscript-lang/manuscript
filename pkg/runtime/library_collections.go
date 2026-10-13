@@ -152,6 +152,14 @@ func init() {
 		a[0].(*List).Items = items[:len(items)-1]
 		return a[0]
 	})
+	libraryAlias("collections", "set", "with_value")
+	libraryAlias("collections", "remove", "without")
+	add("set_add", "Set[T]", hash, []LibraryParam{p("values", "Set[T]"), p("value", "T")}, func(ctx *Execution, _ string, a []Value) Value {
+		return SetWithValue(ctx, a[0], a[1], ctx.EqualityScope)
+	})
+	add("set_remove", "Set[T]", hash, []LibraryParam{p("values", "Set[T]"), p("value", "T")}, func(ctx *Execution, _ string, a []Value) Value {
+		return SetRemove(ctx, a[0], a[1], ctx.EqualityScope)
+	})
 	for _, name := range []string{"find", "find_last", "find_index", "find_last_index", "some", "every"} {
 		result := "Optional[T]"
 		if name == "find_index" || name == "find_last_index" {

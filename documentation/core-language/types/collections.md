@@ -72,9 +72,9 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 ## Mutation and copies
 
-`append`, `prepend`, `with_value`, `without`, `with_values`, `fill`, `copy_within`, and `reverse` update a list and return the same instance. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
+`append`, `prepend`, `set`, `remove`, `with_values`, `fill`, `copy_within`, and `reverse` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `with_value` and `without` remain compatible spellings for `set` and `remove`, with the same receiver returns and faults. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
 
-Map `with_entry`, `without`, `with_default`, `with_default_from`, `merge`, and `clear` update the receiver. Set `with_value`, `without`, and `clear` update the receiver. Their return values retain that instance for chaining.
+Map `with_entry`, `without`, `with_default`, `with_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver; `with_value` and `without` remain compatible spellings for `add` and `remove`. Their return values retain that instance for chaining.
 
 ```manuscript
 let values = [1, 2]
@@ -97,6 +97,7 @@ A `for` loop and collection callback traversals snapshot collection membership o
 | `List[T]()` | Empty `List[T]` |
 | `List[T]` | `length() -> Int`; `at(index: Int) -> Optional[T]`; `[index] -> Optional[T]` |
 | `List[T]` | `append(value: T) -> List[T]`; `concat(values: List[T]) -> List[T]` |
+| `List[T]` | `set(index: Int, value: T) -> List[T]`; `remove(index: Int) -> List[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
 | `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
 | `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
@@ -106,13 +107,13 @@ A `for` loop and collection callback traversals snapshot collection membership o
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
 | `Set[T]` | `is_empty() -> Bool`; `filter(predicate: fn(value: T) -> Bool) -> Set[T]` |
 | `Set[T]` | `map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]` |
-| `Set[T]` | `with_value(value: T) -> Set[T]`; `without(value: T) -> Set[T]` |
+| `Set[T]` | `add(value: T) -> Set[T]`; `remove(value: T) -> Set[T]` |
 
 All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding MaxInt64 faults.
 
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
 
-Map `get`, `contains`, and `with_entry` and Set `contains` and `with_value` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. `without` shifts later entries to keep insertion order and takes time proportional to the collection size. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
+Map `get`, `contains`, and `with_entry` and Set `contains` and `add` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. Map `without` and Set `remove` shift later entries to keep insertion order and take time proportional to the collection size. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
 
 ### Search and enumeration
 

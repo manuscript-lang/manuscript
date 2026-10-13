@@ -290,7 +290,9 @@
             "length: fn()-\u003eInt",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
             "prepend: fn(value: T)-\u003eList[T]",
+            "remove: fn(index: Int)-\u003eList[T]",
             "reverse: fn()-\u003eList[T]",
+            "set: fn(index: Int, value: T)-\u003eList[T]",
             "slice: fn(start: Int, end: Int)-\u003eList[T]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
@@ -392,6 +394,7 @@
             "T: Hashable"
           ],
           "operations": [
+            "add: fn(value: T)-\u003eSet[T]",
             "clear: fn()-\u003eSet[T]",
             "clone: fn()-\u003eSet[T]",
             "contains: fn(value: T)-\u003eBool",
@@ -406,6 +409,7 @@
             "is_superset_of: fn(right: Set[T])-\u003eBool",
             "length: fn()-\u003eInt",
             "map[U: Hashable]: fn(transform: fn(value: T)-\u003eU)-\u003eSet[U]",
+            "remove: fn(value: T)-\u003eSet[T]",
             "symmetric_difference: fn(right: Set[T])-\u003eSet[T]",
             "union: fn(right: Set[T])-\u003eSet[T]",
             "values: fn()-\u003eList[T]",
@@ -2280,7 +2284,8 @@
           "operations": [
             "find_all: fn(text: String, max_matches: Optional[Int] = ...)-\u003eResult[List[String], RegexError]",
             "matches: fn(text: String)-\u003eBool",
-            "replace: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]"
+            "replace: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]",
+            "replace_all: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]"
           ]
         },
         {
@@ -3280,6 +3285,7 @@
             "repeat: fn(count: Int, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
             "replace: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
             "replace_all: fn(old: String, new: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
+            "replace_first: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
             "scalar_at: fn(index: Int)-\u003eOptional[Int]",
             "scalar_length: fn()-\u003eInt",
             "scalar_values: fn()-\u003eList[Int]",
