@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/frontend"
+	"github.com/manuscript-lang/manuscript/pkg/lower"
 	"github.com/manuscript-lang/manuscript/pkg/project"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
@@ -124,13 +125,7 @@ func compile(graph frontend.Graph, options Options, kind BuildType) Result {
 		return result
 	}
 
-	optimized := optimize(checked)
-	var source string
-	if kind == Debug {
-		source, err = lowerGoForBuild(optimized, graph.Entry, options, kind)
-	} else {
-		source, err = lowerGo(optimized, graph.Entry, options)
-	}
+	source, err := lower.Go(checked, graph.Entry, lower.Options{Tests: options.Tests, Entry: options.Entry, CPUProfile: options.CPUProfile, HeapProfile: options.HeapProfile, Trace: options.Trace, DebugLiterals: kind == Debug})
 	if err != nil {
 		result.Diagnostics = append(result.Diagnostics, syntax.Diagnostic{Position: syntax.Position{File: graph.Entry, Line: 1, Column: 1}, Phase: "lowering", Message: err.Error()})
 	} else {

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
@@ -76,7 +77,7 @@ func timedRunMain(main rt.Value, arguments []string) int {
 }
 `
 			must(os.WriteFile(filepath.Join(dir, "generated.go"), []byte(result.Source), 0600))
-			_, err = compiler.BuildCheckedWithType(result, binary, filepath.Join(root, "cache"), compiler.RelWithDebInfo)
+			_, err = build.BuildCheckedWithType(result, binary, filepath.Join(root, "cache"), compiler.RelWithDebInfo)
 			must(err)
 			fmt.Println("built", mode)
 			continue

@@ -3,6 +3,7 @@ package e2e_test
 import (
 	"context"
 	"fmt"
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"os"
 	"os/exec"
@@ -61,7 +62,7 @@ func execute(t *testing.T, result compiler.Result, args ...string) ([]byte, erro
 		t.Fatalf("source rejected: %v", result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	return commandOutput(t, binary, args...)

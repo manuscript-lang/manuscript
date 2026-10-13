@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
@@ -101,7 +102,7 @@ export fn main() -> Int:
 		t.Fatal(err)
 	}
 	binary := filepath.Join(dir, "file-clone")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command(binary)
