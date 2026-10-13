@@ -129,6 +129,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			return runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Expressions[e.Left].Type))
 		}
 		if info.Native != "" {
+			if info.Native == "milliseconds" || info.Native == "seconds" || info.Native == "minutes" {
+				return g.locatedOperation(e, runtimeName("NativeMember"), g.expression(e.Left), textLiteral(e.Text))
+			}
 			return runtimeCall("NativeMember", g.expression(e.Left), textLiteral(e.Text))
 		}
 		return runtimeCall("Field", g.expression(e.Left), textLiteral(e.Text))
