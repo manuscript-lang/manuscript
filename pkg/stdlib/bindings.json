@@ -233,6 +233,7 @@
     "@std/bytes.ms/Bytes/reverse": "bytes/reverse",
     "@std/bytes.ms/Bytes/slice": "bytes/slice",
     "@std/bytes.ms/Bytes/starts_with": "bytes/starts_with",
+    "@std/bytes.ms/Bytes/values": "bytes/values",
     "@std/bytes.ms/Bytes/with_value": "bytes/with_value",
     "@std/collections.ms/List/at": "collections/at",
     "@std/collections.ms/List/contains": "collections/contains",

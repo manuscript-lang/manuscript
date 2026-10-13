@@ -86,6 +86,8 @@ values.append(3)
 
 Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, and set algebra construct new results. Text and Bytes retain their existing nonmutating operations.
 
+List `slice` uses strict, nonnegative element bounds: `0 <= start <= end <= length()`. Invalid bounds fault; negative indexes accepted by `at` are not accepted by `slice`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
+
 A `for` loop and collection callback traversals snapshot collection membership once; elements retain their references. Adding or removing items inside the body does not change that traversal. Protect shared mutation and concurrent reads with `Synchronized`; every alias must use the same lock.
 
 ## Lookup and updates
@@ -107,6 +109,22 @@ All existing element and key bounds apply. An empty List/Map/Set constructor req
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
 
 Map `get`, `contains`, and `with_entry` and Set `contains` and `with_value` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. `without` shifts later entries to keep insertion order and takes time proportional to the collection size. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
+
+### Search and enumeration
+
+| Operation | Result |
+| --- | --- |
+| List `index_of(value:)`, `last_index_of(value:)` | First or last equal element's zero-based index, or `none`; these searches require `Equal` elements. |
+| List `find_index(predicate:)`, `find_last_index(predicate:)` | First or last matching index, or `none`. `find` and `find_last` return the matching value instead. |
+| List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` records containing `index` and `value`. |
+| Map `keys()`, `values()`, `entries()` | New lists in insertion order; entries are `MapEntry[K, V]` records with `key` and `value`. |
+| Set `values()`, `entries()` | New lists in insertion order; `entries()` returns `List[List[T]]`, with each inner list `[value, value]`. |
+| List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
+| Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
+
+Enumeration copies outer storage and retains nested references. Callback traversals use the membership snapshot described above.
+
+Set `union`, `intersection`, `difference`, and `symmetric_difference` return new sets. Symmetric difference contains values present in exactly one operand. `is_subset_of` tests whether all receiver values occur in the right operand, `is_superset_of` tests the converse, and `is_disjoint_from` tests whether there are no common values. The empty set is a subset of every set and is disjoint from every set. These operations leave both operands unchanged.
 
 ```manuscript
 import panic from "@std/faults.ms"

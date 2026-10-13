@@ -69,9 +69,25 @@ The built-in method takes precedence over a field or interface operation named `
 
 ## Indexing and character boundaries
 
-There is no `text[index]` or slicing syntax. String methods such as `at` and `slice_scalars` count Unicode scalars; `scalar_at` returns a scalar code point. Bytes use byte indexes. Grapheme indexing is unsupported. See the [string reference](../../standard-library/reference/string.md) for the methods.
+There is no `text[index]` or slicing syntax. String `at`, `scalar_at`, `index_of`, `last_index_of`, `slice`, `substring`, and `slice_scalars` use Unicode scalar indexes, not byte offsets. `at` returns a one-scalar String; `scalar_at` returns its integer code point. Both accept negative indexes relative to the end and return `none` out of range. Search returns the first or last matching scalar index, or `none`; an empty search matches at zero for `index_of` and at `scalar_length()` for `last_index_of`.
 
 A byte position, a Unicode scalar, and a user-visible grapheme are different units. For example, `"é"` has two UTF-8 bytes; `"e\u{301}"` has two scalars but can display as one grapheme. Byte lookup alone cannot select a character.
+
+`scalar_length()` counts scalars and `scalar_values()` returns their integer code points in order. Bytes use byte indexes and Lists use element indexes. Grapheme indexing is unsupported.
+
+### Half-open slices
+
+All slice operations include `start` and exclude `end`. Let `n` be the receiver's scalar, element, or byte length:
+
+| Operation | Bounds and result |
+| --- | --- |
+| `String.slice(start:, end:)` | Add `n` to each negative bound, then clamp each bound to `0..n`. Return empty text if the adjusted start exceeds the adjusted end. |
+| `String.substring(start:, end:)` | Clamp each bound to `0..n`; negative bounds become zero. Swap the adjusted bounds if start exceeds end. |
+| `String.slice_scalars(start:, end:)` | Require `0 <= start <= end <= n`; invalid bounds return `StringError.OutOfRange`. |
+| `List.slice(start:, end:)` | Require `0 <= start <= end <= n`; invalid bounds produce a programming fault. Return a new shallow List with independent outer storage. |
+| `Bytes.slice(start:, end:)` | Require `0 <= start <= end <= n`; invalid bounds produce a programming fault. Return immutable Bytes; native slices may share immutable storage. |
+
+Equal bounds select an empty range. Strict slices accept `start: n, end: n` and do not accept relative negative indexes, unlike `at`. String slices preserve scalar boundaries and leave their receiver unchanged. For example, `"aé🙂z".slice(start: -2, end: 10)` is `"🙂z"`, `"aé🙂z".slice(start: 3, end: 1)` is `""`, and `"aé🙂z".substring(start: 3, end: 1)` is `"é🙂"`. Choose `slice_scalars` when invalid text bounds should be an expected error. Exact signatures appear in the [String reference](../../standard-library/reference/prelude.md#string), [collection reference](../../standard-library/reference/collections.md), and [Bytes reference](../../standard-library/reference/bytes.md).
 
 ## Encoding and parsing
 
@@ -81,8 +97,11 @@ A byte position, a Unicode scalar, and a user-visible grapheme are different uni
 | `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
 | `Bytes` | `length() -> Int`; `at(index: Int) -> Optional[Int]`; `concat(values: Bytes) -> Bytes` |
 | `Bytes` | `to_text() -> Optional[String]` |
+| `Bytes` | `values() -> List[Int]`; a fresh mutable list of unsigned byte values |
 
 `String.to_bytes` uses UTF-8. `Bytes.to_text` succeeds exactly for valid UTF-8, preserving contents without normalization; invalid bytes produce `none`. Byte `at` follows list index behavior and returns the unsigned byte as Int. An empty `Bytes(values: [])` is valid.
+
+`Bytes(values:)` copies the supplied list; subsequent list mutation does not change the Bytes. `data.values()` returns a fresh list, so editing that result does not change `data`. The existing free function `values(data:)` from `@std/bytes.ms` returns the same kind of copy. `values` is a receiver operation, not a readable data field; the constructor's `values:` argument remains a List.
 
 `parse_int` accepts exactly an optional ASCII `+` or `-` followed by one or more ASCII decimal digits and an in-range mathematical value. It permits leading zeros, rejects whitespace, separators, fractions, exponents, and any unconsumed character, and returns `none` for invalid or out-of-range input. Runtime parsing is distinct from the stricter source literal grammar. See [text and collection operations](../../standard-library/data.md) and [numeric operations](../../standard-library/math.md) for more methods; exact signatures live in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations remain unsupported.
 
@@ -118,6 +137,8 @@ Formatting never depends on locale, host display settings, or a process's decima
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |
 | Record | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
 | Alternative | `Type.Case` for a nullary case; `Type.Case(value, ...)` for payloads in declaration order |
+| Optional | `Optional.some(value)` or `Optional.none`; for example, `some(42)` formats as `Optional.some(42)` |
+| Result | `Result.ok(value)` or `Result.error(cause)`; for example, `ok(42)` formats as `Result.ok(42)` |
 | List | `[value, ...]` in element order |
 | Map | `Map(key: value, ...)` in insertion order |
 | Set | `Set(value, ...)` in insertion order |

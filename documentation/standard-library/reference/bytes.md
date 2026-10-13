@@ -10,7 +10,6 @@ Import each required symbol with `import Name from "@std/bytes.ms"`.
 
 ```manuscript
 type Bytes:
-    values: List[Int]
     fn clone() -> Bytes:
     fn contains(value: Bytes) -> Bool:
     fn slice(start: Int, end: Int) -> Bytes:
@@ -22,6 +21,7 @@ type Bytes:
     fn reverse() -> Bytes:
     fn with_value(index: Int, value: Int) -> Bytes:
     fn is_empty() -> Bool:
+    fn values() -> List[Int]:
     fn concat(values: Bytes) -> Bytes:
     fn length() -> Int:
     fn to_text() -> Optional[String]:

@@ -34,7 +34,7 @@ let line = labels.join(separator: ", ")
 # line is "item 1, item 2".
 ```
 
-Import `List` from `@std/collections.ms` for the bracket literal. `find` and `find_index` stop at the first match and return an `Optional`; their `find_last` variants search from the end. `some` and `every` return a `Bool`; an empty list produces false and true respectively. `fold` and `fold_right` require an initial accumulator, which may have a different type from the elements. Sorting is stable and requires an explicit comparator.
+Import `List` from `@std/collections.ms` for the bracket literal. `find` and `find_index` stop at the first match and return an `Optional`; `find_last` and `find_last_index` search from the end. `index_of` and `last_index_of` search by equality. `for_each` runs a sequential callback and returns Unit. `some` and `every` return a `Bool`; an empty list produces false and true respectively. `fold` and `fold_right` require an initial accumulator, which may have a different type from the elements. Sorting is stable and requires an explicit comparator. See [search and enumeration](../core-language/types/collections.md#search-and-enumeration) for callback labels, entry shapes, and Set relation operations.
 
 ## Map and set order
 
@@ -44,6 +44,33 @@ Maps and sets enumerate in insertion order, while equality ignores order. Replac
 
 ## Text and regular expressions
 
-String indexing counts Unicode scalars. `replace` replaces one occurrence by default; `replace_all` replaces every occurrence. An explicit replacement cap is respected. `split` truncates to `max_parts` when supplied, including an empty result for zero. Unicode normalization is explicit.
+String indexing and search count Unicode scalars. The [text rules](../core-language/basics/text-and-bytes.md#indexing-and-character-boundaries) specify units and the negative, clamped, swapped, and strict slice bounds. String operations return new text and leave the receiver unchanged.
+
+| String operations | Behavior |
+| --- | --- |
+| `contains`, `starts_with`, `ends_with` | Test exact text contents without normalization. |
+| `trim`, `trim_start`, `trim_end` | Remove Unicode whitespace from both ends, the start, or the end. Whitespace is U+0009–U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, and U+3000. |
+| `upper`, `lower` | Convert text to uppercase or lowercase. |
+| `scalar_length`, `scalar_values` | Count Unicode scalars or return their integer code points. |
+| `pad_start`, `pad_end` | Repeat and truncate `padding` on scalar boundaries until `target_length` scalars are reached. A shorter target or empty padding leaves the text unchanged. Negative targets return `InvalidInput`. |
+| `replace` | Replace the first occurrence by default (omitted or `none` cap); a supplied `max_replacements` caps replacements, and zero leaves text unchanged. Negative caps fault. |
+| `replace_all` | Replace every nonoverlapping occurrence. Return `StringError.LimitExceeded` if the UTF-8 output exceeds a supplied `max_bytes`, or `InvalidInput` for a negative budget. |
+| `split` | Split on exact separators and truncate to a supplied `max_parts`; zero returns no parts and negative limits fault. Empty text split on a nonempty separator returns `[""]`; an empty separator splits into scalars, giving no parts for empty text. |
+
+An empty `old` in `replace` or `replace_all` matches before the first scalar and after each scalar, including the end. Replacement does not scan newly inserted text. `repeat`, `normalize`, `pad_start`, and `pad_end` also accept optional UTF-8 output budgets: omitted or `none` budgets impose no cap, zero permits only empty output, negatives return `StringError.InvalidInput`, and exceeding a supplied budget returns `StringError.LimitExceeded`. Even unchanged padding results must fit the supplied budget. Normalization is explicit (`NFC`, `NFD`, `NFKC`, or `NFKD`).
+
+## Byte operations
+
+| Bytes operations | Behavior |
+| --- | --- |
+| `length`, `is_empty`, `at` | Count bytes, test emptiness, or read an unsigned byte; negative lookup indexes are relative to the end. |
+| `contains`, `starts_with`, `ends_with` | Test byte subsequences, prefixes, or suffixes. |
+| `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length()` respectively. |
+| `slice` | Select a strict half-open byte range under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
+| `with_value`, `reverse`, `concat`, `clone` | Return Bytes without changing the receiver. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
+| `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
+| `to_text` | Decode valid UTF-8 or return `none`. |
+
+Bytes stay immutable even when a native slice shares storage. Construction and extraction copy values, as described in [encoding and parsing](../core-language/basics/text-and-bytes.md#encoding-and-parsing).
 
 Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.
