@@ -224,10 +224,10 @@ func typeSketch(name string, arity int) string {
 
 func (c *checker) unknownTypeMessage(name string) string {
 	message := "unknown type " + name
-	if hint := didYouMean(name, c.typeNames()); hint != "" {
+	if hint := importHint(name); hint != "" {
 		return message + hint
 	}
-	if hint := importHint(name); hint != "" {
+	if hint := didYouMean(name, c.typeNames()); hint != "" {
 		return message + hint
 	}
 	return message + "; declare it with 'type " + name + ":' / 'interface " + name + ":', declare it as a type parameter, or import it"

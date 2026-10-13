@@ -732,7 +732,7 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 	if i.Type.ID == "Never" {
 		i.NoReturn = true
 	}
-	if expected != nil && !compatible(i.Type, expected) {
+	if expected != nil && i.Type.ID != "<invalid>" && !compatible(i.Type, expected) {
 		if c.errorAssignable(i.Type, expected) {
 			i.ErrorSource = i.Type
 			cause := i.Type
@@ -856,14 +856,14 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			if callable.Type.ID == "<invalid>" {
 				return i
 			}
-			i.Type = c.specialize(callable.Type, callable.Method.Variables, args, e.Pos)
+			i.Type = c.specialize(callable.Type, callable.Method.Variables, args, e.Pos, calleeName(e))
 			c.Expressions[e.Left] = i
 			return i
 		}
 		if s := c.functionSymbol(e.Left); s != nil {
 			args := c.resolveArguments(e.Types)
 			i.Symbol = s
-			i.Type = c.specialize(s.Type, s.Variables, args, e.Pos)
+			i.Type = c.specialize(s.Type, s.Variables, args, e.Pos, calleeName(e))
 			i.TypeArgs = args
 		} else {
 			typ := c.typeExpression(e)
