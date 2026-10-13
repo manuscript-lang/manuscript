@@ -68,7 +68,7 @@ and `sort_in_place` delegates to `ListSortInPlace`. The typed `sorted_int`,
 and use stable natural sorting. Numeric sums use captured primitive readers;
 random choices retain a captured header across entropy callbacks, and shuffles
 copy the active backing before swapping. None reads or writes a typed List's
-legacy `Items` field. See the [parity storage regressions](../../pkg/runtime/library_list_storage_parity_test.go)
+legacy `Items` field. See the [parity storage regressions](https://github.com/manuscript-lang/manuscript/blob/main/pkg/runtime/library_list_storage_parity_test.go)
 and the numeric/random runtime tests for typed and boxed compatibility, callback
 mutation, fresh shallow copies, cancellation, and unchanged draw sequences.
 
