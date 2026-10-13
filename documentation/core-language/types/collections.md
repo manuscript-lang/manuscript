@@ -106,6 +106,8 @@ All existing element and key bounds apply. An empty List/Map/Set constructor req
 
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
 
+Map `get`, `contains`, and `with_entry` and Set `contains` and `with_value` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. `without` shifts later entries to keep insertion order and takes time proportional to the collection size. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
+
 ```manuscript
 import panic from "@std/faults.ms"
 

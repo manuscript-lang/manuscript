@@ -62,7 +62,7 @@ func init() {
 			var out []Value
 			for _, v := range left.Items {
 				CheckCancelled(ctx)
-				contains := indexOfIn(ctx, right.Items, v) >= 0
+				contains := right.find(ctx, v) >= 0
 				if name == "union" || name == "intersection" && contains || name == "difference" && !contains {
 					out = append(out, v)
 				}
@@ -70,12 +70,12 @@ func init() {
 			if name == "union" {
 				for _, v := range right.Items {
 					CheckCancelled(ctx)
-					if indexOfIn(ctx, left.Items, v) < 0 {
+					if left.find(ctx, v) < 0 {
 						out = append(out, v)
 					}
 				}
 			}
-			return &Set{r, out}
+			return &Set{Type: r, Items: out}
 		})
 	}
 	libraryAdd("io", "copy", libraryResult("Int", "IoError"), []LibraryParam{p("input", "ReadStream"), p("output", "WriteStream"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {

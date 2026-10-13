@@ -120,9 +120,9 @@ func newBuilder(typ string) *Builder {
 	case "@std/ListBuilder":
 		b.value = &List{"@std/List[" + args[0] + "]", nil}
 	case "@std/MapBuilder":
-		b.value = &Map{"@std/Map[" + args[0] + "][" + args[1] + "]", nil}
+		b.value = &Map{Type: "@std/Map[" + args[0] + "][" + args[1] + "]"}
 	case "@std/SetBuilder":
-		b.value = &Set{"@std/Set[" + args[0] + "]", nil}
+		b.value = &Set{Type: "@std/Set[" + args[0] + "]"}
 	case "@std/BytesBuilder":
 		b.value = Bytes{}
 	case "@std/StringBuilder":
