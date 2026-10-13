@@ -182,3 +182,34 @@ fn use(l: List[Int], m: Map[String, Int], s: Set[Int], t: String) -> Unit:
 		t.Fatalf("reordered labels must keep ordinary dispatch:\n%s", result.Source)
 	}
 }
+
+func TestDirectMethodCallLowering(t *testing.T) {
+	result := compiler.CompileSource("method.ms", `type Counter:
+    n: Int
+interface Bumper:
+    fn bump(by: Int) -> Int
+interface Scaler:
+    fn scale(factor: Int, offset: Optional[Int] = none) -> Int
+impl Bumper for Counter:
+    fn bump(by: Int) -> Int: self.n + by
+impl Scaler for Counter:
+    fn scale(factor: Int, offset: Optional[Int] = none) -> Int: self.n * factor
+fn direct(c: Counter) -> Int:
+    return c.bump(by: 1)
+fn view(b: Bumper) -> Int:
+    return b.bump(by: 1)
+fn omitted(c: Counter) -> Int:
+    return c.scale(factor: 2)
+fn reordered(c: Counter) -> Int:
+    return c.scale(offset: some(1), factor: 2)
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	if strings.Count(result.Source, "rt.CallMethod(") != 1 || strings.Count(result.Source, "var method1 rt.MethodSite") != 1 {
+		t.Fatalf("only the in-order concrete call is direct:\n%s", result.Source)
+	}
+	if strings.Count(result.Source, "rt.Bind(") != 3 {
+		t.Fatalf("views, omitted defaults, and reordered labels keep Bind:\n%s", result.Source)
+	}
+}

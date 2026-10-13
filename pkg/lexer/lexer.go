@@ -141,7 +141,7 @@ func Lex(file, source string) (tokens []Token, err error) {
 			top := s.levels[len(s.levels)-1]
 			if len(s.delimiters) == top.depth && leading != top.indent {
 				if leading > top.indent {
-					s.fail(fmt.Sprintf("unexpected indentation, %d spaces where %d are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it", leading, top.indent))
+					s.fail(fmt.Sprintf("unexpected indentation, %d spaces where %d are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it%s", leading, top.indent, s.continuationHint()))
 				}
 				s.fail(fmt.Sprintf("inconsistent dedent to %d spaces; enclosing blocks are indented at %d or %d spaces, so align with one of them", leading, top.indent, max(top.indent-4, 0)))
 			}
@@ -364,18 +364,27 @@ func (s *scanner) scanString() {
 		} else if b == '{' {
 			s.scanInterpolation()
 		} else if b == '}' {
-			s.fail("an unmatched closing brace must be escaped; write \\} for a literal brace, or open an interpolation with {expression}")
+			s.fail("an unmatched closing brace must be escaped; write \\} for a literal brace (and \\{ for the opening brace), or open an interpolation with {expression}")
 		}
 	}
 	s.fail("unterminated text literal")
 }
+
+const braceHint = "'{' starts an interpolation; write \\{ and \\} for literal braces"
+
 func (s *scanner) scanInterpolation() {
 	depth := 1
 	start := s.offset
+	open := s.pos()
+	open.Column--
+	open.Offset--
 	for s.offset < len(s.source) {
 		b := s.source[s.offset]
 		if b == '\n' || b == '\r' || b == '#' {
-			s.fail("newlines and comments are not allowed inside interpolation; keep the expression on one line, or bind it to a name first and interpolate the name")
+			s.failAt(open, "newlines and comments are not allowed inside interpolation; keep the expression on one line, or bind it to a name first and interpolate the name ("+braceHint+")")
+		}
+		if b == '\\' {
+			s.failAt(open, braceHint+"; a backslash cannot appear in the interpolated expression")
 		}
 		if b == '"' {
 			s.scanString()
@@ -395,7 +404,7 @@ func (s *scanner) scanInterpolation() {
 			}
 		}
 	}
-	s.fail("unterminated interpolation; add the closing } before the closing quote")
+	s.failAt(open, "unterminated interpolation; add the closing } before the closing quote ("+braceHint+")")
 }
 
 func normalizeSource(source string) (string, []int) {
@@ -433,4 +442,20 @@ func characterHint(b byte) string {
 		return "; this character is not part of Manuscript's syntax outside text"
 	}
 	return "; this character is not part of Manuscript's syntax"
+}
+
+// continuationHint explains the usual cause of an over-indented line that
+// starts with a binary operator: the previous expression ended at the newline.
+func (s *scanner) continuationHint() string {
+	rest := s.source[s.offset:]
+	end := 0
+	for end < len(rest) && rest[end] != ' ' && rest[end] != '\n' {
+		end++
+	}
+	word := string(rest[:end])
+	switch word {
+	case "and", "or", "+", "-", "*", "/", "%", "==", "!=", "<", ">", "<=", ">=":
+		return "; to continue an expression on the next line, wrap the whole expression in parentheses"
+	}
+	return ""
 }
