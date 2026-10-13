@@ -201,6 +201,7 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				return optional(typ, v.Entries[found].Value, true)
 			case "with_entry":
 				if found >= 0 {
+					v.ownEntries()
 					v.Entries[found].Value = args[1]
 				} else {
 					v.Entries = append(v.Entries, Entry{key, args[1]})

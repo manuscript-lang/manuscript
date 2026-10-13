@@ -64,12 +64,16 @@ type Map struct {
 	Type    string
 	Entries []Entry
 	keys    keyIndex
+	// shared marks Entries as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
 type Entry struct{ Key, Value Value }
 type Set struct {
 	Type  string
 	Items []Value
 	keys  keyIndex
+	// shared marks Items as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
 type Bytes struct{ Items []byte }
 type Duration int64
@@ -281,12 +285,14 @@ func Iterate(value Value) []Value {
 		v.shared = true
 		return v.Items[:len(v.Items):len(v.Items)]
 	case *Set:
-		return append([]Value{}, v.Items...)
+		v.shared = true
+		return v.Items[:len(v.Items):len(v.Items)]
 	case *Map:
 		values := make([]Value, len(v.Entries))
 		args := typeArguments(v.Type)
+		entryType := "@std/MapEntry[" + args[0] + "][" + args[1] + "]"
 		for i, e := range v.Entries {
-			values[i] = Record{"@std/MapEntry[" + args[0] + "][" + args[1] + "]", map[string]Value{"key": e.Key, "value": e.Value}}
+			values[i] = Record{entryType, map[string]Value{"key": e.Key, "value": e.Value}}
 		}
 		return values
 	}

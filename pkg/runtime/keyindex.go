@@ -227,6 +227,7 @@ func (m *Map) find(ctx *Execution, key Value) int { return lookupKey(ctx, m, key
 // put replaces the value of an equal key or appends a new entry.
 func (m *Map) put(ctx *Execution, key, value Value) {
 	if i := m.find(ctx, key); i >= 0 {
+		m.ownEntries()
 		m.Entries[i].Value = value
 		return
 	}
@@ -234,7 +235,23 @@ func (m *Map) put(ctx *Execution, key, value Value) {
 	keyAppended(ctx, m)
 }
 
+// ownEntries gives the map a private backing array before an in-place write.
+func (m *Map) ownEntries() {
+	if m.shared {
+		m.Entries = append([]Entry(nil), m.Entries...)
+		m.shared = false
+	}
+}
+
+func (s *Set) ownItems() {
+	if s.shared {
+		s.Items = append([]Value(nil), s.Items...)
+		s.shared = false
+	}
+}
+
 func (m *Map) removeAt(ctx *Execution, pos int) {
+	m.ownEntries()
 	removed := m.Entries[pos].Key
 	copy(m.Entries[pos:], m.Entries[pos+1:])
 	m.Entries[len(m.Entries)-1] = Entry{}
@@ -266,6 +283,7 @@ func (s *Set) add(ctx *Execution, value Value) bool {
 }
 
 func (s *Set) removeAt(ctx *Execution, pos int) {
+	s.ownItems()
 	removed := s.Items[pos]
 	copy(s.Items[pos:], s.Items[pos+1:])
 	s.Items[len(s.Items)-1] = nil
