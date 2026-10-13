@@ -299,6 +299,7 @@ func init() {
 		}
 		return Bytes{out}
 	})
+	libraryAlias("bytes", "reversed", "reverse")
 	add("bytes", "with_value", "Bytes", []LibraryParam{p("data", "Bytes"), p("index", "Int"), p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		items := a[0].(Bytes).Items
 		i, n := relativeIndex(len(items), a[1].(int64)), a[2].(int64)

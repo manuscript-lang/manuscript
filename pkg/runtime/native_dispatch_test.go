@@ -126,3 +126,26 @@ func TestDirectNativeListAtAndUnwrap(t *testing.T) {
 		}
 	}
 }
+
+func TestNativeDispatchMapAddCancellation(t *testing.T) {
+	ctx := RootExecution()
+	cancelledContext, cancel := context.WithCancel(ctx.Context)
+	cancel()
+	child := &Execution{Context: cancelledContext}
+	m := &Map{Type: "@std/Map[String][Int]"}
+	bound := NativeMemberResult(m, "add", "").(Function)
+	if bound.Result != m.Type || len(bound.Labels) != 2 || bound.Labels[0] != "key" || bound.Labels[1] != "value" {
+		t.Fatal(bound)
+	}
+	for _, call := range []func(){
+		func() { MapWithEntry(child, m, "a", int64(1), TypeScope{}) },
+		func() { Invoke(child, bound, []Argument{{"value", int64(1)}, {"key", "a"}}) },
+	} {
+		if _, ok := recovered(call).(cancelled); !ok {
+			t.Fatal("map add ignored cancellation")
+		}
+		if len(m.Entries) != 0 {
+			t.Fatal("cancelled add changed map")
+		}
+	}
+}

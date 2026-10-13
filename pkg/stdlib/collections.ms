@@ -33,6 +33,11 @@ export type List[T]:
     # Returns a new shallow List containing [start, end); outer storage is independent.
     # Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
     fn slice(start: Int, end: Int) -> List[T]:
+    # Reverses this list in place and returns the same instance.
+    fn reverse_in_place() -> List[T]:
+    # Returns a reversed shallow copy with independent outer storage; nested references remain shared.
+    fn reversed() -> List[T]:
+    # Compatibility spelling for reverse_in_place; mutates and returns this list.
     fn reverse() -> List[T]:
     # Returns a new list sorted by negative/zero/positive comparator results.
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
@@ -101,6 +106,9 @@ export type Map[T: Hashable, U]:
     fn contains(key: T) -> Bool:
     fn get(key: T) -> Optional[U]:
     fn length() -> Int:
+    # Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position.
+    fn add(key: T, value: U) -> Map[T, U]:
+    # Compatible spelling of add, with the same mutation and receiver return.
     fn with_entry(key: T, value: U) -> Map[T, U]:
     fn without(key: T) -> Map[T, U]:
 

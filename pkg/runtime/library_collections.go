@@ -73,6 +73,9 @@ func init() {
 	add("map_is_empty", "Bool", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, _ string, a []Value) Value {
 		return len(a[0].(*Map).Entries) == 0
 	})
+	add("map_add", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("key", "K"), p("value", "V")}, func(ctx *Execution, _ string, a []Value) Value {
+		return MapWithEntry(ctx, a[0], a[1], a[2], ctx.EqualityScope)
+	})
 	add("map_get_or", "V", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("key", "K"), p("fallback", "V")}, func(ctx *Execution, _ string, a []Value) Value {
 		values := a[0].(*Map)
 		if index := values.find(ctx, a[1]); index >= 0 {
@@ -273,10 +276,14 @@ func init() {
 		return a[0]
 	})
 	add("fill", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
-		items := a[0].(*List).Items
+		list := a[0].(*List)
 		s, e := a[2].(int64), a[3].(int64)
-		librarySlice("List.fill", len(items), s, e)
-		out := items
+		librarySlice("List.fill", len(list.Items), s, e)
+		if s == e {
+			return list
+		}
+		list.ownItems()
+		out := list.Items
 		for i := s; i < e; i++ {
 			CheckCancelled(ctx)
 			out[i] = a[1]
@@ -284,12 +291,17 @@ func init() {
 		return a[0]
 	})
 	add("copy_within", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("target", "Int"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
-		items := a[0].(*List).Items
+		list := a[0].(*List)
 		t, s, e := a[1].(int64), a[2].(int64), a[3].(int64)
-		librarySlice("List.copy_within", len(items), s, e)
-		if t < 0 || t > int64(len(items)) {
-			return libraryRangeFault("List.copy_within", "target", t, 0, int64(len(items)))
+		librarySlice("List.copy_within", len(list.Items), s, e)
+		if t < 0 || t > int64(len(list.Items)) {
+			return libraryRangeFault("List.copy_within", "target", t, 0, int64(len(list.Items)))
 		}
+		if s == e || t == int64(len(list.Items)) {
+			return list
+		}
+		list.ownItems()
+		items := list.Items
 		copy(items[t:], items[s:e])
 		return a[0]
 	})

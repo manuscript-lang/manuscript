@@ -14,6 +14,9 @@ func TestPreferredNamesCancellationPrecedesEffects(t *testing.T) {
 		name     string
 		args     []Argument
 	}{
+		{list, "reverse_in_place", nil},
+		{list, "reversed", nil},
+		{Bytes{[]byte{1}}, "reversed", nil},
 		{list, "set", []Argument{{"index", int64(0)}, {"value", int64(2)}}},
 		{list, "remove", []Argument{{"index", int64(0)}}},
 		{set, "add", []Argument{{"value", int64(2)}}},

@@ -400,6 +400,9 @@ func TestShorthandRenamePreservesBothNames(t *testing.T) {
 func TestPreferredNativeNamesHoverAndNavigation(t *testing.T) {
 	for _, tc := range []struct{ name, receiver, contract, module string }{
 		{"set", "List[Int]", "Replaces an element in place", "collections.ms"},
+		{"reverse_in_place", "List[Int]", "Reverses this list in place", "collections.ms"},
+		{"reversed", "List[Int]", "independent outer storage", "collections.ms"},
+		{"reversed", "Bytes", "reversed copy", "bytes.ms"},
 		{"remove", "List[Int]", "Removes an element in place", "collections.ms"},
 		{"add", "Set[Int]", "Adds a value in place", "collections.ms"},
 		{"remove", "Set[Int]", "Removes an equal value in place", "collections.ms"},
@@ -407,7 +410,7 @@ func TestPreferredNativeNamesHoverAndNavigation(t *testing.T) {
 		{"replace_all", "Regex", "literal replacement text", "regex.ms"},
 	} {
 		t.Run(tc.receiver+"/"+tc.name, func(t *testing.T) {
-			source := "import {List, Set} from \"@std/collections.ms\"\nimport Regex from \"@std/regex.ms\"\nfn check(receiver: " + tc.receiver + ") -> Unit:\n    let bound = receiver." + tc.name + "\n"
+			source := "import {List, Set} from \"@std/collections.ms\"\nimport Bytes from \"@std/bytes.ms\"\nimport Regex from \"@std/regex.ms\"\nfn check(receiver: " + tc.receiver + ") -> Unit:\n    let bound = receiver." + tc.name + "\n"
 			d := document{"file:///tmp/preferred-names-hover.ms", source, 1}
 			checked := analyze(d, map[string]document{d.URI: d})
 			if !checked.Success() {

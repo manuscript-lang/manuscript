@@ -1,0 +1,42 @@
+before run 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-latest-baseline
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLists/CallbacksGenerated64K         	      14	  25835390 ns/op	 2622637 B/op	  131093 allocs/op
+PASS
+after run 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-final
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLists/CallbacksGenerated64K         	      20	  13883211 ns/op	 1574059 B/op	  131092 allocs/op
+PASS
+after run 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-final
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLists/CallbacksGenerated64K         	      10	  31860828 ns/op	 1574059 B/op	  131092 allocs/op
+PASS
+before run 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-latest-baseline
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLists/CallbacksGenerated64K         	      14	  16286280 ns/op	 2622637 B/op	  131093 allocs/op
+PASS
+before run 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-latest-baseline
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLists/CallbacksGenerated64K         	      13	  16247082 ns/op	 2622635 B/op	  131093 allocs/op
+PASS
+after run 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-final
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLists/CallbacksGenerated64K         	      20	  14170293 ns/op	 1574058 B/op	  131092 allocs/op
+PASS

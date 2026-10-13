@@ -73,7 +73,7 @@ Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed 
 | `contains`, `starts_with`, `ends_with` | Test byte subsequences, prefixes, or suffixes. |
 | `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length()` respectively. |
 | `slice` | Select a strict half-open byte range under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
-| `with_value`, `reverse`, `concat`, `clone` | Return Bytes without changing the receiver. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
+| `with_value`, `reversed`, `reverse`, `concat`, `clone` | Return Bytes without changing the receiver. `reverse` remains a compatible spelling for `reversed`. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
 | `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
 | `to_text` | Decode valid UTF-8 or return `none`. |
 

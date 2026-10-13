@@ -20,6 +20,7 @@ type Bytes:
     fn last_index_of(value: Bytes) -> Optional[Int]:
     fn starts_with(value: Bytes) -> Bool:
     fn ends_with(value: Bytes) -> Bool:
+    fn reversed() -> Bytes:
     fn reverse() -> Bytes:
     fn with_value(index: Int, value: Int) -> Bytes:
     fn is_empty() -> Bool:
