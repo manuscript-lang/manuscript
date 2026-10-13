@@ -22,6 +22,22 @@ type CpuInfo:
     irq: Int
 ```
 
+### CpuInfo.speed_mhz
+
+Integer megahertz, not a time interval.
+
+```manuscript
+speed_mhz: Int
+```
+
+### CpuInfo.user
+
+The user, nice, system, idle, and irq fields are cumulative milliseconds.
+
+```manuscript
+user: Int
+```
+
 ## NetworkInterface {data-api-kind="Record"}
 
 Address and link metadata for one host network interface.
@@ -35,6 +51,14 @@ type NetworkInterface:
     mac: String
     internal: Bool
     scope_id: Int
+```
+
+### NetworkInterface.family
+
+Exactly `IPv4` or `IPv6` for native address records.
+
+```manuscript
+family: String
 ```
 
 ## System {data-api-kind="Interface"}
@@ -58,6 +82,40 @@ interface System:
     fn machine() -> Result[String, SystemError]
     fn get_priority(pid: Int) -> Result[Int, SystemError]
     fn set_priority(pid: Int, priority: Int) -> Result[Unit, SystemError]
+```
+
+### System.environment
+
+Reads the live variable; absent or non-UTF-8 values return none.
+
+```manuscript
+fn environment(name: String) -> Optional[String]
+```
+
+### System.set_priority
+
+Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).
+Unix uses nice values; Windows maps ranges to native priority classes.
+
+```manuscript
+fn set_priority(pid: Int, priority: Int) -> Result[Unit, SystemError]
+```
+
+### System.temporary_directory
+
+Queries the host temp root without creating or checking a directory; non-UTF-8 returns Unsupported.
+
+```manuscript
+fn temporary_directory() -> Result[String, SystemError]
+```
+
+### System.working_directory
+
+Reads the live native directory; an OS query failure faults because this API has no Result.
+A host service constructed with an explicit directory retains that base.
+
+```manuscript
+fn working_directory() -> String
 ```
 
 ## SystemError {data-api-kind="Alternative"}
@@ -93,6 +151,14 @@ type SystemInfo:
     cpu_count: Int
 ```
 
+### SystemInfo.os
+
+Native Go OS identifier, such as linux, darwin, or windows; an open host identifier set.
+
+```manuscript
+os: String
+```
+
 ## SystemMetrics {data-api-kind="Record"}
 
 Host measurements: memory fields are bytes; load_average is 1/5/15-minute load
@@ -106,6 +172,14 @@ type SystemMetrics:
     uptime: Duration
     load_average: List[Float]
     available_parallelism: Int
+```
+
+### SystemMetrics.uptime
+
+Host boot uptime as a Duration with whole-second native resolution; not process uptime.
+
+```manuscript
+uptime: Duration
 ```
 
 ## UserInfo {data-api-kind="Record"}

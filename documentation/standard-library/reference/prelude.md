@@ -440,7 +440,7 @@ fn lower() -> String
 
 ### String.normalize
 
-Normalizes using NFC, NFD, NFKC, or NFKD; max_bytes optionally bounds UTF-8 output.
+Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes optionally bounds UTF-8 output.
 Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
 
 ```manuscript

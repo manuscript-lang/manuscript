@@ -1469,6 +1469,15 @@ type CopyOptions:
     max_bytes: Optional[Int] = none
 ```
 
+### CopyOptions.clone
+
+Exactly `none`, `try`, or `force`; other strings return InvalidInput.
+try falls back to byte copying; force requires a native clone operation.
+
+```manuscript
+clone: String
+```
+
 ## Directory
 
 **Interface**
@@ -1507,6 +1516,14 @@ type FileEvent:
     kind: String
 ```
 
+### FileEvent.kind
+
+Exactly `rename` (appearance/disappearance/rename) or `change` (contents/metadata).
+
+```manuscript
+kind: String
+```
+
 ## FileHandle
 
 **Interface**
@@ -1536,6 +1553,95 @@ interface FileHandle:
     fn chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]
     fn set_times(accessed: Timestamp, modified: Timestamp) -> Result[Unit, FileSystemError]
     fn read_lines(max_bytes: Optional[Int] = none, max_lines: Optional[Int] = none) -> Result[List[String], FileSystemError]
+```
+
+### FileHandle.append_file
+
+Writes at the current position; appends only when the handle was opened in append mode.
+
+```manuscript
+fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
+```
+
+### FileHandle.read
+
+Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
+
+```manuscript
+fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
+```
+
+### FileHandle.read_at
+
+Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
+
+```manuscript
+fn read_at(offset: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+```
+
+### FileHandle.read_file
+
+Reads remaining bytes from the current position; EOF returns empty Bytes.
+
+```manuscript
+fn read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+```
+
+### FileHandle.reader
+
+Adapts this handle to IoError/Optional chunk reads; closing either view closes all aliases.
+
+```manuscript
+fn reader() -> ReadStream
+```
+
+### FileHandle.seek
+
+Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).
+Other origins return InvalidInput; the OS validates the resulting offset.
+
+```manuscript
+fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
+```
+
+### FileHandle.write
+
+Writes all bytes on success and returns their count; errors can leave a prefix without a count.
+
+```manuscript
+fn write(data: Bytes) -> Result[Int, FileSystemError]
+```
+
+### FileHandle.write_at
+
+Writes all bytes at a nonnegative offset without moving the position; returns the full count.
+
+```manuscript
+fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
+```
+
+### FileHandle.write_file
+
+Writes all bytes at the current position; does not truncate or reposition this handle.
+
+```manuscript
+fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
+```
+
+### FileHandle.write_vectors
+
+Writes every buffer and returns the total byte count; offset -1 uses the current position.
+
+```manuscript
+fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
+```
+
+### FileHandle.writer
+
+Adapts complete writes to IoError/Unit; flush synchronizes the file.
+
+```manuscript
+fn writer() -> WriteStream
 ```
 
 ## FileInfo
@@ -1570,6 +1676,30 @@ type FileInfo:
     links: Int
     uid: Int
     gid: Int
+```
+
+### FileInfo.block_size
+
+Preferred I/O block size in bytes; unavailable fields are zero.
+
+```manuscript
+block_size: Int
+```
+
+### FileInfo.blocks
+
+Allocated 512-byte blocks on POSIX hosts; unavailable fields are zero.
+
+```manuscript
+blocks: Int
+```
+
+### FileInfo.size
+
+File length in bytes.
+
+```manuscript
+size: Int
 ```
 
 ## FileSystem
@@ -1613,12 +1743,37 @@ interface FileSystem:
     fn chmod_link(path: String, mode: Int) -> Result[Unit, FileSystemError]
 ```
 
+### FileSystem.access
+
+Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.
+Native permissions and Windows access policy still apply.
+
+```manuscript
+fn access(path: String, mode: Int) -> Result[Unit, FileSystemError]
+```
+
 ### FileSystem.canonicalize
 
 Resolves symlinks and returns the canonical absolute path.
 
 ```manuscript
 fn canonicalize(path: String) -> Result[String, FileSystemError]
+```
+
+### FileSystem.chmod
+
+Changes target permissions with mode 0..4095; follows a final symbolic link.
+
+```manuscript
+fn chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.chmod_link
+
+Changes the link itself without following it; Unsupported on hosts lacking this operation.
+
+```manuscript
+fn chmod_link(path: String, mode: Int) -> Result[Unit, FileSystemError]
 ```
 
 ### FileSystem.copy
@@ -1669,9 +1824,19 @@ Lists a directory, optionally limiting the number of returned entries.
 fn list(path: String, max_entries: Optional[Int] = none) -> Result[List[DirectoryEntry], FileSystemError]
 ```
 
+### FileSystem.open
+
+Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return InvalidInput.
+Mode is permission bits in 0..4095, applied on creation subject to umask/OS policy.
+
+```manuscript
+fn open(path: String, flags: String, mode: Int) -> Result[FileHandle, FileSystemError]
+```
+
 ### FileSystem.open_flags
 
-Opens a path using host flag and mode bit values.
+Opens a path using host flag bits in 0..2147483647 and permission bits in 0..4095.
+Use fs.constants() on this host; unknown bits/combinations are left to the OS.
 
 ```manuscript
 fn open_flags(path: String, flags: Int, mode: Int) -> Result[FileHandle, FileSystemError]
@@ -1685,9 +1850,36 @@ Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
 fn read_file(path: String, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
 ```
 
+### FileSystem.temporary
+
+Creates a new temp directory whose contents are removed by scoped close.
+Prefix has the same validation as temporary_directory; this does not query the temp root.
+
+```manuscript
+fn temporary(prefix: String) -> Result[TemporaryDirectory, FileSystemError]
+```
+
+### FileSystem.temporary_directory
+
+Creates a new directory under the host temp root; the caller must remove it.
+Prefix must be nonempty and contain no slash, backslash, or NUL.
+
+```manuscript
+fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
+```
+
+### FileSystem.truncate
+
+Sets the target size in bytes; follows a final symbolic link.
+
+```manuscript
+fn truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
+```
+
 ### FileSystem.watch_native
 
-Watches filesystem changes. Limits bound tracked paths and queued events.
+Watches native OS events; overflow is exactly `error` or `ignore` (case-sensitive).
+Other policies return InvalidInput. Limits bound tracked paths and queued events.
 
 ```manuscript
 fn watch_native(path: String, recursive: Bool, max_entries: Optional[Int] = none, max_events: Optional[Int] = none, overflow: String) -> Result[FileWatcher, FileSystemError]
@@ -2142,6 +2334,14 @@ interface WriteStream:
     fn close() -> Unit
     fn flush() -> Result[Unit, IoError]
     fn write(data: Bytes) -> Result[Unit, IoError]
+```
+
+### WriteStream.write
+
+Accepts the complete input on success; a source implementation may buffer until flush.
+
+```manuscript
+fn write(data: Bytes) -> Result[Unit, IoError]
 ```
 
 ## copy
@@ -2731,6 +2931,22 @@ interface Connection:
     fn write(data: Bytes, timeout: Optional[Duration] = none) -> Result[Unit, IoError]
 ```
 
+### Connection.read
+
+Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
+
+```manuscript
+fn read(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Optional[Bytes], IoError]
+```
+
+### Connection.write
+
+Writes all bytes on success; failure can leave a prefix. Local timeout uses IoError.Failed.
+
+```manuscript
+fn write(data: Bytes, timeout: Optional[Duration] = none) -> Result[Unit, IoError]
+```
+
 ## Datagram
 
 **Record**
@@ -2741,6 +2957,14 @@ One datagram and the address from which it was received.
 type Datagram:
     data: Bytes
     sender: String
+```
+
+### Datagram.sender
+
+Native host:port text, with bracketed IPv6 addresses.
+
+```manuscript
+sender: String
 ```
 
 ## DatagramSocket
@@ -2770,6 +2994,14 @@ type DnsRecord:
     priority: Int
     weight: Int
     port: Int
+```
+
+### DnsRecord.kind
+
+Uppercase A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV.
+
+```manuscript
+kind: String
 ```
 
 ## Listener
@@ -2811,6 +3043,15 @@ interface Network:
     fn serve_stream(address: String, handler: fn(exchange: HttpExchange) -> Result[Unit, HttpError], options: HttpServerOptions) -> Result[HttpServer, HttpError]
     fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket, WebSocketError]
     fn with_resolver(address: String) -> Result[Network, NetworkError]
+```
+
+### Network.resolve
+
+Accepts A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV, case-insensitively; others return InvalidInput.
+Returned DnsRecord.kind is uppercase.
+
+```manuscript
+fn resolve(name: String, kind: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[DnsRecord], NetworkError]
 ```
 
 ## NetworkError
@@ -3316,6 +3557,22 @@ type CpuUsage:
     system_microseconds: Int
 ```
 
+### CpuUsage.system_microseconds
+
+Kernel CPU time in microseconds.
+
+```manuscript
+system_microseconds: Int
+```
+
+### CpuUsage.user_microseconds
+
+User CPU time in microseconds.
+
+```manuscript
+user_microseconds: Int
+```
+
 ## MemoryUsage
 
 **Record**
@@ -3367,13 +3624,74 @@ interface ProcessControl:
     fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
 ```
 
+### ProcessControl.environment
+
+Reads a fresh live process environment map; non-UTF-8 entries return Unsupported.
+
+```manuscript
+fn environment() -> Result[Map[String, String], ProcessError]
+```
+
+### ProcessControl.monotonic_time
+
+Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
+This is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing.
+
+```manuscript
+fn monotonic_time() -> Int
+```
+
+### ProcessControl.send_signal
+
+Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
+Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination.
+
+```manuscript
+fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
+```
+
+### ProcessControl.set_identity
+
+Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.
+Identity changes require OS permission and are Unsupported on Windows.
+
+```manuscript
+fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
+```
+
+### ProcessControl.umask
+
+Sets mask 0..511 (0777) and returns the previous mask; Unsupported on Windows.
+
+```manuscript
+fn umask(mask: Int) -> Result[Int, ProcessError]
+```
+
+### ProcessControl.uptime
+
+Returns elapsed Duration since runtime initialization, rather than host boot.
+
+```manuscript
+fn uptime() -> Result[Duration, ProcessError]
+```
+
 ### ProcessControl.watch_signals
 
-Observes signals without claiming them or suppressing host cancellation.
+Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
+Capacity must be 1..1048576; omission/none uses 128 buffered signals.
+Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
 Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
 
 ```manuscript
 fn watch_signals(signals: List[Int], capacity: Optional[Int] = none) -> Result[SignalStream, ProcessError]
+```
+
+### ProcessControl.working_directory
+
+Reads the live process directory, preserving OS failures as ProcessError.
+
+```manuscript
+fn working_directory() -> Result[String, ProcessError]
 ```
 
 ## ProcessError
@@ -3418,6 +3736,14 @@ type ProcessInfo:
     gid: Int
     effective_uid: Int
     effective_gid: Int
+```
+
+### ProcessInfo.arguments
+
+Live native argv including argv[0]; cli.arguments() is the supplied startup tail without it.
+
+```manuscript
+arguments: List[String]
 ```
 
 ## ResourceUsage
@@ -3865,6 +4191,22 @@ type CpuInfo:
     irq: Int
 ```
 
+### CpuInfo.speed_mhz
+
+Integer megahertz, not a time interval.
+
+```manuscript
+speed_mhz: Int
+```
+
+### CpuInfo.user
+
+The user, nice, system, idle, and irq fields are cumulative milliseconds.
+
+```manuscript
+user: Int
+```
+
 ## NetworkInterface
 
 **Record**
@@ -3880,6 +4222,14 @@ type NetworkInterface:
     mac: String
     internal: Bool
     scope_id: Int
+```
+
+### NetworkInterface.family
+
+Exactly `IPv4` or `IPv6` for native address records.
+
+```manuscript
+family: String
 ```
 
 ## System
@@ -3905,6 +4255,40 @@ interface System:
     fn machine() -> Result[String, SystemError]
     fn get_priority(pid: Int) -> Result[Int, SystemError]
     fn set_priority(pid: Int, priority: Int) -> Result[Unit, SystemError]
+```
+
+### System.environment
+
+Reads the live variable; absent or non-UTF-8 values return none.
+
+```manuscript
+fn environment(name: String) -> Optional[String]
+```
+
+### System.set_priority
+
+Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).
+Unix uses nice values; Windows maps ranges to native priority classes.
+
+```manuscript
+fn set_priority(pid: Int, priority: Int) -> Result[Unit, SystemError]
+```
+
+### System.temporary_directory
+
+Queries the host temp root without creating or checking a directory; non-UTF-8 returns Unsupported.
+
+```manuscript
+fn temporary_directory() -> Result[String, SystemError]
+```
+
+### System.working_directory
+
+Reads the live native directory; an OS query failure faults because this API has no Result.
+A host service constructed with an explicit directory retains that base.
+
+```manuscript
+fn working_directory() -> String
 ```
 
 ## SystemError
@@ -3944,6 +4328,14 @@ type SystemInfo:
     cpu_count: Int
 ```
 
+### SystemInfo.os
+
+Native Go OS identifier, such as linux, darwin, or windows; an open host identifier set.
+
+```manuscript
+os: String
+```
+
 ## SystemMetrics
 
 **Record**
@@ -3959,6 +4351,14 @@ type SystemMetrics:
     uptime: Duration
     load_average: List[Float]
     available_parallelism: Int
+```
+
+### SystemMetrics.uptime
+
+Host boot uptime as a Duration with whole-second native resolution; not process uptime.
+
+```manuscript
+uptime: Duration
 ```
 
 ## UserInfo
@@ -5293,7 +5693,7 @@ fn lower() -> String
 
 ### String.normalize
 
-Normalizes using NFC, NFD, NFKC, or NFKD; max_bytes optionally bounds UTF-8 output.
+Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes optionally bounds UTF-8 output.
 Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
 
 ```manuscript

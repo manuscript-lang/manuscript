@@ -1903,7 +1903,7 @@
               "name": "clone",
               "kind": "field",
               "signature": "clone: String",
-              "doc": ""
+              "doc": "Exactly `none`, `try`, or `force`; other strings return InvalidInput.\ntry falls back to byte copying; force requires a native clone operation."
             },
             {
               "name": "dereference",
@@ -2031,7 +2031,7 @@
               "name": "kind",
               "kind": "field",
               "signature": "kind: String",
-              "doc": ""
+              "doc": "Exactly `rename` (appearance/disappearance/rename) or `change` (contents/metadata)."
             },
             {
               "name": "path",
@@ -2074,7 +2074,7 @@
               "name": "append_file",
               "kind": "operation",
               "signature": "fn append_file(data: Bytes) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "doc": "Writes at the current position; appends only when the handle was opened in append mode."
             },
             {
               "name": "chmod",
@@ -2104,19 +2104,19 @@
               "name": "read",
               "kind": "operation",
               "signature": "fn read(max_bytes: Optional[Int] = none) -\u003e Result[Optional[Bytes], FileSystemError]",
-              "doc": ""
+              "doc": "Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive."
             },
             {
               "name": "read_at",
               "kind": "operation",
               "signature": "fn read_at(offset: Int, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, FileSystemError]",
-              "doc": ""
+              "doc": "Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF."
             },
             {
               "name": "read_file",
               "kind": "operation",
               "signature": "fn read_file(max_bytes: Optional[Int] = none) -\u003e Result[Bytes, FileSystemError]",
-              "doc": ""
+              "doc": "Reads remaining bytes from the current position; EOF returns empty Bytes."
             },
             {
               "name": "read_lines",
@@ -2134,13 +2134,13 @@
               "name": "reader",
               "kind": "operation",
               "signature": "fn reader() -\u003e ReadStream",
-              "doc": ""
+              "doc": "Adapts this handle to IoError/Optional chunk reads; closing either view closes all aliases."
             },
             {
               "name": "seek",
               "kind": "operation",
               "signature": "fn seek(offset: Int, origin: Int) -\u003e Result[Int, FileSystemError]",
-              "doc": ""
+              "doc": "Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).\nOther origins return InvalidInput; the OS validates the resulting offset."
             },
             {
               "name": "set_times",
@@ -2170,31 +2170,31 @@
               "name": "write",
               "kind": "operation",
               "signature": "fn write(data: Bytes) -\u003e Result[Int, FileSystemError]",
-              "doc": ""
+              "doc": "Writes all bytes on success and returns their count; errors can leave a prefix without a count."
             },
             {
               "name": "write_at",
               "kind": "operation",
               "signature": "fn write_at(offset: Int, data: Bytes) -\u003e Result[Int, FileSystemError]",
-              "doc": ""
+              "doc": "Writes all bytes at a nonnegative offset without moving the position; returns the full count."
             },
             {
               "name": "write_file",
               "kind": "operation",
               "signature": "fn write_file(data: Bytes) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "doc": "Writes all bytes at the current position; does not truncate or reposition this handle."
             },
             {
               "name": "write_vectors",
               "kind": "operation",
               "signature": "fn write_vectors(buffers: List[Bytes], offset: Int) -\u003e Result[Int, FileSystemError]",
-              "doc": ""
+              "doc": "Writes every buffer and returns the total byte count; offset -1 uses the current position."
             },
             {
               "name": "writer",
               "kind": "operation",
               "signature": "fn writer() -\u003e WriteStream",
-              "doc": ""
+              "doc": "Adapts complete writes to IoError/Unit; flush synchronizes the file."
             }
           ]
         },
@@ -2246,13 +2246,13 @@
               "name": "block_size",
               "kind": "field",
               "signature": "block_size: Int",
-              "doc": ""
+              "doc": "Preferred I/O block size in bytes; unavailable fields are zero."
             },
             {
               "name": "blocks",
               "kind": "field",
               "signature": "blocks: Int",
-              "doc": ""
+              "doc": "Allocated 512-byte blocks on POSIX hosts; unavailable fields are zero."
             },
             {
               "name": "changed",
@@ -2354,7 +2354,7 @@
               "name": "size",
               "kind": "field",
               "signature": "size: Int",
-              "doc": ""
+              "doc": "File length in bytes."
             },
             {
               "name": "socket",
@@ -2419,7 +2419,7 @@
               "name": "access",
               "kind": "operation",
               "signature": "fn access(path: String, mode: Int) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "doc": "Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.\nNative permissions and Windows access policy still apply."
             },
             {
               "name": "append_file",
@@ -2437,13 +2437,13 @@
               "name": "chmod",
               "kind": "operation",
               "signature": "fn chmod(path: String, mode: Int) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "doc": "Changes target permissions with mode 0..4095; follows a final symbolic link."
             },
             {
               "name": "chmod_link",
               "kind": "operation",
               "signature": "fn chmod_link(path: String, mode: Int) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "doc": "Changes the link itself without following it; Unsupported on hosts lacking this operation."
             },
             {
               "name": "chown",
@@ -2509,7 +2509,7 @@
               "name": "open",
               "kind": "operation",
               "signature": "fn open(path: String, flags: String, mode: Int) -\u003e Result[FileHandle, FileSystemError]",
-              "doc": ""
+              "doc": "Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return InvalidInput.\nMode is permission bits in 0..4095, applied on creation subject to umask/OS policy."
             },
             {
               "name": "open_directory",
@@ -2521,7 +2521,7 @@
               "name": "open_flags",
               "kind": "operation",
               "signature": "fn open_flags(path: String, flags: Int, mode: Int) -\u003e Result[FileHandle, FileSystemError]",
-              "doc": "Opens a path using host flag and mode bit values."
+              "doc": "Opens a path using host flag bits in 0..2147483647 and permission bits in 0..4095.\nUse fs.constants() on this host; unknown bits/combinations are left to the OS."
             },
             {
               "name": "read_file",
@@ -2569,19 +2569,19 @@
               "name": "temporary",
               "kind": "operation",
               "signature": "fn temporary(prefix: String) -\u003e Result[TemporaryDirectory, FileSystemError]",
-              "doc": ""
+              "doc": "Creates a new temp directory whose contents are removed by scoped close.\nPrefix has the same validation as temporary_directory; this does not query the temp root."
             },
             {
               "name": "temporary_directory",
               "kind": "operation",
               "signature": "fn temporary_directory(prefix: String) -\u003e Result[String, FileSystemError]",
-              "doc": ""
+              "doc": "Creates a new directory under the host temp root; the caller must remove it.\nPrefix must be nonempty and contain no slash, backslash, or NUL."
             },
             {
               "name": "truncate",
               "kind": "operation",
               "signature": "fn truncate(path: String, size: Int) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "doc": "Sets the target size in bytes; follows a final symbolic link."
             },
             {
               "name": "watch",
@@ -2593,7 +2593,7 @@
               "name": "watch_native",
               "kind": "operation",
               "signature": "fn watch_native(path: String, recursive: Bool, max_entries: Optional[Int] = none, max_events: Optional[Int] = none, overflow: String) -\u003e Result[FileWatcher, FileSystemError]",
-              "doc": "Watches filesystem changes. Limits bound tracked paths and queued events."
+              "doc": "Watches native OS events; overflow is exactly `error` or `ignore` (case-sensitive).\nOther policies return InvalidInput. Limits bound tracked paths and queued events."
             },
             {
               "name": "write_file",
@@ -3769,7 +3769,7 @@
               "name": "write",
               "kind": "operation",
               "signature": "fn write(data: Bytes) -\u003e Result[Unit, IoError]",
-              "doc": ""
+              "doc": "Accepts the complete input on success; a source implementation may buffer until flush."
             }
           ]
         },
@@ -4494,7 +4494,7 @@
               "name": "read",
               "kind": "operation",
               "signature": "fn read(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[Optional[Bytes], IoError]",
-              "doc": ""
+              "doc": "Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout."
             },
             {
               "name": "shutdown_write",
@@ -4512,7 +4512,7 @@
               "name": "write",
               "kind": "operation",
               "signature": "fn write(data: Bytes, timeout: Optional[Duration] = none) -\u003e Result[Unit, IoError]",
-              "doc": ""
+              "doc": "Writes all bytes on success; failure can leave a prefix. Local timeout uses IoError.Failed."
             }
           ]
         },
@@ -4536,7 +4536,7 @@
               "name": "sender",
               "kind": "field",
               "signature": "sender: String",
-              "doc": ""
+              "doc": "Native host:port text, with bracketed IPv6 addresses."
             }
           ]
         },
@@ -4595,7 +4595,7 @@
               "name": "kind",
               "kind": "field",
               "signature": "kind: String",
-              "doc": ""
+              "doc": "Uppercase A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV."
             },
             {
               "name": "port",
@@ -4756,7 +4756,7 @@
               "name": "resolve",
               "kind": "operation",
               "signature": "fn resolve(name: String, kind: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[List[DnsRecord], NetworkError]",
-              "doc": ""
+              "doc": "Accepts A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV, case-insensitively; others return InvalidInput.\nReturned DnsRecord.kind is uppercase."
             },
             {
               "name": "restrict",
@@ -5498,13 +5498,13 @@
               "name": "system_microseconds",
               "kind": "field",
               "signature": "system_microseconds: Int",
-              "doc": ""
+              "doc": "Kernel CPU time in microseconds."
             },
             {
               "name": "user_microseconds",
               "kind": "field",
               "signature": "user_microseconds: Int",
-              "doc": ""
+              "doc": "User CPU time in microseconds."
             }
           ]
         },
@@ -5612,7 +5612,7 @@
               "name": "environment",
               "kind": "operation",
               "signature": "fn environment() -\u003e Result[Map[String, String], ProcessError]",
-              "doc": ""
+              "doc": "Reads a fresh live process environment map; non-UTF-8 entries return Unsupported."
             },
             {
               "name": "groups",
@@ -5648,7 +5648,7 @@
               "name": "monotonic_time",
               "kind": "operation",
               "signature": "fn monotonic_time() -\u003e Int",
-              "doc": ""
+              "doc": "Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.\nThis is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing."
             },
             {
               "name": "replace",
@@ -5666,7 +5666,7 @@
               "name": "send_signal",
               "kind": "operation",
               "signature": "fn send_signal(pid: Int, signal: Int) -\u003e Result[Unit, ProcessError]",
-              "doc": ""
+              "doc": "Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.\nSignal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination."
             },
             {
               "name": "set_environment",
@@ -5684,7 +5684,7 @@
               "name": "set_identity",
               "kind": "operation",
               "signature": "fn set_identity(kind: String, id: Int) -\u003e Result[Unit, ProcessError]",
-              "doc": ""
+              "doc": "Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.\nIdentity changes require OS permission and are Unsupported on Windows."
             },
             {
               "name": "set_title",
@@ -5702,25 +5702,25 @@
               "name": "umask",
               "kind": "operation",
               "signature": "fn umask(mask: Int) -\u003e Result[Int, ProcessError]",
-              "doc": ""
+              "doc": "Sets mask 0..511 (0777) and returns the previous mask; Unsupported on Windows."
             },
             {
               "name": "uptime",
               "kind": "operation",
               "signature": "fn uptime() -\u003e Result[Duration, ProcessError]",
-              "doc": ""
+              "doc": "Returns elapsed Duration since runtime initialization, rather than host boot."
             },
             {
               "name": "watch_signals",
               "kind": "operation",
               "signature": "fn watch_signals(signals: List[Int], capacity: Optional[Int] = none) -\u003e Result[SignalStream, ProcessError]",
-              "doc": "Observes signals without claiming them or suppressing host cancellation.\nCode after next() has no shutdown guarantee; use registered with/Closeable cleanup."
+              "doc": "Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.\nCapacity must be 1..1048576; omission/none uses 128 buffered signals.\nNumeric validation does not guarantee OS support. Observing does not suppress host cancellation.\nCode after next() has no shutdown guarantee; use registered with/Closeable cleanup."
             },
             {
               "name": "working_directory",
               "kind": "operation",
               "signature": "fn working_directory() -\u003e Result[String, ProcessError]",
-              "doc": ""
+              "doc": "Reads the live process directory, preserving OS failures as ProcessError."
             }
           ]
         },
@@ -5844,7 +5844,7 @@
               "name": "arguments",
               "kind": "field",
               "signature": "arguments: List[String]",
-              "doc": ""
+              "doc": "Live native argv including argv[0]; cli.arguments() is the supplied startup tail without it."
             },
             {
               "name": "effective_gid",
@@ -6625,7 +6625,7 @@
               "name": "speed_mhz",
               "kind": "field",
               "signature": "speed_mhz: Int",
-              "doc": ""
+              "doc": "Integer megahertz, not a time interval."
             },
             {
               "name": "system",
@@ -6637,7 +6637,7 @@
               "name": "user",
               "kind": "field",
               "signature": "user: Int",
-              "doc": ""
+              "doc": "The user, nice, system, idle, and irq fields are cumulative milliseconds."
             }
           ]
         },
@@ -6666,7 +6666,7 @@
               "name": "family",
               "kind": "field",
               "signature": "family: String",
-              "doc": ""
+              "doc": "Exactly `IPv4` or `IPv6` for native address records."
             },
             {
               "name": "internal",
@@ -6733,7 +6733,7 @@
               "name": "environment",
               "kind": "operation",
               "signature": "fn environment(name: String) -\u003e Optional[String]",
-              "doc": ""
+              "doc": "Reads the live variable; absent or non-UTF-8 values return none."
             },
             {
               "name": "get_priority",
@@ -6793,13 +6793,13 @@
               "name": "set_priority",
               "kind": "operation",
               "signature": "fn set_priority(pid: Int, priority: Int) -\u003e Result[Unit, SystemError]",
-              "doc": ""
+              "doc": "Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).\nUnix uses nice values; Windows maps ranges to native priority classes."
             },
             {
               "name": "temporary_directory",
               "kind": "operation",
               "signature": "fn temporary_directory() -\u003e Result[String, SystemError]",
-              "doc": ""
+              "doc": "Queries the host temp root without creating or checking a directory; non-UTF-8 returns Unsupported."
             },
             {
               "name": "user_info",
@@ -6811,7 +6811,7 @@
               "name": "working_directory",
               "kind": "operation",
               "signature": "fn working_directory() -\u003e String",
-              "doc": ""
+              "doc": "Reads the live native directory; an OS query failure faults because this API has no Result.\nA host service constructed with an explicit directory retains that base."
             }
           ]
         },
@@ -6934,7 +6934,7 @@
               "name": "os",
               "kind": "field",
               "signature": "os: String",
-              "doc": ""
+              "doc": "Native Go OS identifier, such as linux, darwin, or windows; an open host identifier set."
             }
           ]
         },
@@ -6986,7 +6986,7 @@
               "name": "uptime",
               "kind": "field",
               "signature": "uptime: Duration",
-              "doc": ""
+              "doc": "Host boot uptime as a Duration with whole-second native resolution; not process uptime."
             }
           ]
         },
@@ -9188,7 +9188,7 @@
               "name": "normalize",
               "kind": "operation",
               "signature": "fn normalize(form: String, max_bytes: Optional[Int] = none) -\u003e Result[String, StringError]",
-              "doc": "Normalizes using NFC, NFD, NFKC, or NFKD; max_bytes optionally bounds UTF-8 output.\nInvalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded."
+              "doc": "Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes optionally bounds UTF-8 output.\nInvalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded."
             },
             {
               "name": "pad_end",
