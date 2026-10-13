@@ -165,6 +165,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"repeat":        "string/repeat",
 		"replace":       "string/replace",
 		"replace_first": "string/replace_first",
+		"replace_n":     "string/replace_n",
 		"scalar_length": "string/scalar_length",
 		"scalar_values": "string/scalar_values",
 		"slice_scalars": "string/slice_scalars",

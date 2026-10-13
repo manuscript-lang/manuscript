@@ -22,6 +22,7 @@ func TestPreferredNamesCancellationPrecedesEffects(t *testing.T) {
 		{set, "add", []Argument{{"value", int64(2)}}},
 		{set, "remove", []Argument{{"value", int64(1)}}},
 		{"aa", "replace_first", []Argument{{"old", "a"}, {"new", "b"}, {"max_replacements", optional("Int", nil, false)}}},
+		{"aa", "replace_n", []Argument{{"old", "a"}, {"new", "b"}, {"max_replacements", int64(2)}}},
 		{libraryRegex{regexp.MustCompile("a")}, "replace_all", []Argument{{"text", "aa"}, {"replacement", "b"}, {"max_bytes", optional("Int", nil, false)}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
