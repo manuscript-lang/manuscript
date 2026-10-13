@@ -5,7 +5,7 @@ weight = 1
 
 # Commands and editor setup
 
-Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or run `make build` in a source checkout to prepare the pinned Go SDK automatically. Compilation, formatting, lint, LSP, and profiling need no separate Go installation. Native debugging uses Delve 1.25.2 or newer, available from [Delve Releases](https://github.com/go-delve/delve/releases). The VS Code extension provides its own Manuscript DAP layer over Delve.
+Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or run `make build` in a source checkout to prepare the pinned Go SDK automatically. Compilation, formatting, lint, LSP, and profiling need no separate Go installation. Native debugging uses Delve embedded in `ms`, with no separate `dlv` installation. macOS still requires Apple’s `debugserver` from Xcode command line tools; see [debugger integration](debugging/debugger-integration.md). The VS Code extension provides its own Manuscript DAP layer over Delve.
 
 ```sh
 ms lint source.ms --json

@@ -63,7 +63,8 @@
       "pkg/tooling/docgen",
       "pkg/checker",
       "pkg/stdlib",
-      "."
+      ".",
+      "internal/debugger"
     ],
     "cmd/ms": [
       "internal/cli"
@@ -72,7 +73,8 @@
       "pkg/syntax",
       "pkg/parser",
       "pkg/project"
-    ]
+    ],
+    "internal/debugger": []
   },
   "pinned": [
     "pkg/syntax",

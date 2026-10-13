@@ -41,11 +41,10 @@ async function activate(context) {
     if (!await editor.document.save()) return;
     return editor;
   }
-  let delve = vscode.workspace.getConfiguration('manuscript').get('delvePath', 'dlv');
   context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('manuscript', {
     createDebugAdapterDescriptor() {
       return new vscode.DebugAdapterExecutable(process.execPath,
-        [path.join(context.extensionPath, 'dist/debug-adapter.js'), command, delve],
+        [path.join(context.extensionPath, 'dist/debug-adapter.js'), command],
         { env: { ELECTRON_RUN_AS_NODE: '1' } });
     },
   }));
@@ -65,13 +64,12 @@ async function activate(context) {
       const target = await targetFor(editor.document.uri.fsPath);
       await vscode.debug.startDebugging(vscode.workspace.getWorkspaceFolder(editor.document.uri), {
         type: 'manuscript', name: 'Manuscript', request: 'launch', program: target,
-        compilerPath: command, delvePath: delve, cwd: path.dirname(target),
+        compilerPath: command, cwd: path.dirname(target),
       });
     } catch (error) { vscode.window.showErrorMessage(`Manuscript debug failed: ${error.message}`); }
   }));
   context.subscriptions.push(vscode.commands.registerCommand('manuscript.restartServer', async () => {
     try { await client.stop(); command = vscode.workspace.getConfiguration('manuscript').get('serverPath', 'ms');
-      delve = vscode.workspace.getConfiguration('manuscript').get('delvePath', 'dlv');
       client = new LanguageClient('manuscript', 'Manuscript', { command, args: ['lsp'] }, {
         documentSelector, synchronize: { fileEvents: watcher }, outputChannel: output,
       }); await client.start();

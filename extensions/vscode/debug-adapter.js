@@ -1,6 +1,5 @@
 // Manuscript's DAP layer delegates native control to Delve and renders checked
 // source names and runtime values. It never evaluates application methods.
-const net = require('node:net');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
@@ -95,31 +94,22 @@ class ManuscriptAdapter {
   respond(request, body, success = true, message) {
     this.emit({ type: 'response', request_seq: request.seq, command: request.command, success, body, message });
   }
-  async start(delve) {
+  async start(compiler) {
     if (this.ready) return this.ready;
     this.ready = new Promise((resolve, reject) => {
-      const child = spawn(delve, ['dap', '--listen=127.0.0.1:0'], { stdio: ['ignore', 'pipe', 'pipe'] });
-      this.child = child; let text = ''; let connected = false;
-      const timer = setTimeout(() => { child.kill(); reject(new Error('Delve startup timed out')); }, 15000);
-      child.once('error', error => { clearTimeout(timer); reject(error); });
-      child.once('exit', (code) => {
-        clearTimeout(timer);
-        if (!connected) reject(new Error(`Delve exited before startup (${code})`));
+      const child = spawn(compiler, ['dap'], { stdio: ['pipe', 'pipe', 'pipe'] });
+      this.child = child;
+      child.once('error', reject);
+      child.once('spawn', resolve);
+      child.once('exit', () => {
         for (const pending of this.pending.values()) pending.reject(new Error('Debugger exited'));
         this.pending.clear();
       });
       child.stderr.on('data', bytes => this.emit({ type: 'event', event: 'output', body: { category: 'stderr', output: bytes.toString() } }));
-      child.stdout.on('data', bytes => {
-        text += bytes.toString();
-        const address = /DAP server listening at: (127\.0\.0\.1):(\d+)/.exec(text);
-        if (!address || connected) return;
-        connected = true; clearTimeout(timer);
-        const socket = net.createConnection({ host: address[1], port: Number(address[2]) });
-        this.socket = socket;
-        const framing = new Framing(message => this.receive(message));
-        socket.on('data', chunk => { try { framing.push(chunk); } catch (error) { this.fail(error); } });
-        socket.once('connect', resolve); socket.on('error', error => { reject(error); this.fail(error); });
-      });
+      this.socket = child.stdin;
+      this.socket.on('error', error => this.fail(error));
+      const framing = new Framing(message => this.receive(message));
+      child.stdout.on('data', bytes => { try { framing.push(bytes); } catch (error) { this.fail(error); } });
     });
     return this.ready;
   }
@@ -230,12 +220,12 @@ class ManuscriptAdapter {
       if (!args.inspection) throw new Error('Prebuilt launches require an inspection.json path');
       await this.loadMetadata(program, JSON.parse(await fs.readFile(args.inspection, 'utf8')));
     }
-    args.mode = 'exec'; delete args.compilerPath; delete args.delvePath; delete args.inspection;
+    args.mode = 'exec'; args.outputMode = 'remote'; delete args.compilerPath; delete args.delvePath; delete args.inspection;
     return this.native('launch', args);
   }
   async request(request) {
     try {
-      await this.start(request.arguments?.delvePath || this.options.delve || 'dlv');
+      await this.start(request.arguments?.compilerPath || this.options.compiler || 'ms');
       const args = request.arguments || {}; let body;
       if (request.command === 'launch') body = await this.launch(args);
       else if (request.command === 'variables') {
@@ -297,12 +287,20 @@ class ManuscriptAdapter {
   fail(error) { this.emit({ type: 'event', event: 'output', body: { category: 'stderr', output: `${error.message}\n` } }); this.cleanup(); }
   async cleanup() {
     if (this.socket) { this.socket.destroy(); this.socket = undefined; }
-    if (this.child) { this.child.kill(); this.child = undefined; }
+    if (this.child) {
+      const child = this.child; this.child = undefined;
+      await new Promise(resolve => {
+        if (child.exitCode !== null || child.signalCode !== null) return resolve();
+        const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
+        child.once('close', () => { clearTimeout(timer); resolve(); });
+        child.kill();
+      });
+    }
     if (this.temp) { const directory = this.temp; this.temp = undefined; await fs.rm(directory, { recursive: true, force: true }).catch(() => {}); }
   }
 }
 if (require.main === module) {
-  const adapter = new ManuscriptAdapter(process.stdout, { compiler: process.argv[2], delve: process.argv[3] });
+  const adapter = new ManuscriptAdapter(process.stdout, { compiler: process.argv[2] });
   const framing = new Framing(request => adapter.request(request));
   process.stdin.on('data', bytes => { try { framing.push(bytes); } catch (error) { adapter.fail(error); } });
   process.stdin.on('end', () => adapter.cleanup());

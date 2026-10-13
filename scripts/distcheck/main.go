@@ -18,7 +18,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	fmt.Println("Packaged compilation, source tooling, LSP, and profiles passed using only ms, without system Go or downloads.")
+	fmt.Println("Packaged compilation, source tooling, LSP, terminal/DAP debugging, and profiles passed using only ms, without system Go, dlv, or downloads (macOS uses system debugserver).")
 }
 
 func check() error {
@@ -68,6 +68,7 @@ func check() error {
 		"CGO_ENABLED": "1", "GOPROXY": "off", "GOSUMDB": "off", "GOFLAGS": "",
 		"GOCACHE": filepath.Join(directory, "cache"), "GOMODCACHE": filepath.Join(directory, "modules"),
 		"MANUSCRIPT_CACHE_DIR": filepath.Join(directory, "user-cache"),
+		"XDG_CONFIG_HOME":      filepath.Join(directory, "config"),
 	}
 	var environment []string
 	for _, entry := range os.Environ() {
@@ -172,6 +173,9 @@ func check() error {
 		} else if data != "Arguments: 2\n" {
 			return fmt.Errorf("unexpected %s output: %q", kind, data)
 		}
+	}
+	if err := checkDebugger(cli, directory, environment, run); err != nil {
+		return err
 	}
 	profile := filepath.Join(directory, "profile")
 	if data, err := run(cli, "profile", manifest, "-o", profile, "--", "first", "second"); err != nil {

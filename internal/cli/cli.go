@@ -2,10 +2,12 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	support "github.com/manuscript-lang/manuscript"
+	"github.com/manuscript-lang/manuscript/internal/debugger"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -48,6 +50,22 @@ func Run(args []string) int {
 	}
 	if args[0] == "fmt" {
 		return runFormat(args[1:])
+	}
+	if args[0] == "dap" {
+		if len(args) != 1 {
+			fmt.Fprintln(os.Stderr, "ms dap takes no arguments; it serves one session on stdin/stdout")
+			return 2
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		transport := &dapStdio{os.Stdin, os.Stdout}
+		// Keep any locally directed target/Delve output out of the protocol stream.
+		// The editor asks for outputMode=remote to receive DAP output events.
+		stdout := os.Stdout
+		os.Stdout = os.Stderr
+		defer func() { os.Stdout = stdout }()
+		debugger.DAP(ctx, transport)
+		return 0
 	}
 	if args[0] == "lsp" {
 		if err := lsp.Serve(os.Stdin, os.Stdout); err != nil {
@@ -371,16 +389,16 @@ func Run(args []string) int {
 				return 1
 			}
 		}
-		child := exec.Command(executable, arguments...)
 		if command == "debug" {
-			dlv, e := exec.LookPath("dlv")
-			if e != nil {
-				fmt.Fprintln(os.Stderr, "debug requires Delve (dlv) on PATH; install it with: go install github.com/go-delve/delve/cmd/dlv@latest")
-				return 1
+			ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+			defer cancel()
+			status, err := debugger.Terminal(ctx, executable, arguments)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
 			}
-			dlvArgs := append([]string{"exec", executable, "--"}, arguments...)
-			child = exec.Command(dlv, dlvArgs...)
+			return status
 		}
+		child := exec.Command(executable, arguments...)
 		child.Stdin = os.Stdin
 		child.Stdout = os.Stdout
 		child.Stderr = os.Stderr
@@ -510,3 +528,13 @@ func writeOutput(filename string, data []byte) int {
 	}
 	return 0
 }
+
+// dapStdio owns both protocol handles; closing interrupts blocked reads/writes.
+type dapStdio struct {
+	*os.File
+	output *os.File
+}
+
+func (s *dapStdio) Write(p []byte) (int, error) { return s.output.Write(p) }
+
+func (s *dapStdio) Close() error { _ = s.output.Close(); return s.File.Close() }

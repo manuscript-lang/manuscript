@@ -5,6 +5,10 @@ required references, runtime, standard library, and native dependencies. No
 separate Go installation or package downloads are needed. Copy the binary anywhere
 on PATH. No companion toolchain directory is required. On first native use, ms
 unpacks its reduced build payload into the OS user cache and reuses it thereafter.
+The Delve terminal and DAP debugger are embedded: no dlv executable is needed.
+On macOS only, native debugging still requires Apple debugserver from Xcode
+command line tools and OS authorization. ms does not install it or change signing
+credentials or security settings. Linux/Windows use Delve native backends.
 CGO is disabled. MANUSCRIPT_CACHE_DIR selects a different writable cache directory.
 
 From this directory on macOS/Linux:

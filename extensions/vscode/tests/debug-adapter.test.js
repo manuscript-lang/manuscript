@@ -32,7 +32,7 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
   await fs.writeFile(program, source);
   const returnLine = source.split('\n').findIndex(line => line.trim().startsWith('return box.')) + 1;
   const output = new PassThrough(); const messages = []; const waiters = [];
-  const adapter = new ManuscriptAdapter(output, { compiler: process.env.MANUSCRIPT_MS, delve: process.env.MANUSCRIPT_DLV });
+  const adapter = new ManuscriptAdapter(output, { compiler: process.env.MANUSCRIPT_MS });
   const parser = new Framing(message => { messages.push(message); for (const wake of waiters.splice(0)) wake(); });
   output.on('data', bytes => parser.push(bytes));
   const wait = async predicate => { while (true) { const index = messages.findIndex(predicate); if (index >= 0) return messages.splice(index, 1)[0]; await new Promise(resolve => waiters.push(resolve)); } };
@@ -44,7 +44,8 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
     assert.equal(capabilities.supportsSetVariable, false);
     assert.equal(capabilities.supportsSetExpression, false);
     const launch = request('launch', { program, stopOnEntry: false });
-    await wait(message => message.event === 'initialized');
+    const initialized = await wait(message => message.event === 'initialized' || (message.request_seq === launch && !message.success));
+    assert.equal(initialized.event, 'initialized', initialized.message);
     const breakpoints = await response(request('setBreakpoints', { source: { path: program }, breakpoints: [{ line: returnLine }] }));
     assert.equal(breakpoints.breakpoints[0].verified, true);
     const configured = request('configurationDone');

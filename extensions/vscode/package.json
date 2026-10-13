@@ -45,11 +45,6 @@
           "type": "string",
           "default": "ms",
           "description": "Path to the Manuscript compiler and language server."
-        },
-        "manuscript.delvePath": {
-          "type": "string",
-          "default": "dlv",
-          "description": "Path to Delve for native source debugging."
         }
       }
     },

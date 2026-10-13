@@ -62,7 +62,7 @@ payload: | toolchain
 	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz $$("$(GO)" env GOHOSTOS) $$("$(GO)" env GOHOSTARCH)
 
 build: payload
-	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags bundled_toolchain -o ms ./cmd/ms
+	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags bundled_toolchain,exp.winarm64 -o ms ./cmd/ms
 
 test:
 	"$(GO)" test ./...
