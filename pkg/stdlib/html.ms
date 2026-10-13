@@ -1,9 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
 import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-import Error from "@std/errors.ms"
 
 # Errors returned for malformed HTML or parser resource limits.
 export type HtmlError:

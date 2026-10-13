@@ -1,8 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 # Errors returned while parsing or converting arbitrary-precision integers.
 export type BigIntError:

@@ -1,6 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Optional from "@std/optional.ms"
 
 # FIFO queue. An omitted capacity creates an unbounded queue.
 export type Queue[T]:

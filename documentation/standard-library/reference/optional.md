@@ -4,7 +4,9 @@ title = "optional"
 
 # @std/optional.ms
 
-Import each required symbol with `import Name from "@std/optional.ms"`.
+These names are available in the prelude; no import required.
+
+Explicit imports with `import Name from "@std/optional.ms"` remain supported.
 
 ## Optional {data-api-kind="Alternative"}
 

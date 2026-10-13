@@ -1,6 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 import Connection from "@std/net.ms"
 import DatagramSocket from "@std/net.ms"
@@ -11,9 +10,7 @@ import List from "@std/collections.ms"
 import Listener from "@std/net.ms"
 import Map from "@std/collections.ms"
 import NetworkError from "@std/net.ms"
-import Optional from "@std/optional.ms"
 import ReadStream from "@std/io.ms"
-import Result from "@std/result.ms"
 import TlsOptions from "@std/tls.ms"
 import WebSocket from "@std/websocket.ms"
 import WebSocketError from "@std/websocket.ms"

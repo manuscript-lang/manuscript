@@ -1,9 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Optional from "@std/optional.ms"
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 
 # Errors returned when compressed data is unsupported, invalid, or exceeds a limit.
 export type CompressionError:

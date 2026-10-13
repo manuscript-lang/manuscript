@@ -1,9 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
 import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 # Errors returned for malformed URL text, components, or query limits.
 export type UrlError:

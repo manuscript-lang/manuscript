@@ -240,7 +240,7 @@ func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
 
 func TestNavigationWithinStandardLibrary(t *testing.T) {
 	for _, item := range []struct{ file, needle, target, name string }{
-		{"collections.ms", "Optional from", "optional.ms", "Optional"},
+		{"collections.ms", "Result[List[T]", "result.ms", "Result"},
 		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
 		{"collections.ms", "List[T]) ->", "collections.ms", "List"},
 		{"cli.ms", "List from", "collections.ms", "List"},

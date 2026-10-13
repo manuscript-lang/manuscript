@@ -81,6 +81,32 @@ func itemNamed(items []completionItem, name string) *completionItem {
 	}
 	return nil
 }
+
+func TestPreludeCompletionNeedsNoImport(t *testing.T) {
+	for _, name := range []string{"Optional", "Result", "Error"} {
+		items := completeSource(t, "fn work(value: "+name[:2]+"|) -> Unit:\n    return\n")
+		item := itemNamed(items, name)
+		if item == nil || len(item.AdditionalTextEdits) != 0 {
+			t.Fatalf("%s must complete without an import: %+v", name, item)
+		}
+	}
+}
+
+func TestPreludeNavigationUsesStandardSource(t *testing.T) {
+	source := "fn work(value: Optional[Int]) -> Result[Int, Error]:\n    return ok(value: value.unwrap())\n"
+	d := document{"file:///tmp/prelude.ms", source, 1}
+	result := analyze(d, map[string]document{d.URI: d})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	for name, file := range map[string]string{"Optional": "optional.ms", "Result": "result.ms", "Error": "errors.ms"} {
+		target := navigation(result, d, Position(source, strings.Index(source, name)), "textDocument/definition")
+		if target == nil || target.([]any)[0].(map[string]any)["uri"] != "manuscript-stdlib:///"+file {
+			t.Fatalf("%s did not navigate to its standard declaration: %v", name, target)
+		}
+	}
+}
+
 func TestTypedCompletionWhileEditing(t *testing.T) {
 	tests := []struct {
 		name, source string
@@ -99,8 +125,9 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"auto import", "fn work() -> Unit:\n    Que|\n", []string{"Queue"}, nil},
 		{"comments", "fn work() -> Unit:\n    # Que|\n    unit\n", nil, []string{"Queue"}},
 		{"strings", "fn work() -> String:\n    return \"Que|\"\n", nil, []string{"Queue"}},
-		{"optional methods", "import Optional from \"@std/optional.ms\"\nfn work(value: Optional[Int]) -> Int:\n    return value.|\n", []string{"is_some", "is_none", "unwrap", "unwrap_or", "unwrap_or_else"}, []string{"some", "none", "get"}},
-		{"generic alternative", "import Optional from \"@std/optional.ms\"\nfn work() -> Optional[Int]:\n    return Optional[Int].|\n", []string{"some", "none"}, nil},
+		{"optional methods", "fn work(value: Optional[Int]) -> Int:\n    return value.|\n", []string{"is_some", "is_none", "unwrap", "unwrap_or", "unwrap_or_else"}, []string{"some", "none", "get"}},
+		{"generic alternative", "fn work() -> Optional[Int]:\n    return Optional[Int].|\n", []string{"some", "none"}, nil},
+		{"prelude result cases", "fn work() -> Result[Int, String]:\n    return Result[Int, String].|\n", []string{"ok", "error"}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

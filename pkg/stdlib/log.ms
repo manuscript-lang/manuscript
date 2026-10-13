@@ -1,10 +1,7 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Optional from "@std/optional.ms"
-import Error from "@std/errors.ms"
 import IoError from "@std/io.ms"
 import Map from "@std/collections.ms"
-import Result from "@std/result.ms"
 import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import JsonValue from "@std/json.ms"

@@ -5,7 +5,7 @@ weight = 4
 
 # Optional values
 
-Use `Optional[T]` when a value may be missing. `some(value: ...)` contains a value of type `T`; `none` means there is no value. Import Optional from `@std/optional.ms`.
+Use `Optional[T]` when a value may be missing. `some(value: ...)` contains a value of type `T`; `none` means there is no value. `Optional`, `some`, and `none` are available from the prelude without imports.
 
 ```manuscript
 let present: Optional[String] = some("Ada")

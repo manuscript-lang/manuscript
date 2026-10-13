@@ -2,10 +2,8 @@
 import List from "@std/collections.ms"
 import StringError from "@std/string.ms"
 import NumberError from "@std/numbers.ms"
-import Result from "@std/result.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
-import Optional from "@std/optional.ms"
 
 # Every value has this operation, including unconstrained type parameters.
 interface ValueOperations:

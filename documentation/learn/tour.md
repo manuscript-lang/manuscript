@@ -29,7 +29,6 @@ test "unread message count":
 
 ```manuscript
 import {List, Map, Set} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 
 let tags = ["docs", "release"]
 tags.append("featured")
@@ -135,8 +134,6 @@ Records group named fields. Fields can change even when the binding uses `let`. 
 ## Expected errors
 
 ```manuscript
-import Result from "@std/result.ms"
-
 type QuantityError:
     case MustBePositive
 
@@ -198,7 +195,6 @@ A closure remembers each binding's value when created. Reassigning a local varia
 
 ```manuscript
 import {filesystem, FileSystemError} from "@std/fs.ms"
-import Result from "@std/result.ms"
 
 fn copy_notes() -> Result[Unit, FileSystemError]:
     with source = try filesystem().open(path: "notes.txt", flags: "r", mode: 0):

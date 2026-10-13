@@ -89,7 +89,6 @@ Adding a case to an alternative invalidates exhaustive matches that lack a wildc
 A contract view keeps its concrete receiver. Match that view with `ConcreteType(receiver)` to handle a particular implementation, followed by `_:` for generic handling. This is a checked recovery of an existing receiver, not a constructor call.
 
 ```text
-import Error from "@std/errors.ms"
 import JsonError from "@std/json.ms"
 
 fn describe(cause: Error) -> String:

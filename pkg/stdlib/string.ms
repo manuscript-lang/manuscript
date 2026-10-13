@@ -1,9 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
-import Optional from "@std/optional.ms"
 import List from "@std/collections.ms"
-import Result from "@std/result.ms"
 
 # Errors returned by Unicode scalar conversions and bounded string operations.
 export type StringError:

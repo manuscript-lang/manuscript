@@ -4,12 +4,26 @@ title = "prelude"
 
 # prelude
 
-Intrinsic names; no import required.
+Names available in every module; no import required.
 
 ## Bool {data-api-kind="Type"}
 
 ```manuscript
 type Bool:
+```
+
+## Equal {data-api-kind="Interface"}
+
+```manuscript
+interface Equal:
+    fn equals(other: Equal) -> Bool
+```
+
+## Error {data-api-kind="Interface"}
+
+```manuscript
+interface Error:
+    fn message() -> String
 ```
 
 ## Float {data-api-kind="Type"}
@@ -25,6 +39,13 @@ type Float:
     fn truncate_to_int() -> Optional[Int]:
 ```
 
+## Hashable {data-api-kind="Interface"}
+
+```manuscript
+interface Hashable:
+    fn hash() -> Int
+```
+
 ## Int {data-api-kind="Type"}
 
 ```manuscript
@@ -38,6 +59,27 @@ type Int:
 
 ```manuscript
 type Never:
+```
+
+## Optional {data-api-kind="Alternative"}
+
+```manuscript
+type Optional[T]:
+    case some(value: T)
+    case none
+    fn is_some() -> Bool:
+    fn is_none() -> Bool:
+    fn unwrap() -> T:
+    fn unwrap_or(fallback: T) -> T:
+    fn unwrap_or_else(create: fn() -> T) -> T:
+```
+
+## Result {data-api-kind="Alternative"}
+
+```manuscript
+type Result[T, U]:
+    case ok(value: T)
+    case error(cause: U)
 ```
 
 ## String {data-api-kind="Type"}

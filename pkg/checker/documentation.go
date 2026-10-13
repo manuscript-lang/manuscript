@@ -44,6 +44,9 @@ func StandardLibrary() []APIModule {
 	for _, name := range []string{"Bool", "Int", "Float", "String", "Unit", "Never"} {
 		modules["prelude"] = append(modules["prelude"], &Symbol{Name: name, Kind: "type", Type: primitive(name)})
 	}
+	for _, name := range standardPreludeNames {
+		modules["prelude"] = append(modules["prelude"], standardSymbols[name])
+	}
 	var result []APIModule
 	for path, symbols := range modules {
 		sort.Slice(symbols, func(i, j int) bool { return symbols[i].Name < symbols[j].Name })

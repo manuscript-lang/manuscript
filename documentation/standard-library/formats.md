@@ -58,7 +58,6 @@ Negative limits return `InvalidInput`; zero is a real budget and exhaustion retu
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import {parse, TomlValue, TomlLimits} from "@std/toml.ms"
-import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
 test "parse bounded TOML configuration":
@@ -97,8 +96,6 @@ Hostnames are not normalized through IDNA; absent and empty queries have the sam
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import {parse, HtmlNode} from "@std/html.ms"
-import {Result} from "@std/result.ms"
-import Error from "@std/errors.ms"
 import panic from "@std/faults.ms"
 
 fn text_content(node: HtmlNode) -> String:

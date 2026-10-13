@@ -714,7 +714,9 @@ fn hex_encode(data: Bytes) -> String:
 
 # @std/equality.ms
 
-Import each required symbol with `import Name from "@std/equality.ms"`.
+These names are available in the prelude; no import required.
+
+Explicit imports with `import Name from "@std/equality.ms"` remain supported.
 
 ## Equal
 
@@ -736,7 +738,9 @@ interface Hashable:
 
 # @std/errors.ms
 
-Import each required symbol with `import Name from "@std/errors.ms"`.
+These names are available in the prelude; no import required.
+
+Explicit imports with `import Name from "@std/errors.ms"` remain supported.
 
 ## Error
 
@@ -1910,7 +1914,9 @@ fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]:
 
 # @std/optional.ms
 
-Import each required symbol with `import Name from "@std/optional.ms"`.
+These names are available in the prelude; no import required.
+
+Explicit imports with `import Name from "@std/optional.ms"` remain supported.
 
 ## Optional
 
@@ -2423,7 +2429,9 @@ fn compile(pattern: String) -> Result[Regex, RegexError]:
 
 # @std/result.ms
 
-Import each required symbol with `import Name from "@std/result.ms"`.
+These names are available in the prelude; no import required.
+
+Explicit imports with `import Name from "@std/result.ms"` remain supported.
 
 ## Result
 
@@ -3268,7 +3276,7 @@ fn parse(text: String, limits: Optional[YamlLimits] = none) -> Result[YamlValue,
 
 # prelude
 
-Intrinsic names; no import required.
+Names available in every module; no import required.
 
 ## Bool
 
@@ -3276,6 +3284,24 @@ Intrinsic names; no import required.
 
 ```manuscript
 type Bool:
+```
+
+## Equal
+
+**Interface**
+
+```manuscript
+interface Equal:
+    fn equals(other: Equal) -> Bool
+```
+
+## Error
+
+**Interface**
+
+```manuscript
+interface Error:
+    fn message() -> String
 ```
 
 ## Float
@@ -3291,6 +3317,15 @@ type Float:
     fn is_nan() -> Bool:
     fn is_finite() -> Bool:
     fn truncate_to_int() -> Optional[Int]:
+```
+
+## Hashable
+
+**Interface**
+
+```manuscript
+interface Hashable:
+    fn hash() -> Int
 ```
 
 ## Int
@@ -3310,6 +3345,31 @@ type Int:
 
 ```manuscript
 type Never:
+```
+
+## Optional
+
+**Alternative**
+
+```manuscript
+type Optional[T]:
+    case some(value: T)
+    case none
+    fn is_some() -> Bool:
+    fn is_none() -> Bool:
+    fn unwrap() -> T:
+    fn unwrap_or(fallback: T) -> T:
+    fn unwrap_or_else(create: fn() -> T) -> T:
+```
+
+## Result
+
+**Alternative**
+
+```manuscript
+type Result[T, U]:
+    case ok(value: T)
+    case error(cause: U)
 ```
 
 ## String

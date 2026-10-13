@@ -5,7 +5,7 @@ weight = 1
 
 # Expected failures with Result
 
-Use `Result[T, E]` when an operation can either succeed with a value of type `T` or fail with an expected error of type `E`. Import `Result` from `@std/result.ms`.
+Use `Result[T, E]` when an operation can either succeed with a value of type `T` or fail with an expected error of type `E`. `Result`, `ok`, and `error` are available from the prelude without imports.
 
 Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can inspect the result with `match` or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
 
@@ -47,13 +47,11 @@ This caller chooses a response for either outcome. Another caller could inspect 
 
 For most functions, keep the concrete domain error type. Its typed fields are available directly to callers; see [error details](../../standard-library/contracts.md#error-details).
 
-When a boundary should accept several error types, import `Error` from `@std/errors.ms`. It is an ordinary interface declaring `message() -> String`. Standard errors implement it; custom errors can declare an `impl Error` in their defining module.
+When a boundary should accept several error types, use the prelude `Error` interface without an import. It is an ordinary interface declaring `message() -> String`. Standard errors implement it; custom errors can declare an `impl Error` in their defining module.
 
 ```manuscript
 import Bytes from "@std/bytes.ms"
-import Error from "@std/errors.ms"
 import hex_decode from "@std/encoding.ms"
-import Result from "@std/result.ms"
 
 fn decode(text: String) -> Result[Bytes, Error]:
     let bytes = try hex_decode(text: text)

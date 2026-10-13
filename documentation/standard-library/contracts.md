@@ -25,7 +25,6 @@ Put typed information directly in an error record or alternative case. Each fiel
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 
 type ReadError:
@@ -70,8 +69,6 @@ If cancellation wins before a newly acquired resource is delivered, native acqui
 Limit and timeout parameters use `Optional[T] = none`. Omission or explicit `none` adds no operation budget or deadline. Supply a plain limit or duration to enforce a budget; the compiler wraps it under the [optional argument rules](../core-language/types/optionals.md#passing-optional-arguments). Optional limit fields in standard option records may also be omitted; `JsonLimits()` and `ArchiveLimits()` have no imposed budgets.
 
 ```manuscript
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import StringError from "@std/string.ms"
 
 fn repeated() -> Result[String, StringError]:

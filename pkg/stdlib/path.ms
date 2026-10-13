@@ -1,8 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
 import List from "@std/collections.ms"
-import Result from "@std/result.ms"
 
 # Errors returned when a path cannot be parsed or resolved.
 export type PathError:

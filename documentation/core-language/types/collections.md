@@ -111,7 +111,6 @@ import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
 import Map from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 
 fn positives(values: List[Int]) -> List[Int]:
     var result: List[Int] = []

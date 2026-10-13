@@ -2,10 +2,7 @@
 
 import List from "@std/collections.ms"
 import Map from "@std/collections.ms"
-import Error from "@std/errors.ms"
-import Result from "@std/result.ms"
 import Duration from "@std/time.ms"
-import Optional from "@std/optional.ms"
 
 # Read-only host details and selected controls for the current operating system.
 export interface System:

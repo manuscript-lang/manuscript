@@ -141,7 +141,7 @@ func TestUniversalToStringNavigation(t *testing.T) {
 func TestNavigationWithinStandardLibrary(t *testing.T) {
 	result := compiler.CompileSource("navigation.ms", "", compiler.Options{AnalyzeOnly: true})
 	for _, item := range []struct{ file, needle, target, name string }{
-		{"collections.ms", "Optional from", "optional.ms", "Optional"},
+		{"collections.ms", "Result[List[T]", "result.ms", "Result"},
 		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
 		{"collections.ms", "List[T]) ->", "collections.ms", "List"},
 		{"cli.ms", "List from", "collections.ms", "List"},

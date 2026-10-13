@@ -1,10 +1,7 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Optional from "@std/optional.ms"
-import Error from "@std/errors.ms"
 import List from "@std/collections.ms"
 import Map from "@std/collections.ms"
-import Result from "@std/result.ms"
 
 # Errors returned for malformed JSON or configured input and nesting limits.
 export type JsonError:

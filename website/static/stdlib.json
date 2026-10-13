@@ -2852,6 +2852,22 @@
           "type": "Bool"
         },
         {
+          "name": "Equal",
+          "kind": "interface",
+          "type": "Equal",
+          "operations": [
+            "equals: fn(other: Equal)-\u003eBool"
+          ]
+        },
+        {
+          "name": "Error",
+          "kind": "interface",
+          "type": "Error",
+          "operations": [
+            "message: fn()-\u003eString"
+          ]
+        },
+        {
           "name": "Float",
           "kind": "type",
           "type": "Float",
@@ -2863,6 +2879,14 @@
             "to_precision: fn(precision: Int)-\u003eResult[String, NumberError]",
             "to_string: fn()-\u003eString",
             "truncate_to_int: fn()-\u003eOptional[Int]"
+          ]
+        },
+        {
+          "name": "Hashable",
+          "kind": "interface",
+          "type": "Hashable",
+          "operations": [
+            "hash: fn()-\u003eInt"
           ]
         },
         {
@@ -2879,6 +2903,38 @@
           "name": "Never",
           "kind": "type",
           "type": "Never"
+        },
+        {
+          "name": "Optional",
+          "kind": "alternative",
+          "type": "Optional[T]",
+          "type_parameters": [
+            "T"
+          ],
+          "cases": [
+            "some(value: T)",
+            "none"
+          ],
+          "operations": [
+            "is_none: fn()-\u003eBool",
+            "is_some: fn()-\u003eBool",
+            "unwrap: fn()-\u003eT",
+            "unwrap_or: fn(fallback: T)-\u003eT",
+            "unwrap_or_else: fn(create: fn()-\u003eT)-\u003eT"
+          ]
+        },
+        {
+          "name": "Result",
+          "kind": "alternative",
+          "type": "Result[T, U]",
+          "type_parameters": [
+            "T",
+            "U"
+          ],
+          "cases": [
+            "ok(value: T)",
+            "error(cause: U)"
+          ]
         },
         {
           "name": "String",

@@ -100,6 +100,14 @@ Apply when: changing fields, collection updates, aliases, copies, equality, or c
 Evidence: [record contract](../documentation/core-language/types/records.md#mutation-and-cloning); [collection contract](../documentation/core-language/types/collections.md#mutation-and-copies); [native conformance](../tests/e2e/testdata/accept/mutation.ms); [resource clone rejection](../pkg/compiler/mutation_test.go); [CLI rejection and shared file lifetime](../tests/e2e/mutation_test.go).
 Verify: the counter's Unit-returning method updates `self.val`; aliases observe mutation; a clone's outer storage stays separate while its nested references remain shared. Native resource clone calls are rejected. Protect concurrent mutation with existing Synchronized guards; do not restore removed sharing bounds.
 
+### Optional, Result, and Error belong in the prelude
+
+Decision: the user requested Optional, Result, their related helpers, and Error without imports. Keep their canonical source-backed identities, including some/none, ok/error, and Optional receiver methods. Existing explicit imports remain valid. Ordinary declarations may select a local identity instead; a matching spelling must not acquire native behavior. Other standard APIs remain explicit imports.
+
+Apply when: changing prelude scope, standard imports, case lookup, or editor auto-imports.
+Evidence: [module scope rules](../documentation/core-language/modules/declarations.md#names-and-declaration-order), [native prelude conformance](../tests/e2e/testdata/accept/prelude.ms), [case inference regressions](../pkg/compiler/prelude_test.go), and [editor completion/navigation](../pkg/tooling/lsp/completion_test.go).
+Verify: Optional methods and Result propagation into Error execute without imports; incomplete constructors and ambiguous cases still fail; editor completion adds no redundant import and definitions reach pinned standard source.
+
 ### Parameterless main and imported host accessors
 
 Decision: applications export `fn main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.

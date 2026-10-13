@@ -2,14 +2,11 @@
 
 import BigInt from "@std/bigint.ms"
 import Bytes from "@std/bytes.ms"
-import Error from "@std/errors.ms"
 import Map from "@std/collections.ms"
 import List from "@std/collections.ms"
 import ReadStream from "@std/io.ms"
 import WriteStream from "@std/io.ms"
-import Optional from "@std/optional.ms"
 import Duration from "@std/time.ms"
-import Result from "@std/result.ms"
 import Timestamp from "@std/time.ms"
 
 # Errors returned by filesystem operations. `Failed` retains the host error text.

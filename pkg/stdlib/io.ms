@@ -1,9 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 # A file-like byte stream that returns `none` at end of input.
 export interface File:
