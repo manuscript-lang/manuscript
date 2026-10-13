@@ -16,6 +16,8 @@ type DocumentationInventory struct {
 	DescribedDeclarations  int                  `json:"described_declarations"`
 	Members                int                  `json:"members"`
 	DescribedMembers       int                  `json:"described_members"`
+	QualifiedDeclarations  int                  `json:"qualified_declarations"`
+	QualifiedMembers       int                  `json:"qualified_members"`
 	Entries                []DocumentationEntry `json:"entries"`
 }
 
@@ -26,27 +28,48 @@ type DocumentationEntry struct {
 	Name        string `json:"name"`
 	Contract    string `json:"contract,omitempty"`
 	Described   bool   `json:"described"`
+	Qualified   bool   `json:"qualified"`
+	Problem     string `json:"problem,omitempty"`
 }
 
 func Inventory(modules []checker.APIModule) DocumentationInventory {
-	report := DocumentationInventory{Format: 1, IncludesPreludeAliases: true, Entries: []DocumentationEntry{}}
-	for _, module := range modules {
-		for _, declaration := range module.Declarations {
-			described := strings.TrimSpace(declaration.Doc) != ""
+	report := DocumentationInventory{Format: 1, Entries: []DocumentationEntry{}}
+	visitDescriptions(modules, func(entry DocumentationEntry, doc string) {
+		entry.Described = strings.TrimSpace(doc) != ""
+		entry.Problem = descriptionProblem(entry, doc)
+		entry.Qualified = entry.Problem == ""
+		if entry.Module == "prelude" {
+			report.IncludesPreludeAliases = true
+		}
+		if entry.Kind == "declaration" {
 			report.Declarations++
-			if described {
+			if entry.Described {
 				report.DescribedDeclarations++
 			}
-			report.Entries = append(report.Entries, DocumentationEntry{Module: module.Path, Declaration: declaration.Name, Kind: "declaration", Name: declaration.Name, Described: described})
+			if entry.Qualified {
+				report.QualifiedDeclarations++
+			}
+		} else {
+			report.Members++
+			if entry.Described {
+				report.DescribedMembers++
+			}
+			if entry.Qualified {
+				report.QualifiedMembers++
+			}
+		}
+		report.Entries = append(report.Entries, entry)
+	})
+	return report
+}
+
+func visitDescriptions(modules []checker.APIModule, visit func(DocumentationEntry, string)) {
+	for _, module := range modules {
+		for _, declaration := range module.Declarations {
+			visit(DocumentationEntry{Module: module.Path, Declaration: declaration.Name, Kind: "declaration", Name: declaration.Name}, declaration.Doc)
 			for _, member := range declaration.Members {
-				described := strings.TrimSpace(member.Doc) != ""
-				report.Members++
-				if described {
-					report.DescribedMembers++
-				}
-				report.Entries = append(report.Entries, DocumentationEntry{Module: module.Path, Declaration: declaration.Name, Kind: member.Kind, Name: member.Name, Contract: member.Contract, Described: described})
+				visit(DocumentationEntry{Module: module.Path, Declaration: declaration.Name, Kind: member.Kind, Name: member.Name, Contract: member.Contract}, member.Doc)
 			}
 		}
 	}
-	return report
 }

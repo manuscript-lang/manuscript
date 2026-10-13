@@ -183,6 +183,30 @@ type BytesBuilder:
     fn freeze() -> Bytes:
 ```
 
+### BytesBuilder.append
+
+Appends one unsigned byte; values outside 0 through 255 or writes after freeze fault.
+
+```manuscript
+fn append(value: Int) -> Unit:
+```
+
+### BytesBuilder.concat
+
+Appends all supplied bytes in order; the input is unchanged, and a sealed builder faults.
+
+```manuscript
+fn concat(values: Bytes) -> Unit:
+```
+
+### BytesBuilder.freeze
+
+Seals the builder and returns its immutable bytes; repeated freeze returns the same value.
+
+```manuscript
+fn freeze() -> Bytes:
+```
+
 ## values {data-api-kind="Function"}
 
 Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().

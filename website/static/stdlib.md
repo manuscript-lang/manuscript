@@ -452,6 +452,30 @@ type BytesBuilder:
     fn freeze() -> Bytes:
 ```
 
+### BytesBuilder.append
+
+Appends one unsigned byte; values outside 0 through 255 or writes after freeze fault.
+
+```manuscript
+fn append(value: Int) -> Unit:
+```
+
+### BytesBuilder.concat
+
+Appends all supplied bytes in order; the input is unchanged, and a sealed builder faults.
+
+```manuscript
+fn concat(values: Bytes) -> Unit:
+```
+
+### BytesBuilder.freeze
+
+Seals the builder and returns its immutable bytes; repeated freeze returns the same value.
+
+```manuscript
+fn freeze() -> Bytes:
+```
+
 ## values
 
 **Function**
@@ -475,6 +499,15 @@ A resource that can be closed. `with` closes a bound resource on every exit.
 ```manuscript
 interface Closeable:
     fn close() -> Unit
+```
+
+### Closeable.close
+
+Releases the implementation's resource state; with calls this on every scope exit.
+Cleanup runs during return, expected errors, faults, and cancellation too.
+
+```manuscript
+fn close() -> Unit
 ```
 
 # @std/cli.ms
@@ -1263,7 +1296,7 @@ case Deflate
 
 ### CompressionFormat.Gzip
 
-GZIP framing.
+DEFLATE data wrapped in GZIP headers and a checksum trailer.
 
 ```manuscript
 case Gzip
@@ -1271,7 +1304,7 @@ case Gzip
 
 ### CompressionFormat.Zlib
 
-ZLIB framing.
+DEFLATE data with ZLIB header and Adler-32 checksum framing.
 
 ```manuscript
 case Zlib
@@ -1356,7 +1389,7 @@ type HashAlgorithm:
 
 ### HashAlgorithm.Sha256
 
-SHA-256.
+SHA-256, producing a 32-byte digest or HMAC.
 
 ```manuscript
 case Sha256
@@ -1364,7 +1397,7 @@ case Sha256
 
 ### HashAlgorithm.Sha384
 
-SHA-384.
+SHA-384, producing a 48-byte digest or HMAC.
 
 ```manuscript
 case Sha384
@@ -1372,7 +1405,7 @@ case Sha384
 
 ### HashAlgorithm.Sha512
 
-SHA-512.
+SHA-512, producing a 64-byte digest or HMAC.
 
 ```manuscript
 case Sha512
@@ -2403,6 +2436,14 @@ impl Error for FileSystemError:
     fn message() -> String:
 ```
 
+### FileSystemError.NotEmpty
+
+Removal failed because the directory still contains entries.
+
+```manuscript
+case NotEmpty
+```
+
 ## FileSystemInfo
 
 **Record**
@@ -2794,6 +2835,23 @@ interface File:
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 ```
 
+### File.close
+
+Releases the file resource; retained aliases do not extend its open lifetime.
+
+```manuscript
+fn close() -> Unit
+```
+
+### File.read
+
+Returns a byte chunk or none at EOF; max_bytes is a positive chunk size, not a total budget.
+Omission/none uses the native 64 KiB chunk; source implementations define their own buffering.
+
+```manuscript
+fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+```
+
 ## Files
 
 **Interface**
@@ -2804,6 +2862,14 @@ Native open failures (including missing paths and permission denial) become IoEr
 ```manuscript
 interface Files:
     fn open(path: String) -> Result[File, IoError]
+```
+
+### Files.open
+
+Opens path for read-only access; native missing, denied, and other open failures become Unavailable.
+
+```manuscript
+fn open(path: String) -> Result[File, IoError]
 ```
 
 ## IoError
@@ -2827,6 +2893,70 @@ impl Error for IoError:
     fn message() -> String:
 ```
 
+### IoError.Closed
+
+The stream or shared native handle was closed before the operation completed.
+
+```manuscript
+case Closed
+```
+
+### IoError.Failed
+
+A native or adapter failure outside the more specific I/O cases.
+
+```manuscript
+case Failed(message: String)
+```
+
+### IoError.InvalidData
+
+Read bytes are invalid for the requested decoding, such as malformed UTF-8 text.
+
+```manuscript
+case InvalidData
+```
+
+### IoError.InvalidInput
+
+An explicit chunk size, byte limit, or handle mode is invalid for this operation.
+
+```manuscript
+case InvalidInput
+```
+
+### IoError.LimitExceeded
+
+A supplied byte budget was exceeded; already consumed input may not be recoverable.
+
+```manuscript
+case LimitExceeded
+```
+
+### IoError.Unavailable
+
+The native service could not open or provide the requested stream.
+
+```manuscript
+case Unavailable
+```
+
+### IoError.Failed.message
+
+Original diagnostic text; message() returns it unchanged rather than redacting it.
+
+```manuscript
+message: String
+```
+
+### IoError.Error.message
+
+Returns original Failed text, or an I/O-prefixed diagnostic for the other cases.
+
+```manuscript
+fn message() -> String:
+```
+
 ## ReadStream
 
 **Interface**
@@ -2837,6 +2967,23 @@ A readable byte stream. Each read returns a chunk or `none` at end of stream.
 interface ReadStream:
     fn close() -> Unit
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+```
+
+### ReadStream.close
+
+Releases this implementation's read resource; ownership of underlying handles is implementation-defined.
+
+```manuscript
+fn close() -> Unit
+```
+
+### ReadStream.read
+
+Returns a chunk or none at EOF; a final nonempty chunk can precede EOF.
+A supplied positive max_bytes requests a chunk size; native omission/none uses 64 KiB.
+
+```manuscript
+fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 ```
 
 ## WriteStream
@@ -2852,6 +2999,23 @@ interface WriteStream:
     fn close() -> Unit
     fn flush() -> Result[Unit, IoError]
     fn write(data: Bytes) -> Result[Unit, IoError]
+```
+
+### WriteStream.close
+
+Releases this implementation's write resource; close does not imply a successful flush.
+
+```manuscript
+fn close() -> Unit
+```
+
+### WriteStream.flush
+
+Completes implementation-specific buffering or synchronization; native stdout/stderr use a no-op.
+File-handle writers synchronize the file, and failures retain IoError identity.
+
+```manuscript
+fn flush() -> Result[Unit, IoError]
 ```
 
 ### WriteStream.write
@@ -3028,6 +3192,78 @@ impl Error for LogError:
     fn message() -> String:
 ```
 
+### LogError.Closed
+
+The native transport has closed, so an admitted write or flush cannot complete.
+
+```manuscript
+case Closed
+```
+
+### LogError.FileSystem
+
+Opening the owned file transport returned a filesystem error.
+
+```manuscript
+case FileSystem(cause: FileSystemError)
+```
+
+### LogError.InvalidData
+
+Structured fields cannot be encoded as valid JSON, including cyclic values.
+
+```manuscript
+case InvalidData
+```
+
+### LogError.InvalidInput
+
+The selected record level or an explicit record-size budget is invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### LogError.Io
+
+A transport's underlying byte-stream operation returned its original I/O error.
+
+```manuscript
+case Io(cause: IoError)
+```
+
+### LogError.LimitExceeded
+
+The JSON record plus its terminating newline exceeds the supplied byte budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### LogError.FileSystem.cause
+
+Original filesystem error retained from file acquisition.
+
+```manuscript
+cause: FileSystemError
+```
+
+### LogError.Io.cause
+
+Original stream error; its message and concrete case are preserved.
+
+```manuscript
+cause: IoError
+```
+
+### LogError.Error.message
+
+Returns the preserved I/O/filesystem cause message, or a logging-prefixed diagnostic.
+
+```manuscript
+fn message() -> String:
+```
+
 ## LogLevel
 
 **Alternative**
@@ -3043,6 +3279,62 @@ type LogLevel:
     case Error
     case Fatal
     case Silent
+```
+
+### LogLevel.Debug
+
+Development diagnostics, encoded with numeric level 20.
+
+```manuscript
+case Debug
+```
+
+### LogLevel.Error
+
+Failure records, encoded with numeric level 50.
+
+```manuscript
+case Error
+```
+
+### LogLevel.Fatal
+
+Critical records at numeric level 60; logging does not terminate the process.
+
+```manuscript
+case Fatal
+```
+
+### LogLevel.Info
+
+Ordinary operational records, encoded with numeric level 30; the default threshold.
+
+```manuscript
+case Info
+```
+
+### LogLevel.Silent
+
+Filtering threshold that disables records; passing it to log returns InvalidInput.
+
+```manuscript
+case Silent
+```
+
+### LogLevel.Trace
+
+Most detailed records, encoded with numeric level 10.
+
+```manuscript
+case Trace
+```
+
+### LogLevel.Warn
+
+Warning records, encoded with numeric level 40.
+
+```manuscript
+case Warn
 ```
 
 ## Logger
@@ -3075,6 +3367,38 @@ Returns a logger that adds these fields to each record.
 fn child(bindings: Map[String, JsonValue]) -> Logger
 ```
 
+### Logger.debug
+
+Logs at Debug when enabled, with call fields overriding child bindings for duplicate keys.
+
+```manuscript
+fn debug(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
+```
+
+### Logger.enabled
+
+Tests the current filtering threshold; Silent is never enabled as a record level.
+
+```manuscript
+fn enabled(level: LogLevel) -> Bool
+```
+
+### Logger.error
+
+Logs at Error when enabled; it records an expected diagnostic rather than raising a fault.
+
+```manuscript
+fn error(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
+```
+
+### Logger.fatal
+
+Logs at Fatal when enabled; the caller remains responsible for process termination.
+
+```manuscript
+fn fatal(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
+```
+
 ### Logger.flush
 
 Flushes the logger's transport.
@@ -3083,12 +3407,52 @@ Flushes the logger's transport.
 fn flush() -> Result[Unit, LogError]
 ```
 
+### Logger.info
+
+Logs at Info when enabled; reserved level, msg, and time fields remain controlled by the logger.
+
+```manuscript
+fn info(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
+```
+
+### Logger.level
+
+Returns this logger's current threshold, independent of its parent or children.
+
+```manuscript
+fn level() -> LogLevel
+```
+
 ### Logger.log
 
 Writes a record at the selected level with optional JSON fields.
 
 ```manuscript
 fn log(level: LogLevel, message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
+```
+
+### Logger.set_level
+
+Changes only this logger's threshold; existing child loggers retain their copied threshold.
+
+```manuscript
+fn set_level(level: LogLevel) -> Unit
+```
+
+### Logger.trace
+
+Logs at Trace when enabled; a filtered call returns ok without encoding or transport access.
+
+```manuscript
+fn trace(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
+```
+
+### Logger.warn
+
+Logs at Warn when enabled, returning encoding, size-budget, or transport errors unchanged.
+
+```manuscript
+fn warn(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
 ```
 
 ## Transport
@@ -3102,6 +3466,31 @@ interface Transport:
     fn write(data: Bytes) -> Result[Unit, LogError]
     fn flush() -> Result[Unit, LogError]
     fn close() -> Unit
+```
+
+### Transport.close
+
+Releases owned resources; native close cancels admitted operations and leaves borrowed streams open.
+
+```manuscript
+fn close() -> Unit
+```
+
+### Transport.flush
+
+Delegates flush to the destination; persistence and buffering depend on that destination.
+
+```manuscript
+fn flush() -> Result[Unit, LogError]
+```
+
+### Transport.write
+
+Accepts encoded record bytes; native transports serialize writes and may return the original I/O cause.
+Errors can follow a partial external write, without rollback.
+
+```manuscript
+fn write(data: Bytes) -> Result[Unit, LogError]
 ```
 
 ## create
@@ -3705,6 +4094,30 @@ type Optional[T]:
     fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
+### Optional.none
+
+An absent value with no payload; no T needs to be constructed.
+
+```manuscript
+case none
+```
+
+### Optional.some
+
+A present payload, retained by reference when T is mutable.
+
+```manuscript
+case some(value: T)
+```
+
+### Optional.some.value
+
+The contained value; unwrap and matching return this original payload.
+
+```manuscript
+value: T
+```
+
 ### Optional.and_then[U]
 
 Calls transform only when present, returning its Optional unchanged.
@@ -3723,7 +4136,7 @@ fn is_none() -> Bool:
 
 ### Optional.is_some
 
-Reports whether this value contains a payload.
+Returns true for some(value), and false for none.
 
 ```manuscript
 fn is_some() -> Bool:
@@ -4341,6 +4754,23 @@ type PriorityQueue[T]:
     fn is_empty() -> Bool:
 ```
 
+### PriorityQueue.capacity
+
+Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
+
+```manuscript
+capacity: Optional[Int] = none
+```
+
+### PriorityQueue.compare
+
+Constructor comparator: negative puts left first; ties dequeue in enqueue order.
+Comparisons must stay consistent and must not mutate this queue.
+
+```manuscript
+compare: fn(left: T, right: T) -> Int
+```
+
 ### PriorityQueue.dequeue
 
 Removes and returns the next value by priority, or `none` when empty.
@@ -4357,11 +4787,36 @@ Adds a value, returning false when a bounded queue is full.
 fn enqueue(value: T) -> Bool:
 ```
 
+### PriorityQueue.is_empty
+
+Reports whether the queue has no values to peek or dequeue.
+
+```manuscript
+fn is_empty() -> Bool:
+```
+
+### PriorityQueue.length
+
+Returns the number of enqueued values, independent of their priorities.
+
+```manuscript
+fn length() -> Int:
+```
+
+### PriorityQueue.peek
+
+Returns the next value by priority without removing it, or none when empty.
+
+```manuscript
+fn peek() -> Optional[T]:
+```
+
 ## Queue
 
 **Native type**
 
-FIFO queue. An omitted capacity creates an unbounded queue.
+A local mutable FIFO queue; protect all shared access with Synchronized.
+Omitted or none capacity grows as needed and adds no fixed queue limit.
 
 ```manuscript
 type Queue[T]:
@@ -4375,7 +4830,7 @@ type Queue[T]:
 
 ### Queue.capacity
 
-Optional constructor argument; omit for an unbounded queue.
+Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
 
 ```manuscript
 capacity: Optional[Int] = none
@@ -4397,9 +4852,25 @@ Adds a value, returning false when a bounded queue is full.
 fn enqueue(value: T) -> Bool:
 ```
 
+### Queue.is_empty
+
+Reports whether dequeue and peek would return none.
+
+```manuscript
+fn is_empty() -> Bool:
+```
+
+### Queue.length
+
+Returns the number of values currently waiting in the queue.
+
+```manuscript
+fn length() -> Int:
+```
+
 ### Queue.peek
 
-Returns the oldest value without removing it.
+Returns the oldest value without removing it, or none when the queue is empty.
 
 ```manuscript
 fn peek() -> Optional[T]:
@@ -4558,6 +5029,38 @@ type Result[T, E]:
     fn to_optional() -> Optional[T]:
 ```
 
+### Result.error
+
+An expected failure value; it is distinct from faults and cancellation.
+
+```manuscript
+case error(cause: E)
+```
+
+### Result.ok
+
+A successful result, retaining its payload without a deep copy.
+
+```manuscript
+case ok(value: T)
+```
+
+### Result.error.cause
+
+The original domain error, retained through compatible Result propagation.
+
+```manuscript
+cause: E
+```
+
+### Result.ok.value
+
+The successful value returned by unwrap, matching, or propagation.
+
+```manuscript
+value: T
+```
+
 ### Result.and_then[U]
 
 Calls transform only on success. Its result keeps the same error type.
@@ -4651,7 +5154,7 @@ type NormalizationForm:
 
 ### NormalizationForm.Nfc
 
-Canonical composition.
+Canonical decomposition followed by canonical recomposition where Unicode permits it.
 
 ```manuscript
 case Nfc
@@ -4659,7 +5162,7 @@ case Nfc
 
 ### NormalizationForm.Nfd
 
-Canonical decomposition.
+Canonical decomposition with combining marks placed in canonical order.
 
 ```manuscript
 case Nfd
@@ -4667,7 +5170,7 @@ case Nfd
 
 ### NormalizationForm.Nfkc
 
-Compatibility composition.
+Compatibility decomposition followed by canonical recomposition where Unicode permits it.
 
 ```manuscript
 case Nfkc
@@ -4675,7 +5178,7 @@ case Nfkc
 
 ### NormalizationForm.Nfkd
 
-Compatibility decomposition.
+Compatibility decomposition with combining marks placed in canonical order.
 
 ```manuscript
 case Nfkd
@@ -4748,6 +5251,23 @@ type Synchronized[T]:
     fn lock() -> SynchronizedGuard[T]:
 ```
 
+### Synchronized.value
+
+Initial constructor payload; retain its mutable aliases only with the same guarded access policy.
+
+```manuscript
+value: T
+```
+
+### Synchronized.lock
+
+Waits for an exclusive guard; caller cancellation interrupts a pending acquisition.
+Keep the guard in a with scope so every exit releases it.
+
+```manuscript
+fn lock() -> SynchronizedGuard[T]:
+```
+
 ## SynchronizedGuard
 
 **Native type**
@@ -4759,6 +5279,30 @@ type SynchronizedGuard[T]:
     fn get() -> T:
     fn set(value: T) -> Unit:
     fn close() -> Unit:
+```
+
+### SynchronizedGuard.close
+
+Releases the lock for every alias of this guard; repeated close does nothing.
+
+```manuscript
+fn close() -> Unit:
+```
+
+### SynchronizedGuard.get
+
+Returns the original guarded payload, without cloning; a closed guard faults.
+
+```manuscript
+fn get() -> T:
+```
+
+### SynchronizedGuard.set
+
+Replaces the guarded payload without copying it; a closed guard faults.
+
+```manuscript
+fn set(value: T) -> Unit:
 ```
 
 # @std/system.ms
@@ -5213,7 +5757,7 @@ type Duration:
 
 ### Duration.add
 
-Adds another duration.
+Adds signed nanoseconds; a result outside Duration's representable range faults.
 
 ```manuscript
 fn add(right: Duration) -> Duration:
@@ -5835,6 +6379,8 @@ Names available in every module; no import required.
 
 **Type**
 
+Boolean truth values true and false; conditions require this type.
+
 ```manuscript
 type Bool:
 ```
@@ -5881,6 +6427,8 @@ fn message() -> String
 ## Float
 
 **Type**
+
+Binary floating-point values, including signed zero, infinities and NaN.
 
 ```manuscript
 type Float:
@@ -5972,6 +6520,8 @@ fn hash() -> Int
 ## Int
 
 **Type**
+
+Signed whole numbers with checked arithmetic; overflow and division by zero fault.
 
 ```manuscript
 type Int:
@@ -6383,6 +6933,8 @@ fn with_entry(key: T, value: U) -> Map[T, U]:
 
 **Type**
 
+The return type of computations that cannot return a value, such as panic.
+
 ```manuscript
 type Never:
 ```
@@ -6409,6 +6961,30 @@ type Optional[T]:
     fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
+### Optional.none
+
+An absent value with no payload; no T needs to be constructed.
+
+```manuscript
+case none
+```
+
+### Optional.some
+
+A present payload, retained by reference when T is mutable.
+
+```manuscript
+case some(value: T)
+```
+
+### Optional.some.value
+
+The contained value; unwrap and matching return this original payload.
+
+```manuscript
+value: T
+```
+
 ### Optional.and_then[U]
 
 Calls transform only when present, returning its Optional unchanged.
@@ -6427,7 +7003,7 @@ fn is_none() -> Bool:
 
 ### Optional.is_some
 
-Reports whether this value contains a payload.
+Returns true for some(value), and false for none.
 
 ```manuscript
 fn is_some() -> Bool:
@@ -6510,6 +7086,38 @@ type Result[T, E]:
     fn to_optional() -> Optional[T]:
 ```
 
+### Result.error
+
+An expected failure value; it is distinct from faults and cancellation.
+
+```manuscript
+case error(cause: E)
+```
+
+### Result.ok
+
+A successful result, retaining its payload without a deep copy.
+
+```manuscript
+case ok(value: T)
+```
+
+### Result.error.cause
+
+The original domain error, retained through compatible Result propagation.
+
+```manuscript
+cause: E
+```
+
+### Result.ok.value
+
+The successful value returned by unwrap, matching, or propagation.
+
+```manuscript
+value: T
+```
+
 ### Result.and_then[U]
 
 Calls transform only on success. Its result keeps the same error type.
@@ -6585,6 +7193,8 @@ fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 ## String
 
 **Type**
+
+UTF-8 text indexed by Unicode scalar values; byte_length counts encoded bytes instead.
 
 ```manuscript
 type String:
@@ -6919,6 +7529,8 @@ fn upper() -> String
 ## Unit
 
 **Type**
+
+The single value unit, used when an operation returns no useful payload.
 
 ```manuscript
 type Unit:

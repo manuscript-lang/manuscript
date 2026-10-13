@@ -48,7 +48,7 @@ case Deflate
 
 ### CompressionFormat.Gzip
 
-GZIP framing.
+DEFLATE data wrapped in GZIP headers and a checksum trailer.
 
 ```manuscript
 case Gzip
@@ -56,7 +56,7 @@ case Gzip
 
 ### CompressionFormat.Zlib
 
-ZLIB framing.
+DEFLATE data with ZLIB header and Adler-32 checksum framing.
 
 ```manuscript
 case Zlib

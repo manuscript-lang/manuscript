@@ -11,13 +11,13 @@ export type StringError:
 
 # The four Unicode normalization forms, selected without runtime string spelling errors.
 export type NormalizationForm:
-    # Canonical composition.
+    # Canonical decomposition followed by canonical recomposition where Unicode permits it.
     case Nfc
-    # Canonical decomposition.
+    # Canonical decomposition with combining marks placed in canonical order.
     case Nfd
-    # Compatibility composition.
+    # Compatibility decomposition followed by canonical recomposition where Unicode permits it.
     case Nfkc
-    # Compatibility decomposition.
+    # Compatibility decomposition with combining marks placed in canonical order.
     case Nfkd
 
     # Normalizes text with the existing String.normalize budgets and StringError cases.

@@ -21,7 +21,7 @@ type NormalizationForm:
 
 ### NormalizationForm.Nfc
 
-Canonical composition.
+Canonical decomposition followed by canonical recomposition where Unicode permits it.
 
 ```manuscript
 case Nfc
@@ -29,7 +29,7 @@ case Nfc
 
 ### NormalizationForm.Nfd
 
-Canonical decomposition.
+Canonical decomposition with combining marks placed in canonical order.
 
 ```manuscript
 case Nfd
@@ -37,7 +37,7 @@ case Nfd
 
 ### NormalizationForm.Nfkc
 
-Compatibility composition.
+Compatibility decomposition followed by canonical recomposition where Unicode permits it.
 
 ```manuscript
 case Nfkc
@@ -45,7 +45,7 @@ case Nfkc
 
 ### NormalizationForm.Nfkd
 
-Compatibility decomposition.
+Compatibility decomposition with combining marks placed in canonical order.
 
 ```manuscript
 case Nfkd

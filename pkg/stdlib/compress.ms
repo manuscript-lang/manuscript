@@ -34,9 +34,9 @@ impl Error for CompressionError:
 # Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
 # Existing compress/decompress format: String calls remain available.
 export type CompressionFormat:
-    # GZIP framing.
+    # DEFLATE data wrapped in GZIP headers and a checksum trailer.
     case Gzip
-    # ZLIB framing.
+    # DEFLATE data with ZLIB header and Adler-32 checksum framing.
     case Zlib
     # Raw DEFLATE without framing.
     case Deflate

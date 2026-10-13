@@ -13,7 +13,7 @@ export interface Clock:
 
 # A span of elapsed time.
 export type Duration:
-    # Adds another duration.
+    # Adds signed nanoseconds; a result outside Duration's representable range faults.
     fn add(right: Duration) -> Duration:
     fn subtract(right: Duration) -> Duration:
     fn multiply(factor: Int) -> Duration:
