@@ -216,6 +216,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			return &ast.BinaryExpr{X: runtimeCall("Bool", g.expression(e.Left)), Op: op, Y: runtimeCall("Bool", g.expression(e.Right))}
 		}
 		if e.Text == "==" || e.Text == "!=" {
+			if value := g.primitiveEquality(e); value != nil {
+				return value
+			}
 			return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.program.Expressions[e.Left].Type))
 		}
 		if value := g.numericBinary(e); value != nil {
