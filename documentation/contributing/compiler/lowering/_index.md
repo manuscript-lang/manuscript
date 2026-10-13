@@ -78,13 +78,34 @@ label preparation but still pass `[]rt.Value` through `Function.Body`. Lists sto
 alternative. Generic specialization, contract dispatch, and closure snapshots
 also cross the shared value boundary.
 
-The next specialization should start with noncaptured concrete scalar locals
-whose repeated uses remain in arithmetic or comparisons, converting at explicit
-boundaries. Do not change every concrete local blindly: in the benchmark's call
-loop, unboxing a returned value and boxing it again for the next call adds
-allocations. Keep those locals boxed until a separately measured typed-call path
-can remove both conversions. Preserve checked overflow, Float rounding, operand
-order, source frames, cancellation, and debugger-visible names.
+The coordinated first production optimization stage is narrower than changing
+all representations:
+
+- Lower equality directly only for matching checked built-in primitive identities
+  whose runtime comparison agrees with Go. Source implementations cannot replace
+  primitive equality. Keep generic operands, contract views, nominal data,
+  Decimal, and time values on their existing paths. Capture both operands once in
+  source order, then update the operation's fault site; preserve Float NaN and
+  signed-zero behavior. Test side-effecting operands, shadowed type names, and
+  local/custom implementations alongside a primitive-equality benchmark.
+- Omit a source function's cleanup stack only when lowering emits no `with`
+  registration owned by that function. Track actual use while building its AST;
+  defaults and generated match closures share the owning stack, while nested
+  source functions/closures make independent decisions. An empty `Unwind` only
+  recovers and rethrows; retain source tracing, source-return/propagation wrappers,
+  profiling, and cancellation. Test functions with and without cleanup across
+  return, fault, cancellation, match exits, and nested closures, and measure the
+  call benchmark with the same ABI before and after.
+
+Next, specialize noncaptured concrete scalar locals whose repeated uses remain
+in arithmetic or comparisons, converting at explicit boundaries. Do not change
+every concrete local blindly: in the benchmark's call loop, unboxing a returned
+value and boxing it again for the next call adds allocations. Keep those locals
+boxed until a separately measured typed-call path can remove both conversions.
+Specialization hoisting must retain the exact checked type arguments and recursive
+implementation scopes; matching type spellings alone do not establish reusable
+dispatch. Preserve checked overflow, Float rounding, operand order, source frames,
+cancellation, and debugger-visible names.
 
 Subsequent candidates are typed entry points for eligible known source functions
 with adapters at callable/generic boundaries, and fusion of an immediately
