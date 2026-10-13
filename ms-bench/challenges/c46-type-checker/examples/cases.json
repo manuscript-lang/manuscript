@@ -1,0 +1,7 @@
+[
+ {
+  "name": "basic",
+  "stdin": "1 + 2 * 3\nif 1 < 2 then \"a\" else \"b\"\nlet x = 5 in x + true\n1 +\n",
+  "stdout": "Int\nStr\nerror: expected Int, found Bool at 18\nerror: syntax error at 4\n"
+ }
+]

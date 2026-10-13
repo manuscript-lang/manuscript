@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "[rules]\nnow 3000\nvip Dana\nroute refund billing 2\nroute crash eng 1\n[tickets]\nt1|alice|100|App crash on start|stack trace attached\nt2|Dana|2900|Re: refund please|where is my money\nt3|alice|150|RE: re: app crash on start|same here\nt4|bob|2990|hello\nt5|bob|2990|Question|just asking\n",
+  "stdout": "queue billing (1)\n  t2 P1 Re: refund please\nqueue eng (1)\n  t1 P1 App crash on start (+1 merged)\nqueue general (1)\n  t5 P3 Question\nsummary: tickets=3 merged=1 problems=1\nproblems:\n  line 10: bad ticket\n"
+ },
+ {
+  "name": "small",
+  "stdin": "[rules]\nroute printer hardware 4\n[tickets]\na|x|0|Printer jam|\nb|y|1|printer? PRINTER|\n",
+  "stdout": "queue hardware (2)\n  a P4 Printer jam\n  b P4 printer? PRINTER\nsummary: tickets=2 merged=0 problems=0\n"
+ }
+]

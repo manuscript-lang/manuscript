@@ -1,0 +1,55 @@
+use std::collections::HashMap;
+use std::io::{self, Read, Write};
+
+fn digits(s: &str) -> bool {
+    !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    let levels = ["DEBUG", "INFO", "WARN", "ERROR"];
+    let methods = ["GET", "POST", "PUT", "DELETE"];
+    let mut level_counts = [0usize; 4];
+    let mut stats: HashMap<String, (usize, u64)> = HashMap::new();
+    let (mut valid, mut malformed, mut server) = (0, 0, 0);
+    for line in input.split('\n') {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let f: Vec<&str> = line.split(' ').collect();
+        let lv = if f.len() == 6 { levels.iter().position(|l| *l == f[1]) } else { None };
+        let ok = f.len() == 6
+            && !f[0].is_empty()
+            && lv.is_some()
+            && methods.contains(&f[2])
+            && f[3].starts_with('/')
+            && f[4].len() == 3
+            && digits(f[4])
+            && digits(f[5])
+            && f[5].len() <= 9;
+        if !ok {
+            malformed += 1;
+            continue;
+        }
+        valid += 1;
+        level_counts[lv.unwrap()] += 1;
+        if f[4].parse::<u32>().unwrap() >= 500 {
+            server += 1;
+        }
+        let e = stats.entry(f[3].to_string()).or_insert((0, 0));
+        e.0 += 1;
+        e.1 += f[5].parse::<u64>().unwrap();
+    }
+    let mut out = format!("valid: {}\nmalformed: {}\n", valid, malformed);
+    for (i, l) in levels.iter().enumerate() {
+        out.push_str(&format!("{}: {}\n", l, level_counts[i]));
+    }
+    out.push_str(&format!("5xx: {}\ntop:\n", server));
+    let mut ranked: Vec<(&String, &(usize, u64))> = stats.iter().collect();
+    ranked.sort_by(|a, b| b.1 .0.cmp(&a.1 .0).then(a.0.cmp(b.0)));
+    for (path, (n, sum)) in ranked.into_iter().take(3) {
+        out.push_str(&format!("{} {} avg={}\n", path, n, sum / *n as u64));
+    }
+    io::stdout().write_all(out.as_bytes()).unwrap();
+}

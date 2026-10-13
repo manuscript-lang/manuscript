@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "caesar enc 3 Hello, World!\ncaesar dec 3 Khoor, Zruog!\nvigenere enc Key Attack at dawn\nvigenere dec Key Kxrkgi kx bkal\nrot13 enc 13 x\ncaesar enc 3x abc\ncaesar enc\n",
+  "stdout": "Khoor, Zruog!\nHello, World!\nKxrkgi kx bkal\nAttack at dawn\nerror: bad cipher\nerror: bad key\nerror: bad command\n"
+ },
+ {
+  "name": "wraparound",
+  "stdin": "caesar enc 1 xyz XYZ\ncaesar enc -1 abc ABC\n",
+  "stdout": "yza YZA\nzab ZAB\n"
+ }
+]

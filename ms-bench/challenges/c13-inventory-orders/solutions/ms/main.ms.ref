@@ -1,0 +1,211 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+import StringBuilder from "@std/string.ms"
+
+type Item:
+    sku: String
+    qty: Int
+
+type Order:
+    items: List[Item]
+    status: String
+    total: Int
+
+type Shop:
+    stock: Map[String, Int]
+    price: Map[String, Int]
+    orders: Map[String, Order]
+    out: StringBuilder
+
+fn emit(s: Shop, text: String) -> Unit:
+    s.out.append(text)
+    s.out.append("\n")
+
+fn pad2(n: Int) -> String:
+    if n < 10:
+        return "0{n}"
+    return "{n}"
+
+fn money(c: Int) -> String:
+    return "{c / 100}.{pad2(c % 100)}"
+
+# True when s is non-empty and every scalar is in [lo1, hi1], [lo2, hi2] or equals extra.
+fn all_in(s: String, lo1: Int, hi1: Int, lo2: Int, hi2: Int, extra: Int) -> Bool:
+    if s.is_empty():
+        return false
+    for c in s.scalar_values():
+        if not ((c >= lo1 and c <= hi1) or (c >= lo2 and c <= hi2) or c == extra):
+            return false
+    return true
+
+fn valid_sku(s: String) -> Bool:
+    return all_in(s, 65, 90, 48, 57, 45)
+
+fn valid_oid(s: String) -> Bool:
+    return all_in(s, 97, 122, 48, 57, 45)
+
+# Parses 1 to 7 ASCII digits.
+fn number(s: String) -> Optional[Int]:
+    if s.length() > 7 or not all_in(s, 48, 57, 48, 57, 48):
+        return none
+    return some(s.parse_int().unwrap())
+
+fn qty_of(s: String) -> Optional[Int]:
+    let n = number(s)
+    if n.is_none() or n.unwrap() < 1 or n.unwrap() > 100000:
+        return none
+    return n
+
+fn arity(cmd: String) -> Int:
+    if cmd == "stock" or cmd == "price":
+        return 3
+    if cmd == "cancel" or cmd == "ship":
+        return 2
+    if cmd == "report":
+        return 1
+    return 0
+
+fn stock_of(s: Shop, sku: String) -> Int:
+    return s.stock.get(sku).unwrap()
+
+fn do_stock(s: Shop, t: List[String]) -> Unit:
+    let sku = t.at(1).unwrap()
+    if not valid_sku(sku):
+        return emit(s, "error: bad sku")
+    let q = qty_of(t.at(2).unwrap())
+    if q.is_none():
+        return emit(s, "error: bad quantity")
+    if s.stock.contains(sku):
+        s.stock.add(key: sku, value: stock_of(s, sku) + q.unwrap())
+    else:
+        s.stock.add(key: sku, value: q.unwrap())
+        s.price.add(key: sku, value: 0)
+    emit(s, "ok {sku} stock={stock_of(s, sku)}")
+
+fn do_price(s: Shop, t: List[String]) -> Unit:
+    let sku = t.at(1).unwrap()
+    let p = number(t.at(2).unwrap())
+    if p.is_none() or p.unwrap() > 10000000:
+        return emit(s, "error: bad price")
+    if not s.stock.contains(sku):
+        return emit(s, "error: unknown sku {sku}")
+    s.price.add(key: sku, value: p.unwrap())
+    emit(s, "ok")
+
+fn do_order(s: Shop, t: List[String]) -> Unit:
+    let id = t.at(1).unwrap()
+    if not valid_oid(id):
+        return emit(s, "error: bad order id")
+    if s.orders.contains(id):
+        return emit(s, "error: order {id} already exists")
+    let items = List[Item]()
+    var i = 2
+    while i < t.length():
+        let tok = t.at(i).unwrap()
+        i = i + 1
+        let p = tok.split(":")
+        if p.length() != 2 or not valid_sku(p.at(0).unwrap()):
+            return emit(s, "error: bad item {tok}")
+        let q = qty_of(p.at(1).unwrap())
+        if q.is_none():
+            return emit(s, "error: bad item {tok}")
+        items.append(Item(sku: p.at(0).unwrap(), qty: q.unwrap()))
+    let seen = Map[String, Bool]()
+    for it in items:
+        if seen.contains(it.sku):
+            return emit(s, "error: duplicate sku {it.sku}")
+        if not s.stock.contains(it.sku):
+            return emit(s, "error: unknown sku {it.sku}")
+        let have = stock_of(s, it.sku)
+        if it.qty > have:
+            return emit(s, "error: insufficient stock for {it.sku} (have {have}, need {it.qty})")
+        seen.add(key: it.sku, value: true)
+    var total = 0
+    for it in items:
+        s.stock.add(key: it.sku, value: stock_of(s, it.sku) - it.qty)
+        let each = s.price.get(it.sku).unwrap()
+        if it.qty >= 10:
+            total = total + (it.qty * each * 90 + 50) / 100
+        else:
+            total = total + it.qty * each
+    s.orders.add(key: id, value: Order(items: items, status: "placed", total: total))
+    emit(s, "ok {id} total={money(total)}")
+
+fn do_cancel_ship(s: Shop, cmd: String, id: String) -> Unit:
+    let found = s.orders.get(id)
+    if found.is_none():
+        return emit(s, "error: unknown order {id}")
+    let o = found.unwrap()
+    if cmd == "cancel":
+        if o.status != "placed":
+            return emit(s, "error: order {id} already {o.status}")
+        for it in o.items:
+            s.stock.add(key: it.sku, value: stock_of(s, it.sku) + it.qty)
+        o.status = "cancelled"
+        return emit(s, "ok")
+    if o.status == "shipped":
+        return emit(s, "error: order {id} already shipped")
+    if o.status == "cancelled":
+        return emit(s, "error: order {id} is cancelled")
+    o.status = "shipped"
+    emit(s, "ok")
+
+fn do_report(s: Shop) -> Unit:
+    let reserved = Map[String, Int]()
+    var placed = 0
+    var shipped = 0
+    var cancelled = 0
+    var revenue = 0
+    for id in s.orders.keys():
+        let o = s.orders.get(id).unwrap()
+        if o.status == "placed":
+            placed = placed + 1
+            for it in o.items:
+                reserved.add(key: it.sku, value: reserved.get(it.sku).unwrap_or(0) + it.qty)
+        else if o.status == "shipped":
+            shipped = shipped + 1
+            revenue = revenue + o.total
+        else:
+            cancelled = cancelled + 1
+    let skus = s.stock.keys().sorted(compare: fn(x: String, y: String) -> Int:
+        return x.compare(y)
+    )
+    for sku in skus:
+        emit(s, "{sku} stock={stock_of(s, sku)} price={money(s.price.get(sku).unwrap())} reserved={reserved.get(sku).unwrap_or(0)}")
+    emit(s, "orders placed={placed} shipped={shipped} cancelled={cancelled}")
+    emit(s, "revenue={money(revenue)}")
+
+fn exec(s: Shop, line: String) -> Unit:
+    let t = line.split(" ")
+    let cmd = t.at(0).unwrap()
+    let want = arity(cmd)
+    if want == 0 and cmd != "order":
+        return emit(s, "error: unknown command")
+    if (cmd == "order" and t.length() < 3) or (cmd != "order" and t.length() != want):
+        return emit(s, "error: usage")
+    if cmd == "stock":
+        return do_stock(s, t)
+    if cmd == "price":
+        return do_price(s, t)
+    if cmd == "order":
+        return do_order(s, t)
+    if cmd == "report":
+        return do_report(s)
+    do_cancel_ship(s, cmd, t.at(1).unwrap())
+
+fn run() -> Result[Unit, Error]:
+    let s = Shop(stock: Map[String, Int](), price: Map[String, Int](), orders: Map[String, Order](), out: StringBuilder())
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let line = next.unwrap()
+        if line.replace_all(old: " ", new: "").unwrap().is_empty():
+            continue
+        exec(s, line)
+    try stdout().write(s.out.freeze().to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

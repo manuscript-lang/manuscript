@@ -28,10 +28,11 @@ def run_one(ch, lang_id, lang, harness, model, timeout_s, keep, out_file, tag):
     transcripts = RESULTS / "transcripts"
     transcripts.mkdir(parents=True, exist_ok=True)
     if harness.name == "oracle":
-        src = ch.solution(lang_id)
+        src = ch.solution(lang_id) / (Path(lang["solution"]).name + ".ref")
         dst = ws / lang["solution"]
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(next(src.iterdir()), dst)
+        if src.is_file() and src.stat().st_size:
+            shutil.copy(src, dst)
         agent = {"usage": harness.parse("").dict(), "wall_s": 0.0, "exit_code": 0, "timed_out": False}
     else:
         agent = harness.run(prompt, model, ws, timeout_s, transcripts / f"{run_id}.log")

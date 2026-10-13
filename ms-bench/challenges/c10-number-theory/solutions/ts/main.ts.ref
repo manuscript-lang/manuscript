@@ -1,0 +1,69 @@
+import { readFileSync } from "node:fs";
+
+const DIG = "0123456789abcdefghijklmnopqrstuvwxyz";
+const ARITY: Record<string, number> = { gcd: 3, lcm: 3, isprime: 2, factor: 2, base: 4 };
+
+function gcd(a: bigint, b: bigint): bigint {
+  while (b !== 0n) [a, b] = [b, a % b];
+  return a;
+}
+
+function isNumber(s: string): boolean { return /^[0-9]{1,18}$/.test(s); }
+
+function baseCmd(t: string[]): string {
+  const [, v, fr, to] = t;
+  for (const b of [fr, to]) {
+    if (!isNumber(b) || Number(b) < 2 || Number(b) > 36) return "error: bad base";
+  }
+  const from = BigInt(fr), dest = BigInt(to);
+  if (v === "") return "error: bad digit";
+  let n = 0n;
+  for (const ch of v.toLowerCase()) {
+    const d = DIG.indexOf(ch);
+    if (d < 0 || BigInt(d) >= from || !/^[0-9A-Za-z]$/.test(ch)) return "error: bad digit";
+    n = n * from + BigInt(d);
+  }
+  if (n === 0n) return "0";
+  let s = "";
+  while (n > 0n) { s = DIG[Number(n % dest)] + s; n /= dest; }
+  return s;
+}
+
+function solveLine(line: string): string {
+  const t = line.split(" ");
+  const cmd = t[0];
+  if (!(cmd in ARITY) || !Object.prototype.hasOwnProperty.call(ARITY, cmd)) return "error: unknown command";
+  if (t.length !== ARITY[cmd]) return "error: bad arguments";
+  if (cmd === "base") return baseCmd(t);
+  if (!t.slice(1).every(isNumber)) return "error: bad arguments";
+  const nums = t.slice(1).map((x) => BigInt(x));
+  if ((cmd === "gcd" || cmd === "lcm") && nums.some((n) => n > 1000000000n)) return "error: out of range";
+  if ((cmd === "isprime" || cmd === "factor") && nums[0] > 10000000000n) return "error: out of range";
+  if (cmd === "gcd") return String(gcd(nums[0], nums[1]));
+  if (cmd === "lcm") {
+    const [a, b] = nums;
+    return a === 0n || b === 0n ? "0" : String((a / gcd(a, b)) * b);
+  }
+  let n = Number(nums[0]);
+  if (cmd === "isprime") {
+    if (n < 2) return "neither";
+    for (let p = 2; p * p <= n; p++) if (n % p === 0) return "composite";
+    return "prime";
+  }
+  if (n < 2) return "error: n must be at least 2";
+  const parts: string[] = [];
+  for (let p = 2; p * p <= n; p++) {
+    if (n % p !== 0) continue;
+    let e = 0;
+    while (n % p === 0) { n /= p; e++; }
+    parts.push(e > 1 ? `${p}^${e}` : `${p}`);
+  }
+  if (n > 1) parts.push(`${n}`);
+  return parts.join(" * ");
+}
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+let out = "";
+for (const l of lines) if (l.replace(/ /g, "") !== "") out += solveLine(l) + "\n";
+process.stdout.write(out);

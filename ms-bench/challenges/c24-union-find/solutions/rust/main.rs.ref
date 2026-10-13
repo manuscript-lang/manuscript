@@ -1,0 +1,58 @@
+use std::io::{self, Read, Write};
+
+fn find(parent: &mut Vec<usize>, mut x: usize) -> usize {
+    while parent[x] != x {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    x
+}
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    let lines: Vec<&str> = input.split('\n').filter(|l| !l.trim().is_empty()).collect();
+    let n: i64 = lines[0].trim().parse().unwrap();
+    let mut parent: Vec<usize> = (0..n as usize).collect();
+    let mut size = vec![1usize; n as usize];
+    let mut sets = n as usize;
+    let mut out = String::new();
+    for line in &lines[1..] {
+        let p: Vec<&str> = line.split(' ').collect();
+        if p[0] == "count" {
+            out.push_str(&format!("{}\n", sets));
+            continue;
+        }
+        let args: Vec<i64> = p[1..].iter().map(|a| a.parse().unwrap()).collect();
+        if args.iter().any(|&a| a < 0 || a >= n) {
+            out.push_str("error\n");
+            continue;
+        }
+        let a0 = args[0] as usize;
+        match p[0] {
+            "size" => {
+                let r = find(&mut parent, a0);
+                out.push_str(&format!("{}\n", size[r]));
+            }
+            "connected" => {
+                let ra = find(&mut parent, a0);
+                let rb = find(&mut parent, args[1] as usize);
+                out.push_str(if ra == rb { "yes\n" } else { "no\n" });
+            }
+            "union" => {
+                let ra = find(&mut parent, a0);
+                let rb = find(&mut parent, args[1] as usize);
+                if ra == rb {
+                    out.push_str("same\n");
+                } else {
+                    parent[ra] = rb;
+                    size[rb] += size[ra];
+                    sets -= 1;
+                    out.push_str("merged\n");
+                }
+            }
+            _ => {}
+        }
+    }
+    io::stdout().write_all(out.as_bytes()).unwrap();
+}

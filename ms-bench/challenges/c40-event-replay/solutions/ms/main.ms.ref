@@ -1,0 +1,191 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+import StringBuilder from "@std/string.ms"
+
+type Item:
+    qty: Int
+    price: Int
+
+type Order:
+    name: String
+    items: Map[String, Item]
+
+type Store:
+    log: Map[String, List[List[String]]]
+    out: StringBuilder
+
+fn fields(line: String) -> List[String]:
+    let spaced = line.replace_all(old: "\t", new: " ").unwrap()
+    return spaced.split(" ").filter(fn(part: String) -> Bool:
+        return not part.is_empty()
+    )
+
+fn all_digits(s: String) -> Bool:
+    if s.is_empty():
+        return false
+    for c in s.scalar_values():
+        if c < 48 or c > 57:
+            return false
+    return true
+
+fn emit(s: Store, text: String) -> Unit:
+    s.out.append(text)
+    s.out.append("\n")
+
+fn new_order() -> Order:
+    return Order(name: "none", items: Map[String, Item]())
+
+fn total(o: Order) -> Int:
+    var t = 0
+    for item in o.items.values():
+        t = t + item.qty * item.price
+    return t
+
+fn num(s: String) -> Int:
+    return s.parse_int().unwrap_or(0)
+
+# Applies one validated event. Returns an error message, or "" on success.
+fn apply(o: Order, ev: List[String], ver: Int) -> String:
+    let typ = ev.at(0).unwrap()
+    let a = ev.slice(1, ev.length())
+    let s = o.name
+    let invalid = "invalid {typ} in {s} at v{ver}"
+    if typ == "created":
+        if s != "none":
+            return invalid
+        o.name = "open"
+    else if typ == "item_added":
+        if s != "open":
+            return invalid
+        let sku = a.at(0).unwrap()
+        let old = o.items.get_or(key: sku, fallback: Item(qty: 0, price: 0))
+        o.items.add(key: sku, value: Item(qty: old.qty + num(a.at(1).unwrap()), price: num(a.at(2).unwrap())))
+    else if typ == "item_removed":
+        if s != "open":
+            return invalid
+        let sku = a.at(0).unwrap()
+        if not o.items.contains(sku):
+            return "no such item {sku} at v{ver}"
+        # Rebuild instead of Map.without: see notes/c36-c50.md.
+        let kept = Map[String, Item]()
+        for k in o.items.keys():
+            if k != sku:
+                kept.add(key: k, value: o.items.get(k).unwrap())
+        o.items = kept
+    else if typ == "paid":
+        if s != "open":
+            return invalid
+        if o.items.is_empty():
+            return "empty order at v{ver}"
+        let tot = total(o)
+        if num(a.at(0).unwrap()) != tot:
+            return "wrong amount expected={tot} at v{ver}"
+        o.name = "paid"
+    else if typ == "shipped":
+        if s != "paid":
+            return invalid
+        o.name = "shipped"
+    else:
+        if s != "open" and s != "paid":
+            return invalid
+        o.name = "cancelled"
+    return ""
+
+fn replay(store: Store, id: String, n: Int) -> Order:
+    let o = new_order()
+    let events = store.log.get_or(key: id, fallback: List[List[String]]())
+    var k = 0
+    while k < n:
+        apply(o, events.at(k).unwrap(), k + 1)
+        k = k + 1
+    return o
+
+fn summary(store: Store, id: String, o: Order, ver: Int) -> Unit:
+    emit(store, "{id} state={o.name} v={ver} items={o.items.length()} total={total(o)}")
+    let keys = o.items.keys().sorted(compare: fn(x: String, y: String) -> Int:
+        return x.compare(y)
+    )
+    for k in keys:
+        let item = o.items.get(k).unwrap()
+        emit(store, "  {k} x{item.qty} @{item.price}")
+
+fn arg_count(typ: String) -> Int:
+    if typ == "created" or typ == "shipped" or typ == "cancelled":
+        return 0
+    if typ == "item_added":
+        return 3
+    if typ == "item_removed" or typ == "paid":
+        return 1
+    return -1
+
+fn query(store: Store, t: List[String]) -> Unit:
+    var is_at = false
+    if t.at(0).unwrap() == "at":
+        is_at = true
+    if is_at and t.length() != 3 or not is_at and t.length() != 2:
+        return emit(store, "error: bad line")
+    let id = t.at(1).unwrap()
+    let found = store.log.get(id)
+    if found.is_none():
+        return emit(store, "error: unknown aggregate {id}")
+    var ver = found.unwrap().length()
+    if is_at:
+        let vt = t.at(2).unwrap()
+        if not all_digits(vt) or vt.parse_int().unwrap_or(1000000000) > ver:
+            return emit(store, "error: bad version")
+        ver = vt.parse_int().unwrap()
+    summary(store, id, replay(store, id, ver), ver)
+
+fn event(store: Store, t: List[String]) -> Unit:
+    if t.length() < 3:
+        return emit(store, "error: bad line")
+    let id = t.at(0).unwrap()
+    let vt = t.at(1).unwrap()
+    let typ = t.at(2).unwrap()
+    let a = t.slice(3, t.length())
+    if not all_digits(vt):
+        return emit(store, "error: bad version")
+    let cur = store.log.get_or(key: id, fallback: List[List[String]]()).length()
+    if vt.parse_int().unwrap_or(-1) != cur + 1:
+        return emit(store, "{id}: conflict v={vt} expected={cur + 1}")
+    let n = arg_count(typ)
+    if n < 0:
+        return emit(store, "{id}: unknown event {typ}")
+    var bad = a.length() != n
+    if not bad and typ == "item_added":
+        bad = not all_digits(a.at(1).unwrap()) or not all_digits(a.at(2).unwrap()) or num(a.at(1).unwrap()) == 0
+    if not bad and typ == "paid":
+        bad = not all_digits(a.at(0).unwrap())
+    if bad:
+        return emit(store, "{id}: bad arguments for {typ}")
+    let o = replay(store, id, cur)
+    let ev = [typ]
+    for x in a:
+        ev.append(x)
+    let msg = apply(o, ev, cur + 1)
+    if not msg.is_empty():
+        return emit(store, "{id}: {msg}")
+    store.log.with_default(key: id, value: List[List[String]]())
+    store.log.get(id).unwrap().append(ev)
+    emit(store, "{id}: {typ} -> {o.name} v={cur + 1}")
+
+fn run() -> Result[Unit, Error]:
+    let store = Store(log: Map[String, List[List[String]]](), out: StringBuilder())
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let t = fields(next.unwrap())
+        if t.is_empty():
+            continue
+        let first = t.at(0).unwrap()
+        if first == "show" or first == "at":
+            query(store, t)
+        else:
+            event(store, t)
+    try stdout().write(store.out.freeze().to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

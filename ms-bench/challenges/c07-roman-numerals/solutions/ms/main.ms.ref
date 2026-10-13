@@ -1,0 +1,80 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+
+fn to_roman(number: Int) -> String:
+    let values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
+    let symbols = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
+    let parts = List[String]()
+    var n = number
+    var i = 0
+    while i < values.length():
+        let v = values.at(i).unwrap()
+        while n >= v:
+            parts.append(symbols.at(i).unwrap())
+            n = n - v
+        i = i + 1
+    return parts.join("")
+
+# Value of a Roman letter by code point, or 0 when it is not one.
+fn letter_value(c: Int) -> Int:
+    if c == 73:
+        return 1
+    if c == 86:
+        return 5
+    if c == 88:
+        return 10
+    if c == 76:
+        return 50
+    if c == 67:
+        return 100
+    if c == 68:
+        return 500
+    if c == 77:
+        return 1000
+    return 0
+
+fn solve_line(line: String) -> String:
+    let codes = line.scalar_values()
+    var all_digits = true
+    var all_roman = true
+    for c in codes:
+        if c < 48 or c > 57:
+            all_digits = false
+        if letter_value(c) == 0:
+            all_roman = false
+    if all_digits:
+        if codes.at(0).unwrap() == 48:
+            return "invalid"
+        let n = line.parse_int().unwrap()
+        if n >= 1 and n <= 3999:
+            return to_roman(n)
+        return "invalid"
+    if not all_roman:
+        return "invalid"
+    var total = 0
+    var i = 0
+    while i < codes.length():
+        let v = letter_value(codes.at(i).unwrap())
+        if i + 1 < codes.length() and letter_value(codes.at(i + 1).unwrap()) > v:
+            total = total - v
+        else:
+            total = total + v
+        i = i + 1
+    if total >= 1 and total <= 3999 and to_roman(total) == line:
+        return "{total}"
+    return "invalid"
+
+fn run() -> Result[Unit, Error]:
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let line = next.unwrap()
+        if line.replace_all(old: " ", new: "").unwrap().is_empty():
+            continue
+        try stdout().write("{solve_line(line)}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

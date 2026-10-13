@@ -1,0 +1,124 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+type op struct {
+	t byte
+	s string
+}
+
+func rng(start, ln int) string {
+	s := start
+	if ln > 0 {
+		s++
+	}
+	if ln == 1 {
+		return strconv.Itoa(s)
+	}
+	return fmt.Sprintf("%d,%d", s, ln)
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<26)
+	var lines []string
+	for sc.Scan() {
+		lines = append(lines, sc.Text())
+	}
+	h := strings.Fields(lines[0])
+	nameA, nameB := h[0], h[1]
+	ctx, _ := strconv.Atoi(h[2])
+	n, _ := strconv.Atoi(h[3])
+	m, _ := strconv.Atoi(h[4])
+	a := lines[1 : 1+n]
+	b := lines[1+n : 1+n+m]
+
+	w := m + 1
+	L := make([]int32, (n+1)*w)
+	for i := n - 1; i >= 0; i-- {
+		for j := m - 1; j >= 0; j-- {
+			if a[i] == b[j] {
+				L[i*w+j] = L[(i+1)*w+j+1] + 1
+			} else if L[(i+1)*w+j] >= L[i*w+j+1] {
+				L[i*w+j] = L[(i+1)*w+j]
+			} else {
+				L[i*w+j] = L[i*w+j+1]
+			}
+		}
+	}
+	var ops []op
+	i, j := 0, 0
+	for i < n || j < m {
+		if i < n && j < m && a[i] == b[j] {
+			ops = append(ops, op{' ', a[i]})
+			i++
+			j++
+		} else if j == m || (i < n && L[(i+1)*w+j] >= L[i*w+j+1]) {
+			ops = append(ops, op{'-', a[i]})
+			i++
+		} else {
+			ops = append(ops, op{'+', b[j]})
+			j++
+		}
+	}
+
+	var changes []int
+	for k, o := range ops {
+		if o.t != ' ' {
+			changes = append(changes, k)
+		}
+	}
+	if len(changes) == 0 {
+		return
+	}
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	fmt.Fprintf(out, "--- %s\n+++ %s\n", nameA, nameB)
+	groups := [][]int{{changes[0]}}
+	for _, k := range changes[1:] {
+		g := groups[len(groups)-1]
+		if k-g[len(g)-1]-1 <= 2*ctx {
+			groups[len(groups)-1] = append(g, k)
+		} else {
+			groups = append(groups, []int{k})
+		}
+	}
+	for _, g := range groups {
+		lo := g[0] - ctx
+		if lo < 0 {
+			lo = 0
+		}
+		hi := g[len(g)-1] + 1 + ctx
+		if hi > len(ops) {
+			hi = len(ops)
+		}
+		sa, sb := 0, 0
+		for _, o := range ops[:lo] {
+			if o.t != '+' {
+				sa++
+			}
+			if o.t != '-' {
+				sb++
+			}
+		}
+		la, lb := 0, 0
+		for _, o := range ops[lo:hi] {
+			if o.t != '+' {
+				la++
+			}
+			if o.t != '-' {
+				lb++
+			}
+		}
+		fmt.Fprintf(out, "@@ -%s +%s @@\n", rng(sa, la), rng(sb, lb))
+		for _, o := range ops[lo:hi] {
+			fmt.Fprintf(out, "%c%s\n", o.t, o.s)
+		}
+	}
+}

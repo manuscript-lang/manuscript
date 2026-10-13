@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "name,qty,note\napple,3,\"red, sweet\"\nkiwi,12,\nfig,-5,\"say \"\"hi\"\"\"\n",
+  "stdout": "name  | qty | note\n------+-----+-----------\napple |   3 | red, sweet\nkiwi  |  12 |\nfig   |  -5 | say \"hi\"\n"
+ },
+ {
+  "name": "numeric-only",
+  "stdin": "a,b\n1,22\n333,4\n",
+  "stdout": "  a |  b\n----+---\n  1 | 22\n333 |  4\n"
+ }
+]

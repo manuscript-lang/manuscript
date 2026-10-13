@@ -1,0 +1,68 @@
+use std::collections::HashMap;
+use std::io::{self, Read, Write};
+
+fn ident(s: &str) -> bool {
+    let b = s.as_bytes();
+    !b.is_empty()
+        && (b[0].is_ascii_alphabetic() || b[0] == b'_')
+        && b.iter().all(|c| c.is_ascii_alphanumeric() || *c == b'_')
+}
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    let lines: Vec<&str> = input.split('\n').collect();
+    let sep = match lines.iter().position(|l| *l == "---") {
+        Some(i) => i,
+        None => return,
+    };
+    let mut vars: HashMap<&str, &str> = HashMap::new();
+    for l in &lines[..sep] {
+        if let Some(eq) = l.find('=') {
+            if ident(&l[..eq]) {
+                vars.insert(&l[..eq], &l[eq + 1..]);
+            }
+        }
+    }
+    let mut tpl = &lines[sep + 1..];
+    if let Some(last) = tpl.last() {
+        if last.is_empty() {
+            tpl = &tpl[..tpl.len() - 1];
+        }
+    }
+    let mut out = String::new();
+    for line in tpl {
+        let mut i = 0;
+        while i < line.len() {
+            let rest = &line[i..];
+            if rest.starts_with("{{") {
+                out.push('{');
+                i += 2;
+            } else if rest.starts_with("}}") {
+                out.push('}');
+                i += 2;
+            } else if rest.starts_with('{') {
+                match rest[1..].find('}') {
+                    Some(j) if ident(&rest[1..1 + j]) => {
+                        let name = &rest[1..1 + j];
+                        match vars.get(name) {
+                            Some(v) => out.push_str(v),
+                            None => out.push_str(&format!("<undefined:{}>", name)),
+                        }
+                        i += j + 2;
+                    }
+                    _ => {
+                        out.push('{');
+                        i += 1;
+                    }
+                }
+            } else {
+                let ch = rest.chars().next().unwrap();
+                out.push(ch);
+                i += ch.len_utf8();
+            }
+        }
+        out.push('\n');
+    }
+    io::stdout().write_all(out.as_bytes()).unwrap();
+}

@@ -1,0 +1,297 @@
+import * as fs from "node:fs";
+
+type Tok = { kind: string; text: string; col: number };
+type Node =
+  | { k: "int" | "bool" | "str"; col: number }
+  | { k: "var"; col: number; name: string }
+  | { k: "neg" | "not"; col: number; e: Node }
+  | { k: "bin"; col: number; op: string; l: Node; r: Node }
+  | { k: "call"; col: number; name: string; args: Node[] }
+  | { k: "let"; col: number; name: string; e1: Node; e2: Node }
+  | { k: "if"; col: number; c: Node; a: Node; b: Node };
+
+class Err {
+  msg: string;
+  col: number;
+  constructor(msg: string, col: number) {
+    this.msg = msg;
+    this.col = col;
+  }
+}
+
+const KEYWORDS = new Set(["let", "in", "if", "then", "else", "true", "false", "and", "or", "not"]);
+const BUILTINS: Record<string, [string[], string]> = {
+  len: [["Str"], "Int"],
+  str: [["Int"], "Str"],
+  abs: [["Int"], "Int"],
+  min: [["Int", "Int"], "Int"],
+  max: [["Int", "Int"], "Int"],
+  concat: [["Str", "Str"], "Str"],
+  even: [["Int"], "Bool"],
+};
+const CMP = new Set(["<", "<=", ">", ">=", "==", "!="]);
+
+const isDigit = (c: string) => c >= "0" && c <= "9";
+const isStart = (c: string) => (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c === "_";
+const isIdent = (c: string) => isStart(c) || isDigit(c);
+
+function lex(line: string): Tok[] {
+  const toks: Tok[] = [];
+  let i = 0;
+  const n = line.length;
+  while (i < n) {
+    const c = line[i];
+    const col = i + 1;
+    if (c === " " || c === "\t") {
+      i++;
+    } else if (isDigit(c)) {
+      let j = i;
+      while (j < n && isDigit(line[j])) j++;
+      toks.push({ kind: "int", text: line.slice(i, j), col });
+      i = j;
+    } else if (isStart(c)) {
+      let j = i;
+      while (j < n && isIdent(line[j])) j++;
+      const w = line.slice(i, j);
+      toks.push({ kind: KEYWORDS.has(w) ? w : "id", text: w, col });
+      i = j;
+    } else if (c === '"') {
+      const j = line.indexOf('"', i + 1);
+      if (j < 0) throw new Err("unterminated string", col);
+      toks.push({ kind: "str", text: line.slice(i, j + 1), col });
+      i = j + 1;
+    } else {
+      const two = line.slice(i, i + 2);
+      if (two === "<=" || two === ">=" || two === "==" || two === "!=") {
+        toks.push({ kind: two, text: two, col });
+        i += 2;
+      } else if ("+-*<>(),=".includes(c)) {
+        toks.push({ kind: c, text: c, col });
+        i++;
+      } else {
+        throw new Err(`unexpected character '${c}'`, col);
+      }
+    }
+  }
+  return toks;
+}
+
+function parse(toks: Tok[], eof: number): Node {
+  let pos = 0;
+  const peek = (): string => (pos < toks.length ? toks[pos].kind : "");
+  const col = (): number => (pos < toks.length ? toks[pos].col : eof);
+  const nxt = (): Tok => toks[pos++];
+  const expect = (k: string): Tok => {
+    if (peek() !== k) throw new Err("syntax error", col());
+    return nxt();
+  };
+  const expr = (): Node => {
+    const k = peek();
+    if (k === "let") {
+      const t = nxt();
+      const name = expect("id");
+      expect("=");
+      const e1 = expr();
+      expect("in");
+      const e2 = expr();
+      return { k: "let", col: t.col, name: name.text, e1, e2 };
+    }
+    if (k === "if") {
+      const t = nxt();
+      const c = expr();
+      expect("then");
+      const a = expr();
+      expect("else");
+      const b = expr();
+      return { k: "if", col: t.col, c, a, b };
+    }
+    return orx();
+  };
+  const bin = (op: string, l: Node, r: Node): Node => ({ k: "bin", col: l.col, op, l, r });
+  const orx = (): Node => {
+    let l = andx();
+    while (peek() === "or") {
+      nxt();
+      l = bin("or", l, andx());
+    }
+    return l;
+  };
+  const andx = (): Node => {
+    let l = notx();
+    while (peek() === "and") {
+      nxt();
+      l = bin("and", l, notx());
+    }
+    return l;
+  };
+  const notx = (): Node => {
+    if (peek() === "not") {
+      const t = nxt();
+      return { k: "not", col: t.col, e: notx() };
+    }
+    return cmp();
+  };
+  const cmp = (): Node => {
+    const l = add();
+    if (CMP.has(peek())) {
+      const op = nxt().kind;
+      return bin(op, l, add());
+    }
+    return l;
+  };
+  const add = (): Node => {
+    let l = mul();
+    while (peek() === "+" || peek() === "-") {
+      const op = nxt().kind;
+      l = bin(op, l, mul());
+    }
+    return l;
+  };
+  const mul = (): Node => {
+    let l = unary();
+    while (peek() === "*") {
+      nxt();
+      l = bin("*", l, unary());
+    }
+    return l;
+  };
+  const unary = (): Node => {
+    if (peek() === "-") {
+      const t = nxt();
+      return { k: "neg", col: t.col, e: unary() };
+    }
+    return atom();
+  };
+  const atom = (): Node => {
+    const k = peek();
+    if (k === "int") return { k: "int", col: nxt().col };
+    if (k === "str") return { k: "str", col: nxt().col };
+    if (k === "true" || k === "false") return { k: "bool", col: nxt().col };
+    if (k === "id") {
+      const t = nxt();
+      if (peek() === "(") {
+        nxt();
+        const args: Node[] = [];
+        if (peek() !== ")") {
+          args.push(expr());
+          while (peek() === ",") {
+            nxt();
+            args.push(expr());
+          }
+        }
+        expect(")");
+        return { k: "call", col: t.col, name: t.text, args };
+      }
+      return { k: "var", col: t.col, name: t.text };
+    }
+    if (k === "(") {
+      const t = nxt();
+      const e = expr();
+      expect(")");
+      return { ...e, col: t.col };
+    }
+    throw new Err("syntax error", col());
+  };
+  const e = expr();
+  if (pos < toks.length) throw new Err("syntax error", col());
+  return e;
+}
+
+function need(t: string, want: string, col: number): void {
+  if (t !== want) throw new Err(`expected ${want}, found ${t}`, col);
+}
+
+function check(e: Node, env: Map<string, string>): string {
+  switch (e.k) {
+    case "int":
+      return "Int";
+    case "bool":
+      return "Bool";
+    case "str":
+      return "Str";
+    case "var": {
+      const t = env.get(e.name);
+      if (t === undefined) throw new Err(`unbound variable ${e.name}`, e.col);
+      return t;
+    }
+    case "neg":
+      need(check(e.e, env), "Int", e.e.col);
+      return "Int";
+    case "not":
+      need(check(e.e, env), "Bool", e.e.col);
+      return "Bool";
+    case "bin": {
+      const lt = check(e.l, env);
+      const rt = check(e.r, env);
+      const op = e.op;
+      if (op === "+") {
+        if (lt !== "Int" && lt !== "Str") throw new Err(`expected Int or Str, found ${lt}`, e.l.col);
+        need(rt, lt, e.r.col);
+        return lt;
+      }
+      if (op === "-" || op === "*") {
+        need(lt, "Int", e.l.col);
+        need(rt, "Int", e.r.col);
+        return "Int";
+      }
+      if (CMP.has(op) && op !== "==" && op !== "!=") {
+        need(lt, "Int", e.l.col);
+        need(rt, "Int", e.r.col);
+        return "Bool";
+      }
+      if (op === "==" || op === "!=") {
+        need(rt, lt, e.r.col);
+        return "Bool";
+      }
+      need(lt, "Bool", e.l.col);
+      need(rt, "Bool", e.r.col);
+      return "Bool";
+    }
+    case "call": {
+      const b = BUILTINS[e.name];
+      if (b === undefined || !Object.prototype.hasOwnProperty.call(BUILTINS, e.name)) {
+        throw new Err(`unknown function ${e.name}`, e.col);
+      }
+      const [params, ret] = b;
+      if (e.args.length !== params.length) {
+        throw new Err(
+          `wrong number of arguments for ${e.name}: expected ${params.length}, found ${e.args.length}`,
+          e.col,
+        );
+      }
+      for (let i = 0; i < params.length; i++) need(check(e.args[i], env), params[i], e.args[i].col);
+      return ret;
+    }
+    case "let": {
+      const t1 = check(e.e1, env);
+      const env2 = new Map(env);
+      env2.set(e.name, t1);
+      return check(e.e2, env2);
+    }
+    case "if": {
+      need(check(e.c, env), "Bool", e.c.col);
+      const tt = check(e.a, env);
+      const et = check(e.b, env);
+      need(et, tt, e.b.col);
+      return tt;
+    }
+  }
+}
+
+function runLine(line: string): string {
+  try {
+    const toks = lex(line);
+    const eof = line.replace(/[ \t]+$/, "").length + 1;
+    return check(parse(toks, eof), new Map());
+  } catch (x) {
+    if (x instanceof Err) return `error: ${x.msg} at ${x.col}`;
+    throw x;
+  }
+}
+
+const out: string[] = [];
+for (const line of fs.readFileSync(0, "utf8").split("\n")) {
+  if (line.replace(/[ \t]+/g, "") === "") continue;
+  out.push(runLine(line));
+}
+process.stdout.write(out.map((l) => l + "\n").join(""));

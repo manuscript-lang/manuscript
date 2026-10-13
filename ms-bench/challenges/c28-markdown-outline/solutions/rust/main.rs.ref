@@ -1,0 +1,41 @@
+use std::io::{self, Read, Write};
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    let mut counters = [0u32; 7];
+    let mut fence = false;
+    let mut out = String::new();
+    for line in input.split('\n') {
+        if line.starts_with("```") {
+            fence = !fence;
+            continue;
+        }
+        if fence {
+            continue;
+        }
+        let level = line.bytes().take_while(|&b| b == b'#').count();
+        if !(1..=6).contains(&level) {
+            continue;
+        }
+        let rest = &line[level..];
+        if !rest.starts_with(' ') {
+            continue;
+        }
+        let title = rest.trim_matches(' ');
+        if title.is_empty() {
+            continue;
+        }
+        counters[level] += 1;
+        for k in level + 1..=6 {
+            counters[k] = 0;
+        }
+        let number: Vec<String> = counters[1..=level].iter().map(|c| c.to_string()).collect();
+        out.push_str(&"  ".repeat(level - 1));
+        out.push_str(&number.join("."));
+        out.push(' ');
+        out.push_str(title);
+        out.push('\n');
+    }
+    io::stdout().write_all(out.as_bytes()).unwrap();
+}

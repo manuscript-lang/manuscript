@@ -1,0 +1,115 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type node struct {
+	kids  map[byte]*node
+	end   bool
+	count int
+}
+
+func newNode() *node { return &node{kids: map[byte]*node{}} }
+
+var root = newNode()
+
+func find(prefix string) *node {
+	n := root
+	for i := 0; i < len(prefix); i++ {
+		k, ok := n.kids[prefix[i]]
+		if !ok {
+			return nil
+		}
+		n = k
+	}
+	return n
+}
+
+func insert(word string) bool {
+	if n := find(word); n != nil && n.end {
+		return false
+	}
+	cur := root
+	cur.count++
+	for i := 0; i < len(word); i++ {
+		k, ok := cur.kids[word[i]]
+		if !ok {
+			k = newNode()
+			cur.kids[word[i]] = k
+		}
+		cur = k
+		cur.count++
+	}
+	cur.end = true
+	return true
+}
+
+func collect(n *node, prefix string, limit int, acc *[]string) {
+	if len(*acc) >= limit {
+		return
+	}
+	if n.end {
+		*acc = append(*acc, prefix)
+	}
+	keys := make([]int, 0, len(n.kids))
+	for c := range n.kids {
+		keys = append(keys, int(c))
+	}
+	sort.Ints(keys)
+	for _, c := range keys {
+		if len(*acc) >= limit {
+			return
+		}
+		collect(n.kids[byte(c)], prefix+string(rune(c)), limit, acc)
+	}
+}
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		p := strings.Split(line, " ")
+		switch p[0] {
+		case "insert":
+			if insert(p[1]) {
+				fmt.Fprintln(out, "added")
+			} else {
+				fmt.Fprintln(out, "exists")
+			}
+		case "has":
+			if n := find(p[1]); n != nil && n.end {
+				fmt.Fprintln(out, "yes")
+			} else {
+				fmt.Fprintln(out, "no")
+			}
+		case "count":
+			if n := find(p[1]); n != nil {
+				fmt.Fprintln(out, n.count)
+			} else {
+				fmt.Fprintln(out, 0)
+			}
+		case "complete":
+			k, _ := strconv.Atoi(p[2])
+			var acc []string
+			if n := find(p[1]); n != nil {
+				collect(n, p[1], k, &acc)
+			}
+			if len(acc) == 0 {
+				fmt.Fprintln(out, "none")
+			} else {
+				fmt.Fprintln(out, strings.Join(acc, " "))
+			}
+		}
+	}
+}

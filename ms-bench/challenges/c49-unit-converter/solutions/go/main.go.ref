@@ -1,0 +1,263 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+type unit struct {
+	dim string
+	f   int64
+}
+
+var units = map[string]unit{}
+var user = map[string]bool{}
+
+func init() {
+	add := func(dim string, names []string, vals []int64) {
+		for i, n := range names {
+			units[n] = unit{dim, vals[i]}
+		}
+	}
+	add("length", []string{"mm", "cm", "m", "km", "in", "ft", "yd", "mi"}, []int64{10, 100, 10000, 10000000, 254, 3048, 9144, 16093440})
+	add("mass", []string{"mg", "g", "kg", "oz", "lb"}, []int64{1, 1000, 1000000, 28350, 453592})
+	add("time", []string{"ms", "s", "min", "h", "d"}, []int64{1, 1000, 60000, 3600000, 86400000})
+	add("volume", []string{"ml", "l", "tsp", "tbsp", "cup", "gal"}, []int64{1, 1000, 5, 15, 240, 3785})
+	add("temperature", []string{"c", "f", "k"}, []int64{0, 0, 0})
+}
+
+func roundDiv(n, d int64) int64 {
+	a := n
+	if a < 0 {
+		a = -a
+	}
+	q := (2*a + d) / (2 * d)
+	if n < 0 {
+		return -q
+	}
+	return q
+}
+
+func fmtMilli(m int64) string {
+	if m == 0 {
+		return "0"
+	}
+	sign := ""
+	a := m
+	if m < 0 {
+		sign = "-"
+		a = -m
+	}
+	whole, frac := a/1000, a%1000
+	if frac == 0 {
+		return fmt.Sprintf("%s%d", sign, whole)
+	}
+	return fmt.Sprintf("%s%d.%s", sign, whole, strings.TrimRight(fmt.Sprintf("%03d", frac), "0"))
+}
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func parseNum(t string) (int64, bool) {
+	neg := false
+	s := t
+	if strings.HasPrefix(s, "-") {
+		neg = true
+		s = s[1:]
+	}
+	whole, frac := s, ""
+	if i := strings.IndexByte(s, '.'); i >= 0 {
+		whole, frac = s[:i], s[i+1:]
+		if len(frac) < 1 || len(frac) > 3 || !isDigits(frac) {
+			return 0, false
+		}
+	}
+	if !isDigits(whole) {
+		return 0, false
+	}
+	w, err := strconv.ParseInt(whole, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	for len(frac) < 3 {
+		frac += "0"
+	}
+	f, _ := strconv.ParseInt(frac, 10, 64)
+	v := w*1000 + f
+	if neg {
+		v = -v
+	}
+	return v, true
+}
+
+func toC(u string, sv int64) (int64, int64) {
+	switch u {
+	case "c":
+		return sv, 1
+	case "f":
+		return (sv - 32000) * 5, 9
+	}
+	return sv - 273150, 1
+}
+
+func fromC(u string, cn, cd int64) int64 {
+	switch u {
+	case "c":
+		return roundDiv(cn, cd)
+	case "f":
+		return roundDiv(cn*9+32000*5*cd, 5*cd)
+	}
+	return roundDiv(cn+273150*cd, cd)
+}
+
+func validName(s string) bool {
+	if s == "" || s[0] < 'a' || s[0] > 'z' {
+		return false
+	}
+	for i := 1; i < len(s); i++ {
+		c := s[i]
+		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_') {
+			return false
+		}
+	}
+	return true
+}
+
+func define(t []string) string {
+	if len(t) != 5 || t[2] != "=" {
+		return "error: syntax"
+	}
+	name, v, u := t[1], t[3], t[4]
+	if !validName(name) {
+		return "error: bad name " + name
+	}
+	if _, ok := units[name]; ok {
+		return "error: unit exists " + name
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if !isDigits(v) || err != nil || n < 1 || n > 1000 {
+		return "error: bad number " + v
+	}
+	if user[u] {
+		return "error: not a builtin unit " + u
+	}
+	base, ok := units[u]
+	if !ok {
+		return "error: unknown unit " + u
+	}
+	if base.dim == "temperature" {
+		return "error: cannot define temperature unit"
+	}
+	units[name] = unit{base.dim, n * base.f}
+	user[name] = true
+	return "ok"
+}
+
+func abs(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+func twoUnit(cmd string, t []string) string {
+	if len(t) != 5 || (cmd == "convert" && t[3] != "to") {
+		return "error: syntax"
+	}
+	numToks := []string{t[1]}
+	if cmd == "compare" {
+		numToks = []string{t[1], t[3]}
+	}
+	unitToks := []string{t[2], t[4]}
+	var vals []int64
+	for _, x := range numToks {
+		v, ok := parseNum(x)
+		if !ok {
+			return "error: bad number " + x
+		}
+		vals = append(vals, v)
+	}
+	for _, u := range unitToks {
+		if _, ok := units[u]; !ok {
+			return "error: unknown unit " + u
+		}
+	}
+	for _, v := range vals {
+		if abs(v) > 100000000 {
+			return "error: out of range"
+		}
+	}
+	fu, tu := unitToks[0], unitToks[1]
+	a, b := units[fu], units[tu]
+	if a.dim != b.dim {
+		return fmt.Sprintf("error: dimension mismatch %s vs %s", a.dim, b.dim)
+	}
+	temp := a.dim == "temperature"
+	below := func(cn, cd int64) bool { return cn < -273150*cd }
+	if cmd == "convert" {
+		v := vals[0]
+		var r int64
+		if temp {
+			cn, cd := toC(fu, v)
+			if below(cn, cd) {
+				return "error: below absolute zero"
+			}
+			r = fromC(tu, cn, cd)
+		} else {
+			r = roundDiv(v*a.f, b.f)
+		}
+		return fmt.Sprintf("%s %s = %s %s", fmtMilli(v), fu, fmtMilli(r), tu)
+	}
+	v1, v2 := vals[0], vals[1]
+	var x, y int64
+	if temp {
+		an, ad := toC(fu, v1)
+		bn, bd := toC(tu, v2)
+		if below(an, ad) || below(bn, bd) {
+			return "error: below absolute zero"
+		}
+		x, y = an*bd, bn*ad
+	} else {
+		x, y = v1*a.f, v2*b.f
+	}
+	rel := "="
+	if x < y {
+		rel = "<"
+	} else if x > y {
+		rel = ">"
+	}
+	return fmt.Sprintf("%s %s %s %s %s", fmtMilli(v1), fu, rel, fmtMilli(v2), tu)
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	for sc.Scan() {
+		t := strings.FieldsFunc(sc.Text(), func(r rune) bool { return r == ' ' || r == '\t' })
+		if len(t) == 0 {
+			continue
+		}
+		switch t[0] {
+		case "define":
+			fmt.Fprintln(out, define(t))
+		case "convert", "compare":
+			fmt.Fprintln(out, twoUnit(t[0], t))
+		default:
+			fmt.Fprintln(out, "error: syntax")
+		}
+	}
+}

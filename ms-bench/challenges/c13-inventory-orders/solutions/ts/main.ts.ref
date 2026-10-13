@@ -1,0 +1,105 @@
+import { readFileSync } from "node:fs";
+
+const ARITY: Record<string, number> = { stock: 3, price: 3, cancel: 2, ship: 2, report: 1 };
+const SKU = /^[A-Z0-9-]+$/;
+const OID = /^[a-z0-9-]+$/;
+const NUM = /^[0-9]{1,7}$/;
+
+type Order = { items: [string, number][]; status: string; total: number };
+const stock = new Map<string, number>();
+const price = new Map<string, number>();
+const orders = new Map<string, Order>();
+
+const money = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
+const qtyOk = (s: string) => NUM.test(s) && Number(s) >= 1 && Number(s) <= 100000;
+const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+function exec(line: string): string[] {
+  const t = line.split(" ");
+  const c = t[0];
+  const known = c === "order" || Object.prototype.hasOwnProperty.call(ARITY, c);
+  if (!known) return ["error: unknown command"];
+  if (c === "order" ? t.length < 3 : t.length !== ARITY[c]) return ["error: usage"];
+  switch (c) {
+    case "stock": {
+      if (!SKU.test(t[1])) return ["error: bad sku"];
+      if (!qtyOk(t[2])) return ["error: bad quantity"];
+      stock.set(t[1], (stock.get(t[1]) ?? 0) + Number(t[2]));
+      if (!price.has(t[1])) price.set(t[1], 0);
+      return [`ok ${t[1]} stock=${stock.get(t[1])}`];
+    }
+    case "price": {
+      if (!NUM.test(t[2]) || Number(t[2]) > 10000000) return ["error: bad price"];
+      if (!stock.has(t[1])) return [`error: unknown sku ${t[1]}`];
+      price.set(t[1], Number(t[2]));
+      return ["ok"];
+    }
+    case "order": {
+      const id = t[1];
+      if (!OID.test(id)) return ["error: bad order id"];
+      if (orders.has(id)) return [`error: order ${id} already exists`];
+      const items: [string, number][] = [];
+      for (const tok of t.slice(2)) {
+        const p = tok.split(":");
+        if (p.length !== 2 || !SKU.test(p[0]) || !qtyOk(p[1])) return [`error: bad item ${tok}`];
+        items.push([p[0], Number(p[1])]);
+      }
+      const seen = new Set<string>();
+      for (const [sku, q] of items) {
+        if (seen.has(sku)) return [`error: duplicate sku ${sku}`];
+        if (!stock.has(sku)) return [`error: unknown sku ${sku}`];
+        if (q > stock.get(sku)!) return [`error: insufficient stock for ${sku} (have ${stock.get(sku)}, need ${q})`];
+        seen.add(sku);
+      }
+      let total = 0;
+      for (const [sku, q] of items) {
+        stock.set(sku, stock.get(sku)! - q);
+        const p = price.get(sku)!;
+        total += q >= 10 ? Math.floor((q * p * 90 + 50) / 100) : q * p;
+      }
+      orders.set(id, { items, status: "placed", total });
+      return [`ok ${id} total=${money(total)}`];
+    }
+    case "cancel":
+    case "ship": {
+      const o = orders.get(t[1]);
+      if (!o) return [`error: unknown order ${t[1]}`];
+      if (c === "cancel") {
+        if (o.status !== "placed") return [`error: order ${t[1]} already ${o.status}`];
+        for (const [sku, q] of o.items) stock.set(sku, stock.get(sku)! + q);
+        o.status = "cancelled";
+        return ["ok"];
+      }
+      if (o.status === "shipped") return [`error: order ${t[1]} already shipped`];
+      if (o.status === "cancelled") return [`error: order ${t[1]} is cancelled`];
+      o.status = "shipped";
+      return ["ok"];
+    }
+    default: {
+      const out: string[] = [];
+      const reserved = new Map<string, number>();
+      const counts: Record<string, number> = { placed: 0, shipped: 0, cancelled: 0 };
+      let revenue = 0;
+      for (const o of orders.values()) {
+        counts[o.status]++;
+        if (o.status === "placed") for (const [sku, q] of o.items) reserved.set(sku, (reserved.get(sku) ?? 0) + q);
+        if (o.status === "shipped") revenue += o.total;
+      }
+      for (const sku of [...stock.keys()].sort(cmp)) {
+        out.push(`${sku} stock=${stock.get(sku)} price=${money(price.get(sku)!)} reserved=${reserved.get(sku) ?? 0}`);
+      }
+      out.push(`orders placed=${counts.placed} shipped=${counts.shipped} cancelled=${counts.cancelled}`);
+      out.push(`revenue=${money(revenue)}`);
+      return out;
+    }
+  }
+}
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+let out = "";
+for (const l of lines) {
+  if (l.replace(/ /g, "") === "") continue;
+  for (const o of exec(l)) out += o + "\n";
+}
+process.stdout.write(out);

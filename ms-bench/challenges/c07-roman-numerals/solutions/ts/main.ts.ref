@@ -1,0 +1,32 @@
+import { readFileSync } from "node:fs";
+
+const SYM: [number, string][] = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"],
+  [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+const VAL: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+
+function toRoman(n: number): string {
+  let out = "";
+  for (const [v, s] of SYM) while (n >= v) { out += s; n -= v; }
+  return out;
+}
+
+function solveLine(line: string): string {
+  if (/^[0-9]+$/.test(line)) {
+    if (line[0] === "0") return "invalid";
+    const n = Number(line);
+    return n >= 1 && n <= 3999 ? toRoman(n) : "invalid";
+  }
+  if (!/^[IVXLCDM]+$/.test(line)) return "invalid";
+  let total = 0;
+  for (let i = 0; i < line.length; i++) {
+    const v = VAL[line[i]];
+    total += i + 1 < line.length && VAL[line[i + 1]] > v ? -v : v;
+  }
+  return total >= 1 && total <= 3999 && toRoman(total) === line ? String(total) : "invalid";
+}
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+let out = "";
+for (const l of lines) if (l.replace(/ /g, "") !== "") out += solveLine(l) + "\n";
+process.stdout.write(out);

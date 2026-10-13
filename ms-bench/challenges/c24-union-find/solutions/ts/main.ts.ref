@@ -1,0 +1,36 @@
+import { readFileSync } from "node:fs";
+
+const lines = readFileSync(0, "utf8").split("\n").filter((l) => l.trim() !== "");
+const n = parseInt(lines[0], 10);
+const parent = Array.from({ length: n }, (_, i) => i);
+const size = new Array<number>(n).fill(1);
+let sets = n;
+
+function find(x: number): number {
+  while (parent[x] !== x) {
+    parent[x] = parent[parent[x]];
+    x = parent[x];
+  }
+  return x;
+}
+
+const out: string[] = [];
+for (const line of lines.slice(1)) {
+  const p = line.split(" ");
+  if (p[0] === "count") { out.push(String(sets)); continue; }
+  const args = p.slice(1).map((a) => parseInt(a, 10));
+  if (args.some((a) => a < 0 || a >= n)) { out.push("error"); continue; }
+  if (p[0] === "size") out.push(String(size[find(args[0])]));
+  else if (p[0] === "connected") out.push(find(args[0]) === find(args[1]) ? "yes" : "no");
+  else if (p[0] === "union") {
+    const a = find(args[0]), b = find(args[1]);
+    if (a === b) out.push("same");
+    else {
+      parent[a] = b;
+      size[b] += size[a];
+      sets--;
+      out.push("merged");
+    }
+  }
+}
+process.stdout.write(out.map((l) => l + "\n").join(""));

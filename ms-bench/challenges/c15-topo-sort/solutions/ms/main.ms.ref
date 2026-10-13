@@ -1,0 +1,119 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+import Set from "@std/collections.ms"
+
+fn valid_name(s: String) -> Bool:
+    let codes = s.scalar_values()
+    if codes.is_empty():
+        return false
+    var i = 0
+    for c in codes:
+        let lower = c >= 97 and c <= 122
+        let other = (c >= 48 and c <= 57) or c == 95
+        if i == 0 and not lower:
+            return false
+        if not lower and not other:
+            return false
+        i = i + 1
+    return true
+
+type Decl:
+    name: String
+    deps: List[String]
+
+# Parses "name:" or "name: dep dep"; none when the line is malformed.
+fn parse(line: String) -> Optional[Decl]:
+    let at = line.index_of(":")
+    if at.is_none():
+        return none
+    let name = line.slice(0, at.unwrap())
+    if not valid_name(name):
+        return none
+    let rest = line.slice(at.unwrap() + 1, line.length())
+    if rest.is_empty():
+        return some(Decl(name: name, deps: List[String]()))
+    if not rest.starts_with(" "):
+        return none
+    let deps = rest.slice(1, rest.length()).split(" ")
+    for d in deps:
+        if not valid_name(d):
+            return none
+    return some(Decl(name: name, deps: deps))
+
+fn run() -> Result[Unit, Error]:
+    let decls = List[Decl]()
+    let names = Set[String]()
+    var line_no = 0
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        line_no = line_no + 1
+        let line = next.unwrap()
+        if line.replace_all(old: " ", new: "").unwrap().is_empty():
+            continue
+        let decl = parse(line)
+        if decl.is_none():
+            try stdout().write("error: line {line_no}\n".to_bytes())
+            return stdout().flush()
+        decls.append(decl.unwrap())
+        names.add(decl.unwrap().name)
+        for d in decl.unwrap().deps:
+            names.add(d)
+    # Node ids follow byte order of the names, so the smallest ready id is the smallest name.
+    let sorted_names = names.values().sorted(compare: fn(a: String, b: String) -> Int:
+        return a.compare(b)
+    )
+    let ids = Map[String, Int]()
+    var k = 0
+    for n in sorted_names:
+        ids.add(key: n, value: k)
+        k = k + 1
+    let count = sorted_names.length()
+    let indegree = List[Int]()
+    let dependents = List[List[Int]]()
+    var i = 0
+    while i < count:
+        indegree.append(0)
+        dependents.append(List[Int]())
+        i = i + 1
+    let seen = Set[String]()
+    for decl in decls:
+        let task = ids.get(decl.name).unwrap()
+        for d in decl.deps:
+            let dep = ids.get(d).unwrap()
+            let edge = "{dep}>{task}"
+            if not seen.contains(edge):
+                seen.add(edge)
+                dependents.at(dep).unwrap().append(task)
+                indegree.set(task, indegree.at(task).unwrap() + 1)
+    let done = List[Bool]()
+    i = 0
+    while i < count:
+        done.append(false)
+        i = i + 1
+    let order = List[String]()
+    var emitted = 0
+    while emitted < count:
+        var pick = -1
+        i = 0
+        while i < count:
+            if not done.at(i).unwrap() and indegree.at(i).unwrap() == 0:
+                pick = i
+                break
+            i = i + 1
+        if pick == -1:
+            try stdout().write("cycle\n".to_bytes())
+            return stdout().flush()
+        done.set(pick, true)
+        order.append(sorted_names.at(pick).unwrap())
+        for m in dependents.at(pick).unwrap():
+            indegree.set(m, indegree.at(m).unwrap() - 1)
+        emitted = emitted + 1
+    for n in order:
+        try stdout().write("{n}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

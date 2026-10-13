@@ -1,0 +1,246 @@
+package main
+
+import (
+	"errors"
+	"io"
+	"os"
+	"strings"
+)
+
+var errInvalid = errors.New("invalid")
+
+type parser struct {
+	s   string
+	pos int
+	out strings.Builder
+}
+
+func (p *parser) peek() byte {
+	if p.pos < len(p.s) {
+		return p.s[p.pos]
+	}
+	return 0
+}
+
+func (p *parser) ws() {
+	for p.pos < len(p.s) {
+		c := p.s[p.pos]
+		if c != ' ' && c != '\t' && c != '\n' && c != '\r' {
+			return
+		}
+		p.pos++
+	}
+}
+
+func isDigit(c byte) bool { return c >= '0' && c <= '9' }
+
+func isHex(c byte) bool {
+	return isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+}
+
+func (p *parser) word(w string) error {
+	if !strings.HasPrefix(p.s[p.pos:], w) {
+		return errInvalid
+	}
+	p.pos += len(w)
+	p.out.WriteString(w)
+	return nil
+}
+
+func (p *parser) str() error {
+	start := p.pos
+	if p.peek() != '"' || p.pos >= len(p.s) {
+		return errInvalid
+	}
+	p.pos++
+	for {
+		if p.pos >= len(p.s) {
+			return errInvalid
+		}
+		c := p.s[p.pos]
+		switch {
+		case c == '"':
+			p.pos++
+			p.out.WriteString(p.s[start:p.pos])
+			return nil
+		case c < 0x20:
+			return errInvalid
+		case c == '\\':
+			p.pos++
+			if p.pos >= len(p.s) {
+				return errInvalid
+			}
+			e := p.s[p.pos]
+			if strings.IndexByte("\"\\/bfnrt", e) >= 0 {
+				p.pos++
+			} else if e == 'u' {
+				for k := 1; k <= 4; k++ {
+					if p.pos+k >= len(p.s) || !isHex(p.s[p.pos+k]) {
+						return errInvalid
+					}
+				}
+				p.pos += 5
+			} else {
+				return errInvalid
+			}
+		default:
+			p.pos++
+		}
+	}
+}
+
+func (p *parser) digits() error {
+	if p.pos >= len(p.s) || !isDigit(p.s[p.pos]) {
+		return errInvalid
+	}
+	for p.pos < len(p.s) && isDigit(p.s[p.pos]) {
+		p.pos++
+	}
+	return nil
+}
+
+func (p *parser) num() error {
+	start := p.pos
+	if p.peek() == '-' {
+		p.pos++
+	}
+	if p.peek() == '0' {
+		p.pos++
+	} else if c := p.peek(); c >= '1' && c <= '9' {
+		if err := p.digits(); err != nil {
+			return err
+		}
+	} else {
+		return errInvalid
+	}
+	if p.peek() == '.' {
+		p.pos++
+		if err := p.digits(); err != nil {
+			return err
+		}
+	}
+	if c := p.peek(); c == 'e' || c == 'E' {
+		p.pos++
+		if c := p.peek(); c == '+' || c == '-' {
+			p.pos++
+		}
+		if err := p.digits(); err != nil {
+			return err
+		}
+	}
+	p.out.WriteString(p.s[start:p.pos])
+	return nil
+}
+
+func (p *parser) indent(n int) { p.out.WriteString(strings.Repeat("  ", n)) }
+
+func (p *parser) value(depth int) error {
+	if p.pos >= len(p.s) {
+		return errInvalid
+	}
+	switch p.s[p.pos] {
+	case '{':
+		p.pos++
+		p.ws()
+		if p.peek() == '}' && p.pos < len(p.s) {
+			p.pos++
+			p.out.WriteString("{}")
+			return nil
+		}
+		p.out.WriteString("{\n")
+		for first := true; ; first = false {
+			if !first {
+				p.out.WriteString(",\n")
+			}
+			p.ws()
+			p.indent(depth + 1)
+			if err := p.str(); err != nil {
+				return err
+			}
+			p.ws()
+			if p.peek() != ':' || p.pos >= len(p.s) {
+				return errInvalid
+			}
+			p.pos++
+			p.ws()
+			p.out.WriteString(": ")
+			if err := p.value(depth + 1); err != nil {
+				return err
+			}
+			p.ws()
+			if p.pos < len(p.s) && p.s[p.pos] == ',' {
+				p.pos++
+				continue
+			}
+			if p.pos < len(p.s) && p.s[p.pos] == '}' {
+				p.pos++
+				break
+			}
+			return errInvalid
+		}
+		p.out.WriteString("\n")
+		p.indent(depth)
+		p.out.WriteString("}")
+		return nil
+	case '[':
+		p.pos++
+		p.ws()
+		if p.peek() == ']' && p.pos < len(p.s) {
+			p.pos++
+			p.out.WriteString("[]")
+			return nil
+		}
+		p.out.WriteString("[\n")
+		for first := true; ; first = false {
+			if !first {
+				p.out.WriteString(",\n")
+			}
+			p.ws()
+			p.indent(depth + 1)
+			if err := p.value(depth + 1); err != nil {
+				return err
+			}
+			p.ws()
+			if p.pos < len(p.s) && p.s[p.pos] == ',' {
+				p.pos++
+				continue
+			}
+			if p.pos < len(p.s) && p.s[p.pos] == ']' {
+				p.pos++
+				break
+			}
+			return errInvalid
+		}
+		p.out.WriteString("\n")
+		p.indent(depth)
+		p.out.WriteString("]")
+		return nil
+	case '"':
+		return p.str()
+	case 't':
+		return p.word("true")
+	case 'f':
+		return p.word("false")
+	case 'n':
+		return p.word("null")
+	}
+	return p.num()
+}
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	p := &parser{s: string(data)}
+	p.ws()
+	err := p.value(0)
+	if err == nil {
+		p.ws()
+		if p.pos != len(p.s) {
+			err = errInvalid
+		}
+	}
+	if err != nil {
+		os.Stdout.WriteString("invalid\n")
+		return
+	}
+	os.Stdout.WriteString(p.out.String() + "\n")
+}
