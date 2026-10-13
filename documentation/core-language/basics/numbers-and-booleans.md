@@ -87,6 +87,49 @@ let discounted = price * (1d - percent / 100d)
 
 Use ordinary validation when invalid numbers are expected inputs. [Expected failures](../errors/results.md) shows how to return a domain error before calculating a discount; [programming faults](../errors/faults.md) explains invariant failures.
 
+#### Scale rounding and fixed places
+
+Use `round(places:)` when a calculation needs a Decimal at a chosen scale, and `to_fixed(digits:)` when output needs stable trailing zeros. Both return `Result[..., NumberError]` from `@std/numbers.ms` and operate on the exact stored value without a Float conversion. `round(places: 2)` rounds to hundredths; negative places round to tens, hundreds, and larger powers of ten. Decimal values still ignore scale: use `to_fixed(digits: 2)` to display `25.50d` as `"25.50"`.
+
+Omitting `mode` or supplying `none` chooses `RoundingMode.HalfEven`. Import `RoundingMode` from `@std/decimal.ms` to choose another mode:
+
+| Mode | Rule | `2.5d` at zero places | `-2.5d` at zero places |
+| --- | --- | --- | --- |
+| `HalfEven` | Nearest; a tie chooses an even coefficient | `2d` | `-2d` |
+| `HalfAwayFromZero` | Nearest; a tie rounds away from zero | `3d` | `-3d` |
+| `TowardZero` | Discard the fractional coefficient | `2d` | `-2d` |
+| `Floor` | Toward negative infinity | `2d` | `-3d` |
+| `Ceil` | Toward positive infinity | `3d` | `-2d` |
+
+`round` accepts places from -6144 through 6176. It returns `InvalidInput` for other places, and `OutOfRange` if the rounded number cannot be represented exactly as a Decimal. It never rounds again to fit the 34-digit arithmetic context. `to_fixed` accepts digits from 0 through 6176, returning `InvalidInput` otherwise. It uses plain notation even for large values, retains exactly the requested fractional digits, and prints any rounded zero without a minus sign. Neither method changes the receiver or the rounding of arithmetic operators.
+
+For amounts with two fractional places, this example explicitly rounds tax before adding it. Choose the scale, rounding mode, and rounding stage required by your application; Decimal does not impose a currency policy. Scaled Int cents are another option when all values and arithmetic fit the checked Int range.
+
+Save the following as `cents.ms` and run `ms test cents.ms`:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import Decimal from "@std/decimal.ms"
+import NumberError from "@std/numbers.ms"
+import panic from "@std/faults.ms"
+
+fn amount_text() -> Result[String, NumberError]:
+    let subtotal = 19.99d * 3d
+    let tax = try (subtotal * 0.0825d).round(places: 2)
+    let tax_text = try tax.to_fixed(digits: 2)
+    let total_text = try (subtotal + tax).to_fixed(digits: 2)
+    let padded = try 25.50d.to_fixed(digits: 2)
+    return ok("tax {tax_text} total {total_text} padded {padded}")
+
+test "decimal amounts":
+    match amount_text():
+        ok(text):
+            if text != "tax 4.95 total 64.92 padded 25.50":
+                return panic("unexpected amount text")
+        error(cause):
+            return panic(cause.message())
+```
+
 ## Booleans
 
 A Boolean value controls an [if statement](../control-flow/conditionals.md) or [while loop](../control-flow/loops.md). There is no numeric-to-Boolean conversion implied by using a number as a condition.

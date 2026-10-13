@@ -658,6 +658,21 @@ Import each required symbol with `import Name from "@std/decimal.ms"`.
 type Decimal:
     fn to_float() -> Float:
     fn truncate_to_int() -> Optional[Int]:
+    fn round(places: Int, mode: Optional[RoundingMode] = none) -> Result[Decimal, NumberError]:
+    fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
+```
+
+## RoundingMode
+
+**Alternative**
+
+```manuscript
+type RoundingMode:
+    case HalfEven
+    case HalfAwayFromZero
+    case TowardZero
+    case Floor
+    case Ceil
 ```
 
 # @std/encoding.ms

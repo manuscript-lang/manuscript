@@ -405,7 +405,20 @@ func libraryCSVStringify(ctx *Execution, r string, a []Value) Value {
 	writer.UseCRLF = crlf
 	for _, row := range a[0].(*List).Items {
 		CheckCancelled(ctx)
-		if err := writer.Write(libraryStringValues(row)); err != nil {
+		record := libraryStringValues(row)
+		// encoding/csv emits a bare line ending for a sole empty field,
+		// which its reader skips. Quote it to retain this row on round trip.
+		if len(record) == 1 && record[0] == "" {
+			text := "\"\"\n"
+			if crlf {
+				text = "\"\"\r\n"
+			}
+			if _, err := w.Write([]byte(text)); err != nil {
+				return libraryError(r, "LimitExceeded", "")
+			}
+			continue
+		}
+		if err := writer.Write(record); err != nil {
 			return libraryError(r, "LimitExceeded", "")
 		}
 		writer.Flush()
