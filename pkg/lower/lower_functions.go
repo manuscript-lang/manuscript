@@ -193,6 +193,20 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 	for i, b := range bindings {
 		if g.nativeResult != nil {
 			out = append(out, discard(ident(b.ID)))
+			var value ast.Expr
+			if params[i].Default != nil {
+				value = g.bindingValue(b, params[i].Default)
+			} else if t.Defaults[t.Params[i].Name] && b.Type.ID == "@std/Optional" {
+				value = runtimeCall("NewAlternative", g.key(b.Type), textLiteral("none"), ident("nil"), ident("nil"))
+			}
+			if value != nil {
+				stmt := &ast.IfStmt{Cond: &ast.UnaryExpr{Op: token.NOT, X: ident(nativePresence(i))}, Body: block(assign(ident(b.ID), token.ASSIGN, value))}
+				pos := result.Pos
+				if params[i].Default != nil {
+					pos = params[i].Default.Pos
+				}
+				out = append(out, g.locatedStatement(pos, stmt))
+			}
 			continue
 		}
 		out = append(out, define(b.ID, index(ident("args"), intLiteral(i))), discard(ident(b.ID)))
@@ -216,7 +230,7 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 	}
 	out = append(prologue, out...)
 	var fallback ast.Expr = unit()
-	if g.nativeResult != nil {
+	if g.nativeResult != nil && primitiveEqualityType(g.nativeResult) != "" {
 		fallback = scalarExtract(g.nativeResult, runtimeCall("Panic", textLiteral("runtime invariant: source function fell through")))
 	}
 	out = append(out, g.locatedStatement(syntax.Position{File: "manuscript.generated.go", Line: 1}, returned(fallback)))

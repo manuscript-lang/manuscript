@@ -74,7 +74,8 @@ fn sizes(values: List[Int], pairs: Map[String, Int], names: Set[String], text: S
 		t.Fatal(result.Diagnostics)
 	}
 	bodies := strings.Count(result.Source, `"sizes")`)
-	if bodies < 1 || strings.Count(result.Source, "rt.CollectionLength(") != 4*bodies || strings.Count(result.Source, "rt.StringByteLength(") != bodies {
+	// The separate Measure implementation adds one List length call.
+	if bodies < 1 || strings.Count(result.Source, "rt.CollectionLength(") != 3*bodies+1 || strings.Count(result.Source, "rt.StringByteLength(") != bodies {
 		t.Fatalf("expected direct length calls only for built-in receivers:\n%s", result.Source)
 	}
 	if !strings.Contains(result.Source, "rt.NativeMemberResult(") {
@@ -119,7 +120,8 @@ fn nested(n: Int) -> Result[Int, String]:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	if strings.Count(result.Source, "rt.Try(") != 1 {
+	nestedBodies := strings.Count(result.Source, `"nested")`)
+	if nestedBodies < 1 || strings.Count(result.Source, "rt.Try(") != nestedBodies {
 		t.Fatalf("only the nested try keeps the panic form:\n%s", result.Source)
 	}
 }
@@ -179,7 +181,8 @@ fn use(l: List[Int], m: Map[String, Int], s: Set[Int], t: String) -> Unit:
 			t.Fatalf("missing direct %s", operation)
 		}
 	}
-	if strings.Count(result.Source, "rt.MapWithEntry(") != 1 || !strings.Contains(result.Source, `"with_entry"`) {
+	useBodies := strings.Count(result.Source, `"use")`)
+	if useBodies < 1 || strings.Count(result.Source, "rt.MapWithEntry(") != useBodies || !strings.Contains(result.Source, `"with_entry"`) {
 		t.Fatalf("reordered labels must keep ordinary dispatch:\n%s", result.Source)
 	}
 }

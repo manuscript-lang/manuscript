@@ -95,7 +95,7 @@ func (g *generator) scalarProducer(e *syntax.Expression) bool {
 	case syntax.KindUnary:
 		return e.Text == "-" || e.Text == "not"
 	case syntax.KindCall:
-		return g.nativeCallAvailable(e)
+		return g.numericCallName(e) != "" || g.nativeCallAvailable(e) && g.shareNativeBody(g.program.Expressions[e].Symbol)
 	}
 	return false
 }
@@ -148,7 +148,7 @@ func (g *generator) nativeScalarExpression(e *syntax.Expression) bool {
 	case syntax.KindUnary:
 		return e.Text == "not" || e.Text == "-" || e.Text == "+"
 	case syntax.KindCall:
-		return g.nativeCallAvailable(e)
+		return g.nativeCallAvailable(e) || g.numericCallName(e) != ""
 	}
 	return false
 }
@@ -172,6 +172,12 @@ func (g *generator) returnValue(e *syntax.Expression) ast.Expr {
 // an extraction disappears, capture every operand explicitly before a later
 // call/match can mutate an earlier local. Go can inline these scalar closures.
 func (g *generator) orderedScalars(e *syntax.Expression, build func(ast.Expr, ast.Expr) ast.Expr) ast.Expr {
+	if !scalarEffects(e.Right) {
+		// A pure right operand cannot mutate an earlier local read. Keep this
+		// common path as one Go expression, with the fault site set before the
+		// checked operation, and without an anonymous debugger frame.
+		return build(g.scalarValue(e.Left), sourceAt(e.Pos, g.scalarValue(e.Right)))
+	}
 	a, b := g.temp(), g.temp()
 	result := primitiveEqualityType(g.program.Expressions[e].Type)
 	return call(closure(nil, ident(result),
@@ -179,6 +185,26 @@ func (g *generator) orderedScalars(e *syntax.Expression, build func(ast.Expr, as
 		assign(ident("sourcePosition"), token.ASSIGN, textLiteral(e.Pos.String())),
 		returned(build(ident(a), ident(b))),
 	))
+}
+
+func scalarEffects(e *syntax.Expression) bool {
+	if e == nil {
+		return false
+	}
+	switch e.Kind {
+	case syntax.KindNumber, syntax.KindBool, syntax.KindName, syntax.KindApply:
+		return false
+	case syntax.KindCall, syntax.KindMatch, syntax.KindLambda:
+		return true
+	case syntax.KindUnary:
+		return e.Text == "try" || scalarEffects(e.Right)
+	case syntax.KindBinary:
+		return scalarEffects(e.Left) || scalarEffects(e.Right)
+	case syntax.KindMember:
+		return scalarEffects(e.Left) || scalarEffects(e.Right)
+	}
+	// Interpolation and indexed/literal receivers can contain arbitrary calls.
+	return true
 }
 
 func (g *generator) nativeBinaryOperands(e *syntax.Expression) bool {
@@ -206,6 +232,9 @@ func (g *generator) scalarUnary(e *syntax.Expression) ast.Expr {
 	}
 	switch e.Text {
 	case "+":
+		if g.wantScalar == 0 {
+			return nil
+		}
 		return g.scalarValue(e.Right)
 	case "not":
 		return &ast.UnaryExpr{Op: token.NOT, X: g.scalarValue(e.Right)}
@@ -214,7 +243,9 @@ func (g *generator) scalarUnary(e *syntax.Expression) ast.Expr {
 			return g.locatedOperation(e, runtimeName("IntSubtract"), call(ident("int64"), intLiteral(0)), g.scalarValue(e.Right))
 		}
 		if typ == "float64" {
-			return &ast.UnaryExpr{Op: token.SUB, X: g.scalarValue(e.Right)}
+			// Go constant folding of -float64(0) loses the sign of zero.
+			// A typed variable operation retains the source IEEE result.
+			return runtimeCall("FloatNegate", g.scalarValue(e.Right))
 		}
 	}
 	return nil

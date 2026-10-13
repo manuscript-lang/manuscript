@@ -147,6 +147,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if info.Arguments != nil {
 			arguments = info.Arguments
 		}
+		if value := g.numericCall(e); value != nil {
+			return value
+		}
 		if value := g.directCollectionCall(e, arguments); value != nil {
 			return value
 		}

@@ -128,7 +128,15 @@ func callableDirectives(t *testing.T, source string) map[string][][]string {
 				t.Fatal(err)
 			}
 			start, end := fset.PositionFor(body.Pos(), false).Offset, fset.PositionFor(body.End(), false).Offset
-			result[name] = append(result[name], sourceDirectives(source[start:end]))
+			var directives []string
+			for _, line := range sourceDirectives(source[start:end]) {
+				// The source-position update and executable statement deliberately
+				// share one source target; preserve all transitions and their order.
+				if len(directives) == 0 || directives[len(directives)-1] != line {
+					directives = append(directives, line)
+				}
+			}
+			result[name] = append(result[name], directives)
 			break
 		}
 		return true

@@ -65,7 +65,7 @@ func TestInterfaceViewLowersReceiverOnce(t *testing.T) {
 				t.Fatal("lost source directives")
 			}
 			if name == "nested constructor" {
-				want := []string{"//line views.ms:9", "//line views.ms:9", "//line manuscript.generated.go:1", "//line views.ms:10", "//line manuscript.generated.go:1", "//line views.ms:7", "//line manuscript.generated.go:1"}
+				want := []string{"//line views.ms:9", "//line views.ms:9", "//line views.ms:9", "//line views.ms:9", "//line manuscript.generated.go:1", "//line views.ms:10", "//line views.ms:10", "//line manuscript.generated.go:1", "//line views.ms:7", "//line views.ms:7", "//line manuscript.generated.go:1"}
 				if !reflect.DeepEqual(sourceDirectives(printed), want) {
 					t.Fatalf("source directive order/targets changed: %q", sourceDirectives(printed))
 				}

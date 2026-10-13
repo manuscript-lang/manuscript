@@ -20,7 +20,7 @@ func TestPreparedSourceCallEligibility(t *testing.T) {
 		{"shorthand", "fn add(a: Int, b: Int) -> Int: a + b\nfn run(a: Int, b: Int) -> Int: add(a, b)\n", true},
 		{"no arguments", "fn value() -> Int: 2\nfn run() -> Int: value()\n", true},
 		{"explicit default", "fn value(number: Int = 2) -> Int: number\nfn run() -> Int: value(3)\n", true},
-		{"omitted default", "fn value(number: Int = 2) -> Int: number\nfn run() -> Int: value()\n", false},
+		{"omitted default", "fn value(number: Int = 2) -> Int: number\nfn run() -> Int: value()\n", true},
 		{"reordered", "fn add(a: Int, b: Int) -> Int: a + b\nfn run() -> Int: add(b: 2, a: 1)\n", true},
 		{"generic", "fn value[T](number: T) -> T: number\nfn run() -> Int: value(2)\n", false},
 		{"callback", "fn add(a: Int, b: Int) -> Int: a + b\nfn run() -> Int:\n    let callback = add\n    return callback(a: 1, b: 2)\n", false},

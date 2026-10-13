@@ -141,3 +141,5 @@ test('typed task handles and groups expose work state without native bookkeeping
   const state = await adapter.valueChildren(adapter.handles.get(group.variablesReference), {});
   assert.deepEqual(state.map(field => field.name), ['Active tasks', 'Joined']);
 });
+
+require('./native-scalar-debug.test.js');

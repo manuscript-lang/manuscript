@@ -11,7 +11,10 @@ import (
 func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 	var out []ast.Stmt
 	for _, s := range body {
-		out = append(out, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String())))
+		// Bookkeeping must map to the upcoming statement too. Otherwise its
+		// physical Go lines inherit the previous directive and create misleading
+		// debugger stops, especially inside typed bodies and scalar closures.
+		out = append(out, g.locatedStatement(s.Pos, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String()))))
 		statements := g.statement(s)
 		statements[0] = g.locatedStatement(s.Pos, statements[0])
 		out = append(out, statements...)

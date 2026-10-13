@@ -118,9 +118,13 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 			return true
 		})
 		if _, native := n.(*ast.FuncDecl); native {
-			name += ":native"
+			counts[name+":native"] = count
+			if _, exists := counts[name]; !exists {
+				counts[name] = count
+			}
+		} else {
+			counts[name] = count
 		}
-		counts[name] = count
 		traced++
 		return true
 	})
@@ -168,7 +172,7 @@ fn looped() -> Unit:
 		t.Fatal(r.Diagnostics)
 	}
 	counts := callableCleanupCounts(t, r.Source)
-	for name, want := range map[string]int{"empty": 0, "conditional": 1, "nested": 0, "<anonymous>": 1, "matched": 1, "defaulted": 1, "looped": 1, "Resource.close": 0, "matched:native": 1, "defaulted:native": 0} {
+	for name, want := range map[string]int{"empty": 0, "conditional": 1, "nested": 0, "<anonymous>": 1, "matched": 1, "defaulted": 1, "looped": 1, "Resource.close": 0, "matched:native": 1, "defaulted:native": 1} {
 		if got, ok := counts[name]; !ok || got != want {
 			t.Fatalf("%s cleanup count = %d (present %v), want %d\n%s", name, got, ok, want, r.Source)
 		}

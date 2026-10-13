@@ -3,6 +3,7 @@ package lower
 import (
 	"go/ast"
 	"go/token"
+	"strconv"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -33,15 +34,15 @@ func (g *generator) nativeCallAvailable(e *syntax.Expression) bool {
 	if info.Arguments != nil {
 		args = info.Arguments
 	}
-	if len(args) != len(info.Symbol.Type.Params) {
+	if len(args) > len(info.Symbol.Type.Params) {
 		return false
 	}
 	present := map[string]bool{}
 	for _, a := range args {
 		present[a.Name] = true
 	}
-	for _, p := range info.Symbol.Type.Params {
-		if !present[p.Name] {
+	for i, p := range info.Symbol.Type.Params {
+		if !present[p.Name] && !nativeDefault(info.Symbol, i) {
 			return false
 		}
 	}
@@ -129,6 +130,12 @@ func (g *generator) nativeFunction(s *checker.Symbol) ([]ast.Decl, ast.Expr) {
 		parameters = append(parameters, field(b.ID, typ))
 		values = append(values, ident(b.ID))
 	}
+	for i := range s.Type.Params {
+		if nativeDefault(s, i) {
+			parameters = append(parameters, field(nativePresence(i), ident("bool")))
+			values = append(values, ident(nativePresence(i)))
+		}
+	}
 	labels, key, position, body := g.functionParts(s.Decl.Name, s.Decl.Params, s.Decl.Result, s.Decl.Body, bindings, nil, s.Type)
 	result := nativeResultType(s.Type.Result)
 	raw, native := s.ID+"Body", s.ID+"Native"
@@ -165,6 +172,42 @@ func (g *generator) nativeSourceCall(e *syntax.Expression, args []syntax.Argumen
 	if g.wantScalar == 0 && !g.shareNativeBody(s) {
 		return nil
 	}
+	ordered := true
+	previous := -1
+	for _, a := range args {
+		for i, p := range s.Type.Params {
+			if p.Name == a.Name {
+				ordered = ordered && i > previous
+				previous = i
+			}
+		}
+	}
+	if ordered {
+		byName := map[string]syntax.Argument{}
+		for _, a := range args {
+			byName[a.Name] = a
+		}
+		values := []ast.Expr{ident("ctx")}
+		for _, p := range s.Type.Params {
+			value := nativeZero(p.Type)
+			if a, present := byName[p.Name]; present {
+				if primitiveEqualityType(p.Type) != "" {
+					value = g.scalarValue(a.Value)
+				} else {
+					value = g.argumentValue(a)
+				}
+				value = sourceAt(a.Pos, value)
+			}
+			values = append(values, value)
+		}
+		for i, p := range s.Type.Params {
+			if nativeDefault(s, i) {
+				_, present := byName[p.Name]
+				values = append(values, ident(strconv.FormatBool(present)))
+			}
+		}
+		return g.locatedOperation(e, ident(s.ID+"Native"), values...)
+	}
 	var captures []ast.Stmt
 	byName := map[string]ast.Expr{}
 	for _, a := range args {
@@ -186,7 +229,16 @@ func (g *generator) nativeSourceCall(e *syntax.Expression, args []syntax.Argumen
 	}
 	values := []ast.Expr{ident("ctx")}
 	for _, p := range s.Type.Params {
-		values = append(values, byName[p.Name])
+		value := byName[p.Name]
+		if value == nil {
+			value = nativeZero(p.Type)
+		}
+		values = append(values, value)
+	}
+	for i, p := range s.Type.Params {
+		if nativeDefault(s, i) {
+			values = append(values, ident(strconv.FormatBool(byName[p.Name] != nil)))
+		}
 	}
 	captures = append(captures, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(e.Pos.String())), returned(call(ident(s.ID+"Native"), values...)))
 	return call(closure(nil, nativeResultType(s.Type.Result), captures...))
@@ -197,4 +249,20 @@ func nativeResultType(t *checker.Type) ast.Expr {
 		return ident(primitive)
 	}
 	return runtimeName("Value")
+}
+
+func nativeDefault(s *checker.Symbol, index int) bool {
+	return s.Decl.Params[index].Default != nil || s.Type.Defaults[s.Type.Params[index].Name]
+}
+func nativePresence(index int) string { return "suppliedArgument" + strconv.Itoa(index) }
+func nativeZero(t *checker.Type) ast.Expr {
+	switch primitiveEqualityType(t) {
+	case "int64", "float64":
+		return call(ident(primitiveEqualityType(t)), intLiteral(0))
+	case "bool":
+		return ident("false")
+	case "string":
+		return textLiteral("")
+	}
+	return ident("nil")
 }
