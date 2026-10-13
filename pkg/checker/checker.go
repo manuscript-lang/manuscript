@@ -51,6 +51,8 @@ type checker struct {
 	inferenceVariables      map[string]bool
 	checkedArguments        map[*syntax.Expression]checkedArgument
 	function, serial, loops int
+	testFunction            int
+	rejectedNames           map[string]bool
 	unknownType             bool
 	labelMismatch           bool
 	reportedImports         map[string]bool
@@ -232,6 +234,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 	}
 	c.finiteTypeApplications()
 	c.finiteApplications()
+	c.Diagnostics = uniqueDiagnostics(c.Diagnostics)
 	if len(c.Diagnostics) == 0 {
 		c.effectSummaries()
 	}
@@ -258,6 +261,14 @@ func (c *checker) importReported(name string) bool {
 	return false
 }
 func (c *checker) error(pos syntax.Position, phase, message string) {
+	// One missing import is reported once per file: later uses of the same
+	// name only repeat the fix already given.
+	if _, rest, ok := strings.Cut(message, "; add: import "); ok && phase == "resolution" {
+		name, _, _ := strings.Cut(rest, " from ")
+		if c.importReported(name) {
+			return
+		}
+	}
 	// An unresolved type is already reported where it is written; later
 	// diagnostics that only restate its placeholder are noise.
 	if c.unknownType && phase != "resolution" && strings.Contains(message, "<invalid>") {
@@ -268,6 +279,10 @@ func (c *checker) error(pos syntax.Position, phase, message string) {
 func (c *checker) addSymbol(name string, s *Symbol, pos syntax.Position) {
 	if c.names[name] != nil {
 		c.error(pos, "resolution", "duplicate or intrinsic name "+name+"; this name is already declared, imported, or built in, so rename one of them")
+		if c.rejectedNames == nil {
+			c.rejectedNames = map[string]bool{}
+		}
+		c.rejectedNames[name] = true
 		return
 	}
 	c.names[name] = s
@@ -282,7 +297,7 @@ func (c *checker) variableScope(vars []*Type) *scope {
 func (c *checker) typeVariables(params []syntax.TypeParameter) []*Type {
 	var vars []*Type
 	for _, p := range params {
-		if c.names[p.Name] != nil && c.names[p.Name].Module == "" || c.scope.types[p.Name] != nil {
+		if c.names[p.Name] != nil && c.names[p.Name].Module == "" || c.scope.types[p.Name] != nil || p.Name == "Equal" || p.Name == "Hashable" {
 			c.error(p.Pos, "resolution", "duplicate or intrinsic type parameter "+p.Name+"; choose a different type parameter name")
 		}
 		v := &Type{Name: p.Name, ID: c.unique("typevar"), Kind: "variable"}
@@ -385,6 +400,11 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 	c.function = c.serial + 1
 	c.serial++
 	c.loops = 0
+	oldTest := c.testFunction
+	c.testFunction = 0
+	if d.Kind == syntax.KindTest {
+		c.testFunction = c.function
+	}
 	if receiver != nil {
 		c.Self[d] = c.bind("self", receiver, false, d.Pos)
 	}
@@ -394,6 +414,7 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 		c.error(d.Pos, "type", "reachable fallthrough in function returning "+t.Result.String()+"; end every path with 'return <"+t.Result.String()+">' (or make the last branch return)")
 	}
 	c.scope, c.result, c.function, c.loops = oldScope, oldResult, oldFunction, oldLoops
+	c.testFunction = oldTest
 }
 
 func (c *checker) checkFieldDefaults(d *syntax.Declaration, s *Symbol) {
@@ -468,7 +489,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			target := c.expression(s.Target, nil)
 			target.Write = true
 			receiver := c.Expressions[s.Target.Left]
-			if receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || (receiver.Symbol != nil && receiver.Symbol.Kind == syntax.KindType) || target.Method != nil {
+			if !opaqueField(receiver, s.Target.Text) && (receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || (receiver.Symbol != nil && receiver.Symbol.Kind == syntax.KindType) || target.Method != nil) {
 				c.error(s.Target.Pos, "type", "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'")
 			}
 			value := c.expression(s.Value, target.Type)
@@ -476,7 +497,11 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		}
 		b := c.scope.binding(s.Name)
 		if b == nil {
-			c.error(s.Pos, "resolution", c.unknownName(s.Name))
+			if symbol := c.names[s.Name]; symbol != nil {
+				c.error(s.Pos, "type", "cannot assign to "+c.symbolDescription(symbol)+" "+s.Name+"; assignment targets are 'var' bindings and record fields")
+			} else {
+				c.error(s.Pos, "resolution", c.unknownName(s.Name))
+			}
 			c.expression(s.Value, nil)
 			return true, false
 		}
@@ -510,7 +535,15 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		}
 		return false, false
 	case syntax.KindCall:
-		i := c.expression(s.Value, nil)
+		var i *Info
+		if s.Value.Kind == syntax.KindMatch {
+			// A match used as a statement discards its result, so its arms need
+			// not agree on a value.
+			c.captureScope(s.Value)
+			i = c.checkExpression(s.Value, c.matchExpression(s.Value, nil, true), nil)
+		} else {
+			i = c.expression(s.Value, nil)
+		}
 		if s.Value.Kind == syntax.KindUnary && s.Value.Text == "try" && i.Type.ID != "Unit" && i.Type.ID != "<invalid>" {
 			c.error(s.Value.Pos, "type", "standalone try requires a Unit success value, found "+i.Type.String()+"; use 'let name = try ...' to keep the value or 'return try ...' to return it")
 		}
@@ -780,7 +813,7 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 		if c.errorAssignable(i.Type, expected) {
 			i.ErrorSource = i.Type
 			cause := i.Type
-			if std(cause, "Result") {
+			if std(cause, "Result") && len(cause.Args) == 2 {
 				cause = cause.Args[1]
 			}
 			i.ScopedError = c.errorNeedsScope(cause)
@@ -892,7 +925,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 	case syntax.KindIndex:
 		return c.index(e)
 	case syntax.KindMatch:
-		return c.matchExpression(e, expected)
+		return c.matchExpression(e, expected, false)
 	case syntax.KindApply:
 		if callable := c.nativeCallable(e); callable != nil {
 			*i = *callable
@@ -975,7 +1008,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 	case syntax.KindLambda:
 		return c.callback(e, expected)
 	case syntax.KindList:
-		if s := c.names["List"]; (s == nil || s != standardSymbols["List"]) && !c.importReported("List") {
+		if s := c.names["List"]; s == nil || s != standardSymbols["List"] {
 			c.error(e.Pos, "resolution", "list literal requires the canonical List import; add: import List from \"@std/collections.ms\"")
 		}
 		var element *Type
@@ -1004,7 +1037,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 		i.Type = standard("List", element)
 	case syntax.KindMap:
-		if s := c.names["Map"]; (s == nil || s != standardSymbols["Map"]) && !c.importReported("Map") {
+		if s := c.names["Map"]; s == nil || s != standardSymbols["Map"] {
 			c.error(e.Pos, "resolution", "map literal requires the canonical Map import; add: import Map from \"@std/collections.ms\"")
 		}
 		var types [2]*Type
@@ -1055,7 +1088,11 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 					c.returnInference.contextDependent = true
 				}
 				if !std(c.result, "Result") || len(c.result.Args) != 2 {
-					c.error(e.Pos, "type", "try requires an enclosing Result; declare this function to return Result[T, E] or handle the error with match")
+					if c.testFunction != 0 && c.function == c.testFunction {
+						c.error(e.Pos, "type", "try is not available in a test, which cannot return Result; match the result and end the failing arm with 'return panic(message: ...)'")
+					} else {
+						c.error(e.Pos, "type", "try requires an enclosing Result; declare this function to return Result[T, E] or handle the error with match")
+					}
 				} else if !Same(c.result.Args[1], v.Type.Args[1]) {
 					if c.errorAssignable(v.Type.Args[1], c.result.Args[1]) {
 						i.PropagatedError = v.Type.Args[1]
@@ -1262,7 +1299,7 @@ func (c *checker) index(e *syntax.Expression) *Info {
 	return info
 }
 
-func (c *checker) matchExpression(e *syntax.Expression, expected *Type) *Info {
+func (c *checker) matchExpression(e *syntax.Expression, expected *Type, statement bool) *Info {
 	type armState struct {
 		arm            *syntax.Arm
 		scope          *scope
@@ -1278,6 +1315,25 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type) *Info {
 	})
 	outer := c.scope
 	defer func() { c.scope = outer }()
+	checkpoint := len(c.Diagnostics)
+	// A statement match discards its value. Arms that agree keep the common
+	// type; arms that do not are checked independently.
+	discard := func() *Info {
+		fall, breaks := false, false
+		for _, state := range states {
+			c.scope = state.scope
+			normal := state.normal
+			breaks = breaks || state.breaks
+			if normal && state.arm.Value != nil {
+				value := c.expression(state.arm.Value, nil)
+				breaks = breaks || value.Breaks
+				normal = !value.NoReturn
+			}
+			fall = fall || normal
+		}
+		scrutinee := c.Expressions[e.Left]
+		return &Info{Type: primitive("Unit"), NoReturn: scrutinee.NoReturn || !fall, Breaks: scrutinee.Breaks || (!scrutinee.NoReturn && breaks)}
+	}
 	result := expected
 	if !inferenceTypeKnown(result, c.inferenceVariables) {
 		result = nil
@@ -1337,6 +1393,60 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type) *Info {
 			result = primitive("Never")
 		}
 	}
+	if statement && len(c.Diagnostics) > checkpoint {
+		c.Diagnostics = c.Diagnostics[:checkpoint]
+		return discard()
+	}
 	scrutinee := c.Expressions[e.Left]
 	return &Info{Type: result, NoReturn: scrutinee.NoReturn || !fall, Breaks: scrutinee.Breaks || (!scrutinee.NoReturn && breaks)}
+}
+
+// symbolDescription names what a module-level declaration is, for diagnostics
+// about using it where a variable is required.
+func (c *checker) symbolDescription(s *Symbol) string {
+	imported := s.Module != c.module.File
+	switch {
+	case s.Kind == syntax.KindFn && imported:
+		return "imported function"
+	case s.Kind == syntax.KindFn:
+		return "function"
+	case s.Kind == syntax.KindType && imported:
+		return "imported type"
+	case s.Kind == syntax.KindType:
+		return "type"
+	}
+	return "declaration"
+}
+
+// uniqueDiagnostics drops repeats of one message at one position, which
+// speculative checks of the same expression can produce.
+func uniqueDiagnostics(diagnostics []syntax.Diagnostic) []syntax.Diagnostic {
+	type key struct {
+		position syntax.Position
+		message  string
+	}
+	seen := map[key]bool{}
+	result := diagnostics[:0]
+	for _, d := range diagnostics {
+		k := key{d.Position, d.Message}
+		if !seen[k] {
+			seen[k] = true
+			result = append(result, d)
+		}
+	}
+	return result
+}
+
+// opaqueField reports a declared field of a non-record standard type, whose
+// member diagnostic already says the field cannot be reached.
+func opaqueField(receiver *Info, name string) bool {
+	if receiver == nil || receiver.Type == nil || receiver.Type.Kind == syntax.KindRecord {
+		return false
+	}
+	for _, f := range Fields(receiver.Type) {
+		if f.Name == name {
+			return true
+		}
+	}
+	return false
 }

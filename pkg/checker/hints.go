@@ -140,6 +140,9 @@ func (c *checker) unknownName(name string) string {
 	if name == "this" && c.scope.binding("self") != nil {
 		return message + "; the receiver in an impl method is 'self'; write self instead of this"
 	}
+	if name == "pass" {
+		return message + "; 'pass' is not a keyword, so write 'unit' for an empty block or match arm"
+	}
 	if hint := didYouMean(name, c.valueNames()); hint != "" {
 		return message + hint
 	}
@@ -160,8 +163,10 @@ func (c *checker) memberNamesSeen(receiver *Type, seen map[*Type]bool) []string 
 	}
 	seen[receiver] = true
 	var names []string
-	for _, f := range Fields(receiver) {
-		names = append(names, f.Name)
+	if receiver.Kind == syntax.KindRecord {
+		for _, f := range Fields(receiver) {
+			names = append(names, f.Name)
+		}
 	}
 	if receiver.Def != nil {
 		for _, op := range receiver.Def.Operations {
@@ -193,6 +198,13 @@ func (c *checker) unknownMember(receiver *Type, name string) string {
 	c.unknownType = true
 	message := "unknown or ambiguous member " + name + " on " + receiver.String()
 	available := c.memberNames(receiver)
+	if receiver.Kind != syntax.KindRecord {
+		for _, f := range Fields(receiver) {
+			if f.Name == name {
+				return "member " + name + " of " + receiver.String() + " is not readable or assignable; its state is reached only through its operations: " + strings.Join(available, ", ")
+			}
+		}
+	}
 	if std(receiver, "List") && name == "join" {
 		return message + "; join is only available on List[String]; convert the elements first, e.g. xs.map(transform: fn(value: Int) -> String: \"{value}\").join(separator: \",\")"
 	}
@@ -276,7 +288,6 @@ func typeSketch(name string, arity int) string {
 func (c *checker) unknownTypeMessage(name string) string {
 	message := "unknown type " + name
 	if hint := importHint(name); hint != "" {
-		c.importReported(name)
 		return message + hint
 	}
 	if hint := didYouMean(name, c.typeNames()); hint != "" {

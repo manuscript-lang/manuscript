@@ -40,6 +40,8 @@ func ResolveImport(project Project, importer, path string, overlay map[string]st
 			}
 			target = base
 		}
+	} else if strings.HasPrefix(path, "/") {
+		return "", fmt.Errorf("absolute import paths are not supported; write a relative path such as \"../name.ms\" from this file, or declare an alias under [aliases] in ms.toml")
 	} else {
 		return "", fmt.Errorf("imports require a relative path or alias; write \"./%s\" for a file next to this one, \"@std/name.ms\" for the standard library, or declare an alias under [aliases] in ms.toml", path)
 	}
