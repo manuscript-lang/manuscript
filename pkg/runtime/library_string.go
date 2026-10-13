@@ -371,6 +371,39 @@ func init() {
 		return Bytes{out}
 	})
 	add("bytes", "is_empty", "Bool", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return len(a[0].(Bytes).Items) == 0 })
+	add("bytes", "split", "List[Bytes]", []LibraryParam{p("data", "Bytes"), p("separator", "Bytes"), p("max_parts", "Optional[Int]")}, libraryBytesSplit)
+}
+
+func libraryBytesSplit(ctx *Execution, result string, args []Value) Value {
+	data, separator := args[0].(Bytes).Items, args[1].(Bytes).Items
+	limit := args[2].(int64)
+	if limit < 0 {
+		return Panic("split: max_parts must be nonnegative, found " + strconv.FormatInt(limit, 10))
+	}
+	out := &List{Type: result}
+	if len(separator) == 0 {
+		for i := 0; i < len(data) && int64(len(out.Items)) < limit; i++ {
+			if i%1024 == 0 {
+				CheckCancelled(ctx)
+			}
+			out.Items = append(out.Items, Bytes{data[i : i+1]})
+		}
+		return out
+	}
+	start := 0
+	for int64(len(out.Items)) < limit {
+		CheckCancelled(ctx)
+		offset := bytes.Index(data[start:], separator)
+		CheckCancelled(ctx)
+		if offset < 0 {
+			out.Items = append(out.Items, Bytes{data[start:]})
+			break
+		}
+		end := start + offset
+		out.Items = append(out.Items, Bytes{data[start:end]})
+		start = end + len(separator)
+	}
+	return out
 }
 
 // Precision formatting preserves requested trailing digits. Manuscript uses the
