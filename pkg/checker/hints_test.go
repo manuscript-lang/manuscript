@@ -33,7 +33,7 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"unimported Map call", "fn f() -> Int:\n    let m = Map[String, Int]()\n    return 0\n", []string{"unknown binding Map", "import Map from \"@std/collections.ms\""}, 1},
 		{"unimported Set call", "fn f() -> Int:\n    let s = Set[String]()\n    return 0\n", []string{"unknown binding Set", "import Set from \"@std/collections.ms\""}, 1},
 		{"unimported List annotation and literal", "fn f() -> Int:\n    var xs: List[Int] = []\n    return 0\n", []string{"unknown type List", "import List from \"@std/collections.ms\""}, 1},
-		{"missing labels on generic call", "import List from \"@std/collections.ms\"\nfn pick[T](items: List[T], keep: fn(value: T) -> Bool) -> Optional[T]:\n    return none\nfn f() -> Int:\n    let nums = [1, 2]\n    let hit = pick(nums, fn(value: Int) -> Bool: value > 1)\n    return hit.unwrap_or(0)\n", []string{"write pick(items: nums, keep: fn(value: Int) -> Bool: value > 1)"}, 1},
+		{"positional generic call", "import List from \"@std/collections.ms\"\nfn pick[T](items: List[T], keep: fn(value: T) -> Bool) -> Optional[T]:\n    return none\nfn f() -> Int:\n    let nums = [1, 2]\n    let hit = pick(nums, fn(value: Int) -> Bool: value > 1)\n    return hit.unwrap_or(0)\n", nil, 0},
 		{"member synonym on String", "fn f() -> Int:\n    let n = \"abc\".length()\n    return 0\n", []string{"did you mean 'byte_length' or 'scalar_length'?"}, 1},
 		{"member list is complete", "fn f() -> Int:\n    let n = \"abc\".foo()\n    return 0\n", []string{"available: at,", "upper"}, 1},
 		{"join on non-String list", "import List from \"@std/collections.ms\"\nfn f() -> String:\n    return [1].join(separator: \",\")\n", []string{"only available on List[String]", "separator"}, 1},
@@ -50,6 +50,9 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 			p := checker.Check([]*syntax.Module{m}, nil)
 			if len(p.Diagnostics) != tt.count {
 				t.Fatalf("expected %d diagnostics, got %v", tt.count, p.Diagnostics)
+			}
+			if tt.count == 0 {
+				return
 			}
 			message := p.Diagnostics[0].Message
 			for _, want := range tt.want {

@@ -303,8 +303,8 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 	}
 
-	// A shorthand token names a caller binding and supplies a callee label.
-	// Renaming either side expands the token to keep the other side intact.
+	// An unlabeled identifier names a caller binding and supplies a callee parameter.
+	// Renaming either side makes the label explicit to preserve argument binding.
 	for call, info := range program.Expressions {
 		if call.Kind != syntax.KindCall || len(info.Arguments) != len(call.Args) {
 			continue
@@ -322,7 +322,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 		for at, arg := range call.Args {
 			label := info.Arguments[at].Name
-			if arg.Name != "" || label == "" || arg.Value.Kind != syntax.KindName {
+			if arg.Name != "" || label == "" || arg.Value.Kind != syntax.KindName || arg.Pos != arg.Value.Pos {
 				continue
 			}
 			value := program.Expressions[arg.Value]
@@ -353,7 +353,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 				}
 			}
 			if labelKey != "" {
-				index = append(index, occurrence{key: labelKey, name: label, pos: arg.Value.Pos, end: arg.Value.Pos.Offset + len(label), renameSuffix: ": " + arg.Value.Text, implicitLabel: true})
+				index = append(index, occurrence{key: labelKey, name: label, pos: arg.Value.Pos, end: arg.Value.Pos.Offset + len(arg.Value.Text), renameSuffix: ": " + arg.Value.Text, implicitLabel: true})
 			}
 		}
 	}
