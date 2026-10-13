@@ -7,7 +7,8 @@ import (
 
 // Code groups stable rule families; message text remains readable and contextual.
 func (d Diagnostic) Code() string {
-	message := d.Message
+	// Messages read "<cause>; <fix>". Only the cause identifies the rule.
+	message, _, _ := strings.Cut(d.Message, "; ")
 	switch d.Phase {
 	case "parse":
 		if strings.Contains(message, "indent") || strings.Contains(message, "suite") || strings.Contains(message, "tabs") {

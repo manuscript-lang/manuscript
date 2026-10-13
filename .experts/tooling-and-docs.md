@@ -173,3 +173,11 @@ Decision: the user switched Pages to GitHub Actions and requested removal of obs
 Apply when: migrating or repairing Pages publishing.
 Evidence: [failed settings request](https://github.com/manuscript-lang/manuscript/actions/runs/38275457893/job/114902462365), [artifact deployment](../.github/workflows/cicd.yml), and [publishing instructions](../documentation/contributing/development.md).
 Verify: inspect the actual deployment result, not just the book artifact or merged PR; confirm Pages source is GitHub Actions.
+
+### Diagnostics are `<cause>; <fix>`, and tools key on the cause
+
+Verified: agents act on a diagnostic only when it names the cause, the location, and a concrete fix (nearest name, import line, valid options). Messages therefore read `<cause>; <fix>`. `Diagnostic.Code` classifies only the text before the first `; `, so fix text cannot change a rule code. Partial parsing recovers from an unterminated delimiter by matching the message prefix, and the lexer reports it at end of file; moving that position or exact wording breaks editor recovery. A follow-on error that only restates `<invalid>` after an unknown name or operand mismatch is suppressed, but a genuine mismatch that mentions `<invalid>` (callback arity) must still surface.
+
+Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
+Evidence: [message-shape rule](../documentation/developer-tooling/source/diagnostics.md), [catalogue](../documentation/contributing/diagnostics-catalogue.md), [checker hints](../pkg/checker/hints.go), [hint tests](../pkg/checker/hints_test.go), and [recovery](../pkg/parser/partial.go).
+Verify: run `go test ./pkg/checker ./pkg/parser ./pkg/tooling/lsp ./internal/cli`; extend the hint tests with the new message.

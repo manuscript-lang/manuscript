@@ -120,7 +120,7 @@ func CurrentPin() (BuildPin, error) {
 		return BuildPin{}, err
 	}
 	if toolchain["GOFLAGS"] != "" {
-		return BuildPin{}, fmt.Errorf("pinned builds require empty GOFLAGS; use an explicit build type")
+		return BuildPin{}, fmt.Errorf("pinned builds require empty GOFLAGS; unset it (GOFLAGS= ms ...) and choose optimization with --build-type instead")
 	}
 	return BuildPin{1, support.Version(), implementationDigest(), toolchain}, nil
 }
@@ -150,10 +150,10 @@ func readPin(root string) (BuildPin, error) {
 	decoder := json.NewDecoder(strings.NewReader(string(data)))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&pin); err != nil {
-		return BuildPin{}, fmt.Errorf("invalid ms.lock: %w", err)
+		return BuildPin{}, fmt.Errorf("invalid ms.lock: %w; it is generated, so delete it and run ms lock ms.toml to recreate it", err)
 	}
 	if err := decoder.Decode(new(any)); err != io.EOF {
-		return BuildPin{}, fmt.Errorf("ms.lock must contain exactly one JSON object")
+		return BuildPin{}, fmt.Errorf("ms.lock must contain exactly one JSON object; it is generated, so delete it and run ms lock ms.toml to recreate it")
 	}
 	return pin, nil
 }
@@ -234,7 +234,7 @@ func BuildCheckedWithType(result Result, output, cacheDir string, kind BuildType
 		return BuildMetadata{}, err
 	}
 	if !result.Success() || result.Program == nil || result.Source == "" {
-		return BuildMetadata{}, fmt.Errorf("cannot build a program with diagnostics")
+		return BuildMetadata{}, fmt.Errorf("cannot build a program with diagnostics; run ms check on the source and fix the reported errors first")
 	}
 	var expected BuildPin
 	if result.ProjectRoot != "" {
@@ -404,7 +404,7 @@ func VerifyBuild(output string, sources map[string]string) error {
 		return err
 	}
 	if metadata.Format != 1 || digest(binary) != metadata.ExecutableSHA256 {
-		return fmt.Errorf("executable does not match build metadata")
+		return fmt.Errorf("executable does not match build metadata; the cached build is stale or was modified, so delete it (or the MANUSCRIPT_CACHE_DIR entry) and rebuild")
 	}
 	names := make([]string, 0, len(metadata.Sources))
 	for name := range metadata.Sources {
@@ -414,7 +414,7 @@ func VerifyBuild(output string, sources map[string]string) error {
 	for _, name := range names {
 		source, ok := sources[name]
 		if !ok || digest([]byte(source)) != metadata.Sources[name] {
-			return fmt.Errorf("source does not match build metadata: %s", name)
+			return fmt.Errorf("source does not match build metadata: %s changed since the build; rebuild to refresh the artifact", name)
 		}
 	}
 	return nil

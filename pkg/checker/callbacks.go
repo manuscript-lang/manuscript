@@ -21,7 +21,7 @@ func (r *callbackReturns) add(c *checker, typ *Type, pos syntax.Position) {
 	if r.typ == nil {
 		r.typ = typ
 	} else if !Same(typ, r.typ) {
-		c.error(pos, "type", "callback returns require the same type: "+formatMismatch(typ, r.typ))
+		c.error(pos, "type", "callback returns require the same type: "+formatMismatch(typ, r.typ)+"; make every return in the callback produce one type")
 	}
 }
 
@@ -55,7 +55,7 @@ func inferenceTypeKnown(t *Type, variables map[string]bool) bool {
 func (c *checker) callback(e *syntax.Expression, expected *Type) *Info {
 	context := callbackContext(expected)
 	if context != nil && len(context.Params) != len(e.Params) {
-		c.error(e.Pos, "type", "callback parameter count does not match its context")
+		c.error(e.Pos, "type", "callback parameter count does not match its context; the callback takes exactly the parameters its context declares")
 		context = nil
 	}
 	params := make([]Param, len(e.Params))
@@ -63,7 +63,7 @@ func (c *checker) callback(e *syntax.Expression, expected *Type) *Info {
 	defaults := map[string]bool{}
 	for index, param := range e.Params {
 		if seen[param.Name] {
-			c.error(param.Pos, "type", "duplicate parameter or field "+param.Name)
+			c.error(param.Pos, "type", "duplicate parameter or field "+param.Name+"; each name may appear once, so rename one")
 		}
 		seen[param.Name] = true
 		var typ *Type
@@ -122,7 +122,7 @@ func (c *checker) callback(e *syntax.Expression, expected *Type) *Info {
 			}
 		}
 	} else if fall && result.ID != "Unit" && result.ID != "<invalid>" {
-		c.error(e.Pos, "type", "reachable fallthrough in anonymous function")
+		c.error(e.Pos, "type", "reachable fallthrough in anonymous function; end every path with a 'return'")
 	}
 	t := function(params, result)
 	if len(defaults) > 0 {

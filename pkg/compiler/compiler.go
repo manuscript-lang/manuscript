@@ -99,5 +99,24 @@ func checkEntry(program *checker.Program, entry string) *syntax.Diagnostic {
 	if main != nil && main.Export && main.Kind == syntax.KindFn && len(main.Variables) == 0 && len(main.Type.Params) == 0 && main.Type.Result.ID == "Int" {
 		return nil
 	}
-	return &syntax.Diagnostic{Position: syntax.Position{File: entry, Line: 1, Column: 1}, Phase: "type", Message: "entry must export fn main() -> Int"}
+	position := syntax.Position{File: entry, Line: 1, Column: 1}
+	detail := "no main function is declared, so add 'export fn main() -> Int:' with an indented 'return 0' body"
+	if main != nil {
+		if main.Decl != nil {
+			position = main.Decl.Pos
+		}
+		switch {
+		case main.Kind != syntax.KindFn:
+			detail = "main is declared as a " + main.Kind + ", so rename it and declare 'export fn main() -> Int:'"
+		case !main.Export:
+			detail = "main is not exported, so write 'export fn main() -> Int:'"
+		case len(main.Variables) > 0:
+			detail = "main cannot be generic, so remove its type parameters"
+		case len(main.Type.Params) > 0:
+			detail = "main takes no parameters, so remove them (read program arguments through the standard cli module)"
+		default:
+			detail = "main returns " + main.Type.Result.String() + ", so declare it '-> Int' and return an exit status, e.g. 'return 0'"
+		}
+	}
+	return &syntax.Diagnostic{Position: position, Phase: "type", Message: "entry must export fn main() -> Int; " + detail}
 }

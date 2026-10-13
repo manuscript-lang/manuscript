@@ -62,7 +62,7 @@ func constructor(typ string, args []Argument) Value {
 		for i, v := range values {
 			n := v.(int64)
 			if n < 0 || n > 255 {
-				return Panic("byte value must be between 0 and 255")
+				return Panic("byte value must be between 0 and 255; clamp or validate the Int before storing it as a byte")
 			}
 			bytes[i] = byte(n)
 		}

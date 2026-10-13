@@ -44,7 +44,7 @@ func init() {
 	add("math", "abs_int", "Int", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[0].(int64)
 		if n == math.MinInt64 {
-			return Panic("Int overflow")
+			return Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 		}
 		if n < 0 {
 			n = -n
@@ -67,7 +67,7 @@ func init() {
 	add("string", "split", "List[String]", []LibraryParam{p("text", "String"), p("separator", "String"), p("max_parts", "Optional[Int]")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[2].(int64)
 		if n < 0 {
-			return Panic("split requires nonnegative max_parts")
+			return Panic("split requires nonnegative max_parts; pass 0 or a positive count")
 		}
 		if n == 0 {
 			return libraryStrings(nil)
@@ -218,7 +218,7 @@ func init() {
 	add("numbers", "format_int", "String", []LibraryParam{p("value", "Int"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		r := a[1].(int64)
 		if r < 2 || r > 36 {
-			return Panic("invalid radix")
+			return Panic("invalid radix; the radix must be between 2 and 36")
 		}
 		return strconv.FormatInt(a[0].(int64), int(r))
 	})
@@ -280,7 +280,7 @@ func init() {
 	add("bigint", "format", "String", []LibraryParam{p("value", "BigInt"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[1].(int64)
 		if n < 2 || n > 36 {
-			return Panic("invalid radix")
+			return Panic("invalid radix; the radix must be between 2 and 36")
 		}
 		return a[0].(libraryBigInt).n.Text(int(n))
 	})

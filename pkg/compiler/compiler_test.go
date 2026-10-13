@@ -214,7 +214,7 @@ func TestParameterlessEntrySignature(t *testing.T) {
 			if result.Success() != spec.accepted {
 				t.Fatalf("accepted=%v: %v", result.Success(), result.Diagnostics)
 			}
-			if !spec.accepted && (len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "entry must export fn main() -> Int") {
+			if !spec.accepted && (len(result.Diagnostics) != 1 || !strings.HasPrefix(result.Diagnostics[0].Message, "entry must export fn main() -> Int")) {
 				t.Fatalf("wrong entry diagnostic: %v", result.Diagnostics)
 			}
 		})

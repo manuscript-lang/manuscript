@@ -107,7 +107,7 @@ func canonicalOverlay(root string, overlay map[string]string) (map[string]string
 			continue
 		}
 		if previous, ok := normalized[canonical]; ok && previous != source {
-			return nil, fmt.Errorf("conflicting editor overlays for %s", canonical)
+			return nil, fmt.Errorf("conflicting editor overlays for %s; two spellings of one path carry different unsaved contents, so send a single snapshot per file", canonical)
 		}
 		normalized[canonical] = source
 	}
@@ -132,7 +132,7 @@ func (l *moduleLoader) visit(canonical string) (string, error) {
 	}
 	logical = filepath.ToSlash(logical)
 	if l.active[canonical] {
-		return "", fmt.Errorf("cyclic module dependency at %s", logical)
+		return "", fmt.Errorf("cyclic module dependency at %s; modules cannot import each other in a loop, so move the shared declarations into a third module that both import", logical)
 	}
 	if key, ok := l.loaded[canonical]; ok {
 		return key, nil
@@ -179,7 +179,7 @@ func (l *moduleLoader) read(filename string) (string, error) {
 func (l *moduleLoader) importModule(filename string, item *syntax.Import) (string, error) {
 	target, err := project.ResolveImport(l.config, filename, item.Path, l.overlay)
 	if err != nil {
-		return "", syntax.Diagnostic{Position: item.Pos, Phase: "resolution", Message: err.Error()}
+		return "", syntax.Diagnostic{Position: item.Pos, Phase: "resolution", Message: explainPathError(err, item.Path)}
 	}
 	key, err := l.visit(target)
 	if err != nil {

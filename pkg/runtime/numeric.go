@@ -19,14 +19,14 @@ func Float(text string) Value { n, _ := strconv.ParseFloat(text, 64); return n }
 func checkedAdd(a, b int64) int64 {
 	r := a + b
 	if b > 0 && r < a || b < 0 && r > a {
-		Panic("Int overflow")
+		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 	}
 	return r
 }
 func checkedSub(a, b int64) int64 {
 	r := a - b
 	if b < 0 && r < a || b > 0 && r > a {
-		Panic("Int overflow")
+		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 	}
 	return r
 }
@@ -35,11 +35,11 @@ func checkedMul(a, b int64) int64 {
 		return 0
 	}
 	if a == math.MinInt64 && b == -1 || b == math.MinInt64 && a == -1 {
-		Panic("Int overflow")
+		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 	}
 	r := a * b
 	if r/b != a {
-		Panic("Int overflow")
+		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 	}
 	return r
 }
@@ -55,7 +55,7 @@ func Unary(op string, value Value) Value {
 		switch v := value.(type) {
 		case int64:
 			if v == math.MinInt64 {
-				return Panic("Int overflow")
+				return Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 			}
 			return -v
 		case float64:
@@ -85,15 +85,15 @@ func Binary(op string, a, b Value) Value {
 			return checkedMul(x, y)
 		case "/":
 			if y == 0 {
-				return Panic("division by zero")
+				return Panic("division by zero; test that the divisor is not 0 before dividing")
 			}
 			if x == math.MinInt64 && y == -1 {
-				return Panic("Int overflow")
+				return Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 			}
 			return x / y
 		case "%":
 			if y == 0 {
-				return Panic("division by zero")
+				return Panic("division by zero; test that the divisor is not 0 before dividing")
 			}
 			return x % y
 		case "<":
@@ -148,7 +148,7 @@ func Binary(op string, a, b Value) Value {
 			result.Mul(x.Value, y.Value)
 		case "/":
 			if y.Value.Sign() == 0 {
-				return Panic("Decimal division by zero")
+				return Panic("Decimal division by zero; test that the divisor is not 0 before dividing")
 			}
 			result.Quo(x.Value, y.Value)
 		}

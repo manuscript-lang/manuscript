@@ -204,7 +204,7 @@ func Positions(value Value, length int) []Value {
 		Panic("runtime invariant: positional binding")
 	}
 	if len(values) != length {
-		Panic("destructuring length mismatch")
+		Panic(fmt.Sprintf("destructuring length mismatch; the pattern binds %d names but the list has %d elements", length, len(values)))
 	}
 	return values
 }

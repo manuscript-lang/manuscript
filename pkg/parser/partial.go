@@ -30,7 +30,7 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 			// rather than counting delimiter characters in source text.
 			if !declaration && len(starts) > 0 {
 				_, err := lexer.Lex(file, source[starts[len(starts)-1]:offset])
-				if issue, ok := err.(syntax.Diagnostic); ok && issue.Message == "unterminated delimiter" {
+				if issue, ok := err.(syntax.Diagnostic); ok && strings.HasPrefix(issue.Message, "unterminated delimiter") {
 					offset += len(line)
 					continue
 				}

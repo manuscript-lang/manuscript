@@ -27,7 +27,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	}
 	receiver := c.resolve(d.Receiver, false)
 	if receiver.Def == nil || receiver.Def.Symbol == nil || receiver.Def.Symbol.Native != "" && !c.standardDeclarations || (receiver.Kind != syntax.KindRecord && receiver.Kind != "alternative") {
-		c.error(d.Pos, "type", "implementation receiver must be nominal source data")
+		c.error(d.Pos, "type", "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types")
 	}
 	occurs := map[string]bool{}
 	var visit func(*Type)
@@ -64,7 +64,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	}
 	contract := c.resolve(d.Contract, false)
 	if contract.Kind != "contract" {
-		c.error(d.Pos, "type", "implementation target must be an interface")
+		c.error(d.Pos, "type", "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'")
 	}
 	// An interface argument that is a receiver parameter carries the interface's
 	// declared bounds into this implementation, without changing the data type.
@@ -86,7 +86,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	contract = c.resolve(d.Contract, false)
 	for _, m := range c.Methods {
 		if c.methodVisible(m) && overlap(receiver, contract, m.Receiver, m.Contract, append(append([]*Type{}, vars...), m.Variables...)) {
-			c.error(d.Pos, "type", "duplicate or overlapping implementation")
+			c.error(d.Pos, "type", "duplicate or overlapping implementation; "+contract.String()+" is already implemented for "+receiver.String()+" (or an overlapping type), so remove one impl")
 			break
 		}
 	}
@@ -99,7 +99,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	}
 	for _, method := range d.Methods {
 		if seen[method.Name] {
-			c.error(method.Pos, "type", "duplicate implementation operation")
+			c.error(method.Pos, "type", "duplicate implementation operation "+method.Name+"; define each operation once per impl")
 		}
 		seen[method.Name] = true
 		t := c.signature(method.Params, method.Result)
@@ -116,19 +116,19 @@ func (c *checker) implementation(d *syntax.Declaration) {
 					}
 				}
 				if !Same(t, op.Type) {
-					c.error(method.Pos, "type", "implementation operation signature does not match contract")
+					c.error(method.Pos, "type", "implementation operation signature does not match contract; "+method.Name+" must be declared as fn "+method.Name+signatureText(op.Type))
 				}
 			}
 		}
 		if !found {
-			c.error(method.Pos, "type", "extra operation "+method.Name)
+			c.error(method.Pos, "type", "extra operation "+method.Name+"; "+contract.String()+" declares: "+list(paramNames(ops), 12)+" (remove it or add it to the interface)")
 		}
 		local := receiver.Def != nil && receiver.Def.Symbol != nil && receiver.Def.Symbol.Module != c.module.File
 		c.Methods = append(c.Methods, &Method{ID: c.unique("method"), Module: c.module.File, Local: local, Receiver: receiver, Contract: contract, Variables: vars, Decl: method, Type: t})
 	}
 	for _, op := range ops {
 		if !seen[op.Name] {
-			c.error(d.Pos, "type", "missing implementation operation "+op.Name)
+			c.error(d.Pos, "type", "missing implementation operation "+op.Name+"; add fn "+op.Name+signatureText(op.Type)+" to this impl")
 		}
 	}
 	c.wellFormed(receiver, d.Pos, map[string]bool{})
@@ -474,7 +474,7 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 		for _, v := range t.Def.Variables {
 			for _, b := range v.Bounds {
 				if !c.satisfies(sub[v.ID], Sub(b, sub)) {
-					c.error(pos, "type", sub[v.ID].String()+" does not satisfy "+b.String())
+					c.error(pos, "type", sub[v.ID].String()+" does not satisfy "+b.String()+"; add 'impl "+b.String()+" for "+sub[v.ID].String()+":' or use a type that implements it")
 				}
 			}
 		}
@@ -535,7 +535,7 @@ func (c *checker) public(t *Type, pos syntax.Position, seen map[string]bool) {
 	}
 	seen[typeKey(t)] = true
 	if t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Module == c.module.File && !t.Def.Symbol.Export {
-		c.error(pos, "type", "public signature exposes private type "+t.Name)
+		c.error(pos, "type", "public signature exposes private type "+t.Name+"; add 'export' to its declaration or keep the function private")
 	}
 	for _, a := range t.Args {
 		c.public(a, pos, seen)
@@ -557,10 +557,10 @@ func (c *checker) layout(t *Type, pos syntax.Position, active map[string]*Type, 
 	}
 	if previous := active[t.ID]; previous != nil {
 		if !Same(previous, t) {
-			c.error(pos, "type", "recursive generic applications must preserve their parameters")
+			c.error(pos, "type", "recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])")
 		}
 		if !indirect {
-			c.error(pos, "type", "unguarded inline recursive layout")
+			c.error(pos, "type", "unguarded inline recursive layout; a type cannot contain itself directly, so wrap the recursive field in List[...], Optional[...], or another indirection")
 		}
 		return
 	}

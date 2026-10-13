@@ -1,6 +1,9 @@
 package msruntime
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // LibrarySpec describes native calling conventions; integration tests compare
 // them with the authoritative checked Manuscript declarations.
@@ -104,7 +107,7 @@ func libraryBound(result string, n int64) Value {
 }
 func librarySlice(length int, start, end int64) {
 	if start < 0 || end < start || end > int64(length) {
-		Panic("invalid half-open slice bounds")
+		Panic(fmt.Sprintf("invalid half-open slice bounds; need 0 <= start <= end <= %d, found start %d and end %d", length, start, end))
 	}
 }
 

@@ -51,6 +51,8 @@ type checker struct {
 	inferenceVariables      map[string]bool
 	function, serial, loops int
 	unknownType             bool
+	callName                string
+	callPos                 syntax.Position
 	captures                map[int]map[*Binding]bool
 }
 
@@ -68,7 +70,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 	for _, module := range modules {
 		for _, d := range module.Declarations {
 			if d.Kind != syntax.KindInterface && d.Kind != syntax.KindImpl && len(d.Methods) > 0 {
-				c.error(d.Pos, "type", "receiver operation declarations require standard-library bindings; use an explicit impl for source methods")
+				c.error(d.Pos, "type", "receiver operation declarations require standard-library bindings; move source methods into an explicit 'impl Interface for Type:' block")
 			}
 		}
 	}
@@ -113,7 +115,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 				found = p.Symbols[imports[item]][item.Name]
 			}
 			if found == nil || !found.Export {
-				c.error(item.NamePos, "resolution", "module does not export "+item.Name)
+				c.error(item.NamePos, "resolution", c.exportMessage(item, imports))
 				continue
 			}
 			c.addSymbol(item.Name, found, item.NamePos)
@@ -169,7 +171,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 				seen := map[string]bool{}
 				for _, cs := range d.Cases {
 					if seen[cs.Name] {
-						c.error(cs.Pos, "type", "duplicate case "+cs.Name)
+						c.error(cs.Pos, "type", "duplicate case "+cs.Name+"; rename or remove one of them")
 					}
 					seen[cs.Name] = true
 					def.Cases = append(def.Cases, Case{cs.Name, c.params(cs.Fields)})
@@ -177,7 +179,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 				seen = map[string]bool{}
 				for _, m := range d.Methods {
 					if seen[m.Name] {
-						c.error(m.Pos, "type", "duplicate operation "+m.Name)
+						c.error(m.Pos, "type", "duplicate operation "+m.Name+"; rename or remove one of them")
 					}
 					seen[m.Name] = true
 					def.Operations = append(def.Operations, Param{m.Name, c.signature(m.Params, m.Result)})
@@ -208,7 +210,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 						typ := c.resolve(param.Type, false)
 						c.expression(param.Default, typ)
 						if typ.ID != "@std/Optional" || param.Default.Kind != syntax.KindName || param.Default.Text != "none" {
-							c.error(param.Pos, "type", "interface defaults must be Optional.none")
+							c.error(param.Pos, "type", "interface defaults must be Optional.none; write '= none' or remove the default")
 						}
 						c.scope = old
 					}
@@ -253,7 +255,7 @@ func (c *checker) error(pos syntax.Position, phase, message string) {
 }
 func (c *checker) addSymbol(name string, s *Symbol, pos syntax.Position) {
 	if c.names[name] != nil {
-		c.error(pos, "resolution", "duplicate or intrinsic name "+name)
+		c.error(pos, "resolution", "duplicate or intrinsic name "+name+"; this name is already declared, imported, or built in, so rename one of them")
 		return
 	}
 	c.names[name] = s
@@ -269,7 +271,7 @@ func (c *checker) typeVariables(params []syntax.TypeParameter) []*Type {
 	var vars []*Type
 	for _, p := range params {
 		if c.names[p.Name] != nil && c.names[p.Name].Module == "" || c.scope.types[p.Name] != nil {
-			c.error(p.Pos, "resolution", "duplicate or intrinsic type parameter "+p.Name)
+			c.error(p.Pos, "resolution", "duplicate or intrinsic type parameter "+p.Name+"; choose a different type parameter name")
 		}
 		v := &Type{Name: p.Name, ID: c.unique("typevar"), Kind: "variable"}
 		vars = append(vars, v)
@@ -279,7 +281,7 @@ func (c *checker) typeVariables(params []syntax.TypeParameter) []*Type {
 		for _, b := range p.Bounds {
 			t := c.resolve(b, true)
 			if t.Kind != "contract" {
-				c.error(b.Pos, "type", "a bound must be an interface")
+				c.error(b.Pos, "type", "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'")
 			}
 			vars[i].Bounds = append(vars[i].Bounds, t)
 		}
@@ -295,7 +297,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 	}
 	var base *Type
 	if c.scope.binding(t.Name) != nil {
-		c.error(t.Pos, "resolution", "a value shadows type "+t.Name)
+		c.error(t.Pos, "resolution", "a value shadows type "+t.Name+"; rename the local binding so the type name is usable here")
 		return primitive("<invalid>")
 	}
 	if v := c.scope.typ(t.Name); v != nil {
@@ -303,7 +305,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 	} else if s := c.names[t.Name]; s != nil && s.Kind == syntax.KindType {
 		base = s.Type
 	} else {
-		c.error(t.Pos, "resolution", "unknown type "+t.Name)
+		c.error(t.Pos, "resolution", c.unknownTypeMessage(t.Name))
 		c.unknownType = true
 		return primitive("<invalid>")
 	}
@@ -317,7 +319,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 		arity = len(base.Def.Variables)
 	}
 	if len(r.Args) != arity {
-		c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments", base.Name, arity))
+		c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments, found %d; write %s", base.Name, arity, len(r.Args), typeSketch(base.Name, arity)))
 	}
 	c.TypeReferences[t] = &r
 	return &r
@@ -327,7 +329,7 @@ func (c *checker) params(params []syntax.Parameter) []Param {
 	seen := map[string]bool{}
 	for _, p := range params {
 		if seen[p.Name] {
-			c.error(p.Pos, "type", "duplicate parameter or field "+p.Name)
+			c.error(p.Pos, "type", "duplicate parameter or field "+p.Name+"; each name may appear once, so rename one")
 		}
 		seen[p.Name] = true
 		result = append(result, Param{p.Name, c.resolve(p.Type, false)})
@@ -348,7 +350,7 @@ func (c *checker) signature(params []syntax.Parameter, result *syntax.Type) *Typ
 }
 func (c *checker) bind(name string, t *Type, mutable bool, pos syntax.Position) *Binding {
 	if c.scope.bindings[name] != nil || c.scope.types[name] != nil {
-		c.error(pos, "type", "duplicate local binding "+name)
+		c.error(pos, "type", "duplicate local binding "+name+"; this scope already has that name, so choose another name or assign to the existing 'var'")
 	}
 	if mutable {
 		t = requiredType(t)
@@ -370,7 +372,7 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 	c.checkParameters(d, d.Params, t.Params)
 	fall, _ := c.block(d.Body, false)
 	if fall && t.Result.ID != "Unit" && t.Result.ID != "<invalid>" {
-		c.error(d.Pos, "type", "reachable fallthrough in function returning "+t.Result.String())
+		c.error(d.Pos, "type", "reachable fallthrough in function returning "+t.Result.String()+"; end every path with 'return <"+t.Result.String()+">' (or make the last branch return)")
 	}
 	c.scope, c.result, c.function, c.loops = oldScope, oldResult, oldFunction, oldLoops
 }
@@ -442,23 +444,23 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			target.Write = true
 			receiver := c.Expressions[s.Target.Left]
 			if receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || target.Method != nil {
-				c.error(s.Target.Pos, "type", "assignment requires a record field")
+				c.error(s.Target.Pos, "type", "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'")
 			}
 			value := c.expression(s.Value, target.Type)
 			return !target.NoReturn && !value.NoReturn, false
 		}
 		b := c.scope.binding(s.Name)
 		if b == nil {
-			c.error(s.Pos, "resolution", "unknown binding "+s.Name)
+			c.error(s.Pos, "resolution", c.unknownName(s.Name))
 			c.expression(s.Value, nil)
 			return true, false
 		}
 		c.Assignments[s.Value] = b
 		if !b.Mutable {
-			c.error(s.Pos, "type", "cannot assign immutable binding "+s.Name)
+			c.error(s.Pos, "type", "cannot assign immutable binding "+s.Name+"; declare it with 'var "+s.Name+" = ...' instead of 'let'")
 		}
 		if b.Function != c.function {
-			c.error(s.Pos, "type", "cannot assign a captured binding")
+			c.error(s.Pos, "type", "cannot assign a captured binding; closures cannot reassign outer variables, so return the new value or keep state in a record field")
 		}
 		i := c.expression(s.Value, b.Type)
 		return !i.NoReturn, false
@@ -473,7 +475,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		}
 		if s.Value == nil {
 			if c.result.ID != "Unit" {
-				c.error(s.Pos, "type", "bare return requires Unit")
+				c.error(s.Pos, "type", "bare return requires Unit; this function returns "+c.result.String()+", so write 'return <value>'")
 			}
 		} else {
 			c.expression(s.Value, c.result)
@@ -484,7 +486,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		return !i.NoReturn, false
 	case syntax.KindBreak, syntax.KindContinue:
 		if c.loops == 0 {
-			c.error(s.Pos, "type", s.Kind+" requires an enclosing loop")
+			c.error(s.Pos, "type", s.Kind+" requires an enclosing loop; use it only inside 'for' or 'while' bodies")
 		}
 		return false, s.Kind == syntax.KindBreak
 	case syntax.KindIf:
@@ -514,7 +516,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 				element = standard("MapEntry", i.Type.Args...)
 			}
 		} else {
-			c.error(s.Pos, "type", "for requires List, Set, or Map")
+			c.error(s.Pos, "type", "for requires List, Set, or Map, found "+i.Type.String()+"; iterate a collection, e.g. a list literal [1, 2, 3]")
 		}
 		old := c.scope
 		c.scope = newScope(old)
@@ -527,7 +529,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 	case syntax.KindWith:
 		i := c.expression(s.Value, nil)
 		if !c.closeable(i.Type) {
-			c.error(s.Pos, "type", "with requires an explicit Closeable implementation or a contract declaring close() -> Unit")
+			c.error(s.Pos, "type", "with requires an explicit Closeable implementation or a contract declaring close() -> Unit; "+i.Type.String()+" has none, so add 'impl Closeable for "+i.Type.String()+":' with fn close() -> Unit")
 		}
 		methods := c.methods(i.Type, "close")
 		var candidates []*Method
@@ -543,7 +545,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		if len(candidates) == 1 {
 			c.Cleanups[s] = candidates[0]
 		} else if len(candidates) > 1 {
-			c.error(s.Pos, "type", "with cleanup operation is ambiguous; construct an explicit contract view")
+			c.error(s.Pos, "type", "with cleanup operation is ambiguous; wrap the value in an explicit contract view, e.g. Closeable(value: x)")
 		}
 		old := c.scope
 		c.scope = newScope(old)
@@ -562,14 +564,14 @@ func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable bool, source *synt
 		c.Bindings[p] = c.bind(p.Name, t, mutable, p.Pos)
 	case syntax.KindRecord:
 		if t.Kind != syntax.KindRecord {
-			c.error(p.Pos, "type", "record binding requires a record")
+			c.error(p.Pos, "type", "record binding requires a record; destructure only record values, or bind the whole value to one name")
 			return
 		}
 		fields := Fields(t)
 		seen := map[string]bool{}
 		for _, f := range p.Fields {
 			if seen[f.Name] {
-				c.error(f.Pos, "type", "duplicate record field "+f.Name)
+				c.error(f.Pos, "type", "duplicate record field "+f.Name+"; bind each field once")
 			}
 			seen[f.Name] = true
 			found := false
@@ -580,19 +582,19 @@ func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable bool, source *synt
 				}
 			}
 			if !found {
-				c.error(f.Pos, "type", "unknown record field "+f.Name)
+				c.error(f.Pos, "type", "unknown record field "+f.Name+"; fields: "+list(paramNames(fields), 12))
 			}
 		}
 	case syntax.KindList:
 		if std(t, "List") && len(t.Args) == 1 {
 			if source != nil && source.Kind == syntax.KindList && len(source.Elements) != len(p.Elements) {
-				c.error(p.Pos, "type", "statically known list length does not match binding")
+				c.error(p.Pos, "type", "statically known list length does not match binding; bind exactly as many names as the list has elements")
 			}
 			for _, child := range p.Elements {
 				c.pattern(child, t.Args[0], mutable, nil)
 			}
 		} else {
-			c.error(p.Pos, "type", "positional binding requires a list")
+			c.error(p.Pos, "type", "positional binding requires a list; use [a, b] patterns only with List values")
 		}
 	}
 }
@@ -605,7 +607,7 @@ func (c *checker) match(s *syntax.Statement) (bool, bool) {
 		return false, false
 	}
 	if info.Type.Kind != "alternative" {
-		c.error(s.Pos, "type", "match requires an alternative or contract view")
+		c.error(s.Pos, "type", "match requires an alternative or contract view, found "+info.Type.String()+"; match on a type with cases, or use if/else")
 		return true, false
 	}
 	cases := Cases(info.Type)
@@ -618,14 +620,14 @@ func (c *checker) match(s *syntax.Statement) (bool, bool) {
 		fields := []Param{}
 		if name == "_" {
 			if wildcard || index != len(s.Arms)-1 || len(seen) == len(cases) {
-				c.error(arm.Pos, "type", "unreachable wildcard or wildcard is not last")
+				c.error(arm.Pos, "type", "unreachable wildcard or wildcard is not last; keep one '_' arm at the end, and only when cases remain")
 			}
 			wildcard = true
 		} else {
 			if arm.Path.Kind == syntax.KindMember {
 				qualified := c.typeExpression(arm.Path.Left)
 				if qualified == nil || !Same(qualified, info.Type) {
-					c.error(arm.Pos, "type", "pattern belongs to a different alternative")
+					c.error(arm.Pos, "type", "pattern belongs to a different alternative; qualify arms with the matched type, "+info.Type.Name+".<case>")
 				}
 			}
 			found := false
@@ -636,14 +638,14 @@ func (c *checker) match(s *syntax.Statement) (bool, bool) {
 				}
 			}
 			if !found {
-				c.error(arm.Pos, "resolution", "unknown case "+name)
+				c.error(arm.Pos, "resolution", "unknown case "+name+" of "+info.Type.Name+"; cases: "+list(caseNames(info.Type), 12))
 			}
 			if seen[name] || wildcard {
-				c.error(arm.Pos, "type", "duplicate or unreachable case "+name)
+				c.error(arm.Pos, "type", "duplicate or unreachable case "+name+"; each case may be matched once and before any '_' arm")
 			}
 			seen[name] = true
 			if len(fields) != len(arm.Names) {
-				c.error(arm.Pos, "type", "case payload arity mismatch")
+				c.error(arm.Pos, "type", fmt.Sprintf("case payload arity mismatch; %s has %d payload fields, found %d bindings (use _ to ignore one)", name, len(fields), len(arm.Names)))
 			}
 		}
 		old := c.scope
@@ -661,7 +663,7 @@ func (c *checker) match(s *syntax.Statement) (bool, bool) {
 		c.scope = old
 	}
 	if !wildcard && len(seen) != len(cases) {
-		c.error(s.Pos, "type", "non-exhaustive match")
+		c.error(s.Pos, "type", "non-exhaustive match; missing cases: "+list(missingCases(cases, seen), 12)+", or add a final '_' arm")
 	}
 	return !info.NoReturn && fall, breaks
 }
@@ -675,17 +677,17 @@ func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
 		var target *Type
 		if arm.Path.Text == "_" {
 			if wildcard || index != len(s.Arms)-1 {
-				c.error(arm.Pos, "type", "wildcard must appear once and be last")
+				c.error(arm.Pos, "type", "wildcard must appear once and be last; keep a single '_' arm at the end")
 			}
 			wildcard = true
 		} else {
 			target = c.typeExpression(arm.Path)
 			if target == nil || (target.Kind != syntax.KindRecord && target.Kind != "alternative") {
-				c.error(arm.Pos, "type", "contract pattern requires a concrete record or alternative type")
+				c.error(arm.Pos, "type", "contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'")
 				target = nil
 			} else {
 				if len(target.Def.Variables) > 0 && arm.Path.Kind != syntax.KindApply {
-					c.error(arm.Pos, "type", "concrete type pattern requires explicit type arguments")
+					c.error(arm.Pos, "type", "concrete type pattern requires explicit type arguments; write e.g. Box[Int]")
 				}
 				c.wellFormed(target, arm.Pos, map[string]bool{})
 				if !c.implements(target, &contract) {
@@ -693,7 +695,7 @@ func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
 				}
 				key := TypeKey(target)
 				if seen[key] || wildcard {
-					c.error(arm.Pos, "type", "duplicate or unreachable concrete type pattern")
+					c.error(arm.Pos, "type", "duplicate or unreachable concrete type pattern; match each type once and before '_'")
 				}
 				seen[key] = true
 				c.ContractPatterns[arm] = target
@@ -704,7 +706,7 @@ func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
 				c.Expressions[name] = &Info{Type: target, Symbol: target.Def.Symbol}
 			}
 			if len(arm.Names) != 1 {
-				c.error(arm.Pos, "type", "concrete type pattern requires exactly one receiver binding")
+				c.error(arm.Pos, "type", "concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'")
 			}
 		}
 		old := c.scope
@@ -721,7 +723,7 @@ func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
 		c.scope = old
 	}
 	if !wildcard {
-		c.error(s.Pos, "type", "contract match requires a final wildcard for other implementations")
+		c.error(s.Pos, "type", "contract match requires a final wildcard for other implementations; add a last '_' arm")
 	}
 	return !info.NoReturn && fall, breaks
 }
@@ -768,22 +770,22 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		if strings.HasSuffix(e.Text, "d") {
 			name = "Decimal"
 			if s := c.names[name]; s == nil || s != standardSymbols[name] {
-				c.error(e.Pos, "resolution", "Decimal literal requires the canonical Decimal import")
+				c.error(e.Pos, "resolution", "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"")
 			}
 			i.Type = standard("Decimal")
 			if !decimal.Valid(e.Text) {
-				c.error(e.Pos, "type", "Decimal literal is outside the exact 34-digit representable grid")
+				c.error(e.Pos, "type", "Decimal literal is outside the exact 34-digit representable grid; shorten it to 34 significant digits")
 			}
 		} else if strings.ContainsAny(e.Text, ".eE") {
 			name = "Float"
 			n, err := strconv.ParseFloat(e.Text, 64)
 			if err != nil || math.IsInf(n, 0) {
-				c.error(e.Pos, "type", "Float literal is outside finite binary64 range")
+				c.error(e.Pos, "type", "Float literal is outside finite binary64 range; use a smaller magnitude (about 1.8e308 at most)")
 			}
 			i.Type = primitive(name)
 		} else {
 			if _, err := strconv.ParseInt(e.Text, 10, 64); err != nil {
-				c.error(e.Pos, "type", "Int literal is outside signed 64-bit range")
+				c.error(e.Pos, "type", "Int literal is outside signed 64-bit range; use a value between -9223372036854775808 and 9223372036854775807, or BigInt")
 			}
 			i.Type = primitive(name)
 		}
@@ -812,13 +814,13 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 		if s := c.names[e.Text]; s != nil {
 			if s.Kind == syntax.KindType {
-				c.error(e.Pos, "type", "type name requires a constructor call")
+				c.error(e.Pos, "type", "type name requires a constructor call; write "+e.Text+"(field: value, ...) to build a value")
 				i.Type = primitive("<invalid>")
 			} else {
 				i.Type = s.Type
 				i.Symbol = s
 				if len(s.Variables) > 0 {
-					c.error(e.Pos, "type", "a generic function value requires explicit specialization")
+					c.error(e.Pos, "type", "a generic function value requires explicit specialization; write "+e.Text+"[Type] or call it with arguments")
 				}
 			}
 			return i
@@ -829,7 +831,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			i.Case = cs.Name
 			i.Type = i.Constructor
 		} else {
-			c.error(e.Pos, "resolution", "unknown binding "+e.Text)
+			c.error(e.Pos, "resolution", c.unknownName(e.Text))
 		}
 	case syntax.KindApply:
 		if callable := c.nativeCallable(e); callable != nil {
@@ -846,10 +848,10 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		} else {
 			typ := c.typeExpression(e)
 			if typ != nil {
-				c.error(e.Pos, "type", "type application requires construction")
+				c.error(e.Pos, "type", "type application requires construction; add (field: value, ...) after the type arguments")
 				i.Type = typ
 			} else {
-				c.error(e.Pos, "resolution", "unknown generic declaration")
+				c.error(e.Pos, "resolution", "unknown generic declaration; the name before [...] is not a generic function or type in scope")
 			}
 		}
 	case syntax.KindMember:
@@ -861,7 +863,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				i.Case = e.Text
 				return i
 			}
-			c.error(e.Pos, "resolution", "unknown or non-nullary alternative case "+e.Text)
+			c.error(e.Pos, "resolution", "unknown or non-nullary alternative case "+e.Text+" of "+typ.Name+"; cases: "+list(caseNames(typ), 12)+" (cases with payloads need call syntax)")
 			i.Type = primitive("<invalid>")
 			return i
 		}
@@ -880,14 +882,14 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 		methods := c.methods(receiver.Type, e.Text)
 		if len(methods) != 1 {
-			c.error(e.Pos, "resolution", "unknown or ambiguous member "+e.Text)
+			c.error(e.Pos, "resolution", c.unknownMember(receiver.Type, e.Text))
 			return i
 		}
 		i.Method = methods[0]
 		i.Type = methods[0].Type
 		i.Native = methods[0].Native
 		if methods[0].Native != "" && methods[0].Native != "contract" && len(methods[0].Variables) > 0 {
-			c.error(e.Pos, "type", "a generic method value requires explicit specialization")
+			c.error(e.Pos, "type", "a generic method value requires explicit specialization; write the type arguments or call it with arguments")
 		}
 	case syntax.KindCall:
 		return c.call(e, expected)
@@ -895,7 +897,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		return c.callback(e, expected)
 	case syntax.KindList:
 		if s := c.names["List"]; s == nil || s != standardSymbols["List"] {
-			c.error(e.Pos, "resolution", "list literal requires the canonical List import")
+			c.error(e.Pos, "resolution", "list literal requires the canonical List import; add: import List from \"@std/collections.ms\"")
 		}
 		var element *Type
 		if std(expected, "List") && len(expected.Args) == 1 {
@@ -912,7 +914,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			}
 		}
 		if element == nil {
-			c.error(e.Pos, "type", "cannot infer list element type")
+			c.error(e.Pos, "type", "cannot infer list element type; add an annotation, e.g. let xs: List[Int] = []")
 			element = primitive("<invalid>")
 		}
 		for _, item := range e.Elements {
@@ -922,7 +924,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		i.Type = standard("List", element)
 	case syntax.KindMap:
 		if s := c.names["Map"]; s == nil || s != standardSymbols["Map"] {
-			c.error(e.Pos, "resolution", "map literal requires the canonical Map import")
+			c.error(e.Pos, "resolution", "map literal requires the canonical Map import; add: import Map from \"@std/collections.ms\"")
 		}
 		var types [2]*Type
 		if std(expected, "Map") && len(expected.Args) == 2 {
@@ -941,7 +943,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				}
 			}
 			if types[index] == nil {
-				c.error(e.Pos, "type", "cannot infer map key or value type")
+				c.error(e.Pos, "type", "cannot infer map key or value type; add an annotation, e.g. let m: Map[String, Int] = {}")
 				types[index] = primitive("<invalid>")
 			}
 		}
@@ -961,28 +963,28 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		i.NoReturn = v.NoReturn
 		if e.Text == "not" {
 			if !compatible(v.Type, primitive("Bool")) {
-				c.error(e.Pos, "type", "not requires Bool")
+				c.error(e.Pos, "type", "not requires Bool, found "+v.Type.String()+"; compare explicitly, e.g. not (x == 0)")
 			}
 			i.Type = primitive("Bool")
 		} else if e.Text == "try" {
 			if !std(v.Type, "Result") || len(v.Type.Args) != 2 {
-				c.error(e.Pos, "type", "try requires Result")
+				c.error(e.Pos, "type", "try requires Result, found "+v.Type.String()+"; apply try only to a call returning Result[T, E]")
 			} else {
 				if !std(c.result, "Result") || len(c.result.Args) != 2 {
-					c.error(e.Pos, "type", "try requires an enclosing Result")
+					c.error(e.Pos, "type", "try requires an enclosing Result; declare this function to return Result[T, E] or handle the error with match")
 				} else if !Same(c.result.Args[1], v.Type.Args[1]) {
 					if c.errorAssignable(v.Type.Args[1], c.result.Args[1]) {
 						i.PropagatedError = v.Type.Args[1]
 						i.ScopedPropagation = c.errorNeedsScope(v.Type.Args[1])
 					} else {
-						c.error(e.Pos, "type", "try requires the same error type or an Error boundary implemented by the specific error")
+						c.error(e.Pos, "type", "try requires the same error type or an Error boundary implemented by the specific error; this function returns "+c.result.String()+" but the operand fails with "+v.Type.Args[1].String()+", so change the return error type or implement Error for it")
 					}
 				}
 				i.Type = v.Type.Args[0]
 			}
 		} else {
 			if !numeric(v.Type) {
-				c.error(e.Pos, "type", "numeric sign requires an independently known numeric operand")
+				c.error(e.Pos, "type", "numeric sign requires an independently known numeric operand, found "+v.Type.String()+"; apply + or - to Int, Float, or Decimal")
 			}
 			i.Type = v.Type
 		}
@@ -993,7 +995,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		if e.Text == "and" || e.Text == "or" {
 			i.Type = primitive("Bool")
 			if !compatible(a.Type, i.Type) || !compatible(b.Type, i.Type) {
-				c.error(e.Pos, "type", "logical operands require Bool")
+				c.error(e.Pos, "type", "logical operands require Bool, found "+a.Type.String()+" and "+b.Type.String()+"; compare explicitly, e.g. x != 0")
 			}
 			return i
 		}
@@ -1007,7 +1009,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				}
 			}
 			if matches != 1 {
-				c.error(e.Pos, "type", "known operands must select exactly one time arithmetic operation")
+				c.error(e.Pos, "type", "known operands must select exactly one time arithmetic operation; allowed: Duration±Duration, Instant±Duration, Instant-Instant")
 			}
 			return i
 		}
@@ -1016,17 +1018,23 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			common = b.Type
 		}
 		if common.ID == "Never" || !compatible(a.Type, common) || !compatible(b.Type, common) {
-			c.error(e.Pos, "type", "operator operands require the same independently known type")
+			c.error(e.Pos, "type", fmt.Sprintf("operator operands require the same independently known type, found %s %s %s; convert one side so both have one type (e.g. toString() for text, or an Int/Float conversion)", a.Type, e.Text, b.Type))
+			c.unknownType = true // later "<invalid>" diagnostics only restate this one
+			i.Type = primitive("<invalid>")
+			if e.Text == "==" || e.Text == "!=" || strings.Contains("|<|<=|>|>=|", "|"+e.Text+"|") {
+				i.Type = primitive("Bool")
+			}
+			return i
 		}
 		if e.Text == "==" || e.Text == "!=" {
 			i.Type = primitive("Bool")
 			if !c.property(common, "Equal", nil) {
-				c.error(e.Pos, "type", "equality requires Equal operands")
+				c.error(e.Pos, "type", "equality requires Equal operands; "+common.String()+" has no equality, so add 'impl Equal for "+common.String()+":' or compare fields")
 			}
 		} else if strings.Contains("|<|<=|>|>=|", "|"+e.Text+"|") {
 			i.Type = primitive("Bool")
 			if !numeric(common) && !std(common, "Duration") && !std(common, "Instant") {
-				c.error(e.Pos, "type", "ordering requires numeric or time operands")
+				c.error(e.Pos, "type", "ordering requires numeric or time operands, found "+common.String()+"; compare a numeric field or convert first")
 			}
 		} else {
 			i.Type = common
@@ -1034,11 +1042,11 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				c.error(e.Pos, "type", "arithmetic requires numeric operands")
 			}
 			if e.Text == "%" && common.ID != "Int" {
-				c.error(e.Pos, "type", "remainder requires Int operands")
+				c.error(e.Pos, "type", "remainder requires Int operands, found "+common.String()+"; convert to Int or use math functions")
 			}
 		}
 	default:
-		c.error(e.Pos, "type", "unsupported expression "+e.Kind)
+		c.error(e.Pos, "type", "unsupported expression "+e.Kind+"; rewrite it with supported syntax (see documentation/core-language)")
 	}
 	if i.Type != nil && i.Type.ID == "Never" {
 		i.NoReturn = true
@@ -1083,7 +1091,7 @@ func (c *checker) typeExpression(e *syntax.Expression) *Type {
 			r := *t
 			r.Args = c.resolveArguments(e.Types)
 			if r.Def == nil || len(r.Args) != len(r.Def.Variables) {
-				c.error(e.Pos, "type", "generic type arity mismatch")
+				c.error(e.Pos, "type", "generic type arity mismatch; supply exactly the type arguments the declaration lists")
 			}
 			return &r
 		}
@@ -1105,7 +1113,7 @@ func (c *checker) findCase(name string, pos syntax.Position) (*Type, Case) {
 		if s.Kind == syntax.KindType && s.Type.Kind == "alternative" {
 			if candidate, ok := caseOf(s.Type, name); ok {
 				if found != nil {
-					c.error(pos, "resolution", "ambiguous alternative case "+name)
+					c.error(pos, "resolution", "ambiguous alternative case "+name+"; qualify it with its type, e.g. Type."+name)
 					return nil, Case{}
 				}
 				found = s.Type

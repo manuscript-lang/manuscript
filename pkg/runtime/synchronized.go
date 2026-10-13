@@ -83,7 +83,7 @@ func (g *SynchronizedGuard) Operation(name string) Function {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.holder != g {
-			return Panic("Synchronized guard is closed")
+			return Panic("Synchronized guard is closed; use the guard only inside its with block, and acquire a new one to access the value again")
 		}
 		switch name {
 		case "get":
