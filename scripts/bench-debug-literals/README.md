@@ -33,7 +33,7 @@ the existing build-mode/source-root keys. Match the explicit compile and build
 kinds when selecting a representation.
 
 The external compatibility fixture is
-`pkg/compiler/testdata/debug-literals/result-compatible.go`, compiled with the
+`pkg/build/testdata/debug-literals/result-compatible.go`, compiled with the
 bundled SDK. Native tests cover edits to both legacy and Debug-generated Source.
 
 CLI path selection is explicit:

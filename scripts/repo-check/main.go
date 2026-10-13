@@ -85,7 +85,7 @@ func check() error {
 	}
 	var issues []string
 	issues = append(issues, dependencyIssues(rules, packages)...)
-	hashFile, err := parser.ParseFile(token.NewFileSet(), "pkg/compiler/cache.go", nil, 0)
+	hashFile, err := parser.ParseFile(token.NewFileSet(), "pkg/build/cache.go", nil, 0)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func check() error {
 		}
 		return true
 	})
-	hashed["pkg/compiler"] = true // Its unqualified ImplementationSources is in the same package.
+	hashed["pkg/build"] = true // Its unqualified ImplementationSources is in the same package.
 	for _, name := range rules.Pinned {
 		if !hashed[name] {
 			issues = append(issues, "implementation hash omits "+name)
@@ -173,8 +173,8 @@ func check() error {
 		path, function string
 		kinds          []string
 	}{
-		{"pkg/compiler/lower_statements.go", "statement", syntax.StatementKinds()},
-		{"pkg/compiler/lower_expressions.go", "expressionValue", syntax.ExpressionKinds()},
+		{"pkg/lower/lower_statements.go", "statement", syntax.StatementKinds()},
+		{"pkg/lower/lower_expressions.go", "expressionValue", syntax.ExpressionKinds()},
 		{"pkg/checker/checker.go", "checkStatement", syntax.StatementKinds()},
 		{"pkg/checker/checker.go", "infer", syntax.ExpressionKinds()},
 	} {
