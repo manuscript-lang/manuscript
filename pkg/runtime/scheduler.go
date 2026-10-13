@@ -350,7 +350,7 @@ var diagnostics = struct {
 }{queue: make(chan string, 128)}
 
 func init() {
-	markConcurrent()
+	// Diagnostic delivery writes strings; it never evaluates source records.
 	go func() {
 		for message := range diagnostics.queue {
 			fmt.Fprintln(os.Stderr, message)

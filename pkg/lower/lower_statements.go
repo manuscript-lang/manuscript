@@ -21,7 +21,12 @@ func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 func (g *generator) pattern(p *syntax.Pattern, value ast.Expr) []ast.Stmt {
 	if p.Kind == syntax.KindName {
 		b := g.program.Bindings[p]
-		return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, runtimeName("Value"), value)}, discard(ident(b.ID))}
+		typ := runtimeName("Value")
+		if scalar := g.scalarLocals[b]; scalar != "" {
+			typ = ident(scalar)
+			value = scalarExtract(b.Type, value)
+		}
+		return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, typ, value)}, discard(ident(b.ID))}
 	}
 	tmp := g.temp()
 	out := []ast.Stmt{define(tmp, value), discard(ident(tmp))}
@@ -54,17 +59,24 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	}
 	switch s.Kind {
 	case syntax.KindBind:
+		if s.Pattern.Kind == syntax.KindName {
+			b := g.program.Bindings[s.Pattern]
+			if g.typedBinding(b) {
+				return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, ident(g.scalarLocals[b]), g.scalarValue(s.Value))}, discard(ident(b.ID))}
+			}
+		}
 		return g.pattern(s.Pattern, g.expression(s.Value))
 	case syntax.KindAssign:
 		if s.Target != nil {
 			return []ast.Stmt{evaluated(runtimeCall("SetField", g.expression(s.Target.Left), textLiteral(s.Target.Text), g.expression(s.Value)))}
 		}
 		// Assignment binding identities are recorded by the checker, including shadows.
-		return []ast.Stmt{assign(ident(g.program.Assignments[s.Value].ID), token.ASSIGN, g.expression(s.Value))}
+		b := g.program.Assignments[s.Value]
+		return []ast.Stmt{assign(ident(b.ID), token.ASSIGN, g.bindingValue(b, s.Value))}
 	case syntax.KindReturn:
 		value := unit()
 		if s.Value != nil {
-			value = g.expression(s.Value)
+			value = g.returnValue(s.Value)
 		}
 		if g.expressionDepth > 0 {
 			value = runtimeCall("Return", value)
@@ -96,7 +108,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		}
 		return append(out, &ast.BranchStmt{Tok: op, Label: ident(label.name)})
 	case syntax.KindIf:
-		stmt := &ast.IfStmt{Cond: runtimeCall("Bool", g.expression(s.Value)), Body: block(g.body(s.Body)...)}
+		stmt := &ast.IfStmt{Cond: g.scalarValue(s.Value), Body: block(g.body(s.Body)...)}
 		if len(s.Else) > 0 {
 			stmt.Else = block(g.body(s.Else)...)
 		}
@@ -111,7 +123,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		var loop ast.Stmt
 		if s.Kind == syntax.KindWhile {
 			body = append([]ast.Stmt{evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
-			loop = &ast.ForStmt{Cond: runtimeCall("Bool", g.expression(s.Value)), Body: block(body...)}
+			loop = &ast.ForStmt{Cond: g.scalarValue(s.Value), Body: block(body...)}
 		} else {
 			b := g.program.LoopBindings[s]
 			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)

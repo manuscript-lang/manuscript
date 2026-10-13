@@ -38,7 +38,7 @@ func TestPrimitiveEqualityEligibility(t *testing.T) {
 			if got := strings.Contains(r.Source, "rt.Equality("); got == tc.direct {
 				t.Fatalf("selected equality fallback = %v, direct = %v\n%s", got, tc.direct, r.Source)
 			}
-			if tc.direct && (!strings.Contains(r.Source, ".("+primitiveEqualityType(r.Program.Parameters[r.Program.Symbols["scalar.ms"]["equal"].Decl][0].Type)+")") || !strings.Contains(r.Source, " != ")) {
+			if tc.direct && (!strings.Contains(r.Source, " "+primitiveEqualityType(r.Program.Parameters[r.Program.Symbols["scalar.ms"]["equal"].Decl][0].Type)) || !strings.Contains(r.Source, " != ")) {
 				t.Fatal("missing typed direct equality", r.Source)
 			}
 		})
@@ -69,44 +69,65 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 		t.Fatal(err)
 	}
 	counts := map[string]int{}
+	traced := 0
 	ast.Inspect(f, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
+		var body *ast.BlockStmt
+		switch n := n.(type) {
+		case *ast.FuncDecl:
+			body = n.Body
+		case *ast.FuncLit:
+			body = n.Body
+		default:
 			return true
 		}
-		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || (selector.Sel.Name != "NewSourceFunction" && selector.Sel.Name != "SourceDirect") {
+		if body == nil {
 			return true
 		}
-		// Direct method bodies are the third argument of SourceDirect.
-		bodyArg := 3
-		if selector.Sel.Name == "SourceDirect" {
-			bodyArg = 2
+		var trace *ast.CallExpr
+		for _, stmt := range body.List {
+			if deferStmt, ok := stmt.(*ast.DeferStmt); ok {
+				if sel, ok := deferStmt.Call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "TraceSource" {
+					trace = deferStmt.Call
+					break
+				}
+			}
 		}
-		body := call.Args[bodyArg].(*ast.FuncLit).Body
-		traceCall := body.List[1].(*ast.DeferStmt).Call
-		trace := traceCall.Args[len(traceCall.Args)-1].(*ast.BasicLit)
-		name, err := strconv.Unquote(trace.Value)
+		if trace == nil {
+			return true
+		}
+		name, err := strconv.Unquote(trace.Args[len(trace.Args)-1].(*ast.BasicLit).Value)
 		if err != nil {
 			t.Fatal(err)
 		}
 		count := 0
 		ast.Inspect(body, func(node ast.Node) bool {
+			if nested, ok := node.(*ast.FuncLit); ok {
+				for _, stmt := range nested.Body.List {
+					if d, ok := stmt.(*ast.DeferStmt); ok {
+						if sel, ok := d.Call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "TraceSource" {
+							return false
+						}
+					}
+				}
+			}
 			if c, ok := node.(*ast.CallExpr); ok {
-				if s, ok := c.Fun.(*ast.SelectorExpr); ok {
-					if s.Sel.Name == "NewSourceFunction" || s.Sel.Name == "SourceDirect" {
-						return false
-					}
-					if s.Sel.Name == "NewCleanupStack" {
-						count++
-					}
+				if sel, ok := c.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "NewCleanupStack" {
+					count++
 				}
 			}
 			return true
 		})
+		if _, native := n.(*ast.FuncDecl); native {
+			name += ":native"
+		}
 		counts[name] = count
+		traced++
 		return true
 	})
+	if traced != strings.Count(source, "defer rt.TraceSource(") {
+		t.Fatal("unaccounted source trace")
+	}
+
 	return counts
 }
 
@@ -147,12 +168,9 @@ fn looped() -> Unit:
 		t.Fatal(r.Diagnostics)
 	}
 	counts := callableCleanupCounts(t, r.Source)
-	for name, want := range map[string]int{"empty": 0, "conditional": 1, "nested": 0, "<anonymous>": 1, "matched": 1, "defaulted": 1, "looped": 1, "Resource.close": 0} {
+	for name, want := range map[string]int{"empty": 0, "conditional": 1, "nested": 0, "<anonymous>": 1, "matched": 1, "defaulted": 1, "looped": 1, "Resource.close": 0, "matched:native": 1, "defaulted:native": 0} {
 		if got, ok := counts[name]; !ok || got != want {
 			t.Fatalf("%s cleanup count = %d (present %v), want %d\n%s", name, got, ok, want, r.Source)
 		}
-	}
-	if strings.Count(r.Source, "defer rt.TraceSource(") != len(counts) {
-		t.Fatal("lost source tracing")
 	}
 }

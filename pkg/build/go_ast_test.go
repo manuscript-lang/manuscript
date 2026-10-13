@@ -2,7 +2,9 @@ package build
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"go/ast"
 	"go/parser"
@@ -11,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -33,8 +36,36 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	}
 	// Production optimizations may change executable AST shape. Retain this
 	// independent behavior/source-map oracle; eligibility tests check new shapes.
-	if !reflect.DeepEqual(sourceDirectives(string(baseline)), sourceDirectives(result.Source)) {
-		t.Fatal("lowering changed source directive order or targets")
+	// Keep the independent checked-in oracle immutable. Native entry bodies may
+	// omit fully supplied defaults, and boxed adapters may share a native body.
+	if got := fmt.Sprintf("%x", sha256.Sum256(baseline)); got != "38d1c416f840003550800f362fdfb457d8f4ace168d48b98c9972a5cf0a6be61" {
+		t.Fatal("independent baseline changed", got)
+	}
+	original, current := callableDirectives(t, string(baseline)), callableDirectives(t, result.Source)
+	for name, variants := range original {
+		want := variants[0]
+		matched := false
+		for _, got := range current[name] {
+			matched = matched || reflect.DeepEqual(want, got)
+			at := 0
+			for _, directive := range got {
+				for at < len(want) && want[at] != directive {
+					at++
+				}
+				if at == len(want) {
+					t.Fatalf("%s source directive changed order/target: %v outside %v", name, got, want)
+				}
+				at++
+			}
+		}
+		if !matched {
+			t.Fatalf("%s lost its complete source mapping: %v != %v", name, current[name], want)
+		}
+	}
+	for name := range current {
+		if original[name] == nil {
+			t.Fatal("unexpected source callable", name)
+		}
 	}
 	for i := 0; i < 3; i++ {
 		repeated := compiler.CompileSource("ast-lowering.ms", string(source), compiler.Options{Tests: true})
@@ -57,6 +88,52 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	if outputs[0] != outputs[1] || !strings.Contains(outputs[1], "1 tests, 0 failed") {
 		t.Fatalf("baseline behavior differs: %q", outputs)
 	}
+}
+
+// Inspect source-owned bodies separately: a typed entry and its boxed adapter
+// can contain distinct copies, while caller-default locations occur only in the
+// boxed copy. Each complete body and each specialized subsequence is checked.
+func callableDirectives(t *testing.T, source string) map[string][][]string {
+	t.Helper()
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "generated.go", source, parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := map[string][][]string{}
+	ast.Inspect(file, func(n ast.Node) bool {
+		var body *ast.BlockStmt
+		switch n := n.(type) {
+		case *ast.FuncDecl:
+			body = n.Body
+		case *ast.FuncLit:
+			body = n.Body
+		default:
+			return true
+		}
+		if body == nil {
+			return true
+		}
+		for _, stmt := range body.List {
+			d, ok := stmt.(*ast.DeferStmt)
+			if !ok {
+				continue
+			}
+			sel, ok := d.Call.Fun.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "TraceSource" {
+				continue
+			}
+			name, err := strconv.Unquote(d.Call.Args[len(d.Call.Args)-1].(*ast.BasicLit).Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			start, end := fset.PositionFor(body.Pos(), false).Offset, fset.PositionFor(body.End(), false).Offset
+			result[name] = append(result[name], sourceDirectives(source[start:end]))
+			break
+		}
+		return true
+	})
+	return result
 }
 
 // Normalize only nonsemantic position information and redundant parentheses.
@@ -163,11 +240,14 @@ fn text() -> String:
 		if expr, ok := node.(*ast.BinaryExpr); ok && expr.Op == token.LAND {
 			// Bool conversions preserve the left OR as one argument, independent of
 			// the relative precedence of Go's && and || operators.
-			left, ok := expr.X.(*ast.CallExpr)
-			if !ok || len(left.Args) != 1 {
-				t.Fatal("missing left boolean conversion")
+			left := expr.X
+			if conversion, ok := left.(*ast.CallExpr); ok && len(conversion.Args) == 1 {
+				left = conversion.Args[0]
 			}
-			inner, ok := left.Args[0].(*ast.BinaryExpr)
+			if paren, ok := left.(*ast.ParenExpr); ok {
+				left = paren.X
+			}
+			inner, ok := left.(*ast.BinaryExpr)
 			if !ok || inner.Op != token.LOR {
 				t.Fatal("lost source grouping")
 			}

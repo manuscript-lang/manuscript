@@ -150,6 +150,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if value := g.directCollectionCall(e, arguments); value != nil {
 			return value
 		}
+		if value := g.nativeSourceCall(e, arguments); value != nil {
+			return value
+		}
 		if value := g.preparedSourceCall(e, arguments); value != nil {
 			return value
 		}
@@ -226,6 +229,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return call(ident("int64"), signedInteger("-9223372036854775808"))
 		}
+		if value := g.scalarUnary(e); value != nil {
+			return value
+		}
 		return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
 	case syntax.KindBinary:
 		if e.Text == "and" || e.Text == "or" {
@@ -233,7 +239,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			if e.Text == "or" {
 				op = token.LOR
 			}
-			return &ast.BinaryExpr{X: runtimeCall("Bool", g.expression(e.Left)), Op: op, Y: runtimeCall("Bool", g.expression(e.Right))}
+			return &ast.BinaryExpr{X: g.scalarValue(e.Left), Op: op, Y: g.scalarValue(e.Right)}
 		}
 		if e.Text == "==" || e.Text == "!=" {
 			if value := g.primitiveEquality(e); value != nil {

@@ -73,7 +73,8 @@ fn sizes(values: List[Int], pairs: Map[String, Int], names: Set[String], text: S
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	if strings.Count(result.Source, "rt.CollectionLength(") != 4 || strings.Count(result.Source, "rt.StringByteLength(") != 1 {
+	bodies := strings.Count(result.Source, `"sizes")`)
+	if bodies < 1 || strings.Count(result.Source, "rt.CollectionLength(") != 4*bodies || strings.Count(result.Source, "rt.StringByteLength(") != bodies {
 		t.Fatalf("expected direct length calls only for built-in receivers:\n%s", result.Source)
 	}
 	if !strings.Contains(result.Source, "rt.NativeMemberResult(") {
@@ -206,10 +207,12 @@ fn reordered(c: Counter) -> Int:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	if strings.Count(result.Source, "rt.CallMethod(") != 1 || strings.Count(result.Source, "var method1 rt.MethodSite") != 1 {
+	directBodies := strings.Count(result.Source, `"direct")`)
+	if directBodies < 1 || strings.Count(result.Source, "rt.CallMethod(") != directBodies || strings.Count(result.Source, " rt.MethodSite") != directBodies {
 		t.Fatalf("only the in-order concrete call is direct:\n%s", result.Source)
 	}
-	if strings.Count(result.Source, "rt.Bind(") != 3 {
+	boxedBodies := strings.Count(result.Source, `"view")`) + strings.Count(result.Source, `"omitted")`) + strings.Count(result.Source, `"reordered")`)
+	if strings.Count(result.Source, "rt.Bind(") != boxedBodies {
 		t.Fatalf("views, omitted defaults, and reordered labels keep Bind:\n%s", result.Source)
 	}
 }

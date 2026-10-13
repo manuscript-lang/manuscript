@@ -19,12 +19,13 @@ type Options struct {
 	DebugLiterals bool
 }
 
-// Go lowers a checked program to Go source. It consumes checked identities and
-// optimization facts and never parses source or resolves a type or binding by
-// its spelling.
+// Go lowers a checked program to Go source using its resolved identities.
 func Go(program *checker.Program, entry string, options Options) (string, error) {
 	optimized := optimize(program)
 	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}, debugLiterals: options.DebugLiterals}
+	g.selectNativeCalls()
+	g.scalarLocals = g.selectScalarLocals()
+
 	file := g.file(entry, options)
 	if g.loweringError != nil {
 		return "", g.loweringError
@@ -63,7 +64,13 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			}
 			value = composite(runtimeName("Generic"), keyed("Variables", stringSlice(vars)), keyed("Build", closure(buildParameters(false), runtimeName("Function"), returned(g.declaredFunction(s)))))
 		} else {
-			value = concreteFunction(g.declaredFunction(s))
+			if g.nativeCalls[s] {
+				decls, adapter := g.nativeFunction(s)
+				file.Decls = append(file.Decls, decls...)
+				value = concreteFunction(adapter)
+			} else {
+				value = concreteFunction(g.declaredFunction(s))
+			}
 		}
 		initialize = append(initialize, assign(ident(s.ID), token.ASSIGN, value))
 	}
@@ -100,7 +107,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			name := "direct" + strconv.Itoa(len(initialize)+1)
 			direct := closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("receiver", runtimeName("Value")), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...)
 			initialize = append(initialize, define(name, runtimeCall("SourceDirect", textLiteral(position), resultKey, direct)))
-			fields = append(fields, keyed("Direct", ident(name)), keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(runtimeCall("BoundDirect", ident("receiver"), stringSlice(labels), resultKey, ident(name))))))
+			fields = append(fields, keyed("Direct", ident(name)), keyed("DirectGuarded", ident("true")), keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(runtimeCall("BoundDirect", ident("receiver"), stringSlice(labels), resultKey, ident(name))))))
 		} else {
 			fn := runtimeCall("NewSourceFunction", stringSlice(labels), resultKey, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...))
 			fields = append(fields, keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(fn))))

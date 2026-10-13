@@ -97,17 +97,32 @@ func Profile(cpuPath, heapPath, tracePath string, run func() int) (exit int) {
 var sourceProfiling atomic.Bool
 var profiling, cpuProfiling, traceProfiling atomic.Bool
 
+// Select the profiling adapter before constructing a closure that its collector
+// may retain. This keeps the ordinary guard/body path allocation-free. The
+// adapter runs attribution inside the same guard, never through another wrapper.
+func SourceCallNeedsProfile(ctx *Execution) bool {
+	if !sourceProfiling.Load() || ctx == nil || ctx.Context == nil {
+		return false
+	}
+	active, _ := ctx.Context.Value(sourceProfileKey{}).(bool)
+	return !active
+}
+
+func ProfileSourceCall[T any](ctx *Execution, result, position string, body func(*Execution) T) T {
+	return SourceCall(ctx, result, func(ctx *Execution) T { return profileSource(ctx, position, body) })
+}
+
 // A source boundary follows context inheritance, including cancellation
 // shielding, but a work operation starts a fresh boundary. Nested source calls
 // use Go's sampled stacks rather than allocating labels and regions per call.
 type sourceProfileKey struct{}
 
-func profileSource(ctx *Execution, position string, args []Value, body func(*Execution, []Value) Value) (value Value) {
+func profileSource[T any](ctx *Execution, position string, body func(*Execution) T) (value T) {
 	if ctx == nil || ctx.Context == nil {
-		return body(ctx, args)
+		return body(ctx)
 	}
 	if active, _ := ctx.Context.Value(sourceProfileKey{}).(bool); active {
-		return body(ctx, args)
+		return body(ctx)
 	}
 	run := func(labeled context.Context) {
 		boundary := context.WithValue(labeled, sourceProfileKey{}, true)
@@ -119,7 +134,7 @@ func profileSource(ctx *Execution, position string, args []Value, body func(*Exe
 		// fresh call accounting for work; profiling must keep that state.
 		execution := *ctx
 		execution.Context = boundary
-		value = body(&execution, args)
+		value = body(&execution)
 	}
 	if cpuProfiling.Load() {
 		pprof.Do(ctx.Context, pprof.Labels("ms.source", position), run)
