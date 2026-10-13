@@ -92,6 +92,17 @@ fn total(values: Optional[Int]) -> Int:
         none: 0
         some(inner): inner * 2
     return doubled
+
+func TestStatementTryReturnsInline(t *testing.T) {
+	result := compiler.CompileSource("try.ms", `fn parse(n: Int) -> Result[Int, String]:
+    if n < 0:
+        return error("neg")
+    return ok(n)
+fn bound(n: Int) -> Result[Int, String]:
+    let v = try parse(n: n)
+    return ok(v + 1)
+fn nested(n: Int) -> Result[Int, String]:
+    return ok((try parse(n: n)) + 1)
 `, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -101,5 +112,8 @@ fn total(values: Optional[Int]) -> Int:
 	}
 	if strings.Count(result.Source, "func() rt.Value {") < 1 {
 		t.Fatal("a match used as a value keeps its closure")
+
+	if strings.Count(result.Source, "rt.Try(") != 1 {
+		t.Fatalf("only the nested try keeps the panic form:\n%s", result.Source)
 	}
 }

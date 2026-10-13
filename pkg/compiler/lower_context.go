@@ -23,6 +23,7 @@ type generator struct {
 	module          string
 	serial          int
 	expressionDepth int
+	resultKey       ast.Expr // result type key of the function being lowered
 	cleanups        []string
 	loopCleanup     []int
 	loopLabels      []*loopLabel
