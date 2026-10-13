@@ -18,9 +18,6 @@ This complete program writes one JSON line to stdout. `try` propagates logging f
 import {create, stdout_transport} from "@std/log.ms"
 import JsonValue from "@std/json.ms"
 import Map from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Error from "@std/errors.ms"
-import Result from "@std/result.ms"
 
 fn announce() -> Result[Unit, Error]:
     with transport = stdout_transport():

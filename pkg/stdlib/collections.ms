@@ -1,9 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
-import Result from "@std/result.ms"
-import Optional from "@std/optional.ms"
-
 # Errors returned when a collection factory exceeds its supplied item limit.
 export type CollectionError:
     case InvalidInput

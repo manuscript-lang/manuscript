@@ -37,7 +37,10 @@ func renderModule(module checker.APIModule, forSite bool) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n\n", module.Path)
 	if module.Path == "prelude" {
-		b.WriteString("Intrinsic names; no import required.\n\n")
+		b.WriteString("Names available in every module; no import required.\n\n")
+	} else if module.Path == "@std/optional.ms" || module.Path == "@std/result.ms" || module.Path == "@std/errors.ms" || module.Path == "@std/equality.ms" {
+		b.WriteString("These names are available in the prelude; no import required.\n\n")
+		fmt.Fprintf(&b, "Explicit imports with `import Name from %q` remain supported.\n\n", module.Path)
 	} else if strings.HasPrefix(module.Path, "@std/") {
 		fmt.Fprintf(&b, "Import each required symbol with `import Name from %q`.\n\n", module.Path)
 	}

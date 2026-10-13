@@ -1,8 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 
 # Errors returned when a byte range or numeric representation is invalid.
 export type BinaryError:

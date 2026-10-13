@@ -29,7 +29,7 @@ func TestSourceStandardModulesAreCheckedAndReachable(t *testing.T) {
 					t.Fatal("unreachable standard module was emitted")
 				}
 			}
-			for _, imported := range []string{"Reader", "Context", "List", "Int"} {
+			for _, imported := range []string{"Reader", "Context", "List", "Int", "Optional", "Result", "Error"} {
 				result := CompileSource("private.ms", "import "+imported+" from \"@std/"+name+".ms\"\n", Options{AnalyzeOnly: true})
 				if result.Success() {
 					t.Fatal("standard source reexported private or imported symbol", imported)

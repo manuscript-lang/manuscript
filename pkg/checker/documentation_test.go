@@ -33,7 +33,7 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 	if count != expected {
 		t.Fatalf("captured %d exports, want %d", count, expected)
 	}
-	for _, key := range []string{"@std/collections.ms#List", "@std/tasks.ms#Scheduler", "@std/cli.ms#arguments", "prelude#String"} {
+	for _, key := range []string{"@std/collections.ms#List", "@std/tasks.ms#Scheduler", "@std/cli.ms#arguments", "prelude#String", "prelude#Optional", "prelude#Result", "prelude#Error"} {
 		d, ok := exports[key]
 		if !ok {
 			t.Fatalf("missing %s", key)
@@ -43,6 +43,11 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 		}
 		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T" || !slices.Contains(d.Operations, "map[U]: fn(transform: fn(value: T)->U)->List[U]") || !slices.Contains(d.Operations, "at: fn(index: Int)->Optional[T]")) {
 			t.Fatalf("lost bounds or native methods: %+v", d)
+		}
+	}
+	for _, pair := range [][2]string{{"Optional", "optional"}, {"Result", "result"}, {"Error", "errors"}} {
+		if exports["prelude#"+pair[0]].Declaration != exports["@std/"+pair[1]+".ms#"+pair[0]].Declaration {
+			t.Fatalf("prelude %s lost its source declaration", pair[0])
 		}
 	}
 	// Editing a snapshot must never change checker contracts.

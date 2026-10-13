@@ -82,7 +82,6 @@ Open a resource inside the callback that uses it:
 ```manuscript
 import {filesystem, FileSystemError} from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 
 fn notes_reader(path: String) -> fn() -> Result[Bytes, FileSystemError]:
     return fn():

@@ -87,19 +87,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 		for _, name := range strings.Fields("Bool Int Float String Unit Never") {
 			c.names[name] = &Symbol{Name: name, ID: name, Kind: syntax.KindType, Type: primitive(name), Export: true}
 		}
-		// Prelude equality names refer to the source-backed interfaces.
-		for _, name := range []string{"Equal", "Hashable"} {
-			symbol := standardSymbols[name]
-			imported := false
-			for _, item := range module.Imports {
-				if item.Name == name {
-					imported = true
-				}
-			}
-			if !imported && symbol.Module != module.File {
-				c.names[name] = symbol
-			}
-		}
+		c.addStandardPrelude()
 		for _, item := range module.Imports {
 			var found *Symbol
 			if strings.HasPrefix(item.Path, "@std/") {

@@ -1,9 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Optional from "@std/optional.ms"
-import Error from "@std/errors.ms"
 import Duration from "@std/time.ms"
-import Result from "@std/result.ms"
 
 # Runs immediate, delayed, and repeating operations with explicit cancellation.
 export type Scheduler:

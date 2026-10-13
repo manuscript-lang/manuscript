@@ -12,7 +12,6 @@ Use a `TaskGroup` to start independent operations and retrieve each result throu
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import { TaskGroup, ExecutionError } from "@std/tasks.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 
 fn number() -> Int: 42

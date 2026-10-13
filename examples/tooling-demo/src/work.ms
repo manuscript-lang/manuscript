@@ -1,6 +1,5 @@
 import TaskGroup from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
-import Result from "@std/result.ms"
 
 fn compute() -> Int:
     var index = 0

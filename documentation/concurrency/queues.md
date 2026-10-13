@@ -43,7 +43,6 @@ For concurrent access, put the queue in one `Synchronized[Queue[T]]` and hold it
 ```manuscript
 import Queue from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
-import Optional from "@std/optional.ms"
 
 fn make_queue() -> Synchronized[Queue[Int]]:
     return Synchronized(Queue[Int](16))

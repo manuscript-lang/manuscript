@@ -1,10 +1,7 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Optional from "@std/optional.ms"
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 import List from "@std/collections.ms"
-import Result from "@std/result.ms"
 
 # Errors returned when an archive cannot be read or written.
 export type ArchiveError:

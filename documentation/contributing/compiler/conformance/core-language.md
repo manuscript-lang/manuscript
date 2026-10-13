@@ -344,8 +344,6 @@ Inference uses independently typed supplied arguments. Explicit and inferred app
 Separate fixture:
 
 ```manuscript
-import Optional from "@std/optional.ms"
-
 fn absent[T]() -> Optional[T]:
     return none
 
@@ -470,7 +468,6 @@ Contract: [contract views](../../../core-language/types/contracts.md#explicit-co
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 
 interface ReadValue[T]:
     fn get() -> T
@@ -657,7 +654,6 @@ Contract: [Result](../../../core-language/errors/results.md) and [try propagatio
 ```manuscript
 import panic from "@std/faults.ms"
 
-import Result from "@std/result.ms"
 
 type Problem:
     case Missing(reason: String)
@@ -711,7 +707,6 @@ import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
-import Optional from "@std/optional.ms"
 
 type Callback:
     handler: fn(value: Int) -> Int
@@ -761,8 +756,6 @@ Contract: [compatibility and expected types](../../../core-language/types/compat
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 type Input:
     names: List[Optional[String]]

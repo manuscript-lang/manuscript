@@ -14,7 +14,6 @@ import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
-import Result from "@std/result.ms"
 
 fn amount() -> Result[Decimal, String]:
     return ok(12.50d)
@@ -83,8 +82,6 @@ import panic from "@std/faults.ms"
 import Bytes from "@std/bytes.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 type ClosedFile:
     marker: Unit
@@ -123,7 +120,6 @@ Use the accepted modules in [collection operations](../../../core-language/types
 import panic from "@std/faults.ms"
 
 import Decimal from "@std/decimal.ms"
-import Optional from "@std/optional.ms"
 
 fn quotient(value: Int, divisor: Int) -> Int:
     return value / divisor

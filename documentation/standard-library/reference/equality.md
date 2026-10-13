@@ -4,7 +4,9 @@ title = "equality"
 
 # @std/equality.ms
 
-Import each required symbol with `import Name from "@std/equality.ms"`.
+These names are available in the prelude; no import required.
+
+Explicit imports with `import Name from "@std/equality.ms"` remain supported.
 
 ## Equal {data-api-kind="Interface"}
 

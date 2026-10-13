@@ -1,9 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Optional from "@std/optional.ms"
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 
 # Errors returned when encoded text is invalid or exceeds a supplied byte limit.
 export type EncodingError:

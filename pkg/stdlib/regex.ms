@@ -1,9 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Optional from "@std/optional.ms"
-import Error from "@std/errors.ms"
 import List from "@std/collections.ms"
-import Result from "@std/result.ms"
 
 # Errors returned for invalid patterns or configured result limits.
 export type RegexError:

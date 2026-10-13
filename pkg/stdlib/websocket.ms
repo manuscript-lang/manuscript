@@ -1,10 +1,7 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import TlsOptions from "@std/tls.ms"
 
 # Errors returned by WebSocket handshakes, message limits, timeouts, or closed sockets.
