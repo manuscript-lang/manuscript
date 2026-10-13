@@ -7,10 +7,14 @@ on:
 permissions:
   contents: read
 
+# Each unit of work runs exactly once. Jobs are grouped by shared inputs, not by
+# topic: static checks share the pinned linters, Go tests share one sharded
+# race+coverage run, and the distribution checks share the packaged CLI.
 jobs:
-  fast:
-    name: Fast feedback
-    runs-on: ubuntu-latest
+  # Format, vet, lint, repo rules, licenses, generated docs, and the book.
+  static:
+    name: Static checks and docs book
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -28,12 +32,29 @@ jobs:
           key: devtools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256', 'scripts/devtools.env', 'scripts/devtools.sha256') }}
       - name: Prepare verified SDK and pinned linters
         run: make setup
-      - name: Read-only verification, unit tests, and tutorial checks
-        run: make verify
+      - name: Format, vet, lint, repo rules, generated docs, licenses
+        run: make check lint repo-check docs-check licenses-check
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: '0.146.7'
+          extended: true
+      - name: Validate project URL prefixes and production output
+        run: |
+          make book-check
+          make book
+          node --test tests/docs/publication.test.cjs
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: .artifacts/book
 
-  conformance:
-    name: Native conformance and coverage
-    needs: fast
+  # Every Go test runs once: unit, stdlib, examples, and native end-to-end, with
+  # coverage; in-process packages also run under the race detector.
+  go:
+    name: Go tests (shard ${{ matrix.shard }})
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -48,48 +69,18 @@ jobs:
         with:
           path: toolchain/
           key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
-      - name: Unit and native end-to-end coverage, including dependency packages
-        run: make coverage
+      - name: Prepare SDK payload
+        run: make payload
+      - name: Sharded race and coverage tests
+        run: sh scripts/ci-test.sh ${{ matrix.shard }} 4
       - uses: actions/upload-artifact@v7
         with:
-          name: language-coverage
+          name: language-coverage-${{ matrix.shard }}
           path: .artifacts/coverage/
-      - name: Build bundled CLI and run hello
-        run: |
-          make build
-          ./ms check examples/hello/ms.toml
-          ./ms lock examples/hello/ms.toml
-          ./ms run examples/hello/ms.toml -- first second
-      - uses: actions/upload-artifact@v7
-        with:
-          name: manuscript-test-cli
-          path: ms
-      - name: Verify offline standalone distribution
-        run: make dist-check
 
-  stress:
-    needs: fast
-    strategy:
-      fail-fast: false
-      matrix:
-        check: [race, fuzz]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: .go-version
-          cache: true
-      - uses: actions/cache@v6
-        with:
-          path: toolchain/
-          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
-      - name: Runtime/compiler stress checks
-        run: make "${{ matrix.check }}"
-
-  extension:
-    name: Editor and native debugger
-    needs: conformance
+  # The bundled CLI, built once and reused by the editor tests.
+  dist:
+    name: CLI, distribution, fuzz, and editor
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -102,12 +93,20 @@ jobs:
           node-version-file: .node-version
           cache: npm
           cache-dependency-path: extensions/vscode/package-lock.json
-      - uses: actions/download-artifact@v8
+      - uses: actions/cache@v6
         with:
-          name: manuscript-test-cli
-      - name: Prepare embedded debugger CLI
+          path: toolchain/
+          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
+      - name: Build bundled CLI and run hello
         run: |
-          chmod +x ms
+          make build
+          ./ms check examples/hello/ms.toml
+          ./ms lock examples/hello/ms.toml
+          ./ms run examples/hello/ms.toml -- first second
+      - name: Verify offline standalone distribution
+        run: make dist-check
+      - name: Parser and compiler fuzzing
+        run: make fuzz
       - name: Validate and package VS Code extension
         working-directory: extensions/vscode
         run: |
@@ -122,12 +121,12 @@ jobs:
           name: manuscript-vscode
           path: extensions/vscode/*.vsix
 
+  # Linux host behavior is covered by the Go shards.
   host-stdlib:
-    needs: fast
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     env:
       CGO_ENABLED: '0'
@@ -148,11 +147,14 @@ jobs:
 
   # Keep one stable required check; every applicable job must pass before merging.
   test:
-    needs: [fast, conformance, stress, extension, host-stdlib]
+    needs: [static, go, dist, host-stdlib]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require all language checks
         env:
           RESULTS: ${{ join(needs.*.result, ',') }}
-        run: test "$RESULTS" = 'success,success,success,success,success'
+        run: |
+          case ",$RESULTS," in
+            *,failure,*|*,cancelled,*|*,skipped,*) exit 1 ;;
+          esac

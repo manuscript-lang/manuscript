@@ -24,7 +24,27 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Pull requests cross-build every target in one job; linux/amd64 is verified
+  # end to end by `make dist-check` in the Language workflow.
+  cross-build:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: toolchain/
+          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
+      - name: Build every distribution target
+        run: |
+          for os in linux darwin windows; do
+            for arch in amd64 arm64; do
+              sh scripts/package.sh "$os" "$arch"
+            done
+          done
+
   package:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -51,6 +71,7 @@ jobs:
 
   verify:
     needs: package
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
