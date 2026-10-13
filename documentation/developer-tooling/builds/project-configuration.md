@@ -50,6 +50,10 @@ check; successful text output reports the number of local modules checked.
 Checking never executes main functions or test blocks and needs no native toolchain.
 
 `ms check file.ms` checks that file and its imports without project-wide discovery.
+Check, lint, and doc also accept independent target collections and standalone
+directories; see [analysis input selection](../implementation.md#selecting-independent-analysis-inputs).
+Their collection mode retains the project behavior in the table above and never
+combines several applications into one native entrypoint.
 For executable projects, the build and other source commands discover application modules by following imports from entry. The manifest does not enumerate them. Only `[project]` and `[aliases]` are implemented; unknown tables, unknown project keys, duplicate tables, and duplicate keys are rejected. Values must be double-quoted strings. Comments begin with `#` outside a quoted string.
 
 External `[adapters]` entries and [adapter bindings](../../contributing/compiler/adapters/manifests.md) remain design work. The current compiler rejects those tables.

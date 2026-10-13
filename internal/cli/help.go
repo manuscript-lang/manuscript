@@ -20,7 +20,7 @@ Commands:
   fmt      Format source files or a project
   inspect  Emit checked source metadata as JSON
   diagram  Emit a static call graph as Mermaid
-  profile  Run with CPU, heap, and trace capture
+  profile  Run with CPU and heap capture; optionally trace
   pprof    Inspect captured CPU or heap profiles
   trace    Inspect captured execution traces
   debug    Start an application in the embedded Delve debugger
@@ -60,15 +60,15 @@ func commandHelp(command string) (string, bool) {
 	var usage, description, options, examples string
 	switch command {
 	case "check":
-		usage = "<file.ms|ms.toml> [--json]"
-		description = "Parse, resolve imports, and type-check without executing source.\nA project checks all source modules, discovered tests, and its entry signature."
+		usage = "<file.ms|directory|ms.toml>... [--json]"
+		description = "Parse, resolve imports, and type-check independent inputs without executing source.\nA project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.\nStandalone directories discover .ms files recursively, skipping hidden/vendor/node_modules directories, directory symlinks, and nested projects.\nEach input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames."
 		options = "  --json  Emit versioned JSON diagnostics instead of terminal messages\n"
-		examples = "ms check main.ms\n  ms check ms.toml --json"
+		examples = "ms check main.ms\n  ms check ms.toml --json\n  ms check src utilities.ms --json"
 	case "lint":
-		usage = "<file.ms|ms.toml> [--json]"
-		description = "Check source hygiene and semantic lint rules, including imported modules.\nExit status is 1 when lint findings are present."
+		usage = "<file.ms|directory|ms.toml>... [--json]"
+		description = "Check source hygiene and semantic lint rules in independent inputs and their imports.\nA project directory selects ms.toml; standalone directories discover .ms files recursively.\nDiscovery skips hidden/vendor/node_modules directories, directory symlinks, and nested projects.\nEach input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.\nExit status is 1 when any input fails checking or has lint findings."
 		options = "  --json  Emit versioned JSON findings with stable rule codes\n"
-		examples = "ms lint ms.toml\n  ms lint main.ms --json"
+		examples = "ms lint ms.toml\n  ms lint main.ms --json\n  ms lint src utilities.ms --json"
 	case "build":
 		usage = "<file.ms|ms.toml> [-o output] [--build-type level] [--debug]"
 		description = "Build an application exporting main() -> Int as a native executable."
@@ -105,10 +105,10 @@ func commandHelp(command string) (string, bool) {
 		options = outputHelp
 		examples = "ms diagram main.ms\n  ms diagram ms.toml -o calls.mmd"
 	case "profile":
-		usage = "<file.ms|ms.toml> [-o directory] [--build-type level] [-- program arguments]"
-		description = "Build and run an application with CPU, heap, and execution trace capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, trace.out,\ninspection.json, and manifest.json. The output directory must not already exist.\nArguments after -- are passed to the application; its exit status is returned."
-		options = "  -o, --output <directory>  Bundle directory (default: ./profile)\n"
-		examples = "ms profile ms.toml\n  ms profile main.ms -o capture -- first second"
+		usage = "<file.ms|ms.toml> [-o directory] [--trace] [--build-type level] [-- program arguments]"
+		description = "Build and run an application with CPU and heap capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, inspection.json,\nand manifest.json. Add --trace to also write trace.out. The directory must be new.\nSource labels/regions identify entry and work boundaries; CPU stacks retain nested calls.\nProfiling adds overhead; tracing can add substantial time and disk usage.\nMeasure normal execution separately. Arguments after -- go to the application; its exit status is returned."
+		options = "  -o, --output <directory>  Bundle directory (default: ./profile)\n  --trace                  Also capture an execution trace\n"
+		examples = "ms profile ms.toml\n  ms profile main.ms -o capture --trace -- first second"
 	case "pprof", "trace":
 		usage = "[viewer options] <profile file>"
 		description = "Inspect captured profiles with the embedded SDK viewer."
@@ -184,14 +184,18 @@ func runHelp(args []string) int {
 	return 2
 }
 
-func requestsHelp(args []string) bool {
+func requestsHelp(command string, args []string) bool {
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--":
 			return false
 		case "-h", "--help":
 			return true
-		case "-o", "--output", "--cpu-profile", "--heap-profile", "--trace", "--build-type", "--timeout", "--filter":
+		case "--trace":
+			if command != "profile" {
+				i++
+			}
+		case "-o", "--output", "--cpu-profile", "--heap-profile", "--build-type", "--timeout", "--filter":
 			// A flag value is not a help request, even if it is spelled --help.
 			i++
 		}

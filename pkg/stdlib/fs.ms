@@ -101,15 +101,18 @@ export interface FileSystem:
     ) -> Result[FileWatcher, FileSystemError]
     # Resolves symlinks and returns the canonical absolute path.
     fn canonicalize(path: String) -> Result[String, FileSystemError]
-    # Copies one file; existing destinations are replaced only when requested.
+    # Copies one file; replace defaults to false, refusing an existing destination.
     fn copy_file(
         source: String,
         destination: String,
-        replace: Bool,
+        replace: Bool = false,
         max_bytes: Optional[Int] = none
     ) -> Result[Unit, FileSystemError]
-    # Creates a directory, optionally creating missing parents.
-    fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+    # Creates one directory; recursive defaults to false, requiring its parent to exist.
+    fn create_directory(
+        path: String,
+        recursive: Bool = false
+    ) -> Result[Unit, FileSystemError]
     # Creates a symbolic link at `path` pointing to `target`.
     fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
     # Lists a directory, optionally limiting the number of returned entries.
@@ -123,16 +126,18 @@ export interface FileSystem:
         max_bytes: Optional[Int] = none
     ) -> Result[Bytes, FileSystemError]
     fn read_link(path: String) -> Result[String, FileSystemError]
-    fn remove(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+    # Removes a file or empty directory; recursive defaults to false, retaining nonempty trees.
+    fn remove(path: String, recursive: Bool = false) -> Result[Unit, FileSystemError]
     fn rename(source: String, destination: String) -> Result[Unit, FileSystemError]
     fn stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
     # Creates a new directory under the host temp root; the caller must remove it.
     # Prefix must be nonempty and contain no slash, backslash, or NUL.
     fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
+    # Creates a file exclusively; replace defaults to false, retaining an existing file.
     fn write_file(
         path: String,
         data: Bytes,
-        replace: Bool
+        replace: Bool = false
     ) -> Result[Unit, FileSystemError]
     # Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.
     # Native permissions and Windows access policy still apply.
@@ -163,10 +168,12 @@ export interface FileSystem:
         mode: Int
     ) -> Result[FileHandle, FileSystemError]
     fn open_directory(path: String) -> Result[Directory, FileSystemError]
+    # Copies a tree; replace defaults to false, refusing existing destinations.
+    # Entry and byte limits remain separate and apply cumulatively across the copy.
     fn copy_tree(
         source: String,
         destination: String,
-        replace: Bool,
+        replace: Bool = false,
         max_entries: Optional[Int] = none,
         max_bytes: Optional[Int] = none
     ) -> Result[Unit, FileSystemError]

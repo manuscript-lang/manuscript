@@ -7,6 +7,7 @@ import Result from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
+import sleep from "@std/time.ms"
 
 fn identity[T](value: T) -> T:
     return value
@@ -127,18 +128,18 @@ test "function fields collections and interface views share freely":
         let first_task = group.start(make_function)
 
         match group.join():
-            ok(_):
-                match first_task.join():
-                    ok(returned):
-                        if not (returned(value: 3) == 4):
-                            return panic(message: "check failed")
-
-                    error(_):
-                        return panic("task result unavailable")
-
+            ok(_): unit
             error(_):
                 if not (false):
                     return panic(message: "check failed")
+
+        match first_task.join():
+            ok(returned):
+                if not (returned(value: 3) == 4):
+                    return panic(message: "check failed")
+
+            error(_):
+                return panic("task result unavailable")
 
 test "builders can be captured and stored callbacks can map":
     let builder = ListBuilder[Int]()
@@ -211,25 +212,79 @@ test "guard aliases close once and stale methods fault":
                     if not (second.get() == 2):
                         return panic(message: "check failed")
 
-test "ancestor reentry faults without hanging":
+test "same-task reentry faults and releases its guard":
     let counter = Synchronized(0)
+    let acquire = fn():
+        with locked = counter.lock():
+            with again = counter.lock():
+                return panic(message: "reentry should fault")
+
+    with group = TaskGroup():
+        let first_task = group.start(acquire)
+
+        match group.join():
+            ok(_):
+                return panic(message: "reentry did not fault")
+
+            error(_):
+                with locked = counter.lock():
+                    locked.set(value: 3)
 
     with locked = counter.lock():
-        let acquire = fn():
-            with again = counter.lock():
-                if not (false):
-                    return panic(message: "check failed")
+        if locked.get() != 3:
+            return panic(message: "fault leaked guard")
 
-        with group = TaskGroup():
-            let first_task = group.start(acquire)
+test "parent holds lock while a running child waits for it":
+    let cell = Synchronized(0)
 
-            match group.join():
+    with tasks = TaskGroup():
+        let child = tasks.start(
+            fn() -> Int:
+                sleep(duration: 20.milliseconds)
+
+                with locked = cell.lock():
+                    return locked.get()
+        )
+
+        with locked = cell.lock():
+            sleep(duration: 100.milliseconds)
+            locked.set(value: 7)
+
+        match child.join():
+            ok(value):
+                if value != 7:
+                    return panic(message: "got {value}")
+
+            error(_):
+                return panic(message: "child failed")
+
+test "ordinary cross-task lock cycle stops at the group timeout":
+    let cell = Synchronized(0)
+
+    with locked = cell.lock():
+        with tasks = TaskGroup(timeout: 40.milliseconds):
+            let child = tasks.start(
+                fn() -> Int:
+                    with acquired = cell.lock():
+                        return acquired.get()
+            )
+
+            let cause = match child.join():
                 ok(_):
-                    if not (false):
-                        return panic(message: "check failed")
+                    return panic(message: "cycle acquired before release")
 
-                error(_):
+                error(cause): cause
+
+            match cause:
+                TimedOut:
                     locked.set(value: 3)
+
+                _:
+                    return panic(message: "unexpected failure {cause}")
+
+    with locked = cell.lock():
+        if locked.get() != 3:
+            return panic(message: "timeout lost committed data")
 
 test "loop exits release the guard":
     let counter = Synchronized(0)
@@ -272,19 +327,19 @@ test "native collection methods preserve ordinary function values":
         let second_task = group.start(second)
 
         match group.join():
-            ok(_):
-                match first_task.join():
-                    ok(first_value):
-                        match second_task.join():
-                            ok(second_value):
-                                if first_value != 1 or second_value != 2:
-                                    return panic(message: "check failed")
-
-                            error(_):
-                                return panic("task result unavailable")
-
-                    error(_):
-                        return panic("task result unavailable")
-
+            ok(_): unit
             error(_):
                 return panic(message: "task callbacks failed")
+
+        let first_value = match first_task.join():
+            ok(first_value): first_value
+            error(_):
+                return panic("task result unavailable")
+
+        match second_task.join():
+            ok(second_value):
+                if first_value != 1 or second_value != 2:
+                    return panic(message: "check failed")
+
+            error(_):
+                return panic("task result unavailable")

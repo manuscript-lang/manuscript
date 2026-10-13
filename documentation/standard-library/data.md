@@ -62,6 +62,18 @@ String indexing and search count Unicode scalars. The [text rules](../core-langu
 
 An empty `old` in `replace_first` (or `replace`) and `replace_all` matches before the first scalar and after each scalar, including the end. Replacement does not scan newly inserted text. `repeat`, `normalize`, `pad_start`, and `pad_end` also accept optional UTF-8 output budgets: omitted or `none` budgets impose no cap, zero permits only empty output, negatives return `StringError.InvalidInput`, and exceeding a supplied budget returns `StringError.LimitExceeded`. Even unchanged padding results must fit the supplied budget. Normalization accepts exactly the case-sensitive strings `NFC`, `NFD`, `NFKC`, or `NFKD`; other forms return `StringError.InvalidInput`.
 
+Use `NormalizationForm.Nfc`, `Nfd`, `Nfkc`, or `Nfkd` from `@std/string.ms` to select a form with a checked alternative. Its `normalize(text, max_bytes = none)` operation shares the existing String implementation, UTF-8 byte budgets, errors, and cancellation. Canonical forms compose/decompose canonically equivalent text; compatibility forms also normalize compatibility characters such as ligatures.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import NormalizationForm from "@std/string.ms"
+import panic from "@std/faults.ms"
+
+test "typed Unicode normalization":
+    let text = NormalizationForm.Nfkc.normalize("ﬁ", max_bytes: 2).unwrap()
+    if text != "fi": return panic("compatibility normalization")
+```
+
 Negative `max_parts` and `max_replacements` fault with a message naming the operation and parameter, because these operations return plain values. Full case mapping includes `"ß".upper()` as `"SS"`, `"ﬁ".upper()` as `"FI"`, final sigma `ς` at the end of `"ΑΣ".lower()`, and `"İ".lower()` as `i` followed by U+0307.
 
 Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.
@@ -75,12 +87,15 @@ Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed 
 | `length`, `is_empty`, `at` | Count bytes, test emptiness, or read an unsigned byte; negative lookup indexes are relative to the end. |
 | `contains`, `starts_with`, `ends_with` | Test byte subsequences, prefixes, or suffixes. |
 | `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length()` respectively. |
+| `split` | Split exact binary separators into a fresh List of immutable Bytes views. `max_parts` truncates returned parts; omitted/`none` is unlimited, zero returns no parts, negatives fault. |
 | `slice` | Select a strict half-open byte range under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
 | `with_value`, `reversed`, `reverse`, `concat`, `clone` | Return Bytes without changing the receiver. `reverse` remains a compatible spelling for `reversed`. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
 | `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
 | `to_text` | Decode valid UTF-8 or return `none`. |
 
 Bytes stay immutable even when a native slice shares storage. Construction and extraction copy values, as described in [encoding and parsing](../core-language/basics/text-and-bytes.md#encoding-and-parsing).
+
+`Bytes.split` preserves leading, interior and trailing empty parts. An empty separator yields one Bytes per byte, and gives no parts for empty data; a nonempty separator gives one empty part for empty data. It never decodes UTF-8, so separators can split a multibyte character or invalid text. A cap discards later parts instead of retaining an unsplit remainder: `Bytes([1, 0, 2, 0, 3]).split(Bytes([0]), max_parts: 2)` returns `[Bytes([1]), Bytes([2])]`. Returned Lists have independent mutable storage, while their immutable Bytes may share the input storage. Changing a result with `with_value` creates new Bytes and leaves the input and other parts unchanged.
 
 ## Base64 encoding
 

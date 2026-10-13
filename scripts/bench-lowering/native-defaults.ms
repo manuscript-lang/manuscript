@@ -4,6 +4,7 @@ import Bytes from "@std/bytes.ms"
 import List from "@std/collections.ms"
 import {commands, CommandOutput, CommandError} from "@std/process.ms"
 import Duration from "@std/time.ms"
+import {filesystem, FileSystem, FileSystemError} from "@std/fs.ms"
 
 fn direct_explicit(data: Bytes) -> String: base64_encode(data, false)
 
@@ -41,3 +42,14 @@ fn command_bind() -> fn(
     timeout: Optional[Duration]
 ) -> Result[CommandOutput, CommandError]:
     return commands().run
+
+fn filesystem_setup() -> FileSystem: filesystem()
+
+fn filesystem_explicit(fs: FileSystem, data: Bytes) -> Result[Unit, FileSystemError]:
+    return fs.write_file("", data, false)
+
+fn filesystem_omitted(fs: FileSystem, data: Bytes) -> Result[Unit, FileSystemError]:
+    return fs.write_file("", data)
+
+fn filesystem_bind(fs: FileSystem) -> fn(path: String, data: Bytes, replace: Bool) -> Result[Unit, FileSystemError]:
+    return fs.write_file

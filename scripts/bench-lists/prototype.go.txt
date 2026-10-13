@@ -12,13 +12,12 @@ import (
 // recognize this type. One storage handle is authoritative across typed/Value
 // aliases; there is no mutable boxed mirror. Only primitive Int is prototyped.
 type prototypeList struct {typ string;storage *prototypeStorage}
-type prototypeStorage struct {ints []int64;shared bool}
+type prototypeStorage struct {ints []int64}
 func newPrototype() *prototypeList {return &prototypeList{typ:"@std/List[Int]",storage:&prototypeStorage{}}}
 func (l *prototypeList) appendInt(ctx *rt.Execution,v int64) *prototypeList {rt.CheckCancelled(ctx);l.storage.ints=append(l.storage.ints,v);return l}
 func prototypeAppendValue(ctx *rt.Execution,receiver,value rt.Value) rt.Value {return receiver.(*prototypeList).appendInt(ctx,rt.IntValue(value))}
-func (l *prototypeList) own() {if l.storage.shared {l.storage.ints=append([]int64(nil),l.storage.ints...);l.storage.shared=false}}
-func (l *prototypeList) snapshot() []int64 {l.storage.shared=true;return l.storage.ints[:len(l.storage.ints):len(l.storage.ints)]}
-func (l *prototypeList) update(ctx *rt.Execution,i int,v int64) {rt.CheckCancelled(ctx);l.own();l.storage.ints[i]=v}
+func (l *prototypeList) rangeItems() []int64 {return l.storage.ints}
+func (l *prototypeList) update(ctx *rt.Execution,i int,v int64) {rt.CheckCancelled(ctx);l.storage.ints[i]=v}
 func (l *prototypeList) clone() *prototypeList {return &prototypeList{typ:l.typ,storage:&prototypeStorage{ints:append([]int64(nil),l.storage.ints...)}}}
 func (l *prototypeList) atValue(ctx *rt.Execution,i int64) rt.Value {
  rt.CheckCancelled(ctx)
@@ -43,7 +42,7 @@ func benchmarkPrototype(b *testing.B,ctx *rt.Execution,n int64) {
  b.Run("AppendRuntimeBoxed64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=runtimeBoxedBuild(ctx,n)}})
  b.Run("AppendPrototype64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=prototypeBuild(ctx,n)}})
  b.Run("IndexPrototypeBoxed64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for i:=int64(0);i<n;i=rt.IntAdd(i,1) {rt.CheckCancelled(ctx);total=rt.IntAdd(total,rt.IntValue(rt.OptionalUnwrap(ctx,xs.atValue(ctx,i))))};listResult=total}})
- b.Run("IteratePrototypeTyped64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for _,x:=range xs.snapshot(){rt.CheckCancelled(ctx);total=rt.IntAdd(total,x)};listResult=total}})
+ b.Run("IteratePrototypeTyped64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for _,x:=range xs.rangeItems(){rt.CheckCancelled(ctx);total=rt.IntAdd(total,x)};listResult=total}})
  boxed:=runtimeBoxedBuild(ctx,n)
  b.Run("IndexRuntimeBoxedTypedLocals64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for i:=int64(0);i<n;i=rt.IntAdd(i,1) {rt.CheckCancelled(ctx);total=rt.IntAdd(total,rt.IntValue(rt.OptionalUnwrap(ctx,rt.ListAt(ctx,boxed,i,"@std/Optional[Int]"))))};listResult=total}})
  b.Run("IterateRuntimeBoxedTypedLocals64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for _,x:=range rt.Iterate(boxed){rt.CheckCancelled(ctx);total=rt.IntAdd(total,x.(int64))};listResult=total}})
@@ -65,9 +64,9 @@ func TestListPrototypeAliases(t *testing.T) {
  appendValue:=rt.NewFunction([]string{"value"},xs.typ,func(ctx *rt.Execution,args []rt.Value)rt.Value{return prototypeAppendValue(ctx,boxed,args[0])})
  for i:=int64(0);i<1024;i++ {if i%2==0 {xs.appendInt(ctx,i)} else {rt.Invoke(ctx,appendValue,[]rt.Argument{{Name:"value",Value:i}})}}
  if len(typedAlias.storage.ints)!=1024 {t.Fatal("alias lost growth")}
- snap:=xs.snapshot();copy:=typedAlias.clone()
+ snap:=xs.rangeItems();copy:=typedAlias.clone()
  typedAlias.update(ctx,0,99);prototypeAppendValue(ctx,boxed,int64(1024))
- if xs.storage.ints[0]!=99||len(xs.storage.ints)!=1025||snap[0]!=0||len(snap)!=1024||copy.storage.ints[0]!=0||len(copy.storage.ints)!=1024 {t.Fatal("alias, clone or snapshot diverged")}
+ if xs.storage.ints[0]!=99||len(xs.storage.ints)!=1025||snap[0]!=99||len(snap)!=1024||copy.storage.ints[0]!=0||len(copy.storage.ints)!=1024 {t.Fatal("alias, clone or captured range diverged")}
  if !reflect.DeepEqual(xs.atValue(ctx,-1),rt.Alternative{Type:"@std/Optional[Int]",Tag:"some",Fields:[]rt.Value{int64(1024)}}) {t.Fatal("negative at")}
  if xs.atValue(ctx,-1026).(rt.Alternative).Tag!="none" {t.Fatal("optional bounds")}
 }

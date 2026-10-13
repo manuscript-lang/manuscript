@@ -7,7 +7,7 @@ ms lock ms.toml
 ms check ms.toml
 ms test ms.toml
 ms run ms.toml
-ms profile ms.toml -o captures
+ms profile ms.toml -o captures --trace
 ms profile src/work.ms -o work-captures
 ms pprof -tags work-captures/cpu.pprof
 ms pprof -http=127.0.0.1:8080 captures/program captures/cpu.pprof

@@ -135,10 +135,34 @@ func TestCLICommands(t *testing.T) {
 	if data, err := commandOutput(t, binary, "profile", manifest, "-o", bundle); err != nil {
 		t.Fatalf("profile bundle: %v %s", err, data)
 	}
-	for _, name := range []string{"program", "program.ms-build.json", "inspection.json", "manifest.json", "cpu.pprof", "heap.pprof", "trace.out"} {
+	for _, name := range []string{"program", "program.ms-build.json", "inspection.json", "manifest.json", "cpu.pprof", "heap.pprof"} {
 		info, err := os.Stat(filepath.Join(bundle, name))
 		if err != nil || info.Size() == 0 {
 			t.Fatalf("missing profile artifact %s: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(bundle, "trace.out")); !os.IsNotExist(err) {
+		t.Fatal("default bundle captured a trace", err)
+	}
+	manifestData, err := os.ReadFile(filepath.Join(bundle, "manifest.json"))
+	if err != nil || bytes.Contains(manifestData, []byte(`"trace"`)) {
+		t.Fatal("default manifest advertises a trace", err)
+	}
+	traced := filepath.Join(project, "traced")
+	if data, err := commandOutput(t, binary, "profile", manifest, "-o", traced, "--trace", "--", "first", "second"); err != nil || string(data) != "Arguments: 2\n" {
+		t.Fatalf("explicit trace bundle: %v %s", err, data)
+	}
+	manifestData, err = os.ReadFile(filepath.Join(traced, "manifest.json"))
+	if err != nil || !bytes.Contains(manifestData, []byte(`"trace": "trace.out"`)) {
+		t.Fatal("explicit trace missing from manifest", err)
+	}
+	for _, args := range [][]string{
+		{"pprof", "-top", filepath.Join(bundle, "cpu.pprof")},
+		{"pprof", "-top", filepath.Join(bundle, "heap.pprof")},
+		{"trace", "-d=parsed", filepath.Join(traced, "trace.out")},
+	} {
+		if data, err := commandOutput(t, binary, args...); err != nil {
+			t.Fatalf("invalid captured artifact: %v %s", err, data)
 		}
 	}
 	if err := exec.Command(binary, "profile", manifest, "-o", bundle).Run(); err == nil {
@@ -453,27 +477,31 @@ export fn main() -> Int:
         let task = fn() -> Result[Unit, String]:
             close_output()
             return ok(value: unit)
-        match service.start(task):
-            ok(id):
-                while true:
-                    match service.status(id):
-                        Running:
-                            sleep(1.milliseconds)
-                        Succeeded:
-                            break
-                        _:
-                            return 5
+        let id = match service.start(task):
+            ok(id): id
             error(_):
                 return 2
-    match stdout().write("".to_bytes()):
+
+        while true:
+            match service.status(id):
+                Running:
+                    sleep(1.milliseconds)
+                Succeeded:
+                    break
+                _:
+                    return 5
+
+    let cause = match stdout().write("".to_bytes()):
         ok(_):
             return 3
-        error(cause):
-            match cause:
-                Closed:
-                    return 0
-                _:
-                    return 4
+        error(cause): cause
+
+    match cause:
+        Closed:
+            return 0
+        _:
+            return 4
+
 `
 	for name, source := range map[string]string{"helper.ms": helper, "main.ms": main} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {

@@ -64,13 +64,15 @@ import panic from "@std/faults.ms"
 
 test "parse bounded TOML configuration":
     let limits = TomlLimits(max_bytes: 1024, max_depth: 8, max_values: 64)
-    match parse(text: "[server]\nport = 8080\n", limits: limits):
+    let value = match parse(text: "[server]\nport = 8080\n", limits: limits):
         error(cause): return panic(cause.message())
-        ok(value):
-            match value:
-                TableValue(entries):
-                    if not entries.contains("server"): return panic("missing server table")
-                _: return panic("expected table")
+        ok(value): value
+
+    match value:
+        TableValue(entries):
+            if not entries.contains("server"): return panic("missing server table")
+        _: return panic("expected table")
+
 ```
 
 ## CSV behavior
@@ -95,7 +97,7 @@ Query entries retain duplicates and order. A bare key has an empty value; `+` re
 
 Hostnames are not normalized through IDNA; absent and empty queries have the same representation.
 
-## HTML parsing and escaping
+## HTML parsing and text conversion
 
 `parse` returns an `HtmlNode.Document` containing an HTML5 tree. Match `Element` to work with its tag, namespace, ordered `List[HtmlAttribute]`, and child nodes. `Text`, `Comment`, and `Doctype` preserve their data. These are ordinary Manuscript data values; child lists and attribute records are mutable.
 
@@ -141,3 +143,7 @@ Parsing follows HTML5 document rules: omitted `html`, `head`, `body`, and table 
 Omitted limits impose no added cap. An empty input produces four nodes (`Document`, `html`, `head`, and `body`) with maximum depth two. Depth and node budgets are checked while converting the native tree, after HTML5 parsing has allocated it; use a byte budget to bound the input first. Negative limits return `HtmlError.InvalidInput`, invalid UTF-8 or a native parser failure returns `InvalidData`, and exceeded budgets return `LimitExceeded`. Recoverable markup errors are accepted.
 
 `escape` handles text and quoted attribute contexts. It does not sanitize HTML or escape script, stylesheet, or URL content.
+
+`unescape(text:) -> String` decodes HTML5 character references in text context, in one pass. Named references such as `&lt;`, decimal references such as `&#225;`, and hexadecimal references such as `&#xE1;` are recognized. HTML5 text rules accept some references without semicolons and select recognized prefixes; `unescape("&ampx")` returns `"&x"`. Unrecognized text such as `&bogus;` remains literal. Invalid numeric scalars (zero, surrogates, and values above U+10FFFF) become U+FFFD, and the HTML5 C1 replacement table applies to numeric references.
+
+The output is ordinary immutable String, without markup parsing or Unicode normalization. Decoded text is not decoded again: `unescape("&amp;lt;")` is `"&lt;"`. `unescape(escape(text))` preserves `text`, while escaping an unescaped reference may choose another equivalent spelling. Attribute parsing has its own HTML5 reference rules; use `parse` to obtain decoded attributes from markup. Cancellation is checked before and after this atomic text codec and may wait for the codec to return.

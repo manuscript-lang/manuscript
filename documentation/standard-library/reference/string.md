@@ -6,6 +6,60 @@ title = "string"
 
 Import each required symbol with `import Name from "@std/string.ms"`.
 
+## NormalizationForm {data-api-kind="Alternative"}
+
+The four Unicode normalization forms, selected without runtime string spelling errors.
+
+```manuscript
+type NormalizationForm:
+    case Nfc
+    case Nfd
+    case Nfkc
+    case Nfkd
+    fn normalize(text: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+```
+
+### NormalizationForm.Nfc
+
+Canonical decomposition followed by canonical recomposition where Unicode permits it.
+
+```manuscript
+case Nfc
+```
+
+### NormalizationForm.Nfd
+
+Canonical decomposition with combining marks placed in canonical order.
+
+```manuscript
+case Nfd
+```
+
+### NormalizationForm.Nfkc
+
+Compatibility decomposition followed by canonical recomposition where Unicode permits it.
+
+```manuscript
+case Nfkc
+```
+
+### NormalizationForm.Nfkd
+
+Compatibility decomposition with combining marks placed in canonical order.
+
+```manuscript
+case Nfkd
+```
+
+### NormalizationForm.normalize
+
+Normalizes text with the existing String.normalize budgets and StringError cases.
+Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
+
+```manuscript
+fn normalize(text: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+```
+
 ## StringBuilder {data-api-kind="Native type"}
 
 Mutable builder for constructing a string without repeated intermediate copies.

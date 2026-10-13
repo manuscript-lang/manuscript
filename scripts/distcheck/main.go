@@ -219,8 +219,11 @@ func check() error {
 	if err := checkJSONResults(cli, directory, environment); err != nil {
 		return err
 	}
+	if err := checkAnalysisCollections(cli, directory, environment); err != nil {
+		return err
+	}
 	profile := filepath.Join(directory, "profile")
-	if data, err := run(cli, "profile", manifest, "-o", profile, "--", "first", "second"); err != nil {
+	if data, err := run(cli, "profile", manifest, "-o", profile, "--trace", "--", "first", "second"); err != nil {
 		return err
 	} else if data != "Arguments: 2\n" {
 		return fmt.Errorf("unexpected profile output: %q", data)
@@ -236,12 +239,31 @@ func check() error {
 	}
 	for _, arguments := range [][]string{
 		{"pprof", "-top", filepath.Join(profile, "heap.pprof")},
+		{"pprof", "-top", filepath.Join(profile, "cpu.pprof")},
 		{"pprof", "-tags", filepath.Join(profile, "cpu.pprof")},
 		{"trace", "-d=parsed", filepath.Join(profile, "trace.out")},
 	} {
 		if _, err := run(cli, arguments...); err != nil {
 			return err
 		}
+	}
+	defaultProfile := filepath.Join(directory, "default-profile")
+	if _, err := run(cli, "profile", manifest, "-o", defaultProfile); err != nil {
+		return err
+	}
+	if _, err := os.Stat(filepath.Join(defaultProfile, "trace.out")); !os.IsNotExist(err) {
+		return fmt.Errorf("default profile unexpectedly captured a trace: %v", err)
+	}
+	defaultManifest, err := os.ReadFile(filepath.Join(defaultProfile, "manifest.json"))
+	if err != nil {
+		return err
+	}
+	var defaultArtifacts map[string]any
+	if err := json.Unmarshal(defaultManifest, &defaultArtifacts); err != nil {
+		return err
+	}
+	if _, ok := defaultArtifacts["trace"]; ok {
+		return fmt.Errorf("default profile manifest advertises an unrequested trace")
 	}
 	// Repeat a cold native build with actual poison executables on PATH. Ambient
 	// overrides already point to them in the first, ms-only PATH phase above.

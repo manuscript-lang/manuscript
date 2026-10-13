@@ -42,12 +42,12 @@ func NewTaskGroup(ctx *Execution, args []Argument) Value {
 		if a.Name == "timeout" {
 			value, valid := nativeOption(a.Value, "Duration", nil)
 			if !valid {
-				return Panic("TaskGroup timeout must be nonnegative")
+				return durationParameterFault("TaskGroup", "timeout", a.Value)
 			}
 			if value != nil {
 				duration := value.(Duration)
 				if duration < 0 {
-					return Panic("TaskGroup timeout must be nonnegative")
+					return durationParameterFault("TaskGroup", "timeout", a.Value)
 				}
 				timeout = &duration
 			}

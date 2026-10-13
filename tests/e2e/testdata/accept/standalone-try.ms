@@ -57,15 +57,16 @@ test "standalone try propagates and cleans up before returning":
 test "standalone try preserves concrete errors at Error boundaries":
     let state = State(calls: 0, closed: 0)
 
-    match widened(state):
+    let cause = match widened(state):
         ok(value): return panic("failure swallowed")
 
-        error(cause):
-            match cause:
-                Failure(value):
-                    if value.code != 42: return panic("payload lost")
+        error(cause): cause
 
-                _: return panic("concrete error lost")
+    match cause:
+        Failure(value):
+            if value.code != 42: return panic("payload lost")
+
+        _: return panic("concrete error lost")
 
     if state.calls != 1: return panic("operation repeated")
 
