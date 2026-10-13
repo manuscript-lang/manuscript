@@ -35,6 +35,43 @@ import Duration from "@std/time.ms"
 fn generic_run[T: Commands](service: T) -> Bytes:
     return value(service.run(program: "fake", arguments: [])).stdout
 
+type Override:
+    input: Bytes
+
+impl Commands for Override:
+    fn run(
+        program: String,
+        arguments: List[String],
+        input: Bytes = self.input,
+        max_output_bytes: Optional[Int] = none,
+        timeout: Optional[Duration]
+    ) -> Result[CommandOutput, CommandError]:
+        return ok(
+            CommandOutput(
+                0,
+                input,
+                "".to_bytes()
+            )
+        )
+
+test "concrete implementation defaults and interface defaults stay distinct":
+    let service = Override("custom".to_bytes())
+    let concrete = service.run
+    if value(concrete(program: "fake", arguments: [])).stdout != service.input:
+        return panic("concrete input override")
+
+    let viewed = Commands(service).run
+    if value(viewed(program: "fake", arguments: [])).stdout.length() != 0:
+        return panic("interface input default")
+
+    let explicit = "explicit".to_bytes()
+    if (
+        value(
+            viewed(program: "fake", arguments: [], input: explicit)
+        ).stdout != explicit
+    ):
+        return panic("explicit input skips both defaults")
+
 test "CSV defaults are fresh and explicit options retain their meaning":
     let first = CsvOptions()
     let alias = first
