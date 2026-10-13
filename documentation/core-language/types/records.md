@@ -49,7 +49,7 @@ A default can refer to earlier fields and module declarations, including functio
 
 ## Mutation and cloning
 
-A method can update its receiver's fields without replacing the record:
+A method declared through an [interface implementation](contracts.md#explicit-implementations) can update its receiver's fields without replacing the record. User-defined methods require `impl Interface for Type:`; `impl Type:` and method declarations inside a source record are unsupported:
 
 ```manuscript
 interface Counter:

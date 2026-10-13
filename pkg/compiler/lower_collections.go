@@ -3,8 +3,19 @@ package compiler
 import (
 	"go/ast"
 
+	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
+
+func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checker.Info) ast.Expr {
+	args := []ast.Expr{g.expression(member.Left), textLiteral(member.Text), g.key(info.Type.Result), g.typeScope(g.program.Expressions[member.Left].Type)}
+	if info.Method.Native == "collections/set_map" {
+		// Output deduplication needs the mapped element's lexical evidence,
+		// including when a generic receiver method is explicitly specialized.
+		args = append(args, g.typeScope(info.Type.Result))
+	}
+	return runtimeCall("NativeMemberResult", args...)
+}
 
 // These checked native operations neither invoke callbacks nor acquire
 // resources. Direct calls can share their runtime implementation without

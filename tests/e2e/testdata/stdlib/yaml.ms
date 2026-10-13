@@ -583,3 +583,22 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
         if value(parse(text: text)) != YamlValue.StringValue(text): return panic(
             "plain scalar resolved incorrectly: {text}"
         )
+
+fn failure(text: String) -> String:
+    match parse(text: text):
+        ok(_): return "accepted"
+        error(cause): return cause.message()
+
+test "YAML merge and block header errors name their own line":
+    if failure("<<: 1") != "YAML 1:1: merge requires mappings": return panic(
+        "single line merge"
+    )
+    if failure("x: 1\ny: 2\n<<: 1") != "YAML 3:1: merge requires mappings": return panic(
+        "later merge"
+    )
+    if failure("a: |x") != "YAML 1:5: invalid block scalar header": return panic(
+        "header"
+    )
+    if failure("x: 1\ny: |x\nz: 3") != "YAML 2:5: invalid block scalar header": return panic(
+        "later header"
+    )

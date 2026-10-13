@@ -12,6 +12,9 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type libraryBigInt struct{ n *big.Int }
@@ -51,7 +54,7 @@ func init() {
 		}
 		return n
 	})
-	for name, f := range map[string]func(string) string{"trim": strings.TrimSpace, "upper": strings.ToUpper, "lower": strings.ToLower} {
+	for name, f := range map[string]func(string) string{"trim": strings.TrimSpace, "upper": libraryUpper, "lower": libraryLower} {
 		add("string", name, "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string)) })
 	}
 	for name, f := range map[string]func(string, string) bool{"contains": strings.Contains, "starts_with": strings.HasPrefix, "ends_with": strings.HasSuffix} {
@@ -239,7 +242,7 @@ func init() {
 	add("bigint", "parse", libraryResult("BigInt", "BigIntError"), []LibraryParam{p("text", "String"), p("radix", "Int"), p("max_digits", "Optional[Int]")}, func(_ *Execution, r string, a []Value) Value {
 		text := a[0].(string)
 		radix, n := a[1].(int64), a[2].(int64)
-		if radix < 2 || radix > 36 || n <= 0 {
+		if radix < 2 || radix > 36 || n < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
 		digits := len(strings.TrimPrefix(strings.TrimPrefix(text, "+"), "-"))
@@ -444,3 +447,8 @@ func javascriptRound(value float64) float64 {
 	}
 	return lower
 }
+
+// Full Unicode case mapping, independent of locale: ß becomes SS, ligatures
+// expand, final sigma lowers to ς, and İ lowers to i + U+0307.
+func libraryUpper(text string) string { return cases.Upper(language.Und).String(text) }
+func libraryLower(text string) string { return cases.Lower(language.Und).String(text) }

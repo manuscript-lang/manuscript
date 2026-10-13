@@ -64,7 +64,7 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 	}
 	prologue := []ast.Stmt{
 		define("sourcePosition", textLiteral(result.Pos.String())),
-		&ast.DeferStmt{Call: runtimeCall("TraceSource", address(ident("sourcePosition")), textLiteral(name))},
+		&ast.DeferStmt{Call: runtimeCall("TraceSource", ident("ctx"), address(ident("sourcePosition")), textLiteral(name))},
 	}
 	var out []ast.Stmt
 	if self != nil {

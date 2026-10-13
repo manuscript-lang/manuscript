@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/project"
@@ -16,21 +17,18 @@ import (
 func LoadFile(filename string, options Options) Graph {
 	config, manifest, err := sourceProject(filename)
 	if err != nil {
-		return Graph{Diagnostics: []syntax.Diagnostic{diagnostic(filename, "resolution", err)}}
+		return Graph{SourceRoot: config.Root, Diagnostics: []syntax.Diagnostic{diagnostic(filename, "resolution", err)}}
 	}
 	graph := Graph{SourceRoot: config.Root, Imports: map[*syntax.Import]string{}}
 	if manifest {
 		graph.ProjectRoot, graph.Configuration = config.Root, config.Configuration
+		graph.Library = config.Entry == ""
+		graph.ManifestPosition = manifestPosition(config.Location)
 	}
 	if options.Module != "" {
 		config.Entry = options.Module
 	}
 	overlay, err := canonicalOverlay(config.Root, options.Overlay)
-	if err != nil {
-		graph.Diagnostics = []syntax.Diagnostic{diagnostic(config.Entry, "resolution", err)}
-		return graph
-	}
-	entry, err := project.SourcePath(config.Root, config.Entry, overlay)
 	if err != nil {
 		graph.Diagnostics = []syntax.Diagnostic{diagnostic(filename, "resolution", err)}
 		return graph
@@ -39,16 +37,23 @@ func LoadFile(filename string, options Options) Graph {
 		config: config, overlay: overlay, recover: options.Recover,
 		graph: &graph, active: map[string]bool{}, loaded: map[string]string{},
 	}
-	graph.Entry, err = loader.visit(entry)
-	if err != nil {
-		// An incomplete strict graph cannot be checked. Recovered graphs retain
-		// import failures inside visit and still contain the selected module.
-		graph.Modules = nil
-		graph.Diagnostics = append(graph.Diagnostics, diagnostic(filename, "resolution", err))
-		return graph
+	if config.Entry != "" {
+		entry, resolveErr := project.SourcePath(config.Root, config.Entry, overlay)
+		if resolveErr != nil {
+			graph.Diagnostics = []syntax.Diagnostic{diagnostic(filename, "resolution", resolveErr)}
+			return graph
+		}
+		graph.Entry, err = loader.visit(entry)
+		if err != nil {
+			// An incomplete strict graph cannot be checked. Recovered graphs retain
+			// import failures inside visit and still contain the selected module.
+			graph.Modules = nil
+			graph.Diagnostics = append(graph.Diagnostics, diagnostic(filename, "resolution", err))
+			return graph
+		}
 	}
-	if manifest && (options.Tests || options.ProjectSources) {
-		files, err := project.DiscoverModules(config, options.ProjectSources)
+	if manifest && (graph.Library || options.Tests || options.ProjectSources) {
+		files, err := project.DiscoverModulesWithOverlay(config, graph.Library || options.ProjectSources, overlay)
 		if err != nil {
 			graph.Diagnostics = append(graph.Diagnostics, diagnostic(filename, "resolution", err))
 		}
@@ -82,7 +87,13 @@ func sourceProject(filename string) (project.Project, bool, error) {
 // canonicalized. Two spellings of one file cannot select conflicting content.
 func canonicalOverlay(root string, overlay map[string]string) (map[string]string, error) {
 	normalized := make(map[string]string, len(overlay))
-	for filename, source := range overlay {
+	filenames := make([]string, 0, len(overlay))
+	for filename := range overlay {
+		filenames = append(filenames, filename)
+	}
+	sort.Strings(filenames)
+	for _, filename := range filenames {
+		source := overlay[filename]
 		canonical, err := project.SourcePath(root, filename, overlay)
 		if err != nil {
 			// Documents outside this project never enter its module graph.

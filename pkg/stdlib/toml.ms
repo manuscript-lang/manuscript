@@ -601,6 +601,14 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
                 )
             )
 
+    # Bare words such as True, yes, or abc are not numbers, even when they
+    # contain an e.
+    if (
+        clean != "inf"
+        and clean != "nan"
+        and not "0123456789".contains(clean.at(0).unwrap_or("x"))
+    ): return error(invalid(reader: reader, reason: "invalid value"))
+
     if (
         clean == "inf"
         or clean == "nan"
@@ -766,6 +774,8 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
         return ok(node)
 
     var text = ""
+    let start_line = reader.line
+    let start_column = reader.column
 
     while (
         peek(reader) != ""
@@ -799,7 +809,15 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
         ):
             text = text.concat(advance(reader))
 
-    return scalar(reader: reader, text: text)
+    # Report token errors where the token starts, not where it ended.
+    let end_line = reader.line
+    let end_column = reader.column
+    reader.line = start_line
+    reader.column = start_column
+    let result = scalar(reader: reader, text: text)
+    reader.line = end_line
+    reader.column = end_column
+    return result
 
 fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, TomlError]:
     let checked_budget = try budget(reader: reader, depth: depth)
@@ -875,32 +893,41 @@ export fn parse(
         limit: options.max_bytes
     ): return error(TomlError.LimitExceeded)
 
-    # TOML permits CR only as part of CRLF.
+    # TOML permits CR only as part of CRLF. Report the first offending scalar
+    # at its own line and column.
     let normalized = text.replace(
         old: "\r\n",
         new: "\n",
         max_replacements: text.byte_length()
     )
-    if normalized.contains("\r"): return error(
-        TomlError.InvalidData(
-            line: 1,
-            column: 1,
-            reason: "bare carriage return"
-        )
-    )
+    var scan_line = 1
+    var scan_column = 1
 
     for code in normalized.scalar_values():
+        if code == 13: return error(
+            TomlError.InvalidData(
+                line: scan_line,
+                column: scan_column,
+                reason: "bare carriage return"
+            )
+        )
+
         if (
             code < 32
             and code != 9
             and code != 10
         ) or code == 127: return error(
             TomlError.InvalidData(
-                line: 1,
-                column: 1,
+                line: scan_line,
+                column: scan_column,
                 reason: "invalid control character"
             )
         )
+
+        if code == 10:
+            scan_line = scan_line + 1
+            scan_column = 1
+        else: scan_column = scan_column + 1
 
     let reader = Reader(
         chars: normalized.split(separator: ""),

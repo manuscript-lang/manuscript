@@ -100,7 +100,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 	case syntax.KindName, syntax.KindApply:
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
 			member := e.Left
-			return runtimeCall("NativeMemberResult", g.expression(member.Left), textLiteral(member.Text), g.key(info.Type.Result))
+			return g.nativeReceiverMember(member, info)
 		}
 		if info.Binding != nil {
 			return g.binding(info.Binding)
@@ -123,7 +123,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			return runtimeCall("NewAlternative", g.key(info.Constructor), textLiteral(info.Case), ident("nil"), ident("nil"))
 		}
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
-			return runtimeCall("NativeMemberResult", g.expression(e.Left), textLiteral(e.Text), g.key(info.Type.Result), g.typeScope(g.program.Expressions[e.Left].Type))
+			return g.nativeReceiverMember(e, info)
 		}
 		if info.Method != nil {
 			return runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Expressions[e.Left].Type))

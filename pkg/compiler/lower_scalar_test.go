@@ -84,7 +84,8 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 			bodyArg = 2
 		}
 		body := call.Args[bodyArg].(*ast.FuncLit).Body
-		trace := body.List[1].(*ast.DeferStmt).Call.Args[1].(*ast.BasicLit)
+		traceCall := body.List[1].(*ast.DeferStmt).Call
+		trace := traceCall.Args[len(traceCall.Args)-1].(*ast.BasicLit)
 		name, err := strconv.Unquote(trace.Value)
 		if err != nil {
 			t.Fatal(err)

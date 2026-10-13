@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,9 +19,24 @@ import (
 )
 
 type example struct {
-	Mode   string   `json:"mode"`
-	Args   []string `json:"args"`
-	Stdout string   `json:"stdout"`
+	Mode string `json:"mode"`
+	exampleRun
+	Cases []exampleRun `json:"cases"`
+}
+
+type exampleRun struct {
+	Args      []string          `json:"args"`
+	Stdin     string            `json:"stdin"`
+	Stdout    string            `json:"stdout"`
+	ExitCode  int               `json:"exit_code"`
+	Files     map[string]string `json:"files"`
+	WantFiles map[string]string `json:"want_files"`
+	HTTP      *httpExample      `json:"http"`
+}
+
+type httpExample struct {
+	Status int    `json:"status"`
+	Body   string `json:"body"`
 }
 
 var blocks = regexp.MustCompile("(?s)(?:<!-- manuscript-example: (.*?) -->\\s*)?```manuscript\\n(.*?)```")
@@ -37,6 +54,7 @@ func TestTutorialExamples(t *testing.T) {
 	files = append(files, libraryFiles...)
 	files = append(files, "../../documentation/core-language/types/records.md")
 	files = append(files, "../../documentation/core-language/basics/numbers-and-booleans.md")
+	files = append(files, "../../documentation/core-language/control-flow/loops.md")
 	total := 0
 	for _, file := range files {
 		text, err := os.ReadFile(file)
@@ -76,22 +94,85 @@ func TestTutorialExamples(t *testing.T) {
 				if err := compiler.Build(result.Source, binary); err != nil {
 					t.Fatal(err)
 				}
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
-				output, err := exec.CommandContext(ctx, binary, spec.Args...).CombinedOutput()
-				if err != nil {
-					t.Fatalf("example failed: %v\n%s", err, output)
-				}
-				if spec.Mode == "run" && string(output) != spec.Stdout {
-					t.Fatalf("got %q, want %q", output, spec.Stdout)
-				}
-				if spec.Mode == "test" && !strings.Contains(string(output), "0 failed") {
-					t.Fatalf("test block did not complete: %s", output)
+				for index, run := range append([]exampleRun{spec.exampleRun}, spec.Cases...) {
+					t.Run(fmt.Sprintf("execution-%d", index+1), func(t *testing.T) {
+						runExample(t, binary, spec.Mode, run)
+					})
 				}
 			})
 		}
 	}
 	if total == 0 {
 		t.Fatal("no complete tutorial examples found")
+	}
+}
+
+func runExample(t *testing.T, binary, mode string, spec exampleRun) {
+	t.Helper()
+	root := t.TempDir()
+	for path, contents := range spec.Files {
+		if !filepath.IsLocal(path) {
+			t.Fatalf("fixture path must stay inside the example directory: %q", path)
+		}
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(root, path)), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, path), []byte(contents), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	args := append([]string(nil), spec.Args...)
+	if spec.HTTP != nil {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet || r.URL.Path != "/" {
+				t.Errorf("unexpected recipe request: %s %s", r.Method, r.URL.Path)
+			}
+			w.WriteHeader(spec.HTTP.Status)
+			if _, err := w.Write([]byte(spec.HTTP.Body)); err != nil {
+				t.Errorf("write recipe response: %v", err)
+			}
+		}))
+		defer server.Close()
+		for i, arg := range args {
+			args[i] = strings.ReplaceAll(arg, "$HTTP_URL", server.URL)
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, binary, args...)
+	command.Dir = root
+	command.Stdin = strings.NewReader(spec.Stdin)
+	output, err := command.CombinedOutput()
+	if ctx.Err() != nil {
+		t.Fatalf("example timed out: %s", output)
+	}
+	code := 0
+	if err != nil {
+		if exit, ok := err.(*exec.ExitError); ok {
+			code = exit.ExitCode()
+		} else {
+			t.Fatalf("execute example: %v", err)
+		}
+	}
+	if code != spec.ExitCode {
+		t.Fatalf("exit code %d, want %d: %s", code, spec.ExitCode, output)
+	}
+	for path, want := range spec.WantFiles {
+		if !filepath.IsLocal(path) {
+			t.Fatalf("expected file path must stay inside the example directory: %q", path)
+		}
+		got, err := os.ReadFile(filepath.Join(root, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != want {
+			t.Fatalf("file %s: got %q, want %q", path, got, want)
+		}
+	}
+	if mode == "run" && string(output) != spec.Stdout {
+		t.Fatalf("got %q, want %q", output, spec.Stdout)
+	}
+	if mode == "test" && !strings.Contains(string(output), "0 failed") {
+		t.Fatalf("test block did not complete: %s", output)
 	}
 }

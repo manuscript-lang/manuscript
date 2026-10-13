@@ -59,6 +59,13 @@ export type List[T]:
 export type Map[T: Hashable, U]:
     # Returns a shallow copy with independent map storage.
     fn clone() -> Map[T, U]:
+    # Reports whether this map has no entries.
+    fn is_empty() -> Bool:
+    # Copies matching entries in insertion order, retaining payload references.
+    # Callbacks traverse a snapshot even when they mutate the receiver.
+    fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+    # Returns the stored value or an eagerly evaluated fallback without inserting.
+    fn get_or(key: T, fallback: U) -> U:
     # Sets `key` to `value` only when the key is absent.
     fn with_default(key: T, value: U) -> Map[T, U]:
     # Creates a value only when the key is absent.
@@ -83,6 +90,13 @@ export type MapEntry[T: Hashable, U]:
 # A mutable collection of unique values using explicit `Hashable` value semantics.
 export type Set[T: Hashable]:
     fn clone() -> Set[T]:
+    # Reports whether this set has no elements.
+    fn is_empty() -> Bool:
+    # Copies matching elements in insertion order, retaining payload references.
+    # Callbacks traverse a snapshot even when they mutate the receiver.
+    fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
+    # Transforms a snapshot into a fresh set, retaining the first equal result.
+    fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
     fn union(right: Set[T]) -> Set[T]:
     fn intersection(right: Set[T]) -> Set[T]:
     fn difference(right: Set[T]) -> Set[T]:
