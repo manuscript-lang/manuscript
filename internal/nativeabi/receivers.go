@@ -150,6 +150,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"substring":     "string/substring",
 	},
 	"Bytes": {
+		"values":        "bytes/values",
 		"contains":      "bytes/contains",
 		"slice":         "bytes/slice",
 		"at":            "bytes/at",

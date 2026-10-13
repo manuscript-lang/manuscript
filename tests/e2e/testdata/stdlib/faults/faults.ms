@@ -6,6 +6,7 @@ import {Queue} from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
 import {stdout, WriteStream} from "@std/io.ms"
 import Result from "@std/result.ms"
+import Bytes from "@std/bytes.ms"
 
 fn emit(message: String) -> Unit:
     match stdout().write(message.to_bytes()):
@@ -48,6 +49,15 @@ test "stale synchronized guard faults":
 
 test "invalid list slice faults":
     let impossible = ([1, 2]).slice(start: 0, end: 3)
+
+test "negative list slice faults":
+    let impossible = [1, 2, 3, 4].slice(start: -2, end: 4)
+
+test "negative byte slice faults":
+    let impossible = Bytes([1, 2, 3]).slice(start: -1, end: 3)
+
+test "out of range byte slice faults":
+    let impossible = Bytes([1, 2, 3]).slice(start: 1, end: 10)
 
 test "negative split limit faults":
     let impossible = "a,b,c".split(separator: ",", max_parts: -1)

@@ -76,6 +76,9 @@ func TestStandardLibraryFaults(t *testing.T) {
 		"negative queue capacity faults":  "Queue capacity must be positive",
 		"stale synchronized guard faults": "Synchronized guard is closed",
 		"invalid list slice faults":       "invalid half-open slice bounds",
+		"negative list slice faults":      "invalid half-open slice bounds; need 0 <= start <= end <= 4, found start -2 and end 4",
+		"negative byte slice faults":      "invalid half-open slice bounds; need 0 <= start <= end <= 3, found start -1 and end 3",
+		"out of range byte slice faults":  "invalid half-open slice bounds; need 0 <= start <= end <= 3, found start 1 and end 10",
 		"negative split limit faults":     "split: max_parts must be nonnegative, found -1",
 		"negative replace limit faults":   "replace: max_replacements must be nonnegative, found -1",
 	}
@@ -99,7 +102,7 @@ func TestStandardLibraryFaults(t *testing.T) {
 			t.Errorf("missing %s%s:\n%s", prefix, declaration.Name, output)
 		}
 	}
-	for _, expected := range []string{"fault cleanup completed\n", "fresh root after stdlib faults\n", "10 tests, 9 failed"} {
+	for _, expected := range []string{"fault cleanup completed\n", "fresh root after stdlib faults\n", "13 tests, 12 failed"} {
 		if !strings.Contains(output, expected) {
 			t.Errorf("missing transcript %q:\n%s", expected, output)
 		}
