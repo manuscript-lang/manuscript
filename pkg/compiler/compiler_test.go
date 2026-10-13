@@ -124,7 +124,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"conflicting inference", "cl-09", "same(left: 6, right: 6)", "same(left: 6, right: 6.0)", "type"},
 		{"missing equal bound", "cl-09", "T: Equal", "T", "type"},
 		{"unknown type parameter", "cl-09", "    value: T", "    value: U", "resolution"},
-		{"result context inference forbidden", "cl-09-2", "absent[Int]()", "absent()", "type"},
+		{"result inference needs context", "cl-09-2", "let value: Optional[Int] = absent()", "let value = absent()", "type"},
 		{"implicit contract conversion", "cl-10", "operation: same_view", "operation: offset", "type"},
 		{"missing implementation", "cl-10", "impl Increment for Offset:\n    fn apply(value: Int) -> Int:\n        return value + self.delta\n", "", "type"},
 		{"implementation labels", "cl-10", "fn apply(value: Int) -> Int:\n        return value + self.delta", "fn apply(item: Int) -> Int:\n        return item + self.delta", "type"},

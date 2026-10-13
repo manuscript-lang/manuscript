@@ -2,10 +2,17 @@ package checker
 
 import "github.com/manuscript-lang/manuscript/pkg/syntax"
 
-// Infer ordinary arguments first, then callbacks whose input types are known.
+type callInferenceContext struct {
+	result, expected *Type
+	pos              syntax.Position
+	conflict         bool
+}
+
+// Infer ordinary arguments first, then use the expected result to complete
+// missing evidence before checking callbacks whose input types are known.
 // Callback results supply evidence for generic result variables. Revisit deferred
 // callbacks when another argument provides their input context.
-func (c *checker) inferArguments(args []syntax.Argument, params []Param, variables []*Type, sub map[string]*Type) {
+func (c *checker) inferArguments(args []syntax.Argument, params []Param, variables []*Type, sub map[string]*Type, context *callInferenceContext) {
 	vars := variableSet(variables)
 	pending := []syntax.Argument{}
 	parameter := func(name string) *Type {
@@ -42,6 +49,9 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 				contribute(arg, actual)
 			}
 		}
+	}
+	if context != nil {
+		c.inferExpectedResult(variables, sub, context)
 	}
 	for len(pending) > 0 {
 		progress := false
@@ -149,4 +159,58 @@ func invalidType(t *Type) bool {
 		}
 	}
 	return invalidType(t.Result)
+}
+
+// Result evidence is transactional and invariant. A failed structural match
+// must not commit the prefix it happened to match. The only widening here is
+// the same explicit Error boundary checked after ordinary expression inference.
+func (c *checker) inferExpectedResult(variables []*Type, sub map[string]*Type, context *callInferenceContext) {
+	if invalidType(context.expected) {
+		// Keep usable parts of a failed annotation and poison only the result
+		// variables whose evidence is invalid; the resolution error owns them.
+		inferInvalidArgument(context.result, context.expected, variableSet(variables), sub)
+		return
+	}
+	if !inferenceTypeKnown(context.expected, c.inferenceVariables) || invalidType(context.result) {
+		return
+	}
+	missing := false
+	for _, variable := range variables {
+		missing = missing || sub[variable.ID] == nil
+	}
+	if !missing {
+		return // Keep argument evidence; ordinary result checking reports mismatches.
+	}
+	vars := variableSet(variables)
+	trial := map[string]*Type{}
+	for key, value := range sub {
+		trial[key] = value
+	}
+	result := Sub(context.result, sub)
+	matched := unify(context.result, context.expected, vars, trial)
+	if !matched && std(result, "Result") && std(context.expected, "Result") &&
+		len(result.Args) == 2 && len(context.expected.Args) == 2 &&
+		c.errorAssignable(result.Args[1], context.expected.Args[1]) {
+		trial = map[string]*Type{}
+		for key, value := range sub {
+			trial[key] = value
+		}
+		matched = unify(context.result.Args[0], context.expected.Args[0], vars, trial)
+	}
+	if !matched && c.errorAssignable(result, context.expected) {
+		return // Existing concrete error evidence needs no substitution.
+	}
+	if !matched {
+		c.error(context.pos, "type", "conflicting generic inference; expected result type "+context.expected.String()+" does not match "+result.String()+"; give consistent argument and result types or specify the type arguments")
+		context.conflict = true
+		for _, variable := range variables {
+			if sub[variable.ID] == nil {
+				sub[variable.ID] = primitive("<invalid>")
+			}
+		}
+		return
+	}
+	for key, value := range trial {
+		sub[key] = value
+	}
 }

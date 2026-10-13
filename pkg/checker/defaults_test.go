@@ -19,7 +19,7 @@ func TestDefaultArgumentBoundaries(t *testing.T) {
 		{"duplicate argument", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    return f(2, value: 3)\n", "duplicate argument value"},
 		{"unknown label", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    return f(other: 3)\n", "unknown argument other"},
 		{"default does not infer generics", "fn f[T](value: T = 3) -> T:\n    return value\n", "expected T, found Int"},
-		{"omitted generic source", "fn f[T](value: T, copy: T = value) -> T:\n    return copy\nfn call() -> Int:\n    return f()\n", "cannot infer type argument T"},
+		{"omitted generic source", "fn f[T](value: T, copy: T = value) -> T:\n    return copy\nfn call() -> Int:\n    return f()\n", "missing argument value"},
 		{"annotation erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    let copy: fn(value: Int) -> Int = f\n    return copy()\n", "missing argument value"},
 		{"mutable binding erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn g(value: Int) -> Int:\n    return value\nfn call() -> Int:\n    var copy = f\n    copy = g\n    return copy()\n", "missing argument value"},
 		{"function parameter erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn apply(callback: fn(value: Int) -> Int) -> Int:\n    return callback()\n", "missing argument value"},
