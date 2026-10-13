@@ -15,7 +15,6 @@ func TestDefaultArgumentBoundaries(t *testing.T) {
 		{"later parameter", "fn f(first: Int = second, second: Int = 2) -> Int:\n    return first\n", "unknown binding second"},
 		{"self reference", "fn f(value: Int = value) -> Int:\n    return value\n", "unknown binding value"},
 		{"missing required", "fn f(first: Int = 1, second: Int) -> Int:\n    return first + second\nfn call() -> Int:\n    return f()\n", "missing argument second"},
-		{"labels still required", "fn f(first: Int = 1, second: Int = 2) -> Int:\n    return first + second\nfn call() -> Int:\n    return f(3)\n", "argument labels are required"},
 		{"duplicate argument", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    return f(2, value: 3)\n", "duplicate argument value"},
 		{"unknown label", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    return f(other: 3)\n", "unknown argument other"},
 		{"default does not infer generics", "fn f[T](value: T = 3) -> T:\n    return value\n", "expected T, found Int"},
@@ -102,13 +101,13 @@ func TestUnknownTypeDoesNotCascade(t *testing.T) {
 	}
 }
 
-func TestLabelDiagnosticNamesParameter(t *testing.T) {
+func TestPositionalCallNeedsNoLabelDiagnostic(t *testing.T) {
 	m, err := parser.Parse("labels.ms", "fn f(a: Int, b: Int) -> Int:\n    return a + b\nfn call() -> Int:\n    return f(1, 2)\n")
 	if err != nil {
 		t.Fatal(err)
 	}
 	p := checker.Check([]*syntax.Module{m}, nil)
-	if len(p.Diagnostics) != 1 || !strings.Contains(p.Diagnostics[0].Message, "write f(a: 1, b: 2)") {
+	if len(p.Diagnostics) != 0 {
 		t.Fatal(p.Diagnostics)
 	}
 }

@@ -26,27 +26,31 @@ Parameters belong to the function body's lexical scope. A local declaration cann
 
 ## Argument names
 
-A function with exactly one declared parameter accepts either `function(value)` or `function(name: value)`. The omitted label resolves to that sole parameter. For functions with more than one parameter, a bare identifier matching a parameter name is shorthand for `name: name`. Other argument expressions require `name: value`; the name identifies the declared parameter.
+Argument labels are optional. An unlabeled expression supplies the first parameter not filled by an earlier argument, in declaration order. An explicit `name: value` supplies that named parameter in any order.
+
+For compatibility, a bare identifier matching a parameter name remains shorthand for `name: name` when the callable has multiple parameters. This selects the named parameter even when it is already filled, in which case the call is rejected as a duplicate. Parenthesizing an identifier makes it positional: `(name)` is an ordinary expression.
 
 ```manuscript
 fn reduce(amount: Int, deduction: Int) -> Int:
     return amount - deduction
 
+let remaining = reduce(10, 3)
+let explicit_remaining = reduce(amount: 10, deduction: 3)
+let mixed = reduce(deduction: 3, 10)
 let amount = 10
 let deduction = 3
-let remaining = reduce(amount, deduction)
-let explicit_remaining = reduce(amount: 10, deduction: 3)
-let next = decrement(3)
-let explicit = decrement(value: 3)
+let shorthand = reduce(deduction, amount)
 ```
 
-The rule applies to ordinary functions, methods, function values, and library APIs. Count the callable's declared parameters, including optional API parameters, rather than the arguments supplied at a particular call. A method's implicit receiver does not count as a parameter. Single-payload constructors and explicit contract views also permit omitted labels, including `some(...)`, `ok(...)`, `error(...)`, and `Contract(receiver)`. Multi-payload constructors retain explicit labels. A zero-parameter function uses `()`.
+All four results are `7`. Resolve each argument from left to right; labels do not reserve parameters for later arguments. For example, `reduce(10, amount: 3)` supplies `amount` twice and fails, while `reduce(amount: 10, 3)` supplies `deduction` positionally. Unknown labels do not fill a declared parameter. Once every parameter is filled, another positional argument is an error. Arguments never skip a parameter merely because it has a default.
+
+The rule applies to ordinary and generic functions, methods, function values, library APIs, record and alternative-case constructors, and explicit contract views. A method's implicit receiver is evaluated before its arguments and does not consume a positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Existing labeled calls and function matching-name shorthand retain their meaning. Function-type parameter names remain part of [type identity](function-values-and-closures.md); omitting invocation labels does not make differently named callback signatures compatible.
 
 TaskGroup.start accepts one zero-argument function and infers a typed Task[T] handle. Task and group joins use ordinary receiver calls; see [task groups](../../concurrency/task-groups.md).
 
 Match payload bindings such as `some(value):` are patterns, rather than calls; see [pattern matching](../control-flow/pattern-matching.md).
 
-A parameter with a default may be omitted; every other parameter remains required. An `Optional[T]` parameter without a default is still required: callers explicitly supply `none` when absent. A supplied `T` is wrapped once as `some(value: ...)` for a standard `Optional[T]` parameter; see [optional arguments](../types/optionals.md#passing-optional-arguments). Variadic parameters and argument spreading are not supported. Existing trusted library API contracts may explicitly permit omitted named arguments; that permission does not follow from an `Optional` value type. Unknown labels, duplicate arguments, missing required arguments, and unlabeled expressions without matching-name shorthand are compile errors. Shorthand matches names rather than positions, may mix with explicit labels, and follows ordinary lexical name resolution. For example, `reduce(deduction, amount)` still passes each variable to its matching parameter. `reduce(amount + 1, deduction)` requires an explicit `amount:` label. Supplying both `decrement(3, value: 4)` arguments duplicates the sole parameter and is rejected. Supplied values must be compatible with the declared parameter types under [type compatibility](../types/compatibility.md); labels do not authorize numeric or contract conversions.
+A parameter with a default may be omitted; every other parameter remains required. An `Optional[T]` parameter without a default is still required: callers explicitly supply `none` when absent. A supplied `T` is wrapped once as `some(value: ...)` for a standard `Optional[T]` parameter; see [optional arguments](../types/optionals.md#passing-optional-arguments). Variadic parameters and argument spreading are not supported. Existing trusted library API contracts may explicitly permit omitted arguments; that permission does not follow from an `Optional` value type. Unknown labels, duplicate arguments, missing required arguments, and excess positional arguments are compile errors. Supplied values must be compatible with the declared parameter types under [type compatibility](../types/compatibility.md); optional labels do not authorize numeric or contract conversions.
 
 ## Default arguments
 
@@ -57,12 +61,12 @@ fn subtract(amount: Int, deduction: Int = 1) -> Int:
     return amount - deduction
 
 fn example() -> Int:
-    let usual = subtract(amount: 5)
-    let explicit = subtract(amount: 5, deduction: 2)
+    let usual = subtract(5)
+    let explicit = subtract(5, 2)
     return usual + explicit
 ```
 
-`usual` is `4` and `explicit` is `3`. A function whose sole parameter has a default also accepts `function()`. Multi-parameter functions accept matching-name shorthand even when only one argument is supplied; other supplied expressions still require labels. Defaults may appear before required parameters because labels identify arguments.
+`usual` is `4` and `explicit` is `3`. A function whose sole parameter has a default also accepts `function()`. Defaults may appear before required parameters. To omit an earlier default and supply a later required parameter, use its label: `fn choose(first: Int = 1, second: Int) -> Int: second` accepts `choose(second: 2)`. Calling `choose(2)` supplies `first` and reports missing `second`.
 
 A default is checked against its explicit parameter type in the function's lexical scope. It may use imports, module declarations, earlier parameters, and an implementation method's `self`. Current and later parameters are not yet in scope. Anonymous functions may use captured outer bindings in defaults; those bindings follow the ordinary snapshot and sharing rules.
 
@@ -88,7 +92,7 @@ let total = sum([1, 2, 3])
 let empty = sum([])
 ```
 
-The argument supplies one list reference. An existing `List[Int]` can be passed as `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list. Function values use the ordinary type `fn(values: List[Int]) -> Int`, and functions with multiple list parameters follow the same matching-name shorthand rule.
+The argument supplies one list reference. An existing `List[Int]` can be passed as `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list. Function values use the ordinary type `fn(values: List[Int]) -> Int`, and functions with multiple list parameters follow the same optional-label rule.
 
 See [collections](../types/collections.md) for list literals and element requirements.
 

@@ -49,7 +49,7 @@ export fn main() -> Int:
 - `stdout().write(data: ...)` writes bytes, so `to_bytes()` converts the text first.
 - `write` returns a `Result`. The `match` handles both outcomes: success returns `0`, and failure returns `1`. `_` ignores the outcome's payload.
 
-Four spaces start each nested block. Functions with multiple parameters name every supplied argument; a single-parameter call may omit its label.
+Four spaces start each nested block. Function calls accept positional arguments; labels are optional and can make a call clearer.
 
 ## Understand the project
 

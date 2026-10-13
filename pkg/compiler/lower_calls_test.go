@@ -13,6 +13,9 @@ func TestPreparedSourceCallEligibility(t *testing.T) {
 		prepared     bool
 	}{
 		{"ordered", "fn add(a: Int, b: Int) -> Int: a + b\nfn run() -> Int: add(a: 1, b: 2)\n", true},
+		{"positional", "fn add(a: Int, b: Int) -> Int: a + b\nfn run() -> Int: add(1, 2)\n", true},
+		{"mixed ordered", "fn add(a: Int, b: Int) -> Int: a + b\nfn run() -> Int: add(1, b: 2)\n", true},
+		{"mixed reordered", "fn add(a: Int, b: Int) -> Int: a + b\nfn run() -> Int: add(b: 2, 1)\n", false},
 		{"single label", "fn value(number: Int) -> Int: number\nfn run() -> Int: value(2)\n", true},
 		{"shorthand", "fn add(a: Int, b: Int) -> Int: a + b\nfn run(a: Int, b: Int) -> Int: add(a, b)\n", true},
 		{"no arguments", "fn value() -> Int: 2\nfn run() -> Int: value()\n", true},

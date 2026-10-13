@@ -5,7 +5,7 @@ weight = 95
 
 # Evaluation order and call preparation
 
-Named arguments can be written in a different order from the parameters in a declaration. Generated Go must still evaluate them in the order the caller wrote. Resolve the names first, including an omitted label on a single-parameter function. Evaluate each argument into a temporary value, then arrange those values for the Go call. Preserve short-circuit behavior too.
+Named arguments can be written in a different order from the parameters in a declaration. Generated Go must still evaluate them in the order the caller wrote. Consume the checker's resolved argument names, including positional and mixed calls; retain their written order. Evaluate each argument into a temporary value, then arrange those values for the Go call. Preserve short-circuit behavior too.
 
 Each TaskGroup.start prepares its callback before submitting that operation. Constructing closures snapshots their local captures without invoking their bodies. Earlier submissions may already be running while later callbacks are prepared; lexical group cleanup stops and joins them if later preparation fails. Native acquisitions retain their explicit delivery/cleanup contracts.
 
