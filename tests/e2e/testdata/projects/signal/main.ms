@@ -15,7 +15,7 @@ impl Closeable for Resource:
 
 export fn main() -> Int:
     let output = stdout()
-    let child = fn() -> Unit:
+    let child = fn():
         with resource = Resource(label: "child", output: output):
             output.write(data: "ready\n".to_bytes())
 

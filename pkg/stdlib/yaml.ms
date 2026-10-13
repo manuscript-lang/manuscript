@@ -57,15 +57,15 @@ fn within(value: Int, limit: Optional[Int]) -> Bool:
 
 fn count(context: Context, depth: Int) -> Result[Unit, YamlError]:
     if not within(value: depth, limit: context.limits.max_depth): return error(
-        cause: YamlError.LimitExceeded
+        YamlError.LimitExceeded
     )
 
     context.values = context.values + 1
     if not within(value: context.values, limit: context.limits.max_values): return error(
-        cause: YamlError.LimitExceeded
+        YamlError.LimitExceeded
     )
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn invalid(context: Context, reason: String) -> YamlError:
     return YamlError.InvalidData(line: context.index + 1, column: 1, reason: reason)
@@ -97,7 +97,7 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
     while true:
         let c = advance(flow)
         if c == "": return error(
-            cause: flow_invalid(flow: flow, reason: "unterminated string")
+            flow_invalid(flow: flow, reason: "unterminated string")
         )
 
         if c == quote:
@@ -106,7 +106,7 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
                 result = result.concat("'")
                 continue
 
-            return ok(value: result)
+            return ok(result)
 
         if c == "\n":
             result = result.concat(" ")
@@ -158,7 +158,7 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
             while count > 0:
                 let digit = advance(flow)
                 if digit == "" or not "0123456789abcdefABCDEF".contains(digit): return error(
-                    cause: flow_invalid(
+                    flow_invalid(
                         flow: flow,
                         reason: "invalid Unicode escape"
                     )
@@ -169,7 +169,7 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
 
             match parse_int(text: hex, radix: 16):
                 error(_): return error(
-                    cause: flow_invalid(
+                    flow_invalid(
                         flow: flow,
                         reason: "invalid Unicode escape"
                     )
@@ -178,7 +178,7 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
                 ok(value):
                     match from_scalars([value]):
                         error(_): return error(
-                            cause: flow_invalid(
+                            flow_invalid(
                                 flow: flow,
                                 reason: "invalid Unicode scalar"
                             )
@@ -186,7 +186,7 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
                         ok(text): result = result.concat(text)
         else:
             return error(
-                cause: flow_invalid(
+                flow_invalid(
                     flow: flow,
                     reason: "invalid string escape"
                 )
@@ -275,15 +275,15 @@ fn plain(text: String) -> YamlValue:
         text == "true"
         or text == "True"
         or text == "TRUE"
-    ): return YamlValue.BoolValue(value: true)
+    ): return YamlValue.BoolValue(true)
     if (
         text == "false"
         or text == "False"
         or text == "FALSE"
-    ): return YamlValue.BoolValue(value: false)
-    if numeric(text): return YamlValue.NumberValue(text: text)
+    ): return YamlValue.BoolValue(false)
+    if numeric(text): return YamlValue.NumberValue(text)
 
-    return YamlValue.StringValue(value: text)
+    return YamlValue.StringValue(text)
 
 fn anchor_name(flow: Flow) -> Result[String, YamlError]:
     var name = ""
@@ -292,10 +292,10 @@ fn anchor_name(flow: Flow) -> Result[String, YamlError]:
         name = name.concat(advance(flow))
 
     if name == "": return error(
-        cause: flow_invalid(flow: flow, reason: "empty anchor name")
+        flow_invalid(flow: flow, reason: "empty anchor name")
     )
 
-    return ok(value: name)
+    return ok(name)
 
 fn merge(
     context: Context,
@@ -310,7 +310,7 @@ fn merge(
                     value: entry.value
                 )
 
-            return ok(value: unit)
+            return ok(unit)
 
         ArrayValue(values):
             for item in values:
@@ -321,16 +321,16 @@ fn merge(
                         value: item
                     )
                     _: return error(
-                        cause: invalid(
+                        invalid(
                             context: context,
                             reason: "merge requires mappings"
                         )
                     )
 
-            return ok(value: unit)
+            return ok(unit)
 
         _: return error(
-            cause: invalid(
+            invalid(
                 context: context,
                 reason: "merge requires mappings"
             )
@@ -350,35 +350,35 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
         flow.context.values = flow.context.values - 1
         let value = try flow_value(flow: flow, depth: depth, key: false)
         flow.context.anchors.with_entry(key: name, value: value)
-        return ok(value: value)
+        return ok(value)
 
     if c == "*":
         advance(flow)
         let name = try anchor_name(flow)
 
         match flow.context.anchors.get(name):
-            some(value): return ok(value: value)
+            some(value): return ok(value)
             none: return error(
-                cause: flow_invalid(
+                flow_invalid(
                     flow: flow,
                     reason: "unknown or recursive alias"
                 )
             )
 
     if c == "!": return error(
-        cause: YamlError.UnsupportedFeature(
+        YamlError.UnsupportedFeature(
             line: flow.line,
             reason: "explicit tags are unsupported"
         )
     )
     if c == "\"" or c == "'": return ok(
-        value: YamlValue.StringValue(value: try quoted(flow))
+        YamlValue.StringValue(try quoted(flow))
     )
 
     if c == "[":
         flow.delimited = true
         if key: return error(
-            cause: YamlError.UnsupportedFeature(
+            YamlError.UnsupportedFeature(
                 line: flow.line,
                 reason: "complex mapping keys are unsupported"
             )
@@ -390,7 +390,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
         while peek(flow) != "]":
             if peek(flow) == "" or peek(flow) == ",": return error(
-                cause: flow_invalid(
+                flow_invalid(
                     flow: flow,
                     reason: "expected flow sequence value"
                 )
@@ -400,7 +400,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
             flow_space(flow)
             if peek(flow) == "]": break
             if advance(flow) != ",": return error(
-                cause: flow_invalid(
+                flow_invalid(
                     flow: flow,
                     reason: "expected sequence comma"
                 )
@@ -409,12 +409,12 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
             flow_space(flow)
 
         advance(flow)
-        return ok(value: YamlValue.ArrayValue(values: values))
+        return ok(YamlValue.ArrayValue(values))
 
     if c == "\{":
         flow.delimited = true
         if key: return error(
-            cause: YamlError.UnsupportedFeature(
+            YamlError.UnsupportedFeature(
                 line: flow.line,
                 reason: "complex mapping keys are unsupported"
             )
@@ -427,7 +427,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
         while peek(flow) != "\}":
             if peek(flow) == "": return error(
-                cause: flow_invalid(
+                flow_invalid(
                     flow: flow,
                     reason: "unterminated flow mapping"
                 )
@@ -439,7 +439,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
             match parsed_key:
                 StringValue(value): name = value
                 _: return error(
-                    cause: YamlError.UnsupportedFeature(
+                    YamlError.UnsupportedFeature(
                         line: flow.line,
                         reason: "mapping keys must be strings"
                     )
@@ -447,7 +447,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
             flow_space(flow)
             if advance(flow) != ":": return error(
-                cause: flow_invalid(
+                flow_invalid(
                     flow: flow,
                     reason: "expected mapping colon"
                 )
@@ -455,7 +455,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
             let value = try flow_value(flow: flow, depth: depth + 1, key: false)
             if explicit.contains(name): return error(
-                cause: flow_invalid(
+                flow_invalid(
                     flow: flow,
                     reason: "duplicate mapping key"
                 )
@@ -475,7 +475,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
             flow_space(flow)
             if peek(flow) == "\}": break
             if advance(flow) != ",": return error(
-                cause: flow_invalid(
+                flow_invalid(
                     flow: flow,
                     reason: "expected mapping comma"
                 )
@@ -484,7 +484,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
             flow_space(flow)
 
         advance(flow)
-        return ok(value: YamlValue.ObjectValue(values: values))
+        return ok(YamlValue.ObjectValue(values))
 
     var text = ""
 
@@ -494,7 +494,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
         and not (key and peek(flow) == ":")
     ):
         if peek(flow) == ":" and flow.chars.at(flow.pos + 1).unwrap_or("") == " ": return error(
-            cause: flow_invalid(
+            flow_invalid(
                 flow: flow,
                 reason: "unexpected mapping colon"
             )
@@ -503,9 +503,9 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
         text = text.concat(advance(flow))
 
     text = text.trim()
-    if key: return ok(value: YamlValue.StringValue(value: text))
+    if key: return ok(YamlValue.StringValue(text))
 
-    return ok(value: plain(text))
+    return ok(plain(text))
 
 # Find a mapping colon or comment outside quoted/flow values.
 fn boundary(text: String, colon: Bool) -> Int:
@@ -581,10 +581,10 @@ fn indent(text: String) -> Int:
 fn indentation(context: Context, text: String) -> Result[Int, YamlError]:
     let spaces = indent(text)
     if text.at(spaces).unwrap_or("") == "\t": return error(
-        cause: invalid(context: context, reason: "tabs cannot indent YAML")
+        invalid(context: context, reason: "tabs cannot indent YAML")
     )
 
-    return ok(value: spaces)
+    return ok(spaces)
 
 fn skip(context: Context) -> Unit:
     while (
@@ -667,10 +667,10 @@ fn inline_value(
     let result = try flow_value(flow: flow, depth: depth, key: false)
     flow_space(flow)
     if peek(flow) != "": return error(
-        cause: flow_invalid(flow: flow, reason: "unexpected trailing text")
+        flow_invalid(flow: flow, reason: "unexpected trailing text")
     )
 
-    return ok(value: result)
+    return ok(result)
 
 fn block_string(
     context: Context,
@@ -691,7 +691,7 @@ fn block_string(
             .unwrap()
         )
         else: return error(
-            cause: invalid(
+            invalid(
                 context: context,
                 reason: "invalid block scalar header"
             )
@@ -755,7 +755,7 @@ fn block_string(
 
         if mode != "-" and parts.length() > 0: result = result.concat("\n")
 
-    return ok(value: YamlValue.StringValue(value: result))
+    return ok(YamlValue.StringValue(result))
 
 fn block_value(
     context: Context,
@@ -799,7 +799,7 @@ fn block_value(
                     boundary(text: next, colon: true) >= 0
                     or sequence(next.trim_start())
                 ): return error(
-                    cause: invalid(
+                    invalid(
                         context: context,
                         reason: "unexpected indented collection"
                     )
@@ -832,13 +832,13 @@ fn block_value(
 
     if anchor != "": context.anchors.with_entry(key: anchor, value: result)
 
-    return ok(value: result)
+    return ok(result)
 
 fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError]:
     skip(context)
     let first = uncomment(context.lines.at(context.index).unwrap()).trim_start()
     if first.starts_with("?"): return error(
-        cause: YamlError.UnsupportedFeature(
+        YamlError.UnsupportedFeature(
             line: (context.index + 1),
             reason: "explicit mapping keys are unsupported"
         )
@@ -903,7 +903,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                     )
                 )
 
-        return ok(value: YamlValue.ArrayValue(values: values))
+        return ok(YamlValue.ArrayValue(values))
 
     if boundary(text: first, colon: true) >= 0:
         let counted = try count(context: context, depth: depth)
@@ -934,7 +934,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 )
                 name = try quoted(flow)
                 if flow.pos != flow.chars.length(): return error(
-                    cause: invalid(
+                    invalid(
                         context: context,
                         reason: "invalid quoted key"
                     )
@@ -948,14 +948,14 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 or name.starts_with("*")
             ):
                 return error(
-                    cause: YamlError.UnsupportedFeature(
+                    YamlError.UnsupportedFeature(
                         line: context.index + 1,
                         reason: "mapping keys must be strings"
                     )
                 )
 
             if explicit.contains(name): return error(
-                cause: invalid(
+                invalid(
                     context: context,
                     reason: "duplicate mapping key"
                 )
@@ -984,7 +984,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
             else:
                 values.with_entry(key: name, value: value)
 
-        return ok(value: YamlValue.ObjectValue(values: values))
+        return ok(YamlValue.ObjectValue(values))
 
     context.index = context.index + 1
     return block_value(
@@ -1015,7 +1015,7 @@ fn validate(context: Context, value: YamlValue, depth: Int) -> Result[Unit, Yaml
 
         _: let ignored = unit
 
-    return ok(value: unit)
+    return ok(unit)
 
 # Parses a YAML document. Unsupported YAML features and invalid input include source locations.
 export fn parse(
@@ -1033,12 +1033,12 @@ export fn parse(
             none: let ignored = unit
 
             some(value):
-                if value < 0: return error(cause: YamlError.InvalidInput)
+                if value < 0: return error(YamlError.InvalidInput)
 
     if not within(
         value: text.byte_length(),
         limit: options.max_bytes
-    ): return error(cause: YamlError.LimitExceeded)
+    ): return error(YamlError.LimitExceeded)
 
     var normalized = (
         text
@@ -1073,7 +1073,7 @@ export fn parse(
             )
         ):
             return error(
-                cause: YamlError.InvalidData(
+                YamlError.InvalidData(
                     line: 1,
                     column: 1,
                     reason: "invalid control character"
@@ -1098,7 +1098,7 @@ export fn parse(
         and context.lines.at(context.index).unwrap().starts_with("%")
     ):
         if uncomment(context.lines.at(context.index).unwrap()) != "%YAML 1.2": return error(
-            cause: YamlError.UnsupportedFeature(
+            YamlError.UnsupportedFeature(
                 line: (context.index + 1),
                 reason: "only the YAML 1.2 directive is supported"
             )
@@ -1112,7 +1112,7 @@ export fn parse(
                 (context.lines.at(context.index).unwrap())
             ) != "---"
         ): return error(
-            cause: invalid(
+            invalid(
                 context: context,
                 reason: "directive requires document start"
             )
@@ -1150,15 +1150,15 @@ export fn parse(
         skip(context)
 
     if context.index != context.lines.length(): return error(
-        cause: invalid(
+        invalid(
             context: context,
             reason: "unexpected indentation or additional document"
         )
     )
     if options.max_depth.is_none() and options.max_values.is_none(): return ok(
-        value: result
+        result
     )
 
     context.values = 0
     let valid = try validate(context: context, value: result, depth: 1)
-    return ok(value: result)
+    return ok(result)

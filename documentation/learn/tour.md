@@ -125,7 +125,7 @@ test "publish a help page":
     todo.completed = true
     let backup = todo.clone()
     todo.title = "Update the contact page"
-    let label = status_label(Status.Published(url: "/help"))
+    let label = status_label(Status.Published("/help"))
     if not (backup.title == "Update the help page" and backup.completed and label == "Published at /help"):
         return panic(message: "Unexpected page data")
 ```
@@ -142,12 +142,12 @@ type QuantityError:
 
 fn quantity(value: Int) -> Result[Int, QuantityError]:
     if value <= 0:
-        return error(cause: QuantityError.MustBePositive)
-    return ok(value: value)
+        return error(QuantityError.MustBePositive)
+    return ok(value)
 
 fn order_total(count: Int) -> Result[Int, QuantityError]:
     let valid_count = try quantity(count)
-    return ok(value: valid_count * 12)
+    return ok(valid_count * 12)
 ```
 
 A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. Use the same error type, or the common `Error` boundary for errors implementing that interface. Use `match` when you want to handle both outcomes yourself; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
@@ -204,7 +204,7 @@ fn copy_notes() -> Result[Unit, FileSystemError]:
     with source = try filesystem().open(path: "notes.txt", flags: "r", mode: 0):
         let contents = try source.read_file(max_bytes: 1048576)
         let written = try filesystem().write_file(path: "backup.txt", data: contents, replace: true)
-    return ok(value: unit)
+    return ok(unit)
 ```
 
 `with` closes the file when the block ends, including an early return. A closure that captures the file keeps a reference but does not keep it open. Read it inside the block, or open a new file inside the callback. [Resource captures](../core-language/functions/function-values-and-closures.md#resource-captures) shows a complete example.

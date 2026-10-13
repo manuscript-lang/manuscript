@@ -14,7 +14,7 @@ fn defaulted(flag: Bool = not (false or false)) -> Bool:
     return flag
 
 test "boolean optimization preserves source evaluation order":
-    let counter = Counter(calls: 0)
+    let counter = Counter(0)
     let skipped_and = false and fail()
     let skipped_or = true or fail()
     if skipped_and or not skipped_or:
@@ -38,6 +38,6 @@ test "boolean optimization preserves source evaluation order":
     ):
         return panic("effectful right operand was eliminated")
 
-    let callback = fn() -> Bool: return not (true and false)
+    let callback = fn(): not (true and false)
     if not defaulted() or not callback():
         return panic("folding defaults or closures changed the result")

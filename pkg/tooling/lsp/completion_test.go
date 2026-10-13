@@ -128,7 +128,7 @@ func TestCompletionSnippetsEditsAndSpecialization(t *testing.T) {
 		t.Fatal(item)
 	}
 	edit := item.TextEdit.(map[string]any)
-	if edit["newText"] != "append(value: ${1:value})$0" {
+	if edit["newText"] != "append(${1:value})$0" {
 		t.Fatal(edit)
 	}
 	if got := edit["range"].(span); got.Start != (position{2, 10}) || got.End != (position{2, 12}) {

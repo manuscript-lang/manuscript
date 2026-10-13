@@ -85,7 +85,7 @@ fn example() -> Int:
     )
 ```
 
-Its header has eight leading spaces, its body twelve, and the enclosing call closes at four. Use `fn(value: Int) -> Int: return value - 1` for an inline function. Returns remain explicit; a bare value expression is rejected. Binding an anonymous function first and then passing its name is also valid. When a suite-bodied expression completes a surrounding simple statement with no enclosing expression delimiter still open, its suite boundary also terminates that statement: the parser supplies the outer `NEWLINE` after the expression's `DEDENT`. It does not require a second physical blank line. When a delimiter remains open, continuation resumes until that delimiter closes and the surrounding statement ends normally.
+Its header has eight leading spaces, its body twelve, and the enclosing call closes at four. Use `fn(value): value - 1` when context supplies the parameter type. An inline function expression body returns its value; indented bodies retain explicit returns. Binding an anonymous function first and then passing its name is also valid. When a suite-bodied expression completes a surrounding simple statement with no enclosing expression delimiter still open, its suite boundary also terminates that statement: the parser supplies the outer `NEWLINE` after the expression's `DEDENT`. It does not require a second physical blank line. When a delimiter remains open, continuation resumes until that delimiter closes and the surrounding statement ends normally.
 
 ## Modules, declarations, and types
 
@@ -116,12 +116,14 @@ FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters 
 Implementation = "impl", NamedType, "for", NamedType, ":", NEWLINE,
                  INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ;
 MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, FunctionSuite ;
-FunctionSuite = ":", (SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
+FunctionSuite = ":", (Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
 Parameters    = Parameter, { ",", Parameter }, [ "," ] ;
 Parameter     = Name, ":", Type ;
 FunctionParameters = FunctionParameter, { ",", FunctionParameter }, [ "," ] ;
 FunctionParameter = Parameter, [ "=", Expression ] ;
+CallbackParameters = CallbackParameter, { ",", CallbackParameter }, [ "," ] ;
+CallbackParameter = Name, [ ":", Type ], [ "=", Expression ] ;
 TypeParameters = "[", TypeParameter, { ",", TypeParameter }, [ "," ], "]" ;
 TypeParameter = Name, [ ":", Bounds ] ;
 Bounds        = NamedType, { "&", NamedType } ;
@@ -133,7 +135,7 @@ TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
 FunctionType  = "fn", "(", [ Parameters ], ")", "->", Type ;
 ```
 
-A `type` declares record fields or alternative cases; these data forms cannot be mixed. It may also contain receiver function declarations with ordinary function headers and suites, as used by the standard library. An `interface` contains only operation signatures. A nullary alternative uses `case Ready`, without `()`. Parameter names and declaration names must be unique within their applicable scope. Function parameters and results always have explicit types. Function declarations and expressions with bodies accept [default arguments](../functions/declarations-and-calls.md#default-arguments). Record fields accept [default expressions](../types/records.md#construction). Interface signatures may declare `= none` defaults on Optional parameters. Function types and alternative payloads have no defaults. Variadic parameters, parameter patterns, and anonymous-function type parameters are not accepted. An omitted argument is checked against its declared contract.
+A `type` declares record fields or alternative cases; these data forms cannot be mixed. It may also contain receiver function declarations with ordinary function headers and suites, as used by the standard library. An `interface` contains only operation signatures. A nullary alternative uses `case Ready`, without `()`. Parameter names and declaration names must be unique within their applicable scope. Named function parameters and results have explicit types. Anonymous parameter types may come from a known function context, and anonymous result types may come from context or the checked body; see [callback inference](../functions/function-values-and-closures.md#contextual-callback-inference). Function declarations and expressions with bodies accept [default arguments](../functions/declarations-and-calls.md#default-arguments). Record fields accept [default expressions](../types/records.md#construction). Interface signatures may declare `= none` defaults on Optional parameters. Function types and alternative payloads have no defaults. Variadic parameters, parameter patterns, and anonymous-function type parameters are not accepted. An omitted argument is checked against its declared contract.
 
 Named function and method suites may be empty: `fn commands() -> Commands:` followed by a newline is valid syntax. The standard library uses these empty functions for implementations supplied by its pinned runtime bindings. Empty type schemas likewise use `type Duration:` with a newline. No parser mode or `native` keyword changes the syntax. Application functions still need valid return behavior, and source receiver implementations use explicit `impl` blocks. Interface, implementation, test, and control-flow suites remain nonempty.
 
@@ -179,10 +181,10 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 
 `CallStatement` must resolve to a call expression; arithmetic expressions or bare names are not standalone statements. Assignment replaces an existing `var` binding or updates a record field. Collection positions are updated through methods. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
 
-Inline suites work for functions, methods, tests, branches, loops, cleanup scopes, and match arms. They contain one simple statement, with no semicolon separators or nested compound statements. For example:
+Inline suites work for functions, methods, tests, branches, loops, cleanup scopes, and match arms. They contain one simple statement, with no semicolon separators or nested compound statements. A function or method may instead contain one expression, which is implicitly returned. This expression shorthand applies only to callable bodies, not to tests or control-flow suites. For example:
 
 ```manuscript
-fn double(value: Int) -> Int: return value * 2
+fn double(value: Int) -> Int: value * 2
 fn positive(value: Int) -> Bool:
     if value > 0: return true
     else: return false

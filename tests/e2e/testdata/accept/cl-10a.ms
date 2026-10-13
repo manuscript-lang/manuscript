@@ -21,10 +21,10 @@ fn compare[T: Equal](box: Box[T], other: T) -> Bool:
     return box.same(other: other)
 
 test "generic implementations":
-    let number = Box[Int](value: 7)
-    let text = Box[String](value: "hello")
-    let number_view = ReadValue[Int](value: number)
-    let text_view = ReadValue[String](value: text)
+    let number = Box[Int](7)
+    let text = Box[String]("hello")
+    let number_view = ReadValue[Int](number)
+    let text_view = ReadValue[String](text)
     if not (number_view.get() == 7):
         return panic(message: "check failed")
     if not (text_view.get() == "hello"):

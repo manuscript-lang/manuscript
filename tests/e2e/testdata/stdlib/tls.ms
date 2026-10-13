@@ -24,7 +24,7 @@ fn hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let written = value(
         exchange.write("secure".to_bytes())
     )
-    return ok(value: unit)
+    return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
     let certificates = value(
@@ -47,7 +47,7 @@ test "TLS certificate parsing verification hostname and expiration":
             now: now
         )
     )
-    let failed: Result[Unit, TlsError] = error(cause: TlsError.AuthenticationFailed)
+    let failed: Result[Unit, TlsError] = error(TlsError.AuthenticationFailed)
     if (
         verify_certificates(
             chain_pem: certificate(),
@@ -69,12 +69,12 @@ test "TLS certificate parsing verification hostname and expiration":
 
 test "TLS rejects malformed PEM and certificate budgets":
     let invalid: Result[List[CertificateInfo], TlsError] = error(
-        cause: TlsError.InvalidData
+        TlsError.InvalidData
     )
     if parse_certificates(pem: "not PEM") != invalid: return panic("malformed PEM")
 
     let limited: Result[List[CertificateInfo], TlsError] = error(
-        cause: TlsError.LimitExceeded
+        TlsError.LimitExceeded
     )
     if (
         parse_certificates(

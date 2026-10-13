@@ -15,20 +15,20 @@ test "JSON exact numbers Unicode and nested roundtrip":
     let text = "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"
     let parsed = value(parse(text: text))
     if value(stringify(value: parsed)) != text: return panic("JSON precision or order")
-    if value(parse(text: "\"\\uD83D\\uDE00\"")) != JsonValue.StringValue(value: "😀"): return panic(
+    if value(parse(text: "\"\\uD83D\\uDE00\"")) != JsonValue.StringValue("😀"): return panic(
         "surrogate pair"
     )
     if (
         value(
             stringify(
-                value: value(parse(text: "null", limits: none)),
+                value: value(parse(text: "null")),
                 max_bytes: 4
             )
         ) != "null"
     ): return panic("exact budget")
 
 test "JSON rejects duplicate keys malformed Unicode and trailing values":
-    let invalid: Result[JsonValue, JsonError] = error(cause: JsonError.InvalidData)
+    let invalid: Result[JsonValue, JsonError] = error(JsonError.InvalidData)
 
     for text in [
         "\{\"a\":1,\"\\u0061\":2\}",
@@ -41,7 +41,7 @@ test "JSON rejects duplicate keys malformed Unicode and trailing values":
         if parse(text: text) != invalid: return panic("malformed JSON accepted")
 
 test "JSON independently enforces byte depth and value budgets":
-    let limited: Result[JsonValue, JsonError] = error(cause: JsonError.LimitExceeded)
+    let limited: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
     if (
         parse(
             text: "null",
@@ -61,7 +61,7 @@ test "JSON independently enforces byte depth and value budgets":
         ) != limited
     ): return panic("JSON value budget")
 
-    let invalid: Result[JsonValue, JsonError] = error(cause: JsonError.InvalidInput)
+    let invalid: Result[JsonValue, JsonError] = error(JsonError.InvalidInput)
     if (
         parse(
             text: "null",

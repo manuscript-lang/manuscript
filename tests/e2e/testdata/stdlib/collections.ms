@@ -16,25 +16,25 @@ import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn positive(value: Int) -> Bool: return value > 0
+fn positive(value: Int) -> Bool: value > 0
 
-fn twice(value: Int) -> Int: return value * 2
+fn twice(value: Int) -> Int: value * 2
 
-fn duplicate(value: Int) -> List[Int]: return [value, value]
+fn duplicate(value: Int) -> List[Int]: [value, value]
 
-fn sum(accumulator: Int, value: Int) -> Int: return accumulator + value
+fn sum(accumulator: Int, value: Int) -> Int: accumulator + value
 
-fn parity(value: Int) -> Int: return value % 2
+fn parity(value: Int) -> Int: value % 2
 
 test "list search callbacks empty identities and folding":
     let list = [-1, 2, 0, 3]
     if (
-        list.find(positive) != some(value: 2)
-        or list.find_last(positive) != some(value: 3)
+        list.find(positive) != some(2)
+        or list.find_last(positive) != some(3)
     ): return panic("find")
     if (
-        list.find_index(positive) != some(value: 1)
-        or list.find_last_index(positive) != some(value: 3)
+        list.find_index(positive) != some(1)
+        or list.find_last_index(positive) != some(3)
     ): return panic("find indices")
     if list.filter(positive).map(twice) != [4, 6]: return panic("sequential callbacks")
     if ([1, 2]).flat_map(duplicate) != [1, 1, 2, 2]: return panic("flat map")
@@ -52,7 +52,7 @@ test "list search callbacks empty identities and folding":
     )
 
     let groups = ([1, 2, 3]).group_by(parity)
-    if groups.get(1) != some(value: [1, 3]) or groups.get(0) != some(value: [2]): return panic(
+    if groups.get(1) != some([1, 3]) or groups.get(0) != some([2]): return panic(
         "group order"
     )
 
@@ -79,7 +79,7 @@ test "maps preserve insertion order and overwrite duplicate keys":
     if map.keys() != ["a", "b"] or map.values() != [3, 2]: return panic("map order")
 
     map.with_default(key: "a", value: 99)
-    if map.get("a") != some(value: 3): return panic("default overwrote value")
+    if map.get("a") != some(3): return panic("default overwrote value")
 
     let copy = map.clone().without("a")
     if copy.keys() != ["b"] or map.keys() != ["a", "b"]: return panic("map clone")
@@ -112,12 +112,12 @@ test "collection constructors validate bounds and exact limits":
     if value(filled(value: "x", count: 2)) != ["x", "x"]: return panic("filled")
 
     let invalid: Result[List[Int], CollectionError] = error(
-        cause: CollectionError.InvalidInput
+        CollectionError.InvalidInput
     )
     if range(start: 0, end: 1, step: 0) != invalid: return panic("zero step")
 
     let limited: Result[List[Int], CollectionError] = error(
-        cause: CollectionError.LimitExceeded
+        CollectionError.LimitExceeded
     )
     if range(
         start: 0,
@@ -135,7 +135,7 @@ test "collection builders freeze all accumulated values":
     let map = MapBuilder[String, Int]()
     map.with_entry(key: "a", value: 1)
     map.with_entry(key: "a", value: 2)
-    if map.freeze().get("a") != some(value: 2): return panic("map builder")
+    if map.freeze().get("a") != some(2): return panic("map builder")
 
     let set = SetBuilder[Int]()
     set.with_value(1)

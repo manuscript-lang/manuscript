@@ -16,7 +16,7 @@ import panic from "@std/faults.ms"
 import Synchronized from "@std/sync.ms"
 
 test "a complete update holds one lock":
-    let counter = Synchronized(value: 0)
+    let counter = Synchronized(0)
     with locked = counter.lock():
         locked.set(value: locked.get() + 1)
     with locked = counter.lock():

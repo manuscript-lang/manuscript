@@ -25,7 +25,7 @@ let payment = Payment.Paid(receipt: "receipt-42")
 let declined: Payment = Declined(reason: "Card rejected")
 ```
 
-`Type.Case` identifies a case of that nominal type. Payload constructors supply every payload field by name exactly once; missing, duplicate, and unknown fields are errors. Payloadless cases are values such as `State.Ready`, without `()`. Tags do not implicitly convert to integers.
+`Type.Case` identifies a case of that nominal type. A single-payload case may omit its label, such as `some(3)`. Multi-payload constructors supply every payload field by name exactly once; missing, duplicate, and unknown fields are errors. Payloadless cases are values such as `State.Ready`, without `()`. Tags do not implicitly convert to integers.
 
 This qualification names a visible type and its case, not a module namespace. Modules import individual symbols; `customers.Customer` is not a type path introduced by importing a module. Import the nominal type name itself and qualify its case as `Type.Case`.
 

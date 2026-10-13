@@ -43,7 +43,6 @@ func TestRejectSyntax(t *testing.T) {
 		"invalid scalar":        "import panic from \"@std/faults.ms\"\n\ntest \"bad\":\n    if not (\"\\u{D800}\" == \"\"):\n        return panic(message: \"check failed\")\n",
 		"numeric suffix":        "fn f() -> Int:\n    return 1_000\n",
 		"indexing":              "fn f() -> Int:\n    return values[0]\n",
-		"single-line lambda":    "fn f() -> Unit:\n    let g = fn() -> Int: 1\n",
 		"loop pattern":          "fn f() -> Unit:\n    for [key, value] in entries:\n        return\n",
 		"interpolation comment": "fn f() -> String:\n    return \"{1 # comment}\"\n",
 		"outer close in lambda": "fn f() -> Unit:\n    consume(transform: fn() -> Unit:\n        return\n        )\n",
@@ -194,6 +193,8 @@ func TestRejectNamedImports(t *testing.T) {
 func TestInlineSuites(t *testing.T) {
 	for _, source := range []string{
 		"fn double(x: Int) -> Int: return x * 2",
+		"fn double(x: Int) -> Int: x * 2",
+		"fn f() -> Unit:\n    use(fn(value): value + 1)\n",
 		"fn f() -> Unit: return\nfn g() -> Unit: return\n",
 		"fn f(x: Int) -> Int:\n    if x > 0: return x\n    else: return 0\n",
 		"fn f(x: Int) -> Int:\n    if x > 0: return x\n    else if x == 0: return 1\n    else:\n        return 2\n",
@@ -206,7 +207,6 @@ func TestInlineSuites(t *testing.T) {
 		}
 	}
 	for _, source := range []string{
-		"fn f() -> Int: 1\n",
 		"fn f(x: Int) -> Int:\n    if x > 0: return x else: return 0\n",
 		"fn f() -> Unit:\n    if true: return else: return\n",
 		"fn f() -> Unit:\n    if true: use() else if false: use()\n",
@@ -216,6 +216,32 @@ func TestInlineSuites(t *testing.T) {
 	} {
 		if _, err := parser.Parse("inline.ms", source); err == nil {
 			t.Errorf("accepted %s", source)
+		}
+	}
+}
+
+func TestContextualCallbackRecovery(t *testing.T) {
+	for _, source := range []string{
+		"fn f() -> Unit:\n    use(fn(value): value + 1)\n",
+		"fn f() -> Unit:\n    use(fn(value, other: Int):\n        return value + other\n    )\n",
+	} {
+		if _, err := parser.Parse("callback.ms", source); err != nil {
+			t.Fatal(err)
+		}
+		module, diagnostics := parser.ParsePartial("callback.ms", source+"fn broken(\n")
+		if len(diagnostics) != 1 || len(module.Declarations) != 1 {
+			t.Fatal(module, diagnostics)
+		}
+	}
+	for _, source := range []string{
+		"fn f(value) -> Int: value\n",
+		"fn f(transform: fn(value) -> Int) -> Unit: return\n",
+		"type Choice:\n    case Payload(value)\n",
+		"fn f() -> Int:\n    1\n",
+		"fn f() -> Unit:\n    if true: 1\n",
+	} {
+		if _, err := parser.Parse("callback.ms", source); err == nil {
+			t.Fatal("accepted", source)
 		}
 	}
 }

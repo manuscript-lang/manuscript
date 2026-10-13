@@ -26,7 +26,7 @@ let customer = Customer(name: "Ada", email: none)
 let name = customer.name
 ```
 
-The constructor states which value belongs to each field. `customer.name` reads the field. To use the optional email, handle its alternatives as described in [optional values](optionals.md).
+The constructor states which value belongs to each field. For exactly one declared field, its label may be omitted: `Box(3)` and `Box(value: 3)` are equivalent. Multi-field records require labels even when defaults leave only one supplied argument. `customer.name` reads the field. To use the optional email, handle its alternatives as described in [optional values](optionals.md).
 
 ```manuscript
 # Rejected: required email is missing.

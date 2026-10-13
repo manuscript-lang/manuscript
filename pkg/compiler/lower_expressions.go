@@ -197,7 +197,11 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 			g.captures[b] = snapshot
 			declarations = append(declarations, snapshot+" rt.Value")
 		}
-		fn := g.function(e.Params, e.Result, e.Body, g.program.LambdaParameters[e], nil, info.Type)
+		result := e.Result
+		if result == nil {
+			result = &syntax.Type{Pos: e.Pos}
+		}
+		fn := g.function(e.Params, result, e.Body, g.program.LambdaParameters[e], nil, info.Type)
 		for _, b := range captures {
 			if old[b] == "" {
 				delete(g.captures, b)

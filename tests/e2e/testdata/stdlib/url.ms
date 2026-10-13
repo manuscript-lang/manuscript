@@ -17,7 +17,7 @@ import value from "./support/results.ms"
 
 test "URL canonicalization and relative references":
     let url = value(parse("https://EXAMPLE.com:443/a/b?q=1#fragment"))
-    if url.host != "example.com" or url.port != some(value: 443): return panic(
+    if url.host != "example.com" or url.port != some(443): return panic(
         "host and port"
     )
     if value(format(url)) != "https://example.com:443/a/b?q=1#fragment": return panic(
@@ -45,12 +45,12 @@ test "URL query retains duplicate keys empty values and spaces":
     )
 
     let limited: Result[List[QueryEntry], UrlError] = error(
-        cause: UrlError.LimitExceeded
+        UrlError.LimitExceeded
     )
     if parse_query(
         text: "a=1&b=2",
         max_entries: 1
     ) != limited: return panic("query limit")
 
-    let invalid: Result[String, UrlError] = error(cause: UrlError.InvalidData)
+    let invalid: Result[String, UrlError] = error(UrlError.InvalidData)
     if decode_component("%zz") != invalid: return panic("malformed escape")

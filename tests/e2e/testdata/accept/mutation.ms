@@ -32,15 +32,15 @@ fn replacement(log: List[Int]) -> Int:
     return 7
 
 test "record fields mutate through aliases methods views and captures":
-    let counter = Val(val: 0)
+    let counter = Val(0)
     let alias = counter
     let copy = counter.clone()
     counter.increment()
-    let view = Counter(value: counter)
+    let view = Counter(counter)
     view.increment()
     let increment = counter.increment
     increment()
-    let callback = fn() -> Unit:
+    let callback = fn():
         counter.val = counter.val + 1
     callback()
     if not (alias.val == 4 and copy.val == 0):
@@ -114,8 +114,8 @@ test "for loop snapshots membership while elements retain references":
         return panic(message: "iteration membership must be stable")
 
 test "Synchronized protects record mutation without replacement":
-    let counter = Synchronized(value: Val(val: 0))
-    let operation = fn() -> Unit:
+    let counter = Synchronized(Val(0))
+    let operation = fn():
         var remaining = 100
 
         while remaining > 0:
@@ -142,7 +142,7 @@ test "Synchronized protects record mutation without replacement":
 test "callbacks snapshot membership while mutating their source":
     let values = [1, 2, 3]
     let result = values.map(
-        transform: fn(value: Int) -> Int:
+        transform: fn(value):
             values.without(0)
             return value + 1
     )
@@ -162,12 +162,12 @@ test "list growth and saved clone methods preserve current contents":
     let copy = clone()
     alias.append(2048)
     values.with_value(index: 0, value: -1)
-    if not (alias.length() == 2049 and alias.last() == some(value: 2048)):
+    if not (alias.length() == 2049 and alias.last() == some(2048)):
         return panic(message: "growth lost the aliased collection header")
     if not (
         copy.length() == 2048
-        and copy.first() == some(value: 0)
-        and copy.last() == some(value: 2047)
+        and copy.first() == some(0)
+        and copy.last() == some(2047)
     ):
         return panic(message: "saved clone method failed to separate current storage")
 
@@ -178,15 +178,15 @@ test "list growth and saved clone methods preserve current contents":
         return panic(message: "empty clone retained mutable storage")
 
 test "collection clones retain nested object references":
-    let child = Val(val: 1)
+    let child = Val(1)
     let values = [child]
     let copied_values = values.clone()
-    copied_values.append(Val(val: 2))
+    copied_values.append(Val(2))
     let entries = Map[String, Val]().with_entry(key: "child", value: child)
     let copied_entries = entries.clone()
     copied_entries.with_entry(
         key: "other",
-        value: Val(val: 3)
+        value: Val(3)
     )
 
     for entry in copied_entries.entries():
@@ -247,8 +247,8 @@ type Choice:
     case Missing
 
 test "alternative clones retain tags and shared payload references":
-    let child = Val(val: 1)
-    let original = Choice.Present(value: child)
+    let child = Val(1)
+    let original = Choice.Present(child)
     let copy = original.clone()
 
     match copy:

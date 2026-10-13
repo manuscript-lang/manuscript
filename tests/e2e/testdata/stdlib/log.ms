@@ -25,7 +25,7 @@ test "logger writes typed escaped records and protects metadata":
         closed: false
     )
 
-    with transport = stream_transport(WriteStream(value: output)):
+    with transport = stream_transport(WriteStream(output)):
         let logger = value(
             create(
                 transport: transport,
@@ -50,7 +50,7 @@ test "logger writes typed escaped records and protects metadata":
             _: return panic("object fields")
 
         let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
-        if output.data.to_text() != some(value: expected): return panic(
+        if output.data.to_text() != some(expected): return panic(
             "typed log record"
         )
 
@@ -65,7 +65,7 @@ test "levels filter methods and function values":
         closed: false
     )
 
-    with transport = stream_transport(WriteStream(value: output)):
+    with transport = stream_transport(WriteStream(output)):
         let logger = value(
             create(
                 transport: transport,
@@ -93,7 +93,7 @@ test "levels filter methods and function values":
         let debugged = value(logger.debug(message: "debug"))
         let informed = value(logger.info(message: "info"))
         let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
-        if output.data.to_text() != some(value: expected): return panic("level records")
+        if output.data.to_text() != some(expected): return panic("level records")
 
         logger.set_level(LogLevel.Silent)
         if logger.enabled(LogLevel.Fatal) or logger.enabled(LogLevel.Silent): return panic(
@@ -104,7 +104,7 @@ test "levels filter methods and function values":
         let silent = value(logger.fatal(message: "filtered"))
         if output.data != before: return panic("silent logger wrote")
 
-        let invalid: Result[Unit, LogError] = error(cause: LogError.InvalidInput)
+        let invalid: Result[Unit, LogError] = error(LogError.InvalidInput)
         if logger.log(level: LogLevel.Silent, message: "invalid") != invalid: return panic(
             "silent message level"
         )
@@ -116,10 +116,10 @@ test "child bindings snapshot membership and merge without mutating inputs":
         closed: false
     )
 
-    with transport = stream_transport(WriteStream(value: output)):
+    with transport = stream_transport(WriteStream(output)):
         let bindings = Map[String, JsonValue]().with_entry(
             key: "service",
-            value: JsonValue.StringValue(value: "api")
+            value: JsonValue.StringValue("api")
         )
         let logger = value(
             create(
@@ -130,23 +130,23 @@ test "child bindings snapshot membership and merge without mutating inputs":
         )
         bindings.with_entry(
             key: "service",
-            value: JsonValue.StringValue(value: "changed")
+            value: JsonValue.StringValue("changed")
         )
         let child_fields = Map[String, JsonValue]().with_entry(
             key: "request",
-            value: JsonValue.NumberValue(text: "7")
+            value: JsonValue.NumberValue("7")
         )
         let child = logger.child(child_fields)
         child_fields.with_entry(
             key: "request",
-            value: JsonValue.NumberValue(text: "9")
+            value: JsonValue.NumberValue("9")
         )
         logger.set_level(LogLevel.Fatal)
         if child.level() != LogLevel.Info: return panic("child level snapshot")
 
         let fields = Map[String, JsonValue]().with_entry(
             key: "service",
-            value: JsonValue.StringValue(value: "worker")
+            value: JsonValue.StringValue("worker")
         )
         let child_log = value(
             child.info(
@@ -156,7 +156,7 @@ test "child bindings snapshot membership and merge without mutating inputs":
         )
         let parent_log = value(logger.fatal(message: "parent"))
         let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
-        if output.data.to_text() != some(value: expected): return panic(
+        if output.data.to_text() != some(expected): return panic(
             "binding precedence"
         )
         if fields.length() != 1: return panic("log mutated fields")
@@ -168,7 +168,7 @@ test "limits and invalid JSON reject before writing":
         closed: false
     )
 
-    with transport = stream_transport(WriteStream(value: output)):
+    with transport = stream_transport(WriteStream(output)):
         let record = "\{\"level\":30,\"msg\":\"x\"\}\n"
         let logger = value(
             create(
@@ -178,12 +178,12 @@ test "limits and invalid JSON reject before writing":
             )
         )
         let written = value(logger.info(message: "x"))
-        if output.data.to_text() != some(value: record): return panic(
+        if output.data.to_text() != some(record): return panic(
             "exact byte budget"
         )
 
         let before = output.data.clone()
-        let limited: Result[Unit, LogError] = error(cause: LogError.LimitExceeded)
+        let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
         if logger.info(message: "xx") != limited: return panic("log budget")
 
         let zero = value(
@@ -207,15 +207,14 @@ test "limits and invalid JSON reject before writing":
         let unlimited = value(
             create(
                 transport: transport,
-                timestamp: false,
-                max_bytes: none
+                timestamp: false
             )
         )
         let bad = Map[String, JsonValue]().with_entry(
             key: "n",
-            value: JsonValue.NumberValue(text: "NaN")
+            value: JsonValue.NumberValue("NaN")
         )
-        let invalid_data: Result[Unit, LogError] = error(cause: LogError.InvalidData)
+        let invalid_data: Result[Unit, LogError] = error(LogError.InvalidData)
         if unlimited.info(
             message: "bad",
             fields: bad
@@ -228,18 +227,18 @@ test "transport closure and stream errors preserve identity":
         offset: 0,
         closed: false
     )
-    let transport = stream_transport(WriteStream(value: output))
+    let transport = stream_transport(WriteStream(output))
     let logger = value(create(transport: transport))
     output.closed = true
     let io_closed: Result[Unit, LogError] = error(
-        cause: LogError.Io(cause: IoError.Closed)
+        LogError.Io(IoError.Closed)
     )
     if logger.info(message: "closed") != io_closed: return panic("write cause")
     if logger.flush() != io_closed: return panic("flush cause")
 
     transport.close()
     transport.close()
-    let closed: Result[Unit, LogError] = error(cause: LogError.Closed)
+    let closed: Result[Unit, LogError] = error(LogError.Closed)
     if logger.info(message: "closed") != closed: return panic("transport closed")
     if logger.flush() != closed: return panic("closed flush")
 
@@ -271,7 +270,7 @@ test "file transport appends and flushes with scoped cleanup":
         let data = value(fs.read_file(path: path))
         if (
             data.to_text() != some(
-                value: "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
+                "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
             )
         ): return panic("file append")
 
@@ -279,7 +278,7 @@ test "file transport appends and flushes with scoped cleanup":
             ok(_): return panic("missing parent accepted")
 
             error(cause):
-                if cause != LogError.FileSystem(cause: FileSystemError.NotFound): return panic(
+                if cause != LogError.FileSystem(FileSystemError.NotFound): return panic(
                     "file error cause"
                 )
 
@@ -299,15 +298,15 @@ type CaptureTransport:
 
 impl Transport for CaptureTransport:
     fn write(data: Bytes) -> Result[Unit, LogError]:
-        if self.output.closed: return error(cause: LogError.Closed)
+        if self.output.closed: return error(LogError.Closed)
 
         self.output.data = self.output.data.concat(data)
-        return ok(value: unit)
+        return ok(unit)
 
     fn flush() -> Result[Unit, LogError]:
-        if self.output.closed: return error(cause: LogError.Closed)
+        if self.output.closed: return error(LogError.Closed)
 
-        return ok(value: unit)
+        return ok(unit)
 
     fn close() -> Unit: self.output.closed = true
 
@@ -317,9 +316,9 @@ test "source transports receive complete records and close through their contrac
         offset: 0,
         closed: false
     )
-    let sink = CaptureTransport(output: output)
+    let sink = CaptureTransport(output)
 
-    with transport = Transport(value: sink):
+    with transport = Transport(sink):
         let logger = value(
             create(
                 transport: transport,
@@ -330,7 +329,7 @@ test "source transports receive complete records and close through their contrac
         let flushed = value(logger.flush())
         if (
             output.data.to_text() != some(
-                value: "\{\"level\":30,\"msg\":\"source transport\"\}\n"
+                "\{\"level\":30,\"msg\":\"source transport\"\}\n"
             )
         ): return panic("source transport record")
 

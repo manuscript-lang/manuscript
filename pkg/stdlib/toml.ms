@@ -114,17 +114,17 @@ fn within(value: Int, limit: Optional[Int]) -> Bool:
 fn allocate(reader: Reader) -> Result[Unit, TomlError]:
     reader.values = reader.values + 1
     if not within(value: reader.values, limit: reader.limits.max_values): return error(
-        cause: TomlError.LimitExceeded
+        TomlError.LimitExceeded
     )
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn budget(reader: Reader, depth: Int) -> Result[Unit, TomlError]:
     if not within(value: depth, limit: reader.limits.max_depth): return error(
-        cause: TomlError.LimitExceeded
+        TomlError.LimitExceeded
     )
 
-    return ok(value: unit)
+    return ok(unit)
 
 # Basic and literal strings, including multiline delimiters and escaped newline folding.
 fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
@@ -147,11 +147,11 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
     while true:
         let c = advance(reader)
         if c == "": return error(
-            cause: invalid(reader: reader, reason: "unterminated string")
+            invalid(reader: reader, reason: "unterminated string")
         )
 
         if c == quote:
-            if not multiline: return ok(value: result)
+            if not multiline: return ok(result)
 
             if peek(reader) == quote and ahead(reader: reader, offset: 1) == quote:
                 advance(reader)
@@ -162,7 +162,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                     result = result.concat(advance(reader))
                     extra = extra + 1
 
-                return ok(value: result)
+                return ok(result)
 
             result = result.concat(c)
             continue
@@ -174,7 +174,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
             and not (multiline and c == "\n")
         ) or code == 127:
             return error(
-                cause: invalid(
+                invalid(
                     reader: reader,
                     reason: "control character in string"
                 )
@@ -195,7 +195,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
             while peek(reader) == " " or peek(reader) == "\t": advance(reader)
 
             if advance(reader) != "\n": return error(
-                cause: invalid(
+                invalid(
                     reader: reader,
                     reason: "expected escaped newline"
                 )
@@ -228,7 +228,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                 let digit = advance(reader)
                 if digit == "" or not "0123456789abcdefABCDEF".contains(digit):
                     return error(
-                        cause: invalid(
+                        invalid(
                             reader: reader,
                             reason: "invalid Unicode escape"
                         )
@@ -239,7 +239,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
 
             match parse_int(text: hex, radix: 16):
                 error(_): return error(
-                    cause: invalid(
+                    invalid(
                         reader: reader,
                         reason: "invalid Unicode escape"
                     )
@@ -248,7 +248,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                 ok(scalar):
                     match from_scalars([scalar]):
                         error(_): return error(
-                            cause: invalid(
+                            invalid(
                                 reader: reader,
                                 reason: "invalid Unicode scalar"
                             )
@@ -256,7 +256,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                         ok(text): result = result.concat(text)
         else:
             return error(
-                cause: invalid(
+                invalid(
                     reader: reader,
                     reason: "invalid string escape"
                 )
@@ -281,12 +281,12 @@ fn key_path(reader: Reader) -> Result[List[String], TomlError]:
                 key = key.concat(advance(reader))
 
             if key == "": return error(
-                cause: invalid(reader: reader, reason: "expected key")
+                invalid(reader: reader, reason: "expected key")
             )
 
         keys.append(key)
         space(reader: reader, multiline: false)
-        if peek(reader) != ".": return ok(value: keys)
+        if peek(reader) != ".": return ok(keys)
 
         advance(reader)
 
@@ -297,7 +297,7 @@ fn child(
     dotted: Bool
 ) -> Result[Table, TomlError]:
     if parent.sealed: return error(
-        cause: invalid(reader: reader, reason: "inline table is closed")
+        invalid(reader: reader, reason: "inline table is closed")
     )
 
     match parent.entries.get(key):
@@ -306,40 +306,40 @@ fn child(
             let created = table(explicit: false, dotted: dotted)
             parent.entries.with_entry(
                 key: key,
-                value: Node.TableNode(table: created)
+                value: Node.TableNode(created)
             )
-            return ok(value: created)
+            return ok(created)
 
         some(node):
             match node:
                 TableNode(value):
                     if value.sealed: return error(
-                        cause: invalid(
+                        invalid(
                             reader: reader,
                             reason: "inline table is closed"
                         )
                     )
                     if dotted and value.explicit: return error(
-                        cause: invalid(
+                        invalid(
                             reader: reader,
                             reason: "dotted key extends an explicit table"
                         )
                     )
 
-                    return ok(value: value)
+                    return ok(value)
 
                 TableArray(tables):
                     if dotted: return error(
-                        cause: invalid(
+                        invalid(
                             reader: reader,
                             reason: "dotted key extends a table array"
                         )
                     )
 
-                    return ok(value: tables.last().unwrap())
+                    return ok(tables.last().unwrap())
 
                 _: return error(
-                    cause: invalid(
+                    invalid(
                         reader: reader,
                         reason: "key is already a value"
                     )
@@ -365,11 +365,11 @@ fn assign(
 
     let key = keys.last().unwrap()
     if current.sealed or current.entries.contains(key): return error(
-        cause: invalid(reader: reader, reason: "duplicate or closed key")
+        invalid(reader: reader, reason: "duplicate or closed key")
     )
 
     current.entries.with_entry(key: key, value: value)
-    return ok(value: unit)
+    return ok(unit)
 
 fn seal(value: Node) -> Unit:
     match value:
@@ -532,13 +532,13 @@ fn datetime_valid(text: String) -> Bool:
 
 fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
     if text == "true": return ok(
-        value: Node.Leaf(value: TomlValue.BoolValue(value: true))
+        Node.Leaf(TomlValue.BoolValue(true))
     )
     if text == "false": return ok(
-        value: Node.Leaf(value: TomlValue.BoolValue(value: false))
+        Node.Leaf(TomlValue.BoolValue(false))
     )
     if datetime_valid(text): return ok(
-        value: Node.Leaf(value: TomlValue.DateTimeValue(text: text))
+        Node.Leaf(TomlValue.DateTimeValue(text))
     )
 
     var clean = text
@@ -575,7 +575,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
                 alphabet: alphabet
             )
         ):
-            return error(cause: invalid(reader: reader, reason: "invalid integer"))
+            return error(invalid(reader: reader, reason: "invalid integer"))
 
         match parse_int(
             text: (
@@ -593,12 +593,12 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
             radix: radix
         ):
             ok(value): return ok(
-                value: Node.Leaf(
-                    value: TomlValue.IntValue(value: value)
+                Node.Leaf(
+                    TomlValue.IntValue(value)
                 )
             )
             error(_): return error(
-                cause: invalid(
+                invalid(
                     reader: reader,
                     reason: "integer out of range"
                 )
@@ -614,7 +614,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         if clean != "inf" and clean != "nan":
             let parts = clean.lower().split(separator: "e")
             if parts.length() > 2: return error(
-                cause: invalid(reader: reader, reason: "invalid float")
+                invalid(reader: reader, reason: "invalid float")
             )
 
             if parts.length() == 2:
@@ -626,7 +626,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
                 )
 
                 if not decimal_digits(exponent): return error(
-                    cause: invalid(
+                    invalid(
                         reader: reader,
                         reason: "invalid exponent"
                     )
@@ -634,10 +634,10 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
 
             let fraction = parts.first().unwrap().split(separator: ".")
             if fraction.length() > 2 or not decimal_part(fraction.first().unwrap()): return error(
-                cause: invalid(reader: reader, reason: "invalid float")
+                invalid(reader: reader, reason: "invalid float")
             )
             if fraction.length() == 2 and not decimal_digits(fraction.at(1).unwrap()): return error(
-                cause: invalid(
+                invalid(
                     reader: reader,
                     reason: "invalid fraction"
                 )
@@ -649,14 +649,14 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
             if text.starts_with("-"): infinity = -infinity
 
             return ok(
-                value: Node.Leaf(
-                    value: TomlValue.FloatValue(value: infinity)
+                Node.Leaf(
+                    TomlValue.FloatValue(infinity)
                 )
             )
 
         if clean == "nan": return ok(
-            value: Node.Leaf(
-                value: TomlValue.FloatValue(value: sqrt((-1.0)))
+            Node.Leaf(
+                TomlValue.FloatValue(sqrt((-1.0)))
             )
         )
 
@@ -668,19 +668,19 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
 
         match parse_float(number):
             ok(value): return ok(
-                value: Node.Leaf(
-                    value: TomlValue.FloatValue(value: value)
+                Node.Leaf(
+                    TomlValue.FloatValue(value)
                 )
             )
             error(_): return error(
-                cause: invalid(
+                invalid(
                     reader: reader,
                     reason: "float out of range"
                 )
             )
 
     if not decimal_part(clean): return error(
-        cause: invalid(reader: reader, reason: "invalid value")
+        invalid(reader: reader, reason: "invalid value")
     )
 
     match parse_int(
@@ -692,10 +692,10 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         radix: 10
     ):
         ok(value): return ok(
-            value: Node.Leaf(value: TomlValue.IntValue(value: value))
+            Node.Leaf(TomlValue.IntValue(value))
         )
         error(_): return error(
-            cause: invalid(reader: reader, reason: "integer out of range")
+            invalid(reader: reader, reason: "integer out of range")
         )
 
 fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
@@ -704,9 +704,9 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
     space(reader: reader, multiline: false)
     let c = peek(reader)
     if c == "\"" or c == "'": return ok(
-        value: Node.Leaf(
-            value: TomlValue.StringValue(
-                value: try string_value(reader: reader, key: false)
+        Node.Leaf(
+            TomlValue.StringValue(
+                try string_value(reader: reader, key: false)
             )
         )
     )
@@ -721,7 +721,7 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
             space(reader: reader, multiline: true)
             if peek(reader) == "]": break
             if advance(reader) != ",": return error(
-                cause: invalid(
+                invalid(
                     reader: reader,
                     reason: "expected array comma"
                 )
@@ -730,7 +730,7 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
             space(reader: reader, multiline: true)
 
         advance(reader)
-        return ok(value: Node.ArrayNode(values: values))
+        return ok(Node.ArrayNode(values))
 
     if c == "\{":
         advance(reader)
@@ -741,7 +741,7 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
             while true:
                 let keys = try key_path(reader)
                 if advance(reader) != "=": return error(
-                    cause: invalid(
+                    invalid(
                         reader: reader,
                         reason: "expected equals"
                     )
@@ -757,16 +757,16 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
                 space(reader: reader, multiline: false)
                 if peek(reader) == "\}": break
                 if advance(reader) != ",": return error(
-                    cause: invalid(
+                    invalid(
                         reader: reader,
                         reason: "expected inline table comma"
                     )
                 )
 
         advance(reader)
-        let node = Node.TableNode(table: result)
+        let node = Node.TableNode(result)
         seal(node)
-        return ok(value: node)
+        return ok(node)
 
     var text = ""
 
@@ -808,11 +808,11 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
     let checked_budget = try budget(reader: reader, depth: depth)
     reader.values = reader.values + 1
     if not within(value: reader.values, limit: reader.limits.max_values): return error(
-        cause: TomlError.LimitExceeded
+        TomlError.LimitExceeded
     )
 
     match node:
-        Leaf(value): return ok(value: value)
+        Leaf(value): return ok(value)
 
         TableNode(table):
             let entries = Map[String, TomlValue]()
@@ -827,7 +827,7 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
                     )
                 )
 
-            return ok(value: TomlValue.TableValue(values: entries))
+            return ok(TomlValue.TableValue(entries))
 
         ArrayNode(values):
             let result: List[TomlValue] = []
@@ -840,7 +840,7 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
                 )
             )
 
-            return ok(value: TomlValue.ArrayValue(values: result))
+            return ok(TomlValue.ArrayValue(result))
 
         TableArray(tables):
             let result: List[TomlValue] = []
@@ -848,12 +848,12 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
             for table in tables: result.append(
                 try materialize(
                     reader: reader,
-                    node: Node.TableNode(table: table),
+                    node: Node.TableNode(table),
                     depth: (depth + 1)
                 )
             )
 
-            return ok(value: TomlValue.ArrayValue(values: result))
+            return ok(TomlValue.ArrayValue(result))
 
 # Parses a TOML document into a table value and reports source line and column on invalid input.
 export fn parse(
@@ -871,12 +871,12 @@ export fn parse(
             none: let ignored = unit
 
             some(value):
-                if value < 0: return error(cause: TomlError.InvalidInput)
+                if value < 0: return error(TomlError.InvalidInput)
 
     if not within(
         value: text.byte_length(),
         limit: options.max_bytes
-    ): return error(cause: TomlError.LimitExceeded)
+    ): return error(TomlError.LimitExceeded)
 
     # TOML permits CR only as part of CRLF.
     let normalized = text.replace(
@@ -885,7 +885,7 @@ export fn parse(
         max_replacements: text.byte_length()
     )
     if normalized.contains("\r"): return error(
-        cause: TomlError.InvalidData(
+        TomlError.InvalidData(
             line: 1,
             column: 1,
             reason: "bare carriage return"
@@ -898,7 +898,7 @@ export fn parse(
             and code != 9
             and code != 10
         ) or code == 127: return error(
-            cause: TomlError.InvalidData(
+            TomlError.InvalidData(
                 line: 1,
                 column: 1,
                 reason: "invalid control character"
@@ -932,7 +932,7 @@ export fn parse(
 
             let keys = try key_path(reader)
             if advance(reader) != "]" or (array and advance(reader) != "]"): return error(
-                cause: invalid(
+                invalid(
                     reader: reader,
                     reason: "expected closing table bracket"
                 )
@@ -952,7 +952,7 @@ export fn parse(
 
             let key = keys.last().unwrap()
             if parent.sealed: return error(
-                cause: invalid(
+                invalid(
                     reader: reader,
                     reason: "inline table is closed"
                 )
@@ -969,7 +969,7 @@ export fn parse(
                             parent.entries.with_entry(
                                 key: key,
                                 value: Node.TableArray(
-                                    tables: [next]
+                                    [next]
                                 )
                             )
                         )
@@ -978,7 +978,7 @@ export fn parse(
                         match node:
                             TableArray(tables): tables.append(next)
                             _: return error(
-                                cause: invalid(
+                                invalid(
                                     reader: reader,
                                     reason: "table array conflicts with value"
                                 )
@@ -993,7 +993,7 @@ export fn parse(
                     dotted: false
                 )
                 if current.explicit or current.dotted: return error(
-                    cause: invalid(
+                    invalid(
                         reader: reader,
                         reason: "table already defined"
                     )
@@ -1009,7 +1009,7 @@ export fn parse(
         else:
             let keys = try key_path(reader)
             if advance(reader) != "=": return error(
-                cause: invalid(
+                invalid(
                     reader: reader,
                     reason: "expected equals"
                 )
@@ -1032,7 +1032,7 @@ export fn parse(
             while peek(reader) != "" and peek(reader) != "\n": advance(reader)
 
         if peek(reader) != "" and advance(reader) != "\n": return error(
-            cause: invalid(
+            invalid(
                 reader: reader,
                 reason: "unexpected trailing text"
             )
@@ -1041,6 +1041,6 @@ export fn parse(
     reader.values = 0
     return materialize(
         reader: reader,
-        node: Node.TableNode(table: root),
+        node: Node.TableNode(root),
         depth: 1
     )

@@ -39,7 +39,7 @@ fn adapt() -> Unit:
     let result = apply(value: 3, transform: renamed)
 ```
 
-The rejected binding is a negative example; removing it leaves a valid function. Anonymous functions require explicit parameter and result types and an inline or indented body, exactly as specified in the [grammar](../basics/grammar.md). An annotation on the receiving variable does not omit those signatures. A generic function must be instantiated before it is stored as a value; `identity[Int]` is a function value, while a bare polymorphic `identity` is not. Bound method values have the operation's function type with the receiver already bound and excluded from the parameter list.
+The rejected binding is a negative example; removing it leaves a valid function. Anonymous functions may omit parameter types when a surrounding function type supplies them. The context may come from an argument, binding annotation, field, collection element, or return type. Parameter names and order must still match that type. An omitted result type comes from a known context, or is inferred from the body when all input types are known. Without a result context, returns must have one exact type; normal fallthrough contributes `Unit`, and `Never` contributes no competing value. Standalone callbacks still need parameter annotations when no context provides their types. An inline expression body returns its value; multiline bodies use explicit `return`. See the [grammar](../basics/grammar.md). A generic function must be instantiated before it is stored as a value; `identity[Int]` is a function value, while a bare polymorphic `identity` is not. Bound method values have the operation's function type with the receiver already bound and excluded from the parameter list.
 
 An anonymous function forms its own function boundary for `return`, `try`, `break`, and `continue`. Its control-flow exits cannot exit the containing function or loop. Capture and sharing behavior remains governed by the separate contracts below.
 
@@ -50,7 +50,7 @@ A closure remembers the current value of each local binding it uses:
 ```manuscript
 fn make_headline() -> fn() -> String:
     var subject = "Weekly update"
-    let headline = fn() -> String:
+    let headline = fn():
         return subject
     subject = "Launch announcement"
     return headline
@@ -66,7 +66,7 @@ import List from "@std/collections.ms"
 
 fn tag_count() -> Int:
     let tags = ["docs"]
-    let count = fn() -> Int:
+    let count = fn():
         return tags.length()
     tags.append("release")
     return count()
@@ -85,7 +85,7 @@ import Bytes from "@std/bytes.ms"
 import Result from "@std/result.ms"
 
 fn notes_reader(path: String) -> fn() -> Result[Bytes, FileSystemError]:
-    return fn() -> Result[Bytes, FileSystemError]:
+    return fn():
         with file = try filesystem().open(path: path, flags: "r", mode: 0):
             return file.read_file(max_bytes: 1048576)
 ```
@@ -101,3 +101,14 @@ Concurrency APIs accept ordinary functions. Function parameters, returned functi
 Capture request-data snapshots and application services for scheduled work, then acquire job resources within that operation. Keep a TaskGroup scope inside the resources its tasks use. The group cancels and joins at scope exit before the enclosing resources close, unless a resource is explicitly closed elsewhere.
 
 See [task groups](../../concurrency/task-groups.md), [scheduling work](../../concurrency/scheduling.md), and [reference sharing](../../concurrency/sharing.md).
+
+## Contextual callback inference
+
+```manuscript
+import List from "@std/collections.ms"
+
+fn names() -> List[String]:
+    return [1, 2].map(fn(value): value.toString())
+```
+
+Here the list supplies `Int` for `value`, and the body determines the generic `String` result. Other supplied arguments may establish callback inputs regardless of their written order; callbacks are revisited as their input context becomes known. This checking order does not change runtime evaluation order. An expected outer call result does not infer missing generic arguments. Known parts of a Result context supply its error type while the callback body determines its generic success type. `try` uses that Result error context. A callback that supplies no evidence for the success type still needs an explicit specialization or annotation.

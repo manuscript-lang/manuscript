@@ -13,7 +13,7 @@ fn countdown[T](value: T, count: Int) -> T:
 
 test "snapshot reassignment and shadowing":
     var offset = 1
-    let action = fn(value: Int) -> Int:
+    let action = fn(value: Int):
         return value + offset
     offset = 10
     if not (action(value: 3) == 4):
@@ -31,7 +31,7 @@ test "snapshot reassignment and shadowing":
         return panic(message: "check failed")
 
     let factory = fn(value: Int) -> fn(value: Int) -> Int:
-        return fn(value: Int) -> Int:
+        return fn(value):
             return value + offset
     let nested = factory(value: 99)
     offset = 100
