@@ -25,6 +25,7 @@ export type List[T]:
     fn set(index: Int, value: T) -> List[T]:
     # Removes an element in place and returns this list; negative indexes count from the end.
     # Invalid indexes fault, with the same bounds and diagnostics as without.
+    # Shifts the suffix without clearing prior values retained in spare backing capacity.
     fn remove(index: Int) -> List[T]:
     # Compatibility spelling for set; mutates and returns this list.
     fn with_value(index: Int, value: T) -> List[T]:
@@ -52,7 +53,7 @@ export type List[T]:
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     # Returns true when every value satisfies the predicate; empty lists return true.
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
-    # Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
+    # Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal.
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
     fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]:
     fn map[U](transform: fn(value: T) -> U) -> List[U]:
@@ -61,10 +62,10 @@ export type List[T]:
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     # Reduces values from right to left, starting with `initial`.
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
-    # Replaces `delete_count` values at `start` with the replacement list.
     # Replaces delete_count elements starting at start, mutating and returning this List.
     # Requires 0 <= start <= length and 0 <= delete_count <= length - start; invalid bounds fault without clamping.
     # Replacement references stay shallow; using this same List as replacement stages its prior values.
+    # Shrinking retains prior values in spare backing capacity, following captured Go slice traversal.
     fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     # Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior.
     fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:

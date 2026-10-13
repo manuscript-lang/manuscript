@@ -154,7 +154,7 @@ func Binary(op string, a, b Value) Value {
 			result.Mul(x.Value, y.Value)
 		case "/":
 			if y.Value.Sign() == 0 {
-				return Panic("Decimal division by zero; test that the divisor is not 0 before dividing")
+				return Panic("Decimal./: division by zero; right must be nonzero, found 0")
 			}
 			result.Quo(x.Value, y.Value)
 		}
@@ -163,9 +163,9 @@ func Binary(op string, a, b Value) Value {
 		y := b.(Duration)
 		switch op {
 		case "+":
-			return Duration(checkedAdd(int64(x), int64(y)))
+			return Duration(checkedTimeAdd("Duration.+", "left", "right", int64(x), int64(y)))
 		case "-":
-			return Duration(checkedSub(int64(x), int64(y)))
+			return Duration(checkedTimeSub("Duration.-", "left", "right", int64(x), int64(y)))
 		case "<":
 			return x < y
 		case "<=":
@@ -180,7 +180,7 @@ func Binary(op string, a, b Value) Value {
 			sameClock(x, y)
 			switch op {
 			case "-":
-				return Duration(checkedSub(x.Tick, y.Tick))
+				return Duration(checkedTimeSub("Instant.-", "left", "right", x.Tick, y.Tick))
 			case "<":
 				return x.Tick < y.Tick
 			case "<=":
@@ -193,9 +193,9 @@ func Binary(op string, a, b Value) Value {
 		}
 		y := b.(Duration)
 		if op == "+" {
-			return Instant{x.Domain, checkedAdd(x.Tick, int64(y))}
+			return Instant{x.Domain, checkedTimeAdd("Instant.+", "value", "duration", x.Tick, int64(y))}
 		}
-		return Instant{x.Domain, checkedSub(x.Tick, int64(y))}
+		return Instant{x.Domain, checkedTimeSub("Instant.-", "value", "duration", x.Tick, int64(y))}
 	}
 	return Panic("runtime invariant: binary operator")
 }
@@ -255,7 +255,11 @@ func duration(value Value, name string) Value {
 	if name == "minutes" {
 		scale = 60000000000
 	}
-	return Duration(checkedMul(value.(int64), scale))
+	n := value.(int64)
+	if n < math.MinInt64/scale || n > math.MaxInt64/scale {
+		return libraryRangeFault("Int."+name, "value", n, math.MinInt64/scale, math.MaxInt64/scale)
+	}
+	return Duration(n * scale)
 }
 
 type Decimal struct{ Value *big.Rat }

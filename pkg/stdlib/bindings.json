@@ -385,6 +385,7 @@
     "@std/result.ms/Result/unwrap_error": "result/unwrap_error",
     "@std/result.ms/Result/unwrap_or": "result/unwrap_or",
     "@std/result.ms/Result/unwrap_or_else": "result/unwrap_or_else",
+    "@std/string.ms/NormalizationForm/normalize": "string/form_normalize",
     "@std/tasks.ms/Task/join": "tasks/task_join",
     "@std/tasks.ms/TaskGroup/close": "tasks/task_group_close",
     "@std/tasks.ms/TaskGroup/join": "tasks/task_group_join",

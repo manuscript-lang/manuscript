@@ -1,0 +1,17 @@
+{
+  "before_revision": "85f9a075161b840f46ea9d321631e0384fc6ed2c",
+  "after_revision": "5e79d57f7d050cad4b3ea1c1fa0561fe71f106e6",
+  "program_and_harness_identical": true,
+  "source_sha256": {
+    "before": {
+      "program.ms": "e7ce60a0d0a4b2742a70601de34ecf98f096ae513304516feb31a93848bf2b33",
+      "program.go": "0ccb6b6235b1d054e3c2405a4dfaa4ed405fa441a676b7c84d9a5c202c0ae529",
+      "harness_test.go": "ef78e2424305dd976dcf41c55563abe738f8891ee07f6dcb832484070015b199"
+    },
+    "after": {
+      "program.ms": "e7ce60a0d0a4b2742a70601de34ecf98f096ae513304516feb31a93848bf2b33",
+      "program.go": "0ccb6b6235b1d054e3c2405a4dfaa4ed405fa441a676b7c84d9a5c202c0ae529",
+      "harness_test.go": "ef78e2424305dd976dcf41c55563abe738f8891ee07f6dcb832484070015b199"
+    }
+  }
+}

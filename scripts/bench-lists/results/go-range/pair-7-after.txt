@@ -1,0 +1,8 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-go-range-final
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNarrowSnapshots/ReadOnly         	      19	  11692572 ns/op	 2622670 B/op	  131093 allocs/op
+BenchmarkNarrowSnapshots/WriteInCallback  	      18	  12316464 ns/op	 2623380 B/op	  131104 allocs/op
+BenchmarkNarrowSnapshots/WriteAfterCallback         	      19	  11849857 ns/op	 2623130 B/op	  131106 allocs/op
+PASS

@@ -1,5 +1,13 @@
 # Numeric List storage measurements and staged representation plan
 
+**Direction updates:** the user's default Int32/Float32 migration is owned by its
+dedicated task; the 64-bit results here describe the historical/current pre-migration
+ABI, not permission to narrow storage independently. Later user direction also
+supersedes List traversal snapshots/COW: capture backing and initial length once,
+permit backing writes, never extend traversal on append, and follow Go reallocation
+behavior. Explicit clone/slice results and Map/Set snapshots remain independent.
+The COW review/results are retained as historical evidence, not current semantics.
+
 Refs #142 and #87. This directory contains checked Manuscript workloads, a
 generated-Go benchmark runner, fresh-process allocation/RSS workers, and an
 isolated typed-storage experiment. The experiment is **not** a runtime ABI or
@@ -110,12 +118,22 @@ With matched concrete accumulation/index locals, boxed storage indexing uses
 through the same Optional ABI uses 196,444 / about 5.77 MB. This is an allocation
 regression of about 50% despite the much smaller retained backing storage.
 
-## Bounded production change
+## Current no-copy traversal follow-on
+
+The [Go range review](go-range-review.md) records the authorized List-only
+semantic change, deterministic Go-reference cases, zero-allocation boundary and
+paired normal-runtime and retained-memory evidence. Shrinking uses non-clearing
+shift-and-reslice semantics; prior values remain in spare capacity until overwritten
+or released, preserving valid typed consumption by a captured traversal.
+Production List storage remains boxed `[]Value`;
+typed storage and numeric-width changes remain separate work.
+
+## Historical bounded COW change
 
 The [narrow review](narrow-review.md) records exact correctness/concurrency/native
 writer boundaries, snapshot-edge coverage, and paired normal-runtime results.
 
-List callback traversals now retain a private, capacity-limited membership
+The earlier #247 List callback traversals retained a private, capacity-limited membership
 header and mark the receiver's backing array shared, using the existing loop
 COW mechanism. A read-only 65,536-element snapshot costs 48 bytes / one
 allocation rather than a 1,048,624-byte clone / two allocations. Generated
@@ -124,9 +142,9 @@ removing exactly the 1,048,576-byte membership array. Callbacks' own boxing and
 dispatch remain measurable costs.
 
 All writes to existing elements must detach. `fill`, `copy_within`, and
-`reverse` previously omitted `ownItems` and corrupted active loop snapshots;
-they now detach as the other mutators already do. A source fixture fails on
-unmodified baseline and passes after this correction. Append can reuse
+`reverse` had omitted `ownItems` and corrupted active loop snapshots;
+#247 made them detach as the other mutators already did. A source fixture failed on
+its unmodified baseline and passed after this correction. Append could reuse
 capacity because appended values lie beyond captured membership. Clones keep
 independent outer storage; nested and recursive references remain shared.
 
@@ -140,18 +158,21 @@ bounded change does not solve boxed element storage or callback dispatch cost.
 ## Authoritative typed representation
 
 Keep `*List` as the single source identity and shared mutable handle. An
-internal backing object owns exactly one representation: Int `[]int64`, Float
-`[]float64`, Bool `[]bool`, or generic `[]Value`. `List[Int]` remains Int-backed
+internal backing object owns exactly one representation: target default Int
+`[]int32` and Float `[]float32`, explicit wider numeric types where required,
+Bool `[]bool`, or generic `[]Value`. Select widths only after the dedicated language
+range/rounding/ABI migration. `List[Int]` remains Int-backed
 even when passed through `Value`, a generic function, a record, Optional,
 Result, a closure, a contract view or a saved method. A typed projection must
 reference the backing object, never copy its slice header into an independent
 mutable owner. No lazy boxed mirror is permitted.
-COW replaces the array field inside that same backing object; replacing the
-backing object itself would strand previously captured typed projections.
+Growth replaces the array field inside that same backing object; replacing the
+backing object itself would strand previously captured typed projections. A
+running traversal retains its captured old array if growth reallocates.
 
 The Int-only prototype uses `*prototypeStorage` to make that invariant explicit.
 Typed and boxed aliases plus a bound append function see growth and updates
-through the same handle. Snapshot slices capture membership and trigger COW;
+through the same handle. Range slices capture the initial header without COW;
 clones allocate a fresh handle and array. The prototype is deliberately absent
 from production dispatch. It does not establish complete nested/recursive,
 equality/hash, native-service, debugger or generic ABI compatibility.
@@ -165,7 +186,7 @@ memory layout, interface-data pointer tricks or Go runtime internals are needed.
 
 Migrate in reviewable stages:
 
-1. Centralize every List constructor, read, snapshot, append and in-place write
+1. Centralize every List constructor, read, traversal capture, append and in-place write
    behind storage-aware helpers while retaining the old backing representation.
    Include runtime adapters/builders, formatting, positional binding, equality,
    native ABI, standalone bundles, pins and debugger watches. Distinguish List
@@ -196,8 +217,8 @@ to bypass those source-call guards or the current checked record-field boundary.
   runtime adapters and external Go callers. Cutover is a coordinated ABI change;
   a compatibility accessor cannot support arbitrary direct writes to a mirror.
   Native/standalone embedding, implementation hashes and debugger expectations
-  must move together. The bounded snapshot change leaves that ABI intact.
-- **Snapshot/COW:** audit every mutator, overlapping/self splices, callback
+  must move together. The bounded traversal change leaves that ABI intact.
+- **Captured backing:** audit every mutator, overlapping/self splices, callback
   reentry, early exits, cancellation and faults. Preserve shallow references.
   Synchronization remains the caller's responsibility for shared collections.
 - **Equality/hash:** keep identity/cycle tracking keyed by the authoritative
@@ -205,7 +226,7 @@ to bypass those source-call guards or the current checked record-field boundary.
   Do not derive Hashable for Lists: current source declarations do not do so.
   Float behavior must retain NaN, signed-zero and hashing/equality contracts.
 - **Interop:** called native tests must cover typed -> generic -> typed aliases,
-  saved methods across growth/COW, `List[Optional[T]]`, Error/Result conversion,
+  saved methods across growth, `List[Optional[T]]`, Error/Result conversion,
   nested lists/records/cycles, Lists of functions/views/resources, builders,
   source/native callbacks and synchronized access. No divergent copies at any
   boundary, including operations that return the original instance.

@@ -149,3 +149,29 @@ test "List explicit and bound interface views preserve field shadowing":
     let bound = view.splice
     bound(1, 2, [8]).append(5)
     if values != [7, 8, 4, 5]: return panic("interface view or bound alias")
+
+test "List splice through a dispatched view follows reviewed Go range shrink semantics":
+    let values = [1, 2, 3]
+    let adapter = ListAdapter(
+        values,
+        fn(start: Int, delete_count: Int, replacement: List[Int]) -> List[
+            Int
+        ]: []
+    )
+    let view = ListSplicing(adapter)
+    var total = 0
+    var visited = 0
+
+    for value in values:
+        total = total + value
+
+        if visited == 0: view.splice(0, 1, [])
+
+        visited = visited + 1
+
+    if (
+        total != 7
+        or visited != 3
+        or values != [2, 3]
+    ):
+        return panic("captured backing, shifted values or valid retained tail changed")

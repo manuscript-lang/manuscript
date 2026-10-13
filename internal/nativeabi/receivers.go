@@ -2,6 +2,7 @@
 package nativeabi
 
 var ReceiverBindings = map[string]map[string]string{
+	"NormalizationForm": {"normalize": "string/form_normalize"},
 	"HashAlgorithm":     {"digest": "crypto/hash_algorithm_digest", "hmac": "crypto/hash_algorithm_hmac"},
 	"CompressionFormat": {"compress": "compress/format_compress", "decompress": "compress/format_decompress"},
 	"ArchiveFormat":     {"pack": "archive/format_pack", "unpack": "archive/format_unpack"},

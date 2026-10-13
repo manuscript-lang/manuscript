@@ -131,7 +131,7 @@ fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
 
 ### List.for_each
 
-Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
+Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal.
 
 ```manuscript
 fn for_each(operation: fn(value: T) -> Unit) -> Unit:
@@ -157,6 +157,7 @@ fn last_index_of(value: T) -> Optional[Int]:
 
 Removes an element in place and returns this list; negative indexes count from the end.
 Invalid indexes fault, with the same bounds and diagnostics as without.
+Shifts the suffix without clearing prior values retained in spare backing capacity.
 
 ```manuscript
 fn remove(index: Int) -> List[T]:
@@ -222,10 +223,10 @@ fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
 
 ### List.splice
 
-Replaces `delete_count` values at `start` with the replacement list.
 Replaces delete_count elements starting at start, mutating and returning this List.
 Requires 0 <= start <= length and 0 <= delete_count <= length - start; invalid bounds fault without clamping.
 Replacement references stay shallow; using this same List as replacement stages its prior values.
+Shrinking retains prior values in spare backing capacity, following captured Go slice traversal.
 
 ```manuscript
 fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:

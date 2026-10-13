@@ -151,24 +151,25 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
         "[a.b.c]\nz=9\n[a]\nb.c.t=1",
         "[[a.b]]\n[a]\nb.y=2"
     ]:
-        match parse(text: text):
+        let cause = match parse(text: text):
             ok(_): return panic("invalid TOML accepted: {text}")
 
-            error(cause):
-                match cause:
-                    InvalidData(line, column, reason):
-                        if (
-                            line < 1
-                            or column < 1
-                            or reason == ""
-                        ): return panic("TOML error details")
+            error(cause): cause
 
-                        let boundary = Error(cause)
-                        if not boundary.message().starts_with("TOML "): return panic(
-                            "source Error implementation"
-                        )
+        match cause:
+            InvalidData(line, column, reason):
+                if (
+                    line < 1
+                    or column < 1
+                    or reason == ""
+                ): return panic("TOML error details")
 
-                    _: return panic("wrong TOML error")
+                let boundary = Error(cause)
+                if not boundary.message().starts_with("TOML "): return panic(
+                    "source Error implementation"
+                )
+
+            _: return panic("wrong TOML error")
 
 test "TOML optional limits include implicit tables and zero":
     let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
