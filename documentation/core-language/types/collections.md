@@ -74,7 +74,7 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 `append`, `prepend`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `with_value` and `without` remain compatible spellings for `set` and `remove`, with the same receiver returns and faults. `reverse` remains a compatible spelling for `reverse_in_place`, returning the same list. `splice(start:, delete_count:, replacement:)` requires nonnegative bounds with `start <= length()` and `delete_count <= length() - start`; it stages a self-replacement and retains shallow references. Invalid bounds fault without clamping. `with_values` remains its compatible spelling. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
 
-Map `add`, `remove`, `with_entry`, `without`, `with_default`, `with_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver; `with_value` and `without` remain compatible spellings for `add` and `remove`. Map `without` remains compatible with `remove`, including no-op absence, scoped lookup and insertion order. Their return values retain that instance for chaining.
+Map `add`, `remove`, `add_default`, `add_default_from`, `merge`, and `clear` update the receiver. `with_entry`, `without`, `with_default`, and `with_default_from` retain their legacy mutation and receiver returns. Set `add`, `remove`, and `clear` update the receiver; `with_value` and `without` remain compatible spellings for `add` and `remove`. Map `without` remains compatible with `remove`, including no-op absence, scoped lookup and insertion order. Their return values retain that instance for chaining.
 
 ```manuscript
 let values = [1, 2]
@@ -86,13 +86,33 @@ values.append(3)
 
 Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra construct new results. List `reversed()` returns a reversed shallow copy with independent outer storage. Bytes `reversed()` also returns a copy; Bytes `reverse()` remains compatible. Text and Bytes retain their existing nonmutating operations.
 
-List `slice` uses strict, nonnegative element bounds: `0 <= start <= end <= length()`. Invalid bounds fault; negative indexes accepted by `at` are not accepted by `slice`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
+List `slice` returns `Result[List[T], CollectionError]` and uses strict element bounds after resolving negative bounds relative to the end: `0 <= start <= end <= length()`. Invalid bounds return `CollectionError.OutOfRange`. Successful slices copy outer storage and retain nested references. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
 
 A List `for` loop or callback traversal evaluates its backing slice and initial length once, without copying or freezing elements. In-place writes can change values read later in that traversal. Append never extends the current traversal. If a mutation reallocates storage, the running traversal keeps its original backing array; shrinking or shifting storage does not reduce its captured length. Use an explicit `.clone()` before traversal when stable, separate outer storage is needed. Nested elements retain their references.
 
 List removal and shrinking replacement shift elements and shorten the receiver's slice without overwriting the vacated tail. A captured traversal can therefore read shifted or repeated prior values. Replacing all elements with an empty list only shortens that slice; later appends can overwrite the same backing storage. Removed references can remain retained in spare capacity until overwritten, reallocated, or released along with the backing array. An explicit `fill` or `copy_within` writes backing elements and can affect later visits.
 
 Map and Set loops and callbacks retain their membership snapshot contract: additions, removals and replacements do not change that traversal. Protect shared mutation and concurrent reads with `Synchronized`; every alias must use the same lock.
+
+### Naming and migration
+
+Use verbs for mutable updates and explicit `.clone()` when a separate mutable result is wanted. `concat`, `filter`, `sorted`, `reversed` and other existing transforms keep their copying contracts; a verb alone does not promise mutation on immutable String or Bytes values. Bytes `with_value` copies byte storage, while Bytes `slice` and `split` may retain immutable views.
+
+Legacy spellings remain supported compatibility APIs with their original signatures and behavior. They are never reinterpreted as copies. Migrate direct calls and stored method references using this table; argument labels and callable return types stay the same.
+
+| Receiver | Legacy spelling | Preferred spelling | Result |
+| --- | --- | --- | --- |
+| List | `with_value`, `without`, `with_values`, `reverse` | `set`, `remove`, `splice`, `reverse_in_place` | Same List |
+| Map | `with_entry`, `without` | `add`, `remove` | Same Map |
+| Map | `with_default`, `with_default_from` | `add_default`, `add_default_from` | Same Map |
+| Set | `with_value`, `without` | `add`, `remove` | Same Set |
+| MapBuilder | `with_entry` | `add` | Unit |
+| SetBuilder | `with_value` | `add` | Unit |
+| Bytes | `reverse` | `reversed` | Copy of byte storage |
+
+Map `add_default` evaluates its value argument normally and inserts only when absent. `add_default_from` calls `create(key:)` once only when absent. Neither replaces an existing value or its insertion position. For a copy, write `map.clone().add_default(...)` explicitly.
+
+All [builder mutations](../../standard-library/builders.md) return Unit; `freeze` returns the sealed result. This convention applies to List, Map, Set, Bytes and String builders and preserves their existing function types. MSL108 recommends equivalent preferred names using checked standard identities, including stored references; user methods and callable fields keep their own contracts. Standard implementations and teaching examples use the preferred names. Compatibility tests intentionally exercise old spellings.
 
 ## Lookup and updates
 

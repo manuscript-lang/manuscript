@@ -10,7 +10,7 @@ func CollectionMutation(receiver *Type, name string) bool {
 	}
 	if std(receiver, "Map") {
 		switch name {
-		case "add", "remove", "with_entry", "without", "with_default", "with_default_from", "merge", "clear":
+		case "add", "remove", "add_default", "add_default_from", "with_entry", "without", "with_default", "with_default_from", "merge", "clear":
 			return true
 		}
 	}
