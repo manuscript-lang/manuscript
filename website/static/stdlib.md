@@ -416,6 +416,10 @@ type Map[T: Hashable, U]:
     fn is_empty() -> Bool:
     fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
     fn get_or(key: T, fallback: U) -> U:
+    fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn with_default(key: T, value: U) -> Map[T, U]:
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
@@ -467,6 +471,10 @@ type Set[T: Hashable]:
     fn is_empty() -> Bool:
     fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
     fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn some(predicate: fn(value: T) -> Bool) -> Bool:
+    fn every(predicate: fn(value: T) -> Bool) -> Bool:
     fn union(right: Set[T]) -> Set[T]:
     fn intersection(right: Set[T]) -> Set[T]:
     fn difference(right: Set[T]) -> Set[T]:
@@ -2284,6 +2292,8 @@ type Optional[T]:
     fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
     fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
+    fn ok_or[E](cause: E) -> Result[T, E]:
+    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
 # @std/path.ms
@@ -2894,6 +2904,7 @@ type Result[T, E]:
     fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+    fn to_optional() -> Optional[T]:
 ```
 
 # @std/string.ms
@@ -3962,6 +3973,8 @@ type Optional[T]:
     fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
     fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
+    fn ok_or[E](cause: E) -> Result[T, E]:
+    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
 ## Result
@@ -3982,6 +3995,7 @@ type Result[T, E]:
     fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+    fn to_optional() -> Optional[T]:
 ```
 
 ## String

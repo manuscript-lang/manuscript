@@ -79,6 +79,14 @@ export type Map[T: Hashable, U]:
     fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
     # Returns the stored value or an eagerly evaluated fallback without inserting.
     fn get_or(key: T, fallback: U) -> U:
+    # Reduces an entry snapshot in insertion order, starting with initial.
+    fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    # Returns the first matching entry as a fresh record with shallow references.
+    fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    # Stops at the first matching entry; empty maps return false.
+    fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    # Stops at the first nonmatching entry; empty maps return true.
+    fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     # Sets `key` to `value` only when the key is absent.
     fn with_default(key: T, value: U) -> Map[T, U]:
     # Creates a value only when the key is absent.
@@ -111,6 +119,14 @@ export type Set[T: Hashable]:
     fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
     # Transforms a snapshot into a fresh set, retaining the first equal result.
     fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
+    # Reduces an element snapshot in insertion order, starting with initial.
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    # Returns the original first matching element, or none.
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    # Stops at the first matching element; empty sets return false.
+    fn some(predicate: fn(value: T) -> Bool) -> Bool:
+    # Stops at the first nonmatching element; empty sets return true.
+    fn every(predicate: fn(value: T) -> Bool) -> Bool:
     fn union(right: Set[T]) -> Set[T]:
     fn intersection(right: Set[T]) -> Set[T]:
     fn difference(right: Set[T]) -> Set[T]:
