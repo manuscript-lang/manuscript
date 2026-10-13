@@ -35,6 +35,7 @@ impl Error for YamlError:
 
 type Context:
     lines: List[String]
+    final_break: Bool
     index: Int
     limits: YamlLimits
     values: Int
@@ -87,9 +88,27 @@ fn flow_space(flow: Flow) -> Unit:
 fn flow_invalid(flow: Flow, reason: String) -> YamlError:
     return YamlError.InvalidData(line: flow.line, column: flow.pos + 1, reason: reason)
 
+# The first physical break folds to a space, or is removed before empty lines.
+# An escaped first break is removed even when no empty lines follow it.
+fn folded_break(flow: Flow, escaped: Bool) -> String:
+    var result = ""
+
+    while true:
+        while peek(flow) == " " or peek(flow) == "\t": advance(flow)
+
+        if peek(flow) != "\n": break
+
+        advance(flow)
+        result = result.concat("\n")
+
+    if result == "" and not escaped: return " "
+
+    return result
+
 fn quoted(flow: Flow) -> Result[String, YamlError]:
     let quote = advance(flow)
     var result = ""
+    var whitespace = ""
 
     while true:
         let c = advance(flow)
@@ -98,6 +117,9 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
         )
 
         if c == quote:
+            result = result.concat(whitespace)
+            whitespace = ""
+
             if quote == "'" and peek(flow) == "'":
                 advance(flow)
                 result = result.concat("'")
@@ -106,11 +128,16 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
             return ok(result)
 
         if c == "\n":
-            result = result.concat(" ")
-
-            while peek(flow) == " " or peek(flow) == "\t": advance(flow)
-
+            whitespace = ""
+            result = result.concat(folded_break(flow: flow, escaped: false))
             continue
+
+        if c == " " or c == "\t":
+            whitespace = whitespace.concat(c)
+            continue
+
+        result = result.concat(whitespace)
+        whitespace = ""
 
         if c != "\\" or quote == "'":
             result = result.concat(c)
@@ -119,7 +146,7 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
         let escaped = advance(flow)
 
         if escaped == "\n":
-            while peek(flow) == " " or peek(flow) == "\t": advance(flow)
+            result = result.concat(folded_break(flow: flow, escaped: true))
         else if escaped == "0": result = result.concat("\u{0}")
         else if escaped == "a": result = result.concat("\u{7}")
         else if escaped == "b": result = result.concat("\u{8}")
@@ -561,7 +588,11 @@ fn boundary(text: String, colon: Bool) -> Int:
 
 fn uncomment(text: String) -> String:
     let index = boundary(text: text, colon: false)
-    if index < 0: return text.trim_end()
+
+    if index < 0:
+        if not complete(text): return text
+
+        return text.trim_end()
 
     return text.slice(start: 0, end: index).trim_end()
 
@@ -651,7 +682,13 @@ fn inline_value(
         and context.index < context.lines.length()
     ):
         let next = context.lines.at(context.index).unwrap()
-        joined = joined.concat("\n").concat(uncomment(next))
+        # Keep quote state and physical empty lines when removing comments.
+        let combined = joined.concat("\n").concat(next)
+        let comment = boundary(text: combined, colon: false)
+
+        if comment < 0: joined = combined
+        else: joined = combined.slice(start: 0, end: comment)
+
         context.index = context.index + 1
 
     let flow = Flow(
@@ -698,22 +735,40 @@ fn block_string(
     var probe = context.index
 
     if explicit == 0:
+        var blank_indent = base + 1
+
         while (
             probe < context.lines.length()
-            and context.lines.at(probe).unwrap().trim() == ""
-        ): probe = (probe + 1)
+            and context.lines.at(probe).unwrap().slice(
+                start: indent(context.lines.at(probe).unwrap()),
+                end: context.lines.at(probe).unwrap().scalar_length()
+            ) == ""
+        ):
+            let spaces = indent(context.lines.at(probe).unwrap())
+
+            if spaces > blank_indent: blank_indent = spaces
+
+            probe = probe + 1
 
         if probe < context.lines.length(): content_indent = indent(
             (context.lines.at(probe).unwrap())
         )
 
-        if content_indent <= base: content_indent = base + 1
+        if content_indent <= base: content_indent = blank_indent
 
     let parts: List[String] = []
 
     while context.index < context.lines.length():
         let line = context.lines.at(context.index).unwrap()
-        if line.trim() != "" and indent(line) < content_indent: break
+        let spaces = indent(line)
+        if (
+            line.slice(
+                start: spaces,
+                end: line.scalar_length()
+            ) != ""
+            and spaces < content_indent
+        ):
+            break
 
         parts.append(
             line.slice(
@@ -725,9 +780,13 @@ fn block_string(
 
     var result = ""
     var index = 0
+    var content = false
 
     while index < parts.length():
         let part = parts.at(index).unwrap()
+
+        if part != "": content = true
+
         result = result.concat(part)
         var separator = "\n"
 
@@ -735,22 +794,43 @@ fn block_string(
             header.starts_with(">")
             and part != ""
             and not part.starts_with(" ")
+            and not part.starts_with("\t")
             and index + 1 < parts.length()
         ):
-            let next = parts.at(index + 1).unwrap()
+            var next_index = index + 1
 
-            if next != "" and not next.starts_with(" "): separator = " "
+            while next_index < parts.length() and parts.at(next_index).unwrap() == "":
+                next_index = next_index + 1
+
+            if next_index < parts.length():
+                let next = parts.at(next_index).unwrap()
+
+                if not next.starts_with(" ") and not next.starts_with("\t"):
+                    if next_index == index + 1: separator = " "
+                    else: separator = ""
+
+        if (
+            index + 1 == parts.length()
+            and context.index == context.lines.length()
+            and not context.final_break
+        ): separator = ""
 
         result = result.concat(separator)
         index = index + 1
 
     if mode != "+":
+        let final_break = result.ends_with("\n")
+
         while result.ends_with("\n"): result = result.slice(
             start: 0,
             end: (result.scalar_length() - 1)
         )
 
-        if mode != "-" and parts.length() > 0: result = result.concat("\n")
+        if (
+            mode != "-"
+            and content
+            and final_break
+        ): result = result.concat("\n")
 
     return ok(YamlValue.StringValue(result))
 
@@ -761,7 +841,7 @@ fn block_value(
     depth: Int,
     indentless: Bool
 ) -> Result[YamlValue, YamlError]:
-    var remainder = text.trim()
+    var remainder = text.trim_start()
     var anchor = ""
 
     if remainder.starts_with("&"):
@@ -779,19 +859,37 @@ fn block_value(
                 start: flow.pos,
                 end: remainder.scalar_length()
             )
-            .trim()
+            .trim_start()
         )
 
     var result = YamlValue.Null
 
     if remainder.starts_with("|") or remainder.starts_with(">"):
         let counted = try count(context: context, depth: depth)
-        result = try block_string(context: context, header: remainder, base: base)
+        result = try block_string(
+            context: context,
+            header: remainder.trim_end(),
+            base: base
+        )
     else if remainder != "":
         if not "['\"\{*&!".contains(remainder.at(0).unwrap()):
-            while context.index < context.lines.length():
-                let next = uncomment(context.lines.at(context.index).unwrap())
+            remainder = remainder.trim_end()
+            var probe = context.index
+            var blanks = 0
+
+            while probe < context.lines.length():
+                let line = context.lines.at(probe).unwrap()
+
+                if line.trim() == "":
+                    blanks = blanks + 1
+                    probe = probe + 1
+                    continue
+
+                let next = uncomment(line)
                 if next.trim() == "" or indent(next) <= base: break
+
+                context.index = probe
+                let next_indent = try indentation(context: context, text: next)
                 if (
                     boundary(text: next, colon: true) >= 0
                     or sequence(next.trim_start())
@@ -802,8 +900,18 @@ fn block_value(
                     )
                 )
 
-                remainder = remainder.concat(" ").concat(next.trim())
-                context.index = context.index + 1
+                var separator = " "
+
+                if blanks > 0:
+                    separator = ""
+
+                    while blanks > 0:
+                        separator = separator.concat("\n")
+                        blanks = blanks - 1
+
+                remainder = remainder.concat(separator).concat(next.trim())
+                probe = probe + 1
+                context.index = probe
 
         result = try inline_value(context: context, text: remainder, depth: depth)
     else:
@@ -965,7 +1073,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                     start: colon + 1,
                     end: content.scalar_length()
                 )
-                .trim()
+                .trim_start()
             )
             context.index = context.index + 1
             let value = try block_value(
@@ -1079,6 +1187,7 @@ export fn parse(
 
     let context = Context(
         lines: normalized.split(separator: "\n"),
+        final_break: normalized.ends_with("\n"),
         index: 0,
         limits: options,
         values: 0,

@@ -1,12 +1,14 @@
 package e2e_test
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
@@ -29,12 +31,25 @@ func TestLibraryProjectCommandsAndCache(t *testing.T) {
 	write("ms.toml", configuration)
 	write("src/value.ms", "export fn value() -> Int: return 3\n")
 	write("src/other.ms", "import panic from \"@std/faults.ms\"\nexport fn other() -> Int: return 4\ntest \"unimported\":\n    if other() != 4: return panic(\"bad other\")\n")
-	write("test.ms", "import value from \"@lib/value.ms\"\nimport panic from \"@std/faults.ms\"\ntest \"root\":\n    if value() != 3: return panic(\"bad value\")\n")
+	write("golden/input.txt", "fixture")
+	write("test.ms", `import value from "@lib/value.ms"
+import filesystem from "@std/fs.ms"
+import panic from "@std/faults.ms"
+test "root":
+    if value() != 3: return panic("bad value")
+    match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
+        ok(data):
+            if data.length() != 7: return panic("wrong fixture size")
+        error(_):
+            return panic("fixture not found from project directory")
+`)
 	write("tests/value_test.ms", "test \"nested\":\n    return unit\n")
 	// Invoke from an unrelated directory: module and lock paths remain manifest-relative.
 	run := func(args ...string) (string, error) {
 		t.Helper()
-		c := exec.Command(cliBinary, args...)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		c := exec.CommandContext(ctx, cliBinary, args...)
 		c.Dir = t.TempDir()
 		data, err := c.CombinedOutput()
 		return string(data), err

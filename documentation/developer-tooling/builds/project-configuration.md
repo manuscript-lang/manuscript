@@ -9,6 +9,8 @@ A project has an `ms.toml` file at its root. The compiler reads this file to loc
 
 ## A project manifest
 
+`ms init [directory]` creates a manifest, an entry module, a `test.ms`, and a `.gitignore` excluding `.ms-cache/`. Commit `ms.lock`, which the first build creates, and do not commit `.ms-cache/`.
+
 ```toml
 [project]
 name = "store"

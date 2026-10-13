@@ -155,3 +155,41 @@ func TestRecordDefaultDocumentation(t *testing.T) {
 		t.Fatal("field default spelling changed", docs)
 	}
 }
+
+func TestModuleDocumentationCapturesLeadingComments(t *testing.T) {
+	source := `# Adds two numbers.
+# Never rounds.
+export fn add(a: Int, b: Int) -> Int:
+    return a + b
+
+# Detached by a blank line.
+
+export fn sub(a: Int, b: Int) -> Int:
+    return a - b
+
+# Not a doc comment: private declaration.
+fn helper() -> Int:
+    return 1
+
+export fn bare() -> Int:
+    return 0
+`
+	module, err := parser.Parse("docs.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := Check([]*syntax.Module{module}, nil)
+	if len(program.Diagnostics) != 0 {
+		t.Fatal(program.Diagnostics)
+	}
+	docs := map[string]string{}
+	for _, d := range ModuleDocumentation(program)[0].Declarations {
+		docs[d.Name] = d.Doc
+	}
+	if docs["add"] != "Adds two numbers.\nNever rounds." {
+		t.Errorf("add doc = %q", docs["add"])
+	}
+	if docs["sub"] != "" || docs["bare"] != "" {
+		t.Errorf("detached or absent comments leaked: %q %q", docs["sub"], docs["bare"])
+	}
+}

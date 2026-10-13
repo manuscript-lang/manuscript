@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/json.ms"`.
 
 ## JsonError {data-api-kind="Alternative"}
 
+Errors returned for malformed JSON or configured input and nesting limits.
+
 ```manuscript
 type JsonError:
     case InvalidInput
@@ -22,6 +24,8 @@ impl Error for JsonError:
 
 ## JsonLimits {data-api-kind="Record"}
 
+Optional bounds for JSON input bytes, nesting depth, and parsed values.
+
 ```manuscript
 type JsonLimits:
     max_bytes: Optional[Int] = none
@@ -30,6 +34,8 @@ type JsonLimits:
 ```
 
 ## JsonValue {data-api-kind="Alternative"}
+
+A JSON value. Number text is retained to avoid losing precision during parsing.
 
 ```manuscript
 type JsonValue:
@@ -43,11 +49,15 @@ type JsonValue:
 
 ## parse {data-api-kind="Function"}
 
+Parses one JSON value and applies the supplied input, depth, and value limits.
+
 ```manuscript
 fn parse(text: String, limits: Optional[JsonLimits] = none) -> Result[JsonValue, JsonError]:
 ```
 
 ## stringify {data-api-kind="Function"}
+
+Serializes a JSON value. `max_bytes` bounds output when supplied.
 
 ```manuscript
 fn stringify(value: JsonValue, max_bytes: Optional[Int] = none) -> Result[String, JsonError]:

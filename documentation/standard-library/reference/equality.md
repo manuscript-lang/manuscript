@@ -10,12 +10,17 @@ Explicit imports with `import Name from "@std/equality.ms"` remain supported.
 
 ## Equal {data-api-kind="Interface"}
 
+Equality and hashing are ordinary operation interfaces. Built-in data retains
+its value semantics; an explicit implementation selects domain identity.
+
 ```manuscript
 interface Equal:
     fn equals(other: Equal) -> Bool
 ```
 
 ## Hashable {data-api-kind="Interface"}
+
+A type with a stable hash consistent with its `Equal` implementation.
 
 ```manuscript
 interface Hashable:

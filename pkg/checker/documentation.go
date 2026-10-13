@@ -15,6 +15,7 @@ type APIDeclaration struct {
 	// snapshot retains its existing machine-readable type and member contracts.
 	Declaration                string   `json:"-"`
 	Name                       string   `json:"name"`
+	Doc                        string   `json:"doc,omitempty"`
 	Kind                       string   `json:"kind"`
 	Type                       string   `json:"type"`
 	Parameters                 []string `json:"type_parameters,omitempty"`
@@ -92,6 +93,7 @@ func documentSymbol(symbol *Symbol, source string) APIDeclaration {
 			keyword = "interface"
 		}
 		d.Declaration = documentDeclaration(decl, keyword, decl.Name, source)
+		d.Doc = leadingComment(source, decl.Pos.Offset)
 	} else if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
 		d.Declaration = documentDeclaration(intrinsic.Def.Symbol.Decl, "type", symbol.Name)
 	} else {
@@ -191,4 +193,26 @@ func documentOperationName(receiver *Type, name string) string {
 		params = append(params, parameter)
 	}
 	return name + "[" + strings.Join(params, ", ") + "]"
+}
+
+// leadingComment returns the contiguous block of '#' comment lines that ends on
+// the line directly above the declaration containing offset. A blank line
+// detaches the block. Markers are removed; text is otherwise preserved.
+func leadingComment(source string, offset int) string {
+	if offset < 0 || offset > len(source) {
+		return ""
+	}
+	lines := strings.Split(source[:offset], "\n")
+	// The final element is the part of the declaration's own line before it.
+	lines = lines[:len(lines)-1]
+	var block []string
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if !strings.HasPrefix(line, "#") {
+			break
+		}
+		line = strings.TrimPrefix(line, "#")
+		block = append([]string{strings.TrimPrefix(line, " ")}, block...)
+	}
+	return strings.Join(block, "\n")
 }

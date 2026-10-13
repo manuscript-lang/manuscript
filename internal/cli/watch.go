@@ -75,6 +75,7 @@ func watchProgram(command, filename string, options compiler.Options, kind compi
 			child = nil
 		}
 		next := exec.Command(executable, arguments...)
+		next.Dir = testWorkingDirectory(command, filename, result)
 		next.Stdin, next.Stdout, next.Stderr = os.Stdin, os.Stdout, os.Stderr
 		if err := next.Start(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
