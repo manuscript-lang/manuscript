@@ -338,6 +338,9 @@ func (lineInfo *DebugLineInfo) PrologueEndPC(start, end uint64) (pc uint64, file
 			if sm.address >= end {
 				return 0, "", 0, false
 			}
+			if sm.address < start {
+				return 0, "", 0, false
+			}
 			if sm.prologueEnd {
 				return sm.address, sm.file, sm.line, true
 			}
@@ -351,21 +354,19 @@ func (lineInfo *DebugLineInfo) PrologueEndPC(start, end uint64) (pc uint64, file
 	}
 }
 
-// FirstStmtForLine looks in the half open interval [start, end) for the
-// first PC address marked as stmt for the line at address 'start'.
-func (lineInfo *DebugLineInfo) FirstStmtForLine(start, end uint64) (pc uint64, file string, line int, ok bool) {
-	first := true
+// FirstStmt looks in the half open interval [start, end) for the
+// first PC address marked as stmt.
+func (lineInfo *DebugLineInfo) FirstStmt(start, end uint64) (pc uint64, file string, line int, ok bool) {
 	sm := lineInfo.stateMachineForEntry(start)
 	for {
 		if sm.valid {
 			if sm.address >= end {
 				return 0, "", 0, false
 			}
-			if first {
-				first = false
-				file, line = sm.file, sm.line
+			if sm.address < start {
+				return 0, "", 0, false
 			}
-			if sm.isStmt && sm.file == file && sm.line == line {
+			if sm.isStmt {
 				return sm.address, sm.file, sm.line, true
 			}
 		}

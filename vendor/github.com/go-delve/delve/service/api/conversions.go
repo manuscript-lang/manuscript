@@ -28,6 +28,7 @@ func ConvertLogicalBreakpoint(lbp *proc.LogicalBreakpoint) *Breakpoint {
 		Variables:        lbp.Variables,
 		LoadArgs:         LoadConfigFromProc(lbp.LoadArgs),
 		LoadLocals:       LoadConfigFromProc(lbp.LoadLocals),
+		CustomCommands:   lbp.CustomCommands,
 		TotalHitCount:    lbp.TotalHitCount,
 		Disabled:         !lbp.Enabled(),
 		UserData:         lbp.UserData,
@@ -470,6 +471,21 @@ func ConvertEvent(event *proc.Event) *Event {
 		r.BinaryInfoDownloadEventDetails = &BinaryInfoDownloadEventDetails{
 			ImagePath: event.BinaryInfoDownloadEventDetails.ImagePath,
 			Progress:  event.BinaryInfoDownloadEventDetails.Progress,
+		}
+	}
+
+	if event.BreakpointMaterializedEventDetails != nil {
+		r.BreakpointMaterializedEventDetails = &BreakpointMaterializedEventDetails{
+			Breakpoint: ConvertLogicalBreakpoint(event.BreakpointMaterializedEventDetails.Breakpoint),
+		}
+	}
+
+	if event.ProcessSpawnedEventDetails != nil {
+		r.ProcessSpawnedEventDetails = &ProcessSpawnedEventDetails{
+			PID:        event.ProcessSpawnedEventDetails.PID,
+			ThreadID:   event.ProcessSpawnedEventDetails.ThreadID,
+			Cmdline:    event.ProcessSpawnedEventDetails.Cmdline,
+			WillFollow: event.ProcessSpawnedEventDetails.WillFollow,
 		}
 	}
 

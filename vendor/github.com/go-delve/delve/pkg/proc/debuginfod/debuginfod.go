@@ -3,22 +3,26 @@ package debuginfod
 import (
 	"bufio"
 	"bytes"
-	"os"
+	"context"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 )
 
 const debuginfodFind = "debuginfod-find"
-const notificationThrottle time.Duration = 1 * time.Second
+const notificationThrottle time.Duration = 500 * time.Millisecond
 
-func execFind(notify func(string), args ...string) (string, error) {
+func execFind(ctx context.Context, notify func(string), args ...string) (string, error) {
 	if _, err := exec.LookPath(debuginfodFind); err != nil {
 		return "", err
 	}
-	cmd := exec.Command(debuginfodFind, args...)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	cmd := exec.CommandContext(ctx, debuginfodFind, args...)
 	if notify != nil {
-		cmd.Env = append(os.Environ(), "DEBUGINFOD_PROGRESS=yes")
+		cmd.Args = slices.Insert(cmd.Args, 1, "--verbose")
 		stderr, err := cmd.StderrPipe()
 		if err != nil {
 			return "", err
@@ -59,9 +63,9 @@ func dropCR(data []byte) []byte {
 }
 
 func GetSource(buildid, filename string) (string, error) {
-	return execFind(nil, "source", buildid, filename)
+	return execFind(context.Background(), nil, "source", buildid, filename)
 }
 
-func GetDebuginfo(notify func(string), buildid string) (string, error) {
-	return execFind(notify, "debuginfo", buildid)
+func GetDebuginfo(ctx context.Context, notify func(string), buildid string) (string, error) {
+	return execFind(ctx, notify, "debuginfo", buildid)
 }

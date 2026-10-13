@@ -145,10 +145,14 @@ func (s *RPCServer) Command(command api.DebuggerCommand, cb service.RPCCallback)
 }
 
 func (s *RPCServer) eventsFn(event *proc.Event) {
-	s.eventsChan <- event
+	select {
+	case s.eventsChan <- event:
+	default:
+	}
 }
 
 type GetBufferedTracepointsIn struct {
+	LoadCfg *api.LoadConfig
 }
 
 type GetBufferedTracepointsOut struct {
@@ -156,7 +160,7 @@ type GetBufferedTracepointsOut struct {
 }
 
 func (s *RPCServer) GetBufferedTracepoints(arg GetBufferedTracepointsIn, out *GetBufferedTracepointsOut) error {
-	out.TracepointResults = s.debugger.GetBufferedTracepoints()
+	out.TracepointResults = s.debugger.GetBufferedTracepoints(arg.LoadCfg)
 	return nil
 }
 
@@ -194,6 +198,7 @@ type StacktraceIn struct {
 	Defers bool // read deferred functions (equivalent to passing StacktraceReadDefers in Opts)
 	Opts   api.StacktraceOptions
 	Cfg    *api.LoadConfig
+	Skip   int // number of frames to skip
 }
 
 type StacktraceOut struct {
@@ -207,7 +212,8 @@ type StacktraceOut struct {
 func (s *RPCServer) Stacktrace(arg StacktraceIn, out *StacktraceOut) error {
 	cfg := arg.Cfg
 	if cfg == nil && arg.Full {
-		cfg = &api.LoadConfig{FollowPointers: true, MaxVariableRecurse: 1, MaxStringLen: 64, MaxArrayValues: 64, MaxStructFields: -1}
+		full := proc.LoadFullValue()
+		cfg = api.LoadConfigFromProc(&full)
 	}
 	if arg.Defers {
 		arg.Opts |= api.StacktraceReadDefers
@@ -215,6 +221,13 @@ func (s *RPCServer) Stacktrace(arg StacktraceIn, out *StacktraceOut) error {
 	rawlocs, err := s.debugger.Stacktrace(arg.Id, arg.Depth, arg.Opts)
 	if err != nil {
 		return err
+	}
+	if arg.Skip > 0 {
+		if arg.Skip >= len(rawlocs) {
+			rawlocs = nil
+		} else {
+			rawlocs = rawlocs[arg.Skip:]
+		}
 	}
 	out.Locations, err = s.debugger.ConvertStacktrace(rawlocs, api.LoadConfigToProc(cfg))
 	return err
@@ -276,6 +289,31 @@ func (s *RPCServer) CreateBreakpoint(arg CreateBreakpointIn, out *CreateBreakpoi
 		return err
 	}
 	out.Breakpoint = *createdbp
+	return nil
+}
+
+type SetExecutionPointIn struct {
+	// Addr is the address of the instruction to jump to.
+	Addr uint64
+}
+
+type SetExecutionPointOut struct {
+	State api.DebuggerState
+}
+
+// SetExecutionPoint sets the next instruction to be executed by the current
+// thread to the instruction at arg.Addr, without executing any of the
+// instructions in between (also known as "set next statement" or "jump"). The
+// target address must be inside the function the current thread is stopped in.
+func (s *RPCServer) SetExecutionPoint(arg SetExecutionPointIn, out *SetExecutionPointOut) error {
+	if err := s.debugger.SetExecutionPoint(arg.Addr); err != nil {
+		return err
+	}
+	state, err := s.debugger.State(false)
+	if err != nil {
+		return err
+	}
+	out.State = *state
 	return nil
 }
 
@@ -544,7 +582,8 @@ type EvalOut struct {
 func (s *RPCServer) Eval(arg EvalIn, out *EvalOut) error {
 	cfg := arg.Cfg
 	if cfg == nil {
-		cfg = &api.LoadConfig{FollowPointers: true, MaxVariableRecurse: 1, MaxStringLen: 64, MaxArrayValues: 64, MaxStructFields: -1}
+		full := proc.LoadFullValue()
+		cfg = api.LoadConfigFromProc(&full)
 	}
 	pcfg := *api.LoadConfigToProc(cfg)
 	v, err := s.debugger.EvalVariableInScope(arg.Scope.GoroutineID, arg.Scope.Frame, arg.Scope.DeferredCall, arg.Expr, pcfg)
@@ -731,9 +770,7 @@ type AttachedToExistingProcessOut struct {
 
 // AttachedToExistingProcess returns whether we attached to a running process or not
 func (s *RPCServer) AttachedToExistingProcess(arg AttachedToExistingProcessIn, out *AttachedToExistingProcessOut) error {
-	if s.config.Debugger.AttachPid != 0 {
-		out.Answer = true
-	}
+	out.Answer = s.debugger.AttachPid() != 0
 	return nil
 }
 
@@ -912,14 +949,21 @@ type ListDynamicLibrariesIn struct {
 // ListDynamicLibrariesOut holds the return values of ListDynamicLibraries
 type ListDynamicLibrariesOut struct {
 	List []api.Image
+
+	ExecutableTrimpath bool
 }
 
 func (s *RPCServer) ListDynamicLibraries(in ListDynamicLibrariesIn, out *ListDynamicLibrariesOut) error {
 	imgs := s.debugger.ListDynamicLibraries()
-	out.List = make([]api.Image, 0, len(imgs))
-	for i := range imgs {
-		out.List = append(out.List, api.ConvertImage(imgs[i]))
+	_, unlock := s.debugger.LockTargetGroup()
+	defer unlock()
+	out.List = make([]api.Image, 0, len(imgs)-1)
+	for i := 1; i < len(imgs); i++ {
+		img := api.ConvertImage(imgs[i])
+		img.Trimpath = imgs[i].Trimpath
+		out.List = append(out.List, img)
 	}
+	out.ExecutableTrimpath = imgs[0].Trimpath
 	return nil
 }
 
@@ -1193,4 +1237,53 @@ func (s *RPCServer) GetEvents(arg GetEventsIn, cb service.RPCCallback) {
 		}
 	}
 	cb.Return(out, nil)
+}
+
+type CancelDownloadsIn struct {
+}
+
+type CancelDownloadsOut struct {
+}
+
+func (s *RPCServer) CancelDownloads(arg CancelDownloadsIn, cb service.RPCCallback) {
+	close(cb.SetupDoneChan())
+	s.debugger.CancelDownloads()
+	cb.Return(new(CancelDownloadsOut), nil)
+}
+
+type DownloadLibraryDebugInfoIn struct {
+	N int
+	// WithEvents specifies that download events, similar to the ones produced
+	// by Command are emitted.
+	// A client specifying WithEvents is responsible for repeatedly calling
+	// GetEvents until a EventDownloadLibraryInfoDone is seen.
+	WithEvents bool
+}
+
+type DownloadLibraryDebugInfoOut struct {
+}
+
+func (s *RPCServer) DownloadLibraryDebugInfo(arg DownloadLibraryDebugInfoIn, cb service.RPCCallback) {
+	close(cb.SetupDoneChan())
+	eventsFn := s.eventsFn
+	if !arg.WithEvents {
+		eventsFn = nil
+	}
+	err := s.debugger.DownloadLibraryDebugInfo(arg.N+1, eventsFn)
+	cb.Return(new(DownloadLibraryDebugInfoOut), err)
+}
+
+type TypeInfoIn struct {
+	Name string
+}
+
+type TypeInfoOut struct {
+	TypeInfo *api.TypeInfo
+}
+
+// TypeInfo returns informations about the specified type.
+func (s *RPCServer) TypeInfo(arg TypeInfoIn, out *TypeInfoOut) error {
+	var err error
+	out.TypeInfo, err = s.debugger.TypeInfo(arg.Name)
+	return err
 }

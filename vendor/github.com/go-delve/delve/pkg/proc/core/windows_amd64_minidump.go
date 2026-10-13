@@ -8,7 +8,7 @@ import (
 )
 
 func readAMD64Minidump(minidumpPath, exePath string) (*process, proc.Thread, error) {
-	var logfn func(string, ...interface{})
+	var logfn func(string, ...any)
 	if logflags.Minidump() {
 		logfn = logflags.MinidumpLogger().Infof
 	}
@@ -36,7 +36,7 @@ func readAMD64Minidump(minidumpPath, exePath string) (*process, proc.Thread, err
 	p := &process{
 		mem:         memory,
 		Threads:     map[int]*thread{},
-		bi:          proc.NewBinaryInfo("windows", "amd64"),
+		bi:          proc.NewBinaryInfo("windows", "amd64", false),
 		entryPoint:  entryPoint,
 		breakpoints: proc.NewBreakpointMap(),
 		pid:         int(mdmp.Pid),

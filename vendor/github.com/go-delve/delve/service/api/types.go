@@ -2,11 +2,13 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/go-delve/delve/pkg/proc"
 )
@@ -49,6 +51,9 @@ type DebuggerState struct {
 	ExitStatus int  `json:"exitStatus"`
 	// When contains a description of the current position in a recording
 	When string
+	// StopReason describes why the process is stopped (e.g., "breakpoint",
+	// "shared library loaded"). Empty when the stop reason is unknown.
+	StopReason string `json:"stopReason,omitempty"`
 	// Filled by RPCClient.Continue, indicates an error
 	Err error `json:"-"`
 }
@@ -118,6 +123,8 @@ type Breakpoint struct {
 	LoadArgs *LoadConfig
 	// LoadLocals requests loading function locals when the breakpoint is hit
 	LoadLocals *LoadConfig
+	// CustomCommands are custom starlark commands to execute when the breakpoint is hit
+	CustomCommands []string `json:"customCommands,omitempty"`
 
 	// WatchExpr is the expression used to create this watchpoint
 	WatchExpr string
@@ -132,7 +139,7 @@ type Breakpoint struct {
 	// Disabled flag, signifying the state of the breakpoint
 	Disabled bool `json:"disabled"`
 
-	UserData interface{} `json:"-"`
+	UserData any `json:"-"`
 
 	// RootFuncName is the Root function from where tracing needs to be done
 	RootFuncName string
@@ -326,6 +333,14 @@ type Variable struct {
 	// Function variables will store the name of the function in this field
 	Value string `json:"value"`
 
+	// StringValueBytes contains the Value for string variables that can not be
+	// represented in unicode.
+	// Specifically if v.Kind is reflect.String and v.Value is not a valid
+	// unicode string the JSON marshaller will convert it to a valid unicode
+	// string, altering its contents. This fields contains the unaltered string
+	// contents.
+	StringValueBytes []byte
+
 	// Number of elements in an array or a slice, number of keys for a map, number of struct members for a struct, length of strings, number of captured variables for functions
 	Len int64 `json:"len"`
 	// Cap value for slices
@@ -351,6 +366,36 @@ type Variable struct {
 	LocationExpr string
 	// DeclLine is the line number of this variable's declaration
 	DeclLine int64
+}
+
+type variableWithoutMarshaler Variable
+
+func (v *Variable) MarshalJSON() (text []byte, err error) {
+	var v2 *variableWithoutMarshaler = (*variableWithoutMarshaler)(v)
+	if v2.Kind == reflect.String && !utf8.ValidString(v2.Value) {
+		value := v2.Value
+		// Should we blot out the value with something obviously wrong? Like:
+		//
+		// 	v2.Value = "<invalid-utf8-string>"
+		// 	defer func() {
+		// 		v2.Value = value
+		// 	}()
+		v2.StringValueBytes = []byte(value)
+	}
+	return json.Marshal(v2)
+}
+
+func (v *Variable) UnmarshalJSON(buf []byte) error {
+	var v2 *variableWithoutMarshaler = (*variableWithoutMarshaler)(v)
+	err := json.Unmarshal(buf, v2)
+	if err != nil {
+		return err
+	}
+	if v.Kind == reflect.String && len(v.StringValueBytes) > 0 {
+		v.Value = string(v.StringValueBytes)
+		v.StringValueBytes = nil
+	}
+	return nil
 }
 
 // LoadConfig describes how to load values from target's memory
@@ -413,6 +458,8 @@ type DebuggerCommand struct {
 
 	// If WithEvents is set events are generated that should be read by calling
 	// GetEvents.
+	// A client specifying this is responsible for calling GetEvents repeatedly
+	// until an EventStopped is seen.
 	WithEvents bool
 
 	// UnsafeCall disables parameter escape checking for function calls.
@@ -589,6 +636,7 @@ type Image struct {
 	Path      string
 	Address   uint64
 	LoadError string
+	Trimpath  bool
 }
 
 // Ancestor represents a goroutine ancestor
@@ -693,17 +741,51 @@ type GuessSubstitutePathIn struct {
 type Event struct {
 	Kind EventKind
 	*BinaryInfoDownloadEventDetails
+	*BreakpointMaterializedEventDetails
+	*ProcessSpawnedEventDetails
 }
 
 type EventKind uint8
 
 const (
-	EventResumed EventKind = iota
-	EventStopped
-	EventBinaryInfoDownload
+	EventResumed                 EventKind = iota // The target process has resumed
+	EventStopped                                  // The target process stopped, there will be no more events until Command is called again
+	EventBinaryInfoDownload                       // Delve is downloading the debug symbols for a library, using debuginfod
+	EventBreakpointMaterialized                   // A previously suspended breakpoint has been materialized
+	EventProcessSpawned                           // A new child process has been spawned
+	EventDownloadLibraryInfoDone                  // The DownloadLibraryDebugInfo call has finished its work
 )
 
 // BinaryInfoDownloadEventDetails describes the details of a BinaryInfoDownloadEvent
 type BinaryInfoDownloadEventDetails struct {
 	ImagePath, Progress string
+}
+
+// BreakpointMaterializedEventDetails describes the details of a BreakpointMaterializedEvent
+type BreakpointMaterializedEventDetails struct {
+	Breakpoint *Breakpoint
+}
+
+// ProcessSpawnedEventDetails describes the details of a ProcessSpawnedEvent
+type ProcessSpawnedEventDetails struct {
+	PID        int
+	ThreadID   int
+	Cmdline    string
+	WillFollow bool
+}
+
+type TypeInfo struct {
+	Kind     reflect.Kind
+	Size     int64
+	RealType string
+	Fields   []TypeInfoField
+	Methods  []TypeInfoMethod
+}
+
+type TypeInfoField struct {
+	Name, Type string
+}
+
+type TypeInfoMethod struct {
+	Name string
 }

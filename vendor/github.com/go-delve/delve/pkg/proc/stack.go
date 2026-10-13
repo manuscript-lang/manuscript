@@ -13,6 +13,7 @@ import (
 	"github.com/go-delve/delve/pkg/dwarf/frame"
 	"github.com/go-delve/delve/pkg/dwarf/op"
 	"github.com/go-delve/delve/pkg/dwarf/reader"
+	"github.com/go-delve/delve/pkg/goversion"
 	"github.com/go-delve/delve/pkg/logflags"
 )
 
@@ -66,13 +67,13 @@ type Stackframe struct {
 	lastpc uint64
 
 	// closurePtr is the value of .closureptr, if present. This variable is
-	// used to correlated range-over-func closure bodies with their enclosing
+	// used to correlate range-over-func closure bodies with their enclosing
 	// function.
 	closurePtr int64
 
 	// TopmostDefer is the defer that would be at the top of the stack when a
 	// panic unwind would get to this call frame, in other words it's the first
-	// deferred function that will  be called if the runtime unwinds past this
+	// deferred function that will be called if the runtime unwinds past this
 	// call frame.
 	TopmostDefer *Defer
 
@@ -111,6 +112,14 @@ func (frame *Stackframe) contains(off int64) bool {
 func ThreadStacktrace(tgt *Target, thread Thread, depth int) ([]Stackframe, error) {
 	g, _ := GetG(thread)
 	if g == nil {
+		if cachedStack := tgt.scache.get(0, thread.ThreadID()); cachedStack != nil {
+			frames, err := cachedStack.it.stacktrace(depth, cachedStack.frames)
+			if err != nil {
+				return nil, err
+			}
+			tgt.scache.put(0, thread.ThreadID(), cachedStack.it, frames)
+			return limitframes(frames, depth+1), nil
+		}
 		regs, err := thread.Registers()
 		if err != nil {
 			return nil, err
@@ -119,7 +128,13 @@ func ThreadStacktrace(tgt *Target, thread Thread, depth int) ([]Stackframe, erro
 		dwarfRegs := *(thread.BinInfo().Arch.RegistersToDwarfRegisters(so.StaticBase, regs))
 		dwarfRegs.ChangeFunc = thread.SetReg
 		it := newStackIterator(tgt, thread.BinInfo(), thread.ProcessMemory(), dwarfRegs, 0, nil, 0)
-		return it.stacktrace(depth)
+		frames, err := it.stacktrace(depth, nil)
+		if err != nil {
+			return nil, err
+		}
+		tgt.scache.put(0, thread.ThreadID(), it, frames)
+		return frames, nil
+
 	}
 	return GoroutineStacktrace(tgt, g, depth, 0)
 }
@@ -165,16 +180,33 @@ const (
 // GoroutineStacktrace returns the stack trace for a goroutine.
 // Note the locations in the array are return addresses not call addresses.
 func GoroutineStacktrace(tgt *Target, g *G, depth int, opts StacktraceOptions) ([]Stackframe, error) {
+	if opts == 0 {
+		var threadID int
+		if g.Thread != nil {
+			threadID = g.Thread.ThreadID()
+		}
+		if cachedStack := tgt.scache.get(g.ID, threadID); cachedStack != nil {
+			frames, err := cachedStack.it.stacktrace(depth, cachedStack.frames)
+			if err != nil {
+				return nil, err
+			}
+			tgt.scache.put(g.ID, threadID, cachedStack.it, frames)
+			return limitframes(frames, depth+1), nil
+		}
+	}
 	it, err := goroutineStackIterator(tgt, g, opts)
 	if err != nil {
 		return nil, err
 	}
-	frames, err := it.stacktrace(depth)
+	frames, err := it.stacktrace(depth, nil)
 	if err != nil {
 		return nil, err
 	}
 	if opts&StacktraceReadDefers != 0 {
 		g.readDefers(frames)
+	}
+	if opts == 0 {
+		tgt.scache.put(g.ID, 0, it, frames)
 	}
 	return frames, nil
 }
@@ -212,6 +244,13 @@ type stackIterator struct {
 
 	count int
 
+	// canUseFP is true when the frame pointer has been validated as stable
+	// for FP-based unwinding. At the top of the stack the topmost function
+	// may be frameless (BP inherited from caller), so canUseFP starts false.
+	// It becomes true when BP + 2*PtrSize == CFA, indicating that BP is the
+	// current frame's own frame pointer.
+	canUseFP bool
+
 	opts StacktraceOptions
 }
 
@@ -242,6 +281,15 @@ func (it *stackIterator) Next() bool {
 			fmt.Fprintf(w, " %s = %#x", name, reg.Uint64Val)
 		}
 		logger.Debugf("%s", w.String())
+	}
+
+	// Adjust return addresses that land on a C function entry due to noreturn calls (e.g. assert).
+	if !it.top && !it.sigret && it.pc > 0 {
+		if fn := it.bi.PCToFunc(it.pc); fn != nil && it.pc == fn.Entry && !fn.cu.isgo {
+			if pfn := it.bi.PCToFunc(it.pc - 1); pfn != nil && pfn != fn {
+				it.pc--
+			}
+		}
 	}
 
 	callFrameRegs, ret, retaddr := it.advanceRegs()
@@ -385,11 +433,19 @@ func (it *stackIterator) newStackframe(ret, retaddr uint64) Stackframe {
 	return r
 }
 
-func (it *stackIterator) stacktrace(depth int) ([]Stackframe, error) {
+func (it *stackIterator) stacktrace(depth int, initialFrames []Stackframe) ([]Stackframe, error) {
 	if depth < 0 {
 		return nil, errors.New("negative maximum stack depth")
 	}
-	frames := make([]Stackframe, 0, depth+1)
+	var frames []Stackframe
+	if len(initialFrames) > 0 {
+		frames = initialFrames
+		if len(frames) >= depth+1 {
+			return frames, nil
+		}
+	} else {
+		frames = make([]Stackframe, 0, depth+1)
+	}
 	f := func(frame Stackframe) bool {
 		frames = append(frames, frame)
 		return len(frames) < depth+1
@@ -414,7 +470,6 @@ func (it *stackIterator) stacktrace(depth int) ([]Stackframe, error) {
 		}
 
 		frames = append(frames, Stackframe{Err: err})
-
 	}
 	return frames, nil
 }
@@ -455,7 +510,7 @@ func (it *stackIterator) appendInlineCalls(callback func(Stackframe) bool, frame
 		return callback(frame)
 	}
 
-	for _, entry := range reader.InlineStack(dwarfTree, callpc) {
+	for i, entry := range reader.InlineStack(dwarfTree, callpc) {
 		frame.hasInlines = true
 		fnname, okname := entry.Val(dwarf.AttrName).(string)
 		fileidx, okfileidx := entry.Val(dwarf.AttrCallFile).(int64)
@@ -485,6 +540,7 @@ func (it *stackIterator) appendInlineCalls(callback func(Stackframe) bool, frame
 			Ret:         frame.Ret,
 			Err:         frame.Err,
 			SystemStack: frame.SystemStack,
+			hasInlines:  i > 0,
 			Inlined:     true,
 			lastpc:      frame.lastpc,
 			closurePtr:  frame.closurePtr,
@@ -498,16 +554,155 @@ func (it *stackIterator) appendInlineCalls(callback func(Stackframe) bool, frame
 	return callback(frame)
 }
 
-// advanceRegs calculates the DwarfRegisters for a next stack frame
+// advanceRegs calculates the DwarfRegisters for the next stack frame
 // (corresponding to it.pc).
 //
-// The computation uses the registers for the current stack frame (it.regs) and
-// the corresponding Frame Descriptor Entry (FDE) retrieved from the DWARF info.
+// The computation uses the registers for the current stack frame in it.regs.
+// When possible a simple frame pointer based unwinding is done, otherwise
+// the Frame Descriptor Entry (FDE) corresponding to the current frame,
+// retrieved from DWARF, is used.
 //
 // The new set of registers is returned. it.regs is not updated, except for
 // it.regs.CFA; the caller has to eventually switch it.regs when the iterator
 // advances to the next frame.
 func (it *stackIterator) advanceRegs() (callFrameRegs op.DwarfRegisters, ret uint64, retaddr uint64) {
+	if callFrameRegs, ret, retaddr, ok := it.tryFramePointerUnwind(); ok {
+		return callFrameRegs, ret, retaddr
+	}
+	callFrameRegs, ret, retaddr = it.advanceRegsDWARF()
+	if !it.canUseFP && it.err == nil {
+		ptrSize := uint64(it.bi.Arch.PtrSize())
+		stable := false
+
+		switch it.bi.Arch.Name {
+		case "amd64":
+			// AMD64: BP + 2*PtrSize == CFA
+			bp := it.regs.BP()
+			cfa := uint64(it.regs.CFA)
+			stable = (bp != 0 && bp+2*ptrSize == cfa)
+
+		case "arm64":
+			// ARM64: BP + 2*PtrSize == CFA
+			bp := it.regs.BP()
+			cfa := uint64(it.regs.CFA)
+			stable = (bp != 0 && bp+2*ptrSize == cfa)
+
+			// Disable hybrid FP unwinding on Windows when DW_AT_producer is missing
+			// or unparsable (otherwise canUseFP could activate despite the Go 1.24+
+			// guard), and for Go 1.24 and later due to test failures. See
+			// golang/go#63630. Open-ended since the upstream issue is still
+			// unresolved as of Go 1.27.
+			if it.bi.GOOS == "windows" {
+				ver := goversion.ParseProducer(it.bi.Producer())
+				if ver.Major < 1 || !ver.IsDevelBuild() && ver.Major == 1 && ver.Minor >= 24 {
+					stable = false
+				}
+			}
+		}
+
+		if stable {
+			it.canUseFP = true
+			// AArch64: DWARF may omit X29 (BP) rules; inject savedBP when missing
+			if it.bi.Arch.Name == "arm64" {
+				bp := it.regs.BP()
+				if (callFrameRegs.Reg(callFrameRegs.BPRegNum) == nil || callFrameRegs.BP() == 0) && bp != 0 {
+					savedBP, err := readUintRaw(it.mem, bp, int64(ptrSize))
+					if err == nil {
+						callFrameRegs.AddReg(callFrameRegs.BPRegNum, op.DwarfRegisterFromUint64(savedBP))
+					}
+				}
+			}
+		}
+	}
+	return callFrameRegs, ret, retaddr
+}
+
+func (it *stackIterator) tryFramePointerUnwind() (callFrameRegs op.DwarfRegisters, ret uint64, retaddr uint64, ok bool) {
+	// Frame pointer unwinding is only implemented for amd64 and arm64.
+	if it.bi.Arch.Name != "amd64" && it.bi.Arch.Name != "arm64" {
+		return op.DwarfRegisters{}, 0, 0, false
+	}
+
+	if !it.canUseFP {
+		return op.DwarfRegisters{}, 0, 0, false
+	}
+
+	bp := it.regs.BP()
+	if bp == 0 {
+		return op.DwarfRegisters{}, 0, 0, false
+	}
+
+	if it.g != nil && !it.systemstack {
+		if bp < it.g.stack.lo || bp >= it.g.stack.hi {
+			return op.DwarfRegisters{}, 0, 0, false
+		}
+	}
+
+	fn := it.bi.PCToFunc(it.pc)
+	// Frame pointer conventions are only guaranteed for Go code.
+	if fn == nil || !fn.cu.isgo {
+		return op.DwarfRegisters{}, 0, 0, false
+	}
+
+	switch fn.Name {
+	case "runtime.asmcgocall",
+		"runtime.cgocallback_gofunc", "runtime.cgocallback",
+		"runtime.goexit", "runtime.goexit0", "runtime.goexit1",
+		"runtime.mstart", "runtime.mstart0", "runtime.mstart1",
+		"runtime.systemstack_switch",
+		"runtime.sigreturn", "runtime.sigtrampgo",
+		"runtime.sigpanic",
+		"crosscall2":
+		return op.DwarfRegisters{}, 0, 0, false
+	}
+
+	ptrSize := uint64(it.bi.Arch.PtrSize())
+
+	savedBP, err := readUintRaw(it.mem, bp, int64(ptrSize))
+	if err != nil {
+		return op.DwarfRegisters{}, 0, 0, false
+	}
+
+	retaddr = bp + ptrSize
+	ret, err = readUintRaw(it.mem, retaddr, int64(ptrSize))
+	if err != nil {
+		return op.DwarfRegisters{}, 0, 0, false
+	}
+
+	cfa := int64(bp + 2*ptrSize)
+
+	if ret == 0 || it.bi.PCToFunc(ret) == nil {
+		return op.DwarfRegisters{}, 0, 0, false
+	}
+
+	it.regs.CFA = cfa
+
+	callimage := it.bi.funcToImage(fn)
+	callFrameRegs = op.DwarfRegisters{
+		StaticBase: callimage.StaticBase,
+		ByteOrder:  it.regs.ByteOrder,
+		PCRegNum:   it.regs.PCRegNum,
+		SPRegNum:   it.regs.SPRegNum,
+		BPRegNum:   it.regs.BPRegNum,
+		LRRegNum:   it.regs.LRRegNum,
+	}
+
+	callFrameRegs.AddReg(callFrameRegs.SPRegNum, op.DwarfRegisterFromUint64(uint64(cfa)))
+	callFrameRegs.AddReg(callFrameRegs.BPRegNum, op.DwarfRegisterFromUint64(savedBP))
+
+	if it.bi.Arch.usesLR {
+		callFrameRegs.AddReg(callFrameRegs.LRRegNum, op.DwarfRegisterFromUint64(ret))
+	}
+
+	if logflags.Stack() {
+		logflags.StackLogger().Debugf("advanceRegs (fp) at %#x: BP=%#x savedBP=%#x ret=%#x CFA=%#x", it.pc, bp, savedBP, ret, cfa)
+	}
+
+	return callFrameRegs, ret, retaddr, true
+}
+
+// advanceRegsDWARF unwinds the stack using DWARF Call Frame Information.
+func (it *stackIterator) advanceRegsDWARF() (callFrameRegs op.DwarfRegisters, ret uint64, retaddr uint64) {
 	logger := logflags.StackLogger()
 
 	fde, err := it.bi.frameEntries.FDEForPC(it.pc)
@@ -522,7 +717,7 @@ func (it *stackIterator) advanceRegs() (callFrameRegs op.DwarfRegisters, ret uin
 		framectx = it.bi.Arch.fixFrameUnwindContext(fctxt, it.pc, it.bi)
 	}
 
-	logger.Debugf("advanceRegs at %#x", it.pc)
+	logger.Debugf("advanceRegs (DWARF) at %#x", it.pc)
 
 	cfareg, err := it.executeFrameRegRule(0, framectx.CFA, 0)
 	if cfareg == nil {
@@ -593,6 +788,14 @@ func (it *stackIterator) advanceRegs() (callFrameRegs op.DwarfRegisters, ret uin
 			}
 			retaddr = uint64(it.regs.CFA + regRule.Offset)
 		}
+	}
+
+	// Issue #3591: On LR architectures, runtime.sigpanic's DWARF CFA points to the
+	// signaled frame's SP, not the caller's SP. Add 2 words (saved FP + saved LR)
+	// to compute the correct caller SP.
+	if fn := it.bi.PCToFunc(it.pc); fn != nil && fn.Name == "runtime.sigpanic" && it.bi.Arch.usesLR {
+		callerSP := uint64(it.regs.CFA) + uint64(2*it.bi.Arch.PtrSize())
+		callFrameRegs.AddReg(callFrameRegs.SPRegNum, op.DwarfRegisterFromUint64(callerSP))
 	}
 
 	if it.bi.Arch.usesLR {
@@ -669,9 +872,9 @@ func (it *stackIterator) loadG0SchedSP() {
 	}
 	it.g0_sched_sp_loaded = true
 	if it.g != nil {
-		mvar, _ := it.g.variable.structMember("m")
+		mvar, _ := it.g.variable.structField("m")
 		if mvar != nil {
-			g0var, _ := mvar.structMember("g0")
+			g0var, _ := mvar.structField("g0")
 			if g0var != nil {
 				g0, _ := g0var.parseG()
 				if g0 != nil {
@@ -929,7 +1132,7 @@ func ruleString(rule *frame.DWRule, regnumToString func(uint64) string) string {
 	}
 }
 
-// rangeFuncStackTrace, if the topmost frame of the stack is a the body of a
+// rangeFuncStackTrace, if the topmost frame of the stack is the body of a
 // range-over-func statement, returns a slice containing the stack of range
 // bodies on the stack, interleaved with their return frames, the frame of
 // the function containing them and finally the function that called it.
@@ -1102,4 +1305,37 @@ func rangeFuncStackTrace(tgt *Target, g *G) ([]Stackframe, error) {
 	}
 	g.readDefers(frames)
 	return frames, nil
+}
+
+type cachedStack struct {
+	it     *stackIterator
+	frames []Stackframe
+}
+
+type stackCacheKey struct {
+	goid     int64
+	threadID int
+}
+
+type stackCache struct {
+	m map[stackCacheKey]*cachedStack
+}
+
+func (cache *stackCache) init() {
+	cache.m = make(map[stackCacheKey]*cachedStack)
+}
+
+func (cache *stackCache) get(goid int64, threadID int) *cachedStack {
+	return cache.m[stackCacheKey{goid, threadID}]
+}
+
+func (cache *stackCache) put(goid int64, threadID int, it *stackIterator, frames []Stackframe) {
+	cache.m[stackCacheKey{goid, threadID}] = &cachedStack{it, frames}
+}
+
+func limitframes(frames []Stackframe, n int) []Stackframe {
+	if len(frames) < n {
+		return frames
+	}
+	return frames[:n]
 }

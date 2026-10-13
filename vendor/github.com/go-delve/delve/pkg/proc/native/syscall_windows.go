@@ -1,10 +1,15 @@
-//go:generate go run $GOROOT/src/syscall/mksyscall_windows.go -output zsyscall_windows.go syscall_windows.go
+//go:generate go run -mod=mod golang.org/x/sys/windows/mkwinsyscall -output zsyscall_windows.go syscall_windows.go
 
 package native
 
 import (
 	"syscall"
+
+	"golang.org/x/sys/windows"
 )
+
+// dbgUiRemoteBreakin is inspected by address but never called by Delve.
+var dbgUiRemoteBreakin = windows.NewLazySystemDLL("ntdll.dll").NewProc("DbgUiRemoteBreakin")
 
 type _NTSTATUS int32
 
@@ -131,13 +136,14 @@ type _DEBUG_EVENT struct {
 	U              [160]byte
 }
 
-//sys	_NtQueryInformationThread(threadHandle syscall.Handle, infoclass int32, info uintptr, infolen uint32, retlen *uint32) (status _NTSTATUS) = ntdll.NtQueryInformationThread
+//sys	_NtQueryInformationThread(threadHandle syscall.Handle, infoclass int32, info *_THREAD_BASIC_INFORMATION, infolen uint32, retlen *uint32) (status _NTSTATUS) = ntdll.NtQueryInformationThread
 //sys	_GetThreadContext(thread syscall.Handle, context *_CONTEXT) (err error) = kernel32.GetThreadContext
 //sys	_SetThreadContext(thread syscall.Handle, context *_CONTEXT) (err error) = kernel32.SetThreadContext
 //sys	_SuspendThread(threadid syscall.Handle) (prevsuspcount uint32, err error) [failretval==0xffffffff] = kernel32.SuspendThread
 //sys	_ResumeThread(threadid syscall.Handle) (prevsuspcount uint32, err error) [failretval==0xffffffff] = kernel32.ResumeThread
 //sys	_ContinueDebugEvent(processid uint32, threadid uint32, continuestatus uint32) (err error) = kernel32.ContinueDebugEvent
 //sys	_WriteProcessMemory(process syscall.Handle, baseaddr uintptr, buffer *byte, size uintptr, byteswritten *uintptr) (err error) = kernel32.WriteProcessMemory
+//sys	_FlushInstructionCache(process syscall.Handle, baseaddr uintptr, size uintptr) (err error) = kernel32.FlushInstructionCache
 //sys	_ReadProcessMemory(process syscall.Handle, baseaddr uintptr, buffer *byte, size uintptr, bytesread *uintptr) (err error) = kernel32.ReadProcessMemory
 //sys	_DebugBreakProcess(process syscall.Handle) (err error) = kernel32.DebugBreakProcess
 //sys	_WaitForDebugEvent(debugevent *_DEBUG_EVENT, milliseconds uint32) (err error) = kernel32.WaitForDebugEvent

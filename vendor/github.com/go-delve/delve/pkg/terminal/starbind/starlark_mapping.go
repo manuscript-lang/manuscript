@@ -1,4 +1,4 @@
-// DO NOT EDIT: auto-generated using _scripts/gen-starlark-bindings.go
+// DO NOT EDIT: auto-generated using github.com/go-delve/build-tools/cmd/gen-starlark-bindings
 
 package starbind
 
@@ -926,13 +926,34 @@ func (env *Env) starlarkPredeclare() (starlark.StringDict, map[string]string) {
 		}
 		var rpcArgs rpc2.GetBufferedTracepointsIn
 		var rpcRet rpc2.GetBufferedTracepointsOut
+		if len(args) > 0 && args[0] != starlark.None {
+			err := unmarshalStarlarkValue(args[0], &rpcArgs.LoadCfg, "LoadCfg")
+			if err != nil {
+				return starlark.None, decorateError(thread, err)
+			}
+		} else {
+			cfg := env.ctx.LoadConfig()
+			rpcArgs.LoadCfg = &cfg
+		}
+		for _, kv := range kwargs {
+			var err error
+			switch kv[0].(starlark.String) {
+			case "LoadCfg":
+				err = unmarshalStarlarkValue(kv[1], &rpcArgs.LoadCfg, "LoadCfg")
+			default:
+				err = fmt.Errorf("unknown argument %q", kv[0])
+			}
+			if err != nil {
+				return starlark.None, decorateError(thread, err)
+			}
+		}
 		err := env.ctx.Client().CallAPI("GetBufferedTracepoints", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
 		}
 		return env.interfaceToStarlarkValue(&rpcRet), nil
 	})
-	doc["get_buffered_tracepoints"] = "builtin get_buffered_tracepoints()"
+	doc["get_buffered_tracepoints"] = "builtin get_buffered_tracepoints(LoadCfg)"
 	r["get_thread"] = starlark.NewBuiltin("get_thread", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
@@ -1633,6 +1654,37 @@ func (env *Env) starlarkPredeclare() (starlark.StringDict, map[string]string) {
 		return env.interfaceToStarlarkValue(&rpcRet), nil
 	})
 	doc["set_expr"] = "builtin set_expr(Scope, Symbol, Value)\n\nset_expr sets the value of a variable. Only numerical types and\npointers are currently supported."
+	r["set_execution_point"] = starlark.NewBuiltin("set_execution_point", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		if err := isCancelled(thread); err != nil {
+			return starlark.None, decorateError(thread, err)
+		}
+		var rpcArgs rpc2.SetExecutionPointIn
+		var rpcRet rpc2.SetExecutionPointOut
+		if len(args) > 0 && args[0] != starlark.None {
+			err := unmarshalStarlarkValue(args[0], &rpcArgs.Addr, "Addr")
+			if err != nil {
+				return starlark.None, decorateError(thread, err)
+			}
+		}
+		for _, kv := range kwargs {
+			var err error
+			switch kv[0].(starlark.String) {
+			case "Addr":
+				err = unmarshalStarlarkValue(kv[1], &rpcArgs.Addr, "Addr")
+			default:
+				err = fmt.Errorf("unknown argument %q", kv[0])
+			}
+			if err != nil {
+				return starlark.None, decorateError(thread, err)
+			}
+		}
+		err := env.ctx.Client().CallAPI("SetExecutionPoint", &rpcArgs, &rpcRet)
+		if err != nil {
+			return starlark.None, err
+		}
+		return env.interfaceToStarlarkValue(&rpcRet), nil
+	})
+	doc["set_execution_point"] = "builtin set_execution_point(Addr)\n\nset_execution_point sets the next instruction to be executed by the current\nthread to the instruction at arg.Addr, without executing any of the\ninstructions in between (also known as \"set next statement\" or \"jump\"). The\ntarget address must be inside the function the current thread is stopped in."
 	r["stacktrace"] = starlark.NewBuiltin("stacktrace", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
@@ -1675,6 +1727,12 @@ func (env *Env) starlarkPredeclare() (starlark.StringDict, map[string]string) {
 				return starlark.None, decorateError(thread, err)
 			}
 		}
+		if len(args) > 6 && args[6] != starlark.None {
+			err := unmarshalStarlarkValue(args[6], &rpcArgs.Skip, "Skip")
+			if err != nil {
+				return starlark.None, decorateError(thread, err)
+			}
+		}
 		for _, kv := range kwargs {
 			var err error
 			switch kv[0].(starlark.String) {
@@ -1690,6 +1748,8 @@ func (env *Env) starlarkPredeclare() (starlark.StringDict, map[string]string) {
 				err = unmarshalStarlarkValue(kv[1], &rpcArgs.Opts, "Opts")
 			case "Cfg":
 				err = unmarshalStarlarkValue(kv[1], &rpcArgs.Cfg, "Cfg")
+			case "Skip":
+				err = unmarshalStarlarkValue(kv[1], &rpcArgs.Skip, "Skip")
 			default:
 				err = fmt.Errorf("unknown argument %q", kv[0])
 			}
@@ -1703,7 +1763,7 @@ func (env *Env) starlarkPredeclare() (starlark.StringDict, map[string]string) {
 		}
 		return env.interfaceToStarlarkValue(&rpcRet), nil
 	})
-	doc["stacktrace"] = "builtin stacktrace(Id, Depth, Full, Defers, Opts, Cfg)\n\nstacktrace returns stacktrace of goroutine Id up to the specified Depth.\n\nIf Full is set it will also the variable of all local variables\nand function arguments of all stack frames."
+	doc["stacktrace"] = "builtin stacktrace(Id, Depth, Full, Defers, Opts, Cfg, Skip)\n\nstacktrace returns stacktrace of goroutine Id up to the specified Depth.\n\nIf Full is set it will also the variable of all local variables\nand function arguments of all stack frames."
 	r["state"] = starlark.NewBuiltin("state", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
@@ -1774,5 +1834,36 @@ func (env *Env) starlarkPredeclare() (starlark.StringDict, map[string]string) {
 		return env.interfaceToStarlarkValue(&rpcRet), nil
 	})
 	doc["toggle_breakpoint"] = "builtin toggle_breakpoint(Id, Name)\n\ntoggle_breakpoint toggles on or off a breakpoint by Name (if Name is not an\nempty string) or by ID."
+	r["type_info"] = starlark.NewBuiltin("type_info", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		if err := isCancelled(thread); err != nil {
+			return starlark.None, decorateError(thread, err)
+		}
+		var rpcArgs rpc2.TypeInfoIn
+		var rpcRet rpc2.TypeInfoOut
+		if len(args) > 0 && args[0] != starlark.None {
+			err := unmarshalStarlarkValue(args[0], &rpcArgs.Name, "Name")
+			if err != nil {
+				return starlark.None, decorateError(thread, err)
+			}
+		}
+		for _, kv := range kwargs {
+			var err error
+			switch kv[0].(starlark.String) {
+			case "Name":
+				err = unmarshalStarlarkValue(kv[1], &rpcArgs.Name, "Name")
+			default:
+				err = fmt.Errorf("unknown argument %q", kv[0])
+			}
+			if err != nil {
+				return starlark.None, decorateError(thread, err)
+			}
+		}
+		err := env.ctx.Client().CallAPI("TypeInfo", &rpcArgs, &rpcRet)
+		if err != nil {
+			return starlark.None, err
+		}
+		return env.interfaceToStarlarkValue(&rpcRet), nil
+	})
+	doc["type_info"] = "builtin type_info(Name)\n\ntype_info returns informations about the specified type."
 	return r, doc
 }

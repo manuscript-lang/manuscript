@@ -48,6 +48,12 @@ func NewClientFromConn(conn net.Conn) *RPCClient {
 	return newFromRPCClient(jsonrpc.NewClient(conn))
 }
 
+func (c *RPCClient) GetVersion() *api.GetVersionOut {
+	out := new(api.GetVersionOut)
+	c.call("GetVersion", api.GetVersionIn{}, out)
+	return out
+}
+
 func (c *RPCClient) ProcessPid() int {
 	out := new(ProcessPidOut)
 	c.call("ProcessPid", ProcessPidIn{}, out)
@@ -163,7 +169,7 @@ func (c *RPCClient) drainEvents() <-chan struct{} {
 			}
 			for _, event := range out.Events {
 				c.eventsFn(&event)
-				if event.Kind == api.EventStopped {
+				if event.Kind == api.EventStopped || event.Kind == api.EventDownloadLibraryInfoDone {
 					return
 				}
 			}
@@ -260,9 +266,9 @@ func (c *RPCClient) Halt() (*api.DebuggerState, error) {
 	return &out.State, err
 }
 
-func (c *RPCClient) GetBufferedTracepoints() ([]api.TracepointResult, error) {
+func (c *RPCClient) GetBufferedTracepoints(loadCfg *api.LoadConfig) ([]api.TracepointResult, error) {
 	var out GetBufferedTracepointsOut
-	err := c.call("GetBufferedTracepoints", GetBufferedTracepointsIn{}, &out)
+	err := c.call("GetBufferedTracepoints", GetBufferedTracepointsIn{LoadCfg: loadCfg}, &out)
 	return out.TracepointResults, err
 }
 
@@ -286,6 +292,15 @@ func (c *RPCClient) CreateBreakpoint(breakPoint *api.Breakpoint) (*api.Breakpoin
 	var out CreateBreakpointOut
 	err := c.call("CreateBreakpoint", CreateBreakpointIn{*breakPoint, "", nil, false}, &out)
 	return &out.Breakpoint, err
+}
+
+// SetExecutionPoint sets the next instruction to be executed by the current
+// thread to the instruction at addr, without executing any of the
+// instructions in between (also known as "set next statement" or "jump").
+func (c *RPCClient) SetExecutionPoint(addr uint64) (*api.DebuggerState, error) {
+	var out SetExecutionPointOut
+	err := c.call("SetExecutionPoint", SetExecutionPointIn{Addr: addr}, &out)
+	return &out.State, err
 }
 
 // CreateBreakpointWithExpr is like CreateBreakpoint but will also set a
@@ -441,9 +456,9 @@ func (c *RPCClient) ListGoroutinesWithFilter(start, count int, filters []api.Lis
 	return out.Goroutines, out.Groups, out.Nextg, out.TooManyGroups, err
 }
 
-func (c *RPCClient) Stacktrace(goroutineId int64, depth int, opts api.StacktraceOptions, cfg *api.LoadConfig) ([]api.Stackframe, error) {
+func (c *RPCClient) Stacktrace(goroutineId int64, depth, skip int, opts api.StacktraceOptions, cfg *api.LoadConfig) ([]api.Stackframe, error) {
 	var out StacktraceOut
-	err := c.call("Stacktrace", StacktraceIn{goroutineId, depth, false, false, opts, cfg}, &out)
+	err := c.call("Stacktrace", StacktraceIn{goroutineId, depth, false, false, opts, cfg, skip}, &out)
 	return out.Locations, err
 }
 
@@ -542,10 +557,10 @@ func (c *RPCClient) Disconnect(cont bool) error {
 	return c.client.Close()
 }
 
-func (c *RPCClient) ListDynamicLibraries() ([]api.Image, error) {
+func (c *RPCClient) ListDynamicLibraries() ([]api.Image, bool, error) {
 	var out ListDynamicLibrariesOut
 	c.call("ListDynamicLibraries", ListDynamicLibrariesIn{}, &out)
-	return out.List, nil
+	return out.List, out.ExecutableTrimpath, nil
 }
 
 func (c *RPCClient) ExamineMemory(address uint64, count int) ([]byte, bool, error) {
@@ -693,17 +708,36 @@ func (c *RPCClient) GuessSubstitutePath() ([][2]string, error) {
 	return out.List, err
 }
 
-func (c *RPCClient) call(method string, args, reply interface{}) error {
+func (c *RPCClient) CancelDownloads() error {
+	out := &CancelDownloadsOut{}
+	return c.call("CancelDownloads", CancelDownloadsIn{}, out)
+}
+
+func (c *RPCClient) DownloadLibraryDebugInfo(n int) error {
+	out := DownloadLibraryDebugInfoOut{}
+	return c.callWhileDrainingEvents("DownloadLibraryDebugInfo", DownloadLibraryDebugInfoIn{n, c.eventsFn != nil}, &out)
+}
+
+func (c *RPCClient) TypeInfo(name string) (*api.TypeInfo, error) {
+	var out TypeInfoOut
+	err := c.call("TypeInfo", TypeInfoIn{name}, &out)
+	if err != nil {
+		return nil, err
+	}
+	return out.TypeInfo, err
+}
+
+func (c *RPCClient) call(method string, args, reply any) error {
 	return c.client.Call("RPCServer."+method, args, reply)
 }
 
-func (c *RPCClient) callWhileDrainingEvents(method string, args, reply interface{}) error {
+func (c *RPCClient) callWhileDrainingEvents(method string, args, reply any) error {
 	done := c.drainEvents()
 	err := c.call(method, args, reply)
 	<-done
 	return err
 }
 
-func (c *RPCClient) CallAPI(method string, args, reply interface{}) error {
+func (c *RPCClient) CallAPI(method string, args, reply any) error {
 	return c.call(method, args, reply)
 }

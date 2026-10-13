@@ -18,8 +18,8 @@ type Version struct {
 
 // DelveVersion is the current version of Delve.
 var DelveVersion = Version{
-	Major: "1", Minor: "25", Patch: "2", Metadata: "",
-	Build: "$Id: af3df277866d7175e816eab14e56611053d4cdea $",
+	Major: "1", Minor: "27", Patch: "2", Metadata: "",
+	Build: "$Id: 360e7b2181d3da54115aaee4f569954bca95cfe3 $",
 }
 
 func (v Version) String() string {
@@ -41,7 +41,7 @@ func BuildInfo() string {
 
 func fixBuild(v *Version) {
 	// Return if v.Build already set, but not if it is Git ident expand file blob hash
-	if !strings.HasPrefix(v.Build, "$Id: af3df277866d7175e816eab14e56611053d4cdea $") {
+	if !strings.HasPrefix(v.Build, "$Id: 360e7b2181d3da54115aaee4f569954bca95cfe3 $") {
 		return
 	}
 
