@@ -186,6 +186,15 @@ leaves the running traversal on its original array. No traversal-driven List cop
 or hidden shared flag is needed. Map/Set snapshots, closure variable capture,
 explicit shallow clone/slice storage and synchronization contracts remain distinct.
 
+Verified blocker in the unmerged no-copy draft: `without` and shrinking splice
+clear vacated `[]Value` cells to nil. A captured range visits them; consuming one
+as source Int produces an unframed conversion panic (exit 70). A Go `[]Value`
+oracle matches the nil, and a native loop ignoring its binding passes, but neither
+establishes valid typed consumption. The cleared-value/fault policy is unresolved;
+do not silently infer Go `[]int64` zero behavior or remove reference clearing.
+Evidence: [called source reproducer](../scripts/bench-lists/repro-cleared-tail.ms)
+and [blocked review](../scripts/bench-lists/go-range-review.md#cleared-cell-blocker).
+
 Apply when: changing List traversal, callbacks, writers or typed numeric storage.
 Evidence: [range/mutation oracle](../pkg/runtime/list_range_test.go),
 [called native Go-range cases](../tests/e2e/testdata/accept/list-go-range.ms),
@@ -194,3 +203,5 @@ and [measured no-copy follow-on](../scripts/bench-lists/go-range-review.md).
 Verify: capture once, mutate in place, append with/without growth, shrink, reverse
 and self-splice; observed reads match ordinary Go backing-array behavior. Explicit
 clones stay separate and append-only callbacks visit only the initial length.
+Also consume yielded values after shrink in called native/standalone regressions,
+checking both type behavior and source fault frames after the policy is resolved.

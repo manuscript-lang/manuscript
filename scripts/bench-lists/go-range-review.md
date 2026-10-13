@@ -14,6 +14,29 @@ Existing removal/splice writers clear vacated backing cells: a captured range ca
 visit those cells after shrink, just as a Go range over the same `[]Value` does.
 No typed zero-value policy or numeric-width migration is introduced here.
 
+## Cleared-cell blocker
+
+This draft remains unmerged despite green gates on `d8a83a2a`. The independent Go
+oracle observes nil cells after removal; the native shrink fixture currently
+ignores the yielded value. Consuming that cell as source Int instead reproduces
+`interface conversion: interface {} is nil, not int64`, exit 70, with no source
+frame. [Source](repro-cleared-tail.ms) and [raw reproduction](results/go-range/cleared-tail-repro.json)
+are retained. Run the source with the candidate's packaged CLI:
+
+```sh
+dist/manuscript-linux-amd64/ms run scripts/bench-lists/repro-cleared-tail.ms
+```
+
+Go `[]int64` clearing would yield zero, whereas current `[]Value` clearing yields
+nil. Removing clearing would retain references and change reclamation; type-aware
+zeroing introduces a generic/record/function policy; a framed removed-cell fault
+needs a deliberate checked boundary. Parent must resolve this contract before
+merge. The fix requires consumer-level native/standalone shrink regressions and
+new final-head gates. No unilateral broader representation policy is implemented.
+
+Main's accepted String and duration-site changes were subsequently integrated;
+the completed `d8a83a2a` gates are evidence for that precise head, not a later head.
+
 ## Semantic evidence
 
 `pkg/runtime/list_range_test.go` compares runtime traversal against independent
