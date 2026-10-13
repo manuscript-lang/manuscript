@@ -23,6 +23,25 @@ retained generated Go and escape analysis, and compare allocation counts as well
 as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
 when promoting a benchmark candidate into production lowering.
 
+### Large literals need measured data and function-size boundaries
+
+Verified: large interface-valued composites can make native compilation costly
+even after numeric parsing is removed. Copying private immutable scalar data
+into fresh evaluation storage avoids that SSA cost. Typed data boxed in a loop
+can compile quickly but add nearly one allocation per element; measure runtime
+allocations and binary size alongside compilation time and memory. Effectful
+elements need ordered assignments and measured helper sizes. Go constants lose
+negative Float zero's sign, so retain runtime negation for that case.
+
+Apply when: changing collection literal lowering or hoisting generated data.
+Evidence: [measurements](../scripts/bench-flat-literals/README.md),
+[lowering](../pkg/compiler/lower_literals.go),
+[native semantics](../tests/e2e/large_literals_test.go), and
+[independent oracle](../pkg/compiler/testdata/flat-literals/README.md).
+Verify: fresh mutable storage, shallow aliases, defaults, generics, ordered
+effects/plain local reads, negative zero, cleanup/nonlocal exits and exact fault
+frames; keep mutable objects and runtime calls out of package data arrays.
+
 ### Readable formatting needs paragraphs while retaining inline guards
 
 Decision: the user's formatter request keeps inline `if` bodies and introduces

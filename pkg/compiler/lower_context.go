@@ -32,6 +32,7 @@ type generator struct {
 	sourceLines     map[string]syntax.Position
 	hoisted         []string          // package-level Lazy variables for static specializations
 	hoistedByKey    map[string]string // call-site identity to Lazy variable
+	literalData     []ast.Decl        // private immutable scalar data, never source collection storage
 }
 
 func (g *generator) temp() string { g.serial++; return fmt.Sprintf("temporary%d", g.serial) }

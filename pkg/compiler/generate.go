@@ -109,5 +109,6 @@ func (g *generator) file(entry string, options Options) *ast.File {
 	for _, name := range g.hoisted {
 		file.Decls = append(file.Decls, variable(name, runtimeName("Lazy"), nil))
 	}
+	file.Decls = append(file.Decls, g.literalData...)
 	return file
 }

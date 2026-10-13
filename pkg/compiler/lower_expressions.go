@@ -184,11 +184,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		}
 		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 	case syntax.KindList:
-		var elements []ast.Expr
-		for _, item := range e.Elements {
-			elements = append(elements, g.expression(item))
-		}
-		return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
+		return g.listLiteral(e, info.Type)
 	case syntax.KindMap:
 		var entries []ast.Expr
 		for at := 0; at < len(e.Elements); at += 2 {
