@@ -80,6 +80,8 @@ var ReceiverBindings = map[string]map[string]string{
 		"set":              "collections/set",
 		"remove":           "collections/remove",
 		"slice":            "collections/slice",
+		"take":             "collections/take",
+		"drop":             "collections/drop",
 		"reverse":          "collections/reverse",
 		"reverse_in_place": "collections/reverse_in_place",
 		"reversed":         "collections/reversed",
