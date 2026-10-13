@@ -21,12 +21,14 @@ Every message that reaches an author or an agent states the cause, the location,
 
 Unexpected tokens are described in source terms (`end of line`, `name 'x'`, `'case'`) instead of internal token kinds. Missing `:`, `->`, closing brackets, and `from` carry the usual fix. Statements at top level, standalone non-call expressions, comparison chains, `case` inside `match` each say what to write instead.
 
+Compound assignment (`+=`, `-=`, `*=`, `/=`, `%=`) points at the full operator and suggests an explicit assignment. String-literal match patterns explain that arms select alternative cases or concrete types and suggest `if`/`else` string comparisons. Wildcard imports explain that namespace imports are unsupported and show named imports.
+
 ## Names, calls, and types (`pkg/checker`)
 
 | Message | Fix included |
 | --- | --- |
 | `unknown binding`, `unknown type` | Nearest declared name, else the standard module to import, else how to declare it. |
-| `module does not export` | Nearest export, else the module's export list; private names say to add `export`. |
+| `module does not export` | Nearest export, else the module's declared export list without implicit prelude or imported symbols, plus named-import guidance; private names say to add `export`. |
 | `unknown or ambiguous member` | Nearest field or operation, else the available ones. |
 | `missing argument`, `unknown argument`, `duplicate argument` | The parameter and its type at the call site; the parameter list. |
 | `callee is not a function` | The callee name and its type. |
