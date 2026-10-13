@@ -24,6 +24,7 @@ Manuscript is a statically typed language implemented in Go. Source `.ms` files 
 | Tutorials, exact rules, generated API reference, Hugo book/publication | [documentation](skills/documentation/SKILL.md) |
 | Package organization, dependency policy, pins, CI, releases, repository cleanup | [repository-maintenance](skills/repository-maintenance/SKILL.md) |
 | Opening or updating a pull request | [create-pr](skills/create-pr/SKILL.md) |
+| Filing or rewriting an issue | [create-issue](skills/create-issue/SKILL.md) |
 
 Syntax changes usually need language-design, ast, compiler, tooling, and documentation. Standard API changes usually need standard-library, runtime, tooling, and documentation. Select only domains the change reaches.
 
