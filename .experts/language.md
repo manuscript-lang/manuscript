@@ -154,7 +154,7 @@ Verify: use `items[index].unwrap_or(0)` for absent indexes, keep `identity[Int]`
 
 ### Infer local callback signatures from context
 
-Decision: the user explicitly permits callback parameter and result inference. Known function contexts supply omitted parameter types; callback bodies can supply generic output evidence after inputs are known, including success types within a partially known Result context. Named public signatures stay explicit, and parameter labels retain their existing function identity. Use existing argument/field defaults to omit redundant values; do not treat every Optional parameter as implicitly defaulted.
+Decision: the user explicitly permits callback parameter and result inference. Known function contexts supply omitted parameter types; callback bodies can supply generic output evidence after inputs are known, including success types within a partially known Result context. Named public signatures stay explicit, and callable argument labels retain their existing function identity. Following [issue #81](https://github.com/manuscript-lang/manuscript/issues/81), contextual anonymous functions adopt the expected call labels independently of local parameter names; lowering must dispatch using those context labels while binding body names by position. Use existing argument/field defaults to omit redundant values; do not treat every Optional parameter as implicitly defaulted.
 
 Verify: source and native callbacks cover generic map results, callbacks listed before their inference inputs, optional callbacks, nested closures, constructors, and editor parameter navigation. Preserve explicit annotations where incomplete Result construction or `try` lacks a known result context.
 

@@ -359,7 +359,7 @@ test "standard error diagnostics work directly":
     let message = cause.message
     if cause.message() != "read failed" or message() != "read failed":
         return panic(message: "standard diagnostic lost")
-    if JsonError.InvalidData.message() != "JsonError.InvalidData":
+    if JsonError.InvalidData.message() != "JSON: invalid data":
         return panic(message: "nullary standard diagnostic lost")
 
 import FileSystemError from "@std/fs.ms"
@@ -383,9 +383,13 @@ test "standard diagnostics preserve messages and wrapped causes":
         ).message() != "command diagnostic"
     ):
         return panic(message: "command error lost diagnostic")
-    if Error(ExecutionError.TimedOut).message() != "ExecutionError.TimedOut":
+    if (
+        Error(
+            ExecutionError.TimedOut
+        ).message() != "task execution: operation timed out"
+    ):
         return panic(message: "execution error has no diagnostic")
-    if Error(StartError.Full).message() != "StartError.Full":
+    if Error(StartError.Full).message() != "scheduler: capacity exhausted":
         return panic(message: "start error has no diagnostic")
 
 # The type-pattern rule also works for unrelated operation contracts.
@@ -433,3 +437,47 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
     let view = Label[String](Labelled("separate handler"))
     if match_label(view) != "separate handler":
         return panic(message: "contract match depended on Error identity")
+
+import filesystem from "@std/fs.ms"
+
+fn check_missing_file() -> Result[Unit, FileSystemError]:
+    let fs = filesystem()
+    let directory = try fs.temporary_directory("manuscript-errors-")
+    let missing = "{directory}/missing-secret-token"
+
+    match fs.read_file(path: missing):
+        ok(_):
+            return panic(message: "missing file read succeeded")
+
+        error(cause):
+            match cause:
+                NotFound:
+                    let diagnostic = cause.message
+                    let shared: Error = cause
+                    if (
+                        diagnostic() != "filesystem: file or directory not found"
+                        or shared.message() != diagnostic()
+                    ):
+                        return panic(message: "missing file diagnostic lost")
+
+                _:
+                    return panic(message: "missing file changed error case")
+
+    match fs.stat(path: missing, follow_links: true):
+        ok(_):
+            return panic(message: "missing file stat succeeded")
+
+        error(cause):
+            if cause.message() != "filesystem: file or directory not found":
+                return panic(message: "stat diagnostic lost")
+
+    let removed = try fs.remove(path: directory, recursive: false)
+    return ok(unit)
+
+test "missing file diagnostics preserve the filesystem case":
+    match check_missing_file():
+        ok(_):
+            return unit
+
+        error(cause):
+            return panic(message: cause.message())
