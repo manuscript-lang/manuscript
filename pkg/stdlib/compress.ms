@@ -30,3 +30,24 @@ export fn decompress(
 
 impl Error for CompressionError:
     fn message() -> String:
+
+# Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
+# Existing compress/decompress format: String calls remain available.
+export type CompressionFormat:
+    # GZIP framing.
+    case Gzip
+    # ZLIB framing.
+    case Zlib
+    # Raw DEFLATE without framing.
+    case Deflate
+    # Compresses with level 0..9 and the same optional output budget/domain errors as compress.
+    fn compress(
+        data: Bytes,
+        level: Int,
+        max_bytes: Optional[Int] = none
+    ) -> Result[Bytes, CompressionError]:
+    # Decompresses with the same cumulative output limit and validation as decompress.
+    fn decompress(
+        data: Bytes,
+        max_bytes: Optional[Int] = none
+    ) -> Result[Bytes, CompressionError]:

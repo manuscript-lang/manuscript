@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Report invalid Scheduler limits/drain, TaskGroup timeout and sleep duration with the operation, parameter, original value and valid range, preserving all scheduling and cancellation contracts.
+- Add preferred `List.set`/`remove`/`reverse_in_place`, copying `List.reversed`/`Bytes.reversed`, `Set.add`/`remove`, `String.replace_first`, and `Regex.replace_all` spellings. Existing names remain compatible, including receiver returns, replacement caps, limits, and errors.
 - Report duration-unit property faults at the member token after evaluating the receiver, preserving source order and numeric widths.
 
 - Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
@@ -19,6 +19,7 @@
 - Accept plain values for standard `Optional[T]` arguments, including `Queue[Int](capacity: 4)`, and use this convention across current call sites and examples.
 - Parse HTML strings into `HtmlNode` trees with `HtmlAttribute` records, HTML5 recovery, and optional byte, depth, and node limits.
 - Replace `@std/log.ms`'s `write` function with structured `Logger` and `Transport` interfaces: six levels, typed JSON fields, child bindings, record limits, and stdout/file/custom transports. Migrate calls to `create(transport: transport)` and `logger.info(message: message, fields: fields)`; fields now use `Map[String, JsonValue]`, and transports use scoped cleanup.
+- Report invalid Scheduler limits/drain, TaskGroup timeout and sleep duration with the operation, parameter, original value and valid range, preserving all scheduling and cancellation contracts.
 
 - Share parsing and AST graph loading across compilation and source tools; make checking, boolean optimization, and Go lowering explicit stages while preserving the checked source model.
 - Group reusable Go packages under `pkg/`; Go callers must update the former root package imports to `github.com/manuscript-lang/manuscript/pkg/...`.

@@ -25,6 +25,8 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"missing argument", "fn g(a: Int) -> Int:\n    return a\nfn f() -> Int:\n    return g()\n", []string{"missing argument a: Int in call to g", "add 'a: <Int>'"}, 1},
 		{"unknown argument", "fn g(amount: Int) -> Int:\n    return amount\nfn f() -> Int:\n    return g(amunt: 1)\n", []string{"unknown argument amunt", "did you mean 'amount'?"}, 2},
 		{"unknown member", "type P:\n    x: Int\nfn f(p: P) -> Int:\n    return p.y\n", []string{"unknown or ambiguous member y on P", "available: x"}, 1},
+		{"set insert hint", "import Set from \"@std/collections.ms\"\nfn f(values: Set[Int]) -> Unit:\n    values.insert(1)\n", []string{"unknown or ambiguous member insert", "did you mean 'add'?"}, 1},
+		{"list delete hint", "import List from \"@std/collections.ms\"\nfn f(values: List[Int]) -> Unit:\n    values.delete(0)\n", []string{"unknown or ambiguous member delete", "did you mean 'remove'"}, 1},
 		{"non-exhaustive", "type S:\n    case A\n    case B\n    case C\nfn f(s: S) -> Int:\n    match s:\n        A:\n            return 1\n    return 0\n", []string{"non-exhaustive match", "missing cases: B, C"}, 1},
 		{"operand mismatch is one error", "fn f() -> Int:\n    return \"a\" + 1\n", []string{"found String + Int", "toString()"}, 1},
 		{"not a function", "fn f() -> Int:\n    let x = 1\n    return x()\n", []string{"x is not a function (it has type Int)"}, 1},

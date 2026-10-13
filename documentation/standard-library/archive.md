@@ -9,6 +9,35 @@ API reference: [compress](reference/compress.md), [archive](reference/archive.md
 
 Use compress for a byte stream and archive for named file or directory entries. Both operate on data in memory. Set limits on expanded output; unpacking an archive does not write its entries to disk.
 
+## Typed format selection
+
+Choose `CompressionFormat.Gzip`, `Zlib`, or `Deflate` and call its `compress`/`decompress` operations. Choose `ArchiveFormat.Zip` or `Tar` and call its `pack`/`unpack` operations. These alternatives check the format selection in source while sharing the existing implementations, limits, domain errors, and cancellation. Compression level remains explicit; no configuration or security default changes. Existing string-based functions retain their contracts.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import CompressionFormat from "@std/compress.ms"
+import panic from "@std/faults.ms"
+
+test "use a typed compression format":
+    let format = CompressionFormat.Gzip
+    let input = "hello".to_bytes()
+    let encoded = format.compress(input, 6).unwrap()
+    let decoded = format.decompress(encoded, max_bytes: 5).unwrap()
+    if decoded != input: return panic("compression roundtrip")
+```
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import {ArchiveFormat, ArchiveEntry} from "@std/archive.ms"
+import List from "@std/collections.ms"
+import panic from "@std/faults.ms"
+
+test "use a typed archive format":
+    let entries = [ArchiveEntry("note.txt", "hello".to_bytes(), false)]
+    let encoded = ArchiveFormat.Zip.pack(entries).unwrap()
+    if ArchiveFormat.Zip.unpack(encoded).unwrap() != entries: return panic("archive roundtrip")
+```
+
 ## Compression behavior
 
 Supported format strings are exactly the case-sensitive `gzip`, `zlib`, and raw `deflate`; others return `CompressionError.Unsupported`. Compression levels are 0–9 (0 stores data without compression); values outside that range return `InvalidInput`. Output limits must be nonnegative.
