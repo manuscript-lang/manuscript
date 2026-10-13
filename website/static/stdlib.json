@@ -3649,6 +3649,12 @@
               "doc": ""
             }
           ]
+        },
+        {
+          "name": "header_values",
+          "doc": "Finds all values under ASCII case-equivalent names without changing Map keys.\nReturns none if absent, or some(empty) for a present empty list. Copies list\nmembership and preserves Map insertion order followed by each list's order.",
+          "kind": "fn",
+          "type": "fn(headers: Map[String, List[String]], name: String)-\u003eOptional[List[String]]"
         }
       ]
     },
