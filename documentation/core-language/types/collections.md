@@ -101,8 +101,12 @@ A `for` loop and collection callback traversals snapshot collection membership o
 | `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
 | `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
 | `Map[K, V]` | `filter(predicate: fn(key: K, value: V) -> Bool) -> Map[K, V]` |
+| `Map[K, V]` | `map[W](transform: fn(key: K, value: V) -> W) -> Map[K, W]` |
+| `Map[K, V]` | `map_keys[W: Hashable](transform: fn(key: K, value: V) -> W) -> Map[W, V]` |
 | `Map[K, V]` | `fold[A](initial: A, step: fn(accumulator: A, key: K, value: V) -> A) -> A` |
+| `Map[K, V]` | `fold_right[A]` uses the same step in reverse insertion order |
 | `Map[K, V]` | `find(predicate: fn(key: K, value: V) -> Bool) -> Optional[MapEntry[K, V]]` |
+| `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
 | `Map[K, V]` | `some(predicate: fn(key: K, value: V) -> Bool) -> Bool`; `every` uses the same predicate |
 | `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `without(key: K) -> Map[K, V]` |
 | `Set[T]()` | Empty `Set[T]` |
@@ -110,7 +114,9 @@ A `for` loop and collection callback traversals snapshot collection membership o
 | `Set[T]` | `is_empty() -> Bool`; `filter(predicate: fn(value: T) -> Bool) -> Set[T]` |
 | `Set[T]` | `map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]` |
 | `Set[T]` | `fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A` |
+| `Set[T]` | `fold_right[A]` uses the same step in reverse insertion order |
 | `Set[T]` | `find(predicate: fn(value: T) -> Bool) -> Optional[T]` |
+| `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
 | `Set[T]` | `some(predicate: fn(value: T) -> Bool) -> Bool`; `every` uses the same predicate |
 | `Set[T]` | `with_value(value: T) -> Set[T]`; `without(value: T) -> Set[T]` |
 
@@ -167,11 +173,26 @@ Map `get_or` evaluates its fallback as an ordinary argument and never inserts an
 
 Set `map` also visits a snapshot and returns a fresh set. Its output type must satisfy `Hashable`; equal mapped results retain the first payload and its insertion position. Deduplication uses the output type's scoped Equal/Hashable implementations, including in generic calls and stored methods. Callbacks run sequentially in the caller's execution context; faults and cancellation stop the traversal normally.
 
+## Transforming Map keys and values
+
+`map` transforms each value while retaining the original key. `map_keys` transforms each key while retaining the original value; its output keys require Hashable. Both callbacks receive `key` and `value`, visit an insertion-order membership snapshot, and return fresh outer Map storage with shallow payload references. Callback mutation does not change which source entries or value references are visited.
+
+Equal transformed keys retain the first transformed key reference and insertion position, while later input entries replace its value, matching ordinary Map insertion. Key deduplication uses the output type's scoped Equal/Hashable evidence, including generic forwarding and stored specialized methods. Callback faults and cancellation propagate normally. Value transforms do not flatten Optional or Result values and do not require output values to be Hashable.
+
+```manuscript
+fn increment_scores(scores: Map[String, Int]) -> Map[String, Int]:
+    return scores.map(fn(name, score): score + 1)
+```
+
 ## Reducing and querying
 
 Map and Set `fold` visit a snapshot in insertion order. The callback receives the current accumulator, then the entry key/value or set element, and returns the next accumulator with the same type `A`. An empty receiver returns the original initial value without calling the step. Accumulators and payloads retain their references.
 
+`fold_right` uses the same callback and accumulator contract in reverse insertion order. It starts with the final inserted entry/element and moves toward the first. Empty receivers return the original initial value without invoking callbacks.
+
 `find` stops at the first true predicate. Set returns the original element; Map returns a fresh MapEntry record with the original key/value references, matching `entries()`. Replacing that record's fields does not update the Map. No match, including an empty receiver, returns none.
+
+`find_last` visits the snapshot in reverse insertion order and stops at the first true predicate from the end. It retains the same Optional and shallow payload/entry contracts as `find`; a nonmatching search visits the complete snapshot in reverse.
 
 `some` stops at the first true predicate; `every` stops at the first false predicate. Empty receivers return false for some and true for every without invoking callbacks. All four methods snapshot membership before callbacks, retaining shallow references even if the callback updates or clears the receiver. They preserve normal cancellation, faults, and scoped generic implementation evidence.
 
