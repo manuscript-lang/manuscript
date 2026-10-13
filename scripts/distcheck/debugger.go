@@ -51,14 +51,14 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	// connection while the target remains alive. Reading stdin before the source
 	// breakpoint must see EOF, never block on or consume the DAP protocol pipe.
 	runningSource := filepath.Join(directory, "debug running.ms")
-	if err := os.WriteFile(runningSource, []byte("import stdin from \"@std/io.ms\"\nexport fn main() -> Int:\n    let input = stdin().read(max_bytes: 1)\n    let number = 41\n    var result = number + 1\n\n    while result == 42:\n        result = result + 0\n    return result - 42\n"), 0600); err != nil {
+	if err := os.WriteFile(runningSource, []byte("import stdin from \"@std/io.ms\"\nexport fn main() -> Int:\n    let number = read_number()\n    var result = number + 1\n\n    while result == 42:\n        result = result + 0\n    return result - 42\n\nfn read_number() -> Int:\n    let input = stdin().read(max_bytes: 1)\n    return 41\n"), 0600); err != nil {
 		return err
 	}
 	runningBinary := binary + "-running"
 	if _, err := run(cli, "build", runningSource, "--debug", "-o", runningBinary); err != nil {
 		return err
 	}
-	if err := checkDAP(cli, directory, environment, runningBinary, runningSource, 5, false); err != nil {
+	if err := checkDAP(cli, directory, environment, runningBinary, runningSource, 4, false); err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -196,7 +196,7 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 		return err
 	}
 	frames := reply.(*dap.StackTraceResponse).Body.StackFrames
-	if len(frames) == 0 || frames[0].Source == nil || frames[0].Source.Path != source || (frames[0].Line <= breakpointLine || frames[0].Line > breakpointLine+2) {
+	if len(frames) == 0 || frames[0].Source == nil || filepath.Clean(frames[0].Source.Path) != filepath.Clean(source) || (frames[0].Line <= breakpointLine || frames[0].Line > breakpointLine+2) {
 		return fmt.Errorf("source step mismatch: %+v", frames)
 	}
 	if err := request("scopes", map[string]any{"frameId": frames[0].Id}); err != nil {
