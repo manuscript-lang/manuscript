@@ -5,6 +5,6 @@ weight = 4
 
 # Compiler internals
 
-This chapter is for compiler contributors. Follow a program through [parsing and checking](frontend/_index.md), then [lowering](lowering/_index.md). [Conformance tests](conformance/_index.md) specify accepted source, rejected source, and observable runtime behavior.
+This chapter is for compiler contributors. Start with the [pipeline and core IR](pipeline.md), then follow a program through [parsing and checking](frontend/_index.md) and [lowering](lowering/_index.md). [Conformance tests](conformance/_index.md) specify accepted source, rejected source, and observable runtime behavior.
 
 [External adapters](adapters/_index.md) describe integration contracts that remain design work. Application build settings belong in [builds and projects](../../developer-tooling/builds/_index.md).
