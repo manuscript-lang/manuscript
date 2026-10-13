@@ -762,4 +762,9 @@ func TestFileSystemErrorMapping(t *testing.T) {
 	defer write(ro, "close")
 	libraryFailure(t, write(ro, "write_file", Bytes{[]byte("z")}), "InvalidInput")
 	libraryFailure(t, write(ro, "seek", int64(-1), int64(0)), "InvalidInput")
+	libraryFailure(t, write(ro, "seek", int64(0), int64(3)), "InvalidInput")
+	wo := librarySuccess(t, call("open", "file", "a", int64(0)))
+	defer write(wo, "close")
+	libraryFailure(t, write(wo, "read", int64(1)), "InvalidInput")
+	libraryFailure(t, write(wo, "read_file", int64(100)), "InvalidInput")
 }
