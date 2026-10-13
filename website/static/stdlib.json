@@ -634,6 +634,7 @@
         },
         {
           "name": "RoundingMode",
+          "doc": "How a Decimal rounds to a multiple of the requested power of ten.",
           "kind": "alternative",
           "type": "RoundingMode",
           "cases": [
@@ -1778,7 +1779,7 @@
       "declarations": [
         {
           "name": "NumberError",
-          "doc": "Errors returned when numeric text is malformed or outside the target range.",
+          "doc": "Errors returned for invalid numeric requests, malformed text, or out-of-range values.",
           "kind": "alternative",
           "type": "NumberError",
           "cases": [
@@ -2057,7 +2058,7 @@
         },
         {
           "name": "ProcessControl",
-          "doc": "Process and operating-system controls for the current process.",
+          "doc": "Process and operating-system controls for the current process.\n`watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.\n`next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup\nand finish shutdown work directly in the shielded close call after joining cancelled workers.",
           "kind": "interface",
           "type": "ProcessControl",
           "operations": [
@@ -2146,7 +2147,7 @@
         },
         {
           "name": "SignalStream",
-          "doc": "A stream of operating-system signals selected by `watch_signals`.",
+          "doc": "A cancellable observer of operating-system signals selected by `watch_signals`.\nSIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.\n`next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.",
           "kind": "interface",
           "type": "SignalStream",
           "operations": [

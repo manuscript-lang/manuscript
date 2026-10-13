@@ -71,11 +71,8 @@ func renderModule(module checker.APIModule, forSite bool) string {
 		for _, implementation := range d.ImplementationDeclarations {
 			fmt.Fprintf(&b, "```manuscript\n%s```\n\n", implementation)
 		}
-		if module.Path == "@std/process.ms" && (d.Name == "ProcessControl" || d.Name == "SignalStream") {
-			b.WriteString("`watch_signals` observes signals without claiming them. SIGINT/SIGTERM still cancel the native application; `next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup and finish shutdown work directly in the shielded close call after joining cancelled workers.\n\n")
-			if forSite {
-				b.WriteString("See the [shutdown cookbook](../../concurrency/shutdown.md) for runnable examples and limitations.\n\n")
-			}
+		if forSite && module.Path == "@std/process.ms" && (d.Name == "ProcessControl" || d.Name == "SignalStream") {
+			b.WriteString("See the [shutdown cookbook](../../concurrency/shutdown.md) for runnable examples and limitations.\n\n")
 		}
 	}
 	return b.String()

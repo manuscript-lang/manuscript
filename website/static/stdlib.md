@@ -771,6 +771,8 @@ type Decimal:
 
 **Alternative**
 
+How a Decimal rounds to a multiple of the requested power of ten.
+
 ```manuscript
 type RoundingMode:
     case HalfEven
@@ -2214,7 +2216,7 @@ Import each required symbol with `import Name from "@std/numbers.ms"`.
 
 **Alternative**
 
-Errors returned when numeric text is malformed or outside the target range.
+Errors returned for invalid numeric requests, malformed text, or out-of-range values.
 
 ```manuscript
 type NumberError:
@@ -2581,6 +2583,9 @@ type MemoryUsage:
 **Interface**
 
 Process and operating-system controls for the current process.
+`watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
+`next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup
+and finish shutdown work directly in the shielded close call after joining cancelled workers.
 
 ```manuscript
 interface ProcessControl:
@@ -2608,8 +2613,6 @@ interface ProcessControl:
     fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
     fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
 ```
-
-`watch_signals` observes signals without claiming them. SIGINT/SIGTERM still cancel the native application; `next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup and finish shutdown work directly in the shielded close call after joining cancelled workers.
 
 ## ProcessError
 
@@ -2678,15 +2681,15 @@ type ResourceUsage:
 
 **Interface**
 
-A stream of operating-system signals selected by `watch_signals`.
+A cancellable observer of operating-system signals selected by `watch_signals`.
+SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
+`next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.
 
 ```manuscript
 interface SignalStream:
     fn close() -> Unit
     fn next() -> Result[Int, ProcessError]
 ```
-
-`watch_signals` observes signals without claiming them. SIGINT/SIGTERM still cancel the native application; `next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup and finish shutdown work directly in the shielded close call after joining cancelled workers.
 
 ## commands
 
