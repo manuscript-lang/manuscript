@@ -1034,7 +1034,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 		i.Type = standard("List", element)
 	case syntax.KindMap:
-		if s := c.names["Map"]; (s == nil || s != standardSymbols["Map"]) {
+		if s := c.names["Map"]; s == nil || s != standardSymbols["Map"] {
 			c.error(e.Pos, "resolution", "map literal requires the canonical Map import; add: import Map from \"@std/collections.ms\"")
 		}
 		var types [2]*Type
