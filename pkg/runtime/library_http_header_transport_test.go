@@ -303,6 +303,7 @@ func TestHTTPHeaderBridgePreservesExactEntries(t *testing.T) {
 	// lookup with Header.Values would repeat one spelling's values and lose others.
 	headers := http.Header{"x-dup": {"first", ""}, "X-Dup": {"second"}}
 	assertHTTPHeaderMap(t, libraryHTTPHeaders(headers), map[string][]string{"x-dup": {"first", ""}, "X-Dup": {"second"}})
+	//lint:ignore SA1008 Deliberately test exact lookup on a noncanonical host map.
 	if strings.Join(headers["x-dup"], ",") != "first," {
 		t.Fatal("bridge mutated host map")
 	}
