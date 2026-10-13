@@ -48,7 +48,7 @@ type ArchiveLimits:
 
 ## pack {data-api-kind="Function"}
 
-Encodes entries as `zip` or `tar` bytes. `max_bytes` bounds output when supplied.
+Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.
 
 ```manuscript
 fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
@@ -56,7 +56,8 @@ fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = 
 
 ## unpack {data-api-kind="Function"}
 
-Decodes `zip` or `tar` bytes and applies each supplied entry and total-size limit.
+Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.
+Applies each supplied entry and total-size limit.
 
 ```manuscript
 fn unpack(data: Bytes, format: String, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:

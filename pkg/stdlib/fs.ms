@@ -30,6 +30,7 @@ export type DirectoryEntry:
 # File metadata, including portable fields and exact platform-specific numeric values.
 export type FileInfo:
     name: String
+    # File length in bytes.
     size: Int
     directory: Bool
     symlink: Bool
@@ -39,7 +40,9 @@ export type FileInfo:
     mode: Int
     permissions: Int
     created: Optional[Timestamp]
+    # Preferred I/O block size in bytes; unavailable fields are zero.
     block_size: Int
+    # Allocated 512-byte blocks on POSIX hosts; unavailable fields are zero.
     blocks: Int
     rdev: Int
     fifo: Bool
@@ -56,7 +59,8 @@ export type FileInfo:
 
 # Filesystem operations and resource factories for the current host.
 export interface FileSystem:
-    # Opens a path using host flag and mode bit values.
+    # Opens a path using host flag bits in 0..2147483647 and permission bits in 0..4095.
+    # Use fs.constants() on this host; unknown bits/combinations are left to the OS.
     fn open_flags(
         path: String,
         flags: Int,
@@ -84,7 +88,8 @@ export interface FileSystem:
             ) -> Bool
         ]
     ) -> Result[Unit, FileSystemError]
-    # Watches filesystem changes. Limits bound tracked paths and queued events.
+    # Watches native OS events; overflow is exactly `error` or `ignore` (case-sensitive).
+    # Other policies return InvalidInput. Limits bound tracked paths and queued events.
     fn watch_native(
         path: String,
         recursive: Bool,
@@ -119,14 +124,19 @@ export interface FileSystem:
     fn remove(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
     fn rename(source: String, destination: String) -> Result[Unit, FileSystemError]
     fn stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
+    # Creates a new directory under the host temp root; the caller must remove it.
+    # Prefix must be nonempty and contain no slash, backslash, or NUL.
     fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
     fn write_file(
         path: String,
         data: Bytes,
         replace: Bool
     ) -> Result[Unit, FileSystemError]
+    # Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.
+    # Native permissions and Windows access policy still apply.
     fn access(path: String, mode: Int) -> Result[Unit, FileSystemError]
     fn append_file(path: String, data: Bytes) -> Result[Unit, FileSystemError]
+    # Changes target permissions with mode 0..4095; follows a final symbolic link.
     fn chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
     fn chown(
         path: String,
@@ -134,6 +144,7 @@ export interface FileSystem:
         gid: Int,
         follow_links: Bool
     ) -> Result[Unit, FileSystemError]
+    # Sets the target size in bytes; follows a final symbolic link.
     fn truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
     fn set_times(
         path: String,
@@ -142,6 +153,8 @@ export interface FileSystem:
         follow_links: Bool
     ) -> Result[Unit, FileSystemError]
     fn hard_link(source: String, destination: String) -> Result[Unit, FileSystemError]
+    # Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return InvalidInput.
+    # Mode is permission bits in 0..4095, applied on creation subject to umask/OS policy.
     fn open(
         path: String,
         flags: String,
@@ -166,30 +179,45 @@ export interface FileSystem:
         interval: Duration,
         max_entries: Optional[Int] = none
     ) -> Result[FileWatcher, FileSystemError]
+    # Creates a new temp directory whose contents are removed by scoped close.
+    # Prefix has the same validation as temporary_directory; this does not query the temp root.
     fn temporary(prefix: String) -> Result[TemporaryDirectory, FileSystemError]
     fn stat_filesystem(path: String) -> Result[FileSystemInfo, FileSystemError]
+    # Changes the link itself without following it; Unsupported on hosts lacking this operation.
     fn chmod_link(path: String, mode: Int) -> Result[Unit, FileSystemError]
 
 # An open file supporting sequential and positional I/O.
 export interface FileHandle:
+    # Adapts this handle to IoError/Optional chunk reads; closing either view closes all aliases.
     fn reader() -> ReadStream
+    # Adapts complete writes to IoError/Unit; flush synchronizes the file.
     fn writer() -> WriteStream
     fn close() -> Unit
+    # Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
+    # Writes all bytes on success and returns their count; errors can leave a prefix without a count.
     fn write(data: Bytes) -> Result[Int, FileSystemError]
+    # Writes at the current position; appends only when the handle was opened in append mode.
     fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
+    # Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
     fn read_at(
         offset: Int,
         max_bytes: Optional[Int] = none
     ) -> Result[Bytes, FileSystemError]
+    # Writes all bytes at a nonnegative offset without moving the position; returns the full count.
     fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
+    # Reads remaining bytes from the current position; EOF returns empty Bytes.
     fn read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+    # Writes all bytes at the current position; does not truncate or reposition this handle.
     fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
     fn read_vectors(
         sizes: List[Int],
         offset: Int
     ) -> Result[List[Bytes], FileSystemError]
+    # Writes every buffer and returns the total byte count; offset -1 uses the current position.
     fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
+    # Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).
+    # Other origins return InvalidInput; the OS validates the resulting offset.
     fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
     fn stat() -> Result[FileInfo, FileSystemError]
     fn truncate(size: Int) -> Result[Unit, FileSystemError]
@@ -225,9 +253,11 @@ export interface TemporaryDirectory:
 # One filesystem change and the affected path.
 export type FileEvent:
     path: String
+    # Exactly `rename` (appearance/disappearance/rename) or `change` (contents/metadata).
     kind: String
 
-# Capacity and free-space statistics for the filesystem containing a path.
+# Capacity/free-space statistics: block_size is bytes, blocks/free/available are counts
+# in those blocks, and files/files_free are native file-node counts (zero if unavailable).
 export type FileSystemInfo:
     type_id: Int
     block_size: Int
@@ -237,7 +267,8 @@ export type FileSystemInfo:
     files: Int
     files_free: Int
 
-# Returns host filesystem flag, mode, and permission constants by name.
+# Returns this host's filesystem flag, mode, and permission constants by name.
+# Names and values vary by host; absent entries are not supported constants or portable enum cases.
 export fn constants() -> Map[String, Int]:
 
 # Policies for recursive copies, including replacement, symlinks, and optional limits.
@@ -248,6 +279,8 @@ export type CopyOptions:
     dereference: Bool
     preserve_timestamps: Bool
     verbatim_symlinks: Bool
+    # Exactly `none`, `try`, or `force`; other strings return InvalidInput.
+    # try falls back to byte copying; force requires a native clone operation.
     clone: String
     max_entries: Optional[Int] = none
     max_bytes: Optional[Int] = none

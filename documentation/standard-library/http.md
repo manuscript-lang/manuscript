@@ -11,11 +11,11 @@ Use HttpClient for reusable outbound requests and HttpExchange for streaming req
 
 ## Protocols
 
-Network.serve handles buffered requests, and Network.request returns a buffered response. Reusable clients and streaming servers support HTTP/1.1 and HTTP/2 with the same HTTP record types.
+`Network.serve` invokes a handler with a buffered `HttpRequest` and emits its `HttpResponse`. `Network.request` buffers the response into `ClientResponse`. `HttpClient.send` and `send_stream` return a scoped `ResponseBody`; its status and headers are methods, and its body is read incrementally. Streaming servers receive `HttpExchange`. TLS-enabled reusable clients and streaming servers support HTTP/1.1 and HTTP/2.
 
 ## Configuration
 
-Limits and deadlines are optional. Supplied redirect counts, idle capacity, byte budgets, deadlines, and grace must be nonnegative; supplied header and request-admission caps must be positive. With no TLS configuration, the server uses plain HTTP/1.1. With TLS configured, native ALPN negotiation selects HTTP/1.1 or HTTP/2. Credentials/trust come from explicit TlsOptions. No ambient HTTP proxy is read.
+Limits and deadlines are optional. Supplied redirect counts, idle capacity, byte budgets, deadlines, and grace must be nonnegative; supplied header and request-admission caps must be positive. `HttpServerOptions` requires an explicit `tls` field: `tls: none` selects plain HTTP/1.1. With TLS configured, native ALPN negotiation selects HTTP/1.1 or HTTP/2. Credentials/trust come from explicit TlsOptions. Client `decompress`, `cookies`, and `tls` settings remain required. No ambient HTTP proxy is read.
 
 ### Client lifetime
 
@@ -50,10 +50,20 @@ HTTP header names are case-insensitive. Received maps retain canonical spelling 
 | API | Header representation | Repeated values |
 | --- | --- | --- |
 | `HttpRequest.headers` | `Map[String, Bytes]` | Received values are joined with newline bytes. `header` returns those same bytes. |
-| `HttpResponse.headers` and outbound client request headers | `Map[String, String]` | One value per name; no supported repeated-field representation. |
-| `ClientResponse.headers`, `ResponseBody.headers()`, `HttpExchange.headers()` and `HttpExchange.send_headers` | `Map[String, List[String]]` | Separate values retain their order within each name. |
+| `HttpResponse.headers` and outbound client request headers | `Map[String, String]` | One value per exact Map key. Case-equivalent keys emit separate fields in Map insertion order. |
+| `ClientResponse.headers`, `ResponseBody.headers()`, `HttpExchange.headers()` and `HttpExchange.send_headers` | `Map[String, List[String]]` | Separate values retain their order within each name. Sending case-equivalent keys appends their lists in Map insertion order. |
 
-Buffered responses cannot emit several `Set-Cookie` fields reliably. Use `Network.serve_stream` and `HttpExchange.send_headers` with a list of cookie strings when repeated response fields are required. Do not comma-join `Set-Cookie` values or create differently cased map keys as a substitute. Use `HttpExchange.headers()` when incoming values must remain separate; the buffered helper does not split or reinterpret their joined bytes. List-valued maps still use exact Map keys for lookup.
+Sending `x-dup: first` and `X-Dup: second` emits both values in that order; reversing insertion order reverses the fields without losing either value. `Set-Cookie` fields remain separate, including cookies with commas in `Expires`. Do not comma-join cookies. Received map keys are sorted by canonical name for stable iteration; values retain wire order within a name. There is no ordering guarantee between different names.
+
+Use `Network.serve_stream` and `HttpExchange.send_headers` with a list of cookie strings for arbitrary numbers of repeated response fields. A list-valued header map can be passed directly to `send_headers` after removing host-managed framing fields. Converting it to `Map[String, String]` by taking the first or last value loses data; changing every API to one header type requires a separate migration.
+
+Use `HttpExchange.headers()` when incoming values must remain separate. For a received buffered request, `request.header(name)` returns newline-joined bytes: decode with `Bytes.to_text()` and handle `none` for invalid UTF-8 before splitting on `"\n"`. HTTP values cannot contain newline bytes, so this preserves received empty and repeated fields. Manually constructed records can contain arbitrary bytes and do not establish that wire invariant. Buffered input retains non-UTF-8 bytes; streaming input rejects them with 400, and clients return `HttpError.InvalidData` for non-UTF-8 response metadata. List-valued maps still use exact Map keys for lookup.
+
+Outgoing names must be ASCII HTTP tokens; values must be valid UTF-8 without control bytes except tab. CR, LF, NUL, and DEL are invalid. Both server forms validate the entire header map before emitting caller fields. An invalid buffered response becomes 500; invalid client headers or `send_headers` return `HttpError.InvalidInput`. Clients reject `Host`, `Content-Length`, and `Transfer-Encoding`; servers reject `Content-Length`, `Transfer-Encoding`, and `Connection` regardless of casing.
+
+## Error boundaries
+
+`request`, `http_client`, `send`, `send_stream`, `serve_stream`, and `send_headers` use `HttpError`. Buffered `serve` and `HttpServer.wait` use `IoError`. Streaming body reads and exchange reads/writes also use `IoError`, while upgrades use `WebSocketError`. These retain their domain error types; use an explicit match or a compatible `Error` boundary when composing operations. Buffered admission is named `limit`; the equivalent streaming option is `max_requests`.
 
 ## Streaming request servers
 
