@@ -70,6 +70,9 @@ type MemoryUsage:
 ## ProcessControl {data-api-kind="Interface"}
 
 Process and operating-system controls for the current process.
+`watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
+`next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup
+and finish shutdown work directly in the shielded close call after joining cancelled workers.
 
 ```manuscript
 interface ProcessControl:
@@ -97,6 +100,17 @@ interface ProcessControl:
     fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
     fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
 ```
+
+### ProcessControl.watch_signals
+
+Observes signals without claiming them or suppressing host cancellation.
+Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
+
+```manuscript
+fn watch_signals(signals: List[Int], capacity: Optional[Int] = none) -> Result[SignalStream, ProcessError]
+```
+
+See the [shutdown cookbook](../../concurrency/shutdown.md) for runnable examples and limitations.
 
 ## ProcessError {data-api-kind="Alternative"}
 
@@ -157,13 +171,17 @@ type ResourceUsage:
 
 ## SignalStream {data-api-kind="Interface"}
 
-A stream of operating-system signals selected by `watch_signals`.
+A cancellable observer of operating-system signals selected by `watch_signals`.
+SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
+`next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.
 
 ```manuscript
 interface SignalStream:
     fn close() -> Unit
     fn next() -> Result[Int, ProcessError]
 ```
+
+See the [shutdown cookbook](../../concurrency/shutdown.md) for runnable examples and limitations.
 
 ## commands {data-api-kind="Function"}
 

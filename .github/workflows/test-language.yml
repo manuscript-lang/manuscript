@@ -144,7 +144,7 @@ jobs:
         shell: bash
         run: |
           make payload
-          toolchain/go/bin/go test ./pkg/runtime ./pkg/compiler ./tests/e2e -run 'TestFileSystem|TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
+          toolchain/go/bin/go test ./pkg/runtime ./pkg/compiler ./tests/e2e -run 'TestFileSystem|TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestShutdownCookbook|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
 
   # Keep one stable required check; every applicable job must pass before merging.
   test:

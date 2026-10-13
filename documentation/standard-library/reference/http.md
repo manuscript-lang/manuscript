@@ -8,7 +8,8 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 ## ClientResponse {data-api-kind="Record"}
 
-Buffered HTTP response metadata and body.
+Buffered HTTP response metadata and body. Header names have canonical spelling;
+Map lookup is case-sensitive. Lists preserve separate values in received order.
 
 ```manuscript
 type ClientResponse:
@@ -20,6 +21,7 @@ type ClientResponse:
 ## HttpClient {data-api-kind="Interface"}
 
 Reusable HTTP client with connection pooling and explicit response limits.
+Outbound case-equivalent header keys append values in Map insertion order.
 
 ```manuscript
 interface HttpClient:
@@ -66,6 +68,8 @@ impl Error for HttpError:
 ## HttpExchange {data-api-kind="Interface"}
 
 One streaming server exchange. Read or write incrementally and close when done.
+Received header names have canonical spelling; Map lookup is case-sensitive.
+Sending case-equivalent names appends each list in Map insertion order.
 
 ```manuscript
 interface HttpExchange:
@@ -107,6 +111,8 @@ fn header(name: String) -> Optional[Bytes]:
 ## HttpResponse {data-api-kind="Record"}
 
 Buffered response returned by the simple HTTP server handler.
+Case-equivalent header keys emit separate values in Map insertion order.
+Use HttpExchange.send_headers for repeated values under one exact Map key.
 
 ```manuscript
 type HttpResponse:
@@ -143,7 +149,8 @@ type HttpServerOptions:
 
 ## ResponseBody {data-api-kind="Interface"}
 
-Streaming response body returned by HTTP client operations.
+Streaming response body returned by HTTP client operations. Header names have
+canonical spelling; Map lookup is case-sensitive. Lists keep received order.
 
 ```manuscript
 interface ResponseBody:

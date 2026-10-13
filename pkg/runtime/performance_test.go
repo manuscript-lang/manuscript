@@ -3,6 +3,7 @@ package msruntime
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -353,4 +354,160 @@ func BenchmarkMapGetDirect(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		MapGet(ctx, m, "a", TypeScope{}, "@std/Optional[Int]")
 	}
+}
+
+func registerDirectProbe(typ string, result int64) {
+	Register(Implementation{Receiver: typ, Contract: "probe/Speak", Name: "speak", Scope: "probe.ms",
+		Direct: func(*Execution, Value, []Value) Value { return result },
+		Build: func(receiver Value, _ map[string]string, _ map[string]TypeScope) Function {
+			return NewFunction(nil, "Int", func(*Execution, []Value) Value { return result })
+		}})
+}
+
+func TestMethodSiteFollowsReceiverTypeAndRegistration(t *testing.T) {
+	ctx := RootExecution()
+	registerDirectProbe("probe/A", 1)
+	registerDirectProbe("probe/B", 2)
+	var site MethodSite
+	scope := TypeScope{Module: "probe.ms"}
+	call := func(typ string) Value {
+		return CallMethod(ctx, &site, Record{Type: typ}, "probe/Speak", "speak", scope, nil)
+	}
+	for i := 0; i < 2; i++ {
+		if call("probe/A") != int64(1) || call("probe/B") != int64(2) {
+			t.Fatal("site must re-resolve when the receiver type changes")
+		}
+	}
+	registerDirectProbe("probe/C", 3)
+	if call("probe/A") != int64(1) || call("probe/C") != int64(3) {
+		t.Fatal("site must survive later registrations")
+	}
+}
+
+func BenchmarkCallMethodSite(b *testing.B) {
+	ctx := RootExecution()
+	registerDirectProbe("probe/Bench", 1)
+	var site MethodSite
+	receiver := Record{Type: "probe/Bench"}
+	scope := TypeScope{Module: "probe.ms"}
+	for i := 0; i < b.N; i++ {
+		CallMethod(ctx, &site, receiver, "probe/Speak", "speak", scope, nil)
+	}
+}
+
+func BenchmarkBindInvokeMethod(b *testing.B) {
+	ctx := RootExecution()
+	registerDirectProbe("probe/BenchBind", 1)
+	receiver := Record{Type: "probe/BenchBind"}
+	scope := TypeScope{Module: "probe.ms", Args: []TypeScope{}}
+	for i := 0; i < b.N; i++ {
+		Invoke(ctx, Bind(receiver, "probe/Speak", "speak", scope), nil)
+	}
+}
+
+func TestSourceDirectMatchesBoundFunctionContract(t *testing.T) {
+	result := "@std/Result[Int][String]"
+	propagating := func(*Execution, Value, []Value) Value { return raisePropagation("bad") }
+	got := SourceDirect("p.ms:1:1", result, propagating)(RootExecution(), nil, nil)
+	want := NewSourceFunction(nil, result, "p.ms:1:1", func(*Execution, []Value) Value { return raisePropagation("bad") }).Body(RootExecution(), nil)
+	if alt, ok := got.(Alternative); !ok || alt.Tag != "error" || alt.Type != result || got.(Alternative).Fields[0] != want.(Alternative).Fields[0] {
+		t.Fatalf("propagation: got %#v want %#v", got, want)
+	}
+
+	// Cancellation that arrives during the body is delivered at the checkpoint
+	// after it, for both a normal and a source return.
+	for name, body := range map[string]func(*Execution, Value, []Value) Value{
+		"normal": func(*Execution, Value, []Value) Value { return int64(1) },
+		"return": func(*Execution, Value, []Value) Value { return raiseSourceReturn(int64(1)) },
+	} {
+		cancelCtx, cancel := context.WithCancel(context.Background())
+		ctx := &Execution{Context: cancelCtx}
+		direct := SourceDirect("p.ms:1:1", result, func(ctx *Execution, r Value, a []Value) Value {
+			cancel()
+			return body(ctx, r, a)
+		})
+		func() {
+			defer func() {
+				if _, ok := recover().(cancelled); !ok {
+					t.Fatalf("%s: cancellation during the body must unwind", name)
+				}
+			}()
+			direct(ctx, nil, nil)
+		}()
+	}
+}
+
+// Direct and bound calls of one registered body must agree on every outcome,
+// with and without source profiling.
+func TestCallMethodMatchesBoundCallOutcomes(t *testing.T) {
+	result := "@std/Result[Int][String]"
+	cases := map[string]func(cancel func()) func(*Execution, Value, []Value) Value{
+		"value": func(func()) func(*Execution, Value, []Value) Value {
+			return func(*Execution, Value, []Value) Value { return int64(1) }
+		},
+		"propagation": func(func()) func(*Execution, Value, []Value) Value {
+			return func(*Execution, Value, []Value) Value { return raisePropagation("bad") }
+		},
+		"cancelled": func(cancel func()) func(*Execution, Value, []Value) Value {
+			return func(*Execution, Value, []Value) Value { cancel(); return int64(1) }
+		},
+		"cancelled return": func(cancel func()) func(*Execution, Value, []Value) Value {
+			return func(*Execution, Value, []Value) Value { cancel(); return raiseSourceReturn(int64(1)) }
+		},
+	}
+	outcome := func(run func(*Execution) Value, ctx *Execution) (value Value, failure any) {
+		defer func() { failure = recover() }()
+		return run(ctx), nil
+	}
+	for _, profiling := range []bool{false, true} {
+		sourceProfiling.Store(profiling)
+		for name, make := range cases {
+			var directOut, boundOut string
+			for _, bound := range []bool{false, true} {
+				cancelCtx, cancel := context.WithCancel(context.Background())
+				ctx := &Execution{Context: cancelCtx}
+				direct := SourceDirect("p.ms:1:1", result, make(cancel))
+				var run func(*Execution) Value
+				if bound {
+					run = func(ctx *Execution) Value { return BoundDirect(nil, nil, result, direct).Body(ctx, nil) }
+				} else {
+					name := fmt.Sprintf("outcome/%v/%s", profiling, name)
+					registerDirectProbeBody(name, direct)
+					var site MethodSite
+					run = func(ctx *Execution) Value {
+						return CallMethod(ctx, &site, Record{Type: name}, "probe/Speak", "speak", TypeScope{Module: "probe.ms"}, nil)
+					}
+				}
+				v, f := outcome(run, ctx)
+				got := fmt.Sprintf("%#v / %#v", v, f)
+				if bound {
+					boundOut = got
+				} else {
+					directOut = got
+				}
+			}
+			if directOut != boundOut {
+				t.Errorf("profiling=%v %s: direct %s, bound %s", profiling, name, directOut, boundOut)
+			}
+		}
+	}
+	sourceProfiling.Store(false)
+}
+
+func registerDirectProbeBody(typ string, direct func(*Execution, Value, []Value) Value) {
+	Register(Implementation{Receiver: typ, Contract: "probe/Speak", Name: "speak", Scope: "probe.ms", Direct: direct,
+		Build: func(receiver Value, _ map[string]string, _ map[string]TypeScope) Function {
+			return BoundDirect(receiver, nil, "Int", direct)
+		}})
+}
+
+// Control panics are counted when raised, as the generated code does.
+func raisePropagation(cause Value) Value {
+	controlPanics.Add(1)
+	panic(propagation{Cause: cause})
+}
+
+func raiseSourceReturn(value Value) Value {
+	controlPanics.Add(1)
+	panic(sourceReturn{value: value})
 }

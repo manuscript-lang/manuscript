@@ -302,8 +302,11 @@ func init() {
 	add("bytes", "with_value", "Bytes", []LibraryParam{p("data", "Bytes"), p("index", "Int"), p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		items := a[0].(Bytes).Items
 		i, n := relativeIndex(len(items), a[1].(int64)), a[2].(int64)
-		if i < 0 || i >= int64(len(items)) || n < 0 || n > 255 {
-			return Panic("invalid byte update")
+		if i < 0 || i >= int64(len(items)) {
+			return libraryIndexFault("Bytes.with_value", len(items), a[1].(int64))
+		}
+		if n < 0 || n > 255 {
+			return libraryRangeFault("Bytes.with_value", "value", n, 0, 255)
 		}
 		out := append([]byte{}, items...)
 		out[i] = byte(n)

@@ -55,6 +55,7 @@ func TestTutorialExamples(t *testing.T) {
 	files = append(files, "../../documentation/core-language/types/records.md")
 	files = append(files, "../../documentation/core-language/basics/numbers-and-booleans.md")
 	files = append(files, "../../documentation/core-language/control-flow/loops.md")
+	files = append(files, "../../documentation/concurrency/shutdown.md")
 	total := 0
 	for _, file := range files {
 		text, err := os.ReadFile(file)
@@ -74,15 +75,16 @@ func TestTutorialExamples(t *testing.T) {
 				if err := json.Unmarshal([]byte(block[1]), &spec); err != nil {
 					t.Fatal(err)
 				}
-				if spec.Mode != "test" && spec.Mode != "run" {
+				if spec.Mode != "test" && spec.Mode != "run" && spec.Mode != "signal" {
 					t.Fatalf("unsupported example mode %q", spec.Mode)
 				}
-				options := compiler.Options{Entry: spec.Mode == "run", Tests: spec.Mode == "test", AnalyzeOnly: true}
+				options := compiler.Options{Entry: spec.Mode != "test", Tests: spec.Mode == "test", AnalyzeOnly: true}
 				result := compiler.CompileSource("example.ms", block[2], options)
 				if !result.Success() {
 					t.Fatal(result.Diagnostics)
 				}
-				if os.Getenv("MANUSCRIPT_EXAMPLES_NATIVE") != "1" {
+				// Signal cookbook execution uses disposable children in tests/e2e.
+				if spec.Mode == "signal" || os.Getenv("MANUSCRIPT_EXAMPLES_NATIVE") != "1" {
 					return
 				}
 				options.AnalyzeOnly = false

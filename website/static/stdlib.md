@@ -649,6 +649,10 @@ type Map[T: Hashable, U]:
     fn is_empty() -> Bool:
     fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
     fn get_or(key: T, fallback: U) -> U:
+    fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn with_default(key: T, value: U) -> Map[T, U]:
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
@@ -672,6 +676,14 @@ Returns a shallow copy with independent map storage.
 fn clone() -> Map[T, U]:
 ```
 
+### Map.every
+
+Stops at the first nonmatching entry; empty maps return true.
+
+```manuscript
+fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+```
+
 ### Map.filter
 
 Copies matching entries in insertion order, retaining payload references.
@@ -679,6 +691,22 @@ Callbacks traverse a snapshot even when they mutate the receiver.
 
 ```manuscript
 fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+```
+
+### Map.find
+
+Returns the first matching entry as a fresh record with shallow references.
+
+```manuscript
+fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+```
+
+### Map.fold[A]
+
+Reduces an entry snapshot in insertion order, starting with initial.
+
+```manuscript
+fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
 ```
 
 ### Map.for_each
@@ -703,6 +731,14 @@ Reports whether this map has no entries.
 
 ```manuscript
 fn is_empty() -> Bool:
+```
+
+### Map.some
+
+Stops at the first matching entry; empty maps return false.
+
+```manuscript
+fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
 ```
 
 ### Map.with_default
@@ -757,6 +793,10 @@ type Set[T: Hashable]:
     fn is_empty() -> Bool:
     fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
     fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn some(predicate: fn(value: T) -> Bool) -> Bool:
+    fn every(predicate: fn(value: T) -> Bool) -> Bool:
     fn union(right: Set[T]) -> Set[T]:
     fn intersection(right: Set[T]) -> Set[T]:
     fn difference(right: Set[T]) -> Set[T]:
@@ -782,6 +822,14 @@ Returns a new list of [value, value] lists in insertion order.
 fn entries() -> List[List[T]]:
 ```
 
+### Set.every
+
+Stops at the first nonmatching element; empty sets return true.
+
+```manuscript
+fn every(predicate: fn(value: T) -> Bool) -> Bool:
+```
+
 ### Set.filter
 
 Copies matching elements in insertion order, retaining payload references.
@@ -789,6 +837,22 @@ Callbacks traverse a snapshot even when they mutate the receiver.
 
 ```manuscript
 fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
+```
+
+### Set.find
+
+Returns the original first matching element, or none.
+
+```manuscript
+fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+```
+
+### Set.fold[A]
+
+Reduces an element snapshot in insertion order, starting with initial.
+
+```manuscript
+fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
 ```
 
 ### Set.for_each
@@ -837,6 +901,14 @@ Transforms a snapshot into a fresh set, retaining the first equal result.
 
 ```manuscript
 fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
+```
+
+### Set.some
+
+Stops at the first matching element; empty sets return false.
+
+```manuscript
+fn some(predicate: fn(value: T) -> Bool) -> Bool:
 ```
 
 ### Set.symmetric_difference
@@ -1818,7 +1890,8 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 **Record**
 
-Buffered HTTP response metadata and body.
+Buffered HTTP response metadata and body. Header names have canonical spelling;
+Map lookup is case-sensitive. Lists preserve separate values in received order.
 
 ```manuscript
 type ClientResponse:
@@ -1832,6 +1905,7 @@ type ClientResponse:
 **Interface**
 
 Reusable HTTP client with connection pooling and explicit response limits.
+Outbound case-equivalent header keys append values in Map insertion order.
 
 ```manuscript
 interface HttpClient:
@@ -1884,6 +1958,8 @@ impl Error for HttpError:
 **Interface**
 
 One streaming server exchange. Read or write incrementally and close when done.
+Received header names have canonical spelling; Map lookup is case-sensitive.
+Sending case-equivalent names appends each list in Map insertion order.
 
 ```manuscript
 interface HttpExchange:
@@ -1929,6 +2005,8 @@ fn header(name: String) -> Optional[Bytes]:
 **Record**
 
 Buffered response returned by the simple HTTP server handler.
+Case-equivalent header keys emit separate values in Map insertion order.
+Use HttpExchange.send_headers for repeated values under one exact Map key.
 
 ```manuscript
 type HttpResponse:
@@ -1971,7 +2049,8 @@ type HttpServerOptions:
 
 **Interface**
 
-Streaming response body returned by HTTP client operations.
+Streaming response body returned by HTTP client operations. Header names have
+canonical spelling; Map lookup is case-sensitive. Lists keep received order.
 
 ```manuscript
 interface ResponseBody:
@@ -2852,6 +2931,8 @@ type Optional[T]:
     fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
     fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
+    fn ok_or[E](cause: E) -> Result[T, E]:
+    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
 ### Optional.and_then[U]
@@ -2884,6 +2965,22 @@ Transforms a present payload; none remains absent.
 
 ```manuscript
 fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
+```
+
+### Optional.ok_or[E]
+
+Returns ok with the original payload, or error with the eager cause.
+
+```manuscript
+fn ok_or[E](cause: E) -> Result[T, E]:
+```
+
+### Optional.ok_or_else[E]
+
+Constructs an error once only for none; present payloads remain unchanged.
+
+```manuscript
+fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
 ### Optional.or_else
@@ -3228,6 +3325,9 @@ type MemoryUsage:
 **Interface**
 
 Process and operating-system controls for the current process.
+`watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
+`next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup
+and finish shutdown work directly in the shielded close call after joining cancelled workers.
 
 ```manuscript
 interface ProcessControl:
@@ -3254,6 +3354,15 @@ interface ProcessControl:
     fn umask(mask: Int) -> Result[Int, ProcessError]
     fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
     fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
+```
+
+### ProcessControl.watch_signals
+
+Observes signals without claiming them or suppressing host cancellation.
+Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
+
+```manuscript
+fn watch_signals(signals: List[Int], capacity: Optional[Int] = none) -> Result[SignalStream, ProcessError]
 ```
 
 ## ProcessError
@@ -3323,7 +3432,9 @@ type ResourceUsage:
 
 **Interface**
 
-A stream of operating-system signals selected by `watch_signals`.
+A cancellable observer of operating-system signals selected by `watch_signals`.
+SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
+`next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.
 
 ```manuscript
 interface SignalStream:
@@ -3568,6 +3679,7 @@ type Result[T, E]:
     fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+    fn to_optional() -> Optional[T]:
 ```
 
 ### Result.and_then[U]
@@ -3600,6 +3712,14 @@ Transforms only a successful payload, preserving an error unchanged.
 
 ```manuscript
 fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
+```
+
+### Result.to_optional
+
+Returns some with the original success payload, or none for an error.
+
+```manuscript
+fn to_optional() -> Optional[T]:
 ```
 
 ### Result.unwrap
@@ -4877,6 +4997,8 @@ type Optional[T]:
     fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
     fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
+    fn ok_or[E](cause: E) -> Result[T, E]:
+    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
 ### Optional.and_then[U]
@@ -4909,6 +5031,22 @@ Transforms a present payload; none remains absent.
 
 ```manuscript
 fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
+```
+
+### Optional.ok_or[E]
+
+Returns ok with the original payload, or error with the eager cause.
+
+```manuscript
+fn ok_or[E](cause: E) -> Result[T, E]:
+```
+
+### Optional.ok_or_else[E]
+
+Constructs an error once only for none; present payloads remain unchanged.
+
+```manuscript
+fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
 ### Optional.or_else
@@ -4961,6 +5099,7 @@ type Result[T, E]:
     fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+    fn to_optional() -> Optional[T]:
 ```
 
 ### Result.and_then[U]
@@ -4993,6 +5132,14 @@ Transforms only a successful payload, preserving an error unchanged.
 
 ```manuscript
 fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
+```
+
+### Result.to_optional
+
+Returns some with the original success payload, or none for an error.
+
+```manuscript
+fn to_optional() -> Optional[T]:
 ```
 
 ### Result.unwrap

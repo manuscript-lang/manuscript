@@ -1,5 +1,13 @@
 # Runtime lessons
 
+### HTTP field folding must not erase map entries
+
+Verified: source Map keys use exact equality, while HTTP field names fold ASCII case. Passing case-equivalent outgoing entries through `Header.Set` silently replaces earlier values, including separate `Set-Cookie` fields. Append in source insertion order after validating all fields. `Header.Values(key)` also canonicalizes lookup: when converting an existing host map, index its exact key to avoid substituting another spelling's values.
+
+Apply when: changing HTTP adapters, repeated fields, or header representation bridges.
+Evidence: [header regressions](../pkg/runtime/library_http_header_transport_test.go), [called source checks](../tests/e2e/testdata/stdlib/http-headers.ms), and [header contracts](../documentation/standard-library/http.md#header-lookup-and-repeated-values).
+Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered byte input, streaming text input, exact Map lookup, and existing domain errors distinct. Public representation unification needs a separate migration decision.
+
 ### Empty cleanup omission needs callable ownership evidence
 
 Verified: lexical cleanup lists return to empty after lowering a `with` scope;
@@ -50,6 +58,8 @@ Decision: the canonical design separates safe concurrent access from keeping a r
 Apply when: changing closures, task-group work, schedulers, resource wrappers, or owned resources.
 Evidence: [sharing](../documentation/concurrency/sharing.md); [joined groups](../documentation/concurrency/joining.md); [scope-exit ordering](../documentation/core-language/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
 Verify: exercise use after close and shutdown with work still running. Confirm started work completes cleanup before joining returns and stale resource aliases cannot reach a reused handle.
+
+Verified: SIGINT/SIGTERM observation does not claim the signal; native host cancellation races independently with `SignalStream.next()`. Registered cleanup is shielded, but shielding a close call does not revive workers derived from the cancelled construction parent. Join workers before draining application-owned pending data directly in close while its dependencies remain open. See the [shutdown cookbook](../documentation/concurrency/shutdown.md), [disposable-child signal tests](../tests/e2e/shutdown_cookbook_test.go), and [already-cancelled worker test](../pkg/runtime/shutdown_test.go). The current native host has no cleanup watchdog; do not infer implemented escalation from the contributor policy.
 
 Verified: a queued transport operation can acquire a ready gate even when its lifetime cancellation is also ready. An asynchronous cancellation callback does not guarantee the operation's derived context is cancelled before stream dispatch. Recheck the closed state after acquiring the gate; otherwise queued writes can reach the stream after shutdown starts. See [transport admission](../pkg/runtime/library_log.go) and `TestLogCloseInterruptsActiveAndQueuedWrites` in [logging regressions](../pkg/runtime/library_log_test.go). Repeat the close/caller-cancellation cases under the race detector when changing this path.
 

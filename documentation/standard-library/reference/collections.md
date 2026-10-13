@@ -209,6 +209,10 @@ type Map[T: Hashable, U]:
     fn is_empty() -> Bool:
     fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
     fn get_or(key: T, fallback: U) -> U:
+    fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn with_default(key: T, value: U) -> Map[T, U]:
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
@@ -232,6 +236,14 @@ Returns a shallow copy with independent map storage.
 fn clone() -> Map[T, U]:
 ```
 
+### Map.every
+
+Stops at the first nonmatching entry; empty maps return true.
+
+```manuscript
+fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+```
+
 ### Map.filter
 
 Copies matching entries in insertion order, retaining payload references.
@@ -239,6 +251,22 @@ Callbacks traverse a snapshot even when they mutate the receiver.
 
 ```manuscript
 fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+```
+
+### Map.find
+
+Returns the first matching entry as a fresh record with shallow references.
+
+```manuscript
+fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+```
+
+### Map.fold[A]
+
+Reduces an entry snapshot in insertion order, starting with initial.
+
+```manuscript
+fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
 ```
 
 ### Map.for_each
@@ -263,6 +291,14 @@ Reports whether this map has no entries.
 
 ```manuscript
 fn is_empty() -> Bool:
+```
+
+### Map.some
+
+Stops at the first matching entry; empty maps return false.
+
+```manuscript
+fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
 ```
 
 ### Map.with_default
@@ -311,6 +347,10 @@ type Set[T: Hashable]:
     fn is_empty() -> Bool:
     fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
     fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn some(predicate: fn(value: T) -> Bool) -> Bool:
+    fn every(predicate: fn(value: T) -> Bool) -> Bool:
     fn union(right: Set[T]) -> Set[T]:
     fn intersection(right: Set[T]) -> Set[T]:
     fn difference(right: Set[T]) -> Set[T]:
@@ -336,6 +376,14 @@ Returns a new list of [value, value] lists in insertion order.
 fn entries() -> List[List[T]]:
 ```
 
+### Set.every
+
+Stops at the first nonmatching element; empty sets return true.
+
+```manuscript
+fn every(predicate: fn(value: T) -> Bool) -> Bool:
+```
+
 ### Set.filter
 
 Copies matching elements in insertion order, retaining payload references.
@@ -343,6 +391,22 @@ Callbacks traverse a snapshot even when they mutate the receiver.
 
 ```manuscript
 fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
+```
+
+### Set.find
+
+Returns the original first matching element, or none.
+
+```manuscript
+fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+```
+
+### Set.fold[A]
+
+Reduces an element snapshot in insertion order, starting with initial.
+
+```manuscript
+fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
 ```
 
 ### Set.for_each
@@ -391,6 +455,14 @@ Transforms a snapshot into a fresh set, retaining the first equal result.
 
 ```manuscript
 fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
+```
+
+### Set.some
+
+Stops at the first matching element; empty sets return false.
+
+```manuscript
+fn some(predicate: fn(value: T) -> Bool) -> Bool:
 ```
 
 ### Set.symmetric_difference

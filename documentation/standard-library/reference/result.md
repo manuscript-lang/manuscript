@@ -24,6 +24,7 @@ type Result[T, E]:
     fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+    fn to_optional() -> Optional[T]:
 ```
 
 ### Result.and_then[U]
@@ -56,6 +57,14 @@ Transforms only a successful payload, preserving an error unchanged.
 
 ```manuscript
 fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
+```
+
+### Result.to_optional
+
+Returns some with the original success payload, or none for an error.
+
+```manuscript
+fn to_optional() -> Optional[T]:
 ```
 
 ### Result.unwrap

@@ -934,7 +934,10 @@
             "clone: fn()-\u003eMap[T, U]",
             "contains: fn(key: T)-\u003eBool",
             "entries: fn()-\u003eList[MapEntry[T, U]]",
+            "every: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eBool",
             "filter: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eMap[T, U]",
+            "find: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eOptional[MapEntry[T, U]]",
+            "fold[A]: fn(initial: A, step: fn(accumulator: A, key: T, value: U)-\u003eA)-\u003eA",
             "for_each: fn(operation: fn(key: T, value: U)-\u003eUnit)-\u003eUnit",
             "get: fn(key: T)-\u003eOptional[U]",
             "get_or: fn(key: T, fallback: U)-\u003eU",
@@ -942,6 +945,7 @@
             "keys: fn()-\u003eList[T]",
             "length: fn()-\u003eInt",
             "merge: fn(other: Map[T, U])-\u003eMap[T, U]",
+            "some: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eBool",
             "values: fn()-\u003eList[U]",
             "with_default: fn(key: T, value: U)-\u003eMap[T, U]",
             "with_default_from: fn(key: T, create: fn(key: T)-\u003eU)-\u003eMap[T, U]",
@@ -974,10 +978,28 @@
               "doc": ""
             },
             {
+              "name": "every",
+              "kind": "operation",
+              "signature": "fn every(predicate: fn(key: T, value: U) -\u003e Bool) -\u003e Bool:",
+              "doc": "Stops at the first nonmatching entry; empty maps return true."
+            },
+            {
               "name": "filter",
               "kind": "operation",
               "signature": "fn filter(predicate: fn(key: T, value: U) -\u003e Bool) -\u003e Map[T, U]:",
               "doc": "Copies matching entries in insertion order, retaining payload references.\nCallbacks traverse a snapshot even when they mutate the receiver."
+            },
+            {
+              "name": "find",
+              "kind": "operation",
+              "signature": "fn find(predicate: fn(key: T, value: U) -\u003e Bool) -\u003e Optional[MapEntry[T, U]]:",
+              "doc": "Returns the first matching entry as a fresh record with shallow references."
+            },
+            {
+              "name": "fold[A]",
+              "kind": "operation",
+              "signature": "fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -\u003e A) -\u003e A:",
+              "doc": "Reduces an entry snapshot in insertion order, starting with initial."
             },
             {
               "name": "for_each",
@@ -1020,6 +1042,12 @@
               "kind": "operation",
               "signature": "fn merge(other: Map[T, U]) -\u003e Map[T, U]:",
               "doc": ""
+            },
+            {
+              "name": "some",
+              "kind": "operation",
+              "signature": "fn some(predicate: fn(key: T, value: U) -\u003e Bool) -\u003e Bool:",
+              "doc": "Stops at the first matching entry; empty maps return false."
             },
             {
               "name": "values",
@@ -1123,7 +1151,10 @@
             "contains: fn(value: T)-\u003eBool",
             "difference: fn(right: Set[T])-\u003eSet[T]",
             "entries: fn()-\u003eList[List[T]]",
+            "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "filter: fn(predicate: fn(value: T)-\u003eBool)-\u003eSet[T]",
+            "find: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
+            "fold[A]: fn(initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
             "for_each: fn(operation: fn(value: T)-\u003eUnit)-\u003eUnit",
             "intersection: fn(right: Set[T])-\u003eSet[T]",
             "is_disjoint_from: fn(right: Set[T])-\u003eBool",
@@ -1132,6 +1163,7 @@
             "is_superset_of: fn(right: Set[T])-\u003eBool",
             "length: fn()-\u003eInt",
             "map[U: Hashable]: fn(transform: fn(value: T)-\u003eU)-\u003eSet[U]",
+            "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "symmetric_difference: fn(right: Set[T])-\u003eSet[T]",
             "union: fn(right: Set[T])-\u003eSet[T]",
             "values: fn()-\u003eList[T]",
@@ -1170,10 +1202,28 @@
               "doc": "Returns a new list of [value, value] lists in insertion order."
             },
             {
+              "name": "every",
+              "kind": "operation",
+              "signature": "fn every(predicate: fn(value: T) -\u003e Bool) -\u003e Bool:",
+              "doc": "Stops at the first nonmatching element; empty sets return true."
+            },
+            {
               "name": "filter",
               "kind": "operation",
               "signature": "fn filter(predicate: fn(value: T) -\u003e Bool) -\u003e Set[T]:",
               "doc": "Copies matching elements in insertion order, retaining payload references.\nCallbacks traverse a snapshot even when they mutate the receiver."
+            },
+            {
+              "name": "find",
+              "kind": "operation",
+              "signature": "fn find(predicate: fn(value: T) -\u003e Bool) -\u003e Optional[T]:",
+              "doc": "Returns the original first matching element, or none."
+            },
+            {
+              "name": "fold[A]",
+              "kind": "operation",
+              "signature": "fn fold[A](initial: A, step: fn(accumulator: A, value: T) -\u003e A) -\u003e A:",
+              "doc": "Reduces an element snapshot in insertion order, starting with initial."
             },
             {
               "name": "for_each",
@@ -1222,6 +1272,12 @@
               "kind": "operation",
               "signature": "fn map[U: Hashable](transform: fn(value: T) -\u003e U) -\u003e Set[U]:",
               "doc": "Transforms a snapshot into a fresh set, retaining the first equal result."
+            },
+            {
+              "name": "some",
+              "kind": "operation",
+              "signature": "fn some(predicate: fn(value: T) -\u003e Bool) -\u003e Bool:",
+              "doc": "Stops at the first matching element; empty sets return false."
             },
             {
               "name": "symmetric_difference",
@@ -3062,7 +3118,7 @@
       "declarations": [
         {
           "name": "ClientResponse",
-          "doc": "Buffered HTTP response metadata and body.",
+          "doc": "Buffered HTTP response metadata and body. Header names have canonical spelling;\nMap lookup is case-sensitive. Lists preserve separate values in received order.",
           "kind": "record",
           "type": "ClientResponse",
           "fields": [
@@ -3093,7 +3149,7 @@
         },
         {
           "name": "HttpClient",
-          "doc": "Reusable HTTP client with connection pooling and explicit response limits.",
+          "doc": "Reusable HTTP client with connection pooling and explicit response limits.\nOutbound case-equivalent header keys append values in Map insertion order.",
           "kind": "interface",
           "type": "HttpClient",
           "operations": [
@@ -3261,7 +3317,7 @@
         },
         {
           "name": "HttpExchange",
-          "doc": "One streaming server exchange. Read or write incrementally and close when done.",
+          "doc": "One streaming server exchange. Read or write incrementally and close when done.\nReceived header names have canonical spelling; Map lookup is case-sensitive.\nSending case-equivalent names appends each list in Map insertion order.",
           "kind": "interface",
           "type": "HttpExchange",
           "operations": [
@@ -3388,7 +3444,7 @@
         },
         {
           "name": "HttpResponse",
-          "doc": "Buffered response returned by the simple HTTP server handler.",
+          "doc": "Buffered response returned by the simple HTTP server handler.\nCase-equivalent header keys emit separate values in Map insertion order.\nUse HttpExchange.send_headers for repeated values under one exact Map key.",
           "kind": "record",
           "type": "HttpResponse",
           "fields": [
@@ -3509,7 +3565,7 @@
         },
         {
           "name": "ResponseBody",
-          "doc": "Streaming response body returned by HTTP client operations.",
+          "doc": "Streaming response body returned by HTTP client operations. Header names have\ncanonical spelling; Map lookup is case-sensitive. Lists keep received order.",
           "kind": "interface",
           "type": "ResponseBody",
           "operations": [
@@ -4926,6 +4982,8 @@
             "is_none: fn()-\u003eBool",
             "is_some: fn()-\u003eBool",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eOptional[U]",
+            "ok_or[E]: fn(cause: E)-\u003eResult[T, E]",
+            "ok_or_else[E]: fn(create: fn()-\u003eE)-\u003eResult[T, E]",
             "or_else: fn(create: fn()-\u003eOptional[T])-\u003eOptional[T]",
             "unwrap: fn()-\u003eT",
             "unwrap_or: fn(fallback: T)-\u003eT",
@@ -4973,6 +5031,18 @@
               "kind": "operation",
               "signature": "fn map[U](transform: fn(value: T) -\u003e U) -\u003e Optional[U]:",
               "doc": "Transforms a present payload; none remains absent."
+            },
+            {
+              "name": "ok_or[E]",
+              "kind": "operation",
+              "signature": "fn ok_or[E](cause: E) -\u003e Result[T, E]:",
+              "doc": "Returns ok with the original payload, or error with the eager cause."
+            },
+            {
+              "name": "ok_or_else[E]",
+              "kind": "operation",
+              "signature": "fn ok_or_else[E](create: fn() -\u003e E) -\u003e Result[T, E]:",
+              "doc": "Constructs an error once only for none; present payloads remain unchanged."
             },
             {
               "name": "or_else",
@@ -5485,7 +5555,7 @@
         },
         {
           "name": "ProcessControl",
-          "doc": "Process and operating-system controls for the current process.",
+          "doc": "Process and operating-system controls for the current process.\n`watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.\n`next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup\nand finish shutdown work directly in the shielded close call after joining cancelled workers.",
           "kind": "interface",
           "type": "ProcessControl",
           "operations": [
@@ -5644,7 +5714,7 @@
               "name": "watch_signals",
               "kind": "operation",
               "signature": "fn watch_signals(signals: List[Int], capacity: Optional[Int] = none) -\u003e Result[SignalStream, ProcessError]",
-              "doc": ""
+              "doc": "Observes signals without claiming them or suppressing host cancellation.\nCode after next() has no shutdown guarantee; use registered with/Closeable cleanup."
             },
             {
               "name": "working_directory",
@@ -5901,7 +5971,7 @@
         },
         {
           "name": "SignalStream",
-          "doc": "A stream of operating-system signals selected by `watch_signals`.",
+          "doc": "A cancellable observer of operating-system signals selected by `watch_signals`.\nSIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.\n`next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.",
           "kind": "interface",
           "type": "SignalStream",
           "operations": [
@@ -6260,6 +6330,7 @@
             "is_error: fn()-\u003eBool",
             "is_ok: fn()-\u003eBool",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eResult[U, E]",
+            "to_optional: fn()-\u003eOptional[T]",
             "unwrap: fn()-\u003eT",
             "unwrap_error: fn()-\u003eE",
             "unwrap_or: fn(fallback: T)-\u003eT",
@@ -6313,6 +6384,12 @@
               "kind": "operation",
               "signature": "fn map[U](transform: fn(value: T) -\u003e U) -\u003e Result[U, E]:",
               "doc": "Transforms only a successful payload, preserving an error unchanged."
+            },
+            {
+              "name": "to_optional",
+              "kind": "operation",
+              "signature": "fn to_optional() -\u003e Optional[T]:",
+              "doc": "Returns some with the original success payload, or none for an error."
             },
             {
               "name": "unwrap",
@@ -8831,6 +8908,8 @@
             "is_none: fn()-\u003eBool",
             "is_some: fn()-\u003eBool",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eOptional[U]",
+            "ok_or[E]: fn(cause: E)-\u003eResult[T, E]",
+            "ok_or_else[E]: fn(create: fn()-\u003eE)-\u003eResult[T, E]",
             "or_else: fn(create: fn()-\u003eOptional[T])-\u003eOptional[T]",
             "unwrap: fn()-\u003eT",
             "unwrap_or: fn(fallback: T)-\u003eT",
@@ -8880,6 +8959,18 @@
               "doc": "Transforms a present payload; none remains absent."
             },
             {
+              "name": "ok_or[E]",
+              "kind": "operation",
+              "signature": "fn ok_or[E](cause: E) -\u003e Result[T, E]:",
+              "doc": "Returns ok with the original payload, or error with the eager cause."
+            },
+            {
+              "name": "ok_or_else[E]",
+              "kind": "operation",
+              "signature": "fn ok_or_else[E](create: fn() -\u003e E) -\u003e Result[T, E]:",
+              "doc": "Constructs an error once only for none; present payloads remain unchanged."
+            },
+            {
               "name": "or_else",
               "kind": "operation",
               "signature": "fn or_else(create: fn() -\u003e Optional[T]) -\u003e Optional[T]:",
@@ -8923,6 +9014,7 @@
             "is_error: fn()-\u003eBool",
             "is_ok: fn()-\u003eBool",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eResult[U, E]",
+            "to_optional: fn()-\u003eOptional[T]",
             "unwrap: fn()-\u003eT",
             "unwrap_error: fn()-\u003eE",
             "unwrap_or: fn(fallback: T)-\u003eT",
@@ -8976,6 +9068,12 @@
               "kind": "operation",
               "signature": "fn map[U](transform: fn(value: T) -\u003e U) -\u003e Result[U, E]:",
               "doc": "Transforms only a successful payload, preserving an error unchanged."
+            },
+            {
+              "name": "to_optional",
+              "kind": "operation",
+              "signature": "fn to_optional() -\u003e Optional[T]:",
+              "doc": "Returns some with the original success payload, or none for an error."
             },
             {
               "name": "unwrap",

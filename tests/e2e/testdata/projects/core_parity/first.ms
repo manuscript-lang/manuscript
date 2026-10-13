@@ -1,5 +1,11 @@
 import {Key, Cause} from "./domain.ms"
-import {transform_set, lookup} from "./helpers.ms"
+import {
+    transform_set,
+    lookup,
+    locate_map,
+    locate_set,
+    convert
+} from "./helpers.ms"
 import {Map, Set} from "@std/collections.ms"
 import {Equal, Hashable} from "@std/equality.ms"
 
@@ -57,4 +63,33 @@ export fn first_failure(cause: Cause) -> Result[String, Error]:
         fn(n): n.toString()
     ).and_then(
         fn(text): ok(text)
+    )
+
+export fn first_queries() -> Bool:
+    let key = Key(5, "original")
+    let map = Map[Key, String]().with_entry(key, "found")
+    let set = Set[Key]().with_value(key)
+    return (
+        locate_map(
+            map,
+            Key(5, "different")
+        ).is_some()
+        and locate_set(
+            set,
+            Key(5, "different")
+        ).is_some()
+    )
+
+export fn first_converted(cause: Cause) -> Result[Int, Error]:
+    let missing: Optional[Int] = none
+    return convert(
+        missing,
+        fn() -> Error: cause
+    )
+
+export fn first_folded(cause: Cause) -> Error:
+    let values = Map[String, Int]().with_entry("key", 1)
+    return values.fold[Error](
+        cause,
+        fn(acc, key, value): acc
     )

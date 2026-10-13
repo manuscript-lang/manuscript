@@ -18,14 +18,14 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 		}
 		value, valid := nativeOption(args[0].Value, "Int", int64(0))
 		if !valid {
-			return Panic("Queue capacity must be positive; pass a limit of at least 1")
+			return libraryRangeFault("Queue", "capacity", args[0].Value, 1, int64(^uint(0)>>1))
 		}
 		capacity := value.(int64)
 		if option, ok := args[0].Value.(Alternative); ok && option.Tag == "none" {
 			return &Queue{typ: typ}
 		}
 		if capacity <= 0 || capacity > int64(^uint(0)>>1) {
-			return Panic("Queue capacity must be positive; pass a limit of at least 1")
+			return libraryRangeFault("Queue", "capacity", args[0].Value, 1, int64(^uint(0)>>1))
 		}
 		return &Queue{typ: typ, capacity: int(capacity)}
 	case "@std/PriorityQueue":
@@ -37,12 +37,12 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 			if arg.Name == "capacity" {
 				value, valid := nativeOption(arg.Value, "Int", int64(0))
 				if !valid {
-					return Panic("PriorityQueue capacity must be positive; pass a limit of at least 1")
+					return libraryRangeFault("PriorityQueue", "capacity", arg.Value, 1, int64(^uint(0)>>1))
 				}
 				q.capacity = int(value.(int64))
 				if q.capacity <= 0 {
 					if v, ok := arg.Value.(Alternative); !ok || v.Tag != "none" {
-						return Panic("PriorityQueue capacity must be positive; pass a limit of at least 1")
+						return libraryRangeFault("PriorityQueue", "capacity", arg.Value, 1, int64(^uint(0)>>1))
 					}
 				}
 			}
@@ -176,7 +176,7 @@ func (b *Builder) Operation(name string) Function {
 			} else {
 				n := args[0].(int64)
 				if n < 0 || n > 255 {
-					return Panic("byte value must be between 0 and 255; clamp or validate the Int before storing it as a byte")
+					return libraryRangeFault("BytesBuilder.append", "value", n, 0, 255)
 				}
 				b.bytes = append(b.bytes, byte(n))
 			}

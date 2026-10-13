@@ -33,7 +33,7 @@ impl Read for Val:
 		{"socket clone", "import Connection from \"@std/net.ms\"\nfn f(socket: Connection) -> Unit:\n    socket.clone()\n", "unknown or ambiguous member clone"},
 		{"lock clone", "fn f(lock: Synchronized[Int]) -> Unit:\n    lock.clone()\n", "unknown or ambiguous member clone"},
 		{"guard clone", "fn f(guard: SynchronizedGuard[Int]) -> Unit:\n    guard.clone()\n", "unknown or ambiguous member clone"},
-		{"service fields opaque", "fn f(lock: Synchronized[Int]) -> Unit:\n    lock.value = 1\n", "assignment requires a record field"},
+		{"service fields opaque", "fn f(lock: Synchronized[Int]) -> Unit:\n    lock.value = 1\n", "not readable or assignable"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			result := compiler.CompileSource("rejected.ms", declarations+test.source, compiler.Options{})
