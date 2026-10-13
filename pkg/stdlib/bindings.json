@@ -270,6 +270,8 @@
     "@std/collections.ms/List/reversed": "collections/reversed",
     "@std/collections.ms/List/set": "collections/set",
     "@std/collections.ms/List/slice": "collections/slice",
+    "@std/collections.ms/List/take": "collections/take",
+    "@std/collections.ms/List/drop": "collections/drop",
     "@std/collections.ms/List/some": "collections/some",
     "@std/collections.ms/List/sorted": "collections/sorted",
     "@std/collections.ms/List/to_set": "collections/to_set",

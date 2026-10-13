@@ -355,6 +355,31 @@ func init() {
 		librarySlice("List.slice", len(v.Items), s, e)
 		return &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)}
 	})
+	for _, name := range []string{"take", "drop"} {
+		libraryGeneric("collections", name, "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("count", "Int")}, func(ctx *Execution, _ string, args []Value) Value {
+			values := args[0].(*List)
+			count := args[1].(int64)
+			if count < 0 {
+				return Panic("List." + name + ": count must be nonnegative, found " + strconv.FormatInt(count, 10))
+			}
+			source := values.Items
+			if count > int64(len(source)) {
+				count = int64(len(source))
+			}
+			start, end := 0, int(count)
+			if name == "drop" {
+				start, end = int(count), len(source)
+			}
+			items := make([]Value, end-start)
+			for i := range items {
+				if i%1024 == 0 {
+					CheckCancelled(ctx)
+				}
+				items[i] = source[start+i]
+			}
+			return &List{Type: values.Type, Items: items}
+		})
+	}
 }
 
 var libraryFloatSyntax = regexp.MustCompile(`^[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$`)

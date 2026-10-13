@@ -663,6 +663,7 @@
             "concat: fn(values: List[T])-\u003eList[T]",
             "contains: fn(value: T)-\u003eBool",
             "copy_within: fn(target: Int, start: Int, end: Int)-\u003eList[T]",
+            "drop: fn(count: Int)-\u003eList[T]",
             "entries: fn()-\u003eList[ListEntry[T]]",
             "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "fill: fn(value: T, start: Int, end: Int)-\u003eList[T]",
@@ -694,6 +695,7 @@
             "slice: fn(start: Int, end: Int)-\u003eList[T]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
+            "take: fn(count: Int)-\u003eList[T]",
             "to_set: fn()-\u003eSet[T]",
             "with_value: fn(index: Int, value: T)-\u003eList[T]",
             "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
@@ -735,6 +737,12 @@
               "kind": "operation",
               "signature": "fn copy_within(target: Int, start: Int, end: Int) -\u003e List[T]:",
               "doc": ""
+            },
+            {
+              "name": "drop",
+              "kind": "operation",
+              "signature": "fn drop(count: Int) -\u003e List[T]:",
+              "doc": "Copies the remainder after min(count, length) into fresh shallow List storage.\nLeaves the receiver unchanged; negative count is a programming fault."
             },
             {
               "name": "entries",
@@ -921,6 +929,12 @@
               "kind": "operation",
               "signature": "fn sorted(compare: fn(left: T, right: T) -\u003e Int) -\u003e List[T]:",
               "doc": "Returns a new list sorted by negative/zero/positive comparator results."
+            },
+            {
+              "name": "take",
+              "kind": "operation",
+              "signature": "fn take(count: Int) -\u003e List[T]:",
+              "doc": "Copies the first min(count, length) elements into fresh shallow List storage.\nLeaves the receiver unchanged; negative count is a programming fault."
             },
             {
               "name": "to_set",
@@ -9299,6 +9313,7 @@
             "concat: fn(values: List[T])-\u003eList[T]",
             "contains: fn(value: T)-\u003eBool",
             "copy_within: fn(target: Int, start: Int, end: Int)-\u003eList[T]",
+            "drop: fn(count: Int)-\u003eList[T]",
             "entries: fn()-\u003eList[ListEntry[T]]",
             "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "fill: fn(value: T, start: Int, end: Int)-\u003eList[T]",
@@ -9330,6 +9345,7 @@
             "slice: fn(start: Int, end: Int)-\u003eList[T]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
+            "take: fn(count: Int)-\u003eList[T]",
             "to_set: fn()-\u003eSet[T]",
             "with_value: fn(index: Int, value: T)-\u003eList[T]",
             "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
@@ -9371,6 +9387,12 @@
               "kind": "operation",
               "signature": "fn copy_within(target: Int, start: Int, end: Int) -\u003e List[T]:",
               "doc": ""
+            },
+            {
+              "name": "drop",
+              "kind": "operation",
+              "signature": "fn drop(count: Int) -\u003e List[T]:",
+              "doc": "Copies the remainder after min(count, length) into fresh shallow List storage.\nLeaves the receiver unchanged; negative count is a programming fault."
             },
             {
               "name": "entries",
@@ -9557,6 +9579,12 @@
               "kind": "operation",
               "signature": "fn sorted(compare: fn(left: T, right: T) -\u003e Int) -\u003e List[T]:",
               "doc": "Returns a new list sorted by negative/zero/positive comparator results."
+            },
+            {
+              "name": "take",
+              "kind": "operation",
+              "signature": "fn take(count: Int) -\u003e List[T]:",
+              "doc": "Copies the first min(count, length) elements into fresh shallow List storage.\nLeaves the receiver unchanged; negative count is a programming fault."
             },
             {
               "name": "to_set",
