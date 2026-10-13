@@ -80,6 +80,45 @@ func TestNativeCallExperimentParity(t *testing.T) {
 		FinishExecution(ctx)
 	}
 	sourceProfiling.Store(false)
+	// The topology must enter one source-call depth, not guard an already
+	// guarded native entry from a first-class wrapper.
+	boundaryCtx := RootExecution()
+	for _, boxed := range []bool{false, true} {
+		body := func() int64 {
+			if got := boundaryCtx.calls.depth.Load(); got != 1 {
+				t.Fatalf("boxed=%v depth=%d", boxed, got)
+			}
+			return 1
+		}
+		if boxed {
+			NewSourceFunction(nil, "Int", "experiment.ms:1:1", func(*Execution, []Value) Value { return body() }).Body(boundaryCtx, nil)
+		} else {
+			experimentSourceCall(boundaryCtx, "Int", body)
+		}
+		if boundaryCtx.calls.depth.Load() != 0 {
+			t.Fatal("boundary did not unwind")
+		}
+	}
+	FinishExecution(boundaryCtx)
+	for _, boxed := range []bool{false, true} {
+		ctx := RootExecution()
+		var cancel context.CancelFunc
+		ctx.Context, cancel = context.WithCancel(ctx.Context)
+		cancel()
+		entered := false
+		body := func() int64 { entered = true; return 1 }
+		failure := experimentFailure(func() {
+			if boxed {
+				NewSourceFunction(nil, "Int", "experiment.ms:1:1", func(*Execution, []Value) Value { return body() }).Body(ctx, nil)
+			} else {
+				experimentSourceCall(ctx, "Int", body)
+			}
+		})
+		if _, ok := failure.(cancelled); !ok || entered || ctx.calls.depth.Load() != 0 {
+			t.Fatalf("boxed=%v cancelled admission: failure=%#v entered=%v depth=%d", boxed, failure, entered, ctx.calls.depth.Load())
+		}
+		FinishExecution(ctx)
+	}
 	for _, returned := range []bool{false, true} {
 		ctx := RootExecution()
 		var cancel context.CancelFunc

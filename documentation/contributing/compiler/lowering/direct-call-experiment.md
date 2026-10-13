@@ -5,7 +5,7 @@ weight = 4
 
 # Direct call ABI experiment
 
-This is a held design and test-only prototype for #251, based on main `e747d1e9`.
+This is a held design and test-only prototype for #251, rebased on main `c80bdb2a`.
 It does not change production lowering, select numeric widths, or add a second
 scalar representation map. #271 owns signed32/binary32 defaults and explicit
 wider types; current measurements preserve the preceding 64-bit ABI.
@@ -19,7 +19,7 @@ Dynamic functions, omitted defaults and reordered calls still use their existing
 paths. Dropping `Invoke` everywhere is therefore not the current opportunity.
 
 The existing generated 1,024-source-call loop records 2,794 allocations and
-46,928 bytes per invocation on this main revision. Native checks, result parity,
+46,928 bytes per invocation on historical main `e747d1e9`. Native checks, result parity,
 wrappers, source positions and cancellation remain in the fixture. The existing
 handwritten typed-local comparison records 3,795 allocations / 54,952 bytes:
 unboxing and reboxing alone can worsen an ABI-heavy program. The old benchmark
@@ -50,6 +50,31 @@ Result propagation must stop at its own Result boundary on supported composite
 paths; primitive-only eligibility does not permit it to escape into a caller.
 The experiment keeps depth accounting on every call. It does not establish that
 recursion-only checks or statement-only source locations are equivalent.
+
+### Exactly one guard per invocation
+
+Keep four distinct layers. The unguarded typed body owns the source-position
+variable, fault-frame defer and lexical cleanup; it contains no admission,
+delivery or depth guard. A guarded native entry calls that body through one
+shared source-call guard. A boxed first-class adapter converts arguments and calls
+the same unguarded body through that guard once; it does not call the already
+guarded native entry from inside `NewSourceFunction`. A profile/debug adapter is
+selected inside the chosen guard and also calls the unguarded body directly.
+It never falls back to the same wrapper that reached it.
+
+```text
+known call -> guarded native entry -> shared guard -> typed body
+first-class call -> boxed adapter  -> shared guard -> typed body
+profile/debug mode               -> shared guard -> mode adapter -> typed body
+```
+
+Guard sharing must replace duplication in `NewSourceFunction`/`SourceDirect`,
+not permanently add another implementation. All-call depth and source-return/
+Result recovery remain at this one boundary. Argument conversion/capture is a
+caller obligation before admission; result boxing is outside the native body.
+The current handwritten experiment's independent boxed fallback avoids recursion
+but is only a measurement scaffold. A generated pilot needs this topology and
+an exactly-one-depth/admission/delivery/trace regression before it is acceptable.
 
 ## Test-only guard prototype
 
@@ -91,12 +116,14 @@ return, expression-match source returns, Result propagation, cancellation before
 admission/during body/at delivery, cleanup before delivery, and recursion-limit
 failure without leaked depth. Profiling on/off and native DAP must agree.
 
-The current test prototype covers value/profile fallback, normal/source-return
+The current test prototype covers value/profile fallback, exactly one depth,
+cancelled admission without body entry, normal/source-return
 cancellation, Result-boundary recovery, depth-limit admission, cleanup and fault
 preservation. It does not yet prove arbitrary generated bodies, real deep
 recursion, debugger stepping, acquisition disposal, distribution behavior or
 code-size/build-time effects. Those remain gates for the later integration.
 
-#259/#255 scalar integration remains held. #252 typed records stays queued until
-the calling convention and numeric representation are coherent. Parent review
+#259/#255 scalar integration remains held. #252's proposal and baseline are
+separate; its implementation stays queued until the calling convention and
+numeric representation are coherent. Parent review
 is required before broad implementation or merge.
