@@ -1,6 +1,92 @@
 import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
+test "growth nested snapshots self splice and overlapping copy preserve membership":
+    let growing = [1]
+    let alias = growing
+    let old: List[Int] = []
+
+    for value in growing:
+        old.append(value)
+
+        while growing.length() < 128:
+            growing.append(growing.length() + 1)
+
+        growing.with_value(index: 0, value: 9)
+
+    if not (
+        old == [1]
+        and alias.length() == 128
+        and alias.first() == some(9)
+    ):
+        return panic("growth lost membership or alias update")
+
+    let nested = [1, 2, 3]
+    let outer: List[Int] = []
+    let before: List[Int] = []
+    let after: List[Int] = []
+
+    for value in nested:
+        outer.append(value)
+
+        if value == 1:
+            for inner in nested:
+                before.append(inner)
+
+                if inner == 1:
+                    nested.with_value(index: 0, value: 9)
+
+            for inner in nested:
+                after.append(inner)
+
+                if inner == 9:
+                    nested.reverse()
+
+    if not (
+        outer == [1, 2, 3]
+        and before == [1, 2, 3]
+        and after == [9, 2, 3]
+        and nested == [3, 2, 9]
+    ):
+        return panic("nested snapshots changed across detach")
+
+    let self_list = [1, 2, 3]
+    let seen_self: List[Int] = []
+
+    for value in self_list:
+        seen_self.append(value)
+
+        if value == 1:
+            self_list.with_values(start: 1, delete_count: 1, replacement: self_list)
+
+    if not (seen_self == [1, 2, 3] and self_list == [1, 1, 2, 3, 3]):
+        return panic("self splice overwrote snapshot")
+
+    let backward = [1, 2, 3]
+    let truncated = [1, 2, 3]
+    let seen_backward: List[Int] = []
+    let seen_truncated: List[Int] = []
+
+    for value in backward:
+        seen_backward.append(value)
+
+        if value == 1:
+            backward.copy_within(target: 0, start: 1, end: 3)
+
+    for value in truncated:
+        seen_truncated.append(value)
+
+        if value == 1:
+            truncated.copy_within(target: 2, start: 0, end: 3)
+
+    if not (
+        seen_backward == [1, 2, 3]
+        and seen_truncated == [1, 2, 3]
+        and backward == [2, 3, 3]
+        and truncated == [1, 2, 1]
+    ):
+        return panic("overlapping copy overwrote snapshot or changed truncation")
+
 fn update[T](values: List[T], value: T) -> Unit:
     values.with_value(index: 0, value: value)
 

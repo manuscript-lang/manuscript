@@ -53,6 +53,34 @@ func BenchmarkLists(b *testing.B) {
  benchmarkPrototype(b,ctx,n)
 }
 
+// Paired normal-runtime measurements isolate the bounded COW change. Fresh
+// clone input is common to all variants and keeps writes/reset costs comparable.
+func TestNarrowSnapshotParity(t *testing.T) {
+ initialize()
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ xs:=generatedList(ctx,1024)
+ alias:=xs
+ if @@callback_write@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64)!=listSum(1024)||alias.Items[0]!=int64(7) {t.Fatal("callback write changed captured membership or alias")}
+ xs=generatedList(ctx,1024)
+ if @@callbacks@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64)!=listSum(1024)||!rt.Equal(xs,generatedList(ctx,1024)) {t.Fatal("readonly callback mutated values")}
+ rt.Invoke(ctx,rt.NativeMember(xs,"with_value"),[]rt.Argument{{Name:"index",Value:int64(0)},{Name:"value",Value:int64(7)}})
+ if xs.Items[0]!=int64(7)||len(xs.Items)!=1024 {t.Fatal("deferred write changed alias")}
+}
+func BenchmarkNarrowSnapshots(b *testing.B) {
+ initialize()
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ xs:=generatedList(ctx,65536)
+ for _,mode:=range []string{"ReadOnly","WriteInCallback","WriteAfterCallback"} {
+  b.Run(mode,func(b *testing.B){b.ReportAllocs();for b.Loop(){
+   input:=rt.Clone(xs).(*rt.List)
+   if mode=="WriteInCallback" {listResult=@@callback_write@@.(rt.Function).Body(ctx,[]rt.Value{input})} else {
+    listResult=@@callbacks@@.(rt.Function).Body(ctx,[]rt.Value{input})
+    if mode=="WriteAfterCallback" {rt.Invoke(ctx,rt.NativeMember(input,"with_value"),[]rt.Argument{{Name:"index",Value:int64(0)},{Name:"value",Value:int64(7)}})}
+   }
+  }})
+ }
+}
+
 // Each RSS sample runs in a fresh process. Keep storage live through both reads.
 // MS_LIST_MEMORY selects generated, boxed or prototype; MS_LIST_COUNT sets length.
 func TestListMemory(t *testing.T) {

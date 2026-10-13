@@ -21,6 +21,8 @@ func TestListSnapshotsDetachEveryInPlaceMutation(t *testing.T) {
 		{"with_values", []Argument{{"start", int64(1)}, {"delete_count", int64(1)}, {"replacement", &List{Type: "@std/List[Int]", Items: []Value{int64(4), int64(5)}}}}, []Value{int64(1), int64(4), int64(5), int64(3)}},
 		{"fill", []Argument{{"value", int64(4)}, {"start", int64(0)}, {"end", int64(3)}}, []Value{int64(4), int64(4), int64(4)}},
 		{"copy_within", []Argument{{"target", int64(1)}, {"start", int64(0)}, {"end", int64(2)}}, []Value{int64(1), int64(1), int64(2)}},
+		{"copy_within", []Argument{{"target", int64(0)}, {"start", int64(1)}, {"end", int64(3)}}, []Value{int64(2), int64(3), int64(3)}},
+		{"copy_within", []Argument{{"target", int64(2)}, {"start", int64(0)}, {"end", int64(3)}}, []Value{int64(1), int64(2), int64(1)}},
 		{"reverse", nil, []Value{int64(3), int64(2), int64(1)}},
 	} {
 		for _, kind := range []string{"loop", "callback"} {
@@ -47,6 +49,41 @@ func TestListSnapshotsDetachEveryInPlaceMutation(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestListSnapshotsAcrossGrowthDetachAndSelfSplice(t *testing.T) {
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	list := &List{Type: "@std/List[Int]", Items: []Value{int64(1)}}
+	alias := list
+	beforeGrowth := list.snapshot()
+	ListAppend(ctx, list, int64(2))
+	if &beforeGrowth.Items[0] == &list.Items[0] {
+		t.Fatal("append did not grow the full-capacity array")
+	}
+	afterGrowth := list.snapshot()
+	Invoke(ctx, NativeMember(alias, "with_value"), []Argument{{"index", int64(0)}, {"value", int64(9)}})
+	afterDetach := list.snapshot()
+	Invoke(ctx, NativeMember(alias, "reverse"), nil)
+	for _, test := range []struct {
+		list *List
+		want []Value
+	}{
+		{beforeGrowth, []Value{int64(1)}},
+		{afterGrowth, []Value{int64(1), int64(2)}},
+		{afterDetach, []Value{int64(9), int64(2)}},
+		{alias, []Value{int64(2), int64(9)}},
+	} {
+		if !reflect.DeepEqual(test.list.Items, test.want) {
+			t.Fatalf("growth/detach changed membership: %v, want %v", test.list.Items, test.want)
+		}
+	}
+	self := &List{Type: list.Type, Items: []Value{int64(1), int64(2), int64(3)}}
+	snapshot := self.snapshot()
+	result := Invoke(ctx, NativeMember(self, "with_values"), []Argument{{"start", int64(1)}, {"delete_count", int64(1)}, {"replacement", self}})
+	if result != self || !reflect.DeepEqual(self.Items, []Value{int64(1), int64(1), int64(2), int64(3), int64(3)}) || !reflect.DeepEqual(snapshot.Items, []Value{int64(1), int64(2), int64(3)}) {
+		t.Fatalf("self splice changed live snapshot: current=%v, snapshot=%v", self.Items, snapshot.Items)
 	}
 }
 

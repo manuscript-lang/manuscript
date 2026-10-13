@@ -21,7 +21,7 @@ func TestListSnapshotsStandalone(t *testing.T) {
 	if err := compiler.Build(source, binary); err != nil {
 		t.Fatal(err)
 	}
-	if output, err := commandOutput(t, binary); err != nil || !strings.Contains(string(output), "4 tests, 0 failed") {
+	if output, err := commandOutput(t, binary); err != nil || !strings.Contains(string(output), "5 tests, 0 failed") {
 		t.Fatalf("standalone snapshot/interop cases: %v\n%s", err, output)
 	}
 }

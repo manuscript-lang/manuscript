@@ -112,6 +112,9 @@ regression of about 50% despite the much smaller retained backing storage.
 
 ## Bounded production change
 
+The [narrow review](narrow-review.md) records exact correctness/concurrency/native
+writer boundaries, snapshot-edge coverage, and paired normal-runtime results.
+
 List callback traversals now retain a private, capacity-limited membership
 header and mark the receiver's backing array shared, using the existing loop
 COW mechanism. A read-only 65,536-element snapshot costs 48 bytes / one

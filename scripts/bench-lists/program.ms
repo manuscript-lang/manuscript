@@ -49,3 +49,14 @@ fn compare(left: Int, right: Int) -> Int:
     return 0
 
 export fn main() -> Int: return 0
+
+fn callback_write(values: List[Int]) -> Int:
+    let total = Total(0)
+    values.for_each(
+        fn(value):
+            total.value = total.value + value
+
+            if value == 0:
+                values.with_value(index: 0, value: 7)
+    )
+    return total.value

@@ -20,6 +20,7 @@
     "baseline-5b482774-bench.txt": "cd20a96f4fa6ee5715d81e2db2c74a3b8459ee4711383a21c76e97bd7de4611e",
     "baseline-7bd79bb0-memory.json": "bb36304e4e2ece95e363d6b877b3d466eb9c5aebafa2095bd13f0781f6401640",
     "after-7bd79bb0-bench.txt": "7b2c6ea4b0bbfbba24302ff1a1f4d4a06ea11c772e40b4bb2a64853408418f2d",
+    "narrow-normal-pairs.json": "11db652bdc6cae0a22a5c8a8982239f41b06b8c1a5d45a0d31ecbfc97376a992",
     "baseline-93fcb4fe-bench.txt": "b72283c9f6f51ba0e2669c8ed6a48a037ca9bd7e385ab5046995b3d29b3cb8e3",
     "literal-copy-control.txt": "76ca0532d3179536310ed37add73da3f3e7a5a5b1d913daca3cdd78d0cc6ac88",
     "snapshot-bench.txt": "5a0bf69b1ae9a32399169d1a32706b763d27e8921ea14021f8d756d6118fc089"
@@ -39,11 +40,12 @@
   "after_callbacks_binary_sha256": "ebd580762ac9b6020573bd323f3b3e9a8e9b7df1604dd7a7eaa4aa6a21098b31",
   "before_callbacks_binary_sha256": "dab27f4506f70e2d27c89691ebf911f482419c44eff1b500a060870b78b112ad",
   "final_source_hashes": {
+    "scripts/bench-lists/normal_pairs.py": "d43f0ba13d9b7cfda17961ebb8d9a112d2dd3fb87e8c931a65feec5ef8797a86",
     "scripts/bench-lists/prototype.go.txt": "28c21b0c563e96466a2935a745756aa75c39369b3b92b2f72e972d91f0c9a526",
-    "scripts/bench-lists/harness.go.txt": "7fec8f61599dbd4149d33b2037303aba0f8e00cd5a35ad3f534ac0a245cdae79",
+    "scripts/bench-lists/harness.go.txt": "29fd258ef1277ca13d9d671ddb62fd8e588e76e7b5a3ab46c83e6fec2a8bdf65",
     "scripts/bench-lists/native.py": "634e3bd127536c122e3140d4cc267a384665efc5ae11ae072b6e93693bf963c3",
-    "scripts/bench-lists/main.go": "2a3730920e3176c808de7da59397f12098fea124f9fada7694ffd07fe3ec9ee1",
-    "scripts/bench-lists/program.ms": "f135a8ef5d971fd110b2443feba623bf55fb406f67c8ff5d94624d8027c22ec7",
+    "scripts/bench-lists/main.go": "1d271e45523b12acb84a6cb11395b1d18c4a202b727ce2efe04e5ecd259ff789",
+    "scripts/bench-lists/program.ms": "e7ce60a0d0a4b2742a70601de34ecf98f096ae513304516feb31a93848bf2b33",
     "scripts/bench-lists/memory.py": "5f0b206aa0262f5f9d018975976a9a2ae71dc945d65c50bd1d89c4d0810868b4"
   },
   "literal_copy_limit": "Synthetic prebuilt heap tables; not a matched actual source/static literal benchmark, so it cannot approve a #238 replacement.",
@@ -51,5 +53,10 @@
   "final_benchmark_runs": 3,
   "final_benchmark_benchtime": "100ms",
   "final_before_binary_sha256": "2c26c54f02882e902eec5ee867f50fdf0250b5a41b01e3e49cafb549bd3b1deb",
-  "final_after_binary_sha256": "a58834e2c822ea140564b3af5b77440318a8c25ffd62a9ee6f89cda37b3be5fe"
+  "final_after_binary_sha256": "a58834e2c822ea140564b3af5b77440318a8c25ffd62a9ee6f89cda37b3be5fe",
+  "narrow_pairs_base": "ecba349e",
+  "narrow_pair_count": 12,
+  "narrow_pairs_cpu": 0,
+  "narrow_pairs_gc": 100,
+  "narrow_pairs_gomaxprocs": 1
 }
