@@ -85,6 +85,15 @@ func TestCoreParityCallbacksPreserveFaultsAndCancellation(t *testing.T) {
 		{"Map filter", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "filter", "predicate", []string{"key", "value"}, "@std/Map[String][Int]"},
 		{"Set filter", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "filter", "predicate", []string{"value"}, "@std/Set[Int]"},
 		{"Set map", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "map", "transform", []string{"value"}, "@std/Set[Int]"},
+		{"Optional lazy conversion", optional("Int", nil, false), "ok_or_else", "create", nil, "@std/Result[Int][String]"},
+		{"Map fold", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "fold", "step", []string{"accumulator", "key", "value"}, "Int"},
+		{"Set fold", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "fold", "step", []string{"accumulator", "value"}, "Int"},
+		{"Map find", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "find", "predicate", []string{"key", "value"}, "@std/Optional[@std/MapEntry[String][Int]]"},
+		{"Set find", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "find", "predicate", []string{"value"}, "@std/Optional[Int]"},
+		{"Map some", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "some", "predicate", []string{"key", "value"}, "Bool"},
+		{"Set some", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "some", "predicate", []string{"value"}, "Bool"},
+		{"Map every", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "every", "predicate", []string{"key", "value"}, "Bool"},
+		{"Set every", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "every", "predicate", []string{"value"}, "Bool"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			for _, cancelCallback := range []bool{false, true} {
@@ -105,7 +114,11 @@ func TestCoreParityCallbacksPreserveFaultsAndCancellation(t *testing.T) {
 					return Panic("callback failed")
 				})
 				failure := recovered(func() {
-					Invoke(ctx, NativeMemberResult(test.receiver, test.method, test.result), []Argument{{test.argument, callback}})
+					arguments := []Argument{{test.argument, callback}}
+					if test.method == "fold" {
+						arguments = append(arguments, Argument{"initial", int64(0)})
+					}
+					Invoke(ctx, NativeMemberResult(test.receiver, test.method, test.result), arguments)
 				})
 				if cancelCallback {
 					if _, ok := failure.(cancelled); !ok {

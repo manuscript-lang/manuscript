@@ -15,6 +15,23 @@ func OptionalUnwrap(ctx *Execution, receiver Value) Value {
 
 func init() {
 	variables := []LibraryParam{{"T", ""}}
+	for _, name := range []string{"ok_or", "ok_or_else"} {
+		params := []LibraryParam{{"value", "Optional[T]"}, {"cause", "E"}}
+		if name == "ok_or_else" {
+			params[1] = LibraryParam{"create", "fn()->E"}
+		}
+		libraryGeneric("optional", name, "Result[T][E]", []LibraryParam{{"T", ""}, {"E", ""}}, params, func(ctx *Execution, result string, args []Value) Value {
+			value := args[0].(Alternative)
+			if value.Tag == "some" {
+				return libraryOK(result, value.Fields[0])
+			}
+			cause := args[1]
+			if name == "ok_or_else" {
+				cause = Invoke(ctx, cause, nil)
+			}
+			return Alternative{Type: result, Tag: "error", Fields: []Value{cause}}
+		})
+	}
 	for _, name := range []string{"is_some", "is_none", "unwrap", "unwrap_or", "unwrap_or_else"} {
 		params := []LibraryParam{{"value", "Optional[T]"}}
 		result := "T"
