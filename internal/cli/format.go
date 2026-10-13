@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,7 +12,7 @@ import (
 )
 
 func runFormat(args []string) int {
-	check, positional := false, false
+	check, structured, positional := false, false, false
 	var targets []string
 	for _, arg := range args {
 		switch {
@@ -21,6 +20,8 @@ func runFormat(args []string) int {
 			positional = true
 		case !positional && arg == "--check":
 			check = true
+		case !positional && arg == "--json":
+			structured = true
 		case !positional && strings.HasPrefix(arg, "-"):
 			fmt.Fprintf(os.Stderr, "unknown option %s for ms fmt; run 'ms help fmt' for its options\n", arg)
 			return 2
@@ -32,16 +33,33 @@ func runFormat(args []string) int {
 		fmt.Fprintln(os.Stderr, "ms fmt: missing a target; pass .ms files, directories, or ms.toml")
 		return 2
 	}
-	// Resolve every target before writing, and deduplicate overlapping selections
-	// by physical path. Keep a stable display spelling for explicit file targets.
-	files := map[string]string{}
+	if structured && !check {
+		fmt.Fprintln(os.Stderr, "--json requires ms fmt --check; remove --json to format files in place")
+		return 2
+	}
+	cwd, err := formatCWD()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	result := formatResult{Format: 1, Files: []formatFileResult{}, Diagnostics: []commandDiagnostic{}}
 	status := 0
+	report := func(target string, err error) {
+		issue, message := formatError(cwd, target, err)
+		result.Diagnostics = append(result.Diagnostics, issue)
+		if !structured {
+			fmt.Fprintln(os.Stderr, message)
+		}
+		status = 1
+	}
+	// Resolve and deduplicate before writing. Physical identity also determines
+	// display spelling, regardless of how a file was selected.
+	files := map[string]string{}
 	sort.Strings(targets)
 	for _, target := range targets {
 		paths, err := formatPaths(target)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, fileError(err))
-			status = 1
+			report(target, err)
 			continue
 		}
 		for _, path := range paths {
@@ -50,13 +68,10 @@ func runFormat(args []string) int {
 				absolute, err = filepath.EvalSymlinks(absolute)
 			}
 			if err != nil {
-				fmt.Fprintln(os.Stderr, fileError(err))
-				status = 1
+				report(path, err)
 				continue
 			}
-			if previous, ok := files[absolute]; !ok || path < previous {
-				files[absolute] = path
-			}
+			files[absolute] = formatDisplay(cwd, absolute)
 		}
 	}
 	paths := make([]string, 0, len(files))
@@ -65,10 +80,30 @@ func runFormat(args []string) int {
 	}
 	sort.Slice(paths, func(i, j int) bool { return files[paths[i]] < files[paths[j]] })
 	for _, path := range paths {
-		if err := formatFile(path, files[path], check); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			status = 1
+		state, err := formatFile(path, files[path], check)
+		result.Files = append(result.Files, formatFileResult{files[path], state})
+		if err != nil {
+			report(path, err)
 		}
+	}
+	if structured {
+		sort.SliceStable(result.Diagnostics, func(i, j int) bool {
+			a, b := result.Diagnostics[i], result.Diagnostics[j]
+			if a.Position.File != b.Position.File {
+				return a.Position.File < b.Position.File
+			}
+			if a.Position.Line != b.Position.Line {
+				return a.Position.Line < b.Position.Line
+			}
+			if a.Position.Column != b.Position.Column {
+				return a.Position.Column < b.Position.Column
+			}
+			if a.Code != b.Code {
+				return a.Code < b.Code
+			}
+			return a.Message < b.Message
+		})
+		return emitJSON(result, status)
 	}
 	return status
 }
@@ -116,24 +151,27 @@ func formatPaths(target string) ([]string, error) {
 	return paths, nil
 }
 
-func formatFile(path, display string, check bool) error {
+func formatFile(path, display string, check bool) (string, error) {
 	source, err := os.ReadFile(path)
 	if err != nil {
-		return errors.New(fileError(err))
+		return "error", err
 	}
 	formatted, err := tooling.Format(display, string(source))
 	if err != nil {
-		return fmt.Errorf("%v\nfmt only formats source that parses; fix the syntax error above, then re-run ms fmt %s", err, display)
+		return "error", formatSourceError{display, err}
 	}
 	if string(source) == formatted {
-		return nil
+		return "clean", nil
 	}
 	if check {
-		return fmt.Errorf("Formatting needed: %s; run ms fmt %s to rewrite it", display, display)
+		return "needs_formatting", formatDrift{display}
 	}
 	info, err := os.Stat(path)
 	if err != nil {
-		return err
+		return "error", err
 	}
-	return tooling.WriteFormatted(path, formatted, info.Mode().Perm())
+	if err := tooling.WriteFormatted(path, formatted, info.Mode().Perm()); err != nil {
+		return "error", err
+	}
+	return "formatted", nil
 }
