@@ -14,7 +14,11 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 	switch callee.Method.Native {
 	case "collections/at":
 		if len(arguments) == 1 {
-			return g.locatedOperation(e, "rt.ListAt", "ctx", g.expression(e.Left.Left), g.expression(arguments[0].Value), g.key(g.program.Expressions[e].Type))
+			// Force even a plain local receiver to be read before the index:
+			// a match expression in the index can reassign that local. Go does
+			// not otherwise order a variable read before a later function call.
+			receiver := "rt.SourceAt(&sourcePosition," + quote(e.Left.Left.Pos.String()) + "," + g.expression(e.Left.Left) + ")"
+			return g.locatedOperation(e, "rt.ListAt", "ctx", receiver, g.expression(arguments[0].Value), g.key(g.program.Expressions[e].Type))
 		}
 	case "optional/unwrap":
 		if len(arguments) == 0 {
