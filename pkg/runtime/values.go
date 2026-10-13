@@ -723,6 +723,9 @@ type Implementation struct {
 	Scope     string
 	Variables []string
 	Build     func(Value, map[string]string, map[string]TypeScope) Function
+	// Direct runs a nongeneric method for any receiver of the implemented type
+	// without first binding it; Build derives from it when present.
+	Direct func(*Execution, Value, []Value) Value
 }
 
 var implementations []Implementation
@@ -733,6 +736,7 @@ var implementationsByName = map[string][]int{}
 
 func Register(implementation Implementation) {
 	implementationCache.Clear()
+	implementationGeneration.Add(1)
 	implementationsByName[implementation.Name] = append(implementationsByName[implementation.Name], len(implementations))
 	implementations = append(implementations, implementation)
 }
@@ -997,6 +1001,123 @@ type resolvedImplementation struct {
 	impl       *Implementation
 	sub        map[string]string
 	typeScopes map[string]TypeScope
+}
+
+// implementationGeneration invalidates call-site caches when Register runs.
+var implementationGeneration atomic.Uint64
+
+// SourceDirect wraps a method body with everything a bound method gets from
+// NewSourceFunction and newFunction: the call-depth limit, source returns,
+// profiling, propagation of a nested try into an error Result, and the
+// post-body cancellation checkpoint. Keep it in step with those two.
+func SourceDirect(position, result string, body func(*Execution, Value, []Value) Value) func(*Execution, Value, []Value) Value {
+	source := func(ctx *Execution, receiver Value, args []Value) (value Value) {
+		if ctx != nil && ctx.calls != nil {
+			calls := ctx.calls
+			if calls.depth.Add(1) > MaxCallDepth {
+				calls.depth.Add(-1)
+				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
+			}
+			defer func() {
+				if calls.depth.Add(-1) == 0 {
+					calls.traceFull.Store(false)
+				}
+			}()
+		}
+		defer func() {
+			if controlPanics.Load() == 0 {
+				return
+			}
+			if failure := recover(); failure != nil {
+				if returned, ok := failure.(sourceReturn); ok {
+					controlPanics.Add(-1)
+					value = returned.value
+					return
+				}
+				panic(failure)
+			}
+		}()
+		if sourceProfiling.Load() {
+			return profileSource(ctx, position, args, func(ctx *Execution, args []Value) Value { return body(ctx, receiver, args) })
+		}
+		return body(ctx, receiver, args)
+	}
+	return func(ctx *Execution, receiver Value, args []Value) (value Value) {
+		defer func() {
+			if controlPanics.Load() == 0 {
+				return
+			}
+			if r := recover(); r != nil {
+				if p, ok := r.(propagation); ok {
+					controlPanics.Add(-1)
+					CheckCancelled(ctx)
+					value = Alternative{Type: result, Tag: "error", Fields: []Value{p.Cause}}
+				} else {
+					panic(r)
+				}
+			}
+		}()
+		value = source(ctx, receiver, args)
+		if ctx != nil && ctx.Context.Err() != nil {
+			panic(cancelled{})
+		}
+		return value
+	}
+}
+
+// BoundDirect binds a receiver to a direct method body.
+func BoundDirect(receiver Value, labels []string, result string, direct func(*Execution, Value, []Value) Value) Function {
+	return NewFunction(labels, result, func(ctx *Execution, args []Value) Value { return direct(ctx, receiver, args) })
+}
+
+// MethodSite caches the direct body last resolved for one call site.
+type MethodSite struct {
+	entry atomic.Pointer[methodEntry]
+}
+
+type methodEntry struct {
+	generation uint64
+	typ        string
+	direct     func(*Execution, Value, []Value) Value
+}
+
+// CallMethod calls a user method whose receiver has a concrete record or
+// alternative type. Arguments are already in declaration order.
+func CallMethod(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
+	typ := ConcreteType(receiver)
+	if e := site.entry.Load(); e != nil && e.typ == typ && e.generation == implementationGeneration.Load() {
+		CheckCancelled(ctx)
+		return e.direct(ctx, receiver, args)
+	}
+	return callMethodSlow(ctx, site, receiver, contract, name, scope, args)
+}
+
+func callMethodSlow(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
+	generation := implementationGeneration.Load()
+	typ := ConcreteType(receiver)
+	if typ != "" && name != "toString" {
+		key := implementationKey{typ: typ, contract: contract, name: name, module: scope.Module}
+		if len(scope.Args) == 0 {
+			var resolved *resolvedImplementation
+			if cached, ok := implementationCache.Load(key); ok {
+				resolved = cached.(*resolvedImplementation)
+			} else {
+				resolved = resolveImplementation(typ, contract, name, scope)
+				implementationCache.Store(key, resolved)
+			}
+			if resolved != nil && resolved.impl.Direct != nil {
+				site.entry.Store(&methodEntry{generation: generation, typ: typ, direct: resolved.impl.Direct})
+				CheckCancelled(ctx)
+				return resolved.impl.Direct(ctx, receiver, args)
+			}
+		}
+	}
+	f, ok := Bind(receiver, contract, name, scope).(Function)
+	if !ok {
+		return Panic("runtime invariant: callee is not specialized")
+	}
+	CheckCancelled(ctx)
+	return f.Body(ctx, args)
 }
 
 // implementationCache memoizes lookups; Register discards it.

@@ -2,6 +2,8 @@ package compiler
 
 import (
 	"go/ast"
+	"strconv"
+	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
@@ -32,4 +34,37 @@ func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argum
 		values[i] = sourceAt(arg.Pos, g.argumentValue(arg))
 	}
 	return g.locatedOperation(e, selector(&ast.TypeAssertExpr{X: ident(symbol.ID), Type: runtimeName("Function")}, "Body"), ident("ctx"), sliceLiteral(runtimeName("Value"), values...))
+}
+
+// A method call on a receiver whose static type is a concrete user record or
+// alternative resolves its implementation once per call site and then runs the
+// implementation's direct body, skipping the bound Function, argument labels,
+// and Argument slice that Bind and Invoke build for every call. Arguments must
+// already be in declaration order so the labels carry no information.
+func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
+	callee := g.program.Expressions[e.Left]
+	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Contract == nil || callee.Method.Native != "" {
+		return nil
+	}
+	receiverType := g.program.Expressions[e.Left.Left].Type
+	if (receiverType.Kind != syntax.KindRecord && receiverType.Kind != "alternative") || len(receiverType.Args) != 0 || hasTypeVariable(receiverType) || strings.HasPrefix(receiverType.ID, "@std/") {
+		return nil
+	}
+	params := callee.Method.Type.Params
+	if len(args) != len(params) {
+		return nil
+	}
+	for i, arg := range args {
+		if arg.Name != params[i].Name {
+			return nil
+		}
+	}
+	values := make([]ast.Expr, len(args))
+	for i, arg := range args {
+		values[i] = sourceAt(arg.Pos, g.argumentValue(arg))
+	}
+	site := "method" + strconv.Itoa(len(g.sites)+1)
+	g.sites = append(g.sites, site)
+	receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
+	return g.locatedOperation(e, runtimeName("CallMethod"), ident("ctx"), address(ident(site)), receiver, g.key(callee.Method.Contract), textLiteral(e.Left.Text), g.typeScope(receiverType), sliceLiteral(runtimeName("Value"), values...))
 }

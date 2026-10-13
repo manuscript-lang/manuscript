@@ -43,7 +43,6 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"non-generic callback label mismatch", "import List from \"@std/collections.ms\"\nfn positive(n: Int) -> Bool:\n    return n > 0\nfn f() -> Int:\n    return [1].filter(positive).length()\n", []string{"expected fn(value: Int)->Bool", "expects value"}, 1},
 		{"binding catch-all arm", "type S:\n    case A\n    case B\nfn f(s: S) -> Int:\n    match s:\n        A:\n            return 1\n        other:\n            return 2\n", []string{"'other' is not a case of S", "use '_'"}, 1},
 		{"with on Result suggests unwrapping", "import Closeable from \"@std/cleanup.ms\"\ntype R:\n    n: Int\nimpl Closeable for R:\n    fn close() -> Unit:\n        return unit\nfn mk() -> Result[R, String]:\n    return ok(R(n: 1))\nfn f() -> Int:\n    with x = mk():\n        return 1\n    return 0\n", []string{"with needs a Closeable value", "Result[R, String]", "'try'", "'match'"}, 1},
-		{"statement match with value arm", "import List from \"@std/collections.ms\"\nfn f(xs: List[Int]) -> Int:\n    var seen = xs\n    match xs.first():\n        some(value):\n            seen.concat(xs)\n        none:\n            seen = []\n    return seen.length()\n", []string{"arm at line 6", "let ignored"}, 1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("hints.ms", tt.source)

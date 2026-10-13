@@ -190,7 +190,7 @@ func init() {
 	add("bytes", "slice", "Bytes", []LibraryParam{p("data", "Bytes"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		b := a[0].(Bytes).Items
 		s, e := a[1].(int64), a[2].(int64)
-		librarySlice(len(b), s, e)
+		librarySlice("Bytes.slice", len(b), s, e)
 		// Bytes are immutable, so the slice shares storage; the capacity limit keeps appends from touching the parent.
 		return Bytes{b[s:e:e]}
 	})
@@ -223,7 +223,7 @@ func init() {
 	add("numbers", "format_int", "String", []LibraryParam{p("value", "Int"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		r := a[1].(int64)
 		if r < 2 || r > 36 {
-			return Panic("invalid radix; the radix must be between 2 and 36")
+			return libraryRangeFault("Int.to_string", "radix", r, 2, 36)
 		}
 		return strconv.FormatInt(a[0].(int64), int(r))
 	})
@@ -285,7 +285,7 @@ func init() {
 	add("bigint", "format", "String", []LibraryParam{p("value", "BigInt"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[1].(int64)
 		if n < 2 || n > 36 {
-			return Panic("invalid radix; the radix must be between 2 and 36")
+			return libraryRangeFault("BigInt.to_string", "radix", n, 2, 36)
 		}
 		return a[0].(libraryBigInt).n.Text(int(n))
 	})
@@ -347,7 +347,7 @@ func init() {
 	libraryGeneric("collections", "slice", "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(*List)
 		s, e := a[1].(int64), a[2].(int64)
-		librarySlice(len(v.Items), s, e)
+		librarySlice("List.slice", len(v.Items), s, e)
 		return &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)}
 	})
 }
