@@ -238,6 +238,30 @@ func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
 	}
 }
 
+func TestBytesValuesHoverIncludesOperationContract(t *testing.T) {
+	source := `import Bytes from "@std/bytes.ms"
+import List from "@std/collections.ms"
+fn extract(data: Bytes) -> List[Int]:
+    let bound: fn() -> List[Int] = data.values
+    return data.values()
+`
+	d := document{"file:///tmp/bytes-values-hover.ms", source, 1}
+	checked := analyze(d, map[string]document{d.URI: d})
+	if !checked.Success() {
+		t.Fatal(checked.Diagnostics)
+	}
+	for _, offset := range []int{strings.Index(source, "values\n"), strings.Index(source, "values()")} {
+		hover := navigation(checked, d, Position(source, offset), "textDocument/hover")
+		if hover == nil {
+			t.Fatal("missing Bytes.values hover")
+		}
+		text := hover.(map[string]any)["contents"].(map[string]any)["value"].(string)
+		if !strings.Contains(text, "fn()->List[Int]") || !strings.Contains(text, "fresh mutable list") || !strings.Contains(text, "leaves the Bytes unchanged") {
+			t.Fatalf("operation contract missing: %s", text)
+		}
+	}
+}
+
 func TestNavigationWithinStandardLibrary(t *testing.T) {
 	for _, item := range []struct{ file, needle, target, name string }{
 		{"collections.ms", "Result[List[T]", "result.ms", "Result"},

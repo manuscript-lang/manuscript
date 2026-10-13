@@ -101,8 +101,8 @@ fn extract(data: Bytes) -> List[Int]:
 	}
 	for _, offset := range []int{strings.Index(source, "values\n"), strings.Index(source, "values()")} {
 		nav, ok := tooling.NavigationAt(result.Program, "bytes-values.ms", offset)
-		if !ok || nav.Definition.File != "@std/bytes.ms" || !strings.Contains(nav.Hover, "fn()->List[Int]") || !strings.Contains(nav.Hover, "fresh mutable list") {
-			t.Fatalf("Bytes.values navigation lost callable signature or contract: %#v", nav)
+		if !ok || nav.Definition.File != "@std/bytes.ms" || !strings.Contains(nav.Hover, "fn()->List[Int]") {
+			t.Fatalf("Bytes.values navigation lost callable signature: %#v", nav)
 		}
 	}
 }
