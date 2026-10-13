@@ -2,6 +2,7 @@
 package nativeabi
 
 var ReceiverBindings = map[string]map[string]string{
+	"HttpRequest": {"header": "http/request_header"},
 	"TaskGroup": {
 		"start": "tasks/task_group_start",
 		"join":  "tasks/task_group_join",

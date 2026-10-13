@@ -19,6 +19,11 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	var kind string
 	var args []string
 	switch v := receiver.(type) {
+	case Record:
+		if v.Type != "@std/HttpRequest" {
+			return nil, false
+		}
+		kind = "HttpRequest"
 	case *TaskGroup:
 		kind = "TaskGroup"
 	case *Task:
