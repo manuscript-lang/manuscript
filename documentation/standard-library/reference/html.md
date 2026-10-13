@@ -17,6 +17,30 @@ type HtmlAttribute:
     value: String
 ```
 
+### HtmlAttribute.name
+
+Local attribute name after native HTML parsing and normalization.
+
+```manuscript
+name: String
+```
+
+### HtmlAttribute.namespace
+
+Attribute namespace prefix, or empty text for an unqualified attribute.
+
+```manuscript
+namespace: String
+```
+
+### HtmlAttribute.value
+
+Decoded attribute contents, with character references resolved.
+
+```manuscript
+value: String
+```
+
 ## HtmlError {data-api-kind="Alternative"}
 
 Errors returned for malformed HTML or parser resource limits.
@@ -33,6 +57,38 @@ impl Error for HtmlError:
     fn message() -> String:
 ```
 
+### HtmlError.InvalidData
+
+Input encoding or a native parser/tree conversion is invalid; HTML syntax can be recovered normally.
+
+```manuscript
+case InvalidData
+```
+
+### HtmlError.InvalidInput
+
+A supplied input-byte, tree-depth or node-count budget is negative.
+
+```manuscript
+case InvalidInput
+```
+
+### HtmlError.LimitExceeded
+
+Input bytes or the normalized returned tree exceed a supplied budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### HtmlError.Error.message
+
+Returns an HTML-prefixed diagnostic without echoing source markup.
+
+```manuscript
+fn message() -> String:
+```
+
 ## HtmlLimits {data-api-kind="Record"}
 
 Optional bounds for HTML input bytes, tree depth, and node count.
@@ -42,6 +98,30 @@ type HtmlLimits:
     max_bytes: Optional[Int] = none
     max_depth: Optional[Int] = none
     max_nodes: Optional[Int] = none
+```
+
+### HtmlLimits.max_bytes
+
+Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
+
+```manuscript
+max_bytes: Optional[Int] = none
+```
+
+### HtmlLimits.max_depth
+
+Maximum normalized node depth; the document is depth zero and direct children depth one.
+
+```manuscript
+max_depth: Optional[Int] = none
+```
+
+### HtmlLimits.max_nodes
+
+Maximum returned nodes, including document/text/comment/doctype and implied element nodes.
+
+```manuscript
+max_nodes: Optional[Int] = none
 ```
 
 ## HtmlNode {data-api-kind="Alternative"}
@@ -55,6 +135,126 @@ type HtmlNode:
     case Text(text: String)
     case Comment(text: String)
     case Doctype(name: String, public_id: String, system_id: String)
+```
+
+### HtmlNode.Comment
+
+An HTML comment retained as a node rather than element text.
+
+```manuscript
+case Comment(text: String)
+```
+
+### HtmlNode.Doctype
+
+A document-type declaration retained from the parsed HTML.
+
+```manuscript
+case Doctype(name: String, public_id: String, system_id: String)
+```
+
+### HtmlNode.Document
+
+Root document node, including any elements implied by HTML tree normalization.
+
+```manuscript
+case Document(children: List[HtmlNode])
+```
+
+### HtmlNode.Element
+
+An element with normalized attributes and its ordered child nodes.
+
+```manuscript
+case Element(tag: String, namespace: String, attributes: List[HtmlAttribute], children: List[HtmlNode])
+```
+
+### HtmlNode.Text
+
+Text node contents after HTML entity decoding and tree normalization.
+
+```manuscript
+case Text(text: String)
+```
+
+### HtmlNode.Comment.text
+
+Comment contents without the opening and closing comment delimiters.
+
+```manuscript
+text: String
+```
+
+### HtmlNode.Doctype.name
+
+Doctype name supplied by the native HTML parser.
+
+```manuscript
+name: String
+```
+
+### HtmlNode.Doctype.public_id
+
+Public identifier, or empty text when no public identifier is present.
+
+```manuscript
+public_id: String
+```
+
+### HtmlNode.Doctype.system_id
+
+System identifier, or empty text when no system identifier is present.
+
+```manuscript
+system_id: String
+```
+
+### HtmlNode.Document.children
+
+Direct child nodes in normalized document order.
+
+```manuscript
+children: List[HtmlNode]
+```
+
+### HtmlNode.Element.attributes
+
+Attributes in parser order, with decoded values and namespace information.
+
+```manuscript
+attributes: List[HtmlAttribute]
+```
+
+### HtmlNode.Element.children
+
+Direct child nodes in normalized tree order; mutable list storage is retained.
+
+```manuscript
+children: List[HtmlNode]
+```
+
+### HtmlNode.Element.namespace
+
+Element namespace, such as svg/math, or empty text for ordinary HTML.
+
+```manuscript
+namespace: String
+```
+
+### HtmlNode.Element.tag
+
+Local element tag name produced by the HTML parser.
+
+```manuscript
+tag: String
+```
+
+### HtmlNode.Text.text
+
+Unicode text belonging to this node, without surrounding markup.
+
+```manuscript
+text: String
 ```
 
 ## escape {data-api-kind="Function"}
