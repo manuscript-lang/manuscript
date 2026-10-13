@@ -56,7 +56,7 @@ Linux and macOS support process resource accounting, identities, groups, and uma
 
 ## Signals
 
-`watch_signals` returns a scoped `SignalStream` with a bounded delivery buffer. OS signal delivery can coalesce or drop repeated signals; SIGKILL and SIGSTOP cannot be observed. The CLI still treats SIGINT/SIGTERM as cancellation, and an observer does not override joined shutdown. Unix `send_signal` accepts signed PIDs for process groups and signal zero for existence checks. Windows supports existence checks and forced termination for its INT/KILL/TERM mapping; other signals return `Unsupported`.
+`watch_signals` returns a scoped `SignalStream` with a bounded delivery buffer. OS signal delivery can coalesce or drop repeated signals; SIGKILL and SIGSTOP cannot be observed. The native host still treats SIGINT/SIGTERM as cancellation. A watcher only observes; it cannot claim a signal or protect code after `next()`. Use registered `with`/`Closeable` cleanup for shutdown, and finish required writes directly in the shielded close call after joining cancelled workers. See the [shutdown cookbook](../concurrency/shutdown.md) for runnable examples and limitations. Unix `send_signal` accepts signed PIDs for process groups and signal zero for existence checks. Windows supports existence checks and forced termination for its INT/KILL/TERM mapping; other signals return `Unsupported`.
 
 ## Titles, memory, and replacement
 

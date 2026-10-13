@@ -32,6 +32,8 @@ export interface Commands:
 # Process and operating-system controls for the current process.
 export interface ProcessControl:
     fn monotonic_time() -> Int
+    # Observes signals without claiming them or suppressing host cancellation.
+    # Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
     fn watch_signals(
         signals: List[Int],
         capacity: Optional[Int] = none
@@ -106,7 +108,8 @@ export type ResourceUsage:
     voluntary_switches: Int
     involuntary_switches: Int
 
-# A stream of operating-system signals selected by `watch_signals`.
+# A cancellable observer of operating-system signals selected by `watch_signals`.
+# SIGINT/SIGTERM still cancel the native application; close() unregisters this observer.
 export interface SignalStream:
     fn close() -> Unit
     fn next() -> Result[Int, ProcessError]

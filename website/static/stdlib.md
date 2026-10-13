@@ -2220,6 +2220,8 @@ interface ProcessControl:
     fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
 ```
 
+`watch_signals` observes signals without claiming them. SIGINT/SIGTERM still cancel the native application; `next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup and finish shutdown work directly in the shielded close call after joining cancelled workers.
+
 ## ProcessError
 
 **Alternative**
@@ -2286,6 +2288,8 @@ interface SignalStream:
     fn close() -> Unit
     fn next() -> Result[Int, ProcessError]
 ```
+
+`watch_signals` observes signals without claiming them. SIGINT/SIGTERM still cancel the native application; `next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup and finish shutdown work directly in the shielded close call after joining cancelled workers.
 
 ## commands
 
