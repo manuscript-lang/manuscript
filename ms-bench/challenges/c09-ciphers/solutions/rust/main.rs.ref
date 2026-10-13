@@ -1,0 +1,75 @@
+use std::io::{BufRead, Write};
+
+fn transform(text: &str, key_at: &dyn Fn(usize) -> i32, sign: i32) -> String {
+    let mut out = String::new();
+    let mut i = 0;
+    for c in text.chars() {
+        if c.is_ascii_alphabetic() {
+            let base = if c.is_ascii_lowercase() { b'a' } else { b'A' } as i32;
+            let v = ((c as i32 - base + sign * key_at(i)) % 26 + 26) % 26;
+            out.push((v + base) as u8 as char);
+            i += 1;
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+fn solve_line(line: &str) -> String {
+    let mut parts: Vec<&str> = Vec::new();
+    let mut rest = line;
+    while parts.len() < 3 {
+        match rest.find(' ') {
+            Some(i) => {
+                parts.push(&rest[..i]);
+                rest = &rest[i + 1..];
+            }
+            None => return "error: bad command".into(),
+        }
+    }
+    if rest.is_empty() {
+        return "error: bad command".into();
+    }
+    let (cipher, mode, key, text) = (parts[0], parts[1], parts[2], rest);
+    if cipher != "caesar" && cipher != "vigenere" {
+        return "error: bad cipher".into();
+    }
+    if mode != "enc" && mode != "dec" {
+        return "error: bad mode".into();
+    }
+    let sign = if mode == "enc" { 1 } else { -1 };
+    if cipher == "caesar" {
+        let (neg, digits) = match key.strip_prefix('-') {
+            Some(d) => (true, d),
+            None => (false, key),
+        };
+        if digits.is_empty() || digits.len() > 7 || !digits.bytes().all(|b| b.is_ascii_digit()) {
+            return "error: bad key".into();
+        }
+        let mut k: i32 = digits.parse().unwrap();
+        if neg {
+            k = -k;
+        }
+        return transform(text, &|_| k, sign);
+    }
+    if key.is_empty() || !key.bytes().all(|b| b.is_ascii_alphabetic()) {
+        return "error: bad key".into();
+    }
+    let ks: Vec<i32> = key.bytes().map(|b| (b.to_ascii_lowercase() - b'a') as i32).collect();
+    transform(text, &|i| ks[i % ks.len()], sign)
+}
+
+fn main() {
+    let stdin = std::io::stdin();
+    let mut out = String::new();
+    for line in stdin.lock().lines() {
+        let line = line.unwrap();
+        if line.trim_matches(' ').is_empty() {
+            continue;
+        }
+        out.push_str(&solve_line(&line));
+        out.push('\n');
+    }
+    std::io::stdout().write_all(out.as_bytes()).unwrap();
+}

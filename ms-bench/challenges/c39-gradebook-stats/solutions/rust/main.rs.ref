@@ -1,0 +1,129 @@
+use std::collections::{BTreeMap, HashMap};
+use std::io::{Read, Write};
+
+fn is_digits(s: &str) -> bool {
+    !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit())
+}
+
+fn fmt_tenths(v: i64) -> String {
+    format!("{}.{}", v / 10, v % 10)
+}
+
+fn letter(f: i64) -> char {
+    match f {
+        900.. => 'A',
+        800.. => 'B',
+        700.. => 'C',
+        600.. => 'D',
+        _ => 'F',
+    }
+}
+
+fn main() {
+    let mut input = String::new();
+    std::io::stdin().read_to_string(&mut input).unwrap();
+    let mut out = String::new();
+    let mut assigns: BTreeMap<String, (i64, i64)> = BTreeMap::new();
+    let mut students: BTreeMap<String, HashMap<String, i64>> = BTreeMap::new();
+    for line in input.split('\n') {
+        let t: Vec<&str> = line.split(|c| c == ' ' || c == '\t').filter(|x| !x.is_empty()).collect();
+        if t.is_empty() {
+            continue;
+        }
+        let arity = match t[0] {
+            "assign" | "score" => 4,
+            "student" => 2,
+            "report" => 1,
+            _ => 0,
+        };
+        if arity == 0 || t.len() != arity {
+            out.push_str("error: bad command\n");
+            continue;
+        }
+        match t[0] {
+            "assign" => {
+                let mx: i64 = if is_digits(t[2]) { t[2].parse().unwrap_or(0) } else { 0 };
+                let w: i64 = if is_digits(t[3]) { t[3].parse().unwrap_or(0) } else { 0 };
+                if mx == 0 || w == 0 {
+                    out.push_str("error: bad number\n");
+                } else if assigns.contains_key(t[1]) {
+                    out.push_str(&format!("error: assignment exists {}\n", t[1]));
+                } else {
+                    assigns.insert(t[1].to_string(), (mx, w));
+                    out.push_str("ok\n");
+                }
+            }
+            "student" => {
+                if students.contains_key(t[1]) {
+                    out.push_str(&format!("error: student exists {}\n", t[1]));
+                } else {
+                    students.insert(t[1].to_string(), HashMap::new());
+                    out.push_str("ok\n");
+                }
+            }
+            "score" => {
+                if !students.contains_key(t[1]) {
+                    out.push_str(&format!("error: unknown student {}\n", t[1]));
+                } else if !assigns.contains_key(t[2]) {
+                    out.push_str(&format!("error: unknown assignment {}\n", t[2]));
+                } else {
+                    let mx = assigns[t[2]].0;
+                    match t[3].parse::<i64>() {
+                        Ok(p) if is_digits(t[3]) && p <= mx => {
+                            students.get_mut(t[1]).unwrap().insert(t[2].to_string(), p);
+                            out.push_str("ok\n");
+                        }
+                        _ => out.push_str("error: bad points\n"),
+                    }
+                }
+            }
+            _ => {
+                if students.is_empty() {
+                    out.push_str("no students\n");
+                    continue;
+                }
+                let total: i64 = assigns.values().map(|a| a.1).sum();
+                let tenths = |st: &str, name: &str| -> i64 {
+                    let mx = assigns[name].0;
+                    let p = students[st].get(name).copied().unwrap_or(0);
+                    (2000 * p + mx) / (2 * mx)
+                };
+                let mut fin: Vec<(String, i64)> = Vec::new();
+                for st in students.keys() {
+                    let s: i64 = assigns.iter().map(|(name, a)| a.1 * tenths(st, name)).sum();
+                    fin.push((st.clone(), if total > 0 { (2 * s + total) / (2 * total) } else { 0 }));
+                }
+                let all: Vec<i64> = fin.iter().map(|x| x.1).collect();
+                fin.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+                for (st, f) in &fin {
+                    let rank = 1 + all.iter().filter(|o| **o > *f).count();
+                    out.push_str(&format!("{} {} {} {}\n", rank, st, fmt_tenths(*f), letter(*f)));
+                }
+                let mut vals = all.clone();
+                vals.sort();
+                let n = vals.len() as i64;
+                let sum: i64 = vals.iter().sum();
+                let u = vals.len();
+                let med = if u % 2 == 1 { vals[u / 2] } else { (vals[u / 2 - 1] + vals[u / 2] + 1) / 2 };
+                out.push_str(&format!(
+                    "class: n={} min={} max={} mean={} median={}\n",
+                    n,
+                    fmt_tenths(vals[0]),
+                    fmt_tenths(vals[u - 1]),
+                    fmt_tenths((2 * sum + n) / (2 * n)),
+                    fmt_tenths(med)
+                ));
+                let mut cnt = [0; 5];
+                for f in &vals {
+                    cnt[match letter(*f) { 'A' => 0, 'B' => 1, 'C' => 2, 'D' => 3, _ => 4 }] += 1;
+                }
+                out.push_str(&format!("grades: A={} B={} C={} D={} F={}\n", cnt[0], cnt[1], cnt[2], cnt[3], cnt[4]));
+                for name in assigns.keys() {
+                    let sm: i64 = students.keys().map(|st| tenths(st, name)).sum();
+                    out.push_str(&format!("assignment {} mean={}\n", name, fmt_tenths((2 * sm + n) / (2 * n))));
+                }
+            }
+        }
+    }
+    std::io::stdout().write_all(out.as_bytes()).unwrap();
+}

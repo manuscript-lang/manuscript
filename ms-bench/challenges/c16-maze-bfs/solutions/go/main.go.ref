@@ -1,0 +1,95 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+func solve(rows [][]rune) string {
+	for r, row := range rows {
+		for c, ch := range row {
+			if !strings.ContainsRune("#.SE", ch) {
+				return fmt.Sprintf("error: bad character at %d,%d", r+1, c+1)
+			}
+		}
+	}
+	for _, row := range rows {
+		if len(row) != len(rows[0]) {
+			return "error: ragged grid"
+		}
+	}
+	starts, ends := 0, 0
+	for _, row := range rows {
+		for _, ch := range row {
+			if ch == 'S' {
+				starts++
+			}
+			if ch == 'E' {
+				ends++
+			}
+		}
+	}
+	if starts == 0 {
+		return "error: no start"
+	}
+	if starts > 1 {
+		return "error: multiple starts"
+	}
+	if ends == 0 {
+		return "error: no end"
+	}
+	if ends > 1 {
+		return "error: multiple ends"
+	}
+	H, W := len(rows), len(rows[0])
+	dist := make([]int, H*W)
+	for i := range dist {
+		dist[i] = -1
+	}
+	flat := make([]rune, 0, H*W)
+	for _, row := range rows {
+		flat = append(flat, row...)
+	}
+	var queue []int
+	for i, ch := range flat {
+		if ch == 'S' {
+			dist[i] = 0
+			queue = append(queue, i)
+		}
+	}
+	dirs := [][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
+	for head := 0; head < len(queue); head++ {
+		cur := queue[head]
+		if flat[cur] == 'E' {
+			return fmt.Sprint(dist[cur])
+		}
+		r, c := cur/W, cur%W
+		for _, d := range dirs {
+			nr, nc := r+d[0], c+d[1]
+			if nr < 0 || nr >= H || nc < 0 || nc >= W {
+				continue
+			}
+			ni := nr*W + nc
+			if flat[ni] != '#' && dist[ni] < 0 {
+				dist[ni] = dist[cur] + 1
+				queue = append(queue, ni)
+			}
+		}
+	}
+	return "no path"
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	var rows [][]rune
+	for sc.Scan() {
+		rows = append(rows, []rune(sc.Text()))
+	}
+	for len(rows) > 0 && len(rows[len(rows)-1]) == 0 {
+		rows = rows[:len(rows)-1]
+	}
+	fmt.Println(solve(rows))
+}

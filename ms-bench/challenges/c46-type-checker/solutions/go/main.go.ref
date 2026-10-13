@@ -1,0 +1,364 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+type tok struct {
+	kind, text string
+	col        int
+}
+
+type node struct {
+	k          string
+	col        int
+	name, op   string
+	l, r, c    *node
+	args       []*node
+	e1, e2     *node
+}
+
+type perr struct {
+	msg string
+	col int
+}
+
+var keywords = map[string]bool{"let": true, "in": true, "if": true, "then": true, "else": true, "true": true, "false": true, "and": true, "or": true, "not": true}
+
+type sig struct {
+	params []string
+	ret    string
+}
+
+var builtins = map[string]sig{
+	"len": {[]string{"Str"}, "Int"}, "str": {[]string{"Int"}, "Str"}, "abs": {[]string{"Int"}, "Int"},
+	"min": {[]string{"Int", "Int"}, "Int"}, "max": {[]string{"Int", "Int"}, "Int"},
+	"concat": {[]string{"Str", "Str"}, "Str"}, "even": {[]string{"Int"}, "Bool"},
+}
+
+func isDigit(c byte) bool { return c >= '0' && c <= '9' }
+func isStart(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+}
+func isIdent(c byte) bool { return isStart(c) || isDigit(c) }
+
+func fail(msg string, col int) { panic(perr{msg, col}) }
+
+func lex(line string) []tok {
+	var toks []tok
+	i, n := 0, len(line)
+	for i < n {
+		c := line[i]
+		col := i + 1
+		switch {
+		case c == ' ' || c == '\t':
+			i++
+		case isDigit(c):
+			j := i
+			for j < n && isDigit(line[j]) {
+				j++
+			}
+			toks = append(toks, tok{"int", line[i:j], col})
+			i = j
+		case isStart(c):
+			j := i
+			for j < n && isIdent(line[j]) {
+				j++
+			}
+			w := line[i:j]
+			kind := "id"
+			if keywords[w] {
+				kind = w
+			}
+			toks = append(toks, tok{kind, w, col})
+			i = j
+		case c == '"':
+			j := strings.IndexByte(line[i+1:], '"')
+			if j < 0 {
+				fail("unterminated string", col)
+			}
+			j += i + 1
+			toks = append(toks, tok{"str", line[i : j+1], col})
+			i = j + 1
+		default:
+			two := ""
+			if i+2 <= n {
+				two = line[i : i+2]
+			}
+			if two == "<=" || two == ">=" || two == "==" || two == "!=" {
+				toks = append(toks, tok{two, two, col})
+				i += 2
+			} else if strings.IndexByte("+-*<>(),=", c) >= 0 {
+				toks = append(toks, tok{string(c), string(c), col})
+				i++
+			} else {
+				fail(fmt.Sprintf("unexpected character '%c'", c), col)
+			}
+		}
+	}
+	return toks
+}
+
+type parser struct {
+	toks []tok
+	pos  int
+	eof  int
+}
+
+func (p *parser) peek() string {
+	if p.pos < len(p.toks) {
+		return p.toks[p.pos].kind
+	}
+	return ""
+}
+func (p *parser) col() int {
+	if p.pos < len(p.toks) {
+		return p.toks[p.pos].col
+	}
+	return p.eof
+}
+func (p *parser) next() tok { t := p.toks[p.pos]; p.pos++; return t }
+func (p *parser) expect(k string) tok {
+	if p.peek() != k {
+		fail("syntax error", p.col())
+	}
+	return p.next()
+}
+func bin(op string, l, r *node) *node { return &node{k: "bin", col: l.col, op: op, l: l, r: r} }
+
+func (p *parser) expr() *node {
+	switch p.peek() {
+	case "let":
+		t := p.next()
+		name := p.expect("id")
+		p.expect("=")
+		e1 := p.expr()
+		p.expect("in")
+		e2 := p.expr()
+		return &node{k: "let", col: t.col, name: name.text, e1: e1, e2: e2}
+	case "if":
+		t := p.next()
+		c := p.expr()
+		p.expect("then")
+		a := p.expr()
+		p.expect("else")
+		b := p.expr()
+		return &node{k: "if", col: t.col, c: c, l: a, r: b}
+	}
+	return p.or()
+}
+func (p *parser) or() *node {
+	l := p.and()
+	for p.peek() == "or" {
+		p.next()
+		l = bin("or", l, p.and())
+	}
+	return l
+}
+func (p *parser) and() *node {
+	l := p.not()
+	for p.peek() == "and" {
+		p.next()
+		l = bin("and", l, p.not())
+	}
+	return l
+}
+func (p *parser) not() *node {
+	if p.peek() == "not" {
+		t := p.next()
+		return &node{k: "not", col: t.col, l: p.not()}
+	}
+	return p.cmp()
+}
+func isCmp(k string) bool {
+	return k == "<" || k == "<=" || k == ">" || k == ">=" || k == "==" || k == "!="
+}
+func (p *parser) cmp() *node {
+	l := p.add()
+	if isCmp(p.peek()) {
+		op := p.next().kind
+		return bin(op, l, p.add())
+	}
+	return l
+}
+func (p *parser) add() *node {
+	l := p.mul()
+	for p.peek() == "+" || p.peek() == "-" {
+		op := p.next().kind
+		l = bin(op, l, p.mul())
+	}
+	return l
+}
+func (p *parser) mul() *node {
+	l := p.unary()
+	for p.peek() == "*" {
+		p.next()
+		l = bin("*", l, p.unary())
+	}
+	return l
+}
+func (p *parser) unary() *node {
+	if p.peek() == "-" {
+		t := p.next()
+		return &node{k: "neg", col: t.col, l: p.unary()}
+	}
+	return p.atom()
+}
+func (p *parser) atom() *node {
+	switch k := p.peek(); k {
+	case "int", "str":
+		return &node{k: k, col: p.next().col}
+	case "true", "false":
+		return &node{k: "bool", col: p.next().col}
+	case "id":
+		t := p.next()
+		if p.peek() == "(" {
+			p.next()
+			var args []*node
+			if p.peek() != ")" {
+				args = append(args, p.expr())
+				for p.peek() == "," {
+					p.next()
+					args = append(args, p.expr())
+				}
+			}
+			p.expect(")")
+			return &node{k: "call", col: t.col, name: t.text, args: args}
+		}
+		return &node{k: "var", col: t.col, name: t.text}
+	case "(":
+		t := p.next()
+		e := p.expr()
+		p.expect(")")
+		c := *e
+		c.col = t.col
+		return &c
+	}
+	fail("syntax error", p.col())
+	return nil
+}
+
+func need(t, want string, col int) {
+	if t != want {
+		fail(fmt.Sprintf("expected %s, found %s", want, t), col)
+	}
+}
+
+type env struct {
+	name, typ string
+	next      *env
+}
+
+func lookup(e *env, name string) (string, bool) {
+	for ; e != nil; e = e.next {
+		if e.name == name {
+			return e.typ, true
+		}
+	}
+	return "", false
+}
+
+func check(n *node, e *env) string {
+	switch n.k {
+	case "int":
+		return "Int"
+	case "bool":
+		return "Bool"
+	case "str":
+		return "Str"
+	case "var":
+		t, ok := lookup(e, n.name)
+		if !ok {
+			fail("unbound variable "+n.name, n.col)
+		}
+		return t
+	case "neg":
+		need(check(n.l, e), "Int", n.l.col)
+		return "Int"
+	case "not":
+		need(check(n.l, e), "Bool", n.l.col)
+		return "Bool"
+	case "bin":
+		lt := check(n.l, e)
+		rt := check(n.r, e)
+		switch op := n.op; {
+		case op == "+":
+			if lt != "Int" && lt != "Str" {
+				fail("expected Int or Str, found "+lt, n.l.col)
+			}
+			need(rt, lt, n.r.col)
+			return lt
+		case op == "-" || op == "*":
+			need(lt, "Int", n.l.col)
+			need(rt, "Int", n.r.col)
+			return "Int"
+		case op == "==" || op == "!=":
+			need(rt, lt, n.r.col)
+			return "Bool"
+		case isCmp(op):
+			need(lt, "Int", n.l.col)
+			need(rt, "Int", n.r.col)
+			return "Bool"
+		}
+		need(lt, "Bool", n.l.col)
+		need(rt, "Bool", n.r.col)
+		return "Bool"
+	case "call":
+		s, ok := builtins[n.name]
+		if !ok {
+			fail("unknown function "+n.name, n.col)
+		}
+		if len(n.args) != len(s.params) {
+			fail(fmt.Sprintf("wrong number of arguments for %s: expected %d, found %d", n.name, len(s.params), len(n.args)), n.col)
+		}
+		for i, a := range n.args {
+			need(check(a, e), s.params[i], a.col)
+		}
+		return s.ret
+	case "let":
+		t1 := check(n.e1, e)
+		return check(n.e2, &env{n.name, t1, e})
+	}
+	// if
+	need(check(n.c, e), "Bool", n.c.col)
+	tt := check(n.l, e)
+	et := check(n.r, e)
+	need(et, tt, n.r.col)
+	return tt
+}
+
+func runLine(line string) (res string) {
+	defer func() {
+		if r := recover(); r != nil {
+			if pe, ok := r.(perr); ok {
+				res = fmt.Sprintf("error: %s at %d", pe.msg, pe.col)
+				return
+			}
+			panic(r)
+		}
+	}()
+	toks := lex(line)
+	p := &parser{toks: toks, eof: len(strings.TrimRight(line, " \t")) + 1}
+	n := p.expr()
+	if p.pos < len(toks) {
+		fail("syntax error", p.col())
+	}
+	return check(n, nil)
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	for sc.Scan() {
+		line := sc.Text()
+		if strings.Trim(line, " \t") == "" {
+			continue
+		}
+		fmt.Fprintln(out, runLine(line))
+	}
+}

@@ -1,0 +1,449 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type ver struct {
+	n   [3]int
+	pre []string
+}
+
+type comp struct {
+	op string
+	v  ver
+}
+
+type partial struct {
+	n, M, m, p int
+	pre        []string
+}
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func isNum(s string) bool {
+	return isDigits(s) && len(s) <= 9 && (s == "0" || s[0] != '0')
+}
+
+func isWild(s string) bool { return s == "x" || s == "X" || s == "*" }
+
+func parsePre(s string) ([]string, bool) {
+	ids := strings.Split(s, ".")
+	for _, id := range ids {
+		if id == "" {
+			return nil, false
+		}
+		for i := 0; i < len(id); i++ {
+			c := id[i]
+			if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '-') {
+				return nil, false
+			}
+		}
+		if isDigits(id) && !isNum(id) {
+			return nil, false
+		}
+	}
+	return ids, true
+}
+
+func parseVersion(s string) (ver, bool) {
+	var v ver
+	if d := strings.Index(s, "-"); d >= 0 {
+		p, ok := parsePre(s[d+1:])
+		if !ok {
+			return v, false
+		}
+		v.pre = p
+		s = s[:d]
+	}
+	parts := strings.Split(s, ".")
+	if len(parts) != 3 {
+		return v, false
+	}
+	for i, p := range parts {
+		if !isNum(p) {
+			return v, false
+		}
+		v.n[i], _ = strconv.Atoi(p)
+	}
+	return v, true
+}
+
+func sign(a int) int {
+	if a < 0 {
+		return -1
+	}
+	if a > 0 {
+		return 1
+	}
+	return 0
+}
+
+func cmpID(a, b string) int {
+	an, bn := isDigits(a), isDigits(b)
+	if an && bn {
+		x, _ := strconv.Atoi(a)
+		y, _ := strconv.Atoi(b)
+		return sign(x - y)
+	}
+	if an {
+		return -1
+	}
+	if bn {
+		return 1
+	}
+	return strings.Compare(a, b)
+}
+
+func cmpVer(a, b ver) int {
+	for i := 0; i < 3; i++ {
+		if a.n[i] != b.n[i] {
+			return sign(a.n[i] - b.n[i])
+		}
+	}
+	if len(a.pre) == 0 && len(b.pre) == 0 {
+		return 0
+	}
+	if len(a.pre) == 0 {
+		return 1
+	}
+	if len(b.pre) == 0 {
+		return -1
+	}
+	k := len(a.pre)
+	if len(b.pre) < k {
+		k = len(b.pre)
+	}
+	for i := 0; i < k; i++ {
+		if c := cmpID(a.pre[i], b.pre[i]); c != 0 {
+			return c
+		}
+	}
+	return sign(len(a.pre) - len(b.pre))
+}
+
+func parsePartial(tok string) (partial, bool) {
+	var P partial
+	if isWild(tok) {
+		return P, true
+	}
+	base := tok
+	if d := strings.Index(tok, "-"); d >= 0 {
+		p, ok := parsePre(tok[d+1:])
+		if !ok {
+			return P, false
+		}
+		P.pre = p
+		base = tok[:d]
+	}
+	parts := strings.Split(base, ".")
+	if len(parts) > 3 {
+		return P, false
+	}
+	vals := []int{}
+	wild := false
+	for _, q := range parts {
+		if isWild(q) {
+			wild = true
+		} else {
+			if wild || !isNum(q) {
+				return P, false
+			}
+			x, _ := strconv.Atoi(q)
+			vals = append(vals, x)
+		}
+	}
+	if len(P.pre) > 0 && len(vals) != 3 {
+		return P, false
+	}
+	P.n = len(vals)
+	for len(vals) < 3 {
+		vals = append(vals, 0)
+	}
+	P.M, P.m, P.p = vals[0], vals[1], vals[2]
+	return P, true
+}
+
+func mk(M, m, p int, pre []string) ver { return ver{[3]int{M, m, p}, pre} }
+
+func termComps(op string, P partial) []comp {
+	n, M, m, p := P.n, P.M, P.m, P.p
+	full := mk(M, m, p, P.pre)
+	var fillPre []string
+	if n == 3 {
+		fillPre = P.pre
+	}
+	fill := mk(M, m, p, fillPre)
+	n1 := mk(M+1, 0, 0, nil)
+	n2 := mk(M, m+1, 0, nil)
+	never := []comp{{"<", mk(0, 0, 0, nil)}}
+	switch op {
+	case "", "=":
+		switch n {
+		case 0:
+			return nil
+		case 1:
+			return []comp{{">=", mk(M, 0, 0, nil)}, {"<", n1}}
+		case 2:
+			return []comp{{">=", mk(M, m, 0, nil)}, {"<", n2}}
+		}
+		return []comp{{"==", full}}
+	case ">":
+		switch n {
+		case 0:
+			return never
+		case 1:
+			return []comp{{">=", n1}}
+		case 2:
+			return []comp{{">=", n2}}
+		}
+		return []comp{{">", full}}
+	case ">=":
+		if n == 0 {
+			return nil
+		}
+		return []comp{{">=", fill}}
+	case "<":
+		if n == 0 {
+			return never
+		}
+		return []comp{{"<", fill}}
+	case "<=":
+		switch n {
+		case 0:
+			return nil
+		case 1:
+			return []comp{{"<", n1}}
+		case 2:
+			return []comp{{"<", n2}}
+		}
+		return []comp{{"<=", full}}
+	case "~":
+		switch n {
+		case 0:
+			return nil
+		case 1:
+			return []comp{{">=", mk(M, 0, 0, nil)}, {"<", n1}}
+		case 2:
+			return []comp{{">=", mk(M, m, 0, nil)}, {"<", n2}}
+		}
+		return []comp{{">=", full}, {"<", n2}}
+	}
+	// caret
+	switch n {
+	case 0:
+		return nil
+	case 1:
+		return []comp{{">=", mk(M, 0, 0, nil)}, {"<", n1}}
+	case 2:
+		up := n2
+		if M > 0 {
+			up = n1
+		}
+		return []comp{{">=", mk(M, m, 0, nil)}, {"<", up}}
+	}
+	if M > 0 {
+		return []comp{{">=", full}, {"<", n1}}
+	}
+	if m > 0 {
+		return []comp{{">=", full}, {"<", n2}}
+	}
+	return []comp{{">=", full}, {"<", mk(0, 0, p+1, nil)}}
+}
+
+var opList = []string{">=", "<=", ">", "<", "=", "^", "~"}
+
+func parseRange(tokens []string) ([][]comp, bool) {
+	sets := [][]string{{}}
+	for _, t := range tokens {
+		if t == "||" {
+			sets = append(sets, []string{})
+		} else {
+			sets[len(sets)-1] = append(sets[len(sets)-1], t)
+		}
+	}
+	var out [][]comp
+	for _, st := range sets {
+		comps := []comp{}
+		i := 0
+		for i < len(st) {
+			if i+1 < len(st) && st[i+1] == "-" {
+				if i+2 >= len(st) {
+					return nil, false
+				}
+				a, ok1 := parsePartial(st[i])
+				b, ok2 := parsePartial(st[i+2])
+				if !ok1 || !ok2 {
+					return nil, false
+				}
+				if a.n > 0 {
+					var pre []string
+					if a.n == 3 {
+						pre = a.pre
+					}
+					comps = append(comps, comp{">=", mk(a.M, a.m, a.p, pre)})
+				}
+				switch b.n {
+				case 3:
+					comps = append(comps, comp{"<=", mk(b.M, b.m, b.p, b.pre)})
+				case 2:
+					comps = append(comps, comp{"<", mk(b.M, b.m+1, 0, nil)})
+				case 1:
+					comps = append(comps, comp{"<", mk(b.M+1, 0, 0, nil)})
+				}
+				i += 3
+				continue
+			}
+			t := st[i]
+			if t == "-" {
+				return nil, false
+			}
+			op := ""
+			for _, o := range opList {
+				if strings.HasPrefix(t, o) {
+					op = o
+					break
+				}
+			}
+			P, ok := parsePartial(t[len(op):])
+			if !ok {
+				return nil, false
+			}
+			comps = append(comps, termComps(op, P)...)
+			i++
+		}
+		out = append(out, comps)
+	}
+	return out, true
+}
+
+func holds(c comp, v ver) bool {
+	k := cmpVer(v, c.v)
+	switch c.op {
+	case ">=":
+		return k >= 0
+	case ">":
+		return k > 0
+	case "<":
+		return k < 0
+	case "<=":
+		return k <= 0
+	}
+	return k == 0
+}
+
+func satisfies(rng [][]comp, v ver) bool {
+	for _, comps := range rng {
+		all := true
+		for _, c := range comps {
+			if !holds(c, v) {
+				all = false
+				break
+			}
+		}
+		if !all {
+			continue
+		}
+		if len(v.pre) > 0 {
+			found := false
+			for _, c := range comps {
+				if len(c.v.pre) > 0 && c.v.n == v.n {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+		return true
+	}
+	return false
+}
+
+type entry struct {
+	text string
+	v    ver
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<26)
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+	var pool []entry
+	for sc.Scan() {
+		t := strings.Fields(strings.ReplaceAll(sc.Text(), "\t", " "))
+		if len(t) == 0 {
+			continue
+		}
+		switch c := t[0]; {
+		case c == "pool":
+			seen := map[string]bool{}
+			pool = nil
+			skipped := 0
+			for _, a := range t[1:] {
+				v, ok := parseVersion(a)
+				if !ok {
+					skipped++
+					continue
+				}
+				if seen[a] {
+					continue
+				}
+				seen[a] = true
+				pool = append(pool, entry{a, v})
+			}
+			sort.Slice(pool, func(i, j int) bool { return cmpVer(pool[i].v, pool[j].v) < 0 })
+			fmt.Fprintf(w, "pool %d skipped %d\n", len(pool), skipped)
+		case c == "max" || c == "all":
+			r, ok := parseRange(t[1:])
+			if !ok {
+				fmt.Fprintln(w, "invalid range")
+				continue
+			}
+			var res []string
+			for _, e := range pool {
+				if satisfies(r, e.v) {
+					res = append(res, e.text)
+				}
+			}
+			if len(res) == 0 {
+				fmt.Fprintln(w, "none")
+			} else if c == "max" {
+				fmt.Fprintln(w, res[len(res)-1])
+			} else {
+				fmt.Fprintln(w, strings.Join(res, " "))
+			}
+		case c == "test" && len(t) >= 2:
+			v, ok := parseVersion(t[1])
+			if !ok {
+				fmt.Fprintln(w, "invalid version")
+				continue
+			}
+			r, ok := parseRange(t[2:])
+			if !ok {
+				fmt.Fprintln(w, "invalid range")
+				continue
+			}
+			fmt.Fprintln(w, satisfies(r, v))
+		default:
+			fmt.Fprintln(w, "error: bad command")
+		}
+	}
+}

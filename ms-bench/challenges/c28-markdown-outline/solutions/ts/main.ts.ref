@@ -1,0 +1,24 @@
+import { readFileSync } from "node:fs";
+
+const counters = [0, 0, 0, 0, 0, 0, 0];
+const out: string[] = [];
+let fence = false;
+for (const line of readFileSync(0, "utf8").split("\n")) {
+  if (line.startsWith("```")) {
+    fence = !fence;
+    continue;
+  }
+  if (fence) continue;
+  let level = 0;
+  while (level < line.length && line[level] === "#") level++;
+  if (level < 1 || level > 6) continue;
+  const rest = line.slice(level);
+  if (!rest.startsWith(" ")) continue;
+  const title = rest.replace(/^ +| +$/g, "");
+  if (title === "") continue;
+  counters[level]++;
+  for (let k = level + 1; k <= 6; k++) counters[k] = 0;
+  const number = counters.slice(1, level + 1).join(".");
+  out.push("  ".repeat(level - 1) + number + " " + title);
+}
+process.stdout.write(out.map((l) => l + "\n").join(""));

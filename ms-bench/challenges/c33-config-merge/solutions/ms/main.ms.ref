@@ -1,0 +1,249 @@
+import {stdin, stdout, read_all} from "@std/io.ms"
+
+# kind: "s" string, "i" integer, "b" boolean, "l" list. Scalars keep their canonical text in `text`;
+# lists keep their (scalar) items in `items`.
+type Val:
+    kind: String
+    text: String
+    items: List[Val]
+
+fn scalar_val(kind: String, text: String) -> Val:
+    return Val(kind: kind, text: text, items: List[Val]())
+
+fn trim_blanks(s: String) -> String:
+    let codes = s.scalar_values()
+    var start = 0
+    var end = codes.length()
+    while start < end and (codes.at(start).unwrap() == 32 or codes.at(start).unwrap() == 9):
+        start = start + 1
+    while end > start and (codes.at(end - 1).unwrap() == 32 or codes.at(end - 1).unwrap() == 9):
+        end = end - 1
+    return s.slice(start, end)
+
+fn is_ident_start(c: Int) -> Bool:
+    return (c >= 97 and c <= 122) or c == 95
+
+fn valid_key(k: String) -> Bool:
+    if k.is_empty():
+        return false
+    for seg in k.split("."):
+        let codes = seg.scalar_values()
+        if codes.is_empty() or not is_ident_start(codes.at(0).unwrap()):
+            return false
+        for c in codes:
+            if not (is_ident_start(c) or (c >= 48 and c <= 57)):
+                return false
+    return true
+
+fn is_int(s: String) -> Bool:
+    let codes = s.scalar_values()
+    var start = 0
+    if codes.length() > 0 and codes.at(0).unwrap() == 45:
+        start = 1
+    let n = codes.length() - start
+    if n < 1 or n > 15:
+        return false
+    var i = start
+    while i < codes.length():
+        let c = codes.at(i).unwrap()
+        if c < 48 or c > 57:
+            return false
+        i = i + 1
+    return true
+
+fn scalar(p: String) -> Val:
+    if p == "true" or p == "false":
+        return scalar_val("b", p)
+    if is_int(p):
+        return scalar_val("i", "{p.parse_int().unwrap()}")
+    if p.length() >= 2 and p.starts_with("\"") and p.ends_with("\""):
+        return scalar_val("s", p.slice(1, p.length() - 1))
+    return scalar_val("s", p)
+
+fn parse_value(v: String) -> Optional[Val]:
+    if v == "true" or v == "false" or is_int(v):
+        return some(scalar(v))
+    if v.starts_with("\""):
+        let chars = v.chars()
+        let out = List[String]()
+        var i = 1
+        while i < chars.length():
+            let c = chars.at(i).unwrap()
+            let next = chars.at(i + 1).unwrap_or("")
+            if c == "\\" and (next == "\"" or next == "\\"):
+                out.append(next)
+                i = i + 2
+                continue
+            if c == "\"":
+                if i == chars.length() - 1:
+                    return some(scalar_val("s", out.join("")))
+                return none
+            out.append(c)
+            i = i + 1
+        return none
+    if v.starts_with("["):
+        if not v.ends_with("]") or v.length() < 2:
+            return none
+        let inner = v.slice(1, v.length() - 1)
+        let list = Val(kind: "l", text: "", items: List[Val]())
+        if trim_blanks(inner).is_empty():
+            return some(list)
+        for piece in inner.split(","):
+            let p = trim_blanks(piece)
+            if p.is_empty():
+                return none
+            list.items.append(scalar(p))
+        return some(list)
+    return some(scalar_val("s", v))
+
+fn plain(v: Val) -> String:
+    if v.kind == "l":
+        let parts = List[String]()
+        for item in v.items:
+            parts.append(plain(item))
+        return parts.join(",")
+    return v.text
+
+fn quote(s: String) -> String:
+    let escaped = s.replace_all(old: "\\", new: "\\\\").unwrap().replace_all(old: "\"", new: "\\\"").unwrap()
+    return "\"{escaped}\""
+
+fn render(v: Val) -> String:
+    if v.kind == "s":
+        return quote(v.text)
+    if v.kind == "l":
+        let parts = List[String]()
+        for item in v.items:
+            parts.append(render(item))
+        return "[{parts.join(", ")}]"
+    return v.text
+
+type Context:
+    vals: Map[String, Val]
+    memo: Map[String, Val]
+    key_errs: Map[String, List[String]]
+
+fn resolve(ctx: Context, key: String) -> Val:
+    let cached = ctx.memo.get(key)
+    if cached.is_some():
+        return cached.unwrap()
+    let v = ctx.vals.get(key).unwrap()
+    if v.kind != "s":
+        ctx.memo.add(key: key, value: v)
+        return v
+    let chars = v.text.chars()
+    let n = chars.length()
+    let out = List[String]()
+    var i = 0
+    while i < n:
+        if chars.at(i).unwrap() == "$" and chars.at(i + 1).unwrap_or("") == "\{":
+            var j = i + 2
+            while j < n and chars.at(j).unwrap() != "\}":
+                j = j + 1
+            if j < n:
+                let name = chars.slice(i + 2, j).join("")
+                if valid_key(name):
+                    if ctx.vals.contains(name):
+                        out.append(plain(resolve(ctx, name)))
+                    else:
+                        out.append(chars.slice(i, j + 1).join(""))
+                        if not ctx.key_errs.contains(key):
+                            ctx.key_errs.add(key: key, value: List[String]())
+                        ctx.key_errs.get(key).unwrap().append("key {key}: unresolved $\{{name}\}")
+                    i = j + 1
+                    continue
+        out.append(chars.at(i).unwrap())
+        i = i + 1
+    let r = scalar_val("s", out.join(""))
+    ctx.memo.add(key: key, value: r)
+    return r
+
+fn by_text(left: String, right: String) -> Int:
+    return left.compare(right)
+
+fn run() -> Result[Unit, Error]:
+    let data = try read_all(input: stdin())
+    let lines = data.to_text().unwrap_or("").split("\n")
+    if lines.length() > 0 and lines.at(lines.length() - 1).unwrap().is_empty():
+        lines.remove(lines.length() - 1)
+    var layer = "base"
+    let vals = Map[String, Val]()
+    let source = Map[String, String]()
+    let errs = List[String]()
+    var idx = 0
+    while idx < lines.length():
+        let l = trim_blanks(lines.at(idx).unwrap())
+        idx = idx + 1
+        let n = idx
+        if l.is_empty() or l.starts_with("#"):
+            continue
+        if l.starts_with("@@"):
+            layer = trim_blanks(l.slice(2, l.length()))
+            if layer.is_empty():
+                layer = "unnamed"
+            continue
+        if l.starts_with("!"):
+            let k = trim_blanks(l.slice(1, l.length()))
+            if not valid_key(k):
+                errs.append("line {n}: syntax error")
+                continue
+            for x in vals.keys():
+                if x == k or x.starts_with("{k}."):
+                    vals.without(x)
+                    source.without(x)
+            continue
+        let eq_at = l.index_of("=")
+        if eq_at.is_none():
+            errs.append("line {n}: syntax error")
+            continue
+        let eq = eq_at.unwrap()
+        let append = eq > 0 and l.slice(eq - 1, eq) == "+"
+        var key_end = eq
+        if append:
+            key_end = eq - 1
+        let key = trim_blanks(l.slice(0, key_end))
+        if not valid_key(key):
+            errs.append("line {n}: syntax error")
+            continue
+        let parsed = parse_value(trim_blanks(l.slice(eq + 1, l.length())))
+        if parsed.is_none():
+            errs.append("line {n}: syntax error")
+            continue
+        let v = parsed.unwrap()
+        if append:
+            var cur = Val(kind: "l", text: "", items: List[Val]())
+            if vals.contains(key):
+                cur = vals.get(key).unwrap()
+            if cur.kind != "l":
+                errs.append("line {n}: cannot append to non-list")
+                continue
+            let merged = Val(kind: "l", text: "", items: cur.items.clone())
+            if v.kind == "l":
+                for item in v.items:
+                    merged.items.append(item)
+            else:
+                merged.items.append(v)
+            vals.add(key: key, value: merged)
+        else:
+            vals.add(key: key, value: v)
+        source.add(key: key, value: layer)
+    let ctx = Context(vals: vals, memo: Map[String, Val](), key_errs: Map[String, List[String]]())
+    let out = List[String]()
+    for k in vals.keys().sorted(compare: by_text):
+        out.append("{k} = {render(resolve(ctx, k))}  # {source.get(k).unwrap()}")
+    let msgs = errs.clone()
+    for k in ctx.key_errs.keys().sorted(compare: by_text):
+        for m in ctx.key_errs.get(k).unwrap():
+            msgs.append(m)
+    if msgs.length() > 0:
+        out.append("errors:")
+        for m in msgs:
+            out.append("  {m}")
+    if not out.is_empty():
+        try stdout().write("{out.join("\n")}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

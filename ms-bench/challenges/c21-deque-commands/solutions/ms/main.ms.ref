@@ -1,0 +1,58 @@
+import {stdin, stdout, read_all} from "@std/io.ms"
+
+fn run() -> Result[Unit, Error]:
+    let data = try read_all(input: stdin())
+    let text = data.to_text().unwrap_or("")
+    # Elements live in `items`; `head` is the index of the front element so pop_front is O(1).
+    var items = List[String]()
+    var head = 0
+    let out = List[String]()
+    for line in text.split("\n"):
+        if line.trim().is_empty():
+            continue
+        let p = line.split(" ")
+        let cmd = p.at(0).unwrap()
+        let live = items.length() - head
+        if cmd == "push_back":
+            items.append(p.at(1).unwrap())
+        else if cmd == "push_front":
+            if head > 0:
+                head = head - 1
+                items.set(head, p.at(1).unwrap())
+            else:
+                items = [p.at(1).unwrap()].concat(items)
+        else if cmd == "pop_back":
+            if live == 0:
+                out.append("empty")
+            else:
+                out.append(items.at(items.length() - 1).unwrap())
+                items.remove(items.length() - 1)
+        else if cmd == "pop_front":
+            if live == 0:
+                out.append("empty")
+            else:
+                out.append(items.at(head).unwrap())
+                head = head + 1
+        else if cmd == "back":
+            if live == 0:
+                out.append("empty")
+            else:
+                out.append(items.at(items.length() - 1).unwrap())
+        else if cmd == "front":
+            if live == 0:
+                out.append("empty")
+            else:
+                out.append(items.at(head).unwrap())
+        else if cmd == "size":
+            out.append("{live}")
+        else if cmd == "dump":
+            let shown = items.slice(head, items.length())
+            out.append("[{shown.join(" ")}]")
+    if not out.is_empty():
+        try stdout().write("{out.join("\n")}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

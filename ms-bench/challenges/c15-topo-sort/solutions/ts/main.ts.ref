@@ -1,0 +1,38 @@
+import { readFileSync } from "node:fs";
+
+const NAME = "[a-z][a-z0-9_]*";
+const LINE = new RegExp(`^(${NAME}):((?: ${NAME})*)$`);
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+const deps = new Map<string, Set<string>>();
+const touch = (n: string) => { if (!deps.has(n)) deps.set(n, new Set()); return deps.get(n)!; };
+for (let i = 0; i < lines.length; i++) {
+  const l = lines[i];
+  if (l.replace(/ /g, "") === "") continue;
+  const m = LINE.exec(l);
+  if (!m) {
+    process.stdout.write(`error: line ${i + 1}\n`);
+    process.exit(0);
+  }
+  const set = touch(m[1]);
+  for (const d of m[2].split(" ").filter((x) => x !== "")) { set.add(d); touch(d); }
+}
+const indeg = new Map<string, number>();
+const rev = new Map<string, string[]>();
+for (const [n, ds] of deps) { indeg.set(n, ds.size); rev.set(n, rev.get(n) ?? []); }
+for (const [n, ds] of deps) for (const d of ds) rev.get(d)!.push(n);
+const ready = [...deps.keys()].filter((n) => indeg.get(n) === 0);
+const out: string[] = [];
+const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+while (ready.length > 0) {
+  ready.sort(cmp);
+  const n = ready.shift()!;
+  out.push(n);
+  for (const m of rev.get(n)!) {
+    indeg.set(m, indeg.get(m)! - 1);
+    if (indeg.get(m) === 0) ready.push(m);
+  }
+}
+if (out.length < deps.size) process.stdout.write("cycle\n");
+else process.stdout.write(out.map((x) => x + "\n").join(""));

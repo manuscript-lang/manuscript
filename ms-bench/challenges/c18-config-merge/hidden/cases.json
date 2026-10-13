@@ -1,0 +1,97 @@
+[
+ {
+  "name": "basic",
+  "stdin": "# defaults\n--- defaults\nname = demo\n[server]\nhost = localhost\nport = 8080\ndebug = true\nurl = http://${server.host}:${server.port}/${global.name}\n--- production\n[server]\nhost = example.com\nport = 443\n@unset server.debug\nprice = $$5 for $name\n",
+  "stdout": "[global]\nname = demo\n\n[server]\nhost = example.com\nport = 443\nprice = $5 for $name\nurl = http://example.com:443/demo\n"
+ },
+ {
+  "name": "cycle",
+  "stdin": "--- a\nx = ${global.y}\ny = ${global.x}\n",
+  "stdout": "error: global.x: cycle\n"
+ },
+ {
+  "name": "empty",
+  "stdin": "",
+  "stdout": ""
+ },
+ {
+  "name": "override-order",
+  "stdin": "--- a\nk = 1\n[s]\nk = a\n--- b\n[s]\nk = b\n--- c\nk = 3\n",
+  "stdout": "[global]\nk = 3\n\n[s]\nk = b\n"
+ },
+ {
+  "name": "section-resets-per-layer",
+  "stdin": "--- a\n[s]\nx = 1\n--- b\ny = 2\n",
+  "stdout": "[global]\ny = 2\n\n[s]\nx = 1\n"
+ },
+ {
+  "name": "whitespace-and-equals",
+  "stdin": "--- a\n   key   =   spaced value   \neq = a=b=c\nhash = x # not a comment\nempty =\n[s]\nv = 1\n",
+  "stdout": "[global]\nempty = \neq = a=b=c\nhash = x # not a comment\nkey = spaced value\n\n[s]\nv = 1\n"
+ },
+ {
+  "name": "unset-and-reset",
+  "stdin": "--- a\nx = 1\ny = 2\n@unset global.x\n@unset global.nope\n--- b\n@unset global.y\nx = 9\n",
+  "stdout": "[global]\nx = 9\n"
+ },
+ {
+  "name": "chained-references",
+  "stdin": "--- a\na = 1\nb = ${global.a}2\nc = ${global.b}3\n[s]\nd = ${global.c}-${global.a}\n",
+  "stdout": "[global]\na = 1\nb = 12\nc = 123\n\n[s]\nd = 123-1\n"
+ },
+ {
+  "name": "dollar-forms",
+  "stdin": "--- a\na = $$\nb = $$${global.a}\nc = $x $ {y} $\nd = $$$$\ne = ${global.a}$\n",
+  "stdout": "[global]\na = $\nb = $$\nc = $x $ {y} $\nd = $$\ne = $$\n"
+ },
+ {
+  "name": "deep-cycle-reports-reentered-key",
+  "stdin": "--- a\n[a]\nk = ${b.k}\n[b]\nk = ${c.k}\n[c]\nk = ${b.k}\n",
+  "stdout": "error: b.k: cycle\n"
+ },
+ {
+  "name": "unknown-reference",
+  "stdin": "--- a\n[z]\nok = fine\n[a]\nv = ${z.nope}\n",
+  "stdout": "error: a.v: unknown reference ${z.nope}\n"
+ },
+ {
+  "name": "bad-reference",
+  "stdin": "--- a\nz = ${global.y\n",
+  "stdout": "error: global.z: bad reference\n"
+ },
+ {
+  "name": "first-error-in-sorted-order",
+  "stdin": "--- a\n[b]\nk = ${x.y}\n[a]\nk = ${global.q\n",
+  "stdout": "error: a.k: bad reference\n"
+ },
+ {
+  "name": "missing-layer-header",
+  "stdin": "# fine\nx = 1\n--- a\n",
+  "stdout": "error: input:2: expected layer header\n"
+ },
+ {
+  "name": "bad-directive",
+  "stdin": "--- a\n@unset x\n",
+  "stdout": "error: a:2: bad directive\n"
+ },
+ {
+  "name": "bad-key",
+  "stdin": "--- one\nok = 1\n--- two\nBad = 2\n",
+  "stdout": "error: two:4: bad key\n"
+ },
+ {
+  "name": "invalid-line",
+  "stdin": "--- a\njust words\n",
+  "stdout": "error: a:2: invalid line\n"
+ },
+ {
+  "name": "layer-header-spaces",
+  "stdin": "---  padded name  \nx = 1\n--- \n",
+  "stdout": "error: padded name:3: invalid line\n"
+ },
+ {
+  "name": "big",
+  "stdin": "# generated\n--- layer0\n[global]\n@unset global.k7\nk1 = pre-${web.k0}-post 80\nk2 = value 469\nk3 = pre-${log.k0}-post 15\n[db]\nk0 = value 178\nk1 = value 240\nk2 = pre-${web.k0}-post 73\nk3 = value 913\nk4 = value 221\nk0 = base-db\n[cache]\nk0 = pre-${web.k0}-post 28\nk1 = value 354\nk2 = value 845\nk3 = value 565\n@unset cache.k7\nk5 = value 507\nk6 = value 164\nk7 = value 825\nk0 = base-cache\n[web]\n@unset web.k8\nk1 = pre-${log.k0}-post 25\nk2 = value 347\nk3 = value 673\nk4 = pre-${db.k0}-post 61\nk5 = pre-${log.k0}-post 11\nk0 = base-web\n[log]\nk0 = value 802\nk1 = value 837\nk2 = value 6\nk3 = pre-${log.k0}-post 11\nk4 = value 185\nk5 = pre-${log.k0}-post 50\nk6 = value 343\nk0 = base-log\n--- layer1\n[global]\nk0 = value 934\n@unset global.k8\nk2 = value 433\n@unset global.k2\nk4 = value 912\n[db]\n@unset db.k8\nk1 = value 103\n@unset db.k4\nk3 = value 625\nk4 = value 856\nk5 = value 154\nk0 = base-db\n[cache]\nk0 = value 980\nk1 = value 507\n@unset cache.k1\nk3 = value 753\nk0 = base-cache\n[web]\nk0 = value 952\nk1 = value 167\nk2 = value 815\nk3 = value 108\nk0 = base-web\n[log]\nk0 = value 90\nk1 = value 736\nk2 = value 848\nk3 = value 725\n@unset log.k6\nk5 = pre-${web.k0}-post 51\nk6 = pre-${db.k0}-post 47\nk0 = base-log\n--- layer2\n[global]\nk0 = value 91\n@unset global.k5\nk2 = pre-${log.k0}-post 99\nk3 = value 224\n[db]\n@unset db.k7\nk1 = value 166\nk2 = value 225\nk3 = value 654\nk4 = value 519\nk5 = value 692\nk6 = value 521\nk7 = value 194\nk0 = base-db\n[cache]\nk0 = pre-${web.k0}-post 84\nk1 = value 591\n@unset cache.k3\nk3 = pre-${log.k0}-post 40\n@unset cache.k2\nk5 = value 282\n@unset cache.k6\nk7 = value 170\nk0 = base-cache\n[web]\nk0 = value 627\nk1 = pre-${db.k0}-post 67\nk2 = value 518\n@unset web.k7\nk4 = value 293\nk0 = base-web\n[log]\nk0 = pre-${log.k0}-post 81\nk1 = value 221\n@unset log.k4\nk3 = pre-${web.k0}-post 8\nk4 = value 29\nk5 = value 470\n@unset log.k7\nk7 = pre-${web.k0}-post 41\nk0 = base-log\n--- layer3\n[global]\nk0 = pre-${db.k0}-post 48\nk1 = value 954\nk2 = value 268\nk3 = value 36\nk4 = value 633\nk5 = value 400\n@unset global.k7\nk7 = pre-${db.k0}-post 61\n[db]\nk0 = value 155\nk1 = pre-${web.k0}-post 25\n@unset db.k4\nk0 = base-db\n[cache]\nk0 = value 629\nk1 = value 207\n@unset cache.k0\n@unset cache.k5\nk0 = base-cache\n[web]\n@unset web.k2\nk1 = value 329\nk2 = value 531\nk3 = value 265\nk0 = base-web\n[log]\nk0 = pre-${web.k0}-post 47\nk1 = value 547\nk2 = pre-${db.k0}-post 86\nk3 = pre-${web.k0}-post 29\nk4 = value 488\nk0 = base-log\n\n",
+  "stdout": "[cache]\nk0 = base-cache\nk1 = value 207\nk3 = pre-base-log-post 40\nk7 = value 170\n\n[db]\nk0 = base-db\nk1 = pre-base-web-post 25\nk2 = value 225\nk3 = value 654\nk5 = value 692\nk6 = value 521\nk7 = value 194\n\n[global]\nk0 = pre-base-db-post 48\nk1 = value 954\nk2 = value 268\nk3 = value 36\nk4 = value 633\nk5 = value 400\nk7 = pre-base-db-post 61\n\n[log]\nk0 = base-log\nk1 = value 547\nk2 = pre-base-db-post 86\nk3 = pre-base-web-post 29\nk4 = value 488\nk5 = value 470\nk6 = pre-base-db-post 47\nk7 = pre-base-web-post 41\n\n[web]\nk0 = base-web\nk1 = value 329\nk2 = value 531\nk3 = value 265\nk4 = value 293\nk5 = pre-base-log-post 11\n"
+ }
+]
