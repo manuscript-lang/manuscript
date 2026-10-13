@@ -22,6 +22,12 @@ fn describe(payment: Payment) -> String:
             return "Pending: {reference}"
 ```
 
+## Keep match flow flat
+
+Nested `match` is an anti-pattern: another match inside a scrutinee or arm makes the control flow harder to follow. Bind the outer payload with an early exit, propagate compatible errors with `try`, use the ordinary Optional methods, or call a small helper for further case handling. The [bounded TOML example](../../standard-library/formats.md#yaml-and-toml-limits) and the contract handler below show flat flow and a helper, respectively.
+
+`ms lint` reports advisory **MSL107** at each inner match, including matches inside an inline callback or its default expressions beneath another match. Separate helpers and sequential matches do not trigger it. Checking and execution still accept nested matches; the advisory is a style rule and adds no grammar restriction.
+
 ## Arm values
 
 An arm may contain statements followed by a final expression. That expression supplies the arm's value. An arm ending in an ordinary statement produces `Unit` when it reaches the end. All arms that produce values must have a compatible type; an annotation or expected argument/return type supplies context. Without context, independently typed value-producing arms establish the result type, including for earlier contextual values such as `none` or `[]`. An inferred function result requires all arguments; it does not inherit omission permissions from one selected callable. Arms that exit through `return`, `break`, `continue`, or a `Never` expression do not contribute a result value.
@@ -93,16 +99,15 @@ import JsonError from "@std/json.ms"
 
 fn describe(cause: Error) -> String:
     match cause:
-        JsonError(json):
-            match json:
-                InvalidInput:
-                    return "Invalid JSON limits"
-                InvalidData:
-                    return "Malformed JSON"
-                LimitExceeded:
-                    return "JSON limit exceeded"
+        JsonError(json): return describe_json(json)
         _:
             return cause.message()
+
+fn describe_json(cause: JsonError) -> String:
+    match cause:
+        InvalidInput: return "Invalid JSON limits"
+        InvalidData: return "Malformed JSON"
+        LimitExceeded: return "JSON limit exceeded"
 ```
 
 The type must be an imported or local nominal record or alternative with an applicable explicit implementation of the scrutinee's exact contract. Supply exactly one receiver name or `_`, including for a payloadless alternative. The binding has the concrete type, so its fields, cases, and implemented operations are available inside the arm. Native opaque receivers can be handled by the wildcard, but cannot be named in a concrete type pattern.

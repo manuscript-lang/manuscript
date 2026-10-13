@@ -14,6 +14,8 @@ func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
 		name, source, code string
 		line               int
 	}{
+		// manuscript:allow-nested-match editor warning must point at the inner match
+		{"nested match", "fn use(value: Optional[Int]) -> Unit:\n    match value:\n        some(_):\n            match value:\n                some(_): unit\n                none: unit\n        none: unit\n", "MSL107", 3},
 		{"discarded result", "fn fail() -> Result[Int, String]:\n    return error(\"boom\")\nfn use() -> Unit:\n    fail()\n", "MSL104", 3},
 		{"concurrent capture", "import Map from \"@std/collections.ms\"\nimport TaskGroup from \"@std/tasks.ms\"\nfn use() -> Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() -> Unit:\n            shared.with_entry(key: 1, value: 2)\n        )\n", "MSL105", 6},
 	} {

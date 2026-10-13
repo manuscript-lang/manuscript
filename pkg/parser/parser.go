@@ -842,7 +842,7 @@ func (p *Parser) matchArms() []syntax.Arm {
 					}
 					a.Names = append(a.Names, tok.Text)
 					if p.peek().Kind == "(" {
-						p.fail(p.peek(), "patterns cannot be nested; match the outer case, then match its payload with a nested 'match'")
+						p.fail(p.peek(), "patterns cannot be nested; bind the outer payload, then handle it in a separate match or helper function")
 					}
 					if !p.take(",") {
 						break

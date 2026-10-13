@@ -32,6 +32,7 @@ Syntax changes usually need language-design, ast, compiler, tooling, and documen
 
 ## Shared guidance and checks
 
+- Nested `match` is an anti-pattern. Keep implementation, examples, and diagnostic remedies flat: bind a payload with an early exit, use compatible `try`, or call a small helper. `make repo-check` guards source, Markdown fences, and Go source strings; intentional syntax/semantic regressions need a scoped test allowance with a reason. The grammar remains unchanged. See [flat match flow](documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 - Shared skills live in `skills/`; `.agents/skills/` and `.claude/skills/` link to the same folders for Codex and Claude discovery. Read selected `SKILL.md` files and relevant evidence links. Keep discovery links synchronized when adding, renaming, or removing skills.
 - Use this `AGENTS.md` as the sole repository guidance entry point; do not create a separate `CLAUDE.md`.
 - Skills describe workflows, `.experts/` preserves reasons and failure modes, and `documentation/` owns exact rules. Standard signatures belong in `pkg/stdlib/*.ms`; regenerate derived references with `make docs`.

@@ -127,18 +127,18 @@ test "function fields collections and interface views share freely":
         let first_task = group.start(make_function)
 
         match group.join():
-            ok(_):
-                match first_task.join():
-                    ok(returned):
-                        if not (returned(value: 3) == 4):
-                            return panic(message: "check failed")
-
-                    error(_):
-                        return panic("task result unavailable")
-
+            ok(_): unit
             error(_):
                 if not (false):
                     return panic(message: "check failed")
+
+        match first_task.join():
+            ok(returned):
+                if not (returned(value: 3) == 4):
+                    return panic(message: "check failed")
+
+            error(_):
+                return panic("task result unavailable")
 
 test "builders can be captured and stored callbacks can map":
     let builder = ListBuilder[Int]()
@@ -272,19 +272,19 @@ test "native collection methods preserve ordinary function values":
         let second_task = group.start(second)
 
         match group.join():
-            ok(_):
-                match first_task.join():
-                    ok(first_value):
-                        match second_task.join():
-                            ok(second_value):
-                                if first_value != 1 or second_value != 2:
-                                    return panic(message: "check failed")
-
-                            error(_):
-                                return panic("task result unavailable")
-
-                    error(_):
-                        return panic("task result unavailable")
-
+            ok(_): unit
             error(_):
                 return panic(message: "task callbacks failed")
+
+        let first_value = match first_task.join():
+            ok(first_value): first_value
+            error(_):
+                return panic("task result unavailable")
+
+        match second_task.join():
+            ok(second_value):
+                if first_value != 1 or second_value != 2:
+                    return panic(message: "check failed")
+
+            error(_):
+                return panic("task result unavailable")

@@ -453,27 +453,31 @@ export fn main() -> Int:
         let task = fn() -> Result[Unit, String]:
             close_output()
             return ok(value: unit)
-        match service.start(task):
-            ok(id):
-                while true:
-                    match service.status(id):
-                        Running:
-                            sleep(1.milliseconds)
-                        Succeeded:
-                            break
-                        _:
-                            return 5
+        let id = match service.start(task):
+            ok(id): id
             error(_):
                 return 2
-    match stdout().write("".to_bytes()):
+
+        while true:
+            match service.status(id):
+                Running:
+                    sleep(1.milliseconds)
+                Succeeded:
+                    break
+                _:
+                    return 5
+
+    let cause = match stdout().write("".to_bytes()):
         ok(_):
             return 3
-        error(cause):
-            match cause:
-                Closed:
-                    return 0
-                _:
-                    return 4
+        error(cause): cause
+
+    match cause:
+        Closed:
+            return 0
+        _:
+            return 4
+
 `
 	for name, source := range map[string]string{"helper.ms": helper, "main.ms": main} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {

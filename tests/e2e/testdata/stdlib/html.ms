@@ -146,26 +146,23 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 
     let body = children(children(nodes.at(2).unwrap()).at(1).unwrap())
 
-    match body.at(0).unwrap():
+    let svg_items = match body.at(0).unwrap():
         Element(tag, namespace, _, items):
             if tag != "svg" or namespace != "svg": return panic("SVG namespace")
-
-            match items.at(0).unwrap():
-                Element(_, child_namespace, attributes, _):
-                    if (
-                        child_namespace != "svg"
-                        or attributes.at(
-                            0
-                        ).unwrap() != HtmlAttribute(
-                            name: "href",
-                            namespace: "xlink",
-                            value: "#icon"
-                        )
-                    ): return panic("namespaced attribute")
-
-                _: return panic("expected SVG anchor")
-
+            items
         _: return panic("expected SVG")
+
+    match svg_items.at(0).unwrap():
+        Element(_, child_namespace, attributes, _):
+            if (
+                child_namespace != "svg"
+                or attributes.at(0).unwrap() != HtmlAttribute(
+                    name: "href",
+                    namespace: "xlink",
+                    value: "#icon"
+                )
+            ): return panic("namespaced attribute")
+        _: return panic("expected SVG anchor")
 
     if text_content(body.at(1).unwrap()) != "if (a < b) x = '&amp;';": return panic(
         "script raw text"

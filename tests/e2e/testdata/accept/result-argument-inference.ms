@@ -57,46 +57,50 @@ test "infer success and preserve concrete error identity":
     cause.code = 19
 
     for value in [inferred, explicit, wrapped, forwarded, inferred_from_known]:
-        match value:
+        let view = match value:
             ok(_): return panic("expected error")
-            error(view):
-                if view.message() != "19": return panic("lost Error dispatch")
+            error(view): view
 
-                match view:
-                    Failure(original):
-                        if original.code != 19: return panic("copied domain error")
+        if view.message() != "19": return panic("lost Error dispatch")
 
-                        original.code = 23
-                    _: return panic("lost concrete error identity")
+        match view:
+            Failure(original):
+                if original.code != 19: return panic("copied domain error")
 
-                if cause.code != 23: return panic("lost receiver alias")
+                original.code = 23
+            _: return panic("lost concrete error identity")
 
-                cause.code = 19
+        if cause.code != 23: return panic("lost receiver alias")
+
+        cause.code = 19
 
     let generic: Result[Int, Tagged[Int]] = error(Tagged(31))
 
-    match erase(generic):
+    let view = match erase(generic):
         ok(_): return panic("expected generic error")
-        error(view):
-            if view.message() != "tagged 31": return panic(
-                "lost generic Error evidence"
-            )
-            match view:
-                Tagged[Int](original):
-                    if original.value != 31: return panic("lost generic payload")
-                _: return panic("lost generic identity")
+        error(view): view
+
+    if view.message() != "tagged 31": return panic(
+        "lost generic Error evidence"
+    )
+
+    match view:
+        Tagged[Int](original):
+            if original.value != 31: return panic("lost generic payload")
+        _: return panic("lost generic identity")
 
 test "nested success preserves its domain and inferred errors remain exact":
     let inner: Result[Int, Failure] = error(Failure(41))
     let outer: Result[Result[Int, Failure], Tagged[Int]] = ok(inner)
 
-    match erase(outer):
-        ok(value):
-            match value:
-                ok(_): return panic("expected inner error")
-                error(cause):
-                    if cause.code != 41: return panic("changed nested success error")
+    let value = match erase(outer):
+        ok(value): value
         error(_): return panic("changed outer case")
+
+    match value:
+        ok(_): return panic("expected inner error")
+        error(cause):
+            if cause.code != 41: return panic("changed nested success error")
 
     match same(inner):
         ok(_): return panic("expected exact error")

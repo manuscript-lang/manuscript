@@ -64,13 +64,15 @@ import panic from "@std/faults.ms"
 
 test "parse bounded TOML configuration":
     let limits = TomlLimits(max_bytes: 1024, max_depth: 8, max_values: 64)
-    match parse(text: "[server]\nport = 8080\n", limits: limits):
+    let value = match parse(text: "[server]\nport = 8080\n", limits: limits):
         error(cause): return panic(cause.message())
-        ok(value):
-            match value:
-                TableValue(entries):
-                    if not entries.contains("server"): return panic("missing server table")
-                _: return panic("expected table")
+        ok(value): value
+
+    match value:
+        TableValue(entries):
+            if not entries.contains("server"): return panic("missing server table")
+        _: return panic("expected table")
+
 ```
 
 ## CSV behavior
