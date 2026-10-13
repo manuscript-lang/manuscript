@@ -287,6 +287,7 @@ type Bytes:
     fn last_index_of(value: Bytes) -> Optional[Int]:
     fn starts_with(value: Bytes) -> Bool:
     fn ends_with(value: Bytes) -> Bool:
+    fn reversed() -> Bytes:
     fn reverse() -> Bytes:
     fn with_value(index: Int, value: Int) -> Bytes:
     fn is_empty() -> Bool:
@@ -370,10 +371,18 @@ fn length() -> Int:
 
 ### Bytes.reverse
 
-Returns reversed bytes without changing the receiver.
+Compatibility spelling for reversed; returns a copy without changing the receiver.
 
 ```manuscript
 fn reverse() -> Bytes:
+```
+
+### Bytes.reversed
+
+Returns a reversed copy without changing the receiver.
+
+```manuscript
+fn reversed() -> Bytes:
 ```
 
 ### Bytes.slice
@@ -522,9 +531,13 @@ type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    fn set(index: Int, value: T) -> List[T]:
+    fn remove(index: Int) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> List[T]:
+    fn reverse_in_place() -> List[T]:
+    fn reversed() -> List[T]:
     fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
@@ -632,6 +645,48 @@ Returns the last equal element's zero-based index, or none; elements require Equ
 fn last_index_of(value: T) -> Optional[Int]:
 ```
 
+### List.remove
+
+Removes an element in place and returns this list; negative indexes count from the end.
+Invalid indexes fault, with the same bounds and diagnostics as without.
+
+```manuscript
+fn remove(index: Int) -> List[T]:
+```
+
+### List.reverse
+
+Compatibility spelling for reverse_in_place; mutates and returns this list.
+
+```manuscript
+fn reverse() -> List[T]:
+```
+
+### List.reverse_in_place
+
+Reverses this list in place and returns the same instance.
+
+```manuscript
+fn reverse_in_place() -> List[T]:
+```
+
+### List.reversed
+
+Returns a reversed shallow copy with independent outer storage; nested references remain shared.
+
+```manuscript
+fn reversed() -> List[T]:
+```
+
+### List.set
+
+Replaces an element in place and returns this list; negative indexes count from the end.
+Invalid indexes fault, with the same bounds and diagnostics as with_value.
+
+```manuscript
+fn set(index: Int, value: T) -> List[T]:
+```
+
 ### List.slice
 
 Returns a new shallow List containing [start, end); outer storage is independent.
@@ -657,12 +712,28 @@ Returns a new list sorted by negative/zero/positive comparator results.
 fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
 ```
 
+### List.with_value
+
+Compatibility spelling for set; mutates and returns this list.
+
+```manuscript
+fn with_value(index: Int, value: T) -> List[T]:
+```
+
 ### List.with_values
 
 Replaces `delete_count` values at `start` with the replacement list.
 
 ```manuscript
 fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+```
+
+### List.without
+
+Compatibility spelling for remove; mutates and returns this list.
+
+```manuscript
+fn without(index: Int) -> List[T]:
 ```
 
 ## ListBuilder
@@ -920,8 +991,18 @@ type Set[T: Hashable]:
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
     fn contains(value: T) -> Bool:
     fn length() -> Int:
+    fn add(value: T) -> Set[T]:
+    fn remove(value: T) -> Set[T]:
     fn with_value(value: T) -> Set[T]:
     fn without(value: T) -> Set[T]:
+```
+
+### Set.add
+
+Adds a value in place and returns this set; an equal value retains its original payload and position.
+
+```manuscript
+fn add(value: T) -> Set[T]:
 ```
 
 ### Set.entries
@@ -1029,6 +1110,14 @@ Transforms a snapshot into a fresh set, retaining the first equal result.
 fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
 ```
 
+### Set.remove
+
+Removes an equal value in place and returns this set; an absent value leaves it unchanged.
+
+```manuscript
+fn remove(value: T) -> Set[T]:
+```
+
 ### Set.some
 
 Stops at the first matching element; empty sets return false.
@@ -1051,6 +1140,22 @@ Returns a shallow list of values in insertion order.
 
 ```manuscript
 fn values() -> List[T]:
+```
+
+### Set.with_value
+
+Compatibility spelling for add; mutates and returns this set.
+
+```manuscript
+fn with_value(value: T) -> Set[T]:
+```
+
+### Set.without
+
+Compatibility spelling for remove; mutates and returns this set.
+
+```manuscript
+fn without(value: T) -> Set[T]:
 ```
 
 ## SetBuilder
@@ -4213,7 +4318,25 @@ A compiled regular expression that can be reused across input strings.
 type Regex:
     fn matches(text: String) -> Bool:
     fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
+    fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
     fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+```
+
+### Regex.replace
+
+Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
+
+```manuscript
+fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+```
+
+### Regex.replace_all
+
+Replaces every nonoverlapping match with literal replacement text (no capture expansion).
+max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
+
+```manuscript
+fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
 ```
 
 ## RegexError
@@ -5654,9 +5777,13 @@ type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    fn set(index: Int, value: T) -> List[T]:
+    fn remove(index: Int) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> List[T]:
+    fn reverse_in_place() -> List[T]:
+    fn reversed() -> List[T]:
     fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
@@ -5764,6 +5891,48 @@ Returns the last equal element's zero-based index, or none; elements require Equ
 fn last_index_of(value: T) -> Optional[Int]:
 ```
 
+### List.remove
+
+Removes an element in place and returns this list; negative indexes count from the end.
+Invalid indexes fault, with the same bounds and diagnostics as without.
+
+```manuscript
+fn remove(index: Int) -> List[T]:
+```
+
+### List.reverse
+
+Compatibility spelling for reverse_in_place; mutates and returns this list.
+
+```manuscript
+fn reverse() -> List[T]:
+```
+
+### List.reverse_in_place
+
+Reverses this list in place and returns the same instance.
+
+```manuscript
+fn reverse_in_place() -> List[T]:
+```
+
+### List.reversed
+
+Returns a reversed shallow copy with independent outer storage; nested references remain shared.
+
+```manuscript
+fn reversed() -> List[T]:
+```
+
+### List.set
+
+Replaces an element in place and returns this list; negative indexes count from the end.
+Invalid indexes fault, with the same bounds and diagnostics as with_value.
+
+```manuscript
+fn set(index: Int, value: T) -> List[T]:
+```
+
 ### List.slice
 
 Returns a new shallow List containing [start, end); outer storage is independent.
@@ -5789,12 +5958,28 @@ Returns a new list sorted by negative/zero/positive comparator results.
 fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
 ```
 
+### List.with_value
+
+Compatibility spelling for set; mutates and returns this list.
+
+```manuscript
+fn with_value(index: Int, value: T) -> List[T]:
+```
+
 ### List.with_values
 
 Replaces `delete_count` values at `start` with the replacement list.
 
 ```manuscript
 fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+```
+
+### List.without
+
+Compatibility spelling for remove; mutates and returns this list.
+
+```manuscript
+fn without(index: Int) -> List[T]:
 ```
 
 ## Map
@@ -6194,6 +6379,7 @@ type String:
     fn ends_with(suffix: String) -> Bool:
     fn lower() -> String:
     fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
     fn scalar_values() -> List[Int]:
@@ -6368,8 +6554,7 @@ fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringE
 
 ### String.replace
 
-Replaces the first occurrence when the cap is omitted or none; zero changes nothing, negatives fault.
-An empty old matches at scalar boundaries, and inserted text is not searched again.
+Compatibility spelling for replace_first, including its explicit replacement cap.
 
 ```manuscript
 fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String
@@ -6382,6 +6567,16 @@ max_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion retu
 
 ```manuscript
 fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+```
+
+### String.replace_first
+
+Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.
+An empty old matches at scalar boundaries, and inserted text is not searched again.
+Zero changes nothing; negative caps retain replace's programming fault.
+
+```manuscript
+fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String
 ```
 
 ### String.reverse

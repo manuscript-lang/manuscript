@@ -177,14 +177,30 @@ func SetContains(ctx *Execution, receiver, value Value, scope TypeScope) Value {
 	return receiver.(*Set).find(keyContext(ctx, value, scope), value) >= 0
 }
 
-// SetWithValue is the direct path for Set.with_value calls.
+// SetWithValue is the direct path for Set.with_value and Set.add calls.
 func SetWithValue(ctx *Execution, receiver, value Value, scope TypeScope) Value {
 	CheckCancelled(ctx)
-	s := receiver.(*Set)
-	child := keyContext(ctx, value, scope)
-	if s.find(child, value) < 0 {
+	return setWithValue(keyContext(ctx, value, scope), receiver.(*Set), value)
+}
+
+// Bound native members already select their equality scope at invocation.
+func setWithValue(ctx *Execution, s *Set, value Value) Value {
+	if s.find(ctx, value) < 0 {
 		s.Items = append(s.Items, value)
-		keyAppended(child, s)
+		keyAppended(ctx, s)
+	}
+	return s
+}
+
+// SetRemove retains insertion order and returns the mutable receiver.
+func SetRemove(ctx *Execution, receiver, value Value, scope TypeScope) Value {
+	CheckCancelled(ctx)
+	return setRemove(keyContext(ctx, value, scope), receiver.(*Set), value)
+}
+
+func setRemove(ctx *Execution, s *Set, value Value) Value {
+	if found := s.find(ctx, value); found >= 0 {
+		s.removeAt(ctx, found)
 	}
 	return s
 }
@@ -312,6 +328,12 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				return v
 			}
 		case *Set:
+			if name == "with_value" {
+				return setWithValue(ctx, v, args[0])
+			}
+			if name == "without" {
+				return setRemove(ctx, v, args[0])
+			}
 			var value Value
 			if len(args) > 0 {
 				value = args[0]
@@ -325,17 +347,6 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				return int64(len(v.Items))
 			case "contains":
 				return found >= 0
-			case "with_value":
-				if found < 0 {
-					v.Items = append(v.Items, value)
-					keyAppended(ctx, v)
-				}
-				return v
-			case "without":
-				if found >= 0 {
-					v.removeAt(ctx, found)
-				}
-				return v
 			}
 		case string:
 			switch name {

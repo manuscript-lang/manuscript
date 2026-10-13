@@ -53,6 +53,30 @@ type Counter:
             values.append(1)
         )
 `, 1},
+		{"list reverse in place", `    let values = [0]
+    with tasks = TaskGroup():
+        let _task = tasks.start(fn(): values.reverse_in_place())
+`, 1},
+		{"list reversed copy", `    let values = [0]
+    with tasks = TaskGroup():
+        let _task = tasks.start(fn(): values.reversed())
+`, 0},
+		{"list set", `    let values = [0]
+    with tasks = TaskGroup():
+        let _task = tasks.start(fn(): values.set(0, 1))
+`, 1},
+		{"list remove", `    let values = [0]
+    with tasks = TaskGroup():
+        let _task = tasks.start(fn(): values.remove(0))
+`, 1},
+		{"set add", `    let values = [0].to_set()
+    with tasks = TaskGroup():
+        let _task = tasks.start(fn(): values.add(1))
+`, 1},
+		{"set remove", `    let values = [0].to_set()
+    with tasks = TaskGroup():
+        let _task = tasks.start(fn(): values.remove(0))
+`, 1},
 		{"set update", `    let values = [0].to_set()
     with tasks = TaskGroup():
         let _task = tasks.start(fn():

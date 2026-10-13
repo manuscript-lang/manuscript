@@ -237,7 +237,8 @@ func (c *checker) unknownMember(receiver *Type, name string) string {
 var memberSynonyms = map[string][]string{
 	"len": {"length", "byte_length", "scalar_length"}, "size": {"length", "byte_length", "scalar_length"}, "count": {"length", "byte_length", "scalar_length"},
 	"length": {"byte_length", "scalar_length"},
-	"push":   {"append", "with_value", "with_entry"}, "add": {"append", "with_value", "with_entry"}, "insert": {"append", "with_value", "with_entry"},
+	"push":   {"append", "add", "with_entry"}, "add": {"append", "with_entry"}, "insert": {"append", "add", "with_entry"},
+	"delete":    {"remove", "without"},
 	"to_string": {"to_text"}, "decode": {"to_text"}, "toString": {"to_text"},
 }
 

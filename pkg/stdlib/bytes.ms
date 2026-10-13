@@ -21,7 +21,9 @@ export type Bytes:
     fn starts_with(value: Bytes) -> Bool:
     # Tests whether the receiver ends with these bytes.
     fn ends_with(value: Bytes) -> Bool:
-    # Returns reversed bytes without changing the receiver.
+    # Returns a reversed copy without changing the receiver.
+    fn reversed() -> Bytes:
+    # Compatibility spelling for reversed; returns a copy without changing the receiver.
     fn reverse() -> Bytes:
     # Returns a copy with one byte replaced; negative indexes are relative to the end.
     # An out-of-range index or a value outside 0 through 255 faults.
