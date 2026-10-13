@@ -29,6 +29,8 @@ type generator struct {
 	loopLabels      []*loopLabel
 	captures        map[*checker.Binding]string
 	sourceLines     map[string]syntax.Position
+	hoisted         []string          // package-level Lazy variables for static specializations
+	hoistedByKey    map[string]string // call-site identity to Lazy variable
 }
 
 func (g *generator) temp() string { g.serial++; return fmt.Sprintf("temporary%d", g.serial) }
@@ -83,7 +85,27 @@ func (g *generator) specialize(symbol *checker.Symbol, args []*checker.Type) ast
 	}
 	result := runtimeCall("Specialize", ident(symbol.ID), sliceLiteral(ident("string"), types...), sliceLiteral(runtimeName("TypeScope"), scopes...))
 	result.Ellipsis = 1
-	return result
+	static := true
+	identity := g.module + "\x00" + symbol.ID
+	for _, arg := range args {
+		static = static && !hasTypeVariable(arg)
+		identity += "\x00" + checker.TypeKey(arg)
+	}
+	if !static {
+		return result
+	}
+	// Static type arguments specialize once per program. The Lazy has no
+	// initializer, so recursive generics create no Go initialization cycle.
+	name, ok := g.hoistedByKey[identity]
+	if !ok {
+		name = fmt.Sprintf("specialized%d", len(g.hoisted)+1)
+		if g.hoistedByKey == nil {
+			g.hoistedByKey = map[string]string{}
+		}
+		g.hoistedByKey[identity] = name
+		g.hoisted = append(g.hoisted, name)
+	}
+	return call(selector(ident(name), "Get"), closure(nil, runtimeName("Value"), returned(result)))
 }
 func (g *generator) binding(b *checker.Binding) ast.Expr {
 	if name := g.captures[b]; name != "" {

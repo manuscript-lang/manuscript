@@ -106,5 +106,8 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		main = append(main, discard(selector(ident("os"), "Args")))
 	}
 	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("main"), Type: functionType(nil, nil), Body: block(main...)})
+	for _, name := range g.hoisted {
+		file.Decls = append(file.Decls, variable(name, runtimeName("Lazy"), nil))
+	}
 	return file
 }
