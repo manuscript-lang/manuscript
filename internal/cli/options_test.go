@@ -90,6 +90,7 @@ func TestCLIInlineValuesKeepValidationAndForwarding(t *testing.T) {
 		{[]string{"test", "missing.ms", "--timeout=-1s"}, "invalid --timeout"},
 		{[]string{"test", "missing.ms", "--timeout=bad=value"}, "invalid --timeout \"bad=value\""},
 		{[]string{"test", "missing.ms", "--cpu-profile=cpu=1.pprof"}, "profiling flags"},
+		{[]string{"profile", "missing.ms", "--trace=trace=1.out"}, "unknown option --trace=trace=1.out for ms profile"},
 		{[]string{"run", "missing.ms", "--watch", "--trace=trace=1.out"}, "--watch cannot be combined"},
 	} {
 		status, _, stderr := invoke(t, tc.args...)

@@ -127,7 +127,7 @@ func Run(args []string) int {
 	testTimeout, testFilter := "", ""
 	var arguments []string
 	for i := 2; i < len(args); i++ {
-		flag, value, inline := splitValueOption(args[i], valueOptions...)
+		flag, value, inline := splitCommandValueOption(command, args[i])
 		switch flag {
 		case "--":
 			arguments = args[i+1:]

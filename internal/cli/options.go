@@ -9,6 +9,15 @@ import (
 
 var valueOptions = []string{"-o", "--output", "--build-type", "--timeout", "--filter", "--cpu-profile", "--heap-profile", "--trace"}
 
+func splitCommandValueOption(command, arg string) (name, value string, inline bool) {
+	// A profile bundle owns its artifact paths; --trace=<path> belongs to run.
+	// Preserve the token so it cannot become a bare profile tracing request.
+	if command == "profile" && strings.HasPrefix(arg, "--trace=") {
+		return arg, "", false
+	}
+	return splitValueOption(arg, valueOptions...)
+}
+
 // splitValueOption recognizes only long options that take values. Keep unknown
 // tokens intact for diagnostics, and split once so paths and text can contain '='.
 func splitValueOption(arg string, options ...string) (name, value string, inline bool) {
