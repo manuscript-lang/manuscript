@@ -100,6 +100,46 @@
           ]
         },
         {
+          "name": "ArchiveFormat",
+          "doc": "Selects a supported archive format without a runtime string spelling check.\nExisting pack/unpack format: String calls remain available.",
+          "kind": "alternative",
+          "type": "ArchiveFormat",
+          "cases": [
+            "Zip",
+            "Tar"
+          ],
+          "operations": [
+            "pack: fn(entries: List[ArchiveEntry], max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, ArchiveError]",
+            "unpack: fn(data: Bytes, limits: Optional[ArchiveLimits] = ...)-\u003eResult[List[ArchiveEntry], ArchiveError]"
+          ],
+          "members": [
+            {
+              "name": "Tar",
+              "kind": "case",
+              "signature": "case Tar",
+              "doc": "TAR files and directories."
+            },
+            {
+              "name": "Zip",
+              "kind": "case",
+              "signature": "case Zip",
+              "doc": "ZIP files and directories."
+            },
+            {
+              "name": "pack",
+              "kind": "operation",
+              "signature": "fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -\u003e Result[Bytes, ArchiveError]:",
+              "doc": "Packs entries with the same optional output budget and path validation as pack."
+            },
+            {
+              "name": "unpack",
+              "kind": "operation",
+              "signature": "fn unpack(data: Bytes, limits: Optional[ArchiveLimits] = none) -\u003e Result[List[ArchiveEntry], ArchiveError]:",
+              "doc": "Unpacks in memory with the same entry/byte limits and domain errors as unpack."
+            }
+          ]
+        },
+        {
           "name": "ArchiveLimits",
           "doc": "Optional limits applied while unpacking untrusted archive data.",
           "kind": "record",
@@ -1482,6 +1522,53 @@
           ]
         },
         {
+          "name": "CompressionFormat",
+          "doc": "Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.\nExisting compress/decompress format: String calls remain available.",
+          "kind": "alternative",
+          "type": "CompressionFormat",
+          "cases": [
+            "Gzip",
+            "Zlib",
+            "Deflate"
+          ],
+          "operations": [
+            "compress: fn(data: Bytes, level: Int, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]",
+            "decompress: fn(data: Bytes, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
+          ],
+          "members": [
+            {
+              "name": "Deflate",
+              "kind": "case",
+              "signature": "case Deflate",
+              "doc": "Raw DEFLATE without framing."
+            },
+            {
+              "name": "Gzip",
+              "kind": "case",
+              "signature": "case Gzip",
+              "doc": "GZIP framing."
+            },
+            {
+              "name": "Zlib",
+              "kind": "case",
+              "signature": "case Zlib",
+              "doc": "ZLIB framing."
+            },
+            {
+              "name": "compress",
+              "kind": "operation",
+              "signature": "fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, CompressionError]:",
+              "doc": "Compresses with level 0..9 and the same optional output budget/domain errors as compress."
+            },
+            {
+              "name": "decompress",
+              "kind": "operation",
+              "signature": "fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, CompressionError]:",
+              "doc": "Decompresses with the same cumulative output limit and validation as decompress."
+            }
+          ]
+        },
+        {
           "name": "compress",
           "doc": "Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).\nOther formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.\n`max_bytes` bounds the encoded output when supplied.",
           "kind": "fn",
@@ -1540,6 +1627,53 @@
           ],
           "implements": [
             "Error"
+          ]
+        },
+        {
+          "name": "HashAlgorithm",
+          "doc": "Selects a supported SHA-2 algorithm without a runtime string spelling check.\nExisting hash functions and hmac(algorithm: String) remain available.",
+          "kind": "alternative",
+          "type": "HashAlgorithm",
+          "cases": [
+            "Sha256",
+            "Sha384",
+            "Sha512"
+          ],
+          "operations": [
+            "digest: fn(data: Bytes)-\u003eBytes",
+            "hmac: fn(key: Bytes, data: Bytes)-\u003eResult[Bytes, CryptoError]"
+          ],
+          "members": [
+            {
+              "name": "Sha256",
+              "kind": "case",
+              "signature": "case Sha256",
+              "doc": "SHA-256."
+            },
+            {
+              "name": "Sha384",
+              "kind": "case",
+              "signature": "case Sha384",
+              "doc": "SHA-384."
+            },
+            {
+              "name": "Sha512",
+              "kind": "case",
+              "signature": "case Sha512",
+              "doc": "SHA-512."
+            },
+            {
+              "name": "digest",
+              "kind": "operation",
+              "signature": "fn digest(data: Bytes) -\u003e Bytes:",
+              "doc": "Computes this algorithm's digest, checking cancellation between chunks."
+            },
+            {
+              "name": "hmac",
+              "kind": "operation",
+              "signature": "fn hmac(key: Bytes, data: Bytes) -\u003e Result[Bytes, CryptoError]:",
+              "doc": "Computes HMAC with this algorithm and retains CryptoError results."
+            }
           ]
         },
         {
@@ -1659,7 +1793,7 @@
         },
         {
           "name": "CsvOptions",
-          "doc": "Delimiter and line ending used when parsing or writing CSV.",
+          "doc": "Delimiter and line ending used when parsing or writing CSV; defaults are comma and LF.",
           "kind": "record",
           "type": "CsvOptions",
           "fields": [
@@ -1670,28 +1804,28 @@
             {
               "name": "delimiter",
               "kind": "field",
-              "signature": "delimiter: String",
+              "signature": "delimiter: String = \",\"",
               "doc": ""
             },
             {
               "name": "line_ending",
               "kind": "field",
-              "signature": "line_ending: String",
+              "signature": "line_ending: String = \"\\n\"",
               "doc": ""
             }
           ]
         },
         {
           "name": "parse",
-          "doc": "Parses CSV into rows of cells. Optional row and cell limits bound large inputs.",
+          "doc": "Parses CSV into rows of cells, using fresh default options when omitted.\nOptional row and cell limits bound large inputs.",
           "kind": "fn",
-          "type": "fn(text: String, options: CsvOptions, max_rows: Optional[Int] = ..., max_cells: Optional[Int] = ...)-\u003eResult[List[List[String]], CsvError]"
+          "type": "fn(text: String, options: CsvOptions = ..., max_rows: Optional[Int] = ..., max_cells: Optional[Int] = ...)-\u003eResult[List[List[String]], CsvError]"
         },
         {
           "name": "stringify",
-          "doc": "Encodes rows as CSV, quoting cells when required by the delimiter or line ending.",
+          "doc": "Encodes rows as CSV with comma delimiters and LF endings by default.\nQuotes cells when required by the delimiter or line ending.",
           "kind": "fn",
-          "type": "fn(rows: List[List[String]], options: CsvOptions, max_bytes: Optional[Int] = ...)-\u003eResult[String, CsvError]"
+          "type": "fn(rows: List[List[String]], options: CsvOptions = ..., max_bytes: Optional[Int] = ...)-\u003eResult[String, CsvError]"
         }
       ]
     },
@@ -1832,15 +1966,15 @@
         },
         {
           "name": "base64_decode",
-          "doc": "Decodes standard or URL-safe Base64 text into bytes.",
+          "doc": "Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.",
           "kind": "fn",
-          "type": "fn(text: String, url_safe: Bool, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, EncodingError]"
+          "type": "fn(text: String, url_safe: Bool = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, EncodingError]"
         },
         {
           "name": "base64_encode",
-          "doc": "Encodes bytes as standard or URL-safe Base64 text.",
+          "doc": "Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.",
           "kind": "fn",
-          "type": "fn(data: Bytes, url_safe: Bool)-\u003eString"
+          "type": "fn(data: Bytes, url_safe: Bool = ...)-\u003eString"
         },
         {
           "name": "hex_decode",
@@ -3649,6 +3783,12 @@
               "doc": ""
             }
           ]
+        },
+        {
+          "name": "header_values",
+          "doc": "Finds all values under ASCII case-equivalent names without changing Map keys.\nReturns none if absent, or some(empty) for a present empty list. Copies list\nmembership and preserves Map insertion order followed by each list's order.",
+          "kind": "fn",
+          "type": "fn(headers: Map[String, List[String]], name: String)-\u003eOptional[List[String]]"
         }
       ]
     },
@@ -5518,17 +5658,17 @@
         },
         {
           "name": "Commands",
-          "doc": "Runs child programs with explicit input, output bounds, and an optional timeout.",
+          "doc": "Runs child programs with empty input by default, optional output bounds and timeout.",
           "kind": "interface",
           "type": "Commands",
           "operations": [
-            "run: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[CommandOutput, CommandError]"
+            "run: fn(program: String, arguments: List[String], input: Bytes = ..., max_output_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[CommandOutput, CommandError]"
           ],
           "members": [
             {
               "name": "run",
               "kind": "operation",
-              "signature": "fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[CommandOutput, CommandError]",
+              "signature": "fn run(program: String, arguments: List[String], input: Bytes = \"\".to_bytes(), max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[CommandOutput, CommandError]",
               "doc": ""
             }
           ]

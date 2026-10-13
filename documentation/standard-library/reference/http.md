@@ -160,3 +160,13 @@ interface ResponseBody:
     fn status() -> Int
 ```
 
+## header_values {data-api-kind="Function"}
+
+Finds all values under ASCII case-equivalent names without changing Map keys.
+Returns none if absent, or some(empty) for a present empty list. Copies list
+membership and preserves Map insertion order followed by each list's order.
+
+```manuscript
+fn header_values(headers: Map[String, List[String]], name: String) -> Optional[List[String]]:
+```
+

@@ -77,6 +77,8 @@ test "parse bounded TOML configuration":
 
 ## CSV behavior
 
+`CsvOptions()` creates fresh mutable options with `delimiter: ","` and `line_ending: "\n"`. `parse(text: "a,b\n")` and `stringify(rows: [["a", "b"]])` use these defaults. Either option field can be supplied independently; use `CsvOptions(line_ending: "\r\n")` for CRLF output. Explicit options retain their values and are validated as usual.
+
 The delimiter must be one non-NUL ASCII byte other than quote, CR, or LF. `line_ending` is LF or CRLF. Row, cell, and output limits must be nonnegative; `max_cells` counts every returned cell.
 
 CSV quotes are doubled; values are not trimmed or converted to other types, rows may have different widths, and blank lines are ignored. CRLF is normalized, including inside quoted cells. Serialization ends every row with the selected terminator. Formula-like spreadsheet values are left as supplied.

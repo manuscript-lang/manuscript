@@ -1,0 +1,68 @@
+package main
+
+import (
+    "testing"
+    rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+)
+
+var benchmarkResult rt.Value
+
+func init() { initialize() }
+
+type defaultCase struct {
+    name string
+    run func() rt.Value
+    want rt.Value
+}
+
+func defaultCases() []defaultCase {
+    ctx := rt.RootExecution()
+    data := rt.Bytes{Items: []byte{255}}
+    dataArgs := []rt.Value{data}
+    empty := []rt.Value(nil)
+    encode := @@encode_bind@@.(rt.Function).Body(ctx, empty).(rt.Function)
+    command := @@command_bind@@.(rt.Function).Body(ctx, empty).(rt.Function)
+    flagArgs := []rt.Value{data, false}
+    missingFlag := []rt.Value{data, nil}
+    commands := []rt.Value{"", &rt.List{Type:"@std/List[String]"}, rt.Bytes{}, nil, nil}
+    missingInput := []rt.Value{"", commands[1], nil, nil, nil}
+    options := rt.Record{Type:"@std/CsvOptions", Fields:map[string]rt.Value{"delimiter":",", "line_ending":"\n"}}
+    failure := rt.Alternative{Type:"@std/Result[@std/CommandOutput][@std/CommandError]",Tag:"error", Fields:[]rt.Value{rt.Alternative{Type:"@std/CommandError",Tag:"InvalidInput"}}}
+    // On main, the API requires explicit flags/input/options. The baseline
+    // script spells them in source and supplies them to stored native callables.
+    baseline := @@baseline@@
+    if baseline { missingFlag = flagArgs; missingInput = commands }
+    return []defaultCase{
+        {"base64/direct_explicit",func()rt.Value{return @@direct_explicit@@.(rt.Function).Body(ctx,dataArgs)},"/w=="},
+        {"base64/direct_omitted",func()rt.Value{return @@direct_omitted@@.(rt.Function).Body(ctx,dataArgs)},"/w=="},
+        {"base64/bind_and_explicit",func()rt.Value{return @@bound_explicit@@.(rt.Function).Body(ctx,dataArgs)},"/w=="},
+        {"base64/bind_and_omitted",func()rt.Value{return @@bound_omitted@@.(rt.Function).Body(ctx,dataArgs)},"/w=="},
+        {"base64/stored_explicit",func()rt.Value{return encode.Body(ctx,flagArgs)},"/w=="},
+        {"base64/stored_omitted",func()rt.Value{return encode.Body(ctx,missingFlag)},"/w=="},
+        {"csv/explicit",func()rt.Value{return @@csv_explicit@@.(rt.Function).Body(ctx,empty)},options},
+        {"csv/omitted",func()rt.Value{return @@csv_omitted@@.(rt.Function).Body(ctx,empty)},options},
+        {"commands/direct_explicit",func()rt.Value{return @@command_explicit@@.(rt.Function).Body(ctx,empty)},failure},
+        {"commands/direct_omitted",func()rt.Value{return @@command_omitted@@.(rt.Function).Body(ctx,empty)},failure},
+        {"commands/bind",func()rt.Value{return @@command_bind@@.(rt.Function).Body(ctx,empty)},nil},
+        {"commands/stored_explicit",func()rt.Value{return command.Body(ctx,commands)},failure},
+        {"commands/stored_omitted",func()rt.Value{return command.Body(ctx,missingInput)},failure},
+    }
+}
+
+func TestBenchmarkParity(t *testing.T) {
+    for _, item := range defaultCases() {
+        got := item.run()
+        if item.want == nil {
+            if _,ok:=got.(rt.Function);!ok {t.Fatal(item.name,got)}
+        } else if !rt.Equal(got,item.want) {t.Fatalf("%s: %#v != %#v",item.name,got,item.want)}
+    }
+}
+
+func BenchmarkLowering(b *testing.B) {
+    for _, item := range defaultCases() {
+        b.Run(item.name,func(b *testing.B){
+            b.ReportAllocs()
+            for b.Loop(){benchmarkResult=item.run()}
+        })
+    }
+}

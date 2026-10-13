@@ -23,6 +23,22 @@ Cryptographic transforms are pure functions. Obtain random keys and nonces throu
 
 Hashing checks cancellation between chunks. Key derivation checks it periodically.
 
+## Typed algorithm selection
+
+Use `HashAlgorithm.Sha256`, `Sha384`, or `Sha512` when the algorithm is chosen in source. Each value has `digest(data)` and `hmac(key, data)` operations. Algorithm case names are checked before execution; the methods use the existing hash/HMAC implementation and preserve cancellation and CryptoError results. Existing hash functions and string-based `hmac` remain available for runtime text configuration.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import HashAlgorithm from "@std/crypto.ms"
+import hex_encode from "@std/encoding.ms"
+import panic from "@std/faults.ms"
+
+test "select a typed SHA algorithm":
+    let digest = HashAlgorithm.Sha256.digest("abc".to_bytes())
+    if hex_encode(digest) != "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad":
+        return panic("SHA-256 digest")
+```
+
 ## Key derivation
 
 `derive_key` requires positive iterations and a length from 1 to 1048576. The application chooses the salt and work factor. The function does not define a password-storage policy.

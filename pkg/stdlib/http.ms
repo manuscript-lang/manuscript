@@ -33,6 +33,14 @@ export type ClientResponse:
     headers: Map[String, List[String]]
     body: Bytes
 
+# Finds all values under ASCII case-equivalent names without changing Map keys.
+# Returns none if absent, or some(empty) for a present empty list. Copies list
+# membership and preserves Map insertion order followed by each list's order.
+export fn header_values(
+    headers: Map[String, List[String]],
+    name: String
+) -> Optional[List[String]]:
+
 # Reusable HTTP client with connection pooling and explicit response limits.
 # Outbound case-equivalent header keys append values in Map insertion order.
 export interface HttpClient:

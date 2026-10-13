@@ -45,6 +45,12 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 			kind = "Optional"
 		case "@std/Result":
 			kind = "Result"
+		case "@std/HashAlgorithm":
+			kind = "HashAlgorithm"
+		case "@std/CompressionFormat":
+			kind = "CompressionFormat"
+		case "@std/ArchiveFormat":
+			kind = "ArchiveFormat"
 		default:
 			return nil, false
 		}

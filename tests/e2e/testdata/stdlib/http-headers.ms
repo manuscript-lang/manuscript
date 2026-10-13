@@ -1,4 +1,5 @@
 import {
+    header_values,
     HttpRequest,
     HttpResponse,
     HttpExchange,
@@ -65,6 +66,12 @@ test "buffered requests support case-insensitive header lookup":
             return panic("cookies combined or lost")
         if response.headers.get("x-dup").is_some():
             return panic("Map lookup changed")
+        if (
+            header_values(headers: response.headers, name: "x-DUP") != some(
+                ["first", "second"]
+            )
+        ):
+            return panic("case-insensitive response lookup lost values")
 
 fn echo_buffered_headers(request: HttpRequest) -> HttpResponse:
     let raw = request.header("X-DUP").unwrap()
@@ -101,7 +108,10 @@ test "outbound collisions and buffered byte bridge retain empty fields":
     )
 
 fn echo_streaming_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let values = exchange.headers().get("X-Dup").unwrap()
+    let values = header_values(
+        headers: exchange.headers(),
+        name: "x-DUP"
+    ).unwrap()
     return exchange.send_headers(
         status: 200,
         headers: Map[String, List[String]]().with_entry(
@@ -173,4 +183,38 @@ test "header lookup preserves empty and repeated values and map order":
     if not request.header("missing").is_none(): return panic("missing header")
     if headers.get("X-Test") != some("later".to_bytes()): return panic(
         "lookup mutated Map"
+    )
+
+test "list-valued lookup combines equivalent keys and copies membership":
+    let first = ["", "first"]
+    let headers = (
+        Map[String, List[String]]()
+        .with_entry(key: "x-test", value: first)
+        .with_entry(key: "X-Test", value: ["second", "third"])
+        .with_entry(key: "X-Empty", value: [])
+        .with_entry(key: "K", value: ["ascii"])
+    )
+    let lookup = header_values
+    let combined = lookup(headers: headers, name: "X-TEST").unwrap()
+    if combined != ["", "first", "second", "third"]: return panic(
+        "values lost or reordered"
+    )
+
+    combined.append("copy")
+    first.append("input")
+    if combined != ["", "first", "second", "third", "copy"]: return panic(
+        "input changed copy membership"
+    )
+    if first != ["", "first", "input"]: return panic("copy changed input membership")
+    if headers.keys() != ["x-test", "X-Test", "X-Empty", "K"]: return panic(
+        "lookup changed keys"
+    )
+    if header_values(headers: headers, name: "x-empty") != some(List[String]()): return panic(
+        "present empty list became absent"
+    )
+    if not header_values(headers: headers, name: "missing").is_none(): return panic(
+        "missing name present"
+    )
+    if not header_values(headers: headers, name: "K").is_none(): return panic(
+        "Unicode fold used for an HTTP name"
     )
