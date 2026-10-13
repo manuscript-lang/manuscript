@@ -1466,7 +1466,7 @@ type CompressionFormat:
     case Gzip
     case Zlib
     case Deflate
-    fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+    fn compress(data: Bytes, level: Int = 6, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
     fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
 ```
 
@@ -1496,10 +1496,11 @@ case Zlib
 
 ### CompressionFormat.compress
 
-Compresses with level 0..9 and the same optional output budget/domain errors as compress.
+Compresses with level 6 by default; explicit levels remain 0..9 (0 stores data).
+Uses the same optional output budget/domain errors as compress.
 
 ```manuscript
-fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+fn compress(data: Bytes, level: Int = 6, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ### CompressionFormat.decompress
@@ -1515,11 +1516,12 @@ fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, Com
 **Function**
 
 Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
-Other formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.
+Other formats return Unsupported; level defaults to 6 (balanced DEFLATE compression).
+Explicit levels must be 0..9 (0 stores data), else InvalidInput.
 `max_bytes` bounds the encoded output when supplied.
 
 ```manuscript
-fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+fn compress(data: Bytes, format: String, level: Int = 6, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ## decompress
