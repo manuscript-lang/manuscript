@@ -22,6 +22,12 @@ func defaultCases() []defaultCase {
     empty := []rt.Value(nil)
     encode := @@encode_bind@@.(rt.Function).Body(ctx, empty).(rt.Function)
     command := @@command_bind@@.(rt.Function).Body(ctx, empty).(rt.Function)
+    filesystem := @@filesystem_setup@@.(rt.Function).Body(ctx, empty)
+    filesystemArgs := []rt.Value{filesystem, data}
+    filesystemBindArgs := []rt.Value{filesystem}
+    write := @@filesystem_bind@@.(rt.Function).Body(ctx, filesystemBindArgs).(rt.Function)
+    writeArgs := []rt.Value{"", data, false}
+    missingReplace := []rt.Value{"", data, nil}
     flagArgs := []rt.Value{data, false}
     missingFlag := []rt.Value{data, nil}
     commands := []rt.Value{"", &rt.List{Type:"@std/List[String]"}, rt.Bytes{}, nil, nil}
@@ -32,6 +38,8 @@ func defaultCases() []defaultCase {
     // script spells them in source and supplies them to stored native callables.
     baseline := @@baseline@@
     if baseline { missingFlag = flagArgs; missingInput = commands }
+    if baseline { missingReplace = writeArgs }
+    filesystemFailure := rt.Alternative{Type:"@std/Result[Unit][@std/FileSystemError]",Tag:"error", Fields:[]rt.Value{rt.Alternative{Type:"@std/FileSystemError",Tag:"InvalidInput"}}}
     return []defaultCase{
         {"base64/direct_explicit",func()rt.Value{return @@direct_explicit@@.(rt.Function).Body(ctx,dataArgs)},"/w=="},
         {"base64/direct_omitted",func()rt.Value{return @@direct_omitted@@.(rt.Function).Body(ctx,dataArgs)},"/w=="},
@@ -46,6 +54,11 @@ func defaultCases() []defaultCase {
         {"commands/bind",func()rt.Value{return @@command_bind@@.(rt.Function).Body(ctx,empty)},nil},
         {"commands/stored_explicit",func()rt.Value{return command.Body(ctx,commands)},failure},
         {"commands/stored_omitted",func()rt.Value{return command.Body(ctx,missingInput)},failure},
+        {"filesystem/direct_explicit",func()rt.Value{return @@filesystem_explicit@@.(rt.Function).Body(ctx,filesystemArgs)},filesystemFailure},
+        {"filesystem/direct_omitted",func()rt.Value{return @@filesystem_omitted@@.(rt.Function).Body(ctx,filesystemArgs)},filesystemFailure},
+        {"filesystem/bind",func()rt.Value{return @@filesystem_bind@@.(rt.Function).Body(ctx,filesystemBindArgs)},nil},
+        {"filesystem/stored_explicit",func()rt.Value{return write.Body(ctx,writeArgs)},filesystemFailure},
+        {"filesystem/stored_omitted",func()rt.Value{return write.Body(ctx,missingReplace)},filesystemFailure},
     }
 }
 

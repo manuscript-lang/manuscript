@@ -2621,9 +2621,9 @@
             "chmod_link: fn(path: String, mode: Int)-\u003eResult[Unit, FileSystemError]",
             "chown: fn(path: String, uid: Int, gid: Int, follow_links: Bool)-\u003eResult[Unit, FileSystemError]",
             "copy: fn(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String)-\u003eBool])-\u003eResult[Unit, FileSystemError]",
-            "copy_file: fn(source: String, destination: String, replace: Bool, max_bytes: Optional[Int] = ...)-\u003eResult[Unit, FileSystemError]",
-            "copy_tree: fn(source: String, destination: String, replace: Bool, max_entries: Optional[Int] = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Unit, FileSystemError]",
-            "create_directory: fn(path: String, recursive: Bool)-\u003eResult[Unit, FileSystemError]",
+            "copy_file: fn(source: String, destination: String, replace: Bool = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Unit, FileSystemError]",
+            "copy_tree: fn(source: String, destination: String, replace: Bool = ..., max_entries: Optional[Int] = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Unit, FileSystemError]",
+            "create_directory: fn(path: String, recursive: Bool = ...)-\u003eResult[Unit, FileSystemError]",
             "create_link: fn(path: String, target: String)-\u003eResult[Unit, FileSystemError]",
             "glob: fn(path: String, pattern: String, max_entries: Optional[Int] = ...)-\u003eResult[List[String], FileSystemError]",
             "glob_entries: fn(path: String, options: GlobOptions, exclude: Optional[fn(entry: PathEntry)-\u003eBool])-\u003eResult[List[PathEntry], FileSystemError]",
@@ -2634,7 +2634,7 @@
             "open_flags: fn(path: String, flags: Int, mode: Int)-\u003eResult[FileHandle, FileSystemError]",
             "read_file: fn(path: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, FileSystemError]",
             "read_link: fn(path: String)-\u003eResult[String, FileSystemError]",
-            "remove: fn(path: String, recursive: Bool)-\u003eResult[Unit, FileSystemError]",
+            "remove: fn(path: String, recursive: Bool = ...)-\u003eResult[Unit, FileSystemError]",
             "rename: fn(source: String, destination: String)-\u003eResult[Unit, FileSystemError]",
             "set_times: fn(path: String, accessed: Timestamp, modified: Timestamp, follow_links: Bool)-\u003eResult[Unit, FileSystemError]",
             "stat: fn(path: String, follow_links: Bool)-\u003eResult[FileInfo, FileSystemError]",
@@ -2644,7 +2644,7 @@
             "truncate: fn(path: String, size: Int)-\u003eResult[Unit, FileSystemError]",
             "watch: fn(path: String, recursive: Bool, interval: Duration, max_entries: Optional[Int] = ...)-\u003eResult[FileWatcher, FileSystemError]",
             "watch_native: fn(path: String, recursive: Bool, max_entries: Optional[Int] = ..., max_events: Optional[Int] = ..., overflow: String)-\u003eResult[FileWatcher, FileSystemError]",
-            "write_file: fn(path: String, data: Bytes, replace: Bool)-\u003eResult[Unit, FileSystemError]"
+            "write_file: fn(path: String, data: Bytes, replace: Bool = ...)-\u003eResult[Unit, FileSystemError]"
           ],
           "members": [
             {
@@ -2692,20 +2692,20 @@
             {
               "name": "copy_file",
               "kind": "operation",
-              "signature": "fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Optional[Int] = none) -\u003e Result[Unit, FileSystemError]",
-              "doc": "Copies one file; existing destinations are replaced only when requested."
+              "signature": "fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int] = none) -\u003e Result[Unit, FileSystemError]",
+              "doc": "Copies one file; replace defaults to false, refusing an existing destination."
             },
             {
               "name": "copy_tree",
               "kind": "operation",
-              "signature": "fn copy_tree(source: String, destination: String, replace: Bool, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "signature": "fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -\u003e Result[Unit, FileSystemError]",
+              "doc": "Copies a tree; replace defaults to false, refusing existing destinations.\nEntry and byte limits remain separate and apply cumulatively across the copy."
             },
             {
               "name": "create_directory",
               "kind": "operation",
-              "signature": "fn create_directory(path: String, recursive: Bool) -\u003e Result[Unit, FileSystemError]",
-              "doc": "Creates a directory, optionally creating missing parents."
+              "signature": "fn create_directory(path: String, recursive: Bool = false) -\u003e Result[Unit, FileSystemError]",
+              "doc": "Creates one directory; recursive defaults to false, requiring its parent to exist."
             },
             {
               "name": "create_link",
@@ -2770,8 +2770,8 @@
             {
               "name": "remove",
               "kind": "operation",
-              "signature": "fn remove(path: String, recursive: Bool) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "signature": "fn remove(path: String, recursive: Bool = false) -\u003e Result[Unit, FileSystemError]",
+              "doc": "Removes a file or empty directory; recursive defaults to false, retaining nonempty trees."
             },
             {
               "name": "rename",
@@ -2830,8 +2830,8 @@
             {
               "name": "write_file",
               "kind": "operation",
-              "signature": "fn write_file(path: String, data: Bytes, replace: Bool) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "signature": "fn write_file(path: String, data: Bytes, replace: Bool = false) -\u003e Result[Unit, FileSystemError]",
+              "doc": "Creates a file exclusively; replace defaults to false, retaining an existing file."
             }
           ]
         },
