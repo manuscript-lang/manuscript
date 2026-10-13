@@ -822,6 +822,7 @@ func (p *Parser) matchArms() []syntax.Arm {
 						p.need(lexer.Name)
 					}
 					a.Names = append(a.Names, tok.Text)
+					a.NamePositions = append(a.NamePositions, tok.Pos)
 					if p.peek().Kind == "(" {
 						p.fail(p.peek(), "patterns cannot be nested; match the outer case, then match its payload with a nested 'match'")
 					}

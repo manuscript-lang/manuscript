@@ -142,6 +142,9 @@ func rebase(module *syntax.Module, offset, lines int) {
 		body(e.Body)
 		for i := range e.Arms {
 			position(&e.Arms[i].Pos)
+			for index := range e.Arms[i].NamePositions {
+				position(&e.Arms[i].NamePositions[index])
+			}
 			expression(e.Arms[i].Path)
 			body(e.Arms[i].Body)
 			expression(e.Arms[i].Value)

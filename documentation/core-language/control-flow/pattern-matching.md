@@ -61,6 +61,20 @@ fn horizontal(position: Position) -> Int:
 
 An unqualified case in a pattern resolves within the scrutinee's alternative type. A qualified case must belong to that exact type. `Other.Point(...)` cannot match `Position`, even when its payload types have the same shape. Constructor-expression name lookup instead follows [alternative construction](../types/alternatives.md).
 
+Payload identifiers always create fresh bindings. For example, `error(NotFound)`
+matches every error payload, even when `NotFound` is a case of that payload's
+type. It does not test for that case. Bind `error(cause)` and use a nested
+`match cause:` with `NotFound:` and the remaining cases instead. A case that
+carries data needs its own payload names or `_` placeholders in that nested
+match.
+
+`ms lint` reports MSL106 at a capitalized payload identifier that coincides with
+a known case or type name. The editor publishes the same advisory as a warning;
+`ms check` still accepts the binding. If binding the whole payload is intentional,
+use a name such as `cause` or `_cause`. Capitalized names without a known case or
+type identity are allowed, and an enclosing value binding or generic parameter
+with that name takes precedence when deciding whether to warn.
+
 ## Exhaustiveness
 
 Match cases bind data without fallthrough; missing alternatives are compile errors. Wildcard cases must be explicit.
