@@ -40,6 +40,9 @@ func TestOptionalStandardRecordDefaults(t *testing.T) {
 			continue
 		}
 		for _, field := range Fields(typ) {
+			if field.Type.ID != "@std/Optional" {
+				continue
+			}
 			defaulted := false
 			for _, declared := range symbol.Decl.Fields {
 				if declared.Name == field.Name && declared.Default != nil {

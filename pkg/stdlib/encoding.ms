@@ -8,15 +8,15 @@ export type EncodingError:
     case InvalidData
     case LimitExceeded
 
-# Decodes standard or URL-safe Base64 text into bytes.
+# Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
 export fn base64_decode(
     text: String,
-    url_safe: Bool,
+    url_safe: Bool = false,
     max_bytes: Optional[Int] = none
 ) -> Result[Bytes, EncodingError]:
 
-# Encodes bytes as standard or URL-safe Base64 text.
-export fn base64_encode(data: Bytes, url_safe: Bool) -> String:
+# Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
+export fn base64_encode(data: Bytes, url_safe: Bool = false) -> String:
 
 # Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 export fn hex_decode(

@@ -22,6 +22,60 @@ impl Error for CryptoError:
     fn message() -> String:
 ```
 
+## HashAlgorithm {data-api-kind="Alternative"}
+
+Selects a supported SHA-2 algorithm without a runtime string spelling check.
+Existing hash functions and hmac(algorithm: String) remain available.
+
+```manuscript
+type HashAlgorithm:
+    case Sha256
+    case Sha384
+    case Sha512
+    fn digest(data: Bytes) -> Bytes:
+    fn hmac(key: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:
+```
+
+### HashAlgorithm.Sha256
+
+SHA-256.
+
+```manuscript
+case Sha256
+```
+
+### HashAlgorithm.Sha384
+
+SHA-384.
+
+```manuscript
+case Sha384
+```
+
+### HashAlgorithm.Sha512
+
+SHA-512.
+
+```manuscript
+case Sha512
+```
+
+### HashAlgorithm.digest
+
+Computes this algorithm's digest, checking cancellation between chunks.
+
+```manuscript
+fn digest(data: Bytes) -> Bytes:
+```
+
+### HashAlgorithm.hmac
+
+Computes HMAC with this algorithm and retains CryptoError results.
+
+```manuscript
+fn hmac(key: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:
+```
+
 ## constant_time_equal {data-api-kind="Function"}
 
 Compares byte strings without making the comparison time depend on their contents.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Report duration-unit property faults at the member token after evaluating the receiver, preserving source order and numeric widths.
+
 - Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
 - Add versioned `fmt --check --json` and `test --json` results, preserving test streams and partial outcomes; display explicit and discovered fmt paths consistently.
 
@@ -25,4 +27,5 @@
 - Separate frontend facts from host runtime implementations and verify native signatures in integration tests.
 - Validate compressed toolchain archives before cache publication, including interrupted downloads.
 - Preserve case-equivalent HTTP header keys as separate values in insertion order, including `Set-Cookie`; reject malformed outgoing header values before emission.
+- Add `http.header_values` for ASCII case-insensitive, value-preserving lookup across list-valued HTTP header maps, with separate returned list membership.
 - Add repeatable dependency/pin maintenance, license inventories, and one shared release version.

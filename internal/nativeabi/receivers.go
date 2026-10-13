@@ -2,8 +2,11 @@
 package nativeabi
 
 var ReceiverBindings = map[string]map[string]string{
-	"Decimal":     {"round": "decimal/round", "to_fixed": "decimal/to_fixed"},
-	"HttpRequest": {"header": "http/request_header"},
+	"HashAlgorithm":     {"digest": "crypto/hash_algorithm_digest", "hmac": "crypto/hash_algorithm_hmac"},
+	"CompressionFormat": {"compress": "compress/format_compress", "decompress": "compress/format_decompress"},
+	"ArchiveFormat":     {"pack": "archive/format_pack", "unpack": "archive/format_unpack"},
+	"Decimal":           {"round": "decimal/round", "to_fixed": "decimal/to_fixed"},
+	"HttpRequest":       {"header": "http/request_header"},
 	"TaskGroup": {
 		"start": "tasks/task_group_start",
 		"join":  "tasks/task_group_join",
@@ -141,6 +144,12 @@ var ReceiverBindings = map[string]map[string]string{
 		"for_each":             "collections/set_for_each",
 	},
 	"String": {
+		"length":        "string/length",
+		"is_empty":      "string/is_empty",
+		"chars":         "string/chars",
+		"reverse":       "string/reverse",
+		"compare":       "string/compare",
+		"lines":         "string/lines",
 		"normalize":     "string/normalize",
 		"concat":        "string/concat",
 		"contains":      "string/contains",
