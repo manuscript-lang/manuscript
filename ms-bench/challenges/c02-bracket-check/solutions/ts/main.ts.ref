@@ -1,0 +1,20 @@
+import { readFileSync } from "node:fs";
+
+const closers: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
+
+function check(line: string): string {
+  const stack: [string, number][] = [];
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === "(" || c === "[" || c === "{") stack.push([c, i + 1]);
+    else if (c in closers) {
+      if (stack.length === 0 || stack[stack.length - 1][0] !== closers[c]) return `error ${i + 1}`;
+      stack.pop();
+    }
+  }
+  return stack.length > 0 ? `error ${stack[0][1]}` : "ok";
+}
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+process.stdout.write(lines.map((l) => check(l) + "\n").join(""));

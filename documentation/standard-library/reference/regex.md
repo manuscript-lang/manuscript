@@ -18,6 +18,23 @@ type Regex:
     fn replace(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
 ```
 
+### Regex.find_all
+
+Returns nonoverlapping full-match text in occurrence order, excluding capture groups.
+A supplied cap is a strict budget, not truncation; zero-width matches follow native regexp rules.
+
+```manuscript
+fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
+```
+
+### Regex.matches
+
+Tests whether any match occurs; anchor the pattern explicitly to require a whole-string match.
+
+```manuscript
+fn matches(text: String) -> Bool:
+```
+
 ### Regex.replace
 
 Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
@@ -28,7 +45,7 @@ fn replace(text: String, replacement: String, max_bytes: Optional[Int64] = none)
 
 ### Regex.replace_all
 
-Replaces every nonoverlapping match with literal replacement text (no capture expansion).
+Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.
 max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
 
 ```manuscript
@@ -49,6 +66,38 @@ type RegexError:
 ```manuscript
 impl Error for RegexError:
     fn message() -> String:
+```
+
+### RegexError.InvalidData
+
+Pattern syntax is invalid for the native RE2-compatible regular-expression engine.
+
+```manuscript
+case InvalidData
+```
+
+### RegexError.InvalidInput
+
+A supplied match-count or output-byte budget is negative.
+
+```manuscript
+case InvalidInput
+```
+
+### RegexError.LimitExceeded
+
+More matches exist than permitted, or replacement output exceeds its byte budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### RegexError.Error.message
+
+Returns a regular-expression-prefixed diagnostic without echoing pattern or input text.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## compile {data-api-kind="Function"}

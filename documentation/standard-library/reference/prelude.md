@@ -8,6 +8,8 @@ Names available in every module; no import required.
 
 ## Bool {data-api-kind="Type"}
 
+Boolean truth values true and false; conditions require this type.
+
 ```manuscript
 type Bool:
 ```
@@ -48,6 +50,8 @@ fn message() -> String
 ```
 
 ## Float {data-api-kind="Type"}
+
+Binary floating-point values, including signed zero, infinities and NaN.
 
 ```manuscript
 type Float:
@@ -95,6 +99,14 @@ Invalid digits return NumberError.InvalidInput; rounding uses the stored binary3
 fn to_fixed(digits: Int) -> Result[String, NumberError]
 ```
 
+### Float.to_float64
+
+Widens the stored binary32 value exactly, retaining signed zero and nonfinite values.
+
+```manuscript
+fn to_float64() -> Float64
+```
+
 ### Float.to_precision
 
 Formats 1..100 significant digits, preserving trailing zeros; an invalid precision returns NumberError.InvalidInput.
@@ -119,7 +131,17 @@ Truncates toward zero, or returns none for nonfinite values or Int overflow.
 fn truncate_to_int() -> Optional[Int]
 ```
 
+### Float.truncate_to_int64
+
+Truncates toward zero, returning none for nonfinite values or signed64 overflow.
+
+```manuscript
+fn truncate_to_int64() -> Optional[Int64]
+```
+
 ## Float64 {data-api-kind="Type"}
+
+Explicit IEEE binary64 floating-point values, including signed zero, infinities and NaN.
 
 ```manuscript
 type Float64:
@@ -132,6 +154,79 @@ type Float64:
     fn to_fixed(digits: Int) -> Result[String, NumberError]:
     fn is_nan() -> Bool:
     fn is_finite() -> Bool:
+```
+
+### Float64.is_finite
+
+Tests whether the stored binary64 value is neither NaN nor an infinity.
+
+```manuscript
+fn is_finite() -> Bool
+```
+
+### Float64.is_nan
+
+Tests whether the stored binary64 value is NaN.
+
+```manuscript
+fn is_nan() -> Bool
+```
+
+### Float64.to_exponential
+
+Formats scientific notation with 0..100 fractional digits; invalid digits return InvalidInput.
+
+```manuscript
+fn to_exponential(digits: Int) -> Result[String, NumberError]
+```
+
+### Float64.to_fixed
+
+Formats 0..100 fractional digits with ties to even; magnitude >= 1e21 uses binary64 round-trip text.
+Invalid digits return NumberError.InvalidInput.
+
+```manuscript
+fn to_fixed(digits: Int) -> Result[String, NumberError]
+```
+
+### Float64.to_float
+
+Rounds to IEEE binary32, allowing signed zero, underflow, infinities and NaN.
+
+```manuscript
+fn to_float() -> Float
+```
+
+### Float64.to_precision
+
+Formats 1..100 significant digits from the stored binary64 value; invalid precision returns InvalidInput.
+
+```manuscript
+fn to_precision(precision: Int) -> Result[String, NumberError]
+```
+
+### Float64.to_string
+
+Returns the shortest binary64 round-trip text, including NaN and signed infinities.
+
+```manuscript
+fn to_string() -> String
+```
+
+### Float64.truncate_to_int
+
+Truncates toward zero, returning none for nonfinite values or signed32 overflow.
+
+```manuscript
+fn truncate_to_int() -> Optional[Int]
+```
+
+### Float64.truncate_to_int64
+
+Truncates toward zero, returning none for nonfinite values or signed64 overflow.
+
+```manuscript
+fn truncate_to_int64() -> Optional[Int64]
 ```
 
 ## Hashable {data-api-kind="Interface"}
@@ -153,6 +248,8 @@ fn hash() -> Int
 
 ## Int {data-api-kind="Type"}
 
+Signed whole numbers with checked arithmetic; overflow and division by zero fault.
+
 ```manuscript
 type Int:
     fn to_int64() -> Int64:
@@ -162,7 +259,25 @@ type Int:
     fn to_decimal() -> Decimal:
 ```
 
+### Int.to_float64
+
+Converts the signed32 value exactly to IEEE binary64.
+
+```manuscript
+fn to_float64() -> Float64
+```
+
+### Int.to_int64
+
+Widens the signed32 value exactly to signed64.
+
+```manuscript
+fn to_int64() -> Int64
+```
+
 ## Int64 {data-api-kind="Type"}
+
+Explicit signed64 whole numbers with checked arithmetic; overflow and division by zero fault.
 
 ```manuscript
 type Int64:
@@ -171,6 +286,46 @@ type Int64:
     fn to_float64() -> Float64:
     fn to_decimal() -> Decimal:
     fn to_string(radix: Int) -> String:
+```
+
+### Int64.to_decimal
+
+Converts the signed64 integer exactly to a Decimal.
+
+```manuscript
+fn to_decimal() -> Decimal
+```
+
+### Int64.to_float
+
+Rounds directly to IEEE binary32, without a binary64 intermediate.
+
+```manuscript
+fn to_float() -> Float
+```
+
+### Int64.to_float64
+
+Converts to IEEE binary64; integers beyond its exact precision can round.
+
+```manuscript
+fn to_float64() -> Float64
+```
+
+### Int64.to_int
+
+Returns the exact value when it fits signed32, otherwise none.
+
+```manuscript
+fn to_int() -> Optional[Int]
+```
+
+### Int64.to_string
+
+Formats the signed integer in radix 2..36; an invalid radix faults.
+
+```manuscript
+fn to_string(radix: Int) -> String
 ```
 
 ## List {data-api-kind="Native type"}
@@ -570,6 +725,8 @@ fn with_entry(key: T, value: U) -> Map[T, U]:
 
 ## Never {data-api-kind="Type"}
 
+The return type of computations that cannot return a value, such as panic.
+
 ```manuscript
 type Never:
 ```
@@ -594,6 +751,30 @@ type Optional[T]:
     fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
+### Optional.none
+
+An absent value with no payload; no T needs to be constructed.
+
+```manuscript
+case none
+```
+
+### Optional.some
+
+A present payload, retained by reference when T is mutable.
+
+```manuscript
+case some(value: T)
+```
+
+### Optional.some.value
+
+The contained value; unwrap and matching return this original payload.
+
+```manuscript
+value: T
+```
+
 ### Optional.and_then[U]
 
 Calls transform only when present, returning its Optional unchanged.
@@ -612,7 +793,7 @@ fn is_none() -> Bool:
 
 ### Optional.is_some
 
-Reports whether this value contains a payload.
+Returns true for some(value), and false for none.
 
 ```manuscript
 fn is_some() -> Bool:
@@ -693,6 +874,38 @@ type Result[T, E]:
     fn to_optional() -> Optional[T]:
 ```
 
+### Result.error
+
+An expected failure value; it is distinct from faults and cancellation.
+
+```manuscript
+case error(cause: E)
+```
+
+### Result.ok
+
+A successful result, retaining its payload without a deep copy.
+
+```manuscript
+case ok(value: T)
+```
+
+### Result.error.cause
+
+The original domain error, retained through compatible Result propagation.
+
+```manuscript
+cause: E
+```
+
+### Result.ok.value
+
+The successful value returned by unwrap, matching, or propagation.
+
+```manuscript
+value: T
+```
+
 ### Result.and_then[U]
 
 Calls transform only on success. Its result keeps the same error type.
@@ -766,6 +979,8 @@ fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 ```
 
 ## String {data-api-kind="Type"}
+
+UTF-8 text indexed by Unicode scalar values; byte_length counts encoded bytes instead.
 
 ```manuscript
 type String:
@@ -1098,6 +1313,8 @@ fn upper() -> String
 ```
 
 ## Unit {data-api-kind="Type"}
+
+The single value unit, used when an operation returns no useful payload.
 
 ```manuscript
 type Unit:

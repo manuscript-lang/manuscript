@@ -101,6 +101,9 @@ func documentImplementations(d *APIDeclaration, symbol *Symbol, methods []*Metho
 func documentSymbol(symbol *Symbol, sources map[string]string) APIDeclaration {
 	source := sources[symbol.Module]
 	d := APIDeclaration{Name: symbol.Name, Kind: symbol.Kind, Type: symbol.Type.String()}
+	if symbol.Decl == nil {
+		d.Doc = primitiveDocumentation[symbol.Type.ID]
+	}
 	if decl := symbol.Decl; decl != nil {
 		keyword := "type"
 		if strings.HasPrefix(source[decl.Pos.Offset:], "interface") {

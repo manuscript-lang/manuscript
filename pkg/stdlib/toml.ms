@@ -6,27 +6,69 @@ import {log, sqrt} from "@std/math.ms"
 
 # A TOML value. Date and time values retain their original TOML text.
 export type TomlValue:
-    case StringValue(value: String)
-    case IntValue(value: Int64)
-    case FloatValue(value: Float64)
-    case BoolValue(value: Bool)
-    case DateTimeValue(text: String)
-    case ArrayValue(values: List[TomlValue])
-    case TableValue(values: Map[String, TomlValue])
+    # Text decoded from TOML basic or literal string syntax.
+    case StringValue(
+        # Unicode contents after the applicable escapes and multiline rules.
+        value: String
+    )
+    # A parsed whole number; out-of-range input is rejected rather than truncated.
+    case IntValue(
+        # Exact signed integer value of the accepted TOML numeric token.
+        value: Int64
+    )
+    # A parsed floating-point number, including TOML infinity and NaN spellings.
+    case FloatValue(
+        # Numeric value of the accepted floating token, preserving signed zero.
+        value: Float64
+    )
+    # A TOML true or false value; other capitalizations are invalid.
+    case BoolValue(
+        # The decoded boolean from the lowercase TOML token.
+        value: Bool
+    )
+    # A validated local/offset date or time token, retained as text.
+    case DateTimeValue(
+        # Original accepted TOML date/time spelling, without a timezone conversion.
+        text: String
+    )
+    # An ordered array; elements can have different TOML value kinds.
+    case ArrayValue(
+        # Element values in document order, with ordinary mutable list storage.
+        values: List[TomlValue]
+    )
+    # An insertion-ordered table; parse returns this case even for an empty document.
+    case TableValue(
+        # String-keyed entries produced by assignments, dotted keys and table headers.
+        values: Map[String, TomlValue]
+    )
 
 # Errors returned for invalid limits, malformed TOML, or exceeded resource bounds.
 export type TomlError:
+    # One of the supplied input-byte, depth or value-count limits is negative.
     case InvalidInput
-    case InvalidData(line: Int, column: Int, reason: String)
+    # Invalid syntax, duplicate/conflicting keys, unsupported value forms or numeric range failures.
+    case InvalidData(
+        # One-based line of the invalid token or conflicting construct.
+        line: Int,
+        # One-based Unicode scalar column after CRLF normalization.
+        column: Int,
+        # Parser diagnostic describing the rejected TOML construct.
+        reason: String
+    )
+    # Input, nesting or parsed/returned value counts exceed a supplied budget.
     case LimitExceeded
 
 # Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
 export type TomlLimits:
+    # Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
     max_bytes: Optional[Int64]
+    # Maximum value depth, including scalar leaves and implicit tables, with the root at one.
     max_depth: Optional[Int]
+    # Maximum containers and leaves, excluding keys; checked during parsing and materialization.
     max_values: Optional[Int]
 
 impl Error for TomlError:
+    # Formats the source line, scalar column and parser reason for a malformed document.
     fn message() -> String:
         match self:
             InvalidInput: return "invalid TOML limits"

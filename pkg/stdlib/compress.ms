@@ -4,11 +4,19 @@ import Bytes from "@std/bytes.ms"
 
 # Errors returned when compressed data is unsupported, invalid, or exceeds a limit.
 export type CompressionError:
+    # Compression level is outside 0..9, or a supplied encoded/decoded byte budget is negative.
     case InvalidInput
+    # Compressed framing, checksum, payload or trailing data is invalid for the chosen format.
     case InvalidData
+    # Encoded or decompressed output exceeds the supplied byte budget.
     case LimitExceeded
+    # A String selector is not exactly gzip, zlib or deflate; typed selectors avoid spelling errors.
     case Unsupported
-    case Failed(message: String)
+    # An explicit implementation-supplied compression diagnostic; native codecs use specific cases.
+    case Failed(
+        # Original diagnostic text, returned unchanged by message().
+        message: String
+    )
 
 # Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
 # Other formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.
@@ -29,14 +37,15 @@ export fn decompress(
 ) -> Result[Bytes, CompressionError]:
 
 impl Error for CompressionError:
+    # Returns original Failed text, or a compression-prefixed diagnostic for other cases.
     fn message() -> String:
 
 # Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
 # Existing compress/decompress format: String calls remain available.
 export type CompressionFormat:
-    # GZIP framing.
+    # DEFLATE data wrapped in GZIP headers and a checksum trailer.
     case Gzip
-    # ZLIB framing.
+    # DEFLATE data with ZLIB header and Adler-32 checksum framing.
     case Zlib
     # Raw DEFLATE without framing.
     case Deflate

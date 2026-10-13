@@ -25,6 +25,11 @@ export type Outcome:
     case Ready(value: Int)
     # Work is pending.
     case Pending
+    # Work failed with source context.
+    case Failed(
+        # Original failure diagnostic.
+        message: String
+    )
 
 export interface Countable:
     # Reads the count without mutation.
@@ -74,6 +79,7 @@ type Hidden:
 			"Outcome/case/Ready/":               "A completed count.",
 			"Outcome/case/Pending/":             "Work is pending.",
 			"Outcome/field/Ready.value/":        "",
+			"Outcome/field/Failed.message/":     "Original failure diagnostic.",
 			"Countable/operation/count/":        "Reads the count without mutation.",
 		} {
 			got, ok := members[key]

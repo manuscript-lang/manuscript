@@ -5,27 +5,68 @@ import from_scalars from "@std/string.ms"
 
 # A YAML value represented as null, boolean, number text, string, array, or object.
 export type YamlValue:
+    # YAML null, including an empty document or a plain null spelling.
     case Null
-    case BoolValue(value: Bool)
-    case NumberValue(text: String)
-    case StringValue(value: String)
-    case ArrayValue(values: List[YamlValue])
-    case ObjectValue(values: Map[String, YamlValue])
+    # A core-schema true or false value; yes and no remain strings.
+    case BoolValue(
+        # The decoded boolean selected from YAML core-schema spellings.
+        value: Bool
+    )
+    # Numeric token text retained exactly instead of being coerced into Float.
+    case NumberValue(
+        # Original numeric spelling, including supported base prefixes and nonfinite spellings.
+        text: String
+    )
+    # Text decoded from a quoted, plain or block scalar.
+    case StringValue(
+        # Resulting Unicode text after escape decoding, folding and chomping.
+        value: String
+    )
+    # An ordered YAML sequence with ordinary mutable list storage.
+    case ArrayValue(
+        # Sequence entries in document order, retaining nested references.
+        values: List[YamlValue]
+    )
+    # A textual-key mapping, with insertion order and duplicate-key checks.
+    case ObjectValue(
+        # Decoded string keys and their values; aliases may share nested payloads.
+        values: Map[String, YamlValue]
+    )
 
 # Errors returned for malformed YAML, unsupported features, or exceeded resource limits.
 export type YamlError:
+    # One of the supplied byte, depth or value-count limits is negative.
     case InvalidInput
-    case InvalidData(line: Int, column: Int, reason: String)
-    case UnsupportedFeature(line: Int, reason: String)
+    # Malformed YAML or a form outside the supported parser's accepted grammar.
+    case InvalidData(
+        # One-based source line of the offending token or construct.
+        line: Int,
+        # One-based Unicode scalar column within that source line.
+        column: Int,
+        # Parser diagnostic describing the malformed construct.
+        reason: String
+    )
+    # An explicit tag, complex key or directive unsupported by this configuration parser.
+    case UnsupportedFeature(
+        # One-based source line where the unsupported construct appears.
+        line: Int,
+        # Diagnostic identifying the unsupported syntax or feature.
+        reason: String
+    )
+    # Parsing or validating the returned alias-expanded tree exceeds a supplied budget.
     case LimitExceeded
 
 # Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
 export type YamlLimits:
+    # Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
     max_bytes: Optional[Int64]
+    # Maximum value depth, including scalar leaves, with the root at one.
     max_depth: Optional[Int]
+    # Maximum containers and leaves, excluding keys; aliases count at each checked occurrence.
     max_values: Optional[Int]
 
 impl Error for YamlError:
+    # Formats parser positions and reason text; match the typed fields for programmatic handling.
     fn message() -> String:
         match self:
             InvalidInput: return "invalid YAML limits"

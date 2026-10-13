@@ -4,8 +4,11 @@ import Bytes from "@std/bytes.ms"
 
 # Errors returned when encoded text is invalid or exceeds a supplied byte limit.
 export type EncodingError:
+    # A supplied decoded-output byte budget is negative.
     case InvalidInput
+    # Hexadecimal digits or strict padded Base64 syntax/characters are invalid.
     case InvalidData
+    # The decoded byte count exceeds the supplied output budget.
     case LimitExceeded
 
 # Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
@@ -28,4 +31,5 @@ export fn hex_decode(
 export fn hex_encode(data: Bytes) -> String:
 
 impl Error for EncodingError:
+    # Returns an encoding-prefixed diagnostic without echoing the encoded input.
     fn message() -> String:
