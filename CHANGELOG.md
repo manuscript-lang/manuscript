@@ -24,6 +24,7 @@
 - Name Int division/remainder, Decimal division, and Duration/Instant arithmetic faults with the offending operands and valid constraints, retaining existing numeric outcomes and cancellation.
 - Parse HTML strings into `HtmlNode` trees with `HtmlAttribute` records, HTML5 recovery, and optional byte, depth, and node limits.
 - Replace `@std/log.ms`'s `write` function with structured `Logger` and `Transport` interfaces: six levels, typed JSON fields, child bindings, record limits, and stdout/file/custom transports. Migrate calls to `create(transport: transport)` and `logger.info(message: message, fields: fields)`; fields now use `Map[String, JsonValue]`, and transports use scoped cleanup.
+- Report invalid Scheduler limits/drain, TaskGroup timeout and sleep duration with the operation, parameter, original value and valid range, preserving all scheduling and cancellation contracts.
 
 - Share parsing and AST graph loading across compilation and source tools; make checking, boolean optimization, and Go lowering explicit stages while preserving the checked source model.
 - Group reusable Go packages under `pkg/`; Go callers must update the former root package imports to `github.com/manuscript-lang/manuscript/pkg/...`.

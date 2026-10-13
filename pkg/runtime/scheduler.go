@@ -65,32 +65,38 @@ func NewScheduler(ctx *Execution, args []Argument) Value {
 		case "limit":
 			value, valid := nativeOption(a.Value, "Int", int64(0))
 			if !valid {
-				return Panic("invalid Scheduler limit")
+				return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(^uint(0)>>1))
 			}
 			limit = value.(int64)
 			if limit == 0 && a.Value != nil {
 				if v, ok := a.Value.(Alternative); !ok || v.Tag != "none" {
-					return Panic("Scheduler limit must be positive")
+					return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(^uint(0)>>1))
 				}
 			}
 		case "history_limit":
 			value, valid := nativeOption(a.Value, "Int", int64(-1))
 			if !valid {
-				return Panic("invalid Scheduler history limit")
+				return libraryRangeFault("Scheduler", "history_limit", a.Value, 0, int64(^uint(0)>>1))
 			}
 			historyLimit = value.(int64)
 		case "drain":
 			value, valid := nativeOption(a.Value, "Duration", Duration(0))
 			if !valid {
-				return Panic("invalid Scheduler drain")
+				return durationParameterFault("Scheduler", "drain", a.Value)
 			}
 			drain = value.(Duration)
 		case "reporter":
 			reporter, _ = nativeOption(a.Value, "fn", nil)
 		}
 	}
-	if limit < 0 || historyLimit < -1 || drain < 0 || limit > int64(^uint(0)>>1) || historyLimit > int64(^uint(0)>>1) {
-		return Panic("invalid Scheduler limits")
+	if limit < 0 || limit > int64(^uint(0)>>1) {
+		return libraryRangeFault("Scheduler", "limit", limit, 1, int64(^uint(0)>>1))
+	}
+	if historyLimit < -1 || historyLimit > int64(^uint(0)>>1) {
+		return libraryRangeFault("Scheduler", "history_limit", historyLimit, 0, int64(^uint(0)>>1))
+	}
+	if drain < 0 {
+		return durationParameterFault("Scheduler", "drain", drain)
 	}
 	parent, cancel := context.WithCancel(ctx.Context)
 	b := &Scheduler{parent: ctx, context: parent, cancel: cancel, limit: int(limit), historyLimit: int(historyLimit), drain: time.Duration(drain), reporter: reporter, active: map[OperationId]*schedulerJob{}, history: map[OperationId]string{}, schedules: map[OperationId]scheduledOperation{}, changed: make(chan struct{}, 1), done: make(chan struct{}), reportReady: make(chan struct{}, 1)}
