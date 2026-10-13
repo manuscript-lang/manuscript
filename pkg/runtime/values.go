@@ -1007,32 +1007,57 @@ type resolvedImplementation struct {
 var implementationGeneration atomic.Uint64
 
 // SourceDirect wraps a method body with everything a bound method gets from
-// NewSourceFunction and newFunction: source returns, profiling, propagation of
-// a nested try into an error Result, and the post-body cancellation checkpoint.
+// NewSourceFunction and newFunction: the call-depth limit, source returns,
+// profiling, propagation of a nested try into an error Result, and the
+// post-body cancellation checkpoint. Keep it in step with those two.
 func SourceDirect(position, result string, body func(*Execution, Value, []Value) Value) func(*Execution, Value, []Value) Value {
-	return func(ctx *Execution, receiver Value, args []Value) (value Value) {
+	source := func(ctx *Execution, receiver Value, args []Value) (value Value) {
+		if ctx != nil && ctx.calls != nil {
+			calls := ctx.calls
+			if calls.depth.Add(1) > MaxCallDepth {
+				calls.depth.Add(-1)
+				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
+			}
+			defer func() {
+				if calls.depth.Add(-1) == 0 {
+					calls.traceFull.Store(false)
+				}
+			}()
+		}
 		defer func() {
+			if controlPanics.Load() == 0 {
+				return
+			}
 			if failure := recover(); failure != nil {
-				switch f := failure.(type) {
-				case sourceReturn:
-					value = f.value
-				case propagation:
-					CheckCancelled(ctx)
-					value = Alternative{Type: result, Tag: "error", Fields: []Value{f.Cause}}
+				if returned, ok := failure.(sourceReturn); ok {
+					controlPanics.Add(-1)
+					value = returned.value
 					return
-				default:
-					panic(failure)
 				}
-				if ctx != nil && ctx.Context.Err() != nil {
-					panic(cancelled{})
-				}
+				panic(failure)
 			}
 		}()
 		if sourceProfiling.Load() {
-			value = profileSource(ctx, position, args, func(ctx *Execution, args []Value) Value { return body(ctx, receiver, args) })
-		} else {
-			value = body(ctx, receiver, args)
+			return profileSource(ctx, position, args, func(ctx *Execution, args []Value) Value { return body(ctx, receiver, args) })
 		}
+		return body(ctx, receiver, args)
+	}
+	return func(ctx *Execution, receiver Value, args []Value) (value Value) {
+		defer func() {
+			if controlPanics.Load() == 0 {
+				return
+			}
+			if r := recover(); r != nil {
+				if p, ok := r.(propagation); ok {
+					controlPanics.Add(-1)
+					CheckCancelled(ctx)
+					value = Alternative{Type: result, Tag: "error", Fields: []Value{p.Cause}}
+				} else {
+					panic(r)
+				}
+			}
+		}()
+		value = source(ctx, receiver, args)
 		if ctx != nil && ctx.Context.Err() != nil {
 			panic(cancelled{})
 		}

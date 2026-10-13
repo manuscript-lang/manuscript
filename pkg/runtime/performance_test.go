@@ -407,9 +407,9 @@ func BenchmarkBindInvokeMethod(b *testing.B) {
 
 func TestSourceDirectMatchesBoundFunctionContract(t *testing.T) {
 	result := "@std/Result[Int][String]"
-	propagating := func(*Execution, Value, []Value) Value { panic(propagation{Cause: "bad"}) }
+	propagating := func(*Execution, Value, []Value) Value { return raisePropagation("bad") }
 	got := SourceDirect("p.ms:1:1", result, propagating)(RootExecution(), nil, nil)
-	want := NewSourceFunction(nil, result, "p.ms:1:1", func(*Execution, []Value) Value { panic(propagation{Cause: "bad"}) }).Body(RootExecution(), nil)
+	want := NewSourceFunction(nil, result, "p.ms:1:1", func(*Execution, []Value) Value { return raisePropagation("bad") }).Body(RootExecution(), nil)
 	if alt, ok := got.(Alternative); !ok || alt.Tag != "error" || alt.Type != result || got.(Alternative).Fields[0] != want.(Alternative).Fields[0] {
 		t.Fatalf("propagation: got %#v want %#v", got, want)
 	}
@@ -418,7 +418,7 @@ func TestSourceDirectMatchesBoundFunctionContract(t *testing.T) {
 	// after it, for both a normal and a source return.
 	for name, body := range map[string]func(*Execution, Value, []Value) Value{
 		"normal": func(*Execution, Value, []Value) Value { return int64(1) },
-		"return": func(*Execution, Value, []Value) Value { panic(sourceReturn{value: int64(1)}) },
+		"return": func(*Execution, Value, []Value) Value { return raiseSourceReturn(int64(1)) },
 	} {
 		cancelCtx, cancel := context.WithCancel(context.Background())
 		ctx := &Execution{Context: cancelCtx}
@@ -446,13 +446,13 @@ func TestCallMethodMatchesBoundCallOutcomes(t *testing.T) {
 			return func(*Execution, Value, []Value) Value { return int64(1) }
 		},
 		"propagation": func(func()) func(*Execution, Value, []Value) Value {
-			return func(*Execution, Value, []Value) Value { panic(propagation{Cause: "bad"}) }
+			return func(*Execution, Value, []Value) Value { return raisePropagation("bad") }
 		},
 		"cancelled": func(cancel func()) func(*Execution, Value, []Value) Value {
 			return func(*Execution, Value, []Value) Value { cancel(); return int64(1) }
 		},
 		"cancelled return": func(cancel func()) func(*Execution, Value, []Value) Value {
-			return func(*Execution, Value, []Value) Value { cancel(); panic(sourceReturn{value: int64(1)}) }
+			return func(*Execution, Value, []Value) Value { cancel(); return raiseSourceReturn(int64(1)) }
 		},
 	}
 	outcome := func(run func(*Execution) Value, ctx *Execution) (value Value, failure any) {
@@ -499,4 +499,15 @@ func registerDirectProbeBody(typ string, direct func(*Execution, Value, []Value)
 		Build: func(receiver Value, _ map[string]string, _ map[string]TypeScope) Function {
 			return BoundDirect(receiver, nil, "Int", direct)
 		}})
+}
+
+// Control panics are counted when raised, as the generated code does.
+func raisePropagation(cause Value) Value {
+	controlPanics.Add(1)
+	panic(propagation{Cause: cause})
+}
+
+func raiseSourceReturn(value Value) Value {
+	controlPanics.Add(1)
+	panic(sourceReturn{value: value})
 }
