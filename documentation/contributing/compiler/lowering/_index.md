@@ -27,10 +27,13 @@ closures, default arguments, actual loop labels, and generated fallback returns
 retain their own locations. Runtime `SourceAt` and `TraceSource` calls remain
 ordinary AST nodes with the same operand evaluation order.
 
-This structure supports future compiler transformations; building AST nodes does
-not itself make native programs faster. Checked optimization facts, typed numeric
-operations, direct collection calls, and ordered source-call preparation remain
-the semantic transformations. Go still performs native optimization.
+Lowering should erase high-level abstractions when checked facts establish an
+equivalent concrete Go representation. Building AST nodes alone does not make
+native programs faster. This first migration preserves executable structure so
+representation changes can be reviewed and measured separately. Checked
+optimization facts, typed numeric operations, direct collection calls, and
+ordered source-call preparation remain in place; Go optimizes the emitted native
+operations.
 
 The public `Result.Source` and native build/cache interfaces still accept printed
 Go. `Standalone` separately parses complete generated and embedded runtime files
@@ -41,6 +44,49 @@ The compiler's `testdata/go-ast` fixture retains source and generated Go from
 commit `4d9bce1f`, before AST lowering. Its differential test compares parsed
 executable structure and source directives, then builds and executes both forms.
 Do not refresh this independent baseline just because output formatting changes.
+
+## Measure representation choices
+
+From the checkout root, run:
+
+```sh
+toolchain/go/bin/go run ./scripts/bench-lowering -count=5
+```
+
+The command retains current generated Go and a handwritten Go comparison under
+`.artifacts/lowering-bench/`, checks their results, and benchmarks scalar loops,
+ordered source calls, and `List.at(...).unwrap()` loops. The handwritten versions
+change scalar locals to `int64` while retaining the `Value` ABI, real source-call
+callee, function wrappers, checked arithmetic, fault positions, cancellation,
+cleanup defers, collection storage, and Optional operations. This isolates local
+representation from dropping language guarantees. Inspect `program.go` beside
+`program_test.go`; neither compilation nor process startup is in the benchmark
+loop. Use a quiet machine for time comparisons, and report allocations as well.
+
+Current generated loops still store primitive locals as `rt.Value`, extract them
+for arithmetic, and box results again on assignment. Ordered source calls avoid
+label preparation but still pass `[]rt.Value` through `Function.Body`. Lists store
+`[]rt.Value`, and `.at().unwrap()` still creates and consumes an ordinary Optional
+alternative. Generic specialization, contract dispatch, and closure snapshots
+also cross the shared value boundary.
+
+The next specialization should start with noncaptured concrete scalar locals
+whose repeated uses remain in arithmetic or comparisons, converting at explicit
+boundaries. Do not change every concrete local blindly: in the benchmark's call
+loop, unboxing a returned value and boxing it again for the next call adds
+allocations. Keep those locals boxed until a separately measured typed-call path
+can remove both conversions. Preserve checked overflow, Float rounding, operand
+order, source frames, cancellation, and debugger-visible names.
+
+Subsequent candidates are typed entry points for eligible known source functions
+with adapters at callable/generic boundaries, and fusion of an immediately
+consumed Optional where no alternative escapes. They need separate evidence for
+defaults, recursion, callbacks, error propagation, profiling, negative indexing,
+absent values, and fault sites. Aggregate layout changes are a later stage:
+mutable aliasing, shallow cloning, recursive data, nominal identity, and local
+implementation scopes prevent replacing every record or collection with an
+unqualified Go value. No language semantics or ABI change is implied by these
+benchmark candidates.
 
 - [Function and concurrency API lowering](function-and-task-calls.md)
 - [Source guarantees and Go representations](value-representations.md)
