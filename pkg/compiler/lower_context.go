@@ -34,7 +34,7 @@ type generator struct {
 	hoistedByKey     map[string]string // call-site identity to Lazy variable
 	defaultExpansion map[*syntax.Declaration]bool
 	loweringError    error
-	sites []string // package-level MethodSite variables, one per direct method call
+	sites            []string // package-level MethodSite variables, one per direct method call
 }
 
 func (g *generator) temp() string { g.serial++; return fmt.Sprintf("temporary%d", g.serial) }
