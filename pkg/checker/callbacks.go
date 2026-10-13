@@ -124,6 +124,20 @@ func (c *checker) callback(e *syntax.Expression, expected *Type) *Info {
 	} else if fall && result.ID != "Unit" && result.ID != "<invalid>" {
 		c.error(e.Pos, "type", "reachable fallthrough in anonymous function; end every path with a 'return'")
 	}
+	// Context labels belong to callers; source names remain local bindings.
+	// Preserve invariant parameter types and declaration order.
+	if context != nil {
+		for index := range params {
+			params[index].Name = context.Params[index].Name
+		}
+		contextDefaults := map[string]bool{}
+		for index, param := range e.Params {
+			if defaults[param.Name] {
+				contextDefaults[params[index].Name] = true
+			}
+		}
+		defaults = contextDefaults
+	}
 	t := function(params, result)
 	if len(defaults) > 0 {
 		t.Defaults = defaults
