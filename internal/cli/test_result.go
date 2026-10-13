@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"unicode/utf8"
 
 	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
@@ -95,11 +93,7 @@ func runTestJSON(child *exec.Cmd, result compiler.Result) int {
 	if err != nil {
 		return testJSONError(child.Path, result, "execution", err)
 	}
-	if utf8.Valid(output) {
-		document.Stdout = string(output)
-	} else {
-		document.StdoutBase64 = base64.StdEncoding.EncodeToString(output)
-	}
+	document.Stdout, document.StdoutBase64 = capturedOutput(output)
 	if err := readTestEvents(events, &document); err != nil {
 		document.Completed = false
 		if document.Reason == "" {
