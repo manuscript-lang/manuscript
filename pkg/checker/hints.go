@@ -233,6 +233,7 @@ func typeSketch(name string, arity int) string {
 func (c *checker) unknownTypeMessage(name string) string {
 	message := "unknown type " + name
 	if hint := importHint(name); hint != "" {
+		c.importReported(name)
 		return message + hint
 	}
 	if hint := didYouMean(name, c.typeNames()); hint != "" {
