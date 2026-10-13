@@ -82,3 +82,38 @@ func freshNumericCall(e *syntax.Expression) bool {
 	}
 	return false
 }
+
+// Fixed declared call results are evidence even when their arguments contain
+// literals. Generic results depending on call variables await literal context.
+func (c *checker) numericCallNeedsContext(e *syntax.Expression) bool {
+	if !freshNumericCall(e) {
+		return false
+	}
+	if c.contextual(e.Left) {
+		return true
+	}
+	var head *Info
+	if e.Left.Kind == syntax.KindName && c.scope.binding(e.Left.Text) == nil {
+		if symbol := c.names[e.Left.Text]; symbol != nil && symbol.Type.Kind == "function" {
+			head = &Info{Type: symbol.Type, Symbol: symbol}
+		}
+	}
+	if head == nil {
+		head = c.independentArgument(e.Left)
+	}
+	if head == nil || head.Type.Kind != "function" {
+		return true
+	}
+	variables := map[string]bool{}
+	if head.Symbol != nil {
+		for _, variable := range head.Symbol.Variables {
+			variables[variable.ID] = true
+		}
+	}
+	if head.Method != nil {
+		for _, variable := range head.Method.Variables {
+			variables[variable.ID] = true
+		}
+	}
+	return !inferenceTypeKnown(head.Type.Result, variables)
+}

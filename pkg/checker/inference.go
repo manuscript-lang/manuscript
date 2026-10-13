@@ -63,7 +63,7 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 				}
 			}
 			pending = append(pending, arg)
-		} else if numericLiteralExpression(arg.Value) || freshNumericCall(arg.Value) {
+		} else if numericLiteralExpression(arg.Value) || c.numericCallNeedsContext(arg.Value) {
 			numeric = append(numeric, arg)
 		} else if !c.contextual(arg.Value) {
 			if actual := c.independentArgument(arg.Value); actual != nil {

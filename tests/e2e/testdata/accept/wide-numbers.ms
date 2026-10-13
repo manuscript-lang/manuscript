@@ -156,6 +156,8 @@ test "wide equality retains explicit and generic views":
     if not keys.contains(integer) or not keys.contains(identity(integer)):
         return panic("wide hash collection membership changed")
 
+fn widen_default(value: Float) -> Float64: value.to_float64()
+
 fn choose_other[T](left: T, right: T) -> T: left
 
 fn choose_wide[T](value: T, producer: fn(input: Int) -> T) -> T: value
@@ -170,6 +172,17 @@ test "fresh nested calls and fully annotated producers receive wide literal cont
         known
     )
     if from_other != known: return panic("typed argument context was ignored")
+
+    let fixed_right = choose_other(
+        identity(0.1),
+        widen_default(0.1)
+    )
+    let fixed_left = choose_other(
+        widen_default(0.1),
+        identity(0.1)
+    )
+    if fixed_right != known or fixed_left != 0.1.to_float64():
+        return panic("fixed result evidence depended on argument order")
 
     let produced = choose_wide(
         identity(0.1),

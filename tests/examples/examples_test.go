@@ -53,6 +53,7 @@ func TestTutorialExamples(t *testing.T) {
 	}
 	files = append(files, libraryFiles...)
 	files = append(files, "../../documentation/core-language/types/records.md")
+	files = append(files, "../../documentation/core-language/types/compatibility.md")
 	files = append(files, "../../documentation/core-language/basics/numbers-and-booleans.md")
 	files = append(files, "../../documentation/core-language/control-flow/loops.md")
 	files = append(files, "../../documentation/concurrency/shutdown.md")

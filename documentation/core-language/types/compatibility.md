@@ -69,7 +69,21 @@ The compiler rejects expressions whose type cannot be determined. It does not si
 
 A list is rejected if its independently typed elements disagree.
 
-Operators and try do not pass an expected result type backward into their operands. Their operands must determine their own types first. For example, knowing that the value unwrapped by try should be Int does not tell the compiler which error type an incomplete Result constructor should have.
+Already typed operator operands retain their exact types; an expected result cannot promote or reinterpret them. Numeric literal-only arithmetic is a narrow exception: a known Int64 or Float64 context selects the corresponding literal width before range checking or rounding. A fresh generic call can carry that context to its numeric literal arguments; declared fixed-width results and bound values remain invariant. `try` does not pass an expected success type backward to complete its operand. For example, knowing that the value unwrapped by try should be Int does not tell the compiler which error type an incomplete Result constructor should have.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import panic from "@std/faults.ms"
+test "numeric literal context and explicit conversion":
+    let wide: Int64 = 2147483647 + 1
+    let ratio: Float64 = 0.1 + 0.2
+    let small = 1
+    let converted = small.to_int64() + wide
+    if converted != 2147483649 or ratio != 0.30000000000000004:
+        return panic("literal context or explicit conversion")
+```
+
+An annotation such as `let rejected: Int64 = small + small` remains invalid: the already typed operands and their result are Int.
 
 ```manuscript
 fn known() -> Result[Int, String]:
