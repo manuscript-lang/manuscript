@@ -137,7 +137,7 @@ func TestDocProjectDirectoryAndUsage(t *testing.T) {
 		t.Fatalf("directory docs: %d, %q, %q; manifest: %d, %q", status, directoryDoc, stderr, manifestStatus, manifestErr)
 	}
 	status, _, stderr = invoke(t, "doc", t.TempDir())
-	if status != 2 || !strings.Contains(stderr, "is a directory without an ms.toml") {
+	if status != 0 || stderr != "" {
 		t.Fatalf("plain directory: %d, %q", status, stderr)
 	}
 	for _, tc := range []struct {
@@ -145,7 +145,6 @@ func TestDocProjectDirectoryAndUsage(t *testing.T) {
 		want string
 	}{
 		{[]string{"doc"}, "missing the file argument"},
-		{[]string{"doc", root, "extra.ms"}, "unexpected extra argument extra.ms (ms doc takes one"},
 		{[]string{"doc", "--stdlib", root}, "ms doc --stdlib takes no input file"},
 	} {
 		status, _, stderr := invoke(t, tc.args...)

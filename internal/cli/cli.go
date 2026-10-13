@@ -10,7 +10,6 @@ import (
 	"github.com/manuscript-lang/manuscript/internal/debugger"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
-	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 	"github.com/manuscript-lang/manuscript/pkg/tooling/lsp"
 	"io/fs"
@@ -113,15 +112,28 @@ func Run(args []string) int {
 		return 2
 	}
 	command, filename := args[0], args[1]
-	if strings.HasPrefix(filename, "-") && filename != "--" {
+	analysis := command == "check" || command == "lint"
+	first, positional := 1, false
+	if analysis && filename == "--" {
+		if len(args) == 2 {
+			fmt.Fprintf(os.Stderr, "ms %s: missing a target; pass .ms files, directories, or ms.toml\n", command)
+			return 2
+		}
+		first, filename, positional = 2, args[2], true
+	}
+	if strings.HasPrefix(filename, "-") && filename != "--" && !positional {
 		fmt.Fprintf(os.Stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (put the file first, then options)\n", filename, command, command)
 		return 2
 	}
-	filename, err := resolveInput(command, filename)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 2
+	if !analysis {
+		var err error
+		filename, err = resolveInput(command, filename)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 2
+		}
 	}
+	targets := []string{filename}
 	output := ""
 	cpuProfile, heapProfile, tracePath := "", "", ""
 	formatCheck, structured, debug, watch := false, false, false, false
@@ -129,11 +141,19 @@ func Run(args []string) int {
 	buildTypeSet := false
 	testTimeout, testFilter := "", ""
 	var arguments []string
-	for i := 2; i < len(args); i++ {
+	for i := first + 1; i < len(args); i++ {
+		if positional {
+			targets = append(targets, args[i])
+			continue
+		}
 		flag, value, inline := splitCommandValueOption(command, args[i])
 		switch flag {
 		case "--":
-			arguments = args[i+1:]
+			if analysis {
+				targets = append(targets, args[i+1:]...)
+			} else {
+				arguments = args[i+1:]
+			}
 			i = len(args)
 		case "--debug":
 			debug = true
@@ -191,6 +211,10 @@ func Run(args []string) int {
 			}
 		default:
 			if !strings.HasPrefix(args[i], "-") {
+				if analysis {
+					targets = append(targets, args[i])
+					continue
+				}
 				fmt.Fprintf(os.Stderr, "unexpected extra argument %s (ms %s takes one file; arguments for the program go after --)\n", args[i], command)
 				return 2
 			}
@@ -200,10 +224,10 @@ func Run(args []string) int {
 	}
 	options := compiler.Options{}
 	switch command {
-	case "check", "lint", "inspect", "diagram", "lock":
+	case "check", "lint": // Independent source requests run after flag validation.
+	case "inspect", "diagram", "lock":
 		options.AnalyzeOnly = true
-		options.ProjectSources = command == "check"
-		options.Entry = command != "lint" && filepath.Base(filename) == "ms.toml"
+		options.Entry = filepath.Base(filename) == "ms.toml"
 	case "emit": // Only source emission needs lowering without an entry launcher.
 	case "build", "run", "debug", "profile":
 		options.Entry = true
@@ -269,6 +293,9 @@ func Run(args []string) int {
 		fmt.Fprintln(os.Stderr, "--watch cannot be combined with profiling flags; run the profile once without --watch")
 		return 2
 	}
+	if analysis {
+		return runAnalysis(command, targets, structured)
+	}
 
 	if command == "profile" {
 		if output == "" {
@@ -297,24 +324,6 @@ func Run(args []string) int {
 		return watchProgram(command, filename, options, kind, "", arguments)
 	}
 	result := compiler.CompileFile(filename, options)
-	if structured && command == "check" || structured && command == "lint" && !result.Success() {
-		if result.Diagnostics == nil {
-			result.Diagnostics = []syntax.Diagnostic{}
-		}
-		data, err := json.MarshalIndent(struct {
-			Format      int                 `json:"format"`
-			Diagnostics []syntax.Diagnostic `json:"diagnostics"`
-		}{1, result.Diagnostics}, "", "  ")
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		fmt.Println(string(data))
-		if !result.Success() {
-			return 1
-		}
-		return 0
-	}
 	if !result.Success() {
 		if structured && command == "test" {
 			document := newTestResult(result)
@@ -336,37 +345,6 @@ func Run(args []string) int {
 	}
 
 	switch command {
-	case "lint":
-		findings := []tooling.LintFinding{}
-		// Bundled standard modules are not the user's to fix.
-		for _, module := range result.Program.Modules {
-			if !strings.HasPrefix(module.File, "@std/") {
-				findings = append(findings, tooling.Lint(module.File, module.Source)...)
-			}
-		}
-		for _, finding := range tooling.LintProgram(result.Program) {
-			if !strings.HasPrefix(finding.Position.File, "@std/") {
-				findings = append(findings, finding)
-			}
-		}
-		if structured {
-			data, _ := json.Marshal(struct {
-				Format      int                   `json:"format"`
-				Diagnostics []tooling.LintFinding `json:"diagnostics"`
-			}{1, findings})
-			fmt.Println(string(data))
-		} else {
-			for _, f := range findings {
-				if result.SourceRoot != "" && !filepath.IsAbs(f.Position.File) {
-					f.Position.File = filepath.Join(result.SourceRoot, f.Position.File)
-				}
-				fmt.Fprintf(os.Stderr, "%s: %s: %s\n", f.Position, f.Code, f.Message)
-			}
-		}
-		if len(findings) > 0 {
-			return 1
-		}
-		return 0
 	case "lock":
 		if result.ProjectRoot == "" {
 			fmt.Fprintln(os.Stderr, "lock requires a project ms.toml, not a single .ms file; run ms lock path/to/ms.toml (a manifest declares [project] name and source, plus entry for an executable)")
@@ -392,19 +370,6 @@ func Run(args []string) int {
 			source = string(data) + "\n"
 		}
 		return writeOutput(output, []byte(source))
-	case "check":
-		if result.ProjectRoot != "" {
-			count := 0
-			for _, module := range result.Program.Modules {
-				if !strings.HasPrefix(module.File, "@std/") {
-					count++
-				}
-			}
-			fmt.Printf("Checked %s (%d %s)\n", filename, count, plural(count, "module", "modules"))
-		} else {
-			fmt.Println("Checked", filename)
-		}
-		return 0
 	case "emit":
 		source, err := compiler.Standalone(result.Source)
 		if err != nil {

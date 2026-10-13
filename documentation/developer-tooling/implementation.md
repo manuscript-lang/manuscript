@@ -63,6 +63,43 @@ These commands use source checking and embedded declarations without a Go instal
 `ms stdlib <directory>` writes source declarations and bindings for tooling;
 `ms doc --stdlib` renders API documentation. These outputs serve different tasks.
 
+## Selecting independent analysis inputs
+
+`check`, `lint`, and `doc` accept multiple `.ms` files, directories, and `ms.toml`
+projects. For example, `ms check src utilities.ms --json` checks each selected
+input independently. It does not combine their declarations or execute their
+`main` functions or test blocks. Native commands still take one entrypoint.
+
+A directory containing `ms.toml` selects that project and retains the command's
+existing project behavior. A directory without its own manifest recursively
+selects `.ms` files, skipping hidden, `vendor`, and `node_modules` directories,
+directory symlinks, and nested directories containing `ms.toml`. Select nested
+projects explicitly. Selecting an excluded directory or file explicitly is
+allowed. Discovered file symlinks must stay inside the selected directory.
+Files keep their ordinary import roots; selecting a directory does not grant
+parent-directory imports or inherit manifest aliases. Select `ms.toml` to use
+project aliases and project-wide checking. These additions do not change fmt's
+existing [directory and manifest discovery](source/formatting.md).
+
+Collections deduplicate canonical targets, imported diagnostics, and documented
+modules. Targets and diagnostics are ordered by displayed path and source
+position; module documentation paths use `/` separators. Paths inside the
+invocation directory are relative to it, and outside paths are canonical
+absolute paths. The existing single-file/project path spelling is preserved.
+Use `--` before literal filenames beginning with `-`.
+
+Check and lint process other independent inputs after an error, returning 1 for
+any failed selection, source error, or lint finding. Their existing `format: 1`
+JSON documents collect all diagnostics; lint findings retain their existing
+shape alongside source diagnostics. Empty standalone selections succeed with
+empty arrays. Usage errors return 2 before checking.
+
+Doc checks every input before writing its combined public module reference.
+On any error it returns 1, reports diagnostics on stderr, and leaves stdout and
+an existing output file untouched. Successful JSON retains `format: 1` and the
+`modules` array; an empty selection produces an empty reference. `--stdlib`
+continues to require no input targets.
+
 ## Machine-readable checks and tests
 
 `ms fmt <targets> --check --json` and `ms test <input> --json` write one JSON

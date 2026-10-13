@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Accept independent input collections and standalone directories in check, lint, and doc; aggregate deterministic reports without combining applications or changing fmt discovery.
 - Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
 - Add versioned `fmt --check --json` and `test --json` results, preserving test streams and partial outcomes; display explicit and discovered fmt paths consistently.
 

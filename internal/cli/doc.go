@@ -4,20 +4,25 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
 
-const docHelp = `Usage: ms doc <file.ms|directory|ms.toml> [--json] [-o output]
+const docHelp = `Usage: ms doc <file.ms|directory|ms.toml>... [--json] [-o output]
        ms doc --stdlib [--json] [-o output]
 
 Generate public API documentation as Markdown (default) or versioned JSON.
 Contiguous # comments describe declarations, fields, cases, and operations.
 Project documentation includes reachable exports; libraries include all source modules and tests.
-A project directory selects its ms.toml. Long value options also accept --flag=value.
+A project directory selects its ms.toml. Standalone directories discover independent .ms inputs.
+Discovery skips hidden, vendor, node_modules, directory symlinks, and nested projects.
+Multiple inputs keep their own import roots; output is written only after every input checks.
+Long value options also accept --flag=value. Use -- before flag-like filenames.
 Output goes to stdout unless -o or --output is supplied. No Go toolchain is needed.
 
 Options:
@@ -29,16 +34,24 @@ Options:
 Examples:
   ms doc main.ms
   ms doc ms.toml -o api.md
+  ms doc src utilities.ms --json -o api.json
   ms doc --stdlib -o stdlib.md
   ms doc --stdlib --json -o stdlib.json
 `
 
 func runDoc(args []string) int {
-	filename, output := "", ""
-	standard, structured := false, false
+	output := ""
+	var targets []string
+	standard, structured, positional := false, false, false
 	for i := 0; i < len(args); i++ {
+		if positional {
+			targets = append(targets, args[i])
+			continue
+		}
 		flag, value, inline := splitValueOption(args[i], "--output")
 		switch flag {
+		case "--":
+			positional = true
 		case "--help", "-h":
 			fmt.Print(docHelp)
 			return 0
@@ -58,14 +71,10 @@ func runDoc(args []string) int {
 				fmt.Fprintf(os.Stderr, "unknown option %s for ms doc; run 'ms help doc' for its options\n", args[i])
 				return 2
 			}
-			if filename != "" {
-				fmt.Fprintf(os.Stderr, "unexpected extra argument %s (ms doc takes one file or project directory, or --stdlib)\n", args[i])
-				return 2
-			}
-			filename = args[i]
+			targets = append(targets, args[i])
 		}
 	}
-	if standard && filename != "" || !standard && filename == "" {
+	if standard && len(targets) != 0 || !standard && len(targets) == 0 {
 		if standard {
 			fmt.Fprintln(os.Stderr, "ms doc --stdlib takes no input file; omit the file or remove --stdlib")
 		} else {
@@ -79,17 +88,43 @@ func runDoc(args []string) int {
 	if standard {
 		modules = checker.StandardLibrary()
 	} else {
-		var err error
-		filename, err = resolveInput("doc", filename)
+		selection, err := selectAnalysisInputs(targets)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-			return 2
+			return 1
 		}
-		result := compiler.CompileFile(filename, compiler.Options{AnalyzeOnly: true, Entry: filepath.Base(filename) == "ms.toml"})
-		if !result.Success() {
-			return reportDiagnostics(result)
+		inputs, issues := analyzeSelection("doc", selection)
+		if len(issues) != 0 {
+			root := ""
+			if !selection.collection && len(inputs) == 1 {
+				root = inputs[0].result.SourceRoot
+			}
+			if selection.collection {
+				diagnostics := make([]commandDiagnostic, 0, len(issues))
+				for _, issue := range issues {
+					diagnostics = append(diagnostics, sourceDiagnostic(issue))
+				}
+				issues = issues[:0]
+				for _, issue := range orderedAnalysisDiagnostics(diagnostics) {
+					issues = append(issues, syntax.Diagnostic{Position: issue.Position, Phase: issue.Phase, Message: issue.Message, End: issue.End, Fix: issue.Fix})
+				}
+			}
+			return reportDiagnostics(compiler.Result{SourceRoot: root, Diagnostics: issues})
 		}
-		modules = checker.ModuleDocumentation(result.Program)
+		seen := map[string]bool{}
+		modules = []checker.APIModule{}
+		for _, input := range inputs {
+			for _, module := range checker.ModuleDocumentation(input.result.Program) {
+				if selection.collection && !strings.HasPrefix(module.Path, "@std/") {
+					module.Path = filepath.ToSlash(formatDisplay(selection.cwd, filepath.Join(input.result.SourceRoot, filepath.FromSlash(module.Path))))
+				}
+				if !seen[module.Path] {
+					seen[module.Path] = true
+					modules = append(modules, module)
+				}
+			}
+		}
+		sort.Slice(modules, func(i, j int) bool { return modules[i].Path < modules[j].Path })
 	}
 	var data []byte
 	if structured {

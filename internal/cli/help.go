@@ -60,15 +60,15 @@ func commandHelp(command string) (string, bool) {
 	var usage, description, options, examples string
 	switch command {
 	case "check":
-		usage = "<file.ms|ms.toml> [--json]"
-		description = "Parse, resolve imports, and type-check without executing source.\nA project checks all source modules, discovered tests, and its entry signature."
+		usage = "<file.ms|directory|ms.toml>... [--json]"
+		description = "Parse, resolve imports, and type-check independent inputs without executing source.\nA project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.\nStandalone directories discover .ms files recursively, skipping hidden/vendor/node_modules directories, directory symlinks, and nested projects.\nEach input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames."
 		options = "  --json  Emit versioned JSON diagnostics instead of terminal messages\n"
-		examples = "ms check main.ms\n  ms check ms.toml --json"
+		examples = "ms check main.ms\n  ms check ms.toml --json\n  ms check src utilities.ms --json"
 	case "lint":
-		usage = "<file.ms|ms.toml> [--json]"
-		description = "Check source hygiene and semantic lint rules, including imported modules.\nExit status is 1 when lint findings are present."
+		usage = "<file.ms|directory|ms.toml>... [--json]"
+		description = "Check source hygiene and semantic lint rules in independent inputs and their imports.\nA project directory selects ms.toml; standalone directories discover .ms files recursively.\nDiscovery skips hidden/vendor/node_modules directories, directory symlinks, and nested projects.\nEach input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.\nExit status is 1 when any input fails checking or has lint findings."
 		options = "  --json  Emit versioned JSON findings with stable rule codes\n"
-		examples = "ms lint ms.toml\n  ms lint main.ms --json"
+		examples = "ms lint ms.toml\n  ms lint main.ms --json\n  ms lint src utilities.ms --json"
 	case "build":
 		usage = "<file.ms|ms.toml> [-o output] [--build-type level] [--debug]"
 		description = "Build an application exporting main() -> Int as a native executable."

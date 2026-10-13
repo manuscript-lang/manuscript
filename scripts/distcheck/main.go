@@ -219,6 +219,9 @@ func check() error {
 	if err := checkJSONResults(cli, directory, environment); err != nil {
 		return err
 	}
+	if err := checkAnalysisCollections(cli, directory, environment); err != nil {
+		return err
+	}
 	profile := filepath.Join(directory, "profile")
 	if data, err := run(cli, "profile", manifest, "-o", profile, "--", "first", "second"); err != nil {
 		return err
