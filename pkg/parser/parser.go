@@ -817,9 +817,6 @@ func needHint(kind string, found lexer.Token) string {
 	case "from":
 		return "; imports read: import name from \"path.ms\""
 	case lexer.Name:
-		if found.Kind == lexer.Number || found.Kind == lexer.String {
-			return "; a name is required here. If you meant indexing like xs[0], Manuscript has none: call xs.at(index: 0), which returns an Optional"
-		}
 		if found.Kind == "case" {
 			return "; match arms are written without 'case', e.g. Paid(receipt): or Missing:, and 'case' only declares the cases of a type"
 		}
