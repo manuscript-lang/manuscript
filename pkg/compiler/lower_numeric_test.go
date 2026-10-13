@@ -80,3 +80,26 @@ fn sizes(values: List[Int], pairs: Map[String, Int], names: Set[String], text: S
 		t.Fatal("bound method reference must keep ordinary callable dispatch")
 	}
 }
+
+func TestStatementMatchLowersWithoutClosure(t *testing.T) {
+	result := compiler.CompileSource("statement-match.ms", `fn pick(value: Optional[Int]) -> Int:
+    match value:
+        none: return 0
+        some(inner): return inner
+    return -1
+fn total(values: Optional[Int]) -> Int:
+    let doubled = match values:
+        none: 0
+        some(inner): inner * 2
+    return doubled
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	if strings.Count(result.Source, "rt.Return(") != 0 {
+		t.Fatalf("statement match returns must be native Go returns:\n%s", result.Source)
+	}
+	if strings.Count(result.Source, "func() rt.Value {") < 1 {
+		t.Fatal("a match used as a value keeps its closure")
+	}
+}
