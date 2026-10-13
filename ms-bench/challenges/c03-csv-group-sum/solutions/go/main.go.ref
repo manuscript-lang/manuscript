@@ -1,0 +1,95 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+	"strings"
+)
+
+// parseAmount returns cents.
+func parseAmount(s string) (int64, bool) {
+	if s == "" {
+		return 0, false
+	}
+	whole, frac, hasDot := strings.Cut(s, ".")
+	if whole == "" || (hasDot && (len(frac) < 1 || len(frac) > 2)) {
+		return 0, false
+	}
+	var v int64
+	for _, c := range whole {
+		if c < '0' || c > '9' {
+			return 0, false
+		}
+		v = v*10 + int64(c-'0')
+	}
+	v *= 100
+	for i, c := range frac {
+		if c < '0' || c > '9' {
+			return 0, false
+		}
+		d := int64(c - '0')
+		if i == 0 {
+			d *= 10
+		}
+		v += d
+	}
+	return v, true
+}
+
+func parse(line string) (string, int64, bool) {
+	var cat, amt string
+	if strings.HasPrefix(line, `"`) {
+		end := strings.Index(line[1:], `"`)
+		if end < 0 {
+			return "", 0, false
+		}
+		end++
+		if end+1 >= len(line) || line[end+1] != ',' {
+			return "", 0, false
+		}
+		cat, amt = line[1:end], line[end+2:]
+	} else {
+		parts := strings.Split(line, ",")
+		if len(parts) != 2 {
+			return "", 0, false
+		}
+		cat, amt = parts[0], parts[1]
+	}
+	if cat == "" || strings.ContainsAny(cat, `"`) || strings.Contains(amt, ",") {
+		return "", 0, false
+	}
+	v, ok := parseAmount(amt)
+	return cat, v, ok
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	totals := map[string]int64{}
+	bad := 0
+	for sc.Scan() {
+		line := strings.TrimRight(sc.Text(), "\r")
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		cat, v, ok := parse(line)
+		if !ok {
+			bad++
+			continue
+		}
+		totals[cat] += v
+	}
+	keys := make([]string, 0, len(totals))
+	for k := range totals {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Printf("%s: %d.%02d\n", k, totals[k]/100, totals[k]%100)
+	}
+	if bad > 0 {
+		fmt.Printf("skipped: %d\n", bad)
+	}
+}

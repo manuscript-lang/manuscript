@@ -1,0 +1,35 @@
+{
+  "ts": {
+    "name": "TypeScript",
+    "solution": "main.ts",
+    "build": "true",
+    "run": "node --experimental-strip-types --no-warnings main.ts",
+    "version": "node --version",
+    "notes": "Node 22 with type stripping; no npm packages."
+  },
+  "go": {
+    "name": "Go",
+    "solution": "main.go",
+    "build": "go build -o prog .",
+    "run": "./prog",
+    "version": "go version",
+    "notes": "Standard library only."
+  },
+  "rust": {
+    "name": "Rust",
+    "solution": "src/main.rs",
+    "build": "cargo build --release --offline --quiet",
+    "run": "./target/release/prog",
+    "version": "rustc --version",
+    "notes": "Standard library only; no crates."
+  },
+  "ms": {
+    "name": "Manuscript",
+    "solution": "src/main.ms",
+    "build": "ms lock ms.toml && ms build ms.toml -o prog",
+    "run": "./prog",
+    "version": "ms --version",
+    "notes": "Docs for the language are in docs/ (tutorials) and docs/stdlib/ (standard declarations). `ms help` lists commands.",
+    "context": ["@repo/documentation/learn", "@stdlib"]
+  }
+}
