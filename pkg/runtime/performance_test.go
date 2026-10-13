@@ -205,3 +205,35 @@ func BenchmarkReadLine(b *testing.B) {
 		h.close()
 	}
 }
+
+func TestForLoopSeesListAsOfLoopStart(t *testing.T) {
+	for _, mutate := range []string{"append", "prepend", "with_value", "without"} {
+		list := &List{Type: "@std/List[Int]", Items: []Value{int64(1), int64(2), int64(3)}}
+		var seen []int64
+		for _, item := range Iterate(list) {
+			seen = append(seen, item.(int64))
+			switch mutate {
+			case "append":
+				list.Items = append(list.Items, int64(9))
+			case "prepend":
+				libraryPlain(t, "collections/prepend", list, int64(9))
+			case "with_value":
+				libraryPlain(t, "collections/with_value", list, int64(0), int64(9))
+			case "without":
+				libraryPlain(t, "collections/without", list, int64(0))
+			}
+		}
+		if len(seen) != 3 || seen[0] != 1 || seen[1] != 2 || seen[2] != 3 {
+			t.Fatalf("%s: loop saw %v", mutate, seen)
+		}
+	}
+}
+
+func BenchmarkIterateEarlyExit(b *testing.B) {
+	list := &List{Type: "@std/List[Int]", Items: make([]Value, 1000000)}
+	for i := 0; i < b.N; i++ {
+		for range Iterate(list) {
+			break
+		}
+	}
+}

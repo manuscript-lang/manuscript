@@ -43,7 +43,18 @@ type Alternative struct {
 type List struct {
 	Type  string
 	Items []Value
+	// shared marks Items as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
+
+// ownItems gives the list a private backing array before an in-place write.
+func (l *List) ownItems() {
+	if l.shared {
+		l.Items = append([]Value(nil), l.Items...)
+		l.shared = false
+	}
+}
+
 type Map struct {
 	Type    string
 	Entries []Entry
@@ -211,7 +222,10 @@ func Positions(value Value, length int) []Value {
 func Iterate(value Value) []Value {
 	switch v := value.(type) {
 	case *List:
-		return append([]Value{}, v.Items...)
+		// Loops see the elements as of loop start. Appends land beyond the captured
+		// length; in-place writes call ownItems and leave this slice untouched.
+		v.shared = true
+		return v.Items[:len(v.Items):len(v.Items)]
 	case *Set:
 		return append([]Value{}, v.Items...)
 	case *Map:

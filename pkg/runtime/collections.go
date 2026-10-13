@@ -27,6 +27,7 @@ func spliceList(list *List, start, count int, replacement *List) {
 	if list == replacement {
 		items = append([]Value{}, items...)
 	}
+	list.ownItems()
 	oldLength := len(list.Items)
 	newLength := oldLength - count + len(items)
 	if newLength < oldLength-count {
@@ -155,7 +156,7 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				v.Items = append(v.Items, args[0])
 				return v
 			case "concat":
-				return &List{v.Type, append(append([]Value{}, v.Items...), args[0].(*List).Items...)}
+				return &List{Type: v.Type, Items: append(append([]Value{}, v.Items...), args[0].(*List).Items...)}
 			}
 		case *Map:
 			typ := typeArguments(v.Type)[1]
