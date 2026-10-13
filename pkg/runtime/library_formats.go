@@ -101,8 +101,8 @@ func init() {
 		return libraryOK(r, libraryList("@std/QueryEntry", items))
 	})
 	add("url", "format_query", "String", []LibraryParam{p("entries", "List[QueryEntry]")}, func(_ *Execution, _ string, a []Value) Value {
-		parts := make([]string, len(a[0].(*List).Items))
-		for i, v := range a[0].(*List).Items {
+		parts := make([]string, len(a[0].(*List).Boxed()))
+		for i, v := range a[0].(*List).Boxed() {
 			f := v.(Record).Fields
 			parts[i] = url.QueryEscape(f["key"].(string)) + "=" + url.QueryEscape(f["value"].(string))
 		}
@@ -318,7 +318,7 @@ func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
 			if err := write("["); err != nil {
 				return err
 			}
-			for i, x := range v.Fields[0].(*List).Items {
+			for i, x := range v.Fields[0].(*List).Boxed() {
 				if i > 0 {
 					if err := write(","); err != nil {
 						return err
@@ -409,7 +409,7 @@ func libraryCSVStringify(ctx *Execution, r string, a []Value) Value {
 	writer := csv.NewWriter(w)
 	writer.Comma = delimiter
 	writer.UseCRLF = crlf
-	for _, row := range a[0].(*List).Items {
+	for _, row := range a[0].(*List).Boxed() {
 		CheckCancelled(ctx)
 		record := libraryStringValues(row)
 		// encoding/csv emits a bare line ending for a sole empty field,

@@ -24,25 +24,39 @@ func MapLiteral(ctx *Execution, typ string, entries []Entry, scope TypeScope) *M
 }
 
 func spliceList(list *List, start, count int, replacement *List) {
-	items := replacement.Items
-	if list == replacement {
-		items = append([]Value{}, items...)
+	switch list.kind {
+	case listInt:
+		list.ints = spliceItems(list.ints, start, count, listInts(replacement), list == replacement)
+	case listFloat:
+		list.floats = spliceItems(list.floats, start, count, listFloats(replacement), list == replacement)
+	case listBool:
+		list.bools = spliceItems(list.bools, start, count, listBools(replacement), list == replacement)
+	case listString:
+		list.strings = spliceItems(list.strings, start, count, listStrings(replacement), list == replacement)
+	default:
+		items := replacement.Items
+		if replacement.kind != listBoxed {
+			items = replacement.Boxed()
+		}
+		list.Items = spliceItems(list.Items, start, count, items, list == replacement)
 	}
-	oldLength := len(list.Items)
-	newLength := oldLength - count + len(items)
+}
+func spliceItems[T any](items []T, start, count int, replacement []T, self bool) []T {
+	if self {
+		replacement = append([]T(nil), replacement...)
+	}
+	oldLength := len(items)
+	newLength := oldLength - count + len(replacement)
 	if newLength < oldLength-count {
 		Panic("list replacement length overflow")
 	}
 	if newLength > oldLength {
-		list.Items = slices.Grow(list.Items, newLength-oldLength)[:newLength]
+		items = slices.Grow(items, newLength-oldLength)[:newLength]
 	}
-	copy(list.Items[start+len(items):], list.Items[start+count:oldLength])
-	copy(list.Items[start:], items)
-	if newLength < oldLength {
-		// A captured Go range still visits the original length. Keep valid
-		// elements in the vacated tail, as ordinary copy-and-reslice does.
-		list.Items = list.Items[:newLength]
-	}
+	copy(items[start+len(replacement):], items[start+count:oldLength])
+	copy(items[start:], replacement)
+	// Non-clearing reslice preserves valid values in captured traversal tails.
+	return items[:newLength]
 }
 
 func optional(typ string, value Value, present bool) Value {
@@ -55,13 +69,13 @@ func constructor(typ string, args []Argument) Value {
 	name, _ := splitType(typ)
 	switch name {
 	case "@std/List":
-		return &List{Type: typ}
+		return newList(typ)
 	case "@std/Map":
 		return &Map{Type: typ}
 	case "@std/Set":
 		return &Set{Type: typ}
 	case "@std/Bytes":
-		values := args[0].Value.(*List).Items
+		values := args[0].Value.(*List).Boxed()
 		bytes := make([]byte, len(values))
 		for i, v := range values {
 			n := v.(int64)
@@ -92,7 +106,7 @@ func CollectionLength(ctx *Execution, receiver Value) Value {
 	CheckCancelled(ctx)
 	switch v := receiver.(type) {
 	case *List:
-		return int64(len(v.Items))
+		return int64(v.Len())
 	case *Map:
 		return int64(len(v.Entries))
 	case *Set:
@@ -105,14 +119,14 @@ func CollectionLength(ctx *Execution, receiver Value) Value {
 func ListAppend(ctx *Execution, receiver, value Value) Value {
 	CheckCancelled(ctx)
 	list := receiver.(*List)
-	list.Items = append(list.Items, value)
+	list.Append(value)
 	return list
 }
 
 // ListIsEmpty is the direct path for List.is_empty calls.
 func ListIsEmpty(ctx *Execution, receiver Value) Value {
 	CheckCancelled(ctx)
-	return len(receiver.(*List).Items) == 0
+	return receiver.(*List).Len() == 0
 }
 
 // keyContext selects the equality scope for a keyed lookup. Primitive keys
@@ -129,10 +143,10 @@ func keyContext(ctx *Execution, key Value, scope TypeScope) *Execution {
 
 // ListContains is the direct path for List.contains calls.
 func ListContains(ctx *Execution, receiver, value Value, scope TypeScope) Value {
-	items := receiver.(*List).Items
-	for _, item := range items {
+	items := receiver.(*List).Capture()
+	for i := 0; i < items.Len(); i++ {
 		CheckCancelled(ctx)
-		if EqualSelected(ctx, item, value, scope) {
+		if items.EqualAt(ctx, i, value, scope) {
 			return true
 		}
 	}
@@ -299,12 +313,14 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 		case *List:
 			switch name {
 			case "length":
-				return int64(len(v.Items))
+				return int64(v.Len())
 			case "append":
-				v.Items = append(v.Items, args[0])
+				v.Append(args[0])
 				return v
 			case "concat":
-				return &List{Type: v.Type, Items: append(append([]Value{}, v.Items...), args[0].(*List).Items...)}
+				out := v.CopySlice(0, v.Len())
+				out.appendList(args[0].(*List))
+				return out
 			}
 		case *Map:
 			if name == "without" {
@@ -431,9 +447,9 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 func Index(value, index Value) Value {
 	list := value.(*List)
 	_, types := splitType(list.Type)
-	i := relativeIndex(len(list.Items), index.(int64))
-	if i < 0 || i >= int64(len(list.Items)) {
+	i := relativeIndex(list.Len(), index.(int64))
+	if i < 0 || i >= int64(list.Len()) {
 		return optional(types[0], nil, false)
 	}
-	return optional(types[0], list.Items[i], true)
+	return optional(types[0], list.Get(int(i)), true)
 }

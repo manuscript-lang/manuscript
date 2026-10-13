@@ -240,3 +240,17 @@ Reloading the cell afterward returned an element the predicate never matched.
 Body-versus-dispatch comparisons share the bug, so use independent expected values
 and Go operation oracles. Evidence: [search regression](../pkg/runtime/list_find_mutation_test.go)
 and [called search/view/alias consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms).
+
+Verified: primitive storage keeps the mutable slice header on the authoritative
+`*List`, with two allocations for fresh nonempty backing. A captured `ListRange`
+is a traversal header, not another mutable owner. `Items` is only legacy boxed
+construction; typed consumers use storage-aware methods. Dynamic Optional reads
+still allocate at the value boundary, so benchmark the compiler's typed access
+and comparator consumers together with storage. Typed comparator constructors
+accept raw bodies and install exactly one guarded admission; passing an already
+guarded body doubles accounting. Evidence: [storage migration](../documentation/contributing/list-storage.md),
+[primitive Go oracles and allocation/guard tests](../pkg/runtime/list_storage_test.go),
+and [measured storage/access paths](../scripts/bench-lists/typed-storage.md).
+Verify: fresh constructors and effectful sized initialization use two allocations,
+typed at/unwrap uses none, generic forwarding retains identity, and comparator
+profiling/returns/cancellation/depth/fault frames match ordinary source calls.

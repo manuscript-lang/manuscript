@@ -211,7 +211,12 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		for _, item := range e.Elements {
 			elements = append(elements, g.expression(item))
 		}
-		return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
+		// The independently owned large-literal lowering retains its existing ABI
+		// until it consumes the primitive constructors. Preserve its oracle here.
+		if len(e.Elements) > debugListThreshold {
+			return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
+		}
+		return runtimeCall("NewList", g.key(info.Type), sliceLiteral(runtimeName("Value"), elements...))
 	case syntax.KindMap:
 		var entries []ast.Expr
 		for at := 0; at < len(e.Elements); at += 2 {
