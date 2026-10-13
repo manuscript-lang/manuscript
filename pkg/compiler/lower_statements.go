@@ -21,7 +21,11 @@ func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 func (g *generator) pattern(p *syntax.Pattern, value ast.Expr) []ast.Stmt {
 	if p.Kind == syntax.KindName {
 		b := g.program.Bindings[p]
-		return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, runtimeName("Value"), value)}, discard(ident(b.ID))}
+		var typ ast.Expr = runtimeName("Value")
+		if scalar := g.scalarLocals[b]; scalar != "" {
+			typ = ident(scalar)
+		}
+		return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, typ, g.localValue(b, value))}, discard(ident(b.ID))}
 	}
 	tmp := g.temp()
 	out := []ast.Stmt{define(tmp, value), discard(ident(tmp))}
@@ -45,7 +49,8 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		case syntax.KindBind:
 			return append(pre, g.pattern(s.Pattern, value)...)
 		case syntax.KindAssign:
-			return append(pre, assign(ident(g.program.Assignments[s.Value].ID), token.ASSIGN, value))
+			b := g.program.Assignments[s.Value]
+			return append(pre, assign(ident(b.ID), token.ASSIGN, g.localValue(b, value)))
 		case syntax.KindReturn:
 			return append(pre, returned(value))
 		default:
@@ -60,7 +65,8 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 			return []ast.Stmt{evaluated(runtimeCall("SetField", g.expression(s.Target.Left), textLiteral(s.Target.Text), g.expression(s.Value)))}
 		}
 		// Assignment binding identities are recorded by the checker, including shadows.
-		return []ast.Stmt{assign(ident(g.program.Assignments[s.Value].ID), token.ASSIGN, g.expression(s.Value))}
+		b := g.program.Assignments[s.Value]
+		return []ast.Stmt{assign(ident(b.ID), token.ASSIGN, g.localValue(b, g.expression(s.Value)))}
 	case syntax.KindReturn:
 		value := unit()
 		if s.Value != nil {

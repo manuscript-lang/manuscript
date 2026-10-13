@@ -18,7 +18,7 @@ import (
 	"github.com/manuscript-lang/manuscript/scripts/internal/devtool"
 )
 
-//go:embed program.ms harness.go.txt production.ms production.go.txt
+//go:embed program.ms harness.go.txt production.ms production.go.txt scalar-locals.ms scalar-locals.go.txt
 var inputs embed.FS
 
 func main() {
@@ -32,12 +32,20 @@ func run() error {
 	count := flag.Int("count", 5, "benchmark repetitions")
 	benchtime := flag.String("benchtime", "1s", "time per benchmark")
 	production := flag.Bool("production", false, "benchmark primitive equality and callable cleanup in generated code")
+	scalars := flag.Bool("scalar-locals", false, "benchmark generated Int, Float and Bool local loops")
 	flag.Parse()
 	program, harnessFile := "program.ms", "harness.go.txt"
 	names := []string{"scalar", "calls", "items", "add"}
 	if *production {
 		program, harnessFile = "production.ms", "production.go.txt"
 		names = []string{"empty", "kept", "ints", "floats", "bools", "strings"}
+	}
+	if *scalars {
+		if *production {
+			return fmt.Errorf("choose either -production or -scalar-locals")
+		}
+		program, harnessFile = "scalar-locals.ms", "scalar-locals.go.txt"
+		names = []string{"integers", "floats", "booleans", "floating_values", "forward_integer", "forward_float", "identity_integer", "identity_float"}
 	}
 	source, err := inputs.ReadFile(program)
 	if err != nil {

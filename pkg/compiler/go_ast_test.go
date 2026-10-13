@@ -2,7 +2,9 @@ package compiler
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -29,6 +31,9 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if hash := sha256.Sum256(baseline); fmt.Sprintf("%x", hash) != "f371e92ed76ad6e5aa50dda0e75d83f9e64016fa73179095cc4356882fcd8b3a" {
+		t.Fatal("pre-AST baseline changed; adapt runtime compatibility in the test instead")
+	}
 	result := CompileSource("ast-lowering.ms", string(source), Options{Tests: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -45,7 +50,10 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 		}
 	}
 	var outputs []string
-	for _, source := range []string{string(baseline), result.Source} {
+	// #214 added an execution context to the trace ABI. Adapt only the runtime
+	// call signature at build time; retain the original artifact byte for byte.
+	compatibleBaseline := strings.ReplaceAll(string(baseline), "rt.TraceSource(", "rt.TraceSource(ctx, ")
+	for _, source := range []string{compatibleBaseline, result.Source} {
 		binary := filepath.Join(t.TempDir(), "program")
 		if err := Build(source, binary); err != nil {
 			t.Fatal(err)

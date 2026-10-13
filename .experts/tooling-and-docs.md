@@ -14,6 +14,20 @@ loops, but unboxing a source-call result and reboxing it for the next call can
 increase allocations. Classify uses and ABI boundaries before choosing a local
 representation; Go's optimizer does not reliably remove those allocations.
 
+Verified: the bounded scalar-local prototype indexes storage by checked binding
+identity and excludes captures before lowering. It retains a single storage slot
+per binding and consumes the same checked arithmetic and argument-conversion
+paths. Protect the historical lowering oracle's hash; adapt a changed runtime
+ABI in the test rather than editing its original generated artifact.
+Immutable and ABI-only parameter copies can reuse an existing box; unboxing them
+adds allocations at forwarding and return boundaries. The bounded production
+experiment selects only mutable operator-assigned locals and retains direct-call
+result storage. Verify nongeneric Int/Float identities and repeated forwarding,
+in addition to arithmetic loops and generic identity controls.
+Evidence: [local storage facts](../pkg/compiler/lower_scalar_locals.go),
+[mutable/shadow/capture conformance](../tests/e2e/testdata/accept/scalar-locals.ms),
+and [historical oracle](../pkg/compiler/go_ast_test.go).
+
 Apply when: optimizing Go lowering, representations, calls, or collection access.
 Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),

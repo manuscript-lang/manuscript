@@ -72,12 +72,36 @@ representation from dropping language guarantees. Inspect `program.go` beside
 `program_test.go`; neither compilation nor process startup is in the benchmark
 loop. Use a quiet machine for time comparisons, and report allocations as well.
 
-Current generated loops still store primitive locals as `rt.Value`, extract them
-for arithmetic, and box results again on assignment. Ordered source calls avoid
+Mutable uncaptured local bindings checked as Int, Float or Bool and assigned
+through a scalar operator use one Go
+`int64`, `float64` or `bool` variable. Representation facts are indexed by checked
+binding identity, so shadowing and mutable assignments keep their selected
+storage. Immutable and ABI-only copies retain existing boxes. Initializers and
+assignments extract the checked scalar value; existing
+runtime calls and returns box when their `Value` ABI requires it. No boxed mirror
+is maintained. Locals initialized or assigned from a direct call retain boxed
+storage, avoiding extra unbox/rebox allocations across repeated calls.
+Parameters, captures, generic locals, loop bindings and match payloads retain
+their existing representation in this bounded prototype. Checked
+Int arithmetic, Float operation rounding, source positions and ordered argument
+capture guards remain unchanged.
+
+Run `scripts/bench-lowering` with `-scalar-locals` to retain and measure generated
+Int/Float/Bool loops. Compare the same fixtures against the main revision before
+the representation change; a handwritten comparison alone is not evidence that
+production lowering improved. Report allocations separately from timings under
+shared load, and measure Release and Debug sizes with identical runtime inputs.
+
+Ordered source calls avoid
 label preparation but still pass `[]rt.Value` through `Function.Body`. Lists store
 `[]rt.Value`, and `.at().unwrap()` still creates and consumes an ordinary Optional
 alternative. Generic specialization, contract dispatch, and closure snapshots
 also cross the shared value boundary.
+
+The original pre-AST golden remains byte-identical to its recorded SHA-256.
+The differential test adapts the `TraceSource` execution-context argument added
+by #214 only when building the historical source against the current runtime;
+runtime ABI compatibility is separate from refreshing the golden's lowering.
 
 Two bounded production optimizations use checked facts while keeping the shared
 representation and callable ABI:

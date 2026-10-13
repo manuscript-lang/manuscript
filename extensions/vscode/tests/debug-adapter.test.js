@@ -28,7 +28,7 @@ test('Manuscript values use source names and lazy structured handles', async () 
 test('native DAP source stepping and Manuscript record/list/variant rendering', { skip: !process.env.MANUSCRIPT_DAP_TEST, timeout: 60000 }, async () => {
   const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript dap test ')));
   const program = path.join(directory, 'main.ms');
-  const source = 'import List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1\n';
+  const source = 'import List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    var integer = 42\n    integer = integer + 1\n    var floating = 0.5\n    floating = floating + 0.25\n    var flag = false\n    flag = not flag\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1\n';
   await fs.writeFile(program, source);
   const returnLine = source.split('\n').findIndex(line => line.trim().startsWith('return box.')) + 1;
   const output = new PassThrough(); const messages = []; const waiters = [];
@@ -61,6 +61,13 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
     assert.equal(scopes.scopes[0].name, 'Manuscript locals');
     assert.ok(scopes.scopes.some(scope => scope.name === 'Execution and services'));
     const locals = await response(request('variables', { variablesReference: scopes.scopes[0].variablesReference }));
+    for (const [name, type, value] of [['integer', 'Int', '43'], ['floating', 'Float', '0.75'], ['flag', 'Bool', 'true']]) {
+      const local = locals.variables.find(variable => variable.name === name);
+      assert.ok(local, JSON.stringify(locals));
+      assert.equal(local.type, type); assert.equal(local.value, value);
+      const watched = await response(request('evaluate', { frameId: stack.stackFrames[0].id, expression: name, context: 'watch' }));
+      assert.equal(watched.result, value);
+    }
     const box = locals.variables.find(variable => variable.name === 'box'); assert.equal(box.type, 'Box');
     const fields = await response(request('variables', { variablesReference: box.variablesReference }));
     assert.ok(fields.variables.find(variable => variable.name === 'count'),JSON.stringify(fields));

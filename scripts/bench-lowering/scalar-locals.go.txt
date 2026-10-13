@@ -1,0 +1,106 @@
+package main
+
+import (
+	rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+	"math"
+	"testing"
+)
+
+var result rt.Value
+
+func BenchmarkLowering(b *testing.B) {
+	initialize()
+	ctx := rt.RootExecution()
+	defer rt.FinishExecution(ctx)
+	for _, c := range []struct {
+		name string
+		fn   rt.Function
+	}{{"Int", @@integers@@.(rt.Function)}, {"Float", @@floats@@.(rt.Function)}, {"Bool", @@booleans@@.(rt.Function)}} {
+		b.Run(c.name, func(b *testing.B) {
+			args := []rt.Value{int64(1024)}
+			b.ReportAllocs()
+			for b.Loop() {
+				result = c.fn.Body(ctx, args)
+			}
+		})
+	}
+	items := make([]rt.Value, 1024)
+	for i := range items {
+		items[i] = int64(i)
+	}
+	values := &rt.List{Type: "@std/List[Int]", Items: items}
+	for _, c := range []struct {
+		name  string
+		fn    rt.Function
+		input rt.Value
+	}{
+		{"ForwardInt", @@forward_integer@@.(rt.Function), int64(1024)},
+		{"ForwardFloat", @@forward_float@@.(rt.Function), float64(1.25)},
+	} {
+		b.Run(c.name, func(b *testing.B) {
+			args := []rt.Value{c.input, values}
+			b.ReportAllocs()
+			for b.Loop() {
+				result = c.fn.Body(ctx, args)
+			}
+		})
+	}
+	for _, c := range []struct {
+		name  string
+		fn    rt.Function
+		input rt.Value
+	}{
+		{"IdentityInt", @@identity_integer@@.(rt.Function), int64(1024)},
+		{"IdentityFloat", @@identity_float@@.(rt.Function), float64(1.25)},
+	} {
+		b.Run(c.name, func(b *testing.B) {
+			args := []rt.Value{c.input}
+			b.ReportAllocs()
+			for b.Loop() {
+				result = c.fn.Body(ctx, args)
+			}
+		})
+	}
+}
+func TestBenchmarkParity(t *testing.T) {
+	initialize()
+	ctx := rt.RootExecution()
+	defer rt.FinishExecution(ctx)
+	if got := @@identity_integer@@.(rt.Function).Body(ctx, []rt.Value{int64(1024)}); got != int64(1024) {
+		t.Fatal(got)
+	}
+	if got := @@identity_float@@.(rt.Function).Body(ctx, []rt.Value{float64(1.25)}); got != float64(1.25) {
+		t.Fatal(got)
+	}
+	if got := @@integers@@.(rt.Function).Body(ctx, []rt.Value{int64(1024)}); got != int64(523776) {
+		t.Fatal(got)
+	}
+	if got := @@booleans@@.(rt.Function).Body(ctx, []rt.Value{int64(1023)}); got != true {
+		t.Fatal(got)
+	}
+	want := float64(0.5)
+	for index := 0; index < 1024; index++ {
+		want = float64(float64(want*1.0001) + 0.25)
+	}
+	if got := rt.FloatValue(@@floats@@.(rt.Function).Body(ctx, []rt.Value{int64(1024)})); got != want {
+		t.Fatalf("Float rounding: got %v want %v", got, want)
+	}
+	for _, values := range [][3]float64{
+		{1 + math.Ldexp(1, -27), 1 - math.Ldexp(1, -27), -1},
+		{math.Copysign(0, -1), 1, math.Copysign(0, -1)},
+		{math.NaN(), 1, 0},
+		{math.Inf(1), 1, 0},
+		{math.Inf(1), 1, math.Inf(-1)},
+		{math.SmallestNonzeroFloat64, 0.5, 0},
+	} {
+		want := float64(float64(values[0]*values[1]) + values[2])
+		got := rt.FloatValue(@@floating_values@@.(rt.Function).Body(ctx, []rt.Value{values[0], values[1], values[2]}))
+		if math.IsNaN(want) {
+			if !math.IsNaN(got) {
+				t.Fatalf("Float NaN changed: %v", got)
+			}
+		} else if math.Float64bits(got) != math.Float64bits(want) {
+			t.Fatalf("Float bits: %v got %x want %x", values, math.Float64bits(got), math.Float64bits(want))
+		}
+	}
+}
