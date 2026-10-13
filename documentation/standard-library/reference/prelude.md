@@ -310,9 +310,13 @@ type Map[T: Hashable, U]:
     fn clone() -> Map[T, U]:
     fn is_empty() -> Bool:
     fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+    fn map[W](transform: fn(key: T, value: U) -> W) -> Map[T, W]:
+    fn map_keys[W: Hashable](transform: fn(key: T, value: U) -> W) -> Map[W, U]:
     fn get_or(key: T, fallback: U) -> U:
     fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    fn fold_right[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
     fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    fn find_last(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
     fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn with_default(key: T, value: U) -> Map[T, U]:
@@ -372,12 +376,29 @@ Returns the first matching entry as a fresh record with shallow references.
 fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
 ```
 
+### Map.find_last
+
+Searches a snapshot from the end, stopping at the last matching entry.
+Returns a fresh entry record retaining its original key/value references.
+
+```manuscript
+fn find_last(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+```
+
 ### Map.fold[A]
 
 Reduces an entry snapshot in insertion order, starting with initial.
 
 ```manuscript
 fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+```
+
+### Map.fold_right[A]
+
+Reduces an entry snapshot in reverse insertion order, starting with initial.
+
+```manuscript
+fn fold_right[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
 ```
 
 ### Map.for_each
@@ -402,6 +423,24 @@ Reports whether this map has no entries.
 
 ```manuscript
 fn is_empty() -> Bool:
+```
+
+### Map.map[W]
+
+Transforms values in snapshot insertion order, retaining original keys.
+Returns independent outer storage with shallow key and result references.
+
+```manuscript
+fn map[W](transform: fn(key: T, value: U) -> W) -> Map[T, W]:
+```
+
+### Map.map_keys[W: Hashable]
+
+Transforms keys in snapshot insertion order, retaining value references.
+Equal outputs keep the first key/position and the last input value.
+
+```manuscript
+fn map_keys[W: Hashable](transform: fn(key: T, value: U) -> W) -> Map[W, U]:
 ```
 
 ### Map.some
