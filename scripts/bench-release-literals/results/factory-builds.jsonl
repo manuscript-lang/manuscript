@@ -1,0 +1,16 @@
+{"n": 16000, "variant": "baseline", "rep": 0, "wall": 5.587964723999903, "rss_kib": 346524, "exit": 0, "size": 6230308}
+{"n": 16000, "variant": "baseline", "rep": 1, "wall": 1.7199547989985149, "rss_kib": 361940, "exit": 0, "size": 6230308}
+{"n": 16000, "variant": "factory64", "rep": 0, "wall": 0.6474365899994154, "rss_kib": 117612, "exit": 0, "size": 6119716}
+{"n": 16000, "variant": "factory64", "rep": 1, "wall": 0.6404315390027477, "rss_kib": 116300, "exit": 0, "size": 6119716}
+{"n": 16000, "variant": "factory256", "rep": 0, "wall": 0.6987288610034739, "rss_kib": 116396, "exit": 0, "size": 6328612}
+{"n": 16000, "variant": "factory256", "rep": 1, "wall": 0.6423894940016908, "rss_kib": 116808, "exit": 0, "size": 6328612}
+{"n": 16000, "variant": "factory1024", "rep": 0, "wall": 0.6490275180003664, "rss_kib": 115592, "exit": 0, "size": 6132004}
+{"n": 16000, "variant": "factory1024", "rep": 1, "wall": 0.6272981879992585, "rss_kib": 116132, "exit": 0, "size": 6132004}
+{"n": 100000, "variant": "baseline", "rep": 0, "wall": 12.838402517998475, "rss_kib": 1942204, "exit": 0, "size": 9687332}
+{"n": 100000, "variant": "baseline", "rep": 1, "wall": 12.698683361999429, "rss_kib": 1916112, "exit": 0, "size": 9687332}
+{"n": 100000, "variant": "factory64", "rep": 0, "wall": 2.900261799997679, "rss_kib": 407684, "exit": 0, "size": 9007396}
+{"n": 100000, "variant": "factory64", "rep": 1, "wall": 2.704066600999795, "rss_kib": 413568, "exit": 0, "size": 9007396}
+{"n": 100000, "variant": "factory256", "rep": 0, "wall": 2.4859720429994923, "rss_kib": 398812, "exit": 0, "size": 18514212}
+{"n": 100000, "variant": "factory256", "rep": 1, "wall": 2.6010874759995204, "rss_kib": 364688, "exit": 0, "size": 18514212}
+{"n": 100000, "variant": "factory1024", "rep": 0, "wall": 2.6058372180013976, "rss_kib": 424804, "exit": 0, "size": 11125028}
+{"n": 100000, "variant": "factory1024", "rep": 1, "wall": 2.571320661001664, "rss_kib": 399432, "exit": 0, "size": 11125028}

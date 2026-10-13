@@ -1,0 +1,12 @@
+{"gc": "100", "variant": "reuse1024", "pairs": 12, "ratio": 1.61441551020536, "lower95": 1.5617485598445842, "upper95": 1.672835153601391, "all_slower": true}
+{"gc": "100", "variant": "reuse256", "pairs": 12, "ratio": 1.602100251922279, "lower95": 1.4991313961764376, "upper95": 1.699785953300131, "all_slower": true}
+{"gc": "100", "variant": "typed32", "pairs": 12, "ratio": 0.07865945033176586, "lower95": 0.07427312369842551, "upper95": 0.08446000180561672, "all_slower": false}
+{"gc": "100", "variant": "typed64", "pairs": 12, "ratio": 0.17286666267479095, "lower95": 0.1663380644997258, "upper95": 0.18025464819266065, "all_slower": false}
+{"gc": "50", "variant": "reuse1024", "pairs": 12, "ratio": 1.6103658580466615, "lower95": 1.5542443950589562, "upper95": 1.6619240669290014, "all_slower": true}
+{"gc": "50", "variant": "reuse256", "pairs": 12, "ratio": 1.6200515025066764, "lower95": 1.5541104814678237, "upper95": 1.6784847115843733, "all_slower": true}
+{"gc": "50", "variant": "typed32", "pairs": 12, "ratio": 0.1111952920585908, "lower95": 0.10708732954650861, "upper95": 0.11537664106173899, "all_slower": false}
+{"gc": "50", "variant": "typed64", "pairs": 12, "ratio": 0.172995103450518, "lower95": 0.16742412195543108, "upper95": 0.17773146936629297, "all_slower": false}
+{"gc": "off", "variant": "reuse1024", "pairs": 12, "ratio": 1.1902709253611976, "lower95": 1.135666793333565, "upper95": 1.2388654263447412, "all_slower": false}
+{"gc": "off", "variant": "reuse256", "pairs": 12, "ratio": 1.3114500917160052, "lower95": 1.243750309741788, "upper95": 1.3840235848821516, "all_slower": true}
+{"gc": "off", "variant": "typed32", "pairs": 12, "ratio": 0.2535871319676843, "lower95": 0.24181341952866514, "upper95": 0.2654408857971647, "all_slower": false}
+{"gc": "off", "variant": "typed64", "pairs": 12, "ratio": 0.5129924480400936, "lower95": 0.4890640941964134, "upper95": 0.5339537508201424, "all_slower": false}

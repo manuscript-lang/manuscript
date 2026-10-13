@@ -1,0 +1,6 @@
+{"n": 16000, "variant": "factory64", "wall": 0.5890869700015173, "rss_kib": 117204, "exit": 0, "size": 6107428}
+{"n": 16000, "variant": "factory256", "wall": 0.5567785740022373, "rss_kib": 115484, "exit": 0, "size": 6082852}
+{"n": 16000, "variant": "factory1024", "wall": 0.5676866960020561, "rss_kib": 115044, "exit": 0, "size": 6074660}
+{"n": 100000, "variant": "factory64", "wall": 2.7515706490012235, "rss_kib": 377924, "exit": 0, "size": 8933668}
+{"n": 100000, "variant": "factory256", "wall": 2.3549757469991164, "rss_kib": 330504, "exit": 0, "size": 8782116}
+{"n": 100000, "variant": "factory1024", "wall": 2.800579809998453, "rss_kib": 405744, "exit": 0, "size": 8724772}

@@ -1,0 +1,252 @@
+{
+  "base": "c80bdb2a",
+  "widths": "current language Int64/Float64; typed32 is a synthetic Go control only",
+  "rows": [
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reassessment/16000/factory64/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "c4a0a5ff1c91b3816ef0b36bbb749cd0850f3165707c73d29da7b9720c4d6006",
+      "sections": {
+        ".text": 3334417,
+        ".rodata": 1255521,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reassessment/16000/factory1024/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "c5eb26713bea9ad79909e955058313fa247416527d36d6767f8cbebf5b5a9165",
+      "sections": {
+        ".text": 3319121,
+        ".rodata": 1304545,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reassessment/16000/baseline/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "8665fa98e7e87b70bff0e55b107c8e6fff99c535309a9271d6cd6737488f7d5f",
+      "sections": {
+        ".text": 3477873,
+        ".rodata": 1244161,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reassessment/16000/factory256/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "da0c9408b8cfc51edd4a8e8788ae88e11c37912395b5e632cc00367669596d44",
+      "sections": {
+        ".text": 3321329,
+        ".rodata": 1493121,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reassessment/100000/factory64/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "4b1717f52409026d15d905541d7cba2fb84fb81e321dd0e798583138f397849f",
+      "sections": {
+        ".text": 5350449,
+        ".rodata": 2000065,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reassessment/100000/factory1024/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "d7b1741bbfda65f8db70bf204b0d9516599bbbf1e1ac14eaa34b61a2dae4d8c9",
+      "sections": {
+        ".text": 5254993,
+        ".rodata": 4353089,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reassessment/100000/baseline/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "5d0dce2f3912bb7e1fbc0529ab470229cd99bfcd6cb5527c17c506488cb474bf",
+      "sections": {
+        ".text": 6249873,
+        ".rodata": 1929345,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reassessment/100000/factory256/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "55e63b1808404c74f927c87cabb585a23d75bb1b7ddb82ecb2291f5dabe07836",
+      "sections": {
+        ".text": 5268753,
+        ".rodata": 11700161,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reuse/16000/factory64/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "3417caeb7b0871556e7369675cdf059a48130a23438c9d8a2f74a21665c9a79b",
+      "sections": {
+        ".text": 3334417,
+        ".rodata": 1243553,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reuse/16000/factory1024/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "95ef432bb01c4382318e1d899279f64271b0757c0257572499e671a73f6f9e93",
+      "sections": {
+        ".text": 3319217,
+        ".rodata": 1248097,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reuse/16000/baseline/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "35766518abf7d012dd6911d1d2f608743727f3b3a2f8af56bfd890ae5fe446ab"
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reuse/16000/factory256/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "e35e216148e2b9400fc167c1fdde78f80c2fcef90d3b951773ba7103d4db86a3",
+      "sections": {
+        ".text": 3321425,
+        ".rodata": 1248129,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reuse/100000/factory64/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "b0569a04007df84ef77e752db26defd3c11d5ed2d2b52ee2593e0fdfebf6fde2",
+      "sections": {
+        ".text": 5350481,
+        ".rodata": 1925057,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reuse/100000/factory1024/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "8077112285a2f33a1350c1b6c8d763ad469fcb0cc63c1ea205e003674abbd489",
+      "sections": {
+        ".text": 5255057,
+        ".rodata": 1951393,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reuse/100000/baseline/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "d4a6c4f869233cdb80e52f1ff999bef97c246ed361e3ab95c9b495cffab6365a"
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-reuse/100000/factory256/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "419f9dd59151a9565efdd09bdcd65a9140cdeb3dccd60a2fe50f6bab9e947868",
+      "sections": {
+        ".text": 5268817,
+        ".rodata": 1968897,
+        ".noptrdata": 188801,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-typed/16000/typed32/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "db34028b0917c41b2292cd5eb5a6a1577252d894bfe8c616178e8f6d4f4a5418",
+      "sections": {
+        ".text": 2950833,
+        ".rodata": 1115777,
+        ".noptrdata": 252833,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-typed/16000/baseline/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "35766518abf7d012dd6911d1d2f608743727f3b3a2f8af56bfd890ae5fe446ab"
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-typed/16000/typed64/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "2548acd9a23aaaeb00be9cb9488af9f266f8ba6d240e3eb878393cfd1d3ff1c6",
+      "sections": {
+        ".text": 2950833,
+        ".rodata": 1115777,
+        ".noptrdata": 316833,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-typed/16000/factory256/program.go",
+      "source_sha256": "57e014094a16e3405105d30aba7ab315953ab7675dc310f923ecddd27e0f4587",
+      "generated_sha256": "9020810b2b4a9dcdea84ed0f48da22d931c9f3d26b0e3b6ae6aac1d070b1ca59"
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-typed/100000/typed32/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "d60cb738d9bd18682b0d8077aebf797993d2ddcfeddd3770f13c6eb6e57ea6a3",
+      "sections": {
+        ".text": 2950833,
+        ".rodata": 1115777,
+        ".noptrdata": 588833,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-typed/100000/baseline/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "d4a6c4f869233cdb80e52f1ff999bef97c246ed361e3ab95c9b495cffab6365a"
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-typed/100000/typed64/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "264010243d8100aaba3266376bc194adecbadf6aea2bebec255edbb51b04b95e",
+      "sections": {
+        ".text": 2950833,
+        ".rodata": 1115777,
+        ".noptrdata": 988833,
+        ".data": 55762,
+        ".bss": 144040
+      }
+    },
+    {
+      "path": "/workspace/manuscript/.artifacts/flat-literals/release-typed/100000/factory256/program.go",
+      "source_sha256": "a8b94288cbd7524b898a32f29f2cf8a477e23f5daea21586c716c763276dbcf5",
+      "generated_sha256": "1c2f15eeb1eb8ef5e7e1f9cb8b0840f9a3eaf1dd07a1dc59246105e6b9ec01ec"
+    }
+  ]
+}
