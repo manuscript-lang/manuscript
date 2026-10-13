@@ -24,6 +24,9 @@ adds allocations at forwarding and return boundaries. The bounded production
 experiment selects only mutable operator-assigned locals and retains direct-call
 result storage. Verify nongeneric Int/Float identities and repeated forwarding,
 in addition to arithmetic loops and generic identity controls.
+Unary syntax alone is not arithmetic evidence: `try` copies a boxed Result
+payload and unary `+` is an identity. Keep those copies boxed unless another
+measured arithmetic assignment establishes eligibility.
 Evidence: [local storage facts](../pkg/compiler/lower_scalar_locals.go),
 [mutable/shadow/capture conformance](../tests/e2e/testdata/accept/scalar-locals.ms),
 and [historical oracle](../pkg/compiler/go_ast_test.go).

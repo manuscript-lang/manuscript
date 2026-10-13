@@ -20,7 +20,10 @@ func scalarLocals(program *checker.Program) map[*checker.Binding]string {
 	}
 	operatorAssigned := map[*checker.Binding]bool{}
 	for value, binding := range program.Assignments {
-		if value.Kind == syntax.KindBinary || value.Kind == syntax.KindUnary {
+		// try copies an already boxed payload; unary + is also an identity.
+		// Neither establishes arithmetic work that benefits from native storage.
+		unaryOperation := value.Kind == syntax.KindUnary && (value.Text == "-" || value.Text == "not")
+		if value.Kind == syntax.KindBinary || unaryOperation {
 			operatorAssigned[binding] = true
 		}
 	}

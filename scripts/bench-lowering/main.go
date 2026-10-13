@@ -45,7 +45,7 @@ func run() error {
 			return fmt.Errorf("choose either -production or -scalar-locals")
 		}
 		program, harnessFile = "scalar-locals.ms", "scalar-locals.go.txt"
-		names = []string{"integers", "floats", "booleans", "floating_values", "forward_integer", "forward_float", "identity_integer", "identity_float"}
+		names = []string{"integers", "floats", "booleans", "floating_values", "forward_integer", "forward_float", "identity_integer", "identity_float", "payload_return_integer", "payload_return_float", "payload_forward_integer", "payload_forward_float"}
 	}
 	source, err := inputs.ReadFile(program)
 	if err != nil {

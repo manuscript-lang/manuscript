@@ -56,6 +56,10 @@ Do not refresh this independent baseline just because output formatting changes.
 
 ## Measure representation choices
 
+The scalar prototype below records the historical 64-bit ABI. The requested
+signed32/binary32 defaults are coordinated in #271; numeric-sensitive integration
+of this draft and #255 is paused until that migration is reviewed.
+
 From the checkout root, run:
 
 ```sh

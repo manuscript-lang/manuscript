@@ -5,6 +5,12 @@ weight = 3
 
 # Scalar local experiment
 
+This is historical evidence for the pre-migration 64-bit default ABI. The user
+has since approved signed32/binary32 defaults in #271. Keep this draft unmerged
+until numeric-width and overlapping #255 scalar work are coordinated; it does
+not establish 64-bit public defaults. The eligibility correction below is width
+independent.
+
 This bounded draft measures mutable uncaptured Int, Float and Bool local storage
 against main `505b564e`. It changes neither the public ABI nor scalar arithmetic.
 Only bindings with scalar operator assignments are selected. Checked binding
@@ -61,6 +67,15 @@ changed from zero allocations to one / 8 bytes. The final mutable-operator
 eligibility rule retains these copies' original boxes; paired generated controls
 again record 1,024 / 16,384 for forwarding and zero for both identities.
 Primitive type information alone does not establish a useful storage optimization.
+
+A mutable binding assigned only by `value = try parse(...)` is also an ABI
+payload copy. Treating every unary expression as arithmetic reintroduced boxing:
+Int/Float payload returns changed from 3 allocations / 96 bytes to 4 / 104, and
+payload forwarding from 1,027 / 16,480 to 2,051 / 24,672. Only arithmetic negation
+and logical `not` qualify among unary expressions; `try` and identity unary `+`
+do not. The corrected generated controls match main at 3 / 96 and 1,027 / 16,480,
+including success and error propagation. Raw main/abandoned/corrected samples are
+committed under `scripts/bench-lowering/testdata/scalar-local-boundaries.samples.txt`.
 
 After #245/#248/#258 landed, the draft rebased cleanly onto main `bee671d4` and
 repeated the generated forwarding/identity comparisons. The original three-loop

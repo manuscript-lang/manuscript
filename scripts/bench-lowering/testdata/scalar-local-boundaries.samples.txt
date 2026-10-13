@@ -1,0 +1,51 @@
+Historical 64-bit scalar boundary samples
+Go 1.25.1; linux/amd64; Intel Xeon Platinum 8573C; GOMAXPROCS=1; default GC.
+Captured under shared verification load. Timings are raw samples, not speedup evidence.
+This preserves the pre-#271 Int64/Float64 default baseline; the user has approved
+signed32/binary32 defaults, so do not treat these samples as the future public ABI.
+
+Reproduce with scripts/bench-lowering -scalar-locals -count=1 -benchtime=100ms.
+For an older compiler revision, copy the current bench-lowering fixture/driver
+into that checkout without changing compiler/runtime code, then run the command.
+Inputs: Int=1024, Float=1.25; forwarding iterates a 1024-item List[Int].
+Payload cases receive preboxed Result.ok inputs; parse_* returns that Result.
+Checking, building and process startup are excluded from each benchmark loop.
+The parity test also checks Result error propagation and Float rounding/IEEE cases.
+Samples are informational; tests do not assert noisy timing thresholds.
+
+Main boxed ABI controls (bee671d4)
+BenchmarkLowering/ForwardInt         	    1436	    104400 ns/op	   16384 B/op	    1024 allocs/op
+BenchmarkLowering/ForwardFloat       	    1183	    127786 ns/op	   16384 B/op	    1024 allocs/op
+BenchmarkLowering/IdentityInt        	 1445541	       141.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLowering/IdentityFloat      	  361291	       347.5 ns/op	       0 B/op	       0 allocs/op
+
+Abandoned broader scalar rule (b6376cc5)
+BenchmarkLowering/ForwardInt  	     273	    428994 ns/op	   24576 B/op	    2048 allocs/op
+BenchmarkLowering/ForwardFloat         	     349	    417834 ns/op	   24576 B/op	    2048 allocs/op
+BenchmarkLowering/IdentityInt          	  500599	       313.9 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/IdentityFloat        	  429462	       279.7 ns/op	       8 B/op	       1 allocs/op
+
+Corrected immutable/ABI-only copies (c11f7322)
+BenchmarkLowering/ForwardInt  	     703	    146445 ns/op	   16384 B/op	    1024 allocs/op
+BenchmarkLowering/ForwardFloat         	    1476	    221392 ns/op	   16384 B/op	    1024 allocs/op
+BenchmarkLowering/IdentityInt          	 1000000	       716.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLowering/IdentityFloat        	  898567	       137.4 ns/op	       0 B/op	       0 allocs/op
+
+Main boxed try payloads (bee671d4)
+BenchmarkLowering/PayloadReturnInt         	  255715	       619.3 ns/op	      96 B/op	       3 allocs/op
+BenchmarkLowering/PayloadReturnFloat       	  285996	       516.3 ns/op	      96 B/op	       3 allocs/op
+BenchmarkLowering/PayloadForwardInt        	     870	    198429 ns/op	   16480 B/op	    1027 allocs/op
+BenchmarkLowering/PayloadForwardFloat      	     668	    184677 ns/op	   16480 B/op	    1027 allocs/op
+
+Abandoned unary-try eligibility (c11f7322)
+BenchmarkLowering/PayloadReturnInt         	  176451	       723.8 ns/op	     104 B/op	       4 allocs/op
+BenchmarkLowering/PayloadReturnFloat       	  184609	       630.7 ns/op	     104 B/op	       4 allocs/op
+BenchmarkLowering/PayloadForwardInt        	     728	    293478 ns/op	   24672 B/op	    2051 allocs/op
+BenchmarkLowering/PayloadForwardFloat      	     594	    221354 ns/op	   24672 B/op	    2051 allocs/op
+
+Corrected arithmetic/logical unary eligibility
+BenchmarkLowering/PayloadReturnInt     	  138139	       762.0 ns/op	      96 B/op	       3 allocs/op
+BenchmarkLowering/PayloadReturnFloat   	  243732	       999.3 ns/op	      96 B/op	       3 allocs/op
+BenchmarkLowering/PayloadForwardInt    	     856	    142645 ns/op	   16480 B/op	    1027 allocs/op
+BenchmarkLowering/PayloadForwardFloat  	    1114	    148954 ns/op	   16480 B/op	    1027 allocs/op
+

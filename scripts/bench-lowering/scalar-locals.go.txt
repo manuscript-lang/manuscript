@@ -61,11 +61,71 @@ func BenchmarkLowering(b *testing.B) {
 			}
 		})
 	}
+	integerResult := rt.Alternative{Type: "@std/Result[Int][String]", Tag: "ok", Fields: []rt.Value{int64(1024)}}
+	floatResult := rt.Alternative{Type: "@std/Result[Float][String]", Tag: "ok", Fields: []rt.Value{float64(1.25)}}
+	for _, c := range []struct {
+		name string
+		fn   rt.Function
+		args []rt.Value
+	}{
+		{"PayloadReturnInt", @@payload_return_integer@@.(rt.Function), []rt.Value{integerResult}},
+		{"PayloadReturnFloat", @@payload_return_float@@.(rt.Function), []rt.Value{floatResult}},
+		{"PayloadForwardInt", @@payload_forward_integer@@.(rt.Function), []rt.Value{integerResult, values}},
+		{"PayloadForwardFloat", @@payload_forward_float@@.(rt.Function), []rt.Value{floatResult, values}},
+	} {
+		b.Run(c.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				result = c.fn.Body(ctx, c.args)
+			}
+		})
+	}
 }
 func TestBenchmarkParity(t *testing.T) {
 	initialize()
 	ctx := rt.RootExecution()
 	defer rt.FinishExecution(ctx)
+	for _, c := range []struct {
+		fn    rt.Function
+		typ   string
+		value rt.Value
+	}{
+		{@@payload_return_integer@@.(rt.Function), "@std/Result[Int][String]", int64(1024)},
+		{@@payload_return_float@@.(rt.Function), "@std/Result[Float][String]", float64(1.25)},
+	} {
+		for _, tag := range []string{"ok", "error"} {
+			value := c.value
+			if tag == "error" {
+				value = "bad"
+			}
+			input := rt.Alternative{Type: c.typ, Tag: tag, Fields: []rt.Value{value}}
+			got := c.fn.Body(ctx, []rt.Value{input})
+			if rt.Tag(got) != tag || rt.Payload(got, 0) != value {
+				t.Fatalf("payload changed: %#v", got)
+			}
+		}
+	}
+	for _, c := range []struct {
+		fn    rt.Function
+		typ   string
+		value rt.Value
+	}{
+		{@@payload_forward_integer@@.(rt.Function), "@std/Result[Int][String]", int64(1024)},
+		{@@payload_forward_float@@.(rt.Function), "@std/Result[Float][String]", float64(1.25)},
+	} {
+		for _, tag := range []string{"ok", "error"} {
+			value, want := c.value, rt.Value(rt.Unit{})
+			if tag == "error" {
+				value, want = "bad", "bad"
+			}
+			input := rt.Alternative{Type: c.typ, Tag: tag, Fields: []rt.Value{value}}
+			values := &rt.List{Type: "@std/List[Int]", Items: []rt.Value{int64(1), int64(2)}}
+			got := c.fn.Body(ctx, []rt.Value{input, values})
+			if rt.Tag(got) != tag || rt.Payload(got, 0) != want {
+				t.Fatalf("forwarded payload changed: %#v", got)
+			}
+		}
+	}
 	if got := @@identity_integer@@.(rt.Function).Body(ctx, []rt.Value{int64(1024)}); got != int64(1024) {
 		t.Fatal(got)
 	}
