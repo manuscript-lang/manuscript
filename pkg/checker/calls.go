@@ -110,14 +110,18 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		i.Native = s.Native
 		signature = s.Type
 		if len(s.Variables) > 0 {
+			context := &callInferenceContext{result: signature.Result, expected: expected, pos: e.Pos}
 			if !explicit {
 				sub := map[string]*Type{}
-				c.inferArguments(functionArguments(e.Args, signature.Params), signature.Params, s.Variables, sub)
+				c.inferArguments(functionArguments(e.Args, signature.Params), signature.Params, s.Variables, sub, context)
 				for _, v := range s.Variables {
 					supplied = append(supplied, sub[v.ID])
 				}
 			}
 			signature = c.specialize(signature, s.Variables, supplied, e.Pos, calleeName(callee))
+			if context.conflict {
+				signature.Result = primitive("<invalid>")
+			}
 			i.TypeArgs = supplied
 		} else if explicit && len(supplied) > 0 {
 			c.error(e.Pos, "type", "nongeneric function cannot take type arguments; remove the [...] after "+s.Name)
@@ -133,7 +137,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 				}
 				return callable
 			}
-			c.specializeNativeCall(e, callable)
+			c.specializeNativeCall(e, callable, expected)
 		} else {
 			callable = c.expression(callee, nil)
 		}
@@ -299,7 +303,7 @@ func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, n
 	}
 	for _, v := range vars {
 		for _, bound := range v.Bounds {
-			if !c.satisfies(sub[v.ID], Sub(bound, sub)) {
+			if !invalidType(sub[v.ID]) && !c.satisfies(sub[v.ID], Sub(bound, sub)) {
 				c.error(pos, "type", fmt.Sprintf("%s does not satisfy %s; add 'impl %s for %s:' or pass a type that already implements it", sub[v.ID], Sub(bound, sub), Sub(bound, sub), sub[v.ID]))
 			}
 		}
@@ -328,7 +332,7 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 	for index, field := range fields {
 		inferredFields[index] = Param{field.Name, Sub(field.Type, sub)}
 	}
-	c.inferArguments(args, inferredFields, vars, sub)
+	c.inferArguments(args, inferredFields, vars, sub, nil)
 	actualArgs := []*Type{}
 	for _, v := range vars {
 		a := sub[v.ID]

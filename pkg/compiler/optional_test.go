@@ -32,7 +32,7 @@ func TestOptionalArgumentBoundaries(t *testing.T) {
 		{"invariant optionals", "fn f(value: Optional[Float]) -> Unit: return\nfn call(value: Optional[Int]) -> Unit: f(value)\n", "expected Optional[Float], found Optional[Int]"},
 		{"conflicting inference", "fn f[T](first: Optional[T], second: T) -> Unit: return\nfn call() -> Unit: f(first: 4, second: \"wrong\")\n", "conflicting generic inference"},
 		{"omission does not infer", "fn f[T](value: Optional[T] = none) -> Unit: return\nfn call() -> Unit: f()\n", "cannot infer type argument T"},
-		{"result context does not infer", "fn f[T](value: Optional[T]) -> T: return value.unwrap()\nfn call() -> Int: return f(none)\n", "cannot infer type argument T"},
+		{"missing result context", "fn f[T](value: Optional[T]) -> T: return value.unwrap()\nfn call() -> Unit: let value = f(none)\n", "cannot infer type argument T"},
 		{"collection elements stay exact", "fn f(values: List[Optional[Int]]) -> Unit: return\nfn call() -> Unit: f([4])\n", "expected Optional[Int], found Int"},
 		{"function identity stays exact", "fn f(value: Int) -> Int: return value\nfn call() -> Unit:\n    let callback: fn(value: Optional[Int]) -> Int = f\n", "expected fn(value: Optional[Int])"},
 		{"labels still required", "fn f(first: Optional[Int], second: Int = 0) -> Unit: return\nfn call() -> Unit: f(4)\n", "argument labels are required"},
