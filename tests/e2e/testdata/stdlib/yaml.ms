@@ -29,6 +29,233 @@ fn limits(
         )
     )
 
+type ScalarCase:
+    text: String
+    expected: String
+
+fn scalar(text: String, expected: String) -> Unit:
+    let root = entries(
+        value(parse(text: text))
+    )
+    if root.get("a").unwrap() != YamlValue.StringValue(expected): return panic(
+        "scalar folding: {text}"
+    )
+
+test "YAML issue 133 folded paragraph":
+    scalar(text: "a: >\n  x\n  y\n\n  z\n", expected: "x y\nz\n")
+
+test "YAML issue 133 folded multiple blank lines":
+    scalar(text: "a: >\n  x\n\n\n  z\n", expected: "x\n\nz\n")
+
+test "YAML issue 133 single quoted paragraph":
+    scalar(text: "a: 'x\n\n  y'", expected: "x\ny")
+
+test "YAML issue 133 double quoted paragraphs":
+    scalar(text: "a: \"x\n\n\n  y\"", expected: "x\n\ny")
+
+test "YAML issue 133 plain paragraph before sibling":
+    scalar(text: "a: x\n\n  y\nb: 1", expected: "x\ny")
+
+test "YAML quoted folding trims physical whitespace and preserves escapes":
+    let cases = [
+        ScalarCase(text: "a: 'x \t\n \t\n  y'", expected: "x\ny"),
+        ScalarCase(text: "a: \"x \t\n \t\n\n  y\"", expected: "x\n\ny"),
+        ScalarCase(text: "a: ' x  \n  y '", expected: " x y "),
+        ScalarCase(text: "a: \"x\\t\n  y\"", expected: "x\t y"),
+        ScalarCase(text: "a: \"x\\ \n  y\"", expected: "x  y"),
+        ScalarCase(text: "a: \"x \\\n  y\"", expected: "x y"),
+        ScalarCase(text: "a: \"x \\\n \t\n\n  y\"", expected: "x \n\ny"),
+        ScalarCase(
+            text: "a: 'x\n\n  # hash: text\n\n  it''s y' # outside",
+            expected: "x\n# hash: text\nit's y"
+        ),
+        ScalarCase(
+            text: "a: \"x\n\n  \\\"y\\\"\" # outside",
+            expected: "x\n\"y\""
+        )
+    ]
+
+    for example in cases:
+        for ending in ["\n", "\r\n", "\r"]:
+            scalar(
+                text: (
+                    example
+                    .text
+                    .replace(
+                        old: "\n",
+                        new: ending,
+                        max_replacements: (
+                            example
+                            .text
+                            .byte_length()
+                        )
+                    )
+                ),
+                expected: example.expected
+            )
+
+    if value(parse(text: "'x\n\n  y'")) != YamlValue.StringValue("x\ny"):
+        return panic("root quoted paragraph")
+
+    let flow = items(
+        value(parse(text: "['x\n\n  y', \"z\\\n\n  w\"]"))
+    )
+    if flow != [YamlValue.StringValue("x\ny"), YamlValue.StringValue("z\nw")]:
+        return panic("quoted folding inside flow collection")
+
+test "YAML folded and literal blocks respect paragraphs indentation and chomping":
+    let cases = [
+        ScalarCase(text: "a: >-\n  x\n \n  y\n\n", expected: "x\ny"),
+        ScalarCase(text: "a: >\n  x\n\n  y\n\n\n", expected: "x\ny\n"),
+        ScalarCase(text: "a: >+\n  x\n\n  y\n\n\n", expected: "x\ny\n\n\n"),
+        ScalarCase(text: "a: >2-\n  x\n\n\n  y\n", expected: "x\n\ny"),
+        ScalarCase(
+            text: "a: >\n  x\n\n    y\n\n  z\n",
+            expected: "x\n\n  y\n\nz\n"
+        ),
+        ScalarCase(text: "a: >2-\n  x\n   \n  y\n", expected: "x\n \ny"),
+        ScalarCase(
+            text: "a: >2-\n  x\n\n  \ty\n\n  z\n",
+            expected: "x\n\n\ty\n\nz"
+        ),
+        ScalarCase(text: "a: >-\n\n  x\n\n  y\n", expected: "\nx\ny"),
+        ScalarCase(text: "a: |\n  x\n\n  y\n", expected: "x\n\ny\n"),
+        ScalarCase(text: "a: |+\n  x\n\n", expected: "x\n\n"),
+        ScalarCase(text: "a: >\n  x", expected: "x"),
+        ScalarCase(text: "a: |\n  x", expected: "x"),
+        ScalarCase(text: "a: >+\n  x\n\n  y", expected: "x\ny"),
+        ScalarCase(text: "a: >\n\n", expected: ""),
+        ScalarCase(text: "a: >+\n\n", expected: "\n"),
+        ScalarCase(text: "a: |-\n\n", expected: ""),
+        ScalarCase(text: "a: >\n   \n", expected: ""),
+        ScalarCase(text: "a: >+\n   \n", expected: "\n"),
+        ScalarCase(text: "a: >2+\n   \n", expected: " \n"),
+        ScalarCase(text: "a: >\n \t\n", expected: "\t\n")
+    ]
+
+    for example in cases:
+        for ending in ["\n", "\r\n", "\r"]:
+            scalar(
+                text: (
+                    example
+                    .text
+                    .replace(
+                        old: "\n",
+                        new: ending,
+                        max_replacements: (
+                            example
+                            .text
+                            .byte_length()
+                        )
+                    )
+                ),
+                expected: example.expected
+            )
+
+test "YAML plain paragraphs retain boundaries and nested collections":
+    for ending in ["\n", "\r\n", "\r"]:
+        let text = "a: x  \n \t\n\n  y \t\n  z\n\nb: 1\n"
+        let root = entries(
+            value(
+                parse(
+                    text: text.replace(
+                        old: "\n",
+                        new: ending,
+                        max_replacements: text.byte_length()
+                    )
+                )
+            )
+        )
+        if root.get("a").unwrap() != YamlValue.StringValue("x\n\ny z"):
+            return panic("plain whitespace paragraphs")
+        if root.get("b").unwrap() != YamlValue.NumberValue("1"):
+            return panic("plain folding consumed sibling")
+
+    let root = entries(
+        value(parse(text: "a:\n  - x\n\n    y\n  - z\nb: 1\n"))
+    )
+    if (
+        items(root.get("a").unwrap()) != [
+            YamlValue.StringValue("x\ny"),
+            YamlValue.StringValue("z")
+        ]
+    ):
+        return panic("sequence plain paragraph")
+
+    scalar(text: "a: x\n\n# comment\nb: 1\n", expected: "x")
+    scalar(text: "a: x\n\n", expected: "x")
+
+test "YAML blank line folding retains byte node and malformed input contracts":
+    let text = "a: \"é\r\n\r\n  y\"\r\n"
+    let expected = value(parse(text: text))
+    if (
+        value(
+            parse(
+                text: text,
+                limits: limits(
+                    bytes: text.byte_length(),
+                    depth: 2,
+                    values: 2
+                )
+            )
+        ) != expected
+    ):
+        return panic("exact original byte and node budgets")
+
+    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
+    if (
+        parse(
+            text: text,
+            limits: limits(
+                bytes: text.byte_length() - 1,
+                depth: none,
+                values: none
+            )
+        ) != limited
+    ):
+        return panic("byte budget precedes line ending normalization")
+    if (
+        parse(
+            text: text,
+            limits: limits(bytes: none, depth: none, values: 1)
+        ) != limited
+    ):
+        return panic("folding does not alter value counting")
+
+    for text in [
+        "a: 'x\n\n  y",
+        "a: \"x\n\n  y",
+        "a: \"x\\\n\n  y\\q\"",
+        "a: x\n\n  b: y",
+        "a: x\n\n  - y",
+        "a: x\n\n \ty",
+        "a: x\n # comment\n  y",
+        "a: >--\n\n  x",
+        "a: >\n  x\n \t\n  y",
+        "a: >2\n  x\n y"
+    ]:
+        match parse(text: text):
+            ok(_): return panic("malformed multiline scalar accepted: {text}")
+            error(cause):
+                match cause:
+                    InvalidData(line, column, reason):
+                        if (
+                            line < 1
+                            or column < 1
+                            or reason == ""
+                        ): return panic("multiline diagnostic")
+                    _: return panic("wrong multiline error")
+
+    match parse(text: "a: x\n\n  b: y"):
+        error(cause):
+            match cause:
+                InvalidData(line, column, _):
+                    if line != 3 or column != 1: return panic(
+                        "continuation error position"
+                    )
+                _: return panic("wrong continuation error")
+        ok(_): return panic("indented mapping accepted as plain continuation")
+
 test "YAML block mappings sequences exact scalars and core schema":
     let text = "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
     let root = entries(

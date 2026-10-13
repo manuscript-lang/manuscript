@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/tasks.ms"`.
 
 ## ExecutionError {data-api-kind="Alternative"}
 
+Why a task or task group did not complete successfully.
+
 ```manuscript
 type ExecutionError:
     case TimedOut
@@ -22,11 +24,15 @@ impl Error for ExecutionError:
 
 ## OperationId {data-api-kind="Native type"}
 
+Opaque identifier used to inspect, cancel, or restart scheduled work.
+
 ```manuscript
 type OperationId:
 ```
 
 ## Scheduler {data-api-kind="Native type"}
+
+Runs immediate, delayed, and repeating operations with explicit cancellation.
 
 ```manuscript
 type Scheduler:
@@ -45,6 +51,8 @@ type Scheduler:
 
 ## SchedulerFailure {data-api-kind="Alternative"}
 
+A scheduled operation that returned an error or raised a fault.
+
 ```manuscript
 type SchedulerFailure:
     case Failed(operation: OperationId, cause: String)
@@ -52,6 +60,8 @@ type SchedulerFailure:
 ```
 
 ## StartError {data-api-kind="Alternative"}
+
+Why a scheduler could not start an operation.
 
 ```manuscript
 type StartError:
@@ -67,12 +77,16 @@ impl Error for StartError:
 
 ## Task {data-api-kind="Native type"}
 
+A handle to a child task. Join it to collect its result and observe failures.
+
 ```manuscript
 type Task[T]:
     fn join() -> Result[T, ExecutionError]:
 ```
 
 ## TaskGroup {data-api-kind="Native type"}
+
+Starts child tasks and joins them together with an optional group timeout.
 
 ```manuscript
 type TaskGroup:
@@ -83,6 +97,8 @@ type TaskGroup:
 ```
 
 ## WorkStatus {data-api-kind="Alternative"}
+
+Current or final state of a scheduled operation.
 
 ```manuscript
 type WorkStatus:
@@ -96,11 +112,15 @@ type WorkStatus:
 
 ## check_cancelled {data-api-kind="Function"}
 
+Raises the cancellation fault when the current task has been cancelled.
+
 ```manuscript
 fn check_cancelled() -> Unit:
 ```
 
 ## yield_now {data-api-kind="Function"}
+
+Suspends the current task briefly so other ready work can run.
 
 ```manuscript
 fn yield_now() -> Unit:

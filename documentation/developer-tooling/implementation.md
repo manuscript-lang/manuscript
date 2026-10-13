@@ -58,7 +58,7 @@ ms stdlib exported-standard-sources
 
 These commands use source checking and embedded declarations without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
 
-`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. Project docs include reachable local modules. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. JSON uses schema version 1. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
+`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. The contiguous `#` comment block directly above an exported declaration (no blank line between) is its description: Markdown prints it above the signature and JSON carries it as a `doc` string with the `#` markers removed. Comments above fields, cases, and operations are not captured yet. Project docs include reachable local modules. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. JSON uses schema version 1. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
 
 `ms stdlib <directory>` writes source declarations and bindings for tooling;
 `ms doc --stdlib` renders API documentation. These outputs serve different tasks.
