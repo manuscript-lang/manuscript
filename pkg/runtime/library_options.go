@@ -57,6 +57,21 @@ func nativeDefault(name, typ, operation string) Value {
 	return nil
 }
 
+// Classify declarations once, rather than inspecting generic payload values on
+// every call. Keep this in step with the adapters in nativeOptions.
+func nativeParamsNeedOptions(params []LibraryParam) bool {
+	for _, p := range params {
+		switch p.Type {
+		case "Optional[Int]", "Optional[Duration]", "Optional[JsonLimits]", "Optional[ArchiveLimits]", "Optional[HtmlLimits]":
+			return true
+		}
+		if nativeOptionRecords[libraryRuntimeType(p.Type)] != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func nativeOptions(operation string, params []LibraryParam, args []Value) ([]Value, bool) {
 	out := append([]Value{}, args...)
 	for len(out) < len(params) {

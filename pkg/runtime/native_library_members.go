@@ -1,6 +1,10 @@
 package msruntime
 
-import "github.com/manuscript-lang/manuscript/internal/nativeabi"
+import (
+	"strings"
+
+	"github.com/manuscript-lang/manuscript/internal/nativeabi"
+)
 
 // NativeLibraryBindings maps receiver declarations directly to native implementations.
 // The first native parameter is bound to the receiver; remaining labels are unchanged.
@@ -17,7 +21,7 @@ func NativeLibrarySpec(receiver, name string) (LibrarySpec, bool) {
 
 func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	var kind string
-	var args []string
+	var receiverType string
 	switch v := receiver.(type) {
 	case Record:
 		if v.Type != "@std/HttpRequest" {
@@ -27,7 +31,7 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	case *TaskGroup:
 		kind = "TaskGroup"
 	case *Task:
-		kind, args = "Task", typeArguments(v.typ)
+		kind, receiverType = "Task", v.typ
 	case Duration:
 		kind = "Duration"
 	case Instant:
@@ -35,20 +39,20 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	case libraryTimestamp:
 		kind = "Timestamp"
 	case Alternative:
-		native, types := splitType(v.Type)
+		native, _, _ := strings.Cut(v.Type, "[")
 		if native != "@std/Optional" {
 			return nil, false
 		}
-		kind, args = "Optional", types
+		kind, receiverType = "Optional", v.Type
 	case *List:
 		kind = "List"
-		args = typeArguments(v.Type)
+		receiverType = v.Type
 	case *Map:
 		kind = "Map"
-		args = typeArguments(v.Type)
+		receiverType = v.Type
 	case *Set:
 		kind = "Set"
-		args = typeArguments(v.Type)
+		receiverType = v.Type
 	case libraryBigInt:
 		kind = "BigInt"
 	case libraryRegex:
@@ -71,7 +75,7 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	if result == "" {
 		// Bind receiver variables for runtime callers of nongeneric operations.
 		variables := map[string]string{}
-		for i, arg := range args {
+		for i, arg := range typeArguments(receiverType) {
 			if i < len(spec.Variables) {
 				variables["@std/"+spec.Variables[i].Name] = arg
 			}
@@ -83,6 +87,9 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 		labels[i] = p.Name
 	}
 	return NewFunction(labels, result, func(ctx *Execution, a []Value) Value {
-		return invokeLibrary(spec, ctx, result, append([]Value{receiver}, a...))
+		args := make([]Value, len(a)+1)
+		args[0] = receiver
+		copy(args[1:], a)
+		return invokeLibrary(spec, ctx, result, args)
 	}), true
 }
