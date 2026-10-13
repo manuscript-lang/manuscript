@@ -1043,6 +1043,9 @@
             "query: String",
             "headers: Map[String, Bytes]",
             "body: Bytes"
+          ],
+          "operations": [
+            "header: fn(name: String)-\u003eOptional[Bytes]"
           ]
         },
         {

@@ -139,7 +139,7 @@ func (c *checker) effectSummaries() {
 						}
 					case "@std/List", "@std/Map", "@std/Set":
 						add(n, "read")
-						if collectionMutation(receiver, name) {
+						if CollectionMutation(receiver, name) {
 							add(n, "write")
 						}
 						for _, param := range method.Type.Params {

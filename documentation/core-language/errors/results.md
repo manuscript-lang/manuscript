@@ -43,6 +43,24 @@ fn discount_message(price: Decimal, percent: Decimal) -> String:
 
 This caller chooses a response for either outcome. Another caller could inspect `cause` with a further match or [propagate it with try](propagation.md).
 
+## Discarding a result
+
+A standalone call such as `discount(price: 20d, percent: 10d)` evaluates the
+operation but discards both success and failure. `ms lint` reports advisory
+`MSL104` for a discarded `Result`, including `Result[Unit, E]`. Checking still
+accepts the statement. Handle the result with `match`, propagate it with `try`,
+or return it to the caller.
+
+When ignoring both outcomes is deliberate, use a named binding beginning with
+`_`, such as this fragment using `discount` above:
+
+```manuscript
+let _ignored = discount(price: 20d, percent: 10d)
+```
+
+The initializer still runs, and the `_ignored` name suppresses the unread-local
+advisory. This does not handle an error or stop a programming fault.
+
 ## A common error boundary
 
 For most functions, keep the concrete domain error type. Its typed fields are available directly to callers; see [error details](../../standard-library/contracts.md#error-details).

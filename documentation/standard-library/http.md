@@ -43,6 +43,18 @@ Client disconnection cancels the request and nested task-group work. Started wor
 
 Schedulers used by handlers retain their construction lifetime. Accepted work uses that scheduler's context rather than the submitting request's deadline or disconnect signal. Construct shared schedulers outside request scopes, keep their dependencies open, and acquire operation resources inside each callback. Close them before releasing application resources.
 
+## Header lookup and repeated values
+
+HTTP header names are case-insensitive. Received maps retain canonical spelling such as `Content-Type`; ordinary `Map.get` uses exact, case-sensitive keys. For a buffered request, use `request.header("content-type")` (or `request.header(name: "CONTENT-TYPE")`) to obtain `Optional[Bytes]` without changing the map. A present empty value returns `some` empty bytes; a missing name returns `none`. The helper compares ASCII letters without regard to case. In a manually constructed map containing several equivalent names, the first entry wins.
+
+| API | Header representation | Repeated values |
+| --- | --- | --- |
+| `HttpRequest.headers` | `Map[String, Bytes]` | Received values are joined with newline bytes. `header` returns those same bytes. |
+| `HttpResponse.headers` and outbound client request headers | `Map[String, String]` | One value per name; no supported repeated-field representation. |
+| `ClientResponse.headers`, `ResponseBody.headers()`, `HttpExchange.headers()` and `HttpExchange.send_headers` | `Map[String, List[String]]` | Separate values retain their order within each name. |
+
+Buffered responses cannot emit several `Set-Cookie` fields reliably. Use `Network.serve_stream` and `HttpExchange.send_headers` with a list of cookie strings when repeated response fields are required. Do not comma-join `Set-Cookie` values or create differently cased map keys as a substitute. Use `HttpExchange.headers()` when incoming values must remain separate; the buffered helper does not split or reinterpret their joined bytes. List-valued maps still use exact Map keys for lookup.
+
 ## Streaming request servers
 
 Network.serve_stream accepts an ordinary handler and may be stored as a bound method. The handler signature is `fn(exchange: HttpExchange) -> Result[Unit, HttpError]`. The server establishes a fixed request execution context, optional admission and body/output/header budgets, disconnect cancellation, and an optional timeout. The handler may read incrementally, emit headers once and write/flush bounded output, or upgrade to a WebSocket session. Source routes by ordinary method/path branching.

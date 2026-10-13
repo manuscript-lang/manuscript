@@ -432,7 +432,7 @@ func nativeMethod(t *Type, name string) *Method {
 	if intrinsic := intrinsicOperations[t.ID]; intrinsic != nil {
 		receiver = intrinsic
 	}
-	if receiver.Kind == syntax.KindNative || receiver != t || receiver.Kind == "alternative" && receiver.Def.Symbol.Native != "" {
+	if receiver.Kind == syntax.KindNative || receiver != t || standardReceiverBindings[receiver.ID+"/"+name] != "" || receiver.Kind == "alternative" && receiver.Def.Symbol.Native != "" {
 		for _, operation := range receiver.Def.Operations {
 			if operation.Name == name {
 				native := name

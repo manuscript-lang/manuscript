@@ -212,6 +212,7 @@
     }
   },
   "receivers": {
+    "@std/http.ms/HttpRequest/header": "http/request_header",
     "@std/bigint.ms/BigInt/add": "bigint/add",
     "@std/bigint.ms/BigInt/bit_and": "bigint/bit_and",
     "@std/bigint.ms/BigInt/bit_or": "bigint/bit_or",
