@@ -15,12 +15,12 @@ func LintProgram(program *checker.Program) []LintFinding {
 		return findings
 	}
 	reads := map[*checker.Binding]int{}
-	for _, info := range program.Expressions {
+	for _, info := range program.Expressions() {
 		if info != nil && info.Binding != nil {
 			reads[info.Binding]++
 		}
 	}
-	for pattern, binding := range program.Bindings {
+	for pattern, binding := range program.PatternBindings() {
 		if binding != nil && reads[binding] == 0 && !strings.HasPrefix(binding.Name, "_") {
 			findings = append(findings, LintFinding{"MSL101", "Local binding " + binding.Name + " is never read", pattern.Pos})
 		}
@@ -36,26 +36,26 @@ func LintProgram(program *checker.Program) []LintFinding {
 		}
 		uses[file][symbol] = true
 	}
-	for expression, info := range program.Expressions {
+	for expression, info := range program.Expressions() {
 		if info != nil {
 			mark(expression.Pos.File, info.Symbol)
 		}
 		// Collection literals require canonical imports even without written types.
 		if expression.Kind == syntax.KindList {
-			mark(expression.Pos.File, program.Symbols[expression.Pos.File]["List"])
+			mark(expression.Pos.File, program.Symbol(expression.Pos.File, "List"))
 		}
 		if expression.Kind == syntax.KindMap {
-			mark(expression.Pos.File, program.Symbols[expression.Pos.File]["Map"])
+			mark(expression.Pos.File, program.Symbol(expression.Pos.File, "Map"))
 		}
 	}
-	for ref, typ := range program.TypeReferences {
+	for ref, typ := range program.TypeReferences() {
 		if typ != nil && typ.Def != nil {
 			mark(ref.Pos.File, typ.Def.Symbol)
 		}
 	}
 	for _, module := range program.Modules {
 		for _, imp := range module.Imports {
-			if !uses[module.File][program.Symbols[module.File][imp.Name]] {
+			if !uses[module.File][program.Symbol(module.File, imp.Name)] {
 				findings = append(findings, LintFinding{"MSL102", "Import " + imp.Name + " is never used", imp.NamePos})
 			}
 		}
@@ -65,7 +65,7 @@ func LintProgram(program *checker.Program) []LintFinding {
 				if !reachable {
 					findings = append(findings, LintFinding{"MSL103", "Statement is unreachable", s.Pos})
 				}
-				if flow, ok := program.Flow[s]; ok && !flow.FallsThrough {
+				if flow, ok := program.FlowOf(s); ok && !flow.FallsThrough {
 					reachable = false
 				}
 			}

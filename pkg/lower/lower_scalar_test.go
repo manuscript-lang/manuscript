@@ -38,7 +38,7 @@ func TestPrimitiveEqualityEligibility(t *testing.T) {
 			if got := strings.Contains(r.Source, "rt.Equality("); got == tc.direct {
 				t.Fatalf("selected equality fallback = %v, direct = %v\n%s", got, tc.direct, r.Source)
 			}
-			if tc.direct && (!strings.Contains(r.Source, ".("+primitiveEqualityType(r.Program.Parameters[r.Program.Symbols["scalar.ms"]["equal"].Decl][0].Type)+")") || !strings.Contains(r.Source, " != ")) {
+			if tc.direct && (!strings.Contains(r.Source, ".("+primitiveEqualityType(r.Program.ParameterBindings(r.Program.Symbol("scalar.ms", "equal").Decl)[0].Type)+")") || !strings.Contains(r.Source, " != ")) {
 				t.Fatal("missing typed direct equality", r.Source)
 			}
 		})

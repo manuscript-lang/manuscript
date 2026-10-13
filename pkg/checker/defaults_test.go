@@ -57,7 +57,7 @@ func TestDefaultsDoNotMutateSourceAST(t *testing.T) {
 		if len(p.Diagnostics) != 0 {
 			t.Fatal(p.Diagnostics)
 		}
-		if len(call.Args) != 0 || len(p.Expressions[call].Arguments) != 0 || m.Declarations[0].Params[0].Default != original {
+		if len(call.Args) != 0 || len(p.Info(call).Arguments) != 0 || m.Declarations[0].Params[0].Default != original {
 			t.Fatal("checking rewrote a default or inserted source arguments")
 		}
 	}

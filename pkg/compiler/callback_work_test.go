@@ -102,7 +102,7 @@ fn first() -> Unit:
 		t.Fatal(result.Diagnostics)
 	}
 	lambdas, optional, outerCaptures := 0, 0, 0
-	for expression, info := range result.Program.Expressions {
+	for expression, info := range result.Program.Expressions() {
 		if expression.Kind != syntax.KindLambda || expression.Pos.File != "callback-metadata.ms" {
 			continue
 		}
@@ -116,7 +116,7 @@ fn first() -> Unit:
 			}
 			outerCaptures++
 			found := false
-			for _, params := range result.Program.LambdaParameters {
+			for _, params := range result.Program.LambdaParameters() {
 				for _, binding := range params {
 					if binding == capture {
 						found = true

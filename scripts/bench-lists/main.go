@@ -45,7 +45,7 @@ func run() error {
 	}
 	var replacements []string
 	for _, name := range []string{"build", "index", "iterate", "callbacks", "sorted", "compare", "callback_write"} {
-		symbol := result.Program.Symbols["list-benchmark.ms"][name]
+		symbol := result.Program.Symbol("list-benchmark.ms", name)
 		replacements = append(replacements, "@@"+name+"@@", symbol.ID)
 	}
 	directory, err := filepath.Abs(*output)

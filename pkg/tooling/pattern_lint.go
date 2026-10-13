@@ -10,13 +10,13 @@ import (
 
 func lintPatternBindings(program *checker.Program) []LintFinding {
 	var findings []LintFinding
-	for arm, conflicts := range program.ArmNameConflicts {
+	for arm, conflicts := range program.ArmNameConflicts() {
 		for index, conflict := range conflicts {
 			name := arm.Names[index]
 			if conflict == nil || name == "" || name[0] < 'A' || name[0] > 'Z' {
 				continue
 			}
-			binding := program.ArmBindings[arm][index]
+			binding := program.ArmBindingsFor(arm)[index]
 			if binding == nil {
 				continue
 			}
@@ -36,7 +36,7 @@ func lintPatternBindings(program *checker.Program) []LintFinding {
 				}
 				names[index] = payload
 				path := arm.Path.Text
-				if target := program.ContractPatterns[arm]; target != nil {
+				if target := program.ContractPattern(arm); target != nil {
 					path = target.String()
 				}
 				nested := name
