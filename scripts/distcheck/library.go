@@ -10,9 +10,20 @@ import (
 func libraryFixture(directory string) (string, error) {
 	root := filepath.Join(directory, "library")
 	for name, text := range map[string]string{
-		"ms.toml":             "# library\n[project]\nname = \"library\"\nsource = \"src\"\n",
-		"src/value.ms":        "export fn value() -> Int: return 3\n",
-		"src/unimported.ms":   "import panic from \"@std/faults.ms\"\nexport fn other() -> Int: return 4\ntest \"source\":\n    if other() != 4: return panic(\"bad other\")\n",
+		"ms.toml":      "# library\n[project]\nname = \"library\"\nsource = \"src\"\n",
+		"src/value.ms": "export fn value() -> Int: return 3\n",
+		"src/unimported.ms": `import panic from "@std/faults.ms"
+import filesystem from "@std/fs.ms"
+export fn other() -> Int: return 4
+test "source":
+    if other() != 4: return panic("bad other")
+    match filesystem().read_file(path: "fixture.txt", max_bytes: 1024):
+        ok(data):
+            if data.length() != 7: return panic("wrong fixture size")
+        error(_):
+            return panic("library fixture cwd changed")
+`,
+		"fixture.txt":         "fixture",
 		"tests/value_test.ms": "import value from \"../src/value.ms\"\nimport panic from \"@std/faults.ms\"\ntest \"separate\":\n    if value() != 3: return panic(\"bad value\")\n",
 	} {
 		path := filepath.Join(root, name)
