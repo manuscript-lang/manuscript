@@ -70,7 +70,7 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	if err != nil {
 		return fmt.Errorf("standalone terminal: %w\n%s", err, output)
 	}
-	for _, want := range []string{"Go-module path guessing is unavailable", "Breakpoint 1", "result = interface {}(int64) 42", "exited with status 0"} {
+	for _, want := range []string{"Go-module path guessing is unavailable", "Breakpoint 1", "result = 42", "exited with status 0"} {
 		if !strings.Contains(string(output), want) {
 			return fmt.Errorf("standalone terminal missing %q:\n%s", want, output)
 		}

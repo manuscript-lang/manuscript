@@ -18,8 +18,43 @@ func (g *generator) numericBinary(e *syntax.Expression) ast.Expr {
 		return nil
 	}
 	goType := primitiveEqualityType(left)
+	if g.orderedFirst(e) {
+		return g.orderedNumeric(e, goType)
+	}
 	a := paren(g.numericOperand(e.Left, goType))
 	b := paren(g.numericOperand(e.Right, goType))
+	return g.numericOperation(e, a, b)
+}
+
+// orderedFirst reports whether the right operand holds a match whose arms can
+// assign a local the left operand reads. Go does not order a variable read
+// before a later operand's evaluation, so the left value is captured first.
+func (g *generator) orderedFirst(e *syntax.Expression) bool {
+	if g.constant(e.Left) {
+		return false
+	}
+	found := false
+	syntax.Visitor{Expression: func(x *syntax.Expression) {
+		if x.Kind == syntax.KindMatch {
+			found = true
+		}
+	}}.Callable(nil, []*syntax.Statement{{Kind: syntax.KindCall, Value: e.Right}})
+	return found
+}
+
+// orderedNumeric evaluates the left operand into a temporary before the right.
+func (g *generator) orderedNumeric(e *syntax.Expression, goType string) ast.Expr {
+	a, b := g.temp(), g.temp()
+	result := g.numericResult(e)
+	return call(closure(nil, ident(result),
+		define(a, g.numericOperand(e.Left, goType)),
+		define(b, g.numericOperand(e.Right, goType)),
+		returned(g.numericOperation(e, ident(a), ident(b))),
+	))
+}
+
+func (g *generator) numericOperation(e *syntax.Expression, a, b ast.Expr) ast.Expr {
+	left := g.program.Expressions[e.Left].Type
 	switch e.Text {
 	case "<", "<=", ">", ">=":
 		op := map[string]token.Token{"<": token.LSS, "<=": token.LEQ, ">": token.GTR, ">=": token.GEQ}[e.Text]
