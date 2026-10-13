@@ -176,13 +176,13 @@ func TestLibraryHTTPClient(t *testing.T) {
 		return n.Operation("request").Body(ctx, []Value{libraryHTTPMethod("GET"), server.URL + path, headers, Bytes{}, max, Duration(time.Second)})
 	}
 	response := librarySuccess(t, call("/body", 4)).(Record)
-	if response.Fields["status"] != int64(404) || string(response.Fields["body"].(Bytes).Items) != "body" {
+	if response.Fields["head"].(Record).Fields["status"] != int64(404) || string(response.Fields["body"].(Bytes).Items) != "body" {
 		t.Fatal(response)
 	}
 	libraryFailure(t, call("/body", 3), "LimitExceeded")
 	libraryFailure(t, n.Operation("request").Body(ctx, []Value{libraryHTTPMethod("GET"), "http://127.0.0.1:99999/", headers, Bytes{}, int64(10), Duration(time.Second)}), "InvalidInput")
 	redirect := librarySuccess(t, call("/redirect", 1000)).(Record)
-	if redirect.Fields["status"] != int64(302) {
+	if redirect.Fields["head"].(Record).Fields["status"] != int64(302) {
 		t.Fatal("followed redirect")
 	}
 	n.Operation("close").Body(ctx, nil)

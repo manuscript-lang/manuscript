@@ -186,7 +186,7 @@ func TestHTTPOmittedBudgets(t *testing.T) {
 	defer Invoke(ctx, Bind(server, "", "close"), nil)
 	address := Invoke(ctx, Bind(server, "", "address"), nil).(string)
 	response := librarySuccess(t, Invoke(ctx, n.Operation("request"), []Argument{{"method", libraryHTTPMethod("GET")}, {"url", "http://" + address}, {"headers", httpTestHeaders(&Map{Type: "@std/Map[String][String]"})}, {"body", Bytes{}}})).(Record)
-	if response.Fields["status"] != int64(200) || string(response.Fields["body"].(Bytes).Items) != "ok" {
+	if response.Fields["head"].(Record).Fields["status"] != int64(200) || string(response.Fields["body"].(Bytes).Items) != "ok" {
 		t.Fatal(response)
 	}
 }

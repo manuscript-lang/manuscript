@@ -3,6 +3,7 @@
 package msruntime
 
 import (
+	"bytes"
 	"net/http"
 	"net/url"
 	"strings"
@@ -41,7 +42,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		return libraryError(r, "Closed", "")
 	}
 	defer finish()
-	req, err := http.NewRequestWithContext(call, method, address, strings.NewReader(string(a[3].(Bytes).Items)))
+	req, err := http.NewRequestWithContext(call, method, address, bytes.NewReader(a[3].(Bytes).Items))
 	if err != nil {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -82,7 +83,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		return libraryError(r, "InvalidData", "")
 	}
 	headers := libraryHTTPHeaders(response.Header)
-	return libraryOK(r, Record{"@std/ClientResponse", map[string]Value{"status": int64(response.StatusCode), "headers": headers, "body": Bytes{data}}})
+	return libraryOK(r, Record{"@std/ClientResponse", map[string]Value{"head": Record{"@std/HttpResponseMetadata", map[string]Value{"status": int64(response.StatusCode), "headers": headers}}, "body": Bytes{data}}})
 }
 
 func libraryHeaderName(s string) bool { return validHeaderName(s) }

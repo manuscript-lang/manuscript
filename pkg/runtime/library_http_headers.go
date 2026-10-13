@@ -89,18 +89,12 @@ func init() {
 		}
 		return true
 	})
-	for _, kind := range []string{"ClientResponse", "HttpResponse"} {
-		operation := "response_metadata"
-		if kind == "ClientResponse" {
-			operation = "client_response_metadata"
-		}
-		libraryAdd("http", operation, "HttpResponseMetadata", []LibraryParam{{"response", kind}}, func(_ *Execution, _ string, args []Value) Value { return libraryResponseMetadata(args[0].(Record)) })
-	}
+	libraryAdd("http", "client_response_metadata", "HttpResponseMetadata", []LibraryParam{{"response", "ClientResponse"}}, func(_ *Execution, _ string, args []Value) Value { return libraryResponseMetadata(args[0].(Record)) })
 	libraryAdd("http", "method_text", "String", []LibraryParam{{"method", "HttpMethod"}}, func(_ *Execution, _ string, args []Value) Value { return libraryHTTPMethodText(args[0]) })
 }
 
-func libraryResponseMetadata(response Record) Record {
-	return Record{"@std/HttpResponseMetadata", map[string]Value{"status": readField(response.Fields, "status"), "headers": readField(response.Fields, "headers")}}
+func libraryResponseMetadata(response Record) Value {
+	return readField(response.Fields, "head")
 }
 
 var httpMethodNames = map[string]string{"Get": "GET", "Head": "HEAD", "Post": "POST", "Put": "PUT", "Patch": "PATCH", "Delete": "DELETE", "Connect": "CONNECT", "Options": "OPTIONS", "Trace": "TRACE"}

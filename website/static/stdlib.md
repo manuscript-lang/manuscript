@@ -2550,15 +2550,30 @@ Buffered response body with explicit common metadata access.
 
 ```manuscript
 type ClientResponse:
-    status: Int
-    headers: HttpHeaders
+    head: HttpResponseMetadata
     body: Bytes
     fn metadata() -> HttpResponseMetadata:
 ```
 
+### ClientResponse.body
+
+The complete response payload within the supplied byte bound.
+
+```manuscript
+body: Bytes
+```
+
+### ClientResponse.head
+
+Mutable metadata returned by every metadata() read.
+
+```manuscript
+head: HttpResponseMetadata
+```
+
 ### ClientResponse.metadata
 
-Returns current status and the same mutable header object.
+Returns the same mutable metadata record, without copying header membership.
 
 ```manuscript
 fn metadata() -> HttpResponseMetadata:
@@ -2576,6 +2591,22 @@ interface HttpClient:
     fn close() -> Unit
     fn request(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
     fn request_stream(method: HttpMethod, url: String, headers: HttpHeaders, body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+```
+
+### HttpClient.request
+
+Sends immutable Bytes and returns a scoped streaming response body.
+
+```manuscript
+fn request(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+```
+
+### HttpClient.request_stream
+
+Borrows ReadStream upload data through the scoped response lifetime.
+
+```manuscript
+fn request_stream(method: HttpMethod, url: String, headers: HttpHeaders, body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
 ```
 
 ## HttpClientOptions
@@ -2839,15 +2870,6 @@ type HttpResponse:
     status: Int
     headers: HttpHeaders
     body: Bytes
-    fn metadata() -> HttpResponseMetadata:
-```
-
-### HttpResponse.metadata
-
-Returns current status and the same mutable header object.
-
-```manuscript
-fn metadata() -> HttpResponseMetadata:
 ```
 
 ## HttpResponseMetadata
@@ -2860,6 +2882,22 @@ Response status and headers shared by buffered and streaming response access.
 type HttpResponseMetadata:
     status: Int
     headers: HttpHeaders
+```
+
+### HttpResponseMetadata.headers
+
+The shared mutable fields, with every repeated value retained.
+
+```manuscript
+headers: HttpHeaders
+```
+
+### HttpResponseMetadata.status
+
+The received status; editing metadata leaves wire/body behavior unchanged.
+
+```manuscript
+status: Int
 ```
 
 ## HttpServer

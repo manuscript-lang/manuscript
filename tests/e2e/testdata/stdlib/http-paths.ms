@@ -56,7 +56,7 @@ fn check_route(url: String, expected: String) -> Unit:
             timeout: 2.seconds
         )
     )
-    if response.status != 200 or response.body != expected.to_bytes(): return panic(
+    if response.metadata().status != 200 or response.body != expected.to_bytes(): return panic(
         "path or raw query changed"
     )
     if (
@@ -75,7 +75,9 @@ fn check_rejected(url: String) -> Unit:
             timeout: 2.seconds
         )
     )
-    if response.status != 400: return panic("unsafe or invalid path was dispatched")
+    if response.metadata().status != 400: return panic(
+        "unsafe or invalid path was dispatched"
+    )
 
 fn check_paths(base: String) -> Unit:
     check_route(url: "{base}/a%20b", expected: "/a b|")

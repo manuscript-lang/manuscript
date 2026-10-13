@@ -421,7 +421,6 @@
     "@std/http.ms/HttpHeaders/names": "http/headers_names",
     "@std/http.ms/HttpHeaders/clone": "http/headers_clone",
     "@std/http.ms/ClientResponse/metadata": "http/client_response_metadata",
-    "@std/http.ms/HttpResponse/metadata": "http/response_metadata",
     "@std/http.ms/HttpMethod/text": "http/method_text",
     "@std/http.ms/HttpHeaders/remove": "http/headers_remove",
     "@std/net.ms/IpAddress/text": "net/ip_text",

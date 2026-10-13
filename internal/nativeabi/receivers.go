@@ -12,7 +12,6 @@ var ReceiverBindings = map[string]map[string]string{
 	"Decimal":           {"round": "decimal/round", "to_fixed": "decimal/to_fixed"},
 	"HttpHeaders":       {"append": "http/headers_append", "values": "http/headers_values", "text": "http/headers_text", "names": "http/headers_names", "clone": "http/headers_clone", "remove": "http/headers_remove"},
 	"ClientResponse":    {"metadata": "http/client_response_metadata"},
-	"HttpResponse":      {"metadata": "http/response_metadata"},
 	"HttpMethod":        {"text": "http/method_text"},
 	"TaskGroup": {
 		"start": "tasks/task_group_start",

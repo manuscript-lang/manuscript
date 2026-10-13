@@ -48,15 +48,18 @@ export fn headers() -> HttpHeaders:
 
 # Response status and headers shared by buffered and streaming response access.
 export type HttpResponseMetadata:
+    # The received status; editing metadata leaves wire/body behavior unchanged.
     status: Int
+    # The shared mutable fields, with every repeated value retained.
     headers: HttpHeaders
 
 # Buffered response body with explicit common metadata access.
 export type ClientResponse:
-    status: Int
-    headers: HttpHeaders
+    # Mutable metadata returned by every metadata() read.
+    head: HttpResponseMetadata
+    # The complete response payload within the supplied byte bound.
     body: Bytes
-    # Returns current status and the same mutable header object.
+    # Returns the same mutable metadata record, without copying header membership.
     fn metadata() -> HttpResponseMetadata:
 
 # Known HTTP methods, plus extension tokens validated by outgoing operations.
@@ -88,6 +91,7 @@ export type HttpMethod:
 # Outbound headers retain separate values in their stored order.
 export interface HttpClient:
     fn close() -> Unit
+    # Sends immutable Bytes and returns a scoped streaming response body.
     fn request(
         method: HttpMethod,
         url: String,
@@ -96,6 +100,7 @@ export interface HttpClient:
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[ResponseBody, HttpError]
+    # Borrows ReadStream upload data through the scoped response lifetime.
     fn request_stream(
         method: HttpMethod,
         url: String,
@@ -148,8 +153,6 @@ export type HttpResponse:
     status: Int
     headers: HttpHeaders
     body: Bytes
-    # Returns current status and the same mutable header object.
-    fn metadata() -> HttpResponseMetadata:
 
 # A running HTTP server. Close it to stop accepting new requests.
 export interface HttpServer:

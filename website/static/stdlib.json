@@ -3447,8 +3447,7 @@
           "kind": "record",
           "type": "ClientResponse",
           "fields": [
-            "status: Int",
-            "headers: HttpHeaders",
+            "head: HttpResponseMetadata",
             "body: Bytes"
           ],
           "operations": [
@@ -3459,25 +3458,19 @@
               "name": "body",
               "kind": "field",
               "signature": "body: Bytes",
-              "doc": ""
+              "doc": "The complete response payload within the supplied byte bound."
             },
             {
-              "name": "headers",
+              "name": "head",
               "kind": "field",
-              "signature": "headers: HttpHeaders",
-              "doc": ""
-            },
-            {
-              "name": "status",
-              "kind": "field",
-              "signature": "status: Int",
-              "doc": ""
+              "signature": "head: HttpResponseMetadata",
+              "doc": "Mutable metadata returned by every metadata() read."
             },
             {
               "name": "metadata",
               "kind": "operation",
               "signature": "fn metadata() -\u003e HttpResponseMetadata:",
-              "doc": "Returns current status and the same mutable header object."
+              "doc": "Returns the same mutable metadata record, without copying header membership."
             }
           ]
         },
@@ -3502,13 +3495,13 @@
               "name": "request",
               "kind": "operation",
               "signature": "fn request(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ResponseBody, HttpError]",
-              "doc": ""
+              "doc": "Sends immutable Bytes and returns a scoped streaming response body."
             },
             {
               "name": "request_stream",
               "kind": "operation",
               "signature": "fn request_stream(method: HttpMethod, url: String, headers: HttpHeaders, body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ResponseBody, HttpError]",
-              "doc": ""
+              "doc": "Borrows ReadStream upload data through the scoped response lifetime."
             }
           ]
         },
@@ -3924,9 +3917,6 @@
             "headers: HttpHeaders",
             "body: Bytes"
           ],
-          "operations": [
-            "metadata: fn()-\u003eHttpResponseMetadata"
-          ],
           "members": [
             {
               "name": "body",
@@ -3945,12 +3935,6 @@
               "kind": "field",
               "signature": "status: Int",
               "doc": ""
-            },
-            {
-              "name": "metadata",
-              "kind": "operation",
-              "signature": "fn metadata() -\u003e HttpResponseMetadata:",
-              "doc": "Returns current status and the same mutable header object."
             }
           ]
         },
@@ -3968,13 +3952,13 @@
               "name": "headers",
               "kind": "field",
               "signature": "headers: HttpHeaders",
-              "doc": ""
+              "doc": "The shared mutable fields, with every repeated value retained."
             },
             {
               "name": "status",
               "kind": "field",
               "signature": "status: Int",
-              "doc": ""
+              "doc": "The received status; editing metadata leaves wire/body behavior unchanged."
             }
           ]
         },

@@ -255,7 +255,7 @@ type libraryResponseBody struct {
 	owner     *network
 	client    *libraryHTTPClient
 	response  *http.Response
-	metadata  Record
+	metadata  Value
 	reader    io.ReadCloser
 	remaining int64
 	mu        sync.Mutex
@@ -298,7 +298,7 @@ func (b *libraryResponseBody) Operation(name string) Function {
 	return libraryMethod("ResponseBody", name, func(ctx *Execution, r string, a []Value) Value {
 		switch name {
 		case "metadata":
-			return libraryResponseMetadata(b.metadata)
+			return b.metadata
 		case "close":
 			b.close()
 			return Unit{}

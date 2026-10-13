@@ -72,7 +72,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                 timeout: 2.seconds
             )
         )
-        if response.status != 201 or response.body != "hello".to_bytes(): return panic(
+        if response.metadata().status != 201 or response.body != "hello".to_bytes(): return panic(
             "buffered HTTP"
         )
         if value(response.metadata().headers.text("X-Test")) != some(["manuscript"]): return panic(

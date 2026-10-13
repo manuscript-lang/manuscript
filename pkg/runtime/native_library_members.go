@@ -25,7 +25,7 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	switch v := receiver.(type) {
 	case Record:
 		switch v.Type {
-		case "@std/ClientResponse", "@std/HttpResponse":
+		case "@std/ClientResponse":
 			kind = strings.TrimPrefix(v.Type, "@std/")
 		default:
 			return nil, false

@@ -35,7 +35,7 @@ func BenchmarkHTTPHeaders(b *testing.B) {
 		}
 	})
 	b.Run("proxy_metadata_cached_headers", func(b *testing.B) {
-		response := Record{"@std/ClientResponse", map[string]Value{"status": int64(200), "headers": headers, "body": Bytes{}}}
+		response := Record{"@std/ClientResponse", map[string]Value{"head": Record{"@std/HttpResponseMetadata", map[string]Value{"status": int64(200), "headers": headers}}, "body": Bytes{}}}
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
 			httpBenchmarkValue = libraryResponseMetadata(response)

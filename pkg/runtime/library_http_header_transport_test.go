@@ -84,7 +84,7 @@ func TestHTTPClientHeaderCollisions(t *testing.T) {
 				var headers *libraryHeaders
 				if method == "buffered" {
 					response := librarySuccess(t, n.Operation("request").Body(ctx, args)).(Record)
-					headers = response.Fields["headers"].(*libraryHeaders)
+					headers = response.Fields["head"].(Record).Fields["headers"].(*libraryHeaders)
 					if string(response.Fields["body"].(Bytes).Items) != "ok" {
 						t.Fatal(response)
 					}

@@ -113,16 +113,16 @@ func httpTestCall(name string, a ...Value) Value {
 	return invokeLibrary(spec, RootExecution(), libraryRuntimeType(spec.Result), a)
 }
 
-func TestHTTPMetadataSnapshotSharesHeaders(t *testing.T) {
+func TestHTTPMetadataAliasesShareHeaders(t *testing.T) {
 	headers := &libraryHeaders{}
 	headers.append("X-Test", Bytes{[]byte("first")})
-	response := Record{"@std/ClientResponse", map[string]Value{"status": int64(200), "headers": headers, "body": Bytes{}}}
+	response := Record{"@std/ClientResponse", map[string]Value{"head": Record{"@std/HttpResponseMetadata", map[string]Value{"status": int64(200), "headers": headers}}, "body": Bytes{}}}
 	first := httpTestCall("http/client_response_metadata", response).(Record)
 	first.Fields["status"] = int64(999)
 	first.Fields["headers"].(*libraryHeaders).append("x-test", Bytes{[]byte("second")})
 	next := httpTestCall("http/client_response_metadata", response).(Record)
-	if next.Fields["status"] != int64(200) || next.Fields["headers"] != headers {
-		t.Fatal("metadata snapshot or alias contract", next)
+	if next.Fields["status"] != int64(999) || next.Fields["headers"] != headers {
+		t.Fatal("metadata alias contract", next)
 	}
 	values, _ := headers.values("X-Test")
 	if !reflect.DeepEqual(httpTestTextValues(values), []string{"first", "second"}) {
