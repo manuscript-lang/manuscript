@@ -76,6 +76,10 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 			return ""
 		}
 		return g.numericResult(e)
+	case syntax.KindCall:
+		if direct := g.directTarget(e); direct != nil {
+			return direct.result
+		}
 	case syntax.KindUnary:
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return "int64"

@@ -33,9 +33,19 @@ func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 		returned(runtimeCall("ConstructWithContext", ident("ctx"), g.key(s.Type), sliceLiteral(runtimeName("Argument"), args...))))
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
+	return g.functionWith(nil, name, params, result, body, bindings, self, t, tail...)
+}
+
+// functionWith lowers a source function. With direct set it yields the Go
+// function literal of a direct function instead of the dynamic wrapper.
+func (g *generator) functionWith(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
 	oldCleanups, oldLoops, oldLabels, oldDepth, oldResult := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth, g.resultKey
-	oldNeedsCleanup := g.needsCleanup
+	oldNeedsCleanup, oldResultType, oldRecovers := g.needsCleanup, g.resultType, g.recovers
 	g.resultKey = g.key(t.Result)
+	g.resultType, g.recovers = "", false
+	if direct != nil {
+		g.resultType = direct.result
+	}
 	g.expressionDepth = 0
 	g.cleanups = nil
 	g.needsCleanup = false
@@ -48,6 +58,7 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 		g.loopLabels = oldLabels
 		g.expressionDepth = oldDepth
 		g.resultKey = oldResult
+		g.resultType, g.recovers = oldResultType, oldRecovers
 	}()
 	var labels []string
 	for _, p := range t.Params {
@@ -62,6 +73,14 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 		out = append(out, define(self.ID, ident("receiver")), discard(ident(self.ID)))
 	}
 	for i, b := range bindings {
+		if direct != nil {
+			// The Go parameter is the binding; callers supply typed values.
+			if typ := direct.params[i]; typ != "" {
+				g.typed[b] = typ
+			}
+			out = append(out, discard(ident(b.ID)))
+			continue
+		}
 		if typ := scalarBinding(b); typ != "" && params[i].Default == nil && !t.Defaults[t.Params[i].Name] {
 			// A required scalar argument is never nil; copy it into a typed variable.
 			g.typed[b] = typ
@@ -81,6 +100,9 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 	}
 	out = append(out, g.body(body)...)
 	out = append(out, tail...)
+	if direct != nil {
+		return g.directLiteral(direct, name, result, bindings, t, out)
+	}
 	// Defaults and generated match closures belong to this callable; nested
 	// source functions save their own flag. Lexical cleanup lists are empty again
 	// after lowering each scope, so their final length cannot prove absence.

@@ -152,7 +152,7 @@ func newFunction(labels []string, result string, body func(*Execution, []Value) 
 		value = body(ctx, args)
 		// One delivery checkpoint decides both disposal and unwinding. A
 		// second cancellation check could discard an undisposed acquisition.
-		if ctx != nil && ctx.Context.Err() != nil {
+		if ctx != nil && isDone(ctx.Context) {
 			if dispose != nil {
 				dispose(ctx, value)
 			}
@@ -960,13 +960,13 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 	return NewFunction(labels, result, func(ctx *Execution, args []Value) (value Value) {
 		if ctx != nil && ctx.calls != nil {
 			calls := ctx.calls
-			if calls.depth.Add(1) > MaxCallDepth {
-				calls.depth.Add(-1)
+			if calls.depth++; calls.depth > MaxCallDepth {
+				calls.depth--
 				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
 			}
 			defer func() {
-				if calls.depth.Add(-1) == 0 {
-					calls.traceFull.Store(false)
+				if calls.depth--; calls.depth == 0 {
+					calls.traceFull = false
 				}
 			}()
 		}
@@ -1101,7 +1101,7 @@ func SourceAt[T any](position *string, site string, value T) T {
 
 // TraceSource runs once per source function, after its cleanup has completed.
 func TraceSource(ctx *Execution, position *string, name string) {
-	if ctx != nil && ctx.calls != nil && ctx.calls.traceFull.Load() {
+	if ctx != nil && ctx.calls != nil && ctx.calls.traceFull {
 		return
 	}
 	if failure := recover(); failure != nil {
@@ -1111,7 +1111,7 @@ func TraceSource(ctx *Execution, position *string, name string) {
 				// Re-raising at every frame makes unwinding a deep stack
 				// quadratic, so outer frames are no longer recorded.
 				fault.Truncated = true
-				ctx.calls.traceFull.Store(true)
+				ctx.calls.traceFull = true
 			}
 			panic(fault)
 		}

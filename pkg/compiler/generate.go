@@ -36,10 +36,15 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		}
 	}
 	var initialize []ast.Stmt
+	g.planDirect(functions, options)
 	for _, s := range functions {
 		g.module = s.Module
 		var value ast.Expr
-		if len(s.Variables) > 0 {
+		if g.direct[s] != nil {
+			var decl *ast.FuncDecl
+			decl, value = g.directDeclaration(s)
+			file.Decls = append(file.Decls, decl)
+		} else if len(s.Variables) > 0 {
 			var vars []string
 			for _, v := range s.Variables {
 				vars = append(vars, v.ID)

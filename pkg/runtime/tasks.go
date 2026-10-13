@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	goruntime "runtime"
-	"sync/atomic"
 	"time"
 )
 
@@ -22,8 +21,8 @@ type Execution struct {
 // callState tracks one goroutine's nested source calls. Copies of an
 // Execution made for equality scopes or cancellation share it.
 type callState struct {
-	depth     atomic.Int64
-	traceFull atomic.Bool
+	depth     int64
+	traceFull bool
 }
 
 type cancelled struct{}
@@ -32,10 +31,12 @@ func RootExecution() *Execution {
 	return &Execution{Context: context.Background(), Lifetime: &workLifetime{}, Host: &hostRoots{}, calls: &callState{}}
 }
 func CheckCancelled(ctx *Execution) {
-	if ctx != nil && ctx.Context.Err() != nil {
+	if ctx != nil && isDone(ctx.Context) {
 		panic(cancelled{})
 	}
 }
+
+func isDone(ctx context.Context) bool  { return ctx.Err() != nil }
 func Shield(ctx *Execution) *Execution { return inherit(ctx, context.WithoutCancel(ctx.Context)) }
 func Cleanup(ctx *Execution, resource Value) {
 	pending := recover()

@@ -80,9 +80,14 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	case syntax.KindReturn:
 		value := unit()
 		if s.Value != nil {
-			value = g.expression(s.Value)
+			if g.resultType != "" && g.expressionDepth == 0 {
+				value = g.scalar(s.Value, g.resultType)
+			} else {
+				value = g.expression(s.Value)
+			}
 		}
 		if g.expressionDepth > 0 {
+			g.recovers = true
 			value = runtimeCall("Return", value)
 		}
 		return []ast.Stmt{returned(value)}

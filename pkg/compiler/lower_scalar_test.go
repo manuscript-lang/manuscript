@@ -40,7 +40,7 @@ func TestPrimitiveEqualityEligibility(t *testing.T) {
 			}
 			// Scalar parameters are typed variables, so the comparison needs no assertion.
 			goType := primitiveEqualityType(r.Program.Parameters[r.Program.Symbols["scalar.ms"]["equal"].Decl][0].Type)
-			if tc.direct && (!strings.Contains(r.Source, "var local4_left "+goType+" = rt.") || !strings.Contains(r.Source, " != ")) {
+			if tc.direct && (!strings.Contains(r.Source, "local4_left "+goType+", ") || !strings.Contains(r.Source, " != ")) {
 				t.Fatal("missing typed direct equality", r.Source)
 			}
 		})
@@ -71,21 +71,21 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 		t.Fatal(err)
 	}
 	counts := map[string]int{}
-	ast.Inspect(f, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || selector.Sel.Name != "NewSourceFunction" {
-			return true
-		}
-		body := call.Args[3].(*ast.FuncLit).Body
-		traceCall := body.List[1].(*ast.DeferStmt).Call
-		trace := traceCall.Args[len(traceCall.Args)-1].(*ast.BasicLit)
-		name, err := strconv.Unquote(trace.Value)
-		if err != nil {
-			t.Fatal(err)
+	// A callable is a NewSourceFunction body or a direct function declaration;
+	// either defers TraceSource or Leave with its name as the last argument.
+	measure := func(body *ast.BlockStmt) {
+		name := ""
+		for _, statement := range body.List {
+			if deferred, ok := statement.(*ast.DeferStmt); ok {
+				if s, ok := deferred.Call.Fun.(*ast.SelectorExpr); ok && (s.Sel.Name == "TraceSource" || s.Sel.Name == "Leave") {
+					text, err := strconv.Unquote(deferred.Call.Args[len(deferred.Call.Args)-1].(*ast.BasicLit).Value)
+					if err != nil {
+						t.Fatal(err)
+					}
+					name = text
+					break
+				}
+			}
 		}
 		count := 0
 		ast.Inspect(body, func(node ast.Node) bool {
@@ -102,6 +102,18 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 			return true
 		})
 		counts[name] = count
+	}
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.FuncDecl:
+			if strings.HasPrefix(n.Name.Name, "call_") {
+				measure(n.Body)
+			}
+		case *ast.CallExpr:
+			if selector, ok := n.Fun.(*ast.SelectorExpr); ok && selector.Sel.Name == "NewSourceFunction" {
+				measure(n.Args[3].(*ast.FuncLit).Body)
+			}
+		}
 		return true
 	})
 	return counts
@@ -149,7 +161,7 @@ fn looped() -> Unit:
 			t.Fatalf("%s cleanup count = %d (present %v), want %d\n%s", name, got, ok, want, r.Source)
 		}
 	}
-	if strings.Count(r.Source, "defer rt.TraceSource(") != len(counts) {
+	if strings.Count(r.Source, "defer rt.TraceSource(")+strings.Count(r.Source, "defer rt.Leave(") != len(counts) {
 		t.Fatal("lost source tracing")
 	}
 }

@@ -23,10 +23,7 @@ func TestScalarLocalsAndParametersAreTypedGoVariables(t *testing.T) {
 		t.Fatal(r.Diagnostics)
 	}
 	for _, want := range []string{
-		"var local3_limit int64 = rt.IntValue(args[0])",
-		"var local4_ratio float64 = rt.FloatValue(args[1])",
-		"var local5_label string = rt.StringValue(args[2])",
-		"var local6_on bool = rt.Bool(args[3])",
+		"(ctx *rt.Execution, local3_limit int64, local4_ratio float64, local5_label string, local6_on bool) (directResult int64)",
 		"var local7_i int64 = int64(0)",
 		"var local9_scaled float64 =",
 	} {

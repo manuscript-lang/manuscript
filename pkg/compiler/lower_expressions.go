@@ -140,6 +140,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if value := g.directCollectionCall(e, arguments); value != nil {
 			return value
 		}
+		if value := g.directCall(e); value != nil {
+			return value
+		}
 		if value := g.preparedSourceCall(e, arguments); value != nil {
 			return value
 		}
@@ -201,6 +204,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			if info.ScopedPropagation {
 				args = append(args, g.typeScope(info.PropagatedError))
 			}
+			g.recovers = true
 			return runtimeCall("Try", args...)
 		}
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {

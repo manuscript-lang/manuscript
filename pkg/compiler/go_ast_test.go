@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -35,8 +36,13 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	}
 	// Production optimizations may change executable AST shape. Retain this
 	// independent behavior/source-map oracle; eligibility tests check new shapes.
-	if !reflect.DeepEqual(sourceDirectives(string(baseline)), sourceDirectives(result.Source)) {
-		t.Fatal("lowering changed source directive order or targets")
+	// Direct functions are top-level declarations, so directives keep their
+	// order within a function but no longer interleave with registration order.
+	want, got := sourceDirectives(string(baseline)), sourceDirectives(result.Source)
+	sort.Strings(want)
+	sort.Strings(got)
+	if !reflect.DeepEqual(want, got) {
+		t.Fatal("lowering changed source directive targets")
 	}
 	for i := 0; i < 3; i++ {
 		repeated := CompileSource("ast-lowering.ms", string(source), Options{Tests: true})
