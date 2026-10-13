@@ -24,18 +24,18 @@ impl Error for EncodingError:
 
 ## base64_decode {data-api-kind="Function"}
 
-Decodes standard or URL-safe Base64 text into bytes.
+Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
 
 ```manuscript
-fn base64_decode(text: String, url_safe: Bool, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
+fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
 ```
 
 ## base64_encode {data-api-kind="Function"}
 
-Encodes bytes as standard or URL-safe Base64 text.
+Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
 
 ```manuscript
-fn base64_encode(data: Bytes, url_safe: Bool) -> String:
+fn base64_encode(data: Bytes, url_safe: Bool = false) -> String:
 ```
 
 ## hex_decode {data-api-kind="Function"}

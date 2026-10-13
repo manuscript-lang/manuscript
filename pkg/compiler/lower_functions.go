@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 
@@ -19,8 +20,110 @@ func recordDefaults(d *syntax.Declaration) bool {
 	}
 	return false
 }
+
+// Native Optional.none adapters already implement omission. Other defaults use
+// the same checked per-call prologue as source functions, then tail-dispatch to
+// the existing native body with full concrete argument slots.
+func (g *generator) nativeDefaults(d *syntax.Declaration, t *checker.Type, callee ast.Expr, supplied ...[]syntax.Argument) ast.Expr {
+	value := g.nativeDefaultParameters(d, t, nil, callee, supplied...)
+	if value == callee || hasTypeVariable(t) {
+		return value
+	}
+	// Cache the stateless callable, never its default values. Native free
+	// functions have no receiver/captured locals; preparation stays per-call.
+	return g.lazyValue("native defaults/"+d.Pos.String()+"/"+checker.TypeKey(t), value)
+}
+
+func (g *generator) nativeDefaultParameters(d *syntax.Declaration, t *checker.Type, overridden map[string]bool, callee ast.Expr, supplied ...[]syntax.Argument) ast.Expr {
+	if d == nil || g.program.Parameters[d] == nil {
+		return callee
+	}
+	oldModule := g.module
+	g.module = d.Pos.File
+	defer func() { g.module = oldModule }()
+	var values []ast.Expr
+	for _, binding := range g.program.Parameters[d] {
+		values = append(values, ident(binding.ID))
+	}
+	params := append([]syntax.Parameter{}, d.Params...)
+	present := map[string]bool{}
+	if len(supplied) > 0 {
+		for _, arg := range supplied[0] {
+			present[arg.Name] = true
+		}
+	}
+	var slots []ast.Expr
+	needed := false
+	for i := range params {
+		if overridden[params[i].Name] {
+			params[i].Default = nil
+		}
+		if e := params[i].Default; e != nil && (e.Kind != syntax.KindName || e.Text != "none") {
+			slots = append(slots, intLiteral(i))
+			needed = needed || !present[params[i].Name]
+		}
+	}
+	if !needed {
+		return callee
+	}
+	if !g.enterNativeDefault(d) {
+		return callee
+	}
+	defer delete(g.defaultExpansion, d)
+	preparedType := *t
+	preparedType.Defaults = nil // Only the selected expression defaults run here.
+	prepare := g.function(d.Name+" defaults", params, d.Result, nil, g.program.Parameters[d], nil, &preparedType,
+		returned(composite(runtimeName("PreparedDefaults"), values...)))
+	return runtimeCall("WithDefaults", callee, concreteFunction(prepare), sliceLiteral(ident("int"), slots...))
+}
+
+func (g *generator) methodDefaults(m *checker.Method, callee ast.Expr, supplied ...[]syntax.Argument) ast.Expr {
+	if m.Native != "" {
+		return g.nativeDefaultParameters(m.Decl, m.Type, nil, callee, supplied...)
+	}
+	// Source implementations inherit omission permission from a standard
+	// interface. Prepare its new defaults before entering the source method;
+	// explicit method defaults keep their existing precedence.
+	if m.Contract != nil && m.Contract.Def != nil && m.Contract.Def.Symbol != nil {
+		for _, d := range m.Contract.Def.Symbol.Decl.Methods {
+			if d.Name != m.Decl.Name || g.program.Parameters[d] == nil {
+				continue
+			}
+			overridden := map[string]bool{}
+			for _, p := range m.Decl.Params {
+				overridden[p.Name] = p.Default != nil
+			}
+			return g.nativeDefaultParameters(d, m.Type, overridden, callee, supplied...)
+		}
+	}
+	return callee
+}
+
+// A direct member call carries checked omission facts. Avoid materializing a
+// default wrapper when every new default is supplied; old none adapters still
+// receive exactly the slots they handled before this feature.
+func (g *generator) methodCallable(e *syntax.Expression, arguments []syntax.Argument) ast.Expr {
+	info := g.program.Expressions[e]
+	if e.Kind != syntax.KindMember || info.Method == nil {
+		return g.expression(e)
+	}
+	m := info.Method
+	if m.Contract == nil && m.Native != "" && m.Native != "contract" {
+		return g.methodDefaults(m, g.nativeReceiverMember(e, info), arguments)
+	}
+	return g.methodDefaults(m, runtimeCall("Bind", g.expression(e.Left), g.key(m.Contract), textLiteral(e.Text), g.typeScope(g.program.Expressions[e.Left].Type)), arguments)
+}
 func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 	d := s.Decl
+	if s.Native != "" {
+		if !g.enterNativeDefault(d) {
+			return ident("nil")
+		}
+		defer delete(g.defaultExpansion, d)
+		oldModule := g.module
+		g.module = s.Module
+		defer func() { g.module = oldModule }()
+	}
 	if d.Kind == syntax.KindFn {
 		return g.function(d.Name, d.Params, d.Result, d.Body, g.program.Parameters[d], nil, s.Type)
 	}
@@ -31,6 +134,20 @@ func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 	t := checker.ConstructorSignature(s.Type)
 	return g.function(d.Name, d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.Parameters[d], nil, t,
 		returned(runtimeCall("ConstructWithContext", ident("ctx"), g.key(s.Type), sliceLiteral(runtimeName("Argument"), args...))))
+}
+
+func (g *generator) enterNativeDefault(d *syntax.Declaration) bool {
+	if g.defaultExpansion[d] {
+		if g.loweringError == nil {
+			g.loweringError = fmt.Errorf("recursive native default expansion at %s; move the recursive default into a source wrapper", d.Pos)
+		}
+		return false
+	}
+	if g.defaultExpansion == nil {
+		g.defaultExpansion = map[*syntax.Declaration]bool{}
+	}
+	g.defaultExpansion[d] = true
+	return true
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
 	labels, key, position, out := g.functionParts(name, params, result, body, bindings, self, t, tail...)

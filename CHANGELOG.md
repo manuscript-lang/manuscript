@@ -2,10 +2,11 @@
 
 ## Unreleased
 
-- Identify Decimal arithmetic overflow by operator, operands and the finite magnitude limit, without changing arithmetic or rounding.
+- Add preferred `List.set`/`remove`/`reverse_in_place`, copying `List.reversed`/`Bytes.reversed`, `Set.add`/`remove`, `String.replace_first`, and `Regex.replace_all` spellings. Existing names remain compatible, including receiver returns, replacement caps, limits, and errors.
 - Report duration-unit property faults at the member token after evaluating the receiver, preserving source order and numeric widths.
 
 - Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
+- Identify Decimal arithmetic overflow by operator, operands and the finite magnitude limit, without changing arithmetic or rounding.
 - Add versioned `fmt --check --json` and `test --json` results, preserving test streams and partial outcomes; display explicit and discovered fmt paths consistently.
 
 - Fix standard-library data bugs: `String.upper()`/`lower()` use full Unicode case mapping (`ß` to `SS`, final sigma, `İ`); negative `split`/`replace` limits fault with the operation and parameter; `bigint.parse(max_digits: 0)` is a real zero budget; TOML and YAML parse errors report the offending line and column.
@@ -28,4 +29,5 @@
 - Separate frontend facts from host runtime implementations and verify native signatures in integration tests.
 - Validate compressed toolchain archives before cache publication, including interrupted downloads.
 - Preserve case-equivalent HTTP header keys as separate values in insertion order, including `Set-Cookie`; reject malformed outgoing header values before emission.
+- Add `http.header_values` for ASCII case-insensitive, value-preserving lookup across list-valued HTTP header maps, with separate returned list membership.
 - Add repeatable dependency/pin maintenance, license inventories, and one shared release version.
