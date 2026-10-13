@@ -136,6 +136,13 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		}
 		return runtimeCall("Field", g.expression(e.Left), textLiteral(e.Text))
 	case syntax.KindCall:
+		if info.Constructor != nil && info.Native == "view" {
+			// Select the view path before lowering ordinary call arguments.
+			// Lowering a discarded receiver tree would strand source markers
+			// and other generator state from its nested callable/match bodies.
+			receiver := e.Args[0].Value
+			return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.program.Expressions[receiver].Type))
+		}
 		arguments := e.Args
 		if info.Arguments != nil {
 			arguments = info.Arguments
@@ -151,9 +158,6 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		}
 		args := g.arguments(arguments)
 		if info.Constructor != nil {
-			if info.Native == "view" {
-				return runtimeCall("ViewOf", g.key(info.Type), g.expression(e.Args[0].Value), g.typeScope(g.program.Expressions[e.Args[0].Value].Type))
-			}
 			if info.Case != "" {
 				var labels []string
 				for _, cs := range checker.Cases(info.Constructor) {
