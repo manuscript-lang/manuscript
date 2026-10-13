@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Accept `--flag=value` for value-taking CLI long options, reject empty required values, and resolve project directories consistently in `ms doc`.
+- Accept `--flag=value` for value-taking CLI long options, reject empty required values and unsupported output options, and resolve project directories consistently in `ms doc`.
 
 - Embed Delve in `ms debug` and `ms dap`; VS Code no longer needs `dlv`. CGO remains disabled; macOS still requires Apple debugserver from Xcode command line tools.
 

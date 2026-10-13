@@ -64,6 +64,14 @@ func TestCLIValueSpellingsAndErrors(t *testing.T) {
 			}
 		}
 	}
+	for _, command := range []string{"check", "lint", "run", "test", "debug", "lock"} {
+		for _, suffix := range [][]string{{"-o", "unused"}, {"--output", "unused"}, {"--output=unused"}} {
+			status, _, stderr := invoke(t, append([]string{command, file}, suffix...)...)
+			if status != 2 || !strings.Contains(stderr, "-o and --output are valid only for") || !strings.Contains(stderr, "not ms "+command) {
+				t.Fatalf("unsupported output %s %v: %d, %q", command, suffix, status, stderr)
+			}
+		}
+	}
 	for _, flag := range []string{"-o", "--output"} {
 		for _, suffix := range [][]string{{flag}, {flag, ""}, {flag + "="}} {
 			if suffix[0] == "-o=" {

@@ -210,6 +210,10 @@ func Run(args []string) int {
 		unknownCommand(command)
 		return 2
 	}
+	if output != "" && command != "build" && command != "emit" && command != "inspect" && command != "diagram" && command != "profile" {
+		fmt.Fprintf(os.Stderr, "-o and --output are valid only for ms build, emit, inspect, diagram, doc, or profile, not ms %s; run 'ms help %s' for its options\n", command, command)
+		return 2
+	}
 	if (testTimeout != "" || testFilter != "") && command != "test" {
 		fmt.Fprintf(os.Stderr, "--timeout and --filter are valid only for ms test, not ms %s; run 'ms help %s' for the options this command accepts\n", command, command)
 		return 2
