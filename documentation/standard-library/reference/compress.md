@@ -38,6 +38,46 @@ type CompressionFormat:
     fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
 ```
 
+### CompressionFormat.Deflate
+
+Raw DEFLATE without framing.
+
+```manuscript
+case Deflate
+```
+
+### CompressionFormat.Gzip
+
+GZIP framing.
+
+```manuscript
+case Gzip
+```
+
+### CompressionFormat.Zlib
+
+ZLIB framing.
+
+```manuscript
+case Zlib
+```
+
+### CompressionFormat.compress
+
+Compresses with level 0..9 and the same optional output budget/domain errors as compress.
+
+```manuscript
+fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+```
+
+### CompressionFormat.decompress
+
+Decompresses with the same cumulative output limit and validation as decompress.
+
+```manuscript
+fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+```
+
 ## compress {data-api-kind="Function"}
 
 Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).

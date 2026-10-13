@@ -111,6 +111,32 @@
           "operations": [
             "pack: fn(entries: List[ArchiveEntry], max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, ArchiveError]",
             "unpack: fn(data: Bytes, limits: Optional[ArchiveLimits] = ...)-\u003eResult[List[ArchiveEntry], ArchiveError]"
+          ],
+          "members": [
+            {
+              "name": "Tar",
+              "kind": "case",
+              "signature": "case Tar",
+              "doc": "TAR files and directories."
+            },
+            {
+              "name": "Zip",
+              "kind": "case",
+              "signature": "case Zip",
+              "doc": "ZIP files and directories."
+            },
+            {
+              "name": "pack",
+              "kind": "operation",
+              "signature": "fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -\u003e Result[Bytes, ArchiveError]:",
+              "doc": "Packs entries with the same optional output budget and path validation as pack."
+            },
+            {
+              "name": "unpack",
+              "kind": "operation",
+              "signature": "fn unpack(data: Bytes, limits: Optional[ArchiveLimits] = none) -\u003e Result[List[ArchiveEntry], ArchiveError]:",
+              "doc": "Unpacks in memory with the same entry/byte limits and domain errors as unpack."
+            }
           ]
         },
         {
@@ -1508,6 +1534,38 @@
           "operations": [
             "compress: fn(data: Bytes, level: Int, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]",
             "decompress: fn(data: Bytes, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
+          ],
+          "members": [
+            {
+              "name": "Deflate",
+              "kind": "case",
+              "signature": "case Deflate",
+              "doc": "Raw DEFLATE without framing."
+            },
+            {
+              "name": "Gzip",
+              "kind": "case",
+              "signature": "case Gzip",
+              "doc": "GZIP framing."
+            },
+            {
+              "name": "Zlib",
+              "kind": "case",
+              "signature": "case Zlib",
+              "doc": "ZLIB framing."
+            },
+            {
+              "name": "compress",
+              "kind": "operation",
+              "signature": "fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, CompressionError]:",
+              "doc": "Compresses with level 0..9 and the same optional output budget/domain errors as compress."
+            },
+            {
+              "name": "decompress",
+              "kind": "operation",
+              "signature": "fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, CompressionError]:",
+              "doc": "Decompresses with the same cumulative output limit and validation as decompress."
+            }
           ]
         },
         {
@@ -1584,6 +1642,38 @@
           "operations": [
             "digest: fn(data: Bytes)-\u003eBytes",
             "hmac: fn(key: Bytes, data: Bytes)-\u003eResult[Bytes, CryptoError]"
+          ],
+          "members": [
+            {
+              "name": "Sha256",
+              "kind": "case",
+              "signature": "case Sha256",
+              "doc": "SHA-256."
+            },
+            {
+              "name": "Sha384",
+              "kind": "case",
+              "signature": "case Sha384",
+              "doc": "SHA-384."
+            },
+            {
+              "name": "Sha512",
+              "kind": "case",
+              "signature": "case Sha512",
+              "doc": "SHA-512."
+            },
+            {
+              "name": "digest",
+              "kind": "operation",
+              "signature": "fn digest(data: Bytes) -\u003e Bytes:",
+              "doc": "Computes this algorithm's digest, checking cancellation between chunks."
+            },
+            {
+              "name": "hmac",
+              "kind": "operation",
+              "signature": "fn hmac(key: Bytes, data: Bytes) -\u003e Result[Bytes, CryptoError]:",
+              "doc": "Computes HMAC with this algorithm and retains CryptoError results."
+            }
           ]
         },
         {
