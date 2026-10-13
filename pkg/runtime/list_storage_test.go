@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"runtime"
 	"slices"
+	"sort"
 	"strconv"
 	"testing"
 )
@@ -332,4 +333,154 @@ func TestPrimitiveListMemory(t *testing.T) {
 	}
 	t.Log(string(data))
 	runtime.KeepAlive(list)
+}
+
+func TestFreshSizedListInitialization(t *testing.T) {
+	var result *List
+	if n := testing.AllocsPerRun(100, func() {
+		list := NewSizedIntList("@std/List[Int]", 4096)
+		for i := 0; i < 4096; i++ {
+			InitListInt(list, i, int64(i))
+		}
+		result = FinishListInitialization(list)
+	}); n != 2 {
+		t.Fatalf("fresh initialization allocates %g, want 2", n)
+	}
+	if result.Len() != 4096 || result.Get(4095) != int64(4095) {
+		t.Fatal("sized contents")
+	}
+	for _, call := range []func(){func() { InitListInt(result, 0, 9) }, func() { FinishListInitialization(result) }, func() { InitListValue(NewSizedList("@std/List[Int]", 1), 1, int64(7)) }} {
+		if _, ok := recovered(call).(Fault); !ok {
+			t.Fatal("initialization accepted published or invalid storage")
+		}
+	}
+	list := NewSizedList("@std/List[@std/Optional[Int]]", 2)
+	InitListValue(list, 0, optional("Int", int64(1), true))
+	InitListValue(list, 1, optional("Int", nil, false))
+	FinishListInitialization(list)
+	if list.kind != listBoxed || list.Get(0).(Alternative).Fields[0] != int64(1) {
+		t.Fatal("generic initializer lost Optional boundary")
+	}
+}
+
+func TestTypedComparatorGuardParity(t *testing.T) {
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	depth := NewIntCompareFunction([]string{"left", "right"}, "Int", "depth.ms:1:1", func(ctx *Execution, _, _ int64) int64 { return ctx.calls.depth.Load() })
+	if depth.IntCompare(ctx, 1, 2) != 1 || depth.Body(ctx, []Value{int64(1), int64(2)}) != int64(1) {
+		t.Fatal("comparator admission was skipped or doubled")
+	}
+	previous := sourceProfiling.Swap(true)
+	got := depth.IntCompare(ctx, 1, 2)
+	sourceProfiling.Store(previous)
+	if got != 1 || ctx.calls.depth.Load() != 0 {
+		t.Fatal("profiling doubled source admission")
+	}
+	ctx.calls.depth.Store(MaxCallDepth)
+	failure := recovered(func() { depth.IntCompare(ctx, 1, 2) })
+	remaining := ctx.calls.depth.Load()
+	ctx.calls.depth.Store(0)
+	if _, ok := failure.(Fault); !ok || remaining != MaxCallDepth {
+		t.Fatal("depth guard did not restore accounting")
+	}
+	faulting := NewIntCompareFunction([]string{"left", "right"}, "Int", "compare.ms:7:3", func(ctx *Execution, _, _ int64) int64 {
+		position := "compare.ms:7:3"
+		defer TraceSource(ctx, &position, "compare")
+		return IntDivide(1, 0)
+	})
+	fault := recovered(func() { faulting.IntCompare(ctx, 1, 2) }).(Fault)
+	if len(fault.Frames) != 1 || fault.Frames[0] != "compare.ms:7:3 in compare" {
+		t.Fatalf("source frame lost: %#v", fault)
+	}
+	work, cancel := context.WithCancel(ctx.Context)
+	child := *ctx
+	child.Context = work
+	stopping := NewIntCompareFunction([]string{"left", "right"}, "Int", "cancel.ms:1:1", func(*Execution, int64, int64) int64 { cancel(); return 0 })
+	if _, ok := recovered(func() { stopping.IntCompare(&child, 1, 2) }).(cancelled); !ok {
+		t.Fatal("typed delivery ignored cancellation")
+	}
+}
+
+func TestPrimitiveNaturalSortAndFloatEdges(t *testing.T) {
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	negativeZero := math.Copysign(0, -1)
+	input := NewFloatList("@std/List[Float]", []float64{1, negativeZero, math.NaN(), math.Inf(1), 0, math.Inf(-1), math.NaN()})
+	out := ListSorted(ctx, input, nil)
+	if !math.IsNaN(out.floats[0]) || !math.IsNaN(out.floats[1]) || out.floats[2] != math.Inf(-1) || !math.Signbit(out.floats[3]) || math.Signbit(out.floats[4]) || out.floats[5] != 1 || out.floats[6] != math.Inf(1) {
+		t.Fatal("natural Float edge order or zero bits changed", out.floats)
+	}
+	if input.floats[0] != 1 {
+		t.Fatal("natural sorted mutated input")
+	}
+	integers := NewIntList("@std/List[Int]", []int64{math.MaxInt64, 0, math.MinInt64})
+	if ListSortInPlace(ctx, integers, nil) != integers || !slices.Equal(integers.ints, []int64{math.MinInt64, 0, math.MaxInt64}) {
+		t.Fatal("natural Int overflow or identity change")
+	}
+	booleans := ListSorted(ctx, NewBoolList("@std/List[Bool]", []bool{true, false, true}), nil)
+	strings := ListSorted(ctx, NewStringList("@std/List[String]", []string{"z", "α", "a"}), nil)
+	if !slices.Equal(booleans.bools, []bool{false, true, true}) || !slices.Equal(strings.strings, []string{"a", "z", "α"}) {
+		t.Fatal("natural Bool/String order")
+	}
+	if _, ok := recovered(func() { ListSorted(ctx, NewList("@std/List[Unit]", []Value{Unit{}}), nil) }).(Fault); !ok {
+		t.Fatal("nonprimitive natural sort accepted")
+	}
+}
+
+func TestListSortInPlaceMutationMatchesGo(t *testing.T) {
+	for _, grow := range []bool{false, true} {
+		ref := []int64{5, 3, 4, 1, 2}
+		captured := ref
+		first := true
+		sort.SliceStable(captured, func(i, j int) bool {
+			left, right := captured[i], captured[j]
+			if first {
+				first = false
+				if grow {
+					for range 100 {
+						ref = append(ref, 7)
+					}
+				}
+				ref[2] = -4
+			}
+			return left < right
+		})
+		for _, typed := range []bool{false, true} {
+			ctx := RootExecution()
+			list := NewIntList("@std/List[Int]", []int64{5, 3, 4, 1, 2})
+			first := true
+			body := func(ctx *Execution, left, right int64) int64 {
+				if first {
+					first = false
+					if grow {
+						for range 100 {
+							ListAppendInt(ctx, list, 7)
+						}
+					}
+					list.Set(2, int64(-4))
+				}
+				if left < right {
+					return -1
+				}
+				if left > right {
+					return 1
+				}
+				return 0
+			}
+			compare := NewIntCompareFunction([]string{"left", "right"}, "Int", "mutation.ms:1:1", body)
+			if !typed {
+				compare.IntCompare = nil
+			}
+			if ListSortInPlace(ctx, list, compare) != list || !slices.Equal(list.ints, ref) {
+				t.Fatalf("grow=%v typed=%v: %v / %v", grow, typed, list.ints, ref)
+			}
+			FinishExecution(ctx)
+		}
+	}
+	legacy := &List{Type: "@std/List[Int]", Items: []Value{int64(3), int64(1), int64(2)}}
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	if got := ListSorted(ctx, legacy, nil); !Equal(got, NewIntList(legacy.Type, []int64{1, 2, 3})) {
+		t.Fatal("legacy primitive natural ordering failed")
+	}
 }

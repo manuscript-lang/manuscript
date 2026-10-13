@@ -578,3 +578,94 @@ func (l *List) allocate(n int) {
 		l.Items = make([]Value, n)
 	}
 }
+
+// NewSizedList starts private literal construction. Lowering evaluates and
+// initializes each slot in source order, then finishes before publishing it.
+func NewSizedList(typ string, length int) *List {
+	list := newList(typ)
+	if length < 0 {
+		Panic("runtime invariant: negative List initialization length")
+	}
+	list.allocate(length)
+	list.initializing = true
+	return list
+}
+func checkListInitialization(list *List, index int) {
+	if !list.initializing || index < 0 || index >= list.Len() {
+		Panic("runtime invariant: invalid fresh List initialization")
+	}
+}
+func InitListValue(list *List, index int, value Value) {
+	checkListInitialization(list, index)
+	if !list.accepts(value) {
+		Panic("runtime invariant: List initialization payload type")
+	}
+	list.Set(index, value)
+}
+func FinishListInitialization(list *List) *List {
+	if !list.initializing {
+		Panic("runtime invariant: List initialization already finished")
+	}
+	list.initializing = false
+	return list
+}
+
+func NewSizedIntList(typ string, length int) *List {
+	if length < 0 {
+		Panic("runtime invariant: negative List initialization length")
+	}
+	return &List{Type: typ, kind: listInt, initializing: true, ints: make([]int64, length)}
+}
+func InitListInt(list *List, index int, value int64) {
+	checkListInitialization(list, index)
+	if list.kind == listInt {
+		list.ints[index] = value
+	} else {
+		list.Set(index, value)
+	}
+}
+
+func NewSizedFloatList(typ string, length int) *List {
+	if length < 0 {
+		Panic("runtime invariant: negative List initialization length")
+	}
+	return &List{Type: typ, kind: listFloat, initializing: true, floats: make([]float64, length)}
+}
+func InitListFloat(list *List, index int, value float64) {
+	checkListInitialization(list, index)
+	if list.kind == listFloat {
+		list.floats[index] = value
+	} else {
+		list.Set(index, value)
+	}
+}
+
+func NewSizedBoolList(typ string, length int) *List {
+	if length < 0 {
+		Panic("runtime invariant: negative List initialization length")
+	}
+	return &List{Type: typ, kind: listBool, initializing: true, bools: make([]bool, length)}
+}
+func InitListBool(list *List, index int, value bool) {
+	checkListInitialization(list, index)
+	if list.kind == listBool {
+		list.bools[index] = value
+	} else {
+		list.Set(index, value)
+	}
+}
+
+func NewSizedStringList(typ string, length int) *List {
+	if length < 0 {
+		Panic("runtime invariant: negative List initialization length")
+	}
+	return &List{Type: typ, kind: listString, initializing: true, strings: make([]string, length)}
+}
+func InitListString(list *List, index int, value string) {
+	checkListInitialization(list, index)
+	if list.kind == listString {
+		list.strings[index] = value
+	} else {
+		list.Set(index, value)
+	}
+}

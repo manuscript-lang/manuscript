@@ -86,13 +86,30 @@ values.append(3)
 
 Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra construct new results. List `reversed()` returns a reversed shallow copy with independent outer storage. Bytes `reversed()` also returns a copy; Bytes `reverse()` remains compatible. Text and Bytes retain their existing nonmutating operations.
 
-List `slice` uses strict, nonnegative element bounds: `0 <= start <= end <= length()`. Invalid bounds fault; negative indexes accepted by `at` are not accepted by `slice`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
+List `slice` returns `Result[List[T], CollectionError]`. Negative bounds resolve relative to the end, then strict half-open bounds require `0 <= start <= end <= length()`. Invalid bounds return `CollectionError.OutOfRange`; valid slices copy outer storage. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
 
 A List `for` loop or callback traversal evaluates its backing slice and initial length once, without copying or freezing elements. In-place writes can change values read later in that traversal. Append never extends the current traversal. If a mutation reallocates storage, the running traversal keeps its original backing array; shrinking or shifting storage does not reduce its captured length. Use an explicit `.clone()` before traversal when stable, separate outer storage is needed. Nested elements retain their references.
 
 List removal and shrinking replacement shift elements and shorten the receiver's slice without overwriting the vacated tail. A captured traversal can therefore read shifted or repeated prior values. Replacing all elements with an empty list only shortens that slice; later appends can overwrite the same backing storage. Removed references can remain retained in spare capacity until overwritten, reallocated, or released along with the backing array. An explicit `fill` or `copy_within` writes backing elements and can affect later visits.
 
 Map and Set loops and callbacks retain their membership snapshot contract: additions, removals and replacements do not change that traversal. Protect shared mutation and concurrent reads with `Synchronized`; every alias must use the same lock.
+
+## Primitive storage and memory
+
+Primitive List backing stores each reserved `Int` or `Float` element in 8 bytes,
+each `Bool` in 1 byte, and each `String` reference in 16 bytes on a 64-bit host.
+String text storage is additional and may be shared. A List also has a small
+constant header. Append reserves spare capacity and growth can temporarily keep
+old arrays alive, so retained heap and peak process RSS exceed the element budget.
+Int and Float remain signed 64-bit and binary64; storage does not narrow values.
+
+Passing a List through a generic function, record, Optional, Result, closure, or
+stored operation preserves its mutable identity and backing kind. Generic access
+boxes a primitive only when it crosses the ordinary value boundary. Explicit
+copies preserve shallow references and receive independent backing.
+
+See the [runtime ABI migration](../../contributing/list-storage.md) for Go callers
+and the measured constructor/access/comparator paths.
 
 ## Lookup and updates
 

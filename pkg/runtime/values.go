@@ -56,13 +56,14 @@ type Alternative struct {
 // Go callers; typed Lists use exactly one private primitive backing slice.
 // Use constructors and accessors rather than inspecting Items.
 type List struct {
-	Type    string
-	Items   []Value
-	kind    uint8
-	ints    []int64
-	floats  []float64
-	bools   []bool
-	strings []string
+	Type         string
+	Items        []Value
+	kind         uint8
+	initializing bool
+	ints         []int64
+	floats       []float64
+	bools        []bool
+	strings      []string
 }
 
 type Map struct {
