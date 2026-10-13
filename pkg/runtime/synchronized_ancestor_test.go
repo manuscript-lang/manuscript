@@ -231,10 +231,10 @@ func TestSynchronizedAncestorContentionWaits(t *testing.T) {
 				t.Fatal("contention completed before release")
 			default:
 			}
-			Invoke(root, guard.Operation("set"), []Argument{{"value", int64(7)}})
+			Invoke(root, guard.Operation("set"), []Argument{{"value", int32(7)}})
 			guard.close()
 			outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value { return taskResult(root, task) }))
-			if outcome.failure != nil || outcome.value.(Alternative).Tag != "ok" || outcome.value.(Alternative).Fields[0] != int64(7) {
+			if outcome.failure != nil || outcome.value.(Alternative).Tag != "ok" || outcome.value.(Alternative).Fields[0] != int32(7) {
 				t.Fatal(outcome)
 			}
 			group.close(root)
@@ -266,7 +266,7 @@ func TestSynchronizedAncestorJoinCycleCancelled(t *testing.T) {
 					child = inherit(child, &synchronizedWaitContext{Context: child.Context, entered: blocked})
 					locked := lockCell(child, cell)
 					defer locked.close()
-					return int64(1)
+					return int32(1)
 				}))
 				waiting := &synchronizedWaitContext{Context: root.Context, entered: make(chan struct{})}
 				join := func() Value {
@@ -342,7 +342,7 @@ func TestSynchronizedTaskGroupTimeoutBreaksOrdinaryCycle(t *testing.T) {
 	task := groupTask(root, group, NewFunction(nil, "Int", func(child *Execution, _ []Value) Value {
 		locked := lockCell(child, cell)
 		defer locked.close()
-		return int64(1)
+		return int32(1)
 	}))
 	outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value { return taskResult(root, task) }))
 	if outcome.failure != nil {
@@ -358,7 +358,7 @@ func TestSynchronizedTaskGroupTimeoutBreaksOrdinaryCycle(t *testing.T) {
 	if !held {
 		t.Fatal("group timeout released executing holder")
 	}
-	Invoke(root, guard.Operation("set"), []Argument{{"value", int64(3)}})
+	Invoke(root, guard.Operation("set"), []Argument{{"value", int32(3)}})
 }
 
 func TestSynchronizedNilLifetimesRemainIndependent(t *testing.T) {

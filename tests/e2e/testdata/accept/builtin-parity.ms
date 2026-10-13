@@ -157,9 +157,9 @@ test "list methods mutate explicit clones and remain typed":
         return panic(message: "check failed")
 
     let absent: Optional[Int] = none
-    if not (original.at(index: -9223372036854775808) == absent):
+    if not (original.at(index: -2147483648) == absent):
         return panic(message: "check failed")
-    if not (original.at(index: 9223372036854775807) == absent):
+    if not (original.at(index: 2147483647) == absent):
         return panic(message: "check failed")
     if not (original.first() == some(3)):
         return panic(message: "check failed")
@@ -421,7 +421,7 @@ test "string methods use Unicode scalars":
     let missing: Optional[String] = none
     if not ("".at(index: 0) == missing):
         return panic(message: "check failed")
-    if not ("é".at(index: -9223372036854775808) == missing):
+    if not ("é".at(index: -2147483648) == missing):
         return panic(message: "check failed")
     if not ("é🙂é".index_of(value: "🙂") == some(1)):
         return panic(message: "check failed")
@@ -498,7 +498,7 @@ test "bytes have analogous immutable operations":
         return panic(message: "check failed")
 
     let missing: Optional[Int] = none
-    if not (data.at(index: -9223372036854775808) == missing):
+    if not (data.at(index: -2147483648) == missing):
         return panic(message: "check failed")
     if not (data.contains(value: Bytes([2, 3]))):
         return panic(message: "check failed")
@@ -546,7 +546,7 @@ test "growth limits and invalid inputs return values":
         return panic(message: "check failed")
     if not (
         "x".pad_end(
-            target_length: 9223372036854775807,
+            target_length: 2147483647,
             padding: "é",
             max_bytes: 8
         ) == too_large

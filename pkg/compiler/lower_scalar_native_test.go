@@ -60,7 +60,7 @@ func loweringFailure(body func()) (failure any) { defer func(){failure=recover()
 func checkLowering() {
  ctx:=rt.RootExecution(); defer rt.FinishExecution(ctx)
  for _, pair:=range [][2]float64{{math.NaN(),math.NaN()},{math.Inf(1),math.Inf(1)},{math.Inf(1),math.Inf(-1)},{0,math.Copysign(0,-1)}} {
-  args:=[]rt.Value{pair[0],pair[1]}
+  args:=[]rt.Value{float32(pair[0]),float32(pair[1])}
   if @@floats@@.(rt.Function).Body(ctx,args).(bool)!=(pair[0]==pair[1]) {panic("IEEE equality changed")}
   if @@unequal@@.(rt.Function).Body(ctx,args).(bool)!=(pair[0]!=pair[1]) {panic("IEEE inequality changed")}
  }
@@ -80,7 +80,7 @@ func checkLowering() {
   execution:=rt.RootExecution()
   var cancel context.CancelFunc
   execution.Context,cancel=context.WithCancel(execution.Context)
-  counter:=rt.ConstructWithContext(execution,@@Counter@@,[]rt.Argument{{Name:"value",Value:int64(0)}})
+  counter:=rt.ConstructWithContext(execution,@@Counter@@,[]rt.Argument{{Name:"value",Value:int32(0)}})
   resource:=rt.ConstructWithContext(execution,@@Resource@@,[]rt.Argument{{Name:"counter",Value:counter}})
   stop:=rt.NewFunction(nil,"Unit",func(*rt.Execution,[]rt.Value)rt.Value{cancel();return rt.Unit{}})
   failure:=loweringFailure(func(){
@@ -88,11 +88,11 @@ func checkLowering() {
   })
   expected:=loweringFailure(func(){rt.CheckCancelled(execution)})
   if failure==nil || !reflect.DeepEqual(failure,expected) {panic(fmt.Sprintf("cancellation changed: %#v != %#v",failure,expected))}
-  want:=int64(0);if withCleanup {want=1}
+  want:=int32(0);if withCleanup {want=1}
   if rt.IntValue(rt.Field(counter,"value"))!=want {panic("cancelled cleanup changed")}
   rt.FinishExecution(execution)
  }
- counter:=rt.ConstructWithContext(ctx,@@Counter@@,[]rt.Argument{{Name:"value",Value:int64(0)}})
+ counter:=rt.ConstructWithContext(ctx,@@Counter@@,[]rt.Argument{{Name:"value",Value:int32(0)}})
  resource:=rt.ConstructWithContext(ctx,@@Resource@@,[]rt.Argument{{Name:"counter",Value:counter}})
  broken:=rt.ConstructWithContext(ctx,@@Broken@@,[]rt.Argument{{Name:"counter",Value:counter}})
  failure:=loweringFailure(func(){@@fault_with@@.(rt.Function).Body(ctx,[]rt.Value{resource,broken})})

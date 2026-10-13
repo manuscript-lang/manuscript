@@ -248,7 +248,7 @@ func (c *libraryConnection) baseOperation(name string) Function {
 			return libraryOK(r, Unit{})
 		}
 		if name == "read" {
-			n := a[0].(int64)
+			n := nativeInteger(a[0])
 			if n <= 0 {
 				return ioError(r, "InvalidInput", "")
 			}
@@ -482,7 +482,7 @@ func (d *libraryDatagram) baseOperation(name string) Function {
 			}
 			return libraryOK(r, Unit{})
 		}
-		max := a[0].(int64)
+		max := nativeInteger(a[0])
 		if max <= 0 || max > 65535 {
 			return libraryError(r, "InvalidInput", "")
 		}

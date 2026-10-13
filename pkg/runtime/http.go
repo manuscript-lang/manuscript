@@ -92,7 +92,7 @@ func (n *network) Operation(name string) Function {
 			return ioError(result, "InvalidInput", "")
 		}
 		args = normalized
-		limit, bodyLimit, responseLimit := args[2].(int64), args[3].(int64), args[4].(int64)
+		limit, bodyLimit, responseLimit := nativeInteger(args[2]), nativeInteger(args[3]), nativeInteger(args[4])
 		timeout, grace := args[5].(Duration), args[6].(Duration)
 		if limit <= 0 || limit > int64(^uint(0)>>1) || bodyLimit < 0 || responseLimit < 0 || timeout < nativeNoTimeout || grace < nativeNoTimeout {
 			return ioError(result, "InvalidInput", "")
@@ -226,7 +226,7 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	record := response.(Record)
-	status := record.Fields["status"].(int64)
+	status := nativeInteger(record.Fields["status"])
 	body := record.Fields["body"].(Bytes).Items
 	if status < 200 || status > 599 || int64(len(body)) > s.responseLimit {
 		http.Error(w, "invalid response", 500)

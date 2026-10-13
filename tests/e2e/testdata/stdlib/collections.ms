@@ -130,19 +130,19 @@ test "huge sizes return LimitExceeded instead of exhausting memory":
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
-    if filled(value: 1, count: 9223372036854775807) != limited: return panic(
+    if filled(value: 1, count: 2147483647) != limited: return panic(
         "filled huge"
     )
     if (
         filled(
             value: 1,
-            count: 4611686018427387904,
-            max_items: 9223372036854775807
+            count: 1073741824,
+            max_items: 2147483647
         ) != limited
     ): return panic("filled huge explicit limit")
     if range(
         start: 0,
-        end: 9223372036854775807,
+        end: 2147483647,
         step: 1
     ) != limited: return panic("range huge")
 

@@ -18,8 +18,8 @@ Decimal literals require `import Decimal from "@std/decimal.ms"`; Decimal is an 
 
 | Type | Representation |
 | --- | --- |
-| `Int` | Signed 64-bit integer with checked arithmetic |
-| `Float` | IEEE 754 binary64 |
+| `Int` | Signed 32-bit integer with checked arithmetic |
+| `Float` | IEEE 754 binary32 |
 | `Int64` | Explicit signed 64-bit integer with checked arithmetic |
 | `Float64` | Explicit IEEE 754 binary64 |
 | `Decimal` | Base-10, 34 significant digits, round half to even |
@@ -31,7 +31,7 @@ Numeric conversions are explicit. Int overflow and invalid Int/Decimal operation
 
 Arithmetic operands must have the same exact numeric type, and the result has that type. Unary signs retain their operand type. `%` accepts only `Int` operands. Ordering comparisons accept matching numeric types and return `Bool`; equality additionally follows the [Equal rules](../types/equality-and-hashing.md). The [expression table](expressions.md#operand-and-result-types) is authoritative for operator typing.
 
-Integer literals are checked against the signed 64-bit range at compile time. The magnitude `9223372036854775808` is accepted only as a directly negated integer literal, giving `-9223372036854775808`; parentheses immediately around that literal do not change the check. The positive literal and magnitudes outside either signed boundary are rejected. A Float literal rounds to binary64 using nearest, ties to even; one whose rounded magnitude would be infinite is rejected. An explicit `Int64` or `Float64` context selects that literal type before checking its range or rounding its value. The ordinary Int/Float categories remain distinct: an integer-shaped token does not become Float64 from context. Typed values still require explicit conversion.
+Default integer literals are checked against the signed 32-bit range at compile time, from `-2147483648` to `2147483647`. The magnitude `2147483648` is accepted only as a directly negated integer literal, giving `-2147483648`; parentheses immediately around that literal do not change the check. The positive literal and magnitudes outside either signed boundary are rejected. A Float literal rounds to binary32 using nearest, ties to even; one whose rounded magnitude would be infinite is rejected. An explicit `Int64` or `Float64` context selects that literal type before checking its range or rounding its value. Int64 literals span `-9223372036854775808` to `9223372036854775807`, with the same directly negated minimum rule; Float64 literals round to finite binary64. The ordinary Int/Float categories remain distinct: an integer-shaped token does not become Float64 from context. Typed values still require explicit conversion.
 
 ```manuscript
 fn literals() -> Unit:
@@ -44,7 +44,7 @@ fn literals() -> Unit:
 
 ## Explicit wider values
 
-Use `Int64` for integer contracts that require a wide range, and `Float64` when a contract requires binary64 precision. These are distinct types even while this checkout's default types still use 64-bit representations. The [default-width migration](https://github.com/manuscript-lang/manuscript/issues/271) changes the defaults in a separate coordinated stage; adding explicit types alone does not reduce existing storage.
+Use `Int64` for integer contracts that require a wide range, and `Float64` when a contract requires binary64 precision. The defaults use four-byte scalar payloads; Int64 and Float64 use eight. Generic values and record fields are boxed, so object headers, interface slots and alignment still contribute to memory usage. This is a breaking default-width change: formerly accepted large unconstrained literals require a wide annotation, and Float calculations have binary32 precision.
 
 An annotation, parameter, field, default, return, collection element, callback result or match result can provide a concrete wider context for a literal. Literal-only arithmetic can use that result context. A known wide operand also provides context to a numeric literal on the other side. The checker selects the width before parsing or rounding; it never rounds a literal to the default Float and then widens it.
 
@@ -68,23 +68,23 @@ There is no new literal suffix or built-in constructor. `parse_int64(text, radix
 | `Int64` | `to_int() -> Optional[Int]`; `to_float() -> Float`; `to_float64() -> Float64`; `to_decimal() -> Decimal` |
 | `Float64` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]`; `truncate_to_int64() -> Optional[Int64]` |
 
-Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. Decimal→Float may produce signed infinity or signed zero under the Float rules. Truncation discards the fractional part toward zero, then checks the mathematical integer against the exact signed 64-bit limits before conversion. NaN, infinities, or an out-of-range integer yield `none`.
+Int→Decimal is exact. Int→Float and Decimal→Float round once directly to nearest binary32, ties to even. Decimal→Float may produce signed infinity or signed zero under the Float rules. Truncation discards the fractional part toward zero, then checks the mathematical integer against the destination signed limits before conversion. NaN, infinities, or an out-of-range integer yield `none`.
 
 For example, `1e300.truncate_to_int()` is `none`. Float +2^63 cannot convert to Int, while Float -2^63 can.
 
-Int64→Int checks the complete mathematical value against Int's range and returns `none` if it does not fit. Float64 truncation checks the destination range before the host cast, including the exactly representable +2^63 boundary. Integer-to-Float64 rounds directly to binary64; integer-to-Decimal is exact. Float64 formatting/classification supports the same `to_string`, `to_precision`, `to_exponential`, `to_fixed`, `is_nan` and `is_finite` operations as Float. Float64 remains non-Hashable, while Int64 equality and hashing retain exact integer value semantics at generic/collection boundaries.
+Int64→Int checks the complete mathematical value against Int's range and returns `none` if it does not fit. Float64 truncation discards the fractional part before checking the destination range and host cast, including the exactly representable +2^63 boundary. Int64→Float rounds directly to binary32 without a binary64 intermediate. Integer-to-Float64 rounds directly to binary64; integer-to-Decimal is exact. Float64 formatting/classification supports the same `to_string`, `to_precision`, `to_exponential`, `to_fixed`, `is_nan` and `is_finite` operations as Float. Float64 remains non-Hashable, while Int64 equality and hashing retain exact integer value semantics at generic/collection boundaries.
 
 ## Runtime numeric outcomes
 
 ### Int
 
-Int addition, subtraction, multiplication, and unary negation fault when the mathematical result is outside the signed 64-bit range. Division truncates toward zero. Remainder has the sign of the dividend (or is zero), satisfying `a = (a / b) * b + a % b` mathematically. A zero divisor faults for both operations. Minimum Int divided by -1 faults, while Minimum Int modulo -1 is zero. Unary negation of Minimum Int faults. Thus `-7 / 2` is -3 and `-7 % 3` is -1.
+Int addition, subtraction, multiplication, and unary negation fault when the mathematical result is outside the signed 32-bit range. Division truncates toward zero. Remainder has the sign of the dividend (or is zero), satisfying `a = (a / b) * b + a % b` mathematically. A zero divisor faults for both operations. Minimum Int divided by -1 faults, while Minimum Int modulo -1 is zero. Unary negation of Minimum Int faults. Thus `-7 / 2` is -3 and `-7 % 3` is -1.
 
 Int `/` and `%` faults name the operator and the invalid right operand. Division overflow also gives both operands and the signed 64-bit result range. These remain programming faults, while BigInt division returns its declared Result error.
 
 ### Float
 
-Float operations round each operator result to binary64, nearest with ties to even; no implicit fused multiply-add or reassociation is permitted. Arithmetic overflow produces signed infinity; division by zero follows IEEE behavior, including infinity for nonzero/zero and NaN for zero/zero. Invalid Float arithmetic produces NaN, without a programming fault. Underflow rounds to a subnormal or signed zero. NaN makes every ordering comparison false; equality is false and inequality true, including against itself. Positive and negative zero compare equal. Native adapters may deliver these values. Source literals still reject a magnitude rounding to infinity. [String formatting](text-and-bytes.md#deterministic-formatting) specifies non-finite spellings.
+Float operations round each operator result to binary32, nearest with ties to even; no implicit fused multiply-add or reassociation is permitted. Arithmetic overflow produces signed infinity; division by zero follows IEEE behavior, including infinity for nonzero/zero and NaN for zero/zero. Invalid Float arithmetic produces NaN, without a programming fault. Underflow rounds to a subnormal or signed zero. NaN makes every ordering comparison false; equality is false and inequality true, including against itself. Positive and negative zero compare equal. Native adapters may deliver these values. Source literals still reject a magnitude rounding to infinity. [String formatting](text-and-bytes.md#deterministic-formatting) specifies non-finite spellings.
 
 ### Decimal
 

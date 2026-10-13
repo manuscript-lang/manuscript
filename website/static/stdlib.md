@@ -2075,7 +2075,7 @@ interface FileHandle:
     fn sync() -> Result[Unit, FileSystemError]
     fn data_sync() -> Result[Unit, FileSystemError]
     fn chmod(mode: Int) -> Result[Unit, FileSystemError]
-    fn chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]
+    fn chown(uid: Int64, gid: Int64) -> Result[Unit, FileSystemError]
     fn set_times(accessed: Timestamp, modified: Timestamp) -> Result[Unit, FileSystemError]
     fn read_lines(max_bytes: Optional[Int64] = none, max_lines: Optional[Int] = none) -> Result[List[String], FileSystemError]
 ```
@@ -2235,7 +2235,7 @@ Filesystem operations and resource factories for the current host.
 
 ```manuscript
 interface FileSystem:
-    fn open_flags(path: String, flags: Int, mode: Int) -> Result[FileHandle, FileSystemError]
+    fn open_flags(path: String, flags: Int64, mode: Int) -> Result[FileHandle, FileSystemError]
     fn glob_entries(path: String, options: GlobOptions, exclude: Optional[fn(entry: PathEntry) -> Bool]) -> Result[List[PathEntry], FileSystemError]
     fn copy(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String) -> Bool]) -> Result[Unit, FileSystemError]
     fn watch_native(path: String, recursive: Bool, max_entries: Optional[Int] = none, max_events: Optional[Int] = none, overflow: String) -> Result[FileWatcher, FileSystemError]
@@ -2254,7 +2254,7 @@ interface FileSystem:
     fn access(path: String, mode: Int) -> Result[Unit, FileSystemError]
     fn append_file(path: String, data: Bytes) -> Result[Unit, FileSystemError]
     fn chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
-    fn chown(path: String, uid: Int, gid: Int, follow_links: Bool) -> Result[Unit, FileSystemError]
+    fn chown(path: String, uid: Int64, gid: Int64, follow_links: Bool) -> Result[Unit, FileSystemError]
     fn truncate(path: String, size: Int64) -> Result[Unit, FileSystemError]
     fn set_times(path: String, accessed: Timestamp, modified: Timestamp, follow_links: Bool) -> Result[Unit, FileSystemError]
     fn hard_link(source: String, destination: String) -> Result[Unit, FileSystemError]
@@ -2373,7 +2373,7 @@ Opens a path using host flag bits in 0..2147483647 and permission bits in 0..409
 Use fs.constants() on this host; unknown bits/combinations are left to the OS.
 
 ```manuscript
-fn open_flags(path: String, flags: Int, mode: Int) -> Result[FileHandle, FileSystemError]
+fn open_flags(path: String, flags: Int64, mode: Int) -> Result[FileHandle, FileSystemError]
 ```
 
 ### FileSystem.read_file
@@ -2537,7 +2537,7 @@ Returns this host's filesystem flag, mode, and permission constants by name.
 Names and values vary by host; absent entries are not supported constants or portable enum cases.
 
 ```manuscript
-fn constants() -> Map[String, Int]:
+fn constants() -> Map[String, Int64]:
 ```
 
 ## filesystem
@@ -4200,7 +4200,7 @@ interface ProcessControl:
     fn available_memory() -> Result[Int64, ProcessError]
     fn title() -> Result[String, ProcessError]
     fn set_title(title: String) -> Result[Unit, ProcessError]
-    fn initialize_groups(username: String, gid: Int) -> Result[Unit, ProcessError]
+    fn initialize_groups(username: String, gid: Int64) -> Result[Unit, ProcessError]
     fn replace(program: String, arguments: List[String], environment: Map[String, String]) -> Result[Unit, ProcessError]
     fn info() -> Result[ProcessInfo, ProcessError]
     fn memory_usage() -> Result[MemoryUsage, ProcessError]
@@ -4212,11 +4212,11 @@ interface ProcessControl:
     fn working_directory() -> Result[String, ProcessError]
     fn change_directory(path: String) -> Result[Unit, ProcessError]
     fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
-    fn groups() -> Result[List[Int], ProcessError]
+    fn groups() -> Result[List[Int64], ProcessError]
     fn resource_usage() -> Result[ResourceUsage, ProcessError]
     fn umask(mask: Int) -> Result[Int, ProcessError]
-    fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
-    fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
+    fn set_identity(kind: String, id: Int64) -> Result[Unit, ProcessError]
+    fn set_groups(groups: List[Int64]) -> Result[Unit, ProcessError]
 ```
 
 ### ProcessControl.environment
@@ -4251,7 +4251,7 @@ Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs retur
 Identity changes require OS permission and are Unsupported on Windows.
 
 ```manuscript
-fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
+fn set_identity(kind: String, id: Int64) -> Result[Unit, ProcessError]
 ```
 
 ### ProcessControl.umask
@@ -5053,7 +5053,7 @@ Returns native signal/error/loader/priority constants by name.
 Names and values vary by host; missing entries do not imply a portable numeric default.
 
 ```manuscript
-fn constants() -> Map[String, Int]:
+fn constants() -> Map[String, Int64]:
 ```
 
 ## dev_null
@@ -5999,7 +5999,7 @@ fn to_exponential(digits: Int) -> Result[String, NumberError]
 ### Float.to_fixed
 
 Formats 0..100 fractional digits; magnitude >= 1e21 uses ordinary round-trip notation.
-Invalid digits return NumberError.InvalidInput; rounding uses binary64 ties to even.
+Invalid digits return NumberError.InvalidInput; rounding uses the stored binary32 value and ties to even.
 
 ```manuscript
 fn to_fixed(digits: Int) -> Result[String, NumberError]

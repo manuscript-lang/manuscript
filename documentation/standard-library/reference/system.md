@@ -201,7 +201,7 @@ Returns native signal/error/loader/priority constants by name.
 Names and values vary by host; missing entries do not imply a portable numeric default.
 
 ```manuscript
-fn constants() -> Map[String, Int]:
+fn constants() -> Map[String, Int64]:
 ```
 
 ## dev_null {data-api-kind="Function"}

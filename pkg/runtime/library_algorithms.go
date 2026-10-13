@@ -36,7 +36,7 @@ func init() {
 		out := append([]Value{}, a[0].(*List).Items...)
 		sort.SliceStable(out, func(i, j int) bool {
 			CheckCancelled(ctx)
-			return Invoke(ctx, a[1], []Argument{{"left", out[i]}, {"right", out[j]}}).(int64) < 0
+			return nativeInteger(Invoke(ctx, a[1], []Argument{{"left", out[i]}, {"right", out[j]}})) < 0
 		})
 		return &List{Type: r, Items: out}
 	})
@@ -79,7 +79,7 @@ func init() {
 		})
 	}
 	libraryAdd("io", "copy", libraryResult("Int64", "IoError"), []LibraryParam{p("input", "ReadStream"), p("output", "WriteStream"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
-		max := a[2].(int64)
+		max := nativeInteger(a[2])
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -90,7 +90,7 @@ func init() {
 			if max-total < n {
 				n = max - total + 1
 			}
-			value := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int", n, true)}}).(Alternative)
+			value := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int64", n, true)}}).(Alternative)
 			if value.Tag == "error" {
 				return Alternative{r, "error", value.Fields}
 			}
@@ -113,7 +113,7 @@ func init() {
 		}
 	})
 	libraryAdd("io", "read_all", libraryResult("Bytes", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
-		max := a[1].(int64)
+		max := nativeInteger(a[1])
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -123,7 +123,7 @@ func init() {
 			if max-int64(len(out)) < n {
 				n = max - int64(len(out)) + 1
 			}
-			value := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int", n, true)}}).(Alternative)
+			value := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int64", n, true)}}).(Alternative)
 			if value.Tag == "error" {
 				return Alternative{r, "error", value.Fields}
 			}

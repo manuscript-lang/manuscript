@@ -34,7 +34,7 @@ func init() {
 		}
 		return goruntime.GOOS
 	})
-	libraryAdd("system", "constants", "Map[String][Int]", nil, func(_ *Execution, _ string, _ []Value) Value {
+	libraryAdd("system", "constants", "Map[String][Int64]", nil, func(_ *Execution, _ string, _ []Value) Value {
 		values := hostos.Constants()
 		return libraryConstants(values)
 	})
@@ -44,8 +44,8 @@ func init() {
 		{"ProcessControl", "available_memory", libraryResult("Int64", "ProcessError"), nil},
 		{"ProcessControl", "title", libraryResult("String", "ProcessError"), nil},
 		{"ProcessControl", "set_title", libraryResult("Unit", "ProcessError"), []LibraryParam{{"title", "String"}}},
-		{"ProcessControl", "initialize_groups", libraryResult("Unit", "ProcessError"), []LibraryParam{{"username", "String"}, {"gid", "Int"}}},
-		{"ProcessControl", "replace", libraryResult("Unit", "ProcessError"), []LibraryParam{{"program", "String"}, {"arguments", "List[String]"}, {"environment", "Map[String][String]"}}}, {"System", "get_priority", libraryResult("Int", "SystemError"), []LibraryParam{{"pid", "Int"}}}, {"System", "set_priority", libraryResult("Unit", "SystemError"), []LibraryParam{{"pid", "Int"}, {"priority", "Int"}}}, {"ProcessControl", "resource_usage", libraryResult("ResourceUsage", "ProcessError"), []LibraryParam{}}, {"ProcessControl", "umask", libraryResult("Int", "ProcessError"), []LibraryParam{{"mask", "Int"}}}, {"ProcessControl", "set_identity", libraryResult("Unit", "ProcessError"), []LibraryParam{{"kind", "String"}, {"id", "Int"}}}, {"ProcessControl", "set_groups", libraryResult("Unit", "ProcessError"), []LibraryParam{{"groups", "List[Int]"}}}}...)
+		{"ProcessControl", "initialize_groups", libraryResult("Unit", "ProcessError"), []LibraryParam{{"username", "String"}, {"gid", "Int64"}}},
+		{"ProcessControl", "replace", libraryResult("Unit", "ProcessError"), []LibraryParam{{"program", "String"}, {"arguments", "List[String]"}, {"environment", "Map[String][String]"}}}, {"System", "get_priority", libraryResult("Int", "SystemError"), []LibraryParam{{"pid", "Int"}}}, {"System", "set_priority", libraryResult("Unit", "SystemError"), []LibraryParam{{"pid", "Int"}, {"priority", "Int"}}}, {"ProcessControl", "resource_usage", libraryResult("ResourceUsage", "ProcessError"), []LibraryParam{}}, {"ProcessControl", "umask", libraryResult("Int", "ProcessError"), []LibraryParam{{"mask", "Int"}}}, {"ProcessControl", "set_identity", libraryResult("Unit", "ProcessError"), []LibraryParam{{"kind", "String"}, {"id", "Int64"}}}, {"ProcessControl", "set_groups", libraryResult("Unit", "ProcessError"), []LibraryParam{{"groups", "List[Int64]"}}}}...)
 
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"System", "hostname", libraryResult("String", "SystemError"), []LibraryParam{}},
@@ -68,7 +68,7 @@ func init() {
 		{"ProcessControl", "working_directory", libraryResult("String", "ProcessError"), []LibraryParam{}},
 		{"ProcessControl", "change_directory", libraryResult("Unit", "ProcessError"), []LibraryParam{{"path", "String"}}},
 		{"ProcessControl", "send_signal", libraryResult("Unit", "ProcessError"), []LibraryParam{{"pid", "Int"}, {"signal", "Int"}}},
-		{"ProcessControl", "groups", libraryResult("List[Int]", "ProcessError"), []LibraryParam{}},
+		{"ProcessControl", "groups", libraryResult("List[Int64]", "ProcessError"), []LibraryParam{}},
 	}...)
 
 	for _, name := range []string{"endianness", "end_of_line", "dev_null"} {
@@ -102,14 +102,14 @@ func (s *librarySystem) extended(ctx *Execution, r, name string, a []Value) Valu
 	CheckCancelled(ctx)
 	switch name {
 	case "get_priority":
-		pid := a[0].(int64)
+		pid := nativeInteger(a[0])
 		if pid < 0 || pid > 2147483647 {
 			return libraryError(r, "InvalidInput", "")
 		}
 		v, err := hostos.GetPriority(int(pid))
 		return libraryOSResult(r, int64(v), err)
 	case "set_priority":
-		pid, priority := a[0].(int64), a[1].(int64)
+		pid, priority := nativeInteger(a[0]), nativeInteger(a[1])
 		if pid < 0 || pid > 2147483647 || priority < -20 || priority > 19 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -169,7 +169,7 @@ func (s *librarySystem) extended(ctx *Execution, r, name string, a []Value) Valu
 				if ip.To4() != nil {
 					family = "IPv4"
 				}
-				items = append(items, Record{"@std/NetworkInterface", map[string]Value{"name": iface.Name, "address": ip.String(), "netmask": net.IP(network.Mask).String(), "family": family, "mac": iface.HardwareAddr.String(), "internal": iface.Flags&net.FlagLoopback != 0, "scope_id": int64(iface.Index)}})
+				items = append(items, Record{"@std/NetworkInterface", map[string]Value{"name": iface.Name, "address": ip.String(), "netmask": net.IP(network.Mask).String(), "family": family, "mac": iface.HardwareAddr.String(), "internal": iface.Flags&net.FlagLoopback != 0, "scope_id": defaultInteger(int64(iface.Index))}})
 			}
 		}
 		return libraryOK(r, libraryList("@std/NetworkInterface", items))
@@ -291,7 +291,7 @@ func (libraryProcessControl) Operation(name string) Function {
 			}
 			return libraryOSResult(r, Unit{}, hostos.SetProcessTitle(title))
 		case "initialize_groups":
-			gid := a[1].(int64)
+			gid := nativeInteger(a[1])
 			username := a[0].(string)
 			if gid < 0 || gid > 2147483647 || strings.ContainsRune(username, 0) {
 				return libraryError(r, "InvalidInput", "")
@@ -345,7 +345,7 @@ func (libraryProcessControl) Operation(name string) Function {
 			}
 			return libraryOK(r, nativeHostRecord("@std/ResourceUsage", map[string]Value{"user_microseconds": u.User, "system_microseconds": u.System, "max_resident_bytes": u.MaxRSS, "minor_faults": u.MinorFaults, "major_faults": u.MajorFaults, "filesystem_reads": u.Reads, "filesystem_writes": u.Writes, "voluntary_switches": u.VoluntarySwitches, "involuntary_switches": u.InvoluntarySwitches}))
 		case "umask":
-			mask := a[0].(int64)
+			mask := nativeInteger(a[0])
 			if mask < 0 || mask > 0777 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -358,7 +358,7 @@ func (libraryProcessControl) Operation(name string) Function {
 			return libraryOK(r, int64(v))
 		case "set_identity":
 			kind := a[0].(string)
-			id := a[1].(int64)
+			id := nativeInteger(a[1])
 			if id < 0 || id > 2147483647 || (kind != "uid" && kind != "gid" && kind != "euid" && kind != "egid") {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -366,7 +366,7 @@ func (libraryProcessControl) Operation(name string) Function {
 		case "set_groups":
 			var groups []int
 			for _, v := range a[0].(*List).Items {
-				id := v.(int64)
+				id := nativeInteger(v)
 				if id < 0 || id > 2147483647 {
 					return libraryError(r, "InvalidInput", "")
 				}
@@ -438,7 +438,7 @@ func (libraryProcessControl) Operation(name string) Function {
 			}
 			return libraryOSResult(r, Unit{}, err)
 		case "load_environment":
-			max := a[1].(int64)
+			max := nativeInteger(a[1])
 			if max < 0 || strings.ContainsRune(a[0].(string), 0) {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -482,7 +482,7 @@ func (libraryProcessControl) Operation(name string) Function {
 			defer libraryDirectoryMu.Unlock()
 			return libraryOSResult(r, Unit{}, os.Chdir(p))
 		case "send_signal":
-			pid, signal := a[0].(int64), a[1].(int64)
+			pid, signal := nativeInteger(a[0]), nativeInteger(a[1])
 			if pid < -2147483648 || pid > 2147483647 || signal < 0 || signal > 64 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -499,7 +499,7 @@ func (libraryProcessControl) Operation(name string) Function {
 			for i, g := range groups {
 				items[i] = int64(g)
 			}
-			return libraryOK(r, libraryList("Int", items))
+			return libraryOK(r, libraryList("Int64", items))
 		}
 		return Panic("unknown process operation")
 	})

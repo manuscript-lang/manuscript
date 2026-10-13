@@ -14,7 +14,7 @@ func TestPreconditionDiagnostics(t *testing.T) {
 	cases := []struct{ setup, call, message string }{
 		{"", "bytes.|with_value(index: 2, value: 0)", "Bytes.with_value: index must be between -2 and 1 (negative indexes count from the end), found 2"},
 		{"", "bytes.|with_value(index: -3, value: 0)", "Bytes.with_value: index must be between -2 and 1 (negative indexes count from the end), found -3"},
-		{"", "bytes.|with_value(index: -9223372036854775808, value: 0)", "Bytes.with_value: index must be between -2 and 1 (negative indexes count from the end), found -9223372036854775808"},
+		{"", "bytes.|with_value(index: -2147483648, value: 0)", "Bytes.with_value: index must be between -2 and 1 (negative indexes count from the end), found -2147483648"},
 		{"", "bytes.|with_value(index: 0, value: -1)", "Bytes.with_value: value must be between 0 and 255, found -1"},
 		{"", "bytes.|with_value(index: -1, value: 256)", "Bytes.with_value: value must be between 0 and 255, found 256"},
 		{"", "bytes.|with_value(index: 2, value: 300)", "Bytes.with_value: index must be between -2 and 1 (negative indexes count from the end), found 2"},
@@ -33,16 +33,16 @@ func TestPreconditionDiagnostics(t *testing.T) {
 		{"", "list.|with_values(start: -1, delete_count: 0, replacement: [])", "List.with_values: start must be between 0 and 2, found -1"},
 		{"", "list.|with_values(start: 3, delete_count: 0, replacement: [])", "List.with_values: start must be between 0 and 2, found 3"},
 		{"", "list.|with_values(start: 1, delete_count: -1, replacement: [])", "List.with_values: delete_count must be between 0 and 1, found -1"},
-		{"", "list.|with_values(start: 1, delete_count: 9223372036854775807, replacement: [])", "List.with_values: delete_count must be between 0 and 1, found 9223372036854775807"},
+		{"", "list.|with_values(start: 1, delete_count: 2147483647, replacement: [])", "List.with_values: delete_count must be between 0 and 1, found 2147483647"},
 		{"", "list.|slice(start: -1, end: 2)", "List.slice: start/end must satisfy 0 <= start <= end <= 2; found start -1 and end 2"},
 		{"", "bytes.|slice(start: 0, end: 3)", "Bytes.slice: start/end must satisfy 0 <= start <= end <= 2; found start 0 and end 3"},
 		{"", "(1).|to_string(radix: 1)", "Int.to_string: radix must be between 2 and 36, found 1"},
 		{"", "(1).|to_string(radix: 37)", "Int.to_string: radix must be between 2 and 36, found 37"},
 		{"    let big = from_int(1)\n", "big.|to_string(radix: -1)", "BigInt.to_string: radix must be between 2 and 36, found -1"},
-		{"", "|Queue[Int](capacity: 0)", "Queue: capacity must be between 1 and 9223372036854775807, found 0"},
-		{"", "|Queue[Int](capacity: -1)", "Queue: capacity must be between 1 and 9223372036854775807, found -1"},
-		{"", "|PriorityQueue[Int](compare: compare, capacity: -1)", "PriorityQueue: capacity must be between 1 and 9223372036854775807, found -1"},
-		{"", "|PriorityQueue[Int](compare: compare, capacity: 0)", "PriorityQueue: capacity must be between 1 and 9223372036854775807, found 0"},
+		{"", "|Queue[Int](capacity: 0)", "Queue: capacity must be between 1 and 2147483647, found 0"},
+		{"", "|Queue[Int](capacity: -1)", "Queue: capacity must be between 1 and 2147483647, found -1"},
+		{"", "|PriorityQueue[Int](compare: compare, capacity: -1)", "PriorityQueue: capacity must be between 1 and 2147483647, found -1"},
+		{"", "|PriorityQueue[Int](compare: compare, capacity: 0)", "PriorityQueue: capacity must be between 1 and 2147483647, found 0"},
 	}
 	source := `import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import List from "@std/collections.ms"

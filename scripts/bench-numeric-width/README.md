@@ -1,6 +1,6 @@
 # Default numeric-width migration controls
 
-These are Go storage controls for [#271](https://github.com/manuscript-lang/manuscript/issues/271), not measurements of an implemented default-width switch. The source language on baseline `238ab77d` uses signed64 Int and binary64 Float. The explicit-wide groundwork leaves those defaults unchanged until the entire native/host contract can migrate coherently.
+This directory records Go storage controls and runtime measurements for [#271](https://github.com/manuscript-lang/manuscript/issues/271). Initial controls compare explicit Go layouts on the signed64/binary64 baseline. The runtime samples compare default scalar results before and after the coordinated signed32/binary32 switch; the migration remains a draft requiring parent review and exact-head gates.
 
 Use only the repository's pinned SDK:
 
@@ -58,4 +58,21 @@ Timing is inconclusive under shared load: boxed scalar construction varies from 
 Expected breaks include formerly accepted unconstrained integers outside signed32, Float precision beyond 2^24, overflow/fault boundaries, round-trip text, numeric generic evidence, host signatures and debugger concrete types. A default 32 scalar saved into a wide context after it was already bound requires explicit conversion; that conversion cannot recover discarded Float32 precision. Public 32-bit literal context and wider arithmetic do not authorize mixed-width variable arithmetic. Decimal stays 34-digit base 10 with its existing independent rounding/range rules. Default Int has no source shift/bitwise operators; the existing BigInt bit operations remain arbitrary precision.
 
 
-The wide-host stage preserves Duration/Instant signed64 arithmetic independently of default Int helpers. Duration unit outputs/factors/divisors, Timestamp Unix seconds/construction, file offsets/lengths/metadata, memory/CPU/resource counters and byte budgets are explicit Int64; host load averages and TOML float payloads are Float64. Binary integer wire values remain Int64, and explicit read_float64/write_float64 preserve binary64 encodings. JSON/YAML numbers retain exact text. Source stream fakes and byte-budget checks convert explicitly while preserving omission, none, zero, negative bounds and payload identity. The default switch must still reconcile public32-bit hashes with internal64-bit key hashes, truncation before range checks and direct integer-to-binary32 rounding.
+The wide-host stage preserves Duration/Instant signed64 arithmetic independently of default Int helpers. Duration unit outputs/factors/divisors, Timestamp Unix seconds/construction, file offsets/lengths/metadata, memory/CPU/resource counters and byte budgets are explicit Int64; host load averages and TOML float payloads are Float64. Binary integer wire values remain Int64, and explicit read_float64/write_float64 preserve binary64 encodings. JSON/YAML numbers retain exact text. Source stream fakes and byte-budget checks convert explicitly while preserving omission, none, zero, negative bounds and payload identity. The switch uses public int32 hashes with internal uint64 key hashes, truncates before checking the integer destination and rounds integer-to-binary32 conversions directly. Source/default/wide native and standalone regression fixtures cover these boundaries.
+
+
+## Runtime results after the default switch
+
+`runtime-samples-linux-amd64.json` uses the same harness against preparatory head `bd45f92a` and the default32 candidate. Each element is produced by the runtime's numeric Binary operation, retaining its actual boxed dynamic identity. Three fresh processes per case alternate widths; a wide host checksum prevents default overflow. Scalar payloads report `int32`/`float32` in the candidate and `int64`/`float64` in the baseline.
+
+| Case | Elements | Retained heap 64 → 32 | Allocations 64 → 32 | Median construction ms 64 → 32 | Median 10-pass traversal ms 64 → 32 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Boxed Int | 1,000,000 | 24,007,272 → 20,007,304 | 1,000,025 → 1,000,025 | 154.4 → 154.0 | 37.0 → 78.3 |
+| Boxed Float | 1,000,000 | 24,007,368 → 20,007,384 | 1,000,026 → 1,000,025 | 100.4 → 89.9 | 30.4 → 75.5 |
+| Boxed record | 100,000 | 39,205,784 → 38,405,880 | 500,008 → 500,009 | 170.8 → 184.1 | 60.3 → 136.0 |
+
+The runtime results confirm about 17% retained-heap savings for boxed scalar collections and 2% for map-backed records, with unchanged allocation counts. Representative RSS falls from about 34,200 to 30,000 KiB for scalar collections and 50,500 to 49,400 KiB for records. Typed layout controls still halve four/eight-byte scalar buffers and twelve/twenty-four-byte records; interface slots and object headers remain unchanged.
+
+These measurements do **not** establish a speedup. Traversal includes generic inspection and conversion to the wide host checksum and is slower in the candidate samples; construction is mixed. Shared-host scheduling remains uncontrolled. The runtime Binary harness measures boxing paths; it is not a benchmark of every generated typed expression or collection algorithm.
+
+`factory-samples-linux-amd64.json` separately exercises Integer/Float parsing factories, including a temporary decimal token per element. It saves only about 2.4% of scalar retained heap (32,007,192 → 31,227,656 bytes): short-lived token strings and live scalar boxes share Go's tiny allocator blocks. This further shows why four-byte payloads do not imply a uniform whole-heap reduction. Those construction timings include text parsing and cannot describe ordinary lowered literal or arithmetic speed.

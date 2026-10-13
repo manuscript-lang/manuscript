@@ -2413,7 +2413,7 @@
           "operations": [
             "append_file: fn(data: Bytes)-\u003eResult[Unit, FileSystemError]",
             "chmod: fn(mode: Int)-\u003eResult[Unit, FileSystemError]",
-            "chown: fn(uid: Int, gid: Int)-\u003eResult[Unit, FileSystemError]",
+            "chown: fn(uid: Int64, gid: Int64)-\u003eResult[Unit, FileSystemError]",
             "close: fn()-\u003eUnit",
             "data_sync: fn()-\u003eResult[Unit, FileSystemError]",
             "read: fn(max_bytes: Optional[Int64] = ...)-\u003eResult[Optional[Bytes], FileSystemError]",
@@ -2449,7 +2449,7 @@
             {
               "name": "chown",
               "kind": "operation",
-              "signature": "fn chown(uid: Int, gid: Int) -\u003e Result[Unit, FileSystemError]",
+              "signature": "fn chown(uid: Int64, gid: Int64) -\u003e Result[Unit, FileSystemError]",
               "doc": ""
             },
             {
@@ -2751,7 +2751,7 @@
             "canonicalize: fn(path: String)-\u003eResult[String, FileSystemError]",
             "chmod: fn(path: String, mode: Int)-\u003eResult[Unit, FileSystemError]",
             "chmod_link: fn(path: String, mode: Int)-\u003eResult[Unit, FileSystemError]",
-            "chown: fn(path: String, uid: Int, gid: Int, follow_links: Bool)-\u003eResult[Unit, FileSystemError]",
+            "chown: fn(path: String, uid: Int64, gid: Int64, follow_links: Bool)-\u003eResult[Unit, FileSystemError]",
             "copy: fn(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String)-\u003eBool])-\u003eResult[Unit, FileSystemError]",
             "copy_file: fn(source: String, destination: String, replace: Bool = ..., max_bytes: Optional[Int64] = ...)-\u003eResult[Unit, FileSystemError]",
             "copy_tree: fn(source: String, destination: String, replace: Bool = ..., max_entries: Optional[Int] = ..., max_bytes: Optional[Int64] = ...)-\u003eResult[Unit, FileSystemError]",
@@ -2763,7 +2763,7 @@
             "list: fn(path: String, max_entries: Optional[Int] = ...)-\u003eResult[List[DirectoryEntry], FileSystemError]",
             "open: fn(path: String, flags: String, mode: Int)-\u003eResult[FileHandle, FileSystemError]",
             "open_directory: fn(path: String)-\u003eResult[Directory, FileSystemError]",
-            "open_flags: fn(path: String, flags: Int, mode: Int)-\u003eResult[FileHandle, FileSystemError]",
+            "open_flags: fn(path: String, flags: Int64, mode: Int)-\u003eResult[FileHandle, FileSystemError]",
             "read_file: fn(path: String, max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, FileSystemError]",
             "read_link: fn(path: String)-\u003eResult[String, FileSystemError]",
             "remove: fn(path: String, recursive: Bool = ...)-\u003eResult[Unit, FileSystemError]",
@@ -2812,7 +2812,7 @@
             {
               "name": "chown",
               "kind": "operation",
-              "signature": "fn chown(path: String, uid: Int, gid: Int, follow_links: Bool) -\u003e Result[Unit, FileSystemError]",
+              "signature": "fn chown(path: String, uid: Int64, gid: Int64, follow_links: Bool) -\u003e Result[Unit, FileSystemError]",
               "doc": ""
             },
             {
@@ -2884,7 +2884,7 @@
             {
               "name": "open_flags",
               "kind": "operation",
-              "signature": "fn open_flags(path: String, flags: Int, mode: Int) -\u003e Result[FileHandle, FileSystemError]",
+              "signature": "fn open_flags(path: String, flags: Int64, mode: Int) -\u003e Result[FileHandle, FileSystemError]",
               "doc": "Opens a path using host flag bits in 0..2147483647 and permission bits in 0..4095.\nUse fs.constants() on this host; unknown bits/combinations are left to the OS."
             },
             {
@@ -3246,7 +3246,7 @@
           "name": "constants",
           "doc": "Returns this host's filesystem flag, mode, and permission constants by name.\nNames and values vary by host; absent entries are not supported constants or portable enum cases.",
           "kind": "fn",
-          "type": "fn()-\u003eMap[String, Int]"
+          "type": "fn()-\u003eMap[String, Int64]"
         },
         {
           "name": "filesystem",
@@ -5959,9 +5959,9 @@
             "constrained_memory: fn()-\u003eResult[Int64, ProcessError]",
             "cpu_usage: fn()-\u003eResult[CpuUsage, ProcessError]",
             "environment: fn()-\u003eResult[Map[String, String], ProcessError]",
-            "groups: fn()-\u003eResult[List[Int], ProcessError]",
+            "groups: fn()-\u003eResult[List[Int64], ProcessError]",
             "info: fn()-\u003eResult[ProcessInfo, ProcessError]",
-            "initialize_groups: fn(username: String, gid: Int)-\u003eResult[Unit, ProcessError]",
+            "initialize_groups: fn(username: String, gid: Int64)-\u003eResult[Unit, ProcessError]",
             "load_environment: fn(path: String, max_bytes: Optional[Int64] = ...)-\u003eResult[Unit, ProcessError]",
             "memory_usage: fn()-\u003eResult[MemoryUsage, ProcessError]",
             "monotonic_time: fn()-\u003eInt64",
@@ -5969,8 +5969,8 @@
             "resource_usage: fn()-\u003eResult[ResourceUsage, ProcessError]",
             "send_signal: fn(pid: Int, signal: Int)-\u003eResult[Unit, ProcessError]",
             "set_environment: fn(name: String, value: Optional[String])-\u003eResult[Unit, ProcessError]",
-            "set_groups: fn(groups: List[Int])-\u003eResult[Unit, ProcessError]",
-            "set_identity: fn(kind: String, id: Int)-\u003eResult[Unit, ProcessError]",
+            "set_groups: fn(groups: List[Int64])-\u003eResult[Unit, ProcessError]",
+            "set_identity: fn(kind: String, id: Int64)-\u003eResult[Unit, ProcessError]",
             "set_title: fn(title: String)-\u003eResult[Unit, ProcessError]",
             "title: fn()-\u003eResult[String, ProcessError]",
             "umask: fn(mask: Int)-\u003eResult[Int, ProcessError]",
@@ -6012,7 +6012,7 @@
             {
               "name": "groups",
               "kind": "operation",
-              "signature": "fn groups() -\u003e Result[List[Int], ProcessError]",
+              "signature": "fn groups() -\u003e Result[List[Int64], ProcessError]",
               "doc": ""
             },
             {
@@ -6024,7 +6024,7 @@
             {
               "name": "initialize_groups",
               "kind": "operation",
-              "signature": "fn initialize_groups(username: String, gid: Int) -\u003e Result[Unit, ProcessError]",
+              "signature": "fn initialize_groups(username: String, gid: Int64) -\u003e Result[Unit, ProcessError]",
               "doc": ""
             },
             {
@@ -6072,13 +6072,13 @@
             {
               "name": "set_groups",
               "kind": "operation",
-              "signature": "fn set_groups(groups: List[Int]) -\u003e Result[Unit, ProcessError]",
+              "signature": "fn set_groups(groups: List[Int64]) -\u003e Result[Unit, ProcessError]",
               "doc": ""
             },
             {
               "name": "set_identity",
               "kind": "operation",
-              "signature": "fn set_identity(kind: String, id: Int) -\u003e Result[Unit, ProcessError]",
+              "signature": "fn set_identity(kind: String, id: Int64) -\u003e Result[Unit, ProcessError]",
               "doc": "Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.\nIdentity changes require OS permission and are Unsupported on Windows."
             },
             {
@@ -7488,7 +7488,7 @@
           "name": "constants",
           "doc": "Returns native signal/error/loader/priority constants by name.\nNames and values vary by host; missing entries do not imply a portable numeric default.",
           "kind": "fn",
-          "type": "fn()-\u003eMap[String, Int]"
+          "type": "fn()-\u003eMap[String, Int64]"
         },
         {
           "name": "dev_null",
@@ -9268,7 +9268,7 @@
               "name": "to_fixed",
               "kind": "operation",
               "signature": "fn to_fixed(digits: Int) -\u003e Result[String, NumberError]",
-              "doc": "Formats 0..100 fractional digits; magnitude \u003e= 1e21 uses ordinary round-trip notation.\nInvalid digits return NumberError.InvalidInput; rounding uses binary64 ties to even."
+              "doc": "Formats 0..100 fractional digits; magnitude \u003e= 1e21 uses ordinary round-trip notation.\nInvalid digits return NumberError.InvalidInput; rounding uses the stored binary32 value and ties to even."
             },
             {
               "name": "to_float64",

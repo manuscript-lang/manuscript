@@ -67,7 +67,7 @@ func NewScheduler(ctx *Execution, args []Argument) Value {
 			if !valid {
 				return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(^uint(0)>>1))
 			}
-			limit = value.(int64)
+			limit = nativeInteger(value)
 			if limit == 0 && a.Value != nil {
 				if v, ok := a.Value.(Alternative); !ok || v.Tag != "none" {
 					return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(^uint(0)>>1))
@@ -78,7 +78,7 @@ func NewScheduler(ctx *Execution, args []Argument) Value {
 			if !valid {
 				return libraryRangeFault("Scheduler", "history_limit", a.Value, 0, int64(^uint(0)>>1))
 			}
-			historyLimit = value.(int64)
+			historyLimit = nativeInteger(value)
 		case "drain":
 			value, valid := nativeOption(a.Value, "Duration", Duration(0))
 			if !valid {

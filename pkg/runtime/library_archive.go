@@ -33,7 +33,7 @@ func libraryArchivePath(s string, directory bool) bool {
 	return true
 }
 func libraryArchivePack(ctx *Execution, r string, a []Value) Value {
-	max := a[2].(int64)
+	max := nativeInteger(a[2])
 	if max < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -128,7 +128,7 @@ func libraryArchivePack(ctx *Execution, r string, a []Value) Value {
 }
 func libraryArchiveUnpack(ctx *Execution, r string, a []Value) Value {
 	f := a[2].(Record).Fields
-	count, entryMax, total := f["max_entries"].(int64), f["max_entry_bytes"].(int64), f["max_total_bytes"].(int64)
+	count, entryMax, total := nativeInteger(f["max_entries"]), nativeInteger(f["max_entry_bytes"]), nativeInteger(f["max_total_bytes"])
 	if count < 0 || entryMax < 0 || total < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}

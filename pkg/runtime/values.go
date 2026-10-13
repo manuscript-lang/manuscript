@@ -383,10 +383,10 @@ func formatValue(value Value, depth int) string {
 		return strconv.FormatInt(int64(v), 10)
 	case Float64:
 		return formatFloat(float64(v))
-	case int64:
-		return strconv.FormatInt(v, 10)
-	case float64:
-		return formatFloat(v)
+	case int32:
+		return strconv.FormatInt(int64(v), 10)
+	case float32:
+		return formatFloat32(v)
 	case bool:
 		return strconv.FormatBool(v)
 	case Unit:
@@ -495,8 +495,8 @@ func primitiveEqual(a, b Value) (result, ok bool) {
 		if y, same := b.(Float64); same {
 			return x == y, true
 		}
-	case int64:
-		if y, same := b.(int64); same {
+	case int32:
+		if y, same := b.(int32); same {
 			return x == y, true
 		}
 	case string:
@@ -507,8 +507,8 @@ func primitiveEqual(a, b Value) (result, ok bool) {
 		if y, same := b.(bool); same {
 			return x == y, true
 		}
-	case float64:
-		if y, same := b.(float64); same {
+	case float32:
+		if y, same := b.(float32); same {
 			return x == y, true
 		}
 	}
@@ -573,11 +573,11 @@ func equal(a, b Value, state *equalityState) bool {
 	case libraryTimestamp:
 		y, ok := b.(libraryTimestamp)
 		return ok && x.t.Equal(y.t)
-	case int64:
-		y, ok := b.(int64)
+	case int32:
+		y, ok := b.(int32)
 		return ok && x == y
-	case float64:
-		y, ok := b.(float64)
+	case float32:
+		y, ok := b.(float32)
 		return ok && x == y
 	case string:
 		y, ok := b.(string)

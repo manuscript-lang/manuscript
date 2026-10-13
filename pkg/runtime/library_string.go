@@ -29,7 +29,7 @@ func clampedIndex(length int, index int64, relative bool) int64 {
 // StringAt is the direct path for String.at calls.
 func StringAt(ctx *Execution, text, index Value, result string) Value {
 	CheckCancelled(ctx)
-	return stringScalarAt(text.(string), index.(int64), result, false)
+	return stringScalarAt(text.(string), nativeInteger(index), result, false)
 }
 
 func stringScalarAt(text string, index int64, result string, asInt bool) Value {
@@ -50,7 +50,7 @@ func stringScalarAt(text string, index int64, result string, asInt bool) Value {
 	}
 	var value Value = string(scalar)
 	if asInt {
-		value = int64(scalar)
+		value = int32(scalar)
 	}
 	return Alternative{result, "some", []Value{value}}
 }
@@ -124,17 +124,17 @@ func init() {
 		{"format_fixed", "digits", 'f', 0}, {"format_exponential", "digits", 'e', 0}, {"format_precision", "precision", 'g', 1},
 	} {
 		add("numbers", spec.name, libraryResult("String", "NumberError"), []LibraryParam{p("value", "Float"), p(spec.label, "Int")}, func(_ *Execution, r string, a []Value) Value {
-			precision := a[1].(int64)
+			precision := nativeInteger(a[1])
 			if precision < spec.minimum || precision > 100 {
 				return libraryError(r, "InvalidInput", "")
 			}
-			return libraryOK(r, formatFloatPrecision(a[0].(float64), spec.format, int(precision)))
+			return libraryOK(r, formatFloatPrecisionBits(nativeFloat(a[0]), spec.format, int(precision), 32))
 		})
 	}
 
 	add("string", "concat", "String", []LibraryParam{p("text", "String"), p("values", "String")}, func(_ *Execution, _ string, a []Value) Value { return a[0].(string) + a[1].(string) })
 	add("string", "normalize", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("form", "String"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
-		max := a[2].(int64)
+		max := nativeInteger(a[2])
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -177,7 +177,7 @@ func init() {
 			result = "Optional[Int]"
 		}
 		add("string", name, result, []LibraryParam{p("text", "String"), p("index", "Int")}, func(_ *Execution, r string, a []Value) Value {
-			return stringScalarAt(a[0].(string), a[1].(int64), r, name == "scalar_at")
+			return stringScalarAt(a[0].(string), nativeInteger(a[1]), r, name == "scalar_at")
 		})
 	}
 	for _, name := range []string{"index_of", "last_index_of"} {
@@ -190,7 +190,7 @@ func init() {
 			if i < 0 {
 				return Alternative{Type: r, Tag: "none"}
 			}
-			return Alternative{r, "some", []Value{int64(utf8.RuneCountInString(text[:i]))}}
+			return Alternative{r, "some", []Value{defaultInteger(int64(utf8.RuneCountInString(text[:i])))}}
 		})
 	}
 	for _, name := range []string{"trim_start", "trim_end"} {
@@ -209,8 +209,8 @@ func init() {
 			if !ascii {
 				count = utf8.RuneCountInString(text)
 			}
-			s := clampedIndex(count, a[1].(int64), name == "slice")
-			e := clampedIndex(count, a[2].(int64), name == "slice")
+			s := clampedIndex(count, nativeInteger(a[1]), name == "slice")
+			e := clampedIndex(count, nativeInteger(a[2]), name == "slice")
 			if s > e {
 				if name == "substring" {
 					s, e = e, s
@@ -228,7 +228,7 @@ func init() {
 	for _, name := range []string{"pad_start", "pad_end"} {
 		add("string", name, libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("target_length", "Int"), p("padding", "String"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
 			text, padding := a[0].(string), a[2].(string)
-			target, max := a[1].(int64), a[3].(int64)
+			target, max := nativeInteger(a[1]), nativeInteger(a[3])
 			if target < 0 || max < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -278,7 +278,7 @@ func init() {
 		})
 	}
 	add("string", "replace_all", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
-		text, old, replacement, max := a[0].(string), a[1].(string), a[2].(string), a[3].(int64)
+		text, old, replacement, max := a[0].(string), a[1].(string), a[2].(string), nativeInteger(a[3])
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -320,11 +320,11 @@ func init() {
 	})
 	add("bytes", "at", "Optional[Int]", []LibraryParam{p("data", "Bytes"), p("index", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		items := a[0].(Bytes).Items
-		i := relativeIndex(len(items), a[1].(int64))
+		i := relativeIndex(len(items), nativeInteger(a[1]))
 		if i < 0 || i >= int64(len(items)) {
 			return Alternative{Type: r, Tag: "none"}
 		}
-		return Alternative{r, "some", []Value{int64(items[i])}}
+		return Alternative{r, "some", []Value{int32(items[i])}}
 	})
 	for _, name := range []string{"index_of", "last_index_of", "starts_with", "ends_with"} {
 		result := "Optional[Int]"
@@ -346,7 +346,7 @@ func init() {
 			if i < 0 {
 				return Alternative{Type: r, Tag: "none"}
 			}
-			return Alternative{r, "some", []Value{int64(i)}}
+			return Alternative{r, "some", []Value{defaultInteger(int64(i))}}
 		})
 	}
 	add("bytes", "reverse", "Bytes", []LibraryParam{p("data", "Bytes")}, func(ctx *Execution, _ string, a []Value) Value {
@@ -360,9 +360,9 @@ func init() {
 	libraryAlias("bytes", "reversed", "reverse")
 	add("bytes", "with_value", "Bytes", []LibraryParam{p("data", "Bytes"), p("index", "Int"), p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		items := a[0].(Bytes).Items
-		i, n := relativeIndex(len(items), a[1].(int64)), a[2].(int64)
+		i, n := relativeIndex(len(items), nativeInteger(a[1])), nativeInteger(a[2])
 		if i < 0 || i >= int64(len(items)) {
-			return libraryIndexFault("Bytes.with_value", len(items), a[1].(int64))
+			return libraryIndexFault("Bytes.with_value", len(items), nativeInteger(a[1]))
 		}
 		if n < 0 || n > 255 {
 			return libraryRangeFault("Bytes.with_value", "value", n, 0, 255)
@@ -408,14 +408,17 @@ func libraryBytesSplit(ctx *Execution, result string, args []Value) Value {
 }
 
 // Precision formatting preserves requested trailing digits. Manuscript uses the
-// existing binary64 ties-to-even rounding and preserves signed zero.
+// stored value's ties-to-even rounding and preserves signed zero.
 func formatFloatPrecision(value float64, format byte, precision int) string {
+	return formatFloatPrecisionBits(value, format, precision, 64)
+}
+func formatFloatPrecisionBits(value float64, format byte, precision, bits int) string {
 	if math.IsNaN(value) || math.IsInf(value, 0) {
-		return formatFloat(value)
+		return formatFloatBits(value, bits)
 	}
 	if format == 'f' {
 		if math.Abs(value) >= 1e21 {
-			return formatFloat(value)
+			return formatFloatBits(value, bits)
 		}
 		return strconv.FormatFloat(value, 'f', precision, 64)
 	}

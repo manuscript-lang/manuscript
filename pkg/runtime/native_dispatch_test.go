@@ -13,11 +13,11 @@ func TestNativeDispatchBoundBytesValues(t *testing.T) {
 		t.Fatalf("unexpected callable: %#v", bound)
 	}
 	first := Invoke(ctx, bound, nil).(*List)
-	if !Equal(first, &List{Type: "@std/List[Int]", Items: []Value{int64(0), int64(1), int64(255)}}) {
+	if !Equal(first, &List{Type: "@std/List[Int]", Items: []Value{int32(0), int32(1), int32(255)}}) {
 		t.Fatalf("unexpected byte extraction: %#v", first)
 	}
-	first.Items[0] = int64(99)
-	if got := Invoke(ctx, bound, nil).(*List); got.Items[0] != int64(0) || data.Items[0] != 0 {
+	first.Items[0] = int32(99)
+	if got := Invoke(ctx, bound, nil).(*List); got.Items[0] != int32(0) || data.Items[0] != 0 {
 		t.Fatal("byte extraction aliases storage")
 	}
 	cancelledContext, cancel := context.WithCancel(ctx.Context)
@@ -29,25 +29,25 @@ func TestNativeDispatchBoundBytesValues(t *testing.T) {
 
 func TestNativeDispatchBoundList(t *testing.T) {
 	ctx := RootExecution()
-	list := &List{Type: "@std/List[@std/Optional[Int]]", Items: []Value{optional("Int", int64(1), true)}}
+	list := &List{Type: "@std/List[@std/Optional[Int]]", Items: []Value{optional("Int", int32(1), true)}}
 	for _, result := range []string{"", "@std/Optional[@std/Optional[Int]]"} {
 		bound := NativeMemberResult(list, "at", result, TypeScope{Args: []TypeScope{{Module: "local"}}}).(Function)
 		if bound.Result != "@std/Optional[@std/Optional[Int]]" {
 			t.Fatalf("result = %s", bound.Result)
 		}
 		// A bound method must read the original receiver's current contents.
-		list.Items[0] = optional("Int", int64(2), true)
-		got := Invoke(ctx, bound, []Argument{{"index", int64(0)}}).(Alternative)
+		list.Items[0] = optional("Int", int32(2), true)
+		got := Invoke(ctx, bound, []Argument{{"index", int32(0)}}).(Alternative)
 		if !Equal(got.Fields[0], list.Items[0]) {
 			t.Fatal("bound receiver lost payload")
 		}
-		missing := Invoke(ctx, bound, []Argument{{"index", int64(1)}}).(Alternative)
+		missing := Invoke(ctx, bound, []Argument{{"index", int32(1)}}).(Alternative)
 		if missing.Tag != "none" || missing.Type != bound.Result {
 			t.Fatal("out-of-range access changed")
 		}
 		cancelledContext, cancel := context.WithCancel(ctx.Context)
 		cancel()
-		if _, ok := recovered(func() { Invoke(&Execution{Context: cancelledContext}, bound, []Argument{{"index", int64(0)}}) }).(cancelled); !ok {
+		if _, ok := recovered(func() { Invoke(&Execution{Context: cancelledContext}, bound, []Argument{{"index", int32(0)}}) }).(cancelled); !ok {
 			t.Fatal("native call ignored cancellation")
 		}
 	}
@@ -72,10 +72,10 @@ func TestNativeOptionAdapterClassification(t *testing.T) {
 
 func TestDirectNativeListAtAndUnwrap(t *testing.T) {
 	ctx := RootExecution()
-	payload := Record{Type: "local/Item", Fields: map[string]Value{"value": int64(7)}}
+	payload := Record{Type: "local/Item", Fields: map[string]Value{"value": int32(7)}}
 	list := &List{Type: "@std/List[local/Item]", Items: []Value{payload}}
 	result := "@std/Optional[local/Item]"
-	for _, index := range []int64{0, -1, 1, -2, -1 << 63, 1<<63 - 1} {
+	for _, index := range []int32{0, -1, 1, -2, -1 << 31, 1<<31 - 1} {
 		got := ListAt(ctx, list, index, result).(Alternative)
 		wantPresent := index == 0 || index == -1
 		if got.Type != result || (got.Tag == "some") != wantPresent {
@@ -87,8 +87,8 @@ func TestDirectNativeListAtAndUnwrap(t *testing.T) {
 		}
 		if wantPresent {
 			unwrapped := OptionalUnwrap(ctx, got).(Record)
-			unwrapped.Fields["value"] = int64(9)
-			if payload.Fields["value"] != int64(9) {
+			unwrapped.Fields["value"] = int32(9)
+			if payload.Fields["value"] != int32(9) {
 				t.Fatal("unwrap copied payload")
 			}
 		} else {
@@ -103,7 +103,7 @@ func TestDirectNativeListAtAndUnwrap(t *testing.T) {
 	for _, method := range []string{"first", "last", "at"} {
 		args := []Argument(nil)
 		if method == "at" {
-			args = []Argument{{"index", int64(-1)}}
+			args = []Argument{{"index", int32(-1)}}
 		}
 		if Invoke(ctx, NativeMemberResult(empty, method, result), args).(Alternative).Tag != "none" {
 			t.Fatalf("empty %s", method)
@@ -117,8 +117,8 @@ func TestDirectNativeListAtAndUnwrap(t *testing.T) {
 	cancel()
 	stopped := &Execution{Context: cancelledContext}
 	for _, call := range []func(){
-		func() { ListAt(stopped, list, int64(0), result) },
-		func() { OptionalUnwrap(stopped, optional("Int", int64(1), true)) },
+		func() { ListAt(stopped, list, int32(0), result) },
+		func() { OptionalUnwrap(stopped, optional("Int", int32(1), true)) },
 		func() { OptionalUnwrap(stopped, optional("Int", nil, false)) },
 	} {
 		if _, ok := recovered(call).(cancelled); !ok {
@@ -138,8 +138,8 @@ func TestNativeDispatchMapAddCancellation(t *testing.T) {
 		t.Fatal(bound)
 	}
 	for _, call := range []func(){
-		func() { MapWithEntry(child, m, "a", int64(1), TypeScope{}) },
-		func() { Invoke(child, bound, []Argument{{"value", int64(1)}, {"key", "a"}}) },
+		func() { MapWithEntry(child, m, "a", int32(1), TypeScope{}) },
+		func() { Invoke(child, bound, []Argument{{"value", int32(1)}, {"key", "a"}}) },
 	} {
 		if _, ok := recovered(call).(cancelled); !ok {
 			t.Fatal("map add ignored cancellation")

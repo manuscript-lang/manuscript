@@ -38,7 +38,7 @@ function runtimeKind(variable) {
   return match ? match[1] : '';
 }
 function sourceType(native) {
-  const primitives = { int64: 'Int', float64: 'Float', 'msruntime.Int64': 'Int64', 'msruntime.Float64': 'Float64', bool: 'Bool', string: 'String' };
+  const primitives = { int32: 'Int', float32: 'Float', int64: 'Int64', float64: 'Float64', 'msruntime.Int64': 'Int64', 'msruntime.Float64': 'Float64', bool: 'Bool', string: 'String' };
   native = (native || '').replace(/^.+: (interface \{\}.*)$/, '$1');
   const match = /^interface \{\}\(([^)]+)\)$/.exec(native);
   const concrete = match ? match[1] : native;

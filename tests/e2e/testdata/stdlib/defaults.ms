@@ -17,7 +17,7 @@ impl Commands for Capture:
         program: String,
         arguments: List[String],
         input: Bytes,
-        max_output_bytes: Optional[Int],
+        max_output_bytes: Optional[Int64],
         timeout: Optional[Duration]
     ) -> Result[CommandOutput, CommandError]:
         self.last = input
@@ -72,7 +72,7 @@ impl Commands for Override:
         program: String,
         arguments: List[String],
         input: Bytes = self.input,
-        max_output_bytes: Optional[Int] = none,
+        max_output_bytes: Optional[Int64] = none,
         timeout: Optional[Duration]
     ) -> Result[CommandOutput, CommandError]:
         return ok(

@@ -23,7 +23,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		return libraryError(r, "Closed", "")
 	}
 	method, address := a[0].(string), a[1].(string)
-	max, timeout := a[4].(int64), a[5].(Duration)
+	max, timeout := nativeInteger(a[4]), a[5].(Duration)
 	if max < 0 || timeout < nativeNoTimeout {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -73,7 +73,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		return libraryError(r, "InvalidData", "")
 	}
 	headers := libraryHTTPHeaders(response.Header)
-	return libraryOK(r, Record{"@std/ClientResponse", map[string]Value{"status": int64(response.StatusCode), "headers": headers, "body": Bytes{data}}})
+	return libraryOK(r, Record{"@std/ClientResponse", map[string]Value{"status": int32(response.StatusCode), "headers": headers, "body": Bytes{data}}})
 }
 
 func libraryHeaderName(s string) bool {
@@ -95,7 +95,7 @@ func libraryNetworkLookup(n *network, ctx *Execution, r string, a []Value) Value
 	if closed {
 		return libraryError(r, "Closed", "")
 	}
-	max, timeout := a[1].(int64), a[2].(Duration)
+	max, timeout := nativeInteger(a[1]), a[2].(Duration)
 	if max < 0 || timeout < nativeNoTimeout {
 		return libraryError(r, "InvalidInput", "")
 	}

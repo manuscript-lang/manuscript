@@ -27,7 +27,7 @@ func init() {
 func (n *network) serveStreaming() Function {
 	return libraryAcquisition("Network", "serve_stream", func(ctx *Execution, r string, a []Value) Value {
 		f := a[2].(Record).Fields
-		limit, bodyMax, responseMax, headerMax := f["max_requests"].(int64), f["max_body_bytes"].(int64), f["max_response_bytes"].(int64), f["max_header_bytes"].(int64)
+		limit, bodyMax, responseMax, headerMax := nativeInteger(f["max_requests"]), nativeInteger(f["max_body_bytes"]), nativeInteger(f["max_response_bytes"]), nativeInteger(f["max_header_bytes"])
 		timeout, grace := f["timeout"].(Duration), f["grace"].(Duration)
 		if limit <= 0 || bodyMax < 0 || responseMax < 0 || headerMax <= 0 || headerMax > int64(^uint(0)>>1) || timeout < nativeNoTimeout || grace < nativeNoTimeout {
 			return libraryError(r, "InvalidInput", "")
@@ -244,7 +244,7 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 		defer e.active.Done()
 		CheckCancelled(e.ctx)
 		if name == "read" {
-			max := a[0].(int64)
+			max := nativeInteger(a[0])
 			if max <= 0 {
 				return ioError(r, "InvalidInput", "")
 			}
@@ -274,7 +274,7 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 			return ioError(r, "Failed", "empty request read")
 		}
 		if name == "send_headers" {
-			status := a[0].(int64)
+			status := nativeInteger(a[0])
 			e.mu.Lock()
 			sent := e.sent
 			e.mu.Unlock()

@@ -24,8 +24,8 @@ func nativeOption(value Value, typ string, fallback Value) (Value, bool) {
 			if v < 0 {
 				return nil, false
 			}
-		case int64:
-			if v < 0 {
+		case int32, int64:
+			if nativeInteger(v) < 0 {
 				return nil, false
 			}
 		case Duration:
@@ -34,8 +34,8 @@ func nativeOption(value Value, typ string, fallback Value) (Value, bool) {
 			}
 		}
 	}
-	if value, ok := value.(Int64); ok {
-		return int64(value), true
+	if value, ok := nativeIntegerValue(value); ok {
+		return value, true
 	}
 	return value, true
 }
@@ -140,8 +140,8 @@ func nativeOptionFailure(result, operation string, params []LibraryParam, args [
 			if v < 0 {
 				return Panic(fmt.Sprintf("%s: %s must be nonnegative, found %d", operation, p.Name, v))
 			}
-		case int64:
-			if v < 0 {
+		case int32, int64:
+			if nativeInteger(v) < 0 {
 				return Panic(fmt.Sprintf("%s: %s must be nonnegative, found %d", operation, p.Name, v))
 			}
 		case Duration:
@@ -164,7 +164,7 @@ func nativeStreamReadSize(value Value) int64 {
 	if !ok {
 		return -1
 	}
-	return normalized.(int64)
+	return nativeInteger(normalized)
 }
 
 func nativeTransportTimeout(timeout Duration) time.Duration {

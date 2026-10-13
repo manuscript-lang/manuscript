@@ -89,7 +89,7 @@ fn to_exponential(digits: Int) -> Result[String, NumberError]
 ### Float.to_fixed
 
 Formats 0..100 fractional digits; magnitude >= 1e21 uses ordinary round-trip notation.
-Invalid digits return NumberError.InvalidInput; rounding uses binary64 ties to even.
+Invalid digits return NumberError.InvalidInput; rounding uses the stored binary32 value and ties to even.
 
 ```manuscript
 fn to_fixed(digits: Int) -> Result[String, NumberError]

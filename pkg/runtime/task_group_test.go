@@ -54,12 +54,12 @@ func TestTaskJoinAllowsFurtherAdmission(t *testing.T) {
 	root := RootExecution()
 	group := NewTaskGroup(root, nil).(*TaskGroup)
 	defer group.close(root)
-	first := groupTask(root, group, NewFunction(nil, "Int", func(*Execution, []Value) Value { return int64(1) }))
-	if taskResult(root, first).Fields[0] != int64(1) {
+	first := groupTask(root, group, NewFunction(nil, "Int", func(*Execution, []Value) Value { return int32(1) }))
+	if taskResult(root, first).Fields[0] != int32(1) {
 		t.Fatal("first result")
 	}
-	second := groupTask(root, group, NewFunction(nil, "Int", func(*Execution, []Value) Value { return int64(2) }))
-	if taskResult(root, second).Fields[0] != int64(2) {
+	second := groupTask(root, group, NewFunction(nil, "Int", func(*Execution, []Value) Value { return int32(2) }))
+	if taskResult(root, second).Fields[0] != int32(2) {
 		t.Fatal("second result")
 	}
 }
@@ -176,7 +176,7 @@ func TestTaskGroupCancelledTaskJoinWaitsForSiblings(t *testing.T) {
 	group := NewTaskGroup(root, nil).(*TaskGroup)
 	defer group.close(root)
 	cleaned := make(chan struct{})
-	fast := groupTask(root, group, NewFunction(nil, "Int", func(*Execution, []Value) Value { return int64(1) }))
+	fast := groupTask(root, group, NewFunction(nil, "Int", func(*Execution, []Value) Value { return int32(1) }))
 	entered := make(chan struct{})
 	groupTask(root, group, NewFunction(nil, "Unit", func(ctx *Execution, _ []Value) Value {
 		defer close(cleaned)
@@ -261,8 +261,8 @@ func TestTaskGroupFaultPreservesCompletedTaskAndStopsNewBodies(t *testing.T) {
 	root := RootExecution()
 	group := NewTaskGroup(root, nil).(*TaskGroup)
 	defer group.close(root)
-	completed := groupTask(root, group, NewFunction(nil, "Int", func(*Execution, []Value) Value { return int64(9) }))
-	if taskResult(root, completed).Fields[0] != int64(9) {
+	completed := groupTask(root, group, NewFunction(nil, "Int", func(*Execution, []Value) Value { return int32(9) }))
+	if taskResult(root, completed).Fields[0] != int32(9) {
 		t.Fatal("completion")
 	}
 	failed := groupTask(root, group, NewFunction(nil, "Unit", func(*Execution, []Value) Value { return Panic("primary") }))
@@ -273,7 +273,7 @@ func TestTaskGroupFaultPreservesCompletedTaskAndStopsNewBodies(t *testing.T) {
 	if outcome.Tag != "error" || outcome.Fields[0].(Alternative).Tag != "Crashed" || invoked.Load() {
 		t.Fatal(outcome)
 	}
-	if taskResult(root, completed).Fields[0] != int64(9) {
+	if taskResult(root, completed).Fields[0] != int32(9) {
 		t.Fatal("a sibling fault overwrote a committed result")
 	}
 }

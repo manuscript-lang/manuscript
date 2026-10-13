@@ -16,17 +16,17 @@ func recovered(action func()) (failure any) {
 	return nil
 }
 func TestCheckedNumericOperations(t *testing.T) {
-	for name, action := range map[string]func(){"add overflow": func() { Binary("+", int64(math.MaxInt64), int64(1)) }, "sub overflow": func() { Binary("-", int64(math.MinInt64), int64(1)) }, "multiply overflow": func() { Binary("*", int64(math.MaxInt64), int64(2)) }, "minimum division": func() { Binary("/", int64(math.MinInt64), int64(-1)) }, "zero division": func() { Binary("/", int64(3), int64(0)) }, "minimum negation": func() { Unary("-", int64(math.MinInt64)) }, "duration overflow": func() { duration(int64(math.MaxInt64), "minutes") }, "decimal zero divisor": func() { Binary("/", DecimalLiteral("1d"), DecimalLiteral("0d")) }, "decimal overflow": func() { Binary("*", DecimalLiteral("1e6144d"), DecimalLiteral("10d")) }} {
+	for name, action := range map[string]func(){"add overflow": func() { Binary("+", int32(math.MaxInt32), int32(1)) }, "sub overflow": func() { Binary("-", int32(math.MinInt32), int32(1)) }, "multiply overflow": func() { Binary("*", int32(math.MaxInt32), int32(2)) }, "minimum division": func() { Binary("/", int32(math.MinInt32), int32(-1)) }, "zero division": func() { Binary("/", int32(3), int32(0)) }, "minimum negation": func() { Unary("-", int32(math.MinInt32)) }, "duration overflow": func() { duration(Int64(math.MaxInt64), "minutes") }, "decimal zero divisor": func() { Binary("/", DecimalLiteral("1d"), DecimalLiteral("0d")) }, "decimal overflow": func() { Binary("*", DecimalLiteral("1e6144d"), DecimalLiteral("10d")) }} {
 		t.Run(name, func(t *testing.T) {
 			if _, ok := recovered(action).(Fault); !ok {
 				t.Fatal("expected programming fault")
 			}
 		})
 	}
-	if Binary("/", int64(-7), int64(2)) != int64(-3) || Binary("%", int64(-7), int64(3)) != int64(-1) || Binary("%", int64(math.MinInt64), int64(-1)) != int64(0) {
+	if Binary("/", int32(-7), int32(2)) != int32(-3) || Binary("%", int32(-7), int32(3)) != int32(-1) || Binary("%", int32(math.MinInt32), int32(-1)) != int32(0) {
 		t.Fatal("integer quotient/remainder semantics")
 	}
-	if Equal(math.NaN(), math.NaN()) || !Equal(0.0, math.Copysign(0, -1)) {
+	if Equal(float32(math.NaN()), float32(math.NaN())) || !Equal(float32(0), float32(math.Copysign(0, -1))) {
 		t.Fatal("IEEE equality")
 	}
 	if value := Format(Binary("/", DecimalLiteral("1d"), DecimalLiteral("3d"))); value != "0.3333333333333333333333333333333333" {
@@ -48,24 +48,24 @@ func TestCheckedNumericOperations(t *testing.T) {
 		}
 	}
 	for input, want := range map[float64]string{1e-7: "1e-7", 1e-6: "0.000001", 1e20: "100000000000000000000", 1e21: "1e+21", math.Inf(1): "Infinity"} {
-		if got := Format(input); got != want {
+		if got := Format(Float64(input)); got != want {
 			t.Errorf("%v -> %s", input, got)
 		}
 	}
-	if Format(math.Copysign(0, -1)) != "-0" {
+	if Format(float32(math.Copysign(0, -1))) != "-0" {
 		t.Fatal("negative zero formatting")
 	}
 }
 func TestClonedCollectionSnapshots(t *testing.T) {
 	ctx := RootExecution()
 	original := &Map{Type: "@std/Map[String][Int]"}
-	add := func(m *Map, key string, value int64) *Map {
+	add := func(m *Map, key string, value int32) *Map {
 		return Invoke(ctx, NativeMember(m, "with_entry"), []Argument{{"value", value}, {"key", key}}).(*Map)
 	}
 	a := add(Clone(original).(*Map), "a", 1)
 	b := add(Clone(a).(*Map), "b", 2)
 	updated := add(Clone(b).(*Map), "a", 3)
-	if len(original.Entries) != 0 || a.Entries[0].Value != int64(1) || updated.Entries[0].Key != "a" || updated.Entries[0].Value != int64(3) {
+	if len(original.Entries) != 0 || a.Entries[0].Value != int32(1) || updated.Entries[0].Key != "a" || updated.Entries[0].Value != int32(3) {
 		t.Fatal("update mutated an alias or changed order")
 	}
 	removed := Invoke(ctx, NativeMember(Clone(updated), "without"), []Argument{{"key", "a"}}).(*Map)
@@ -149,7 +149,7 @@ func TestTaskGroupJoinsFaultedSiblings(t *testing.T) {
 		close(started)
 		<-ctx.Context.Done()
 		CheckCancelled(ctx)
-		return int64(2)
+		return int32(2)
 	})
 	outcome := runTasks(RootExecution(), "result", []Value{first, second}, nil).(Alternative)
 	if outcome.Tag != "error" || outcome.Fields[0].(Alternative).Tag != "Crashed" {
@@ -170,7 +170,7 @@ func TestTaskGroupEmptyZeroTimeoutAndParentCancellation(t *testing.T) {
 		t.Fatal("empty group timed out")
 	}
 	var started atomic.Bool
-	task := NewFunction(nil, "Int", func(_ *Execution, _ []Value) Value { started.Store(true); return int64(1) })
+	task := NewFunction(nil, "Int", func(_ *Execution, _ []Value) Value { started.Store(true); return int32(1) })
 	outcome := runTasks(RootExecution(), "result", []Value{task}, &zero).(Alternative)
 	if outcome.Tag != "error" || started.Load() {
 		t.Fatal("zero timeout started work")
@@ -192,7 +192,7 @@ func startJob(ctx *Execution, b *Scheduler, f Function) Alternative {
 }
 func TestSchedulerAdmissionCancellationAndClose(t *testing.T) {
 	ctx := RootExecution()
-	b := NewScheduler(ctx, []Argument{{"limit", int64(1)}}).(*Scheduler)
+	b := NewScheduler(ctx, []Argument{{"limit", int32(1)}}).(*Scheduler)
 	started := make(chan struct{})
 	cleaned := make(chan struct{})
 	f := NewFunction(nil, "@std/Result[Unit][String]", func(child *Execution, _ []Value) Value {
@@ -230,7 +230,7 @@ func TestSchedulerReporterHistoryAndOwnLifetime(t *testing.T) {
 	ctx := &Execution{Context: parent}
 	reports := make(chan Value, 2)
 	reporter := NewFunction([]string{"failure"}, "Unit", func(_ *Execution, args []Value) Value { reports <- args[0]; return Unit{} })
-	b := NewScheduler(ctx, []Argument{{"limit", int64(2)}, {"reporter", reporter}, {"history_limit", int64(1)}, {"drain", Duration(time.Second)}}).(*Scheduler)
+	b := NewScheduler(ctx, []Argument{{"limit", int32(2)}, {"reporter", reporter}, {"history_limit", int32(1)}, {"drain", Duration(time.Second)}}).(*Scheduler)
 	failure := NewFunction(nil, "@std/Result[Unit][String]", func(_ *Execution, _ []Value) Value {
 		return Alternative{"@std/Result[Unit][String]", "error", []Value{"expected failure"}}
 	})
@@ -251,7 +251,7 @@ func TestSchedulerCannotJoinItselfOrNestedDescendant(t *testing.T) {
 	ctx := RootExecution()
 	reports := make(chan Value, 1)
 	reporter := NewFunction([]string{"failure"}, "Unit", func(_ *Execution, args []Value) Value { reports <- args[0]; return Unit{} })
-	b := NewScheduler(ctx, []Argument{{"limit", int64(1)}, {"reporter", reporter}, {"drain", Duration(time.Second)}}).(*Scheduler)
+	b := NewScheduler(ctx, []Argument{{"limit", int32(1)}, {"reporter", reporter}, {"drain", Duration(time.Second)}}).(*Scheduler)
 	operation := NewFunction(nil, "@std/Result[Unit][String]", func(child *Execution, _ []Value) Value {
 		nested := NewFunction(nil, "Unit", func(grandchild *Execution, _ []Value) Value { b.close(grandchild); return Unit{} })
 		result := runTasks(child, "result", []Value{nested}, nil).(Alternative)
@@ -271,7 +271,7 @@ func TestSchedulerCannotJoinItselfOrNestedDescendant(t *testing.T) {
 }
 func TestSchedulerSubmittingContextDoesNotReparent(t *testing.T) {
 	parent := RootExecution()
-	b := NewScheduler(parent, []Argument{{"limit", int64(1)}, {"drain", Duration(time.Second)}}).(*Scheduler)
+	b := NewScheduler(parent, []Argument{{"limit", int32(1)}, {"drain", Duration(time.Second)}}).(*Scheduler)
 	submit, cancel := context.WithCancel(context.Background())
 	started := make(chan struct{})
 	release := make(chan struct{})
@@ -293,7 +293,7 @@ func TestSchedulerSubmittingContextDoesNotReparent(t *testing.T) {
 }
 func TestSchedulerConcurrentClose(t *testing.T) {
 	ctx := RootExecution()
-	b := NewScheduler(ctx, []Argument{{"limit", int64(1)}}).(*Scheduler)
+	b := NewScheduler(ctx, []Argument{{"limit", int32(1)}}).(*Scheduler)
 	var callers sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		callers.Add(1)
@@ -309,7 +309,7 @@ func TestJoinedOperationCannotDetachNestedScheduler(t *testing.T) {
 	started := make(chan struct{})
 	finished := make(chan struct{})
 	task := NewFunction(nil, "Int", func(ctx *Execution, _ []Value) Value {
-		b := NewScheduler(ctx, []Argument{{"limit", int64(1)}}).(*Scheduler)
+		b := NewScheduler(ctx, []Argument{{"limit", int32(1)}}).(*Scheduler)
 		job := NewFunction(nil, "@std/Result[Unit][String]", func(child *Execution, _ []Value) Value {
 			defer close(finished)
 			close(started)
@@ -319,7 +319,7 @@ func TestJoinedOperationCannotDetachNestedScheduler(t *testing.T) {
 		})
 		startJob(ctx, b, job)
 		<-started
-		return int64(1)
+		return int32(1)
 	})
 	outcome := runTasks(RootExecution(), "result", []Value{task}, nil).(Alternative)
 	if outcome.Tag != "ok" {
@@ -342,7 +342,7 @@ func TestSchedulerReporterFailureAndOverflow(t *testing.T) {
 		<-release
 		return Panic("reporter failed")
 	})
-	b := NewScheduler(ctx, []Argument{{"limit", int64(1)}, {"reporter", reporter}}).(*Scheduler)
+	b := NewScheduler(ctx, []Argument{{"limit", int32(1)}, {"reporter", reporter}}).(*Scheduler)
 	operation := NewFunction(nil, "@std/Result[Unit][String]", func(_ *Execution, _ []Value) Value {
 		return Alternative{"@std/Result[Unit][String]", "error", []Value{"domain error"}}
 	})

@@ -76,7 +76,7 @@ test "queue capacities retain omission none minimum maximum and full results":
     )
 
     let unbounded = Queue[Int](capacity: none)
-    let large = Queue[Int](capacity: 9223372036854775807)
+    let large = Queue[Int](capacity: 2147483647)
     if not unbounded.enqueue(1) or not large.enqueue(1): return panic(
         "queue capacity boundaries"
     )
@@ -87,7 +87,7 @@ test "queue capacities retain omission none minimum maximum and full results":
     let unlimited = PriorityQueue[Int](compare: compare, capacity: none)
     let large_priority = PriorityQueue[Int](
         compare: compare,
-        capacity: 9223372036854775807
+        capacity: 2147483647
     )
     if not unlimited.enqueue(1) or not large_priority.enqueue(1): return panic(
         "priority capacity boundaries"

@@ -113,7 +113,7 @@ func TestStandardMemberCommentsIncludeIntrinsicAndNativeOperations(t *testing.T)
 		"@std/bytes.ms/Bytes/values":      "fresh mutable list",
 		"@std/collections.ms/List/map[U]": "",
 		"prelude/String/slice":            "negative bounds are relative",
-		"prelude/Float/to_fixed":          "binary64 ties to even",
+		"prelude/Float/to_fixed":          "stored binary32",
 	} {
 		member, ok := found[key]
 		if !ok || !strings.Contains(member.Doc, phrase) {

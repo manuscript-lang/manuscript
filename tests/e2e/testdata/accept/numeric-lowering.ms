@@ -23,11 +23,11 @@ test "typed operands retain evaluation order and generic boundaries":
     let snapshot = fn() -> Int: return value * 2
     value = value - 1
     if snapshot() != 20 or value != 9: return panic("boxed capture")
-    if - 9223372036854775808 % -1 != 0: return panic("minimum remainder")
+    if - 2147483648 % -1 != 0: return panic("minimum remainder")
     if - 7 / 2 != -3 or - 7 % 3 != -1: return panic("signed arithmetic")
-    if 9223372036854775807 * 0 != 0: return panic("zero multiplication")
+    if 2147483647 * 0 != 0: return panic("zero multiplication")
 
-test "floating operations retain binary64 edge behavior":
+test "floating operations retain binary32 edge behavior":
     let negative_zero = -0.0
     if "{1.0 / negative_zero}" != "-Infinity": return panic("signed zero")
 
@@ -38,9 +38,9 @@ test "floating operations retain binary64 edge behavior":
         or nan < 0.0
         or nan > 0.0
     ): return panic("NaN comparisons")
-    if 5e-324 <= 0.0 or 5e-324 / 2.0 != 0.0: return panic("subnormal rounding")
-    if "{1.7976931348623157e308 * 2.0}" != "Infinity": return panic("floating overflow")
+    if 1e-45 <= 0.0 or 1e-45 / 2.0 != 0.0: return panic("subnormal rounding")
+    if "{3.4028235e38 * 2.0}" != "Infinity": return panic("floating overflow")
 
-    let a = 1.0000000074505806
-    let b = 0.9999999925494194
+    let a = 1.0001220703125
+    let b = 0.9998779296875
     if a * b - 1.0 != 0.0: return panic("per-operation rounding")

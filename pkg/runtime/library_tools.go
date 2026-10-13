@@ -9,7 +9,7 @@ import (
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	libraryAdd("io", "read_line", libraryResult("Optional[String]", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
-		max := a[1].(int64)
+		max := nativeInteger(a[1])
 		if max <= 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -56,7 +56,7 @@ func init() {
 				chunk = take()
 			}
 			if len(chunk) == 0 {
-				v := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int", int64(65536), true)}}).(Alternative)
+				v := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int64", int64(65536), true)}}).(Alternative)
 				if v.Tag == "error" {
 					return Alternative{r, "error", v.Fields}
 				}
@@ -94,7 +94,7 @@ func init() {
 	})
 	libraryAdd("string", "repeat", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("count", "Int"), p("max_bytes", "Optional[Int64]")}, func(_ *Execution, r string, a []Value) Value {
 		s := a[0].(string)
-		count, max := a[1].(int64), a[2].(int64)
+		count, max := nativeInteger(a[1]), nativeInteger(a[2])
 		if count < 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -108,7 +108,7 @@ func init() {
 		return libraryOK(r, strings.Repeat(s, int(count)))
 	})
 	libraryAdd("regex", "replace", libraryResult("String", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("replacement", "String"), p("max_bytes", "Optional[Int64]")}, func(ctx *Execution, r string, a []Value) Value {
-		max := a[3].(int64)
+		max := nativeInteger(a[3])
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -142,7 +142,7 @@ func libraryValidText(b []byte) bool { return utf8.Valid(b) }
 func readLineByByte(ctx *Execution, r string, input Value, max int64) Value {
 	var b []byte
 	for {
-		v := Invoke(ctx, Bind(input, "", "read"), []Argument{{"max_bytes", optional("Int", int64(1), true)}}).(Alternative)
+		v := Invoke(ctx, Bind(input, "", "read"), []Argument{{"max_bytes", optional("Int64", int64(1), true)}}).(Alternative)
 		if v.Tag == "error" {
 			return Alternative{r, "error", v.Fields}
 		}

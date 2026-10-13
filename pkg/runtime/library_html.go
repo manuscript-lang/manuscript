@@ -28,7 +28,7 @@ func (r libraryHTMLReader) Read(p []byte) (int, error) {
 func libraryHTMLParse(ctx *Execution, result string, args []Value) Value {
 	text := args[0].(string)
 	limits := args[1].(Record).Fields
-	maxBytes, maxDepth, maxNodes := limits["max_bytes"].(int64), limits["max_depth"].(int64), limits["max_nodes"].(int64)
+	maxBytes, maxDepth, maxNodes := nativeInteger(limits["max_bytes"]), nativeInteger(limits["max_depth"]), nativeInteger(limits["max_nodes"])
 	if maxBytes < 0 || maxDepth < 0 || maxNodes < 0 {
 		return libraryError(result, "InvalidInput", "")
 	}

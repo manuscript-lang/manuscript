@@ -18,7 +18,7 @@ func (f *libraryFileSystem) globEntries(ctx *Execution, r string, a []Value) Val
 	fields := a[1].(Record).Fields
 	patterns, excluded := libraryStringValues(fields["patterns"]), libraryStringValues(fields["exclude"])
 	follow := fields["follow_links"].(bool)
-	remaining, maxResults := fields["max_entries"].(int64), fields["max_results"].(int64)
+	remaining, maxResults := nativeInteger(fields["max_entries"]), nativeInteger(fields["max_results"])
 	if !ok || remaining < 0 || maxResults < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}

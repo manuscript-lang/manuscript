@@ -14,19 +14,19 @@ fn multiply(a: Int, b: Int) -> Int: return a * b
 fn divide(a: Int, b: Int) -> Int: return a / b
 fn remainder(a: Int, b: Int) -> Int: return a % b
 test "add high":
-    let bad = add(a: 9223372036854775807, b: 1)
+    let bad = add(a: 2147483647, b: 1)
 test "add low":
-    let bad = add(a: -9223372036854775808, b: -1)
+    let bad = add(a: -2147483648, b: -1)
 test "subtract high":
-    let bad = subtract(a: 9223372036854775807, b: -1)
+    let bad = subtract(a: 2147483647, b: -1)
 test "subtract low":
-    let bad = subtract(a: -9223372036854775808, b: 1)
+    let bad = subtract(a: -2147483648, b: 1)
 test "multiply high":
-    let bad = multiply(a: 9223372036854775807, b: 2)
+    let bad = multiply(a: 2147483647, b: 2)
 test "multiply minimum":
-    let bad = multiply(a: -9223372036854775808, b: -1)
+    let bad = multiply(a: -2147483648, b: -1)
 test "divide minimum":
-    let bad = divide(a: -9223372036854775808, b: -1)
+    let bad = divide(a: -2147483648, b: -1)
 test "divide zero":
     let bad = divide(a: 1, b: 0)
 test "remainder zero":

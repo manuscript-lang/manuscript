@@ -8,13 +8,13 @@ import (
 
 func TestResultPayloadIdentityAndSpecialization(t *testing.T) {
 	ctx := RootExecution()
-	cause := &List{Type: "@std/List[Int]", Items: []Value{int64(1)}}
+	cause := &List{Type: "@std/List[Int]", Items: []Value{int32(1)}}
 	failed := Alternative{Type: "@std/Result[Int][@std/List[Int]]", Tag: "error", Fields: []Value{cause}}
-	success := Alternative{Type: failed.Type, Tag: "ok", Fields: []Value{int64(0)}}
+	success := Alternative{Type: failed.Type, Tag: "ok", Fields: []Value{int32(0)}}
 	call := func(value Value, name, result string, args ...Argument) Value {
 		return Invoke(ctx, NativeMemberResult(value, name, result), args)
 	}
-	if call(failed, "unwrap_error", "") != cause || call(success, "unwrap", "") != int64(0) {
+	if call(failed, "unwrap_error", "") != cause || call(success, "unwrap", "") != int32(0) {
 		t.Fatal("extraction changed payload")
 	}
 	if call(failed, "is_error", "") != true || call(failed, "is_ok", "") != false || call(success, "is_ok", "") != true {
@@ -38,12 +38,12 @@ func TestResultPayloadIdentityAndSpecialization(t *testing.T) {
 			t.Fatal("fallback lost caller context or original cause")
 		}
 		calls++
-		return int64(9)
+		return int32(9)
 	})
-	if call(success, "unwrap_or_else", "", Argument{"create", create}) != int64(0) || calls != 0 {
+	if call(success, "unwrap_or_else", "", Argument{"create", create}) != int32(0) || calls != 0 {
 		t.Fatal("successful Result invoked fallback")
 	}
-	if call(failed, "unwrap_or_else", "", Argument{"create", create}) != int64(9) || calls != 1 {
+	if call(failed, "unwrap_or_else", "", Argument{"create", create}) != int32(9) || calls != 1 {
 		t.Fatal("failed Result must invoke fallback once")
 	}
 	bound := NativeMemberResult(failed, "unwrap_error", "").(Function)
@@ -61,7 +61,7 @@ func TestResultPayloadIdentityAndSpecialization(t *testing.T) {
 		}
 	}
 	for _, typ := range []string{"local/Result[Int][String]", "local/Optional[Int]", "@std/ResultLike[Int][String]"} {
-		if _, ok := nativeLibraryMember(Alternative{Type: typ, Tag: "ok", Fields: []Value{int64(0)}}, "unwrap", ""); ok {
+		if _, ok := nativeLibraryMember(Alternative{Type: typ, Tag: "ok", Fields: []Value{int32(0)}}, "unwrap", ""); ok {
 			t.Fatal("native methods leaked to unrelated alternative", typ)
 		}
 	}
@@ -77,29 +77,29 @@ func TestCoreParityCallbacksPreserveFaultsAndCancellation(t *testing.T) {
 		result   string
 	}{
 		{"Result fallback", Alternative{"@std/Result[Int][String]", "error", []Value{"cause"}}, "unwrap_or_else", "create", []string{"cause"}, "Int"},
-		{"Result map", Alternative{"@std/Result[Int][String]", "ok", []Value{int64(0)}}, "map", "transform", []string{"value"}, "@std/Result[Int][String]"},
-		{"Result chain", Alternative{"@std/Result[Int][String]", "ok", []Value{int64(0)}}, "and_then", "transform", []string{"value"}, "@std/Result[Int][String]"},
-		{"Optional map", optional("Int", int64(0), true), "map", "transform", []string{"value"}, "@std/Optional[Int]"},
-		{"Optional chain", optional("Int", int64(0), true), "and_then", "transform", []string{"value"}, "@std/Optional[Int]"},
+		{"Result map", Alternative{"@std/Result[Int][String]", "ok", []Value{int32(0)}}, "map", "transform", []string{"value"}, "@std/Result[Int][String]"},
+		{"Result chain", Alternative{"@std/Result[Int][String]", "ok", []Value{int32(0)}}, "and_then", "transform", []string{"value"}, "@std/Result[Int][String]"},
+		{"Optional map", optional("Int", int32(0), true), "map", "transform", []string{"value"}, "@std/Optional[Int]"},
+		{"Optional chain", optional("Int", int32(0), true), "and_then", "transform", []string{"value"}, "@std/Optional[Int]"},
 		{"Optional fallback", optional("Int", nil, false), "or_else", "create", nil, "@std/Optional[Int]"},
-		{"Map filter", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "filter", "predicate", []string{"key", "value"}, "@std/Map[String][Int]"},
-		{"Set filter", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "filter", "predicate", []string{"value"}, "@std/Set[Int]"},
-		{"Set map", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "map", "transform", []string{"value"}, "@std/Set[Int]"},
+		{"Map filter", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int32(1)}, {"b", int32(2)}}}, "filter", "predicate", []string{"key", "value"}, "@std/Map[String][Int]"},
+		{"Set filter", &Set{Type: "@std/Set[Int]", Items: []Value{int32(1), int32(2)}}, "filter", "predicate", []string{"value"}, "@std/Set[Int]"},
+		{"Set map", &Set{Type: "@std/Set[Int]", Items: []Value{int32(1), int32(2)}}, "map", "transform", []string{"value"}, "@std/Set[Int]"},
 		{"Optional lazy conversion", optional("Int", nil, false), "ok_or_else", "create", nil, "@std/Result[Int][String]"},
-		{"Map fold", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "fold", "step", []string{"accumulator", "key", "value"}, "Int"},
-		{"Set fold", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "fold", "step", []string{"accumulator", "value"}, "Int"},
-		{"Map find", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "find", "predicate", []string{"key", "value"}, "@std/Optional[@std/MapEntry[String][Int]]"},
-		{"Set find", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "find", "predicate", []string{"value"}, "@std/Optional[Int]"},
-		{"Map some", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "some", "predicate", []string{"key", "value"}, "Bool"},
-		{"Set some", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "some", "predicate", []string{"value"}, "Bool"},
-		{"Map every", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "every", "predicate", []string{"key", "value"}, "Bool"},
-		{"Set every", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "every", "predicate", []string{"value"}, "Bool"},
-		{"Map value transform", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "map", "transform", []string{"key", "value"}, "@std/Map[String][Int]"},
-		{"Map key transform", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "map_keys", "transform", []string{"key", "value"}, "@std/Map[Int][Int]"},
-		{"Map fold right", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "fold_right", "step", []string{"accumulator", "key", "value"}, "Int"},
-		{"Set fold right", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "fold_right", "step", []string{"accumulator", "value"}, "Int"},
-		{"Map find last", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "find_last", "predicate", []string{"key", "value"}, "@std/Optional[@std/MapEntry[String][Int]]"},
-		{"Set find last", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "find_last", "predicate", []string{"value"}, "@std/Optional[Int]"},
+		{"Map fold", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int32(1)}, {"b", int32(2)}}}, "fold", "step", []string{"accumulator", "key", "value"}, "Int"},
+		{"Set fold", &Set{Type: "@std/Set[Int]", Items: []Value{int32(1), int32(2)}}, "fold", "step", []string{"accumulator", "value"}, "Int"},
+		{"Map find", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int32(1)}, {"b", int32(2)}}}, "find", "predicate", []string{"key", "value"}, "@std/Optional[@std/MapEntry[String][Int]]"},
+		{"Set find", &Set{Type: "@std/Set[Int]", Items: []Value{int32(1), int32(2)}}, "find", "predicate", []string{"value"}, "@std/Optional[Int]"},
+		{"Map some", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int32(1)}, {"b", int32(2)}}}, "some", "predicate", []string{"key", "value"}, "Bool"},
+		{"Set some", &Set{Type: "@std/Set[Int]", Items: []Value{int32(1), int32(2)}}, "some", "predicate", []string{"value"}, "Bool"},
+		{"Map every", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int32(1)}, {"b", int32(2)}}}, "every", "predicate", []string{"key", "value"}, "Bool"},
+		{"Set every", &Set{Type: "@std/Set[Int]", Items: []Value{int32(1), int32(2)}}, "every", "predicate", []string{"value"}, "Bool"},
+		{"Map value transform", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int32(1)}, {"b", int32(2)}}}, "map", "transform", []string{"key", "value"}, "@std/Map[String][Int]"},
+		{"Map key transform", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int32(1)}, {"b", int32(2)}}}, "map_keys", "transform", []string{"key", "value"}, "@std/Map[Int][Int]"},
+		{"Map fold right", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int32(1)}, {"b", int32(2)}}}, "fold_right", "step", []string{"accumulator", "key", "value"}, "Int"},
+		{"Set fold right", &Set{Type: "@std/Set[Int]", Items: []Value{int32(1), int32(2)}}, "fold_right", "step", []string{"accumulator", "value"}, "Int"},
+		{"Map find last", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int32(1)}, {"b", int32(2)}}}, "find_last", "predicate", []string{"key", "value"}, "@std/Optional[@std/MapEntry[String][Int]]"},
+		{"Set find last", &Set{Type: "@std/Set[Int]", Items: []Value{int32(1), int32(2)}}, "find_last", "predicate", []string{"value"}, "@std/Optional[Int]"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			for _, cancelCallback := range []bool{false, true} {
@@ -122,7 +122,7 @@ func TestCoreParityCallbacksPreserveFaultsAndCancellation(t *testing.T) {
 				failure := recovered(func() {
 					arguments := []Argument{{test.argument, callback}}
 					if test.method == "fold" || test.method == "fold_right" {
-						arguments = append(arguments, Argument{"initial", int64(0)})
+						arguments = append(arguments, Argument{"initial", int32(0)})
 					}
 					Invoke(ctx, NativeMemberResult(test.receiver, test.method, test.result), arguments)
 				})

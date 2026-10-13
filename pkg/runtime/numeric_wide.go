@@ -89,7 +89,8 @@ func float64Binary(op string, x, y Float64) Value {
 
 func truncateInt64(value float64) Value {
 	// +2^63 is exactly representable as Float64; MaxInt64 is not. Check the
-	// mathematical half-open range before asking Go to convert an out-of-range float.
+	// mathematical half-open range after truncation, before the host cast.
+	value = math.Trunc(value)
 	if math.IsNaN(value) || math.IsInf(value, 0) || value >= 0x1p63 || value < -0x1p63 {
 		return optional("Int64", nil, false)
 	}
@@ -100,9 +101,9 @@ func wideNumericMember(receiver Value, name, result string) (Value, bool) {
 	labels := []string{}
 	available := false
 	switch receiver.(type) {
-	case int64:
+	case int32:
 		available = name == "to_int64" || name == "to_float64"
-	case float64:
+	case float32:
 		available = name == "to_float64" || name == "truncate_to_int64"
 	case Int64:
 		available = name == "to_int" || name == "to_float" || name == "to_float64" || name == "to_decimal" || name == "to_string"
@@ -123,28 +124,31 @@ func wideNumericMember(receiver Value, name, result string) (Value, bool) {
 	}
 	return NewFunction(labels, result, func(_ *Execution, args []Value) Value {
 		switch v := receiver.(type) {
-		case int64:
+		case int32:
 			if name == "to_int64" {
 				return Int64(v)
 			}
 			return Float64(v)
-		case float64:
+		case float32:
 			if name == "to_float64" {
 				return Float64(v)
 			}
-			return truncateInt64(v)
+			return truncateInt64(float64(v))
 		case Int64:
 			switch name {
 			case "to_int":
-				return optional("Int", int64(v), true)
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return optional("Int", nil, false)
+				}
+				return optional("Int", int32(v), true)
 			case "to_float":
-				return float64(v)
+				return float32(v)
 			case "to_float64":
 				return Float64(v)
 			case "to_decimal":
 				return Decimal{new(big.Rat).SetInt64(int64(v))}
 			case "to_string":
-				radix := args[0].(int64)
+				radix := nativeInteger(args[0])
 				if radix < 2 || radix > 36 {
 					return libraryRangeFault("Int64.to_string", "radix", radix, 2, 36)
 				}
@@ -154,14 +158,11 @@ func wideNumericMember(receiver Value, name, result string) (Value, bool) {
 			f := float64(v)
 			switch name {
 			case "to_float":
-				return f
+				return float32(f)
 			case "truncate_to_int64":
 				return truncateInt64(f)
 			case "truncate_to_int":
-				if math.IsNaN(f) || math.IsInf(f, 0) || f >= 0x1p63 || f < -0x1p63 {
-					return optional("Int", nil, false)
-				}
-				return optional("Int", int64(f), true)
+				return truncateInt32(f)
 			case "to_string":
 				return formatFloat(f)
 			case "is_nan":
@@ -169,7 +170,7 @@ func wideNumericMember(receiver Value, name, result string) (Value, bool) {
 			case "is_finite":
 				return !math.IsNaN(f) && !math.IsInf(f, 0)
 			case "to_precision", "to_exponential", "to_fixed":
-				precision := args[0].(int64)
+				precision := nativeInteger(args[0])
 				minimum := int64(0)
 				format := byte('f')
 				if name == "to_precision" {
@@ -192,7 +193,7 @@ func wideNumericMember(receiver Value, name, result string) (Value, bool) {
 func init() {
 	p := func(name, typ string) LibraryParam { return LibraryParam{name, typ} }
 	libraryAdd("numbers", "parse_int64", libraryResult("Int64", "NumberError"), []LibraryParam{p("text", "String"), p("radix", "Int")}, func(_ *Execution, result string, args []Value) Value {
-		radix := args[1].(int64)
+		radix := nativeInteger(args[1])
 		if radix < 2 || radix > 36 {
 			return libraryError(result, "InvalidInput", "")
 		}

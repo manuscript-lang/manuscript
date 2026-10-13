@@ -23,7 +23,7 @@ func TestErrorCategoryPreservesDomainValues(t *testing.T) {
 		{"HttpError", "Timeout", "Timeout", nil},
 		{"CommandError", "TimedOut", "Timeout", nil},
 		{"ExecutionError", "TimedOut", "Timeout", nil},
-		{"YamlError", "InvalidData", "InvalidData", []Value{int64(3), int64(9), "detail"}},
+		{"YamlError", "InvalidData", "InvalidData", []Value{int32(3), int32(9), "detail"}},
 		{"IoError", "Failed", "", []Value{"not found; operation timed out"}},
 		{"NumberError", "OutOfRange", "", nil},
 		{"CommandError", "OutputLimit", "", nil},
@@ -69,7 +69,7 @@ func TestErrorCategoryPreservesDomainValues(t *testing.T) {
 		if name == "TomlError" {
 			module = "@std/toml.ms"
 		}
-		cause := Alternative{Type: librarySourceErrorType(module, name), Tag: "InvalidData", Fields: []Value{int64(3), int64(9), "detail"}}
+		cause := Alternative{Type: librarySourceErrorType(module, name), Tag: "InvalidData", Fields: []Value{int32(3), int32(9), "detail"}}
 		original := Clone(cause)
 		got := libraryErrorCategory(ViewOf("@std/Error", cause)).(Alternative)
 		if got.Tag != "some" || got.Fields[0].(Alternative).Tag != "InvalidData" || !Equal(cause, original) {

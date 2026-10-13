@@ -28,7 +28,7 @@ func (f *libraryFileSystem) copy(ctx *Execution, r string, a []Value) Value {
 	source, ok := f.path(a[0].(string))
 	dest, ok2 := f.path(a[1].(string))
 	fields := a[2].(Record).Fields
-	options := &libraryCopyOptions{recursive: fields["recursive"].(bool), replace: fields["replace"].(bool), errorOnExists: fields["error_on_exists"].(bool), dereference: fields["dereference"].(bool), preserve: fields["preserve_timestamps"].(bool), verbatim: fields["verbatim_symlinks"].(bool), clone: fields["clone"].(string), entries: fields["max_entries"].(int64), bytes: fields["max_bytes"].(int64), ancestors: map[string]bool{}}
+	options := &libraryCopyOptions{recursive: fields["recursive"].(bool), replace: fields["replace"].(bool), errorOnExists: fields["error_on_exists"].(bool), dereference: fields["dereference"].(bool), preserve: fields["preserve_timestamps"].(bool), verbatim: fields["verbatim_symlinks"].(bool), clone: fields["clone"].(string), entries: nativeInteger(fields["max_entries"]), bytes: nativeInteger(fields["max_bytes"]), ancestors: map[string]bool{}}
 	filter := a[3].(Alternative)
 	if filter.Tag == "some" {
 		options.filter = filter.Fields[0]

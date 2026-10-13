@@ -9,14 +9,14 @@ import (
 
 // Hashes are lookup aids, not a serialization format. Composite hashing uses
 // the same explicit implementations as equality, including nested domain keys.
-func HashIn(ctx *Execution, value Value) int64 {
+func HashIn(ctx *Execution, value Value) int32 {
 	if view, ok := value.(View); ok {
 		child := *ctx
 		child.EqualityScope = view.Scope
 		return HashIn(&child, view.Receiver)
 	}
 	if method, ok := implementationFunction(value, "@std/Hashable", "hash", ctx.EqualityScope); ok {
-		return Invoke(ctx, method, nil).(int64)
+		return Invoke(ctx, method, nil).(int32)
 	}
 	h := fnv.New64a()
 	write := func(s string) { h.Write([]byte(strconv.Itoa(len(s)) + ":" + s)) }
@@ -31,13 +31,13 @@ func HashIn(ctx *Execution, value Value) int64 {
 		sort.Strings(keys)
 		for _, k := range keys {
 			write(k)
-			write(strconv.FormatInt(HashIn(ctx, fields[k]), 10))
+			write(strconv.FormatInt(int64(HashIn(ctx, fields[k])), 10))
 		}
 	case Alternative:
 		write(v.Type)
 		write(v.Tag)
 		for _, field := range v.Fields {
-			write(strconv.FormatInt(HashIn(ctx, field), 10))
+			write(strconv.FormatInt(int64(HashIn(ctx, field)), 10))
 		}
 	case Decimal:
 		write(v.Value.RatString())
@@ -47,5 +47,5 @@ func HashIn(ctx *Execution, value Value) int64 {
 	default:
 		write(Format(value))
 	}
-	return int64(h.Sum64())
+	return int32(h.Sum64())
 }

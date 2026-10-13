@@ -6,13 +6,13 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 test "numbers radix and signed boundaries":
-    if value(parse_int(text: "7fffffffffffffff", radix: 16)) != 9223372036854775807: return panic(
+    if value(parse_int(text: "7fffffff", radix: 16)) != 2147483647: return panic(
         "maximum int"
     )
     if (
         value(
-            parse_int(text: "-9223372036854775808", radix: 10)
-        ) != -9223372036854775808
+            parse_int(text: "-2147483648", radix: 10)
+        ) != -2147483648
     ): return panic("minimum int")
     if 255.to_string(radix: 16) != "ff": return panic("radix formatting")
     if value(parse_float("-1.25e2")) != -125.0: return panic("exponent")
@@ -32,7 +32,7 @@ test "numbers reject whitespace separators overflow and invalid radix":
         if parse_int(text: text, radix: 10) != invalid: return panic("nondecimal input")
 
     let overflow: Result[Int, NumberError] = error(NumberError.OutOfRange)
-    if parse_int(text: "9223372036854775808", radix: 10) != overflow: return panic(
+    if parse_int(text: "2147483648", radix: 10) != overflow: return panic(
         "overflow"
     )
 

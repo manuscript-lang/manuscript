@@ -52,7 +52,7 @@ func (n *network) httpOperation(name string) (Function, bool) {
 	case "http_client":
 		return libraryAcquisition("Network", name, func(_ *Execution, r string, a []Value) Value {
 			f := a[0].(Record).Fields
-			redirects, idle, headerMax := f["max_redirects"].(int64), f["max_idle_connections"].(int64), f["max_header_bytes"].(int64)
+			redirects, idle, headerMax := nativeInteger(f["max_redirects"]), nativeInteger(f["max_idle_connections"]), nativeInteger(f["max_header_bytes"])
 			idleTimeout := f["idle_timeout"].(Duration)
 			if redirects < 0 || idle < 0 || headerMax <= 0 || idleTimeout < nativeNoTimeout {
 				return libraryError(r, "InvalidInput", "")
@@ -118,7 +118,7 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 		return libraryMethod("HttpClient", name, func(_ *Execution, _ string, _ []Value) Value { c.close(); return Unit{} })
 	}
 	return libraryAcquisition("HttpClient", name, func(ctx *Execution, r string, a []Value) Value {
-		max, timeout := a[4].(int64), a[5].(Duration)
+		max, timeout := nativeInteger(a[4]), a[5].(Duration)
 		if max < 0 || timeout < nativeNoTimeout {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -287,14 +287,14 @@ func (b *libraryResponseBody) Operation(name string) Function {
 	return libraryMethod("ResponseBody", name, func(ctx *Execution, r string, a []Value) Value {
 		switch name {
 		case "status":
-			return int64(b.response.StatusCode)
+			return int32(b.response.StatusCode)
 		case "headers":
 			return libraryHTTPHeaders(b.response.Header)
 		case "close":
 			b.close()
 			return Unit{}
 		}
-		max := a[0].(int64)
+		max := nativeInteger(a[0])
 		if max <= 0 {
 			return ioError(r, "InvalidInput", "")
 		}
@@ -395,7 +395,7 @@ func (b *libraryStreamReader) Read(p []byte) (count int, err error) {
 		return 0, nil
 	}
 	if len(b.remainder) == 0 {
-		v := Invoke(b.ctx, Bind(b.stream, "", "read"), []Argument{{"max_bytes", optional("Int", int64(len(p)), true)}}).(Alternative)
+		v := Invoke(b.ctx, Bind(b.stream, "", "read"), []Argument{{"max_bytes", optional("Int64", int64(len(p)), true)}}).(Alternative)
 		if v.Tag == "error" {
 			return 0, errors.New("source stream read failed")
 		}

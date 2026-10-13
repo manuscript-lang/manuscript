@@ -29,7 +29,7 @@ func (n *network) webSocketDial() Function {
 	return libraryAcquisition("Network", "web_socket", func(ctx *Execution, r string, a []Value) Value {
 		u, err := url.Parse(a[0].(string))
 		f := a[3].(Record).Fields
-		max, timeout := f["max_message_bytes"].(int64), f["timeout"].(Duration)
+		max, timeout := nativeInteger(f["max_message_bytes"]), f["timeout"].(Duration)
 		if err != nil || u.Host == "" || u.User != nil || u.Scheme != "ws" && u.Scheme != "wss" || max <= 0 || timeout < nativeNoTimeout {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -79,7 +79,7 @@ func (n *network) webSocketDial() Function {
 }
 func (e *libraryHTTPExchange) upgrade() Function {
 	return libraryAcquisition("HttpExchange", "upgrade", func(ctx *Execution, r string, a []Value) Value {
-		max := a[2].(int64)
+		max := nativeInteger(a[2])
 		if max <= 0 {
 			return libraryError(r, "InvalidInput", "")
 		}

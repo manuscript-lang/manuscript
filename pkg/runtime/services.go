@@ -18,14 +18,14 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 		}
 		value, valid := nativeOption(args[0].Value, "Int", int64(0))
 		if !valid {
-			return libraryRangeFault("Queue", "capacity", args[0].Value, 1, int64(^uint(0)>>1))
+			return libraryRangeFault("Queue", "capacity", args[0].Value, 1, int64(2147483647))
 		}
-		capacity := value.(int64)
+		capacity := nativeInteger(value)
 		if option, ok := args[0].Value.(Alternative); ok && option.Tag == "none" {
 			return &Queue{typ: typ}
 		}
-		if capacity <= 0 || capacity > int64(^uint(0)>>1) {
-			return libraryRangeFault("Queue", "capacity", args[0].Value, 1, int64(^uint(0)>>1))
+		if capacity <= 0 || capacity > int64(2147483647) {
+			return libraryRangeFault("Queue", "capacity", args[0].Value, 1, int64(2147483647))
 		}
 		return &Queue{typ: typ, capacity: int(capacity)}
 	case "@std/PriorityQueue":
@@ -37,12 +37,12 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 			if arg.Name == "capacity" {
 				value, valid := nativeOption(arg.Value, "Int", int64(0))
 				if !valid {
-					return libraryRangeFault("PriorityQueue", "capacity", arg.Value, 1, int64(^uint(0)>>1))
+					return libraryRangeFault("PriorityQueue", "capacity", arg.Value, 1, int64(2147483647))
 				}
-				q.capacity = int(value.(int64))
+				q.capacity = int(nativeInteger(value))
 				if q.capacity <= 0 {
 					if v, ok := arg.Value.(Alternative); !ok || v.Tag != "none" {
-						return libraryRangeFault("PriorityQueue", "capacity", arg.Value, 1, int64(^uint(0)>>1))
+						return libraryRangeFault("PriorityQueue", "capacity", arg.Value, 1, int64(2147483647))
 					}
 				}
 			}
@@ -87,7 +87,7 @@ func (q *Queue) Operation(name string) Function {
 			q.items = append(q.items, args[0])
 			return true
 		case "length":
-			return int64(len(q.items))
+			return defaultInteger(int64(len(q.items)))
 		case "is_empty":
 			return len(q.items) == 0
 		default:
@@ -174,7 +174,7 @@ func (b *Builder) Operation(name string) Function {
 			if name == "concat" {
 				b.bytes = append(b.bytes, args[0].(Bytes).Items...)
 			} else {
-				n := args[0].(int64)
+				n := nativeInteger(args[0])
 				if n < 0 || n > 255 {
 					return libraryRangeFault("BytesBuilder.append", "value", n, 0, 255)
 				}

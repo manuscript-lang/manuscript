@@ -9,7 +9,7 @@ import (
 )
 
 func synchronizedInt() *Synchronized {
-	return ConstructWithContext(RootExecution(), "@std/Synchronized[Int]", []Argument{{"value", int64(0)}}).(*Synchronized)
+	return ConstructWithContext(RootExecution(), "@std/Synchronized[Int]", []Argument{{"value", int32(0)}}).(*Synchronized)
 }
 func lockCell(ctx *Execution, cell *Synchronized) *SynchronizedGuard {
 	return Invoke(ctx, cell.Operation("lock"), nil).(*SynchronizedGuard)
@@ -25,7 +25,7 @@ func TestSynchronizedConcurrentUpdates(t *testing.T) {
 			child := newExecution(root, root.Context)
 			for range 100 {
 				guard := lockCell(child, cell)
-				value := Invoke(child, guard.Operation("get"), nil).(int64)
+				value := Invoke(child, guard.Operation("get"), nil).(int32)
 				Invoke(child, guard.Operation("set"), []Argument{{"value", value + 1}})
 				guard.close()
 			}
@@ -34,7 +34,7 @@ func TestSynchronizedConcurrentUpdates(t *testing.T) {
 	wait.Wait()
 	guard := lockCell(root, cell)
 	defer guard.close()
-	if value := Invoke(root, guard.Operation("get"), nil); value != int64(2000) {
+	if value := Invoke(root, guard.Operation("get"), nil); value != int32(2000) {
 		t.Fatalf("lost update: %v", value)
 	}
 }
@@ -93,11 +93,11 @@ func TestSynchronizedReentryAndClosedAliases(t *testing.T) {
 		go func() { defer wait.Done(); guard.close() }()
 	}
 	wait.Wait()
-	failure := recovered(func() { Invoke(root, saved, []Argument{{"value", int64(7)}}) })
+	failure := recovered(func() { Invoke(root, saved, []Argument{{"value", int32(7)}}) })
 	if _, ok := failure.(Fault); !ok {
 		t.Fatal("stale alias remained usable", failure)
 	}
-	if Invoke(root, next.Operation("get"), nil) != int64(0) {
+	if Invoke(root, next.Operation("get"), nil) != int32(0) {
 		t.Fatal("stale alias modified new lock's value")
 	}
 }
@@ -111,7 +111,7 @@ func TestSynchronizedCloseRacesAccess(t *testing.T) {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			failure := recovered(func() { Invoke(root, saved, []Argument{{"value", int64(1)}}) })
+			failure := recovered(func() { Invoke(root, saved, []Argument{{"value", int32(1)}}) })
 			if failure != nil {
 				if _, ok := failure.(Fault); !ok {
 					t.Error(failure)
@@ -121,9 +121,9 @@ func TestSynchronizedCloseRacesAccess(t *testing.T) {
 	}
 	guard.close()
 	next := lockCell(root, cell)
-	Invoke(root, next.Operation("set"), []Argument{{"value", int64(2)}})
+	Invoke(root, next.Operation("set"), []Argument{{"value", int32(2)}})
 	wait.Wait()
-	if Invoke(root, next.Operation("get"), nil) != int64(2) {
+	if Invoke(root, next.Operation("get"), nil) != int32(2) {
 		t.Fatal("old guard accessed reacquired value")
 	}
 	next.close()
@@ -136,7 +136,7 @@ func TestSharedBuilderFreezeRace(t *testing.T) {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			failure := recovered(func() { Invoke(root, builder.Operation("append"), []Argument{{"value", int64(1)}}) })
+			failure := recovered(func() { Invoke(root, builder.Operation("append"), []Argument{{"value", int32(1)}}) })
 			if failure != nil {
 				if _, ok := failure.(Fault); !ok {
 					t.Error(failure)

@@ -16,9 +16,9 @@ func primitiveEqualityType(t *checker.Type) string {
 	}
 	switch t.ID {
 	case "Int":
-		return "int64"
+		return "int32"
 	case "Float":
-		return "float64"
+		return "float32"
 	case "Bool":
 		return "bool"
 	case "String":

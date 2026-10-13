@@ -12,23 +12,23 @@ func TestNativeDefaultsPreservePayloadAndCancellation(t *testing.T) {
 	prepare := NewSourceFunction(native.Labels, native.Result, "defaults.ms:1:1", func(_ *Execution, args []Value) Value {
 		if args[0] == nil {
 			defaults++
-			args[0] = Record{Type: "@std/Box", Fields: map[string]Value{"count": int64(0)}}
+			args[0] = Record{Type: "@std/Box", Fields: map[string]Value{"count": int32(0)}}
 		}
 		return PreparedDefaults(args)
 	})
 	callable := WithDefaults(native, prepare, []int{0})
 	first := Invoke(ctx, callable, nil).(Record)
 	second := Invoke(ctx, callable, nil).(Record)
-	first.Fields["count"] = int64(4)
-	if second.Fields["count"] != int64(0) || defaults != 2 {
+	first.Fields["count"] = int32(4)
+	if second.Fields["count"] != int32(0) || defaults != 2 {
 		t.Fatal("shared mutable default storage", defaults)
 	}
 	present := Invoke(ctx, callable, []Argument{{"value", first}}).(Record)
-	present.Fields["count"] = int64(7)
-	if first.Fields["count"] != int64(7) || defaults != 2 {
+	present.Fields["count"] = int32(7)
+	if first.Fields["count"] != int32(7) || defaults != 2 {
 		t.Fatal("present payload was copied or default ran")
 	}
-	for _, value := range []Value{false, int64(0), Unit{}, optional("Int", nil, false), Bytes{}} {
+	for _, value := range []Value{false, int32(0), Unit{}, optional("Int", nil, false), Bytes{}} {
 		_ = Invoke(ctx, callable, []Argument{{"value", value}})
 	}
 	if defaults != 2 || calls != 8 {
@@ -52,7 +52,7 @@ func TestNativeDefaultsPreservePayloadAndCancellation(t *testing.T) {
 func TestNativeDefaultFailureAndAcquisitionDelivery(t *testing.T) {
 	ctx := RootExecution()
 	called := false
-	native := NewFunction([]string{"value"}, "Result[Int][String]", func(*Execution, []Value) Value { called = true; return int64(1) })
+	native := NewFunction([]string{"value"}, "Result[Int][String]", func(*Execution, []Value) Value { called = true; return int32(1) })
 	failure := Alternative{Type: native.Result, Tag: "error", Fields: []Value{"failed"}}
 	prepare := NewFunction(native.Labels, native.Result, func(*Execution, []Value) Value { return failure })
 	if got := Invoke(ctx, WithDefaults(native, prepare, []int{0}), nil); !Equal(got, failure) || called {

@@ -9,14 +9,14 @@ import (
 
 func TestNumericLoweringAvoidsParsingAndDynamicDispatch(t *testing.T) {
 	result := compiler.CompileSource("numeric.ms", `fn calculate(value: Int) -> Int:
-    let minimum = -9223372036854775808
+    let minimum = -2147483648
     let leading = 9
     if value < 5:
         return (value + leading) * 3 - minimum % 7
     return value / 2
 fn fraction(value: Float) -> Float:
     if value >= 1e-3: return value * 2.5 + 1.0 / 0.0
-    return value - 5e-324
+    return value - 1e-45
 `, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -26,7 +26,7 @@ fn fraction(value: Float) -> Float:
 			t.Fatalf("numeric hot path still contains %s", forbidden)
 		}
 	}
-	for _, required := range []string{"int64(-9223372036854775808)", "int64(9)", "rt.IntAdd(", "rt.IntSubtract(", "rt.IntMultiply(", "rt.IntDivide(", "rt.IntRemainder(", "rt.FloatValue("} {
+	for _, required := range []string{"int32(-2147483648)", "int32(9)", "rt.IntAdd(", "rt.IntSubtract(", "rt.IntMultiply(", "rt.IntDivide(", "rt.IntRemainder(", "rt.FloatValue("} {
 		if !strings.Contains(result.Source, required) {
 			t.Fatalf("missing typed lowering %s", required)
 		}

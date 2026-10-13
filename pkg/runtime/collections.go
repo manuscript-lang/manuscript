@@ -49,7 +49,7 @@ func optional(typ string, value Value, present bool) Value {
 	if !present {
 		return Alternative{Type: "@std/Optional[" + typ + "]", Tag: "none"}
 	}
-	return Alternative{Type: "@std/Optional[" + typ + "]", Tag: "some", Fields: []Value{value}}
+	return Alternative{Type: "@std/Optional[" + typ + "]", Tag: "some", Fields: []Value{nativeNumericResult(typ, value)}}
 }
 func constructor(typ string, args []Argument) Value {
 	name, _ := splitType(typ)
@@ -64,7 +64,7 @@ func constructor(typ string, args []Argument) Value {
 		values := args[0].Value.(*List).Items
 		bytes := make([]byte, len(values))
 		for i, v := range values {
-			n := v.(int64)
+			n := nativeInteger(v)
 			if n < 0 || n > 255 {
 				return libraryRangeFault("Bytes", fmt.Sprintf("values[%d]", i), n, 0, 255)
 			}
@@ -92,11 +92,11 @@ func CollectionLength(ctx *Execution, receiver Value) Value {
 	CheckCancelled(ctx)
 	switch v := receiver.(type) {
 	case *List:
-		return int64(len(v.Items))
+		return defaultInteger(int64(len(v.Items)))
 	case *Map:
-		return int64(len(v.Entries))
+		return defaultInteger(int64(len(v.Entries)))
 	case *Set:
-		return int64(len(v.Items))
+		return defaultInteger(int64(len(v.Items)))
 	}
 	return Panic("runtime invariant: collection receiver")
 }
@@ -119,7 +119,7 @@ func ListIsEmpty(ctx *Execution, receiver Value) Value {
 // compare without it, so only composite keys pay for the context copy.
 func keyContext(ctx *Execution, key Value, scope TypeScope) *Execution {
 	switch key.(type) {
-	case int64, string:
+	case int32, string:
 		return ctx
 	}
 	child := *ctx
@@ -208,7 +208,7 @@ func setRemove(ctx *Execution, s *Set, value Value) Value {
 // StringByteLength is the direct path for String.byte_length calls.
 func StringByteLength(ctx *Execution, receiver Value) Value {
 	CheckCancelled(ctx)
-	return int64(len(receiver.(string)))
+	return defaultInteger(int64(len(receiver.(string))))
 }
 
 func NativeMember(receiver Value, name string) Value {
@@ -288,7 +288,7 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 		case *List:
 			switch name {
 			case "length":
-				return int64(len(v.Items))
+				return defaultInteger(int64(len(v.Items)))
 			case "append":
 				v.Items = append(v.Items, args[0])
 				return v
@@ -307,7 +307,7 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			}
 			switch name {
 			case "length":
-				return int64(len(v.Entries))
+				return defaultInteger(int64(len(v.Entries)))
 			case "contains":
 				return found >= 0
 			case "get":
@@ -347,14 +347,14 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			}
 			switch name {
 			case "length":
-				return int64(len(v.Items))
+				return defaultInteger(int64(len(v.Items)))
 			case "contains":
 				return found >= 0
 			}
 		case string:
 			switch name {
 			case "byte_length":
-				return int64(len(v))
+				return defaultInteger(int64(len(v)))
 			case "to_bytes":
 				return Bytes{[]byte(v)}
 			case "parse_int":
@@ -373,31 +373,28 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 						return optional("Int", nil, false)
 					}
 				}
-				n, err := strconv.ParseInt(v, 10, 64)
+				n, err := strconv.ParseInt(v, 10, 32)
 				return optional("Int", n, err == nil)
 			}
 		case Bytes:
 			switch name {
 			case "length":
-				return int64(len(v.Items))
+				return defaultInteger(int64(len(v.Items)))
 			case "concat":
 				return Bytes{append(append([]byte{}, v.Items...), args[0].(Bytes).Items...)}
 			case "to_text":
 				return optional("String", string(v.Items), utf8.Valid(v.Items))
 			}
-		case int64:
+		case int32:
 			switch name {
 			case "to_float":
-				return float64(v)
+				return float32(v)
 			case "to_decimal":
-				return DecimalLiteral(strconv.FormatInt(v, 10))
+				return DecimalLiteral(strconv.FormatInt(int64(v), 10))
 			}
-		case float64:
+		case float32:
 			if name == "truncate_to_int" {
-				if math.IsNaN(v) || math.IsInf(v, 0) || v >= 9223372036854775808.0 || v < -9223372036854775808.0 {
-					return optional("Int", nil, false)
-				}
-				return optional("Int", int64(v), true)
+				return truncateInt32(float64(v))
 			}
 		case Decimal:
 			switch name {
@@ -408,13 +405,13 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				q := new(big.Int).Quo(v.Value.Num(), v.Value.Denom())
 				return optional("Int64", Int64(q.Int64()), q.IsInt64())
 			case "to_float":
-				f, _ := v.Value.Float64()
+				f, _ := v.Value.Float32()
 				return f
 			case "truncate_to_int":
 				n := v.Value.Num()
 				d := v.Value.Denom()
 				q := new(big.Int).Quo(n, d)
-				if !q.IsInt64() {
+				if !q.IsInt64() || q.Int64() < math.MinInt32 || q.Int64() > math.MaxInt32 {
 					return optional("Int", nil, false)
 				}
 				return optional("Int", q.Int64(), true)
@@ -428,7 +425,7 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 func Index(value, index Value) Value {
 	list := value.(*List)
 	_, types := splitType(list.Type)
-	i := relativeIndex(len(list.Items), index.(int64))
+	i := relativeIndex(len(list.Items), nativeInteger(index))
 	if i < 0 || i >= int64(len(list.Items)) {
 		return optional(types[0], nil, false)
 	}

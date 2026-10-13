@@ -31,7 +31,7 @@ fn bounded_compression(
     operation: fn(
         data: Bytes,
         level: Int,
-        max_bytes: Optional[Int]
+        max_bytes: Optional[Int64]
     ) -> Result[Bytes, CompressionError],
     data: Bytes
 ) -> Result[Bytes, CompressionError]:
@@ -103,14 +103,14 @@ test "typed compression preserves bytes limits errors and optional arguments":
             if value(
                 format.decompress(
                     encoded,
-                    data.length()
+                    data.length().to_int64()
                 )
             ) != data: return panic("typed exact budget")
 
             let limited: Result[Bytes, CompressionError] = error(
                 CompressionError.LimitExceeded
             )
-            if format.decompress(encoded, data.length() - 1) != limited: return panic(
+            if format.decompress(encoded, data.length().to_int64() - 1) != limited: return panic(
                 "typed byte limit"
             )
 

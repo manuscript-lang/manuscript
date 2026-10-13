@@ -16,14 +16,14 @@ import (
 )
 
 func init() {
-	LibraryMethods = append(LibraryMethods, LibraryMethod{"FileSystem", "open_flags", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "Int"}, {"mode", "Int"}}})
+	LibraryMethods = append(LibraryMethods, LibraryMethod{"FileSystem", "open_flags", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "Int64"}, {"mode", "Int"}}})
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Directory", "path", "String", nil},
 		{"FileHandle", "append_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
 		{"FileSystem", "access", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"mode", "Int"}}},
 		{"FileSystem", "append_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"data", "Bytes"}}},
 		{"FileSystem", "chmod", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"mode", "Int"}}},
-		{"FileSystem", "chown", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"uid", "Int"}, {"gid", "Int"}, {"follow_links", "Bool"}}},
+		{"FileSystem", "chown", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"uid", "Int64"}, {"gid", "Int64"}, {"follow_links", "Bool"}}},
 		{"FileSystem", "truncate", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"size", "Int64"}}},
 		{"FileSystem", "set_times", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"accessed", "Timestamp"}, {"modified", "Timestamp"}, {"follow_links", "Bool"}}},
 		{"FileSystem", "hard_link", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}}},
@@ -48,7 +48,7 @@ func init() {
 		{"FileHandle", "sync", libraryResult("Unit", "FileSystemError"), []LibraryParam{}},
 		{"FileHandle", "data_sync", libraryResult("Unit", "FileSystemError"), []LibraryParam{}},
 		{"FileHandle", "chmod", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"mode", "Int"}}},
-		{"FileHandle", "chown", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"uid", "Int"}, {"gid", "Int"}}},
+		{"FileHandle", "chown", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"uid", "Int64"}, {"gid", "Int64"}}},
 		{"FileHandle", "set_times", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"accessed", "Timestamp"}, {"modified", "Timestamp"}}},
 		{"Directory", "close", "Unit", []LibraryParam{}},
 		{"Directory", "read", libraryResult("Optional[DirectoryEntry]", "FileSystemError"), []LibraryParam{}},
@@ -148,7 +148,7 @@ func libraryFileInfo(info os.FileInfo) Record {
 	fields := map[string]Value{"name": info.Name(), "size": info.Size(), "directory": info.IsDir(), "symlink": info.Mode()&os.ModeSymlink != 0, "regular": info.Mode().IsRegular(), "modified": libraryTimestamp{info.ModTime().UTC()}, "accessed": accessed, "changed": changed, "mode": mode, "permissions": libraryPermissionBits(info.Mode()), "created": optional("@std/Timestamp", libraryTimestamp{created.UTC()}, hasCreated), "block_size": libraryStatInt(info, "Blksize"), "blocks": libraryStatInt(info, "Blocks"), "rdev": libraryStatInt(info, "Rdev"), "device": libraryStatInt(info, "Dev"), "inode": libraryStatInt(info, "Ino"), "links": libraryStatInt(info, "Nlink"), "uid": libraryStatInt(info, "Uid"), "gid": libraryStatInt(info, "Gid"), "fifo": info.Mode()&os.ModeNamedPipe != 0, "socket": info.Mode()&os.ModeSocket != 0, "block_device": info.Mode()&os.ModeDevice != 0 && info.Mode()&os.ModeCharDevice == 0, "char_device": info.Mode()&os.ModeCharDevice != 0}
 	exact := &Map{Type: "@std/Map[String][@std/BigInt]"}
 	for _, name := range []string{"size", "mode", "device", "inode", "links", "uid", "gid", "block_size", "blocks", "rdev"} {
-		number := big.NewInt(fields[name].(int64))
+		number := big.NewInt(nativeInteger(fields[name]))
 		nativeNames := map[string]string{"device": "Dev", "inode": "Ino", "links": "Nlink", "uid": "Uid", "gid": "Gid", "rdev": "Rdev", "blocks": "Blocks", "block_size": "Blksize"}
 		if nativeName := nativeNames[name]; nativeName != "" {
 			value := reflect.ValueOf(info.Sys())
@@ -737,7 +737,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 				return libraryError(r, "InvalidInput", "")
 			}
 			for _, v := range sizes {
-				n := v.(int64)
+				n := nativeInteger(v)
 				if n < 0 || n > 65536 || total > 16*1024*1024-n {
 					return libraryError(r, "InvalidInput", "")
 				}
@@ -746,7 +746,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			var result []Value
 			for _, v := range sizes {
 				CheckCancelled(ctx)
-				b := make([]byte, int(v.(int64)))
+				b := make([]byte, int(nativeInteger(v)))
 				var n int
 				var err error
 				if offset == -1 {

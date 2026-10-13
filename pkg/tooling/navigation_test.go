@@ -198,6 +198,9 @@ func TestSourceStandardLibraryNavigation(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	for _, offset := range []int{strings.Index(source, "parse"), strings.LastIndex(source, "parse("), strings.Index(source, "TomlValue")} {
+		if offset < 0 {
+			t.Fatal("missing local source reference")
+		}
 		nav, ok := tooling.NavigationAt(result.Program, "source-navigation.ms", offset)
 		if !ok || nav.Definition.File != "@std/toml.ms" {
 			t.Fatal("missing source standard navigation", nav, ok)
@@ -207,8 +210,12 @@ func TestSourceStandardLibraryNavigation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	nav, ok := tooling.NavigationAt(result.Program, "@std/toml.ms", strings.Index(string(standard), "parse_int, parse_float"))
-	if !ok || nav.Definition.File != "@std/numbers.ms" {
+	offset := strings.Index(string(standard), "parse_int64")
+	if offset < 0 {
+		t.Fatal("missing imported parse_int64 reference")
+	}
+	nav, ok := tooling.NavigationAt(result.Program, "@std/toml.ms", offset)
+	if !ok || nav.Definition.File != "@std/numbers.ms" || !strings.Contains(nav.Hover, "parse_int64") {
 		t.Fatal("missing cross-standard source navigation", nav, ok)
 	}
 }

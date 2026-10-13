@@ -13,7 +13,8 @@ The frontend enforces semantics that Go representations do not provide:
 | --- | --- |
 | Checked `Int64` | Distinct runtime Int64 scalar identity with checked signed64 operations; contextual literals select this type before parsing |
 | Explicit `Float64` | Distinct runtime Float64 scalar identity with rounding at each binary64 operation |
-| Checked `Int` | `int64` with checked operations and conversions |
+| Checked `Int` | `int32` with checked operations and conversions |
+| `Float` | `float32`, with an explicit binary32 rounding boundary at each arithmetic operation |
 | `Decimal` | Versioned finite decimal implementation honoring the coefficient/exponent grid, exact literals, and per-operator rounding in the numeric contract |
 | Valid UTF-8 `String` | Validated construction and conversion; no raw string escape |
 | Mutable records and collections | Shared record field storage and pointer-backed collection headers; explicit shallow clone |
@@ -45,7 +46,7 @@ callable dispatch retain the ordinary ABI. The reproducible native workloads in
 `scripts/benchmarks/` measure numeric loops, calls, list reads, and Game of Life;
 they do not establish that values or source functions are fully unboxed.
 
-For example, emitting a raw `int64` does not supply checked arithmetic. A raw Go slice does not establish immutable source bytes. The frontend and runtime cooperate with generated wrappers and operations to preserve those contracts.
+For example, emitting a raw `int32` does not supply checked arithmetic. A raw Go slice does not establish immutable source bytes. The frontend and runtime cooperate with generated wrappers and operations to preserve those contracts.
 
 Explicit [view constructors](../../../core-language/types/contracts.md#explicit-contract-views) create ordinary contract wrappers. There is one contract-view identity and no sharing proof in the frontend or IR. Native services synchronize their internals. Local queues rely on caller-managed Synchronized guards for concurrent access.
 

@@ -117,7 +117,7 @@ func libraryAEAD(key []byte) (cipher.AEAD, error) {
 	return cipher.NewGCM(block)
 }
 func libraryPBKDF2(ctx *Execution, r string, a []Value) Value {
-	iterations, length := a[2].(int64), a[3].(int64)
+	iterations, length := nativeInteger(a[2]), nativeInteger(a[3])
 	if iterations <= 0 || length <= 0 || length > 1048576 {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -150,7 +150,7 @@ func libraryPBKDF2(ctx *Execution, r string, a []Value) Value {
 	return libraryOK(r, Bytes{out})
 }
 func libraryCompress(ctx *Execution, r string, a []Value) Value {
-	level, max := a[2].(int64), a[3].(int64)
+	level, max := nativeInteger(a[2]), nativeInteger(a[3])
 	if level < 0 || level > 9 || max < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -189,7 +189,7 @@ func libraryCompress(ctx *Execution, r string, a []Value) Value {
 	return libraryOK(r, Bytes{append([]byte{}, w.Bytes()...)})
 }
 func libraryDecompress(ctx *Execution, r string, a []Value) Value {
-	max := a[2].(int64)
+	max := nativeInteger(a[2])
 	if max < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}

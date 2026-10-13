@@ -64,7 +64,7 @@ export interface FileSystem:
     # Use fs.constants() on this host; unknown bits/combinations are left to the OS.
     fn open_flags(
         path: String,
-        flags: Int,
+        flags: Int64,
         mode: Int
     ) -> Result[FileHandle, FileSystemError]
     # Returns entries matching the supplied include and exclude patterns.
@@ -146,8 +146,8 @@ export interface FileSystem:
     fn chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
     fn chown(
         path: String,
-        uid: Int,
-        gid: Int,
+        uid: Int64,
+        gid: Int64,
         follow_links: Bool
     ) -> Result[Unit, FileSystemError]
     # Sets the target size in bytes; follows a final symbolic link.
@@ -237,7 +237,7 @@ export interface FileHandle:
     fn sync() -> Result[Unit, FileSystemError]
     fn data_sync() -> Result[Unit, FileSystemError]
     fn chmod(mode: Int) -> Result[Unit, FileSystemError]
-    fn chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]
+    fn chown(uid: Int64, gid: Int64) -> Result[Unit, FileSystemError]
     fn set_times(
         accessed: Timestamp,
         modified: Timestamp
@@ -282,7 +282,7 @@ export type FileSystemInfo:
 
 # Returns this host's filesystem flag, mode, and permission constants by name.
 # Names and values vary by host; absent entries are not supported constants or portable enum cases.
-export fn constants() -> Map[String, Int]:
+export fn constants() -> Map[String, Int64]:
 
 # Policies for recursive copies, including replacement, symlinks, and optional limits.
 export type CopyOptions:

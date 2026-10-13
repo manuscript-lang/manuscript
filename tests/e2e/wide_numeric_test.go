@@ -9,8 +9,11 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
-func TestWideNumericStandalone(t *testing.T) {
-	result := compiler.CompileFile("testdata/accept/wide-numbers.ms", compiler.Options{Tests: true})
+func TestWideNumericStandalone(t *testing.T)    { numericStandalone(t, "wide-numbers.ms", 5) }
+func TestDefaultNumericStandalone(t *testing.T) { numericStandalone(t, "default-numbers.ms", 4) }
+func numericStandalone(t *testing.T, fixture string, tests int) {
+	t.Helper()
+	result := compiler.CompileFile(filepath.Join("testdata/accept", fixture), compiler.Options{Tests: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
@@ -21,12 +24,12 @@ func TestWideNumericStandalone(t *testing.T) {
 	if strings.Contains(source, "github.com/manuscript-lang/manuscript/pkg/runtime") {
 		t.Fatal("runtime import survived standalone assembly")
 	}
-	executable := filepath.Join(t.TempDir(), "wide-standalone")
+	executable := filepath.Join(t.TempDir(), "numeric-standalone")
 	if err := compiler.Build(source, executable); err != nil {
 		t.Fatal(err)
 	}
-	if data, err := commandOutput(t, executable); err != nil || !strings.Contains(string(data), "5 tests, 0 failed") {
-		t.Fatalf("wide standalone transcript %q, error %v", data, err)
+	if data, err := commandOutput(t, executable); err != nil || !strings.Contains(string(data), fmt.Sprintf("%d tests, 0 failed", tests)) {
+		t.Fatalf("standalone transcript %q, error %v", data, err)
 	}
 }
 

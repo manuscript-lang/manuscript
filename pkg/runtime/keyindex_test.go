@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func pointKey(x, y int64) Value {
+func pointKey(x, y int32) Value {
 	return Record{"Point", map[string]Value{"x": x, "y": y}}
 }
 
@@ -25,13 +25,13 @@ func TestMapIndexMatchesLinearScan(t *testing.T) {
 	keyFor := func() Value {
 		switch rng.Intn(4) {
 		case 0:
-			return int64(rng.Intn(40))
+			return int32(rng.Intn(40))
 		case 1:
 			return string(rune('a' + rng.Intn(30)))
 		case 2:
-			return pointKey(int64(rng.Intn(6)), int64(rng.Intn(6)))
+			return pointKey(int32(rng.Intn(6)), int32(rng.Intn(6)))
 		}
-		return Alternative{Type: "Shape", Tag: "dot", Fields: []Value{int64(rng.Intn(10))}}
+		return Alternative{Type: "Shape", Tag: "dot", Fields: []Value{int32(rng.Intn(10))}}
 	}
 	for step := 0; step < 4000; step++ {
 		key := keyFor()
@@ -47,7 +47,7 @@ func TestMapIndexMatchesLinearScan(t *testing.T) {
 		if want < 0 {
 			model = append(model, key)
 		}
-		m.put(ctx, key, int64(step))
+		m.put(ctx, key, int32(step))
 		if len(m.Entries) != len(model) {
 			t.Fatalf("step %d: %d entries, model has %d", step, len(m.Entries), len(model))
 		}
@@ -62,14 +62,14 @@ func TestMapIndexMatchesLinearScan(t *testing.T) {
 func TestSetIndexSurvivesDirectEdits(t *testing.T) {
 	ctx := RootExecution()
 	s := &Set{Type: "@std/Set[Int]"}
-	for i := int64(0); i < 100; i++ {
+	for i := int32(0); i < 100; i++ {
 		s.add(ctx, i)
 	}
-	if s.add(ctx, int64(50)) {
+	if s.add(ctx, int32(50)) {
 		t.Fatal("duplicate added")
 	}
 	s.Items = nil // library code assigns directly
-	if s.find(ctx, int64(50)) >= 0 {
+	if s.find(ctx, int32(50)) >= 0 {
 		t.Fatal("cleared set still finds 50")
 	}
 	s.Items = append(s.Items, "x", "y") // and appends directly
@@ -96,7 +96,7 @@ func TestUnhashableKeyIsAnInvariantViolation(t *testing.T) {
 			t.Fatalf("expected a not-Hashable fault, got %v", fault)
 		}
 	}()
-	s.add(ctx, &List{Type: "@std/List[Int]", Items: []Value{int64(1)}})
+	s.add(ctx, &List{Type: "@std/List[Int]", Items: []Value{int32(1)}})
 }
 
 func TestDocumentedKeyMutationProtocol(t *testing.T) {
@@ -106,7 +106,7 @@ func TestDocumentedKeyMutationProtocol(t *testing.T) {
 	m.put(ctx, p, "a")
 	// Remove before mutating a stored key, then reinsert it.
 	m.removeAt(ctx, m.find(ctx, p))
-	p.Fields["x"] = int64(9)
+	p.Fields["x"] = int32(9)
 	m.put(ctx, p, "a")
 	if m.find(ctx, pointKey(9, 2)) < 0 || m.find(ctx, pointKey(1, 2)) >= 0 {
 		t.Fatal("reinserted key not found by its new value")
@@ -114,7 +114,7 @@ func TestDocumentedKeyMutationProtocol(t *testing.T) {
 	// A clone is independent of later mutation of the original.
 	q := pointKey(3, 4).(Record)
 	m.put(ctx, Clone(q), "b")
-	q.Fields["x"] = int64(7)
+	q.Fields["x"] = int32(7)
 	if m.find(ctx, pointKey(3, 4)) < 0 {
 		t.Fatal("cloned key changed with the original")
 	}
@@ -137,7 +137,7 @@ func init() {
 	}})
 }
 
-func customKey(id int64, label string) Value {
+func customKey(id int32, label string) Value {
 	return Record{"CustomKey", map[string]Value{"id": id, "label": label}}
 }
 
@@ -159,15 +159,15 @@ func TestCustomHashableIsUsedForLookup(t *testing.T) {
 
 func TestPrimitiveEquality(t *testing.T) {
 	ctx := RootExecution()
-	nan := math.NaN()
-	negativeZero := math.Copysign(0, -1)
+	nan := float32(math.NaN())
+	negativeZero := float32(math.Copysign(0, -1))
 	cases := []struct {
 		a, b Value
 		want bool
 	}{
-		{int64(1), int64(1), true}, {int64(1), int64(2), false}, {int64(1), 1.0, false},
+		{int32(1), int32(1), true}, {int32(1), int32(2), false}, {int32(1), 1.0, false},
 		{"a", "a", true}, {"a", "b", false}, {true, true, true}, {true, false, false},
-		{nan, nan, false}, {0.0, negativeZero, true}, {1.5, 1.5, true},
+		{nan, nan, false}, {float32(0), negativeZero, true}, {float32(1.5), float32(1.5), true},
 	}
 	for _, c := range cases {
 		if got := EqualIn(ctx, c.a, c.b); got != c.want {

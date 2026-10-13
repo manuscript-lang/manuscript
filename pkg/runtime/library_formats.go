@@ -77,7 +77,7 @@ func init() {
 		return libraryOK(r, u.String())
 	})
 	add("url", "parse_query", libraryResult("List[QueryEntry]", "UrlError"), []LibraryParam{p("text", "String"), p("max_entries", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
-		n := a[1].(int64)
+		n := nativeInteger(a[1])
 		if n < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -121,7 +121,7 @@ func init() {
 func libraryJSONParse(ctx *Execution, r string, a []Value) Value {
 	text := a[0].(string)
 	f := a[1].(Record).Fields
-	maxBytes, maxDepth, maxValues := f["max_bytes"].(int64), f["max_depth"].(int64), f["max_values"].(int64)
+	maxBytes, maxDepth, maxValues := nativeInteger(f["max_bytes"]), nativeInteger(f["max_depth"]), nativeInteger(f["max_values"])
 	if maxBytes < 0 || maxDepth < 0 || maxValues < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -274,7 +274,7 @@ func (w *libraryLimitedWriter) Write(p []byte) (int, error) {
 	return w.Buffer.Write(p)
 }
 func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
-	max := a[1].(int64)
+	max := nativeInteger(a[1])
 	if max < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -373,7 +373,7 @@ func libraryCSVOptions(v Value) (rune, bool, bool) {
 }
 func libraryCSVParse(ctx *Execution, r string, a []Value) Value {
 	delimiter, _, ok := libraryCSVOptions(a[1])
-	rows, cells := a[2].(int64), a[3].(int64)
+	rows, cells := nativeInteger(a[2]), nativeInteger(a[3])
 	if !ok || rows < 0 || cells < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -401,7 +401,7 @@ func libraryCSVParse(ctx *Execution, r string, a []Value) Value {
 }
 func libraryCSVStringify(ctx *Execution, r string, a []Value) Value {
 	delimiter, crlf, ok := libraryCSVOptions(a[1])
-	n := a[2].(int64)
+	n := nativeInteger(a[2])
 	if !ok || n < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -459,7 +459,7 @@ func libraryURL(v Value) (*url.URL, error) {
 	}
 	p := f["port"].(Alternative)
 	if p.Tag == "some" {
-		n := p.Fields[0].(int64)
+		n := nativeInteger(p.Fields[0])
 		if n < 0 || n > 65535 {
 			return nil, io.ErrUnexpectedEOF
 		}

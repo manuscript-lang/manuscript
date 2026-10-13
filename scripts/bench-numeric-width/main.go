@@ -1,4 +1,4 @@
-// Numeric-width controls measure Go storage, not an implemented language migration.
+// Numeric-width controls and runtime factory cases measure retained storage separately.
 package main
 
 import (
@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -39,7 +40,7 @@ var retained any
 var checksum float64
 
 func main() {
-	kind := flag.String("case", "layout", "layout, boxed-int32/64, boxed-float32/64, typed-int32/64, typed-float32/64, boxed-record32/64, typed-record32/64")
+	kind := flag.String("case", "layout", "layout, boxed-int32/64, boxed-float32/64, typed-int32/64, typed-float32/64, boxed-record32/64, typed-record32/64, runtime-int, runtime-float, runtime-record")
 	n := flag.Int("n", 1000000, "elements; use separate processes for RSS comparisons")
 	flag.Parse()
 	if *kind == "layout" {
@@ -58,6 +59,44 @@ func main() {
 	start := time.Now()
 	// Values stay within signed32; checksums intentionally use an explicit wide host accumulator.
 	switch *kind {
+	case "runtime-int", "runtime-float", "runtime-record":
+		values := make([]rt.Value, *n)
+		integer, fraction := rt.Integer("257"), rt.Float("257.125")
+		integerOne, floatOne := rt.Integer("1"), rt.Float("1.0")
+		for i := range values {
+			if i%100003 == 0 {
+				integer, fraction = rt.Integer("257"), rt.Float("257.125")
+			}
+			switch *kind {
+			case "runtime-int":
+				integer = rt.Binary("+", integer, integerOne)
+				values[i] = integer
+			case "runtime-float":
+				fraction = rt.Binary("+", fraction, floatOne)
+				values[i] = fraction
+			case "runtime-record":
+				integer = rt.Binary("+", integer, integerOne)
+				fraction = rt.Binary("+", fraction, floatOne)
+				values[i] = rt.Record{Type: "WidthControl", Fields: map[string]rt.Value{"integer": integer, "float": fraction, "flag": true}}
+			}
+		}
+		retained = values
+
+	case "factory-int", "factory-float", "factory-record":
+		values := make([]rt.Value, *n)
+		for i := range values {
+			text := strconv.Itoa(i%100003 + 257)
+			switch *kind {
+			case "factory-int":
+				values[i] = rt.Integer(text)
+			case "factory-float":
+				values[i] = rt.Float(text + ".125")
+			case "factory-record":
+				values[i] = rt.Record{Type: "WidthControl", Fields: map[string]rt.Value{"integer": rt.Integer(text), "float": rt.Float(text + ".125"), "flag": true}}
+			}
+		}
+		retained = values
+
 	case "boxed-int32":
 		x := make([]any, *n)
 		for i := range x {
@@ -195,7 +234,7 @@ func main() {
 			rss = append(rss, line)
 		}
 	}
-	result := map[string]any{"case": *kind, "n": *n, "go": runtime.Version(), "os": runtime.GOOS, "arch": runtime.GOARCH, "retained_heap_bytes": int64(after.HeapAlloc) - int64(before.HeapAlloc), "allocated_bytes": built.TotalAlloc - before.TotalAlloc, "allocations": built.Mallocs - before.Mallocs, "construction_ns": construction.Nanoseconds(), "traversal_10_pass_ns": traversal.Nanoseconds(), "rss": rss, "checksum": checksum}
+	result := map[string]any{"case": *kind, "default_int_type": fmt.Sprintf("%T", rt.Integer("1")), "default_float_type": fmt.Sprintf("%T", rt.Float("1.0")), "n": *n, "go": runtime.Version(), "os": runtime.GOOS, "arch": runtime.GOARCH, "retained_heap_bytes": int64(after.HeapAlloc) - int64(before.HeapAlloc), "allocated_bytes": built.TotalAlloc - before.TotalAlloc, "allocations": built.Mallocs - before.Mallocs, "construction_ns": construction.Nanoseconds(), "traversal_10_pass_ns": traversal.Nanoseconds(), "rss": rss, "checksum": checksum}
 	_ = json.NewEncoder(os.Stdout).Encode(result)
 	runtime.KeepAlive(retained)
 }

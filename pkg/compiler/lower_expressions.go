@@ -85,11 +85,11 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			return runtimeCall("DecimalLiteral", textLiteral(e.Text))
 		}
 		if strings.ContainsAny(e.Text, ".eE") {
-			value, _ := strconv.ParseFloat(e.Text, 64)
-			return call(ident("float64"), &ast.BasicLit{Kind: token.FLOAT, Value: strconv.FormatFloat(value, 'g', -1, 64)})
+			value, _ := strconv.ParseFloat(e.Text, 32)
+			return call(ident("float32"), &ast.BasicLit{Kind: token.FLOAT, Value: strconv.FormatFloat(value, 'g', -1, 32)})
 		}
-		value, _ := strconv.ParseInt(e.Text, 10, 64)
-		return call(ident("int64"), signedInteger(strconv.FormatInt(value, 10)))
+		value, _ := strconv.ParseInt(e.Text, 10, 32)
+		return call(ident("int32"), signedInteger(strconv.FormatInt(value, 10)))
 	case syntax.KindBool:
 		return ident(e.Text)
 	case syntax.KindUnit:
@@ -233,8 +233,8 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if e.Text == "-" && info.Type.ID == "Int64" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return call(runtimeName("Int64"), signedInteger("-9223372036854775808"))
 		}
-		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
-			return call(ident("int64"), signedInteger("-9223372036854775808"))
+		if e.Text == "-" && info.Type.ID == "Int" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "2147483648" {
+			return call(ident("int32"), signedInteger("-2147483648"))
 		}
 		return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
 	case syntax.KindBinary:

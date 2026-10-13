@@ -49,7 +49,7 @@ export interface ProcessControl:
     fn available_memory() -> Result[Int64, ProcessError]
     fn title() -> Result[String, ProcessError]
     fn set_title(title: String) -> Result[Unit, ProcessError]
-    fn initialize_groups(username: String, gid: Int) -> Result[Unit, ProcessError]
+    fn initialize_groups(username: String, gid: Int64) -> Result[Unit, ProcessError]
     fn replace(
         program: String,
         arguments: List[String],
@@ -76,14 +76,14 @@ export interface ProcessControl:
     # Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
     # Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination.
     fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
-    fn groups() -> Result[List[Int], ProcessError]
+    fn groups() -> Result[List[Int64], ProcessError]
     fn resource_usage() -> Result[ResourceUsage, ProcessError]
     # Sets mask 0..511 (0777) and returns the previous mask; Unsupported on Windows.
     fn umask(mask: Int) -> Result[Int, ProcessError]
     # Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.
     # Identity changes require OS permission and are Unsupported on Windows.
-    fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
-    fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
+    fn set_identity(kind: String, id: Int64) -> Result[Unit, ProcessError]
+    fn set_groups(groups: List[Int64]) -> Result[Unit, ProcessError]
 
 # Identity and invocation details for the current process.
 export type ProcessInfo:

@@ -10,13 +10,13 @@ import (
 	"time"
 )
 
-func hostResponse(status int64, text string) Value {
+func hostResponse(status int32, text string) Value {
 	return Record{"@std/HttpResponse", map[string]Value{"status": status, "headers": &Map{Type: "@std/Map[String][String]"}, "body": Bytes{[]byte(text)}}}
 }
-func serveTest(t *testing.T, root *Execution, handler Function, bodyLimit int64) *httpService {
+func serveTest(t *testing.T, root *Execution, handler Function, bodyLimit int32) *httpService {
 	t.Helper()
 	network := &network{}
-	result := Invoke(root, network.Operation("serve"), []Argument{{"address", "127.0.0.1:0"}, {"handler", handler}, {"limit", int64(1)}, {"max_body_bytes", bodyLimit}, {"max_response_bytes", int64(32)}, {"timeout", Duration(time.Second)}, {"grace", Duration(0)}}).(Alternative)
+	result := Invoke(root, network.Operation("serve"), []Argument{{"address", "127.0.0.1:0"}, {"handler", handler}, {"limit", int32(1)}, {"max_body_bytes", bodyLimit}, {"max_response_bytes", int32(32)}, {"timeout", Duration(time.Second)}, {"grace", Duration(0)}}).(Alternative)
 	if result.Tag != "ok" {
 		t.Fatal(result)
 	}
@@ -126,7 +126,7 @@ func TestStreamCancellationAndConcurrentClose(t *testing.T) {
 			finished := make(chan any, 1)
 			go func() {
 				finished <- recovered(func() {
-					value := Invoke(execution, stream.Operation("read"), []Argument{{"max_bytes", int64(8)}}).(Alternative)
+					value := Invoke(execution, stream.Operation("read"), []Argument{{"max_bytes", int32(8)}}).(Alternative)
 					if value.Tag != "error" {
 						panic("closed read succeeded")
 					}
@@ -172,21 +172,21 @@ func TestSubprocessOutputAndLimit(t *testing.T) {
 	}
 	root := RootExecution()
 	commands := &commands{}
-	for limit, tag := range map[int64]string{8: "ok", 2: "error"} {
+	for limit, tag := range map[int32]string{8: "ok", 2: "error"} {
 		result := Invoke(root, commands.Operation("run"), []Argument{{"program", "/bin/printf"}, {"arguments", &List{Items: []Value{"hello"}}}, {"input", Bytes{}}, {"max_output_bytes", limit}, {"timeout", Duration(time.Second)}}).(Alternative)
 		if result.Tag != tag {
 			t.Fatal(result)
 		}
 		if tag == "ok" {
 			output := result.Fields[0].(Record)
-			if string(output.Fields["stdout"].(Bytes).Items) != "hello" || output.Fields["exit_code"] != int64(0) {
+			if string(output.Fields["stdout"].(Bytes).Items) != "hello" || output.Fields["exit_code"] != int32(0) {
 				t.Fatal(output)
 			}
 		} else if result.Fields[0].(Alternative).Tag != "OutputLimit" {
 			t.Fatal(result)
 		}
 	}
-	result := Invoke(root, commands.Operation("run"), []Argument{{"program", "/bin/printf"}, {"arguments", &List{}}, {"input", Bytes{}}, {"max_output_bytes", int64(8)}, {"timeout", Duration(0)}}).(Alternative)
+	result := Invoke(root, commands.Operation("run"), []Argument{{"program", "/bin/printf"}, {"arguments", &List{}}, {"input", Bytes{}}, {"max_output_bytes", int32(8)}, {"timeout", Duration(0)}}).(Alternative)
 	if result.Tag != "error" || result.Fields[0].(Alternative).Tag != "TimedOut" {
 		t.Fatal(result)
 	}

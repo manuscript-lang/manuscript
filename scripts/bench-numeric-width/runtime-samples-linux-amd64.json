@@ -1,0 +1,385 @@
+{
+  "baseline_commit": "bd45f92aa5f569e24d908e4574935978fd4f1587",
+  "candidate": "default32 working switch on #280",
+  "method": "runtime Binary numeric results; fresh process every sample, widths alternated; explicit wide host checksum",
+  "samples": [
+    {
+      "allocated_bytes": 24007384,
+      "allocations": 1000025,
+      "arch": "amd64",
+      "case": "runtime-int",
+      "checksum": 50257500405,
+      "construction_ns": 154354803,
+      "default_float_type": "float64",
+      "default_int_type": "int64",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 24012776,
+      "rss": [
+        "VmHWM:\t   34176 kB",
+        "VmRSS:\t   34176 kB"
+      ],
+      "traversal_10_pass_ns": 20807127,
+      "width": 64,
+      "run": 1
+    },
+    {
+      "allocated_bytes": 20007320,
+      "allocations": 1000025,
+      "arch": "amd64",
+      "case": "runtime-int",
+      "checksum": 50257500405,
+      "construction_ns": 154013000,
+      "default_float_type": "float32",
+      "default_int_type": "int32",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 20007400,
+      "rss": [
+        "VmHWM:\t   29952 kB",
+        "VmRSS:\t   29952 kB"
+      ],
+      "traversal_10_pass_ns": 111101408,
+      "width": 32,
+      "run": 1
+    },
+    {
+      "allocated_bytes": 20007304,
+      "allocations": 1000025,
+      "arch": "amd64",
+      "case": "runtime-int",
+      "checksum": 50257500405,
+      "construction_ns": 109266947,
+      "default_float_type": "float32",
+      "default_int_type": "int32",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 20007288,
+      "rss": [
+        "VmHWM:\t   30004 kB",
+        "VmRSS:\t   30004 kB"
+      ],
+      "traversal_10_pass_ns": 43897350,
+      "width": 32,
+      "run": 2
+    },
+    {
+      "allocated_bytes": 24007384,
+      "allocations": 1000025,
+      "arch": "amd64",
+      "case": "runtime-int",
+      "checksum": 50257500405,
+      "construction_ns": 141639830,
+      "default_float_type": "float64",
+      "default_int_type": "int64",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 24007272,
+      "rss": [
+        "VmHWM:\t   34232 kB",
+        "VmRSS:\t   34232 kB"
+      ],
+      "traversal_10_pass_ns": 36976434,
+      "width": 64,
+      "run": 2
+    },
+    {
+      "allocated_bytes": 24007384,
+      "allocations": 1000025,
+      "arch": "amd64",
+      "case": "runtime-int",
+      "checksum": 50257500405,
+      "construction_ns": 188734900,
+      "default_float_type": "float64",
+      "default_int_type": "int64",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 24007272,
+      "rss": [
+        "VmHWM:\t   34080 kB",
+        "VmRSS:\t   34080 kB"
+      ],
+      "traversal_10_pass_ns": 67619063,
+      "width": 64,
+      "run": 3
+    },
+    {
+      "allocated_bytes": 20007320,
+      "allocations": 1000025,
+      "arch": "amd64",
+      "case": "runtime-int",
+      "checksum": 50257500405,
+      "construction_ns": 192552010,
+      "default_float_type": "float32",
+      "default_int_type": "int32",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 20007304,
+      "rss": [
+        "VmHWM:\t   30000 kB",
+        "VmRSS:\t   30000 kB"
+      ],
+      "traversal_10_pass_ns": 78282546,
+      "width": 32,
+      "run": 3
+    },
+    {
+      "allocated_bytes": 24007496,
+      "allocations": 1000026,
+      "arch": "amd64",
+      "case": "runtime-float",
+      "checksum": 50257625405,
+      "construction_ns": 100378527,
+      "default_float_type": "float64",
+      "default_int_type": "int64",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 24007384,
+      "rss": [
+        "VmHWM:\t   34156 kB",
+        "VmRSS:\t   34156 kB"
+      ],
+      "traversal_10_pass_ns": 28104808,
+      "width": 64,
+      "run": 1
+    },
+    {
+      "allocated_bytes": 20007320,
+      "allocations": 1000025,
+      "arch": "amd64",
+      "case": "runtime-float",
+      "checksum": 50257625405,
+      "construction_ns": 75497864,
+      "default_float_type": "float32",
+      "default_int_type": "int32",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 20007304,
+      "rss": [
+        "VmHWM:\t   29996 kB",
+        "VmRSS:\t   29996 kB"
+      ],
+      "traversal_10_pass_ns": 55817987,
+      "width": 32,
+      "run": 1
+    },
+    {
+      "allocated_bytes": 20007304,
+      "allocations": 1000025,
+      "arch": "amd64",
+      "case": "runtime-float",
+      "checksum": 50257625405,
+      "construction_ns": 192859580,
+      "default_float_type": "float32",
+      "default_int_type": "int32",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 20007384,
+      "rss": [
+        "VmHWM:\t   29944 kB",
+        "VmRSS:\t   29944 kB"
+      ],
+      "traversal_10_pass_ns": 139397670,
+      "width": 32,
+      "run": 2
+    },
+    {
+      "allocated_bytes": 24007384,
+      "allocations": 1000025,
+      "arch": "amd64",
+      "case": "runtime-float",
+      "checksum": 50257625405,
+      "construction_ns": 171524598,
+      "default_float_type": "float64",
+      "default_int_type": "int64",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 24007288,
+      "rss": [
+        "VmHWM:\t   34228 kB",
+        "VmRSS:\t   34228 kB"
+      ],
+      "traversal_10_pass_ns": 74380149,
+      "width": 64,
+      "run": 2
+    },
+    {
+      "allocated_bytes": 24007480,
+      "allocations": 1000026,
+      "arch": "amd64",
+      "case": "runtime-float",
+      "checksum": 50257625405,
+      "construction_ns": 90946548,
+      "default_float_type": "float64",
+      "default_int_type": "int64",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 24007368,
+      "rss": [
+        "VmHWM:\t   34104 kB",
+        "VmRSS:\t   34104 kB"
+      ],
+      "traversal_10_pass_ns": 30449980,
+      "width": 64,
+      "run": 3
+    },
+    {
+      "allocated_bytes": 20007304,
+      "allocations": 1000025,
+      "arch": "amd64",
+      "case": "runtime-float",
+      "checksum": 50257625405,
+      "construction_ns": 89886049,
+      "default_float_type": "float32",
+      "default_int_type": "int32",
+      "go": "go1.25.1",
+      "n": 1000000,
+      "os": "linux",
+      "retained_heap_bytes": 20012792,
+      "rss": [
+        "VmHWM:\t   30000 kB",
+        "VmRSS:\t   30000 kB"
+      ],
+      "traversal_10_pass_ns": 75468000,
+      "width": 32,
+      "run": 3
+    },
+    {
+      "allocated_bytes": 39205816,
+      "allocations": 500008,
+      "arch": "amd64",
+      "case": "runtime-record",
+      "checksum": 5025750000,
+      "construction_ns": 170759751,
+      "default_float_type": "float64",
+      "default_int_type": "int64",
+      "go": "go1.25.1",
+      "n": 100000,
+      "os": "linux",
+      "retained_heap_bytes": 39205784,
+      "rss": [
+        "VmHWM:\t   50492 kB",
+        "VmRSS:\t   50492 kB"
+      ],
+      "traversal_10_pass_ns": 150751575,
+      "width": 64,
+      "run": 1
+    },
+    {
+      "allocated_bytes": 38405928,
+      "allocations": 500009,
+      "arch": "amd64",
+      "case": "runtime-record",
+      "checksum": 5025750000,
+      "construction_ns": 130346541,
+      "default_float_type": "float32",
+      "default_int_type": "int32",
+      "go": "go1.25.1",
+      "n": 100000,
+      "os": "linux",
+      "retained_heap_bytes": 38405912,
+      "rss": [
+        "VmHWM:\t   49488 kB",
+        "VmRSS:\t   49488 kB"
+      ],
+      "traversal_10_pass_ns": 136008472,
+      "width": 32,
+      "run": 1
+    },
+    {
+      "allocated_bytes": 38405720,
+      "allocations": 500007,
+      "arch": "amd64",
+      "case": "runtime-record",
+      "checksum": 5025750000,
+      "construction_ns": 257285977,
+      "default_float_type": "float32",
+      "default_int_type": "int32",
+      "go": "go1.25.1",
+      "n": 100000,
+      "os": "linux",
+      "retained_heap_bytes": 38405704,
+      "rss": [
+        "VmHWM:\t   49420 kB",
+        "VmRSS:\t   49420 kB"
+      ],
+      "traversal_10_pass_ns": 102234070,
+      "width": 32,
+      "run": 2
+    },
+    {
+      "allocated_bytes": 39205800,
+      "allocations": 500008,
+      "arch": "amd64",
+      "case": "runtime-record",
+      "checksum": 5025750000,
+      "construction_ns": 190306289,
+      "default_float_type": "float64",
+      "default_int_type": "int64",
+      "go": "go1.25.1",
+      "n": 100000,
+      "os": "linux",
+      "retained_heap_bytes": 39205768,
+      "rss": [
+        "VmHWM:\t   50460 kB",
+        "VmRSS:\t   50460 kB"
+      ],
+      "traversal_10_pass_ns": 60292599,
+      "width": 64,
+      "run": 2
+    },
+    {
+      "allocated_bytes": 39205992,
+      "allocations": 500010,
+      "arch": "amd64",
+      "case": "runtime-record",
+      "checksum": 5025750000,
+      "construction_ns": 151958957,
+      "default_float_type": "float64",
+      "default_int_type": "int64",
+      "go": "go1.25.1",
+      "n": 100000,
+      "os": "linux",
+      "retained_heap_bytes": 39211464,
+      "rss": [
+        "VmHWM:\t   50560 kB",
+        "VmRSS:\t   50560 kB"
+      ],
+      "traversal_10_pass_ns": 40754149,
+      "width": 64,
+      "run": 3
+    },
+    {
+      "allocated_bytes": 38405896,
+      "allocations": 500009,
+      "arch": "amd64",
+      "case": "runtime-record",
+      "checksum": 5025750000,
+      "construction_ns": 184051425,
+      "default_float_type": "float32",
+      "default_int_type": "int32",
+      "go": "go1.25.1",
+      "n": 100000,
+      "os": "linux",
+      "retained_heap_bytes": 38405880,
+      "rss": [
+        "VmHWM:\t   49376 kB",
+        "VmRSS:\t   49376 kB"
+      ],
+      "traversal_10_pass_ns": 189431354,
+      "width": 32,
+      "run": 3
+    }
+  ]
+}

@@ -34,7 +34,7 @@ func (g *generator) numericBinary(e *syntax.Expression) ast.Expr {
 		if e.Text != "%" {
 			// Explicit rounding preserves each source operation even on FMA targets.
 			op := map[string]token.Token{"+": token.ADD, "-": token.SUB, "*": token.MUL, "/": token.QUO}[e.Text]
-			return call(ident("float64"), &ast.BinaryExpr{X: a, Op: op, Y: b})
+			return call(ident("float32"), &ast.BinaryExpr{X: a, Op: op, Y: b})
 		}
 	}
 	return nil

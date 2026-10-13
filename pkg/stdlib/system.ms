@@ -92,7 +92,7 @@ export fn os_type() -> String:
 
 # Returns native signal/error/loader/priority constants by name.
 # Names and values vary by host; missing entries do not imply a portable numeric default.
-export fn constants() -> Map[String, Int]:
+export fn constants() -> Map[String, Int64]:
 
 # Errors returned when a requested host operation is unavailable or denied.
 export type SystemError:

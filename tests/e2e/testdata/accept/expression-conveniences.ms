@@ -180,7 +180,7 @@ test "missing indexes are optional":
     if (
         values[2].is_some()
         or values[-3].is_some()
-        or values[-9223372036854775808].is_some()
+        or values[-2147483648].is_some()
     ):
         return panic("out of range must be none")
     if values[0] != values.at(0) or values[-1] != values.at(-1):

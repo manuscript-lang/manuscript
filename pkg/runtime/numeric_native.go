@@ -1,5 +1,7 @@
 package msruntime
 
+import "math"
+
 // Native implementations calculate host sizes and counters in signed64. The
 // checked declaration selects their source width; this is not source coercion.
 func nativeInteger(value Value) int64 {
@@ -12,6 +14,8 @@ func nativeInteger(value Value) int64 {
 
 func nativeIntegerValue(value Value) (int64, bool) {
 	switch value := value.(type) {
+	case int32:
+		return int64(value), true
 	case int64:
 		return value, true
 	case Int64:
@@ -20,12 +24,51 @@ func nativeIntegerValue(value Value) (int64, bool) {
 	return 0, false
 }
 
+func nativeFloat(value Value) float64 {
+	if result, ok := nativeFloatValue(value); ok {
+		return result
+	}
+	Panic("runtime invariant: native float parameter")
+	return 0
+}
+func nativeFloatValue(value Value) (float64, bool) {
+	switch value := value.(type) {
+	case float32:
+		return float64(value), true
+	case float64:
+		return value, true
+	case Float64:
+		return float64(value), true
+	}
+	return 0, false
+}
+func defaultInteger(value int64) int32 {
+	if value < math.MinInt32 || value > math.MaxInt32 {
+		Panic("Int result outside signed 32-bit range; use an explicit Int64 contract")
+	}
+	return int32(value)
+}
+func truncateInt32(value float64) Value {
+	value = math.Trunc(value)
+	if math.IsNaN(value) || math.IsInf(value, 0) || value < math.MinInt32 || value > math.MaxInt32 {
+		return optional("Int", nil, false)
+	}
+	return optional("Int", int32(value), true)
+}
 func nativeNumericResult(typ string, value Value) Value {
 	name, args := splitType(typ)
 	if (name == "@std/Result" || name == "Result") && len(args) == 2 {
 		typ = args[0]
 	}
 	switch typ {
+	case "Int":
+		if value, ok := value.(int64); ok {
+			return defaultInteger(value)
+		}
+	case "Float":
+		if value, ok := value.(float64); ok {
+			return float32(value)
+		}
 	case "Int64":
 		if value, ok := value.(int64); ok {
 			return Int64(value)
@@ -46,6 +89,9 @@ func nativeHostRecord(typ string, fields map[string]Value) Record {
 		if value, ok := fields[name].(int64); ok {
 			fields[name] = Int64(value)
 		}
+	}
+	for name, value := range fields {
+		fields[name] = nativeNumericResult("Int", value)
 	}
 	return Record{Type: typ, Fields: fields}
 }

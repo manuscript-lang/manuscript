@@ -10,7 +10,7 @@ func BenchmarkSourceCallDispatch(b *testing.B) {
 	b.Run("Named", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			if value := Invoke(ctx, callee, []Argument{{"a", int64(300)}, {"b", int64(301)}}); value != int64(601) {
+			if value := Invoke(ctx, callee, []Argument{{"a", int32(300)}, {"b", int32(301)}}); value != int32(601) {
 				b.Fatal(value)
 			}
 		}
@@ -18,7 +18,7 @@ func BenchmarkSourceCallDispatch(b *testing.B) {
 	b.Run("Prepared", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			if value := callee.(Function).Body(ctx, []Value{int64(300), int64(301)}); value != int64(601) {
+			if value := callee.(Function).Body(ctx, []Value{int32(300), int32(301)}); value != int32(601) {
 				b.Fatal(value)
 			}
 		}

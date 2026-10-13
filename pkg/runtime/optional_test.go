@@ -15,7 +15,7 @@ func TestOptionalReceiverMethods(t *testing.T) {
 		typ      string
 		payload  Value
 		fallback Value
-	}{{"Int", int64(0), int64(9)}, {"Bool", false, true}, {"Unit", Unit{}, Unit{}}} {
+	}{{"Int", int32(0), int32(9)}, {"Bool", false, true}, {"Unit", Unit{}, Unit{}}} {
 		payload := test.payload
 		present := optional(test.typ, payload, true)
 		missing := optional(test.typ, nil, false)
@@ -32,12 +32,12 @@ func TestOptionalReceiverMethods(t *testing.T) {
 	var calls int
 	create := NewFunction(nil, "Int", func(_ *Execution, _ []Value) Value {
 		calls++
-		return int64(42)
+		return int32(42)
 	})
-	if call(optional("Int", int64(0), true), "unwrap_or_else", Argument{"create", create}) != int64(0) || calls != 0 {
+	if call(optional("Int", int32(0), true), "unwrap_or_else", Argument{"create", create}) != int32(0) || calls != 0 {
 		t.Fatal("some evaluated fallback")
 	}
-	if call(optional("Int", nil, false), "unwrap_or_else", Argument{"create", create}) != int64(42) || calls != 1 {
+	if call(optional("Int", nil, false), "unwrap_or_else", Argument{"create", create}) != int32(42) || calls != 1 {
 		t.Fatal("none must evaluate fallback once")
 	}
 	fault, ok := recovered(func() { call(optional("Int", nil, false), "unwrap") }).(Fault)
@@ -53,7 +53,7 @@ func TestOptionalReceiverMethods(t *testing.T) {
 	cancel()
 	create = NewFunction(nil, "Int", func(_ *Execution, _ []Value) Value {
 		CheckCancelled(&Execution{Context: cancelledContext})
-		return int64(0)
+		return int32(0)
 	})
 	if _, ok := recovered(func() { call(optional("Int", nil, false), "unwrap_or_else", Argument{"create", create}) }).(cancelled); !ok {
 		t.Fatal("lazy fallback cancellation was changed")
@@ -64,12 +64,12 @@ func TestOptionalReceiverMethods(t *testing.T) {
 	if bound.Result != "@std/Optional[Int]" || !Equal(Invoke(ctx, bound, nil), inner) {
 		t.Fatal("nested Optional result was flattened or incorrectly specialized")
 	}
-	limits := Record{Type: "@std/JsonLimits", Fields: map[string]Value{"max_bytes": optional("Int", int64(-1), true), "max_depth": optional("Int", nil, false), "max_values": optional("Int", nil, false)}}
+	limits := Record{Type: "@std/JsonLimits", Fields: map[string]Value{"max_bytes": optional("Int", int32(-1), true), "max_depth": optional("Int", nil, false), "max_values": optional("Int", nil, false)}}
 	got := call(optional("@std/JsonLimits", nil, false), "unwrap_or", Argument{"fallback", limits}).(Record)
 	if !Equal(got, limits) {
 		t.Fatal("generic fallback normalized options instead of preserving the record")
 	}
-	got.Fields["max_values"] = optional("Int", int64(7), true)
+	got.Fields["max_values"] = optional("Int", int32(7), true)
 	if !Equal(got, limits) {
 		t.Fatal("generic fallback copied the payload")
 	}

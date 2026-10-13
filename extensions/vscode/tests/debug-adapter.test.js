@@ -16,11 +16,11 @@ test('DAP framing preserves fragmented UTF-8 and multiple messages', () => {
 });
 test('Manuscript values use source names and lazy structured handles', async () => {
   const adapter = new ManuscriptAdapter(new PassThrough());
-  assert.equal(sourceType('interface {}(int64)'), 'Int');
+  assert.equal(sourceType('interface {}(int32)'), 'Int');
   assert.equal(mapName('["name"]'), 'name');
   const box = adapter.render({ name: 'local5_box', type: 'interface {}(main.Record)', value: 'interface {}(main.Record) {Type: "Box", Fields: map[]}', variablesReference: 5 }, 'box', 'Box');
   assert.equal(box.name, 'box'); assert.equal(box.value, 'Box');
-  const children = new Map([[5, [{ name: 'data', variablesReference: 6 }]], [6, [{ name: 'Type', value: '"Box"' }, { name: 'Fields', variablesReference: 7 }]], [7, [{ name: '["count"]', type: 'interface {}(int64)', value: 'interface {}(int64) 42', variablesReference: 0 }]]]);
+  const children = new Map([[5, [{ name: 'data', variablesReference: 6 }]], [6, [{ name: 'Type', value: '"Box"' }, { name: 'Fields', variablesReference: 7 }]], [7, [{ name: '["count"]', type: 'interface {}(int32)', value: 'interface {}(int32) 42', variablesReference: 0 }]]]);
   adapter.children = async ref => children.get(ref);
   const fields = await adapter.valueChildren(adapter.handles.get(box.variablesReference), {});
   assert.equal(fields[0].name, 'count'); assert.equal(fields[0].value, '42'); assert.equal(fields[0].type, 'Int');
@@ -100,7 +100,7 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
 
 test('watch rewriting respects quoted text and native member names',()=>{
  const metadata=new Map([['local5_box',{name:'box'}],['local6_count',{name:'count'}]]);
- const vars=[{name:'local5_box',type:'interface {}(main.Record)'},{name:'local6_count',type:'interface {}(int64)'}];
+ const vars=[{name:'local5_box',type:'interface {}(main.Record)'},{name:'local6_count',type:'interface {}(int32)'}];
  assert.equal(rewriteExpression('box.count',vars,metadata),'local5_box.(data).Fields["count"]');
  assert.equal(rewriteExpression('count + len("count")',vars,metadata),'local6_count + len("count")');
 });
@@ -139,7 +139,7 @@ test('typed task handles and groups expose work state without native bookkeeping
   assert.equal(task.type, 'Task[Int]');
   adapter.children = async () => [
     { name: 'id', type: 'main.OperationId', value: '{number: 7}', variablesReference: 0 },
-    { name: 'value', type: 'interface {}(int64)', value: '7', variablesReference: 0 },
+    { name: 'value', type: 'interface {}(int32)', value: '7', variablesReference: 0 },
     { name: 'committed', type: 'bool', value: 'true', variablesReference: 0 },
     { name: 'done', type: 'chan struct {}', value: 'channel', variablesReference: 0 },
   ];

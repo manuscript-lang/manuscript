@@ -75,6 +75,6 @@ func (c *libraryConnection) tlsInfo() Function {
 		for _, cert := range state.PeerCertificates {
 			certs = append(certs, Bytes{append([]byte{}, cert.Raw...)})
 		}
-		return libraryOK(r, Record{"@std/TlsInfo", map[string]Value{"version": int64(state.Version), "cipher_suite": int64(state.CipherSuite), "alpn": state.NegotiatedProtocol, "peer_certificates": libraryList("@std/Bytes", certs), "verified": len(state.VerifiedChains) > 0}})
+		return libraryOK(r, Record{"@std/TlsInfo", map[string]Value{"version": int32(state.Version), "cipher_suite": int32(state.CipherSuite), "alpn": state.NegotiatedProtocol, "peer_certificates": libraryList("@std/Bytes", certs), "verified": len(state.VerifiedChains) > 0}})
 	})
 }

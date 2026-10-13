@@ -86,7 +86,7 @@ func TestRuntimeFaults(t *testing.T) {
 	for name, source := range map[string]string{
 		"absent optional": "import Optional from \"@std/optional.ms\"\ntest \"fault\":\n    let missing: Optional[Int] = none\n    let impossible = missing.unwrap()\n",
 		"failed check":    "import panic from \"@std/faults.ms\"\ntest \"fault\":\n    if 2 + 3 != 6:\n        return panic(message: \"arithmetic check failed\")\n",
-		"overflow":        "fn sum(value: Int) -> Int:\n    return value + 1\ntest \"fault\":\n    let impossible = sum(value: 9223372036854775807)\n",
+		"overflow":        "fn sum(value: Int) -> Int:\n    return value + 1\ntest \"fault\":\n    let impossible = sum(value: 2147483647)\n",
 		"division":        "fn divide(value: Int, divisor: Int) -> Int:\n    return value / divisor\ntest \"fault\":\n    let impossible = divide(value: 3, divisor: 0)\n",
 		"destructuring":   "import List from \"@std/collections.ms\"\nfn difference(values: List[Int]) -> Int:\n    let [first, second] = values\n    return first - second\ntest \"fault\":\n    let impossible = difference(values: [1])\n",
 	} {

@@ -65,7 +65,7 @@ toolchain/go/bin/go run ./scripts/bench-lowering -count=5
 The command retains current generated Go and a handwritten Go comparison under
 `.artifacts/lowering-bench/`, checks their results, and benchmarks scalar loops,
 ordered source calls, and `List.at(...).unwrap()` loops. The handwritten versions
-change scalar locals to `int64` while retaining the `Value` ABI, real source-call
+change scalar locals to `int32` while retaining the `Value` ABI, real source-call
 callee, function wrappers, checked arithmetic, fault positions, cancellation,
 cleanup defers, collection storage, and Optional operations. This isolates local
 representation from dropping language guarantees. Inspect `program.go` beside

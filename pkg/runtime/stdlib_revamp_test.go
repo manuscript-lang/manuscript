@@ -17,16 +17,16 @@ func TestOptionalLimits(t *testing.T) {
 		spec := libraryFunctions[name]
 		return Invoke(ctx, StandardFunction(name, libraryRuntimeType(spec.Result)), args)
 	}
-	if librarySuccess(t, call("string/repeat", Argument{"text", "ab"}, Argument{"count", int64(3)})) != "ababab" {
+	if librarySuccess(t, call("string/repeat", Argument{"text", "ab"}, Argument{"count", int32(3)})) != "ababab" {
 		t.Fatal("omitted cap")
 	}
-	libraryFailure(t, call("string/repeat", Argument{"text", "ab"}, Argument{"count", int64(3)}, Argument{"max_bytes", optional("Int", int64(5), true)}), "LimitExceeded")
-	libraryFailure(t, call("string/repeat", Argument{"text", "a"}, Argument{"count", int64(1)}, Argument{"max_bytes", optional("Int", int64(0), true)}), "LimitExceeded")
-	libraryFailure(t, call("string/repeat", Argument{"text", "a"}, Argument{"count", int64(1)}, Argument{"max_bytes", optional("Int", int64(-1), true)}), "InvalidInput")
+	libraryFailure(t, call("string/repeat", Argument{"text", "ab"}, Argument{"count", int32(3)}, Argument{"max_bytes", optional("Int", int32(5), true)}), "LimitExceeded")
+	libraryFailure(t, call("string/repeat", Argument{"text", "a"}, Argument{"count", int32(1)}, Argument{"max_bytes", optional("Int", int32(0), true)}), "LimitExceeded")
+	libraryFailure(t, call("string/repeat", Argument{"text", "a"}, Argument{"count", int32(1)}, Argument{"max_bytes", optional("Int", int32(-1), true)}), "InvalidInput")
 	librarySuccess(t, call("json/parse", Argument{"text", "[1,2,3]"}))
 	limits := Construct("@std/JsonLimits", nil)
 	librarySuccess(t, call("json/parse", Argument{"text", "[1,2,3]"}, Argument{"limits", optional("@std/JsonLimits", limits, true)}))
-	if !Equal(call("string/split", Argument{"text", "a,b,c"}, Argument{"separator", ","}, Argument{"max_parts", optional("Int", int64(2), true)}), libraryStrings([]string{"a", "b"})) {
+	if !Equal(call("string/split", Argument{"text", "a,b,c"}, Argument{"separator", ","}, Argument{"max_parts", optional("Int", int32(2), true)}), libraryStrings([]string{"a", "b"})) {
 		t.Fatal("JS split cap")
 	}
 	if call("string/replace", Argument{"text", "aba"}, Argument{"old", "a"}, Argument{"new", "x"}) != "xba" {
@@ -34,8 +34,8 @@ func TestOptionalLimits(t *testing.T) {
 	}
 }
 func TestJavascriptRound(t *testing.T) {
-	for _, v := range []struct{ input, want float64 }{{-1.5, -1}, {-2.5, -2}, {1.5, 2}, {2.5, 3}, {0.49999999999999994, 0}} {
-		if got := javascriptRound(v.input); got != v.want {
+	for _, v := range []struct{ input, want float32 }{{-1.5, -1}, {-2.5, -2}, {1.5, 2}, {2.5, 3}, {math.Nextafter32(0.5, 0), 0}} {
+		if got := float32(javascriptRound(float64(v.input))); got != v.want {
 			t.Fatalf("round(%v)=%v", v.input, got)
 		}
 	}
@@ -45,12 +45,12 @@ func TestJavascriptRound(t *testing.T) {
 }
 func TestPriorityQueueOrderingAndFaultRecovery(t *testing.T) {
 	ctx := RootExecution()
-	compare := NewFunction([]string{"left", "right"}, "Int", func(_ *Execution, a []Value) Value { return a[0].(int64) - a[1].(int64) })
+	compare := NewFunction([]string{"left", "right"}, "Int", func(_ *Execution, a []Value) Value { return a[0].(int32) - a[1].(int32) })
 	q := ConstructWithContext(ctx, "@std/PriorityQueue[Int]", []Argument{{"compare", compare}}).(*PriorityQueue)
-	for _, v := range []int64{8, 2, 5, 1, 3, 7, 6, 4} {
+	for _, v := range []int32{8, 2, 5, 1, 3, 7, 6, 4} {
 		Invoke(ctx, q.Operation("enqueue"), []Argument{{"value", v}})
 	}
-	for want := int64(1); want <= 8; want++ {
+	for want := int32(1); want <= 8; want++ {
 		got := Invoke(ctx, q.Operation("dequeue"), nil).(Alternative)
 		if got.Tag != "some" || got.Fields[0] != want {
 			t.Fatal(want, got)
@@ -59,9 +59,9 @@ func TestPriorityQueueOrderingAndFaultRecovery(t *testing.T) {
 	if Invoke(ctx, q.Operation("peek"), nil).(Alternative).Tag != "none" {
 		t.Fatal("empty heap")
 	}
-	Invoke(ctx, q.Operation("enqueue"), []Argument{{"value", int64(2)}})
+	Invoke(ctx, q.Operation("enqueue"), []Argument{{"value", int32(2)}})
 	q.compare = NewFunction([]string{"left", "right"}, "Int", func(_ *Execution, _ []Value) Value { return Panic("bad comparison") })
-	if recovered(func() { Invoke(ctx, q.Operation("enqueue"), []Argument{{"value", int64(1)}}) }) == nil || len(q.items) != 1 {
+	if recovered(func() { Invoke(ctx, q.Operation("enqueue"), []Argument{{"value", int32(1)}}) }) == nil || len(q.items) != 1 {
 		t.Fatal("comparison fault corrupted queue")
 	}
 }
@@ -180,13 +180,13 @@ func TestHTTPOmittedBudgets(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(Shield(ctx), nil)
 	handler := NewFunction([]string{"request"}, "@std/HttpResponse", func(_ *Execution, _ []Value) Value {
-		return Record{"@std/HttpResponse", map[string]Value{"status": int64(200), "headers": &Map{Type: "@std/Map[String][String]"}, "body": Bytes{[]byte("ok")}}}
+		return Record{"@std/HttpResponse", map[string]Value{"status": int32(200), "headers": &Map{Type: "@std/Map[String][String]"}, "body": Bytes{[]byte("ok")}}}
 	})
 	server := librarySuccess(t, Invoke(ctx, n.Operation("serve"), []Argument{{"address", "127.0.0.1:0"}, {"handler", handler}}))
 	defer Invoke(ctx, Bind(server, "", "close"), nil)
 	address := Invoke(ctx, Bind(server, "", "address"), nil).(string)
 	response := librarySuccess(t, Invoke(ctx, n.Operation("request"), []Argument{{"method", "GET"}, {"url", "http://" + address}, {"headers", &Map{Type: "@std/Map[String][String]"}}, {"body", Bytes{}}})).(Record)
-	if response.Fields["status"] != int64(200) || string(response.Fields["body"].(Bytes).Items) != "ok" {
+	if response.Fields["status"] != int32(200) || string(response.Fields["body"].(Bytes).Items) != "ok" {
 		t.Fatal(response)
 	}
 }

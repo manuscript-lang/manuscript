@@ -24,7 +24,7 @@ func init() {
 	p := func(name, typ string) LibraryParam { return LibraryParam{name, typ} }
 	add := libraryAdd
 	for name, f := range map[string]func(float64) float64{"abs": math.Abs, "floor": math.Floor, "ceil": math.Ceil, "round": javascriptRound, "sqrt": math.Sqrt, "exp": math.Exp, "log": math.Log, "log2": math.Log2, "log10": math.Log10, "sin": math.Sin, "cos": math.Cos, "tan": math.Tan, "asin": math.Asin, "acos": math.Acos, "atan": math.Atan, "sinh": math.Sinh, "cosh": math.Cosh, "tanh": math.Tanh, "truncate": math.Trunc} {
-		add("math", name, "Float", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(float64)) })
+		add("math", name, "Float", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return f(nativeFloat(a[0])) })
 	}
 	for name, f := range map[string]func(float64, float64) float64{"pow": math.Pow, "min": math.Min, "max": math.Max, "hypot": math.Hypot, "atan2": math.Atan2, "remainder": math.Mod} {
 		labels := []LibraryParam{p("left", "Float"), p("right", "Float")}
@@ -34,20 +34,20 @@ func init() {
 		if name == "atan2" {
 			labels = []LibraryParam{p("y", "Float"), p("x", "Float")}
 		}
-		add("math", name, "Float", labels, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(float64), a[1].(float64)) })
+		add("math", name, "Float", labels, func(_ *Execution, _ string, a []Value) Value { return f(nativeFloat(a[0]), nativeFloat(a[1])) })
 	}
-	add("math", "is_nan", "Bool", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return math.IsNaN(a[0].(float64)) })
+	add("math", "is_nan", "Bool", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return math.IsNaN(nativeFloat(a[0])) })
 	add("math", "is_finite", "Bool", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value {
-		v := a[0].(float64)
+		v := nativeFloat(a[0])
 		return !math.IsNaN(v) && !math.IsInf(v, 0)
 	})
 	for name, value := range map[string]float64{"pi": math.Pi, "e": math.E} {
 		add("math", name, "Float", nil, func(_ *Execution, _ string, _ []Value) Value { return value })
 	}
 	add("math", "abs_int", "Int", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		n := a[0].(int64)
-		if n == math.MinInt64 {
-			return Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+		n := nativeInteger(a[0])
+		if n == math.MinInt32 {
+			return Panic("Int overflow; the result does not fit in signed 32 bits, so bound the operands or use BigInt")
 		}
 		if n < 0 {
 			n = -n
@@ -68,7 +68,7 @@ func init() {
 		add("string", name, "Bool", []LibraryParam{p("value", "String"), p(label, "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string), a[1].(string)) })
 	}
 	add("string", "split", "List[String]", []LibraryParam{p("text", "String"), p("separator", "String"), p("max_parts", "Optional[Int]")}, func(_ *Execution, _ string, a []Value) Value {
-		n := a[2].(int64)
+		n := nativeInteger(a[2])
 		if n < 0 {
 			return Panic("split requires nonnegative max_parts; pass 0 or a positive count")
 		}
@@ -88,7 +88,7 @@ func init() {
 		return strings.Join(libraryStringValues(a[0]), a[1].(string))
 	})
 	add("string", "replace", "String", []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_replacements", "Optional[Int]")}, func(_ *Execution, _ string, a []Value) Value {
-		n := a[3].(int64)
+		n := nativeInteger(a[3])
 		if n < 0 {
 			return Panic("invalid replacement bounds")
 		}
@@ -118,7 +118,7 @@ func init() {
 			if i%4096 == 0 {
 				CheckCancelled(ctx)
 			}
-			n := v.(int64)
+			n := nativeInteger(v)
 			if n < 0 || n > utf8.MaxRune || n >= 0xD800 && n <= 0xDFFF {
 				return libraryError(result, "InvalidInput", "")
 			}
@@ -128,7 +128,7 @@ func init() {
 	})
 	add("string", "slice_scalars", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, result string, a []Value) Value {
 		r := []rune(a[0].(string))
-		s, e := a[1].(int64), a[2].(int64)
+		s, e := nativeInteger(a[1]), nativeInteger(a[2])
 		if s < 0 || e < s || e > int64(len(r)) {
 			return libraryError(result, "OutOfRange", "")
 		}
@@ -137,7 +137,7 @@ func init() {
 	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return scalarCount(a[0].(string)) })
 	add("encoding", "hex_encode", "String", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return hex.EncodeToString(a[0].(Bytes).Items) })
 	add("encoding", "hex_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("max_bytes", "Optional[Int64]")}, func(_ *Execution, result string, a []Value) Value {
-		n := a[1].(int64)
+		n := nativeInteger(a[1])
 		if v := libraryBound(result, n); v != nil {
 			return v
 		}
@@ -160,7 +160,7 @@ func init() {
 	})
 	add("encoding", "base64_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("url_safe", "Bool"), p("max_bytes", "Optional[Int64]")}, func(_ *Execution, result string, a []Value) Value {
 		text := a[0].(string)
-		n := a[2].(int64)
+		n := nativeInteger(a[2])
 		if v := libraryBound(result, n); v != nil {
 			return v
 		}
@@ -189,7 +189,7 @@ func init() {
 	})
 	add("bytes", "slice", "Bytes", []LibraryParam{p("data", "Bytes"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		b := a[0].(Bytes).Items
-		s, e := a[1].(int64), a[2].(int64)
+		s, e := nativeInteger(a[1]), nativeInteger(a[2])
 		librarySlice("Bytes.slice", len(b), s, e)
 		// Bytes are immutable, so the slice shares storage; the capacity limit keeps appends from touching the parent.
 		return Bytes{b[s:e:e]}
@@ -206,7 +206,7 @@ func init() {
 		return bytes.Contains(a[0].(Bytes).Items, a[1].(Bytes).Items)
 	})
 	add("numbers", "parse_int", libraryResult("Int", "NumberError"), []LibraryParam{p("text", "String"), p("radix", "Int")}, func(_ *Execution, r string, a []Value) Value {
-		radix := a[1].(int64)
+		radix := nativeInteger(a[1])
 		if radix < 2 || radix > 36 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -214,36 +214,36 @@ func init() {
 		if !libraryIntegerSyntax(text, int(radix)) {
 			return libraryError(r, "InvalidData", "")
 		}
-		n, err := strconv.ParseInt(text, int(radix), 64)
+		n, err := strconv.ParseInt(text, int(radix), 32)
 		if err != nil {
 			return libraryError(r, "OutOfRange", "")
 		}
 		return libraryOK(r, n)
 	})
 	add("numbers", "format_int", "String", []LibraryParam{p("value", "Int"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		r := a[1].(int64)
+		r := nativeInteger(a[1])
 		if r < 2 || r > 36 {
 			return libraryRangeFault("Int.to_string", "radix", r, 2, 36)
 		}
-		return strconv.FormatInt(a[0].(int64), int(r))
+		return strconv.FormatInt(nativeInteger(a[0]), int(r))
 	})
 	add("numbers", "parse_float", libraryResult("Float", "NumberError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
 		text := a[0].(string)
 		if !libraryFloatSyntax.MatchString(text) && text != "NaN" && text != "Infinity" && text != "-Infinity" {
 			return libraryError(r, "InvalidData", "")
 		}
-		n, err := strconv.ParseFloat(text, 64)
+		n, err := strconv.ParseFloat(text, 32)
 		if err != nil {
 			return libraryError(r, "OutOfRange", "")
 		}
 		return libraryOK(r, n)
 	})
-	add("numbers", "format_float", "String", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return formatFloat(a[0].(float64)) })
-	add("bigint", "from_int", "BigInt", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value { return libraryBigInt{big.NewInt(a[0].(int64))} })
+	add("numbers", "format_float", "String", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return formatFloat32(a[0].(float32)) })
+	add("bigint", "from_int", "BigInt", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value { return libraryBigInt{big.NewInt(nativeInteger(a[0]))} })
 	add("bigint", "from_int64", "BigInt", []LibraryParam{p("value", "Int64")}, func(_ *Execution, _ string, a []Value) Value { return libraryBigInt{big.NewInt(nativeInteger(a[0]))} })
 	add("bigint", "parse", libraryResult("BigInt", "BigIntError"), []LibraryParam{p("text", "String"), p("radix", "Int"), p("max_digits", "Optional[Int]")}, func(_ *Execution, r string, a []Value) Value {
 		text := a[0].(string)
-		radix, n := a[1].(int64), a[2].(int64)
+		radix, n := nativeInteger(a[1]), nativeInteger(a[2])
 		if radix < 2 || radix > 36 || n < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -284,7 +284,7 @@ func init() {
 		return int64(a[0].(libraryBigInt).n.Cmp(a[1].(libraryBigInt).n))
 	})
 	add("bigint", "format", "String", []LibraryParam{p("value", "BigInt"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		n := a[1].(int64)
+		n := nativeInteger(a[1])
 		if n < 2 || n > 36 {
 			return libraryRangeFault("BigInt.to_string", "radix", n, 2, 36)
 		}
@@ -292,7 +292,7 @@ func init() {
 	})
 	add("bigint", "to_int", "Optional[Int]", []LibraryParam{p("value", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[0].(libraryBigInt).n
-		return optional("Int", n.Int64(), n.IsInt64())
+		return optional("Int", n.Int64(), n.IsInt64() && n.Int64() >= math.MinInt32 && n.Int64() <= math.MaxInt32)
 	})
 	add("bigint", "to_int64", "Optional[Int64]", []LibraryParam{p("value", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[0].(libraryBigInt).n
@@ -302,20 +302,20 @@ func init() {
 	add("binary", "write_integer", libraryResult("Bytes", "BinaryError"), []LibraryParam{p("value", "Int64"), p("width", "Int"), p("signed", "Bool"), p("little_endian", "Bool")}, libraryWriteInteger)
 	add("binary", "read_float", libraryResult("Float", "BinaryError"), []LibraryParam{p("data", "Bytes"), p("offset", "Int"), p("little_endian", "Bool")}, func(_ *Execution, r string, a []Value) Value {
 		b := a[0].(Bytes).Items
-		offset := a[1].(int64)
-		if offset < 0 || offset > int64(len(b))-8 {
+		offset := nativeInteger(a[1])
+		if offset < 0 || offset > int64(len(b))-4 {
 			return libraryError(r, "OutOfRange", "")
 		}
-		return libraryOK(r, math.Float64frombits(libraryOrder(a[2]).Uint64(b[offset:offset+8])))
+		return libraryOK(r, math.Float32frombits(libraryOrder(a[2]).Uint32(b[offset:offset+4])))
 	})
 	add("binary", "write_float", "Bytes", []LibraryParam{p("value", "Float"), p("little_endian", "Bool")}, func(_ *Execution, _ string, a []Value) Value {
-		b := make([]byte, 8)
-		libraryOrder(a[1]).PutUint64(b, math.Float64bits(a[0].(float64)))
+		b := make([]byte, 4)
+		libraryOrder(a[1]).PutUint32(b, math.Float32bits(a[0].(float32)))
 		return Bytes{b}
 	})
 	add("binary", "read_float64", libraryResult("Float64", "BinaryError"), []LibraryParam{p("data", "Bytes"), p("offset", "Int"), p("little_endian", "Bool")}, func(_ *Execution, r string, a []Value) Value {
 		b := a[0].(Bytes).Items
-		offset := a[1].(int64)
+		offset := nativeInteger(a[1])
 		if offset < 0 || offset > int64(len(b))-8 {
 			return libraryError(r, "OutOfRange", "")
 		}
@@ -337,7 +337,7 @@ func init() {
 		return a[0].(libraryRegex).pattern.MatchString(a[1].(string))
 	})
 	add("regex", "find_all", libraryResult("List[String]", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("max_matches", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
-		n := a[2].(int64)
+		n := nativeInteger(a[2])
 		if n < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -369,7 +369,7 @@ func init() {
 	})
 	libraryGeneric("collections", "slice", "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(*List)
-		s, e := a[1].(int64), a[2].(int64)
+		s, e := nativeInteger(a[1]), nativeInteger(a[2])
 		librarySlice("List.slice", len(v.Items), s, e)
 		return &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)}
 	})
@@ -410,7 +410,7 @@ func libraryOrder(v Value) binary.ByteOrder {
 }
 func libraryReadInteger(_ *Execution, r string, a []Value) Value {
 	b := a[0].(Bytes).Items
-	o, w := a[1].(int64), a[2].(int64)
+	o, w := nativeInteger(a[1]), nativeInteger(a[2])
 	if w != 1 && w != 2 && w != 4 && w != 8 {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -437,7 +437,7 @@ func libraryReadInteger(_ *Execution, r string, a []Value) Value {
 	return libraryOK(r, int64(n))
 }
 func libraryWriteInteger(_ *Execution, r string, a []Value) Value {
-	n, w := nativeInteger(a[0]), a[1].(int64)
+	n, w := nativeInteger(a[0]), nativeInteger(a[1])
 	if w != 1 && w != 2 && w != 4 && w != 8 {
 		return libraryError(r, "InvalidInput", "")
 	}

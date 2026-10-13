@@ -916,17 +916,25 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			if expected != nil && expected.ID == "Float64" {
 				name = "Float64"
 			}
-			n, err := strconv.ParseFloat(e.Text, 64)
+			bits := 32
+			if name == "Float64" {
+				bits = 64
+			}
+			n, err := strconv.ParseFloat(e.Text, bits)
 			if err != nil || math.IsInf(n, 0) {
-				c.error(e.Pos, "type", name+" literal is outside finite binary64 range; use a smaller magnitude (about 1.8e308 at most)")
+				c.error(e.Pos, "type", fmt.Sprintf("%s literal is outside finite binary%d range; use a smaller magnitude or an explicit Float64 context", name, bits))
 			}
 			i.Type = primitive(name)
 		} else {
 			if expected != nil && expected.ID == "Int64" {
 				name = "Int64"
 			}
-			if _, err := strconv.ParseInt(e.Text, 10, 64); err != nil {
-				c.error(e.Pos, "type", name+" literal is outside signed 64-bit range; use a value between -9223372036854775808 and 9223372036854775807, or BigInt")
+			bits := 32
+			if name == "Int64" {
+				bits = 64
+			}
+			if _, err := strconv.ParseInt(e.Text, 10, bits); err != nil {
+				c.error(e.Pos, "type", fmt.Sprintf("%s literal is outside signed %d-bit range; use an explicit Int64 context or BigInt", name, bits))
 			}
 			i.Type = primitive(name)
 		}
@@ -1120,7 +1128,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		i.Type = standard("Map", types[0], types[1])
 		c.wellFormed(i.Type, e.Pos, map[string]bool{})
 	case syntax.KindUnary:
-		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
+		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && ((e.Right.Text == "2147483648" && (expected == nil || expected.ID != "Int64")) || (e.Right.Text == "9223372036854775808" && expected != nil && expected.ID == "Int64")) {
 			name := "Int"
 			if expected != nil && expected.ID == "Int64" {
 				name = "Int64"

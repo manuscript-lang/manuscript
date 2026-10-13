@@ -10,37 +10,43 @@ import (
 )
 
 func Integer(text string) Value {
-	n, err := strconv.ParseInt(text, 10, 64)
+	n, err := strconv.ParseInt(text, 10, 32)
 	if err != nil {
 		return Panic("Int literal out of range")
 	}
-	return n
+	return int32(n)
 }
-func Float(text string) Value { n, _ := strconv.ParseFloat(text, 64); return n }
-func checkedAdd(a, b int64) int64 {
+func Float(text string) Value {
+	n, err := strconv.ParseFloat(text, 32)
+	if err != nil {
+		return Panic("Float literal out of range")
+	}
+	return float32(n)
+}
+func checkedAdd(a, b int32) int32 {
 	r := a + b
 	if b > 0 && r < a || b < 0 && r > a {
-		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+		Panic("Int overflow; the result does not fit in signed 32 bits, so bound the operands or use BigInt")
 	}
 	return r
 }
-func checkedSub(a, b int64) int64 {
+func checkedSub(a, b int32) int32 {
 	r := a - b
 	if b < 0 && r < a || b > 0 && r > a {
-		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+		Panic("Int overflow; the result does not fit in signed 32 bits, so bound the operands or use BigInt")
 	}
 	return r
 }
-func checkedMul(a, b int64) int64 {
+func checkedMul(a, b int32) int32 {
 	if a == 0 || b == 0 {
 		return 0
 	}
-	if a == math.MinInt64 && b == -1 || b == math.MinInt64 && a == -1 {
-		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+	if a == math.MinInt32 && b == -1 || b == math.MinInt32 && a == -1 {
+		Panic("Int overflow; the result does not fit in signed 32 bits, so bound the operands or use BigInt")
 	}
 	r := a * b
 	if r/b != a {
-		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+		Panic("Int overflow; the result does not fit in signed 32 bits, so bound the operands or use BigInt")
 	}
 	return r
 }
@@ -61,12 +67,12 @@ func Unary(op string, value Value) Value {
 			return -v
 		case Float64:
 			return -v
-		case int64:
-			if v == math.MinInt64 {
-				return Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+		case int32:
+			if v == math.MinInt32 {
+				return Panic("Int overflow; the result does not fit in signed 32 bits, so bound the operands or use BigInt")
 			}
 			return -v
-		case float64:
+		case float32:
 			return -v
 		case Decimal:
 			return Decimal{new(big.Rat).Neg(v.Value)}
@@ -100,8 +106,8 @@ func Binary(op string, a, b Value) Value {
 		case ">=":
 			return x >= y
 		}
-	case int64:
-		y := b.(int64)
+	case int32:
+		y := b.(int32)
 		switch op {
 		case "+":
 			return checkedAdd(x, y)
@@ -122,17 +128,17 @@ func Binary(op string, a, b Value) Value {
 		case ">=":
 			return x >= y
 		}
-	case float64:
-		y := b.(float64)
+	case float32:
+		y := b.(float32)
 		switch op {
 		case "+":
-			return x + y
+			return float32(x + y)
 		case "-":
-			return x - y
+			return float32(x - y)
 		case "*":
-			return x * y
+			return float32(x * y)
 		case "/":
-			return x / y
+			return float32(x / y)
 		case "<":
 			return x < y
 		case "<=":
@@ -236,7 +242,9 @@ func renderDecimal(digits string, exponent int, negative bool) string {
 	}
 	return out + "e" + exp
 }
-func formatFloat(v float64) string {
+func formatFloat(v float64) string   { return formatFloatBits(v, 64) }
+func formatFloat32(v float32) string { return formatFloatBits(float64(v), 32) }
+func formatFloatBits(v float64, bits int) string {
 	if math.IsNaN(v) {
 		return "NaN"
 	}
@@ -253,7 +261,7 @@ func formatFloat(v float64) string {
 		return "0"
 	}
 	negative := math.Signbit(v)
-	mantissa, exponent, _ := strings.Cut(strconv.FormatFloat(math.Abs(v), 'e', -1, 64), "e")
+	mantissa, exponent, _ := strings.Cut(strconv.FormatFloat(math.Abs(v), 'e', -1, bits), "e")
 	e, _ := strconv.Atoi(exponent)
 	return renderDecimal(strings.ReplaceAll(mantissa, ".", ""), e, negative)
 }

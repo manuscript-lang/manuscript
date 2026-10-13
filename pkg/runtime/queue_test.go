@@ -10,16 +10,16 @@ func TestQueueWithoutCapacityGrowsAndReuses(t *testing.T) {
 	q := ConstructWithContext(ctx, "@std/Queue[Int]", nil).(*Queue)
 	for range 2 {
 		for i := range 4096 {
-			if Invoke(ctx, q.Operation("enqueue"), []Argument{{"value", int64(i)}}) != true {
+			if Invoke(ctx, q.Operation("enqueue"), []Argument{{"value", int32(i)}}) != true {
 				t.Fatal("unbounded queue rejected an item", i)
 			}
 		}
-		if Invoke(ctx, q.Operation("length"), nil) != int64(4096) {
+		if Invoke(ctx, q.Operation("length"), nil) != int32(4096) {
 			t.Fatal("unbounded queue lost items")
 		}
 		for i := range 4096 {
 			value := Invoke(ctx, q.Operation("dequeue"), nil).(Alternative)
-			if value.Tag != "some" || value.Fields[0] != int64(i) {
+			if value.Tag != "some" || value.Fields[0] != int32(i) {
 				t.Fatal("unbounded queue lost FIFO order", i, value)
 			}
 		}
@@ -31,7 +31,7 @@ func TestQueueWithoutCapacityGrowsAndReuses(t *testing.T) {
 
 func TestQueueFIFOEmptyAndReuse(t *testing.T) {
 	ctx := RootExecution()
-	q := ConstructWithContext(ctx, "@std/Queue[Int]", []Argument{{"capacity", int64(100)}}).(*Queue)
+	q := ConstructWithContext(ctx, "@std/Queue[Int]", []Argument{{"capacity", int32(100)}}).(*Queue)
 	for range 2 {
 		if Invoke(ctx, q.Operation("dequeue"), nil).(Alternative).Tag != "none" || Invoke(ctx, q.Operation("peek"), nil).(Alternative).Tag != "none" {
 			t.Fatal("empty queue must return none immediately")
@@ -41,21 +41,21 @@ func TestQueueFIFOEmptyAndReuse(t *testing.T) {
 	dequeue := q.Operation("dequeue")
 	for round := range 3 {
 		for i := range 100 {
-			if Invoke(ctx, enqueue, []Argument{{"value", int64(round*100 + i)}}) != true {
+			if Invoke(ctx, enqueue, []Argument{{"value", int32(round*100 + i)}}) != true {
 				t.Fatal("enqueue failed before capacity")
 			}
 		}
-		if Invoke(ctx, enqueue, []Argument{{"value", int64(-1)}}) != false {
+		if Invoke(ctx, enqueue, []Argument{{"value", int32(-1)}}) != false {
 			t.Fatal("full queue must reject without waiting")
 		}
 		for i := range 100 {
-			if Invoke(ctx, q.Operation("length"), nil) != int64(100-i) || Invoke(ctx, q.Operation("is_empty"), nil) != false {
+			if Invoke(ctx, q.Operation("length"), nil) != int32(100-i) || Invoke(ctx, q.Operation("is_empty"), nil) != false {
 				t.Fatal("incorrect queue size")
 			}
 			peek := Invoke(ctx, q.Operation("peek"), nil).(Alternative)
 			storage := q.items
 			value := Invoke(ctx, dequeue, nil).(Alternative)
-			if value.Tag != "some" || value.Fields[0] != int64(round*100+i) || !Equal(peek, value) {
+			if value.Tag != "some" || value.Fields[0] != int32(round*100+i) || !Equal(peek, value) {
 				t.Fatal("queue lost FIFO order", peek, value)
 			}
 			if storage[0] != nil {
@@ -70,7 +70,7 @@ func TestQueueFIFOEmptyAndReuse(t *testing.T) {
 
 func TestQueueSharedThroughSynchronized(t *testing.T) {
 	root := RootExecution()
-	q := ConstructWithContext(root, "@std/Queue[Int]", []Argument{{"capacity", int64(1600)}})
+	q := ConstructWithContext(root, "@std/Queue[Int]", []Argument{{"capacity", int32(1600)}})
 	cell := ConstructWithContext(root, "@std/Synchronized[@std/Queue[Int]]", []Argument{{"value", q}}).(*Synchronized)
 	const workers, count = 16, 100
 	var wait sync.WaitGroup
@@ -82,7 +82,7 @@ func TestQueueSharedThroughSynchronized(t *testing.T) {
 			for i := range count {
 				guard := lockCell(ctx, cell)
 				queue := Invoke(ctx, guard.Operation("get"), nil).(*Queue)
-				Invoke(ctx, queue.Operation("enqueue"), []Argument{{"value", int64(worker*count + i)}})
+				Invoke(ctx, queue.Operation("enqueue"), []Argument{{"value", int32(worker*count + i)}})
 				guard.close()
 			}
 		}()
@@ -91,17 +91,17 @@ func TestQueueSharedThroughSynchronized(t *testing.T) {
 	guard := lockCell(root, cell)
 	defer guard.close()
 	queue := Invoke(root, guard.Operation("get"), nil).(*Queue)
-	if Invoke(root, queue.Operation("length"), nil) != int64(workers*count) {
+	if Invoke(root, queue.Operation("length"), nil) != int32(workers*count) {
 		t.Fatal("lost concurrent enqueue")
 	}
-	seen := make(map[int64]bool)
-	last := make([]int64, workers)
+	seen := make(map[int32]bool)
+	last := make([]int32, workers)
 	for i := range last {
 		last[i] = -1
 	}
 	for range workers * count {
 		item := Invoke(root, queue.Operation("dequeue"), nil).(Alternative)
-		value := item.Fields[0].(int64)
+		value := item.Fields[0].(int32)
 		worker, sequence := value/count, value%count
 		if seen[value] || sequence != last[worker]+1 {
 			t.Fatal("duplicated value or lost producer order", value)
@@ -115,7 +115,7 @@ func TestQueueSharedThroughSynchronized(t *testing.T) {
 }
 
 func TestQueueRejectsInvalidCapacity(t *testing.T) {
-	for _, capacity := range []int64{0, -1} {
+	for _, capacity := range []int32{0, -1} {
 		failure := recovered(func() { ConstructWithContext(RootExecution(), "@std/Queue[Int]", []Argument{{"capacity", capacity}}) })
 		if _, ok := failure.(Fault); !ok {
 			t.Fatal("invalid capacity accepted", capacity, failure)

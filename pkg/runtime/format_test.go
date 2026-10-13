@@ -21,8 +21,8 @@ func TestUniversalFormatting(t *testing.T) {
 		want  string
 	}{
 		{"empty record", Record{Type: "module/123#Empty", Fields: map[string]Value{}}, "Empty()"},
-		{"field order", Record{Type: "module/123#Point[Int]", Fields: map[string]Value{"z": int64(2), "a": true}}, "Point(a: true, z: 2)"},
-		{"alternative", Alternative{Type: "@std/Result[Int][String]", Tag: "ok", Fields: []Value{int64(3)}}, "Result.ok(3)"},
+		{"field order", Record{Type: "module/123#Point[Int]", Fields: map[string]Value{"z": int32(2), "a": true}}, "Point(a: true, z: 2)"},
+		{"alternative", Alternative{Type: "@std/Result[Int][String]", Tag: "ok", Fields: []Value{int32(3)}}, "Result.ok(3)"},
 		{"empty map", &Map{}, "Map()"},
 		{"empty set", &Set{}, "Set()"},
 		{"empty bytes", Bytes{}, "Bytes()"},
@@ -35,7 +35,7 @@ func TestUniversalFormatting(t *testing.T) {
 		{"function", Function{}, "[function]"},
 		{"generic", Generic{}, "[function]"},
 		{"resource", uninspectableResource{}, "[object]"},
-		{"view", View{Type: "Named", Receiver: int64(3)}, "3"},
+		{"view", View{Type: "Named", Receiver: int32(3)}, "3"},
 		{"resource view", View{Type: "Resource", Receiver: uninspectableResource{}}, "[object]"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -63,7 +63,7 @@ func TestFormattingCyclesAndSharedValues(t *testing.T) {
 	if got := Format(value); !strings.Contains(got, "next: ...") || len(got) > 1000 {
 		t.Fatal("cyclic value did not terminate", got)
 	}
-	shared := Record{Type: "Leaf", Fields: map[string]Value{"value": int64(1)}}
+	shared := Record{Type: "Leaf", Fields: map[string]Value{"value": int32(1)}}
 	if got := Format(&List{Items: []Value{shared, shared}}); got != "[Leaf(value: 1), Leaf(value: 1)]" {
 		t.Fatal("sharing changed formatting", got)
 	}

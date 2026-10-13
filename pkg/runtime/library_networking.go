@@ -29,7 +29,7 @@ func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	libraryAdd("tls", "parse_certificates", libraryResult("List[CertificateInfo]", "TlsError"), []LibraryParam{p("pem", "String"), p("max_certificates", "Optional[Int]")}, func(_ *Execution, r string, a []Value) Value {
 		data := []byte(a[0].(string))
-		max := a[1].(int64)
+		max := nativeInteger(a[1])
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -361,7 +361,7 @@ func (n *network) extendedOperation(name string) (Function, bool) {
 }
 func (n *network) resolve(ctx *Execution, r string, a []Value) Value {
 	name, kind := a[0].(string), strings.ToUpper(a[1].(string))
-	max, timeout := a[2].(int64), a[3].(Duration)
+	max, timeout := nativeInteger(a[2]), a[3].(Duration)
 	if max < 0 || timeout < nativeNoTimeout {
 		return libraryError(r, "InvalidInput", "")
 	}
@@ -378,7 +378,7 @@ func (n *network) resolve(ctx *Execution, r string, a []Value) Value {
 	resolver := n.resolverInstance()
 	var out []Value
 	add := func(value string, priority, weight, port int64) {
-		out = append(out, Record{"@std/DnsRecord", map[string]Value{"kind": kind, "value": value, "priority": priority, "weight": weight, "port": port}})
+		out = append(out, Record{"@std/DnsRecord", map[string]Value{"kind": kind, "value": value, "priority": defaultInteger(priority), "weight": defaultInteger(weight), "port": defaultInteger(port)}})
 	}
 	var err error
 	switch kind {

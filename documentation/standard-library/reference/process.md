@@ -98,7 +98,7 @@ interface ProcessControl:
     fn available_memory() -> Result[Int64, ProcessError]
     fn title() -> Result[String, ProcessError]
     fn set_title(title: String) -> Result[Unit, ProcessError]
-    fn initialize_groups(username: String, gid: Int) -> Result[Unit, ProcessError]
+    fn initialize_groups(username: String, gid: Int64) -> Result[Unit, ProcessError]
     fn replace(program: String, arguments: List[String], environment: Map[String, String]) -> Result[Unit, ProcessError]
     fn info() -> Result[ProcessInfo, ProcessError]
     fn memory_usage() -> Result[MemoryUsage, ProcessError]
@@ -110,11 +110,11 @@ interface ProcessControl:
     fn working_directory() -> Result[String, ProcessError]
     fn change_directory(path: String) -> Result[Unit, ProcessError]
     fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
-    fn groups() -> Result[List[Int], ProcessError]
+    fn groups() -> Result[List[Int64], ProcessError]
     fn resource_usage() -> Result[ResourceUsage, ProcessError]
     fn umask(mask: Int) -> Result[Int, ProcessError]
-    fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
-    fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
+    fn set_identity(kind: String, id: Int64) -> Result[Unit, ProcessError]
+    fn set_groups(groups: List[Int64]) -> Result[Unit, ProcessError]
 ```
 
 ### ProcessControl.environment
@@ -149,7 +149,7 @@ Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs retur
 Identity changes require OS permission and are Unsupported on Windows.
 
 ```manuscript
-fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
+fn set_identity(kind: String, id: Int64) -> Result[Unit, ProcessError]
 ```
 
 ### ProcessControl.umask

@@ -7,7 +7,11 @@ import value from "./support/results.ms"
 test "big integers exceed machine range without losing precision":
     let big = value(parse(text: "9223372036854775808", radix: 10))
     if not big.to_int().is_none(): return panic("overflow conversion")
-    if big.subtract(from_int(1)).to_int() != some(9223372036854775807): return panic(
+    if (
+        big.subtract(from_int(1)).to_int64() != Optional[Int64].some(
+            9223372036854775807
+        )
+    ): return panic(
         "exact subtraction"
     )
     if from_int(7).multiply(from_int(6)).to_string(radix: 10) != "42": return panic(

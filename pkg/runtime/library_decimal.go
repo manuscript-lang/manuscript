@@ -9,7 +9,7 @@ import (
 func init() {
 	p := func(name, typ string) LibraryParam { return LibraryParam{name, typ} }
 	libraryAdd("decimal", "round", libraryResult("Decimal", "NumberError"), []LibraryParam{p("value", "Decimal"), p("places", "Int"), p("mode", "Optional[RoundingMode]")}, func(_ *Execution, result string, args []Value) Value {
-		places := args[1].(int64)
+		places := nativeInteger(args[1])
 		if places < -6144 || places > 6176 {
 			return libraryError(result, "InvalidInput", "")
 		}
@@ -26,7 +26,7 @@ func init() {
 		return libraryOK(result, DecimalLiteral(value))
 	})
 	libraryAdd("decimal", "to_fixed", libraryResult("String", "NumberError"), []LibraryParam{p("value", "Decimal"), p("digits", "Int"), p("mode", "Optional[RoundingMode]")}, func(_ *Execution, result string, args []Value) Value {
-		digits := args[1].(int64)
+		digits := nativeInteger(args[1])
 		if digits < 0 || digits > 6176 {
 			return libraryError(result, "InvalidInput", "")
 		}

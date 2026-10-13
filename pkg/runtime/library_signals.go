@@ -21,13 +21,13 @@ type librarySignalStream struct {
 }
 
 func libraryNewSignalStream(ctx *Execution, r string, a []Value) Value {
-	capacity := a[1].(int64)
+	capacity := nativeInteger(a[1])
 	if capacity <= 0 || capacity > 1048576 {
 		return libraryError(r, "InvalidInput", "")
 	}
 	var signals []os.Signal
 	for _, value := range a[0].(*List).Items {
-		n := value.(int64)
+		n := nativeInteger(value)
 		if n <= 0 || n > 64 || n == int64(syscall.SIGKILL) || n == hostos.Constants()["SIGSTOP"] {
 			return libraryError(r, "InvalidInput", "")
 		}

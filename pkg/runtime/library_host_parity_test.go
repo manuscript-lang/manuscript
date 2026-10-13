@@ -680,13 +680,13 @@ func TestNodeConstantCatalogs(t *testing.T) {
 		}
 		spec := libraryFunctions[name]
 		actual := StandardFunction(name, libraryRuntimeType(spec.Result)).(Function).Body(RootExecution(), nil).(*Map)
-		values := map[string]int64{}
+		values := map[string]Int64{}
 		for _, e := range actual.Entries {
-			values[e.Key.(string)] = e.Value.(int64)
+			values[e.Key.(string)] = e.Value.(Int64)
 		}
 		check := func(name string, n float64) {
 			value, exists := values[name]
-			if !exists || value != int64(n) {
+			if !exists || value != Int64(n) {
 				t.Errorf("%s constant %s: got %d (exists %v), Node expected %d", module, name, value, exists, int64(n))
 			}
 		}
@@ -709,7 +709,7 @@ func TestFileStatMetadataAndNativeFlags(t *testing.T) {
 	defer Bind(handle, "", "close").(Function).Body(ctx, nil)
 	librarySuccess(t, fs.Operation("chmod").Body(ctx, []Value{"metadata", int64(0640)}))
 	info := librarySuccess(t, Bind(handle, "", "stat").(Function).Body(ctx, nil)).(Record)
-	if info.Fields["mode"].(int64)&0170000 != 0100000 || info.Fields["permissions"].(int64) != func() int64 {
+	if int64(info.Fields["mode"].(int32))&0170000 != 0100000 || int64(info.Fields["permissions"].(int32)) != func() int64 {
 		native, err := os.Stat(filepath.Join(fs.directory, "metadata"))
 		if err != nil {
 			t.Fatal(err)
@@ -723,7 +723,7 @@ func TestFileStatMetadataAndNativeFlags(t *testing.T) {
 	for _, entry := range exact.Entries {
 		if entry.Key == "mode" {
 			found = true
-			if entry.Value.(libraryBigInt).n.Int64() != info.Fields["mode"] {
+			if entry.Value.(libraryBigInt).n.Int64() != int64(info.Fields["mode"].(int32)) {
 				t.Fatal("exact mode differs")
 			}
 		}
@@ -778,7 +778,7 @@ func TestProcessSignalStreamAndMonotonicTime(t *testing.T) {
 	defer cancel()
 	limited := *ctx
 	limited.Context = lifetime
-	if librarySuccess(t, Bind(view, "", "next").(Function).Body(&limited, nil)) != n {
+	if librarySuccess(t, Bind(view, "", "next").(Function).Body(&limited, nil)) != int32(n) {
 		t.Fatal("wrong signal")
 	}
 	Bind(view, "", "close").(Function).Body(ctx, nil)

@@ -45,7 +45,7 @@ interface RegexReplacement:
     fn replace_all(
         text: String,
         replacement: String,
-        max_bytes: Optional[Int]
+        max_bytes: Optional[Int64]
     ) -> Result[String, RegexError]
 
 type RegexAdapter:
@@ -55,7 +55,7 @@ impl RegexReplacement for RegexAdapter:
     fn replace_all(
         text: String,
         replacement: String,
-        max_bytes: Optional[Int]
+        max_bytes: Optional[Int64]
     ) -> Result[String, RegexError]:
         return self.pattern.replace_all(text, replacement, max_bytes)
 
@@ -176,7 +176,7 @@ test "replace_first preserves first default explicit caps and scalar boundaries"
     if "aaaa".replace_first("a", "b", none) != "baaa": return panic("first none")
     if "aaaa".replace_first("a", "b", 0) != "aaaa": return panic("zero cap")
     if "aaaa".replace_first("a", "b", 2) != "bbaa": return panic("explicit cap")
-    if "aaaa".replace_first("a", "b", 9223372036854775807) != "bbbb":
+    if "aaaa".replace_first("a", "b", 2147483647) != "bbbb":
         return panic("large cap")
     if "aa".replace_first("a", "aa", 2) != "aaaa": return panic(
         "inserted text rescanned"

@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	libraryAdd("fs", "constants", "Map[String][Int]", nil, func(_ *Execution, _ string, _ []Value) Value {
+	libraryAdd("fs", "constants", "Map[String][Int64]", nil, func(_ *Execution, _ string, _ []Value) Value {
 		return libraryConstants(hostos.FileConstants())
 	})
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
@@ -112,9 +112,9 @@ func libraryConstants(values map[string]int64) *Map {
 		keys = append(keys, key)
 	}
 	sortStrings(keys)
-	result := &Map{Type: "@std/Map[String][Int]"}
+	result := &Map{Type: "@std/Map[String][Int64]"}
 	for _, key := range keys {
-		result.Entries = append(result.Entries, Entry{key, values[key]})
+		result.Entries = append(result.Entries, Entry{key, Int64(values[key])})
 	}
 	return result
 }

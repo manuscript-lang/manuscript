@@ -74,9 +74,9 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 		kind = "Bytes"
 	case string:
 		kind = "String"
-	case int64:
+	case int32:
 		kind = "Int"
-	case float64:
+	case float32:
 		kind = "Float"
 	case Decimal:
 		kind = "Decimal"

@@ -15,7 +15,7 @@ type PriorityQueue struct {
 }
 
 func (q *PriorityQueue) before(ctx *Execution, left, right priorityEntry) bool {
-	order := Invoke(ctx, q.compare, []Argument{{"left", left.value}, {"right", right.value}}).(int64)
+	order := nativeInteger(Invoke(ctx, q.compare, []Argument{{"left", left.value}, {"right", right.value}}))
 	return order < 0 || order == 0 && left.sequence < right.sequence
 }
 func (q *PriorityQueue) Operation(name string) Function {
@@ -35,7 +35,7 @@ func (q *PriorityQueue) Operation(name string) Function {
 	return NewFunction(labels, result, func(ctx *Execution, args []Value) Value {
 		switch name {
 		case "length":
-			return int64(len(q.items))
+			return defaultInteger(int64(len(q.items)))
 		case "is_empty":
 			return len(q.items) == 0
 		case "enqueue":

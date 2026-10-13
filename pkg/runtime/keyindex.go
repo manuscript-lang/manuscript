@@ -12,7 +12,7 @@ import "hash/maphash"
 // checker rejects key types that are not Hashable, so an unhashable key at run
 // time is an invariant violation.
 type keyIndex struct {
-	ints  map[int64]int
+	ints  map[int32]int
 	strs  map[string]int
 	other map[uint64][]int
 	n     int // number of keys the index covers; -1 forces a rebuild
@@ -42,7 +42,7 @@ func keyHash(ctx *Execution, v Value) uint64 {
 	switch x := v.(type) {
 	case Int64:
 		return mixHash(uint64(x))
-	case int64:
+	case int32:
 		return mixHash(uint64(x))
 	case string:
 		return maphash.String(hashSeed, x)
@@ -73,7 +73,7 @@ func keyHash(ctx *Execution, v Value) uint64 {
 	case Record, Alternative:
 		scope := ctx.EqualityScope
 		if method, ok := implementationFunction(v, "@std/Hashable", "hash", scope); ok {
-			return mixHash(uint64(Invoke(ctx, method, nil).(int64)))
+			return mixHash(uint64(Invoke(ctx, method, nil).(int32)))
 		}
 		if _, custom := implementationFunction(v, "@std/Equal", "equals", scope); custom {
 			Panic("runtime invariant: key type overrides Equal without Hashable")
@@ -113,9 +113,9 @@ func (ix *keyIndex) rebuild(ctx *Execution, c keyed) {
 // insert records key at position i, keeping the first position for duplicates.
 func (ix *keyIndex) insert(ctx *Execution, key Value, i int) {
 	switch k := key.(type) {
-	case int64:
+	case int32:
 		if ix.ints == nil {
-			ix.ints = map[int64]int{}
+			ix.ints = map[int32]int{}
 		}
 		if _, dup := ix.ints[k]; !dup {
 			ix.ints[k] = i
@@ -146,7 +146,7 @@ func lookupKey(ctx *Execution, c keyed, key Value) int {
 		ix.rebuild(ctx, c)
 	}
 	switch k := key.(type) {
-	case int64:
+	case int32:
 		if i, ok := ix.ints[k]; ok {
 			return i
 		}
@@ -191,7 +191,7 @@ func keyRemoved(ctx *Execution, c keyed, pos int, removed Value) {
 		return
 	}
 	switch k := removed.(type) {
-	case int64:
+	case int32:
 		delete(ix.ints, k)
 	case string:
 		delete(ix.strs, k)
@@ -202,7 +202,7 @@ func keyRemoved(ctx *Execution, c keyed, pos int, removed Value) {
 	}
 	for i := pos; i < n; i++ {
 		switch k := c.keyAt(i).(type) {
-		case int64:
+		case int32:
 			ix.ints[k] = i
 		case string:
 			ix.strs[k] = i

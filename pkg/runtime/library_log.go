@@ -27,10 +27,10 @@ func init() {
 	)
 	libraryAdd("log", "create", libraryResult("Logger", "LogError"), []LibraryParam{p("transport", "Transport"), p("level", "Optional[LogLevel]"), p("bindings", "Optional[Map[String][JsonValue]]"), p("timestamp", "Optional[Bool]"), p("max_bytes", "Optional[Int64]")}, func(_ *Execution, r string, a []Value) Value {
 		level := logLevel(logOption(a[1], Alternative{Type: "@std/LogLevel", Tag: "Info"}))
-		if level < 0 || a[4].(int64) < 0 {
+		if level < 0 || nativeInteger(a[4]) < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
-		return libraryOK(r, ViewOf("@std/Logger", &libraryLogger{transport: a[0], threshold: level, bindings: logMerge(logOption(a[2], &Map{}).(*Map)), timestamp: logOption(a[3], true).(bool), max: a[4].(int64)}))
+		return libraryOK(r, ViewOf("@std/Logger", &libraryLogger{transport: a[0], threshold: level, bindings: logMerge(logOption(a[2], &Map{}).(*Map)), timestamp: logOption(a[3], true).(bool), max: nativeInteger(a[4])}))
 	})
 	libraryAdd("log", "stream_transport", "Transport", []LibraryParam{p("output", "WriteStream")}, func(_ *Execution, _ string, a []Value) Value {
 		return newLogTransport(a[0], nil)
@@ -39,7 +39,7 @@ func init() {
 		return newLogTransport(hostValue(ctx, "stdout"), nil)
 	})
 	libraryAdd("log", "file_transport", libraryResult("Transport", "LogError"), []LibraryParam{p("path", "String")}, func(ctx *Execution, r string, a []Value) Value {
-		opened := Invoke(ctx, Bind(hostValue(ctx, "filesystem"), "", "open"), []Argument{{"path", a[0]}, {"flags", "a"}, {"mode", int64(0600)}}).(Alternative)
+		opened := Invoke(ctx, Bind(hostValue(ctx, "filesystem"), "", "open"), []Argument{{"path", a[0]}, {"flags", "a"}, {"mode", int32(0600)}}).(Alternative)
 		if opened.Tag == "error" {
 			return libraryErrorFields(r, "FileSystem", opened.Fields)
 		}

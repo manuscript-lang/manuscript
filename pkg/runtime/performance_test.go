@@ -27,7 +27,7 @@ func TestBuildersAppendInLinearTime(t *testing.T) {
 	const n = 300000
 	for i := 0; i < n; i++ {
 		text.Operation("append").Body(ctx, []Value{"x"})
-		data.Operation("append").Body(ctx, []Value{int64(i % 256)})
+		data.Operation("append").Body(ctx, []Value{int32(i % 256)})
 		data.Operation("concat").Body(ctx, []Value{Bytes{[]byte("0123456789")}})
 	}
 	if got := text.Operation("freeze").Body(ctx, nil); got != strings.Repeat("x", n) {
@@ -53,7 +53,7 @@ func TestStringIndexingMatchesScalars(t *testing.T) {
 	text := "aé世😀b"
 	scalars := []rune(text)
 	for i := -7; i <= 7; i++ {
-		got := libraryPlain(t, "string/scalar_at", text, int64(i)).(Alternative)
+		got := libraryPlain(t, "string/scalar_at", text, int32(i)).(Alternative)
 		j := i
 		if j < 0 {
 			j += len(scalars)
@@ -64,10 +64,10 @@ func TestStringIndexingMatchesScalars(t *testing.T) {
 			}
 			continue
 		}
-		if got.Tag != "some" || got.Fields[0] != int64(scalars[j]) {
+		if got.Tag != "some" || got.Fields[0] != int32(scalars[j]) {
 			t.Fatalf("scalar_at %d: %#v", i, got)
 		}
-		if s := libraryPlain(t, "string/at", text, int64(i)).(Alternative); s.Fields[0] != string(scalars[j]) {
+		if s := libraryPlain(t, "string/at", text, int32(i)).(Alternative); s.Fields[0] != string(scalars[j]) {
 			t.Fatalf("at %d: %#v", i, s)
 		}
 	}
@@ -75,7 +75,7 @@ func TestStringIndexingMatchesScalars(t *testing.T) {
 		runes := []rune(input)
 		for s := 0; s <= len(runes); s++ {
 			for e := s; e <= len(runes); e++ {
-				if got := libraryPlain(t, "string/slice", input, int64(s), int64(e)); got != Value(string(runes[s:e])) {
+				if got := libraryPlain(t, "string/slice", input, int32(s), int32(e)); got != Value(string(runes[s:e])) {
 					t.Fatalf("slice %q %d:%d = %#v", input, s, e, got)
 				}
 			}
@@ -85,10 +85,10 @@ func TestStringIndexingMatchesScalars(t *testing.T) {
 
 func TestBytesSliceSharesWithoutAliasingAppends(t *testing.T) {
 	data := Bytes{[]byte("abcdef")}
-	head := libraryPlain(t, "bytes/slice", data, int64(0), int64(3)).(Bytes)
+	head := libraryPlain(t, "bytes/slice", data, int32(0), int32(3)).(Bytes)
 	builder := newBuilder("@std/BytesBuilder")
 	builder.Operation("concat").Body(RootExecution(), []Value{head})
-	builder.Operation("append").Body(RootExecution(), []Value{int64('z')})
+	builder.Operation("append").Body(RootExecution(), []Value{int32('z')})
 	if string(data.Items) != "abcdef" || string(head.Items) != "abc" {
 		t.Fatalf("slice parent changed: %q %q", data.Items, head.Items)
 	}
@@ -101,27 +101,27 @@ func TestReadLineBuffersWithoutLosingBytes(t *testing.T) {
 	ctx := RootExecution()
 	dir := t.TempDir()
 	fs := &libraryFileSystem{dir}
-	view := librarySuccess(t, fs.Operation("open").Body(ctx, []Value{"lines", "w+", int64(0600)}))
+	view := librarySuccess(t, fs.Operation("open").Body(ctx, []Value{"lines", "w+", int32(0600)}))
 	h := view.(View).Receiver.(*libraryFileHandle)
 	librarySuccess(t, h.Operation("write_file").Body(ctx, []Value{Bytes{[]byte("one\r\ntwo\n\nlast")}}))
-	librarySuccess(t, h.Operation("seek").Body(ctx, []Value{int64(0), int64(0)}))
+	librarySuccess(t, h.Operation("seek").Body(ctx, []Value{int32(0), int32(0)}))
 	reader := h.Operation("reader").Body(ctx, nil)
-	next := func() Value { return libraryCall(t, "io/read_line", reader, int64(100)).Fields[0] }
+	next := func() Value { return libraryCall(t, "io/read_line", reader, int32(100)).Fields[0] }
 	want := []string{"one", "two", ""}
 	for _, line := range want {
 		if got := next(); !Equal(got, optional("String", line, true)) {
 			t.Fatalf("want %q got %#v", line, got)
 		}
 	}
-	rest := librarySuccess(t, Bind(reader, "", "read").(Function).Body(ctx, []Value{optional("Int", int64(100), true)}))
+	rest := librarySuccess(t, Bind(reader, "", "read").(Function).Body(ctx, []Value{optional("Int", int32(100), true)}))
 	if !Equal(rest, optional("@std/Bytes", Bytes{[]byte("last")}, true)) {
 		t.Fatalf("read after read_line: %#v", rest)
 	}
 	if got := next(); !Equal(got, optional("String", nil, false)) {
 		t.Fatalf("expected end: %#v", got)
 	}
-	librarySuccess(t, h.Operation("seek").Body(ctx, []Value{int64(0), int64(0)}))
-	libraryFailure(t, libraryCall(t, "io/read_line", reader, int64(2)), "LimitExceeded")
+	librarySuccess(t, h.Operation("seek").Body(ctx, []Value{int32(0), int32(0)}))
+	libraryFailure(t, libraryCall(t, "io/read_line", reader, int32(2)), "LimitExceeded")
 }
 
 func TestReadLineOnPipeKeepsReadAhead(t *testing.T) {
@@ -135,11 +135,11 @@ func TestReadLineOnPipeKeepsReadAhead(t *testing.T) {
 	ctx := RootExecution()
 	in := ViewOf("@std/ReadStream", &stream{file: input, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"})
 	for _, line := range []string{"alpha", "beta", "gamma"} {
-		if got := librarySuccess(t, libraryCall(t, "io/read_line", in, int64(100))); !Equal(got, optional("String", line, true)) {
+		if got := librarySuccess(t, libraryCall(t, "io/read_line", in, int32(100))); !Equal(got, optional("String", line, true)) {
 			t.Fatalf("want %q got %#v", line, got)
 		}
 	}
-	if got := librarySuccess(t, libraryCall(t, "io/read_line", in, int64(100))); !Equal(got, optional("String", nil, false)) {
+	if got := librarySuccess(t, libraryCall(t, "io/read_line", in, int32(100))); !Equal(got, optional("String", nil, false)) {
 		t.Fatalf("expected end: %#v", got)
 	}
 	_ = ctx
@@ -172,7 +172,7 @@ func BenchmarkStringAt(b *testing.B) {
 	fn := StandardFunction("string/at", libraryRuntimeType(spec.Result)).(Function)
 	ctx := RootExecution()
 	for i := 0; i < b.N; i++ {
-		fn.Body(ctx, []Value{text, int64(i % len(text))})
+		fn.Body(ctx, []Value{text, int32(i % len(text))})
 	}
 }
 
@@ -182,7 +182,7 @@ func BenchmarkBytesSlice(b *testing.B) {
 	fn := StandardFunction("bytes/slice", libraryRuntimeType(spec.Result)).(Function)
 	ctx := RootExecution()
 	for i := 0; i < b.N; i++ {
-		fn.Body(ctx, []Value{data, int64(i % 1000), int64(len(data.Items))})
+		fn.Body(ctx, []Value{data, int32(i % 1000), int32(len(data.Items))})
 	}
 }
 
@@ -199,7 +199,7 @@ func BenchmarkReadLine(b *testing.B) {
 		h := &libraryFileHandle{file: file}
 		reader := h.Operation("reader").Body(ctx, nil)
 		for {
-			got := fn.Body(ctx, []Value{reader, int64(1 << 20)}).(Alternative)
+			got := fn.Body(ctx, []Value{reader, int32(1 << 20)}).(Alternative)
 			if got.Fields[0].(Alternative).Tag == "none" {
 				break
 			}
@@ -230,14 +230,14 @@ func TestScalarLengthCache(t *testing.T) {
 	long := strings.Repeat("aé", 2000)
 	other := strings.Repeat("é", 2000)
 	for i := 0; i < 2; i++ {
-		if got := libraryPlain(t, "string/scalar_length", long); got != int64(4000) {
+		if got := libraryPlain(t, "string/scalar_length", long); got != int32(4000) {
 			t.Fatalf("long: %v", got)
 		}
-		if got := libraryPlain(t, "string/scalar_length", other); got != int64(2000) {
+		if got := libraryPlain(t, "string/scalar_length", other); got != int32(2000) {
 			t.Fatalf("other: %v", got)
 		}
 	}
-	if got := libraryPlain(t, "string/scalar_length", "héllo"); got != int64(5) {
+	if got := libraryPlain(t, "string/scalar_length", "héllo"); got != int32(5) {
 		t.Fatalf("short: %v", got)
 	}
 }
@@ -255,27 +255,27 @@ func BenchmarkScalarLength(b *testing.B) {
 func TestForLoopSeesSetAndMapAsOfLoopStart(t *testing.T) {
 	ctx := RootExecution()
 	set := &Set{Type: "@std/Set[Int]"}
-	for i := int64(1); i <= 4; i++ {
+	for i := int32(1); i <= 4; i++ {
 		set.add(ctx, i)
 	}
-	var seen []int64
+	var seen []int32
 	for _, item := range Iterate(set) {
-		seen = append(seen, item.(int64))
+		seen = append(seen, item.(int32))
 		set.removeAt(ctx, 0)
-		set.add(ctx, item.(int64)+100)
+		set.add(ctx, item.(int32)+100)
 	}
 	if len(seen) != 4 || seen[0] != 1 || seen[1] != 2 || seen[2] != 3 || seen[3] != 4 {
 		t.Fatalf("set loop saw %v", seen)
 	}
 	m := &Map{Type: "@std/Map[Int][Int]"}
-	for i := int64(1); i <= 3; i++ {
+	for i := int32(1); i <= 3; i++ {
 		m.put(ctx, i, i*10)
 	}
-	var values []int64
+	var values []int32
 	for _, entry := range Iterate(m) {
 		fields := entry.(Record).Fields
-		values = append(values, fields["value"].(int64))
-		m.put(ctx, fields["key"], int64(-1))
+		values = append(values, fields["value"].(int32))
+		m.put(ctx, fields["key"], int32(-1))
 		m.removeAt(ctx, 0)
 	}
 	if len(values) != 3 || values[0] != 10 || values[1] != 20 || values[2] != 30 {
@@ -286,7 +286,7 @@ func TestForLoopSeesSetAndMapAsOfLoopStart(t *testing.T) {
 func BenchmarkIterateSetEarlyExit(b *testing.B) {
 	ctx := RootExecution()
 	set := &Set{Type: "@std/Set[Int]"}
-	for i := int64(0); i < 100000; i++ {
+	for i := int32(0); i < 100000; i++ {
 		set.add(ctx, i)
 	}
 	for i := 0; i < b.N; i++ {
@@ -299,7 +299,7 @@ func BenchmarkIterateSetEarlyExit(b *testing.B) {
 func BenchmarkIterateMap(b *testing.B) {
 	ctx := RootExecution()
 	m := &Map{Type: "@std/Map[Int][Int]"}
-	for i := int64(0); i < 10000; i++ {
+	for i := int32(0); i < 10000; i++ {
 		m.put(ctx, i, i)
 	}
 	for i := 0; i < b.N; i++ {
@@ -312,7 +312,7 @@ func BenchmarkListAppendDirect(b *testing.B) {
 	ctx := &Execution{Context: context.Background()}
 	list := &List{Type: "@std/List[Int]"}
 	for i := 0; i < b.N; i++ {
-		ListAppend(ctx, list, int64(i))
+		ListAppend(ctx, list, int32(i))
 	}
 }
 
@@ -320,20 +320,20 @@ func BenchmarkListAppendMember(b *testing.B) {
 	ctx := &Execution{Context: context.Background()}
 	list := &List{Type: "@std/List[Int]"}
 	for i := 0; i < b.N; i++ {
-		Invoke(ctx, NativeMemberResult(list, "append", "", TypeScope{}), []Argument{{Value: int64(i)}})
+		Invoke(ctx, NativeMemberResult(list, "append", "", TypeScope{}), []Argument{{Value: int32(i)}})
 	}
 }
 
 func BenchmarkMapGetDirect(b *testing.B) {
 	ctx := &Execution{Context: context.Background()}
 	m := &Map{Type: "@std/Map[String][Int]"}
-	MapWithEntry(ctx, m, "a", int64(1), TypeScope{})
+	MapWithEntry(ctx, m, "a", int32(1), TypeScope{})
 	for i := 0; i < b.N; i++ {
 		MapGet(ctx, m, "a", TypeScope{}, "@std/Optional[Int]")
 	}
 }
 
-func registerDirectProbe(typ string, result int64) {
+func registerDirectProbe(typ string, result int32) {
 	Register(Implementation{Receiver: typ, Contract: "probe/Speak", Name: "speak", Scope: "probe.ms",
 		Direct: func(*Execution, Value, []Value) Value { return result },
 		Build: func(receiver Value, _ map[string]string, _ map[string]TypeScope) Function {
@@ -351,12 +351,12 @@ func TestMethodSiteFollowsReceiverTypeAndRegistration(t *testing.T) {
 		return CallMethod(ctx, &site, Record{Type: typ}, "probe/Speak", "speak", scope, nil)
 	}
 	for i := 0; i < 2; i++ {
-		if call("probe/A") != int64(1) || call("probe/B") != int64(2) {
+		if call("probe/A") != int32(1) || call("probe/B") != int32(2) {
 			t.Fatal("site must re-resolve when the receiver type changes")
 		}
 	}
 	registerDirectProbe("probe/C", 3)
-	if call("probe/A") != int64(1) || call("probe/C") != int64(3) {
+	if call("probe/A") != int32(1) || call("probe/C") != int32(3) {
 		t.Fatal("site must survive later registrations")
 	}
 }
@@ -394,8 +394,8 @@ func TestSourceDirectMatchesBoundFunctionContract(t *testing.T) {
 	// Cancellation that arrives during the body is delivered at the checkpoint
 	// after it, for both a normal and a source return.
 	for name, body := range map[string]func(*Execution, Value, []Value) Value{
-		"normal": func(*Execution, Value, []Value) Value { return int64(1) },
-		"return": func(*Execution, Value, []Value) Value { return raiseSourceReturn(int64(1)) },
+		"normal": func(*Execution, Value, []Value) Value { return int32(1) },
+		"return": func(*Execution, Value, []Value) Value { return raiseSourceReturn(int32(1)) },
 	} {
 		cancelCtx, cancel := context.WithCancel(context.Background())
 		ctx := &Execution{Context: cancelCtx}
@@ -420,16 +420,16 @@ func TestCallMethodMatchesBoundCallOutcomes(t *testing.T) {
 	result := "@std/Result[Int][String]"
 	cases := map[string]func(cancel func()) func(*Execution, Value, []Value) Value{
 		"value": func(func()) func(*Execution, Value, []Value) Value {
-			return func(*Execution, Value, []Value) Value { return int64(1) }
+			return func(*Execution, Value, []Value) Value { return int32(1) }
 		},
 		"propagation": func(func()) func(*Execution, Value, []Value) Value {
 			return func(*Execution, Value, []Value) Value { return raisePropagation("bad") }
 		},
 		"cancelled": func(cancel func()) func(*Execution, Value, []Value) Value {
-			return func(*Execution, Value, []Value) Value { cancel(); return int64(1) }
+			return func(*Execution, Value, []Value) Value { cancel(); return int32(1) }
 		},
 		"cancelled return": func(cancel func()) func(*Execution, Value, []Value) Value {
-			return func(*Execution, Value, []Value) Value { cancel(); return raiseSourceReturn(int64(1)) }
+			return func(*Execution, Value, []Value) Value { cancel(); return raiseSourceReturn(int32(1)) }
 		},
 	}
 	outcome := func(run func(*Execution) Value, ctx *Execution) (value Value, failure any) {

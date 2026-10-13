@@ -68,7 +68,7 @@ func (c *commands) Operation(name string) Function {
 		}
 		args = normalized
 		program := args[0].(string)
-		limit := args[3].(int64)
+		limit := nativeInteger(args[3])
 		timeout := args[4].(Duration)
 		if program == "" || strings.ContainsRune(program, 0) || limit < 0 || timeout < nativeNoTimeout {
 			return failure("InvalidInput", "")
@@ -121,6 +121,6 @@ func (c *commands) Operation(name string) Function {
 				return failure("Failed", err.Error())
 			}
 		}
-		return Alternative{result, "ok", []Value{Record{"@std/CommandOutput", map[string]Value{"exit_code": code, "stdout": Bytes{append([]byte{}, output.stdout.Bytes()...)}, "stderr": Bytes{append([]byte{}, output.stderr.Bytes()...)}}}}}
+		return Alternative{result, "ok", []Value{Record{"@std/CommandOutput", map[string]Value{"exit_code": defaultInteger(code), "stdout": Bytes{append([]byte{}, output.stdout.Bytes()...)}, "stderr": Bytes{append([]byte{}, output.stderr.Bytes()...)}}}}}
 	})
 }

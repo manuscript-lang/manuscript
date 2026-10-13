@@ -111,7 +111,7 @@ func (s *librarySystem) Operation(name string) Function {
 	return libraryMethod("System", name, func(ctx *Execution, r string, a []Value) Value {
 		switch name {
 		case "info":
-			return Record{"@std/SystemInfo", map[string]Value{"os": goruntime.GOOS, "architecture": goruntime.GOARCH, "cpu_count": int64(goruntime.NumCPU())}}
+			return nativeHostRecord("@std/SystemInfo", map[string]Value{"os": goruntime.GOOS, "architecture": goruntime.GOARCH, "cpu_count": int64(goruntime.NumCPU())})
 		case "working_directory":
 			if s.directory != "" {
 				return s.directory
@@ -138,7 +138,7 @@ type libraryEntropy struct{}
 
 func (libraryEntropy) Operation(name string) Function {
 	return libraryMethod("Entropy", name, func(ctx *Execution, r string, a []Value) Value {
-		n := a[0].(int64)
+		n := nativeInteger(a[0])
 		if n < 0 || n > 16*1024*1024 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -228,7 +228,7 @@ func (f *libraryFileSystem) Operation(name string) Function {
 		}
 		switch name {
 		case "read_file":
-			n := a[1].(int64)
+			n := nativeInteger(a[1])
 			if n < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -288,7 +288,7 @@ func (f *libraryFileSystem) Operation(name string) Function {
 			}
 			return libraryOK(r, libraryFileInfoBirth(libraryFileInfo(info), hostos.BirthPath(p, a[1].(bool))))
 		case "list":
-			n := a[1].(int64)
+			n := nativeInteger(a[1])
 			if n < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -351,7 +351,7 @@ func (f *libraryFileSystem) Operation(name string) Function {
 			return libraryOSResult(r, Unit{}, os.Rename(p, destination))
 		case "copy_file":
 			destination, ok := f.path(a[1].(string))
-			n := a[3].(int64)
+			n := nativeInteger(a[3])
 			if !ok || n < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -453,7 +453,7 @@ func libraryRemoveRoot(ctx *Execution, root *os.Root, p string) error {
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	libraryAdd("random", "secure_int", libraryResult("Int", "RandomError"), []LibraryParam{p("entropy", "Entropy"), p("min", "Int"), p("max_exclusive", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
-		min, max := a[1].(int64), a[2].(int64)
+		min, max := nativeInteger(a[1]), nativeInteger(a[2])
 		if min >= max {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -462,7 +462,7 @@ func init() {
 		count := (bits + 7) / 8
 		for {
 			CheckCancelled(ctx)
-			v := Invoke(ctx, Bind(a[0], "", "bytes"), []Argument{{"count", int64(count)}}).(Alternative)
+			v := Invoke(ctx, Bind(a[0], "", "bytes"), []Argument{{"count", defaultInteger(int64(count))}}).(Alternative)
 			if v.Tag == "error" {
 				return Alternative{r, "error", v.Fields}
 			}
@@ -478,7 +478,7 @@ func init() {
 		}
 	})
 	libraryAdd("random", "uuid_v4", libraryResult("String", "RandomError"), []LibraryParam{p("entropy", "Entropy")}, func(ctx *Execution, r string, a []Value) Value {
-		v := Invoke(ctx, Bind(a[0], "", "bytes"), []Argument{{"count", int64(16)}}).(Alternative)
+		v := Invoke(ctx, Bind(a[0], "", "bytes"), []Argument{{"count", int32(16)}}).(Alternative)
 		if v.Tag == "error" {
 			return Alternative{r, "error", v.Fields}
 		}

@@ -51,13 +51,13 @@ func TestSourceProfilesPreserveExecutionAndAttributeWork(t *testing.T) {
 				t.Fatal(kind, id)
 			}
 			observed = true
-			return int64(42)
+			return int32(42)
 		})
 	})
 	directory := t.TempDir()
 	traceFile := filepath.Join(directory, "trace.out")
 	if exit := Profile(filepath.Join(directory, "cpu.pprof"), "", traceFile, func() int {
-		if Invoke(root, fn, nil) != int64(42) {
+		if Invoke(root, fn, nil) != int32(42) {
 			t.Fatal("changed result")
 		}
 		return 0
@@ -97,10 +97,10 @@ func TestSourceProfileBoundaries(t *testing.T) {
 				if ctx != boundary {
 					t.Fatal("nested call derived another execution")
 				}
-				if args[0].(int64) > 0 {
-					return nested.Body(ctx, []Value{args[0].(int64) - 1})
+				if args[0].(int32) > 0 {
+					return nested.Body(ctx, []Value{args[0].(int32) - 1})
 				}
-				return Return(int64(42))
+				return Return(int32(42))
 			})
 			operation := NewSourceFunction(nil, "Int", "work.ms:3:1", func(ctx *Execution, _ []Value) Value {
 				label, ok := pprof.Label(ctx.Context, "ms.source")
@@ -110,7 +110,7 @@ func TestSourceProfileBoundaries(t *testing.T) {
 				if ctx.Lifetime != root.Lifetime || ctx.Host != root.Host || ctx.Context.Done() != root.Context.Done() || ctx.calls != root.calls {
 					t.Fatal("work profiling changed execution identity")
 				}
-				return int64(9)
+				return int32(9)
 			})
 			entry := NewSourceFunction(nil, "Int", "entry.ms:1:1", func(ctx *Execution, _ []Value) Value {
 				boundary = ctx
@@ -124,20 +124,20 @@ func TestSourceProfileBoundaries(t *testing.T) {
 				if ctx.calls != root.calls {
 					t.Fatal("source profiling reset call accounting")
 				}
-				if nested.Body(ctx, []Value{int64(1000)}) != int64(42) {
+				if nested.Body(ctx, []Value{int32(1000)}) != int32(42) {
 					t.Fatal("source return changed")
 				}
 				if profileWork(ctx, "task_group.operation", "8", func(child *Execution) Value {
 					return Invoke(child, operation, nil)
-				}) != int64(9) {
+				}) != int32(9) {
 					t.Fatal("work result changed")
 				}
 				if label, _ := pprof.Label(ctx.Context, "ms.source"); cpu != "" && label != "entry.ms:1:1" {
 					t.Fatal("work label leaked into source caller")
 				}
-				return int64(0)
+				return int32(0)
 			})
-			if exit := Profile(cpu, heap, traceFile, func() int { return int(Invoke(root, entry, nil).(int64)) }); exit != 0 {
+			if exit := Profile(cpu, heap, traceFile, func() int { return int(Invoke(root, entry, nil).(int32)) }); exit != 0 {
 				t.Fatal(exit)
 			}
 			if sourceProfiling.Load() || cpuProfiling.Load() || traceProfiling.Load() || profiling.Load() {
@@ -175,11 +175,11 @@ func TestProfileFailuresAndRepeatedRuns(t *testing.T) {
 						t.Fatal("overlapping capture disrupted active session")
 					}
 				}
-				return int64(0)
+				return int32(0)
 			})
 			got := recovered(func() {
 				Profile(filepath.Join(dir, "cpu.pprof"), filepath.Join(dir, "heap.pprof"), filepath.Join(dir, "trace.out"), func() int {
-					return int(Invoke(root, fn, nil).(int64))
+					return int(Invoke(root, fn, nil).(int32))
 				})
 			})
 			cancel()
@@ -211,14 +211,14 @@ func TestProfileFailuresAndRepeatedRuns(t *testing.T) {
 }
 
 func TestNestedSourceProfilingDoesNotAllocate(t *testing.T) {
-	inner := NewSourceFunction(nil, "Int", "inner.ms:2:1", func(_ *Execution, _ []Value) Value { return int64(0) })
+	inner := NewSourceFunction(nil, "Int", "inner.ms:2:1", func(_ *Execution, _ []Value) Value { return int32(0) })
 	entry := NewSourceFunction(nil, "Int", "entry.ms:1:1", func(ctx *Execution, _ []Value) Value {
 		if allocations := testing.AllocsPerRun(100, func() { inner.Body(ctx, nil) }); allocations != 0 {
 			t.Fatalf("nested source profiling allocated %v objects per call", allocations)
 		}
-		return int64(0)
+		return int32(0)
 	})
-	if exit := Profile(filepath.Join(t.TempDir(), "cpu.pprof"), "", "", func() int { return int(Invoke(RootExecution(), entry, nil).(int64)) }); exit != 0 {
+	if exit := Profile(filepath.Join(t.TempDir(), "cpu.pprof"), "", "", func() int { return int(Invoke(RootExecution(), entry, nil).(int32)) }); exit != 0 {
 		t.Fatal(exit)
 	}
 }
@@ -231,7 +231,7 @@ func TestProfilingPreservesCallDepthLimit(t *testing.T) {
 			root.calls.traceFull.Store(true)
 			inner := NewSourceFunction(nil, "Int", "inner.ms:2:1", func(_ *Execution, _ []Value) Value {
 				t.Fatal("profiled call crossed the source depth limit")
-				return int64(0)
+				return int32(0)
 			})
 			entry := NewSourceFunction(nil, "Int", "entry.ms:1:1", func(ctx *Execution, _ []Value) Value {
 				if ctx.calls != root.calls || ctx.calls.depth.Load() != MaxCallDepth || !ctx.calls.traceFull.Load() {
@@ -241,7 +241,7 @@ func TestProfilingPreservesCallDepthLimit(t *testing.T) {
 				if fault, ok := failure.(Fault); !ok || !strings.Contains(fault.Message, "call depth limit exceeded") {
 					t.Fatal("profiling changed depth-limit fault", failure)
 				}
-				return int64(0)
+				return int32(0)
 			})
 			dir := t.TempDir()
 			var cpu, traceFile string
@@ -251,7 +251,7 @@ func TestProfilingPreservesCallDepthLimit(t *testing.T) {
 			if mode != "cpu" {
 				traceFile = filepath.Join(dir, "trace.out")
 			}
-			if exit := Profile(cpu, "", traceFile, func() int { return int(Invoke(root, entry, nil).(int64)) }); exit != 0 || root.calls.depth.Load() != MaxCallDepth-1 {
+			if exit := Profile(cpu, "", traceFile, func() int { return int(Invoke(root, entry, nil).(int32)) }); exit != 0 || root.calls.depth.Load() != MaxCallDepth-1 {
 				t.Fatal("profiled call did not restore depth", exit, root.calls.depth.Load())
 			}
 		})

@@ -103,6 +103,9 @@ func libraryErrorFields(result, code string, fields []Value) Value {
 }
 func libraryResult(typ, errorType string) string { return "Result[" + typ + "][" + errorType + "]" }
 func libraryList(typ string, values []Value) *List {
+	for i, value := range values {
+		values[i] = nativeNumericResult(typ, value)
+	}
 	return &List{Type: "@std/List[" + typ + "]", Items: values}
 }
 func libraryStrings(values []string) *List {
@@ -136,6 +139,10 @@ func librarySlice(operation string, length int, start, end int64) {
 func libraryRangeFault(operation, parameter string, value Value, minimum, maximum int64) Value {
 	if option, ok := value.(Alternative); ok && option.Tag == "some" && strings.HasPrefix(option.Type, "@std/Optional[") {
 		value = option.Fields[0]
+	}
+	// Native temporaries retain signed64; format them through their wide identity.
+	if integer, ok := value.(int64); ok {
+		value = Int64(integer)
 	}
 	return Panic(fmt.Sprintf("%s: %s must be between %d and %d, found %s", operation, parameter, minimum, maximum, Format(value)))
 }

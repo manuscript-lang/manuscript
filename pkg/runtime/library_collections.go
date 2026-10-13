@@ -17,7 +17,7 @@ func relativeIndex(length int, index int64) int64 {
 func ListAt(ctx *Execution, receiver Value, index Value, result string) Value {
 	CheckCancelled(ctx)
 	list := receiver.(*List)
-	i := relativeIndex(len(list.Items), index.(int64))
+	i := relativeIndex(len(list.Items), nativeInteger(index))
 	value := Alternative{Type: result, Tag: "none"}
 	if i >= 0 && i < int64(len(list.Items)) {
 		value = Alternative{Type: result, Tag: "some", Fields: []Value{list.Items[i]}}
@@ -163,7 +163,7 @@ func init() {
 				i = int64(len(v.Items)) - 1
 			}
 			if name == "at" {
-				i = a[1].(int64)
+				i = nativeInteger(a[1])
 			}
 			return ListAt(ctx, v, i, r)
 		})
@@ -186,7 +186,7 @@ func init() {
 					if name == "contains" {
 						return true
 					}
-					return Alternative{r, "some", []Value{int64(i)}}
+					return Alternative{r, "some", []Value{defaultInteger(int64(i))}}
 				}
 			}
 			if name == "contains" {
@@ -204,18 +204,18 @@ func init() {
 	})
 	add("with_value", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int"), p("value", "T")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
-		i := relativeIndex(len(items), a[1].(int64))
+		i := relativeIndex(len(items), nativeInteger(a[1]))
 		if i < 0 || i >= int64(len(items)) {
-			return libraryIndexFault("List.with_value", len(items), a[1].(int64))
+			return libraryIndexFault("List.with_value", len(items), nativeInteger(a[1]))
 		}
 		items[i] = a[2]
 		return a[0]
 	})
 	add("without", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
-		i := relativeIndex(len(items), a[1].(int64))
+		i := relativeIndex(len(items), nativeInteger(a[1]))
 		if i < 0 || i >= int64(len(items)) {
-			return libraryIndexFault("List.without", len(items), a[1].(int64))
+			return libraryIndexFault("List.without", len(items), nativeInteger(a[1]))
 		}
 		copy(items[i:], items[i+1:])
 		// Do not clear the tail: a running range retains its initial header.
@@ -259,7 +259,7 @@ func init() {
 						return true
 					}
 					if name == "find_index" || name == "find_last_index" {
-						value = int64(i)
+						value = defaultInteger(int64(i))
 					}
 					return Alternative{r, "some", []Value{value}}
 				}
@@ -299,7 +299,7 @@ func init() {
 	})
 	add("with_values", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("delete_count", "Int"), p("replacement", "List[T]")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
-		start, count := a[1].(int64), a[2].(int64)
+		start, count := nativeInteger(a[1]), nativeInteger(a[2])
 		if start < 0 || start > int64(len(items)) {
 			return libraryRangeFault("List.with_values", "start", start, 0, int64(len(items)))
 		}
@@ -311,7 +311,7 @@ func init() {
 	})
 	add("fill", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		list := a[0].(*List)
-		s, e := a[2].(int64), a[3].(int64)
+		s, e := nativeInteger(a[2]), nativeInteger(a[3])
 		librarySlice("List.fill", len(list.Items), s, e)
 		if s == e {
 			return list
@@ -325,7 +325,7 @@ func init() {
 	})
 	add("copy_within", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("target", "Int"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		list := a[0].(*List)
-		t, s, e := a[1].(int64), a[2].(int64), a[3].(int64)
+		t, s, e := nativeInteger(a[1]), nativeInteger(a[2]), nativeInteger(a[3])
 		librarySlice("List.copy_within", len(list.Items), s, e)
 		if t < 0 || t > int64(len(list.Items)) {
 			return libraryRangeFault("List.copy_within", "target", t, 0, int64(len(list.Items)))
@@ -341,7 +341,7 @@ func init() {
 		out := make([]Value, len(a[0].(*List).Items))
 		for i := range out {
 			CheckCancelled(ctx)
-			out[i] = int64(i)
+			out[i] = defaultInteger(int64(i))
 		}
 		return &List{Type: r, Items: out}
 	})
@@ -351,7 +351,7 @@ func init() {
 		typ := typeArguments(r)[0]
 		for i, v := range items {
 			CheckCancelled(ctx)
-			out[i] = Record{typ, map[string]Value{"index": int64(i), "value": v}}
+			out[i] = Record{typ, map[string]Value{"index": defaultInteger(int64(i)), "value": v}}
 		}
 		return &List{Type: r, Items: out}
 	})
@@ -364,7 +364,7 @@ func init() {
 		return out
 	})
 	add("filled", libraryResult("List[T]", "CollectionError"), elements, []LibraryParam{p("value", "T"), p("count", "Int"), p("max_items", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
-		count, max := a[1].(int64), a[2].(int64)
+		count, max := nativeInteger(a[1]), nativeInteger(a[2])
 		if count < 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -379,7 +379,7 @@ func init() {
 		return libraryOK(r, &List{Type: typeArguments(r)[0], Items: out})
 	})
 	add("range", libraryResult("List[Int]", "CollectionError"), nil, []LibraryParam{p("start", "Int"), p("end", "Int"), p("step", "Int"), p("max_items", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
-		start, end, step, max := a[0].(int64), a[1].(int64), a[2].(int64), a[3].(int64)
+		start, end, step, max := nativeInteger(a[0]), nativeInteger(a[1]), nativeInteger(a[2]), nativeInteger(a[3])
 		if step == 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
@@ -400,7 +400,7 @@ func init() {
 			if int64(len(out)) == max {
 				return libraryError(r, "LimitExceeded", "")
 			}
-			out = append(out, n)
+			out = append(out, defaultInteger(n))
 			// An overflowing next term lies outside every representable end.
 			if step > 0 && n > math.MaxInt64-step || step < 0 && n < math.MinInt64-step {
 				break
