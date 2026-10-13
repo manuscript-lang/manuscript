@@ -48,7 +48,7 @@ func runDoc(args []string) int {
 		case "-o", "--output":
 			value, ok := requiredValue(args, &i, value, inline)
 			if !ok {
-				fmt.Fprintln(os.Stderr, "output flag requires a path argument, e.g. -o docs.md")
+				fmt.Fprintf(os.Stderr, "%s requires a path argument, e.g. %s docs.md\n", flag, flag)
 				return 2
 			}
 			output = value
