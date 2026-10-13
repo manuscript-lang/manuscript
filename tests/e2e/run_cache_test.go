@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/build"
 )
 
 func TestStandaloneRunCache(t *testing.T) {
@@ -34,7 +34,7 @@ func TestStandaloneRunCache(t *testing.T) {
 			}
 		}
 	}
-	cache, err := compiler.DefaultBuildCacheDir()
+	cache, err := build.DefaultBuildCacheDir()
 	if err != nil {
 		t.Fatal(err)
 	}

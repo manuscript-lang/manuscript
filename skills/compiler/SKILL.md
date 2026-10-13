@@ -5,7 +5,7 @@ description: Implement or review Manuscript checking, module resolution, Go lowe
 
 # Compiler
 
-Use for `pkg/checker/`, `pkg/compiler/`, `pkg/project/`, or embedded build inputs. Read [architecture](../../documentation/contributing/architecture.md), relevant [compiler rules](../../documentation/contributing/compiler/_index.md), and [language](../../.experts/language.md) / [build lessons](../../.experts/tooling-and-docs.md).
+Use for `pkg/checker/`, `pkg/lower/`, `pkg/compiler/`, `pkg/build/`, `pkg/project/`, or embedded build inputs. Read [architecture](../../documentation/contributing/architecture.md), relevant [compiler rules](../../documentation/contributing/compiler/_index.md), and [language](../../.experts/language.md) / [build lessons](../../.experts/tooling-and-docs.md).
 
 - Trace `CompileSource`/`CompileFile` through resolution, `checker.Program`, and Go generation. Keep parse/resolution/type/lowering diagnostics attributable to source.
 - Preserve source-only analysis: `AnalyzeOnly` stops before lowering; recovery is editor analysis and diagnostics prevent executable generation. Entry validation independently checks `export fn main() -> Int`.

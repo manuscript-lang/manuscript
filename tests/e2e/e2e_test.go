@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	// The suite builds cmd/ms in subprocesses. Track its implementation so Go's
 	// test cache is invalidated when CLI code changes, even if the harness does not.
@@ -51,7 +52,7 @@ func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	source, err := compiler.Standalone(result.Source)
+	source, err := build.Standalone(result.Source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +61,7 @@ func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
 	}
 	// Emitted source is a complete program against the vendored dependencies.
 	executable := filepath.Join(t.TempDir(), "standalone")
-	if err := compiler.Build(source, executable); err != nil {
+	if err := build.Build(source, executable); err != nil {
 		t.Fatal(err)
 	}
 	if data, err := commandOutput(t, executable); err != nil || !strings.Contains(string(data), "0 failed") {
@@ -74,7 +75,7 @@ func TestCLIEntryAndNativeBuild(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	executable := filepath.Join(t.TempDir(), "hello")
-	if err := compiler.Build(result.Source, executable); err != nil {
+	if err := build.Build(result.Source, executable); err != nil {
 		t.Fatal(err)
 	}
 	data, err := commandOutput(t, executable, "first", "second")
@@ -96,7 +97,7 @@ func TestRuntimeFaults(t *testing.T) {
 				t.Fatal(result.Diagnostics)
 			}
 			binary := filepath.Join(t.TempDir(), "program")
-			if err := compiler.Build(result.Source, binary); err != nil {
+			if err := build.Build(result.Source, binary); err != nil {
 				t.Fatal(err)
 			}
 			data, err := commandOutput(t, binary)
@@ -187,7 +188,7 @@ func TestEvaluationOrderAndEveryCleanupExit(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	data, err := commandOutput(t, binary)
@@ -209,7 +210,7 @@ func TestSignalCancelsJoinsAndCleansUp(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	t.Run("native", func(t *testing.T) { checkSignalShutdown(t, binary) })
@@ -277,7 +278,7 @@ func TestNativeHTTPHost(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "server")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -343,7 +344,7 @@ func TestNativeSubprocessCapability(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	output, err := commandOutput(t, binary)
@@ -417,7 +418,7 @@ test "encoded nominal identity":
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	output, err := commandOutput(t, binary)
@@ -436,7 +437,7 @@ func TestExpandedLibraryCLICapabilities(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		binary += ".exe"
 	}
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	dataPath := filepath.Join(directory, "data")
@@ -513,7 +514,7 @@ export fn main() -> Int:
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(root, "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -529,7 +530,7 @@ func TestNetworkingStreamingAndWebSocket(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "networking")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -566,7 +567,7 @@ test "defaults use their declaration module":
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(root, "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	data, err := commandOutput(t, binary)

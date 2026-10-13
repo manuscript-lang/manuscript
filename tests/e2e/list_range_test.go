@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
@@ -13,12 +14,12 @@ func TestListGoRangeStandalone(t *testing.T) {
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	source, err := compiler.Standalone(result.Source)
+	source, err := build.Standalone(result.Source)
 	if err != nil {
 		t.Fatal(err)
 	}
 	binary := filepath.Join(t.TempDir(), "range")
-	if err := compiler.Build(source, binary); err != nil {
+	if err := build.Build(source, binary); err != nil {
 		t.Fatal(err)
 	}
 	if output, err := commandOutput(t, binary); err != nil || !strings.Contains(string(output), "6 tests, 0 failed") {
@@ -31,12 +32,12 @@ func TestListShrinkConsumersStandalone(t *testing.T) {
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	source, err := compiler.Standalone(result.Source)
+	source, err := build.Standalone(result.Source)
 	if err != nil {
 		t.Fatal(err)
 	}
 	binary := filepath.Join(t.TempDir(), "shrink")
-	if err := compiler.Build(source, binary); err != nil {
+	if err := build.Build(source, binary); err != nil {
 		t.Fatal(err)
 	}
 	if output, err := commandOutput(t, binary); err != nil || !strings.Contains(string(output), "10 tests, 0 failed") {

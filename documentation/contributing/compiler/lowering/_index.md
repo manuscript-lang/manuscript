@@ -9,7 +9,7 @@ Lowering translates checked Manuscript into Go. The generated code must preserve
 
 ## Structured Go generation
 
-`pkg/compiler/lower_*.go` consumes checked identities and the optimization view,
+`pkg/lower/lower_*.go` consumes checked identities and the optimization view,
 returning Go `ast.Expr` nodes and ordered `[]ast.Stmt` bodies. Function literals,
 declarations, and the complete `ast.File` are assembled directly; lowering never
 parses generated snippets. Small builders in `go_ast.go` express recurring Go
