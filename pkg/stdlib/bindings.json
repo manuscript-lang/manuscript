@@ -347,6 +347,7 @@
     "@std/intrinsics.ms/StringOperations/replace": "string/replace",
     "@std/intrinsics.ms/StringOperations/replace_all": "string/replace_all",
     "@std/intrinsics.ms/StringOperations/replace_first": "string/replace_first",
+    "@std/intrinsics.ms/StringOperations/replace_n": "string/replace_n",
     "@std/intrinsics.ms/StringOperations/reverse": "string/reverse",
     "@std/intrinsics.ms/StringOperations/scalar_at": "string/scalar_at",
     "@std/intrinsics.ms/StringOperations/scalar_length": "string/scalar_length",

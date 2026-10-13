@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `String.replace_n` with a required finite replacement cap and the existing literal/scalar, zero/negative and fault behavior; current `replace`/`replace_first` signatures remain compatible.
 - Add MSL108 advisories for equivalent preferred collection mutation, byte-copy reversal and regex replacement names, including stored methods; preserve user methods, callable fields and existing execution.
 - Add preferred `List.set`/`remove`/`reverse_in_place`, copying `List.reversed`/`Bytes.reversed`, `Set.add`/`remove`, `String.replace_first`, and `Regex.replace_all` spellings. Existing names remain compatible, including receiver returns, replacement caps, limits, and errors.
 - Report duration-unit property faults at the member token after evaluating the receiver, preserving source order and numeric widths.
