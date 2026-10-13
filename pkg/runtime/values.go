@@ -688,6 +688,7 @@ var implementations []Implementation
 var implementationsByName = map[string][]int{}
 
 func Register(implementation Implementation) {
+	implementationCache.Clear()
 	implementationsByName[implementation.Name] = append(implementationsByName[implementation.Name], len(implementations))
 	implementations = append(implementations, implementation)
 }
@@ -917,8 +918,43 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 	})
 }
 
+type implementationKey struct {
+	typ, contract, name, module, args string
+}
+
+// resolvedImplementation is the receiver-independent outcome of a lookup.
+type resolvedImplementation struct {
+	impl       *Implementation
+	sub        map[string]string
+	typeScopes map[string]TypeScope
+}
+
+// implementationCache memoizes lookups; Register discards it.
+var implementationCache sync.Map
+
 func implementationFunction(receiver Value, contract, name string, scope TypeScope) (Function, bool) {
-	typ := ConcreteType(receiver)
+	key := implementationKey{typ: ConcreteType(receiver), contract: contract, name: name, module: scope.Module}
+	if len(scope.Args) > 0 {
+		var b strings.Builder
+		writeScopeKey(&b, scope)
+		key.args = b.String()
+	}
+	if cached, ok := implementationCache.Load(key); ok {
+		resolved := cached.(*resolvedImplementation)
+		if resolved == nil {
+			return Function{}, false
+		}
+		return resolved.impl.Build(receiver, resolved.sub, resolved.typeScopes), true
+	}
+	resolved := resolveImplementation(key.typ, contract, name, scope)
+	implementationCache.Store(key, resolved)
+	if resolved == nil {
+		return Function{}, false
+	}
+	return resolved.impl.Build(receiver, resolved.sub, resolved.typeScopes), true
+}
+
+func resolveImplementation(typ, contract, name string, scope TypeScope) *resolvedImplementation {
 	for _, at := range implementationsByName[name] {
 		m := &implementations[at]
 		if m.Scope != "" && m.Scope != scope.Module {
@@ -932,10 +968,10 @@ func implementationFunction(receiver Value, contract, name string, scope TypeSco
 		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == contract) {
 			typeScopes := map[string]TypeScope{}
 			implementationScopes(m.Receiver, scope, vars, typeScopes)
-			return m.Build(receiver, sub, typeScopes), true
+			return &resolvedImplementation{m, sub, typeScopes}
 		}
 	}
-	return Function{}, false
+	return nil
 }
 
 func indexOfIn(ctx *Execution, items []Value, value Value) int {
