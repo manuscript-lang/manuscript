@@ -2398,6 +2398,14 @@ impl Error for FileSystemError:
     fn message() -> String:
 ```
 
+### FileSystemError.NotEmpty
+
+Removal failed because the directory still contains entries.
+
+```manuscript
+case NotEmpty
+```
+
 ## FileSystemInfo
 
 **Record**

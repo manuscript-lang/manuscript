@@ -2982,7 +2982,7 @@
               "name": "NotEmpty",
               "kind": "case",
               "signature": "case NotEmpty",
-              "doc": ""
+              "doc": "Removal failed because the directory still contains entries."
             },
             {
               "name": "NotFound",
