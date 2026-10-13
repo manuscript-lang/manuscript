@@ -262,6 +262,11 @@ and [measured storage/access paths](../scripts/bench-lists/typed-storage.md).
 Verify: fresh constructors and effectful sized initialization use two allocations,
 typed at/unwrap uses none, generic forwarding retains identity, and comparator
 profiling/returns/cancellation/depth/fault frames match ordinary source calls.
+Also exercise new List parity, sums, sorting and random helpers with typed backing;
+legacy boxed fixtures cannot expose reads of a typed List's nil Items field.
+Evidence: [parity storage regressions](../pkg/runtime/library_list_storage_parity_test.go),
+[sum tests](../pkg/runtime/library_numeric_parity_test.go), and
+[random tests](../pkg/runtime/library_random_parity_test.go).
 
 ### Format serialization must retain syntax provenance and native delimiter limits
 

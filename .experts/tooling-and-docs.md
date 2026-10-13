@@ -140,4 +140,3 @@ primitive type because legacy/large literals can still be boxed. Evidence:
 and [storage-aware renderer](../extensions/vscode/debug-adapter.js).
 Verify all four primitive backings, legacy/empty Lists, generic types and watch
 indexing; source values must not expose private header fields or inactive lengths.
-

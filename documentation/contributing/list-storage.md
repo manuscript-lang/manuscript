@@ -61,6 +61,17 @@ retains equal values' order and zero/NaN bits. A missing comparator for other
 element kinds faults. The source declarations determine where comparator
 omission is available; this ABI does not itself add source operations.
 
+Parity consumers follow the same boundary: List queries capture one traversal
+header, `insert` and `pop` use storage-aware splicing with non-clearing tails,
+and `sort_in_place` delegates to `ListSortInPlace`. The typed `sorted_int`,
+`sorted_float`, and `sorted_strings` helpers construct fresh primitive backing
+and use stable natural sorting. Numeric sums use captured primitive readers;
+random choices retain a captured header across entropy callbacks, and shuffles
+copy the active backing before swapping. None reads or writes a typed List's
+legacy `Items` field. See the [parity storage regressions](../../pkg/runtime/library_list_storage_parity_test.go)
+and the numeric/random runtime tests for typed and boxed compatibility, callback
+mutation, fresh shallow copies, cancellation, and unchanged draw sequences.
+
 Large-literal emission is separately owned by #147 and still needs these
 constructors. Typed source access/comparator lowering is separately owned by #87.
 The [measurement evidence](https://github.com/manuscript-lang/manuscript/blob/main/scripts/bench-lists/typed-storage.md) separates
