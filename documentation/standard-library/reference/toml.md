@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/toml.ms"`.
 
 ## TomlError {data-api-kind="Alternative"}
 
+Errors returned for invalid limits, malformed TOML, or exceeded resource bounds.
+
 ```manuscript
 type TomlError:
     case InvalidInput
@@ -22,6 +24,8 @@ impl Error for TomlError:
 
 ## TomlLimits {data-api-kind="Record"}
 
+Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
+
 ```manuscript
 type TomlLimits:
     max_bytes: Optional[Int]
@@ -30,6 +34,8 @@ type TomlLimits:
 ```
 
 ## TomlValue {data-api-kind="Alternative"}
+
+A TOML value. Date and time values retain their original TOML text.
 
 ```manuscript
 type TomlValue:
@@ -43,6 +49,8 @@ type TomlValue:
 ```
 
 ## parse {data-api-kind="Function"}
+
+Parses a TOML document into a table value and reports source line and column on invalid input.
 
 ```manuscript
 fn parse(text: String, limits: Optional[TomlLimits] = none) -> Result[TomlValue, TomlError]:

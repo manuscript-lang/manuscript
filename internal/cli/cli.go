@@ -65,6 +65,9 @@ func Run(args []string) int {
 	if args[0] == "doc" {
 		return runDoc(args[1:])
 	}
+	if args[0] == "init" {
+		return runInit(args[1:])
+	}
 	if args[0] == "fmt" {
 		return runFormat(args[1:])
 	}
@@ -476,6 +479,7 @@ func Run(args []string) int {
 			return status
 		}
 		child := exec.Command(executable, arguments...)
+		child.Dir = testWorkingDirectory(command, filename, result)
 		child.Stdin = os.Stdin
 		child.Stdout = os.Stdout
 		child.Stderr = os.Stderr
@@ -533,7 +537,7 @@ func plural(n int, one, many string) string {
 	return many
 }
 
-var commandNames = []string{"check", "lint", "build", "emit", "run", "test", "fmt", "inspect", "diagram", "profile", "debug", "lock", "doc", "stdlib", "lsp", "help"}
+var commandNames = []string{"check", "lint", "build", "emit", "run", "test", "fmt", "inspect", "diagram", "profile", "debug", "lock", "init", "doc", "stdlib", "lsp", "help"}
 
 // unknownCommand names the nearest command and lists the rest.
 func unknownCommand(name string) {
@@ -615,3 +619,20 @@ type dapStdio struct {
 func (s *dapStdio) Write(p []byte) (int, error) { return s.output.Write(p) }
 
 func (s *dapStdio) Close() error { _ = s.output.Close(); return s.File.Close() }
+
+// Tests run in the project directory (the one holding ms.toml), or beside the
+// test file for a single-file run, so fixtures such as "golden/x.md" resolve the
+// same way wherever ms is invoked. Other commands keep the caller's directory.
+func testWorkingDirectory(command, filename string, result compiler.Result) string {
+	if command != "test" {
+		return ""
+	}
+	directory := result.ProjectRoot
+	if directory == "" {
+		directory = filepath.Dir(filename)
+	}
+	if absolute, err := filepath.Abs(directory); err == nil {
+		return absolute
+	}
+	return ""
+}
