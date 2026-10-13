@@ -13,6 +13,48 @@ func TestFaultSourceLocations(t *testing.T) {
 		tests        bool
 		frames       []string
 	}{
+		{"Result unwrap", `fn deep(value: Result[Int, String]) -> Int:
+    return value.unwrap()
+export fn main() -> Int:
+    return deep(error("expected failure"))
+`, false, []string{"fault.ms:2:18 in deep", "fault.ms:4:12 in main"}},
+		{"bound Result unwrap_error", `export fn main() -> Int:
+    let value: Result[Int, String] = ok(0)
+    let extract = value.unwrap_error
+    return extract().scalar_length()
+`, false, []string{"fault.ms:4:12 in main"}},
+		{"Result callback fault", `fn crash(value: Int) -> Int:
+    return 1 / value
+export fn main() -> Int:
+    let value: Result[Int, String] = ok(0)
+    return value.map(crash).unwrap()
+`, false, []string{"fault.ms:2:14 in crash", "fault.ms:5:18 in main"}},
+		{"Result lazy fallback fault", `fn crash(cause: String) -> Int:
+    return 1 / 0
+export fn main() -> Int:
+    let value: Result[Int, String] = error("expected failure")
+    return value.unwrap_or_else(crash)
+`, false, []string{"fault.ms:2:14 in crash", "fault.ms:5:18 in main"}},
+		{"Map filter callback fault", `import Map from "@std/collections.ms"
+fn crash(key: String, value: Int) -> Bool:
+    return 1 / value == 0
+export fn main() -> Int:
+    let value: Map[String, Int] = {"a": 0}
+    return value.filter(crash).length()
+`, false, []string{"fault.ms:3:14 in crash", "fault.ms:6:18 in main"}},
+		{"Set map callback fault", `import Set from "@std/collections.ms"
+fn crash(value: Int) -> Int:
+    return 1 / value
+export fn main() -> Int:
+    let value = Set[Int]().with_value(0)
+    return value.map(crash).length()
+`, false, []string{"fault.ms:3:14 in crash", "fault.ms:6:18 in main"}},
+		{"Optional callback fault", `fn crash(value: Int) -> Optional[Int]:
+    return some(1 / value)
+export fn main() -> Int:
+    let value: Optional[Int] = some(0)
+    return value.and_then(crash).unwrap()
+`, false, []string{"fault.ms:2:19 in crash", "fault.ms:5:18 in main"}},
 		{"unwrap and caller", `import List from "@std/collections.ms"
 fn deep(l: List[Int], i: Int) -> Int:
     return l.at(i).unwrap()

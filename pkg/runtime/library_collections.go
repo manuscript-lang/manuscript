@@ -37,6 +37,47 @@ func init() {
 	add := func(name, result string, vars, params []LibraryParam, body func(*Execution, string, []Value) Value) {
 		libraryGeneric("collections", name, result, vars, params, body)
 	}
+	add("map_is_empty", "Bool", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, _ string, a []Value) Value {
+		return len(a[0].(*Map).Entries) == 0
+	})
+	add("map_get_or", "V", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("key", "K"), p("fallback", "V")}, func(ctx *Execution, _ string, a []Value) Value {
+		values := a[0].(*Map)
+		if index := values.find(ctx, a[1]); index >= 0 {
+			return values.Entries[index].Value
+		}
+		return a[2]
+	})
+	add("map_filter", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("predicate", "fn(key:K;value:V)->Bool")}, func(ctx *Execution, result string, a []Value) Value {
+		out := &Map{Type: result}
+		for _, entry := range a[0].(*Map).Entries {
+			CheckCancelled(ctx)
+			if Invoke(ctx, a[1], []Argument{{"key", entry.Key}, {"value", entry.Value}}).(bool) {
+				out.Entries = append(out.Entries, entry)
+			}
+		}
+		return out
+	})
+	add("set_is_empty", "Bool", hash, []LibraryParam{p("values", "Set[T]")}, func(_ *Execution, _ string, a []Value) Value {
+		return len(a[0].(*Set).Items) == 0
+	})
+	add("set_filter", "Set[T]", hash, []LibraryParam{p("values", "Set[T]"), p("predicate", "fn(value:T)->Bool")}, func(ctx *Execution, result string, a []Value) Value {
+		out := &Set{Type: result}
+		for _, value := range a[0].(*Set).Items {
+			CheckCancelled(ctx)
+			if Invoke(ctx, a[1], []Argument{{"value", value}}).(bool) {
+				out.Items = append(out.Items, value)
+			}
+		}
+		return out
+	})
+	add("set_map", "Set[U]", []LibraryParam{p("T", "Hashable"), p("U", "Hashable")}, []LibraryParam{p("values", "Set[T]"), p("transform", "fn(value:T)->U")}, func(ctx *Execution, result string, a []Value) Value {
+		out := &Set{Type: result}
+		for _, value := range a[0].(*Set).Items {
+			CheckCancelled(ctx)
+			out.add(ctx, Invoke(ctx, a[1], []Argument{{"value", value}}))
+		}
+		return out
+	})
 	for _, name := range []string{"first", "last", "at"} {
 		params := append([]LibraryParam{}, listParam...)
 		if name == "at" {
