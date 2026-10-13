@@ -89,7 +89,7 @@ func (g *TaskGroup) start(ctx *Execution, typ string, operation Value) Value {
 	g.mu.Lock()
 	if g.sealed || g.closing {
 		g.mu.Unlock()
-		return Panic("TaskGroup is joined or closed")
+		return Panic("TaskGroup is joined or closed; start tasks before join/close, or create a new TaskGroup")
 	}
 	if g.timeout != nil && g.timer == nil && !g.expired {
 		if *g.timeout == 0 {

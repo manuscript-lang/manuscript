@@ -39,7 +39,7 @@ func goToolchain() (string, []string, error) {
 			var err error
 			tool, err = exec.LookPath("go")
 			if err != nil {
-				return "", nil, fmt.Errorf("this developer binary has no bundled toolchain; use a Manuscript release binary, run make build, or set MANUSCRIPT_GO: %w", err)
+				return "", nil, fmt.Errorf("no Go toolchain found: this developer binary has no bundled toolchain and go is not on PATH; install Go 1.25 or newer, set MANUSCRIPT_GO to a go executable, or use a Manuscript release binary: %w", err)
 			}
 		}
 	}

@@ -4,25 +4,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
 // ResolveImport resolves a local import; standard imports belong to the checker.
 func ResolveImport(project Project, importer, path string, overlay map[string]string) (string, error) {
 	if strings.Contains(path, "\\") {
-		return "", fmt.Errorf("import paths use / separators")
+		return "", fmt.Errorf("import paths use / separators; write \"./dir/file.ms\" instead of backslashes")
 	}
 	var target string
 	if strings.HasPrefix(path, "./") || strings.HasPrefix(path, "../") {
 		if filepath.Ext(path) != ".ms" {
-			return "", fmt.Errorf("import path requires .ms extension")
+			return "", fmt.Errorf("import path requires .ms extension; write \"%s.ms\"", strings.TrimSuffix(path, filepath.Ext(path)))
 		}
 		target = filepath.Join(filepath.Dir(importer), path)
 	} else if strings.HasPrefix(path, "@") {
 		alias, remainder, _ := strings.Cut(path, "/")
 		base := project.Aliases[alias]
 		if base == "" {
-			return "", fmt.Errorf("unknown import alias %s", alias)
+			return "", fmt.Errorf("unknown import alias %s%s", alias, aliasHint(project.Aliases))
 		}
 		info, err := os.Stat(base)
 		if err != nil {
@@ -30,17 +31,17 @@ func ResolveImport(project Project, importer, path string, overlay map[string]st
 		}
 		if info.IsDir() {
 			if remainder == "" || filepath.Ext(remainder) != ".ms" {
-				return "", fmt.Errorf("directory alias requires a .ms path")
+				return "", fmt.Errorf("directory alias requires a .ms path; write \"%s/<file>.ms\"", alias)
 			}
 			target = filepath.Join(base, remainder)
 		} else {
 			if remainder != "" || filepath.Ext(base) != ".ms" {
-				return "", fmt.Errorf("file alias does not accept a suffix")
+				return "", fmt.Errorf("file alias does not accept a suffix; alias %s names one file, so import it as \"%s\" alone", alias, alias)
 			}
 			target = base
 		}
 	} else {
-		return "", fmt.Errorf("imports require a relative path or alias")
+		return "", fmt.Errorf("imports require a relative path or alias; write \"./%s\" for a file next to this one, \"@std/name.ms\" for the standard library, or declare an alias under [aliases] in ms.toml", path)
 	}
 	return SourcePath(project.Root, target, overlay)
 }
@@ -73,7 +74,19 @@ func SourcePath(root, path string, overlay map[string]string) (string, error) {
 	}
 	rel, err := filepath.Rel(root, canonical)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("path escapes project root: %s", path)
+		return "", fmt.Errorf("path escapes project root: %s; keep imported files inside the directory containing ms.toml (or the entry file's directory)", path)
 	}
 	return canonical, nil
+}
+
+func aliasHint(aliases map[string]string) string {
+	if len(aliases) == 0 {
+		return "; this project declares none, so add one under [aliases] in ms.toml, e.g. @lib = \"src/lib\" (use @std/... for the standard library)"
+	}
+	names := make([]string, 0, len(aliases))
+	for name := range aliases {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return "; declared aliases: " + strings.Join(names, ", ")
 }

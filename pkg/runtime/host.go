@@ -364,7 +364,7 @@ func RunMain(main Value, arguments []string) (exit int) {
 	value := Invoke(execution, main, nil).(int64)
 	CheckCancelled(execution)
 	if value < 0 || value > 125 {
-		Panic("main exit code must be between 0 and 125")
+		Panic("main exit code must be between 0 and 125; return 0 for success or a small positive Int for failure (126 and above are reserved by shells)")
 	}
 	return int(value)
 }

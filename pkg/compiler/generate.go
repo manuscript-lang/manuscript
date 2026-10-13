@@ -103,7 +103,7 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 	out.WriteString("}\n")
 	formatted, err := format.Source([]byte(out.String()))
 	if err != nil {
-		return "", fmt.Errorf("generated invalid Go: %w", err)
+		return "", fmt.Errorf("generated invalid Go: %w; this is a Manuscript compiler bug, so report it with the .ms source that triggers it", err)
 	}
 	return string(formatted), nil
 }

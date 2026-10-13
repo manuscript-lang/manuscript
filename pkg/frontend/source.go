@@ -3,6 +3,10 @@
 package frontend
 
 import (
+	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/parser"
@@ -68,5 +72,35 @@ func diagnostic(filename, phase string, err error) syntax.Diagnostic {
 	if issue, ok := err.(syntax.Diagnostic); ok {
 		return issue
 	}
-	return syntax.Diagnostic{Position: syntax.Position{File: filename, Line: 1, Column: 1}, Phase: phase, Message: err.Error()}
+	return syntax.Diagnostic{Position: syntax.Position{File: filename, Line: 1, Column: 1}, Phase: phase, Message: explainPathError(err, "")}
+}
+
+// explainPathError turns raw filesystem failures into a cause and a fix.
+// importPath is the import string when the failure came from an import.
+func explainPathError(err error, importPath string) string {
+	var pathError *fs.PathError
+	if !errors.As(err, &pathError) {
+		return err.Error()
+	}
+	name := pathError.Path
+	if relative, relErr := filepath.Rel(mustGetwd(), name); relErr == nil && !strings.HasPrefix(relative, "..") {
+		name = relative
+	}
+	switch {
+	case errors.Is(err, fs.ErrNotExist) && importPath != "":
+		return "cannot find module " + importPath + " (looked for " + name + "); check the spelling, make sure the file exists, and that the path is relative to the importing file"
+	case errors.Is(err, fs.ErrNotExist):
+		return "file not found: " + name + "; check the path, pass a .ms file or a project ms.toml, and run from the directory that contains it"
+	case errors.Is(err, fs.ErrPermission):
+		return "permission denied reading " + name + "; make the file readable"
+	}
+	return err.Error()
+}
+
+func mustGetwd() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return wd
 }

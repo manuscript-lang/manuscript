@@ -9,6 +9,10 @@ A diagnostic explains a problem and points to the source that caused it. Human-r
 
 Each diagnostic has a stable rule code, a readable message, and a primary source span. Related declarations or call sites use secondary spans. Source coordinates follow the [metadata span contract](../debugging/metadata.md).
 
+## Message shape
+
+A message names the cause first, then a fix after a semicolon: `<cause>; <fix>`. The cause keeps stable wording and states the offending name, type, or count; the fix is something to write or change, such as `did you mean 'count'?`, `add: import panic from "@std/faults.ms"`, `declare it with 'var x = ...' instead of 'let'`, or the list of valid arguments, members, cases, or exports. Rule codes classify only the text before the first `; `, so adding or rewording a fix never changes a code. A follow-on error that only restates an earlier one, such as `found <invalid>` after an unknown name, is not reported. A missing argument is reported at the call, naming the callee and parameter type. See the [diagnostic catalogue](../../contributing/diagnostics-catalogue.md) for the reviewed messages.
+
 ## Explaining a violated rule
 
 For example, a non-function argument to TaskGroup.start should identify the required callable type and source position. An invalid `with` initializer should identify the missing concrete implementation, contract operation, or generic-bound proof. A missing match alternative or unnamed argument should identify the relevant declaration and call-site location. Runtime closed-resource errors carry operation and source locations separately from static diagnostics.
