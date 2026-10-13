@@ -1,6 +1,9 @@
 package msruntime
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 // Scalar extraction and checked operations let generated numeric expressions
 // stay typed between operations, while values at language boundaries stay boxed.
@@ -11,18 +14,22 @@ func IntSubtract(a, b int64) int64   { return checkedSub(a, b) }
 func IntMultiply(a, b int64) int64   { return checkedMul(a, b) }
 
 func IntDivide(a, b int64) int64 {
-	if b == 0 {
-		Panic("division by zero; test that the divisor is not 0 before dividing")
-	}
-	if a == math.MinInt64 && b == -1 {
-		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+	if b == 0 || a == math.MinInt64 && b == -1 {
+		intDivisionFault(a, b)
 	}
 	return a / b
 }
 
+func intDivisionFault(a, b int64) {
+	if b == 0 {
+		Panic("Int./: division by zero; right must be nonzero, found 0")
+	}
+	Panic(fmt.Sprintf("Int./: overflow; found left %d and right %d; result must be between %d and %d", a, b, math.MinInt64, math.MaxInt64))
+}
+
 func IntRemainder(a, b int64) int64 {
 	if b == 0 {
-		Panic("division by zero; test that the divisor is not 0 before dividing")
+		Panic("Int.%: remainder by zero; right must be nonzero, found 0")
 	}
 	return a % b
 }
