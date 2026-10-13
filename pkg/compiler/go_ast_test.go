@@ -2,7 +2,9 @@ package compiler
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -29,6 +31,12 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if got := fmt.Sprintf("%x", sha256.Sum256(baseline)); got != "f371e92ed76ad6e5aa50dda0e75d83f9e64016fa73179095cc4356882fcd8b3a" {
+		t.Fatalf("independent golden was changed: %s", got)
+	}
+	if count := strings.Count(string(source), "-9223372036854775808"); count != 1 {
+		t.Fatalf("unexpected source minimum count: %d", count)
+	}
 	result := CompileSource("ast-lowering.ms", strings.ReplaceAll(string(source), "-9223372036854775808", "-2147483648"), Options{Tests: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -48,7 +56,20 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	// The historical artifact retains its bytes. Its primitive box spellings are
 	// adapted only while executing against the current 32-bit runtime ABI,
 	// including this fixture's directly negated minimum literal.
-	baselineABI := strings.NewReplacer("int64(", "int32(", "float64(", "float32(", "-9223372036854775808", "-2147483648").Replace(string(baseline))
+	baselineABI := string(baseline)
+	for _, edit := range []struct {
+		before, after string
+		count         int
+	}{
+		{"int64(", "int32(", 26}, {"float64(", "float32(", 6},
+		{"-9223372036854775808", "-2147483648", 1},
+		{"rt.TraceSource(&sourcePosition,", "rt.TraceSource(ctx, &sourcePosition,", 7},
+	} {
+		if count := strings.Count(baselineABI, edit.before); count != edit.count {
+			t.Fatalf("unexpected golden compatibility count for %q: %d", edit.before, count)
+		}
+		baselineABI = strings.ReplaceAll(baselineABI, edit.before, edit.after)
+	}
 	for _, source := range []string{baselineABI, result.Source} {
 		binary := filepath.Join(t.TempDir(), "program")
 		if err := Build(source, binary); err != nil {

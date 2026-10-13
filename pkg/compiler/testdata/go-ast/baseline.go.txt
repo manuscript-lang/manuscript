@@ -17,7 +17,7 @@ func initialize() {
 		_ = typeArgs
 		return rt.NewSourceFunction([]string{"value"}, "module/6173742d6c6f776572696e672e6d73#Counter", "ast-lowering.ms:4:1", func(ctx *rt.Execution, args []rt.Value) rt.Value {
 			sourcePosition := "ast-lowering.ms:4:1"
-			defer rt.TraceSource(ctx, &sourcePosition, "Counter")
+			defer rt.TraceSource(&sourcePosition, "Counter")
 			cleanupStack := rt.NewCleanupStack()
 			defer cleanupStack.Unwind()
 			local8_value := args[0]
@@ -36,7 +36,7 @@ func initialize() {
 		_ = typeArgs
 		return rt.NewSourceFunction([]string{"counter"}, "Bool", "ast-lowering.ms:7:30", func(ctx *rt.Execution, args []rt.Value) rt.Value {
 			sourcePosition := "ast-lowering.ms:7:30"
-			defer rt.TraceSource(ctx, &sourcePosition, "bump")
+			defer rt.TraceSource(&sourcePosition, "bump")
 			cleanupStack := rt.NewCleanupStack()
 			defer cleanupStack.Unwind()
 			local10_counter := args[0]
@@ -54,7 +54,7 @@ func initialize() {
 	symbol3 = rt.Generic{Variables: []string{"typevar6"}, Build: func(typeArgs map[string]string, typeScopes map[string]rt.TypeScope) rt.Function {
 		return rt.NewSourceFunction([]string{"value"}, rt.ResolveType("typevar6", typeArgs), "ast-lowering.ms:11:29", func(ctx *rt.Execution, args []rt.Value) rt.Value {
 			sourcePosition := "ast-lowering.ms:11:29"
-			defer rt.TraceSource(ctx, &sourcePosition, "identity")
+			defer rt.TraceSource(&sourcePosition, "identity")
 			cleanupStack := rt.NewCleanupStack()
 			defer cleanupStack.Unwind()
 			local12_value := args[0]
@@ -71,7 +71,7 @@ func initialize() {
 		_ = typeArgs
 		return rt.NewSourceFunction([]string{"left", "right"}, "Int", "ast-lowering.ms:13:42", func(ctx *rt.Execution, args []rt.Value) rt.Value {
 			sourcePosition := "ast-lowering.ms:13:42"
-			defer rt.TraceSource(ctx, &sourcePosition, "combine")
+			defer rt.TraceSource(&sourcePosition, "combine")
 			cleanupStack := rt.NewCleanupStack()
 			defer cleanupStack.Unwind()
 			local14_left := args[0]
@@ -94,7 +94,7 @@ func initialize() {
 		_ = typeArgs
 		return rt.NewSourceFunction([]string{"a", "b", "c"}, "Float", "ast-lowering.ms:15:47", func(ctx *rt.Execution, args []rt.Value) rt.Value {
 			sourcePosition := "ast-lowering.ms:15:47"
-			defer rt.TraceSource(ctx, &sourcePosition, "floatMath")
+			defer rt.TraceSource(&sourcePosition, "floatMath")
 			cleanupStack := rt.NewCleanupStack()
 			defer cleanupStack.Unwind()
 			local17_a := args[0]
@@ -150,7 +150,7 @@ func main() {
 			_ = typeArgs
 			return rt.NewSourceFunction([]string{}, "Unit", "ast-lowering.ms:17:1", func(ctx *rt.Execution, args []rt.Value) rt.Value {
 				sourcePosition := "ast-lowering.ms:17:1"
-				defer rt.TraceSource(ctx, &sourcePosition, "test structured lowering")
+				defer rt.TraceSource(&sourcePosition, "test structured lowering")
 				cleanupStack := rt.NewCleanupStack()
 				defer cleanupStack.Unwind()
 				sourcePosition = "ast-lowering.ms:18:5"
@@ -210,7 +210,7 @@ func main() {
 				var local29_snapshot rt.Value = func(temporary1 rt.Value) rt.Function {
 					return rt.NewSourceFunction([]string{"value"}, "Int", "ast-lowering.ms:30:38", func(ctx *rt.Execution, args []rt.Value) rt.Value {
 						sourcePosition := "ast-lowering.ms:30:38"
-						defer rt.TraceSource(ctx, &sourcePosition, "<anonymous>")
+						defer rt.TraceSource(&sourcePosition, "<anonymous>")
 						cleanupStack := rt.NewCleanupStack()
 						defer cleanupStack.Unwind()
 						local28_value := args[0]

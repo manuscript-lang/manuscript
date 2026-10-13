@@ -166,6 +166,9 @@ func check() error {
 			return fmt.Errorf("unexpected test output: %q", data)
 		}
 	}
+	if err := checkNumericFixtures(cli, directory, run); err != nil {
+		return err
+	}
 	if err := checkLibraryNative(cli, library, run); err != nil {
 		return err
 	}

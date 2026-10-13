@@ -155,3 +155,23 @@ test "wide equality retains explicit and generic views":
     keys.with_value(integer)
     if not keys.contains(integer) or not keys.contains(identity(integer)):
         return panic("wide hash collection membership changed")
+
+fn choose_wide[T](value: T, producer: fn(input: Int) -> T) -> T: value
+
+test "fresh nested calls and fully annotated producers receive wide literal context":
+    let integer: Optional[Int64] = some(identity(1))
+    let fraction: Optional[Float64] = some(identity(0.1))
+    let explicit: Optional[Float64] = Optional[Float64].some(identity(0.1))
+    let produced = choose_wide(
+        identity(0.1),
+        fn(input: Int) -> Float64: 0.1
+    )
+    if integer.unwrap().to_int().unwrap() != 1:
+        return panic("nested integer box did not retain context")
+    if (
+        fraction.unwrap() != 0.10000000000000001
+        or explicit.unwrap() != fraction.unwrap()
+    ):
+        return panic("nested float was rounded before context")
+    if produced != fraction.unwrap():
+        return panic("annotated input producer lost its evidence")

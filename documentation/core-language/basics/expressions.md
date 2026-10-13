@@ -56,11 +56,11 @@ Contract views use `Payments(card)` or `Payments(value: card)`. [Contract views]
 
 | Operator | Accepted operands | Result |
 | --- | --- | --- |
-| Unary `+`, `-` | Int, Float, or Decimal | Same numeric type |
-| `+`, `-`, `*`, `/` | Both Int, both Float, or both Decimal | The common operand type |
+| Unary `+`, `-` | Int, Int64, Float, Float64, or Decimal | Same numeric type |
+| `+`, `-`, `*`, `/` | Both Int, both Int64, both Float, both Float64, or both Decimal | The common operand type |
 | `+` | Both String | String |
-| `%` | Both Int | Int |
-| `<`, `<=`, `>`, `>=` | Both Int, both Float, both Decimal, or both String | Bool |
+| `%` | Both Int or both Int64 | The common integer type |
+| `<`, `<=`, `>`, `>=` | Both Int, both Int64, both Float, both Float64, both Decimal, or both String | Bool |
 | `==`, `!=` | Same exact type satisfying Equal | Bool |
 | `not` | Bool | Bool |
 | `and`, `or` | Both Bool | Bool |

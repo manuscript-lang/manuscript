@@ -42,7 +42,7 @@ function sourceType(native) {
   native = (native || '').replace(/^.+: (interface \{\}.*)$/, '$1');
   const match = /^interface \{\}\(([^)]+)\)$/.exec(native);
   const concrete = match ? match[1] : native;
-  const wide = /^(?:main|msruntime|runtime)\.(Int64|Float64)$/.exec(concrete);
+  const wide = /^(?:main|msruntime|runtime|github\.com\/manuscript-lang\/manuscript\/pkg\/runtime)\.(Int64|Float64)$/.exec(concrete);
   return wide ? wide[1] : (primitives[concrete] || native);
 }
 function runtimeType(key) {

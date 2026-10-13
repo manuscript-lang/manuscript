@@ -46,3 +46,22 @@ test "time preserves counts beyond signed32":
 
 test "file offsets and sizes have explicit wide identities":
     verify_file_offsets().unwrap()
+
+import {parse, TomlValue} from "@std/toml.ms"
+import Map from "@std/collections.ms"
+
+fn toml_entries(value: TomlValue) -> Map[String, TomlValue]:
+    match value:
+        TableValue(entries): return entries
+        _: return panic("expected TOML table")
+
+test "TOML float payloads retain binary64 precision and range":
+    let values = toml_entries(
+        parse("fraction=0.10000000000000001\nlarge=1e300\n").unwrap()
+    )
+    if values.get("fraction").unwrap() != TomlValue.FloatValue(0.10000000000000001):
+        return panic("TOML fraction narrowed")
+    if values.get("fraction").unwrap() == TomlValue.FloatValue(0.1.to_float64()):
+        return panic("TOML fraction passed through binary32")
+    if values.get("large").unwrap() != TomlValue.FloatValue(1e300):
+        return panic("TOML float range narrowed")

@@ -50,7 +50,12 @@ func TestDebugLiteralBuildSelection(t *testing.T) {
 	})
 	// Hash the constructor rather than unrelated stdlib registrations, which
 	// evolve on main. The complete before-source hash is also retained.
-	if got := fmt.Sprintf("%x", sha256.Sum256(constructor.Bytes())); got != "14f056a0e496cbba6ff77959a189419ceed5206a63a9ece9b49aa07aae677362" {
+	// Compare the recorded constructor after only its known numeric ABI spelling.
+	if count := strings.Count(constructor.String(), "int32(7)"); count != 1100 {
+		t.Fatalf("unexpected ABI edit count: %d", count)
+	}
+	baselineABI := strings.ReplaceAll(constructor.String(), "int32(7)", "int64(7)")
+	if got := fmt.Sprintf("%x", sha256.Sum256([]byte(baselineABI))); got != "14f056a0e496cbba6ff77959a189419ceed5206a63a9ece9b49aa07aae677362" {
 		t.Fatal("default lowering changed from the independent baseline", got)
 	}
 	for _, kind := range []BuildType{Release, RelWithDebInfo, MinSizeRel} {

@@ -14,6 +14,15 @@ type callInferenceContext struct {
 // callbacks when another argument provides their input context.
 func (c *checker) inferArguments(args []syntax.Argument, params []Param, variables []*Type, sub map[string]*Type, context *callInferenceContext) {
 	vars := variableSet(variables)
+	wideContext := context != nil && containsWideNumeric(context.expected)
+	for _, param := range params {
+		wideContext = wideContext || containsWideNumeric(Sub(param.Type, sub))
+	}
+	for _, arg := range args {
+		if arg.Value.Kind == syntax.KindLambda && arg.Value.Result != nil {
+			wideContext = wideContext || containsWideNumeric(c.resolve(arg.Value.Result, false))
+		}
+	}
 	pending := []syntax.Argument{}
 	numeric := []syntax.Argument{}
 	parameter := func(name string) *Type {
@@ -50,17 +59,20 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 	}
 	for _, arg := range args {
 		if arg.Value.Kind == syntax.KindLambda {
-			// An explicitly wide zero-input producer is complete evidence.
+			// A fully annotated wide producer supplies complete independent evidence.
 			// Check it before a numeric token commits its fallback width.
-			if len(arg.Value.Params) == 0 && arg.Value.Result != nil &&
-				containsWideNumeric(c.resolve(arg.Value.Result, false)) {
+			complete := arg.Value.Result != nil
+			for _, param := range arg.Value.Params {
+				complete = complete && param.Type != nil
+			}
+			if complete && containsWideNumeric(c.resolve(arg.Value.Result, false)) {
 				if actual := c.independentArgument(arg.Value); actual != nil {
 					contribute(arg, actual)
 					continue
 				}
 			}
 			pending = append(pending, arg)
-		} else if numericLiteralExpression(arg.Value) {
+		} else if numericLiteralExpression(arg.Value) || wideContext && freshNumericCall(arg.Value) {
 			numeric = append(numeric, arg)
 		} else if !c.contextual(arg.Value) {
 			if actual := c.independentArgument(arg.Value); actual != nil {
@@ -77,11 +89,26 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 	// parameter/other argument/explicit result can select a wider literal type.
 	for _, arg := range numeric {
 		target := Sub(parameter(arg.Name), sub)
+		payload := target
 		if std(target, "Optional") && len(target.Args) == 1 {
-			target = target.Args[0]
+			payload = target.Args[0]
+		}
+		literalContext := numericLiteralContext(arg.Value, payload)
+		if freshNumericCall(arg.Value) && containsWideNumeric(target) {
+			literalContext = target
+			if std(target, "Optional") && len(target.Args) == 1 {
+				// Determine whether the fresh expression already constructs an
+				// Optional; the existing argument wrapper applies to plain values.
+				checkpoint := len(c.Diagnostics)
+				probe := c.expression(arg.Value, nil)
+				c.Diagnostics = c.Diagnostics[:checkpoint]
+				if !std(probe.Type, "Optional") {
+					literalContext = payload
+				}
+			}
 		}
 		checkpoint := len(c.Diagnostics)
-		actual := c.expression(arg.Value, numericLiteralContext(arg.Value, target))
+		actual := c.expression(arg.Value, literalContext)
 		if len(c.Diagnostics) != checkpoint {
 			c.Diagnostics = c.Diagnostics[:checkpoint]
 			continue

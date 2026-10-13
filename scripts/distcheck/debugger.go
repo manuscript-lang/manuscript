@@ -47,6 +47,17 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	if err := checkDAP(cli, directory, environment, binary, source, 3, true); err != nil {
 		return err
 	}
+	wideSource := filepath.Join(directory, "debug wide.ms")
+	if err := os.WriteFile(wideSource, []byte("export fn main() -> Int:\n    let wide_count: Int64 = 3000000000\n    let wide_fraction: Float64 = 0.10000000000000001\n    let result = 42\n    if wide_count != 3000000000 or wide_fraction != 0.10000000000000001: return 1\n    return result - 42\n"), 0600); err != nil {
+		return err
+	}
+	wideBinary := binary + "-wide"
+	if _, err := run(cli, "build", wideSource, "--debug", "-o", wideBinary); err != nil {
+		return err
+	}
+	if err := checkDAP(cli, directory, environment, wideBinary, wideSource, 6, true, true); err != nil {
+		return err
+	}
 	// Stop while running too: EOF must halt and reap a target, not just close a
 	// connection while the target remains alive. Reading stdin before the source
 	// breakpoint must see EOF, never block on or consume the DAP protocol pipe.
@@ -70,7 +81,7 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	if err != nil {
 		return fmt.Errorf("standalone terminal: %w\n%s", err, output)
 	}
-	for _, want := range []string{"Go-module path guessing is unavailable", "Breakpoint 1", "result = interface {}(int64) 42", "exited with status 0"} {
+	for _, want := range []string{"Go-module path guessing is unavailable", "Breakpoint 1", "result = interface {}(int32) 42", "exited with status 0"} {
 		if !strings.Contains(string(output), want) {
 			return fmt.Errorf("standalone terminal missing %q:\n%s", want, output)
 		}
@@ -78,7 +89,7 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	return nil
 }
 
-func checkDAP(cli, directory string, environment []string, binary, source string, breakpointLine int, disconnect bool) (resultErr error) {
+func checkDAP(cli, directory string, environment []string, binary, source string, breakpointLine int, disconnect bool, wideLocals ...bool) (resultErr error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, cli, "dap")
@@ -151,7 +162,7 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 			return ok && r.GetResponse().Command == command
 		})
 	}
-	if err := request("initialize", map[string]any{"adapterID": "manuscript", "pathFormat": "path", "linesStartAt1": true, "columnsStartAt1": true}); err != nil {
+	if err := request("initialize", map[string]any{"adapterID": "manuscript", "pathFormat": "path", "linesStartAt1": true, "columnsStartAt1": true, "supportsVariableType": true}); err != nil {
 		return err
 	}
 	if _, err := response("initialize"); err != nil {
@@ -182,11 +193,14 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 		return err
 	}
 	thread := reply.(*dap.StoppedEvent).Body.ThreadId
-	if err := request("next", map[string]any{"threadId": thread}); err != nil {
-		return err
-	}
-	if _, err := receive(func(m dap.Message) bool { _, ok := m.(*dap.StoppedEvent); return ok }); err != nil {
-		return err
+	wide := len(wideLocals) > 0 && wideLocals[0]
+	if !wide {
+		if err := request("next", map[string]any{"threadId": thread}); err != nil {
+			return err
+		}
+		if _, err := receive(func(m dap.Message) bool { _, ok := m.(*dap.StoppedEvent); return ok }); err != nil {
+			return err
+		}
 	}
 	if err := request("stackTrace", map[string]any{"threadId": thread}); err != nil {
 		return err
@@ -196,7 +210,8 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 		return err
 	}
 	frames := reply.(*dap.StackTraceResponse).Body.StackFrames
-	if len(frames) == 0 || frames[0].Source == nil || filepath.Clean(frames[0].Source.Path) != filepath.Clean(source) || (frames[0].Line <= breakpointLine || frames[0].Line > breakpointLine+2) {
+	if len(frames) == 0 || frames[0].Source == nil || filepath.Clean(frames[0].Source.Path) != filepath.Clean(source) ||
+		(!wide && (frames[0].Line <= breakpointLine || frames[0].Line > breakpointLine+2)) || (wide && frames[0].Line != breakpointLine) {
 		return fmt.Errorf("source step mismatch: %+v", frames)
 	}
 	if err := request("scopes", map[string]any{"frameId": frames[0].Id}); err != nil {
@@ -217,14 +232,20 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 	if err != nil {
 		return err
 	}
-	found := false
-	for _, v := range reply.(*dap.VariablesResponse).Body.Variables {
-		if strings.HasSuffix(v.Name, "_result") && strings.Contains(v.Value, "42") {
-			found = true
-		}
+	expectedLocals := []struct{ name, typ, value string }{{"_result", "int32", "42"}}
+	if wide {
+		expectedLocals = append(expectedLocals, struct{ name, typ, value string }{"_wide_count", "Int64", "3000000000"}, struct{ name, typ, value string }{"_wide_fraction", "Float64", "0.1"})
 	}
-	if !found {
-		return fmt.Errorf("missing source local result=42: %+v", reply)
+	for _, expected := range expectedLocals {
+		found := false
+		for _, v := range reply.(*dap.VariablesResponse).Body.Variables {
+			if strings.HasSuffix(v.Name, expected.name) && numericDebuggerType(v.Type, expected.typ) && strings.HasSuffix(v.Value, " "+expected.value) {
+				found = true
+			}
+		}
+		if !found {
+			return fmt.Errorf("missing source local %s type %s value %s: %+v", expected.name, expected.typ, expected.value, reply)
+		}
 	}
 	if pid == 0 {
 		return fmt.Errorf("missing debuggee process event")
@@ -259,4 +280,16 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 		return fmt.Errorf("debuggee %d survived DAP shutdown (disconnect=%v)", pid, disconnect)
 	}
 	return nil
+}
+
+func numericDebuggerType(actual, wanted string) bool {
+	if actual == wanted || actual == "interface {}("+wanted+")" {
+		return true
+	}
+	for _, prefix := range []string{"main", "runtime", "msruntime", "github.com/manuscript-lang/manuscript/pkg/runtime"} {
+		if actual == prefix+"."+wanted || actual == "interface {}("+prefix+"."+wanted+")" {
+			return true
+		}
+	}
+	return false
 }

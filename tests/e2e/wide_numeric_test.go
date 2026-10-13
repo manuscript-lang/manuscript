@@ -9,8 +9,9 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
-func TestWideNumericStandalone(t *testing.T)    { numericStandalone(t, "wide-numbers.ms", 5) }
+func TestWideNumericStandalone(t *testing.T)    { numericStandalone(t, "wide-numbers.ms", 6) }
 func TestDefaultNumericStandalone(t *testing.T) { numericStandalone(t, "default-numbers.ms", 4) }
+func TestWideHostStandalone(t *testing.T)       { numericStandalone(t, "wide-host-contracts.ms", 3) }
 func numericStandalone(t *testing.T, fixture string, tests int) {
 	t.Helper()
 	result := compiler.CompileFile(filepath.Join("testdata/accept", fixture), compiler.Options{Tests: true})

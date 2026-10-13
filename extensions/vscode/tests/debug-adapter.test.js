@@ -28,7 +28,7 @@ test('Manuscript values use source names and lazy structured handles', async () 
 
 test('explicit wide scalars render at native and standalone boundaries', () => {
   const adapter = new ManuscriptAdapter(new PassThrough());
-  for (const prefix of ['main', 'msruntime', 'runtime']) {
+  for (const prefix of ['main', 'msruntime', 'runtime', 'github.com/manuscript-lang/manuscript/pkg/runtime']) {
     for (const kind of ['Int64', 'Float64']) {
       assert.equal(sourceType(`interface {}(${prefix}.${kind})`), kind);
       assert.equal(sourceType(`${prefix}.${kind}`), kind);
@@ -43,7 +43,7 @@ test('explicit wide scalars render at native and standalone boundaries', () => {
 test('native DAP source stepping and Manuscript record/list/variant rendering', { skip: !process.env.MANUSCRIPT_DAP_TEST, timeout: 60000 }, async () => {
   const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript dap test ')));
   const program = path.join(directory, 'main.ms');
-  const source = 'import List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1\n';
+  const source = 'import List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let wide_count: Int64 = 3000000000\n    let wide_fraction: Float64 = 0.10000000000000001\n    let fraction = 0.1\n    let items = [1, 2, 3]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1\n';
   await fs.writeFile(program, source);
   const returnLine = source.split('\n').findIndex(line => line.trim().startsWith('return box.')) + 1;
   const output = new PassThrough(); const messages = []; const waiters = [];
@@ -80,6 +80,10 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
     const fields = await response(request('variables', { variablesReference: box.variablesReference }));
     assert.ok(fields.variables.find(variable => variable.name === 'count'),JSON.stringify(fields));
     assert.equal(fields.variables.find(variable => variable.name === 'count').value, '42');
+    for (const [name, type, value] of [['wide_count','Int64','3000000000'],['wide_fraction','Float64','0.1'],['fraction','Float','0.1']]) {
+      const variable = locals.variables.find(item => item.name === name);
+      assert.ok(variable, JSON.stringify(locals)); assert.equal(variable.type,type); assert.equal(variable.value,value); assert.equal(variable.variablesReference,0);
+    }
     const items = locals.variables.find(variable => variable.name === 'items'); assert.equal(items.type, 'List[Int]');
     const values = await response(request('variables', { variablesReference: items.variablesReference })); assert.equal(values.variables.length, 3);
     const watch = await response(request('evaluate',{frameId:stack.stackFrames[0].id,expression:'box.count',context:'watch'}));assert.equal(watch.result,'42');

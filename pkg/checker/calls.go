@@ -377,6 +377,9 @@ func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info
 	if numericLiteralContext(e, context) != nil && (info == nil || !Same(info.Type, context)) {
 		info = nil // Concrete numeric context replaces only literal inference.
 	}
+	if freshNumericCall(e) && containsWideNumeric(expected) && info != nil && !compatible(info.Type, expected) && !compatible(info.Type, context) {
+		info = nil // A fresh expression can be checked under new literal context.
+	}
 	if e.Kind == syntax.KindLambda && info != nil && !Same(info.Type, callbackContext(expected)) {
 		info = nil // Later inference changed the callback's required signature.
 	}

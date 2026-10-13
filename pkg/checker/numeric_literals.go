@@ -68,3 +68,17 @@ func (c *checker) numericOperands(e *syntax.Expression, expected *Type) (*Info, 
 	left := c.expression(e.Left, numericLiteralContext(e.Left, expected))
 	return left, c.expression(e.Right, numericLiteralContext(e.Right, left.Type))
 }
+
+// A fresh call can pass literal context through generic results. This never
+// follows names or fields back to their initializers: bound values keep their type.
+func freshNumericCall(e *syntax.Expression) bool {
+	if e == nil || e.Kind != syntax.KindCall {
+		return false
+	}
+	for _, arg := range e.Args {
+		if numericLiteralExpression(arg.Value) || freshNumericCall(arg.Value) {
+			return true
+		}
+	}
+	return false
+}
