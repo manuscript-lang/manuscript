@@ -383,7 +383,14 @@ func libraryRemoveTree(ctx *Execution, p string) error {
 		return err
 	}
 	defer root.Close()
-	return libraryRemoveRoot(ctx, root, ".")
+	if err := libraryRemoveRoot(ctx, root, "."); err != nil {
+		return err
+	}
+	// Windows cannot remove the root directory while its handle is open.
+	if err := root.Close(); err != nil {
+		return err
+	}
+	return os.Remove(p)
 }
 func libraryRemoveRoot(ctx *Execution, root *os.Root, p string) error {
 	CheckCancelled(ctx)
@@ -414,8 +421,11 @@ func libraryRemoveRoot(ctx *Execution, root *os.Root, p string) error {
 		}
 		CheckCancelled(ctx)
 	}
+	if err := file.Close(); err != nil {
+		return err
+	}
 	if p == "." {
-		return os.Remove(root.Name())
+		return nil
 	}
 	return root.Remove(p)
 }
