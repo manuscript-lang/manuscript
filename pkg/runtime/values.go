@@ -158,6 +158,19 @@ func Invoke(ctx *Execution, callee Value, args []Argument) Value {
 	CheckCancelled(ctx)
 	return f.Body(ctx, ordered)
 }
+
+// Lazy holds a value built on first use; generated code keeps one per call site
+// whose type arguments are known statically, so repeated calls skip Specialize.
+type Lazy struct {
+	once  sync.Once
+	value Value
+}
+
+func (l *Lazy) Get(build func() Value) Value {
+	l.once.Do(func() { l.value = build() })
+	return l.value
+}
+
 func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 	g, ok := value.(Generic)
 	if !ok {

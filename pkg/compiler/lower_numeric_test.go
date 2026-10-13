@@ -122,3 +122,22 @@ fn nested(n: Int) -> Result[Int, String]:
 		t.Fatalf("only the nested try keeps the panic form:\n%s", result.Source)
 	}
 }
+
+func TestStaticSpecializationIsHoisted(t *testing.T) {
+	result := compiler.CompileSource("hoist.ms", `fn ident[T](x: T) -> T:
+    return x
+fn twice[T](x: T) -> T:
+    return ident(x: ident(x: x))
+fn use() -> Int:
+    return ident(x: 1) + ident(x: 2)
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	if strings.Count(result.Source, "var specialized1 rt.Lazy") != 1 || strings.Contains(result.Source, "specialized2") {
+		t.Fatalf("one hoisted specialization expected for the shared Int call sites:\n%s", result.Source)
+	}
+	if strings.Count(result.Source, "rt.Specialize(") != 4 {
+		t.Fatalf("static Int sites share a Lazy; type-variable sites stay dynamic:\n%s", result.Source)
+	}
+}
