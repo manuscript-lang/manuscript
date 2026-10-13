@@ -52,7 +52,7 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 		if len(arguments) == 0 && g.program.Expressions[e.Left.Left].Type.ID == "@std/List" {
 			return g.locatedOperation(e, runtimeName("ListIsEmpty"), ident("ctx"), g.expression(e.Left.Left))
 		}
-	case "collections/contains", "contains", "get", "with_entry", "with_value":
+	case "collections/contains", "contains", "get", "with_entry", "with_value", "collections/map_add":
 		return g.directKeyedCall(e, callee.Method.Native, arguments)
 	case "string/at":
 		if len(arguments) == 1 && g.program.Expressions[e.Left.Left].Type.ID == "String" {
@@ -87,7 +87,7 @@ func (g *generator) directKeyedCall(e *syntax.Expression, native string, argumen
 		name = "MapContains"
 	case "@std/Map/get":
 		name = "MapGet"
-	case "@std/Map/with_entry":
+	case "@std/Map/with_entry", "@std/Map/collections/map_add":
 		name = "MapWithEntry"
 	case "@std/Set/contains":
 		name = "SetContains"

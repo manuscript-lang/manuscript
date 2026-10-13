@@ -16,6 +16,7 @@ func TestDirectCollectionCallsRetainArgumentConversions(t *testing.T) {
 		{"list contains", "List[Optional[Int]]", "values.contains(7)", "ListContains", []int{2}},
 		{"map contains", "Map[Optional[Int], Int]", "values.contains(7)", "MapContains", []int{2}},
 		{"map get", "Map[Optional[Int], Int]", "values.get(7)", "MapGet", []int{2}},
+		{"map add", "Map[Optional[Int], Optional[Int]]", "values.add(7, 9)", "MapWithEntry", []int{2, 3}},
 		{"map entry", "Map[Optional[Int], Optional[Int]]", "values.with_entry(7, 9)", "MapWithEntry", []int{2, 3}},
 		{"set contains", "Set[Optional[Int]]", "values.contains(7)", "SetContains", []int{2}},
 		{"set value", "Set[Optional[Int]]", "values.with_value(7)", "SetWithValue", []int{2}},

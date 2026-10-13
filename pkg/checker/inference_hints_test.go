@@ -10,13 +10,13 @@ import (
 )
 
 func TestKnownStandardTypeImportHint(t *testing.T) {
-	m, err := parser.Parse("import-hint.ms", "fn boxed(value: List[Int]) -> Unit: return\n")
+	m, err := parser.Parse("import-hint.ms", "fn boxed(value: Set[Int]) -> Unit: return\n")
 	if err != nil {
 		t.Fatal(err)
 	}
 	p := checker.Check([]*syntax.Module{m}, nil)
-	if len(p.Diagnostics) != 1 || !strings.Contains(p.Diagnostics[0].Message, `add: import List from "@std/collections.ms"`) {
-		t.Fatalf("expected canonical List import hint, got %v", p.Diagnostics)
+	if len(p.Diagnostics) != 1 || !strings.Contains(p.Diagnostics[0].Message, `add: import Set from "@std/collections.ms"`) {
+		t.Fatalf("expected canonical Set import hint, got %v", p.Diagnostics)
 	}
 }
 
@@ -41,7 +41,7 @@ fn first() -> Result[Int, String]:
 }
 
 func TestUnknownTypeDoesNotCascadeIntoInference(t *testing.T) {
-	source := `import List from "@std/collections.ms"
+	source := `import Set from "@std/collections.ms"
 fn collect[T, U](items: List[T], step: fn(value: T) -> Result[List[U], MissingError]) -> Result[List[U], MissingError]:
     return step(items.at(0).unwrap())
 fn first() -> Unit:
