@@ -31,6 +31,7 @@ func main() {
 	output := flag.String("output", "", "directory for prepared binaries and capture files (required)")
 	count := flag.Int("count", 3, "repetitions after warmup")
 	buildOnly := flag.Bool("build-only", false, "prepare binaries before measuring")
+	modes := flag.String("modes", "none,cpu,heap,trace,all,cpuheap", "comma-separated capture modes; restrict expensive legacy traces")
 	flag.Parse()
 	if *output == "" || *count < 1 {
 		fmt.Fprintln(os.Stderr, "provide -output <directory> and a positive -count")
@@ -39,7 +40,12 @@ func main() {
 	root, err := filepath.Abs(*output)
 	must(err)
 	must(os.MkdirAll(root, 0700))
-	for _, mode := range []string{"none", "cpu", "heap", "trace", "all", "cpuheap"} {
+	for _, mode := range strings.Split(*modes, ",") {
+		switch mode {
+		case "none", "cpu", "heap", "trace", "all", "cpuheap":
+		default:
+			panic("unknown capture mode " + mode)
+		}
 		dir := filepath.Join(root, mode)
 		must(os.MkdirAll(dir, 0700))
 		binary := filepath.Join(dir, "program")
