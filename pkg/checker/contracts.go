@@ -260,24 +260,38 @@ func (c *checker) satisfies(t, bound *Type) bool {
 	}
 	return c.implements(t, bound)
 }
-func (c *checker) property(t *Type, property string, seen map[string]bool) bool {
+
+type propertyState struct {
+	active    map[string]bool
+	completed map[string]bool
+}
+
+func (c *checker) property(t *Type, property string, state *propertyState) (result bool) {
 	if t == nil {
 		return false
 	}
 	if t.ID == "<invalid>" {
 		return true
 	}
-	if seen == nil {
-		seen = map[string]bool{}
+	if state == nil {
+		state = &propertyState{active: map[string]bool{}, completed: map[string]bool{}}
 	}
 	key := typeKey(t) + property
-	if seen[key] {
-		return true
+	if result, ok := state.completed[key]; ok {
+		return result
 	}
-	if len(seen) > 200 {
+	if state.active[key] {
+		// Equality handles cycles; structural hashing requires an acyclic shape.
+		return property != "Hashable"
+	}
+	if len(state.active) > 200 {
 		return false
 	}
-	seen[key] = true
+	state.active[key] = true
+	defer func() {
+		delete(state.active, key)
+		state.completed[key] = result
+	}()
 	if t.Kind == "variable" {
 		for _, b := range t.Bounds {
 			if std(b, property) || std(b, "Hashable") && property == "Equal" {
@@ -327,7 +341,7 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 			return false
 		}
 		for _, a := range t.Args {
-			if !c.property(a, property, seen) {
+			if !c.property(a, property, state) {
 				return false
 			}
 		}
@@ -341,13 +355,13 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	}
 	if t.Def != nil {
 		for _, f := range Fields(t) {
-			if !c.property(f.Type, property, seen) {
+			if !c.property(f.Type, property, state) {
 				return false
 			}
 		}
 		for _, cs := range Cases(t) {
 			for _, f := range cs.Fields {
-				if !c.property(f.Type, property, seen) {
+				if !c.property(f.Type, property, state) {
 					return false
 				}
 			}
@@ -519,19 +533,6 @@ func (c *checker) declarationChecks(module *syntax.Module) {
 			for _, op := range s.Type.Def.Operations {
 				check(op.Type)
 			}
-			checkLayout := func(field Param, pos syntax.Position, name string) {
-				if message := layoutIssue(field.Type, map[string]*Type{s.Type.ID: s.Type}, false, name); message != "" {
-					c.error(pos, "type", message)
-				}
-			}
-			for i, field := range s.Type.Def.Fields {
-				checkLayout(field, d.Fields[i].Pos, d.Name+"."+field.Name)
-			}
-			for i, cs := range s.Type.Def.Cases {
-				for j, field := range cs.Fields {
-					checkLayout(field, d.Cases[i].Fields[j].Pos, d.Name+"."+cs.Name+"."+field.Name)
-				}
-			}
 		}
 		for _, v := range s.Variables {
 			for _, b := range v.Bounds {
@@ -556,48 +557,4 @@ func (c *checker) public(t *Type, pos syntax.Position, seen map[string]bool) {
 		c.public(p.Type, pos, seen)
 	}
 	c.public(t.Result, pos, seen)
-}
-
-// layoutIssue returns the first invalid cycle reachable from a source field.
-// Each declaration checks its own fields, preserving their names and positions
-// even when a cycle passes through inline Optional/Result payloads.
-func layoutIssue(t *Type, active map[string]*Type, indirect bool, field string) string {
-	if t == nil || t.Kind == "function" || t.Kind == "contract" || t.Kind == "variable" {
-		return ""
-	}
-	if std(t, "List") || std(t, "Set") || std(t, "Map") {
-		for _, a := range t.Args {
-			if issue := layoutIssue(a, active, true, field); issue != "" {
-				return issue
-			}
-		}
-		return ""
-	}
-	if previous := active[t.ID]; previous != nil {
-		if !Same(previous, t) {
-			return "recursive generic applications must preserve their parameters in field " + field + "; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])"
-		}
-		if !indirect {
-			return "unguarded inline recursive layout in field " + field + " through " + t.String() + "; use an indirect container such as List[" + t.String() + "] or restructure the recursive field"
-		}
-		return ""
-	}
-	if t.Def == nil {
-		return ""
-	}
-	active[t.ID] = t
-	defer delete(active, t.ID)
-	for _, f := range Fields(t) {
-		if issue := layoutIssue(f.Type, active, indirect, field); issue != "" {
-			return issue
-		}
-	}
-	for _, cs := range Cases(t) {
-		for _, f := range cs.Fields {
-			if issue := layoutIssue(f.Type, active, indirect, field); issue != "" {
-				return issue
-			}
-		}
-	}
-	return ""
 }

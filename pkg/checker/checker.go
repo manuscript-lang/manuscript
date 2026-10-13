@@ -226,6 +226,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 		}
 		c.declarationChecks(module)
 	}
+	c.finiteTypeApplications()
 	c.finiteApplications()
 	if len(c.Diagnostics) == 0 {
 		c.effectSummaries()

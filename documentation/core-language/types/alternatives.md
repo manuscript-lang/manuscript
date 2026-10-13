@@ -51,7 +51,7 @@ let wrong: LeftState = RightState.Ready
 
 Inside a scope with `let Ready = LeftState.Ready`, subsequent `Ready` expressions refer to that binding rather than retrying ambiguous case lookup. An incompatible expected type rejects the binding's type; it does not choose another type's case instead.
 
-Generic qualification includes type arguments: `Choice[Int].Found(value: 1)`. Exporting an alternative exposes every case and payload field. Payload types follow the [public surface](records.md#public-data-surfaces) and [recursive layout](records.md#recursive-data) rules for records.
+Generic qualification includes type arguments: `Choice[Int].Found(value: 1)`. Exporting an alternative exposes every case and payload field. Payload types follow the [public surface](records.md#public-data-surfaces) and [recursive data](records.md#recursive-data) rules for records.
 
 Type arguments attach to the nominal alternative, never to the case name. `Found[Int](value: 1)` and `Choice.Found[Int](value: 1)` are rejected. Unqualified `Found(value: 1)` may use argument inference or a complete expected `Choice[Int]` after case lookup resolves uniquely; explicit arguments use the single spelling `Choice[Int].Found(value: 1)`. These rules also apply to qualified standard Optional/Result cases.
 

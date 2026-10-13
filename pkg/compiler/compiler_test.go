@@ -133,7 +133,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"implementation missing bound", "cl-10a", "interface SameValue[T: Equal]", "interface SameValue[T]", "type"},
 		{"implementation unavailable", "cl-10a", "fn compare[T: Equal]", "fn compare[T]", "resolution"},
 		{"blanket implementation", "cl-10a", "ReadValue[T] for Box[T]", "ReadValue[T] for T", "resolution"},
-		{"unguarded recursion", "cl-11", "children: List[Tree[T]]", "children: Tree[T]", "type"},
+		{"recursive field constructor mismatch", "cl-11", "children: List[Tree[T]]", "children: Tree[T]", "type"},
 		{"expanding recursion", "cl-11", "children: List[Tree[T]]", "children: List[Tree[List[T]]]", "type"},
 		{"map key binding type", "cl-12", "let label: String = key", "let label: Int = key", "type"},
 		{"float set element", "cl-12", "Set[Int]", "Set[Float]", "type"},

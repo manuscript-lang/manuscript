@@ -73,9 +73,9 @@ func TestContextualCallbackPreservesSourceAST(t *testing.T) {
 	}
 }
 
-// Different collection applications can occur along a guarded recursive path.
+// Different collection applications can occur along a recursive declaration path.
 // The finite-application rule constrains nominal user types, not Map/List storage.
-func TestNestedCollectionsGuardRecursiveLayouts(t *testing.T) {
+func TestNestedCollectionsPreserveFiniteRecursiveApplications(t *testing.T) {
 	for _, test := range []struct {
 		source   string
 		accepted bool
