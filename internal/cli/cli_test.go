@@ -359,7 +359,7 @@ func TestArgumentMistakesNameTheProblem(t *testing.T) {
 func TestDirectoryArgumentUsesManifestOrExplains(t *testing.T) {
 	directory := t.TempDir()
 	status, _, errors := invoke(t, "check", directory)
-	if status != 2 || !strings.Contains(errors, directory+" is a directory without an ms.toml; pass a .ms file or a project ms.toml") {
+	if status != 0 || errors != "" {
 		t.Fatalf("plain directory: %d, %q", status, errors)
 	}
 	if err := os.MkdirAll(filepath.Join(directory, "src"), 0755); err != nil {

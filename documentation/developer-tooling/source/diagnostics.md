@@ -19,6 +19,10 @@ For example, a non-function argument to TaskGroup.start should identify the requ
 
 `ms check file.ms --json` emits `{"format": 1, "diagnostics": [...]}`. Each diagnostic has `code`, `phase`, `message`, and `position` with `file`, one-based `line`/UTF-8 byte `column`, and original-byte `offset`. Empty results use `[]`. CRLF normalization preserves original offsets.
 
+Check and lint can report several independent inputs in one document. See
+[analysis selection and aggregation](../implementation.md#selecting-independent-analysis-inputs)
+for collection paths, ordering, partial failures, and project boundaries.
+
 Optional `end` uses the same coordinate fields and marks the exclusive end of the diagnostic range. Parser token errors and failed import names provide this range; diagnostics without a known extent omit it.
 
 An optional `fix` contains `position`, exclusive `end`, and `replacement`. Apply it by replacing that byte range in the original source snapshot, then check the edited file again. For `total += x`, the fix replaces `+=` with `= total +`. Automatic compound-assignment fixes are limited to bare variable targets with a single name or numeric operand. More complex operands, field receivers, string-match rewrites, and ambiguous imports receive prose guidance without a machine fix. Consumers must tolerate absent optional fields; the existing fields and `format: 1` remain unchanged.
