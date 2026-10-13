@@ -35,6 +35,51 @@ impl Error for ArchiveError:
     fn message() -> String:
 ```
 
+## ArchiveFormat {data-api-kind="Alternative"}
+
+Selects a supported archive format without a runtime string spelling check.
+Existing pack/unpack format: String calls remain available.
+
+```manuscript
+type ArchiveFormat:
+    case Zip
+    case Tar
+    fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+    fn unpack(data: Bytes, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
+```
+
+### ArchiveFormat.Tar
+
+TAR files and directories.
+
+```manuscript
+case Tar
+```
+
+### ArchiveFormat.Zip
+
+ZIP files and directories.
+
+```manuscript
+case Zip
+```
+
+### ArchiveFormat.pack
+
+Packs entries with the same optional output budget and path validation as pack.
+
+```manuscript
+fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+```
+
+### ArchiveFormat.unpack
+
+Unpacks in memory with the same entry/byte limits and domain errors as unpack.
+
+```manuscript
+fn unpack(data: Bytes, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
+```
+
 ## ArchiveLimits {data-api-kind="Record"}
 
 Optional limits applied while unpacking untrusted archive data.

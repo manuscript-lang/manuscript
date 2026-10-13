@@ -3,6 +3,7 @@
 ## Unreleased
 
 - List loops and callbacks follow Go slice range behavior without traversal copies: capture backing and initial length once, observe in-place writes, and do not extend traversal on append. Shrinking shifts/reslices without clearing valid tail values; removed references can remain in spare capacity. Explicit clones/slices and Map/Set membership snapshots retain their contracts.
+- Add preferred `List.set`/`remove`/`reverse_in_place`, copying `List.reversed`/`Bytes.reversed`, `Set.add`/`remove`, `String.replace_first`, and `Regex.replace_all` spellings. Existing names remain compatible, including receiver returns, replacement caps, limits, and errors.
 - Report duration-unit property faults at the member token after evaluating the receiver, preserving source order and numeric widths.
 
 - Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
@@ -29,4 +30,5 @@
 - Validate compressed toolchain archives before cache publication, including interrupted downloads.
 - Preserve case-equivalent HTTP header keys as separate values in insertion order, including `Set-Cookie`; reject malformed outgoing header values before emission.
 - Add `http.header_values` for ASCII case-insensitive, value-preserving lookup across list-valued HTTP header maps, with separate returned list membership.
+- Return typed filesystem errors for non-empty directories, wrong entry kinds, negative absolute seeks and handle-mode misuse. Validate HTTP paths before normalization, reject encoded slash/NUL, normalize dot segments, and return `HttpError.InvalidInput` for malformed ports in all HTTP clients.
 - Add repeatable dependency/pin maintenance, license inventories, and one shared release version.

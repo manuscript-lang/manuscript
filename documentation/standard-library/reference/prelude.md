@@ -158,9 +158,13 @@ type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    fn set(index: Int, value: T) -> List[T]:
+    fn remove(index: Int) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> List[T]:
+    fn reverse_in_place() -> List[T]:
+    fn reversed() -> List[T]:
     fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
@@ -268,6 +272,49 @@ Returns the last equal element's zero-based index, or none; elements require Equ
 fn last_index_of(value: T) -> Optional[Int]:
 ```
 
+### List.remove
+
+Removes an element in place and returns this list; negative indexes count from the end.
+Invalid indexes fault, with the same bounds and diagnostics as without.
+Shifts the suffix without clearing prior values retained in spare backing capacity.
+
+```manuscript
+fn remove(index: Int) -> List[T]:
+```
+
+### List.reverse
+
+Compatibility spelling for reverse_in_place; mutates and returns this list.
+
+```manuscript
+fn reverse() -> List[T]:
+```
+
+### List.reverse_in_place
+
+Reverses this list in place and returns the same instance.
+
+```manuscript
+fn reverse_in_place() -> List[T]:
+```
+
+### List.reversed
+
+Returns a reversed shallow copy with independent outer storage; nested references remain shared.
+
+```manuscript
+fn reversed() -> List[T]:
+```
+
+### List.set
+
+Replaces an element in place and returns this list; negative indexes count from the end.
+Invalid indexes fault, with the same bounds and diagnostics as with_value.
+
+```manuscript
+fn set(index: Int, value: T) -> List[T]:
+```
+
 ### List.slice
 
 Returns a new shallow List containing [start, end); outer storage is independent.
@@ -293,6 +340,14 @@ Returns a new list sorted by negative/zero/positive comparator results.
 fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
 ```
 
+### List.with_value
+
+Compatibility spelling for set; mutates and returns this list.
+
+```manuscript
+fn with_value(index: Int, value: T) -> List[T]:
+```
+
 ### List.with_values
 
 Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity.
@@ -303,7 +358,7 @@ fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
 
 ### List.without
 
-Removes an element and returns this list, shifting the suffix without clearing the retained backing tail.
+Compatibility spelling for remove; mutates and returns this list.
 
 ```manuscript
 fn without(index: Int) -> List[T]:
@@ -696,6 +751,7 @@ type String:
     fn ends_with(suffix: String) -> Bool:
     fn lower() -> String:
     fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
     fn scalar_values() -> List[Int]:
@@ -870,8 +926,7 @@ fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringE
 
 ### String.replace
 
-Replaces the first occurrence when the cap is omitted or none; zero changes nothing, negatives fault.
-An empty old matches at scalar boundaries, and inserted text is not searched again.
+Compatibility spelling for replace_first, including its explicit replacement cap.
 
 ```manuscript
 fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String
@@ -884,6 +939,16 @@ max_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion retu
 
 ```manuscript
 fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+```
+
+### String.replace_first
+
+Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.
+An empty old matches at scalar boundaries, and inserted text is not searched again.
+Zero changes nothing; negative caps retain replace's programming fault.
+
+```manuscript
+fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String
 ```
 
 ### String.reverse

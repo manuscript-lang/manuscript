@@ -101,6 +101,7 @@ func init() {
 		}
 		return strings.Replace(a[0].(string), a[1].(string), a[2].(string), int(n))
 	})
+	libraryAlias("string", "replace_first", "replace")
 	add("string", "scalar_values", "List[Int]", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, a []Value) Value {
 		var items []Value
 		for i, r := range a[0].(string) {
@@ -342,6 +343,11 @@ func init() {
 			out[i], out[j] = out[j], out[i]
 		}
 		return v
+	})
+	libraryAlias("collections", "reverse_in_place", "reverse")
+	reverse := libraryFunctions["collections/reverse"].Body
+	libraryGeneric("collections", "reversed", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(ctx *Execution, result string, a []Value) Value {
+		return reverse(ctx, result, []Value{Clone(a[0])})
 	})
 	libraryGeneric("collections", "slice", "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(*List)

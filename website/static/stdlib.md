@@ -62,6 +62,53 @@ impl Error for ArchiveError:
     fn message() -> String:
 ```
 
+## ArchiveFormat
+
+**Alternative**
+
+Selects a supported archive format without a runtime string spelling check.
+Existing pack/unpack format: String calls remain available.
+
+```manuscript
+type ArchiveFormat:
+    case Zip
+    case Tar
+    fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+    fn unpack(data: Bytes, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
+```
+
+### ArchiveFormat.Tar
+
+TAR files and directories.
+
+```manuscript
+case Tar
+```
+
+### ArchiveFormat.Zip
+
+ZIP files and directories.
+
+```manuscript
+case Zip
+```
+
+### ArchiveFormat.pack
+
+Packs entries with the same optional output budget and path validation as pack.
+
+```manuscript
+fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+```
+
+### ArchiveFormat.unpack
+
+Unpacks in memory with the same entry/byte limits and domain errors as unpack.
+
+```manuscript
+fn unpack(data: Bytes, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
+```
+
 ## ArchiveLimits
 
 **Record**
@@ -240,6 +287,7 @@ type Bytes:
     fn last_index_of(value: Bytes) -> Optional[Int]:
     fn starts_with(value: Bytes) -> Bool:
     fn ends_with(value: Bytes) -> Bool:
+    fn reversed() -> Bytes:
     fn reverse() -> Bytes:
     fn with_value(index: Int, value: Int) -> Bytes:
     fn is_empty() -> Bool:
@@ -323,10 +371,18 @@ fn length() -> Int:
 
 ### Bytes.reverse
 
-Returns reversed bytes without changing the receiver.
+Compatibility spelling for reversed; returns a copy without changing the receiver.
 
 ```manuscript
 fn reverse() -> Bytes:
+```
+
+### Bytes.reversed
+
+Returns a reversed copy without changing the receiver.
+
+```manuscript
+fn reversed() -> Bytes:
 ```
 
 ### Bytes.slice
@@ -475,9 +531,13 @@ type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    fn set(index: Int, value: T) -> List[T]:
+    fn remove(index: Int) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> List[T]:
+    fn reverse_in_place() -> List[T]:
+    fn reversed() -> List[T]:
     fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
@@ -585,6 +645,49 @@ Returns the last equal element's zero-based index, or none; elements require Equ
 fn last_index_of(value: T) -> Optional[Int]:
 ```
 
+### List.remove
+
+Removes an element in place and returns this list; negative indexes count from the end.
+Invalid indexes fault, with the same bounds and diagnostics as without.
+Shifts the suffix without clearing prior values retained in spare backing capacity.
+
+```manuscript
+fn remove(index: Int) -> List[T]:
+```
+
+### List.reverse
+
+Compatibility spelling for reverse_in_place; mutates and returns this list.
+
+```manuscript
+fn reverse() -> List[T]:
+```
+
+### List.reverse_in_place
+
+Reverses this list in place and returns the same instance.
+
+```manuscript
+fn reverse_in_place() -> List[T]:
+```
+
+### List.reversed
+
+Returns a reversed shallow copy with independent outer storage; nested references remain shared.
+
+```manuscript
+fn reversed() -> List[T]:
+```
+
+### List.set
+
+Replaces an element in place and returns this list; negative indexes count from the end.
+Invalid indexes fault, with the same bounds and diagnostics as with_value.
+
+```manuscript
+fn set(index: Int, value: T) -> List[T]:
+```
+
 ### List.slice
 
 Returns a new shallow List containing [start, end); outer storage is independent.
@@ -610,6 +713,14 @@ Returns a new list sorted by negative/zero/positive comparator results.
 fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
 ```
 
+### List.with_value
+
+Compatibility spelling for set; mutates and returns this list.
+
+```manuscript
+fn with_value(index: Int, value: T) -> List[T]:
+```
+
 ### List.with_values
 
 Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity.
@@ -620,7 +731,7 @@ fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
 
 ### List.without
 
-Removes an element and returns this list, shifting the suffix without clearing the retained backing tail.
+Compatibility spelling for remove; mutates and returns this list.
 
 ```manuscript
 fn without(index: Int) -> List[T]:
@@ -881,8 +992,18 @@ type Set[T: Hashable]:
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
     fn contains(value: T) -> Bool:
     fn length() -> Int:
+    fn add(value: T) -> Set[T]:
+    fn remove(value: T) -> Set[T]:
     fn with_value(value: T) -> Set[T]:
     fn without(value: T) -> Set[T]:
+```
+
+### Set.add
+
+Adds a value in place and returns this set; an equal value retains its original payload and position.
+
+```manuscript
+fn add(value: T) -> Set[T]:
 ```
 
 ### Set.entries
@@ -990,6 +1111,14 @@ Transforms a snapshot into a fresh set, retaining the first equal result.
 fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
 ```
 
+### Set.remove
+
+Removes an equal value in place and returns this set; an absent value leaves it unchanged.
+
+```manuscript
+fn remove(value: T) -> Set[T]:
+```
+
 ### Set.some
 
 Stops at the first matching element; empty sets return false.
@@ -1012,6 +1141,22 @@ Returns a shallow list of values in insertion order.
 
 ```manuscript
 fn values() -> List[T]:
+```
+
+### Set.with_value
+
+Compatibility spelling for add; mutates and returns this set.
+
+```manuscript
+fn with_value(value: T) -> Set[T]:
+```
+
+### Set.without
+
+Compatibility spelling for remove; mutates and returns this set.
+
+```manuscript
+fn without(value: T) -> Set[T]:
 ```
 
 ## SetBuilder
@@ -1080,6 +1225,62 @@ impl Error for CompressionError:
     fn message() -> String:
 ```
 
+## CompressionFormat
+
+**Alternative**
+
+Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
+Existing compress/decompress format: String calls remain available.
+
+```manuscript
+type CompressionFormat:
+    case Gzip
+    case Zlib
+    case Deflate
+    fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+    fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+```
+
+### CompressionFormat.Deflate
+
+Raw DEFLATE without framing.
+
+```manuscript
+case Deflate
+```
+
+### CompressionFormat.Gzip
+
+GZIP framing.
+
+```manuscript
+case Gzip
+```
+
+### CompressionFormat.Zlib
+
+ZLIB framing.
+
+```manuscript
+case Zlib
+```
+
+### CompressionFormat.compress
+
+Compresses with level 0..9 and the same optional output budget/domain errors as compress.
+
+```manuscript
+fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+```
+
+### CompressionFormat.decompress
+
+Decompresses with the same cumulative output limit and validation as decompress.
+
+```manuscript
+fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+```
+
 ## compress
 
 **Function**
@@ -1123,6 +1324,62 @@ type CryptoError:
 ```manuscript
 impl Error for CryptoError:
     fn message() -> String:
+```
+
+## HashAlgorithm
+
+**Alternative**
+
+Selects a supported SHA-2 algorithm without a runtime string spelling check.
+Existing hash functions and hmac(algorithm: String) remain available.
+
+```manuscript
+type HashAlgorithm:
+    case Sha256
+    case Sha384
+    case Sha512
+    fn digest(data: Bytes) -> Bytes:
+    fn hmac(key: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:
+```
+
+### HashAlgorithm.Sha256
+
+SHA-256.
+
+```manuscript
+case Sha256
+```
+
+### HashAlgorithm.Sha384
+
+SHA-384.
+
+```manuscript
+case Sha384
+```
+
+### HashAlgorithm.Sha512
+
+SHA-512.
+
+```manuscript
+case Sha512
+```
+
+### HashAlgorithm.digest
+
+Computes this algorithm's digest, checking cancellation between chunks.
+
+```manuscript
+fn digest(data: Bytes) -> Bytes:
+```
+
+### HashAlgorithm.hmac
+
+Computes HMAC with this algorithm and retains CryptoError results.
+
+```manuscript
+fn hmac(key: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:
 ```
 
 ## constant_time_equal
@@ -1516,6 +1773,119 @@ Returns a human-readable description of this expected error.
 
 ```manuscript
 fn message() -> String
+```
+
+## ErrorCategory
+
+**Alternative**
+
+Portable categories for shared standard error cases. Domain errors retain their types and payloads.
+
+```manuscript
+type ErrorCategory:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case NotFound
+    case AlreadyExists
+    case PermissionDenied
+    case Unsupported
+    case Closed
+    case Timeout
+    case Unavailable
+```
+
+### ErrorCategory.AlreadyExists
+
+A requested exclusive resource already exists.
+
+```manuscript
+case AlreadyExists
+```
+
+### ErrorCategory.Closed
+
+The resource has been closed.
+
+```manuscript
+case Closed
+```
+
+### ErrorCategory.InvalidData
+
+Input data is malformed.
+
+```manuscript
+case InvalidData
+```
+
+### ErrorCategory.InvalidInput
+
+Caller input is invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### ErrorCategory.LimitExceeded
+
+An operation budget or implementation limit was exceeded.
+
+```manuscript
+case LimitExceeded
+```
+
+### ErrorCategory.NotFound
+
+A requested resource was not found.
+
+```manuscript
+case NotFound
+```
+
+### ErrorCategory.PermissionDenied
+
+Host authority denied the operation.
+
+```manuscript
+case PermissionDenied
+```
+
+### ErrorCategory.Timeout
+
+A local operation or group deadline expired.
+
+```manuscript
+case Timeout
+```
+
+### ErrorCategory.Unavailable
+
+The service/resource is unavailable; this does not imply NotFound or PermissionDenied.
+
+```manuscript
+case Unavailable
+```
+
+### ErrorCategory.Unsupported
+
+The requested operation is unsupported.
+
+```manuscript
+case Unsupported
+```
+
+## category
+
+**Function**
+
+Queries a shared category without changing or invoking the error.
+Recognized standard cases use their same-name category; TimedOut maps to Timeout.
+Custom errors and domain-specific cases (including Failed, Full, OutputLimit, OutOfRange,
+AuthenticationFailed and wrapped LogError causes) return none. Messages are never parsed.
+
+```manuscript
+fn category(cause: Error) -> Optional[ErrorCategory]:
 ```
 
 # @std/faults.ms
@@ -1984,6 +2354,7 @@ type FileSystemError:
     case LimitExceeded
     case NotFound
     case AlreadyExists
+    case NotEmpty
     case PermissionDenied
     case Unsupported
     case Closed
@@ -4062,7 +4433,25 @@ A compiled regular expression that can be reused across input strings.
 type Regex:
     fn matches(text: String) -> Bool:
     fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
+    fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
     fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+```
+
+### Regex.replace
+
+Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
+
+```manuscript
+fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+```
+
+### Regex.replace_all
+
+Replaces every nonoverlapping match with literal replacement text (no capture expansion).
+max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
+
+```manuscript
+fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
 ```
 
 ## RegexError
@@ -5503,9 +5892,13 @@ type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    fn set(index: Int, value: T) -> List[T]:
+    fn remove(index: Int) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> List[T]:
+    fn reverse_in_place() -> List[T]:
+    fn reversed() -> List[T]:
     fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
@@ -5613,6 +6006,49 @@ Returns the last equal element's zero-based index, or none; elements require Equ
 fn last_index_of(value: T) -> Optional[Int]:
 ```
 
+### List.remove
+
+Removes an element in place and returns this list; negative indexes count from the end.
+Invalid indexes fault, with the same bounds and diagnostics as without.
+Shifts the suffix without clearing prior values retained in spare backing capacity.
+
+```manuscript
+fn remove(index: Int) -> List[T]:
+```
+
+### List.reverse
+
+Compatibility spelling for reverse_in_place; mutates and returns this list.
+
+```manuscript
+fn reverse() -> List[T]:
+```
+
+### List.reverse_in_place
+
+Reverses this list in place and returns the same instance.
+
+```manuscript
+fn reverse_in_place() -> List[T]:
+```
+
+### List.reversed
+
+Returns a reversed shallow copy with independent outer storage; nested references remain shared.
+
+```manuscript
+fn reversed() -> List[T]:
+```
+
+### List.set
+
+Replaces an element in place and returns this list; negative indexes count from the end.
+Invalid indexes fault, with the same bounds and diagnostics as with_value.
+
+```manuscript
+fn set(index: Int, value: T) -> List[T]:
+```
+
 ### List.slice
 
 Returns a new shallow List containing [start, end); outer storage is independent.
@@ -5638,6 +6074,14 @@ Returns a new list sorted by negative/zero/positive comparator results.
 fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
 ```
 
+### List.with_value
+
+Compatibility spelling for set; mutates and returns this list.
+
+```manuscript
+fn with_value(index: Int, value: T) -> List[T]:
+```
+
 ### List.with_values
 
 Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity.
@@ -5648,7 +6092,7 @@ fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
 
 ### List.without
 
-Removes an element and returns this list, shifting the suffix without clearing the retained backing tail.
+Compatibility spelling for remove; mutates and returns this list.
 
 ```manuscript
 fn without(index: Int) -> List[T]:
@@ -6051,6 +6495,7 @@ type String:
     fn ends_with(suffix: String) -> Bool:
     fn lower() -> String:
     fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+    fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
     fn scalar_values() -> List[Int]:
@@ -6225,8 +6670,7 @@ fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringE
 
 ### String.replace
 
-Replaces the first occurrence when the cap is omitted or none; zero changes nothing, negatives fault.
-An empty old matches at scalar boundaries, and inserted text is not searched again.
+Compatibility spelling for replace_first, including its explicit replacement cap.
 
 ```manuscript
 fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String
@@ -6239,6 +6683,16 @@ max_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion retu
 
 ```manuscript
 fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+```
+
+### String.replace_first
+
+Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.
+An empty old matches at scalar boundaries, and inserted text is not searched again.
+Zero changes nothing; negative caps retain replace's programming fault.
+
+```manuscript
+fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String
 ```
 
 ### String.reverse

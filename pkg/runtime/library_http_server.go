@@ -103,6 +103,10 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "invalid UTF-8 request", 400)
 		return
 	}
+	if !normalizeHTTPRequestPath(r) {
+		http.Error(w, "invalid request path", 400)
+		return
+	}
 	s.mu.Lock()
 	if s.closing {
 		s.mu.Unlock()
