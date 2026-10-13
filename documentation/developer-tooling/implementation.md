@@ -11,6 +11,7 @@ Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/m
 ms lint source.ms --json
 ms lint ms.toml --json
 ms fmt source.ms --check
+ms fmt ms.toml --check
 ms lsp
 ms debug source.ms -- arg1
 ms run source.ms --cpu-profile cpu.pprof --heap-profile heap.pprof --trace trace.out -- arg1
@@ -65,7 +66,7 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 `lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), and MSL103 (unreachable statement). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
 
-`fmt` preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
+`fmt` accepts files, directories, and manifests, with project discovery shared with checking. `--check` reports every unformatted file and fails if any target needs formatting or cannot be processed. See [formatting](source/formatting.md) for selection and exclusion rules. It preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
 
 The formatter adds single blank lines at structural boundaries so code reads in
 paragraphs:

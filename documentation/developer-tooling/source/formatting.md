@@ -7,14 +7,19 @@ weight = 1
 
 The source file defines the program. The formatter gives it a consistent layout, and tools can regenerate diagrams and explanations from it.
 
-## Format a file
+## Format files or a project
 
 ```sh
 ms fmt file.ms
 ms fmt file.ms --check
+ms fmt ms.toml --check
+ms fmt src test.ms
+ms fmt src/*.ms --check
 ```
 
-The first command formats in place. `--check` writes nothing and returns a nonzero status if formatting would change the file. Invalid input produces diagnostics and no write.
+Formatting writes each valid file in place, preserving its permissions. `--check` writes nothing, lists every file needing formatting in path order, and returns 1 if any file needs changes or any target fails. Invalid source produces diagnostics and is left unchanged; other selected files are still processed.
+
+A manifest selects its entry, every `.ms` file below its configured source directory, and project `test.ms`/`*_test.ms` files. A directory recursively selects all `.ms` files. Both use the same discovery exclusions as project checking: hidden, `vendor`, and `node_modules` directories are skipped, and directory symlinks are not followed. Discovered file symlinks must stay within the selected root. Explicit file arguments can select excluded files; overlapping selections are formatted only once. An empty directory succeeds without output.
 
 ## Formatter contract
 
