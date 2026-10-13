@@ -28,8 +28,8 @@ func Run(args []string) int {
 		fmt.Print(help)
 		return 0
 	}
-	if args[0] == "--version" {
-		return runVersion("--version", args[1:])
+	if args[0] == "--version" || args[0] == "version" {
+		return runVersion(args[0], args[1:])
 	}
 	usage, known := commandHelp(args[0])
 	if !known {
@@ -58,9 +58,6 @@ func Run(args []string) int {
 	}
 	if args[0] == "help" {
 		return runHelp(args[1:])
-	}
-	if args[0] == "version" {
-		return runVersion("version", args[1:])
 	}
 	if args[0] == "doc" {
 		return runDoc(args[1:])

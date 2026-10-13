@@ -17,7 +17,7 @@ func TestVersionAliasAndArgumentErrors(t *testing.T) {
 	if status != 0 || alias != original || stderr != "" {
 		t.Fatalf("version alias: %d, %q, %q", status, alias, stderr)
 	}
-	for _, args := range [][]string{{"version", "extra"}, {"version", "--json"}, {"version", "--", "argument"}, {"--version", "extra"}, {"--version", "--help"}} {
+	for _, args := range [][]string{{"version", "extra"}, {"version", "--json"}, {"version", "--", "argument"}, {"version", "extra", "--help"}, {"version", "--help", "extra"}, {"--version", "extra"}, {"--version", "--help"}} {
 		status, stdout, stderr := invoke(t, args...)
 		if status != 2 || stdout != "" || !strings.Contains(stderr, "takes no arguments") {
 			t.Fatalf("extra version arguments %v: %d, %q, %q", args, status, stdout, stderr)
