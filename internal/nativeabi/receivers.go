@@ -141,6 +141,12 @@ var ReceiverBindings = map[string]map[string]string{
 		"for_each":             "collections/set_for_each",
 	},
 	"String": {
+		"length":        "string/length",
+		"is_empty":      "string/is_empty",
+		"chars":         "string/chars",
+		"reverse":       "string/reverse",
+		"compare":       "string/compare",
+		"lines":         "string/lines",
 		"normalize":     "string/normalize",
 		"concat":        "string/concat",
 		"contains":      "string/contains",
