@@ -14,15 +14,6 @@ type callInferenceContext struct {
 // callbacks when another argument provides their input context.
 func (c *checker) inferArguments(args []syntax.Argument, params []Param, variables []*Type, sub map[string]*Type, context *callInferenceContext) {
 	vars := variableSet(variables)
-	wideContext := context != nil && containsWideNumeric(context.expected)
-	for _, param := range params {
-		wideContext = wideContext || containsWideNumeric(Sub(param.Type, sub))
-	}
-	for _, arg := range args {
-		if arg.Value.Kind == syntax.KindLambda && arg.Value.Result != nil {
-			wideContext = wideContext || containsWideNumeric(c.resolve(arg.Value.Result, false))
-		}
-	}
 	pending := []syntax.Argument{}
 	numeric := []syntax.Argument{}
 	parameter := func(name string) *Type {
@@ -72,7 +63,7 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 				}
 			}
 			pending = append(pending, arg)
-		} else if numericLiteralExpression(arg.Value) || wideContext && freshNumericCall(arg.Value) {
+		} else if numericLiteralExpression(arg.Value) || freshNumericCall(arg.Value) {
 			numeric = append(numeric, arg)
 		} else if !c.contextual(arg.Value) {
 			if actual := c.independentArgument(arg.Value); actual != nil {

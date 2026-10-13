@@ -56,6 +56,7 @@ func TestWideLiteralContexts(t *testing.T) {
 		"callback":                        "fn f() -> fn() -> Float64: fn(): 1e300\n",
 		"function result":                 "fn thunk[T](value: T) -> fn() -> T: fn(): value\nfn f() -> fn() -> Float64: thunk(1e300)\n",
 		"producer evidence":               "fn choose[T](value: T, producer: fn() -> T) -> T: value\nfn f() -> Unit:\n    let wide = choose(1e300, fn() -> Float64: 1e300)\n    let checked: Float64 = wide\n",
+		"typed other argument evidence":   "fn identity[T](value:T)->T:value\nfn choose[T](left:T,right:T)->T:left\nfn f()->Unit:\n    let known: Float64 = 0.1\n    let wide = choose(identity(0.1), known)\n    let checked: Float64 = wide\n",
 		"producer typed input":            "fn choose[T](value: T, producer: fn(input: Int) -> T) -> T: value\nfn f() -> Unit:\n    let wide = choose(0.1, fn(input: Int) -> Float64: 0.1)\n    let checked: Float64 = wide\n",
 		"optional small integer":          "fn identity[T](value:T)->T:value\nfn f()->Optional[Int64]: some(identity(1))\n",
 		"optional large integer":          "fn identity[T](value:T)->T:value\nfn f()->Optional[Int64]: some(identity(3000000000))\n",
