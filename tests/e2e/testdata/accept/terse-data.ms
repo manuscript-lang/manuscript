@@ -3,13 +3,13 @@ import {Equal, Hashable} from "@std/equality.ms"
 import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
-fn subtract(amount: Int, deduction: Int = 1) -> Int: return amount - deduction
+fn subtract(amount: Int, deduction: Int = 1) -> Int: amount - deduction
 
-fn first[T](left: T, right: T) -> T: return left
+fn first[T](left: T, right: T) -> T: left
 
-fn size(values: Map[String, Int]) -> Int: return values.length()
+fn size(values: Map[String, Int]) -> Int: values.length()
 
-fn optional_size(values: Optional[Map[String, Int]]) -> Int: return (
+fn optional_size(values: Optional[Map[String, Int]]) -> Int: (
     values
     .unwrap()
     .length()
@@ -53,7 +53,7 @@ test "map literals and matching argument names":
     let nested: Map[String, Map[String, Int]] = {"a": {}, "b": {"c": 1}}
     if nested.get("b").unwrap().get("c").unwrap() != 1: return panic("nested map")
 
-    let optional: Map[String, Optional[Int]] = {"a": none, "b": some(value: 2)}
+    let optional: Map[String, Optional[Int]] = {"a": none, "b": some(2)}
     if not optional.get("a").unwrap().is_none(): return panic("context")
 
     let key = "c"
@@ -87,7 +87,7 @@ impl Equal for Key:
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: return self.id
+    fn hash() -> Int: self.id
 
 test "map literal uses custom key equality":
     let a = Key(id: 1, label: "first")

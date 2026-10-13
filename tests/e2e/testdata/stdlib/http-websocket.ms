@@ -30,7 +30,7 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
             let message = value(socket.receive()).unwrap()
             let sent = value(socket.send(data: message.data, text: message.text))
 
-        return ok(value: unit)
+        return ok(unit)
 
     let headers = Map[String, List[String]]().with_entry(
         key: "X-Test",
@@ -40,7 +40,7 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let written = value(
         exchange.write("hello".to_bytes())
     )
-    return ok(value: unit)
+    return ok(unit)
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
     let net = network()
@@ -71,7 +71,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         if response.status != 201 or response.body != "hello".to_bytes(): return panic(
             "buffered HTTP"
         )
-        if response.headers.get("X-Test") != some(value: ["manuscript"]): return panic(
+        if response.headers.get("X-Test") != some(["manuscript"]): return panic(
             "HTTP header"
         )
 
@@ -100,7 +100,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                     body.read(5)
                 ).is_none(): return panic("streaming EOF")
 
-        let limited: Result[Unit, HttpError] = error(cause: HttpError.LimitExceeded)
+        let limited: Result[Unit, HttpError] = error(HttpError.LimitExceeded)
 
         match net.request(
             method: "GET",

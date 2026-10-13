@@ -598,8 +598,12 @@ func groupStatementExpressions(filename, source string) (string, error) {
 				return
 			}
 			switch s.Kind {
-			case syntax.KindIf, syntax.KindWhile, syntax.KindMatch, syntax.KindReturn:
+			case syntax.KindIf, syntax.KindWhile, syntax.KindMatch:
 				start++
+			case syntax.KindReturn:
+				if tokens[start].Kind == syntax.KindReturn {
+					start++
+				}
 			case syntax.KindBind, syntax.KindAssign, syntax.KindWith, syntax.KindFor:
 				target := "="
 				if s.Kind == syntax.KindFor {

@@ -101,7 +101,7 @@ fn customer_name(customer: Customer) -> String:
     return "{value}: {display_name}"
 
 test "nominal record and nested binding":
-    let customer = Customer(id: CustomerId(value: "c1"), name: "Ada")
+    let customer = Customer(id: CustomerId("c1"), name: "Ada")
     if not (customer_name(customer: customer) == "c1: Ada"):
         return panic(message: "check failed")
 ```
@@ -147,7 +147,7 @@ test "list binding":
     if not (difference(values: [9, 4]) == 5):
         return panic(message: "check failed")
     let empty: List[Int] = []
-    let {value: label} = Label(value: "ready")
+    let {value: label} = Label("ready")
     if not (label == "ready"):
         return panic(message: "check failed")
 
@@ -249,9 +249,9 @@ fn score(outcome: Outcome) -> Int:
             return 0
 
 test "alternative result":
-    if not (score(outcome: Outcome.Ready(value: 8)) == 8):
+    if not (score(outcome: Outcome.Ready(8)) == 8):
         return panic(message: "check failed")
-    if not (score(outcome: Outcome.Failed(reason: "unavailable")) == 0):
+    if not (score(outcome: Outcome.Failed("unavailable")) == 0):
         return panic(message: "check failed")
 ```
 
@@ -321,7 +321,7 @@ fn same[T: Equal](left: T, right: T) -> Bool:
     return left == right
 
 test "generic argument inference":
-    let box = Box[Int](value: 6)
+    let box = Box[Int](6)
     if not (unwrap(box: box) == 6):
         return panic(message: "check failed")
     if not (unwrap[Int](box: box) == 6):
@@ -385,9 +385,9 @@ fn use_increment(operation: Increment) -> Int:
     return operation.apply(value: 4)
 
 test "explicit contract conversion":
-    let offset = Offset(delta: 1)
-    let operation = Increment(value: offset)
-    let same_view = Increment(value: operation)
+    let offset = Offset(1)
+    let operation = Increment(offset)
+    let same_view = Increment(operation)
     if not (use_increment(operation: same_view) == 5):
         return panic(message: "check failed")
 ```
@@ -434,10 +434,10 @@ fn compare[T: Equal](box: Box[T], other: T) -> Bool:
     return box.same(other: other)
 
 test "generic implementations":
-    let number = Box[Int](value: 7)
-    let text = Box[String](value: "hello")
-    let number_view = ReadValue[Int](value: number)
-    let text_view = ReadValue[String](value: text)
+    let number = Box[Int](7)
+    let text = Box[String]("hello")
+    let number_view = ReadValue[Int](number)
+    let text_view = ReadValue[String](text)
     if not (number_view.get() == 7):
         return panic(message: "check failed")
     if not (text_view.get() == "hello"):
@@ -496,25 +496,25 @@ fn seven() -> Int:
     return 7
 
 fn make_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
-    return ReadValue[Int](value: source)
+    return ReadValue[Int](source)
 
 fn forward_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
-    return ReadValue[Int](value: source)
+    return ReadValue[Int](source)
 
 fn consume[T: ReadValue[Int]](source: T) -> Int:
     return source.get()
 
 test "contract views and callbacks":
-    let box = Box[Int](value: 7)
+    let box = Box[Int](7)
     let first = make_view(source: box)
     let forwarded = forward_view(source: box)
-    let identity = ReadValue[Int](value: forwarded)
-    let copied = ReadValue[Int](value: identity)
-    let holder = ReaderHolder(reader: identity)
+    let identity = ReadValue[Int](forwarded)
+    let copied = ReadValue[Int](identity)
+    let holder = ReaderHolder(identity)
     let readers: List[ReadValue[Int]] = [holder.reader]
-    let optional: Optional[ReadValue[Int]] = some(value: forwarded)
-    let callback = CallbackReader(read_value: seven)
-    let callback_view = ReadValue[Int](value: callback)
+    let optional: Optional[ReadValue[Int]] = some(forwarded)
+    let callback = CallbackReader(seven)
+    let callback_view = ReadValue[Int](callback)
     if not (first.get() == 7):
         return panic(message: "check failed")
     if not (copied.get() == 7):
@@ -667,12 +667,12 @@ type OtherProblem:
 
 fn checked(value: Int) -> Result[Int, Problem]:
     if value < 0:
-        return error(cause: Problem.Missing(reason: "negative"))
-    return ok(value: value)
+        return error(Problem.Missing("negative"))
+    return ok(value)
 
 fn doubled(value: Int) -> Result[Int, Problem]:
     let accepted = try checked(value: value)
-    return ok(value: accepted * 2)
+    return ok(accepted * 2)
 
 fn summarize(outcome: Result[Int, Problem]) -> Int:
     match outcome:
@@ -723,8 +723,8 @@ fn preserve_key[K: Hashable](value: K) -> K:
     return value
 
 test "derived value equality":
-    let present: Optional[Int] = some(value: 1)
-    let same: Optional[Int] = some(value: 1)
+    let present: Optional[Int] = some(1)
+    let same: Optional[Int] = some(1)
     let missing: Optional[Int] = none
     if not (present == same):
         return panic(message: "check failed")
@@ -738,7 +738,7 @@ test "derived value equality":
         return panic(message: "check failed")
     if not (preserve_key(value: "key") == "key"):
         return panic(message: "check failed")
-    let callback = Callback(handler: increment)
+    let callback = Callback(increment)
 ```
 
 Optional equality compares its tag and eligible payload. Decimal equality compares numeric values despite different trailing zeroes. List equality observes positions rather than treating a list as a set. Eligibility is checked recursively on record fields.
@@ -775,9 +775,9 @@ fn outcome_value(outcome: Result[Int, String]) -> Int:
             return -1
 
 test "data constructor context":
-    let input = Input(names: [none, some(value: "Ada")])
-    let success: Result[Int, String] = ok(value: 3)
-    let failure: Result[Int, String] = error(cause: "unavailable")
+    let input = Input([none, some("Ada")])
+    let success: Result[Int, String] = ok(3)
+    let failure: Result[Int, String] = error("unavailable")
     let absent: Optional[Int] = none
     let nested: List[List[Int]] = [[], [1]]
     if not (outcome_value(outcome: success) == 3):
@@ -848,20 +848,21 @@ fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:
     return transform(value: value)
 
 test "function suite boundaries":
-    let dormant = fn() -> Int:
+    let dormant = fn():
         return panic(message: "body is not run at creation")
     let grouped = apply(
         transform: (
-            fn(value: Int) -> Int:
+            fn(value):
                 if value > 0:
                     return value - 1
+
                 return 0
         ),
         value: 3,
     )
     let final_argument = apply(
         value: 3,
-        transform: fn(value: Int) -> Int:
+        transform: fn(value):
             return value - 1
     )
     if not (grouped == 2):

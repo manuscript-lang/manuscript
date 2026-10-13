@@ -40,6 +40,22 @@ func TestFormatFixturesPreservesMeaningAndIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestFormatImplicitReturnPreservesOperands(t *testing.T) {
+	source := "fn sum(first_value: Int, second_value: Int, third_value: Int, fourth_value: Int) -> Int: first_value + second_value + third_value + fourth_value\n"
+	formatted, err := tooling.Format("implicit.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertFormatMeaning(t, "implicit.ms", source, formatted)
+	twice, err := tooling.Format("implicit.ms", formatted)
+	if err != nil || formatted != twice {
+		t.Fatal("implicit return formatting is not idempotent", err)
+	}
+	if result := compiler.CompileSource("implicit.ms", formatted, compiler.Options{}); !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+}
+
 // Grouping parentheses do not appear in the AST. Compare every other token's
 // spelling and the complete syntax tree with source positions removed, so
 // wrapping cannot change precedence, arguments, literals, or suite ownership.

@@ -22,7 +22,7 @@ fn limits(
     values: Optional[Int]
 ) -> Optional[TomlLimits]:
     return some(
-        value: TomlLimits(
+        TomlLimits(
             max_bytes: bytes,
             max_depth: depth,
             max_values: values
@@ -34,32 +34,32 @@ test "TOML scalars quoted keys comments exact integers and dates":
     let root = entries(
         value(parse(text: source))
     )
-    if root.get("title").unwrap() != TomlValue.StringValue(value: "é🙂 # text"): return panic(
+    if root.get("title").unwrap() != TomlValue.StringValue("é🙂 # text"): return panic(
         "TOML text"
     )
-    if root.get("").unwrap() != TomlValue.StringValue(value: "literal\\n"): return panic(
+    if root.get("").unwrap() != TomlValue.StringValue("literal\\n"): return panic(
         "literal string"
     )
-    if root.get("large").unwrap() != TomlValue.IntValue(value: 9007199254740993): return panic(
+    if root.get("large").unwrap() != TomlValue.IntValue(9007199254740993): return panic(
         "exact integer"
     )
-    if root.get("hex").unwrap() != TomlValue.IntValue(value: 3735928559): return panic(
+    if root.get("hex").unwrap() != TomlValue.IntValue(3735928559): return panic(
         "hex"
     )
-    if root.get("oct").unwrap() != TomlValue.IntValue(value: 493): return panic("octal")
-    if root.get("bin").unwrap() != TomlValue.IntValue(value: 10): return panic("binary")
-    if root.get("float").unwrap() != TomlValue.FloatValue(value: -1250.0): return panic(
+    if root.get("oct").unwrap() != TomlValue.IntValue(493): return panic("octal")
+    if root.get("bin").unwrap() != TomlValue.IntValue(10): return panic("binary")
+    if root.get("float").unwrap() != TomlValue.FloatValue(-1250.0): return panic(
         "float"
     )
     if (
         root.get(
             "stamp"
-        ).unwrap() != TomlValue.DateTimeValue(text: "1979-05-27 07:32:00-07:00")
+        ).unwrap() != TomlValue.DateTimeValue("1979-05-27 07:32:00-07:00")
     ): return panic("date time")
-    if root.get("date").unwrap() != TomlValue.DateTimeValue(text: "2024-02-29"): return panic(
+    if root.get("date").unwrap() != TomlValue.DateTimeValue("2024-02-29"): return panic(
         "date"
     )
-    if root.get("time").unwrap() != TomlValue.DateTimeValue(text: "07:32:00.123"): return panic(
+    if root.get("time").unwrap() != TomlValue.DateTimeValue("07:32:00.123"): return panic(
         "time"
     )
 
@@ -71,10 +71,10 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
             )
         )
     )
-    if root.get("basic").unwrap() != TomlValue.StringValue(value: "hello world!"): return panic(
+    if root.get("basic").unwrap() != TomlValue.StringValue("hello world!"): return panic(
         "multiline basic"
     )
-    if root.get("literal").unwrap() != TomlValue.StringValue(value: "raw\\text\nnext"): return panic(
+    if root.get("literal").unwrap() != TomlValue.StringValue("raw\\text\nnext"): return panic(
         "multiline literal"
     )
 
@@ -82,13 +82,13 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
     if array.length() != 3: return panic("array")
 
     let person = entries(array.at(2).unwrap())
-    if person.get("name").unwrap() != TomlValue.StringValue(value: "Ada"): return panic(
+    if person.get("name").unwrap() != TomlValue.StringValue("Ada"): return panic(
         "inline table"
     )
     if (
         entries(
             person.get("meta").unwrap()
-        ).get("age").unwrap() != TomlValue.IntValue(value: 37)
+        ).get("age").unwrap() != TomlValue.IntValue(37)
     ): return panic("inline dotted key")
 
 test "TOML implicit parents dotted keys and arrays of tables":
@@ -100,7 +100,7 @@ test "TOML implicit parents dotted keys and arrays of tables":
     if (
         entries(
             owner.get("details").unwrap()
-        ).get("name").unwrap() != TomlValue.StringValue(value: "Ada")
+        ).get("name").unwrap() != TomlValue.StringValue("Ada")
     ): return panic("implicit parent")
 
     let products = items(root.get("products").unwrap())
@@ -108,7 +108,7 @@ test "TOML implicit parents dotted keys and arrays of tables":
     if (
         entries(
             entries(products.first().unwrap()).get("meta").unwrap()
-        ).get("stock").unwrap() != TomlValue.IntValue(value: 3)
+        ).get("stock").unwrap() != TomlValue.IntValue(3)
     ): return panic("array child table")
     if items(entries(products.last().unwrap()).get("variants").unwrap()).length() != 2: return panic(
         "nested table arrays"
@@ -163,7 +163,7 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
                             or reason == ""
                         ): return panic("TOML error details")
 
-                        let boundary = Error(value: cause)
+                        let boundary = Error(cause)
                         if not boundary.message().starts_with("TOML "): return panic(
                             "source Error implementation"
                         )
@@ -171,8 +171,8 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
                     _: return panic("wrong TOML error")
 
 test "TOML optional limits include implicit tables and zero":
-    let limited: Result[TomlValue, TomlError] = error(cause: TomlError.LimitExceeded)
-    let invalid: Result[TomlValue, TomlError] = error(cause: TomlError.InvalidInput)
+    let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
+    let invalid: Result[TomlValue, TomlError] = error(TomlError.InvalidInput)
     if (
         parse(
             text: "a=1",
@@ -211,7 +211,7 @@ test "TOML optional limits include implicit tables and zero":
                 depth: 1,
                 values: 1
             )
-        ) != parse(text: "", limits: none)
+        ) != parse(text: "")
     ): return panic("empty exact limits")
     if (
         parse(
@@ -271,6 +271,6 @@ test "TOML nonfinite floats CRLF and repeated separators":
 
         _: return panic("expected float")
 
-    if root.get("integer").unwrap() != TomlValue.IntValue(value: 1000000): return panic(
+    if root.get("integer").unwrap() != TomlValue.IntValue(1000000): return panic(
         "repeated underscore separators"
     )

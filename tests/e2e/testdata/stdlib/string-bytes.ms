@@ -12,7 +12,7 @@ test "Unicode scalar indexing differs from byte length":
         "Unicode lengths"
     )
     if text.scalar_values() != [97, 233, 128578]: return panic("scalar values")
-    if text.at(-1) != some(value: "🙂") or text.scalar_at(1) != some(value: 233): return panic(
+    if text.at(-1) != some("🙂") or text.scalar_at(1) != some(233): return panic(
         "scalar indexing"
     )
     if not text.at(3).is_none(): return panic("out of bounds optional")
@@ -24,7 +24,7 @@ test "Unicode scalar indexing differs from byte length":
 
 test "strings honor omitted none zero and explicit output limits":
     if value("ab".repeat(count: 2)) != "abab": return panic("omitted repeat budget")
-    if value("ab".repeat(count: 2, max_bytes: none)) != "abab": return panic(
+    if value("ab".repeat(count: 2)) != "abab": return panic(
         "none repeat budget"
     )
     if value(
@@ -34,7 +34,7 @@ test "strings honor omitted none zero and explicit output limits":
         )
     ) != "": return panic("zero repeat")
 
-    let limited: Result[String, StringError] = error(cause: StringError.LimitExceeded)
+    let limited: Result[String, StringError] = error(StringError.LimitExceeded)
     if "é".repeat(
         count: 2,
         max_bytes: 3
@@ -54,35 +54,35 @@ test "strings honor omitted none zero and explicit output limits":
     ) != ["a", ""]: return panic("split truncation")
     if " \té \n".trim() != "é": return panic("trim")
 
-    let invalid: Result[String, StringError] = error(cause: StringError.InvalidInput)
+    let invalid: Result[String, StringError] = error(StringError.InvalidInput)
     if "a".normalize(form: "invalid") != invalid: return panic("normalization form")
 
     let scalar_error: Result[String, StringError] = error(
-        cause: StringError.InvalidInput
+        StringError.InvalidInput
     )
     if from_scalars([55296]) != scalar_error: return panic("surrogate scalar")
 
 test "bytes copy slice search and UTF8 validation":
-    let data = Bytes(values: [0, 1, 255, 1])
-    if data.at(-1) != some(value: 1): return panic("negative byte index")
+    let data = Bytes([0, 1, 255, 1])
+    if data.at(-1) != some(1): return panic("negative byte index")
     if not data.at(4).is_none(): return panic("missing byte")
-    if data.index_of(Bytes(values: [1])) != some(value: 1): return panic("byte search")
-    if data.last_index_of(Bytes(values: [1])) != some(value: 3): return panic(
+    if data.index_of(Bytes([1])) != some(1): return panic("byte search")
+    if data.last_index_of(Bytes([1])) != some(3): return panic(
         "last byte search"
     )
-    if data.slice(start: 1, end: 3) != Bytes(values: [1, 255]): return panic(
+    if data.slice(start: 1, end: 3) != Bytes([1, 255]): return panic(
         "byte slice"
     )
-    if data.reverse() != Bytes(values: [1, 255, 1, 0]): return panic("byte reverse")
+    if data.reverse() != Bytes([1, 255, 1, 0]): return panic("byte reverse")
 
     let copied = data.clone().with_value(index: 0, value: 42)
-    if copied.at(0) != some(value: 42) or data.at(0) != some(value: 0): return panic(
+    if copied.at(0) != some(42) or data.at(0) != some(0): return panic(
         "clone storage"
     )
-    if not Bytes(values: [255]).to_text().is_none(): return panic(
+    if not Bytes([255]).to_text().is_none(): return panic(
         "invalid UTF8 accepted"
     )
-    if "é".to_bytes().to_text() != some(value: "é"): return panic("UTF8 roundtrip")
+    if "é".to_bytes().to_text() != some("é"): return panic("UTF8 roundtrip")
 
 test "string and bytes builders freeze idempotently":
     let text = StringBuilder()
@@ -92,8 +92,8 @@ test "string and bytes builders freeze idempotently":
 
     let bytes = BytesBuilder()
     bytes.append(0)
-    bytes.concat(Bytes(values: [255, 1]))
+    bytes.concat(Bytes([255, 1]))
     if (
-        bytes.freeze() != Bytes(values: [0, 255, 1])
-        or bytes.freeze() != Bytes(values: [0, 255, 1])
+        bytes.freeze() != Bytes([0, 255, 1])
+        or bytes.freeze() != Bytes([0, 255, 1])
     ): return panic("bytes freeze")

@@ -5,7 +5,7 @@ weight = 1
 
 # Declarations and calls
 
-A function names its inputs, declares their types, and declares the type it returns. Its body runs in source order. Use `return` to send a value back to the caller. A short body can stay on one line: `fn double(value: Int) -> Int: return value * 2`. See the [suite rules](../basics/grammar.md#statements-and-patterns) for inline bodies.
+A function names its inputs, declares their types, and declares the type it returns. Its body runs in source order. Use `return` to send a value back from a multiline body. A short expression body can stay on one line and return implicitly: `fn double(value: Int) -> Int: value * 2`. See the [suite rules](../basics/grammar.md#statements-and-patterns) for inline bodies.
 
 ```manuscript
 fn decrement(value: Int) -> Int:
@@ -40,7 +40,7 @@ let next = decrement(3)
 let explicit = decrement(value: 3)
 ```
 
-The rule applies to ordinary functions, methods, function values, and library APIs. Count the callable's declared parameters, including optional API parameters, rather than the arguments supplied at a particular call. A method's implicit receiver does not count as a parameter. Constructors and explicit contract views still require labels, including `some(value: ...)`, `ok(value: ...)`, `error(cause: ...)`, and `Contract(value: receiver)`. A zero-parameter function uses `()`.
+The rule applies to ordinary functions, methods, function values, and library APIs. Count the callable's declared parameters, including optional API parameters, rather than the arguments supplied at a particular call. A method's implicit receiver does not count as a parameter. Single-payload constructors and explicit contract views also permit omitted labels, including `some(...)`, `ok(...)`, `error(...)`, and `Contract(receiver)`. Multi-payload constructors retain explicit labels. A zero-parameter function uses `()`.
 
 TaskGroup.start accepts one zero-argument function and infers a typed Task[T] handle. Task and group joins use ordinary receiver calls; see [task groups](../../concurrency/task-groups.md).
 
@@ -68,7 +68,7 @@ A default is checked against its explicit parameter type in the function's lexic
 
 Evaluate the callable and all supplied arguments first, in written order. Then evaluate omitted defaults once each in parameter declaration order, before entering the body. Defaults run afresh on each invocation; supplying a value skips its default entirely. Explicit `none`, `unit`, `false`, and zero are supplied values. A failing default prevents later defaults and the body from running. `try` in a default propagates from the called function under its declared result type.
 
-Named functions, anonymous functions, and implementation methods with bodies may declare defaults. Interface operation signatures, function-type annotations, record fields, and alternative payloads cannot. A method default permits omission through its concrete receiver or inferred bound method value; calls through an interface view follow the interface's required signature. Defaults do not provide generic inference: omitted arguments supply no type evidence, and a generic default must type-check under the declared bounds.
+Named functions, anonymous functions, and implementation methods with bodies may declare defaults. Function-type annotations and alternative payloads cannot. Interface signatures only permit `= none` defaults on Optional parameters. Record fields have their own [default expressions](../types/records.md#construction). A method default permits omission through its concrete receiver or inferred bound method value; calls through an interface view follow the interface's required signature. Defaults do not provide generic inference: omitted arguments supply no type evidence, and a generic default must type-check under the declared bounds.
 
 An inferred immutable local copy of a callable retains its defaults. Explicit function-type annotations, mutable bindings, function parameters and results, fields, and generic forwarding require the full argument list. Defaults are not part of function-type identity; a defaulted function can be passed wherever its complete labeled signature is expected.
 
@@ -102,7 +102,7 @@ This also matters for [concurrency APIs](../../concurrency/task-groups.md#prepar
 
 ## Unit and Never
 
-`unit` is the single value of `Unit`. A `Unit` function may use `return`, `return unit`, or fall through the end of its body. Other functions must return a compatible value on every reachable normal exit; bare `return` and reachable fallthrough are compile errors. There is no implicit return of a block's final expression.
+`unit` is the single value of `Unit`. A `Unit` function may use `return`, `return unit`, or fall through the end of its body. Other functions must return a compatible value on every reachable normal exit; bare `return` and reachable fallthrough are compile errors. A single-line function expression body returns its value: `fn double(value: Int) -> Int: value * 2`. Multiline bodies require explicit `return`; their final expression is not an implicit return.
 
 ```manuscript
 import panic from "@std/faults.ms"

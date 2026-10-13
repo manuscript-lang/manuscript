@@ -57,7 +57,7 @@ fn identity[T](value: T) -> T:
 fn same[T: Equal](left: T, right: T) -> Bool:
     return left == right
 
-let box = Box[Int](value: 1)
+let box = Box[Int](1)
 let exact = identity[Int](value: 1)
 let inferred = identity(value: 1)
 ```
@@ -68,7 +68,7 @@ Applications are invariant: `Box[Int]` and `Box[Float]` are distinct types. A ge
 
 ## Inference from arguments
 
-A function call may omit type arguments only when independently typed supplied argument expressions uniquely determine every parameter. The compiler matches argument types against declared parameter types, including invariant nested applications, then checks bounds and arguments after substitution. Repeated occurrences must determine the same type. No common superclass, implicit union, or numeric widening is inferred.
+A function call may omit type arguments when supplied argument expressions uniquely determine every parameter. Independently typed values establish initial evidence; callbacks with known inputs can then contribute their inferred result types. The compiler matches argument types against declared parameter types, including invariant nested applications, then checks bounds and arguments after substitution. Repeated occurrences must determine the same type. No common superclass, implicit union, or numeric widening is inferred.
 
 ```manuscript
 fn choose[T](first: T, second: T) -> T:

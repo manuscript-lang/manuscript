@@ -25,9 +25,12 @@ import Result from "@std/result.ms"
 fn announce() -> Result[Unit, Error]:
     with transport = stdout_transport():
         let logger = try create(transport: transport, timestamp: false)
-        let fields = Map[String, JsonValue]().with_entry(key: "port", value: JsonValue.NumberValue(text: "8080"))
+        let fields = Map[String, JsonValue]().with_entry(
+            key: "port",
+            value: JsonValue.NumberValue("8080")
+        )
         let written = try logger.info(message: "listening", fields: fields)
-        return ok(value: unit)
+        return ok(unit)
 
 export fn main() -> Int:
     match announce():

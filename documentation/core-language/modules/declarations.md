@@ -52,7 +52,7 @@ type PrivateToken:
 
 # Rejected: callers cannot name the internal result type.
 export fn issue() -> PrivateToken:
-    return PrivateToken(value: "token")
+    return PrivateToken("token")
 ```
 
 Exporting a record exposes every field and its constructor; exporting an alternative exposes every case and payload field; exporting an `interface` exposes every operation. Opaque exports and selective member visibility are unsupported. See [public data surfaces](../types/records.md#public-data-surfaces).

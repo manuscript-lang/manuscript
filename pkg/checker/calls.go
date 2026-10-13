@@ -16,7 +16,8 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		}
 		if typ.Kind == "contract" {
 			typ = c.instantiate(typ, nil, nil, expected, e.Pos)
-			if len(e.Args) != 1 || e.Args[0].Name != "value" {
+			i.Arguments = constructorArguments(e.Args, []Param{{Name: "value"}})
+			if len(i.Arguments) != 1 || i.Arguments[0].Name != "value" {
 				c.error(e.Pos, "type", "contract view requires exactly value: receiver; write "+typ.String()+"(value: x) with one argument labeled value")
 				return i
 			}
@@ -43,7 +44,8 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			c.error(e.Pos, "type", "standard type has no source constructor: "+typ.String()+"; create it with a literal or the standard function documented for it (ms doc)")
 			return i
 		}
-		typ = c.instantiate(typ, fields, e.Args, expected, e.Pos)
+		i.Arguments = constructorArguments(e.Args, fields)
+		typ = c.instantiate(typ, fields, i.Arguments, expected, e.Pos)
 		fields = Fields(typ)
 		if std(typ, "Queue") && len(e.Args) == 0 {
 			fields = nil
@@ -51,7 +53,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if std(typ, "Bytes") {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
-		i.NoReturn = c.argumentsFor(typ.Name, e.Pos, e.Args, fields, ConstructorSignature(typ).Defaults)
+		i.NoReturn = c.argumentsFor(typ.Name, e.Pos, i.Arguments, fields, ConstructorSignature(typ).Defaults)
 		i.Type = typ
 		i.Constructor = typ
 		return i
@@ -76,9 +78,10 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if len(cs.Fields) == 0 {
 			c.error(e.Pos, "type", "nullary cases omit call parentheses; write "+cs.Name+" instead of "+cs.Name+"()")
 		}
-		alternative = c.instantiate(alternative, cs.Fields, e.Args, expected, e.Pos)
+		i.Arguments = constructorArguments(e.Args, cs.Fields)
+		alternative = c.instantiate(alternative, cs.Fields, i.Arguments, expected, e.Pos)
 		cs, _ = caseOf(alternative, cs.Name)
-		i.NoReturn = c.argumentsFor(cs.Name, e.Pos, e.Args, cs.Fields)
+		i.NoReturn = c.argumentsFor(cs.Name, e.Pos, i.Arguments, cs.Fields)
 		i.Type = alternative
 		i.Constructor = alternative
 		i.Case = cs.Name
@@ -105,21 +108,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if len(s.Variables) > 0 {
 			if !explicit {
 				sub := map[string]*Type{}
-				vars := variableSet(s.Variables)
-				for _, arg := range functionArguments(e.Args, signature.Params) {
-					if c.contextual(arg.Value) {
-						continue
-					}
-					actual := c.independentArgument(arg.Value)
-					if actual == nil {
-						continue
-					}
-					for _, param := range signature.Params {
-						if param.Name == arg.Name && !c.unifyArgument(param.Type, actual.Type, vars, sub) {
-							c.error(arg.Pos, "type", conflictingInference)
-						}
-					}
-				}
+				c.inferArguments(functionArguments(e.Args, signature.Params), signature.Params, s.Variables, sub)
 				for _, v := range s.Variables {
 					supplied = append(supplied, sub[v.ID])
 				}
@@ -317,28 +306,16 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 	}
 	if expected != nil && expected.ID == t.ID && len(expected.Args) == len(vars) {
 		for index, v := range vars {
-			if sub[v.ID] == nil {
+			if sub[v.ID] == nil && inferenceTypeKnown(expected.Args[index], c.inferenceVariables) {
 				sub[v.ID] = expected.Args[index]
 			}
 		}
 	}
-	for _, arg := range args {
-		if c.contextual(arg.Value) {
-			continue
-		}
-		actual := c.independentArgument(arg.Value)
-		if actual == nil {
-			continue
-		}
-		for _, field := range fields {
-			if field.Name != arg.Name || c.errorAssignable(actual.Type, Sub(field.Type, sub)) {
-				continue
-			}
-			if !c.unifyArgument(Sub(field.Type, sub), actual.Type, variableSet(vars), sub) {
-				c.error(arg.Pos, "type", "constructor arguments conflict with expected type; make the argument types match the annotated type or drop the annotation")
-			}
-		}
+	inferredFields := make([]Param, len(fields))
+	for index, field := range fields {
+		inferredFields[index] = Param{field.Name, Sub(field.Type, sub)}
 	}
+	c.inferArguments(args, inferredFields, vars, sub)
 	actualArgs := []*Type{}
 	for _, v := range vars {
 		a := sub[v.ID]
@@ -443,4 +420,12 @@ func missingArgumentHint(param Param, callee string) string {
 		in = " in call to " + callee
 	}
 	return ": " + param.Type.String() + in + "; add '" + param.Name + ": <" + param.Type.String() + ">'"
+}
+
+// Constructor shorthand is limited to exactly one declared payload.
+func constructorArguments(args []syntax.Argument, params []Param) []syntax.Argument {
+	if len(params) == 1 {
+		return functionArguments(args, params)
+	}
+	return args
 }

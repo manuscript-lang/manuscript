@@ -24,7 +24,7 @@ test "IP parsing CIDR normalization and containment":
         "CIDR exclusion"
     )
 
-    let invalid: Result[String, NetworkError] = error(cause: NetworkError.InvalidData)
+    let invalid: Result[String, NetworkError] = error(NetworkError.InvalidData)
     if parse_ip("999.1.1.1") != invalid: return panic("invalid IP")
 
 test "TCP loopback writes reads half close and EOF":

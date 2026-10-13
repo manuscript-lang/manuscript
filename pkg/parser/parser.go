@@ -12,6 +12,7 @@ type Parser struct {
 	tokens          []lexer.Token
 	at              int
 	inlineStatement bool
+	inlineReturn    bool
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
@@ -145,14 +146,18 @@ func (p *Parser) typeParams() []syntax.TypeParameter {
 	p.need("]")
 	return result
 }
-func (p *Parser) parameters(defaults bool) []syntax.Parameter {
+func (p *Parser) parameters(defaults, inferred bool) []syntax.Parameter {
 	p.need("(")
 	var params []syntax.Parameter
 	if !p.take(")") {
 		for {
 			name := p.need(lexer.Name)
-			p.need(":")
-			param := syntax.Parameter{Pos: name.Pos, Name: name.Text, Type: p.typ()}
+			param := syntax.Parameter{Pos: name.Pos, Name: name.Text}
+			if p.take(":") {
+				param.Type = p.typ()
+			} else if !inferred {
+				p.need(":")
+			}
 			if p.take("=") {
 				if !defaults {
 					p.fail(p.previous(), "function types and case payloads cannot have defaults; put the default on a named function parameter or a record field instead")
@@ -199,7 +204,7 @@ func (p *Parser) typeArgs() []*syntax.Type {
 func (p *Parser) typ() *syntax.Type {
 	if p.take("fn") {
 		pos := p.previous().Pos
-		params := p.parameters(false)
+		params := p.parameters(false, false)
 		p.need("->")
 		return &syntax.Type{Pos: pos, Name: "fn", Params: params, Result: p.typ()}
 	}
@@ -217,7 +222,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 	case p.take("fn"):
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
-		d.Params = p.parameters(true)
+		d.Params = p.parameters(true, false)
 		p.need("->")
 		d.Result = p.typ()
 		d.Body = p.statementSuite(false, true)
@@ -245,7 +250,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 			p.need("fn")
 			name := p.need(lexer.Name)
 			m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text}
-			m.Params = p.parameters(true)
+			m.Params = p.parameters(true, false)
 			p.need("->")
 			m.Result = p.typ()
 			m.Body = p.statementSuite(false, true)
@@ -290,7 +295,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 				name := p.need(lexer.Name)
 				c := syntax.Case{Pos: name.Pos, Name: name.Text}
 				if p.peek().Kind == "(" {
-					c.Fields = p.parameters(false)
+					c.Fields = p.parameters(false, false)
 					if len(c.Fields) == 0 {
 						p.fail(name, "nullary cases omit parentheses; write 'case "+name.Text+"' instead of 'case "+name.Text+"()'")
 					}
@@ -303,7 +308,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 				if token.Kind == "type" {
 					m.TypeParams = p.typeParams()
 				}
-				m.Params = p.parameters(true)
+				m.Params = p.parameters(true, false)
 				p.need("->")
 				m.Result = p.typ()
 				if token.Kind == "interface" {
@@ -340,8 +345,8 @@ func (p *Parser) suite() []*syntax.Statement {
 	return p.statementSuite(false)
 }
 func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statement {
-	outer := p.inlineStatement
-	defer func() { p.inlineStatement = outer }()
+	outer, outerReturn := p.inlineStatement, p.inlineReturn
+	defer func() { p.inlineStatement, p.inlineReturn = outer, outerReturn }()
 	p.need(":")
 	if p.peek().Kind != lexer.Newline {
 		switch p.peek().Kind {
@@ -349,6 +354,7 @@ func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statem
 			p.fail(p.peek(), "inline bodies require one simple statement; put '"+p.peek().Kind+"' on its own line in an indented block")
 		}
 		p.inlineStatement = true
+		p.inlineReturn = expression || len(empty) > 0
 		body := []*syntax.Statement{p.statement()}
 		p.inlineStatement = outer
 		if !expression {
@@ -357,6 +363,7 @@ func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statem
 		return body
 	}
 	p.inlineStatement = false
+	p.inlineReturn = false
 	p.need(lexer.Newline)
 	p.need(lexer.Indent)
 	var body []*syntax.Statement
@@ -468,10 +475,13 @@ func (p *Parser) statement() *syntax.Statement {
 			}
 			s.Value = p.expression(0)
 		} else {
-			if e.Kind != syntax.KindCall {
+			if !p.inlineReturn && e.Kind != syntax.KindCall {
 				p.fail(t, "only a call can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function")
 			}
 			s.Kind = syntax.KindCall
+			if p.inlineReturn {
+				s.Kind = syntax.KindReturn
+			}
 			s.Value = e
 		}
 		p.end()
@@ -617,9 +627,10 @@ func (p *Parser) primary() *syntax.Expression {
 	case "fn":
 		e.Kind = syntax.KindLambda
 		e.Text = ""
-		e.Params = p.parameters(true)
-		p.need("->")
-		e.Result = p.typ()
+		e.Params = p.parameters(true, true)
+		if p.take("->") {
+			e.Result = p.typ()
+		}
 		e.Body = p.statementSuite(true)
 	default:
 		p.fail(t, "expected an expression, found "+describe(t)+"; write a value, name, call, or literal here")

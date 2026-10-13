@@ -65,7 +65,7 @@ Evidence: [sharing rules](../documentation/concurrency/sharing.md).
 
 ### Syntax improvements need examples across their boundaries
 
-Decision: support grouped symbol imports, and allow an omitted call label for a function with one parameter. The later token-cost request permits matching-name shorthand for multi-parameter functions and brace Map literals. Other multi-parameter expressions and constructors retain explicit labels. The single-parameter request measures declaration arity, not the number of arguments supplied. These are user decisions; verify their availability in the branch being changed.
+Decision: support grouped symbol imports, and allow an omitted call label for a function with one parameter. The later token-cost request permits matching-name shorthand for multi-parameter functions and brace Map literals. Other multi-parameter expressions retain explicit labels. The latest correction also allows omitted labels on single-payload record/case constructors and contract views; multi-payload constructors retain labels. The single-parameter request measures declaration arity, not the number of arguments supplied. These are user decisions; verify their availability in the branch being changed.
 
 Apply when: changing imports, calls, grammar, or editor assistance.
 Evidence for the newer rule: [call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names), [Map literals](../documentation/core-language/types/collections.md#map-literals), and [native terse syntax fixture](../tests/e2e/testdata/accept/terse-data.ms).
@@ -110,7 +110,7 @@ Verify: a parameterless entry runs; parameterized entries fail; imported accesso
 
 ### Keep short bodies available without a second function kind
 
-Decision: the user requested a terse language with single-line functions and conditions. Do not restore the earlier blanket requirement for indented function bodies. The user clarified that `else` must start on a separate line: allow one branch per line, and reject same-line `else` or `else if`. Inline suites use the existing colon and explicit statement/return semantics; they do not introduce implicit returns or a separate callable kind.
+Decision: the user requested a terse language with single-line functions and conditions. Do not restore the earlier blanket requirement for indented function bodies. The user clarified that `else` must start on a separate line: allow one branch per line, and reject same-line `else` or `else if`. The latest correction permits a single expression after a function or method colon and implicitly returns it. Multiline bodies retain explicit returns. Other inline suites retain ordinary statement semantics; there is no separate callable kind.
 
 Apply when: changing suite parsing, anonymous-function layout, formatting, or syntax documentation.
 Evidence: [canonical suite rules](../documentation/core-language/basics/grammar.md#statements-and-patterns), [parser boundary cases](../pkg/parser/parser_test.go), and [native inline conformance](../tests/e2e/testdata/accept/inline-suites.ms).
@@ -135,3 +135,12 @@ Verified: tracking List/Map/Set nominal identities as active generic application
 Apply when: changing recursive layout checking or adding recursive data types.
 Evidence: [layout checker](../pkg/checker/contracts.go), [accepted and rejected layout regressions](../pkg/checker/checker_test.go), and [compiled TOML node trees](../tests/e2e/testdata/stdlib/toml.ms).
 Verify: `TestNestedCollectionsGuardRecursiveLayouts` accepts the two Map element types and still rejects `Growing[List[T]]` recursion.
+
+### Infer local callback signatures from context
+
+Decision: the user explicitly permits callback parameter and result inference. Known function contexts supply omitted parameter types; callback bodies can supply generic output evidence after inputs are known, including success types within a partially known Result context. Named public signatures stay explicit, and parameter labels retain their existing function identity. Use existing argument/field defaults to omit redundant values; do not treat every Optional parameter as implicitly defaulted.
+
+Verify: source and native callbacks cover generic map results, callbacks listed before their inference inputs, optional callbacks, nested closures, constructors, and editor parameter navigation. Preserve explicit annotations where incomplete Result construction or `try` lacks a known result context.
+
+Apply when: changing callback checking, generic inference, syntax or editor annotations.
+Evidence: [callback rules](../documentation/core-language/functions/function-values-and-closures.md#contextual-callback-inference), [acceptance and rejection checks](../pkg/compiler/callbacks_test.go), and [native fixture](../tests/e2e/testdata/accept/contextual-callbacks.ms).
