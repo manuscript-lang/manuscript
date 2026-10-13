@@ -458,6 +458,10 @@ func formatValue(value Value, depth int) string {
 		return v.t.UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
 	case libraryRegex:
 		return v.pattern.String()
+	case libraryIPAddress:
+		return v.address.String()
+	case libraryCidr:
+		return v.prefix.String()
 	}
 	return "[object]"
 }

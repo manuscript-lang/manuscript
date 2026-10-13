@@ -85,8 +85,8 @@ func (n *network) Operation(name string) Function {
 		})
 	}
 	result := "@std/Result[@std/HttpServer][@std/IoError]"
-	return NewAcquisition([]string{"address", "handler", "limit", "max_body_bytes", "max_response_bytes", "timeout", "grace"}, result, func(ctx *Execution, args []Value) Value {
-		params := []LibraryParam{{"address", "String"}, {"handler", ""}, {"limit", "Optional[Int]"}, {"max_body_bytes", "Optional[Int]"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}, {"grace", "Optional[Duration]"}}
+	return NewAcquisition([]string{"address", "handler", "max_requests", "max_body_bytes", "max_response_bytes", "timeout", "grace"}, result, func(ctx *Execution, args []Value) Value {
+		params := []LibraryParam{{"address", "String"}, {"handler", ""}, {"max_requests", "Optional[Int]"}, {"max_body_bytes", "Optional[Int]"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}, {"grace", "Optional[Duration]"}}
 		normalized, valid := nativeOptions("serve", params, args)
 		if !valid {
 			return ioError(result, "InvalidInput", "")
@@ -197,12 +197,8 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid or oversized request body", 413)
 		return
 	}
-	headers := &Map{Type: "@std/Map[String][@std/Bytes]"}
-	// Header iteration is sorted for stable source-visible insertion order.
-	for _, name := range sortedHeaderNames(r.Header) {
-		headers.Entries = append(headers.Entries, Entry{name, Bytes{[]byte(strings.Join(r.Header[name], "\n"))}})
-	}
-	request := Record{"@std/HttpRequest", map[string]Value{"method": r.Method, "path": r.URL.Path, "query": r.URL.RawQuery, "headers": headers, "body": Bytes{data}}}
+	headers := libraryHTTPHeaders(r.Header)
+	request := Record{"@std/HttpRequest", map[string]Value{"method": libraryHTTPMethod(r.Method), "path": r.URL.Path, "query": r.URL.RawQuery, "headers": headers, "body": Bytes{data}}}
 	var response Value
 	var failure any
 	func() {
@@ -232,17 +228,24 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid response", 500)
 		return
 	}
-	for _, entry := range record.Fields["headers"].(*Map).Entries {
-		key, value := entry.Key.(string), entry.Value.(string)
-		if !validHeaderName(key) || !validHeaderValue(value) || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Connection") {
+	headers = record.Fields["headers"].(*libraryHeaders)
+	for _, entry := range headers.Entries {
+		key := entry.Key.(string)
+		if !validHeaderName(key) || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Connection") {
 			http.Error(w, "invalid response header", 500)
 			return
 		}
+		for _, value := range entry.Value.(*List).Items {
+			if !validHeaderValue(string(value.(Bytes).Items)) {
+				http.Error(w, "invalid response header", 500)
+				return
+			}
+		}
 	}
-	for _, entry := range record.Fields["headers"].(*Map).Entries {
-		// Map keys are case-sensitive; HTTP names are not. Append equivalent
-		// names in insertion order so repeated fields such as Set-Cookie survive.
-		w.Header().Add(entry.Key.(string), entry.Value.(string))
+	for _, entry := range headers.Entries {
+		for _, value := range entry.Value.(*List).Items {
+			w.Header().Add(entry.Key.(string), string(value.(Bytes).Items))
+		}
 	}
 	w.WriteHeader(int(status))
 	w.Write(body)
@@ -325,17 +328,6 @@ func sortedHeaderNames(headers http.Header) []string {
 	}
 	sortStrings(names)
 	return names
-}
-func validHeaderName(name string) bool {
-	if name == "" {
-		return false
-	}
-	for _, r := range name {
-		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("!#$%&'*+-.^_`|~", r)) {
-			return false
-		}
-	}
-	return true
 }
 
 // normalizeHTTPRequestPath makes the decoded path safe to route on: an

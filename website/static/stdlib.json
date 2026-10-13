@@ -3443,13 +3443,16 @@
       "declarations": [
         {
           "name": "ClientResponse",
-          "doc": "Buffered HTTP response metadata and body. Header names have canonical spelling;\nMap lookup is case-sensitive. Lists preserve separate values in received order.",
+          "doc": "Buffered response body with explicit common metadata access.",
           "kind": "record",
           "type": "ClientResponse",
           "fields": [
             "status: Int",
-            "headers: Map[String, List[String]]",
+            "headers: HttpHeaders",
             "body: Bytes"
+          ],
+          "operations": [
+            "metadata: fn()-\u003eHttpResponseMetadata"
           ],
           "members": [
             {
@@ -3461,7 +3464,7 @@
             {
               "name": "headers",
               "kind": "field",
-              "signature": "headers: Map[String, List[String]]",
+              "signature": "headers: HttpHeaders",
               "doc": ""
             },
             {
@@ -3469,18 +3472,24 @@
               "kind": "field",
               "signature": "status: Int",
               "doc": ""
+            },
+            {
+              "name": "metadata",
+              "kind": "operation",
+              "signature": "fn metadata() -\u003e HttpResponseMetadata:",
+              "doc": "Returns current status and the same mutable header object."
             }
           ]
         },
         {
           "name": "HttpClient",
-          "doc": "Reusable HTTP client with connection pooling and explicit response limits.\nOutbound case-equivalent header keys append values in Map insertion order.",
+          "doc": "Reusable HTTP client with connection pooling and explicit response limits.\nOutbound headers retain separate values in their stored order.",
           "kind": "interface",
           "type": "HttpClient",
           "operations": [
             "close: fn()-\u003eUnit",
-            "send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ResponseBody, HttpError]",
-            "send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ResponseBody, HttpError]"
+            "request: fn(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes, max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ResponseBody, HttpError]",
+            "request_stream: fn(method: HttpMethod, url: String, headers: HttpHeaders, body: ReadStream, max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ResponseBody, HttpError]"
           ],
           "members": [
             {
@@ -3490,15 +3499,15 @@
               "doc": ""
             },
             {
-              "name": "send",
+              "name": "request",
               "kind": "operation",
-              "signature": "fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ResponseBody, HttpError]",
+              "signature": "fn request(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ResponseBody, HttpError]",
               "doc": ""
             },
             {
-              "name": "send_stream",
+              "name": "request_stream",
               "kind": "operation",
-              "signature": "fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ResponseBody, HttpError]",
+              "signature": "fn request_stream(method: HttpMethod, url: String, headers: HttpHeaders, body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ResponseBody, HttpError]",
               "doc": ""
             }
           ]
@@ -3642,17 +3651,17 @@
         },
         {
           "name": "HttpExchange",
-          "doc": "One streaming server exchange. Read or write incrementally and close when done.\nReceived header names have canonical spelling; Map lookup is case-sensitive.\nSending case-equivalent names appends each list in Map insertion order.",
+          "doc": "One streaming server exchange. Read or write incrementally and close when done.\nReceived headers are one shared mutable object; repeated values stay separate.",
           "kind": "interface",
           "type": "HttpExchange",
           "operations": [
             "close: fn()-\u003eUnit",
-            "headers: fn()-\u003eMap[String, List[String]]",
-            "method: fn()-\u003eString",
+            "headers: fn()-\u003eHttpHeaders",
+            "method: fn()-\u003eHttpMethod",
             "path: fn()-\u003eString",
             "query: fn()-\u003eString",
             "read: fn(max_bytes: Optional[Int] = ...)-\u003eResult[Optional[Bytes], IoError]",
-            "send_headers: fn(status: Int, headers: Map[String, List[String]])-\u003eResult[Unit, HttpError]",
+            "send_headers: fn(status: Int, headers: HttpHeaders)-\u003eResult[Unit, HttpError]",
             "upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int] = ...)-\u003eResult[WebSocket, WebSocketError]",
             "write: fn(data: Bytes)-\u003eResult[Unit, IoError]"
           ],
@@ -3666,13 +3675,13 @@
             {
               "name": "headers",
               "kind": "operation",
-              "signature": "fn headers() -\u003e Map[String, List[String]]",
+              "signature": "fn headers() -\u003e HttpHeaders",
               "doc": ""
             },
             {
               "name": "method",
               "kind": "operation",
-              "signature": "fn method() -\u003e String",
+              "signature": "fn method() -\u003e HttpMethod",
               "doc": ""
             },
             {
@@ -3696,7 +3705,7 @@
             {
               "name": "send_headers",
               "kind": "operation",
-              "signature": "fn send_headers(status: Int, headers: Map[String, List[String]]) -\u003e Result[Unit, HttpError]",
+              "signature": "fn send_headers(status: Int, headers: HttpHeaders) -\u003e Result[Unit, HttpError]",
               "doc": ""
             },
             {
@@ -3714,19 +3723,163 @@
           ]
         },
         {
+          "name": "HttpHeaders",
+          "doc": "Mutable HTTP fields with ASCII case-insensitive names and separate byte values.\nNames keep first-insertion order and spelling; values keep append order.\nLookup shares list membership. Use clone() to separate mutable membership.",
+          "kind": "native",
+          "type": "HttpHeaders",
+          "operations": [
+            "append: fn(name: String, value: Bytes)-\u003eResult[Unit, HttpError]",
+            "clone: fn()-\u003eHttpHeaders",
+            "names: fn()-\u003eList[String]",
+            "remove: fn(name: String)-\u003eBool",
+            "text: fn(name: String)-\u003eResult[Optional[List[String]], HttpError]",
+            "values: fn(name: String)-\u003eOptional[List[Bytes]]"
+          ],
+          "members": [
+            {
+              "name": "append",
+              "kind": "operation",
+              "signature": "fn append(name: String, value: Bytes) -\u003e Result[Unit, HttpError]:",
+              "doc": "Appends raw bytes under a valid HTTP name; invalid names return InvalidInput.\nTransport operations additionally validate UTF-8, framing and field values."
+            },
+            {
+              "name": "clone",
+              "kind": "operation",
+              "signature": "fn clone() -\u003e HttpHeaders:",
+              "doc": "Copies name/list membership and shares immutable Bytes values."
+            },
+            {
+              "name": "names",
+              "kind": "operation",
+              "signature": "fn names() -\u003e List[String]:",
+              "doc": "Returns first-inserted spellings in insertion order."
+            },
+            {
+              "name": "remove",
+              "kind": "operation",
+              "signature": "fn remove(name: String) -\u003e Bool:",
+              "doc": "Removes a name; existing list aliases are detached from this header object."
+            },
+            {
+              "name": "text",
+              "kind": "operation",
+              "signature": "fn text(name: String) -\u003e Result[Optional[List[String]], HttpError]:",
+              "doc": "Decodes every value; invalid UTF-8 returns InvalidData without partial success."
+            },
+            {
+              "name": "values",
+              "kind": "operation",
+              "signature": "fn values(name: String) -\u003e Optional[List[Bytes]]:",
+              "doc": "Returns shared mutable membership, or none for an absent name."
+            }
+          ]
+        },
+        {
+          "name": "HttpMethod",
+          "doc": "Known HTTP methods, plus extension tokens validated by outgoing operations.",
+          "kind": "alternative",
+          "type": "HttpMethod",
+          "cases": [
+            "Get",
+            "Head",
+            "Post",
+            "Put",
+            "Patch",
+            "Delete",
+            "Connect",
+            "Options",
+            "Trace",
+            "Custom(value: String)"
+          ],
+          "operations": [
+            "text: fn()-\u003eString"
+          ],
+          "members": [
+            {
+              "name": "Connect",
+              "kind": "case",
+              "signature": "case Connect",
+              "doc": "Establishes a tunnel to the request target."
+            },
+            {
+              "name": "Custom",
+              "kind": "case",
+              "signature": "case Custom(value: String)",
+              "doc": "Carries an extension token; requests reject empty or malformed tokens."
+            },
+            {
+              "name": "Delete",
+              "kind": "case",
+              "signature": "case Delete",
+              "doc": "Removes the selected representation."
+            },
+            {
+              "name": "Get",
+              "kind": "case",
+              "signature": "case Get",
+              "doc": "Requests the selected representation."
+            },
+            {
+              "name": "Head",
+              "kind": "case",
+              "signature": "case Head",
+              "doc": "Requests response metadata without a body."
+            },
+            {
+              "name": "Options",
+              "kind": "case",
+              "signature": "case Options",
+              "doc": "Requests communication options."
+            },
+            {
+              "name": "Patch",
+              "kind": "case",
+              "signature": "case Patch",
+              "doc": "Applies a partial modification."
+            },
+            {
+              "name": "Post",
+              "kind": "case",
+              "signature": "case Post",
+              "doc": "Submits a representation for processing."
+            },
+            {
+              "name": "Put",
+              "kind": "case",
+              "signature": "case Put",
+              "doc": "Replaces the selected representation."
+            },
+            {
+              "name": "Trace",
+              "kind": "case",
+              "signature": "case Trace",
+              "doc": "Requests a diagnostic loopback."
+            },
+            {
+              "name": "Custom.value",
+              "kind": "field",
+              "signature": "value: String",
+              "doc": ""
+            },
+            {
+              "name": "text",
+              "kind": "operation",
+              "signature": "fn text() -\u003e String:",
+              "doc": "Returns the method token; outgoing requests reject malformed Custom tokens."
+            }
+          ]
+        },
+        {
           "name": "HttpRequest",
           "doc": "Buffered request accepted by the simple HTTP server handler.",
           "kind": "record",
           "type": "HttpRequest",
           "fields": [
-            "method: String",
+            "method: HttpMethod",
             "path: String",
             "query: String",
-            "headers: Map[String, Bytes]",
+            "headers: HttpHeaders",
             "body: Bytes"
-          ],
-          "operations": [
-            "header: fn(name: String)-\u003eOptional[Bytes]"
           ],
           "members": [
             {
@@ -3738,13 +3891,13 @@
             {
               "name": "headers",
               "kind": "field",
-              "signature": "headers: Map[String, Bytes]",
+              "signature": "headers: HttpHeaders",
               "doc": ""
             },
             {
               "name": "method",
               "kind": "field",
-              "signature": "method: String",
+              "signature": "method: HttpMethod",
               "doc": ""
             },
             {
@@ -3758,24 +3911,21 @@
               "kind": "field",
               "signature": "query: String",
               "doc": ""
-            },
-            {
-              "name": "header",
-              "kind": "operation",
-              "signature": "fn header(name: String) -\u003e Optional[Bytes]:",
-              "doc": "Finds a header using ASCII case-insensitive names, or returns `none`.\nLeaves Map keys unchanged. Repeated received values remain newline-joined bytes.\nIf a manually built Map has equivalent names, returns its first matching entry."
             }
           ]
         },
         {
           "name": "HttpResponse",
-          "doc": "Buffered response returned by the simple HTTP server handler.\nCase-equivalent header keys emit separate values in Map insertion order.\nUse HttpExchange.send_headers for repeated values under one exact Map key.",
+          "doc": "Buffered response returned by the simple HTTP server handler.",
           "kind": "record",
           "type": "HttpResponse",
           "fields": [
             "status: Int",
-            "headers: Map[String, String]",
+            "headers: HttpHeaders",
             "body: Bytes"
+          ],
+          "operations": [
+            "metadata: fn()-\u003eHttpResponseMetadata"
           ],
           "members": [
             {
@@ -3787,7 +3937,37 @@
             {
               "name": "headers",
               "kind": "field",
-              "signature": "headers: Map[String, String]",
+              "signature": "headers: HttpHeaders",
+              "doc": ""
+            },
+            {
+              "name": "status",
+              "kind": "field",
+              "signature": "status: Int",
+              "doc": ""
+            },
+            {
+              "name": "metadata",
+              "kind": "operation",
+              "signature": "fn metadata() -\u003e HttpResponseMetadata:",
+              "doc": "Returns current status and the same mutable header object."
+            }
+          ]
+        },
+        {
+          "name": "HttpResponseMetadata",
+          "doc": "Response status and headers shared by buffered and streaming response access.",
+          "kind": "record",
+          "type": "HttpResponseMetadata",
+          "fields": [
+            "status: Int",
+            "headers: HttpHeaders"
+          ],
+          "members": [
+            {
+              "name": "headers",
+              "kind": "field",
+              "signature": "headers: HttpHeaders",
               "doc": ""
             },
             {
@@ -3890,14 +4070,13 @@
         },
         {
           "name": "ResponseBody",
-          "doc": "Streaming response body returned by HTTP client operations. Header names have\ncanonical spelling; Map lookup is case-sensitive. Lists keep received order.",
+          "doc": "Streaming response body returned by reusable HTTP client operations.\nMetadata remains available after close and shares one mutable header object.",
           "kind": "interface",
           "type": "ResponseBody",
           "operations": [
             "close: fn()-\u003eUnit",
-            "headers: fn()-\u003eMap[String, List[String]]",
-            "read: fn(max_bytes: Optional[Int] = ...)-\u003eResult[Optional[Bytes], IoError]",
-            "status: fn()-\u003eInt"
+            "metadata: fn()-\u003eHttpResponseMetadata",
+            "read: fn(max_bytes: Optional[Int] = ...)-\u003eResult[Optional[Bytes], IoError]"
           ],
           "members": [
             {
@@ -3907,9 +4086,9 @@
               "doc": ""
             },
             {
-              "name": "headers",
+              "name": "metadata",
               "kind": "operation",
-              "signature": "fn headers() -\u003e Map[String, List[String]]",
+              "signature": "fn metadata() -\u003e HttpResponseMetadata",
               "doc": ""
             },
             {
@@ -3917,20 +4096,14 @@
               "kind": "operation",
               "signature": "fn read(max_bytes: Optional[Int] = none) -\u003e Result[Optional[Bytes], IoError]",
               "doc": ""
-            },
-            {
-              "name": "status",
-              "kind": "operation",
-              "signature": "fn status() -\u003e Int",
-              "doc": ""
             }
           ]
         },
         {
-          "name": "header_values",
-          "doc": "Finds all values under ASCII case-equivalent names without changing Map keys.\nReturns none if absent, or some(empty) for a present empty list. Copies list\nmembership and preserves Map insertion order followed by each list's order.",
+          "name": "headers",
+          "doc": "Creates empty mutable headers. No header values are joined or comma-combined.",
           "kind": "fn",
-          "type": "fn(headers: Map[String, List[String]], name: String)-\u003eOptional[List[String]]"
+          "type": "fn()-\u003eHttpHeaders"
         }
       ]
     },
@@ -4789,6 +4962,23 @@
       "path": "@std/net.ms",
       "declarations": [
         {
+          "name": "Cidr",
+          "doc": "A validated, masked numeric CIDR range.",
+          "kind": "native",
+          "type": "Cidr",
+          "operations": [
+            "text: fn()-\u003eString"
+          ],
+          "members": [
+            {
+              "name": "text",
+              "kind": "operation",
+              "signature": "fn text() -\u003e String:",
+              "doc": "Returns the canonical masked prefix without reparsing."
+            }
+          ]
+        },
+        {
           "name": "Connection",
           "doc": "A connected stream socket, optionally protected by TLS.",
           "kind": "interface",
@@ -4910,12 +5100,87 @@
           ]
         },
         {
+          "name": "DnsKind",
+          "doc": "Supported DNS query categories; unknown spellings are rejected by checking.",
+          "kind": "alternative",
+          "type": "DnsKind",
+          "cases": [
+            "A",
+            "AAAA",
+            "CNAME",
+            "MX",
+            "NS",
+            "TXT",
+            "PTR",
+            "SRV"
+          ],
+          "operations": [
+            "text: fn()-\u003eString"
+          ],
+          "members": [
+            {
+              "name": "A",
+              "kind": "case",
+              "signature": "case A",
+              "doc": "IPv4 address records."
+            },
+            {
+              "name": "AAAA",
+              "kind": "case",
+              "signature": "case AAAA",
+              "doc": "IPv6 address records."
+            },
+            {
+              "name": "CNAME",
+              "kind": "case",
+              "signature": "case CNAME",
+              "doc": "Canonical name records."
+            },
+            {
+              "name": "MX",
+              "kind": "case",
+              "signature": "case MX",
+              "doc": "Mail exchange records."
+            },
+            {
+              "name": "NS",
+              "kind": "case",
+              "signature": "case NS",
+              "doc": "Name server records."
+            },
+            {
+              "name": "PTR",
+              "kind": "case",
+              "signature": "case PTR",
+              "doc": "Reverse address records."
+            },
+            {
+              "name": "SRV",
+              "kind": "case",
+              "signature": "case SRV",
+              "doc": "Service location records."
+            },
+            {
+              "name": "TXT",
+              "kind": "case",
+              "signature": "case TXT",
+              "doc": "Text records."
+            },
+            {
+              "name": "text",
+              "kind": "operation",
+              "signature": "fn text() -\u003e String:",
+              "doc": "Returns the uppercase wire category."
+            }
+          ]
+        },
+        {
           "name": "DnsRecord",
           "doc": "DNS record data returned by a typed lookup.",
           "kind": "record",
           "type": "DnsRecord",
           "fields": [
-            "kind: String",
+            "kind: DnsKind",
             "value: String",
             "priority: Int",
             "weight: Int",
@@ -4925,8 +5190,8 @@
             {
               "name": "kind",
               "kind": "field",
-              "signature": "kind: String",
-              "doc": "Uppercase A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV."
+              "signature": "kind: DnsKind",
+              "doc": "The same typed category used by the query."
             },
             {
               "name": "port",
@@ -4951,6 +5216,63 @@
               "kind": "field",
               "signature": "weight: Int",
               "doc": ""
+            }
+          ]
+        },
+        {
+          "name": "IpAddress",
+          "doc": "A validated numeric IPv4/IPv6 address without a port or zone.",
+          "kind": "native",
+          "type": "IpAddress",
+          "operations": [
+            "family: fn()-\u003eIpFamily",
+            "text: fn()-\u003eString"
+          ],
+          "members": [
+            {
+              "name": "family",
+              "kind": "operation",
+              "signature": "fn family() -\u003e IpFamily:",
+              "doc": "Returns the normalized address family."
+            },
+            {
+              "name": "text",
+              "kind": "operation",
+              "signature": "fn text() -\u003e String:",
+              "doc": "Returns canonical text; mapped IPv6 input is normalized to IPv4."
+            }
+          ]
+        },
+        {
+          "name": "IpFamily",
+          "doc": "Numeric address families reported by IP values and host interfaces.",
+          "kind": "alternative",
+          "type": "IpFamily",
+          "cases": [
+            "IPv4",
+            "IPv6"
+          ],
+          "operations": [
+            "text: fn()-\u003eString"
+          ],
+          "members": [
+            {
+              "name": "IPv4",
+              "kind": "case",
+              "signature": "case IPv4",
+              "doc": "A four-byte numeric address."
+            },
+            {
+              "name": "IPv6",
+              "kind": "case",
+              "signature": "case IPv6",
+              "doc": "A sixteen-byte numeric address."
+            },
+            {
+              "name": "text",
+              "kind": "operation",
+              "signature": "fn text() -\u003e String:",
+              "doc": "Returns IPv4 or IPv6."
             }
           ]
         },
@@ -5002,12 +5324,12 @@
             "listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Optional[Duration] = ...)-\u003eResult[Listener, NetworkError]",
             "listen_unix: fn(path: String)-\u003eResult[Listener, NetworkError]",
             "lookup: fn(name: String, max_records: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[List[String], NetworkError]",
-            "request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ClientResponse, HttpError]",
-            "resolve: fn(name: String, kind: String, max_records: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[List[DnsRecord], NetworkError]",
+            "request: fn(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes, max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[ClientResponse, HttpError]",
+            "resolve: fn(name: String, kind: DnsKind, max_records: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[List[DnsRecord], NetworkError]",
             "restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)-\u003eResult[Network, NetworkError]",
-            "serve: fn(address: String, handler: fn(request: HttpRequest)-\u003eHttpResponse, limit: Optional[Int] = ..., max_body_bytes: Optional[Int] = ..., max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ..., grace: Optional[Duration] = ...)-\u003eResult[HttpServer, IoError]",
+            "serve: fn(address: String, handler: fn(request: HttpRequest)-\u003eHttpResponse, max_requests: Optional[Int] = ..., max_body_bytes: Optional[Int] = ..., max_response_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ..., grace: Optional[Duration] = ...)-\u003eResult[HttpServer, IoError]",
             "serve_stream: fn(address: String, handler: fn(exchange: HttpExchange)-\u003eResult[Unit, HttpError], options: HttpServerOptions)-\u003eResult[HttpServer, HttpError]",
-            "web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)-\u003eResult[WebSocket, WebSocketError]",
+            "web_socket: fn(url: String, headers: HttpHeaders, subprotocols: List[String], options: WebSocketOptions)-\u003eResult[WebSocket, WebSocketError]",
             "with_resolver: fn(address: String)-\u003eResult[Network, NetworkError]"
           ],
           "members": [
@@ -5080,14 +5402,14 @@
             {
               "name": "request",
               "kind": "operation",
-              "signature": "fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ClientResponse, HttpError]",
+              "signature": "fn request(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[ClientResponse, HttpError]",
               "doc": ""
             },
             {
               "name": "resolve",
               "kind": "operation",
-              "signature": "fn resolve(name: String, kind: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[List[DnsRecord], NetworkError]",
-              "doc": "Accepts A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV, case-insensitively; others return InvalidInput.\nReturned DnsRecord.kind is uppercase."
+              "signature": "fn resolve(name: String, kind: DnsKind, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -\u003e Result[List[DnsRecord], NetworkError]",
+              "doc": "Resolves the selected supported category, retaining it in each record."
             },
             {
               "name": "restrict",
@@ -5098,7 +5420,7 @@
             {
               "name": "serve",
               "kind": "operation",
-              "signature": "fn serve(address: String, handler: fn(request: HttpRequest) -\u003e HttpResponse, limit: Optional[Int] = none, max_body_bytes: Optional[Int] = none, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none, grace: Optional[Duration] = none) -\u003e Result[HttpServer, IoError]",
+              "signature": "fn serve(address: String, handler: fn(request: HttpRequest) -\u003e HttpResponse, max_requests: Optional[Int] = none, max_body_bytes: Optional[Int] = none, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none, grace: Optional[Duration] = none) -\u003e Result[HttpServer, IoError]",
               "doc": ""
             },
             {
@@ -5110,7 +5432,7 @@
             {
               "name": "web_socket",
               "kind": "operation",
-              "signature": "fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -\u003e Result[WebSocket, WebSocketError]",
+              "signature": "fn web_socket(url: String, headers: HttpHeaders, subprotocols: List[String], options: WebSocketOptions) -\u003e Result[WebSocket, WebSocketError]",
               "doc": ""
             },
             {
@@ -5210,7 +5532,7 @@
           "name": "contains_ip",
           "doc": "Reports whether an IP address belongs to a CIDR range.",
           "kind": "fn",
-          "type": "fn(cidr: String, address: String)-\u003eResult[Bool, NetworkError]"
+          "type": "fn(cidr: Cidr, address: IpAddress)-\u003eResult[Bool, NetworkError]"
         },
         {
           "name": "network",
@@ -5222,13 +5544,13 @@
           "name": "parse_cidr",
           "doc": "Validates and canonicalizes an IPv4 or IPv6 CIDR range.",
           "kind": "fn",
-          "type": "fn(text: String)-\u003eResult[String, NetworkError]"
+          "type": "fn(text: String)-\u003eResult[Cidr, NetworkError]"
         },
         {
           "name": "parse_ip",
           "doc": "Validates and canonicalizes an IPv4 or IPv6 address.",
           "kind": "fn",
-          "type": "fn(text: String)-\u003eResult[String, NetworkError]"
+          "type": "fn(text: String)-\u003eResult[IpAddress, NetworkError]"
         }
       ]
     },
@@ -6988,7 +7310,7 @@
             "name: String",
             "address: String",
             "netmask: String",
-            "family: String",
+            "family: IpFamily",
             "mac: String",
             "internal: Bool",
             "scope_id: Int"
@@ -7003,8 +7325,8 @@
             {
               "name": "family",
               "kind": "field",
-              "signature": "family: String",
-              "doc": "Exactly `IPv4` or `IPv6` for native address records."
+              "signature": "family: IpFamily",
+              "doc": "The IPv4/IPv6 alternative for the native address record."
             },
             {
               "name": "internal",

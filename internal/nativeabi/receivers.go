@@ -2,11 +2,18 @@
 package nativeabi
 
 var ReceiverBindings = map[string]map[string]string{
+	"IpAddress":         {"text": "net/ip_text", "family": "net/ip_family"},
+	"Cidr":              {"text": "net/cidr_text"},
+	"DnsKind":           {"text": "net/dns_kind_text"},
+	"IpFamily":          {"text": "net/ip_family_text"},
 	"HashAlgorithm":     {"digest": "crypto/hash_algorithm_digest", "hmac": "crypto/hash_algorithm_hmac"},
 	"CompressionFormat": {"compress": "compress/format_compress", "decompress": "compress/format_decompress"},
 	"ArchiveFormat":     {"pack": "archive/format_pack", "unpack": "archive/format_unpack"},
 	"Decimal":           {"round": "decimal/round", "to_fixed": "decimal/to_fixed"},
-	"HttpRequest":       {"header": "http/request_header"},
+	"HttpHeaders":       {"append": "http/headers_append", "values": "http/headers_values", "text": "http/headers_text", "names": "http/headers_names", "clone": "http/headers_clone", "remove": "http/headers_remove"},
+	"ClientResponse":    {"metadata": "http/client_response_metadata"},
+	"HttpResponse":      {"metadata": "http/response_metadata"},
+	"HttpMethod":        {"text": "http/method_text"},
 	"TaskGroup": {
 		"start": "tasks/task_group_start",
 		"join":  "tasks/task_group_join",

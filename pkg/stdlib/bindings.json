@@ -39,7 +39,6 @@
     "@std/fs.ms/filesystem": "fs/filesystem",
     "@std/html.ms/escape": "html/escape",
     "@std/html.ms/parse": "html/parse",
-    "@std/http.ms/header_values": "http/header_values",
     "@std/io.ms/copy": "io/copy",
     "@std/io.ms/files": "io/files",
     "@std/io.ms/read_all": "io/read_all",
@@ -133,7 +132,8 @@
     "@std/url.ms/format_query": "url/format_query",
     "@std/url.ms/parse": "url/parse",
     "@std/url.ms/parse_query": "url/parse_query",
-    "@std/url.ms/resolve": "url/resolve"
+    "@std/url.ms/resolve": "url/resolve",
+    "@std/http.ms/headers": "http/headers"
   },
   "implementations": {
     "@std/archive.ms/ArchiveError/Error/message": "errors/message",
@@ -194,7 +194,10 @@
     "@std/tasks.ms/TaskGroup": "native",
     "@std/time.ms/Duration": "native",
     "@std/time.ms/Instant": "native",
-    "@std/time.ms/Timestamp": "native"
+    "@std/time.ms/Timestamp": "native",
+    "@std/http.ms/HttpHeaders": "native",
+    "@std/net.ms/IpAddress": "native",
+    "@std/net.ms/Cidr": "native"
   },
   "receiver_requirements": {
     "@std/collections.ms/List/contains": {
@@ -318,7 +321,6 @@
     "@std/collections.ms/Set/values": "collections/set_values",
     "@std/decimal.ms/Decimal/round": "decimal/round",
     "@std/decimal.ms/Decimal/to_fixed": "decimal/to_fixed",
-    "@std/http.ms/HttpRequest/header": "http/request_header",
     "@std/intrinsics.ms/FloatOperations/is_finite": "math/is_finite",
     "@std/intrinsics.ms/FloatOperations/is_nan": "math/is_nan",
     "@std/intrinsics.ms/FloatOperations/to_exponential": "numbers/format_exponential",
@@ -412,6 +414,20 @@
     "@std/compress.ms/CompressionFormat/compress": "compress/format_compress",
     "@std/compress.ms/CompressionFormat/decompress": "compress/format_decompress",
     "@std/archive.ms/ArchiveFormat/pack": "archive/format_pack",
-    "@std/archive.ms/ArchiveFormat/unpack": "archive/format_unpack"
+    "@std/archive.ms/ArchiveFormat/unpack": "archive/format_unpack",
+    "@std/http.ms/HttpHeaders/append": "http/headers_append",
+    "@std/http.ms/HttpHeaders/values": "http/headers_values",
+    "@std/http.ms/HttpHeaders/text": "http/headers_text",
+    "@std/http.ms/HttpHeaders/names": "http/headers_names",
+    "@std/http.ms/HttpHeaders/clone": "http/headers_clone",
+    "@std/http.ms/ClientResponse/metadata": "http/client_response_metadata",
+    "@std/http.ms/HttpResponse/metadata": "http/response_metadata",
+    "@std/http.ms/HttpMethod/text": "http/method_text",
+    "@std/http.ms/HttpHeaders/remove": "http/headers_remove",
+    "@std/net.ms/IpAddress/text": "net/ip_text",
+    "@std/net.ms/IpAddress/family": "net/ip_family",
+    "@std/net.ms/Cidr/text": "net/cidr_text",
+    "@std/net.ms/DnsKind/text": "net/dns_kind_text",
+    "@std/net.ms/IpFamily/text": "net/ip_family_text"
   }
 }

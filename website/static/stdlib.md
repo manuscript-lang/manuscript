@@ -2546,14 +2546,22 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 **Record**
 
-Buffered HTTP response metadata and body. Header names have canonical spelling;
-Map lookup is case-sensitive. Lists preserve separate values in received order.
+Buffered response body with explicit common metadata access.
 
 ```manuscript
 type ClientResponse:
     status: Int
-    headers: Map[String, List[String]]
+    headers: HttpHeaders
     body: Bytes
+    fn metadata() -> HttpResponseMetadata:
+```
+
+### ClientResponse.metadata
+
+Returns current status and the same mutable header object.
+
+```manuscript
+fn metadata() -> HttpResponseMetadata:
 ```
 
 ## HttpClient
@@ -2561,13 +2569,13 @@ type ClientResponse:
 **Interface**
 
 Reusable HTTP client with connection pooling and explicit response limits.
-Outbound case-equivalent header keys append values in Map insertion order.
+Outbound headers retain separate values in their stored order.
 
 ```manuscript
 interface HttpClient:
     fn close() -> Unit
-    fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
-    fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+    fn request(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+    fn request_stream(method: HttpMethod, url: String, headers: HttpHeaders, body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
 ```
 
 ## HttpClientOptions
@@ -2614,20 +2622,195 @@ impl Error for HttpError:
 **Interface**
 
 One streaming server exchange. Read or write incrementally and close when done.
-Received header names have canonical spelling; Map lookup is case-sensitive.
-Sending case-equivalent names appends each list in Map insertion order.
+Received headers are one shared mutable object; repeated values stay separate.
 
 ```manuscript
 interface HttpExchange:
     fn close() -> Unit
-    fn headers() -> Map[String, List[String]]
-    fn method() -> String
+    fn headers() -> HttpHeaders
+    fn method() -> HttpMethod
     fn path() -> String
     fn query() -> String
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
-    fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, HttpError]
+    fn send_headers(status: Int, headers: HttpHeaders) -> Result[Unit, HttpError]
     fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int] = none) -> Result[WebSocket, WebSocketError]
     fn write(data: Bytes) -> Result[Unit, IoError]
+```
+
+## HttpHeaders
+
+**Native type**
+
+Mutable HTTP fields with ASCII case-insensitive names and separate byte values.
+Names keep first-insertion order and spelling; values keep append order.
+Lookup shares list membership. Use clone() to separate mutable membership.
+
+```manuscript
+type HttpHeaders:
+    fn append(name: String, value: Bytes) -> Result[Unit, HttpError]:
+    fn values(name: String) -> Optional[List[Bytes]]:
+    fn text(name: String) -> Result[Optional[List[String]], HttpError]:
+    fn names() -> List[String]:
+    fn remove(name: String) -> Bool:
+    fn clone() -> HttpHeaders:
+```
+
+### HttpHeaders.append
+
+Appends raw bytes under a valid HTTP name; invalid names return InvalidInput.
+Transport operations additionally validate UTF-8, framing and field values.
+
+```manuscript
+fn append(name: String, value: Bytes) -> Result[Unit, HttpError]:
+```
+
+### HttpHeaders.clone
+
+Copies name/list membership and shares immutable Bytes values.
+
+```manuscript
+fn clone() -> HttpHeaders:
+```
+
+### HttpHeaders.names
+
+Returns first-inserted spellings in insertion order.
+
+```manuscript
+fn names() -> List[String]:
+```
+
+### HttpHeaders.remove
+
+Removes a name; existing list aliases are detached from this header object.
+
+```manuscript
+fn remove(name: String) -> Bool:
+```
+
+### HttpHeaders.text
+
+Decodes every value; invalid UTF-8 returns InvalidData without partial success.
+
+```manuscript
+fn text(name: String) -> Result[Optional[List[String]], HttpError]:
+```
+
+### HttpHeaders.values
+
+Returns shared mutable membership, or none for an absent name.
+
+```manuscript
+fn values(name: String) -> Optional[List[Bytes]]:
+```
+
+## HttpMethod
+
+**Alternative**
+
+Known HTTP methods, plus extension tokens validated by outgoing operations.
+
+```manuscript
+type HttpMethod:
+    case Get
+    case Head
+    case Post
+    case Put
+    case Patch
+    case Delete
+    case Connect
+    case Options
+    case Trace
+    case Custom(value: String)
+    fn text() -> String:
+```
+
+### HttpMethod.Connect
+
+Establishes a tunnel to the request target.
+
+```manuscript
+case Connect
+```
+
+### HttpMethod.Custom
+
+Carries an extension token; requests reject empty or malformed tokens.
+
+```manuscript
+case Custom(value: String)
+```
+
+### HttpMethod.Delete
+
+Removes the selected representation.
+
+```manuscript
+case Delete
+```
+
+### HttpMethod.Get
+
+Requests the selected representation.
+
+```manuscript
+case Get
+```
+
+### HttpMethod.Head
+
+Requests response metadata without a body.
+
+```manuscript
+case Head
+```
+
+### HttpMethod.Options
+
+Requests communication options.
+
+```manuscript
+case Options
+```
+
+### HttpMethod.Patch
+
+Applies a partial modification.
+
+```manuscript
+case Patch
+```
+
+### HttpMethod.Post
+
+Submits a representation for processing.
+
+```manuscript
+case Post
+```
+
+### HttpMethod.Put
+
+Replaces the selected representation.
+
+```manuscript
+case Put
+```
+
+### HttpMethod.Trace
+
+Requests a diagnostic loopback.
+
+```manuscript
+case Trace
+```
+
+### HttpMethod.text
+
+Returns the method token; outgoing requests reject malformed Custom tokens.
+
+```manuscript
+fn text() -> String:
 ```
 
 ## HttpRequest
@@ -2638,22 +2821,11 @@ Buffered request accepted by the simple HTTP server handler.
 
 ```manuscript
 type HttpRequest:
-    method: String
+    method: HttpMethod
     path: String
     query: String
-    headers: Map[String, Bytes]
+    headers: HttpHeaders
     body: Bytes
-    fn header(name: String) -> Optional[Bytes]:
-```
-
-### HttpRequest.header
-
-Finds a header using ASCII case-insensitive names, or returns `none`.
-Leaves Map keys unchanged. Repeated received values remain newline-joined bytes.
-If a manually built Map has equivalent names, returns its first matching entry.
-
-```manuscript
-fn header(name: String) -> Optional[Bytes]:
 ```
 
 ## HttpResponse
@@ -2661,14 +2833,33 @@ fn header(name: String) -> Optional[Bytes]:
 **Record**
 
 Buffered response returned by the simple HTTP server handler.
-Case-equivalent header keys emit separate values in Map insertion order.
-Use HttpExchange.send_headers for repeated values under one exact Map key.
 
 ```manuscript
 type HttpResponse:
     status: Int
-    headers: Map[String, String]
+    headers: HttpHeaders
     body: Bytes
+    fn metadata() -> HttpResponseMetadata:
+```
+
+### HttpResponse.metadata
+
+Returns current status and the same mutable header object.
+
+```manuscript
+fn metadata() -> HttpResponseMetadata:
+```
+
+## HttpResponseMetadata
+
+**Record**
+
+Response status and headers shared by buffered and streaming response access.
+
+```manuscript
+type HttpResponseMetadata:
+    status: Int
+    headers: HttpHeaders
 ```
 
 ## HttpServer
@@ -2705,27 +2896,24 @@ type HttpServerOptions:
 
 **Interface**
 
-Streaming response body returned by HTTP client operations. Header names have
-canonical spelling; Map lookup is case-sensitive. Lists keep received order.
+Streaming response body returned by reusable HTTP client operations.
+Metadata remains available after close and shares one mutable header object.
 
 ```manuscript
 interface ResponseBody:
     fn close() -> Unit
-    fn headers() -> Map[String, List[String]]
+    fn metadata() -> HttpResponseMetadata
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
-    fn status() -> Int
 ```
 
-## header_values
+## headers
 
 **Function**
 
-Finds all values under ASCII case-equivalent names without changing Map keys.
-Returns none if absent, or some(empty) for a present empty list. Copies list
-membership and preserves Map insertion order followed by each list's order.
+Creates empty mutable headers. No header values are joined or comma-combined.
 
 ```manuscript
-fn header_values(headers: Map[String, List[String]], name: String) -> Optional[List[String]]:
+fn headers() -> HttpHeaders:
 ```
 
 # @std/io.ms
@@ -3382,6 +3570,25 @@ fn truncate(value: Float) -> Float:
 
 Import each required symbol with `import Name from "@std/net.ms"`.
 
+## Cidr
+
+**Native type**
+
+A validated, masked numeric CIDR range.
+
+```manuscript
+type Cidr:
+    fn text() -> String:
+```
+
+### Cidr.text
+
+Returns the canonical masked prefix without reparsing.
+
+```manuscript
+fn text() -> String:
+```
+
 ## Connection
 
 **Interface**
@@ -3449,6 +3656,97 @@ interface DatagramSocket:
     fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) -> Result[Unit, NetworkError]
 ```
 
+## DnsKind
+
+**Alternative**
+
+Supported DNS query categories; unknown spellings are rejected by checking.
+
+```manuscript
+type DnsKind:
+    case A
+    case AAAA
+    case CNAME
+    case MX
+    case NS
+    case TXT
+    case PTR
+    case SRV
+    fn text() -> String:
+```
+
+### DnsKind.A
+
+IPv4 address records.
+
+```manuscript
+case A
+```
+
+### DnsKind.AAAA
+
+IPv6 address records.
+
+```manuscript
+case AAAA
+```
+
+### DnsKind.CNAME
+
+Canonical name records.
+
+```manuscript
+case CNAME
+```
+
+### DnsKind.MX
+
+Mail exchange records.
+
+```manuscript
+case MX
+```
+
+### DnsKind.NS
+
+Name server records.
+
+```manuscript
+case NS
+```
+
+### DnsKind.PTR
+
+Reverse address records.
+
+```manuscript
+case PTR
+```
+
+### DnsKind.SRV
+
+Service location records.
+
+```manuscript
+case SRV
+```
+
+### DnsKind.TXT
+
+Text records.
+
+```manuscript
+case TXT
+```
+
+### DnsKind.text
+
+Returns the uppercase wire category.
+
+```manuscript
+fn text() -> String:
+```
+
 ## DnsRecord
 
 **Record**
@@ -3457,7 +3755,7 @@ DNS record data returned by a typed lookup.
 
 ```manuscript
 type DnsRecord:
-    kind: String
+    kind: DnsKind
     value: String
     priority: Int
     weight: Int
@@ -3466,10 +3764,75 @@ type DnsRecord:
 
 ### DnsRecord.kind
 
-Uppercase A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV.
+The same typed category used by the query.
 
 ```manuscript
-kind: String
+kind: DnsKind
+```
+
+## IpAddress
+
+**Native type**
+
+A validated numeric IPv4/IPv6 address without a port or zone.
+
+```manuscript
+type IpAddress:
+    fn text() -> String:
+    fn family() -> IpFamily:
+```
+
+### IpAddress.family
+
+Returns the normalized address family.
+
+```manuscript
+fn family() -> IpFamily:
+```
+
+### IpAddress.text
+
+Returns canonical text; mapped IPv6 input is normalized to IPv4.
+
+```manuscript
+fn text() -> String:
+```
+
+## IpFamily
+
+**Alternative**
+
+Numeric address families reported by IP values and host interfaces.
+
+```manuscript
+type IpFamily:
+    case IPv4
+    case IPv6
+    fn text() -> String:
+```
+
+### IpFamily.IPv4
+
+A four-byte numeric address.
+
+```manuscript
+case IPv4
+```
+
+### IpFamily.IPv6
+
+A sixteen-byte numeric address.
+
+```manuscript
+case IPv6
+```
+
+### IpFamily.text
+
+Returns IPv4 or IPv6.
+
+```manuscript
+fn text() -> String:
 ```
 
 ## Listener
@@ -3504,22 +3867,21 @@ interface Network:
     fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Optional[Duration] = none) -> Result[Listener, NetworkError]
     fn listen_unix(path: String) -> Result[Listener, NetworkError]
     fn lookup(name: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[String], NetworkError]
-    fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ClientResponse, HttpError]
-    fn resolve(name: String, kind: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[DnsRecord], NetworkError]
+    fn request(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ClientResponse, HttpError]
+    fn resolve(name: String, kind: DnsKind, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[DnsRecord], NetworkError]
     fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network, NetworkError]
-    fn serve(address: String, handler: fn(request: HttpRequest) -> HttpResponse, limit: Optional[Int] = none, max_body_bytes: Optional[Int] = none, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none, grace: Optional[Duration] = none) -> Result[HttpServer, IoError]
+    fn serve(address: String, handler: fn(request: HttpRequest) -> HttpResponse, max_requests: Optional[Int] = none, max_body_bytes: Optional[Int] = none, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none, grace: Optional[Duration] = none) -> Result[HttpServer, IoError]
     fn serve_stream(address: String, handler: fn(exchange: HttpExchange) -> Result[Unit, HttpError], options: HttpServerOptions) -> Result[HttpServer, HttpError]
-    fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket, WebSocketError]
+    fn web_socket(url: String, headers: HttpHeaders, subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket, WebSocketError]
     fn with_resolver(address: String) -> Result[Network, NetworkError]
 ```
 
 ### Network.resolve
 
-Accepts A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV, case-insensitively; others return InvalidInput.
-Returned DnsRecord.kind is uppercase.
+Resolves the selected supported category, retaining it in each record.
 
 ```manuscript
-fn resolve(name: String, kind: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[DnsRecord], NetworkError]
+fn resolve(name: String, kind: DnsKind, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[DnsRecord], NetworkError]
 ```
 
 ## NetworkError
@@ -3552,7 +3914,7 @@ impl Error for NetworkError:
 Reports whether an IP address belongs to a CIDR range.
 
 ```manuscript
-fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]:
+fn contains_ip(cidr: Cidr, address: IpAddress) -> Result[Bool, NetworkError]:
 ```
 
 ## network
@@ -3572,7 +3934,7 @@ fn network() -> Network:
 Validates and canonicalizes an IPv4 or IPv6 CIDR range.
 
 ```manuscript
-fn parse_cidr(text: String) -> Result[String, NetworkError]:
+fn parse_cidr(text: String) -> Result[Cidr, NetworkError]:
 ```
 
 ## parse_ip
@@ -3582,7 +3944,7 @@ fn parse_cidr(text: String) -> Result[String, NetworkError]:
 Validates and canonicalizes an IPv4 or IPv6 address.
 
 ```manuscript
-fn parse_ip(text: String) -> Result[String, NetworkError]:
+fn parse_ip(text: String) -> Result[IpAddress, NetworkError]:
 ```
 
 # @std/numbers.ms
@@ -4704,7 +5066,7 @@ type NetworkInterface:
     name: String
     address: String
     netmask: String
-    family: String
+    family: IpFamily
     mac: String
     internal: Bool
     scope_id: Int
@@ -4712,10 +5074,10 @@ type NetworkInterface:
 
 ### NetworkInterface.family
 
-Exactly `IPv4` or `IPv6` for native address records.
+The IPv4/IPv6 alternative for the native address record.
 
 ```manuscript
-family: String
+family: IpFamily
 ```
 
 ## System

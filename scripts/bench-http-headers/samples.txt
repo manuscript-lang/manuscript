@@ -1,0 +1,24 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkHTTPHeaders/shared_lookup/x-field-8-4         	12012925	        29.25 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHTTPHeaders/shared_lookup/x-field-8-4         	12324816	        28.15 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHTTPHeaders/shared_lookup/x-field-8-4         	13185994	        31.43 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHTTPHeaders/shared_lookup/X-FIELD-8-4         	 5352496	        63.85 ns/op	      16 B/op	       1 allocs/op
+BenchmarkHTTPHeaders/shared_lookup/X-FIELD-8-4         	 4004698	        88.21 ns/op	      16 B/op	       1 allocs/op
+BenchmarkHTTPHeaders/shared_lookup/X-FIELD-8-4         	 4683994	        65.99 ns/op	      16 B/op	       1 allocs/op
+BenchmarkHTTPHeaders/explicit_membership_clone-4       	   38529	      8454 ns/op	    5448 B/op	      65 allocs/op
+BenchmarkHTTPHeaders/explicit_membership_clone-4       	   38912	      7881 ns/op	    5448 B/op	      65 allocs/op
+BenchmarkHTTPHeaders/explicit_membership_clone-4       	   39493	      8224 ns/op	    5448 B/op	      65 allocs/op
+BenchmarkHTTPHeaders/proxy_metadata_cached_headers-4   	  693172	       438.3 ns/op	     360 B/op	       3 allocs/op
+BenchmarkHTTPHeaders/proxy_metadata_cached_headers-4   	  754785	       421.8 ns/op	     360 B/op	       3 allocs/op
+BenchmarkHTTPHeaders/proxy_metadata_cached_headers-4   	  919459	       417.4 ns/op	     360 B/op	       3 allocs/op
+BenchmarkHTTPHeaders/proxy_reconvert_headers_control-4 	   22278	     16919 ns/op	    7680 B/op	     185 allocs/op
+BenchmarkHTTPHeaders/proxy_reconvert_headers_control-4 	   19195	     16835 ns/op	    7680 B/op	     185 allocs/op
+BenchmarkHTTPHeaders/proxy_reconvert_headers_control-4 	   21705	     17001 ns/op	    7680 B/op	     185 allocs/op
+BenchmarkHTTPHeaders/explicit_text-4                   	  353691	      1392 ns/op	     456 B/op	      16 allocs/op
+BenchmarkHTTPHeaders/explicit_text-4                   	  373833	      1150 ns/op	     456 B/op	      16 allocs/op
+BenchmarkHTTPHeaders/explicit_text-4                   	  320118	      1148 ns/op	     456 B/op	      16 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	8.679s

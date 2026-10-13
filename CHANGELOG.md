@@ -31,3 +31,5 @@
 - Add `http.header_values` for ASCII case-insensitive, value-preserving lookup across list-valued HTTP header maps, with separate returned list membership.
 - Return typed filesystem errors for non-empty directories, wrong entry kinds, negative absolute seeks and handle-mode misuse. Validate HTTP paths before normalization, reject encoded slash/NUL, normalize dot segments, and return `HttpError.InvalidInput` for malformed ports in all HTTP clients.
 - Add repeatable dependency/pin maintenance, license inventories, and one shared release version.
+
+- Held #171 migration draft: unify HTTP headers as ordered ASCII case-insensitive Bytes lists, add common response metadata and typed method/DNS/address/family values, and align client/admission names while retaining buffering, error and explicit security contracts.
