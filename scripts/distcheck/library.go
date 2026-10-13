@@ -34,6 +34,7 @@ test "source":
 import {base64_encode, base64_decode} from "@std/encoding.ms"
 import List from "@std/collections.ms"
 import commands from "@std/process.ms"
+import filesystem from "@std/fs.ms"
 import panic from "@std/faults.ms"
 test "copied native defaults":
     let first = CsvOptions()
@@ -53,6 +54,33 @@ test "copied native defaults":
         error(_): return panic("default command stdin failed")
         ok(output):
             if output.exit_code != 0 or output.stdout.length() == 0: return panic("default command output")
+    let fs = filesystem()
+    match fs.create_directory("defaults"):
+        error(_): return panic("default directory creation")
+        ok(_): unit
+    match fs.write_file("defaults/keep", "first".to_bytes()):
+        error(_): return panic("default exclusive write")
+        ok(_): unit
+    let write = fs.write_file
+    match write("defaults/keep", "second".to_bytes()):
+        ok(_): return panic("omitted replacement overwrote file")
+        error(_): unit
+    match fs.copy_file("defaults/keep", "defaults/copied"):
+        error(_): return panic("default file copy")
+        ok(_): unit
+    match fs.copy_tree("defaults", "default-tree"):
+        error(_): return panic("default tree copy")
+        ok(_): unit
+    match fs.remove("defaults"):
+        ok(_): return panic("omitted recursion removed tree")
+        error(_): unit
+    match fs.read_file("defaults/keep"):
+        error(_): return panic("default retained file")
+        ok(data):
+            if data != "first".to_bytes(): return panic("default changed retained bytes")
+    match fs.remove("defaults", recursive: true):
+        error(_): return panic("explicit recursive removal")
+        ok(_): unit
 `, cli),
 	} {
 		path := filepath.Join(root, name)
