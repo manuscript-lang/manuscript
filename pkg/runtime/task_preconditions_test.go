@@ -11,8 +11,8 @@ func TestTaskPreconditionFaultValuesAndCancellation(t *testing.T) {
 		args []Argument
 		want string
 	}{
-		{"limit", []Argument{{"limit", int64(-1)}}, "Scheduler: limit must be between 1 and 9223372036854775807, found -1"},
-		{"history_limit", []Argument{{"history_limit", int64(-2)}}, "Scheduler: history_limit must be between 0 and 9223372036854775807, found -2"},
+		{"limit", []Argument{{"limit", int32(-1)}}, "Scheduler: limit must be between 1 and 2147483647, found -1"},
+		{"history_limit", []Argument{{"history_limit", int32(-2)}}, "Scheduler: history_limit must be between 0 and 2147483647, found -2"},
 		{"drain", []Argument{{"drain", Duration(-1)}}, "Scheduler: drain (nanoseconds) must be between 0 and 9223372036854775807, found -1"},
 	} {
 		fault, ok := recovered(func() { NewScheduler(RootExecution(), tc.args) }).(Fault)
@@ -22,7 +22,7 @@ func TestTaskPreconditionFaultValuesAndCancellation(t *testing.T) {
 	}
 	// Keep the existing internal -1 history sentinel and zero unlimited limit.
 	ctx := RootExecution()
-	scheduler := NewScheduler(ctx, []Argument{{"history_limit", int64(-1)}}).(*Scheduler)
+	scheduler := NewScheduler(ctx, []Argument{{"history_limit", int32(-1)}}).(*Scheduler)
 	if scheduler.historyLimit != -1 || scheduler.limit != 0 {
 		t.Fatal("internal omitted-bound sentinels changed")
 	}

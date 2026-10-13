@@ -276,7 +276,11 @@ func duration(value Value, name string) Value {
 	}
 	n := nativeInteger(value)
 	if n < math.MinInt64/scale || n > math.MaxInt64/scale {
-		return libraryRangeFault("Int."+name, "value", n, math.MinInt64/scale, math.MaxInt64/scale)
+		kind := "Int"
+		if _, wide := value.(Int64); wide {
+			kind = "Int64"
+		}
+		return libraryRangeFault(kind+"."+name, "value", n, math.MinInt64/scale, math.MaxInt64/scale)
 	}
 	return Duration(n * scale)
 }

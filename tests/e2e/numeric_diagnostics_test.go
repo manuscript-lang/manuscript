@@ -12,7 +12,7 @@ func TestNumericPreconditionDiagnostics(t *testing.T) {
 	cases := []struct{ call, message string }{
 		{"1 |/ 0", "Int./: division by zero; right must be nonzero, found 0"},
 		{"1 |% 0", "Int.%: remainder by zero; right must be nonzero, found 0"},
-		{"(-9223372036854775808) |/ -1", "Int./: overflow; found left -9223372036854775808 and right -1; result must be between -9223372036854775808 and 9223372036854775807"},
+		{"(-2147483648) |/ -1", "Int./: overflow; found left -2147483648 and right -1; result must be between -2147483648 and 2147483647"},
 		{"1d |/ 0d", "Decimal./: division by zero; right must be nonzero, found 0"},
 		{"minimum.|divide(0)", "Duration.divide: division by zero; divisor must be nonzero, found 0"},
 		{"minimum.|divide(-1)", "Duration.divide: overflow; found value (nanoseconds) -9223372036854775808 and divisor -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
@@ -27,10 +27,10 @@ func TestNumericPreconditionDiagnostics(t *testing.T) {
 		{"minimum.|abs()", "Duration.abs: value (nanoseconds) must be between -9223372036854775807 and 9223372036854775807, found -9223372036854775808"},
 		{"maximum |+ duration(1)", "Duration.+: overflow; found left (nanoseconds) 9223372036854775807 and right (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
 		{"minimum |- duration(1)", "Duration.-: overflow; found left (nanoseconds) -9223372036854775808 and right (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
-		{"(9223372036855).|milliseconds", "Int.milliseconds: value must be between -9223372036854 and 9223372036854, found 9223372036855"},
-		{"(-9223372036855).|milliseconds", "Int.milliseconds: value must be between -9223372036854 and 9223372036854, found -9223372036855"},
-		{"(9223372037).|seconds", "Int.seconds: value must be between -9223372036 and 9223372036, found 9223372037"},
-		{"(-9223372037).|seconds", "Int.seconds: value must be between -9223372036 and 9223372036, found -9223372037"},
+		{"wide_milliseconds.|milliseconds", "Int64.milliseconds: value must be between -9223372036854 and 9223372036854, found 9223372036855"},
+		{"(-wide_milliseconds).|milliseconds", "Int64.milliseconds: value must be between -9223372036854 and 9223372036854, found -9223372036855"},
+		{"wide_seconds.|seconds", "Int64.seconds: value must be between -9223372036 and 9223372036, found 9223372037"},
+		{"(-wide_seconds).|seconds", "Int64.seconds: value must be between -9223372036 and 9223372036, found -9223372037"},
 		{"(153722868).|minutes", "Int.minutes: value must be between -153722867 and 153722867, found 153722868"},
 		{"(-153722868).|minutes", "Int.minutes: value must be between -153722867 and 153722867, found -153722868"},
 		{"|divide(0)", "Duration.divide: division by zero; divisor must be nonzero, found 0"},
@@ -42,7 +42,7 @@ import Decimal from "@std/decimal.ms"
 	var frames []string
 	for i, tc := range cases {
 		name := fmt.Sprintf("numeric %d", i)
-		source += fmt.Sprintf("test %q:\n    let minimum = duration(-9223372036854775808)\n    let maximum = duration(9223372036854775807)\n    let divide = minimum.divide\n", name)
+		source += fmt.Sprintf("test %q:\n    let minimum = duration(-9223372036854775808)\n    let maximum = duration(9223372036854775807)\n    let divide = minimum.divide\n    let wide_milliseconds: Int64 = 9223372036855\n    let wide_seconds: Int64 = 9223372037\n", name)
 		line := strings.Count(source, "\n") + 1
 		call := "    let impossible = " + tc.call
 		column := strings.IndexByte(call, '|') + 1

@@ -13,16 +13,16 @@ func TestListFindReturnsVisitedValueAfterMutation(t *testing.T) {
 				defer FinishExecution(ctx)
 				reverse := name == "find_last" || name == "find_last_index"
 				remove := writer == "without" || writer == "remove"
-				target := int64(1)
+				target := int32(1)
 				if reverse {
 					target = 3
 					if remove {
 						target = 2 // Remove a middle cell so the backing cell changes.
 					}
 				}
-				ref := []int64{1, 2, 3}
+				ref := []int32{1, 2, 3}
 				captured := ref
-				var expected int64
+				var expected int32
 				wantIndex := -1
 				start, end, step := 0, len(captured), 1
 				if reverse {
@@ -41,15 +41,15 @@ func TestListFindReturnsVisitedValueAfterMutation(t *testing.T) {
 					expected, wantIndex = value, i
 					break
 				}
-				list := &List{Type: "@std/List[Int]", Items: []Value{int64(1), int64(2), int64(3)}}
+				list := &List{Type: "@std/List[Int]", Items: []Value{int32(1), int32(2), int32(3)}}
 				predicate := NewFunction([]string{"value"}, "Bool", func(ctx *Execution, args []Value) Value {
-					value := args[0].(int64)
+					value := args[0].(int32)
 					if value != target {
 						return false
 					}
 					arguments := []Argument{{"index", value - 1}}
 					if !remove {
-						arguments = append(arguments, Argument{"value", int64(9)})
+						arguments = append(arguments, Argument{"value", int32(9)})
 					}
 					if Invoke(ctx, NativeMember(list, writer), arguments) != list {
 						t.Fatal("alias lost receiver")
@@ -58,7 +58,7 @@ func TestListFindReturnsVisitedValueAfterMutation(t *testing.T) {
 				})
 				found := Invoke(ctx, NativeMember(list, name), []Argument{{"predicate", predicate}}).(Alternative)
 				if name == "find_index" || name == "find_last_index" {
-					expected = int64(wantIndex)
+					expected = int32(wantIndex)
 				}
 				if found.Tag != "some" || !reflect.DeepEqual(found.Fields, []Value{expected}) {
 					t.Fatalf("returned %v, expected visited value/index %d", found, expected)

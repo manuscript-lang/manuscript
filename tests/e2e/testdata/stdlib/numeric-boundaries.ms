@@ -4,7 +4,7 @@ import Decimal from "@std/decimal.ms"
 import {BigInt, BigIntError, from_int} from "@std/bigint.ms"
 
 test "integer division retains signed boundary and remainder rules":
-    let minimum = -9223372036854775808
+    let minimum = -2147483648
     if minimum / 1 != minimum or minimum % -1 != 0: return panic("minimum boundary")
     if - 7 / 2 != -3 or - 7 % 3 != -1: return panic("negative dividend")
     if 7 / -2 != -3 or 7 % -3 != 1: return panic("negative divisor")
@@ -62,15 +62,18 @@ test "duration safe addition subtraction negation and unit edges":
     if duration(0).negate() != duration(0) or duration(0).abs() != duration(0): return panic(
         "zero unary"
     )
-    if (9223372036854).milliseconds.to_nanoseconds() != 9223372036854000000: return panic(
+
+    let milliseconds_edge: Int64 = 9223372036854
+    let seconds_edge: Int64 = 9223372036
+    if milliseconds_edge.milliseconds.to_nanoseconds() != 9223372036854000000: return panic(
         "milliseconds maximum"
     )
-    if (-9223372036854).milliseconds.to_nanoseconds() != -9223372036854000000: return panic(
+    if (-milliseconds_edge).milliseconds.to_nanoseconds() != -9223372036854000000: return panic(
         "milliseconds minimum"
     )
     if (
-        (9223372036).seconds.to_nanoseconds() != 9223372036000000000
-        or (-9223372036).seconds.to_nanoseconds() != -9223372036000000000
+        seconds_edge.seconds.to_nanoseconds() != 9223372036000000000
+        or (-seconds_edge).seconds.to_nanoseconds() != -9223372036000000000
     ): return panic("seconds edges")
     if (
         (153722867).minutes.to_nanoseconds() != 9223372020000000000

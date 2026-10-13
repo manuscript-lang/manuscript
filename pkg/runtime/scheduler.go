@@ -65,18 +65,18 @@ func NewScheduler(ctx *Execution, args []Argument) Value {
 		case "limit":
 			value, valid := nativeOption(a.Value, "Int", int64(0))
 			if !valid {
-				return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(^uint(0)>>1))
+				return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(2147483647))
 			}
 			limit = nativeInteger(value)
 			if limit == 0 && a.Value != nil {
 				if v, ok := a.Value.(Alternative); !ok || v.Tag != "none" {
-					return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(^uint(0)>>1))
+					return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(2147483647))
 				}
 			}
 		case "history_limit":
 			value, valid := nativeOption(a.Value, "Int", int64(-1))
 			if !valid {
-				return libraryRangeFault("Scheduler", "history_limit", a.Value, 0, int64(^uint(0)>>1))
+				return libraryRangeFault("Scheduler", "history_limit", a.Value, 0, int64(2147483647))
 			}
 			historyLimit = nativeInteger(value)
 		case "drain":
@@ -89,11 +89,11 @@ func NewScheduler(ctx *Execution, args []Argument) Value {
 			reporter, _ = nativeOption(a.Value, "fn", nil)
 		}
 	}
-	if limit < 0 || limit > int64(^uint(0)>>1) {
-		return libraryRangeFault("Scheduler", "limit", limit, 1, int64(^uint(0)>>1))
+	if limit < 0 || limit > int64(2147483647) {
+		return libraryRangeFault("Scheduler", "limit", limit, 1, int64(2147483647))
 	}
-	if historyLimit < -1 || historyLimit > int64(^uint(0)>>1) {
-		return libraryRangeFault("Scheduler", "history_limit", historyLimit, 0, int64(^uint(0)>>1))
+	if historyLimit < -1 || historyLimit > int64(2147483647) {
+		return libraryRangeFault("Scheduler", "history_limit", historyLimit, 0, int64(2147483647))
 	}
 	if drain < 0 {
 		return durationParameterFault("Scheduler", "drain", drain)

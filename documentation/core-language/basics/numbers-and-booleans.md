@@ -103,7 +103,7 @@ Int64→Int checks the complete mathematical value against Int's range and retur
 
 Int addition, subtraction, multiplication, and unary negation fault when the mathematical result is outside the signed 32-bit range. Division truncates toward zero. Remainder has the sign of the dividend (or is zero), satisfying `a = (a / b) * b + a % b` mathematically. A zero divisor faults for both operations. Minimum Int divided by -1 faults, while Minimum Int modulo -1 is zero. Unary negation of Minimum Int faults. Thus `-7 / 2` is -3 and `-7 % 3` is -1.
 
-Int `/` and `%` faults name the operator and the invalid right operand. Division overflow also gives both operands and the signed 64-bit result range. These remain programming faults, while BigInt division returns its declared Result error.
+Int `/` and `%` faults name the operator and the invalid right operand. Division overflow also gives both operands and the signed 32-bit result range. These remain programming faults, while BigInt division returns its declared Result error.
 
 ### Float
 

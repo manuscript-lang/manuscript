@@ -32,21 +32,21 @@ fn callback_cancel(values: List[Int], stop: fn() -> Unit) -> Unit:
 func rangeFailure(body func()) (failure any) {defer func(){failure=recover()}();body();return}
 func checkRangeExits() {
  ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
- values:=&rt.List{Type:"@std/List[Int]",Items:[]rt.Value{int64(1),int64(2),int64(3)}}
+ values:=&rt.List{Type:"@std/List[Int]",Items:[]rt.Value{int32(1),int32(2),int32(3)}}
  alias:=values
  failure:=rangeFailure(func(){@@fault@@.(rt.Function).Body(ctx,[]rt.Value{values})})
  fault,ok:=failure.(rt.Fault)
  if !ok || fault.Message!="range failure" || len(fault.Frames)!=2 || !strings.HasPrefix(fault.Frames[0],"native-range.ms:6:") || !strings.HasPrefix(fault.Frames[1],"native-range.ms:4:") {panic(fmt.Sprintf("fault/source changed: %#v",failure))}
- if !reflect.DeepEqual(alias.Items,[]rt.Value{int64(2),int64(3)}) {panic("fault lost source mutation")}
+ if !reflect.DeepEqual(alias.Items,[]rt.Value{int32(2),int32(3)}) {panic("fault lost source mutation")}
  cancelled:=rt.RootExecution();defer rt.FinishExecution(cancelled)
  var cancel context.CancelFunc
  cancelled.Context,cancel=context.WithCancel(cancelled.Context);defer cancel()
  count:=0
  stop:=rt.NewFunction(nil,"Unit",func(*rt.Execution,[]rt.Value)rt.Value{count++;cancel();return rt.Unit{}})
- values=&rt.List{Type:"@std/List[Int]",Items:[]rt.Value{int64(1),int64(2),int64(3)}}
+ values=&rt.List{Type:"@std/List[Int]",Items:[]rt.Value{int32(1),int32(2),int32(3)}}
  failure=rangeFailure(func(){@@cancel@@.(rt.Function).Body(cancelled,[]rt.Value{values,stop})})
  expected:=rangeFailure(func(){rt.CheckCancelled(cancelled)})
- if failure==nil || !reflect.DeepEqual(failure,expected) || count!=1 || len(values.Items)!=0 || !reflect.DeepEqual(values.Items[:3],[]rt.Value{int64(1),int64(2),int64(3)}) {panic(fmt.Sprintf("cancel/source changed: %#v",failure))}
+ if failure==nil || !reflect.DeepEqual(failure,expected) || count!=1 || len(values.Items)!=0 || !reflect.DeepEqual(values.Items[:3],[]rt.Value{int32(1),int32(2),int32(3)}) {panic(fmt.Sprintf("cancel/source changed: %#v",failure))}
 }
 `)
 	generated := strings.Replace(result.Source, "package main\n", "package main\nimport (\"context\";\"reflect\";\"strings\";\"fmt\")\n", 1)

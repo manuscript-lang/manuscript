@@ -10,10 +10,10 @@ import (
 
 func TestTaskPreconditionDiagnostics(t *testing.T) {
 	cases := []struct{ call, message string }{
-		{"Scheduler(limit: 0)", "Scheduler: limit must be between 1 and 9223372036854775807, found 0"},
-		{"Scheduler(limit: -1)", "Scheduler: limit must be between 1 and 9223372036854775807, found -1"},
-		{"Scheduler(limit: -9223372036854775808)", "Scheduler: limit must be between 1 and 9223372036854775807, found -9223372036854775808"},
-		{"Scheduler(history_limit: -1)", "Scheduler: history_limit must be between 0 and 9223372036854775807, found -1"},
+		{"Scheduler(limit: 0)", "Scheduler: limit must be between 1 and 2147483647, found 0"},
+		{"Scheduler(limit: -1)", "Scheduler: limit must be between 1 and 2147483647, found -1"},
+		{"Scheduler(limit: -2147483648)", "Scheduler: limit must be between 1 and 2147483647, found -2147483648"},
+		{"Scheduler(history_limit: -1)", "Scheduler: history_limit must be between 0 and 2147483647, found -1"},
 		{"Scheduler(drain: duration(-1))", "Scheduler: drain (nanoseconds) must be between 0 and 9223372036854775807, found -1"},
 		{"Scheduler(drain: duration(-9223372036854775808))", "Scheduler: drain (nanoseconds) must be between 0 and 9223372036854775807, found -9223372036854775808"},
 		{"TaskGroup(timeout: duration(-1))", "TaskGroup: timeout (nanoseconds) must be between 0 and 9223372036854775807, found -1"},

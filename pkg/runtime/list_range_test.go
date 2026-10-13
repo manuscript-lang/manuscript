@@ -17,24 +17,24 @@ func TestListTraversalMatchesGoRange(t *testing.T) {
 		args   []Argument
 		mutate func([]Value) []Value
 	}{
-		{"replace", "with_value", []Argument{{"index", int64(1)}, {"value", int64(9)}}, func(v []Value) []Value { v[1] = int64(9); return v }},
-		{"fill", "fill", []Argument{{"value", int64(9)}, {"start", int64(0)}, {"end", int64(3)}}, func(v []Value) []Value {
+		{"replace", "with_value", []Argument{{"index", int32(1)}, {"value", int32(9)}}, func(v []Value) []Value { v[1] = int32(9); return v }},
+		{"fill", "fill", []Argument{{"value", int32(9)}, {"start", int32(0)}, {"end", int32(3)}}, func(v []Value) []Value {
 			for i := range v {
-				v[i] = int64(9)
+				v[i] = int32(9)
 			}
 			return v
 		}},
 		{"reverse", "reverse", nil, func(v []Value) []Value { slices.Reverse(v); return v }},
-		{"prepend", "prepend", []Argument{{"value", int64(9)}}, func(v []Value) []Value { v = append(v, nil); copy(v[1:], v[:len(v)-1]); v[0] = int64(9); return v }},
-		{"remove", "without", []Argument{{"index", int64(0)}}, func(v []Value) []Value { return append(v[:0], v[1:]...) }},
-		{"copy backward", "copy_within", []Argument{{"target", int64(0)}, {"start", int64(1)}, {"end", int64(3)}}, func(v []Value) []Value { copy(v, v[1:3]); return v }},
-		{"copy truncated", "copy_within", []Argument{{"target", int64(2)}, {"start", int64(0)}, {"end", int64(3)}}, func(v []Value) []Value { copy(v[2:], v[:3]); return v }},
-		{"splice shrink", "with_values", []Argument{{"start", int64(1)}, {"delete_count", int64(2)}, {"replacement", &List{Type: "@std/List[Int]", Items: []Value{int64(9)}}}}, func(v []Value) []Value { v[1] = int64(9); return v[:2] }},
+		{"prepend", "prepend", []Argument{{"value", int32(9)}}, func(v []Value) []Value { v = append(v, nil); copy(v[1:], v[:len(v)-1]); v[0] = int32(9); return v }},
+		{"remove", "without", []Argument{{"index", int32(0)}}, func(v []Value) []Value { return append(v[:0], v[1:]...) }},
+		{"copy backward", "copy_within", []Argument{{"target", int32(0)}, {"start", int32(1)}, {"end", int32(3)}}, func(v []Value) []Value { copy(v, v[1:3]); return v }},
+		{"copy truncated", "copy_within", []Argument{{"target", int32(2)}, {"start", int32(0)}, {"end", int32(3)}}, func(v []Value) []Value { copy(v[2:], v[:3]); return v }},
+		{"splice shrink", "with_values", []Argument{{"start", int32(1)}, {"delete_count", int32(2)}, {"replacement", &List{Type: "@std/List[Int]", Items: []Value{int32(9)}}}}, func(v []Value) []Value { v[1] = int32(9); return v[:2] }},
 	} {
 		for _, capacity := range []int{3, 8} {
 			for _, callback := range []bool{false, true} {
-				t.Run(test.name+Format(int64(capacity))+Format(callback), func(t *testing.T) {
-					initial := []Value{int64(1), int64(2), int64(3)}
+				t.Run(test.name+Format(int32(capacity))+Format(callback), func(t *testing.T) {
+					initial := []Value{int32(1), int32(2), int32(3)}
 					ref := make([]Value, len(initial), capacity)
 					copy(ref, initial)
 					var want []Value
@@ -79,7 +79,7 @@ func TestListRangeAppendAndSelfSplice(t *testing.T) {
 	defer FinishExecution(ctx)
 	for _, capacity := range []int{3, 8} {
 		for _, splice := range []bool{false, true} {
-			initial := []Value{int64(1), int64(2), int64(3)}
+			initial := []Value{int32(1), int32(2), int32(3)}
 			ref := make([]Value, 3, capacity)
 			copy(ref, initial)
 			var want []Value
@@ -93,8 +93,8 @@ func TestListRangeAppendAndSelfSplice(t *testing.T) {
 						copy(ref[4:], ref[2:old])
 						copy(ref[1:], replacement)
 					} else {
-						ref = append(ref, int64(4))
-						ref[1] = int64(9)
+						ref = append(ref, int32(4))
+						ref[1] = int32(9)
 					}
 				}
 			}
@@ -105,10 +105,10 @@ func TestListRangeAppendAndSelfSplice(t *testing.T) {
 				seen = append(seen, v)
 				if len(seen) == 1 {
 					if splice {
-						Invoke(ctx, NativeMember(list, "with_values"), []Argument{{"start", int64(1)}, {"delete_count", int64(1)}, {"replacement", list}})
+						Invoke(ctx, NativeMember(list, "with_values"), []Argument{{"start", int32(1)}, {"delete_count", int32(1)}, {"replacement", list}})
 					} else {
-						ListAppend(ctx, list, int64(4))
-						Invoke(ctx, NativeMember(list, "with_value"), []Argument{{"index", int64(1)}, {"value", int64(9)}})
+						ListAppend(ctx, list, int32(4))
+						Invoke(ctx, NativeMember(list, "with_value"), []Argument{{"index", int32(1)}, {"value", int32(9)}})
 					}
 				}
 			}
@@ -127,12 +127,12 @@ func TestListRangeNestedAndCallbackExits(t *testing.T) {
 			ctx.Context, cancel = context.WithCancel(ctx.Context)
 			defer cancel()
 			defer FinishExecution(ctx)
-			list := &List{Type: "@std/List[Int]", Items: []Value{int64(1), int64(2), int64(3)}}
+			list := &List{Type: "@std/List[Int]", Items: []Value{int32(1), int32(2), int32(3)}}
 			var seen, inner []Value
 			cb := NewFunction([]string{"value"}, "Unit", func(ctx *Execution, a []Value) Value {
 				seen = append(seen, a[0])
 				if len(seen) == 1 {
-					Invoke(ctx, NativeMember(list, "fill"), []Argument{{"value", int64(9)}, {"start", int64(0)}, {"end", int64(3)}})
+					Invoke(ctx, NativeMember(list, "fill"), []Argument{{"value", int32(9)}, {"start", int32(0)}, {"end", int32(3)}})
 					//lint:ignore S1011 Exercise a nested Go range explicitly.
 					for _, v := range Iterate(list) {
 						inner = append(inner, v)
@@ -148,11 +148,11 @@ func TestListRangeNestedAndCallbackExits(t *testing.T) {
 			})
 			failure := recovered(func() { Invoke(ctx, NativeMember(list, "for_each"), []Argument{{"operation", cb}}) })
 			if exit == "normal" {
-				if failure != nil || !reflect.DeepEqual(seen, []Value{int64(1), int64(9), int64(9)}) {
+				if failure != nil || !reflect.DeepEqual(seen, []Value{int32(1), int32(9), int32(9)}) {
 					t.Fatal(seen, failure)
 				}
 			} else {
-				if failure == nil || !reflect.DeepEqual(seen, []Value{int64(1)}) {
+				if failure == nil || !reflect.DeepEqual(seen, []Value{int32(1)}) {
 					t.Fatal(seen, failure)
 				}
 				if exit == "fault" && failure.(Fault).Message != "callback fault" {
@@ -162,7 +162,7 @@ func TestListRangeNestedAndCallbackExits(t *testing.T) {
 					t.Fatal("cancellation changed")
 				}
 			}
-			if !reflect.DeepEqual(inner, []Value{int64(9), int64(9), int64(9)}) {
+			if !reflect.DeepEqual(inner, []Value{int32(9), int32(9), int32(9)}) {
 				t.Fatal("nested range missed backing updates")
 			}
 		})
@@ -175,22 +175,22 @@ func TestListCallbackTraversalsUseCapturedBacking(t *testing.T) {
 			run := func(reference bool) (Value, []Value, []Value) {
 				ctx := RootExecution()
 				defer FinishExecution(ctx)
-				list := &List{Type: "@std/List[Int]", Items: []Value{int64(1), int64(2), int64(3)}}
+				list := &List{Type: "@std/List[Int]", Items: []Value{int32(1), int32(2), int32(3)}}
 				var seen []Value
 				labels, result := []string{"value"}, "@std/List[Int]"
 				if name == "fold" || name == "fold_right" {
 					labels, result = []string{"accumulator", "value"}, "Int"
 				}
 				cb := NewFunction(labels, "Int", func(ctx *Execution, a []Value) Value {
-					v := a[len(a)-1].(int64)
+					v := a[len(a)-1].(int32)
 					seen = append(seen, v)
-					Invoke(ctx, NativeMember(list, "fill"), []Argument{{"value", int64(9)}, {"start", int64(0)}, {"end", int64(3)}})
-					ListAppend(ctx, list, int64(4))
+					Invoke(ctx, NativeMember(list, "fill"), []Argument{{"value", int32(9)}, {"start", int32(0)}, {"end", int32(3)}})
+					ListAppend(ctx, list, int32(4))
 					switch name {
 					case "filter", "find", "find_last", "find_index", "find_last_index", "some", "every":
 						return v%2 == 1
 					case "fold", "fold_right":
-						return a[0].(int64)*10 + v
+						return a[0].(int32)*10 + v
 					case "for_each":
 						return Unit{}
 					case "flat_map":
@@ -213,7 +213,7 @@ func TestListCallbackTraversalsUseCapturedBacking(t *testing.T) {
 				}
 				a := []Value{list, cb}
 				if name == "fold" || name == "fold_right" {
-					a = []Value{list, int64(0), cb}
+					a = []Value{list, int32(0), cb}
 				}
 				spec := libraryFunctions["collections/"+name]
 				var out Value

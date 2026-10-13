@@ -76,3 +76,6 @@ The runtime results confirm about 17% retained-heap savings for boxed scalar col
 These measurements do **not** establish a speedup. Traversal includes generic inspection and conversion to the wide host checksum and is slower in the candidate samples; construction is mixed. Shared-host scheduling remains uncontrolled. The runtime Binary harness measures boxing paths; it is not a benchmark of every generated typed expression or collection algorithm.
 
 `factory-samples-linux-amd64.json` separately exercises Integer/Float parsing factories, including a temporary decimal token per element. It saves only about 2.4% of scalar retained heap (32,007,192 → 31,227,656 bytes): short-lived token strings and live scalar boxes share Go's tiny allocator blocks. This further shows why four-byte payloads do not imply a uniform whole-heap reduction. Those construction timings include text parsing and cannot describe ordinary lowered literal or arithmetic speed.
+
+
+After integration of unrelated #278, the current List header is40 bytes/alignment8 rather than the48-byte historical control: removal of its COW flag is a separate change. Record24/8, Alternative56/8 and interface16/8 remain as measured. The retained-box sample comparisons do not include that unrelated header change.

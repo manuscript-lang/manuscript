@@ -19,8 +19,8 @@ test "scheduler bounds preserve omission none zero and positive meanings":
         if not zero.start(pass).is_ok(): return panic("zero history/drain")
 
     with maximum = Scheduler(
-        limit: 9223372036854775807,
-        history_limit: 9223372036854775807,
+        limit: 2147483647,
+        history_limit: 2147483647,
         drain: duration(9223372036854775807)
     ):
         if not maximum.start(pass).is_ok(): return panic("maximum bounds")

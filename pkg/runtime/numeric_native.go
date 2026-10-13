@@ -107,7 +107,3 @@ var nativeWideHostFields = map[string][]string{
 	"@std/ProcessInfo":    {"uid", "gid", "effective_uid", "effective_gid"},
 	"@std/UserInfo":       {"uid", "gid"},
 }
-
-func checkedWideAdd(a, b int64) int64 { return int64(integer64Binary("+", Int64(a), Int64(b)).(Int64)) }
-func checkedWideSub(a, b int64) int64 { return int64(integer64Binary("-", Int64(a), Int64(b)).(Int64)) }
-func checkedWideMul(a, b int64) int64 { return int64(integer64Binary("*", Int64(a), Int64(b)).(Int64)) }
