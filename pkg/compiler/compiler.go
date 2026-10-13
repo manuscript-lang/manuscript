@@ -33,6 +33,7 @@ type Result struct {
 	Source                     string
 	Diagnostics                []syntax.Diagnostic
 	ProjectRoot, Configuration string
+	lowering                   *loweringRecipe
 }
 
 func (r Result) Success() bool { return len(r.Diagnostics) == 0 }
@@ -114,6 +115,9 @@ func compile(graph frontend.Graph, options Options) Result {
 		result.Diagnostics = append(result.Diagnostics, syntax.Diagnostic{Position: syntax.Position{File: graph.Entry, Line: 1, Column: 1}, Phase: "lowering", Message: err.Error()})
 	} else {
 		result.Source = source
+		// Retain only lowering options, not overlays or frontend query state.
+		loweringOptions := Options{Entry: options.Entry, Tests: options.Tests, CPUProfile: options.CPUProfile, HeapProfile: options.HeapProfile, Trace: options.Trace}
+		result.lowering = &loweringRecipe{program: checked, entry: graph.Entry, options: loweringOptions, source: source}
 	}
 	return result
 }

@@ -42,6 +42,13 @@ same native settings as `Release`; it does not promise a smaller binary than
 `Release`. Both omit debugging data to reduce binary size. Runtime stack traces
 remain available. Optimization does not change Manuscript language semantics.
 
+Debug builds copy large lists of primitive constants from private immutable
+data into fresh mutable storage. This reduces native compilation work while
+preserving aliases and repeated evaluations. Mixed lists, calls, unary numeric
+expressions, and mutable elements keep the ordinary lowering. The other build
+levels retain their normal representation; repeated-construction performance
+and GC cost are part of choosing the Debug representation.
+
 ## Defaults and command behavior
 
 The default is `Release`, except `debug` always uses `Debug` and `profile`
@@ -61,3 +68,11 @@ The compiler API offers `BuildWithType` and `BuildCheckedWithType` for explicit
 selection. `Build` defaults to Release; the existing `BuildChecked` boolean
 selects Debug when true and Release otherwise. Build levels share `ms.lock`
 toolchain pins but have distinct artifact cache identities.
+
+`CompileSource` and `CompileFile` return the default generated Go in
+`Result.Source`. An untouched compiler result retains the checked lowering
+recipe so `BuildCheckedWithType(..., Debug)` can select the Debug representation
+at build time. Editing `Result.Source` or constructing a result manually keeps
+that supplied Go as the build input, including for Debug. Building does not
+mutate the caller's result. The checked program retained by a compiler result
+is read-only compiler state.

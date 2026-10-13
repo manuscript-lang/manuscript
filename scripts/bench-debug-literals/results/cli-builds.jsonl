@@ -1,0 +1,12 @@
+{"rep": 0, "n": 16000, "variant": "baseline", "wall": 2.5620285850000073, "rss": 270304, "exit": 0, "size": 12407118}
+{"rep": 0, "n": 16000, "variant": "prototype", "wall": 0.6227605009989929, "rss": 149860, "exit": 0, "size": 11497543}
+{"rep": 0, "n": 100000, "variant": "baseline", "wall": 15.260055393000584, "rss": 1582912, "exit": 0, "size": 19198304}
+{"rep": 0, "n": 100000, "variant": "prototype", "wall": 2.3612846769992757, "rss": 389860, "exit": 0, "size": 13512783}
+{"rep": 1, "n": 16000, "variant": "prototype", "wall": 0.6169013819999236, "rss": 165792, "exit": 0, "size": 11497543}
+{"rep": 1, "n": 16000, "variant": "baseline", "wall": 2.0939111419993424, "rss": 272228, "exit": 0, "size": 12407118}
+{"rep": 1, "n": 100000, "variant": "prototype", "wall": 2.3132236239998747, "rss": 391140, "exit": 0, "size": 13512783}
+{"rep": 1, "n": 100000, "variant": "baseline", "wall": 12.872889156000383, "rss": 1574808, "exit": 0, "size": 19198304}
+{"rep": 2, "n": 16000, "variant": "baseline", "wall": 2.006811931998527, "rss": 273436, "exit": 0, "size": 12407118}
+{"rep": 2, "n": 16000, "variant": "prototype", "wall": 0.5291588500003854, "rss": 152548, "exit": 0, "size": 11497543}
+{"rep": 2, "n": 100000, "variant": "baseline", "wall": 12.65168410500155, "rss": 1545376, "exit": 0, "size": 19198304}
+{"rep": 2, "n": 100000, "variant": "prototype", "wall": 2.3850338960000954, "rss": 389988, "exit": 0, "size": 13512783}

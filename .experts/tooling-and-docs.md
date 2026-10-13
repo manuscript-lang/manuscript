@@ -73,6 +73,20 @@ Apply when: changing native optimization, symbol settings, or build caches.
 Evidence: [build level contract](../documentation/developer-tooling/builds/build-levels.md), [native flags](../pkg/compiler/build_type.go), [cache identity](../pkg/compiler/cache.go), and [native artifact checks](../pkg/compiler/build_type_test.go).
 Verify: build all four levels, execute and restore each artifact, check native optimization settings and debug sections, and compare stripped sizes with RelWithDebInfo.
 
+Verified: replacing a large list constructor with an anonymous copy thunk
+added physical Go lines under the preceding Manuscript `//line` directive.
+Delve stopped at a later source breakpoint inside that thunk with missing
+source locals. Giving the thunk a generated-file directive still introduced
+an extra stepping frame. An in-statement `append([]rt.Value(nil), data[:]...)`
+retains fresh storage without that frame; native DAP tests must compare against
+the unchanged baseline, including existing bookkeeping-line coalescing.
+Evidence: [large-list DAP regression](../extensions/vscode/tests/debug-large-literal.test.js),
+[bounded Debug lowering](../pkg/compiler/lower_debug_literals.go), and
+[independent measurement/provenance](../scripts/bench-debug-literals/README.md).
+Verify: break before and after construction, step, inspect source locals and
+watches, and mutate one of two independent evaluations. Default/Release
+generation and caller-edited `Result.Source` must remain unchanged.
+
 ### Repository cleanup must remove duplicated work and layers
 
 Decision: the user's codebase cleanup request includes simplifying the implementation as a whole; reorganizing files alone does not satisfy it. Consolidate duplicated behavior and remove avoidable work before adding abstraction layers.
