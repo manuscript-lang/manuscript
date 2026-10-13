@@ -849,7 +849,11 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 	case syntax.KindApply:
 		if callable := c.nativeCallable(e); callable != nil {
 			*i = *callable
-			i.Type = c.specialize(callable.Type, callable.Method.Variables, c.resolveArguments(e.Types), e.Pos)
+			args := c.resolveArguments(e.Types)
+			if callable.Type.ID == "<invalid>" {
+				return i
+			}
+			i.Type = c.specialize(callable.Type, callable.Method.Variables, args, e.Pos)
 			c.Expressions[e.Left] = i
 			return i
 		}

@@ -18,6 +18,9 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 	}
 	contribute := func(arg syntax.Argument, actual *Info) {
 		pattern := parameter(arg.Name)
+		if pattern == nil {
+			return
+		}
 		if invalidType(actual.Type) {
 			if std(pattern, "Optional") && actual.Type.Kind == "function" {
 				pattern = pattern.Args[0]
@@ -27,7 +30,7 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 			}
 			return
 		}
-		if pattern != nil && !c.errorAssignable(actual.Type, Sub(pattern, sub)) && !c.unifyArgument(pattern, actual.Type, vars, sub) {
+		if !c.errorAssignable(actual.Type, Sub(pattern, sub)) && !c.unifyArgument(pattern, actual.Type, vars, sub) {
 			c.error(arg.Pos, "type", conflictingInference)
 		}
 	}

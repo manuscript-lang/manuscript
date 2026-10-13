@@ -107,6 +107,8 @@ func TestInvalidCallbackInferenceDoesNotCascade(t *testing.T) {
 		`let names = [1, 2].map(fn(item): missing).join(",")`,
 		`let names = [1, 2].map(fn(item): missing)
     names.join(",")`,
+		`let names = [1].map(fn(item): missing)
+    let next = names.map[String]`,
 		`let name = apply(value: 1, transform: fn(item): missing)
     name.toString()`,
 		`let callback = Callback(fn(item: Int): missing)`,
@@ -135,6 +137,21 @@ func TestInvalidCallbackPreservesIndependentDiagnostics(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("missing %q in %v", message, result.Diagnostics)
+		}
+	}
+}
+
+func TestUnknownCallbackLabelDoesNotConflictWithInference(t *testing.T) {
+	source := callbackDeclarations + `fn example() -> Unit:
+    choose(first: fn(): "a", second: fn(): "b", other: fn(): missing)
+`
+	result := compiler.CompileSource("callbacks.ms", source, compiler.Options{AnalyzeOnly: true})
+	if result.Success() {
+		t.Fatal("accepted unknown callback argument")
+	}
+	for _, diagnostic := range result.Diagnostics {
+		if strings.Contains(diagnostic.Message, "conflicting generic inference") {
+			t.Fatal(result.Diagnostics)
 		}
 	}
 }
