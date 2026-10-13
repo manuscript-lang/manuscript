@@ -149,6 +149,17 @@ Verify: truncated archives fail, leave no published/staging cache, and permit a 
 
 ### Native option adapters must respect declared parameter types
 
+Verified: a required Int delegated to an Optional[Int] operation needs the
+explicit Some representation when preserving its public negative-limit fault.
+The optional adapter rejects negative payloads inside Some; a raw negative Int
+can reach a distinct primitive fault instead. String.replace_n deliberately
+adapts its required cap before calling replace's prepared body. Evidence:
+[negative diagnostic/frame parity](../tests/e2e/replace_n_test.go) and
+[required-cap adapter](../pkg/runtime/library_data.go).
+Verify zero/positive caps, negative empty/nonempty/direct/bound calls, required
+source arity and declared ABI shape together; preserving the raw algorithm alone
+does not preserve preparation semantics.
+
 Verified: normalizing every runtime record recognized as an options record corrupts generic payloads. An Optional fallback containing JsonLimits must retain Optional fields and shared storage; it is not a limits argument to an I/O adapter. Normalize only a concrete declared parameter matching the record identity, including a concrete Optional parameter after its outer wrapper is removed.
 
 Apply when: changing native argument normalization or generic receiver methods.

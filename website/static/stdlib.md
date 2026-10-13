@@ -8662,6 +8662,7 @@ type String:
     fn lower() -> String:
     fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
     fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
+    fn replace_n(old: String, new: String, max_replacements: Int) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
     fn scalar_values() -> List[Int]:
@@ -8853,12 +8854,23 @@ fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Res
 
 ### String.replace_first
 
-Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.
+Transitional compatibility name: omitted or none replaces the first occurrence; an explicit cap can replace more.
+Use replace_n for a required finite cap; this retained signature has not become a strict first-only operation.
 An empty old matches at scalar boundaries, and inserted text is not searched again.
 Zero changes nothing; negative caps retain replace's programming fault.
 
 ```manuscript
 fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String
+```
+
+### String.replace_n
+
+Replaces at most the required number of nonoverlapping literal occurrences; zero leaves text unchanged.
+Empty old matches at scalar boundaries, inserted text is not rescanned, and negative caps retain replace's programming fault.
+The count limits replacements, not UTF-8 output bytes; there is no additional allocation budget.
+
+```manuscript
+fn replace_n(old: String, new: String, max_replacements: Int) -> String
 ```
 
 ### String.reverse

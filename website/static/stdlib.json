@@ -10054,6 +10054,7 @@
             "replace: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
             "replace_all: fn(old: String, new: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
             "replace_first: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
+            "replace_n: fn(old: String, new: String, max_replacements: Int)-\u003eString",
             "reverse: fn()-\u003eString",
             "scalar_at: fn(index: Int)-\u003eOptional[Int]",
             "scalar_length: fn()-\u003eInt",
@@ -10194,7 +10195,13 @@
               "name": "replace_first",
               "kind": "operation",
               "signature": "fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -\u003e String",
-              "doc": "Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.\nAn empty old matches at scalar boundaries, and inserted text is not searched again.\nZero changes nothing; negative caps retain replace's programming fault."
+              "doc": "Transitional compatibility name: omitted or none replaces the first occurrence; an explicit cap can replace more.\nUse replace_n for a required finite cap; this retained signature has not become a strict first-only operation.\nAn empty old matches at scalar boundaries, and inserted text is not searched again.\nZero changes nothing; negative caps retain replace's programming fault."
+            },
+            {
+              "name": "replace_n",
+              "kind": "operation",
+              "signature": "fn replace_n(old: String, new: String, max_replacements: Int) -\u003e String",
+              "doc": "Replaces at most the required number of nonoverlapping literal occurrences; zero leaves text unchanged.\nEmpty old matches at scalar boundaries, inserted text is not rescanned, and negative caps retain replace's programming fault.\nThe count limits replacements, not UTF-8 output bytes; there is no additional allocation budget."
             },
             {
               "name": "reverse",
