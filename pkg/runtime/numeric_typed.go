@@ -33,3 +33,6 @@ func IntRemainder(a, b int64) int64 {
 	}
 	return a % b
 }
+
+// FloatNegate prevents Go constant arithmetic from erasing a negative zero.
+func FloatNegate(value float64) float64 { return -value }

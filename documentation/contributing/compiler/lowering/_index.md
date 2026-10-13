@@ -72,12 +72,11 @@ representation from dropping language guarantees. Inspect `program.go` beside
 `program_test.go`; neither compilation nor process startup is in the benchmark
 loop. Use a quiet machine for time comparisons, and report allocations as well.
 
-Current generated loops still store primitive locals as `rt.Value`, extract them
-for arithmetic, and box results again on assignment. Ordered source calls avoid
-label preparation but still pass `[]rt.Value` through `Function.Body`. Lists store
-`[]rt.Value`, and `.at().unwrap()` still creates and consumes an ordinary Optional
-alternative. Generic specialization, contract dispatch, and closure snapshots
-also cross the shared value boundary.
+Concrete scalar storage and known source calls now use native representations
+at eligible boundaries. See [native scalar storage and calls](native-scalar-calls.md)
+for storage classification, first-class adapters, default preparation, source
+guards and compatibility. Dynamic aggregates and generic values still cross the
+shared Value boundary; collection representation has its own runtime authority.
 
 Two bounded production optimizations use checked facts while keeping the shared
 representation and callable ABI:
@@ -109,25 +108,19 @@ same runtime/toolchain, alternating unprofiled samples on a quiet host; report
 allocation counts and timing variability rather than extrapolating to a workload
 that was not reproduced.
 
-Next, specialize noncaptured concrete scalar locals whose repeated uses remain
-in arithmetic or comparisons, converting at explicit boundaries. Do not change
-every concrete local blindly: in the benchmark's call loop, unboxing a returned
-value and boxing it again for the next call adds allocations. Keep those locals
-boxed until a separately measured typed-call path can remove both conversions.
-Specialization hoisting must retain the exact checked type arguments and recursive
-implementation scopes; matching type spellings alone do not establish reusable
-dispatch. Preserve checked overflow, Float rounding, operand order, source frames,
-cancellation, and debugger-visible names.
+The workload harness adds complete loop, call, access and Game of Life checks:
 
-Subsequent candidates are typed entry points for eligible known source functions
-with adapters at callable/generic boundaries, and fusion of an immediately
-consumed Optional where no alternative escapes. They need separate evidence for
-defaults, recursion, callbacks, error propagation, profiling, negative indexing,
-absent values, and fault sites. Aggregate layout changes are a later stage:
-mutable aliasing, shallow cloning, recursive data, nominal identity, and local
-implementation scopes prevent replacing every record or collection with an
-unqualified Go value. No language semantics or ABI change is implied by these
-benchmark candidates.
+```sh
+toolchain/go/bin/go run ./scripts/bench-lowering -workloads -count=5
+```
+
+Retain main and candidate generated sources and raw allocation samples. Keep
+identity, forwarding, capture and storage controls alongside hot loops: removing
+one box at a numerical boundary can add a replacement at another boundary.
+List storage, immediate Optional consumption and comparator dispatch must be
+validated together with their authoritative runtime representation. Mutable
+aliasing, shallow cloning, recursive data, nominal identity and local
+implementation scopes remain source contracts.
 
 - [Function and concurrency API lowering](function-and-task-calls.md)
 - [Source guarantees and Go representations](value-representations.md)
