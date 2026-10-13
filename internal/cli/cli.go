@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // Run executes a command and returns its process exit status.
@@ -126,6 +127,7 @@ func Run(args []string) int {
 	formatCheck, structured, debug, watch := false, false, false, false
 	buildTypeName := ""
 	buildTypeSet := false
+	testTimeout, testFilter := "", ""
 	var arguments []string
 	for i := 2; i < len(args); i++ {
 		switch args[i] {
@@ -147,6 +149,22 @@ func Run(args []string) int {
 				return 2
 			}
 			buildTypeName, buildTypeSet = args[i], true
+		case "--timeout", "--filter":
+			flag := args[i]
+			i++
+			if i == len(args) || flag == "--filter" && args[i] == "" {
+				fmt.Fprintf(os.Stderr, "%s requires a value, e.g. %s\n", flag, map[string]string{"--timeout": "--timeout 30s", "--filter": "--filter \"test name\""}[flag])
+				return 2
+			}
+			if flag == "--timeout" {
+				if d, err := time.ParseDuration(args[i]); err != nil || d < 0 {
+					fmt.Fprintf(os.Stderr, "invalid --timeout %q; use a duration such as 30s or 2m, or 0 to disable\n", args[i])
+					return 2
+				}
+				testTimeout = args[i]
+			} else {
+				testFilter = args[i]
+			}
 		case "--check":
 			formatCheck = true
 		case "--json":
@@ -195,6 +213,20 @@ func Run(args []string) int {
 	default:
 		unknownCommand(command)
 		return 2
+	}
+	if (testTimeout != "" || testFilter != "") && command != "test" {
+		fmt.Fprintf(os.Stderr, "--timeout and --filter are valid only for ms test, not ms %s; run 'ms help %s' for the options this command accepts\n", command, command)
+		return 2
+	}
+	if command == "test" {
+		var testArgs []string
+		if testTimeout != "" {
+			testArgs = append(testArgs, "--timeout="+testTimeout)
+		}
+		if testFilter != "" {
+			testArgs = append(testArgs, "--filter="+testFilter)
+		}
+		arguments = append(testArgs, arguments...)
 	}
 	if watch && command != "run" && command != "test" {
 		fmt.Fprintf(os.Stderr, "--watch requires run or test, not %s; use ms run <file> --watch or ms test <file> --watch\n", command)
