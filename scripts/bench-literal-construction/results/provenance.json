@@ -1,0 +1,40 @@
+{
+  "before_head": "f01d88003284cc21ffda49284b04694c53f8cd8a",
+  "candidate_tree": "ab25fda1f50d3c52278c79820deb99025ef1abb9",
+  "runtime_provider": "8c6569060fd9b073350c7bc2fa665c8fc3ceb189",
+  "sdk": "Go1.25.1",
+  "artifacts": [
+    {
+      "file": "/tmp/ms147-main/ms",
+      "sha256": "d82fe4a6c6e31164fa71fb4aa9345108aada36811722c53cb953318912f569fe"
+    },
+    {
+      "file": "/workspace/manuscript/ms",
+      "sha256": "2f1f44ec0541e60731ea0208e418cbab63a6af95a0de1baa5e3631ed7e3424d9"
+    },
+    {
+      "file": "/workspace/manuscript/.artifacts/literals-147/calls-paired/2200/baseline/runtime.test",
+      "sha256": "6299d1eb3e2d3f4f434f27b60f8a13bbfda64b3f75e83581455fd6037e36bbf6"
+    },
+    {
+      "file": "/workspace/manuscript/.artifacts/literals-147/calls-paired/2200/prototype/runtime.test",
+      "sha256": "45e7ec0e0680b1d4501f565580567e611624dc409a485a512df35482d24750d4"
+    },
+    {
+      "file": "/workspace/manuscript/.artifacts/literals-147/flat-paired/100000/baseline/runtime.test",
+      "sha256": "2cb1b808d3673c8721b0029cdbfbcb36d8d426d0bbd93827e3f95398ad2662ec"
+    },
+    {
+      "file": "/workspace/manuscript/.artifacts/literals-147/flat-paired/100000/prototype/runtime.test",
+      "sha256": "b9211e3a68020862118dc520fb57e8b610f033819f04b1a1e97d2ef8db9a9302"
+    },
+    {
+      "file": "/workspace/manuscript/.artifacts/literals-147/flat-paired/16000/baseline/runtime.test",
+      "sha256": "5a0891acd417c3a7b142147c734833e160e103f853028650198ab9b32e807286"
+    },
+    {
+      "file": "/workspace/manuscript/.artifacts/literals-147/flat-paired/16000/prototype/runtime.test",
+      "sha256": "0ebe95b78a5ff62776353b34fa21efe4bef7512517614c15277c06a9b5006f91"
+    }
+  ]
+}

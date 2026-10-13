@@ -21,6 +21,7 @@ def main():
     parser.add_argument("--go", required=True)
     parser.add_argument("--repo", required=True)
     parser.add_argument("--variants", default="baseline,prototype")
+    parser.add_argument("--elements", default="scalar", choices=("scalar", "calls"))
     parser.add_argument("--build-type", default="Debug",
                         choices=("Debug", "Release", "RelWithDebInfo", "MinSizeRel"))
     args = parser.parse_args()
@@ -37,12 +38,13 @@ def main():
                 # Match the explicit expected length in main as well as the
                 # original path; data itself only contains values below n.
                 absolute_source = str(root / str(n) / "source.ms") in source
-                relative_source = ('"source.ms:2:16"' in source and
+                declaration_line = 3 if args.elements == "calls" else 2
+                relative_source = (f'"source.ms:{declaration_line}:16"' in source and
                                    re.search(r"IntSubtract[^\n]*int64\(" + str(n) + r"\)", source))
                 if not absolute_source and not relative_source:
                     continue
                 transformed = ("debugLiteralData1" in source if args.build_type == "Debug"
-                               else "literalData1" in source)
+                               else "literalData1" in source or "rt.NewSizedIntList(" in source)
                 if transformed != (variant == "prototype"):
                     continue
                 if (transformed and args.build_type == "Debug" and
@@ -52,7 +54,8 @@ def main():
             original = max(matches, key=lambda file: file.stat().st_mtime_ns)
             source = original.read_text()
             # The emitter creates values() as its first source function.
-            symbol = re.search(r"(?m)^\t(\w+) = func\(\) rt.Function \{", source)[1]
+            symbols = re.findall(r"(?m)^\t(\w+) = func\(\) rt.Function \{", source)
+            symbol = symbols[1] if args.elements == "calls" else symbols[0]
             directory = root / str(n) / variant
             directory.mkdir(exist_ok=True)
             (directory / "main.go").write_text(source)
@@ -60,6 +63,8 @@ def main():
                 cache_source=str(original), source_sha256=hashlib.sha256(source.encode()).hexdigest(),
                 elements=n, variant=variant, symbol=symbol,
             ), indent=2) + "\n")
+            expected = "int64(7)" if args.elements == "calls" else "i"
+            first_value = 7 if args.elements == "calls" else 0
             harness = f'''package main
 import("testing"; rt "github.com/manuscript-lang/manuscript/pkg/runtime")
 var sink rt.Value
@@ -71,9 +76,9 @@ func TestResult(t *testing.T) {{
  second:=rt.Invoke(ctx,{symbol},nil)
  if rt.IntValue(rt.CollectionLength(ctx,first))!={n} || rt.IntValue(rt.CollectionLength(ctx,second))!={n} {{t.Fatal("length")}}
  at:=func(list rt.Value,index int64) int64 {{return rt.IntValue(rt.OptionalUnwrap(ctx,rt.ListAt(ctx,list,index,"@std/Optional[Int]")))}}
- for i:=int64(0);i<{n};i++ {{if v:=at(first,i);v!=i {{t.Fatal(i,v)}}}}
+ for i:=int64(0);i<{n};i++ {{if v:=at(first,i);v!={expected} {{t.Fatal(i,v)}}}}
  rt.Invoke(ctx,rt.NativeMemberResult(first,"set","@std/List[Int]"),[]rt.Argument{{{{Name:"index",Value:int64(0)}},{{Name:"value",Value:int64({n}-1)}}}})
- if at(first,0)!={n}-1 || at(second,0)!=0 {{t.Fatal("shared storage or lost mutation")}}
+ if at(first,0)!={n}-1 || at(second,0)!={first_value} {{t.Fatal("shared storage or lost mutation")}}
 }}
 func BenchmarkLiteral(b *testing.B) {{
  initialize();ctx:=rt.RootExecution();defer rt.FinishExecution(ctx);b.ReportAllocs();b.ResetTimer()

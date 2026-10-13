@@ -1,0 +1,9 @@
+{"kind":"list","Depth":500,"Sample":0,"Seconds":0.317444369,"Bytes":45332456,"Allocations":376967,"Diagnostics":0}
+{"kind":"list","Depth":500,"Sample":1,"Seconds":0.321498358,"Bytes":45327000,"Allocations":376960,"Diagnostics":0}
+{"kind":"list","Depth":500,"Sample":2,"Seconds":0.321348113,"Bytes":45327192,"Allocations":376961,"Diagnostics":0}
+{"kind":"list","Depth":1000,"Sample":0,"Seconds":2.691029059,"Bytes":180630520,"Allocations":1503720,"Diagnostics":0}
+{"kind":"list","Depth":1000,"Sample":1,"Seconds":2.6974310580000003,"Bytes":180630808,"Allocations":1503723,"Diagnostics":0}
+{"kind":"list","Depth":1000,"Sample":2,"Seconds":2.6816802429999997,"Bytes":180630904,"Allocations":1503724,"Diagnostics":0}
+{"kind":"list","Depth":2000,"Sample":0,"Seconds":23.351857239,"Bytes":721236872,"Allocations":6007234,"Diagnostics":0}
+{"kind":"list","Depth":2000,"Sample":1,"Seconds":23.109560076,"Bytes":721238136,"Allocations":6007247,"Diagnostics":0}
+{"kind":"list","Depth":2000,"Sample":2,"Seconds":22.944463195,"Bytes":721236504,"Allocations":6007230,"Diagnostics":0}
