@@ -86,8 +86,8 @@ MSL104 warns when an expression statement discards a standard `Result`. Handle i
 MSL105 identifies direct mutations of captured data in known concurrent callbacks. It is advisory and does not prove race freedom; use one `Synchronized` wrapper for shared mutable access. See [sharing and lint limits](../concurrency/sharing.md#captured-mutable-data).
 
 MSL106 explains that a capitalized payload name creates a fresh binding even
-when it names a known constructor or alternative case. It suggests a nested
-match for a case of the payload's type, or renaming an intentional binding.
+when it names a known constructor or alternative case. It suggests a separate
+helper to match a case of the payload's type, or renaming an intentional binding.
 See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns).
 
 `fmt` accepts files, directories, and manifests, with project discovery shared with checking. `--check` reports every unformatted file and fails if any target needs formatting or cannot be processed. See [formatting](source/formatting.md) for selection and exclusion rules. It preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.

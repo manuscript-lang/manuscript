@@ -63,10 +63,10 @@ An unqualified case in a pattern resolves within the scrutinee's alternative typ
 
 Payload identifiers always create fresh bindings. For example, `error(NotFound)`
 matches every error payload, even when `NotFound` is a case of that payload's
-type. It does not test for that case. Bind `error(cause)` and use a nested
-`match cause:` with `NotFound:` and the remaining cases instead. A case that
-carries data needs its own payload names or `_` placeholders in that nested
-match.
+type. It does not test for that case. Bind `error(cause)` and pass `cause` to a
+helper that matches its cases, including `NotFound:` and the remaining cases.
+A case that carries data needs its own payload names or `_` placeholders in the
+helper's match. Keep one match per function; nested matches are an anti-pattern.
 
 `ms lint` reports MSL106 at a capitalized payload identifier that coincides with
 a known case or type name. The editor publishes the same advisory as a warning;

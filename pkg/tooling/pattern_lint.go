@@ -49,7 +49,7 @@ func lintPatternBindings(program *checker.Program) []LintFinding {
 						nested += "(" + strings.Join(ignored, ", ") + ")"
 					}
 				}
-				message += fmt.Sprintf("; nested patterns are unsupported: write '%s(%s):', then 'match %s:' with a '%s:' arm", path, strings.Join(names, ", "), payload, nested)
+				message += fmt.Sprintf("; nested patterns are unsupported: write '%s(%s):', handle the payload in a separate helper using 'match %s:' with a '%s:' arm", path, strings.Join(names, ", "), payload, nested)
 			}
 			position := arm.Pos
 			if index < len(arm.NamePositions) {

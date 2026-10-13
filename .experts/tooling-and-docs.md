@@ -88,7 +88,7 @@ even when only its producing function was imported. Retain each binder's origina
 position and rebase it during partial parsing. Evidence: [checked name evidence](../pkg/checker/pattern_names.go),
 [binding/alias/shadowing regressions](../pkg/tooling/pattern_lint_test.go),
 [recovery positions](../pkg/parser/pattern_positions_test.go), and
-[native binding versus nested matching](../tests/e2e/testdata/accept/pattern-binding-capture.ms).
+[native binding versus separate payload handling](../tests/e2e/testdata/accept/pattern-binding-capture.ms).
 
 ### Package moves must preserve build identity and publication inputs
 

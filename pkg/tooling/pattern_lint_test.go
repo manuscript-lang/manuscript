@@ -16,7 +16,7 @@ func TestPatternBindingAdvisory(t *testing.T) {
 		name, source string
 		messages     []string
 	}{
-		{"nullary payload case", patternCaptureSource, []string{"NotFound is a case of Failure", "fresh binding for every Failure payload", "error(payload):", "match payload:", "NotFound:", "lowercase binding name if intentional"}},
+		{"nullary payload case", patternCaptureSource, []string{"NotFound is a case of Failure", "fresh binding for every Failure payload", "error(payload):", "match payload:", "NotFound:", "lowercase binding name if intentional", "separate helper"}},
 		{"read does not turn binding into case", strings.Replace(patternCaptureSource, "return 1", "return NotFound.toString().byte_length()", 1), []string{"NotFound is a case of Failure"}},
 		{"payload case with fields", strings.Replace(patternCaptureSource, "error(NotFound)", "error(Denied)", 1), []string{"Denied is a case of Failure", "Denied(_):"}},
 		{"multiple payload fields", "type Failure:\n    case NotFound\n    case Denied\ntype Envelope:\n    case Pair(left: Failure, right: Failure)\nfn use(value: Envelope) -> Int:\n    match value:\n        Pair(payload, NotFound): return 1\n", []string{"Pair(payload, payload2):", "match payload2:", "NotFound:"}},
@@ -41,7 +41,7 @@ func TestPatternBindingAdvisory(t *testing.T) {
 		{"type variable shadow", strings.Replace(patternCaptureSource, "fn classify(", "fn classify[NotFound](", 1), nil},
 		{"ordinary binding", "type Failure:\n    case NotFound\nfn use() -> Int:\n    let NotFound = 1\n    return NotFound\n", nil},
 		{"generic unknown binder", "fn use[T](value: Optional[T]) -> T:\n    match value:\n        some(Value): return Value\n        none: return panic(message: \"empty\")\n", nil},
-		{"nested match fix", strings.Replace(patternCaptureSource, "error(NotFound): return 1", "error(cause):\n            match cause:\n                NotFound: return 1\n                Denied(_): return 2", 1), nil},
+		{"separate payload helper", "type Failure:\n    case NotFound\n    case Denied(reason: String)\nfn failure_code(cause: Failure) -> Int:\n    match cause:\n        NotFound: return 1\n        Denied(_): return 2\nfn classify(result: Result[Int, Failure]) -> Int:\n    match result:\n        error(cause): return failure_code(cause)\n        ok(value): return value\n", nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

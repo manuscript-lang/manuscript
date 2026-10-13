@@ -10,20 +10,24 @@ fn captured[T](result: Result[Int, Failure[T]]) -> Int:
         error(NotFound): return 1
         ok(value): return value
 
+fn failure_code[T](cause: Failure[T]) -> Int:
+    match cause:
+        NotFound: return 1
+        Denied(_): return 2
+
 fn precise[T](result: Result[Int, Failure[T]]) -> Int:
     match result:
-        error(cause):
-            match cause:
-                NotFound: return 1
-                Denied(_): return 2
+        error(cause): return failure_code(cause)
         ok(value): return value
+
+fn failure_reason(cause: Failure[String]) -> String:
+    match cause:
+        NotFound: return "missing"
+        Denied(reason): return reason
 
 fn deliberate(result: Result[Int, Failure[String]]) -> String:
     match result:
-        error(cause):
-            match cause:
-                NotFound: return "missing"
-                Denied(reason): return reason
+        error(cause): return failure_reason(cause)
         ok(_): return "ok"
 
 test "a payload identifier binds every alternative without changing semantics":
@@ -43,6 +47,8 @@ test "a payload identifier binds every alternative without changing semantics":
         or precise(missing) != 1
         or precise(success) != 7
     ):
-        return panic(message: "nested match did not distinguish alternatives")
+        return panic(
+            message: "separate payload helper did not distinguish alternatives"
+        )
     if deliberate(denied) != "permission denied":
         return panic(message: "bound error payload was lost")
