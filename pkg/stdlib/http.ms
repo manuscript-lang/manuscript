@@ -88,6 +88,10 @@ export type HttpRequest:
     query: String
     headers: Map[String, Bytes]
     body: Bytes
+    # Finds a header using ASCII case-insensitive names, or returns `none`.
+    # Leaves Map keys unchanged. Repeated received values remain newline-joined bytes.
+    # If a manually built Map has equivalent names, returns its first matching entry.
+    fn header(name: String) -> Optional[Bytes]:
 
 # Buffered response returned by the simple HTTP server handler.
 export type HttpResponse:

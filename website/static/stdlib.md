@@ -1172,6 +1172,7 @@ type HttpRequest:
     query: String
     headers: Map[String, Bytes]
     body: Bytes
+    fn header(name: String) -> Optional[Bytes]:
 ```
 
 ## HttpResponse

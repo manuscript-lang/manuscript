@@ -35,6 +35,10 @@ fn ready_label() -> Result[String, String]:
 
 Standalone `try call()` requires a `Unit` success value. For other success types, bind the value with `let name = try call()` or return it with `return try call()`; it cannot be silently discarded.
 
+Omitting `try` discards the entire Result, including any error, and produces the
+`MSL104` lint advisory. To deliberately ignore both outcomes, use an explicit
+[`_ignored` binding](results.md#discarding-a-result).
+
 ## Error compatibility
 
 `try` accepts the same error type as the enclosing function, or a specific error implementing the common `Error` interface when the enclosing function returns `Result[U, Error]`.
