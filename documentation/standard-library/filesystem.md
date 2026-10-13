@@ -20,7 +20,7 @@ with file = try filesystem().open(path: path, flags: "r+", mode: 384):
     let synced = try file.sync()
 ```
 
-`384` is decimal for Unix permission bits `0600`. Opening accepts `r`, `r+`, `w`, `wx`, `w+`, `wx+`, `a`, `ax`, `a+`, and `ax+`. `x` makes creation exclusive. Permission arguments accept `0..4095` (`07777`), including setuid, setgid, and sticky bits where the native OS supports them. `open_flags` accepts numeric native flags from `fs.constants()`; these numbers are host-specific. Paths use the native filesystem dialect, reject NUL, and use host OS permissions. Relative paths on CLI roots use the live working directory; embedded capabilities constructed with a directory retain that base. Importing the FileSystem type alone does not obtain a service.
+`384` is decimal for Unix permission bits `0600`. Opening accepts `r`, `r+`, `w`, `wx`, `w+`, `wx+`, `a`, `ax`, `a+`, and `ax+`. `x` makes creation exclusive. Permission arguments accept `0..4095` (`07777`), including setuid, setgid, and sticky bits where the native OS supports them. `open_flags` accepts numeric native flags from `fs.constants()`; these numbers are host-specific. Paths use the native filesystem dialect, reject empty strings and NUL with `FileSystemError.InvalidInput`, and use host OS permissions. Relative paths on CLI roots use the live working directory; embedded capabilities constructed with a directory retain that base. Importing the FileSystem type alone does not obtain a service.
 
 ## File reads and writes
 
@@ -34,7 +34,7 @@ with file = try filesystem().open(path: path, flags: "r+", mode: 384):
 
 ## Directories and metadata
 
-Directory lists are sorted. Excess entries return `LimitExceeded`, rather than a truncated success. `stat` uses `follow_links` to select link or target metadata. `rename` uses native replacement and atomicity rules and does not fall back to copying across devices. Recursive removal does not intentionally follow symlinks and checks cancellation between entries.
+Directory lists are sorted. Excess entries return `LimitExceeded`, rather than a truncated success. `stat` uses `follow_links` to select link or target metadata. `rename` uses native replacement and atomicity rules and does not fall back to copying across devices. Removal rejects final `.` or `..` components, filesystem roots, the filesystem base (the live working directory for CLI services), and its ancestors with `FileSystemError.InvalidInput` before deleting any entries. Directory aliases through intermediate symlinks are checked by identity. An explicit descendant can still be removed; a final symlink is removed as a link, including with a trailing separator. Recursive removal does not intentionally follow symlinks and checks cancellation between entries. These checks prevent accidental base removal; they are not a filesystem sandbox or a guarantee against concurrent external path replacement.
 
 Temporary-directory prefixes must be nonempty and contain no slash, backslash, or NUL. `temporary_directory` returns a path that the caller must remove; `temporary` returns a scoped resource that removes its directory on close.
 

@@ -144,7 +144,7 @@ jobs:
       - name: Native host compatibility and Node.js coverage
         shell: bash
         run: |
-          go test ./pkg/runtime ./pkg/compiler ./tests/e2e -run 'TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
+          go test ./pkg/runtime ./pkg/compiler ./tests/e2e -run 'TestFileSystem|TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
 
   # Keep one stable required check; every applicable job must pass before merging.
   test:
