@@ -114,13 +114,10 @@ func Run(args []string) int {
 		fmt.Fprintf(os.Stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (put the file first, then options)\n", filename, command, command)
 		return 2
 	}
-	if info, err := os.Stat(filename); err == nil && info.IsDir() {
-		manifest := filepath.Join(filename, "ms.toml")
-		if _, err := os.Stat(manifest); err != nil {
-			fmt.Fprintf(os.Stderr, "ms %s: %s is a directory without an ms.toml; pass a .ms file or a project ms.toml, e.g. ms %s ms.toml\n", command, filename, command)
-			return 2
-		}
-		filename = manifest
+	filename, err := resolveInput(command, filename)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
 	}
 	output := ""
 	cpuProfile, heapProfile, tracePath := "", "", ""
@@ -130,7 +127,8 @@ func Run(args []string) int {
 	testTimeout, testFilter := "", ""
 	var arguments []string
 	for i := 2; i < len(args); i++ {
-		switch args[i] {
+		flag, value, inline := splitValueOption(args[i], valueOptions...)
+		switch flag {
 		case "--":
 			arguments = args[i+1:]
 			i = len(args)
@@ -139,8 +137,8 @@ func Run(args []string) int {
 		case "--watch":
 			watch = true
 		case "--build-type":
-			i++
-			if i == len(args) || args[i] == "" {
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
 				fmt.Fprintln(os.Stderr, "--build-type requires a build type; use Debug, Release, RelWithDebInfo, or MinSizeRel")
 				return 2
 			}
@@ -148,31 +146,29 @@ func Run(args []string) int {
 				fmt.Fprintln(os.Stderr, "--build-type may only be specified once; remove the duplicate flag")
 				return 2
 			}
-			buildTypeName, buildTypeSet = args[i], true
+			buildTypeName, buildTypeSet = value, true
 		case "--timeout", "--filter":
-			flag := args[i]
-			i++
-			if i == len(args) || flag == "--filter" && args[i] == "" {
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
 				fmt.Fprintf(os.Stderr, "%s requires a value, e.g. %s\n", flag, map[string]string{"--timeout": "--timeout 30s", "--filter": "--filter \"test name\""}[flag])
 				return 2
 			}
 			if flag == "--timeout" {
-				if d, err := time.ParseDuration(args[i]); err != nil || d < 0 {
-					fmt.Fprintf(os.Stderr, "invalid --timeout %q; use a duration such as 30s or 2m, or 0 to disable\n", args[i])
+				if d, err := time.ParseDuration(value); err != nil || d < 0 {
+					fmt.Fprintf(os.Stderr, "invalid --timeout %q; use a duration such as 30s or 2m, or 0 to disable\n", value)
 					return 2
 				}
-				testTimeout = args[i]
+				testTimeout = value
 			} else {
-				testFilter = args[i]
+				testFilter = value
 			}
 		case "--check":
 			formatCheck = true
 		case "--json":
 			structured = true
 		case "-o", "--output", "--cpu-profile", "--heap-profile", "--trace":
-			flag := args[i]
-			i++
-			if i == len(args) {
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
 				message := flag + " requires a path argument, e.g. " + flag + " out.pprof"
 				if flag == "-o" || flag == "--output" {
 					message = flag + " requires a path argument, e.g. " + flag + " out.go"
@@ -182,13 +178,13 @@ func Run(args []string) int {
 			}
 			switch flag {
 			case "-o", "--output":
-				output = args[i]
+				output = value
 			case "--cpu-profile":
-				cpuProfile = args[i]
+				cpuProfile = value
 			case "--heap-profile":
-				heapProfile = args[i]
+				heapProfile = value
 			case "--trace":
-				tracePath = args[i]
+				tracePath = value
 			}
 		default:
 			if !strings.HasPrefix(args[i], "-") {

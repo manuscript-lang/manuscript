@@ -11,11 +11,12 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
 
-const docHelp = `Usage: ms doc <file.ms|ms.toml> [--json] [-o output]
+const docHelp = `Usage: ms doc <file.ms|directory|ms.toml> [--json] [-o output]
        ms doc --stdlib [--json] [-o output]
 
 Generate public API documentation as Markdown (default) or versioned JSON.
 Project documentation includes exports from the entry module and local imports.
+A project directory selects its ms.toml. Long value options also accept --flag=value.
 Output goes to stdout unless -o or --output is supplied. No Go toolchain is needed.
 
 Options:
@@ -35,7 +36,8 @@ func runDoc(args []string) int {
 	filename, output := "", ""
 	standard, structured := false, false
 	for i := 0; i < len(args); i++ {
-		switch args[i] {
+		flag, value, inline := splitValueOption(args[i], "--output")
+		switch flag {
 		case "--help", "-h":
 			fmt.Print(docHelp)
 			return 0
@@ -44,21 +46,31 @@ func runDoc(args []string) int {
 		case "--json":
 			structured = true
 		case "-o", "--output":
-			i++
-			if i == len(args) {
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
 				fmt.Fprintln(os.Stderr, "output flag requires a path argument, e.g. -o docs.md")
 				return 2
 			}
-			output = args[i]
+			output = value
 		default:
-			if strings.HasPrefix(args[i], "-") || filename != "" {
-				fmt.Fprintln(os.Stderr, "unexpected doc argument:", args[i], "; ms doc takes one .ms file or ms.toml, plus optional -o <path>")
+			if strings.HasPrefix(args[i], "-") {
+				fmt.Fprintf(os.Stderr, "unknown option %s for ms doc; run 'ms help doc' for its options\n", args[i])
+				return 2
+			}
+			if filename != "" {
+				fmt.Fprintf(os.Stderr, "unexpected extra argument %s (ms doc takes one file or project directory, or --stdlib)\n", args[i])
 				return 2
 			}
 			filename = args[i]
 		}
 	}
 	if standard && filename != "" || !standard && filename == "" {
+		if standard {
+			fmt.Fprintln(os.Stderr, "ms doc --stdlib takes no input file; omit the file or remove --stdlib")
+		} else {
+			fmt.Fprintln(os.Stderr, "ms doc: missing the file argument; pass a .ms file, project directory, or --stdlib")
+		}
+		fmt.Fprintln(os.Stderr)
 		fmt.Fprint(os.Stderr, docHelp)
 		return 2
 	}
@@ -66,6 +78,12 @@ func runDoc(args []string) int {
 	if standard {
 		modules = checker.StandardLibrary()
 	} else {
+		var err error
+		filename, err = resolveInput("doc", filename)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 2
+		}
 		result := compiler.CompileFile(filename, compiler.Options{AnalyzeOnly: true, Entry: filepath.Base(filename) == "ms.toml"})
 		if !result.Success() {
 			return reportDiagnostics(result)
