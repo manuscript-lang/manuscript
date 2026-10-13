@@ -16,11 +16,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Pushes to main only deploy: the merge queue already ran the full suite on
-  # this exact commit.
   language:
     name: Language checks
-    if: github.event_name != 'push'
     uses: ./.github/workflows/test-language.yml
 
   build:
@@ -60,7 +57,7 @@ jobs:
 
   pages:
     name: Publish Pages docs
-    needs: [build]
+    needs: [build, language]
     if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-24.04
     permissions:
