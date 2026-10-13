@@ -39,7 +39,7 @@ export type List[T]:
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     # Returns true when every value satisfies the predicate; empty lists return true.
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
-    # Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
+    # Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal.
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
     fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]:
     fn map[U](transform: fn(value: T) -> U) -> List[U]:

@@ -190,7 +190,7 @@ Apply when: changing List traversal, callbacks, writers or typed numeric storage
 Evidence: [range/mutation oracle](../pkg/runtime/list_range_test.go),
 [called native Go-range cases](../tests/e2e/testdata/accept/list-go-range.ms),
 [loop contract](../documentation/core-language/control-flow/loops.md#iterable-types-and-binding),
-and [historical superseded COW review](../scripts/bench-lists/narrow-review.md).
+and [measured no-copy follow-on](../scripts/bench-lists/go-range-review.md).
 Verify: capture once, mutate in place, append with/without growth, shrink, reverse
 and self-splice; observed reads match ordinary Go backing-array behavior. Explicit
 clones stay separate and append-only callbacks visit only the initial length.

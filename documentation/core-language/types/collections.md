@@ -142,7 +142,7 @@ Map `get`, `contains`, and `add` and Set `contains` and `with_value` look keys u
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
 
-Enumeration copies outer storage and retains nested references. Callback traversals use the membership snapshot described above.
+Enumeration copies outer storage and retains nested references. List callbacks use the captured backing slice described above; Map and Set callbacks use membership snapshots.
 
 Set `union`, `intersection`, `difference`, and `symmetric_difference` return new sets. Symmetric difference contains values present in exactly one operand. `is_subset_of` tests whether all receiver values occur in the right operand, `is_superset_of` tests the converse, and `is_disjoint_from` tests whether there are no common values. The empty set is a subset of every set and is disjoint from every set. These operations leave both operands unchanged.
 

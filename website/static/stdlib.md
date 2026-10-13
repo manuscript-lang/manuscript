@@ -563,7 +563,7 @@ fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
 
 ### List.for_each
 
-Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
+Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal.
 
 ```manuscript
 fn for_each(operation: fn(value: T) -> Unit) -> Unit:
@@ -5569,7 +5569,7 @@ fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
 
 ### List.for_each
 
-Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
+Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal.
 
 ```manuscript
 fn for_each(operation: fn(value: T) -> Unit) -> Unit:
