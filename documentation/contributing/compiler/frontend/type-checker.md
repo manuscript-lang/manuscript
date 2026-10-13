@@ -23,9 +23,9 @@ Accept source according to the [normative grammar](../../../core-language/basics
 | Typed tasks | Infer Task[T] from the ordinary generic start signature; check each join against Result[T, ExecutionError] |
 | Destructuring bindings | Check positional arity, record fields, renaming, nesting, and duplicate bindings; infer each local's type independently; see [destructuring bindings](../../../core-language/types/destructuring.md) |
 | Nominal records and tagged alternatives | Preserve type identity and check declared fields and cases |
-| Expected types | Propagate annotations/substituted constructor context through literals, fields, and parentheses; reject incomplete types and avoid result-context inference for generic calls |
+| Expected types | Propagate known result context through literals, fields, parentheses, and generic calls; reject ambiguous or conflicting inference |
 | Exhaustive match | Check the scrutinee alternative, positional payload arity/bindings, exact qualified cases, missing alternatives, duplicate arms, and final nonredundant wildcard |
-| Generic bounds | Check arity, invariant arguments, argument-only inference, every nested application's bounds, and generic bodies under their declared assumptions |
+| Generic bounds | Check arity, invariant arguments, argument and expected-result inference, every nested application's bounds, and generic bodies under their declared assumptions |
 | Recursive types and specialization | Permit direct and mutual recursive data; reject expanding generic type/function specialization, including signature references, mutual calls, and specialized function values |
 | Equality and hashing | Derive only the specified properties; reject Float/collection keys and data containing ineligible components |
 | Explicit implementations | Match substituted operation names/labels/order/types exactly, check generic bodies and receiver-determined parameters, reject overlap ignoring bounds, enforce module-local extension visibility, and require explicit contract views |

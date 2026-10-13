@@ -20,7 +20,7 @@ func TestKnownStandardTypeImportHint(t *testing.T) {
 	}
 }
 
-func TestReturnOnlyTypeParameterDiagnostic(t *testing.T) {
+func TestReturnOnlyTypeParameterContext(t *testing.T) {
 	for _, body := range []string{
 		`return fail("empty")`,
 		`let result: Result[Int, String] = fail("empty")
@@ -34,12 +34,8 @@ fn first() -> Result[Int, String]:
 			t.Fatal(err)
 		}
 		p := checker.Check([]*syntax.Module{m}, nil)
-		if len(p.Diagnostics) != 1 {
-			t.Fatalf("expected one inference error, got %v", p.Diagnostics)
-		}
-		message := p.Diagnostics[0].Message
-		if !strings.Contains(message, "cannot infer type argument T") || !strings.Contains(message, "fail[T](...)") || strings.Contains(message, "annotate") {
-			t.Fatalf("expected named explicit-specialization hint, got %s", message)
+		if len(p.Diagnostics) != 0 {
+			t.Fatalf("expected result context to infer T, got %v", p.Diagnostics)
 		}
 	}
 }
@@ -89,7 +85,7 @@ fn first() -> Result[Int, String]: fail[Int]("empty")
 func TestMissingTypeArgumentHintRetainsKnownArguments(t *testing.T) {
 	m, err := parser.Parse("partial-inference.ms", `fn convert[T, U](value: T) -> Optional[U]: none
 fn first() -> Unit:
-    let value: Optional[String] = convert(1)
+    let value = convert(1)
 `)
 	if err != nil {
 		t.Fatal(err)

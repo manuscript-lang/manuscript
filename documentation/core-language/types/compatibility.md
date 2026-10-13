@@ -86,7 +86,7 @@ Similarly, an expected `Bool` cannot make `[] == []` well typed; neither operand
 
 Never operands use the [operator candidate rules](../basics/expressions.md#never-operands). Those rules select a required operand type locally; they do not infer it backward from an expected result.
 
-Generic function inference uses supplied argument types only, as specified in [generics](generics.md#inference-from-arguments). An expected return type does not infer missing function type arguments. A generic function value must be explicitly specialized before an expected function type can check it. Anonymous functions can infer parameter and result types under [callback inference](../functions/function-values-and-closures.md#contextual-callback-inference).
+Generic function inference combines supplied argument types with an unambiguous expected result, as specified in [generics](generics.md#inference-from-arguments). Expected results fill missing evidence without overriding independently inferred argument types. A generic function value must be explicitly specialized before an expected function type can check it. Anonymous functions can infer parameter and result types under [callback inference](../functions/function-values-and-closures.md#contextual-callback-inference).
 
 ## Validation boundaries
 

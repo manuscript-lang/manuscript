@@ -68,7 +68,7 @@ Applications are invariant: `Box[Int]` and `Box[Float]` are distinct types. A ge
 
 ## Inference from arguments
 
-A function call may omit type arguments when supplied argument expressions uniquely determine every parameter. Independently typed values establish initial evidence; callbacks with known inputs can then contribute their inferred result types. The compiler matches argument types against declared parameter types, including invariant nested applications, then checks bounds and arguments after substitution. Repeated occurrences must determine the same type. No common superclass, implicit union, or numeric widening is inferred.
+A function call may omit type arguments when its arguments and expected result uniquely determine every parameter. Independently typed arguments establish initial evidence. A known expected result then supplies missing evidence before callbacks with known inputs contribute their result types. The compiler matches argument types against declared parameter types, including invariant nested applications, then checks bounds and arguments after substitution. Repeated occurrences must determine the same type. No common superclass, implicit union, or numeric widening is inferred.
 
 ```manuscript
 fn choose[T](first: T, second: T) -> T:
@@ -79,7 +79,18 @@ let value = choose(first: 1, second: 2)  # T = Int
 let mixed = choose(first: 1, second: 2.0)
 ```
 
-Result annotations do not infer function type arguments. Empty lists, `none`, and other expressions requiring context cannot independently provide evidence. Once other arguments determine all parameters, substituted parameter types provide context to those expressions. For a standard `Optional[T]` parameter, inference first matches an existing optional, then permits a plain payload to determine `T`; see [optional arguments](optionals.md#passing-optional-arguments). This process does not reorder evaluation.
+The expected result may come from an enclosing function's return type, an annotated binding, a field, an argument, or a contextual callback. It must determine missing parameters unambiguously; a parameter absent from both the arguments and result still needs an explicit type argument. Existing argument evidence is preserved. Conflicting types are rejected, and explicit specialization is never overridden.
+
+```manuscript
+fn fail[T](message: String) -> Result[T, String]: error(message)
+
+fn first() -> Result[Int, String]: fail("empty")  # T = Int
+let failed: Result[Int, String] = fail("empty")
+```
+
+Result matching preserves nominal types, invariant generic applications, and function argument labels. It does not introduce numeric conversions, implicit interface views, or wrapping a plain return value in `Optional`. Existing conversion of an implemented domain error to `Error` remains valid, including a `Result` error payload; inference preserves the concrete error type already determined by arguments. Bounds are checked after inference, and inferred function types do not retain default-argument omission permissions.
+
+Empty lists, `none`, and other expressions requiring context cannot independently provide evidence. Once arguments or the expected result determine the needed parameters, substituted parameter types provide context to those expressions. For a standard `Optional[T]` parameter, inference first matches an existing optional, then permits a plain payload to determine `T`; see [optional arguments](optionals.md#passing-optional-arguments). This process does not reorder evaluation.
 
 ```manuscript
 fn count[T](values: List[T]) -> Int:
@@ -90,7 +101,7 @@ let known = count[Int](values: [])
 let unknown = count(values: [])
 ```
 
-Generic data constructors follow the same field/payload inference rule, but an expected data application may supply their type arguments before field checking. Thus `let box: Box[Int] = Box(value: 1)` is valid. A unique complete application must result; a constructor cannot invent an unused type parameter.
+Generic data constructors infer from their fields or payloads, and an expected data application may supply their type arguments before field checking. Thus `let box: Box[Int] = Box(value: 1)` is valid. A unique complete application must result; a constructor cannot invent an unused type parameter.
 
 ## Body checking and well-formedness
 
