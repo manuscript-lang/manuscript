@@ -19,7 +19,6 @@ func libraryFixture(directory string) (string, error) {
 		"src/value.ms": "export fn value() -> Int: return 3\n",
 		"src/unimported.ms": `import panic from "@std/faults.ms"
 import filesystem from "@std/fs.ms"
-import {compress, decompress, CompressionFormat} from "@std/compress.ms"
 export fn other() -> Int: return 4
 test "source":
     if other() != 4: return panic("bad other")
@@ -36,6 +35,7 @@ import {base64_encode, base64_decode} from "@std/encoding.ms"
 import List from "@std/collections.ms"
 import commands from "@std/process.ms"
 import filesystem from "@std/fs.ms"
+import {compress, decompress, CompressionFormat} from "@std/compress.ms"
 import panic from "@std/faults.ms"
 test "copied native defaults":
     let first = CsvOptions()
