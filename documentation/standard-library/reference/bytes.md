@@ -20,6 +20,7 @@ type Bytes:
     fn last_index_of(value: Bytes) -> Optional[Int]:
     fn starts_with(value: Bytes) -> Bool:
     fn ends_with(value: Bytes) -> Bool:
+    fn reversed() -> Bytes:
     fn reverse() -> Bytes:
     fn with_value(index: Int, value: Int) -> Bytes:
     fn is_empty() -> Bool:
@@ -103,10 +104,18 @@ fn length() -> Int:
 
 ### Bytes.reverse
 
-Returns reversed bytes without changing the receiver.
+Compatibility spelling for reversed; returns a copy without changing the receiver.
 
 ```manuscript
 fn reverse() -> Bytes:
+```
+
+### Bytes.reversed
+
+Returns a reversed copy without changing the receiver.
+
+```manuscript
+fn reversed() -> Bytes:
 ```
 
 ### Bytes.slice

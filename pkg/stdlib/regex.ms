@@ -22,7 +22,13 @@ export type Regex:
         max_matches: Optional[Int] = none
     ) -> Result[List[String], RegexError]:
     # Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.
-    # max_bytes counts UTF-8 output; omitted/none adds no output budget.
+    # max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
+    fn replace_all(
+        text: String,
+        replacement: String,
+        max_bytes: Optional[Int] = none
+    ) -> Result[String, RegexError]:
+    # Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
     fn replace(
         text: String,
         replacement: String,
