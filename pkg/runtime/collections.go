@@ -180,11 +180,14 @@ func SetContains(ctx *Execution, receiver, value Value, scope TypeScope) Value {
 // SetWithValue is the direct path for Set.with_value and Set.add calls.
 func SetWithValue(ctx *Execution, receiver, value Value, scope TypeScope) Value {
 	CheckCancelled(ctx)
-	s := receiver.(*Set)
-	child := keyContext(ctx, value, scope)
-	if s.find(child, value) < 0 {
+	return setWithValue(keyContext(ctx, value, scope), receiver.(*Set), value)
+}
+
+// Bound native members already select their equality scope at invocation.
+func setWithValue(ctx *Execution, s *Set, value Value) Value {
+	if s.find(ctx, value) < 0 {
 		s.Items = append(s.Items, value)
-		keyAppended(child, s)
+		keyAppended(ctx, s)
 	}
 	return s
 }
@@ -192,10 +195,12 @@ func SetWithValue(ctx *Execution, receiver, value Value, scope TypeScope) Value 
 // SetRemove retains insertion order and returns the mutable receiver.
 func SetRemove(ctx *Execution, receiver, value Value, scope TypeScope) Value {
 	CheckCancelled(ctx)
-	s := receiver.(*Set)
-	child := keyContext(ctx, value, scope)
-	if found := s.find(child, value); found >= 0 {
-		s.removeAt(child, found)
+	return setRemove(keyContext(ctx, value, scope), receiver.(*Set), value)
+}
+
+func setRemove(ctx *Execution, s *Set, value Value) Value {
+	if found := s.find(ctx, value); found >= 0 {
+		s.removeAt(ctx, found)
 	}
 	return s
 }
@@ -321,10 +326,10 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			}
 		case *Set:
 			if name == "with_value" {
-				return SetWithValue(ctx, v, args[0], ctx.EqualityScope)
+				return setWithValue(ctx, v, args[0])
 			}
 			if name == "without" {
-				return SetRemove(ctx, v, args[0], ctx.EqualityScope)
+				return setRemove(ctx, v, args[0])
 			}
 			var value Value
 			if len(args) > 0 {

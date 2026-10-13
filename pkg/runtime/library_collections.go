@@ -154,10 +154,10 @@ func init() {
 	libraryAlias("collections", "set", "with_value")
 	libraryAlias("collections", "remove", "without")
 	add("set_add", "Set[T]", hash, []LibraryParam{p("values", "Set[T]"), p("value", "T")}, func(ctx *Execution, _ string, a []Value) Value {
-		return SetWithValue(ctx, a[0], a[1], ctx.EqualityScope)
+		return setWithValue(ctx, a[0].(*Set), a[1])
 	})
 	add("set_remove", "Set[T]", hash, []LibraryParam{p("values", "Set[T]"), p("value", "T")}, func(ctx *Execution, _ string, a []Value) Value {
-		return SetRemove(ctx, a[0], a[1], ctx.EqualityScope)
+		return setRemove(ctx, a[0].(*Set), a[1])
 	})
 	for _, name := range []string{"find", "find_last", "find_index", "find_last_index", "some", "every"} {
 		result := "Optional[T]"
