@@ -598,7 +598,7 @@ func groupStatementExpressions(filename, source string) (string, error) {
 				return
 			}
 			switch s.Kind {
-			case syntax.KindIf, syntax.KindWhile, syntax.KindMatch:
+			case syntax.KindIf, syntax.KindWhile:
 				start++
 			case syntax.KindReturn:
 				if tokens[start].Kind == syntax.KindReturn {
@@ -709,5 +709,5 @@ func suiteExpression(e *syntax.Expression) bool {
 	for e.Kind == syntax.KindUnary {
 		e = e.Right
 	}
-	return e.Kind == syntax.KindLambda
+	return e.Kind == syntax.KindLambda || e.Kind == syntax.KindMatch
 }

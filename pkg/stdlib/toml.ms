@@ -973,10 +973,14 @@ export fn parse(
                                 )
                             )
                         )
+                        unit
 
                     some(node):
                         match node:
-                            TableArray(tables): tables.append(next)
+                            TableArray(tables):
+                                tables.append(next)
+                                unit
+
                             _: return error(
                                 invalid(
                                     reader: reader,

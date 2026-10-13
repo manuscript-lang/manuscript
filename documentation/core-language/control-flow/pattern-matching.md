@@ -7,7 +7,7 @@ weight = 3
 
 Use `match` to handle the cases of an alternative type. Each branch can give names to the data carried by its case. For example, a payment may be paid, declined, or pending, and each outcome needs different handling.
 
-A match accepts tagged alternative types, including `Optional` and `Result`, and operation contract views. Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is a statement; it cannot initialize a binding as an expression. The scrutinee evaluates once.
+A match accepts tagged alternative types, including `Optional` and `Result`, and operation contract views. Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is an expression. It can initialize a binding, supply an argument, or appear on its own with its result discarded. The scrutinee evaluates once, and only the selected arm runs.
 
 The following function handles the `Payment` type declared in [alternatives](../types/alternatives.md):
 
@@ -21,6 +21,24 @@ fn describe(payment: Payment) -> String:
         Pending(reference):
             return "Pending: {reference}"
 ```
+
+## Arm values
+
+An arm may contain statements followed by a final expression. That expression supplies the arm's value. An arm ending in an ordinary statement produces `Unit` when it reaches the end. All arms that produce values must have a compatible type; an annotation or expected argument/return type supplies context. Without context, independently typed value-producing arms establish the result type, including for earlier contextual values such as `none` or `[]`. An inferred function result requires all arguments; it does not inherit omission permissions from one selected callable. Arms that exit through `return`, `break`, `continue`, or a `Never` expression do not contribute a result value.
+
+```manuscript
+fn amount(text: String) -> Result[Int, String]:
+    let cents = match text.parse_int():
+        some(value):
+            value
+        none:
+            return error(cause: "Invalid amount")
+    return ok(value: cents)
+```
+
+This fragment uses the standard `Optional` and `Result` imports. `return` exits the enclosing function, including from a match used inside another expression; lexical cleanup still runs. `break` and `continue` target the enclosing loop. A nested anonymous function retains its own return boundary.
+
+Short arms may place the value after the colon, such as `none: 0`. For an arm used only for effects, finish with `unit` when its last call returns another type. A match has the same typing rules whether its result is used or discarded.
 
 ## Payload patterns
 

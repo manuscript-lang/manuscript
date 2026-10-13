@@ -437,7 +437,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		}
 		info := c.expression(s.Value, expected)
 		c.pattern(s.Pattern, info.Type, s.Mutable, s.Value)
-		return !info.NoReturn, false
+		return !info.NoReturn, info.Breaks
 	case syntax.KindAssign:
 		if s.Target != nil {
 			target := c.expression(s.Target, nil)
@@ -447,7 +447,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 				c.error(s.Target.Pos, "type", "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'")
 			}
 			value := c.expression(s.Value, target.Type)
-			return !target.NoReturn && !value.NoReturn, false
+			return !target.NoReturn && !value.NoReturn, target.Breaks || value.Breaks
 		}
 		b := c.scope.binding(s.Name)
 		if b == nil {
@@ -463,27 +463,30 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			c.error(s.Pos, "type", "cannot assign a captured binding; closures cannot reassign outer variables, so return the new value or keep state in a record field")
 		}
 		i := c.expression(s.Value, b.Type)
-		return !i.NoReturn, false
+		return !i.NoReturn, i.Breaks
 	case syntax.KindReturn:
 		if c.returnInference != nil {
 			typ := primitive("Unit")
+			breaks := false
 			if s.Value != nil {
-				typ = c.checkExpression(s.Value, c.infer(s.Value, c.returnInference.context), nil).Type
+				info := c.checkExpression(s.Value, c.infer(s.Value, c.returnInference.context), nil)
+				typ, breaks = info.Type, info.Breaks
 			}
 			c.returnInference.add(c, typ, s.Pos)
-			return false, false
+			return false, breaks
 		}
 		if s.Value == nil {
 			if c.result.ID != "Unit" {
 				c.error(s.Pos, "type", "bare return requires Unit; this function returns "+c.result.String()+", so write 'return <value>'")
 			}
 		} else {
-			c.expression(s.Value, c.result)
+			i := c.expression(s.Value, c.result)
+			return false, i.Breaks
 		}
 		return false, false
 	case syntax.KindCall:
 		i := c.expression(s.Value, nil)
-		return !i.NoReturn, false
+		return !i.NoReturn, i.Breaks
 	case syntax.KindBreak, syntax.KindContinue:
 		if c.loops == 0 {
 			c.error(s.Pos, "type", s.Kind+" requires an enclosing loop; use it only inside 'for' or 'while' bodies")
@@ -496,14 +499,14 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		if len(s.Else) > 0 {
 			b, bb = c.block(s.Else, true)
 		}
-		return !i.NoReturn && (a || b), ab || bb
+		return !i.NoReturn && (a || b), i.Breaks || ab || bb
 	case syntax.KindWhile:
 		i := c.expression(s.Value, primitive("Bool"))
 		c.loops++
 		_, br := c.block(s.Body, true)
 		c.loops--
 		literalTrue := s.Value.Kind == syntax.KindBool && s.Value.Text == "true"
-		return !i.NoReturn && (!literalTrue || br), false
+		return !i.NoReturn && (!literalTrue || br), i.Breaks
 	case syntax.KindFor:
 		i := c.expression(s.Value, nil)
 		element := primitive("<invalid>")
@@ -525,7 +528,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		c.block(s.Body, false)
 		c.loops--
 		c.scope = old
-		return !i.NoReturn, false
+		return !i.NoReturn, i.Breaks
 	case syntax.KindWith:
 		i := c.expression(s.Value, nil)
 		if !c.closeable(i.Type) {
@@ -552,9 +555,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		c.LoopBindings[s] = c.bind(s.Name, i.Type, false, s.Pos)
 		fall, br := c.block(s.Body, false)
 		c.scope = old
-		return !i.NoReturn && fall, br
-	case syntax.KindMatch:
-		return c.match(s)
+		return !i.NoReturn && fall, i.Breaks || br
 	}
 	return true, false
 }
@@ -598,28 +599,29 @@ func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable bool, source *synt
 		}
 	}
 }
-func (c *checker) match(s *syntax.Statement) (bool, bool) {
-	info := c.expression(s.Value, nil)
+func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []syntax.Arm, body func(*syntax.Arm) (bool, bool)) (bool, bool) {
+	info := c.expression(value, nil)
 	if info.Type.Kind == "contract" {
-		return c.matchContract(s, info)
+		return c.matchContract(pos, arms, info, body)
 	}
 	if info.Type.ID == "<invalid>" {
 		return false, false
 	}
 	if info.Type.Kind != "alternative" {
-		c.error(s.Pos, "type", "match requires an alternative or contract view, found "+info.Type.String()+"; match on a type with cases, or use if/else")
+		c.error(pos, "type", "match requires an alternative or contract view, found "+info.Type.String()+"; match on a type with cases, or use if/else")
 		return true, false
 	}
 	cases := Cases(info.Type)
 	seen := map[string]bool{}
 	fall, breaks := false, false
 	wildcard := false
-	for index := range s.Arms {
-		arm := &s.Arms[index]
+	for index := range arms {
+		arm := &arms[index]
+		c.ArmBindings[arm] = nil
 		name := arm.Path.Text
 		fields := []Param{}
 		if name == "_" {
-			if wildcard || index != len(s.Arms)-1 || len(seen) == len(cases) {
+			if wildcard || index != len(arms)-1 || len(seen) == len(cases) {
 				c.error(arm.Pos, "type", "unreachable wildcard or wildcard is not last; keep one '_' arm at the end, and only when cases remain")
 			}
 			wildcard = true
@@ -657,26 +659,27 @@ func (c *checker) match(s *syntax.Statement) (bool, bool) {
 			}
 			c.ArmBindings[arm] = append(c.ArmBindings[arm], b)
 		}
-		a, br := c.block(arm.Body, false)
+		a, br := body(arm)
 		fall = fall || a
 		breaks = breaks || br
 		c.scope = old
 	}
 	if !wildcard && len(seen) != len(cases) {
-		c.error(s.Pos, "type", "non-exhaustive match; missing cases: "+list(missingCases(cases, seen), 12)+", or add a final '_' arm")
+		c.error(pos, "type", "non-exhaustive match; missing cases: "+list(missingCases(cases, seen), 12)+", or add a final '_' arm")
 	}
-	return !info.NoReturn && fall, breaks
+	return !info.NoReturn && fall, info.Breaks || breaks
 }
 
-func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
+func (c *checker) matchContract(pos syntax.Position, arms []syntax.Arm, info *Info, body func(*syntax.Arm) (bool, bool)) (bool, bool) {
 	contract := *info.Type
 	seen := map[string]bool{}
 	wildcard, fall, breaks := false, false, false
-	for index := range s.Arms {
-		arm := &s.Arms[index]
+	for index := range arms {
+		arm := &arms[index]
+		c.ArmBindings[arm] = nil
 		var target *Type
 		if arm.Path.Text == "_" {
-			if wildcard || index != len(s.Arms)-1 {
+			if wildcard || index != len(arms)-1 {
 				c.error(arm.Pos, "type", "wildcard must appear once and be last; keep a single '_' arm at the end")
 			}
 			wildcard = true
@@ -718,14 +721,14 @@ func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
 			}
 			c.ArmBindings[arm] = append(c.ArmBindings[arm], binding)
 		}
-		a, br := c.block(arm.Body, false)
+		a, br := body(arm)
 		fall, breaks = fall || a, breaks || br
 		c.scope = old
 	}
 	if !wildcard {
-		c.error(s.Pos, "type", "contract match requires a final wildcard for other implementations; add a last '_' arm")
+		c.error(pos, "type", "contract match requires a final wildcard for other implementations; add a last '_' arm")
 	}
-	return !info.NoReturn && fall, breaks
+	return !info.NoReturn && fall, info.Breaks || breaks
 }
 func (c *checker) expression(e *syntax.Expression, expected *Type) *Info {
 	return c.checkExpression(e, c.infer(e, expected), expected)
@@ -753,6 +756,24 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 	}
 	if expected != nil && expected.Kind == "function" && Same(i.Type, expected) {
 		i.Type = expected
+	}
+	if e != nil && e.Kind != syntax.KindLambda {
+		child := func(value *syntax.Expression) {
+			if info := c.Expressions[value]; info != nil {
+				i.Breaks = i.Breaks || info.Breaks
+			}
+		}
+		child(e.Left)
+		child(e.Right)
+		for _, arg := range e.Args {
+			child(arg.Value)
+		}
+		for _, element := range e.Elements {
+			child(element)
+		}
+		for _, part := range e.Parts {
+			child(part.Value)
+		}
 	}
 	c.Expressions[e] = i
 	return i
@@ -833,6 +854,10 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		} else {
 			c.error(e.Pos, "resolution", c.unknownName(e.Text))
 		}
+	case syntax.KindIndex:
+		return c.index(e)
+	case syntax.KindMatch:
+		return c.matchExpression(e, expected)
 	case syntax.KindApply:
 		if callable := c.nativeCallable(e); callable != nil {
 			*i = *callable
@@ -851,7 +876,10 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				c.error(e.Pos, "type", "type application requires construction; add (field: value, ...) after the type arguments")
 				i.Type = typ
 			} else {
-				c.error(e.Pos, "resolution", "unknown generic declaration; the name before [...] is not a generic function or type in scope")
+				if e.Right != nil {
+					return c.index(e)
+				}
+				c.error(e.Pos, "resolution", "brackets require type arguments on a generic declaration or one Int index on a List")
 			}
 		}
 	case syntax.KindMember:
@@ -1033,12 +1061,12 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			}
 		} else if strings.Contains("|<|<=|>|>=|", "|"+e.Text+"|") {
 			i.Type = primitive("Bool")
-			if !numeric(common) && !std(common, "Duration") && !std(common, "Instant") {
-				c.error(e.Pos, "type", "ordering requires numeric or time operands, found "+common.String()+"; compare a numeric field or convert first")
+			if !numeric(common) && common.ID != "String" && !std(common, "Duration") && !std(common, "Instant") {
+				c.error(e.Pos, "type", "ordering requires numeric, String, or time operands, found "+common.String()+"; compare a numeric field or convert first")
 			}
 		} else {
 			i.Type = common
-			if !numeric(common) && !(std(common, "Duration") && (e.Text == "+" || e.Text == "-")) {
+			if !numeric(common) && !(common.ID == "String" && e.Text == "+") && !(std(common, "Duration") && (e.Text == "+" || e.Text == "-")) {
 				c.error(e.Pos, "type", "arithmetic requires numeric operands")
 			}
 			if e.Text == "%" && common.ID != "Int" {
@@ -1154,4 +1182,91 @@ func (c *checker) contextual(e *syntax.Expression) bool {
 		}
 	}
 	return false
+}
+
+func (c *checker) index(e *syntax.Expression) *Info {
+	receiver := c.expression(e.Left, nil)
+	index := c.expression(e.Right, primitive("Int"))
+	info := &Info{Type: primitive("<invalid>"), Native: "index", NoReturn: receiver.NoReturn || index.NoReturn}
+	if !std(receiver.Type, "List") || len(receiver.Type.Args) != 1 {
+		c.error(e.Pos, "type", "indexing requires List[T]; use the receiver's lookup method for other types")
+	} else {
+		info.Type = standard("Optional", receiver.Type.Args[0])
+	}
+	return info
+}
+
+func (c *checker) matchExpression(e *syntax.Expression, expected *Type) *Info {
+	type armState struct {
+		arm            *syntax.Arm
+		scope          *scope
+		normal, breaks bool
+		info           *Info
+	}
+	var states []*armState
+	c.match(e.Pos, e.Left, e.Arms, func(arm *syntax.Arm) (bool, bool) {
+		normal, breaks := c.block(arm.Body, false)
+		states = append(states, &armState{arm: arm, scope: c.scope, normal: normal, breaks: breaks})
+		return normal, breaks
+	})
+	outer := c.scope
+	defer func() { c.scope = outer }()
+	result := expected
+	if !inferenceTypeKnown(result, c.inferenceVariables) {
+		result = nil
+	}
+	armValue := func(value *syntax.Expression) *Info {
+		if result != nil {
+			return c.expression(value, result)
+		}
+		// Generic callback contexts can supply partial evidence, such as the
+		// error type in Result[T, String], without fixing the match result.
+		return c.checkExpression(value, c.infer(value, expected), nil)
+	}
+	// Infer from independently typed, reachable arms before checking contextual
+	// values such as none or []. Keep each arm's checked lexical scope.
+	for _, state := range states {
+		c.scope = state.scope
+		if !state.normal {
+			continue
+		}
+		if state.arm.Value == nil {
+			if result == nil {
+				result = primitive("Unit")
+			}
+		} else if !c.contextual(state.arm.Value) {
+			state.info = armValue(state.arm.Value)
+			if result == nil && state.info.Type.ID != "Never" && inferenceTypeKnown(state.info.Type, c.inferenceVariables) {
+				result = requiredType(state.info.Type)
+			}
+		}
+	}
+	fall, breaks := false, false
+	for _, state := range states {
+		c.scope = state.scope
+		normal := state.normal
+		breaks = breaks || state.breaks
+		if state.arm.Value != nil {
+			if state.info == nil {
+				state.info = armValue(state.arm.Value)
+			}
+			if normal {
+				breaks = breaks || state.info.Breaks
+				normal = !state.info.NoReturn
+			}
+		} else if normal && result != nil && !compatible(primitive("Unit"), result) {
+			c.error(state.arm.Pos, "type", "match arm requires a final value of type "+result.String())
+		}
+		fall = fall || normal
+	}
+	if result == nil {
+		if fall {
+			c.error(e.Pos, "type", "cannot infer match result type; annotate the binding or give an arm an independently known type")
+			result = primitive("<invalid>")
+		} else {
+			result = primitive("Never")
+		}
+	}
+	scrutinee := c.Expressions[e.Left]
+	return &Info{Type: result, NoReturn: scrutinee.NoReturn || !fall, Breaks: scrutinee.Breaks || (!scrutinee.NoReturn && breaks)}
 }

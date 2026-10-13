@@ -695,10 +695,18 @@ func RunTests(tests []Test) int {
 	return failed
 }
 
+type sourceReturn struct{ value Value }
+
+func Return(value Value) Value { panic(sourceReturn{value}) }
+
 func NewSourceFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
 	return NewFunction(labels, result, func(ctx *Execution, args []Value) (value Value) {
 		defer func() {
 			if failure := recover(); failure != nil {
+				if returned, ok := failure.(sourceReturn); ok {
+					value = returned.value
+					return
+				}
 				if fault, ok := failure.(Fault); ok {
 					fault.Frames = append(append([]string{}, fault.Frames...), position)
 					panic(fault)
@@ -749,4 +757,26 @@ func equalityChild(state *equalityState, index int) *equalityState {
 	child := *state
 	child.scope = state.scope.Args[index]
 	return &child
+}
+
+// loopExit crosses generated expression closures, never a source callable.
+type loopExit struct{ stop bool }
+
+func ExitLoop(stop bool) { panic(loopExit{stop}) }
+func LoopBody(body func() Value) (exit int) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			if loop, ok := failure.(loopExit); ok {
+				if loop.stop {
+					exit = 1
+				} else {
+					exit = 2
+				}
+			} else {
+				panic(failure)
+			}
+		}
+	}()
+	body()
+	return 0
 }

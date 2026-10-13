@@ -10,21 +10,24 @@ import (
 )
 
 type loopLabel struct {
-	name string
-	used bool
+	name    string
+	used    bool
+	depth   int
+	escaped bool
 }
 
 // generator carries checked identities and lexical state through Go lowering.
 // Function lowering saves and restores cleanup/loop state for nested closures.
 type generator struct {
-	program     *checker.Program
-	booleans    map[*syntax.Expression]bool
-	module      string
-	serial      int
-	cleanups    []string
-	loopCleanup []int
-	loopLabels  []*loopLabel
-	captures    map[*checker.Binding]string
+	program         *checker.Program
+	booleans        map[*syntax.Expression]bool
+	module          string
+	serial          int
+	expressionDepth int
+	cleanups        []string
+	loopCleanup     []int
+	loopLabels      []*loopLabel
+	captures        map[*checker.Binding]string
 }
 
 func quote(s string) string { return strconv.Quote(s) }

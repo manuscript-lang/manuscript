@@ -176,7 +176,7 @@ func Lex(file, source string) (tokens []Token, err error) {
 				if reserved[value] || value == "_" {
 					kind = value
 				}
-				if value == "fn" {
+				if value == "fn" || value == "match" {
 					s.functionDepths = append(s.functionDepths, len(s.delimiters))
 				}
 				s.emit(kind, value, p)

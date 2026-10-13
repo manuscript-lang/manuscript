@@ -35,11 +35,17 @@ func (g *generator) declaredFunction(s *checker.Symbol) string {
 }
 
 func (g *generator) function(params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...string) string {
-	oldCleanups, oldLoops, oldLabels := g.cleanups, g.loopCleanup, g.loopLabels
+	oldCleanups, oldLoops, oldLabels, oldDepth := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth
+	g.expressionDepth = 0
 	g.cleanups = nil
 	g.loopCleanup = nil
 	g.loopLabels = nil
-	defer func() { g.cleanups = oldCleanups; g.loopCleanup = oldLoops; g.loopLabels = oldLabels }()
+	defer func() {
+		g.cleanups = oldCleanups
+		g.loopCleanup = oldLoops
+		g.loopLabels = oldLabels
+		g.expressionDepth = oldDepth
+	}()
 	var out strings.Builder
 	labels := []string{}
 	for _, p := range params {

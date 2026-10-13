@@ -52,6 +52,8 @@ func optional(typ string, value Value, present bool) Value {
 func constructor(typ string, args []Argument) Value {
 	name, _ := splitType(typ)
 	switch name {
+	case "@std/List":
+		return &List{Type: typ}
 	case "@std/Map":
 		return &Map{Type: typ}
 	case "@std/Set":
@@ -290,4 +292,15 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 		}
 		return Panic("runtime invariant: unavailable member " + name)
 	})
+}
+
+// Index implements List bracket lookup with the same Optional result as at.
+func Index(value, index Value) Value {
+	list := value.(*List)
+	_, types := splitType(list.Type)
+	i := relativeIndex(len(list.Items), index.(int64))
+	if i < 0 || i >= int64(len(list.Items)) {
+		return optional(types[0], nil, false)
+	}
+	return optional(types[0], list.Items[i], true)
 }

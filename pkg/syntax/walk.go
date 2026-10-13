@@ -44,9 +44,6 @@ func (v Visitor) statements(body []*Statement) {
 		v.expression(s.Value)
 		v.statements(s.Body)
 		v.statements(s.Else)
-		for _, arm := range s.Arms {
-			v.statements(arm.Body)
-		}
 	}
 }
 
@@ -69,4 +66,8 @@ func (v Visitor) expression(e *Expression) {
 		v.expression(part.Value)
 	}
 	v.Callable(e.Params, e.Body)
+	for _, arm := range e.Arms {
+		v.statements(arm.Body)
+		v.expression(arm.Value)
+	}
 }

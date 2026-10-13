@@ -136,6 +136,14 @@ Apply when: changing recursive layout checking or adding recursive data types.
 Evidence: [layout checker](../pkg/checker/contracts.go), [accepted and rejected layout regressions](../pkg/checker/checker_test.go), and [compiled TOML node trees](../tests/e2e/testdata/stdlib/toml.ms).
 Verify: `TestNestedCollectionsGuardRecursiveLayouts` accepts the two Map element types and still rejects `Growing[List[T]]` recursion.
 
+### Match is uniformly a value expression; indexing preserves Optional
+
+Decision: when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form. A standalone match discards the same checked result. The user also clarified that list brackets must preserve `.at()`'s Optional result, rather than unwrap or introduce bounds faults. Generic specialization retains its existing meaning.
+
+Apply when: changing matching, collection lookup, type application parsing, or examples migrating from other languages.
+Evidence: [match values](../documentation/core-language/control-flow/pattern-matching.md#arm-values), [list lookup](../documentation/core-language/types/collections.md#lookup-and-updates), and [native expression conformance](../tests/e2e/testdata/accept/expression-conveniences.ms).
+Verify: use `items[index].unwrap_or(0)` for absent indexes, keep `identity[Int]` specialization, and exercise enclosing returns, propagation, cleanup, and loop exits from match arms. An effects-only arm ending in a value-returning call needs an explicit `unit` when another arm produces Unit.
+
 ### Infer local callback signatures from context
 
 Decision: the user explicitly permits callback parameter and result inference. Known function contexts supply omitted parameter types; callback bodies can supply generic output evidence after inputs are known, including success types within a partially known Result context. Named public signatures stay explicit, and parameter labels retain their existing function identity. Use existing argument/field defaults to omit redundant values; do not treat every Optional parameter as implicitly defaulted.

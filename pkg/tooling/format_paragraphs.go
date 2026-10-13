@@ -44,7 +44,13 @@ func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 		}
 	}
 	indentedArm := func(arm syntax.Arm) bool {
-		header, body := lines[arm.Pos.Line-1], lines[arm.Body[0].Pos.Line-1]
+		line := arm.Pos.Line
+		if len(arm.Body) > 0 {
+			line = arm.Body[0].Pos.Line
+		} else if arm.Value != nil {
+			line = arm.Value.Pos.Line
+		}
+		header, body := lines[arm.Pos.Line-1], lines[line-1]
 		return len(body)-len(strings.TrimLeft(body, " ")) >
 			len(header)-len(strings.TrimLeft(header, " "))
 	}
@@ -61,9 +67,9 @@ func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 				}
 			}
 		},
-		Statement: func(statement *syntax.Statement) {
-			for i := 1; i < len(statement.Arms); i++ {
-				previous, current := statement.Arms[i-1], statement.Arms[i]
+		Expression: func(expression *syntax.Expression) {
+			for i := 1; i < len(expression.Arms); i++ {
+				previous, current := expression.Arms[i-1], expression.Arms[i]
 				if indentedArm(previous) || indentedArm(current) {
 					before(current.Pos.Line)
 				}
@@ -95,10 +101,13 @@ func guardStatement(statement *syntax.Statement) bool {
 }
 
 func paragraphBlock(statement *syntax.Statement) bool {
+	if statement.Value != nil && statement.Value.Kind == syntax.KindMatch {
+		return true
+	}
 	switch statement.Kind {
 	case syntax.KindIf:
 		return !guardStatement(statement)
-	case syntax.KindWhile, syntax.KindFor, syntax.KindWith, syntax.KindMatch:
+	case syntax.KindWhile, syntax.KindFor, syntax.KindWith:
 		return true
 	}
 	return false
