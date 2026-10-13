@@ -93,3 +93,16 @@ func TestTokenEndPositionsUseOriginalBytes(t *testing.T) {
 		}
 	}
 }
+
+func TestUnexpectedNonASCIICharacterNamesTheRune(t *testing.T) {
+	for source, want := range map[string]string{
+		"let é = 1\n":     "'é'",
+		"return 0 // 日\n": "'日'",
+		"let x = 1 + 日\n": "'日'",
+	} {
+		_, err := lexer.Lex("a.ms", source)
+		if err == nil || !strings.Contains(err.Error(), "unexpected source character "+want) {
+			t.Fatalf("%q: %v", source, err)
+		}
+	}
+}

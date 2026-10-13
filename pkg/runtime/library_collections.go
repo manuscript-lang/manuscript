@@ -83,12 +83,14 @@ func init() {
 	}
 	add("prepend", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T")}, func(ctx *Execution, r string, a []Value) Value {
 		v := a[0].(*List)
+		v.ownItems()
 		v.Items = append(v.Items, nil)
 		copy(v.Items[1:], v.Items[:len(v.Items)-1])
 		v.Items[0] = a[1]
 		return v
 	})
 	add("with_value", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int"), p("value", "T")}, func(ctx *Execution, r string, a []Value) Value {
+		a[0].(*List).ownItems()
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
@@ -98,6 +100,7 @@ func init() {
 		return a[0]
 	})
 	add("without", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+		a[0].(*List).ownItems()
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
@@ -164,7 +167,7 @@ func init() {
 			CheckCancelled(ctx)
 			out = append(out, Invoke(ctx, a[1], []Argument{{"value", v}}).(*List).Items...)
 		}
-		return &List{r, out}
+		return &List{Type: r, Items: out}
 	})
 	add("fold_right", "A", []LibraryParam{p("T", ""), p("A", "")}, []LibraryParam{p("values", "List[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		acc := a[1]
@@ -211,7 +214,7 @@ func init() {
 			CheckCancelled(ctx)
 			out[i] = int64(i)
 		}
-		return &List{r, out}
+		return &List{Type: r, Items: out}
 	})
 	add("list_entries", "List[ListEntry[T]]", elements, listParam, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
@@ -221,7 +224,7 @@ func init() {
 			CheckCancelled(ctx)
 			out[i] = Record{typ, map[string]Value{"index": int64(i), "value": v}}
 		}
-		return &List{r, out}
+		return &List{Type: r, Items: out}
 	})
 	add("to_set", "Set[T]", []LibraryParam{p("T", "Hashable")}, listParam, func(ctx *Execution, r string, a []Value) Value {
 		out := &Set{Type: r}
@@ -244,7 +247,7 @@ func init() {
 			CheckCancelled(ctx)
 			out[i] = a[0]
 		}
-		return libraryOK(r, &List{typeArguments(r)[0], out})
+		return libraryOK(r, &List{Type: typeArguments(r)[0], Items: out})
 	})
 	add("range", libraryResult("List[Int]", "CollectionError"), nil, []LibraryParam{p("start", "Int"), p("end", "Int"), p("step", "Int"), p("max_items", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		start, end, step, max := a[0].(int64), a[1].(int64), a[2].(int64), a[3].(int64)
@@ -264,7 +267,7 @@ func init() {
 			}
 			n += step
 		}
-		return libraryOK(r, &List{typeArguments(r)[0], out})
+		return libraryOK(r, &List{Type: typeArguments(r)[0], Items: out})
 	})
 	add("group_by", "Map[K][List[T]]", []LibraryParam{p("T", ""), p("K", "Hashable")}, []LibraryParam{p("values", "List[T]"), p("key", "fn(value:T)->K")}, func(ctx *Execution, r string, a []Value) Value {
 		out := &Map{Type: r}
@@ -274,7 +277,7 @@ func init() {
 			key := Invoke(ctx, a[1], []Argument{{"value", v}})
 			found := out.find(ctx, key)
 			if found < 0 {
-				out.Entries = append(out.Entries, Entry{key, &List{listType, []Value{v}}})
+				out.Entries = append(out.Entries, Entry{key, &List{Type: listType, Items: []Value{v}}})
 				keyAppended(ctx, out)
 			} else {
 				group := out.Entries[found].Value.(*List)
@@ -311,7 +314,7 @@ func init() {
 			CheckCancelled(ctx)
 			out[i] = Record{typ, map[string]Value{"key": e.Key, "value": e.Value}}
 		}
-		return &List{r, out}
+		return &List{Type: r, Items: out}
 	})
 	add("map_merge", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("other", "Map[K][V]")}, func(ctx *Execution, r string, a []Value) Value {
 		out := a[0].(*Map)
@@ -339,7 +342,7 @@ func init() {
 	})
 	add("set_clear", "Set[T]", hash, []LibraryParam{p("values", "Set[T]")}, func(ctx *Execution, _ string, a []Value) Value { a[0].(*Set).Items = nil; return a[0] })
 	add("set_values", "List[T]", hash, []LibraryParam{p("values", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
-		return &List{r, append([]Value{}, a[0].(*Set).Items...)}
+		return &List{Type: r, Items: append([]Value{}, a[0].(*Set).Items...)}
 	})
 	add("set_entries", "List[List[T]]", hash, []LibraryParam{p("values", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*Set).Items
@@ -347,9 +350,9 @@ func init() {
 		typ := typeArguments(r)[0]
 		for i, v := range items {
 			CheckCancelled(ctx)
-			out[i] = &List{typ, []Value{v, v}}
+			out[i] = &List{Type: typ, Items: []Value{v, v}}
 		}
-		return &List{r, out}
+		return &List{Type: r, Items: out}
 	})
 	add("set_for_each", "Unit", hash, []LibraryParam{p("values", "Set[T]"), p("operation", "fn(value:T)->Unit")}, func(ctx *Execution, _ string, a []Value) Value {
 		for _, v := range a[0].(*Set).Items {

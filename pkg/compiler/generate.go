@@ -90,7 +90,7 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 				out.WriteString("}()},\n")
 			}
 		}
-		out.WriteString("};if rt.RunTests(tests)>0{os.Exit(1)}\n")
+		out.WriteString("};if rt.RunTestsArgs(tests,os.Args[1:])>0{os.Exit(1)}\n")
 	} else if options.Entry {
 		if options.CPUProfile == "" && options.HeapProfile == "" && options.Trace == "" {
 			out.WriteString("os.Exit(rt.RunMain(" + program.Symbols[entry]["main"].ID + ",os.Args[1:]))\n")

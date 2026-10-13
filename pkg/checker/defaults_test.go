@@ -108,7 +108,7 @@ func TestLabelDiagnosticNamesParameter(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := checker.Check([]*syntax.Module{m}, nil)
-	if len(p.Diagnostics) != 2 || !strings.Contains(p.Diagnostics[0].Message, "write a: ...") || !strings.Contains(p.Diagnostics[1].Message, "write b: ...") {
+	if len(p.Diagnostics) != 1 || !strings.Contains(p.Diagnostics[0].Message, "write f(a: 1, b: 2)") {
 		t.Fatal(p.Diagnostics)
 	}
 }

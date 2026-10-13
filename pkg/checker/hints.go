@@ -233,6 +233,7 @@ func typeSketch(name string, arity int) string {
 func (c *checker) unknownTypeMessage(name string) string {
 	message := "unknown type " + name
 	if hint := importHint(name); hint != "" {
+		c.importReported(name)
 		return message + hint
 	}
 	if hint := didYouMean(name, c.typeNames()); hint != "" {
@@ -291,6 +292,9 @@ func signatureText(t *Type) string {
 // element conversions and cannot be converted by wrapping the whole value.
 func (c *checker) assignmentMismatch(actual, expected *Type) string {
 	message := formatMismatch(actual, expected)
+	if hint := labelMismatchHint(actual, expected); hint != "" {
+		return message + "; " + hint
+	}
 	if expected.Kind != "contract" || actual == nil || actual.ID == "<invalid>" {
 		return message
 	}
@@ -306,4 +310,18 @@ func (c *checker) assignmentMismatch(actual, expected *Type) string {
 func (c *checker) interfaceTypeMember(typ *Type) string {
 	c.unknownType = true
 	return typ.String() + " is an interface, not an alternative; declare a concrete type and 'impl " + typ.String() + " for <Type>:', then construct that concrete type"
+}
+
+// labelMismatchHint explains function types that differ in parameter names
+// (labels), which are part of a function's identity.
+func labelMismatchHint(actual, expected *Type) string {
+	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind != "function" || len(actual.Params) != len(expected.Params) {
+		return ""
+	}
+	for i, p := range actual.Params {
+		if p.Name != expected.Params[i].Name {
+			return "the function's parameter is named " + p.Name + " but this position expects " + expected.Params[i].Name + "; rename the parameter to " + expected.Params[i].Name + ", or wrap the function in a lambda: fn(" + expected.Params[i].Name + ": ...) -> ...: f(" + p.Name + ": " + expected.Params[i].Name + ")"
+		}
+	}
+	return ""
 }
