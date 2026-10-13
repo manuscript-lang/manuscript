@@ -73,6 +73,6 @@ Paths are relative to the manifest. See [project configuration](../developer-too
 ./ms fmt examples/hello/src/main.ms --check
 ```
 
-`build` leaves a native executable that runs independently of Manuscript. `test` runs test blocks in the given module; `ms test ms.toml` also runs every `test.ms` and `*_test.ms` file in the project. `fmt --check` reports formatting changes without writing them. Use `./ms --help` to list commands or `./ms help run` for a command's options.
+`build` leaves a native executable that runs independently of Manuscript. `test` runs test blocks in the given module; `ms test ms.toml` also runs every `test.ms` and `*_test.ms` file in the project. Each test prints `RUN` before it starts; a test that exceeds `--timeout` (default 60s, `0` disables) fails by name, and `--filter text` runs only tests whose `module::name` contains the text. `fmt --check` reports formatting changes without writing them. Use `./ms --help` to list commands or `./ms help run` for a command's options.
 
 Continue with [the language tour](tour.md). The [developer tools](../developer-tooling/implementation.md) cover editor setup, inspection, API documentation, and debugging.

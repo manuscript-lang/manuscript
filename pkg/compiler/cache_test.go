@@ -28,3 +28,15 @@ func TestAtomicWriteFailurePreservesDestinationAndRemovesStaging(t *testing.T) {
 		t.Fatal("staging file leaked", entries, err)
 	}
 }
+
+func TestShellQuoteKeepsLockHintsPasteable(t *testing.T) {
+	for path, want := range map[string]string{
+		"/tmp/proj/ms.toml":    "/tmp/proj/ms.toml",
+		"/tmp/my proj/ms.toml": `"/tmp/my proj/ms.toml"`,
+		`/tmp/a"b/ms.toml`:     `"/tmp/a\"b/ms.toml"`,
+	} {
+		if got := shellQuote(path); got != want {
+			t.Fatalf("%s: got %s, want %s", path, got, want)
+		}
+	}
+}

@@ -141,7 +141,7 @@ func readPin(root string) (BuildPin, error) {
 		return BuildPin{}, errMissingPin
 	}
 	if err != nil {
-		return BuildPin{}, fmt.Errorf("project build requires ms.lock; run ms lock %s: %w", filepath.Join(root, "ms.toml"), err)
+		return BuildPin{}, fmt.Errorf("project build requires ms.lock; run ms lock %s: %w", shellQuote(filepath.Join(root, "ms.toml")), err)
 	}
 	var pin BuildPin
 	decoder := json.NewDecoder(strings.NewReader(string(data)))
@@ -169,7 +169,7 @@ func CheckPin(root string) error {
 
 func comparePin(root string, expected, actual BuildPin) error {
 	if !reflect.DeepEqual(expected, actual) {
-		return fmt.Errorf("ms.lock does not match compiler/runtime, Go toolchain, or target; run ms lock %s to explicitly update", filepath.Join(root, "ms.toml"))
+		return fmt.Errorf("ms.lock does not match compiler/runtime, Go toolchain, or target; run ms lock %s to explicitly update", shellQuote(filepath.Join(root, "ms.toml")))
 	}
 	return nil
 }
@@ -415,4 +415,12 @@ func VerifyBuild(output string, sources map[string]string) error {
 		}
 	}
 	return nil
+}
+
+// shellQuote makes a path safe to paste into a command hint.
+func shellQuote(path string) string {
+	if path != "" && !strings.ContainsAny(path, " \t\n'\"\\$`&;|<>()*?[]{}!#~") {
+		return path
+	}
+	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, "$", `\$`, "`", "\\`").Replace(path) + `"`
 }
