@@ -114,6 +114,80 @@ func ListIsEmpty(ctx *Execution, receiver Value) Value {
 	return len(receiver.(*List).Items) == 0
 }
 
+// keyContext selects the equality scope for a keyed lookup. Primitive keys
+// compare without it, so only composite keys pay for the context copy.
+func keyContext(ctx *Execution, key Value, scope TypeScope) *Execution {
+	switch key.(type) {
+	case int64, string:
+		return ctx
+	}
+	child := *ctx
+	child.EqualityScope = scope
+	return &child
+}
+
+// ListContains is the direct path for List.contains calls.
+func ListContains(ctx *Execution, receiver, value Value, scope TypeScope) Value {
+	items := receiver.(*List).Items
+	for _, item := range items {
+		CheckCancelled(ctx)
+		if EqualSelected(ctx, item, value, scope) {
+			return true
+		}
+	}
+	return false
+}
+
+// MapContains is the direct path for Map.contains calls.
+func MapContains(ctx *Execution, receiver, key Value, scope TypeScope) Value {
+	CheckCancelled(ctx)
+	return receiver.(*Map).find(keyContext(ctx, key, scope), key) >= 0
+}
+
+// MapGet is the direct path for Map.get calls.
+func MapGet(ctx *Execution, receiver, key Value, scope TypeScope, result string) Value {
+	CheckCancelled(ctx)
+	m := receiver.(*Map)
+	found := m.find(keyContext(ctx, key, scope), key)
+	if found < 0 {
+		return Alternative{Type: result, Tag: "none"}
+	}
+	return Alternative{Type: result, Tag: "some", Fields: []Value{m.Entries[found].Value}}
+}
+
+// MapWithEntry is the direct path for Map.with_entry calls.
+func MapWithEntry(ctx *Execution, receiver, key, value Value, scope TypeScope) Value {
+	CheckCancelled(ctx)
+	m := receiver.(*Map)
+	child := keyContext(ctx, key, scope)
+	if found := m.find(child, key); found >= 0 {
+		m.ownEntries()
+		m.Entries[found].Value = value
+	} else {
+		m.Entries = append(m.Entries, Entry{key, value})
+		keyAppended(child, m)
+	}
+	return m
+}
+
+// SetContains is the direct path for Set.contains calls.
+func SetContains(ctx *Execution, receiver, value Value, scope TypeScope) Value {
+	CheckCancelled(ctx)
+	return receiver.(*Set).find(keyContext(ctx, value, scope), value) >= 0
+}
+
+// SetWithValue is the direct path for Set.with_value calls.
+func SetWithValue(ctx *Execution, receiver, value Value, scope TypeScope) Value {
+	CheckCancelled(ctx)
+	s := receiver.(*Set)
+	child := keyContext(ctx, value, scope)
+	if s.find(child, value) < 0 {
+		s.Items = append(s.Items, value)
+		keyAppended(child, s)
+	}
+	return s
+}
+
 // StringByteLength is the direct path for String.byte_length calls.
 func StringByteLength(ctx *Execution, receiver Value) Value {
 	CheckCancelled(ctx)
