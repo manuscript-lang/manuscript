@@ -1028,38 +1028,71 @@ const MaxCallDepth = 200000
 // maxFaultFrames bounds the trace kept on a fault; deeper frames are counted.
 const maxFaultFrames = 32
 
-func NewSourceFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
-	return NewFunction(labels, result, func(ctx *Execution, args []Value) (value Value) {
-		if ctx != nil && ctx.calls != nil {
-			calls := ctx.calls
-			if calls.depth.Add(1) > MaxCallDepth {
-				calls.depth.Add(-1)
-				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
-			}
-			defer func() {
-				if calls.depth.Add(-1) == 0 {
-					calls.traceFull.Store(false)
-				}
-			}()
+// SourceCall is the single source boundary used by native entries and boxed
+// adapters. The body is unguarded and owns its source trace and cleanup defers.
+// T must use the same dynamic representation as its checked Value boundary.
+func SourceCall[T any](ctx *Execution, result string, body func(*Execution) T) (value T) {
+	CheckCancelled(ctx)
+	if ctx != nil && ctx.calls != nil {
+		calls := ctx.calls
+		if calls.depth.Add(1) > MaxCallDepth {
+			calls.depth.Add(-1)
+			Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
 		}
 		defer func() {
-			if controlPanics.Load() == 0 {
-				return
-			}
-			if failure := recover(); failure != nil {
-				if returned, ok := failure.(sourceReturn); ok {
-					controlPanics.Add(-1)
-					value = returned.value
-					return
-				}
-				panic(failure)
+			if calls.depth.Add(-1) == 0 {
+				calls.traceFull.Store(false)
 			}
 		}()
-		if sourceProfiling.Load() {
-			return profileSource(ctx, position, args, body)
+	}
+	completed := false
+	defer func() {
+		if controlPanics.Load() != 0 {
+			if failure := recover(); failure != nil {
+				switch failure := failure.(type) {
+				case sourceReturn:
+					controlPanics.Add(-1)
+					// A boxed runtime callback may return nil. Preserve that Value
+					// without accepting nil as a typed scalar representation.
+					if failure.value == nil {
+						var zero T
+						if any(zero) == nil {
+							value, completed = zero, true
+							break
+						}
+					}
+					value = any(failure.value).(T)
+					completed = true
+				case propagation:
+					controlPanics.Add(-1)
+					CheckCancelled(ctx)
+					value = any(Alternative{Type: result, Tag: "error", Fields: []Value{failure.Cause}}).(T)
+					return
+				default:
+					panic(failure)
+				}
+			}
 		}
-		return body(ctx, args)
-	})
+		if completed && ctx != nil && ctx.Context.Err() != nil {
+			panic(cancelled{})
+		}
+	}()
+	value = body(ctx)
+	completed = true
+	return value
+}
+
+// Keep the adapter in this package. Inlining it into generated importers loses
+// the shared generic guard's no-escape fact and allocates a body thunk per call.
+//
+//go:noinline
+func NewSourceFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
+	return Function{labels, result, func(ctx *Execution, args []Value) Value {
+		if SourceCallNeedsProfile(ctx) {
+			return ProfileSourceCall(ctx, result, position, func(ctx *Execution) Value { return body(ctx, args) })
+		}
+		return SourceCall(ctx, result, func(ctx *Execution) Value { return body(ctx, args) })
+	}}
 }
 
 type implementationKey struct {
@@ -1076,68 +1109,21 @@ type resolvedImplementation struct {
 // implementationGeneration invalidates call-site caches when Register runs.
 var implementationGeneration atomic.Uint64
 
-// SourceDirect wraps a method body with everything a bound method gets from
-// NewSourceFunction and newFunction: the call-depth limit, source returns,
-// profiling, propagation of a nested try into an error Result, and the
-// post-body cancellation checkpoint. Keep it in step with those two.
+// SourceDirect and BoundDirect select the same guarded entry. Neither adapter
+// adds another source guard around it.
+//
+//go:noinline
 func SourceDirect(position, result string, body func(*Execution, Value, []Value) Value) func(*Execution, Value, []Value) Value {
-	source := func(ctx *Execution, receiver Value, args []Value) (value Value) {
-		if ctx != nil && ctx.calls != nil {
-			calls := ctx.calls
-			if calls.depth.Add(1) > MaxCallDepth {
-				calls.depth.Add(-1)
-				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
-			}
-			defer func() {
-				if calls.depth.Add(-1) == 0 {
-					calls.traceFull.Store(false)
-				}
-			}()
+	return func(ctx *Execution, receiver Value, args []Value) Value {
+		if SourceCallNeedsProfile(ctx) {
+			return ProfileSourceCall(ctx, result, position, func(ctx *Execution) Value { return body(ctx, receiver, args) })
 		}
-		defer func() {
-			if controlPanics.Load() == 0 {
-				return
-			}
-			if failure := recover(); failure != nil {
-				if returned, ok := failure.(sourceReturn); ok {
-					controlPanics.Add(-1)
-					value = returned.value
-					return
-				}
-				panic(failure)
-			}
-		}()
-		if sourceProfiling.Load() {
-			return profileSource(ctx, position, args, func(ctx *Execution, args []Value) Value { return body(ctx, receiver, args) })
-		}
-		return body(ctx, receiver, args)
-	}
-	return func(ctx *Execution, receiver Value, args []Value) (value Value) {
-		defer func() {
-			if controlPanics.Load() == 0 {
-				return
-			}
-			if r := recover(); r != nil {
-				if p, ok := r.(propagation); ok {
-					controlPanics.Add(-1)
-					CheckCancelled(ctx)
-					value = Alternative{Type: result, Tag: "error", Fields: []Value{p.Cause}}
-				} else {
-					panic(r)
-				}
-			}
-		}()
-		value = source(ctx, receiver, args)
-		if ctx != nil && ctx.Context.Err() != nil {
-			panic(cancelled{})
-		}
-		return value
+		return SourceCall(ctx, result, func(ctx *Execution) Value { return body(ctx, receiver, args) })
 	}
 }
 
-// BoundDirect binds a receiver to a direct method body.
 func BoundDirect(receiver Value, labels []string, result string, direct func(*Execution, Value, []Value) Value) Function {
-	return NewFunction(labels, result, func(ctx *Execution, args []Value) Value { return direct(ctx, receiver, args) })
+	return Function{labels, result, func(ctx *Execution, args []Value) Value { return direct(ctx, receiver, args) }}
 }
 
 // MethodSite caches the direct body last resolved for one call site.

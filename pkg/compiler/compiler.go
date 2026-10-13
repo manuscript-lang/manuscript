@@ -26,6 +26,9 @@ type Options struct {
 	Tests                          bool
 	// Entry requires an exported, nongeneric, parameterless main returning Int.
 	Entry bool
+	// ExperimentalNativeCalls enables the held #251 scalar calling-convention
+	// pilot. It is off by default and is not a supported CLI or ABI contract.
+	ExperimentalNativeCalls bool
 }
 type Result struct {
 	SourceRoot                 string

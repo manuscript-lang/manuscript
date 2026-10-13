@@ -11,7 +11,13 @@ import (
 func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 	var out []ast.Stmt
 	for _, s := range body {
-		out = append(out, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String())))
+		position := assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String()))
+		if g.nativeResult != nil {
+			// A synthetic position write must not inherit physical Go line
+			// offsets from the previous source statement in the new typed body.
+			position = g.locatedStatement(s.Pos, position)
+		}
+		out = append(out, position)
 		statements := g.statement(s)
 		statements[0] = g.locatedStatement(s.Pos, statements[0])
 		out = append(out, statements...)
@@ -68,6 +74,8 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		}
 		if g.expressionDepth > 0 {
 			value = runtimeCall("Return", value)
+		} else if g.nativeResult != nil {
+			value = g.nativeExtract(g.nativeResult, value)
 		}
 		return []ast.Stmt{returned(value)}
 	case syntax.KindCall:

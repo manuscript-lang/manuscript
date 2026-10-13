@@ -17,6 +17,9 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 
 func lowerGoForBuild(optimized optimizedProgram, entry string, options Options, kind BuildType) (string, error) {
 	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}, debugLiterals: kind == Debug}
+	if options.ExperimentalNativeCalls {
+		g.selectNativeCalls()
+	}
 	file := g.file(entry, options)
 	if g.loweringError != nil {
 		return "", g.loweringError
@@ -48,7 +51,11 @@ func (g *generator) file(entry string, options Options) *ast.File {
 	for _, s := range functions {
 		g.module = s.Module
 		var value ast.Expr
-		if len(s.Variables) > 0 {
+		if g.nativeCalls[s] {
+			decls, adapter := g.nativeFunction(s)
+			file.Decls = append(file.Decls, decls...)
+			value = adapter
+		} else if len(s.Variables) > 0 {
 			var vars []string
 			for _, v := range s.Variables {
 				vars = append(vars, v.ID)

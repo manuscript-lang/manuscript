@@ -150,6 +150,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if value := g.directCollectionCall(e, arguments); value != nil {
 			return value
 		}
+		if value := g.nativeSourceCall(e, arguments); value != nil {
+			return value
+		}
 		if value := g.preparedSourceCall(e, arguments); value != nil {
 			return value
 		}

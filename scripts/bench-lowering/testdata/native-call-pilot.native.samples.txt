@@ -1,0 +1,25 @@
+Generated source and benchmark harness: /workspace/manuscript-direct-calls/.artifacts/native-call-pilot/final-native
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/native-call-pilot/final-native
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLowering/Actual1024Calls         	    7351	    181471 ns/op	   14160 B/op	    1770 allocs/op
+BenchmarkLowering/Actual1024Calls         	   10000	    142770 ns/op	   14160 B/op	    1770 allocs/op
+BenchmarkLowering/Actual1024Calls         	    8378	    169438 ns/op	   14160 B/op	    1770 allocs/op
+BenchmarkLowering/MixedFirstClass1024     	    4762	    280883 ns/op	   46928 B/op	    2794 allocs/op
+BenchmarkLowering/MixedFirstClass1024     	    6565	    214263 ns/op	   46928 B/op	    2794 allocs/op
+BenchmarkLowering/MixedFirstClass1024     	    5630	    263419 ns/op	   46928 B/op	    2794 allocs/op
+BenchmarkLowering/BoxedIdentity           	18383016	        80.36 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLowering/BoxedIdentity           	18014526	        74.53 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLowering/BoxedIdentity           	15142136	        73.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLowering/BoxedForward            	 4991104	       222.5 ns/op	      16 B/op	       1 allocs/op
+BenchmarkLowering/BoxedForward            	 5168776	       248.5 ns/op	      16 B/op	       1 allocs/op
+BenchmarkLowering/BoxedForward            	 5658669	       252.5 ns/op	      16 B/op	       1 allocs/op
+BenchmarkLowering/BoxedComputedForward    	 5897216	       210.3 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/BoxedComputedForward    	 6565246	       206.9 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/BoxedComputedForward    	 5837720	       212.9 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/BoxedAdd                	 8873720	       140.2 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/BoxedAdd                	 8750920	       146.3 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/BoxedAdd                	 9735690	       128.8 ns/op	       8 B/op	       1 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/.artifacts/native-call-pilot/final-native	23.876s

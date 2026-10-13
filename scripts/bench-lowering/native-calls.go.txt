@@ -1,0 +1,41 @@
+package main
+
+import (
+ "testing"
+ rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+)
+
+var nativeCallResult rt.Value
+
+func TestBenchmarkParity(t *testing.T) {
+ initialize()
+ ctx:=rt.RootExecution(); defer rt.FinishExecution(ctx)
+ for _, c:=range []struct{fn rt.Function; args []rt.Value; want int64}{
+  {@@calls@@.(rt.Function),[]rt.Value{int64(1024)},523776},
+  {@@mixed@@.(rt.Function),[]rt.Value{int64(1024)},523776},
+  {@@identity@@.(rt.Function),[]rt.Value{int64(1024)},1024},
+  {@@forward@@.(rt.Function),[]rt.Value{int64(1024)},1024},
+  {@@computed_forward@@.(rt.Function),[]rt.Value{int64(1024)},1025},
+ } {
+  if got:=c.fn.Body(ctx,c.args);got!=c.want {t.Fatalf("got %v want %v",got,c.want)}
+ }
+ // This is compiled across the actual runtime package boundary. A local guard
+ // microbenchmark can miss a body-thunk allocation after cross-package inlining.
+ identity:=@@identity@@.(rt.Function); args:=[]rt.Value{int64(1024)}
+ if got:=testing.AllocsPerRun(100,func(){nativeCallResult=identity.Body(ctx,args)});got!=0 {t.Fatalf("boxed identity acquired %v allocations",got)}
+}
+
+func BenchmarkLowering(b *testing.B) {
+ initialize()
+ ctx:=rt.RootExecution(); defer rt.FinishExecution(ctx)
+ for _, c:=range []struct{name string; fn rt.Function; args []rt.Value}{
+  {"Actual1024Calls",@@calls@@.(rt.Function),[]rt.Value{int64(1024)}},
+  {"MixedFirstClass1024",@@mixed@@.(rt.Function),[]rt.Value{int64(1024)}},
+  {"BoxedIdentity",@@identity@@.(rt.Function),[]rt.Value{int64(1024)}},
+  {"BoxedForward",@@forward@@.(rt.Function),[]rt.Value{int64(1024)}},
+  {"BoxedComputedForward",@@computed_forward@@.(rt.Function),[]rt.Value{int64(1024)}},
+  {"BoxedAdd",@@add@@.(rt.Function),[]rt.Value{int64(1024),int64(2048)}},
+ } {
+  b.Run(c.name,func(b *testing.B){b.ReportAllocs();for b.Loop(){nativeCallResult=c.fn.Body(ctx,c.args)}})
+ }
+}

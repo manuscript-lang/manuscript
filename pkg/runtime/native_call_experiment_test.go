@@ -2,53 +2,17 @@ package msruntime
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"testing"
 )
 
 // Test-only ABI experiment. It does not alter production execution or select
 // numeric representations. A future lowering entry must use checked identities.
-func experimentSourceCall[T any](ctx *Execution, result string, body func() T) (value T) {
-	CheckCancelled(ctx)
-	if ctx != nil && ctx.calls != nil {
-		calls := ctx.calls
-		if calls.depth.Add(1) > MaxCallDepth {
-			calls.depth.Add(-1)
-			Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
-		}
-		defer func() {
-			if calls.depth.Add(-1) == 0 {
-				calls.traceFull.Store(false)
-			}
-		}()
+func experimentSourceCall[T any](ctx *Execution, result string, body func() T) T {
+	if SourceCallNeedsProfile(ctx) {
+		return ProfileSourceCall(ctx, result, "experiment.ms:1:1", func(*Execution) T { return body() })
 	}
-	completed := false
-	defer func() {
-		if controlPanics.Load() != 0 {
-			if failure := recover(); failure != nil {
-				switch failure := failure.(type) {
-				case sourceReturn:
-					controlPanics.Add(-1)
-					value = failure.value.(T)
-					completed = true
-				case propagation:
-					controlPanics.Add(-1)
-					CheckCancelled(ctx)
-					value = any(Alternative{Type: result, Tag: "error", Fields: []Value{failure.Cause}}).(T)
-					return
-				default:
-					panic(failure)
-				}
-			}
-		}
-		if completed && ctx != nil && ctx.Context.Err() != nil {
-			panic(cancelled{})
-		}
-	}()
-	value = body()
-	completed = true
-	return value
+	return SourceCall(ctx, result, func(*Execution) T { return body() })
 }
 
 var experimentBoxedAdd = NewSourceFunction([]string{"left", "right"}, "Int", "experiment.ms:1:1", func(ctx *Execution, args []Value) Value {
@@ -58,10 +22,6 @@ var experimentBoxedAdd = NewSourceFunction([]string{"left", "right"}, "Int", "ex
 })
 
 func experimentTypedAdd(ctx *Execution, left, right int64) int64 {
-	// Keep the existing first-class wrapper/profiling boundary as a fallback.
-	if sourceProfiling.Load() {
-		return IntValue(experimentBoxedAdd.Body(ctx, []Value{left, right}))
-	}
 	return experimentSourceCall(ctx, "Int", func() int64 {
 		position := "experiment.ms:1:1"
 		defer TraceSource(ctx, &position, "add")

@@ -1,0 +1,9 @@
+Two-function source: the native-calls debug fixture, same source root for both builds.
+Pinned Go1.25.1, Linux amd64, shared Xeon Platinum8573C. Runtime plus pilot compared.
+Original main c80bdb2a:
+Release bytes=5554360 build_elapsed=5.861271024s
+Debug bytes=11186594 build_elapsed=5.27518064s
+Candidate runtime plus opt-in generated native calls:
+Release bytes=5558456 build_elapsed=10.166705452s
+Debug bytes=11207488 build_elapsed=1.769607977s
+Elapsed observations have unequal cache state/shared load; no compile-time claim.
