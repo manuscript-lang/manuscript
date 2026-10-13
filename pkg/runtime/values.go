@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -158,6 +159,23 @@ func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 	if !ok {
 		return value
 	}
+	var key string
+	cache := genericCache(g)
+	if cache != nil {
+		var b strings.Builder
+		for i, arg := range args {
+			b.WriteString(arg)
+			b.WriteByte(0)
+			if i < len(scopes) {
+				writeScopeKey(&b, scopes[i])
+			}
+			b.WriteByte(1)
+		}
+		key = b.String()
+		if cached, ok := cache.Load(key); ok {
+			return cached.(Function)
+		}
+	}
 	sub := map[string]string{}
 	typeScopes := map[string]TypeScope{}
 	for i, v := range g.Variables {
@@ -166,7 +184,37 @@ func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 			typeScopes[v] = scopes[i]
 		}
 	}
-	return g.Build(sub, typeScopes)
+	built := g.Build(sub, typeScopes)
+	if cache != nil {
+		cache.Store(key, built)
+	}
+	return built
+}
+
+// genericCaches holds one instantiation cache per Generic, keyed by the address
+// of its Variables backing array, which every copy of the value shares.
+var genericCaches sync.Map
+
+func genericCache(g Generic) *sync.Map {
+	if len(g.Variables) == 0 {
+		return nil
+	}
+	key := &g.Variables[0]
+	if cache, ok := genericCaches.Load(key); ok {
+		return cache.(*sync.Map)
+	}
+	cache, _ := genericCaches.LoadOrStore(key, new(sync.Map))
+	return cache.(*sync.Map)
+}
+
+func writeScopeKey(b *strings.Builder, scope TypeScope) {
+	b.WriteString(scope.Module)
+	b.WriteByte('(')
+	for _, arg := range scope.Args {
+		writeScopeKey(b, arg)
+		b.WriteByte(',')
+	}
+	b.WriteByte(')')
 }
 func Try(value Value, scopes ...TypeScope) Value {
 	v := value.(Alternative)
