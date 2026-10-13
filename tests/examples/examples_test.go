@@ -36,6 +36,7 @@ func TestTutorialExamples(t *testing.T) {
 	}
 	files = append(files, libraryFiles...)
 	files = append(files, "../../documentation/core-language/types/records.md")
+	files = append(files, "../../documentation/core-language/basics/numbers-and-booleans.md")
 	total := 0
 	for _, file := range files {
 		text, err := os.ReadFile(file)

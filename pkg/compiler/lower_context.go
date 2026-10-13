@@ -25,6 +25,7 @@ type generator struct {
 	expressionDepth int
 	resultKey       ast.Expr // result type key of the function being lowered
 	cleanups        []string
+	needsCleanup    bool
 	loopCleanup     []int
 	loopLabels      []*loopLabel
 	captures        map[*checker.Binding]string

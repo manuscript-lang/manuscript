@@ -286,6 +286,8 @@
     "@std/collections.ms/Set/symmetric_difference": "collections/symmetric_difference",
     "@std/collections.ms/Set/union": "collections/union",
     "@std/collections.ms/Set/values": "collections/set_values",
+    "@std/decimal.ms/Decimal/round": "decimal/round",
+    "@std/decimal.ms/Decimal/to_fixed": "decimal/to_fixed",
     "@std/intrinsics.ms/FloatOperations/is_finite": "math/is_finite",
     "@std/intrinsics.ms/FloatOperations/is_nan": "math/is_nan",
     "@std/intrinsics.ms/FloatOperations/to_exponential": "numbers/format_exponential",

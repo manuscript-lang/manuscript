@@ -178,9 +178,7 @@ func main() {
 				_ = local24_escaped
 				sourcePosition = "ast-lowering.ms:24:5"
 //line ast-lowering.ms:24
-				if rt.Bool(rt.Equality(ctx, "!=", local24_escaped, rt.Invoke(ctx, specialized1.Get(func() rt.Value {
-							return rt.Specialize(symbol3, []string{"String"}, []rt.TypeScope{rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}}...)
-						}), rt.SourceAt(&sourcePosition, "ast-lowering.ms:24:19", []rt.Argument{{Name: "value", Value: local24_escaped}})), rt.SourceAt(&sourcePosition, "ast-lowering.ms:24:16", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
+				if rt.Bool(rt.Equality(ctx, "!=", local24_escaped, rt.Invoke(ctx, rt.Specialize(symbol3, []string{"String"}, []rt.TypeScope{rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}}...), rt.SourceAt(&sourcePosition, "ast-lowering.ms:24:19", []rt.Argument{{Name: "value", Value: local24_escaped}})), rt.SourceAt(&sourcePosition, "ast-lowering.ms:24:16", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
 					sourcePosition = "ast-lowering.ms:24:38"
 //line ast-lowering.ms:24
 					return rt.Invoke(ctx, rt.StandardFunction("panic", "Never"), rt.SourceAt(&sourcePosition, "ast-lowering.ms:24:45", []rt.Argument{{Name: "message", Value: rt.Text("escaping changed")}}))
@@ -359,5 +357,3 @@ func main() {
 		os.Exit(1)
 	}
 }
-
-var specialized1 rt.Lazy

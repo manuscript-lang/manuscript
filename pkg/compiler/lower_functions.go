@@ -34,13 +34,16 @@ func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
 	oldCleanups, oldLoops, oldLabels, oldDepth, oldResult := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth, g.resultKey
+	oldNeedsCleanup := g.needsCleanup
 	g.resultKey = g.key(t.Result)
 	g.expressionDepth = 0
 	g.cleanups = nil
+	g.needsCleanup = false
 	g.loopCleanup = nil
 	g.loopLabels = nil
 	defer func() {
 		g.cleanups = oldCleanups
+		g.needsCleanup = oldNeedsCleanup
 		g.loopCleanup = oldLoops
 		g.loopLabels = oldLabels
 		g.expressionDepth = oldDepth
@@ -50,12 +53,11 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 	for _, p := range t.Params {
 		labels = append(labels, p.Name)
 	}
-	out := []ast.Stmt{
+	prologue := []ast.Stmt{
 		define("sourcePosition", textLiteral(result.Pos.String())),
 		&ast.DeferStmt{Call: runtimeCall("TraceSource", ident("ctx"), address(ident("sourcePosition")), textLiteral(name))},
-		define("cleanupStack", runtimeCall("NewCleanupStack")),
-		&ast.DeferStmt{Call: call(selector(ident("cleanupStack"), "Unwind"))},
 	}
+	var out []ast.Stmt
 	if self != nil {
 		out = append(out, define(self.ID, ident("receiver")), discard(ident(self.ID)))
 	}
@@ -73,6 +75,13 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 	}
 	out = append(out, g.body(body)...)
 	out = append(out, tail...)
+	// Defaults and generated match closures belong to this callable; nested
+	// source functions save their own flag. Lexical cleanup lists are empty again
+	// after lowering each scope, so their final length cannot prove absence.
+	if g.needsCleanup {
+		prologue = append(prologue, define("cleanupStack", runtimeCall("NewCleanupStack")), &ast.DeferStmt{Call: call(selector(ident("cleanupStack"), "Unwind"))})
+	}
+	out = append(prologue, out...)
 	out = append(out, g.locatedStatement(syntax.Position{File: "manuscript.generated.go", Line: 1}, returned(unit())))
 	return runtimeCall("NewSourceFunction", stringSlice(labels), g.key(t.Result), textLiteral(result.Pos.String()), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
 }
