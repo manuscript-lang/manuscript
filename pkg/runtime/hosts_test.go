@@ -11,7 +11,7 @@ import (
 )
 
 func hostResponse(status int64, text string) Value {
-	return Record{"@std/HttpResponse", map[string]Value{"status": status, "headers": &Map{"@std/Map[String][String]", nil}, "body": Bytes{[]byte(text)}}}
+	return Record{"@std/HttpResponse", map[string]Value{"status": status, "headers": &Map{Type: "@std/Map[String][String]"}, "body": Bytes{[]byte(text)}}}
 }
 func serveTest(t *testing.T, root *Execution, handler Function, bodyLimit int64) *httpService {
 	t.Helper()

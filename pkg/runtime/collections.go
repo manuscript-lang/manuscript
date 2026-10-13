@@ -165,11 +165,8 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				key = args[0]
 			}
 			found := -1
-			for i, e := range v.Entries {
-				if EqualIn(ctx, e.Key, key) {
-					found = i
-					break
-				}
+			if name != "length" {
+				found = v.find(ctx, key)
 			}
 			switch name {
 			case "length":
@@ -182,22 +179,17 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				}
 				return optional(typ, v.Entries[found].Value, true)
 			case "with_entry":
-				entries := v.Entries
 				if found >= 0 {
-					entries[found].Value = args[1]
+					v.Entries[found].Value = args[1]
 				} else {
-					entries = append(entries, Entry{key, args[1]})
+					v.Entries = append(v.Entries, Entry{key, args[1]})
+					keyAppended(ctx, v)
 				}
-				v.Entries = entries
 				return v
 			case "without":
-				entries := v.Entries
 				if found >= 0 {
-					copy(entries[found:], entries[found+1:])
-					entries[len(entries)-1] = Entry{}
-					entries = entries[:len(entries)-1]
+					v.removeAt(ctx, found)
 				}
-				v.Entries = entries
 				return v
 			}
 		case *Set:
@@ -205,27 +197,25 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			if len(args) > 0 {
 				value = args[0]
 			}
-			found := indexOfIn(ctx, v.Items, value)
+			found := -1
+			if name != "length" {
+				found = v.find(ctx, value)
+			}
 			switch name {
 			case "length":
 				return int64(len(v.Items))
 			case "contains":
 				return found >= 0
 			case "with_value":
-				items := v.Items
 				if found < 0 {
-					items = append(items, value)
+					v.Items = append(v.Items, value)
+					keyAppended(ctx, v)
 				}
-				v.Items = items
 				return v
 			case "without":
-				items := v.Items
 				if found >= 0 {
-					copy(items[found:], items[found+1:])
-					items[len(items)-1] = nil
-					items = items[:len(items)-1]
+					v.removeAt(ctx, found)
 				}
-				v.Items = items
 				return v
 			}
 		case string:

@@ -227,14 +227,12 @@ func init() {
 		return &List{Type: r, Items: out}
 	})
 	add("to_set", "Set[T]", []LibraryParam{p("T", "Hashable")}, listParam, func(ctx *Execution, r string, a []Value) Value {
-		var out []Value
+		out := &Set{Type: r}
 		for _, v := range a[0].(*List).Items {
 			CheckCancelled(ctx)
-			if indexOfIn(ctx, out, v) < 0 {
-				out = append(out, v)
-			}
+			out.add(ctx, v)
 		}
-		return &Set{r, out}
+		return out
 	})
 	add("filled", libraryResult("List[T]", "CollectionError"), elements, []LibraryParam{p("value", "T"), p("count", "Int"), p("max_items", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		count, max := a[1].(int64), a[2].(int64)
@@ -277,15 +275,10 @@ func init() {
 		for _, v := range a[0].(*List).Items {
 			CheckCancelled(ctx)
 			key := Invoke(ctx, a[1], []Argument{{"value", v}})
-			found := -1
-			for i, e := range out.Entries {
-				if EqualIn(ctx, e.Key, key) {
-					found = i
-					break
-				}
-			}
+			found := out.find(ctx, key)
 			if found < 0 {
 				out.Entries = append(out.Entries, Entry{key, &List{Type: listType, Items: []Value{v}}})
+				keyAppended(ctx, out)
 			} else {
 				group := out.Entries[found].Value.(*List)
 				group.Items = append(group.Items, v)
@@ -301,11 +294,8 @@ func init() {
 		}
 		add(name, "Map[K][V]", mapVars, params, func(ctx *Execution, r string, a []Value) Value {
 			values := a[0].(*Map)
-			for _, e := range values.Entries {
-				CheckCancelled(ctx)
-				if EqualIn(ctx, e.Key, a[1]) {
-					return values
-				}
+			if values.find(ctx, a[1]) >= 0 {
+				return values
 			}
 			value := a[2]
 			if name == "map_with_default_from" {
@@ -377,14 +367,14 @@ func init() {
 			result = "Set[T]"
 		}
 		add(name, result, hash, []LibraryParam{p("left", "Set[T]"), p("right", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
-			left, right := a[0].(*Set).Items, a[1].(*Set).Items
+			left, right := a[0].(*Set), a[1].(*Set)
 			if name == "is_superset_of" {
 				left, right = right, left
 			}
 			var out []Value
-			for _, v := range left {
+			for _, v := range left.Items {
 				CheckCancelled(ctx)
-				found := indexOfIn(ctx, right, v) >= 0
+				found := right.find(ctx, v) >= 0
 				if name == "symmetric_difference" {
 					if !found {
 						out = append(out, v)
@@ -398,24 +388,18 @@ func init() {
 			if name != "symmetric_difference" {
 				return true
 			}
-			for _, v := range right {
+			for _, v := range right.Items {
 				CheckCancelled(ctx)
-				if indexOfIn(ctx, left, v) < 0 {
+				if left.find(ctx, v) < 0 {
 					out = append(out, v)
 				}
 			}
-			return &Set{r, out}
+			return &Set{Type: r, Items: out}
 		})
 	}
 }
 
 func mapPut(ctx *Execution, values *Map, key, value Value) *Map {
-	for i, e := range values.Entries {
-		if EqualIn(ctx, e.Key, key) {
-			values.Entries[i].Value = value
-			return values
-		}
-	}
-	values.Entries = append(values.Entries, Entry{key, value})
+	values.put(ctx, key, value)
 	return values
 }

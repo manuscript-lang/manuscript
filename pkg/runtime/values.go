@@ -62,11 +62,13 @@ func (l *List) ownItems() {
 type Map struct {
 	Type    string
 	Entries []Entry
+	keys    keyIndex
 }
 type Entry struct{ Key, Value Value }
 type Set struct {
 	Type  string
 	Items []Value
+	keys  keyIndex
 }
 type Bytes struct{ Items []byte }
 type Duration int64
@@ -368,9 +370,37 @@ func equalityID(value Value) (equalityIdentity, bool) {
 	return equalityIdentity{}, false
 }
 
+// primitiveEqual compares Int, Float, String, and Bool operands directly. These
+// types cannot carry a user Equal implementation, so it needs no scope, cycle
+// bookkeeping, or state allocation.
+func primitiveEqual(a, b Value) (result, ok bool) {
+	switch x := a.(type) {
+	case int64:
+		if y, same := b.(int64); same {
+			return x == y, true
+		}
+	case string:
+		if y, same := b.(string); same {
+			return x == y, true
+		}
+	case bool:
+		if y, same := b.(bool); same {
+			return x == y, true
+		}
+	case float64:
+		if y, same := b.(float64); same {
+			return x == y, true
+		}
+	}
+	return false, false
+}
+
 func Equal(a, b Value) bool                   { return equal(a, b, &equalityState{}) }
 func EqualIn(ctx *Execution, a, b Value) bool { return EqualSelected(ctx, a, b, ctx.EqualityScope) }
 func EqualSelected(ctx *Execution, a, b Value, scope TypeScope) bool {
+	if result, ok := primitiveEqual(a, b); ok {
+		return result
+	}
 	return equal(a, b, &equalityState{ctx: ctx, scope: scope})
 }
 func Equality(ctx *Execution, operator string, a, b Value, scope TypeScope) Value {
@@ -381,6 +411,9 @@ func Equality(ctx *Execution, operator string, a, b Value, scope TypeScope) Valu
 	return result
 }
 func equal(a, b Value, state *equalityState) bool {
+	if result, ok := primitiveEqual(a, b); ok {
+		return result
+	}
 	if view, ok := a.(View); ok {
 		a = view.Receiver
 		stateCopy := *state
@@ -602,7 +635,12 @@ type Implementation struct {
 
 var implementations []Implementation
 
+// implementationsByName indexes implementations by method name so a lookup
+// visits only candidates instead of the whole registry.
+var implementationsByName = map[string][]int{}
+
 func Register(implementation Implementation) {
+	implementationsByName[implementation.Name] = append(implementationsByName[implementation.Name], len(implementations))
 	implementations = append(implementations, implementation)
 }
 func ViewOf(contract string, receiver Value, scopes ...TypeScope) Value {
@@ -833,8 +871,9 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 
 func implementationFunction(receiver Value, contract, name string, scope TypeScope) (Function, bool) {
 	typ := ConcreteType(receiver)
-	for _, m := range implementations {
-		if m.Name != name || m.Scope != "" && m.Scope != scope.Module {
+	for _, at := range implementationsByName[name] {
+		m := &implementations[at]
+		if m.Scope != "" && m.Scope != scope.Module {
 			continue
 		}
 		vars := map[string]bool{}
