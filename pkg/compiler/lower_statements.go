@@ -18,23 +18,31 @@ func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 	}
 	return out
 }
-func (g *generator) pattern(p *syntax.Pattern, value ast.Expr) []ast.Stmt {
+
+// pattern binds value, whose Go type is native when it is not Value.
+func (g *generator) pattern(p *syntax.Pattern, value ast.Expr, native string) []ast.Stmt {
 	if p.Kind == syntax.KindName {
 		b := g.program.Bindings[p]
+		if typ := g.declareTyped(b); typ != "" {
+			if native != typ {
+				value = unbox(value, typ)
+			}
+			return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, ident(typ), value)}, discard(ident(b.ID))}
+		}
 		return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, runtimeName("Value"), value)}, discard(ident(b.ID))}
 	}
 	tmp := g.temp()
 	out := []ast.Stmt{define(tmp, value), discard(ident(tmp))}
 	if p.Kind == syntax.KindRecord {
 		for _, f := range p.Fields {
-			out = append(out, g.pattern(f.Pattern, runtimeCall("Field", ident(tmp), textLiteral(f.Name)))...)
+			out = append(out, g.pattern(f.Pattern, runtimeCall("Field", ident(tmp), textLiteral(f.Name)), "")...)
 		}
 	}
 	if p.Kind == syntax.KindList {
 		positions := g.temp()
 		out = append(out, define(positions, runtimeCall("Positions", ident(tmp), sourceAt(p.Pos, intLiteral(len(p.Elements))))), discard(ident(positions)))
 		for i, child := range p.Elements {
-			out = append(out, g.pattern(child, index(ident(positions), intLiteral(i)))...)
+			out = append(out, g.pattern(child, index(ident(positions), intLiteral(i)), "")...)
 		}
 	}
 	return out
@@ -43,9 +51,13 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	if pre, value := g.inlineTry(s); value != nil {
 		switch s.Kind {
 		case syntax.KindBind:
-			return append(pre, g.pattern(s.Pattern, value)...)
+			return append(pre, g.pattern(s.Pattern, value, "")...)
 		case syntax.KindAssign:
-			return append(pre, assign(ident(g.program.Assignments[s.Value].ID), token.ASSIGN, value))
+			target := g.program.Assignments[s.Value]
+			if typ := g.typed[target]; typ != "" {
+				value = unbox(value, typ)
+			}
+			return append(pre, assign(ident(target.ID), token.ASSIGN, value))
 		case syntax.KindReturn:
 			return append(pre, returned(value))
 		default:
@@ -54,13 +66,17 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	}
 	switch s.Kind {
 	case syntax.KindBind:
-		return g.pattern(s.Pattern, g.expression(s.Value))
+		return g.pattern(s.Pattern, g.expression(s.Value), g.nativeType(s.Value))
 	case syntax.KindAssign:
 		if s.Target != nil {
 			return []ast.Stmt{evaluated(runtimeCall("SetField", g.expression(s.Target.Left), textLiteral(s.Target.Text), g.expression(s.Value)))}
 		}
 		// Assignment binding identities are recorded by the checker, including shadows.
-		return []ast.Stmt{assign(ident(g.program.Assignments[s.Value].ID), token.ASSIGN, g.expression(s.Value))}
+		target := g.program.Assignments[s.Value]
+		if typ := g.typed[target]; typ != "" {
+			return []ast.Stmt{assign(ident(target.ID), token.ASSIGN, g.scalar(s.Value, typ))}
+		}
+		return []ast.Stmt{assign(ident(target.ID), token.ASSIGN, g.expression(s.Value))}
 	case syntax.KindReturn:
 		value := unit()
 		if s.Value != nil {
@@ -96,7 +112,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		}
 		return append(out, &ast.BranchStmt{Tok: op, Label: ident(label.name)})
 	case syntax.KindIf:
-		stmt := &ast.IfStmt{Cond: runtimeCall("Bool", g.expression(s.Value)), Body: block(g.body(s.Body)...)}
+		stmt := &ast.IfStmt{Cond: g.condition(s.Value), Body: block(g.body(s.Body)...)}
 		if len(s.Else) > 0 {
 			stmt.Else = block(g.body(s.Else)...)
 		}
@@ -111,7 +127,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		var loop ast.Stmt
 		if s.Kind == syntax.KindWhile {
 			body = append([]ast.Stmt{evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
-			loop = &ast.ForStmt{Cond: runtimeCall("Bool", g.expression(s.Value)), Body: block(body...)}
+			loop = &ast.ForStmt{Cond: g.condition(s.Value), Body: block(body...)}
 		} else {
 			b := g.program.LoopBindings[s]
 			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)

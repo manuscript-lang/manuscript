@@ -62,6 +62,12 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 		out = append(out, define(self.ID, ident("receiver")), discard(ident(self.ID)))
 	}
 	for i, b := range bindings {
+		if typ := scalarBinding(b); typ != "" && params[i].Default == nil && !t.Defaults[t.Params[i].Name] {
+			// A required scalar argument is never nil; copy it into a typed variable.
+			g.typed[b] = typ
+			out = append(out, &ast.DeclStmt{Decl: variable(b.ID, ident(typ), unbox(index(ident("args"), intLiteral(i)), typ))}, discard(ident(b.ID)))
+			continue
+		}
 		out = append(out, define(b.ID, index(ident("args"), intLiteral(i))), discard(ident(b.ID)))
 		// Checked source values are concrete (including Unit and Optional.none);
 		// Invoke leaves nil only for an omitted argument.

@@ -163,13 +163,13 @@ fn text() -> String:
 			t.Errorf("invalid generated identifier %q", name.Name)
 		}
 		if expr, ok := node.(*ast.BinaryExpr); ok && expr.Op == token.LAND {
-			// Bool conversions preserve the left OR as one argument, independent of
+			// Grouping preserves the left OR as one operand, independent of
 			// the relative precedence of Go's && and || operators.
-			left, ok := expr.X.(*ast.CallExpr)
-			if !ok || len(left.Args) != 1 {
-				t.Fatal("missing left boolean conversion")
+			left, ok := expr.X.(*ast.ParenExpr)
+			if !ok {
+				t.Fatal("missing left grouping")
 			}
-			inner, ok := left.Args[0].(*ast.BinaryExpr)
+			inner, ok := left.X.(*ast.BinaryExpr)
 			if !ok || inner.Op != token.LOR {
 				t.Fatal("lost source grouping")
 			}

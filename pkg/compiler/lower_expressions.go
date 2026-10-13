@@ -213,7 +213,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			if e.Text == "or" {
 				op = token.LOR
 			}
-			return &ast.BinaryExpr{X: runtimeCall("Bool", g.expression(e.Left)), Op: op, Y: runtimeCall("Bool", g.expression(e.Right))}
+			return &ast.BinaryExpr{X: paren(g.condition(e.Left)), Op: op, Y: paren(g.condition(e.Right))}
 		}
 		if e.Text == "==" || e.Text == "!=" {
 			if value := g.primitiveEquality(e); value != nil {

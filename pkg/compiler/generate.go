@@ -11,7 +11,7 @@ import (
 // lowerGo consumes checked identities and optimization facts. It never parses
 // source or resolves a type or binding by its spelling.
 func lowerGo(optimized optimizedProgram, entry string, options Options) (string, error) {
-	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}}
+	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}, typed: map[*checker.Binding]string{}}
 	return g.printGo(g.file(entry, options))
 }
 

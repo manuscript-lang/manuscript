@@ -38,7 +38,9 @@ func TestPrimitiveEqualityEligibility(t *testing.T) {
 			if got := strings.Contains(r.Source, "rt.Equality("); got == tc.direct {
 				t.Fatalf("selected equality fallback = %v, direct = %v\n%s", got, tc.direct, r.Source)
 			}
-			if tc.direct && (!strings.Contains(r.Source, ".("+primitiveEqualityType(r.Program.Parameters[r.Program.Symbols["scalar.ms"]["equal"].Decl][0].Type)+")") || !strings.Contains(r.Source, " != ")) {
+			// Scalar parameters are typed variables, so the comparison needs no assertion.
+			goType := primitiveEqualityType(r.Program.Parameters[r.Program.Symbols["scalar.ms"]["equal"].Decl][0].Type)
+			if tc.direct && (!strings.Contains(r.Source, "var local4_left "+goType+" = rt.") || !strings.Contains(r.Source, " != ")) {
 				t.Fatal("missing typed direct equality", r.Source)
 			}
 		})
