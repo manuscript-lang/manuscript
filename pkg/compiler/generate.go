@@ -18,10 +18,13 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 // file assembles the Go tree; executable source is serialized only by printGo.
 func (g *generator) file(entry string, options Options) *ast.File {
 	program := g.program
-	file := &ast.File{Name: ident("main"), Decls: []ast.Decl{&ast.GenDecl{Tok: token.IMPORT, Specs: []ast.Spec{
-		&ast.ImportSpec{Name: ident("rt"), Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/manuscript-lang/manuscript/pkg/runtime"`}},
-		&ast.ImportSpec{Path: &ast.BasicLit{Kind: token.STRING, Value: `"os"`}},
-	}}}}
+	imports := []*ast.ImportSpec{
+		{Name: ident("rt"), Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/manuscript-lang/manuscript/pkg/runtime"`}},
+		{Path: &ast.BasicLit{Kind: token.STRING, Value: `"os"`}},
+	}
+	file := &ast.File{Name: ident("main"), Imports: imports, Decls: []ast.Decl{
+		&ast.GenDecl{Tok: token.IMPORT, Specs: []ast.Spec{imports[0], imports[1]}},
+	}}
 	var functions []*checker.Symbol
 	for _, module := range program.Modules {
 		for _, d := range module.Declarations {

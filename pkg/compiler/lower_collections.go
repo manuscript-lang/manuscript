@@ -1,7 +1,10 @@
 package compiler
 
-import "go/ast"
-import "github.com/manuscript-lang/manuscript/pkg/syntax"
+import (
+	"go/ast"
+
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
+)
 
 // These checked native operations neither invoke callbacks nor acquire
 // resources. Direct calls can share their runtime implementation without

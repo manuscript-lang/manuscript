@@ -1,10 +1,11 @@
 package compiler
 
 import (
-	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"go/ast"
 	"go/token"
+
+	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
 func recordDefaults(d *syntax.Declaration) bool {

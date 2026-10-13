@@ -1,9 +1,10 @@
 package compiler
 
 import (
-	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"go/ast"
 	"go/token"
+
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
 // Keep statically known scalar operands typed through an expression. Locals,

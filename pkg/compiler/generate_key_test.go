@@ -2,12 +2,13 @@ package compiler
 
 import (
 	"bytes"
-	"github.com/manuscript-lang/manuscript/pkg/checker"
-	rt "github.com/manuscript-lang/manuscript/pkg/runtime"
 	"go/format"
 	"go/token"
 	"strconv"
 	"testing"
+
+	"github.com/manuscript-lang/manuscript/pkg/checker"
+	rt "github.com/manuscript-lang/manuscript/pkg/runtime"
 )
 
 func TestGeneratedTypeKeys(t *testing.T) {

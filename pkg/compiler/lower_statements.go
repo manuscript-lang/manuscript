@@ -1,10 +1,11 @@
 package compiler
 
 import (
-	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"go/ast"
 	"go/token"
 	"strconv"
+
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
 func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
