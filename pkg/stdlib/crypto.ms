@@ -19,7 +19,8 @@ export fn derive_key(
     length: Int
 ) -> Result[Bytes, CryptoError]:
 
-# Computes an HMAC using `sha256`, `sha384`, or `sha512`.
+# Computes an HMAC using exactly `sha256`, `sha384`, or `sha512` (case-sensitive).
+# Other algorithms return CryptoError.Unsupported.
 export fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, CryptoError]:
 
 # Authenticates and decrypts a value produced by `seal` using AES-GCM.
