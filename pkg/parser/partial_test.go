@@ -107,3 +107,47 @@ fn later() -> Int:
 		}
 	}
 }
+
+func TestPartialMatchExpressionPositions(t *testing.T) {
+	for _, ending := range []string{"\n", "\r\n"} {
+		source := strings.ReplaceAll(`fn broken(
+fn later(values: List[Int]) -> Int:
+    let result = match values[0]:
+        some(number):
+            let doubled = number * 2
+            doubled
+        none: return 0
+    return result
+`, "\n", ending)
+		module, issues := ParsePartial("match.ms", source)
+		if len(issues) == 0 || len(module.Declarations) != 1 {
+			t.Fatal(module, issues)
+		}
+		value := module.Declarations[0].Body[0].Value
+		if value.Kind != "match" || value.Arms[0].Value.Pos.Offset != strings.LastIndex(source, "doubled") || value.Arms[1].Body[0].Value.Pos.Offset != strings.Index(source, "0"+ending) {
+			t.Fatalf("match expression lost recovered positions: %+v", value)
+		}
+	}
+}
+
+func TestPartialIndexCandidatesOwnTheirPositions(t *testing.T) {
+	source := `fn broken(
+fn later(values: List[Int]) -> Unit:
+    let field = values[holder . index]
+    let nested = values[indices[index]]
+`
+	module, issues := ParsePartial("index.ms", source)
+	if len(issues) == 0 || len(module.Declarations) != 1 {
+		t.Fatal(module, issues)
+	}
+	body := module.Declarations[0].Body
+	field := body[0].Value.Right
+	if field.Pos.Offset != strings.Index(source, "index]") {
+		t.Fatal("field position ignored spaces", field.Pos)
+	}
+	nested := body[1].Value
+	offset := strings.LastIndex(source, "index]")
+	if nested.Types[0].Args[0].Pos.Offset != offset || nested.Right.Types[0].Pos.Offset != offset || nested.Right.Right.Pos.Offset != offset {
+		t.Fatal("shared type arguments rebased twice", nested.Types[0].Args[0].Pos, nested.Right.Types[0].Pos, nested.Right.Right.Pos)
+	}
+}

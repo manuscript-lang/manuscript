@@ -72,6 +72,7 @@ type Info struct {
 	Method      *Method
 	Native      string
 	NoReturn    bool
+	Breaks      bool
 	Write       bool
 	Captures    []*Binding
 	TypeArgs    []*Type

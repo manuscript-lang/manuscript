@@ -38,7 +38,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if std(typ, "Bytes") {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
-		if std(typ, "Task") || std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "List") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
+		if std(typ, "Task") || std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
 			c.error(e.Pos, "type", "standard type has no source constructor")
 			return i
 		}

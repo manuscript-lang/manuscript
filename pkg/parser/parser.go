@@ -4,6 +4,7 @@ package parser
 import (
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -345,7 +346,7 @@ func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statem
 	p.need(":")
 	if p.peek().Kind != lexer.Newline {
 		switch p.peek().Kind {
-		case "if", "while", "for", "with", "match":
+		case "if", "while", "for", "with":
 			p.fail(p.peek(), "inline bodies require one simple statement")
 		}
 		p.inlineStatement = true
@@ -373,7 +374,7 @@ func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statem
 	}
 	return body
 }
-func (p *Parser) statement() *syntax.Statement {
+func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 	t := p.peek()
 	s := &syntax.Statement{Pos: t.Pos, Kind: t.Kind}
 	switch {
@@ -418,42 +419,6 @@ func (p *Parser) statement() *syntax.Statement {
 		p.need("=")
 		s.Value = p.expression(0)
 		s.Body = p.suite()
-	case p.take("match"):
-		s.Value = p.expression(0)
-		p.need(":")
-		p.need(lexer.Newline)
-		p.need(lexer.Indent)
-		for {
-			p.newlines()
-			if p.peek().Kind == lexer.Dedent {
-				break
-			}
-			a := syntax.Arm{Pos: p.peek().Pos}
-			if p.take("_") {
-				a.Path = &syntax.Expression{Kind: syntax.KindName, Text: "_", Pos: a.Pos}
-			} else {
-				a.Path = p.casePath()
-				if p.take("(") {
-					for {
-						tok := p.peek()
-						if !p.take("_") {
-							p.need(lexer.Name)
-						}
-						a.Names = append(a.Names, tok.Text)
-						if !p.take(",") {
-							break
-						}
-						if p.peek().Kind == ")" {
-							break
-						}
-					}
-					p.need(")")
-				}
-			}
-			a.Body = p.suite()
-			s.Arms = append(s.Arms, a)
-		}
-		p.need(lexer.Dedent)
 	default:
 		e := p.expression(0)
 		if p.take("=") {
@@ -468,8 +433,8 @@ func (p *Parser) statement() *syntax.Statement {
 			}
 			s.Value = p.expression(0)
 		} else {
-			if e.Kind != syntax.KindCall {
-				p.fail(t, "only a call can be a standalone expression statement")
+			if e.Kind != syntax.KindCall && e.Kind != syntax.KindMatch && len(allowValue) == 0 {
+				p.fail(t, "only a call or match can be a standalone expression statement")
 			}
 			s.Kind = syntax.KindCall
 			s.Value = e
@@ -601,6 +566,10 @@ func (p *Parser) primary() *syntax.Expression {
 			}
 			p.need("]")
 		}
+	case "match":
+		e.Kind = syntax.KindMatch
+		e.Left = p.expression(0)
+		e.Arms = p.matchArms()
 	case "fn":
 		e.Kind = syntax.KindLambda
 		e.Text = ""
@@ -616,7 +585,7 @@ func (p *Parser) primary() *syntax.Expression {
 			name := p.need(lexer.Name)
 			e = &syntax.Expression{Kind: syntax.KindMember, Pos: name.Pos, Text: name.Text, Left: e}
 		} else if p.take("[") {
-			e = &syntax.Expression{Kind: syntax.KindApply, Pos: t.Pos, Left: e, Types: p.typeArgs()}
+			e = p.bracket(e)
 		} else if p.take("(") {
 			call := &syntax.Expression{Kind: syntax.KindCall, Pos: e.Pos, Left: e}
 			if !p.take(")") {
@@ -743,4 +712,149 @@ func (p *Parser) text(token lexer.Token) *syntax.Expression {
 		e.Parts = []syntax.TextPart{{Text: ""}}
 	}
 	return e
+}
+
+func (p *Parser) matchArms() []syntax.Arm {
+	var arms []syntax.Arm
+	p.need(":")
+	p.need(lexer.Newline)
+	p.need(lexer.Indent)
+	for {
+		p.newlines()
+		if p.peek().Kind == lexer.Dedent {
+			break
+		}
+		a := syntax.Arm{Pos: p.peek().Pos}
+		if p.take("_") {
+			a.Path = &syntax.Expression{Kind: syntax.KindName, Text: "_", Pos: a.Pos}
+		} else {
+			a.Path = p.casePath()
+			if p.take("(") {
+				for {
+					tok := p.peek()
+					if !p.take("_") {
+						p.need(lexer.Name)
+					}
+					a.Names = append(a.Names, tok.Text)
+					if !p.take(",") {
+						break
+					}
+					if p.peek().Kind == ")" {
+						break
+					}
+				}
+				p.need(")")
+			}
+		}
+		p.valueArm(&a)
+		arms = append(arms, a)
+	}
+	p.need(lexer.Dedent)
+	return arms
+}
+
+// Brackets may contain types or a value. Retain both interpretations of a
+// single name/application until name resolution identifies the receiver.
+func (p *Parser) bracket(left *syntax.Expression) *syntax.Expression {
+	start := p.at
+	var types []*syntax.Type
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if _, ok := r.(syntax.Diagnostic); !ok {
+					panic(r)
+				}
+				types = nil
+				p.at = start
+			}
+		}()
+		types = p.typeArgs()
+	}()
+	if types != nil {
+		e := &syntax.Expression{Kind: syntax.KindApply, Pos: left.Pos, Left: left, Types: types}
+		if len(types) == 1 {
+			e.Right = p.typeValue(types[0])
+		}
+		return e
+	}
+	index := p.expression(0)
+	p.need("]")
+	return &syntax.Expression{Kind: syntax.KindIndex, Pos: left.Pos, Left: left, Right: index}
+}
+
+func (p *Parser) typeValue(t *syntax.Type) *syntax.Expression {
+	if t.Name == "fn" {
+		return nil
+	}
+	names := strings.Split(t.Name, ".")
+	e := &syntax.Expression{Kind: syntax.KindName, Pos: t.Pos, Text: names[0]}
+	token := sort.Search(len(p.tokens), func(i int) bool { return p.tokens[i].Pos.Offset >= t.Pos.Offset })
+	for index, name := range names[1:] {
+		pos := p.tokens[token+2*(index+1)].Pos
+		e = &syntax.Expression{Kind: syntax.KindMember, Pos: pos, Left: e, Text: name}
+	}
+	if len(t.Args) > 0 {
+		e = &syntax.Expression{Kind: syntax.KindApply, Pos: t.Pos, Left: e, Types: copyTypes(t.Args)}
+		if len(t.Args) == 1 {
+			e.Right = p.typeValue(t.Args[0])
+		}
+	}
+	return e
+}
+
+// An arm's final expression supplies its value; a statement-only arm yields Unit.
+func (p *Parser) valueArm(a *syntax.Arm) {
+	outer := p.inlineStatement
+	defer func() { p.inlineStatement = outer }()
+	p.need(":")
+	indented := p.take(lexer.Newline)
+	if indented {
+		p.need(lexer.Indent)
+	}
+	p.inlineStatement = !indented
+	for {
+		a.Body = append(a.Body, p.statement(true))
+		if !indented {
+			break
+		}
+		p.newlines()
+		if p.peek().Kind == lexer.Dedent || p.peek().Kind == lexer.EOF {
+			break
+		}
+	}
+	last := a.Body[len(a.Body)-1]
+	if last.Kind == syntax.KindCall {
+		a.Value = last.Value
+		a.Body = a.Body[:len(a.Body)-1]
+	}
+	for _, statement := range a.Body {
+		if statement.Kind == syntax.KindCall && statement.Value.Kind != syntax.KindCall && statement.Value.Kind != syntax.KindMatch {
+			p.fail(lexer.Token{Pos: statement.Pos}, "an arm value must be its final expression")
+		}
+	}
+	if indented {
+		p.need(lexer.Dedent)
+	} else {
+		p.inlineStatement = false
+		p.end()
+	}
+}
+
+// The two possible bracket interpretations own their positions independently:
+// recovery rebases each subtree, and must never shift a shared type twice.
+func copyTypes(types []*syntax.Type) []*syntax.Type {
+	result := make([]*syntax.Type, len(types))
+	for index, typ := range types {
+		copy := *typ
+		copy.Args = copyTypes(typ.Args)
+		copy.Params = append([]syntax.Parameter(nil), typ.Params...)
+		for index := range copy.Params {
+			copy.Params[index].Type = copyTypes([]*syntax.Type{typ.Params[index].Type})[0]
+		}
+		if typ.Result != nil {
+			copy.Result = copyTypes([]*syntax.Type{typ.Result})[0]
+		}
+		result[index] = &copy
+	}
+	return result
 }

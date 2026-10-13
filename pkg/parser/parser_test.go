@@ -42,7 +42,7 @@ func TestRejectSyntax(t *testing.T) {
 		"bad escape":            "import panic from \"@std/faults.ms\"\n\ntest \"bad\":\n    if not (\"\\q\" == \"\"):\n        return panic(message: \"check failed\")\n",
 		"invalid scalar":        "import panic from \"@std/faults.ms\"\n\ntest \"bad\":\n    if not (\"\\u{D800}\" == \"\"):\n        return panic(message: \"check failed\")\n",
 		"numeric suffix":        "fn f() -> Int:\n    return 1_000\n",
-		"indexing":              "fn f() -> Int:\n    return values[0]\n",
+		"index arity":           "fn f() -> Int:\n    return values[0, 1]\n",
 		"single-line lambda":    "fn f() -> Unit:\n    let g = fn() -> Int: 1\n",
 		"loop pattern":          "fn f() -> Unit:\n    for [key, value] in entries:\n        return\n",
 		"interpolation comment": "fn f() -> String:\n    return \"{1 # comment}\"\n",

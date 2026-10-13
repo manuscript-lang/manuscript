@@ -50,6 +50,9 @@ func (c *checker) effectSummaries() {
 				}
 			},
 			Expression: func(expression *syntax.Expression) {
+				if info := c.Expressions[expression]; info != nil && info.Native == "index" {
+					add(n, "read")
+				}
 				if expression.Kind == syntax.KindMember {
 					if receiver := c.Expressions[expression.Left]; receiver != nil && receiver.Type.Kind == syntax.KindRecord && c.Expressions[expression].Method == nil {
 						add(n, "read")

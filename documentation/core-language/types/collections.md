@@ -22,6 +22,7 @@ Brackets construct mutable lists of values:
 ```manuscript
 let values = [1, 2, 3]
 let empty: List[Int] = []
+let also_empty = List[Int]()
 ```
 
 The first literal infers `List[Int]`. An empty literal gets its element type from an annotation or the expected parameter type. Every element must match the list's element type; numeric conversions are explicit. Elements evaluate from left to right, and nested lists remain nested.
@@ -76,7 +77,8 @@ A `for` loop and collection callback traversals snapshot collection membership o
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `List[T]` | `length() -> Int`; `at(index: Int) -> Optional[T]` |
+| `List[T]()` | Empty `List[T]` |
+| `List[T]` | `length() -> Int`; `at(index: Int) -> Optional[T]`; `[index] -> Optional[T]` |
 | `List[T]` | `append(value: T) -> List[T]`; `concat(values: List[T]) -> List[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
 | `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
@@ -85,7 +87,7 @@ A `for` loop and collection callback traversals snapshot collection membership o
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
 | `Set[T]` | `with_value(value: T) -> Set[T]`; `without(value: T) -> Set[T]` |
 
-All existing element and key bounds apply. An empty Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. List construction uses the existing bracket literal. List and Bytes `.at` accept relative negative indexes; out-of-range indexes return `none`. A size exceeding MaxInt64 faults.
+All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding MaxInt64 faults.
 
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
 

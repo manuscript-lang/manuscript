@@ -47,7 +47,25 @@ func (g *generator) expression(e *syntax.Expression) string {
 }
 
 func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) string {
+	if info.Native == "index" {
+		return "rt.Index(" + g.expression(e.Left) + "," + g.expression(e.Right) + ")"
+	}
 	switch e.Kind {
+	case syntax.KindIndex:
+		return "rt.Index(" + g.expression(e.Left) + "," + g.expression(e.Right) + ")"
+	case syntax.KindMatch:
+		g.expressionDepth++
+		body := g.match(e.Left, e.Arms, func(a *syntax.Arm) string {
+			body := g.body(a.Body)
+			value := "rt.Unit{}"
+			if a.Value != nil {
+				value = g.expression(a.Value)
+			}
+			return body + "return " + value + "\n"
+		})
+		g.expressionDepth--
+		return "func() rt.Value {\n" + body + "return rt.Panic(\"runtime invariant: exhaustive match\")\n}()"
+
 	case syntax.KindNumber:
 		if strings.HasSuffix(e.Text, "d") {
 			return "rt.DecimalLiteral(" + quote(e.Text) + ")"

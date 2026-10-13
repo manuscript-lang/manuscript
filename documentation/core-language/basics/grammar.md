@@ -150,7 +150,7 @@ There are no module-level executable statements or `let`/`var` bindings. Functio
 ```ebnf
 Suite         = ":", (SimpleStatement | NEWLINE, INDENT, Statement, { Statement }, DEDENT) ;
 Statement     = SimpleStatement, NEWLINE
-              | IfStatement | WhileStatement | ForStatement | MatchStatement
+              | IfStatement | WhileStatement | ForStatement
               | WithStatement ;
 SimpleStatement = Binding | Assignment | ReturnStatement | "break" | "continue"
                 | CallStatement ;
@@ -164,9 +164,11 @@ IfStatement   = "if", Expression, Suite,
 WhileStatement = "while", Expression, Suite ;
 ForStatement  = "for", Name, "in", Expression, Suite ;
 WithStatement = "with", Name, "=", Expression, Suite ;
-MatchStatement = "match", Expression, ":", NEWLINE, INDENT,
+MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                  MatchArm, { MatchArm }, DEDENT ;
-MatchArm      = CasePattern, Suite | "_", Suite ;
+MatchArm      = (CasePattern | "_"), ArmSuite ;
+ArmSuite      = ":", (SimpleStatement | Expression
+              | NEWLINE, INDENT, { Statement }, [ Expression, NEWLINE ], DEDENT) ;
 CasePattern   = CasePath, [ "(", PayloadNames, ")" ] ;
 CasePath      = Name, [ TypeArguments ], { ".", Name } ;
 PayloadNames  = (Name | "_"), { ",", (Name | "_") }, [ "," ] ;
@@ -177,9 +179,9 @@ RecordPattern = "{", RecordEntry, { ",", RecordEntry }, [ "," ], "}" ;
 RecordEntry   = Name, [ ":", BindingPattern ] ;
 ```
 
-`CallStatement` must resolve to a call expression; arithmetic expressions or bare names are not standalone statements. Assignment replaces an existing `var` binding or updates a record field. Collection positions are updated through methods. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
+`CallStatement` accepts a call or match expression and discards its result; arithmetic expressions or bare names are not standalone statements. A match arm may end with any expression to produce its value. Assignment replaces an existing `var` binding or updates a record field. Collection positions are updated through methods. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
 
-Inline suites work for functions, methods, tests, branches, loops, cleanup scopes, and match arms. They contain one simple statement, with no semicolon separators or nested compound statements. For example:
+Inline suites work for functions, methods, tests, branches, loops, and cleanup scopes. They contain one simple statement, with no semicolon separators or nested compound statements. For example:
 
 ```manuscript
 fn double(value: Int) -> Int: return value * 2
@@ -190,7 +192,9 @@ fn positive(value: Int) -> Bool:
 
 `else` and `else if` must start on separate lines at the corresponding `if` header's indentation. Each branch may have its own inline body. Inline and indented branches may be mixed.
 
-`else if` is two words; `elif` is not syntax. Alternative match patterns use exact positional case payloads, not constructor argument labels. On a contract view, the same pattern syntax names a complete concrete record or alternative type and exactly one receiver binding; a final wildcard is required. Their exhaustiveness, wildcard position, and binding checks are in [pattern matching](../control-flow/pattern-matching.md). `if`, `match`, loops, and `with` are statements, not value-producing expressions. Local type/implementation/import/test declarations are not accepted. Nested named function declarations are rejected; bind an anonymous function to a local name instead.
+A short match arm contains one statement or value expression after its colon; an indented arm may contain statements followed by a value.
+
+`else if` is two words; `elif` is not syntax. Alternative match patterns use exact positional case payloads, not constructor argument labels. On a contract view, the same pattern syntax names a complete concrete record or alternative type and exactly one receiver binding; a final wildcard is required. Their exhaustiveness, wildcard position, and binding checks are in [pattern matching](../control-flow/pattern-matching.md). `match` is an expression, including when its value is discarded on a line of its own. `if`, loops, and `with` are statements. Local type/implementation/import/test declarations are not accepted. Nested named function declarations are rejected; bind an anonymous function to a local name instead.
 
 The existing [with construct](../cleanup/scopes.md) supplies its cleanup contract. This grammar does not define a move, borrow, consuming function kind, spawn keyword, or deferred-call construct. Runtime APIs are checked according to their own declarations and may impose more constraints on otherwise ordinary calls and list literals.
 

@@ -88,6 +88,7 @@ type Expression struct {
 	Params      []Parameter
 	Result      *Type
 	Body        []*Statement
+	Arms        []Arm
 }
 type Pattern struct {
 	Pos        Position
@@ -104,6 +105,7 @@ type Arm struct {
 	Pos   Position
 	Path  *Expression
 	Names []string
+	Value *Expression
 	Body  []*Statement
 }
 type Statement struct {
@@ -115,5 +117,4 @@ type Statement struct {
 	Target     *Expression
 	Value      *Expression
 	Body, Else []*Statement
-	Arms       []Arm
 }

@@ -74,6 +74,20 @@ func Binary(op string, a, b Value) Value {
 		return !Equal(a, b)
 	}
 	switch x := a.(type) {
+	case string:
+		y := b.(string)
+		switch op {
+		case "+":
+			return x + y
+		case "<":
+			return x < y
+		case "<=":
+			return x <= y
+		case ">":
+			return x > y
+		case ">=":
+			return x >= y
+		}
 	case int64:
 		y := b.(int64)
 		switch op {

@@ -48,10 +48,14 @@ func (g *generator) statement(s *syntax.Statement) string {
 		}
 		return g.programBinding(s.Name, s.Value) + " = " + g.expression(s.Value) + "\n"
 	case syntax.KindReturn:
-		if s.Value == nil {
-			return "return rt.Unit{}\n"
+		value := "rt.Unit{}"
+		if s.Value != nil {
+			value = g.expression(s.Value)
 		}
-		return "return " + g.expression(s.Value) + "\n"
+		if g.expressionDepth > 0 {
+			value = "rt.Return(" + value + ")"
+		}
+		return "return " + value + "\n"
 	case syntax.KindCall:
 		return "_ = " + g.expression(s.Value) + "\n"
 	case syntax.KindBreak, syntax.KindContinue:
@@ -65,6 +69,10 @@ func (g *generator) statement(s *syntax.Statement) string {
 		}
 		label := g.loopLabels[len(g.loopLabels)-1]
 		label.used = true
+		if label.depth < g.expressionDepth || label.escaped {
+			label.escaped = true
+			return out + "rt.ExitLoop(" + strconv.FormatBool(s.Kind == syntax.KindBreak) + ")\n"
+		}
 		return out + s.Kind + " " + label.name + "\n"
 	case syntax.KindIf:
 		out := "if rt.Bool(" + g.expression(s.Value) + "){\n" + g.body(s.Body) + "}"
@@ -74,9 +82,9 @@ func (g *generator) statement(s *syntax.Statement) string {
 		return out + "\n"
 	case syntax.KindWhile:
 		g.loopCleanup = append(g.loopCleanup, len(g.cleanups))
-		label := &loopLabel{name: g.temp()}
+		label := &loopLabel{name: g.temp(), depth: g.expressionDepth}
 		g.loopLabels = append(g.loopLabels, label)
-		body := g.body(s.Body)
+		body := g.loopBody(s.Body, label)
 		g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
 		g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
 		prefix := ""
@@ -87,9 +95,9 @@ func (g *generator) statement(s *syntax.Statement) string {
 	case syntax.KindFor:
 		b := g.program.LoopBindings[s]
 		g.loopCleanup = append(g.loopCleanup, len(g.cleanups))
-		label := &loopLabel{name: g.temp()}
+		label := &loopLabel{name: g.temp(), depth: g.expressionDepth}
 		g.loopLabels = append(g.loopLabels, label)
-		body := g.body(s.Body)
+		body := g.loopBody(s.Body, label)
 		g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
 		g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
 		prefix := ""
@@ -110,36 +118,6 @@ func (g *generator) statement(s *syntax.Statement) string {
 			contract = quote("")
 		}
 		return "{\n" + b.ID + " := " + g.expression(s.Value) + "; _ = " + b.ID + "\n" + cleanup + " := cleanupStack.PushContract(ctx," + b.ID + "," + contract + "," + g.typeScope(b.Type) + ")\n" + body + cleanup + ".Run()\n}\n"
-	case syntax.KindMatch:
-		tmp := g.temp()
-		contractMatch := g.program.Expressions[s.Value].Type.Kind == "contract"
-		out := tmp + " := " + g.expression(s.Value) + "\n"
-		if contractMatch {
-			out += tmp + " = rt.ContractReceiver(" + tmp + ")\nswitch rt.ConcreteType(" + tmp + "){\n"
-		} else {
-			out += "switch rt.Tag(" + tmp + "){\n"
-		}
-		for index := range s.Arms {
-			a := &s.Arms[index]
-			if a.Path.Text == "_" {
-				out += "default:\n"
-			} else if contractMatch {
-				out += "case " + g.key(g.program.ContractPatterns[a]) + ":\n"
-			} else {
-				out += "case " + quote(a.Path.Text) + ":\n"
-			}
-			for i, b := range g.program.ArmBindings[a] {
-				if b != nil {
-					value := "rt.Payload(" + tmp + "," + strconv.Itoa(i) + ")"
-					if contractMatch {
-						value = tmp
-					}
-					out += b.ID + " := " + value + "; _ = " + b.ID + "\n"
-				}
-			}
-			out += g.body(a.Body)
-		}
-		return out + "}\n"
 	}
 	return ""
 }
@@ -147,4 +125,54 @@ func (g *generator) statement(s *syntax.Statement) string {
 // Assignment binding identities are recorded by the checker, including shadows.
 func (g *generator) programBinding(name string, e *syntax.Expression) string {
 	return g.program.Assignments[e].ID
+}
+
+func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func(*syntax.Arm) string) string {
+	tmp := g.temp()
+	contractMatch := g.program.Expressions[value].Type.Kind == "contract"
+	out := tmp + " := " + g.expression(value) + "\n"
+	if contractMatch {
+		out += tmp + " = rt.ContractReceiver(" + tmp + ")\nswitch rt.ConcreteType(" + tmp + "){\n"
+	} else {
+		out += "switch rt.Tag(" + tmp + "){\n"
+	}
+	for index := range arms {
+		a := &arms[index]
+		if a.Path.Text == "_" {
+			out += "default:\n"
+		} else if contractMatch {
+			out += "case " + g.key(g.program.ContractPatterns[a]) + ":\n"
+		} else {
+			out += "case " + quote(a.Path.Text) + ":\n"
+		}
+		for i, b := range g.program.ArmBindings[a] {
+			if b != nil {
+				value := "rt.Payload(" + tmp + "," + strconv.Itoa(i) + ")"
+				if contractMatch {
+					value = tmp
+				}
+				out += b.ID + " := " + value + "; _ = " + b.ID + "\n"
+			}
+		}
+		out += body(a)
+	}
+	return out + "}\n"
+}
+
+// A loop containing match expressions gets a boundary for exits from their
+// generated closures. Scan before lowering so nested loops are emitted once.
+func (g *generator) loopBody(statements []*syntax.Statement, label *loopLabel) string {
+	syntax.Visitor{Expression: func(e *syntax.Expression) {
+		if e.Kind == syntax.KindMatch {
+			label.escaped = true
+		}
+	}}.Callable(nil, statements)
+	if !label.escaped {
+		return g.body(statements)
+	}
+	label.used = true
+	g.expressionDepth++
+	body := g.body(statements)
+	g.expressionDepth--
+	return "switch rt.LoopBody(func() rt.Value {\n" + body + "return rt.Unit{}\n}) {\ncase 1: break " + label.name + "\ncase 2: continue " + label.name + "\n}\n"
 }

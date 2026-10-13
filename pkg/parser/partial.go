@@ -130,6 +130,12 @@ func rebase(module *syntax.Module, offset, lines int) {
 		parameters(e.Params)
 		typ(e.Result)
 		body(e.Body)
+		for i := range e.Arms {
+			position(&e.Arms[i].Pos)
+			expression(e.Arms[i].Path)
+			body(e.Arms[i].Body)
+			expression(e.Arms[i].Value)
+		}
 	}
 	body = func(statements []*syntax.Statement) {
 		for _, s := range statements {
@@ -140,11 +146,6 @@ func rebase(module *syntax.Module, offset, lines int) {
 			expression(s.Value)
 			body(s.Body)
 			body(s.Else)
-			for i := range s.Arms {
-				position(&s.Arms[i].Pos)
-				expression(s.Arms[i].Path)
-				body(s.Arms[i].Body)
-			}
 		}
 	}
 	declaration = func(d *syntax.Declaration) {
