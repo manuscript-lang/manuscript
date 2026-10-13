@@ -2,8 +2,11 @@
 
 ## Unreleased
 
+- Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
+
 - Fix standard-library data bugs: `String.upper()`/`lower()` use full Unicode case mapping (`ß` to `SS`, final sigma, `İ`); negative `split`/`replace` limits fault with the operation and parameter; `bigint.parse(max_digits: 0)` is a real zero budget; TOML and YAML parse errors report the offending line and column.
 - Update the VS Code language client and packaging dependencies; the extension now requires VS Code 1.91 or newer.
+- Accept `--flag=value` for value-taking CLI long options, reject empty required values and unsupported output options, and resolve project directories consistently in `ms doc`.
 
 - Embed Delve in `ms debug` and `ms dap`; VS Code no longer needs `dlv`. CGO remains disabled; macOS still requires Apple debugserver from Xcode command line tools.
 
@@ -20,4 +23,5 @@
 - Reuse the CLI across conformance tests, execute complete tutorial examples, and collect dependency-package coverage.
 - Separate frontend facts from host runtime implementations and verify native signatures in integration tests.
 - Validate compressed toolchain archives before cache publication, including interrupted downloads.
+- Preserve case-equivalent HTTP header keys as separate values in insertion order, including `Set-Cookie`; reject malformed outgoing header values before emission.
 - Add repeatable dependency/pin maintenance, license inventories, and one shared release version.

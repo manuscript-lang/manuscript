@@ -62,6 +62,81 @@ type Int:
     fn to_decimal() -> Decimal:
 ```
 
+## List {data-api-kind="Native type"}
+
+An ordered collection of values with indexing, iteration, and transformation operations.
+
+```manuscript
+type List[T]:
+    fn clone() -> List[T]:
+    fn at(index: Int) -> Optional[T]:
+    fn contains(value: T) -> Bool:
+    fn index_of(value: T) -> Optional[Int]:
+    fn last_index_of(value: T) -> Optional[Int]:
+    fn first() -> Optional[T]:
+    fn last() -> Optional[T]:
+    fn is_empty() -> Bool:
+    fn prepend(value: T) -> List[T]:
+    fn with_value(index: Int, value: T) -> List[T]:
+    fn without(index: Int) -> List[T]:
+    fn slice(start: Int, end: Int) -> List[T]:
+    fn reverse() -> List[T]:
+    fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    fn some(predicate: fn(value: T) -> Bool) -> Bool:
+    fn every(predicate: fn(value: T) -> Bool) -> Bool:
+    fn for_each(operation: fn(value: T) -> Unit) -> Unit:
+    fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]:
+    fn map[U](transform: fn(value: T) -> U) -> List[U]:
+    fn flat_map[U](transform: fn(value: T) -> List[U]) -> List[U]:
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+    fn fill(value: T, start: Int, end: Int) -> List[T]:
+    fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
+    fn to_set() -> Set[T]:
+    fn keys() -> List[Int]:
+    fn entries() -> List[ListEntry[T]]:
+    fn join(separator: String) -> String:
+    fn append(value: T) -> List[T]:
+    fn concat(values: List[T]) -> List[T]:
+    fn length() -> Int:
+```
+
+## Map {data-api-kind="Native type"}
+
+A mutable key-value collection. Keys use explicit `Hashable` value semantics.
+
+```manuscript
+type Map[T: Hashable, U]:
+    fn clone() -> Map[T, U]:
+    fn is_empty() -> Bool:
+    fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+    fn get_or(key: T, fallback: U) -> U:
+    fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn with_default(key: T, value: U) -> Map[T, U]:
+    fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
+    fn clear() -> Map[T, U]:
+    fn keys() -> List[T]:
+    fn values() -> List[U]:
+    fn entries() -> List[MapEntry[T, U]]:
+    fn merge(other: Map[T, U]) -> Map[T, U]:
+    fn for_each(operation: fn(key: T, value: U) -> Unit) -> Unit:
+    fn contains(key: T) -> Bool:
+    fn get(key: T) -> Optional[U]:
+    fn length() -> Int:
+    fn add(key: T, value: U) -> Map[T, U]:
+    fn with_entry(key: T, value: U) -> Map[T, U]:
+    fn without(key: T) -> Map[T, U]:
+```
+
 ## Never {data-api-kind="Type"}
 
 ```manuscript
@@ -84,6 +159,8 @@ type Optional[T]:
     fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
     fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
+    fn ok_or[E](cause: E) -> Result[T, E]:
+    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
 ## Result {data-api-kind="Alternative"}
@@ -102,6 +179,7 @@ type Result[T, E]:
     fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+    fn to_optional() -> Optional[T]:
 ```
 
 ## String {data-api-kind="Type"}

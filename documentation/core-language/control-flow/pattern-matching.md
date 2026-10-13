@@ -38,7 +38,7 @@ fn amount(text: String) -> Result[Int, String]:
 
 This fragment uses the standard `Optional` and `Result` imports. `return` exits the enclosing function, including from a match used inside another expression; lexical cleanup still runs. `break` and `continue` target the enclosing loop. A nested anonymous function retains its own return boundary.
 
-Short arms may place the value after the colon, such as `none: 0`. For an arm used only for effects, finish with `unit` when its last call returns another type. A match has the same typing rules whether its result is used or discarded.
+Short arms may place the value after the colon, such as `none: 0`. For an arm used only for effects, finish with `unit` when its last call returns another type. When a match stands on its own as a statement its result is discarded, so its arms need not agree on a type; when the result is used (a binding, argument, or `return`), every arm must produce that type. An empty arm is written `unit`; `pass` is not a keyword.
 
 ## Payload patterns
 
@@ -60,6 +60,20 @@ fn horizontal(position: Position) -> Int:
 `Point(x: local, y: other):` is rejected at parsing. `Point(x):` is rejected for wrong arity. Repeated binding identifiers are rejected, while `_` can occur repeatedly because it creates no name. Each arm's payload bindings and body share a lexical scope nested inside the enclosing scope.
 
 An unqualified case in a pattern resolves within the scrutinee's alternative type. A qualified case must belong to that exact type. `Other.Point(...)` cannot match `Position`, even when its payload types have the same shape. Constructor-expression name lookup instead follows [alternative construction](../types/alternatives.md).
+
+Payload identifiers always create fresh bindings. For example, `error(NotFound)`
+matches every error payload, even when `NotFound` is a case of that payload's
+type. It does not test for that case. Bind `error(cause)` and pass `cause` to a
+helper that matches its cases, including `NotFound:` and the remaining cases.
+A case that carries data needs its own payload names or `_` placeholders in the
+helper's match. Keep matches flat; nested matches are an anti-pattern.
+
+`ms lint` reports MSL106 at a capitalized payload identifier that coincides with
+a known case or type name. The editor publishes the same advisory as a warning;
+`ms check` still accepts the binding. If binding the whole payload is intentional,
+use a name such as `cause` or `_cause`. Capitalized names without a known case or
+type identity are allowed, and an enclosing value binding or generic parameter
+with that name takes precedence when deciding whether to warn.
 
 ## Exhaustiveness
 

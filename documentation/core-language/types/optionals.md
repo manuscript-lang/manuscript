@@ -104,6 +104,19 @@ fn display_name(name: Optional[String]) -> String:
 
 Use [Result](../errors/results.md) when a failure needs an explanation. An absent value and a failed operation express different contracts. `try` propagates a `Result` error; the design specifies no corresponding implicit propagation for an optional.
 
+## Converting absence to a Result
+
+`ok_or[E](cause: E) -> Result[T, E]` returns `ok` with the original present payload, or `error` with `cause` when absent. The cause expression is an ordinary eager argument, including when the Optional is present. `E` can be any type and does not need an Error implementation.
+
+`ok_or_else[E](create: fn() -> E) -> Result[T, E]` calls `create` once only for absence. It runs in the caller's execution context; faults and cancellation propagate normally. Both conversions retain payload references and nested Optional/Result values.
+
+```manuscript
+fn require_name(name: Optional[String]) -> Result[String, String]:
+    return name.ok_or("missing name")
+```
+
+Use [Result.to_optional](../errors/results.md#converting-success-to-an-optional) to keep success while discarding an error.
+
 ## Data modeling
 
 A [record](records.md) can contain optional fields, such as `email: Optional[String]`. Manuscript has no nullable reference type: put absence in the declared type and handle it with Optional methods or [pattern matching](../control-flow/pattern-matching.md).

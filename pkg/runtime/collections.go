@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"slices"
@@ -65,7 +66,7 @@ func constructor(typ string, args []Argument) Value {
 		for i, v := range values {
 			n := v.(int64)
 			if n < 0 || n > 255 {
-				return Panic("byte value must be between 0 and 255; clamp or validate the Int before storing it as a byte")
+				return libraryRangeFault("Bytes", fmt.Sprintf("values[%d]", i), n, 0, 255)
 			}
 			bytes[i] = byte(n)
 		}
@@ -207,9 +208,12 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			if len(scopes[0].Args) > 0 {
 				child.EqualityScope = scopes[0].Args[0]
 			}
-			// Set.map deduplicates the output, whose implementation evidence
-			// can differ from the receiver element's scope.
-			if _, set := receiver.(*Set); set && name == "map" && len(scopes) > 1 && len(scopes[1].Args) > 0 {
+			// Key/element transformations deduplicate outputs, whose evidence
+			// can differ from the receiver key/element's scope.
+			_, set := receiver.(*Set)
+			_, mapping := receiver.(*Map)
+			outputKeys := set && name == "map" || mapping && name == "map_keys"
+			if outputKeys && len(scopes) > 1 && len(scopes[1].Args) > 0 {
 				child.EqualityScope = scopes[1].Args[0]
 			}
 			return originalBody(&child, args)

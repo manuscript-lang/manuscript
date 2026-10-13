@@ -14,7 +14,7 @@ Functions, methods, function values, record/case constructors and contract views
 - `Queue[T]()` creates an unbounded local FIFO. `Queue[T](capacity: 4)` supplies a fixed positive bound through its `capacity: Optional[Int]` constructor argument; supplied payloads are wrapped once under the [optional argument rules](https://manuscript-lang.github.io/manuscript/core-language/types/optionals/#passing-optional-arguments). A nonpositive explicit capacity is a programming fault. Shared access requires `Synchronized[Queue[T]]`.
 - `Synchronized[T](value: T)` stores a value behind a mutex. Its `lock()` returns a `SynchronizedGuard[T]` for `with`; guard get/set require an active acquisition, and close releases it.
 - `Bytes(values: List[Int])` constructs bytes. The runtime checks the byte range.
-- `List[T]()` constructs an empty list, with explicit type arguments or a complete expected List type. List literals remain available.
+- Prelude `List[T]()` and `Map[K, V]()` construct empty collections, with explicit type arguments or a complete expected type. List and map literals need no imports; explicit imports remain supported. Map keys still require `Hashable`. `Map.add(key, value)` inserts or replaces a value, returns the receiver and preserves the original key and insertion position; `with_entry` remains compatible.
 - `Task`, `SynchronizedGuard`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Durations use literals; other values come from APIs or conversions.
 - `.clone()` is built in on records, alternatives, List, Map, Set, and Bytes and returns the same concrete data type with separate outer storage. It does not clone nested handles or introduce a method on native services.
 - Records use their listed fields as constructor arguments, with optional labels and declaration-order positional slots. Alternatives construct one listed case. Interfaces describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
@@ -79,7 +79,7 @@ type ArchiveLimits:
 
 **Function**
 
-Encodes entries as `zip` or `tar` bytes. `max_bytes` bounds output when supplied.
+Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.
 
 ```manuscript
 fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
@@ -89,7 +89,8 @@ fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = 
 
 **Function**
 
-Decodes `zip` or `tar` bytes and applies each supplied entry and total-size limit.
+Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.
+Applies each supplied entry and total-size limit.
 
 ```manuscript
 fn unpack(data: Bytes, format: String, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
@@ -294,7 +295,8 @@ Import each required symbol with `import Name from "@std/cli.ms"`.
 
 **Function**
 
-Returns process arguments, excluding the executable path.
+Returns the host-supplied startup arguments, excluding the executable path.
+Repeated calls share the same mutable list; mutations do not rewrite native argv.
 
 ```manuscript
 fn arguments() -> List[String]:
@@ -304,7 +306,8 @@ fn arguments() -> List[String]:
 
 **Function**
 
-Returns the process environment as a map of variable names to values.
+Returns the startup environment snapshot, not the live process environment.
+Repeated calls share the same mutable map; mutations do not call set_environment.
 
 ```manuscript
 fn environment() -> Map[String, String]:
@@ -312,7 +315,9 @@ fn environment() -> Map[String, String]:
 
 # @std/collections.ms
 
-Import each required symbol with `import Name from "@std/collections.ms"`.
+`List` and `Map` are available in the prelude; no import required.
+
+Other names require `import Name from "@std/collections.ms"`; explicit List/Map imports remain supported.
 
 ## CollectionError
 
@@ -413,7 +418,15 @@ type Map[T: Hashable, U]:
     fn clone() -> Map[T, U]:
     fn is_empty() -> Bool:
     fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+    fn map[W](transform: fn(key: T, value: U) -> W) -> Map[T, W]:
+    fn map_keys[W: Hashable](transform: fn(key: T, value: U) -> W) -> Map[W, U]:
     fn get_or(key: T, fallback: U) -> U:
+    fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    fn fold_right[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    fn find_last(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn with_default(key: T, value: U) -> Map[T, U]:
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
@@ -425,6 +438,7 @@ type Map[T: Hashable, U]:
     fn contains(key: T) -> Bool:
     fn get(key: T) -> Optional[U]:
     fn length() -> Int:
+    fn add(key: T, value: U) -> Map[T, U]:
     fn with_entry(key: T, value: U) -> Map[T, U]:
     fn without(key: T) -> Map[T, U]:
 ```
@@ -465,6 +479,12 @@ type Set[T: Hashable]:
     fn is_empty() -> Bool:
     fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
     fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn some(predicate: fn(value: T) -> Bool) -> Bool:
+    fn every(predicate: fn(value: T) -> Bool) -> Bool:
     fn union(right: Set[T]) -> Set[T]:
     fn intersection(right: Set[T]) -> Set[T]:
     fn difference(right: Set[T]) -> Set[T]:
@@ -552,7 +572,8 @@ impl Error for CompressionError:
 
 **Function**
 
-Compresses bytes using `gzip`, `zlib`, or `deflate` at the requested level.
+Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
+Other formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.
 `max_bytes` bounds the encoded output when supplied.
 
 ```manuscript
@@ -563,7 +584,8 @@ fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = 
 
 **Function**
 
-Decompresses supported data and stops when the supplied output limit is reached.
+Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
+Stops when the supplied output limit is reached.
 
 ```manuscript
 fn decompress(data: Bytes, format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
@@ -615,7 +637,8 @@ fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Res
 
 **Function**
 
-Computes an HMAC using `sha256`, `sha384`, or `sha512`.
+Computes an HMAC using exactly `sha256`, `sha384`, or `sha512` (case-sensitive).
+Other algorithms return CryptoError.Unsupported.
 
 ```manuscript
 fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, CryptoError]:
@@ -1106,7 +1129,8 @@ impl Error for FileSystemError:
 
 **Record**
 
-Capacity and free-space statistics for the filesystem containing a path.
+Capacity/free-space statistics: block_size is bytes, blocks/free/available are counts
+in those blocks, and files/files_free are native file-node counts (zero if unavailable).
 
 ```manuscript
 type FileSystemInfo:
@@ -1174,7 +1198,8 @@ interface TemporaryDirectory:
 
 **Function**
 
-Returns host filesystem flag, mode, and permission constants by name.
+Returns this host's filesystem flag, mode, and permission constants by name.
+Names and values vary by host; absent entries are not supported constants or portable enum cases.
 
 ```manuscript
 fn constants() -> Map[String, Int]:
@@ -1281,7 +1306,8 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 **Record**
 
-Buffered HTTP response metadata and body.
+Buffered HTTP response metadata and body. Header names have canonical spelling;
+Map lookup is case-sensitive. Lists preserve separate values in received order.
 
 ```manuscript
 type ClientResponse:
@@ -1295,6 +1321,7 @@ type ClientResponse:
 **Interface**
 
 Reusable HTTP client with connection pooling and explicit response limits.
+Outbound case-equivalent header keys append values in Map insertion order.
 
 ```manuscript
 interface HttpClient:
@@ -1347,6 +1374,8 @@ impl Error for HttpError:
 **Interface**
 
 One streaming server exchange. Read or write incrementally and close when done.
+Received header names have canonical spelling; Map lookup is case-sensitive.
+Sending case-equivalent names appends each list in Map insertion order.
 
 ```manuscript
 interface HttpExchange:
@@ -1382,6 +1411,8 @@ type HttpRequest:
 **Record**
 
 Buffered response returned by the simple HTTP server handler.
+Case-equivalent header keys emit separate values in Map insertion order.
+Use HttpExchange.send_headers for repeated values under one exact Map key.
 
 ```manuscript
 type HttpResponse:
@@ -1424,7 +1455,8 @@ type HttpServerOptions:
 
 **Interface**
 
-Streaming response body returned by HTTP client operations.
+Streaming response body returned by HTTP client operations. Header names have
+canonical spelling; Map lookup is case-sensitive. Lists keep received order.
 
 ```manuscript
 interface ResponseBody:
@@ -1454,7 +1486,8 @@ interface File:
 
 **Interface**
 
-Opens file resources using the current host's default filesystem.
+Opens read-only file resources using the current host's default filesystem.
+Native open failures (including missing paths and permission denial) become IoError.Unavailable.
 
 ```manuscript
 interface Files:
@@ -1498,7 +1531,9 @@ interface ReadStream:
 
 **Interface**
 
-A writable byte stream. Flush before relying on buffered data being delivered.
+A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
+Buffering/flush depends on the implementation: native stdout/stderr are unbuffered (flush is a no-op),
+while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
 
 ```manuscript
 interface WriteStream:
@@ -2281,6 +2316,8 @@ type Optional[T]:
     fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
     fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
+    fn ok_or[E](cause: E) -> Result[T, E]:
+    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
 # @std/path.ms
@@ -2565,7 +2602,7 @@ interface Commands:
 
 **Record**
 
-CPU time consumed by the current process.
+Cumulative CPU time consumed by the current process, in integer microseconds.
 
 ```manuscript
 type CpuUsage:
@@ -2577,7 +2614,7 @@ type CpuUsage:
 
 **Record**
 
-Memory statistics for the current process.
+Memory statistics for the current process; every field is bytes.
 
 ```manuscript
 type MemoryUsage:
@@ -2593,6 +2630,9 @@ type MemoryUsage:
 **Interface**
 
 Process and operating-system controls for the current process.
+`watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
+`next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup
+and finish shutdown work directly in the shielded close call after joining cancelled workers.
 
 ```manuscript
 interface ProcessControl:
@@ -2669,7 +2709,10 @@ type ProcessInfo:
 
 **Record**
 
-Kernel resource counters for the current process.
+Kernel resource counters for the current process. CPU times are integer microseconds;
+max_resident_bytes is bytes; other fields are counts, not durations or byte totals.
+Filesystem reads/writes count native block I/O on Unix and I/O operations on Windows.
+Unavailable Windows fault/context-switch counters are zero.
 
 ```manuscript
 type ResourceUsage:
@@ -2688,7 +2731,9 @@ type ResourceUsage:
 
 **Interface**
 
-A stream of operating-system signals selected by `watch_signals`.
+A cancellable observer of operating-system signals selected by `watch_signals`.
+SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
+`next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.
 
 ```manuscript
 interface SignalStream:
@@ -2885,6 +2930,7 @@ type Result[T, E]:
     fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+    fn to_optional() -> Optional[T]:
 ```
 
 # @std/string.ms
@@ -2970,7 +3016,8 @@ Import each required symbol with `import Name from "@std/system.ms"`.
 
 **Record**
 
-Model, speed, and cumulative time counters for one logical CPU.
+Model, integer MHz speed (fractional MHz truncated), and cumulative integer millisecond
+counters for one logical CPU. irq includes hardware and software interrupt time.
 
 ```manuscript
 type CpuInfo:
@@ -3066,7 +3113,8 @@ type SystemInfo:
 
 **Record**
 
-Host memory, uptime, load, and available parallelism measurements.
+Host measurements: memory fields are bytes; load_average is 1/5/15-minute load
+(three zeros on Windows); available_parallelism is a usable logical-processor count.
 
 ```manuscript
 type SystemMetrics:
@@ -3097,7 +3145,8 @@ type UserInfo:
 
 **Function**
 
-Returns operating-system constants by name.
+Returns native signal/error/loader/priority constants by name.
+Names and values vary by host; missing entries do not imply a portable numeric default.
 
 ```manuscript
 fn constants() -> Map[String, Int]:
@@ -3127,7 +3176,7 @@ fn end_of_line() -> String:
 
 **Function**
 
-Returns `little` or `big` for the host's native byte order.
+Returns exactly `LE` or `BE` for the host's native byte order.
 
 ```manuscript
 fn endianness() -> String:
@@ -3137,7 +3186,7 @@ fn endianness() -> String:
 
 **Function**
 
-Returns the host operating-system family.
+Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their Go OS name.
 
 ```manuscript
 fn os_type() -> String:
@@ -3927,6 +3976,85 @@ type Int:
     fn to_decimal() -> Decimal:
 ```
 
+## List
+
+**Native type**
+
+An ordered collection of values with indexing, iteration, and transformation operations.
+
+```manuscript
+type List[T]:
+    fn clone() -> List[T]:
+    fn at(index: Int) -> Optional[T]:
+    fn contains(value: T) -> Bool:
+    fn index_of(value: T) -> Optional[Int]:
+    fn last_index_of(value: T) -> Optional[Int]:
+    fn first() -> Optional[T]:
+    fn last() -> Optional[T]:
+    fn is_empty() -> Bool:
+    fn prepend(value: T) -> List[T]:
+    fn with_value(index: Int, value: T) -> List[T]:
+    fn without(index: Int) -> List[T]:
+    fn slice(start: Int, end: Int) -> List[T]:
+    fn reverse() -> List[T]:
+    fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    fn some(predicate: fn(value: T) -> Bool) -> Bool:
+    fn every(predicate: fn(value: T) -> Bool) -> Bool:
+    fn for_each(operation: fn(value: T) -> Unit) -> Unit:
+    fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]:
+    fn map[U](transform: fn(value: T) -> U) -> List[U]:
+    fn flat_map[U](transform: fn(value: T) -> List[U]) -> List[U]:
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+    fn fill(value: T, start: Int, end: Int) -> List[T]:
+    fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
+    fn to_set() -> Set[T]:
+    fn keys() -> List[Int]:
+    fn entries() -> List[ListEntry[T]]:
+    fn join(separator: String) -> String:
+    fn append(value: T) -> List[T]:
+    fn concat(values: List[T]) -> List[T]:
+    fn length() -> Int:
+```
+
+## Map
+
+**Native type**
+
+A mutable key-value collection. Keys use explicit `Hashable` value semantics.
+
+```manuscript
+type Map[T: Hashable, U]:
+    fn clone() -> Map[T, U]:
+    fn is_empty() -> Bool:
+    fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+    fn get_or(key: T, fallback: U) -> U:
+    fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn with_default(key: T, value: U) -> Map[T, U]:
+    fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
+    fn clear() -> Map[T, U]:
+    fn keys() -> List[T]:
+    fn values() -> List[U]:
+    fn entries() -> List[MapEntry[T, U]]:
+    fn merge(other: Map[T, U]) -> Map[T, U]:
+    fn for_each(operation: fn(key: T, value: U) -> Unit) -> Unit:
+    fn contains(key: T) -> Bool:
+    fn get(key: T) -> Optional[U]:
+    fn length() -> Int:
+    fn add(key: T, value: U) -> Map[T, U]:
+    fn with_entry(key: T, value: U) -> Map[T, U]:
+    fn without(key: T) -> Map[T, U]:
+```
+
 ## Never
 
 **Type**
@@ -3953,6 +4081,8 @@ type Optional[T]:
     fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
     fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
+    fn ok_or[E](cause: E) -> Result[T, E]:
+    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
 ## Result
@@ -3973,6 +4103,7 @@ type Result[T, E]:
     fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+    fn to_optional() -> Optional[T]:
 ```
 
 ## String

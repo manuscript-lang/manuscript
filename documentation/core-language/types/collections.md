@@ -7,7 +7,7 @@ weight = 3
 
 Use `List[T]` for an ordered sequence, `Map[K, V]` for key/value entries, and `Set[T]` for distinct values. The type arguments state the element, key, and value types. All three collections are mutable references. Assignment retains the same instance; `.clone()` copies its storage.
 
-Import each collection type you name from `@std/collections.ms`. Bracket list literals require the canonical `List` import; brace map literals require the canonical `Map` import.
+`List` and `Map` are available in the prelude without imports. Explicit imports from `@std/collections.ms` remain valid. Import `Set` and other collection names when needed. Literals use the canonical standard types; a module declaration or import that replaces `List` or `Map` makes its corresponding literal invalid.
 
 | Type | Contents |
 | --- | --- |
@@ -42,7 +42,7 @@ Write each entry as `key: value`, with optional trailing commas. Keys are expres
 
 A nonempty literal infers key and value types independently from its entries. Expected Map types propagate to both keys and values, including nested empty literals. An empty map needs an annotation or expected parameter/return type. Every key and value must match its inferred or expected type; keys must satisfy `Hashable`.
 
-Entries evaluate in written order, key before value, once each. Equal duplicate keys retain their first insertion position and use the last value, just like `with_entry`. Stored values retain references to nested data. Physical newlines inside braces follow ordinary delimiter continuation rules.
+Entries evaluate in written order, key before value, once each. Equal duplicate keys retain their first insertion position and use the last value, just like `add`. Stored values retain references to nested data. Physical newlines inside braces follow ordinary delimiter continuation rules.
 
 ## Element requirements
 
@@ -74,7 +74,7 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 `append`, `prepend`, `with_value`, `without`, `with_values`, `fill`, `copy_within`, and `reverse` update a list and return the same instance. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
 
-Map `with_entry`, `without`, `with_default`, `with_default_from`, `merge`, and `clear` update the receiver. Set `with_value`, `without`, and `clear` update the receiver. Their return values retain that instance for chaining.
+Map `add`, `with_entry`, `without`, `with_default`, `with_default_from`, `merge`, and `clear` update the receiver. Set `with_value`, `without`, and `clear` update the receiver. Their return values retain that instance for chaining.
 
 ```manuscript
 let values = [1, 2]
@@ -101,18 +101,32 @@ A `for` loop and collection callback traversals snapshot collection membership o
 | `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
 | `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
 | `Map[K, V]` | `filter(predicate: fn(key: K, value: V) -> Bool) -> Map[K, V]` |
-| `Map[K, V]` | `with_entry(key: K, value: V) -> Map[K, V]`; `without(key: K) -> Map[K, V]` |
+| `Map[K, V]` | `map[W](transform: fn(key: K, value: V) -> W) -> Map[K, W]` |
+| `Map[K, V]` | `map_keys[W: Hashable](transform: fn(key: K, value: V) -> W) -> Map[W, V]` |
+| `Map[K, V]` | `fold[A](initial: A, step: fn(accumulator: A, key: K, value: V) -> A) -> A` |
+| `Map[K, V]` | `fold_right[A]` uses the same step in reverse insertion order |
+| `Map[K, V]` | `find(predicate: fn(key: K, value: V) -> Bool) -> Optional[MapEntry[K, V]]` |
+| `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
+| `Map[K, V]` | `some(predicate: fn(key: K, value: V) -> Bool) -> Bool`; `every` uses the same predicate |
+| `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `without(key: K) -> Map[K, V]` |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
 | `Set[T]` | `is_empty() -> Bool`; `filter(predicate: fn(value: T) -> Bool) -> Set[T]` |
 | `Set[T]` | `map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]` |
+| `Set[T]` | `fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A` |
+| `Set[T]` | `fold_right[A]` uses the same step in reverse insertion order |
+| `Set[T]` | `find(predicate: fn(value: T) -> Bool) -> Optional[T]` |
+| `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
+| `Set[T]` | `some(predicate: fn(value: T) -> Bool) -> Bool`; `every` uses the same predicate |
 | `Set[T]` | `with_value(value: T) -> Set[T]`; `without(value: T) -> Set[T]` |
 
 All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding MaxInt64 faults.
 
+`Map.add(key, value)` inserts or replaces a value and returns the same map. `with_entry` remains a compatible spelling with identical behavior.
+
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
 
-Map `get`, `contains`, and `with_entry` and Set `contains` and `with_value` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. `without` shifts later entries to keep insertion order and takes time proportional to the collection size. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
+Map `get`, `contains`, and `add` and Set `contains` and `with_value` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. `without` shifts later entries to keep insertion order and takes time proportional to the collection size. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
 
 ### Search and enumeration
 
@@ -133,8 +147,6 @@ Set `union`, `intersection`, `difference`, and `symmetric_difference` return new
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
 
 fn positives(values: List[Int]) -> List[Int]:
     var result: List[Int] = []
@@ -149,8 +161,8 @@ test "dynamic mutable data and explicit copies":
     let absent: Optional[Int] = none
     if not ([1].at(index: 5) == absent):
         return panic(message: "check failed")
-    let original = Map[String, Int]().with_entry(key: "a", value: 1)
-    let updated = original.clone().with_entry(key: "b", value: 2).with_entry(key: "a", value: 3)
+    let original = Map[String, Int]().add(key: "a", value: 1)
+    let updated = original.clone().add(key: "b", value: 2).add(key: "a", value: 3)
     if not (original.get(key: "a") == some(1)):
         return panic(message: "check failed")
     if not (updated.get(key: "a") == some(3)):
@@ -160,6 +172,29 @@ test "dynamic mutable data and explicit copies":
 Map `get_or` evaluates its fallback as an ordinary argument and never inserts an absent key. Map and Set `filter` return fresh outer storage in insertion order while retaining key and payload references. Their predicates visit a snapshot, so additions, removals, replacements, and clearing during a callback do not change which entries it receives. An empty result still has independent storage.
 
 Set `map` also visits a snapshot and returns a fresh set. Its output type must satisfy `Hashable`; equal mapped results retain the first payload and its insertion position. Deduplication uses the output type's scoped Equal/Hashable implementations, including in generic calls and stored methods. Callbacks run sequentially in the caller's execution context; faults and cancellation stop the traversal normally.
+
+## Transforming Map keys and values
+
+`map` transforms each value while retaining the original key. `map_keys` transforms each key while retaining the original value; its output keys require Hashable. Both callbacks receive `key` and `value`, visit an insertion-order membership snapshot, and return fresh outer Map storage with shallow payload references. Callback mutation does not change which source entries or value references are visited.
+
+Equal transformed keys retain the first transformed key reference and insertion position, while later input entries replace its value, matching ordinary Map insertion. Key deduplication uses the output type's scoped Equal/Hashable evidence, including generic forwarding and stored specialized methods. Callback faults and cancellation propagate normally. Value transforms do not flatten Optional or Result values and do not require output values to be Hashable.
+
+```manuscript
+fn increment_scores(scores: Map[String, Int]) -> Map[String, Int]:
+    return scores.map(fn(name, score): score + 1)
+```
+
+## Reducing and querying
+
+Map and Set `fold` visit a snapshot in insertion order. The callback receives the current accumulator, then the entry key/value or set element, and returns the next accumulator with the same type `A`. An empty receiver returns the original initial value without calling the step. Accumulators and payloads retain their references.
+
+`fold_right` uses the same callback and accumulator contract in reverse insertion order. It starts with the final inserted entry/element and moves toward the first. Empty receivers return the original initial value without invoking callbacks.
+
+`find` stops at the first true predicate. Set returns the original element; Map returns a fresh MapEntry record with the original key/value references, matching `entries()`. Replacing that record's fields does not update the Map. No match, including an empty receiver, returns none.
+
+`find_last` visits the snapshot in reverse insertion order and stops at the first true predicate from the end. It retains the same Optional and shallow payload/entry contracts as `find`; a nonmatching search visits the complete snapshot in reverse.
+
+`some` stops at the first true predicate; `every` stops at the first false predicate. Empty receivers return false for some and true for every without invoking callbacks. All four methods snapshot membership before callbacks, retaining shallow references even if the callback updates or clears the receiver. They preserve normal cancellation, faults, and scoped generic implementation evidence.
 
 ## Building data
 

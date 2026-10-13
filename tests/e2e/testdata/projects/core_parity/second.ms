@@ -1,6 +1,13 @@
 import {Key, Cause} from "./domain.ms"
-import transform_set from "./helpers.ms"
-import Set from "@std/collections.ms"
+import {
+    transform_set,
+    locate_map,
+    locate_set,
+    convert,
+    remap_keys,
+    remap_values
+} from "./helpers.ms"
+import {Map, Set} from "@std/collections.ms"
 import {Equal, Hashable} from "@std/equality.ms"
 
 impl Equal for Key:
@@ -30,3 +37,57 @@ export fn second_failure(cause: Cause) -> Result[String, Error]:
     return value.and_then(
         fn(n): Result[String, Error].ok(n.toString())
     )
+
+export fn second_queries() -> Bool:
+    let key = Key(5, "original")
+    let map = Map[Key, String]().with_entry(key, "found")
+    let set = Set[Key]().with_value(key)
+    return (
+        locate_map(
+            map,
+            Key(5, "different")
+        ).is_none()
+        and locate_set(
+            set,
+            Key(5, "different")
+        ).is_none()
+    )
+
+export fn second_converted(cause: Cause) -> Result[Int, Error]:
+    let missing: Optional[Int] = none
+    return convert(
+        missing,
+        fn() -> Error: cause
+    )
+
+export fn second_folded(cause: Cause) -> Error:
+    let values = Map[String, Int]().with_entry("key", 1)
+    return values.fold[Error](
+        cause,
+        fn(acc, key, value): acc
+    )
+
+export fn second_key_transform[T: Hashable](input: Map[T, Int]) -> Map[Key, Int]:
+    return remap_keys(
+        input,
+        fn(key, value): Key(
+            0,
+            key.toString()
+        )
+    )
+
+export fn second_bound_keys() -> fn(
+    transform: fn(key: Int, value: Int) -> Key
+) -> Map[Key, Int]:
+    return Map[Int, Int]().with_entry(1, 10).with_entry(2, 20).map_keys[Key]
+
+export fn second_value_transform() -> Int:
+    let input = Map[Key, Int]().with_entry(
+        Key(5, "original"),
+        2
+    )
+    let mapped = remap_values(
+        input,
+        fn(key, value): value + 1
+    )
+    return mapped.get(Key(5, "different")).unwrap_or(0)

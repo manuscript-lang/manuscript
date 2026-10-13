@@ -18,7 +18,8 @@ interface File:
 
 ## Files {data-api-kind="Interface"}
 
-Opens file resources using the current host's default filesystem.
+Opens read-only file resources using the current host's default filesystem.
+Native open failures (including missing paths and permission denial) become IoError.Unavailable.
 
 ```manuscript
 interface Files:
@@ -56,7 +57,9 @@ interface ReadStream:
 
 ## WriteStream {data-api-kind="Interface"}
 
-A writable byte stream. Flush before relying on buffered data being delivered.
+A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
+Buffering/flush depends on the implementation: native stdout/stderr are unbuffered (flush is a no-op),
+while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
 
 ```manuscript
 interface WriteStream:

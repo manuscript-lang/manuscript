@@ -184,12 +184,12 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		controller.SetReadDeadline(time.Now().Add(s.timeout))
 		controller.SetWriteDeadline(time.Now().Add(s.timeout))
 	}
-	if !normalizeHTTPRequestPath(r) {
-		http.Error(w, "invalid request path", 400)
-		return
-	}
 	if !utf8.ValidString(r.URL.Path) || !utf8.ValidString(r.URL.RawQuery) {
 		http.Error(w, "invalid UTF-8 URL", 400)
+		return
+	}
+	if !normalizeHTTPRequestPath(r) {
+		http.Error(w, "invalid request path", 400)
 		return
 	}
 	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, s.bodyLimit))
@@ -200,7 +200,7 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	headers := &Map{Type: "@std/Map[String][@std/Bytes]"}
 	// Header iteration is sorted for stable source-visible insertion order.
 	for _, name := range sortedHeaderNames(r.Header) {
-		headers.Entries = append(headers.Entries, Entry{name, Bytes{[]byte(strings.Join(r.Header.Values(name), "\n"))}})
+		headers.Entries = append(headers.Entries, Entry{name, Bytes{[]byte(strings.Join(r.Header[name], "\n"))}})
 	}
 	request := Record{"@std/HttpRequest", map[string]Value{"method": r.Method, "path": r.URL.Path, "query": r.URL.RawQuery, "headers": headers, "body": Bytes{data}}}
 	var response Value
@@ -234,13 +234,15 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, entry := range record.Fields["headers"].(*Map).Entries {
 		key, value := entry.Key.(string), entry.Value.(string)
-		if !validHeaderName(key) || strings.ContainsAny(value, "\r\n\x00") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Connection") {
+		if !validHeaderName(key) || !validHeaderValue(value) || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Connection") {
 			http.Error(w, "invalid response header", 500)
 			return
 		}
 	}
 	for _, entry := range record.Fields["headers"].(*Map).Entries {
-		w.Header().Set(entry.Key.(string), entry.Value.(string))
+		// Map keys are case-sensitive; HTTP names are not. Append equivalent
+		// names in insertion order so repeated fields such as Set-Cookie survive.
+		w.Header().Add(entry.Key.(string), entry.Value.(string))
 	}
 	w.WriteHeader(int(status))
 	w.Write(body)
@@ -350,6 +352,20 @@ func normalizeHTTPRequestPath(r *http.Request) bool {
 			clean += "/"
 		}
 		r.URL.Path, r.URL.RawPath = clean, ""
+	}
+	return true
+}
+
+// Source header values are UTF-8 text. HTTP permits HTAB, visible bytes and
+// non-ASCII text, but no other control bytes or DEL.
+func validHeaderValue(value string) bool {
+	if !utf8.ValidString(value) {
+		return false
+	}
+	for i := range len(value) {
+		if value[i] < 32 && value[i] != '\t' || value[i] == 127 {
+			return false
+		}
 	}
 	return true
 }

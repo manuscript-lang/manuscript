@@ -46,7 +46,7 @@ interface Commands:
 
 ## CpuUsage {data-api-kind="Record"}
 
-CPU time consumed by the current process.
+Cumulative CPU time consumed by the current process, in integer microseconds.
 
 ```manuscript
 type CpuUsage:
@@ -56,7 +56,7 @@ type CpuUsage:
 
 ## MemoryUsage {data-api-kind="Record"}
 
-Memory statistics for the current process.
+Memory statistics for the current process; every field is bytes.
 
 ```manuscript
 type MemoryUsage:
@@ -70,6 +70,9 @@ type MemoryUsage:
 ## ProcessControl {data-api-kind="Interface"}
 
 Process and operating-system controls for the current process.
+`watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
+`next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup
+and finish shutdown work directly in the shielded close call after joining cancelled workers.
 
 ```manuscript
 interface ProcessControl:
@@ -97,6 +100,8 @@ interface ProcessControl:
     fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
     fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
 ```
+
+See the [shutdown cookbook](../../concurrency/shutdown.md) for runnable examples and limitations.
 
 ## ProcessError {data-api-kind="Alternative"}
 
@@ -140,7 +145,10 @@ type ProcessInfo:
 
 ## ResourceUsage {data-api-kind="Record"}
 
-Kernel resource counters for the current process.
+Kernel resource counters for the current process. CPU times are integer microseconds;
+max_resident_bytes is bytes; other fields are counts, not durations or byte totals.
+Filesystem reads/writes count native block I/O on Unix and I/O operations on Windows.
+Unavailable Windows fault/context-switch counters are zero.
 
 ```manuscript
 type ResourceUsage:
@@ -157,13 +165,17 @@ type ResourceUsage:
 
 ## SignalStream {data-api-kind="Interface"}
 
-A stream of operating-system signals selected by `watch_signals`.
+A cancellable observer of operating-system signals selected by `watch_signals`.
+SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
+`next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.
 
 ```manuscript
 interface SignalStream:
     fn close() -> Unit
     fn next() -> Result[Int, ProcessError]
 ```
+
+See the [shutdown cookbook](../../concurrency/shutdown.md) for runnable examples and limitations.
 
 ## commands {data-api-kind="Function"}
 

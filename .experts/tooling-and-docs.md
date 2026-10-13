@@ -14,6 +14,12 @@ loops, but unboxing a source-call result and reboxing it for the next call can
 increase allocations. Classify uses and ABI boundaries before choosing a local
 representation; Go's optimizer does not reliably remove those allocations.
 
+Verified: primitive List storage also needs a use/ABI classification. The
+[numeric List experiment](../scripts/bench-lists/README.md) separates boxed
+storage from scalar-local boxing; its typed storage adds payload allocations
+when fed through the unchanged Optional/comparator ABI. Preserve one authoritative
+mutable handle across typed and generic aliases rather than keeping a boxed mirror.
+
 Apply when: optimizing Go lowering, representations, calls, or collection access.
 Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),
@@ -22,6 +28,16 @@ Verify: run `go run ./scripts/bench-lowering` with the pinned SDK, inspect the
 retained generated Go and escape analysis, and compare allocation counts as well
 as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
 when promoting a benchmark candidate into production lowering.
+
+Verified: direct native calls must use `argumentValue`, not raw `expression`,
+for supplied arguments. Checking can attach implicit Optional wrapping while
+the expression retains its payload type; bypassing that evidence stored an Int
+inside `List[Optional[Int]]` and caused an exit-70 conversion crash. Multi-argument
+fast paths also retain ordered capture guards. Error/Result widening remains in
+expression lowering and composes with the Optional wrapper.
+Evidence: [direct collection lowering](../pkg/compiler/lower_collections.go),
+[generated-form checks](../pkg/compiler/lower_collection_conversions_test.go),
+and [native conversion/order conformance](../tests/e2e/testdata/accept/direct-collection-conversions.ms).
 
 ### Readable formatting needs paragraphs while retaining inline guards
 
@@ -70,6 +86,15 @@ Verify: identify the duplicate traversal, query, serialization, or forwarding pa
 Verified: optimization uses a separate lowering view of checked source. Rewriting or removing AST nodes would break the pointer identities used by editor queries, lint, effects, and source maps. Parsing and resolution diagnostics travel with the AST graph, including during recovery; folding a short-circuited expression never permits an invalid operand to bypass checking. Evidence: [shared pipeline](../pkg/compiler/compiler.go), [source model regressions](../pkg/compiler/pipeline_test.go), and [native side-effect regression](../tests/e2e/testdata/accept/boolean-optimization.ms).
 
 Verified: Go's test cache does not automatically track source built only by a subprocess. The native end-to-end harness imports the CLI implementation as a test dependency so changing CLI code invalidates its cached result. Evidence: [native harness dependency](../tests/e2e/e2e_test.go). For a final native run after command changes, use `go test -count=1 ./tests/e2e` with the pinned toolchain.
+
+Verified: a payload binder such as `error(NotFound)` can conceal a case name
+without a checking error. Advisory lint needs the checked identity before any
+sibling payload bindings enter scope; the payload's own cases remain matchable
+even when only its producing function was imported. Retain each binder's original
+position and rebase it during partial parsing. Evidence: [checked name evidence](../pkg/checker/pattern_names.go),
+[binding/alias/shadowing regressions](../pkg/tooling/pattern_lint_test.go),
+[recovery positions](../pkg/parser/pattern_positions_test.go), and
+[native binding versus separate payload handling](../tests/e2e/testdata/accept/pattern-binding-capture.ms).
 
 ### Package moves must preserve build identity and publication inputs
 

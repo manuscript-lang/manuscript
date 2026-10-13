@@ -1,5 +1,13 @@
 # Runtime lessons
 
+### HTTP field folding must not erase map entries
+
+Verified: source Map keys use exact equality, while HTTP field names fold ASCII case. Passing case-equivalent outgoing entries through `Header.Set` silently replaces earlier values, including separate `Set-Cookie` fields. Append in source insertion order after validating all fields. `Header.Values(key)` also canonicalizes lookup: when converting an existing host map, index its exact key to avoid substituting another spelling's values.
+
+Apply when: changing HTTP adapters, repeated fields, or header representation bridges.
+Evidence: [header regressions](../pkg/runtime/library_http_header_transport_test.go), [called source checks](../tests/e2e/testdata/stdlib/http-headers.ms), and [header contracts](../documentation/standard-library/http.md#header-lookup-and-repeated-values).
+Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered byte input, streaming text input, exact Map lookup, and existing domain errors distinct. Public representation unification needs a separate migration decision.
+
 ### Empty cleanup omission needs callable ownership evidence
 
 Verified: lexical cleanup lists return to empty after lowering a `with` scope;
@@ -51,6 +59,8 @@ Apply when: changing closures, task-group work, schedulers, resource wrappers, o
 Evidence: [sharing](../documentation/concurrency/sharing.md); [joined groups](../documentation/concurrency/joining.md); [scope-exit ordering](../documentation/core-language/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
 Verify: exercise use after close and shutdown with work still running. Confirm started work completes cleanup before joining returns and stale resource aliases cannot reach a reused handle.
 
+Verified: SIGINT/SIGTERM observation does not claim the signal; native host cancellation races independently with `SignalStream.next()`. Registered cleanup is shielded, but shielding a close call does not revive workers derived from the cancelled construction parent. Join workers before draining application-owned pending data directly in close while its dependencies remain open. See the [shutdown cookbook](../documentation/concurrency/shutdown.md), [disposable-child signal tests](../tests/e2e/shutdown_cookbook_test.go), and [already-cancelled worker test](../pkg/runtime/shutdown_test.go). The current native host has no cleanup watchdog; do not infer implemented escalation from the contributor policy.
+
 Verified: a queued transport operation can acquire a ready gate even when its lifetime cancellation is also ready. An asynchronous cancellation callback does not guarantee the operation's derived context is cancelled before stream dispatch. Recheck the closed state after acquiring the gate; otherwise queued writes can reach the stream after shutdown starts. See [transport admission](../pkg/runtime/library_log.go) and `TestLogCloseInterruptsActiveAndQueuedWrites` in [logging regressions](../pkg/runtime/library_log_test.go). Repeat the close/caller-cancellation cases under the race detector when changing this path.
 
 ### Networking completeness includes interruption and shutdown
@@ -70,6 +80,14 @@ Decision: keep typed diagnostic information in ordinary domain error fields. The
 Apply when: adding or changing fallible standard APIs, native adapters, or error propagation.
 Evidence: [error contracts](../documentation/standard-library/contracts.md#errors); [native identity and stream-cause regressions](../pkg/runtime/library_test.go); [compiled matching and mapping](../tests/e2e/testdata/accept/library-errors.ms).
 Verify: native error values carry the declared Result's error identity; unrelated domains cannot propagate implicitly; stream helpers preserve the original IoError case and payload.
+
+### Host API names do not establish units or write guarantees
+
+Verified: ProcessControl.monotonic_time returns time.Since(runtime initialization) as nanoseconds and shares the process uptime origin; host uptime and Clock instants have different origins/domains. FileHandle count-returning writes loop to complete the input, just like Unit-returning native stream writes. A count result does not imply partial success, and failures do not retain a prefix count. The file stream adapter preserves Closed/InvalidInput but translates other filesystem cases to IoError.Failed.
+
+Apply when: documenting host contracts or proposing typed time, flag, stream, or error adapters. Trace validator/conversion/result code before inferring semantics from names or result shapes; retain explicit migration decisions for public replacements.
+Evidence: [host contracts](../documentation/standard-library/contracts.md#native-io-success-and-eof), [process accounting](../documentation/standard-library/process.md#process-time-and-accounting), [nanosecond bracketing](../pkg/runtime/library_host_contract_test.go), and [called host contracts](../tests/e2e/testdata/stdlib/host-contracts.ms).
+Verify: bracket raw monotonic readings against elapsed nanoseconds; check multi-chunk byte counts, sequential/positional EOF, shared adapter close and concrete domain errors in compiled tests.
 
 ### Native constructor arguments need not be readable fields
 
@@ -137,7 +155,7 @@ Verify: round-trip consecutive single empty fields with LF/CRLF and alternate de
 
 ### Native transformations need output implementation evidence
 
-Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map deduplicates output elements, whose scope can differ from the input element's scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep callback membership snapshots at the native invocation boundary and payload references shallow.
+Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map and Map.map_keys deduplicate output elements/keys, whose scope can differ from the input element/key scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep callback membership snapshots at the native invocation boundary and payload references shallow.
 
 Apply when: adding native transformations with output bounds or changing receiver specialization.
 Evidence: [receiver lowering](../pkg/compiler/lower_collections.go), [native dispatch](../pkg/runtime/collections.go), [cross-module output evidence](../tests/e2e/testdata/projects/core_parity/main.ms), and [callback mutation conformance](../tests/e2e/testdata/stdlib/core-parity.ms).
@@ -158,3 +176,19 @@ Verified: stripping continuation lines before joining loses paragraph breaks and
 Apply when: changing YAML scalar gathering, comment removal, whitespace handling, folding, or chomping.
 Evidence: [YAML parser](../pkg/stdlib/yaml.ms), [called scalar regressions](../tests/e2e/testdata/stdlib/yaml.ms), [YAML contract](../documentation/standard-library/formats.md#yaml-behavior), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
 Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization.
+
+### Collection snapshots require every in-place writer to detach
+
+Verified: List callback traversals can retain a capacity-limited header and use
+the existing loop COW flag instead of eagerly copying all membership. Appends
+lie beyond the captured length, but fill, overlapping copy, reverse and other
+prefix writes must detach first. Nested element references remain shared; the
+private membership header must not become a second source-visible alias.
+
+Apply when: changing collection storage, mutators, callback traversal or iteration.
+Evidence: [mutation differential tests](../pkg/runtime/list_snapshot_test.go),
+[called native alias/interop cases](../tests/e2e/testdata/accept/list-snapshots.ms),
+[native fault/cancellation cases](../pkg/compiler/list_snapshot_native_test.go),
+and [measured allocation costs and conservative COW tradeoff](../scripts/bench-lists/README.md).
+Verify: read-only traversal allocates only a header; all existing-element writes
+leave captured membership unchanged, including reentry and saved method calls.

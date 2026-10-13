@@ -129,15 +129,15 @@ func check() error {
 		return err
 	}
 	manifest := filepath.Join(project, "ms.toml")
-	output := filepath.Join(directory, "hello-program"+suffix)
+	output := filepath.Join(directory, "hello=program"+suffix)
 	for _, arguments := range [][]string{
 		{"--help"}, {"--version"}, {"check", manifest},
 		{"fmt", filepath.Join(project, "src", "main.ms"), "--check"},
-		{"emit", manifest, "-o", filepath.Join(directory, "main.go")},
+		{"emit", manifest, "--output=" + filepath.Join(directory, "main=v1.go")},
 		{"inspect", manifest, "-o", filepath.Join(directory, "inspection.json")},
 		{"diagram", manifest, "-o", filepath.Join(directory, "calls.mmd")},
-		{"doc", manifest, "-o", filepath.Join(directory, "api.md")},
-		{"doc", "--stdlib", "--json", "-o", filepath.Join(directory, "stdlib.json")},
+		{"doc", project, "--output=" + filepath.Join(directory, "api=v1.md")},
+		{"doc", "--stdlib", "--json", "--output=" + filepath.Join(directory, "stdlib=v1.json")},
 		{"stdlib", filepath.Join(directory, "stdlib")},
 		{"lint", filepath.Join(project, "test.ms"), "--json"},
 	} {
@@ -191,7 +191,7 @@ func check() error {
 		return fmt.Errorf("unexpected debug run output: %q", data)
 	}
 	for _, kind := range []string{"Debug", "Release", "RelWithDebInfo", "MinSizeRel"} {
-		if _, err := run(cli, "build", manifest, "--build-type", kind, "-o", output); err != nil {
+		if _, err := run(cli, "build", manifest, "--build-type="+kind, "--output="+output); err != nil {
 			return err
 		}
 		metadata, err := os.ReadFile(output + ".ms-build.json")

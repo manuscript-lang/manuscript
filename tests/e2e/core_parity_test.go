@@ -10,7 +10,7 @@ import (
 func TestCoreParityScopedImplementations(t *testing.T) {
 	result := compiler.CompileFile("testdata/projects/core_parity/main.ms", compiler.Options{Tests: true})
 	data, err := execute(t, result)
-	if err != nil || !strings.HasSuffix(strings.TrimSpace(string(data)), "2 tests, 0 failed") {
+	if err != nil || !strings.HasSuffix(strings.TrimSpace(string(data)), "5 tests, 0 failed") {
 		t.Fatalf("scoped core parity: %v\n%s", err, data)
 	}
 }

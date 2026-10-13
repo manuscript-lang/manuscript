@@ -2,6 +2,13 @@ package msruntime
 
 func init() {
 	variables := []LibraryParam{{"T", ""}, {"E", ""}}
+	libraryGeneric("result", "to_optional", "Optional[T]", variables, []LibraryParam{{"value", "Result[T][E]"}}, func(_ *Execution, result string, args []Value) Value {
+		value := args[0].(Alternative)
+		if value.Tag == "ok" {
+			return Alternative{Type: result, Tag: "some", Fields: []Value{value.Fields[0]}}
+		}
+		return Alternative{Type: result, Tag: "none"}
+	})
 	for _, name := range []string{"is_ok", "is_error", "unwrap", "unwrap_error", "unwrap_or", "unwrap_or_else"} {
 		params := []LibraryParam{{"value", "Result[T][E]"}}
 		result := "T"

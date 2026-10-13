@@ -30,9 +30,7 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"not a function", "fn f() -> Int:\n    let x = 1\n    return x()\n", []string{"x is not a function (it has type Int)"}, 1},
 		{"unknown export", "import nope from \"@std/faults.ms\"\nfn f() -> Unit:\n    return\n", []string{"module does not export nope", "@std/faults.ms exports:"}, 1},
 		{"annotated binding survives bad initializer", "fn f() -> Int:\n    let x: Int = 3.5\n    let y = x + 1\n    return y\n", []string{"expected Int, found Float"}, 1},
-		{"unimported Map call", "fn f() -> Int:\n    let m = Map[String, Int]()\n    return 0\n", []string{"unknown binding Map", "import Map from \"@std/collections.ms\""}, 1},
 		{"unimported Set call", "fn f() -> Int:\n    let s = Set[String]()\n    return 0\n", []string{"unknown binding Set", "import Set from \"@std/collections.ms\""}, 1},
-		{"unimported List annotation and literal", "fn f() -> Int:\n    var xs: List[Int] = []\n    return 0\n", []string{"unknown type List", "import List from \"@std/collections.ms\""}, 1},
 		{"positional generic call", "import List from \"@std/collections.ms\"\nfn pick[T](items: List[T], keep: fn(value: T) -> Bool) -> Optional[T]:\n    return none\nfn f() -> Int:\n    let nums = [1, 2]\n    let hit = pick(nums, fn(value: Int) -> Bool: value > 1)\n    return hit.unwrap_or(0)\n", nil, 0},
 		{"member synonym on String", "fn f() -> Int:\n    let n = \"abc\".length()\n    return 0\n", []string{"did you mean 'byte_length' or 'scalar_length'?"}, 1},
 		{"member list is complete", "fn f() -> Int:\n    let n = \"abc\".foo()\n    return 0\n", []string{"available: at,", "upper"}, 1},
@@ -41,7 +39,6 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"non-generic callback label mismatch", "import List from \"@std/collections.ms\"\nfn positive(n: Int) -> Bool:\n    return n > 0\nfn f() -> Int:\n    return [1].filter(positive).length()\n", []string{"expected fn(value: Int)->Bool", "expects value"}, 1},
 		{"binding catch-all arm", "type S:\n    case A\n    case B\nfn f(s: S) -> Int:\n    match s:\n        A:\n            return 1\n        other:\n            return 2\n", []string{"'other' is not a case of S", "use '_'"}, 1},
 		{"with on Result suggests unwrapping", "import Closeable from \"@std/cleanup.ms\"\ntype R:\n    n: Int\nimpl Closeable for R:\n    fn close() -> Unit:\n        return unit\nfn mk() -> Result[R, String]:\n    return ok(R(n: 1))\nfn f() -> Int:\n    with x = mk():\n        return 1\n    return 0\n", []string{"with needs a Closeable value", "Result[R, String]", "'try'", "'match'"}, 1},
-		{"statement match with value arm", "import List from \"@std/collections.ms\"\nfn f(xs: List[Int]) -> Int:\n    var seen = xs\n    match xs.first():\n        some(value):\n            seen.concat(xs)\n        none:\n            seen = []\n    return seen.length()\n", []string{"arm at line 6", "let ignored"}, 1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("hints.ms", tt.source)
