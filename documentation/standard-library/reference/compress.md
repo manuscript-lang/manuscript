@@ -24,6 +24,20 @@ impl Error for CompressionError:
     fn message() -> String:
 ```
 
+## CompressionFormat {data-api-kind="Alternative"}
+
+Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
+Existing compress/decompress format: String calls remain available.
+
+```manuscript
+type CompressionFormat:
+    case Gzip
+    case Zlib
+    case Deflate
+    fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+    fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+```
+
 ## compress {data-api-kind="Function"}
 
 Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).

@@ -40,3 +40,19 @@ export fn unpack(
 
 impl Error for ArchiveError:
     fn message() -> String:
+
+# Selects a supported archive format without a runtime string spelling check.
+# Existing pack/unpack format: String calls remain available.
+export type ArchiveFormat:
+    case Zip
+    case Tar
+    # Packs entries with the same optional output budget and path validation as pack.
+    fn pack(
+        entries: List[ArchiveEntry],
+        max_bytes: Optional[Int] = none
+    ) -> Result[Bytes, ArchiveError]:
+    # Unpacks in memory with the same entry/byte limits and domain errors as unpack.
+    fn unpack(
+        data: Bytes,
+        limits: Optional[ArchiveLimits] = none
+    ) -> Result[List[ArchiveEntry], ArchiveError]:
