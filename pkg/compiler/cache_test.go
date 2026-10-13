@@ -3,6 +3,7 @@ package compiler
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -38,5 +39,15 @@ func TestShellQuoteKeepsLockHintsPasteable(t *testing.T) {
 		if got := shellQuote(path); got != want {
 			t.Fatalf("%s: got %s, want %s", path, got, want)
 		}
+	}
+}
+
+func TestCompilerPanicBecomesDiagnostic(t *testing.T) {
+	result := func() (result Result) {
+		defer recoverCompilerBug("a.ms", &result)
+		panic("boom")
+	}()
+	if result.Success() || len(result.Diagnostics) != 1 || result.Diagnostics[0].Position.File != "a.ms" || !strings.Contains(result.Diagnostics[0].Message, "boom") {
+		t.Fatalf("%+v", result.Diagnostics)
 	}
 }

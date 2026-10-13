@@ -2,6 +2,7 @@
 package compiler
 
 import (
+	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/frontend"
 	"github.com/manuscript-lang/manuscript/pkg/project"
@@ -42,19 +43,33 @@ type Project = project.Project
 func ReadProject(filename string) (Project, error) { return project.ReadProject(filename) }
 
 // CompileSource parses in-memory source. Local imports require CompileFile.
-func CompileSource(filename, source string, options Options) Result {
+func CompileSource(filename, source string, options Options) (result Result) {
+	defer recoverCompilerBug(filename, &result)
 	graph := frontend.LoadSource(filename, source, options.sourceOptions())
 	return compile(graph, options)
 }
 
 // CompileFile loads a module or project and checks its reachable import graph.
 // AnalyzeOnly with ProjectSources also checks unimported source and test modules.
-func CompileFile(filename string, options Options) Result {
+func CompileFile(filename string, options Options) (result Result) {
+	defer recoverCompilerBug(filename, &result)
 	graph := frontend.LoadFile(filename, options.sourceOptions())
 	if graph.ProjectRoot != "" {
 		options.Entry = !options.Tests && (!options.AnalyzeOnly || options.Entry)
 	}
 	return compile(graph, options)
+}
+
+// recoverCompilerBug turns a checker or lowering panic into a diagnostic so one
+// bad input cannot kill the CLI's report or a long-lived language server.
+func recoverCompilerBug(filename string, result *Result) {
+	if failure := recover(); failure != nil {
+		*result = Result{Diagnostics: []syntax.Diagnostic{{
+			Position: syntax.Position{File: filename, Line: 1, Column: 1},
+			Phase:    "internal",
+			Message:  fmt.Sprintf("the compiler failed unexpectedly (%v); this is a Manuscript bug, so report it with the source that triggers it", failure),
+		}}}
+	}
 }
 
 func (o Options) sourceOptions() frontend.Options {
