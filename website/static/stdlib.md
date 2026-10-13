@@ -635,7 +635,7 @@ fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
 
 ### List.for_each
 
-Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
+Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal.
 
 ```manuscript
 fn for_each(operation: fn(value: T) -> Unit) -> Unit:
@@ -661,6 +661,7 @@ fn last_index_of(value: T) -> Optional[Int]:
 
 Removes an element in place and returns this list; negative indexes count from the end.
 Invalid indexes fault, with the same bounds and diagnostics as without.
+Shifts the suffix without clearing prior values retained in spare backing capacity.
 
 ```manuscript
 fn remove(index: Int) -> List[T]:
@@ -734,7 +735,7 @@ fn with_value(index: Int, value: T) -> List[T]:
 
 ### List.with_values
 
-Replaces `delete_count` values at `start` with the replacement list.
+Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity.
 
 ```manuscript
 fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
@@ -2182,17 +2183,17 @@ interface FileSystem:
     fn copy(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String) -> Bool]) -> Result[Unit, FileSystemError]
     fn watch_native(path: String, recursive: Bool, max_entries: Optional[Int] = none, max_events: Optional[Int] = none, overflow: String) -> Result[FileWatcher, FileSystemError]
     fn canonicalize(path: String) -> Result[String, FileSystemError]
-    fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
-    fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+    fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+    fn create_directory(path: String, recursive: Bool = false) -> Result[Unit, FileSystemError]
     fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
     fn list(path: String, max_entries: Optional[Int] = none) -> Result[List[DirectoryEntry], FileSystemError]
     fn read_file(path: String, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
     fn read_link(path: String) -> Result[String, FileSystemError]
-    fn remove(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+    fn remove(path: String, recursive: Bool = false) -> Result[Unit, FileSystemError]
     fn rename(source: String, destination: String) -> Result[Unit, FileSystemError]
     fn stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
     fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
-    fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, FileSystemError]
+    fn write_file(path: String, data: Bytes, replace: Bool = false) -> Result[Unit, FileSystemError]
     fn access(path: String, mode: Int) -> Result[Unit, FileSystemError]
     fn append_file(path: String, data: Bytes) -> Result[Unit, FileSystemError]
     fn chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
@@ -2202,7 +2203,7 @@ interface FileSystem:
     fn hard_link(source: String, destination: String) -> Result[Unit, FileSystemError]
     fn open(path: String, flags: String, mode: Int) -> Result[FileHandle, FileSystemError]
     fn open_directory(path: String) -> Result[Directory, FileSystemError]
-    fn copy_tree(source: String, destination: String, replace: Bool, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+    fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
     fn glob(path: String, pattern: String, max_entries: Optional[Int] = none) -> Result[List[String], FileSystemError]
     fn watch(path: String, recursive: Bool, interval: Duration, max_entries: Optional[Int] = none) -> Result[FileWatcher, FileSystemError]
     fn temporary(prefix: String) -> Result[TemporaryDirectory, FileSystemError]
@@ -2253,18 +2254,27 @@ fn copy(source: String, destination: String, options: CopyOptions, filter: Optio
 
 ### FileSystem.copy_file
 
-Copies one file; existing destinations are replaced only when requested.
+Copies one file; replace defaults to false, refusing an existing destination.
 
 ```manuscript
-fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.copy_tree
+
+Copies a tree; replace defaults to false, refusing existing destinations.
+Entry and byte limits remain separate and apply cumulatively across the copy.
+
+```manuscript
+fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
 ```
 
 ### FileSystem.create_directory
 
-Creates a directory, optionally creating missing parents.
+Creates one directory; recursive defaults to false, requiring its parent to exist.
 
 ```manuscript
-fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+fn create_directory(path: String, recursive: Bool = false) -> Result[Unit, FileSystemError]
 ```
 
 ### FileSystem.create_link
@@ -2317,6 +2327,14 @@ Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
 fn read_file(path: String, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
 ```
 
+### FileSystem.remove
+
+Removes a file or empty directory; recursive defaults to false, retaining nonempty trees.
+
+```manuscript
+fn remove(path: String, recursive: Bool = false) -> Result[Unit, FileSystemError]
+```
+
 ### FileSystem.temporary
 
 Creates a new temp directory whose contents are removed by scoped close.
@@ -2350,6 +2368,14 @@ Other policies return InvalidInput. Limits bound tracked paths and queued events
 
 ```manuscript
 fn watch_native(path: String, recursive: Bool, max_entries: Optional[Int] = none, max_events: Optional[Int] = none, overflow: String) -> Result[FileWatcher, FileSystemError]
+```
+
+### FileSystem.write_file
+
+Creates a file exclusively; replace defaults to false, retaining an existing file.
+
+```manuscript
+fn write_file(path: String, data: Bytes, replace: Bool = false) -> Result[Unit, FileSystemError]
 ```
 
 ## FileSystemError
@@ -4608,6 +4634,62 @@ fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 
 Import each required symbol with `import Name from "@std/string.ms"`.
 
+## NormalizationForm
+
+**Alternative**
+
+The four Unicode normalization forms, selected without runtime string spelling errors.
+
+```manuscript
+type NormalizationForm:
+    case Nfc
+    case Nfd
+    case Nfkc
+    case Nfkd
+    fn normalize(text: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+```
+
+### NormalizationForm.Nfc
+
+Canonical composition.
+
+```manuscript
+case Nfc
+```
+
+### NormalizationForm.Nfd
+
+Canonical decomposition.
+
+```manuscript
+case Nfd
+```
+
+### NormalizationForm.Nfkc
+
+Compatibility composition.
+
+```manuscript
+case Nfkc
+```
+
+### NormalizationForm.Nfkd
+
+Compatibility decomposition.
+
+```manuscript
+case Nfkd
+```
+
+### NormalizationForm.normalize
+
+Normalizes text with the existing String.normalize budgets and StringError cases.
+Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
+
+```manuscript
+fn normalize(text: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
+```
+
 ## StringBuilder
 
 **Native type**
@@ -6007,7 +6089,7 @@ fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
 
 ### List.for_each
 
-Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
+Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal.
 
 ```manuscript
 fn for_each(operation: fn(value: T) -> Unit) -> Unit:
@@ -6033,6 +6115,7 @@ fn last_index_of(value: T) -> Optional[Int]:
 
 Removes an element in place and returns this list; negative indexes count from the end.
 Invalid indexes fault, with the same bounds and diagnostics as without.
+Shifts the suffix without clearing prior values retained in spare backing capacity.
 
 ```manuscript
 fn remove(index: Int) -> List[T]:
@@ -6106,7 +6189,7 @@ fn with_value(index: Int, value: T) -> List[T]:
 
 ### List.with_values
 
-Replaces `delete_count` values at `start` with the replacement list.
+Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity.
 
 ```manuscript
 fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:

@@ -25,6 +25,7 @@ export type List[T]:
     fn set(index: Int, value: T) -> List[T]:
     # Removes an element in place and returns this list; negative indexes count from the end.
     # Invalid indexes fault, with the same bounds and diagnostics as without.
+    # Shifts the suffix without clearing prior values retained in spare backing capacity.
     fn remove(index: Int) -> List[T]:
     # Compatibility spelling for set; mutates and returns this list.
     fn with_value(index: Int, value: T) -> List[T]:
@@ -52,7 +53,7 @@ export type List[T]:
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     # Returns true when every value satisfies the predicate; empty lists return true.
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
-    # Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
+    # Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal.
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
     fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]:
     fn map[U](transform: fn(value: T) -> U) -> List[U]:
@@ -61,7 +62,7 @@ export type List[T]:
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     # Reduces values from right to left, starting with `initial`.
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
-    # Replaces `delete_count` values at `start` with the replacement list.
+    # Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity.
     fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:

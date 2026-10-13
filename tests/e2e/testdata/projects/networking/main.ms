@@ -127,21 +127,21 @@ fn exercise() -> Result[Unit, HttpError]:
                 if not (response.status() == 200):
                     return panic(message: "check failed")
 
-                match response.read(max_bytes: 1024):
-                    ok(part):
-                        match part:
-                            some(data):
-                                if not (
-                                    data.to_text() == some(
-                                        "hello from streaming Manuscript"
-                                    )
-                                ):
-                                    return panic(message: "check failed")
-
-                            none:
-                                return panic(message: "Unexpected case")
-
+                let part = match response.read(max_bytes: 1024):
+                    ok(part): part
                     error(_):
+                        return panic(message: "Unexpected case")
+
+                match part:
+                    some(data):
+                        if not (
+                            data.to_text() == some(
+                                "hello from streaming Manuscript"
+                            )
+                        ):
+                            return panic(message: "check failed")
+
+                    none:
                         return panic(message: "Unexpected case")
 
         let websocket_options = WebSocketOptions(

@@ -90,27 +90,21 @@ fn propagate_generic() -> Result[Unit, Error]:
 
 fn describe_error(cause: Error) -> String:
     match cause:
-        JsonError(json):
-            match json:
-                InvalidInput:
-                    return "bad JSON limits"
-
-                InvalidData:
-                    return "malformed JSON"
-
-                LimitExceeded:
-                    return "JSON bound exceeded"
-
-        IoError(io):
-            match io:
-                Failed(message):
-                    return "I/O: {message}"
-
-                _:
-                    return io.message()
-
+        JsonError(json): return describe_json_error(json)
+        IoError(io): return describe_io_error(io)
         _:
             return cause.message()
+
+fn describe_json_error(cause: JsonError) -> String:
+    match cause:
+        InvalidInput: return "bad JSON limits"
+        InvalidData: return "malformed JSON"
+        LimitExceeded: return "JSON bound exceeded"
+
+fn describe_io_error(cause: IoError) -> String:
+    match cause:
+        Failed(message): return "I/O: {message}"
+        _: return cause.message()
 
 fn tagged_detail(cause: Error) -> String:
     match cause:
@@ -148,18 +142,19 @@ test "generic handling preserves the concrete error and its payload":
     if describe_error(wrapped) != "malformed JSON":
         return panic(message: "repeated views changed concrete identity")
 
-    match propagate_generic():
+    let cause = match propagate_generic():
         ok(_):
             return panic(message: "invalid data succeeded")
 
-        error(cause):
-            match cause:
-                EncodingError(encoding):
-                    if encoding != EncodingError.InvalidData:
-                        return panic(message: "generic propagation lost original cause")
+        error(cause): cause
 
-                _:
-                    return panic(message: "generic propagation lost concrete type")
+    match cause:
+        EncodingError(encoding):
+            if encoding != EncodingError.InvalidData:
+                return panic(message: "generic propagation lost original cause")
+
+        _:
+            return panic(message: "generic propagation lost concrete type")
 
 test "type patterns compare exact generic applications":
     let integer = Error(TaggedError(7))
@@ -178,18 +173,18 @@ test "Error views can be stored and matched":
     let shared = Error(CustomError("shared diagnostic"))
     let errors: List[Error] = [shared]
 
-    match errors.at(index: 0):
-        some(cause):
-            match cause:
-                CustomError(custom):
-                    if custom.detail != "shared diagnostic":
-                        return panic(message: "shared view lost receiver")
-
-                _:
-                    return panic(message: "shared view lost type")
-
+    let cause = match errors.at(index: 0):
+        some(cause): cause
         none:
             return panic(message: "shared errors collection was empty")
+
+    match cause:
+        CustomError(custom):
+            if custom.detail != "shared diagnostic":
+                return panic(message: "shared view lost receiver")
+
+        _:
+            return panic(message: "shared view lost type")
 
 type ReadError:
     diagnostic: String
@@ -216,35 +211,36 @@ fn propagate_read() -> Result[Unit, ReadError]:
     return ok(unit)
 
 test "domain error fields survive propagation without a wrapper":
-    match propagate_read():
+    let cause = match propagate_read():
         ok(_):
             return panic(message: "failed read succeeded")
 
-        error(cause):
+        error(cause): cause
+
+    if (
+        cause.path != "settings.json"
+        or cause.attempt != 2
+        or not cause.retryable
+    ):
+        return panic(message: "lost typed error fields")
+
+    let message = cause.message
+    if cause.message() != "read failed" or message() != "read failed":
+        return panic(message: "lost diagnostic")
+
+    let generic: Error = cause
+
+    match generic:
+        ReadError(read):
             if (
-                cause.path != "settings.json"
-                or cause.attempt != 2
-                or not cause.retryable
+                read.path != "settings.json"
+                or read.attempt != 2
+                or not read.retryable
             ):
-                return panic(message: "lost typed error fields")
+                return panic(message: "generic boundary lost typed fields")
 
-            let message = cause.message
-            if cause.message() != "read failed" or message() != "read failed":
-                return panic(message: "lost diagnostic")
-
-            let generic: Error = cause
-
-            match generic:
-                ReadError(read):
-                    if (
-                        read.path != "settings.json"
-                        or read.attempt != 2
-                        or not read.retryable
-                    ):
-                        return panic(message: "generic boundary lost typed fields")
-
-                _:
-                    return panic(message: "generic boundary lost concrete error")
+        _:
+            return panic(message: "generic boundary lost concrete error")
 
 fn read_failure(cause: ReadError) -> Result[Unit, ReadError]:
     return error(cause)
@@ -286,27 +282,28 @@ test "specific errors pass directly into Error boundaries":
     original.attempt = 3
 
     for result in results:
-        match result:
+        let cause = match result:
             ok(_):
                 return panic(message: "failed read succeeded")
 
-            error(cause):
-                match cause:
-                    ReadError(read):
-                        if (
-                            read.path != "settings.json"
-                            or read.attempt != 3
-                            or not read.retryable
-                        ):
-                            return panic(
-                                message: "Error boundary copied or lost typed fields"
-                            )
+            error(cause): cause
 
-                        read.path = "changed.json"
-                        read.path = "settings.json"
+        match cause:
+            ReadError(read):
+                if (
+                    read.path != "settings.json"
+                    or read.attempt != 3
+                    or not read.retryable
+                ):
+                    return panic(
+                        message: "Error boundary copied or lost typed fields"
+                    )
 
-                    _:
-                        return panic(message: "Error boundary lost original type")
+                read.path = "changed.json"
+                read.path = "settings.json"
+
+            _:
+                return panic(message: "Error boundary lost original type")
 
     match shared:
         ReadError(read):
@@ -340,19 +337,20 @@ fn invalid_field() -> Result[Unit, ValidationError]:
     return error(InvalidField(field: "attempt", expected: 1, actual: 0))
 
 test "domain case payloads need no Error implementation":
-    match invalid_field():
+    let cause = match invalid_field():
         ok(_):
             return panic(message: "invalid field succeeded")
 
-        error(cause):
-            match cause:
-                InvalidField(field, expected, actual):
-                    if (
-                        field != "attempt"
-                        or expected != 1
-                        or actual != 0
-                    ):
-                        return panic(message: "domain case lost typed fields")
+        error(cause): cause
+
+    match cause:
+        InvalidField(field, expected, actual):
+            if (
+                field != "attempt"
+                or expected != 1
+                or actual != 0
+            ):
+                return panic(message: "domain case lost typed fields")
 
 test "standard error diagnostics work directly":
     let cause = IoError.Failed("read failed")
@@ -445,23 +443,24 @@ fn check_missing_file() -> Result[Unit, FileSystemError]:
     let directory = try fs.temporary_directory("manuscript-errors-")
     let missing = "{directory}/missing-secret-token"
 
-    match fs.read_file(path: missing):
+    let cause = match fs.read_file(path: missing):
         ok(_):
             return panic(message: "missing file read succeeded")
 
-        error(cause):
-            match cause:
-                NotFound:
-                    let diagnostic = cause.message
-                    let shared: Error = cause
-                    if (
-                        diagnostic() != "filesystem: file or directory not found"
-                        or shared.message() != diagnostic()
-                    ):
-                        return panic(message: "missing file diagnostic lost")
+        error(cause): cause
 
-                _:
-                    return panic(message: "missing file changed error case")
+    match cause:
+        NotFound:
+            let diagnostic = cause.message
+            let shared: Error = cause
+            if (
+                diagnostic() != "filesystem: file or directory not found"
+                or shared.message() != diagnostic()
+            ):
+                return panic(message: "missing file diagnostic lost")
+
+        _:
+            return panic(message: "missing file changed error case")
 
     match fs.stat(path: missing, follow_links: true):
         ok(_):
