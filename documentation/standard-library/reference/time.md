@@ -36,6 +36,46 @@ type Duration:
     fn to_hours() -> Float:
 ```
 
+### Duration.add
+
+Adds another duration.
+
+```manuscript
+fn add(right: Duration) -> Duration:
+```
+
+### Duration.to_microseconds
+
+Converts this duration to an integer number of microseconds.
+
+```manuscript
+fn to_microseconds() -> Int:
+```
+
+### Duration.to_milliseconds
+
+Converts this duration to an integer number of milliseconds.
+
+```manuscript
+fn to_milliseconds() -> Int:
+```
+
+### Duration.to_nanoseconds
+
+Converts this duration to an integer number of nanoseconds.
+
+```manuscript
+fn to_nanoseconds() -> Int:
+```
+
+### Duration.to_seconds
+
+Converts this duration to floating-point seconds.
+
+```manuscript
+fn to_seconds() -> Float:
+```
+
 ## Instant {data-api-kind="Native type"}
 
 An instant on a monotonic clock; it is not a calendar timestamp.
@@ -45,6 +85,22 @@ type Instant:
     fn shift(duration: Duration) -> Instant:
     fn difference(right: Instant) -> Duration:
     fn compare(right: Instant) -> Int:
+```
+
+### Instant.difference
+
+Returns the elapsed duration from `right` to this instant.
+
+```manuscript
+fn difference(right: Instant) -> Duration:
+```
+
+### Instant.shift
+
+Shifts this monotonic instant by a duration.
+
+```manuscript
+fn shift(duration: Duration) -> Instant:
 ```
 
 ## TimeError {data-api-kind="Alternative"}
@@ -76,6 +132,46 @@ type Timestamp:
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
     fn difference(right: Timestamp) -> Result[Duration, TimeError]:
     fn compare(right: Timestamp) -> Int:
+```
+
+### Timestamp.difference
+
+Returns `self - right` as a duration.
+
+```manuscript
+fn difference(right: Timestamp) -> Result[Duration, TimeError]:
+```
+
+### Timestamp.nanoseconds
+
+Returns this timestamp's nanosecond component.
+
+```manuscript
+fn nanoseconds() -> Int:
+```
+
+### Timestamp.shift
+
+Adds a duration to this wall-clock timestamp.
+
+```manuscript
+fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
+```
+
+### Timestamp.to_string
+
+Formats this timestamp in RFC 3339 form.
+
+```manuscript
+fn to_string() -> String:
+```
+
+### Timestamp.unix_seconds
+
+Returns the whole Unix seconds represented by this timestamp.
+
+```manuscript
+fn unix_seconds() -> Int:
 ```
 
 ## WallClock {data-api-kind="Interface"}
