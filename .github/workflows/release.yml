@@ -108,8 +108,10 @@ jobs:
       # Runs with no Go on PATH from the workflow; the packaged CLI is all it uses.
       - name: Verify standalone compilation and tooling without system Go
         run: |
-          chmod +x verifier/distcheck* 2>/dev/null || true
-          ./verifier/distcheck* 'extracted distribution/manuscript-${{ matrix.os }}-${{ matrix.arch }}'
+          verifier=verifier/distcheck
+          if [ '${{ matrix.os }}' = windows ]; then verifier=verifier/distcheck.exe; fi
+          chmod +x "$verifier"
+          "./$verifier" 'extracted distribution/manuscript-${{ matrix.os }}-${{ matrix.arch }}'
 
   test:
     name: Distribution checks
