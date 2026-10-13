@@ -237,3 +237,12 @@ func BenchmarkIterateEarlyExit(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkBindImplementation(b *testing.B) {
+	receiver := customKey(1, "x")
+	ctx := RootExecution()
+	scope := TypeScope{Module: "a.ms", Args: []TypeScope{}}
+	for i := 0; i < b.N; i++ {
+		Invoke(ctx, Bind(receiver, "@std/Hashable", "hash", scope), nil)
+	}
+}
