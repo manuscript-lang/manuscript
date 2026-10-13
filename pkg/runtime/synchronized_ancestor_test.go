@@ -1,7 +1,11 @@
 package msruntime
 
 import (
+	"bufio"
 	"context"
+	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -56,216 +60,6 @@ func awaitSynchronizedCall(t *testing.T, done <-chan synchronizedCallOutcome) sy
 	}
 }
 
-func requireSynchronizedAncestorCrash(t *testing.T, outcome synchronizedCallOutcome) {
-	t.Helper()
-	if outcome.failure != nil {
-		t.Fatal("join faulted instead of reporting task failure", outcome.failure)
-	}
-	result := outcome.value.(Alternative)
-	if result.Tag != "error" {
-		t.Fatal("expected ancestor lock fault", result)
-	}
-	cause := result.Fields[0].(Alternative)
-	if cause.Tag != "Crashed" || !strings.Contains(cause.Fields[1].(string), "lock held by this operation or an ancestor") {
-		t.Fatal("unexpected task failure", cause)
-	}
-}
-
-func TestSynchronizedReentryAcrossExecutionViews(t *testing.T) {
-	root := RootExecution()
-	cell := synchronizedInt()
-	guard := lockCell(root, cell)
-	defer guard.close()
-	for name, caller := range map[string]*Execution{
-		"same operation":      root,
-		"shielded operation":  Shield(root),
-		"inherited view":      inherit(root, root.Context),
-		"nested descendant":   newExecution(newExecution(root, root.Context), root.Context),
-		"shielded descendant": Shield(newExecution(root, root.Context)),
-	} {
-		t.Run(name, func(t *testing.T) {
-			outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value {
-				locked := lockCell(caller, cell)
-				locked.close()
-				return Unit{}
-			}))
-			if fault, ok := outcome.failure.(Fault); !ok || !strings.Contains(fault.Message, "ancestor") {
-				t.Fatal("reentrant lock was not rejected", outcome)
-			}
-		})
-	}
-}
-
-func TestSynchronizedAncestorCloseJoinsShieldedCleanup(t *testing.T) {
-	for _, boundary := range []string{"group close", "execution exit", "scheduler close"} {
-		t.Run(boundary, func(t *testing.T) {
-			root := RootExecution()
-			cell := synchronizedInt()
-			guard := lockCell(root, cell)
-			entered := make(chan struct{})
-			callback := NewFunction(nil, "Unit", func(child *Execution, _ []Value) Value {
-				defer func() {
-					locked := lockCell(Shield(child), cell)
-					locked.close()
-				}()
-				close(entered)
-				<-child.Context.Done()
-				CheckCancelled(child)
-				return Unit{}
-			})
-			var closeWork func() Value
-			reported := make(chan Value, 1)
-			if boundary == "scheduler close" {
-				reporter := NewFunction([]string{"failure"}, "Unit", func(_ *Execution, args []Value) Value {
-					reported <- args[0]
-					return Unit{}
-				})
-				service := NewScheduler(root, []Argument{{"reporter", reporter}}).(*Scheduler)
-				service.start(root, callback)
-				closeWork = func() Value { service.close(root); return Unit{} }
-			} else {
-				group := NewTaskGroup(root, nil).(*TaskGroup)
-				groupTask(root, group, callback)
-				if boundary == "execution exit" {
-					closeWork = func() Value { FinishExecution(root); return Unit{} }
-				} else {
-					closeWork = func() Value { group.close(Shield(root)); return Unit{} }
-				}
-			}
-			t.Cleanup(func() {
-				guard.close()
-				// If the test times out, release before retrying shutdown so a
-				// regressed ancestor check cannot leave test goroutines blocked.
-				if failure := recovered(func() { closeWork() }); failure != nil && !t.Failed() {
-					t.Error(failure)
-				}
-			})
-			awaitSynchronizedSignal(t, entered)
-			outcome := awaitSynchronizedCall(t, synchronizedCall(closeWork))
-			if boundary == "scheduler close" {
-				if outcome.failure != nil {
-					t.Fatal(outcome.failure)
-				}
-				select {
-				case value := <-reported:
-					failure := value.(Alternative)
-					if failure.Tag != "Crashed" || !strings.Contains(failure.Fields[1].(string), "ancestor") {
-						t.Fatal(failure)
-					}
-				default:
-					t.Fatal("scheduler close returned before reporting cleanup failure")
-				}
-			} else if fault, ok := outcome.failure.(Fault); !ok || !strings.Contains(fault.Message, "ancestor") {
-				t.Fatal("shutdown did not report the shielded ancestor-lock fault", outcome)
-			}
-		})
-	}
-}
-
-// Characterizes #148 under the current documented conservative contract.
-// There is no ancestor join while the child attempts acquisition. A future
-// actual-cycle policy must change the overlapping case to wait and return 7.
-func TestSynchronizedAncestorContentionCurrentContract(t *testing.T) {
-	for _, overlap := range []bool{false, true} {
-		name := "released before child acquisition"
-		if overlap {
-			name = "held while child runs without a parent join"
-		}
-		t.Run(name, func(t *testing.T) {
-			root := RootExecution()
-			cell := synchronizedInt()
-			guard := lockCell(root, cell)
-			group := NewTaskGroup(root, nil).(*TaskGroup)
-			acquire := make(chan struct{})
-			var release sync.Once
-			// Release the lock and callback barrier before any cleanup join, even
-			// when a regressed guard lets the callback block indefinitely.
-			t.Cleanup(func() {
-				guard.close()
-				release.Do(func() { close(acquire) })
-				if failure := recovered(func() { group.close(Shield(root)) }); failure != nil && !t.Failed() {
-					t.Error(failure)
-				}
-			})
-			task := groupTask(root, group, NewFunction(nil, "Int", func(child *Execution, _ []Value) Value {
-				<-acquire
-				locked := lockCell(child, cell)
-				defer locked.close()
-				return Invoke(child, locked.Operation("get"), nil)
-			}))
-			Invoke(root, guard.Operation("set"), []Argument{{"value", int64(7)}})
-			if !overlap {
-				guard.close()
-			}
-			release.Do(func() { close(acquire) })
-			// Observe completion first; invoking join here would obscure the
-			// distinction between ordinary contention and a real wait cycle.
-			awaitSynchronizedSignal(t, task.done)
-			guard.close()
-			outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value { return taskResult(root, task) }))
-			if overlap {
-				requireSynchronizedAncestorCrash(t, outcome)
-			} else if outcome.failure != nil || outcome.value.(Alternative).Tag != "ok" || outcome.value.(Alternative).Fields[0] != int64(7) {
-				t.Fatal("released ancestor lock did not deliver the committed value", outcome)
-			}
-		})
-	}
-}
-
-// Covers both orders that an actual-cycle detector must handle: acquisition
-// before join, and join before acquisition. An ancestor-only check currently
-// rejects the first lock attempt; removing it would hang both cases.
-func TestSynchronizedAncestorJoinLockCycle(t *testing.T) {
-	for _, boundary := range []string{"task", "group"} {
-		for _, joinFirst := range []bool{false, true} {
-			order := "lock first"
-			if joinFirst {
-				order = "join first"
-			}
-			t.Run(boundary+"/"+order, func(t *testing.T) {
-				root := RootExecution()
-				cell := synchronizedInt()
-				guard := lockCell(root, cell)
-				group := NewTaskGroup(root, nil).(*TaskGroup)
-				acquire := make(chan struct{})
-				var release sync.Once
-				t.Cleanup(func() {
-					guard.close()
-					release.Do(func() { close(acquire) })
-					if failure := recovered(func() { group.close(Shield(root)) }); failure != nil && !t.Failed() {
-						t.Error(failure)
-					}
-				})
-				task := groupTask(root, group, NewFunction(nil, "Int", func(child *Execution, _ []Value) Value {
-					<-acquire
-					locked := lockCell(child, cell)
-					defer locked.close()
-					return int64(1)
-				}))
-				waiting := &synchronizedWaitContext{Context: root.Context, entered: make(chan struct{})}
-				join := func() Value {
-					caller := inherit(root, waiting)
-					if boundary == "task" {
-						return taskResult(caller, task)
-					}
-					return groupResult(caller, group)
-				}
-				var done <-chan synchronizedCallOutcome
-				if joinFirst {
-					done = synchronizedCall(join)
-					awaitSynchronizedSignal(t, waiting.entered)
-					release.Do(func() { close(acquire) })
-				} else {
-					release.Do(func() { close(acquire) })
-					awaitSynchronizedSignal(t, task.done)
-					done = synchronizedCall(join)
-				}
-				requireSynchronizedAncestorCrash(t, awaitSynchronizedCall(t, done))
-			})
-		}
-	}
-}
-
 func TestSynchronizedGuardAliasReleasesWhileOwnerJoins(t *testing.T) {
 	root := RootExecution()
 	cell := synchronizedInt()
@@ -296,46 +90,6 @@ func TestSynchronizedGuardAliasReleasesWhileOwnerJoins(t *testing.T) {
 	}
 	next := lockCell(root, cell)
 	next.close()
-}
-
-func TestSynchronizedAncestorLockDuringCancelledCleanup(t *testing.T) {
-	base := RootExecution()
-	parentContext, cancel := context.WithCancel(base.Context)
-	defer cancel()
-	root := inherit(base, parentContext)
-	cell := synchronizedInt()
-	guard := lockCell(root, cell)
-	group := NewTaskGroup(root, nil).(*TaskGroup)
-	t.Cleanup(func() {
-		guard.close()
-		cancel()
-		if failure := recovered(func() { group.close(Shield(root)) }); failure != nil && !t.Failed() {
-			t.Error(failure)
-		}
-	})
-	entered := make(chan struct{})
-	task := groupTask(root, group, NewFunction(nil, "Unit", func(child *Execution, _ []Value) Value {
-		defer func() {
-			locked := lockCell(Shield(child), cell)
-			locked.close()
-		}()
-		close(entered)
-		<-child.Context.Done()
-		CheckCancelled(child)
-		return Unit{}
-	}))
-	awaitSynchronizedSignal(t, entered)
-	cancel()
-	// Shielded joining still depends on child cleanup. Cancellation cannot
-	// dissolve this lock/join cycle, nor may it forcibly release the guard.
-	outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value { return taskResult(Shield(root), task) }))
-	requireSynchronizedAncestorCrash(t, outcome)
-	cell.mu.Lock()
-	held := cell.holder == guard
-	cell.mu.Unlock()
-	if !held {
-		t.Fatal("parent cancellation released an executing critical section")
-	}
 }
 
 func TestSynchronizedBlockedCancellationRacesRelease(t *testing.T) {
@@ -417,4 +171,390 @@ func TestSynchronizedCancellationAtDeliveryCheckpoint(t *testing.T) {
 	}
 	next := lockCell(root, cell)
 	next.close()
+}
+
+func TestSynchronizedReentryAcrossExecutionViews(t *testing.T) {
+	root := RootExecution()
+	cell := synchronizedInt()
+	guard := lockCell(root, cell)
+	defer guard.close()
+	for name, caller := range map[string]*Execution{"same operation": root, "shielded operation": Shield(root), "inherited view": inherit(root, root.Context)} {
+		t.Run(name, func(t *testing.T) {
+			outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value { locked := lockCell(caller, cell); locked.close(); return Unit{} }))
+			if fault, ok := outcome.failure.(Fault); !ok || !strings.Contains(fault.Message, "this operation") {
+				t.Fatal("reentry did not fault", outcome)
+			}
+		})
+	}
+}
+
+func TestSynchronizedAncestorContentionWaits(t *testing.T) {
+	for _, mode := range []string{"ordinary child", "shielded child", "nested child"} {
+		t.Run(mode, func(t *testing.T) {
+			root := RootExecution()
+			cell := synchronizedInt()
+			guard := lockCell(root, cell)
+			group := NewTaskGroup(root, nil).(*TaskGroup)
+			blocked := make(chan struct{})
+			t.Cleanup(func() {
+				guard.close()
+				if failure := recovered(func() { group.close(Shield(root)) }); failure != nil && !t.Failed() {
+					t.Error(failure)
+				}
+			})
+			read := NewFunction(nil, "Int", func(child *Execution, _ []Value) Value {
+				if mode == "shielded child" {
+					child = Shield(child)
+				}
+				child = inherit(child, &synchronizedWaitContext{Context: child.Context, entered: blocked})
+				locked := lockCell(child, cell)
+				defer locked.close()
+				return Invoke(child, locked.Operation("get"), nil)
+			})
+			callback := read
+			if mode == "nested child" {
+				callback = NewFunction(nil, "Int", func(child *Execution, _ []Value) Value {
+					nested := NewTaskGroup(child, nil).(*TaskGroup)
+					defer nested.close(Shield(child))
+					task := groupTask(child, nested, read)
+					result := taskResult(child, task)
+					if result.Tag != "ok" {
+						return Panic("nested child failed")
+					}
+					return result.Fields[0]
+				})
+			}
+			task := groupTask(root, group, callback)
+			awaitSynchronizedSignal(t, blocked)
+			select {
+			case <-task.done:
+				t.Fatal("contention completed before release")
+			default:
+			}
+			Invoke(root, guard.Operation("set"), []Argument{{"value", int64(7)}})
+			guard.close()
+			outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value { return taskResult(root, task) }))
+			if outcome.failure != nil || outcome.value.(Alternative).Tag != "ok" || outcome.value.(Alternative).Fields[0] != int64(7) {
+				t.Fatal(outcome)
+			}
+			group.close(root)
+		})
+	}
+}
+
+func TestSynchronizedAncestorJoinCycleCancelled(t *testing.T) {
+	for _, boundary := range []string{"task", "group"} {
+		for _, joinFirst := range []bool{false, true} {
+			order := "lock first"
+			if joinFirst {
+				order = "join first"
+			}
+			t.Run(boundary+"/"+order, func(t *testing.T) {
+				base := RootExecution()
+				active, cancel := context.WithCancel(base.Context)
+				defer cancel()
+				root := inherit(base, active)
+				cell := synchronizedInt()
+				guard := lockCell(root, cell)
+				group := NewTaskGroup(root, nil).(*TaskGroup)
+				acquire := make(chan struct{})
+				var allow sync.Once
+				t.Cleanup(func() { guard.close(); cancel(); allow.Do(func() { close(acquire) }); group.close(Shield(root)) })
+				blocked := make(chan struct{})
+				task := groupTask(root, group, NewFunction(nil, "Int", func(child *Execution, _ []Value) Value {
+					<-acquire
+					child = inherit(child, &synchronizedWaitContext{Context: child.Context, entered: blocked})
+					locked := lockCell(child, cell)
+					defer locked.close()
+					return int64(1)
+				}))
+				waiting := &synchronizedWaitContext{Context: root.Context, entered: make(chan struct{})}
+				join := func() Value {
+					caller := inherit(root, waiting)
+					if boundary == "task" {
+						return taskResult(caller, task)
+					}
+					return groupResult(caller, group)
+				}
+				var done <-chan synchronizedCallOutcome
+				if joinFirst {
+					done = synchronizedCall(join)
+					awaitSynchronizedSignal(t, waiting.entered)
+					allow.Do(func() { close(acquire) })
+				} else {
+					allow.Do(func() { close(acquire) })
+					awaitSynchronizedSignal(t, blocked)
+					done = synchronizedCall(join)
+				}
+				awaitSynchronizedSignal(t, blocked)
+				awaitSynchronizedSignal(t, waiting.entered)
+				select {
+				case outcome := <-done:
+					t.Fatal("cycle did not block", outcome)
+				default:
+				}
+				cancel()
+				outcome := awaitSynchronizedCall(t, done)
+				if _, ok := outcome.failure.(cancelled); !ok {
+					t.Fatal("cancelled join changed failure identity", outcome)
+				}
+				cell.mu.Lock()
+				held := cell.holder == guard
+				cell.mu.Unlock()
+				if !held {
+					t.Fatal("cancellation forcibly released executing holder")
+				}
+				Cleanup(root, guard)
+				next := lockCell(base, cell)
+				next.close()
+			})
+		}
+	}
+}
+
+func TestSynchronizedDeadlineStopsOrdinaryWait(t *testing.T) {
+	root := RootExecution()
+	cell := synchronizedInt()
+	guard := lockCell(root, cell)
+	defer guard.close()
+	deadline, cancel := context.WithTimeout(root.Context, 40*time.Millisecond)
+	defer cancel()
+	child := newExecution(root, deadline)
+	outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value { return lockCell(child, cell) }))
+	if _, ok := outcome.failure.(cancelled); !ok || deadline.Err() != context.DeadlineExceeded {
+		t.Fatal(outcome, deadline.Err())
+	}
+	cell.mu.Lock()
+	held := cell.holder == guard
+	cell.mu.Unlock()
+	if !held {
+		t.Fatal("deadline released executing holder")
+	}
+}
+
+func TestSynchronizedTaskGroupTimeoutBreaksOrdinaryCycle(t *testing.T) {
+	root := RootExecution()
+	cell := synchronizedInt()
+	guard := lockCell(root, cell)
+	defer guard.close()
+	group := NewTaskGroup(root, []Argument{{"timeout", Duration(40 * time.Millisecond)}}).(*TaskGroup)
+	t.Cleanup(func() { guard.close(); group.close(root) })
+	task := groupTask(root, group, NewFunction(nil, "Int", func(child *Execution, _ []Value) Value {
+		locked := lockCell(child, cell)
+		defer locked.close()
+		return int64(1)
+	}))
+	outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value { return taskResult(root, task) }))
+	if outcome.failure != nil {
+		t.Fatal(outcome)
+	}
+	result := outcome.value.(Alternative)
+	if result.Tag != "error" || result.Fields[0].(Alternative).Tag != "TimedOut" {
+		t.Fatal(result)
+	}
+	cell.mu.Lock()
+	held := cell.holder == guard
+	cell.mu.Unlock()
+	if !held {
+		t.Fatal("group timeout released executing holder")
+	}
+	Invoke(root, guard.Operation("set"), []Argument{{"value", int64(3)}})
+}
+
+func TestSynchronizedNilLifetimesRemainIndependent(t *testing.T) {
+	owner, other := RootExecution(), RootExecution()
+	owner.Lifetime = nil
+	other.Lifetime = nil
+	cell := synchronizedInt()
+	guard := lockCell(owner, cell)
+	defer guard.close()
+	waiting := &synchronizedWaitContext{Context: other.Context, entered: make(chan struct{})}
+	other = inherit(other, waiting)
+	done := synchronizedCall(func() Value { locked := lockCell(other, cell); locked.close(); return Unit{} })
+	awaitSynchronizedSignal(t, waiting.entered)
+	select {
+	case outcome := <-done:
+		t.Fatal("independent nil lifetimes did not wait", outcome)
+	default:
+	}
+	guard.close()
+	if outcome := awaitSynchronizedCall(t, done); outcome.failure != nil {
+		t.Fatal(outcome)
+	}
+}
+
+// Disposable children exercise real wait cycles without leaving stuck goroutines
+// in this test process. The parent controls cancellation and alias release.
+func TestSynchronizedBlockingCycleSubprocess(t *testing.T) {
+	const variable = "MANUSCRIPT_SYNCHRONIZED_CYCLE_CHILD"
+	if mode := os.Getenv(variable); mode != "" {
+		runSynchronizedCycleChild(t, mode)
+		return
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"ordinary", "shielded"} {
+		t.Run(mode, func(t *testing.T) {
+			deadline, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+			defer cancel()
+			command := exec.CommandContext(deadline, executable, "-test.run=^TestSynchronizedBlockingCycleSubprocess$", "-test.count=1", "-test.timeout=6s")
+			command.Env = append(os.Environ(), variable+"="+mode)
+			input, err := command.StdinPipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer input.Close()
+			output, err := command.StdoutPipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var diagnostics strings.Builder
+			command.Stderr = &diagnostics
+			if err := command.Start(); err != nil {
+				t.Fatal(err)
+			}
+			exited := make(chan error, 1)
+			lines := make(chan string, 32)
+			go func() {
+				scanner := bufio.NewScanner(output)
+				for scanner.Scan() {
+					select {
+					case lines <- scanner.Text():
+					case <-deadline.Done():
+						close(lines)
+						exited <- command.Wait()
+						return
+					}
+				}
+				close(lines)
+				exited <- command.Wait()
+			}()
+			wait := func(marker string) {
+				t.Helper()
+				for {
+					select {
+					case line, ok := <-lines:
+						if !ok {
+							t.Fatal("child exited before", marker)
+						}
+						if line == marker {
+							return
+						}
+					case <-deadline.Done():
+						t.Fatal("child did not reach", marker)
+					}
+				}
+			}
+			if mode == "ordinary" {
+				wait("CYCLE_WAITING")
+				if _, err := fmt.Fprintln(input, "cancel"); err != nil {
+					t.Fatal(err)
+				}
+				wait("CANCELLED_RELEASED")
+			} else {
+				wait("CANCELLED_SHIELDED_WAITING")
+				if _, err := fmt.Fprintln(input, "release"); err != nil {
+					t.Fatal(err)
+				}
+				wait("RELEASED_JOIN_FINISHED")
+			}
+			input.Close()
+			select {
+			case err := <-exited:
+				if err != nil {
+					t.Fatal(err, diagnostics.String())
+				}
+			case <-deadline.Done():
+				t.Fatal("child process did not exit")
+			}
+		})
+	}
+}
+
+func runSynchronizedCycleChild(t *testing.T, mode string) {
+	base := RootExecution()
+	active, cancel := context.WithCancel(base.Context)
+	defer cancel()
+	root := inherit(base, active)
+	cell := synchronizedInt()
+	guard := lockCell(root, cell)
+	group := NewTaskGroup(root, nil).(*TaskGroup)
+	t.Cleanup(func() { guard.close(); cancel(); group.close(Shield(root)) })
+	blocked, started := make(chan struct{}), make(chan struct{})
+	task := groupTask(root, group, NewFunction(nil, "Unit", func(child *Execution, _ []Value) Value {
+		if mode == "shielded" {
+			defer func() {
+				shield := inherit(Shield(child), &synchronizedWaitContext{Context: Shield(child).Context, entered: blocked})
+				locked := lockCell(shield, cell)
+				locked.close()
+			}()
+			close(started)
+			<-child.Context.Done()
+			CheckCancelled(child)
+		} else {
+			child = inherit(child, &synchronizedWaitContext{Context: child.Context, entered: blocked})
+			locked := lockCell(child, cell)
+			locked.close()
+		}
+		return Unit{}
+	}))
+	waiting := &synchronizedWaitContext{Context: root.Context, entered: make(chan struct{})}
+	done := synchronizedCall(func() Value { return taskResult(inherit(root, waiting), task) })
+	awaitSynchronizedSignal(t, waiting.entered)
+	reader := bufio.NewReader(os.Stdin)
+	if mode == "shielded" {
+		awaitSynchronizedSignal(t, started)
+		cancel()
+		awaitSynchronizedSignal(t, blocked)
+		select {
+		case outcome := <-done:
+			t.Fatal("shielded cleanup was abandoned", outcome)
+		default:
+		}
+		cell.mu.Lock()
+		held := cell.holder == guard
+		cell.mu.Unlock()
+		if !held {
+			t.Fatal("cancel released holder")
+		}
+		fmt.Println("CANCELLED_SHIELDED_WAITING")
+		command, err := reader.ReadString('\n')
+		if err != nil || command != "release\n" {
+			t.Fatal(command, err)
+		}
+		guard.close()
+	} else {
+		awaitSynchronizedSignal(t, blocked)
+		select {
+		case outcome := <-done:
+			t.Fatal("cycle did not wait", outcome)
+		default:
+		}
+		fmt.Println("CYCLE_WAITING")
+		command, err := reader.ReadString('\n')
+		if err != nil || command != "cancel\n" {
+			t.Fatal(command, err)
+		}
+		cancel()
+	}
+	outcome := awaitSynchronizedCall(t, done)
+	if _, ok := outcome.failure.(cancelled); !ok {
+		t.Fatal("join cancellation identity", outcome)
+	}
+	if mode == "ordinary" {
+		cell.mu.Lock()
+		held := cell.holder == guard
+		cell.mu.Unlock()
+		if !held {
+			t.Fatal("cancel released holder")
+		}
+		Cleanup(root, guard)
+		next := lockCell(base, cell)
+		next.close()
+		fmt.Println("CANCELLED_RELEASED")
+	} else {
+		fmt.Println("RELEASED_JOIN_FINISHED")
+	}
 }

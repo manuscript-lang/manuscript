@@ -34,17 +34,11 @@ func (s *Synchronized) Operation(name string) Function {
 				s.mu.Unlock()
 				return guard
 			}
-			reentrant := s.holder.owner == ctx
-			for life := ctx.Lifetime; life != nil; life = life.parent {
-				if life == s.holder.lifetime {
-					reentrant = true
-					break
-				}
-			}
+			reentrant := s.holder.owner == ctx || ctx.Lifetime != nil && s.holder.lifetime == ctx.Lifetime
 			changed := s.changed
 			s.mu.Unlock()
 			if reentrant {
-				return Panic("cannot acquire a Synchronized lock held by this operation or an ancestor")
+				return Panic("cannot acquire a Synchronized lock held by this operation")
 			}
 			select {
 			case <-changed:

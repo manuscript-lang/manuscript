@@ -57,6 +57,8 @@ For native application shutdown, use registered `with` cleanup; observing SIGINT
 
 Cancellation of a lock holder unwinds its `with` scope and closes the guard. It never releases the lock while the holder is still running. Updates already made through `locked.set()` remain committed; releasing the guard does not roll them back. Guard cleanup is idempotent and shielded from the initiating cancellation. See [synchronizing updates](synchronization.md#synchronized).
 
+Cross-task lock cycles wait rather than faulting automatically. Cancellation or a group timeout can stop an ordinary lock waiter, but cannot cancel a shielded cleanup wait or abandon a mandatory cleanup join. Release a held guard before joining work that needs it; deadlines do not guarantee escape from cleanup cycles.
+
 ## Timeouts
 
 Timeouts are named library arguments, not syntax annotations. Duration values come from the standard time API; naming `Duration` requires its own import from `@std/time.ms`.
