@@ -234,15 +234,20 @@ test "ancestor join cycle faults without hanging":
 
 test "parent holds lock while a running child waits for it":
     let cell = Synchronized(0)
+
     with tasks = TaskGroup():
-        let child = tasks.start(fn() -> Int:
-            sleep(duration: 20.milliseconds)
-            with locked = cell.lock():
-                return locked.get()
+        let child = tasks.start(
+            fn() -> Int:
+                sleep(duration: 20.milliseconds)
+
+                with locked = cell.lock():
+                    return locked.get()
         )
+
         with locked = cell.lock():
             sleep(duration: 100.milliseconds)
             locked.set(value: 7)
+
         match child.join():
             ok(value):
                 if value != 7:
