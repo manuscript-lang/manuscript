@@ -46,6 +46,9 @@ func Run(args []string) int {
 	if args[0] == "doc" {
 		return runDoc(args[1:])
 	}
+	if args[0] == "fmt" {
+		return runFormat(args[1:])
+	}
 	if args[0] == "lsp" {
 		if err := lsp.Serve(os.Stdin, os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -128,7 +131,6 @@ func Run(args []string) int {
 	}
 	options := compiler.Options{}
 	switch command {
-	case "fmt": // Formatting returns before the compiler pipeline.
 	case "check", "lint", "inspect", "diagram", "lock":
 		options.AnalyzeOnly = true
 		options.Entry = command != "lint" && filepath.Base(filename) == "ms.toml"
@@ -174,34 +176,6 @@ func Run(args []string) int {
 	if watch && (cpuProfile != "" || heapProfile != "" || tracePath != "") {
 		fmt.Fprintln(os.Stderr, "--watch cannot be combined with profiling flags; run the profile once without --watch")
 		return 2
-	}
-	if command == "fmt" {
-		source, err := os.ReadFile(filename)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, fileError(err))
-			return 1
-		}
-		formatted, err := tooling.Format(filename, string(source))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\nfmt only formats source that parses; fix the syntax error above, then re-run ms fmt %s\n", err, filename)
-			return 1
-		}
-		if string(source) == formatted {
-			return 0
-		}
-		if formatCheck {
-			fmt.Fprintf(os.Stderr, "Formatting needed: %s; run ms fmt %s to rewrite it\n", filename, filename)
-			return 1
-		}
-		info, err := os.Stat(filename)
-		if err == nil {
-			err = tooling.WriteFormatted(filename, formatted, info.Mode().Perm())
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		return 0
 	}
 
 	if command == "profile" {
