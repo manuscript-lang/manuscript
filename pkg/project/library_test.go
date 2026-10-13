@@ -32,6 +32,7 @@ func TestAliasDiagnosticKeyAndValueLocations(t *testing.T) {
 		column      int
 	}{
 		{"  \"@std\" = \"src\" # invalid key\r\n", "\"@std\"", 3},
+		{"\u2003\"@std\" = \"src\"\r\n", "\"@std\"", 4},
 		{"  \"@bad\" = \"@other\" # invalid value\r\n", "\"@other\"", 12},
 		{"  \"@bad\" = \"missing\" # unresolved target\r\n", "\"missing\"", 12},
 		{"  \"@bad\" = \"src\"\r\n  \"@bad\" = \"src\"\r\n", "\"@bad\"", 3},

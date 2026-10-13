@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 type Project struct {
@@ -83,7 +84,7 @@ func ReadProject(filename string) (Project, error) {
 		}
 		content := manifestLine(raw)
 		line := strings.TrimSpace(content)
-		leading := len(content) - len(strings.TrimLeft(content, " \t\r"))
+		leading := len(content) - len(strings.TrimLeftFunc(content, unicode.IsSpace))
 		location = Location{File: filepath.Base(absolute), Line: lineNumber, Column: leading + 1, Offset: lineStart + leading}
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue

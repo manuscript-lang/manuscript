@@ -29,7 +29,7 @@ ms test test.ms --watch
 
 `--watch` keeps one `ms` process alive, rebuilds after each saved change to the manifest or any loaded local module, and restarts the program. The running program is interrupted, given five seconds to finish cleanup, and then killed, but only after its replacement builds; a failed edit prints diagnostics and keeps watching. Each restart reports the time from the save. Interrupting `ms` interrupts the program and exits with status 130. See [cache boundaries](builds/incremental-compilation.md) for what a rebuild still compiles and links.
 
-Project lint checks hygiene in every reachable local module and runs semantic rules on the checked program. `--json` reports stable rule codes and module-relative positions.
+Project lint checks hygiene in every reachable local module and runs semantic rules on the checked program. [Library projects](builds/project-configuration.md#library-projects-and-copied-dependencies) include all source modules and discovered tests. `--json` reports stable rule codes and module-relative positions.
 
 ## Source inspection and API documentation
 
@@ -46,7 +46,7 @@ ms stdlib exported-standard-sources
 
 These commands use source checking and embedded declarations without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
 
-`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. Project docs include reachable local modules. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. JSON uses schema version 1. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
+`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. Project docs include reachable local modules; library projects include all source modules and discovered tests. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. JSON uses schema version 1. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
 
 `ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/` platform helpers. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](builds/reproducibility.md).
 
