@@ -7,8 +7,10 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
+	"unsafe"
 )
 
 func clampedIndex(length int, index int64, relative bool) int64 {
@@ -346,4 +348,27 @@ func scalarOffset(text string, n int) int {
 		offset += width
 	}
 	return offset
+}
+
+// scalarCountCache remembers the last long string measured, so a loop that
+// calls scalar_length() every iteration pays for the scan once. It holds the
+// string itself, which keeps its backing memory from being reused under the
+// pointer comparison.
+type scalarCountEntry struct {
+	text  string
+	count int64
+}
+
+var scalarCountCache atomic.Pointer[scalarCountEntry]
+
+func scalarCount(text string) int64 {
+	if len(text) < 1024 {
+		return int64(utf8.RuneCountInString(text))
+	}
+	if e := scalarCountCache.Load(); e != nil && len(e.text) == len(text) && unsafe.StringData(e.text) == unsafe.StringData(text) {
+		return e.count
+	}
+	n := int64(utf8.RuneCountInString(text))
+	scalarCountCache.Store(&scalarCountEntry{text, n})
+	return n
 }
