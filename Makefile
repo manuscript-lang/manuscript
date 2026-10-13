@@ -3,7 +3,6 @@ HUGO ?= hugo
 FUZZTIME ?= 10s
 E2EFLAGS ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
-export MANUSCRIPT_GO ?= $(GO)
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
@@ -12,9 +11,9 @@ export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 toolchain:
 	sh scripts/bootstrap-go.sh
 
-build test e2e stdlib-test race fmt coverage fuzz: | toolchain
+check lint repo-check unit stdlib-check stdlib-test examples-check licenses licenses-check test e2e race coverage fuzz fmt docs docs-check: | payload
 
-setup: toolchain tools
+setup: payload tools
 
 tools: | toolchain
 	sh scripts/bootstrap-tools.sh
@@ -62,7 +61,7 @@ payload: | toolchain
 	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz $$("$(GO)" env GOHOSTOS) $$("$(GO)" env GOHOSTARCH)
 
 build: payload
-	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags bundled_toolchain,exp.winarm64 -o ms ./cmd/ms
+	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags exp.winarm64 -o ms ./cmd/ms
 
 test:
 	"$(GO)" test ./...

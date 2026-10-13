@@ -14,6 +14,10 @@ import (
 )
 
 func main() {
+	if marker := os.Getenv("MS_TEST_POISON"); marker != "" {
+		_ = os.WriteFile(marker, []byte(os.Args[0]), 0600)
+		os.Exit(99)
+	}
 	if err := check(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -67,14 +71,21 @@ func check() error {
 			return err
 		}
 	}
+	poison, marker, err := poisonTools(directory, suffix)
+	if err != nil {
+		return err
+	}
 	// Deliberately conflicting host settings must not replace the bundled SDK.
 	settings := map[string]string{
-		"PATH": directory, "MANUSCRIPT_GO": "", "GOROOT": filepath.Join(directory, "missing-go"),
+		"PATH": directory, "MANUSCRIPT_GO": filepath.Join(poison, "go"+suffix), "GOROOT": filepath.Join(directory, "missing-go"),
 		"GOTOOLCHAIN": "auto", "GOENV": filepath.Join(directory, "missing-go-env"),
-		"CGO_ENABLED": "1", "GOPROXY": "off", "GOSUMDB": "off", "GOFLAGS": "",
+		"CGO_ENABLED": "1", "GOPROXY": "off", "GOSUMDB": "off", "GOFLAGS": "-toolexec=" + filepath.Join(poison, "cache-tool"+suffix),
 		"GOCACHE": filepath.Join(directory, "cache"), "GOMODCACHE": filepath.Join(directory, "modules"),
 		"MANUSCRIPT_CACHE_DIR": filepath.Join(directory, "user-cache"),
 		"XDG_CONFIG_HOME":      filepath.Join(directory, "config"),
+		"GOCACHEPROG":          filepath.Join(poison, "cache-tool"+suffix),
+		"GOWORK":               filepath.Join(directory, "missing-workspace"),
+		"MS_TEST_POISON":       marker,
 	}
 	// Delve's macOS backend requires Apple's separately installed debugserver.
 	// Resolve the documented prerequisite before removing host tools from PATH.
@@ -209,6 +220,32 @@ func check() error {
 		if info.Size() == 0 {
 			return fmt.Errorf("empty profile artifact: %s", name)
 		}
+	}
+	for _, arguments := range [][]string{
+		{"pprof", "-top", filepath.Join(profile, "heap.pprof")},
+		{"pprof", "-tags", filepath.Join(profile, "cpu.pprof")},
+		{"trace", "-d=parsed", filepath.Join(profile, "trace.out")},
+	} {
+		if _, err := run(cli, arguments...); err != nil {
+			return err
+		}
+	}
+	// Repeat a cold native build with actual poison executables on PATH. Ambient
+	// overrides already point to them in the first, ms-only PATH phase above.
+	for i, entry := range environment {
+		key, _, _ := strings.Cut(entry, "=")
+		switch strings.ToUpper(key) {
+		case "PATH":
+			environment[i] = "PATH=" + poison
+		case "MANUSCRIPT_CACHE_DIR":
+			environment[i] = "MANUSCRIPT_CACHE_DIR=" + filepath.Join(directory, "second-cold-cache")
+		}
+	}
+	if _, err := run(cli, "run", filepath.Join(project, "src", "main.ms"), "--", "first", "second"); err != nil {
+		return err
+	}
+	if err := assertNoExternalTool(marker); err != nil {
+		return err
 	}
 	profileManifest, err := os.ReadFile(filepath.Join(profile, "manifest.json"))
 	if err != nil {

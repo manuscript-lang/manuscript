@@ -2,15 +2,11 @@
 package devtool
 
 import (
-	"os"
 	"path/filepath"
 	"runtime"
 )
 
 func Go() string {
-	if selected := os.Getenv("MANUSCRIPT_GO"); selected != "" {
-		return selected
-	}
 	name := "go"
 	if runtime.GOOS == "windows" {
 		name += ".exe"

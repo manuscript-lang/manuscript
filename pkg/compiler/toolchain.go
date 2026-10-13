@@ -3,10 +3,11 @@ package compiler
 import (
 	"encoding/json"
 	"fmt"
-	support "github.com/manuscript-lang/manuscript"
 	"maps"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -24,36 +25,33 @@ func goCommand(arguments ...string) (*exec.Cmd, error) {
 }
 
 func goToolchain() (string, []string, error) {
-	tool := os.Getenv("MANUSCRIPT_GO")
-	settings := map[string]string{"GOTOOLCHAIN": "local", "CGO_ENABLED": "0", "GOENV": "off"}
-	if tool == "" {
-		if len(support.GoToolchainArchive) != 0 {
-			root, err := bundledGoRoot()
-			if err != nil {
-				return "", nil, fmt.Errorf("prepare bundled toolchain: %w", err)
-			}
-			tool = goExecutable(root)
-			settings["GOROOT"] = root
-		} else {
-			// Preserve direct go build and library embedding for developers.
-			var err error
-			tool, err = exec.LookPath("go")
-			if err != nil {
-				return "", nil, fmt.Errorf("no Go toolchain found: this developer binary has no bundled toolchain and go is not on PATH; install Go 1.25 or newer, set MANUSCRIPT_GO to a go executable, or use a Manuscript release binary: %w", err)
-			}
-		}
+	root, err := bundledGoRoot()
+	if err != nil {
+		return "", nil, fmt.Errorf("prepare bundled toolchain: %w", err)
+	}
+	cache, err := userCacheRoot()
+	if err != nil {
+		return "", nil, err
+	}
+	settings := map[string]string{
+		"GOROOT": root, "GOTOOLCHAIN": "local", "CGO_ENABLED": "0", "GOENV": "off",
+		"GOOS": runtime.GOOS, "GOARCH": runtime.GOARCH, "GOFLAGS": "", "GOWORK": "off",
+		"GO111MODULE": "on", "GOPROXY": "off", "GOSUMDB": "off", "GOTELEMETRY": "off",
+		"GOCACHE":    filepath.Join(cache, "manuscript", "go-build"),
+		"GOPATH":     filepath.Join(cache, "manuscript", "go"),
+		"GOMODCACHE": filepath.Join(cache, "manuscript", "go", "pkg", "mod"),
 	}
 	var environment []string
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")
-		if _, replaced := settings[strings.ToUpper(key)]; !replaced {
+		if key = strings.ToUpper(key); !strings.HasPrefix(key, "GO") && !strings.HasPrefix(key, "CGO_") {
 			environment = append(environment, entry)
 		}
 	}
 	for _, key := range slices.Sorted(maps.Keys(settings)) {
 		environment = append(environment, key+"="+settings[key])
 	}
-	return tool, environment, nil
+	return goExecutable(root), environment, nil
 }
 
 // Toolchain queries are remembered per tool and environment, so one process

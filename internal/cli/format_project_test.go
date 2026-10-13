@@ -8,7 +8,7 @@ import (
 )
 
 func TestFormatTargets(t *testing.T) {
-	t.Setenv("MANUSCRIPT_GO", filepath.Join(t.TempDir(), "missing-go"))
+	t.Setenv("PATH", t.TempDir())
 	for _, mode := range []string{"manifest", "directory", "files"} {
 		t.Run(mode, func(t *testing.T) {
 			root := t.TempDir()

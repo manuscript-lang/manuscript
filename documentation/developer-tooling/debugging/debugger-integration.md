@@ -61,3 +61,7 @@ an installation with no Apple developer tools works.
 The required debug conformance program steps through API admission, concurrent operations, joining, and cleanup. It must demonstrate source stepping, value rendering, and operation and service inspection together; native line mapping alone cannot establish that behavior.
 
 See [complete-program evidence](../../contributing/compiler/conformance/programs.md), [metadata](metadata.md), and [Go line mapping](source-mapping.md).
+
+DAP launch requests must use `mode: exec` with an already compiled target. Compile Manuscript with `ms build --debug`; Delve’s Go-source build/test modes are rejected before tool discovery.
+
+Go-module source-path guessing is not used for Manuscript targets; source maps provide their paths, and explicit `substitute-path` rules remain available. The vendored Delve compatibility probe for pre-Go-1.11 builds is disabled; dependency refresh reapplies this patch.

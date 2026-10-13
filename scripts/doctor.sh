@@ -22,7 +22,7 @@ if command -v node >/dev/null 2>&1 && [ "$(node --version)" = "v$expected_node" 
 else
     printf 'MISSING Node %s (install the version in .node-version)\n' "$expected_node"; failed=1
 fi
-go_tool=${MANUSCRIPT_GO:-$repository/toolchain/go/bin/go}
+go_tool=$repository/toolchain/go/bin/go
 expected=$(cat "$repository/.go-version")
 if [ -x "$go_tool" ] && [ "$("$go_tool" env GOVERSION)" = "go$expected" ]; then
     printf 'OK      Go %s\n' "$expected"

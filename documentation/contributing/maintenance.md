@@ -9,7 +9,7 @@ Keep changes small enough to trace from an observable example to their implement
 
 ## Refresh pinned inputs
 
-Use the checkout SDK for maintenance commands. Make sets `MANUSCRIPT_GO` and PATH consistently. Commands below deliberately modify tracked inputs; `make verify` only checks them.
+Use the checkout SDK for maintenance commands. Make uses the checkout SDK and prepares the mandatory embedded build payload. Commands below deliberately modify tracked inputs; `make verify` only checks them.
 
 | Change | Command and result |
 | --- | --- |

@@ -176,3 +176,11 @@ func TestConcurrentNativeBuildsShareWorkspace(t *testing.T) {
 		t.Fatalf("expected one published workspace, found %d", len(entries))
 	}
 }
+
+func TestReplayRejectsExternalTools(t *testing.T) {
+	profile := &replayProfile{Compile: []string{"external-compile"}, Link: []string{"external-link"}}
+	err := profile.replay(t.TempDir(), "main", filepath.Join(t.TempDir(), "output"))
+	if err == nil || !strings.Contains(err.Error(), "replay requires bundled") {
+		t.Fatalf("external replay accepted: %v", err)
+	}
+}

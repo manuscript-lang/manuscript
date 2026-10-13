@@ -10,7 +10,7 @@ if [ -f "$destination/versions" ] && cmp -s "$repository/scripts/devtools.env" "
     [ -x "$destination/staticcheck" ] && [ -x "$destination/actionlint" ] && [ -x "$destination/shellcheck" ]; then
     exit 0
 fi
-go_tool=${MANUSCRIPT_GO:-$repository/toolchain/go/bin/go}
+go_tool=$repository/toolchain/go/bin/go
 GOBIN="$destination" "$go_tool" install "honnef.co/go/tools/cmd/staticcheck@$STATICCHECK_VERSION"
 GOBIN="$destination" "$go_tool" install "github.com/rhysd/actionlint/cmd/actionlint@$ACTIONLINT_VERSION"
 case $(uname -s) in Linux) target_os=linux ;; Darwin) target_os=darwin ;; *) echo 'Developer lint setup requires Linux or macOS.' >&2; exit 1 ;; esac

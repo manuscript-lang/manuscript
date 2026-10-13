@@ -42,6 +42,22 @@ func Run(args []string) int {
 		fmt.Print(usage)
 		return 0
 	}
+	if args[0] == "pprof" || args[0] == "trace" {
+		command, err := compiler.ProfileCommand(args[0], args[1:]...)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		command.Stdin, command.Stdout, command.Stderr = os.Stdin, os.Stdout, os.Stderr
+		if err := runWithSignals(command); err != nil {
+			if exit, ok := err.(*exec.ExitError); ok {
+				return exit.ExitCode()
+			}
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return 0
+	}
 	if args[0] == "help" {
 		return runHelp(args[1:])
 	}

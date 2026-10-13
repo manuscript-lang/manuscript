@@ -100,6 +100,24 @@ func build() error {
 	for _, tool := range []string{"compile", "link", "asm"} {
 		files[filepath.Join("pkg", "tool", targetOS+"_"+targetArch, tool+extension)] = true
 	}
+	// Go 1.25 builds these viewers on demand. Compile them while packaging,
+	// rather than shipping cmd sources or needing a tool build on first use.
+	viewers, err := os.MkdirTemp("", "ms-profile-tools-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(viewers)
+	built := map[string]string{}
+	for _, tool := range []string{"pprof", "trace"} {
+		name := filepath.Join("pkg", "tool", targetOS+"_"+targetArch, tool+extension)
+		output := filepath.Join(viewers, tool+extension)
+		command := exec.Command(hostGo, "build", "-trimpath", "-o", output, "cmd/"+tool)
+		command.Env = append(os.Environ(), "GOROOT="+hostRoot, "GOOS="+targetOS, "GOARCH="+targetArch, "CGO_ENABLED=0", "GOTOOLCHAIN=local", "GOENV=off", "GOFLAGS=", "GOWORK=off")
+		if data, err := command.CombinedOutput(); err != nil {
+			return fmt.Errorf("build bundled %s: %w\n%s", tool, err, data)
+		}
+		files[name], built[name] = true, output
+	}
 	if err := addDirectory("pkg/include"); err != nil {
 		return err
 	}
@@ -133,7 +151,11 @@ func build() error {
 	archive := tar.NewWriter(compressed)
 	var total int64
 	for _, name := range names {
-		input, err := os.Open(filepath.Join(root, name))
+		source := built[name]
+		if source == "" {
+			source = filepath.Join(root, name)
+		}
+		input, err := os.Open(source)
 		if err != nil {
 			return err
 		}

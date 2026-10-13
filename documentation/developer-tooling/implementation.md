@@ -15,9 +15,9 @@ ms fmt ms.toml --check
 ms lsp
 ms debug source.ms -- arg1
 ms run source.ms --cpu-profile cpu.pprof --heap-profile heap.pprof --trace trace.out -- arg1
-go tool pprof -tags cpu.pprof
-go tool pprof -http=127.0.0.1:8080 cpu.pprof
-go tool trace trace.out
+ms pprof -tags cpu.pprof
+ms pprof -http=127.0.0.1:8080 cpu.pprof
+ms trace trace.out
 ```
 
 ## Rebuild on save

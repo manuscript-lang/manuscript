@@ -15,7 +15,9 @@ import (
 	"sync"
 )
 
-var bundledToolchain struct {
+var bundledToolchains sync.Map
+
+type bundledToolchain struct {
 	sync.Once
 	root string
 	err  error
@@ -50,15 +52,19 @@ func validateToolchain(root string) error {
 }
 
 func bundledGoRoot() (string, error) {
-	bundledToolchain.Do(func() {
-		absolute, err := userCacheRoot()
-		if err != nil {
-			bundledToolchain.err = err
-			return
-		}
-		bundledToolchain.root, bundledToolchain.err = materializeToolchain(support.GoToolchainArchive, filepath.Join(absolute, "manuscript", "toolchains"))
+	absolute, err := userCacheRoot()
+	if err != nil {
+		return "", err
+	}
+	value, _ := bundledToolchains.LoadOrStore(absolute, &bundledToolchain{})
+	bundle := value.(*bundledToolchain)
+	bundle.Do(func() {
+		bundle.root, bundle.err = materializeToolchain(support.GoToolchainArchive, filepath.Join(absolute, "manuscript", "toolchains"))
 	})
-	return bundledToolchain.root, bundledToolchain.err
+	if bundle.err != nil {
+		bundledToolchains.CompareAndDelete(absolute, bundle)
+	}
+	return bundle.root, bundle.err
 }
 
 func userCacheRoot() (string, error) {
