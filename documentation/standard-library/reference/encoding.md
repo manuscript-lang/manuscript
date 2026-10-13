@@ -17,30 +17,30 @@ type EncodingError:
 
 ```manuscript
 impl Error for EncodingError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## base64_decode {data-api-kind="Function"}
 
 ```manuscript
-fn base64_decode(text: String, url_safe: Bool, max_bytes: Int) -> Result[Bytes, EncodingError]
+fn base64_decode(text: String, url_safe: Bool, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
 ```
 
 ## base64_encode {data-api-kind="Function"}
 
 ```manuscript
-fn base64_encode(data: Bytes, url_safe: Bool) -> String
+fn base64_encode(data: Bytes, url_safe: Bool) -> String:
 ```
 
 ## hex_decode {data-api-kind="Function"}
 
 ```manuscript
-fn hex_decode(text: String, max_bytes: Int) -> Result[Bytes, EncodingError]
+fn hex_decode(text: String, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
 ```
 
 ## hex_encode {data-api-kind="Function"}
 
 ```manuscript
-fn hex_encode(data: Bytes) -> String
+fn hex_encode(data: Bytes) -> String:
 ```
 

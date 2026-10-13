@@ -19,7 +19,7 @@ type CommandError:
 
 ```manuscript
 impl Error for CommandError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## CommandOutput {data-api-kind="Record"}
@@ -35,7 +35,7 @@ type CommandOutput:
 
 ```manuscript
 interface Commands:
-    fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration) -> Result[CommandOutput, CommandError]
+    fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
 ```
 
 ## CpuUsage {data-api-kind="Record"}
@@ -62,7 +62,7 @@ type MemoryUsage:
 ```manuscript
 interface ProcessControl:
     fn monotonic_time() -> Int
-    fn watch_signals(signals: List[Int], capacity: Int) -> Result[SignalStream, ProcessError]
+    fn watch_signals(signals: List[Int], capacity: Optional[Int] = none) -> Result[SignalStream, ProcessError]
     fn constrained_memory() -> Result[Int, ProcessError]
     fn available_memory() -> Result[Int, ProcessError]
     fn title() -> Result[String, ProcessError]
@@ -75,7 +75,7 @@ interface ProcessControl:
     fn uptime() -> Result[Duration, ProcessError]
     fn environment() -> Result[Map[String, String], ProcessError]
     fn set_environment(name: String, value: Optional[String]) -> Result[Unit, ProcessError]
-    fn load_environment(path: String, max_bytes: Int) -> Result[Unit, ProcessError]
+    fn load_environment(path: String, max_bytes: Optional[Int] = none) -> Result[Unit, ProcessError]
     fn working_directory() -> Result[String, ProcessError]
     fn change_directory(path: String) -> Result[Unit, ProcessError]
     fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
@@ -103,7 +103,7 @@ type ProcessError:
 
 ```manuscript
 impl Error for ProcessError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## ProcessInfo {data-api-kind="Record"}
@@ -148,12 +148,12 @@ interface SignalStream:
 ## commands {data-api-kind="Function"}
 
 ```manuscript
-fn commands() -> Commands
+fn commands() -> Commands:
 ```
 
 ## control {data-api-kind="Function"}
 
 ```manuscript
-fn control() -> ProcessControl
+fn control() -> ProcessControl:
 ```
 

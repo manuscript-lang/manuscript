@@ -1,11 +1,9 @@
 +++
 title = "Alternatives"
-weight = 13
+weight = 2
 +++
 
 # Alternatives
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use an alternative type when a value can be one of several declared cases. For example, a payment can be paid, declined, or pending. Each case may carry its own data, such as a receipt or a reason.
 
@@ -27,7 +25,7 @@ let payment = Payment.Paid(receipt: "receipt-42")
 let declined: Payment = Declined(reason: "Card rejected")
 ```
 
-`Type.Case` identifies a case of that nominal type. Payload constructors supply every payload field by name exactly once; missing, duplicate, and unknown fields are errors. Payloadless cases are values such as `State.Ready`, without `()`. Tags do not implicitly convert to integers.
+`Type.Case` identifies a case of that nominal type. A single-payload case may omit its label, such as `some(3)`. Multi-payload constructors accept positional and optionally labeled arguments under the ordinary [call rules](../functions/declarations-and-calls.md#argument-names); supply every payload field exactly once; missing, duplicate, and unknown fields are errors. Payloadless cases are values such as `State.Ready`, without `()`. Tags do not implicitly convert to integers.
 
 This qualification names a visible type and its case, not a module namespace. Modules import individual symbols; `customers.Customer` is not a type path introduced by importing a module. Import the nominal type name itself and qualify its case as `Type.Case`.
 
@@ -53,7 +51,7 @@ let wrong: LeftState = RightState.Ready
 
 Inside a scope with `let Ready = LeftState.Ready`, subsequent `Ready` expressions refer to that binding rather than retrying ambiguous case lookup. An incompatible expected type rejects the binding's type; it does not choose another type's case instead.
 
-Generic qualification includes type arguments: `Choice[Int].Found(value: 1)`. Exporting an alternative exposes every case and payload field. Payload types follow the [public surface](records.md#public-data-surfaces) and [recursive layout](records.md#recursive-data) rules for records.
+Generic qualification includes type arguments: `Choice[Int].Found(value: 1)`. Exporting an alternative exposes every case and payload field. Payload types follow the [public surface](records.md#public-data-surfaces) and [recursive data](records.md#recursive-data) rules for records.
 
 Type arguments attach to the nominal alternative, never to the case name. `Found[Int](value: 1)` and `Choice.Found[Int](value: 1)` are rejected. Unqualified `Found(value: 1)` may use argument inference or a complete expected `Choice[Int]` after case lookup resolves uniquely; explicit arguments use the single spelling `Choice[Int].Found(value: 1)`. These rules also apply to qualified standard Optional/Result cases.
 
@@ -67,6 +65,4 @@ There is no general implicit union construction or nullable reference type. Decl
 
 ## Resource payloads
 
-Payloads retain ordinary values and references. Matching or extracting a resource reference does not invalidate the original value, register cleanup, or extend its open lifetime. See [aggregate references](../../ownership-and-cleanup/values/aggregates.md).
-
-[Previous: Records and nominal types](records.md) · [Next: Optional values](optionals.md)
+Payloads retain ordinary values and references. Matching or extracting a resource reference does not invalidate the original value, register cleanup, or extend its open lifetime. See [references inside other values](references.md).

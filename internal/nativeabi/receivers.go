@@ -1,7 +1,49 @@
-// Package nativeabi maps receiver operations to source-backed native functions.
+// Package nativeabi maps receiver operations to native implementations.
 package nativeabi
 
-var ReceiverFunctions = map[string]map[string]string{
+var ReceiverBindings = map[string]map[string]string{
+	"HttpRequest": {"header": "http/request_header"},
+	"TaskGroup": {
+		"start": "tasks/task_group_start",
+		"join":  "tasks/task_group_join",
+		"close": "tasks/task_group_close",
+	},
+	"Task": {"join": "tasks/task_join"},
+	"Duration": {
+		"add":             "time/duration_add",
+		"subtract":        "time/duration_subtract",
+		"multiply":        "time/duration_multiply",
+		"divide":          "time/duration_divide",
+		"negate":          "time/duration_negate",
+		"abs":             "time/duration_abs",
+		"compare":         "time/duration_compare",
+		"to_nanoseconds":  "time/duration_nanoseconds",
+		"to_microseconds": "time/duration_microseconds",
+		"to_milliseconds": "time/duration_milliseconds",
+		"to_seconds":      "time/duration_seconds",
+		"to_minutes":      "time/duration_minutes",
+		"to_hours":        "time/duration_hours",
+	},
+	"Instant": {
+		"shift":      "time/instant_shift",
+		"difference": "time/instant_difference",
+		"compare":    "time/instant_compare",
+	},
+	"Timestamp": {
+		"to_string":    "time/format_timestamp",
+		"unix_seconds": "time/unix_seconds",
+		"nanoseconds":  "time/nanoseconds",
+		"shift":        "time/shift",
+		"difference":   "time/difference",
+		"compare":      "time/timestamp_compare",
+	},
+	"Optional": {
+		"is_some":        "optional/is_some",
+		"is_none":        "optional/is_none",
+		"unwrap":         "optional/unwrap",
+		"unwrap_or":      "optional/unwrap_or",
+		"unwrap_or_else": "optional/unwrap_or_else",
+	},
 	"List": {
 		"group_by":        "collections/group_by",
 		"at":              "collections/at",

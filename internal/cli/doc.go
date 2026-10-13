@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/manuscript-lang/manuscript/checker"
-	"github.com/manuscript-lang/manuscript/compiler"
-	"github.com/manuscript-lang/manuscript/tooling/docgen"
+	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
 
 const docHelp = `Usage: ms doc <file.ms|ms.toml> [--json] [-o output]
@@ -46,13 +46,13 @@ func runDoc(args []string) int {
 		case "-o", "--output":
 			i++
 			if i == len(args) {
-				fmt.Fprintln(os.Stderr, "output flag requires a path")
+				fmt.Fprintln(os.Stderr, "output flag requires a path argument, e.g. -o docs.md")
 				return 2
 			}
 			output = args[i]
 		default:
 			if strings.HasPrefix(args[i], "-") || filename != "" {
-				fmt.Fprintln(os.Stderr, "unexpected doc argument:", args[i])
+				fmt.Fprintln(os.Stderr, "unexpected doc argument:", args[i], "; ms doc takes one .ms file or ms.toml, plus optional -o <path>")
 				return 2
 			}
 			filename = args[i]

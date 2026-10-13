@@ -20,7 +20,7 @@ Manuscript's tools share the compiler's understanding of the program:
 
 See the [tooling guide](documentation/developer-tooling/implementation.md) and [VS Code integration](extensions/vscode/README.md) for setup and current limits.
 
-Manuscript is statically typed. Write `.ms` files, compile them to Go, and run them as native executables.
+Manuscript is statically typed. Write `.ms` files and build native executables with `ms`.
 
 [Read the book](https://manuscript-lang.github.io/manuscript/) · [Take the tour](documentation/learn/tour.md) · [Download Manuscript](https://github.com/manuscript-lang/manuscript/releases)
 
@@ -72,7 +72,7 @@ To keep a standalone executable or run the included test:
 
 Use `./ms --help` to list commands, or `./ms help run` for a command's options and examples. Every command supports `--help`.
 
-Follow [your first program](documentation/getting-started.md) for a walkthrough of the source and project manifest. To build `ms` from a source checkout on macOS or Linux, run `make build`; initial setup needs Make, curl, tar, a SHA-256 utility, and Internet access to fetch the pinned Go SDK.
+Follow [your first program](documentation/learn/getting-started.md) for a walkthrough of the source and project manifest. To build `ms` from a source checkout on macOS or Linux, run `make build`; initial setup needs Make, curl, tar, a SHA-256 utility, and Internet access to fetch the pinned Go SDK.
 
 ## Keep exploring
 
@@ -80,14 +80,14 @@ Follow [your first program](documentation/getting-started.md) for a walkthrough 
 | --- | --- |
 | Learn the language | [Language tour](documentation/learn/tour.md) and [core language](documentation/core-language/_index.md) |
 | Find a standard type or function | [Standard library](documentation/standard-library/_index.md) and [API reference](documentation/standard-library/reference/_index.md) |
-| Understand cleanup and concurrent work | [Resource lifetimes](documentation/ownership-and-cleanup/_index.md) and [concurrency](documentation/concurrency/_index.md) |
+| Understand cleanup and concurrent work | [Resource lifetimes](documentation/core-language/cleanup/_index.md) and [concurrency](documentation/concurrency/_index.md) |
 | Set up your editor or use source tools | [VS Code extension](extensions/vscode/README.md) and [tooling guide](documentation/developer-tooling/implementation.md) |
-| Understand build pins and caches | [Reproducible builds](documentation/compiler/builds/reproducibility.md) |
-| Choose optimization and debugging settings | [Build levels](documentation/compiler/builds/build-levels.md) |
+| Understand build pins and caches | [Reproducible builds](documentation/developer-tooling/builds/reproducibility.md) |
+| Choose optimization and debugging settings | [Build levels](documentation/developer-tooling/builds/build-levels.md) |
 
 ## Project status
 
-Manuscript is at version 0.1, with a working compiler, runtime, standard library, native test runner, formatter, and editor tooling. The language and tools are still evolving. External adapters, incremental frontend compilation, and some tooling APIs remain design work. Check [implementation coverage](documentation/implementation.md) for supported features and current limits.
+Manuscript is at version 0.1, with a working compiler, runtime, standard library, native test runner, formatter, and editor tooling. The language and tools are still evolving. External adapters, incremental frontend compilation, and some tooling APIs remain design work. Each guide describes its own supported behavior and limits.
 
 ## Contribute
 
@@ -95,4 +95,4 @@ The [architecture guide](documentation/contributing/architecture.md) maps the co
 
 Use `make setup`, `make doctor`, and `make verify` for routine development; `make verify-full` runs native validation. Read [maintenance and compatibility](documentation/contributing/maintenance.md) for pin updates and releases.
 
-Language guides live in `documentation/`, and standard declarations live in [stdlib/](stdlib/README.md). The website is generated into ignored `.artifacts/book/` and deployed through GitHub Pages artifacts.
+Go implementation packages live in `pkg/`, command entrypoints in `cmd/`, and private helpers in `internal/`. Language guides live in `documentation/`, and standard declarations live in [pkg/stdlib/](pkg/stdlib/README.md). The website is generated into ignored `.artifacts/book/` and deployed through GitHub Pages artifacts.

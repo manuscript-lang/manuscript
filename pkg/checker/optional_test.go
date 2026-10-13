@@ -1,0 +1,31 @@
+package checker_test
+
+import (
+	"testing"
+
+	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/parser"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
+)
+
+func TestOptionalArgumentPreservesSourceTypeAndAST(t *testing.T) {
+	module, err := parser.Parse("optional.ms", "import Optional from \"@std/optional.ms\"\nfn f(value: Optional[Int]) -> Int: return value.unwrap()\nfn call() -> Int: return f(4)\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	call := module.Declarations[1].Body[0].Value
+	argument := call.Args[0].Value
+	for range 2 {
+		program := checker.Check([]*syntax.Module{module}, nil)
+		if len(program.Diagnostics) != 0 {
+			t.Fatal(program.Diagnostics)
+		}
+		info := program.Expressions[argument]
+		if info.Type.ID != "Int" || info.OptionalArgument == nil || info.OptionalArgument.ID != "@std/Optional" || info.OptionalArgument.Args[0].ID != "Int" {
+			t.Fatal("lost source type or optional argument conversion", info)
+		}
+		if call.Args[0].Name != "" || call.Args[0].Value != argument || argument.Kind != syntax.KindNumber || argument.Text != "4" {
+			t.Fatal("checking rewrote the supplied source argument")
+		}
+	}
+}

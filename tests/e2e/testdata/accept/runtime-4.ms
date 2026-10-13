@@ -10,16 +10,18 @@ type ClosedFile:
     marker: Unit
 
 impl File for ClosedFile:
-    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]:
-        return error(cause: IoError.Closed)
+    fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
+        return error(IoError.Closed)
+
     fn close() -> Unit:
         return
 
 test "contract-valued cleanup":
-    with file = File(value: ClosedFile(marker: unit)):
+    with file = File(ClosedFile(unit)):
         match file.read(max_bytes: 1):
             ok(_):
                 return panic(message: "Unexpected case")
+
             error(cause):
                 if not (cause == IoError.Closed):
                     return panic(message: "check failed")

@@ -5,56 +5,58 @@ weight = 1
 
 # Repository architecture
 
-Manuscript uses one Go module. Packages follow the language pipeline and its independently usable tools. Tests stay beside the implementation they exercise; native conformance and publication checks live in `tests/`.
+Manuscript uses one Go module. Reusable implementation packages live in `pkg/`; command entrypoints live in `cmd/`, and private CLI and native helpers live in `internal/`. Tests stay beside the implementation they exercise; native conformance and publication checks live in `tests/`.
+
+The root groups implementation (`pkg/`, `cmd/`, `internal/`), documentation (`documentation/`, `website/`), integrations and examples (`extensions/`, `examples/`), and repository support (`scripts/`, `tests/`, `skills/`, `vendor/`). Go module files, build/version configuration, the README, and contributor guidance remain at the root.
 
 ## Follow one compilation
 
 ```mermaid
 flowchart LR
-  CLI[cmd/ms → internal/cli] --> Compiler[compiler]
-  Compiler --> Project[project: manifest and paths]
-  Compiler --> Parser[parser]
-  Parser --> Lexer[lexer]
-  Lexer --> Syntax[syntax]
-  Parser --> Syntax
-  Compiler --> Checker[checker]
-  Checker --> Stdlib[stdlib: source and bindings]
-  Checker --> Facts[internal/decimal and nativeabi]
-  Runtime --> Facts
-  Compiler --> Runtime[runtime: embedded native source]
-  Tools[tooling and LSP] --> Compiler
-  Docs[tooling/docgen] --> Checker
+  CLI[CLI or compiler API] --> Parse[frontend: parse and resolve imports]
+  Parse --> AST[syntax: AST graph]
+  AST --> Check[checker: types and semantic facts]
+  Check --> Optimize[compiler: optimization facts]
+  Optimize --> Lower[compiler: Go lowering]
+  Lower --> Native[native build and runtime]
+  SyntaxTools[formatting and declaration completion] --> Parse
+  Check --> SourceTools[lint, inspection, docs, and LSP]
+  Parse --> Project[project: paths and overlays]
+  Check --> Stdlib[checked standard declarations]
 ```
 
 1. `internal/cli` validates command options and selects a compiler mode. `cmd/ms` only translates the returned status into the process exit code.
 2. `project.ReadProject` validates `[project]` and `[aliases]`. `project.ResolveImport` and `SourcePath` establish canonical paths, including editor overlays, confined to the project root. This package needs no checker or native tools.
-3. `compiler.CompileFile` follows imports, detects cycles, deduplicates canonical module identities, and supplies modules in dependency order. The resolver supplies canonical keys once; graph traversal does not resolve them again. `CompileSource` accepts in-memory source with standard imports; local imports require `CompileFile`.
-4. `lexer` produces layout-aware UTF-8 tokens with original source positions. `parser` produces `syntax.Module` trees. Partial parsing is restricted to editor analysis; it never grants permission to build invalid source.
-5. `checker` resolves declarations, nominal types, bounds, selected implementations, control flow, captures, cleanup, and effects. Its checked program retains the information used by lowering, documentation, and editor tools.
-6. `compiler` lowers a successful checked program to Go. Check, lint, inspection, diagrams, documentation, and lock commands stop after checking. Application entry validation can run without lowering; editor analysis can omit that requirement. Diagnostics prevent generated output. `Standalone` merges checked output and the embedded runtime without a runtime package dependency.
-7. Native builds disable VCS stamping for their generated temporary module, query the selected toolchain once, use that same pin for project verification and artifact metadata, and check cache hashes. Pin and metadata comparison operates on typed values rather than serializing both sides back to JSON. Builds embed vendored dependency sources and write executable metadata. Only the lock command needs a toolchain query among the source commands.
+3. `compiler.CompileSource` and `CompileFile` load source through `frontend`, then converge on `compile` in `pkg/compiler/compiler.go`. `frontend.LoadFile` follows imports, detects cycles, deduplicates canonical module identities, and supplies a `frontend.Graph` in dependency order. Its module loader resolves canonical keys once. `LoadSource` accepts in-memory source with standard imports; local imports require file loading.
+4. `frontend.Parse` selects strict or recovering parsing for compilation, formatting, and completion. `lexer` produces layout-aware UTF-8 tokens with original source positions; `parser` produces `syntax.Module` trees. Compilation permits recovery only with `AnalyzeOnly`. Recovered ASTs retain diagnostics, which prevent generated output. Standard declarations use the same syntax and parser as application source; `checker` loads their pinned runtime bindings.
+5. `checker` loads standard declarations on first use, so commands that never check source start without that cost. It resolves declarations, nominal types, bounds, selected implementations, control flow, captures, cleanup, and effects. Its checked program retains the information used by lowering, documentation, and editor tools.
+6. Check, lint, inspection, diagrams, documentation, and lock commands stop after checking. Application entry validation can run without lowering; editor analysis can omit that requirement. Formatting uses only the shared parsing stage.
+7. `compiler.optimize` derives a lowering view from a successful checked program. It folds literal boolean expressions, including short-circuiting, without rewriting source nodes or discarding checked identities and effects. An effectful left operand still runs: `operation() and false` cannot become `false`. Numeric operations retain runtime fault behavior. Go performs native optimization according to the selected build type.
+8. `compiler.lowerGo` consumes the checked program and optimization facts, constructing Go AST expressions, statements, declarations, and a file directly. Module assembly, function bodies, statements, and expressions have focused implementation files. One printer boundary formats the tree and materializes its source directives; see [structured Go generation](compiler/lowering/_index.md#structured-go-generation). `Standalone` merges generated output and the embedded runtime without a runtime package dependency.
+9. Native builds compile the embedded runtime as a separate package in a shared, content-addressed workspace module, select a lean runtime variant when the program imports no network, system, or process module, replay the recorded compile and link commands when the application imports are unchanged, disable VCS stamping, query the selected toolchain once per process (native CLI commands start that query and the implementation digest while checking), use that same pin for project verification and artifact metadata, and check cache hashes. Pin and metadata comparison operates on typed values rather than serializing both sides back to JSON. Builds embed vendored dependency sources and write executable metadata. Standalone execution commands use a per-user artifact cache; projects use `.ms-cache`. Only the lock command needs a toolchain query among the source commands.
 
 ## Know what each package owns
 
 | Package or directory | Responsibility and starting point |
 | --- | --- |
-| `syntax/` | Syntax tree, patterns, positions, and diagnostics in `ast.go` and `diagnostics.go`; shared executable-syntax traversal in `walk.go` |
-| `lexer/` | Tokenization and layout in `lexer.go`; original-position checks in `lexer_test.go` |
-| `parser/` | Strict source parsing in `parser.go`; editor recovery in `partial.go` |
-| `checker/` | Checking entry point in `checker.go`; calls, contracts, recursion, effects, standard loading, editor queries, and declaration documentation in focused files |
-| `project/` | Manifest parsing in `manifest.go`; confined import and overlay resolution in `paths.go` |
-| `compiler/` | Public orchestration in `compiler.go` and `modules.go`; lowering in `generate.go`; native source assembly in `build.go`; pin/artifact identity in `cache.go`; SDK selection/materialization in `toolchain*.go` |
-| `runtime/` | Value and numeric semantics; work lifetimes in `tasks.go`, `background.go`, and `lifetime.go`; cleanup, synchronization, services, and host implementations; domain-specific native standard-library operations in `library_*.go` |
-| `stdlib/` | Public `.ms` declarations, `bindings.json` native identities, and embedded sources. This is the standard signature authority |
-| `tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
-| `tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
-| `tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. `call-rules.md` is the embedded source for special compiler-bound calls |
+| `pkg/syntax/` | Syntax tree, patterns, positions, and diagnostics in `ast.go` and `diagnostics.go`; shared executable-syntax traversal in `walk.go` |
+| `pkg/lexer/` | Tokenization and layout in `lexer.go`; original-position checks in `lexer_test.go` |
+| `pkg/parser/` | Strict source parsing in `parser.go`; editor recovery in `partial.go` |
+| `pkg/frontend/` | Shared parsing and in-memory AST loading in `source.go`; project/module graph loading, canonical snapshots, and import diagnostics in `modules.go` |
+| `pkg/checker/` | Checking entry point in `checker.go`; calls, contracts, recursion, effects, standard loading, editor queries, and declaration documentation in focused files |
+| `pkg/project/` | Manifest parsing in `manifest.go`; confined import and overlay resolution in `paths.go` |
+| `pkg/compiler/` | Shared pipeline in `compiler.go`; optimization facts in `optimize.go`; Go module assembly in `generate.go` and lowering in `lower_*.go`; native source assembly in `build.go`; pin/artifact identity in `cache.go`; SDK selection/materialization in `toolchain*.go` |
+| `pkg/runtime/` | Value and numeric semantics; work lifetimes in `tasks.go`, `scheduler.go`, and `lifetime.go`; cleanup, synchronization, services, and host implementations; domain-specific native standard-library operations in `library_*.go` |
+| `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native identities, and embedded sources. This is the standard signature authority |
+| `pkg/tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
+| `pkg/tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
+| `pkg/tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. `call-rules.md` is the embedded source for special compiler-bound calls |
 | `internal/decimal/`, `internal/nativeabi/` | Lightweight shared decimal literal rules and receiver-to-function identities; checked `.ms` declarations retain signature authority |
 | `internal/hostos/` | Platform helpers for native filesystem, process, and OS operations, included in the embedded dependency bundle |
 | `internal/cli/` | CLI command orchestration, status codes, signal forwarding, and shipped documentation commands |
 | Root Go files | Embedded vendor/module dependencies and optional native toolchain payload. They must remain beside `go.mod`, `vendor/`, and the build payload because Go embed paths cannot traverse a parent directory |
 
-The frontend's public import paths stay at the repository root. `compiler.Project` and `compiler.ReadProject` remain available for existing callers; their implementation now belongs to `project`. The documentation renderer is `tooling/docgen`, with the Go package name `docgen`.
+Public Go imports use `github.com/manuscript-lang/manuscript/pkg/<package>`, including `pkg/tooling/lsp` and `pkg/tooling/docgen`. Callers using the former root package paths must update their imports. `compiler.Project` and `compiler.ReadProject` remain available; their implementation belongs to `project`. The documentation renderer has the Go package name `docgen`. Manuscript imports such as `@std/time.ms` keep their existing names.
 
 ## Keep shared behavior in one implementation
 
@@ -70,7 +72,7 @@ The CLI classifies each command's compiler mode in one switch, then checks sourc
 
 | Location | Ownership |
 | --- | --- |
-| `documentation/` | Authored tutorials, exact language rules, compiler/runtime semantics, current implementation inventory, tooling limits, contributor workflow, and explicitly historical reviews |
+| `documentation/` | Authored tutorials, exact language rules, compiler/runtime semantics, tooling limits, contributor workflow |
 | `documentation/standard-library/reference/` and `documentation/standard-library/call-rules.md` | Generated from checked standard declarations and the embedded call rules by `make docs` |
 | `website/` | Hugo configuration, custom layouts/assets, static resources, version archives, and the vendored Hugo Book theme with its license and upstream revision |
 | `website/static/stdlib.md` and `stdlib.json` | Generated API downloads. Hugo mounts the root version and extension grammar directly; neither needs a copied source |
@@ -83,7 +85,7 @@ The CLI classifies each command's compiler mode in one switch, then checks sourc
 | `skills/`, `.experts/`, `AGENTS.md` | Contributor guidance and evidence-backed lessons. `.agents/skills/` and `.claude/skills/` link to the shared skills |
 | `.artifacts/`, `toolchain/`, `dist/`, `.ms-cache/` | Ignored local reports, SDKs, releases, and native artifact caches |
 
-Keep generated sources reproducible through their generator. Do not edit HTML to repair a source rule or copy standard signatures into a second hand-maintained catalog. Use [implementation coverage](../implementation.md) to check which design facilities are actually available.
+Keep generated sources reproducible through their generator. Do not edit HTML to repair a source rule or copy standard signatures into a second hand-maintained catalog. Check the relevant implementation and source-level tests before describing a design as available.
 
 ## Make a change where its behavior lives
 
@@ -97,12 +99,12 @@ Keep generated sources reproducible through their generator. Do not edit HTML to
 | Documentation | Canonical Markdown or generator → `make docs-check` → `make book-check` → `make book`; source freshness alone does not establish published freshness |
 | Build packaging | Embedded source/dependency/toolchain inputs → pins and cache → copied standalone binary; `make dist-check` removes host Go and disables package downloads |
 
-Implementation hashes include source from `project` as well as the frontend, compiler, runtime, standard declarations, and dependency bundle. When moving build-affecting behavior to a new package, include that package's embedded implementation sources in pin identity. Otherwise an implementation update can silently retain stale build pins.
+Implementation hashes include source from `frontend` and `project` as well as syntax, parsing, checking, the compiler, runtime, standard declarations, and dependency bundle. When moving build-affecting behavior to a new package, include that package's embedded implementation sources in pin identity. Otherwise an implementation update can silently retain stale build pins.
 
 ## Read the evidence correctly
 
 Package tests exercise narrow contracts. `tests/e2e` compiles Manuscript fixtures and checks native behavior, CLI commands, faults, signals, networking, and cross-module dispatch. Declaration-only fixtures demonstrate acceptance, not execution. `tests/docs` checks shared highlighting and the published API pages/downloads. Extension tests exercise editor and debugger integration separately.
 
-Statement coverage helps find unexercised branches; it does not establish language completeness, race freedom, or reliable shutdown. Combine [coverage reports and the development checks](development.md) with the feature inventory and observable source-level cases. Keep unimplemented adapter, incremental compilation, host, and tooling contracts explicitly identified.
+Statement coverage helps find unexercised branches; it does not establish language completeness, race freedom, or reliable shutdown. Combine [coverage reports and the development checks](development.md) with observable source-level cases. Keep unimplemented adapter, incremental compilation, host, and tooling contracts explicitly identified.
 
 `make repo-check` enforces the package dependency policy, frontend isolation from host implementations, complete embedded source inputs, exhaustive checked/lowered syntax kinds, and Go-source release triggers. The checker consumes checked standard declarations for native receiver constraints; runtime ABI comparisons are integration tests. The CLI, native pins, and book share `.msversion`.

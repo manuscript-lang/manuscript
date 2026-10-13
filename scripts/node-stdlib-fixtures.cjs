@@ -27,4 +27,4 @@ for(const dialect of ['posix','win32']){
  for(const base of absolute)for(const target of absolute)records.push({dialect,name:'relative',args:[base,target],expected:p.relative(base,target)});
  for(const value of ['a.txt','b.js','x/a.txt','a/b/c.txt','.hidden','.x/a.txt','a1.js','a2.js','a3.js','a4.js','abab.txt','a/b.js','c/d.js','a01.js','a02.js','aa.js','ab.js','{literal}.js','b.txt'])for(const pattern of ['*.txt','**/*.txt','*.{txt,js}','a{1..3}.js','@(a|b).*','+(a|b).txt','?(a|b).txt','*(a|b).txt','!(a).txt','.*','[ab].*','{a/b,c/d}.js','a{01..03}.js','a{a..c}.js','[!a].txt','{literal}.js'])records.push({dialect,name:'matchesGlob',args:[value,pattern],expected:p.matchesGlob(value,pattern)});
 }
-fs.writeFileSync(path.join(__dirname,'../runtime/testdata/node-path.json'),JSON.stringify(records,null,2)+'\n');
+fs.writeFileSync(path.join(__dirname,'../pkg/runtime/testdata/node-path.json'),JSON.stringify(records,null,2)+'\n');

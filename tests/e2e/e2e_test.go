@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/manuscript-lang/manuscript/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	// The suite builds cmd/ms in subprocesses. Track its implementation so Go's
 	// test cache is invalidated when CLI code changes, even if the harness does not.
 	_ "github.com/manuscript-lang/manuscript/internal/cli"
@@ -55,11 +55,16 @@ func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(source, "github.com/manuscript-lang/manuscript/runtime") {
+	if strings.Contains(source, "github.com/manuscript-lang/manuscript/pkg/runtime") {
 		t.Fatal("retained runtime import")
 	}
-	if err := os.WriteFile(filepath.Join(t.TempDir(), "main.go"), []byte(source), 0600); err != nil {
+	// Emitted source is a complete program against the vendored dependencies.
+	executable := filepath.Join(t.TempDir(), "standalone")
+	if err := compiler.Build(source, executable); err != nil {
 		t.Fatal(err)
+	}
+	if data, err := commandOutput(t, executable); err != nil || !strings.Contains(string(data), "0 failed") {
+		t.Fatalf("standalone transcript %q, error %v", data, err)
 	}
 }
 
@@ -79,10 +84,11 @@ func TestCLIEntryAndNativeBuild(t *testing.T) {
 }
 func TestRuntimeFaults(t *testing.T) {
 	for name, source := range map[string]string{
-		"failed check":  "import panic from \"@std/faults.ms\"\ntest \"fault\":\n    if 2 + 3 != 6:\n        return panic(message: \"arithmetic check failed\")\n",
-		"overflow":      "fn sum(value: Int) -> Int:\n    return value + 1\ntest \"fault\":\n    let impossible = sum(value: 9223372036854775807)\n",
-		"division":      "fn divide(value: Int, divisor: Int) -> Int:\n    return value / divisor\ntest \"fault\":\n    let impossible = divide(value: 3, divisor: 0)\n",
-		"destructuring": "import List from \"@std/collections.ms\"\nfn difference(values: List[Int]) -> Int:\n    let [first, second] = values\n    return first - second\ntest \"fault\":\n    let impossible = difference(values: [1])\n",
+		"absent optional": "import Optional from \"@std/optional.ms\"\ntest \"fault\":\n    let missing: Optional[Int] = none\n    let impossible = missing.unwrap()\n",
+		"failed check":    "import panic from \"@std/faults.ms\"\ntest \"fault\":\n    if 2 + 3 != 6:\n        return panic(message: \"arithmetic check failed\")\n",
+		"overflow":        "fn sum(value: Int) -> Int:\n    return value + 1\ntest \"fault\":\n    let impossible = sum(value: 9223372036854775807)\n",
+		"division":        "fn divide(value: Int, divisor: Int) -> Int:\n    return value / divisor\ntest \"fault\":\n    let impossible = divide(value: 3, divisor: 0)\n",
+		"destructuring":   "import List from \"@std/collections.ms\"\nfn difference(values: List[Int]) -> Int:\n    let [first, second] = values\n    return first - second\ntest \"fault\":\n    let impossible = difference(values: [1])\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := compiler.CompileSource(name+".ms", source, compiler.Options{Tests: true})
@@ -431,10 +437,11 @@ export fn now() -> Instant:
 export fn close_output() -> Unit:
     stdout().close()
 `
-	main := `import {now, close_output} from "./helper.ms"
+	main := `import Optional from "@std/optional.ms"
+import { now, close_output } from "./helper.ms"
 import stdout from "@std/io.ms"
 import clock from "@std/time.ms"
-import Background from "@std/tasks.ms"
+import Scheduler from "@std/tasks.ms"
 import sleep from "@std/time.ms"
 import Result from "@std/result.ms"
 
@@ -442,7 +449,7 @@ export fn main() -> Int:
     let before = now()
     if clock().now() - before < 0.milliseconds:
         return 1
-    with service = Background(limit: 1):
+    with service = Scheduler(limit: 1):
         let task = fn() -> Result[Unit, String]:
             close_output()
             return ok(value: unit)
@@ -537,5 +544,35 @@ test "defaults use their declaration module":
 	data, err := commandOutput(t, binary)
 	if err != nil || !strings.Contains(string(data), "1 tests, 0 failed") {
 		t.Fatalf("%v: %s", err, data)
+	}
+}
+
+func TestFieldDefaultsAcrossModules(t *testing.T) {
+	directory := t.TempDir()
+	sources := map[string]string{
+		"data.ms": `import List from "@std/collections.ms"
+fn copy[T](value: T) -> T: return value
+export type Box[T]:
+    value: T
+    copied: T = copy(value)
+    items: List[T] = [value]
+`,
+		"main.ms": `import Box from "./data.ms"
+import panic from "@std/faults.ms"
+test "imported constructor retains default module and generic scope":
+    let box = Box(value: "text")
+    if box.copied != "text" or box.items.at(0).unwrap() != "text":
+        return panic("imported generic defaults")
+`,
+	}
+	for name, source := range sources {
+		if err := os.WriteFile(filepath.Join(directory, name), []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result := compiler.CompileFile(filepath.Join(directory, "main.ms"), compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "0 failed") {
+		t.Fatalf("execution failed: %v\n%s", err, output)
 	}
 }

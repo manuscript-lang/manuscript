@@ -14,8 +14,8 @@ fn preserve_key[K: Hashable](value: K) -> K:
     return value
 
 test "derived value equality":
-    let present: Optional[Int] = some(value: 1)
-    let same: Optional[Int] = some(value: 1)
+    let present: Optional[Int] = some(1)
+    let same: Optional[Int] = some(1)
     let missing: Optional[Int] = none
     if not (present == same):
         return panic(message: "check failed")
@@ -29,4 +29,5 @@ test "derived value equality":
         return panic(message: "check failed")
     if not (preserve_key(value: "key") == "key"):
         return panic(message: "check failed")
-    let callback = Callback(handler: increment)
+
+    let callback = Callback(increment)

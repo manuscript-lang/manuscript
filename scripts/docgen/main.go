@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"github.com/manuscript-lang/manuscript/tooling/docgen"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 	"os"
 	"path/filepath"
 )

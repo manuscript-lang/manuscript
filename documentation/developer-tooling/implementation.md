@@ -1,23 +1,33 @@
 +++
-title = "Tooling commands and limits"
+title = "Commands and editor setup"
 weight = 1
 +++
 
-# Manuscript developer tools
+# Commands and editor setup
 
-Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or run `make build` in a source checkout to prepare the pinned Go SDK automatically. Compilation, formatting, lint, LSP, and profiling need no separate Go installation. Native debugging uses Delve 1.25.2 or newer, available from [Delve Releases](https://github.com/go-delve/delve/releases). The VS Code extension provides its own Manuscript DAP layer over Delve.
+Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or run `make build` in a source checkout to prepare the pinned Go SDK automatically. Compilation, formatting, lint, LSP, and profiling need no separate Go installation. Native debugging uses Delve embedded in `ms`, with no separate `dlv` installation. macOS still requires Apple’s `debugserver` from Xcode command line tools; see [debugger integration](debugging/debugger-integration.md). The VS Code extension provides its own Manuscript DAP layer over Delve.
 
 ```sh
 ms lint source.ms --json
 ms lint ms.toml --json
 ms fmt source.ms --check
+ms fmt ms.toml --check
 ms lsp
 ms debug source.ms -- arg1
 ms run source.ms --cpu-profile cpu.pprof --heap-profile heap.pprof --trace trace.out -- arg1
-go tool pprof -tags cpu.pprof
-go tool pprof -http=127.0.0.1:8080 cpu.pprof
-go tool trace trace.out
+ms pprof -tags cpu.pprof
+ms pprof -http=127.0.0.1:8080 cpu.pprof
+ms trace trace.out
 ```
+
+## Rebuild on save
+
+```sh
+ms run ms.toml --watch -- arg1
+ms test test.ms --watch
+```
+
+`--watch` keeps one `ms` process alive, rebuilds after each saved change to the manifest or any loaded local module, and restarts the program. The running program is interrupted, given five seconds to finish cleanup, and then killed, but only after its replacement builds; a failed edit prints diagnostics and keeps watching. Each restart reports the time from the save. Interrupting `ms` interrupts the program and exits with status 130. See [cache boundaries](builds/incremental-compilation.md) for what a rebuild still compiles and links.
 
 Project lint checks hygiene in every reachable local module and runs semantic rules on the checked program. `--json` reports stable rule codes and module-relative positions.
 
@@ -38,7 +48,7 @@ These commands use source checking and embedded declarations without a Go instal
 
 `doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. Project docs include reachable local modules. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. JSON uses schema version 1. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
 
-`ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/` platform helpers. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](../compiler/builds/reproducibility.md).
+`ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/` platform helpers. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](builds/reproducibility.md).
 
 ## Editor features
 
@@ -54,17 +64,66 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 ## Linting and formatting
 
-`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), and MSL103 (unreachable statement). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
+`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), and MSL105 (unsynchronized captured mutation). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
 
-`fmt` preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
+MSL104 warns when an expression statement discards a standard `Result`. Handle it with `match`, propagate it with `try`, or explicitly bind it as `let _ignored = operation()` when ignoring both success and failure is intentional. See [Result handling](../core-language/errors/results.md).
+
+MSL105 identifies direct mutations of captured data in known concurrent callbacks. It is advisory and does not prove race freedom; use one `Synchronized` wrapper for shared mutable access. See [sharing and lint limits](../concurrency/sharing.md#captured-mutable-data).
+
+`fmt` accepts files, directories, and manifests, with project discovery shared with checking. `--check` reports every unformatted file and fails if any target needs formatting or cannot be processed. See [formatting](source/formatting.md) for selection and exclusion rules. It preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
+
+The formatter adds single blank lines at structural boundaries so code reads in
+paragraphs:
+
+- Separate top-level declarations from each other and from imports. Separate
+  implementation methods; keep interface signatures, record fields, and
+  alternative cases compact.
+- Separate conditionals, loops, resource scopes, and matches from neighboring
+  statements. An `if` with no `else` and exactly one `return`, `break`, or
+  `continue` is a guard: keep it with preceding setup and consecutive guards,
+  then add a blank line before the next statement.
+- Keep each `if`/`else if`/`else` family together. Preserve inline bodies.
+- Preserve authored spacing between match arms, including compact indented arms.
+- Put inserted breaks before contiguous leading comments at the same indentation,
+  keeping those comments with the following code.
+
+These rules also apply inside anonymous functions. Existing paragraph breaks are
+preserved, with consecutive blank lines reduced to one. The formatter does not
+infer stages from the names of calls or bindings.
+
+Expression layout uses a soft limit of 88 columns:
+
+- Keep simple calls and small literals compact. Expand calls with four or more
+  arguments, multiple arguments containing nested calls or compound computations,
+  or a closure argument. Single-argument calls containing another nested
+  computation can also expand.
+- Expand signatures with four or more parameters or complex defaults. Include the
+  return type when deciding whether a signature fits, excluding callback bodies
+  and enclosing arguments.
+- Keep lists compact when they fit, including nested lists. Expand grouped
+  imports with five or more names. Later call arguments do not count toward
+  the width of a preceding list or call in a chain.
+- Once a group expands, put every argument, parameter, or element on its own line.
+  Use four spaces beyond the containing line and align the closing delimiter with
+  that line. Existing multiline groups remain expanded with this same layout.
+- Break conditions with three or more clauses at their lowest-precedence logical
+  operator. Keep comparison operands together. Long arithmetic and member chains
+  also gain continuation lines, preserving precedence and evaluation order.
+- Add grouping parentheses around complete statement values, argument values,
+  collection elements, and parameter defaults when continuation requires them.
+  Keep inline suites, including inline `if`, intact.
+- Comments force a group to expand. Keep opener comments on the opener, trailing
+  argument comments beside that argument, and leading comments with their item.
+  Move anonymous-function bodies with their headers when an argument moves.
+
+String literals, their interpolation text, and comment wording are preserved.
+They can exceed the soft limit; the formatter does not split or rewrite them.
 
 ## Debugging and profiling
 
-The [VS Code extension](https://github.com/manuscript-lang/manuscript/blob/main/extensions/vscode/README.md) uses the `manuscript` debug type. F5 or **Manuscript: Debug current file** builds the containing project or standalone module without optimization/inlining, verifies executable/source/configuration hashes, and starts native DAP control through a loopback-only Delve listener. Breakpoints and stepping use absolute `.ms` source paths; source frames and locals use Manuscript names. Records, lists, sets, maps, bytes, variants, and interface views expand through lazy source views. Execution, cancellation, work lifetime, background services, leases, and HTTP services appear in a separate inspection scope. Service inspection reads stopped-process data and never invokes application operations. Simple local, record-field, and list-index watch expressions are mapped to their generated storage. Complex watch expressions use Delve's native evaluator.
-
 `ms debug` is also available for Delve's terminal UI. Existing project pin validation remains in effect; use `ms lock ms.toml` explicitly after a toolchain/compiler change.
 
-Profiling is explicit and local: CPU/heap use pprof and execution traces use Go tracing. New files are created exclusively with mode 0600; existing files are never overwritten. Profiles flush before process exit, including handled faults and signal cancellation. Source functions contribute `ms.source` CPU labels and `source:<position>` trace regions. Parallel/background operations contribute work labels and trace tasks; joining and lexical cleanup have named trace regions. Profiling preserves authority, cancellation, and work lifetime. Without profiling, source calls take a single atomic branch. A setup or heap-write error returns exit code 70. Use optimized builds for representative samples and retain matching native metadata.
+Profiling is explicit and local: CPU/heap use pprof and execution traces use Go tracing. New files are created exclusively with mode 0600; existing files are never overwritten. Profiles flush before process exit, including handled faults and signal cancellation. Source functions contribute `ms.source` CPU labels and `source:<position>` trace regions. Task-group/scheduled operations contribute work labels and trace tasks; joining and lexical cleanup have named trace regions. Profiling preserves authority, cancellation, and work lifetime. Without profiling, source calls take a single atomic branch. A setup or heap-write error returns exit code 70. Use optimized builds for representative samples and retain matching native metadata.
 
 The checker analyzes each affected module rather than incrementally reusing individual syntax/type nodes. Public rename is conservative about identifier collisions. The debugger retains native runtime frames as subdued entries, and complex watch expressions retain native Go syntax. These behaviors are explicit rather than hidden by unsupported capabilities.
 

@@ -2,30 +2,47 @@ import Queue from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
 import Optional from "@std/optional.ms"
 import List from "@std/collections.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
 test "omitted capacity creates an unbounded queue":
     let queue = Queue[Int]()
     let inferred: Queue[Int] = Queue()
+
     for unused in [1, 2]:
-        for value in [1, 2, 3, 4, 5]:
+        for value in [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]:
             if not queue.enqueue(value):
                 return panic("unbounded queue rejected an item")
+
         if queue.length() != 5:
             return panic("unbounded queue lost items")
-        for value in [1, 2, 3, 4, 5]:
-            let expected: Optional[Int] = some(value: value)
+
+        for value in [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]:
+            let expected: Optional[Int] = some(value)
             if queue.dequeue() != expected:
                 return panic("unbounded queue lost FIFO order")
+
         let missing: Optional[Int] = none
         if not (queue.is_empty() and queue.dequeue() == missing):
             return panic("unbounded queue did not drain")
+
     if not inferred.enqueue(1):
         return panic("inferred queue rejected an item")
 
 test "local FIFO aliases and saved methods":
-    let queue = Queue[Int](capacity: 2)
+    let queue = Queue[Int](2)
     let alias = queue
     let enqueue = alias.enqueue
     let dequeue = queue.dequeue
@@ -38,8 +55,9 @@ test "local FIFO aliases and saved methods":
         return panic("enqueue failed before capacity")
     if enqueue(5):
         return panic("full queue accepted an item")
-    let first: Optional[Int] = some(value: 3)
-    let second: Optional[Int] = some(value: 4)
+
+    let first: Optional[Int] = some(3)
+    let second: Optional[Int] = some(4)
     if not (alias.peek() == first and queue.length() == 2):
         return panic("peek changed the queue")
     if not (dequeue() == first and alias.dequeue() == second):
@@ -52,40 +70,58 @@ test "local FIFO aliases and saved methods":
         return panic("drained queue cannot be reused")
 
 test "queue elements include ordinary functions":
-    let queue = Queue[fn() -> Int](capacity: 1)
-    queue.enqueue(fn() -> Int:
-        return 7
+    let queue = Queue[fn() -> Int](1)
+    queue.enqueue(
+        fn():
+            return 7
     )
+
     match queue.dequeue():
         some(callback):
             if not (callback() == 7):
                 return panic("callback changed")
+
         none:
             return panic("callback missing")
 
 test "shared queue uses explicit lock scopes":
-    let shared = Synchronized(value: Queue[Int]())
-    let operation = fn(item: Int) -> Unit:
-        for unused in [1, 2, 3, 4, 5]:
+    let shared = Synchronized(Queue[Int]())
+    let operation = fn(item: Int):
+        for unused in [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]:
             with locked = shared.lock():
                 let queue = locked.get()
                 if not queue.enqueue(item):
                     return panic("critical section did not drain queue")
-                let expected: Optional[Int] = some(value: item)
+
+                let expected: Optional[Int] = some(item)
                 if not (queue.dequeue() == expected):
                     return panic("critical section interleaved")
-    let task1 = fn() -> Unit:
+    let task1 = fn():
         operation(item: 1)
-    let task2 = fn() -> Unit:
+    let task2 = fn():
         operation(item: 2)
-    let task3 = fn() -> Unit:
+    let task3 = fn():
         operation(item: 3)
-    let task4 = fn() -> Unit:
+    let task4 = fn():
         operation(item: 4)
-    match parallel(tasks: [task1, task2, task3, task4]):
-        ok(_):
-            with locked = shared.lock():
-                if not locked.get().is_empty():
-                    return panic("shared queue did not drain")
-        error(_):
-            return panic("shared work failed")
+
+    with group = TaskGroup():
+        group.start(task1)
+        group.start(task2)
+        group.start(task3)
+        group.start(task4)
+
+        match group.join():
+            ok(_):
+                with locked = shared.lock():
+                    if not locked.get().is_empty():
+                        return panic("shared queue did not drain")
+
+            error(_):
+                return panic("shared work failed")

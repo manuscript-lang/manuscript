@@ -7,6 +7,8 @@ description: Implement or review Manuscript language, standard library, runtime,
 
 Read [the expert protocol](../../.experts/README.md), then select relevant files from [the expert index](../../.experts/index.yml) by task meaning and affected paths. Apply [language design taste](../language-design-taste/SKILL.md) for design choices.
 
+Select domain workflows from [AGENTS.md](../../AGENTS.md#domain-skills): language design, compiler, AST/parsing, runtime, standard library, tooling, documentation, and repository maintenance. Read only the relevant skills, adding another when the contract trace reaches it. They provide concrete entry points and checks; this skill owns the common change workflow.
+
 ## Establish the contract
 
 Use the user's latest direction and the relevant canonical design pages to identify the behavior being changed. Compare them with the checkout's implementation and tests. When work depends on a newer decision or another branch, establish what is available before implementing against it; report a material mismatch. A proposal in an old conversation is not an accepted rule.

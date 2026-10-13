@@ -1,11 +1,9 @@
 +++
 title = "Programming faults"
-weight = 30
+weight = 3
 +++
 
 # Programming faults
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 A programming fault means an assumption the code relies on has failed. Use ordinary conditional returns to check that assumption. For ordinary invalid user input, use conditions and return a [Result](results.md) error so the caller can respond.
 
@@ -40,8 +38,6 @@ A fault aborts the current operation after cleanup. Programming faults are disti
 
 ## Cleanup and observation
 
-Cleanup still runs after a fault. A cleanup fault can replace a pending return, domain error, or cancellation, while secondary faults are retained as diagnostics. The full selection and cleanup rules are in [lexical cleanup](../../ownership-and-cleanup/cleanup/_index.md).
+Cleanup still runs after a fault. A cleanup fault can replace a pending return, domain error, or cancellation, while secondary faults are retained as diagnostics. The full selection and cleanup rules are in [lexical cleanup](../cleanup/_index.md).
 
-An active `parallel` caller observes an operation fault as `ExecutionError.Crashed` after siblings are cancelled and joined. Background faults go to the service's failure observer. A caller's own fault still unwinds it; [try](propagation.md) only propagates `Result` errors. See [execution errors](../../concurrency/joining.md).
-
-[Previous: Error propagation with try](propagation.md)
+A TaskGroup or failed Task join observes an operation fault as `ExecutionError.Crashed` after siblings are cancelled and joined. Scheduler faults go to the service's failure observer. A caller's own fault still unwinds it; [try](propagation.md) only propagates `Result` errors. See [execution errors](../../concurrency/joining.md).

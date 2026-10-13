@@ -37,48 +37,48 @@ type UrlError:
 
 ```manuscript
 impl Error for UrlError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## decode_component {data-api-kind="Function"}
 
 ```manuscript
-fn decode_component(text: String) -> Result[String, UrlError]
+fn decode_component(text: String) -> Result[String, UrlError]:
 ```
 
 ## encode_component {data-api-kind="Function"}
 
 ```manuscript
-fn encode_component(text: String) -> String
+fn encode_component(text: String) -> String:
 ```
 
 ## format {data-api-kind="Function"}
 
 ```manuscript
-fn format(value: Url) -> Result[String, UrlError]
+fn format(value: Url) -> Result[String, UrlError]:
 ```
 
 ## format_query {data-api-kind="Function"}
 
 ```manuscript
-fn format_query(entries: List[QueryEntry]) -> String
+fn format_query(entries: List[QueryEntry]) -> String:
 ```
 
 ## parse {data-api-kind="Function"}
 
 ```manuscript
-fn parse(text: String) -> Result[Url, UrlError]
+fn parse(text: String) -> Result[Url, UrlError]:
 ```
 
 ## parse_query {data-api-kind="Function"}
 
 ```manuscript
-fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], UrlError]
+fn parse_query(text: String, max_entries: Optional[Int] = none) -> Result[List[QueryEntry], UrlError]:
 ```
 
 ## resolve {data-api-kind="Function"}
 
 ```manuscript
-fn resolve(base: Url, reference: String) -> Result[Url, UrlError]
+fn resolve(base: Url, reference: String) -> Result[Url, UrlError]:
 ```
 

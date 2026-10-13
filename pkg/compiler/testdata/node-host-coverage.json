@@ -1,0 +1,1581 @@
+{
+  "baseline": "Node.js 24.19.0",
+  "apis": [
+    {
+      "module": "fs/promises",
+      "api": "access",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.access"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "appendFile",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.append_file"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "chmod",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.chmod"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "chown",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.chown"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "constants",
+      "status": "equivalent",
+      "reason": "Complete Linux Node.js constant oracle; other targets expose supported native numeric flags and permission constants.",
+      "targets": [
+        "@std/fs.ms/constants"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "copyFile",
+      "status": "adapted",
+      "reason": "CopyOptions supplies recursive/overwrite/filter/symlink/timestamp/clone policies with explicit shared budgets.",
+      "targets": [
+        "@std/fs.ms/FileSystem.copy"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "cp",
+      "status": "adapted",
+      "reason": "CopyOptions supplies recursive/overwrite/filter/symlink/timestamp/clone policies with explicit shared budgets.",
+      "targets": [
+        "@std/fs.ms/FileSystem.copy"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "glob",
+      "status": "adapted",
+      "reason": "GlobOptions supplies multiple patterns, exclusions, link traversal and typed entries with visit/result bounds.",
+      "targets": [
+        "@std/fs.ms/FileSystem.glob_entries"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "lchmod",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.chmod_link"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "lchown",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.chown"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "link",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.hard_link"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "lstat",
+      "status": "adapted",
+      "reason": "FileInfo with follow_links false; native absent fields and optional birth timestamps are explicit.",
+      "targets": [
+        "@std/fs.ms/FileSystem.stat"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "lutimes",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.set_times"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "mkdir",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.create_directory"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "mkdtemp",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.temporary_directory"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "mkdtempDisposable",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.temporary"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "open",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.open"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "opendir",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.open_directory"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "readFile",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.read_file"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "readdir",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.list"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "readlink",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.read_link"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "realpath",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.canonicalize"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "rename",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.rename"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "rm",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.remove"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "rmdir",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.remove"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "stat",
+      "status": "adapted",
+      "reason": "FileInfo supplies native kinds, ownership, allocation, timestamps, optional birth time, and an exact BigInt map; absent host fields have documented sentinels.",
+      "targets": [
+        "@std/fs.ms/FileSystem.stat"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "statfs",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.stat_filesystem"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "symlink",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.create_link"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "truncate",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.truncate"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "unlink",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.remove"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "utimes",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.set_times"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "watch",
+      "status": "adapted",
+      "reason": "Native event retention, recursive directory admission, bounded queue overflow policy, cancellation and joined close.",
+      "targets": [
+        "@std/fs.ms/FileSystem.watch_native"
+      ]
+    },
+    {
+      "module": "fs/promises",
+      "api": "writeFile",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/fs.ms/FileSystem.write_file"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "EOL",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/end_of_line"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "arch",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.info"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "availableParallelism",
+      "status": "equivalent",
+      "reason": "Native queries on Linux, macOS and Windows; Windows load averages are zero and constant values follow the host.",
+      "targets": [
+        "@std/system.ms/System.metrics"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "constants",
+      "status": "equivalent",
+      "reason": "Native queries on Linux, macOS and Windows; Windows load averages are zero and constant values follow the host.",
+      "targets": [
+        "@std/system.ms/constants"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "cpus",
+      "status": "equivalent",
+      "reason": "Native queries on Linux, macOS and Windows; Windows load averages are zero and constant values follow the host.",
+      "targets": [
+        "@std/system.ms/System.cpus"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "devNull",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/dev_null"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "endianness",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/endianness"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "freemem",
+      "status": "equivalent",
+      "reason": "Native queries on Linux, macOS and Windows; Windows load averages are zero and constant values follow the host.",
+      "targets": [
+        "@std/system.ms/System.metrics"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "getPriority",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.get_priority"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "homedir",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.home_directory"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "hostname",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.hostname"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "loadavg",
+      "status": "equivalent",
+      "reason": "Native queries on Linux, macOS and Windows; Windows load averages are zero and constant values follow the host.",
+      "targets": [
+        "@std/system.ms/System.metrics"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "machine",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.machine"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "networkInterfaces",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.network_interfaces"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "platform",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.info"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "release",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.os_release"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "setPriority",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.set_priority"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "tmpdir",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.temporary_directory"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "totalmem",
+      "status": "equivalent",
+      "reason": "Native queries on Linux, macOS and Windows; Windows load averages are zero and constant values follow the host.",
+      "targets": [
+        "@std/system.ms/System.metrics"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "type",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/os_type"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "uptime",
+      "status": "equivalent",
+      "reason": "Native queries on Linux, macOS and Windows; Windows load averages are zero and constant values follow the host.",
+      "targets": [
+        "@std/system.ms/System.metrics"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "userInfo",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.user_info"
+      ]
+    },
+    {
+      "module": "os",
+      "api": "version",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/system.ms/System.os_version"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "basename",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/PathOperations.basename_without"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "delimiter",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/PathOperations.delimiter"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "dirname",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/PathOperations.dirname"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "extname",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/PathOperations.extension"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "format",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/PathOperations.format"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "isAbsolute",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/PathOperations.is_absolute"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "join",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/PathOperations.join"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "matchesGlob",
+      "status": "adapted",
+      "reason": "Pure bounded glob matching, including globstar, braces and extended groups; invalid or oversized patterns return PathError.",
+      "targets": [
+        "@std/path.ms/PathOperations.matches_glob"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "normalize",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/PathOperations.normalize"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "parse",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/PathOperations.parse"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "posix",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/posix"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "relative",
+      "status": "adapted",
+      "reason": "Pure relative calculation requires absolute inputs instead of reading ambient cwd.",
+      "targets": [
+        "@std/path.ms/PathOperations.relative"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "resolve",
+      "status": "adapted",
+      "reason": "Pure explicit absolute base replaces ambient cwd; drive-relative paths require a supplied base on the chosen Windows drive.",
+      "targets": [
+        "@std/path.ms/PathOperations.resolve"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "sep",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/PathOperations.separator"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "toNamespacedPath",
+      "status": "adapted",
+      "reason": "Absolute Windows paths become namespaced; relative paths pass through because this pure operation cannot read cwd.",
+      "targets": [
+        "@std/path.ms/PathOperations.to_namespaced_path"
+      ]
+    },
+    {
+      "module": "path",
+      "api": "win32",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/path.ms/win32"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "abort",
+      "status": "runtime_specific",
+      "reason": "Immediate core-dump termination or VM-thread-specific accounting does not follow Manuscript execution lifetimes."
+    },
+    {
+      "module": "process",
+      "api": "allowedNodeEnvironmentFlags",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "arch",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "argv",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "argv0",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "availableMemory",
+      "status": "adapted",
+      "reason": "Native available memory, limited by known Linux cgroup budgets; native host query on macOS/Windows.",
+      "targets": [
+        "@std/process.ms/ProcessControl.available_memory"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "binding",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "chdir",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.change_directory"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "config",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "constrainedMemory",
+      "status": "adapted",
+      "reason": "Linux cgroup v1/v2 budgets; zero represents no known limit on other hosts.",
+      "targets": [
+        "@std/process.ms/ProcessControl.constrained_memory"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "cpuUsage",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.cpu_usage"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "cwd",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.working_directory"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "debugPort",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "dlopen",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "domain",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "emitWarning",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "env",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.environment"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "execArgv",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "execPath",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "execve",
+      "status": "adapted",
+      "reason": "Unix executable replacement with explicit argv/environment; success bypasses scoped cleanup; Unsupported on Windows.",
+      "targets": [
+        "@std/process.ms/ProcessControl.replace"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "exit",
+      "status": "runtime_specific",
+      "reason": "Return an exit code from main after cleanup; immediate exit bypasses Manuscript lifetimes."
+    },
+    {
+      "module": "process",
+      "api": "exitCode",
+      "status": "runtime_specific",
+      "reason": "Return an exit code from main after cleanup; immediate exit bypasses Manuscript lifetimes."
+    },
+    {
+      "module": "process",
+      "api": "features",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "finalization",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "getActiveResourcesInfo",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "getBuiltinModule",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "getegid",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "geteuid",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "getgid",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "getgroups",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.groups"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "getuid",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "hasUncaughtExceptionCaptureCallback",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "hrtime",
+      "status": "adapted",
+      "reason": "Monotonic nanoseconds as Int; arbitrary-precision conversion is provided by BigInt.",
+      "targets": [
+        "@std/process.ms/ProcessControl.monotonic_time"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "initgroups",
+      "status": "adapted",
+      "reason": "Supplementary-group lookup and native group setter, governed by native privilege checks.",
+      "targets": [
+        "@std/process.ms/ProcessControl.initialize_groups"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "kill",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.send_signal"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "loadEnvFile",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.load_environment"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "memoryUsage",
+      "status": "adapted",
+      "reason": "Native RSS and Go heap/allocation counters replace V8-specific memory categories.",
+      "targets": [
+        "@std/process.ms/ProcessControl.memory_usage"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "moduleLoadList",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "nextTick",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "openStdin",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/io.ms/stdin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "pid",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "platform",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "ppid",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.info"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "reallyExit",
+      "status": "runtime_specific",
+      "reason": "Return an exit code from main after cleanup; immediate exit bypasses Manuscript lifetimes."
+    },
+    {
+      "module": "process",
+      "api": "ref",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "release",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "report",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "resourceUsage",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.resource_usage"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "setSourceMapsEnabled",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "setUncaughtExceptionCaptureCallback",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "setegid",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.set_identity"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "seteuid",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.set_identity"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "setgid",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.set_identity"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "setgroups",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.set_groups"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "setuid",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.set_identity"
+      ],
+      "platforms": [
+        "linux",
+        "darwin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "sourceMapsEnabled",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "stderr",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/io.ms/stderr"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "stdin",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/io.ms/stdin"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "stdout",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/io.ms/stdout"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "threadCpuUsage",
+      "status": "runtime_specific",
+      "reason": "Immediate core-dump termination or VM-thread-specific accounting does not follow Manuscript execution lifetimes."
+    },
+    {
+      "module": "process",
+      "api": "title",
+      "status": "adapted",
+      "reason": "Linux kernel comm, macOS program name, or Windows console title; native length/policy replaces Node argv rewriting.",
+      "targets": [
+        "@std/process.ms/ProcessControl.title"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "umask",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.umask"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "unref",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "uptime",
+      "status": "equivalent",
+      "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
+      "targets": [
+        "@std/process.ms/ProcessControl.uptime"
+      ]
+    },
+    {
+      "module": "process",
+      "api": "version",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "process",
+      "api": "versions",
+      "status": "runtime_specific",
+      "reason": "Node VM/event-loop or JavaScript module integration; Manuscript uses explicit capabilities and structured tasks."
+    },
+    {
+      "module": "timers",
+      "api": "clearImmediate",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
+      "targets": [
+        "@std/tasks.ms/Scheduler.cancel"
+      ]
+    },
+    {
+      "module": "timers",
+      "api": "clearInterval",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
+      "targets": [
+        "@std/tasks.ms/Scheduler.cancel"
+      ]
+    },
+    {
+      "module": "timers",
+      "api": "clearTimeout",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
+      "targets": [
+        "@std/tasks.ms/Scheduler.cancel"
+      ]
+    },
+    {
+      "module": "timers",
+      "api": "promises",
+      "status": "adapted",
+      "reason": "Ordinary sequential sleep and return replace value-carrying Promise timers.",
+      "targets": [
+        "@std/time.ms/sleep"
+      ]
+    },
+    {
+      "module": "timers",
+      "api": "setImmediate",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
+      "targets": [
+        "@std/tasks.ms/Scheduler.after"
+      ]
+    },
+    {
+      "module": "timers",
+      "api": "setInterval",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
+      "targets": [
+        "@std/tasks.ms/Scheduler.every"
+      ]
+    },
+    {
+      "module": "timers",
+      "api": "setTimeout",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
+      "targets": [
+        "@std/tasks.ms/Scheduler.after"
+      ]
+    },
+    {
+      "module": "timers/promises",
+      "api": "scheduler",
+      "status": "adapted",
+      "reason": "Explicit task yielding or sequential sleep uses the existing execution context.",
+      "targets": [
+        "@std/tasks.ms/yield_now",
+        "@std/time.ms/sleep"
+      ]
+    },
+    {
+      "module": "timers/promises",
+      "api": "setImmediate",
+      "status": "adapted",
+      "reason": "Explicit task yielding or sequential sleep uses the existing execution context.",
+      "targets": [
+        "@std/tasks.ms/yield_now",
+        "@std/time.ms/sleep"
+      ]
+    },
+    {
+      "module": "timers/promises",
+      "api": "setInterval",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
+      "targets": [
+        "@std/time.ms/sleep",
+        "@std/tasks.ms/Scheduler.start"
+      ]
+    },
+    {
+      "module": "timers/promises",
+      "api": "setTimeout",
+      "status": "adapted",
+      "reason": "Ordinary sleep suspends under the caller context; the caller then returns its own value.",
+      "targets": [
+        "@std/time.ms/sleep"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "appendFile",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.append_file"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "chmod",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.chmod"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "chown",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.chown"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "datasync",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.data_sync"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "sync",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.sync"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "read",
+      "status": "adapted",
+      "reason": "Positional or sequential byte reads return owned Bytes and enforce a 64 KiB chunk bound.",
+      "targets": [
+        "@std/fs.ms/FileHandle.read_at"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "readv",
+      "status": "adapted",
+      "reason": "Vector reads return owned Bytes with per-buffer and total bounds.",
+      "targets": [
+        "@std/fs.ms/FileHandle.read_vectors"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "readFile",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.read_file"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "readLines",
+      "status": "adapted",
+      "reason": "Bounded UTF-8 line collection replaces async line iteration; stream adapters supply incremental byte access.",
+      "targets": [
+        "@std/fs.ms/FileHandle.read_lines"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "stat",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.stat"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "truncate",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.truncate"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "utimes",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.set_times"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "write",
+      "status": "adapted",
+      "reason": "Positional or sequential writes consume Bytes and return the written count.",
+      "targets": [
+        "@std/fs.ms/FileHandle.write_at"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "writev",
+      "status": "adapted",
+      "reason": "Vector writes consume a List of Bytes and return the written count.",
+      "targets": [
+        "@std/fs.ms/FileHandle.write_vectors"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "writeFile",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.write_file"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "readableWebStream",
+      "status": "adapted",
+      "reason": "ReadStream adapter supplies cancellable byte reads and shared handle close.",
+      "targets": [
+        "@std/fs.ms/FileHandle.reader"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "createReadStream",
+      "status": "adapted",
+      "reason": "ReadStream adapter supplies cancellable byte reads and shared handle close.",
+      "targets": [
+        "@std/fs.ms/FileHandle.reader"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "createWriteStream",
+      "status": "adapted",
+      "reason": "WriteStream adapter supplies cancellable byte writes and shared handle close; flush syncs the file.",
+      "targets": [
+        "@std/fs.ms/FileHandle.writer"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "close",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/FileHandle.close"
+      ]
+    },
+    {
+      "module": "fs:Dir",
+      "api": "path",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/Directory.path"
+      ]
+    },
+    {
+      "module": "fs:Dir",
+      "api": "read",
+      "status": "adapted",
+      "reason": "Directory.read returns one DirectoryEntry or none under the execution context.",
+      "targets": [
+        "@std/fs.ms/Directory.read"
+      ]
+    },
+    {
+      "module": "fs:Dir",
+      "api": "readSync",
+      "status": "adapted",
+      "reason": "Ordinary Directory.read handles synchronous native work and suspension in one Manuscript call model.",
+      "targets": [
+        "@std/fs.ms/Directory.read"
+      ]
+    },
+    {
+      "module": "fs:Dir",
+      "api": "close",
+      "status": "equivalent",
+      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
+      "targets": [
+        "@std/fs.ms/Directory.close"
+      ]
+    },
+    {
+      "module": "fs:Dir",
+      "api": "closeSync",
+      "status": "adapted",
+      "reason": "Directory.close is an ordinary idempotent native call.",
+      "targets": [
+        "@std/fs.ms/Directory.close"
+      ]
+    },
+    {
+      "module": "fs:Dir",
+      "api": "entries",
+      "status": "adapted",
+      "reason": "Repeated Directory.read replaces JavaScript async iteration and requires scoped close.",
+      "targets": [
+        "@std/fs.ms/Directory.read"
+      ]
+    },
+    {
+      "module": "timers:Timeout",
+      "api": "refresh",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
+      "targets": [
+        "@std/tasks.ms/Scheduler.restart"
+      ]
+    },
+    {
+      "module": "timers:Timeout",
+      "api": "close",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
+      "targets": [
+        "@std/tasks.ms/Scheduler.cancel"
+      ]
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "fd",
+      "status": "runtime_specific",
+      "reason": "Native descriptor exposure, JS async identity, or Node event-loop liveness is outside the capability contract."
+    },
+    {
+      "module": "fs/promises:FileHandle",
+      "api": "getAsyncId",
+      "status": "runtime_specific",
+      "reason": "Native descriptor exposure, JS async identity, or Node event-loop liveness is outside the capability contract."
+    },
+    {
+      "module": "timers:Timeout",
+      "api": "ref",
+      "status": "runtime_specific",
+      "reason": "Native descriptor exposure, JS async identity, or Node event-loop liveness is outside the capability contract."
+    },
+    {
+      "module": "timers:Timeout",
+      "api": "unref",
+      "status": "runtime_specific",
+      "reason": "Native descriptor exposure, JS async identity, or Node event-loop liveness is outside the capability contract."
+    },
+    {
+      "module": "timers:Timeout",
+      "api": "hasRef",
+      "status": "runtime_specific",
+      "reason": "Native descriptor exposure, JS async identity, or Node event-loop liveness is outside the capability contract."
+    }
+  ],
+  "platform": "linux",
+  "notes": "Feature coverage uses native/application capabilities. Adapted APIs retain explicit bounds, UTF-8 String paths, values, capability authority, and structured work lifetimes; runtime_specific means a JS/V8/event-loop facility, not an unimplemented native operation."
+}

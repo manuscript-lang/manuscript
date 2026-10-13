@@ -1,16 +1,18 @@
 +++
-title = "Language reference"
+title = "Language"
 weight = 2
 +++
 
-# Language reference
+# Language
 
-For a first introduction, take the [language tour](../learn/tour.md). Use these chapters when you need a specific rule.
+Start with [getting started](../learn/getting-started.md) and the [tour](../learn/tour.md). These chapters build on that introduction in this order:
 
-- [Variables, numbers, text, and expressions](basics/_index.md)
-- [Functions and closures](functions/_index.md)
-- [Records, alternatives, and collections](types/_index.md)
-- [Conditions, loops, and matching](control-flow/_index.md)
-- [Errors and propagation](errors/_index.md)
+1. [Basics](basics/_index.md): source files, variables, numbers, text, and expressions.
+2. [Functions](functions/_index.md): parameters, calls, and closures.
+3. [Types](types/_index.md): records, alternatives, collections, and interfaces.
+4. [Control flow](control-flow/_index.md): conditions, loops, and matching.
+5. [Error handling](errors/_index.md): results, propagation, and faults.
+6. [Modules](modules/_index.md): imports, exports, and public boundaries.
+7. [Managing resources](cleanup/_index.md): closing files and connections with `with`.
 
-Continue with [modules](../modules-and-capabilities/modules/declarations.md), [resource cleanup](../ownership-and-cleanup/cleanup/scopes.md), or [concurrent work](../concurrency/parallel.md).
+Then use the [standard library](../standard-library/_index.md) to work with data and external services. [Concurrent work](../concurrency/_index.md) explains starting tasks, scheduling, and sharing mutable data.

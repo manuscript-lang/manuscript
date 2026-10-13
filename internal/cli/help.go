@@ -17,11 +17,14 @@ Commands:
   emit     Emit standalone Go source with the runtime
   run      Build and run an application
   test     Execute test blocks, including imported modules
-  fmt      Format a source file
+  fmt      Format source files or a project
   inspect  Emit checked source metadata as JSON
   diagram  Emit a static call graph as Mermaid
   profile  Run with CPU, heap, and trace capture
-  debug    Start an application in Delve
+  pprof    Inspect captured CPU or heap profiles
+  trace    Inspect captured execution traces
+  debug    Start an application in the embedded Delve debugger
+  dap      Serve one native debugger session on stdin/stdout
   lock     Create or update project build pins
   doc      Generate public API documentation
   stdlib   Write bundled standard library declarations to a directory
@@ -42,8 +45,9 @@ Start with:
   ms run ms.toml -- first second
 
 Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
-Release binaries bundle the Go toolchain. MANUSCRIPT_GO selects another Go
-executable; MANUSCRIPT_CACHE_DIR selects the bundled-toolchain cache directory.
+The Go toolchain is embedded and cannot be replaced by external tools.
+MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains
+and standalone run/test/debug/profile artifacts.
 `
 
 // Keep command usage next to its explanation so flags and defaults are visible
@@ -53,7 +57,7 @@ func commandHelp(command string) (string, bool) {
 	switch command {
 	case "check":
 		usage = "<file.ms|ms.toml> [--json]"
-		description = "Parse, resolve imports, and type-check without executing source.\nA project also checks its application entry signature."
+		description = "Parse, resolve imports, and type-check without executing source.\nA project checks all source modules, discovered tests, and its entry signature."
 		options = "  --json  Emit versioned JSON diagnostics instead of terminal messages\n"
 		examples = "ms check main.ms\n  ms check ms.toml --json"
 	case "lint":
@@ -74,18 +78,18 @@ func commandHelp(command string) (string, bool) {
 	case "run":
 		usage = "<file.ms|ms.toml> [options] [-- program arguments]"
 		description = "Build a temporary executable and run its exported main() -> Int.\nArguments after -- are passed unchanged to the application; its exit status is returned."
-		options = "  --debug               Alias for --build-type Debug\n  --cpu-profile <path>  Write a CPU profile\n  --heap-profile <path> Write a heap profile\n  --trace <path>        Write an execution trace\n"
-		examples = "ms run ms.toml -- first second\n  ms run main.ms --cpu-profile cpu.pprof"
+		options = "  --debug               Alias for --build-type Debug\n  --watch               Rebuild and restart after each saved source change\n  --cpu-profile <path>  Write a CPU profile\n  --heap-profile <path> Write a heap profile\n  --trace <path>        Write an execution trace\n"
+		examples = "ms run ms.toml -- first second\n  ms run main.ms --watch\n  ms run main.ms --cpu-profile cpu.pprof"
 	case "test":
-		usage = "<file.ms|ms.toml> [--build-type level] [--debug] [-- program arguments]"
-		description = "Build and execute test blocks in the module and its imported modules.\nArguments after -- are passed to the test executable; its exit status is returned."
-		options = "  --debug  Alias for --build-type Debug\n"
-		examples = "ms test test.ms\n  ms test ms.toml --debug"
+		usage = "<file.ms|ms.toml> [--filter text] [--timeout duration] [--build-type level] [--debug] [--watch] [-- program arguments]"
+		description = "Build and execute test blocks in the module and its imported modules.\nEach test prints RUN before it starts and PASS or FAIL after; a test that exceeds the timeout fails by name.\nArguments after -- are passed to the test executable; its exit status is returned."
+		options = "  --filter <text>      Run only tests whose module::name contains text\n  --timeout <duration> Fail a test that runs longer (default 60s; 0 disables)\n  --debug              Alias for --build-type Debug\n  --watch              Rebuild and rerun after each saved source change\n"
+		examples = "ms test test.ms\n  ms test ms.toml --debug\n  ms test ms.toml --filter \"nick collisions\" --timeout 10s"
 	case "fmt":
-		usage = "<file.ms> [--check]"
-		description = "Format one source file in place, preserving its file permissions."
-		options = "  --check  Leave the file unchanged; exit 1 if formatting is needed\n"
-		examples = "ms fmt main.ms\n  ms fmt main.ms --check"
+		usage = "<file.ms|directory|ms.toml>... [--check]"
+		description = "Format selected source files in place, preserving their file permissions.\nDirectories are recursive; projects include all source modules and test files.\nDiscovery skips hidden, vendor, and node_modules directories."
+		options = "  --check  Leave files unchanged; report every unformatted file and exit 1\n"
+		examples = "ms fmt main.ms\n  ms fmt ms.toml --check\n  ms fmt src test.ms\n  ms fmt src/*.ms --check"
 	case "inspect":
 		usage = "<file.ms|ms.toml> [-o output]"
 		description = "Emit checked symbols, source hashes, call sites, and statement spans as JSON."
@@ -101,9 +105,16 @@ func commandHelp(command string) (string, bool) {
 		description = "Build and run an application with CPU, heap, and execution trace capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, trace.out,\ninspection.json, and manifest.json. The output directory must not already exist.\nArguments after -- are passed to the application; its exit status is returned."
 		options = "  -o, --output <directory>  Bundle directory (default: ./profile)\n"
 		examples = "ms profile ms.toml\n  ms profile main.ms -o capture -- first second"
+	case "pprof", "trace":
+		usage = "[viewer options] <profile file>"
+		description = "Inspect captured profiles with the embedded SDK viewer."
+		examples = "ms pprof -top heap.pprof\n  ms trace -http=127.0.0.1:8080 trace.out"
+	case "dap":
+		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
+		examples = "ms dap"
 	case "debug":
 		usage = "<file.ms|ms.toml> [-- program arguments]"
-		description = "Build without optimization or inlining, then start Delve with dlv exec.\nRequires Delve (dlv) on PATH. Arguments after -- are passed to the application."
+		description = "Build without optimization or inlining, then start the embedded Delve terminal.\nNo dlv executable is needed. On macOS, Xcode command line tools supply debugserver. Arguments after -- are passed to the application."
 		examples = "ms debug ms.toml\n  ms debug main.ms -- first second"
 	case "lock":
 		usage = "<ms.toml>"
@@ -130,6 +141,9 @@ func commandHelp(command string) (string, bool) {
 		options += buildTypeHelp + "  Default build type: Release\n"
 	case "profile":
 		options += buildTypeHelp + "  Default build type: RelWithDebInfo\n"
+	case "dap":
+		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
+		examples = "ms dap"
 	case "debug":
 		usage = "<file.ms|ms.toml> [--build-type Debug] [-- program arguments]"
 		options += "  --build-type Debug  Debug is required for Delve\n"
@@ -140,7 +154,7 @@ func commandHelp(command string) (string, bool) {
 	}
 	switch command {
 	case "build", "run", "test", "profile", "debug", "lock":
-		description += "\nRelease binaries use the bundled Go toolchain; no Go installation is needed.\nMANUSCRIPT_GO selects another Go executable. Project builds require matching\nms.lock pins; use 'ms lock ms.toml' to create or update them."
+		description += "\nAll builds use the embedded Go toolchain; no Go installation is needed. Project builds require matching\nms.lock pins; use 'ms lock ms.toml' to create or update them."
 	}
 	return text + "\n\n" + description + "\n\nOptions:\n" + options +
 		"  -h, --help  Show this help without executing the command\n\nExamples:\n  " + examples + "\n", true

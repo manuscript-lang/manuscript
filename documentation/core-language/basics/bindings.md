@@ -1,11 +1,9 @@
 +++
-title = "Bindings and scope"
-weight = 7
+title = "Variables and scope"
+weight = 2
 +++
 
-# Bindings and scope
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
+# Variables and scope
 
 A binding gives a name to a value. Choose `let` when the name should keep its value and `var` when you need to assign a replacement.
 
@@ -33,14 +31,14 @@ remaining = remaining - 1
 
 ## Destructuring
 
-Bindings use JavaScript-style positional and record patterns:
+Bindings can unpack positional elements or named fields:
 
 ```manuscript
-let [resA, resB] = try parallel(tasks: [first, second])
+let [first_name, second_name] = names
 let {name, email: customer_email} = customer
 ```
 
-The parallel fragment needs an enclosing `Result[U, ExecutionError]` function; see the [complete example](../../concurrency/parallel.md). Use `[...]` for positions and `{field: local}` to rename a record field. Patterns also support field shorthand and nesting. Parenthesized positional bindings are not supported. See [destructuring bindings](destructuring.md) for static shape checks and list behavior.
+Use `[...]` for positions and `{field: local}` to rename a record field. Patterns also support field shorthand and nesting. Parenthesized positional bindings are not supported. See [destructuring bindings](../types/destructuring.md) for static shape checks and list behavior.
 
 ## Scope and shadowing
 
@@ -65,6 +63,4 @@ Only a simple name binding accepts a type annotation. Destructuring patterns inf
 
 Binding mutability and object mutation are separate. A `var` holding a [record](../types/records.md) can receive another record. Both `let` and `var` bindings permit updating that record's fields. Assignment of a record or collection retains the same instance; `.clone()` creates a separate shallow copy.
 
-Assignment replaces the value of the binding; it does not close the previous resource or invalidate aliases. `with` registers a fixed resource for cleanup and uses an immutable binding. See [ordinary references](../../ownership-and-cleanup/values/references.md).
-
-[Previous: Expressions and operators](expressions.md) · [Next: Destructuring bindings](destructuring.md)
+Assignment replaces the value of the binding; it does not close the previous resource or invalidate aliases. `with` registers a fixed resource for cleanup and uses an immutable binding. See [mutation and references](../types/references.md).

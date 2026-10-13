@@ -6,18 +6,20 @@ type List:
 type Result:
     case Value(value: Int)
 
-fn parallel(value: Int) -> Int:
+fn compute(value: Int) -> Int:
     return value
 
 fn ordinary() -> Result:
-    return Result.Value(value: parallel(value: 3))
+    return Result.Value(compute(value: 3))
 
 test "standard spellings are ordinary names":
-    if not (List(count: 2).count == 2):
+    if not (List(2).count == 2):
         return panic(message: "check failed")
-    let forward = parallel
+
+    let forward = compute
     if not (forward(value: 4) == 4):
         return panic(message: "check failed")
+
     match ordinary():
         Value(value):
             if not (value == 3):

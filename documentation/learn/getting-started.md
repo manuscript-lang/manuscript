@@ -1,28 +1,31 @@
 +++
 title = "Get started"
 weight = 1
+aliases = ["/getting-started/"]
 +++
 
 # Get started
 
-Download and extract the archive for your operating system and architecture from
-[Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases).
-The archive includes `ms`, its build tools, and runnable examples. Put `ms` on `PATH` to use it from any directory.
+Download and extract the [Manuscript release archive](https://github.com/manuscript-lang/manuscript/releases) for your operating system and architecture. It includes the `ms` executable, build tools, and examples. You can put `ms` on `PATH` to use it from any directory.
 
-Run these commands from the extracted directory. In Windows PowerShell, replace
-`./ms` with `.\ms.exe`:
+Run these commands from the extracted directory. In Windows PowerShell, replace `./ms` with `.\ms.exe`.
 
 ```sh
 ./ms check examples/hello/ms.toml
-./ms lock examples/hello/ms.toml
 ./ms run examples/hello/ms.toml -- first second
 ```
 
-The program prints `Arguments: 2`. The lock command pins the compiler, runtime, Go toolchain, and target; rerun it after changing those inputs.
+The program prints:
 
-From a source checkout, run `make build` to create `./ms`. See [development setup](../contributing/development.md) for prerequisites.
+```text
+Arguments: 2
+```
 
-## Your first application
+`check` validates source without running it. `lock` records the project's compiler, runtime, build-tool, and target versions; rerun it after changing those inputs. `run` builds and runs the program, passing it the arguments after `--`.
+
+From a source checkout, run `make build` first. See [development setup](../contributing/development.md) for prerequisites.
+
+## Read the program
 
 The hello project's `src/main.ms` is a complete application:
 
@@ -40,36 +43,36 @@ export fn main() -> Int:
             return 1
 ```
 
-The imports name the argument and standard-output accessors this module needs. The host calls `main()` with no arguments; the imported functions return its host data and services. `let` binds a value with an inferred local type. String interpolation inserts the argument count. `write(data: ...)` names its argument and returns a `Result`; the match handles success and failure. The returned integer becomes the exit status.
+- `import` selects the argument and standard-output functions this file uses.
+- `export fn main() -> Int` defines the application's entry function. Its returned integer becomes the exit code.
+- `let` names a value and infers its type. The string inserts the argument count inside `{...}` and ends with a newline, `\n`.
+- `stdout().write(data: ...)` writes bytes, so `to_bytes()` converts the text first.
+- `write` returns a `Result`. The `match` handles both outcomes: success returns `0`, and failure returns `1`. `_` ignores the outcome's payload.
 
-Indentation defines blocks. A function with one parameter permits calls such as `stdout().write(message.to_bytes())` or `stdout().write(data: message.to_bytes())`. Functions with multiple parameters require labels on every supplied argument; zero-parameter calls use `()`. Public functions are explicitly exported, and each `.ms` file is a module.
+Four spaces start each nested block. Function calls accept positional arguments; labels are optional and can make a call clearer.
 
-## Build and inspect
+## Understand the project
+
+Each `.ms` file is a module. The `examples/hello/ms.toml` manifest selects the source directory and entry module:
+
+```toml
+[project]
+name = "hello"
+source = "./src"
+entry = "./src/main.ms"
+```
+
+Paths are relative to the manifest. See [project configuration](../developer-tooling/builds/project-configuration.md) when setting up your own application.
+
+## Build and test
 
 ```sh
 ./ms build examples/hello/ms.toml -o hello
 ./hello first second
 ./ms test examples/hello/test.ms
-./ms emit examples/hello/ms.toml -o main.go
-./ms inspect examples/hello/ms.toml -o inspection.json
-./ms diagram examples/hello/ms.toml -o calls.mmd
+./ms fmt examples/hello/src/main.ms --check
 ```
 
-`build` produces a native executable. `emit` exposes the generated Go program. `inspect` produces structured source information; `diagram` captures static calls. To check formatting, run `./ms fmt examples/hello/src/main.ms --check`.
+`build` leaves a native executable that runs independently of Manuscript. `test` runs test blocks in the given module; `ms test ms.toml` also runs every `test.ms` and `*_test.ms` file in the project. Each test prints `RUN` before it starts; a test that exceeds `--timeout` (default 60s, `0` disables) fails by name, and `--filter text` runs only tests whose `module::name` contains the text. `fmt --check` reports formatting changes without writing them. Use `./ms --help` to list commands or `./ms help run` for a command's options.
 
-Built executables run independently of the Manuscript installation.
-
-## Generate API documentation
-
-```sh
-./ms doc examples/hello/ms.toml -o api.md
-./ms doc examples/hello/ms.toml --json -o api.json
-./ms doc --stdlib -o stdlib.md
-```
-
-The generator documents checked public declarations and writes Markdown by default.
-`--json` produces a versioned structured reference. Without `-o`, output goes to
-stdout. It works from the shipped binary without installing Go. `--stdlib`
-documents the standard library bundled with that version of the compiler.
-
-Continue with [the language tour](tour.md).
+Continue with [the language tour](tour.md). The [developer tools](../developer-tooling/implementation.md) cover editor setup, inspection, API documentation, and debugging.

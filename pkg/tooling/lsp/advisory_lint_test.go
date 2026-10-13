@@ -1,0 +1,71 @@
+package lsp
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"io"
+	"strings"
+	"testing"
+)
+
+func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
+	for _, tc := range []struct {
+		name, source, code string
+		line               int
+	}{
+		{"discarded result", "fn fail() -> Result[Int, String]:\n    return error(\"boom\")\nfn use() -> Unit:\n    fail()\n", "MSL104", 3},
+		{"concurrent capture", "import Map from \"@std/collections.ms\"\nimport TaskGroup from \"@std/tasks.ms\"\nfn use() -> Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() -> Unit:\n            shared.with_entry(key: 1, value: 2)\n        )\n", "MSL105", 6},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := document{"file:///tmp/advisory.ms", tc.source, 1}
+			input := frame("textDocument/didOpen", nil, map[string]any{"textDocument": d}) + frame("shutdown", 1, nil) + frame("exit", nil, nil)
+			var output bytes.Buffer
+			if err := Serve(strings.NewReader(input), &output); err != nil {
+				t.Fatal(err)
+			}
+			reader := bufio.NewReader(&output)
+			found := false
+			for {
+				body, err := readFrame(reader)
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				var message struct {
+					Method string `json:"method"`
+					Params struct {
+						Diagnostics []struct {
+							Code     string `json:"code"`
+							Severity int    `json:"severity"`
+							Source   string `json:"source"`
+							Range    span   `json:"range"`
+						} `json:"diagnostics"`
+					} `json:"params"`
+				}
+				if err := json.Unmarshal(body, &message); err != nil {
+					t.Fatal(err)
+				}
+				if message.Method != "textDocument/publishDiagnostics" {
+					continue
+				}
+				for _, diagnostic := range message.Params.Diagnostics {
+					if diagnostic.Severity == 1 {
+						t.Fatalf("advisory became an error: %+v", diagnostic)
+					}
+					if diagnostic.Code == tc.code {
+						found = true
+						if diagnostic.Severity != 2 || diagnostic.Source != "manuscript-lint" || diagnostic.Range.Start.Line != tc.line {
+							t.Fatalf("wrong advisory: %+v", diagnostic)
+						}
+					}
+				}
+			}
+			if !found {
+				t.Fatalf("missing %s warning", tc.code)
+			}
+		})
+	}
+}

@@ -30,7 +30,7 @@ type TlsError:
 
 ```manuscript
 impl Error for TlsError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## TlsInfo {data-api-kind="Record"}
@@ -59,12 +59,12 @@ type TlsOptions:
 ## parse_certificates {data-api-kind="Function"}
 
 ```manuscript
-fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
+fn parse_certificates(pem: String, max_certificates: Optional[Int] = none) -> Result[List[CertificateInfo], TlsError]:
 ```
 
 ## verify_certificates {data-api-kind="Function"}
 
 ```manuscript
-fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
+fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]:
 ```
 

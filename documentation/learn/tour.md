@@ -29,7 +29,6 @@ test "unread message count":
 
 ```manuscript
 import {List, Map, Set} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 
 let tags = ["docs", "release"]
 tags.append("featured")
@@ -79,10 +78,10 @@ fn line_total(price: Int, quantity: Int) -> Int:
     return price * quantity
 
 let welcome = greeting("Sam")
-let subtotal = line_total(price: 12, quantity: 3)
+let subtotal = line_total(12, 3)
 ```
 
-Functions declare parameter and return types. A single parameter allows an unlabeled call. With multiple parameters, name every argument. Use `Unit` when a function has no result to return.
+Functions declare parameter and return types. Call with positional arguments or add labels for clarity. Use `Unit` when a function has no result to return.
 
 Pass functions to transform collections:
 
@@ -125,7 +124,7 @@ test "publish a help page":
     todo.completed = true
     let backup = todo.clone()
     todo.title = "Update the contact page"
-    let label = status_label(Status.Published(url: "/help"))
+    let label = status_label(Status.Published("/help"))
     if not (backup.title == "Update the help page" and backup.completed and label == "Published at /help"):
         return panic(message: "Unexpected page data")
 ```
@@ -135,22 +134,20 @@ Records group named fields. Fields can change even when the binding uses `let`. 
 ## Expected errors
 
 ```manuscript
-import Result from "@std/result.ms"
-
 type QuantityError:
     case MustBePositive
 
 fn quantity(value: Int) -> Result[Int, QuantityError]:
     if value <= 0:
-        return error(cause: QuantityError.MustBePositive)
-    return ok(value: value)
+        return error(QuantityError.MustBePositive)
+    return ok(value)
 
 fn order_total(count: Int) -> Result[Int, QuantityError]:
     let valid_count = try quantity(count)
-    return ok(value: valid_count * 12)
+    return ok(valid_count * 12)
 ```
 
-A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. The containing function must return a `Result` with the same error type. Use `match` when you want to handle both outcomes yourself.
+A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. Use the same error type, or the common `Error` boundary for errors implementing that interface. Use `match` when you want to handle both outcomes yourself; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
 
 ## Modules
 
@@ -172,7 +169,7 @@ export fn checkout_total() -> Int:
     return line_total(price: 12, quantity: 3)
 ```
 
-Import standard APIs from `@std/…`, and local code with a relative path. [Module rules](../modules-and-capabilities/modules/declarations.md) cover grouped imports and visibility.
+Import standard APIs from `@std/…`, and local code with a relative path. [Module rules](../core-language/modules/declarations.md) cover grouped imports and visibility.
 
 ## Closures and shared data
 
@@ -198,13 +195,12 @@ A closure remembers each binding's value when created. Reassigning a local varia
 
 ```manuscript
 import {filesystem, FileSystemError} from "@std/fs.ms"
-import Result from "@std/result.ms"
 
 fn copy_notes() -> Result[Unit, FileSystemError]:
     with source = try filesystem().open(path: "notes.txt", flags: "r", mode: 0):
         let contents = try source.read_file(max_bytes: 1048576)
         let written = try filesystem().write_file(path: "backup.txt", data: contents, replace: true)
-    return ok(value: unit)
+    return ok(unit)
 ```
 
 `with` closes the file when the block ends, including an early return. A closure that captures the file keeps a reference but does not keep it open. Read it inside the block, or open a new file inside the callback. [Resource captures](../core-language/functions/function-values-and-closures.md#resource-captures) shows a complete example.
@@ -217,7 +213,7 @@ These fragments are intentionally rejected:
 let count = 2
 count = 3                 # Use var for reassignment.
 let mixed = [1, "two"]    # List elements need a common type.
-line_total(12, 3)         # Name both arguments.
+line_total(12)            # Supply the required quantity.
 ```
 
-Keep these cases separate from runnable examples. Continue with the [language reference](../core-language/_index.md) or find an API in the [module reference](../standard-library/reference/_index.md).
+Keep these cases separate from runnable examples. Continue with the [language guide](../core-language/_index.md) or find an API in the [API reference](../standard-library/reference/_index.md).

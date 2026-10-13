@@ -1,13 +1,39 @@
 # Repository guidance
 
-- Read and apply [language design taste](skills/language-design-taste/SKILL.md) when proposing or reviewing language, standard library, runtime, compiler, or tooling changes.
-- Current design documents and explicit user instructions take precedence over these preferences.
-- Before implementing or reviewing Manuscript changes, read [manuscript-change](skills/manuscript-change/SKILL.md) and consult the relevant experts it routes to.
-- When work establishes a durable lesson or the user corrects a recurring mistake, apply [change-memory](skills/change-memory/SKILL.md) to preserve it alongside the change.
+Manuscript is a statically typed language implemented in Go. Source `.ms` files are parsed and checked, then lowered to Go for native execution.
 
-## Skills
+## Start each session
 
-- Shared skills live in `skills/`; `.agents/skills/` and `.claude/skills/` link to the same folders for native discovery.
-- Read the relevant `SKILL.md` and its referenced files when using a skill. Preserve explicit-only invocation settings; `/skill-name` in upstream instructions means `$skill-name` in Codex.
-- Use this `AGENTS.md` for repository guidance; do not create a separate `CLAUDE.md`.
-- Matt Pocock's published skills are pinned in [mattpocock.lock.json](skills/mattpocock.lock.json), with their license in [LICENSE.mattpocock](skills/LICENSE.mattpocock).
+- Read [architecture](documentation/contributing/architecture.md) and [development checks](documentation/contributing/development.md) for implementation or repository work. Check the relevant source and tests before assuming a documented design is implemented.
+- Before implementing or reviewing a change, read [manuscript-change](skills/manuscript-change/SKILL.md), select relevant domain skills below, and consult the experts it routes to. Read additional skills if exploration reaches another domain; do not load the whole catalog for every task.
+- Apply [language-design-taste](skills/language-design-taste/SKILL.md) for language, standard-library, runtime, compiler, or tooling design choices.
+- The user's latest explicit direction and current canonical design take precedence over remembered preferences. Historical proposals and assistant completion reports do not establish current behavior. Identify material differences between a newer decision and this checkout.
+- Use [change-memory](skills/change-memory/SKILL.md) when a correction or verified lesson would change future work. Update existing entries rather than accumulating duplicate or superseded advice.
+
+## Domain skills
+
+| Task or affected surface | Read |
+| --- | --- |
+| Syntax, types, calls, imports, interfaces, language semantics | [language-design](skills/language-design/SKILL.md) |
+| Checking, lowering, module resolution, build pins/cache, native toolchain | [compiler](skills/compiler/SKILL.md) |
+| Syntax nodes, traversal, lexer/layout, strict and partial parsing | [ast](skills/ast/SKILL.md) |
+| Execution, resources, cancellation, cleanup, concurrency, native dispatch | [runtime](skills/runtime/SKILL.md) |
+| Standard declarations, bindings, errors, API parity/grouping | [standard-library](skills/standard-library/SKILL.md) |
+| Formatter, lint, inspection, LSP, VS Code, CLI, debugger | [tooling](skills/tooling/SKILL.md) |
+| Tutorials, exact rules, generated API reference, Hugo book/publication | [documentation](skills/documentation/SKILL.md) |
+| Package organization, dependency policy, pins, CI, releases, repository cleanup | [repository-maintenance](skills/repository-maintenance/SKILL.md) |
+
+Syntax changes usually need language-design, ast, compiler, tooling, and documentation. Standard API changes usually need standard-library, runtime, tooling, and documentation. Select only domains the change reaches.
+
+## Repository layout
+
+- Reusable Go packages live in `pkg/`; executable entrypoints live in `cmd/`, and private CLI/native helpers live in `internal/`.
+- Keep root Go embed carriers beside `go.mod`, `vendor/`, `.msversion`, and the generated toolchain payload. Package moves update imports, fixtures, dependency policy, release inputs, and expert routes; see the architecture guide.
+
+## Shared guidance and checks
+
+- Shared skills live in `skills/`; `.agents/skills/` and `.claude/skills/` link to the same folders for Codex and Claude discovery. Read selected `SKILL.md` files and relevant evidence links. Keep discovery links synchronized when adding, renaming, or removing skills.
+- Use this `AGENTS.md` as the sole repository guidance entry point; do not create a separate `CLAUDE.md`.
+- Skills describe workflows, `.experts/` preserves reasons and failure modes, and `documentation/` owns exact rules. Standard signatures belong in `pkg/stdlib/*.ms`; regenerate derived references with `make docs`.
+- Keep skills concise and specific to Manuscript. Do not reinstall generic collections during routine setup. [Skill maintenance and history](skills/README.md) records why this catalog exists.
+- Run checks appropriate to the changed behavior from the current Makefile. `make verify` is the routine gate; `make verify-full` adds native, race, fuzz, book, and distribution checks. Guidance-only edits need reference/discovery validation and license freshness when notices change.

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/manuscript-lang/manuscript/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
 func TestMutationCLIRejectsInvalidAssignmentsAndHandleClones(t *testing.T) {

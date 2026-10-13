@@ -17,16 +17,16 @@ type JsonError:
 
 ```manuscript
 impl Error for JsonError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## JsonLimits {data-api-kind="Record"}
 
 ```manuscript
 type JsonLimits:
-    max_bytes: Int
-    max_depth: Int
-    max_values: Int
+    max_bytes: Optional[Int] = none
+    max_depth: Optional[Int] = none
+    max_values: Optional[Int] = none
 ```
 
 ## JsonValue {data-api-kind="Alternative"}
@@ -44,12 +44,12 @@ type JsonValue:
 ## parse {data-api-kind="Function"}
 
 ```manuscript
-fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, JsonError]
+fn parse(text: String, limits: Optional[JsonLimits] = none) -> Result[JsonValue, JsonError]:
 ```
 
 ## stringify {data-api-kind="Function"}
 
 ```manuscript
-fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, JsonError]
+fn stringify(value: JsonValue, max_bytes: Optional[Int] = none) -> Result[String, JsonError]:
 ```
 

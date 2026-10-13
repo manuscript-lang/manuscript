@@ -1,11 +1,9 @@
 +++
 title = "Strings and bytes"
-weight = 10
+weight = 4
 +++
 
 # Strings and bytes
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use `String` for text and `Bytes` for raw data. Both are immutable. Strings always contain valid UTF-8 and are available without an import. Import `Bytes` from `@std/bytes.ms` when naming that type. A byte sequence may need decoding before it can be treated as text.
 
@@ -65,9 +63,46 @@ test "string conversion":
     let embedded = "{count}"
 ```
 
-Each conversion above produces `"3"`. This follows JavaScript's convenience of converting any value to text; the exact representations below are Manuscript's own. Assignment, arguments, and return values still require compatible types: passing an Int to a String parameter requires an explicit `.toString()`.
+Each conversion above produces `"3"`. Every value supports explicit text conversion; the exact representations are defined below. Assignment, arguments, and return values still require compatible types: passing an Int to a String parameter requires an explicit `.toString()`.
 
 The built-in method takes precedence over a field or interface operation named `toString`. It cannot be overridden. Application-specific display functions can return String explicitly. Conversion never invokes user-defined formatting operations or native resource operations; even a closed resource remains printable.
+
+## Indexing and character boundaries
+
+There is no `text[index]` or slicing syntax. String methods such as `at` and `slice_scalars` count Unicode scalars; `scalar_at` returns a scalar code point. Bytes use byte indexes. Grapheme indexing is unsupported. See the [string reference](../../standard-library/reference/string.md) for the methods.
+
+A byte position, a Unicode scalar, and a user-visible grapheme are different units. For example, `"é"` has two UTF-8 bytes; `"e\u{301}"` has two scalars but can display as one grapheme. Byte lookup alone cannot select a character.
+
+## Encoding and parsing
+
+| Receiver or constructor | Signature/result |
+| --- | --- |
+| `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]` |
+| `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
+| `Bytes` | `length() -> Int`; `at(index: Int) -> Optional[Int]`; `concat(values: Bytes) -> Bytes` |
+| `Bytes` | `to_text() -> Optional[String]` |
+
+`String.to_bytes` uses UTF-8. `Bytes.to_text` succeeds exactly for valid UTF-8, preserving contents without normalization; invalid bytes produce `none`. Byte `at` follows list index behavior and returns the unsigned byte as Int. An empty `Bytes(values: [])` is valid.
+
+`parse_int` accepts exactly an optional ASCII `+` or `-` followed by one or more ASCII decimal digits and an in-range mathematical value. It permits leading zeros, rejects whitespace, separators, fractions, exponents, and any unconsumed character, and returns `none` for invalid or out-of-range input. Runtime parsing is distinct from the stricter source literal grammar. See [text and collection operations](../../standard-library/data.md) and [numeric operations](../../standard-library/math.md) for more methods; exact signatures live in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations remain unsupported.
+
+```manuscript
+import panic from "@std/faults.ms"
+
+import Bytes from "@std/bytes.ms"
+import List from "@std/collections.ms"
+
+test "explicit byte conversion":
+    if not ("é".byte_length() == 2):
+        return panic(message: "check failed")
+    if not ("é".to_bytes().to_text() == some("é")):
+        return panic(message: "check failed")
+    let invalid: Optional[String] = none
+    if not (Bytes([255]).to_text() == invalid):
+        return panic(message: "check failed")
+    if not ("-007".parse_int() == some(-7)):
+        return panic(message: "check failed")
+```
 
 ## Deterministic formatting
 
@@ -84,7 +119,6 @@ Formatting never depends on locale, host display settings, or a process's decima
 | Record | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
 | Alternative | `Type.Case` for a nullary case; `Type.Case(value, ...)` for payloads in declaration order |
 | List | `[value, ...]` in element order |
-| Heterogeneous pack | `(value, ...)` in element order |
 | Map | `Map(key: value, ...)` in insertion order |
 | Set | `Set(value, ...)` in insertion order |
 | Bytes | `Bytes(byte, ...)`, with each byte in base ten; no UTF-8 decoding |
@@ -108,14 +142,6 @@ For either finite numerical decimal, let e be the base-ten exponent of its first
 
 Non-finite Float values format as `NaN`, `Infinity`, or `-Infinity`; NaN payloads and signs do not affect that text. The [numeric rules](numbers-and-booleans.md#runtime-numeric-outcomes) define how these values arise; they have no source literal spelling.
 
-## Indexing and character boundaries
-
-There is no `text[index]` or slicing syntax. The [data API](../../standard-library/data-and-io/operations.md#strings-and-bytes) defines byte length, UTF-8 encoding/decoding, and byte lookup. Scalar and grapheme indexing are unsupported.
-
-A byte position, a Unicode scalar, and a user-visible grapheme are different units. For example, `"é"` has two UTF-8 bytes; `"e\u{301}"` has two scalars but can display as one grapheme. Byte lookup alone cannot select a character.
-
 ## External data
 
-[Capability adapters](../../modules-and-capabilities/adapters/_index.md) validate UTF-8 when constructing text from foreign values and preserve immutability when transferring buffers. The [standard type catalog](../../standard-library/types/catalog.md) lists both types alongside the intrinsic and imported standard types.
-
-[Previous: Numbers and booleans](numbers-and-booleans.md) · [Next: Records and nominal types](../types/records.md)
+[Capability adapters](../../contributing/compiler/adapters/_index.md) validate UTF-8 when constructing text from foreign values and preserve immutability when transferring buffers. See [standard imports](../../standard-library/imports.md) for the names available without imports.

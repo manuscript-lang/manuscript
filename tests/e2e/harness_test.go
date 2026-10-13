@@ -3,10 +3,11 @@ package e2e_test
 import (
 	"context"
 	"fmt"
-	"github.com/manuscript-lang/manuscript/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -22,9 +23,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	cliBinary = filepath.Join(directory, "ms")
-	tool := os.Getenv("MANUSCRIPT_GO")
-	if tool == "" {
-		tool = "go"
+	tool, err := filepath.Abs("../../toolchain/go/bin/go")
+	if err != nil {
+		panic(err)
+	}
+	if runtime.GOOS == "windows" {
+		tool += ".exe"
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	command := exec.CommandContext(ctx, tool, "build", "-o", cliBinary, "../../cmd/ms")

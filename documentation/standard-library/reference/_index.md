@@ -1,20 +1,19 @@
 +++
-title = "Module reference"
+title = "API reference"
 weight = 2
 +++
 
-# Standard library module reference
+# Standard library API reference
 
-Generated from the bundled standard-library declarations. This is the implemented API; the design guides explain semantics and planned extensions. Declaration excerpts omit implementation bodies.
+Look up types, functions, and import paths in the bundled standard library. These declarations are generated from source and omit implementation bodies.
 
 [Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)
 
-See [special call rules](../call-rules.md) for constructors, variadic parallel work, and optional arguments.
+See [special call rules](../call-rules.md) for constructors, generic receiver methods, and optional arguments.
 
 - [@std/archive.ms](archive.md)
 - [@std/bigint.ms](bigint.md)
 - [@std/binary.ms](binary.md)
-- [@std/builders.ms](builders.md)
 - [@std/bytes.ms](bytes.md)
 - [@std/cleanup.ms](cleanup.md)
 - [@std/cli.ms](cli.md)
@@ -24,6 +23,7 @@ See [special call rules](../call-rules.md) for constructors, variadic parallel w
 - [@std/csv.ms](csv.md)
 - [@std/decimal.ms](decimal.md)
 - [@std/encoding.ms](encoding.md)
+- [@std/equality.ms](equality.md)
 - [@std/errors.ms](errors.md)
 - [@std/faults.ms](faults.md)
 - [@std/fs.ms](fs.md)
@@ -37,7 +37,6 @@ See [special call rules](../call-rules.md) for constructors, variadic parallel w
 - [@std/numbers.ms](numbers.md)
 - [@std/optional.ms](optional.md)
 - [@std/path.ms](path.md)
-- [@std/pools.ms](pools.md)
 - [@std/process.ms](process.md)
 - [@std/queues.ms](queues.md)
 - [@std/random.ms](random.md)
@@ -49,6 +48,8 @@ See [special call rules](../call-rules.md) for constructors, variadic parallel w
 - [@std/tasks.ms](tasks.md)
 - [@std/time.ms](time.md)
 - [@std/tls.ms](tls.md)
+- [@std/toml.ms](toml.md)
 - [@std/url.ms](url.md)
 - [@std/websocket.ms](websocket.md)
+- [@std/yaml.ms](yaml.md)
 - [prelude](prelude.md)

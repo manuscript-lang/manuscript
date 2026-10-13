@@ -35,12 +35,12 @@ fn early(output: WriteStream) -> Int:
             return report(output: output, label: "return value", value: 5)
 
 fn failure() -> Result[Int, String]:
-    return error(cause: "expected")
+    return error("expected")
 
 fn propagate(output: WriteStream) -> Result[Int, String]:
     with resource = Resource(label: "propagation", output: output):
         let number = try failure()
-        return ok(value: number)
+        return ok(number)
 
 fn iterable(output: WriteStream) -> List[Int]:
     output.write(data: "iterable\n".to_bytes())
@@ -48,34 +48,68 @@ fn iterable(output: WriteStream) -> List[Int]:
 
 export fn main() -> Int:
     let total = select(output: stdout())(
-        second: report(output: stdout(), label: "second", value: 2),
-        first: report(output: stdout(), label: "first", value: 1),
+        second: report(
+            output: stdout(),
+            label: "second",
+            value: 2
+        ),
+        first: report(
+            output: stdout(),
+            label: "first",
+            value: 1
+        ),
     )
     if not (total == 3):
         return panic(message: "check failed")
+
     let pair = Pair(
-        second: report(output: stdout(), label: "pair second", value: 2),
-        first: report(output: stdout(), label: "pair first", value: 1),
+        second: report(
+            output: stdout(),
+            label: "pair second",
+            value: 2
+        ),
+        first: report(
+            output: stdout(),
+            label: "pair first",
+            value: 1
+        ),
     )
     if not (pair.first + pair.second == 3):
         return panic(message: "check failed")
-    with resource = Resource(label: "normal", output: stdout()):
+
+    with resource = Resource(
+        label: "normal",
+        output: stdout()
+    ):
         let completed = unit
+
     stdout().write(data: "after normal\n".to_bytes())
     var count = 0
+
     while count < 2:
-        with resource = Resource(label: "iteration", output: stdout()):
+        with resource = Resource(
+            label: "iteration",
+            output: stdout()
+        ):
             count = count + 1
             continue
+
     for value in iterable(output: stdout()):
-        with resource = Resource(label: "break", output: stdout()):
+        with resource = Resource(
+            label: "break",
+            output: stdout()
+        ):
             break
+
     match propagate(output: stdout()):
         ok(_):
             return panic(message: "Unexpected case")
+
         error(_):
             let completed = unit
+
     if not (early(output: stdout()) == 5):
         return panic(message: "check failed")
+
     stdout().write(data: "finished\n".to_bytes())
     return 0

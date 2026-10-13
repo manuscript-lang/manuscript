@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/manuscript-lang/manuscript/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
 func TestLocalInterfaceExtensions(t *testing.T) {

@@ -9,9 +9,9 @@ ms test ms.toml
 ms run ms.toml
 ms profile ms.toml -o captures
 ms profile src/work.ms -o work-captures
-go tool pprof -tags work-captures/cpu.pprof
-go tool pprof -http=127.0.0.1:8080 captures/program captures/cpu.pprof
-go tool trace captures/trace.out
+ms pprof -tags work-captures/cpu.pprof
+ms pprof -http=127.0.0.1:8080 captures/program captures/cpu.pprof
+ms trace captures/trace.out
 ```
 
 Set a breakpoint on the workload call in `src/main.ms` and press F5. Inspect the record, list, variant, queue, and execution scopes; add `package.count` as a watch. `src/lint.ms` contains semantic lint findings. Add trailing spaces and remove its final newline to also demonstrate the two source-hygiene findings; use it for diagnostics, quick fixes, and formatting. Profile destinations must be new.

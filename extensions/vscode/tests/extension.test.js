@@ -13,7 +13,7 @@ test('editor commands pass argument arrays, discover projects, and require trust
   const vscode = {
     workspace: {
       registerTextDocumentContentProvider: (scheme, value) => { assert.equal(scheme, "manuscript-stdlib"); provider = value; return dispose; },
-      isTrusted: true, getConfiguration: () => ({ get: name => name==='serverPath' ? '/compiler path/ms' : '/delve path/dlv' }), saveAll:async()=>true,
+      isTrusted: true, getConfiguration: () => ({ get: name => name==='serverPath' ? '/compiler path/ms' : undefined }), saveAll:async()=>true,
       getWorkspaceFolder: () => undefined, createFileSystemWatcher: () => dispose,
     },
     window: {

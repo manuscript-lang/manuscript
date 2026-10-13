@@ -1,22 +1,25 @@
 +++
-title = "Canonical formatting and generated views"
-weight = 109
+title = "Formatting"
+weight = 1
 +++
 
-# Canonical formatting and generated views
-
-[Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
+# Formatting
 
 The source file defines the program. The formatter gives it a consistent layout, and tools can regenerate diagrams and explanations from it.
 
-## Format a file
+## Format files or a project
 
 ```sh
 ms fmt file.ms
 ms fmt file.ms --check
+ms fmt ms.toml --check
+ms fmt src test.ms
+ms fmt src/*.ms --check
 ```
 
-The first command formats in place. `--check` writes nothing and returns a nonzero status if formatting would change the file. Invalid input produces diagnostics and no write.
+Formatting writes each valid file in place, preserving its permissions. `--check` writes nothing, lists every file needing formatting in path order, and returns 1 if any file needs changes or any target fails. Invalid source produces diagnostics and is left unchanged; other selected files are still processed.
+
+A manifest selects its entry, every `.ms` file below its configured source directory, and project `test.ms`/`*_test.ms` files. A directory recursively selects all `.ms` files. Both use the same discovery exclusions as project checking: hidden, `vendor`, and `node_modules` directories are skipped, and directory symlinks are not followed. Discovered file symlinks must stay within the selected root. Explicit file arguments can select excluded files; overlapping selections are formatted only once. An empty directory succeeds without output.
 
 ## Formatter contract
 
@@ -24,19 +27,18 @@ Formatting preserves program meaning and comments. It uses four-space indentatio
 
 The current formatter applies these layout rules:
 
-- Keep token spellings and physical code lines; do not rewrap lines.
+- Keep token spellings; wrap expressions using a soft limit of 88 columns.
+- Keep short lists and callback signatures compact, and preserve authored spacing between match arms.
 - Put one space around operators and after argument/type colons and commas.
 - Remove spaces next to delimiters and put two spaces before inline comments.
 - Collapse blank runs to one line and remove leading and trailing blank lines.
 - Keep comment text but remove trailing whitespace.
 - Round comment-only indentation down to a multiple of four.
 
-Golden-output and token-equivalence tests verify these choices. A valid rewrite replaces the file through an atomic rename in the same directory.
+See the [complete layout rules](../implementation.md#linting-and-formatting) for continuation groups and paragraph boundaries. Golden-output and syntax-equivalence tests verify these choices. A valid rewrite replaces the file through an atomic rename in the same directory.
 
 ## Generated explanations
 
 Compilation and task creation never invoke AI implicitly. Model output enters through an explicit capability call and validation. A generated explanation cannot change compilation behavior or replace a source edit.
 
-See [source layout](../../core-language/basics/syntax.md) and [capability inputs](../../modules-and-capabilities/capabilities/authority.md).
-
-[Next: Structural edits and revision guards](structural-editing.md)
+See [source layout](../../core-language/basics/syntax.md) and [capability inputs](../../standard-library/services.md).

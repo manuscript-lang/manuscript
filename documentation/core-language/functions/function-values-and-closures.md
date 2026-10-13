@@ -1,11 +1,9 @@
 +++
 title = "Function values and closures"
-weight = 22
+weight = 2
 +++
 
 # Function values and closures
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 You can store a function in a local binding and pass it to another function. Write an anonymous function with `fn`; its type has the form `fn(value: T) -> U`.
 
@@ -22,11 +20,11 @@ let decrement = fn(value: Int) -> Int:
 let result = apply(value: 3, transform: decrement)
 ```
 
-Function types retain parameter names. Calls through values may omit the label when the function type has exactly one parameter; multi-parameter function types require labels on every supplied argument. Labels remain part of function-type identity and compatibility even when a call omits one. Calls have the same suspension and evaluation rules as declared functions. Inferred immutable copies retain [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
+Function types retain parameter names. Calls through values accept positional, labeled, and mixed arguments, with matching-name shorthand preserved under the ordinary [call rules](declarations-and-calls.md#argument-names). Labels remain part of function-type identity and compatibility even when a call omits one. A contextual anonymous function adopts those labels while keeping its own local parameter names. Calls have the same suspension and evaluation rules as declared functions. Inferred immutable copies retain [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
 
 ## Function type compatibility
 
-Parameter names, declaration order, parameter types, and result type are all part of function-type identity. Compatibility is invariant: a different label, reordered signature, or different result type requires an explicit adapter function. Caller-written argument order may vary without changing the function's declared type.
+Callable argument labels, declaration order, parameter types, and result type are all part of function-type identity. Compatibility is invariant: a different label, reordered signature, or different result type requires an explicit adapter function. Caller-written argument order may vary without changing the function's declared type.
 
 ```manuscript
 fn subtract_one(amount: Int) -> Int:
@@ -41,7 +39,7 @@ fn adapt() -> Unit:
     let result = apply(value: 3, transform: renamed)
 ```
 
-The rejected binding is a negative example; removing it leaves a valid function. Anonymous functions require explicit parameter and result types and an inline or indented body, exactly as specified in the [grammar](../basics/grammar.md). An annotation on the receiving variable does not omit those signatures. A generic function must be instantiated before it is stored as a value; `identity[Int]` is a function value, while a bare polymorphic `identity` is not. Bound method values have the operation's function type with the receiver already bound and excluded from the parameter list.
+The rejected binding is a negative example; removing it leaves a valid function. Anonymous functions may omit parameter types when a surrounding function type supplies them. The context may come from an argument, binding annotation, field, collection element, or return type. Local parameter names may differ from the context's labels; parameters correspond by declaration order and retain invariant types. For example, `let increment: fn(value: Int) -> Int = fn(item): item + 1` uses `item` inside the body and is called as `increment(value: 3)`. This applies to directly contextual anonymous functions, including generic callback arguments; an already bound function value retains its existing labels. An omitted result type comes from a known context, or is inferred from the body when all input types are known. Without a result context, returns must have one exact type; normal fallthrough contributes `Unit`, and `Never` contributes no competing value. Standalone callbacks still need parameter annotations when no context provides their types. An inline expression body returns its value; multiline bodies use explicit `return`. See the [grammar](../basics/grammar.md). A generic function must be instantiated before it is stored as a value; `identity[Int]` is a function value, while a bare polymorphic `identity` is not. Bound method values have the operation's function type with the receiver already bound and excluded from the parameter list.
 
 An anonymous function forms its own function boundary for `return`, `try`, `break`, and `continue`. Its control-flow exits cannot exit the containing function or loop. Capture and sharing behavior remains governed by the separate contracts below.
 
@@ -52,7 +50,7 @@ A closure remembers the current value of each local binding it uses:
 ```manuscript
 fn make_headline() -> fn() -> String:
     var subject = "Weekly update"
-    let headline = fn() -> String:
+    let headline = fn():
         return subject
     subject = "Launch announcement"
     return headline
@@ -68,14 +66,14 @@ import List from "@std/collections.ms"
 
 fn tag_count() -> Int:
     let tags = ["docs"]
-    let count = fn() -> Int:
+    let count = fn():
         return tags.length()
     tags.append("release")
     return count()
 # tag_count() returns 2.
 ```
 
-Use `.clone()` before capturing if you need independent outer storage. Nested references remain shared. Coordinate concurrent reads and writes with [Synchronized](../../standard-library/data-and-io/synchronized-state.md#synchronized). A bound method retains its receiver by the same reference rules.
+Use `.clone()` before capturing if you need independent outer storage. Nested references remain shared. Coordinate concurrent reads and writes with [Synchronized](../../concurrency/synchronization.md#synchronized). A bound method retains its receiver by the same reference rules.
 
 ## Resource captures
 
@@ -84,10 +82,9 @@ Open a resource inside the callback that uses it:
 ```manuscript
 import {filesystem, FileSystemError} from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 
 fn notes_reader(path: String) -> fn() -> Result[Bytes, FileSystemError]:
-    return fn() -> Result[Bytes, FileSystemError]:
+    return fn():
         with file = try filesystem().open(path: path, flags: "r", mode: 0):
             return file.read_file(max_bytes: 1048576)
 ```
@@ -98,10 +95,19 @@ Capturing an already-open file keeps the same handle; it does not delay its `wit
 
 ## Concurrent invocation
 
-Concurrency APIs accept ordinary functions. Function parameters, returned functions, function fields, and generic forwarding work exactly as local function values do. See [function sharing](../../ownership-and-cleanup/values/sharing.md#function-values). A shared resource can still be closed before invocation.
+Concurrency APIs accept ordinary functions. Function parameters, returned functions, function fields, and generic forwarding work exactly as local function values do. See [function sharing](../../concurrency/sharing.md#function-values). A shared resource can still be closed before invocation.
 
-Capture request-data snapshots and application services for background work, then acquire job resources within that operation. `parallel` joins before returning, so an enclosing `with` remains active while its operations run, unless the resource is explicitly closed elsewhere.
+Capture request-data snapshots and application services for scheduled work, then acquire job resources within that operation. Keep a TaskGroup scope inside the resources its tasks use. The group cancels and joins at scope exit before the enclosing resources close, unless a resource is explicitly closed elsewhere.
 
-See [parallel](../../concurrency/parallel.md), [background services](../../standard-library/tasks/background.md), and [reference sharing](../../ownership-and-cleanup/values/sharing.md).
+See [task groups](../../concurrency/task-groups.md), [scheduling work](../../concurrency/scheduling.md), and [reference sharing](../../concurrency/sharing.md).
 
-[Previous: Declarations and calls](declarations-and-calls.md) · [Next: Conditionals](../control-flow/conditionals.md)
+## Contextual callback inference
+
+```manuscript
+import List from "@std/collections.ms"
+
+fn names() -> List[String]:
+    return [1, 2].map(fn(value): value.toString())
+```
+
+Here the list supplies `Int` for `value`, and the expected `List[String]` result supplies `String` for the callback result. Without that expected result, the body can determine `String`. Other supplied arguments may establish callback inputs regardless of their written order; callbacks are revisited as their input context becomes known. This checking order does not change runtime evaluation order. An unambiguous expected outer call result may establish missing generic arguments before callback checking; see [generic inference](../types/generics.md#inference-from-arguments). Known parts of a Result context supply its error type while the callback body determines its generic success type. `try` uses that Result error context. If neither the outer context nor the callback body determines the success type, an explicit specialization or annotation is still needed.

@@ -1,0 +1,3 @@
+{{ $pages := where .Pages "Params.bookHidden" "ne" true }}
+{{/* API lookup pages have their own navigation group. */}}
+{{ return where $pages "Path" "not in" (slice "/standard-library/reference" "/standard-library/call-rules") }}

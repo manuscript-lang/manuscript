@@ -1,11 +1,9 @@
 +++
 title = "Generics and bounds"
-weight = 18
+weight = 9
 +++
 
 # Generics and bounds
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 A generic type describes a family of types using type arguments. The arguments make the element or result types visible wherever the type is used.
 
@@ -22,7 +20,9 @@ These are type expressions: a list of text, a map from text to integers, optiona
 
 ## Bounds
 
-`T: Equal` means that values of `T` can be compared with `==` and `!=`. `T: Hashable` means that values of `T` can also be map keys or set elements. The compiler checks these requirements; you do not implement them yourself. See [equality and hashing](equality-and-hashing.md) for examples. Other requirements use named operation contracts. Generic declarations use `[T, U]`, with bounds such as `T: Equal` or `T: Read & Closeable`.
+`T: Equal` means values of `T` can be compared with `==` and `!=`; `T: Hashable` supplies hashing for map keys and set elements, which also require Equal. These are standard interfaces with built-in value implementations and explicit domain implementations. See [equality and hashing](equality-and-hashing.md) for examples. Generic declarations use `[T, U]`, with bounds such as `T: Equal` or `T: Read & Closeable`.
+
+A bound must resolve to an interface. Type parameters are in scope in their bounds, so `T: Compare[T]` is valid when `Compare` is an interface, but `T: T` is not. A parameter named `Error` shadows the prelude interface: use `E: Error` rather than `Error: Error`.
 
 | Bound | Required property |
 | --- | --- |
@@ -59,7 +59,7 @@ fn identity[T](value: T) -> T:
 fn same[T: Equal](left: T, right: T) -> Bool:
     return left == right
 
-let box = Box[Int](value: 1)
+let box = Box[Int](1)
 let exact = identity[Int](value: 1)
 let inferred = identity(value: 1)
 ```
@@ -70,7 +70,7 @@ Applications are invariant: `Box[Int]` and `Box[Float]` are distinct types. A ge
 
 ## Inference from arguments
 
-A function call may omit type arguments only when independently typed supplied argument expressions uniquely determine every parameter. The compiler matches argument types against declared parameter types, including invariant nested applications, then checks bounds and arguments after substitution. Repeated occurrences must determine the same type. No common superclass, implicit union, or numeric widening is inferred.
+A function call may omit type arguments when its arguments and expected result uniquely determine every parameter. Independently typed arguments establish initial evidence. A known expected result then supplies missing evidence before callbacks with known inputs contribute their result types. The compiler matches argument types against declared parameter types, including invariant nested applications, then checks bounds and arguments after substitution. Repeated occurrences must determine the same type. No common superclass, implicit union, or numeric widening is inferred.
 
 ```manuscript
 fn choose[T](first: T, second: T) -> T:
@@ -81,7 +81,18 @@ let value = choose(first: 1, second: 2)  # T = Int
 let mixed = choose(first: 1, second: 2.0)
 ```
 
-Result annotations do not infer function type arguments. Empty lists, `none`, and other expressions requiring context cannot independently provide evidence. Once other arguments determine all parameters, substituted parameter types provide context to those expressions. This process does not reorder evaluation.
+The expected result may come from an enclosing function's return type, an annotated binding, a field, an argument, or a contextual callback. It must determine missing parameters unambiguously; a parameter absent from both the arguments and result still needs an explicit type argument. Existing argument evidence is preserved. Conflicting types are rejected, and explicit specialization is never overridden.
+
+```manuscript
+fn fail[T](message: String) -> Result[T, String]: error(message)
+
+fn first() -> Result[Int, String]: fail("empty")  # T = Int
+let failed: Result[Int, String] = fail("empty")
+```
+
+Result matching preserves nominal types, invariant generic applications, and function argument labels. It does not introduce numeric conversions, implicit interface views, or wrapping a plain return value in `Optional`. Existing conversion of an implemented domain error to `Error` remains valid, including a `Result` error payload; inference preserves the concrete error type already determined by arguments. Bounds are checked after inference, and inferred function types do not retain default-argument omission permissions.
+
+Empty lists, `none`, and other expressions requiring context cannot independently provide evidence. Once arguments or the expected result determine the needed parameters, substituted parameter types provide context to those expressions. For a standard `Optional[T]` parameter, inference first matches an existing optional, then permits a plain payload to determine `T`; see [optional arguments](optionals.md#passing-optional-arguments). This process does not reorder evaluation.
 
 ```manuscript
 fn count[T](values: List[T]) -> Int:
@@ -92,7 +103,7 @@ let known = count[Int](values: [])
 let unknown = count(values: [])
 ```
 
-Generic data constructors follow the same field/payload inference rule, but an expected data application may supply their type arguments before field checking. Thus `let box: Box[Int] = Box(value: 1)` is valid. A unique complete application must result; a constructor cannot invent an unused type parameter.
+Generic data constructors infer from their fields or payloads, and an expected data application may supply their type arguments before field checking. Thus `let box: Box[Int] = Box(value: 1)` is valid. A unique complete application must result; a constructor cannot invent an unused type parameter.
 
 ## Body checking and well-formedness
 
@@ -113,9 +124,9 @@ The same rule checks a generic implementation once under its inherited parameter
 
 ## Finite recursive applications
 
-Recursive declarations follow [layout rules](records.md#recursive-data). Separately, the compiler requires a finite regular family of recursive generic applications. Along a recursive generic cycle, arguments preserve the original parameters one-to-one in their original positions. `Tree[T]` with `children: List[Tree[T]]` is allowed. Substituting concrete arguments, reordering them, or expanding them on a recursive cycle is rejected; `Grow[T]` containing `List[Grow[List[T]]]` would create an infinite application family. This regularity check follows recursive type references even through function signatures or contracts: an indirect runtime representation does not permit infinitely expanding static instantiations.
+Direct and mutual [recursive data](records.md#recursive-data) are supported. Separately, the compiler requires a finite regular family of recursive generic applications. Along a recursive generic cycle, arguments preserve the original parameters one-to-one in their original positions. `Tree[T]` with a case `Branch(left: Tree[T], right: Tree[T])` is allowed. Substituting concrete arguments, reordering them, or expanding them on a recursive cycle is rejected; `Grow[T]` containing `List[Grow[List[T]]]` would create an infinite application family. Nonrecursive nesting such as `Box[Box[Int]]` is allowed. For mutually recursive declarations, substitutions are composed around the cycle; the resulting arguments must match the starting parameters. This regularity check follows all declared type references, including generic arguments (even unused parameters), function signatures, and contracts: an indirect runtime representation does not permit infinitely expanding static instantiations.
 
-The same finite-application requirement covers generic function calls and specialized function values. Follow specialization dependencies through the whole module graph; on a recursive function cycle, the composed substitution must preserve the starting function's type parameters one-to-one in their original positions. Nonrecursive calls may construct different type arguments. Reject expanding recursive specialization before Go emission, even when the recursive call is unreachable at runtime. This prevents both an infinite monomorphization worklist and generic recursion that the Go backend cannot represent.
+The same finite-application requirement covers generic function calls and specialized function values. Follow specialization dependencies through the whole module graph; on a recursive function cycle, the composed substitution must preserve the starting function's type parameters one-to-one in their original positions. Nonrecursive calls may construct different type arguments. Reject expanding recursive specialization before code generation, even when the recursive call is unreachable at runtime. This keeps recursive specialization finite.
 
 ```manuscript
 fn repeat[T](value: T) -> Never:
@@ -129,6 +140,4 @@ Apply the check to mutual recursion and references such as `grow[List[T]]` store
 
 ## Built-in requirements
 
-`List[T]`, `Queue[T]`, `Synchronized[T]`, and collection values accept arbitrary value types, including functions and contract views. Map keys and set elements require `Hashable`. Equality is independently derived as described in [equality and hashing](equality-and-hashing.md). Sharing does not register cleanup or extend a resource's open lifetime.
-
-[Previous: Operation contracts](contracts.md) · [Next: Type compatibility and expected types](compatibility.md)
+`List[T]`, `Queue[T]`, `Synchronized[T]`, and collection values accept arbitrary value types, including functions and contract views. Map keys and set elements require `Hashable`. Equality uses the interfaces described in [equality and hashing](equality-and-hashing.md). Sharing does not register cleanup or extend a resource's open lifetime.

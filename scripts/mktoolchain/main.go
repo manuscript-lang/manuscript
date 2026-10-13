@@ -4,6 +4,7 @@ package main
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -56,7 +57,7 @@ func build() error {
 	// Keep references for each supported native target, including cross builds.
 	for _, target := range []string{"linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"} {
 		parts := strings.Split(target, "/")
-		command := exec.Command(hostGo, "list", "-mod=vendor", "-deps", "-json", "./runtime")
+		command := exec.Command(hostGo, "list", "-mod=vendor", "-deps", "-json", "./pkg/runtime")
 		command.Env = append(os.Environ(), "GOROOT="+hostRoot, "GOOS="+parts[0], "GOARCH="+parts[1], "CGO_ENABLED=0", "GOTOOLCHAIN=local", "GOENV=off", "GOFLAGS=")
 		data, err := command.Output()
 		if err != nil {
@@ -100,6 +101,24 @@ func build() error {
 	for _, tool := range []string{"compile", "link", "asm"} {
 		files[filepath.Join("pkg", "tool", targetOS+"_"+targetArch, tool+extension)] = true
 	}
+	// Go 1.25 builds these viewers on demand. Compile them while packaging,
+	// rather than shipping cmd sources or needing a tool build on first use.
+	viewers, err := os.MkdirTemp("", "ms-profile-tools-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(viewers)
+	built := map[string]string{}
+	for _, tool := range []string{"pprof", "trace"} {
+		name := filepath.Join("pkg", "tool", targetOS+"_"+targetArch, tool+extension)
+		output := filepath.Join(viewers, tool+extension)
+		command := exec.Command(hostGo, "build", "-trimpath", "-o", output, "cmd/"+tool)
+		command.Env = append(os.Environ(), "GOROOT="+hostRoot, "GOOS="+targetOS, "GOARCH="+targetArch, "CGO_ENABLED=0", "GOTOOLCHAIN=local", "GOENV=off", "GOFLAGS=", "GOWORK=off")
+		if data, err := command.CombinedOutput(); err != nil {
+			return fmt.Errorf("build bundled %s: %w\n%s", tool, err, data)
+		}
+		files[name], built[name] = true, output
+	}
 	if err := addDirectory("pkg/include"); err != nil {
 		return err
 	}
@@ -124,16 +143,21 @@ func build() error {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	file, err := os.Create(output)
+	file, err := os.CreateTemp(filepath.Dir(output), ".build-payload-*.tar.gz")
 	if err != nil {
 		return err
 	}
 	defer file.Close()
+	defer os.Remove(file.Name())
 	compressed := gzip.NewWriter(file)
 	archive := tar.NewWriter(compressed)
 	var total int64
 	for _, name := range names {
-		input, err := os.Open(filepath.Join(root, name))
+		source := built[name]
+		if source == "" {
+			source = filepath.Join(root, name)
+		}
+		input, err := os.Open(source)
 		if err != nil {
 			return err
 		}
@@ -161,6 +185,18 @@ func build() error {
 	}
 	if err := file.Close(); err != nil {
 		return err
+	}
+	// Publish atomically: other developer checks can be embedding this file.
+	// Keep an identical payload untouched so concurrent builds retain its inode.
+	prepared, err := os.ReadFile(file.Name())
+	if err != nil {
+		return err
+	}
+	previous, _ := os.ReadFile(output)
+	if !bytes.Equal(previous, prepared) {
+		if err := os.Rename(file.Name(), output); err != nil {
+			return err
+		}
 	}
 	// Overlay selects a target payload without mutating the host payload or SDK.
 	absolute, err := filepath.Abs(output)

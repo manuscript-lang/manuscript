@@ -15,7 +15,7 @@ type PathError:
 
 ```manuscript
 impl Error for PathError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## PathOperations {data-api-kind="Interface"}
@@ -53,102 +53,102 @@ type PathParts:
 ## basename {data-api-kind="Function"}
 
 ```manuscript
-fn basename(path: String) -> String
+fn basename(path: String) -> String:
 ```
 
 ## basename_without {data-api-kind="Function"}
 
 ```manuscript
-fn basename_without(path: String, suffix: String) -> String
+fn basename_without(path: String, suffix: String) -> String:
 ```
 
 ## delimiter {data-api-kind="Function"}
 
 ```manuscript
-fn delimiter() -> String
+fn delimiter() -> String:
 ```
 
 ## dirname {data-api-kind="Function"}
 
 ```manuscript
-fn dirname(path: String) -> String
+fn dirname(path: String) -> String:
 ```
 
 ## extension {data-api-kind="Function"}
 
 ```manuscript
-fn extension(path: String) -> String
+fn extension(path: String) -> String:
 ```
 
 ## format {data-api-kind="Function"}
 
 ```manuscript
-fn format(parts: PathParts) -> String
+fn format(parts: PathParts) -> String:
 ```
 
 ## is_absolute {data-api-kind="Function"}
 
 ```manuscript
-fn is_absolute(path: String) -> Bool
+fn is_absolute(path: String) -> Bool:
 ```
 
 ## join {data-api-kind="Function"}
 
 ```manuscript
-fn join(parts: List[String]) -> String
+fn join(parts: List[String]) -> String:
 ```
 
 ## matches_glob {data-api-kind="Function"}
 
 ```manuscript
-fn matches_glob(path: String, pattern: String) -> Result[Bool, PathError]
+fn matches_glob(path: String, pattern: String) -> Result[Bool, PathError]:
 ```
 
 ## normalize {data-api-kind="Function"}
 
 ```manuscript
-fn normalize(path: String) -> String
+fn normalize(path: String) -> String:
 ```
 
 ## parse {data-api-kind="Function"}
 
 ```manuscript
-fn parse(path: String) -> PathParts
+fn parse(path: String) -> PathParts:
 ```
 
 ## posix {data-api-kind="Function"}
 
 ```manuscript
-fn posix() -> PathOperations
+fn posix() -> PathOperations:
 ```
 
 ## relative {data-api-kind="Function"}
 
 ```manuscript
-fn relative(base: String, target: String) -> Result[String, PathError]
+fn relative(base: String, target: String) -> Result[String, PathError]:
 ```
 
 ## resolve {data-api-kind="Function"}
 
 ```manuscript
-fn resolve(base: String, parts: List[String]) -> Result[String, PathError]
+fn resolve(base: String, parts: List[String]) -> Result[String, PathError]:
 ```
 
 ## separator {data-api-kind="Function"}
 
 ```manuscript
-fn separator() -> String
+fn separator() -> String:
 ```
 
 ## to_namespaced_path {data-api-kind="Function"}
 
 ```manuscript
-fn to_namespaced_path(path: String) -> String
+fn to_namespaced_path(path: String) -> String:
 ```
 
 ## win32 {data-api-kind="Function"}
 
 ```manuscript
-fn win32() -> PathOperations
+fn win32() -> PathOperations:
 ```
 

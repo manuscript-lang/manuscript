@@ -17,7 +17,7 @@ type CsvError:
 
 ```manuscript
 impl Error for CsvError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## CsvOptions {data-api-kind="Record"}
@@ -31,12 +31,12 @@ type CsvOptions:
 ## parse {data-api-kind="Function"}
 
 ```manuscript
-fn parse(text: String, options: CsvOptions, max_rows: Int, max_cells: Int) -> Result[List[List[String]], CsvError]
+fn parse(text: String, options: CsvOptions, max_rows: Optional[Int] = none, max_cells: Optional[Int] = none) -> Result[List[List[String]], CsvError]:
 ```
 
 ## stringify {data-api-kind="Function"}
 
 ```manuscript
-fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Int) -> Result[String, CsvError]
+fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Optional[Int] = none) -> Result[String, CsvError]:
 ```
 

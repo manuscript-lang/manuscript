@@ -1,6 +1,5 @@
 // Manuscript's DAP layer delegates native control to Delve and renders checked
 // source names and runtime values. It never evaluates application methods.
-const net = require('node:net');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
@@ -35,7 +34,7 @@ function exec(command, args) {
 }
 function runtimeKind(variable) {
   const text = variable.type || '';
-  const match = /(?:main|msruntime)\.(Record|Alternative|List|Set|Map|Pack|Bytes|View|Unit|Function|Background|Queue|Synchronized|SynchronizedGuard|Pool|Lease|OperationId)(?:\)|$)/.exec(text);
+  const match = /(?:main|msruntime|runtime)\.(Record|Alternative|List|Set|Map|Bytes|View|Unit|Function|TaskGroup|Task|Scheduler|Queue|PriorityQueue|Synchronized|SynchronizedGuard|OperationId)(?:\)|$)/.exec(text);
   return match ? match[1] : '';
 }
 function sourceType(native) {
@@ -69,8 +68,10 @@ function rewriteExpression(expression, variables, metadata) {
   const simple=/^([A-Za-z_][A-Za-z0-9_]*)(?:\.([A-Za-z_][A-Za-z0-9_]*)|\[(\d+)\])?$/.exec(expression.trim());
   if(simple && visible.has(simple[1])) {
     const variable=visible.get(simple[1]);const kind=runtimeKind(variable);
-    if(simple[2] && kind==='Record') return `${variable.name}.(main.Record).Fields[${JSON.stringify(simple[2])}]`;
-    if(simple[3] && ['List','Set','Pack','Bytes'].includes(kind)) return `${variable.name}.(main.${kind}).Items[${simple[3]}]`;
+    // Delve's .(data) exposes the concrete interface value without depending
+    // on runtime package names, and retains pointers for collection access.
+    if(simple[2] && kind==='Record') return `${variable.name}.(data).Fields[${JSON.stringify(simple[2])}]`;
+    if(simple[3] && ['List','Set','Bytes'].includes(kind)) return `${variable.name}.(data).Items[${simple[3]}]`;
     if(!simple[2] && !simple[3]) return variable.name;
   }
   let result='',at=0;
@@ -93,31 +94,22 @@ class ManuscriptAdapter {
   respond(request, body, success = true, message) {
     this.emit({ type: 'response', request_seq: request.seq, command: request.command, success, body, message });
   }
-  async start(delve) {
+  async start(compiler) {
     if (this.ready) return this.ready;
     this.ready = new Promise((resolve, reject) => {
-      const child = spawn(delve, ['dap', '--listen=127.0.0.1:0'], { stdio: ['ignore', 'pipe', 'pipe'] });
-      this.child = child; let text = ''; let connected = false;
-      const timer = setTimeout(() => { child.kill(); reject(new Error('Delve startup timed out')); }, 15000);
-      child.once('error', error => { clearTimeout(timer); reject(error); });
-      child.once('exit', (code) => {
-        clearTimeout(timer);
-        if (!connected) reject(new Error(`Delve exited before startup (${code})`));
+      const child = spawn(compiler, ['dap'], { stdio: ['pipe', 'pipe', 'pipe'] });
+      this.child = child;
+      child.once('error', reject);
+      child.once('spawn', resolve);
+      child.once('exit', () => {
         for (const pending of this.pending.values()) pending.reject(new Error('Debugger exited'));
         this.pending.clear();
       });
       child.stderr.on('data', bytes => this.emit({ type: 'event', event: 'output', body: { category: 'stderr', output: bytes.toString() } }));
-      child.stdout.on('data', bytes => {
-        text += bytes.toString();
-        const address = /DAP server listening at: (127\.0\.0\.1):(\d+)/.exec(text);
-        if (!address || connected) return;
-        connected = true; clearTimeout(timer);
-        const socket = net.createConnection({ host: address[1], port: Number(address[2]) });
-        this.socket = socket;
-        const framing = new Framing(message => this.receive(message));
-        socket.on('data', chunk => { try { framing.push(chunk); } catch (error) { this.fail(error); } });
-        socket.once('connect', resolve); socket.on('error', error => { reject(error); this.fail(error); });
-      });
+      this.socket = child.stdin;
+      this.socket.on('error', error => this.fail(error));
+      const framing = new Framing(message => this.receive(message));
+      child.stdout.on('data', bytes => { try { framing.push(bytes); } catch (error) { this.fail(error); } });
     });
     return this.ready;
   }
@@ -150,7 +142,7 @@ class ManuscriptAdapter {
     const kind = runtimeKind(variable);
     // Native stack slots can cease to contain a dead source local after GC.
     // Do not present a recycled primitive or corrupt runtime type as a container.
-    const expectedContainer = /^(List|Set|Map|Pack|Bytes|Optional|Result)(?:\[|$)/.exec(declaredType || '');
+    const expectedContainer = /^(List|Set|Map|Bytes|Optional|Result)(?:\[|$)/.exec(declaredType || '');
     if (expectedContainer && (primitive || (embedded && runtimeType(embedded[1]).split('[')[0] !== expectedContainer[1]))) {
       result.type = declaredType; result.value = '<unavailable after last use>'; result.variablesReference = 0;
       return result;
@@ -174,12 +166,12 @@ class ManuscriptAdapter {
       children = await this.children(children[0].variablesReference);
     }
     if (handle.kind === 'Execution') {
-      const names = { Context: 'Cancellation context', Lifetime: 'Work lifetime', Owners: 'Background services', Leases: 'Active leases', HostServices: 'HTTP services' };
+      const names = { Context: 'Cancellation context', Lifetime: 'Work lifetime', Owners: 'Scheduler services', TaskGroups: 'Task groups', HostServices: 'HTTP services' };
       return children.filter(v => names[v.name]).map(v => ({ ...v, name: names[v.name] }));
     }
-    const serviceFields={Queue:{capacity:'Capacity',items:'Queued values'},Synchronized:{value:'Value',holder:'Active guard'},SynchronizedGuard:{cell:'Synchronized value'},Background:{limit:'Admission limit',active:'Active operations',history:'Recent outcomes',closing:'Closing',closed:'Closed'},Pool:{resources:'Resources',available:'Available resources',leases:'Active leases',closing:'Closing'},Lease:{resource:'Resource',closed:'Closed'}}[handle.kind];
+    const serviceFields={TaskGroup:{active:'Active tasks',sealed:'Joined',closing:'Closing',closed:'Closed',failure:'Execution failure'},Task:{id:'Operation',value:'Result',committed:'Completed',group:'Task group'},PriorityQueue:{capacity:'Capacity',items:'Queued priorities',compare:'Comparator'},Queue:{capacity:'Capacity',items:'Queued values'},Synchronized:{value:'Value',holder:'Active guard'},SynchronizedGuard:{cell:'Synchronized value'},Scheduler:{limit:'Admission limit',active:'Active operations',history:'Recent outcomes',closing:'Closing',closed:'Closed'}}[handle.kind];
     if(serviceFields) return children.filter(v=>serviceFields[v.name]).map(v=>this.render(v,serviceFields[v.name]));
-    const fieldName = { Record: 'Fields', Alternative: 'Fields', List: 'Items', Set: 'Items', Pack: 'Items', Bytes: 'Items', Map: 'Entries', View: 'Receiver' }[handle.kind];
+    const fieldName = { Record: 'Fields', Alternative: 'Fields', List: 'Items', Set: 'Items', Bytes: 'Items', Map: 'Entries', View: 'Receiver' }[handle.kind];
     if (!fieldName) return children.map(v => this.render(v));
     const field = children.find(v => v.name === fieldName);
     if (!field || !field.variablesReference) return children.map(v => this.render(v));
@@ -228,12 +220,12 @@ class ManuscriptAdapter {
       if (!args.inspection) throw new Error('Prebuilt launches require an inspection.json path');
       await this.loadMetadata(program, JSON.parse(await fs.readFile(args.inspection, 'utf8')));
     }
-    args.mode = 'exec'; delete args.compilerPath; delete args.delvePath; delete args.inspection;
+    args.mode = 'exec'; args.outputMode = 'remote'; delete args.compilerPath; delete args.inspection;
     return this.native('launch', args);
   }
   async request(request) {
     try {
-      await this.start(request.arguments?.delvePath || this.options.delve || 'dlv');
+      await this.start(request.arguments?.compilerPath || this.options.compiler || 'ms');
       const args = request.arguments || {}; let body;
       if (request.command === 'launch') body = await this.launch(args);
       else if (request.command === 'variables') {
@@ -295,12 +287,21 @@ class ManuscriptAdapter {
   fail(error) { this.emit({ type: 'event', event: 'output', body: { category: 'stderr', output: `${error.message}\n` } }); this.cleanup(); }
   async cleanup() {
     if (this.socket) { this.socket.destroy(); this.socket = undefined; }
-    if (this.child) { this.child.kill(); this.child = undefined; }
+    if (this.child) {
+      const child = this.child; this.child = undefined;
+      await new Promise(resolve => {
+        if (child.exitCode !== null || child.signalCode !== null) return resolve();
+        const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
+        child.once('close', () => { clearTimeout(timer); resolve(); });
+        // Closing stdin lets ms detach/reap the target before it exits, including
+        // on Windows where child.kill() would terminate ms immediately.
+      });
+    }
     if (this.temp) { const directory = this.temp; this.temp = undefined; await fs.rm(directory, { recursive: true, force: true }).catch(() => {}); }
   }
 }
 if (require.main === module) {
-  const adapter = new ManuscriptAdapter(process.stdout, { compiler: process.argv[2], delve: process.argv[3] });
+  const adapter = new ManuscriptAdapter(process.stdout, { compiler: process.argv[2] });
   const framing = new Framing(request => adapter.request(request));
   process.stdin.on('data', bytes => { try { framing.push(bytes); } catch (error) { adapter.fail(error); } });
   process.stdin.on('end', () => adapter.cleanup());

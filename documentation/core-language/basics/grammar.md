@@ -1,11 +1,9 @@
 +++
 title = "Source grammar"
-weight = 10.5
+weight = 6
 +++
 
 # Source grammar
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 This page is the exact syntax reference. Use it to check how a declaration, expression, block, or pattern must be written. If you are learning the language, read [source structure](syntax.md) and the practical concept pages first.
 
@@ -87,7 +85,21 @@ fn example() -> Int:
     )
 ```
 
-Its header has eight leading spaces, its body twelve, and the enclosing call closes at four. Use `fn(value: Int) -> Int: return value - 1` for an inline function. Returns remain explicit; a bare value expression is rejected. Binding an anonymous function first and then passing its name is also valid. When a suite-bodied expression completes a surrounding simple statement with no enclosing expression delimiter still open, its suite boundary also terminates that statement: the parser supplies the outer `NEWLINE` after the expression's `DEDENT`. It does not require a second physical blank line. When a delimiter remains open, continuation resumes until that delimiter closes and the surrounding statement ends normally.
+Its header has eight leading spaces, its body twelve, and the enclosing call closes at four. Use `fn(value): value - 1` when context supplies the parameter type. An inline function expression body returns its value; indented bodies retain explicit returns. Binding an anonymous function first and then passing its name is also valid. When a suite-bodied expression completes a surrounding simple statement with no enclosing expression delimiter still open, its suite boundary also terminates that statement: the parser supplies the outer `NEWLINE` after the expression's `DEDENT`. It does not require a second physical blank line. When a delimiter remains open, continuation resumes until that delimiter closes and the surrounding statement ends normally.
+
+To continue with another argument after an ungrouped indented function, put the separating comma on its own line at the function header's indentation:
+
+```manuscript
+fn example() -> Int:
+    return apply(
+        transform: fn(value: Int) -> Int:
+            return value - 1
+        ,
+        value: 3,
+    )
+```
+
+The dedented comma ends the function suite and separates the arguments. A comma after `return value - 1` remains inside the function body and is rejected. Grouping the function, as above, also allows another argument after `),`.
 
 ## Modules, declarations, and types
 
@@ -102,25 +114,30 @@ Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | Function
 
 TypeDeclaration = "type", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, (RecordBody | AlternativeBody), DEDENT ;
-RecordBody    = Field, { Field } ;
-Field         = Name, ":", Type, NEWLINE ;
-AlternativeBody = CaseDeclaration, { CaseDeclaration } ;
+RecordBody    = { Field | ReceiverDeclaration } ;
+Field         = Name, ":", Type, [ "=", Expression ], NEWLINE ;
+AlternativeBody = CaseDeclaration, { CaseDeclaration | ReceiverDeclaration } ;
 CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
                        INDENT, ContractBody, DEDENT ;
 ContractBody  = OperationSignature, { OperationSignature } ;
-OperationSignature = "fn", Name, "(", [ Parameters ], ")", "->", Type, NEWLINE ;
+OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, NEWLINE ;
+ReceiverDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
+                      "->", Type, FunctionSuite ;
 
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
-                      "->", Type, Suite ;
+                      "->", Type, FunctionSuite ;
 Implementation = "impl", NamedType, "for", NamedType, ":", NEWLINE,
                  INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ;
-MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, Suite ;
+MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, FunctionSuite ;
+FunctionSuite = ":", (Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
 Parameters    = Parameter, { ",", Parameter }, [ "," ] ;
 Parameter     = Name, ":", Type ;
 FunctionParameters = FunctionParameter, { ",", FunctionParameter }, [ "," ] ;
 FunctionParameter = Parameter, [ "=", Expression ] ;
+CallbackParameters = CallbackParameter, { ",", CallbackParameter }, [ "," ] ;
+CallbackParameter = Name, [ ":", Type ], [ "=", Expression ] ;
 TypeParameters = "[", TypeParameter, { ",", TypeParameter }, [ "," ], "]" ;
 TypeParameter = Name, [ ":", Bounds ] ;
 Bounds        = NamedType, { "&", NamedType } ;
@@ -132,7 +149,9 @@ TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
 FunctionType  = "fn", "(", [ Parameters ], ")", "->", Type ;
 ```
 
-A `type` declares either record fields or alternative cases. An `interface` declares one or more operation signatures. Mixing these forms is rejected. A nullary alternative uses `case Ready`, without `()`. Parameter names and declaration names must be unique within their applicable scope. Function parameters and results always have explicit types. Function declarations and expressions with bodies accept [default arguments](../functions/declarations-and-calls.md#default-arguments). Interface signatures, function types, and data fields have no defaults. Variadic parameters, parameter patterns, and anonymous-function type parameters are not accepted. Trusted library/API contracts may define optional named arguments; an omitted API argument is checked against that declared contract.
+A `type` declares record fields or alternative cases; these data forms cannot be mixed. It may also contain receiver function declarations with ordinary function headers and suites, as used by the standard library. An `interface` contains only operation signatures. A nullary alternative uses `case Ready`, without `()`. Parameter names and declaration names must be unique within their applicable scope. Named function parameters and results have explicit types. Anonymous parameter types may come from a known function context, and anonymous result types may come from context or the checked body; see [callback inference](../functions/function-values-and-closures.md#contextual-callback-inference). Function declarations and expressions with bodies accept [default arguments](../functions/declarations-and-calls.md#default-arguments). Record fields accept [default expressions](../types/records.md#construction). Interface signatures may declare `= none` defaults on Optional parameters. Function types and alternative payloads have no defaults. Variadic parameters, parameter patterns, and anonymous-function type parameters are not accepted. An omitted argument is checked against its declared contract.
+
+Named function and method suites may be empty: `fn commands() -> Commands:` followed by a newline is valid syntax. The standard library uses these empty functions for implementations supplied by its pinned runtime bindings. Empty type schemas likewise use `type Duration:` with a newline. No parser mode or `native` keyword changes the syntax. Application functions still need valid return behavior, and source receiver implementations use explicit `impl` blocks. Interface, implementation, test, and control-flow suites remain nonempty.
 
 Imports and declarations may be interleaved; import visibility and declaration resolution do not depend on written order. Import paths and test names are plain text literals: escapes are permitted, interpolation is rejected. `export` applies to types, interfaces, and named module functions, not tests or implementation blocks. Implementation blocks declare no type parameters. In `impl Contract[T] for Data[T]:`, `T` comes from the receiver type declaration; applicable bounds come from the type and interface declarations.
 
@@ -140,14 +159,14 @@ Every parameter used in the interface or method signatures must occur in the nom
 
 Value types have no intersection/refinement syntax. `&` is used only to combine generic bounds, such as `T: Read & Closeable`; bound order does not affect the requirements. `Synchronized[T]` and `SynchronizedGuard[T]` are ordinary imported types, and lock scopes use existing `with` syntax.
 
-There are no module-level executable statements or `let`/`var` bindings. Functions and tests contain executable code. A snippet showing local bindings without an enclosing function is a body fragment, not a complete `.ms` module. Type paths do not introduce wildcard/namespace imports or make a private type accessible; resolution follows [module rules](../../modules-and-capabilities/modules/declarations.md).
+There are no module-level executable statements or `let`/`var` bindings. Functions and tests contain executable code. A snippet showing local bindings without an enclosing function is a body fragment, not a complete `.ms` module. Type paths do not introduce wildcard/namespace imports or make a private type accessible; resolution follows [module rules](../modules/declarations.md).
 
 ## Statements and patterns
 
 ```ebnf
 Suite         = ":", (SimpleStatement | NEWLINE, INDENT, Statement, { Statement }, DEDENT) ;
 Statement     = SimpleStatement, NEWLINE
-              | IfStatement | WhileStatement | ForStatement | MatchStatement
+              | IfStatement | WhileStatement | ForStatement
               | WithStatement ;
 SimpleStatement = Binding | Assignment | ReturnStatement | "break" | "continue"
                 | CallStatement ;
@@ -161,9 +180,11 @@ IfStatement   = "if", Expression, Suite,
 WhileStatement = "while", Expression, Suite ;
 ForStatement  = "for", Name, "in", Expression, Suite ;
 WithStatement = "with", Name, "=", Expression, Suite ;
-MatchStatement = "match", Expression, ":", NEWLINE, INDENT,
+MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                  MatchArm, { MatchArm }, DEDENT ;
-MatchArm      = CasePattern, Suite | "_", Suite ;
+MatchArm      = (CasePattern | "_"), ArmSuite ;
+ArmSuite      = ":", (SimpleStatement | Expression
+              | NEWLINE, INDENT, { Statement }, [ Expression, NEWLINE ], DEDENT) ;
 CasePattern   = CasePath, [ "(", PayloadNames, ")" ] ;
 CasePath      = Name, [ TypeArguments ], { ".", Name } ;
 PayloadNames  = (Name | "_"), { ",", (Name | "_") }, [ "," ] ;
@@ -174,12 +195,12 @@ RecordPattern = "{", RecordEntry, { ",", RecordEntry }, [ "," ], "}" ;
 RecordEntry   = Name, [ ":", BindingPattern ] ;
 ```
 
-`CallStatement` must resolve to a call expression; arithmetic expressions or bare names are not standalone statements. Assignment replaces an existing `var` binding or updates a record field. Collection positions are updated through methods. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
+`CallStatement` accepts a call or match expression and discards its result. It also accepts `try call()` when the Result success type is `Unit` (see [propagation](../errors/propagation.md)); arithmetic expressions or bare names are not standalone statements. A match arm may end with any expression to produce its value. Assignment replaces an existing `var` binding or updates a record field. Collection positions are updated through methods. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
 
-Inline suites work for functions, methods, tests, branches, loops, cleanup scopes, and match arms. They contain one simple statement, with no semicolon separators or nested compound statements. For example:
+Inline suites work for functions, methods, tests, branches, loops, and cleanup scopes. They contain one simple statement, with no semicolon separators or nested compound statements. A function or method may instead contain one expression, which is implicitly returned. This expression shorthand applies only to callable bodies, not to tests or control-flow suites. For example:
 
 ```manuscript
-fn double(value: Int) -> Int: return value * 2
+fn double(value: Int) -> Int: value * 2
 fn positive(value: Int) -> Bool:
     if value > 0: return true
     else: return false
@@ -187,9 +208,11 @@ fn positive(value: Int) -> Bool:
 
 `else` and `else if` must start on separate lines at the corresponding `if` header's indentation. Each branch may have its own inline body. Inline and indented branches may be mixed.
 
-`else if` is two words; `elif` is not syntax. Alternative match patterns use exact positional case payloads, not constructor argument labels. On a contract view, the same pattern syntax names a complete concrete record or alternative type and exactly one receiver binding; a final wildcard is required. Their exhaustiveness, wildcard position, and binding checks are in [pattern matching](../control-flow/pattern-matching.md). `if`, `match`, loops, and `with` are statements, not value-producing expressions. Local type/implementation/import/test declarations are not accepted. Nested named function declarations are rejected; bind an anonymous function to a local name instead.
+A short match arm contains one statement or value expression after its colon; an indented arm may contain statements followed by a value.
 
-The existing [with construct](../../ownership-and-cleanup/cleanup/scopes.md) supplies its cleanup contract. This grammar does not define a move, borrow, consuming function kind, spawn keyword, or deferred-call construct. Runtime APIs are checked according to their own declarations and may impose more constraints on otherwise ordinary calls and list literals.
+`else if` is two words; `elif` is not syntax. Alternative match patterns use exact positional case payloads, not constructor argument labels. On a contract view, the same pattern syntax names a complete concrete record or alternative type and exactly one receiver binding; a final wildcard is required. Their exhaustiveness, wildcard position, and binding checks are in [pattern matching](../control-flow/pattern-matching.md). `match` is an expression, including when its value is discarded on a line of its own. `if`, loops, and `with` are statements. Local type/implementation/import/test declarations are not accepted. Nested named function declarations are rejected; bind an anonymous function to a local name instead.
+
+The existing [with construct](../cleanup/scopes.md) supplies its cleanup contract. This grammar does not define a move, borrow, consuming function kind, spawn keyword, or deferred-call construct. Runtime APIs are checked according to their own declarations and may impose more constraints on otherwise ordinary calls and list literals.
 
 ## Rejected forms
 

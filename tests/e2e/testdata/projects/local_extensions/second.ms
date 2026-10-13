@@ -2,7 +2,7 @@ import Optional from "@std/optional.ms"
 import {Item, Box, Holder, Choice} from "./domain.ms"
 import {Read, invoke, relay, as_view} from "./contracts.ms"
 import Closeable from "@std/cleanup.ms"
-import ListBuilder from "@std/builders.ms"
+import ListBuilder from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 impl Read[Int] for Item:
@@ -21,6 +21,7 @@ impl Read[Int] for Choice:
         match self:
             Some(value):
                 return value + delta()
+
             Empty:
                 return delta()
 
@@ -33,7 +34,7 @@ impl Extract for Holder[T]:
         return self.value.get()
 
 export fn second_view(value: Item) -> Read[Int]:
-    return Read[Int](value: value)
+    return Read[Int](value)
 
 export fn second_method(value: Item) -> fn() -> Int:
     return value.get
@@ -42,17 +43,26 @@ export fn second_generic() -> fn(value: Item) -> Int:
     return relay[Item]
 
 test "second local extensions":
-    let item = Item(value: 2)
-    if item.get() != 22 or invoke(item) != 22 or relay(item) != 22:
+    let item = Item(2)
+    if (
+        item.get() != 22
+        or invoke(item) != 22
+        or relay(item) != 22
+    ):
         return panic("local dispatch")
     if as_view(item).get() != 22:
         return panic("generic view")
-    let holder = Holder(value: item)
-    if holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22:
+
+    let holder = Holder(item)
+    if (
+        holder.get() != 22
+        or invoke(holder) != 22
+        or holder.extract() != 22
+    ):
         return panic("nested generic dispatch")
-    if Box(value: "hello").get() != "hello":
+    if Box("hello").get() != "hello":
         return panic("generic extension")
-    if Choice.Some(value: 2).get() != 22:
+    if Choice.Some(2).get() != 22:
         return panic("alternative extension")
 
 import Resource from "./domain.ms"
@@ -66,17 +76,17 @@ fn leave(resource: Resource) -> Unit:
         return
 
 export fn second_resource(resource: Resource) -> Closeable:
-    return Closeable(value: resource)
+    return Closeable(resource)
 
 test "second local cleanup":
     let events = ListBuilder[Int]()
-    leave(Resource(events: events))
-    if events.freeze().get(index: 0) != some(value: 20):
+    leave(Resource(events))
+    if events.freeze().at(index: 0) != some(20):
         return panic("local cleanup")
 
 import mixed from "./first.ms"
 
 test "generic evidence does not change concrete lexical dispatch":
-    let item = Item(value: 2)
+    let item = Item(2)
     if mixed(value: item, concrete: item) != 34:
         return panic("generic evidence changed concrete dispatch")

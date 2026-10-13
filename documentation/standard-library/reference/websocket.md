@@ -32,7 +32,7 @@ type WebSocketError:
 
 ```manuscript
 impl Error for WebSocketError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## WebSocketMessage {data-api-kind="Record"}
@@ -47,8 +47,8 @@ type WebSocketMessage:
 
 ```manuscript
 type WebSocketOptions:
-    max_message_bytes: Int
-    timeout: Duration
+    max_message_bytes: Optional[Int] = none
+    timeout: Optional[Duration] = none
     tls: TlsOptions
     compression: Bool
 ```

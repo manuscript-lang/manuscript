@@ -1,11 +1,9 @@
 +++
 title = "Functions"
-weight = 20
+weight = 2
 +++
 
 # Functions
-
-[Core language guide](../_index.md) · [Design index](../../_index.md)
 
 Functions take named inputs and return a declared type. First learn how to declare and call them. Then learn how to pass a function as a value and what it keeps from its surrounding scope.
 

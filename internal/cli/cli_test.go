@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/manuscript-lang/manuscript/syntax"
-	"github.com/manuscript-lang/manuscript/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
 func invoke(t *testing.T, args ...string) (int, string, string) {
@@ -74,6 +74,8 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 		{"build", "missing.ms", "--build-type", "Release", "--debug"},
 		{"debug", "missing.ms", "--build-type", "RelWithDebInfo"},
 		{"build", "missing.ms", "--build-type", "Debug", "--build-type", "Release"},
+		{"build", "missing.ms", "--watch"}, {"check", "missing.ms", "--watch"},
+		{"run", "missing.ms", "--watch", "--trace", "trace.out"},
 	} {
 		status, output, errors := invoke(t, args...)
 		if status != 2 || output != "" || errors == "" {
@@ -83,7 +85,7 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 }
 
 func TestHelpForEveryCommand(t *testing.T) {
-	t.Setenv("MANUSCRIPT_GO", filepath.Join(t.TempDir(), "missing-go"))
+	t.Setenv("PATH", t.TempDir())
 	for _, command := range []string{
 		"check", "lint", "lsp", "profile", "debug", "build", "emit", "run",
 		"test", "fmt", "inspect", "diagram", "lock", "doc", "stdlib", "help",
@@ -174,7 +176,22 @@ func TestStructuredDiagnosticsAndFailedEmit(t *testing.T) {
 }
 
 func TestFormattingCheckAndPermissionPreservation(t *testing.T) {
-	file := sourceFile(t, "fn value() -> Int:   \n    return 3   \n")
+	for _, tc := range []struct {
+		name, source, want string
+	}{
+		{"spacing", "fn value() -> Int:   \n    return 3   \n", "fn value() -> Int:\n    return 3\n"},
+		{"paragraphs", "fn value() -> Int:\n    if true: return 3\n    return 0\n", "fn value() -> Int:\n    if true: return 3\n\n    return 0\n"},
+		{"expressions", "fn value() -> Int:\n    return sum(left: read(1), right: 2)\n", "fn value() -> Int:\n    return sum(\n        left: read(1),\n        right: 2\n    )\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			checkFormattingAndPermissions(t, tc.source, tc.want)
+		})
+	}
+}
+
+func checkFormattingAndPermissions(t *testing.T, source, want string) {
+	t.Helper()
+	file := sourceFile(t, source)
 	originalInfo, err := os.Stat(file)
 	if err != nil {
 		t.Fatal(err)
@@ -187,6 +204,13 @@ func TestFormattingCheckAndPermissionPreservation(t *testing.T) {
 	}
 	if status, _, errors := invoke(t, "fmt", file); status != 0 {
 		t.Fatal(errors)
+	}
+	formatted, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(formatted) != want {
+		t.Fatalf("formatted source: %q, want %q", formatted, want)
 	}
 	if status, _, errors := invoke(t, "fmt", file, "--check"); status != 0 {
 		t.Fatal(errors)
@@ -228,14 +252,14 @@ func TestProjectLintChecksImportedSource(t *testing.T) {
 }
 
 func TestSourceCommandsNeedNoNativeToolchain(t *testing.T) {
-	t.Setenv("MANUSCRIPT_GO", filepath.Join(t.TempDir(), "missing-go"))
+	t.Setenv("PATH", t.TempDir())
 	file := sourceFile(t, "export fn value() -> Int:\n    return 3\n")
 	for _, command := range []string{"check", "inspect", "diagram", "emit", "doc"} {
 		status, output, errors := invoke(t, command, file)
 		if status != 0 || output == "" || errors != "" {
 			t.Fatalf("%s: %d, %q", command, status, errors)
 		}
-		if command == "emit" && (!strings.Contains(output, "package main") || strings.Contains(output, `"github.com/manuscript-lang/manuscript/runtime"`)) {
+		if command == "emit" && (!strings.Contains(output, "package main") || strings.Contains(output, `"github.com/manuscript-lang/manuscript/pkg/runtime"`)) {
 			t.Fatal("emit did not bundle runtime")
 		}
 	}
@@ -266,5 +290,88 @@ func TestFailedProfileDoesNotCreateAnArtifactDirectory(t *testing.T) {
 	}
 	if _, err := os.Stat(output); !os.IsNotExist(err) {
 		t.Fatal("failed checking created a profile artifact directory", err)
+	}
+}
+
+func TestCLIErrorsNameTheFix(t *testing.T) {
+	status, _, errors := invoke(t, "chek", "x.ms")
+	if status != 2 || !strings.Contains(errors, "Did you mean 'ms check'?") {
+		t.Fatalf("unknown command: %d, %q", status, errors)
+	}
+	status, _, errors = invoke(t, "check", "missing-file.ms")
+	if status != 1 || !strings.Contains(errors, "file not found: missing-file.ms; check the path") || !strings.Contains(errors, "1 error;") {
+		t.Fatalf("missing file: %d, %q", status, errors)
+	}
+	status, _, errors = invoke(t, "fmt", "missing-file.ms")
+	if status != 1 || !strings.Contains(errors, "file not found: missing-file.ms") {
+		t.Fatalf("missing format file: %d, %q", status, errors)
+	}
+	source := sourceFile(t, "fn value() -> Int:\n    return 1\n")
+	status, _, errors = invoke(t, "check", source, "--bogus")
+	if status != 2 || !strings.Contains(errors, "unknown option --bogus for ms check; run 'ms help check'") {
+		t.Fatalf("unknown option: %d, %q", status, errors)
+	}
+}
+
+func TestLintJSONReportsParseAndTypeErrors(t *testing.T) {
+	for _, source := range []string{"export fn main() -> Int:\n    return \"a\"\n", "fn (\n"} {
+		status, output, _ := invoke(t, "lint", sourceFile(t, source), "--json")
+		var document struct {
+			Format      int               `json:"format"`
+			Diagnostics []json.RawMessage `json:"diagnostics"`
+		}
+		if status != 1 || json.Unmarshal([]byte(output), &document) != nil || document.Format != 1 || len(document.Diagnostics) == 0 {
+			t.Fatalf("%q: %d, %q", source, status, output)
+		}
+	}
+}
+
+func TestArgumentMistakesNameTheProblem(t *testing.T) {
+	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	status, _, errors := invoke(t, "build", source, "extra.ms")
+	if status != 2 || !strings.Contains(errors, "unexpected extra argument extra.ms (ms build takes one file") {
+		t.Fatalf("extra argument: %d, %q", status, errors)
+	}
+	status, _, errors = invoke(t, "build", "--bogus", source)
+	if status != 2 || !strings.Contains(errors, "unknown option --bogus for ms build") {
+		t.Fatalf("unknown flag: %d, %q", status, errors)
+	}
+	status, _, errors = invoke(t, "stdlib")
+	if status != 2 || strings.Contains(errors, "file argument") || !strings.Contains(errors, "ms stdlib: pass exactly one directory") {
+		t.Fatalf("stdlib usage: %d, %q", status, errors)
+	}
+	directory := t.TempDir()
+	status, _, errors = invoke(t, "build", source, "-o", directory)
+	if status != 2 || !strings.Contains(errors, "is a directory; pass a file path") || strings.Contains(errors, "rename") {
+		t.Fatalf("output directory: %d, %q", status, errors)
+	}
+}
+
+func TestDirectoryArgumentUsesManifestOrExplains(t *testing.T) {
+	directory := t.TempDir()
+	status, _, errors := invoke(t, "check", directory)
+	if status != 2 || !strings.Contains(errors, directory+" is a directory without an ms.toml; pass a .ms file or a project ms.toml") {
+		t.Fatalf("plain directory: %d, %q", status, errors)
+	}
+	if err := os.MkdirAll(filepath.Join(directory, "src"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "ms.toml"), []byte("[project]\nname = \"demo\"\nsource = \"src\"\nentry = \"./src/main.ms\"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "src", "main.ms"), []byte("export fn main() -> Int:\n    return 0\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	status, output, errors := invoke(t, "check", directory)
+	if status != 0 || !strings.Contains(output, "Checked "+filepath.Join(directory, "ms.toml")) {
+		t.Fatalf("project directory: %d, %q, %q", status, output, errors)
+	}
+}
+
+func TestLintIgnoresBundledStandardModules(t *testing.T) {
+	source := sourceFile(t, "import TomlValue from \"@std/toml.ms\"\n\nexport fn main() -> Int:\n    let v: Optional[TomlValue] = none\n    match v:\n        some(_):\n            return 1\n        none:\n            return 0\n")
+	status, output, errors := invoke(t, "lint", source)
+	if status != 0 || strings.Contains(errors, "@std/") || output != "" {
+		t.Fatalf("%d, %q, %q", status, output, errors)
 	}
 }

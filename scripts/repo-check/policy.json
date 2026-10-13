@@ -1,82 +1,91 @@
 {
   "dependencies": {
-    "syntax": [],
-    "lexer": [
-      "syntax"
+    "pkg/syntax": [],
+    "pkg/lexer": [
+      "pkg/syntax"
     ],
-    "parser": [
-      "syntax",
-      "lexer"
+    "pkg/parser": [
+      "pkg/syntax",
+      "pkg/lexer"
     ],
-    "project": [],
-    "stdlib": [],
+    "pkg/project": [],
+    "pkg/stdlib": [],
     "internal/decimal": [],
     "internal/nativeabi": [],
     "internal/hostos": [],
-    "checker": [
-      "syntax",
-      "lexer",
-      "parser",
-      "stdlib",
-      "internal/decimal",
-      "internal/nativeabi"
+    "pkg/checker": [
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/parser",
+      "pkg/stdlib",
+      "internal/decimal"
     ],
-    "runtime": [
+    "pkg/runtime": [
       "internal/decimal",
       "internal/nativeabi",
       "internal/hostos"
     ],
-    "compiler": [
+    "pkg/compiler": [
       ".",
-      "syntax",
-      "lexer",
-      "parser",
-      "checker",
-      "project",
-      "stdlib",
-      "runtime"
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/parser",
+      "pkg/checker",
+      "pkg/project",
+      "pkg/stdlib",
+      "pkg/runtime",
+      "pkg/frontend"
     ],
-    "tooling": [
-      "syntax",
-      "lexer",
-      "parser",
-      "checker"
+    "pkg/tooling": [
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/checker",
+      "pkg/frontend"
     ],
-    "tooling/docgen": [
-      "checker"
+    "pkg/tooling/docgen": [
+      "pkg/checker"
     ],
-    "tooling/lsp": [
-      "syntax",
-      "lexer",
-      "parser",
-      "checker",
-      "project",
-      "compiler",
-      "tooling"
+    "pkg/tooling/lsp": [
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/checker",
+      "pkg/project",
+      "pkg/compiler",
+      "pkg/tooling",
+      "pkg/frontend"
     ],
     "internal/cli": [
-      "compiler",
-      "syntax",
-      "tooling",
-      "tooling/lsp",
-      "tooling/docgen",
-      "checker",
-      "stdlib",
-      "."
+      "pkg/compiler",
+      "pkg/project",
+      "pkg/syntax",
+      "pkg/tooling",
+      "pkg/tooling/lsp",
+      "pkg/tooling/docgen",
+      "pkg/checker",
+      "pkg/stdlib",
+      ".",
+      "internal/debugger"
     ],
     "cmd/ms": [
       "internal/cli"
-    ]
+    ],
+    "pkg/frontend": [
+      "pkg/syntax",
+      "pkg/parser",
+      "pkg/project"
+    ],
+    "internal/debugger": []
   },
   "pinned": [
-    "syntax",
-    "lexer",
-    "parser",
-    "checker",
-    "project",
-    "compiler",
-    "runtime",
-    "stdlib"
+    "pkg/syntax",
+    "pkg/lexer",
+    "pkg/parser",
+    "pkg/frontend",
+    "pkg/checker",
+    "pkg/project",
+    "pkg/compiler",
+    "pkg/runtime",
+    "pkg/stdlib"
   ],
   "bundled": [
     "internal/decimal",
