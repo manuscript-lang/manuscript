@@ -110,6 +110,7 @@ func assertFormatMeaning(t *testing.T, filename, original, formatted string) {
 				continue
 			}
 			token.Pos = syntax.Position{}
+			token.End = syntax.Position{}
 			result = append(result, token)
 		}
 		return result

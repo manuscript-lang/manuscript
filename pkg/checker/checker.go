@@ -103,7 +103,10 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 				found = p.Symbols[imports[item]][item.Name]
 			}
 			if found == nil || !found.Export {
-				c.error(item.NamePos, "resolution", c.exportMessage(item, imports))
+				end := item.NamePos
+				end.Column += len(item.Name)
+				end.Offset += len(item.Name)
+				c.Diagnostics = append(c.Diagnostics, syntax.Diagnostic{Position: item.NamePos, End: &end, Phase: "resolution", Message: c.exportMessage(item, imports)})
 				continue
 			}
 			c.addSymbol(item.Name, found, item.NamePos)
