@@ -166,3 +166,24 @@ python3 scripts/bench-lists/retention.py \
   --before /path/to/before-worker --after /path/to/after-worker \
   --output .artifacts/retention --runs 3 --cpu 0
 ```
+
+## Final integrated timing check
+
+Before `85f9a075`, after reviewed List code integrated at `5e79d57f`; program and
+harness remain byte-identical. Twelve fresh pairs use the same pinned SDK, CPU
+and GC settings. Raw trials and hashes are in
+[final-integrated.json](results/final-integrated.json),
+[raw output](results/final-integrated-raw.json), and
+[source provenance](results/final-integrated-provenance.json).
+
+| Case | after/before time | paired 95% interval | bytes before / after | allocations before / after |
+| --- | ---: | --- | ---: | ---: |
+| Read only | 0.985 | 0.860–1.124 | 2,622,748 / 2,622,669 | 131,095 / 131,093 |
+| Write inside | 1.008 | 0.863–1.162 | 3,672,039 / 2,623,380 | 131,107 / 131,104 |
+| Write after | 1.085 | 0.913–1.283 | 3,671,789 / 2,623,130 | 131,109 / 131,106 |
+
+The allocation reduction repeats; these wider timing intervals include parity
+and do not establish a final integrated speedup or rule out meaningful slowdowns.
+Earlier narrower intervals remain observations for their own recorded versions
+and host periods. Report allocation savings as the reliable result, rather than
+promising the earlier approximately 7.6% writing-path speedup for final main.
