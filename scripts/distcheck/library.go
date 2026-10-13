@@ -19,6 +19,7 @@ func libraryFixture(directory string) (string, error) {
 		"src/value.ms": "export fn value() -> Int: return 3\n",
 		"src/unimported.ms": `import panic from "@std/faults.ms"
 import filesystem from "@std/fs.ms"
+import {compress, decompress, CompressionFormat} from "@std/compress.ms"
 export fn other() -> Int: return 4
 test "source":
     if other() != 4: return panic("bad other")
@@ -81,6 +82,12 @@ test "copied native defaults":
     match fs.remove("defaults", recursive: true):
         error(_): return panic("explicit recursive removal")
         ok(_): unit
+    let data = "compression defaults".to_bytes()
+    let compressed = compress(data, "gzip").unwrap()
+    if compressed != compress(data, "gzip", 6).unwrap(): return panic("default compression level")
+    let encode = CompressionFormat.Gzip.compress
+    if encode(data).unwrap() != compressed: return panic("bound default compression level")
+    if decompress(compressed, "gzip").unwrap() != data: return panic("default compression round trip")
 `, cli),
 	} {
 		path := filepath.Join(root, name)
