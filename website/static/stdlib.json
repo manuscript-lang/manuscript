@@ -1068,7 +1068,7 @@
       "declarations": [
         {
           "name": "ClientResponse",
-          "doc": "Buffered HTTP response metadata and body.",
+          "doc": "Buffered HTTP response metadata and body. Header names have canonical spelling;\nMap lookup is case-sensitive. Lists preserve separate values in received order.",
           "kind": "record",
           "type": "ClientResponse",
           "fields": [
@@ -1079,7 +1079,7 @@
         },
         {
           "name": "HttpClient",
-          "doc": "Reusable HTTP client with connection pooling and explicit response limits.",
+          "doc": "Reusable HTTP client with connection pooling and explicit response limits.\nOutbound case-equivalent header keys append values in Map insertion order.",
           "kind": "interface",
           "type": "HttpClient",
           "operations": [
@@ -1126,7 +1126,7 @@
         },
         {
           "name": "HttpExchange",
-          "doc": "One streaming server exchange. Read or write incrementally and close when done.",
+          "doc": "One streaming server exchange. Read or write incrementally and close when done.\nReceived header names have canonical spelling; Map lookup is case-sensitive.\nSending case-equivalent names appends each list in Map insertion order.",
           "kind": "interface",
           "type": "HttpExchange",
           "operations": [
@@ -1159,7 +1159,7 @@
         },
         {
           "name": "HttpResponse",
-          "doc": "Buffered response returned by the simple HTTP server handler.",
+          "doc": "Buffered response returned by the simple HTTP server handler.\nCase-equivalent header keys emit separate values in Map insertion order.\nUse HttpExchange.send_headers for repeated values under one exact Map key.",
           "kind": "record",
           "type": "HttpResponse",
           "fields": [
@@ -1196,7 +1196,7 @@
         },
         {
           "name": "ResponseBody",
-          "doc": "Streaming response body returned by HTTP client operations.",
+          "doc": "Streaming response body returned by HTTP client operations. Header names have\ncanonical spelling; Map lookup is case-sensitive. Lists keep received order.",
           "kind": "interface",
           "type": "ResponseBody",
           "operations": [
