@@ -65,6 +65,8 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 		kind = "Int"
 	case float64:
 		kind = "Float"
+	case Decimal:
+		kind = "Decimal"
 	default:
 		return nil, false
 	}
