@@ -268,15 +268,74 @@ type BigInt:
     fn bit_and(right: BigInt) -> BigInt:
     fn bit_or(right: BigInt) -> BigInt:
     fn bit_xor(right: BigInt) -> BigInt:
+    fn negate() -> BigInt:
+    fn abs() -> BigInt:
+    fn bit_not() -> BigInt:
+    fn pow(exponent: Int, max_bits: Optional[Int] = none) -> Result[BigInt, BigIntError]:
+    fn shift_left(count: Int, max_bits: Optional[Int] = none) -> Result[BigInt, BigIntError]:
+    fn shift_right(count: Int) -> Result[BigInt, BigIntError]:
     fn to_int() -> Optional[Int]:
     fn to_string(radix: Int) -> String:
+```
+
+### BigInt.abs
+
+Returns the nonnegative magnitude without changing this value.
+
+```manuscript
+fn abs() -> BigInt:
+```
+
+### BigInt.bit_not
+
+Complements every bit using an infinite signed two's-complement representation.
+
+```manuscript
+fn bit_not() -> BigInt:
+```
+
+### BigInt.negate
+
+Returns the additive inverse without changing this value.
+
+```manuscript
+fn negate() -> BigInt:
+```
+
+### BigInt.pow
+
+Raises this value to a nonnegative exponent; zero to the zero power is one.
+Negative exponent or max_bits returns InvalidInput; output beyond max_bits returns LimitExceeded.
+Omitted/none max_bits adds no caller budget; a native ceiling of 2^28 magnitude bits still applies.
+
+```manuscript
+fn pow(exponent: Int, max_bits: Optional[Int] = none) -> Result[BigInt, BigIntError]:
+```
+
+### BigInt.shift_left
+
+Shifts left by count bits, preserving the sign and leaving this value unchanged.
+Negative count or max_bits returns InvalidInput; output beyond max_bits returns LimitExceeded.
+Omitted/none max_bits adds no caller budget; a native ceiling of 2^28 magnitude bits still applies.
+
+```manuscript
+fn shift_left(count: Int, max_bits: Optional[Int] = none) -> Result[BigInt, BigIntError]:
+```
+
+### BigInt.shift_right
+
+Shifts right arithmetically; discarded bits round a negative value toward negative infinity.
+A negative count returns InvalidInput; arbitrarily large counts yield zero or negative one.
+
+```manuscript
+fn shift_right(count: Int) -> Result[BigInt, BigIntError]:
 ```
 
 ## BigIntError
 
 **Alternative**
 
-Errors returned while parsing or converting arbitrary-precision integers.
+Errors returned for invalid arithmetic requests, malformed digits, or excessive integer growth.
 
 ```manuscript
 type BigIntError:
@@ -413,6 +472,7 @@ type Bytes:
     fn slice(start: Int, end: Int) -> Result[Bytes, CollectionError]:
     fn at(index: Int) -> Optional[Int]:
     fn index_of(value: Bytes) -> Optional[Int]:
+    fn index_of_from(value: Bytes, start: Int) -> Optional[Int]:
     fn last_index_of(value: Bytes) -> Optional[Int]:
     fn starts_with(value: Bytes) -> Bool:
     fn ends_with(value: Bytes) -> Bool:
@@ -424,6 +484,7 @@ type Bytes:
     fn concat(values: Bytes) -> Bytes:
     fn length() -> Int:
     fn to_text() -> Optional[String]:
+    fn to_hex() -> String:
 ```
 
 ### Bytes.at
@@ -472,6 +533,16 @@ Returns the first matching byte offset or `none`; empty `value` matches at zero.
 
 ```manuscript
 fn index_of(value: Bytes) -> Optional[Int]:
+```
+
+### Bytes.index_of_from
+
+Searches at or after a strict byte offset and returns an absolute byte offset.
+start must be between zero and length(), inclusive; invalid offsets fault.
+An empty value matches at start, including the end of the receiver.
+
+```manuscript
+fn index_of_from(value: Bytes, start: Int) -> Optional[Int]:
 ```
 
 ### Bytes.is_empty
@@ -541,6 +612,14 @@ Tests whether the receiver begins with these bytes.
 
 ```manuscript
 fn starts_with(value: Bytes) -> Bool:
+```
+
+### Bytes.to_hex
+
+Encodes every byte as two lowercase hexadecimal digits, without separators.
+
+```manuscript
+fn to_hex() -> String:
 ```
 
 ### Bytes.to_text
@@ -725,6 +804,15 @@ type List[T]:
     fn reversed() -> List[T]:
     fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    fn sort_in_place(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    fn count(predicate: fn(value: T) -> Bool) -> Int:
+    fn zip[U](other: List[U]) -> List[ListPair[T, U]]:
+    fn distinct() -> List[T]:
+    fn partition(predicate: fn(value: T) -> Bool) -> ListPartition[T]:
+    fn min(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+    fn max(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+    fn insert(index: Int, value: T) -> List[T]:
+    fn pop() -> Optional[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
@@ -765,6 +853,24 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.count
+
+Counts matching values over the initial backing slice and length.
+Element writes can affect later calls; appending does not extend traversal.
+
+```manuscript
+fn count(predicate: fn(value: T) -> Bool) -> Int:
+```
+
+### List.distinct
+
+Returns the first of each equal value in original order, using the selected Equal implementation.
+Output list storage is independent; payload references remain shared.
+
+```manuscript
+fn distinct() -> List[T]:
 ```
 
 ### List.drop
@@ -832,12 +938,57 @@ Returns the first equal element's zero-based index, or none; elements require Eq
 fn index_of(value: T) -> Optional[Int]:
 ```
 
+### List.insert
+
+Inserts one value in place at index and returns this same list; indexes range from zero through length.
+Negative or out-of-range indexes fault without clamping; nested payloads remain shared.
+
+```manuscript
+fn insert(index: Int, value: T) -> List[T]:
+```
+
 ### List.last_index_of
 
 Returns the last equal element's zero-based index, or none; elements require Equal.
 
 ```manuscript
 fn last_index_of(value: T) -> Optional[Int]:
+```
+
+### List.max
+
+Returns the greatest value under the comparator, or none for an empty list; ties retain the first value.
+Comparisons traverse the initial backing slice and retain visited payloads before callbacks run.
+
+```manuscript
+fn max(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+```
+
+### List.min
+
+Returns the least value under the comparator, or none for an empty list; ties retain the first value.
+Comparisons traverse the initial backing slice and retain visited payloads before callbacks run.
+
+```manuscript
+fn min(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+```
+
+### List.partition
+
+Splits values into fresh matching and remaining lists, preserving order and shallow references.
+Callbacks visit the initial backing slice; a visited value is retained before its callback runs.
+
+```manuscript
+fn partition(predicate: fn(value: T) -> Bool) -> ListPartition[T]:
+```
+
+### List.pop
+
+Removes and returns the last value, or none for an empty list, preserving this list's identity.
+Shrinking retains the removed value in spare backing capacity for captured Go slice traversal.
+
+```manuscript
+fn pop() -> Optional[T]:
 ```
 
 ### List.remove
@@ -900,6 +1051,15 @@ Returns true when at least one value satisfies the predicate.
 fn some(predicate: fn(value: T) -> Bool) -> Bool:
 ```
 
+### List.sort_in_place
+
+Stably sorts the initial backing slice in place and returns this same list.
+Comparator faults or cancellation may leave a partially sorted list; nested payloads remain shared.
+
+```manuscript
+fn sort_in_place(compare: fn(left: T, right: T) -> Int) -> List[T]:
+```
+
 ### List.sorted
 
 Returns a new list sorted by negative/zero/positive comparator results.
@@ -952,6 +1112,15 @@ Compatibility spelling for remove; mutates and returns this list.
 fn without(index: Int) -> List[T]:
 ```
 
+### List.zip[U]
+
+Pairs values by position, stopping at the shorter input's length.
+Returns fresh pair records and outer list storage while retaining shallow payload references.
+
+```manuscript
+fn zip[U](other: List[U]) -> List[ListPair[T, U]]:
+```
+
 ## ListBuilder
 
 **Native type**
@@ -974,6 +1143,62 @@ One list index and its corresponding value.
 type ListEntry[T]:
     index: Int
     value: T
+```
+
+## ListPair
+
+**Record**
+
+One pair of shallow payload references returned by List.zip.
+
+```manuscript
+type ListPair[T, U]:
+    first: T
+    second: U
+```
+
+### ListPair.first
+
+The receiver's value at this position, retaining its original reference.
+
+```manuscript
+first: T
+```
+
+### ListPair.second
+
+The other list's value at this position, retaining its original reference.
+
+```manuscript
+second: U
+```
+
+## ListPartition
+
+**Record**
+
+Two independent shallow lists returned by List.partition.
+
+```manuscript
+type ListPartition[T]:
+    matching: List[T]
+    remaining: List[T]
+```
+
+### ListPartition.matching
+
+Values whose predicate returned true, in their original traversal order.
+
+```manuscript
+matching: List[T]
+```
+
+### ListPartition.remaining
+
+Values whose predicate returned false, in their original traversal order.
+
+```manuscript
+remaining: List[T]
 ```
 
 ## Map
@@ -1490,6 +1715,37 @@ Creates integers from `start` up to but excluding `end` using `step`.
 fn range(start: Int, end: Int, step: Int, max_items: Optional[Int] = none) -> Result[List[Int], CollectionError]:
 ```
 
+## sorted_float
+
+**Function**
+
+Returns a fresh stable list with NaNs first, then ascending numeric values.
+Numeric ties preserve input order, including the original signs of zero.
+
+```manuscript
+fn sorted_float(values: List[Float]) -> List[Float]:
+```
+
+## sorted_int
+
+**Function**
+
+Returns a fresh list in ascending signed integer order, without a comparator.
+
+```manuscript
+fn sorted_int(values: List[Int]) -> List[Int]:
+```
+
+## sorted_strings
+
+**Function**
+
+Returns a fresh list in case-sensitive lexical Unicode scalar order, without normalization.
+
+```manuscript
+fn sorted_strings(values: List[String]) -> List[String]:
+```
+
 # @std/compress.ms
 
 Import each required symbol with `import Name from "@std/compress.ms"`.
@@ -1990,8 +2246,45 @@ An exact decimal value. Conversions are explicit because binary floats may round
 type Decimal:
     fn to_float() -> Float:
     fn truncate_to_int() -> Optional[Int]:
+    fn abs() -> Decimal:
+    fn compare(right: Decimal) -> Int:
+    fn floor_to_int() -> Optional[Int]:
+    fn ceil_to_int() -> Optional[Int]:
+    fn round_to_int() -> Optional[Int]:
     fn round(places: Int, mode: Optional[RoundingMode] = none) -> Result[Decimal, NumberError]:
     fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
+```
+
+### Decimal.abs
+
+Returns the nonnegative exact magnitude without changing this value.
+
+```manuscript
+fn abs() -> Decimal:
+```
+
+### Decimal.ceil_to_int
+
+Rounds upward exactly; returns none when the integer is outside signed 64-bit range.
+
+```manuscript
+fn ceil_to_int() -> Optional[Int]:
+```
+
+### Decimal.compare
+
+Returns -1, 0, or 1 by comparing exact decimal values without converting to Float.
+
+```manuscript
+fn compare(right: Decimal) -> Int:
+```
+
+### Decimal.floor_to_int
+
+Rounds downward exactly; returns none when the integer is outside signed 64-bit range.
+
+```manuscript
+fn floor_to_int() -> Optional[Int]:
 ```
 
 ### Decimal.round
@@ -2003,6 +2296,15 @@ Omitted or `none` mode selects HalfEven. This does not preserve trailing zeros o
 
 ```manuscript
 fn round(places: Int, mode: Optional[RoundingMode] = none) -> Result[Decimal, NumberError]:
+```
+
+### Decimal.round_to_int
+
+Rounds exactly to the nearest integer, with ties choosing the even integer.
+Returns none when the rounded integer is outside signed 64-bit range.
+
+```manuscript
+fn round_to_int() -> Optional[Int]:
 ```
 
 ### Decimal.to_fixed
@@ -3017,7 +3319,7 @@ case InvalidData
 
 ### HtmlError.InvalidInput
 
-A supplied input-byte, tree-depth or node-count budget is negative.
+A supplied byte, tree-depth or node-count budget is negative.
 
 ```manuscript
 case InvalidInput
@@ -3025,7 +3327,7 @@ case InvalidInput
 
 ### HtmlError.LimitExceeded
 
-Input bytes or the normalized returned tree exceed a supplied budget.
+Input/output bytes or parsed/serialized tree traversal exceeds a supplied budget.
 
 ```manuscript
 case LimitExceeded
@@ -3043,7 +3345,7 @@ fn message() -> String:
 
 **Record**
 
-Optional bounds for HTML input bytes, tree depth, and node count.
+Optional bounds for HTML input/output bytes, tree depth, and node count.
 
 ```manuscript
 type HtmlLimits:
@@ -3054,7 +3356,7 @@ type HtmlLimits:
 
 ### HtmlLimits.max_bytes
 
-Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
+Maximum UTF-8 input bytes before parsing or encoded output bytes from stringify; none adds no budget.
 
 ```manuscript
 max_bytes: Optional[Int] = none
@@ -3062,7 +3364,7 @@ max_bytes: Optional[Int] = none
 
 ### HtmlLimits.max_depth
 
-Maximum normalized node depth; the document is depth zero and direct children depth one.
+Maximum node depth; the parsed document or serialized root is zero and direct children are one.
 
 ```manuscript
 max_depth: Optional[Int] = none
@@ -3070,7 +3372,7 @@ max_depth: Optional[Int] = none
 
 ### HtmlLimits.max_nodes
 
-Maximum returned nodes, including document/text/comment/doctype and implied element nodes.
+Maximum returned or serialized nodes, including document/text/comment/doctype and implied elements.
 
 ```manuscript
 max_nodes: Optional[Int] = none
@@ -3229,6 +3531,18 @@ Parses HTML into a normalized tree and applies the supplied resource limits.
 
 ```manuscript
 fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]:
+```
+
+## stringify
+
+**Function**
+
+Renders an HTML node or document with HTML5 escaping and raw-text element rules.
+Cycles and malformed nodes return InvalidData; limits bound output bytes, root-zero depth and node count.
+Parsing the output normalizes the tree and can insert implied document elements.
+
+```manuscript
+fn stringify(value: HtmlNode, limits: Optional[HtmlLimits] = none) -> Result[String, HtmlError]:
 ```
 
 ## unescape
@@ -4325,6 +4639,16 @@ Returns the inverse cosine in radians.
 fn acos(value: Float) -> Float:
 ```
 
+## acosh
+
+**Function**
+
+Returns the inverse hyperbolic cosine; values below one produce NaN.
+
+```manuscript
+fn acosh(value: Float) -> Float:
+```
+
 ## asin
 
 **Function**
@@ -4333,6 +4657,16 @@ Returns the inverse sine in radians.
 
 ```manuscript
 fn asin(value: Float) -> Float:
+```
+
+## asinh
+
+**Function**
+
+Returns the inverse hyperbolic sine; infinities and NaN propagate.
+
+```manuscript
+fn asinh(value: Float) -> Float:
 ```
 
 ## atan
@@ -4355,6 +4689,27 @@ Returns the angle in radians for `(x, y)`, preserving its quadrant.
 fn atan2(y: Float, x: Float) -> Float:
 ```
 
+## atanh
+
+**Function**
+
+Returns the inverse hyperbolic tangent; values outside [-1, 1] produce NaN.
+At -1 and 1 the result is negative and positive infinity respectively.
+
+```manuscript
+fn atanh(value: Float) -> Float:
+```
+
+## cbrt
+
+**Function**
+
+Returns the real cube root, including for negative values.
+
+```manuscript
+fn cbrt(value: Float) -> Float:
+```
+
 ## ceil
 
 **Function**
@@ -4363,6 +4718,38 @@ Rounds upward to the nearest whole number.
 
 ```manuscript
 fn ceil(value: Float) -> Float:
+```
+
+## ceil_to_int
+
+**Function**
+
+Rounds upward and converts to Int; nonfinite or out-of-range results return none.
+
+```manuscript
+fn ceil_to_int(value: Float) -> Optional[Int]:
+```
+
+## clamp
+
+**Function**
+
+Clamps a value to the inclusive bounds; NaN in any argument produces NaN.
+Reversed bounds fault; supply minimum <= maximum.
+
+```manuscript
+fn clamp(value: Float, minimum: Float, maximum: Float) -> Float:
+```
+
+## clamp_int
+
+**Function**
+
+Clamps an integer to the inclusive bounds without converting to Float.
+Reversed bounds fault; supply minimum <= maximum.
+
+```manuscript
+fn clamp_int(value: Int, minimum: Int, maximum: Int) -> Int:
 ```
 
 ## cos
@@ -4415,6 +4802,16 @@ Rounds downward to the nearest whole number.
 fn floor(value: Float) -> Float:
 ```
 
+## floor_to_int
+
+**Function**
+
+Rounds downward and converts to Int; nonfinite or out-of-range results return none.
+
+```manuscript
+fn floor_to_int(value: Float) -> Optional[Int]:
+```
+
 ## hypot
 
 **Function**
@@ -4465,6 +4862,16 @@ Returns the greater of two floating-point values.
 fn max(left: Float, right: Float) -> Float:
 ```
 
+## max_int
+
+**Function**
+
+Returns the greater signed 64-bit integer without converting to Float.
+
+```manuscript
+fn max_int(left: Int, right: Int) -> Int:
+```
+
 ## min
 
 **Function**
@@ -4473,6 +4880,16 @@ Returns the lesser of two floating-point values.
 
 ```manuscript
 fn min(left: Float, right: Float) -> Float:
+```
+
+## min_int
+
+**Function**
+
+Returns the lesser signed 64-bit integer without converting to Float.
+
+```manuscript
+fn min_int(left: Int, right: Int) -> Int:
 ```
 
 ## pi
@@ -4495,6 +4912,17 @@ Returns `base` raised to `exponent`.
 fn pow(base: Float, exponent: Float) -> Float:
 ```
 
+## pow_int
+
+**Function**
+
+Raises an integer to a nonnegative integer exponent; zero to the zero power is one.
+Negative exponents return InvalidInput; signed 64-bit overflow returns OutOfRange.
+
+```manuscript
+fn pow_int(base: Int, exponent: Int) -> Result[Int, NumberError]:
+```
+
 ## remainder
 
 **Function**
@@ -4509,10 +4937,41 @@ fn remainder(left: Float, right: Float) -> Float:
 
 **Function**
 
-Rounds to the nearest whole number, with half values away from zero.
+Rounds to the nearest whole number, with half values toward positive infinity.
 
 ```manuscript
 fn round(value: Float) -> Float:
+```
+
+## round_to_int
+
+**Function**
+
+Rounds to the nearest integer with ties toward positive infinity, as round does.
+Returns none for nonfinite values or a rounded value outside signed 64-bit range.
+
+```manuscript
+fn round_to_int(value: Float) -> Optional[Int]:
+```
+
+## sign
+
+**Function**
+
+Returns -1, 0, or 1 for the sign; preserves signed zero and propagates NaN.
+
+```manuscript
+fn sign(value: Float) -> Float:
+```
+
+## sign_int
+
+**Function**
+
+Returns -1, 0, or 1 for the sign of a signed 64-bit integer.
+
+```manuscript
+fn sign_int(value: Int) -> Int:
 ```
 
 ## sin
@@ -4543,6 +5002,28 @@ Returns the non-negative square root.
 
 ```manuscript
 fn sqrt(value: Float) -> Float:
+```
+
+## sum_float
+
+**Function**
+
+Adds floating-point values in order using IEEE arithmetic; an empty list sums to zero.
+NaN and infinity follow ordinary Float addition; input is unchanged.
+
+```manuscript
+fn sum_float(values: List[Float]) -> Float:
+```
+
+## sum_int
+
+**Function**
+
+Adds integer values in order; an empty list sums to zero.
+Returns OutOfRange if any running total leaves the signed 64-bit range; input is unchanged.
+
+```manuscript
+fn sum_int(values: List[Int]) -> Result[Int, NumberError]:
 ```
 
 ## tan
@@ -5826,6 +6307,52 @@ interface Entropy:
     fn bytes(count: Int) -> Result[Bytes, RandomError]
 ```
 
+## Random
+
+**Native type**
+
+Mutable, reproducible SplitMix64 state for simulations and tests; unsuitable for secrets.
+
+```manuscript
+type Random:
+    fn int(min: Int, max_exclusive: Optional[Int] = none) -> Result[Int, RandomError]:
+    fn float() -> Float:
+    fn choice[T](values: List[T]) -> Optional[T]:
+    fn shuffle[T](values: List[T]) -> List[T]:
+```
+
+### Random.choice[T]
+
+Selects an element, or none for an empty list without advancing state.
+
+```manuscript
+fn choice[T](values: List[T]) -> Optional[T]:
+```
+
+### Random.float
+
+Returns a binary64 value in [0, 1), using the next word's highest 53 bits.
+
+```manuscript
+fn float() -> Float:
+```
+
+### Random.int
+
+Samples a signed integer in [min, max_exclusive); none uses Int's maximum. InvalidInput reports min >= max_exclusive.
+
+```manuscript
+fn int(min: Int, max_exclusive: Optional[Int] = none) -> Result[Int, RandomError]:
+```
+
+### Random.shuffle[T]
+
+Returns a fresh shallow Fisher–Yates permutation, preserving the input list.
+
+```manuscript
+fn shuffle[T](values: List[T]) -> List[T]:
+```
+
 ## RandomError
 
 **Alternative**
@@ -5854,6 +6381,26 @@ Returns the operating system's cryptographic entropy source.
 fn entropy() -> Entropy:
 ```
 
+## secure_choice
+
+**Function**
+
+Selects a secure random element, or none for an empty list without reading entropy.
+
+```manuscript
+fn secure_choice[T](entropy: Entropy, values: List[T]) -> Result[Optional[T], RandomError]:
+```
+
+## secure_float
+
+**Function**
+
+Returns a secure binary64 value in [0, 1), using 53 unbiased random bits.
+
+```manuscript
+fn secure_float(entropy: Entropy) -> Result[Float, RandomError]:
+```
+
 ## secure_int
 
 **Function**
@@ -5862,6 +6409,26 @@ Returns a secure integer at least `min` and below `max_exclusive` when supplied.
 
 ```manuscript
 fn secure_int(entropy: Entropy, min: Int, max_exclusive: Optional[Int] = none) -> Result[Int, RandomError]:
+```
+
+## secure_shuffle
+
+**Function**
+
+Returns a fresh shallow list in a secure Fisher–Yates random order.
+
+```manuscript
+fn secure_shuffle[T](entropy: Entropy, values: List[T]) -> Result[List[T], RandomError]:
+```
+
+## seeded
+
+**Function**
+
+Initializes SplitMix64 from the seed's 64-bit two's-complement representation.
+
+```manuscript
+fn seeded(seed: Int) -> Random:
 ```
 
 ## uuid_v4
@@ -5887,9 +6454,19 @@ A compiled regular expression that can be reused across input strings.
 ```manuscript
 type Regex:
     fn matches(text: String) -> Bool:
+    fn find(text: String) -> Optional[RegexMatch]:
+    fn split(text: String, max_parts: Optional[Int] = none) -> Result[List[String], RegexError]:
     fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
     fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
     fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+```
+
+### Regex.find
+
+Returns the first full match, its scalar positions and optional capture groups, or none.
+
+```manuscript
+fn find(text: String) -> Optional[RegexMatch]:
 ```
 
 ### Regex.find_all
@@ -5924,6 +6501,16 @@ max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaust
 
 ```manuscript
 fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+```
+
+### Regex.split
+
+Splits at nonoverlapping full matches; capture groups are not returned.
+Omitted/none max_parts is unlimited, zero returns no parts, negatives return InvalidInput.
+A cap truncates parts rather than retaining the unsplit remainder; zero-width matches follow native regexp rules.
+
+```manuscript
+fn split(text: String, max_parts: Optional[Int] = none) -> Result[List[String], RegexError]:
 ```
 
 ## RegexError
@@ -5974,6 +6561,52 @@ Returns a regular-expression-prefixed diagnostic without echoing pattern or inpu
 
 ```manuscript
 fn message() -> String:
+```
+
+## RegexMatch
+
+**Record**
+
+The first full match, with half-open Unicode scalar positions in the input.
+
+```manuscript
+type RegexMatch:
+    text: String
+    start: Int
+    end: Int
+    groups: List[Optional[String]]
+```
+
+### RegexMatch.end
+
+Unicode scalar position immediately after the full match.
+
+```manuscript
+end: Int
+```
+
+### RegexMatch.groups
+
+Capture groups only, in pattern order; unmatched groups are none, empty matches some("").
+
+```manuscript
+groups: List[Optional[String]]
+```
+
+### RegexMatch.start
+
+Zero-based Unicode scalar position where the full match begins.
+
+```manuscript
+start: Int
+```
+
+### RegexMatch.text
+
+Full matched text; an empty match contains empty text.
+
+```manuscript
+text: String
 ```
 
 ## compile
@@ -6899,6 +7532,7 @@ A wall-clock time with Unix seconds and nanoseconds.
 ```manuscript
 type Timestamp:
     fn to_string() -> String:
+    fn format(layout: String) -> String:
     fn unix_seconds() -> Int:
     fn nanoseconds() -> Int:
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
@@ -6912,6 +7546,15 @@ Returns `self - right` as a duration.
 
 ```manuscript
 fn difference(right: Timestamp) -> Result[Duration, TimeError]:
+```
+
+### Timestamp.format
+
+Formats this timestamp in UTC using Go's reference-time layout: Mon Jan 2 15:04:05 MST 2006.
+For example, "2006-01-02" selects a calendar date and "15:04:05.000000000" preserves nanoseconds.
+
+```manuscript
+fn format(layout: String) -> String:
 ```
 
 ### Timestamp.nanoseconds
@@ -6985,6 +7628,18 @@ Parses an RFC 3339 timestamp with an explicit time zone.
 
 ```manuscript
 fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]:
+```
+
+## parse_timestamp_format
+
+**Function**
+
+Parses a timestamp using Go's reference-time layout: Mon Jan 2 15:04:05 MST 2006.
+Missing zones use UTC; offsets are normalized to UTC. Empty layouts return InvalidInput,
+malformed text returns InvalidData, and UTC years outside 1..9999 return OutOfRange.
+
+```manuscript
+fn parse_timestamp_format(text: String, layout: String) -> Result[Timestamp, TimeError]:
 ```
 
 ## sleep
@@ -7131,7 +7786,7 @@ impl Error for TomlError:
 
 ### TomlError.InvalidData
 
-Invalid syntax, duplicate/conflicting keys, unsupported value forms or numeric range failures.
+Invalid syntax, keys, value forms, numeric ranges, date/time text or cyclic serialization values.
 
 ```manuscript
 case InvalidData(line: Int, column: Int, reason: String)
@@ -7139,7 +7794,7 @@ case InvalidData(line: Int, column: Int, reason: String)
 
 ### TomlError.InvalidInput
 
-One of the supplied input-byte, depth or value-count limits is negative.
+One of the supplied byte, depth or value-count limits is negative.
 
 ```manuscript
 case InvalidInput
@@ -7147,7 +7802,7 @@ case InvalidInput
 
 ### TomlError.LimitExceeded
 
-Input, nesting or parsed/returned value counts exceed a supplied budget.
+Input/output bytes, nesting or parsed/serialized value counts exceed a supplied budget.
 
 ```manuscript
 case LimitExceeded
@@ -7155,7 +7810,7 @@ case LimitExceeded
 
 ### TomlError.InvalidData.column
 
-One-based Unicode scalar column after CRLF normalization.
+One-based Unicode scalar column after normalization, or zero for serialization errors.
 
 ```manuscript
 column: Int
@@ -7163,7 +7818,7 @@ column: Int
 
 ### TomlError.InvalidData.line
 
-One-based line of the invalid token or conflicting construct.
+One-based line of the invalid token, or zero for an invalid serialization value.
 
 ```manuscript
 line: Int
@@ -7171,7 +7826,7 @@ line: Int
 
 ### TomlError.InvalidData.reason
 
-Parser diagnostic describing the rejected TOML construct.
+Diagnostic describing the rejected TOML syntax, value or cyclic graph.
 
 ```manuscript
 reason: String
@@ -7189,7 +7844,7 @@ fn message() -> String:
 
 **Record**
 
-Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
+Optional byte, nesting-depth, and value-count limits for TOML parsing and serialization.
 
 ```manuscript
 type TomlLimits:
@@ -7200,7 +7855,7 @@ type TomlLimits:
 
 ### TomlLimits.max_bytes
 
-Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
+Maximum UTF-8 input bytes before normalization or stringify output bytes; none adds no budget.
 
 ```manuscript
 max_bytes: Optional[Int]
@@ -7216,7 +7871,7 @@ max_depth: Optional[Int]
 
 ### TomlLimits.max_values
 
-Maximum containers and leaves, excluding keys; checked during parsing and materialization.
+Maximum containers and leaves, excluding keys; checked during parsing, materialization and stringify.
 
 ```manuscript
 max_values: Optional[Int]
@@ -7359,6 +8014,19 @@ Parses a TOML document into a table value and reports source line and column on 
 
 ```manuscript
 fn parse(text: String, limits: Optional[TomlLimits] = none) -> Result[TomlValue, TomlError]:
+```
+
+## stringify
+
+**Function**
+
+Serializes a TOML table document with quoted keys, inline nested tables and ordered arrays.
+Non-table roots, invalid date/time text and cycles return InvalidData with line/column zero.
+Float kinds, signed zero and nonfinite values are preserved; date/time tokens retain their text.
+Supplied limits bound UTF-8 output bytes, root-one value depth and value count; none adds no budget.
+
+```manuscript
+fn stringify(value: TomlValue, limits: Optional[TomlLimits] = none) -> Result[String, TomlError]:
 ```
 
 # @std/url.ms
@@ -7685,7 +8353,7 @@ case InvalidInput
 
 ### YamlError.LimitExceeded
 
-Parsing or validating the returned alias-expanded tree exceeds a supplied budget.
+Parsing, validating an alias-expanded tree, or serialization exceeds a supplied budget.
 
 ```manuscript
 case LimitExceeded
@@ -7701,7 +8369,7 @@ case UnsupportedFeature(line: Int, reason: String)
 
 ### YamlError.InvalidData.column
 
-One-based Unicode scalar column within that source line.
+One-based Unicode scalar column, or zero when serialization has no source location.
 
 ```manuscript
 column: Int
@@ -7709,7 +8377,7 @@ column: Int
 
 ### YamlError.InvalidData.line
 
-One-based source line of the offending token or construct.
+One-based source line of the offending token, or zero for an invalid serialization value.
 
 ```manuscript
 line: Int
@@ -7717,7 +8385,7 @@ line: Int
 
 ### YamlError.InvalidData.reason
 
-Parser diagnostic describing the malformed construct.
+Diagnostic describing the malformed syntax, number token or cyclic value.
 
 ```manuscript
 reason: String
@@ -7751,7 +8419,7 @@ fn message() -> String:
 
 **Record**
 
-Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
+Optional byte, nesting-depth, and value-count limits for YAML parsing and serialization.
 
 ```manuscript
 type YamlLimits:
@@ -7762,7 +8430,7 @@ type YamlLimits:
 
 ### YamlLimits.max_bytes
 
-Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
+Maximum UTF-8 input bytes before normalization or output bytes from stringify; none adds no budget.
 
 ```manuscript
 max_bytes: Optional[Int]
@@ -7898,6 +8566,19 @@ Parses a YAML document. Unsupported YAML features and invalid input include sour
 fn parse(text: String, limits: Optional[YamlLimits] = none) -> Result[YamlValue, YamlError]:
 ```
 
+## stringify
+
+**Function**
+
+Serializes one value as flow-style YAML, quoting every string and mapping key.
+Number tokens retain their text and must match the supported YAML core schema.
+Cycles return InvalidData with line/column zero; shared subtrees are emitted at each occurrence.
+Supplied limits bound UTF-8 output bytes, root-one value depth and value count; none adds no budget.
+
+```manuscript
+fn stringify(value: YamlValue, limits: Optional[YamlLimits] = none) -> Result[String, YamlError]:
+```
+
 # prelude
 
 Names available in every module; no import required.
@@ -7959,6 +8640,9 @@ Binary floating-point values, including signed zero, infinities and NaN.
 
 ```manuscript
 type Float:
+    fn round_to_int() -> Optional[Int]:
+    fn floor_to_int() -> Optional[Int]:
+    fn ceil_to_int() -> Optional[Int]:
     fn to_precision(precision: Int) -> Result[String, NumberError]:
     fn to_exponential(digits: Int) -> Result[String, NumberError]:
     fn to_fixed(digits: Int) -> Result[String, NumberError]:
@@ -7966,6 +8650,22 @@ type Float:
     fn is_nan() -> Bool:
     fn is_finite() -> Bool:
     fn truncate_to_int() -> Optional[Int]:
+```
+
+### Float.ceil_to_int
+
+Rounds up to a signed 64-bit integer; nonfinite or out-of-range values return none.
+
+```manuscript
+fn ceil_to_int() -> Optional[Int]
+```
+
+### Float.floor_to_int
+
+Rounds down to a signed 64-bit integer; nonfinite or out-of-range values return none.
+
+```manuscript
+fn floor_to_int() -> Optional[Int]
 ```
 
 ### Float.is_finite
@@ -7982,6 +8682,14 @@ Tests whether the value is NaN.
 
 ```manuscript
 fn is_nan() -> Bool
+```
+
+### Float.round_to_int
+
+Rounds half values toward positive infinity; nonfinite or out-of-range values return none.
+
+```manuscript
+fn round_to_int() -> Optional[Int]
 ```
 
 ### Float.to_exponential
@@ -8085,6 +8793,15 @@ type List[T]:
     fn reversed() -> List[T]:
     fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    fn sort_in_place(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    fn count(predicate: fn(value: T) -> Bool) -> Int:
+    fn zip[U](other: List[U]) -> List[ListPair[T, U]]:
+    fn distinct() -> List[T]:
+    fn partition(predicate: fn(value: T) -> Bool) -> ListPartition[T]:
+    fn min(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+    fn max(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+    fn insert(index: Int, value: T) -> List[T]:
+    fn pop() -> Optional[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
@@ -8125,6 +8842,24 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.count
+
+Counts matching values over the initial backing slice and length.
+Element writes can affect later calls; appending does not extend traversal.
+
+```manuscript
+fn count(predicate: fn(value: T) -> Bool) -> Int:
+```
+
+### List.distinct
+
+Returns the first of each equal value in original order, using the selected Equal implementation.
+Output list storage is independent; payload references remain shared.
+
+```manuscript
+fn distinct() -> List[T]:
 ```
 
 ### List.drop
@@ -8192,12 +8927,57 @@ Returns the first equal element's zero-based index, or none; elements require Eq
 fn index_of(value: T) -> Optional[Int]:
 ```
 
+### List.insert
+
+Inserts one value in place at index and returns this same list; indexes range from zero through length.
+Negative or out-of-range indexes fault without clamping; nested payloads remain shared.
+
+```manuscript
+fn insert(index: Int, value: T) -> List[T]:
+```
+
 ### List.last_index_of
 
 Returns the last equal element's zero-based index, or none; elements require Equal.
 
 ```manuscript
 fn last_index_of(value: T) -> Optional[Int]:
+```
+
+### List.max
+
+Returns the greatest value under the comparator, or none for an empty list; ties retain the first value.
+Comparisons traverse the initial backing slice and retain visited payloads before callbacks run.
+
+```manuscript
+fn max(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+```
+
+### List.min
+
+Returns the least value under the comparator, or none for an empty list; ties retain the first value.
+Comparisons traverse the initial backing slice and retain visited payloads before callbacks run.
+
+```manuscript
+fn min(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+```
+
+### List.partition
+
+Splits values into fresh matching and remaining lists, preserving order and shallow references.
+Callbacks visit the initial backing slice; a visited value is retained before its callback runs.
+
+```manuscript
+fn partition(predicate: fn(value: T) -> Bool) -> ListPartition[T]:
+```
+
+### List.pop
+
+Removes and returns the last value, or none for an empty list, preserving this list's identity.
+Shrinking retains the removed value in spare backing capacity for captured Go slice traversal.
+
+```manuscript
+fn pop() -> Optional[T]:
 ```
 
 ### List.remove
@@ -8260,6 +9040,15 @@ Returns true when at least one value satisfies the predicate.
 fn some(predicate: fn(value: T) -> Bool) -> Bool:
 ```
 
+### List.sort_in_place
+
+Stably sorts the initial backing slice in place and returns this same list.
+Comparator faults or cancellation may leave a partially sorted list; nested payloads remain shared.
+
+```manuscript
+fn sort_in_place(compare: fn(left: T, right: T) -> Int) -> List[T]:
+```
+
 ### List.sorted
 
 Returns a new list sorted by negative/zero/positive comparator results.
@@ -8310,6 +9099,15 @@ Compatibility spelling for remove; mutates and returns this list.
 
 ```manuscript
 fn without(index: Int) -> List[T]:
+```
+
+### List.zip[U]
+
+Pairs values by position, stopping at the shorter input's length.
+Returns fresh pair records and outer list storage while retaining shallow payload references.
+
+```manuscript
+fn zip[U](other: List[U]) -> List[ListPair[T, U]]:
 ```
 
 ## Map

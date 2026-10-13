@@ -50,6 +50,33 @@ export type List[T]:
     fn reverse() -> List[T]:
     # Returns a new list sorted by negative/zero/positive comparator results.
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    # Stably sorts the initial backing slice in place and returns this same list.
+    # Comparator faults or cancellation may leave a partially sorted list; nested payloads remain shared.
+    fn sort_in_place(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    # Counts matching values over the initial backing slice and length.
+    # Element writes can affect later calls; appending does not extend traversal.
+    fn count(predicate: fn(value: T) -> Bool) -> Int:
+    # Pairs values by position, stopping at the shorter input's length.
+    # Returns fresh pair records and outer list storage while retaining shallow payload references.
+    fn zip[U](other: List[U]) -> List[ListPair[T, U]]:
+    # Returns the first of each equal value in original order, using the selected Equal implementation.
+    # Output list storage is independent; payload references remain shared.
+    fn distinct() -> List[T]:
+    # Splits values into fresh matching and remaining lists, preserving order and shallow references.
+    # Callbacks visit the initial backing slice; a visited value is retained before its callback runs.
+    fn partition(predicate: fn(value: T) -> Bool) -> ListPartition[T]:
+    # Returns the least value under the comparator, or none for an empty list; ties retain the first value.
+    # Comparisons traverse the initial backing slice and retain visited payloads before callbacks run.
+    fn min(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+    # Returns the greatest value under the comparator, or none for an empty list; ties retain the first value.
+    # Comparisons traverse the initial backing slice and retain visited payloads before callbacks run.
+    fn max(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+    # Inserts one value in place at index and returns this same list; indexes range from zero through length.
+    # Negative or out-of-range indexes fault without clamping; nested payloads remain shared.
+    fn insert(index: Int, value: T) -> List[T]:
+    # Removes and returns the last value, or none for an empty list, preserving this list's identity.
+    # Shrinking retains the removed value in spare backing capacity for captured Go slice traversal.
+    fn pop() -> Optional[T]:
     # Keeps matching values in their original order.
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
@@ -208,6 +235,20 @@ export type ListEntry[T]:
     index: Int
     value: T
 
+# One pair of shallow payload references returned by List.zip.
+export type ListPair[T, U]:
+    # The receiver's value at this position, retaining its original reference.
+    first: T
+    # The other list's value at this position, retaining its original reference.
+    second: U
+
+# Two independent shallow lists returned by List.partition.
+export type ListPartition[T]:
+    # Values whose predicate returned true, in their original traversal order.
+    matching: List[T]
+    # Values whose predicate returned false, in their original traversal order.
+    remaining: List[T]
+
 # Creates a list containing `value` repeated `count` times.
 export fn filled[T](
     value: T,
@@ -225,6 +266,16 @@ export fn range(
 
 # Builds a map from entries. Later entries replace earlier values for duplicate keys.
 export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) -> Map[K, V]:
+
+# Returns a fresh list in ascending signed integer order, without a comparator.
+export fn sorted_int(values: List[Int]) -> List[Int]:
+
+# Returns a fresh stable list with NaNs first, then ascending numeric values.
+# Numeric ties preserve input order, including the original signs of zero.
+export fn sorted_float(values: List[Float]) -> List[Float]:
+
+# Returns a fresh list in case-sensitive lexical Unicode scalar order, without normalization.
+export fn sorted_strings(values: List[String]) -> List[String]:
 
 impl Error for CollectionError:
     fn message() -> String:

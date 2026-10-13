@@ -19,6 +19,17 @@ export type RoundingMode:
 export type Decimal:
     fn to_float() -> Float:
     fn truncate_to_int() -> Optional[Int]:
+    # Returns the nonnegative exact magnitude without changing this value.
+    fn abs() -> Decimal:
+    # Returns -1, 0, or 1 by comparing exact decimal values without converting to Float.
+    fn compare(right: Decimal) -> Int:
+    # Rounds downward exactly; returns none when the integer is outside signed 64-bit range.
+    fn floor_to_int() -> Optional[Int]:
+    # Rounds upward exactly; returns none when the integer is outside signed 64-bit range.
+    fn ceil_to_int() -> Optional[Int]:
+    # Rounds exactly to the nearest integer, with ties choosing the even integer.
+    # Returns none when the rounded integer is outside signed 64-bit range.
+    fn round_to_int() -> Optional[Int]:
     # Rounds exactly to a multiple of `10^-places`, without converting to Float.
     # Places range from -6144 through 6176; negative places round tens, hundreds, etc.
     # Invalid places return InvalidInput; an unrepresentable result returns OutOfRange.

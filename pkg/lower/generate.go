@@ -47,6 +47,11 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindFn || recordDefaults(d) {
 				s := program.Symbols[module.File][d.Name]
+				if s.Native != "" && d.Kind == syntax.KindFn {
+					// Pinned private stdlib helpers dispatch through StandardFunction;
+					// their empty declaration is not an executable source body.
+					continue
+				}
 				functions = append(functions, s)
 				file.Decls = append(file.Decls, variable(s.ID, runtimeName("Value"), nil))
 			}

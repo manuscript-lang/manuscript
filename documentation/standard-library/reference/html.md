@@ -67,7 +67,7 @@ case InvalidData
 
 ### HtmlError.InvalidInput
 
-A supplied input-byte, tree-depth or node-count budget is negative.
+A supplied byte, tree-depth or node-count budget is negative.
 
 ```manuscript
 case InvalidInput
@@ -75,7 +75,7 @@ case InvalidInput
 
 ### HtmlError.LimitExceeded
 
-Input bytes or the normalized returned tree exceed a supplied budget.
+Input/output bytes or parsed/serialized tree traversal exceeds a supplied budget.
 
 ```manuscript
 case LimitExceeded
@@ -91,7 +91,7 @@ fn message() -> String:
 
 ## HtmlLimits {data-api-kind="Record"}
 
-Optional bounds for HTML input bytes, tree depth, and node count.
+Optional bounds for HTML input/output bytes, tree depth, and node count.
 
 ```manuscript
 type HtmlLimits:
@@ -102,7 +102,7 @@ type HtmlLimits:
 
 ### HtmlLimits.max_bytes
 
-Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
+Maximum UTF-8 input bytes before parsing or encoded output bytes from stringify; none adds no budget.
 
 ```manuscript
 max_bytes: Optional[Int] = none
@@ -110,7 +110,7 @@ max_bytes: Optional[Int] = none
 
 ### HtmlLimits.max_depth
 
-Maximum normalized node depth; the document is depth zero and direct children depth one.
+Maximum node depth; the parsed document or serialized root is zero and direct children are one.
 
 ```manuscript
 max_depth: Optional[Int] = none
@@ -118,7 +118,7 @@ max_depth: Optional[Int] = none
 
 ### HtmlLimits.max_nodes
 
-Maximum returned nodes, including document/text/comment/doctype and implied element nodes.
+Maximum returned or serialized nodes, including document/text/comment/doctype and implied elements.
 
 ```manuscript
 max_nodes: Optional[Int] = none
@@ -271,6 +271,16 @@ Parses HTML into a normalized tree and applies the supplied resource limits.
 
 ```manuscript
 fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]:
+```
+
+## stringify {data-api-kind="Function"}
+
+Renders an HTML node or document with HTML5 escaping and raw-text element rules.
+Cycles and malformed nodes return InvalidData; limits bound output bytes, root-zero depth and node count.
+Parsing the output normalizes the tree and can insert implied document elements.
+
+```manuscript
+fn stringify(value: HtmlNode, limits: Optional[HtmlLimits] = none) -> Result[String, HtmlError]:
 ```
 
 ## unescape {data-api-kind="Function"}

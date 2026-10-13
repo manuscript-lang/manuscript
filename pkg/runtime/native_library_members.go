@@ -68,6 +68,8 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 		receiverType = v.Type
 	case libraryBigInt:
 		kind = "BigInt"
+	case *libraryRandom:
+		kind = "Random"
 	case libraryRegex:
 		kind = "Regex"
 	case Bytes:

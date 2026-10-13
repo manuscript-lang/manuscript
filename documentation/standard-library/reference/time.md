@@ -127,6 +127,7 @@ A wall-clock time with Unix seconds and nanoseconds.
 ```manuscript
 type Timestamp:
     fn to_string() -> String:
+    fn format(layout: String) -> String:
     fn unix_seconds() -> Int:
     fn nanoseconds() -> Int:
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
@@ -140,6 +141,15 @@ Returns `self - right` as a duration.
 
 ```manuscript
 fn difference(right: Timestamp) -> Result[Duration, TimeError]:
+```
+
+### Timestamp.format
+
+Formats this timestamp in UTC using Go's reference-time layout: Mon Jan 2 15:04:05 MST 2006.
+For example, "2006-01-02" selects a calendar date and "15:04:05.000000000" preserves nanoseconds.
+
+```manuscript
+fn format(layout: String) -> String:
 ```
 
 ### Timestamp.nanoseconds
@@ -205,6 +215,16 @@ Parses an RFC 3339 timestamp with an explicit time zone.
 
 ```manuscript
 fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]:
+```
+
+## parse_timestamp_format {data-api-kind="Function"}
+
+Parses a timestamp using Go's reference-time layout: Mon Jan 2 15:04:05 MST 2006.
+Missing zones use UTC; offsets are normalized to UTC. Empty layouts return InvalidInput,
+malformed text returns InvalidData, and UTC years outside 1..9999 return OutOfRange.
+
+```manuscript
+fn parse_timestamp_format(text: String, layout: String) -> Result[Timestamp, TimeError]:
 ```
 
 ## sleep {data-api-kind="Function"}

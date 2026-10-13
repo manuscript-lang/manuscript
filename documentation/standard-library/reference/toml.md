@@ -24,7 +24,7 @@ impl Error for TomlError:
 
 ### TomlError.InvalidData
 
-Invalid syntax, duplicate/conflicting keys, unsupported value forms or numeric range failures.
+Invalid syntax, keys, value forms, numeric ranges, date/time text or cyclic serialization values.
 
 ```manuscript
 case InvalidData(line: Int, column: Int, reason: String)
@@ -32,7 +32,7 @@ case InvalidData(line: Int, column: Int, reason: String)
 
 ### TomlError.InvalidInput
 
-One of the supplied input-byte, depth or value-count limits is negative.
+One of the supplied byte, depth or value-count limits is negative.
 
 ```manuscript
 case InvalidInput
@@ -40,7 +40,7 @@ case InvalidInput
 
 ### TomlError.LimitExceeded
 
-Input, nesting or parsed/returned value counts exceed a supplied budget.
+Input/output bytes, nesting or parsed/serialized value counts exceed a supplied budget.
 
 ```manuscript
 case LimitExceeded
@@ -48,7 +48,7 @@ case LimitExceeded
 
 ### TomlError.InvalidData.column
 
-One-based Unicode scalar column after CRLF normalization.
+One-based Unicode scalar column after normalization, or zero for serialization errors.
 
 ```manuscript
 column: Int
@@ -56,7 +56,7 @@ column: Int
 
 ### TomlError.InvalidData.line
 
-One-based line of the invalid token or conflicting construct.
+One-based line of the invalid token, or zero for an invalid serialization value.
 
 ```manuscript
 line: Int
@@ -64,7 +64,7 @@ line: Int
 
 ### TomlError.InvalidData.reason
 
-Parser diagnostic describing the rejected TOML construct.
+Diagnostic describing the rejected TOML syntax, value or cyclic graph.
 
 ```manuscript
 reason: String
@@ -80,7 +80,7 @@ fn message() -> String:
 
 ## TomlLimits {data-api-kind="Record"}
 
-Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
+Optional byte, nesting-depth, and value-count limits for TOML parsing and serialization.
 
 ```manuscript
 type TomlLimits:
@@ -91,7 +91,7 @@ type TomlLimits:
 
 ### TomlLimits.max_bytes
 
-Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
+Maximum UTF-8 input bytes before normalization or stringify output bytes; none adds no budget.
 
 ```manuscript
 max_bytes: Optional[Int]
@@ -107,7 +107,7 @@ max_depth: Optional[Int]
 
 ### TomlLimits.max_values
 
-Maximum containers and leaves, excluding keys; checked during parsing and materialization.
+Maximum containers and leaves, excluding keys; checked during parsing, materialization and stringify.
 
 ```manuscript
 max_values: Optional[Int]
@@ -246,5 +246,16 @@ Parses a TOML document into a table value and reports source line and column on 
 
 ```manuscript
 fn parse(text: String, limits: Optional[TomlLimits] = none) -> Result[TomlValue, TomlError]:
+```
+
+## stringify {data-api-kind="Function"}
+
+Serializes a TOML table document with quoted keys, inline nested tables and ordered arrays.
+Non-table roots, invalid date/time text and cycles return InvalidData with line/column zero.
+Float kinds, signed zero and nonfinite values are preserved; date/time tokens retain their text.
+Supplied limits bound UTF-8 output bytes, root-one value depth and value count; none adds no budget.
+
+```manuscript
+fn stringify(value: TomlValue, limits: Optional[TomlLimits] = none) -> Result[String, TomlError]:
 ```
 

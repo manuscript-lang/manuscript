@@ -58,6 +58,15 @@ type List[T]:
     fn reversed() -> List[T]:
     fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    fn sort_in_place(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    fn count(predicate: fn(value: T) -> Bool) -> Int:
+    fn zip[U](other: List[U]) -> List[ListPair[T, U]]:
+    fn distinct() -> List[T]:
+    fn partition(predicate: fn(value: T) -> Bool) -> ListPartition[T]:
+    fn min(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+    fn max(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+    fn insert(index: Int, value: T) -> List[T]:
+    fn pop() -> Optional[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
@@ -98,6 +107,24 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.count
+
+Counts matching values over the initial backing slice and length.
+Element writes can affect later calls; appending does not extend traversal.
+
+```manuscript
+fn count(predicate: fn(value: T) -> Bool) -> Int:
+```
+
+### List.distinct
+
+Returns the first of each equal value in original order, using the selected Equal implementation.
+Output list storage is independent; payload references remain shared.
+
+```manuscript
+fn distinct() -> List[T]:
 ```
 
 ### List.drop
@@ -165,12 +192,57 @@ Returns the first equal element's zero-based index, or none; elements require Eq
 fn index_of(value: T) -> Optional[Int]:
 ```
 
+### List.insert
+
+Inserts one value in place at index and returns this same list; indexes range from zero through length.
+Negative or out-of-range indexes fault without clamping; nested payloads remain shared.
+
+```manuscript
+fn insert(index: Int, value: T) -> List[T]:
+```
+
 ### List.last_index_of
 
 Returns the last equal element's zero-based index, or none; elements require Equal.
 
 ```manuscript
 fn last_index_of(value: T) -> Optional[Int]:
+```
+
+### List.max
+
+Returns the greatest value under the comparator, or none for an empty list; ties retain the first value.
+Comparisons traverse the initial backing slice and retain visited payloads before callbacks run.
+
+```manuscript
+fn max(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+```
+
+### List.min
+
+Returns the least value under the comparator, or none for an empty list; ties retain the first value.
+Comparisons traverse the initial backing slice and retain visited payloads before callbacks run.
+
+```manuscript
+fn min(compare: fn(left: T, right: T) -> Int) -> Optional[T]:
+```
+
+### List.partition
+
+Splits values into fresh matching and remaining lists, preserving order and shallow references.
+Callbacks visit the initial backing slice; a visited value is retained before its callback runs.
+
+```manuscript
+fn partition(predicate: fn(value: T) -> Bool) -> ListPartition[T]:
+```
+
+### List.pop
+
+Removes and returns the last value, or none for an empty list, preserving this list's identity.
+Shrinking retains the removed value in spare backing capacity for captured Go slice traversal.
+
+```manuscript
+fn pop() -> Optional[T]:
 ```
 
 ### List.remove
@@ -233,6 +305,15 @@ Returns true when at least one value satisfies the predicate.
 fn some(predicate: fn(value: T) -> Bool) -> Bool:
 ```
 
+### List.sort_in_place
+
+Stably sorts the initial backing slice in place and returns this same list.
+Comparator faults or cancellation may leave a partially sorted list; nested payloads remain shared.
+
+```manuscript
+fn sort_in_place(compare: fn(left: T, right: T) -> Int) -> List[T]:
+```
+
 ### List.sorted
 
 Returns a new list sorted by negative/zero/positive comparator results.
@@ -285,6 +366,15 @@ Compatibility spelling for remove; mutates and returns this list.
 fn without(index: Int) -> List[T]:
 ```
 
+### List.zip[U]
+
+Pairs values by position, stopping at the shorter input's length.
+Returns fresh pair records and outer list storage while retaining shallow payload references.
+
+```manuscript
+fn zip[U](other: List[U]) -> List[ListPair[T, U]]:
+```
+
 ## ListBuilder {data-api-kind="Native type"}
 
 Appends values efficiently before freezing them into a list.
@@ -303,6 +393,58 @@ One list index and its corresponding value.
 type ListEntry[T]:
     index: Int
     value: T
+```
+
+## ListPair {data-api-kind="Record"}
+
+One pair of shallow payload references returned by List.zip.
+
+```manuscript
+type ListPair[T, U]:
+    first: T
+    second: U
+```
+
+### ListPair.first
+
+The receiver's value at this position, retaining its original reference.
+
+```manuscript
+first: T
+```
+
+### ListPair.second
+
+The other list's value at this position, retaining its original reference.
+
+```manuscript
+second: U
+```
+
+## ListPartition {data-api-kind="Record"}
+
+Two independent shallow lists returned by List.partition.
+
+```manuscript
+type ListPartition[T]:
+    matching: List[T]
+    remaining: List[T]
+```
+
+### ListPartition.matching
+
+Values whose predicate returned true, in their original traversal order.
+
+```manuscript
+matching: List[T]
+```
+
+### ListPartition.remaining
+
+Values whose predicate returned false, in their original traversal order.
+
+```manuscript
+remaining: List[T]
 ```
 
 ## Map {data-api-kind="Native type"}
@@ -801,5 +943,30 @@ Creates integers from `start` up to but excluding `end` using `step`.
 
 ```manuscript
 fn range(start: Int, end: Int, step: Int, max_items: Optional[Int] = none) -> Result[List[Int], CollectionError]:
+```
+
+## sorted_float {data-api-kind="Function"}
+
+Returns a fresh stable list with NaNs first, then ascending numeric values.
+Numeric ties preserve input order, including the original signs of zero.
+
+```manuscript
+fn sorted_float(values: List[Float]) -> List[Float]:
+```
+
+## sorted_int {data-api-kind="Function"}
+
+Returns a fresh list in ascending signed integer order, without a comparator.
+
+```manuscript
+fn sorted_int(values: List[Int]) -> List[Int]:
+```
+
+## sorted_strings {data-api-kind="Function"}
+
+Returns a fresh list in case-sensitive lexical Unicode scalar order, without normalization.
+
+```manuscript
+fn sorted_strings(values: List[String]) -> List[String]:
 ```
 

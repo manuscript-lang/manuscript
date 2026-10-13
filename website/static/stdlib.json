@@ -193,19 +193,31 @@
           "kind": "native",
           "type": "BigInt",
           "operations": [
+            "abs: fn()-\u003eBigInt",
             "add: fn(right: BigInt)-\u003eBigInt",
             "bit_and: fn(right: BigInt)-\u003eBigInt",
+            "bit_not: fn()-\u003eBigInt",
             "bit_or: fn(right: BigInt)-\u003eBigInt",
             "bit_xor: fn(right: BigInt)-\u003eBigInt",
             "compare: fn(right: BigInt)-\u003eInt",
             "divide: fn(right: BigInt)-\u003eResult[BigInt, BigIntError]",
             "multiply: fn(right: BigInt)-\u003eBigInt",
+            "negate: fn()-\u003eBigInt",
+            "pow: fn(exponent: Int, max_bits: Optional[Int] = ...)-\u003eResult[BigInt, BigIntError]",
             "remainder: fn(right: BigInt)-\u003eResult[BigInt, BigIntError]",
+            "shift_left: fn(count: Int, max_bits: Optional[Int] = ...)-\u003eResult[BigInt, BigIntError]",
+            "shift_right: fn(count: Int)-\u003eResult[BigInt, BigIntError]",
             "subtract: fn(right: BigInt)-\u003eBigInt",
             "to_int: fn()-\u003eOptional[Int]",
             "to_string: fn(radix: Int)-\u003eString"
           ],
           "members": [
+            {
+              "name": "abs",
+              "kind": "operation",
+              "signature": "fn abs() -\u003e BigInt:",
+              "doc": "Returns the nonnegative magnitude without changing this value."
+            },
             {
               "name": "add",
               "kind": "operation",
@@ -217,6 +229,12 @@
               "kind": "operation",
               "signature": "fn bit_and(right: BigInt) -\u003e BigInt:",
               "doc": ""
+            },
+            {
+              "name": "bit_not",
+              "kind": "operation",
+              "signature": "fn bit_not() -\u003e BigInt:",
+              "doc": "Complements every bit using an infinite signed two's-complement representation."
             },
             {
               "name": "bit_or",
@@ -249,10 +267,34 @@
               "doc": ""
             },
             {
+              "name": "negate",
+              "kind": "operation",
+              "signature": "fn negate() -\u003e BigInt:",
+              "doc": "Returns the additive inverse without changing this value."
+            },
+            {
+              "name": "pow",
+              "kind": "operation",
+              "signature": "fn pow(exponent: Int, max_bits: Optional[Int] = none) -\u003e Result[BigInt, BigIntError]:",
+              "doc": "Raises this value to a nonnegative exponent; zero to the zero power is one.\nNegative exponent or max_bits returns InvalidInput; output beyond max_bits returns LimitExceeded.\nOmitted/none max_bits adds no caller budget; a native ceiling of 2^28 magnitude bits still applies."
+            },
+            {
               "name": "remainder",
               "kind": "operation",
               "signature": "fn remainder(right: BigInt) -\u003e Result[BigInt, BigIntError]:",
               "doc": ""
+            },
+            {
+              "name": "shift_left",
+              "kind": "operation",
+              "signature": "fn shift_left(count: Int, max_bits: Optional[Int] = none) -\u003e Result[BigInt, BigIntError]:",
+              "doc": "Shifts left by count bits, preserving the sign and leaving this value unchanged.\nNegative count or max_bits returns InvalidInput; output beyond max_bits returns LimitExceeded.\nOmitted/none max_bits adds no caller budget; a native ceiling of 2^28 magnitude bits still applies."
+            },
+            {
+              "name": "shift_right",
+              "kind": "operation",
+              "signature": "fn shift_right(count: Int) -\u003e Result[BigInt, BigIntError]:",
+              "doc": "Shifts right arithmetically; discarded bits round a negative value toward negative infinity.\nA negative count returns InvalidInput; arbitrarily large counts yield zero or negative one."
             },
             {
               "name": "subtract",
@@ -276,7 +318,7 @@
         },
         {
           "name": "BigIntError",
-          "doc": "Errors returned while parsing or converting arbitrary-precision integers.",
+          "doc": "Errors returned for invalid arithmetic requests, malformed digits, or excessive integer growth.",
           "kind": "alternative",
           "type": "BigIntError",
           "cases": [
@@ -413,6 +455,7 @@
             "contains: fn(value: Bytes)-\u003eBool",
             "ends_with: fn(value: Bytes)-\u003eBool",
             "index_of: fn(value: Bytes)-\u003eOptional[Int]",
+            "index_of_from: fn(value: Bytes, start: Int)-\u003eOptional[Int]",
             "is_empty: fn()-\u003eBool",
             "last_index_of: fn(value: Bytes)-\u003eOptional[Int]",
             "length: fn()-\u003eInt",
@@ -421,6 +464,7 @@
             "slice: fn(start: Int, end: Int)-\u003eResult[Bytes, CollectionError]",
             "split: fn(separator: Bytes, max_parts: Optional[Int] = ...)-\u003eList[Bytes]",
             "starts_with: fn(value: Bytes)-\u003eBool",
+            "to_hex: fn()-\u003eString",
             "to_text: fn()-\u003eOptional[String]",
             "values: fn()-\u003eList[Int]",
             "with_value: fn(index: Int, value: Int)-\u003eBytes"
@@ -461,6 +505,12 @@
               "kind": "operation",
               "signature": "fn index_of(value: Bytes) -\u003e Optional[Int]:",
               "doc": "Returns the first matching byte offset or `none`; empty `value` matches at zero."
+            },
+            {
+              "name": "index_of_from",
+              "kind": "operation",
+              "signature": "fn index_of_from(value: Bytes, start: Int) -\u003e Optional[Int]:",
+              "doc": "Searches at or after a strict byte offset and returns an absolute byte offset.\nstart must be between zero and length(), inclusive; invalid offsets fault.\nAn empty value matches at start, including the end of the receiver."
             },
             {
               "name": "is_empty",
@@ -509,6 +559,12 @@
               "kind": "operation",
               "signature": "fn starts_with(value: Bytes) -\u003e Bool:",
               "doc": "Tests whether the receiver begins with these bytes."
+            },
+            {
+              "name": "to_hex",
+              "kind": "operation",
+              "signature": "fn to_hex() -\u003e String:",
+              "doc": "Encodes every byte as two lowercase hexadecimal digits, without separators."
             },
             {
               "name": "to_text",
@@ -670,6 +726,8 @@
             "concat: fn(values: List[T])-\u003eList[T]",
             "contains: fn(value: T)-\u003eBool",
             "copy_within: fn(target: Int, start: Int, end: Int)-\u003eList[T]",
+            "count: fn(predicate: fn(value: T)-\u003eBool)-\u003eInt",
+            "distinct: fn()-\u003eList[T]",
             "drop: fn(count: Int)-\u003eList[T]",
             "entries: fn()-\u003eList[ListEntry[T]]",
             "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
@@ -686,6 +744,7 @@
             "for_each: fn(operation: fn(value: T)-\u003eUnit)-\u003eUnit",
             "group_by[K: Hashable]: fn(key: fn(value: T)-\u003eK)-\u003eMap[K, List[T]]",
             "index_of: fn(value: T)-\u003eOptional[Int]",
+            "insert: fn(index: Int, value: T)-\u003eList[T]",
             "is_empty: fn()-\u003eBool",
             "join: fn(separator: String)-\u003eString",
             "keys: fn()-\u003eList[Int]",
@@ -693,6 +752,10 @@
             "last_index_of: fn(value: T)-\u003eOptional[Int]",
             "length: fn()-\u003eInt",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
+            "max: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eOptional[T]",
+            "min: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eOptional[T]",
+            "partition: fn(predicate: fn(value: T)-\u003eBool)-\u003eListPartition[T]",
+            "pop: fn()-\u003eOptional[T]",
             "prepend: fn(value: T)-\u003eList[T]",
             "remove: fn(index: Int)-\u003eList[T]",
             "reverse: fn()-\u003eList[T]",
@@ -701,13 +764,15 @@
             "set: fn(index: Int, value: T)-\u003eList[T]",
             "slice: fn(start: Int, end: Int)-\u003eResult[List[T], CollectionError]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
+            "sort_in_place: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
             "splice: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
             "take: fn(count: Int)-\u003eList[T]",
             "to_set: fn()-\u003eSet[T]",
             "with_value: fn(index: Int, value: T)-\u003eList[T]",
             "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
-            "without: fn(index: Int)-\u003eList[T]"
+            "without: fn(index: Int)-\u003eList[T]",
+            "zip[U]: fn(other: List[U])-\u003eList[ListPair[T, U]]"
           ],
           "members": [
             {
@@ -745,6 +810,18 @@
               "kind": "operation",
               "signature": "fn copy_within(target: Int, start: Int, end: Int) -\u003e List[T]:",
               "doc": ""
+            },
+            {
+              "name": "count",
+              "kind": "operation",
+              "signature": "fn count(predicate: fn(value: T) -\u003e Bool) -\u003e Int:",
+              "doc": "Counts matching values over the initial backing slice and length.\nElement writes can affect later calls; appending does not extend traversal."
+            },
+            {
+              "name": "distinct",
+              "kind": "operation",
+              "signature": "fn distinct() -\u003e List[T]:",
+              "doc": "Returns the first of each equal value in original order, using the selected Equal implementation.\nOutput list storage is independent; payload references remain shared."
             },
             {
               "name": "drop",
@@ -843,6 +920,12 @@
               "doc": "Returns the first equal element's zero-based index, or none; elements require Equal."
             },
             {
+              "name": "insert",
+              "kind": "operation",
+              "signature": "fn insert(index: Int, value: T) -\u003e List[T]:",
+              "doc": "Inserts one value in place at index and returns this same list; indexes range from zero through length.\nNegative or out-of-range indexes fault without clamping; nested payloads remain shared."
+            },
+            {
               "name": "is_empty",
               "kind": "operation",
               "signature": "fn is_empty() -\u003e Bool:",
@@ -883,6 +966,30 @@
               "kind": "operation",
               "signature": "fn map[U](transform: fn(value: T) -\u003e U) -\u003e List[U]:",
               "doc": ""
+            },
+            {
+              "name": "max",
+              "kind": "operation",
+              "signature": "fn max(compare: fn(left: T, right: T) -\u003e Int) -\u003e Optional[T]:",
+              "doc": "Returns the greatest value under the comparator, or none for an empty list; ties retain the first value.\nComparisons traverse the initial backing slice and retain visited payloads before callbacks run."
+            },
+            {
+              "name": "min",
+              "kind": "operation",
+              "signature": "fn min(compare: fn(left: T, right: T) -\u003e Int) -\u003e Optional[T]:",
+              "doc": "Returns the least value under the comparator, or none for an empty list; ties retain the first value.\nComparisons traverse the initial backing slice and retain visited payloads before callbacks run."
+            },
+            {
+              "name": "partition",
+              "kind": "operation",
+              "signature": "fn partition(predicate: fn(value: T) -\u003e Bool) -\u003e ListPartition[T]:",
+              "doc": "Splits values into fresh matching and remaining lists, preserving order and shallow references.\nCallbacks visit the initial backing slice; a visited value is retained before its callback runs."
+            },
+            {
+              "name": "pop",
+              "kind": "operation",
+              "signature": "fn pop() -\u003e Optional[T]:",
+              "doc": "Removes and returns the last value, or none for an empty list, preserving this list's identity.\nShrinking retains the removed value in spare backing capacity for captured Go slice traversal."
             },
             {
               "name": "prepend",
@@ -933,6 +1040,12 @@
               "doc": "Returns true when at least one value satisfies the predicate."
             },
             {
+              "name": "sort_in_place",
+              "kind": "operation",
+              "signature": "fn sort_in_place(compare: fn(left: T, right: T) -\u003e Int) -\u003e List[T]:",
+              "doc": "Stably sorts the initial backing slice in place and returns this same list.\nComparator faults or cancellation may leave a partially sorted list; nested payloads remain shared."
+            },
+            {
               "name": "sorted",
               "kind": "operation",
               "signature": "fn sorted(compare: fn(left: T, right: T) -\u003e Int) -\u003e List[T]:",
@@ -973,6 +1086,12 @@
               "kind": "operation",
               "signature": "fn without(index: Int) -\u003e List[T]:",
               "doc": "Compatibility spelling for remove; mutates and returns this list."
+            },
+            {
+              "name": "zip[U]",
+              "kind": "operation",
+              "signature": "fn zip[U](other: List[U]) -\u003e List[ListPair[T, U]]:",
+              "doc": "Pairs values by position, stopping at the shorter input's length.\nReturns fresh pair records and outer list storage while retaining shallow payload references."
             }
           ]
         },
@@ -1027,6 +1146,61 @@
               "kind": "field",
               "signature": "value: T",
               "doc": ""
+            }
+          ]
+        },
+        {
+          "name": "ListPair",
+          "doc": "One pair of shallow payload references returned by List.zip.",
+          "kind": "record",
+          "type": "ListPair[T, U]",
+          "type_parameters": [
+            "T",
+            "U"
+          ],
+          "fields": [
+            "first: T",
+            "second: U"
+          ],
+          "members": [
+            {
+              "name": "first",
+              "kind": "field",
+              "signature": "first: T",
+              "doc": "The receiver's value at this position, retaining its original reference."
+            },
+            {
+              "name": "second",
+              "kind": "field",
+              "signature": "second: U",
+              "doc": "The other list's value at this position, retaining its original reference."
+            }
+          ]
+        },
+        {
+          "name": "ListPartition",
+          "doc": "Two independent shallow lists returned by List.partition.",
+          "kind": "record",
+          "type": "ListPartition[T]",
+          "type_parameters": [
+            "T"
+          ],
+          "fields": [
+            "matching: List[T]",
+            "remaining: List[T]"
+          ],
+          "members": [
+            {
+              "name": "matching",
+              "kind": "field",
+              "signature": "matching: List[T]",
+              "doc": "Values whose predicate returned true, in their original traversal order."
+            },
+            {
+              "name": "remaining",
+              "kind": "field",
+              "signature": "remaining: List[T]",
+              "doc": "Values whose predicate returned false, in their original traversal order."
             }
           ]
         },
@@ -1570,6 +1744,24 @@
           "doc": "Creates integers from `start` up to but excluding `end` using `step`.",
           "kind": "fn",
           "type": "fn(start: Int, end: Int, step: Int, max_items: Optional[Int] = ...)-\u003eResult[List[Int], CollectionError]"
+        },
+        {
+          "name": "sorted_float",
+          "doc": "Returns a fresh stable list with NaNs first, then ascending numeric values.\nNumeric ties preserve input order, including the original signs of zero.",
+          "kind": "fn",
+          "type": "fn(values: List[Float])-\u003eList[Float]"
+        },
+        {
+          "name": "sorted_int",
+          "doc": "Returns a fresh list in ascending signed integer order, without a comparator.",
+          "kind": "fn",
+          "type": "fn(values: List[Int])-\u003eList[Int]"
+        },
+        {
+          "name": "sorted_strings",
+          "doc": "Returns a fresh list in case-sensitive lexical Unicode scalar order, without normalization.",
+          "kind": "fn",
+          "type": "fn(values: List[String])-\u003eList[String]"
         }
       ]
     },
@@ -1957,17 +2149,52 @@
           "kind": "native",
           "type": "Decimal",
           "operations": [
+            "abs: fn()-\u003eDecimal",
+            "ceil_to_int: fn()-\u003eOptional[Int]",
+            "compare: fn(right: Decimal)-\u003eInt",
+            "floor_to_int: fn()-\u003eOptional[Int]",
             "round: fn(places: Int, mode: Optional[RoundingMode] = ...)-\u003eResult[Decimal, NumberError]",
+            "round_to_int: fn()-\u003eOptional[Int]",
             "to_fixed: fn(digits: Int, mode: Optional[RoundingMode] = ...)-\u003eResult[String, NumberError]",
             "to_float: fn()-\u003eFloat",
             "truncate_to_int: fn()-\u003eOptional[Int]"
           ],
           "members": [
             {
+              "name": "abs",
+              "kind": "operation",
+              "signature": "fn abs() -\u003e Decimal:",
+              "doc": "Returns the nonnegative exact magnitude without changing this value."
+            },
+            {
+              "name": "ceil_to_int",
+              "kind": "operation",
+              "signature": "fn ceil_to_int() -\u003e Optional[Int]:",
+              "doc": "Rounds upward exactly; returns none when the integer is outside signed 64-bit range."
+            },
+            {
+              "name": "compare",
+              "kind": "operation",
+              "signature": "fn compare(right: Decimal) -\u003e Int:",
+              "doc": "Returns -1, 0, or 1 by comparing exact decimal values without converting to Float."
+            },
+            {
+              "name": "floor_to_int",
+              "kind": "operation",
+              "signature": "fn floor_to_int() -\u003e Optional[Int]:",
+              "doc": "Rounds downward exactly; returns none when the integer is outside signed 64-bit range."
+            },
+            {
               "name": "round",
               "kind": "operation",
               "signature": "fn round(places: Int, mode: Optional[RoundingMode] = none) -\u003e Result[Decimal, NumberError]:",
               "doc": "Rounds exactly to a multiple of `10^-places`, without converting to Float.\nPlaces range from -6144 through 6176; negative places round tens, hundreds, etc.\nInvalid places return InvalidInput; an unrepresentable result returns OutOfRange.\nOmitted or `none` mode selects HalfEven. This does not preserve trailing zeros or change arithmetic."
+            },
+            {
+              "name": "round_to_int",
+              "kind": "operation",
+              "signature": "fn round_to_int() -\u003e Optional[Int]:",
+              "doc": "Rounds exactly to the nearest integer, with ties choosing the even integer.\nReturns none when the rounded integer is outside signed 64-bit range."
             },
             {
               "name": "to_fixed",
@@ -3338,13 +3565,13 @@
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": "A supplied input-byte, tree-depth or node-count budget is negative."
+              "doc": "A supplied byte, tree-depth or node-count budget is negative."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": "Input bytes or the normalized returned tree exceed a supplied budget."
+              "doc": "Input/output bytes or parsed/serialized tree traversal exceeds a supplied budget."
             },
             {
               "name": "message",
@@ -3360,7 +3587,7 @@
         },
         {
           "name": "HtmlLimits",
-          "doc": "Optional bounds for HTML input bytes, tree depth, and node count.",
+          "doc": "Optional bounds for HTML input/output bytes, tree depth, and node count.",
           "kind": "record",
           "type": "HtmlLimits",
           "fields": [
@@ -3373,19 +3600,19 @@
               "name": "max_bytes",
               "kind": "field",
               "signature": "max_bytes: Optional[Int] = none",
-              "doc": "Maximum UTF-8 input bytes before parsing; none adds no input-size budget."
+              "doc": "Maximum UTF-8 input bytes before parsing or encoded output bytes from stringify; none adds no budget."
             },
             {
               "name": "max_depth",
               "kind": "field",
               "signature": "max_depth: Optional[Int] = none",
-              "doc": "Maximum normalized node depth; the document is depth zero and direct children depth one."
+              "doc": "Maximum node depth; the parsed document or serialized root is zero and direct children are one."
             },
             {
               "name": "max_nodes",
               "kind": "field",
               "signature": "max_nodes: Optional[Int] = none",
-              "doc": "Maximum returned nodes, including document/text/comment/doctype and implied element nodes."
+              "doc": "Maximum returned or serialized nodes, including document/text/comment/doctype and implied elements."
             }
           ]
         },
@@ -3505,6 +3732,12 @@
           "doc": "Parses HTML into a normalized tree and applies the supplied resource limits.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[HtmlLimits] = ...)-\u003eResult[HtmlNode, HtmlError]"
+        },
+        {
+          "name": "stringify",
+          "doc": "Renders an HTML node or document with HTML5 escaping and raw-text element rules.\nCycles and malformed nodes return InvalidData; limits bound output bytes, root-zero depth and node count.\nParsing the output normalizes the tree and can insert implied document elements.",
+          "kind": "fn",
+          "type": "fn(value: HtmlNode, limits: Optional[HtmlLimits] = ...)-\u003eResult[String, HtmlError]"
         },
         {
           "name": "unescape",
@@ -4710,8 +4943,20 @@
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
+          "name": "acosh",
+          "doc": "Returns the inverse hyperbolic cosine; values below one produce NaN.",
+          "kind": "fn",
+          "type": "fn(value: Float)-\u003eFloat"
+        },
+        {
           "name": "asin",
           "doc": "Returns the inverse sine in radians.",
+          "kind": "fn",
+          "type": "fn(value: Float)-\u003eFloat"
+        },
+        {
+          "name": "asinh",
+          "doc": "Returns the inverse hyperbolic sine; infinities and NaN propagate.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
@@ -4728,10 +4973,40 @@
           "type": "fn(y: Float, x: Float)-\u003eFloat"
         },
         {
+          "name": "atanh",
+          "doc": "Returns the inverse hyperbolic tangent; values outside [-1, 1] produce NaN.\nAt -1 and 1 the result is negative and positive infinity respectively.",
+          "kind": "fn",
+          "type": "fn(value: Float)-\u003eFloat"
+        },
+        {
+          "name": "cbrt",
+          "doc": "Returns the real cube root, including for negative values.",
+          "kind": "fn",
+          "type": "fn(value: Float)-\u003eFloat"
+        },
+        {
           "name": "ceil",
           "doc": "Rounds upward to the nearest whole number.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
+        },
+        {
+          "name": "ceil_to_int",
+          "doc": "Rounds upward and converts to Int; nonfinite or out-of-range results return none.",
+          "kind": "fn",
+          "type": "fn(value: Float)-\u003eOptional[Int]"
+        },
+        {
+          "name": "clamp",
+          "doc": "Clamps a value to the inclusive bounds; NaN in any argument produces NaN.\nReversed bounds fault; supply minimum \u003c= maximum.",
+          "kind": "fn",
+          "type": "fn(value: Float, minimum: Float, maximum: Float)-\u003eFloat"
+        },
+        {
+          "name": "clamp_int",
+          "doc": "Clamps an integer to the inclusive bounds without converting to Float.\nReversed bounds fault; supply minimum \u003c= maximum.",
+          "kind": "fn",
+          "type": "fn(value: Int, minimum: Int, maximum: Int)-\u003eInt"
         },
         {
           "name": "cos",
@@ -4764,6 +5039,12 @@
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
+          "name": "floor_to_int",
+          "doc": "Rounds downward and converts to Int; nonfinite or out-of-range results return none.",
+          "kind": "fn",
+          "type": "fn(value: Float)-\u003eOptional[Int]"
+        },
+        {
           "name": "hypot",
           "doc": "Returns the length of the hypotenuse for sides `left` and `right`.",
           "kind": "fn",
@@ -4794,10 +5075,22 @@
           "type": "fn(left: Float, right: Float)-\u003eFloat"
         },
         {
+          "name": "max_int",
+          "doc": "Returns the greater signed 64-bit integer without converting to Float.",
+          "kind": "fn",
+          "type": "fn(left: Int, right: Int)-\u003eInt"
+        },
+        {
           "name": "min",
           "doc": "Returns the lesser of two floating-point values.",
           "kind": "fn",
           "type": "fn(left: Float, right: Float)-\u003eFloat"
+        },
+        {
+          "name": "min_int",
+          "doc": "Returns the lesser signed 64-bit integer without converting to Float.",
+          "kind": "fn",
+          "type": "fn(left: Int, right: Int)-\u003eInt"
         },
         {
           "name": "pi",
@@ -4812,6 +5105,12 @@
           "type": "fn(base: Float, exponent: Float)-\u003eFloat"
         },
         {
+          "name": "pow_int",
+          "doc": "Raises an integer to a nonnegative integer exponent; zero to the zero power is one.\nNegative exponents return InvalidInput; signed 64-bit overflow returns OutOfRange.",
+          "kind": "fn",
+          "type": "fn(base: Int, exponent: Int)-\u003eResult[Int, NumberError]"
+        },
+        {
           "name": "remainder",
           "doc": "Returns the floating-point remainder after division.",
           "kind": "fn",
@@ -4819,9 +5118,27 @@
         },
         {
           "name": "round",
-          "doc": "Rounds to the nearest whole number, with half values away from zero.",
+          "doc": "Rounds to the nearest whole number, with half values toward positive infinity.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
+        },
+        {
+          "name": "round_to_int",
+          "doc": "Rounds to the nearest integer with ties toward positive infinity, as round does.\nReturns none for nonfinite values or a rounded value outside signed 64-bit range.",
+          "kind": "fn",
+          "type": "fn(value: Float)-\u003eOptional[Int]"
+        },
+        {
+          "name": "sign",
+          "doc": "Returns -1, 0, or 1 for the sign; preserves signed zero and propagates NaN.",
+          "kind": "fn",
+          "type": "fn(value: Float)-\u003eFloat"
+        },
+        {
+          "name": "sign_int",
+          "doc": "Returns -1, 0, or 1 for the sign of a signed 64-bit integer.",
+          "kind": "fn",
+          "type": "fn(value: Int)-\u003eInt"
         },
         {
           "name": "sin",
@@ -4840,6 +5157,18 @@
           "doc": "Returns the non-negative square root.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
+        },
+        {
+          "name": "sum_float",
+          "doc": "Adds floating-point values in order using IEEE arithmetic; an empty list sums to zero.\nNaN and infinity follow ordinary Float addition; input is unchanged.",
+          "kind": "fn",
+          "type": "fn(values: List[Float])-\u003eFloat"
+        },
+        {
+          "name": "sum_int",
+          "doc": "Adds integer values in order; an empty list sums to zero.\nReturns OutOfRange if any running total leaves the signed 64-bit range; input is unchanged.",
+          "kind": "fn",
+          "type": "fn(values: List[Int])-\u003eResult[Int, NumberError]"
         },
         {
           "name": "tan",
@@ -6561,6 +6890,44 @@
           ]
         },
         {
+          "name": "Random",
+          "doc": "Mutable, reproducible SplitMix64 state for simulations and tests; unsuitable for secrets.",
+          "kind": "native",
+          "type": "Random",
+          "operations": [
+            "choice[T]: fn(values: List[T])-\u003eOptional[T]",
+            "float: fn()-\u003eFloat",
+            "int: fn(min: Int, max_exclusive: Optional[Int] = ...)-\u003eResult[Int, RandomError]",
+            "shuffle[T]: fn(values: List[T])-\u003eList[T]"
+          ],
+          "members": [
+            {
+              "name": "choice[T]",
+              "kind": "operation",
+              "signature": "fn choice[T](values: List[T]) -\u003e Optional[T]:",
+              "doc": "Selects an element, or none for an empty list without advancing state."
+            },
+            {
+              "name": "float",
+              "kind": "operation",
+              "signature": "fn float() -\u003e Float:",
+              "doc": "Returns a binary64 value in [0, 1), using the next word's highest 53 bits."
+            },
+            {
+              "name": "int",
+              "kind": "operation",
+              "signature": "fn int(min: Int, max_exclusive: Optional[Int] = none) -\u003e Result[Int, RandomError]:",
+              "doc": "Samples a signed integer in [min, max_exclusive); none uses Int's maximum. InvalidInput reports min \u003e= max_exclusive."
+            },
+            {
+              "name": "shuffle[T]",
+              "kind": "operation",
+              "signature": "fn shuffle[T](values: List[T]) -\u003e List[T]:",
+              "doc": "Returns a fresh shallow Fisher–Yates permutation, preserving the input list."
+            }
+          ]
+        },
+        {
           "name": "RandomError",
           "doc": "Errors returned when random input is invalid or entropy generation fails.",
           "kind": "alternative",
@@ -6617,10 +6984,40 @@
           "type": "fn()-\u003eEntropy"
         },
         {
+          "name": "secure_choice",
+          "doc": "Selects a secure random element, or none for an empty list without reading entropy.",
+          "kind": "fn",
+          "type": "fn(entropy: Entropy, values: List[T])-\u003eResult[Optional[T], RandomError]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "secure_float",
+          "doc": "Returns a secure binary64 value in [0, 1), using 53 unbiased random bits.",
+          "kind": "fn",
+          "type": "fn(entropy: Entropy)-\u003eResult[Float, RandomError]"
+        },
+        {
           "name": "secure_int",
           "doc": "Returns a secure integer at least `min` and below `max_exclusive` when supplied.",
           "kind": "fn",
           "type": "fn(entropy: Entropy, min: Int, max_exclusive: Optional[Int] = ...)-\u003eResult[Int, RandomError]"
+        },
+        {
+          "name": "secure_shuffle",
+          "doc": "Returns a fresh shallow list in a secure Fisher–Yates random order.",
+          "kind": "fn",
+          "type": "fn(entropy: Entropy, values: List[T])-\u003eResult[List[T], RandomError]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "seeded",
+          "doc": "Initializes SplitMix64 from the seed's 64-bit two's-complement representation.",
+          "kind": "fn",
+          "type": "fn(seed: Int)-\u003eRandom"
         },
         {
           "name": "uuid_v4",
@@ -6639,12 +7036,20 @@
           "kind": "native",
           "type": "Regex",
           "operations": [
+            "find: fn(text: String)-\u003eOptional[RegexMatch]",
             "find_all: fn(text: String, max_matches: Optional[Int] = ...)-\u003eResult[List[String], RegexError]",
             "matches: fn(text: String)-\u003eBool",
             "replace: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]",
-            "replace_all: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]"
+            "replace_all: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]",
+            "split: fn(text: String, max_parts: Optional[Int] = ...)-\u003eResult[List[String], RegexError]"
           ],
           "members": [
+            {
+              "name": "find",
+              "kind": "operation",
+              "signature": "fn find(text: String) -\u003e Optional[RegexMatch]:",
+              "doc": "Returns the first full match, its scalar positions and optional capture groups, or none."
+            },
             {
               "name": "find_all",
               "kind": "operation",
@@ -6668,6 +7073,12 @@
               "kind": "operation",
               "signature": "fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -\u003e Result[String, RegexError]:",
               "doc": "Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.\nmax_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded."
+            },
+            {
+              "name": "split",
+              "kind": "operation",
+              "signature": "fn split(text: String, max_parts: Optional[Int] = none) -\u003e Result[List[String], RegexError]:",
+              "doc": "Splits at nonoverlapping full matches; capture groups are not returned.\nOmitted/none max_parts is unlimited, zero returns no parts, negatives return InvalidInput.\nA cap truncates parts rather than retaining the unsplit remainder; zero-width matches follow native regexp rules."
             }
           ]
         },
@@ -6713,6 +7124,44 @@
           ],
           "implements": [
             "Error"
+          ]
+        },
+        {
+          "name": "RegexMatch",
+          "doc": "The first full match, with half-open Unicode scalar positions in the input.",
+          "kind": "record",
+          "type": "RegexMatch",
+          "fields": [
+            "text: String",
+            "start: Int",
+            "end: Int",
+            "groups: List[Optional[String]]"
+          ],
+          "members": [
+            {
+              "name": "end",
+              "kind": "field",
+              "signature": "end: Int",
+              "doc": "Unicode scalar position immediately after the full match."
+            },
+            {
+              "name": "groups",
+              "kind": "field",
+              "signature": "groups: List[Optional[String]]",
+              "doc": "Capture groups only, in pattern order; unmatched groups are none, empty matches some(\"\")."
+            },
+            {
+              "name": "start",
+              "kind": "field",
+              "signature": "start: Int",
+              "doc": "Zero-based Unicode scalar position where the full match begins."
+            },
+            {
+              "name": "text",
+              "kind": "field",
+              "signature": "text: String",
+              "doc": "Full matched text; an empty match contains empty text."
+            }
           ]
         },
         {
@@ -8117,6 +8566,7 @@
           "operations": [
             "compare: fn(right: Timestamp)-\u003eInt",
             "difference: fn(right: Timestamp)-\u003eResult[Duration, TimeError]",
+            "format: fn(layout: String)-\u003eString",
             "nanoseconds: fn()-\u003eInt",
             "shift: fn(duration: Duration)-\u003eResult[Timestamp, TimeError]",
             "to_string: fn()-\u003eString",
@@ -8134,6 +8584,12 @@
               "kind": "operation",
               "signature": "fn difference(right: Timestamp) -\u003e Result[Duration, TimeError]:",
               "doc": "Returns `self - right` as a duration."
+            },
+            {
+              "name": "format",
+              "kind": "operation",
+              "signature": "fn format(layout: String) -\u003e String:",
+              "doc": "Formats this timestamp in UTC using Go's reference-time layout: Mon Jan 2 15:04:05 MST 2006.\nFor example, \"2006-01-02\" selects a calendar date and \"15:04:05.000000000\" preserves nanoseconds."
             },
             {
               "name": "nanoseconds",
@@ -8195,6 +8651,12 @@
           "doc": "Parses an RFC 3339 timestamp with an explicit time zone.",
           "kind": "fn",
           "type": "fn(text: String)-\u003eResult[Timestamp, TimeError]"
+        },
+        {
+          "name": "parse_timestamp_format",
+          "doc": "Parses a timestamp using Go's reference-time layout: Mon Jan 2 15:04:05 MST 2006.\nMissing zones use UTC; offsets are normalized to UTC. Empty layouts return InvalidInput,\nmalformed text returns InvalidData, and UTC years outside 1..9999 return OutOfRange.",
+          "kind": "fn",
+          "type": "fn(text: String, layout: String)-\u003eResult[Timestamp, TimeError]"
         },
         {
           "name": "sleep",
@@ -8454,37 +8916,37 @@
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData(line: Int, column: Int, reason: String)",
-              "doc": "Invalid syntax, duplicate/conflicting keys, unsupported value forms or numeric range failures."
+              "doc": "Invalid syntax, keys, value forms, numeric ranges, date/time text or cyclic serialization values."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": "One of the supplied input-byte, depth or value-count limits is negative."
+              "doc": "One of the supplied byte, depth or value-count limits is negative."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": "Input, nesting or parsed/returned value counts exceed a supplied budget."
+              "doc": "Input/output bytes, nesting or parsed/serialized value counts exceed a supplied budget."
             },
             {
               "name": "InvalidData.column",
               "kind": "field",
               "signature": "column: Int",
-              "doc": "One-based Unicode scalar column after CRLF normalization."
+              "doc": "One-based Unicode scalar column after normalization, or zero for serialization errors."
             },
             {
               "name": "InvalidData.line",
               "kind": "field",
               "signature": "line: Int",
-              "doc": "One-based line of the invalid token or conflicting construct."
+              "doc": "One-based line of the invalid token, or zero for an invalid serialization value."
             },
             {
               "name": "InvalidData.reason",
               "kind": "field",
               "signature": "reason: String",
-              "doc": "Parser diagnostic describing the rejected TOML construct."
+              "doc": "Diagnostic describing the rejected TOML syntax, value or cyclic graph."
             },
             {
               "name": "message",
@@ -8500,7 +8962,7 @@
         },
         {
           "name": "TomlLimits",
-          "doc": "Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.",
+          "doc": "Optional byte, nesting-depth, and value-count limits for TOML parsing and serialization.",
           "kind": "record",
           "type": "TomlLimits",
           "fields": [
@@ -8513,7 +8975,7 @@
               "name": "max_bytes",
               "kind": "field",
               "signature": "max_bytes: Optional[Int]",
-              "doc": "Maximum UTF-8 input bytes before CRLF normalization; none adds no budget."
+              "doc": "Maximum UTF-8 input bytes before normalization or stringify output bytes; none adds no budget."
             },
             {
               "name": "max_depth",
@@ -8525,7 +8987,7 @@
               "name": "max_values",
               "kind": "field",
               "signature": "max_values: Optional[Int]",
-              "doc": "Maximum containers and leaves, excluding keys; checked during parsing and materialization."
+              "doc": "Maximum containers and leaves, excluding keys; checked during parsing, materialization and stringify."
             }
           ]
         },
@@ -8635,6 +9097,12 @@
           "doc": "Parses a TOML document into a table value and reports source line and column on invalid input.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[TomlLimits] = ...)-\u003eResult[TomlValue, TomlError]"
+        },
+        {
+          "name": "stringify",
+          "doc": "Serializes a TOML table document with quoted keys, inline nested tables and ordered arrays.\nNon-table roots, invalid date/time text and cycles return InvalidData with line/column zero.\nFloat kinds, signed zero and nonfinite values are preserved; date/time tokens retain their text.\nSupplied limits bound UTF-8 output bytes, root-one value depth and value count; none adds no budget.",
+          "kind": "fn",
+          "type": "fn(value: TomlValue, limits: Optional[TomlLimits] = ...)-\u003eResult[String, TomlError]"
         }
       ]
     },
@@ -9029,7 +9497,7 @@
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": "Parsing or validating the returned alias-expanded tree exceeds a supplied budget."
+              "doc": "Parsing, validating an alias-expanded tree, or serialization exceeds a supplied budget."
             },
             {
               "name": "UnsupportedFeature",
@@ -9041,19 +9509,19 @@
               "name": "InvalidData.column",
               "kind": "field",
               "signature": "column: Int",
-              "doc": "One-based Unicode scalar column within that source line."
+              "doc": "One-based Unicode scalar column, or zero when serialization has no source location."
             },
             {
               "name": "InvalidData.line",
               "kind": "field",
               "signature": "line: Int",
-              "doc": "One-based source line of the offending token or construct."
+              "doc": "One-based source line of the offending token, or zero for an invalid serialization value."
             },
             {
               "name": "InvalidData.reason",
               "kind": "field",
               "signature": "reason: String",
-              "doc": "Parser diagnostic describing the malformed construct."
+              "doc": "Diagnostic describing the malformed syntax, number token or cyclic value."
             },
             {
               "name": "UnsupportedFeature.line",
@@ -9081,7 +9549,7 @@
         },
         {
           "name": "YamlLimits",
-          "doc": "Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.",
+          "doc": "Optional byte, nesting-depth, and value-count limits for YAML parsing and serialization.",
           "kind": "record",
           "type": "YamlLimits",
           "fields": [
@@ -9094,7 +9562,7 @@
               "name": "max_bytes",
               "kind": "field",
               "signature": "max_bytes: Optional[Int]",
-              "doc": "Maximum UTF-8 input bytes before line-ending normalization; none adds no budget."
+              "doc": "Maximum UTF-8 input bytes before normalization or output bytes from stringify; none adds no budget."
             },
             {
               "name": "max_depth",
@@ -9197,6 +9665,12 @@
           "doc": "Parses a YAML document. Unsupported YAML features and invalid input include source locations.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[YamlLimits] = ...)-\u003eResult[YamlValue, YamlError]"
+        },
+        {
+          "name": "stringify",
+          "doc": "Serializes one value as flow-style YAML, quoting every string and mapping key.\nNumber tokens retain their text and must match the supported YAML core schema.\nCycles return InvalidData with line/column zero; shared subtrees are emitted at each occurrence.\nSupplied limits bound UTF-8 output bytes, root-one value depth and value count; none adds no budget.",
+          "kind": "fn",
+          "type": "fn(value: YamlValue, limits: Optional[YamlLimits] = ...)-\u003eResult[String, YamlError]"
         }
       ]
     },
@@ -9249,8 +9723,11 @@
           "kind": "type",
           "type": "Float",
           "operations": [
+            "ceil_to_int: fn()-\u003eOptional[Int]",
+            "floor_to_int: fn()-\u003eOptional[Int]",
             "is_finite: fn()-\u003eBool",
             "is_nan: fn()-\u003eBool",
+            "round_to_int: fn()-\u003eOptional[Int]",
             "to_exponential: fn(digits: Int)-\u003eResult[String, NumberError]",
             "to_fixed: fn(digits: Int)-\u003eResult[String, NumberError]",
             "to_precision: fn(precision: Int)-\u003eResult[String, NumberError]",
@@ -9258,6 +9735,18 @@
             "truncate_to_int: fn()-\u003eOptional[Int]"
           ],
           "members": [
+            {
+              "name": "ceil_to_int",
+              "kind": "operation",
+              "signature": "fn ceil_to_int() -\u003e Optional[Int]",
+              "doc": "Rounds up to a signed 64-bit integer; nonfinite or out-of-range values return none."
+            },
+            {
+              "name": "floor_to_int",
+              "kind": "operation",
+              "signature": "fn floor_to_int() -\u003e Optional[Int]",
+              "doc": "Rounds down to a signed 64-bit integer; nonfinite or out-of-range values return none."
+            },
             {
               "name": "is_finite",
               "kind": "operation",
@@ -9269,6 +9758,12 @@
               "kind": "operation",
               "signature": "fn is_nan() -\u003e Bool",
               "doc": "Tests whether the value is NaN."
+            },
+            {
+              "name": "round_to_int",
+              "kind": "operation",
+              "signature": "fn round_to_int() -\u003e Optional[Int]",
+              "doc": "Rounds half values toward positive infinity; nonfinite or out-of-range values return none."
             },
             {
               "name": "to_exponential",
@@ -9365,6 +9860,8 @@
             "concat: fn(values: List[T])-\u003eList[T]",
             "contains: fn(value: T)-\u003eBool",
             "copy_within: fn(target: Int, start: Int, end: Int)-\u003eList[T]",
+            "count: fn(predicate: fn(value: T)-\u003eBool)-\u003eInt",
+            "distinct: fn()-\u003eList[T]",
             "drop: fn(count: Int)-\u003eList[T]",
             "entries: fn()-\u003eList[ListEntry[T]]",
             "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
@@ -9381,6 +9878,7 @@
             "for_each: fn(operation: fn(value: T)-\u003eUnit)-\u003eUnit",
             "group_by[K: Hashable]: fn(key: fn(value: T)-\u003eK)-\u003eMap[K, List[T]]",
             "index_of: fn(value: T)-\u003eOptional[Int]",
+            "insert: fn(index: Int, value: T)-\u003eList[T]",
             "is_empty: fn()-\u003eBool",
             "join: fn(separator: String)-\u003eString",
             "keys: fn()-\u003eList[Int]",
@@ -9388,6 +9886,10 @@
             "last_index_of: fn(value: T)-\u003eOptional[Int]",
             "length: fn()-\u003eInt",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
+            "max: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eOptional[T]",
+            "min: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eOptional[T]",
+            "partition: fn(predicate: fn(value: T)-\u003eBool)-\u003eListPartition[T]",
+            "pop: fn()-\u003eOptional[T]",
             "prepend: fn(value: T)-\u003eList[T]",
             "remove: fn(index: Int)-\u003eList[T]",
             "reverse: fn()-\u003eList[T]",
@@ -9396,13 +9898,15 @@
             "set: fn(index: Int, value: T)-\u003eList[T]",
             "slice: fn(start: Int, end: Int)-\u003eResult[List[T], CollectionError]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
+            "sort_in_place: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
             "splice: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
             "take: fn(count: Int)-\u003eList[T]",
             "to_set: fn()-\u003eSet[T]",
             "with_value: fn(index: Int, value: T)-\u003eList[T]",
             "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
-            "without: fn(index: Int)-\u003eList[T]"
+            "without: fn(index: Int)-\u003eList[T]",
+            "zip[U]: fn(other: List[U])-\u003eList[ListPair[T, U]]"
           ],
           "members": [
             {
@@ -9440,6 +9944,18 @@
               "kind": "operation",
               "signature": "fn copy_within(target: Int, start: Int, end: Int) -\u003e List[T]:",
               "doc": ""
+            },
+            {
+              "name": "count",
+              "kind": "operation",
+              "signature": "fn count(predicate: fn(value: T) -\u003e Bool) -\u003e Int:",
+              "doc": "Counts matching values over the initial backing slice and length.\nElement writes can affect later calls; appending does not extend traversal."
+            },
+            {
+              "name": "distinct",
+              "kind": "operation",
+              "signature": "fn distinct() -\u003e List[T]:",
+              "doc": "Returns the first of each equal value in original order, using the selected Equal implementation.\nOutput list storage is independent; payload references remain shared."
             },
             {
               "name": "drop",
@@ -9538,6 +10054,12 @@
               "doc": "Returns the first equal element's zero-based index, or none; elements require Equal."
             },
             {
+              "name": "insert",
+              "kind": "operation",
+              "signature": "fn insert(index: Int, value: T) -\u003e List[T]:",
+              "doc": "Inserts one value in place at index and returns this same list; indexes range from zero through length.\nNegative or out-of-range indexes fault without clamping; nested payloads remain shared."
+            },
+            {
               "name": "is_empty",
               "kind": "operation",
               "signature": "fn is_empty() -\u003e Bool:",
@@ -9578,6 +10100,30 @@
               "kind": "operation",
               "signature": "fn map[U](transform: fn(value: T) -\u003e U) -\u003e List[U]:",
               "doc": ""
+            },
+            {
+              "name": "max",
+              "kind": "operation",
+              "signature": "fn max(compare: fn(left: T, right: T) -\u003e Int) -\u003e Optional[T]:",
+              "doc": "Returns the greatest value under the comparator, or none for an empty list; ties retain the first value.\nComparisons traverse the initial backing slice and retain visited payloads before callbacks run."
+            },
+            {
+              "name": "min",
+              "kind": "operation",
+              "signature": "fn min(compare: fn(left: T, right: T) -\u003e Int) -\u003e Optional[T]:",
+              "doc": "Returns the least value under the comparator, or none for an empty list; ties retain the first value.\nComparisons traverse the initial backing slice and retain visited payloads before callbacks run."
+            },
+            {
+              "name": "partition",
+              "kind": "operation",
+              "signature": "fn partition(predicate: fn(value: T) -\u003e Bool) -\u003e ListPartition[T]:",
+              "doc": "Splits values into fresh matching and remaining lists, preserving order and shallow references.\nCallbacks visit the initial backing slice; a visited value is retained before its callback runs."
+            },
+            {
+              "name": "pop",
+              "kind": "operation",
+              "signature": "fn pop() -\u003e Optional[T]:",
+              "doc": "Removes and returns the last value, or none for an empty list, preserving this list's identity.\nShrinking retains the removed value in spare backing capacity for captured Go slice traversal."
             },
             {
               "name": "prepend",
@@ -9628,6 +10174,12 @@
               "doc": "Returns true when at least one value satisfies the predicate."
             },
             {
+              "name": "sort_in_place",
+              "kind": "operation",
+              "signature": "fn sort_in_place(compare: fn(left: T, right: T) -\u003e Int) -\u003e List[T]:",
+              "doc": "Stably sorts the initial backing slice in place and returns this same list.\nComparator faults or cancellation may leave a partially sorted list; nested payloads remain shared."
+            },
+            {
               "name": "sorted",
               "kind": "operation",
               "signature": "fn sorted(compare: fn(left: T, right: T) -\u003e Int) -\u003e List[T]:",
@@ -9668,6 +10220,12 @@
               "kind": "operation",
               "signature": "fn without(index: Int) -\u003e List[T]:",
               "doc": "Compatibility spelling for remove; mutates and returns this list."
+            },
+            {
+              "name": "zip[U]",
+              "kind": "operation",
+              "signature": "fn zip[U](other: List[U]) -\u003e List[ListPair[T, U]]:",
+              "doc": "Pairs values by position, stopping at the shorter input's length.\nReturns fresh pair records and outer list storage while retaining shallow payload references."
             }
           ]
         },

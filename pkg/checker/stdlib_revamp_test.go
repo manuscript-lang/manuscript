@@ -63,7 +63,17 @@ func TestReceiverUtilitiesHaveOnePublicSpelling(t *testing.T) {
 	for _, module := range standardSources {
 		for _, declaration := range module.Declarations {
 			if declaration.Kind == syntax.KindFn && !declaration.Export && standardModules[module.File][declaration.Name].Native != "" {
-				t.Fatalf("private native function duplicates a receiver declaration: %s", declaration.Pos)
+				identity := standardModules[module.File][declaration.Name].Native
+				if standardSourceFunctionBindings[declaration] != identity {
+					t.Fatalf("private native function is not a pinned source helper: %s", declaration.Pos)
+				}
+				for _, methods := range rt.NativeLibraryBindings {
+					for _, receiverIdentity := range methods {
+						if identity == receiverIdentity {
+							t.Fatalf("private native function duplicates a receiver declaration: %s", declaration.Pos)
+						}
+					}
+				}
 			}
 		}
 	}

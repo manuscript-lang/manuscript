@@ -135,6 +135,12 @@ interface IntOperations:
 
 # Formatting and classification operations for floating-point values.
 interface FloatOperations:
+    # Rounds half values toward positive infinity; nonfinite or out-of-range values return none.
+    fn round_to_int() -> Optional[Int]
+    # Rounds down to a signed 64-bit integer; nonfinite or out-of-range values return none.
+    fn floor_to_int() -> Optional[Int]
+    # Rounds up to a signed 64-bit integer; nonfinite or out-of-range values return none.
+    fn ceil_to_int() -> Optional[Int]
     # Formats 1..100 significant digits, preserving trailing zeros; an invalid precision returns NumberError.InvalidInput.
     fn to_precision(precision: Int) -> Result[String, NumberError]
     # Formats scientific notation with 0..100 fractional digits; an invalid count returns NumberError.InvalidInput.

@@ -161,6 +161,11 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 				continue
 			}
 			s := &Symbol{Name: d.Name, ID: c.unique("symbol"), Kind: syntax.KindFn, Module: module.File, Export: d.Export, Decl: d}
+			if standardSourceModules[module.File] == module {
+				// Only exact declarations from the pinned source module can bind
+				// private implementation helpers. User filenames confer no trust.
+				s.Native = standardSourceFunctionBindings[d]
+			}
 			if d.Kind != syntax.KindFn {
 				s.Kind = syntax.KindType
 				kind := d.Kind
@@ -257,7 +262,11 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 			if d.Kind == syntax.KindFn {
 				s := c.names[d.Name]
 				if s.Decl == d {
-					c.checkFunction(d, s.Type, s.Variables, nil)
+					if s.Native != "" {
+						c.checkNativeDefaults(d, d.Params, s.Type, s.Variables)
+					} else {
+						c.checkFunction(d, s.Type, s.Variables, nil)
+					}
 				}
 			}
 			if d.Kind == syntax.KindTest {

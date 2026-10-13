@@ -39,11 +39,11 @@ export type YamlError:
     case InvalidInput
     # Malformed YAML or a form outside the supported parser's accepted grammar.
     case InvalidData(
-        # One-based source line of the offending token or construct.
+        # One-based source line of the offending token, or zero for an invalid serialization value.
         line: Int,
-        # One-based Unicode scalar column within that source line.
+        # One-based Unicode scalar column, or zero when serialization has no source location.
         column: Int,
-        # Parser diagnostic describing the malformed construct.
+        # Diagnostic describing the malformed syntax, number token or cyclic value.
         reason: String
     )
     # An explicit tag, complex key or directive unsupported by this configuration parser.
@@ -53,12 +53,12 @@ export type YamlError:
         # Diagnostic identifying the unsupported syntax or feature.
         reason: String
     )
-    # Parsing or validating the returned alias-expanded tree exceeds a supplied budget.
+    # Parsing, validating an alias-expanded tree, or serialization exceeds a supplied budget.
     case LimitExceeded
 
-# Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
+# Optional byte, nesting-depth, and value-count limits for YAML parsing and serialization.
 export type YamlLimits:
-    # Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
+    # Maximum UTF-8 input bytes before normalization or output bytes from stringify; none adds no budget.
     max_bytes: Optional[Int]
     # Maximum value depth, including scalar leaves, with the root at one.
     max_depth: Optional[Int]
@@ -512,6 +512,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
                 )
             )
 
+            let merge_key = peek(flow) != "\"" and peek(flow) != "'"
             let parsed_key = try flow_value(flow: flow, depth: depth, key: true)
             var name = ""
 
@@ -542,7 +543,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
             explicit.append(name)
 
-            if name == "<<":
+            if merge_key and name == "<<":
                 let merged = try merge(
                     line: flow.line,
                     column: flow.pos + 1,
@@ -1107,6 +1108,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
             if colon < 0: break
 
             var name = content.slice(start: 0, end: colon).unwrap_or("").trim()
+            let merge_key = name == "<<"
 
             if name.starts_with("\"") or name.starts_with("'"):
                 let flow = Flow(
@@ -1165,7 +1167,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 indentless: true
             )
 
-            if name == "<<":
+            if merge_key:
                 let merged = try merge(
                     line: key_line,
                     column: line_indent + 1,
@@ -1358,3 +1360,146 @@ export fn parse(
     context.values = 0
     let valid = try validate(context: context, value: result, depth: 1)
     return ok(result)
+
+type Writer:
+    parts: List[String]
+    bytes: Int
+    values: Int
+    limits: YamlLimits
+    active: List[YamlValue]
+
+fn write(writer: Writer, text: String) -> Result[Unit, YamlError]:
+    let bytes = text.byte_length()
+
+    match writer.limits.max_bytes:
+        none: let ignored = unit
+        some(maximum):
+            if bytes > maximum - writer.bytes: return error(YamlError.LimitExceeded)
+
+    writer.bytes = writer.bytes + bytes
+    writer.parts.append(text)
+    return ok(unit)
+
+fn write_quoted(writer: Writer, text: String) -> Result[Unit, YamlError]:
+    let opening = try write(writer: writer, text: "\"")
+
+    for code in text.scalar_values():
+        var escaped = from_scalars([code]).unwrap()
+
+        if code == 34: escaped = "\\\""
+        else if code == 92: escaped = "\\\\"
+        else if code == 10: escaped = "\\n"
+        else if code == 13: escaped = "\\r"
+        else if code == 9: escaped = "\\t"
+        else if (
+            code < 32
+            or (code >= 127 and code <= 159)
+            or code == 8232
+            or code == 8233
+        ):
+            var digits = code.to_string(radix: 16)
+
+            while digits.scalar_length() < 4: digits = "0{digits}"
+
+            escaped = "\\u{digits}"
+
+        let written = try write(writer: writer, text: escaped)
+
+    return write(writer: writer, text: "\"")
+
+fn write_value(writer: Writer, value: YamlValue, depth: Int) -> Result[Unit, YamlError]:
+    if not within(value: depth, limit: writer.limits.max_depth): return error(
+        YamlError.LimitExceeded
+    )
+
+    writer.values = writer.values + 1
+    if not within(value: writer.values, limit: writer.limits.max_values): return error(
+        YamlError.LimitExceeded
+    )
+    if writer.active.contains(value): return error(
+        YamlError.InvalidData(line: 0, column: 0, reason: "cyclic YAML value")
+    )
+
+    match value:
+        Null: return write(writer: writer, text: "null")
+        BoolValue(boolean):
+            if boolean: return write(writer: writer, text: "true")
+
+            return write(writer: writer, text: "false")
+        NumberValue(text):
+            if not numeric(text): return error(
+                YamlError.InvalidData(
+                    line: 0,
+                    column: 0,
+                    reason: "invalid YAML number text"
+                )
+            )
+
+            return write(writer: writer, text: text)
+        StringValue(text): return write_quoted(writer: writer, text: text)
+        ArrayValue(values):
+            writer.active.append(value)
+            let opening = try write(writer: writer, text: "[")
+            var first = true
+
+            for item in values:
+                if not first: let separator = try write(writer: writer, text: ", ")
+
+                first = false
+                let written = try write_value(
+                    writer: writer,
+                    value: item,
+                    depth: (depth + 1)
+                )
+
+            writer.active.remove(writer.active.length() - 1)
+            return write(writer: writer, text: "]")
+        ObjectValue(values):
+            writer.active.append(value)
+            let opening = try write(writer: writer, text: "\{")
+            var first = true
+
+            for entry in values:
+                if not first: let separator = try write(writer: writer, text: ", ")
+
+                first = false
+                let key = try write_quoted(writer: writer, text: entry.key)
+                let colon = try write(writer: writer, text: ": ")
+                let written = try write_value(
+                    writer: writer,
+                    value: entry.value,
+                    depth: (depth + 1)
+                )
+
+            writer.active.remove(writer.active.length() - 1)
+            return write(writer: writer, text: "\}")
+
+# Serializes one value as flow-style YAML, quoting every string and mapping key.
+# Number tokens retain their text and must match the supported YAML core schema.
+# Cycles return InvalidData with line/column zero; shared subtrees are emitted at each occurrence.
+# Supplied limits bound UTF-8 output bytes, root-one value depth and value count; none adds no budget.
+export fn stringify(
+    value: YamlValue,
+    limits: Optional[YamlLimits] = none
+) -> Result[String, YamlError]:
+    var options = YamlLimits(max_bytes: none, max_depth: none, max_values: none)
+
+    match limits:
+        none: let ignored = unit
+        some(value): options = value
+
+    for limit in [options.max_bytes, options.max_depth, options.max_values]:
+        match limit:
+            none: let ignored = unit
+            some(value):
+                if value < 0: return error(YamlError.InvalidInput)
+
+    let writer = Writer(
+        parts: [],
+        bytes: 0,
+        values: 0,
+        limits: options,
+        active: []
+    )
+    let written = try write_value(writer: writer, value: value, depth: 1)
+    return ok(writer.parts.join(separator: ""))

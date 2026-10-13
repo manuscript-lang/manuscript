@@ -18,6 +18,7 @@ type Bytes:
     fn slice(start: Int, end: Int) -> Result[Bytes, CollectionError]:
     fn at(index: Int) -> Optional[Int]:
     fn index_of(value: Bytes) -> Optional[Int]:
+    fn index_of_from(value: Bytes, start: Int) -> Optional[Int]:
     fn last_index_of(value: Bytes) -> Optional[Int]:
     fn starts_with(value: Bytes) -> Bool:
     fn ends_with(value: Bytes) -> Bool:
@@ -29,6 +30,7 @@ type Bytes:
     fn concat(values: Bytes) -> Bytes:
     fn length() -> Int:
     fn to_text() -> Optional[String]:
+    fn to_hex() -> String:
 ```
 
 ### Bytes.at
@@ -77,6 +79,16 @@ Returns the first matching byte offset or `none`; empty `value` matches at zero.
 
 ```manuscript
 fn index_of(value: Bytes) -> Optional[Int]:
+```
+
+### Bytes.index_of_from
+
+Searches at or after a strict byte offset and returns an absolute byte offset.
+start must be between zero and length(), inclusive; invalid offsets fault.
+An empty value matches at start, including the end of the receiver.
+
+```manuscript
+fn index_of_from(value: Bytes, start: Int) -> Optional[Int]:
 ```
 
 ### Bytes.is_empty
@@ -146,6 +158,14 @@ Tests whether the receiver begins with these bytes.
 
 ```manuscript
 fn starts_with(value: Bytes) -> Bool:
+```
+
+### Bytes.to_hex
+
+Encodes every byte as two lowercase hexadecimal digits, without separators.
+
+```manuscript
+fn to_hex() -> String:
 ```
 
 ### Bytes.to_text

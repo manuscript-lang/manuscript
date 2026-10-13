@@ -4,20 +4,20 @@ import List from "@std/collections.ms"
 
 # Errors returned for malformed HTML or parser resource limits.
 export type HtmlError:
-    # A supplied input-byte, tree-depth or node-count budget is negative.
+    # A supplied byte, tree-depth or node-count budget is negative.
     case InvalidInput
     # Input encoding or a native parser/tree conversion is invalid; HTML syntax can be recovered normally.
     case InvalidData
-    # Input bytes or the normalized returned tree exceed a supplied budget.
+    # Input/output bytes or parsed/serialized tree traversal exceeds a supplied budget.
     case LimitExceeded
 
-# Optional bounds for HTML input bytes, tree depth, and node count.
+# Optional bounds for HTML input/output bytes, tree depth, and node count.
 export type HtmlLimits:
-    # Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
+    # Maximum UTF-8 input bytes before parsing or encoded output bytes from stringify; none adds no budget.
     max_bytes: Optional[Int] = none
-    # Maximum normalized node depth; the document is depth zero and direct children depth one.
+    # Maximum node depth; the parsed document or serialized root is zero and direct children are one.
     max_depth: Optional[Int] = none
-    # Maximum returned nodes, including document/text/comment/doctype and implied element nodes.
+    # Maximum returned or serialized nodes, including document/text/comment/doctype and implied elements.
     max_nodes: Optional[Int] = none
 
 # An HTML attribute, including its namespace and decoded value.
@@ -80,6 +80,14 @@ export fn parse(
     text: String,
     limits: Optional[HtmlLimits] = none
 ) -> Result[HtmlNode, HtmlError]:
+
+# Renders an HTML node or document with HTML5 escaping and raw-text element rules.
+# Cycles and malformed nodes return InvalidData; limits bound output bytes, root-zero depth and node count.
+# Parsing the output normalizes the tree and can insert implied document elements.
+export fn stringify(
+    value: HtmlNode,
+    limits: Optional[HtmlLimits] = none
+) -> Result[String, HtmlError]:
 
 impl Error for HtmlError:
     # Returns an HTML-prefixed diagnostic without echoing source markup.

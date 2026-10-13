@@ -44,6 +44,9 @@ export type Instant:
 export type Timestamp:
     # Formats this timestamp in RFC 3339 form.
     fn to_string() -> String:
+    # Formats this timestamp in UTC using Go's reference-time layout: Mon Jan 2 15:04:05 MST 2006.
+    # For example, "2006-01-02" selects a calendar date and "15:04:05.000000000" preserves nanoseconds.
+    fn format(layout: String) -> String:
     # Returns the whole Unix seconds represented by this timestamp.
     fn unix_seconds() -> Int:
     # Returns this timestamp's nanosecond component.
@@ -63,6 +66,14 @@ export fn duration(nanoseconds: Int) -> Duration:
 
 # Parses an RFC 3339 timestamp with an explicit time zone.
 export fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]:
+
+# Parses a timestamp using Go's reference-time layout: Mon Jan 2 15:04:05 MST 2006.
+# Missing zones use UTC; offsets are normalized to UTC. Empty layouts return InvalidInput,
+# malformed text returns InvalidData, and UTC years outside 1..9999 return OutOfRange.
+export fn parse_timestamp_format(
+    text: String,
+    layout: String
+) -> Result[Timestamp, TimeError]:
 
 # Suspends the current task for at least the requested duration.
 export fn sleep(duration: Duration) -> Unit:

@@ -198,6 +198,14 @@ Apply when: changing YAML scalar gathering, comment removal, whitespace handling
 Evidence: [YAML parser](../pkg/stdlib/yaml.ms), [called scalar regressions](../tests/e2e/testdata/stdlib/yaml.ms), [YAML contract](../documentation/standard-library/formats.md#yaml-behavior), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
 Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization.
 
+### Serializer cycle checks need container identity when leaves are nonreflexive
+
+Verified: structural ancestry equality misses a TOML cycle containing NaN because IEEE NaN is unequal to itself. TOML's private `same_list`/`same_table` native helpers compare only container references; its parser, nominal types, serializer and budgets remain source-owned. Bindings attach to exact pinned module/declaration objects, and private helper imports and user lookalikes remain rejected or ordinary source functions. A shared acyclic subtree is emitted at each occurrence rather than rejected as a cycle.
+
+Apply when: changing source-owned codecs, private stdlib/native seams, cycle guards, or standard symbol loading.
+Evidence: [TOML serializer](../pkg/stdlib/toml.ms), [ownership seam](../pkg/stdlib/README.md), [trust-boundary tests](../pkg/checker/source_native_helpers_test.go), and [NaN-cycle/shared-tree conformance](../tests/e2e/testdata/stdlib/toml-parity.ms).
+Verify: NaN-bearing list/map cycles return typed InvalidData; shared subtrees serialize twice without mutation. Keep helpers private, their generic signatures ABI-checked, and application empty functions subject to normal body checking even with a standard-looking filename. Do not add a public identity API solely for serializer plumbing.
+
 ### List traversal follows the captured Go slice header
 
 Decision: the user's later instruction explicitly supersedes List membership

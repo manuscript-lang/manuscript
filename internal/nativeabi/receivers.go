@@ -2,11 +2,12 @@
 package nativeabi
 
 var ReceiverBindings = map[string]map[string]string{
+	"Random":            {"int": "random/int", "float": "random/float", "choice": "random/choice", "shuffle": "random/shuffle"},
 	"NormalizationForm": {"normalize": "string/form_normalize"},
 	"HashAlgorithm":     {"digest": "crypto/hash_algorithm_digest", "hmac": "crypto/hash_algorithm_hmac"},
 	"CompressionFormat": {"compress": "compress/format_compress", "decompress": "compress/format_decompress"},
 	"ArchiveFormat":     {"pack": "archive/format_pack", "unpack": "archive/format_unpack"},
-	"Decimal":           {"round": "decimal/round", "to_fixed": "decimal/to_fixed"},
+	"Decimal":           {"abs": "decimal/abs", "compare": "decimal/compare", "floor_to_int": "decimal/floor_to_int", "ceil_to_int": "decimal/ceil_to_int", "round_to_int": "decimal/round_to_int", "round": "decimal/round", "to_fixed": "decimal/to_fixed"},
 	"HttpRequest":       {"header": "http/request_header"},
 	"TaskGroup": {
 		"start": "tasks/task_group_start",
@@ -34,7 +35,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"difference": "time/instant_difference",
 		"compare":    "time/instant_compare",
 	},
-	"Timestamp": {
+	"Timestamp": {"format": "time/timestamp_format",
 		"to_string":    "time/format_timestamp",
 		"unix_seconds": "time/unix_seconds",
 		"nanoseconds":  "time/nanoseconds",
@@ -66,6 +67,15 @@ var ReceiverBindings = map[string]map[string]string{
 		"and_then":       "result/and_then",
 	},
 	"List": {
+		"count":            "collections/count",
+		"zip":              "collections/zip",
+		"distinct":         "collections/distinct",
+		"partition":        "collections/partition",
+		"min":              "collections/min",
+		"max":              "collections/max",
+		"insert":           "collections/insert",
+		"pop":              "collections/pop",
+		"sort_in_place":    "collections/sort_in_place",
 		"group_by":         "collections/group_by",
 		"at":               "collections/at",
 		"contains":         "collections/contains",
@@ -190,7 +200,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"replace_all":   "string/replace_all",
 		"slice":         "string/slice",
 	},
-	"Bytes": {
+	"Bytes": {"index_of_from": "bytes/index_of_from", "to_hex": "bytes/to_hex",
 		"split":         "bytes/split",
 		"values":        "bytes/values",
 		"contains":      "bytes/contains",
@@ -208,7 +218,7 @@ var ReceiverBindings = map[string]map[string]string{
 	"Int": {
 		"to_string": "numbers/format_int",
 	},
-	"Float": {
+	"Float": {"round_to_int": "math/round_to_int", "floor_to_int": "math/floor_to_int", "ceil_to_int": "math/ceil_to_int",
 		"to_precision":   "numbers/format_precision",
 		"to_exponential": "numbers/format_exponential",
 		"to_fixed":       "numbers/format_fixed",
@@ -216,7 +226,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"is_nan":         "math/is_nan",
 		"is_finite":      "math/is_finite",
 	},
-	"BigInt": {
+	"BigInt": {"negate": "bigint/negate", "abs": "bigint/abs", "bit_not": "bigint/bit_not", "pow": "bigint/pow", "shift_left": "bigint/shift_left", "shift_right": "bigint/shift_right",
 		"add":       "bigint/add",
 		"subtract":  "bigint/subtract",
 		"multiply":  "bigint/multiply",
@@ -229,7 +239,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"to_int":    "bigint/to_int",
 		"to_string": "bigint/format",
 	},
-	"Regex": {
+	"Regex": {"find": "regex/find", "split": "regex/split",
 		"matches":     "regex/matches",
 		"find_all":    "regex/find_all",
 		"replace":     "regex/replace",
