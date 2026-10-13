@@ -43,6 +43,15 @@ func libraryGeneric(module, name, result string, variables, params []LibraryPara
 	Library[len(Library)-1].Variables = variables
 	libraryFunctions[module+"/"+name] = Library[len(Library)-1]
 }
+
+// libraryAlias gives a receiver alias its own ABI identity while retaining the
+// original implementation, option defaults and failure diagnostics.
+func libraryAlias(module, name, original string) {
+	spec := libraryFunctions[module+"/"+original]
+	spec.Name = name
+	Library = append(Library, spec)
+	libraryFunctions[module+"/"+name] = spec
+}
 func libraryFunction(name, result string) (Value, bool) {
 	spec, ok := libraryFunctions[name]
 	if !ok {
