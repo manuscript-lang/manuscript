@@ -66,6 +66,12 @@ Unrelated domain errors still need an explicit translation. The Error interface 
 | Parent cancellation | Unwind; do not turn cancellation into EOF or a domain error. |
 | Local network deadline expires | Return Timeout, subject to the operation's documented error type. |
 
+Collection bounds, byte values, integer-formatting radices, and supplied queue capacities fault when their documented call preconditions fail. Their diagnostics name the operation and parameter, show the original offending argument, and state the valid range. For example, `Bytes.with_value: value must be between 0 and 255, found 300` distinguishes a value failure from an index failure.
+
+Negative indexes in `at`, `with_value`, and List `without` remain relative to the end. Empty collections have no valid update/removal index. List `fill`, `copy_within`, and List/Bytes `slice` require `0 <= start <= end <= length`; List `with_values` requires `0 <= start <= length` and `0 <= delete_count <= length - start`.
+
+These diagnostics preserve each operation's return type, bounds behavior, and failure category. String slicing retains its existing clamping behavior; unifying the slice families remains a separate policy decision.
+
 If cancellation wins before a newly acquired resource is delivered, native acquisition releases that resource. Delivered socket handles use `with` and synchronized close admission. Retaining another reference never extends the open lifetime.
 
 ## Optional limits and deadlines
