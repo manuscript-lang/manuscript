@@ -35,6 +35,14 @@ optimization facts, typed numeric operations, direct collection calls, and
 ordered source-call preparation remain in place; Go optimizes the emitted native
 operations.
 
+Generated Go need not be readable or idiomatic. Prefer measured execution speed,
+concrete representations, static dispatch, unboxed temporaries, and direct
+control flow when they preserve Manuscript semantics and source mapping. Keep
+the compiler implementation maintainable even when its output is mechanical.
+Unsafe or runtime-internal techniques require explicit invariant evidence and
+targeted tests; supported-platform and ABI guarantees still apply. Do not assume
+Go will eliminate the overhead of generic runtime abstractions on its own.
+
 The public `Result.Source` and native build/cache interfaces still accept printed
 Go. `Standalone` separately parses complete generated and embedded runtime files
 to combine them, and debugger path rebinding operates on final line directives.
