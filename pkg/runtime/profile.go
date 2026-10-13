@@ -12,6 +12,16 @@ import (
 
 // Profile runs an entry under explicitly requested local profiling. No network listener is opened.
 func Profile(cpuPath, heapPath, tracePath string, run func() int) (exit int) {
+	if cpuPath == "" && heapPath == "" && tracePath == "" {
+		return run()
+	}
+	// Go's profilers are process-wide. Reject overlap without changing the
+	// active session's flags or stopping its collectors.
+	if !profiling.CompareAndSwap(false, true) {
+		fmt.Fprintln(os.Stderr, "profiling is already active; finish the current capture before starting another")
+		return 70
+	}
+	defer profiling.Store(false)
 	var cpu, traceFile, heap *os.File
 	var err error
 	files := []*os.File{}
@@ -45,6 +55,8 @@ func Profile(cpuPath, heapPath, tracePath string, run func() int) (exit int) {
 	cpuStarted, traceStarted, ran := false, false, false
 	defer func() {
 		sourceProfiling.Store(false)
+		cpuProfiling.Store(false)
+		traceProfiling.Store(false)
 		if traceStarted {
 			trace.Stop()
 		}
@@ -74,6 +86,8 @@ func Profile(cpuPath, heapPath, tracePath string, run func() int) (exit int) {
 		}
 		traceStarted = true
 	}
+	cpuProfiling.Store(cpuStarted)
+	traceProfiling.Store(traceStarted)
 	sourceProfiling.Store(cpuStarted || traceStarted)
 	ran = true
 	return run()
@@ -81,30 +95,56 @@ func Profile(cpuPath, heapPath, tracePath string, run func() int) (exit int) {
 
 // Source profiling is opt-in. Normal calls take one inexpensive atomic branch.
 var sourceProfiling atomic.Bool
+var profiling, cpuProfiling, traceProfiling atomic.Bool
+
+// A source boundary follows context inheritance, including cancellation
+// shielding, but a work operation starts a fresh boundary. Nested source calls
+// use Go's sampled stacks rather than allocating labels and regions per call.
+type sourceProfileKey struct{}
 
 func profileSource(ctx *Execution, position string, args []Value, body func(*Execution, []Value) Value) (value Value) {
 	if ctx == nil || ctx.Context == nil {
 		return body(ctx, args)
 	}
-	pprof.Do(ctx.Context, pprof.Labels("ms.source", position), func(labeled context.Context) {
-		region := trace.StartRegion(labeled, "source:"+position)
-		defer region.End()
-		value = body(inherit(ctx, labeled), args)
-	})
+	if active, _ := ctx.Context.Value(sourceProfileKey{}).(bool); active {
+		return body(ctx, args)
+	}
+	run := func(labeled context.Context) {
+		boundary := context.WithValue(labeled, sourceProfileKey{}, true)
+		if traceProfiling.Load() {
+			region := trace.StartRegion(boundary, "source:"+position)
+			defer region.End()
+		}
+		value = body(inherit(ctx, boundary), args)
+	}
+	if cpuProfiling.Load() {
+		pprof.Do(ctx.Context, pprof.Labels("ms.source", position), run)
+	} else {
+		run(ctx.Context)
+	}
 	return value
 }
 func profileWork(ctx *Execution, kind, id string, body func(*Execution) Value) (value Value) {
-	if !sourceProfiling.Load() {
+	if !sourceProfiling.Load() || ctx == nil || ctx.Context == nil {
 		return body(ctx)
 	}
-	taskContext, task := trace.NewTask(ctx.Context, kind)
-	defer task.End()
-	trace.Log(taskContext, "ms.operation", id)
-	pprof.Do(taskContext, pprof.Labels("ms.work", kind, "ms.operation", id), func(labeled context.Context) { value = body(inherit(ctx, labeled)) })
+	taskContext := context.WithValue(ctx.Context, sourceProfileKey{}, false)
+	if traceProfiling.Load() {
+		var task *trace.Task
+		taskContext, task = trace.NewTask(taskContext, kind)
+		defer task.End()
+		trace.Log(taskContext, "ms.operation", id)
+	}
+	run := func(labeled context.Context) { value = body(inherit(ctx, labeled)) }
+	if cpuProfiling.Load() {
+		pprof.Do(taskContext, pprof.Labels("ms.work", kind, "ms.operation", id), run)
+	} else {
+		run(taskContext)
+	}
 	return value
 }
 func profileRegion(ctx *Execution, name string) func() {
-	if !sourceProfiling.Load() || ctx == nil {
+	if !traceProfiling.Load() || ctx == nil || ctx.Context == nil {
 		return func() {}
 	}
 	region := trace.StartRegion(ctx.Context, name)

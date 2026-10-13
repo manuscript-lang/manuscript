@@ -33,6 +33,14 @@ Apply when: changing ancestor lock admission, wait-cycle prevention, task/servic
 Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [synchronization contract](../documentation/concurrency/synchronization.md), [bounded regressions](../pkg/runtime/synchronized_ancestor_test.go), [acquisition delivery](../pkg/runtime/values.go), and [undelivered acquisition regression](../pkg/runtime/synchronized_test.go).
 Verify: run the Synchronized and TaskGroup tests repeatedly and with the race detector. Any permissive contract must change the overlapping contention case to wait and return 7 while retaining bounded cycle/cleanup rejection in both orders.
 
+### Attribute profiling at execution boundaries
+
+Verified: allocating pprof labels, derived executions, and trace regions for every source call can dominate a call-heavy program and create enormous traces. Source boundaries follow immutable context inheritance; task/scheduler work explicitly starts a new boundary. Nested calls keep source mapping in CPU sample stacks while reusing the boundary context. CPU labels and trace tasks/regions must follow their independently requested collectors; heap-only capture needs neither.
+
+Apply when: changing source-call wrappers, profiling, work-context inheritance, or capture defaults.
+Evidence: [profiling implementation](../pkg/runtime/profile.go), [boundary/allocation and repeated-run regressions](../pkg/runtime/profile_test.go), [native exit/flush checks](../pkg/compiler/profile_test.go), and [profiling contract](../documentation/developer-tooling/implementation.md#debugging-and-profiling).
+Verify: measure unprofiled execution separately from capture setup/flush; repeat CPU/heap/trace modes. Preserve cancellation/lifetime and caller-label restoration, including faults. Validate all requested outputs with bundled viewers and keep default artifact changes explicit in help, docs, and manifest tests.
+
 ### Newer stdlib direction needs checkout reconciliation
 
 Decision: the stdlib request calls for Node.js/JavaScript contract parity with consolidated grouping and one spelling per operation; optional limits/timeouts honored when supplied; removal of the speculative resource-pooling API; equality and hashing interfaces; and a priority queue. This supersedes the older derived-only equality preference. The combined scheduling service is `Scheduler`, with one lifecycle for immediate and timed work.
