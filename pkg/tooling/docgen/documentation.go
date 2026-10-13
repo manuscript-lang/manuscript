@@ -41,6 +41,9 @@ func renderModule(module checker.APIModule, forSite bool) string {
 	} else if module.Path == "@std/optional.ms" || module.Path == "@std/result.ms" || module.Path == "@std/errors.ms" || module.Path == "@std/equality.ms" {
 		b.WriteString("These names are available in the prelude; no import required.\n\n")
 		fmt.Fprintf(&b, "Explicit imports with `import Name from %q` remain supported.\n\n", module.Path)
+	} else if module.Path == "@std/collections.ms" {
+		b.WriteString("`List` and `Map` are available in the prelude; no import required.\n\n")
+		fmt.Fprintf(&b, "Other names require `import Name from %q`; explicit List/Map imports remain supported.\n\n", module.Path)
 	} else if strings.HasPrefix(module.Path, "@std/") {
 		fmt.Fprintf(&b, "Import each required symbol with `import Name from %q`.\n\n", module.Path)
 	}

@@ -268,6 +268,7 @@
     "@std/collections.ms/List/with_value": "collections/with_value",
     "@std/collections.ms/List/with_values": "collections/with_values",
     "@std/collections.ms/List/without": "collections/without",
+    "@std/collections.ms/Map/add": "collections/map_add",
     "@std/collections.ms/Map/clear": "collections/map_clear",
     "@std/collections.ms/Map/entries": "collections/map_entries",
     "@std/collections.ms/Map/every": "collections/map_every",

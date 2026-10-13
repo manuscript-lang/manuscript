@@ -930,6 +930,7 @@
             "U"
           ],
           "operations": [
+            "add: fn(key: T, value: U)-\u003eMap[T, U]",
             "clear: fn()-\u003eMap[T, U]",
             "clone: fn()-\u003eMap[T, U]",
             "contains: fn(key: T)-\u003eBool",
@@ -8884,6 +8885,88 @@
               "signature": "fn to_string(radix: Int) -\u003e String",
               "doc": ""
             }
+          ]
+        },
+        {
+          "name": "List",
+          "doc": "An ordered collection of values with indexing, iteration, and transformation operations.",
+          "kind": "native",
+          "type": "List[T]",
+          "type_parameters": [
+            "T"
+          ],
+          "operations": [
+            "append: fn(value: T)-\u003eList[T]",
+            "at: fn(index: Int)-\u003eOptional[T]",
+            "clone: fn()-\u003eList[T]",
+            "concat: fn(values: List[T])-\u003eList[T]",
+            "contains: fn(value: T)-\u003eBool",
+            "copy_within: fn(target: Int, start: Int, end: Int)-\u003eList[T]",
+            "entries: fn()-\u003eList[ListEntry[T]]",
+            "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
+            "fill: fn(value: T, start: Int, end: Int)-\u003eList[T]",
+            "filter: fn(predicate: fn(value: T)-\u003eBool)-\u003eList[T]",
+            "find: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
+            "find_index: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[Int]",
+            "find_last: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
+            "find_last_index: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[Int]",
+            "first: fn()-\u003eOptional[T]",
+            "flat_map[U]: fn(transform: fn(value: T)-\u003eList[U])-\u003eList[U]",
+            "fold[A]: fn(initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
+            "fold_right[A]: fn(initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
+            "for_each: fn(operation: fn(value: T)-\u003eUnit)-\u003eUnit",
+            "group_by[K: Hashable]: fn(key: fn(value: T)-\u003eK)-\u003eMap[K, List[T]]",
+            "index_of: fn(value: T)-\u003eOptional[Int]",
+            "is_empty: fn()-\u003eBool",
+            "join: fn(separator: String)-\u003eString",
+            "keys: fn()-\u003eList[Int]",
+            "last: fn()-\u003eOptional[T]",
+            "last_index_of: fn(value: T)-\u003eOptional[Int]",
+            "length: fn()-\u003eInt",
+            "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
+            "prepend: fn(value: T)-\u003eList[T]",
+            "reverse: fn()-\u003eList[T]",
+            "slice: fn(start: Int, end: Int)-\u003eList[T]",
+            "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
+            "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
+            "to_set: fn()-\u003eSet[T]",
+            "with_value: fn(index: Int, value: T)-\u003eList[T]",
+            "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
+            "without: fn(index: Int)-\u003eList[T]"
+          ]
+        },
+        {
+          "name": "Map",
+          "doc": "A mutable key-value collection. Keys use explicit `Hashable` value semantics.",
+          "kind": "native",
+          "type": "Map[T, U]",
+          "type_parameters": [
+            "T: Hashable",
+            "U"
+          ],
+          "operations": [
+            "add: fn(key: T, value: U)-\u003eMap[T, U]",
+            "clear: fn()-\u003eMap[T, U]",
+            "clone: fn()-\u003eMap[T, U]",
+            "contains: fn(key: T)-\u003eBool",
+            "entries: fn()-\u003eList[MapEntry[T, U]]",
+            "every: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eBool",
+            "filter: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eMap[T, U]",
+            "find: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eOptional[MapEntry[T, U]]",
+            "fold[A]: fn(initial: A, step: fn(accumulator: A, key: T, value: U)-\u003eA)-\u003eA",
+            "for_each: fn(operation: fn(key: T, value: U)-\u003eUnit)-\u003eUnit",
+            "get: fn(key: T)-\u003eOptional[U]",
+            "get_or: fn(key: T, fallback: U)-\u003eU",
+            "is_empty: fn()-\u003eBool",
+            "keys: fn()-\u003eList[T]",
+            "length: fn()-\u003eInt",
+            "merge: fn(other: Map[T, U])-\u003eMap[T, U]",
+            "some: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eBool",
+            "values: fn()-\u003eList[U]",
+            "with_default: fn(key: T, value: U)-\u003eMap[T, U]",
+            "with_default_from: fn(key: T, create: fn(key: T)-\u003eU)-\u003eMap[T, U]",
+            "with_entry: fn(key: T, value: U)-\u003eMap[T, U]",
+            "without: fn(key: T)-\u003eMap[T, U]"
           ]
         },
         {

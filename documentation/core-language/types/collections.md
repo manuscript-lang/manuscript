@@ -7,7 +7,7 @@ weight = 3
 
 Use `List[T]` for an ordered sequence, `Map[K, V]` for key/value entries, and `Set[T]` for distinct values. The type arguments state the element, key, and value types. All three collections are mutable references. Assignment retains the same instance; `.clone()` copies its storage.
 
-Import each collection type you name from `@std/collections.ms`. Bracket list literals require the canonical `List` import; brace map literals require the canonical `Map` import.
+`List` and `Map` are available in the prelude without imports. Explicit imports from `@std/collections.ms` remain valid. Import `Set` and other collection names when needed. Literals use the canonical standard types; a module declaration or import that replaces `List` or `Map` makes its corresponding literal invalid.
 
 | Type | Contents |
 | --- | --- |
@@ -42,7 +42,7 @@ Write each entry as `key: value`, with optional trailing commas. Keys are expres
 
 A nonempty literal infers key and value types independently from its entries. Expected Map types propagate to both keys and values, including nested empty literals. An empty map needs an annotation or expected parameter/return type. Every key and value must match its inferred or expected type; keys must satisfy `Hashable`.
 
-Entries evaluate in written order, key before value, once each. Equal duplicate keys retain their first insertion position and use the last value, just like `with_entry`. Stored values retain references to nested data. Physical newlines inside braces follow ordinary delimiter continuation rules.
+Entries evaluate in written order, key before value, once each. Equal duplicate keys retain their first insertion position and use the last value, just like `add`. Stored values retain references to nested data. Physical newlines inside braces follow ordinary delimiter continuation rules.
 
 ## Element requirements
 
@@ -74,7 +74,7 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 `append`, `prepend`, `with_value`, `without`, `with_values`, `fill`, `copy_within`, and `reverse` update a list and return the same instance. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
 
-Map `with_entry`, `without`, `with_default`, `with_default_from`, `merge`, and `clear` update the receiver. Set `with_value`, `without`, and `clear` update the receiver. Their return values retain that instance for chaining.
+Map `add`, `with_entry`, `without`, `with_default`, `with_default_from`, `merge`, and `clear` update the receiver. Set `with_value`, `without`, and `clear` update the receiver. Their return values retain that instance for chaining.
 
 ```manuscript
 let values = [1, 2]
@@ -104,7 +104,7 @@ A `for` loop and collection callback traversals snapshot collection membership o
 | `Map[K, V]` | `fold[A](initial: A, step: fn(accumulator: A, key: K, value: V) -> A) -> A` |
 | `Map[K, V]` | `find(predicate: fn(key: K, value: V) -> Bool) -> Optional[MapEntry[K, V]]` |
 | `Map[K, V]` | `some(predicate: fn(key: K, value: V) -> Bool) -> Bool`; `every` uses the same predicate |
-| `Map[K, V]` | `with_entry(key: K, value: V) -> Map[K, V]`; `without(key: K) -> Map[K, V]` |
+| `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `without(key: K) -> Map[K, V]` |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
 | `Set[T]` | `is_empty() -> Bool`; `filter(predicate: fn(value: T) -> Bool) -> Set[T]` |
@@ -116,9 +116,11 @@ A `for` loop and collection callback traversals snapshot collection membership o
 
 All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding MaxInt64 faults.
 
+`Map.add(key, value)` inserts or replaces a value and returns the same map. `with_entry` remains a compatible spelling with identical behavior.
+
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
 
-Map `get`, `contains`, and `with_entry` and Set `contains` and `with_value` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. `without` shifts later entries to keep insertion order and takes time proportional to the collection size. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
+Map `get`, `contains`, and `add` and Set `contains` and `with_value` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. `without` shifts later entries to keep insertion order and takes time proportional to the collection size. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
 
 ### Search and enumeration
 
@@ -139,8 +141,6 @@ Set `union`, `intersection`, `difference`, and `symmetric_difference` return new
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
 
 fn positives(values: List[Int]) -> List[Int]:
     var result: List[Int] = []
@@ -155,8 +155,8 @@ test "dynamic mutable data and explicit copies":
     let absent: Optional[Int] = none
     if not ([1].at(index: 5) == absent):
         return panic(message: "check failed")
-    let original = Map[String, Int]().with_entry(key: "a", value: 1)
-    let updated = original.clone().with_entry(key: "b", value: 2).with_entry(key: "a", value: 3)
+    let original = Map[String, Int]().add(key: "a", value: 1)
+    let updated = original.clone().add(key: "b", value: 2).add(key: "a", value: 3)
     if not (original.get(key: "a") == some(1)):
         return panic(message: "check failed")
     if not (updated.get(key: "a") == some(3)):

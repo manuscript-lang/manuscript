@@ -101,6 +101,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"find":              "collections/map_find",
 		"some":              "collections/map_some",
 		"every":             "collections/map_every",
+		"add":               "collections/map_add",
 		"is_empty":          "collections/map_is_empty",
 		"get_or":            "collections/map_get_or",
 		"filter":            "collections/map_filter",

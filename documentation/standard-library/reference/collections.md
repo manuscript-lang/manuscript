@@ -4,7 +4,9 @@ title = "collections"
 
 # @std/collections.ms
 
-Import each required symbol with `import Name from "@std/collections.ms"`.
+`List` and `Map` are available in the prelude; no import required.
+
+Other names require `import Name from "@std/collections.ms"`; explicit List/Map imports remain supported.
 
 ## CollectionError {data-api-kind="Alternative"}
 
@@ -224,6 +226,7 @@ type Map[T: Hashable, U]:
     fn contains(key: T) -> Bool:
     fn get(key: T) -> Optional[U]:
     fn length() -> Int:
+    fn add(key: T, value: U) -> Map[T, U]:
     fn with_entry(key: T, value: U) -> Map[T, U]:
     fn without(key: T) -> Map[T, U]:
 ```

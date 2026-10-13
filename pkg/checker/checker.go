@@ -84,6 +84,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 	}
 	p.Methods = append(p.Methods, standardImplementations...)
 	p.ContractPatterns = map[*syntax.Arm]*Type{}
+	p.ArmNameConflicts = map[*syntax.Arm][]*Info{}
 	for _, module := range modules {
 		c.module = module
 		c.names = map[string]*Symbol{}
@@ -715,6 +716,7 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 				c.error(arm.Pos, "type", fmt.Sprintf("case payload arity mismatch; %s has %d payload fields, found %d bindings (use _ to ignore one)", name, len(fields), len(arm.Names)))
 			}
 		}
+		c.matchBindingNames(arm, fields)
 		old := c.scope
 		c.scope = newScope(old)
 		for i, name := range arm.Names {
@@ -777,6 +779,7 @@ func (c *checker) matchContract(pos syntax.Position, arms []syntax.Arm, info *In
 				c.error(arm.Pos, "type", "concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'")
 			}
 		}
+		c.matchBindingNames(arm, []Param{{Type: target}})
 		old := c.scope
 		c.scope = newScope(old)
 		for _, name := range arm.Names {
@@ -1006,7 +1009,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		return c.callback(e, expected)
 	case syntax.KindList:
 		if s := c.names["List"]; s == nil || s != standardSymbols["List"] {
-			c.error(e.Pos, "resolution", "list literal requires the canonical List import; add: import List from \"@std/collections.ms\"")
+			c.error(e.Pos, "resolution", "list literal requires the canonical List type; rename the shadowing List declaration or binding")
 		}
 		var element *Type
 		if std(expected, "List") && len(expected.Args) == 1 {
@@ -1035,7 +1038,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		i.Type = standard("List", element)
 	case syntax.KindMap:
 		if s := c.names["Map"]; s == nil || s != standardSymbols["Map"] {
-			c.error(e.Pos, "resolution", "map literal requires the canonical Map import; add: import Map from \"@std/collections.ms\"")
+			c.error(e.Pos, "resolution", "map literal requires the canonical Map type; rename the shadowing Map declaration or binding")
 		}
 		var types [2]*Type
 		if std(expected, "Map") && len(expected.Args) == 2 {
