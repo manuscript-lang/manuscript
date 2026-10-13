@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/collections.ms"`.
 
 ## CollectionError {data-api-kind="Alternative"}
 
+Errors returned when a collection factory exceeds its supplied item limit.
+
 ```manuscript
 type CollectionError:
     case InvalidInput
@@ -20,6 +22,8 @@ impl Error for CollectionError:
 ```
 
 ## List {data-api-kind="Native type"}
+
+An ordered collection of values with indexing, iteration, and transformation operations.
 
 ```manuscript
 type List[T]:
@@ -64,6 +68,8 @@ type List[T]:
 
 ## ListBuilder {data-api-kind="Native type"}
 
+Appends values efficiently before freezing them into a list.
+
 ```manuscript
 type ListBuilder[T]:
     fn append(value: T) -> Unit:
@@ -72,6 +78,8 @@ type ListBuilder[T]:
 
 ## ListEntry {data-api-kind="Record"}
 
+One list index and its corresponding value.
+
 ```manuscript
 type ListEntry[T]:
     index: Int
@@ -79,6 +87,8 @@ type ListEntry[T]:
 ```
 
 ## Map {data-api-kind="Native type"}
+
+A mutable key-value collection. Keys use explicit `Hashable` value semantics.
 
 ```manuscript
 type Map[T: Hashable, U]:
@@ -100,6 +110,8 @@ type Map[T: Hashable, U]:
 
 ## MapBuilder {data-api-kind="Native type"}
 
+Adds entries efficiently before freezing them into a map.
+
 ```manuscript
 type MapBuilder[T: Hashable, U]:
     fn freeze() -> Map[T, U]:
@@ -108,6 +120,8 @@ type MapBuilder[T: Hashable, U]:
 
 ## MapEntry {data-api-kind="Record"}
 
+One key-value pair returned by `Map.entries`.
+
 ```manuscript
 type MapEntry[T: Hashable, U]:
     key: T
@@ -115,6 +129,8 @@ type MapEntry[T: Hashable, U]:
 ```
 
 ## Set {data-api-kind="Native type"}
+
+A mutable collection of unique values using explicit `Hashable` value semantics.
 
 ```manuscript
 type Set[T: Hashable]:
@@ -138,6 +154,8 @@ type Set[T: Hashable]:
 
 ## SetBuilder {data-api-kind="Native type"}
 
+Adds unique values efficiently before freezing them into a set.
+
 ```manuscript
 type SetBuilder[T: Hashable]:
     fn freeze() -> Set[T]:
@@ -146,17 +164,23 @@ type SetBuilder[T: Hashable]:
 
 ## filled {data-api-kind="Function"}
 
+Creates a list containing `value` repeated `count` times.
+
 ```manuscript
 fn filled[T](value: T, count: Int, max_items: Optional[Int] = none) -> Result[List[T], CollectionError]:
 ```
 
 ## map_from_entries {data-api-kind="Function"}
 
+Builds a map from entries. Later entries replace earlier values for duplicate keys.
+
 ```manuscript
 fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) -> Map[K, V]:
 ```
 
 ## range {data-api-kind="Function"}
+
+Creates integers from `start` up to but excluding `end` using `step`.
 
 ```manuscript
 fn range(start: Int, end: Int, step: Int, max_items: Optional[Int] = none) -> Result[List[Int], CollectionError]:

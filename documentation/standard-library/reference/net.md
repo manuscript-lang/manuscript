@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/net.ms"`.
 
 ## Connection {data-api-kind="Interface"}
 
+A connected stream socket, optionally protected by TLS.
+
 ```manuscript
 interface Connection:
     fn close() -> Unit
@@ -21,6 +23,8 @@ interface Connection:
 
 ## Datagram {data-api-kind="Record"}
 
+One datagram and the address from which it was received.
+
 ```manuscript
 type Datagram:
     data: Bytes
@@ -28,6 +32,8 @@ type Datagram:
 ```
 
 ## DatagramSocket {data-api-kind="Interface"}
+
+A connectionless socket for sending and receiving datagrams.
 
 ```manuscript
 interface DatagramSocket:
@@ -38,6 +44,8 @@ interface DatagramSocket:
 ```
 
 ## DnsRecord {data-api-kind="Record"}
+
+DNS record data returned by a typed lookup.
 
 ```manuscript
 type DnsRecord:
@@ -50,6 +58,8 @@ type DnsRecord:
 
 ## Listener {data-api-kind="Interface"}
 
+A listening socket that accepts incoming connections.
+
 ```manuscript
 interface Listener:
     fn accept(timeout: Optional[Duration] = none) -> Result[Connection, NetworkError]
@@ -58,6 +68,8 @@ interface Listener:
 ```
 
 ## Network {data-api-kind="Interface"}
+
+Network, DNS, HTTP, and WebSocket operations for the current host.
 
 ```manuscript
 interface Network:
@@ -83,6 +95,8 @@ interface Network:
 
 ## NetworkError {data-api-kind="Alternative"}
 
+Errors returned by socket, DNS, and network connection operations.
+
 ```manuscript
 type NetworkError:
     case InvalidInput
@@ -102,11 +116,15 @@ impl Error for NetworkError:
 
 ## contains_ip {data-api-kind="Function"}
 
+Reports whether an IP address belongs to a CIDR range.
+
 ```manuscript
 fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]:
 ```
 
 ## network {data-api-kind="Function"}
+
+Returns network operations for the current host.
 
 ```manuscript
 fn network() -> Network:
@@ -114,11 +132,15 @@ fn network() -> Network:
 
 ## parse_cidr {data-api-kind="Function"}
 
+Validates and canonicalizes an IPv4 or IPv6 CIDR range.
+
 ```manuscript
 fn parse_cidr(text: String) -> Result[String, NetworkError]:
 ```
 
 ## parse_ip {data-api-kind="Function"}
+
+Validates and canonicalizes an IPv4 or IPv6 address.
 
 ```manuscript
 fn parse_ip(text: String) -> Result[String, NetworkError]:

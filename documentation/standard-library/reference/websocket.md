@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/websocket.ms"`.
 
 ## WebSocket {data-api-kind="Interface"}
 
+A WebSocket connection. Send and receive byte messages with an explicit text flag.
+
 ```manuscript
 interface WebSocket:
     fn close() -> Unit
@@ -18,6 +20,8 @@ interface WebSocket:
 ```
 
 ## WebSocketError {data-api-kind="Alternative"}
+
+Errors returned by WebSocket handshakes, message limits, timeouts, or closed sockets.
 
 ```manuscript
 type WebSocketError:
@@ -37,6 +41,8 @@ impl Error for WebSocketError:
 
 ## WebSocketMessage {data-api-kind="Record"}
 
+A received message and whether its payload is UTF-8 text.
+
 ```manuscript
 type WebSocketMessage:
     data: Bytes
@@ -44,6 +50,8 @@ type WebSocketMessage:
 ```
 
 ## WebSocketOptions {data-api-kind="Record"}
+
+WebSocket message, timeout, TLS, and per-message compression settings.
 
 ```manuscript
 type WebSocketOptions:

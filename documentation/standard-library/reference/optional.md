@@ -10,6 +10,8 @@ Explicit imports with `import Name from "@std/optional.ms"` remain supported.
 
 ## Optional {data-api-kind="Alternative"}
 
+Represents a value that may be absent: `some(value)` or `none`.
+
 ```manuscript
 type Optional[T]:
     case some(value: T)

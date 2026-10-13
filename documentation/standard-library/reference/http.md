@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 ## ClientResponse {data-api-kind="Record"}
 
+Buffered HTTP response metadata and body.
+
 ```manuscript
 type ClientResponse:
     status: Int
@@ -17,6 +19,8 @@ type ClientResponse:
 
 ## HttpClient {data-api-kind="Interface"}
 
+Reusable HTTP client with connection pooling and explicit response limits.
+
 ```manuscript
 interface HttpClient:
     fn close() -> Unit
@@ -25,6 +29,8 @@ interface HttpClient:
 ```
 
 ## HttpClientOptions {data-api-kind="Record"}
+
+Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 
 ```manuscript
 type HttpClientOptions:
@@ -38,6 +44,8 @@ type HttpClientOptions:
 ```
 
 ## HttpError {data-api-kind="Alternative"}
+
+Errors returned for invalid requests, transport failures, timeouts, and limits.
 
 ```manuscript
 type HttpError:
@@ -57,6 +65,8 @@ impl Error for HttpError:
 
 ## HttpExchange {data-api-kind="Interface"}
 
+One streaming server exchange. Read or write incrementally and close when done.
+
 ```manuscript
 interface HttpExchange:
     fn close() -> Unit
@@ -72,6 +82,8 @@ interface HttpExchange:
 
 ## HttpRequest {data-api-kind="Record"}
 
+Buffered request accepted by the simple HTTP server handler.
+
 ```manuscript
 type HttpRequest:
     method: String
@@ -84,6 +96,8 @@ type HttpRequest:
 
 ## HttpResponse {data-api-kind="Record"}
 
+Buffered response returned by the simple HTTP server handler.
+
 ```manuscript
 type HttpResponse:
     status: Int
@@ -93,6 +107,8 @@ type HttpResponse:
 
 ## HttpServer {data-api-kind="Interface"}
 
+A running HTTP server. Close it to stop accepting new requests.
+
 ```manuscript
 interface HttpServer:
     fn address() -> String
@@ -101,6 +117,8 @@ interface HttpServer:
 ```
 
 ## HttpServerOptions {data-api-kind="Record"}
+
+Request and response limits, deadlines, graceful shutdown, and TLS server settings.
 
 ```manuscript
 type HttpServerOptions:
@@ -114,6 +132,8 @@ type HttpServerOptions:
 ```
 
 ## ResponseBody {data-api-kind="Interface"}
+
+Streaming response body returned by HTTP client operations.
 
 ```manuscript
 interface ResponseBody:

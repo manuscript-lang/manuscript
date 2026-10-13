@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/html.ms"`.
 
 ## HtmlAttribute {data-api-kind="Record"}
 
+An HTML attribute, including its namespace and decoded value.
+
 ```manuscript
 type HtmlAttribute:
     name: String
@@ -16,6 +18,8 @@ type HtmlAttribute:
 ```
 
 ## HtmlError {data-api-kind="Alternative"}
+
+Errors returned for malformed HTML or parser resource limits.
 
 ```manuscript
 type HtmlError:
@@ -31,6 +35,8 @@ impl Error for HtmlError:
 
 ## HtmlLimits {data-api-kind="Record"}
 
+Optional bounds for HTML input bytes, tree depth, and node count.
+
 ```manuscript
 type HtmlLimits:
     max_bytes: Optional[Int] = none
@@ -39,6 +45,8 @@ type HtmlLimits:
 ```
 
 ## HtmlNode {data-api-kind="Alternative"}
+
+A parsed HTML document tree with document, element, text, comment, and doctype nodes.
 
 ```manuscript
 type HtmlNode:
@@ -51,11 +59,15 @@ type HtmlNode:
 
 ## escape {data-api-kind="Function"}
 
+Escapes text for insertion into an HTML text or quoted attribute context.
+
 ```manuscript
 fn escape(text: String) -> String:
 ```
 
 ## parse {data-api-kind="Function"}
+
+Parses HTML into a normalized tree and applies the supplied resource limits.
 
 ```manuscript
 fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]:

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Update the VS Code language client and packaging dependencies; the extension now requires VS Code 1.91 or newer.
+
 - Embed Delve in `ms debug` and `ms dap`; VS Code no longer needs `dlv`. CGO remains disabled; macOS still requires Apple debugserver from Xcode command line tools.
 
 - Add `ms run --watch` and `ms test --watch` to rebuild and restart after each saved change.
