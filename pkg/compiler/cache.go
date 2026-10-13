@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	support "github.com/manuscript-lang/manuscript"
 	"github.com/manuscript-lang/manuscript/pkg/checker"
@@ -134,8 +135,14 @@ func WritePin(root string) error {
 	}
 	return atomicWrite(filepath.Join(root, "ms.lock"), append(data, '\n'), 0644)
 }
+
+var errMissingPin = errors.New("ms.lock not found")
+
 func readPin(root string) (BuildPin, error) {
 	data, err := os.ReadFile(filepath.Join(root, "ms.lock"))
+	if errors.Is(err, os.ErrNotExist) {
+		return BuildPin{}, errMissingPin
+	}
 	if err != nil {
 		return BuildPin{}, fmt.Errorf("project build requires ms.lock; run ms lock %s: %w", filepath.Join(root, "ms.toml"), err)
 	}
@@ -233,6 +240,13 @@ func BuildCheckedWithType(result Result, output, cacheDir string, kind BuildType
 	if result.ProjectRoot != "" {
 		var err error
 		expected, err = readPin(result.ProjectRoot)
+		if errors.Is(err, errMissingPin) {
+			// A project without ms.lock is pinned on first build; an existing
+			// pin that no longer matches still needs an explicit ms lock.
+			if err = WritePin(result.ProjectRoot); err == nil {
+				expected, err = readPin(result.ProjectRoot)
+			}
+		}
 		if err != nil {
 			return BuildMetadata{}, err
 		}

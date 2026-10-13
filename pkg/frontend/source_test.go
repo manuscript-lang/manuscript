@@ -65,3 +65,31 @@ func TestRecoveredGraphRetainsImportDiagnosticPosition(t *testing.T) {
 		t.Fatal("import diagnostic lost source position", issue)
 	}
 }
+
+func TestProjectTestsDiscoverTestFiles(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"ms.toml":           "[project]\nname = \"p\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
+		"src/main.ms":       "export fn main() -> Int: return 0\n",
+		"src/calc_test.ms":  "test \"a\":\n    return unit\n",
+		"test.ms":           "test \"b\":\n    return unit\n",
+		".hidden/x_test.ms": "test \"c\":\n    return unit\n",
+	}
+	for name, source := range files {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := filepath.Join(root, "ms.toml")
+	if graph := frontend.LoadFile(manifest, frontend.Options{}); len(graph.Modules) != 1 {
+		t.Fatal("tests loaded without request", graph.Modules)
+	}
+	graph := frontend.LoadFile(manifest, frontend.Options{Tests: true})
+	if len(graph.Diagnostics) != 0 || len(graph.Modules) != 3 {
+		t.Fatal("expected entry plus two test files", graph.Diagnostics, len(graph.Modules))
+	}
+}

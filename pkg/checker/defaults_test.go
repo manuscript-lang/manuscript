@@ -85,3 +85,30 @@ fn call(view: Read) -> Unit:
 		t.Fatal(program.Diagnostics)
 	}
 }
+
+func TestUnknownTypeDoesNotCascade(t *testing.T) {
+	m, err := parser.Parse("cascade.ms", "fn peek() -> Missing:\n    return 0\nfn f() -> Int:\n    match peek():\n        some(x):\n            return x\n        none:\n            return 0\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := checker.Check([]*syntax.Module{m}, nil)
+	for _, d := range p.Diagnostics {
+		if d.Phase != "resolution" {
+			t.Fatalf("follow-on diagnostic after unknown type: %v", p.Diagnostics)
+		}
+	}
+	if len(p.Diagnostics) == 0 {
+		t.Fatal("unknown type accepted")
+	}
+}
+
+func TestLabelDiagnosticNamesParameter(t *testing.T) {
+	m, err := parser.Parse("labels.ms", "fn f(a: Int, b: Int) -> Int:\n    return a + b\nfn call() -> Int:\n    return f(1, 2)\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := checker.Check([]*syntax.Module{m}, nil)
+	if len(p.Diagnostics) != 2 || !strings.Contains(p.Diagnostics[0].Message, "write a: ...") || !strings.Contains(p.Diagnostics[1].Message, "write b: ...") {
+		t.Fatal(p.Diagnostics)
+	}
+}

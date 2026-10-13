@@ -54,7 +54,7 @@ func CompileFile(filename string, options Options) Result {
 }
 
 func (o Options) sourceOptions() frontend.Options {
-	return frontend.Options{Recover: o.Recover && o.AnalyzeOnly, Module: o.Module, Overlay: o.Overlay}
+	return frontend.Options{Recover: o.Recover && o.AnalyzeOnly, Module: o.Module, Overlay: o.Overlay, Tests: o.Tests}
 }
 
 // compile is the common path after parsing and import resolution. Each stage

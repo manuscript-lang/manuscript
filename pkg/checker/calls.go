@@ -178,9 +178,14 @@ func functionArguments(args []syntax.Argument, params []Param) []syntax.Argument
 func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...map[string]bool) bool {
 	seen := map[string]bool{}
 	noReturn := false
-	for _, arg := range args {
+	for index, arg := range args {
 		if arg.Name == "" {
-			c.error(arg.Pos, "type", "argument labels are required for this call")
+			message := "argument labels are required for this call"
+			if index < len(params) {
+				message += "; write " + params[index].Name + ": ..."
+				seen[params[index].Name] = true
+			}
+			c.error(arg.Pos, "type", message)
 			v := c.expression(arg.Value, nil)
 			noReturn = noReturn || v.NoReturn
 			continue

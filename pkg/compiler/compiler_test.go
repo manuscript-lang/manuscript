@@ -417,11 +417,11 @@ func TestPinsNativeCacheAndBuildMetadata(t *testing.T) {
 	}
 	binary := filepath.Join(root, "program")
 	cache := filepath.Join(root, "cache")
-	if _, err := compiler.BuildChecked(result, binary, cache, false); err == nil {
-		t.Fatal("project built without explicit pins")
+	if _, err := compiler.BuildChecked(result, binary, cache, false); err != nil {
+		t.Fatal("project did not build without ms.lock", err)
 	}
-	if err := compiler.WritePin(root); err != nil {
-		t.Fatal(err)
+	if _, err := os.Stat(filepath.Join(root, "ms.lock")); err != nil {
+		t.Fatal("missing ms.lock was not created", err)
 	}
 	if err := compiler.CheckPin(root); err != nil {
 		t.Fatal(err)

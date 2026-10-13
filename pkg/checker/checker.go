@@ -48,6 +48,7 @@ type checker struct {
 	scope                   *scope
 	result                  *Type
 	function, serial, loops int
+	unknownType             bool
 	captures                map[int]map[*Binding]bool
 }
 
@@ -241,6 +242,11 @@ func (c *checker) unique(prefix string) string {
 	return fmt.Sprintf("%s%d", prefix, c.serial)
 }
 func (c *checker) error(pos syntax.Position, phase, message string) {
+	// An unresolved type is already reported where it is written; later
+	// diagnostics that only restate its placeholder are noise.
+	if c.unknownType && phase != "resolution" && strings.Contains(message, "<invalid>") {
+		return
+	}
 	c.Diagnostics = append(c.Diagnostics, syntax.Diagnostic{Position: pos, Phase: phase, Message: message})
 }
 func (c *checker) addSymbol(name string, s *Symbol, pos syntax.Position) {
@@ -296,6 +302,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 		base = s.Type
 	} else {
 		c.error(t.Pos, "resolution", "unknown type "+t.Name)
+		c.unknownType = true
 		return primitive("<invalid>")
 	}
 	r := *base
@@ -360,7 +367,7 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 	}
 	c.checkParameters(d, d.Params, t.Params)
 	fall, _ := c.block(d.Body, false)
-	if fall && t.Result.ID != "Unit" {
+	if fall && t.Result.ID != "Unit" && t.Result.ID != "<invalid>" {
 		c.error(d.Pos, "type", "reachable fallthrough in function returning "+t.Result.String())
 	}
 	c.scope, c.result, c.function, c.loops = oldScope, oldResult, oldFunction, oldLoops
@@ -583,6 +590,9 @@ func (c *checker) match(s *syntax.Statement) (bool, bool) {
 	info := c.expression(s.Value, nil)
 	if info.Type.Kind == "contract" {
 		return c.matchContract(s, info)
+	}
+	if info.Type.ID == "<invalid>" {
+		return false, false
 	}
 	if info.Type.Kind != "alternative" {
 		c.error(s.Pos, "type", "match requires an alternative or contract view")
@@ -888,7 +898,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			c.LambdaParameters[e] = append(c.LambdaParameters[e], c.bind(param.Name, param.Type, false, e.Params[index].Pos))
 		}
 		fall, _ := c.block(e.Body, false)
-		if fall && t.Result.ID != "Unit" {
+		if fall && t.Result.ID != "Unit" && t.Result.ID != "<invalid>" {
 			c.error(e.Pos, "type", "reachable fallthrough in anonymous function")
 		}
 		i.Type = t
