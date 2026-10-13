@@ -59,6 +59,16 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 			if issue, ok := err.(syntax.Diagnostic); ok {
 				issue.Position.Offset += start
 				issue.Position.Line += lineOffset
+				if issue.End != nil {
+					issue.End.Offset += start
+					issue.End.Line += lineOffset
+				}
+				if issue.Fix != nil {
+					issue.Fix.Position.Offset += start
+					issue.Fix.Position.Line += lineOffset
+					issue.Fix.End.Offset += start
+					issue.Fix.End.Line += lineOffset
+				}
 				diagnostics = append(diagnostics, issue)
 			}
 			continue

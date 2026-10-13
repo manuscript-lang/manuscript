@@ -48,6 +48,9 @@ func parse(file, source string) (module *syntax.Module, err error) {
 		if p.take("import") {
 			pos := p.previous().Pos
 			names := []lexer.Token{}
+			if p.peek().Kind == "*" {
+				p.fail(p.peek(), "namespace and wildcard imports are unsupported; import individual exports with 'import { Name, OtherName } from \"./module.ms\"'")
+			}
 			if p.take("{") {
 				// A named import list is nonempty and permits a trailing comma.
 				for {
@@ -99,7 +102,11 @@ func (p *Parser) need(k string) lexer.Token {
 	return t
 }
 func (p *Parser) fail(t lexer.Token, m string) {
-	panic(syntax.Diagnostic{Position: t.Pos, Phase: "parse", Message: m})
+	d := syntax.Diagnostic{Position: t.Pos, Phase: "parse", Message: m}
+	if t.End.Line > 0 {
+		d.End = &t.End
+	}
+	panic(d)
 }
 func (p *Parser) newlines() {
 	for p.take(lexer.Newline) {
@@ -428,6 +435,9 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 		s.Body = p.suite()
 	default:
 		e := p.expression(0)
+		if p.compoundAssignment() {
+			p.failCompoundAssignment(t, e)
+		}
 		if p.take("=") {
 			if (e.Kind != syntax.KindName && e.Kind != syntax.KindMember) || e.Text == "self" {
 				p.fail(t, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field")
@@ -519,6 +529,9 @@ func (p *Parser) expression(min int) *syntax.Expression {
 	compared := false
 	for {
 		op := p.peek()
+		if p.compoundAssignment() {
+			break
+		}
 		level := precedence[op.Kind]
 		if level == 0 || level < min {
 			break
@@ -724,6 +737,7 @@ func (p *Parser) text(token lexer.Token) *syntax.Expression {
 		tokens = append(tokens[1:closing], tokens[closing+1:]...)
 		for index := range tokens {
 			tokens[index].Pos = shift(tokens[index].Pos)
+			tokens[index].End = shift(tokens[index].End)
 		}
 		nested := &Parser{tokens: tokens}
 		value := nested.expression(0)
@@ -750,6 +764,9 @@ func (p *Parser) matchArms() []syntax.Arm {
 			break
 		}
 		a := syntax.Arm{Pos: p.peek().Pos}
+		if p.peek().Kind == lexer.String {
+			p.fail(p.peek(), "string-literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare strings with 'if command == \"report\":' and 'else' instead")
+		}
 		if p.take("_") {
 			a.Path = &syntax.Expression{Kind: syntax.KindName, Text: "_", Pos: a.Pos}
 		} else {
