@@ -60,6 +60,30 @@ interface Logger:
     fn flush() -> Result[Unit, LogError]
 ```
 
+### Logger.child
+
+Returns a logger that adds these fields to each record.
+
+```manuscript
+fn child(bindings: Map[String, JsonValue]) -> Logger
+```
+
+### Logger.flush
+
+Flushes the logger's transport.
+
+```manuscript
+fn flush() -> Result[Unit, LogError]
+```
+
+### Logger.log
+
+Writes a record at the selected level with optional JSON fields.
+
+```manuscript
+fn log(level: LogLevel, message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
+```
+
 ## Transport {data-api-kind="Interface"}
 
 A destination that accepts encoded log records and can be flushed and closed.

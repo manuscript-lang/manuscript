@@ -74,6 +74,16 @@ func renderModule(module checker.APIModule, forSite bool) string {
 		for _, implementation := range d.ImplementationDeclarations {
 			fmt.Fprintf(&b, "```manuscript\n%s```\n\n", implementation)
 		}
+		for _, member := range d.Members {
+			if strings.TrimSpace(member.Doc) == "" {
+				continue
+			}
+			name := d.Name + "." + member.Name
+			if member.Contract != "" {
+				name = d.Name + "." + member.Contract + "." + member.Name
+			}
+			fmt.Fprintf(&b, "### %s\n\n%s\n\n```manuscript\n%s\n```\n\n", name, member.Doc, member.Signature)
+		}
 		if forSite && module.Path == "@std/process.ms" && (d.Name == "ProcessControl" || d.Name == "SignalStream") {
 			b.WriteString("See the [shutdown cookbook](../../concurrency/shutdown.md) for runnable examples and limitations.\n\n")
 		}

@@ -18,6 +18,27 @@ type Decimal:
     fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
 ```
 
+### Decimal.round
+
+Rounds exactly to a multiple of `10^-places`, without converting to Float.
+Places range from -6144 through 6176; negative places round tens, hundreds, etc.
+Invalid places return InvalidInput; an unrepresentable result returns OutOfRange.
+Omitted or `none` mode selects HalfEven. This does not preserve trailing zeros or change arithmetic.
+
+```manuscript
+fn round(places: Int, mode: Optional[RoundingMode] = none) -> Result[Decimal, NumberError]:
+```
+
+### Decimal.to_fixed
+
+Rounds exactly and prints plain decimal notation with exactly `digits` fractional digits.
+Digits range from 0 through 6176; invalid digits return InvalidInput.
+HalfEven is the default; rounded zero has no minus sign. Trailing zeros are retained.
+
+```manuscript
+fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
+```
+
 ## RoundingMode {data-api-kind="Alternative"}
 
 How a Decimal rounds to a multiple of the requested power of ten.
@@ -29,5 +50,45 @@ type RoundingMode:
     case TowardZero
     case Floor
     case Ceil
+```
+
+### RoundingMode.Ceil
+
+Rounds toward positive infinity.
+
+```manuscript
+case Ceil
+```
+
+### RoundingMode.Floor
+
+Rounds toward negative infinity.
+
+```manuscript
+case Floor
+```
+
+### RoundingMode.HalfAwayFromZero
+
+Nearest value; an exact tie rounds away from zero.
+
+```manuscript
+case HalfAwayFromZero
+```
+
+### RoundingMode.HalfEven
+
+Nearest value; an exact tie chooses the even coefficient.
+
+```manuscript
+case HalfEven
+```
+
+### RoundingMode.TowardZero
+
+Discards the fractional coefficient toward zero.
+
+```manuscript
+case TowardZero
 ```
 
