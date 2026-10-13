@@ -303,26 +303,40 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 	}
 
-	// A shorthand token names a caller binding and supplies a callee label.
-	// Renaming either side expands the token to keep the other side intact.
+	// An unlabeled identifier names a caller binding and supplies a callee parameter.
+	// Renaming either side makes the label explicit to preserve argument binding.
 	for call, info := range program.Expressions {
 		if call.Kind != syntax.KindCall || len(info.Arguments) != len(call.Args) {
 			continue
 		}
 		called := program.Expressions[call.Left]
-		if called == nil || called.Type == nil || len(called.Type.Params) <= 1 {
-			continue
-		}
 		var decl *syntax.Declaration
-		if called.Symbol != nil {
-			decl = called.Symbol.Decl
+		arity := 0
+		if info.Constructor != nil {
+			if info.Case == "" {
+				arity = len(checker.Fields(info.Constructor))
+			} else {
+				for _, cs := range checker.Cases(info.Constructor) {
+					if cs.Name == info.Case {
+						arity = len(cs.Fields)
+					}
+				}
+			}
+		} else if called != nil && called.Type != nil {
+			arity = len(called.Type.Params)
+			if called.Symbol != nil {
+				decl = called.Symbol.Decl
+			}
+			if called.Method != nil {
+				decl = called.Method.Decl
+			}
 		}
-		if called.Method != nil {
-			decl = called.Method.Decl
+		if arity <= 1 {
+			continue
 		}
 		for at, arg := range call.Args {
 			label := info.Arguments[at].Name
-			if arg.Name != "" || label == "" || arg.Value.Kind != syntax.KindName {
+			if arg.Name != "" || label == "" || arg.Value.Kind != syntax.KindName || arg.Pos != arg.Value.Pos {
 				continue
 			}
 			value := program.Expressions[arg.Value]
@@ -337,6 +351,9 @@ func sourceIndex(result compiler.Result) []occurrence {
 				valueKey = symbolKey(value.Symbol)
 			}
 			labelKey := ""
+			if info.Constructor != nil && info.Constructor.Kind == syntax.KindRecord && info.Constructor.Def != nil {
+				labelKey = "field:" + symbolKey(info.Constructor.Def.Symbol) + ":" + label
+			}
 			if decl != nil {
 				for n, param := range decl.Params {
 					if param.Name == label && n < len(program.Parameters[decl]) {
@@ -353,7 +370,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 				}
 			}
 			if labelKey != "" {
-				index = append(index, occurrence{key: labelKey, name: label, pos: arg.Value.Pos, end: arg.Value.Pos.Offset + len(label), renameSuffix: ": " + arg.Value.Text, implicitLabel: true})
+				index = append(index, occurrence{key: labelKey, name: label, pos: arg.Value.Pos, end: arg.Value.Pos.Offset + len(arg.Value.Text), renameSuffix: ": " + arg.Value.Text, implicitLabel: true})
 			}
 		}
 	}

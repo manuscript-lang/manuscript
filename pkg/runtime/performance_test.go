@@ -2,6 +2,7 @@ package msruntime
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -235,5 +236,112 @@ func BenchmarkIterateEarlyExit(b *testing.B) {
 		for range Iterate(list) {
 			break
 		}
+	}
+}
+
+func BenchmarkBindImplementation(b *testing.B) {
+	receiver := customKey(1, "x")
+	ctx := RootExecution()
+	scope := TypeScope{Module: "a.ms", Args: []TypeScope{}}
+	for i := 0; i < b.N; i++ {
+		Invoke(ctx, Bind(receiver, "@std/Hashable", "hash", scope), nil)
+	}
+}
+
+func TestScalarLengthCache(t *testing.T) {
+	long := strings.Repeat("aé", 2000)
+	other := strings.Repeat("é", 2000)
+	for i := 0; i < 2; i++ {
+		if got := libraryPlain(t, "string/scalar_length", long); got != int64(4000) {
+			t.Fatalf("long: %v", got)
+		}
+		if got := libraryPlain(t, "string/scalar_length", other); got != int64(2000) {
+			t.Fatalf("other: %v", got)
+		}
+	}
+	if got := libraryPlain(t, "string/scalar_length", "héllo"); got != int64(5) {
+		t.Fatalf("short: %v", got)
+	}
+}
+
+func BenchmarkScalarLength(b *testing.B) {
+	text := strings.Repeat("ab", 800000)
+	spec := libraryFunctions["string/scalar_length"]
+	f := StandardFunction("string/scalar_length", libraryRuntimeType(spec.Result)).(Function)
+	ctx := RootExecution()
+	for i := 0; i < b.N; i++ {
+		f.Body(ctx, []Value{text})
+	}
+}
+
+func TestForLoopSeesSetAndMapAsOfLoopStart(t *testing.T) {
+	ctx := RootExecution()
+	set := &Set{Type: "@std/Set[Int]"}
+	for i := int64(1); i <= 4; i++ {
+		set.add(ctx, i)
+	}
+	var seen []int64
+	for _, item := range Iterate(set) {
+		seen = append(seen, item.(int64))
+		set.removeAt(ctx, 0)
+		set.add(ctx, item.(int64)+100)
+	}
+	if len(seen) != 4 || seen[0] != 1 || seen[1] != 2 || seen[2] != 3 || seen[3] != 4 {
+		t.Fatalf("set loop saw %v", seen)
+	}
+	m := &Map{Type: "@std/Map[Int][Int]"}
+	for i := int64(1); i <= 3; i++ {
+		m.put(ctx, i, i*10)
+	}
+	var values []int64
+	for _, entry := range Iterate(m) {
+		fields := entry.(Record).Fields
+		values = append(values, fields["value"].(int64))
+		m.put(ctx, fields["key"], int64(-1))
+		m.removeAt(ctx, 0)
+	}
+	if len(values) != 3 || values[0] != 10 || values[1] != 20 || values[2] != 30 {
+		t.Fatalf("map loop saw %v", values)
+	}
+}
+
+func BenchmarkIterateSetEarlyExit(b *testing.B) {
+	ctx := RootExecution()
+	set := &Set{Type: "@std/Set[Int]"}
+	for i := int64(0); i < 100000; i++ {
+		set.add(ctx, i)
+	}
+	for i := 0; i < b.N; i++ {
+		for range Iterate(set) {
+			break
+		}
+	}
+}
+
+func BenchmarkIterateMap(b *testing.B) {
+	ctx := RootExecution()
+	m := &Map{Type: "@std/Map[Int][Int]"}
+	for i := int64(0); i < 10000; i++ {
+		m.put(ctx, i, i)
+	}
+	for i := 0; i < b.N; i++ {
+		for range Iterate(m) {
+		}
+	}
+}
+
+func BenchmarkListAppendDirect(b *testing.B) {
+	ctx := &Execution{Context: context.Background()}
+	list := &List{Type: "@std/List[Int]"}
+	for i := 0; i < b.N; i++ {
+		ListAppend(ctx, list, int64(i))
+	}
+}
+
+func BenchmarkListAppendMember(b *testing.B) {
+	ctx := &Execution{Context: context.Background()}
+	list := &List{Type: "@std/List[Int]"}
+	for i := 0; i < b.N; i++ {
+		Invoke(ctx, NativeMemberResult(list, "append", "", TypeScope{}), []Argument{{Value: int64(i)}})
 	}
 }

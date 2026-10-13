@@ -33,7 +33,8 @@ func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 		returned(runtimeCall("ConstructWithContext", ident("ctx"), g.key(s.Type), sliceLiteral(runtimeName("Argument"), args...))))
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
-	oldCleanups, oldLoops, oldLabels, oldDepth := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth
+	oldCleanups, oldLoops, oldLabels, oldDepth, oldResult := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth, g.resultKey
+	g.resultKey = g.key(t.Result)
 	g.expressionDepth = 0
 	g.cleanups = nil
 	g.loopCleanup = nil
@@ -43,6 +44,7 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 		g.loopCleanup = oldLoops
 		g.loopLabels = oldLabels
 		g.expressionDepth = oldDepth
+		g.resultKey = oldResult
 	}()
 	var labels []string
 	for _, p := range t.Params {

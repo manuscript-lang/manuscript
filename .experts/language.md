@@ -72,12 +72,11 @@ Evidence: [sharing rules](../documentation/concurrency/sharing.md).
 
 ### Syntax improvements need examples across their boundaries
 
-Decision: support grouped symbol imports, and allow an omitted call label for a function with one parameter. The later token-cost request permits matching-name shorthand for multi-parameter functions and brace Map literals. Other multi-parameter expressions retain explicit labels. The latest correction also allows omitted labels on single-payload record/case constructors and contract views; multi-payload constructors retain labels. The single-parameter request measures declaration arity, not the number of arguments supplied. These are user decisions; verify their availability in the branch being changed.
+Decision: support grouped symbol imports and brace Map literals. The user's newer explicit request to “remove mandatory labels for invoking functions” supersedes the prior restriction to single-parameter unlabeled calls. Invocation labels are optional across functions, methods, function values and constructors. Preserve existing matching-name shorthand; changing every bare identifier to positional would silently change valid reordered calls. Keep callback function-type label identity separate from invocation syntax, including the contextual-lambda label adoption rule.
 
-Apply when: changing imports, calls, grammar, or editor assistance.
-Evidence for the newer rule: [call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names), [Map literals](../documentation/core-language/types/collections.md#map-literals), and [native terse syntax fixture](../tests/e2e/testdata/accept/terse-data.ms).
-Evidence: [grouped-import request](codex://threads/01a12e1a-7d2d-7646-b5fc-2dc8fdd60038); [single-parameter request](codex://threads/01a12e4a-98e8-775e-9e6c-c101a8ac300d).
-Verify: grouped imports resolve each symbol and its editor location; one-parameter calls exercise both spellings, multi-parameter calls accept matching bare names in any order and reject other unlabeled expressions, and missing arguments still fail. Consult current grammar and compatibility rules for methods, constructors, and function values rather than assuming identical boundaries.
+Apply when: changing calls, grammar, inference or editor assistance.
+Evidence: [explicit user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df); [canonical call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names); [binding/source preservation tests](../pkg/checker/positional_arguments_test.go); [native calls](../tests/e2e/testdata/accept/positional-arguments.ms).
+Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding.
 
 ### Recover concrete contract receivers through checked matching
 

@@ -18,10 +18,10 @@ fn f(first: Int, second: Int) -> Int: return first + second
 		{`let value = {[1]: 2}`, "Hashable"},
 		{`let first = 1
     let value = f(first, first: 2, second: 3)`, "duplicate argument first"},
-		{`let wrong = 1
-    let value = f(wrong, second: 2)`, "argument labels are required"},
+		{`let wrong = true
+    let value = f(wrong, second: 2)`, "expected Int, found Bool"},
 		{`let first = 1
-    let value = f(first + 1, second: 2)`, "argument labels are required"},
+    let value = f(first + 1, first: 2)`, "duplicate argument first"},
 	} {
 		t.Run(tc.body, func(t *testing.T) {
 			r := compiler.CompileSource("terse.ms", prefix+"fn test_case() -> Unit:\n    "+tc.body+"\n", compiler.Options{})

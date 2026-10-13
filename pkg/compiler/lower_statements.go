@@ -40,6 +40,18 @@ func (g *generator) pattern(p *syntax.Pattern, value ast.Expr) []ast.Stmt {
 	return out
 }
 func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
+	if pre, value := g.inlineTry(s); value != nil {
+		switch s.Kind {
+		case syntax.KindBind:
+			return append(pre, g.pattern(s.Pattern, value)...)
+		case syntax.KindAssign:
+			return append(pre, assign(ident(g.program.Assignments[s.Value].ID), token.ASSIGN, value))
+		case syntax.KindReturn:
+			return append(pre, returned(value))
+		default:
+			return append(pre, discard(value))
+		}
+	}
 	switch s.Kind {
 	case syntax.KindBind:
 		return g.pattern(s.Pattern, g.expression(s.Value))
@@ -59,6 +71,9 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		}
 		return []ast.Stmt{returned(value)}
 	case syntax.KindCall:
+		if s.Value.Kind == syntax.KindMatch {
+			return g.matchStatement(s.Value)
+		}
 		return []ast.Stmt{discard(g.expression(s.Value))}
 	case syntax.KindBreak, syntax.KindContinue:
 		var out []ast.Stmt
@@ -158,11 +173,37 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 	return append(out, &ast.SwitchStmt{Tag: runtimeCall(tag, ident(tmp)), Body: block(cases...)})
 }
 
+// A match in statement position lowers to a Go switch in the enclosing body,
+// so return, break, and continue in its arms are ordinary Go statements. Only
+// a match used as a value needs the generated closure.
+func (g *generator) matchStatement(e *syntax.Expression) []ast.Stmt {
+	out := g.match(e.Left, e.Arms, func(a *syntax.Arm) []ast.Stmt {
+		body := g.body(a.Body)
+		if a.Value != nil {
+			body = append(body, discard(g.expression(a.Value)))
+		}
+		return body
+	})
+	cases := out[len(out)-1].(*ast.SwitchStmt)
+	for _, clause := range cases.Body.List {
+		if clause.(*ast.CaseClause).List == nil {
+			return out
+		}
+	}
+	cases.Body.List = append(cases.Body.List, &ast.CaseClause{Body: []ast.Stmt{evaluated(runtimeCall("Panic", textLiteral("runtime invariant: exhaustive match")))}})
+	return out
+}
+
 // A loop containing match expressions gets a boundary for exits from their
 // generated closures. Scan before lowering so nested loops are emitted once.
 func (g *generator) loopBody(statements []*syntax.Statement, label *loopLabel) []ast.Stmt {
-	syntax.Visitor{Expression: func(e *syntax.Expression) {
-		if e.Kind == syntax.KindMatch {
+	direct := map[*syntax.Expression]bool{}
+	syntax.Visitor{Statement: func(s *syntax.Statement) {
+		if s.Kind == syntax.KindCall && s.Value.Kind == syntax.KindMatch {
+			direct[s.Value] = true
+		}
+	}, Expression: func(e *syntax.Expression) {
+		if e.Kind == syntax.KindMatch && !direct[e] {
 			label.escaped = true
 		}
 	}}.Callable(nil, statements)
@@ -178,4 +219,37 @@ func (g *generator) loopBody(statements []*syntax.Statement, label *loopLabel) [
 		&ast.CaseClause{List: []ast.Expr{intLiteral(1)}, Body: []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK, Label: ident(label.name)}}},
 		&ast.CaseClause{List: []ast.Expr{intLiteral(2)}, Body: []ast.Stmt{&ast.BranchStmt{Tok: token.CONTINUE, Label: ident(label.name)}}},
 	)}}
+}
+
+// A statement whose whole value is `try call` returns the error result directly
+// instead of panicking through the function's deferred handlers. It applies
+// only outside expression closures, where a Go return leaves the Manuscript
+// function.
+func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr) {
+	if g.expressionDepth > 0 || s.Value == nil || s.Target != nil {
+		return nil, nil
+	}
+	switch s.Kind {
+	case syntax.KindBind, syntax.KindAssign, syntax.KindReturn, syntax.KindCall:
+	default:
+		return nil, nil
+	}
+	e := s.Value
+	info := g.program.Expressions[e]
+	if e.Kind != syntax.KindUnary || e.Text != "try" || info.ErrorSource != nil || g.booleans[e] {
+		return nil, nil
+	}
+	tmp := g.temp()
+	cause := index(selector(ident(tmp), "Fields"), intLiteral(0))
+	var propagated ast.Expr = cause
+	if info.ScopedPropagation {
+		propagated = runtimeCall("ViewOf", textLiteral("@std/Error"), cause, g.typeScope(info.PropagatedError))
+	}
+	failure := composite(runtimeName("Alternative"), keyed("Type", g.resultKey), keyed("Tag", textLiteral("error")), keyed("Fields", sliceLiteral(runtimeName("Value"), propagated)))
+	check := &ast.IfStmt{
+		Cond: &ast.BinaryExpr{X: selector(ident(tmp), "Tag"), Op: token.EQL, Y: textLiteral("error")},
+		Body: block(returned(failure)),
+	}
+	pre := []ast.Stmt{define(tmp, &ast.TypeAssertExpr{X: g.expression(e.Right), Type: runtimeName("Alternative")}), check}
+	return pre, index(selector(ident(tmp), "Fields"), intLiteral(0))
 }

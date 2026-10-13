@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -64,12 +65,16 @@ type Map struct {
 	Type    string
 	Entries []Entry
 	keys    keyIndex
+	// shared marks Entries as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
 type Entry struct{ Key, Value Value }
 type Set struct {
 	Type  string
 	Items []Value
 	keys  keyIndex
+	// shared marks Items as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
 type Bytes struct{ Items []byte }
 type Duration int64
@@ -168,10 +173,40 @@ func Invoke(ctx *Execution, callee Value, args []Argument) Value {
 	CheckCancelled(ctx)
 	return f.Body(ctx, ordered)
 }
+
+// Lazy holds a value built on first use; generated code keeps one per call site
+// whose type arguments are known statically, so repeated calls skip Specialize.
+type Lazy struct {
+	once  sync.Once
+	value Value
+}
+
+func (l *Lazy) Get(build func() Value) Value {
+	l.once.Do(func() { l.value = build() })
+	return l.value
+}
+
 func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 	g, ok := value.(Generic)
 	if !ok {
 		return value
+	}
+	var key string
+	cache := genericCache(g)
+	if cache != nil {
+		var b strings.Builder
+		for i, arg := range args {
+			b.WriteString(arg)
+			b.WriteByte(0)
+			if i < len(scopes) {
+				writeScopeKey(&b, scopes[i])
+			}
+			b.WriteByte(1)
+		}
+		key = b.String()
+		if cached, ok := cache.Load(key); ok {
+			return cached.(Function)
+		}
 	}
 	sub := map[string]string{}
 	typeScopes := map[string]TypeScope{}
@@ -181,7 +216,37 @@ func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 			typeScopes[v] = scopes[i]
 		}
 	}
-	return g.Build(sub, typeScopes)
+	built := g.Build(sub, typeScopes)
+	if cache != nil {
+		cache.Store(key, built)
+	}
+	return built
+}
+
+// genericCaches holds one instantiation cache per Generic, keyed by the address
+// of its Variables backing array, which every copy of the value shares.
+var genericCaches sync.Map
+
+func genericCache(g Generic) *sync.Map {
+	if len(g.Variables) == 0 {
+		return nil
+	}
+	key := &g.Variables[0]
+	if cache, ok := genericCaches.Load(key); ok {
+		return cache.(*sync.Map)
+	}
+	cache, _ := genericCaches.LoadOrStore(key, new(sync.Map))
+	return cache.(*sync.Map)
+}
+
+func writeScopeKey(b *strings.Builder, scope TypeScope) {
+	b.WriteString(scope.Module)
+	b.WriteByte('(')
+	for _, arg := range scope.Args {
+		writeScopeKey(b, arg)
+		b.WriteByte(',')
+	}
+	b.WriteByte(')')
 }
 func Try(value Value, scopes ...TypeScope) Value {
 	v := value.(Alternative)
@@ -249,12 +314,14 @@ func Iterate(value Value) []Value {
 		v.shared = true
 		return v.Items[:len(v.Items):len(v.Items)]
 	case *Set:
-		return append([]Value{}, v.Items...)
+		v.shared = true
+		return v.Items[:len(v.Items):len(v.Items)]
 	case *Map:
 		values := make([]Value, len(v.Entries))
 		args := typeArguments(v.Type)
+		entryType := "@std/MapEntry[" + args[0] + "][" + args[1] + "]"
 		for i, e := range v.Entries {
-			values[i] = Record{"@std/MapEntry[" + args[0] + "][" + args[1] + "]", map[string]Value{"key": e.Key, "value": e.Value}}
+			values[i] = Record{entryType, map[string]Value{"key": e.Key, "value": e.Value}}
 		}
 		return values
 	}
@@ -661,6 +728,7 @@ var implementations []Implementation
 var implementationsByName = map[string][]int{}
 
 func Register(implementation Implementation) {
+	implementationCache.Clear()
 	implementationsByName[implementation.Name] = append(implementationsByName[implementation.Name], len(implementations))
 	implementations = append(implementations, implementation)
 }
@@ -916,8 +984,43 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 	})
 }
 
+type implementationKey struct {
+	typ, contract, name, module, args string
+}
+
+// resolvedImplementation is the receiver-independent outcome of a lookup.
+type resolvedImplementation struct {
+	impl       *Implementation
+	sub        map[string]string
+	typeScopes map[string]TypeScope
+}
+
+// implementationCache memoizes lookups; Register discards it.
+var implementationCache sync.Map
+
 func implementationFunction(receiver Value, contract, name string, scope TypeScope) (Function, bool) {
-	typ := ConcreteType(receiver)
+	key := implementationKey{typ: ConcreteType(receiver), contract: contract, name: name, module: scope.Module}
+	if len(scope.Args) > 0 {
+		var b strings.Builder
+		writeScopeKey(&b, scope)
+		key.args = b.String()
+	}
+	if cached, ok := implementationCache.Load(key); ok {
+		resolved := cached.(*resolvedImplementation)
+		if resolved == nil {
+			return Function{}, false
+		}
+		return resolved.impl.Build(receiver, resolved.sub, resolved.typeScopes), true
+	}
+	resolved := resolveImplementation(key.typ, contract, name, scope)
+	implementationCache.Store(key, resolved)
+	if resolved == nil {
+		return Function{}, false
+	}
+	return resolved.impl.Build(receiver, resolved.sub, resolved.typeScopes), true
+}
+
+func resolveImplementation(typ, contract, name string, scope TypeScope) *resolvedImplementation {
 	for _, at := range implementationsByName[name] {
 		m := &implementations[at]
 		if m.Scope != "" && m.Scope != scope.Module {
@@ -931,10 +1034,10 @@ func implementationFunction(receiver Value, contract, name string, scope TypeSco
 		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == contract) {
 			typeScopes := map[string]TypeScope{}
 			implementationScopes(m.Receiver, scope, vars, typeScopes)
-			return m.Build(receiver, sub, typeScopes), true
+			return &resolvedImplementation{m, sub, typeScopes}
 		}
 	}
-	return Function{}, false
+	return nil
 }
 
 func indexOfIn(ctx *Execution, items []Value, value Value) int {

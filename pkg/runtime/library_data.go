@@ -130,7 +130,7 @@ func init() {
 		}
 		return libraryOK(result, string(r[s:e]))
 	})
-	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return int64(utf8.RuneCountInString(a[0].(string))) })
+	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return scalarCount(a[0].(string)) })
 	add("encoding", "hex_encode", "String", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return hex.EncodeToString(a[0].(Bytes).Items) })
 	add("encoding", "hex_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("max_bytes", "Optional[Int]")}, func(_ *Execution, result string, a []Value) Value {
 		n := a[1].(int64)

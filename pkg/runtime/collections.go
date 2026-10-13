@@ -85,6 +85,41 @@ func constructor(typ string, args []Argument) Value {
 	return NewRecord(typ, args)
 }
 func Construct(typ string, args []Argument) Value { return constructor(typ, args) }
+
+// CollectionLength is the direct path for List, Map, and Set length calls.
+func CollectionLength(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	switch v := receiver.(type) {
+	case *List:
+		return int64(len(v.Items))
+	case *Map:
+		return int64(len(v.Entries))
+	case *Set:
+		return int64(len(v.Items))
+	}
+	return Panic("runtime invariant: collection receiver")
+}
+
+// ListAppend is the direct path for List.append calls.
+func ListAppend(ctx *Execution, receiver, value Value) Value {
+	CheckCancelled(ctx)
+	list := receiver.(*List)
+	list.Items = append(list.Items, value)
+	return list
+}
+
+// ListIsEmpty is the direct path for List.is_empty calls.
+func ListIsEmpty(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	return len(receiver.(*List).Items) == 0
+}
+
+// StringByteLength is the direct path for String.byte_length calls.
+func StringByteLength(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	return int64(len(receiver.(string)))
+}
+
 func NativeMember(receiver Value, name string) Value {
 	return NativeMemberResult(receiver, name, "")
 }
@@ -180,6 +215,7 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				return optional(typ, v.Entries[found].Value, true)
 			case "with_entry":
 				if found >= 0 {
+					v.ownEntries()
 					v.Entries[found].Value = args[1]
 				} else {
 					v.Entries = append(v.Entries, Entry{key, args[1]})

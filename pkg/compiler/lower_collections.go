@@ -24,6 +24,27 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
 			return g.locatedOperation(e, runtimeName("ListAt"), ident("ctx"), receiver, g.expression(arguments[0].Value), g.key(g.program.Expressions[e].Type))
 		}
+	case "length":
+		// Collection length reads the receiver's size; it never calls back or fails.
+		switch g.program.Expressions[e.Left.Left].Type.ID {
+		case "@std/List", "@std/Map", "@std/Set":
+			if len(arguments) == 0 {
+				return g.locatedOperation(e, runtimeName("CollectionLength"), ident("ctx"), g.expression(e.Left.Left))
+			}
+		}
+	case "append":
+		if len(arguments) == 1 && g.program.Expressions[e.Left.Left].Type.ID == "@std/List" {
+			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
+			return g.locatedOperation(e, runtimeName("ListAppend"), ident("ctx"), receiver, g.expression(arguments[0].Value))
+		}
+	case "is_empty", "collections/is_empty":
+		if len(arguments) == 0 && g.program.Expressions[e.Left.Left].Type.ID == "@std/List" {
+			return g.locatedOperation(e, runtimeName("ListIsEmpty"), ident("ctx"), g.expression(e.Left.Left))
+		}
+	case "byte_length":
+		if len(arguments) == 0 && g.program.Expressions[e.Left.Left].Type.ID == "String" {
+			return g.locatedOperation(e, runtimeName("StringByteLength"), ident("ctx"), g.expression(e.Left.Left))
+		}
 	case "optional/unwrap":
 		if len(arguments) == 0 {
 			return g.locatedOperation(e, runtimeName("OptionalUnwrap"), ident("ctx"), g.expression(e.Left.Left))
