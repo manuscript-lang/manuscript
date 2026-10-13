@@ -165,7 +165,7 @@ Verify: round-trip consecutive single empty fields with LF/CRLF and alternate de
 
 ### Native transformations need output implementation evidence
 
-Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map and Map.map_keys deduplicate output elements/keys, whose scope can differ from the input element/key scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep callback membership snapshots at the native invocation boundary and payload references shallow.
+Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map and Map.map_keys deduplicate output elements/keys, whose scope can differ from the input element/key scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep Map/Set callback membership snapshots at the native invocation boundary and payload references shallow.
 
 Apply when: adding native transformations with output bounds or changing receiver specialization.
 Evidence: [receiver lowering](../pkg/compiler/lower_collections.go), [native dispatch](../pkg/runtime/collections.go), [cross-module output evidence](../tests/e2e/testdata/projects/core_parity/main.ms), and [callback mutation conformance](../tests/e2e/testdata/stdlib/core-parity.ms).
@@ -187,18 +187,45 @@ Apply when: changing YAML scalar gathering, comment removal, whitespace handling
 Evidence: [YAML parser](../pkg/stdlib/yaml.ms), [called scalar regressions](../tests/e2e/testdata/stdlib/yaml.ms), [YAML contract](../documentation/standard-library/formats.md#yaml-behavior), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
 Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization.
 
-### Collection snapshots require every in-place writer to detach
+### List traversal follows the captured Go slice header
 
-Verified: List callback traversals can retain a capacity-limited header and use
-the existing loop COW flag instead of eagerly copying all membership. Appends
-lie beyond the captured length, but fill, overlapping copy, reverse and other
-prefix writes must detach first. Nested element references remain shared; the
-private membership header must not become a second source-visible alias.
+Decision: the user's later instruction explicitly supersedes List membership
+snapshot/COW guarantees. Capture the slice and initial length once, expose writes
+to shared backing elements, and never extend a traversal on append. Reallocation
+leaves the running traversal on its original array. No traversal-driven List copy
+or hidden shared flag is needed. Map/Set snapshots, closure variable capture,
+explicit shallow clone/slice storage and synchronization contracts remain distinct.
 
-Apply when: changing collection storage, mutators, callback traversal or iteration.
-Evidence: [mutation differential tests](../pkg/runtime/list_snapshot_test.go),
-[called native alias/interop cases](../tests/e2e/testdata/accept/list-snapshots.ms),
-[native fault/cancellation cases](../pkg/compiler/list_snapshot_native_test.go),
-and [measured allocation costs and conservative COW tradeoff](../scripts/bench-lists/README.md).
-Verify: read-only traversal allocates only a header; all existing-element writes
-leave captured membership unchanged, including reentry and saved method calls.
+Decision: shrinking boxed List mutations use non-clearing Go copy/append and
+reslice semantics. Vacated cells keep prior valid values; captured ranges can
+observe shifted/repeated tails. Full splice-to-empty shortens the header, preserving
+backing capacity; an explicit header reset releases that receiver's backing.
+Removed references can remain retained until overwritten/reallocated/released.
+
+Verified: nil clearing in the earlier draft caused an unframed Int conversion
+panic. A `[]Value` nil oracle and a native loop ignoring its binding both missed
+typed-consumption safety. Parent approved non-clearing behavior without implicit
+copies or invented zero values. Evidence: [typed Go oracles](../pkg/runtime/list_shrink_test.go),
+[called consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms),
+[original reproducer now succeeding](../scripts/bench-lists/repro-cleared-tail.ms),
+and [fix/retention review](../scripts/bench-lists/go-range-review.md#non-clearing-shrink).
+
+Apply when: changing List traversal, callbacks, writers or typed numeric storage.
+Evidence: [range/mutation oracle](../pkg/runtime/list_range_test.go),
+[called native Go-range cases](../tests/e2e/testdata/accept/list-go-range.ms),
+[loop contract](../documentation/core-language/control-flow/loops.md#iterable-types-and-binding),
+and [measured no-copy follow-on](../scripts/bench-lists/go-range-review.md).
+Verify: capture once, mutate in place, append with/without growth, shrink, reverse
+and self-splice; observed reads match ordinary Go backing-array behavior. Explicit
+clones stay separate and append-only callbacks visit only the initial length.
+Also consume yielded values after shrink in called native/standalone regressions,
+checking types, source fault frames, cancellation, explicit clone independence,
+and retained memory after clearing/reusing/releasing backing capacity.
+
+Verified: a mutating predicate can shift/replace the current List cell. `find`
+and `find_last` must capture the element before invoking the predicate and return
+that same shallow value when it matches; index variants return the captured index.
+Reloading the cell afterward returned an element the predicate never matched.
+Body-versus-dispatch comparisons share the bug, so use independent expected values
+and Go operation oracles. Evidence: [search regression](../pkg/runtime/list_find_mutation_test.go)
+and [called search/view/alias consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms).

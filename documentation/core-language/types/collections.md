@@ -88,7 +88,11 @@ Clones have independent outer storage and retain nested references. `map`, `filt
 
 List `slice` uses strict, nonnegative element bounds: `0 <= start <= end <= length()`. Invalid bounds fault; negative indexes accepted by `at` are not accepted by `slice`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
 
-A `for` loop and collection callback traversals snapshot collection membership once; elements retain their references. Adding or removing items inside the body does not change that traversal. Protect shared mutation and concurrent reads with `Synchronized`; every alias must use the same lock.
+A List `for` loop or callback traversal evaluates its backing slice and initial length once, without copying or freezing elements. In-place writes can change values read later in that traversal. Append never extends the current traversal. If a mutation reallocates storage, the running traversal keeps its original backing array; shrinking or shifting storage does not reduce its captured length. Use an explicit `.clone()` before traversal when stable, separate outer storage is needed. Nested elements retain their references.
+
+List removal and shrinking replacement shift elements and shorten the receiver's slice without overwriting the vacated tail. A captured traversal can therefore read shifted or repeated prior values. Replacing all elements with an empty list only shortens that slice; later appends can overwrite the same backing storage. Removed references can remain retained in spare capacity until overwritten, reallocated, or released along with the backing array. An explicit `fill` or `copy_within` writes backing elements and can affect later visits.
+
+Map and Set loops and callbacks retain their membership snapshot contract: additions, removals and replacements do not change that traversal. Protect shared mutation and concurrent reads with `Synchronized`; every alias must use the same lock.
 
 ## Lookup and updates
 
@@ -141,7 +145,7 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` look keys up by ha
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
 
-Enumeration copies outer storage and retains nested references. Callback traversals use the membership snapshot described above.
+Enumeration copies outer storage and retains nested references. List callbacks use the captured backing slice described above; Map and Set callbacks use membership snapshots.
 
 Set `union`, `intersection`, `difference`, and `symmetric_difference` return new sets. Symmetric difference contains values present in exactly one operand. `is_subset_of` tests whether all receiver values occur in the right operand, `is_superset_of` tests the converse, and `is_disjoint_from` tests whether there are no common values. The empty set is a subset of every set and is disjoint from every set. These operations leave both operands unchanged.
 

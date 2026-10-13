@@ -234,7 +234,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                 hex = hex.concat(digit)
                 count = count - 1
 
-            match parse_int(text: hex, radix: 16):
+            let scalar = match parse_int(text: hex, radix: 16):
                 error(_): return error(
                     invalid(
                         reader: reader,
@@ -242,15 +242,17 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                     )
                 )
 
-                ok(scalar):
-                    match from_scalars([scalar]):
-                        error(_): return error(
-                            invalid(
-                                reader: reader,
-                                reason: "invalid Unicode scalar"
-                            )
-                        )
-                        ok(text): result = result.concat(text)
+                ok(scalar): scalar
+
+            match from_scalars([scalar]):
+                error(_): return error(
+                    invalid(
+                        reader: reader,
+                        reason: "invalid Unicode scalar"
+                    )
+                )
+                ok(text): result = result.concat(text)
+
         else:
             return error(
                 invalid(
@@ -297,7 +299,7 @@ fn child(
         invalid(reader: reader, reason: "inline table is closed")
     )
 
-    match parent.entries.get(key):
+    let node = match parent.entries.get(key):
         none:
             let allocated = try allocate(reader)
             let created = table(explicit: false, dotted: dotted)
@@ -307,40 +309,68 @@ fn child(
             )
             return ok(created)
 
-        some(node):
-            match node:
-                TableNode(value):
-                    if value.sealed: return error(
-                        invalid(
-                            reader: reader,
-                            reason: "inline table is closed"
-                        )
-                    )
-                    if dotted and value.explicit: return error(
-                        invalid(
-                            reader: reader,
-                            reason: "dotted key extends an explicit table"
-                        )
-                    )
+        some(node): node
 
-                    return ok(value)
-
-                TableArray(tables):
-                    if dotted: return error(
-                        invalid(
-                            reader: reader,
-                            reason: "dotted key extends a table array"
-                        )
-                    )
-
-                    return ok(tables.last().unwrap())
-
-                _: return error(
-                    invalid(
-                        reader: reader,
-                        reason: "key is already a value"
-                    )
+    match node:
+        TableNode(value):
+            if value.sealed: return error(
+                invalid(
+                    reader: reader,
+                    reason: "inline table is closed"
                 )
+            )
+            if dotted and value.explicit: return error(
+                invalid(
+                    reader: reader,
+                    reason: "dotted key extends an explicit table"
+                )
+            )
+
+            return ok(value)
+
+        TableArray(tables):
+            if dotted: return error(
+                invalid(
+                    reader: reader,
+                    reason: "dotted key extends a table array"
+                )
+            )
+
+            return ok(tables.last().unwrap())
+
+        _: return error(
+            invalid(
+                reader: reader,
+                reason: "key is already a value"
+            )
+        )
+
+fn append_table(
+    reader: Reader,
+    parent: Table,
+    key: String,
+    next: Table
+) -> Result[Unit, TomlError]:
+    let node = match parent.entries.get(key):
+        none:
+            let allocated_array = try allocate(reader)
+            parent.entries.with_entry(
+                key: key,
+                value: Node.TableArray([next])
+            )
+            return ok(unit)
+        some(node): node
+
+    match node:
+        TableArray(tables):
+            tables.append(next)
+            return ok(unit)
+        _: return error(
+            invalid(
+                reader: reader,
+                reason: "table array conflicts with value"
+            )
+        )
 
 fn assign(
     reader: Reader,
@@ -994,31 +1024,12 @@ export fn parse(
                 let allocated_table = try allocate(reader)
                 let next = table(explicit: true, dotted: false)
 
-                match parent.entries.get(key):
-                    none:
-                        let allocated_array = try allocate(reader)
-                        (
-                            parent.entries.with_entry(
-                                key: key,
-                                value: Node.TableArray(
-                                    [next]
-                                )
-                            )
-                        )
-                        unit
-
-                    some(node):
-                        match node:
-                            TableArray(tables):
-                                tables.append(next)
-                                unit
-
-                            _: return error(
-                                invalid(
-                                    reader: reader,
-                                    reason: "table array conflicts with value"
-                                )
-                            )
+                let appended = try append_table(
+                    reader: reader,
+                    parent: parent,
+                    key: key,
+                    next: next
+                )
 
                 current = next
             else:

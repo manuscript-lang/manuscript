@@ -145,6 +145,7 @@ test "match expressions preserve returns and cleanup":
 
     let nested = match present:
         some(value):
+            # manuscript:allow-nested-match regression for nested expression values and the absent branch
             match absent:
                 some(other): value + other
                 none: value

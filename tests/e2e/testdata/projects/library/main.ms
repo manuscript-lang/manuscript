@@ -173,14 +173,14 @@ fn exercise(path: String) -> Result[Unit, Error]:
     return ok(unit)
 
 export fn main() -> Int:
-    match arguments().at(index: 0):
-        some(path):
-            match exercise(path: path):
-                ok(_):
-                    return 0
-
-                error(_):
-                    return 1
-
+    let path = match arguments().at(index: 0):
+        some(path): path
         none:
             return 2
+
+    match exercise(path: path):
+        ok(_):
+            return 0
+
+        error(_):
+            return 1
