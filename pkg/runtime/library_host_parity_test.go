@@ -736,3 +736,35 @@ func TestProcessSignalStreamAndMonotonicTime(t *testing.T) {
 	Bind(view, "", "close").(Function).Body(ctx, nil)
 	libraryFailure(t, Bind(view, "", "next").(Function).Body(ctx, nil), "Closed")
 }
+
+func TestFileSystemErrorMapping(t *testing.T) {
+	ctx := RootExecution()
+	dir := t.TempDir()
+	fs := &libraryFileSystem{dir}
+	call := func(name string, a ...Value) Value { return fs.Operation(name).Body(ctx, a) }
+	librarySuccess(t, call("create_directory", "dir", false))
+	librarySuccess(t, call("write_file", "dir/child", Bytes{[]byte("x")}, false))
+	librarySuccess(t, call("write_file", "file", Bytes{[]byte("abc")}, false))
+	libraryFailure(t, call("remove", "dir", false), "NotEmpty")
+	libraryFailure(t, call("list", "file", nil), "InvalidInput")
+	libraryFailure(t, call("read_file", "dir", nil), "InvalidInput")
+	libraryFailure(t, call("create_directory", "file", false), "AlreadyExists")
+
+	ro := librarySuccess(t, call("open", "file", "r", int64(0)))
+	write := func(h Value, name string, a ...Value) Value {
+		fn := Bind(h, "", name).(Function)
+		var args []Argument
+		for i, v := range a {
+			args = append(args, Argument{Name: fn.Labels[i], Value: v})
+		}
+		return Invoke(ctx, fn, args)
+	}
+	defer write(ro, "close")
+	libraryFailure(t, write(ro, "write_file", Bytes{[]byte("z")}), "InvalidInput")
+	libraryFailure(t, write(ro, "seek", int64(-1), int64(0)), "InvalidInput")
+	libraryFailure(t, write(ro, "seek", int64(0), int64(3)), "InvalidInput")
+	wo := librarySuccess(t, call("open", "file", "a", int64(0)))
+	defer write(wo, "close")
+	libraryFailure(t, write(wo, "read", int64(1)), "InvalidInput")
+	libraryFailure(t, write(wo, "read_file", int64(100)), "InvalidInput")
+}

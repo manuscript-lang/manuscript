@@ -33,6 +33,7 @@
     "@std/encoding.ms/base64_encode": "encoding/base64_encode",
     "@std/encoding.ms/hex_decode": "encoding/hex_decode",
     "@std/encoding.ms/hex_encode": "encoding/hex_encode",
+    "@std/errors.ms/category": "errors/category",
     "@std/faults.ms/panic": "panic",
     "@std/fs.ms/constants": "fs/constants",
     "@std/fs.ms/filesystem": "fs/filesystem",
