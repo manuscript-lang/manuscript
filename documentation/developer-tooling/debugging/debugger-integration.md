@@ -53,6 +53,8 @@ breakpoints, stepping, locals, disconnect, and transport-loss cleanup. On macOS
 it also verifies the installed system debugserver prerequisite; it cannot claim
 an installation with no Apple developer tools works.
 
+A failed `attach` leaves no session behind: the next `launch` or `attach` starts from a clean target selection instead of retrying the earlier process id.
+
 Requests that need a debug session (`pause`, `continue`, `next`, `threads`, `setBreakpoints`, and the rest) sent before a successful `launch` or `attach` get an ordinary DAP error response, `no debug session: send launch or attach before <command>`, instead of reaching Delve, which dereferences a missing debugger on `pause`.
 
 After the target has exited, `continue`, `next`, `stepIn`, `stepOut`, and `pause` get the error `the debuggee has exited` instead of a successful response followed by a `stopped` event with reason `error`. `terminate` is accepted in every state and ends the session and any running target like `disconnect` with `terminateDebuggee`. An `exited` event precedes `terminated` only when the exit code is known (Delve prints it for `noDebug` launches); the adapter never invents one. The VS Code adapter answers the same way after `terminated`, and `disconnect` and `terminate` succeed.

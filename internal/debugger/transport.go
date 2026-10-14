@@ -23,6 +23,8 @@ type execTransport struct {
 	io.ReadWriteCloser
 	reader  *bufio.Reader
 	pending bytes.Buffer
+	// startSession runs before each launch or attach reaches Delve.
+	startSession func()
 
 	mu     sync.Mutex // guards the fields below and every write to the client
 	out    bytes.Buffer
@@ -66,6 +68,9 @@ func (t *execTransport) Read(p []byte) (int, error) {
 			Arguments json.RawMessage `json:"arguments"`
 		}
 		parsed := json.Unmarshal(data, &request) == nil
+		if parsed && (request.Command == "launch" || request.Command == "attach") && t.startSession != nil {
+			t.startSession()
+		}
 		if parsed && request.Type == "request" && needsSession(request.Command) && !t.hasSession() {
 			// Delve would dereference its absent debugger (pause) or answer with
 			// an unrelated internal error. Say what the client must do instead.

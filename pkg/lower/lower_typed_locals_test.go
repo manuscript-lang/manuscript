@@ -231,3 +231,18 @@ fn lookup(m: Map[Int, Int], key: Int) -> Int:
 		t.Fatalf("interpolation still builds Values\n%s", r.Source)
 	}
 }
+
+func TestLambdasBorrowCallbackArguments(t *testing.T) {
+	r := compileSource("lambdas.ms", `import List from "@std/collections.ms"
+fn double(value: Int) -> Int: value * 2
+
+fn run(items: List[Int]) -> List[Int]:
+    return items.map(fn(value: Int) -> Int: double(value: value))
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	if !strings.Contains(r.Source, "rt.NewCompiledSourceFunction(") {
+		t.Fatalf("lambda does not borrow arguments\n%s", r.Source)
+	}
+}
