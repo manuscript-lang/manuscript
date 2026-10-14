@@ -44,13 +44,6 @@ func (p *Parser) enter() func() {
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
-	return parse(file, source)
-}
-
-// ParseLibrary is retained for callers; library and application syntax are identical.
-// Deprecated: use Parse.
-func ParseLibrary(file, source string) (*syntax.Module, error) { return Parse(file, source) }
-func parse(file, source string) (module *syntax.Module, err error) {
 	tokens, err := lexer.Lex(file, source)
 	if err != nil {
 		return nil, err
