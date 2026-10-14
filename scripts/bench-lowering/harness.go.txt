@@ -18,7 +18,7 @@ var benchmarkResult rt.Value
 func typedScalar() rt.Function {
  return rt.NewSourceFunction([]string{"limit"},"Int",@@scalarPosition@@,func(ctx *rt.Execution,args []rt.Value) rt.Value {
   sourcePosition:=@@scalarPosition@@
-  defer rt.TraceSource(&sourcePosition,"scalar")
+  defer rt.TraceSource(ctx,&sourcePosition,"scalar")
   cleanupStack:=rt.NewCleanupStack()
   defer cleanupStack.Unwind()
   limit:=rt.IntValue(args[0])
@@ -41,7 +41,7 @@ func typedScalar() rt.Function {
 func typedCalls() rt.Function {
  return rt.NewSourceFunction([]string{"limit"},"Int",@@callsPosition@@,func(ctx *rt.Execution,args []rt.Value) rt.Value {
   sourcePosition:=@@callsPosition@@
-  defer rt.TraceSource(&sourcePosition,"calls")
+  defer rt.TraceSource(ctx,&sourcePosition,"calls")
   cleanupStack:=rt.NewCleanupStack()
   defer cleanupStack.Unwind()
   limit:=rt.IntValue(args[0])
@@ -69,7 +69,7 @@ func typedCalls() rt.Function {
 func typedItems() rt.Function {
  return rt.NewSourceFunction([]string{"values","limit"},"Int",@@itemsPosition@@,func(ctx *rt.Execution,args []rt.Value) rt.Value {
   sourcePosition:=@@itemsPosition@@
-  defer rt.TraceSource(&sourcePosition,"items")
+  defer rt.TraceSource(ctx,&sourcePosition,"items")
   cleanupStack:=rt.NewCleanupStack()
   defer cleanupStack.Unwind()
   values:=args[0]

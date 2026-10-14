@@ -65,17 +65,37 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 	case syntax.KindIndex:
 		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	case syntax.KindMatch:
+		native := g.wantScalar > 0 && primitiveEqualityType(info.Type) != ""
+		oldExpressionResult := g.expressionResult
+		if native {
+			g.expressionResult = info.Type
+		} else {
+			g.expressionResult = nil
+		}
 		g.expressionDepth++
 		body := g.match(e.Left, e.Arms, func(a *syntax.Arm) []ast.Stmt {
 			body := g.body(a.Body)
 			value := unit()
 			if a.Value != nil {
-				value = g.expression(a.Value)
+				if native {
+					value = g.scalarValue(a.Value)
+				} else {
+					value = g.expression(a.Value)
+				}
+			}
+			if native && a.Value == nil {
+				value = scalarExtract(info.Type, runtimeCall("Panic", textLiteral("runtime invariant: match arm fell through")))
 			}
 			return append(body, returned(value))
 		})
 		g.expressionDepth--
-		body = append(body, returned(runtimeCall("Panic", textLiteral("runtime invariant: exhaustive match"))))
+		g.expressionResult = oldExpressionResult
+		fallback := runtimeCall("Panic", textLiteral("runtime invariant: exhaustive match"))
+		if native {
+			body = append(body, returned(scalarExtract(info.Type, fallback)))
+			return call(closure(nil, nativeResultType(info.Type), body...))
+		}
+		body = append(body, returned(fallback))
 		return call(closure(nil, runtimeName("Value"), body...))
 	case syntax.KindName, syntax.KindApply:
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
@@ -127,7 +147,16 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if info.Arguments != nil {
 			arguments = info.Arguments
 		}
+		if value := g.numericCall(e); value != nil {
+			return value
+		}
 		if value := g.directCollectionCall(e, arguments); value != nil {
+			return value
+		}
+		if value := g.nativeMethodCall(e, arguments); value != nil {
+			return value
+		}
+		if value := g.nativeSourceCall(e, arguments); value != nil {
 			return value
 		}
 		if value := g.preparedSourceCall(e, arguments); value != nil {
@@ -191,6 +220,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return call(ident("int64"), signedInteger("-9223372036854775808"))
 		}
+		if value := g.scalarUnary(e); value != nil {
+			return value
+		}
 		return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
 	case syntax.KindBinary:
 		if e.Text == "and" || e.Text == "or" {
@@ -198,7 +230,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			if e.Text == "or" {
 				op = token.LOR
 			}
-			return &ast.BinaryExpr{X: runtimeCall("Bool", g.expression(e.Left)), Op: op, Y: runtimeCall("Bool", g.expression(e.Right))}
+			return &ast.BinaryExpr{X: g.scalarValue(e.Left), Op: op, Y: g.scalarValue(e.Right)}
 		}
 		if e.Text == "==" || e.Text == "!=" {
 			if value := g.primitiveEquality(e); value != nil {

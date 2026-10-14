@@ -325,7 +325,7 @@ func RunMain(main Value, arguments []string) (exit int) {
 	defer close(done)
 	var mu sync.Mutex
 	signalExit := 0
-	markConcurrent()
+	// Signal delivery never runs source code or touches user record fields.
 	go func() {
 		select {
 		case s := <-signals:

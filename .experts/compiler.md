@@ -23,6 +23,17 @@ capture allocations; typed controls cannot replace these acceptance workloads.
 See [the explicit allocation ledger](../scripts/bench-lists/typed-storage.md#review-correction-traversal-allocation-regressions). Preserve one authoritative
 mutable handle across typed and generic aliases rather than keeping a boxed mirror.
 
+Decision: [the parent approved](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157745861)
+borrowing argument arrays only for generated bodies that copy parameter Values
+and cannot retain/expose the incoming slice. Capturing individual Values is safe;
+arbitrary Go callbacks and unproven wrappers remain unmarked. Each `for_each`
+invocation owns its buffer, including reentry. Native adapters call a raw body
+with scalar/Value copies; ordinary source bodies bind slots before executing
+source expressions. Generated tails keep the conservative constructor until
+audited. Exercise [captured callback/reentry conformance](../tests/e2e/testdata/accept/typed-list-lowering.ms)
+and [native marker/fault/cancellation checks](../pkg/build/typed_list_calls_test.go)
+alongside runtime retention/allocation controls before expanding this seam.
+
 Apply when: optimizing Go lowering, representations, calls, or collection access.
 Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),
@@ -61,6 +72,24 @@ Evidence: [view lowering](../pkg/lower/lower_expressions.go),
 [AST marker regressions](../pkg/lower/lower_views_test.go),
 [native evaluation/capture tests](../tests/e2e/testdata/accept/interface-view-callables.ms),
 and [native DAP regression](../extensions/vscode/tests/interface-view-debug.test.js).
+
+Verified: Go constant negation of `float64(0)` produces positive zero. Native
+Float unary lowering must perform variable arithmetic (`FloatNegate`) so source
+`-0.0`, IEEE sign bits and `toString()` retain negative zero. A direct source call
+also needs the expected parameter type when its argument is `Never`: faulting
+arguments are accepted source and must still produce compilable typed Go.
+Evidence: [native scalar lowering](../pkg/lower/lower_scalars.go),
+[numeric source conformance](../tests/e2e/testdata/accept/numeric-lowering.ms),
+[conversion conformance](../tests/e2e/testdata/accept/to-string.ms), and
+[actual typed boundary tests](../pkg/build/typed_list_calls_test.go).
+
+Verified: selected methods are copied when the checker substitutes a receiver.
+Pointer equality with the declaration does not identify that selection. Native
+method lowering indexes the canonical checked method ID and retains dynamic
+contract/default preparation when no concrete entry is available.
+Evidence: [method selection](../pkg/checker/contracts.go),
+[native method entries](../pkg/lower/lower_native_methods.go), and
+[direct-method acceptance](../tests/e2e/testdata/accept/direct-methods.ms).
 
 ### Native build levels need artifact evidence
 

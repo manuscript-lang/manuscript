@@ -150,8 +150,30 @@ func (g *generator) enterNativeDefault(d *syntax.Declaration) bool {
 	return true
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
+	oldParameters, oldResult, oldWant := g.nativeParameters, g.nativeResult, g.wantScalar
+	g.nativeParameters, g.nativeResult, g.wantScalar = nil, nil, 0
+	defer func() { g.nativeParameters, g.nativeResult, g.wantScalar = oldParameters, oldResult, oldWant }()
+	if kind := comparatorKind(t, params); self == nil && len(tail) == 0 && kind != "" && g.nativeBodyCompatible(params, body, bindings, t) {
+		g.nativeParameters = map[*checker.Binding]bool{}
+		g.nativeResult = t.Result
+		parameters := []*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")})}
+		for _, b := range bindings {
+			g.nativeParameters[b] = true
+			parameters = append(parameters, field(b.ID, ident(primitiveEqualityType(b.Type))))
+		}
+		labels, key, position, out := g.functionParts(name, params, result, body, bindings, self, t)
+		return runtimeCall("New"+kind+"CompareFunction", stringSlice(labels), key, textLiteral(position), closure(parameters, ident("int64"), out...))
+	}
 	labels, key, position, out := g.functionParts(name, params, result, body, bindings, self, t, tail...)
-	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
+	constructor := "NewSourceFunction"
+	if len(tail) == 0 {
+		// functionParts copies each slot into its parameter binding before any
+		// source body/default runs. Source expressions can capture those Values,
+		// but cannot refer to the incoming Go slice. Generated adapter tails
+		// retain the conservative constructor until separately audited.
+		constructor = "NewCompiledSourceFunction"
+	}
+	return runtimeCall(constructor, stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
 }
 
 // functionParts lowers a callable's labels, result key, source position, and
@@ -160,6 +182,9 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 func (g *generator) functionParts(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ([]string, ast.Expr, string, []ast.Stmt) {
 	oldCleanups, oldLoops, oldLabels, oldDepth, oldResult := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth, g.resultKey
 	oldNeedsCleanup := g.needsCleanup
+	oldExpressionResult := g.expressionResult
+	g.expressionResult = nil
+	defer func() { g.expressionResult = oldExpressionResult }()
 	resultKey := g.key(t.Result)
 	g.resultKey = resultKey
 	g.expressionDepth = 0
@@ -188,6 +213,24 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 		out = append(out, define(self.ID, ident("receiver")), discard(ident(self.ID)))
 	}
 	for i, b := range bindings {
+		if g.nativeResult != nil {
+			out = append(out, discard(ident(b.ID)))
+			var value ast.Expr
+			if params[i].Default != nil {
+				value = g.bindingValue(b, params[i].Default)
+			} else if t.Defaults[t.Params[i].Name] && b.Type.ID == "@std/Optional" {
+				value = runtimeCall("NewAlternative", g.key(b.Type), textLiteral("none"), ident("nil"), ident("nil"))
+			}
+			if value != nil {
+				stmt := &ast.IfStmt{Cond: &ast.UnaryExpr{Op: token.NOT, X: ident(nativePresence(i))}, Body: block(assign(ident(b.ID), token.ASSIGN, value))}
+				pos := result.Pos
+				if params[i].Default != nil {
+					pos = params[i].Default.Pos
+				}
+				out = append(out, g.locatedStatement(pos, stmt))
+			}
+			continue
+		}
 		out = append(out, define(b.ID, index(ident("args"), intLiteral(i))), discard(ident(b.ID)))
 		// Checked source values are concrete (including Unit and Optional.none);
 		// Invoke leaves nil only for an omitted argument.
@@ -208,6 +251,10 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 		prologue = append(prologue, define("cleanupStack", runtimeCall("NewCleanupStack")), &ast.DeferStmt{Call: call(selector(ident("cleanupStack"), "Unwind"))})
 	}
 	out = append(prologue, out...)
-	out = append(out, g.locatedStatement(syntax.Position{File: "manuscript.generated.go", Line: 1}, returned(unit())))
+	var fallback ast.Expr = unit()
+	if g.nativeResult != nil && primitiveEqualityType(g.nativeResult) != "" {
+		fallback = scalarExtract(g.nativeResult, runtimeCall("Panic", textLiteral("runtime invariant: source function fell through")))
+	}
+	out = append(out, g.locatedStatement(syntax.Position{File: "manuscript.generated.go", Line: 1}, returned(fallback)))
 	return labels, resultKey, result.Pos.String(), out
 }
