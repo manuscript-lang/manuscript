@@ -13,12 +13,7 @@ fn kept(resource: Resource) -> Int:
 
     return 0
 
-fn ints(
-    left: Int,
-    right: Int,
-    limit: Int,
-    resource: Resource
-) -> Int:
+fn ints(left: Int, right: Int, limit: Int, resource: Resource) -> Int:
     with active = resource:
         var count = 0
         var index = 0
@@ -32,12 +27,7 @@ fn ints(
 
     return 0
 
-fn floats(
-    left: Float,
-    right: Float,
-    limit: Int,
-    resource: Resource
-) -> Int:
+fn floats(left: Float, right: Float, limit: Int, resource: Resource) -> Int:
     with active = resource:
         var count = 0
         var index = 0
@@ -51,12 +41,7 @@ fn floats(
 
     return 0
 
-fn bools(
-    left: Bool,
-    right: Bool,
-    limit: Int,
-    resource: Resource
-) -> Int:
+fn bools(left: Bool, right: Bool, limit: Int, resource: Resource) -> Int:
     with active = resource:
         var count = 0
         var index = 0
@@ -70,12 +55,7 @@ fn bools(
 
     return 0
 
-fn strings(
-    left: String,
-    right: String,
-    limit: Int,
-    resource: Resource
-) -> Int:
+fn strings(left: String, right: String, limit: Int, resource: Resource) -> Int:
     with active = resource:
         var count = 0
         var index = 0

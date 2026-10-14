@@ -33,7 +33,7 @@ Formatting preserves program meaning and comments. It uses four-space indentatio
 
 The current formatter applies these layout rules:
 
-- Keep token spellings; wrap expressions using a soft limit of 88 columns.
+- Keep token spellings; wrap expressions only when they exceed a soft limit of 88 columns; groups that fit stay on one line.
 - Keep short lists and callback signatures compact, and preserve authored spacing between match arms.
 - Put one space around operators and after argument/type colons and commas.
 - Remove spaces next to delimiters and put two spaces before inline comments.

@@ -14,26 +14,13 @@ import value from "./support/results.ms"
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
 fn stream_events(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let sent = headers()
-    value(
-        sent.append(
-            "Content-Type",
-            "text/event-stream".to_bytes()
-        )
-    )
+    value(sent.append("Content-Type", "text/event-stream".to_bytes()))
     value(exchange.send_headers(status: 200, headers: sent))
 
-    value(
-        exchange.write("event: greet\r\ndata: h".to_bytes())
-    )
-    value(
-        exchange.write("é".to_bytes().slice(0, 1).unwrap())
-    )
-    value(
-        exchange.write("\u{e9}!\r".to_bytes().slice(1, 4).unwrap())
-    )
-    value(
-        exchange.write("\n\r\n: keepalive\n\ndata: second\n\n".to_bytes())
-    )
+    value(exchange.write("event: greet\r\ndata: h".to_bytes()))
+    value(exchange.write("é".to_bytes().slice(0, 1).unwrap()))
+    value(exchange.write("\u{e9}!\r".to_bytes().slice(1, 4).unwrap()))
+    value(exchange.write("\n\r\n: keepalive\n\ndata: second\n\n".to_bytes()))
     return ok(unit)
 
 test "HTTP response bodies decode as SSE without being closed by the reader":
@@ -44,9 +31,7 @@ test "HTTP response bodies decode as SSE without being closed by the reader":
             options: HttpServerOptions()
         )
     ):
-        with client = value(
-            network().http_client(options: HttpClientOptions())
-        ):
+        with client = value(network().http_client(options: HttpClientOptions())):
             with response = value(
                 client.request(
                     method: HttpMethod.Get,
@@ -54,9 +39,7 @@ test "HTTP response bodies decode as SSE without being closed by the reader":
                     headers: headers()
                 )
             ):
-                let events = value(
-                    reader(input: borrow_body(response))
-                )
+                let events = value(reader(input: borrow_body(response)))
 
                 let first = value(next_event(events)).unwrap()
                 let second = value(next_event(events)).unwrap()

@@ -33,10 +33,7 @@ fn table(rng: Rng, depth: Int) -> TomlValue:
     var count = next(rng, 4)
 
     while count > 0:
-        entries.add(
-            text(rng),
-            generated(rng, depth)
-        )
+        entries.add(text(rng), generated(rng, depth))
         count = count - 1
 
     return TomlValue.TableValue(entries)
@@ -57,13 +54,7 @@ test "TOML stringify then parse preserves generated documents":
     var seed = 1
 
     while seed <= 300:
-        check_round_trip(
-            seed,
-            table(
-                Rng(seed),
-                0
-            )
-        )
+        check_round_trip(seed, table(Rng(seed), 0))
         seed = seed + 1
 
 test "TOML parse never faults on mutated documents and accepted input is stable":
@@ -72,9 +63,7 @@ test "TOML parse never faults on mutated documents and accepted input is stable"
 
     while seed <= 300:
         let rng = Rng(seed)
-        let rendered = value(
-            stringify(table(rng, 0))
-        )
+        let rendered = value(stringify(table(rng, 0)))
         var round = 0
 
         while round < 4:

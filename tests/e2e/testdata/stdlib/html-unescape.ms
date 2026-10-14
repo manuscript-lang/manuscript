@@ -69,8 +69,6 @@ test "HTML escape and unescape retain immutable text":
     let original = "&lt;é&gt;"
     let alias = original
     let decoded = unescape(original)
-    if (
-        alias != "&lt;é&gt;"
-        or original != alias
-        or decoded != "<é>"
-    ): return panic("unescape text alias")
+    if (alias != "&lt;é&gt;" or original != alias or decoded != "<é>"): return panic(
+        "unescape text alias"
+    )

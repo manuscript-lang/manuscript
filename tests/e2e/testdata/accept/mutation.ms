@@ -50,11 +50,7 @@ test "record fields mutate through aliases methods views and captures":
     let copied = box.clone()
     replace(box: box, value: "new")
     copied.child.val = 9
-    if not (
-        box.value == "new"
-        and copied.value == "old"
-        and box.child.val == 9
-    ):
+    if not (box.value == "new" and copied.value == "old" and box.child.val == 9):
         return panic(message: "clones must be shallow")
 
     let log: List[Int] = []
@@ -77,15 +73,7 @@ test "collection updates retain identity and clone separates storage":
         return panic(message: "list updates must mutate")
 
     values.splice(start: 1, delete_count: 1, replacement: values)
-    if not (
-        alias == [
-            8,
-            8,
-            2,
-            0,
-            0
-        ]
-    ):
+    if not (alias == [8, 8, 2, 0, 0]):
         return panic(message: "self replacement failed")
 
     let map = Map[String, Int]().add(key: "a", value: 1)
@@ -184,10 +172,7 @@ test "collection clones retain nested object references":
     copied_values.append(Val(2))
     let entries = Map[String, Val]().add(key: "child", value: child)
     let copied_entries = entries.clone()
-    copied_entries.add(
-        key: "other",
-        value: Val(3)
-    )
+    copied_entries.add(key: "other", value: Val(3))
 
     for entry in copied_entries.entries():
         if entry.key == "child":

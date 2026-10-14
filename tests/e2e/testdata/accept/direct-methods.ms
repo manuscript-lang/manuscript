@@ -60,28 +60,13 @@ test "one call site sees different receiver types":
 
 test "views, defaults, and reordered labels keep dispatch":
     let c = Counter(n: 5)
-    if not (
-        through_view(
-            b: Bumper(value: c),
-            by: 2
-        ) == 7
-    ):
+    if not (through_view(b: Bumper(value: c), by: 2) == 7):
         return panic(message: "view")
     if not (c.scale(factor: 2) == 10):
         return panic(message: "default")
-    if not (
-        c.scale(
-            offset: some(1),
-            factor: 2
-        ) == 11
-    ):
+    if not (c.scale(offset: some(1), factor: 2) == 11):
         return panic(message: "reordered")
-    if not (
-        c.scale(
-            factor: 2,
-            offset: some(3)
-        ) == 13
-    ):
+    if not (c.scale(factor: 2, offset: some(3)) == 13):
         return panic(message: "ordered")
 
 type Parser:

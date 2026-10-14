@@ -37,10 +37,7 @@ fn eager(counter: Counter) -> Int:
 test "default insertion keeps eager and lazy calls and receiver identity":
     let values = Map[String, Int]().add("a", 1)
     let counter = Counter(0)
-    let alias = values.add_default(
-        "a",
-        eager(counter)
-    )
+    let alias = values.add_default("a", eager(counter))
     if counter.calls != 1 or values.get("a") != some(1): return panic("eager default")
 
     alias.add("b", 2)

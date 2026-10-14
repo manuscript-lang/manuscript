@@ -22,7 +22,7 @@ export fn main() -> Int:
         max_body_bytes: 1024,
         max_response_bytes: 1024,
         timeout: 2.seconds,
-        grace: 0.seconds,
+        grace: 0.seconds
     ):
         error(_):
             return 1

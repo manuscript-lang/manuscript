@@ -255,20 +255,19 @@ infer stages from the names of calls or bindings.
 
 Expression layout uses a soft limit of 88 columns:
 
-- Keep simple calls and small literals compact. Expand calls with four or more
-  arguments, multiple arguments containing nested calls or compound computations,
-  or a closure argument. Single-argument calls containing another nested
-  computation can also expand.
-- Expand signatures with four or more parameters or complex defaults. Include the
-  return type when deciding whether a signature fits, excluding callback bodies
-  and enclosing arguments.
+- Keep calls and signatures on one line when they fit, whatever their argument
+  or parameter count, nested calls, compound computations, or defaults. An
+  anonymous function whose body is a multi-statement suite always expands its
+  call. Include the return type when deciding whether a signature fits,
+  excluding callback bodies and enclosing arguments.
 - Keep lists compact when they fit, including nested lists. Expand grouped
-  imports with five or more names. Later call arguments do not count toward
+  imports with five or more names and maps with ten or more entries. Later call arguments do not count toward
   the width of a preceding list or call in a chain.
 - Once a group expands, put every argument, parameter, or element on its own line.
   Use four spaces beyond the containing line and align the closing delimiter with
-  that line. Existing multiline groups remain expanded with this same layout.
-- Break conditions with three or more clauses at their lowest-precedence logical
+  that line. An authored multiline group collapses when it fits and holds no
+  comment or suite; an authored trailing comma is dropped when it does.
+- Break conditions that exceed the limit at their lowest-precedence logical
   operator. Keep comparison operands together. Long arithmetic and member chains
   also gain continuation lines, preserving precedence and evaluation order.
 - Add grouping parentheses around complete statement values, argument values,

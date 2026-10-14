@@ -77,9 +77,7 @@ impl Error for SseError:
             ReadFailed(cause): return "SSE read failed: {cause.message()}"
 
 # Creates a decoder. Supplied limits must be positive.
-export fn decoder(
-    limits: SseLimits = SseLimits()
-) -> Result[SseDecoder, SseError]:
+export fn decoder(limits: SseLimits = SseLimits()) -> Result[SseDecoder, SseError]:
     if not positive(limits.max_line_bytes): return error(SseError.InvalidInput)
     if not positive(limits.max_event_bytes): return error(SseError.InvalidInput)
 
@@ -186,10 +184,7 @@ fn end_line(decoder: SseDecoder, events: List[SseEvent]) -> Result[Unit, SseErro
 
         if bytes.starts_with("\u{feff}".to_bytes()): bytes = (
             bytes
-            .slice(
-                3,
-                bytes.length()
-            )
+            .slice(3, bytes.length())
             .unwrap()
         )
 
@@ -218,19 +213,10 @@ fn apply(decoder: SseDecoder, line: String) -> Unit:
     let colon = line.index_of(":")
 
     if colon.is_some():
-        name = line.slice(
-            0,
-            colon.unwrap()
-        ).unwrap()
-        value = line.slice(
-            colon.unwrap() + 1,
-            line.length()
-        ).unwrap()
+        name = line.slice(0, colon.unwrap()).unwrap()
+        value = line.slice(colon.unwrap() + 1, line.length()).unwrap()
 
-        if value.starts_with(" "): value = value.slice(
-            1,
-            value.length()
-        ).unwrap()
+        if value.starts_with(" "): value = value.slice(1, value.length()).unwrap()
 
     if name == "event": decoder.event_type = value
     else if name == "data": decoder.data.append(value)
@@ -245,11 +231,7 @@ fn identify(decoder: SseDecoder, value: String) -> Unit:
 
 # Only ASCII digits form a retry time; overflow and signs are ignored.
 fn reconnect(decoder: SseDecoder, value: String) -> Unit:
-    if (
-        value.is_empty()
-        or value.starts_with("-")
-        or value.starts_with("+")
-    ): return unit
+    if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return unit
 
     let milliseconds = value.parse_int()
 
@@ -348,10 +330,7 @@ export fn next_event(reader: SseReader) -> Result[Optional[SseEvent], SseError]:
         let chunk = read.unwrap()
 
         if chunk.is_some():
-            reader.ready = try feed(
-                decoder: reader.decoder,
-                chunk: chunk.unwrap()
-            )
+            reader.ready = try feed(decoder: reader.decoder, chunk: chunk.unwrap())
         else:
             try finish(decoder: reader.decoder)
             reader.finished = true
