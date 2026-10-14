@@ -440,6 +440,11 @@ func (l *expressionLayout) sequence(nodes []layoutNode, indent, column int, pref
 		if comment && lastLine != node.token.Pos.Line && output.Len() > 0 {
 			pending = true
 		}
+		if output.Len() > 0 && !pending && !suite && lastLine != 0 && lastLine != node.token.Pos.Line {
+			// An original line break joins this line to the output line. A suite
+			// opened here is indented relative to the line that holds its header.
+			firstIndent = l.lineIndent(node.token.Pos.Line)
+		}
 		if output.Len() == 0 || pending {
 			if output.Len() > 0 {
 				write("\n")
