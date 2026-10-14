@@ -68,9 +68,27 @@ let exact = identity[Int](value: 1)
 let inferred = identity(value: 1)
 ```
 
-Type parameters are ordered and their names unique. An application supplies exactly one argument per parameter. Default type arguments, higher-kinded parameters, type aliases, and variadic type parameters are unsupported. Records, alternatives, interfaces, and named functions may declare generic parameters. Implementation blocks use the receiver type declaration's parameters and inherit applicable bounds from the type and interface declarations. Anonymous functions, contract operations, and implementation methods cannot declare their own type parameters. Methods inherit the parameters used in their implementation's receiver; see [generic implementations](contracts.md#generic-implementations) for receiver matching, bound checking, and overlap rejection.
+Type parameters are ordered and their names unique. An application supplies one argument per parameter, except that trailing parameters with a [default](#default-type-arguments) may be omitted. Higher-kinded parameters, type aliases, and variadic type parameters are unsupported. Records, alternatives, interfaces, and named functions may declare generic parameters. Implementation blocks use the receiver type declaration's parameters and inherit applicable bounds from the type and interface declarations. Anonymous functions, contract operations, and implementation methods cannot declare their own type parameters. Methods inherit the parameters used in their implementation's receiver; see [generic implementations](contracts.md#generic-implementations) for receiver matching, bound checking, and overlap rejection.
 
 Applications are invariant: `Box[Int]` and `Box[Float]` are distinct types. A generic declaration is not an unapplied type or function value. A generic function passed as a value must be explicitly specialized, for example `identity[Int]`.
+
+## Default type arguments
+
+A type parameter may declare a default with `= Type`. Once one parameter has a default, every later parameter needs one too, so omitted arguments are always a suffix. A default may name earlier parameters but not itself or later ones, and it must satisfy the parameter's bounds.
+
+```manuscript
+type Pair[A, B = A]:
+    first: A
+    second: B
+
+fn parse[T = String](text: String) -> Optional[T]:
+    return none
+
+let same: Pair[Int] = Pair[Int](1, 2)    # Pair[Int, Int]
+let mixed = Pair[Int, String](1, "x")
+```
+
+An explicit type application may omit trailing defaulted arguments. For a call that omits its type arguments, inference runs first, using the arguments and the expected result; a parameter that inference leaves undetermined takes its default. Constructors do the same. A parameter without a default that nothing determines is still an error.
 
 ## Inference from arguments
 

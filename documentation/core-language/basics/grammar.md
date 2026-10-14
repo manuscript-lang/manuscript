@@ -143,7 +143,7 @@ FunctionParameter = Parameter, [ "=", Expression ] ;
 CallbackParameters = CallbackParameter, { ",", CallbackParameter }, [ "," ] ;
 CallbackParameter = Name, [ ":", Type ], [ "=", Expression ] ;
 TypeParameters = "[", TypeParameter, { ",", TypeParameter }, [ "," ], "]" ;
-TypeParameter = Name, [ ":", Bounds ] ;
+TypeParameter = Name, [ ":", Bounds ], [ "=", Type ] ;
 Bounds        = NamedType, { "&", NamedType } ;
 
 Type          = NamedType | FunctionType | "(", Type, ")" ;
