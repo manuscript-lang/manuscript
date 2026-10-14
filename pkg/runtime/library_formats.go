@@ -481,10 +481,35 @@ func libraryURL(v Value) (*url.URL, error) {
 	if err != nil || !utf8.ValidString(decoded) {
 		return nil, io.ErrUnexpectedEOF
 	}
+	if !validURLQuery(f["query"].(string)) || strings.ContainsAny(host, " <>\"") {
+		return nil, io.ErrUnexpectedEOF
+	}
 	u := &url.URL{Scheme: f["scheme"].(string), Host: host, Path: decoded, RawPath: raw, RawQuery: f["query"].(string), Fragment: f["fragment"].(string)}
 	parsed, err := url.Parse(u.String())
 	if err != nil || parsed.Scheme == "" || parsed.User != nil || strings.ContainsAny(host, "/@\\\r\n") {
 		return nil, io.ErrUnexpectedEOF
 	}
 	return u, nil
+}
+
+// validURLQuery rejects query text that would not round-trip through parse: a
+// '#' starts the fragment, spaces and controls are not allowed raw, and '%'
+// must begin a two-digit escape.
+func validURLQuery(query string) bool {
+	for i := 0; i < len(query); i++ {
+		c := query[i]
+		switch {
+		case c == '#' || c == ' ' || c < 0x20 || c == 0x7f:
+			return false
+		case c == '%':
+			if i+2 >= len(query) || !isHexDigit(query[i+1]) || !isHexDigit(query[i+2]) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func isHexDigit(c byte) bool {
+	return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'
 }
