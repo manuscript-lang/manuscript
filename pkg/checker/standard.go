@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -45,7 +46,6 @@ type standardBindings struct {
 	Functions            map[string]string            `json:"functions"`
 	IntrinsicReceivers   map[string]string            `json:"intrinsic_receivers"`
 	Implementations      map[string]string            `json:"implementations"`
-	Receivers            map[string]string            `json:"receivers"`
 	ReceiverRequirements map[string]map[string]string `json:"receiver_requirements"`
 }
 
@@ -401,6 +401,11 @@ func (l *standardLoader) bindImplementations() error {
 // bindReceivers attaches native receiver bindings and their requirements.
 func (l *standardLoader) bindReceivers() error {
 	c := l.c
+	intrinsicNames := map[string]string{}
+	for receiver, name := range l.bindings.IntrinsicReceivers {
+		intrinsicNames[name] = receiver
+	}
+	bound := map[string]bool{}
 	for _, module := range standardSources {
 		if standardSourceModules[module.File] != nil {
 			continue
@@ -411,11 +416,15 @@ func (l *standardLoader) bindReceivers() error {
 				continue
 			}
 			symbol := standardModules[module.File][declaration.Name]
+			receiver := declaration.Name
+			if name, ok := intrinsicNames[receiver]; ok {
+				receiver = name
+			}
 			for _, method := range declaration.Methods {
 				key := module.File + "/" + declaration.Name + "/" + method.Name
-				if native := l.bindings.Receivers[key]; native != "" {
+				if native := nativeabi.ReceiverBindings[receiver][method.Name]; native != "" {
 					standardReceiverBindings[symbol.ID+"/"+method.Name] = native
-					delete(l.bindings.Receivers, key)
+					bound[receiver+"."+method.Name] = true
 				}
 				for name, constraint := range l.bindings.ReceiverRequirements[key] {
 					if standardReceiverBindings[symbol.ID+"/"+method.Name] == "" {
@@ -440,8 +449,12 @@ func (l *standardLoader) bindReceivers() error {
 			}
 		}
 	}
-	for key := range l.bindings.Receivers {
-		return fmt.Errorf("unused native receiver binding: %s", key)
+	for receiver, operations := range nativeabi.ReceiverBindings {
+		for name := range operations {
+			if !bound[receiver+"."+name] {
+				return fmt.Errorf("unused native receiver binding: %s.%s", receiver, name)
+			}
+		}
 	}
 	for key := range l.bindings.ReceiverRequirements {
 		return fmt.Errorf("unused native receiver requirement: %s", key)

@@ -64,7 +64,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/lower/` | Checked program to Go source: optimization facts in `optimize.go`; module assembly in `generate.go`; lowering in `lower_*.go`; Go AST builders and printing in `go_ast.go` and `print_go.go`. It consumes only checker identities |
 | `pkg/build/` | Native builds from compiler results: source assembly in `build.go`; pin/artifact identity in `cache.go`; command replay in `replay.go`; shared workspace in `workspace.go`; runtime variant in `variant.go`; SDK selection/materialization in `toolchain*.go` |
 | `pkg/runtime/` | Value and numeric semantics; work lifetimes in `tasks.go`, `scheduler.go`, and `lifetime.go`; cleanup, synchronization, services, and host implementations; domain-specific native standard-library operations in `library_*.go` |
-| `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native identities, and embedded sources. This is the standard signature authority |
+| `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native function identities (receiver identities live in `internal/nativeabi`), and embedded sources. This is the standard signature authority |
 | `pkg/tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
 | `pkg/tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
 | `pkg/tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. `call-rules.md` is the embedded source for special compiler-bound calls |
