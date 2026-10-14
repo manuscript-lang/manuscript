@@ -119,10 +119,10 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 	}
 	return libraryAcquisition("HttpClient", name, func(ctx *Execution, r string, a []Value) Value {
 		max, timeout := a[4].(int64), a[5].(Duration)
-		if max < 0 || timeout < nativeNoTimeout || a[0].(string) == "" {
+		method := libraryHTTPMethodText(a[0])
+		if max < 0 || timeout < nativeNoTimeout || method == "" {
 			return libraryError(r, "InvalidInput", "")
 		}
-		method := libraryHTTPMethodText(a[0])
 		if !validHeaderName(method) {
 			return libraryError(r, "InvalidInput", "")
 		}
