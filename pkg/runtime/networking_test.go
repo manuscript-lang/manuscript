@@ -335,6 +335,35 @@ func (s *networkingReadStream) Operation(name string) Function {
 		return libraryOK("@std/Result[@std/Optional[@std/Bytes]][@std/IoError]", optional("@std/Bytes", Bytes{part}, true))
 	})
 }
+func TestNetworkingInvalidUTF8TextClosesWith1007(t *testing.T) {
+	ctx := RootExecution()
+	n := &network{}
+	defer n.Operation("close").Body(ctx, nil)
+	handler := NewFunction([]string{"exchange"}, "@std/Result[Unit][@std/HttpError]", func(child *Execution, a []Value) Value {
+		socket := librarySuccess(t, networkingInvoke(child, a[0], "upgrade", libraryStrings(nil), libraryStrings(nil), int64(32)))
+		if result := networkingInvoke(child, socket, "receive").(Alternative); result.Tag != "error" {
+			t.Error("invalid text accepted")
+		}
+		return libraryOK("@std/Result[Unit][@std/HttpError]", Unit{})
+	})
+	server := librarySuccess(t, n.Operation("serve_stream").Body(ctx, []Value{"127.0.0.1:0", handler, networkingServerOptions()}))
+	address := networkingInvoke(ctx, server, "address").(string)
+	conn, _, err := websocket.DefaultDialer.Dial("ws://"+address, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if err := conn.WriteMessage(websocket.TextMessage, []byte{0xff, 0xfe}); err != nil {
+		t.Fatal(err)
+	}
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, _, err = conn.ReadMessage()
+	if !websocket.IsCloseError(err, websocket.CloseInvalidFramePayloadData) {
+		t.Fatal("expected close 1007, got", err)
+	}
+	networkingInvoke(ctx, server, "close")
+}
+
 func TestNetworkingServerShutdownJoinsWebSocket(t *testing.T) {
 	ctx := RootExecution()
 	n := &network{}

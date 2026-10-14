@@ -235,6 +235,12 @@ func (w *libraryWebSocket) Operation(name string) Function {
 			}
 			text := kind == websocket.TextMessage
 			if text && !utf8.Valid(data) {
+				// RFC 6455 section 8.1: fail the connection with 1007.
+				w.mu.Lock()
+				w.failed = true
+				w.mu.Unlock()
+				w.conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInvalidFramePayloadData, ""), time.Now().Add(100*time.Millisecond))
+				w.conn.Close()
 				return libraryError(r, "InvalidData", "")
 			}
 			return libraryOK(r, optional("@std/WebSocketMessage", Record{"@std/WebSocketMessage", map[string]Value{"data": Bytes{data}, "text": text}}, true))
