@@ -16,6 +16,10 @@ type Struct interface {
 	StructClone() Struct
 }
 
+// SharedFields reports whether tasks may share records, so generated accessors
+// must lock. Programs that never start concurrent work read fields directly.
+func SharedFields() bool { return concurrentWork.Load() }
+
 // ReadField and WriteField access one field of a generated struct. Once the
 // program runs concurrent work they take the same sharded lock that guards
 // map-backed records, so tasks sharing a record stay memory-safe.
