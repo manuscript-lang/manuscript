@@ -120,6 +120,9 @@ func (c *checker) typeNames() []string {
 
 // importHint names the standard module that exports name, if any.
 func importHint(name string) string {
+	if symbol := standardSymbols[name]; isPreludeSymbol(symbol) {
+		return "; use the prelude " + name + " declaration directly; rename any shadowing binding or declaration"
+	}
 	var modules []string
 	for _, module := range StandardModuleNames() {
 		if _, ok := StandardExports(module)[name]; ok {

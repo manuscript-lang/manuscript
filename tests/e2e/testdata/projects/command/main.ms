@@ -2,8 +2,6 @@ import commands from "@std/process.ms"
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-
 export fn main() -> Int:
     match commands().run(
         program: "/bin/printf",

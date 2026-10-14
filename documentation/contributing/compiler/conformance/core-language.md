@@ -89,7 +89,6 @@ test "nominal record and nested binding":
 Public-surface rejection fixture:
 
 ```manuscript
-import List from "@std/collections.ms"
 
 type PrivateId:
     value: String
@@ -178,7 +177,6 @@ Contract: [loops](../../../core-language/control-flow/loops.md).
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 
 fn selected_sum(values: List[Int]) -> Int:
     var total = 0
@@ -406,7 +404,6 @@ Contract: [compatibility and expected types](../../../core-language/types/compat
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 
 type Input:
     names: List[Optional[String]]

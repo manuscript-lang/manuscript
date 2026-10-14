@@ -1,7 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
 import IoError from "@std/io.ms"
-import Map from "@std/collections.ms"
 import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import JsonValue from "@std/json.ms"
@@ -146,7 +145,6 @@ impl Error for LogError:
 # ```manuscript
 # import {create, stdout_transport} from "@std/log.ms"
 # import JsonValue from "@std/json.ms"
-# import Map from "@std/collections.ms"
 #
 # fn announce() -> Result[Unit, Error]:
 #     with transport = stdout_transport():

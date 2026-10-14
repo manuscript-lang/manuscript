@@ -2,8 +2,6 @@
 
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
 import ReadStream from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 
@@ -389,7 +387,6 @@ export fn control() -> ProcessControl:
 #
 # <!-- manuscript-example: {"mode":"signal","name":"observer"} -->
 # ```manuscript
-# import List from "@std/collections.ms"
 # import stdout from "@std/io.ms"
 # import control from "@std/process.ms"
 # import sleep from "@std/time.ms"
@@ -432,7 +429,6 @@ export fn control() -> ProcessControl:
 # <!-- manuscript-example: {"mode":"signal","name":"server"} -->
 # ```manuscript
 # import Closeable from "@std/cleanup.ms"
-# import List from "@std/collections.ms"
 # import stdout from "@std/io.ms"
 # import {network, Listener, Connection} from "@std/net.ms"
 # import control from "@std/process.ms"

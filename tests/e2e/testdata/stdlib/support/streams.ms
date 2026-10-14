@@ -1,7 +1,5 @@
 import {ReadStream, WriteStream, IoError} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 export type MemoryStream:
     data: Bytes

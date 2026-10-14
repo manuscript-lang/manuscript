@@ -28,8 +28,7 @@ def main():
     for n in sizes:
         directory = root / str(n)
         directory.mkdir(exist_ok=True)
-        source = ('import List from "@std/collections.ms"\n'
-                  'fn values() -> List[Int]:\n    return ['
+        source = ('fn values() -> List[Int]:\n    return ['
                   + ", ".join(str(i) for i in range(n)) + ']\n'
                   'export fn main() -> Int:\n'
                   f'    return values().length() - {n}\n')

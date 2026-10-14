@@ -1,6 +1,3 @@
-import {List, Map, Set} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
 import Queue from "@std/queues.ms"

@@ -1,6 +1,4 @@
 import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 
 type Counter:
     value: Int = 0

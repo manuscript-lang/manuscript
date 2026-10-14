@@ -39,12 +39,15 @@ func renderModule(module checker.APIModule, forSite bool) string {
 	fmt.Fprintf(&b, "# %s\n\n", module.Path)
 	if module.Path == "prelude" {
 		b.WriteString("Names available in every module; no import required.\n\n")
-	} else if module.Path == "@std/optional.ms" || module.Path == "@std/result.ms" || module.Path == "@std/errors.ms" || module.Path == "@std/equality.ms" {
+	} else if module.Path == "@std/optional.ms" || module.Path == "@std/result.ms" || module.Path == "@std/equality.ms" {
 		b.WriteString("These names are available in the prelude; no import required.\n\n")
-		fmt.Fprintf(&b, "Explicit imports with `import Name from %q` remain supported.\n\n", module.Path)
+		b.WriteString("Explicit imports of these prelude declarations are rejected; remove them from the import.\n\n")
+	} else if module.Path == "@std/errors.ms" {
+		b.WriteString("`Error` and `MissingValue` are prelude declarations; explicit imports of them are rejected.\n\n")
+		fmt.Fprintf(&b, "Import other names with `import Name from %q`.\n\n", module.Path)
 	} else if module.Path == "@std/collections.ms" {
-		b.WriteString("`List`, `Map`, and `Set` are available in the prelude; no import required.\n\n")
-		fmt.Fprintf(&b, "Other names require `import Name from %q`; explicit List/Map/Set imports remain supported.\n\n", module.Path)
+		b.WriteString("`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry` are prelude declarations; explicit imports of them are rejected.\n\n")
+		fmt.Fprintf(&b, "Import other names with `import Name from %q`.\n\n", module.Path)
 	} else if strings.HasPrefix(module.Path, "@std/") {
 		fmt.Fprintf(&b, "Import each required symbol with `import Name from %q`.\n\n", module.Path)
 	}

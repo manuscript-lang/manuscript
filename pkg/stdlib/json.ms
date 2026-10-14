@@ -1,8 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-
 # Errors returned for malformed JSON or configured input and nesting limits.
 export type JsonError:
     # An explicit input, depth, value-count or output budget is negative.

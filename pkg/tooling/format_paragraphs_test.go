@@ -127,8 +127,7 @@ fn last() -> Int: return 2
 		},
 		{
 			name: "comments stay attached",
-			source: `import List from "@std/collections.ms"
-# A public contract.
+			source: `# A public contract.
 export interface Run:
     fn first() -> Int
     fn second() -> Int
@@ -148,9 +147,7 @@ impl Run for Runner:
 # Application entry.
 fn main() -> Int: return 0
 `,
-			want: `import List from "@std/collections.ms"
-
-# A public contract.
+			want: `# A public contract.
 export interface Run:
     fn first() -> Int
     fn second() -> Int

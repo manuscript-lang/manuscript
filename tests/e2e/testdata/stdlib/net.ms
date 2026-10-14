@@ -8,8 +8,6 @@ import {
     IpAddress,
     IpFamily
 } from "@std/net.ms"
-import {List, Map} from "@std/collections.ms"
-import Result from "@std/result.ms"
 import IoError from "@std/io.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"

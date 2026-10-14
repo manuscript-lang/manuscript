@@ -1,6 +1,4 @@
 import {compile, Regex, RegexError} from "@std/regex.ms"
-import List from "@std/collections.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

@@ -112,7 +112,6 @@ Equal valid bounds select an empty range. Slices never clamp or swap bounds, so 
 import panic from "@std/faults.ms"
 
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 
 test "explicit byte conversion":
     if not ("é".byte_length() == 2):

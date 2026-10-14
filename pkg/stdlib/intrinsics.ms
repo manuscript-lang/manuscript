@@ -1,5 +1,4 @@
 # Source locations for the fixed intrinsic receiver operations.
-import List from "@std/collections.ms"
 import StringError from "@std/string.ms"
 import NumberError from "@std/numbers.ms"
 import Bytes from "@std/bytes.ms"
@@ -203,7 +202,7 @@ interface FloatOperations:
 # - `Queue[T]()` creates an unbounded local FIFO. `Queue[T](capacity: 4)` supplies a fixed positive bound through its `capacity: Optional[Int]` constructor argument; supplied payloads are wrapped once under the [optional argument rules](https://manuscript-lang.github.io/manuscript/core-language/types/optionals/#passing-optional-arguments). A nonpositive explicit capacity is a programming fault. Shared access requires `Synchronized[Queue[T]]`.
 # - `Synchronized[T](value: T)` stores a value behind a mutex. Its `lock()` returns a `SynchronizedGuard[T]` for `with`; guard get/set require an active acquisition, and close releases it.
 # - `Bytes(values: List[Int])` constructs bytes. The runtime checks the byte range.
-# - Prelude `List[T]()`, `Map[K, V]()`, and `Set[T]()` construct empty collections, with explicit type arguments or a complete expected type. Collection constructors and list/map literals need no imports; explicit imports remain supported. Map keys and Set elements still require `Hashable`. `Map.add(key, value)` inserts or replaces a value, returns the receiver and preserves the original key and insertion position; `with_entry` remains compatible.
+# - Prelude `List[T]()`, `Map[K, V]()`, and `Set[T]()` construct empty collections, with explicit type arguments or a complete expected type. Their public support types `CollectionError`, `ListEntry`, and `MapEntry` are also in the prelude. `Optional.ok_or`'s default error type `MissingValue` is a prelude declaration too. Explicit standard imports of prelude declarations are rejected; remove those names from the import. Map keys and Set elements still require `Hashable`. `Map.add(key, value)` inserts or replaces a value, returns the receiver and preserves the original key and insertion position.
 # - `Task`, `SynchronizedGuard`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Durations use literals; other values come from APIs or conversions.
 # - `.clone()` is built in on records, alternatives, List, Map, Set, and Bytes and returns the same concrete data type with separate outer storage. It does not clone nested handles or introduce a method on native services.
 # - Records use their listed fields as constructor arguments, with optional labels and declaration-order positional slots. Alternatives construct one listed case. Interfaces describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
@@ -426,7 +425,6 @@ interface FloatOperations:
 # Most standard names need an explicit import. An imported function or type follows the same scope rules as one declared in your own module.
 #
 # ```manuscript
-# import List from "@std/collections.ms"
 # import {filesystem, FileSystemError} from "@std/fs.ms"
 # ```
 #
@@ -434,9 +432,15 @@ interface FloatOperations:
 #
 # ## Names and identity
 #
-# `Bool`, `Int`, `Float`, `String`, `Unit`, `Never`, `Equal`, `Hashable`, `Optional`, `Result`, `Error`, `List`, `Map`, and `Set` are available without imports. The `some`, `none`, `ok`, and `error` cases are available through their prelude types. Every other standard name comes from an explicit `@std/…` import. Importing one name does not expose other names from that module; wildcard imports are unsupported.
+# `Bool`, `Int`, `Float`, `String`, `Unit`, `Never`, `Equal`, `Hashable`, `Optional`, `Result`, `Error`, `List`, `Map`, `Set`, `CollectionError`, `ListEntry`, `MapEntry`, and `MissingValue` are available through the prelude. The `some`, `none`, `ok`, and `error` cases and the cases of `CollectionError` and `MissingValue` are available through their prelude types. Every other standard name comes from an explicit `@std/…` import. Importing one name does not expose other names from that module; wildcard imports are unsupported.
 #
-# `@std` is the reserved directory supplied by the compiler distribution. Standard identities are independent of its installation path. A module declaration or import can replace the prelude `Optional`, `Result`, `Error`, `List`, `Map`, or `Set` name. A local type called `Result` or `List` remains an ordinary application type; matching a standard spelling does not give it standard behavior. Imports still obey the usual collision and shadowing rules.
+# `@std` is the reserved directory supplied by the compiler distribution. Standard identities are independent of its installation path. Application declarations and imports may shadow the prelude data types and `Error`; matching a standard spelling does not give a type standard behavior. `Equal` and `Hashable` retain fixed identities. See the canonical [module scope rules](../core-language/modules/declarations.md#names-and-declaration-order).
+#
+# ## Migrating prelude imports
+#
+# Explicit standard imports of the source-backed prelude declarations above now fail with `MS2003`. Delete a singleton import; in a grouped import, remove only those names and keep unrelated APIs such as `ListBuilder`, `range`, or `ErrorCategory`. The editor offers a removal quick fix. Application imports, including project aliases to same-named application types, keep their ordinary meaning.
+#
+# `CollectionError` is now visible in every module. If another visible alternative also defines `InvalidInput`, `LimitExceeded`, or `OutOfRange`, qualify expression constructors as `CollectionError.OutOfRange` or `OtherError.OutOfRange`. The same rule applies to `MissingValue.Missing` and another visible type's `Missing` case. Match patterns continue to select cases from their scrutinee type.
 #
 # ## Syntax that uses standard types
 #

@@ -1,6 +1,3 @@
-import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import Closeable from "@std/cleanup.ms"
 import panic from "@std/faults.ms"
 

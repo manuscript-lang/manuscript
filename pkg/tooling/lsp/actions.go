@@ -37,6 +37,18 @@ func lineRange(source string, line int) span {
 func editorActions(d document, checked compiler.Result, requested span, only []string) []any {
 	result := actions(d)
 	eligible := func(r span) bool { return r.Start.Line <= requested.End.Line && r.End.Line >= requested.Start.Line }
+	for _, issue := range checked.Diagnostics {
+		m := module(checked, d)
+		if m == nil || issue.Position.File != m.File || issue.Code() != "MS2003" || issue.End == nil || issue.Fix == nil {
+			continue
+		}
+		r := span{Position(d.Text, issue.Position.Offset), Position(d.Text, issue.End.Offset)}
+		if eligible(r) {
+			fix := issue.Fix
+			edits := []any{map[string]any{"range": span{Position(d.Text, fix.Position.Offset), Position(d.Text, fix.End.Offset)}, "newText": fix.Replacement}}
+			result = append(result, actionFor(d, "Remove redundant prelude import", "quickfix", edits, []any{map[string]any{"range": r, "message": issue.Message, "code": issue.Code(), "source": "manuscript"}}))
+		}
+	}
 	for _, issue := range tooling.Lint(filename(d.URI), d.Text) {
 		p := Position(d.Text, issue.Position.Offset)
 		r := span{p, p}

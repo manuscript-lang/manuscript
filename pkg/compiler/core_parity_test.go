@@ -28,7 +28,7 @@ fn wrong(value: Result[Int, String]) -> Int: value.unwrap()`, "no fields or oper
 		{"private native Result helper", `import unwrap from "@std/result.ms"`, "unwrap"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			source := "import {Map, Set} from \"@std/collections.ms\"\n" + test.source + "\n"
+			source := "" + test.source + "\n"
 			result := CompileSource("parity.ms", source, Options{AnalyzeOnly: true})
 			if result.Success() {
 				t.Fatal("accepted invalid contract")

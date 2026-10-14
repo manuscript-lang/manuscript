@@ -60,8 +60,7 @@ fn boxed(n: Int) -> String:
 
 // list.at(i).unwrap() reads the element directly instead of building an Optional.
 func TestListAtUnwrapSkipsOptional(t *testing.T) {
-	r := compileSource("at.ms", `import List from "@std/collections.ms"
-fn pick(values: List[Int], index: Int) -> Int:
+	r := compileSource("at.ms", `fn pick(values: List[Int], index: Int) -> Int:
     return values.at(index).unwrap()
 
 fn keep(values: List[Int], index: Int) -> Int:

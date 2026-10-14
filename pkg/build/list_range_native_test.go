@@ -9,8 +9,7 @@ import (
 )
 
 func TestListRangeNativeFaultAndCancellation(t *testing.T) {
-	const source = `import List from "@std/collections.ms"
-import panic from "@std/faults.ms"
+	const source = `import panic from "@std/faults.ms"
 fn callback_fault(values: List[Int]) -> Unit:
     values.for_each(fn(value):
         values.remove(0)
@@ -37,7 +36,7 @@ func checkRangeExits() {
  alias:=values
  failure:=rangeFailure(func(){@@fault@@.(rt.Function).Body(ctx,[]rt.Value{values})})
  fault,ok:=failure.(rt.Fault)
- if !ok || fault.Message!="range failure" || len(fault.Frames)!=2 || !strings.HasPrefix(fault.Frames[0],"native-range.ms:6") || !strings.HasPrefix(fault.Frames[1],"native-range.ms:4") {panic(fmt.Sprintf("fault/source changed: %#v",failure))}
+ if !ok || fault.Message!="range failure" || len(fault.Frames)!=2 || !strings.HasPrefix(fault.Frames[0],"native-range.ms:5") || !strings.HasPrefix(fault.Frames[1],"native-range.ms:3") {panic(fmt.Sprintf("fault/source changed: %#v",failure))}
  if !reflect.DeepEqual(alias.Items,[]rt.Value{int64(2),int64(3)}) {panic("fault lost source mutation")}
  cancelled:=rt.RootExecution();defer rt.FinishExecution(cancelled)
  var cancel context.CancelFunc

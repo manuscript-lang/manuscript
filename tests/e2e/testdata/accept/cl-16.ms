@@ -1,9 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-
 type Input:
     names: List[Optional[String]]
 

@@ -9,8 +9,6 @@ import (
 
 func TestPrimitiveListAppendAndRangeKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("list-loops.ms", `import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
-import Set from "@std/collections.ms"
 
 fn check(ok: Bool, name: String) -> Unit:
     if not ok:

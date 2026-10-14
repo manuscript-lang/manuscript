@@ -1,8 +1,6 @@
 import {decoder, JsonDecoder} from "@std/jsonstream.ms"
 import {stringify, JsonValue, JsonLimits, JsonError} from "@std/json.ms"
-import List from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

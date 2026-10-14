@@ -1,8 +1,6 @@
 import IpFamily from "@std/net.ms"
 # Canonical standard-library declarations. Implementations are native.
 
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
 import Duration from "@std/time.ms"
 
 # Read-only host details and selected controls for the current operating system.

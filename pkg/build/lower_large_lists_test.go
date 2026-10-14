@@ -34,10 +34,7 @@ func TestLargeListLiteralSemantics(t *testing.T) {
 	ints = append(ints, "-9223372036854775808", "9223372036854775807")
 	early := repeated(n, func(int) string { return "next(counter)" })
 	early[150] = "match value:\n        some(v): v\n        none: return -counter.count\n    "
-	source := `import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-import panic from "@std/faults.ms"
+	source := `import panic from "@std/faults.ms"
 
 type Counter:
     count: Int
@@ -139,7 +136,7 @@ test "a return inside a large literal leaves the function":
 func TestLargeListLiteralFaultFrames(t *testing.T) {
 	items := repeated(300, func(i int) string { return fmt.Sprintf("value(%d)", i) })
 	items[200] = "fail()"
-	source := "import List from \"@std/collections.ms\"\nfn value(i: Int) -> Int: i\nfn fail() -> Int:\n    return 1 / 0\nexport fn main() -> Int:\n    let data = " + listOf(items) + "\n    return data.length()\n"
+	source := "fn value(i: Int) -> Int: i\nfn fail() -> Int:\n    return 1 / 0\nexport fn main() -> Int:\n    let data = " + listOf(items) + "\n    return data.length()\n"
 	var transcripts []string
 	for _, kind := range []compiler.BuildType{compiler.Release, compiler.Debug} {
 		r := compiler.CompileSourceForBuild("fault.ms", source, compiler.Options{Entry: true}, kind)
@@ -156,7 +153,7 @@ func TestLargeListLiteralFaultFrames(t *testing.T) {
 		}
 		transcripts = append(transcripts, string(data))
 	}
-	if transcripts[0] != transcripts[1] || !strings.Contains(transcripts[0], "fault.ms:4 in fail") || !strings.Contains(transcripts[0], "fault.ms:6 in main") {
+	if transcripts[0] != transcripts[1] || !strings.Contains(transcripts[0], "fault.ms:3 in fail") || !strings.Contains(transcripts[0], "fault.ms:5 in main") {
 		t.Fatalf("fault frames changed: %q", transcripts)
 	}
 }

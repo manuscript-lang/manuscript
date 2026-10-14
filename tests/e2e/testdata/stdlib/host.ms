@@ -8,9 +8,6 @@ import {
 } from "@std/system.ms"
 import {control, commands, CommandError, CommandOutput} from "@std/process.ms"
 import {read_line} from "@std/io.ms"
-import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

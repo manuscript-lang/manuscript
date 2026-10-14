@@ -7,8 +7,6 @@ import {
     ArchiveError
 } from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

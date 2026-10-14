@@ -1,8 +1,5 @@
 import {Logger, LogError} from "@std/log.ms"
 import JsonValue from "@std/json.ms"
-import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 export fn emit(logger: Logger) -> Result[Unit, LogError]:
     let bindings = Map[String, JsonValue]().add(

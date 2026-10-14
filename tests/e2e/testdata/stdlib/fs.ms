@@ -1,8 +1,6 @@
 import {filesystem, FileSystemError, FileHandle} from "@std/fs.ms"
 import {files, read_all, IoError} from "@std/io.ms"
-import {List, Map} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

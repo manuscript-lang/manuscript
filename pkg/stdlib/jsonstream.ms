@@ -1,8 +1,5 @@
 # Incremental JSON decoder implemented in Manuscript.
-import List from "@std/collections.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import {parse, JsonValue, JsonLimits, JsonError} from "@std/json.ms"
 import check_cancelled from "@std/tasks.ms"
 

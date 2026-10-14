@@ -9,7 +9,6 @@ import (
 
 func TestListCallbacksReuseArgumentsWithoutChangingSemantics(t *testing.T) {
 	result := compiler.CompileSource("callbacks.ms", `import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
 
 fn check(ok: Bool, name: String) -> Unit:
     if not ok:

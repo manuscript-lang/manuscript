@@ -32,7 +32,6 @@ test "source":
 		"tests/value_test.ms": "import value from \"../src/value.ms\"\nimport panic from \"@std/faults.ms\"\ntest \"separate\":\n    if value() != 3: return panic(\"bad value\")\n",
 		"tests/defaults_test.ms": fmt.Sprintf(`import {parse, CsvOptions} from "@std/csv.ms"
 import {base64_encode, base64_decode} from "@std/encoding.ms"
-import List from "@std/collections.ms"
 import commands from "@std/process.ms"
 import filesystem from "@std/fs.ms"
 import {compress, decompress, CompressionFormat} from "@std/compress.ms"

@@ -7,8 +7,7 @@ import (
 )
 
 func TestConcurrentCaptureLintReproduction(t *testing.T) {
-	source := `import Map from "@std/collections.ms"
-import TaskGroup from "@std/tasks.ms"
+	source := `import TaskGroup from "@std/tasks.ms"
 fn run() -> Unit:
     let counters = {"hits": 0}
     with tasks = TaskGroup():
@@ -29,8 +28,7 @@ fn run() -> Unit:
 }
 
 func TestConcurrentCaptureLint(t *testing.T) {
-	imports := `import { Map, List } from "@std/collections.ms"
-import { TaskGroup, Scheduler } from "@std/tasks.ms"
+	imports := `import { TaskGroup, Scheduler } from "@std/tasks.ms"
 import Synchronized from "@std/sync.ms"
 import duration from "@std/time.ms"
 import network from "@std/net.ms"
@@ -198,8 +196,7 @@ type Counter:
 }
 
 func TestConcurrentCaptureLintDoesNotGuessMethodNames(t *testing.T) {
-	source := `import List from "@std/collections.ms"
-interface Starter:
+	source := `interface Starter:
     fn start(operation: fn() -> Unit) -> Unit
 type Sequential:
 impl Starter for Sequential:
@@ -221,8 +218,7 @@ fn run() -> Unit:
 }
 
 func TestConcurrentCaptureLintHTTPHandlers(t *testing.T) {
-	prefix := `import List from "@std/collections.ms"
-import network from "@std/net.ms"
+	prefix := `import network from "@std/net.ms"
 import { HttpResponse, HttpServerOptions } from "@std/http.ms"
 import panic from "@std/faults.ms"
 fn run() -> Unit:
@@ -260,8 +256,7 @@ func TestConcurrentCaptureLintDocumentationFragments(t *testing.T) {
                 let values = locked.get()
                 values.add(key: "hits", value: values.get("hits").unwrap_or(0) + 1)`, 0},
 	} {
-		source := `import Map from "@std/collections.ms"
-import TaskGroup from "@std/tasks.ms"
+		source := `import TaskGroup from "@std/tasks.ms"
 import Synchronized from "@std/sync.ms"
 fn run() -> Unit:
     ` + tc.declaration + `

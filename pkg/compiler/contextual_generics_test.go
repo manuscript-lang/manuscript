@@ -8,9 +8,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
-const contextualGenericsSource = `import List from "@std/collections.ms"
-import panic from "@std/faults.ms"
-import Equal from "@std/equality.ms"
+const contextualGenericsSource = `import panic from "@std/faults.ms"
 fn fail[T](message: String) -> Result[T, String]: error(message)
 fn fail_cause[T, E](cause: E) -> Result[T, E]: error(cause)
 fn absent[T]() -> Optional[T]: none

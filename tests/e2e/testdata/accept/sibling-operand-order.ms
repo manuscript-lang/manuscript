@@ -1,4 +1,3 @@
-import {List, Map} from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
 import panic from "@std/faults.ms"
 

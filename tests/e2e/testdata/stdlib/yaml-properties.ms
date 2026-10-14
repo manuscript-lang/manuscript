@@ -1,5 +1,4 @@
 import {parse, stringify, YamlValue} from "@std/yaml.ms"
-import {List, Map} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 import {Rng, next, text, mutate} from "./support/generator.ms"

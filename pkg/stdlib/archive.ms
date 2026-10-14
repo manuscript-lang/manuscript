@@ -1,7 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 
 # Errors returned when an archive cannot be read or written.
 export type ArchiveError:
@@ -106,7 +105,6 @@ export type ArchiveFormat:
 # <!-- manuscript-example: {"mode":"test"} -->
 # ```manuscript
 # import {ArchiveFormat, ArchiveEntry} from "@std/archive.ms"
-# import List from "@std/collections.ms"
 # import panic from "@std/faults.ms"
 #
 # test "use a typed archive format":

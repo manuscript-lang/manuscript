@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 
-import Result from "@std/result.ms"
-
 type Problem:
     case Missing(reason: String)
 

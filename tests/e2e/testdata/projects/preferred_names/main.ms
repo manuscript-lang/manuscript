@@ -1,7 +1,6 @@
 import Key from "./domain.ms"
 import {first_run, first_add, first_remove} from "./first.ms"
 import second_run from "./second.ms"
-import Set from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 test "direct bound and forwarded calls retain defining equality scopes":

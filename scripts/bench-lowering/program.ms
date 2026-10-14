@@ -1,4 +1,3 @@
-import List from "@std/collections.ms"
 
 fn scalar(limit: Int) -> Int:
     var total = 0

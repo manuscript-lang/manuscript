@@ -25,7 +25,7 @@ func TestDirectCollectionCallsRetainArgumentConversions(t *testing.T) {
 		{"set remove", "Set[Optional[Int]]", "values.remove(7)", "SetRemove", []int{2}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			r := CompileSource("conversions.ms", "import {List, Map, Set} from \"@std/collections.ms\"\nfn check(values: "+tc.receiver+") -> Unit:\n    "+tc.statement+"\n", Options{})
+			r := CompileSource("conversions.ms", "fn check(values: "+tc.receiver+") -> Unit:\n    "+tc.statement+"\n", Options{})
 			if !r.Success() {
 				t.Fatal(r.Diagnostics)
 			}

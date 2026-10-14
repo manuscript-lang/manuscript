@@ -10,7 +10,6 @@ import {
     SseLimits
 } from "@std/sse.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {List} from "@std/collections.ms"
 import {IoError, ReadStream} from "@std/io.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"

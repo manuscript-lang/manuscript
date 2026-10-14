@@ -1,7 +1,4 @@
-import {Map, Set, List, MapEntry} from "@std/collections.ms"
 import panic from "@std/faults.ms"
-import {Equal, Hashable} from "@std/equality.ms"
-import MissingValue from "@std/errors.ms"
 
 type Counter:
     calls: Int

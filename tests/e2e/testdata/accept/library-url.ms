@@ -5,7 +5,6 @@ import format from "@std/url.ms"
 import encode_component from "@std/url.ms"
 import decode_component from "@std/url.ms"
 import resolve from "@std/url.ms"
-import Result from "@std/result.ms"
 import UrlError from "@std/url.ms"
 
 fn verify_url() -> Result[Unit, UrlError]:

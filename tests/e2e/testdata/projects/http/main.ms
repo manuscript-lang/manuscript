@@ -1,7 +1,6 @@
 import {headers, HttpMethod} from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"
-import Map from "@std/collections.ms"
 import HttpRequest from "@std/http.ms"
 import HttpResponse from "@std/http.ms"
 

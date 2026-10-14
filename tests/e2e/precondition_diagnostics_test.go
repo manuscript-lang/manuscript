@@ -43,7 +43,6 @@ func TestPreconditionDiagnostics(t *testing.T) {
 		{"", "|PriorityQueue[Int](compare: compare, capacity: 0)", "PriorityQueue: capacity must be between 1 and 9223372036854775807, found 0"},
 	}
 	source := `import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import List from "@std/collections.ms"
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import from_int from "@std/bigint.ms"
 fn compare(left: Int, right: Int) -> Int: left - right

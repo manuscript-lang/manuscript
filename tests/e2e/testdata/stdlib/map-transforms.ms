@@ -1,6 +1,4 @@
-import {Map, Set, List} from "@std/collections.ms"
 import panic from "@std/faults.ms"
-import {Equal, Hashable} from "@std/equality.ms"
 
 type Counter:
     count: Int

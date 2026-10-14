@@ -34,8 +34,7 @@ fn fraction(value: Float) -> Float:
 }
 
 func TestDirectNativeCollectionLowering(t *testing.T) {
-	result := compiler.CompileSource("collections.ms", `import List from "@std/collections.ms"
-fn read(values: List[Int], index: Int) -> Int:
+	result := compiler.CompileSource("collections.ms", `fn read(values: List[Int], index: Int) -> Int:
     return values.at(index).unwrap()
 fn stored(values: List[Int], index: Int) -> Optional[Int]:
     return values.at(index)
@@ -60,8 +59,7 @@ impl At for Custom:
 }
 
 func TestDirectLengthLowering(t *testing.T) {
-	result := compiler.CompileSource("length.ms", `import {List, Map, Set} from "@std/collections.ms"
-type Sized:
+	result := compiler.CompileSource("length.ms", `type Sized:
     items: List[Int]
 interface Measure:
     fn length() -> Int
@@ -147,8 +145,7 @@ fn use() -> Int:
 }
 
 func TestDirectListAppendAndIsEmptyLowering(t *testing.T) {
-	result := compiler.CompileSource("append.ms", `import List from "@std/collections.ms"
-fn grow(values: List[Int]) -> Bool:
+	result := compiler.CompileSource("append.ms", `fn grow(values: List[Int]) -> Bool:
     values.append(1)
     return values.is_empty()
 `, compiler.Options{})
@@ -163,8 +160,7 @@ fn grow(values: List[Int]) -> Bool:
 }
 
 func TestDirectKeyedAndStringLowering(t *testing.T) {
-	result := compiler.CompileSource("keyed.ms", `import {List, Map, Set} from "@std/collections.ms"
-fn use(l: List[Int], m: Map[String, Int], s: Set[Int], t: String) -> Unit:
+	result := compiler.CompileSource("keyed.ms", `fn use(l: List[Int], m: Map[String, Int], s: Set[Int], t: String) -> Unit:
     l.contains(1)
     m.contains("a")
     m.get("a")

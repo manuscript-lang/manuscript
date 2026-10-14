@@ -1,5 +1,4 @@
 # Configuration-oriented YAML 1.2 parser implemented in Manuscript.
-import {List, Map, Set} from "@std/collections.ms"
 import parse_int from "@std/numbers.ms"
 import {from_scalars, StringBuilder} from "@std/string.ms"
 
