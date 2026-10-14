@@ -50,8 +50,8 @@ func (g *generator) pattern(p *syntax.Pattern, value ast.Expr, native string) []
 	return out
 }
 func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
-	if pre, value := g.inlineTry(s); value != nil {
-		return append(pre, g.afterTry(s, value)...)
+	if pre, value, native := g.inlineTry(s); value != nil {
+		return append(pre, g.afterTry(s, value, native)...)
 	}
 	switch s.Kind {
 	case syntax.KindBind:
@@ -83,17 +83,20 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 
 // afterTry completes a statement whose value was already evaluated by an
 // inline try.
-func (g *generator) afterTry(s *syntax.Statement, value ast.Expr) []ast.Stmt {
+func (g *generator) afterTry(s *syntax.Statement, value ast.Expr, native string) []ast.Stmt {
 	switch s.Kind {
 	case syntax.KindBind:
-		return g.pattern(s.Pattern, value, "")
+		return g.pattern(s.Pattern, value, native)
 	case syntax.KindAssign:
 		target := g.program.AssignedBinding(s.Value)
-		if typ := g.typed[target]; typ != "" {
+		if typ := g.typed[target]; typ != "" && native != typ {
 			value = unbox(value, typ)
 		}
 		return []ast.Stmt{assign(ident(target.ID), token.ASSIGN, value)}
 	case syntax.KindReturn:
+		if g.resultShape != nil {
+			value = g.resultShape.unbox(value)
+		}
 		return []ast.Stmt{returned(value)}
 	}
 	return []ast.Stmt{discard(value)}
@@ -133,6 +136,8 @@ func (g *generator) returnStatement(s *syntax.Statement) []ast.Stmt {
 	if s.Value != nil {
 		if g.resultType != "" && g.expressionDepth == 0 {
 			value = g.scalar(s.Value, g.resultType)
+		} else if g.resultShape != nil && g.expressionDepth == 0 {
+			value = g.typedReturn(s.Value)
 		} else {
 			value = g.expression(s.Value)
 		}
@@ -214,6 +219,11 @@ func (g *generator) with(s *syntax.Statement) []ast.Stmt {
 func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func(*syntax.Arm) []ast.Stmt) []ast.Stmt {
 	tmp := g.temp()
 	contractMatch := g.program.Info(value).Type.Kind == "contract"
+	if !contractMatch && !g.listAtMatch(value) {
+		if typed, direct := g.typedDirectCall(value); typed != nil && direct.shape != nil {
+			return g.typedMatch(tmp, typed, direct.shape, arms, body)
+		}
+	}
 	out := []ast.Stmt{define(tmp, g.expression(value))}
 	tag := "Tag"
 	var present string
@@ -309,25 +319,42 @@ func (g *generator) loopBody(statements []*syntax.Statement, label *loopLabel) [
 // instead of panicking through the function's deferred handlers. It applies
 // only outside expression closures, where a Go return leaves the Manuscript
 // function.
-func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr) {
+func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr, string) {
 	if g.expressionDepth > 0 || !g.program.PlainTry(s) {
-		return nil, nil
+		return nil, nil, ""
 	}
 	e := s.Value
 	info := g.program.Info(e)
 	tmp := g.temp()
+	if typed, direct := g.typedDirectCall(e.Right); typed != nil && direct.shape != nil && !direct.shape.optional {
+		var propagated ast.Expr = selector(ident(tmp), "Cause")
+		if info.ScopedPropagation {
+			propagated = runtimeCall("ViewOf", textLiteral("@std/Error"), propagated, g.typeScope(info.PropagatedError))
+		}
+		var failure ast.Expr
+		if g.resultShape != nil {
+			failure = composite(g.resultShape.typeExpr(), keyed("Cause", propagated), keyed("Failed", ident("true")))
+		} else {
+			failure = composite(runtimeName("Alternative"), keyed("Type", g.resultKey), keyed("Tag", textLiteral("error")), keyed("Fields", sliceLiteral(runtimeName("Value"), propagated)))
+		}
+		check := &ast.IfStmt{Cond: direct.shape.failed(tmp), Body: block(returned(failure))}
+		return []ast.Stmt{define(tmp, typed), check}, selector(ident(tmp), "Val"), direct.shape.payload
+	}
 	cause := index(selector(ident(tmp), "Fields"), intLiteral(0))
 	var propagated ast.Expr = cause
 	if info.ScopedPropagation {
 		propagated = runtimeCall("ViewOf", textLiteral("@std/Error"), cause, g.typeScope(info.PropagatedError))
 	}
-	failure := composite(runtimeName("Alternative"), keyed("Type", g.resultKey), keyed("Tag", textLiteral("error")), keyed("Fields", sliceLiteral(runtimeName("Value"), propagated)))
+	var failure ast.Expr = composite(runtimeName("Alternative"), keyed("Type", g.resultKey), keyed("Tag", textLiteral("error")), keyed("Fields", sliceLiteral(runtimeName("Value"), propagated)))
+	if g.resultShape != nil {
+		failure = composite(g.resultShape.typeExpr(), keyed("Cause", propagated), keyed("Failed", ident("true")))
+	}
 	check := &ast.IfStmt{
 		Cond: &ast.BinaryExpr{X: selector(ident(tmp), "Tag"), Op: token.EQL, Y: textLiteral("error")},
 		Body: block(returned(failure)),
 	}
 	pre := []ast.Stmt{define(tmp, &ast.TypeAssertExpr{X: g.expression(e.Right), Type: runtimeName("Alternative")}), check}
-	return pre, index(selector(ident(tmp), "Fields"), intLiteral(0))
+	return pre, index(selector(ident(tmp), "Fields"), intLiteral(0)), ""
 }
 
 // positionFree reports whether a statement needs no frame position: it runs
