@@ -73,6 +73,9 @@ checkpoints; source expressions retain their existing checkpoints, fault sites,
 cleanup and enclosing return/try/loop exits. The completed List is published only
 after `FinishListInitialization`. Typed and generic paths use the runtime's
 authoritative storage rather than accessing storage fields from lowering.
+Deferred primitive IR operands consume the canonical scalar lowering context.
+Known calls use the same native entry, argument conversions and source guard as
+other typed scalar operations; literal initialization retains that boundary.
 
 Explicit Debug keeps its existing literal policy. Compiler callers selecting a
 native build kind before lowering should use `CompileSourceForBuild` or

@@ -3,14 +3,14 @@ package lower
 import (
 	"bytes"
 	"fmt"
-	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"go/ast"
 	"go/format"
 	"go/token"
 	"strings"
 	"testing"
 
+	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -166,5 +166,55 @@ func TestLargeLiteralInitializationIsOrderedAndBounded(t *testing.T) {
 	}
 	if !strings.Contains(printed, "rt.NewSizedIntList(") || !strings.Contains(printed, "rt.FinishListInitialization(") || strings.Contains(printed, "literalData") {
 		t.Fatal("invalid sized construction")
+	}
+}
+
+func TestLargeLiteralInitializationUsesNativeScalarBoundary(t *testing.T) {
+	const elements = 1100
+	// A record field result prevents the ordinary boxed adapter from sharing the
+	// native body. The initializer must explicitly consume the primitive context.
+	source := "type Counter:\n    value: Int\nfn read(counter: Counter) -> Int: counter.value\nfn values(counter: Counter) -> List[Int]:\n    return [" + strings.TrimSuffix(strings.Repeat("read(counter), ", elements), ", ") + "]\n"
+	result := analyzeSource("native-literal.ms", source)
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	g := &generator{program: result.Program, captures: map[*checker.Binding]string{}}
+	g.selectNativeCalls()
+	g.selectNativeMethods()
+	g.scalarLocals = g.selectScalarLocals()
+	file := g.file("native-literal.ms", Options{})
+	native := result.Program.Symbol("native-literal.ms", "read").ID + "Native"
+	initializers := 0
+	ast.Inspect(file, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		name, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || name.Sel.Name != "InitListInt" {
+			return true
+		}
+		initializers++
+		found := false
+		ast.Inspect(call.Args[2], func(node ast.Node) bool {
+			if call, ok := node.(*ast.CallExpr); ok {
+				if name, ok := call.Fun.(*ast.Ident); ok && name.Name == native {
+					found = true
+				}
+			}
+			if name, ok := node.(*ast.SelectorExpr); ok && name.Sel.Name == "Body" {
+				var printed bytes.Buffer
+				_ = format.Node(&printed, token.NewFileSet(), call.Args[2])
+				t.Fatal("initializer returned to the boxed source adapter:", printed.String())
+			}
+			return true
+		})
+		if !found {
+			t.Fatal("initializer did not consume the native scalar entry")
+		}
+		return false
+	})
+	if initializers != elements {
+		t.Fatal("missing native-consuming initializers", initializers)
 	}
 }
