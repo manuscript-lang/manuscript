@@ -346,3 +346,27 @@ test "TOML stringify requires a table root and honors max_bytes":
     let exact: Result[String, TomlError] = ok("a = 1\n")
     if stringify(value: root, max_bytes: 6) != exact: return panic("exact limit")
     if stringify(value: root, max_bytes: -1) != wrong: return panic("negative limit")
+
+fn repeated(text: String, count: Int) -> String:
+    if count <= 0: return ""
+    if count == 1: return text
+
+    let half = repeated(text: text, count: count / 2)
+    if count % 2 == 1: return half.concat(half).concat(text)
+
+    return half.concat(half)
+
+test "TOML long strings parse and stringify in linear time":
+    let long = repeated(text: "x\\n", count: 150000)
+    let expected = repeated(text: "x\n", count: 150000)
+    let root = value(parse(text: "a = \"{long}\"\nb = '''{expected}'''"))
+    let table = entries(root)
+    if table.get("a").unwrap() != TomlValue.StringValue(expected): return panic(
+        "basic string"
+    )
+    if table.get("b").unwrap() != TomlValue.StringValue(expected): return panic(
+        "literal multi-line string"
+    )
+
+    let text = value(stringify(value: root))
+    if value(parse(text: text)) != root: return panic("long string round trip")
