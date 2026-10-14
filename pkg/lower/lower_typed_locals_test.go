@@ -115,7 +115,7 @@ fn generic[T](xs: List[T], value: T) -> List[T]:
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	for _, want := range []string{`BindNativeCall("List", "set"`, `BindNativeCall("String", "trim"`, `BindNativeCall("Set", "map"`, "StringBuilderAppend(", "StringBuilderFreeze("} {
+	for _, want := range []string{`BindNativeCall("List", "set"`, `BindNativeCall("Set", "map"`, "StringBuilderAppend(", "StringBuilderFreeze(", "rt.StringTrim("} {
 		if !strings.Contains(r.Source, want) {
 			t.Errorf("missing %q", want)
 		}
@@ -240,5 +240,42 @@ fn run(items: List[Int]) -> List[Int]:
 	}
 	if !strings.Contains(r.Source, "rt.NewCompiledSourceFunction(") {
 		t.Fatalf("lambda does not borrow arguments\n%s", r.Source)
+	}
+}
+
+func TestOptionalMembersLowerWithoutDynamicDispatch(t *testing.T) {
+	r := compileSource("optional.ms", `fn run(o: Optional[Int]) -> Int:
+    if o.is_some():
+        return o.unwrap_or(fallback: 0)
+    return 1
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.OptionalIsSome(", "rt.OptionalUnwrapOr("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, `"is_some"`) {
+		t.Fatalf("Optional member still dispatches by name\n%s", r.Source)
+	}
+}
+
+func TestPureStandardCallsLowerToPlainRuntimeCalls(t *testing.T) {
+	r := compileSource("scalar.ms", `import {sqrt} from "@std/math.ms"
+fn run(x: Float, s: String) -> Bool:
+    return sqrt(value: x) > 1.0 and s.contains(value: "a")
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.MathSqrt(", "rt.StringContains("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, "math/sqrt") {
+		t.Fatalf("sqrt still resolves dynamically\n%s", r.Source)
 	}
 }
