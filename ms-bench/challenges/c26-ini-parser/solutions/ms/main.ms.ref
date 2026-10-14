@@ -9,7 +9,7 @@ fn trim_blanks(s: String) -> String:
         start = start + 1
     while end > start and (codes.at(end - 1).unwrap() == 32 or codes.at(end - 1).unwrap() == 9):
         end = end - 1
-    return s.slice(start, end)
+    return s.slice(start, end).unwrap()
 
 fn run() -> Result[Unit, Error]:
     let data = try read_all(input: stdin())
@@ -35,16 +35,16 @@ fn run() -> Result[Unit, Error]:
         if line.is_empty() or line.starts_with(";") or line.starts_with("#"):
             continue
         if line.starts_with("[") and line.ends_with("]"):
-            section = trim_blanks(line.slice(1, line.length() - 1))
+            section = trim_blanks(line.slice(1, line.length() - 1).unwrap())
             continue
         let eq = line.index_of("=")
         if eq.is_none():
             continue
         let at = eq.unwrap()
-        let key = trim_blanks(line.slice(0, at))
-        var value = trim_blanks(line.slice(at + 1, line.length()))
+        let key = trim_blanks(line.slice(0, at).unwrap())
+        var value = trim_blanks(line.slice(at + 1, line.length()).unwrap())
         if value.length() >= 2 and value.starts_with("\"") and value.ends_with("\""):
-            value = value.slice(1, value.length() - 1)
+            value = value.slice(1, value.length() - 1).unwrap()
         if not key.is_empty():
             values.add(key: "{section}.{key}", value: value)
     let out = List[String]()

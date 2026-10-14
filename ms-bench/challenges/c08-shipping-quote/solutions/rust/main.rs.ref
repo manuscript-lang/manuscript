@@ -1,0 +1,110 @@
+use std::collections::HashSet;
+use std::io::{BufRead, Write};
+
+const HEADER: &str = "order,country,weight_g,service,declared_cents";
+const SERVICES: [&str; 3] = ["standard", "express", "overnight"];
+
+fn money(c: u64) -> String {
+    format!("{}.{:02}", c / 100, c % 100)
+}
+
+fn zone_of(c: &str) -> u64 {
+    match c {
+        "US" => 1,
+        "CA" | "MX" => 2,
+        "AT" | "BE" | "DE" | "ES" | "FR" | "IE" | "IT" | "NL" | "PT" | "SE" => 3,
+        _ => 4,
+    }
+}
+
+fn digits(s: &str, max: usize) -> Option<u64> {
+    if s.is_empty() || s.len() > max || !s.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    s.parse().ok()
+}
+
+fn main() {
+    let stdin = std::io::stdin();
+    let lines: Vec<String> = stdin.lock().lines().map(|l| l.unwrap()).collect();
+    if lines.is_empty() || lines[0] != HEADER {
+        println!("error: bad header");
+        return;
+    }
+    let rates = [(499u64, 120u64), (899, 180), (1499, 250), (2199, 400)];
+    let mut out = String::new();
+    let mut seen: HashSet<String> = HashSet::new();
+    let mut count = [0u64; 3];
+    let mut totals = [0u64; 3];
+    let mut rejected = 0;
+    for (i, l) in lines.iter().enumerate().skip(1) {
+        if l.trim_matches(' ').is_empty() {
+            continue;
+        }
+        let f: Vec<&str> = l.split(',').collect();
+        let mut why = "";
+        let (mut weight, mut dec) = (0, 0);
+        if f.len() != 5 {
+            why = "malformed row";
+        } else {
+            let w = digits(f[2], 5);
+            let d = digits(f[4], 8);
+            let cc = f[1].as_bytes();
+            if f[0].is_empty() || !f[0].bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-') {
+                why = "bad order";
+            } else if cc.len() != 2 || !cc.iter().all(|c| c.is_ascii_uppercase()) {
+                why = "bad country";
+            } else if !w.map_or(false, |v| (1..=30000).contains(&v)) {
+                why = "bad weight";
+            } else if !SERVICES.contains(&f[3]) {
+                why = "bad service";
+            } else if !d.map_or(false, |v| v <= 10000000) {
+                why = "bad declared";
+            } else if seen.contains(f[0]) {
+                why = "duplicate order";
+            } else if f[3] == "overnight" && zone_of(f[1]) != 1 {
+                why = "overnight unavailable";
+            }
+            weight = w.unwrap_or(0);
+            dec = d.unwrap_or(0);
+        }
+        if !why.is_empty() {
+            out.push_str(&format!("line {}: rejected: {}\n", i + 1, why));
+            rejected += 1;
+            continue;
+        }
+        let svc = SERVICES.iter().position(|s| *s == f[3]).unwrap();
+        seen.insert(f[0].to_string());
+        let z = zone_of(f[1]);
+        let band = (weight + 499) / 500;
+        let (start, step) = rates[(z - 1) as usize];
+        let rate = start + step * (band - 1);
+        let mut base = match svc {
+            0 => rate,
+            1 => (rate * 3 + 1) / 2,
+            _ => rate * 3,
+        };
+        if svc == 0 && z == 1 && weight <= 2000 && dec >= 5000 {
+            base = 0;
+        }
+        let fuel = (base * 8 + 50) / 100;
+        let ins = if dec <= 10000 { 0 } else { (dec + 50) / 100 };
+        let total = base + fuel + ins;
+        count[svc] += 1;
+        totals[svc] += total;
+        out.push_str(&format!(
+            "{} | zone={} | band={} | base={} | fuel={} | insurance={} | total={}\n",
+            f[0], z, band, money(base), money(fuel), money(ins), money(total)
+        ));
+    }
+    for (k, name) in SERVICES.iter().enumerate() {
+        out.push_str(&format!("service {}: orders={} total={}\n", name, count[k], money(totals[k])));
+    }
+    out.push_str(&format!(
+        "summary: orders={} rejected={} total={}\n",
+        count.iter().sum::<u64>(),
+        rejected,
+        money(totals.iter().sum())
+    ));
+    std::io::stdout().write_all(out.as_bytes()).unwrap();
+}

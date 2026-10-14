@@ -25,15 +25,15 @@ fn parse(line: String) -> Optional[Decl]:
     let at = line.index_of(":")
     if at.is_none():
         return none
-    let name = line.slice(0, at.unwrap())
+    let name = line.slice(0, at.unwrap()).unwrap()
     if not valid_name(name):
         return none
-    let rest = line.slice(at.unwrap() + 1, line.length())
+    let rest = line.slice(at.unwrap() + 1, line.length()).unwrap()
     if rest.is_empty():
         return some(Decl(name: name, deps: List[String]()))
     if not rest.starts_with(" "):
         return none
-    let deps = rest.slice(1, rest.length()).split(" ")
+    let deps = rest.slice(1, rest.length()).unwrap().split(" ")
     for d in deps:
         if not valid_name(d):
             return none

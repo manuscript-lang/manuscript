@@ -26,6 +26,7 @@ BASE_IMAGES = {
     "go": "golang:1.25-bookworm",
     "rust": "rust:1-bookworm",
     "ms": "ubuntu:24.04",
+    "ms_cheat": "ubuntu:24.04",
 }
 
 DOCKERFILE = """FROM {base}
@@ -38,7 +39,7 @@ COPY workspace /app
 def dockerfile(lang_id: str) -> str:
     install = "apt-get update && apt-get install -y --no-install-recommends python3 ca-certificates curl git && rm -rf /var/lib/apt/lists/*"
     extra = ""
-    if lang_id == "ms":
+    if lang_id.startswith("ms"):
         extra = "COPY ms /usr/local/bin/ms\n"
     return DOCKERFILE.format(base=BASE_IMAGES[lang_id], install=install, extra=extra)
 
@@ -89,7 +90,7 @@ def export_one(ch, lang_id, lang, out: Path, ms_binary: Path | None, agent_timeo
     (d / "instruction.md").write_text(prompt + "\n\n---\n\n" + ch.spec)
     (d / "task.toml").write_text(task_toml(name, ch, agent_timeout))
     (d / "environment" / "Dockerfile").write_text(dockerfile(lang_id))
-    if lang_id == "ms":
+    if lang_id.startswith("ms"):
         if ms_binary is None:
             print(f"  note: {name} needs --ms-binary for its Docker image (local-process env uses PATH)", file=sys.stderr)
         else:
@@ -102,7 +103,7 @@ def export_one(ch, lang_id, lang, out: Path, ms_binary: Path | None, agent_timeo
         "#!/bin/bash\n"
         f"python3 /tests/grade.py /tests/cases.json {json.dumps(lang['build'])} {json.dumps(lang['run'])} {ch.timeout_s}\n"
     )
-    sol = ch.solution(lang_id) / (Path(lang["solution"]).name + ".ref")
+    sol = ch.solution(lang.get("template", lang_id)) / (Path(lang["solution"]).name + ".ref")
     (d / "solution").mkdir()
     shutil.copy(sol, d / "solution" / "reference")
     (d / "solution" / "solve.sh").write_text(

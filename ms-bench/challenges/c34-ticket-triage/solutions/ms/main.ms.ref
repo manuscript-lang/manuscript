@@ -31,7 +31,7 @@ fn trim_blanks(s: String) -> String:
         start = start + 1
     while end > start and is_blank(codes.at(end - 1).unwrap()):
         end = end - 1
-    return s.slice(start, end)
+    return s.slice(start, end).unwrap()
 
 # Splits on runs of spaces and tabs, dropping empty pieces.
 fn words(s: String) -> List[String]:
@@ -76,9 +76,9 @@ fn normalise(subject: String) -> String:
     while true:
         s = s.trim_start()
         if s.starts_with("re:"):
-            s = s.slice(3, s.length())
+            s = s.slice(3, s.length()).unwrap()
         else if s.starts_with("fwd:"):
-            s = s.slice(4, s.length())
+            s = s.slice(4, s.length()).unwrap()
         else:
             break
     return words(s).join(" ")
@@ -103,8 +103,8 @@ fn split_ticket(l: String) -> List[String]:
         let bar = rest.index_of("|")
         if bar.is_none():
             break
-        parts.append(rest.slice(0, bar.unwrap()))
-        rest = rest.slice(bar.unwrap() + 1, rest.length())
+        parts.append(rest.slice(0, bar.unwrap()).unwrap())
+        rest = rest.slice(bar.unwrap() + 1, rest.length()).unwrap()
     parts.append(rest)
     return parts
 

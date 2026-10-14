@@ -1,0 +1,111 @@
+import { readFileSync } from "node:fs";
+
+const RANGES: [string, number, number][] = [["minute", 0, 59], ["hour", 0, 23], ["day-of-month", 1, 31], ["month", 1, 12], ["day-of-week", 0, 6]];
+
+function daysFromCivil(y: number, m: number, d: number): number {
+  if (m <= 2) y -= 1;
+  const era = Math.floor(y / 400);
+  const yoe = y - era * 400;
+  const doy = Math.floor((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5) + d - 1;
+  const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
+  return era * 146097 + doe - 719468;
+}
+
+function civilFromDays(z: number): [number, number, number] {
+  z += 719468;
+  const era = Math.floor(z / 146097);
+  const doe = z - era * 146097;
+  const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
+  let y = yoe + era * 400;
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const mp = Math.floor((5 * doy + 2) / 153);
+  const d = doy - Math.floor((153 * mp + 2) / 5) + 1;
+  const m = mp < 10 ? mp + 3 : mp - 9;
+  if (m <= 2) y += 1;
+  return [y, m, d];
+}
+
+const num = (s: string) => (/^[0-9]{1,2}$/.test(s) ? Number(s) : null);
+
+function parseField(text: string, lo: number, hi: number): boolean[] | null {
+  const set: boolean[] = new Array(hi + 1).fill(false);
+  for (const item of text.split(",")) {
+    const parts = item.split("/");
+    if (parts.length > 2) return null;
+    const body = parts[0];
+    let step = 1;
+    if (parts.length === 2) {
+      const s = num(parts[1]);
+      if (s === null || s < 1) return null;
+      step = s;
+    }
+    let a: number, b: number;
+    if (body === "*") { a = lo; b = hi; }
+    else if (num(body) !== null) {
+      if (parts.length === 2) return null;
+      a = b = num(body)!;
+    } else {
+      const r = body.split("-");
+      if (r.length !== 2 || num(r[0]) === null || num(r[1]) === null) return null;
+      a = num(r[0])!;
+      b = num(r[1])!;
+      if (a > b) return null;
+    }
+    if (a < lo || b > hi) return null;
+    for (let v = a; v <= b; v += step) set[v] = true;
+  }
+  return set;
+}
+
+function parseStart(s: string): [number, number] | null {
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2})$/.exec(s);
+  if (!m) return null;
+  const [y, mo, d, h, mi] = m.slice(1).map(Number);
+  if (y < 1970 || y > 2099 || mo < 1 || mo > 12 || d < 1 || h > 23 || mi > 59) return null;
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const len = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
+  if (d > len) return null;
+  return [daysFromCivil(y, mo, d), h * 60 + mi];
+}
+
+const pad = (n: number, w = 2) => String(n).padStart(w, "0");
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+const out: string[] = [];
+for (let n = 1; n <= lines.length; n++) {
+  const l = lines[n - 1];
+  if (l.replace(/ /g, "") === "") continue;
+  const pre = `line ${n}:`;
+  const t = l.split(" ");
+  if (t.length !== 7) { out.push(`${pre} error: bad line`); continue; }
+  const start = parseStart(t[0]);
+  if (!start) { out.push(`${pre} error: bad start`); continue; }
+  const count = num(t[1]);
+  if (count === null || count < 1 || count > 20) { out.push(`${pre} error: bad count`); continue; }
+  const sets: boolean[][] = [];
+  let bad: string | null = null;
+  for (let i = 0; i < 5; i++) {
+    const s = parseField(t[2 + i], RANGES[i][1], RANGES[i][2]);
+    if (!s) { bad = RANGES[i][0]; break; }
+    sets.push(s);
+  }
+  if (bad) { out.push(`${pre} error: bad ${bad}`); continue; }
+  const [mi, ho, dom, mo, dow] = sets;
+  const runs: string[] = [];
+  for (let k = 0; k <= 3000 && runs.length < count; k++) {
+    const day = start[0] + k;
+    const [y, m, d] = civilFromDays(day);
+    if (!mo[m] || !dom[d] || !dow[(day + 4) % 7]) continue;
+    for (let h = 0; h < 24 && runs.length < count; h++) {
+      if (!ho[h]) continue;
+      for (let mn = 0; mn < 60 && runs.length < count; mn++) {
+        if (!mi[mn]) continue;
+        if (k === 0 && h * 60 + mn <= start[1]) continue;
+        runs.push(`${pad(y, 4)}-${pad(m)}-${pad(d)} ${pad(h)}:${pad(mn)}`);
+      }
+    }
+  }
+  if (runs.length === 0) out.push(`${pre} never`);
+  else out.push(`${pre} ${runs.length} runs`, ...runs);
+}
+process.stdout.write(out.map((x) => x + "\n").join(""));
