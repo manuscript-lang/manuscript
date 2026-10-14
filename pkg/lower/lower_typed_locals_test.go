@@ -174,3 +174,31 @@ fn id(x: Int) -> Int:
 		}
 	}
 }
+
+// Appending to and ranging over a List of a primitive element type neither
+// boxes the element nor asserts it back.
+func TestPrimitiveListAppendAndRangeAreUnboxed(t *testing.T) {
+	r := compileSource("list.ms", `import List from "@std/collections.ms"
+fn sum(count: Int) -> Int:
+    let items = List[Int]()
+    var i = 0
+    while i < count:
+        items.append(value: i)
+        i = i + 1
+    var total = 0
+    for v in items:
+        total = total + v
+    return total
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.ListAppendInt(", "rt.IterateInt("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, "rt.IntValue(local") {
+		t.Fatalf("range element asserted\n%s", r.Source)
+	}
+}

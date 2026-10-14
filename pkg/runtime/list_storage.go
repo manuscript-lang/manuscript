@@ -22,6 +22,77 @@ func (r ListRange) Values() iter.Seq2[int, Value] {
 	}
 }
 
+// Ints, Floats, Bools and Strings iterate a captured range of that primitive
+// element type without boxing each element.
+func (r ListRange) Ints() iter.Seq2[int, int64] {
+	return func(yield func(int, int64) bool) {
+		if r.list.kind == listInt {
+			for i, v := range r.list.ints {
+				if !yield(i, v) {
+					return
+				}
+			}
+			return
+		}
+		for i := 0; i < r.Len(); i++ {
+			if !yield(i, r.Get(i).(int64)) {
+				return
+			}
+		}
+	}
+}
+func (r ListRange) Floats() iter.Seq2[int, float64] {
+	return func(yield func(int, float64) bool) {
+		if r.list.kind == listFloat {
+			for i, v := range r.list.floats {
+				if !yield(i, v) {
+					return
+				}
+			}
+			return
+		}
+		for i := 0; i < r.Len(); i++ {
+			if !yield(i, r.Get(i).(float64)) {
+				return
+			}
+		}
+	}
+}
+func (r ListRange) Bools() iter.Seq2[int, bool] {
+	return func(yield func(int, bool) bool) {
+		if r.list.kind == listBool {
+			for i, v := range r.list.bools {
+				if !yield(i, v) {
+					return
+				}
+			}
+			return
+		}
+		for i := 0; i < r.Len(); i++ {
+			if !yield(i, r.Get(i).(bool)) {
+				return
+			}
+		}
+	}
+}
+func (r ListRange) Strings() iter.Seq2[int, string] {
+	return func(yield func(int, string) bool) {
+		if r.list.kind == listString {
+			for i, v := range r.list.strings {
+				if !yield(i, v) {
+					return
+				}
+			}
+			return
+		}
+		for i := 0; i < r.Len(); i++ {
+			if !yield(i, r.Get(i).(string)) {
+				return
+			}
+		}
+	}
+}
+
 // NewList copies checked values into one authoritative backing representation.
 // A dynamic or heterogeneous payload remains boxed; no boxed mirror is kept.
 func NewList(typ string, values []Value) *List {
