@@ -32,6 +32,19 @@ func libraryArchivePath(s string, directory bool) bool {
 	}
 	return true
 }
+
+// libraryArchiveConflict reports whether a regular file shares a normalized path with the
+// parent directory of another entry (file "a" with "a/b"), which cannot be extracted together.
+func libraryArchiveConflict(kinds map[string]bool) bool {
+	for key := range kinds {
+		for dir := path.Dir(key); dir != "."; dir = path.Dir(dir) {
+			if isDir, ok := kinds[dir]; ok && !isDir {
+				return true
+			}
+		}
+	}
+	return false
+}
 func libraryArchivePack(ctx *Execution, r string, a []Value) Value {
 	max := a[2].(int64)
 	if max < 0 {
@@ -39,6 +52,7 @@ func libraryArchivePack(ctx *Execution, r string, a []Value) Value {
 	}
 	entries := a[0].(*List).Boxed()
 	seen := map[string]bool{}
+	kinds := map[string]bool{}
 	for _, v := range entries {
 		CheckCancelled(ctx)
 		f := v.(Record).Fields
@@ -52,6 +66,10 @@ func libraryArchivePack(ctx *Execution, r string, a []Value) Value {
 			return libraryError(r, "InvalidData", "")
 		}
 		seen[key] = true
+		kinds[key] = directory
+	}
+	if libraryArchiveConflict(kinds) {
+		return libraryError(r, "InvalidData", "")
 	}
 	w := &libraryLimitedWriter{max: max}
 	switch a[1].(string) {
@@ -134,6 +152,7 @@ func libraryArchiveUnpack(ctx *Execution, r string, a []Value) Value {
 	}
 	var out []Value
 	seen := map[string]bool{}
+	kinds := map[string]bool{}
 	add := func(name string, directory bool, size int64, reader io.Reader) string {
 		CheckCancelled(ctx)
 		if !libraryArchivePath(name, directory) {
@@ -144,6 +163,7 @@ func libraryArchiveUnpack(ctx *Execution, r string, a []Value) Value {
 			return "InvalidData"
 		}
 		seen[key] = true
+		kinds[key] = directory
 		if int64(len(out)) >= count || size > entryMax || size > total {
 			return "LimitExceeded"
 		}
@@ -213,6 +233,9 @@ func libraryArchiveUnpack(ctx *Execution, r string, a []Value) Value {
 		}
 	default:
 		return libraryError(r, "Unsupported", "")
+	}
+	if libraryArchiveConflict(kinds) {
+		return libraryError(r, "InvalidData", "")
 	}
 	return libraryOK(r, libraryList("@std/ArchiveEntry", out))
 }

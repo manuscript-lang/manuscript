@@ -7,7 +7,7 @@ import List from "@std/collections.ms"
 export type ArchiveError:
     # A format argument's entry paths, directory payloads or supplied output/unpack limits are invalid.
     case InvalidInput
-    # Archive bytes, duplicate paths, extracted entry paths or encoded metadata are invalid.
+    # Archive bytes, duplicate or file/directory-conflicting paths, extracted entry paths or encoded metadata are invalid.
     case InvalidData
     # Encoded bytes, entry count or unpacked per-entry/total bytes exceed a supplied budget.
     case LimitExceeded
