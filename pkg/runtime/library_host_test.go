@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-func TestNodePathFixtures(t *testing.T) {
-	data, err := os.ReadFile("testdata/node-path.json")
+func TestPathFixtures(t *testing.T) {
+	data, err := os.ReadFile("testdata/path-fixtures.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestNodePathFixtures(t *testing.T) {
 			actualJSON, _ := json.Marshal(actual)
 			expectedJSON, _ := json.Marshal(expected)
 			if string(actualJSON) != string(expectedJSON) {
-				t.Errorf("got %s, Node.js expected %s", got, c.Expected)
+				t.Errorf("got %s, want %s", got, c.Expected)
 			}
 		})
 	}
@@ -661,7 +661,7 @@ func TestFilesystemGlobOptions(t *testing.T) {
 	}
 }
 
-func TestNodeConstantCatalogs(t *testing.T) {
+func TestConstantCatalogs(t *testing.T) {
 	if goruntime.GOOS != "linux" {
 		t.Skip("recorded native values are from Linux; other targets use their OS constants")
 	}

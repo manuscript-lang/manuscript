@@ -35,11 +35,11 @@ func TestOptionalLimits(t *testing.T) {
 }
 func TestJavascriptRound(t *testing.T) {
 	for _, v := range []struct{ input, want float64 }{{-1.5, -1}, {-2.5, -2}, {1.5, 2}, {2.5, 3}, {0.49999999999999994, 0}} {
-		if got := javascriptRound(v.input); got != v.want {
+		if got := roundHalfUp(v.input); got != v.want {
 			t.Fatalf("round(%v)=%v", v.input, got)
 		}
 	}
-	if got := javascriptRound(-0.5); got != 0 || !math.Signbit(got) {
+	if got := roundHalfUp(-0.5); got != 0 || !math.Signbit(got) {
 		t.Fatal("negative zero lost")
 	}
 }
