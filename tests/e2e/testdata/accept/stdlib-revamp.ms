@@ -1,12 +1,8 @@
 import {ReadStream, IoError, read_line} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import {List, Map} from "@std/collections.ms"
-import {Equal, Hashable} from "@std/equality.ms"
 import {Queue, PriorityQueue} from "@std/queues.ms"
-import Optional from "@std/optional.ms"
 import {Scheduler, WorkStatus} from "@std/tasks.ms"
-import {Result} from "@std/result.ms"
 import {sleep} from "@std/time.ms"
 import {parse, JsonValue} from "@std/json.ms"
 

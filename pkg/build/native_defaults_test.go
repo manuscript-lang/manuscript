@@ -15,7 +15,6 @@ func TestNativeDefaultCallableBoundaries(t *testing.T) {
 import {parse, CsvOptions} from "@std/csv.ms"
 import {commands, Commands, CommandOutput, CommandError} from "@std/process.ms"
 import {Bytes} from "@std/bytes.ms"
-import List from "@std/collections.ms"
 import Duration from "@std/time.ms"
 fn forward[T](item: T) -> T: item
 `
@@ -42,7 +41,6 @@ fn forward[T](item: T) -> T: item
 // the shipped stdlib or its immutable registry to manufacture side effects.
 func TestNativeDefaultsEvaluateBeforeDispatch(t *testing.T) {
 	const source = `import {CsvOptions, CsvError} from "@std/csv.ms"
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 fn options(rows: List[List[String]], mark: String) -> CsvOptions:
     rows.append([mark])
@@ -115,7 +113,6 @@ func TestExplicitNativeCallsKeepDirectDispatch(t *testing.T) {
 	r := compiler.CompileSource("explicit-native.ms", `import base64_encode from "@std/encoding.ms"
 import CsvOptions from "@std/csv.ms"
 import {commands} from "@std/process.ms"
-import List from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
 fn explicit(data: Bytes) -> Unit:
     base64_encode(data,false)

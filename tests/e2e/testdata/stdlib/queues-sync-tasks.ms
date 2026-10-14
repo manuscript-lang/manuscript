@@ -8,9 +8,7 @@ import {
     yield_now,
     TaskGroup
 } from "@std/tasks.ms"
-import {List, ListBuilder} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
+import {ListBuilder} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

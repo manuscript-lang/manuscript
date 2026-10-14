@@ -149,18 +149,18 @@ func TestRejectInterfaceSyntax(t *testing.T) {
 
 func TestNamedImports(t *testing.T) {
 	for _, source := range []string{
-		"import List from \"@std/collections.ms\"\n",
-		"import { List } from \"@std/collections.ms\"\n",
-		"import { List, Map } from \"@std/collections.ms\"\n",
-		"import {\n    List, # first\n    Map,\n} from \"@std/collections.ms\"\n",
+		"import ListBuilder from \"@std/collections.ms\"\n",
+		"import { ListBuilder } from \"@std/collections.ms\"\n",
+		"import { ListBuilder, MapBuilder } from \"@std/collections.ms\"\n",
+		"import {\n    ListBuilder, # first\n    MapBuilder,\n} from \"@std/collections.ms\"\n",
 	} {
 		module, err := parser.Parse("imports.ms", source)
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := []string{"List"}
-		if strings.Contains(source, "Map") {
-			want = append(want, "Map")
+		want := []string{"ListBuilder"}
+		if strings.Contains(source, "MapBuilder") {
+			want = append(want, "MapBuilder")
 		}
 		if len(module.Imports) != len(want) {
 			t.Fatal(module.Imports)

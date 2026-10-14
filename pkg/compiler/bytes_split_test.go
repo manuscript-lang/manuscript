@@ -16,7 +16,7 @@ func TestBytesSplitRejectsInvalidContracts(t *testing.T) {
 		{"complete stored method type", `fn wrong(data: Bytes) -> fn(separator: Bytes) -> List[Bytes]: data.split`, "max_parts"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			result := CompileSource("bytes-split.ms", "import Bytes from \"@std/bytes.ms\"\nimport List from \"@std/collections.ms\"\n"+test.source+"\n", Options{AnalyzeOnly: true})
+			result := CompileSource("bytes-split.ms", "import Bytes from \"@std/bytes.ms\"\n"+test.source+"\n", Options{AnalyzeOnly: true})
 			if result.Success() {
 				t.Fatal("accepted invalid byte split contract")
 			}

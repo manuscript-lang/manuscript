@@ -1,9 +1,5 @@
 import panic from "@std/faults.ms"
 
-import Map from "@std/collections.ms"
-import MapEntry from "@std/collections.ms"
-import Set from "@std/collections.ms"
-
 fn map_total(values: Map[String, Int]) -> Int:
     var total = 0
 

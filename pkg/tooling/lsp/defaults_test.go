@@ -6,8 +6,7 @@ import (
 )
 
 func TestDefaultClosureAssignmentReferencesAndListHints(t *testing.T) {
-	source := `import List from "@std/collections.ms"
-fn answer(value: Int = (fn() -> Int:
+	source := `fn answer(value: Int = (fn() -> Int:
     var current = 0
     current = current + 1
     return current

@@ -1,4 +1,3 @@
-import List from "@std/collections.ms"
 
 fn build(count: Int) -> List[Int]:
     let values: List[Int] = []

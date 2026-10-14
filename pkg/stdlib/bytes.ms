@@ -1,8 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import CollectionError from "@std/collections.ms"
-import List from "@std/collections.ms"
-
 # An immutable sequence of bytes. Indices and slice bounds are zero-based.
 export type Bytes:
     # Copies byte storage without changing the receiver.

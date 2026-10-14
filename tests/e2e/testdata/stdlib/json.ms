@@ -6,10 +6,6 @@ import {
     JsonError,
     JsonEncodable
 } from "@std/json.ms"
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

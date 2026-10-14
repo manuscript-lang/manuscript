@@ -182,8 +182,8 @@ func TestInspectInterface(t *testing.T) {
 }
 
 func TestFormatGroupedImports(t *testing.T) {
-	input := "import { List,Map, } from \"@std/collections.ms\" # collections\n"
-	want := "import {List, Map} from \"@std/collections.ms\"  # collections\n"
+	input := "import { ListBuilder,MapBuilder, } from \"@std/collections.ms\" # collections\n"
+	want := "import {ListBuilder, MapBuilder} from \"@std/collections.ms\"  # collections\n"
 	formatted, err := tooling.Format("imports.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
@@ -239,8 +239,8 @@ func TestFormatMapAndShorthand(t *testing.T) {
 }
 
 func TestFormatKeepsConsecutiveConstantsTogether(t *testing.T) {
-	source := "import List from \"@std/collections.ms\"\nlet A = 1\nlet B = 2\nfn f() -> Int:\n    return A + B\n"
-	want := "import List from \"@std/collections.ms\"\n\nlet A = 1\nlet B = 2\n\nfn f() -> Int:\n    return A + B\n"
+	source := "import ListBuilder from \"@std/collections.ms\"\nlet A = 1\nlet B = 2\nfn f() -> Int:\n    return A + B\n"
+	want := "import ListBuilder from \"@std/collections.ms\"\n\nlet A = 1\nlet B = 2\n\nfn f() -> Int:\n    return A + B\n"
 	got, err := tooling.Format("constants.ms", source)
 	if err != nil || got != want {
 		t.Fatalf("got %q, %v", got, err)

@@ -72,7 +72,6 @@ test "negate minimum":
 
 func TestBoundNativeMembersKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("bound.ms", `import panic from "@std/faults.ms"
-import {List, Set, Map} from "@std/collections.ms"
 import StringBuilder from "@std/string.ms"
 
 type Folded:
@@ -128,7 +127,6 @@ test "sealed builder":
 
 func TestNestedTryReturnsInSourceOrder(t *testing.T) {
 	result := compiler.CompileSource("nested_try.ms", `import panic from "@std/faults.ms"
-import {List} from "@std/collections.ms"
 
 fn check(ok: Bool, name: String) -> Unit:
     if not ok:

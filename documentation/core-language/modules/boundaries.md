@@ -10,7 +10,6 @@ A module's exports define what other files can use. Export the types named by pu
 This module exports a record and a function that uses it:
 
 ```manuscript
-import List from "@std/collections.ms"
 
 export type Item:
     price: Int

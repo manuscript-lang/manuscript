@@ -9,8 +9,6 @@ import (
 
 func TestTextInterpolationAndMapLookupKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("text-map.ms", `import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
 
 type Point:
     x: Int

@@ -1,5 +1,4 @@
 import stdout from "@std/io.ms"
-import List from "@std/collections.ms"
 import Queue from "@std/queues.ms"
 import total from "@math"
 import compute from "@math"

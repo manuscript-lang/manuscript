@@ -1,5 +1,5 @@
 import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
+
 
 type Counter:
     value: Int = 0

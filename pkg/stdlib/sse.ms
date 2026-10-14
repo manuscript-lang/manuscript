@@ -1,6 +1,5 @@
 # Server-Sent Events decoder implemented in Manuscript.
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {List} from "@std/collections.ms"
 import {IoError, ReadStream} from "@std/io.ms"
 import {ResponseBody} from "@std/http.ms"
 

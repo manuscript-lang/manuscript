@@ -1,7 +1,5 @@
 import Queue from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
-import Optional from "@std/optional.ms"
-import List from "@std/collections.ms"
 import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 

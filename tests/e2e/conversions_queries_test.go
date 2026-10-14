@@ -27,8 +27,8 @@ func TestCollectionQueryCallbackFaultLocations(t *testing.T) {
 				if method == "map" || method == "map_keys" {
 					result, expression = "Int", "1 / value"
 				}
-				source := fmt.Sprintf("import {Map, Set} from \"@std/collections.ms\"\nfn crash(%s) -> %s:\n    return %s\nexport fn main() -> Int:\n    let values = %s\n    let result = values.%s(%s)\n    return 0\n", parameters, result, expression, constructor, method, arguments)
-				assertQueryFaultFrames(t, source, []string{"query-fault.ms:3 in crash", "query-fault.ms:6 in main"})
+				source := fmt.Sprintf("fn crash(%s) -> %s:\n    return %s\nexport fn main() -> Int:\n    let values = %s\n    let result = values.%s(%s)\n    return 0\n", parameters, result, expression, constructor, method, arguments)
+				assertQueryFaultFrames(t, source, []string{"query-fault.ms:2 in crash", "query-fault.ms:5 in main"})
 			})
 		}
 	}

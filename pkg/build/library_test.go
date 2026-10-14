@@ -40,8 +40,7 @@ func TestOpaqueLibraryTypesCannotBeConstructed(t *testing.T) {
 }
 
 func TestLibraryErrorDomainsAreDistinct(t *testing.T) {
-	prefix := `import Result from "@std/result.ms"
-import JsonError from "@std/json.ms"
+	prefix := `import JsonError from "@std/json.ms"
 import EncodingError from "@std/encoding.ms"
 `
 	for name, source := range map[string]string{
@@ -67,10 +66,8 @@ fn wrong() -> Result[Unit, JsonError]:
 }
 
 func TestCommonErrorRejectsInvalidContractPatterns(t *testing.T) {
-	prefix := `import Error from "@std/errors.ms"
-import JsonError from "@std/json.ms"
+	prefix := `import JsonError from "@std/json.ms"
 import EncodingError from "@std/encoding.ms"
-import Result from "@std/result.ms"
 `
 	for name, source := range map[string]string{
 		"missing implicit implementation": `type Impostor:
@@ -90,8 +87,7 @@ fn wrong() -> Result[Unit, Error]:
 		"Error cannot narrow to a domain": `fn wrong(value: Error) -> JsonError:
     return value
 `,
-		"error lists remain invariant": `import List from "@std/collections.ms"
-fn wrong(values: List[JsonError]) -> List[Error]:
+		"error lists remain invariant": `fn wrong(values: List[JsonError]) -> List[Error]:
     return values
 `,
 		"error function types remain invariant": `fn wrong(operation: fn() -> JsonError) -> fn() -> Error:
@@ -179,9 +175,7 @@ fn wrong(cause: Error) -> String:
 }
 
 func TestCommonErrorAcceptsSpecificErrors(t *testing.T) {
-	source := `import Error from "@std/errors.ms"
-import Result from "@std/result.ms"
-import JsonError from "@std/json.ms"
+	source := `import JsonError from "@std/json.ms"
 import hex_decode from "@std/encoding.ms"
 fn general(cause: JsonError) -> Error:
     return cause
@@ -206,18 +200,22 @@ fn constructed() -> Result[Unit, Error]:
 
 func TestAllStandardErrorsImplementError(t *testing.T) {
 	for _, module := range checker.StandardLibrary() {
+		if module.Path == "prelude" {
+			continue // Prelude aliases retain their defining module's identity.
+		}
 		for _, declaration := range module.Declarations {
 			if declaration.Kind != "alternative" || !strings.HasSuffix(declaration.Name, "Error") {
 				continue
 			}
 			t.Run(declaration.Name, func(t *testing.T) {
-				source := fmt.Sprintf(`import Error from "@std/errors.ms"
-import %s from %q
-fn diagnostic(cause: %s) -> String:
+				source := fmt.Sprintf(`fn diagnostic(cause: %s) -> String:
     return cause.message()
 fn view(cause: %s) -> Error:
     return cause
-`, declaration.Name, module.Path, declaration.Name, declaration.Name)
+`, declaration.Name, declaration.Name)
+				if !checker.IsPreludeSymbol(checker.StandardExports(module.Path)[declaration.Name]) {
+					source = fmt.Sprintf("import %s from %q\n", declaration.Name, module.Path) + source
+				}
 				result := compiler.CompileSource("standard-errors.ms", source, compiler.Options{})
 				if !result.Success() {
 					t.Fatal(result.Diagnostics)
@@ -267,7 +265,6 @@ func TestBundledRuntimeImportAliasesAgree(t *testing.T) {
 
 func TestTimeSchedulingAcceptsOrdinaryCallbackValues(t *testing.T) {
 	source := `import Scheduler from "@std/tasks.ms"
-import Result from "@std/result.ms"
 fn start_timer(operation: fn() -> Result[Unit, Error]) -> Unit:
     with scheduler = Scheduler():
         let schedule = scheduler.after

@@ -9,7 +9,6 @@ import (
 
 func TestDirectMethodsKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("methods.ms", `import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
 
 interface Shape:
     fn area() -> Int

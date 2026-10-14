@@ -346,7 +346,7 @@ func (c *checker) property(t *Type, property string, state *propertyState) (resu
 	if std(t, "Decimal") || std(t, "Bytes") || std(t, "Duration") || std(t, "Instant") {
 		return true
 	}
-	if std(t, "Task") || std(t, "TaskGroup") || std(t, "OperationId") || std(t, "Scheduler") || std(t, "Queue") || std(t, "PriorityQueue") || std(t, "Synchronized") || std(t, "SynchronizedGuard") {
+	if std(t, "Task") || std(t, "TaskGroup") || std(t, "OperationId") || std(t, "Scheduler") || std(t, "Queue") || std(t, "BlockingQueue") || std(t, "PriorityQueue") || std(t, "Synchronized") || std(t, "SynchronizedGuard") {
 		return false
 	}
 	if std(t, "List") || std(t, "Map") || std(t, "Set") {

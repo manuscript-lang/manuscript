@@ -1,7 +1,6 @@
 import base64_encode from "@std/encoding.ms"
 import CsvOptions from "@std/csv.ms"
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 import {commands, CommandOutput, CommandError} from "@std/process.ms"
 import Duration from "@std/time.ms"
 import {filesystem, FileSystem, FileSystemError} from "@std/fs.ms"

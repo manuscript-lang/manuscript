@@ -13,7 +13,7 @@ import {CryptoError} from "@std/crypto.ms"
 import {YamlError} from "@std/yaml.ms"
 import {TomlError} from "@std/toml.ms"
 import {SseError} from "@std/sse.ms"
-import {List, Map, range} from "@std/collections.ms"
+import {range} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 type CustomError:

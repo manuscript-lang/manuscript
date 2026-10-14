@@ -1,7 +1,3 @@
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-import Set from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import Synchronized from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"

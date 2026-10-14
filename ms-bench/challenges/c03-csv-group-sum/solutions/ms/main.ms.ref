@@ -1,5 +1,4 @@
 import {stdin, stdout, read_line} from "@std/io.ms"
-import MapEntry from "@std/collections.ms"
 
 # True when s is a non-empty run of ASCII digits.
 fn all_digits(s: String) -> Bool:

@@ -1,10 +1,7 @@
 import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import abs_int from "@std/math.ms"
 
 import Scheduler from "@std/tasks.ms"
-import Result from "@std/result.ms"
 import Synchronized from "@std/sync.ms"
 
 fn increment(value: Int) -> Int:

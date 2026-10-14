@@ -1,7 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import List from "@std/collections.ms"
-
 # Errors returned by Unicode scalar conversions and bounded string operations.
 export type StringError:
     # Scalar values, normalization form or a supplied repeat/padding/output budget is invalid.

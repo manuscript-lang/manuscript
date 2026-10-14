@@ -1,23 +1,10 @@
 import from_int from "@std/bigint.ms"
 import compile from "@std/regex.ms"
 import panic from "@std/faults.ms"
-import {
-    List,
-    ListEntry,
-    Map,
-    MapEntry,
-    Set,
-    filled,
-    range,
-    map_from_entries
-} from "@std/collections.ms"
+import {filled, range, map_from_entries} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-import Error from "@std/errors.ms"
 import NumberError from "@std/numbers.ms"
 import StringError from "@std/string.ms"
-import CollectionError from "@std/collections.ms"
 
 fn positive(value: Int) -> Bool:
     return value > 0

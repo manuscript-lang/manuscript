@@ -27,12 +27,11 @@ export fn main() -> Int:
     let add = values.add
     return add(value: crash(), key: 1).length()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:6 in main"}},
-		{"List at unwrap out of range", `import List from "@std/collections.ms"
-fn pick(values: List[Int], index: Int) -> Int:
+		{"List at unwrap out of range", `fn pick(values: List[Int], index: Int) -> Int:
     return values.at(index).unwrap()
 export fn main() -> Int:
     return pick([1, 2, 3], 3)
-`, false, []string{"fault.ms:3 in pick", "fault.ms:5 in main"}},
+`, false, []string{"fault.ms:2 in pick", "fault.ms:4 in main"}},
 		{"Result unwrap", `fn deep(value: Result[Int, String]) -> Int:
     return value.unwrap()
 export fn main() -> Int:
@@ -55,32 +54,29 @@ export fn main() -> Int:
     let value: Result[Int, String] = error("expected failure")
     return value.unwrap_or_else(crash)
 `, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
-		{"Map filter callback fault", `import Map from "@std/collections.ms"
-fn crash(key: String, value: Int) -> Bool:
+		{"Map filter callback fault", `fn crash(key: String, value: Int) -> Bool:
     return 1 / value == 0
 export fn main() -> Int:
     let value: Map[String, Int] = {"a": 0}
     return value.filter(crash).length()
-`, false, []string{"fault.ms:3 in crash", "fault.ms:6 in main"}},
-		{"Set map callback fault", `import Set from "@std/collections.ms"
-fn crash(value: Int) -> Int:
+`, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
+		{"Set map callback fault", `fn crash(value: Int) -> Int:
     return 1 / value
 export fn main() -> Int:
     let value = Set[Int]().add(0)
     return value.map(crash).length()
-`, false, []string{"fault.ms:3 in crash", "fault.ms:6 in main"}},
+`, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
 		{"Optional callback fault", `fn crash(value: Int) -> Optional[Int]:
     return some(1 / value)
 export fn main() -> Int:
     let value: Optional[Int] = some(0)
     return value.and_then(crash).unwrap()
 `, false, []string{"fault.ms:2 in crash", "fault.ms:5 in main"}},
-		{"unwrap and caller", `import List from "@std/collections.ms"
-fn deep(l: List[Int], i: Int) -> Int:
+		{"unwrap and caller", `fn deep(l: List[Int], i: Int) -> Int:
     return l.at(i).unwrap()
 export fn main() -> Int:
     return deep(l: [1], i: 5)
-`, false, []string{"fault.ms:3 in deep", "fault.ms:5 in main"}},
+`, false, []string{"fault.ms:2 in deep", "fault.ms:4 in main"}},
 		{"test panic", `import panic from "@std/faults.ms"
 test "several checks":
     let good = 2 + 3
@@ -129,13 +125,12 @@ export fn main() -> Int:
     let run = item.run
     return run()
 `, false, []string{"fault.ms:7 in Item.run", "fault.ms:11 in main"}},
-		{"destructuring", `import List from "@std/collections.ms"
-fn empty() -> List[Int]:
+		{"destructuring", `fn empty() -> List[Int]:
     return []
 export fn main() -> Int:
     let [value] = empty()
     return value
-`, false, []string{"fault.ms:5 in main"}},
+`, false, []string{"fault.ms:4 in main"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			result := compiler.CompileSource("fault.ms", tc.source, compiler.Options{Tests: tc.tests, Entry: !tc.tests})

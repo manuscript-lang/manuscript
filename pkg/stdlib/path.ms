@@ -1,7 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import List from "@std/collections.ms"
-
 # Errors returned when a path cannot be parsed or resolved.
 export type PathError:
     # Invalid NUL input, a nonabsolute resolve/relative anchor or malformed glob syntax.

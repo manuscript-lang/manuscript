@@ -7,9 +7,7 @@ import {
     dev_null
 } from "@std/system.ms"
 import {control, commands, CommandError, CommandOutput} from "@std/process.ms"
-import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
+import {read_line} from "@std/io.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -68,3 +66,15 @@ test "subprocess validation returns expected domain errors":
             input: "".to_bytes()
         ) != unavailable
     ): return panic("missing command")
+
+test "managed subprocess streams incrementally and cleans up on scope exit":
+    if os_type() == "windows": return
+
+    with child = value(commands().spawn(program: "cat", arguments: [])):
+        value(child.stdin().write("ping\n".to_bytes()))
+        let line = value(read_line(input: child.stdout()))
+        if line.unwrap_or("") != "ping": return panic("echo")
+
+        child.stdin().close()
+        if value(child.wait()) != 0: return panic("exit status")
+        if value(child.stdout().read()).is_some(): return panic("stdout eof")

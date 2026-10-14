@@ -22,10 +22,8 @@ func fixture(t *testing.T, name string) string {
 }
 
 func TestCallArgumentLabelRejections(t *testing.T) {
-	const declarations = `import List from "@std/collections.ms"
-import Scheduler from "@std/tasks.ms"
+	const declarations = `import Scheduler from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
-import Result from "@std/result.ms"
 fn one(value: Int) -> Int:
     return value
 fn two(left: Int, right: Int) -> Int:
@@ -249,8 +247,8 @@ func TestModulesAndProjectPaths(t *testing.T) {
 
 func TestGenericRecursionAndNamespaceRules(t *testing.T) {
 	for name, source := range map[string]string{
-		"expanding calls":           "import List from \"@std/collections.ms\"\nfn recurse[T](value: T) -> Unit:\n    recurse(value: [value])\n",
-		"expanding stored function": "import List from \"@std/collections.ms\"\nfn recurse[T](value: T) -> Unit:\n    let next = recurse[List[T]]\n",
+		"expanding calls":           "fn recurse[T](value: T) -> Unit:\n    recurse(value: [value])\n",
+		"expanding stored function": "fn recurse[T](value: T) -> Unit:\n    let next = recurse[List[T]]\n",
 		"intrinsic parameter":       "type Box[Int]:\n    value: Int\n",
 		"intrinsic declaration":     "type Int:\n    value: String\n",
 		"intrinsic bound target":    "type Data:\n    value: Int\nimpl Equal for Data:\n    fn compare() -> Unit:\n        return\n",
@@ -270,7 +268,7 @@ func TestGenericRecursionAndNamespaceRules(t *testing.T) {
 	}
 }
 func FuzzCompile(f *testing.F) {
-	for _, s := range []string{"fn f() -> Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() -> Box[Int]:\n    return Box(value: 1)\n", "import panic from \"@std/faults.ms\"\n\nimport List from \"@std/collections.ms\"\ntest \"list\":\n    let values = [1, 2]\n    if not (values.length() == 2):\n        return panic(message: \"check failed\")\n"} {
+	for _, s := range []string{"fn f() -> Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() -> Box[Int]:\n    return Box(value: 1)\n", "import panic from \"@std/faults.ms\"\n\ntest \"list\":\n    let values = [1, 2]\n    if not (values.length() == 2):\n        return panic(message: \"check failed\")\n"} {
 		f.Add(s)
 	}
 	// Seed from the accept and reject conformance programs so mutation starts
@@ -328,8 +326,7 @@ func FuzzCompile(f *testing.F) {
 
 func TestDisjointImplementations(t *testing.T) {
 	for name, source := range map[string]string{
-		"finite types": `import List from "@std/collections.ms"
-interface Read[T]:
+		"finite types": `interface Read[T]:
     fn get() -> Int
 type Pair[A, B]:
     left: A
@@ -591,10 +588,10 @@ func TestGroupedLocalImports(t *testing.T) {
 
 func TestGroupedImportResolutionErrors(t *testing.T) {
 	for name, source := range map[string]string{
-		"duplicate in group":       "import { List, List } from \"@std/collections.ms\"\n",
-		"duplicate across imports": "import List from \"@std/collections.ms\"\nimport { Map, List } from \"@std/collections.ms\"\n",
-		"declaration collision":    "import { List, Map } from \"@std/collections.ms\"\ntype Map:\n    value: Int\n",
-		"missing export":           "import { List, missing } from \"@std/collections.ms\"\n",
+		"duplicate in group":       "import {ListBuilder, ListBuilder} from \"@std/collections.ms\"\n",
+		"duplicate across imports": "import ListBuilder from \"@std/collections.ms\"\nimport {ListBuilder} from \"@std/collections.ms\"\n",
+		"declaration collision":    "import MapBuilder from \"@std/collections.ms\"\ntype MapBuilder:\n    value: Int\n",
+		"missing export":           "import {missing} from \"@std/collections.ms\"\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := compiler.CompileSource("imports.ms", source, compiler.Options{})

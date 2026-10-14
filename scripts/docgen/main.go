@@ -2,7 +2,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -19,7 +18,7 @@ func generate() (map[string][]byte, error) { return docgen.SiteFiles() }
 var downloads = map[string]bool{"website/static/stdlib.md": true, "website/static/stdlib.json": true}
 
 func main() {
-	check := flag.Bool("check", false, "fail if generated documentation differs")
+	check := flag.Bool("check", false, "validate source documentation without writing generated files")
 	onlyDownloads := flag.Bool("downloads", false, "write only the uncommitted API downloads (website/static/stdlib.*)")
 	coverage := flag.String("coverage", "", "write a complete description inventory as JSON (includes prelude aliases)")
 	flag.Parse()
@@ -57,18 +56,21 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	failed := false
+	if *check {
+		return
+	}
+	// All book Markdown is disposable; rebuild its tree to retire removed routes.
+	if !*onlyDownloads {
+		if err := os.RemoveAll(".artifacts/docs"); err != nil {
+			panic(err)
+		}
+	}
 	for path, data := range files {
-		if *onlyDownloads && !downloads[path] || *check && downloads[path] {
+		if *onlyDownloads && !downloads[path] {
 			continue
 		}
-		if *check {
-			old, err := os.ReadFile(path)
-			if err != nil || !bytes.Equal(old, data) {
-				fmt.Fprintln(os.Stderr, "stale documentation:", path)
-				failed = true
-			}
-			continue
+		if !downloads[path] {
+			path = filepath.Join(".artifacts/docs", path)
 		}
 		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 			panic(err)
@@ -76,23 +78,5 @@ func main() {
 		if err := os.WriteFile(path, data, 0644); err != nil {
 			panic(err)
 		}
-	}
-	if *onlyDownloads {
-		return
-	}
-	// Removed modules must not leave misleading reference pages behind.
-	paths, _ := filepath.Glob("documentation/standard-library/reference/*.md")
-	for _, path := range paths {
-		if _, ok := files[path]; !ok {
-			if *check {
-				fmt.Fprintln(os.Stderr, "obsolete documentation:", path)
-				failed = true
-			} else if err := os.Remove(path); err != nil {
-				panic(err)
-			}
-		}
-	}
-	if failed {
-		os.Exit(1)
 	}
 }

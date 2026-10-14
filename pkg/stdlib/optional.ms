@@ -1,7 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import MissingValue from "@std/errors.ms"
-
 # Represents a value that may be absent: `some(value)` or `none`.
 export type Optional[T]:
     # A present payload, retained by reference when T is mutable.

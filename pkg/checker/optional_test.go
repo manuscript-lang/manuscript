@@ -9,7 +9,7 @@ import (
 )
 
 func TestOptionalArgumentPreservesSourceTypeAndAST(t *testing.T) {
-	module, err := parser.Parse("optional.ms", "import Optional from \"@std/optional.ms\"\nfn f(value: Optional[Int]) -> Int: return value.unwrap()\nfn call() -> Int: return f(4)\n")
+	module, err := parser.Parse("optional.ms", "fn f(value: Optional[Int]) -> Int: return value.unwrap()\nfn call() -> Int: return f(4)\n")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestOptionalArgumentPreservesSourceTypeAndAST(t *testing.T) {
 }
 
 func TestMatchArmBindingsSurviveRepeatedFunctionLiteralChecks(t *testing.T) {
-	source := "import Result from \"@std/result.ms\"\nimport TaskGroup from \"@std/tasks.ms\"\nfn get() -> Result[Int, String]: return ok(value: 1)\nfn note() -> Unit: return unit\nfn run() -> Unit:\n    with tasks = TaskGroup():\n        tasks.start(operation: fn() -> Int:\n            match get():\n                ok(n): note()\n                error(e): note()\n            return 0\n        )\n"
+	source := "import TaskGroup from \"@std/tasks.ms\"\nfn get() -> Result[Int, String]: return ok(value: 1)\nfn note() -> Unit: return unit\nfn run() -> Unit:\n    with tasks = TaskGroup():\n        tasks.start(operation: fn() -> Int:\n            match get():\n                ok(n): note()\n                error(e): note()\n            return 0\n        )\n"
 	module, err := parser.Parse("arms.ms", source)
 	if err != nil {
 		t.Fatal(err)

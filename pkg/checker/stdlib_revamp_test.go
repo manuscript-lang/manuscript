@@ -13,9 +13,7 @@ func TestEqualityInterfacesAndHashConsistency(t *testing.T) {
 			t.Fatal("equality must be a source interface", name)
 		}
 	}
-	source := `import {Equal} from "@std/equality.ms"
-import Map from "@std/collections.ms"
-type Key:
+	source := `type Key:
     id: Int
 impl Equal for Key:
     fn equals(other: Equal) -> Bool: return true

@@ -1,4 +1,3 @@
-import Equal from "@std/equality.ms"
 import panic from "@std/faults.ms"
 
 type Element:

@@ -19,7 +19,7 @@ func TestStringBasicsRejectInvalidContracts(t *testing.T) {
     return compare(value: "b")`, "value"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			result := CompileSource("string-basics.ms", "import List from \"@std/collections.ms\"\n"+test.source+"\n", Options{AnalyzeOnly: true})
+			result := CompileSource("string-basics.ms", ""+test.source+"\n", Options{AnalyzeOnly: true})
 			if result.Success() {
 				t.Fatal("accepted invalid contract")
 			}

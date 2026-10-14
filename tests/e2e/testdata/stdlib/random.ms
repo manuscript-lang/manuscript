@@ -6,8 +6,7 @@ import {
     entropy
 } from "@std/random.ms"
 import Bytes from "@std/bytes.ms"
-import {List, filled} from "@std/collections.ms"
-import Result from "@std/result.ms"
+import {filled} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

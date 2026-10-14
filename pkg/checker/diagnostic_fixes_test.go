@@ -18,14 +18,14 @@ func TestDiagnosticFixes(t *testing.T) {
 		absent       []string
 		count        int // 0 means do not check
 	}{
-		{"bare Result impl receiver does not panic", "import Error from \"@std/errors.ms\"\nimpl Error for Result:\n    fn message() -> String:\n        return \"x\"\nfn general(value: Result) -> Error:\n    return value\n", []string{"Result requires 2 type arguments, found 0"}, nil, 0},
+		{"bare Result impl receiver does not panic", "impl Error for Result:\n    fn message() -> String:\n        return \"x\"\nfn general(value: Result) -> Error:\n    return value\n", []string{"Result requires 2 type arguments, found 0"}, nil, 0},
 		{"short Result impl receiver does not panic through error()", "impl Error for Result[Int]:\n    fn message() -> String:\n        return \"x\"\nfn f(x: Result[Int]) -> Result[Int, Error]:\n    return error(x)\n", []string{"Result requires 2 type arguments, found 1"}, nil, 0},
 		{"type parameter named Equal", "fn f[Equal](a: Equal) -> Unit:\n    return\n", []string{"duplicate or intrinsic type parameter Equal"}, nil, 1},
 		{"type parameter named Hashable on a type", "type Box[Hashable]:\n    v: Hashable\n", []string{"duplicate or intrinsic type parameter Hashable"}, nil, 1},
 		{"Float is not Hashable", "fn f() -> Int:\n    let s = Set[Float]()\n    return 0\n", []string{"Float has no Hashable implementation", "Decimal"}, []string{"add 'impl"}, 1},
-		{"List is not Hashable", "import {Map, List} from \"@std/collections.ms\"\nfn f() -> Int:\n    let m = Map[List[Int], Int]()\n    return 0\n", []string{"collections have no Hashable implementation", "record key"}, []string{"add 'impl"}, 1},
-		{"record still suggests impl", "import Set from \"@std/collections.ms\"\ntype K:\n    v: Float\nimpl Equal for K:\n    fn equals(other: Equal) -> Bool:\n        return true\nfn f() -> Int:\n    let s = Set[K]()\n    return 0\n", []string{"add 'impl Hashable for K:'"}, nil, 1},
-		{"test try", "import Result from \"@std/result.ms\"\nfn g() -> Result[Int, String]:\n    return ok(1)\ntest \"x\":\n    let v = try g()\n", []string{"try is not available in a test", "panic(message: ...)"}, nil, 1},
+		{"List is not Hashable", "fn f() -> Int:\n    let m = Map[List[Int], Int]()\n    return 0\n", []string{"collections have no Hashable implementation", "record key"}, []string{"add 'impl"}, 1},
+		{"record still suggests impl", "type K:\n    v: Float\nimpl Equal for K:\n    fn equals(other: Equal) -> Bool:\n        return true\nfn f() -> Int:\n    let s = Set[K]()\n    return 0\n", []string{"add 'impl Hashable for K:'"}, nil, 1},
+		{"test try", "fn g() -> Result[Int, String]:\n    return ok(1)\ntest \"x\":\n    let v = try g()\n", []string{"try is not available in a test", "panic(message: ...)"}, nil, 1},
 		{"assign to function", "fn helper() -> Int:\n    return 1\nfn f() -> Int:\n    helper = 2\n    return 0\n", []string{"cannot assign to function helper"}, []string{"unknown binding"}, 1},
 		{"assign to type", "type Point:\n    x: Int\nfn f() -> Int:\n    Point = 2\n    return 0\n", []string{"cannot assign to type Point"}, []string{"unknown binding"}, 1},
 		{"assign to import", "import panic from \"@std/faults.ms\"\nfn f() -> Int:\n    panic = 2\n    return 0\n", []string{"cannot assign to imported function panic"}, []string{"unknown binding", "add: import"}, 1},
@@ -68,7 +68,7 @@ func TestDiagnosticFixes(t *testing.T) {
 // A match used as a statement discards its result, so arms may end in values
 // of different types; a match whose value is used still requires agreement.
 func TestStatementMatchDiscardsArmValues(t *testing.T) {
-	prefix := "import {List, Map} from \"@std/collections.ms\"\n"
+	prefix := ""
 	for _, tt := range []struct {
 		name, source string
 		count        int

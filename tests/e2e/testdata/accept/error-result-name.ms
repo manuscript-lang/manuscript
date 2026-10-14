@@ -1,4 +1,3 @@
-import Error from "@std/errors.ms"
 import panic from "@std/faults.ms"
 
 type Result:

@@ -1,6 +1,5 @@
 import Key from "./key.ms"
 import remove_generic from "./generic.ms"
-import {Equal, Hashable} from "@std/equality.ms"
 
 impl Equal for Key:
     fn equals(other: Equal) -> Bool:

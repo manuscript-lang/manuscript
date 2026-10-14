@@ -58,7 +58,7 @@ Decision: the user requested "please remove nested match from everywhere, note i
 Verified: [MSL107](../pkg/tooling/nested_match_lint.go) warns at each structurally inner match; the [repository guard](../scripts/repo-check/nested_match.go) inspects source, fences, and Go strings. Test allowances are scoped and require a reason. [CLI/editor regressions](../internal/cli/advisory_lint_test.go) preserve checking success and advisory status. The earlier local completion report did not establish publication; the reconciliation used current main and the actual code registry, where MSL104/105 are already allocated and MSL106 belongs to the payload-binding rule.
 
 Apply when: adding Result adapters or rewriting examples that combine execution and domain errors.
-Evidence: [flat flow and grammar compatibility](../documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat); [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [task group example](../documentation/concurrency/task-groups.md).
+Evidence: [flat flow and grammar compatibility](../documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat); [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [task group example](../pkg/stdlib/tasks.ms).
 Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. Result's success-only `map` and same-error `and_then` retain the original error payload; they do not add an error-translation helper. The standard Result module exports only its type, and regenerated API references agree with its declarations. [Called composition tests](../tests/e2e/testdata/stdlib/core-parity.ms) distinguish success transformation from error translation.
 
 ### Equality and hashing are source interfaces
@@ -70,7 +70,7 @@ Evidence: [equality rules](../documentation/core-language/types/equality-and-has
 Verify: two keys with equal IDs and different labels compare equal and occupy one map entry; an equality override without a hash is rejected as a map key. Keep local implementation selection when forwarding generic arguments.
 
 Decision: all values may be passed freely; shared mutable state uses Synchronized, and closures have ordinary captures. This remains independent of equality, hashing, cleanup, and work lifetime.
-Evidence: [sharing rules](../documentation/concurrency/sharing.md).
+Evidence: [sharing rules](../pkg/stdlib/sync.ms).
 
 ### Syntax improvements need examples across their boundaries
 
@@ -110,7 +110,9 @@ Verify: the counter's Unit-returning method updates `self.val`; aliases observe 
 
 ### Source-backed data types belong in the prelude
 
-Decision: the user requested Optional, Result, their related helpers, and Error without imports. The later accepted [issue #187 direction](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138072921) adds List and Map to that scope; the adds Set through the same mechanism. Keep their canonical source-backed identities, including some/none, ok/error, and Optional receiver methods. Existing explicit imports remain valid. Ordinary declarations may select a local identity instead; a matching spelling must not acquire native behavior. Other standard APIs remain explicit imports. [Map.add is the accepted insertion spelling](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138104857); the older `with_entry` and alias spellings were removed (#358).
+Decision: the user requested Optional, Result, their related helpers, and Error without imports. The later accepted [issue #187 direction](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138072921) adds List and Map to that scope; Set uses the same mechanism. The latest direction removes existing imports and requires every type referenced by the public List/Map/Set API in the prelude. Its recursive nominal closure adds CollectionError, ListEntry, MapEntry, and MissingValue (through Optional.ok_or's default type argument); Optional, Result, Error, Equal, and Hashable already belong. Keep their canonical source-backed identities, including some/none, ok/error, and Optional receiver methods. Reject explicit imports by resolved canonical symbol identity with a binding-removal fix (MS2003). Project aliases to application types keep ordinary identity; renaming, reexports, and aliases that override the reserved @std directory remain unsupported. Ordinary declarations may select a local identity instead; a matching spelling must not acquire native behavior. Other standard APIs remain explicit imports. [Map.add is the accepted insertion spelling](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138104857); the older `with_entry` and alias spellings were removed (#358).
+
+Reason: a spelling-only ban would reject application declarations, and duplicated support definitions would split native identities. An ambiguous unqualified `LimitExceeded` needs `CollectionError.LimitExceeded` or another explicit case owner; match patterns still resolve through their scrutinee. Recursive signature, type-argument default, and native receiver-bound tests guard future additions. MissingValue also makes `Missing` ambient; qualify an expression as `MissingValue.Missing` or another explicit owner when needed.
 
 Apply when: changing prelude scope, standard imports, case lookup, or editor auto-imports.
 Evidence: [module scope rules](../documentation/core-language/modules/declarations.md#names-and-declaration-order), [native prelude conformance](../tests/e2e/testdata/accept/prelude.ms), [case inference and shadowing regressions](../pkg/compiler/prelude_test.go), [collection execution](../tests/e2e/testdata/accept/collection-prelude.ms), [Set execution](../tests/e2e/testdata/accept/set-prelude.ms), and [editor completion/navigation](../pkg/tooling/lsp/completion_test.go).
@@ -121,7 +123,7 @@ Verify: Optional methods and Result propagation into Error execute without impor
 Decision: applications export `fn main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
-Evidence: [CLI contract](../documentation/standard-library/cli.md), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
+Evidence: [CLI contract](../pkg/stdlib/cli.ms), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
 Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.
 
 ### Keep short bodies available without a second function kind

@@ -7,7 +7,7 @@ import (
 )
 
 func largeListSource(typ, element string, n int, extra string) string {
-	return "import List from \"@std/collections.ms\"\n" + extra +
+	return "" + extra +
 		"fn values(value: Int) -> List[" + typ + "]:\n    return [" + strings.TrimSuffix(strings.Repeat(element+", ", n), ", ") + "]\n"
 }
 

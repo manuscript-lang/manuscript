@@ -1,7 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import List from "@std/collections.ms"
-
 # Errors returned for malformed URL text, components, or query limits.
 export type UrlError:
     # Constructed URL components or a supplied query-entry budget are invalid.

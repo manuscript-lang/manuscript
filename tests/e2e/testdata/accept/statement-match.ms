@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-
 type Shape:
     case Circle(r: Int)
     case Rect(w: Int, h: Int)

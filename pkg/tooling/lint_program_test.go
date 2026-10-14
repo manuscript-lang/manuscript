@@ -8,7 +8,7 @@ import (
 )
 
 func TestSemanticLintUsesReadsAndControlFlow(t *testing.T) {
-	source := "import List from \"@std/collections.ms\"\nfn answer() -> Int:\n    let unused = 1\n    var written = 2\n    written = 3\n    return 0\n    return 1\n"
+	source := "import ListBuilder from \"@std/collections.ms\"\nfn answer() -> Int:\n    let unused = 1\n    var written = 2\n    written = 3\n    return 0\n    return 1\n"
 	checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
 	if !checked.Success() {
 		t.Fatal(checked.Diagnostics)
@@ -113,15 +113,15 @@ func TestMatchArmPayloadBindingsAreLinted(t *testing.T) {
 	}
 }
 
-func TestListLiteralRetainsItsRequiredImport(t *testing.T) {
-	source := "import List from \"@std/collections.ms\"\nfn answer() -> Int:\n    let items = [1, 2, 3]\n    return items.length()\n"
+func TestListLiteralNeedsNoImport(t *testing.T) {
+	source := "fn answer() -> Int:\n    let items = [1, 2, 3]\n    return items.length()\n"
 	checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
 	if !checked.Success() {
 		t.Fatal(checked.Diagnostics)
 	}
 	for _, finding := range LintProgram(checked.Program) {
 		if finding.Code == "MSL102" {
-			t.Fatal("required literal import flagged unused", finding)
+			t.Fatal("prelude literal flagged unused", finding)
 		}
 	}
 }
