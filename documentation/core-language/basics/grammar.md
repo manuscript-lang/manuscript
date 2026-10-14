@@ -44,7 +44,7 @@ An adjacent identifier character cannot follow a numeric token, except for its d
 
 ## Layout tokens
 
-At module level, code starts in column zero. A suite is introduced by `:`. An inline suite contains exactly one simple statement after the colon; an indented suite is a nonempty block with the colon at the end of a logical header. An indented suite's first significant line is indented exactly four spaces beyond its header line's leading indentation. Further statements use that same indentation; nested suites add another four spaces. A dedent returns to an enclosing suite's indentation. Unexpected indentation and dedents to other columns are errors. Blank and comment-only lines do not open or close suites.
+At module level, code starts in column zero. A suite is introduced by `:`. An inline suite contains exactly one simple statement after the colon; an indented suite is a nonempty block with the colon at the end of a logical header. An indented suite's first significant line is indented exactly four spaces beyond its header line's leading indentation; a header that spans lines inside delimiters is measured from its first line, so `):` aligns with the statement it closes. Further statements use that same indentation; nested suites add another four spaces. A dedent returns to an enclosing suite's indentation. Unexpected indentation and dedents to other columns are errors. Blank and comment-only lines do not open or close suites.
 
 The grammar uses `NEWLINE`, `INDENT`, and `DEDENT` for these logical boundaries. End of file supplies the final `NEWLINE` if needed and closes outstanding suites. Empty bodies have no `pass` shorthand: each suite must contain a statement or declaration appropriate to its context.
 

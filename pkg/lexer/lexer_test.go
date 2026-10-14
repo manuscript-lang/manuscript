@@ -123,6 +123,19 @@ func TestUnknownEscapeIsReportedAtTheBackslash(t *testing.T) {
 	}
 }
 
+func TestMultilineHeaderSuiteIsMeasuredFromItsFirstLine(t *testing.T) {
+	canonical := "fn f() -> Int:\n    if (\n        g(\n            a: 1\n        )\n    ):\n        return 1\n    return 0\n"
+	if _, err := lexer.Lex("header.ms", canonical); err != nil {
+		t.Fatal(err)
+	}
+	// The closing line is not the header line: a body indented from it would be
+	// rewritten by the formatter into source that no longer parses.
+	shifted := "fn f() -> Int:\n    if (\n        g(\n            a: 1\n        )\n            ):\n                return 1\n    return 0\n"
+	if _, err := lexer.Lex("header.ms", shifted); err == nil || !strings.Contains(err.Error(), "four spaces after its header") {
+		t.Fatalf("accepted a suite measured from the closing line: %v", err)
+	}
+}
+
 func TestGrammarGuideListsEveryReservedWord(t *testing.T) {
 	data, err := os.ReadFile("../../documentation/core-language/basics/grammar.md")
 	if err != nil {

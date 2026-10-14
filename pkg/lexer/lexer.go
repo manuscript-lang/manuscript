@@ -263,6 +263,11 @@ func Lex(file, source string) (tokens []Token, err error) {
 			if last.Kind == ":" && (len(s.delimiters) == top.depth || hasFunction) {
 				pending = true
 				headerIndent = leading
+				if len(s.delimiters) == top.depth {
+					// A header that spans lines is measured from its first line, where
+					// the statement began, not from the line holding its closing ':'.
+					headerIndent = top.indent
+				}
 				pendingDepth = len(s.delimiters)
 				s.emit(Newline, "", s.pos())
 				s.functionDepths = nil
