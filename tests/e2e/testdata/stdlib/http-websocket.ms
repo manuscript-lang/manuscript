@@ -168,7 +168,7 @@ test "HTTP requests reject an empty method":
     match net.request(
         method: HttpMethod.Custom(value: ""),
         url: "http://127.0.0.1:1/",
-        headers: headers(),
+        headers: text_headers(Map[String, String]()),
         body: "".to_bytes(),
         timeout: 1.seconds
     ):
