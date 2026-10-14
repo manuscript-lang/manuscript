@@ -102,6 +102,13 @@ func NewDirectFunction(labels []string, result, position string, body func(*Exec
 
 // Poll checks cancellation on every 64th call, for loops whose iterations
 // make no checked call of their own.
+// PollIndex is Poll for range loops, which already count their iterations.
+func PollIndex(ctx *Execution, index int) {
+	if index&63 == 63 {
+		CheckCancelled(ctx)
+	}
+}
+
 func Poll(ctx *Execution, tick *uint32) {
 	if *tick++; *tick&63 == 0 {
 		CheckCancelled(ctx)

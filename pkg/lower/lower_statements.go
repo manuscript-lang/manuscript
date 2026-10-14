@@ -142,21 +142,21 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
 		g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
 		var loop ast.Stmt
-		tick := g.temp()
-		poll := evaluated(runtimeCall("Poll", ident("ctx"), address(ident(tick))))
 		if s.Kind == syntax.KindWhile {
-			body = append([]ast.Stmt{poll}, body...)
-			loop = &ast.ForStmt{Cond: g.condition(s.Value), Body: block(body...)}
+			// The counter limits cancellation checks to every 64th iteration.
+			tick := g.temp()
+			body = append([]ast.Stmt{evaluated(runtimeCall("Poll", ident("ctx"), address(ident(tick))))}, body...)
+			loop = &ast.ForStmt{Init: define(tick, call(ident("uint32"), intLiteral(0))), Cond: g.condition(s.Value), Body: block(body...)}
 		} else {
 			b := g.program.LoopBinding(s)
-			body = append([]ast.Stmt{discard(ident(b.ID)), poll}, body...)
-			loop = &ast.RangeStmt{Key: ident("_"), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
+			index := g.temp()
+			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("PollIndex", ident("ctx"), ident(index)))}, body...)
+			loop = &ast.RangeStmt{Key: ident(index), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
 		}
 		if label.used {
 			loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
 		}
-		// The counter limits cancellation checks to every 64th iteration.
-		return []ast.Stmt{block(variableStmt(tick, ident("uint32")), loop)}
+		return []ast.Stmt{loop}
 	case syntax.KindWith:
 		b := g.program.LoopBinding(s)
 		cleanup := g.temp()
