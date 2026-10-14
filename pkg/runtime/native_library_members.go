@@ -24,10 +24,18 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	var receiverType string
 	switch v := receiver.(type) {
 	case Record:
-		if v.Type != "@std/HttpRequest" {
+		switch v.Type {
+		case "@std/ClientResponse":
+			kind = strings.TrimPrefix(v.Type, "@std/")
+		default:
 			return nil, false
 		}
-		kind = "HttpRequest"
+	case libraryIPAddress:
+		kind = "IpAddress"
+	case libraryCidr:
+		kind = "Cidr"
+	case *libraryHeaders:
+		kind = "HttpHeaders"
 	case *TaskGroup:
 		kind = "TaskGroup"
 	case *Task:
@@ -41,6 +49,12 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	case Alternative:
 		native, _, _ := strings.Cut(v.Type, "[")
 		switch native {
+		case "@std/DnsKind":
+			kind = "DnsKind"
+		case "@std/IpFamily":
+			kind = "IpFamily"
+		case "@std/HttpMethod":
+			kind = "HttpMethod"
 		case "@std/Optional":
 			kind = "Optional"
 		case "@std/Result":

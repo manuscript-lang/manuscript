@@ -58,7 +58,7 @@ func init() {
 		add("string", name, "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string)) })
 	}
 	for name, f := range map[string]func(string, string) bool{"contains": strings.Contains, "starts_with": strings.HasPrefix, "ends_with": strings.HasSuffix} {
-		label := "text"
+		label := "value"
 		if name == "starts_with" {
 			label = "prefix"
 		}
@@ -122,7 +122,7 @@ func init() {
 	})
 	add("string", "from_scalars", libraryResult("String", "StringError"), []LibraryParam{p("values", "List[Int]")}, func(ctx *Execution, result string, a []Value) Value {
 		var b strings.Builder
-		for i, v := range a[0].(*List).Items {
+		for i, v := range a[0].(*List).Capture().Values() {
 			if i%4096 == 0 {
 				CheckCancelled(ctx)
 			}
@@ -135,12 +135,16 @@ func init() {
 		return libraryOK(result, b.String())
 	})
 	add("string", "slice_scalars", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, result string, a []Value) Value {
-		r := []rune(a[0].(string))
+		text := a[0].(string)
+		count, ascii := stringShape(text)
 		s, e := a[1].(int64), a[2].(int64)
-		if s < 0 || e < s || e > int64(len(r)) {
+		if s < 0 || e < s || e > count {
 			return libraryError(result, "OutOfRange", "")
 		}
-		return libraryOK(result, string(r[s:e]))
+		if ascii {
+			return libraryOK(result, text[s:e])
+		}
+		return libraryOK(result, text[scalarIndexOffset(text, int(s)):scalarIndexOffset(text, int(e))])
 	})
 	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return scalarCount(a[0].(string)) })
 	add("encoding", "hex_encode", "String", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return hex.EncodeToString(a[0].(Bytes).Items) })
@@ -270,12 +274,12 @@ func init() {
 		return libraryOK(r, libraryBigInt{v})
 	})
 	for name, f := range map[string]func(*big.Int, *big.Int, *big.Int) *big.Int{"add": (*big.Int).Add, "subtract": (*big.Int).Sub, "multiply": (*big.Int).Mul, "bit_and": (*big.Int).And, "bit_or": (*big.Int).Or, "bit_xor": (*big.Int).Xor} {
-		add("bigint", name, "BigInt", []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
+		add("bigint", name, "BigInt", []LibraryParam{p("left", "BigInt"), p("other", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
 			return libraryBigInt{f(new(big.Int), a[0].(libraryBigInt).n, a[1].(libraryBigInt).n)}
 		})
 	}
 	for _, name := range []string{"divide", "remainder"} {
-		add("bigint", name, libraryResult("BigInt", "BigIntError"), []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, r string, a []Value) Value {
+		add("bigint", name, libraryResult("BigInt", "BigIntError"), []LibraryParam{p("left", "BigInt"), p("other", "BigInt")}, func(_ *Execution, r string, a []Value) Value {
 			x, y := a[0].(libraryBigInt).n, a[1].(libraryBigInt).n
 			if y.Sign() == 0 {
 				return libraryError(r, "InvalidInput", "")
@@ -289,7 +293,7 @@ func init() {
 			return libraryOK(r, libraryBigInt{out})
 		})
 	}
-	add("bigint", "compare", "Int", []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
+	add("bigint", "compare", "Int", []LibraryParam{p("left", "BigInt"), p("other", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
 		return int64(a[0].(libraryBigInt).n.Cmp(a[1].(libraryBigInt).n))
 	})
 	add("bigint", "format", "String", []LibraryParam{p("value", "BigInt"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {
@@ -348,10 +352,7 @@ func init() {
 	variable := []LibraryParam{p("T", "")}
 	libraryGeneric("collections", "reverse_in_place", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(*List)
-		out := v.Items
-		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
-			out[i], out[j] = out[j], out[i]
-		}
+		v.reverse()
 		return v
 	})
 	reverse := libraryFunctions["collections/reverse_in_place"].Body
@@ -360,11 +361,11 @@ func init() {
 	})
 	libraryGeneric("collections", "slice", libraryResult("List[T]", "CollectionError"), variable, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		v := a[0].(*List)
-		s, e, ok := librarySliceBounds(len(v.Items), a[1].(int64), a[2].(int64))
+		s, e, ok := librarySliceBounds(v.Len(), a[1].(int64), a[2].(int64))
 		if !ok {
 			return libraryError(r, "OutOfRange", "")
 		}
-		return libraryOK(r, &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)})
+		return libraryOK(r, v.CopySlice(int(s), int(e)))
 	})
 	for _, name := range []string{"take", "drop"} {
 		libraryGeneric("collections", name, "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("count", "Int")}, func(ctx *Execution, _ string, args []Value) Value {
@@ -373,22 +374,15 @@ func init() {
 			if count < 0 {
 				return Panic("List." + name + ": count must be nonnegative, found " + strconv.FormatInt(count, 10))
 			}
-			source := values.Items
-			if count > int64(len(source)) {
-				count = int64(len(source))
+			source := values.Capture()
+			if count > int64(source.Len()) {
+				count = int64(source.Len())
 			}
 			start, end := 0, int(count)
 			if name == "drop" {
-				start, end = int(count), len(source)
+				start, end = int(count), source.Len()
 			}
-			items := make([]Value, end-start)
-			for i := range items {
-				if i%1024 == 0 {
-					CheckCancelled(ctx)
-				}
-				items[i] = source[start+i]
-			}
-			return &List{Type: values.Type, Items: items}
+			return values.copySliceChecked(ctx, start, end)
 		})
 	}
 }

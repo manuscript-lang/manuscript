@@ -488,17 +488,7 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 		return
 	}
 	seen[key] = true
-	if t.Def != nil && len(t.Args) == len(t.Def.Variables) {
-		sub := substitution(t)
-		for _, v := range t.Def.Variables {
-			for _, b := range v.Bounds {
-				if !c.satisfies(sub[v.ID], Sub(b, sub)) {
-					c.error(pos, "type", c.unsatisfiedMessage(sub[v.ID], Sub(b, sub), "use a type that implements it"))
-				}
-			}
-		}
-	}
-
+	c.boundsHold(t, pos)
 	for _, a := range t.Args {
 		c.wellFormed(a, pos, seen)
 	}
@@ -506,6 +496,22 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 		c.wellFormed(p.Type, pos, seen)
 	}
 	c.wellFormed(t.Result, pos, seen)
+}
+
+// boundsHold checks t's own type arguments against its definition's bounds,
+// without descending into those arguments.
+func (c *checker) boundsHold(t *Type, pos syntax.Position) {
+	if t.Def == nil || len(t.Args) != len(t.Def.Variables) {
+		return
+	}
+	sub := substitution(t)
+	for _, v := range t.Def.Variables {
+		for _, b := range v.Bounds {
+			if !c.satisfies(sub[v.ID], Sub(b, sub)) {
+				c.error(pos, "type", c.unsatisfiedMessage(sub[v.ID], Sub(b, sub), "use a type that implements it"))
+			}
+		}
+	}
 }
 func (c *checker) declarationChecks(module *syntax.Module) {
 	for _, d := range module.Declarations {

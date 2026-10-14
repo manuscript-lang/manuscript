@@ -70,7 +70,7 @@ func TestUnsupportedPatternAndNamespaceDiagnostics(t *testing.T) {
 func TestPartialDiagnosticRebasesRangeAndFix(t *testing.T) {
 	source := "fn before() -> Int: 1\r\nfn broken() -> Int:\r\n    var total = 1\r\n    total += 2\r\n    return total\r\nfn after() -> Int: 3\r\n"
 	m, diagnostics := parser.ParsePartial("partial.ms", source)
-	if len(m.Declarations) != 2 || len(diagnostics) != 1 {
+	if len(m.Declarations) != 3 || len(diagnostics) != 1 {
 		t.Fatalf("lost declarations or diagnostics: %+v, %v", m, diagnostics)
 	}
 	d := diagnostics[0]

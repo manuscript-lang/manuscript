@@ -48,6 +48,27 @@ func TestFormatExpressionLayouts(t *testing.T) {
 		name, source, want string
 	}{
 		{
+			name: "match arms after a try joined from a later line",
+			source: `fn work(early: Int) -> Int:
+    let result = subtract(try
+        match some(0):
+            some(_):
+                10
+            none: 10
+    )
+    return result
+`,
+			want: `fn work(early: Int) -> Int:
+    let result = subtract(
+        try match some(0):
+            some(_):
+                10
+            none: 10
+    )
+    return result
+`,
+		},
+		{
 			name: "nested computations below the width limit",
 			source: `fn work() -> Unit:
     send(destination: resolve(name: service, region: region), payload: encode(build(records)))
