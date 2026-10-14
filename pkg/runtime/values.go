@@ -211,6 +211,28 @@ func (l *Lazy) Get(build func() Value) Value {
 	return l.value
 }
 
+// ListTable backs one large list literal whose items are all scalar
+// constants. Generated code keeps the items as pointer-free package data, so
+// the Go compiler and the garbage collector see one plain array instead of an
+// expression or interface value per item. Items are boxed once, on the
+// literal's first evaluation; every evaluation returns a List with its own
+// fresh storage.
+type ListTable[T int64 | float64 | bool | string] struct {
+	once  sync.Once
+	items []Value
+}
+
+func (t *ListTable[T]) List(typ string, data []T) *List {
+	t.once.Do(func() {
+		items := make([]Value, len(data))
+		for i, item := range data {
+			items[i] = item
+		}
+		t.items = items
+	})
+	return &List{Type: typ, Items: append(make([]Value, 0, len(t.items)), t.items...)}
+}
+
 func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 	g, ok := value.(Generic)
 	if !ok {

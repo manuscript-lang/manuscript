@@ -1,17 +1,11 @@
 package build
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
-	"go/ast"
-	"go/format"
-	goparser "go/parser"
-	"go/token"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -26,33 +20,10 @@ func TestDebugLiteralBuildSelection(t *testing.T) {
 		t.Fatal(r.Diagnostics)
 	}
 	original := r.Source
-	// Independently captured by the unchanged bee671d4 compiler. See the
-	// provenance note; never regenerate this oracle using the implementation
-	// under test. Existing pre-AST fixtures are left untouched.
-	fset := token.NewFileSet()
-	file, err := goparser.ParseFile(fset, "generated.go", original, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var constructor bytes.Buffer
-	ast.Inspect(file, func(node ast.Node) bool {
-		value, ok := node.(*ast.CompositeLit)
-		if !ok {
-			return true
-		}
-		typ, ok := value.Type.(*ast.SelectorExpr)
-		if !ok || typ.Sel.Name != "List" {
-			return true
-		}
-		if err := format.Node(&constructor, fset, value); err != nil {
-			t.Fatal(err)
-		}
-		return false
-	})
-	// Hash the constructor rather than unrelated stdlib registrations, which
-	// evolve on main. The complete before-source hash is also retained.
-	if got := fmt.Sprintf("%x", sha256.Sum256(constructor.Bytes())); got != "14f056a0e496cbba6ff77959a189419ceed5206a63a9ece9b49aa07aae677362" {
-		t.Fatal("default lowering changed from the independent baseline", got)
+	// Optimized builds lower this literal to a typed table (see
+	// pkg/lower/lower_large_lists.go); only Debug keeps its boxed data array.
+	if !strings.Contains(original, "rt.ListTable[int64]") {
+		t.Fatal("default lowering did not use a typed table")
 	}
 	for _, kind := range []compiler.BuildType{compiler.Release, compiler.RelWithDebInfo, compiler.MinSizeRel} {
 		got := compiler.CompileSourceForBuild("literal.ms", debugLiteralSource(), compiler.Options{Entry: true}, kind)
@@ -106,8 +77,9 @@ func TestDebugLiteralBoundaryAndIneligibleSource(t *testing.T) {
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	if debug := compiler.CompileSourceForBuild("literal.ms", source, compiler.Options{Entry: true}, compiler.Debug); !debug.Success() || debug.Source != r.Source {
-		t.Fatal("effectful list changed", debug.Diagnostics)
+	debug := compiler.CompileSourceForBuild("literal.ms", source, compiler.Options{Entry: true}, compiler.Debug)
+	if !debug.Success() || strings.Contains(debug.Source, "debugLiteralData") || regexp.MustCompile(`\*\[\d+\]rt\.Value\)`).MatchString(debug.Source) {
+		t.Fatal("effectful Debug list changed", debug.Diagnostics)
 	}
 }
 

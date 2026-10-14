@@ -279,26 +279,20 @@ func (c *checker) inferList(e *syntax.Expression, expected *Type, i *Info) *Info
 	if std(expected, "List") && len(expected.Args) == 1 {
 		element = expected.Args[0]
 	}
+	independent := make([]*Info, len(e.Elements))
 	if element == nil {
-		for _, item := range e.Elements {
-			if !c.contextual(item) {
-				v := c.expression(item, nil)
-				if element == nil && v.Type.ID != "Never" {
-					element = v.Type
-				}
-			}
-		}
+		element = c.independentItems(e.Elements, 0, 1, independent)
 	}
 	if element == nil {
+		if unknownExpected(expected) {
+			return c.unknownLiteral(e, expected, independent, i)
+		}
 		if !c.unknownType {
 			c.error(e.Pos, "type", "cannot infer list element type; add an annotation, e.g. let xs: List[Int] = []")
 		}
 		element = primitive("<invalid>")
 	}
-	for _, item := range e.Elements {
-		v := c.expression(item, element)
-		i.NoReturn = i.NoReturn || v.NoReturn
-	}
+	c.literalItems(e.Elements, independent, []*Type{element}, i)
 	i.Type = standard("List", element)
 	return finishInfo(i)
 }
@@ -311,29 +305,78 @@ func (c *checker) inferMapLiteral(e *syntax.Expression, expected *Type, i *Info)
 	if std(expected, "Map") && len(expected.Args) == 2 {
 		copy(types[:], expected.Args)
 	}
+	independent := make([]*Info, len(e.Elements))
 	for index := range types {
 		if types[index] == nil {
-			for at := index; at < len(e.Elements); at += 2 {
-				item := e.Elements[at]
-				if !c.contextual(item) {
-					v := c.expression(item, nil)
-					if types[index] == nil && v.Type.ID != "Never" {
-						types[index] = v.Type
-					}
-				}
-			}
+			types[index] = c.independentItems(e.Elements, index, 2, independent)
 		}
 		if types[index] == nil {
+			if unknownExpected(expected) {
+				return c.unknownLiteral(e, expected, independent, i)
+			}
 			c.error(e.Pos, "type", "cannot infer map key or value type; add an annotation, e.g. let m: Map[String, Int] = {}")
 			types[index] = primitive("<invalid>")
 		}
 	}
-	for at, item := range e.Elements {
-		v := c.expression(item, types[at%2])
+	c.literalItems(e.Elements, independent, types[:], i)
+	i.Type = standard("Map", types[0], types[1])
+	// Key and value types were checked where they were written or
+	// instantiated; rechecking them makes nested literals quartic in depth.
+	c.boundsHold(i.Type, e.Pos)
+	return finishInfo(i)
+}
+
+// independentItems checks the literal items at offset, offset+stride, ...
+// that have a type without context, records their information, and returns
+// the first type other than Never.
+func (c *checker) independentItems(items []*syntax.Expression, offset, stride int, checked []*Info) *Type {
+	var typ *Type
+	for at := offset; at < len(items); at += stride {
+		if c.contextual(items[at]) {
+			continue
+		}
+		v := c.expression(items[at], nil)
+		checked[at] = v
+		if typ == nil && v.Type.ID != "Never" {
+			typ = v.Type
+		}
+	}
+	return typ
+}
+
+// literalItems checks literal items against their inferred or expected type.
+// An item whose independent type is that very type is not checked again:
+// repeating its whole subtree makes nested literals cubic in their depth.
+// Map keys and values alternate through types.
+func (c *checker) literalItems(items []*syntax.Expression, checked []*Info, types []*Type, i *Info) {
+	for at, item := range items {
+		typ := types[at%len(types)]
+		v := checked[at]
+		if v == nil || v.Type != typ {
+			v = c.expression(item, typ)
+		}
 		i.NoReturn = i.NoReturn || v.NoReturn
 	}
-	i.Type = standard("Map", types[0], types[1])
-	c.wellFormed(i.Type, e.Pos, map[string]bool{})
+}
+
+// unknownExpected reports a context whose type is unknown because an earlier
+// diagnostic already explained why.
+func unknownExpected(expected *Type) bool {
+	return expected != nil && expected.Kind == "primitive" && expected.ID == "<invalid>"
+}
+
+// unknownLiteral finishes a literal nested where an enclosing literal or
+// annotation already reported an unknown type. Its contextual items are
+// checked without repeating that diagnostic once per nesting level.
+func (c *checker) unknownLiteral(e *syntax.Expression, expected *Type, checked []*Info, i *Info) *Info {
+	for at, item := range e.Elements {
+		v := checked[at]
+		if v == nil {
+			v = c.expression(item, expected)
+		}
+		i.NoReturn = i.NoReturn || v.NoReturn
+	}
+	i.Type = expected
 	return finishInfo(i)
 }
 
