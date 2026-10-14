@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Standard library: build JSON values with `from_string`, `from_bool`, `from_int`, `from_float`, `from_number`, `array`, `object`, and `object_optional` in `@std/json.ms`.
 - Standard library: documented one failure-mode rule (absence is `Optional`, invalid external data is `Result`, violated preconditions fault) in the errors and limits contract (#168).
 - Debugging: `ms debug` and `ms dap` embed Delve; VS Code no longer needs `dlv`.
 - Debugging: `ms debug --break <location>` and `--script <file>`, with `--json`, run non-interactively and report Manuscript function and local names and only Manuscript frames (#352).

@@ -191,6 +191,74 @@ Decoded UTF-8 text, preserving scalar contents without normalization.
 value: String
 ```
 
+## array {data-api-kind="Function"}
+
+Builds an array from a shallow copy of `values`; later list changes do not affect it.
+
+```manuscript
+fn array(values: List[JsonValue]) -> JsonValue:
+```
+
+## from_bool {data-api-kind="Function"}
+
+Wraps a Bool as a JSON boolean value.
+
+```manuscript
+fn from_bool(value: Bool) -> JsonValue:
+```
+
+## from_float {data-api-kind="Function"}
+
+Wraps a finite Float as a JSON number. NaN and infinities return `InvalidData`.
+
+```manuscript
+fn from_float(value: Float) -> Result[JsonValue, JsonError]:
+```
+
+## from_int {data-api-kind="Function"}
+
+Wraps an Int as a JSON number using its exact decimal digits.
+
+```manuscript
+fn from_int(value: Int) -> JsonValue:
+```
+
+## from_number {data-api-kind="Function"}
+
+Validates JSON number text and keeps its exact spelling, such as `9007199254740993`.
+Malformed text and text for any other JSON value return `InvalidData`.
+
+```manuscript
+fn from_number(text: String) -> Result[JsonValue, JsonError]:
+```
+
+## from_string {data-api-kind="Function"}
+
+Wraps text as a JSON string value.
+
+```manuscript
+fn from_string(value: String) -> JsonValue:
+```
+
+## object {data-api-kind="Function"}
+
+Builds an object from a shallow copy of `fields`, keeping insertion order. A map
+already has unique keys, so duplicates cannot occur; a literal with an equal key
+keeps the first position and the last value.
+
+```manuscript
+fn object(fields: Map[String, JsonValue]) -> JsonValue:
+```
+
+## object_optional {data-api-kind="Function"}
+
+Builds an object from the present entries; a `none` value omits its key. Entries
+keep their insertion order.
+
+```manuscript
+fn object_optional(fields: Map[String, Optional[JsonValue]]) -> JsonValue:
+```
+
 ## parse {data-api-kind="Function"}
 
 Parses one JSON value and applies the supplied input, depth, and value limits.

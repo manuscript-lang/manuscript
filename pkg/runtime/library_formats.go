@@ -20,6 +20,43 @@ func init() {
 	add := libraryAdd
 	add("json", "parse", libraryResult("JsonValue", "JsonError"), []LibraryParam{p("text", "String"), p("limits", "Optional[JsonLimits]")}, libraryJSONParse)
 	add("json", "stringify", libraryResult("String", "JsonError"), []LibraryParam{p("value", "JsonValue"), p("max_bytes", "Optional[Int]")}, libraryJSONStringify)
+	add("json", "from_string", "JsonValue", []LibraryParam{p("value", "String")}, func(_ *Execution, _ string, a []Value) Value { return libraryJSONValue("StringValue", a[0]) })
+	add("json", "from_bool", "JsonValue", []LibraryParam{p("value", "Bool")}, func(_ *Execution, _ string, a []Value) Value { return libraryJSONValue("BoolValue", a[0]) })
+	add("json", "from_int", "JsonValue", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
+		return libraryJSONValue("NumberValue", strconv.FormatInt(a[0].(int64), 10))
+	})
+	add("json", "from_float", libraryResult("JsonValue", "JsonError"), []LibraryParam{p("value", "Float")}, func(_ *Execution, r string, a []Value) Value {
+		text, err := json.Marshal(a[0].(float64))
+		if err != nil {
+			return libraryError(r, "InvalidData", "")
+		}
+		return libraryOK(r, libraryJSONValue("NumberValue", string(text)))
+	})
+	add("json", "from_number", libraryResult("JsonValue", "JsonError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
+		text := a[0].(string)
+		var number json.Number
+		if err := json.Unmarshal([]byte(text), &number); err != nil || len(text) == 0 || text[0] != '-' && (text[0] < '0' || text[0] > '9') || text[len(text)-1] < '0' || text[len(text)-1] > '9' {
+			return libraryError(r, "InvalidData", "")
+		}
+		return libraryOK(r, libraryJSONValue("NumberValue", text))
+	})
+	add("json", "array", "JsonValue", []LibraryParam{p("values", "List[JsonValue]")}, func(_ *Execution, _ string, a []Value) Value {
+		items := append([]Value(nil), a[0].(*List).Items...)
+		return libraryJSONValue("ArrayValue", libraryList("@std/JsonValue", items))
+	})
+	add("json", "object", "JsonValue", []LibraryParam{p("fields", "Map[String][JsonValue]")}, func(_ *Execution, _ string, a []Value) Value {
+		entries := append([]Entry(nil), a[0].(*Map).Entries...)
+		return libraryJSONValue("ObjectValue", &Map{Type: "@std/Map[String][@std/JsonValue]", Entries: entries})
+	})
+	add("json", "object_optional", "JsonValue", []LibraryParam{p("fields", "Map[String][Optional[JsonValue]]")}, func(_ *Execution, _ string, a []Value) Value {
+		m := &Map{Type: "@std/Map[String][@std/JsonValue]"}
+		for _, e := range a[0].(*Map).Entries {
+			if some := e.Value.(Alternative); some.Tag == "some" {
+				m.Entries = append(m.Entries, Entry{e.Key, some.Fields[0]})
+			}
+		}
+		return libraryJSONValue("ObjectValue", m)
+	})
 	add("csv", "parse", libraryResult("List[List[String]]", "CsvError"), []LibraryParam{p("text", "String"), p("options", "CsvOptions"), p("max_rows", "Optional[Int]"), p("max_cells", "Optional[Int]")}, libraryCSVParse)
 	add("csv", "stringify", libraryResult("String", "CsvError"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Optional[Int]")}, libraryCSVStringify)
 	add("html", "escape", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return html.EscapeString(a[0].(string)) })
@@ -117,6 +154,10 @@ func init() {
 
 // jsonDepthCeiling is the deepest container nesting parse accepts.
 const jsonDepthCeiling = 100000
+
+func libraryJSONValue(tag string, fields ...Value) Value {
+	return Alternative{"@std/JsonValue", tag, fields}
+}
 
 // Parsing uses tokens to retain exact numbers and reject duplicate object keys.
 func libraryJSONParse(ctx *Execution, r string, a []Value) Value {

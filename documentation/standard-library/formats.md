@@ -27,6 +27,33 @@ Omitted budgets impose no added byte, item, or nesting cap. Stringify rejects cy
 
 Stringify produces compact JSON and escapes `<`, `>`, and `&` as `\u003c`, `\u003e`, and `\u0026`. It is not a canonical format for signing.
 
+### Building JSON values
+
+`from_string`, `from_bool`, and `from_int` wrap scalars. `from_float` rejects NaN and infinities, and `from_number` validates number text and keeps its exact spelling, so both return a `Result`. `array` and `object` take a list or a map literal and compose with each other; `object_optional` takes `Optional[JsonValue]` entries and omits keys whose value is `none`.
+
+`array` and `object` copy the list or map shallowly, so later changes to the argument do not change the JSON value. Nested values keep their references. Objects keep map insertion order, and an equal key in a map literal keeps its first position with the last value, as for any map.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import {object, array, from_string, from_bool, from_int, stringify} from "@std/json.ms"
+import {List, Map} from "@std/collections.ms"
+import panic from "@std/faults.ms"
+
+test "build a request body":
+    let body = object(
+        fields: {
+            "model": from_string(value: "example"),
+            "stream": from_bool(value: true),
+            "options": object(fields: {"retries": from_int(value: 2)}),
+            "stop": array(values: [from_string(value: "END")])
+        }
+    )
+    match stringify(value: body):
+        error(cause): return panic(cause.message())
+        ok(value):
+            if value != "\{\"model\":\"example\",\"stream\":true,\"options\":\{\"retries\":2\},\"stop\":[\"END\"]\}": return panic(value)
+```
+
 ## YAML behavior
 
 The parser is written in Manuscript. It reads one YAML 1.2 configuration document with textual mapping keys, block and flow collections, compact sequences and mappings, comments, quoted strings and Unicode escapes, continued scalars, and literal/folded block scalars with indentation and chomping indicators. It accepts a BOM, normalized line endings, document markers, and the `%YAML 1.2` directive.

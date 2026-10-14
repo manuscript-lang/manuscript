@@ -63,6 +63,34 @@ export fn stringify(
     max_bytes: Optional[Int] = none
 ) -> Result[String, JsonError]:
 
+# Wraps text as a JSON string value.
+export fn from_string(value: String) -> JsonValue:
+
+# Wraps a Bool as a JSON boolean value.
+export fn from_bool(value: Bool) -> JsonValue:
+
+# Wraps an Int as a JSON number using its exact decimal digits.
+export fn from_int(value: Int) -> JsonValue:
+
+# Wraps a finite Float as a JSON number. NaN and infinities return `InvalidData`.
+export fn from_float(value: Float) -> Result[JsonValue, JsonError]:
+
+# Validates JSON number text and keeps its exact spelling, such as `9007199254740993`.
+# Malformed text and text for any other JSON value return `InvalidData`.
+export fn from_number(text: String) -> Result[JsonValue, JsonError]:
+
+# Builds an array from a shallow copy of `values`; later list changes do not affect it.
+export fn array(values: List[JsonValue]) -> JsonValue:
+
+# Builds an object from a shallow copy of `fields`, keeping insertion order. A map
+# already has unique keys, so duplicates cannot occur; a literal with an equal key
+# keeps the first position and the last value.
+export fn object(fields: Map[String, JsonValue]) -> JsonValue:
+
+# Builds an object from the present entries; a `none` value omits its key. Entries
+# keep their insertion order.
+export fn object_optional(fields: Map[String, Optional[JsonValue]]) -> JsonValue:
+
 impl Error for JsonError:
     # Returns a JSON-prefixed diagnostic without echoing input text or number tokens.
     fn message() -> String:
