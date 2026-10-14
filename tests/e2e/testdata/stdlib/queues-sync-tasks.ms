@@ -16,7 +16,7 @@ import value from "./support/results.ms"
 
 fn compare(left: Int, right: Int) -> Int: left - right
 
-fn operation() -> Result[Unit, String]: ok(unit)
+fn operation() -> Result[Unit, Error]: ok(unit)
 
 fn first() -> Int: 1
 

@@ -112,7 +112,7 @@ func TestExpandedFileHandles(t *testing.T) {
 		}())
 	}
 	defer op("close")
-	librarySuccess(t, op("write_file", Bytes{[]byte("hello\r\nworld\n")}))
+	librarySuccess(t, op("write", Bytes{[]byte("hello\r\nworld\n")}))
 	libraryFailure(t, call("open", "file", "wx", int64(0600)), "AlreadyExists")
 	if got := librarySuccess(t, op("read_at", int64(0), int64(5))).(Bytes); string(got.Items) != "hello" {
 		t.Fatal(got)
@@ -120,7 +120,7 @@ func TestExpandedFileHandles(t *testing.T) {
 	librarySuccess(t, op("write_at", int64(0), Bytes{[]byte("HELLO")}))
 	librarySuccess(t, op("seek", int64(0), int64(0)))
 	lines := librarySuccess(t, op("read_lines", int64(64), int64(2))).(*List)
-	if len(lines.Items) != 2 || lines.Items[0] != "HELLO" || lines.Items[1] != "world" {
+	if lines.Len() != 2 || lines.Get(0) != "HELLO" || lines.Get(1) != "world" {
 		t.Fatal(lines)
 	}
 	librarySuccess(t, op("seek", int64(0), int64(0)))
@@ -157,7 +157,7 @@ func TestExpandedFileSystem(t *testing.T) {
 	libraryFailure(t, call("copy_tree", "source", "limited", false, int64(10), int64(4)), "LimitExceeded")
 	librarySuccess(t, call("copy_tree", "source", "copy", false, int64(3), int64(5)))
 	matches := librarySuccess(t, call("glob", "copy", "**/*.txt", int64(1))).(*List)
-	if len(matches.Items) != 1 || matches.Items[0] != filepath.Join("sub", "a.txt") {
+	if matches.Len() != 1 || matches.Get(0) != filepath.Join("sub", "a.txt") {
 		t.Fatal(matches)
 	}
 	libraryFailure(t, call("glob", "copy", "[", int64(1)), "InvalidInput")
@@ -808,7 +808,7 @@ func TestFileSystemErrorMapping(t *testing.T) {
 		return Invoke(ctx, fn, args)
 	}
 	defer write(ro, "close")
-	libraryFailure(t, write(ro, "write_file", Bytes{[]byte("z")}), "InvalidInput")
+	libraryFailure(t, write(ro, "write", Bytes{[]byte("z")}), "InvalidInput")
 	libraryFailure(t, write(ro, "seek", int64(-1), int64(0)), "InvalidInput")
 	libraryFailure(t, write(ro, "seek", int64(0), int64(3)), "InvalidInput")
 	wo := librarySuccess(t, call("open", "file", "a", int64(0)))

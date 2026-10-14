@@ -690,3 +690,32 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
     ): return panic(
         "anchored mapping"
     )
+
+test "YAML document start marker accepts same-line content":
+    if value(parse(text: "--- a")) != YamlValue.StringValue("a"): return panic(
+        "scalar after marker"
+    )
+    if items(
+        value(parse(text: "--- [1, 2]"))
+    ).length() != 2: return panic(
+        "flow after marker"
+    )
+    if value(parse(text: "--- # note\na: 1")) != value(parse(text: "a: 1")): return panic(
+        "comment after marker"
+    )
+
+test "YAML compact mapping after a sequence marker follows the marker's spacing":
+    let root = value(
+        parse(text: "-   a: 1\n    b: 2\n-  - x\n   - y\n- c: 3\n  d: 4\n")
+    )
+    let list = items(root)
+    if list.length() != 3: return panic("sequence length")
+
+    let first = entries(list.first().unwrap())
+    if first.get("b").unwrap() != YamlValue.NumberValue("2"): return panic(
+        "wide marker spacing"
+    )
+    if items(list.at(1).unwrap()).length() != 2: return panic("wide nested sequence")
+    if entries(list.last().unwrap()).get("d").unwrap() != YamlValue.NumberValue("4"): return panic(
+        "single space marker"
+    )

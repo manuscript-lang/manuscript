@@ -20,11 +20,8 @@ func StringAt(ctx *Execution, text, index Value, result string) Value {
 }
 
 func stringScalarAt(text string, index int64, result string, asInt bool) Value {
-	ascii := isASCII(text)
-	count := len(text)
-	if !ascii {
-		count = utf8.RuneCountInString(text)
-	}
+	shape, ascii := stringShape(text)
+	count := int(shape)
 	i := relativeIndex(count, index)
 	if i < 0 || i >= int64(count) {
 		return Alternative{Type: result, Tag: "none"}
@@ -33,7 +30,7 @@ func stringScalarAt(text string, index int64, result string, asInt bool) Value {
 	if ascii {
 		scalar = rune(text[i])
 	} else {
-		scalar, _ = utf8.DecodeRuneInString(text[scalarOffset(text, int(i)):])
+		scalar, _ = utf8.DecodeRuneInString(text[scalarIndexOffset(text, int(i)):])
 	}
 	var value Value = string(scalar)
 	if asInt {
@@ -64,7 +61,7 @@ func init() {
 			items = append(items, string(scalar))
 			count++
 		}
-		return &List{Type: result, Items: items}
+		return NewList(result, items)
 	})
 	add("string", "reverse", "String", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, args []Value) Value {
 		remaining := args[0].(string)
@@ -101,7 +98,7 @@ func init() {
 		if start < len(text) {
 			items = append(items, text[start:])
 		}
-		return &List{Type: result, Items: items}
+		return NewList(result, items)
 	})
 	for _, spec := range []struct {
 		name, label string
@@ -119,7 +116,7 @@ func init() {
 		})
 	}
 
-	add("string", "concat", "String", []LibraryParam{p("text", "String"), p("values", "String")}, func(_ *Execution, _ string, a []Value) Value { return a[0].(string) + a[1].(string) })
+	add("string", "concat", "String", []LibraryParam{p("text", "String"), p("other", "String")}, func(_ *Execution, _ string, a []Value) Value { return a[0].(string) + a[1].(string) })
 	add("string", "normalize", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("form", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[2].(int64)
 		if max < 0 {
@@ -190,11 +187,8 @@ func init() {
 	}
 	add("string", "slice", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		text := a[0].(string)
-		ascii := isASCII(text)
-		count := len(text)
-		if !ascii {
-			count = utf8.RuneCountInString(text)
-		}
+		shape, ascii := stringShape(text)
+		count := int(shape)
 		s, e, ok := librarySliceBounds(count, a[1].(int64), a[2].(int64))
 		if !ok {
 			return libraryError(r, "OutOfRange", "")
@@ -202,8 +196,9 @@ func init() {
 		if ascii {
 			return libraryOK(r, text[s:e])
 		}
-		start := scalarOffset(text, int(s))
-		return libraryOK(r, text[start:start+scalarOffset(text[start:], int(e-s))])
+		start := scalarIndexOffset(text, int(s))
+		end := scalarIndexOffset(text, int(e))
+		return libraryOK(r, text[start:end])
 	})
 	for _, name := range []string{"pad_start", "pad_end"} {
 		add("string", name, libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("target_length", "Int"), p("padding", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
@@ -311,7 +306,14 @@ func init() {
 		if name == "starts_with" || name == "ends_with" {
 			result = "Bool"
 		}
-		add("bytes", name, result, []LibraryParam{p("data", "Bytes"), p("value", "Bytes")}, func(_ *Execution, r string, a []Value) Value {
+		label := "value"
+		if name == "starts_with" {
+			label = "prefix"
+		}
+		if name == "ends_with" {
+			label = "suffix"
+		}
+		add("bytes", name, result, []LibraryParam{p("data", "Bytes"), p(label, "Bytes")}, func(_ *Execution, r string, a []Value) Value {
 			data, value := a[0].(Bytes).Items, a[1].(Bytes).Items
 			if name == "starts_with" {
 				return bytes.HasPrefix(data, value)
@@ -360,7 +362,7 @@ func libraryBytesSplit(ctx *Execution, result string, args []Value) Value {
 	if limit < 0 {
 		return Panic("split: max_parts must be nonnegative, found " + strconv.FormatInt(limit, 10))
 	}
-	out := &List{Type: result}
+	out := NewList(result, nil)
 	if len(separator) == 0 {
 		for i := 0; i < len(data) && int64(len(out.Items)) < limit; i++ {
 			if i%1024 == 0 {
@@ -434,25 +436,88 @@ func scalarOffset(text string, n int) int {
 	return offset
 }
 
-// scalarCountCache remembers the last long string measured, so a loop that
-// calls scalar_length() every iteration pays for the scan once. It holds the
-// string itself, which keeps its backing memory from being reused under the
-// pointer comparison.
-type scalarCountEntry struct {
+// shapeCache remembers the last long string measured, so a loop that indexes,
+// slices or measures the same text every iteration pays for the scans once. It
+// holds the string itself, which keeps its backing memory from being reused
+// under the pointer comparison. Entries are immutable; updates replace them.
+const shapeCacheMin = 1024
+
+type stringShapeEntry struct {
 	text  string
 	count int64
+	ascii bool
 }
 
-var scalarCountCache atomic.Pointer[scalarCountEntry]
+var stringShapeCache atomic.Pointer[stringShapeEntry]
+
+func sameText(a, b string) bool {
+	return len(a) == len(b) && unsafe.StringData(a) == unsafe.StringData(b)
+}
+
+// stringShape returns the scalar count of text and whether it is all ASCII.
+func stringShape(text string) (count int64, ascii bool) {
+	if len(text) < shapeCacheMin {
+		ascii = isASCII(text)
+		if ascii {
+			return int64(len(text)), true
+		}
+		return int64(utf8.RuneCountInString(text)), false
+	}
+	if e := stringShapeCache.Load(); e != nil && sameText(e.text, text) {
+		return e.count, e.ascii
+	}
+	e := &stringShapeEntry{text: text, ascii: isASCII(text)}
+	if e.ascii {
+		e.count = int64(len(text))
+	} else {
+		e.count = int64(utf8.RuneCountInString(text))
+	}
+	stringShapeCache.Store(e)
+	return e.count, e.ascii
+}
 
 func scalarCount(text string) int64 {
-	if len(text) < 1024 {
-		return int64(utf8.RuneCountInString(text))
+	count, _ := stringShape(text)
+	return count
+}
+
+// scalarHint remembers the byte offset of one scalar index in the last long
+// non-ASCII string, so sequential or nearby indexing walks a few scalars
+// instead of rescanning from the start.
+type scalarHint struct {
+	text   string
+	scalar int
+	offset int
+}
+
+var scalarHintCache atomic.Pointer[scalarHint]
+
+// scalarIndexOffset returns the byte offset of scalar n of text, which callers
+// have checked lies within 0..scalar count. For long text it starts from the
+// nearest known position, forward or back, instead of the beginning.
+func scalarIndexOffset(text string, n int) int {
+	if len(text) < shapeCacheMin {
+		return scalarOffset(text, n)
 	}
-	if e := scalarCountCache.Load(); e != nil && len(e.text) == len(text) && unsafe.StringData(e.text) == unsafe.StringData(text) {
-		return e.count
+	scalar, offset := 0, 0
+	if h := scalarHintCache.Load(); h != nil && sameText(h.text, text) && abs(h.scalar-n) < n {
+		scalar, offset = h.scalar, h.offset
 	}
-	n := int64(utf8.RuneCountInString(text))
-	scalarCountCache.Store(&scalarCountEntry{text, n})
+	for ; scalar < n && offset < len(text); scalar++ {
+		_, width := utf8.DecodeRuneInString(text[offset:])
+		offset += width
+	}
+	for ; scalar > n; scalar-- {
+		_, width := utf8.DecodeLastRuneInString(text[:offset])
+		offset -= width
+	}
+	scalarHintCache.Store(&scalarHint{text, scalar, offset})
+	return offset
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
 	return n
 }

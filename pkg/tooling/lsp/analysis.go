@@ -111,7 +111,11 @@ func navigation(result compiler.Result, d document, p position, method string) a
 		return nil
 	}
 	if method == "textDocument/hover" {
-		value := "```manuscript\n" + e.Text + ": " + i.Type.String() + "\n```"
+		shown := i.Type
+		if i.Symbol != nil && i.Symbol.IsConstant() && shown == i.Symbol.Type {
+			shown = i.Symbol.ValueType()
+		}
+		value := "```manuscript\n" + e.Text + ": " + shown.String() + "\n```"
 		docs := hoverDocumentation(result, i)
 		if docs != "" {
 			value += "\n\n" + docs

@@ -123,10 +123,48 @@ The requested operation is unsupported.
 case Unsupported
 ```
 
+## TextError {data-api-kind="Alternative"}
+
+An error that carries only intentional text, for callers that have no domain error to return.
+
+```manuscript
+type TextError:
+    case Text(message: String)
+```
+
+```manuscript
+impl Error for TextError:
+    fn message() -> String:
+```
+
+### TextError.Text
+
+Wraps the human-readable description returned by message().
+
+```manuscript
+case Text(message: String)
+```
+
+### TextError.Text.message
+
+Description returned verbatim by message().
+
+```manuscript
+message: String
+```
+
+### TextError.Error.message
+
+Returns the wrapped text verbatim.
+
+```manuscript
+fn message() -> String:
+```
+
 ## category {data-api-kind="Function"}
 
 Queries a shared category without changing or invoking the error.
-Recognized standard cases use their same-name category; TimedOut maps to Timeout.
+Recognized standard cases use their same-name category.
 Custom errors and domain-specific cases (including Failed, Full, OutputLimit, OutOfRange,
 AuthenticationFailed and wrapped LogError causes) return none. Messages are never parsed.
 

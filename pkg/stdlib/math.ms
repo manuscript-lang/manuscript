@@ -63,7 +63,7 @@ export fn pow(base: Float, exponent: Float) -> Float:
 # Returns the floating-point remainder after division.
 export fn remainder(left: Float, right: Float) -> Float:
 
-# Rounds to the nearest whole number, with half values away from zero.
+# Rounds to the nearest whole number, with ties toward positive infinity.
 export fn round(value: Float) -> Float:
 
 # Returns the sine of an angle in radians.

@@ -151,3 +151,41 @@ fn later(values: List[Int]) -> Unit:
 		t.Fatal("shared type arguments rebased twice", nested.Types[0].Args[0].Pos, nested.Right.Types[0].Pos, nested.Right.Right.Pos)
 	}
 }
+
+func TestPartialRecoversAroundInvalidStatement(t *testing.T) {
+	source := "fn work(a: Int) -> Int:\r\n    let b = a + 1\r\n    let c = = 3\r\n    if b > 0:\r\n        let d = )\r\n        let e = b\r\n    return b\r\n"
+	module, issues := ParsePartial("source.ms", source)
+	if len(module.Declarations) != 1 || len(module.Omitted) != 0 || len(issues) != 2 {
+		t.Fatal(module.Declarations, module.Omitted, issues)
+	}
+	body := module.Declarations[0].Body
+	if len(body) != 3 || body[0].Pos.Line != 2 || body[2].Pos.Offset != strings.Index(source, "return") {
+		t.Fatal(body)
+	}
+	if len(module.Recovered) != 1 || module.Recovered[0].End != len(source) {
+		t.Fatal(module.Recovered)
+	}
+}
+
+func TestPartialOmitsDeclarationWithInvalidSignature(t *testing.T) {
+	module, _ := ParsePartial("source.ms", "fn broken(a: ) -> Int:\n    return 1\nfn ok() -> Int:\n    return 2\n")
+	if len(module.Declarations) != 1 || len(module.Omitted) != 1 || module.Omitted[0] != "broken" || len(module.Recovered) != 0 {
+		t.Fatal(module)
+	}
+}
+
+func TestPartialOmitsDeclarationWhenInvalidStatementIsAnEntireBlock(t *testing.T) {
+	module, _ := ParsePartial("source.ms", "fn a() -> Int:\n    if true:\n        let y = = 3\n    return 1\n")
+	if len(module.Declarations) != 0 || len(module.Omitted) != 1 {
+		t.Fatal(module)
+	}
+}
+
+func TestPartialReportsRecoveredIssuesInSourceOrder(t *testing.T) {
+	_, issues := ParsePartial("source.ms", "fn a() -> Int:\n    if true:\n        let y = = 3\n        let z = 1\n    let w = = 4\n    return 1\n")
+	for index := 1; index < len(issues); index++ {
+		if issues[index].Position.Offset < issues[index-1].Position.Offset {
+			t.Fatal(issues)
+		}
+	}
+}

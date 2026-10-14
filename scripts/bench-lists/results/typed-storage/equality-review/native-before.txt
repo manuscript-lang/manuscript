@@ -1,0 +1,5 @@
+RUN list-equality-mutation.ms::element Equal mutating either List retains both captured headers
+FAIL list-equality-mutation.ms::element Equal mutating either List retains both captured headers: left/shrink: equality true/1, expected true/3
+  at list-equality-mutation.ms:98:16 in check_equality
+  at list-equality-mutation.ms:112:13 in test element Equal mutating either List retains both captured headers
+1 tests, 1 failed

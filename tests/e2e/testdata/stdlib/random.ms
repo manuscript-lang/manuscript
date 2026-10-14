@@ -68,3 +68,24 @@ test "random errors propagate and invalid ranges do not read entropy":
         Entropy(FailedEntropy("source failed"))
     ) != failed: return panic("entropy error lost")
     if value(entropy().bytes(16)).length() != 16: return panic("host entropy")
+
+test "random accepts negative exclusive upper bounds":
+    let source = ZeroEntropy(0)
+    if (
+        value(
+            secure_int(
+                entropy: Entropy(source),
+                min: -3,
+                max_exclusive: -2
+            )
+        ) != -3
+    ): return panic("negative single-value range")
+    if (
+        value(
+            secure_int(
+                entropy: Entropy(source),
+                min: -10,
+                max_exclusive: -5
+            )
+        ) != -10
+    ): return panic("negative range")
