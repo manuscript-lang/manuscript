@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -129,8 +130,9 @@ func (c *dapClient) failure(command, want string) {
 	}
 }
 
-// buildTarget compiles a small native program that exits with status 0.
-func buildTarget(t *testing.T) string {
+// buildTarget compiles a small native program that exits with the given
+// status; a negative status makes it run until killed.
+func buildTarget(t *testing.T, status int) string {
 	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("native debugger lifecycle tests run on Unix")
@@ -139,8 +141,12 @@ func buildTarget(t *testing.T) string {
 	if err != nil {
 		t.Skip("go tool unavailable")
 	}
+	source := fmt.Sprintf("package main\n\nimport \"os\"\n\nfunc main() { os.Exit(%d) }\n", status)
+	if status < 0 {
+		source = "package main\n\nimport \"time\"\n\nfunc main() { time.Sleep(time.Minute) }\n"
+	}
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n\nfunc main() { println(\"done\") }\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module target\n\ngo 1.21\n"), 0o600); err != nil {
@@ -183,7 +189,7 @@ func TestDAPRequestsBeforeSessionAreRejected(t *testing.T) {
 }
 
 func TestDAPRequestsAreAcceptedOnceSessionExists(t *testing.T) {
-	target := buildTarget(t)
+	target := buildTarget(t, 0)
 	c := startDAP(t)
 	c.request("launch", map[string]any{"mode": "exec", "program": target, "outputMode": "remote"})
 	if r := c.response("launch"); !r.GetResponse().Success {
@@ -199,4 +205,93 @@ func TestDAPRequestsAreAcceptedOnceSessionExists(t *testing.T) {
 	if r := c.response("threads"); !r.GetResponse().Success {
 		t.Fatalf("threads: %+v", r)
 	}
+}
+
+// exitSequence reads until terminated and returns the exited event seen first.
+func (c *dapClient) exitSequence() *dap.ExitedEvent {
+	c.t.Helper()
+	var exited *dap.ExitedEvent
+	c.next("terminated event", func(m dap.Message) bool {
+		switch e := m.(type) {
+		case *dap.ExitedEvent:
+			exited = e
+		case *dap.TerminatedEvent:
+			return true
+		}
+		return false
+	})
+	if exited == nil {
+		c.t.Fatal("terminated without a preceding exited event")
+	}
+	return exited
+}
+
+func launchAndConfigure(c *dapClient, target string) {
+	c.request("launch", map[string]any{"mode": "exec", "program": target, "outputMode": "remote"})
+	c.response("launch")
+	c.request("configurationDone", map[string]any{})
+}
+
+func TestDAPTargetExitReportsExitedThenTerminated(t *testing.T) {
+	c := startDAP(t)
+	launchAndConfigure(c, buildTarget(t, 0))
+	if exited := c.exitSequence(); exited.Body.ExitCode != 0 {
+		t.Fatalf("exit code %d", exited.Body.ExitCode)
+	}
+}
+
+func TestDAPTargetExitCodeIsReported(t *testing.T) {
+	c := startDAP(t)
+	launchAndConfigure(c, buildTarget(t, 3))
+	if exited := c.exitSequence(); exited.Body.ExitCode != 3 {
+		t.Fatalf("exit code %d, want 3", exited.Body.ExitCode)
+	}
+}
+
+func TestDAPSteppingAfterExitIsRejected(t *testing.T) {
+	c := startDAP(t)
+	launchAndConfigure(c, buildTarget(t, 0))
+	c.exitSequence()
+	for _, command := range []string{"next", "stepIn", "stepOut", "continue", "pause"} {
+		c.request(command, map[string]any{"threadId": 1})
+		c.failure(command, "the debuggee has exited")
+	}
+	// No stopped event with reason error follows the rejected steps.
+	c.request("threads", map[string]any{})
+	c.next("threads response", func(m dap.Message) bool {
+		if e, ok := m.(*dap.StoppedEvent); ok {
+			t.Fatalf("unexpected stopped event: %+v", e)
+		}
+		r, ok := m.(dap.ResponseMessage)
+		return ok && r.GetResponse().Command == "threads"
+	})
+}
+
+func TestDAPTerminate(t *testing.T) {
+	t.Run("after exit", func(t *testing.T) {
+		c := startDAP(t)
+		launchAndConfigure(c, buildTarget(t, 0))
+		c.exitSequence()
+		c.request("terminate", map[string]any{})
+		if r := c.response("terminate"); !r.GetResponse().Success {
+			t.Fatalf("terminate: %+v", r)
+		}
+	})
+	t.Run("running target", func(t *testing.T) {
+		c := startDAP(t)
+		launchAndConfigure(c, buildTarget(t, -1))
+		c.response("configurationDone")
+		c.request("terminate", map[string]any{})
+		if r := c.response("terminate"); !r.GetResponse().Success {
+			t.Fatalf("terminate: %+v", r)
+		}
+		c.event("terminated")
+	})
+	t.Run("before launch", func(t *testing.T) {
+		c := startDAP(t)
+		c.request("terminate", map[string]any{})
+		if r := c.response("terminate"); !r.GetResponse().Success {
+			t.Fatalf("terminate: %+v", r)
+		}
+	})
 }

@@ -2,7 +2,6 @@
 package debugger
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -27,7 +26,7 @@ func DAP(ctx context.Context, transport io.ReadWriteCloser) {
 		// a target consume DAP requests. Match the old adapter's ignored stdin.
 		Debugger: delve.Config{Backend: "default", CheckGoVersion: true, Stdin: os.DevNull},
 	}, StopTriggered: make(chan struct{})}
-	transport = &execTransport{ReadWriteCloser: transport, reader: bufio.NewReader(transport)}
+	transport = newExecTransport(transport)
 	session := dap.NewSession(transport, cfg, nil)
 	done := make(chan struct{})
 	go func() { session.ServeDAPCodec(); close(done) }()
