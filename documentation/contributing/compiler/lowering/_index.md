@@ -98,6 +98,14 @@ representation and callable ABI:
   profiling, and cancellation. Test functions with and without cleanup across
   return, fault, cancellation, match exits, and nested closures, and measure the
   call benchmark with the same ABI before and after.
+- A source method of a nongeneric record or alternative is a direct Go function
+  (`method_N`) taking its receiver after `ctx`, with typed scalar parameters and
+  result like a top-level direct function. A call whose receiver has that exact
+  checked type and supplies every argument in order calls it without runtime
+  method resolution (`planDirectMethod`); views, generic receivers, defaults and
+  reordered labels keep `CallMethod`. The implementation table still registers
+  the method, so dynamic calls forward to the same function. Test receiver and
+  argument order, `try` on a method result, and fault frame names.
 - A `try` nested in a statement's value (`a + try f()`, `g(try f())`) is evaluated
   ahead of the statement with an early Go return, like a whole-statement `try`,
   when everything the statement evaluates before it is a literal, a name or an

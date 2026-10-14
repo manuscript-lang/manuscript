@@ -100,6 +100,19 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			continue
 		}
 		flushNatives()
+		if direct := g.directMethods[m.ID]; direct != nil {
+			decl, forward := g.directMethodDeclaration(m, direct)
+			file.Decls = append(file.Decls, decl)
+			var labels []string
+			for _, p := range m.Type.Params {
+				labels = append(labels, p.Name)
+			}
+			name := "direct" + strconv.Itoa(len(initialize)+1)
+			initialize = append(initialize, define(name, forward))
+			fields = append(fields, keyed("Direct", ident(name)), keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(runtimeCall("BoundDirect", ident("receiver"), stringSlice(labels), g.key(m.Type.Result), ident(name))))))
+			initialize = append(initialize, evaluated(runtimeCall("Register", composite(runtimeName("Implementation"), fields...))))
+			continue
+		}
 		labels, resultKey, position, body := g.functionParts(m.Receiver.Name+"."+m.Decl.Name, m.Decl.Params, m.Decl.Result, m.Decl.Body, program.ParameterBindings(m.Decl), program.SelfBinding(m.Decl), m.Type)
 		if len(m.Variables) == 0 && !mentionsTypeBindings(body) {
 			// A nongeneric method body needs only its receiver, so call sites

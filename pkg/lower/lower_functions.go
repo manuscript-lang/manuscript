@@ -175,8 +175,8 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 }
 
 // directFunctionLiteral lowers a direct function to its Go function literal.
-func (g *generator) directFunctionLiteral(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, t *checker.Type) ast.Expr {
-	_, _, _, _, literal := g.functionPieces(direct, name, params, result, body, bindings, nil, t)
+func (g *generator) directFunctionLiteral(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type) ast.Expr {
+	_, _, _, _, literal := g.functionPieces(direct, name, params, result, body, bindings, self, t)
 	return literal
 }
 
