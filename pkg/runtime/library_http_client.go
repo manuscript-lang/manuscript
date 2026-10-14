@@ -168,7 +168,7 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 			body = bridge
 		}
 		req, err := http.NewRequestWithContext(call, a[0].(string), u.String(), body)
-		if err != nil {
+		if err != nil || a[0].(string) == "" {
 			return libraryError(r, "InvalidInput", "")
 		}
 		for _, entry := range a[2].(*Map).Entries {

@@ -39,7 +39,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 	}
 	defer finish()
 	req, err := http.NewRequestWithContext(call, method, address, strings.NewReader(string(a[3].(Bytes).Items)))
-	if err != nil {
+	if err != nil || method == "" {
 		return libraryError(r, "InvalidInput", "")
 	}
 	for _, e := range a[2].(*Map).Entries {

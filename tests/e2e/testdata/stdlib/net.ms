@@ -110,3 +110,11 @@ test "network restriction denies admission and close rejects acquisitions":
 
         error(cause):
             if cause != NetworkError.Closed: return panic("network close identity")
+
+test "IPv4-mapped IPv6 addresses match IPv4 ranges":
+    if not value(contains_ip(cidr: "10.0.0.0/8", address: "::ffff:10.0.0.1")): return panic(
+        "mapped address inside range"
+    )
+    if value(contains_ip(cidr: "10.0.0.0/8", address: "::ffff:11.0.0.1")): return panic(
+        "mapped address outside range"
+    )

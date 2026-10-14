@@ -67,6 +67,10 @@ func init() {
 		if e1 != nil || e2 != nil {
 			return libraryError(r, "InvalidData", "")
 		}
+		// parse_ip reports an IPv4-mapped address as IPv4, so a v4 range matches it too.
+		if ip.Is4In6() && prefix.Addr().Is4() {
+			ip = ip.Unmap()
+		}
 		return libraryOK(r, prefix.Contains(ip))
 	})
 }
