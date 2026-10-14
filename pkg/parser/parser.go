@@ -376,6 +376,9 @@ func (p *Parser) declaration() *syntax.Declaration {
 		}
 		d.Kind = form
 	default:
+		if token.Kind == "let" {
+			p.fail(token, "module-level constants are not supported; declare a function instead, e.g. fn limit() -> Int: return 10")
+		}
 		p.fail(token, "expected a module declaration or import, found "+describe(token)+"; top level holds only import, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn")
 	}
 	return d
