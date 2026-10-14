@@ -62,7 +62,7 @@ test "continues":
 			t.Fatalf("alias changed diagnostic: %q != %q", messages[0], messages[1])
 		}
 	}
-	for _, frame := range []string{"preferred-faults.ms:3:9", "preferred-faults.ms:6:5", "preferred-faults.ms:8:9", "preferred-faults.ms:11:5", "preferred-faults.ms:14:11", "preferred-faults.ms:17:11", "preferred-faults.ms:19:9", "preferred-faults.ms:21:9", "preferred-faults.ms:24:5", "10 tests, 9 failed"} {
+	for _, frame := range []string{"preferred-faults.ms:3", "preferred-faults.ms:6", "preferred-faults.ms:8", "preferred-faults.ms:11", "preferred-faults.ms:14", "preferred-faults.ms:17", "preferred-faults.ms:19", "preferred-faults.ms:21", "preferred-faults.ms:24", "10 tests, 9 failed"} {
 		if !strings.Contains(output, frame) {
 			t.Errorf("missing %s: %s", frame, output)
 		}

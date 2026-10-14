@@ -37,57 +37,55 @@ func IntRemainder(a, b int64) int64 {
 
 func StringValue(value Value) string { return value.(string) }
 
-// The *At variants take the operation's source site and record it only when
-// the operation faults, so the fast path stores nothing. The fault itself is
-// raised by the unsited operation, so both forms report identical messages.
-func IntAddAt(a, b int64, position *string, site string) int64 {
+// The *At variants check overflow and division inline and leave the fault to
+// the unchecked operation, so both forms report identical messages.
+func IntAddAt(a, b int64) int64 {
 	r := a + b
-	if (r < a) != (b < 0) {
-		*position = site
-		return IntAdd(a, b)
+	if (a^r)&(b^r) < 0 {
+		intOverflow()
 	}
 	return r
 }
 
-func IntSubtractAt(a, b int64, position *string, site string) int64 {
+func IntSubtractAt(a, b int64) int64 {
 	r := a - b
-	if (r > a) != (b < 0) {
-		*position = site
-		return IntSubtract(a, b)
+	if (a^b)&(a^r) < 0 {
+		intOverflow()
 	}
 	return r
 }
 
-func IntMultiplyAt(a, b int64, position *string, site string) int64 {
+// intOverflow raises the fault of Int addition and subtraction.
+func intOverflow() {
+	Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+}
+
+func IntMultiplyAt(a, b int64) int64 {
 	hi, lo := bits.Mul64(uint64(a), uint64(b))
 	hi -= uint64((a>>63)&b) + uint64((b>>63)&a)
 	if int64(hi) != int64(lo)>>63 {
-		*position = site
 		return IntMultiply(a, b)
 	}
 	return int64(lo)
 }
 
-func IntDivideAt(a, b int64, position *string, site string) int64 {
+func IntDivideAt(a, b int64) int64 {
 	if b == 0 || a == math.MinInt64 && b == -1 {
-		*position = site
 		return IntDivide(a, b)
 	}
 	return a / b
 }
 
-// IntNegateAt negates a, recording the site only when -a overflows.
-func IntNegateAt(a int64, position *string, site string) int64 {
+// IntNegateAt negates a, faulting when -a overflows.
+func IntNegateAt(a int64) int64 {
 	if a == math.MinInt64 {
-		*position = site
 		Unary("-", a)
 	}
 	return -a
 }
 
-func IntRemainderAt(a, b int64, position *string, site string) int64 {
+func IntRemainderAt(a, b int64) int64 {
 	if b == 0 {
-		*position = site
 		return IntRemainder(a, b)
 	}
 	if b == -1 {

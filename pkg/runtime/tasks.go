@@ -21,8 +21,8 @@ type Execution struct {
 // callState tracks one goroutine's nested source calls. Copies of an
 // Execution made for equality scopes or cancellation share it.
 type callState struct {
-	depth     int64
-	traceFull bool
+	depth int64
+	ticks uint8
 }
 
 type cancelled struct{}

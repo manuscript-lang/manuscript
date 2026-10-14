@@ -228,13 +228,12 @@ func TestProfilingPreservesCallDepthLimit(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			root := RootExecution()
 			root.calls.depth = MaxCallDepth - 1
-			root.calls.traceFull = true
 			inner := NewSourceFunction(nil, "Int", "inner.ms:2:1", func(_ *Execution, _ []Value) Value {
 				t.Fatal("profiled call crossed the source depth limit")
 				return int64(0)
 			})
 			entry := NewSourceFunction(nil, "Int", "entry.ms:1:1", func(ctx *Execution, _ []Value) Value {
-				if ctx.calls != root.calls || ctx.calls.depth != MaxCallDepth || !ctx.calls.traceFull {
+				if ctx.calls != root.calls || ctx.calls.depth != MaxCallDepth {
 					t.Fatal("attribution replaced call/fault accounting")
 				}
 				failure := recovered(func() { Invoke(ctx, inner, nil) })

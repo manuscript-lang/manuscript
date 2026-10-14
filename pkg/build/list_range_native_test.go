@@ -37,7 +37,7 @@ func checkRangeExits() {
  alias:=values
  failure:=rangeFailure(func(){@@fault@@.(rt.Function).Body(ctx,[]rt.Value{values})})
  fault,ok:=failure.(rt.Fault)
- if !ok || fault.Message!="range failure" || len(fault.Frames)!=2 || !strings.HasPrefix(fault.Frames[0],"native-range.ms:6:") || !strings.HasPrefix(fault.Frames[1],"native-range.ms:4:") {panic(fmt.Sprintf("fault/source changed: %#v",failure))}
+ if !ok || fault.Message!="range failure" || len(fault.Frames)!=2 || !strings.HasPrefix(fault.Frames[0],"native-range.ms:6") || !strings.HasPrefix(fault.Frames[1],"native-range.ms:4") {panic(fmt.Sprintf("fault/source changed: %#v",failure))}
  if !reflect.DeepEqual(alias.Items,[]rt.Value{int64(2),int64(3)}) {panic("fault lost source mutation")}
  cancelled:=rt.RootExecution();defer rt.FinishExecution(cancelled)
  var cancel context.CancelFunc

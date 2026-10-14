@@ -44,10 +44,10 @@ func TestDirectCollectionCallsRetainArgumentConversions(t *testing.T) {
 					value := call.Args[at]
 					for {
 						capture, ok := value.(*ast.CallExpr)
-						if !ok || !runtimeSelector(capture.Fun, "SourceAt") {
+						if !ok || !runtimeSelector(capture.Fun, "Seq") {
 							break
 						}
-						value = capture.Args[2]
+						value = capture.Args[0]
 					}
 					wrapped, ok := value.(*ast.CallExpr)
 					if !ok || !runtimeSelector(wrapped.Fun, "NewAlternative") {
