@@ -26,6 +26,8 @@ a callback body must not consume the parameter signature's width budget.
 The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
 exercises these boundaries alongside comments and literal spellings.
 
+### Inspect active List backing in the debugger
+
 Verified: typed List storage adds inactive nil slice fields to the native header.
 Rendering `Items` alone exposed bookkeeping or an empty fallback instead of source
 elements. Read the kind tag for expansion and indexed watches; Delve displays a

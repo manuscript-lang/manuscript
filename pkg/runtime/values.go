@@ -633,12 +633,22 @@ func equal(a, b Value, state *equalityState) bool {
 		return ok && x.Type == y.Type && x.Tag == y.Tag && equalItemsState(x.Fields, y.Fields, state)
 	case *List:
 		y, ok := b.(*List)
-		if !ok || x.Type != y.Type || x.Len() != y.Len() {
+		if !ok || x.Type != y.Type {
 			return false
 		}
+		// Element equality may mutate either outer List. Capture both headers
+		// before checking lengths; writes remain visible but growth/shrink and
+		// reallocation cannot change the arrays or membership being compared.
+		left, right := x.Capture(), y.Capture()
+		if left.Len() != right.Len() {
+			return false
+		}
+		if same, handled := equalPrimitiveListRanges(left, right); handled {
+			return same
+		}
 		child := equalityChild(state, 0)
-		for i := 0; i < x.Len(); i++ {
-			if !equal(x.Get(i), y.Get(i), child) {
+		for i := 0; i < left.Len(); i++ {
+			if !equal(left.Get(i), right.Get(i), child) {
 				return false
 			}
 		}
