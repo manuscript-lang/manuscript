@@ -203,7 +203,7 @@ func TestLargeLiteralCancellationDuringInitialization(t *testing.T) {
 fn tick(counter: Counter) -> Int:
     counter.value = counter.value + 1
     return counter.value
-fn values(counter: Counter) -> List[Int]: return ` + repeatedLiteral("tick(counter)", 1100) + "\n"
+fn values(counter: Counter, operation: fn(counter: Counter) -> Int) -> List[Int]: return ` + repeatedLiteral("operation(counter)", 1100) + "\n"
 	result := compiler.CompileSource("large-cancel.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -224,7 +224,7 @@ func init() {
  failure:=func(body func())(got any){defer func(){got=recover()}();body();return}
  expected:=failure(func(){rt.CheckCancelled(&cancelled)})
  c:=rt.NewRecord(%q,[]rt.Argument{{Name:"value",Value:int64(0)}})
- args:=[]rt.Value{c}
+ args:=[]rt.Value{c,%s.(rt.Function)}
  got:=failure(func(){%s.(rt.Function).Body(&cancelled,args)})
  if !reflect.DeepEqual(got,expected) || rt.IntValue(rt.Field(c,"value"))!=0 {os.Exit(81)}
  running:=*root
@@ -239,11 +239,11 @@ func init() {
   if calls==65 {cancel()}
   return value
  }
- %s=replacement
+ args[1]=replacement
  got=failure(func(){%s.(rt.Function).Body(&running,args)})
  if !reflect.DeepEqual(got,expected) || calls!=66 || rt.IntValue(rt.Field(c,"value"))!=65 {os.Exit(82)}
 }
-`, checker.TypeKey(counter), values, tick, tick, values)
+`, checker.TypeKey(counter), tick, values, tick, values)
 	binary := filepath.Join(t.TempDir(), "cancel")
 	if _, err := BuildCheckedWithType(result, binary, "", compiler.Release); err != nil {
 		t.Fatal(err)
