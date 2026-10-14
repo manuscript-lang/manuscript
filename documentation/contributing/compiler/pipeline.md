@@ -34,16 +34,16 @@ A typed, desugared core IR (`pkg/ir`) sits between `checker` and `lower`:
 - Every node carries its resolved `checker.Type`. No node refers to a `syntax` node for meaning; a position is kept only for diagnostics, source maps, and fault sites.
 - Names are resolved to bindings and symbols. Method calls are resolved to a selected implementation or a dynamic contract call.
 - Defaults are expanded, arguments are in evaluation order, `try` and error-source conversions are explicit, `match` arms carry their binding variables, and cleanup is an explicit scope with its exit paths.
-- `optimize` rewrites IR and `lower` prints it. Tooling stays on the AST and `Program` queries, because it needs every source node.
+- Optimization rewrites IR and `lower` prints it. The boolean fold lives in `ir` (`Folder`). Tooling stays on the AST and `Program` queries, because it needs every source node.
 
-Elaboration is the one step that reads both the AST and `Program`. After it, nothing in `ir`, `optimize`, or `lower` imports `syntax` for semantics.
+Elaboration is the one step that reads both the AST and `Program`. After it, nothing in `ir` or `lower` imports `syntax` for semantics.
 
 ## Migration order
 
 Each step merges on its own and keeps observable behavior; generated Go need not be byte-identical.
 
 1. Define `ir` nodes and elaborate expressions that need no cleanup or match: literals, names, calls, member access, collections, text, unary and binary operations.
-2. Move the boolean fold from `optimize` onto IR.
+2. Move the boolean fold onto IR. Done: `ir.Folder` replaces the `lower` optimizer and its `booleans` table.
 3. Elaborate statements, `match`, `try`, and defaults.
 4. Elaborate cleanup scopes and function bodies; remove `lower`'s reads of `Program` tables.
 5. Replace the table storage behind `Program` where the IR no longer needs it.

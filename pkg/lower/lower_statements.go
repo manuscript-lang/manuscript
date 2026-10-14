@@ -284,7 +284,7 @@ func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr) {
 	}
 	e := s.Value
 	info := g.program.Info(e)
-	if e.Kind != syntax.KindUnary || e.Text != "try" || info.ErrorSource != nil || g.booleans[e] {
+	if e.Kind != syntax.KindUnary || e.Text != "try" || info.ErrorSource != nil || g.constantBool(e) {
 		return nil, nil
 	}
 	tmp := g.temp()

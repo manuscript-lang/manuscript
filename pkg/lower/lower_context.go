@@ -5,6 +5,7 @@ import (
 	"go/ast"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -19,7 +20,7 @@ type loopLabel struct {
 // Function lowering saves and restores cleanup/loop state for nested closures.
 type generator struct {
 	program          *checker.Program
-	booleans         map[*syntax.Expression]bool
+	folds            *ir.Folder
 	module           string
 	serial           int
 	expressionDepth  int
@@ -43,6 +44,16 @@ type generator struct {
 	sites            []string // package-level MethodSite variables, one per direct method call
 	debugLiterals    bool
 	literalData      []ast.Decl // immutable scalar input, never source collection storage
+}
+
+func newGenerator(program *checker.Program) *generator {
+	return &generator{program: program, folds: ir.NewFolder(program), captures: map[*checker.Binding]string{}, typed: map[*checker.Binding]string{}}
+}
+
+// constantBool reports whether e folds to a Bool constant.
+func (g *generator) constantBool(e *syntax.Expression) bool {
+	_, constant := g.folds.Bool(e)
+	return constant
 }
 
 func (g *generator) temp() string { g.serial++; return fmt.Sprintf("temporary%d", g.serial) }

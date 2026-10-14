@@ -30,7 +30,7 @@ func (g *generator) argumentValue(a syntax.Argument) ast.Expr {
 	return value
 }
 func (g *generator) expression(e *syntax.Expression) ast.Expr {
-	if value, ok := g.booleans[e]; ok {
+	if value, ok := g.folds.Bool(e); ok {
 		return ident(strconv.FormatBool(value))
 	}
 	info := g.program.Info(e)

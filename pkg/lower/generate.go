@@ -23,8 +23,8 @@ type Options struct {
 // optimization facts and never parses source or resolves a type or binding by
 // its spelling.
 func Go(program *checker.Program, entry string, options Options) (string, error) {
-	optimized := optimize(program)
-	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}, typed: map[*checker.Binding]string{}, debugLiterals: options.DebugLiterals}
+	g := newGenerator(program)
+	g.debugLiterals = options.DebugLiterals
 	file := g.file(entry, options)
 	if g.loweringError != nil {
 		return "", g.loweringError
