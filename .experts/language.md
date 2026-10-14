@@ -182,3 +182,13 @@ Verified: Go orders function calls left to right but does not guarantee that a p
 Apply when: removing bound-call wrappers or lowering expressions directly to Go operations.
 Evidence: [direct collection lowering](../pkg/lower/lower_collections.go), [receiver reassignment regression](../tests/e2e/testdata/accept/collection-call-order.ms), and [evaluation-order contract](../documentation/contributing/compiler/lowering/evaluation-order.md).
 Verify: a list receiver initially containing 7 still returns 7 when its index expression reassigns the local to a list containing 9; receiver and argument expressions each execute once in written order.
+
+### Module-level constants are use-site evaluations, not stored values
+
+Decision: Chinmay approved top-level `let NAME[: T] = <constant expression>` in the #332 thread after the ban was found to have no recorded rationale; the inferred gains of the ban were no module initialization order, no startup side effects, and no shared module state. Constants keep those gains: a use evaluates the initializer, so list and map constants are fresh per use.
+Verified: a constant is a parameterless `fn` marked `Declaration.Constant` whose body returns the initializer. The checker validates the constant-expression form, infers an unannotated type with cycle detection, and rewrites a constant name to a call marked `ConstantUse`; a written `NAME()` is rejected. Lowering, imports, and exports are unchanged. Tooling that lists functions still shows a constant as one, except docgen, which prints `let NAME: T`.
+Open: hoisting scalar constants to Go constants for performance, and showing constants as constants in LSP hover, outline, and inspection.
+
+Apply when: changing top-level declarations, name resolution of module symbols, or the formatter's blank-line rules.
+Evidence: [constants rules](../documentation/core-language/modules/declarations.md#constants), [checker](../pkg/checker/constants.go), [diagnostics](../tests/e2e/constants_test.go), and [native fixture](../tests/e2e/testdata/accept/constants.ms).
+Verify: `ms run` on a module using an exported constant from another module, a local `let` shadowing a constant, and `A()` on a constant rejected.

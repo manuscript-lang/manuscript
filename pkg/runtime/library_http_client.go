@@ -315,15 +315,12 @@ func (b *libraryResponseBody) Operation(name string) Function {
 			max = b.remaining + 1
 		}
 		data := make([]byte, max)
-		done := make(chan struct{})
-		stop := context.AfterFunc(ctx.Context, func() { defer close(done); b.response.Body.Close() })
+		stop := libraryInterruptFunc(ctx, func() { b.response.Body.Close() })
 		count, err := b.reader.Read(data)
 		if b.upload != nil {
 			b.upload.rethrow()
 		}
-		if !stop() {
-			<-done
-		}
+		stop()
 		CheckCancelled(ctx)
 		if int64(count) > b.remaining {
 			b.response.Body.Close()

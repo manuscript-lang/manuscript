@@ -2,16 +2,16 @@ package checker
 
 import "github.com/manuscript-lang/manuscript/pkg/syntax"
 
-// primitiveTypeNames are the built-in types that need no declaration.
-var primitiveTypeNames = []string{"Int", "Float", "String", "Bool", "Unit", "Never"}
-
-// BuiltinTypeNames lists every type name available without an import.
-func BuiltinTypeNames() []string {
-	return append(append([]string{}, primitiveTypeNames...), standardPreludeNames...)
-}
-
 // Source-backed prelude types retain their standard declaration identities.
 var standardPreludeNames = []string{"Equal", "Hashable", "Optional", "Result", "Error", "List", "Map", "Set"}
+
+// primitiveNames are the built-in types every module sees without an import.
+var primitiveNames = []string{"Bool", "Int", "Float", "String", "Unit", "Never"}
+
+// PreludeTypeNames lists every type name available without an import.
+func PreludeTypeNames() []string {
+	return append(append([]string{}, primitiveNames...), standardPreludeNames...)
+}
 
 func (c *checker) addStandardPrelude() {
 	for _, name := range standardPreludeNames {

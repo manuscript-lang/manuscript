@@ -711,21 +711,6 @@ func StandardModules() []*syntax.Module {
 	return append([]*syntax.Module{}, standardSources...)
 }
 
-// StandardTypeReferences exposes resolved types in canonical standard signatures.
-// Callers may change the returned map, but must not mutate the shared types.
-func StandardTypeReferences() map[*syntax.Type]*Type {
-	ensureStandardSources()
-	out := map[*syntax.Type]*Type{}
-	for _, module := range standardSources {
-		syntax.Nodes{Type: func(t *syntax.Type) {
-			if resolved, ok := t.Fact.(*Type); ok {
-				out[t] = resolved
-			}
-		}}.Module(module)
-	}
-	return out
-}
-
 func StandardExports(module string) map[string]*Symbol {
 	ensureStandard()
 	out := map[string]*Symbol{}

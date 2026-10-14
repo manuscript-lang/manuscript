@@ -16,7 +16,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 	if e != nil {
 		tokens = []lexer.Token{}
 		keywords := map[string]bool{}
-		for _, word := range lexer.Keywords {
+		for _, word := range lexer.Keywords() {
 			keywords[word] = true
 		}
 		for _, token := range editorTokens(d.Text) {

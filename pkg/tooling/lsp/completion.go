@@ -263,11 +263,15 @@ func (k *completer) scopeItems() {
 
 // keywordItems offers statement and declaration keywords (with snippet
 // templates), literals, and the built-in type names.
+// statementKeywords start a statement inside a body; the rest of the reserved
+// words continue another construct (else, in) or start a declaration.
+var statementKeywords = []string{"let", "var", "if", "else", "for", "while", "match", "with", "return", "break", "continue"}
+
 func (k *completer) keywordItems() {
 	d, c := k.d, k.c
 	lineStart := strings.LastIndex(d.Text[:c.start], "\n") + 1
 	if strings.TrimSpace(d.Text[lineStart:c.start]) == "" {
-		words := []string{"let", "var", "if", "else", "for", "while", "match", "with", "return"}
+		words := statementKeywords
 		if lineStart == c.start {
 			words = []string{"fn", "type", "interface", "impl", "import", "export", "test"}
 		}
@@ -288,7 +292,7 @@ func (k *completer) keywordItems() {
 		}
 	}
 	if c.typeContext {
-		for _, name := range checker.BuiltinTypeNames() {
+		for _, name := range checker.PreludeTypeNames() {
 			k.add(name, 7, nil, 3, name, nil)
 		}
 	}

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Check the `-o` directory before building; name the changed field in `ms.lock` mismatch errors and drop Go internals from lock parse errors; reject arguments to `ms lsp`; fuzz `FuzzFormat` in `make fuzz`.
 - Fix Map and Set lookups after removing the last remaining key: a stale key index made later distinct keys share one entry (#316).
 - Add receiver-returning `Map.remove` and `List.splice` aliases, preserving legacy lookup, insertion order, strict splice bounds and faults; extend native dispatch, mutation analysis and preferred-name advisories.
 - Add `String.replace_n` with a required finite replacement cap and the existing literal/scalar, zero/negative and fault behavior; current `replace`/`replace_first` signatures remain compatible.

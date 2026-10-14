@@ -88,20 +88,7 @@ func runAnalysis(command string, targets []string, structured bool) int {
 		status = 1
 	}
 	if structured {
-		document := struct {
-			Format      int                 `json:"format"`
-			Diagnostics []commandDiagnostic `json:"diagnostics"`
-		}{1, diagnostics}
-		// Keep the original compact successful lint document spelling.
-		if command == "lint" && !selection.collection && len(issues) == 0 {
-			data, err := json.Marshal(document)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				return 1
-			}
-			fmt.Println(string(data))
-			return status
-		}
+		document := diagnosticsDocument{1, diagnostics}
 		return emitJSON(document, status)
 	}
 	for _, issue := range diagnostics {
@@ -126,18 +113,11 @@ func runAnalysis(command string, targets []string, structured bool) int {
 	return status
 }
 
-func orderedAnalysisDiagnostics(issues []commandDiagnostic) []commandDiagnostic {
-	seen := map[string]bool{}
-	unique := issues[:0]
-	for _, issue := range issues {
-		data, _ := json.Marshal(issue)
-		if key := string(data); !seen[key] {
-			seen[key] = true
-			unique = append(unique, issue)
-		}
-	}
-	sort.SliceStable(unique, func(i, j int) bool {
-		a, b := unique[i], unique[j]
+// sortDiagnostics orders by position, then code and message, so every command
+// reports the same diagnostics in the same order.
+func sortDiagnostics(issues []commandDiagnostic) {
+	sort.SliceStable(issues, func(i, j int) bool {
+		a, b := issues[i], issues[j]
 		if a.Position.File != b.Position.File {
 			return a.Position.File < b.Position.File
 		}
@@ -152,6 +132,19 @@ func orderedAnalysisDiagnostics(issues []commandDiagnostic) []commandDiagnostic 
 		}
 		return a.Message < b.Message
 	})
+}
+
+func orderedAnalysisDiagnostics(issues []commandDiagnostic) []commandDiagnostic {
+	seen := map[string]bool{}
+	unique := issues[:0]
+	for _, issue := range issues {
+		data, _ := json.Marshal(issue)
+		if key := string(data); !seen[key] {
+			seen[key] = true
+			unique = append(unique, issue)
+		}
+	}
+	sortDiagnostics(unique)
 	return unique
 }
 

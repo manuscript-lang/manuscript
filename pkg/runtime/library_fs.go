@@ -555,14 +555,13 @@ type libraryFileHandle struct {
 	released        chan struct{}
 	gate            chan struct{}
 	// ahead holds bytes read_line took from the reader beyond the current line.
-	ahead []byte
+	ahead readAhead
 }
 
 // rewindAhead returns read-ahead bytes to the file so position-based operations see them.
 func (h *libraryFileHandle) rewindAhead() {
 	h.mu.Lock()
-	ahead := h.ahead
-	h.ahead = nil
+	ahead, _ := h.ahead.take(0)
 	h.mu.Unlock()
 	if len(ahead) > 0 {
 		h.file.Seek(-int64(len(ahead)), io.SeekCurrent)
@@ -1050,11 +1049,11 @@ func (s libraryHandleStream) Operation(name string) Function {
 	if name == "close" {
 		return s.handle.Operation("close")
 	}
-	result := "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"
+	result := ioBytesResult
 	params := []string{"max_bytes"}
 	operation := name
 	if s.write {
-		result = "@std/Result[Unit][@std/IoError]"
+		result = ioUnitResult
 		params = []string{"data"}
 		if name == "flush" {
 			params = nil
@@ -1065,17 +1064,13 @@ func (s libraryHandleStream) Operation(name string) Function {
 	}
 	return NewFunction(params, result, func(ctx *Execution, a []Value) Value {
 		if name == "read" && !s.write {
+			max, _ := a[0].(int64)
 			s.handle.mu.Lock()
-			if ahead := s.handle.ahead; len(ahead) > 0 {
-				take := len(ahead)
-				if n, ok := a[0].(int64); ok && n > 0 && int(n) < take {
-					take = int(n)
-				}
-				s.handle.ahead = ahead[take:]
-				s.handle.mu.Unlock()
-				return Alternative{result, "ok", []Value{optional("@std/Bytes", Bytes{ahead[:take:take]}, true)}}
-			}
+			data, ok := s.handle.ahead.take(int(max))
 			s.handle.mu.Unlock()
+			if ok {
+				return Alternative{result, "ok", []Value{optional("@std/Bytes", Bytes{data}, true)}}
+			}
 		}
 		value := s.handle.Operation(operation).Body(ctx, a).(Alternative)
 		if value.Tag == "ok" {
