@@ -119,8 +119,8 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms dap"
 	case "debug":
 		usage = "<file.ms|ms.toml> [-- program arguments]"
-		description = "Build without optimization or inlining, then start the embedded Delve terminal.\nNo dlv executable is needed. On macOS, Xcode command line tools supply debugserver. Arguments after -- are passed to the application."
-		examples = "ms debug ms.toml\n  ms debug main.ms -- first second"
+		description = "Build without optimization or inlining, then start the embedded Delve terminal.\nNo dlv executable is needed. On macOS, Xcode command line tools supply debugserver. Arguments after -- are passed to the application.\nWith --script or --break the session is non-interactive and reports Manuscript names, lines, and only Manuscript stack frames."
+		examples = "ms debug ms.toml\n  ms debug main.ms -- first second\n  ms debug ms.toml --break src/main.ms:7 --json\n  ms debug ms.toml --script commands.txt"
 	case "lock":
 		usage = "<ms.toml> [--json]"
 		options = jsonErrorsHelp
@@ -156,8 +156,8 @@ func commandHelp(command string) (string, bool) {
 		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
 		examples = "ms dap"
 	case "debug":
-		usage = "<file.ms|ms.toml> [--build-type Debug] [-- program arguments]"
-		options += "  --build-type Debug  Debug is required for Delve\n"
+		usage = "<file.ms|ms.toml> [--build-type Debug] [--break location]... | --script file [--json] [-- program arguments]"
+		options += "  --build-type Debug  Debug is required for Delve\n  --break <location>  Run to the first of file:line or function name, report the stop, and exit (repeatable)\n  --script <file>     Run debugger commands from a file, or - for standard input\n  --json              With --script or --break, print JSON Lines events instead of text\n  Script commands: break, clear, breakpoints, continue, next, step, stepout, stack, locals, print <name>, exit\n"
 	}
 	text := fmt.Sprintf("Usage: ms %s", command)
 	if usage != "" {

@@ -75,6 +75,30 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 			return fmt.Errorf("standalone terminal missing %q:\n%s", want, output)
 		}
 	}
+	return checkScriptedDebugger(cli, directory, environment, source)
+}
+
+// checkScriptedDebugger runs the non-interactive agent mode from the copied
+// binary: one JSON Lines stop with Manuscript names and no Go runtime frames.
+func checkScriptedDebugger(cli, directory string, environment []string, source string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, cli, "debug", source, "--json", "--break", source+":5")
+	cmd.Dir, cmd.Env = directory, environment
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("scripted debugger: %w\n%s\n%s", err, output, &stderr)
+	}
+	for _, want := range []string{`"event":"stop"`, `"function":"main"`, `"name":"result"`, `"value":"42"`} {
+		if !strings.Contains(string(output), want) {
+			return fmt.Errorf("scripted debugger missing %s:\n%s", want, output)
+		}
+	}
+	if strings.Contains(string(output), "runtime.") || strings.Contains(string(output), "local") {
+		return fmt.Errorf("scripted debugger leaked Go names:\n%s", output)
+	}
 	return nil
 }
 

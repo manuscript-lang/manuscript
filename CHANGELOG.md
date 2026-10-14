@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Debugging: `ms debug` and `ms dap` embed Delve; VS Code no longer needs `dlv`.
+- Debugging: `ms debug --break <location>` and `--script <file>`, with `--json`, run non-interactively and report Manuscript function and local names and only Manuscript frames (#352).
 - Tooling: `ms run --watch` and `ms test --watch`; versioned `--json` results for build, profile, fmt and test; `--flag=value` for value-taking options; check, lint and doc accept multiple inputs.
 - CLI: `-o` directories are checked before building; `ms.lock` mismatch errors name the changed field; `ms lsp` rejects arguments.
 - Builds: faster rebuilds through a content-addressed workspace and command replay; validated toolchain archives.
