@@ -56,7 +56,7 @@ Their collection mode retains the project behavior in the table above and never
 combines several applications into one native entrypoint.
 For executable projects, the build and other source commands discover application modules by following imports from entry. The manifest does not enumerate them. Only `[project]` and `[aliases]` are implemented; unknown tables, unknown project keys, duplicate tables, and duplicate keys are rejected. Values must be double-quoted strings. Comments begin with `#` outside a quoted string.
 
-External `[adapters]` entries and [adapter bindings](../../contributing/compiler/adapters/manifests.md) remain design work. The current compiler rejects those tables.
+The compiler rejects external `[adapters]` tables; external adapters are not implemented.
 
 The compiler supplies the minimal intrinsic prelude and the standard modules under `@std`. Third-party Manuscript packages are unsupported; native dependencies follow [build pinning](reproducibility.md).
 

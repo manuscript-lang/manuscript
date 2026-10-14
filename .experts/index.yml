@@ -49,7 +49,7 @@ experts:
     paths:
       - "scripts/**"
       - ".github/workflows/**"
-      - "documentation/implementation.md"
+      - "documentation/developer-tooling/implementation.md"
       - "documentation/contributing/**"
       - "go.mod"
       - "Makefile"
