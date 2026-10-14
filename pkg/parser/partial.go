@@ -82,6 +82,7 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 	}
 	return module, diagnostics
 }
+
 // declaredName reads the name a declaration chunk introduces, for chunks that
 // failed to parse.
 func declaredName(chunk string) string {
