@@ -56,6 +56,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 	}
 	var initialize []ast.Stmt
 	g.planDirect(functions, options)
+	g.planAltLets()
 	for _, s := range functions {
 		g.module = s.Module
 		var value ast.Expr

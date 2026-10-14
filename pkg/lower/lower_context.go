@@ -42,6 +42,8 @@ type generator struct {
 	hoistedByKey     map[string]string // call-site identity to Lazy variable
 	defaultExpansion map[*syntax.Declaration]bool
 	loweringError    error
+	altUses          map[*checker.Binding]*altUses     // name, scrutinee and capture counts of every binding
+	altLocals        map[*checker.Binding]*altShape    // lets declared as typed Result/Optional variables
 	tried            map[*syntax.Expression]triedValue // nested try operands already evaluated by early returns
 	sites            []string                          // package-level MethodSite variables, one per direct method call
 	debugLiterals    bool
