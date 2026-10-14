@@ -9,19 +9,7 @@ A stream reads or writes bytes over time. Its close operation releases the under
 
 The host supplies synchronized `ReadStream`, `WriteStream`, and `File` views. All stream contract values are safe to share; closing a stream still closes it through every alias.
 
-```manuscript
-interface ReadStream:
-    fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]
-    fn close() -> Unit
-
-interface WriteStream:
-    fn write(data: Bytes) -> Result[Unit, IoError]
-    fn close() -> Unit
-
-interface File:
-    fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]
-    fn close() -> Unit
-```
+The signatures are in the [`@std/io.ms` reference](reference/io.md).
 
 Read requires positive max_bytes or returns IoError.InvalidInput. Under the declared return type, `ok(value: bytes)` wraps 1 through max_bytes bytes in a present Optional; `ok(value: none)` is EOF. Empty chunks never represent EOF. The bound limits each read, not total file size. Write waits until all bytes are accepted or an error occurs; empty writes succeed without I/O. An error may follow a partial external write and supplies no rollback. Internal buffering is bounded with backpressure.
 
