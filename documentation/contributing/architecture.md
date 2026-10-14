@@ -64,7 +64,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/lower/` | Checked program to Go source: literal-boolean folding, module assembly, lowering, and Go AST printing. It consumes only checker identities |
 | `pkg/build/` | Native builds from compiler results: source assembly; pin/artifact identity; command replay; shared workspace; runtime variant; SDK selection/materialization |
 | `pkg/runtime/` | Value and numeric semantics; work lifetimes; cleanup, synchronization, services, and host implementations; domain-specific native standard-library operations |
-| `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native identities, and embedded sources. This is the standard signature authority |
+| `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native function identities (receiver identities live in `internal/nativeabi`), and embedded sources. This is the standard signature authority |
 | `pkg/tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
 | `pkg/tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
 | `pkg/tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. `call-rules.md` is the embedded source for special compiler-bound calls |

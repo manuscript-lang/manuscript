@@ -1,11 +1,10 @@
-package tooling_test
+package lsp
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
-	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
 func TestHTTPRequestHeaderNavigation(t *testing.T) {
@@ -14,13 +13,9 @@ import Bytes from "@std/bytes.ms"
 fn content_type(request: HttpRequest) -> Optional[Bytes]:
     return request.header("content-type")
 `
-	result := compiler.CompileSource("header.ms", source, compiler.Options{AnalyzeOnly: true})
-	if !result.Success() {
-		t.Fatal(result.Diagnostics)
-	}
-	nav, ok := tooling.NavigationAt(result.Program, "header.ms", strings.Index(source, "header("))
-	if !ok || nav.Definition.File != "@std/http.ms" || !strings.Contains(nav.Hover, "fn(name: String)->Optional[Bytes]") {
-		t.Fatalf("header navigation: %#v, %v", nav, ok)
+	file, _, hover := definitionAt(t, source, strings.Index(source, "header("))
+	if file != "@std/http.ms" || !strings.Contains(hover, "fn(name: String)->Optional[Bytes]") {
+		t.Fatalf("header navigation: %s %q", file, hover)
 	}
 }
 
