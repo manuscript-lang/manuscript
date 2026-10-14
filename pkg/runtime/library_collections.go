@@ -315,14 +315,14 @@ func init() {
 		}
 		return acc
 	})
-	add("sets", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("delete_count", "Int"), p("replacement", "List[T]")}, func(ctx *Execution, r string, a []Value) Value {
+	add("splice", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("delete_count", "Int"), p("replacement", "List[T]")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Capture()
 		start, count := a[1].(int64), a[2].(int64)
 		if start < 0 || start > int64(items.Len()) {
-			return libraryRangeFault("List.sets", "start", start, 0, int64(items.Len()))
+			return libraryRangeFault("List.splice", "start", start, 0, int64(items.Len()))
 		}
 		if count < 0 || count > int64(items.Len())-start {
-			return libraryRangeFault("List.sets", "delete_count", count, 0, int64(items.Len())-start)
+			return libraryRangeFault("List.splice", "delete_count", count, 0, int64(items.Len())-start)
 		}
 		spliceList(a[0].(*List), int(start), int(count), a[3].(*List))
 		return a[0]
