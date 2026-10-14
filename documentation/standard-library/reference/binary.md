@@ -47,7 +47,7 @@ fn message() -> String:
 
 ## read_float {data-api-kind="Function"}
 
-Reads a 32-bit floating-point value at `offset` using the selected byte order.
+Reads a 64-bit floating-point value (binary64, 8 bytes) at `offset` using the selected byte order.
 
 ```manuscript
 fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]:
@@ -63,7 +63,7 @@ fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endia
 
 ## write_float {data-api-kind="Function"}
 
-Encodes a 32-bit floating-point value using the selected byte order.
+Encodes a 64-bit floating-point value (binary64) as 8 bytes using the selected byte order.
 
 ```manuscript
 fn write_float(value: Float, little_endian: Bool) -> Bytes:

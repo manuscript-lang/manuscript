@@ -74,7 +74,7 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 		{"build", "missing.ms", "--build-type", "Release", "--debug"},
 		{"debug", "missing.ms", "--build-type", "RelWithDebInfo"},
 		{"build", "missing.ms", "--build-type", "Debug", "--build-type", "Release"},
-		{"build", "missing.ms", "--watch"}, {"check", "missing.ms", "--watch"},
+		{"build", "missing.ms", "--watch"}, {"check", "missing.ms", "--watch", "--json"},
 		{"run", "missing.ms", "--watch", "--trace", "trace.out"},
 	} {
 		status, output, errors := invoke(t, args...)
@@ -190,7 +190,7 @@ func TestFormattingCheckAndPermissionPreservation(t *testing.T) {
 	}{
 		{"spacing", "fn value() -> Int:   \n    return 3   \n", "fn value() -> Int:\n    return 3\n"},
 		{"paragraphs", "fn value() -> Int:\n    if true: return 3\n    return 0\n", "fn value() -> Int:\n    if true: return 3\n\n    return 0\n"},
-		{"expressions", "fn value() -> Int:\n    return sum(left: read(1), right: 2)\n", "fn value() -> Int:\n    return sum(\n        left: read(1),\n        right: 2\n    )\n"},
+		{"expressions", "fn value() -> Int:\n    return sum(left:read(1),right:2)\n", "fn value() -> Int:\n    return sum(left: read(1), right: 2)\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			checkFormattingAndPermissions(t, tc.source, tc.want)
@@ -302,6 +302,27 @@ func TestFailedProfileDoesNotCreateAnArtifactDirectory(t *testing.T) {
 	}
 }
 
+func TestFailedProfileBuildRemovesItsArtifactDirectory(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "ms.toml"), []byte("[project]\nname = \"stale\"\nsource = \".\"\nentry = \"main.ms\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte("export fn main() -> Int:\n    return 0\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "ms.lock"), []byte("stale\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(t.TempDir(), "profile")
+	status, _, errors := invoke(t, "profile", filepath.Join(root, "ms.toml"), "-o", output)
+	if status != 1 || errors == "" {
+		t.Fatalf("stale lock profile: %d, %q", status, errors)
+	}
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatal("failed build left a profile directory that blocks a retry", err)
+	}
+}
+
 func TestCLIErrorsNameTheFix(t *testing.T) {
 	status, _, errors := invoke(t, "chek", "x.ms")
 	if status != 2 || !strings.Contains(errors, "Did you mean 'ms check'?") {
@@ -353,6 +374,42 @@ func TestArgumentMistakesNameTheProblem(t *testing.T) {
 	status, _, errors = invoke(t, "build", source, "-o", directory)
 	if status != 2 || !strings.Contains(errors, "is a directory; pass a file path") || strings.Contains(errors, "rename") {
 		t.Fatalf("output directory: %d, %q", status, errors)
+	}
+}
+
+func TestBuildRefusesToOverwriteSources(t *testing.T) {
+	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	for _, target := range []string{source, filepath.Join(filepath.Dir(source), "ms.toml"), filepath.Join(filepath.Dir(source), "other.ms")} {
+		status, _, errors := invoke(t, "build", source, "-o", target)
+		if status != 2 || !strings.Contains(errors, "would overwrite") {
+			t.Fatalf("-o %s: %d, %q", target, status, errors)
+		}
+	}
+	if data, err := os.ReadFile(source); err != nil || !strings.Contains(string(data), "export fn main") {
+		t.Fatalf("source clobbered: %q, %v", data, err)
+	}
+}
+
+func TestEmptyInputArgumentIsRejected(t *testing.T) {
+	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	for _, args := range [][]string{{"check", ""}, {"run", ""}, {"build", ""}, {"check", source, ""}} {
+		status, _, errors := invoke(t, args...)
+		if status != 2 || !strings.Contains(errors, "empty") {
+			t.Fatalf("%v: %d, %q", args, status, errors)
+		}
+	}
+}
+
+func TestTextOutputsRefuseToOverwriteSources(t *testing.T) {
+	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	for _, command := range []string{"emit", "inspect", "diagram"} {
+		status, _, errors := invoke(t, command, source, "-o", source)
+		if status != 2 || !strings.Contains(errors, "would overwrite") {
+			t.Fatalf("%s -o source: %d, %q", command, status, errors)
+		}
+	}
+	if data, err := os.ReadFile(source); err != nil || !strings.Contains(string(data), "export fn main") {
+		t.Fatalf("source clobbered: %q, %v", data, err)
 	}
 }
 

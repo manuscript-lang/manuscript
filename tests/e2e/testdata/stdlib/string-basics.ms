@@ -6,11 +6,9 @@ test "String basic counterparts are callable":
     if not ("".is_empty()) or "a".is_empty(): return panic("empty text")
     if "é🙂".chars() != ["é", "🙂"]: return panic("scalar chars")
     if "é🙂".reverse() != "🙂é": return panic("scalar reverse")
-    if (
-        "a".compare("b") != -1
-        or "b".compare("a") != 1
-        or "é".compare("é") != 0
-    ): return panic("text comparison")
+    if ("a".compare("b") != -1 or "b".compare("a") != 1 or "é".compare("é") != 0): return panic(
+        "text comparison"
+    )
     if "a\r\nb\n".lines() != ["a", "b"]: return panic("text lines")
 
 test "length and chars use scalars and preserve text boundaries":
@@ -73,10 +71,7 @@ test "lines preserve interior empties and recognize LF and CRLF only":
         LineCase("a\n", ["a"]),
         LineCase("a\r\n", ["a"]),
         LineCase("a\n\n", ["a", ""]),
-        LineCase(
-            "a\r\nb\nc",
-            ["a", "b", "c"]
-        ),
+        LineCase("a\r\nb\nc", ["a", "b", "c"]),
         LineCase("a\r", ["a\r"]),
         LineCase("\r", ["\r"]),
         LineCase("\r\r\n", ["\r"]),
@@ -103,11 +98,9 @@ test "String basic bound methods capture immutable receiver values":
     if chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"]: return panic(
         "bound text collection receiver"
     )
-    if (
-        reverse() != "\n🙂\né"
-        or length() != 4
-        or empty()
-    ): return panic("bound scalar receiver")
+    if (reverse() != "\n🙂\né" or length() != 4 or empty()): return panic(
+        "bound scalar receiver"
+    )
     if compare(other: "é\n🙂\n") != 0: return panic("bound compare receiver/label")
 
     let first = lines()

@@ -19,13 +19,13 @@ type Bytes:
     fn at(index: Int) -> Optional[Int]:
     fn index_of(value: Bytes) -> Optional[Int]:
     fn last_index_of(value: Bytes) -> Optional[Int]:
-    fn starts_with(value: Bytes) -> Bool:
-    fn ends_with(value: Bytes) -> Bool:
+    fn starts_with(prefix: Bytes) -> Bool:
+    fn ends_with(suffix: Bytes) -> Bool:
     fn reversed() -> Bytes:
     fn with_value(index: Int, value: Int) -> Bytes:
     fn is_empty() -> Bool:
     fn values() -> List[Int]:
-    fn concat(values: Bytes) -> Bytes:
+    fn concat(other: Bytes) -> Bytes:
     fn length() -> Int:
     fn to_text() -> Optional[String]:
 ```
@@ -51,7 +51,7 @@ fn clone() -> Bytes:
 Returns concatenated bytes without changing either operand.
 
 ```manuscript
-fn concat(values: Bytes) -> Bytes:
+fn concat(other: Bytes) -> Bytes:
 ```
 
 ### Bytes.contains
@@ -67,7 +67,7 @@ fn contains(value: Bytes) -> Bool:
 Tests whether the receiver ends with these bytes.
 
 ```manuscript
-fn ends_with(value: Bytes) -> Bool:
+fn ends_with(suffix: Bytes) -> Bool:
 ```
 
 ### Bytes.index_of
@@ -136,7 +136,7 @@ fn split(separator: Bytes, max_parts: Optional[Int] = none) -> List[Bytes]:
 Tests whether the receiver begins with these bytes.
 
 ```manuscript
-fn starts_with(value: Bytes) -> Bool:
+fn starts_with(prefix: Bytes) -> Bool:
 ```
 
 ### Bytes.to_text

@@ -48,6 +48,44 @@ func TestFormatExpressionLayouts(t *testing.T) {
 		name, source, want string
 	}{
 		{
+			name: "module constant initializer starting before its operator",
+			source: `let prices = [12, 8, 25]
+let affordable = prices.length > 1 and prices.keep(predicate: fn(value: Int) -> Bool:
+    return value <= 10
+).length > 0
+`,
+			want: `let prices = [12, 8, 25]
+let affordable = (
+    prices.length > 1
+    and prices.keep(
+        predicate: fn(value: Int) -> Bool:
+            return value <= 10
+    ).length > 0
+)
+`,
+		},
+		{
+			name: "match arms after a try joined from a later line",
+			source: `fn work(early: Int) -> Int:
+    let result = subtract(try
+        match some(0):
+            some(_):
+                10
+            none: 10
+    )
+    return result
+`,
+			want: `fn work(early: Int) -> Int:
+    let result = subtract(
+        try match some(0):
+            some(_):
+                10
+            none: 10
+    )
+    return result
+`,
+		},
+		{
 			name: "nested computations below the width limit",
 			source: `fn work() -> Unit:
     send(destination: resolve(name: service, region: region), payload: encode(build(records)))
@@ -90,11 +128,7 @@ func TestFormatExpressionLayouts(t *testing.T) {
     return 0
 `,
 			want: `fn work() -> Int:
-    if (
-        active
-        and allowed
-        and remaining > 0
-    ): return 1
+    if active and allowed and remaining > 0: return 1
 
     return 0
 `,
@@ -105,11 +139,7 @@ func TestFormatExpressionLayouts(t *testing.T) {
     return active or allowed and remaining > 0 or fallback
 `,
 			want: `fn work() -> Bool:
-    return (
-        active
-        or allowed and remaining > 0
-        or fallback
-    )
+    return active or allowed and remaining > 0 or fallback
 `,
 		},
 		{
@@ -118,14 +148,7 @@ func TestFormatExpressionLayouts(t *testing.T) {
     send(condition: active and allowed and remaining > 0, payload: "data")
 `,
 			want: `fn work() -> Unit:
-    send(
-        condition: (
-            active
-            and allowed
-            and remaining > 0
-        ),
-        payload: "data"
-    )
+    send(condition: active and allowed and remaining > 0, payload: "data")
 `,
 		},
 		{
@@ -134,9 +157,19 @@ func TestFormatExpressionLayouts(t *testing.T) {
     return active or allowed and remaining > 0
 `,
 			want: `fn work() -> Bool:
+    return active or allowed and remaining > 0
+`,
+		},
+		{
+			name: "long boolean chain wraps at the width",
+			source: `fn work() -> Bool:
+    return account_is_active and payment_is_allowed and remaining_balance > minimum_balance
+`,
+			want: `fn work() -> Bool:
     return (
-        active
-        or allowed and remaining > 0
+        account_is_active
+        and payment_is_allowed
+        and remaining_balance > minimum_balance
     )
 `,
 		},
@@ -180,12 +213,7 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
     Fifth
 } from "./contracts.ms"
 
-fn work(
-    first: Int,
-    second: Int,
-    third: Int,
-    fourth: Int
-) -> Int: return first
+fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 `,
 		},
 		{
@@ -223,10 +251,7 @@ fn work(
     return apply(value: 3, transform: fn(value: Int) -> Int: return value + 1)
 `,
 			want: `fn work() -> Int:
-    return apply(
-        value: 3,
-        transform: fn(value: Int) -> Int: return value + 1
-    )
+    return apply(value: 3, transform: fn(value: Int) -> Int: return value + 1)
 `,
 		},
 		{
@@ -266,13 +291,7 @@ fn work(
 			name: "compound defaults",
 			source: `fn work(value: Bool = active and allowed and remaining > 0) -> Bool: return value
 `,
-			want: `fn work(
-    value: Bool = (
-        active
-        and allowed
-        and remaining > 0
-    )
-) -> Bool: return value
+			want: `fn work(value: Bool = active and allowed and remaining > 0) -> Bool: return value
 `,
 		},
 		{

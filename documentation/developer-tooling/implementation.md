@@ -14,6 +14,8 @@ ms fmt source.ms --check
 ms fmt ms.toml --check
 ms lsp
 ms debug source.ms -- arg1
+ms debug source.ms --break source.ms:7 --json
+ms debug ms.toml --script commands.txt
 ms run source.ms --cpu-profile cpu.pprof --heap-profile heap.pprof --trace trace.out -- arg1
 ms pprof -tags cpu.pprof
 ms pprof -http=127.0.0.1:8080 cpu.pprof
@@ -43,6 +45,8 @@ ms test test.ms --watch
 ```
 
 `--watch` keeps one `ms` process alive, rebuilds after each saved change to the manifest or any loaded local module, and restarts the program. The running program is interrupted, given five seconds to finish cleanup, and then killed, but only after its replacement builds; a failed edit prints diagnostics and keeps watching. Each restart reports the time from the save. Interrupting `ms` interrupts the program and exits with status 130. See [cache boundaries](builds/incremental-compilation.md) for what a rebuild still compiles and links.
+
+`ms check <targets> --watch` and `ms lint <targets> --watch` rerun the analysis after each saved change to a target, its manifest, or any local module it loaded, printing the usual diagnostics each time. Errors and lint findings keep watching; interrupting exits with status 130. `--json` cannot be combined with `--watch`. Files added to a watched directory are picked up on the next change to a watched file.
 
 Project lint checks hygiene in every reachable local module and runs semantic rules on the checked program. [Library projects](builds/project-configuration.md#library-projects-and-copied-dependencies) include all source modules and discovered tests. `--json` reports stable rule codes and module-relative positions.
 
@@ -209,7 +213,7 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 ## Linting and formatting
 
-`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), MSL106 (a match payload binding mistaken for a case or type pattern) and MSL107 (nested match). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
+`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local or match payload binding; a read inside an assignment to the same variable, as in `total = total + 2`, does not count; use `_` to ignore a payload), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), MSL106 (a match payload binding mistaken for a case or type pattern), MSL107 (nested match) and MSL109 (bare identifier selecting a different parameter than the next positional slot). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
 
 MSL104 warns when an expression statement discards a standard `Result`. Handle it with `match`, propagate it with `try`, or explicitly bind it as `let _ignored = operation()` when ignoring both success and failure is intentional. See [Result handling](../core-language/errors/results.md).
 
@@ -221,6 +225,8 @@ helper to match a case of the payload's type, or renaming an intentional binding
 See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns).
 
 MSL107 warns at a match nested structurally inside another match. Use an early-exit payload binding, compatible `try`, or a small helper to keep flow flat. It includes inline callbacks beneath an outer match and preserves checking/runtime behavior. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
+
+MSL109 warns when a bare identifier call argument matches a parameter name that is not the next unfilled positional parameter, so the matching-name shorthand redirects it. For `subtract(right, amount)` with parameters `left` and `right`, it suggests `left: right` or `(right)` for positional intent, or `right: right` to keep the current binding. Binding is unchanged. See [argument names](../core-language/functions/declarations-and-calls.md#argument-names).
 String replacement names remain outside its preference map. In particular,
 `String.replace_first` still accepts a cap greater than one; renaming every
 `String.replace` call would conceal that behavior. Both names remain supported
@@ -249,20 +255,19 @@ infer stages from the names of calls or bindings.
 
 Expression layout uses a soft limit of 88 columns:
 
-- Keep simple calls and small literals compact. Expand calls with four or more
-  arguments, multiple arguments containing nested calls or compound computations,
-  or a closure argument. Single-argument calls containing another nested
-  computation can also expand.
-- Expand signatures with four or more parameters or complex defaults. Include the
-  return type when deciding whether a signature fits, excluding callback bodies
-  and enclosing arguments.
+- Keep calls and signatures on one line when they fit, whatever their argument
+  or parameter count, nested calls, compound computations, or defaults. An
+  anonymous function whose body is a multi-statement suite always expands its
+  call. Include the return type when deciding whether a signature fits,
+  excluding callback bodies and enclosing arguments.
 - Keep lists compact when they fit, including nested lists. Expand grouped
-  imports with five or more names. Later call arguments do not count toward
+  imports with five or more names and maps with ten or more entries. Later call arguments do not count toward
   the width of a preceding list or call in a chain.
 - Once a group expands, put every argument, parameter, or element on its own line.
   Use four spaces beyond the containing line and align the closing delimiter with
-  that line. Existing multiline groups remain expanded with this same layout.
-- Break conditions with three or more clauses at their lowest-precedence logical
+  that line. An authored multiline group collapses when it fits and holds no
+  comment or suite; an authored trailing comma is dropped when it does.
+- Break conditions that exceed the limit at their lowest-precedence logical
   operator. Keep comparison operands together. Long arithmetic and member chains
   also gain continuation lines, preserving precedence and evaluation order.
 - Add grouping parentheses around complete statement values, argument values,
@@ -279,13 +284,15 @@ They can exceed the soft limit; the formatter does not split or rewrite them.
 
 `ms debug` is also available for Delve's terminal UI. Existing project pin validation remains in effect; use `ms lock ms.toml` explicitly after a toolchain/compiler change.
 
+`ms debug --break <location>` and `ms debug --script <file>` are non-interactive and meant for agents and scripts; see [scripted debugging](debugging/debugger-integration.md#scripted-debugging-for-agents).
+
 Profiling is explicit and local: CPU/heap use pprof and execution traces use Go tracing. New files are created exclusively with mode 0600; existing files are never overwritten. Profiles flush before process exit, including handled faults and signal cancellation. A setup or heap-write error returns exit code 70. Only one capture can run at a time in a process. Use optimized builds for representative samples and retain matching native metadata.
 
 Source entry boundaries contribute `ms.source` CPU labels and, when tracing, `source:<position>` regions. Nested calls inherit the entry label and remain visible in sampled CPU stacks through native source mappings; they do not create a label/context/trace region per call. Each task-group or scheduled operation starts a fresh source boundary, with work labels and trace tasks. Joining and lexical cleanup have named trace regions. This coarser attribution reduces instrumentation cost but does not provide a complete per-call timeline. Heap-only capture adds no source instrumentation. Profiling preserves cancellation and work lifetime; ordinary source calls take a single atomic branch.
 
 Profiling still changes execution time and allocation behavior. CPU capture also waits for samples to flush at shutdown, and heap capture forces a garbage collection. Tracing can add substantial time and disk usage, especially with many work operations or allocations. Measure an unprofiled executable separately when comparing performance; neither capture wall time nor instrumented CPU samples establish normal program speed.
 
-The checker analyzes each affected module rather than incrementally reusing individual syntax/type nodes. Public rename is conservative about identifier collisions. The debugger retains native runtime frames as subdued entries, and complex watch expressions retain native Go syntax. These behaviors are explicit rather than hidden by unsupported capabilities.
+The checker analyzes each affected module rather than incrementally reusing individual syntax/type nodes. Public rename is conservative about identifier collisions. The VS Code debugger retains native runtime frames as subdued entries (scripted `ms debug` omits them), and complex watch expressions retain native Go syntax. These behaviors are explicit rather than hidden by unsupported capabilities.
 
 `ms profile module-or-project --out-dir new-directory` captures `cpu.pprof` and `heap.pprof` and retains the optimized executable, build/source metadata, static inspection, and a bundle manifest for reproducible symbolization. `-o` and `--output` remain compatible aliases for `--out-dir`. Add `--trace` to also capture `trace.out`. Trace capture is now opt-in: the default bundle omits the trace file and its manifest entry. Existing directories are rejected. For individual output paths, use the existing `ms run … --cpu-profile path --heap-profile path --trace path` options; every requested output is captured.
 

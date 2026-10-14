@@ -76,3 +76,173 @@ fn make() -> Point: Point(x: 1, label: "a")
 		t.Errorf("record access fell back to the map-backed path\n%s", r.Source)
 	}
 }
+
+func TestNegationOfScalarsStaysTyped(t *testing.T) {
+	r := compileSource("negate.ms", `fn f(a: Int, b: Float) -> Int:
+    var step = -1
+    let c = -b
+    if c < 0.0:
+        step = -a
+    return step
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	source := localNumbers.ReplaceAllString(r.Source, "local_")
+	for _, want := range []string{"var local_step int64 = int64(-1)", "rt.IntNegateAt(local_a)", "var local_c float64 = -local_b"} {
+		if !strings.Contains(source, want) {
+			t.Errorf("missing %q\n%s", want, source)
+		}
+	}
+	if strings.Contains(source, `rt.Unary("-"`) {
+		t.Errorf("dynamic negation\n%s", source)
+	}
+}
+
+func TestStaticNativeMembersBindOncePerCallSite(t *testing.T) {
+	r := compileSource("native.ms", `import {List, Set} from "@std/collections.ms"
+import StringBuilder from "@std/string.ms"
+
+fn f(xs: List[Int], text: String, seen: Set[Int]) -> String:
+    xs.set(index: 0, value: 1)
+    let doubled = seen.map(transform: fn(value: Int) -> Int: return value * 2)
+    let sb = StringBuilder()
+    sb.append(text.trim())
+    return sb.freeze()
+
+fn generic[T](xs: List[T], value: T) -> List[T]:
+    return xs.set(index: 0, value: value)
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{`BindNativeCall("List", "set"`, `BindNativeCall("String", "trim"`, `BindNativeCall("Set", "map"`, "StringBuilderAppend(", "StringBuilderFreeze("} {
+		if !strings.Contains(r.Source, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	// The generic receiver's scope is known only at run time, so it keeps
+	// ordinary dispatch.
+	if !strings.Contains(r.Source, `NativeMemberResult(`) || strings.Count(r.Source, `BindNativeCall("List", "set"`) != 1 {
+		t.Errorf("generic call must not bind statically\n%s", r.Source)
+	}
+}
+
+func TestStandardFunctionsAreResolvedOncePerCallSite(t *testing.T) {
+	r := compileSource("standard.ms", `import {stdout} from "@std/io.ms"
+
+fn f() -> Int:
+    let out = stdout()
+    return 0
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	hoisted := regexp.MustCompile(`specialized\d+\.Get\(func\(\) rt\.Value \{\s*(?:/\*line [^*]*\*/)?\s*return rt.StandardFunction\("io/stdout"`)
+	if !hoisted.MatchString(r.Source) {
+		t.Errorf("standard function rebuilt per call\n%s", r.Source)
+	}
+}
+
+func TestNestedTryReturnsInsteadOfPanicking(t *testing.T) {
+	const prelude = `fn step(n: Int) -> Result[Int, String]:
+    if n < 0:
+        return error(cause: "bad")
+    return ok(value: n)
+
+fn id(x: Int) -> Int:
+    return x
+
+`
+	for name, tc := range map[string]struct {
+		body    string
+		hoisted bool
+	}{
+		"operands":   {"    let v = (try step(n: a)) + (try step(n: a + 1))\n    return ok(value: v)\n", true},
+		"argument":   {"    return ok(value: id(x: try step(n: a)))\n", true},
+		"after call": {"    let w = id(x: a)\n    let v = w + try step(n: a)\n    return ok(value: v)\n", true},
+		// id runs before the try in source order and would run after it.
+		"effect first":  {"    return ok(value: id(x: a) + (try step(n: a)))\n", false},
+		"short circuit": {"    let v = a > 0 and (try step(n: a)) > 0\n    return ok(value: a)\n", false},
+	} {
+		r := compileSource("try.ms", prelude+"fn run(a: Int) -> Result[Int, String]:\n"+tc.body)
+		if !r.Success() {
+			t.Fatalf("%s: %v", name, r.Diagnostics)
+		}
+		if panics := strings.Contains(r.Source, "rt.Try("); panics == tc.hoisted {
+			t.Errorf("%s: rt.Try present=%v, want %v\n%s", name, panics, !tc.hoisted, r.Source)
+		}
+	}
+}
+
+// Appending to and ranging over a List of a primitive element type neither
+// boxes the element nor asserts it back.
+func TestPrimitiveListAppendAndRangeAreUnboxed(t *testing.T) {
+	r := compileSource("list.ms", `import List from "@std/collections.ms"
+fn sum(count: Int) -> Int:
+    let items = List[Int]()
+    var i = 0
+    while i < count:
+        items.append(value: i)
+        i = i + 1
+    var total = 0
+    for v in items:
+        total = total + v
+    return total
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.ListAppendInt(", "rt.IterateInt("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, "rt.IntValue(local") {
+		t.Fatalf("range element asserted\n%s", r.Source)
+	}
+}
+
+// Interpolation joins typed parts as Go strings, String.length is a direct
+// call, and a Map.get consumed by match reads the value and presence without
+// building an Optional.
+func TestTextLengthAndMapGetLowerWithoutBoxing(t *testing.T) {
+	r := compileSource("strings.ms", `import Map from "@std/collections.ms"
+fn label(n: Int, f: Float, ok: Bool, s: String) -> Int:
+    let text = "n={n} f={f} ok={ok} s={s}"
+    return text.length()
+
+fn lookup(m: Map[Int, Int], key: Int) -> Int:
+    match m.get(key: key):
+        some(v):
+            return v
+        none:
+            return 0
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.FormatInt(", "rt.FormatFloat(", "rt.FormatBool(", "rt.StringLength(", "rt.MapGetParts("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, "rt.Text(") {
+		t.Fatalf("interpolation still builds Values\n%s", r.Source)
+	}
+}
+
+func TestLambdasBorrowCallbackArguments(t *testing.T) {
+	r := compileSource("lambdas.ms", `import List from "@std/collections.ms"
+fn double(value: Int) -> Int: value * 2
+
+fn run(items: List[Int]) -> List[Int]:
+    return items.map(fn(value: Int) -> Int: double(value: value))
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	if !strings.Contains(r.Source, "rt.NewCompiledSourceFunction(") {
+		t.Fatalf("lambda does not borrow arguments\n%s", r.Source)
+	}
+}

@@ -20,6 +20,9 @@ var NativeImplementations = []NativeImplementationSpec{
 			if cause.Tag == "Failed" && len(cause.Fields) == 1 {
 				return cause.Fields[0].(string)
 			}
+			if cause.Type == "@std/TextError" && cause.Tag == "Text" && len(cause.Fields) == 1 {
+				return cause.Fields[0].(string)
+			}
 			if cause.Tag == "Crashed" && len(cause.Fields) == 2 {
 				return cause.Fields[1].(string)
 			}
@@ -79,7 +82,9 @@ var standardErrorDomains = map[string]string{
 	"@std/StringError":      "string",
 	"@std/SystemError":      "system",
 	"@std/ExecutionError":   "task execution",
+	"@std/SseError":         "SSE",
 	"@std/StartError":       "scheduler",
+	"@std/TextError":        "text",
 	"@std/TimeError":        "time",
 	"@std/TlsError":         "TLS",
 	"@std/TomlError":        "TOML",
@@ -101,7 +106,7 @@ var standardErrorReasons = map[string]string{
 	"Closed":               "resource is closed",
 	"Unavailable":          "service unavailable",
 	"Timeout":              "operation timed out",
-	"TimedOut":             "operation timed out",
+	"Truncated":            "stream ended inside an event",
 	"Cancelled":            "operation cancelled",
 	"Full":                 "capacity exhausted",
 	"OutOfRange":           "value out of range",
@@ -158,9 +163,6 @@ func libraryErrorCategory(value Value) Value {
 		return optional("@std/ErrorCategory", nil, false)
 	}
 	name := cause.Tag
-	if name == "TimedOut" {
-		name = "Timeout"
-	}
 	switch name {
 	case "InvalidInput", "InvalidData", "LimitExceeded", "NotFound", "AlreadyExists", "PermissionDenied", "Unsupported", "Closed", "Timeout", "Unavailable":
 		return optional("@std/ErrorCategory", Alternative{Type: "@std/ErrorCategory", Tag: name}, true)
@@ -173,6 +175,7 @@ func libraryErrorCategory(value Value) Value {
 var sourceStandardErrors = map[string]bool{
 	librarySourceErrorType("@std/yaml.ms", "YamlError"): true,
 	librarySourceErrorType("@std/toml.ms", "TomlError"): true,
+	librarySourceErrorType("@std/sse.ms", "SseError"):   true,
 }
 
 func librarySourceErrorType(module, name string) string {

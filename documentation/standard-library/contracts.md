@@ -23,6 +23,18 @@ Standard `message()` implementations return human-readable domain diagnostics, s
 
 Nullary errors retain their existing constructors and do not carry the failing path or operation. Add that context at the application boundary when useful, taking care to redact credentials and sensitive paths or contents before displaying it. Explicit message payloads may contain sensitive information and are not automatically redacted.
 
+### Choosing a failure mode
+
+One rule decides how a standard API reports a mistake:
+
+- **Absence is `Optional`.** A lookup or attempt that may simply find nothing returns `Optional`: `at`, `first`, `get`, `index_of`, `find`, `pop`, `String.parse_int`.
+- **Invalid external data is `Result`.** Input that depends on text, files, the network, or a caller-supplied option that is checked as data returns `Result` with a domain error: `parse` functions, `slice`, formatting options such as `Float.to_fixed`, `repeat` and `pad` counts, `BigInt.divide`.
+- **A violated documented precondition is a fault.** Strict edits, constructors, and primitive operators fault: `List.set`, `remove`, `insert`, `splice`, `Bytes.with_value`, `Int` `/` and `%`, `Duration.divide`, `Int.to_string(radix:)`, `Queue(capacity:)`. Validate dynamic values first.
+
+Idempotent removal is not an edit: `Map.remove` and `Set.remove` of an absent key are no-ops, while `List.remove(index:)` addresses a position and faults when it does not exist. A signature does not carry this choice; each declaration's comment names its mode. `String.parse_int` is a reason-discarding convenience; use `numbers.parse_int` or `bigint.parse` when the radix or failure reason matters.
+
+Faults state the operation, the offending argument with its value, and the valid range, for example `List.insert: index 9 is outside 0..3`. A new API follows this rule and message shape. Existing signatures stay as they are, so aligning an API that disagrees (for example moving `Int.to_string(radix:)` to `Result`) is a deliberate breaking change decided separately.
+
 ### Error details
 
 Put typed information directly in an error record or alternative case. Each field has its own type. A domain error does not need an `Error` implementation to be returned or propagated.
@@ -67,7 +79,7 @@ Unrelated domain errors still need an explicit translation. The Error interface 
 | `InvalidInput`, `InvalidData`, `LimitExceeded` | The same-name category |
 | `NotFound`, `AlreadyExists`, `PermissionDenied` | The same-name category |
 | `Unsupported`, `Closed`, `Unavailable` | The same-name category |
-| `Timeout`, `TimedOut` | `Timeout` |
+| `Timeout` | `Timeout` |
 | Custom errors or other domain cases | `none` |
 
 `Unavailable` does not imply a missing resource or denied permission. Cases such as `Failed(message)`, `Full`, `OutputLimit`, `OutOfRange`, `AuthenticationFailed`, `Cancelled`, YAML `UnsupportedFeature`, and wrapped logging causes remain domain-specific and return `none`. In particular, a timeout described only by an `IoError.Failed` message is not classified as `Timeout`. Use the concrete domain type when these distinctions matter.
@@ -115,13 +127,13 @@ Error case sets describe each domain, even when case names coincide. Filesystem,
 | `FileHandle.reader()` / `writer()` | Shared-handle stream adapters retain `Closed`/`InvalidInput`; other filesystem cases become `IoError.Failed` with their case name, or the original Failed text. |
 | Stream helpers | Preserve returned IoError case/payload. EOF is absence/empty data, not a failure; cancellation unwinds. |
 | `Error` view | Retains the concrete error value for type matching, while exposing only `message()` as a common operation. |
-| Scheduler callbacks | Currently use `Result[Unit, String]`; `SchedulerFailure.Failed.cause` is text, and Crashed carries a fault message. No domain-error view is implied. |
+| Scheduler callbacks | Use `Result[Unit, Error]`; `SchedulerFailure.Failed.cause` is the returned `Error` with its concrete type and payload intact, so reporters can match it or call `category`. Return `TextError.Text(message)` from `@std/errors.ms` for intentional text. `Crashed` carries a fault message. |
 
-The absence of a case in PathError, CryptoError, RegexError, UrlError, or JsonError does not authorize inventing a generic Failed/LimitExceeded at that boundary. The optional category query preserves those distinctions. A scheduler error migration, timeout case rename, or unified write result still needs an explicit API and compatibility decision.
+The absence of a case in PathError, CryptoError, RegexError, UrlError, or JsonError does not authorize inventing a generic Failed/LimitExceeded at that boundary. The optional category query preserves those distinctions. A scheduler error migration still needs an explicit API and compatibility decision. Every timeout case is spelled `Timeout`, and every write returns `Unit`.
 
 ### Native I/O success and EOF
 
-Native WriteStream, Connection, and FileHandle writes accept all supplied bytes on success. FileHandle count results report the complete input length; Unit results omit that count. Errors/cancellation may leave a prefix and do not report its size. Acceptance does not guarantee disk durability or peer processing. Source WriteStream implementations may buffer until flush; native stdout/stderr flush is a no-op, while the file-handle writer adapter flushes with file sync. Commands and `read_file`/`read_all` buffer whole results in memory; chunk readers, directory cursors, sockets, and streaming HTTP expose incremental delivery.
+Native WriteStream, Connection, and FileHandle writes accept all supplied bytes on success. Errors/cancellation may leave a prefix and do not report its size. Acceptance does not guarantee disk durability or peer processing. Source WriteStream implementations may buffer until flush; native stdout/stderr flush is a no-op, while the file-handle writer adapter flushes with file sync. Commands and `read_file`/`read_all` buffer whole results in memory; chunk readers, directory cursors, sockets, and streaming HTTP expose incremental delivery.
 
 | Reader | EOF contract |
 | --- | --- |

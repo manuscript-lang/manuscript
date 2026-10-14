@@ -27,7 +27,9 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	}
 	receiver := c.resolve(d.Receiver, false)
 	if receiver.Def == nil || receiver.Def.Symbol == nil || receiver.Def.Symbol.Native != "" && !c.standardDeclarations || (receiver.Kind != syntax.KindRecord && receiver.Kind != "alternative") {
-		c.error(d.Pos, "type", "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types")
+		if receiver.ID != "<invalid>" {
+			c.error(d.Pos, "type", "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types")
+		}
 		// An impl whose receiver is not valid nominal data must not become
 		// evidence for later conversions; report the receiver's own faults only.
 		c.wellFormed(receiver, d.Pos, map[string]bool{})
@@ -68,7 +70,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		}
 	}
 	contract := c.resolve(d.Contract, false)
-	if contract.Kind != "contract" {
+	if contract.Kind != "contract" && contract.ID != "<invalid>" {
 		c.error(d.Pos, "type", "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'")
 	}
 	// An interface argument that is a receiver parameter carries the interface's
@@ -488,17 +490,7 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 		return
 	}
 	seen[key] = true
-	if t.Def != nil && len(t.Args) == len(t.Def.Variables) {
-		sub := substitution(t)
-		for _, v := range t.Def.Variables {
-			for _, b := range v.Bounds {
-				if !c.satisfies(sub[v.ID], Sub(b, sub)) {
-					c.error(pos, "type", c.unsatisfiedMessage(sub[v.ID], Sub(b, sub), "use a type that implements it"))
-				}
-			}
-		}
-	}
-
+	c.boundsHold(t, pos)
 	for _, a := range t.Args {
 		c.wellFormed(a, pos, seen)
 	}
@@ -506,6 +498,22 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 		c.wellFormed(p.Type, pos, seen)
 	}
 	c.wellFormed(t.Result, pos, seen)
+}
+
+// boundsHold checks t's own type arguments against its definition's bounds,
+// without descending into those arguments.
+func (c *checker) boundsHold(t *Type, pos syntax.Position) {
+	if t.Def == nil || len(t.Args) != len(t.Def.Variables) {
+		return
+	}
+	sub := substitution(t)
+	for _, v := range t.Def.Variables {
+		for _, b := range v.Bounds {
+			if !c.satisfies(sub[v.ID], Sub(b, sub)) {
+				c.error(pos, "type", c.unsatisfiedMessage(sub[v.ID], Sub(b, sub), "use a type that implements it"))
+			}
+		}
+	}
 }
 func (c *checker) declarationChecks(module *syntax.Module) {
 	for _, d := range module.Declarations {

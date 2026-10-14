@@ -10,7 +10,7 @@ Verify: new confined overlay files compile without being written to disk; overla
 
 ### String conversion is available on every value
 
-Decision: the user requested JavaScript-like conversion with `toString()` on everything. This supersedes the previous restriction of interpolation to scalars. Conversion is available in unconstrained generic code and uses the same representations as interpolation; ordinary type compatibility at assignment, call, and return boundaries remains explicit.
+Decision: the user requested conversion with `toString()` on everything. This supersedes the previous restriction of interpolation to scalars. Conversion is available in unconstrained generic code and uses the same representations as interpolation; ordinary type compatibility at assignment, call, and return boundaries remains explicit.
 
 Apply when: changing interpolation, member resolution, formatting, or editor member queries.
 Evidence: [canonical conversion rules](../documentation/core-language/basics/text-and-bytes.md#converting-values-to-string); [native source conformance](../tests/e2e/testdata/accept/to-string.ms); [opaque and cyclic formatting checks](../pkg/runtime/format_test.go).
@@ -63,7 +63,7 @@ Verify: examples compile with compatible `try` calls and introduce only the conc
 
 ### Equality and hashing are source interfaces
 
-Decision: the stdlib revamp explicitly replaces compiler-only equality/hashing bounds with `Equal` and `Hashable` interfaces. Built-in data keeps its value semantics, and explicit implementations select domain identity. Custom equality requires an explicit consistent hash before the type becomes a key; structural hashing cannot silently use different fields.
+Decision: the stdlib revamp explicitly replaces compiler-only equality/hashing bounds with `Equal` and `Hashable` interfaces. Data keeps reference semantics (no move to value semantics was adopted), and explicit implementations select domain identity. Custom equality requires an explicit consistent hash before the type becomes a key; structural hashing cannot silently use different fields.
 
 Apply when: changing equality operators, generic bounds, contract views, key lookup, or implementation visibility.
 Evidence: [equality rules](../documentation/core-language/types/equality-and-hashing.md), [source interfaces](../pkg/stdlib/equality.ms), and [compiled domain-key fixture](../tests/e2e/testdata/accept/stdlib-revamp.ms).
@@ -78,7 +78,7 @@ Decision: support grouped symbol imports and brace Map literals. The user's newe
 
 Apply when: changing calls, grammar, inference or editor assistance.
 Evidence: [canonical call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names); [binding/source preservation tests](../pkg/checker/positional_arguments_test.go); [native calls](../tests/e2e/testdata/accept/positional-arguments.ms).
-Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding.
+Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding. Open (issue #452): a bare identifier can silently select another parameter; [MSL109](../pkg/tooling/bare_argument_lint.go) warns without changing binding, while making bare arguments positional remains an undecided language change needing a migration for reordered shorthand calls.
 
 ### Recover concrete contract receivers through checked matching
 
@@ -110,7 +110,7 @@ Verify: the counter's Unit-returning method updates `self.val`; aliases observe 
 
 ### Source-backed data types belong in the prelude
 
-Decision: the user requested Optional, Result, their related helpers, and Error without imports. The later accepted [issue #187 direction](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138072921) adds List and Map to that scope; the adds Set through the same mechanism. Keep their canonical source-backed identities, including some/none, ok/error, and Optional receiver methods. Existing explicit imports remain valid. Ordinary declarations may select a local identity instead; a matching spelling must not acquire native behavior. Other standard APIs remain explicit imports. [Map.add is the accepted insertion spelling](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138104857); preserve with_entry compatibility until a migration is decided.
+Decision: the user requested Optional, Result, their related helpers, and Error without imports. The later accepted [issue #187 direction](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138072921) adds List and Map to that scope; the adds Set through the same mechanism. Keep their canonical source-backed identities, including some/none, ok/error, and Optional receiver methods. Existing explicit imports remain valid. Ordinary declarations may select a local identity instead; a matching spelling must not acquire native behavior. Other standard APIs remain explicit imports. [Map.add is the accepted insertion spelling](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138104857); the older `with_entry` and alias spellings were removed (#358).
 
 Apply when: changing prelude scope, standard imports, case lookup, or editor auto-imports.
 Evidence: [module scope rules](../documentation/core-language/modules/declarations.md#names-and-declaration-order), [native prelude conformance](../tests/e2e/testdata/accept/prelude.ms), [case inference and shadowing regressions](../pkg/compiler/prelude_test.go), [collection execution](../tests/e2e/testdata/accept/collection-prelude.ms), [Set execution](../tests/e2e/testdata/accept/set-prelude.ms), and [editor completion/navigation](../pkg/tooling/lsp/completion_test.go).
@@ -186,8 +186,8 @@ Verify: a list receiver initially containing 7 still returns 7 when its index ex
 ### Module-level constants are use-site evaluations, not stored values
 
 Decision: Chinmay approved top-level `let NAME[: T] = <constant expression>` in the #332 thread after the ban was found to have no recorded rationale; the inferred gains of the ban were no module initialization order, no startup side effects, and no shared module state. Constants keep those gains: a use evaluates the initializer, so list and map constants are fresh per use.
-Verified: a constant is a parameterless `fn` marked `Declaration.Constant` whose body returns the initializer. The checker validates the constant-expression form, infers an unannotated type with cycle detection, and rewrites a constant name to a call marked `ConstantUse`; a written `NAME()` is rejected. Lowering, imports, and exports are unchanged. Tooling that lists functions still shows a constant as one, except docgen, which prints `let NAME: T`.
-Open: hoisting scalar constants to Go constants for performance, and showing constants as constants in LSP hover, outline, and inspection.
+Verified: a constant is a parameterless `fn` marked `Declaration.Constant` whose body returns the initializer. The checker validates the constant-expression form, infers an unannotated type with cycle detection, and rewrites a constant name to a call marked `ConstantUse`; a written `NAME()` is rejected. Lowering, imports, and exports are unchanged. LSP hover, completion, outline, workspace symbols and semantic tokens, `ms inspect` entities and call sites, and docgen present a constant as a constant of its value type through `Symbol.IsConstant` and `Symbol.ValueType`; lowering, diagram labels and the Go output still see the function.
+Open: hoisting scalar constants to Go constants for performance.
 
 Apply when: changing top-level declarations, name resolution of module symbols, or the formatter's blank-line rules.
 Evidence: [constants rules](../documentation/core-language/modules/declarations.md#constants), [checker](../pkg/checker/constants.go), [diagnostics](../tests/e2e/constants_test.go), and [native fixture](../tests/e2e/testdata/accept/constants.ms).

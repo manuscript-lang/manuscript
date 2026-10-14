@@ -33,6 +33,20 @@ func nativeOption(value Value, typ string, fallback Value) (Value, bool) {
 	return value, true
 }
 
+// nativeBound unwraps an optional Int that may be negative.
+func nativeBound(value Value, fallback Value) Value {
+	if value == nil {
+		return fallback
+	}
+	if option, ok := value.(Alternative); ok && strings.HasPrefix(option.Type, "@std/Optional[") {
+		if option.Tag == "none" {
+			return fallback
+		}
+		return option.Fields[0]
+	}
+	return value
+}
+
 func nativeDefault(name, typ, operation string) Value {
 	switch typ {
 	case "Int":
@@ -73,6 +87,79 @@ func nativeParamsNeedOptions(params []LibraryParam) bool {
 	return false
 }
 
+// optionPlan holds what nativeOptions would derive from a declaration's
+// parameter strings on every call: which parameters are optional scalars, and
+// their defaults. Declarations with option-record parameters keep the general
+// adapter.
+type optionPlan struct {
+	operation string
+	params    []LibraryParam
+	scalars   []optionSlot
+	records   bool
+}
+
+type optionSlot struct {
+	index    int
+	bound    bool
+	fallback Value
+}
+
+func planOptions(operation string, params []LibraryParam) *optionPlan {
+	plan := &optionPlan{operation: operation, params: params}
+	for i, p := range params {
+		typ := p.Type
+		switch typ {
+		case "Optional[Int]", "Optional[Duration]":
+			typ = strings.TrimSuffix(strings.TrimPrefix(typ, "Optional["), "]")
+			plan.scalars = append(plan.scalars, optionSlot{index: i, bound: p.Name == "max_exclusive", fallback: nativeDefault(p.Name, typ, operation)})
+		case "Optional[JsonLimits]", "Optional[ArchiveLimits]", "Optional[HtmlLimits]":
+			plan.records = true
+		}
+		if nativeOptionRecords[libraryRuntimeType(typ)] != nil {
+			plan.records = true
+		}
+	}
+	return plan
+}
+
+// normalize is nativeOptions for a planned declaration. It copies the
+// arguments only when a slot is missing or an optional needs its default.
+func (plan *optionPlan) normalize(args []Value) ([]Value, bool) {
+	if plan.records {
+		return nativeOptions(plan.operation, plan.params, args)
+	}
+	out := args
+	copied := false
+	if len(args) < len(plan.params) {
+		out = make([]Value, len(plan.params))
+		copy(out, args)
+		copied = true
+	}
+	for _, slot := range plan.scalars {
+		value := out[slot.index]
+		if value != nil {
+			if option, ok := value.(Alternative); !ok || !strings.HasPrefix(option.Type, "@std/Optional[") {
+				continue
+			}
+		}
+		var normalized Value
+		if slot.bound {
+			normalized = nativeBound(value, slot.fallback)
+		} else {
+			var ok bool
+			if normalized, ok = nativeOption(value, "", slot.fallback); !ok {
+				return nil, false
+			}
+		}
+		if !copied {
+			out = append([]Value{}, args...)
+			copied = true
+		}
+		out[slot.index] = normalized
+	}
+	return out, true
+}
+
 func nativeOptions(operation string, params []LibraryParam, args []Value) ([]Value, bool) {
 	out := append([]Value{}, args...)
 	for len(out) < len(params) {
@@ -82,6 +169,12 @@ func nativeOptions(operation string, params []LibraryParam, args []Value) ([]Val
 		typ := p.Type
 		if typ == "Optional[Int]" || typ == "Optional[Duration]" || typ == "Optional[JsonLimits]" || typ == "Optional[ArchiveLimits]" || typ == "Optional[HtmlLimits]" {
 			typ = strings.TrimSuffix(strings.TrimPrefix(typ, "Optional["), "]")
+			if p.Name == "max_exclusive" {
+				// An exclusive upper bound is a value, not a size or budget, so
+				// negative bounds are valid.
+				out[i] = nativeBound(out[i], nativeDefault(p.Name, typ, operation))
+				continue
+			}
 			var ok bool
 			out[i], ok = nativeOption(out[i], typ, nativeDefault(p.Name, typ, operation))
 			if !ok {

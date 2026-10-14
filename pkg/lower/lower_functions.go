@@ -163,7 +163,7 @@ func (g *generator) enterNativeDefault(d *syntax.Declaration) bool {
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
 	labels, key, position, out, _ := g.functionPieces(nil, name, params, result, body, bindings, self, t, tail...)
-	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
+	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), runtimeCall("Named", textLiteral(name), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...)))
 }
 
 // functionParts lowers a callable's labels, result key, source position, and
@@ -175,8 +175,8 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 }
 
 // directFunctionLiteral lowers a direct function to its Go function literal.
-func (g *generator) directFunctionLiteral(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, t *checker.Type) ast.Expr {
-	_, _, _, _, literal := g.functionPieces(direct, name, params, result, body, bindings, nil, t)
+func (g *generator) directFunctionLiteral(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type) ast.Expr {
+	_, _, _, _, literal := g.functionPieces(direct, name, params, result, body, bindings, self, t)
 	return literal
 }
 
@@ -186,11 +186,13 @@ func (g *generator) directFunctionLiteral(direct *directFunction, name string, p
 func (g *generator) functionPieces(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ([]string, ast.Expr, string, []ast.Stmt, ast.Expr) {
 	oldCleanups, oldLoops, oldLabels, oldDepth, oldResult := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth, g.resultKey
 	oldNeedsCleanup, oldResultType, oldRecovers := g.needsCleanup, g.resultType, g.recovers
+	oldShape, oldTypeKey := g.resultShape, g.resultTypeKey
 	resultKey := g.key(t.Result)
 	g.resultKey = resultKey
 	g.resultType, g.recovers = "", false
+	g.resultShape, g.resultTypeKey = nil, checker.TypeKey(t.Result)
 	if direct != nil {
-		g.resultType = direct.result
+		g.resultType, g.resultShape = direct.result, direct.shape
 	}
 	g.expressionDepth = 0
 	g.cleanups = nil
@@ -205,15 +207,13 @@ func (g *generator) functionPieces(direct *directFunction, name string, params [
 		g.expressionDepth = oldDepth
 		g.resultKey = oldResult
 		g.resultType, g.recovers = oldResultType, oldRecovers
+		g.resultShape, g.resultTypeKey = oldShape, oldTypeKey
 	}()
 	var labels []string
 	for _, p := range t.Params {
 		labels = append(labels, p.Name)
 	}
-	prologue := []ast.Stmt{
-		define("sourcePosition", textLiteral(result.Pos.String())),
-		&ast.DeferStmt{Call: runtimeCall("TraceSource", ident("ctx"), address(ident("sourcePosition")), textLiteral(name))},
-	}
+	var prologue []ast.Stmt
 	var out []ast.Stmt
 	if self != nil {
 		out = append(out, define(self.ID, ident("receiver")), discard(ident(self.ID)))

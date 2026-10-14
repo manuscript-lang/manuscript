@@ -79,17 +79,13 @@ test "HTML parses nested elements attributes entities and comments":
             ): return panic("HTML attributes")
             if (
                 items.at(0).unwrap() != HtmlNode.Text("Hello ")
-                or items.at(
-                    2
-                ).unwrap() != HtmlNode.Text(" <world>")
+                or items.at(2).unwrap() != HtmlNode.Text(" <world>")
             ): return panic("HTML text ordering or entities")
             if items.at(3).unwrap() != HtmlNode.Comment("note"): return panic(
                 "HTML comment"
             )
             if (
-                items.at(
-                    4
-                ).unwrap() != HtmlNode.Element(
+                items.at(4).unwrap() != HtmlNode.Element(
                     tag: "br",
                     namespace: "",
                     attributes: [],
@@ -132,9 +128,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     )
     let nodes = children(doc)
     if (
-        nodes.at(
-            0
-        ).unwrap() != HtmlNode.Doctype(
+        nodes.at(0).unwrap() != HtmlNode.Doctype(
             name: "html",
             public_id: "public",
             system_id: "system"
@@ -182,40 +176,23 @@ test "HTML honors optional byte depth and node limits":
             )
         ) != empty
     ): return panic("exact HTML limits")
-    if (
-        value(
-            parse(
-                text: "é",
-                limits: HtmlLimits()
-            )
-        ) != value(parse(text: "é"))
-    ): return panic("omitted HTML limits")
+    if (value(parse(text: "é", limits: HtmlLimits())) != value(parse(text: "é"))): return panic(
+        "omitted HTML limits"
+    )
 
     let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
-    if (
-        parse(
-            text: "é",
-            limits: HtmlLimits(max_bytes: 1)
-        ) != limited
-    ): return panic("UTF-8 byte limit")
-    if (
-        parse(
-            text: "",
-            limits: HtmlLimits(max_depth: 1)
-        ) != limited
-    ): return panic("implicit node depth limit")
-    if (
-        parse(
-            text: "",
-            limits: HtmlLimits(max_nodes: 3)
-        ) != limited
-    ): return panic("implicit node count limit")
+    if (parse(text: "é", limits: HtmlLimits(max_bytes: 1)) != limited): return panic(
+        "UTF-8 byte limit"
+    )
+    if (parse(text: "", limits: HtmlLimits(max_depth: 1)) != limited): return panic(
+        "implicit node depth limit"
+    )
+    if (parse(text: "", limits: HtmlLimits(max_nodes: 3)) != limited): return panic(
+        "implicit node count limit"
+    )
 
     let invalid: Result[HtmlNode, HtmlError] = error(HtmlError.InvalidInput)
-    if (
-        parse(
-            text: "",
-            limits: HtmlLimits(max_nodes: -1)
-        ) != invalid
-    ): return panic("negative HTML limit")
+    if (parse(text: "", limits: HtmlLimits(max_nodes: -1)) != invalid): return panic(
+        "negative HTML limit"
+    )
     if HtmlError.InvalidData.message() == "": return panic("HTML error diagnostic")

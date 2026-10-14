@@ -30,16 +30,22 @@ type generator struct {
 	captures         map[*checker.Binding]string
 	typed            map[*checker.Binding]string // Go type of scalar bindings declared as typed variables
 	direct           map[*checker.Symbol]*directFunction
+	directMethods    map[string]*directFunction // by checker.Method.ID, which checked copies of a method share
 	structs          map[string]*structType
 	structOrder      []*structType
-	resultType       string // Go scalar result of the direct function being lowered, or ""
-	recovers         bool   // the function being lowered raises propagation or source-return panics
+	resultType       string    // Go scalar result of the direct function being lowered, or ""
+	resultShape      *altShape // typed Result/Optional result of the direct function being lowered, or nil
+	resultTypeKey    string    // checker.TypeKey of the result of the function being lowered
+	recovers         bool      // the function being lowered raises propagation or source-return panics
 	sourceLines      map[string]syntax.Position
 	hoisted          []string          // package-level Lazy variables for static specializations
 	hoistedByKey     map[string]string // call-site identity to Lazy variable
 	defaultExpansion map[*syntax.Declaration]bool
 	loweringError    error
-	sites            []string // package-level MethodSite variables, one per direct method call
+	altUses          map[*checker.Binding]*altUses     // name, scrutinee and capture counts of every binding
+	altLocals        map[*checker.Binding]*altShape    // lets declared as typed Result/Optional variables
+	tried            map[*syntax.Expression]triedValue // nested try operands already evaluated by early returns
+	sites            []string                          // package-level MethodSite variables, one per direct method call
 	debugLiterals    bool
 	literalData      []ast.Decl // immutable scalar input, never source collection storage
 }

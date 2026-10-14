@@ -60,3 +60,23 @@ func TestInitAppendsToExistingGitignore(t *testing.T) {
 		t.Fatalf("gitignore %q", data)
 	}
 }
+
+func TestInitDiagnosesBadDirectories(t *testing.T) {
+	status, _, errors := invoke(t, "init", "")
+	if status != 2 || !strings.Contains(errors, "directory is empty") {
+		t.Fatalf("empty directory: %d %q", status, errors)
+	}
+	file := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	status, _, errors = invoke(t, "init", file)
+	if status != 1 || !strings.Contains(errors, "ms init: cannot create project in") {
+		t.Fatalf("file as directory: %d %q", status, errors)
+	}
+	root := filepath.Join(t.TempDir(), "my app")
+	_, output, _ := invoke(t, "init", root)
+	if !strings.Contains(output, "'"+filepath.Join(root, "ms.toml")+"'") {
+		t.Fatalf("next command is not paste-safe: %q", output)
+	}
+}

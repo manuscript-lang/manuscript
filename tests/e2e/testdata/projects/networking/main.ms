@@ -1,3 +1,4 @@
+import {headers, HttpMethod} from "@std/http.ms"
 import network from "@std/net.ms"
 import panic from "@std/faults.ms"
 
@@ -68,11 +69,9 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
 
         return ok(unit)
 
-    let headers = Map[String, List[String]]().add(
-        key: "X-Test",
-        value: ["stream"]
-    )
-    let started = try exchange.send_headers(status: 200, headers: headers)
+    let fields = headers()
+    let appended = try fields.append("X-Test", "stream".to_bytes())
+    let started = try exchange.send_headers(status: 200, headers: fields)
 
     match exchange.write(data: "hello from streaming Manuscript".to_bytes()):
         ok(_):
@@ -116,15 +115,15 @@ fn exercise() -> Result[Unit, HttpError]:
         )
 
         with client = try network().http_client(options: client_options):
-            with response = try client.send(
-                method: "GET",
+            with response = try client.request(
+                method: HttpMethod.Get,
                 url: "http://{server.address()}/",
-                headers: Map[String, String](),
+                headers: headers(),
                 body: "".to_bytes(),
                 max_response_bytes: 1024,
                 timeout: 2.seconds
             ):
-                if not (response.status() == 200):
+                if not (response.metadata().status == 200):
                     return panic(message: "check failed")
 
                 let part = match response.read(max_bytes: 1024):
@@ -154,7 +153,7 @@ fn exercise() -> Result[Unit, HttpError]:
         with socket = try socket_result(
             result: network().web_socket(
                 url: "ws://{server.address()}/ws",
-                headers: Map[String, String](),
+                headers: headers(),
                 subprotocols: ["echo"],
                 options: websocket_options
             )

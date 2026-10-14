@@ -80,3 +80,44 @@ test('debug launch activates the adapter without an open Manuscript editor', () 
   assert.ok(manifest.activationEvents.includes('onDebugResolve:manuscript'));
   assert.ok(manifest.activationEvents.includes('onDebugInitialConfigurations:manuscript'));
 });
+
+test('restart recovers from a client whose start failed', async () => {
+  const dispose = { dispose() {} };
+  const commands = new Map(), clients = [];
+  const vscode = {
+    workspace: {
+      registerTextDocumentContentProvider: () => dispose, isTrusted: true, getConfiguration: () => ({ get: (_, fallback) => fallback }),
+      getWorkspaceFolder: () => undefined, createFileSystemWatcher: () => dispose,
+    },
+    window: { createOutputChannel: () => ({ ...dispose, appendLine() {}, show() {} }) },
+    commands: { registerCommand: (name, callback) => { commands.set(name, callback); return dispose; } },
+    debug: { registerDebugAdapterDescriptorFactory: () => dispose, registerDebugConfigurationProvider: () => dispose },
+  };
+  const original = Module._load;
+  Module._load = function (name, ...args) {
+    if (name === 'vscode') return vscode;
+    if (name === 'vscode-languageclient/node') return { LanguageClient: class {
+      constructor() { this.index = clients.push(this) - 1; }
+      // The first client has no usable server: start fails and stop then rejects, as in vscode-languageclient.
+      async start() { if (this.index === 0) throw new Error('spawn ms ENOENT'); this.running = true; }
+      async stop() { if (this.index === 0) throw new Error("Client is not running and can't be stopped."); }
+    } };
+    return original.call(this, name, ...args);
+  };
+  let extension;
+  try { delete require.cache[require.resolve('../extension')]; extension = require('../extension'); } finally { Module._load = original; }
+  await assert.rejects(extension.activate({ subscriptions: [], extensionPath: '' }), /ENOENT/);
+  await commands.get('manuscript.restartServer')();
+  assert.equal(clients.length, 2);
+  assert.equal(clients[1].running, true);
+  await extension.deactivate();
+});
+
+test('language configuration indents block openers and dedents only else', () => {
+  const rules = require('../language-configuration.json').indentationRules;
+  const increase = new RegExp(rules.increaseIndentPattern), decrease = new RegExp(rules.decreaseIndentPattern);
+  for (const line of ['fn main():', 'if x: # note', '    else:']) assert.ok(increase.test(line), line);
+  for (const line of ['# note:', '    # heading:', 'let x = 1']) assert.ok(!increase.test(line), line);
+  assert.ok(decrease.test('    else if y:'));
+  assert.ok(!decrease.test('    case Done'));
+});

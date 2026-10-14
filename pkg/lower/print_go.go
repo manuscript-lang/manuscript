@@ -40,18 +40,60 @@ func (g *generator) printGo(file *ast.File) (string, error) {
 	}
 	lines := strings.Split(out.String(), "\n")
 	seen := make(map[string]bool, len(g.sourceLines))
-	for i, line := range lines {
-		name, label := strings.CutSuffix(strings.TrimSpace(line), ":")
+	// A directive names the next physical line, so each later line of a
+	// statement that Go prints over several lines, and each generated statement
+	// that follows the marked one, would read as a later source line. Every
+	// line that can hold a call therefore repeats the directive of the located
+	// statement it belongs to, inline; the nesting of a line is its indentation.
+	governing := map[int]string{}
+	deepest := 0
+	var printed []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		name, label := strings.CutSuffix(trimmed, ":")
 		if pos, ok := g.sourceLines[name]; label && ok {
 			if seen[name] {
 				return "", fmt.Errorf("duplicate generated source marker %s", name)
 			}
 			seen[name] = true
-			lines[i] = sourceDirective(pos)
+			// The labeled statement is indented one level deeper than its label.
+			depth := indentation(line) + 1
+			for ; deepest > depth; deepest-- {
+				delete(governing, deepest)
+			}
+			deepest = depth
+			governing[depth] = sourceDirective(pos)
+			printed = append(printed, governing[depth])
+			continue
 		}
+		if trimmed != "" && !strings.HasPrefix(trimmed, "//") {
+			depth := indentation(line)
+			for ; deepest > depth; deepest-- {
+				delete(governing, deepest)
+			}
+			for d := depth; d > 0 && strings.Contains(trimmed, "("); d-- {
+				if directive, ok := governing[d]; ok {
+					if len(printed) == 0 || printed[len(printed)-1] != directive {
+						line = strings.Repeat("\t", depth) + inlineDirective(directive) + trimmed
+					}
+					break
+				}
+			}
+		}
+		printed = append(printed, line)
 	}
 	if len(seen) != len(g.sourceLines) {
 		return "", fmt.Errorf("lost generated source directives: printed %d of %d", len(seen), len(g.sourceLines))
 	}
-	return strings.Join(lines, "\n"), nil
+	return strings.Join(printed, "\n"), nil
+}
+
+func indentation(line string) int {
+	return len(line) - len(strings.TrimLeft(line, "\t"))
+}
+
+// inlineDirective is a //line directive in its /*line*/ form, which names the
+// character after it rather than the next line.
+func inlineDirective(directive string) string {
+	return "/*" + strings.TrimPrefix(directive, "//") + "*/"
 }

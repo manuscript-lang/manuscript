@@ -32,11 +32,7 @@ test "domain equality and hashing select interfaces":
     if not (a == b): return panic("custom equality ignored")
     if not (a.hash() == b.hash()): return panic("custom hash ignored")
 
-    let values = (
-        Map[Key, String]()
-        .add(key: a, value: "a")
-        .add(key: b, value: "b")
-    )
+    let values = (Map[Key, String]().add(key: a, value: "a").add(key: b, value: "b"))
     if values.length() != 1: return panic("custom key lookup ignored")
     if values.get(a) != some("b"): return panic("custom key update ignored")
     if not ([a].contains(b)): return panic("custom search ignored")
@@ -62,10 +58,7 @@ test "stable priority queue and optional capacity":
 
         none: return panic("missing item")
 
-    let bounded = PriorityQueue(
-        compare: compare,
-        capacity: 1
-    )
+    let bounded = PriorityQueue(compare: compare, capacity: 1)
     if not (bounded.enqueue(Key(id: 1, label: "only"))): return panic("enqueue failed")
     if bounded.enqueue(Key(id: 0, label: "full")): return panic("capacity ignored")
 
@@ -76,14 +69,11 @@ test "limits can be omitted or supplied":
 
         error(_): return panic("omitted limit rejected")
 
-    match "ab".repeat(
-        count: 3,
-        max_bytes: 5
-    ):
+    match "ab".repeat(count: 3, max_bytes: 5):
         ok(_): return panic("supplied limit ignored")
         error(_): return
 
-fn operation() -> Result[Unit, String]: ok(unit)
+fn operation() -> Result[Unit, Error]: ok(unit)
 
 test "one scheduler admits and schedules work":
     with scheduler = Scheduler():

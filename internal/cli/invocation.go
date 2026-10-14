@@ -24,6 +24,8 @@ type invocation struct {
 	buildTypeName                      string
 	buildTypeSet                       bool
 	testTimeout, testFilter            string
+	debugScript                        string   // ms debug --script: command file, or - for stdin
+	debugBreaks                        []string // ms debug --break: one-shot breakpoints
 	arguments                          []string // forwarded to the program after --
 }
 
@@ -51,6 +53,9 @@ func usageError(format string, a ...any) int {
 // result carries the exit status for the problem it already reported.
 func parseInvocation(args []string) (*invocation, int, bool) {
 	inv := &invocation{command: args[0], filename: args[1]}
+	if inv.filename == "" {
+		return nil, usageError("ms %s: the file argument is empty; pass a .ms file, directory, or ms.toml", inv.command), false
+	}
 	inv.analysis = inv.isOneOf("check", "lint")
 	first, positional := 1, false
 	if inv.analysis && inv.filename == "--" {
@@ -124,6 +129,18 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 				return usageError("invalid --timeout %q; use a duration such as 30s or 2m, or 0 to disable", value), false
 			}
 			inv.testTimeout = value
+		case "--script":
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
+				return usageError("--script requires a file of debugger commands, or - for standard input, e.g. --script commands.txt"), false
+			}
+			inv.debugScript = value
+		case "--break":
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
+				return usageError("--break requires file:line or a function name, e.g. --break src/main.ms:7"), false
+			}
+			inv.debugBreaks = append(inv.debugBreaks, value)
 		case "--trace":
 			if inv.command == "profile" {
 				inv.profileTrace = true
@@ -141,6 +158,9 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 		default:
 			if !strings.HasPrefix(args[i], "-") {
 				if inv.analysis {
+					if args[i] == "" {
+						return usageError("ms %s: an input argument is empty; pass a .ms file, directory, or ms.toml", inv.command), false
+					}
 					inv.targets = append(inv.targets, args[i])
 					continue
 				}
@@ -215,11 +235,20 @@ func (inv *invocation) validate() (plan, int, bool) {
 		}
 		inv.arguments = append(testArgs, inv.arguments...)
 	}
-	if inv.watch && inv.structured {
-		return p, usageError("--json cannot be combined with --watch; remove --watch for one versioned test result"), false
+	if (inv.debugScript != "" || len(inv.debugBreaks) > 0) && command != "debug" {
+		return p, usageError("--script and --break are valid only for ms debug, not ms %s; run 'ms help %s' for the options this command accepts", command, command), false
 	}
-	if inv.watch && !inv.isOneOf("run", "test") {
-		return p, usageError("--watch requires run or test, not %s; use ms run <file> --watch or ms test <file> --watch", command), false
+	if inv.debugScript != "" && len(inv.debugBreaks) > 0 {
+		return p, usageError("--script and --break cannot be combined; put break commands in the script or use --break alone"), false
+	}
+	if command == "debug" && inv.structured && inv.debugScript == "" && len(inv.debugBreaks) == 0 {
+		return p, usageError("ms debug --json requires --script or --break; the interactive terminal has no structured output"), false
+	}
+	if inv.watch && inv.structured {
+		return p, usageError("--json cannot be combined with --watch; remove --watch for one versioned result"), false
+	}
+	if inv.watch && !inv.isOneOf("check", "lint", "run", "test") {
+		return p, usageError("--watch requires check, lint, run, or test, not %s; use ms check <file> --watch or ms run <file> --watch", command), false
 	}
 	if inv.formatCheck && command != "fmt" ||
 		inv.structured && !inv.isOneOf(jsonCommands...) ||

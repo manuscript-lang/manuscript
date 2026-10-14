@@ -1,3 +1,5 @@
+import {headers, HttpMethod} from "@std/http.ms"
+import {text_headers, list_headers} from "./support/http.ms"
 import {
     HttpRequest,
     HttpResponse,
@@ -5,7 +7,7 @@ import {
     HttpError,
     HttpServerOptions,
     HttpClientOptions,
-    header_values
+    HttpHeaders
 } from "@std/http.ms"
 import network from "@std/net.ms"
 import TlsOptions from "@std/tls.ms"
@@ -18,9 +20,13 @@ fn route(request: HttpRequest) -> HttpResponse:
     return HttpResponse(
         status: 200,
         headers: (
-            Map[String, String]()
-            .add(key: "Set-Cookie", value: "a=1")
-            .add(key: "set-cookie", value: "b=2")
+            text_headers(
+                (
+                    Map[String, String]()
+                    .add(key: "Set-Cookie", value: "a=1")
+                    .add(key: "set-cookie", value: "b=2")
+                )
+            )
         ),
         body: "{request.path}|{request.query}".to_bytes()
     )
@@ -28,9 +34,11 @@ fn route(request: HttpRequest) -> HttpResponse:
 fn stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let sent = try exchange.send_headers(
         status: 200,
-        headers: Map[String, List[String]]().add(
-            key: "Set-Cookie",
-            value: ["a=1", "b=2"]
+        headers: list_headers(
+            Map[String, List[String]]().add(
+                key: "Set-Cookie",
+                value: ["a=1", "b=2"]
+            )
         )
     )
     let written = value(
@@ -41,33 +49,33 @@ fn stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
 fn check_route(url: String, expected: String) -> Unit:
     let response = value(
         network().request(
-            method: "GET",
+            method: HttpMethod.Get,
             url: url,
-            headers: Map[String, String](),
+            headers: text_headers(Map[String, String]()),
             body: "".to_bytes(),
             timeout: 2.seconds
         )
     )
-    if response.status != 200 or response.body != expected.to_bytes(): return panic(
+    if response.metadata().status != 200 or response.body != expected.to_bytes(): return panic(
         "path or raw query changed"
     )
-    if (
-        header_values(headers: response.headers, name: "SET-cookie") != some(
-            ["a=1", "b=2"]
-        )
-    ): return panic("#257 repeated cookies regressed")
+    if (value(response.metadata().headers.text("SET-cookie")) != some(["a=1", "b=2"])): return panic(
+        "#257 repeated cookies regressed"
+    )
 
 fn check_rejected(url: String) -> Unit:
     let response = value(
         network().request(
-            method: "GET",
+            method: HttpMethod.Get,
             url: url,
-            headers: Map[String, String](),
+            headers: text_headers(Map[String, String]()),
             body: "".to_bytes(),
             timeout: 2.seconds
         )
     )
-    if response.status != 400: return panic("unsafe or invalid path was dispatched")
+    if response.metadata().status != 400: return panic(
+        "unsafe or invalid path was dispatched"
+    )
 
 fn check_paths(base: String) -> Unit:
     check_route(url: "{base}/a%20b", expected: "/a b|")
@@ -101,11 +109,11 @@ fn expect_http_error[T](outcome: Result[T, HttpError]) -> Unit:
             )
 
 test "buffered and reusable clients reject malformed ports as InvalidInput":
-    let headers = Map[String, String]()
+    let headers = text_headers(Map[String, String]())
     let body = "".to_bytes()
     expect_http_error(
         network().request(
-            method: "GET",
+            method: HttpMethod.Get,
             url: "http://127.0.0.1:99999/",
             headers: headers,
             body: body
@@ -126,8 +134,8 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
         )
     ):
         expect_http_error(
-            client.send(
-                method: "GET",
+            client.request(
+                method: HttpMethod.Get,
                 url: "http://127.0.0.1:65536/",
                 headers: headers,
                 body: body

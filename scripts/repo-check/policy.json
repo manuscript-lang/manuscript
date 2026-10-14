@@ -27,13 +27,9 @@
       "internal/hostos"
     ],
     "pkg/compiler": [
-      ".",
       "pkg/syntax",
-      "pkg/lexer",
-      "pkg/parser",
       "pkg/checker",
       "pkg/project",
-      "pkg/stdlib",
       "pkg/frontend",
       "pkg/lower"
     ],
@@ -80,9 +76,7 @@
     "internal/debugger": [],
     "pkg/lower": [
       "pkg/syntax",
-      "pkg/lexer",
-      "pkg/checker",
-      "pkg/frontend"
+      "pkg/checker"
     ],
     "pkg/build": [
       ".",

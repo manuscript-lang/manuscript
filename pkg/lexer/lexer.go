@@ -60,7 +60,7 @@ type scanner struct {
 }
 
 func (s *scanner) pos() syntax.Position {
-	return syntax.Position{File: s.file, Line: s.line, Column: s.column, Offset: s.originalOffsets[s.offset]}
+	return syntax.Position{File: s.file, Line: s.line, Column: s.column, Offset: s.originalOffset(s.offset)}
 }
 func (s *scanner) fail(message string) {
 	panic(syntax.Diagnostic{Position: s.pos(), Phase: "parse", Message: message})
@@ -115,9 +115,7 @@ func Lex(file, source string) (tokens []Token, err error) {
 			s.fail("tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)")
 		}
 		if s.source[s.offset] == '#' {
-			for s.offset < len(s.source) && s.source[s.offset] != '\n' {
-				s.advance()
-			}
+			s.skipComment()
 			if s.offset < len(s.source) {
 				s.advance()
 			}
@@ -147,7 +145,9 @@ func Lex(file, source string) (tokens []Token, err error) {
 			pending = false
 		}
 		if !startedSuite {
-			for len(s.levels) > 1 && leading < s.levels[len(s.levels)-1].indent {
+			// A continuation line inside delimiters opened within a level does not
+			// close that level; only suites opened inside the open delimiters can.
+			for len(s.levels) > 1 && leading < s.levels[len(s.levels)-1].indent && s.levels[len(s.levels)-1].depth >= len(s.delimiters) {
 				s.levels = s.levels[:len(s.levels)-1]
 				s.emit(Dedent, "", s.pos())
 			}
@@ -172,9 +172,7 @@ func Lex(file, source string) (tokens []Token, err error) {
 				continue
 			}
 			if b == '#' {
-				for s.offset < len(s.source) && s.source[s.offset] != '\n' {
-					s.advance()
-				}
+				s.skipComment()
 				break
 			}
 			if b == '\t' || b == '\r' {
@@ -291,6 +289,18 @@ func Lex(file, source string) (tokens []Token, err error) {
 	s.emit(EOF, "", s.pos())
 	return s.tokens, nil
 }
+
+// skipComment consumes a comment through the end of its physical line. Tabs are
+// allowed in comments, but a lone carriage return is not a line ending.
+func (s *scanner) skipComment() {
+	for s.offset < len(s.source) && s.source[s.offset] != '\n' {
+		if s.source[s.offset] == '\r' {
+			s.fail("lone carriage returns are not allowed in comments; use line endings of LF or CRLF")
+		}
+		s.advance()
+	}
+}
+
 func (s *scanner) scanNumber(p syntax.Position) {
 	start := s.offset
 	s.advance()
@@ -344,6 +354,9 @@ func (s *scanner) scanString() {
 			s.fail("literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}")
 		}
 		if b == '\\' {
+			backslash := s.pos()
+			backslash.Column--
+			backslash.Offset--
 			if s.offset == len(s.source) {
 				s.fail("unterminated text escape; a backslash needs a following character, e.g. \\n")
 			}
@@ -375,7 +388,7 @@ func (s *scanner) scanString() {
 				}
 				s.advance()
 			} else if !strings.ContainsRune("\"\\nrt{}", rune(c)) {
-				s.fail(fmt.Sprintf("unknown text escape \\%c; valid escapes are \\n \\t \\r \\\\ \\\" \\{ \\} and \\u{H}", c))
+				s.failAt(backslash, fmt.Sprintf("unknown text escape \\%c; valid escapes are \\n \\t \\r \\\\ \\\" \\{ \\} and \\u{H}", c))
 			}
 		} else if b == '{' {
 			s.scanInterpolation()
@@ -386,6 +399,11 @@ func (s *scanner) scanString() {
 	s.fail("unterminated text literal")
 }
 
+// maxInterpolationDepth bounds nested text literals inside interpolations. The
+// parser re-lexes every interpolation, so deeper nesting would cost time
+// proportional to depth times source size before the parser's own limit applies.
+const maxInterpolationDepth = 1000
+
 const braceHint = "'{' starts an interpolation; write \\{ and \\} for literal braces"
 
 func (s *scanner) scanInterpolation() {
@@ -394,6 +412,9 @@ func (s *scanner) scanInterpolation() {
 	open := s.pos()
 	open.Column--
 	open.Offset--
+	if len(s.interpolations) >= maxInterpolationDepth {
+		s.failAt(open, fmt.Sprintf("nesting exceeds %d levels; split the expression, type, or block into named parts", maxInterpolationDepth))
+	}
 	s.interpolations = append(s.interpolations, open)
 	defer func() { s.interpolations = s.interpolations[:len(s.interpolations)-1] }()
 	for s.offset < len(s.source) {
@@ -425,7 +446,19 @@ func (s *scanner) scanInterpolation() {
 	s.failAt(open, "unterminated interpolation; add the closing } before the closing quote ("+braceHint+")")
 }
 
+// originalOffset maps a normalized offset back to the source; without CRLF
+// pairs the two coincide and no table is kept.
+func (s *scanner) originalOffset(at int) int {
+	if s.originalOffsets == nil {
+		return at
+	}
+	return s.originalOffsets[at]
+}
+
 func normalizeSource(source string) (string, []int) {
+	if !strings.Contains(source, "\r\n") {
+		return source, nil
+	}
 	var normalized strings.Builder
 	offsets := make([]int, 0, len(source)+1)
 	for at := 0; at < len(source); at++ {

@@ -24,7 +24,7 @@ func TestDecimalOverflowDiagnostics(t *testing.T) {
 		source += fmt.Sprintf("test %q:\n", name)
 		line := strings.Count(source, "\n") + 1
 		expression := "    let impossible = " + tc.expression
-		frames = append(frames, fmt.Sprintf("decimal-overflow.ms:%d:%d in test %s", line, strings.IndexByte(expression, '|')+1, name))
+		frames = append(frames, fmt.Sprintf("decimal-overflow.ms:%d in test %s", line, name))
 		messages = append(messages, fmt.Sprintf("Decimal.%s: overflow; found left %s and right %s; rounded magnitude must be at most %s (34 significant digits)", tc.operator, strings.ReplaceAll(tc.left, "e6144", "e+6144"), strings.ReplaceAll(tc.right, "e6144", "e+6144"), maximum))
 		source += strings.ReplaceAll(expression, "|", "") + "\n"
 	}

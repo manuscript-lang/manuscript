@@ -1,3 +1,5 @@
+import {headers, HttpMethod} from "@std/http.ms"
+import {text_headers, list_headers} from "./support/http.ms"
 import {
     parse_certificates,
     verify_certificates,
@@ -18,20 +20,15 @@ fn hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let started = value(
         exchange.send_headers(
             status: 200,
-            headers: Map[String, List[String]]()
+            headers: list_headers(Map[String, List[String]]())
         )
     )
-    let written = value(
-        exchange.write("secure".to_bytes())
-    )
+    let written = value(exchange.write("secure".to_bytes()))
     return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
     let certificates = value(
-        parse_certificates(
-            pem: certificate(),
-            max_certificates: 1
-        )
+        parse_certificates(pem: certificate(), max_certificates: 1)
     )
     if (
         certificates.length() != 1
@@ -68,20 +65,13 @@ test "TLS certificate parsing verification hostname and expiration":
     ): return panic("expiration validation")
 
 test "TLS rejects malformed PEM and certificate budgets":
-    let invalid: Result[List[CertificateInfo], TlsError] = error(
-        TlsError.InvalidData
-    )
+    let invalid: Result[List[CertificateInfo], TlsError] = error(TlsError.InvalidData)
     if parse_certificates(pem: "not PEM") != invalid: return panic("malformed PEM")
 
-    let limited: Result[List[CertificateInfo], TlsError] = error(
-        TlsError.LimitExceeded
+    let limited: Result[List[CertificateInfo], TlsError] = error(TlsError.LimitExceeded)
+    if (parse_certificates(pem: certificate(), max_certificates: 0) != limited): return panic(
+        "certificate budget"
     )
-    if (
-        parse_certificates(
-            pem: certificate(),
-            max_certificates: 0
-        ) != limited
-    ): return panic("certificate budget")
 
 test "HTTPS trusts only the explicitly supplied local test root":
     let net = network()
@@ -125,16 +115,16 @@ test "HTTPS trusts only the explicitly supplied local test root":
             )
         ):
             with response = value(
-                client.send(
-                    method: "GET",
+                client.request(
+                    method: HttpMethod.Get,
                     url: "https://{server.address()}/",
-                    headers: Map[String, String](),
+                    headers: text_headers(Map[String, String]()),
                     body: "".to_bytes(),
                     timeout: 2.seconds
                 )
             ):
                 if (
-                    response.status() != 200
+                    response.metadata().status != 200
                     or value(
                         response.read()
                     ).unwrap() != "secure".to_bytes()

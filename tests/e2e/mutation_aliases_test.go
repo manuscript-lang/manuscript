@@ -34,7 +34,7 @@ test "continues":
 		t.Fatalf("missing splice faults: %s", data)
 	}
 	output := string(data)
-	for _, frame := range []string{"List.splice: start must be between 0 and 1, found -1", "splice-faults.ms:2:9", "splice-faults.ms:4:9", "splice-faults.ms:7:5", "splice-faults.ms:10:5", "5 tests, 4 failed"} {
+	for _, frame := range []string{"List.splice: start must be between 0 and 1, found -1", "splice-faults.ms:2", "splice-faults.ms:4", "splice-faults.ms:7", "splice-faults.ms:10", "5 tests, 4 failed"} {
 		if !strings.Contains(output, frame) {
 			t.Errorf("missing %s: %s", frame, output)
 		}

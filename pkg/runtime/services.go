@@ -136,7 +136,7 @@ func newBuilder(typ string) *Builder {
 	b := &Builder{typ: typ}
 	switch name {
 	case "@std/ListBuilder":
-		b.value = &List{Type: "@std/List[" + args[0] + "]", Items: nil}
+		b.value = NewList("@std/List["+args[0]+"]", nil)
 	case "@std/MapBuilder":
 		b.value = &Map{Type: "@std/Map[" + args[0] + "][" + args[1] + "]"}
 	case "@std/SetBuilder":
@@ -178,7 +178,7 @@ func (b *Builder) Operation(name string) Function {
 		}
 		switch value := b.value.(type) {
 		case *List:
-			value.Items = append(value.Items, args[0])
+			value.Append(args[0])
 			b.value = value
 		case *Map, *Set:
 			named := make([]Argument, len(args))
@@ -201,4 +201,39 @@ func (b *Builder) Operation(name string) Function {
 		}
 		return Unit{}
 	})
+}
+
+// StringBuilderAppend is the direct path for StringBuilder.append calls. It
+// takes the builder's lock like the bound operation, so sealing and concurrent
+// appends keep their semantics.
+func StringBuilderAppend(ctx *Execution, receiver, value Value) Value {
+	CheckCancelled(ctx)
+	b, ok := receiver.(*Builder)
+	if !ok {
+		return Invoke(ctx, NativeMember(receiver, "append"), []Argument{{"value", value}})
+	}
+	b.mu.Lock()
+	if b.sealed {
+		b.mu.Unlock()
+		return Panic("builder is sealed")
+	}
+	b.text.WriteString(value.(string))
+	b.mu.Unlock()
+	return Unit{}
+}
+
+// StringBuilderFreeze is the direct path for StringBuilder.freeze calls.
+func StringBuilderFreeze(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	b, ok := receiver.(*Builder)
+	if !ok {
+		return Invoke(ctx, NativeMember(receiver, "freeze"), nil)
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if !b.sealed {
+		b.sealed = true
+		b.value = b.text.String()
+	}
+	return b.value
 }

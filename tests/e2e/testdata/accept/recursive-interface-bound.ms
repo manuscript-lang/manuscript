@@ -12,8 +12,5 @@ impl Compare[Key] for Key:
     fn compare(other: Key) -> Int: self.value - other.value
 
 test "interface bounds may reference their parameter":
-    if compare(
-        first: Key(7),
-        second: Key(4)
-    ) != 3:
+    if compare(first: Key(7), second: Key(4)) != 3:
         panic("lost recursive interface bound")

@@ -104,9 +104,16 @@ func (g *generator) structDeclarations() []ast.Decl {
 				value = unbox(value, f.scalar)
 			}
 			sets = append(sets, &ast.CaseClause{List: []ast.Expr{intLiteral(i)}, Body: []ast.Stmt{evaluated(runtimeCall("WriteField", ident("r"), slot, value))}})
-			var read ast.Expr = runtimeCall("ReadField", ident("r"), slot)
-			method("Get_"+f.name, nil, f.goType(), returned(read))
-			method("Set_"+f.name, []*ast.Field{field("value", f.goType())}, nil, evaluated(runtimeCall("WriteField", ident("r"), slot, ident("value"))))
+			// The unshared fast path is a plain field access small enough for Go to
+			// inline; the locked path stays out of line.
+			shared := &ast.IfStmt{Cond: runtimeCall("SharedFields")}
+			method("slowGet_"+f.name, nil, f.goType(), returned(runtimeCall("ReadField", ident("r"), slot)))
+			method("slowSet_"+f.name, []*ast.Field{field("value", f.goType())}, nil, evaluated(runtimeCall("WriteField", ident("r"), slot, ident("value"))))
+			getShared, setShared := *shared, *shared
+			getShared.Body = block(returned(call(selector(ident("r"), "slowGet_"+f.name))))
+			setShared.Body = block(evaluated(call(selector(ident("r"), "slowSet_"+f.name), ident("value"))), &ast.ReturnStmt{})
+			method("Get_"+f.name, nil, f.goType(), &getShared, returned(selector(ident("r"), fieldName(f.name))))
+			method("Set_"+f.name, []*ast.Field{field("value", f.goType())}, nil, &setShared, assign(selector(ident("r"), fieldName(f.name)), token.ASSIGN, ident("value")))
 		}
 		gets = append(gets, &ast.CaseClause{Body: []ast.Stmt{returned(ident("nil"))}})
 		sets = append(sets, &ast.CaseClause{})
@@ -119,7 +126,11 @@ func (g *generator) structDeclarations() []ast.Decl {
 
 // structOperand returns the receiver of a field access as the Go struct pointer.
 func (g *generator) structOperand(st *structType, e *syntax.Expression) ast.Expr {
-	return &ast.TypeAssertExpr{X: g.expression(e), Type: &ast.StarExpr{X: ident(st.name)}}
+	return g.structPointer(st, g.expression(e))
+}
+
+func (g *generator) structPointer(st *structType, value ast.Expr) ast.Expr {
+	return &ast.TypeAssertExpr{X: value, Type: &ast.StarExpr{X: ident(st.name)}}
 }
 
 // structField resolves a source field access on a record-typed operand.
@@ -156,7 +167,7 @@ func (g *generator) constructStruct(st *structType, args []syntax.Argument) ast.
 		} else {
 			value = g.argumentValue(a)
 		}
-		elements = append(elements, keyed(fieldName(a.Name), sourceAt(a.Pos, value)))
+		elements = append(elements, keyed(fieldName(a.Name), sequence(value)))
 	}
 	return call(runtimeName("Value"), address(composite(ident(st.name), elements...)))
 }

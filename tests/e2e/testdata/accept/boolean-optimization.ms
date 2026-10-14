@@ -22,20 +22,12 @@ test "boolean optimization preserves source evaluation order":
 
     let left_and = touch(counter) and false
     let left_or = touch(counter) or true
-    if (
-        left_and
-        or not left_or
-        or counter.calls != 2
-    ):
+    if (left_and or not left_or or counter.calls != 2):
         return panic("effectful left operand was eliminated")
 
     let right_and = (not false) and touch(counter)
     let right_or = (not true) or touch(counter)
-    if (
-        not right_and
-        or not right_or
-        or counter.calls != 4
-    ):
+    if (not right_and or not right_or or counter.calls != 4):
         return panic("effectful right operand was eliminated")
 
     let callback = fn(): not (true and false)

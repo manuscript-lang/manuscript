@@ -268,7 +268,7 @@ func TestBundledRuntimeImportAliasesAgree(t *testing.T) {
 func TestTimeSchedulingAcceptsOrdinaryCallbackValues(t *testing.T) {
 	source := `import Scheduler from "@std/tasks.ms"
 import Result from "@std/result.ms"
-fn start_timer(operation: fn() -> Result[Unit, String]) -> Unit:
+fn start_timer(operation: fn() -> Result[Unit, Error]) -> Unit:
     with scheduler = Scheduler():
         let schedule = scheduler.after
         let id = schedule(duration: 0.milliseconds, operation: operation)

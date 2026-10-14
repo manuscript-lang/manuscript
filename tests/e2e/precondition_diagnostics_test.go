@@ -54,8 +54,7 @@ fn compare(left: Int, right: Int) -> Int: left - right
 		source += fmt.Sprintf("test %q:\n    let bytes = Bytes(values: [0, 255])\n    let list = [0, 1]\n%s", name, tc.setup)
 		line := strings.Count(source, "\n") + 1
 		call := "    let impossible = " + tc.call
-		column := strings.IndexByte(call, '|') + 1
-		frames = append(frames, fmt.Sprintf("preconditions.ms:%d:%d in test %s", line, column, name))
+		frames = append(frames, fmt.Sprintf("preconditions.ms:%d in test %s", line, name))
 		source += strings.ReplaceAll(call, "|", "") + "\n"
 	}
 	source += "test \"continues after preconditions\":\n    let valid = 1\n"

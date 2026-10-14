@@ -25,6 +25,28 @@ Parsing accepts one document. It rejects trailing values, duplicate decoded obje
 
 Omitted budgets impose no added byte, item, or nesting cap. Stringify rejects cyclic values. Malformed data returns `InvalidData`; exceeded limits return `LimitExceeded`.
 
+### Incremental JSON decoding
+
+`decoder` in `@std/jsonstream.ms` returns a `JsonDecoder` for byte streams. `feed(chunk)` accepts a chunk of any size and returns the values it completes; `finish()` ends the input. Strings, escapes, numbers, nesting, and UTF-8 scalars may be split across chunks, and braces or newlines inside strings never end a value.
+
+The decoder reads concatenated values, which covers JSON Lines. Values are separated by JSON whitespace, or directly adjacent when they are strings, arrays, or objects. A top-level number, `true`, `false`, or `null` ends at whitespace or at `finish()`. Blank lines are skipped, and a value may span several lines. Input that ends inside a string, array, or object is `InvalidData` at `finish()`. `JsonError` carries no byte offsets.
+
+The optional `JsonLimits` apply to each value: `max_bytes` counts its UTF-8 bytes, `max_depth` its nesting, and `max_values` its parsed values. The decoder buffers only the unfinished value and drops that buffer after an error, so supply `max_bytes` for untrusted input. After an error the decoder stays failed and repeats that error, and an error discards values completed earlier in the same chunk. Calls after `finish()` return `InvalidInput`. The decoder only consumes chunks you give it; it never reads, owns, or closes a stream, so pass chunks from `ReadStream.read` or an HTTP response body and close those yourself.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import decoder from "@std/jsonstream.ms"
+import panic from "@std/faults.ms"
+
+test "decode JSON Lines split across chunks":
+    let reader = decoder().unwrap()
+    let first = reader.feed("\{\"id\":1\}\n\{\"id".to_bytes()).unwrap()
+    let second = reader.feed("\":2\}\n".to_bytes()).unwrap()
+
+    if first.length() != 1 or second.length() != 1: return panic("expected one value per feed")
+    if reader.finish().unwrap().length() != 0: return panic("unexpected trailing value")
+```
+
 Stringify produces compact JSON and escapes `<`, `>`, and `&` as `\u003c`, `\u003e`, and `\u0026`. It is not a canonical format for signing.
 
 ## YAML behavior
@@ -93,7 +115,7 @@ Exceeded limits return `LimitExceeded`. The input String is already in memory, a
 
 The path keeps escaped separators, the query stays encoded, and the fragment is decoded. Resolving a relative URL merges it with the base path and removes dot segments. `Url` is an ordinary record, so `format` and `resolve` validate values constructed by application code too. Unsupported opaque URLs return `InvalidData`.
 
-Query entries retain duplicates and order. A bare key has an empty value; `+` represents a space. Component encoding preserves only ASCII unreserved characters. Decoding rejects invalid UTF-8.
+Query entries retain duplicates and order. Empty segments, as in `a=1&&b=2` or a trailing `&`, are skipped and do not count toward `max_entries`. A bare key has an empty value; `+` represents a space. Component encoding preserves only ASCII unreserved characters. Decoding rejects invalid UTF-8.
 
 Hostnames are not normalized through IDNA; absent and empty queries have the same representation.
 

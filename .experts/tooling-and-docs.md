@@ -26,6 +26,23 @@ a callback body must not consume the parameter signature's width budget.
 The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
 exercises these boundaries alongside comments and literal spellings.
 
+Update: later feedback asks for compact output that reads well on a phone and a
+desktop. Wrap only when a group exceeds 88 columns or holds a comment or
+multi-statement suite; clause counts, argument counts, lambdas, and authored line
+breaks no longer force expansion. Reintroducing such rules spreads code again.
+
+### Inspect active List backing in the debugger
+
+Verified: typed List storage adds inactive nil slice fields to the native header.
+Rendering `Items` alone exposed bookkeeping or an empty fallback instead of source
+elements. Read the kind tag for expansion and indexed watches; Delve displays a
+uint8 as `1 = 0x1`, so parse its decimal prefix. Do not infer backing from a source
+primitive type because legacy/large literals can still be boxed. Evidence:
+[primitive and native DAP regressions](../extensions/vscode/tests/debug-adapter.test.js)
+and [storage-aware renderer](../extensions/vscode/debug-adapter.js).
+Verify all four primitive backings, legacy/empty Lists, generic types and watch
+indexing; source values must not expose private header fields or inactive lengths.
+
 ### Editor recovery must preserve delimiter continuations
 
 Verified: strict parsing accepts multiline parameters, but declaration recovery previously split their column-zero closing delimiters into separate chunks whenever any declaration was malformed. This discarded valid functions and their parameter scopes in the LSP. Recovery now consults the lexer for continuation boundaries while fresh declarations still synchronize after an unmatched opener. Completion snapshots also need a match arm, rather than an ordinary statement, to repair an unfinished `match` suite.
@@ -38,7 +55,7 @@ Verify: multiline function parameters retain their original LF/CRLF positions, n
 
 Decision: the user asked to keep standard type definitions in Manuscript so editor tooling can use them. Verified architecture: `pkg/stdlib/*.ms` supplies public schemas and signatures; `bindings.json` maps identities to native dispatch. Generated documentation and navigation consume this source-backed contract.
 
-Verified: bundled modules containing bodies use ordinary Manuscript parsing, checking, and lowering. Recheck reachable source implementations in each program rather than mutating shared registry symbols. Publish only module-owned exports: a checked module's name table also contains imported symbols and prelude types, which must not become new exports. Native declarations retain empty bodies and ABI bindings; all standard modules use ordinary parsing. Evidence: [standard source loader](../pkg/checker/standard.go), [reachability and visibility regressions](../pkg/compiler/source_stdlib_test.go), and [source navigation](../pkg/tooling/navigation_test.go).
+Verified: bundled modules containing bodies use ordinary Manuscript parsing, checking, and lowering. Recheck reachable source implementations in each program rather than mutating shared registry symbols. Publish only module-owned exports: a checked module's name table also contains imported symbols and prelude types, which must not become new exports. Native declarations retain empty bodies and ABI bindings; all standard modules use ordinary parsing. Evidence: [standard source loader](../pkg/checker/standard.go), [reachability and visibility regressions](../pkg/compiler/source_stdlib_test.go), and [source navigation](../pkg/tooling/lsp/navigation_test.go).
 
 Verified: navigation must continue after the first jump into a standard declaration. Register the virtual document scheme with the language client and retain the standard loader's resolved type references for tooling; reparsing library signatures as executable workspace modules loses their checked context. Keep virtual documents immutable and outside workspace source overlays.
 
@@ -130,3 +147,10 @@ Verified: agents act on a diagnostic only when it names the cause, the location,
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../documentation/developer-tooling/source/diagnostics.md), [checker hints](../pkg/checker/hints.go), [hint tests](../pkg/checker/hints_test.go), and [recovery](../pkg/parser/partial.go).
 Verify: run `go test ./pkg/checker ./pkg/parser ./pkg/tooling/lsp ./internal/cli`; extend the hint tests with the new message.
+
+### Debug by Manuscript position, not Go symbol
+Verified: in a Debug build `main.main` is generated glue (`initialize()` then the runtime entry), and each Manuscript function is a closure under `initialize` (`main.initialize.func1.1`), so Go symbols never name user code. Line directives map `file.ms:line` stably. Generated position bookkeeping between statements inherits phantom line numbers (a step can stop on a blank line after a statement), and `ms inspect` function entities carry only a header line, so function extent comes from the next declaration and a function breakpoint uses the first statement after the header. Scripted `ms debug` resolves names through inspection for this reason.
+
+Apply when: changing source maps, line directives, inspection spans, or the scripted debugger.
+Evidence: [session driver](../internal/debugger/session.go), [name mapping](../internal/cli/debug_names.go), [end-to-end debug tests](../tests/e2e/debug_script_test.go), [scripted debugging](../documentation/developer-tooling/debugging/debugger-integration.md#scripted-debugging-for-agents).
+Verify: `go test ./tests/e2e -run TestDebug`; a `next` over a statement must land on the next statement line, not a blank line.
