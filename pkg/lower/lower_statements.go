@@ -11,30 +11,40 @@ import (
 func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 	var out []ast.Stmt
 	for _, s := range body {
-		out = append(out, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String())))
+		if !g.positionFree(s) {
+			out = append(out, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String())))
+		}
 		statements := g.statement(s)
 		statements[0] = g.locatedStatement(s.Pos, statements[0])
 		out = append(out, statements...)
 	}
 	return out
 }
-func (g *generator) pattern(p *syntax.Pattern, value ast.Expr) []ast.Stmt {
+
+// pattern binds value, whose Go type is native when it is not Value.
+func (g *generator) pattern(p *syntax.Pattern, value ast.Expr, native string) []ast.Stmt {
 	if p.Kind == syntax.KindName {
 		b := g.program.PatternBinding(p)
+		if typ := g.declareTyped(b); typ != "" {
+			if native != typ {
+				value = unbox(value, typ)
+			}
+			return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, ident(typ), value)}, discard(ident(b.ID))}
+		}
 		return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, runtimeName("Value"), value)}, discard(ident(b.ID))}
 	}
 	tmp := g.temp()
 	out := []ast.Stmt{define(tmp, value), discard(ident(tmp))}
 	if p.Kind == syntax.KindRecord {
 		for _, f := range p.Fields {
-			out = append(out, g.pattern(f.Pattern, runtimeCall("Field", ident(tmp), textLiteral(f.Name)))...)
+			out = append(out, g.pattern(f.Pattern, runtimeCall("Field", ident(tmp), textLiteral(f.Name)), "")...)
 		}
 	}
 	if p.Kind == syntax.KindList {
 		positions := g.temp()
 		out = append(out, define(positions, runtimeCall("Positions", ident(tmp), sourceAt(p.Pos, intLiteral(len(p.Elements))))), discard(ident(positions)))
 		for i, child := range p.Elements {
-			out = append(out, g.pattern(child, index(ident(positions), intLiteral(i)))...)
+			out = append(out, g.pattern(child, index(ident(positions), intLiteral(i)), "")...)
 		}
 	}
 	return out
@@ -43,9 +53,13 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	if pre, value := g.inlineTry(s); value != nil {
 		switch s.Kind {
 		case syntax.KindBind:
-			return append(pre, g.pattern(s.Pattern, value)...)
+			return append(pre, g.pattern(s.Pattern, value, "")...)
 		case syntax.KindAssign:
-			return append(pre, assign(ident(g.program.AssignedBinding(s.Value).ID), token.ASSIGN, value))
+			target := g.program.AssignedBinding(s.Value)
+			if typ := g.typed[target]; typ != "" {
+				value = unbox(value, typ)
+			}
+			return append(pre, assign(ident(target.ID), token.ASSIGN, value))
 		case syntax.KindReturn:
 			return append(pre, returned(value))
 		default:
@@ -54,19 +68,38 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	}
 	switch s.Kind {
 	case syntax.KindBind:
-		return g.pattern(s.Pattern, g.expression(s.Value))
+		return g.pattern(s.Pattern, g.expression(s.Value), g.nativeType(s.Value))
 	case syntax.KindAssign:
 		if s.Target != nil {
+			if st, f := g.structFieldOf(s.Target); st != nil {
+				receiver := g.structOperand(st, s.Target.Left)
+				var value ast.Expr
+				if f.scalar != "" {
+					value = g.scalar(s.Value, f.scalar)
+				} else {
+					value = g.expression(s.Value)
+				}
+				return []ast.Stmt{evaluated(call(selector(receiver, "Set_"+s.Target.Text), value))}
+			}
 			return []ast.Stmt{evaluated(runtimeCall("SetField", g.expression(s.Target.Left), textLiteral(s.Target.Text), g.expression(s.Value)))}
 		}
 		// Assignment binding identities are recorded by the checker, including shadows.
-		return []ast.Stmt{assign(ident(g.program.AssignedBinding(s.Value).ID), token.ASSIGN, g.expression(s.Value))}
+		target := g.program.AssignedBinding(s.Value)
+		if typ := g.typed[target]; typ != "" {
+			return []ast.Stmt{assign(ident(target.ID), token.ASSIGN, g.scalar(s.Value, typ))}
+		}
+		return []ast.Stmt{assign(ident(target.ID), token.ASSIGN, g.expression(s.Value))}
 	case syntax.KindReturn:
 		value := unit()
 		if s.Value != nil {
-			value = g.expression(s.Value)
+			if g.resultType != "" && g.expressionDepth == 0 {
+				value = g.scalar(s.Value, g.resultType)
+			} else {
+				value = g.expression(s.Value)
+			}
 		}
 		if g.expressionDepth > 0 {
+			g.recovers = true
 			value = runtimeCall("Return", value)
 		}
 		return []ast.Stmt{returned(value)}
@@ -96,7 +129,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		}
 		return append(out, &ast.BranchStmt{Tok: op, Label: ident(label.name)})
 	case syntax.KindIf:
-		stmt := &ast.IfStmt{Cond: runtimeCall("Bool", g.expression(s.Value)), Body: block(g.body(s.Body)...)}
+		stmt := &ast.IfStmt{Cond: g.condition(s.Value), Body: block(g.body(s.Body)...)}
 		if len(s.Else) > 0 {
 			stmt.Else = block(g.body(s.Else)...)
 		}
@@ -109,18 +142,21 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
 		g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
 		var loop ast.Stmt
+		tick := g.temp()
+		poll := evaluated(runtimeCall("Poll", ident("ctx"), address(ident(tick))))
 		if s.Kind == syntax.KindWhile {
-			body = append([]ast.Stmt{evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
-			loop = &ast.ForStmt{Cond: runtimeCall("Bool", g.expression(s.Value)), Body: block(body...)}
+			body = append([]ast.Stmt{poll}, body...)
+			loop = &ast.ForStmt{Cond: g.condition(s.Value), Body: block(body...)}
 		} else {
 			b := g.program.LoopBinding(s)
-			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
+			body = append([]ast.Stmt{discard(ident(b.ID)), poll}, body...)
 			loop = &ast.RangeStmt{Key: ident("_"), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
 		}
 		if label.used {
 			loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
 		}
-		return []ast.Stmt{loop}
+		// The counter limits cancellation checks to every 64th iteration.
+		return []ast.Stmt{block(variableStmt(tick, ident("uint32")), loop)}
 	case syntax.KindWith:
 		b := g.program.LoopBinding(s)
 		cleanup := g.temp()
@@ -144,6 +180,11 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 	contractMatch := g.program.Info(value).Type.Kind == "contract"
 	out := []ast.Stmt{define(tmp, g.expression(value))}
 	tag := "Tag"
+	var present string
+	if !contractMatch && g.listAtMatch(value) {
+		present = g.temp()
+		out = []ast.Stmt{&ast.AssignStmt{Lhs: []ast.Expr{ident(tmp), ident(present)}, Tok: token.DEFINE, Rhs: []ast.Expr{g.listAtParts(value)}}}
+	}
 	if contractMatch {
 		out = append(out, assign(ident(tmp), token.ASSIGN, runtimeCall("ContractReceiver", ident(tmp))))
 		tag = "ConcreteType"
@@ -162,6 +203,9 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 		for i, b := range g.program.ArmBindingsFor(a) {
 			if b != nil {
 				var value ast.Expr = runtimeCall("Payload", ident(tmp), intLiteral(i))
+				if present != "" {
+					value = ident(tmp)
+				}
 				if contractMatch {
 					value = ident(tmp)
 				}
@@ -170,6 +214,9 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 		}
 		clause.Body = append(clause.Body, body(a)...)
 		cases = append(cases, clause)
+	}
+	if present != "" {
+		return append(out, &ast.SwitchStmt{Tag: runtimeCall("OptionalTag", ident(present)), Body: block(cases...)})
 	}
 	return append(out, &ast.SwitchStmt{Tag: runtimeCall(tag, ident(tmp)), Body: block(cases...)})
 }
@@ -253,4 +300,38 @@ func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr) {
 	}
 	pre := []ast.Stmt{define(tmp, &ast.TypeAssertExpr{X: g.expression(e.Right), Type: runtimeName("Alternative")}), check}
 	return pre, index(selector(ident(tmp), "Fields"), intLiteral(0))
+}
+
+// positionFree reports whether a statement needs no frame position: it runs
+// no call and no operation that does not carry its own site, so nothing in
+// it can report the enclosing function's position. Scalar arithmetic over
+// typed locals records its own site if it faults.
+func (g *generator) positionFree(s *syntax.Statement) bool {
+	if len(g.cleanups) > 0 {
+		return false
+	}
+	switch s.Kind {
+	case syntax.KindBind:
+		return s.Pattern != nil && s.Pattern.Kind == syntax.KindName && scalarBinding(g.program.PatternBinding(s.Pattern)) != "" && g.exprFree(s.Value)
+	case syntax.KindAssign:
+		return s.Target == nil && g.typed[g.program.AssignedBinding(s.Value)] != "" && g.exprFree(s.Value)
+	case syntax.KindIf, syntax.KindWhile:
+		return g.exprFree(s.Value)
+	}
+	return false
+}
+
+// exprFree reports whether e is built only from literals, typed locals, and
+// scalar operations, so lowering it runs no call and no unlocated operation.
+func (g *generator) exprFree(e *syntax.Expression) bool {
+	if e == nil || g.nativeType(e) == "" {
+		return false
+	}
+	switch e.Kind {
+	case syntax.KindNumber, syntax.KindBool, syntax.KindName:
+		return true
+	case syntax.KindBinary:
+		return g.exprFree(e.Left) && g.exprFree(e.Right)
+	}
+	return false
 }

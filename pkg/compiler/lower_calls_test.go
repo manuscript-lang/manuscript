@@ -1,6 +1,9 @@
 package compiler_test
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"strings"
 	"testing"
 
@@ -31,9 +34,34 @@ func TestPreparedSourceCallEligibility(t *testing.T) {
 			if !result.Success() {
 				t.Fatal(result.Diagnostics)
 			}
-			if got := strings.Contains(result.Source, ".(rt.Function).Body("); got != test.prepared {
+			if got := callsDirectly(t, result.Source); got != test.prepared {
 				t.Fatalf("prepared call = %v, want %v\n%s", got, test.prepared, result.Source)
 			}
 		})
 	}
+}
+
+// callsDirectly reports whether a source function calls another through its
+// Go function (direct function) or the callee's Body (prepared call) instead of Invoke.
+func callsDirectly(t *testing.T, source string) bool {
+	file, err := parser.ParseFile(token.NewFileSet(), "generated.go", source, parser.SkipObjectResolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Name.Name == "initialize" {
+			continue
+		}
+		ast.Inspect(fn.Body, func(node ast.Node) bool {
+			if c, ok := node.(*ast.CallExpr); ok {
+				if name, ok := c.Fun.(*ast.Ident); ok && strings.HasPrefix(name.Name, "call_") {
+					found = true
+				}
+			}
+			return true
+		})
+	}
+	return found || strings.Contains(source, ".(rt.Function).Body(")
 }

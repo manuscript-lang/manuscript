@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -33,8 +34,13 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	}
 	// Production optimizations may change executable AST shape. Retain this
 	// independent behavior/source-map oracle; eligibility tests check new shapes.
-	if !reflect.DeepEqual(sourceDirectives(string(baseline)), sourceDirectives(result.Source)) {
-		t.Fatal("lowering changed source directive order or targets")
+	// Direct functions are top-level declarations, so directives keep their
+	// order within a function but no longer interleave with registration order.
+	want, got := sourceDirectives(string(baseline)), sourceDirectives(result.Source)
+	sort.Strings(want)
+	sort.Strings(got)
+	if !reflect.DeepEqual(want, got) {
+		t.Fatal("lowering changed source directive targets")
 	}
 	for i := 0; i < 3; i++ {
 		repeated := compiler.CompileSource("ast-lowering.ms", string(source), compiler.Options{Tests: true})
@@ -161,13 +167,13 @@ fn text() -> String:
 			t.Errorf("invalid generated identifier %q", name.Name)
 		}
 		if expr, ok := node.(*ast.BinaryExpr); ok && expr.Op == token.LAND {
-			// Bool conversions preserve the left OR as one argument, independent of
+			// Grouping preserves the left OR as one operand, independent of
 			// the relative precedence of Go's && and || operators.
-			left, ok := expr.X.(*ast.CallExpr)
-			if !ok || len(left.Args) != 1 {
-				t.Fatal("missing left boolean conversion")
+			left, ok := expr.X.(*ast.ParenExpr)
+			if !ok {
+				t.Fatal("missing left grouping")
 			}
-			inner, ok := left.Args[0].(*ast.BinaryExpr)
+			inner, ok := left.X.(*ast.BinaryExpr)
 			if !ok || inner.Op != token.LOR {
 				t.Fatal("lost source grouping")
 			}

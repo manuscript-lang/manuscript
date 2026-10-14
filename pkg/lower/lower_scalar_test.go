@@ -38,7 +38,9 @@ func TestPrimitiveEqualityEligibility(t *testing.T) {
 			if got := strings.Contains(r.Source, "rt.Equality("); got == tc.direct {
 				t.Fatalf("selected equality fallback = %v, direct = %v\n%s", got, tc.direct, r.Source)
 			}
-			if tc.direct && (!strings.Contains(r.Source, ".("+primitiveEqualityType(r.Program.ParameterBindings(r.Program.Symbol("scalar.ms", "equal").Decl)[0].Type)+")") || !strings.Contains(r.Source, " != ")) {
+			// Scalar parameters are typed variables, so the comparison needs no assertion.
+			goType := primitiveEqualityType(r.Program.ParameterBindings(r.Program.Symbol("scalar.ms", "equal").Decl)[0].Type)
+			if tc.direct && (!strings.Contains(r.Source, "local4_left "+goType+", ") || !strings.Contains(r.Source, " != ")) {
 				t.Fatal("missing typed direct equality", r.Source)
 			}
 		})
@@ -69,26 +71,21 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 		t.Fatal(err)
 	}
 	counts := map[string]int{}
-	ast.Inspect(f, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || (selector.Sel.Name != "NewSourceFunction" && selector.Sel.Name != "SourceDirect") {
-			return true
-		}
-		// Direct method bodies are the third argument of SourceDirect.
-		bodyArg := 3
-		if selector.Sel.Name == "SourceDirect" {
-			bodyArg = 2
-		}
-		body := call.Args[bodyArg].(*ast.FuncLit).Body
-		traceCall := body.List[1].(*ast.DeferStmt).Call
-		trace := traceCall.Args[len(traceCall.Args)-1].(*ast.BasicLit)
-		name, err := strconv.Unquote(trace.Value)
-		if err != nil {
-			t.Fatal(err)
+	// A callable is a NewSourceFunction body or a direct function declaration;
+	// either defers TraceSource or Leave with its name as the last argument.
+	measure := func(body *ast.BlockStmt) {
+		name := ""
+		for _, statement := range body.List {
+			if deferred, ok := statement.(*ast.DeferStmt); ok {
+				if s, ok := deferred.Call.Fun.(*ast.SelectorExpr); ok && (s.Sel.Name == "TraceSource" || s.Sel.Name == "Leave") {
+					text, err := strconv.Unquote(deferred.Call.Args[len(deferred.Call.Args)-1].(*ast.BasicLit).Value)
+					if err != nil {
+						t.Fatal(err)
+					}
+					name = text
+					break
+				}
+			}
 		}
 		count := 0
 		ast.Inspect(body, func(node ast.Node) bool {
@@ -105,6 +102,21 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 			return true
 		})
 		counts[name] = count
+	}
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.FuncDecl:
+			if strings.HasPrefix(n.Name.Name, "call_") {
+				measure(n.Body)
+			}
+		case *ast.CallExpr:
+			if selector, ok := n.Fun.(*ast.SelectorExpr); ok && selector.Sel.Name == "NewSourceFunction" {
+				measure(n.Args[3].(*ast.FuncLit).Body)
+			} else if ok && selector.Sel.Name == "SourceDirect" {
+				// Direct method bodies are the third argument of SourceDirect.
+				measure(n.Args[2].(*ast.FuncLit).Body)
+			}
+		}
 		return true
 	})
 	return counts
@@ -152,7 +164,7 @@ fn looped() -> Unit:
 			t.Fatalf("%s cleanup count = %d (present %v), want %d\n%s", name, got, ok, want, r.Source)
 		}
 	}
-	if strings.Count(r.Source, "defer rt.TraceSource(") != len(counts) {
+	if strings.Count(r.Source, "defer rt.TraceSource(")+strings.Count(r.Source, "defer rt.Leave(") != len(counts) {
 		t.Fatal("lost source tracing")
 	}
 }

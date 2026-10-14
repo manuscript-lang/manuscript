@@ -29,6 +29,12 @@ type generator struct {
 	loopCleanup      []int
 	loopLabels       []*loopLabel
 	captures         map[*checker.Binding]string
+	typed            map[*checker.Binding]string // Go type of scalar bindings declared as typed variables
+	direct           map[*checker.Symbol]*directFunction
+	structs          map[string]*structType
+	structOrder      []*structType
+	resultType       string // Go scalar result of the direct function being lowered, or ""
+	recovers         bool   // the function being lowered raises propagation or source-return panics
 	sourceLines      map[string]syntax.Position
 	hoisted          []string          // package-level Lazy variables for static specializations
 	hoistedByKey     map[string]string // call-site identity to Lazy variable

@@ -227,14 +227,14 @@ func TestProfilingPreservesCallDepthLimit(t *testing.T) {
 	for _, mode := range []string{"cpu", "trace", "both"} {
 		t.Run(mode, func(t *testing.T) {
 			root := RootExecution()
-			root.calls.depth.Store(MaxCallDepth - 1)
-			root.calls.traceFull.Store(true)
+			root.calls.depth = MaxCallDepth - 1
+			root.calls.traceFull = true
 			inner := NewSourceFunction(nil, "Int", "inner.ms:2:1", func(_ *Execution, _ []Value) Value {
 				t.Fatal("profiled call crossed the source depth limit")
 				return int64(0)
 			})
 			entry := NewSourceFunction(nil, "Int", "entry.ms:1:1", func(ctx *Execution, _ []Value) Value {
-				if ctx.calls != root.calls || ctx.calls.depth.Load() != MaxCallDepth || !ctx.calls.traceFull.Load() {
+				if ctx.calls != root.calls || ctx.calls.depth != MaxCallDepth || !ctx.calls.traceFull {
 					t.Fatal("attribution replaced call/fault accounting")
 				}
 				failure := recovered(func() { Invoke(ctx, inner, nil) })
@@ -251,8 +251,8 @@ func TestProfilingPreservesCallDepthLimit(t *testing.T) {
 			if mode != "cpu" {
 				traceFile = filepath.Join(dir, "trace.out")
 			}
-			if exit := Profile(cpu, "", traceFile, func() int { return int(Invoke(root, entry, nil).(int64)) }); exit != 0 || root.calls.depth.Load() != MaxCallDepth-1 {
-				t.Fatal("profiled call did not restore depth", exit, root.calls.depth.Load())
+			if exit := Profile(cpu, "", traceFile, func() int { return int(Invoke(root, entry, nil).(int64)) }); exit != 0 || root.calls.depth != MaxCallDepth-1 {
+				t.Fatal("profiled call did not restore depth", exit, root.calls.depth)
 			}
 		})
 	}

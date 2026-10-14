@@ -20,6 +20,9 @@ func HashIn(ctx *Execution, value Value) int64 {
 	}
 	h := fnv.New64a()
 	write := func(s string) { h.Write([]byte(strconv.Itoa(len(s)) + ":" + s)) }
+	if s, ok := value.(Struct); ok {
+		value = structRecord(s)
+	}
 	switch v := value.(type) {
 	case Record:
 		write(v.Type)

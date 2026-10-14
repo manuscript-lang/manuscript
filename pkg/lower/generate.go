@@ -24,7 +24,7 @@ type Options struct {
 // its spelling.
 func Go(program *checker.Program, entry string, options Options) (string, error) {
 	optimized := optimize(program)
-	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}, debugLiterals: options.DebugLiterals}
+	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}, typed: map[*checker.Binding]string{}, debugLiterals: options.DebugLiterals}
 	file := g.file(entry, options)
 	if g.loweringError != nil {
 		return "", g.loweringError
@@ -42,6 +42,8 @@ func (g *generator) file(entry string, options Options) *ast.File {
 	file := &ast.File{Name: ident("main"), Imports: imports, Decls: []ast.Decl{
 		&ast.GenDecl{Tok: token.IMPORT, Specs: []ast.Spec{imports[0], imports[1]}},
 	}}
+	g.planStructs()
+	file.Decls = append(file.Decls, g.structDeclarations()...)
 	var functions []*checker.Symbol
 	for _, module := range program.Modules {
 		for _, d := range module.Declarations {
@@ -53,10 +55,15 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		}
 	}
 	var initialize []ast.Stmt
+	g.planDirect(functions, options)
 	for _, s := range functions {
 		g.module = s.Module
 		var value ast.Expr
-		if len(s.Variables) > 0 {
+		if g.direct[s] != nil {
+			var decl *ast.FuncDecl
+			decl, value = g.directDeclaration(s)
+			file.Decls = append(file.Decls, decl)
+		} else if len(s.Variables) > 0 {
 			var vars []string
 			for _, v := range s.Variables {
 				vars = append(vars, v.ID)
@@ -108,6 +115,9 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		initialize = append(initialize, evaluated(runtimeCall("Register", composite(runtimeName("Implementation"), fields...))))
 	}
 	flushNatives()
+	for _, st := range g.structOrder {
+		initialize = append(initialize, evaluated(runtimeCall("RegisterStruct", textLiteral(st.key), closure(nil, runtimeName("Struct"), returned(address(composite(ident(st.name))))))))
+	}
 	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("initialize"), Type: functionType(nil, nil), Body: block(initialize...)})
 	main := []ast.Stmt{evaluated(call(ident("initialize")))}
 	if options.Tests {
