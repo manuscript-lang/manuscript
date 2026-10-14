@@ -198,21 +198,35 @@ func TestLargeLiteralFrozenBaselineParity(t *testing.T) {
 }
 
 func TestLargeLiteralCancellationDuringInitialization(t *testing.T) {
-	source := `type Counter:
+	for _, dynamic := range []bool{false, true} {
+		t.Run(fmt.Sprintf("dynamic=%v", dynamic), func(t *testing.T) {
+			parameters, item, extra := "counter: Counter", "tick(counter)", ""
+			if dynamic {
+				parameters += ", operation: fn(counter: Counter) -> Int"
+				item = "operation(counter)"
+			}
+			source := `type Counter:
     value: Int
 fn tick(counter: Counter) -> Int:
     counter.value = counter.value + 1
     return counter.value
-fn values(counter: Counter, operation: fn(counter: Counter) -> Int) -> List[Int]: return ` + repeatedLiteral("operation(counter)", 1100) + "\n"
-	result := compiler.CompileSource("large-cancel.ms", source, compiler.Options{})
-	if !result.Success() {
-		t.Fatal(result.Diagnostics)
-	}
-	tick := result.Program.Symbol("large-cancel.ms", "tick").ID
-	values := result.Program.Symbol("large-cancel.ms", "values").ID
-	counter := result.Program.Symbol("large-cancel.ms", "Counter").Type
-	result.Source = strings.Replace(result.Source, "\"os\"", "\"os\"\n\"context\"\n\"reflect\"", 1)
-	result.Source += fmt.Sprintf(`
+fn values(` + parameters + `) -> List[Int]: return ` + repeatedLiteral(item, 1100) + "\n"
+			result := compiler.CompileSource("large-cancel.ms", source, compiler.Options{})
+			if !result.Success() {
+				t.Fatal(result.Diagnostics)
+			}
+			if dynamic {
+				extra = "," + result.Program.Symbol("large-cancel.ms", "tick").ID + ".(rt.Function)"
+			}
+			values := result.Program.Symbol("large-cancel.ms", "values").ID
+			counter := result.Program.Symbol("large-cancel.ms", "Counter").Type
+			result.Source = strings.Replace(result.Source, "\"os\"", "\"os\"\n\"context\"\n\"reflect\"", 1)
+			result.Source += fmt.Sprintf(`
+type literalCancelAfter struct { context.Context; counter rt.Value; cancel context.CancelFunc }
+func (c literalCancelAfter) Err() error {
+ if rt.IntValue(rt.Field(c.counter,"value"))>=65 {c.cancel()}
+ return c.Context.Err()
+}
 func init() {
  initialize()
  root:=rt.RootExecution()
@@ -224,32 +238,25 @@ func init() {
  failure:=func(body func())(got any){defer func(){got=recover()}();body();return}
  expected:=failure(func(){rt.CheckCancelled(&cancelled)})
  c:=rt.NewRecord(%q,[]rt.Argument{{Name:"value",Value:int64(0)}})
- args:=[]rt.Value{c,%s.(rt.Function)}
+ args:=[]rt.Value{c%s}
  got:=failure(func(){%s.(rt.Function).Body(&cancelled,args)})
  if !reflect.DeepEqual(got,expected) || rt.IntValue(rt.Field(c,"value"))!=0 {os.Exit(81)}
  running:=*root
- running.Context,cancel=context.WithCancel(root.Context)
+ executionContext,cancel:=context.WithCancel(root.Context)
  defer cancel()
- original:=%s.(rt.Function)
- calls:=0
- replacement:=original
- replacement.Body=func(ctx *rt.Execution,args []rt.Value)rt.Value{
-  calls++
-  value:=original.Body(ctx,args)
-  if calls==65 {cancel()}
-  return value
- }
- args[1]=replacement
+ running.Context=literalCancelAfter{executionContext,c,cancel}
  got=failure(func(){%s.(rt.Function).Body(&running,args)})
- if !reflect.DeepEqual(got,expected) || calls!=66 || rt.IntValue(rt.Field(c,"value"))!=65 {os.Exit(82)}
+ if !reflect.DeepEqual(got,expected) || rt.IntValue(rt.Field(c,"value"))!=65 {os.Exit(82)}
 }
-`, checker.TypeKey(counter), tick, values, tick, values)
-	binary := filepath.Join(t.TempDir(), "cancel")
-	if _, err := BuildCheckedWithType(result, binary, "", compiler.Release); err != nil {
-		t.Fatal(err)
-	}
-	if data, err := exec.Command(binary).CombinedOutput(); err != nil {
-		t.Fatalf("large initialization cancellation: %v\n%s", err, data)
+`, checker.TypeKey(counter), extra, values, values)
+			binary := filepath.Join(t.TempDir(), "cancel")
+			if _, err := BuildCheckedWithType(result, binary, "", compiler.Release); err != nil {
+				t.Fatal(err)
+			}
+			if data, err := exec.Command(binary).CombinedOutput(); err != nil {
+				t.Fatalf("large initialization cancellation: %v\n%s", err, data)
+			}
+		})
 	}
 }
 
