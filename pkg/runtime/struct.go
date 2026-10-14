@@ -1,7 +1,6 @@
 package msruntime
 
 import (
-	"sort"
 	"unsafe"
 )
 
@@ -71,12 +70,6 @@ func structRecord(s Struct) Record {
 		fields[name] = s.StructGet(i)
 	}
 	return Record{s.StructType(), fields}
-}
-
-func sortedNames(s Struct) []string {
-	names := append([]string(nil), s.StructNames()...)
-	sort.Strings(names)
-	return names
 }
 
 var structFactories = map[string]func() Struct{}
