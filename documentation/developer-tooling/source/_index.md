@@ -10,5 +10,3 @@ Format source, read diagnostics, and inspect the external behavior of checked fu
 1. [Formatting](formatting.md)
 2. [Diagnostics](diagnostics.md)
 3. [Understanding effects](effects.md)
-
-The [source-editing design](structural-editing.md) describes planned revision guards for proposed edits.

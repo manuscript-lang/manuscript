@@ -15,11 +15,17 @@ export interface Clock:
 export type Duration:
     # Adds signed nanoseconds; a result outside Duration's representable range faults.
     fn add(right: Duration) -> Duration:
+    # Subtracts signed nanoseconds; a result outside Duration's representable range faults.
     fn subtract(right: Duration) -> Duration:
+    # Multiplies by an integer factor; overflow faults.
     fn multiply(factor: Int) -> Duration:
+    # Divides by a nonzero integer, truncating toward zero; zero faults.
     fn divide(divisor: Int) -> Duration:
+    # Negates this duration; the minimum Duration faults.
     fn negate() -> Duration:
+    # Returns the absolute value; the minimum Duration faults.
     fn abs() -> Duration:
+    # Returns -1, 0, or 1.
     fn compare(right: Duration) -> Int:
     # Converts this duration to an integer number of nanoseconds.
     fn to_nanoseconds() -> Int:
@@ -29,7 +35,9 @@ export type Duration:
     fn to_milliseconds() -> Int:
     # Converts this duration to floating-point seconds.
     fn to_seconds() -> Float:
+    # Converts this duration to floating-point minutes.
     fn to_minutes() -> Float:
+    # Converts this duration to floating-point hours.
     fn to_hours() -> Float:
 
 # An instant on a monotonic clock; it is not a calendar timestamp.
@@ -38,6 +46,7 @@ export type Instant:
     fn shift(duration: Duration) -> Instant:
     # Returns the elapsed duration from `right` to this instant.
     fn difference(right: Instant) -> Duration:
+    # Returns -1, 0, or 1; instants from different clock domains fault.
     fn compare(right: Instant) -> Int:
 
 # A wall-clock time with Unix seconds and nanoseconds.
@@ -52,6 +61,7 @@ export type Timestamp:
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
     # Returns `self - right` as a duration.
     fn difference(right: Timestamp) -> Result[Duration, TimeError]:
+    # Returns -1, 0, or 1 across the full calendar range.
     fn compare(right: Timestamp) -> Int:
 
 # A clock that reports calendar time.

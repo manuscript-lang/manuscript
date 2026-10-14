@@ -38,7 +38,7 @@ Verified: another operation can close a guard alias while its owner is blocked j
 Verified: acquisition delivery uses one final cancellation observation for both disposal and unwind. Two checks can discard an acquired guard without disposing it. Keep PR 230's disposal fix; later cancellation after successful delivery belongs to caller cleanup.
 
 Apply when: changing lock admission, cancellation, alias release, task/service joining or acquisition delivery.
-Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [user decision](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df), [contract](../documentation/concurrency/synchronization.md), [bounded blocking regressions](../pkg/runtime/synchronized_ancestor_test.go), and [acquisition delivery](../pkg/runtime/values.go).
+Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [contract](../documentation/concurrency/synchronization.md), [bounded blocking regressions](../pkg/runtime/synchronized_ancestor_test.go), and [acquisition delivery](../pkg/runtime/values.go).
 Verify: ordinary ancestor overlap returns 7; both lock/join orders block until cooperative cancellation or release. Exercise deadlines, same-operation helper/shield reentry, cancellation/delivery/release races, alias close and use after close. Shielded-cycle tests run in bounded disposable subprocesses and release aliases explicitly; no test relies on cleanup timeout escape.
 
 ### Attribute profiling at execution boundaries
@@ -58,7 +58,7 @@ Decision: the stdlib request calls for Node.js/JavaScript contract parity with c
 Verified: canonical declarations, runtime dispatch, checker rules, conformance, and generated references now implement this direction. Optional also has presence and extraction methods; keep routine absence handling available without requiring a match.
 
 Apply when: changing library signatures, bounds/interfaces, queue APIs, scheduling, grouping, examples, or documentation.
-Evidence: [the user request](codex://threads/01a13126-1245-730b-9e5d-16ca2dc7501f); [current declarations](../pkg/stdlib/README.md); [stdlib contract](../documentation/standard-library/contracts.md); [runtime regressions](../pkg/runtime/stdlib_revamp_test.go); [compiled Optional methods](../tests/e2e/testdata/accept/optional-methods.ms).
+Evidence: [current declarations](../pkg/stdlib/README.md); [stdlib contract](../documentation/standard-library/contracts.md); [runtime regressions](../pkg/runtime/stdlib_revamp_test.go); [compiled Optional methods](../tests/e2e/testdata/accept/optional-methods.ms).
 Verify: inspect current declarations and called behavior against the latest direction. Preserve omitted/none/explicit-limit behavior, custom equality/hash coherence, and joined Scheduler shutdown. Do not restore removed APIs from older documentation or another branch.
 
 ### Sharing, resource lifetime, and work lifetime are separate
@@ -78,7 +78,7 @@ Verified: a queued transport operation can acquire a ready gate even when its li
 Decision: the networking request explicitly required finishing networking rather than deferring gaps, with HTTP/3 excluded for that task. Public signatures alone did not meet the requested scope; cancellation, close, bounded streaming, and shutdown were part of the behavior.
 
 Apply when: adding native network APIs or declaring a networking change complete.
-Evidence: [scope corrections in Solidify networking implementation](codex://threads/01a12ce1-c9ff-70e4-bb2c-51749183e03b); [network coverage and limits](../documentation/contributing/architecture.md#standard-library-and-runtime); [network regression cases](../pkg/runtime/networking_test.go).
+Evidence: [network coverage and limits](../documentation/contributing/architecture.md#standard-library-and-runtime); [network regression cases](../pkg/runtime/networking_test.go).
 Verify: run relevant native and compiled cases for blocked I/O cancellation, concurrent close, bounded input/output, and shutdown joining. Check the actual request's protocol scope; retain implementation limits explicitly when a path remains uncooperative.
 
 ### Standard-library errors describe their domain

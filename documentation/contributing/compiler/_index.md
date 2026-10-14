@@ -7,4 +7,4 @@ weight = 4
 
 This chapter is for compiler contributors. Start with the [pipeline and passes](pipeline.md), then follow a program through [parsing and checking](frontend/_index.md) and [lowering](lowering/_index.md). [Conformance tests](conformance/_index.md) specify accepted source, rejected source, and observable runtime behavior.
 
-[External adapters](adapters/_index.md) describe integration contracts that remain design work. Application build settings belong in [builds and projects](../../developer-tooling/builds/_index.md).
+External adapters are not implemented. Application build settings belong in [builds and projects](../../developer-tooling/builds/_index.md).

@@ -170,4 +170,4 @@ Non-finite Float values format as `NaN`, `Infinity`, or `-Infinity`; NaN payload
 
 ## External data
 
-[Capability adapters](../../contributing/compiler/adapters/_index.md) validate UTF-8 when constructing text from foreign values and preserve immutability when transferring buffers. See [standard imports](../../standard-library/imports.md) for the names available without imports.
+See [standard imports](../../standard-library/imports.md) for the names available without imports.

@@ -37,7 +37,6 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Unwind](core-language/cleanup/exit-order.md) | Leave active scopes and run their registered cleanup. |
 | [Shielded cleanup](core-language/cleanup/cleanup-faults.md) | Cleanup that can run despite the cancellation or deadline that ended ordinary work. |
 | [Host](contributing/concurrent-runtime.md) | The runtime entry point that runs a CLI application or handles HTTP requests. |
-| [Adapter](contributing/compiler/adapters/_index.md) | A declared bridge between Manuscript and foreign code, such as Go. |
 | [Typed IR](contributing/compiler/frontend/typed-ir.md) | The compiler's internal program representation after names and types have been checked. |
 | [Lowering](contributing/compiler/lowering/_index.md) | Translating checked Manuscript operations into generated Go while preserving their behavior. |
 | [Conformance](contributing/compiler/conformance/_index.md) | Tests and evidence that the implementation follows the language's rules. |

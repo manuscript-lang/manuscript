@@ -56,6 +56,7 @@ type checker struct {
 	callName                string
 	callPos                 syntax.Position
 	captures                map[int]map[*Binding]bool
+	constantsVisiting       map[*Symbol]bool
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
@@ -222,7 +223,9 @@ func (c *checker) resolveSignatures(module *syntax.Module) {
 		}
 		old := c.scope
 		c.scope = c.variableScope(s.Variables)
-		if s.Kind == syntax.KindFn {
+		if d.Constant {
+			c.constantType(s)
+		} else if s.Kind == syntax.KindFn {
 			s.Type = c.signature(d.Params, d.Result)
 		} else {
 			def := s.Type.Def
@@ -280,7 +283,7 @@ func (c *checker) checkBodies(module *syntax.Module) {
 	for _, d := range module.Declarations {
 		if d.Kind == syntax.KindFn {
 			s := c.names[d.Name]
-			if s.Decl == d {
+			if s.Decl == d && !(d.Constant && s.Type.Result.ID == "<invalid>") {
 				c.checkFunction(d, s.Type, s.Variables, nil)
 			}
 		}
@@ -788,6 +791,7 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 		setArmBindings(arm, nil)
 		name := arm.Path.Text
 		fields := []Param{}
+		unknownArm := false
 		if name == "_" {
 			if wildcard || index != len(arms)-1 || len(seen) == len(cases) {
 				c.error(arm.Pos, "type", "unreachable wildcard or wildcard is not last; keep one '_' arm at the end, and only when cases remain")
@@ -809,17 +813,18 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 			}
 			if !found {
 				unknownCase = true
+				unknownArm = true
 				if len(arm.Names) == 0 && name != "" && !(name[0] >= 'A' && name[0] <= 'Z') {
 					c.error(arm.Pos, "resolution", "'"+name+"' is not a case of "+info.Type.Name+"; use '_' for a catch-all arm (it cannot bind a name); cases: "+list(caseNames(info.Type), 12))
 				} else {
-					c.error(arm.Pos, "resolution", "unknown case "+name+" of "+info.Type.Name+"; cases: "+list(caseNames(info.Type), 12))
+					c.error(arm.Pos, "resolution", "unknown case "+name+" of "+info.Type.Name+"; cases: "+list(caseNames(info.Type), 12)+didYouMean(name, caseNames(info.Type)))
 				}
 			}
 			if seen[name] || wildcard {
 				c.error(arm.Pos, "type", "duplicate or unreachable case "+name+"; each case may be matched once and before any '_' arm")
 			}
 			seen[name] = true
-			if len(fields) != len(arm.Names) {
+			if found && len(fields) != len(arm.Names) {
 				c.error(arm.Pos, "type", fmt.Sprintf("case payload arity mismatch; %s has %d payload fields, found %d bindings (use _ to ignore one)", name, len(fields), len(arm.Names)))
 			}
 		}
@@ -830,6 +835,9 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 			var b *Binding
 			if name != "_" && i < len(fields) {
 				b = c.bind(name, fields[i].Type, false, arm.Pos)
+			} else if name != "_" && unknownArm {
+				// the unknown case was already reported; keep its names bound
+				b = c.bind(name, primitive("<invalid>"), false, arm.Pos)
 			}
 			setArmBindings(arm, append(armBindingsOf(arm), b))
 		}
@@ -1134,6 +1142,10 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type, statemen
 func (c *checker) symbolDescription(s *Symbol) string {
 	imported := s.Module != c.module.File
 	switch {
+	case isConstant(s) && imported:
+		return "imported constant"
+	case isConstant(s):
+		return "constant"
 	case s.Kind == syntax.KindFn && imported:
 		return "imported function"
 	case s.Kind == syntax.KindFn:

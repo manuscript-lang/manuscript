@@ -276,6 +276,20 @@ func (p *Parser) declaration() *syntax.Declaration {
 		p.need("->")
 		d.Result = p.typ()
 		d.Body = p.statementSuite(false, true)
+	case p.take("let"):
+		d.Kind = syntax.KindFn
+		d.Constant = true
+		d.Name = p.need(lexer.Name).Text
+		if p.take(":") {
+			d.Result = p.typ()
+		}
+		p.need("=")
+		value := p.expression(0)
+		if d.Result == nil {
+			d.Result = &syntax.Type{Pos: value.Pos}
+		}
+		d.Body = []*syntax.Statement{{Pos: value.Pos, Kind: syntax.KindReturn, Value: value}}
+		p.end()
 	case p.take("test"):
 		name := p.need(lexer.String)
 		text := p.text(name)
@@ -387,7 +401,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 		}
 		d.Kind = form
 	default:
-		p.fail(token, "expected a module declaration or import, found "+describe(token)+"; top level holds only import, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn")
+		p.fail(token, "expected a module declaration or import, found "+describe(token)+"; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn")
 	}
 	return d
 }

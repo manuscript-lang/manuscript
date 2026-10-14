@@ -119,13 +119,24 @@ func libraryConstants(values map[string]int64) *Map {
 	return result
 }
 
-func libraryInterrupt(ctx *Execution, deadline func(time.Time) error) func() {
+// libraryInterruptFunc runs interrupt when ctx is cancelled. The returned stop
+// disarms it and, when it already started, waits for it to finish.
+func libraryInterruptFunc(ctx *Execution, interrupt func()) func() {
 	done := make(chan struct{})
-	stop := context.AfterFunc(ctx.Context, func() { defer close(done); deadline(time.Now()) })
+	stop := context.AfterFunc(ctx.Context, func() { defer close(done); interrupt() })
 	return func() {
 		if !stop() {
 			<-done
 		}
+	}
+}
+
+// libraryInterrupt expires the I/O deadline on cancellation; the returned stop
+// also clears the deadline.
+func libraryInterrupt(ctx *Execution, deadline func(time.Time) error) func() {
+	stop := libraryInterruptFunc(ctx, func() { deadline(time.Now()) })
+	return func() {
+		stop()
 		deadline(time.Time{})
 	}
 }
