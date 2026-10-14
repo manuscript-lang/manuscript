@@ -49,3 +49,13 @@ func TestPassAndIfExpressionHints(t *testing.T) {
 		})
 	}
 }
+
+func TestFromIsOnlyAKeywordInImports(t *testing.T) {
+	source := "import {a} from \"./x.ms\"\nfn f(from: Int) -> Int:\n    let to = from + 1\n    return to\n"
+	if _, err := parser.Parse("from.ms", source); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parser.Parse("from.ms", "import a \"./x.ms\"\n"); err == nil || !strings.Contains(err.Error(), "expected 'from'") {
+		t.Fatalf("want missing from, got %v", err)
+	}
+}
