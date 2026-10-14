@@ -655,6 +655,19 @@ test "YAML stringify validates numbers and honors max_bytes":
     if stringify(value: root, max_bytes: 5) != exact: return panic("exact limit")
     if stringify(value: root, max_bytes: -1) != invalid: return panic("negative limit")
 
+test "YAML document start marker accepts same-line content":
+    if value(parse(text: "--- a")) != YamlValue.StringValue("a"): return panic(
+        "scalar after marker"
+    )
+    if items(
+        value(parse(text: "--- [1, 2]"))
+    ).length() != 2: return panic(
+        "flow after marker"
+    )
+    if value(parse(text: "--- # note\na: 1")) != value(parse(text: "a: 1")): return panic(
+        "comment after marker"
+    )
+
 test "YAML compact mapping after a sequence marker follows the marker's spacing":
     let root = value(
         parse(text: "-   a: 1\n    b: 2\n-  - x\n   - y\n- c: 3\n  d: 4\n")

@@ -44,6 +44,16 @@ func lintFindings(result compiler.Result) []tooling.LintFinding {
 			findings = append(findings, finding)
 		}
 	}
+	sort.SliceStable(findings, func(i, j int) bool {
+		a, b := findings[i].Position, findings[j].Position
+		if a.File != b.File {
+			return a.File < b.File
+		}
+		if a.Line != b.Line {
+			return a.Line < b.Line
+		}
+		return a.Column < b.Column
+	})
 	return findings
 }
 
