@@ -154,7 +154,6 @@ Apply when: changing recursive data, automatic equality/hashing, or generic regu
 Evidence: [recursive data rules](../documentation/core-language/types/records.md#recursive-data), [declaration checks](../pkg/checker/type_recursion.go), [compiler regressions](../pkg/compiler/recursive_types_test.go), [shared-dependency regressions](../pkg/checker/layout_diagnostics_test.go), and [native recursive data fixture](../tests/e2e/testdata/accept/recursive-types.ms).
 Verify: direct and mutual trees execute; cyclic equality terminates; clone retains child references; uninitialized self-references and automatic recursive hashing fail. Finite nested generic applications pass; expanding cycles through fields, callbacks, or interfaces fail.
 
-
 ### Match is uniformly a value expression; indexing preserves Optional
 
 Decision: when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form. A standalone match discards the same checked result. The user also clarified that list brackets must preserve `.at()`'s Optional result, rather than unwrap or introduce bounds faults. Generic specialization retains its existing meaning.

@@ -32,3 +32,8 @@ The 4K Map candidate uses about 4.8 MB total allocated and 28K allocations.
 Bounds are still checked at each literal's own source location. Nested empty
 Lists now report the missing leaf context once; independent invalid Map keys
 retain one diagnostic per key instead of being repeated by every parent.
+
+The current-main IR/provider integration at `e9169b56` was rerun without a
+profiler; `results/after-ir.jsonl` records three samples per kind/depth. List 4K
+median is 3.76ms with 12,285 allocations/2.41MB; Map 4K is 13.64ms with 28,322
+allocations/4.79MB. Allocation counts remain identical to the earlier candidate.

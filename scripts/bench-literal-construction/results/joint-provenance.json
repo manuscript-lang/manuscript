@@ -1,0 +1,32 @@
+{
+  "main": "8001f48e6d3dccc5e5ba8ca59f2ec24b63194c64",
+  "scalar_consumer": "92a73898110396a9457bc1244222c4319eb16614",
+  "runtime_provider": "bea5c048ebf261eaa6d9ca6937c9aefc250ec75f",
+  "measured_joint_head": "b81323ae5cb1036aff86746864fc356fc0f5f5a8",
+  "validation_joint_head": "7e394829ec222e629a4cae196cc63956abd077ee",
+  "buildvcs": false,
+  "go": "1.25.1",
+  "hashes": {
+    "baseline_cli": "0ed5c7719fddbf078943141844cf64fc87aabe8228ee53631d39433d630f17a7",
+    "joint_cli": "d4a2e7393e0c6eccc282b893283311f5a2395543a7c4176612be6356baf9f62c",
+    "baseline_runtime": "556043f42eebd3daccfb0f0745fe3cefd4b29cbf999d833e202b4a07200d1949",
+    "joint_runtime": "94d0e08c3aff3bcb955a63a282a5bb5c10b8ccf0e3bab7757dcfaadc1195fe77"
+  },
+  "sources": {
+    "baseline": {
+      "cache_source": "/tmp/ms147-joint-cache/manuscript/workspaces/12363ac5317c11e9111369ea76db5c10/apps/e044eb245726af20b30e8f2a8c615225/main.go",
+      "source_sha256": "2c0e8083b5ffb8937aaf69eae167d54eb564fb1841282e6613f84c74100e1841",
+      "elements": 2200,
+      "variant": "baseline",
+      "symbol": "symbol2"
+    },
+    "prototype": {
+      "cache_source": "/tmp/ms147-joint-cache/manuscript/workspaces/c2e4bff991bc623175ec15d539543192/apps/2377bcbf78762d192feb90ec3a4f26ce/main.go",
+      "source_sha256": "dc94147338a1b5cbb666a7b45dacaa4f8cec0aef02bbc484764c4a467b9a7888",
+      "elements": 2200,
+      "variant": "prototype",
+      "symbol": "symbol2"
+    }
+  },
+  "limits": "Shared host; both source candidates compiled and then benchmarked separately. Initial cold forced-edit build sample includes SDK/runtime warmup; paired runtime excludes compiler/linker. Two allocations per evaluation in all samples."
+}

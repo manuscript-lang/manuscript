@@ -1,0 +1,44 @@
+{
+  "baseline": "f01d88003284cc21ffda49284b04694c53f8cd8a",
+  "implementation_head": "e9169b56a6cc9c29fcd0de817290e35105fa5775",
+  "main": "8001f48e6d3dccc5e5ba8ca59f2ec24b63194c64",
+  "runtime_provider": "bea5c048ebf261eaa6d9ca6937c9aefc250ec75f",
+  "go": "1.25.1",
+  "hashes": {
+    "baseline_cli": "d82fe4a6c6e31164fa71fb4aa9345108aada36811722c53cb953318912f569fe",
+    "candidate_cli": "0bfb589289c4eb0453007fffb0f54a2ce7dc2270d2fdc7b1f9b07b027309a42c",
+    "baseline_runtime": "6299d1eb3e2d3f4f434f27b60f8a13bbfda64b3f75e83581455fd6037e36bbf6",
+    "strict_runtime": "07256b958001ac4bc27fe176c930fdc6ef6de6952016ed7b446c4a68a5ead1ef",
+    "typed_slice_control": "52a0e90001ba8e915ea9267579405e573a2df14d329a1e37ad2feff2606981fa"
+  },
+  "strict_source": {
+    "cache_source": "/tmp/ms147-nativecache/manuscript/workspaces/23f9d48f77344b6e87de353b8f3abe74/apps/f0344a63998958a59b6f096699e56924/main.go",
+    "source_sha256": "417434a75f8b0701d4db729b39d3caa3a81108cf7e34167a51457ad68dce8668",
+    "elements": 2200,
+    "variant": "prototype",
+    "symbol": "symbol2"
+  },
+  "typed_slice_control": "Artifact-only ordered fresh []int64 assignments plus public fresh-copy NewIntList; not production code; remains10% slower.",
+  "scalar_ir_runtime": {
+    "16000": {
+      "hash": "56ebc09eb734f7368dc93d14e98610824754a32cb14105bc075d413402948cc1",
+      "source": {
+        "cache_source": "/tmp/ms147-nativecache/manuscript/workspaces/23f9d48f77344b6e87de353b8f3abe74/apps/a3d37525ece7f3a89b5d3c332afffa9b/main.go",
+        "source_sha256": "1044b1f6038e2413994ea4dc8b9b413b84f0ed736817bbd8ded8380b5a1fc08f",
+        "elements": 16000,
+        "variant": "prototype",
+        "symbol": "symbol1"
+      }
+    },
+    "100000": {
+      "hash": "4948456f48ebdd5ec0d2054fe03a3b4ec6b50cffae68fdd884f1fd5039593126",
+      "source": {
+        "cache_source": "/tmp/ms147-nativecache/manuscript/workspaces/23f9d48f77344b6e87de353b8f3abe74/apps/b56de3ba74ac04587d914872c56e41e8/main.go",
+        "source_sha256": "3303cab5151614bcffc29d08293943f87ac137df31246d9e76297f1eab425c2c",
+        "elements": 100000,
+        "variant": "prototype",
+        "symbol": "symbol1"
+      }
+    }
+  }
+}

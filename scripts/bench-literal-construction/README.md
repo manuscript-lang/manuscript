@@ -3,8 +3,9 @@
 This implements both original #147 scopes. Optimized literals over 1,024 elements
 use private typed data for complete checked Int/Float/Bool/String constants;
 other literals use fresh sized construction and ordered 64-element helpers.
-The constructor ABI is supplied by #142, provider #315 at
-`8c6569060fd9b073350c7bc2fa665c8fc3ceb189`; no rival storage is implemented here.
+The constructor ABI is supplied by #142, provider #315; no rival storage is
+implemented here. The latest integration uses strict initializers at
+`bea5c048ebf261eaa6d9ca6937c9aefc250ec75f` and current main's IR route.
 Int remains signed 64-bit and Float binary64. Closed #238/#301's boxed-copy
 experiments stay closed. Debug #272 is inherited, not rebenchmarked.
 
@@ -21,16 +22,42 @@ The compact executable oracle remains independently frozen under
 
 ## Review status
 
+The joint effectful path meets the gate. It consumes #87's published native
+scalar boundary for deferred primitive operands; no expanded storage ABI is
+needed. The independently published #326 remains draft until the parent selects
+the dependency integration order and exact-head required checks finish.
+
 Scalar constants and checker scaling meet the measured gates. The effectful
-initializer is held: 2,200 cheap source calls regress construction by about
-20–24% (GOGC100 1.243, 95% interval 1.195–1.275; GOGC50 1.202,
-1.185–1.216). Same-runtime controls confirm about26% emitter overhead,
-so this is not dismissed as a storage-provider difference. All samples are in
-`results/runtime-calls*.jsonl`. InitListInt is not inlineable (cost118/budget80);
-the profile attributes8.6% cumulative CPU to it. Parent/runtime coordination
-is assessing strict inlineable initialization or a distinct owned-slice seam.
-No regressing effectful path is approved for merge; this report will be updated
-when the actual provider mitigation is measured.
+initializer without #87 remains held. The first 2,200 cheap-call control regressed by
+20–24%; same-runtime controls confirmed about 26% emitter overhead. Strict
+typed setters preserve state/kind/bounds safety and inline at cost 31 instead
+of 118, but the actual IR integration `e9169b56a6cc9c29fcd0de817290e35105fa5775`
+still regresses: GOGC100 ratio 1.269, paired 95% interval 1.236–1.314; GOGC50
+1.240, 1.214–1.263. Every pair is slower. Both forms allocate twice; B/op falls
+41,008→18,576. Twelve randomized 400ms pairs per GC use the independent original
+main baseline. Raw samples and exact source/binary hashes are in
+`results/runtime-calls-strict*.jsonl` and `results/strict-provenance.json`.
+
+An artifact-only control fills a fresh typed slice with ordered assignments,
+then uses the existing fresh-copy `NewIntList`. At 2,200 cells Go puts this input
+on the stack, retaining two heap allocations. It reduces the regression to
+GOGC100 1.105[1.081,1.135] and GOGC50 1.102[1.074,1.130], but remains slower.
+This control is not production lowering and does not establish 100K allocation
+parity. Parent coordination will test #87's actual native-consuming/direct-call
+path before approving a larger constructor seam. This rejected control is not
+promoted.
+
+The joint control now uses #87 at
+`92a73898110396a9457bc1244222c4319eb16614` and #147's native-consuming adapter
+at `b81323ae`. Against the #87-only boxed literal emitter, twelve randomized
+400ms pairs per GC give GOGC100 ratio 0.707[0.697,0.718] and
+GOGC50 0.649[0.624,0.692]. Both forms retain two allocations;
+B/op 41,104→18,576. The same written calls and source checkpoints are retained.
+`g.scalarValueAs` selects the authoritative typed call context for deferred
+IR operands, including calls whose boxed adapter cannot share the native body.
+Literal source order and the 64-element helper bound remain unchanged.
+Raw paired rows, generated-source hashes and exact consumer/runtime heads are
+in `results/runtime-joint-calls*.jsonl` and `results/joint-provenance.json`.
 
 ## Results
 
@@ -62,6 +89,21 @@ controls use 2,200 source calls; the 16K AST test separately enforces helper
 order/bounds. Native regressions exercise defaults, generics, nested/mutable
 aliases, growth, strict Result slicing, scalar signed zero, return/try/loop
 exits and cleanup.
+
+Current IR/strict-provider rerun at `e9169b56` retains these gains. Three forced
+edit pairs give 16K median 1.471→0.278s, peak RSS 320,964→136,684KiB and
+binary 6,217,876→5,787,796B; 100K 10.616→0.629s,
+RSS 1,879,428→226,476KiB and binary 9,674,900→6,459,540B. Construction still
+uses two allocations with the same B/op reductions. Twelve randomized 400ms
+pairs per GC give ratios 0.321[0.309,0.333] / 0.236[0.230,0.243] for 16K and
+0.118[0.113,0.124] / 0.166[0.162,0.170] for 100K at GOGC100 /50 respectively.
+Raw build/runtime rows are `results/ir-builds.jsonl` and
+`results/runtime-ir-*.jsonl`; hashes are in `strict-provenance.json`.
+
+Called native regressions also verify already-canceled admission, cancellation
+after the 65th effect (a later body never mutates), and exact operator/caller/main
+source frames for a fault beyond a helper boundary. These tests pass on the
+current IR/provider integration; generated helper frames do not leak.
 
 ## Reproduce
 

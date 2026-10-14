@@ -157,4 +157,3 @@ and [direct-AST checker runner](../scripts/bench-nested-literals/main.go).
 Verify: doubling depth grows allocations approximately linearly; both 4K List
 and Map ASTs terminate, nested empty lists report one missing leaf context, and
 each invalid Map key reports at its own use site.
-
