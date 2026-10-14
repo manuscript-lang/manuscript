@@ -22,10 +22,10 @@ import (
 func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "http_client", libraryResult("HttpClient", "HttpError"), []LibraryParam{{"options", "HttpClientOptions"}}},
-		{"HttpClient", "send", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
-		{"HttpClient", "send_stream", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "ReadStream"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"HttpClient", "request", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "HttpMethod"}, {"url", "String"}, {"headers", "HttpHeaders"}, {"body", "Bytes"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"HttpClient", "request_stream", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "HttpMethod"}, {"url", "String"}, {"headers", "HttpHeaders"}, {"body", "ReadStream"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
 		{"HttpClient", "close", "Unit", nil},
-		{"ResponseBody", "status", "Int", nil}, {"ResponseBody", "headers", "Map[String][List[String]]", nil},
+		{"ResponseBody", "metadata", "HttpResponseMetadata", nil},
 		{"ResponseBody", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int]"}}},
 		{"ResponseBody", "close", "Unit", nil},
 	}...)
@@ -122,6 +122,10 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 		if max < 0 || timeout < nativeNoTimeout {
 			return libraryError(r, "InvalidInput", "")
 		}
+		method := libraryHTTPMethodText(a[0])
+		if !validHeaderName(method) {
+			return libraryError(r, "InvalidInput", "")
+		}
 		u, err := url.Parse(a[1].(string))
 		if err != nil || u.Host == "" || u.User != nil || !libraryValidPort(u) || u.Scheme != "http" && u.Scheme != "https" {
 			return libraryError(r, "InvalidInput", "")
@@ -155,10 +159,10 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 		}()
 		var body io.Reader = nil
 		var bridge *libraryStreamReader
-		if name != "send_stream" {
+		if name != "request_stream" {
 			body = bytes.NewReader(a[3].(Bytes).Items)
 		}
-		if name == "send_stream" {
+		if name == "request_stream" {
 			bridge = newLibraryStreamReader(inherit(ctx, call), a[3])
 			defer func() {
 				if !delivered {
@@ -167,16 +171,22 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 			}()
 			body = bridge
 		}
-		req, err := http.NewRequestWithContext(call, a[0].(string), u.String(), body)
-		if err != nil || a[0].(string) == "" {
+		req, err := http.NewRequestWithContext(call, method, u.String(), body)
+		if err != nil {
 			return libraryError(r, "InvalidInput", "")
 		}
-		for _, entry := range a[2].(*Map).Entries {
-			key, value := entry.Key.(string), entry.Value.(string)
-			if !libraryHeaderName(key) || !validHeaderValue(value) || strings.EqualFold(key, "Host") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") {
+		for _, entry := range a[2].(*libraryHeaders).Entries {
+			key := entry.Key.(string)
+			if !libraryHeaderName(key) || strings.EqualFold(key, "Host") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") {
 				return libraryError(r, "InvalidInput", "")
 			}
-			req.Header.Add(key, value)
+			for _, item := range entry.Value.(*List).Items {
+				value := string(item.(Bytes).Items)
+				if !validHeaderValue(value) {
+					return libraryError(r, "InvalidInput", "")
+				}
+				req.Header.Add(key, value)
+			}
 		}
 		// A borrowed streaming body cannot be replayed; return redirects for explicit handling.
 		client := *c.client
@@ -194,7 +204,7 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 			response.Body.Close()
 			return libraryError(r, "InvalidData", "")
 		}
-		resource := &libraryResponseBody{owner: c.owner, client: c, upload: bridge, response: response, reader: response.Body, remaining: max, lifetime: call, finish: finish, gate: make(chan struct{}, 1), released: make(chan struct{})}
+		resource := &libraryResponseBody{owner: c.owner, client: c, upload: bridge, response: response, metadata: Record{"@std/HttpResponseMetadata", map[string]Value{"status": int64(response.StatusCode), "headers": libraryHTTPHeaders(response.Header)}}, reader: response.Body, remaining: max, lifetime: call, finish: finish, gate: make(chan struct{}, 1), released: make(chan struct{})}
 		resource.gate <- struct{}{}
 
 		c.owner.mu.Lock()
@@ -245,6 +255,7 @@ type libraryResponseBody struct {
 	owner     *network
 	client    *libraryHTTPClient
 	response  *http.Response
+	metadata  Value
 	reader    io.ReadCloser
 	remaining int64
 	mu        sync.Mutex
@@ -286,10 +297,8 @@ func (b *libraryResponseBody) close() {
 func (b *libraryResponseBody) Operation(name string) Function {
 	return libraryMethod("ResponseBody", name, func(ctx *Execution, r string, a []Value) Value {
 		switch name {
-		case "status":
-			return int64(b.response.StatusCode)
-		case "headers":
-			return libraryHTTPHeaders(b.response.Header)
+		case "metadata":
+			return b.metadata
 		case "close":
 			b.close()
 			return Unit{}
@@ -345,10 +354,17 @@ func (b *libraryResponseBody) Operation(name string) Function {
 		return ioError(r, "Failed", "empty read without EOF")
 	})
 }
-func libraryHTTPHeaders(headers http.Header) *Map {
-	out := &Map{Type: "@std/Map[String][@std/List[String]]"}
+func libraryHTTPHeaders(headers http.Header) *libraryHeaders {
+	out := &libraryHeaders{}
 	for _, key := range sortedHeaderNames(headers) {
-		out.Entries = append(out.Entries, Entry{key, libraryStrings(headers[key])})
+		for _, value := range headers[key] {
+			out.append(key, Bytes{[]byte(value)})
+		}
+		if len(headers[key]) == 0 {
+			out.append(key, Bytes{})
+			values, _ := out.values(key)
+			values.Items = values.Items[:len(values.Items)-1]
+		}
 	}
 	return out
 }

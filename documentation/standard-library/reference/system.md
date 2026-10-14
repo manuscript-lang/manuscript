@@ -47,7 +47,7 @@ type NetworkInterface:
     name: String
     address: String
     netmask: String
-    family: String
+    family: IpFamily
     mac: String
     internal: Bool
     scope_id: Int
@@ -55,10 +55,10 @@ type NetworkInterface:
 
 ### NetworkInterface.family
 
-Exactly `IPv4` or `IPv6` for native address records.
+The IPv4/IPv6 alternative for the native address record.
 
 ```manuscript
-family: String
+family: IpFamily
 ```
 
 ## System {data-api-kind="Interface"}

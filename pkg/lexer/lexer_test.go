@@ -123,6 +123,31 @@ func TestUnknownEscapeIsReportedAtTheBackslash(t *testing.T) {
 	}
 }
 
+func TestDelimiterContinuationMayDedentBelowSuite(t *testing.T) {
+	for _, source := range []string{
+		"fn f() -> Int:\n    let x = [\n1,\n2,\n]\n    return 0\n",
+		"fn f() -> Int:\n    let x = (1 +\n2)\n    return 0\n",
+		"fn f() -> Int:\n    if true:\n        let x = [\n1\n]\n        return 0\n    return 1\n",
+	} {
+		tokens, err := lexer.Lex("continuation.ms", source)
+		if err != nil {
+			t.Fatalf("%q: %v", source, err)
+		}
+		depth := 0
+		for _, token := range tokens {
+			switch token.Kind {
+			case lexer.Indent:
+				depth++
+			case lexer.Dedent:
+				depth--
+			}
+			if token.Text == "1" && depth < 1 {
+				t.Fatalf("%q: continuation closed the suite", source)
+			}
+		}
+	}
+}
+
 func TestGrammarGuideListsEveryReservedWord(t *testing.T) {
 	data, err := os.ReadFile("../../documentation/core-language/basics/grammar.md")
 	if err != nil {

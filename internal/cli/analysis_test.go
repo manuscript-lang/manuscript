@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 )
@@ -301,5 +303,34 @@ func TestAnalysisDocRejectsConflictingModuleSnapshots(t *testing.T) {
 	shared := reference.Modules[4]
 	if shared.Path != "shared.ms" || len(shared.Declarations) != 1 || len(shared.Declarations[0].Implements) != 2 {
 		t.Fatalf("missing complete shared snapshot: %+v", shared)
+	}
+}
+
+// Watching reruns the analysis after a saved edit, survives errors, and
+// exits 130 when interrupted.
+func TestCheckWatchRerunsAfterEdits(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the test interrupts itself with a POSIX signal")
+	}
+	file := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	type outcome struct {
+		status         int
+		output, errors string
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		status, output, errors := invoke(t, "check", file, "--watch")
+		done <- outcome{status, output, errors}
+	}()
+	time.Sleep(500 * time.Millisecond)
+	if err := os.WriteFile(file, []byte("export fn main() -> Int:\n    return \"wrong\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(500 * time.Millisecond)
+	self, _ := os.FindProcess(os.Getpid())
+	_ = self.Signal(os.Interrupt)
+	got := <-done
+	if got.status != 130 || strings.Count(got.output, "Checked") != 1 || !strings.Contains(got.errors, "found String") || strings.Count(got.errors, "waiting for changes") != 2 {
+		t.Fatalf("watch: %d, %q, %q", got.status, got.output, got.errors)
 	}
 }

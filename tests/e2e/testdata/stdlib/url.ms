@@ -57,10 +57,17 @@ test "URL query retains duplicate keys empty values and spaces":
     if decode_component("%zz") != invalid: return panic("malformed escape")
 
 test "URL query skips empty segments":
-    let entries = value(parse_query(text: "a=1&&b=2&"))
-    if entries.length() != 2 or format_query(entries) != "a=1&b=2": return panic(
-        "empty query segments"
+    let entries = value(parse_query(text: "&a=1&&b=2&"))
+    if format_query(entries) != "a=1&b=2": return panic("empty segments kept")
+    if not value(parse_query(text: "&&")).is_empty(): return panic("only separators")
+
+    let bounded = value(
+        parse_query(
+            text: "a=1&&b=2",
+            max_entries: 2
+        )
     )
+    if bounded.length() != 2: return panic("empty segments counted")
 
 test "URL format rejects queries that would not round trip":
     let base = value(parse("http://h/p"))

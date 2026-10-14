@@ -35,6 +35,9 @@ func runSourceCommand(args []string, usage string) int {
 	}
 	switch inv.command {
 	case "check", "lint":
+		if inv.watch {
+			return watchAnalysis(inv.command, inv.targets)
+		}
 		return runAnalysis(inv.command, inv.targets, inv.structured)
 	case "build", "profile":
 		return runNativeCommand(inv.command, inv.filename, inv.output, p.options, p.kind, inv.arguments, inv.profileTrace, inv.structured)
@@ -58,6 +61,12 @@ func runSourceCommand(args []string, usage string) int {
 			return emitJSON(structuredDiagnostics(result), 1)
 		}
 		return reportDiagnostics(result)
+	}
+	if inv.output != "" && inv.isOneOf("emit", "inspect", "diagram") {
+		if protected := protectedOutput(inv.output, inv.filename, result.ProjectRoot); protected != "" {
+			fmt.Fprintf(os.Stderr, "-o %s would overwrite %s; choose a different output path\n", inv.output, protected)
+			return 2
+		}
 	}
 	switch inv.command {
 	case "lock":

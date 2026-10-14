@@ -111,13 +111,7 @@ func init() {
 		}
 		return strings.Join(parts, "&")
 	})
-	add("net", "parse_ip", libraryResult("String", "NetworkError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
-		ip := net.ParseIP(a[0].(string))
-		if ip == nil {
-			return libraryError(r, "InvalidData", "")
-		}
-		return libraryOK(r, ip.String())
-	})
+	add("net", "parse_ip", libraryResult("IpAddress", "NetworkError"), []LibraryParam{p("text", "String")}, libraryParseIP)
 }
 
 // jsonDepthCeiling is the deepest container nesting parse accepts.

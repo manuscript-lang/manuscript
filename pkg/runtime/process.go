@@ -108,7 +108,7 @@ func (c *commands) Operation(name string) Function {
 			return failure("OutputLimit", "")
 		}
 		if lifetime.Err() != nil {
-			return failure("TimedOut", "")
+			return failure("Timeout", "")
 		}
 		code := int64(0)
 		if err != nil {

@@ -4,7 +4,9 @@ import {
     parse_cidr,
     contains_ip,
     NetworkError,
-    Connection
+    Connection,
+    IpAddress,
+    IpFamily
 } from "@std/net.ms"
 import {List, Map} from "@std/collections.ms"
 import Result from "@std/result.ms"
@@ -13,19 +15,30 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 test "IP parsing CIDR normalization and containment":
-    if value(parse_ip("2001:0db8::1")) != "2001:db8::1": return panic(
+    if value(parse_ip("2001:0db8::1")).text() != "2001:db8::1": return panic(
         "IPv6 normalization"
     )
-    if value(parse_cidr("192.0.2.3/24")) != "192.0.2.0/24": return panic("CIDR mask")
-    if not value(contains_ip(cidr: "192.0.2.0/24", address: "192.0.2.255")): return panic(
+    if value(parse_cidr("192.0.2.3/24")).text() != "192.0.2.0/24": return panic(
+        "CIDR mask"
+    )
+    if not value(
+        contains_ip(
+            cidr: value(parse_cidr("192.0.2.0/24")),
+            address: value(parse_ip("192.0.2.255"))
+        )
+    ): return panic(
         "CIDR membership"
     )
-    if value(contains_ip(cidr: "192.0.2.0/24", address: "192.0.3.0")): return panic(
+    if value(
+        contains_ip(
+            cidr: value(parse_cidr("192.0.2.0/24")),
+            address: value(parse_ip("192.0.3.0"))
+        )
+    ): return panic(
         "CIDR exclusion"
     )
 
-    let invalid: Result[String, NetworkError] = error(NetworkError.InvalidData)
-    if parse_ip("999.1.1.1") != invalid: return panic("invalid IP")
+    expect_ip_error("999.1.1.1")
 
 test "TCP loopback writes reads half close and EOF":
     let net = network()
@@ -111,10 +124,25 @@ test "network restriction denies admission and close rejects acquisitions":
         error(cause):
             if cause != NetworkError.Closed: return panic("network close identity")
 
-test "IPv4-mapped IPv6 addresses match IPv4 ranges":
-    if not value(contains_ip(cidr: "10.0.0.0/8", address: "::ffff:10.0.0.1")): return panic(
-        "mapped address inside range"
+test "typed addresses preserve normalization and reject zones":
+    let ip = value(parse_ip("::ffff:192.0.2.1"))
+    if ip.text() != "192.0.2.1" or ip.family() != IpFamily.IPv4: return panic(
+        "mapped normalization"
     )
-    if value(contains_ip(cidr: "10.0.0.0/8", address: "::ffff:11.0.0.1")): return panic(
-        "mapped address outside range"
+    if value(parse_ip("2001:db8::1")).family() != IpFamily.IPv6: return panic(
+        "IPv6 family"
     )
+
+    expect_ip_error("fe80::1%eth0")
+    if value(
+        contains_ip(
+            value(parse_cidr("::ffff:192.0.2.0/120")),
+            ip
+        )
+    ): return panic("normalized IPv4 matched mapped IPv6 prefix")
+
+fn expect_ip_error(input: String) -> Unit:
+    match parse_ip(input):
+        ok(_): return panic("invalid IP accepted")
+        error(cause):
+            if cause != NetworkError.InvalidData: return panic("wrong address error")
