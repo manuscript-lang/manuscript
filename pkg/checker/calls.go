@@ -50,7 +50,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if std(typ, "Bytes") {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
-		i.NoReturn = c.arguments(e.Args, fields, ConstructorSignature(typ).Defaults)
+		i.NoReturn = c.arguments(e.Pos, e.Args, fields, ConstructorSignature(typ).Defaults)
 		i.Type = typ
 		i.Constructor = typ
 		return i
@@ -77,7 +77,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		}
 		alternative = c.instantiate(alternative, cs.Fields, e.Args, expected, e.Pos)
 		cs, _ = caseOf(alternative, cs.Name)
-		i.NoReturn = c.arguments(e.Args, cs.Fields)
+		i.NoReturn = c.arguments(e.Pos, e.Args, cs.Fields)
 		i.Type = alternative
 		i.Constructor = alternative
 		i.Case = cs.Name
@@ -146,7 +146,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		return i
 	}
 	i.Arguments = functionArguments(e.Args, signature.Params)
-	i.NoReturn = callable.NoReturn || c.arguments(i.Arguments, signature.Params, signature.Defaults)
+	i.NoReturn = callable.NoReturn || c.arguments(e.Pos, i.Arguments, signature.Params, signature.Defaults)
 	i.Type = signature.Result
 	if i.Type != nil && i.Type.ID == "Never" {
 		i.NoReturn = true
@@ -175,7 +175,7 @@ func functionArguments(args []syntax.Argument, params []Param) []syntax.Argument
 	return resolved
 }
 
-func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...map[string]bool) bool {
+func (c *checker) arguments(call syntax.Position, args []syntax.Argument, params []Param, defaults ...map[string]bool) bool {
 	seen := map[string]bool{}
 	noReturn := false
 	for index, arg := range args {
@@ -209,17 +209,10 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 	}
 	for _, param := range params {
 		if !seen[param.Name] && (len(defaults) == 0 || !defaults[0][param.Name]) {
-			pos := c.modulePosition()
-			if len(args) > 0 {
-				pos = args[0].Pos
-			}
-			c.error(pos, "type", "missing argument "+param.Name)
+			c.error(call, "type", "missing argument "+param.Name)
 		}
 	}
 	return noReturn
-}
-func (c *checker) modulePosition() syntax.Position {
-	return syntax.Position{File: c.module.File, Line: 1, Column: 1}
 }
 func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position) *Type {
 	sub := map[string]*Type{}
