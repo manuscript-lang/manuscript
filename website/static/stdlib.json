@@ -1358,25 +1358,25 @@
               "name": "clear",
               "kind": "operation",
               "signature": "fn clear() -\u003e Set[T]:",
-              "doc": ""
+              "doc": "Removes all values in place and returns this set; aliases observe the empty set."
             },
             {
               "name": "clone",
               "kind": "operation",
               "signature": "fn clone() -\u003e Set[T]:",
-              "doc": ""
+              "doc": "Copies outer storage, retaining element references and insertion order."
             },
             {
               "name": "contains",
               "kind": "operation",
               "signature": "fn contains(value: T) -\u003e Bool:",
-              "doc": ""
+              "doc": "Reports whether an equal value is present, using the element's Hashable implementation."
             },
             {
               "name": "difference",
               "kind": "operation",
               "signature": "fn difference(right: Set[T]) -\u003e Set[T]:",
-              "doc": ""
+              "doc": "Returns a new set of receiver values absent from right, preserving receiver insertion order."
             },
             {
               "name": "entries",
@@ -1430,7 +1430,7 @@
               "name": "intersection",
               "kind": "operation",
               "signature": "fn intersection(right: Set[T]) -\u003e Set[T]:",
-              "doc": ""
+              "doc": "Returns a new set of receiver values also in right, preserving receiver insertion order."
             },
             {
               "name": "is_disjoint_from",
@@ -1460,7 +1460,7 @@
               "name": "length",
               "kind": "operation",
               "signature": "fn length() -\u003e Int:",
-              "doc": ""
+              "doc": "Returns the number of distinct values currently stored."
             },
             {
               "name": "map[U: Hashable]",
@@ -1490,7 +1490,7 @@
               "name": "union",
               "kind": "operation",
               "signature": "fn union(right: Set[T]) -\u003e Set[T]:",
-              "doc": ""
+              "doc": "Returns a new set with receiver values followed by right-only values in insertion order."
             },
             {
               "name": "values",
@@ -10101,6 +10101,208 @@
               "kind": "operation",
               "signature": "fn unwrap_or_else(create: fn(cause: E) -\u003e T) -\u003e T:",
               "doc": "Calls create once with the original error only when this is an error."
+            }
+          ]
+        },
+        {
+          "name": "Set",
+          "doc": "A mutable collection of unique values using explicit `Hashable` value semantics.",
+          "kind": "native",
+          "type": "Set[T]",
+          "type_parameters": [
+            "T: Hashable"
+          ],
+          "operations": [
+            "add: fn(value: T)-\u003eSet[T]",
+            "clear: fn()-\u003eSet[T]",
+            "clone: fn()-\u003eSet[T]",
+            "contains: fn(value: T)-\u003eBool",
+            "difference: fn(right: Set[T])-\u003eSet[T]",
+            "entries: fn()-\u003eList[List[T]]",
+            "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
+            "filter: fn(predicate: fn(value: T)-\u003eBool)-\u003eSet[T]",
+            "find: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
+            "find_last: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
+            "fold[A]: fn(initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
+            "fold_right[A]: fn(initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
+            "for_each: fn(operation: fn(value: T)-\u003eUnit)-\u003eUnit",
+            "intersection: fn(right: Set[T])-\u003eSet[T]",
+            "is_disjoint_from: fn(right: Set[T])-\u003eBool",
+            "is_empty: fn()-\u003eBool",
+            "is_subset_of: fn(right: Set[T])-\u003eBool",
+            "is_superset_of: fn(right: Set[T])-\u003eBool",
+            "length: fn()-\u003eInt",
+            "map[U: Hashable]: fn(transform: fn(value: T)-\u003eU)-\u003eSet[U]",
+            "remove: fn(value: T)-\u003eSet[T]",
+            "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
+            "symmetric_difference: fn(right: Set[T])-\u003eSet[T]",
+            "union: fn(right: Set[T])-\u003eSet[T]",
+            "values: fn()-\u003eList[T]",
+            "with_value: fn(value: T)-\u003eSet[T]",
+            "without: fn(value: T)-\u003eSet[T]"
+          ],
+          "members": [
+            {
+              "name": "add",
+              "kind": "operation",
+              "signature": "fn add(value: T) -\u003e Set[T]:",
+              "doc": "Adds a value in place and returns this set; an equal value retains its original payload and position."
+            },
+            {
+              "name": "clear",
+              "kind": "operation",
+              "signature": "fn clear() -\u003e Set[T]:",
+              "doc": "Removes all values in place and returns this set; aliases observe the empty set."
+            },
+            {
+              "name": "clone",
+              "kind": "operation",
+              "signature": "fn clone() -\u003e Set[T]:",
+              "doc": "Copies outer storage, retaining element references and insertion order."
+            },
+            {
+              "name": "contains",
+              "kind": "operation",
+              "signature": "fn contains(value: T) -\u003e Bool:",
+              "doc": "Reports whether an equal value is present, using the element's Hashable implementation."
+            },
+            {
+              "name": "difference",
+              "kind": "operation",
+              "signature": "fn difference(right: Set[T]) -\u003e Set[T]:",
+              "doc": "Returns a new set of receiver values absent from right, preserving receiver insertion order."
+            },
+            {
+              "name": "entries",
+              "kind": "operation",
+              "signature": "fn entries() -\u003e List[List[T]]:",
+              "doc": "Returns a new list of [value, value] lists in insertion order."
+            },
+            {
+              "name": "every",
+              "kind": "operation",
+              "signature": "fn every(predicate: fn(value: T) -\u003e Bool) -\u003e Bool:",
+              "doc": "Stops at the first nonmatching element; empty sets return true."
+            },
+            {
+              "name": "filter",
+              "kind": "operation",
+              "signature": "fn filter(predicate: fn(value: T) -\u003e Bool) -\u003e Set[T]:",
+              "doc": "Copies matching elements in insertion order, retaining payload references.\nCallbacks traverse a snapshot even when they mutate the receiver."
+            },
+            {
+              "name": "find",
+              "kind": "operation",
+              "signature": "fn find(predicate: fn(value: T) -\u003e Bool) -\u003e Optional[T]:",
+              "doc": "Returns the original first matching element, or none."
+            },
+            {
+              "name": "find_last",
+              "kind": "operation",
+              "signature": "fn find_last(predicate: fn(value: T) -\u003e Bool) -\u003e Optional[T]:",
+              "doc": "Searches a snapshot from the end, returning the original last matching element."
+            },
+            {
+              "name": "fold[A]",
+              "kind": "operation",
+              "signature": "fn fold[A](initial: A, step: fn(accumulator: A, value: T) -\u003e A) -\u003e A:",
+              "doc": "Reduces an element snapshot in insertion order, starting with initial."
+            },
+            {
+              "name": "fold_right[A]",
+              "kind": "operation",
+              "signature": "fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -\u003e A) -\u003e A:",
+              "doc": "Reduces an element snapshot in reverse insertion order, starting with initial."
+            },
+            {
+              "name": "for_each",
+              "kind": "operation",
+              "signature": "fn for_each(operation: fn(value: T) -\u003e Unit) -\u003e Unit:",
+              "doc": "Calls operation(value:) sequentially over an insertion-order membership snapshot."
+            },
+            {
+              "name": "intersection",
+              "kind": "operation",
+              "signature": "fn intersection(right: Set[T]) -\u003e Set[T]:",
+              "doc": "Returns a new set of receiver values also in right, preserving receiver insertion order."
+            },
+            {
+              "name": "is_disjoint_from",
+              "kind": "operation",
+              "signature": "fn is_disjoint_from(right: Set[T]) -\u003e Bool:",
+              "doc": "Tests whether the operands have no common values."
+            },
+            {
+              "name": "is_empty",
+              "kind": "operation",
+              "signature": "fn is_empty() -\u003e Bool:",
+              "doc": "Reports whether this set has no elements."
+            },
+            {
+              "name": "is_subset_of",
+              "kind": "operation",
+              "signature": "fn is_subset_of(right: Set[T]) -\u003e Bool:",
+              "doc": "Tests whether every receiver value also occurs in right."
+            },
+            {
+              "name": "is_superset_of",
+              "kind": "operation",
+              "signature": "fn is_superset_of(right: Set[T]) -\u003e Bool:",
+              "doc": "Tests whether every right value also occurs in the receiver."
+            },
+            {
+              "name": "length",
+              "kind": "operation",
+              "signature": "fn length() -\u003e Int:",
+              "doc": "Returns the number of distinct values currently stored."
+            },
+            {
+              "name": "map[U: Hashable]",
+              "kind": "operation",
+              "signature": "fn map[U: Hashable](transform: fn(value: T) -\u003e U) -\u003e Set[U]:",
+              "doc": "Transforms a snapshot into a fresh set, retaining the first equal result."
+            },
+            {
+              "name": "remove",
+              "kind": "operation",
+              "signature": "fn remove(value: T) -\u003e Set[T]:",
+              "doc": "Removes an equal value in place and returns this set; an absent value leaves it unchanged."
+            },
+            {
+              "name": "some",
+              "kind": "operation",
+              "signature": "fn some(predicate: fn(value: T) -\u003e Bool) -\u003e Bool:",
+              "doc": "Stops at the first matching element; empty sets return false."
+            },
+            {
+              "name": "symmetric_difference",
+              "kind": "operation",
+              "signature": "fn symmetric_difference(right: Set[T]) -\u003e Set[T]:",
+              "doc": "Returns a new set of values in exactly one operand; leaves both operands unchanged."
+            },
+            {
+              "name": "union",
+              "kind": "operation",
+              "signature": "fn union(right: Set[T]) -\u003e Set[T]:",
+              "doc": "Returns a new set with receiver values followed by right-only values in insertion order."
+            },
+            {
+              "name": "values",
+              "kind": "operation",
+              "signature": "fn values() -\u003e List[T]:",
+              "doc": "Returns a shallow list of values in insertion order."
+            },
+            {
+              "name": "with_value",
+              "kind": "operation",
+              "signature": "fn with_value(value: T) -\u003e Set[T]:",
+              "doc": "Compatibility spelling for add; mutates and returns this set."
+            },
+            {
+              "name": "without",
+              "kind": "operation",
+              "signature": "fn without(value: T) -\u003e Set[T]:",
+              "doc": "Compatibility spelling for remove; mutates and returns this set."
             }
           ]
         },

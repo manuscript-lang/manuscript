@@ -869,6 +869,258 @@ Calls create once with the original error only when this is an error.
 fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 ```
 
+## Set {data-api-kind="Native type"}
+
+A mutable collection of unique values using explicit `Hashable` value semantics.
+
+```manuscript
+type Set[T: Hashable]:
+    fn clone() -> Set[T]:
+    fn is_empty() -> Bool:
+    fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
+    fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn some(predicate: fn(value: T) -> Bool) -> Bool:
+    fn every(predicate: fn(value: T) -> Bool) -> Bool:
+    fn union(right: Set[T]) -> Set[T]:
+    fn intersection(right: Set[T]) -> Set[T]:
+    fn difference(right: Set[T]) -> Set[T]:
+    fn symmetric_difference(right: Set[T]) -> Set[T]:
+    fn is_subset_of(right: Set[T]) -> Bool:
+    fn is_superset_of(right: Set[T]) -> Bool:
+    fn is_disjoint_from(right: Set[T]) -> Bool:
+    fn clear() -> Set[T]:
+    fn values() -> List[T]:
+    fn entries() -> List[List[T]]:
+    fn for_each(operation: fn(value: T) -> Unit) -> Unit:
+    fn contains(value: T) -> Bool:
+    fn length() -> Int:
+    fn add(value: T) -> Set[T]:
+    fn remove(value: T) -> Set[T]:
+    fn with_value(value: T) -> Set[T]:
+    fn without(value: T) -> Set[T]:
+```
+
+### Set.add
+
+Adds a value in place and returns this set; an equal value retains its original payload and position.
+
+```manuscript
+fn add(value: T) -> Set[T]:
+```
+
+### Set.clear
+
+Removes all values in place and returns this set; aliases observe the empty set.
+
+```manuscript
+fn clear() -> Set[T]:
+```
+
+### Set.clone
+
+Copies outer storage, retaining element references and insertion order.
+
+```manuscript
+fn clone() -> Set[T]:
+```
+
+### Set.contains
+
+Reports whether an equal value is present, using the element's Hashable implementation.
+
+```manuscript
+fn contains(value: T) -> Bool:
+```
+
+### Set.difference
+
+Returns a new set of receiver values absent from right, preserving receiver insertion order.
+
+```manuscript
+fn difference(right: Set[T]) -> Set[T]:
+```
+
+### Set.entries
+
+Returns a new list of [value, value] lists in insertion order.
+
+```manuscript
+fn entries() -> List[List[T]]:
+```
+
+### Set.every
+
+Stops at the first nonmatching element; empty sets return true.
+
+```manuscript
+fn every(predicate: fn(value: T) -> Bool) -> Bool:
+```
+
+### Set.filter
+
+Copies matching elements in insertion order, retaining payload references.
+Callbacks traverse a snapshot even when they mutate the receiver.
+
+```manuscript
+fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
+```
+
+### Set.find
+
+Returns the original first matching element, or none.
+
+```manuscript
+fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+```
+
+### Set.find_last
+
+Searches a snapshot from the end, returning the original last matching element.
+
+```manuscript
+fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
+```
+
+### Set.fold[A]
+
+Reduces an element snapshot in insertion order, starting with initial.
+
+```manuscript
+fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+```
+
+### Set.fold_right[A]
+
+Reduces an element snapshot in reverse insertion order, starting with initial.
+
+```manuscript
+fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+```
+
+### Set.for_each
+
+Calls operation(value:) sequentially over an insertion-order membership snapshot.
+
+```manuscript
+fn for_each(operation: fn(value: T) -> Unit) -> Unit:
+```
+
+### Set.intersection
+
+Returns a new set of receiver values also in right, preserving receiver insertion order.
+
+```manuscript
+fn intersection(right: Set[T]) -> Set[T]:
+```
+
+### Set.is_disjoint_from
+
+Tests whether the operands have no common values.
+
+```manuscript
+fn is_disjoint_from(right: Set[T]) -> Bool:
+```
+
+### Set.is_empty
+
+Reports whether this set has no elements.
+
+```manuscript
+fn is_empty() -> Bool:
+```
+
+### Set.is_subset_of
+
+Tests whether every receiver value also occurs in right.
+
+```manuscript
+fn is_subset_of(right: Set[T]) -> Bool:
+```
+
+### Set.is_superset_of
+
+Tests whether every right value also occurs in the receiver.
+
+```manuscript
+fn is_superset_of(right: Set[T]) -> Bool:
+```
+
+### Set.length
+
+Returns the number of distinct values currently stored.
+
+```manuscript
+fn length() -> Int:
+```
+
+### Set.map[U: Hashable]
+
+Transforms a snapshot into a fresh set, retaining the first equal result.
+
+```manuscript
+fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
+```
+
+### Set.remove
+
+Removes an equal value in place and returns this set; an absent value leaves it unchanged.
+
+```manuscript
+fn remove(value: T) -> Set[T]:
+```
+
+### Set.some
+
+Stops at the first matching element; empty sets return false.
+
+```manuscript
+fn some(predicate: fn(value: T) -> Bool) -> Bool:
+```
+
+### Set.symmetric_difference
+
+Returns a new set of values in exactly one operand; leaves both operands unchanged.
+
+```manuscript
+fn symmetric_difference(right: Set[T]) -> Set[T]:
+```
+
+### Set.union
+
+Returns a new set with receiver values followed by right-only values in insertion order.
+
+```manuscript
+fn union(right: Set[T]) -> Set[T]:
+```
+
+### Set.values
+
+Returns a shallow list of values in insertion order.
+
+```manuscript
+fn values() -> List[T]:
+```
+
+### Set.with_value
+
+Compatibility spelling for add; mutates and returns this set.
+
+```manuscript
+fn with_value(value: T) -> Set[T]:
+```
+
+### Set.without
+
+Compatibility spelling for remove; mutates and returns this set.
+
+```manuscript
+fn without(value: T) -> Set[T]:
+```
+
 ## String {data-api-kind="Type"}
 
 UTF-8 text indexed by Unicode scalar values; byte_length counts encoded bytes instead.

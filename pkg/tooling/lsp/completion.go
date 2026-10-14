@@ -230,7 +230,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 		}
 	}
 	if c.typeContext {
-		for _, name := range []string{"Int", "Float", "String", "Bool", "Unit", "Never", "Equal", "Hashable", "Optional", "Result", "Error", "List", "Map"} {
+		for _, name := range []string{"Int", "Float", "String", "Bool", "Unit", "Never", "Equal", "Hashable", "Optional", "Result", "Error", "List", "Map", "Set"} {
 			add(name, 7, nil, 3, name, nil)
 		}
 	}

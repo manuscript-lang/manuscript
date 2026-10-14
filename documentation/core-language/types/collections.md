@@ -7,7 +7,7 @@ weight = 3
 
 Use `List[T]` for an ordered sequence, `Map[K, V]` for key/value entries, and `Set[T]` for distinct values. The type arguments state the element, key, and value types. All three collections are mutable references. Assignment retains the same instance; `.clone()` copies its storage.
 
-`List` and `Map` are available in the prelude without imports. Explicit imports from `@std/collections.ms` remain valid. Import `Set` and other collection names when needed. Literals use the canonical standard types; a module declaration or import that replaces `List` or `Map` makes its corresponding literal invalid.
+`List`, `Map`, and `Set` are available in the prelude without imports. Explicit imports from `@std/collections.ms` remain valid. Import other collection names when needed. Literals use the canonical standard types; a module declaration or import that replaces `List` or `Map` makes its corresponding literal invalid.
 
 | Type | Contents |
 | --- | --- |

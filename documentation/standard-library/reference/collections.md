@@ -4,9 +4,9 @@ title = "collections"
 
 # @std/collections.ms
 
-`List` and `Map` are available in the prelude; no import required.
+`List`, `Map`, and `Set` are available in the prelude; no import required.
 
-Other names require `import Name from "@std/collections.ms"`; explicit List/Map imports remain supported.
+Other names require `import Name from "@std/collections.ms"`; explicit List/Map/Set imports remain supported.
 
 ## CollectionError {data-api-kind="Alternative"}
 
@@ -598,6 +598,38 @@ Adds a value in place and returns this set; an equal value retains its original 
 fn add(value: T) -> Set[T]:
 ```
 
+### Set.clear
+
+Removes all values in place and returns this set; aliases observe the empty set.
+
+```manuscript
+fn clear() -> Set[T]:
+```
+
+### Set.clone
+
+Copies outer storage, retaining element references and insertion order.
+
+```manuscript
+fn clone() -> Set[T]:
+```
+
+### Set.contains
+
+Reports whether an equal value is present, using the element's Hashable implementation.
+
+```manuscript
+fn contains(value: T) -> Bool:
+```
+
+### Set.difference
+
+Returns a new set of receiver values absent from right, preserving receiver insertion order.
+
+```manuscript
+fn difference(right: Set[T]) -> Set[T]:
+```
+
 ### Set.entries
 
 Returns a new list of [value, value] lists in insertion order.
@@ -663,6 +695,14 @@ Calls operation(value:) sequentially over an insertion-order membership snapshot
 fn for_each(operation: fn(value: T) -> Unit) -> Unit:
 ```
 
+### Set.intersection
+
+Returns a new set of receiver values also in right, preserving receiver insertion order.
+
+```manuscript
+fn intersection(right: Set[T]) -> Set[T]:
+```
+
 ### Set.is_disjoint_from
 
 Tests whether the operands have no common values.
@@ -695,6 +735,14 @@ Tests whether every right value also occurs in the receiver.
 fn is_superset_of(right: Set[T]) -> Bool:
 ```
 
+### Set.length
+
+Returns the number of distinct values currently stored.
+
+```manuscript
+fn length() -> Int:
+```
+
 ### Set.map[U: Hashable]
 
 Transforms a snapshot into a fresh set, retaining the first equal result.
@@ -725,6 +773,14 @@ Returns a new set of values in exactly one operand; leaves both operands unchang
 
 ```manuscript
 fn symmetric_difference(right: Set[T]) -> Set[T]:
+```
+
+### Set.union
+
+Returns a new set with receiver values followed by right-only values in insertion order.
+
+```manuscript
+fn union(right: Set[T]) -> Set[T]:
 ```
 
 ### Set.values
