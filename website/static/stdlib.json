@@ -2428,6 +2428,101 @@
       ]
     },
     {
+      "path": "@std/terminal.ms",
+      "declarations": [
+        {
+          "name": "EraseRegion",
+          "kind": "alternative",
+          "type": "EraseRegion",
+          "cases": [
+            "Screen",
+            "Line",
+            "LineEnd",
+            "LineStart"
+          ]
+        },
+        {
+          "name": "RawTerminal",
+          "kind": "interface",
+          "type": "RawTerminal",
+          "operations": [
+            "close: fn()-\u003eUnit",
+            "erase: fn(region: EraseRegion)-\u003eResult[Unit, TerminalError]",
+            "move_cursor: fn(row: Int, column: Int)-\u003eResult[Unit, TerminalError]",
+            "next_event: fn(timeout: Optional[Duration] = ...)-\u003eResult[Optional[TerminalEvent], TerminalError]",
+            "show_cursor: fn(visible: Bool)-\u003eResult[Unit, TerminalError]",
+            "size: fn()-\u003eResult[TerminalSize, TerminalError]"
+          ]
+        },
+        {
+          "name": "Terminal",
+          "kind": "interface",
+          "type": "Terminal",
+          "operations": [
+            "capabilities: fn()-\u003eTerminalCapabilities",
+            "raw_mode: fn(alternate_screen: Bool)-\u003eResult[RawTerminal, TerminalError]",
+            "size: fn()-\u003eResult[TerminalSize, TerminalError]"
+          ]
+        },
+        {
+          "name": "TerminalCapabilities",
+          "kind": "record",
+          "type": "TerminalCapabilities",
+          "fields": [
+            "input_is_terminal: Bool",
+            "output_is_terminal: Bool",
+            "error_is_terminal: Bool",
+            "raw_mode: Bool",
+            "resize_events: Bool",
+            "colors: Int"
+          ]
+        },
+        {
+          "name": "TerminalError",
+          "kind": "alternative",
+          "type": "TerminalError",
+          "cases": [
+            "InvalidInput",
+            "NotTerminal",
+            "Unsupported",
+            "Busy",
+            "Closed",
+            "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
+          "name": "TerminalEvent",
+          "kind": "alternative",
+          "type": "TerminalEvent",
+          "cases": [
+            "Text(text: String)",
+            "Key(name: String, ctrl: Bool, alt: Bool, shift: Bool)",
+            "Resize(columns: Int, rows: Int)"
+          ]
+        },
+        {
+          "name": "TerminalSize",
+          "kind": "record",
+          "type": "TerminalSize",
+          "fields": [
+            "columns: Int",
+            "rows: Int"
+          ]
+        },
+        {
+          "name": "terminal",
+          "kind": "fn",
+          "type": "fn()-\u003eTerminal"
+        }
+      ]
+    },
+    {
       "path": "@std/time.ms",
       "declarations": [
         {

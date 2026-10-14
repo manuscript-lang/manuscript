@@ -46,6 +46,7 @@ See [special call rules](../call-rules.md) for constructors, generic receiver me
 - [@std/sync.ms](sync.md)
 - [@std/system.ms](system.md)
 - [@std/tasks.ms](tasks.md)
+- [@std/terminal.ms](terminal.md)
 - [@std/time.ms](time.md)
 - [@std/tls.ms](tls.md)
 - [@std/toml.ms](toml.md)

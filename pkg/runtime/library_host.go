@@ -62,7 +62,7 @@ func libraryMethod(receiver, name string, body func(*Execution, string, []Value)
 				}
 				return body(ctx, result, normalized)
 			}
-			if receiver == "ProcessControl" && name == "watch_signals" {
+			if receiver == "ProcessControl" && name == "watch_signals" || receiver == "Terminal" && name == "raw_mode" {
 				return NewAcquisition(labels, result, implementation, libraryDisposeResource)
 			}
 			if receiver == "FileSystem" && (name == "open" || name == "open_flags" || name == "open_directory" || name == "watch" || name == "watch_native" || name == "temporary") {
