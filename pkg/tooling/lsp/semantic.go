@@ -53,7 +53,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 				kind = 9
 			} else if entry.info.Symbol != nil && entry.info.Symbol.Kind == syntax.KindType {
 				kind = 6
-			} else if entry.info.Type != nil && entry.info.Type.Kind == "function" {
+			} else if entry.info.Type != nil && entry.info.Type.Kind == "function" && (entry.info.Symbol == nil || !entry.info.Symbol.IsConstant()) {
 				kind = 5
 			}
 			resolved[entry.pos.Offset] = kind
@@ -69,7 +69,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 				}
 				if info.Symbol != nil && info.Symbol.Kind == syntax.KindType {
 					resolved[expression.Pos.Offset] = 6
-				} else if info.Type != nil && info.Type.Kind == "function" {
+				} else if info.Type != nil && info.Type.Kind == "function" && (info.Symbol == nil || !info.Symbol.IsConstant()) {
 					resolved[expression.Pos.Offset] = 5
 				}
 			}
