@@ -146,9 +146,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
             )
 
             let rewind = value(handle.seek(offset: 0, origin: 0))
-            let overwritten = value(
-                handle.append_file("XY".to_bytes())
-            )
+            let overwritten = value(handle.append_file("XY".to_bytes()))
             if value(handle.read_at(offset: 0, max_bytes: 2)) != "XY".to_bytes(): return panic(
                 "handle append repositioned"
             )
@@ -156,20 +154,13 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
                 "handle append extended"
             )
 
-            value(
-                handle.write_at(
-                    offset: 4,
-                    data: "ZZ".to_bytes()
-                )
-            )
+            value(handle.write_at(offset: 4, data: "ZZ".to_bytes()))
             if value(handle.seek(offset: 0, origin: 1)) != 2: return panic(
                 "write_at moved position"
             )
 
             let writer = handle.writer()
-            let delivered = value(
-                writer.write("AB".to_bytes())
-            )
+            let delivered = value(writer.write("AB".to_bytes()))
             let flushed = value(writer.flush())
             if value(handle.read_at(offset: 2, max_bytes: 4)) != "ABZZ".to_bytes(): return panic(
                 "writer position"

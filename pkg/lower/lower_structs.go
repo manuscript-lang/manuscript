@@ -167,7 +167,7 @@ func (g *generator) constructStruct(st *structType, args []syntax.Argument) ast.
 		} else {
 			value = g.argumentValue(a)
 		}
-		elements = append(elements, keyed(fieldName(a.Name), sourceAt(a.Pos, value)))
+		elements = append(elements, keyed(fieldName(a.Name), sequence(value)))
 	}
 	return call(runtimeName("Value"), address(composite(ident(st.name), elements...)))
 }

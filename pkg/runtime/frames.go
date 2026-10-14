@@ -8,6 +8,9 @@ import (
 	"sync"
 )
 
+// maxFaultFrames bounds the trace kept on a fault; deeper frames are counted.
+const maxFaultFrames = 32
+
 // Direct source functions are emitted as ordinary Go functions. A function in
 // a recursive cycle of direct calls admits itself with Enter and leaves with
 // Exit, which carry the call-depth limit and a periodic cancellation check;

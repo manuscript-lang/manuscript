@@ -32,10 +32,7 @@ test "callback inference retains captures and contextual metadata":
     let values = [1, 2].map(
         fn(outer): [3, 4].map(
             fn(inner):
-                return record(
-                    events: events,
-                    value: outer + inner + offset
-                )
+                return record(events: events, value: outer + inner + offset)
         )
     )
     if values != [[11, 12], [12, 13]]: return panic("nested callback values")
@@ -47,20 +44,12 @@ test "callback inference retains captures and contextual metadata":
     )
     if callable(value: 3)(input: 4) != 8: return panic("nested context labels")
 
-    let callback = Callback(
-        fn(item: Int = 4): item + offset
-    )
+    let callback = Callback(fn(item: Int = 4): item + offset)
     if callback.transform(3) != 10: return panic("constructor callback capture")
-    if optional(
-        value: 5,
-        transform: fn(item): item + offset
-    ) != 12:
+    if optional(value: 5, transform: fn(item): item + offset) != 12:
         return panic("optional callback wrapping")
 
-    let missing = choose(
-        first: fn(): none,
-        second: fn(): some(3)
-    )
+    let missing = choose(first: fn(): none, second: fn(): some(3))
     if not missing.is_none(): return panic("failed probe needed final context")
 
     let failure = with_result(

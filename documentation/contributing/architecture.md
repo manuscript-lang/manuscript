@@ -16,8 +16,8 @@ flowchart LR
   CLI[CLI or compiler API] --> Parse[frontend: parse and resolve imports]
   Parse --> AST[syntax: AST graph]
   AST --> Check[checker: types and semantic facts]
-  Check --> Optimize[compiler: optimization facts]
-  Optimize --> Lower[compiler: Go lowering]
+  Check --> Optimize[lower: optimization facts]
+  Optimize --> Lower[lower: Go generation]
   Lower --> Native[native build and runtime]
   SyntaxTools[formatting and declaration completion] --> Parse
   Check --> SourceTools[lint, inspection, docs, and LSP]
@@ -59,7 +59,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/parser/` | Strict source parsing; editor recovery |
 | `pkg/frontend/` | Shared parsing and in-memory AST loading; project/module graph loading, canonical snapshots, and import diagnostics |
 | `pkg/checker/` | Checking entry point and per-module passes (imports, names, type variables, signatures, defaults, bodies); expression kinds; calls, contracts, recursion, effects, standard loading, editor queries, and declaration documentation in focused files |
-| `pkg/project/` | Manifest parsing; confined import and overlay resolution |
+| `pkg/project/` | Manifest parsing; confined import resolution and canonical editor overlays |
 | `pkg/compiler/` | Source-to-checked-program pipeline (frontend, checker, entry validation, then `lower.Go`); build kinds. It never touches native tools |
 | `pkg/lower/` | Checked program to Go source: literal-boolean folding, module assembly, lowering, and Go AST printing. It consumes only checker identities |
 | `pkg/build/` | Native builds from compiler results: source assembly; pin/artifact identity; command replay; shared workspace; runtime variant; SDK selection/materialization |
@@ -81,9 +81,13 @@ Public Go imports use `github.com/manuscript-lang/manuscript/pkg/<package>`, inc
 
 Semantic lint consumes the checker's resolved symbol and type identities. It does not re-lex checked source to guess whether a name is an import, shadowing local, or field label. Import usage is tracked within each module.
 
+`project.CanonicalOverlay` applies the same path identity and confinement as imports, accepting equivalent snapshots and rejecting conflicting spellings of one file. The frontend consumes that snapshot when loading its module graph.
+
 Editor navigation and references reuse one source index per request. An implicit receiver resolves directly to its checked method declaration; finding it does not generate an entire inspection document and hash. Analysis, completion, and workspace enumeration use the same nearest-manifest discovery rule. A malformed nested manifest cannot silently select a parent's aliases.
 
 The CLI classifies each command's compiler mode in one switch, then checks source once and shares terminal diagnostics and output delivery. Native build/run/test/debug/profile retain one build path and one project cache selection. Profile output directories are created only after source checking succeeds.
+
+Within `runtime`, `values.go` owns value representation and construction; `format.go` and `equality.go` own display and comparison. `functions.go` owns callable adaptation, defaults, source returns, and callback admission; `methods.go` owns type-key resolution, lexical implementation selection, and dispatch caches. `frames.go` owns direct-call recursion checks and fault frames. Native test execution lives in `test_runner.go`, with structured reporting in `test_events.go`. Buffered and streaming HTTP handlers share admission and release accounting while retaining their own request and response lifetimes.
 
 ## Keep source and generated output distinct
 

@@ -213,7 +213,7 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 ## Linting and formatting
 
-`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), MSL106 (a match payload binding mistaken for a case or type pattern) and MSL107 (nested match). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
+`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local or match payload binding; a read inside an assignment to the same variable, as in `total = total + 2`, does not count; use `_` to ignore a payload), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), MSL106 (a match payload binding mistaken for a case or type pattern), MSL107 (nested match) and MSL109 (bare identifier selecting a different parameter than the next positional slot). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
 
 MSL104 warns when an expression statement discards a standard `Result`. Handle it with `match`, propagate it with `try`, or explicitly bind it as `let _ignored = operation()` when ignoring both success and failure is intentional. See [Result handling](../core-language/errors/results.md).
 
@@ -225,6 +225,8 @@ helper to match a case of the payload's type, or renaming an intentional binding
 See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns).
 
 MSL107 warns at a match nested structurally inside another match. Use an early-exit payload binding, compatible `try`, or a small helper to keep flow flat. It includes inline callbacks beneath an outer match and preserves checking/runtime behavior. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
+
+MSL109 warns when a bare identifier call argument matches a parameter name that is not the next unfilled positional parameter, so the matching-name shorthand redirects it. For `subtract(right, amount)` with parameters `left` and `right`, it suggests `left: right` or `(right)` for positional intent, or `right: right` to keep the current binding. Binding is unchanged. See [argument names](../core-language/functions/declarations-and-calls.md#argument-names).
 String replacement names remain outside its preference map. In particular,
 `String.replace_first` still accepts a cap greater than one; renaming every
 `String.replace` call would conceal that behavior. Both names remain supported
@@ -253,20 +255,19 @@ infer stages from the names of calls or bindings.
 
 Expression layout uses a soft limit of 88 columns:
 
-- Keep simple calls and small literals compact. Expand calls with four or more
-  arguments, multiple arguments containing nested calls or compound computations,
-  or a closure argument. Single-argument calls containing another nested
-  computation can also expand.
-- Expand signatures with four or more parameters or complex defaults. Include the
-  return type when deciding whether a signature fits, excluding callback bodies
-  and enclosing arguments.
+- Keep calls and signatures on one line when they fit, whatever their argument
+  or parameter count, nested calls, compound computations, or defaults. An
+  anonymous function whose body is a multi-statement suite always expands its
+  call. Include the return type when deciding whether a signature fits,
+  excluding callback bodies and enclosing arguments.
 - Keep lists compact when they fit, including nested lists. Expand grouped
-  imports with five or more names. Later call arguments do not count toward
+  imports with five or more names and maps with ten or more entries. Later call arguments do not count toward
   the width of a preceding list or call in a chain.
 - Once a group expands, put every argument, parameter, or element on its own line.
   Use four spaces beyond the containing line and align the closing delimiter with
-  that line. Existing multiline groups remain expanded with this same layout.
-- Break conditions with three or more clauses at their lowest-precedence logical
+  that line. An authored multiline group collapses when it fits and holds no
+  comment or suite; an authored trailing comma is dropped when it does.
+- Break conditions that exceed the limit at their lowest-precedence logical
   operator. Keep comparison operands together. Long arithmetic and member chains
   also gain continuation lines, preserving precedence and evaluation order.
 - Add grouping parentheses around complete statement values, argument values,

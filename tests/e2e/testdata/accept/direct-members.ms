@@ -29,10 +29,7 @@ test "list members match generic dispatch":
     let points: List[Point] = [Point(x: 1, y: 2)]
     if not points.contains(Point(x: 1, y: 2)):
         return panic(message: "record contains")
-    if not contains_generic(
-        values: points,
-        value: Point(x: 1, y: 2)
-    ):
+    if not contains_generic(values: points, value: Point(x: 1, y: 2)):
         return panic(message: "generic contains")
 
 test "map and set members":

@@ -155,27 +155,42 @@ type httpService struct {
 	requests                 sync.WaitGroup
 }
 
+// admitRequest pairs with releaseRequest. Admission and closing share the mutex
+// so shutdown cannot begin waiting before an admitted request is counted.
+func (s *httpService) admitRequest(w http.ResponseWriter) bool {
+	s.mu.Lock()
+	if s.closing {
+		s.mu.Unlock()
+		http.Error(w, "server closed", http.StatusServiceUnavailable)
+		return false
+	}
+	if s.admissionLimit != nativeUnlimited && s.admitted >= s.admissionLimit {
+		s.mu.Unlock()
+		http.Error(w, "server busy", http.StatusServiceUnavailable)
+		return false
+	}
+	s.admitted++
+	s.requests.Add(1)
+	s.mu.Unlock()
+	return true
+}
+
+func (s *httpService) releaseRequest() {
+	s.mu.Lock()
+	s.admitted--
+	s.mu.Unlock()
+	s.requests.Done()
+}
+
 func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if s.streaming {
 		s.serveStreamingRequest(w, r)
 		return
 	}
-	s.mu.Lock()
-	if s.closing {
-		s.mu.Unlock()
-		http.Error(w, "server closed", http.StatusServiceUnavailable)
+	if !s.admitRequest(w) {
 		return
 	}
-	if s.admissionLimit != nativeUnlimited && s.admitted >= s.admissionLimit {
-		s.mu.Unlock()
-		http.Error(w, "server busy", 503)
-		return
-	}
-	s.admitted++
-	s.requests.Add(1)
-	s.mu.Unlock()
-	defer s.requests.Done()
-	defer func() { s.mu.Lock(); s.admitted--; s.mu.Unlock() }()
+	defer s.releaseRequest()
 
 	execution, cancel := nativeContextTimeout(r.Context(), s.timeout)
 	defer cancel()

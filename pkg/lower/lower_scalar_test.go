@@ -86,7 +86,7 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 		ast.Inspect(body, func(node ast.Node) bool {
 			if c, ok := node.(*ast.CallExpr); ok {
 				if s, ok := c.Fun.(*ast.SelectorExpr); ok {
-					if s.Sel.Name == "NewSourceFunction" || s.Sel.Name == "SourceDirect" {
+					if s.Sel.Name == "NewSourceFunction" || s.Sel.Name == "NewCompiledSourceFunction" || s.Sel.Name == "SourceDirect" {
 						return false
 					}
 					if s.Sel.Name == "NewCleanupStack" {

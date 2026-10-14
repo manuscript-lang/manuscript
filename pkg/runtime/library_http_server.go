@@ -109,22 +109,10 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "invalid request path", 400)
 		return
 	}
-	s.mu.Lock()
-	if s.closing {
-		s.mu.Unlock()
-		http.Error(w, "server closed", 503)
+	if !s.admitRequest(w) {
 		return
 	}
-	if s.admissionLimit != nativeUnlimited && s.admitted >= s.admissionLimit {
-		s.mu.Unlock()
-		http.Error(w, "server busy", 503)
-		return
-	}
-	s.admitted++
-	s.requests.Add(1)
-	s.mu.Unlock()
-	defer s.requests.Done()
-	defer func() { s.mu.Lock(); s.admitted--; s.mu.Unlock() }()
+	defer s.releaseRequest()
 
 	call, cancel := nativeContextTimeout(r.Context(), s.timeout)
 	defer cancel()

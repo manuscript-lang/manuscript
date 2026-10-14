@@ -16,29 +16,19 @@ test "Unicode scalar indexing differs from byte length":
         "scalar indexing"
     )
     if not text.at(3).is_none(): return panic("out of bounds optional")
-    if value(
-        from_scalars(text.scalar_values())
-    ) != text: return panic("scalar roundtrip")
+    if value(from_scalars(text.scalar_values())) != text: return panic(
+        "scalar roundtrip"
+    )
     if value(text.slice_scalars(start: 1, end: 3)) != "é🙂": return panic("scalar slice")
     if value("é".normalize(form: "NFC")) != "é": return panic("normalization")
 
 test "strings honor omitted none zero and explicit output limits":
     if value("ab".repeat(count: 2)) != "abab": return panic("omitted repeat budget")
-    if value("ab".repeat(count: 2)) != "abab": return panic(
-        "none repeat budget"
-    )
-    if value(
-        "ab".repeat(
-            count: 0,
-            max_bytes: 0
-        )
-    ) != "": return panic("zero repeat")
+    if value("ab".repeat(count: 2)) != "abab": return panic("none repeat budget")
+    if value("ab".repeat(count: 0, max_bytes: 0)) != "": return panic("zero repeat")
 
     let limited: Result[String, StringError] = error(StringError.LimitExceeded)
-    if "é".repeat(
-        count: 2,
-        max_bytes: 3
-    ) != limited: return panic("byte budget")
+    if "é".repeat(count: 2, max_bytes: 3) != limited: return panic("byte budget")
     if value("x".pad_start(target_length: 3, padding: "ab")) != "abx": return panic(
         "pad start"
     )
@@ -46,10 +36,9 @@ test "strings honor omitted none zero and explicit output limits":
         "pad end"
     )
     if "ab".repeat(count: 4611686018427387904) != limited: return panic("repeat huge")
-    if "ab".pad_start(
-        target_length: 9223372036854775807,
-        padding: "x"
-    ) != limited: return panic("pad start huge")
+    if "ab".pad_start(target_length: 9223372036854775807, padding: "x") != limited: return panic(
+        "pad start huge"
+    )
     if (
         "ab".pad_end(
             target_length: 4611686018427387904,
@@ -60,18 +49,15 @@ test "strings honor omitted none zero and explicit output limits":
     if value("aa".replace_all(old: "a", new: "xy")) != "xyxy": return panic(
         "replace all"
     )
-    if "a,,b".split(
-        separator: ",",
-        max_parts: 2
-    ) != ["a", ""]: return panic("split truncation")
+    if "a,,b".split(separator: ",", max_parts: 2) != ["a", ""]: return panic(
+        "split truncation"
+    )
     if " \té \n".trim() != "é": return panic("trim")
 
     let invalid: Result[String, StringError] = error(StringError.InvalidInput)
     if "a".normalize(form: "invalid") != invalid: return panic("normalization form")
 
-    let scalar_error: Result[String, StringError] = error(
-        StringError.InvalidInput
-    )
+    let scalar_error: Result[String, StringError] = error(StringError.InvalidInput)
     if from_scalars([55296]) != scalar_error: return panic("surrogate scalar")
 
 test "bytes copy slice search and UTF8 validation":
@@ -79,9 +65,7 @@ test "bytes copy slice search and UTF8 validation":
     if data.at(-1) != some(1): return panic("negative byte index")
     if not data.at(4).is_none(): return panic("missing byte")
     if data.index_of(Bytes([1])) != some(1): return panic("byte search")
-    if data.last_index_of(Bytes([1])) != some(3): return panic(
-        "last byte search"
-    )
+    if data.last_index_of(Bytes([1])) != some(3): return panic("last byte search")
     if data.slice(start: 1, end: 3).unwrap() != Bytes([1, 255]): return panic(
         "byte slice"
     )
@@ -99,12 +83,8 @@ test "bytes copy slice search and UTF8 validation":
     if data.reversed() != Bytes([1, 255, 1, 0]): return panic("byte reverse")
 
     let copied = data.clone().with_value(index: 0, value: 42)
-    if copied.at(0) != some(42) or data.at(0) != some(0): return panic(
-        "clone storage"
-    )
-    if not Bytes([255]).to_text().is_none(): return panic(
-        "invalid UTF8 accepted"
-    )
+    if copied.at(0) != some(42) or data.at(0) != some(0): return panic("clone storage")
+    if not Bytes([255]).to_text().is_none(): return panic("invalid UTF8 accepted")
     if "é".to_bytes().to_text() != some("é"): return panic("UTF8 roundtrip")
 
 test "Bytes values direct bound and free calls return independent lists":
@@ -165,10 +145,9 @@ test "string and bytes builders freeze idempotently":
     let bytes = BytesBuilder()
     bytes.append(0)
     bytes.concat(Bytes([255, 1]))
-    if (
-        bytes.freeze() != Bytes([0, 255, 1])
-        or bytes.freeze() != Bytes([0, 255, 1])
-    ): return panic("bytes freeze")
+    if (bytes.freeze() != Bytes([0, 255, 1]) or bytes.freeze() != Bytes([0, 255, 1])): return panic(
+        "bytes freeze"
+    )
 
 test "empty text splits into one part and case mapping is full Unicode":
     if "".split(separator: ",") != [""]: return panic("empty split")
@@ -213,9 +192,7 @@ test "indexing and slicing long mixed-width text matches scalar positions":
         text.at(1200) != some("a")
         or text.at(2399) != some("🙂")
         or text.at(-2) != some("€")
-    ): return panic(
-        "scalar at positions"
-    )
+    ): return panic("scalar at positions")
     if value(text.slice(start: 1199, end: 1203)) != "🙂aé€": return panic("slice mid")
     if value(text.slice(start: 2396, end: 2400)) != block: return panic("slice tail")
     if value(text.slice(start: 0, end: 4)) != block: return panic("slice head")

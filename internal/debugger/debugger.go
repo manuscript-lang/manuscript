@@ -27,7 +27,14 @@ func DAP(ctx context.Context, transport io.ReadWriteCloser) {
 		// a target consume DAP requests. Match the old adapter's ignored stdin.
 		Debugger: delve.Config{Backend: "default", CheckGoVersion: true, Stdin: os.DevNull},
 	}, StopTriggered: make(chan struct{})}
-	transport = &execTransport{ReadWriteCloser: transport, reader: bufio.NewReader(transport)}
+	transport = &execTransport{ReadWriteCloser: transport, reader: bufio.NewReader(transport), startSession: func() {
+		// Delve records an attach target in the shared configuration before it
+		// knows the attach will succeed, and a failed attach leaves it behind. The
+		// next launch would then try to attach to that process instead of starting
+		// its program. Every session start begins from a clean target selection.
+		// This runs on the request loop, so it cannot race the handlers.
+		cfg.Debugger.AttachPid, cfg.Debugger.AttachWaitFor, cfg.Debugger.AttachWaitForInterval = 0, "", 0
+	}}
 	session := dap.NewSession(transport, cfg, nil)
 	done := make(chan struct{})
 	go func() { session.ServeDAPCodec(); close(done) }()

@@ -30,9 +30,7 @@ test "byte updates retain relative bounds and immutable storage":
 
 test "list boundaries retain mutation truncation and empty ranges":
     let list = [1, 2]
-    if list.set(index: -2, value: 0) != [0, 2]: return panic(
-        "relative list update"
-    )
+    if list.set(index: -2, value: 0) != [0, 2]: return panic("relative list update")
     if list.remove(-1) != [0] or list != [0]: return panic("relative removal")
 
     list.splice(start: 1, delete_count: 0, replacement: [1, 2])

@@ -260,3 +260,29 @@ func TestRemovalKeepsMixedKeyKindsConsistent(t *testing.T) {
 		}
 	}
 }
+
+// Removing from the front and the back, then appending, must keep every
+// surviving key reachable at its current position.
+func TestIndexPositionsAfterMixedRemovals(t *testing.T) {
+	ctx := RootExecution()
+	s := &Set{Type: "@std/Set[Int]"}
+	for i := int64(0); i < 10; i++ {
+		s.add(ctx, i)
+	}
+	s.removeAt(ctx, s.find(ctx, int64(9))) // tail: ids still equal positions
+	s.add(ctx, int64(20))
+	s.removeAt(ctx, s.find(ctx, int64(0))) // front: switches to explicit ids
+	s.removeAt(ctx, s.find(ctx, int64(5)))
+	s.add(ctx, int64(9))
+	want := []int64{1, 2, 3, 4, 6, 7, 8, 20, 9}
+	for i, v := range want {
+		if got := s.find(ctx, v); got != i {
+			t.Fatalf("find(%d) = %d, want %d", v, got, i)
+		}
+	}
+	for _, gone := range []int64{0, 5} {
+		if s.find(ctx, gone) >= 0 {
+			t.Fatalf("removed %d still found", gone)
+		}
+	}
+}

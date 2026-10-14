@@ -27,19 +27,11 @@ fn limits(
     depth: Optional[Int],
     values: Optional[Int]
 ) -> Optional[TomlLimits]:
-    return some(
-        TomlLimits(
-            max_bytes: bytes,
-            max_depth: depth,
-            max_values: values
-        )
-    )
+    return some(TomlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
 
 test "TOML scalars quoted keys comments exact integers and dates":
     let source = "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
-    let root = entries(
-        value(parse(text: source))
-    )
+    let root = entries(value(parse(text: source)))
     if root.get("title").unwrap() != TomlValue.StringValue("é🙂 # text"): return panic(
         "TOML text"
     )
@@ -49,18 +41,16 @@ test "TOML scalars quoted keys comments exact integers and dates":
     if root.get("large").unwrap() != TomlValue.IntValue(9007199254740993): return panic(
         "exact integer"
     )
-    if root.get("hex").unwrap() != TomlValue.IntValue(3735928559): return panic(
-        "hex"
-    )
+    if root.get("hex").unwrap() != TomlValue.IntValue(3735928559): return panic("hex")
     if root.get("oct").unwrap() != TomlValue.IntValue(493): return panic("octal")
     if root.get("bin").unwrap() != TomlValue.IntValue(10): return panic("binary")
     if root.get("float").unwrap() != TomlValue.FloatValue(-1250.0): return panic(
         "float"
     )
     if (
-        root.get(
-            "stamp"
-        ).unwrap() != TomlValue.DateTimeValue("1979-05-27 07:32:00-07:00")
+        root.get("stamp").unwrap() != TomlValue.DateTimeValue(
+            "1979-05-27 07:32:00-07:00"
+        )
     ): return panic("date time")
     if root.get("date").unwrap() != TomlValue.DateTimeValue("2024-02-29"): return panic(
         "date"
@@ -92,37 +82,33 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
         "inline table"
     )
     if (
-        entries(
-            person.get("meta").unwrap()
-        ).get("age").unwrap() != TomlValue.IntValue(37)
+        entries(person.get("meta").unwrap()).get(
+            "age"
+        ).unwrap() != TomlValue.IntValue(37)
     ): return panic("inline dotted key")
 
 test "TOML implicit parents dotted keys and arrays of tables":
     let text = "[owner.details]\nname = 'Ada'\n[owner]\nactive = true\n[[products]]\nname = 'Hammer'\n[products.meta]\nstock = 3\n[[products]]\nname = 'Nail'\n[[products.variants]]\nsize = 1\n[[products.variants]]\nsize = 2\n"
-    let root = entries(
-        value(parse(text: text))
-    )
+    let root = entries(value(parse(text: text)))
     let owner = entries(root.get("owner").unwrap())
     if (
-        entries(
-            owner.get("details").unwrap()
-        ).get("name").unwrap() != TomlValue.StringValue("Ada")
+        entries(owner.get("details").unwrap()).get(
+            "name"
+        ).unwrap() != TomlValue.StringValue("Ada")
     ): return panic("implicit parent")
 
     let products = items(root.get("products").unwrap())
     if products.length() != 2: return panic("table array")
     if (
-        entries(
-            entries(products.first().unwrap()).get("meta").unwrap()
-        ).get("stock").unwrap() != TomlValue.IntValue(3)
+        entries(entries(products.first().unwrap()).get("meta").unwrap()).get(
+            "stock"
+        ).unwrap() != TomlValue.IntValue(3)
     ): return panic("array child table")
     if items(entries(products.last().unwrap()).get("variants").unwrap()).length() != 2: return panic(
         "nested table arrays"
     )
 
-    let dotted = entries(
-        value(parse(text: "a.b.c = 1\na.b.d = 2\n"))
-    )
+    let dotted = entries(value(parse(text: "a.b.c = 1\na.b.d = 2\n")))
     if entries(entries(dotted.get("a").unwrap()).get("b").unwrap()).length() != 2: return panic(
         "dotted assignment"
     )
@@ -164,11 +150,9 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
 
         match cause:
             InvalidData(line, column, reason):
-                if (
-                    line < 1
-                    or column < 1
-                    or reason == ""
-                ): return panic("TOML error details")
+                if (line < 1 or column < 1 or reason == ""): return panic(
+                    "TOML error details"
+                )
 
                 let boundary = Error(cause)
                 if not boundary.message().starts_with("TOML "): return panic(
@@ -183,71 +167,39 @@ test "TOML optional limits include implicit tables and zero":
     if (
         parse(
             text: "a=1",
-            limits: limits(
-                bytes: 2,
-                depth: none,
-                values: none
-            )
+            limits: limits(bytes: 2, depth: none, values: none)
         ) != limited
     ): return panic("byte limit")
     if (
         parse(
             text: "a.b=1",
-            limits: limits(
-                bytes: none,
-                depth: 2,
-                values: none
-            )
+            limits: limits(bytes: none, depth: 2, values: none)
         ) != limited
     ): return panic("depth limit")
     if (
         parse(
             text: "a.b=1",
-            limits: limits(
-                bytes: none,
-                depth: none,
-                values: 2
-            )
+            limits: limits(bytes: none, depth: none, values: 2)
         ) != limited
     ): return panic("value limit")
     if (
-        parse(
-            text: "",
-            limits: limits(
-                bytes: 0,
-                depth: 1,
-                values: 1
-            )
-        ) != parse(text: "")
+        parse(text: "", limits: limits(bytes: 0, depth: 1, values: 1)) != parse(
+            text: ""
+        )
     ): return panic("empty exact limits")
+    if (parse(text: "", limits: limits(bytes: none, depth: none, values: 0)) != limited): return panic(
+        "zero values"
+    )
     if (
         parse(
             text: "",
-            limits: limits(
-                bytes: none,
-                depth: none,
-                values: 0
-            )
-        ) != limited
-    ): return panic("zero values")
-    if (
-        parse(
-            text: "",
-            limits: limits(
-                bytes: none,
-                depth: -1,
-                values: none
-            )
+            limits: limits(bytes: none, depth: -1, values: none)
         ) != invalid
     ): return panic("negative limit")
     if (
         parse(
             text: "a=1",
-            limits: limits(
-                bytes: 3,
-                depth: 2,
-                values: 2
-            )
+            limits: limits(bytes: 3, depth: 2, values: 2)
         ) != parse(text: "a=1")
     ): return panic("exact limits")
 
@@ -309,16 +261,10 @@ test "TOML errors report the offending line and column":
 
 test "TOML limits fields default to none":
     let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
-    if parse(
-        text: "a=1",
-        limits: some(TomlLimits(max_bytes: 2))
-    ) != limited: return panic(
+    if parse(text: "a=1", limits: some(TomlLimits(max_bytes: 2))) != limited: return panic(
         "partial byte limit"
     )
-    if parse(
-        text: "a=1",
-        limits: some(TomlLimits())
-    ) != parse(text: "a=1"): return panic(
+    if parse(text: "a=1", limits: some(TomlLimits())) != parse(text: "a=1"): return panic(
         "empty limits"
     )
 
@@ -327,11 +273,7 @@ test "TOML stringify round trips scalars tables and arrays of tables":
     let parsed = value(parse(text: source))
     let text = value(stringify(value: parsed))
     if value(parse(text: text)) != parsed: return panic("TOML stringify round trip")
-    if value(
-        stringify(
-            value: value(parse(text: text))
-        )
-    ) != text: return panic(
+    if value(stringify(value: value(parse(text: text)))) != text: return panic(
         "TOML stringify is stable"
     )
 

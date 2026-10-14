@@ -63,7 +63,7 @@ Verify: examples compile with compatible `try` calls and introduce only the conc
 
 ### Equality and hashing are source interfaces
 
-Decision: the stdlib revamp explicitly replaces compiler-only equality/hashing bounds with `Equal` and `Hashable` interfaces. Built-in data keeps its value semantics, and explicit implementations select domain identity. Custom equality requires an explicit consistent hash before the type becomes a key; structural hashing cannot silently use different fields.
+Decision: the stdlib revamp explicitly replaces compiler-only equality/hashing bounds with `Equal` and `Hashable` interfaces. Data keeps reference semantics (no move to value semantics was adopted), and explicit implementations select domain identity. Custom equality requires an explicit consistent hash before the type becomes a key; structural hashing cannot silently use different fields.
 
 Apply when: changing equality operators, generic bounds, contract views, key lookup, or implementation visibility.
 Evidence: [equality rules](../documentation/core-language/types/equality-and-hashing.md), [source interfaces](../pkg/stdlib/equality.ms), and [compiled domain-key fixture](../tests/e2e/testdata/accept/stdlib-revamp.ms).
@@ -78,7 +78,7 @@ Decision: support grouped symbol imports and brace Map literals. The user's newe
 
 Apply when: changing calls, grammar, inference or editor assistance.
 Evidence: [canonical call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names); [binding/source preservation tests](../pkg/checker/positional_arguments_test.go); [native calls](../tests/e2e/testdata/accept/positional-arguments.ms).
-Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding.
+Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding. Open (issue #452): a bare identifier can silently select another parameter; [MSL109](../pkg/tooling/bare_argument_lint.go) warns without changing binding, while making bare arguments positional remains an undecided language change needing a migration for reordered shorthand calls.
 
 ### Recover concrete contract receivers through checked matching
 
@@ -110,7 +110,7 @@ Verify: the counter's Unit-returning method updates `self.val`; aliases observe 
 
 ### Source-backed data types belong in the prelude
 
-Decision: the user requested Optional, Result, their related helpers, and Error without imports. The later accepted [issue #187 direction](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138072921) adds List and Map to that scope; the adds Set through the same mechanism. Keep their canonical source-backed identities, including some/none, ok/error, and Optional receiver methods. Existing explicit imports remain valid. Ordinary declarations may select a local identity instead; a matching spelling must not acquire native behavior. Other standard APIs remain explicit imports. [Map.add is the accepted insertion spelling](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138104857); preserve with_entry compatibility until a migration is decided.
+Decision: the user requested Optional, Result, their related helpers, and Error without imports. The later accepted [issue #187 direction](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138072921) adds List and Map to that scope; the adds Set through the same mechanism. Keep their canonical source-backed identities, including some/none, ok/error, and Optional receiver methods. Existing explicit imports remain valid. Ordinary declarations may select a local identity instead; a matching spelling must not acquire native behavior. Other standard APIs remain explicit imports. [Map.add is the accepted insertion spelling](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138104857); the older `with_entry` and alias spellings were removed (#358).
 
 Apply when: changing prelude scope, standard imports, case lookup, or editor auto-imports.
 Evidence: [module scope rules](../documentation/core-language/modules/declarations.md#names-and-declaration-order), [native prelude conformance](../tests/e2e/testdata/accept/prelude.ms), [case inference and shadowing regressions](../pkg/compiler/prelude_test.go), [collection execution](../tests/e2e/testdata/accept/collection-prelude.ms), [Set execution](../tests/e2e/testdata/accept/set-prelude.ms), and [editor completion/navigation](../pkg/tooling/lsp/completion_test.go).
