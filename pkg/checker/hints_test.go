@@ -29,6 +29,7 @@ func TestDiagnosticsStateCauseAndFix(t *testing.T) {
 		{"list delete hint", "import List from \"@std/collections.ms\"\nfn f(values: List[Int]) -> Unit:\n    values.delete(0)\n", []string{"unknown or ambiguous member delete", "did you mean 'remove'"}, 1},
 		{"non-exhaustive", "type S:\n    case A\n    case B\n    case C\nfn f(s: S) -> Int:\n    match s:\n        A:\n            return 1\n    return 0\n", []string{"non-exhaustive match", "missing cases: B, C"}, 1},
 		{"operand mismatch is one error", "fn f() -> Int:\n    return \"a\" + 1\n", []string{"found String + Int", "toString()"}, 1},
+		{"capitalized Optional arms", "fn f(o: Optional[Int]) -> Int:\n    match o:\n        Some(v):\n            return v\n        None:\n            return 0\n", []string{"unknown case Some of Optional", "did you mean 'some'?"}, 2},
 		{"not a function", "fn f() -> Int:\n    let x = 1\n    return x()\n", []string{"x is not a function (it has type Int)"}, 1},
 		{"unknown export", "import nope from \"@std/faults.ms\"\nfn f() -> Unit:\n    return\n", []string{"module does not export nope", "@std/faults.ms exports:"}, 1},
 		{"annotated binding survives bad initializer", "fn f() -> Int:\n    let x: Int = 3.5\n    let y = x + 1\n    return y\n", []string{"expected Int, found Float"}, 1},
