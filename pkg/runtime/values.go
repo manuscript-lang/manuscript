@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	goruntime "runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -230,23 +231,39 @@ func (l *Lazy) Get(build func() Value) Value {
 // ListTable backs one large list literal whose items are all scalar
 // constants. Generated code keeps the items as pointer-free package data, so
 // the Go compiler and the garbage collector see one plain array instead of an
-// expression or interface value per item. Items are boxed once, on the
-// literal's first evaluation; every evaluation returns a List with its own
-// fresh storage.
-type ListTable[T int64 | float64 | bool | string] struct {
-	once  sync.Once
-	items []Value
-}
+// expression or interface value per item. Every evaluation returns a List
+// with its own fresh typed storage copied from that data.
+type ListTable[T int64 | float64 | bool | string] struct{}
 
 func (t *ListTable[T]) List(typ string, data []T) *List {
-	t.once.Do(func() {
-		items := make([]Value, len(data))
-		for i, item := range data {
-			items[i] = item
+	l := newList(typ)
+	switch d := any(data).(type) {
+	case []int64:
+		if l.kind == listInt {
+			l.ints = slices.Clone(d)
+			return l
 		}
-		t.items = items
-	})
-	return &List{Type: typ, Items: append(make([]Value, 0, len(t.items)), t.items...)}
+	case []float64:
+		if l.kind == listFloat {
+			l.floats = slices.Clone(d)
+			return l
+		}
+	case []bool:
+		if l.kind == listBool {
+			l.bools = slices.Clone(d)
+			return l
+		}
+	case []string:
+		if l.kind == listString {
+			l.strings = slices.Clone(d)
+			return l
+		}
+	}
+	items := make([]Value, len(data))
+	for i, item := range data {
+		items[i] = item
+	}
+	return &List{Type: typ, Items: items}
 }
 
 func Specialize(value Value, args []string, scopes ...TypeScope) Value {
