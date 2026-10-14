@@ -122,12 +122,19 @@ func TestDebugScriptBreaksByFunctionNameAndReportsExit(t *testing.T) {
 func TestDebugOneShotRejectsUnknownAndUnreachedBreakpoints(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "main.ms")
-	if err := os.WriteFile(source, []byte("fn never() -> Int:\n    return 1\n\nexport fn main() -> Int:\n    return 0\n"), 0600); err != nil {
+	if err := os.WriteFile(source, []byte("import stdout from \"@std/io.ms\"\n\nfn never() -> Int:\n    return 1\n\nexport fn main() -> Int:\n    let _written = stdout().write(data: \"TARGET_RAN\\n\".to_bytes())\n    return 0\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	status, stdout, stderr := cliStreams(t, "debug", source, "--json", "--break", "nothing")
 	if status != 1 || !strings.Contains(string(stdout), `"event":"error"`) || !strings.Contains(string(stdout), "function declared in Manuscript source") {
 		t.Fatalf("unknown function breakpoint: %d\n%s\n%s", status, stdout, stderr)
+	}
+	if strings.Contains(stderr, "TARGET_RAN") || strings.Contains(string(stdout), `"event":"exit"`) {
+		t.Fatalf("invalid breakpoint ran the target: %s\n%s", stdout, stderr)
+	}
+	status, stdout, stderr = cliStreams(t, "debug", source, "--json", "--break", "never", "--break", "nothing")
+	if status != 1 || strings.Contains(stderr, "TARGET_RAN") || strings.Contains(string(stdout), `"event":"exit"`) {
+		t.Fatalf("a later invalid breakpoint ran the target: %d\n%s\n%s", status, stdout, stderr)
 	}
 	status, stdout, stderr = cliStreams(t, "debug", source, "--json", "--break", "never")
 	skipWithoutTracing(t, status, stderr)

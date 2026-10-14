@@ -104,6 +104,30 @@ Evidence: [embedded services](../internal/debugger/debugger.go),
 [platform contract](../documentation/developer-tooling/debugging/debugger-integration.md).
 Verified: the DAP Go-source launch modes, terminal Go-module path guessing, and an obsolete DWARF compatibility probe could still invoke external Go despite embedding Delve. The transport/client now exclude those routes; [vendor refresh](../scripts/maintenance/delve.go) reapplies the small compatibility-probe patch. Profile viewers are prebuilt into the SDK payload, not compiled on first use.
 
+Verified: terminal Close only restores modes; it does not interrupt a blocked
+prompt. Embedded terminal sessions need owned interruptible stdio, a joined
+SIGINT guard, and canceled prompt deliveries before restoring borrowed handles.
+On Unix, set nonblocking mode before constructing the duplicate so Delve's
+paging writer calling `Fd` cannot disable cancellation; restore shared flags
+after target shutdown. Windows console input bypasses Go's file reader, so
+cancel the stable worker thread's synchronous I/O until it joins and restore
+console modes through the original handles. [Vendor refresh](../scripts/maintenance/delve_terminal.go)
+preserves the small terminal/liner lifecycle patches. Evidence:
+[owned I/O](../internal/debugger/io.go), [native lifecycle regressions](../internal/debugger/native_lifecycle_test.go),
+and [Windows console regression](../internal/debugger/process_windows_test.go).
+Verify console behavior on a native Windows host; pipe tests and cross-compilation
+do not validate `ReadConsoleInputW` cancellation or console mode restoration.
+
+Open: disconnecting the client joins client calls but does not stop an active
+backend operation. Public service Stop still owns target cleanup. Delve resets
+manual-stop requests before Continue, and gdbserial ignores manual stops while
+its connection is outside Continue; prompt/stream cancellation tests do not
+establish cancellation across every native step. Evidence:
+[Continue](../vendor/github.com/go-delve/delve/pkg/proc/target_exec.go) and
+[gdbserial stop](../vendor/github.com/go-delve/delve/pkg/proc/gdbserial/gdbserver.go).
+Verify native cancellation during dispatch and single-step before expanding
+the shutdown guarantee beyond the tested lifecycle paths.
+
 Verify: run the shutdown tests with `-race`, the native editor test, and the
 six-target standalone distribution checks after changing Delve or its transport.
 

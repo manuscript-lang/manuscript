@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/service"
@@ -47,6 +49,10 @@ type Names struct {
 type Options struct {
 	// Script supplies commands, one per line. A nil Script runs Breaks once.
 	Script io.Reader
+	// CancelIO interrupts owned command input and event output on cancellation.
+	// It is also called after fatal I/O errors. Borrowed streams are never closed
+	// automatically; *os.File streams use owned, interruptible duplicates.
+	CancelIO func()
 	// Breaks are breakpoint specifications installed before a one-shot run.
 	Breaks []string
 	JSON   bool
@@ -99,7 +105,10 @@ var loadConfig = api.LoadConfig{FollowPointers: true, MaxVariableRecurse: 1, Max
 // Script runs commands against a Debug build without a terminal. It returns 0
 // when every command succeeded, 1 when a command failed or a one-shot run
 // ended without reaching a breakpoint.
-func Script(ctx context.Context, executable string, opts Options) (int, error) {
+func Script(ctx context.Context, executable string, opts Options) (status int, err error) {
+	if err := ctx.Err(); err != nil {
+		return 1, err
+	}
 	listener, conn := service.ListenerPipe()
 	defer listener.Close()
 	defer conn.Close()
@@ -109,32 +118,48 @@ func Script(ctx context.Context, executable string, opts Options) (int, error) {
 		config.Stdout, config.Stderr = redirectToStderr(), redirectToStderr()
 	}
 	server := rpccommon.NewServer(&service.Config{Listener: listener, ProcessArgs: append([]string{executable}, opts.Args...), APIVersion: 2, Debugger: config})
+	if err := ctx.Err(); err != nil {
+		return 1, err
+	}
 	if err := server.Run(); err != nil {
 		return 1, err
 	}
-	defer server.Stop()
-	s := &session{client: rpc2.NewClientFromConn(conn), opts: opts, names: opts.Names}
-	stopped := make(chan struct{})
-	defer close(stopped)
-	go func() {
-		select {
-		case <-ctx.Done():
-			_, _ = s.client.Halt()
-		case <-stopped:
+	restoreIO := func() error { return nil }
+	defer func() {
+		stopErr := server.Stop()
+		if closeErr := errors.Join(stopErr, restoreIO()); closeErr != nil {
+			status, err = 1, errors.Join(err, closeErr)
 		}
 	}()
-	if opts.Script == nil {
-		s.oneShot()
-	} else {
-		s.script(opts.Script)
+	// Launch can call Fd on inherited files, clearing their shared nonblocking
+	// flag. Prepare owned I/O afterward, before any target command can run.
+	opts, restoreIO, err = ownScriptIO(opts)
+	if err != nil {
+		return 1, err
 	}
-	if !s.exited {
-		_ = s.client.Detach(true)
+	s := &session{client: rpc2.NewClientFromConn(conn), opts: opts, names: opts.Names, ctx: ctx}
+	defer s.client.Disconnect(false)
+	var cancelIO sync.Once
+	interrupt := func() {
+		_ = s.client.Disconnect(false)
+		if opts.CancelIO != nil {
+			cancelIO.Do(opts.CancelIO)
+		}
 	}
-	if s.failed {
-		return 1, nil
-	}
-	return 0, nil
+	return runCancelable(ctx, interrupt, func() (int, error) {
+		if opts.Script == nil {
+			s.oneShot()
+		} else {
+			s.script(opts.Script)
+		}
+		if s.failed || s.ioErr != nil {
+			if s.ioErr != nil {
+				interrupt()
+			}
+			return 1, s.ioErr
+		}
+		return 0, nil
+	})
 }
 
 func redirectToStderr() proc.OutputRedirect {
@@ -145,16 +170,18 @@ func redirectToStderr() proc.OutputRedirect {
 }
 
 type session struct {
-	client *rpc2.RPCClient
+	client service.Client
 	opts   Options
 	names  Names
 	exited bool
 	failed bool
+	ctx    context.Context
+	ioErr  error
 }
 
 func (s *session) oneShot() {
 	for _, spec := range s.opts.Breaks {
-		if !s.command("break " + spec) {
+		if !s.command("break "+spec) || s.failed {
 			return
 		}
 	}
@@ -168,6 +195,9 @@ func (s *session) script(input io.Reader) {
 	lines := bufio.NewScanner(input)
 	lines.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for lines.Scan() {
+		if !s.ready() {
+			return
+		}
 		line := strings.TrimSpace(lines.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -179,10 +209,21 @@ func (s *session) script(input io.Reader) {
 			return
 		}
 	}
+	if err := lines.Err(); err != nil {
+		s.fail("read debug commands: " + err.Error())
+		s.ioErr = errors.Join(s.ioErr, fmt.Errorf("read debug commands: %w", err))
+	}
+}
+
+func (s *session) ready() bool {
+	return s.ioErr == nil && (s.ctx == nil || s.ctx.Err() == nil)
 }
 
 // command runs one command and reports whether the session can continue.
 func (s *session) command(line string) bool {
+	if !s.ready() {
+		return false
+	}
 	fields := strings.Fields(line)
 	name, rest := fields[0], strings.TrimSpace(strings.TrimPrefix(line, fields[0]))
 	if s.exited && name != "breakpoints" {
@@ -197,7 +238,12 @@ func (s *session) command(line string) bool {
 	case "breakpoints":
 		s.listBreakpoints()
 	case "continue":
-		s.resume(<-s.client.Continue(), nil, "continue")
+		// Drain tracepoint results too, joining the public client's producer.
+		var state *api.DebuggerState
+		for next := range s.client.Continue() {
+			state = next
+		}
+		s.resume(state, nil, "continue")
 	case "next", "step", "stepout":
 		s.step(name)
 	case "stack", "locals":
@@ -207,7 +253,7 @@ func (s *session) command(line string) bool {
 	default:
 		s.fail("unknown command " + strconv.Quote(name) + "; use break, clear, breakpoints, continue, next, step, stepout, stack, locals, print, or exit")
 	}
-	return true
+	return s.ready()
 }
 
 func (s *session) fail(message string) {
@@ -264,7 +310,7 @@ func (s *session) listBreakpoints() {
 func (s *session) step(kind string) {
 	run := map[string]func() (*api.DebuggerState, error){"next": s.client.Next, "step": s.client.Step, "stepout": s.client.StepOut}[kind]
 	state, err := run()
-	for attempts := 0; attempts < 16 && err == nil && state != nil && !state.Exited; attempts++ {
+	for attempts := 0; attempts < 16 && s.ready() && err == nil && state != nil && !state.Exited; attempts++ {
 		if state.CurrentThread != nil && state.CurrentThread.Breakpoint != nil {
 			break
 		}
@@ -467,12 +513,28 @@ func render(v *api.Variable) string {
 }
 
 func (s *session) emit(e Event) {
-	if s.opts.JSON {
-		data, _ := json.Marshal(e)
-		fmt.Fprintf(s.opts.Out, "%s\n", data)
+	if !s.ready() {
 		return
 	}
-	fmt.Fprint(s.opts.Out, e.text())
+	var data []byte
+	if s.opts.JSON {
+		var err error
+		data, err = json.Marshal(e)
+		if err != nil {
+			s.ioErr = fmt.Errorf("encode debug event: %w", err)
+			return
+		}
+		data = append(data, '\n')
+	} else {
+		data = []byte(e.text())
+	}
+	n, err := s.opts.Out.Write(data)
+	if err == nil && n != len(data) {
+		err = io.ErrShortWrite
+	}
+	if err != nil {
+		s.ioErr = fmt.Errorf("write debug event: %w", err)
+	}
 }
 
 func (e Event) text() string {
