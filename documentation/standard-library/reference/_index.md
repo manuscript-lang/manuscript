@@ -31,6 +31,7 @@ See [special call rules](../call-rules.md) for constructors, generic receiver me
 - [@std/http.ms](http.md)
 - [@std/io.ms](io.md)
 - [@std/json.ms](json.md)
+- [@std/jsonstream.ms](jsonstream.md)
 - [@std/log.ms](log.md)
 - [@std/math.ms](math.md)
 - [@std/net.ms](net.md)
