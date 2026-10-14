@@ -105,7 +105,9 @@ export interface RawTerminal:
     # Restores the terminal; closing again does nothing.
     fn close() -> Unit
     # Waits for the next event; none means the timeout elapsed. Waits honor cancellation and concurrent callers are serialized.
-    fn next_event(timeout: Optional[Duration] = none) -> Result[Optional[TerminalEvent], TerminalError]
+    fn next_event(
+        timeout: Optional[Duration] = none
+    ) -> Result[Optional[TerminalEvent], TerminalError]
     # Returns the current terminal size, or `Closed` after close.
     fn size() -> Result[TerminalSize, TerminalError]
     # Moves the cursor to a zero-based row and column; negative or very large values return `InvalidInput`.
