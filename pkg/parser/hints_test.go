@@ -36,6 +36,7 @@ func TestPassAndIfExpressionHints(t *testing.T) {
 		{"if expression", "fn f(a: Int) -> Int:\n    let b = if a == 1: 2 else: 3\n    return b\n", "'if' is a statement, not an expression"},
 		{"if inside arithmetic", "fn f(a: Int) -> Int:\n    return 1 + (if a == 1: 1 else: 0)\n", "'if' is a statement, not an expression"},
 		{"brace in text", "fn f() -> String:\n    return \"function() { return 1; }\"\n", "'{' at column"},
+		{"brace before closing quote", "fn f() -> String:\n    return \"a { b\"\n", "unterminated interpolation; the quote after this '{'"},
 		{"escaped quote in braces", "fn f() -> String:\n    return \"{\\\"a\\\": 1}\"\n", "'{' starts an interpolation; write \\{ and \\}"},
 		{"unmatched closing", "fn f() -> String:\n    return \"a}\"\n", "(and \\{ for the opening brace)"},
 		{"continued condition", "fn f(a: Int, b: Int) -> Bool:\n    return a > 0\n        and b > 0\n", "wrap the whole expression in parentheses"},
