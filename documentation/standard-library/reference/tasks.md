@@ -12,7 +12,7 @@ Why a task or task group did not complete successfully.
 
 ```manuscript
 type ExecutionError:
-    case TimedOut
+    case Timeout
     case Cancelled
     case Crashed(operation: OperationId, message: String)
 ```
@@ -40,12 +40,12 @@ type Scheduler:
     history_limit: Optional[Int] = none
     drain: Optional[Duration] = none
     reporter: Optional[fn(failure: SchedulerFailure) -> Unit] = none
-    fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
-    fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+    fn after(duration: Duration, operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
+    fn every(interval: Duration, operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
     fn restart(id: OperationId) -> Result[OperationId, StartError]:
     fn cancel(id: OperationId) -> Unit:
     fn close() -> Unit:
-    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+    fn start(operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
     fn status(id: OperationId) -> WorkStatus:
 ```
 
@@ -55,7 +55,7 @@ A scheduled operation that returned an error or raised a fault.
 
 ```manuscript
 type SchedulerFailure:
-    case Failed(operation: OperationId, cause: String)
+    case Failed(operation: OperationId, cause: Error)
     case Crashed(operation: OperationId, message: String)
 ```
 

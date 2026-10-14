@@ -3,6 +3,7 @@
 package msruntime
 
 import (
+	"bytes"
 	"net/http"
 	"net/url"
 	"strings"
@@ -10,7 +11,7 @@ import (
 
 func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
-		{"Network", "request", libraryResult("ClientResponse", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"Network", "request", libraryResult("ClientResponse", "HttpError"), []LibraryParam{{"method", "HttpMethod"}, {"url", "String"}, {"headers", "HttpHeaders"}, {"body", "Bytes"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
 		{"Network", "lookup", libraryResult("List[String]", "NetworkError"), []LibraryParam{{"name", "String"}, {"max_records", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
 	}...)
 }
@@ -22,9 +23,12 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 	if closed {
 		return libraryError(r, "Closed", "")
 	}
-	method, address := a[0].(string), a[1].(string)
+	method, address := libraryHTTPMethodText(a[0]), a[1].(string)
+	if !validHeaderName(method) {
+		return libraryError(r, "InvalidInput", "")
+	}
 	max, timeout := a[4].(int64), a[5].(Duration)
-	if max < 0 || timeout < nativeNoTimeout {
+	if max < 0 || timeout < nativeNoTimeout || method == "" {
 		return libraryError(r, "InvalidInput", "")
 	}
 	u, err := url.Parse(address)
@@ -38,16 +42,22 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		return libraryError(r, "Closed", "")
 	}
 	defer finish()
-	req, err := http.NewRequestWithContext(call, method, address, strings.NewReader(string(a[3].(Bytes).Items)))
+	req, err := http.NewRequestWithContext(call, method, address, bytes.NewReader(a[3].(Bytes).Items))
 	if err != nil {
 		return libraryError(r, "InvalidInput", "")
 	}
-	for _, e := range a[2].(*Map).Entries {
-		name, value := e.Key.(string), e.Value.(string)
-		if !libraryHeaderName(name) || !validHeaderValue(value) || strings.EqualFold(name, "Content-Length") || strings.EqualFold(name, "Transfer-Encoding") || strings.EqualFold(name, "Host") {
+	for _, entry := range a[2].(*libraryHeaders).Entries {
+		name := entry.Key.(string)
+		if !libraryHeaderName(name) || strings.EqualFold(name, "Content-Length") || strings.EqualFold(name, "Transfer-Encoding") || strings.EqualFold(name, "Host") {
 			return libraryError(r, "InvalidInput", "")
 		}
-		req.Header.Add(name, value)
+		for _, item := range entry.Value.(*List).Items {
+			value := string(item.(Bytes).Items)
+			if !validHeaderValue(value) {
+				return libraryError(r, "InvalidInput", "")
+			}
+			req.Header.Add(name, value)
+		}
 	}
 	// No ambient proxy or cookie jar. Redirects are returned to the caller for explicit policy decisions.
 	transport := &http.Transport{TLSHandshakeTimeout: nativeTransportTimeout(timeout), MaxResponseHeaderBytes: nativeUnlimited, DisableCompression: true, DisableKeepAlives: true, DialContext: n.dial}
@@ -73,20 +83,10 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		return libraryError(r, "InvalidData", "")
 	}
 	headers := libraryHTTPHeaders(response.Header)
-	return libraryOK(r, Record{"@std/ClientResponse", map[string]Value{"status": int64(response.StatusCode), "headers": headers, "body": Bytes{data}}})
+	return libraryOK(r, Record{"@std/ClientResponse", map[string]Value{"head": Record{"@std/HttpResponseMetadata", map[string]Value{"status": int64(response.StatusCode), "headers": headers}}, "body": Bytes{data}}})
 }
 
-func libraryHeaderName(s string) bool {
-	if s == "" {
-		return false
-	}
-	for _, c := range s {
-		if c <= 32 || c >= 127 || strings.ContainsRune("()<>@,;:\\\"/[]?={}", c) {
-			return false
-		}
-	}
-	return true
-}
+func libraryHeaderName(s string) bool { return validHeaderName(s) }
 
 func libraryNetworkLookup(n *network, ctx *Execution, r string, a []Value) Value {
 	n.mu.Lock()

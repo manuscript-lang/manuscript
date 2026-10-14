@@ -112,7 +112,7 @@ func TestExpandedFileHandles(t *testing.T) {
 		}())
 	}
 	defer op("close")
-	librarySuccess(t, op("write_file", Bytes{[]byte("hello\r\nworld\n")}))
+	librarySuccess(t, op("write", Bytes{[]byte("hello\r\nworld\n")}))
 	libraryFailure(t, call("open", "file", "wx", int64(0600)), "AlreadyExists")
 	if got := librarySuccess(t, op("read_at", int64(0), int64(5))).(Bytes); string(got.Items) != "hello" {
 		t.Fatal(got)
@@ -808,7 +808,7 @@ func TestFileSystemErrorMapping(t *testing.T) {
 		return Invoke(ctx, fn, args)
 	}
 	defer write(ro, "close")
-	libraryFailure(t, write(ro, "write_file", Bytes{[]byte("z")}), "InvalidInput")
+	libraryFailure(t, write(ro, "write", Bytes{[]byte("z")}), "InvalidInput")
 	libraryFailure(t, write(ro, "seek", int64(-1), int64(0)), "InvalidInput")
 	libraryFailure(t, write(ro, "seek", int64(0), int64(3)), "InvalidInput")
 	wo := librarySuccess(t, call("open", "file", "a", int64(0)))

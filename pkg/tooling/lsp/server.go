@@ -329,11 +329,11 @@ func (s *server) didChange(r *request) error {
 				d.Text = change.Text
 				continue
 			}
-			start, e := Offset(d.Text, change.Range.Start)
+			start, e := editOffset(d.Text, change.Range.Start)
 			if e != nil {
 				return nil
 			}
-			end, e := Offset(d.Text, change.Range.End)
+			end, e := editOffset(d.Text, change.Range.End)
 			if e != nil || end < start {
 				return nil
 			}

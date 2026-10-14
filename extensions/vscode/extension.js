@@ -70,7 +70,10 @@ async function activate(context) {
     } catch (error) { vscode.window.showErrorMessage(`Manuscript debug failed: ${error.message}`); }
   }));
   const restartServer = async () => {
-    try { await client.stop(); command = serverPath(); client = makeClient(); await client.start(); }
+    // A client whose start failed (for example, a missing binary) rejects stop(),
+    // but restarting after fixing manuscript.serverPath is exactly that case.
+    try { await client.stop(); } catch (error) { output.appendLine(error.message); }
+    try { command = serverPath(); client = makeClient(); await client.start(); }
     catch (error) { output.appendLine(error.message); output.show(); }
   };
   context.subscriptions.push(vscode.commands.registerCommand('manuscript.restartServer', restartServer));
@@ -119,5 +122,5 @@ async function activate(context) {
   }));
   await client.start();
 }
-async function deactivate() { if (client) await client.stop(); }
+async function deactivate() { if (client) await client.stop().catch(() => {}); }
 module.exports = { activate, deactivate };

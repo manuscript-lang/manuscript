@@ -369,33 +369,33 @@ test "map enumeration, merge, and clear preserve insertion order":
 test "set algebra and enumeration preserve source values":
     let left = [1, 2, 3].to_set()
     let right = [3, 4].to_set()
-    if not (left.union(right: right).values() == [1, 2, 3, 4]):
+    if not (left.union(other: right).values() == [1, 2, 3, 4]):
         return panic(message: "check failed")
-    if not (left.intersection(right: right).values() == [3]):
+    if not (left.intersection(other: right).values() == [3]):
         return panic(message: "check failed")
-    if not (left.difference(right: right).values() == [1, 2]):
+    if not (left.difference(other: right).values() == [1, 2]):
         return panic(message: "check failed")
-    if not (left.symmetric_difference(right: right).values() == [1, 2, 4]):
+    if not (left.symmetric_difference(other: right).values() == [1, 2, 4]):
         return panic(message: "check failed")
-    if not ([3].to_set().is_subset_of(right: left)):
+    if not ([3].to_set().is_subset_of(other: left)):
         return panic(message: "check failed")
-    if not (left.is_superset_of(right: [1, 3].to_set())):
+    if not (left.is_superset_of(other: [1, 3].to_set())):
         return panic(message: "check failed")
-    if not (not left.is_subset_of(right: right)):
+    if not (not left.is_subset_of(other: right)):
         return panic(message: "check failed")
-    if not (not right.is_superset_of(right: left)):
+    if not (not right.is_superset_of(other: left)):
         return panic(message: "check failed")
-    if not (left.is_disjoint_from(right: [5].to_set())):
+    if not (left.is_disjoint_from(other: [5].to_set())):
         return panic(message: "check failed")
-    if not (not left.is_disjoint_from(right: right)):
+    if not (not left.is_disjoint_from(other: right)):
         return panic(message: "check failed")
 
     let empty = Set[Int]()
-    if not (empty.is_subset_of(right: left)):
+    if not (empty.is_subset_of(other: left)):
         return panic(message: "check failed")
-    if not (left.is_superset_of(right: empty)):
+    if not (left.is_superset_of(other: empty)):
         return panic(message: "check failed")
-    if not (empty.is_disjoint_from(right: left)):
+    if not (empty.is_disjoint_from(other: left)):
         return panic(message: "check failed")
     if not (
         left.entries() == [
@@ -457,7 +457,7 @@ test "string methods use Unicode scalars":
         return panic(message: "check failed")
     if not ("ÉAB".lower() == "éab"):
         return panic(message: "check failed")
-    if not ("abc".contains(text: "b")):
+    if not ("abc".contains(value: "b")):
         return panic(message: "check failed")
     if not ("abc".starts_with(prefix: "ab")):
         return panic(message: "check failed")
@@ -506,9 +506,9 @@ test "bytes have analogous immutable operations":
         return panic(message: "check failed")
     if not (data.index_of(value: Bytes([9])) == missing):
         return panic(message: "check failed")
-    if not (data.starts_with(value: Bytes([1, 2]))):
+    if not (data.starts_with(prefix: Bytes([1, 2]))):
         return panic(message: "check failed")
-    if not (data.ends_with(value: Bytes([3, 2]))):
+    if not (data.ends_with(suffix: Bytes([3, 2]))):
         return panic(message: "check failed")
     if not (data.slice(start: 1, end: 3).unwrap() == Bytes([2, 3])):
         return panic(message: "check failed")
@@ -760,7 +760,7 @@ test "normalization, empty separators, and precision formatting":
         ) == "-"
     ):
         return panic(message: "check failed")
-    if not ("é".concat(values: "🙂") == "é🙂"):
+    if not ("é".concat(other: "🙂") == "é🙂"):
         return panic(message: "check failed")
 
     let invalid: Result[String, StringError] = error(StringError.InvalidInput)
@@ -790,27 +790,27 @@ test "normalization, empty separators, and precision formatting":
 fn verify_bigint_and_regex() -> Result[Unit, Error]:
     let a = from_int(value: 12)
     let b = from_int(value: 5)
-    if not (a.add(right: b).to_string(radix: 10) == "17"):
+    if not (a.add(other: b).to_string(radix: 10) == "17"):
         return panic(message: "check failed")
-    if not (a.subtract(right: b).to_string(radix: 10) == "7"):
+    if not (a.subtract(other: b).to_string(radix: 10) == "7"):
         return panic(message: "check failed")
-    if not (a.multiply(right: b).to_string(radix: 10) == "60"):
+    if not (a.multiply(other: b).to_string(radix: 10) == "60"):
         return panic(message: "check failed")
-    if not ((try common_result(result: a.divide(right: b))).to_int() == some(2)):
+    if not ((try common_result(result: a.divide(other: b))).to_int() == some(2)):
         return panic(message: "check failed")
     if not (
         (
-            try common_result(result: a.remainder(right: b))
+            try common_result(result: a.remainder(other: b))
         ).to_int() == some(2)
     ):
         return panic(message: "check failed")
-    if not (a.compare(right: b) == 1):
+    if not (a.compare(other: b) == 1):
         return panic(message: "check failed")
-    if not (a.bit_and(right: b).to_int() == some(4)):
+    if not (a.bit_and(other: b).to_int() == some(4)):
         return panic(message: "check failed")
-    if not (a.bit_or(right: b).to_int() == some(13)):
+    if not (a.bit_or(other: b).to_int() == some(13)):
         return panic(message: "check failed")
-    if not (a.bit_xor(right: b).to_int() == some(9)):
+    if not (a.bit_xor(other: b).to_int() == some(9)):
         return panic(message: "check failed")
 
     let pattern = try common_result(result: compile(pattern: "[0-9]+"))

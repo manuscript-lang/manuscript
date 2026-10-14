@@ -1,3 +1,4 @@
+import IpFamily from "@std/net.ms"
 # Canonical standard-library declarations. Implementations are native.
 
 import List from "@std/collections.ms"
@@ -48,8 +49,8 @@ export type NetworkInterface:
     name: String
     address: String
     netmask: String
-    # Exactly `IPv4` or `IPv6` for native address records.
-    family: String
+    # The IPv4/IPv6 alternative for the native address record.
+    family: IpFamily
     mac: String
     internal: Bool
     scope_id: Int

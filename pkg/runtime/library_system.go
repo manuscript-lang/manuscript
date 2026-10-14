@@ -169,7 +169,7 @@ func (s *librarySystem) extended(ctx *Execution, r, name string, a []Value) Valu
 				if ip.To4() != nil {
 					family = "IPv4"
 				}
-				items = append(items, Record{"@std/NetworkInterface", map[string]Value{"name": iface.Name, "address": ip.String(), "netmask": net.IP(network.Mask).String(), "family": family, "mac": iface.HardwareAddr.String(), "internal": iface.Flags&net.FlagLoopback != 0, "scope_id": int64(iface.Index)}})
+				items = append(items, Record{"@std/NetworkInterface", map[string]Value{"name": iface.Name, "address": ip.String(), "netmask": net.IP(network.Mask).String(), "family": Alternative{"@std/IpFamily", family, nil}, "mac": iface.HardwareAddr.String(), "internal": iface.Flags&net.FlagLoopback != 0, "scope_id": int64(iface.Index)}})
 			}
 		}
 		return libraryOK(r, libraryList("@std/NetworkInterface", items))
