@@ -1,5 +1,5 @@
 // Apply the VS Code extension's shared lexical grammar to documentation fences.
-// The adapter supports its match and quoted-string rules; no source is evaluated.
+// The adapter supports its match (with captures) and quoted-string rules; no source is evaluated.
 (() => {
   function tokenClass(scope) {
     if (scope.startsWith('comment.')) return 'c1';
@@ -36,14 +36,17 @@
   }
 
   function tokenize(source, grammar) {
-    const rules = grammar.patterns.map(rule => ({
-      expression: new RegExp(rule.match || rule.begin, 'muy'),
-      kind: tokenClass(rule.name),
+    const resolve = rule => rule.include ? grammar.repository[rule.include.slice(1)] : rule;
+    const rules = grammar.patterns.map(resolve).map(rule => ({
+      expression: new RegExp(rule.match || rule.begin, 'muyd'),
+      kind: tokenClass(rule.name || ''),
+      captures: Object.entries(rule.captures || {}).map(([group, { name }]) => [Number(group), tokenClass(name)]),
       quoted: rule.begin === '"' && rule.end === '"'
     }));
     const tokens = [];
     let cursor = 0;
     const add = (text, kind = '') => {
+      if (!text) return;
       const previous = tokens[tokens.length - 1];
       if (previous?.kind === kind) previous.text += text;
       else tokens.push({ text, kind });
@@ -59,7 +62,17 @@
             (/[\p{ID_Continue}]/u.test(source[cursor - 1] || '') ||
              /[\p{ID_Continue}]/u.test(source[rule.expression.lastIndex] || ''))) continue;
         const end = rule.quoted ? stringEnd(source, cursor) : rule.expression.lastIndex;
-        add(source.slice(cursor, end), rule.kind);
+        if (rule.captures.length) {
+          // Capture groups carry the scopes; text between them stays plain.
+          let at = cursor;
+          for (const [group, kind] of rule.captures) {
+            const [from, to] = match.indices[group];
+            add(source.slice(at, from));
+            add(source.slice(from, to), kind);
+            at = to;
+          }
+          add(source.slice(at, end));
+        } else add(source.slice(cursor, end), rule.kind);
         cursor = end;
         matched = true;
         break;

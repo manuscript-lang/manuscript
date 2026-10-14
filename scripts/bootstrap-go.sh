@@ -8,6 +8,7 @@ if [ "$#" -eq 0 ]; then
     case $(uname -s) in
         Linux) target_os=linux ;;
         Darwin) target_os=darwin ;;
+        MINGW*|MSYS*|CYGWIN*) target_os=windows ;;
         *) echo 'Use a Manuscript release archive on this operating system.' >&2; exit 1 ;;
     esac
     case $(uname -m) in

@@ -51,7 +51,6 @@ fn last() -> Int: return 2
     match save(payload):
         ok(_):
             return 0
-
         error(_):
             return 1
 `,
@@ -118,11 +117,9 @@ fn last() -> Int: return 2
     match value:
         first: return 1
         second: return 2
-
         third:
             let result = calculate()
             return result
-
         _: return 0
 
     return 3
@@ -170,7 +167,6 @@ impl Run for Runner:
         # Keep these comments together.
         match value:
             one: return 1
-
             # Fallback explanation.
             _:
                 return 2

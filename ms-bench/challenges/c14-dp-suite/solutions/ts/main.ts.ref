@@ -1,0 +1,72 @@
+import { readFileSync } from "node:fs";
+
+const BAD = "error: bad command";
+const isNum = (s: string) => /^[0-9]{1,6}$/.test(s);
+
+function lcs(a: string, b: string): number {
+  let prev = new Array(b.length + 1).fill(0);
+  for (let i = 0; i < a.length; i++) {
+    const cur = [0];
+    for (let j = 0; j < b.length; j++) {
+      cur.push(a[i] === b[j] ? prev[j] + 1 : Math.max(prev[j + 1], cur[j]));
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+function edit(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur.push(Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)));
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+function solveLine(line: string): string {
+  const t = line.split(" ");
+  switch (t[0]) {
+    case "lcs":
+    case "edit":
+      if (t.length !== 3 || t[1] === "" || t[2] === "") return BAD;
+      return String(t[0] === "lcs" ? lcs(t[1], t[2]) : edit(t[1], t[2]));
+    case "knap": {
+      if (t.length < 2 || !isNum(t[1])) return BAD;
+      const cap = Number(t[1]);
+      const items: [number, number][] = [];
+      for (const tok of t.slice(2)) {
+        const p = tok.split(":");
+        if (p.length !== 2 || !isNum(p[0]) || !isNum(p[1]) || Number(p[0]) < 1) return BAD;
+        items.push([Number(p[0]), Number(p[1])]);
+      }
+      const best = new Array(cap + 1).fill(0);
+      for (const [w, v] of items) {
+        for (let c = cap; c >= w; c--) best[c] = Math.max(best[c], best[c - w] + v);
+      }
+      return String(best[cap]);
+    }
+    case "coins": {
+      if (t.length < 3 || !t.slice(1).every(isNum)) return BAD;
+      const amount = Number(t[1]);
+      const cs = t.slice(2).map(Number);
+      if (cs.some((c) => c < 1)) return BAD;
+      const INF = 1e9;
+      const best = [0, ...new Array(amount).fill(INF)];
+      for (let a = 1; a <= amount; a++) {
+        for (const c of cs) if (c <= a && best[a - c] + 1 < best[a]) best[a] = best[a - c] + 1;
+      }
+      return best[amount] >= INF ? "impossible" : String(best[amount]);
+    }
+  }
+  return BAD;
+}
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+let out = "";
+for (const l of lines) if (l.replace(/ /g, "") !== "") out += solveLine(l) + "\n";
+process.stdout.write(out);

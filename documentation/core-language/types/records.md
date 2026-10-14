@@ -26,7 +26,7 @@ let customer = Customer(name: "Ada", email: none)
 let name = customer.name
 ```
 
-The constructor states which value belongs to each field. `customer.name` reads the field. To use the optional email, handle its alternatives as described in [optional values](optionals.md).
+Constructor arguments follow field declaration order and accept optional labels under the ordinary [call rules](../functions/declarations-and-calls.md#argument-names). `Box(3)` and `Box(value: 3)` are equivalent; multi-field records also accept positional and mixed arguments. `customer.name` reads the field. To use the optional email, handle its alternatives as described in [optional values](optionals.md).
 
 ```manuscript
 # Rejected: required email is missing.
@@ -49,7 +49,7 @@ A default can refer to earlier fields and module declarations, including functio
 
 ## Mutation and cloning
 
-A method can update its receiver's fields without replacing the record:
+A method declared through an [interface implementation](contracts.md#explicit-implementations) can update its receiver's fields without replacing the record. User-defined methods require `impl Interface for Type:`; `impl Type:` and method declarations inside a source record are unsupported:
 
 ```manuscript
 interface Counter:
@@ -97,23 +97,53 @@ Exporting a record exports its constructor and every field. Field visibility mod
 
 ## Recursive data
 
-Direct or mutually recursive inline record/alternative layouts are rejected. Build a layout dependency graph using only types stored inline in record fields and alternative payloads. `Optional` and `Result` are inline alternatives, so their stored payload types remain inline dependencies. `List`, `Map`, and `Set` storage is indirect; removing those container storage edges must leave an acyclic inline graph.
+Records and alternatives may refer directly to themselves or to each other. Their fields retain references to existing values; recursive payloads do not need a collection or an explicit box. Use a base case, `Optional`, or a collection when construction needs an endpoint.
 
-Function values and contract values also have indirect representations. Function parameter/result types and contract operation signatures are not inline storage edges and do not introduce a concrete layout cycle merely by mentioning the enclosing type. Generic recursive references still satisfy the separate finite-application rule in [generics](generics.md#finite-recursive-applications).
+This alternative represents binary addition directly:
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-type Node:
-    value: Int
-    children: List[Node]
+import panic from "@std/faults.ms"
 
-type BadNode:
-    next: Optional[BadNode]  # Rejected: inline recursion.
+type Expr:
+    case Num(value: Int)
+    case Add(left: Expr, right: Expr)
 
-type DeferredNode:
-    build: fn() -> DeferredNode  # Allowed: function value is indirect.
+fn evaluate(expr: Expr) -> Int:
+    match expr:
+        Num(value): return value
+        Add(left, right): return evaluate(left) + evaluate(right)
+
+test "recursive expression":
+    let expr = Expr.Add(left: Expr.Num(1), right: Expr.Num(2))
+    if evaluate(expr) != 3:
+        panic("unexpected expression value")
 ```
 
-Container element/key bounds still apply. A `Set[Node]` does not become valid just because it guards recursion: its element must be hashable. Generic recursive cycles must preserve the same type parameters; expanding recursion such as `Grow[T]` containing `List[Grow[List[T]]]` is rejected. See [generic well-formedness](generics.md) and [structural equality](equality-and-hashing.md).
+For a linked record, an absent successor provides the endpoint. After construction, ordinary mutation can connect existing values into a cycle:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import panic from "@std/faults.ms"
+
+type Node:
+    value: Int
+    next: Optional[Node]
+
+test "recursive links":
+    let node = Node(value: 1, next: none)
+    node.next = some(node)
+    let copy = node.clone()
+    copy.next.unwrap().value = 2
+    if node.value != 2 or copy.value != 1:
+        panic("cloning must retain nested references")
+```
+
+Every constructor still supplies all required fields. A binding is unavailable in its own initializer, so `let node = Node(value: 1, next: node)` is rejected. A declaration with only required recursive fields is permitted, but does not gain an implicit empty or partially initialized value. Use a terminating case or `Optional` when building finite values.
+
+Aliases observe field mutations, and `.clone()` copies only the outer storage, retaining recursive references. Structural equality terminates on cyclic data. Recursive shapes do not derive `Hashable` automatically; map keys and set elements need explicit, consistent `Equal` and `Hashable` implementations. See [equality and hashing](equality-and-hashing.md).
+
+Generic recursion must preserve its type parameters along every cycle, including references through collections, function signatures, and interfaces. See [finite recursive applications](generics.md#finite-recursive-applications).
 
 ## Resource fields
 

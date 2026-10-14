@@ -55,14 +55,14 @@ func sourceIndex(result compiler.Result) []occurrence {
 	}
 	program := result.Program
 	bindingKeys := map[*checker.Binding]string{}
-	for decl, bindings := range program.Parameters {
+	for decl, bindings := range program.Parameters() {
 		for index, b := range bindings {
 			if b == nil {
 				continue
 			}
 			bindingKeys[b] = fmt.Sprintf("parameter:%s:%d:%d", decl.Pos.File, decl.Pos.Offset, index)
 			if decl.Kind == syntax.KindRecord {
-				if symbol := program.Symbols[decl.Pos.File][decl.Name]; symbol != nil {
+				if symbol := program.Symbol(decl.Pos.File, decl.Name); symbol != nil {
 					bindingKeys[b] = "field:" + symbolKey(symbol) + ":" + b.Name
 				}
 			}
@@ -156,13 +156,13 @@ func sourceIndex(result compiler.Result) []occurrence {
 			}
 		}
 	}
-	for pattern, b := range program.Bindings {
+	for pattern, b := range program.PatternBindings() {
 		if b == nil {
 			continue
 		}
 		add(localKey(b), b.Name, pattern.Pos, true, false, &checker.Info{Type: b.Type, Binding: b})
 	}
-	for decl, bindings := range program.Parameters {
+	for decl, bindings := range program.Parameters() {
 		for i, b := range bindings {
 			if b == nil {
 				continue
@@ -172,7 +172,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 			}
 		}
 	}
-	for e, bindings := range program.LambdaParameters {
+	for e, bindings := range program.LambdaParameters() {
 		for i, b := range bindings {
 			if b == nil {
 				continue
@@ -182,13 +182,13 @@ func sourceIndex(result compiler.Result) []occurrence {
 			}
 		}
 	}
-	for stmt, b := range program.LoopBindings {
+	for stmt, b := range program.LoopBindings() {
 		if b == nil {
 			continue
 		}
 		add(localKey(b), b.Name, header(stmt.Pos, b.Name), true, false, &checker.Info{Type: b.Type, Binding: b})
 	}
-	for arm, bindings := range program.ArmBindings {
+	for arm, bindings := range program.ArmBindings() {
 		for _, b := range bindings {
 			if b == nil {
 				continue
@@ -201,15 +201,13 @@ func sourceIndex(result compiler.Result) []occurrence {
 			add(methodKey(method), method.Decl.Name, header(method.Decl.Pos, method.Decl.Name), true, false, &checker.Info{Type: method.Type, Method: method})
 		}
 	}
-	for _, refs := range []map[*syntax.Type]*checker.Type{program.TypeReferences, checker.StandardTypeReferences()} {
-		for typ, resolved := range refs {
-			if resolved != nil && resolved.Def != nil && resolved.Def.Symbol != nil {
-				symbol := resolved.Def.Symbol
-				add(symbolKey(symbol), typ.Name, typ.Pos, false, false, &checker.Info{Type: resolved, Symbol: symbol})
-			}
+	for typ, resolved := range program.AllTypeReferences() {
+		if resolved != nil && resolved.Def != nil && resolved.Def.Symbol != nil {
+			symbol := resolved.Def.Symbol
+			add(symbolKey(symbol), typ.Name, typ.Pos, false, false, &checker.Info{Type: resolved, Symbol: symbol})
 		}
 	}
-	for e, info := range program.Expressions {
+	for e, info := range program.Expressions() {
 		if e == nil || info == nil {
 			continue
 		}
@@ -221,7 +219,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 			}
 		}
 		if e.Kind == syntax.KindMember && info.Method == nil && e.Left != nil {
-			if receiver := program.Expressions[e.Left]; receiver != nil && receiver.Type != nil && receiver.Type.Kind == syntax.KindRecord && receiver.Type.Def != nil {
+			if receiver := program.Info(e.Left); receiver != nil && receiver.Type != nil && receiver.Type.Kind == syntax.KindRecord && receiver.Type.Def != nil {
 				parent := receiver.Type.Def.Symbol
 				add("field:"+symbolKey(parent)+":"+e.Text, e.Text, e.Pos, false, info.Write, info)
 			}
@@ -270,7 +268,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 		if e.Kind == syntax.KindCall {
 			var decl *syntax.Declaration
-			if called := program.Expressions[e.Left]; called != nil {
+			if called := program.Info(e.Left); called != nil {
 				if called.Symbol != nil {
 					decl = called.Symbol.Decl
 				}
@@ -281,8 +279,8 @@ func sourceIndex(result compiler.Result) []occurrence {
 			if decl != nil {
 				for _, arg := range e.Args {
 					for i, param := range decl.Params {
-						if param.Name == arg.Name && i < len(program.Parameters[decl]) {
-							b := program.Parameters[decl][i]
+						if param.Name == arg.Name && i < len(program.ParameterBindings(decl)) {
+							b := program.ParameterBindings(decl)[i]
 							add(localKey(b), b.Name, arg.Pos, false, false, &checker.Info{Type: b.Type, Binding: b})
 						}
 					}
@@ -292,7 +290,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 	}
 	visitor := syntax.Visitor{Statement: func(s *syntax.Statement) {
 		if s.Kind == syntax.KindAssign {
-			if b := program.Assignments[s.Value]; b != nil {
+			if b := program.AssignedBinding(s.Value); b != nil {
 				add(localKey(b), s.Name, s.Pos, false, true, &checker.Info{Type: b.Type, Binding: b})
 			}
 		}
@@ -303,29 +301,43 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 	}
 
-	// A shorthand token names a caller binding and supplies a callee label.
-	// Renaming either side expands the token to keep the other side intact.
-	for call, info := range program.Expressions {
+	// An unlabeled identifier names a caller binding and supplies a callee parameter.
+	// Renaming either side makes the label explicit to preserve argument binding.
+	for call, info := range program.Expressions() {
 		if call.Kind != syntax.KindCall || len(info.Arguments) != len(call.Args) {
 			continue
 		}
-		called := program.Expressions[call.Left]
-		if called == nil || called.Type == nil || len(called.Type.Params) <= 1 {
-			continue
-		}
+		called := program.Info(call.Left)
 		var decl *syntax.Declaration
-		if called.Symbol != nil {
-			decl = called.Symbol.Decl
+		arity := 0
+		if info.Constructor != nil {
+			if info.Case == "" {
+				arity = len(checker.Fields(info.Constructor))
+			} else {
+				for _, cs := range checker.Cases(info.Constructor) {
+					if cs.Name == info.Case {
+						arity = len(cs.Fields)
+					}
+				}
+			}
+		} else if called != nil && called.Type != nil {
+			arity = len(called.Type.Params)
+			if called.Symbol != nil {
+				decl = called.Symbol.Decl
+			}
+			if called.Method != nil {
+				decl = called.Method.Decl
+			}
 		}
-		if called.Method != nil {
-			decl = called.Method.Decl
+		if arity <= 1 {
+			continue
 		}
 		for at, arg := range call.Args {
 			label := info.Arguments[at].Name
-			if arg.Name != "" || label == "" || arg.Value.Kind != syntax.KindName {
+			if arg.Name != "" || label == "" || arg.Value.Kind != syntax.KindName || arg.Pos != arg.Value.Pos {
 				continue
 			}
-			value := program.Expressions[arg.Value]
+			value := program.Info(arg.Value)
 			if value == nil {
 				continue
 			}
@@ -337,10 +349,13 @@ func sourceIndex(result compiler.Result) []occurrence {
 				valueKey = symbolKey(value.Symbol)
 			}
 			labelKey := ""
+			if info.Constructor != nil && info.Constructor.Kind == syntax.KindRecord && info.Constructor.Def != nil {
+				labelKey = "field:" + symbolKey(info.Constructor.Def.Symbol) + ":" + label
+			}
 			if decl != nil {
 				for n, param := range decl.Params {
-					if param.Name == label && n < len(program.Parameters[decl]) {
-						labelKey = localKey(program.Parameters[decl][n])
+					if param.Name == label && n < len(program.ParameterBindings(decl)) {
+						labelKey = localKey(program.ParameterBindings(decl)[n])
 					}
 				}
 			}
@@ -353,7 +368,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 				}
 			}
 			if labelKey != "" {
-				index = append(index, occurrence{key: labelKey, name: label, pos: arg.Value.Pos, end: arg.Value.Pos.Offset + len(label), renameSuffix: ": " + arg.Value.Text, implicitLabel: true})
+				index = append(index, occurrence{key: labelKey, name: label, pos: arg.Value.Pos, end: arg.Value.Pos.Offset + len(arg.Value.Text), renameSuffix: ": " + arg.Value.Text, implicitLabel: true})
 			}
 		}
 	}

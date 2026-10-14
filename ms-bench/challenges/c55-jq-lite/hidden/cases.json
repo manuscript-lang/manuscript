@@ -1,0 +1,382 @@
+[
+ {
+  "name": "basic",
+  "stdin": ".users | map(select(.age >= 18) | {name, adult: true})\n{\"users\":[{\"name\":\"A\",\"age\":20},{\"name\":\"B\",\"age\":10},{\"name\":\"C\",\"age\":33}]}\n",
+  "stdout": "[{\"name\":\"A\",\"adult\":true},{\"name\":\"C\",\"adult\":true}]\n"
+ },
+ {
+  "name": "reduce-and-format",
+  "stdin": "reduce .[] as $x ({}; .[$x.k] += $x.v) | to_entries[] | \"\\(.key)=\\(.value)\"\n[{\"k\":\"a\",\"v\":1},{\"k\":\"b\",\"v\":2},{\"k\":\"a\",\"v\":3}]\n",
+  "stdout": "\"a=4\"\n\"b=2\"\n"
+ },
+ {
+  "name": "errors",
+  "stdin": "-r .[] | if type == \"string\" then ascii_upcase else error(\"bad: \\(. | tojson)\") end\n[\"x\",\"y\"] [1] [\"z\"]\n",
+  "stdout": "X\nY\nerror: bad: 1\nZ\n"
+ },
+ {
+  "name": "field-access",
+  "stdin": ".a, .b.c, .b.c.d, .x, .a.y\n{\"a\":{\"y\":1},\"b\":{\"c\":{\"d\":[1]}}}\n",
+  "stdout": "{\"y\":1}\n{\"d\":[1]}\n[1]\nnull\n1\n"
+ },
+ {
+  "name": "index-array",
+  "stdin": ".[0], .[2], .[-1], .[-3], .[3], .[-4], .[1.7]\n[10,20,30]\n",
+  "stdout": "10\n30\n30\n10\nnull\nnull\n20\n"
+ },
+ {
+  "name": "slices",
+  "stdin": ".[1:3], .[:2], .[-2:], .[2:], .[1:-1], .[5:], .[-10:2], .[1.5:3.2]\n[0,1,2,3,4]\n",
+  "stdout": "[1,2]\n[0,1]\n[3,4]\n[2,3,4]\n[1,2,3]\n[]\n[0,1]\n[1,2,3]\n"
+ },
+ {
+  "name": "iterate",
+  "stdin": ".[], .[]?\n[1,[2],{\"a\":3}]\n",
+  "stdout": "1\n[2]\n{\"a\":3}\n1\n[2]\n{\"a\":3}\n"
+ },
+ {
+  "name": "iterate-object",
+  "stdin": ".[], keys, [.[]]\n{\"b\":2,\"a\":1,\"c\":[3]}\n",
+  "stdout": "2\n1\n[3]\n[\"a\",\"b\",\"c\"]\n[2,1,[3]]\n"
+ },
+ {
+  "name": "recurse-dots",
+  "stdin": "[..]\n[1,[2,{\"a\":3}],{\"b\":[4]}]\n",
+  "stdout": "[[1,[2,{\"a\":3}],{\"b\":[4]}],1,[2,{\"a\":3}],2,{\"a\":3},3,{\"b\":[4]},[4],4]\n"
+ },
+ {
+  "name": "array-construct",
+  "stdin": "[.[] | . * 2], [], [1,2,3,4][1:3], [.[0], .[1]], [range(3)]\n[1,2,3]\n",
+  "stdout": "[2,4,6]\n[]\n[2,3]\n[1,2]\n[0,1,2]\n"
+ },
+ {
+  "name": "object-construct",
+  "stdin": "{a: 1, \"b\": 2, (.k): 3, \"c\\(.k)\": 4, name, \"age\": .age}\n{\"k\":\"kk\",\"name\":\"N\",\"age\":5}\n",
+  "stdout": "{\"a\":1,\"b\":2,\"kk\":3,\"ckk\":4,\"name\":\"N\",\"age\":5}\n"
+ },
+ {
+  "name": "object-generators",
+  "stdin": "{a: (1,2), b: (3,4)}, {(.k,\"z\"): 1}, {a: .l[]}\n{\"k\":\"q\",\"l\":[7,8]}\n",
+  "stdout": "{\"a\":1,\"b\":3}\n{\"a\":2,\"b\":3}\n{\"a\":1,\"b\":4}\n{\"a\":2,\"b\":4}\n{\"q\":1}\n{\"z\":1}\n{\"a\":7}\n{\"a\":8}\n"
+ },
+ {
+  "name": "pipes-commas",
+  "stdin": ".a | (.b, .c) | . + 1\n{\"a\":{\"b\":1,\"c\":2}}\n",
+  "stdout": "2\n3\n"
+ },
+ {
+  "name": "arith-numbers",
+  "stdin": ".a + .b, .a - .b, .a * .b, .a / .b, .a % .b, -.a, (.a + .b * 2 - 1), (10 / 4), (7 % 3), (-7 % 3), (7 % -3), (5.9 % 3.2)\n{\"a\":7,\"b\":2}\n",
+  "stdout": "9\n5\n14\n3.5\n1\n-7\n10\n2.5\n1\n-1\n1\n2\n"
+ },
+ {
+  "name": "arith-errors",
+  "stdin": "(try (1 + \"a\") catch .), (try ({} - 1) catch .), (try ([] * 2) catch .), (try (\"a\" / 1) catch .), (try (1 / 0) catch .), (try (1 % 0) catch .), (try (null - 1) catch .), (try (-\"a\") catch .), (try ({} + []) catch .)\nnull\n",
+  "stdout": "\"number and string cannot be added\"\n\"object and number cannot be subtracted\"\n\"array and number cannot be multiplied\"\n\"string and number cannot be divided\"\n\"division by zero\"\n\"division by zero\"\n\"null and number cannot be subtracted\"\n\"string cannot be negated\"\n\"object and array cannot be added\"\n"
+ },
+ {
+  "name": "division-precision",
+  "stdin": "1/3, 2/3, 10/3, 0.1 + 0.2, 1e15 + 1, 3.0, 100 / 8, 1 / 8, 123456789 * 1000, 0.5 / 1000\nnull\n",
+  "stdout": "0.3333333333333333\n0.6666666666666666\n3.3333333333333335\n0.30000000000000004\n1000000000000001\n3\n12.5\n0.125\n123456789000\n0.0005\n"
+ },
+ {
+  "name": "boolean-logic",
+  "stdin": "(true and false), (true or false), (null and 1), (0 and \"x\"), (false or null), ((true, false) and (true, false)), ((true, false) or (true, false)), (1 | not), (null | not), (false, 1 | not)\nnull\n",
+  "stdout": "false\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\nfalse\ntrue\ntrue\nfalse\nfalse\ntrue\ntrue\nfalse\n"
+ },
+ {
+  "name": "alternative",
+  "stdin": ".a // \"d\", .b // \"d\", .c // \"d\", (.d // empty), ([.e[] // 5]), (empty // 1), ((null, false) // 2), ((1, null, 2) // 3), (error(\"x\") // 4), (.a // .b // 9)\n{\"a\":0,\"b\":null,\"c\":false,\"e\":[null,false]}\n",
+  "stdout": "0\n\"d\"\n\"d\"\n[5]\n1\n2\n1\n2\n4\n0\n"
+ },
+ {
+  "name": "if-then-else",
+  "stdin": ".[] | if . > 2 then \"big\" elif . > 1 then \"mid\" else \"small\" end\n[1,2,3]\n",
+  "stdout": "\"small\"\n\"mid\"\n\"big\"\n"
+ },
+ {
+  "name": "select-map",
+  "stdin": "map(select(.age >= 30) | .name), (map(.age) | add / length), [.[] | select(.tags | length > 0) | .name]\n[{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"],\"addr\":{\"city\":\"Paris\",\"zip\":\"75001\"}},{\"name\":\"Bob\",\"age\":25,\"tags\":[],\"addr\":{\"city\":\"Rome\",\"zip\":null}},{\"name\":\"Carol\",\"age\":35,\"tags\":[\"c\"],\"addr\":null}]\n",
+  "stdout": "[\"Alice\",\"Carol\"]\n30\n[\"Alice\",\"Carol\"]\n"
+ },
+ {
+  "name": "map-values",
+  "stdin": "map_values(. + 1), map(. * 2), (map_values(empty)), (map(select(. > 1)))\n{\"a\":1,\"b\":2,\"c\":3}\n",
+  "stdout": "{\"a\":2,\"b\":3,\"c\":4}\n[2,4,6]\n{}\n[2,3]\n"
+ },
+ {
+  "name": "keys-has",
+  "stdin": "keys, keys_unsorted, has(\"b\"), has(\"z\"), (.b | keys), (.b | has(1), has(2), has(-1)), length, (.b | length), (.s | length), (.n | length), (null | length), (.t | try length catch .)\n{\"b\":[5,6],\"a\":1,\"s\":\"h\u00e9llo\",\"n\":-4.5,\"t\":true}\n",
+  "stdout": "[\"a\",\"b\",\"n\",\"s\",\"t\"]\n[\"b\",\"a\",\"s\",\"n\",\"t\"]\ntrue\nfalse\n[0,1]\ntrue\nfalse\nfalse\n5\n2\n5\n4.5\n0\n\"boolean has no length\"\n"
+ },
+ {
+  "name": "any-all",
+  "stdin": "any, all, (map(. > 1) | any, all), any(. > 2), all(. > 0), any(.[]; . == 2), all(.[]; . < 3), ([] | any, all), (any(empty; .)), (all(empty; .))\n[1,2,3]\n",
+  "stdout": "true\ntrue\ntrue\nfalse\ntrue\ntrue\ntrue\nfalse\nfalse\ntrue\nfalse\ntrue\n"
+ },
+ {
+  "name": "flatten-range",
+  "stdin": "flatten, flatten(1), flatten(0), (try flatten(-1) catch .), [range(5)], [range(2;5)], [range(0;10;3)], [range(5;0;-2)], [range(0;1;0.25)], [range(-1)], [range(3;1)], [range(2.5)]\n[1,[2,[3,[4]]],[]]\n",
+  "stdout": "[1,2,3,4]\n[1,2,[3,[4]]]\n[1,[2,[3,[4]]],[]]\n\"flatten depth must not be negative\"\n[0,1,2,3,4]\n[2,3,4]\n[0,3,6,9]\n[5,3,1]\n[0,0.25,0.5,0.75]\n[]\n[]\n[0,1,2]\n"
+ },
+ {
+  "name": "math-funcs",
+  "stdin": ".[] | [floor, ceil, round, (abs), (if . >= 0 then sqrt else null end)]\n[0, 1.5, -1.5, 2.5, -2.5, 16, 0.4]\n",
+  "stdout": "[0,0,0,0,0]\n[1,2,2,1.5,1.224744871391589]\n[-2,-1,-2,1.5,null]\n[2,3,3,2.5,1.5811388300841898]\n[-3,-2,-3,2.5,null]\n[16,16,16,16,4]\n[0,1,0,0.4,0.6324555320336759]\n"
+ },
+ {
+  "name": "type-selectors",
+  "stdin": "[.[] | type], [.[] | numbers], [.[] | strings], [.[] | arrays], [.[] | objects], [.[] | booleans], [.[] | nulls], [.[] | values], [.[] | iterables], [.[] | scalars]\n[1,\"a\",[2],{\"b\":3},true,null,false]\n",
+  "stdout": "[\"number\",\"string\",\"array\",\"object\",\"boolean\",\"null\",\"boolean\"]\n[1]\n[\"a\"]\n[[2]]\n[{\"b\":3}]\n[true,false]\n[null]\n[1,\"a\",[2],{\"b\":3},true,false]\n[[2],{\"b\":3}]\n[1,\"a\",true,null,false]\n"
+ },
+ {
+  "name": "string-funcs",
+  "stdin": "(ascii_downcase), (ascii_upcase), (explode), (explode | implode), ltrimstr(\"He\"), rtrimstr(\"lo\"), ltrimstr(\"x\"), startswith(\"He\"), endswith(\"lo\"), split(\"l\"), split(\"\"), (split(\"l\") | join(\"-\")), index(\"l\"), rindex(\"l\"), indices(\"l\"), indices(\"ll\"), (try (1 | ascii_downcase) catch .), (1 | ltrimstr(\"a\"))\n\"Hello\"\n",
+  "stdout": "\"hello\"\n\"HELLO\"\n[72,101,108,108,111]\n\"Hello\"\n\"llo\"\n\"Hel\"\n\"Hello\"\ntrue\ntrue\n[\"He\",\"\",\"o\"]\n[\"H\",\"e\",\"l\",\"l\",\"o\"]\n\"He--o\"\n2\n3\n[2,3]\n[2]\n\"ascii_downcase: expected string, got number\"\n1\n"
+ },
+ {
+  "name": "split-join",
+  "stdin": "(\"a,b,,c\" | split(\",\")), (\"\" | split(\",\")), (\"abc\" | split(\"\")), ([\"a\",1,null,true] | join(\"/\")), ([] | join(\",\")), ([\"x\"] | join(\",\")), (try ([[1]] | join(\",\")) catch .), (try ([\"a\"] | join(1)) catch .), (\"a--b\" | split(\"--\")), (\"ab\" | split(\"ab\"))\nnull\n",
+  "stdout": "[\"a\",\"b\",\"\",\"c\"]\n[]\n[\"a\",\"b\",\"c\"]\n\"a/1//true\"\n\"\"\n\"x\"\n\"join: cannot join array\"\n\"join: expected string, got number\"\n[\"a\",\"b\"]\n[\"\",\"\"]\n"
+ },
+ {
+  "name": "sort-group-unique",
+  "stdin": "sort, (map(.n) | sort), sort_by(.n), sort_by(.n, .s), sort_by(.s | length), group_by(.g), unique_by(.g), (map(.g) | unique), min_by(.n), max_by(.n), (map(.n) | min, max), ([] | min, max, sort, unique), min_by(.z)\n[{\"n\":3,\"s\":\"cc\",\"g\":\"x\"},{\"n\":1,\"s\":\"a\",\"g\":\"y\"},{\"n\":3,\"s\":\"b\",\"g\":\"x\"},{\"n\":2,\"s\":\"dd\",\"g\":\"z\"}]\n",
+  "stdout": "[{\"n\":3,\"s\":\"b\",\"g\":\"x\"},{\"n\":3,\"s\":\"cc\",\"g\":\"x\"},{\"n\":1,\"s\":\"a\",\"g\":\"y\"},{\"n\":2,\"s\":\"dd\",\"g\":\"z\"}]\n[1,2,3,3]\n[{\"n\":1,\"s\":\"a\",\"g\":\"y\"},{\"n\":2,\"s\":\"dd\",\"g\":\"z\"},{\"n\":3,\"s\":\"cc\",\"g\":\"x\"},{\"n\":3,\"s\":\"b\",\"g\":\"x\"}]\n[{\"n\":1,\"s\":\"a\",\"g\":\"y\"},{\"n\":2,\"s\":\"dd\",\"g\":\"z\"},{\"n\":3,\"s\":\"b\",\"g\":\"x\"},{\"n\":3,\"s\":\"cc\",\"g\":\"x\"}]\n[{\"n\":1,\"s\":\"a\",\"g\":\"y\"},{\"n\":3,\"s\":\"b\",\"g\":\"x\"},{\"n\":3,\"s\":\"cc\",\"g\":\"x\"},{\"n\":2,\"s\":\"dd\",\"g\":\"z\"}]\n[[{\"n\":3,\"s\":\"cc\",\"g\":\"x\"},{\"n\":3,\"s\":\"b\",\"g\":\"x\"}],[{\"n\":1,\"s\":\"a\",\"g\":\"y\"}],[{\"n\":2,\"s\":\"dd\",\"g\":\"z\"}]]\n[{\"n\":3,\"s\":\"cc\",\"g\":\"x\"},{\"n\":1,\"s\":\"a\",\"g\":\"y\"},{\"n\":2,\"s\":\"dd\",\"g\":\"z\"}]\n[\"x\",\"y\",\"z\"]\n{\"n\":1,\"s\":\"a\",\"g\":\"y\"}\n{\"n\":3,\"s\":\"b\",\"g\":\"x\"}\n1\n3\nnull\nnull\n[]\n[]\n{\"n\":3,\"s\":\"cc\",\"g\":\"x\"}\n"
+ },
+ {
+  "name": "sort-errors",
+  "stdin": "try ({} | sort) catch ., try (1 | sort_by(.)) catch ., try (\"a\" | min) catch ., try (null | unique) catch .\nnull\n",
+  "stdout": "\"sort: expected array, got object\"\n\"sort_by: expected array, got number\"\n\"min: expected array, got string\"\n\"unique: expected array, got null\"\n"
+ },
+ {
+  "name": "to-from-entries",
+  "stdin": "to_entries, (to_entries | from_entries), with_entries(.value += 1), with_entries(select(.value > 1)), with_entries(.key |= ascii_upcase), ([{\"name\":\"a\",\"value\":1},{\"k\":\"b\",\"v\":2},{\"Key\":\"c\",\"Value\":3},{\"key\":1,\"value\":4},{\"key\":null,\"value\":5},{\"key\":false},{\"name\":\"z\"}] | from_entries), ([] | from_entries), (try (1 | to_entries) catch .)\n{\"a\":1,\"b\":2,\"c\":3}\n",
+  "stdout": "[{\"key\":\"a\",\"value\":1},{\"key\":\"b\",\"value\":2},{\"key\":\"c\",\"value\":3}]\n{\"a\":1,\"b\":2,\"c\":3}\n{\"a\":2,\"b\":3,\"c\":4}\n{\"b\":2,\"c\":3}\n{\"A\":1,\"B\":2,\"C\":3}\n{\"a\":1,\"b\":2,\"c\":3,\"1\":4,\"null\":null,\"z\":null}\n{}\n\"number has no keys\"\n"
+ },
+ {
+  "name": "paths-getpath",
+  "stdin": "[paths], [paths(type == \"number\")], [leaf_paths], getpath([\"a\",\"b\"]), getpath([\"a\",\"x\",\"y\"]), getpath([\"z\"]), [getpath([\"a\",\"b\"], [\"c\"])], (try getpath([\"c\",\"d\"]) catch .), path(.a.b), [path(..)], [path(.c[])], (try path(1) catch .), (try path(.a | tostring) catch .), [path(.a, .c[0])], (path(.a | select(.b))), [path(.a | if .b then .b else empty end)], [path(.z // .a)], [path(first(.c[]))], [path(limit(1; .c[]))], [path(.c | last)]\n{\"a\":{\"b\":1},\"c\":[true,null]}\n",
+  "stdout": "[[\"a\"],[\"a\",\"b\"],[\"c\"],[\"c\",0],[\"c\",1]]\n[[\"a\",\"b\"]]\n[[\"a\",\"b\"],[\"c\",0]]\n1\nnull\nnull\n[1,[true,null]]\n\"Cannot index array with string \\\"d\\\"\"\n[\"a\",\"b\"]\n[[],[\"a\"],[\"a\",\"b\"],[\"c\"],[\"c\",0],[\"c\",1]]\n[[\"c\",0],[\"c\",1]]\n\"Invalid path expression with result 1\"\n\"Invalid path expression with result \\\"{\\\\\\\"b\\\\\\\":1}\\\"\"\n[[\"a\"],[\"c\",0]]\n[\"a\"]\n[[\"a\",\"b\"]]\n[[\"a\"]]\n[[\"c\",0]]\n[[\"c\",0]]\n[[\"c\",-1]]\n"
+ },
+ {
+  "name": "setpath-delpaths",
+  "stdin": "setpath([\"a\",\"b\"]; 9), setpath([\"n\"]; 1), setpath([\"l\",2]; \"x\"), setpath([]; 5), (try setpath([\"a\",\"b\",\"c\"]; 1) catch .), (try setpath([0]; 1) catch .), delpaths([[\"a\",\"b\"]]), delpaths([[\"l\",0],[\"l\",1]]), delpaths([[\"zz\"]]), delpaths([[\"l\",-1]]), delpaths([[]]), delpaths([]), (try delpaths(1) catch .), (try delpaths([[\"a\",\"b\",\"c\"]]) catch .), (null | setpath([\"x\",1,\"y\"]; 1)), (try setpath([\"l\",-5]; 1) catch .)\n{\"a\":{\"b\":1},\"l\":[1,2,3]}\n",
+  "stdout": "{\"a\":{\"b\":9},\"l\":[1,2,3]}\n{\"a\":{\"b\":1},\"l\":[1,2,3],\"n\":1}\n{\"a\":{\"b\":1},\"l\":[1,2,\"x\"]}\n5\n\"Cannot index number with string \\\"c\\\"\"\n\"Cannot index object with number\"\n{\"a\":{},\"l\":[1,2,3]}\n{\"a\":{\"b\":1},\"l\":[3]}\n{\"a\":{\"b\":1},\"l\":[1,2,3]}\n{\"a\":{\"b\":1},\"l\":[1,2]}\n{\"a\":{\"b\":1},\"l\":[1,2,3]}\n{\"a\":{\"b\":1},\"l\":[1,2,3]}\n\"Paths must be specified as an array\"\n\"Cannot delete field at index of number\"\n{\"x\":[null,{\"y\":1}]}\n\"Out of bounds negative array index\"\n"
+ },
+ {
+  "name": "del",
+  "stdin": "del(.a), del(.l[0]), del(.l[]), del(.a, .l), del(.l[] | select(. > 1)), del(.[]), del(.nope), del(.l[5]), del(.l[0,2]), del(.a.b), del(.. | select(. == 1))\n{\"a\":{\"b\":1},\"l\":[1,2,3]}\n",
+  "stdout": "{\"l\":[1,2,3]}\n{\"a\":{\"b\":1},\"l\":[2,3]}\n{\"a\":{\"b\":1},\"l\":[]}\n{}\n{\"a\":{\"b\":1},\"l\":[1]}\n{}\n{\"a\":{\"b\":1},\"l\":[1,2,3]}\n{\"a\":{\"b\":1},\"l\":[1,2,3]}\n{\"a\":{\"b\":1},\"l\":[2]}\n{\"a\":{},\"l\":[1,2,3]}\n{\"a\":{},\"l\":[2,3]}\n"
+ },
+ {
+  "name": "assign-simple",
+  "stdin": ".a = 1, (.b.c = 2), (.l[1] = \"x\"), (.l[5] = 0), (.[] = 0), (.a = (.l | length)), (.l[] = (1,2)), (.n = .a), (.z.y.x = 1), (.l[-1] = 9)\n{\"a\":10,\"l\":[1,2,3],\"b\":null}\n",
+  "stdout": "{\"a\":1,\"l\":[1,2,3],\"b\":null}\n{\"a\":10,\"l\":[1,2,3],\"b\":{\"c\":2}}\n{\"a\":10,\"l\":[1,\"x\",3],\"b\":null}\n{\"a\":10,\"l\":[1,2,3,null,null,0],\"b\":null}\n{\"a\":0,\"l\":0,\"b\":0}\n{\"a\":3,\"l\":[1,2,3],\"b\":null}\n{\"a\":10,\"l\":[1,1,1],\"b\":null}\n{\"a\":10,\"l\":[2,2,2],\"b\":null}\n{\"a\":10,\"l\":[1,2,3],\"b\":null,\"n\":10}\n{\"a\":10,\"l\":[1,2,3],\"b\":null,\"z\":{\"y\":{\"x\":1}}}\n{\"a\":10,\"l\":[1,2,9],\"b\":null}\n"
+ },
+ {
+  "name": "assign-update",
+  "stdin": ".a |= . + 1, (.l[] |= . * 2), (.l |= map(. + 1)), (.a |= empty), (.l[] |= empty), (.l[] |= select(. > 1)), (.b |= 5), (.s |= ascii_upcase), (.l |= sort_by(-.)), ((.a, .l[0]) |= 0), (.l[] |= (., .)), (.a |= (1, 2))\n{\"a\":1,\"l\":[1,2,3],\"b\":null,\"s\":\"hi\"}\n",
+  "stdout": "{\"a\":2,\"l\":[1,2,3],\"b\":null,\"s\":\"hi\"}\n{\"a\":1,\"l\":[2,4,6],\"b\":null,\"s\":\"hi\"}\n{\"a\":1,\"l\":[2,3,4],\"b\":null,\"s\":\"hi\"}\n{\"l\":[1,2,3],\"b\":null,\"s\":\"hi\"}\n{\"a\":1,\"l\":[],\"b\":null,\"s\":\"hi\"}\n{\"a\":1,\"l\":[2,3],\"b\":null,\"s\":\"hi\"}\n{\"a\":1,\"l\":[1,2,3],\"b\":5,\"s\":\"hi\"}\n{\"a\":1,\"l\":[1,2,3],\"b\":null,\"s\":\"HI\"}\n{\"a\":1,\"l\":[3,2,1],\"b\":null,\"s\":\"hi\"}\n{\"a\":0,\"l\":[0,2,3],\"b\":null,\"s\":\"hi\"}\n{\"a\":1,\"l\":[1,2,3],\"b\":null,\"s\":\"hi\"}\n{\"a\":1,\"l\":[1,2,3],\"b\":null,\"s\":\"hi\"}\n"
+ },
+ {
+  "name": "assign-precedence",
+  "stdin": ".a = 1 | .b = 2, (.a = 1, .b = 2), (.a = .b + 1), (.a = 1 // 2), (.n = (.a | . + 1)), ((.a = 5) | .a), (.a = .b | .a)\n{\"a\":null,\"b\":10,\"n\":0}\n",
+  "stdout": "{\"a\":1,\"b\":2,\"n\":0}\n{\"a\":1,\"b\":10,\"n\":0}\n{\"a\":1,\"b\":2,\"n\":0}\n{\"a\":11,\"b\":10,\"n\":0}\n{\"a\":1,\"b\":10,\"n\":0}\n{\"a\":1,\"b\":10,\"n\":2}\n5\n10\n"
+ },
+ {
+  "name": "variables-as",
+  "stdin": "(. as $x | $x[0] + 1), (1 as $a | 2 as $b | [$a, $b, $a + $b]), (.[0] as $first | $first), ([.[] as $v | $v * $v]), (. as [$a, $b] | {$a, $b}), (. as [$a] | $a), ([.[] as $x | $x | . as $y | $y + 1])\n[5,6]\n",
+  "stdout": "6\n[1,2,3]\n5\n[25,36]\n{\"a\":5,\"b\":6}\n5\n[6,7]\n"
+ },
+ {
+  "name": "destructuring",
+  "stdin": ". as {a: $x, b: [$y, {c: $z}]} | [$x, $y, $z], (. as {$a} | $a), (. as {\"a\": $q} | $q), (. as {(\"a\",\"b\"): $k} | $k), (. as {b: [$p]} | $p), ([.b] | .[] as [$m, {c: $n}] | [$m, $n])\n{\"a\":1,\"b\":[2,{\"c\":3}]}\n",
+  "stdout": "[1,2,3]\n1\n1\n1\n[2,{\"c\":3}]\n2\n[2,3]\n"
+ },
+ {
+  "name": "reduce",
+  "stdin": "reduce .[] as $x (0; . + $x), (reduce .[] as $x ([]; [$x] + .)), (reduce range(5) as $i (1; . * 2)), (reduce empty as $x (7; . + 1)), (reduce .[] as $x (0; empty)), (reduce .[] as $x (0; ., 100)), (reduce (1,2) as $x (0, 10; . + $x)), (reduce .[] as $x ({}; .[\"k\\($x)\"] = $x)), (reduce .[] as $x (null; . + $x)), ([reduce .[] as $x (0; . + 1, . + 2)])\n[1,2,3]\n",
+  "stdout": "6\n[3,2,1]\n32\n7\nnull\n100\n3\n13\n{\"k1\":1,\"k2\":2,\"k3\":3}\n6\n[6]\n"
+ },
+ {
+  "name": "limit-first",
+  "stdin": "[limit(3; .[])], [limit(0; .[])], [limit(-1; .[])], first(.[]), [first(empty)], [limit(2; range(1000000000))], first(range(10; 0; -1)), [limit(1; 1, error(\"x\"))], [limit(3; 1, 2)], [limit(2,3; .[])], (try first(error(\"e\")) catch .), [first(.[] | select(. > 2))], isempty(empty), isempty(1), isempty(.[] | select(. > 100)), isempty(1, error(\"x\"))\n[1,2,3,4,5]\n",
+  "stdout": "[1,2,3]\n[]\n[]\n1\n[]\n[0,1]\n10\n[1]\n[1,2]\n[1,2,1,2,3]\n\"e\"\n[3]\ntrue\nfalse\ntrue\nfalse\n"
+ },
+ {
+  "name": "until-while-repeat",
+  "stdin": "[.[] | until(. > 100; . * 2)], [1 | while(. < 50; . * 3)], [limit(5; 1 | repeat(. * 2))], [2 | recurse(if . < 20 then . * . else empty end)], [.[0] | recurse(if . < 3 then . + 1 else empty end)], ([{\"c\":[{\"c\":[]}]}] | [recurse(.[]?.c?) ] | length)\n[1,5,50]\n",
+  "stdout": "[128,160,200]\n[1,3,9,27]\n[1,2,4,8,16]\n[2,4,16,256]\n[1,2,3]\n3\n"
+ },
+ {
+  "name": "walk",
+  "stdin": "walk(if type == \"number\" then . + 1 else . end), walk(if type == \"array\" then sort else . end), walk(if type == \"object\" then del(.x) else . end), walk(select(. != null)), walk(.)\n[3,{\"x\":1,\"y\":[2,1]},null,[5,4]]\n",
+  "stdout": "[4,{\"x\":2,\"y\":[3,2]},null,[6,5]]\n[null,3,[4,5],{\"x\":1,\"y\":[1,2]}]\n[3,{\"y\":[2,1]},null,[5,4]]\n[3,{\"x\":1,\"y\":[2,1]},[5,4]]\n[3,{\"x\":1,\"y\":[2,1]},null,[5,4]]\n"
+ },
+ {
+  "name": "def-closures",
+  "stdin": "def apply(f): f | f; def twice(f): f | f; def mk($n): . + $n; def comp(f; g): f | g; 3 | apply(. * 2), twice(mk(1)), comp(. + 1; . * 10), (def inner: . * 3; inner), ([1,2] | map(mk(10)))\nnull\n",
+  "stdout": "12\n5\n40\n9\n[11,12]\n"
+ },
+ {
+  "name": "def-recursion",
+  "stdin": "def fac: if . <= 1 then 1 else . * (. - 1 | fac) end; def fib: if . < 2 then . else (. - 1 | fib) + (. - 2 | fib) end; def sum: if length == 0 then 0 else .[0] + (.[1:] | sum) end; def count(f): reduce .[] as $x (0; if ($x | f) then . + 1 else . end); [(10 | fac), (15 | fib), ([1,2,3,4] | sum), ([1,2,3,4,5] | count(. % 2 == 1))]\nnull\n",
+  "stdout": "[3628800,610,10,3]\n"
+ },
+ {
+  "name": "try-catch",
+  "stdin": "[.[] | try (if . == 2 then error(\"two\") else . end) catch \"caught\"], (try error(\"x\") catch .), (try error({a:1}) catch .a), (try error(null) catch .), [.[] | (if . == 2 then error(\"e\") else . end)?], (try (1, error(\"x\"), 3) catch \"c\"), ([.[] | try error catch .]), (try (try error(\"in\") catch error(\"out\")) catch .), (try error catch .)\n[1,2,3]\n",
+  "stdout": "[1,\"caught\",3]\n\"x\"\n1\nnull\n[1,3]\n1\n\"c\"\n[1,2,3]\n\"out\"\n[1,2,3]\n"
+ },
+ {
+  "name": "try-nested-pass",
+  "stdin": "try ((try (1, 2) catch \"inner\") | if . == 2 then error(\"down\") else . end) catch \"outer:\\(.)\"\nnull\n",
+  "stdout": "1\n\"outer:down\"\n"
+ },
+ {
+  "name": "error-uncaught-string",
+  "stdin": ".[] | if . < 0 then error(\"negative: \\(.)\") else . end\n[1,-2,3]\n",
+  "stdout": "1\nerror: negative: -2\n"
+ },
+ {
+  "name": "error-builtin-types",
+  "stdin": ".[] | try length catch .\n[true, {}, [], \"\", 0]\n",
+  "stdout": "\"boolean has no length\"\n0\n0\n0\n0\n"
+ },
+ {
+  "name": "error-messages",
+  "stdin": ".[] | try (.a) catch ., try (.[0]) catch ., try (.[]) catch ., try (keys) catch ., try has(\"a\") catch ., try has(0) catch .\n[1,\"s\",true,[1],{\"a\":1}]\n",
+  "stdout": "\"Cannot index number with string \\\"a\\\"\"\n\"Cannot index number with number\"\n\"Cannot iterate over number\"\n\"number has no keys\"\n\"Cannot check whether number has a string key\"\n\"Cannot check whether number has a number key\"\n\"Cannot index string with string \\\"a\\\"\"\n\"Cannot index string with number\"\n\"Cannot iterate over string\"\n\"string has no keys\"\n\"Cannot check whether string has a string key\"\n\"Cannot check whether string has a number key\"\n\"Cannot index boolean with string \\\"a\\\"\"\n\"Cannot index boolean with number\"\n\"Cannot iterate over boolean\"\n\"boolean has no keys\"\n\"Cannot check whether boolean has a string key\"\n\"Cannot check whether boolean has a number key\"\n\"Cannot index array with string \\\"a\\\"\"\n1\n1\n[0]\n\"Cannot check whether array has a string key\"\ntrue\n1\n\"Cannot index object with number\"\n1\n[\"a\"]\ntrue\n\"Cannot check whether object has a number key\"\n"
+ },
+ {
+  "name": "error-compile",
+  "stdin": ".a | nosuch(1)\n{\"a\":1}\n",
+  "stdout": "error: nosuch/1 is not defined\n"
+ },
+ {
+  "name": "error-compile-var",
+  "stdin": ".a as $x | $y\n{\"a\":1}\n",
+  "stdout": "error: $y is not defined\n"
+ },
+ {
+  "name": "compile-before-input",
+  "stdin": ".a | missing\n{\"a\":1} {\"a\":2}\n",
+  "stdout": "error: missing/0 is not defined\n"
+ },
+ {
+  "name": "error-syntax-1",
+  "stdin": ".a +\n1\n",
+  "stdout": "error: syntax error\n"
+ },
+ {
+  "name": "error-syntax-5",
+  "stdin": "if 1 then 2\n1\n",
+  "stdout": "error: syntax error\n"
+ },
+ {
+  "name": "object-value-expr",
+  "stdin": "{a:1 + 2}\n1\n",
+  "stdout": "{\"a\":3}\n"
+ },
+ {
+  "name": "error-syntax-20",
+  "stdin": "\n1\n",
+  "stdout": "error: syntax error\n"
+ },
+ {
+  "name": "error-invalid-json",
+  "stdin": ".\n{\"a\":1} {bad} 3\n",
+  "stdout": "{\"a\":1}\nerror: invalid JSON input\n"
+ },
+ {
+  "name": "json-numbers-strings",
+  "stdin": ".\n0 -0 1.50 2e3 1E-2 123456789012 -0.5 \"\\u0041\\u00e9\\u4e2d\" \"\\ud83d\\ude00\" \"tab\\there\" \"\\/ \\b\\f\" \"\\u0000\\u001f\\u007f\"\n",
+  "stdout": "0\n0\n1.5\n2000\n0.01\n123456789012\n-0.5\n\"A\u00e9\u4e2d\"\n\"\ud83d\ude00\"\n\"tab\\there\"\n\"/ \\b\\f\"\n\"\\u0000\\u001f\\u007f\"\n"
+ },
+ {
+  "name": "json-empty-input-n",
+  "stdin": "-n 1, 2\n\n",
+  "stdout": "1\n2\n"
+ },
+ {
+  "name": "opt-raw",
+  "stdin": "-r .[]\n[\"a\\nb\", 1, null, {\"a\":\"x\"}, [\"s\"], \"\u00e9\", \"\"]\n",
+  "stdout": "a\nb\n1\nnull\n{\"a\":\"x\"}\n[\"s\"]\n\u00e9\n\n"
+ },
+ {
+  "name": "opt-slurp",
+  "stdin": "-s ., length, map(. * 2)\n1 2 3\n",
+  "stdout": "[1,2,3]\n3\n[2,4,6]\n"
+ },
+ {
+  "name": "opt-slurp-raw",
+  "stdin": "-r -s .[] | strings\n\"a\" 1 \"b\"\n",
+  "stdout": "a\nb\n"
+ },
+ {
+  "name": "opt-null-input",
+  "stdin": "-n [1,2] | add\nignored {bad json\n",
+  "stdout": "3\n"
+ },
+ {
+  "name": "multi-input-errors",
+  "stdin": "if type == \"number\" then . * 2 else error(\"not a number: \\(.)\") end\n1 \"a\" 3 null 5\n",
+  "stdout": "2\nerror: not a number: a\n6\nerror: not a number: null\n10\n"
+ },
+ {
+  "name": "string-interp",
+  "stdin": "\"a\\(.x)b\", \"\\(.x)\", \"\\(.x + 1) and \\(.y)\", \"\\(.l)\", \"\\(\"nested \\(.x)\")\", \"\\(.x, .x + 1)-\\(10, 20)\", \"\\(null)\", \"no interp\", \"\", \"\\(.s)\", \"q\\\"uote\", \"t\\tb\\nn\\\\\"\n{\"x\":1,\"y\":\"two\",\"l\":[1,{\"a\":null}],\"s\":\"str\"}\n",
+  "stdout": "\"a1b\"\n\"1\"\n\"2 and two\"\n\"[1,{\\\"a\\\":null}]\"\n\"nested 1\"\n\"1-10\"\n\"2-10\"\n\"1-20\"\n\"2-20\"\n\"null\"\n\"no interp\"\n\"\"\n\"str\"\n\"q\\\"uote\"\n\"t\\tb\\nn\\\\\"\n"
+ },
+ {
+  "name": "formats",
+  "stdin": "(.l | @csv), (.l | @tsv), (.s | @html), (.s | @uri), (.s | @base64), (.s | @base64 | @base64d), (.o | @json), (.l | @text), (.s | @json), (.l | @json), @json \"v=\\(.l)\", @csv \"r:\\(.l)\", @html \"<b>\\(.s)</b>\", @uri \"q=\\(.s)\", @base64 \"\\(.s)\", @text \"\\(.o)\", (.n | @text, @json)\n{\"l\":[1,\"a,b\",\"q\\\"r\",\"t\\tx\",null,true,2.5],\"s\":\"<a&b> 'x' \\\"y\\\" ~z-_.\u00e9\",\"o\":{\"k\":[1]},\"n\":12}\n",
+  "stdout": "\"1,\\\"a,b\\\",\\\"q\\\"\\\"r\\\",\\\"t\\tx\\\",,true,2.5\"\n\"1\\ta,b\\tq\\\"r\\tt\\\\tx\\t\\ttrue\\t2.5\"\n\"&lt;a&amp;b&gt; &#39;x&#39; &quot;y&quot; ~z-_.\u00e9\"\n\"%3Ca%26b%3E%20%27x%27%20%22y%22%20~z-_.%C3%A9\"\n\"PGEmYj4gJ3gnICJ5IiB+ei1fLsOp\"\n\"<a&b> 'x' \\\"y\\\" ~z-_.\u00e9\"\n\"{\\\"k\\\":[1]}\"\n\"[1,\\\"a,b\\\",\\\"q\\\\\\\"r\\\",\\\"t\\\\tx\\\",null,true,2.5]\"\n\"\\\"<a&b> 'x' \\\\\\\"y\\\\\\\" ~z-_.\u00e9\\\"\"\n\"[1,\\\"a,b\\\",\\\"q\\\\\\\"r\\\",\\\"t\\\\tx\\\",null,true,2.5]\"\n\"v=[1,\\\"a,b\\\",\\\"q\\\\\\\"r\\\",\\\"t\\\\tx\\\",null,true,2.5]\"\n\"r:1,\\\"a,b\\\",\\\"q\\\"\\\"r\\\",\\\"t\\tx\\\",,true,2.5\"\n\"<b>&lt;a&amp;b&gt; &#39;x&#39; &quot;y&quot; ~z-_.\u00e9</b>\"\n\"q=%3Ca%26b%3E%20%27x%27%20%22y%22%20~z-_.%C3%A9\"\n\"PGEmYj4gJ3gnICJ5IiB+ei1fLsOp\"\n\"{\\\"k\\\":[1]}\"\n\"12\"\n\"12\"\n"
+ },
+ {
+  "name": "format-errors",
+  "stdin": "(try ([{}] | @csv) catch .), (try ({} | @csv) catch .), (try (\"a\" | @tsv) catch .), (try ([[1]] | @tsv) catch .), (try (\"!!\" | @base64d) catch .), (1 | @html), (null | @uri), ([1,[2]] | @html), (true | @base64)\nnull\n",
+  "stdout": "\"object is not valid in a csv row\"\n\"object cannot be csv-formatted, only an array can be\"\n\"string cannot be tsv-formatted, only an array can be\"\n\"array is not valid in a csv row\"\n\"\\\"!!\\\" is not valid base64 data\"\n\"1\"\n\"null\"\n\"[1,[2]]\"\n\"dHJ1ZQ==\"\n"
+ },
+ {
+  "name": "complex-orders",
+  "stdin": "(.orders | map(select(.status == \"paid\") | {id, total: (.items | map(.qty * .price) | add // 0)})), ([.orders[].items[]] | group_by(.sku) | map({sku: .[0].sku, qty: (map(.qty) | add)})), (.orders | map(.items | length) | max), ([.orders[] | select(.items | length > 0) | .id]), (.orders | map({(.id | tostring): .status}) | add), ([.orders[] | .items[] | select(.price > 5) | .sku] | unique)\n{\"orders\":[{\"id\":1,\"items\":[{\"sku\":\"a\",\"qty\":2,\"price\":3.5},{\"sku\":\"b\",\"qty\":1,\"price\":10}],\"status\":\"paid\"},{\"id\":2,\"items\":[{\"sku\":\"a\",\"qty\":5,\"price\":3.5}],\"status\":\"open\"},{\"id\":3,\"items\":[],\"status\":\"paid\"}]}\n",
+  "stdout": "[{\"id\":1,\"total\":17},{\"id\":3,\"total\":0}]\n[{\"sku\":\"a\",\"qty\":7},{\"sku\":\"b\",\"qty\":1}]\n2\n[1,2]\n{\"1\":\"paid\",\"2\":\"open\",\"3\":\"paid\"}\n[\"b\"]\n"
+ },
+ {
+  "name": "complex-transform",
+  "stdin": "to_entries | map(select(.value | type == \"number\")) | sort_by(-.value) | map(\"\\(.key): \\(.value)\") | .[]\n{\"a\":3,\"b\":\"x\",\"c\":10,\"d\":1.5,\"e\":null}\n",
+  "stdout": "\"c: 10\"\n\"a: 3\"\n\"d: 1.5\"\n"
+ },
+ {
+  "name": "complex-matrix",
+  "stdin": "[range(3) as $i | [range(3) as $j | $i * 3 + $j]] | ., transpose, (map(add)), (transpose | map(add)), ([.[][]] | add), (map(reverse)), (. as $m | [range(3) | $m[.][.]])\nnull\n",
+  "stdout": "[[0,1,2],[3,4,5],[6,7,8]]\n[[0,3,6],[1,4,7],[2,5,8]]\n[3,12,21]\n[9,12,15]\n36\n[[2,1,0],[5,4,3],[8,7,6]]\n[0,4,8]\n"
+ },
+ {
+  "name": "complex-flatten-paths",
+  "stdin": "[paths(scalars) as $p | {path: ($p | map(tostring) | join(\".\")), value: getpath($p)}]\n{\"a\":{\"b\":[1,{\"c\":2}],\"d\":\"x\"},\"e\":null}\n",
+  "stdout": "[{\"path\":\"a.b.0\",\"value\":1},{\"path\":\"a.b.1.c\",\"value\":2},{\"path\":\"a.d\",\"value\":\"x\"}]\n"
+ },
+ {
+  "name": "complex-pivot",
+  "stdin": "group_by(.region) | map({region: .[0].region, total: (map(.amt) | add), items: map(.item) | sort}) | sort_by(.region)\n[{\"region\":\"n\",\"item\":\"b\",\"amt\":5},{\"region\":\"s\",\"item\":\"a\",\"amt\":2},{\"region\":\"n\",\"item\":\"a\",\"amt\":7},{\"region\":\"s\",\"item\":\"c\",\"amt\":1.5}]\n",
+  "stdout": "[{\"region\":\"n\",\"total\":12,\"items\":[\"a\",\"b\"]},{\"region\":\"s\",\"total\":3.5,\"items\":[\"a\",\"c\"]}]\n"
+ },
+ {
+  "name": "complex-stats",
+  "stdin": "(add / length) as $mean | (map(. - $mean | . * .) | add / length) as $var | {mean: $mean, variance: $var, sorted: sort, median: (sort | if length % 2 == 1 then .[length / 2 | floor] else (.[length / 2 - 1] + .[length / 2]) / 2 end)}\n[2,4,4,4,5,5,7,9]\n",
+  "stdout": "{\"mean\":5,\"variance\":4,\"sorted\":[2,4,4,4,5,5,7,9],\"median\":4.5}\n"
+ },
+ {
+  "name": "generator-cartesian",
+  "stdin": "[(1,2) * (10,20)], [(1,2) - (10,20)], [[(1,2), 3] | .[]], [\"\\(1,2)\\(3,4)\"], [(1,2) as $x | (10,20) as $y | $x + $y], [.[(0,1)]], [(1,2) | tostring], [(1,2) < (2,1)], [(true,false) and (true,false)], [range(1,2; 3,4)]\n[5,6,7,8]\n",
+  "stdout": "[10,20,20,40]\n[-9,-8,-19,-18]\n[1,2,3]\n[\"13\",\"23\",\"14\",\"24\"]\n[11,21,12,22]\n[5,6]\n[\"1\",\"2\"]\n[true,false,false,false]\n[true,false,false]\n[1,2,1,2,3,2,2,3]\n"
+ },
+ {
+  "name": "deep-nesting",
+  "stdin": "[recurse(.[0]?; type == \"array\")] | length\n[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]\n",
+  "stdout": "150\n"
+ }
+]

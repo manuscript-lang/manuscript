@@ -15,7 +15,7 @@ test "regex receivers execute matching replacement and empty results":
             max_matches: 0
         )
     ).is_empty(): return panic("empty match budget")
-    if value(regex.replace(text: "a12b3", replacement: "#")) != "a#b#": return panic(
+    if value(regex.replace_all(text: "a12b3", replacement: "#")) != "a#b#": return panic(
         "replace"
     )
 
@@ -28,7 +28,7 @@ test "regex rejects invalid expressions and exhausted budgets":
 
     let regex = value(compile("[0-9]+"))
     let limited: Result[List[String], RegexError] = error(
-        cause: RegexError.LimitExceeded
+        RegexError.LimitExceeded
     )
     if regex.find_all(
         text: "1 2",
@@ -36,10 +36,10 @@ test "regex rejects invalid expressions and exhausted budgets":
     ) != limited: return panic("match budget")
 
     let output_limit: Result[String, RegexError] = error(
-        cause: RegexError.LimitExceeded
+        RegexError.LimitExceeded
     )
     if (
-        regex.replace(
+        regex.replace_all(
             text: "1",
             replacement: "long",
             max_bytes: 3

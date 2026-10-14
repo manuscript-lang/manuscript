@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	// The suite builds cmd/ms in subprocesses. Track its implementation so Go's
 	// test cache is invalidated when CLI code changes, even if the harness does not.
@@ -51,7 +52,7 @@ func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	source, err := compiler.Standalone(result.Source)
+	source, err := build.Standalone(result.Source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +61,7 @@ func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
 	}
 	// Emitted source is a complete program against the vendored dependencies.
 	executable := filepath.Join(t.TempDir(), "standalone")
-	if err := compiler.Build(source, executable); err != nil {
+	if err := build.Build(source, executable); err != nil {
 		t.Fatal(err)
 	}
 	if data, err := commandOutput(t, executable); err != nil || !strings.Contains(string(data), "0 failed") {
@@ -74,7 +75,7 @@ func TestCLIEntryAndNativeBuild(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	executable := filepath.Join(t.TempDir(), "hello")
-	if err := compiler.Build(result.Source, executable); err != nil {
+	if err := build.Build(result.Source, executable); err != nil {
 		t.Fatal(err)
 	}
 	data, err := commandOutput(t, executable, "first", "second")
@@ -96,7 +97,7 @@ func TestRuntimeFaults(t *testing.T) {
 				t.Fatal(result.Diagnostics)
 			}
 			binary := filepath.Join(t.TempDir(), "program")
-			if err := compiler.Build(result.Source, binary); err != nil {
+			if err := build.Build(result.Source, binary); err != nil {
 				t.Fatal(err)
 			}
 			data, err := commandOutput(t, binary)
@@ -135,10 +136,34 @@ func TestCLICommands(t *testing.T) {
 	if data, err := commandOutput(t, binary, "profile", manifest, "-o", bundle); err != nil {
 		t.Fatalf("profile bundle: %v %s", err, data)
 	}
-	for _, name := range []string{"program", "program.ms-build.json", "inspection.json", "manifest.json", "cpu.pprof", "heap.pprof", "trace.out"} {
+	for _, name := range []string{"program", "program.ms-build.json", "inspection.json", "manifest.json", "cpu.pprof", "heap.pprof"} {
 		info, err := os.Stat(filepath.Join(bundle, name))
 		if err != nil || info.Size() == 0 {
 			t.Fatalf("missing profile artifact %s: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(bundle, "trace.out")); !os.IsNotExist(err) {
+		t.Fatal("default bundle captured a trace", err)
+	}
+	manifestData, err := os.ReadFile(filepath.Join(bundle, "manifest.json"))
+	if err != nil || bytes.Contains(manifestData, []byte(`"trace"`)) {
+		t.Fatal("default manifest advertises a trace", err)
+	}
+	traced := filepath.Join(project, "traced")
+	if data, err := commandOutput(t, binary, "profile", manifest, "-o", traced, "--trace", "--", "first", "second"); err != nil || string(data) != "Arguments: 2\n" {
+		t.Fatalf("explicit trace bundle: %v %s", err, data)
+	}
+	manifestData, err = os.ReadFile(filepath.Join(traced, "manifest.json"))
+	if err != nil || !bytes.Contains(manifestData, []byte(`"trace": "trace.out"`)) {
+		t.Fatal("explicit trace missing from manifest", err)
+	}
+	for _, args := range [][]string{
+		{"pprof", "-top", filepath.Join(bundle, "cpu.pprof")},
+		{"pprof", "-top", filepath.Join(bundle, "heap.pprof")},
+		{"trace", "-d=parsed", filepath.Join(traced, "trace.out")},
+	} {
+		if data, err := commandOutput(t, binary, args...); err != nil {
+			t.Fatalf("invalid captured artifact: %v %s", err, data)
 		}
 	}
 	if err := exec.Command(binary, "profile", manifest, "-o", bundle).Run(); err == nil {
@@ -163,7 +188,7 @@ func TestEvaluationOrderAndEveryCleanupExit(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	data, err := commandOutput(t, binary)
@@ -185,7 +210,7 @@ func TestSignalCancelsJoinsAndCleansUp(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	t.Run("native", func(t *testing.T) { checkSignalShutdown(t, binary) })
@@ -253,7 +278,7 @@ func TestNativeHTTPHost(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "server")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -319,7 +344,7 @@ func TestNativeSubprocessCapability(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	output, err := commandOutput(t, binary)
@@ -393,7 +418,7 @@ test "encoded nominal identity":
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	output, err := commandOutput(t, binary)
@@ -412,7 +437,7 @@ func TestExpandedLibraryCLICapabilities(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		binary += ".exe"
 	}
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	dataPath := filepath.Join(directory, "data")
@@ -450,30 +475,34 @@ export fn main() -> Int:
     if clock().now() - before < 0.milliseconds:
         return 1
     with service = Scheduler(limit: 1):
-        let task = fn() -> Result[Unit, String]:
+        let task = fn() -> Result[Unit, Error]:
             close_output()
             return ok(value: unit)
-        match service.start(task):
-            ok(id):
-                while true:
-                    match service.status(id):
-                        Running:
-                            sleep(1.milliseconds)
-                        Succeeded:
-                            break
-                        _:
-                            return 5
+        let id = match service.start(task):
+            ok(id): id
             error(_):
                 return 2
-    match stdout().write("".to_bytes()):
+
+        while true:
+            match service.status(id):
+                Running:
+                    sleep(1.milliseconds)
+                Succeeded:
+                    break
+                _:
+                    return 5
+
+    let cause = match stdout().write("".to_bytes()):
         ok(_):
             return 3
-        error(cause):
-            match cause:
-                Closed:
-                    return 0
-                _:
-                    return 4
+        error(cause): cause
+
+    match cause:
+        Closed:
+            return 0
+        _:
+            return 4
+
 `
 	for name, source := range map[string]string{"helper.ms": helper, "main.ms": main} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
@@ -485,7 +514,7 @@ export fn main() -> Int:
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(root, "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -501,7 +530,7 @@ func TestNetworkingStreamingAndWebSocket(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "networking")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -538,7 +567,7 @@ test "defaults use their declaration module":
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(root, "program")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	data, err := commandOutput(t, binary)

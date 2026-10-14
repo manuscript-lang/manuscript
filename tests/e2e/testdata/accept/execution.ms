@@ -11,13 +11,13 @@ import WorkStatus from "@std/tasks.ms"
 
 fn run() -> Result[Unit, ExecutionError]:
     var offset = 3
-    let first = fn() -> Int:
+    let first = fn():
         return offset
     offset = 99
-    let second = fn() -> Bool:
+    let second = fn():
         return true
 
-    with group = TaskGroup(timeout: 1.seconds):
+    with group = TaskGroup(1.seconds):
         let number_task = group.start(first)
         let flag_task = group.start(second)
         let joined = try group.join()
@@ -28,18 +28,18 @@ fn run() -> Result[Unit, ExecutionError]:
         if not flag:
             return panic(message: "check failed")
 
-    with empty = TaskGroup(timeout: 0.seconds):
+    with empty = TaskGroup(0.seconds):
         let joined = try empty.join()
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn scheduler_probe() -> Unit:
     with service = Scheduler(
         limit: 1,
         drain: 2.seconds
     ):
-        let task = fn() -> Result[Unit, String]:
-            return ok(value: unit)
+        let task = fn() -> Result[Unit, Error]:
+            return ok(unit)
         let launch = service.start
 
         match launch(operation: task):
@@ -81,7 +81,7 @@ fn standard_task() -> Result[Unit, ExecutionError]:
         if not (completed == unit):
             return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 test "standard functions can run concurrently":
     match standard_task():

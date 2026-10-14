@@ -1,0 +1,17 @@
+[
+ {
+  "name": "ex-basic",
+  "stdin": "all: a\n\t@echo all done\na: b\n\tcp b a\n====\nb 3\n====\nbuild\nbuild\ntouch b\nbuild\nfiles\n",
+  "stdout": "> build\ncp b a\nall done\n> build\nmake: 'all' is up to date.\n> touch b\n> build\ncp b a\nall done\n> files\na 9\nall 10\nb 7\n"
+ },
+ {
+  "name": "ex-pattern-vars",
+  "stdin": "CC = cc\nOBJS = x.o y.o\nprog: $(OBJS)\n\t$(CC) -o $@ $^\n%.o: %.c\n\t$(CC) -c $< -o $@\n====\nx.c 1\ny.c 2\ny.o 9\n====\ndry\nbuild CC=gcc\ndeps prog\n",
+  "stdout": "> dry\ncc -c x.c -o x.o\ncc -o prog x.o y.o\n> build CC=gcc\ngcc -c x.c -o x.o\ngcc -o prog x.o y.o\n> deps prog\nx.c\nx.o\ny.c\ny.o\n"
+ },
+ {
+  "name": "ex-fail",
+  "stdin": ".PHONY: t\nt: a\n\techo test\na:\n\t-false\n\texit 2\n\techo no\n====\n====\nbuild\n",
+  "stdout": "> build\nfalse\nmake: [Makefile:5: a] Error 1 (ignored)\nexit 2\nmake: *** [Makefile:6: a] Error 2\n"
+ }
+]

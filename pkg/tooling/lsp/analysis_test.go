@@ -169,3 +169,49 @@ func TestMultilineParameterNavigationDuringRecovery(t *testing.T) {
 		}
 	}
 }
+
+func TestLibraryProjectOverlaysAndManifestChanges(t *testing.T) {
+	root := t.TempDir()
+	src := filepath.Join(root, "src")
+	if err := os.Mkdir(src, 0700); err != nil {
+		t.Fatal(err)
+	}
+	manifest := filepath.Join(root, "ms.toml")
+	configuration := "[project]\nname = \"library\"\nsource = \"src\"\n[aliases]\n\"@lib\" = \"src\"\n"
+	if err := os.WriteFile(manifest, []byte(configuration), 0600); err != nil {
+		t.Fatal(err)
+	}
+	d := document{URI: fileURI(filepath.Join(src, "value.ms")), Text: "export fn value() -> Int: return 3\n", Version: 1}
+	bad := document{URI: fileURI(filepath.Join(src, "unimported.ms")), Text: "export fn other() -> Int: return \"bad\"\n", Version: 1}
+	outside := document{URI: fileURI(filepath.Join(t.TempDir(), "outside.ms")), Text: "invalid source!", Version: 1}
+	docs := map[string]document{d.URI: d, bad.URI: bad, outside.URI: outside}
+	result := analyze(d, docs)
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Position.File != "src/unimported.ms" || module(result, d) == nil {
+		t.Fatal("library overlay discovery:", result.Diagnostics)
+	}
+	bad.Text = "import value from \"@lib/value.ms\"\nexport fn other() -> Int: return value()\n"
+	bad.Version++
+	docs[bad.URI] = bad
+	result = analyze(d, docs)
+	if !result.Success() || module(result, bad) == nil || navigation(result, bad, position{1, 33}, "textDocument/definition") == nil {
+		t.Fatal("library overlays/navigation:", result.Diagnostics)
+	}
+	if err := os.WriteFile(manifest, []byte(configuration+"\"@std\" = \"src\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	result = analyze(d, docs)
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Position.File != "ms.toml" || result.Diagnostics[0].Position.Line != 6 || result.Diagnostics[0].Position.Column != 1 {
+		t.Fatal("manifest edit did not refresh positioned error:", result.Diagnostics)
+	}
+	if err := os.WriteFile(manifest, []byte(configuration), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if result = analyze(d, docs); !result.Success() {
+		t.Fatal("manifest restoration stale:", result.Diagnostics)
+	}
+	for _, path := range []string{filename(d.URI), filename(bad.URI)} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatal("overlay was written:", err)
+		}
+	}
+}

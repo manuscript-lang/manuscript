@@ -20,17 +20,21 @@ func HashIn(ctx *Execution, value Value) int64 {
 	}
 	h := fnv.New64a()
 	write := func(s string) { h.Write([]byte(strconv.Itoa(len(s)) + ":" + s)) }
+	if s, ok := value.(Struct); ok {
+		value = structRecord(s)
+	}
 	switch v := value.(type) {
 	case Record:
 		write(v.Type)
-		keys := make([]string, 0, len(v.Fields))
-		for k := range v.Fields {
+		fields := fieldsSnapshot(v.Fields)
+		keys := make([]string, 0, len(fields))
+		for k := range fields {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
 			write(k)
-			write(strconv.FormatInt(HashIn(ctx, v.Fields[k]), 10))
+			write(strconv.FormatInt(HashIn(ctx, fields[k]), 10))
 		}
 	case Alternative:
 		write(v.Type)

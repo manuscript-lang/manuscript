@@ -1,0 +1,101 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+func digits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func oneOf(s string, opts ...string) bool {
+	for _, o := range opts {
+		if s == o {
+			return true
+		}
+	}
+	return false
+}
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	levels := map[string]int{}
+	count := map[string]int{}
+	total := map[string]int{}
+	valid, malformed := 0, 0
+	classes := map[byte]int{}
+	var latencies []int
+	slowest, slowText := -1, ""
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		f := strings.Split(line, " ")
+		if len(f) != 6 || f[0] == "" || !oneOf(f[1], "DEBUG", "INFO", "WARN", "ERROR") ||
+			!oneOf(f[2], "GET", "POST", "PUT", "DELETE") || !strings.HasPrefix(f[3], "/") ||
+			len(f[4]) != 3 || !digits(f[4]) || !digits(f[5]) || len(f[5]) > 9 {
+			malformed++
+			continue
+		}
+		valid++
+		levels[f[1]]++
+		c := f[4][0]
+		if c < '2' || c > '5' {
+			c = 'o'
+		}
+		classes[c]++
+		lat, _ := strconv.Atoi(f[5])
+		latencies = append(latencies, lat)
+		if lat > slowest {
+			slowest, slowText = lat, fmt.Sprintf("%d %s %s %s", lat, f[2], f[3], f[0])
+		}
+		count[f[3]]++
+		total[f[3]] += lat
+	}
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	fmt.Fprintf(out, "valid: %d\nmalformed: %d\n", valid, malformed)
+	for _, l := range []string{"DEBUG", "INFO", "WARN", "ERROR"} {
+		fmt.Fprintf(out, "%s: %d\n", l, levels[l])
+	}
+	sort.Ints(latencies)
+	p95 := 0
+	if len(latencies) > 0 {
+		p95 = latencies[(95*len(latencies)+99)/100-1]
+	}
+	fmt.Fprintf(out, "status: 2xx=%d 3xx=%d 4xx=%d 5xx=%d other=%d\np95: %d\n", classes['2'], classes['3'], classes['4'], classes['5'], classes['o'], p95)
+	if slowest >= 0 {
+		fmt.Fprintf(out, "slowest: %s\n", slowText)
+	}
+	fmt.Fprintln(out, "top:")
+	var paths []string
+	for p := range count {
+		paths = append(paths, p)
+	}
+	sort.Slice(paths, func(i, j int) bool {
+		if count[paths[i]] != count[paths[j]] {
+			return count[paths[i]] > count[paths[j]]
+		}
+		return paths[i] < paths[j]
+	})
+	if len(paths) > 3 {
+		paths = paths[:3]
+	}
+	for _, p := range paths {
+		fmt.Fprintf(out, "%s %d avg=%d\n", p, count[p], total[p]/count[p])
+	}
+}

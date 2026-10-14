@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "stock WIDGET 100\nstock GADGET-2 5\nprice WIDGET 250\nprice GADGET-2 1999\norder o1 WIDGET:10 GADGET-2:2\norder o2 GADGET-2:4\nship o1\ncancel o1\nreport\n",
+  "stdout": "ok WIDGET stock=100\nok GADGET-2 stock=5\nok\nok\nok o1 total=62.48\nerror: insufficient stock for GADGET-2 (have 3, need 4)\nok\nerror: order o1 already shipped\nGADGET-2 stock=3 price=19.99 reserved=0\nWIDGET stock=90 price=2.50 reserved=0\norders placed=0 shipped=1 cancelled=0\nrevenue=62.48\n"
+ },
+ {
+  "name": "cancel-restores",
+  "stdin": "stock A 5\nprice A 100\norder x A:5\norder y A:1\ncancel x\norder y A:1\nreport\n",
+  "stdout": "ok A stock=5\nok\nok x total=5.00\nerror: insufficient stock for A (have 0, need 1)\nok\nok y total=1.00\nA stock=4 price=1.00 reserved=1\norders placed=1 shipped=0 cancelled=1\nrevenue=0.00\n"
+ }
+]

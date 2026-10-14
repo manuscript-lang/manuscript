@@ -1,0 +1,9 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkListCallbackMembershipSnapshot-4   	 2376745	        98.20 ns/op	      48 B/op	       1 allocs/op
+BenchmarkListCallbackMembershipSnapshot-4   	 1798928	       115.9 ns/op	      48 B/op	       1 allocs/op
+BenchmarkListCallbackMembershipSnapshot-4   	 2462540	       147.6 ns/op	      48 B/op	       1 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.867s

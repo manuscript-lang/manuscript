@@ -28,7 +28,7 @@ test "compression formats roundtrip and enforce expanded byte budgets":
         ): return panic("compression roundtrip")
 
         let limited: Result[Bytes, CompressionError] = error(
-            cause: CompressionError.LimitExceeded
+            CompressionError.LimitExceeded
         )
         if (
             decompress(
@@ -39,14 +39,14 @@ test "compression formats roundtrip and enforce expanded byte budgets":
         ): return panic("expanded byte budget")
 
     let unsupported: Result[Bytes, CompressionError] = error(
-        cause: CompressionError.Unsupported
+        CompressionError.Unsupported
     )
     if compress(data: input, format: "invalid", level: 6) != unsupported: return panic(
         "unsupported format"
     )
 
     let malformed: Result[Bytes, CompressionError] = error(
-        cause: CompressionError.InvalidData
+        CompressionError.InvalidData
     )
     if decompress(data: input, format: "gzip") != malformed: return panic(
         "invalid compressed data"
@@ -73,7 +73,7 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
         )
 
         let limited: Result[List[ArchiveEntry], ArchiveError] = error(
-            cause: ArchiveError.LimitExceeded
+            ArchiveError.LimitExceeded
         )
         if (
             unpack(
@@ -104,7 +104,7 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
         ): return panic("total bytes")
 
 test "archives reject traversal paths":
-    let invalid: Result[Bytes, ArchiveError] = error(cause: ArchiveError.InvalidInput)
+    let invalid: Result[Bytes, ArchiveError] = error(ArchiveError.InvalidInput)
 
     for path in ["../escape", "/absolute"]:
         let entries = [

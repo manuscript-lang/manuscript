@@ -1,0 +1,161 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type account struct {
+	bal, lim, ops, rej int64
+	frozen             bool
+}
+
+const fee = 5
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	accounts := map[string]*account{}
+	arity := map[string]int{"open": 3, "deposit": 3, "withdraw": 3, "transfer": 4, "freeze": 2, "unfreeze": 2, "report": 1}
+	var fees int64
+	for sc.Scan() {
+		t := strings.FieldsFunc(sc.Text(), func(r rune) bool { return r == ' ' || r == '\t' })
+		if len(t) == 0 {
+			continue
+		}
+		cmd := t[0]
+		if n, ok := arity[cmd]; !ok || n != len(t) {
+			fmt.Fprintln(out, "error: bad command")
+			continue
+		}
+		switch cmd {
+		case "report":
+			ids := make([]string, 0, len(accounts))
+			for id := range accounts {
+				ids = append(ids, id)
+			}
+			sort.Strings(ids)
+			var total int64
+			for _, id := range ids {
+				a := accounts[id]
+				total += a.bal
+				fz := "no"
+				if a.frozen {
+					fz = "yes"
+				}
+				fmt.Fprintf(out, "%s balance=%d limit=%d ops=%d rejected=%d frozen=%s\n", id, a.bal, a.lim, a.ops, a.rej, fz)
+			}
+			fmt.Fprintf(out, "total balance=%d fees=%d\n", total, fees)
+			continue
+		case "open":
+			if !isDigits(t[2]) {
+				fmt.Fprintln(out, "error: invalid limit")
+			} else if _, ok := accounts[t[1]]; ok {
+				fmt.Fprintf(out, "error: account exists %s\n", t[1])
+			} else {
+				lim, _ := strconv.ParseInt(t[2], 10, 64)
+				accounts[t[1]] = &account{lim: lim}
+				fmt.Fprintln(out, "ok")
+			}
+			continue
+		case "freeze", "unfreeze":
+			if a, ok := accounts[t[1]]; !ok {
+				fmt.Fprintf(out, "error: unknown account %s\n", t[1])
+			} else {
+				a.frozen = cmd == "freeze"
+				fmt.Fprintln(out, "ok")
+			}
+			continue
+		}
+		ids := []string{t[1]}
+		if cmd == "transfer" {
+			ids = append(ids, t[2])
+		}
+		amountText := t[len(t)-1]
+		missing := ""
+		for _, id := range ids {
+			if _, ok := accounts[id]; !ok {
+				missing = id
+				break
+			}
+		}
+		if missing != "" {
+			fmt.Fprintf(out, "error: unknown account %s\n", missing)
+			continue
+		}
+		reject := func(id, msg string) {
+			accounts[id].rej++
+			fmt.Fprintln(out, msg)
+		}
+		if cmd == "transfer" && ids[0] == ids[1] {
+			reject(ids[0], "error: same account")
+			continue
+		}
+		n, _ := strconv.ParseInt(amountText, 10, 64)
+		if !isDigits(amountText) || n <= 0 {
+			reject(ids[0], "error: invalid amount")
+			continue
+		}
+		frozen := ""
+		for _, id := range ids {
+			if accounts[id].frozen {
+				frozen = id
+				break
+			}
+		}
+		if frozen != "" {
+			reject(frozen, "error: account frozen "+frozen)
+			continue
+		}
+		a := accounts[ids[0]]
+		if cmd == "deposit" {
+			a.bal += n
+			a.ops++
+			fmt.Fprintf(out, "ok %d\n", a.bal)
+			continue
+		}
+		next := a.bal - n
+		var f int64
+		if a.bal >= 0 && next < 0 {
+			next -= fee
+			f = fee
+		}
+		if next < -a.lim {
+			reject(ids[0], "error: overdraft limit exceeded "+ids[0])
+			continue
+		}
+		a.bal = next
+		a.ops++
+		fees += f
+		sfx := ""
+		if f > 0 {
+			sfx = fmt.Sprintf(" fee=%d", f)
+		}
+		if cmd == "withdraw" {
+			fmt.Fprintf(out, "ok %d%s\n", next, sfx)
+		} else {
+			b := accounts[ids[1]]
+			b.bal += n
+			b.ops++
+			fmt.Fprintf(out, "ok %d %d%s\n", next, b.bal, sfx)
+		}
+	}
+}

@@ -21,11 +21,12 @@ async function activate(context) {
   const output = vscode.window.createOutputChannel('Manuscript');
   const watcher = vscode.workspace.createFileSystemWatcher('**/*.{ms,toml}');
   context.subscriptions.push(output, watcher);
-  let command = vscode.workspace.getConfiguration('manuscript').get('serverPath', 'ms');
-  client = new LanguageClient('manuscript', 'Manuscript', { command, args: ['lsp'] }, {
-    documentSelector,
-    synchronize: { fileEvents: watcher }, outputChannel: output,
+  const serverPath = () => vscode.workspace.getConfiguration('manuscript').get('serverPath', 'ms');
+  let command = serverPath();
+  const makeClient = () => new LanguageClient('manuscript', 'Manuscript', { command, args: ['lsp'] }, {
+    documentSelector, synchronize: { fileEvents: watcher }, outputChannel: output,
   });
+  client = makeClient();
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('manuscript-stdlib', {
     provideTextDocumentContent(uri) {
       return client.sendRequest('manuscript/standardLibrarySource', { textDocument: { uri: uri.toString() } });
@@ -41,11 +42,10 @@ async function activate(context) {
     if (!await editor.document.save()) return;
     return editor;
   }
-  let delve = vscode.workspace.getConfiguration('manuscript').get('delvePath', 'dlv');
   context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('manuscript', {
     createDebugAdapterDescriptor() {
       return new vscode.DebugAdapterExecutable(process.execPath,
-        [path.join(context.extensionPath, 'dist/debug-adapter.js'), command, delve],
+        [path.join(context.extensionPath, 'dist/debug-adapter.js'), command],
         { env: { ELECTRON_RUN_AS_NODE: '1' } });
     },
   }));
@@ -65,17 +65,20 @@ async function activate(context) {
       const target = await targetFor(editor.document.uri.fsPath);
       await vscode.debug.startDebugging(vscode.workspace.getWorkspaceFolder(editor.document.uri), {
         type: 'manuscript', name: 'Manuscript', request: 'launch', program: target,
-        compilerPath: command, delvePath: delve, cwd: path.dirname(target),
+        compilerPath: command, cwd: path.dirname(target),
       });
     } catch (error) { vscode.window.showErrorMessage(`Manuscript debug failed: ${error.message}`); }
   }));
-  context.subscriptions.push(vscode.commands.registerCommand('manuscript.restartServer', async () => {
-    try { await client.stop(); command = vscode.workspace.getConfiguration('manuscript').get('serverPath', 'ms');
-      delve = vscode.workspace.getConfiguration('manuscript').get('delvePath', 'dlv');
-      client = new LanguageClient('manuscript', 'Manuscript', { command, args: ['lsp'] }, {
-        documentSelector, synchronize: { fileEvents: watcher }, outputChannel: output,
-      }); await client.start();
-    } catch (error) { output.appendLine(error.message); output.show(); }
+  const restartServer = async () => {
+    // A client whose start failed (for example, a missing binary) rejects stop(),
+    // but restarting after fixing manuscript.serverPath is exactly that case.
+    try { await client.stop(); } catch (error) { output.appendLine(error.message); }
+    try { command = serverPath(); client = makeClient(); await client.start(); }
+    catch (error) { output.appendLine(error.message); output.show(); }
+  };
+  context.subscriptions.push(vscode.commands.registerCommand('manuscript.restartServer', restartServer));
+  if (vscode.workspace.onDidChangeConfiguration) context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration('manuscript.serverPath') && serverPath() !== command) restartServer();
   }));
   if (vscode.tasks) context.subscriptions.push(vscode.tasks.registerTaskProvider('manuscript', {
     async provideTasks() {
@@ -119,5 +122,5 @@ async function activate(context) {
   }));
   await client.start();
 }
-async function deactivate() { if (client) await client.stop(); }
+async function deactivate() { if (client) await client.stop().catch(() => {}); }
 module.exports = { activate, deactivate };
