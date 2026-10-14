@@ -4,7 +4,7 @@ title = "Read-only accessors: design proposal"
 
 # Read-only accessors and the approved standard-library migration
 
-Status: **approved design; implementation prepared for final review**.
+Status: **approved design; implementation independently reviewed; publication held**.
 Baseline: `main` at `477b4c916cd772f0f7f7229dc502e99385c855d0` (2026-10-14).
 The earlier audit used `4eda0e22`; both checkouts contain 44 standard modules.
 The independent reviewer approved revised design commit `46c46a29105e1aabb969d22cce96825b52dc0b8a`; the parent relayed approval before implementation. Implementation integrates `main` at `1383851e`, including #497, source-owned standard documentation from #501, and the independent scalar/native-call improvements from #503. The performance comparison uses that merged revision as its method-era baseline; the original audit partition below remains historical evidence. See the [implementation verification record](read-only-accessors-verification.md) for executed checks and measurements.

@@ -142,7 +142,7 @@ Verified: accessor kind must survive interface conformance, lexical implementati
 
 Apply when: changing members, interface evidence, native dispatch, accessor lowering or editor metadata.
 Evidence: [canonical accessor rules](../documentation/core-language/types/contracts.md#read-only-accessors), [approved inventory](../documentation/contributing/read-only-accessors-design.md), [exact standard inventory and Error checks](../pkg/stdlib/accessors_test.go), [checked member rules](../pkg/checker/accessors_test.go), [emitted forms](../pkg/lower/lower_accessors_test.go), and [native source/interface semantics](../pkg/build/accessors_native_test.go).
-Verify: read a side-effecting receiver once; observe later mutations and aliases; reject assignment and method/accessor conformance mismatches; execute source implementations of standard interfaces through concrete, generic and view paths; retain Error.message callable references.
+Verify: read a side-effecting receiver once; observe later mutations and aliases; reject assignment and method/accessor conformance mismatches; execute source implementations of standard interfaces through concrete, generic and view paths; retain Error.message callable references. Search bare diagnostic remedies as well as receiver-prefixed calls: the stale `is_some()` recipe in optionalUseHint survived a member-call search and sent users to another diagnostic. [Diagnostic regressions](../pkg/checker/hints_test.go) pin the accessor spelling.
 
 ### Optional values need presence accessors and extraction methods
 

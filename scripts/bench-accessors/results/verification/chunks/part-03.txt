@@ -1,0 +1,96 @@
+Accessor verification record — part 3 of 7
+
+| Handwritten CollectionLengthInt control | 9,509 | 9,236 | 1 | 1 |
+
+The already direct Unicode String.length workload has a 1.2% higher median
+(12,204 to 12,351 ns/op, exploratory p = 0.992). The unchanged-method control is
+0.94% higher (p = 0.0238 without multiple-comparison correction); the handwritten
+control is 2.9% lower (p = 0.5). These small changes and the controls do not support
+a blanket claim that every direct getter becomes faster. The handwritten control
+uses the generic receiver switch in CollectionLengthInt, so it is not a claim
+about the best possible handwritten specialized List loop.
+
+Source workloads also contain the migrated nested List read. Guard setup and
+cleanup remain included. The Logger workload includes LogLevel equality and
+transport setup; its measurements do not isolate mutex or dispatch cost. None of
+these results establishes performance for unmeasured service or contention paths.
+
+Separate warmed CLI phase medians at N/2N/4N are below, in milliseconds. Each cell
+is baseline/accessor, with three samples per phase. The build phase retains warm
+SDK/dependency caches and the existing native command replay; it still compiles
+and links the application. Startup remains included.
+
+| Read expressions | Check ms | Emit ms | Native build ms |
+| ---: | ---: | ---: | ---: |
+| 64 | 19.3 / 18.7 | 156.4 / 168.4 | 124.0 / 231.0 |
+| 128 | 19.5 / 21.6 | 159.1 / 162.6 | 244.6 / 233.9 |
+| 256 | 21.5 / 21.4 | 161.4 / 170.3 | 337.8 / 298.9 |
+
+The 64-read native build is slower on the accessor revision; the larger two are
+faster. No current phase grows more than twice when doubling these bounded inputs.
+This range is too small and the fixed costs too large to establish asymptotic
+complexity or general compile-time improvement. Each emitted/built program passes
+its checksum test.
+
+Small raw samples, metadata, emitted-call inventories and the full comparison are
+retained under `scripts/bench-accessors/results/`. Larger emitted Go, escape
+analysis and native binaries remain in `.artifacts/accessor-bench/` and the
+baseline worktree's `.artifacts/accessor-bench-main-baseline/`; scaling source,
+output and binaries remain in `.artifacts/accessor-scaling/`. Current metadata
+identifies snapshot `31d00fb7` plus the documented integration worktree and exact
+source/emitted-Go hashes; the accompanying final commit retains those changes.
+All nine original result files remain byte-identical to `5107114e`, verified by
+`results/verification/raw-measurement-manifest.json`. A generation-only check at
+reviewed correction `12a26d19` reproduces the measured source and emitted-Go
+hashes; the emitted-Go SHA-256 is
+`1a197b745aad18a9c532997ad36b5aad899d4be66e091ea3b2b138ce6de1af55`.
+That check generates no new timing samples.
+
+## Complete e2e and combined coverage follow-up
+
+The entire e2e suite passed after the formatting correction: **288.394 s** at
+`5107114e`, then **290.146 s** and a final **297.664 s** at the independently
+reviewed correction `12a26d19`. These were complete fresh suites, not selections
+of previously failing tests. Their Go JSON logs remain in
+`.artifacts/verification/`.
+
+Two aggregate attempts exposed local test-environment issues, retained in the
+record rather than reported as passes:
+
+1. The initial manual command omitted Makefile's pinned-SDK PATH. Eleven packages
+   without tests could not generate their coverage reports because a bare `go
+   tool` reached the unrelated system executable. All test-bearing packages,
+   including the complete e2e suite, passed, but the command exited 1.
+2. The next command used the pinned SDK. Five LSP rename tests discovered the
+   deliberately invalid reviewer probe `/tmp/accessor-optional-hint.ms` and
+   correctly rejected rename in an invalid workspace. The probe and the valid
+   native probe were archived under hidden `.artifacts/verification/review-probes/`;
+   the full clean LSP retry passed in 6.691 s. The e2e suite again passed, but the
+   aggregate command exited 1.
+
+A local test-execution wrapper also preserves `-buildvcs=false` for debugger
+helper builds whose own GOFLAGS override the outer environment. With that setup,
+the full native debugger Go suite executes with **zero skips** and passes in
+6.189 s. No debugger production code or CI workflow was changed for this repair.
+
+The final combined run uses the same all-package, atomic-coverage and
+native-example inputs as `make coverage`, with a fresh count, package concurrency
+2 and a 30-minute package timeout. Pinned SDK PATH and the test-execution wrapper
+are environment accommodations, not test filters. The command is:
+
+```sh
+MANUSCRIPT_EXAMPLES_NATIVE=1 toolchain/go/bin/go test \
+  -exec /tmp/manuscript-accessor-native-go/test-env \
+  -json -timeout 30m -count=1 -covermode=atomic \
+  -coverpkg="$(toolchain/go/bin/go list ./... | paste -sd, -)" \
+  -coverprofile=.artifacts/coverage/coverage.out ./...
+toolchain/go/bin/go tool cover -func=.artifacts/coverage/coverage.out
+toolchain/go/bin/go tool cover -html=.artifacts/coverage/coverage.out \
+  -o .artifacts/coverage/index.html
+```
+
+The wrapper puts a temporary `go` shim first on each test process's PATH. The
+shim delegates to this pinned SDK, adding only `-buildvcs=false` to helper `build`
+commands. The outer coverage command uses `GOFLAGS='-buildvcs=false -p=2'`.
+The final command exits **0**. All **32 packages pass**, including `pkg/build`
+[End of part 3 of 7]

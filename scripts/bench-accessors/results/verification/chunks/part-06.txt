@@ -1,0 +1,62 @@
+Accessor verification record — part 6 of 7
+
+- SynchronizedGuard value validation under the cell mutex, stale/closed holder checks, Logger threshold synchronization, metadata/head replacement and resource metadata after close. The migrated helpers preserve existing post-close behavior and do not add queue locking or guard ownership restrictions.
+- Exact stdlib accessor and ABI inventory, excluded Error methods, retained method controls and removed public aliases. Focused tests discover Error implementations instead of fixing their count. Error.message remains callable in concrete/view/generic/reference paths; source and native error text controls remain.
+- Inspection/API format 2, accessor entity/call edges, value-type completion/hover, source declaration navigation/rename, immutable standard documents, contextual grammar, and debugger name classification. The explicit source read is distinct from debugger storage inspection; the implementation does not make value expansion invoke getters.
+- Migration changes and residual spelling search; the stale Optional hint above was the only additional live obsolete spelling identified in the searched production paths. Historical design tables and intentionally retained BlockingQueue methods were distinguished from migrated accessors. Benchmark source/record ownership was inspected as supporting evidence, without inferring semantic correctness from timing.
+
+## Checks actually run by this reviewer
+
+All commands used the pinned SDK `/workspace/manuscript-accessor-design/toolchain/go/bin/go` and writable caches:
+
+```sh
+env GOCACHE=/tmp/manuscript-accessor-go-cache \
+    GOPATH=/tmp/manuscript-accessor-go \
+    GOFLAGS=-buildvcs=false \
+    XDG_CACHE_HOME=/tmp/manuscript-accessor-cache \
+    /workspace/manuscript-accessor-design/toolchain/go/bin/go test \
+    ./pkg/parser ./pkg/checker ./pkg/lower ./pkg/stdlib ./internal/nativeabi \
+    -run 'Accessor|Accessors|ErrorMessage|IntUnit' -count=1
+```
+
+PASS: all five packages.
+
+```sh
+# Same environment prefix as above.
+go test ./pkg/runtime ./pkg/tooling ./pkg/tooling/lsp \
+    -run 'Accessor|Accessors' -count=1
+```
+
+PASS: all three packages. These are focused tests, not full package suites or race runs.
+
+`git diff --check 1383851ebb24d2dc8a0a13d8cec0021bf32e833d HEAD`: PASS.
+
+Independent native probe retained at `/tmp/accessor-probe.ms`, checked using the immutable tree's compiler via `/tmp/accessor-probe.go`, then executed with `/workspace/manuscript-accessor-design/ms test /tmp/accessor-probe.ms`: PASS, `1 tests, 0 failed`. The parent confirmed its current source was still exactly the reviewed commit and the binary used the same production source. The probe exercises a generic source accessor returning `Result[T,String]` whose body fails via compatible `try`, through both an explicit parameterized interface view and a generic bound; it also exercises an impure function-valued accessor before an impure argument expression. Emitted output retained at `/tmp/accessor-probe-emitted.go`.
+
+The worktree's HEAD was verified as the exact reviewed hash and no source edits were made.
+
+## Residual limits
+
+- Did not duplicate the parent's full fresh e2e/combined coverage run, full build suite, verify/full-release gates, race/fuzz runs, docs/book regeneration, extension/native debugger suite, benchmark timings or standalone distribution checks. Their historical verification record was read as supporting evidence, not claimed as reviewer-executed evidence.
+- Only this Linux/amd64 environment was exercised. Other OS/architecture/runtime-bundle combinations remain dependent on their required CI gates.
+- The static trace and targeted tests do not establish race freedom, universal shutdown/cancellation behavior, every possible generic/effect combination, or completeness of every migrated unannotated method reference. Existing broader tests and the parent's fresh run remain material evidence.
+- Contended-read performance is unmeasured in the implementation record; current measurements do not justify a blanket speedup or asymptotic complexity claim. No new performance conclusion is made by this review.
+- Any subsequent fix/integration commit needs exact-diff re-review. This review covers only `5107114ece3d72beb8ebfef9e1cdd5d1858b1dac` against the stated base.
+
+
+===== scripts/bench-accessors/results/verification/rereview-12a26d19.md =====
+
+# Independent correction re-review
+
+**APPROVE.** The sole P3 finding from the original independent review is resolved; no new finding in this correction.
+
+Exact reviewed commit: `12a26d19687f371c18d11cdf1db1b7b35720bc71`.
+Exact parent: `5107114ece3d72beb8ebfef9e1cdd5d1858b1dac`.
+Read-only worktree: `/workspace/manuscript-accessor-review-fix`; clean status verified. No source edits made.
+
+Reviewed the complete two-file diff (`4 insertions, 4 deletions`) from parent to commit. `optionalUseHint` now recommends the accessor spelling `is_some before unwrap()`. The existing comparison, arithmetic and expected-value Optional diagnostic cases each require that exact substring, which would fail with the removed `is_some()` spelling. The change leaves extraction methods callable and changes no runtime or checking behavior beyond remedy text.
+
+Reviewer-executed checks:
+
+- `git diff --check HEAD^ HEAD`: PASS.
+[End of part 6 of 7]
