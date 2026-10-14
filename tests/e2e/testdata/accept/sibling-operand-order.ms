@@ -39,3 +39,26 @@ test "generic binary operands read before a later match assigns them":
             value
         none: 0d
     if sum != 4d: return panic("decimal operand read after a later match")
+
+type Cell:
+    n: Int
+    s: String
+
+test "field assignment evaluates its receiver before the value":
+    var cell = Cell(n: 1, s: "a")
+    let original = cell
+    cell.n = match some(2):
+        some(value):
+            cell = Cell(n: 100, s: "replacement")
+            value
+        none: 0
+    if original.n != 2: return panic("numeric field write used the receiver chosen by the value")
+    if cell.n != 100: return panic("replacement receiver was modified")
+    var texts = Cell(n: 1, s: "a")
+    let before = texts
+    texts.s = match some("q"):
+        some(value):
+            texts = Cell(n: 100, s: "replacement")
+            value
+        none: ""
+    if before.s != "q": return panic("text field write used the receiver chosen by the value")
