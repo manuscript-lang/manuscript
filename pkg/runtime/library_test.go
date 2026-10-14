@@ -1,6 +1,8 @@
 package msruntime
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"encoding/hex"
@@ -132,6 +134,33 @@ func TestLibraryCompressionAndArchives(t *testing.T) {
 		entries := libraryList("@std/ArchiveEntry", []Value{entry(path, "x", false)})
 		libraryFailure(t, libraryCall(t, "archive/pack", entries, "zip", int64(1000)), "InvalidInput")
 	}
+}
+func TestLibraryZipNamesWithoutUTF8Flag(t *testing.T) {
+	// Info-ZIP and other writers store UTF-8 names without general-purpose flag 0x800.
+	// Go's reader marks names containing `~`, control bytes, or non-ASCII as NonUTF8
+	// in that case, but valid UTF-8 text must still unpack.
+	big := Record{"@std/ArchiveLimits", map[string]Value{"max_entries": int64(10), "max_entry_bytes": int64(100), "max_total_bytes": int64(100)}}
+	build := func(name string) Bytes {
+		var buffer bytes.Buffer
+		writer := zip.NewWriter(&buffer)
+		out, err := writer.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store, NonUTF8: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		out.Write([]byte("x"))
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return Bytes{buffer.Bytes()}
+	}
+	for _, name := range []string{"backup~", "a~b/c", "caf\u00e9.txt"} {
+		got := librarySuccess(t, libraryCall(t, "archive/unpack", build(name), "zip", big))
+		items := got.(*List).Items
+		if len(items) != 1 || items[0].(Record).Fields["path"] != name {
+			t.Fatalf("%q: %#v", name, got)
+		}
+	}
+	libraryFailure(t, libraryCall(t, "archive/unpack", build("bad\xff"), "zip", big), "Unsupported")
 }
 func TestLibraryFilesystem(t *testing.T) {
 	ctx := RootExecution()
