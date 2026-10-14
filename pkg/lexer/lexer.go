@@ -4,6 +4,7 @@ package lexer
 import (
 	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"sort"
 	"strings"
 	"unicode/utf8"
 )
@@ -31,6 +32,17 @@ func init() {
 		reserved[s] = true
 	}
 }
+
+// Keywords returns the reserved words in sorted order.
+func Keywords() []string {
+	words := make([]string, 0, len(reserved))
+	for word := range reserved {
+		words = append(words, word)
+	}
+	sort.Strings(words)
+	return words
+}
+
 func letter(b byte) bool { return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b == '_' }
 func digit(b byte) bool  { return b >= '0' && b <= '9' }
 

@@ -4,6 +4,7 @@
 
 - Debugging: `ms debug` and `ms dap` embed Delve; VS Code no longer needs `dlv`.
 - Tooling: `ms run --watch` and `ms test --watch`; versioned `--json` results for build, profile, fmt and test; `--flag=value` for value-taking options; check, lint and doc accept multiple inputs.
+- CLI: `-o` directories are checked before building; `ms.lock` mismatch errors name the changed field; `ms lsp` rejects arguments.
 - Builds: faster rebuilds through a content-addressed workspace and command replay; validated toolchain archives.
 - Lint: MSL107 warns on nested `match`; MSL108 suggests the preferred collection, byte and regex method names.
 - Collections: preferred mutation names (`List.set`/`remove`/`splice`/`reverse_in_place`, `Set.add`/`remove`, `Map.remove`, `Regex.replace_all`) alongside the legacy spellings; Map and Set lookups fixed after removing the last key (#316).

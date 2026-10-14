@@ -92,7 +92,7 @@ The CLI classifies each command's compiler mode in one switch, then checks sourc
 | `documentation/` | Authored tutorials, exact language rules, compiler/runtime semantics, tooling limits, contributor workflow |
 | `documentation/standard-library/reference/` and `documentation/standard-library/call-rules.md` | Generated from checked standard declarations and the embedded call rules by `make docs` |
 | `website/` | Hugo configuration, custom layouts/assets, static resources, version archives, and the vendored Hugo Book theme with its license and upstream revision |
-| `website/static/stdlib.md` and `stdlib.json` | Generated API downloads. Hugo mounts the root version and extension grammar directly; neither needs a copied source |
+| `website/static/stdlib.md` and `stdlib.json` | Generated API downloads, built by `make docs` and `make book-check` and not committed. Hugo mounts the root version and extension grammar directly; neither needs a copied source |
 | `.artifacts/book/` | Ignored generated HTML, search data, and downloads uploaded/deployed as a Pages artifact |
 | `scripts/` | `bootstrap-go.sh`, pinned lint setup/doctor, `mktoolchain/`, `package.sh`, `distcheck/`, `docgen/`, maintenance, and repository checks; all checkout/release maintenance commands live here |
 | `examples/` | The hello project and tooling demo, with their project-specific instructions |

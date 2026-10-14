@@ -225,3 +225,12 @@ func TestFormatMapAndShorthand(t *testing.T) {
 		t.Fatal(formatted)
 	}
 }
+
+func TestFormatKeepsConsecutiveConstantsTogether(t *testing.T) {
+	source := "import List from \"@std/collections.ms\"\nlet A = 1\nlet B = 2\nfn f() -> Int:\n    return A + B\n"
+	want := "import List from \"@std/collections.ms\"\n\nlet A = 1\nlet B = 2\n\nfn f() -> Int:\n    return A + B\n"
+	got, err := tooling.Format("constants.ms", source)
+	if err != nil || got != want {
+		t.Fatalf("got %q, %v", got, err)
+	}
+}

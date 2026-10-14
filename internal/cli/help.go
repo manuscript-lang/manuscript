@@ -76,9 +76,9 @@ func commandHelp(command string) (string, bool) {
 		options = "  -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)\n  --json              Emit one versioned build result and artifact inventory\n  --debug             Alias for --build-type Debug\n"
 		examples = "ms build ms.toml -o hello\n  ms build main.ms --build-type MinSizeRel"
 	case "emit":
-		usage = "<file.ms|ms.toml> [-o output]"
+		usage = "<file.ms|ms.toml> [-o output] [--json]"
 		description = "Emit standalone Go source containing the runtime. No Go toolchain is needed."
-		options = outputHelp
+		options = outputHelp + jsonErrorsHelp
 		examples = "ms emit main.ms\n  ms emit ms.toml -o main.go"
 	case "run":
 		usage = "<file.ms|ms.toml> [options] [-- program arguments]"
@@ -96,14 +96,14 @@ func commandHelp(command string) (string, bool) {
 		options = "  --check  Leave files unchanged; report every unformatted file and exit 1\n  --json   Emit versioned file statuses and diagnostics; requires --check\n"
 		examples = "ms fmt main.ms\n  ms fmt ms.toml --check\n  ms fmt src test.ms\n  ms fmt src/*.ms --check"
 	case "inspect":
-		usage = "<file.ms|ms.toml> [-o output]"
+		usage = "<file.ms|ms.toml> [-o output] [--json]"
 		description = "Emit checked symbols, source hashes, call sites, and statement spans as JSON."
-		options = outputHelp
+		options = outputHelp + jsonErrorsHelp
 		examples = "ms inspect main.ms\n  ms inspect ms.toml -o inspection.json"
 	case "diagram":
-		usage = "<file.ms|ms.toml> [-o output]"
+		usage = "<file.ms|ms.toml> [-o output] [--json]"
 		description = "Emit the checked static call graph as Mermaid."
-		options = outputHelp
+		options = outputHelp + jsonErrorsHelp
 		examples = "ms diagram main.ms\n  ms diagram ms.toml -o calls.mmd"
 	case "profile":
 		usage = "<file.ms|ms.toml> [--json] [--out-dir directory] [--trace] [--build-type level] [-- program arguments]"
@@ -122,7 +122,8 @@ func commandHelp(command string) (string, bool) {
 		description = "Build without optimization or inlining, then start the embedded Delve terminal.\nNo dlv executable is needed. On macOS, Xcode command line tools supply debugserver. Arguments after -- are passed to the application."
 		examples = "ms debug ms.toml\n  ms debug main.ms -- first second"
 	case "lock":
-		usage = "<ms.toml>"
+		usage = "<ms.toml> [--json]"
+		options = jsonErrorsHelp
 		description = "Create or update project-root ms.lock with compiler/runtime, Go toolchain,\nand target pins. Run again after changing the compiler or toolchain.\nRequires a project manifest, rather than a standalone source file."
 		examples = "ms lock ms.toml"
 	case "doc":
@@ -171,6 +172,9 @@ func commandHelp(command string) (string, bool) {
 }
 
 const outputHelp = "  -o, --output <path>  Write output to a file (default: stdout)\n"
+
+// jsonErrorsHelp documents --json on commands whose success output is not a JSON result.
+const jsonErrorsHelp = "  --json               On failure, emit versioned JSON diagnostics instead of terminal messages\n"
 
 func runHelp(args []string) int {
 	if len(args) == 0 {

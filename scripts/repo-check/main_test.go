@@ -43,7 +43,7 @@ func TestStandardSyntaxGate(t *testing.T) {
 		"receiver": "type Data:\n    fn read() -> Int\n",
 		"schema":   "type Data:\n    count Int\n",
 		"default":  "type Data:\n    count: Int =\n",
-		"trailing": "fn valid() -> Unit:\nlet invalid = 3\n",
+		"trailing": "fn valid() -> Unit:\nvar invalid = 3\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			files := fstest.MapFS{"broken.ms": {Data: []byte(source)}}

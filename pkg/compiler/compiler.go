@@ -136,7 +136,7 @@ func compile(graph frontend.Graph, options Options, kind BuildType) Result {
 
 func checkEntry(program *checker.Program, entry string) *syntax.Diagnostic {
 	main := program.Symbol(entry, "main")
-	if main != nil && main.Export && main.Kind == syntax.KindFn && len(main.Variables) == 0 && len(main.Type.Params) == 0 && main.Type.Result.ID == "Int" {
+	if main != nil && main.Export && main.Kind == syntax.KindFn && (main.Decl == nil || !main.Decl.Constant) && len(main.Variables) == 0 && len(main.Type.Params) == 0 && main.Type.Result.ID == "Int" {
 		return nil
 	}
 	position := syntax.Position{File: entry, Line: 1, Column: 1}
@@ -146,6 +146,8 @@ func checkEntry(program *checker.Program, entry string) *syntax.Diagnostic {
 			position = main.Decl.Pos
 		}
 		switch {
+		case main.Decl != nil && main.Decl.Constant:
+			detail = "main is a constant, so rename it and declare 'export fn main() -> Int:'"
 		case main.Kind != syntax.KindFn:
 			detail = "main is declared as a " + main.Kind + ", so rename it and declare 'export fn main() -> Int:'"
 		case !main.Export:

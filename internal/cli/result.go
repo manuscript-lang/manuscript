@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -31,4 +32,19 @@ func emitJSON(value any, status int) int {
 		return 1
 	}
 	return status
+}
+
+// diagnosticsDocument is the versioned diagnostics shape shared by check, lint,
+// and every source command that fails before producing its own output.
+type diagnosticsDocument struct {
+	Format      int                 `json:"format"`
+	Diagnostics []commandDiagnostic `json:"diagnostics"`
+}
+
+func structuredDiagnostics(result compiler.Result) diagnosticsDocument {
+	diagnostics := make([]commandDiagnostic, 0, len(result.Diagnostics))
+	for _, issue := range result.Diagnostics {
+		diagnostics = append(diagnostics, sourceDiagnostic(issue))
+	}
+	return diagnosticsDocument{1, diagnostics}
 }
