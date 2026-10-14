@@ -214,9 +214,20 @@ func (c *checker) declareTypeVariables(module *syntax.Module) {
 	}
 }
 
+// resolveSignatures resolves every type and function signature first and the
+// constants last, so a constant may name a case of a type declared after it.
 func (c *checker) resolveSignatures(module *syntax.Module) {
+	for pass := 0; pass < 2; pass++ {
+		c.resolveSignaturePass(module, pass == 1)
+	}
+}
+
+func (c *checker) resolveSignaturePass(module *syntax.Module, constants bool) {
 	for _, d := range module.Declarations {
 		if d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest {
+			continue
+		}
+		if d.Constant != constants {
 			continue
 		}
 		s := c.names[d.Name]
