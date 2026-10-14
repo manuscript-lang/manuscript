@@ -130,3 +130,22 @@ func TestSymbolNamesStayDeferred(t *testing.T) {
 	}
 	t.Fatal("no symbol name")
 }
+
+func TestMemberReadsCarryTheirResolution(t *testing.T) {
+	program, _ := elaborate(t, "type Point:\n    x: Int\nfn f(p: Point) -> Bool: [p.x].is_empty()\n")
+	el := ir.NewElaborator(program)
+	for e := range program.Expressions() {
+		if e.Pos.File != "main.ms" || e.Kind != syntax.KindMember || e.Text != "x" {
+			continue
+		}
+		m, ok := el.Operand(e).(ir.Member)
+		if !ok || m.Name != "x" || m.ReceiverType == nil || m.ReceiverType.ID == "" || m.Info != program.Info(e) {
+			t.Fatalf("member = %#v", el.Operand(e))
+		}
+		if _, ok := m.Receiver.(ir.Local); !ok {
+			t.Fatalf("receiver = %#v", m.Receiver)
+		}
+		return
+	}
+	t.Fatal("no member read")
+}

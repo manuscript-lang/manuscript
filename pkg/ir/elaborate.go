@@ -46,6 +46,13 @@ func (el *Elaborator) Value(e *syntax.Expression, info *checker.Info) Expr {
 		if info.Method == nil && info.Binding != nil {
 			return Local{Binding: info.Binding, Type: info.Type}
 		}
+	case syntax.KindMember:
+		// A constructor member such as Color.red names a type, which has no facts.
+		var receiverType *checker.Type
+		if receiver := program.Info(e.Left); receiver != nil {
+			receiverType = receiver.Type
+		}
+		return Member{Pos: e.Pos, Receiver: el.Operand(e.Left), ReceiverType: receiverType, Name: e.Text, Info: info}
 	case syntax.KindUnary:
 		if e.Text == "try" {
 			return nil

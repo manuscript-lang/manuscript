@@ -8,7 +8,12 @@ import (
 )
 
 func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checker.Info) ast.Expr {
-	args := []ast.Expr{g.expression(member.Left), textLiteral(member.Text), g.key(info.Type.Result), g.typeScope(g.program.Info(member.Left).Type)}
+	return g.nativeReceiver(g.expression(member.Left), member.Text, g.program.Info(member.Left).Type, info)
+}
+
+// nativeReceiver binds a native method to an already lowered receiver.
+func (g *generator) nativeReceiver(receiver ast.Expr, name string, receiverType *checker.Type, info *checker.Info) ast.Expr {
+	args := []ast.Expr{receiver, textLiteral(name), g.key(info.Type.Result), g.typeScope(receiverType)}
 	if info.Method.Native == "collections/set_map" || info.Method.Native == "collections/map_transform_keys" {
 		// Output deduplication needs the mapped key/element's lexical evidence,
 		// including when a generic receiver method is explicitly specialized.

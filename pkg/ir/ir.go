@@ -101,7 +101,19 @@ type Binary struct {
 	Type                *checker.Type
 }
 
+// Member reads a member of Receiver: a record field, an alternative case, a
+// bound or native method, or a native property. Info holds the checker's
+// resolution of the member, which selects what lowering emits.
+type Member struct {
+	Pos          syntax.Position
+	Receiver     Expr
+	ReceiverType *checker.Type
+	Name         string
+	Info         *checker.Info
+}
+
 func (Deferred) expr()       {}
+func (Member) expr()         {}
 func (Local) expr()          {}
 func (Unary) expr()          {}
 func (Binary) expr()         {}

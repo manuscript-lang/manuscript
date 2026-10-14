@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -122,16 +123,26 @@ func (g *generator) structOperand(st *structType, e *syntax.Expression) ast.Expr
 	return &ast.TypeAssertExpr{X: g.expression(e), Type: &ast.StarExpr{X: ident(st.name)}}
 }
 
-// structField resolves a source field access on a record-typed operand.
-func (g *generator) structFieldOf(e *syntax.Expression) (*structType, *structField) {
-	st := g.structFor(g.program.Info(e.Left).Type)
+// structFieldOf resolves a source field access on a record-typed operand.
+func (g *generator) structFieldOf(x ir.Member) (*structType, *structField) {
+	return g.structFieldIn(x.ReceiverType, x.Name)
+}
+
+// structFieldIn resolves a field of a record type, or returns nil.
+func (g *generator) structFieldIn(receiverType *checker.Type, name string) (*structType, *structField) {
+	st := g.structFor(receiverType)
 	if st == nil {
 		return nil, nil
 	}
-	if f := st.field(e.Text); f != nil {
+	if f := st.field(name); f != nil {
 		return st, f
 	}
 	return nil, nil
+}
+
+// irStructOperand returns the receiver of a field access as the Go struct pointer.
+func (g *generator) irStructOperand(st *structType, receiver ir.Expr) ast.Expr {
+	return &ast.TypeAssertExpr{X: g.irValue(receiver), Type: &ast.StarExpr{X: ident(st.name)}}
 }
 
 // constructStruct lowers a record construction, or returns nil when the call
