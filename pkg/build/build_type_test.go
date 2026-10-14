@@ -27,7 +27,7 @@ func TestBuildTypes(t *testing.T) {
 		t.Fatal("accepted unknown build type")
 	}
 	result := compiler.CompileSource("main.ms", "export fn main() -> Int:\n    return 0\n", compiler.Options{Entry: true})
-	if _, err := build.BuildCheckedWithType(result, filepath.Join(t.TempDir(), "program"), "", "Fast"); err == nil {
+	if _, err := build.BuildCheckedWithType(result, filepath.Join(t.TempDir(), "program"), "Fast"); err == nil {
 		t.Fatal("build accepted unknown build type")
 	}
 }
@@ -42,18 +42,17 @@ func TestNativeBuildTypes(t *testing.T) {
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	cache := filepath.Join(root, "cache")
 	identities := map[string]bool{}
 	sizes := map[compiler.BuildType]int64{}
 	for _, kind := range []compiler.BuildType{compiler.Debug, compiler.Release, compiler.RelWithDebInfo, compiler.MinSizeRel} {
 		t.Run(string(kind), func(t *testing.T) {
 			binary := filepath.Join(root, string(kind))
-			metadata, err := build.BuildCheckedWithType(result, binary, cache, kind)
+			metadata, err := build.BuildCheckedWithType(result, binary, kind)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if metadata.BuildType != kind || metadata.Debug != (kind == compiler.Debug) || identities[metadata.BuildID] {
-				t.Fatal("build type missing or cache identity reused", metadata)
+				t.Fatal("build type missing or identity reused", metadata)
 			}
 			identities[metadata.BuildID] = true
 			withSymbols := kind == compiler.Debug || kind == compiler.RelWithDebInfo
@@ -90,13 +89,7 @@ func TestNativeBuildTypes(t *testing.T) {
 				t.Fatal(err)
 			}
 			sizes[kind] = info.Size()
-			// A cache hit must restore the same artifact and metadata.
-			restored := filepath.Join(root, string(kind)+"-cached")
-			cached, err := build.BuildCheckedWithType(result, restored, cache, kind)
-			if err != nil || cached.BuildID != metadata.BuildID || cached.ExecutableSHA256 != metadata.ExecutableSHA256 {
-				t.Fatal("cache did not preserve build identity", cached, err)
-			}
-			if err := build.VerifyBuild(restored, map[string]string{"main.ms": result.Program.Modules[0].Source}); err != nil {
+			if err := build.VerifyBuild(binary, map[string]string{"main.ms": result.Program.Modules[0].Source}); err != nil {
 				t.Fatal(err)
 			}
 		})

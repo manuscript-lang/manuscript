@@ -156,19 +156,12 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 	if pathErr != nil {
 		return fail("build", pathErr)
 	}
-	cache := ""
-	if result.ProjectRoot != "" {
-		cache = filepath.Join(result.ProjectRoot, ".ms-cache")
-	}
 	if command == "build" {
 		if info, err := os.Stat(output); err == nil && info.IsDir() {
 			fmt.Fprintf(os.Stderr, "-o %s is a directory; pass a file path (e.g. -o %s)\n", displayOutput, filepath.Join(displayOutput, "program"))
 			return 2
 		}
-		if cache == "" {
-			cache = filepath.Join(filepath.Dir(output), ".ms-cache")
-		}
-		if _, err := build.BuildCheckedWithType(result, output, cache, kind); err != nil {
+		if _, err := build.BuildCheckedWithType(result, output, kind); err != nil {
 			return fail("build", err)
 		}
 		verified["executable"], verified["build_metadata"] = true, true
@@ -181,13 +174,6 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 	if err := os.Mkdir(output, 0700); err != nil {
 		return fail("artifact", fmt.Errorf("profile directory must be new: %w; choose a path that does not exist with --out-dir <directory>", err))
 	}
-	if cache == "" {
-		var err error
-		cache, err = build.DefaultBuildCacheDir()
-		if err != nil {
-			return fail("build", err)
-		}
-	}
 	directory, err := os.MkdirTemp("", "manuscript-run-")
 	if err != nil {
 		return fail("execution", err)
@@ -197,7 +183,7 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
-	if _, err := build.BuildCheckedWithType(result, executable, cache, kind); err != nil {
+	if _, err := build.BuildCheckedWithType(result, executable, kind); err != nil {
 		return fail("build", err)
 	}
 	verified["executable"], verified["build_metadata"] = true, true
