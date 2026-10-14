@@ -15,9 +15,9 @@ export type SynchronizedGuard[T]:
     # Replaces the guarded payload without copying it; a closed guard faults.
     fn set(value: T) -> Unit:
     # Releases the lock, waits for notify_all, then reacquires it before returning; re-check state in a loop.
-    # Only the acquiring task may call it. Cancellation interrupts the wait without reacquiring, leaving the guard released.
+    # Use it in a loop, such as: while queue_is_empty: locked.wait(). Only the acquiring task may call it. Cancellation interrupts the wait without reacquiring, leaving the guard released.
     fn wait() -> Unit:
-    # Wakes every task waiting on this Synchronized; the guard must be open and owned by the caller.
+    # Call it after changing the shared value so waiting tasks re-check it. It wakes every task waiting on this Synchronized; the guard must be open and owned by the caller.
     fn notify_all() -> Unit:
     # Releases the lock for every alias of this guard; repeated close does nothing.
     fn close() -> Unit:

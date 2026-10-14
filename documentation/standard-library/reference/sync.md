@@ -64,7 +64,7 @@ fn get() -> T:
 
 ### SynchronizedGuard.notify_all
 
-Wakes every task waiting on this Synchronized; the guard must be open and owned by the caller.
+Call it after changing the shared value so waiting tasks re-check it. It wakes every task waiting on this Synchronized; the guard must be open and owned by the caller.
 
 ```manuscript
 fn notify_all() -> Unit:
@@ -81,7 +81,7 @@ fn set(value: T) -> Unit:
 ### SynchronizedGuard.wait
 
 Releases the lock, waits for notify_all, then reacquires it before returning; re-check state in a loop.
-Only the acquiring task may call it. Cancellation interrupts the wait without reacquiring, leaving the guard released.
+Use it in a loop, such as: while queue_is_empty: locked.wait(). Only the acquiring task may call it. Cancellation interrupts the wait without reacquiring, leaving the guard released.
 
 ```manuscript
 fn wait() -> Unit:
