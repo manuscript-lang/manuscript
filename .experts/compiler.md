@@ -203,3 +203,14 @@ and [direct-AST checker runner](../scripts/bench-nested-literals/main.go).
 Verify: doubling depth grows allocations approximately linearly; both 4K List
 and Map ASTs terminate, nested empty lists report one missing leaf context, and
 each invalid Map key reports at its own use site.
+
+### Typed records retain generic cleanup contract selection
+
+Verified: generated Struct records require the same empty-contract Closeable
+normalization as map-backed Record and Alternative values. Omitting Struct
+made generic Cleanup/CleanupOperation bind wildcard close and select another
+interface's close registered first. Explicit-contract source with scopes can
+hide the regression. Evidence: [competing-close regression](../pkg/runtime/struct_cleanup_test.go)
+and [normalization](../pkg/runtime/tasks.go).
+Verify typed and map-backed records through generic CleanupOperation, Cleanup
+and cleanup-stack routes, with a competing interface registered before Closeable.

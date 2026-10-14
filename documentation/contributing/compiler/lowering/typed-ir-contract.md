@@ -5,10 +5,13 @@ weight = 5
 
 # Shared typed IR contract
 
-`ir.Elaborate` owns the resolved facts used by scalar, call, List and record
-performance work. `Program.Node` supplies literal, reference, primitive-operation,
+`ir.NewElaborator` (`ir.Elaborate`) owns the resolved facts used by scalar, call, List and record
+performance work. `Elaborator.Node` supplies literal, Local, Unary, Binary,
 resolved-call, match-value and record-access nodes. The Go backend translates
-these facts into AST. Unsupported statement, cleanup and dynamic/default bodies
+these facts into AST. `Elaborator` also owns Bool folding and the `Value`/`Operand` API; `Program`
+and `Folder` are compatibility names for that same object, not separate
+implementations. This reconciles the overlapping expression migration contract.
+Unsupported statement, cleanup and dynamic/default bodies
 remain explicit migration boundaries; they must not add another performance
 eligibility analysis in `lower`.
 
@@ -16,8 +19,8 @@ eligibility analysis in `lower`.
 | --- | --- | --- |
 | Source and resolved type | `Expression.Pos`, `Type`, `SourceType` | Preserve source sites and raw type before error widening |
 | Value use and conversion | `Edge.Type`, `Expected`, `Never`, `ErrorSource`, `ScopedError`, `Optional` | Apply error widening before Optional wrapping; extract Never at the expected native type |
-| Name/storage identity | `Reference`, `Binding`, `ScalarLocals`, `Callable` | Keep captures and existing boxed identity/forwarding/storage boundaries |
-| Primitive operation | `PrimitiveExpression`, `Operation.Identity`, ordered operand edges | Capture an earlier value before a later effect; keep short-circuit operands in their region |
+| Name/storage identity | `Local` (`Reference` compatibility name), `Binding`, `ScalarLocals`, `Callable` | Keep captures and existing boxed identity/forwarding/storage boundaries |
+| Primitive operation | `Unary`/`Binary`, `Operation.Identity`, ordered operand edges | Capture an earlier value before a later effect; keep short-circuit operands in their region |
 | Call identity | `ResolvedCall`, selected symbol/method, type arguments, receiver edge | Capture a receiver/callable before supplied arguments |
 | Call evaluation and defaults | Written-order `Call.Arguments`, parameter `Slot`, `Parameters.Supplied`, `Omittable`, `Default` | Reorder captured values only; evaluate omitted defaults inside the callee |
 | Captured List traversal | `Program.Ranges`, receiver/use edge, binding and reader suffix | Keep captured membership and a check on every iteration |

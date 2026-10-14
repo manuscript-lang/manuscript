@@ -17,11 +17,10 @@ func (g *generator) irValue(x ir.Expr) ast.Expr {
 		return g.binding(x.Site.Binding)
 	case ir.RecordAccess:
 		return call(selector(g.structOperand(x.Field.Record, x.Field.Receiver.Source), "Get_"+x.Field.Field.Name))
-	case ir.PrimitiveExpression:
+	case ir.Unary:
+		return g.scalarUnary(x.Site.Source)
+	case ir.Binary:
 		e, op := x.Site.Source, x.Site.Operation
-		if op.Left.Source == nil {
-			return g.scalarUnary(e)
-		}
 		switch op.Identity {
 		case "and", "or":
 			tokenOp := token.LAND

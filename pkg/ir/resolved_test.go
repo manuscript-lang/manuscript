@@ -220,3 +220,31 @@ fn total(items: List[Int]) -> Int:
 		}
 	}
 }
+
+func TestSharedElaboratorOwnsNodesAndFolding(t *testing.T) {
+	checked, _ := resolve(t, `fn simple(value: Int) -> Int: value + 1
+fn folded() -> Bool: true and false
+`)
+	el := ir.NewElaborator(checked)
+	if el.Folds != el {
+		t.Fatal("separate fold/elaboration ownership")
+	}
+	for e, info := range checked.Expressions() {
+		if e.Kind == syntax.KindName && info.Binding != nil {
+			if _, ok := el.Value(e, info).(ir.Local); !ok {
+				t.Fatal("local missing")
+			}
+		}
+		if e.Kind == syntax.KindBinary && e.Text == "+" {
+			if _, ok := el.Value(e, info).(ir.Binary); !ok {
+				t.Fatal("binary missing")
+			}
+		}
+		if e.Kind == syntax.KindBinary && e.Text == "and" {
+			value, ok := el.Value(e, info).(ir.BoolLiteral)
+			if !ok || value.Value {
+				t.Fatal("shared fold missing")
+			}
+		}
+	}
+}

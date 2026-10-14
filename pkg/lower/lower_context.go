@@ -136,7 +136,7 @@ func (g *generator) binding(b *checker.Binding) ast.Expr {
 }
 
 func newGenerator(program *checker.Program) *generator {
-	resolved := ir.Elaborate(program)
+	resolved := ir.NewElaborator(program)
 	return &generator{program: program, ir: resolved, folds: resolved.Folds, captures: map[*checker.Binding]string{}, nativeCalls: resolved.NativeCalls, nativeMethods: resolved.NativeMethods, scalarLocals: resolved.ScalarLocals}
 }
 func (g *generator) constantBool(e *syntax.Expression) bool { _, ok := g.folds.Bool(e); return ok }

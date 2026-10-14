@@ -77,7 +77,8 @@ type Expression struct {
 // Program owns elaboration and representation proofs. Go emission consumes
 // them without reclassifying checker tables. Checked is retained privately for
 // elaborating body forms that have not migrated yet.
-type Program struct {
+type Elaborator struct {
+	known         map[*syntax.Expression]fold
 	nodes         map[*syntax.Expression]Expr
 	checked       *checker.Program
 	expressions   map[*syntax.Expression]*Expression
@@ -93,14 +94,14 @@ type Program struct {
 	bodies        map[*syntax.Statement]*Callable
 }
 
-func (p *Program) Expression(e *syntax.Expression) *Expression { return p.expressions[e] }
+func (p *Elaborator) Expression(e *syntax.Expression) *Expression { return p.expressions[e] }
 
 func Use(program *checker.Program, e *syntax.Expression, expected *checker.Type) Edge {
 	info := program.Info(e)
 	return Edge{Source: e, Type: info.Type, Expected: expected, Never: info.Type.ID == "Never", ErrorSource: info.ErrorSource, Optional: info.OptionalArgument, ScopedError: info.ScopedError}
 }
 
-func (p *Program) Use(e *syntax.Expression, expected *checker.Type) Edge {
+func (p *Elaborator) Use(e *syntax.Expression, expected *checker.Type) Edge {
 	edge := p.expressions[e].Boundary
 	edge.Expected = expected
 	return edge
@@ -123,8 +124,8 @@ func ListSuffix(t *checker.Type) string {
 }
 
 // Elaborate resolves performance nodes once, without rewriting checked source.
-func Elaborate(program *checker.Program) *Program {
-	p := &Program{checked: program, expressions: map[*syntax.Expression]*Expression{}, Callables: map[*syntax.Declaration]*Callable{}}
+func Elaborate(program *checker.Program) *Elaborator {
+	p := &Elaborator{checked: program, expressions: map[*syntax.Expression]*Expression{}, Callables: map[*syntax.Declaration]*Callable{}}
 	p.resolveRecords()
 	p.nodes = map[*syntax.Expression]Expr{}
 	p.selectNativeCalls()
@@ -213,20 +214,27 @@ func Elaborate(program *checker.Program) *Program {
 			p.Ranges[statement] = Range{Value: Use(program, statement.Value, nil), Binding: b, List: t.ID == "@std/List", ListSuffix: ListSuffix(t)}
 		}
 	}
-	p.Folds = NewFolder(program)
+	p.known = map[*syntax.Expression]fold{}
+	p.Folds = p
 	return p
 }
 
 var boolType = &checker.Type{Name: "Bool", ID: "Bool", Kind: "primitive"}
 
 // BoolUse supplies the expected type for if/while without changing Never.
-func (p *Program) BoolUse(e *syntax.Expression) Edge { return p.Use(e, boolType) }
+func (p *Elaborator) BoolUse(e *syntax.Expression) Edge { return p.Use(e, boolType) }
 
-func (p *Program) ShareNativeBody(s *checker.Symbol) bool { return p.Callables[s.Decl].Shared }
-func (p *Program) recordBody(s *checker.Symbol) {
+func (p *Elaborator) ShareNativeBody(s *checker.Symbol) bool { return p.Callables[s.Decl].Shared }
+func (p *Elaborator) recordBody(s *checker.Symbol) {
 	x := p.callable(s.Decl.Params, s.Decl.Body, p.checked.ParameterBindings(s.Decl), s.Type)
 	p.Callables[s.Decl] = x
 	if len(s.Decl.Body) > 0 {
 		p.bodies[s.Decl.Body[0]] = x
 	}
 }
+
+// Program preserves the published shared-contract name. There is one
+// elaborator and one node/fold cache, rather than a parallel API implementation.
+type Program = Elaborator
+
+func NewElaborator(program *checker.Program) *Elaborator { return Elaborate(program) }
