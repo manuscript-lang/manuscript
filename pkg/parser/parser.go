@@ -426,6 +426,9 @@ func (p *Parser) statement() *syntax.Statement {
 		for {
 			p.newlines()
 			if p.peek().Kind == lexer.Dedent {
+				if len(s.Arms) == 0 {
+					p.fail(t, "match requires at least one arm")
+				}
 				break
 			}
 			a := syntax.Arm{Pos: p.peek().Pos}

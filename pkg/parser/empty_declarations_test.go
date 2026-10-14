@@ -33,6 +33,8 @@ func TestEmptyFunctionDeclarations(t *testing.T) {
 		"fn f() -> Unit:\n    if true:\n",
 		"fn f() -> Unit:\n    while true:\n",
 		"test \"empty\":\n",
+		"fn f(value: Int) -> Unit:\n    match value:\n",
+		"fn f(value: Int) -> Int:\n    match value:\nfn g() -> Int: return 1\n",
 		"fn f(callback: fn(value: Int = 3) -> Int) -> Unit: return unit\n",
 	} {
 		if _, err := Parse("ordinary.ms", source); err == nil {
