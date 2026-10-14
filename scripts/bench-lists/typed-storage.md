@@ -88,6 +88,25 @@ cannot stand in for these ordinary paths. Combined #318 acceptance must rerun
 append/index/iteration/callback/sorting and compare allocations and bytes against
 the labeled baseline; memory savings alone do not clear these regressions.
 
+The #87 owner subsequently reports actual combined generated index/iteration/
+ordinary callback allocation acceptance, with exact Life and at/unwrap result
+parity, in [the combined consumer report](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157953965).
+Its production source evidence and final-head validation belong to #318; the
+provider alone does not emit those paths.
+
+The fixed compatibility iterator control also depends on benchmark shape.
+An external consumer on provider `7727cc39` reproduces 5 allocations / 216 B
+when `Iterate` is called directly inside `b.Loop`; the same traversal in an
+ordinary factored function called by the loop uses 1 / 8 B, matching the prior
+boxed result. Bundled Go 1.25.1 `testing/benchmark.go` documents that only
+syntactic loop-body calls have inlining disabled; code inside called functions
+gets ordinary optimization. Both controls remain visible. This does not promise
+that arbitrary adapters avoid iterator escapes or erase the original control.
+An isolated boxed `slices.All` specialization reduced the direct control to
+4 / 104 B but regressed the normal factored path to the same cost, so it is
+rejected and absent from the provider. [Exact external control and samples](results/typed-storage/compatibility-iterator/)
+allow reproduction with the current SDK; timings are descriptive smoke samples.
+
 The approved narrow mitigation adds `NewCompiledSourceFunction`, delegating the
 ordinary source guard once and marking bodies that copy parameter Values without
 retaining/exposing `[]Value`. Exact-label `for_each` uses one invocation-local
