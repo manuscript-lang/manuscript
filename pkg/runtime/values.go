@@ -1000,6 +1000,9 @@ func runTest(test Test, timeout time.Duration) any {
 	defer cancel()
 	execution.Context = cancelled
 	done := make(chan any, 1)
+	// A timed-out test may remain alive while the runner admits the next one.
+	// Enable record synchronization before any test source work is spawned.
+	markConcurrent()
 	go func() {
 		var failure any
 		defer func() { done <- failure }()

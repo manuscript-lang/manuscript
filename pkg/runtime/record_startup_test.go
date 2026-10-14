@@ -52,3 +52,26 @@ func TestRecordConcurrencyStartsWithSourceWork(t *testing.T) {
 		t.Fatal(exit)
 	}
 }
+
+func TestTestRunnerMarksRecordConcurrencyBeforeAdmission(t *testing.T) {
+	if os.Getenv("MANUSCRIPT_RECORD_TEST_RUNNER") != "1" {
+		command := exec.Command(os.Args[0], "-test.run=^TestTestRunnerMarksRecordConcurrencyBeforeAdmission$")
+		command.Env = append(os.Environ(), "MANUSCRIPT_RECORD_TEST_RUNNER=1")
+		if out, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("test runner: %v\n%s", err, out)
+		}
+		return
+	}
+	if concurrentWork.Load() {
+		t.Fatal("process starts concurrent")
+	}
+	test := Test{Name: "startup", Run: NewSourceFunction(nil, "Unit", "startup.ms:1", func(_ *Execution, _ []Value) Value {
+		if !concurrentWork.Load() {
+			panic("test source admitted without record locks")
+		}
+		return Unit{}
+	})}
+	if failure := runTest(test, 0); failure != nil {
+		t.Fatal(failure)
+	}
+}
