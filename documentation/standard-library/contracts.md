@@ -23,6 +23,18 @@ Standard `message()` implementations return human-readable domain diagnostics, s
 
 Nullary errors retain their existing constructors and do not carry the failing path or operation. Add that context at the application boundary when useful, taking care to redact credentials and sensitive paths or contents before displaying it. Explicit message payloads may contain sensitive information and are not automatically redacted.
 
+### Choosing a failure mode
+
+One rule decides how a standard API reports a mistake:
+
+- **Absence is `Optional`.** A lookup or attempt that may simply find nothing returns `Optional`: `at`, `first`, `get`, `index_of`, `find`, `pop`, `String.parse_int`.
+- **Invalid external data is `Result`.** Input that depends on text, files, the network, or a caller-supplied option that is checked as data returns `Result` with a domain error: `parse` functions, `slice`, formatting options such as `Float.to_fixed`, `repeat` and `pad` counts, `BigInt.divide`.
+- **A violated documented precondition is a fault.** Strict edits, constructors, and primitive operators fault: `List.set`, `remove`, `insert`, `splice`, `Bytes.with_value`, `Int` `/` and `%`, `Duration.divide`, `Int.to_string(radix:)`, `Queue(capacity:)`. Validate dynamic values first.
+
+Idempotent removal is not an edit: `Map.remove` and `Set.remove` of an absent key are no-ops, while `List.remove(index:)` addresses a position and faults when it does not exist. A signature does not carry this choice; each declaration's comment names its mode. `String.parse_int` is a reason-discarding convenience; use `numbers.parse_int` or `bigint.parse` when the radix or failure reason matters.
+
+Faults state the operation, the offending argument with its value, and the valid range, for example `List.insert: index 9 is outside 0..3`. A new API follows this rule and message shape. Existing signatures stay as they are, so aligning an API that disagrees (for example moving `Int.to_string(radix:)` to `Result`) is a deliberate breaking change decided separately.
+
 ### Error details
 
 Put typed information directly in an error record or alternative case. Each field has its own type. A domain error does not need an `Error` implementation to be returned or propagated.

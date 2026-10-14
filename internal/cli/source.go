@@ -35,6 +35,9 @@ func runSourceCommand(args []string, usage string) int {
 	}
 	switch inv.command {
 	case "check", "lint":
+		if inv.watch {
+			return watchAnalysis(inv.command, inv.targets)
+		}
 		return runAnalysis(inv.command, inv.targets, inv.structured)
 	case "build", "profile":
 		return runNativeCommand(inv.command, inv.filename, inv.output, p.options, p.kind, inv.arguments, inv.profileTrace, inv.structured)
@@ -45,7 +48,7 @@ func runSourceCommand(args []string, usage string) int {
 		go build.CurrentPin()
 	}
 	if inv.watch {
-		return watchProgram(inv.command, inv.filename, p.options, p.kind, "", inv.arguments)
+		return watchProgram(inv.command, inv.filename, p.options, p.kind, inv.arguments)
 	}
 	result := compiler.CompileFileForBuild(inv.filename, p.options, p.kind)
 	if !result.Success() {
@@ -117,15 +120,6 @@ func runNativeProgram(inv *invocation, kind compiler.BuildType, result compiler.
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	cache := ""
-	if result.ProjectRoot != "" {
-		cache = filepath.Join(result.ProjectRoot, ".ms-cache")
-	} else {
-		var err error
-		if cache, err = build.DefaultBuildCacheDir(); err != nil {
-			return failure("build", err)
-		}
-	}
 	directory, err := os.MkdirTemp("", "manuscript-run-")
 	if err != nil {
 		return failure("execution", err)
@@ -135,7 +129,7 @@ func runNativeProgram(inv *invocation, kind compiler.BuildType, result compiler.
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
-	if _, err := build.BuildCheckedWithType(result, executable, cache, kind); err != nil {
+	if _, err := build.BuildCheckedWithType(result, executable, kind); err != nil {
 		return failure("build", err)
 	}
 	if command == "debug" {

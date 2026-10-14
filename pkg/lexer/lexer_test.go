@@ -109,6 +109,20 @@ func TestUnexpectedNonASCIICharacterNamesTheRune(t *testing.T) {
 	}
 }
 
+func TestUnknownEscapeIsReportedAtTheBackslash(t *testing.T) {
+	_, err := lexer.Lex("escape.ms", "let s = \"a\\qb\"\n")
+	if err == nil {
+		t.Fatal("expected an unknown escape error")
+	}
+	diagnostic, ok := err.(syntax.Diagnostic)
+	if !ok {
+		t.Fatalf("expected a diagnostic, got %T", err)
+	}
+	if diagnostic.Position.Column != 11 || !strings.Contains(diagnostic.Message, "unknown text escape \\q") {
+		t.Fatalf("unexpected diagnostic %v at column %d", diagnostic.Message, diagnostic.Position.Column)
+	}
+}
+
 func TestGrammarGuideListsEveryReservedWord(t *testing.T) {
 	data, err := os.ReadFile("../../documentation/core-language/basics/grammar.md")
 	if err != nil {

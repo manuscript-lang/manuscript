@@ -216,10 +216,10 @@ func (inv *invocation) validate() (plan, int, bool) {
 		inv.arguments = append(testArgs, inv.arguments...)
 	}
 	if inv.watch && inv.structured {
-		return p, usageError("--json cannot be combined with --watch; remove --watch for one versioned test result"), false
+		return p, usageError("--json cannot be combined with --watch; remove --watch for one versioned result"), false
 	}
-	if inv.watch && !inv.isOneOf("run", "test") {
-		return p, usageError("--watch requires run or test, not %s; use ms run <file> --watch or ms test <file> --watch", command), false
+	if inv.watch && !inv.isOneOf("check", "lint", "run", "test") {
+		return p, usageError("--watch requires check, lint, run, or test, not %s; use ms check <file> --watch or ms run <file> --watch", command), false
 	}
 	if inv.formatCheck && command != "fmt" ||
 		inv.structured && !inv.isOneOf(jsonCommands...) ||
