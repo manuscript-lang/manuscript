@@ -165,7 +165,7 @@ func (o *libraryCopyOptions) copy(ctx *Execution, source, dest string) error {
 			}
 		}
 		if o.preserve {
-			return os.Chtimes(dest, libraryStatTime(info, "Atim", "Atimespec").t, info.ModTime())
+			return os.Chtimes(dest, libraryStatTime(hostos.StatInfo(info).Atime, info).t, info.ModTime())
 		}
 		return nil
 	}
@@ -229,7 +229,7 @@ func (o *libraryCopyOptions) copy(ctx *Execution, source, dest string) error {
 				return err
 			}
 			if o.preserve {
-				return os.Chtimes(dest, libraryStatTime(info, "Atim", "Atimespec").t, info.ModTime())
+				return os.Chtimes(dest, libraryStatTime(hostos.StatInfo(info).Atime, info).t, info.ModTime())
 			}
 			return nil
 		}
@@ -274,7 +274,7 @@ func (o *libraryCopyOptions) copy(ctx *Execution, source, dest string) error {
 		return err
 	}
 	if o.preserve {
-		return os.Chtimes(dest, libraryStatTime(info, "Atim", "Atimespec").t, info.ModTime())
+		return os.Chtimes(dest, libraryStatTime(hostos.StatInfo(info).Atime, info).t, info.ModTime())
 	}
 	return nil
 }
