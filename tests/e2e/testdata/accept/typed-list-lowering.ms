@@ -89,7 +89,9 @@ fn reentered(seen: List[Int], value: Int) -> Unit:
     seen.append(value)
 
     if value == 1:
-        [10, 20].for_each(fn(value): reentered(seen, value))
+        [10, 20].for_each(
+            fn(value): reentered(seen, value)
+        )
 
     seen.append(value)
 
@@ -104,7 +106,9 @@ fn generic_copy[T](values: List[T]) -> List[T]:
 test "callback parameter captures survive borrowed slots and reentry":
     let retained: List[fn() -> Int] = []
     let keep = fn(value: Int) -> Unit:
-        retained.append(fn() -> Int: value)
+        retained.append(
+            fn() -> Int: value
+        )
     let values = [10000, 20000, 30000]
     let each = values.for_each
     each(keep)
@@ -118,7 +122,9 @@ test "callback parameter captures survive borrowed slots and reentry":
     let loop_captures: List[fn() -> Int] = []
 
     for value in values:
-        loop_captures.append(fn() -> Int: value)
+        loop_captures.append(
+            fn() -> Int: value
+        )
 
     let loop_seen: List[Int] = []
 
@@ -129,6 +135,8 @@ test "callback parameter captures survive borrowed slots and reentry":
         return panic("captured or generic List loop changed its Values")
 
     let reentered_values: List[Int] = []
-    [1, 2].for_each(fn(value): reentered(reentered_values, value))
+    [1, 2].for_each(
+        fn(value): reentered(reentered_values, value)
+    )
     if reentered_values != [1, 10, 10, 20, 20, 1, 2, 2]:
         return panic("reentrant callback changed its admitted parameter")
