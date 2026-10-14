@@ -57,6 +57,7 @@ type checker struct {
 	callPos                 syntax.Position
 	captures                map[int]map[*Binding]bool
 	constantsVisiting       map[*Symbol]bool
+	cycleReported           map[*Symbol]bool
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
@@ -136,6 +137,7 @@ func (c *checker) checkModule(module *syntax.Module, imports map[*syntax.Import]
 	c.declareSymbols(module)
 	c.declareTypeVariables(module)
 	c.resolveSignatures(module)
+	c.checkConstantCycles(module)
 	for _, d := range module.Declarations {
 		if d.Kind == syntax.KindImpl {
 			c.implementation(d)
