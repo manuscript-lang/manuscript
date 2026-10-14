@@ -145,6 +145,7 @@
     "@std/crypto.ms/CryptoError/Error/message": "errors/message",
     "@std/csv.ms/CsvError/Error/message": "errors/message",
     "@std/encoding.ms/EncodingError/Error/message": "errors/message",
+    "@std/errors.ms/TextError/Error/message": "errors/message",
     "@std/fs.ms/FileSystemError/Error/message": "errors/message",
     "@std/html.ms/HtmlError/Error/message": "errors/message",
     "@std/http.ms/HttpError/Error/message": "errors/message",

@@ -115,7 +115,7 @@ Error case sets describe each domain, even when case names coincide. Filesystem,
 | `FileHandle.reader()` / `writer()` | Shared-handle stream adapters retain `Closed`/`InvalidInput`; other filesystem cases become `IoError.Failed` with their case name, or the original Failed text. |
 | Stream helpers | Preserve returned IoError case/payload. EOF is absence/empty data, not a failure; cancellation unwinds. |
 | `Error` view | Retains the concrete error value for type matching, while exposing only `message()` as a common operation. |
-| Scheduler callbacks | Currently use `Result[Unit, String]`; `SchedulerFailure.Failed.cause` is text, and Crashed carries a fault message. No domain-error view is implied. |
+| Scheduler callbacks | Use `Result[Unit, Error]`; `SchedulerFailure.Failed.cause` is the returned `Error` with its concrete type and payload intact, so reporters can match it or call `category`. Return `TextError.Text(message)` from `@std/errors.ms` for intentional text. `Crashed` carries a fault message. |
 
 The absence of a case in PathError, CryptoError, RegexError, UrlError, or JsonError does not authorize inventing a generic Failed/LimitExceeded at that boundary. The optional category query preserves those distinctions. A scheduler error migration, timeout case rename, or unified write result still needs an explicit API and compatibility decision.
 

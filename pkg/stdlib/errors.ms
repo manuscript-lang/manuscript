@@ -5,6 +5,18 @@ export interface Error:
     # Returns a human-readable description of this expected error.
     fn message() -> String
 
+# An error that carries only intentional text, for callers that have no domain error to return.
+export type TextError:
+    # Wraps the human-readable description returned by message().
+    case Text(
+        # Description returned verbatim by message().
+        message: String
+    )
+
+impl Error for TextError:
+    # Returns the wrapped text verbatim.
+    fn message() -> String:
+
 # Portable categories for shared standard error cases. Domain errors retain their types and payloads.
 export type ErrorCategory:
     # Caller input is invalid.
