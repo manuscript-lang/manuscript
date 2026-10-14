@@ -2,6 +2,7 @@ package checker
 
 import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"strings"
 )
 
 func (c *checker) implementation(d *syntax.Declaration) {
@@ -519,6 +520,7 @@ func (c *checker) declarationChecks(module *syntax.Module) {
 			for _, op := range s.Type.Def.Operations {
 				check(op.Type)
 			}
+			c.regularApplications(s.Type, d.Pos, map[string]*Type{})
 			c.layout(s.Type, d.Pos, map[string]*Type{}, false)
 		}
 		for _, v := range s.Variables {
@@ -556,9 +558,6 @@ func (c *checker) layout(t *Type, pos syntax.Position, active map[string]*Type, 
 		return
 	}
 	if previous := active[t.ID]; previous != nil {
-		if !Same(previous, t) {
-			c.error(pos, "type", "recursive generic applications must preserve their parameters")
-		}
 		if !indirect {
 			c.error(pos, "type", "unguarded inline recursive layout")
 		}
@@ -577,4 +576,43 @@ func (c *checker) layout(t *Type, pos syntax.Position, active map[string]*Type, 
 			c.layout(f.Type, pos, active, indirect)
 		}
 	}
+}
+
+// regularApplications rejects recursive generic applications whose arguments
+// change along a cycle. It follows every type reference, including function
+// signatures and interface operations that layout deliberately skips.
+func (c *checker) regularApplications(t *Type, pos syntax.Position, active map[string]*Type) {
+	if t == nil || t.Kind == "variable" {
+		return
+	}
+	// Standard containers are leaves: their applications differ without cycling.
+	if t.Def != nil && t.Def.Symbol != nil && !strings.HasPrefix(t.ID, "@std/") {
+		if previous := active[t.ID]; previous != nil {
+			if !Same(previous, t) {
+				c.error(pos, "type", "recursive generic applications must preserve their parameters")
+			}
+			return
+		}
+		active[t.ID] = t
+		defer delete(active, t.ID)
+		for _, f := range Fields(t) {
+			c.regularApplications(f.Type, pos, active)
+		}
+		for _, cs := range Cases(t) {
+			for _, f := range cs.Fields {
+				c.regularApplications(f.Type, pos, active)
+			}
+		}
+		sub := substitution(t)
+		for _, op := range t.Def.Operations {
+			c.regularApplications(Sub(op.Type, sub), pos, active)
+		}
+	}
+	for _, a := range t.Args {
+		c.regularApplications(a, pos, active)
+	}
+	for _, p := range t.Params {
+		c.regularApplications(p.Type, pos, active)
+	}
+	c.regularApplications(t.Result, pos, active)
 }
