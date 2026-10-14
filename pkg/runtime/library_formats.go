@@ -86,6 +86,9 @@ func init() {
 		if s != "" {
 			for _, part := range strings.Split(s, "&") {
 				CheckCancelled(ctx)
+				if part == "" {
+					continue
+				}
 				if int64(len(items)) >= n {
 					return libraryError(r, "LimitExceeded", "")
 				}
@@ -117,6 +120,9 @@ func init() {
 	})
 }
 
+// jsonDepthCeiling is the deepest container nesting parse accepts.
+const jsonDepthCeiling = 100000
+
 // Parsing uses tokens to retain exact numbers and reject duplicate object keys.
 func libraryJSONParse(ctx *Execution, r string, a []Value) Value {
 	text := a[0].(string)
@@ -127,6 +133,11 @@ func libraryJSONParse(ctx *Execution, r string, a []Value) Value {
 	}
 	if int64(len(text)) > maxBytes {
 		return libraryError(r, "LimitExceeded", "")
+	}
+	// The parser recurses per container, so unbounded nesting would overflow the
+	// Go stack; an unset depth budget still stops at a generous ceiling.
+	if maxDepth > jsonDepthCeiling {
+		maxDepth = jsonDepthCeiling
 	}
 	// Go's decoder replaces unpaired surrogate escapes; reject them before decoding.
 	if !libraryJSONUnicode(ctx, text) {
@@ -310,7 +321,7 @@ func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
 			return err
 		case "NumberValue":
 			s := v.Fields[0].(string)
-			if !json.Valid([]byte(s)) || s == "" || s[0] != '-' && (s[0] < '0' || s[0] > '9') {
+			if !json.Valid([]byte(s)) || s == "" || s[0] != '-' && (s[0] < '0' || s[0] > '9') || s[len(s)-1] < '0' || s[len(s)-1] > '9' {
 				return io.ErrUnexpectedEOF
 			}
 			return write(s)

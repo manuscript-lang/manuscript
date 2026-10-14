@@ -1314,6 +1314,27 @@ export fn parse(
             )
         )
 
+    # Content after the marker on the same line starts the document body.
+    if (
+        context.index < context.lines.length()
+        and context.lines.at(context.index).unwrap().starts_with("--- ")
+    ):
+        let line = context.lines.at(context.index).unwrap()
+        let rest = line.slice(
+            start: 4,
+            end: line.scalar_length()
+        ).unwrap_or("")
+
+        if not rest.trim().starts_with("#"): (
+            context
+            .lines
+            .splice(
+                start: context.index,
+                delete_count: 1,
+                replacement: ["---", rest]
+            )
+        )
+
     if (
         context.index < context.lines.length()
         and uncomment((context.lines.at(context.index).unwrap())) == "---"

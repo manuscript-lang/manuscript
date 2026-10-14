@@ -54,3 +54,9 @@ test "URL query retains duplicate keys empty values and spaces":
 
     let invalid: Result[String, UrlError] = error(UrlError.InvalidData)
     if decode_component("%zz") != invalid: return panic("malformed escape")
+
+test "URL query skips empty segments":
+    let entries = value(parse_query(text: "a=1&&b=2&"))
+    if entries.length() != 2 or format_query(entries) != "a=1&b=2": return panic(
+        "empty query segments"
+    )
