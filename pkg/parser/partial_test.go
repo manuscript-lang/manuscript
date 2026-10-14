@@ -189,3 +189,20 @@ func TestPartialReportsRecoveredIssuesInSourceOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestPartialRecoversAroundUnterminatedDelimiter(t *testing.T) {
+	for _, opener := range []string{"(", "[", "add(a: 1,"} {
+		source := "fn add(a: Int, b: Int) -> Int:\r\n    return a + b\r\n\r\nexport fn main() -> Int:\r\n    let s = add(a: 1, b: 2)\r\n    let q = " + opener + "\r\n    return s\r\n"
+		module, issues := ParsePartial("source.ms", source)
+		if len(module.Declarations) != 2 || len(module.Omitted) != 0 || len(issues) != 1 {
+			t.Fatal(opener, module.Declarations, module.Omitted, issues)
+		}
+		body := module.Declarations[1].Body
+		if len(body) != 2 || body[0].Pos.Line != 5 || body[1].Pos.Offset != strings.Index(source, "return s") {
+			t.Fatal(opener, body)
+		}
+		if !strings.Contains(issues[0].Message, "opened at line 6:") {
+			t.Fatal("opener line not rebased", issues[0].Message)
+		}
+	}
+}
