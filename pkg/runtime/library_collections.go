@@ -292,8 +292,24 @@ func init() {
 	})
 	add("distinct", "List[T]", equal, listParam, func(ctx *Execution, r string, a []Value) Value {
 		out := NewList(r, nil)
+		// Int and String equality is exact, so hash them instead of comparing every kept element.
+		seenInts, seenStrings := map[int64]struct{}{}, map[string]struct{}{}
 		for _, value := range a[0].(*List).Capture().Values() {
 			CheckCancelled(ctx)
+			switch v := value.(type) {
+			case int64:
+				if _, dup := seenInts[v]; !dup {
+					seenInts[v] = struct{}{}
+					out.Append(value)
+				}
+				continue
+			case string:
+				if _, dup := seenStrings[v]; !dup {
+					seenStrings[v] = struct{}{}
+					out.Append(value)
+				}
+				continue
+			}
 			seen := false
 			for i, kept := range out.Capture().Values() {
 				if i%1024 == 1023 {
