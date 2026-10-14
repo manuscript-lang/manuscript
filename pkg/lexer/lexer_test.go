@@ -53,6 +53,8 @@ func TestLexicalBoundaries(t *testing.T) {
 		"unicode name":        "fn café() -> Unit:\n    return\n",
 		"tab":                 "fn value() -> Unit:\n\treturn\n",
 		"lone CR":             "fn value() -> Unit:\r    return\n",
+		"lone CR in comment":  "fn value() -> Unit:\n    return # note\rmore\n",
+		"lone CR at end":      "fn value() -> Unit:\n    return\n# end\r",
 		"jumped indentation":  "fn value() -> Unit:\n        return\n",
 		"leading zero":        "fn value() -> Int:\n    return 03\n",
 		"hex":                 "fn value() -> Int:\n    return 0xff\n",

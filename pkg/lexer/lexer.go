@@ -115,9 +115,7 @@ func Lex(file, source string) (tokens []Token, err error) {
 			s.fail("tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)")
 		}
 		if s.source[s.offset] == '#' {
-			for s.offset < len(s.source) && s.source[s.offset] != '\n' {
-				s.advance()
-			}
+			s.skipComment()
 			if s.offset < len(s.source) {
 				s.advance()
 			}
@@ -172,9 +170,7 @@ func Lex(file, source string) (tokens []Token, err error) {
 				continue
 			}
 			if b == '#' {
-				for s.offset < len(s.source) && s.source[s.offset] != '\n' {
-					s.advance()
-				}
+				s.skipComment()
 				break
 			}
 			if b == '\t' || b == '\r' {
@@ -291,6 +287,18 @@ func Lex(file, source string) (tokens []Token, err error) {
 	s.emit(EOF, "", s.pos())
 	return s.tokens, nil
 }
+
+// skipComment consumes a comment through the end of its physical line. Tabs are
+// allowed in comments, but a lone carriage return is not a line ending.
+func (s *scanner) skipComment() {
+	for s.offset < len(s.source) && s.source[s.offset] != '\n' {
+		if s.source[s.offset] == '\r' {
+			s.fail("lone carriage returns are not allowed in comments; use line endings of LF or CRLF")
+		}
+		s.advance()
+	}
+}
+
 func (s *scanner) scanNumber(p syntax.Position) {
 	start := s.offset
 	s.advance()
