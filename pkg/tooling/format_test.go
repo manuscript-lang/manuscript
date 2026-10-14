@@ -234,3 +234,21 @@ func TestFormatKeepsConsecutiveConstantsTogether(t *testing.T) {
 		t.Fatalf("got %q, %v", got, err)
 	}
 }
+
+func TestFormatWrapsLongConstantInitializers(t *testing.T) {
+	long := `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" + "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + "cccccccccccccccccccccccccccccccccccccc"`
+	numbers := `100000000000 + 200000000000 + 300000000000 + 400000000000 + 500000000000 + 6000000000000 + 7000000000`
+	for _, value := range []string{long, numbers} {
+		got, err := tooling.Format("constants.ms", "let A = "+value+"\n")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(got, "let A = (\n    ") || !strings.HasSuffix(got, "\n)\n") {
+			t.Fatalf("constant initializer not wrapped in parentheses:\n%s", got)
+		}
+		again, err := tooling.Format("constants.ms", got)
+		if err != nil || again != got {
+			t.Fatalf("not idempotent: %q, %v", again, err)
+		}
+	}
+}

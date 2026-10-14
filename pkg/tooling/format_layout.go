@@ -590,12 +590,24 @@ func groupStatementExpressions(filename, source string) (string, error) {
 			wrap(start + 1)
 		}
 	}
+	// A constant's synthetic statement starts at its initializer, which may be
+	// text, so it bypasses the keyword and text-statement handling below.
+	constants := map[*syntax.Statement]bool{}
+	for _, d := range module.Declarations {
+		if d.Constant {
+			constants[d.Body[0]] = true
+		}
+	}
 	visitor := syntax.Visitor{
 		Statement: func(s *syntax.Statement) {
 			if s.Value == nil || suiteExpression(s.Value) {
 				return
 			}
 			start, ok := starts[s.Pos.Offset]
+			if ok && constants[s] {
+				wrap(start)
+				return
+			}
 			if !ok || tokens[start].Kind == lexer.String {
 				return
 			}

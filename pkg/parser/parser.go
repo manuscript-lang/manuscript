@@ -284,11 +284,14 @@ func (p *Parser) declaration() *syntax.Declaration {
 			d.Result = p.typ()
 		}
 		p.need("=")
+		// A binary expression's position is its operator, so the statement
+		// starts at the first token of the initializer for source tooling.
+		start := p.peek().Pos
 		value := p.expression(0)
 		if d.Result == nil {
 			d.Result = &syntax.Type{Pos: value.Pos}
 		}
-		d.Body = []*syntax.Statement{{Pos: value.Pos, Kind: syntax.KindReturn, Value: value}}
+		d.Body = []*syntax.Statement{{Pos: start, Kind: syntax.KindReturn, Value: value}}
 		p.end()
 	case p.take("test"):
 		name := p.need(lexer.String)
