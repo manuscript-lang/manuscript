@@ -89,7 +89,10 @@ comparisons, `AND`, `OR`, `NOT`, `IS NULL`, `LIKE`, `IN`, `BETWEEN`) or NULL. Bo
   gives NULL; otherwise mismatched types (including booleans) are `type error`.
 - `AND`, `OR`, `NOT`, and the WHERE/HAVING/ON conditions require boolean or NULL; any INT/TEXT operand is
   `type error`. Three-valued logic: `false AND x` is false, `true OR x` is true (and the right side is **not
-  evaluated** in those cases, so errors in it do not occur); `NULL AND true` is NULL; `NULL AND false` is false;
+  evaluated** in those cases, so errors in it do not occur; in every other case, including a NULL or true left side of
+  `AND` and a NULL or false left side of `OR`, the right side *is* evaluated and its errors occur:
+  `SELECT 1 = 2 AND 1 / 0 = 1` is false but `SELECT 1 = 1 AND 1 / 0 = 1` and `SELECT NULL AND 1 / 0 = 1` are
+  `error: division by zero`); `NULL AND true` is NULL; `NULL AND false` is false;
   `NULL OR true` is true; `NULL OR false` is NULL; `NOT NULL` is NULL.
 - A WHERE/HAVING/ON condition keeps a row only when it is true (NULL and false drop it).
 - `IS NULL`/`IS NOT NULL` never give NULL. `x LIKE p`: both TEXT (else `type error`; NULL gives NULL); `%` matches
@@ -102,7 +105,8 @@ comparisons, `AND`, `OR`, `NOT`, `IS NULL`, `LIKE`, `IN`, `BETWEEN`) or NULL. Bo
   `ABS(i)`, `SUBSTR(t, start, len)` (1-based; the result is the bytes of `t` at positions `start .. start+len-1`
   clipped to the string, so `start < 1` shortens the result from the front: `SUBSTR('hello',0,3)` is `he`,
   `SUBSTR('hello',-1,4)` is `he`; empty when `len <= 0` or `start` is beyond the end), `COALESCE(a, b, ...)`
-  (first non-NULL, at least one argument, any types). Scalar functions return NULL for a NULL argument (except
+  (first non-NULL, at least one argument, any types; **all arguments are always evaluated**, left to right, with no
+  short-circuiting, so `COALESCE(1, 1 / 0)` is `error: division by zero`). Scalar functions return NULL for a NULL argument (except
   COALESCE) and are `type error` for a wrong type. Wrong argument count: `wrong number of arguments to NAME`.
   Unknown function: `no such function: NAME` (NAME upper-case).
 - Aggregates `COUNT(*)`, `COUNT(x)`, `SUM(x)`, `MIN(x)`, `MAX(x)`, each with optional `DISTINCT` (exactly one argument,
