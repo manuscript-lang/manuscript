@@ -52,7 +52,7 @@ func (g *generator) primitiveEquality(e *syntax.Expression) ast.Expr {
 	return call(closure(nil, ident("bool"),
 		define(a, extract(g.expression(e.Left))),
 		define(b, extract(g.expression(e.Right))),
-		returned(sourceAt(e.Pos, &ast.BinaryExpr{X: ident(a), Op: op, Y: ident(b)})),
+		returned(sequence(&ast.BinaryExpr{X: ident(a), Op: op, Y: ident(b)})),
 	))
 }
 

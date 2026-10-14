@@ -41,7 +41,6 @@ fn boxed(n: Int) -> String:
 		"(directResult rt.Option[int64])",
 		"rt.Result[int64]{Cause: ",
 		".Failed {",
-		".Tag() {",
 	} {
 		if !strings.Contains(r.Source, want) {
 			t.Fatalf("missing %q\n%s", want, r.Source)
@@ -52,7 +51,7 @@ fn boxed(n: Int) -> String:
 		t.Fatalf("typed Optional reached a Value consumer unboxed\n%s", r.Source)
 	}
 	// try and match over typed calls do not assert Alternatives.
-	for _, forbidden := range []string{".(rt.Alternative)", "rt.Tag(temporary"} {
+	for _, forbidden := range []string{".(rt.Alternative)", "rt.Tag(temporary", ".Tag()"} {
 		if strings.Contains(r.Source, forbidden) {
 			t.Fatalf("unexpected %q\n%s", forbidden, r.Source)
 		}

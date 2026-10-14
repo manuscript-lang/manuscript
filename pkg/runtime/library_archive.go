@@ -179,6 +179,9 @@ func libraryArchiveUnpack(ctx *Execution, r string, a []Value) Value {
 			return "InvalidData"
 		}
 		total -= int64(len(data))
+		if directory {
+			name = strings.TrimSuffix(name, "/") // canonical directory path has no trailing slash
+		}
 		out = append(out, Record{"@std/ArchiveEntry", map[string]Value{"path": name, "directory": directory, "data": Bytes{data}}})
 		return ""
 	}

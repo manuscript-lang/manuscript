@@ -31,10 +31,7 @@ test "issue 187 programs need no collection imports":
     if rolls.length() != 5: return panic("annotation or match")
 
     let points = Map[Point, Int]()
-    points.add(
-        Point(1, 2),
-        7
-    )
+    points.add(Point(1, 2), 7)
     if points.get(Point(1, 2)).unwrap() != 7: return panic("constructor")
 
     let nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
@@ -72,11 +69,7 @@ test "map add retains optional wrapping and generic bound calls":
     if values.get(1).unwrap().unwrap() != 3: return panic("optional conversion")
     if values.get(4).unwrap().unwrap() != 5: return panic("bound conversion")
 
-    let generic = update[Optional[Int], Optional[Int]](
-        values,
-        some(6),
-        some(7)
-    )
+    let generic = update[Optional[Int], Optional[Int]](values, some(6), some(7))
     generic.add(8, 9)
     if values.get(6).unwrap().unwrap() != 7 or values.get(8).unwrap().unwrap() != 9: return panic(
         "generic receiver"

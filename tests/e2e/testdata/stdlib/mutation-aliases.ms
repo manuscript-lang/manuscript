@@ -58,10 +58,7 @@ impl MapRemoval for MapAdapter:
 test "Map explicit and bound interface views preserve field shadowing":
     let values = Map[Int, String]().add(1, "one").add(2, "two").add(3, "three")
     let marker = Map[Int, String]().add(9, "field")
-    let adapter = MapAdapter(
-        values,
-        fn(key: Int) -> Map[Int, String]: marker
-    )
+    let adapter = MapAdapter(values, fn(key: Int) -> Map[Int, String]: marker)
     if adapter.remove(1) != marker or values.length() != 3:
         return panic("callable field shadowing")
 
@@ -87,18 +84,10 @@ test "List splice direct and bound retain self staging and receiver returns":
     let preferred = values.clone().splice(0, 1, [7])
     if legacy != preferred: return panic("legacy equivalence")
 
-    values.splice(
-        values.length(),
-        0,
-        [6]
-    )
+    values.splice(values.length(), 0, [6])
     if alias != [1, 9, 4, 5, 6]: return panic("end insertion")
 
-    values.splice(
-        0,
-        values.length(),
-        []
-    ).append(8)
+    values.splice(0, values.length(), []).append(8)
     if alias != [8]: return panic("full shrink return")
 
     let empty: List[Int] = []
@@ -169,9 +158,5 @@ test "List splice through a dispatched view follows reviewed Go range shrink sem
 
         visited = visited + 1
 
-    if (
-        total != 7
-        or visited != 3
-        or values != [2, 3]
-    ):
+    if (total != 7 or visited != 3 or values != [2, 3]):
         return panic("captured backing, shifted values or valid retained tail changed")

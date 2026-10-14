@@ -35,7 +35,7 @@ directory: Bool
 
 ### ArchiveEntry.path
 
-Relative forward-slash path; pack/unpack reject traversal, absolute paths and duplicate normalized names.
+Relative forward-slash path; pack/unpack reject traversal, absolute paths and duplicate normalized names. Unpack returns directory paths without a trailing slash.
 
 ```manuscript
 path: String

@@ -124,11 +124,19 @@ func TestLibraryCompressionAndArchives(t *testing.T) {
 		return Record{"@std/ArchiveEntry", map[string]Value{"path": path, "data": Bytes{[]byte(data)}, "directory": directory}}
 	}
 	for _, format := range []string{"zip", "tar"} {
-		entries := libraryList("@std/ArchiveEntry", []Value{entry("dir/", "", true), entry("dir/x", "data", false)})
+		entries := libraryList("@std/ArchiveEntry", []Value{entry("dir", "", true), entry("dir/x", "data", false)})
 		packed := librarySuccess(t, libraryCall(t, "archive/pack", entries, format, int64(10000)))
 		got := librarySuccess(t, libraryCall(t, "archive/unpack", packed, format, limits))
 		if !Equal(got, entries) {
 			t.Fatalf("%s: %#v", format, got)
+		}
+	}
+	for _, format := range []string{"zip", "tar"} {
+		// A trailing slash on a directory is accepted by pack but unpack returns the canonical slashless path.
+		packed := librarySuccess(t, libraryCall(t, "archive/pack", libraryList("@std/ArchiveEntry", []Value{entry("d/", "", true)}), format, int64(10000)))
+		got := librarySuccess(t, libraryCall(t, "archive/unpack", packed, format, limits))
+		if want := libraryList("@std/ArchiveEntry", []Value{entry("d", "", true)}); !Equal(got, want) {
+			t.Fatalf("%s trailing slash: %#v", format, got)
 		}
 	}
 	for _, path := range []string{"../x", "/x", "C:/x", "a\\b", "a/../x"} {

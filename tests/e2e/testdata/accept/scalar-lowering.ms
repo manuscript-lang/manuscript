@@ -40,11 +40,7 @@ test "primitive equality captures operands once in order":
 
     let skipped = false and mark(counter, digit: 3) == 3
     let skipped_again = true or mark(counter, digit: 4) == 4
-    if (
-        skipped
-        or not skipped_again
-        or counter.value != 12
-    ):
+    if (skipped or not skipped_again or counter.value != 12):
         return panic("comparison escaped short circuit")
     if "é" == "e\u{0301}" or "λ🙂" != "λ🙂": return panic("Unicode equality changed")
     if not generic(left: true, right: true): return panic("generic equality changed")

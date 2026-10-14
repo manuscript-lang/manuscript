@@ -109,23 +109,14 @@ export interface FileSystem:
     fn glob_entries(
         path: String,
         options: GlobOptions,
-        exclude: Optional[
-            fn(
-                entry: PathEntry
-            ) -> Bool
-        ]
+        exclude: Optional[fn(entry: PathEntry) -> Bool]
     ) -> Result[List[PathEntry], FileSystemError]
     # Copies a file or tree according to the supplied replacement and size policies.
     fn copy(
         source: String,
         destination: String,
         options: CopyOptions,
-        filter: Optional[
-            fn(
-                source: String,
-                destination: String
-            ) -> Bool
-        ]
+        filter: Optional[fn(source: String, destination: String) -> Bool]
     ) -> Result[Unit, FileSystemError]
     # Watches native OS events; overflow is exactly `error` or `ignore` (case-sensitive).
     # Other policies return InvalidInput. Limits bound tracked paths and queued events.

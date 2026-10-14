@@ -99,9 +99,7 @@ test "plain values and explicit optionals share the call contract":
     if flag(false): return panic("false must be present")
     if flag(true and false): return panic("folded false must be wrapped")
     if invoke(increment) != 5: return panic("function payload")
-    if invoke(
-        fn(value): value + 2
-    ) != 6: return panic("closure payload")
+    if invoke(fn(value): value + 2) != 6: return panic("closure payload")
 
 test "constructor fields and methods use optional arguments":
     let defaulted = DefaultBox()
@@ -141,10 +139,7 @@ test "constructor fields and methods use optional arguments":
 
 test "wrapping evaluates arguments once in written order":
     let counter = Counter(0)
-    if ordered(
-        second: next(counter),
-        first: next(counter)
-    ) != 21:
+    if ordered(second: next(counter), first: next(counter)) != 21:
         return panic("argument order changed")
     if counter.calls != 2: return panic("argument evaluated more than once")
 
@@ -162,13 +157,7 @@ test "queue capacity accepts a plain value or omission":
     let capacity: Optional[Int] = some(4)
     let explicit = Queue[Int](capacity)
 
-    for value in [
-        1,
-        2,
-        3,
-        4,
-        5
-    ]:
+    for value in [1, 2, 3, 4, 5]:
         if not (unbounded.enqueue(value)): return panic(
             "omitted capacity became bounded"
         )

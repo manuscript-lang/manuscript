@@ -34,10 +34,7 @@ fn run() -> Result[Unit, ExecutionError]:
     return ok(unit)
 
 fn scheduler_probe() -> Unit:
-    with service = Scheduler(
-        limit: 1,
-        drain: 2.seconds
-    ):
+    with service = Scheduler(limit: 1, drain: 2.seconds):
         let task = fn() -> Result[Unit, Error]:
             return ok(unit)
         let launch = service.start
