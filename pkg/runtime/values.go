@@ -927,8 +927,6 @@ func RunTestsArgs(tests []Test, args []string) int {
 	return runTestsWith(tests, options, reporter)
 }
 
-func RunTests(tests []Test) int { return RunTestsWith(tests, TestOptions{}) }
-
 func RunTestsWith(tests []Test, options TestOptions) int {
 	return runTestsWith(tests, options, nil)
 }
