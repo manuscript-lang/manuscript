@@ -58,6 +58,9 @@ func documentTypeParameters(parameters []syntax.TypeParameter) string {
 			}
 			value += ": " + strings.Join(bounds, " & ")
 		}
+		if p.Default != nil {
+			value += " = " + documentType(p.Default)
+		}
 		values = append(values, value)
 	}
 	return "[" + strings.Join(values, ", ") + "]"

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Standard library: build JSON values with `from_string`, `from_bool`, `from_int`, `from_float`, `from_number`, `array`, `object`, and `object_optional` in `@std/json.ms`.
+- Standard library: `Optional.ok_or` takes an optional cause (`ok_or[E = MissingValue]`); without one it returns a `MissingValue` (`@std/errors.ms`) whose message names the calling file and line.
 - Standard library: `@std/sse.ms` decodes Server-Sent Events from byte chunks or any `ReadStream`, including HTTP response bodies, with line and event budgets and `SseError` (#470).
 - Standard library: documented one failure-mode rule (absence is `Optional`, invalid external data is `Result`, violated preconditions fault) in the errors and limits contract (#168).
 - Debugging: `ms debug` and `ms dap` embed Delve; VS Code no longer needs `dlv`.

@@ -69,7 +69,7 @@ case Failed(message: String)
 
 ### ArchiveError.InvalidData
 
-Archive bytes, duplicate paths, extracted entry paths or encoded metadata are invalid.
+Archive bytes, duplicate or file/directory-conflicting paths, extracted entry paths or encoded metadata are invalid.
 
 ```manuscript
 case InvalidData

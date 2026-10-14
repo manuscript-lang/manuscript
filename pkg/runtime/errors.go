@@ -23,6 +23,9 @@ var NativeImplementations = []NativeImplementationSpec{
 			if cause.Type == "@std/TextError" && cause.Tag == "Text" && len(cause.Fields) == 1 {
 				return cause.Fields[0].(string)
 			}
+			if cause.Type == "@std/MissingValue" && cause.Tag == "Missing" && len(cause.Fields) == 1 {
+				return "missing value at " + cause.Fields[0].(string)
+			}
 			if cause.Tag == "Crashed" && len(cause.Fields) == 2 {
 				return cause.Fields[1].(string)
 			}
@@ -84,6 +87,7 @@ var standardErrorDomains = map[string]string{
 	"@std/ExecutionError":   "task execution",
 	"@std/SseError":         "SSE",
 	"@std/StartError":       "scheduler",
+	"@std/MissingValue":     "missing value",
 	"@std/TextError":        "text",
 	"@std/TimeError":        "time",
 	"@std/TlsError":         "TLS",
