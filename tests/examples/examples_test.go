@@ -17,6 +17,7 @@ import (
 
 	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
 
 type example struct {
@@ -48,21 +49,28 @@ func TestTutorialExamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	libraryFiles, err := filepath.Glob("../../documentation/standard-library/*.md")
+	guides, err := docgen.GuideFiles()
 	if err != nil {
 		t.Fatal(err)
 	}
-	files = append(files, libraryFiles...)
+	sources := map[string][]byte{}
+	for path, data := range guides {
+		if strings.HasPrefix(path, "documentation/") {
+			sources[path] = data
+		}
+	}
 	files = append(files, "../../documentation/core-language/types/records.md")
 	files = append(files, "../../documentation/core-language/basics/numbers-and-booleans.md")
 	files = append(files, "../../documentation/core-language/control-flow/loops.md")
-	files = append(files, "../../documentation/concurrency/shutdown.md")
-	total := 0
 	for _, file := range files {
-		text, err := os.ReadFile(file)
+		data, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatal(err)
 		}
+		sources[file] = data
+	}
+	total := 0
+	for file, text := range sources {
 		for index, block := range blocks.FindAllStringSubmatch(string(text), -1) {
 			if block[1] == "" {
 				if complete.MatchString(block[2]) {

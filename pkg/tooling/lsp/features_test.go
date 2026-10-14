@@ -291,7 +291,17 @@ func TestNavigationWithinStandardLibrary(t *testing.T) {
 			if !checked.Success() || module(checked, d) == nil {
 				t.Fatal("standard document was not resolved", checked.Diagnostics)
 			}
-			offset := strings.LastIndex(source, item.needle)
+			// Guide comments may repeat signatures. Navigate the declaration,
+			// rather than selecting a prose occurrence at the end of the file.
+			offset, base := -1, 0
+			for _, line := range strings.SplitAfter(source, "\n") {
+				if !strings.HasPrefix(strings.TrimSpace(line), "#") {
+					if at := strings.LastIndex(line, item.needle); at >= 0 {
+						offset = base + at
+					}
+				}
+				base += len(line)
+			}
 			if offset < 0 {
 				t.Fatal("missing source reference")
 			}

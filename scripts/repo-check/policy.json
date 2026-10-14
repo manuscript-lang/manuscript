@@ -40,7 +40,8 @@
       "pkg/frontend"
     ],
     "pkg/tooling/docgen": [
-      "pkg/checker"
+      "pkg/checker",
+      "pkg/stdlib"
     ],
     "pkg/tooling/lsp": [
       "pkg/syntax",

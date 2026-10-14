@@ -58,7 +58,7 @@ Decision: the user requested "please remove nested match from everywhere, note i
 Verified: [MSL107](../pkg/tooling/nested_match_lint.go) warns at each structurally inner match; the [repository guard](../scripts/repo-check/nested_match.go) inspects source, fences, and Go strings. Test allowances are scoped and require a reason. [CLI/editor regressions](../internal/cli/advisory_lint_test.go) preserve checking success and advisory status. The earlier local completion report did not establish publication; the reconciliation used current main and the actual code registry, where MSL104/105 are already allocated and MSL106 belongs to the payload-binding rule.
 
 Apply when: adding Result adapters or rewriting examples that combine execution and domain errors.
-Evidence: [flat flow and grammar compatibility](../documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat); [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [task group example](../documentation/concurrency/task-groups.md).
+Evidence: [flat flow and grammar compatibility](../documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat); [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [task group example](../pkg/stdlib/tasks.ms).
 Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. Result's success-only `map` and same-error `and_then` retain the original error payload; they do not add an error-translation helper. The standard Result module exports only its type, and regenerated API references agree with its declarations. [Called composition tests](../tests/e2e/testdata/stdlib/core-parity.ms) distinguish success transformation from error translation.
 
 ### Equality and hashing are source interfaces
@@ -70,7 +70,7 @@ Evidence: [equality rules](../documentation/core-language/types/equality-and-has
 Verify: two keys with equal IDs and different labels compare equal and occupy one map entry; an equality override without a hash is rejected as a map key. Keep local implementation selection when forwarding generic arguments.
 
 Decision: all values may be passed freely; shared mutable state uses Synchronized, and closures have ordinary captures. This remains independent of equality, hashing, cleanup, and work lifetime.
-Evidence: [sharing rules](../documentation/concurrency/sharing.md).
+Evidence: [sharing rules](../pkg/stdlib/sync.ms).
 
 ### Syntax improvements need examples across their boundaries
 
@@ -123,7 +123,7 @@ Verify: Optional methods and Result propagation into Error execute without impor
 Decision: applications export `fn main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
-Evidence: [CLI contract](../documentation/standard-library/cli.md), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
+Evidence: [CLI contract](../pkg/stdlib/cli.ms), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
 Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.
 
 ### Keep short bodies available without a second function kind
