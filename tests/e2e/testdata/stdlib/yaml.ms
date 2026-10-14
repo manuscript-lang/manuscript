@@ -875,3 +875,36 @@ test "YAML block scalar chomping counts every trailing line break":
     scalar(text: "a: >-\n  x\n\n\n", expected: "x")
     scalar(text: "a: |\n\n\nb: 1", expected: "")
     scalar(text: "a: |+\n\n\nb: 1", expected: "\n\n")
+
+test "YAML compact nested sequences resume each level and parse deep chains in linear time":
+    let small = items(
+        value(
+            parse(
+                text: "- - - x\n    - y\n  - z\n- - 1\n  - - 2\n    - 3\n-\n  - -\n    - a: 1\n      b: 2\n"
+            )
+        )
+    )
+    if small.length() != 3: return panic("compact chain top level")
+
+    let first = items(small.first().unwrap())
+    if first.length() != 2: return panic("compact chain middle level")
+    if items(first.first().unwrap()).length() != 2: return panic(
+        "compact chain innermost"
+    )
+    if first.last().unwrap() != YamlValue.StringValue("z"): return panic(
+        "compact chain resumes outer level"
+    )
+
+    let depth = 3000
+    var source = "{repeated(text: "- ", count: depth)}x\n"
+    var root = value(parse(text: source))
+    var level = 1
+
+    while level < depth:
+        let inner = items(root)
+        if inner.length() != 1: return panic("deep chain width")
+
+        root = inner.first().unwrap()
+        level = level + 1
+
+    if items(root) != [YamlValue.StringValue("x")]: return panic("deep chain leaf")
