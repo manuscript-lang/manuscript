@@ -199,19 +199,56 @@ func keyRemoved(ctx *Execution, c keyed, pos int, removed Value) {
 	case string:
 		delete(ix.strs, k)
 	default:
-		// Positions in hash buckets shift; rebuild on the next lookup.
-		ix.n = -1
-		return
+		if !ix.unlinkHashed(ctx, removed, pos) {
+			ix.n = -1
+			return
+		}
 	}
+	ix.shiftHashed(pos)
 	for i := pos; i < n; i++ {
 		switch k := c.keyAt(i).(type) {
 		case int64:
 			ix.ints[k] = i
 		case string:
 			ix.strs[k] = i
-		default:
-			ix.n = -1
-			return
+		}
+	}
+}
+
+// unlinkHashed drops position pos of the removed hashed key from its bucket. It
+// reports false when the bucket does not hold pos (for example an unstable user
+// hash), so the caller can fall back to a full rebuild.
+func (ix *keyIndex) unlinkHashed(ctx *Execution, removed Value, pos int) bool {
+	h := keyHash(ctx, removed)
+	bucket := ix.other[h]
+	at := -1
+	for j, i := range bucket {
+		if i == pos {
+			at = j
+			break
+		}
+	}
+	if at < 0 {
+		return false
+	}
+	if len(bucket) == 1 {
+		delete(ix.other, h)
+	} else {
+		ix.other[h] = append(bucket[:at], bucket[at+1:]...)
+	}
+	return true
+}
+
+// shiftHashed moves every hashed position after pos down by one, as the
+// entries after pos shifted. Shifting integers instead of rehashing keeps a
+// removal at integer cost; rebuilding would hash and compare every remaining
+// key on the next lookup.
+func (ix *keyIndex) shiftHashed(pos int) {
+	for _, bucket := range ix.other {
+		for j := range bucket {
+			if bucket[j] > pos {
+				bucket[j]--
+			}
 		}
 	}
 }
