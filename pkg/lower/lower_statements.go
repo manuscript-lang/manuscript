@@ -11,9 +11,6 @@ import (
 func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 	var out []ast.Stmt
 	for _, s := range body {
-		if !g.positionFree(s) {
-			out = append(out, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String())))
-		}
 		statements := g.statement(s)
 		statements[0] = g.locatedStatement(s.Pos, statements[0])
 		out = append(out, statements...)
@@ -53,8 +50,14 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	if pre, value, native := g.inlineTry(s); value != nil {
 		return append(pre, g.afterTry(s, value, native)...)
 	}
+	if pre := g.hoistTries(s); pre != nil {
+		return append(pre, g.statement(s)...)
+	}
 	switch s.Kind {
 	case syntax.KindBind:
+		if out := g.altLet(s); out != nil {
+			return out
+		}
 		return g.pattern(s.Pattern, g.expression(s.Value), g.nativeType(s.Value))
 	case syntax.KindAssign:
 		return g.assignment(s)
@@ -177,6 +180,10 @@ func (g *generator) loop(s *syntax.Statement) []ast.Stmt {
 	g.loopCleanup = append(g.loopCleanup, len(g.cleanups))
 	label := &loopLabel{name: g.temp(), depth: g.expressionDepth}
 	g.loopLabels = append(g.loopLabels, label)
+	element := ""
+	if s.Kind != syntax.KindWhile {
+		element = g.declareTyped(g.program.LoopBinding(s))
+	}
 	body := g.loopBody(s.Body, label)
 	g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
 	g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
@@ -190,7 +197,8 @@ func (g *generator) loop(s *syntax.Statement) []ast.Stmt {
 		b := g.program.LoopBinding(s)
 		index := g.temp()
 		body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("PollIndex", ident("ctx"), ident(index)))}, body...)
-		loop = &ast.RangeStmt{Key: ident(index), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
+		iterate := "Iterate" + primitiveKinds[element]
+		loop = &ast.RangeStmt{Key: ident(index), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall(iterate, g.expression(s.Value)), Body: block(body...)}
 	}
 	if label.used {
 		loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
@@ -219,6 +227,9 @@ func (g *generator) with(s *syntax.Statement) []ast.Stmt {
 func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func(*syntax.Arm) []ast.Stmt) []ast.Stmt {
 	tmp := g.temp()
 	contractMatch := g.program.Info(value).Type.Kind == "contract"
+	if b, shape := g.altLocalOf(value); shape != nil {
+		return g.typedMatch(tmp, ident(b.ID), shape, arms, body)
+	}
 	if !contractMatch && !g.listAtMatch(value) {
 		if typed, direct := g.typedDirectCall(value); typed != nil && direct.shape != nil {
 			return g.typedMatch(tmp, typed, direct.shape, arms, body)
@@ -323,7 +334,13 @@ func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr, string
 	if g.expressionDepth > 0 || !g.program.PlainTry(s) {
 		return nil, nil, ""
 	}
-	e := s.Value
+	return g.tryReturn(s.Value)
+}
+
+// tryReturn evaluates a `try` expression into statements that return the
+// error result on failure, and the expression that yields the success value
+// with its Go type ("" for a boxed Value).
+func (g *generator) tryReturn(e *syntax.Expression) ([]ast.Stmt, ast.Expr, string) {
 	info := g.program.Info(e)
 	tmp := g.temp()
 	if typed, direct := g.typedDirectCall(e.Right); typed != nil && direct.shape != nil && !direct.shape.optional {
@@ -355,25 +372,6 @@ func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr, string
 	}
 	pre := []ast.Stmt{define(tmp, &ast.TypeAssertExpr{X: g.expression(e.Right), Type: runtimeName("Alternative")}), check}
 	return pre, index(selector(ident(tmp), "Fields"), intLiteral(0)), ""
-}
-
-// positionFree reports whether a statement needs no frame position: it runs
-// no call and no operation that does not carry its own site, so nothing in
-// it can report the enclosing function's position. Scalar arithmetic over
-// typed locals records its own site if it faults.
-func (g *generator) positionFree(s *syntax.Statement) bool {
-	if len(g.cleanups) > 0 {
-		return false
-	}
-	switch s.Kind {
-	case syntax.KindBind:
-		return s.Pattern != nil && s.Pattern.Kind == syntax.KindName && scalarBinding(g.program.PatternBinding(s.Pattern)) != "" && g.exprFree(s.Value)
-	case syntax.KindAssign:
-		return s.Target == nil && g.typed[g.program.AssignedBinding(s.Value)] != "" && g.exprFree(s.Value)
-	case syntax.KindIf, syntax.KindWhile:
-		return g.exprFree(s.Value)
-	}
-	return false
 }
 
 // exprFree reports whether e is built only from literals, typed locals, and

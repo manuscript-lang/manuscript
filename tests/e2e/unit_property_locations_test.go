@@ -30,9 +30,9 @@ test "continues with valid units":
 		}
 	}
 	want := []string{
-		"unit-properties.ms:2:34 in test positive unit overflow",
-		"unit-properties.ms:4:35 in test negative unit overflow",
-		"unit-properties.ms:6:25 in test receiver fault comes first",
+		"unit-properties.ms:2 in test positive unit overflow",
+		"unit-properties.ms:4 in test negative unit overflow",
+		"unit-properties.ms:6 in test receiver fault comes first",
 	}
 	if strings.Join(frames, "\n") != strings.Join(want, "\n") || !strings.Contains(string(data), "PASS unit-properties.ms::continues with valid units") || !strings.HasSuffix(strings.TrimSpace(string(data)), "4 tests, 3 failed") {
 		t.Fatalf("wrong source frames/evaluation/continuation: %q, want %q; transcript:\n%s", frames, want, data)

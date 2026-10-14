@@ -3,6 +3,7 @@ package msruntime
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -137,13 +138,11 @@ func TestCompiledSourceFunctionGuardParity(t *testing.T) {
 	if returning.Body(ctx, nil) != int64(42) || ctx.calls.depth != 0 {
 		t.Fatal("compiled source return changed")
 	}
-	faulting := NewCompiledSourceFunction(nil, "Int", "compiled.ms:3:1", func(ctx *Execution, _ []Value) Value {
-		position := "compiled.ms:3:1"
-		defer TraceSource(ctx, &position, "compiled")
+	faulting := NewCompiledSourceFunction(nil, "Int", "compiled.ms:3:1", Named("compiled", func(ctx *Execution, _ []Value) Value {
 		return IntDivide(1, 0)
-	})
+	}))
 	fault := recovered(func() { faulting.Body(ctx, nil) }).(Fault)
-	if len(fault.Frames) != 1 || fault.Frames[0] != "compiled.ms:3:1 in compiled" {
+	if len(fault.Frames) != 1 || !strings.HasSuffix(fault.Frames[0], " in compiled") {
 		t.Fatal("compiled fault frame changed", fault)
 	}
 	work, cancel := context.WithCancel(ctx.Context)

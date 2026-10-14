@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -383,13 +384,13 @@ func TestTypedComparatorGuardParity(t *testing.T) {
 	if _, ok := failure.(Fault); !ok || remaining != MaxCallDepth {
 		t.Fatal("depth guard did not restore accounting")
 	}
-	faulting := NewIntCompareFunction([]string{"left", "right"}, "Int", "compare.ms:7:3", func(ctx *Execution, _, _ int64) int64 {
-		position := "compare.ms:7:3"
-		defer TraceSource(ctx, &position, "compare")
+	faultingBody := func(ctx *Execution, _, _ int64) int64 {
 		return IntDivide(1, 0)
-	})
+	}
+	RegisterSource(faultingBody, "compare")
+	faulting := NewIntCompareFunction([]string{"left", "right"}, "Int", "compare.ms:7:3", faultingBody)
 	fault := recovered(func() { faulting.IntCompare(ctx, 1, 2) }).(Fault)
-	if len(fault.Frames) != 1 || fault.Frames[0] != "compare.ms:7:3 in compare" {
+	if len(fault.Frames) != 1 || !strings.HasSuffix(fault.Frames[0], " in compare") {
 		t.Fatalf("source frame lost: %#v", fault)
 	}
 	work, cancel := context.WithCancel(ctx.Context)

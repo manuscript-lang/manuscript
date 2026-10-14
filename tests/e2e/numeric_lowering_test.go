@@ -125,3 +125,85 @@ test "sealed builder":
 		t.Fatalf("bound members changed: %v\n%s", err, output)
 	}
 }
+
+func TestNestedTryReturnsInSourceOrder(t *testing.T) {
+	result := compiler.CompileSource("nested_try.ms", `import panic from "@std/faults.ms"
+import {List} from "@std/collections.ms"
+
+fn check(ok: Bool, name: String) -> Unit:
+    if not ok:
+        return panic(message: name)
+
+fn step(log: List[String], name: String, n: Int) -> Result[Int, String]:
+    log.append(value: name)
+    if n < 0:
+        return error(cause: name)
+    return ok(value: n)
+
+fn add(x: Int, y: Int) -> Int:
+    return x + y
+
+fn sum(log: List[String], a: Int, b: Int) -> Result[Int, String]:
+    let v = (try step(log: log, name: "a", n: a)) + (try step(log: log, name: "b", n: b))
+    log.append(value: "done")
+    return ok(value: v)
+
+fn arguments(log: List[String], a: Int, b: Int) -> Result[Int, String]:
+    return ok(value: add(x: try step(log: log, name: "x", n: a), y: try step(log: log, name: "y", n: b)))
+
+fn effect_first(log: List[String], a: Int) -> Result[Int, String]:
+    log.append(value: "before")
+    let v = add(x: 1, y: try step(log: log, name: "s", n: a))
+    return ok(value: v)
+
+fn loop(log: List[String], n: Int) -> Result[Int, String]:
+    var total = 0
+    var i = 0
+    while i < n:
+        total = total + try step(log: log, name: "l", n: 1 - i)
+        i = i + 1
+    return ok(value: total)
+
+fn joined(log: List[String]) -> Result[String, String]:
+    return ok(value: "{try step(log: log, name: "p", n: 1)}-{try step(log: log, name: "q", n: -1)}")
+
+fn text(log: List[String]) -> String:
+    return log.join(separator: ",")
+
+test "nested try":
+    let first = List[String]()
+    match sum(log: first, a: 1, b: 2):
+        ok(value): check(ok: value == 3, name: "sum")
+        error(cause): panic(message: cause)
+    check(ok: text(log: first) == "a,b,done", name: "order")
+    let second = List[String]()
+    match sum(log: second, a: -1, b: 2):
+        ok(value): panic(message: "no failure")
+        error(cause): check(ok: cause == "a", name: "first cause")
+    check(ok: text(log: second) == "a", name: "stops at the first failure")
+    let third = List[String]()
+    match arguments(log: third, a: 1, b: -1):
+        ok(value): panic(message: "no failure")
+        error(cause): check(ok: cause == "y", name: "argument cause")
+    check(ok: text(log: third) == "x,y", name: "argument order")
+    let fourth = List[String]()
+    match effect_first(log: fourth, a: -1):
+        ok(value): panic(message: "no failure")
+        error(cause): check(ok: cause == "s", name: "effect cause")
+    check(ok: text(log: fourth) == "before,s", name: "effects before try")
+    let fifth = List[String]()
+    match loop(log: fifth, n: 5):
+        ok(value): panic(message: "no failure")
+        error(cause): check(ok: cause == "l", name: "loop cause")
+    check(ok: text(log: fifth) == "l,l,l", name: "loop stops")
+    let sixth = List[String]()
+    match joined(log: sixth):
+        ok(value): panic(message: "no failure")
+        error(cause): check(ok: cause == "q", name: "text cause")
+    check(ok: text(log: sixth) == "p,q", name: "text order")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "1 tests, 0 failed") {
+		t.Fatalf("nested try changed: %v\n%s", err, output)
+	}
+}

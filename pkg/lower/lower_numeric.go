@@ -67,9 +67,8 @@ func (g *generator) numericOperation(e *syntax.Expression, a, b ast.Expr) ast.Ex
 		return &ast.BinaryExpr{X: a, Op: op, Y: b}
 	case "+", "-", "*", "/", "%":
 		if left.ID == "Int" {
-			// The operation's site travels with it and is recorded only on a fault.
 			operation := map[string]string{"+": "IntAddAt", "-": "IntSubtractAt", "*": "IntMultiplyAt", "/": "IntDivideAt", "%": "IntRemainderAt"}[e.Text]
-			return runtimeCall(operation, a, b, address(ident("sourcePosition")), textLiteral(e.Pos.String()))
+			return runtimeCall(operation, a, b)
 		}
 		if e.Text != "%" {
 			// Explicit rounding preserves each source operation even on FMA targets.
@@ -152,7 +151,7 @@ func (g *generator) negation(e *syntax.Expression) ast.Expr {
 				return call(ident("int64"), signedInteger(strconv.FormatInt(-value, 10)))
 			}
 		}
-		return runtimeCall("IntNegateAt", g.scalar(e.Right, "int64"), address(ident("sourcePosition")), textLiteral(e.Pos.String()))
+		return runtimeCall("IntNegateAt", g.scalar(e.Right, "int64"))
 	case "float64":
 		return &ast.UnaryExpr{Op: token.SUB, X: paren(g.numericOperand(e.Right, "float64"))}
 	}

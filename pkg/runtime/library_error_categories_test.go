@@ -64,10 +64,13 @@ func TestErrorCategoryPreservesDomainValues(t *testing.T) {
 			t.Fatalf("custom error classified by name/message: %#v", got)
 		}
 	}
-	for _, name := range []string{"YamlError", "TomlError"} {
+	for _, name := range []string{"YamlError", "TomlError", "SseError"} {
 		module := "@std/yaml.ms"
 		if name == "TomlError" {
 			module = "@std/toml.ms"
+		}
+		if name == "SseError" {
+			module = "@std/sse.ms"
 		}
 		cause := Alternative{Type: librarySourceErrorType(module, name), Tag: "InvalidData", Fields: []Value{int64(3), int64(9), "detail"}}
 		original := Clone(cause)

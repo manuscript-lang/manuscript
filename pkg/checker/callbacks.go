@@ -109,11 +109,14 @@ func (c *checker) callback(e *syntax.Expression, expected *Type) *Info {
 	c.loops = 0
 	c.captures[c.function] = map[*Binding]bool{}
 	setLambdaParameters(e, nil)
+	bound := map[string]bool{}
 	for index, param := range params {
 		if e.Params[index].Default != nil {
 			c.expression(e.Params[index].Default, param.Type)
 		}
-		setLambdaParameters(e, append(lambdaParametersOf(e), c.bind(param.Name, param.Type, false, e.Params[index].Pos)))
+		// A repeated name was reported while collecting the parameters.
+		setLambdaParameters(e, append(lambdaParametersOf(e), c.bindReporting(param.Name, param.Type, false, e.Params[index].Pos, !bound[param.Name])))
+		bound[param.Name] = true
 	}
 	fall, _ := c.block(e.Body, false)
 	if result == nil {

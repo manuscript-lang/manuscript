@@ -140,7 +140,6 @@ func TestLargeListLiteralFaultFrames(t *testing.T) {
 	items := repeated(300, func(i int) string { return fmt.Sprintf("value(%d)", i) })
 	items[200] = "fail()"
 	source := "import List from \"@std/collections.ms\"\nfn value(i: Int) -> Int: i\nfn fail() -> Int:\n    return 1 / 0\nexport fn main() -> Int:\n    let data = " + listOf(items) + "\n    return data.length()\n"
-	column := strings.Index(source[strings.Index(source, "    let data"):], "fail()") + 1
 	var transcripts []string
 	for _, kind := range []compiler.BuildType{compiler.Release, compiler.Debug} {
 		r := compiler.CompileSourceForBuild("fault.ms", source, compiler.Options{Entry: true}, kind)
@@ -157,7 +156,7 @@ func TestLargeListLiteralFaultFrames(t *testing.T) {
 		}
 		transcripts = append(transcripts, string(data))
 	}
-	if transcripts[0] != transcripts[1] || !strings.Contains(transcripts[0], "fault.ms:4:14 in fail") || !strings.Contains(transcripts[0], fmt.Sprintf("fault.ms:6:%d in main", column)) {
+	if transcripts[0] != transcripts[1] || !strings.Contains(transcripts[0], "fault.ms:4 in fail") || !strings.Contains(transcripts[0], "fault.ms:6 in main") {
 		t.Fatalf("fault frames changed: %q", transcripts)
 	}
 }

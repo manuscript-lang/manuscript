@@ -82,6 +82,7 @@ var standardErrorDomains = map[string]string{
 	"@std/StringError":      "string",
 	"@std/SystemError":      "system",
 	"@std/ExecutionError":   "task execution",
+	"@std/SseError":         "SSE",
 	"@std/StartError":       "scheduler",
 	"@std/TextError":        "text",
 	"@std/TimeError":        "time",
@@ -105,6 +106,7 @@ var standardErrorReasons = map[string]string{
 	"Closed":               "resource is closed",
 	"Unavailable":          "service unavailable",
 	"Timeout":              "operation timed out",
+	"Truncated":            "stream ended inside an event",
 	"Cancelled":            "operation cancelled",
 	"Full":                 "capacity exhausted",
 	"OutOfRange":           "value out of range",
@@ -173,6 +175,7 @@ func libraryErrorCategory(value Value) Value {
 var sourceStandardErrors = map[string]bool{
 	librarySourceErrorType("@std/yaml.ms", "YamlError"): true,
 	librarySourceErrorType("@std/toml.ms", "TomlError"): true,
+	librarySourceErrorType("@std/sse.ms", "SseError"):   true,
 }
 
 func librarySourceErrorType(module, name string) string {

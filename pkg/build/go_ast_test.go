@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -49,7 +50,7 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 		}
 	}
 	var outputs []string
-	for _, source := range []string{string(baseline), result.Source} {
+	for _, source := range []string{adaptBaseline(string(baseline)), result.Source} {
 		binary := filepath.Join(t.TempDir(), "program")
 		if err := Build(source, binary); err != nil {
 			t.Fatal(err)
@@ -63,6 +64,21 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	if outputs[0] != outputs[1] || !strings.Contains(outputs[1], "1 tests, 0 failed") {
 		t.Fatalf("baseline behavior differs: %q", outputs)
 	}
+}
+
+var (
+	baselineTrace    = regexp.MustCompile(`(?m)^\s*defer rt\.TraceSource\(.*\)\n`)
+	baselinePosition = regexp.MustCompile(`rt\.SourceAt\(&sourcePosition, "[^"]*", `)
+	baselineVariable = regexp.MustCompile(`(?m)^(\s*)sourcePosition := (".*")\n`)
+)
+
+// The baseline records fault frames with per-function position bookkeeping that
+// the runtime no longer provides: frames come from the stack. Strip only that
+// bookkeeping, keeping SourceAt's role of ordering its operand.
+func adaptBaseline(source string) string {
+	source = baselineTrace.ReplaceAllString(source, "")
+	source = baselinePosition.ReplaceAllString(source, "rt.Seq(")
+	return baselineVariable.ReplaceAllString(source, "${1}sourcePosition := ${2}\n${1}_ = sourcePosition\n")
 }
 
 // Normalize only nonsemantic position information and redundant parentheses.

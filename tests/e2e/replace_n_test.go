@@ -55,7 +55,7 @@ test "continues":
 		}
 		message = current
 	}
-	for _, frame := range []string{"replace-n-faults.ms:4:9", "replace-n-faults.ms:7:5", "replace-n-faults.ms:9:8", "5 tests, 4 failed"} {
+	for _, frame := range []string{"replace-n-faults.ms:4", "replace-n-faults.ms:7", "replace-n-faults.ms:9", "5 tests, 4 failed"} {
 		if !strings.Contains(output, frame) {
 			t.Errorf("missing %s: %s", frame, output)
 		}

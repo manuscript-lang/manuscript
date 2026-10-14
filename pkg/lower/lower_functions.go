@@ -163,7 +163,7 @@ func (g *generator) enterNativeDefault(d *syntax.Declaration) bool {
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
 	labels, key, position, out, _ := g.functionPieces(nil, name, params, result, body, bindings, self, t, tail...)
-	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
+	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), runtimeCall("Named", textLiteral(name), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...)))
 }
 
 // functionParts lowers a callable's labels, result key, source position, and
@@ -175,8 +175,8 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 }
 
 // directFunctionLiteral lowers a direct function to its Go function literal.
-func (g *generator) directFunctionLiteral(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, t *checker.Type) ast.Expr {
-	_, _, _, _, literal := g.functionPieces(direct, name, params, result, body, bindings, nil, t)
+func (g *generator) directFunctionLiteral(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type) ast.Expr {
+	_, _, _, _, literal := g.functionPieces(direct, name, params, result, body, bindings, self, t)
 	return literal
 }
 
@@ -213,10 +213,7 @@ func (g *generator) functionPieces(direct *directFunction, name string, params [
 	for _, p := range t.Params {
 		labels = append(labels, p.Name)
 	}
-	prologue := []ast.Stmt{
-		define("sourcePosition", textLiteral(result.Pos.String())),
-		&ast.DeferStmt{Call: runtimeCall("TraceSource", ident("ctx"), address(ident("sourcePosition")), textLiteral(name))},
-	}
+	var prologue []ast.Stmt
 	var out []ast.Stmt
 	if self != nil {
 		out = append(out, define(self.ID, ident("receiver")), discard(ident(self.ID)))

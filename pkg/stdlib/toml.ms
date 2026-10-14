@@ -181,7 +181,8 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
 
         if peek(reader) == "\n": advance(reader)
 
-    var result = ""
+    # Append through a builder: per-character concatenation is quadratic on long strings.
+    let result = StringBuilder()
 
     while true:
         let c = advance(reader)
@@ -190,7 +191,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
         )
 
         if c == quote:
-            if not multiline: return ok(result)
+            if not multiline: return ok(result.freeze())
 
             if peek(reader) == quote and ahead(reader: reader, offset: 1) == quote:
                 advance(reader)
@@ -198,12 +199,12 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                 var extra = 0
 
                 while peek(reader) == quote and extra < 2:
-                    result = result.concat(advance(reader))
+                    result.append(advance(reader))
                     extra = extra + 1
 
-                return ok(result)
+                return ok(result.freeze())
 
-            result = result.concat(c)
+            result.append(c)
             continue
 
         let code = c.scalar_at(0).unwrap()
@@ -220,7 +221,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
             )
 
         if c != "\\" or quote == "'":
-            result = result.concat(c)
+            result.append(c)
             continue
 
         if (
@@ -250,12 +251,12 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
 
         let escaped = advance(reader)
 
-        if escaped == "b": result = result.concat("\u{8}")
-        else if escaped == "t": result = result.concat("\t")
-        else if escaped == "n": result = result.concat("\n")
-        else if escaped == "f": result = result.concat("\u{c}")
-        else if escaped == "r": result = result.concat("\r")
-        else if escaped == "\"" or escaped == "\\": result = result.concat(escaped)
+        if escaped == "b": result.append("\u{8}")
+        else if escaped == "t": result.append("\t")
+        else if escaped == "n": result.append("\n")
+        else if escaped == "f": result.append("\u{c}")
+        else if escaped == "r": result.append("\r")
+        else if escaped == "\"" or escaped == "\\": result.append(escaped)
         else if escaped == "u" or escaped == "U":
             var count = 4
 
@@ -293,7 +294,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                         reason: "invalid Unicode scalar"
                     )
                 )
-                ok(text): result = result.concat(text)
+                ok(text): result.append(text)
 
         else:
             return error(
@@ -1146,28 +1147,26 @@ fn hex4(code: Int) -> String:
     return digits
 
 fn quote_text(text: String) -> String:
-    var result = "\""
+    let result = StringBuilder()
+    result.append("\"")
 
     for c in text.chars():
         let code = c.scalar_at(0).unwrap()
 
-        if c == "\"": result = result.concat("\\\"")
-        else if c == "\\": result = result.concat("\\\\")
-        else if c == "\n": result = result.concat("\\n")
-        else if c == "\t": result = result.concat("\\t")
-        else if c == "\r": result = result.concat("\\r")
-        else if code == 8: result = result.concat("\\b")
-        else if code == 12: result = result.concat("\\f")
-        else if code < 32 or code == 127: result = (
-            result
-            .concat("\\u")
-            .concat(
-                hex4(code)
-            )
-        )
-        else: result = result.concat(c)
+        if c == "\"": result.append("\\\"")
+        else if c == "\\": result.append("\\\\")
+        else if c == "\n": result.append("\\n")
+        else if c == "\t": result.append("\\t")
+        else if c == "\r": result.append("\\r")
+        else if code == 8: result.append("\\b")
+        else if code == 12: result.append("\\f")
+        else if code < 32 or code == 127:
+            result.append("\\u")
+            result.append(hex4(code))
+        else: result.append(c)
 
-    return result.concat("\"")
+    result.append("\"")
+    return result.freeze()
 
 fn format_key(key: String) -> String:
     var bare = key != ""

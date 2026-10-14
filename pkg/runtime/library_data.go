@@ -23,7 +23,7 @@ type libraryRegex struct{ pattern *regexp.Regexp }
 func init() {
 	p := func(name, typ string) LibraryParam { return LibraryParam{name, typ} }
 	add := libraryAdd
-	for name, f := range map[string]func(float64) float64{"abs": math.Abs, "floor": math.Floor, "ceil": math.Ceil, "round": javascriptRound, "sqrt": math.Sqrt, "exp": math.Exp, "log": math.Log, "log2": math.Log2, "log10": math.Log10, "sin": math.Sin, "cos": math.Cos, "tan": math.Tan, "asin": math.Asin, "acos": math.Acos, "atan": math.Atan, "sinh": math.Sinh, "cosh": math.Cosh, "tanh": math.Tanh, "truncate": math.Trunc} {
+	for name, f := range map[string]func(float64) float64{"abs": math.Abs, "floor": math.Floor, "ceil": math.Ceil, "round": roundHalfUp, "sqrt": math.Sqrt, "exp": math.Exp, "log": math.Log, "log2": math.Log2, "log10": math.Log10, "sin": math.Sin, "cos": math.Cos, "tan": math.Tan, "asin": math.Asin, "acos": math.Acos, "atan": math.Atan, "sinh": math.Sinh, "cosh": math.Cosh, "tanh": math.Tanh, "truncate": math.Trunc} {
 		add("math", name, "Float", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(float64)) })
 	}
 	for name, f := range map[string]func(float64, float64) float64{"pow": math.Pow, "min": math.Min, "max": math.Max, "hypot": math.Hypot, "atan2": math.Atan2, "remainder": math.Mod} {
@@ -470,7 +470,7 @@ func libraryWriteInteger(_ *Execution, r string, a []Value) Value {
 	return libraryOK(r, Bytes{b})
 }
 
-func javascriptRound(value float64) float64 {
+func roundHalfUp(value float64) float64 {
 	if math.IsNaN(value) || math.IsInf(value, 0) || value == 0 {
 		return value
 	}
