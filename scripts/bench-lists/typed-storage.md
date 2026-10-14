@@ -11,6 +11,7 @@ omission. Closed prototypes and the cancelled width migration are not dependenci
 | One mutable identity across aliases/generics/saved methods | `TestPrimitiveListConstructorsAndAliases`, called primitive fixture | Implemented |
 | Equality under user Equal mutating either operand | `TestListEqualityCapturesBothHeadersBeforeCallbacks`, native/standalone equality fixture | Both headers captured before length/traversal |
 | Ordinary generated iteration and generic callbacks | Committed before/storage benchmarks and review ledger below | Regressions remain a combined #318 acceptance gate |
+| Borrowed compiled `for_each` arguments | Retention/reentry/Value captures/labels/wrappers/checkpoint/guard tests | Runtime control implemented; #87 emits only proven bodies |
 | Captured Go header, writes/growth/shrink/self-splice/retained tails | `TestPrimitiveListCapturedGoHeaders`, existing Go and source oracles | Implemented |
 | Fresh construction and sized non-cancelling initialization | `TestFreshSizedListInitialization` | Two allocations for nonempty backing |
 | Primitive Optional and fault/cancellation boundary | `TestPrimitiveListAccessAllocationsAndCancellation` | Zero typed read allocations |
@@ -86,6 +87,24 @@ paired confidence estimate. Typed `CaptureList` loops and comparator controls
 cannot stand in for these ordinary paths. Combined #318 acceptance must rerun
 append/index/iteration/callback/sorting and compare allocations and bytes against
 the labeled baseline; memory savings alone do not clear these regressions.
+
+The approved narrow mitigation adds `NewCompiledSourceFunction`, delegating the
+ordinary source guard once and marking bodies that copy parameter Values without
+retaining/exposing `[]Value`. Exact-label `for_each` uses one invocation-local
+buffer; unmarked callbacks keep fresh arrays and wrappers drop the proof.
+`BenchmarkForEachBorrowedArguments` isolates the production callback boundary at
+65,536 cells, with three 100ms samples in
+[borrowed runtime controls](results/typed-storage/borrowed-arguments/).
+
+| Runtime callback control | fresh allocations / bytes | borrowed allocations / bytes |
+| --- | ---: | ---: |
+| Already boxed backing | 65,536 / 1,048,576 | 1 / 16 |
+| Typed backing with boxed callback Values | 130,907 / about 1,571,550 | 65,372 / about 522,986 |
+
+Typed backing still boxes 65,371 non-small primitive payloads. Reusing only the
+argument slots removes their allocation increase relative to the prior boxed
+callback boundary, but actual generated source remains a combined #87 gate.
+These runtime controls do not establish compiler marker proof or timing speedups.
 
 The equality review found a separate semantic bug: reloading live List headers
 let an element's user Equal shrink/extend membership or switch arrays on growth.

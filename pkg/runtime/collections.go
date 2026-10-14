@@ -246,6 +246,8 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 	if len(scopes) > 0 {
 		original := NativeMemberResult(receiver, name, result).(Function)
 		originalBody := original.Body
+		// Scoped adaptation does not inherit the compiled body proof.
+		original.BorrowedArguments = false
 		original.Body = func(ctx *Execution, args []Value) Value {
 			child := *ctx
 			child.EqualityScope = scopes[0]

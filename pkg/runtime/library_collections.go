@@ -277,11 +277,7 @@ func init() {
 		})
 	}
 	add("for_each", "Unit", elements, []LibraryParam{p("values", "List[T]"), p("operation", "fn(value:T)->Unit")}, func(ctx *Execution, _ string, a []Value) Value {
-		for _, v := range a[0].(*List).Capture().Values() {
-			CheckCancelled(ctx)
-			Invoke(ctx, a[1], []Argument{{"value", v}})
-		}
-		return Unit{}
+		return listForEach(ctx, a[0].(*List), a[1])
 	})
 	add("flat_map", "List[U]", []LibraryParam{p("T", ""), p("U", "")}, []LibraryParam{p("values", "List[T]"), p("transform", "fn(value:T)->List[U]")}, func(ctx *Execution, r string, a []Value) Value {
 		var out []Value
