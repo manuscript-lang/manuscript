@@ -267,3 +267,55 @@ func TestAccessorDirectoryPathsRetainPostCloseAvailability(t *testing.T) {
 		t.Fatal("closed directory paths")
 	}
 }
+
+// A deterministic cancellation source distinguishes admission-only static reads
+// from the dynamic accessor boundary's delivery check without scheduling races.
+type optionalCheckpointContext struct {
+	context.Context
+	checks   int
+	cancelAt int
+	cancel   context.CancelFunc
+}
+
+func (c *optionalCheckpointContext) Err() error {
+	c.checks++
+	if c.checks >= c.cancelAt {
+		c.cancel()
+	}
+	return c.Context.Err()
+}
+
+func TestOptionalAccessorStaticAdmissionAndDynamicDelivery(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		read func(*Execution, bool) bool
+		want bool
+	}{
+		{"is_some", OptionalSomeRead, true}, {"is_none", OptionalNoneRead, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			staticBase, cancelStatic := context.WithCancel(context.Background())
+			defer cancelStatic()
+			staticContext := &optionalCheckpointContext{Context: staticBase, cancelAt: 2, cancel: cancelStatic}
+			ctx := newExecution(RootExecution(), staticContext)
+			if got := tc.read(ctx, true); got != tc.want || staticContext.checks != 1 {
+				t.Fatalf("static read changed admission-only contract: got %v after %d checks", got, staticContext.checks)
+			}
+			// Entry and the native operation admit the dynamic read; cancellation at
+			// the following boundary must prevent delivery of its classifier value.
+			dynamicBase, cancelDynamic := context.WithCancel(context.Background())
+			defer cancelDynamic()
+			dynamicContext := &optionalCheckpointContext{Context: dynamicBase, cancelAt: 3, cancel: cancelDynamic}
+			ctx = newExecution(RootExecution(), dynamicContext)
+			if _, ok := recovered(func() { ReadAccessor(ctx, optional("Int", int64(0), true), "", tc.name, TypeScope{}) }).(cancelled); !ok {
+				t.Fatal("dynamic read lost delivery cancellation")
+			}
+			stopped, cancel := context.WithCancel(context.Background())
+			cancel()
+			ctx = newExecution(RootExecution(), stopped)
+			if _, ok := recovered(func() { tc.read(ctx, true) }).(cancelled); !ok {
+				t.Fatal("static read lost admission cancellation")
+			}
+		})
+	}
+}

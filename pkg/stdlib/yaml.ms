@@ -729,11 +729,7 @@ fn inline_value(
         or text.starts_with("&")
     )
 
-    while (
-        structured
-        and not complete(joined)
-        and context.index < context.lines.length
-    ):
+    while (structured and not complete(joined) and context.index < context.lines.length):
         let next = context.lines.at(context.index).unwrap()
         # Keep quote state and physical empty lines when removing comments.
         let combined = joined.concat("\n").concat(next)
@@ -1133,10 +1129,7 @@ fn sequence_items(
             let marker = (
                 line
                 .trim_start()
-                .slice(
-                    start: 1,
-                    end: (line.trim_start().scalar_length)
-                )
+                .slice(start: 1, end: (line.trim_start().scalar_length))
                 .unwrap_or("")
             )
             var gap = indent(marker)

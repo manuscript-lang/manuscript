@@ -1,0 +1,224 @@
+{
+  "Legacy": true,
+  "Partition": {
+    "bound": 5,
+    "direct": 8,
+    "hoisted": 7
+  },
+  "Candidates": {
+    "bytes_empty": {
+      "Class": "hoisted",
+      "Calls": {
+        "BindNativeCall": 1,
+        "Bool": 1,
+        "CallNative": 1,
+        "IntAddAt": 2,
+        "Poll": 1,
+        "Seq": 2
+      }
+    },
+    "bytes_length": {
+      "Class": "bound",
+      "Calls": {
+        "IntAddAt": 2,
+        "IntValue": 1,
+        "Invoke": 1,
+        "NativeMemberResult": 1,
+        "Poll": 1,
+        "Seq": 2
+      }
+    },
+    "float_finite": {
+      "Class": "bound",
+      "Calls": {
+        "Bool": 1,
+        "IntAddAt": 2,
+        "Invoke": 1,
+        "NativeMemberResult": 1,
+        "Poll": 1,
+        "Seq": 2
+      }
+    },
+    "float_nan": {
+      "Class": "bound",
+      "Calls": {
+        "Bool": 1,
+        "IntAddAt": 2,
+        "Invoke": 1,
+        "NativeMemberResult": 1,
+        "Poll": 1,
+        "Seq": 2
+      }
+    },
+    "list_empty": {
+      "Class": "direct",
+      "Calls": {
+        "Bool": 1,
+        "IntAddAt": 2,
+        "ListIsEmpty": 1,
+        "Poll": 1,
+        "Seq": 1
+      }
+    },
+    "list_first": {
+      "Class": "hoisted",
+      "Calls": {
+        "BindNativeCall": 1,
+        "CallNative": 1,
+        "IntAddAt": 2,
+        "IntValue": 1,
+        "OptionalUnwrap": 1,
+        "Poll": 1,
+        "Seq": 3
+      }
+    },
+    "list_last": {
+      "Class": "hoisted",
+      "Calls": {
+        "BindNativeCall": 1,
+        "CallNative": 1,
+        "IntAddAt": 2,
+        "IntValue": 1,
+        "OptionalUnwrap": 1,
+        "Poll": 1,
+        "Seq": 3
+      }
+    },
+    "list_length": {
+      "Class": "direct",
+      "Calls": {
+        "CollectionLength": 1,
+        "IntAddAt": 2,
+        "IntValue": 1,
+        "Poll": 1,
+        "Seq": 1
+      }
+    },
+    "map_empty": {
+      "Class": "hoisted",
+      "Calls": {
+        "BindNativeCall": 1,
+        "Bool": 1,
+        "CallNative": 1,
+        "IntAddAt": 2,
+        "Poll": 1,
+        "Seq": 2
+      }
+    },
+    "map_length": {
+      "Class": "direct",
+      "Calls": {
+        "CollectionLength": 1,
+        "IntAddAt": 2,
+        "IntValue": 1,
+        "Poll": 1,
+        "Seq": 1
+      }
+    },
+    "optional_none": {
+      "Class": "direct",
+      "Calls": {
+        "Bool": 1,
+        "IntAddAt": 2,
+        "OptionalIsSome": 1,
+        "Poll": 1,
+        "Seq": 1
+      }
+    },
+    "optional_some": {
+      "Class": "direct",
+      "Calls": {
+        "Bool": 1,
+        "IntAddAt": 2,
+        "OptionalIsSome": 1,
+        "Poll": 1,
+        "Seq": 1
+      }
+    },
+    "result_error": {
+      "Class": "bound",
+      "Calls": {
+        "Bool": 1,
+        "IntAddAt": 2,
+        "Invoke": 1,
+        "NativeMemberResult": 1,
+        "Poll": 1,
+        "Seq": 2
+      }
+    },
+    "result_ok": {
+      "Class": "bound",
+      "Calls": {
+        "Bool": 1,
+        "IntAddAt": 2,
+        "Invoke": 1,
+        "NativeMemberResult": 1,
+        "Poll": 1,
+        "Seq": 2
+      }
+    },
+    "set_empty": {
+      "Class": "hoisted",
+      "Calls": {
+        "BindNativeCall": 1,
+        "Bool": 1,
+        "CallNative": 1,
+        "IntAddAt": 2,
+        "Poll": 1,
+        "Seq": 2
+      }
+    },
+    "set_length": {
+      "Class": "direct",
+      "Calls": {
+        "CollectionLength": 1,
+        "IntAddAt": 2,
+        "IntValue": 1,
+        "Poll": 1,
+        "Seq": 1
+      }
+    },
+    "string_bytes": {
+      "Class": "direct",
+      "Calls": {
+        "IntAddAt": 2,
+        "IntValue": 1,
+        "Poll": 1,
+        "Seq": 1,
+        "StringByteLength": 1
+      }
+    },
+    "string_empty": {
+      "Class": "hoisted",
+      "Calls": {
+        "BindNativeCall": 1,
+        "Bool": 1,
+        "CallNative": 1,
+        "IntAddAt": 2,
+        "Poll": 1,
+        "Seq": 2
+      }
+    },
+    "string_length": {
+      "Class": "direct",
+      "Calls": {
+        "IntAddAt": 2,
+        "IntValue": 1,
+        "Poll": 1,
+        "Seq": 2,
+        "StringLength": 1
+      }
+    },
+    "string_scalars": {
+      "Class": "hoisted",
+      "Calls": {
+        "BindNativeCall": 1,
+        "CallNative": 1,
+        "IntAddAt": 2,
+        "IntValue": 1,
+        "Poll": 1,
+        "Seq": 2
+      }
+    }
+  }
+}

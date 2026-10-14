@@ -651,11 +651,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
 
         if clean == "nan": return ok(Node.Leaf(TomlValue.FloatValue(sqrt((-1.0)))))
 
-        let number = text.replace(
-            old: "_",
-            new: "",
-            max_replacements: text.byte_length
-        )
+        let number = text.replace(old: "_", new: "", max_replacements: text.byte_length)
 
         match parse_float(number):
             ok(value): return ok(Node.Leaf(TomlValue.FloatValue(value)))

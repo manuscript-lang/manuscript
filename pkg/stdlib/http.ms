@@ -316,7 +316,7 @@ impl Error for HttpError:
 #
 # Use `response.metadata.status` and `response.metadata.headers` for buffered and streaming response consumption. Buffered ClientResponse construction uses `head: HttpResponseMetadata` and `body: Bytes`; fake constructors build head once. Outgoing HttpResponse retains its status/headers/body construction fields. Reusable client `send`/`send_stream` calls become `request`/`request_stream`; their results remain streaming `ResponseBody`, and streaming uploads still borrow ReadStream. `Network.request` continues to buffer ClientResponse. This rename does not consume or materialize a streaming body. Buffered `serve(limit:)` becomes `serve(max_requests:)`, matching HttpServerOptions without changing omitted/zero/negative handling.
 #
-# Method parameters and incoming request methods use `HttpMethod.Get`, `Head`, `Post`, `Put`, `Patch`, `Delete`, `Connect`, `Options`, `Trace`, or `Custom(value)`. `text()` returns the token, and outgoing requests reject empty/malformed Custom tokens as `HttpError.InvalidInput`. Case-sensitive extension tokens remain available. WebSocket and TLS option naming is unchanged.
+# Method parameters and incoming request methods use `HttpMethod.Get`, `Head`, `Post`, `Put`, `Patch`, `Delete`, `Connect`, `Options`, `Trace`, or `Custom(value)`. `text` returns the token, and outgoing requests reject empty/malformed Custom tokens as `HttpError.InvalidInput`. Case-sensitive extension tokens remain available. WebSocket and TLS option naming is unchanged.
 #
 # ## Server-Sent Events
 #

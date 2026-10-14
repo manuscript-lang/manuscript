@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -15,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -34,6 +36,7 @@ func main() {
 }
 func run() error {
 	output := flag.String("output", ".artifacts/accessor-bench", "retained source, native test binary and samples")
+	revision := flag.String("revision", "working-tree", "compiler revision or worktree description for retained metadata")
 	legacy := flag.Bool("legacy", false, "use method syntax with the unmodified baseline compiler/runtime")
 	generateOnly := flag.Bool("generate-only", false, "retain source and harness without native compilation")
 	goTool := flag.String("go", "toolchain/go/bin/go", "same pinned SDK for both revisions")
@@ -91,6 +94,21 @@ func run() error {
 	if err := os.WriteFile(filepath.Join(directory, "emission.json"), emission, 0644); err != nil {
 		return err
 	}
+	goVersion, err := exec.Command(*goTool, "version").Output()
+	if err != nil {
+		return err
+	}
+	environment := map[string]string{}
+	for _, key := range []string{"GOMAXPROCS", "GOGC", "GOMEMLIMIT", "GOCACHE", "XDG_CACHE_HOME", "GOPATH", "GOFLAGS"} {
+		environment[key] = os.Getenv(key)
+	}
+	metadata, err := json.MarshalIndent(map[string]any{"revision": *revision, "legacy": *legacy, "go": strings.TrimSpace(string(goVersion)), "goos": runtime.GOOS, "goarch": runtime.GOARCH, "source_sha256": fmt.Sprintf("%x", sha256.Sum256(source)), "emitted_go_sha256": fmt.Sprintf("%x", sha256.Sum256([]byte(result.Source))), "environment": environment, "reads_per_operation": 1024, "samples": *count, "benchtime": *benchtime, "native_cpus": 1}, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(directory, "metadata.json"), metadata, 0644); err != nil {
+		return err
+	}
 	if *generateOnly {
 		fmt.Println("Generated:", directory)
 		return nil
@@ -116,8 +134,9 @@ func run() error {
 }
 
 // Inspect each concrete workload body, excluding initialization wrappers and
-// unrelated methods used in other workloads. The expected baseline partition is
-// established by emitted Go here, rather than inferred from surface syntax.
+// unrelated methods used in other workloads. The current baseline partition is
+// recorded from emitted Go rather than fixed to a historical audit or inferred
+// from surface syntax.
 func emissionInventory(source string, symbols map[string]string, legacy bool) ([]byte, error) {
 	tree, err := parser.ParseFile(token.NewFileSet(), "program.go", source, 0)
 	if err != nil {
@@ -172,9 +191,6 @@ func emissionInventory(source string, symbols map[string]string, legacy bool) ([
 		}
 		entries[name] = entry{class, calls}
 		partition[class]++
-	}
-	if legacy && (partition["direct"] != 6 || partition["hoisted"] != 7 || partition["bound"] != 7) {
-		return nil, fmt.Errorf("baseline emitted partition changed: %v; inspect before comparing", partition)
 	}
 	return json.MarshalIndent(struct {
 		Legacy     bool

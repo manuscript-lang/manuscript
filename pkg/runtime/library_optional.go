@@ -17,13 +17,8 @@ func OptionalUnwrap(ctx *Execution, receiver Value) Value {
 	return result
 }
 
-// OptionalIsSome and OptionalUnwrapOr are the direct-call paths for the
-// members of the same names; they share the library bodies' semantics.
-func OptionalIsSome(ctx *Execution, receiver Value) bool {
-	CheckCancelled(ctx)
-	return receiver.(Alternative).Tag == "some"
-}
-
+// OptionalUnwrapOr is the direct-call path for the member of the same name;
+// it shares the library body's semantics.
 func OptionalUnwrapOr(ctx *Execution, receiver, fallback Value) Value {
 	CheckCancelled(ctx)
 	if value := receiver.(Alternative); value.Tag == "some" {

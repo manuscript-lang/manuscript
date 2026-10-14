@@ -4,10 +4,10 @@ title = "Read-only accessors: design proposal"
 
 # Read-only accessors and the approved standard-library migration
 
-Status: **approved design; implementation under verification**.
+Status: **approved design; implementation prepared for final review**.
 Baseline: `main` at `477b4c916cd772f0f7f7229dc502e99385c855d0` (2026-10-14).
 The earlier audit used `4eda0e22`; both checkouts contain 44 standard modules.
-The independent reviewer approved revised design commit `46c46a29105e1aabb969d22cce96825b52dc0b8a`; the parent relayed approval before implementation. Implementation integrates `main` at `e56ed8cc`, including #497 and source-owned standard documentation from #501.
+The independent reviewer approved revised design commit `46c46a29105e1aabb969d22cce96825b52dc0b8a`; the parent relayed approval before implementation. Implementation integrates `main` at `1383851e`, including #497, source-owned standard documentation from #501, and the independent scalar/native-call improvements from #503. The performance comparison uses that merged revision as its method-era baseline; the original audit partition below remains historical evidence. See the [implementation verification record](read-only-accessors-verification.md) for executed checks and measurements.
 
 The user approved designing consistent live read-only accessors for the precise
 inventory below. `Error.message()` and **every implementation of it remain
@@ -581,14 +581,14 @@ full-binding candidates are Bytes.length, Optional.is_some/is_none,
 Result.is_ok/is_error and Float.is_nan/is_finite.
 
 String.length and String.scalar_length were two additional candidates, already
-included in the approved migration. Across all 20 candidates, current source
-predicts 6 direct (List/Map/Set.length, List.is_empty, String.byte_length and
+included in the approved migration. At the design baseline, source inspection
+predicted 6 direct (List/Map/Set.length, List.is_empty, String.byte_length and
 String.length), 7 hoisted (List.first/last, Map/Set.is_empty, Bytes.is_empty,
 String.is_empty and String.scalar_length), and the same 7 full-binding paths.
 There is no demonstrated discrepancy with the original audit. This corrects the
 evidence inventory, not the feature scope. Verify all 20 emitted expressions and
 use actual current-main output as the benchmark baseline. These predictions are
-source inspection, not executed emission results or timing measurements. The
+historical source inspection, not executed emission results or timing measurements. The
 remaining service/time inventory is outside these 20.
 
 Required emitted-Go shapes below are acceptance sketches, not generated output.

@@ -424,7 +424,7 @@ func numberConversionHint(actual, expected *Type) string {
 }
 
 // uncalledFunctionHint covers a no-argument operation named without
-// parentheses, such as items.length where items.length() is meant.
+// parentheses, such as reader.read where reader.read() is meant.
 func uncalledFunctionHint(actual, expected *Type) string {
 	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind == "function" || len(actual.Params) != 0 || actual.Result == nil || !Same(actual.Result, expected) {
 		return ""

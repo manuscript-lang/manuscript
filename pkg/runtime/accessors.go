@@ -267,13 +267,14 @@ func StringIsEmptyRead(ctx *Execution, receiver Value) bool {
 	CheckCancelled(ctx)
 	return v
 }
+
+// Optional flag reads retain the admission-only direct path established for
+// both classifiers. Dynamic ReadAccessor supplies its own delivery checkpoint.
 func OptionalSomeRead(ctx *Execution, some bool) bool {
-	CheckCancelled(ctx)
 	CheckCancelled(ctx)
 	return some
 }
 func OptionalNoneRead(ctx *Execution, some bool) bool {
-	CheckCancelled(ctx)
 	CheckCancelled(ctx)
 	return !some
 }

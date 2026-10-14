@@ -451,6 +451,14 @@ func FuzzFormat(f *testing.F) {
 		f.Add(string(source))
 	}
 	f.Add("fn f() -> Bool:\n    return active or allowed and remaining > 0\n")
+	f.Add(`interface Count:
+    get value->Int
+type Box:
+    number:Int
+impl Count for Box:
+    get value->Int: self.number
+fn read(box:Box)->Int: box.value
+`)
 	f.Fuzz(func(t *testing.T, source string) {
 		_, parseError := parser.Parse("fuzz.ms", source)
 		formatted, err := tooling.Format("fuzz.ms", source)

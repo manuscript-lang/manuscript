@@ -322,9 +322,7 @@ export fn next_event(reader: SseReader) -> Result[Optional[SseEvent], SseError]:
         reader.next = 0
 
         let read = reader.input.read(max_bytes: reader.chunk_bytes)
-        if read.is_error: return error(
-            SseError.ReadFailed(cause: read.unwrap_error())
-        )
+        if read.is_error: return error(SseError.ReadFailed(cause: read.unwrap_error()))
 
         let chunk = read.unwrap()
 
