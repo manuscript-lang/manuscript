@@ -112,9 +112,7 @@ test "JSON builders validate numbers and omit absent fields":
         value(
             stringify(value: object_optional(fields: sparse))
         ) != "\{\"a\":null,\"c\":false\}"
-    ): return panic(
-        "optional omission"
-    )
+    ): return panic("optional omission")
 
 test "JSON builders copy their arguments":
     let items: List[JsonValue] = [JsonValue.Null]
