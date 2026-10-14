@@ -174,3 +174,60 @@ fn id(x: Int) -> Int:
 		}
 	}
 }
+
+// Appending to and ranging over a List of a primitive element type neither
+// boxes the element nor asserts it back.
+func TestPrimitiveListAppendAndRangeAreUnboxed(t *testing.T) {
+	r := compileSource("list.ms", `import List from "@std/collections.ms"
+fn sum(count: Int) -> Int:
+    let items = List[Int]()
+    var i = 0
+    while i < count:
+        items.append(value: i)
+        i = i + 1
+    var total = 0
+    for v in items:
+        total = total + v
+    return total
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.ListAppendInt(", "rt.IterateInt("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, "rt.IntValue(local") {
+		t.Fatalf("range element asserted\n%s", r.Source)
+	}
+}
+
+// Interpolation joins typed parts as Go strings, String.length is a direct
+// call, and a Map.get consumed by match reads the value and presence without
+// building an Optional.
+func TestTextLengthAndMapGetLowerWithoutBoxing(t *testing.T) {
+	r := compileSource("strings.ms", `import Map from "@std/collections.ms"
+fn label(n: Int, f: Float, ok: Bool, s: String) -> Int:
+    let text = "n={n} f={f} ok={ok} s={s}"
+    return text.length()
+
+fn lookup(m: Map[Int, Int], key: Int) -> Int:
+    match m.get(key: key):
+        some(v):
+            return v
+        none:
+            return 0
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.FormatInt(", "rt.FormatFloat(", "rt.FormatBool(", "rt.StringLength(", "rt.MapGetParts("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, "rt.Text(") {
+		t.Fatalf("interpolation still builds Values\n%s", r.Source)
+	}
+}

@@ -155,7 +155,7 @@ fn grow(values: List[Int]) -> Bool:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListAppend(", "rt.ListIsEmpty("} {
+	for _, operation := range []string{"rt.ListAppendInt(", "rt.ListIsEmpty("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing direct %s:\n%s", operation, result.Source)
 		}

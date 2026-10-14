@@ -14,5 +14,7 @@ Use for cleanup, package moves, pins (`scripts/devtools.env`, `.go-version`, `.m
 - After third-party changes run `make licenses` and `make licenses-check`. Update generated outputs through their owner.
 - Keep guides/site inputs separate from ignored books, caches, SDKs, coverage, and releases; do not restore tracked generated website HTML.
 - Catalog edits follow [skill maintenance](../README.md#maintain-the-catalog): one AGENTS.md entry, shared skills, matching discovery links, evidence-backed experts. Remove unused collection installers/metadata alongside their skills.
+- CI runs the Go suite in three shards (`scripts/ci-test.sh SHARD 3`); each job pays setup, so prefer few balanced jobs, but keep packaging as parallel jobs (a combined job was slower on 4-core runners). Every PR enables squash auto-merge; do not hold work for owner review.
+- `ms-bench/` measures how well agents solve the same challenges in TypeScript, Go, Rust, and Manuscript (hidden tests, tokens, turns, time, cost). Keep it out of the Go checks and its transcripts out of git; see its README.
 - Run applicable Makefile checks: `make verify` is the fast gate; `make verify-full` adds native/race/fuzz/book/distribution checks. Native input moves need `make dist-check` with copied binary, empty caches, no host Go/downloads.
 - Report concrete check/publication evidence and limitations. Use [manuscript-change](../manuscript-change/SKILL.md#record-durable-lessons) for durable lessons, distinguishing current decisions from historical outcomes.

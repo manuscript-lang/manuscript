@@ -180,6 +180,10 @@ func (g *generator) loop(s *syntax.Statement) []ast.Stmt {
 	g.loopCleanup = append(g.loopCleanup, len(g.cleanups))
 	label := &loopLabel{name: g.temp(), depth: g.expressionDepth}
 	g.loopLabels = append(g.loopLabels, label)
+	element := ""
+	if s.Kind != syntax.KindWhile {
+		element = g.declareTyped(g.program.LoopBinding(s))
+	}
 	body := g.loopBody(s.Body, label)
 	g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
 	g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
@@ -193,7 +197,8 @@ func (g *generator) loop(s *syntax.Statement) []ast.Stmt {
 		b := g.program.LoopBinding(s)
 		index := g.temp()
 		body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("PollIndex", ident("ctx"), ident(index)))}, body...)
-		loop = &ast.RangeStmt{Key: ident(index), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
+		iterate := "Iterate" + primitiveKinds[element]
+		loop = &ast.RangeStmt{Key: ident(index), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall(iterate, g.expression(s.Value)), Body: block(body...)}
 	}
 	if label.used {
 		loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
@@ -225,7 +230,7 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 	if b, shape := g.altLocalOf(value); shape != nil {
 		return g.typedMatch(tmp, ident(b.ID), shape, arms, body)
 	}
-	if !contractMatch && !g.listAtMatch(value) {
+	if !contractMatch && !g.optionalParts(value) {
 		if typed, direct := g.typedDirectCall(value); typed != nil && direct.shape != nil {
 			return g.typedMatch(tmp, typed, direct.shape, arms, body)
 		}
@@ -233,9 +238,9 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 	out := []ast.Stmt{define(tmp, g.expression(value))}
 	tag := "Tag"
 	var present string
-	if !contractMatch && g.listAtMatch(value) {
+	if !contractMatch && g.optionalParts(value) {
 		present = g.temp()
-		out = []ast.Stmt{&ast.AssignStmt{Lhs: []ast.Expr{ident(tmp), ident(present)}, Tok: token.DEFINE, Rhs: []ast.Expr{g.listAtParts(value)}}}
+		out = []ast.Stmt{&ast.AssignStmt{Lhs: []ast.Expr{ident(tmp), ident(present)}, Tok: token.DEFINE, Rhs: []ast.Expr{g.lookupParts(value)}}}
 	}
 	if contractMatch {
 		out = append(out, assign(ident(tmp), token.ASSIGN, runtimeCall("ContractReceiver", ident(tmp))))

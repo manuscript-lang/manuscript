@@ -42,6 +42,7 @@ See [special call rules](../call-rules.md) for constructors, generic receiver me
 - [@std/random.ms](random.md)
 - [@std/regex.ms](regex.md)
 - [@std/result.ms](result.md)
+- [@std/sse.ms](sse.md)
 - [@std/string.ms](string.md)
 - [@std/sync.ms](sync.md)
 - [@std/system.ms](system.md)

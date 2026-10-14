@@ -5,7 +5,7 @@ weight = 16
 
 # HTTP
 
-API reference: [HTTP](reference/http.md) and [Network](reference/net.md).
+API reference: [HTTP](reference/http.md), [Network](reference/net.md), and [Server-Sent Events](reference/sse.md).
 
 Use HttpClient for reusable outbound requests and HttpExchange for streaming request handling. Response bodies are resources: read them in chunks and close them. A received HTTP error status is still a response you can inspect.
 
@@ -66,6 +66,49 @@ Encode each old String value as Bytes and call `append` in the original insertio
 Use `response.metadata().status` and `response.metadata().headers` for buffered and streaming response consumption. Buffered ClientResponse construction uses `head: HttpResponseMetadata` and `body: Bytes`; fake constructors build head once. Outgoing HttpResponse retains its status/headers/body construction fields. Reusable client `send`/`send_stream` calls become `request`/`request_stream`; their results remain streaming `ResponseBody`, and streaming uploads still borrow ReadStream. `Network.request` continues to buffer ClientResponse. This rename does not consume or materialize a streaming body. Buffered `serve(limit:)` becomes `serve(max_requests:)`, matching HttpServerOptions without changing omitted/zero/negative handling.
 
 Method parameters and incoming request methods use `HttpMethod.Get`, `Head`, `Post`, `Put`, `Patch`, `Delete`, `Connect`, `Options`, `Trace`, or `Custom(value)`. `text()` returns the token, and outgoing requests reject empty/malformed Custom tokens as `HttpError.InvalidInput`. Case-sensitive extension tokens remain available. WebSocket and TLS option naming is unchanged.
+
+## Server-Sent Events
+
+`@std/sse.ms` decodes the `text/event-stream` wire format, so you do not write the chunk and line state machine yourself. Chunks may split any line, CRLF pair or UTF-8 scalar; the decoder reassembles them.
+
+For a push decoder, create one with `decoder`, pass each chunk to `feed`, which returns the events it completed, and call `finish` at end of input.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import {decoder, feed, finish} from "@std/sse.ms"
+import panic from "@std/faults.ms"
+
+test "events split across chunks":
+    let created = decoder().unwrap()
+    let first = feed(decoder: created, chunk: "event: tick\r\ndata: 1\r".to_bytes()).unwrap()
+    let second = feed(decoder: created, chunk: "\n\r\n".to_bytes()).unwrap()
+
+    if first.length() != 0 or second.length() != 1: return panic("one event expected")
+    if second.at(0).unwrap().event != "tick": return panic("event type")
+
+    finish(created).unwrap()
+```
+
+To pull events from a stream, wrap any `ReadStream` with `reader` and call `next_event` until it returns `none`. `borrow_body` views a `ResponseBody` as a `ReadStream`. This fragment assumes a `client` from the sections above:
+
+```text
+with response = try client.request(
+    method: HttpMethod.Get,
+    url: url,
+    headers: headers()
+):
+    let events = try reader(input: borrow_body(response))
+    while true:
+        let event = try next_event(events)
+        if event.is_none(): break
+        use(event.unwrap())
+```
+
+The decoder follows the HTML Server-Sent Events rules. LF, CR and CRLF end lines. A leading byte order mark is removed once. Lines starting with `:` are ignored. After the first colon, one leading space is removed from the value. Repeated `data` lines are joined with LF. `event` sets the type, which defaults to `message` and applies to one event. `id` persists across events and is ignored when it contains NUL. `retry` accepts only ASCII digits and is exposed as `decoder.retry`. An event with no `data` line is not dispatched.
+
+Errors keep their domain identity: `InvalidData` for a line that is not UTF-8, `LimitExceeded` when a line exceeds `SseLimits.max_line_bytes` or an event exceeds `max_event_bytes` (comments do not count), `Truncated` when the stream ends inside a line or before the blank line that completes an event, and `ReadFailed` carrying the original `IoError`. A truncated event is reported rather than dispatched, and an error is final for that decoder.
+
+The reader borrows its stream and never closes it. Cancel a blocked read the way you would for the stream itself, by closing the response or cancelling the surrounding scope; the read then fails and surfaces as `ReadFailed`.
 
 ## Error boundaries
 

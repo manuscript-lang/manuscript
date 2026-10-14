@@ -706,6 +706,29 @@ test "YAML long plain scalars and large mappings parse in linear time":
         ok(_): return panic("duplicate key after many keys")
         error(_): return
 
+test "YAML flow mapping keys without a colon map to null":
+    let root = entries(value(parse(text: "a: \{x, y: 1, z\}\nb: \{\"q\", r: [1]\}")))
+    let first = entries(root.get("a").unwrap())
+    if first.length() != 3: return panic("flow keys")
+    if first.get("x").unwrap() != YamlValue.Null: return panic("first null key")
+    if first.get("y").unwrap() != YamlValue.NumberValue("1"): return panic(
+        "explicit value"
+    )
+    if first.get("z").unwrap() != YamlValue.Null: return panic("last null key")
+
+    let second = entries(root.get("b").unwrap())
+    if second.get("q").unwrap() != YamlValue.Null: return panic("quoted null key")
+
+    match parse(text: "\{x, x\}"):
+        ok(_): return panic("duplicate null keys")
+        error(_): let ignored = unit
+
+    let limited = limits(bytes: none, depth: none, values: some(2))
+
+    match parse(text: "\{a, b, c\}", limits: limited):
+        ok(_): return panic("null keys count against the value limit")
+        error(_): let ignored = unit
+
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
     let long = repeated(text: "x", count: 300000)
     let double = entries(value(parse(text: "a: \"{long}\"")))
@@ -746,3 +769,36 @@ test "YAML block scalar chomping counts every trailing line break":
     scalar(text: "a: >-\n  x\n\n\n", expected: "x")
     scalar(text: "a: |\n\n\nb: 1", expected: "")
     scalar(text: "a: |+\n\n\nb: 1", expected: "\n\n")
+
+test "YAML compact nested sequences resume each level and parse deep chains in linear time":
+    let small = items(
+        value(
+            parse(
+                text: "- - - x\n    - y\n  - z\n- - 1\n  - - 2\n    - 3\n-\n  - -\n    - a: 1\n      b: 2\n"
+            )
+        )
+    )
+    if small.length() != 3: return panic("compact chain top level")
+
+    let first = items(small.first().unwrap())
+    if first.length() != 2: return panic("compact chain middle level")
+    if items(first.first().unwrap()).length() != 2: return panic(
+        "compact chain innermost"
+    )
+    if first.last().unwrap() != YamlValue.StringValue("z"): return panic(
+        "compact chain resumes outer level"
+    )
+
+    let depth = 3000
+    var source = "{repeated(text: "- ", count: depth)}x\n"
+    var root = value(parse(text: source))
+    var level = 1
+
+    while level < depth:
+        let inner = items(root)
+        if inner.length() != 1: return panic("deep chain width")
+
+        root = inner.first().unwrap()
+        level = level + 1
+
+    if items(root) != [YamlValue.StringValue("x")]: return panic("deep chain leaf")

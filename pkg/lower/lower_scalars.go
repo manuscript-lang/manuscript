@@ -14,6 +14,9 @@ import (
 // which Go does implicitly. Captured snapshots stay Value.
 
 // scalarBinding is the Go type of a binding declared as a typed variable, or "".
+// primitiveKinds names the runtime entry points of each Go scalar type.
+var primitiveKinds = map[string]string{"int64": "Int", "float64": "Float", "bool": "Bool", "string": "String"}
+
 func scalarBinding(b *checker.Binding) string {
 	if b == nil {
 		return ""
@@ -66,6 +69,8 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 		return "int64"
 	case syntax.KindBool:
 		return "bool"
+	case syntax.KindText:
+		return "string"
 	case syntax.KindName:
 		return g.typedLocal(e)
 	case syntax.KindBinary:

@@ -416,6 +416,13 @@ func Positions(value Value, length int) []Value {
 func Iterate(value Value) iter.Seq2[int, Value] { return captureIterable(value).Values() }
 func CaptureList(value Value) ListRange         { return value.(*List).Capture() }
 
+// IterateInt, IterateFloat, IterateBool and IterateString are Iterate for an
+// iterable whose elements are that primitive type.
+func IterateInt(value Value) iter.Seq2[int, int64]     { return captureIterable(value).Ints() }
+func IterateFloat(value Value) iter.Seq2[int, float64] { return captureIterable(value).Floats() }
+func IterateBool(value Value) iter.Seq2[int, bool]     { return captureIterable(value).Bools() }
+func IterateString(value Value) iter.Seq2[int, string] { return captureIterable(value).Strings() }
+
 func captureIterable(value Value) ListRange {
 	switch v := value.(type) {
 	case *List:
@@ -443,6 +450,12 @@ func Text(values ...Value) Value {
 	}
 	return text.String()
 }
+
+// FormatInt, FormatFloat and FormatBool are Format for a value of known type.
+func FormatInt(value int64) string     { return strconv.FormatInt(value, 10) }
+func FormatFloat(value float64) string { return formatFloat(value) }
+func FormatBool(value bool) string     { return strconv.FormatBool(value) }
+
 func Format(value Value) string {
 	return formatValue(value, 0)
 }
