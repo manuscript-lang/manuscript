@@ -92,7 +92,7 @@ func ControlPending() bool { return controlPanics.Load() != 0 }
 // NewDirectFunction wraps a direct source function for dynamic calls. The
 // direct function already enters and leaves its own frame.
 func NewDirectFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
-	return Function{labels, result, func(ctx *Execution, args []Value) Value {
+	return Function{Labels: labels, Result: result, Body: func(ctx *Execution, args []Value) Value {
 		if sourceProfiling.Load() {
 			return profileSource(ctx, position, args, body)
 		}

@@ -278,7 +278,11 @@ func (g *generator) listValue(e *syntax.Expression, info *checker.Info) ast.Expr
 	for _, item := range e.Elements {
 		elements = append(elements, g.expression(item))
 	}
-	return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
+	// Large literals keep the separately owned boxed route and its oracle.
+	if len(elements) > debugListThreshold {
+		return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
+	}
+	return runtimeCall("NewList", g.key(info.Type), sliceLiteral(runtimeName("Value"), elements...))
 }
 
 // mapValue lowers a map literal.

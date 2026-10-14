@@ -66,7 +66,7 @@ func TestListCloneSeparatesUpdateStorage(t *testing.T) {
 				value = alt.Fields[0]
 			}
 			result := value.(*List)
-			result.Items[0] = int64(99) // model a subsequent builder/native adapter write
+			result.Set(0, int64(99)) // model a subsequent builder/native adapter write
 			if !Equal(original, libraryList("Int", []Value{int64(1), int64(2), int64(3), int64(4)})) {
 				t.Fatal("update shared source storage", original)
 			}
@@ -100,7 +100,7 @@ func TestRangeOverflowAndLimits(t *testing.T) {
 		{0, 0, 1, 0, nil},
 	} {
 		value := librarySuccess(t, libraryCall(t, "collections/range", test.start, test.end, test.step, test.max)).(*List)
-		if value.Type != "@std/List[Int]" || !slices.Equal(value.Items, test.want) {
+		if value.Type != "@std/List[Int]" || !slices.Equal(value.Boxed(), test.want) {
 			t.Fatal(value)
 		}
 	}

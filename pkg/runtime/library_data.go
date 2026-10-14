@@ -122,7 +122,7 @@ func init() {
 	})
 	add("string", "from_scalars", libraryResult("String", "StringError"), []LibraryParam{p("values", "List[Int]")}, func(ctx *Execution, result string, a []Value) Value {
 		var b strings.Builder
-		for i, v := range a[0].(*List).Items {
+		for i, v := range a[0].(*List).Capture().Values() {
 			if i%4096 == 0 {
 				CheckCancelled(ctx)
 			}
@@ -348,10 +348,7 @@ func init() {
 	variable := []LibraryParam{p("T", "")}
 	libraryGeneric("collections", "reverse_in_place", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(*List)
-		out := v.Items
-		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
-			out[i], out[j] = out[j], out[i]
-		}
+		v.reverse()
 		return v
 	})
 	reverse := libraryFunctions["collections/reverse_in_place"].Body
@@ -360,11 +357,11 @@ func init() {
 	})
 	libraryGeneric("collections", "slice", libraryResult("List[T]", "CollectionError"), variable, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		v := a[0].(*List)
-		s, e, ok := librarySliceBounds(len(v.Items), a[1].(int64), a[2].(int64))
+		s, e, ok := librarySliceBounds(v.Len(), a[1].(int64), a[2].(int64))
 		if !ok {
 			return libraryError(r, "OutOfRange", "")
 		}
-		return libraryOK(r, &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)})
+		return libraryOK(r, v.CopySlice(int(s), int(e)))
 	})
 	for _, name := range []string{"take", "drop"} {
 		libraryGeneric("collections", name, "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("count", "Int")}, func(ctx *Execution, _ string, args []Value) Value {
@@ -373,22 +370,15 @@ func init() {
 			if count < 0 {
 				return Panic("List." + name + ": count must be nonnegative, found " + strconv.FormatInt(count, 10))
 			}
-			source := values.Items
-			if count > int64(len(source)) {
-				count = int64(len(source))
+			source := values.Capture()
+			if count > int64(source.Len()) {
+				count = int64(source.Len())
 			}
 			start, end := 0, int(count)
 			if name == "drop" {
-				start, end = int(count), len(source)
+				start, end = int(count), source.Len()
 			}
-			items := make([]Value, end-start)
-			for i := range items {
-				if i%1024 == 0 {
-					CheckCancelled(ctx)
-				}
-				items[i] = source[start+i]
-			}
-			return &List{Type: values.Type, Items: items}
+			return values.copySliceChecked(ctx, start, end)
 		})
 	}
 }

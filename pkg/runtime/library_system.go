@@ -365,7 +365,7 @@ func (libraryProcessControl) Operation(name string) Function {
 			return libraryOSResult(r, Unit{}, hostos.SetIdentity(kind, int(id)))
 		case "set_groups":
 			var groups []int
-			for _, v := range a[0].(*List).Items {
+			for _, v := range a[0].(*List).Boxed() {
 				id := v.(int64)
 				if id < 0 || id > 2147483647 {
 					return libraryError(r, "InvalidInput", "")
