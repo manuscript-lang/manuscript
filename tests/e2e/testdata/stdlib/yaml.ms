@@ -655,6 +655,33 @@ test "YAML stringify validates numbers and honors max_bytes":
     if stringify(value: root, max_bytes: 5) != exact: return panic("exact limit")
     if stringify(value: root, max_bytes: -1) != invalid: return panic("negative limit")
 
+test "YAML plain scalars continued inside flow collections fold their line breaks":
+    let root = entries(
+        value(
+            parse(
+                text: "a: [x\n  y, z]\nb: \{k: one\n    two\}\nc: [p\n  q\n\n  r]\n"
+            )
+        )
+    )
+    if (
+        items(root.get("a").unwrap()) != [
+            YamlValue.StringValue("x y"),
+            YamlValue.StringValue("z")
+        ]
+    ): return panic(
+        "flow sequence fold"
+    )
+    if (
+        entries(root.get("b").unwrap()).get(
+            "k"
+        ).unwrap() != YamlValue.StringValue("one two")
+    ): return panic(
+        "flow mapping fold"
+    )
+    if items(root.get("c").unwrap()) != [YamlValue.StringValue("p q\nr")]: return panic(
+        "flow blank line"
+    )
+
 test "YAML document start marker accepts same-line content":
     if value(parse(text: "--- a")) != YamlValue.StringValue("a"): return panic(
         "scalar after marker"
