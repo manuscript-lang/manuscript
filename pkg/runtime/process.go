@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -180,12 +181,7 @@ func spawnOperation() Function {
 		}
 		command := exec.Command(program, arguments...)
 		command.Stdin, command.Stdout, command.Stderr = inRead, outWrite, errWrite
-		command.SysProcAttr = &syscall.SysProcAttr{}
-		group := reflect.ValueOf(command.SysProcAttr).Elem().FieldByName("Setpgid")
-		grouped := group.IsValid() && group.CanSet()
-		if grouped {
-			group.SetBool(true)
-		}
+		grouped := hostos.SetProcessGroup(command)
 		startErr := command.Start()
 		// The child holds its own ends now; the parent keeps only its ends.
 		inRead.Close()
