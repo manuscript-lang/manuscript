@@ -55,6 +55,9 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	}
 	switch s.Kind {
 	case syntax.KindBind:
+		if out := g.altLet(s); out != nil {
+			return out
+		}
 		return g.pattern(s.Pattern, g.expression(s.Value), g.nativeType(s.Value))
 	case syntax.KindAssign:
 		return g.assignment(s)
@@ -219,6 +222,9 @@ func (g *generator) with(s *syntax.Statement) []ast.Stmt {
 func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func(*syntax.Arm) []ast.Stmt) []ast.Stmt {
 	tmp := g.temp()
 	contractMatch := g.program.Info(value).Type.Kind == "contract"
+	if b, shape := g.altLocalOf(value); shape != nil {
+		return g.typedMatch(tmp, ident(b.ID), shape, arms, body)
+	}
 	if !contractMatch && !g.listAtMatch(value) {
 		if typed, direct := g.typedDirectCall(value); typed != nil && direct.shape != nil {
 			return g.typedMatch(tmp, typed, direct.shape, arms, body)

@@ -28,6 +28,11 @@ retain their own locations. A statement that prints on several Go lines repeats
 its directive, in `/*line*/` form on lines that can hold a call, so every
 physical line keeps the statement's source line. `Seq` orders operands.
 
+A `let` bound to a typed direct call that returns a `Result` or `Optional` stays
+a typed `Result[T]`/`Option[T]` variable when every use of the name is the
+scrutinee of a `match` in its own function and no closure captures it. Any other
+use, a `var`, or a capture keeps the boxed `Alternative`.
+
 Source functions carry no per-call frame bookkeeping. A fault captures its frames
 once, where it is created, from the Go stack: `RegisterSource` and `Named` map
 each generated function to its source name, and the `//line` directives give the
