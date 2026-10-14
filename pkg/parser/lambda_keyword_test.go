@@ -44,7 +44,7 @@ func TestUnitBindingKeywordDiagnostic(t *testing.T) {
 			t.Fatalf("%s: %v", binding, err)
 		}
 		module, diagnostics := parser.ParsePartial("unit.ms", source)
-		if len(module.Declarations) != 2 || len(diagnostics) != 1 || diagnostics[0].Position != d.Position || diagnostics[0].Message != d.Message {
+		if len(module.Declarations) != 3 || len(diagnostics) != 1 || diagnostics[0].Position != d.Position || diagnostics[0].Message != d.Message {
 			t.Fatalf("%+v: %v", module, diagnostics)
 		}
 	}
