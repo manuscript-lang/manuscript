@@ -40,3 +40,32 @@ test "remainder zero":
 		t.Fatalf("numeric fault identities changed: %s", output)
 	}
 }
+
+func TestTypedNegation(t *testing.T) {
+	result := compiler.CompileSource("negation.ms", `import panic from "@std/faults.ms"
+
+fn negate(a: Int) -> Int: return -a
+fn flip(a: Float) -> Float: return -a
+fn check(ok: Bool, name: String) -> Unit:
+    if not ok:
+        return panic(message: name)
+test "negation":
+    check(ok: negate(a: 5) == -5, name: "five")
+    check(ok: negate(a: -7) == 7, name: "minus seven")
+    check(ok: negate(a: 0) == 0, name: "zero")
+    check(ok: negate(a: 9223372036854775807) == -9223372036854775807, name: "maximum")
+    check(ok: -9223372036854775808 == negate(a: 9223372036854775807) - 1, name: "minimum literal")
+    check(ok: flip(a: 1.5) == -1.5, name: "float")
+    check(ok: 1.0 / flip(a: 0.0) < 0.0, name: "negative zero")
+    check(ok: 1.0 / -0.0 < 0.0, name: "literal negative zero")
+    var count = -3
+    count = count + 1
+    check(ok: count == -2, name: "typed local")
+test "negate minimum":
+    let bad = negate(a: -9223372036854775808)
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err == nil || !strings.Contains(string(output), "2 tests, 1 failed") || strings.Count(string(output), "Int overflow;") != 1 {
+		t.Fatalf("negation changed: %v\n%s", err, output)
+	}
+}

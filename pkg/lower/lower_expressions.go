@@ -311,6 +311,9 @@ func (g *generator) unaryValue(e *syntax.Expression, info *checker.Info) ast.Exp
 	if e.Text == "not" {
 		return &ast.UnaryExpr{Op: token.NOT, X: paren(g.condition(e.Right))}
 	}
+	if negated := g.negation(e); negated != nil {
+		return negated
+	}
 	return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
 }
 

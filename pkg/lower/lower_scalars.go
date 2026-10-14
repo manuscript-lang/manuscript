@@ -93,6 +93,7 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return "int64"
 		}
+		return g.negationType(e)
 	}
 	return ""
 }

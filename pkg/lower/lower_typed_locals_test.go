@@ -76,3 +76,25 @@ fn make() -> Point: Point(x: 1, label: "a")
 		t.Errorf("record access fell back to the map-backed path\n%s", r.Source)
 	}
 }
+
+func TestNegationOfScalarsStaysTyped(t *testing.T) {
+	r := compileSource("negate.ms", `fn f(a: Int, b: Float) -> Int:
+    var step = -1
+    let c = -b
+    if c < 0.0:
+        step = -a
+    return step
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	source := localNumbers.ReplaceAllString(r.Source, "local_")
+	for _, want := range []string{"var local_step int64 = int64(-1)", "rt.IntNegateAt(local_a,", "var local_c float64 = -local_b"} {
+		if !strings.Contains(source, want) {
+			t.Errorf("missing %q\n%s", want, source)
+		}
+	}
+	if strings.Contains(source, `rt.Unary("-"`) {
+		t.Errorf("dynamic negation\n%s", source)
+	}
+}
