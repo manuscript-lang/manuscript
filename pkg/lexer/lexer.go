@@ -129,7 +129,9 @@ func Lex(file, source string) (tokens []Token, err error) {
 			pending = false
 		}
 		if !startedSuite {
-			for len(s.levels) > 1 && leading < s.levels[len(s.levels)-1].indent {
+			// Continuation lines inside delimiters opened within a level do not
+			// close that level; only suites opened inside the open delimiters can.
+			for len(s.levels) > 1 && leading < s.levels[len(s.levels)-1].indent && s.levels[len(s.levels)-1].depth >= len(s.delimiters) {
 				s.levels = s.levels[:len(s.levels)-1]
 				s.emit(Dedent, "", s.pos())
 			}
