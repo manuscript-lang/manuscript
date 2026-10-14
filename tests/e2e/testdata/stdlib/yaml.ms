@@ -691,6 +691,49 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
         "anchored mapping"
     )
 
+test "YAML quoted merge key is an ordinary string key":
+    let block = entries(
+        value(parse(text: "\"<<\": 1\nplain: 3\n"))
+    )
+    if block.get("<<").unwrap() != YamlValue.NumberValue("1"): return panic(
+        "block quoted key"
+    )
+    if block.length() != 2: return panic("block entries")
+
+    let single = entries(
+        value(parse(text: "'<<': 2\n"))
+    )
+    if single.get("<<").unwrap() != YamlValue.NumberValue("2"): return panic(
+        "single quoted key"
+    )
+
+    let flow = entries(
+        value(parse(text: "\{\"<<\": 1, a: 2\}\n"))
+    )
+    if flow.get("<<").unwrap() != YamlValue.NumberValue("1"): return panic(
+        "flow quoted key"
+    )
+
+    let merged = entries(
+        value(parse(text: "base: &b \{x: 1\}\nm:\n  <<: *b\n  y: 2\n"))
+    )
+    if (
+        entries(merged.get("m").unwrap()).get(
+            "x"
+        ).unwrap() != YamlValue.NumberValue("1")
+    ): return panic(
+        "plain merge key"
+    )
+
+    let original = value(parse(text: "\"<<\": 1\n"))
+    if value(
+        parse(
+            text: value(stringify(value: original))
+        )
+    ) != original: return panic(
+        "quoted merge key round trip"
+    )
+
 test "YAML plain scalars continued inside flow collections fold their line breaks":
     let root = entries(
         value(
