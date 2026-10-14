@@ -19,13 +19,13 @@ export type Scheduler:
     # A negative duration returns InvalidInput; a closing scheduler returns Closed and a full one returns Full. Cancelling during the wait prevents the call.
     fn after(
         duration: Duration,
-        operation: fn() -> Result[Unit, String]
+        operation: fn() -> Result[Unit, Error]
     ) -> Result[OperationId, StartError]:
     # Runs `operation` repeatedly, sleeping `interval` before the first run and again after each run finishes, so runs never overlap.
     # It stops after the first operation that returns an error, which is reported as Failed. A zero or negative interval returns InvalidInput; Closed and Full apply as for `after`.
     fn every(
         interval: Duration,
-        operation: fn() -> Result[Unit, String]
+        operation: fn() -> Result[Unit, Error]
     ) -> Result[OperationId, StartError]:
     # Cancels the operation `id` if it is still running, waits for it to stop, and schedules a new run with the same delay, repeat mode, and callback. Returns the new OperationId; the old id keeps its final status.
     # Only work created by `after` or `every` can restart. An unknown, evicted, or `start`-created id returns InvalidInput, and a closing scheduler returns Closed. An operation of this scheduler calling restart faults.
@@ -38,7 +38,7 @@ export type Scheduler:
     fn close() -> Unit:
     # Runs `operation` right away as a background task and returns its OperationId.
     # Returns Closed after `close` begins and Full when `limit` operations are already running. An Err result is reported as Failed and a fault as Crashed.
-    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+    fn start(operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
     # Returns the operation's current status, or its final status once it has ended.
     # Unknown means the id was never issued by this scheduler, was evicted by `history_limit`, or finished while `history_limit` was 0.
     fn status(id: OperationId) -> WorkStatus:
@@ -49,8 +49,8 @@ export type SchedulerFailure:
     case Failed(
         # Id of the failed operation, as returned when it was started.
         operation: OperationId,
-        # The error string the operation returned.
-        cause: String
+        # The error the operation returned.
+        cause: Error
     )
     # The operation raised a fault, such as an index error or failed precondition, instead of returning.
     case Crashed(
@@ -63,10 +63,10 @@ export type SchedulerFailure:
 # Why a task or task group did not complete successfully.
 export type ExecutionError:
     # The group's `timeout` elapsed while tasks were still running, and they were cancelled.
-    case TimedOut
+    case Timeout
     # The group was closed or the surrounding task was cancelled before all tasks completed.
     case Cancelled
-    # A task raised a fault. It takes precedence over TimedOut and Cancelled when several failures occur.
+    # A task raised a fault. It takes precedence over Timeout and Cancelled when several failures occur.
     case Crashed(
         # Id of the task that faulted.
         operation: OperationId,
@@ -109,7 +109,7 @@ export fn yield_now() -> Unit:
 
 # Starts child tasks and joins them together with an optional group timeout.
 export type TaskGroup:
-    # Time budget for all tasks in the group, measured from the first `start`. When it elapses with tasks still running, they are cancelled and `join` returns TimedOut.
+    # Time budget for all tasks in the group, measured from the first `start`. When it elapses with tasks still running, they are cancelled and `join` returns Timeout.
     # A zero duration expires immediately, none sets no limit, and a negative duration faults.
     timeout: Optional[Duration] = none
     # Starts `operation` as a concurrent child task and returns its handle without waiting.

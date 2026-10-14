@@ -33,6 +33,20 @@ func nativeOption(value Value, typ string, fallback Value) (Value, bool) {
 	return value, true
 }
 
+// nativeBound unwraps an optional Int that may be negative.
+func nativeBound(value Value, fallback Value) Value {
+	if value == nil {
+		return fallback
+	}
+	if option, ok := value.(Alternative); ok && strings.HasPrefix(option.Type, "@std/Optional[") {
+		if option.Tag == "none" {
+			return fallback
+		}
+		return option.Fields[0]
+	}
+	return value
+}
+
 func nativeDefault(name, typ, operation string) Value {
 	switch typ {
 	case "Int":
@@ -82,6 +96,12 @@ func nativeOptions(operation string, params []LibraryParam, args []Value) ([]Val
 		typ := p.Type
 		if typ == "Optional[Int]" || typ == "Optional[Duration]" || typ == "Optional[JsonLimits]" || typ == "Optional[ArchiveLimits]" || typ == "Optional[HtmlLimits]" {
 			typ = strings.TrimSuffix(strings.TrimPrefix(typ, "Optional["), "]")
+			if p.Name == "max_exclusive" {
+				// An exclusive upper bound is a value, not a size or budget, so
+				// negative bounds are valid.
+				out[i] = nativeBound(out[i], nativeDefault(p.Name, typ, operation))
+				continue
+			}
 			var ok bool
 			out[i], ok = nativeOption(out[i], typ, nativeDefault(p.Name, typ, operation))
 			if !ok {

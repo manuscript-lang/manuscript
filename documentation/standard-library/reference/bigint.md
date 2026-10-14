@@ -12,15 +12,15 @@ An arbitrary-precision signed integer with explicit arithmetic operations.
 
 ```manuscript
 type BigInt:
-    fn add(right: BigInt) -> BigInt:
-    fn subtract(right: BigInt) -> BigInt:
-    fn multiply(right: BigInt) -> BigInt:
-    fn divide(right: BigInt) -> Result[BigInt, BigIntError]:
-    fn remainder(right: BigInt) -> Result[BigInt, BigIntError]:
-    fn compare(right: BigInt) -> Int:
-    fn bit_and(right: BigInt) -> BigInt:
-    fn bit_or(right: BigInt) -> BigInt:
-    fn bit_xor(right: BigInt) -> BigInt:
+    fn add(other: BigInt) -> BigInt:
+    fn subtract(other: BigInt) -> BigInt:
+    fn multiply(other: BigInt) -> BigInt:
+    fn divide(other: BigInt) -> Result[BigInt, BigIntError]:
+    fn remainder(other: BigInt) -> Result[BigInt, BigIntError]:
+    fn compare(other: BigInt) -> Int:
+    fn bit_and(other: BigInt) -> BigInt:
+    fn bit_or(other: BigInt) -> BigInt:
+    fn bit_xor(other: BigInt) -> BigInt:
     fn to_int() -> Optional[Int]:
     fn to_string(radix: Int) -> String:
 ```
@@ -30,7 +30,7 @@ type BigInt:
 Returns the exact sum; arbitrary precision means it cannot overflow.
 
 ```manuscript
-fn add(right: BigInt) -> BigInt:
+fn add(other: BigInt) -> BigInt:
 ```
 
 ### BigInt.bit_and
@@ -38,7 +38,7 @@ fn add(right: BigInt) -> BigInt:
 Returns the bitwise AND using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
 
 ```manuscript
-fn bit_and(right: BigInt) -> BigInt:
+fn bit_and(other: BigInt) -> BigInt:
 ```
 
 ### BigInt.bit_or
@@ -46,7 +46,7 @@ fn bit_and(right: BigInt) -> BigInt:
 Returns the bitwise OR using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
 
 ```manuscript
-fn bit_or(right: BigInt) -> BigInt:
+fn bit_or(other: BigInt) -> BigInt:
 ```
 
 ### BigInt.bit_xor
@@ -54,15 +54,15 @@ fn bit_or(right: BigInt) -> BigInt:
 Returns the bitwise XOR using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
 
 ```manuscript
-fn bit_xor(right: BigInt) -> BigInt:
+fn bit_xor(other: BigInt) -> BigInt:
 ```
 
 ### BigInt.compare
 
-Returns -1 when this value is less than `right`, 0 when equal, and 1 when greater.
+Returns -1 when this value is less than `other`, 0 when equal, and 1 when greater.
 
 ```manuscript
-fn compare(right: BigInt) -> Int:
+fn compare(other: BigInt) -> Int:
 ```
 
 ### BigInt.divide
@@ -71,7 +71,7 @@ Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
 A zero divisor returns InvalidInput.
 
 ```manuscript
-fn divide(right: BigInt) -> Result[BigInt, BigIntError]:
+fn divide(other: BigInt) -> Result[BigInt, BigIntError]:
 ```
 
 ### BigInt.multiply
@@ -79,7 +79,7 @@ fn divide(right: BigInt) -> Result[BigInt, BigIntError]:
 Returns the exact product; it cannot overflow, though very large operands take proportionally longer.
 
 ```manuscript
-fn multiply(right: BigInt) -> BigInt:
+fn multiply(other: BigInt) -> BigInt:
 ```
 
 ### BigInt.remainder
@@ -88,15 +88,15 @@ Returns the remainder whose sign follows the dividend, so -7 remainder 2 is -1.
 A zero divisor returns InvalidInput.
 
 ```manuscript
-fn remainder(right: BigInt) -> Result[BigInt, BigIntError]:
+fn remainder(other: BigInt) -> Result[BigInt, BigIntError]:
 ```
 
 ### BigInt.subtract
 
-Returns the exact difference `self - right`; it cannot overflow.
+Returns the exact difference `self - other`; it cannot overflow.
 
 ```manuscript
-fn subtract(right: BigInt) -> BigInt:
+fn subtract(other: BigInt) -> BigInt:
 ```
 
 ### BigInt.to_int

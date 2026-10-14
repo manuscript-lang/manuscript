@@ -13,7 +13,8 @@ import ClientResponse from "@std/http.ms"
 import HttpError from "@std/http.ms"
 import HttpClientOptions from "@std/http.ms"
 import HttpClient from "@std/http.ms"
-import Map from "@std/collections.ms"
+import HttpHeaders from "@std/http.ms"
+import HttpMethod from "@std/http.ms"
 import List from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
@@ -94,10 +95,52 @@ export interface DatagramSocket:
         timeout: Optional[Duration] = none
     ) -> Result[Unit, NetworkError]
 
+# Supported DNS query categories; unknown spellings are rejected by checking.
+export type DnsKind:
+    # IPv4 address records for the queried name.
+    case A
+    # IPv6 address records for the queried name.
+    case AAAA
+    # Canonical name alias records for the queried name.
+    case CNAME
+    # Mail exchange records with priority values.
+    case MX
+    # Name server records for the queried zone.
+    case NS
+    # Text records returned as string values.
+    case TXT
+    # Reverse address pointer records for an IP.
+    case PTR
+    # Service location records with priority, weight and port.
+    case SRV
+    # Returns the uppercase wire category.
+    fn text() -> String:
+
+# Numeric address families reported by IP values and host interfaces.
+export type IpFamily:
+    # A four-byte numeric address.
+    case IPv4
+    # A sixteen-byte numeric address.
+    case IPv6
+    # Returns IPv4 or IPv6.
+    fn text() -> String:
+
+# A validated numeric IPv4/IPv6 address without a port or zone.
+export type IpAddress:
+    # Returns canonical text; mapped IPv6 input is normalized to IPv4.
+    fn text() -> String:
+    # Returns the normalized address family.
+    fn family() -> IpFamily:
+
+# A validated, masked numeric CIDR range.
+export type Cidr:
+    # Returns the canonical masked prefix without reparsing.
+    fn text() -> String:
+
 # DNS record data returned by a typed lookup.
 export type DnsRecord:
-    # Uppercase A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV.
-    kind: String
+    # The same typed category used by the query.
+    kind: DnsKind
     # The record's answer: an IP address for A and AAAA, the target host name for CNAME, MX, NS, PTR, and SRV, or the text for TXT.
     value: String
     # The preference of an MX record or the priority of an SRV record, where lower values are tried first; 0 for other kinds.
@@ -119,13 +162,13 @@ export interface Listener:
     fn close() -> Unit
 
 # Reports whether an IP address belongs to a CIDR range.
-export fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]:
+export fn contains_ip(cidr: Cidr, address: IpAddress) -> Result[Bool, NetworkError]:
 
 # Validates and canonicalizes an IPv4 or IPv6 CIDR range.
-export fn parse_cidr(text: String) -> Result[String, NetworkError]:
+export fn parse_cidr(text: String) -> Result[Cidr, NetworkError]:
 
 # Validates and canonicalizes an IPv4 or IPv6 address.
-export fn parse_ip(text: String) -> Result[String, NetworkError]:
+export fn parse_ip(text: String) -> Result[IpAddress, NetworkError]:
 
 impl Error for NetworkError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `network: <reason>`.
@@ -191,18 +234,17 @@ export interface Network:
     # Performs one buffered HTTP request and returns the status, headers, and complete body.
     # Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns LimitExceeded; error statuses are ordinary responses.
     fn request(
-        method: String,
+        method: HttpMethod,
         url: String,
-        headers: Map[String, String],
-        body: Bytes,
+        headers: HttpHeaders,
+        body: Bytes = "".to_bytes(),
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[ClientResponse, HttpError]
-    # Accepts A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV, case-insensitively; others return InvalidInput.
-    # Returned DnsRecord.kind is uppercase.
+    # Resolves the selected supported category, retaining it in each record.
     fn resolve(
         name: String,
-        kind: String,
+        kind: DnsKind,
         max_records: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[List[DnsRecord], NetworkError]
@@ -218,7 +260,7 @@ export interface Network:
     fn serve(
         address: String,
         handler: fn(request: HttpRequest) -> HttpResponse,
-        limit: Optional[Int] = none,
+        max_requests: Optional[Int] = none,
         max_body_bytes: Optional[Int] = none,
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none,
@@ -235,7 +277,7 @@ export interface Network:
     # Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. Failures use WebSocketError.
     fn web_socket(
         url: String,
-        headers: Map[String, String],
+        headers: HttpHeaders,
         subprotocols: List[String],
         options: WebSocketOptions
     ) -> Result[WebSocket, WebSocketError]

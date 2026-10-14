@@ -16,7 +16,7 @@ func TestTimeDiagnosticsAndCancellation(t *testing.T) {
 	}{
 		{Instant{Domain: domain, Tick: math.MaxInt64}, "shift", []Argument{{"duration", Duration(1)}}, "Instant.shift: overflow; found value (nanoseconds) 9223372036854775807 and duration (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
 		{Instant{Domain: domain, Tick: math.MinInt64}, "shift", []Argument{{"duration", Duration(-1)}}, "Instant.shift: overflow; found value (nanoseconds) -9223372036854775808 and duration (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
-		{Instant{Domain: domain, Tick: math.MaxInt64}, "difference", []Argument{{"right", Instant{Domain: domain, Tick: -1}}}, "Instant.difference: overflow; found value (nanoseconds) 9223372036854775807 and right (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
+		{Instant{Domain: domain, Tick: math.MaxInt64}, "difference", []Argument{{"other", Instant{Domain: domain, Tick: -1}}}, "Instant.difference: overflow; found value (nanoseconds) 9223372036854775807 and other (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
 		{Duration(1), "divide", []Argument{{"divisor", int64(0)}}, "Duration.divide: division by zero; divisor must be nonzero, found 0"},
 		{Duration(math.MinInt64), "abs", nil, "Duration.abs: value (nanoseconds) must be between -9223372036854775807 and 9223372036854775807, found -9223372036854775808"},
 	}
@@ -38,7 +38,7 @@ func TestTimeDiagnosticsAndCancellation(t *testing.T) {
 		if Invoke(RootExecution(), Bind(instant, "", "shift"), []Argument{{"duration", Duration(0)}}) != instant {
 			t.Fatal("zero shift changed an instant boundary")
 		}
-		if Invoke(RootExecution(), Bind(instant, "", "difference"), []Argument{{"right", instant}}) != Duration(0) {
+		if Invoke(RootExecution(), Bind(instant, "", "difference"), []Argument{{"other", instant}}) != Duration(0) {
 			t.Fatal("same-instant difference overflowed")
 		}
 	}

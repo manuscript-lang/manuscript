@@ -12,7 +12,7 @@ export type CommandError:
     # The program could not be found or executed, such as a missing executable.
     case Unavailable
     # The command was still running when `timeout` elapsed, and its process group was killed.
-    case TimedOut
+    case Timeout
     # The combined standard output and error exceeded `max_output_bytes`, and the command was killed.
     case OutputLimit
     # The command could not be started or run for another reason reported by the host.
@@ -33,7 +33,7 @@ export type CommandOutput:
 # Runs child programs with empty input by default, optional output bounds and timeout.
 export interface Commands:
     # Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
-    # Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns TimedOut, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
+    # Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
     fn run(
         program: String,
         arguments: List[String],

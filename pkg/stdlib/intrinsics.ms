@@ -37,9 +37,9 @@ interface StringOperations:
         max_bytes: Optional[Int] = none
     ) -> Result[String, StringError]
     # Concatenates text without changing either operand.
-    fn concat(values: String) -> String
+    fn concat(other: String) -> String
     # Tests whether the exact text occurs, without normalization.
-    fn contains(text: String) -> Bool
+    fn contains(value: String) -> Bool
     # Tests whether the receiver ends with this exact suffix.
     fn ends_with(suffix: String) -> Bool
     # Returns locale-independent full Unicode lowercase mapping; the scalar length can change.

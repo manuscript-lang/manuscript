@@ -102,8 +102,8 @@ test "timeout classification keeps timeout spelling out of generic handling":
     let causes: List[Error] = [
         NetworkError.Timeout,
         HttpError.Timeout,
-        CommandError.TimedOut,
-        ExecutionError.TimedOut
+        CommandError.Timeout,
+        ExecutionError.Timeout
     ]
     let query = category
 

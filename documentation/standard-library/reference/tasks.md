@@ -12,7 +12,7 @@ Why a task or task group did not complete successfully.
 
 ```manuscript
 type ExecutionError:
-    case TimedOut
+    case Timeout
     case Cancelled
     case Crashed(operation: OperationId, message: String)
 ```
@@ -32,18 +32,18 @@ case Cancelled
 
 ### ExecutionError.Crashed
 
-A task raised a fault. It takes precedence over TimedOut and Cancelled when several failures occur.
+A task raised a fault. It takes precedence over Timeout and Cancelled when several failures occur.
 
 ```manuscript
 case Crashed(operation: OperationId, message: String)
 ```
 
-### ExecutionError.TimedOut
+### ExecutionError.Timeout
 
 The group's `timeout` elapsed while tasks were still running, and they were cancelled.
 
 ```manuscript
-case TimedOut
+case Timeout
 ```
 
 ### ExecutionError.Crashed.message
@@ -88,12 +88,12 @@ type Scheduler:
     history_limit: Optional[Int] = none
     drain: Optional[Duration] = none
     reporter: Optional[fn(failure: SchedulerFailure) -> Unit] = none
-    fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
-    fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+    fn after(duration: Duration, operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
+    fn every(interval: Duration, operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
     fn restart(id: OperationId) -> Result[OperationId, StartError]:
     fn cancel(id: OperationId) -> Unit:
     fn close() -> Unit:
-    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+    fn start(operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
     fn status(id: OperationId) -> WorkStatus:
 ```
 
@@ -138,7 +138,7 @@ Runs `operation` once after `duration` has elapsed and returns its OperationId. 
 A negative duration returns InvalidInput; a closing scheduler returns Closed and a full one returns Full. Cancelling during the wait prevents the call.
 
 ```manuscript
-fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+fn after(duration: Duration, operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
 ```
 
 ### Scheduler.cancel
@@ -165,7 +165,7 @@ Runs `operation` repeatedly, sleeping `interval` before the first run and again 
 It stops after the first operation that returns an error, which is reported as Failed. A zero or negative interval returns InvalidInput; Closed and Full apply as for `after`.
 
 ```manuscript
-fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+fn every(interval: Duration, operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
 ```
 
 ### Scheduler.restart
@@ -183,7 +183,7 @@ Runs `operation` right away as a background task and returns its OperationId.
 Returns Closed after `close` begins and Full when `limit` operations are already running. An Err result is reported as Failed and a fault as Crashed.
 
 ```manuscript
-fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+fn start(operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]:
 ```
 
 ### Scheduler.status
@@ -201,7 +201,7 @@ A scheduled operation that returned an error or raised a fault.
 
 ```manuscript
 type SchedulerFailure:
-    case Failed(operation: OperationId, cause: String)
+    case Failed(operation: OperationId, cause: Error)
     case Crashed(operation: OperationId, message: String)
 ```
 
@@ -218,7 +218,7 @@ case Crashed(operation: OperationId, message: String)
 The operation returned `Err`; delivered to the scheduler's reporter.
 
 ```manuscript
-case Failed(operation: OperationId, cause: String)
+case Failed(operation: OperationId, cause: Error)
 ```
 
 ### SchedulerFailure.Crashed.message
@@ -239,10 +239,10 @@ operation: OperationId
 
 ### SchedulerFailure.Failed.cause
 
-The error string the operation returned.
+The error the operation returned.
 
 ```manuscript
-cause: String
+cause: Error
 ```
 
 ### SchedulerFailure.Failed.operation
@@ -333,7 +333,7 @@ type TaskGroup:
 
 ### TaskGroup.timeout
 
-Time budget for all tasks in the group, measured from the first `start`. When it elapses with tasks still running, they are cancelled and `join` returns TimedOut.
+Time budget for all tasks in the group, measured from the first `start`. When it elapses with tasks still running, they are cancelled and `join` returns Timeout.
 A zero duration expires immediately, none sets no limit, and a negative duration faults.
 
 ```manuscript

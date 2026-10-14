@@ -20,9 +20,9 @@ export interface Clock:
 # A span of elapsed time.
 export type Duration:
     # Adds signed nanoseconds; a result outside Duration's representable range faults.
-    fn add(right: Duration) -> Duration:
+    fn add(other: Duration) -> Duration:
     # Subtracts signed nanoseconds; a result outside Duration's representable range faults.
-    fn subtract(right: Duration) -> Duration:
+    fn subtract(other: Duration) -> Duration:
     # Multiplies by an integer factor; overflow faults.
     fn multiply(factor: Int) -> Duration:
     # Divides by a nonzero integer, truncating toward zero; zero faults.
@@ -32,7 +32,7 @@ export type Duration:
     # Returns the absolute value; the minimum Duration faults.
     fn abs() -> Duration:
     # Returns -1, 0, or 1.
-    fn compare(right: Duration) -> Int:
+    fn compare(other: Duration) -> Int:
     # Converts this duration to an integer number of nanoseconds.
     fn to_nanoseconds() -> Int:
     # Converts this duration to an integer number of microseconds.
@@ -51,9 +51,9 @@ export type Instant:
     # Shifts this monotonic instant by a duration.
     fn shift(duration: Duration) -> Instant:
     # Returns the elapsed duration from `right` to this instant.
-    fn difference(right: Instant) -> Duration:
+    fn difference(other: Instant) -> Duration:
     # Returns -1, 0, or 1; instants from different clock domains fault.
-    fn compare(right: Instant) -> Int:
+    fn compare(other: Instant) -> Int:
 
 # A wall-clock time with Unix seconds and nanoseconds.
 export type Timestamp:
@@ -66,9 +66,9 @@ export type Timestamp:
     # Adds a duration to this wall-clock timestamp.
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
     # Returns `self - right` as a duration.
-    fn difference(right: Timestamp) -> Result[Duration, TimeError]:
+    fn difference(other: Timestamp) -> Result[Duration, TimeError]:
     # Returns -1, 0, or 1 across the full calendar range.
-    fn compare(right: Timestamp) -> Int:
+    fn compare(other: Timestamp) -> Int:
 
 # A clock that reports calendar time.
 export interface WallClock:

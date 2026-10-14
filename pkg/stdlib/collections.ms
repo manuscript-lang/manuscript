@@ -29,6 +29,11 @@ export type List[T]:
     fn is_empty() -> Bool:
     # Inserts `value` at index 0 in place, shifting existing elements one position later, and returns this same list.
     fn prepend(value: T) -> List[T]:
+    # Inserts value before index in place and returns this list; negative indexes count from the end.
+    # Requires -length() <= index <= length(); index length() appends, and invalid indexes fault.
+    fn insert(index: Int, value: T) -> List[T]:
+    # Removes and returns the last element in place, or none for an empty list.
+    fn pop() -> Optional[T]:
     # Replaces an element in place and returns this list; negative indexes count from the end.
     # Invalid indexes fault.
     fn set(index: Int, value: T) -> List[T]:
@@ -61,6 +66,10 @@ export type List[T]:
     fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
     # Searches from the end and returns the last matching zero-based index, or none.
     fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    # Counts values satisfying the predicate, calling it once per element in order.
+    fn count(predicate: fn(value: T) -> Bool) -> Int:
+    # Returns a new shallow List keeping each first equal element in order; elements require Equal.
+    fn distinct() -> List[T]:
     # Returns true when at least one value satisfies the predicate.
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     # Returns true when every value satisfies the predicate; empty lists return true.
@@ -100,8 +109,8 @@ export type List[T]:
     fn join(separator: String) -> String:
     # Adds `value` at the end in place and returns this same list.
     fn append(value: T) -> List[T]:
-    # Returns a new list holding this list's elements followed by `values`; neither operand is changed.
-    fn concat(values: List[T]) -> List[T]:
+    # Returns a new list holding this list's elements followed by `other`; neither operand is changed.
+    fn concat(other: List[T]) -> List[T]:
     # Returns the number of elements.
     fn length() -> Int:
 
@@ -197,19 +206,19 @@ export type Set[T: Hashable]:
     # Stops at the first nonmatching element; empty sets return true.
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
     # Returns a new set with receiver values followed by right-only values in insertion order.
-    fn union(right: Set[T]) -> Set[T]:
+    fn union(other: Set[T]) -> Set[T]:
     # Returns a new set of receiver values also in right, preserving receiver insertion order.
-    fn intersection(right: Set[T]) -> Set[T]:
+    fn intersection(other: Set[T]) -> Set[T]:
     # Returns a new set of receiver values absent from right, preserving receiver insertion order.
-    fn difference(right: Set[T]) -> Set[T]:
+    fn difference(other: Set[T]) -> Set[T]:
     # Returns a new set of values in exactly one operand; leaves both operands unchanged.
-    fn symmetric_difference(right: Set[T]) -> Set[T]:
+    fn symmetric_difference(other: Set[T]) -> Set[T]:
     # Tests whether every receiver value also occurs in right.
-    fn is_subset_of(right: Set[T]) -> Bool:
+    fn is_subset_of(other: Set[T]) -> Bool:
     # Tests whether every right value also occurs in the receiver.
-    fn is_superset_of(right: Set[T]) -> Bool:
+    fn is_superset_of(other: Set[T]) -> Bool:
     # Tests whether the operands have no common values.
-    fn is_disjoint_from(right: Set[T]) -> Bool:
+    fn is_disjoint_from(other: Set[T]) -> Bool:
     # Removes all values in place and returns this set; aliases observe the empty set.
     fn clear() -> Set[T]:
     # Returns a shallow list of values in insertion order.

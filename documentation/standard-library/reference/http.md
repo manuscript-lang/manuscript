@@ -8,50 +8,50 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 ## ClientResponse {data-api-kind="Record"}
 
-Buffered HTTP response metadata and body. Header names have canonical spelling;
-Map lookup is case-sensitive. Lists preserve separate values in received order.
+Buffered response body with explicit common metadata access.
 
 ```manuscript
 type ClientResponse:
-    status: Int
-    headers: Map[String, List[String]]
+    head: HttpResponseMetadata
     body: Bytes
+    fn metadata() -> HttpResponseMetadata:
 ```
 
 ### ClientResponse.body
 
-The complete response body bytes, never longer than the request's `max_response_bytes`.
+The complete response payload within the supplied byte bound.
 
 ```manuscript
 body: Bytes
 ```
 
-### ClientResponse.headers
+### ClientResponse.head
 
-Response headers keyed by canonical name, such as `Content-Type`, in sorted name order. Repeated headers keep every value in received order.
+Current mutable metadata; replacing head detaches existing metadata aliases.
 
 ```manuscript
-headers: Map[String, List[String]]
+head: HttpResponseMetadata
 ```
 
-### ClientResponse.status
+### ClientResponse.metadata
 
-The numeric HTTP status code. 4xx and 5xx statuses are ordinary responses, not errors.
+Returns current head without copying; record clone is shallow.
+Clone headers explicitly when separate mutable membership is needed.
 
 ```manuscript
-status: Int
+fn metadata() -> HttpResponseMetadata:
 ```
 
 ## HttpClient {data-api-kind="Interface"}
 
 Reusable HTTP client with connection pooling and explicit response limits.
-Outbound case-equivalent header keys append values in Map insertion order.
+Outbound headers retain separate values in their stored order.
 
 ```manuscript
 interface HttpClient:
     fn close() -> Unit
-    fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
-    fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+    fn request(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes = "".to_bytes(), max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+    fn request_stream(method: HttpMethod, url: String, headers: HttpHeaders, body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
 ```
 
 ### HttpClient.close
@@ -63,22 +63,20 @@ Safe to call repeatedly; later requests return Closed.
 fn close() -> Unit
 ```
 
-### HttpClient.send
+### HttpClient.request
 
-Sends a request with a buffered body and returns once the response headers arrive; read the body from the returned ResponseBody.
-Redirects follow the client's `max_redirects`, and `timeout` covers DNS through the end of the body. Cumulative body bytes above `max_response_bytes` fail the read.
+Sends immutable Bytes and returns a scoped streaming response body.
 
 ```manuscript
-fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+fn request(method: HttpMethod, url: String, headers: HttpHeaders, body: Bytes = "".to_bytes(), max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
 ```
 
-### HttpClient.send_stream
+### HttpClient.request_stream
 
-Sends a request whose body is pulled from `body` in chunks and returns once the response headers arrive.
-Redirects are never followed, because a consumed stream cannot be replayed. The other limits behave as for `send`.
+Borrows ReadStream upload data through the scoped response lifetime.
 
 ```manuscript
-fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+fn request_stream(method: HttpMethod, url: String, headers: HttpHeaders, body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
 ```
 
 ## HttpClientOptions {data-api-kind="Record"}
@@ -91,25 +89,32 @@ type HttpClientOptions:
     max_idle_connections: Optional[Int] = none
     max_header_bytes: Optional[Int] = none
     idle_timeout: Optional[Duration] = none
-    decompress: Bool
-    cookies: Bool
-    tls: TlsOptions
+    decompress: Bool = false
+    cookies: Bool = false
+    tls: TlsOptions = TlsOptions(
+        server_name: "",
+        roots_pem: "",
+        certificate_pem: "",
+        private_key_pem: "",
+        alpn: [],
+        require_client_certificate: false
+    )
 ```
 
 ### HttpClientOptions.cookies
 
-When true, the client keeps an in-memory cookie jar for its lifetime, respecting public-suffix boundaries; when false, no cookies are stored or sent automatically.
+When true, the client keeps an in-memory cookie jar for its lifetime, respecting public-suffix boundaries; when false (the default), no cookies are stored or sent automatically.
 
 ```manuscript
-cookies: Bool
+cookies: Bool = false
 ```
 
 ### HttpClientOptions.decompress
 
-When true, gzip-encoded responses are decoded transparently, with `max_response_bytes` bounding the decoded size; when false, bodies arrive exactly as sent.
+When true, gzip-encoded responses are decoded transparently, with `max_response_bytes` bounding the decoded size; when false (the default), bodies arrive exactly as sent.
 
 ```manuscript
-decompress: Bool
+decompress: Bool = false
 ```
 
 ### HttpClientOptions.idle_timeout
@@ -150,7 +155,14 @@ max_redirects: Optional[Int] = none
 TLS trust and client-certificate settings for `https` requests. The host name is taken from each URL, so `server_name` is ignored.
 
 ```manuscript
-tls: TlsOptions
+tls: TlsOptions = TlsOptions(
+        server_name: "",
+        roots_pem: "",
+        certificate_pem: "",
+        private_key_pem: "",
+        alpn: [],
+        require_client_certificate: false
+    )
 ```
 
 ## HttpError {data-api-kind="Alternative"}
@@ -248,18 +260,17 @@ fn message() -> String:
 ## HttpExchange {data-api-kind="Interface"}
 
 One streaming server exchange. Read or write incrementally and close when done.
-Received header names have canonical spelling; Map lookup is case-sensitive.
-Sending case-equivalent names appends each list in Map insertion order.
+Received headers are one shared mutable object; repeated values stay separate.
 
 ```manuscript
 interface HttpExchange:
     fn close() -> Unit
-    fn headers() -> Map[String, List[String]]
-    fn method() -> String
+    fn headers() -> HttpHeaders
+    fn method() -> HttpMethod
     fn path() -> String
     fn query() -> String
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
-    fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, HttpError]
+    fn send_headers(status: Int, headers: HttpHeaders) -> Result[Unit, HttpError]
     fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int] = none) -> Result[WebSocket, WebSocketError]
     fn write(data: Bytes) -> Result[Unit, IoError]
 ```
@@ -275,18 +286,18 @@ fn close() -> Unit
 
 ### HttpExchange.headers
 
-Returns the request headers keyed by canonical name in sorted name order; repeated headers keep every value in received order.
+Returns the request headers as shared mutable fields with every repeated value retained.
 
 ```manuscript
-fn headers() -> Map[String, List[String]]
+fn headers() -> HttpHeaders
 ```
 
 ### HttpExchange.method
 
-Returns the request method exactly as sent, such as `GET`.
+Returns the request method, using the Custom case for extension tokens.
 
 ```manuscript
-fn method() -> String
+fn method() -> HttpMethod
 ```
 
 ### HttpExchange.path
@@ -321,7 +332,7 @@ Sends the status line and headers once, before any body is written.
 The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns InvalidInput and a closed exchange returns Closed.
 
 ```manuscript
-fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, HttpError]
+fn send_headers(status: Int, headers: HttpHeaders) -> Result[Unit, HttpError]
 ```
 
 ### HttpExchange.upgrade
@@ -342,18 +353,197 @@ Writes one chunk of the response body and flushes it.
 fn write(data: Bytes) -> Result[Unit, IoError]
 ```
 
+## HttpHeaders {data-api-kind="Native type"}
+
+Mutable HTTP fields with ASCII case-insensitive names and separate byte values.
+Names keep first-insertion order and spelling; values keep append order.
+Lookup shares list membership. Use clone() to separate mutable membership.
+
+```manuscript
+type HttpHeaders:
+    fn append(name: String, value: Bytes) -> Result[Unit, HttpError]:
+    fn values(name: String) -> Optional[List[Bytes]]:
+    fn text(name: String) -> Result[Optional[List[String]], HttpError]:
+    fn names() -> List[String]:
+    fn remove(name: String) -> Bool:
+    fn clone() -> HttpHeaders:
+```
+
+### HttpHeaders.append
+
+Appends raw bytes under a valid HTTP name; invalid names return InvalidInput.
+Transport operations additionally validate UTF-8, framing and field values.
+
+```manuscript
+fn append(name: String, value: Bytes) -> Result[Unit, HttpError]:
+```
+
+### HttpHeaders.clone
+
+Copies name/list membership and shares immutable Bytes values.
+
+```manuscript
+fn clone() -> HttpHeaders:
+```
+
+### HttpHeaders.names
+
+Returns first-inserted spellings in insertion order.
+
+```manuscript
+fn names() -> List[String]:
+```
+
+### HttpHeaders.remove
+
+Removes a name; existing list aliases are detached from this header object.
+
+```manuscript
+fn remove(name: String) -> Bool:
+```
+
+### HttpHeaders.text
+
+Decodes every value; invalid UTF-8 returns InvalidData without partial success.
+
+```manuscript
+fn text(name: String) -> Result[Optional[List[String]], HttpError]:
+```
+
+### HttpHeaders.values
+
+Returns shared mutable membership, or none for an absent name.
+
+```manuscript
+fn values(name: String) -> Optional[List[Bytes]]:
+```
+
+## HttpMethod {data-api-kind="Alternative"}
+
+Known HTTP methods, plus extension tokens validated by outgoing operations.
+
+```manuscript
+type HttpMethod:
+    case Get
+    case Head
+    case Post
+    case Put
+    case Patch
+    case Delete
+    case Connect
+    case Options
+    case Trace
+    case Custom(value: String)
+    fn text() -> String:
+```
+
+### HttpMethod.Connect
+
+Establishes a tunnel to the request target.
+
+```manuscript
+case Connect
+```
+
+### HttpMethod.Custom
+
+Carries an extension token; requests reject empty or malformed tokens.
+
+```manuscript
+case Custom(value: String)
+```
+
+### HttpMethod.Delete
+
+Removes the selected representation.
+
+```manuscript
+case Delete
+```
+
+### HttpMethod.Get
+
+Requests the selected representation.
+
+```manuscript
+case Get
+```
+
+### HttpMethod.Head
+
+Requests response metadata without a body.
+
+```manuscript
+case Head
+```
+
+### HttpMethod.Options
+
+Asks which communication options the target supports, without transferring a body.
+
+```manuscript
+case Options
+```
+
+### HttpMethod.Patch
+
+Applies a partial modification.
+
+```manuscript
+case Patch
+```
+
+### HttpMethod.Post
+
+Submits a representation for processing.
+
+```manuscript
+case Post
+```
+
+### HttpMethod.Put
+
+Replaces the selected representation.
+
+```manuscript
+case Put
+```
+
+### HttpMethod.Trace
+
+Requests a diagnostic loopback.
+
+```manuscript
+case Trace
+```
+
+### HttpMethod.Custom.value
+
+The method token; it must be a non-empty HTTP token such as PURGE.
+
+```manuscript
+value: String
+```
+
+### HttpMethod.text
+
+Returns the method token; outgoing requests reject malformed Custom tokens.
+
+```manuscript
+fn text() -> String:
+```
+
 ## HttpRequest {data-api-kind="Record"}
 
 Buffered request accepted by the simple HTTP server handler.
 
 ```manuscript
 type HttpRequest:
-    method: String
+    method: HttpMethod
     path: String
     query: String
-    headers: Map[String, Bytes]
+    headers: HttpHeaders
     body: Bytes
-    fn header(name: String) -> Optional[Bytes]:
 ```
 
 ### HttpRequest.body
@@ -366,18 +556,18 @@ body: Bytes
 
 ### HttpRequest.headers
 
-Request headers keyed by canonical name, such as `Content-Type`, in sorted name order. Repeated values are joined with newlines in received order.
+The request headers as mutable fields with every repeated value retained.
 
 ```manuscript
-headers: Map[String, Bytes]
+headers: HttpHeaders
 ```
 
 ### HttpRequest.method
 
-The request method exactly as sent, such as `GET`.
+The request method, using the Custom case for extension tokens.
 
 ```manuscript
-method: String
+method: HttpMethod
 ```
 
 ### HttpRequest.path
@@ -396,26 +586,14 @@ The raw query string without the leading `?`; empty when there is none.
 query: String
 ```
 
-### HttpRequest.header
-
-Finds a header using ASCII case-insensitive names, or returns `none`.
-Leaves Map keys unchanged. Repeated received values remain newline-joined bytes.
-If a manually built Map has equivalent names, returns its first matching entry.
-
-```manuscript
-fn header(name: String) -> Optional[Bytes]:
-```
-
 ## HttpResponse {data-api-kind="Record"}
 
 Buffered response returned by the simple HTTP server handler.
-Case-equivalent header keys emit separate values in Map insertion order.
-Use HttpExchange.send_headers for repeated values under one exact Map key.
 
 ```manuscript
 type HttpResponse:
     status: Int
-    headers: Map[String, String]
+    headers: HttpHeaders
     body: Bytes
 ```
 
@@ -429,15 +607,41 @@ body: Bytes
 
 ### HttpResponse.headers
 
-Response headers to send. Names that differ only in case are all sent, in map order; `Content-Length`, `Transfer-Encoding`, and `Connection` are rejected with a 500 error.
+The response headers to send; `Content-Length`, `Transfer-Encoding`, and `Connection` are rejected with a 500 error.
 
 ```manuscript
-headers: Map[String, String]
+headers: HttpHeaders
 ```
 
 ### HttpResponse.status
 
 The HTTP status code, which must be 200 through 599; other values are answered with a 500 error.
+
+```manuscript
+status: Int
+```
+
+## HttpResponseMetadata {data-api-kind="Record"}
+
+Response status and headers shared by buffered and streaming response access.
+
+```manuscript
+type HttpResponseMetadata:
+    status: Int
+    headers: HttpHeaders
+```
+
+### HttpResponseMetadata.headers
+
+The shared mutable fields, with every repeated value retained.
+
+```manuscript
+headers: HttpHeaders
+```
+
+### HttpResponseMetadata.status
+
+The received status; editing metadata leaves wire/body behavior unchanged.
 
 ```manuscript
 status: Int
@@ -492,7 +696,7 @@ type HttpServerOptions:
     max_header_bytes: Optional[Int] = none
     timeout: Optional[Duration] = none
     grace: Optional[Duration] = none
-    tls: Optional[TlsOptions]
+    tls: Optional[TlsOptions] = none
 ```
 
 ### HttpServerOptions.grace
@@ -545,23 +749,22 @@ timeout: Optional[Duration] = none
 
 ### HttpServerOptions.tls
 
-Required: some(options) serves HTTPS and negotiates HTTP/2 or HTTP/1.1 through ALPN, while none serves plain HTTP/1.1.
+Some(options) serves HTTPS and negotiates HTTP/2 or HTTP/1.1 through ALPN; none, the default, serves plain HTTP/1.1.
 
 ```manuscript
-tls: Optional[TlsOptions]
+tls: Optional[TlsOptions] = none
 ```
 
 ## ResponseBody {data-api-kind="Interface"}
 
-Streaming response body returned by HTTP client operations. Header names have
-canonical spelling; Map lookup is case-sensitive. Lists keep received order.
+Streaming response body returned by reusable HTTP client operations.
+Metadata remains available after close and shares one mutable header object.
 
 ```manuscript
 interface ResponseBody:
     fn close() -> Unit
-    fn headers() -> Map[String, List[String]]
+    fn metadata() -> HttpResponseMetadata
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
-    fn status() -> Int
 ```
 
 ### ResponseBody.close
@@ -573,12 +776,12 @@ Safe to call repeatedly; reads afterwards return Closed. A fully read body lets 
 fn close() -> Unit
 ```
 
-### ResponseBody.headers
+### ResponseBody.metadata
 
-Returns the response headers keyed by canonical name in sorted name order; repeated headers keep every value in received order.
+Returns the response head (status and headers) without copying; it stays available after close.
 
 ```manuscript
-fn headers() -> Map[String, List[String]]
+fn metadata() -> HttpResponseMetadata
 ```
 
 ### ResponseBody.read
@@ -590,21 +793,11 @@ Reading past the request's `max_response_bytes` returns IoError.Failed, and a no
 fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 ```
 
-### ResponseBody.status
+## headers {data-api-kind="Function"}
 
-Returns the numeric HTTP status code, available as soon as headers arrive.
-
-```manuscript
-fn status() -> Int
-```
-
-## header_values {data-api-kind="Function"}
-
-Finds all values under ASCII case-equivalent names without changing Map keys.
-Returns none if absent, or some(empty) for a present empty list. Copies list
-membership and preserves Map insertion order followed by each list's order.
+Creates empty mutable headers. No header values are joined or comma-combined.
 
 ```manuscript
-fn header_values(headers: Map[String, List[String]], name: String) -> Optional[List[String]]:
+fn headers() -> HttpHeaders:
 ```
 

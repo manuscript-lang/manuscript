@@ -71,6 +71,8 @@ type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    fn insert(index: Int, value: T) -> List[T]:
+    fn pop() -> Optional[T]:
     fn set(index: Int, value: T) -> List[T]:
     fn remove(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
@@ -84,6 +86,8 @@ type List[T]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
     fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    fn count(predicate: fn(value: T) -> Bool) -> Int:
+    fn distinct() -> List[T]:
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
@@ -100,7 +104,7 @@ type List[T]:
     fn entries() -> List[ListEntry[T]]:
     fn join(separator: String) -> String:
     fn append(value: T) -> List[T]:
-    fn concat(values: List[T]) -> List[T]:
+    fn concat(other: List[T]) -> List[T]:
     fn length() -> Int:
 ```
 
@@ -130,10 +134,10 @@ fn clone() -> List[T]:
 
 ### List.concat
 
-Returns a new list holding this list's elements followed by `values`; neither operand is changed.
+Returns a new list holding this list's elements followed by `other`; neither operand is changed.
 
 ```manuscript
-fn concat(values: List[T]) -> List[T]:
+fn concat(other: List[T]) -> List[T]:
 ```
 
 ### List.contains
@@ -151,6 +155,22 @@ The list never grows: copying stops at the end of the list. Source bounds must s
 
 ```manuscript
 fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
+```
+
+### List.count
+
+Counts values satisfying the predicate, calling it once per element in order.
+
+```manuscript
+fn count(predicate: fn(value: T) -> Bool) -> Int:
+```
+
+### List.distinct
+
+Returns a new shallow List keeping each first equal element in order; elements require Equal.
+
+```manuscript
+fn distinct() -> List[T]:
 ```
 
 ### List.drop
@@ -284,6 +304,15 @@ Returns the first equal element's zero-based index, or none; elements require Eq
 fn index_of(value: T) -> Optional[Int]:
 ```
 
+### List.insert
+
+Inserts value before index in place and returns this list; negative indexes count from the end.
+Requires -length() <= index <= length(); index length() appends, and invalid indexes fault.
+
+```manuscript
+fn insert(index: Int, value: T) -> List[T]:
+```
+
 ### List.is_empty
 
 Reports whether the list has no elements.
@@ -339,6 +368,14 @@ Returns a new list holding `transform` applied to each element in order; the rec
 
 ```manuscript
 fn map[U](transform: fn(value: T) -> U) -> List[U]:
+```
+
+### List.pop
+
+Removes and returns the last element in place, or none for an empty list.
+
+```manuscript
+fn pop() -> Optional[T]:
 ```
 
 ### List.prepend
@@ -802,13 +839,13 @@ type Set[T: Hashable]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
-    fn union(right: Set[T]) -> Set[T]:
-    fn intersection(right: Set[T]) -> Set[T]:
-    fn difference(right: Set[T]) -> Set[T]:
-    fn symmetric_difference(right: Set[T]) -> Set[T]:
-    fn is_subset_of(right: Set[T]) -> Bool:
-    fn is_superset_of(right: Set[T]) -> Bool:
-    fn is_disjoint_from(right: Set[T]) -> Bool:
+    fn union(other: Set[T]) -> Set[T]:
+    fn intersection(other: Set[T]) -> Set[T]:
+    fn difference(other: Set[T]) -> Set[T]:
+    fn symmetric_difference(other: Set[T]) -> Set[T]:
+    fn is_subset_of(other: Set[T]) -> Bool:
+    fn is_superset_of(other: Set[T]) -> Bool:
+    fn is_disjoint_from(other: Set[T]) -> Bool:
     fn clear() -> Set[T]:
     fn values() -> List[T]:
     fn entries() -> List[List[T]]:
@@ -856,7 +893,7 @@ fn contains(value: T) -> Bool:
 Returns a new set of receiver values absent from right, preserving receiver insertion order.
 
 ```manuscript
-fn difference(right: Set[T]) -> Set[T]:
+fn difference(other: Set[T]) -> Set[T]:
 ```
 
 ### Set.entries
@@ -929,7 +966,7 @@ fn for_each(operation: fn(value: T) -> Unit) -> Unit:
 Returns a new set of receiver values also in right, preserving receiver insertion order.
 
 ```manuscript
-fn intersection(right: Set[T]) -> Set[T]:
+fn intersection(other: Set[T]) -> Set[T]:
 ```
 
 ### Set.is_disjoint_from
@@ -937,7 +974,7 @@ fn intersection(right: Set[T]) -> Set[T]:
 Tests whether the operands have no common values.
 
 ```manuscript
-fn is_disjoint_from(right: Set[T]) -> Bool:
+fn is_disjoint_from(other: Set[T]) -> Bool:
 ```
 
 ### Set.is_empty
@@ -953,7 +990,7 @@ fn is_empty() -> Bool:
 Tests whether every receiver value also occurs in right.
 
 ```manuscript
-fn is_subset_of(right: Set[T]) -> Bool:
+fn is_subset_of(other: Set[T]) -> Bool:
 ```
 
 ### Set.is_superset_of
@@ -961,7 +998,7 @@ fn is_subset_of(right: Set[T]) -> Bool:
 Tests whether every right value also occurs in the receiver.
 
 ```manuscript
-fn is_superset_of(right: Set[T]) -> Bool:
+fn is_superset_of(other: Set[T]) -> Bool:
 ```
 
 ### Set.length
@@ -1001,7 +1038,7 @@ fn some(predicate: fn(value: T) -> Bool) -> Bool:
 Returns a new set of values in exactly one operand; leaves both operands unchanged.
 
 ```manuscript
-fn symmetric_difference(right: Set[T]) -> Set[T]:
+fn symmetric_difference(other: Set[T]) -> Set[T]:
 ```
 
 ### Set.union
@@ -1009,7 +1046,7 @@ fn symmetric_difference(right: Set[T]) -> Set[T]:
 Returns a new set with receiver values followed by right-only values in insertion order.
 
 ```manuscript
-fn union(right: Set[T]) -> Set[T]:
+fn union(other: Set[T]) -> Set[T]:
 ```
 
 ### Set.values

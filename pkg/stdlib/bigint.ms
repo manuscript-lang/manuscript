@@ -12,25 +12,25 @@ export type BigIntError:
 # An arbitrary-precision signed integer with explicit arithmetic operations.
 export type BigInt:
     # Returns the exact sum; arbitrary precision means it cannot overflow.
-    fn add(right: BigInt) -> BigInt:
-    # Returns the exact difference `self - right`; it cannot overflow.
-    fn subtract(right: BigInt) -> BigInt:
+    fn add(other: BigInt) -> BigInt:
+    # Returns the exact difference `self - other`; it cannot overflow.
+    fn subtract(other: BigInt) -> BigInt:
     # Returns the exact product; it cannot overflow, though very large operands take proportionally longer.
-    fn multiply(right: BigInt) -> BigInt:
+    fn multiply(other: BigInt) -> BigInt:
     # Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
     # A zero divisor returns InvalidInput.
-    fn divide(right: BigInt) -> Result[BigInt, BigIntError]:
+    fn divide(other: BigInt) -> Result[BigInt, BigIntError]:
     # Returns the remainder whose sign follows the dividend, so -7 remainder 2 is -1.
     # A zero divisor returns InvalidInput.
-    fn remainder(right: BigInt) -> Result[BigInt, BigIntError]:
-    # Returns -1 when this value is less than `right`, 0 when equal, and 1 when greater.
-    fn compare(right: BigInt) -> Int:
+    fn remainder(other: BigInt) -> Result[BigInt, BigIntError]:
+    # Returns -1 when this value is less than `other`, 0 when equal, and 1 when greater.
+    fn compare(other: BigInt) -> Int:
     # Returns the bitwise AND using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
-    fn bit_and(right: BigInt) -> BigInt:
+    fn bit_and(other: BigInt) -> BigInt:
     # Returns the bitwise OR using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
-    fn bit_or(right: BigInt) -> BigInt:
+    fn bit_or(other: BigInt) -> BigInt:
     # Returns the bitwise XOR using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
-    fn bit_xor(right: BigInt) -> BigInt:
+    fn bit_xor(other: BigInt) -> BigInt:
     # Returns the value as an Int when it fits in signed 64 bits, or none when it is outside that range.
     fn to_int() -> Optional[Int]:
     # Formats the value in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.

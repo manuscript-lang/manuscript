@@ -204,14 +204,13 @@ interface FileHandle:
     fn writer() -> WriteStream
     fn close() -> Unit
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
-    fn write(data: Bytes) -> Result[Int, FileSystemError]
+    fn write(data: Bytes) -> Result[Unit, FileSystemError]
     fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
     fn read_at(offset: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
-    fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
+    fn write_at(offset: Int, data: Bytes) -> Result[Unit, FileSystemError]
     fn read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
-    fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
     fn read_vectors(sizes: List[Int], offset: Int) -> Result[List[Bytes], FileSystemError]
-    fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
+    fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Unit, FileSystemError]
     fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
     fn stat() -> Result[FileInfo, FileSystemError]
     fn truncate(size: Int) -> Result[Unit, FileSystemError]
@@ -359,34 +358,26 @@ fn truncate(size: Int) -> Result[Unit, FileSystemError]
 
 ### FileHandle.write
 
-Writes all bytes on success and returns their count; errors can leave a prefix without a count.
+Writes all bytes at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
 
 ```manuscript
-fn write(data: Bytes) -> Result[Int, FileSystemError]
+fn write(data: Bytes) -> Result[Unit, FileSystemError]
 ```
 
 ### FileHandle.write_at
 
-Writes all bytes at a nonnegative offset without moving the position; returns the full count.
+Writes all bytes at a nonnegative offset without moving the position; errors can leave a prefix.
 
 ```manuscript
-fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
-```
-
-### FileHandle.write_file
-
-Writes all bytes at the current position; does not truncate or reposition this handle.
-
-```manuscript
-fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
+fn write_at(offset: Int, data: Bytes) -> Result[Unit, FileSystemError]
 ```
 
 ### FileHandle.write_vectors
 
-Writes every buffer and returns the total byte count; offset -1 uses the current position.
+Writes every buffer; offset -1 uses the current position.
 
 ```manuscript
-fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
+fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Unit, FileSystemError]
 ```
 
 ### FileHandle.writer

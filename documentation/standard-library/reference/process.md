@@ -14,7 +14,7 @@ Errors returned when a process cannot start, times out, or exceeds an output bou
 type CommandError:
     case InvalidInput
     case Unavailable
-    case TimedOut
+    case Timeout
     case OutputLimit
     case Failed(message: String)
 ```
@@ -48,12 +48,12 @@ The combined standard output and error exceeded `max_output_bytes`, and the comm
 case OutputLimit
 ```
 
-### CommandError.TimedOut
+### CommandError.Timeout
 
 The command was still running when `timeout` elapsed, and its process group was killed.
 
 ```manuscript
-case TimedOut
+case Timeout
 ```
 
 ### CommandError.Unavailable
@@ -127,7 +127,7 @@ interface Commands:
 ### Commands.run
 
 Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
-Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns TimedOut, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
+Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
 
 ```manuscript
 fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(), max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]

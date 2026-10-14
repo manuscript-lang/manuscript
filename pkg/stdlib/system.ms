@@ -1,3 +1,4 @@
+import IpFamily from "@std/net.ms"
 # Canonical standard-library declarations. Implementations are native.
 
 import List from "@std/collections.ms"
@@ -77,8 +78,8 @@ export type NetworkInterface:
     address: String
     # The address's network mask in the same textual form as `address`, such as `255.255.255.0`.
     netmask: String
-    # Exactly `IPv4` or `IPv6` for native address records.
-    family: String
+    # The IPv4/IPv6 alternative for the native address record.
+    family: IpFamily
     # Hardware address as colon-separated lowercase hexadecimal, or an empty string for interfaces without one such as loopback.
     mac: String
     # True for a loopback interface, which only reaches the local host.
