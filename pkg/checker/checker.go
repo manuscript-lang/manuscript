@@ -638,6 +638,8 @@ func (c *checker) match(s *syntax.Statement) (bool, bool) {
 		}
 		old := c.scope
 		c.scope = newScope(old)
+		// A function literal can be checked more than once; keep only this pass's bindings.
+		c.ArmBindings[arm] = nil
 		for i, name := range arm.Names {
 			var b *Binding
 			if name != "_" && i < len(fields) {
@@ -699,6 +701,7 @@ func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
 		}
 		old := c.scope
 		c.scope = newScope(old)
+		c.ArmBindings[arm] = nil
 		for _, name := range arm.Names {
 			var binding *Binding
 			if name != "_" && target != nil {

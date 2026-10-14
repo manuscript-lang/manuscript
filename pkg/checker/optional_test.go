@@ -29,3 +29,23 @@ func TestOptionalArgumentPreservesSourceTypeAndAST(t *testing.T) {
 		}
 	}
 }
+
+func TestMatchArmBindingsSurviveRepeatedFunctionLiteralChecks(t *testing.T) {
+	source := "import Result from \"@std/result.ms\"\nimport TaskGroup from \"@std/tasks.ms\"\nfn get() -> Result[Int, String]: return ok(value: 1)\nfn note() -> Unit: return unit\nfn run() -> Unit:\n    with tasks = TaskGroup():\n        tasks.start(operation: fn() -> Int:\n            match get():\n                ok(n): note()\n                error(e): note()\n            return 0\n        )\n"
+	module, err := parser.Parse("arms.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := checker.Check([]*syntax.Module{module}, nil)
+	if len(program.Diagnostics) != 0 {
+		t.Fatal(program.Diagnostics)
+	}
+	if len(program.ArmBindings) != 2 {
+		t.Fatalf("expected two checked arms, got %d", len(program.ArmBindings))
+	}
+	for arm, bindings := range program.ArmBindings {
+		if len(bindings) != len(arm.Names) {
+			t.Fatalf("arm %s recorded %d bindings for %d names", arm.Path.Text, len(bindings), len(arm.Names))
+		}
+	}
+}
