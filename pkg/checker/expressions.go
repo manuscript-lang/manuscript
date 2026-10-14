@@ -260,6 +260,8 @@ func (c *checker) inferMember(e *syntax.Expression, expected *Type, i *Info) *In
 	methods := c.methods(receiver.Type, e.Text)
 	if len(methods) != 1 {
 		c.error(e.Pos, "resolution", c.unknownMember(receiver.Type, e.Text))
+		// Later diagnostics that only restate the missing member are noise.
+		i.Type = primitive("<invalid>")
 		return i
 	}
 	i.Method = methods[0]
