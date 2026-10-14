@@ -53,6 +53,8 @@ breakpoints, stepping, locals, disconnect, and transport-loss cleanup. On macOS
 it also verifies the installed system debugserver prerequisite; it cannot claim
 an installation with no Apple developer tools works.
 
+A failed `attach` leaves no session behind: the next `launch` or `attach` starts from a clean target selection instead of retrying the earlier process id.
+
 DAP launch requests must use `mode: exec` with an already compiled target. Compile Manuscript with `ms build --debug`; Delve’s Go-source build/test modes are rejected before tool discovery.
 
 Go-module source-path guessing is not used for Manuscript targets; source maps provide their paths, and explicit `substitute-path` rules remain available. The vendored Delve compatibility probe for pre-Go-1.11 builds is disabled; dependency refresh reapplies this patch.

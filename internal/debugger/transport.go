@@ -16,6 +16,8 @@ type execTransport struct {
 	io.ReadWriteCloser
 	reader  *bufio.Reader
 	pending bytes.Buffer
+	// startSession runs before each launch or attach reaches Delve.
+	startSession func()
 }
 
 func (t *execTransport) Read(p []byte) (int, error) {
@@ -28,7 +30,10 @@ func (t *execTransport) Read(p []byte) (int, error) {
 			Command   string          `json:"command"`
 			Arguments json.RawMessage `json:"arguments"`
 		}
-		if json.Unmarshal(data, &request) == nil && request.Command == "launch" {
+		if json.Unmarshal(data, &request) == nil && (request.Command == "launch" || request.Command == "attach") && t.startSession != nil {
+			t.startSession()
+		}
+		if request.Command == "launch" {
 			var launch struct {
 				Mode string `json:"mode"`
 			}
