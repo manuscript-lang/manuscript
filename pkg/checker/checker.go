@@ -977,22 +977,23 @@ func caseOf(t *Type, name string) (Case, bool) {
 	}
 	return Case{}, false
 }
-func (c *checker) findCase(name string, pos syntax.Position) (*Type, Case) {
-	var found *Type
-	var cs Case
+
+// findCase resolves an unqualified case name. ambiguous reports that the
+// failure was already diagnosed, so callers must not add an unknown-name error.
+func (c *checker) findCase(name string, pos syntax.Position) (found *Type, cs Case, ambiguous bool) {
 	for _, s := range c.names {
 		if s.Kind == syntax.KindType && s.Type.Kind == "alternative" {
 			if candidate, ok := caseOf(s.Type, name); ok {
 				if found != nil {
 					c.error(pos, "resolution", "ambiguous alternative case "+name+"; qualify it with its type, e.g. Type."+name)
-					return nil, Case{}
+					return nil, Case{}, true
 				}
 				found = s.Type
 				cs = candidate
 			}
 		}
 	}
-	return found, cs
+	return found, cs, false
 }
 func (c *checker) contextual(e *syntax.Expression) bool {
 	if e.Kind == syntax.KindLambda {
