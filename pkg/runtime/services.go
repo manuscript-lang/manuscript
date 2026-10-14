@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"strings"
 	"sync"
 )
 
@@ -17,14 +18,14 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 		}
 		value, valid := nativeOption(args[0].Value, "Int", int64(0))
 		if !valid {
-			return Panic("Queue capacity must be positive")
+			return libraryRangeFault("Queue", "capacity", args[0].Value, 1, int64(^uint(0)>>1))
 		}
 		capacity := value.(int64)
 		if option, ok := args[0].Value.(Alternative); ok && option.Tag == "none" {
 			return &Queue{typ: typ}
 		}
 		if capacity <= 0 || capacity > int64(^uint(0)>>1) {
-			return Panic("Queue capacity must be positive")
+			return libraryRangeFault("Queue", "capacity", args[0].Value, 1, int64(^uint(0)>>1))
 		}
 		return &Queue{typ: typ, capacity: int(capacity)}
 	case "@std/PriorityQueue":
@@ -36,12 +37,12 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 			if arg.Name == "capacity" {
 				value, valid := nativeOption(arg.Value, "Int", int64(0))
 				if !valid {
-					return Panic("PriorityQueue capacity must be positive")
+					return libraryRangeFault("PriorityQueue", "capacity", arg.Value, 1, int64(^uint(0)>>1))
 				}
 				q.capacity = int(value.(int64))
 				if q.capacity <= 0 {
 					if v, ok := arg.Value.(Alternative); !ok || v.Tag != "none" {
-						return Panic("PriorityQueue capacity must be positive")
+						return libraryRangeFault("PriorityQueue", "capacity", arg.Value, 1, int64(^uint(0)>>1))
 					}
 				}
 			}
@@ -110,6 +111,8 @@ type Builder struct {
 	mu     sync.Mutex
 	typ    string
 	value  Value
+	text   strings.Builder
+	bytes  []byte
 	sealed bool
 }
 
@@ -118,11 +121,11 @@ func newBuilder(typ string) *Builder {
 	b := &Builder{typ: typ}
 	switch name {
 	case "@std/ListBuilder":
-		b.value = &List{"@std/List[" + args[0] + "]", nil}
+		b.value = &List{Type: "@std/List[" + args[0] + "]", Items: nil}
 	case "@std/MapBuilder":
-		b.value = &Map{"@std/Map[" + args[0] + "][" + args[1] + "]", nil}
+		b.value = &Map{Type: "@std/Map[" + args[0] + "][" + args[1] + "]"}
 	case "@std/SetBuilder":
-		b.value = &Set{"@std/Set[" + args[0] + "]", nil}
+		b.value = &Set{Type: "@std/Set[" + args[0] + "]"}
 	case "@std/BytesBuilder":
 		b.value = Bytes{}
 	case "@std/StringBuilder":
@@ -131,11 +134,12 @@ func newBuilder(typ string) *Builder {
 	return b
 }
 func (b *Builder) Operation(name string) Function {
+	// Builder verbs retain the established Unit ABI and the same sealing lock.
 	labels := []string{}
-	if name == "append" || name == "with_value" {
+	if name == "append" || name == "add" {
 		labels = []string{"value"}
 	}
-	if name == "with_entry" {
+	if receiver, _ := splitType(b.typ); name == "add" && receiver == "@std/MapBuilder" {
 		labels = []string{"key", "value"}
 	}
 	if name == "concat" {
@@ -146,6 +150,12 @@ func (b *Builder) Operation(name string) Function {
 		defer b.mu.Unlock()
 		if name == "freeze" {
 			b.sealed = true
+			switch b.value.(type) {
+			case Bytes:
+				b.value = Bytes{Items: b.bytes}
+			case string:
+				b.value = b.text.String()
+			}
 			return b.value
 		}
 		if b.sealed {
@@ -163,17 +173,16 @@ func (b *Builder) Operation(name string) Function {
 			b.value = Invoke(ctx, NativeMember(value, name), named)
 		case Bytes:
 			if name == "concat" {
-				value.Items = append(append([]byte{}, value.Items...), args[0].(Bytes).Items...)
+				b.bytes = append(b.bytes, args[0].(Bytes).Items...)
 			} else {
 				n := args[0].(int64)
 				if n < 0 || n > 255 {
-					return Panic("byte value must be between 0 and 255")
+					return libraryRangeFault("BytesBuilder.append", "value", n, 0, 255)
 				}
-				value.Items = append(append([]byte{}, value.Items...), byte(n))
+				b.bytes = append(b.bytes, byte(n))
 			}
-			b.value = value
 		case string:
-			b.value = value + args[0].(string)
+			b.text.WriteString(args[0].(string))
 		}
 		return Unit{}
 	})

@@ -58,17 +58,18 @@ test "repeated accessors retain closed root state":
     stderr().close()
     network().close()
 
-    match stdout().write("".to_bytes()):
+    let cause = match stdout().write("".to_bytes()):
         ok(_):
             return panic("accessor reopened stdout")
 
-        error(cause):
-            match cause:
-                Closed:
-                    return
+        error(cause): cause
 
-                _:
-                    return panic("unexpected closed-stream error")
+    match cause:
+        Closed:
+            return
+
+        _:
+            return panic("unexpected closed-stream error")
 
 test "a later test receives fresh standard output":
     match stdout().write("".to_bytes()):

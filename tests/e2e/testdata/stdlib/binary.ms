@@ -52,9 +52,9 @@ test "binary integer boundaries and both byte orders":
         )
 
         if little:
-            if data != Bytes(values: [2, 1]): return panic("little endian vector")
+            if data != Bytes([2, 1]): return panic("little endian vector")
         else:
-            if data != Bytes(values: [1, 2]): return panic("big endian vector")
+            if data != Bytes([1, 2]): return panic("big endian vector")
 
         if (
             value(
@@ -70,7 +70,7 @@ test "binary integer boundaries and both byte orders":
         ): return panic("float roundtrip")
 
 test "binary errors preserve domain and range":
-    let range_error: Result[Bytes, BinaryError] = error(cause: BinaryError.OutOfRange)
+    let range_error: Result[Bytes, BinaryError] = error(BinaryError.OutOfRange)
     if (
         write_integer(
             value: 256,
@@ -88,10 +88,10 @@ test "binary errors preserve domain and range":
         ) != range_error
     ): return panic("negative unsigned")
 
-    let invalid: Result[Int, BinaryError] = error(cause: BinaryError.OutOfRange)
+    let invalid: Result[Int, BinaryError] = error(BinaryError.OutOfRange)
     if (
         read_integer(
-            data: Bytes(values: [0]),
+            data: Bytes([0]),
             offset: -1,
             width: 1,
             signed: true,

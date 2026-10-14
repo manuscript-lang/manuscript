@@ -18,6 +18,8 @@ import (
 
 	"regexp"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 	"unicode/utf8"
 )
@@ -47,32 +49,54 @@ var LibraryMethods = []LibraryMethod{
 	{"System", "environment", "Optional[String]", []LibraryParam{{"name", "String"}}},
 }
 
-func libraryMethod(receiver, name string, body func(*Execution, string, []Value) Value) Function {
-	for _, spec := range LibraryMethods {
-		if spec.Receiver == receiver && spec.Name == name {
-			labels := []string{}
-			for _, p := range spec.Params {
-				labels = append(labels, p.Name)
-			}
-			result := libraryRuntimeType(spec.Result)
-			implementation := func(ctx *Execution, a []Value) Value {
-				normalized, ok := nativeOptions(name, spec.Params, a)
-				if !ok {
-					return nativeOptionFailure(result)
-				}
-				return body(ctx, result, normalized)
-			}
-			if receiver == "ProcessControl" && name == "watch_signals" {
-				return NewAcquisition(labels, result, implementation, libraryDisposeResource)
-			}
-			if receiver == "FileSystem" && (name == "open" || name == "open_flags" || name == "open_directory" || name == "watch" || name == "watch_native" || name == "temporary") {
-				return NewAcquisition(labels, result, implementation, libraryDisposeResource)
-			}
-			return NewFunction(labels, result, implementation)
-		}
+// libraryAcquiring names the methods registered with registerAcquiringMethods:
+// their results are resources that cancellation must release if undelivered.
+var libraryAcquiring = map[[2]string]bool{}
+
+// registerAcquiringMethods registers methods whose Ok result owns a resource.
+func registerAcquiringMethods(methods ...LibraryMethod) {
+	for _, m := range methods {
+		libraryAcquiring[[2]string{m.Receiver, m.Name}] = true
 	}
-	Panic("unknown library method " + receiver + "." + name)
-	return Function{}
+	LibraryMethods = append(LibraryMethods, methods...)
+}
+
+var (
+	libraryIndexOnce sync.Once
+	libraryIndex     map[[2]string]LibraryMethod
+)
+
+func libraryMethod(receiver, name string, body func(*Execution, string, []Value) Value) Function {
+	libraryIndexOnce.Do(func() {
+		libraryIndex = make(map[[2]string]LibraryMethod, len(LibraryMethods))
+		for _, spec := range LibraryMethods {
+			key := [2]string{spec.Receiver, spec.Name}
+			if _, dup := libraryIndex[key]; !dup {
+				libraryIndex[key] = spec
+			}
+		}
+	})
+	spec, found := libraryIndex[[2]string{receiver, name}]
+	if !found {
+		Panic("unknown library method " + receiver + "." + name)
+		return Function{}
+	}
+	labels := []string{}
+	for _, p := range spec.Params {
+		labels = append(labels, p.Name)
+	}
+	result := libraryRuntimeType(spec.Result)
+	implementation := func(ctx *Execution, a []Value) Value {
+		normalized, ok := nativeOptions(name, spec.Params, a)
+		if !ok {
+			return nativeOptionFailure(result, name, spec.Params, a)
+		}
+		return body(ctx, result, normalized)
+	}
+	if libraryAcquiring[[2]string{receiver, name}] {
+		return NewAcquisition(labels, result, implementation, libraryDisposeResource)
+	}
+	return NewFunction(labels, result, implementation)
 }
 func libraryRuntimeType(s string) string { // qualified runtime keys, preserving intrinsic identifiers
 	var b strings.Builder
@@ -160,7 +184,20 @@ func (libraryEntropy) Operation(name string) Function {
 type libraryFileSystem struct{ directory string }
 
 func (f *libraryFileSystem) path(s string) (string, bool) {
+	if s == "" {
+		return "", false
+	}
 	return libraryHostPath(f.directory, s)
+}
+
+// libraryNotEmpty reports a directory-not-empty failure. Windows reports
+// ERROR_DIR_NOT_EMPTY (145), which Go classifies as os.ErrExist.
+func libraryNotEmpty(err error) bool {
+	if errors.Is(err, syscall.ENOTEMPTY) {
+		return true
+	}
+	var errno syscall.Errno
+	return goruntime.GOOS == "windows" && errors.As(err, &errno) && errno == 145
 }
 func libraryOSResult(r string, value Value, err error) Value {
 	if err == nil {
@@ -168,12 +205,18 @@ func libraryOSResult(r string, value Value, err error) Value {
 	}
 	code := "Failed"
 	switch {
+	case errors.Is(err, errLibraryInput):
+		code = "InvalidInput"
 	case errors.Is(err, errors.ErrUnsupported):
 		code = "Unsupported"
 	case errors.Is(err, os.ErrNotExist):
 		code = "NotFound"
+	case libraryNotEmpty(err) && strings.HasSuffix(r, "FileSystemError]"):
+		code = "NotEmpty"
 	case errors.Is(err, os.ErrExist):
 		code = "AlreadyExists"
+	case errors.Is(err, syscall.EISDIR), errors.Is(err, syscall.ENOTDIR), errors.Is(err, syscall.EBADF), errors.Is(err, syscall.EINVAL):
+		code = "InvalidInput"
 	case errors.Is(err, os.ErrPermission):
 		code = "PermissionDenied"
 	}
@@ -217,6 +260,9 @@ func (f *libraryFileSystem) Operation(name string) Function {
 				return libraryOSResult(r, nil, err)
 			}
 			defer file.Close()
+			if info, err := file.Stat(); err == nil && info.IsDir() {
+				return libraryError(r, "InvalidInput", "")
+			}
 			b, code := libraryReadBounded(ctx, file, n)
 			if code != "" {
 				return libraryError(r, code, "")
@@ -274,6 +320,9 @@ func (f *libraryFileSystem) Operation(name string) Function {
 				return libraryOSResult(r, nil, err)
 			}
 			defer directory.Close()
+			if info, err := directory.Stat(); err == nil && !info.IsDir() {
+				return libraryError(r, "InvalidInput", "")
+			}
 			var entries []Value
 			for {
 				CheckCancelled(ctx)
@@ -307,7 +356,10 @@ func (f *libraryFileSystem) Operation(name string) Function {
 			}
 			return libraryOSResult(r, Unit{}, err)
 		case "remove":
-			var err error
+			p, err := f.removalPath(a[0].(string))
+			if err != nil {
+				return libraryOSResult(r, nil, err)
+			}
 			if a[1].(bool) {
 				err = libraryRemoveTree(ctx, p)
 			} else {
@@ -350,7 +402,7 @@ func (f *libraryFileSystem) Operation(name string) Function {
 			return libraryOSResult(r, s, err)
 		case "create_link":
 			target := a[1].(string)
-			if strings.ContainsRune(target, 0) {
+			if target == "" || strings.ContainsRune(target, 0) {
 				return libraryError(r, "InvalidInput", "")
 			}
 			return libraryOSResult(r, Unit{}, os.Symlink(target, p))
@@ -375,7 +427,14 @@ func libraryRemoveTree(ctx *Execution, p string) error {
 		return err
 	}
 	defer root.Close()
-	return libraryRemoveRoot(ctx, root, ".")
+	if err := libraryRemoveRoot(ctx, root, "."); err != nil {
+		return err
+	}
+	// Windows cannot remove the root directory while its handle is open.
+	if err := root.Close(); err != nil {
+		return err
+	}
+	return os.Remove(p)
 }
 func libraryRemoveRoot(ctx *Execution, root *os.Root, p string) error {
 	CheckCancelled(ctx)
@@ -406,8 +465,11 @@ func libraryRemoveRoot(ctx *Execution, root *os.Root, p string) error {
 		}
 		CheckCancelled(ctx)
 	}
+	if err := file.Close(); err != nil {
+		return err
+	}
 	if p == "." {
-		return os.Remove(root.Name())
+		return nil
 	}
 	return root.Remove(p)
 }

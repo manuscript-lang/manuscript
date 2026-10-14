@@ -26,6 +26,61 @@ func init() {
 
 var libraryDirectoryMu sync.Mutex
 
+// Validate before traversal: removing the base (or an ancestor) must never
+// partially erase its contents. Lstat preserves removal of a final symlink;
+// SameFile also catches directory aliases through intermediate symlinks.
+func (f *libraryFileSystem) removalPath(s string) (string, error) {
+	if s == "" || filepath.Base(s) == "." || filepath.Base(s) == ".." {
+		return "", errLibraryInput
+	}
+	// Capture the live base once, so a concurrent change_directory cannot make
+	// resolution and protection refer to different working directories.
+	base, ok := libraryHostPath(f.directory, ".")
+	if !ok {
+		return "", errLibraryInput
+	}
+	p, ok := libraryHostPath(base, s)
+	if !ok {
+		return "", errLibraryInput
+	}
+	clean := filepath.Clean(p)
+	if filepath.Dir(clean) == clean {
+		return "", errLibraryInput
+	}
+	// Preserve native resolution of absolute paths containing symlink/../.
+	// Only strip trailing separators so a final symlink is removed as a link.
+	p = strings.TrimRightFunc(p, func(c rune) bool { return c == '/' || c == rune(os.PathSeparator) })
+	base, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Lstat(p)
+	if os.IsNotExist(err) {
+		return p, nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if !info.IsDir() {
+		return p, nil
+	}
+	for {
+		ancestor, err := os.Stat(base)
+		if err != nil {
+			return "", err
+		}
+		if os.SameFile(info, ancestor) {
+			return "", errLibraryInput
+		}
+		parent := filepath.Dir(base)
+		if parent == base {
+			break
+		}
+		base = parent
+	}
+	return p, nil
+}
+
 // Kept here so host path operations can consistently use a live directory after
 // ProcessControl.change_directory, while explicitly constructed fakes stay pinned.
 func libraryHostPath(directory, s string) (string, bool) {
@@ -64,13 +119,24 @@ func libraryConstants(values map[string]int64) *Map {
 	return result
 }
 
-func libraryInterrupt(ctx *Execution, deadline func(time.Time) error) func() {
+// libraryInterruptFunc runs interrupt when ctx is cancelled. The returned stop
+// disarms it and, when it already started, waits for it to finish.
+func libraryInterruptFunc(ctx *Execution, interrupt func()) func() {
 	done := make(chan struct{})
-	stop := context.AfterFunc(ctx.Context, func() { defer close(done); deadline(time.Now()) })
+	stop := context.AfterFunc(ctx.Context, func() { defer close(done); interrupt() })
 	return func() {
 		if !stop() {
 			<-done
 		}
+	}
+}
+
+// libraryInterrupt expires the I/O deadline on cancellation; the returned stop
+// also clears the deadline.
+func libraryInterrupt(ctx *Execution, deadline func(time.Time) error) func() {
+	stop := libraryInterruptFunc(ctx, func() { deadline(time.Now()) })
+	return func() {
+		stop()
 		deadline(time.Time{})
 	}
 }

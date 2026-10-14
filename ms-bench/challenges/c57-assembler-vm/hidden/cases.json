@@ -1,0 +1,402 @@
+[
+ {
+  "name": "factorial-recursive",
+  "stdin": "fact:   cmp r0, 1\n        jle base\n        push r0\n        dec r0\n        call fact\n        pop r1\n        mul r0, r1\nbase:   ret\nmain:   mov r0, 10\n        call fact\n        out r0\n        halt\n",
+  "stdout": "3628800\n-- halted after 79 steps\nregs: r0=3628800 r1=10 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "fibonacci-loop",
+  "stdin": "main:   mov r0, 0\n        mov r1, 1\n        mov r2, 20\nagain:  out r0\n        mov r3, r0\n        add r3, r1\n        mov r0, r1\n        mov r1, r3\n        dec r2\n        cmp r2, 0\n        jg again\n        halt\n",
+  "stdout": "0\n1\n1\n2\n3\n5\n8\n13\n21\n34\n55\n89\n144\n233\n377\n610\n987\n1597\n2584\n4181\n-- halted after 164 steps\nregs: r0=6765 r1=10946 r2=0 r3=10946 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "gcd-input",
+  "stdin": "main:   in r0\n        in r1\nloop:   cmp r1, 0\n        je done\n        mod r0, r1\n        mov r2, r0\n        mov r0, r1\n        mov r1, r2\n        jmp loop\ndone:   out r0\n        halt\n====\n1071 462\n",
+  "stdout": "21\n-- halted after 27 steps\nregs: r0=21 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "read-until-zero-sum",
+  "stdin": "        mov r1, 0\nnext:   in r0\n        cmp r0, 0\n        je fin\n        add r1, r0\n        jmp next\nfin:    out r1\n        halt\n====\n5 -3 10 20\n7 0 99\n",
+  "stdout": "39\n-- halted after 31 steps\nregs: r0=0 r1=39 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "bubble-sort",
+  "stdin": ".equ N, 8\n.data\narr:    .space N\n.text\nmain:   mov r0, 0\nrd:     in r1\n        mov [arr+r0], r1\n        inc r0\n        cmp r0, N\n        jl rd\nouter:  mov r2, 0\n        mov r3, 0\ninner:  mov r4, [arr+r3]\n        lea r5, [r3+1]\n        mov r6, [arr+r5]\n        cmp r4, r6\n        jle noswap\n        mov [arr+r3], r6\n        mov [arr+r5], r4\n        mov r2, 1\nnoswap: inc r3\n        cmp r3, N-1\n        jl inner\n        cmp r2, 0\n        jne outer\n        mov r0, 0\npr:     mov r1, [arr+r0]\n        out r1\n        inc r0\n        cmp r0, N\n        jl pr\n        halt\n====\n5 2 9 -1 7 7 0 3\n",
+  "stdout": "-1\n0\n2\n3\n5\n7\n7\n9\n-- halted after 488 steps\nregs: r0=8 r1=9 r2=0 r3=7 r4=7 r5=7 r6=9 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "sieve",
+  "stdin": ".equ LIMIT, 50\n.data\nflags:  .space LIMIT+1, 1\n.text\nmain:   mov r0, 2\nouter:  mov r1, r0\n        mul r1, r0\n        cmp r1, LIMIT\n        jg report\n        mov r2, [flags+r0]\n        cmp r2, 0\n        je nexto\ninner:  cmp r1, LIMIT\n        jg nexto\n        mov r3, 0\n        mov [flags+r1], r3\n        add r1, r0\n        jmp inner\nnexto:  inc r0\n        jmp outer\nreport: mov r0, 2\nrl:     cmp r0, LIMIT\n        jg fin\n        mov r2, [flags+r0]\n        cmp r2, 0\n        je skip\n        out r0\nskip:   inc r0\n        jmp rl\nfin:    halt\n",
+  "stdout": "2\n3\n5\n7\n11\n13\n17\n19\n23\n29\n31\n37\n41\n43\n47\n-- halted after 699 steps\nregs: r0=51 r1=64 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "string-print",
+  "stdin": ".data\nhello:  .asciz \"Hello, World!\\n\"\n.text\nmain:   mov r0, hello\npl:     mov r1, [r0]\n        cmp r1, 0\n        je fin\n        outc r1\n        inc r0\n        jmp pl\nfin:    halt\n",
+  "stdout": "Hello, World!\n-- halted after 89 steps\nregs: r0=14 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "string-reverse",
+  "stdin": ".data\ns:      .ascii \"stressed\"\n.equ SLEN, 8\n.text\nmain:   mov r0, 0\npushl:  mov r1, [s+r0]\n        push r1\n        inc r0\n        cmp r0, SLEN\n        jl pushl\n        mov r0, 0\npopl:   pop r1\n        outc r1\n        inc r0\n        cmp r0, SLEN\n        jl popl\n        outc 10\n        halt\n",
+  "stdout": "desserts\n-- halted after 84 steps\nregs: r0=8 r1=115 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "collatz",
+  "stdin": "main:   in r0\n        mov r1, 0\nloop:   cmp r0, 1\n        je done\n        mov r2, r0\n        and r2, 1\n        cmp r2, 0\n        je even\n        mul r0, 3\n        inc r0\n        jmp cont\neven:   sar r0, 1\ncont:   inc r1\n        jmp loop\ndone:   out r1\n        halt\n====\n27\n",
+  "stdout": "111\n-- halted after 1087 steps\nregs: r0=1 r1=111 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "print-number-digits",
+  "stdin": "; prints a number digit by digit using div/mod and the stack\nmain:   in r0\n        cmp r0, 0\n        jge pos\n        outc '-'\n        neg r0\npos:    mov r3, 0\ndl:     mov r1, r0\n        mod r1, 10\n        push r1\n        inc r3\n        div r0, 10\n        cmp r0, 0\n        jne dl\npl:     pop r1\n        add r1, '0'\n        outc r1\n        dec r3\n        cmp r3, 0\n        jg pl\n        outc '\\n'\n        halt\n====\n-90417\n",
+  "stdout": "-90417\n-- halted after 73 steps\nregs: r0=0 r1=55 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "call-nested",
+  "stdin": "main:   mov r0, 1\n        call a\n        out r0\n        halt\na:      add r0, 10\n        call b\n        add r0, 100\n        ret\nb:      add r0, 1000\n        call c\n        add r0, 10000\n        ret\nc:      add r0, 100000\n        ret\n",
+  "stdout": "111111\n-- halted after 14 steps\nregs: r0=111111 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "flags-jumps",
+  "stdin": "main:   mov r0, 3\n        mov r1, 5\n        cmp r0, r1\n        jl l1\n        out 0\nl1:     out 1\n        jle l2\n        out 0\nl2:     out 2\n        jg bad\n        out 3\n        jge bad\n        out 4\n        jne l3\n        out 0\nl3:     out 5\n        je bad\n        out 6\n        cmp r1, r0\n        jg l4\n        out 0\nl4:     out 7\n        jge l5\n        out 0\nl5:     out 8\n        cmp r0, r0\n        je l6\n        out 0\nl6:     jz l7\n        out 0\nl7:     jle l8\n        out 0\nl8:     jge l9\n        out 0\nl9:     jnz bad\n        out 9\n        halt\nbad:    out -1\n        halt\n",
+  "stdout": "1\n2\n3\n4\n5\n6\n7\n8\n9\n-- halted after 28 steps\nregs: r0=3 r1=5 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "signed-compare-negative",
+  "stdin": "main:   mov r0, -5\n        mov r1, 3\n        cmp r0, r1\n        jl neg\n        out 0\n        halt\nneg:    out 1\n        cmp r0, -5\n        je same\n        out 0\nsame:   out 2\n        halt\n",
+  "stdout": "1\n2\n-- halted after 9 steps\nregs: r0=-5 r1=3 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "arith-wrap",
+  "stdin": "main:   mov r0, 2147483647\n        add r0, 1\n        out r0\n        mov r0, -2147483648\n        sub r0, 1\n        out r0\n        mov r0, 65536\n        mul r0, 65536\n        out r0\n        mov r0, 100000\n        mul r0, 100000\n        out r0\n        mov r0, 4294967295\n        out r0\n        mov r0, -2147483648\n        neg r0\n        out r0\n        mov r0, -2147483648\n        div r0, -1\n        out r0\n        mov r0, -2147483648\n        mod r0, -1\n        out r0\n        halt\n",
+  "stdout": "-2147483648\n2147483647\n0\n1410065408\n-1\n-2147483648\n-2147483648\n0\n-- halted after 24 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "div-mod-signs",
+  "stdin": "main:   mov r0, 7\n        div r0, 2\n        out r0\n        mov r0, -7\n        div r0, 2\n        out r0\n        mov r0, 7\n        div r0, -2\n        out r0\n        mov r0, -7\n        div r0, -2\n        out r0\n        mov r0, 7\n        mod r0, 3\n        out r0\n        mov r0, -7\n        mod r0, 3\n        out r0\n        mov r0, 7\n        mod r0, -3\n        out r0\n        mov r0, -7\n        mod r0, -3\n        out r0\n        halt\n",
+  "stdout": "3\n-3\n-3\n3\n1\n-1\n1\n-1\n-- halted after 25 steps\nregs: r0=-1 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "bitwise-shifts",
+  "stdin": "main:   mov r0, 0xF0F0\n        and r0, 0xFF00\n        out r0\n        mov r0, 0b1010\n        or r0, 0b0101\n        out r0\n        mov r0, 0xFF\n        xor r0, 0x0F\n        out r0\n        mov r0, 1\n        shl r0, 31\n        out r0\n        shr r0, 31\n        out r0\n        mov r0, -16\n        sar r0, 2\n        out r0\n        mov r0, -16\n        shr r0, 28\n        out r0\n        mov r0, 5\n        shl r0, 33\n        out r0\n        mov r0, 5\n        shl r0, -1\n        out r0\n        mov r0, 0\n        not r0\n        out r0\n        halt\n",
+  "stdout": "61440\n15\n240\n-2147483648\n1\n-4\n15\n10\n-2147483648\n-1\n-- halted after 30 steps\nregs: r0=-1 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "memory-modes",
+  "stdin": ".data\na:      .word 10, 20, 30, 40\n.text\nmain:   mov r0, [a]\n        out r0\n        mov r1, 2\n        mov r0, [a+1]\n        out r0\n        mov r0, [r1]\n        out r0\n        mov r0, [r1+a]\n        out r0\n        mov r0, [a+r1]\n        out r0\n        mov r2, 3\n        mov r0, [r2-1+a]\n        out r0\n        mov r0, [r2 - 1]\n        out r0\n        mov [a+3], r1\n        mov r0, [a+3]\n        out r0\n        mov [r1], 77\n        mov r0, [2]\n        out r0\n        lea r4, [r2+5]\n        out r4\n        lea r4, [a]\n        out r4\n        halt\n",
+  "stdout": "10\n20\n30\n30\n30\n30\n30\n2\n77\n8\n0\n-- halted after 27 steps\nregs: r0=77 r1=2 r2=3 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "data-directives",
+  "stdin": ".data\nw:      .word 1, -2, 0x10, 'A', w, w+2\ns1:     .ascii \"ab\"\ns2:     .asciz \"c\\td\"\nsp1:    .space 3\nsp2:    .space 2, 9\ntail:   .word tail\n.text\nmain:   mov r1, 0\nl:      mov r0, [r1]\n        out r0\n        inc r1\n        cmp r1, 18\n        jl l\n        out tail\n        halt\n",
+  "stdout": "1\n-2\n16\n65\n0\n2\n97\n98\n99\n9\n100\n0\n0\n0\n0\n9\n9\n17\n17\n-- halted after 93 steps\nregs: r0=17 r1=18 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "equ-expressions",
+  "stdin": ".equ BASE, 100\n.equ NEXT, BASE + 5\n.equ LATER, EARLY + 1\n.equ EARLY, 7\n.equ MIXED, 'a' - 'A' + 0x10 - 0b11\n.equ NEG, -BASE\nmain:   out BASE\n        out NEXT\n        out LATER\n        out MIXED\n        out NEG\n        out BASE-NEXT+ 1\n        out - 5\n        out 2147483648\n        halt\n",
+  "stdout": "100\n105\n8\n45\n-100\n-4\n-5\n-2147483648\n-- halted after 9 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "entry-main-vs-zero",
+  "stdin": "        out 1\n        halt\nmain:   out 2\n        halt\n",
+  "stdout": "2\n-- halted after 2 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "no-main-starts-at-zero",
+  "stdin": "start:  out 1\n        out 2\n        halt\n",
+  "stdout": "1\n2\n-- halted after 3 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "multiple-labels-one-line",
+  "stdin": "a: b: c: out 1\nd:\n        out 2\n        jmp c2\nc2: halt\n",
+  "stdout": "1\n2\n-- halted after 4 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "comments-and-strings",
+  "stdin": ".data\nmsg:    .asciz \"semi;colon\"  ; real comment\nq:      .word ';'  ; char semicolon\n.text\nmain:   mov r0, msg   ; comment ; more\nl:      mov r1, [r0]\n        cmp r1, 0\n        je d\n        outc r1\n        inc r0\n        jmp l\nd:      outc 10\n        out [q]\n        halt\n",
+  "stdout": "semi;colon\n59\n-- halted after 67 steps\nregs: r0=10 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "sp-and-bp",
+  "stdin": "main:   out sp\n        push 1\n        push 2\n        out sp\n        mov bp, sp\n        add bp, 1\n        mov r0, [bp]\n        out r0\n        mov r0, [sp]\n        out r0\n        pop r1\n        pop r2\n        out sp\n        sub sp, 2\n        mov [sp], 5\n        mov [sp+1], 6\n        pop r3\n        pop r4\n        out r3\n        out r4\n        halt\n",
+  "stdout": "4096\n4094\n1\n2\n4096\n5\n6\n-- halted after 21 steps\nregs: r0=2 r1=2 r2=1 r3=5 r4=6 r5=0 r6=0 r7=0 sp=4096 bp=4095\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "jump-table-0",
+  "stdin": ".data\ntable:  .word case0, case1, case2\n.text\nmain:   in r5\n        mov r1, [table+r5]\n        push r1\n        ret\ncase0:  out 100\n        halt\ncase1:  out 101\n        halt\ncase2:  out 102\n        halt\n====\n0\n",
+  "stdout": "100\n-- halted after 6 steps\nregs: r0=0 r1=4 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "jump-table-2",
+  "stdin": ".data\ntable:  .word case0, case1, case2\n.text\nmain:   in r5\n        mov r1, [table+r5]\n        push r1\n        ret\ncase0:  out 100\n        halt\ncase1:  out 101\n        halt\ncase2:  out 102\n        halt\n====\n2\n",
+  "stdout": "102\n-- halted after 6 steps\nregs: r0=0 r1=8 r2=0 r3=0 r4=0 r5=2 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "jump-table-wild",
+  "stdin": ".data\ntable:  .word case0, case1, case2\n.text\nmain:   in r5\n        mov r1, [table+r5]\n        push r1\n        ret\ncase0:  out 100\n        halt\ncase1:  out 101\n        halt\ncase2:  out 102\n        halt\n====\n3\n",
+  "stdout": "-- trap: input exhausted (pc=0 line=4) after 4 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=3 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "ret-to-pushed-address",
+  "stdin": "main:   push done\n        ret\n        out 99\ndone:   out 7\n        halt\n",
+  "stdout": "7\n-- halted after 4 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "outc-chars",
+  "stdin": "main:   outc 72\n        outc 105\n        outc 33\n        outc 10\n        outc 126\n        outc 10\n        halt\n",
+  "stdout": "Hi!\n~\n-- halted after 7 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "in-multiple-lines",
+  "stdin": "main:   in r0\n        in r1\n        in r2\n        add r0, r1\n        add r0, r2\n        out r0\n        halt\n====\n1\n2\n\n  3\n\n",
+  "stdout": "6\n-- halted after 7 steps\nregs: r0=6 r1=2 r2=3 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "regs-final-state",
+  "stdin": "main:   mov r0, 1\n        mov r1, 2\n        mov r2, 3\n        mov r3, 4\n        mov r4, 5\n        mov r5, 6\n        mov r6, 7\n        mov r7, 8\n        mov bp, 9\n        push 10\n        cmp r0, r1\n        halt\n",
+  "stdout": "-- halted after 12 steps\nregs: r0=1 r1=2 r2=3 r3=4 r4=5 r5=6 r6=7 r7=8 sp=4095 bp=9\nflags: Z=0 L=1\n"
+ },
+ {
+  "name": "trap-div-zero",
+  "stdin": "main: mov r0, 1\n mov r1, 0\n div r0, r1\n out r0\n halt\n",
+  "stdout": "-- trap: division by zero (pc=2 line=3) after 2 steps\nregs: r0=1 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-mem-low",
+  "stdin": "main: mov r0, -1\n mov r1, [r0]\n halt\n",
+  "stdout": "-- trap: memory access out of range: -1 (pc=1 line=2) after 1 steps\nregs: r0=-1 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-mem-high",
+  "stdin": "main: mov r0, 4096\n out 5\n mov [r0], 1\n halt\n",
+  "stdout": "5\n-- trap: memory access out of range: 4096 (pc=2 line=3) after 2 steps\nregs: r0=4096 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-mem-abs",
+  "stdin": "main: out [5000]\n halt\n",
+  "stdout": "-- trap: memory access out of range: 5000 (pc=0 line=1) after 0 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-stack-underflow",
+  "stdin": "main: pop r0\n halt\n",
+  "stdout": "-- trap: stack underflow (pc=0 line=1) after 0 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-stack-overflow",
+  "stdin": "main: push 1\n jmp main\n",
+  "stdout": "-- trap: stack overflow (pc=0 line=1) after 8192 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=0 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-recursion-overflow",
+  "stdin": "f: call f\nmain: call f\n halt\n",
+  "stdout": "-- trap: stack overflow (pc=0 line=1) after 4096 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=0 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-fall-off-end",
+  "stdin": "main: out 1\n nop\n",
+  "stdout": "1\n-- trap: pc out of range (pc=2 line=-) after 2 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-empty-program",
+  "stdin": "; nothing here\n",
+  "stdout": "-- trap: pc out of range (pc=0 line=-) after 0 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-bad-return",
+  "stdin": "main: push 1000\n ret\n halt\n",
+  "stdout": "-- trap: pc out of range (pc=1000 line=-) after 2 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-outc-range",
+  "stdin": "main: outc 65\n outc 200\n halt\n",
+  "stdout": "A\n-- trap: invalid character (pc=1 line=2) after 1 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-input-exhausted",
+  "stdin": "main: in r0\n in r1\n out r0\n halt\n====\n5\n",
+  "stdout": "-- trap: input exhausted (pc=1 line=2) after 1 steps\nregs: r0=5 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-budget-default",
+  "stdin": "main: jmp main\n",
+  "stdout": "-- trap: budget exceeded (pc=0 line=1) after 100000 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "trap-budget-custom",
+  "stdin": ".budget 50\nmain: inc r0\n jmp main\n",
+  "stdout": "-- trap: budget exceeded (pc=0 line=2) after 50 steps\nregs: r0=25 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "budget-exact",
+  "stdin": ".budget 3\nmain: nop\n nop\n halt\n",
+  "stdout": "-- halted after 3 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "budget-one-short",
+  "stdin": ".budget 2\nmain: nop\n nop\n halt\n",
+  "stdout": "-- trap: budget exceeded (pc=2 line=4) after 2 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "budget-large-ok",
+  "stdin": ".budget 400000\nmain: mov r0, 0\nl: inc r0\n cmp r0, 100000\n jl l\n out r0\n halt\n",
+  "stdout": "100000\n-- halted after 300003 steps\nregs: r0=100000 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "asm-unknown-mnemonic",
+  "stdin": "main: out 1\n frob r0\n halt\n",
+  "stdout": "asm error line 2: unknown mnemonic 'frob'\n"
+ },
+ {
+  "name": "asm-uppercase-mnemonic",
+  "stdin": "main: MOV r0, 1\n halt\n",
+  "stdout": "asm error line 1: unknown mnemonic 'MOV'\n"
+ },
+ {
+  "name": "asm-wrong-count-few",
+  "stdin": "main: add r0\n halt\n",
+  "stdout": "asm error line 1: wrong number of operands for 'add'\n"
+ },
+ {
+  "name": "asm-invalid-dst-imm",
+  "stdin": "main: add 5, r0\n",
+  "stdout": "asm error line 1: invalid operands for 'add'\n"
+ },
+ {
+  "name": "asm-invalid-mov-mem-mem",
+  "stdin": "main: mov [1], [2]\n",
+  "stdout": "asm error line 1: invalid operands for 'mov'\n"
+ },
+ {
+  "name": "asm-invalid-jump-reg",
+  "stdin": "main: jmp r0\n",
+  "stdout": "asm error line 1: invalid operands for 'jmp'\n"
+ },
+ {
+  "name": "asm-bad-mem-operand",
+  "stdin": "main: mov r0, [r1\n",
+  "stdout": "asm error line 1: invalid operand '[r1'\n"
+ },
+ {
+  "name": "asm-bad-mem-empty",
+  "stdin": "main: mov r0, []\n",
+  "stdout": "asm error line 1: invalid operand '[]'\n"
+ },
+ {
+  "name": "asm-duplicate-label",
+  "stdin": "a: nop\na: nop\n",
+  "stdout": "asm error line 2: duplicate symbol 'a'\n"
+ },
+ {
+  "name": "asm-duplicate-equ",
+  "stdin": ".equ a, 1\n.equ a, 2\n",
+  "stdout": "asm error line 2: duplicate symbol 'a'\n"
+ },
+ {
+  "name": "asm-reserved-name",
+  "stdin": "r0: nop\n",
+  "stdout": "asm error line 1: reserved name 'r0'\n"
+ },
+ {
+  "name": "asm-undefined-symbol",
+  "stdin": "main: mov r0, nowhere\n halt\n",
+  "stdout": "asm error line 1: undefined symbol 'nowhere'\n"
+ },
+ {
+  "name": "asm-undefined-in-word",
+  "stdin": ".data\nw: .word 1, zzz\n.text\nmain: halt\n",
+  "stdout": "asm error line 2: undefined symbol 'zzz'\n"
+ },
+ {
+  "name": "asm-undefined-order",
+  "stdin": "main: mov r0, aaa\n mov r1, bbb\n halt\n",
+  "stdout": "asm error line 1: undefined symbol 'aaa'\n"
+ },
+ {
+  "name": "asm-pass1-before-pass2",
+  "stdin": "main: mov r0, undefined1\n bogus\n halt\n",
+  "stdout": "asm error line 2: unknown mnemonic 'bogus'\n"
+ },
+ {
+  "name": "asm-circular-equ",
+  "stdin": ".equ A, B\n.equ B, A\nmain: out A\n",
+  "stdout": "asm error line 3: circular definition of 'A'\n"
+ },
+ {
+  "name": "asm-unknown-directive",
+  "stdin": ".bogus 1\nmain: halt\n",
+  "stdout": "asm error line 1: unknown directive '.bogus'\n"
+ },
+ {
+  "name": "asm-data-in-text",
+  "stdin": "main: halt\n.word 5\n",
+  "stdout": "asm error line 2: data directive in text section\n"
+ },
+ {
+  "name": "asm-instruction-in-data",
+  "stdin": ".data\n out 1\n",
+  "stdout": "asm error line 2: instruction in data section\n"
+ },
+ {
+  "name": "asm-space-forward-label",
+  "stdin": ".data\n.space later\nlater: .word 1\n",
+  "stdout": "asm error line 2: undefined symbol 'later'\n"
+ },
+ {
+  "name": "asm-space-negative",
+  "stdin": ".data\n.space -1\n",
+  "stdout": "asm error line 2: invalid operand '-1'\n"
+ },
+ {
+  "name": "asm-data-too-large",
+  "stdin": ".data\n.space 4000\n.space 100\n",
+  "stdout": "asm error line 3: data section too large\n"
+ },
+ {
+  "name": "asm-bad-string",
+  "stdin": ".data\ns: .ascii hello\n",
+  "stdout": "asm error line 2: invalid string\n"
+ },
+ {
+  "name": "asm-bad-expression",
+  "stdin": "main: out 1 +\n",
+  "stdout": "asm error line 1: invalid expression '1 +'\n"
+ },
+ {
+  "name": "asm-immediate-range",
+  "stdin": "main: mov r0, 4294967296\n",
+  "stdout": "asm error line 1: immediate out of range\n"
+ },
+ {
+  "name": "asm-bad-char-literal",
+  "stdin": "main: mov r0, 'ab'\n",
+  "stdout": "asm error line 1: invalid expression ''ab''\n"
+ },
+ {
+  "name": "asm-jump-target-range",
+  "stdin": ".equ FAR, 100\nmain: jmp FAR\n",
+  "stdout": "asm error line 2: invalid jump target\n"
+ },
+ {
+  "name": "asm-budget-bad",
+  "stdin": ".budget 0\nmain: halt\n",
+  "stdout": "asm error line 1: invalid operand '0'\n"
+ },
+ {
+  "name": "asm-equ-bad-name",
+  "stdin": ".equ 1x, 5\n",
+  "stdout": "asm error line 1: invalid operand '1x'\n"
+ },
+ {
+  "name": "asm-error-line-number",
+  "stdin": "; line 1\n\n  \nmain: nop ; four\n\n nope\n",
+  "stdout": "asm error line 6: unknown mnemonic 'nope'\n"
+ },
+ {
+  "name": "dotted-label",
+  "stdin": "main: jmp loop.1\nloop.1: out 5\n halt\n",
+  "stdout": "5\n-- halted after 3 steps\nregs: r0=0 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "label-after-last-instruction",
+  "stdin": "main: jmp tail\n halt\ntail:\n",
+  "stdout": "asm error line 1: invalid jump target\n"
+ }
+]

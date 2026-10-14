@@ -15,12 +15,9 @@ import HttpClientOptions from "@std/http.ms"
 import HttpClient from "@std/http.ms"
 import Map from "@std/collections.ms"
 import List from "@std/collections.ms"
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import IoError from "@std/io.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import TlsError from "@std/tls.ms"
 import TlsInfo from "@std/tls.ms"
 
@@ -40,17 +37,20 @@ export interface Connection:
     fn close() -> Unit
     fn local_address() -> String
     fn peer_address() -> String
+    # Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
     fn read(
         max_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[Optional[Bytes], IoError]
     fn shutdown_write() -> Result[Unit, NetworkError]
     fn tls_info() -> Result[TlsInfo, TlsError]
+    # Writes all bytes on success; failure can leave a prefix. Local timeout uses IoError.Failed.
     fn write(data: Bytes, timeout: Optional[Duration] = none) -> Result[Unit, IoError]
 
 # One datagram and the address from which it was received.
 export type Datagram:
     data: Bytes
+    # Native host:port text, with bracketed IPv6 addresses.
     sender: String
 
 # A connectionless socket for sending and receiving datagrams.
@@ -69,6 +69,7 @@ export interface DatagramSocket:
 
 # DNS record data returned by a typed lookup.
 export type DnsRecord:
+    # Uppercase A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV.
     kind: String
     value: String
     priority: Int
@@ -136,6 +137,8 @@ export interface Network:
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[ClientResponse, HttpError]
+    # Accepts A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV, case-insensitively; others return InvalidInput.
+    # Returned DnsRecord.kind is uppercase.
     fn resolve(
         name: String,
         kind: String,

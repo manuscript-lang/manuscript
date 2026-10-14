@@ -1,7 +1,9 @@
 package msruntime
 
 import (
+	"bytes"
 	"strings"
+	"sync"
 	"unicode/utf8"
 )
 
@@ -13,32 +15,62 @@ func init() {
 			return libraryError(r, "InvalidInput", "")
 		}
 		var b []byte
+		var mu *sync.Mutex
+		var ahead *readAhead
+		switch stream := streamReceiver(a[0]).(type) {
+		case *stream:
+			mu, ahead = &stream.mu, &stream.pending
+		case libraryHandleStream:
+			if !stream.write {
+				mu, ahead = &stream.handle.mu, &stream.handle.ahead
+			}
+		}
+		if ahead == nil {
+			return readLineByByte(ctx, r, a[0], max)
+		}
+		take := func() []byte {
+			mu.Lock()
+			defer mu.Unlock()
+			data, _ := ahead.take(0)
+			return data
+		}
+		unread := func(rest []byte) {
+			mu.Lock()
+			ahead.buf = rest
+			mu.Unlock()
+		}
 		for {
-			v := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int", int64(1), true)}}).(Alternative)
-			if v.Tag == "error" {
-				return Alternative{r, "error", v.Fields}
-			}
-			part := v.Fields[0].(Alternative)
-			if part.Tag == "none" {
-				if len(b) == 0 {
-					return libraryOK(r, optional("String", nil, false))
+			chunk := take()
+			if len(chunk) == 0 {
+				v := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int", int64(65536), true)}}).(Alternative)
+				if v.Tag == "error" {
+					return Alternative{r, "error", v.Fields}
 				}
-				break
+				part := v.Fields[0].(Alternative)
+				if part.Tag == "none" {
+					if len(b) == 0 {
+						return libraryOK(r, optional("String", nil, false))
+					}
+					break
+				}
+				chunk = part.Fields[0].(Bytes).Items
 			}
-			data := part.Fields[0].(Bytes).Items
-			if len(data) != 1 {
-				return libraryError(r, "Failed", "invalid stream chunk")
-			}
-			if int64(len(b)) >= max {
-				return libraryError(r, "LimitExceeded", "")
-			}
-			b = append(b, data[0])
-			if data[0] == '\n' {
-				b = b[:len(b)-1]
+			if i := bytes.IndexByte(chunk, '\n'); i >= 0 {
+				if int64(len(b)+i) >= max {
+					return libraryError(r, "LimitExceeded", "")
+				}
+				b = append(b, chunk[:i]...)
+				if rest := chunk[i+1:]; len(rest) > 0 {
+					unread(rest)
+				}
 				if len(b) > 0 && b[len(b)-1] == '\r' {
 					b = b[:len(b)-1]
 				}
 				break
+			}
+			b = append(b, chunk...)
+			if int64(len(b)) > max {
+				return libraryError(r, "LimitExceeded", "")
 			}
 		}
 		if !libraryValidText(b) {
@@ -55,12 +87,13 @@ func init() {
 		if len(s) == 0 {
 			return libraryOK(r, "")
 		}
-		if count > max/int64(len(s)) || count > int64(^uint(0)>>1) {
+		max = min(max, nativeMaxBytes)
+		if count > max/int64(len(s)) {
 			return libraryError(r, "LimitExceeded", "")
 		}
 		return libraryOK(r, strings.Repeat(s, int(count)))
 	})
-	libraryAdd("regex", "replace", libraryResult("String", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("replacement", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("regex", "replace_all", libraryResult("String", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("replacement", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[3].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -90,3 +123,46 @@ func init() {
 }
 
 func libraryValidText(b []byte) bool { return utf8.Valid(b) }
+
+func readLineByByte(ctx *Execution, r string, input Value, max int64) Value {
+	var b []byte
+	for {
+		v := Invoke(ctx, Bind(input, "", "read"), []Argument{{"max_bytes", optional("Int", int64(1), true)}}).(Alternative)
+		if v.Tag == "error" {
+			return Alternative{r, "error", v.Fields}
+		}
+		part := v.Fields[0].(Alternative)
+		if part.Tag == "none" {
+			if len(b) == 0 {
+				return libraryOK(r, optional("String", nil, false))
+			}
+			break
+		}
+		data := part.Fields[0].(Bytes).Items
+		if len(data) != 1 {
+			return libraryError(r, "Failed", "invalid stream chunk")
+		}
+		if int64(len(b)) >= max {
+			return libraryError(r, "LimitExceeded", "")
+		}
+		b = append(b, data[0])
+		if data[0] == '\n' {
+			b = b[:len(b)-1]
+			if len(b) > 0 && b[len(b)-1] == '\r' {
+				b = b[:len(b)-1]
+			}
+			break
+		}
+	}
+	if !libraryValidText(b) {
+		return libraryError(r, "InvalidData", "")
+	}
+	return libraryOK(r, optional("String", string(b), true))
+}
+
+func streamReceiver(v Value) Value {
+	if view, ok := v.(View); ok {
+		return view.Receiver
+	}
+	return v
+}

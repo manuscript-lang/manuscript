@@ -3,8 +3,11 @@ package lsp
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/manuscript-lang/manuscript/pkg/lexer"
 )
 
 func TestLocalExtensionCompletionAndNavigation(t *testing.T) {
@@ -81,6 +84,42 @@ func itemNamed(items []completionItem, name string) *completionItem {
 	}
 	return nil
 }
+
+func TestPreludeCompletionNeedsNoImport(t *testing.T) {
+	for _, name := range []string{"Optional", "Result", "Error", "List", "Map", "Set"} {
+		items := completeSource(t, "fn work(value: "+name[:2]+"|) -> Unit:\n    return\n")
+		item := itemNamed(items, name)
+		if item == nil || len(item.AdditionalTextEdits) != 0 {
+			t.Fatalf("%s must complete without an import: %+v", name, item)
+		}
+	}
+}
+
+func TestCollectionPreludeExpressionCompletionNeedsNoImport(t *testing.T) {
+	for _, name := range []string{"List", "Map", "Set"} {
+		items := completeSource(t, "fn work() -> Unit:\n    "+name[:2]+"|\n")
+		item := itemNamed(items, name)
+		if item == nil || len(item.AdditionalTextEdits) != 0 {
+			t.Fatalf("%s: %+v", name, item)
+		}
+	}
+}
+
+func TestPreludeNavigationUsesStandardSource(t *testing.T) {
+	source := "fn work(value: Optional[Int]) -> Result[Int, Error]:\n    return ok(value: value.unwrap())\n"
+	d := document{"file:///tmp/prelude.ms", source, 1}
+	result := analyze(d, map[string]document{d.URI: d})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	for name, file := range map[string]string{"Optional": "optional.ms", "Result": "result.ms", "Error": "errors.ms"} {
+		target := navigation(result, d, Position(source, strings.Index(source, name)), "textDocument/definition")
+		if target == nil || target.([]any)[0].(map[string]any)["uri"] != "manuscript-stdlib:///"+file {
+			t.Fatalf("%s did not navigate to its standard declaration: %v", name, target)
+		}
+	}
+}
+
 func TestTypedCompletionWhileEditing(t *testing.T) {
 	tests := []struct {
 		name, source string
@@ -90,6 +129,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"locals before cursor", "fn answer() -> Int:\n    let before = 1\n    be|\n    let behind = 2\n    return before\n", []string{"before"}, []string{"behind"}},
 		{"siblings hidden", "fn answer() -> Int:\n    if true:\n        let secret = 1\n    sec|\n    return 0\n", nil, []string{"secret"}},
 		{"list methods", "import List from \"@std/collections.ms\"\nfn count(items: List[Int]) -> Int:\n    return items.|\n", []string{"length", "at", "append", "concat"}, []string{"byte_length", "send"}},
+		{"prelude set methods", "fn count(items: Set[Int]) -> Int:\n    return items.|\n", []string{"length", "contains", "add", "remove"}, []string{"at", "append", "send"}},
 		{"member prefix", "fn size(text: String) -> Int:\n    return text.byte_|\n", []string{"byte_length"}, []string{"parse_int"}},
 		{"record fields", "type Point:\n    x: Int\n    y: String\nfn read(point: Point) -> Int:\n    return point.|\n", []string{"x", "y"}, []string{"length"}},
 		{"native opaque fields", "import Queue from \"@std/queues.ms\"\nfn read(queue: Queue[Int]) -> Unit:\n    queue.|\n", []string{"enqueue", "dequeue", "peek", "length", "is_empty"}, []string{"capacity", "send", "receive", "close"}},
@@ -99,8 +139,9 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"auto import", "fn work() -> Unit:\n    Que|\n", []string{"Queue"}, nil},
 		{"comments", "fn work() -> Unit:\n    # Que|\n    unit\n", nil, []string{"Queue"}},
 		{"strings", "fn work() -> String:\n    return \"Que|\"\n", nil, []string{"Queue"}},
-		{"optional methods", "import Optional from \"@std/optional.ms\"\nfn work(value: Optional[Int]) -> Int:\n    return value.|\n", []string{"is_some", "is_none", "unwrap", "unwrap_or", "unwrap_or_else"}, []string{"some", "none", "get"}},
-		{"generic alternative", "import Optional from \"@std/optional.ms\"\nfn work() -> Optional[Int]:\n    return Optional[Int].|\n", []string{"some", "none"}, nil},
+		{"optional methods", "fn work(value: Optional[Int]) -> Int:\n    return value.|\n", []string{"is_some", "is_none", "unwrap", "unwrap_or", "unwrap_or_else"}, []string{"some", "none", "get"}},
+		{"generic alternative", "fn work() -> Optional[Int]:\n    return Optional[Int].|\n", []string{"some", "none"}, nil},
+		{"prelude result cases", "fn work() -> Result[Int, String]:\n    return Result[Int, String].|\n", []string{"ok", "error"}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -128,7 +169,7 @@ func TestCompletionSnippetsEditsAndSpecialization(t *testing.T) {
 		t.Fatal(item)
 	}
 	edit := item.TextEdit.(map[string]any)
-	if edit["newText"] != "append(value: ${1:value})$0" {
+	if edit["newText"] != "append(${1:value})$0" {
 		t.Fatal(edit)
 	}
 	if got := edit["range"].(span); got.Start != (position{2, 10}) || got.End != (position{2, 12}) {
@@ -265,5 +306,49 @@ func TestGroupedImportCompletion(t *testing.T) {
 	items := completeSource(t, "import { List, | } from \"@std/collections.ms\"\n")
 	if itemNamed(items, "List") != nil || itemNamed(items, "Map") == nil {
 		t.Fatal(items)
+	}
+}
+
+func TestCollectionPreludeEditorContracts(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		source := strings.ReplaceAll("fn use(values: List[Int], entries: Map[String, Int], unique: Set[Int]) -> Unit:\n    entries.add(\"a\", 1)\n", "\n", newline)
+		d := document{"file:///tmp/collections.ms", source, 1}
+		r := analyze(d, map[string]document{d.URI: d})
+		if !r.Success() {
+			t.Fatal(r.Diagnostics)
+		}
+		for _, name := range []string{"List", "Map", "Set", "add"} {
+			target := navigation(r, d, Position(source, strings.Index(source, name)), "textDocument/definition")
+			if target == nil || target.([]any)[0].(map[string]any)["uri"] != "manuscript-stdlib:///collections.ms" {
+				t.Fatal(name, target)
+			}
+		}
+	}
+	items := completeSource(t, "fn use(entries: Map[String, Int]) -> Unit:\n    entries.ad|\n")
+	item := itemNamed(items, "add")
+	if item == nil || !strings.Contains(item.Detail, "String") || !strings.Contains(item.Detail, "Int") || len(item.AdditionalTextEdits) != 0 {
+		t.Fatal(item)
+	}
+	signature := signatureSource(t, "fn use(entries: Map[String, Int]) -> Unit:\n    entries.add(key: \"a\", value: |\n")
+	label := signature["signatures"].([]any)[0].(map[string]any)["label"].(string)
+	if label != "entries.add(key: String, value: Int) -> Map[String, Int]" || signature["activeParameter"] != 1 {
+		t.Fatal(signature)
+	}
+	local := completeSource(t, "type Map[K,V]:\n    value: V\nfn use(entries: Map[String, Int]) -> Unit:\n    entries.|\n")
+	if itemNamed(local, "add") != nil || itemNamed(local, "value") == nil {
+		t.Fatal(local)
+	}
+	local = completeSource(t, "type Set[T]:\n    value: T\nfn use(values: Set[Int]) -> Unit:\n    values.|\n")
+	if itemNamed(local, "add") != nil || itemNamed(local, "value") == nil {
+		t.Fatal(local)
+	}
+}
+
+func TestStatementKeywordsAreReserved(t *testing.T) {
+	reserved := lexer.Keywords()
+	for _, word := range statementKeywords {
+		if !slices.Contains(reserved, word) {
+			t.Errorf("%q is not a reserved word", word)
+		}
 	}
 }

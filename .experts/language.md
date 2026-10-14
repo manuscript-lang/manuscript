@@ -5,7 +5,7 @@
 Verified: editor overlays may create a file beneath an existing confined directory, but a dangling symlink remains a filesystem entry whose target identity must be respected. Treating every `EvalSymlinks` not-found result as an unsaved file allowed an overlay to hide an unresolved external target. Source path resolution now rejects that fallback for existing entries.
 
 Apply when: changing project resolution, filesystem identity, or editor overlays.
-Evidence: [source path resolution](../pkg/project/paths.go), [symlink/overlay regressions](../pkg/project/project_test.go), and [strict versus recovery compilation](../pkg/compiler/metadata_test.go).
+Evidence: [source path resolution](../pkg/project/paths.go), [symlink/overlay regressions](../pkg/project/project_test.go), and [strict versus recovery compilation](../pkg/build/metadata_test.go).
 Verify: new confined overlay files compile without being written to disk; overlays for outside paths, dangling external links, or symlinked external parents are rejected. Normalize accepted overlay keys to canonical file identity so symlinked workspace directories retain unsaved content; reject conflicting snapshots of one file. Recovery keeps valid declarations while diagnostics still prevent generated executable source.
 
 ### String conversion is available on every value
@@ -15,6 +15,13 @@ Decision: the user requested JavaScript-like conversion with `toString()` on eve
 Apply when: changing interpolation, member resolution, formatting, or editor member queries.
 Evidence: [canonical conversion rules](../documentation/core-language/basics/text-and-bytes.md#converting-values-to-string); [native source conformance](../tests/e2e/testdata/accept/to-string.ms); [opaque and cyclic formatting checks](../pkg/runtime/format_test.go).
 Verify: a record and an unconstrained `T` both support `.toString()` and direct interpolation; a closed resource converts without invoking an operation; passing that record directly to a String parameter is still rejected.
+
+### Invalid bounds must not survive recovery
+
+Verified: reporting an invalid bound without removing it lets implementation substitution turn a variable bound into a self-referential graph. Diagnostic hints and editor member discovery must terminate even on malformed bound graphs. Keep valid interface bounds such as `T: Compare[T]`; reject variable bounds such as `T: T` without attaching them as evidence.
+
+Apply when: resolving generic bounds, copying implementation variables, or traversing recovered types for diagnostics and editor queries.
+Evidence: [bounded crash regression](../pkg/checker/bound_recovery_test.go), [editor recovery](../pkg/tooling/lsp/bound_recovery_test.go), and [native interface-bound fixture](../tests/e2e/testdata/accept/recursive-interface-bound.ms).
 
 ### Local implementations must remain selected across module boundaries
 
@@ -29,7 +36,7 @@ Verify: two modules implement the same imported pair with different results; ret
 Decision: the language rebuild was directed to use the new design on `main`. Earlier designs and assistant proposals can conflict with subsequent user corrections. Establish the target contract from the latest direction and canonical pages before borrowing old implementation ideas.
 
 Apply when: rebuilding a feature, reusing historical code, or reconciling branches.
-Evidence: [user correction in Build out the language](codex://threads/01a12c08-60dd-731b-a496-4a932d9b6000); [design index](../documentation/_index.md).
+Evidence: [design index](../documentation/_index.md).
 Verify: the accepted/rejected source cases agree with the intended design, and any checkout mismatch is identified before being treated as a rule.
 
 ### Removing a construct includes its surrounding APIs
@@ -37,7 +44,7 @@ Verify: the accepted/rejected source cases agree with the intended design, and a
 Decision: the request to remove `assert` required follow-up corrections to remove assertion helpers, bindings, docs, and even residual tests. The user wanted ordinary `if`/`return` control flow. Removing the syntax alone did not satisfy the requested surface.
 
 Apply when: removing or renaming language constructs or standard APIs.
-Evidence: [successive corrections in Remove assert; use if return](codex://threads/01a12e19-ae70-752b-8c66-be8d59177006).
+Evidence: none recorded.
 Verify: inventory related exported helpers and aliases before editing, regenerate references, then check every surface covered by the removal request. Follow an explicit zero-reference request when deciding whether rejection tests should retain the old spelling.
 
 Verified: when rebasing standard-library work onto current main, migrate new conformance fixtures and documentation examples to ordinary `if not (...)` checks returning `panic`; do not restore the removed testing module or its native bindings from a stash. The source-level [built-in parity fixture](../tests/e2e/testdata/accept/builtin-parity.ms) exercises this form, and [standard bindings](../pkg/stdlib/bindings.json) remain free of the removed module.
@@ -46,11 +53,13 @@ Verified: when rebasing standard-library work onto current main, migrate new con
 
 Decision: remove the specialized Result error-mapping helper and keep domain translation in ordinary functions and matching. The newer error simplification permits specific errors to pass directly into the standard Error boundary, including through `try`; unrelated domain errors still require explicit translation. Do not restore a dedicated mapping helper.
 
-Decision: the user rejected both deeply nested Result matches and the elaborate loading examples added to replace them. Keep examples small and focused on the concept being taught. Use compatible `try` calls for a flat success path; do not build contrived domain models or helper layers just to make an example work.
+Decision: the user requested "please remove nested match from everywhere, note it as anti pattern and ensure it never gets repeated", then reaffirmed "nested match is anti pattern, solve it another way". This includes implementation, examples, documentation and diagnostic remedies. Keep grammar and execution semantics available for compatibility and meaningful syntax/semantic regressions. Use compatible `try`, early-exit payload bindings, Optional methods, or small helpers; the user also rejected elaborate loading examples, so avoid contrived domain models and helper layers added only to make an example work.
+
+Verified: [MSL107](../pkg/tooling/nested_match_lint.go) warns at each structurally inner match; the [repository guard](../scripts/repo-check/nested_match.go) inspects source, fences, and Go strings. Test allowances are scoped and require a reason. [CLI/editor regressions](../internal/cli/advisory_lint_test.go) preserve checking success and advisory status. The earlier local completion report did not establish publication; the reconciliation used current main and the actual code registry, where MSL104/105 are already allocated and MSL106 belongs to the payload-binding rule.
 
 Apply when: adding Result adapters or rewriting examples that combine execution and domain errors.
-Evidence: the user's removal request; [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [task group example](../documentation/concurrency/task-groups.md).
-Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. The standard Result module exports only its type, and regenerated API references agree with its declarations.
+Evidence: [flat flow and grammar compatibility](../documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat); [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [task group example](../documentation/concurrency/task-groups.md).
+Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. Result's success-only `map` and same-error `and_then` retain the original error payload; they do not add an error-translation helper. The standard Result module exports only its type, and regenerated API references agree with its declarations. [Called composition tests](../tests/e2e/testdata/stdlib/core-parity.ms) distinguish success transformation from error translation.
 
 ### Equality and hashing are source interfaces
 
@@ -65,12 +74,11 @@ Evidence: [sharing rules](../documentation/concurrency/sharing.md).
 
 ### Syntax improvements need examples across their boundaries
 
-Decision: support grouped symbol imports, and allow an omitted call label for a function with one parameter. The later token-cost request permits matching-name shorthand for multi-parameter functions and brace Map literals. Other multi-parameter expressions and constructors retain explicit labels. The single-parameter request measures declaration arity, not the number of arguments supplied. These are user decisions; verify their availability in the branch being changed.
+Decision: support grouped symbol imports and brace Map literals. The user's newer explicit request to “remove mandatory labels for invoking functions” supersedes the prior restriction to single-parameter unlabeled calls. Invocation labels are optional across functions, methods, function values and constructors. Preserve existing matching-name shorthand; changing every bare identifier to positional would silently change valid reordered calls. Keep callback function-type label identity separate from invocation syntax, including the contextual-lambda label adoption rule.
 
-Apply when: changing imports, calls, grammar, or editor assistance.
-Evidence for the newer rule: [call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names), [Map literals](../documentation/core-language/types/collections.md#map-literals), and [native terse syntax fixture](../tests/e2e/testdata/accept/terse-data.ms).
-Evidence: [grouped-import request](codex://threads/01a12e1a-7d2d-7646-b5fc-2dc8fdd60038); [single-parameter request](codex://threads/01a12e4a-98e8-775e-9e6c-c101a8ac300d).
-Verify: grouped imports resolve each symbol and its editor location; one-parameter calls exercise both spellings, multi-parameter calls accept matching bare names in any order and reject other unlabeled expressions, and missing arguments still fail. Consult current grammar and compatibility rules for methods, constructors, and function values rather than assuming identical boundaries.
+Apply when: changing calls, grammar, inference or editor assistance.
+Evidence: [canonical call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names); [binding/source preservation tests](../pkg/checker/positional_arguments_test.go); [native calls](../tests/e2e/testdata/accept/positional-arguments.ms).
+Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding.
 
 ### Recover concrete contract receivers through checked matching
 
@@ -79,7 +87,7 @@ Decision: a common Error contract must allow generic diagnostics and specific ha
 Verified: direct or stored standard error `message` methods dispatch through the registered Error implementation, rather than intrinsic receiver dispatch. Receiver type parameters belong to the implementation, not method-level inference. The [compiled error fixture](../tests/e2e/testdata/accept/library-errors.ms) exercises direct and stored diagnostics alongside generic error views.
 
 Apply when: changing Error boundaries, contract views, matching, or native standard implementations.
-Evidence: [contract type patterns](../documentation/core-language/control-flow/pattern-matching.md#contract-type-patterns); [common error boundary](../documentation/core-language/errors/results.md#a-common-error-boundary); [compiled errors and generic patterns](../tests/e2e/testdata/accept/library-errors.ms); [invalid contract patterns](../pkg/compiler/library_test.go).
+Evidence: [contract type patterns](../documentation/core-language/control-flow/pattern-matching.md#contract-type-patterns); [common error boundary](../documentation/core-language/errors/results.md#a-common-error-boundary); [compiled errors and generic patterns](../tests/e2e/testdata/accept/library-errors.ms); [invalid contract patterns](../pkg/build/library_test.go).
 Verify: exact nominal identities and generic arguments determine a match; the receiver and payload survive conversion and propagation; missing implementations, incomplete generic patterns, and missing fallbacks are rejected.
 
 ### Default arguments must not leak across callable replacement
@@ -100,6 +108,14 @@ Apply when: changing fields, collection updates, aliases, copies, equality, or c
 Evidence: [record contract](../documentation/core-language/types/records.md#mutation-and-cloning); [collection contract](../documentation/core-language/types/collections.md#mutation-and-copies); [native conformance](../tests/e2e/testdata/accept/mutation.ms); [resource clone rejection](../pkg/compiler/mutation_test.go); [CLI rejection and shared file lifetime](../tests/e2e/mutation_test.go).
 Verify: the counter's Unit-returning method updates `self.val`; aliases observe mutation; a clone's outer storage stays separate while its nested references remain shared. Native resource clone calls are rejected. Protect concurrent mutation with existing Synchronized guards; do not restore removed sharing bounds.
 
+### Source-backed data types belong in the prelude
+
+Decision: the user requested Optional, Result, their related helpers, and Error without imports. The later accepted [issue #187 direction](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138072921) adds List and Map to that scope; the adds Set through the same mechanism. Keep their canonical source-backed identities, including some/none, ok/error, and Optional receiver methods. Existing explicit imports remain valid. Ordinary declarations may select a local identity instead; a matching spelling must not acquire native behavior. Other standard APIs remain explicit imports. [Map.add is the accepted insertion spelling](https://github.com/manuscript-lang/manuscript/issues/187#issuecomment-6138104857); preserve with_entry compatibility until a migration is decided.
+
+Apply when: changing prelude scope, standard imports, case lookup, or editor auto-imports.
+Evidence: [module scope rules](../documentation/core-language/modules/declarations.md#names-and-declaration-order), [native prelude conformance](../tests/e2e/testdata/accept/prelude.ms), [case inference and shadowing regressions](../pkg/compiler/prelude_test.go), [collection execution](../tests/e2e/testdata/accept/collection-prelude.ms), [Set execution](../tests/e2e/testdata/accept/set-prelude.ms), and [editor completion/navigation](../pkg/tooling/lsp/completion_test.go).
+Verify: Optional methods and Result propagation into Error execute without imports; incomplete constructors and ambiguous cases still fail; editor completion adds no redundant import and definitions reach pinned standard source.
+
 ### Parameterless main and imported host accessors
 
 Decision: applications export `fn main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
@@ -110,7 +126,7 @@ Verify: a parameterless entry runs; parameterized entries fail; imported accesso
 
 ### Keep short bodies available without a second function kind
 
-Decision: the user requested a terse language with single-line functions and conditions. Do not restore the earlier blanket requirement for indented function bodies. The user clarified that `else` must start on a separate line: allow one branch per line, and reject same-line `else` or `else if`. Inline suites use the existing colon and explicit statement/return semantics; they do not introduce implicit returns or a separate callable kind.
+Decision: the user requested a terse language with single-line functions and conditions. Do not restore the earlier blanket requirement for indented function bodies. The user clarified that `else` must start on a separate line: allow one branch per line, and reject same-line `else` or `else if`. The latest correction permits a single expression after a function or method colon and implicitly returns it. Multiline bodies retain explicit returns. Other inline suites retain ordinary statement semantics; there is no separate callable kind.
 
 Apply when: changing suite parsing, anonymous-function layout, formatting, or syntax documentation.
 Evidence: [canonical suite rules](../documentation/core-language/basics/grammar.md#statements-and-patterns), [parser boundary cases](../pkg/parser/parser_test.go), and [native inline conformance](../tests/e2e/testdata/accept/inline-suites.ms).
@@ -126,12 +142,53 @@ Apply when: changing Optional declarations, alternative method lookup, fallback 
 Evidence: [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [optional argument rules](../documentation/core-language/types/optionals.md#passing-optional-arguments), [canonical declaration](../pkg/stdlib/optional.ms), [compiled method fixture](../tests/e2e/testdata/accept/optional-methods.ms), and [argument conformance](../tests/e2e/testdata/accept/optional-arguments.ms).
 Verify: false and zero are present; eager defaults evaluate normally; lazy defaults run exactly once only for none; unwrap on none faults clearly. Extraction retains nested type arguments and payload identity, stored receiver methods still work, and local alternatives with the same spelling receive no native methods.
 
-Verified: Optional argument checking retains the expression's source type and records wrapping separately, so editor queries and Boolean folding keep their existing meaning. Reuse an inferred payload type before retrying with context: checking every nested call twice causes exponential work for both accepted and rejected inputs. Evidence: [source/AST regression](../pkg/checker/optional_test.go), [nested call regression](../pkg/compiler/optional_test.go), and [argument checking](../pkg/checker/calls.go).
+Verified: Optional argument checking retains the expression's source type and records wrapping separately, so editor queries and Boolean folding keep their existing meaning. Reuse an inferred payload type before retrying with context: checking every nested call twice causes exponential work for both accepted and rejected inputs. Evidence: [source/AST regression](../pkg/checker/optional_test.go), [nested call regression](../pkg/compiler/optional_test.go), and [argument checking](../pkg/checker/calls.go). The same rule applies to successful independent generic argument checks: reuse their checked information within the owning call, then apply ordinary expected-type and conversion checks. Do not cache probes across calls or scopes. Contextual callback probes can be retained within their owning call only when their final function signature is identical and contains no unresolved inference variables; replay retained root diagnostics once. A complete result signature alone is insufficient: earlier unresolved or conflicting returns, and `try` checked before the enclosing result is known, can require the final context to repair a valid body. Record this dependence and recheck those bodies; invalid result slots can be reused only when the final signature retains exactly those slots. Evidence: [callback complexity and context regressions](../pkg/compiler/callback_work_test.go), [native callback metadata](../tests/e2e/testdata/accept/callback-probe-reuse.ms), and [issue #151](https://github.com/manuscript-lang/manuscript/issues/151). Evidence: [deep generic arguments](../pkg/compiler/inference_work_test.go) and [native order, conversions, and captures](../tests/e2e/testdata/accept/inference-call-order.ms).
 
-### Collection storage can guard different recursive element types
+### Recursive data uses references; generic applications still stay finite
 
-Verified: tracking List/Map/Set nominal identities as active generic applications rejected valid recursive trees when a path crossed two collections with different element types. Collection storage is indirect; recurse into its arguments without treating that collection's identity as a user-defined generic cycle. Continue checking active user type identities so genuinely growing generic recursion is rejected.
+Decision: direct and mutually recursive tree types, resolving [issue #97](https://github.com/manuscript-lang/manuscript/issues/97) and superseding the inline-layout restriction. Preserve complete initialization, reference aliasing, shallow cloning, and cycle-safe structural equality. Recursive shapes must not automatically derive Hashable: structural hashing has no cycle guard, while explicit domain identity implementations remain available.
 
-Apply when: changing recursive layout checking or adding recursive data types.
-Evidence: [layout checker](../pkg/checker/contracts.go), [accepted and rejected layout regressions](../pkg/checker/checker_test.go), and [compiled TOML node trees](../tests/e2e/testdata/stdlib/toml.ms).
-Verify: `TestNestedCollectionsGuardRecursiveLayouts` accepts the two Map element types and still rejects `Growing[List[T]]` recursion.
+Verified: declaration dependency cycles distinguish finite nesting such as `Box[Box[Int]]` from expanding generic recursion. Track generic substitutions around declaration cycles rather than recursively expanding storage layouts. The finite-application rule includes references in generic arguments, functions, and interface operations; indirect storage cannot hide an expanding type family. Collection identities are not user declaration cycles. Keep active cycle detection separate from completed equality/hashing results, so shared acyclic shapes do not trigger exponential property checking.
+
+Apply when: changing recursive data, automatic equality/hashing, or generic regularity checks.
+Evidence: [recursive data rules](../documentation/core-language/types/records.md#recursive-data), [declaration checks](../pkg/checker/type_recursion.go), [compiler regressions](../pkg/compiler/recursive_types_test.go), [shared-dependency regressions](../pkg/checker/layout_diagnostics_test.go), and [native recursive data fixture](../tests/e2e/testdata/accept/recursive-types.ms).
+Verify: direct and mutual trees execute; cyclic equality terminates; clone retains child references; uninitialized self-references and automatic recursive hashing fail. Finite nested generic applications pass; expanding cycles through fields, callbacks, or interfaces fail.
+
+### Match is uniformly a value expression; indexing preserves Optional
+
+Decision: when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form. A standalone match discards the same checked result. The user also clarified that list brackets must preserve `.at()`'s Optional result, rather than unwrap or introduce bounds faults. Generic specialization retains its existing meaning.
+
+Apply when: changing matching, collection lookup, type application parsing, or examples migrating from other languages.
+Evidence: [match values](../documentation/core-language/control-flow/pattern-matching.md#arm-values), [list lookup](../documentation/core-language/types/collections.md#lookup-and-updates), and [native expression conformance](../tests/e2e/testdata/accept/expression-conveniences.ms).
+Verify: use `items[index].unwrap_or(0)` for absent indexes, keep `identity[Int]` specialization, and exercise enclosing returns, propagation, cleanup, and loop exits from match arms. An effects-only arm ending in a value-returning call needs an explicit `unit` when another arm produces Unit.
+
+### Infer local callback signatures from context
+
+Decision: the user explicitly permits callback parameter and result inference. Known function contexts supply omitted parameter types; callback bodies can supply generic output evidence after inputs are known, including success types within a partially known Result context. Named public signatures stay explicit, and callable argument labels retain their existing function identity. Following [issue #81](https://github.com/manuscript-lang/manuscript/issues/81), contextual anonymous functions adopt the expected call labels independently of local parameter names; lowering must dispatch using those context labels while binding body names by position. Use existing argument/field defaults to omit redundant values; do not treat every Optional parameter as implicitly defaulted.
+
+Decision: unambiguous generic inference from the expected result to address [issue #98](https://github.com/manuscript-lang/manuscript/issues/98), superseding the argument-only restriction. Preserve argument evidence and explicit specialization; use result context before deferred callbacks, without widening ordinary nominal/function types or adding Optional return wrapping. Existing Error boundaries retain concrete error evidence. Inferred function types still erase default omission permissions.
+
+Verified: argument inference must apply Result error widening within each transactional match, including the single Optional payload attempt, and check the completed target after substitution. A separate root-only fallback missed Optional wrapping and an error parameter already determined as Error; committing a failed success prefix would constrain unrelated later evidence. Keep success types and nested applications invariant, then let final argument checking retain scoped Error evidence. Evidence: [conversion and rollback checks](../pkg/compiler/result_argument_inference_test.go), [native identity and order](../tests/e2e/testdata/accept/result-argument-inference.ms), and [local implementation boundaries](../tests/e2e/result_argument_scope_test.go).
+
+Verify: source and native callbacks cover generic map results, callbacks listed before their inference inputs, optional callbacks, nested closures, constructors, and editor parameter navigation. Expected-result tests also cover return/binding contexts, bounds, conflicting evidence, concrete Error conversion, and nested call order. Preserve explicit annotations where incomplete Result construction or `try` lacks a known result context.
+
+Apply when: changing callback checking, generic inference, syntax or editor annotations.
+Evidence: [callback rules](../documentation/core-language/functions/function-values-and-closures.md#contextual-callback-inference), [acceptance and rejection checks](../pkg/compiler/callbacks_test.go), and [native fixture](../tests/e2e/testdata/accept/contextual-callbacks.ms). Expected-result evidence: [inference rules](../documentation/core-language/types/generics.md#inference-from-arguments), [compiler boundaries](../pkg/compiler/contextual_generics_test.go), [native execution](../tests/e2e/testdata/accept/contextual-generics.ms), and [editor information](../pkg/tooling/lsp/contextual_generics_test.go).
+
+### Direct native calls must capture receivers before arguments
+
+Verified: Go orders function calls left to right but does not guarantee that a plain variable argument is read before a later call. Replacing bound-method construction with `ListAt(ctx, receiver, indexExpression, ...)` let a match expression in the index reassign the receiver before it was captured. An inline `SourceAt` call captures the receiver first while preserving fault attribution; direct scalar lowering likewise extracts operands through calls.
+
+Apply when: removing bound-call wrappers or lowering expressions directly to Go operations.
+Evidence: [direct collection lowering](../pkg/lower/lower_collections.go), [receiver reassignment regression](../tests/e2e/testdata/accept/collection-call-order.ms), and [evaluation-order contract](../documentation/contributing/compiler/lowering/evaluation-order.md).
+Verify: a list receiver initially containing 7 still returns 7 when its index expression reassigns the local to a list containing 9; receiver and argument expressions each execute once in written order.
+
+### Module-level constants are use-site evaluations, not stored values
+
+Decision: Chinmay approved top-level `let NAME[: T] = <constant expression>` in the #332 thread after the ban was found to have no recorded rationale; the inferred gains of the ban were no module initialization order, no startup side effects, and no shared module state. Constants keep those gains: a use evaluates the initializer, so list and map constants are fresh per use.
+Verified: a constant is a parameterless `fn` marked `Declaration.Constant` whose body returns the initializer. The checker validates the constant-expression form, infers an unannotated type with cycle detection, and rewrites a constant name to a call marked `ConstantUse`; a written `NAME()` is rejected. Lowering, imports, and exports are unchanged. Tooling that lists functions still shows a constant as one, except docgen, which prints `let NAME: T`.
+Open: hoisting scalar constants to Go constants for performance, and showing constants as constants in LSP hover, outline, and inspection.
+
+Apply when: changing top-level declarations, name resolution of module symbols, or the formatter's blank-line rules.
+Evidence: [constants rules](../documentation/core-language/modules/declarations.md#constants), [checker](../pkg/checker/constants.go), [diagnostics](../tests/e2e/constants_test.go), and [native fixture](../tests/e2e/testdata/accept/constants.ms).
+Verify: `ms run` on a module using an exported constant from another module, a local `let` shadowing a constant, and `A()` on a constant rejected.

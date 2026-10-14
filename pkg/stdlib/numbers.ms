@@ -1,9 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
-import Result from "@std/result.ms"
-
-# Errors returned when numeric text is malformed or outside the target range.
+# Errors returned for invalid numeric requests, malformed text, or out-of-range values.
 export type NumberError:
     case InvalidInput
     case InvalidData

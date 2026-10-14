@@ -1,6 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 import Connection from "@std/net.ms"
 import DatagramSocket from "@std/net.ms"
@@ -11,9 +10,7 @@ import List from "@std/collections.ms"
 import Listener from "@std/net.ms"
 import Map from "@std/collections.ms"
 import NetworkError from "@std/net.ms"
-import Optional from "@std/optional.ms"
 import ReadStream from "@std/io.ms"
-import Result from "@std/result.ms"
 import TlsOptions from "@std/tls.ms"
 import WebSocket from "@std/websocket.ms"
 import WebSocketError from "@std/websocket.ms"
@@ -29,13 +26,23 @@ export type HttpError:
     case Timeout
     case Failed(message: String)
 
-# Buffered HTTP response metadata and body.
+# Buffered HTTP response metadata and body. Header names have canonical spelling;
+# Map lookup is case-sensitive. Lists preserve separate values in received order.
 export type ClientResponse:
     status: Int
     headers: Map[String, List[String]]
     body: Bytes
 
+# Finds all values under ASCII case-equivalent names without changing Map keys.
+# Returns none if absent, or some(empty) for a present empty list. Copies list
+# membership and preserves Map insertion order followed by each list's order.
+export fn header_values(
+    headers: Map[String, List[String]],
+    name: String
+) -> Optional[List[String]]:
+
 # Reusable HTTP client with connection pooling and explicit response limits.
+# Outbound case-equivalent header keys append values in Map insertion order.
 export interface HttpClient:
     fn close() -> Unit
     fn send(
@@ -66,6 +73,8 @@ export type HttpClientOptions:
     tls: TlsOptions
 
 # One streaming server exchange. Read or write incrementally and close when done.
+# Received header names have canonical spelling; Map lookup is case-sensitive.
+# Sending case-equivalent names appends each list in Map insertion order.
 export interface HttpExchange:
     fn close() -> Unit
     fn headers() -> Map[String, List[String]]
@@ -91,8 +100,14 @@ export type HttpRequest:
     query: String
     headers: Map[String, Bytes]
     body: Bytes
+    # Finds a header using ASCII case-insensitive names, or returns `none`.
+    # Leaves Map keys unchanged. Repeated received values remain newline-joined bytes.
+    # If a manually built Map has equivalent names, returns its first matching entry.
+    fn header(name: String) -> Optional[Bytes]:
 
 # Buffered response returned by the simple HTTP server handler.
+# Case-equivalent header keys emit separate values in Map insertion order.
+# Use HttpExchange.send_headers for repeated values under one exact Map key.
 export type HttpResponse:
     status: Int
     headers: Map[String, String]
@@ -114,7 +129,8 @@ export type HttpServerOptions:
     grace: Optional[Duration] = none
     tls: Optional[TlsOptions]
 
-# Streaming response body returned by HTTP client operations.
+# Streaming response body returned by HTTP client operations. Header names have
+# canonical spelling; Map lookup is case-sensitive. Lists keep received order.
 export interface ResponseBody:
     fn close() -> Unit
     fn headers() -> Map[String, List[String]]

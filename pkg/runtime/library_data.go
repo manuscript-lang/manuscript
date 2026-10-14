@@ -12,6 +12,9 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type libraryBigInt struct{ n *big.Int }
@@ -44,14 +47,14 @@ func init() {
 	add("math", "abs_int", "Int", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[0].(int64)
 		if n == math.MinInt64 {
-			return Panic("Int overflow")
+			return Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 		}
 		if n < 0 {
 			n = -n
 		}
 		return n
 	})
-	for name, f := range map[string]func(string) string{"trim": strings.TrimSpace, "upper": strings.ToUpper, "lower": strings.ToLower} {
+	for name, f := range map[string]func(string) string{"trim": strings.TrimSpace, "upper": libraryUpper, "lower": libraryLower} {
 		add("string", name, "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string)) })
 	}
 	for name, f := range map[string]func(string, string) bool{"contains": strings.Contains, "starts_with": strings.HasPrefix, "ends_with": strings.HasSuffix} {
@@ -67,7 +70,7 @@ func init() {
 	add("string", "split", "List[String]", []LibraryParam{p("text", "String"), p("separator", "String"), p("max_parts", "Optional[Int]")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[2].(int64)
 		if n < 0 {
-			return Panic("split requires nonnegative max_parts")
+			return Panic("split requires nonnegative max_parts; pass 0 or a positive count")
 		}
 		if n == 0 {
 			return libraryStrings(nil)
@@ -97,6 +100,15 @@ func init() {
 			n = bound
 		}
 		return strings.Replace(a[0].(string), a[1].(string), a[2].(string), int(n))
+	})
+	libraryAlias("string", "replace_first", "replace")
+	// A required count has its own ABI shape, while the prepared legacy body
+	// retains explicit-cap normalization, bounds faults and scalar matching.
+	replace := libraryFunctions["string/replace"].Body
+	add("string", "replace_n", "String", []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_replacements", "Int")}, func(ctx *Execution, result string, args []Value) Value {
+		// The legacy option validator rejects a negative explicit Some. Raw
+		// required Ints otherwise reach the primitive's different fault path.
+		return replace(ctx, result, []Value{args[0], args[1], args[2], optional("Int", args[3], true)})
 	})
 	add("string", "scalar_values", "List[Int]", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, a []Value) Value {
 		var items []Value
@@ -130,7 +142,7 @@ func init() {
 		}
 		return libraryOK(result, string(r[s:e]))
 	})
-	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return int64(utf8.RuneCountInString(a[0].(string))) })
+	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return scalarCount(a[0].(string)) })
 	add("encoding", "hex_encode", "String", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return hex.EncodeToString(a[0].(Bytes).Items) })
 	add("encoding", "hex_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("max_bytes", "Optional[Int]")}, func(_ *Execution, result string, a []Value) Value {
 		n := a[1].(int64)
@@ -183,11 +195,14 @@ func init() {
 		}
 		return libraryOK(result, Bytes{b})
 	})
-	add("bytes", "slice", "Bytes", []LibraryParam{p("data", "Bytes"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
+	add("bytes", "slice", libraryResult("Bytes", "CollectionError"), []LibraryParam{p("data", "Bytes"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		b := a[0].(Bytes).Items
-		s, e := a[1].(int64), a[2].(int64)
-		librarySlice(len(b), s, e)
-		return Bytes{append([]byte{}, b[s:e]...)}
+		s, e, ok := librarySliceBounds(len(b), a[1].(int64), a[2].(int64))
+		if !ok {
+			return libraryError(r, "OutOfRange", "")
+		}
+		// Bytes are immutable, so the slice shares storage; the capacity limit keeps appends from touching the parent.
+		return libraryOK(r, Bytes{b[s:e:e]})
 	})
 	add("bytes", "values", "List[Int]", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value {
 		b := a[0].(Bytes).Items
@@ -218,7 +233,7 @@ func init() {
 	add("numbers", "format_int", "String", []LibraryParam{p("value", "Int"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		r := a[1].(int64)
 		if r < 2 || r > 36 {
-			return Panic("invalid radix")
+			return libraryRangeFault("Int.to_string", "radix", r, 2, 36)
 		}
 		return strconv.FormatInt(a[0].(int64), int(r))
 	})
@@ -238,7 +253,7 @@ func init() {
 	add("bigint", "parse", libraryResult("BigInt", "BigIntError"), []LibraryParam{p("text", "String"), p("radix", "Int"), p("max_digits", "Optional[Int]")}, func(_ *Execution, r string, a []Value) Value {
 		text := a[0].(string)
 		radix, n := a[1].(int64), a[2].(int64)
-		if radix < 2 || radix > 36 || n <= 0 {
+		if radix < 2 || radix > 36 || n < 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
 		digits := len(strings.TrimPrefix(strings.TrimPrefix(text, "+"), "-"))
@@ -280,7 +295,7 @@ func init() {
 	add("bigint", "format", "String", []LibraryParam{p("value", "BigInt"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[1].(int64)
 		if n < 2 || n > 36 {
-			return Panic("invalid radix")
+			return libraryRangeFault("BigInt.to_string", "radix", n, 2, 36)
 		}
 		return a[0].(libraryBigInt).n.Text(int(n))
 	})
@@ -331,7 +346,7 @@ func init() {
 	})
 	// Sequential generic collection helpers retain the caller's actual list identity.
 	variable := []LibraryParam{p("T", "")}
-	libraryGeneric("collections", "reverse", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
+	libraryGeneric("collections", "reverse_in_place", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(*List)
 		out := v.Items
 		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
@@ -339,12 +354,43 @@ func init() {
 		}
 		return v
 	})
-	libraryGeneric("collections", "slice", "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		v := a[0].(*List)
-		s, e := a[1].(int64), a[2].(int64)
-		librarySlice(len(v.Items), s, e)
-		return &List{v.Type, append([]Value{}, v.Items[s:e]...)}
+	reverse := libraryFunctions["collections/reverse_in_place"].Body
+	libraryGeneric("collections", "reversed", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(ctx *Execution, result string, a []Value) Value {
+		return reverse(ctx, result, []Value{Clone(a[0])})
 	})
+	libraryGeneric("collections", "slice", libraryResult("List[T]", "CollectionError"), variable, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
+		v := a[0].(*List)
+		s, e, ok := librarySliceBounds(len(v.Items), a[1].(int64), a[2].(int64))
+		if !ok {
+			return libraryError(r, "OutOfRange", "")
+		}
+		return libraryOK(r, &List{Type: v.Type, Items: append([]Value{}, v.Items[s:e]...)})
+	})
+	for _, name := range []string{"take", "drop"} {
+		libraryGeneric("collections", name, "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("count", "Int")}, func(ctx *Execution, _ string, args []Value) Value {
+			values := args[0].(*List)
+			count := args[1].(int64)
+			if count < 0 {
+				return Panic("List." + name + ": count must be nonnegative, found " + strconv.FormatInt(count, 10))
+			}
+			source := values.Items
+			if count > int64(len(source)) {
+				count = int64(len(source))
+			}
+			start, end := 0, int(count)
+			if name == "drop" {
+				start, end = int(count), len(source)
+			}
+			items := make([]Value, end-start)
+			for i := range items {
+				if i%1024 == 0 {
+					CheckCancelled(ctx)
+				}
+				items[i] = source[start+i]
+			}
+			return &List{Type: values.Type, Items: items}
+		})
+	}
 }
 
 var libraryFloatSyntax = regexp.MustCompile(`^[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$`)
@@ -443,3 +489,8 @@ func javascriptRound(value float64) float64 {
 	}
 	return lower
 }
+
+// Full Unicode case mapping, independent of locale: ß becomes SS, ligatures
+// expand, final sigma lowers to ς, and İ lowers to i + U+0307.
+func libraryUpper(text string) string { return cases.Upper(language.Und).String(text) }
+func libraryLower(text string) string { return cases.Lower(language.Und).String(text) }

@@ -180,6 +180,7 @@ func TestLibraryHTTPClient(t *testing.T) {
 		t.Fatal(response)
 	}
 	libraryFailure(t, call("/body", 3), "LimitExceeded")
+	libraryFailure(t, n.Operation("request").Body(ctx, []Value{"GET", "http://127.0.0.1:99999/", headers, Bytes{}, int64(10), Duration(time.Second)}), "InvalidInput")
 	redirect := librarySuccess(t, call("/redirect", 1000)).(Record)
 	if redirect.Fields["status"] != int64(302) {
 		t.Fatal("followed redirect")
@@ -253,7 +254,7 @@ func TestLibraryNetworkCloseInterruptsRequest(t *testing.T) {
 	n := &network{}
 	done := make(chan Value, 1)
 	go func() {
-		done <- n.Operation("request").Body(ctx, []Value{"GET", server.URL, &Map{"@std/Map[String][String]", nil}, Bytes{}, int64(100), Duration(10 * time.Second)})
+		done <- n.Operation("request").Body(ctx, []Value{"GET", server.URL, &Map{Type: "@std/Map[String][String]"}, Bytes{}, int64(100), Duration(10 * time.Second)})
 	}()
 	<-started
 	n.Operation("close").Body(ctx, nil)

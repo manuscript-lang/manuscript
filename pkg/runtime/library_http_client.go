@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -100,6 +101,14 @@ func (n *network) httpOperation(name string) (Function, bool) {
 	}
 	return Function{}, false
 }
+func libraryValidPort(u *url.URL) bool {
+	port := u.Port()
+	if port == "" {
+		return true
+	}
+	n, err := strconv.Atoi(port)
+	return err == nil && n <= 65535
+}
 func sameHTTPOrigin(a, b *url.URL) bool {
 	return strings.EqualFold(a.Scheme, b.Scheme) && strings.EqualFold(a.Host, b.Host)
 }
@@ -114,7 +123,7 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 			return libraryError(r, "InvalidInput", "")
 		}
 		u, err := url.Parse(a[1].(string))
-		if err != nil || u.Host == "" || u.User != nil || u.Scheme != "http" && u.Scheme != "https" {
+		if err != nil || u.Host == "" || u.User != nil || !libraryValidPort(u) || u.Scheme != "http" && u.Scheme != "https" {
 			return libraryError(r, "InvalidInput", "")
 		}
 		if !c.owner.policy.host(u.Hostname()) {
@@ -164,10 +173,10 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 		}
 		for _, entry := range a[2].(*Map).Entries {
 			key, value := entry.Key.(string), entry.Value.(string)
-			if !libraryHeaderName(key) || strings.ContainsAny(value, "\r\n\x00") || strings.EqualFold(key, "Host") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") {
+			if !libraryHeaderName(key) || !validHeaderValue(value) || strings.EqualFold(key, "Host") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") {
 				return libraryError(r, "InvalidInput", "")
 			}
-			req.Header.Set(key, value)
+			req.Header.Add(key, value)
 		}
 		// A borrowed streaming body cannot be replayed; return redirects for explicit handling.
 		client := *c.client
@@ -306,15 +315,12 @@ func (b *libraryResponseBody) Operation(name string) Function {
 			max = b.remaining + 1
 		}
 		data := make([]byte, max)
-		done := make(chan struct{})
-		stop := context.AfterFunc(ctx.Context, func() { defer close(done); b.response.Body.Close() })
+		stop := libraryInterruptFunc(ctx, func() { b.response.Body.Close() })
 		count, err := b.reader.Read(data)
 		if b.upload != nil {
 			b.upload.rethrow()
 		}
-		if !stop() {
-			<-done
-		}
+		stop()
 		CheckCancelled(ctx)
 		if int64(count) > b.remaining {
 			b.response.Body.Close()
@@ -342,7 +348,7 @@ func (b *libraryResponseBody) Operation(name string) Function {
 func libraryHTTPHeaders(headers http.Header) *Map {
 	out := &Map{Type: "@std/Map[String][@std/List[String]]"}
 	for _, key := range sortedHeaderNames(headers) {
-		out.Entries = append(out.Entries, Entry{key, libraryStrings(headers.Values(key))})
+		out.Entries = append(out.Entries, Entry{key, libraryStrings(headers[key])})
 	}
 	return out
 }

@@ -22,6 +22,12 @@ func init() {
 	add("csv", "parse", libraryResult("List[List[String]]", "CsvError"), []LibraryParam{p("text", "String"), p("options", "CsvOptions"), p("max_rows", "Optional[Int]"), p("max_cells", "Optional[Int]")}, libraryCSVParse)
 	add("csv", "stringify", libraryResult("String", "CsvError"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Optional[Int]")}, libraryCSVStringify)
 	add("html", "escape", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return html.EscapeString(a[0].(string)) })
+	add("html", "unescape", "String", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, args []Value) Value {
+		CheckCancelled(ctx)
+		text := html.UnescapeString(args[0].(string))
+		CheckCancelled(ctx)
+		return text
+	})
 	add("url", "encode_component", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value {
 		text := a[0].(string)
 		var b strings.Builder
@@ -405,7 +411,20 @@ func libraryCSVStringify(ctx *Execution, r string, a []Value) Value {
 	writer.UseCRLF = crlf
 	for _, row := range a[0].(*List).Items {
 		CheckCancelled(ctx)
-		if err := writer.Write(libraryStringValues(row)); err != nil {
+		record := libraryStringValues(row)
+		// encoding/csv emits a bare line ending for a sole empty field,
+		// which its reader skips. Quote it to retain this row on round trip.
+		if len(record) == 1 && record[0] == "" {
+			text := "\"\"\n"
+			if crlf {
+				text = "\"\"\r\n"
+			}
+			if _, err := w.Write([]byte(text)); err != nil {
+				return libraryError(r, "LimitExceeded", "")
+			}
+			continue
+		}
+		if err := writer.Write(record); err != nil {
 			return libraryError(r, "LimitExceeded", "")
 		}
 		writer.Flush()

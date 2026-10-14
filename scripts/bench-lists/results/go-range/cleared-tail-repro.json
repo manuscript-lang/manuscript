@@ -1,0 +1,13 @@
+{
+  "revision": "d8a83a2aca237e329ccf2aaa72535b299199958b",
+  "source": "import panic from \"@std/faults.ms\"\n\nexport fn main() -> Int:\n    let values = [1, 2, 3]\n    var total = 0\n    var count = 0\n    for value in values:\n        total = total + value\n        if count == 0:\n            values.without(0)\n        count = count + 1\n    if total != 4:\n        panic(\"unexpected sum\")\n    return 0\n",
+  "command": [
+    "/workspace/manuscript/dist/manuscript-linux-amd64/ms",
+    "run",
+    "/tmp/ms142-range-tail.ms"
+  ],
+  "returncode": 70,
+  "stdout": "",
+  "stderr": "interface conversion: interface {} is nil, not int64\n",
+  "cli_sha256": "bf40b1f05424cce950e568ba39b3178e62ac7572ccda9bc3197dfce01db8d53a"
+}

@@ -60,7 +60,7 @@ func TestClonedCollectionSnapshots(t *testing.T) {
 	ctx := RootExecution()
 	original := &Map{Type: "@std/Map[String][Int]"}
 	add := func(m *Map, key string, value int64) *Map {
-		return Invoke(ctx, NativeMember(m, "with_entry"), []Argument{{"value", value}, {"key", key}}).(*Map)
+		return Invoke(ctx, NativeMember(m, "add"), []Argument{{"value", value}, {"key", key}}).(*Map)
 	}
 	a := add(Clone(original).(*Map), "a", 1)
 	b := add(Clone(a).(*Map), "b", 2)
@@ -68,7 +68,7 @@ func TestClonedCollectionSnapshots(t *testing.T) {
 	if len(original.Entries) != 0 || a.Entries[0].Value != int64(1) || updated.Entries[0].Key != "a" || updated.Entries[0].Value != int64(3) {
 		t.Fatal("update mutated an alias or changed order")
 	}
-	removed := Invoke(ctx, NativeMember(Clone(updated), "without"), []Argument{{"key", "a"}}).(*Map)
+	removed := Invoke(ctx, NativeMember(Clone(updated), "remove"), []Argument{{"key", "a"}}).(*Map)
 	reinserted := add(removed, "a", 4)
 	if reinserted.Entries[1].Key != "a" {
 		t.Fatal("reinsertion order")

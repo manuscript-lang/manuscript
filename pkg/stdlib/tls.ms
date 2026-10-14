@@ -1,10 +1,7 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Optional from "@std/optional.ms"
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 import List from "@std/collections.ms"
-import Result from "@std/result.ms"
 import Timestamp from "@std/time.ms"
 
 # Errors returned when TLS configuration, certificates, or peer authentication fail.

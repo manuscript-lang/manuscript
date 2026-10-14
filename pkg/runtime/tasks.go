@@ -15,17 +15,28 @@ type Execution struct {
 	HostServices  map[*httpService]bool
 	Lifetime      *workLifetime
 	Host          *hostRoots
+	calls         *callState
 }
+
+// callState tracks one goroutine's nested source calls. Copies of an
+// Execution made for equality scopes or cancellation share it.
+type callState struct {
+	depth     int64
+	traceFull bool
+}
+
 type cancelled struct{}
 
 func RootExecution() *Execution {
-	return &Execution{Context: context.Background(), Lifetime: &workLifetime{}, Host: &hostRoots{}}
+	return &Execution{Context: context.Background(), Lifetime: &workLifetime{}, Host: &hostRoots{}, calls: &callState{}}
 }
 func CheckCancelled(ctx *Execution) {
-	if ctx != nil && ctx.Context.Err() != nil {
+	if ctx != nil && isDone(ctx.Context) {
 		panic(cancelled{})
 	}
 }
+
+func isDone(ctx context.Context) bool  { return ctx.Err() != nil }
 func Shield(ctx *Execution) *Execution { return inherit(ctx, context.WithoutCancel(ctx.Context)) }
 func Cleanup(ctx *Execution, resource Value) {
 	pending := recover()
@@ -58,7 +69,7 @@ func StandardFunction(name, result string) Value {
 		return NewFunction([]string{"duration"}, "Unit", func(ctx *Execution, args []Value) Value {
 			delay := args[0].(Duration)
 			if delay < 0 {
-				return Panic("sleep duration must be nonnegative")
+				return durationParameterFault("sleep", "duration", args[0])
 			}
 			timer := time.NewTimer(time.Duration(delay))
 			defer timer.Stop()
@@ -140,6 +151,11 @@ func (stack *CleanupStack) remove(action *CleanupAction) {
 	}
 }
 func (stack *CleanupStack) Unwind() {
+	// Without actions there is nothing to run, and recovering only to
+	// re-raise makes unwinding a deep stack quadratic.
+	if len(stack.actions) == 0 {
+		return
+	}
 	pending := recover()
 	for len(stack.actions) > 0 {
 		action := stack.actions[len(stack.actions)-1]
@@ -162,7 +178,7 @@ func (stack *CleanupStack) Unwind() {
 func CleanupOperation(resource Value, contract string, scopes ...TypeScope) Value {
 	if contract == "" {
 		switch resource.(type) {
-		case Record, Alternative:
+		case Struct, Record, Alternative:
 			contract = "@std/Closeable"
 		}
 	}
@@ -176,4 +192,12 @@ func init() {
 		CheckCancelled(ctx)
 		return Unit{}
 	})
+}
+
+// Duration limits are displayed as their original signed nanosecond count.
+func durationParameterFault(operation, parameter string, value Value) Value {
+	if option, ok := value.(Alternative); ok && option.Tag == "some" {
+		value = option.Fields[0]
+	}
+	return libraryRangeFault(operation, parameter+" (nanoseconds)", int64(value.(Duration)), 0, nativeUnlimited)
 }

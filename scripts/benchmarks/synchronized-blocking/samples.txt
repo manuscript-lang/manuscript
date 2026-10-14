@@ -1,0 +1,200 @@
+VARIANT baseline GOMAXPROCS 1 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended      	 3557718	       169.9 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle    	  193016	      2971 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks 	  198105	      3031 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.018s
+VARIANT blocking GOMAXPROCS 1 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended      	 3508308	       168.5 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle    	  194730	      3060 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks 	  187950	      3005 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.996s
+VARIANT blocking GOMAXPROCS 1 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended      	 2936456	       171.7 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle    	  191030	      3069 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks 	  195981	      3070 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.970s
+VARIANT baseline GOMAXPROCS 1 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended      	 3569600	       187.6 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle    	  192177	      2997 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks 	  197251	      3015 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.087s
+VARIANT baseline GOMAXPROCS 1 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended      	 3530481	       168.8 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle    	  193888	      3051 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks 	  178412	      3091 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.984s
+VARIANT blocking GOMAXPROCS 1 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended      	 3462872	       172.7 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle    	  192076	      3059 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks 	  193881	      3007 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.015s
+VARIANT blocking GOMAXPROCS 1 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended      	 3565279	       170.8 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle    	  191338	      2988 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks 	  194290	      2995 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.003s
+VARIANT baseline GOMAXPROCS 1 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended      	 3591010	       174.5 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle    	  191694	      2973 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks 	  195259	      2976 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.017s
+VARIANT baseline GOMAXPROCS 1 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended      	 3574623	       168.9 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle    	  184723	      3014 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks 	  195760	      3017 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.992s
+VARIANT blocking GOMAXPROCS 1 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended      	 3410490	       171.6 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle    	  196992	      2980 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks 	  193800	      2996 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.001s
+VARIANT baseline GOMAXPROCS 4 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended-4        	 3444165	       171.2 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle-4      	  137211	      4538 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks-4   	  326222	      2055 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.148s
+VARIANT blocking GOMAXPROCS 4 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended-4        	 3449841	       178.4 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle-4      	  141412	      4371 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks-4   	  346290	      2185 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.252s
+VARIANT blocking GOMAXPROCS 4 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended-4        	 3230966	       169.4 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle-4      	  139060	      4490 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks-4   	  405766	      1780 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.155s
+VARIANT baseline GOMAXPROCS 4 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended-4        	 3193495	       181.1 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle-4      	  124030	      4695 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks-4   	  401642	      1927 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.646s
+VARIANT baseline GOMAXPROCS 4 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended-4        	 2994247	       181.7 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle-4      	  144988	      4359 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks-4   	  437764	      1792 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.235s
+VARIANT blocking GOMAXPROCS 4 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended-4        	 3422898	       159.4 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle-4      	  137715	      4318 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks-4   	  431854	      1355 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.974s
+VARIANT blocking GOMAXPROCS 4 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended-4        	 3643800	       166.8 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle-4      	  132324	      4543 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks-4   	  439682	      1720 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.204s
+VARIANT baseline GOMAXPROCS 4 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended-4        	 3146655	       161.2 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle-4      	  135933	      4587 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks-4   	  406809	      1482 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.002s
+VARIANT baseline GOMAXPROCS 4 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended-4        	 3405734	       164.5 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle-4      	  129622	      4405 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks-4   	  388394	      1430 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.950s
+VARIANT blocking GOMAXPROCS 4 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkSynchronizedUncontended-4        	 3132924	       173.4 ns/op	     248 B/op	       6 allocs/op
+BenchmarkSynchronizedTaskLifecycle-4      	  141261	      4593 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkSynchronizedIndependentTasks-4   	  416858	      1734 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	2.649s

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
@@ -57,35 +58,40 @@ type Holder:
     file: File
     label: String
 export fn main() -> Int:
-    match files().open("data.txt"):
-        ok(file):
-            match file.read(1):
-                ok(chunk):
-                    match chunk:
-                        some(data):
-                            if data.to_text() != some(value: "d"):
-                                return 5
-                        none:
-                            return 6
-                error(_):
-                    return 7
-            let original = Holder(file: file, label: "original")
-            let copy = original.clone()
-            copy.label = "copy"
-            if original.label != "original":
-                return 1
-            copy.file.close()
-            match original.file.read(1):
-                error(cause):
-                    match cause:
-                        IoError.Closed:
-                            return 0
-                        _:
-                            return 2
-                ok(_):
-                    return 3
+    let file = match files().open("data.txt"):
+        ok(file): file
         error(_):
             return 4
+
+    let chunk = match file.read(1):
+        ok(chunk): chunk
+        error(_):
+            return 7
+
+    match chunk:
+        some(data):
+            if data.to_text() != some(value: "d"):
+                return 5
+        none:
+            return 6
+
+    let original = Holder(file: file, label: "original")
+    let copy = original.clone()
+    copy.label = "copy"
+    if original.label != "original":
+        return 1
+    copy.file.close()
+    let cause = match original.file.read(1):
+        error(cause): cause
+        ok(_):
+            return 3
+
+    match cause:
+        IoError.Closed:
+            return 0
+        _:
+            return 2
+
 `
 	result := compiler.CompileSource("file-clone.ms", source, compiler.Options{})
 	if !result.Success() {
@@ -96,7 +102,7 @@ export fn main() -> Int:
 		t.Fatal(err)
 	}
 	binary := filepath.Join(dir, "file-clone")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command(binary)

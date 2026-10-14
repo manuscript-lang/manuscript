@@ -30,7 +30,7 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 			// rather than counting delimiter characters in source text.
 			if !declaration && len(starts) > 0 {
 				_, err := lexer.Lex(file, source[starts[len(starts)-1]:offset])
-				if issue, ok := err.(syntax.Diagnostic); ok && issue.Message == "unterminated delimiter" {
+				if issue, ok := err.(syntax.Diagnostic); ok && strings.HasPrefix(issue.Message, "unterminated delimiter") {
 					offset += len(line)
 					continue
 				}
@@ -56,9 +56,22 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 		previous = start
 		parsed, err := Parse(file, source[start:end])
 		if err != nil {
+			if name := declaredName(source[start:end]); name != "" {
+				module.Omitted = append(module.Omitted, name)
+			}
 			if issue, ok := err.(syntax.Diagnostic); ok {
 				issue.Position.Offset += start
 				issue.Position.Line += lineOffset
+				if issue.End != nil {
+					issue.End.Offset += start
+					issue.End.Line += lineOffset
+				}
+				if issue.Fix != nil {
+					issue.Fix.Position.Offset += start
+					issue.Fix.Position.Line += lineOffset
+					issue.Fix.End.Offset += start
+					issue.Fix.End.Line += lineOffset
+				}
 				diagnostics = append(diagnostics, issue)
 			}
 			continue
@@ -68,6 +81,27 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 		module.Declarations = append(module.Declarations, parsed.Declarations...)
 	}
 	return module, diagnostics
+}
+
+// declaredName reads the name a declaration chunk introduces, for chunks that
+// failed to parse.
+func declaredName(chunk string) string {
+	for _, line := range strings.Split(chunk, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		fields := strings.Fields(strings.TrimPrefix(trimmed, "export "))
+		if len(fields) < 2 || (fields[0] != "fn" && fields[0] != "type" && fields[0] != "interface") {
+			return ""
+		}
+		names := strings.FieldsFunc(fields[1], func(r rune) bool { return r == '(' || r == '[' || r == ':' })
+		if len(names) == 0 {
+			return ""
+		}
+		return names[0]
+	}
+	return ""
 }
 func rebase(module *syntax.Module, offset, lines int) {
 	position := func(p *syntax.Position) { p.Offset += offset; p.Line += lines }
@@ -130,6 +164,15 @@ func rebase(module *syntax.Module, offset, lines int) {
 		parameters(e.Params)
 		typ(e.Result)
 		body(e.Body)
+		for i := range e.Arms {
+			position(&e.Arms[i].Pos)
+			for index := range e.Arms[i].NamePositions {
+				position(&e.Arms[i].NamePositions[index])
+			}
+			expression(e.Arms[i].Path)
+			body(e.Arms[i].Body)
+			expression(e.Arms[i].Value)
+		}
 	}
 	body = func(statements []*syntax.Statement) {
 		for _, s := range statements {
@@ -140,11 +183,6 @@ func rebase(module *syntax.Module, offset, lines int) {
 			expression(s.Value)
 			body(s.Body)
 			body(s.Else)
-			for i := range s.Arms {
-				position(&s.Arms[i].Pos)
-				expression(s.Arms[i].Path)
-				body(s.Arms[i].Body)
-			}
 		}
 	}
 	declaration = func(d *syntax.Declaration) {

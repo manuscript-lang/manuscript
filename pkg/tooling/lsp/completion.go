@@ -53,7 +53,10 @@ func callableText(name string, t *checker.Type, variables []*checker.Type, snipp
 		if written > 0 {
 			output.WriteString(", ")
 		}
-		fmt.Fprintf(&output, "%s: ${%d:%s}", p.Name, at, p.Name)
+		if len(t.Params) != 1 {
+			fmt.Fprintf(&output, "%s: ", p.Name)
+		}
+		fmt.Fprintf(&output, "${%d:%s}", at, p.Name)
 		at++
 		written++
 	}
@@ -82,86 +85,139 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 		return items, nil
 	}
 	analysis := queryEditor(d, docs, c)
-	result := analysis.result
-	seen := map[string]bool{}
-	add := func(name string, kind int, t *checker.Type, priority int, insert string, decl *syntax.Declaration) {
-		if seen[name] || !nameMatches(name, c.prefix) || strings.HasPrefix(name, "__manuscript_completion") {
-			return
+	k := &completer{d: d, docs: docs, c: c, snippets: snippets, analysis: analysis, result: analysis.result, items: items, seen: map[string]bool{}}
+	switch {
+	case c.member:
+		k.memberItems()
+	case c.argument:
+		k.argumentItems()
+	default:
+		k.scopeItems()
+		k.keywordItems()
+		if c.prefix != "" {
+			k.standardImports()
+			k.workspaceImports()
 		}
-		seen[name] = true
-		detail := ""
-		if t != nil {
-			detail = t.String()
-		}
-		format := 1
-		if snippets && strings.Contains(insert, "${") || snippets && strings.Contains(insert, "$0") {
-			format = 2
-		}
-		items = append(items, completionItem{Label: name, Kind: kind, Detail: detail, Documentation: description(result, decl), SortText: fmt.Sprintf("%02d_%s", priority, name), FilterText: name, InsertTextFormat: format, TextEdit: map[string]any{"range": span{Position(d.Text, c.start), Position(d.Text, c.end)}, "newText": insert}})
 	}
-	if c.member {
-		if analysis.expression != nil && analysis.expression.Kind == syntax.KindMember {
-			left := analysis.expression.Left
-			if typ := typeExpression(left, analysis.scope); typ != nil {
-				for _, cs := range checker.Cases(typ) {
-					signature := &checker.Type{Kind: "function", Params: cs.Fields, Result: typ}
-					insert := cs.Name
-					if len(cs.Fields) > 0 {
-						insert = callableText(cs.Name, signature, nil, snippets)
-					}
-					add(cs.Name, 20, signature, 0, insert, nil)
+	sortCompletion(k.items)
+	return k.items, nil
+}
+
+// completer accumulates the completion items for one request.
+type completer struct {
+	d        document
+	docs     map[string]document
+	c        cursorContext
+	snippets bool
+	analysis editorAnalysis
+	result   compiler.Result
+	items    []completionItem
+	seen     map[string]bool
+}
+
+// add appends an item unless its name repeats, does not match the typed
+// prefix, or is the editor's own completion marker.
+func (k *completer) add(name string, kind int, t *checker.Type, priority int, insert string, decl *syntax.Declaration) {
+	if k.seen[name] || !nameMatches(name, k.c.prefix) || strings.HasPrefix(name, "__manuscript_completion") {
+		return
+	}
+	k.seen[name] = true
+	detail := ""
+	if t != nil {
+		detail = t.String()
+	}
+	format := 1
+	if k.snippets && strings.Contains(insert, "${") || k.snippets && strings.Contains(insert, "$0") {
+		format = 2
+	}
+	k.items = append(k.items, completionItem{Label: name, Kind: kind, Detail: detail, Documentation: description(k.result, decl), SortText: fmt.Sprintf("%02d_%s", priority, name), FilterText: name, InsertTextFormat: format, TextEdit: map[string]any{"range": span{Position(k.d.Text, k.c.start), Position(k.d.Text, k.c.end)}, "newText": insert}})
+}
+
+// addImport appends an item that also inserts an ordinary import for it.
+func (k *completer) addImport(s *checker.Symbol, path string) {
+	before := len(k.items)
+	kind := 3
+	if s.Kind == syntax.KindType {
+		kind = 7
+	}
+	k.add(s.Name, kind, s.Type, 4, callableText(s.Name, s.Type, s.Variables, k.snippets), s.Decl)
+	if len(k.items) > before {
+		item := &k.items[len(k.items)-1]
+		item.Detail += " — " + path
+		item.AdditionalTextEdits = []any{map[string]any{"range": span{position{}, position{}}, "newText": "import " + s.Name + " from " + strconv.Quote(path) + "\n"}}
+	}
+}
+
+// memberItems offers alternative cases or members after a dot.
+func (k *completer) memberItems() {
+	analysis, result := k.analysis, k.result
+	if analysis.expression == nil || analysis.expression.Kind != syntax.KindMember {
+		return
+	}
+	left := analysis.expression.Left
+	if typ := typeExpression(left, analysis.scope); typ != nil {
+		for _, cs := range checker.Cases(typ) {
+			signature := &checker.Type{Kind: "function", Params: cs.Fields, Result: typ}
+			insert := cs.Name
+			if len(cs.Fields) > 0 {
+				insert = callableText(cs.Name, signature, nil, k.snippets)
+			}
+			k.add(cs.Name, 20, signature, 0, insert, nil)
+		}
+	} else if result.Program != nil {
+		if info := result.Program.Info(left); info != nil && info.Type != nil {
+			for _, member := range checker.Members(result.Program, info.Type, left.Pos.File) {
+				kind := 5
+				insert := member.Name
+				if member.Kind == "method" {
+					kind = 2
+					insert = callableText(member.Name, member.Type, nil, k.snippets)
 				}
-			} else if result.Program != nil {
-				if info := result.Program.Expressions[left]; info != nil && info.Type != nil {
-					for _, member := range checker.Members(result.Program, info.Type, left.Pos.File) {
-						kind := 5
-						insert := member.Name
-						if member.Kind == "method" {
-							kind = 2
-							insert = callableText(member.Name, member.Type, nil, snippets)
-						}
-						add(member.Name, kind, member.Type, 0, insert, member.Declaration)
-					}
-				}
+				k.add(member.Name, kind, member.Type, 0, insert, member.Declaration)
 			}
 		}
-		sortCompletion(items)
-		return items, nil
 	}
-	if c.argument {
-		if call, signature := queryCall(analysis); call != nil && signature != nil {
-			used := map[string]bool{}
-			for _, arg := range editorCallArguments(analysis, call) {
-				if arg.Name != analysis.marker {
-					used[arg.Name] = true
-				}
-			}
-			for _, param := range signature.Params {
-				if used[param.Name] {
-					continue
-				}
-				insert := param.Name + ": "
-				if snippets {
-					insert += "${1:" + param.Name + "}"
-				}
-				add(param.Name, 6, param.Type, 0, insert, nil)
-			}
+}
+
+// argumentItems offers the labels of parameters not yet supplied.
+func (k *completer) argumentItems() {
+	call, signature := queryCall(k.analysis)
+	if call == nil || signature == nil {
+		return
+	}
+	used := map[string]bool{}
+	for _, arg := range editorCallArguments(k.analysis, call) {
+		if arg.Name != k.analysis.marker {
+			used[arg.Name] = true
 		}
-		sortCompletion(items)
-		return items, nil
 	}
+	for _, param := range signature.Params {
+		if used[param.Name] {
+			continue
+		}
+		insert := param.Name + ": "
+		if k.snippets {
+			insert += "${1:" + param.Name + "}"
+		}
+		k.add(param.Name, 6, param.Type, 0, insert, nil)
+	}
+}
+
+// scopeItems offers the bindings, types, and module symbols visible here.
+func (k *completer) scopeItems() {
+	analysis, result, c := k.analysis, k.result, k.c
 	for name, b := range analysis.scope.Bindings {
 		if !c.typeContext {
-			add(name, 6, b.Type, 0, callableText(name, b.Type, nil, snippets), nil)
+			k.add(name, 6, b.Type, 0, callableText(name, b.Type, nil, k.snippets), nil)
 		}
 	}
 	for name, t := range analysis.scope.Types {
-		add(name, 25, t, 1, name, nil)
+		k.add(name, 25, t, 1, name, nil)
 	}
 	symbols := analysis.scope.Symbols
 	if len(symbols) == 0 && result.Program != nil {
 		if m := module(result, analysis.document); m != nil {
-			symbols = result.Program.Symbols[m.File]
+			symbols = result.Program.ModuleSymbols(m.File)
 		}
 	}
 	for name, s := range symbols {
@@ -169,11 +225,11 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 			continue
 		}
 		kind := 3
-		insert := callableText(name, s.Type, s.Variables, snippets)
+		insert := callableText(name, s.Type, s.Variables, k.snippets)
 		if s.Kind == syntax.KindType {
 			kind = 7
 			insert = name
-			if c.typeContext && snippets && s.Type.Def != nil && len(s.Type.Def.Variables) > 0 {
+			if c.typeContext && k.snippets && s.Type.Def != nil && len(s.Type.Def.Variables) > 0 {
 				insert = name + "["
 				for i, v := range s.Type.Def.Variables {
 					if i > 0 {
@@ -185,128 +241,121 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 			}
 			if !c.typeContext && s.Type.Kind == syntax.KindRecord {
 				signature := checker.ConstructorSignature(s.Type)
-				insert = callableText(name, signature, s.Variables, snippets)
+				insert = callableText(name, signature, s.Variables, k.snippets)
 			}
 		}
-		add(name, kind, s.Type, 2, insert, s.Decl)
+		k.add(name, kind, s.Type, 2, insert, s.Decl)
 	}
 	// Preserve useful declaration suggestions even when another declaration has
 	// malformed syntax. Scope-sensitive results above only use checked snapshots.
 	if len(symbols) == 0 {
-		if parsed, _ := frontend.Parse(filename(d.URI), d.Text, true); parsed != nil {
+		if parsed, _ := frontend.Parse(filename(k.d.URI), k.d.Text, true); parsed != nil {
 			for _, decl := range parsed.Declarations {
 				kind := 3
 				if decl.Kind == syntax.KindType {
 					kind = 7
 				}
-				add(decl.Name, kind, nil, 2, decl.Name, decl)
+				k.add(decl.Name, kind, nil, 2, decl.Name, decl)
 			}
 		}
 	}
+}
+
+// keywordItems offers statement and declaration keywords (with snippet
+// templates), literals, and the built-in type names.
+// statementKeywords start a statement inside a body; the rest of the reserved
+// words continue another construct (else, in) or start a declaration.
+var statementKeywords = []string{"let", "var", "if", "else", "for", "while", "match", "with", "return", "break", "continue"}
+
+func (k *completer) keywordItems() {
+	d, c := k.d, k.c
 	lineStart := strings.LastIndex(d.Text[:c.start], "\n") + 1
 	if strings.TrimSpace(d.Text[lineStart:c.start]) == "" {
-		words := []string{"let", "var", "if", "else", "for", "while", "match", "with", "return"}
+		words := statementKeywords
 		if lineStart == c.start {
 			words = []string{"fn", "type", "interface", "impl", "import", "export", "test"}
 		}
 		templates := map[string]string{"interface": "interface ${1:Name}:\n    ${0:fn operation() -> Unit}", "fn": "fn ${1:name}(${2}) -> ${3:Unit}:\n    ${0:return unit}", "type": "type ${1:Name}:\n    ${0:field: String}", "if": "if ${1:condition}:\n    $0", "for": "for ${1:item} in ${2:items}:\n    $0", "with": "with ${1:resource} = ${2:initializer}:\n    $0", "test": "test \"${1:name}\":\n    ${0:return unit}"}
 		for _, word := range words {
 			insert := word + " "
-			if snippets {
+			if k.snippets {
 				if template := templates[word]; template != "" {
 					insert = template
 				}
 			}
-			add(word, 14, nil, 5, insert, nil)
+			k.add(word, 14, nil, 5, insert, nil)
 		}
 	}
-
 	for _, word := range []string{"true", "false", "unit", "fn", "not", "try"} {
 		if !c.typeContext {
-			add(word, 14, nil, 5, word, nil)
+			k.add(word, 14, nil, 5, word, nil)
 		}
 	}
 	if c.typeContext {
-		for _, name := range []string{"Int", "Float", "String", "Bool", "Unit", "Never", "Equal", "Hashable"} {
-			add(name, 7, nil, 3, name, nil)
+		for _, name := range checker.PreludeTypeNames() {
+			k.add(name, 7, nil, 3, name, nil)
 		}
 	}
-	// Auto-import is explicit: accepting an item inserts an ordinary import.
-	if c.prefix != "" && !c.member {
-		for _, path := range standardPaths() {
-			exports := checker.StandardExportInventory()[path]
-			for _, s := range exports {
-				if seen[s.Name] || !nameMatches(s.Name, c.prefix) || c.typeContext && s.Kind != syntax.KindType {
-					continue
-				}
-				before := len(items)
-				kind := 3
-				if s.Kind == syntax.KindType {
-					kind = 7
-				}
-				add(s.Name, kind, s.Type, 4, callableText(s.Name, s.Type, s.Variables, snippets), s.Decl)
-				if len(items) > before {
-					item := &items[len(items)-1]
-					item.Detail += " — " + path
-					item.AdditionalTextEdits = []any{map[string]any{"range": span{position{}, position{}}, "newText": "import " + s.Name + " from " + strconv.Quote(path) + "\n"}}
-				}
-			}
-		}
-	}
-	if c.prefix != "" && !c.member {
-		files, e := workspaceDocuments(d, docs)
-		if e == nil {
-			for _, file := range files {
-				if file.URI == d.URI {
-					continue
-				}
-				parsed, issues := frontend.Parse(filename(file.URI), file.Text, false)
-				if len(issues) != 0 {
-					continue
-				}
-				matches := false
-				for _, decl := range parsed.Declarations {
-					if decl.Export && nameMatches(decl.Name, c.prefix) && !seen[decl.Name] {
-						matches = true
-					}
-				}
-				if !matches {
-					continue
-				}
-				checked := workspaceAnalysis(file, docs)
-				m := module(checked, file)
-				if m == nil {
-					continue
-				}
-				relative, e := filepath.Rel(filepath.Dir(filename(d.URI)), filename(file.URI))
-				if e != nil {
-					continue
-				}
-				path := filepath.ToSlash(relative)
-				if !strings.HasPrefix(path, ".") {
-					path = "./" + path
-				}
-				for _, s := range checked.Program.Symbols[m.File] {
-					if !s.Export || s.Decl == nil || s.Decl.Pos.File != m.File || seen[s.Name] || !nameMatches(s.Name, c.prefix) || c.typeContext && s.Kind != syntax.KindType {
-						continue
-					}
-					before := len(items)
-					kind := 3
-					if s.Kind == syntax.KindType {
-						kind = 7
-					}
-					add(s.Name, kind, s.Type, 4, callableText(s.Name, s.Type, s.Variables, snippets), s.Decl)
-					if len(items) > before {
-						items[len(items)-1].Detail += " — " + path
-						items[len(items)-1].AdditionalTextEdits = []any{map[string]any{"range": span{position{}, position{}}, "newText": "import " + s.Name + " from " + strconv.Quote(path) + "\n"}}
-					}
-				}
-			}
-		}
-	}
+}
 
-	sortCompletion(items)
-	return items, nil
+// standardImports offers standard-library names that accepting adds an import for.
+func (k *completer) standardImports() {
+	inventory := checker.StandardExportInventory()
+	for _, path := range standardPaths() {
+		for _, s := range inventory[path] {
+			if k.seen[s.Name] || !nameMatches(s.Name, k.c.prefix) || k.c.typeContext && s.Kind != syntax.KindType {
+				continue
+			}
+			k.addImport(s, path)
+		}
+	}
+}
+
+// workspaceImports offers exported names from other workspace files, with a
+// relative import.
+func (k *completer) workspaceImports() {
+	d, c := k.d, k.c
+	files, e := workspaceDocuments(d, k.docs)
+	if e != nil {
+		return
+	}
+	for _, file := range files {
+		if file.URI == d.URI {
+			continue
+		}
+		parsed, issues := frontend.Parse(filename(file.URI), file.Text, false)
+		if len(issues) != 0 {
+			continue
+		}
+		matches := false
+		for _, decl := range parsed.Declarations {
+			if decl.Export && nameMatches(decl.Name, c.prefix) && !k.seen[decl.Name] {
+				matches = true
+			}
+		}
+		if !matches {
+			continue
+		}
+		checked := workspaceAnalysis(file, k.docs)
+		m := module(checked, file)
+		if m == nil {
+			continue
+		}
+		relative, e := filepath.Rel(filepath.Dir(filename(d.URI)), filename(file.URI))
+		if e != nil {
+			continue
+		}
+		path := filepath.ToSlash(relative)
+		if !strings.HasPrefix(path, ".") {
+			path = "./" + path
+		}
+		for _, s := range checked.Program.ModuleSymbols(m.File) {
+			if !s.Export || s.Decl == nil || s.Decl.Pos.File != m.File || k.seen[s.Name] || !nameMatches(s.Name, c.prefix) || c.typeContext && s.Kind != syntax.KindType {
+				continue
+			}
+			k.addImport(s, path)
+		}
+	}
 }
 func sortCompletion(items []completionItem) {
 	sort.Slice(items, func(i, j int) bool {
@@ -371,7 +420,7 @@ func queryCall(a editorAnalysis) (*syntax.Expression, *checker.Type) {
 	if a.result.Program == nil {
 		return nil, nil
 	}
-	for e := range a.result.Program.Expressions {
+	for e := range a.result.Program.Expressions() {
 		if e.Kind != syntax.KindCall || e.Pos.File != moduleFile(a.result, a.document) {
 			continue
 		}
@@ -384,14 +433,14 @@ func queryCall(a editorAnalysis) (*syntax.Expression, *checker.Type) {
 		if !matched {
 			continue
 		}
-		if info := a.result.Program.Expressions[e.Left]; info != nil && info.Type != nil && info.Type.Kind == "function" {
+		if info := a.result.Program.Info(e.Left); info != nil && info.Type != nil && info.Type.Kind == "function" {
 			signature := info.Type
 			if strings.Contains(signature.String(), "<invalid>") && info.Symbol != nil {
 				signature = info.Symbol.Type
 			}
 			return e, signature
 		}
-		if constructed := a.result.Program.Expressions[e]; constructed != nil && constructed.Constructor != nil && constructed.Case != "" {
+		if constructed := a.result.Program.Info(e); constructed != nil && constructed.Constructor != nil && constructed.Case != "" {
 			for _, cs := range checker.Cases(constructed.Constructor) {
 				if cs.Name == constructed.Case {
 					return e, &checker.Type{Kind: "function", Params: cs.Fields, Result: constructed.Constructor}
@@ -532,7 +581,7 @@ func importCompletion(d document, docs map[string]document, c cursorContext, sni
 					target := document{URI: fileURI(file), Text: string(source)}
 					checked := workspaceAnalysis(target, docs)
 					if m := module(checked, target); m != nil {
-						for _, s := range checked.Program.Symbols[m.File] {
+						for _, s := range checked.Program.ModuleSymbols(m.File) {
 							if s.Export && s.Decl != nil && s.Decl.Pos.File == m.File {
 								exports = append(exports, s)
 							}
@@ -604,7 +653,7 @@ func nameMatches(name, query string) bool {
 
 // Use checked label resolution without changing the source expressions used for navigation.
 func editorCallArguments(a editorAnalysis, call *syntax.Expression) []syntax.Argument {
-	if info := a.result.Program.Expressions[call]; info != nil && info.Arguments != nil {
+	if info := a.result.Program.Info(call); info != nil && info.Arguments != nil {
 		return info.Arguments
 	}
 	return call.Args

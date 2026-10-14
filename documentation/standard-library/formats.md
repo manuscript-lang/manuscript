@@ -35,7 +35,9 @@ The parser is written in Manuscript. It reads one YAML 1.2 configuration documen
 
 Anchors and previously defined aliases retain the same value references. Forward and recursive aliases fail. Merge keys accept a mapping or a list of mappings; earlier mappings win and explicit entries override merged values. Duplicate explicit keys fail.
 
-This configuration parser does not implement the complete YAML specification: explicit tags, complex/explicit mapping keys, custom directives, multiple documents, and flow sequence mapping shorthand are unsupported. Multiline scalars cover ordinary continuation and folding; specialized empty-line folding and flow indentation rules are not fully implemented. `UnsupportedFeature` identifies explicit tags, complex keys, and unsupported directives; other malformed or unsupported forms return `InvalidData` with a one-based line, column, and reason. Positions identify where parsing detected the problem, and indentation errors point to the line's first column.
+Continued plain and quoted scalars fold adjacent lines to a space and retain one newline per intervening blank line. Quoted folding discards surrounding physical whitespace; double-quoted escaped continuations discard the first break while preserving preceding content whitespace. Folded blocks (`>`) use the same paragraph rule between ordinary lines and preserve breaks around more-indented content. Literal blocks (`|`) retain their line breaks. Block chomping controls final breaks, including trailing blank lines; a missing final line ending is not added.
+
+This configuration parser does not implement the complete YAML specification: explicit tags, complex/explicit mapping keys, custom directives, multiple documents, and flow sequence mapping shorthand are unsupported. Specialized flow indentation rules are not fully implemented. `UnsupportedFeature` identifies explicit tags, complex keys, and unsupported directives; other malformed or unsupported forms return `InvalidData` with a one-based line, column, and reason. Positions identify the offending token: merge-key errors point at the `<<` key and block-scalar header errors at the offending header character.
 
 ## TOML behavior
 
@@ -43,7 +45,7 @@ The parser is written in Manuscript and targets TOML 1.0. The result is a `Table
 
 It supports bare/quoted/dotted keys, explicit and implicit tables, arrays of tables, heterogeneous arrays, closed inline tables, comments, literal/basic strings, multiline strings, Unicode escapes, and escaped newline folding. Integers support decimal, hexadecimal, octal, and binary forms with valid underscore separators; floats include exponents, infinities, and NaN. Date/time values preserve their spelling and fractional precision after checking calendar/time fields. No host timezone conversion occurs.
 
-Duplicate keys, table redefinitions, scalar/table conflicts, extensions to closed inline tables, malformed strings/numbers/dates, out-of-range integers, trailing text, and bare carriage returns fail with `InvalidData(line, column, reason)`. CRLF becomes LF. Dates allow leap-second spelling (`60`) without checking a historical leap-second registry. Binary64 conversion rejects overflowing finite float tokens. TOML 1.1 extensions are outside this parser's contract.
+Duplicate keys, table redefinitions, scalar/table conflicts, extensions to closed inline tables, malformed strings/numbers/dates, out-of-range integers, trailing text, and bare carriage returns fail with `InvalidData(line, column, reason)`. CRLF becomes LF. Control characters and bare carriage returns report their own line and column, and a bad bare value (such as `True` or `yes`) reports `invalid value` at the token start. Dates allow leap-second spelling (`60`) without checking a historical leap-second registry. Binary64 conversion rejects overflowing finite float tokens. TOML 1.1 extensions are outside this parser's contract.
 
 ## YAML and TOML limits
 
@@ -58,25 +60,30 @@ Negative limits return `InvalidInput`; zero is a real budget and exhaustion retu
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import {parse, TomlValue, TomlLimits} from "@std/toml.ms"
-import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
 test "parse bounded TOML configuration":
     let limits = TomlLimits(max_bytes: 1024, max_depth: 8, max_values: 64)
-    match parse(text: "[server]\nport = 8080\n", limits: limits):
+    let value = match parse(text: "[server]\nport = 8080\n", limits: limits):
         error(cause): return panic(cause.message())
-        ok(value):
-            match value:
-                TableValue(entries):
-                    if not entries.contains("server"): return panic("missing server table")
-                _: return panic("expected table")
+        ok(value): value
+
+    match value:
+        TableValue(entries):
+            if not entries.contains("server"): return panic("missing server table")
+        _: return panic("expected table")
+
 ```
 
 ## CSV behavior
 
+`CsvOptions()` creates fresh mutable options with `delimiter: ","` and `line_ending: "\n"`. `parse(text: "a,b\n")` and `stringify(rows: [["a", "b"]])` use these defaults. Either option field can be supplied independently; use `CsvOptions(line_ending: "\r\n")` for CRLF output. Explicit options retain their values and are validated as usual.
+
 The delimiter must be one non-NUL ASCII byte other than quote, CR, or LF. `line_ending` is LF or CRLF. Row, cell, and output limits must be nonnegative; `max_cells` counts every returned cell.
 
 CSV quotes are doubled; values are not trimmed or converted to other types, rows may have different widths, and blank lines are ignored. CRLF is normalized, including inside quoted cells. Serialization ends every row with the selected terminator. Formula-like spreadsheet values are left as supplied.
+
+A row containing one empty string is serialized as a quoted empty field (`""`), so parsing retains it. A row with no cells is serialized as a blank line and is skipped on parsing; these two rows have distinct serialized forms. Multiple empty cells retain their delimiters.
 
 Exceeded limits return `LimitExceeded`. The input String is already in memory, and the parser reads one record before checking its row and cell limits. Bound the source read before parsing untrusted CSV.
 
@@ -90,15 +97,13 @@ Query entries retain duplicates and order. A bare key has an empty value; `+` re
 
 Hostnames are not normalized through IDNA; absent and empty queries have the same representation.
 
-## HTML parsing and escaping
+## HTML parsing and text conversion
 
 `parse` returns an `HtmlNode.Document` containing an HTML5 tree. Match `Element` to work with its tag, namespace, ordered `List[HtmlAttribute]`, and child nodes. `Text`, `Comment`, and `Doctype` preserve their data. These are ordinary Manuscript data values; child lists and attribute records are mutable.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import {parse, HtmlNode} from "@std/html.ms"
-import {Result} from "@std/result.ms"
-import Error from "@std/errors.ms"
 import panic from "@std/faults.ms"
 
 fn text_content(node: HtmlNode) -> String:
@@ -116,7 +121,7 @@ fn text_content(node: HtmlNode) -> String:
 
 fn read_text() -> Result[String, Error]:
     let document = try parse(text: "<p>Hello <b>world</b> &amp; friends</p>")
-    return ok(value: text_content(document))
+    return ok(text_content(document))
 
 test "read HTML text":
     match read_text():
@@ -138,3 +143,7 @@ Parsing follows HTML5 document rules: omitted `html`, `head`, `body`, and table 
 Omitted limits impose no added cap. An empty input produces four nodes (`Document`, `html`, `head`, and `body`) with maximum depth two. Depth and node budgets are checked while converting the native tree, after HTML5 parsing has allocated it; use a byte budget to bound the input first. Negative limits return `HtmlError.InvalidInput`, invalid UTF-8 or a native parser failure returns `InvalidData`, and exceeded budgets return `LimitExceeded`. Recoverable markup errors are accepted.
 
 `escape` handles text and quoted attribute contexts. It does not sanitize HTML or escape script, stylesheet, or URL content.
+
+`unescape(text:) -> String` decodes HTML5 character references in text context, in one pass. Named references such as `&lt;`, decimal references such as `&#225;`, and hexadecimal references such as `&#xE1;` are recognized. HTML5 text rules accept some references without semicolons and select recognized prefixes; `unescape("&ampx")` returns `"&x"`. Unrecognized text such as `&bogus;` remains literal. Invalid numeric scalars (zero, surrogates, and values above U+10FFFF) become U+FFFD, and the HTML5 C1 replacement table applies to numeric references.
+
+The output is ordinary immutable String, without markup parsing or Unicode normalization. Decoded text is not decoded again: `unescape("&amp;lt;")` is `"&lt;"`. `unescape(escape(text))` preserves `text`, while escaping an unescaped reference may choose another equivalent spelling. Attribute parsing has its own HTML5 reference rules; use `parse` to obtain decoded attributes from markup. Cancellation is checked before and after this atomic text codec and may wait for the codec to return.

@@ -16,7 +16,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 	if e != nil {
 		tokens = []lexer.Token{}
 		keywords := map[string]bool{}
-		for _, word := range strings.Fields("fn type interface impl import from export let var if else for in while match case return with try break continue test and or not true false unit self") {
+		for _, word := range lexer.Keywords() {
 			keywords[word] = true
 		}
 		for _, token := range editorTokens(d.Text) {
@@ -63,7 +63,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 		result := checked[0]
 		m := module(result, d)
 		if m != nil {
-			for expression, info := range result.Program.Expressions {
+			for expression, info := range result.Program.Expressions() {
 				if expression == nil || info == nil || expression.Pos.File != m.File || expression.Text == "" {
 					continue
 				}

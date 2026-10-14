@@ -9,10 +9,9 @@ weight = 4
 
 ```manuscript
 import Scheduler from "@std/tasks.ms"
-import Result from "@std/result.ms"
 
 fn send() -> Result[Unit, String]:
-    return ok(value: unit)
+    return ok(unit)
 
 fn start_work() -> Unit:
     with scheduler = Scheduler():

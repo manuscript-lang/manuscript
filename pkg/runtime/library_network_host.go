@@ -5,9 +5,7 @@ package msruntime
 import (
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
-	"unicode/utf8"
 )
 
 func init() {
@@ -30,7 +28,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		return libraryError(r, "InvalidInput", "")
 	}
 	u, err := url.Parse(address)
-	if err != nil || u.Host == "" || u.User != nil || u.Scheme != "http" && u.Scheme != "https" {
+	if err != nil || u.Host == "" || u.User != nil || !libraryValidPort(u) || u.Scheme != "http" && u.Scheme != "https" {
 		return libraryError(r, "InvalidInput", "")
 	}
 	call, cancel := contextWithLibraryTimeout(ctx, timeout)
@@ -46,10 +44,10 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 	}
 	for _, e := range a[2].(*Map).Entries {
 		name, value := e.Key.(string), e.Value.(string)
-		if !libraryHeaderName(name) || strings.ContainsAny(value, "\r\n\x00") || strings.EqualFold(name, "Content-Length") || strings.EqualFold(name, "Transfer-Encoding") || strings.EqualFold(name, "Host") {
+		if !libraryHeaderName(name) || !validHeaderValue(value) || strings.EqualFold(name, "Content-Length") || strings.EqualFold(name, "Transfer-Encoding") || strings.EqualFold(name, "Host") {
 			return libraryError(r, "InvalidInput", "")
 		}
-		req.Header.Set(name, value)
+		req.Header.Add(name, value)
 	}
 	// No ambient proxy or cookie jar. Redirects are returned to the caller for explicit policy decisions.
 	transport := &http.Transport{TLSHandshakeTimeout: nativeTransportTimeout(timeout), MaxResponseHeaderBytes: nativeUnlimited, DisableCompression: true, DisableKeepAlives: true, DialContext: n.dial}
@@ -71,20 +69,10 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		}
 		return libraryError(r, code, "")
 	}
-	headers := &Map{Type: "@std/Map[String][@std/List[String]]"}
-	keys := []string{}
-	for k := range response.Header {
-		keys = append(keys, k)
+	if !libraryHTTPTextHeaders(response.Header) {
+		return libraryError(r, "InvalidData", "")
 	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		for _, v := range response.Header[k] {
-			if !utf8.ValidString(v) {
-				return libraryError(r, "InvalidData", "")
-			}
-		}
-		headers.Entries = append(headers.Entries, Entry{k, libraryStrings(response.Header[k])})
-	}
+	headers := libraryHTTPHeaders(response.Header)
 	return libraryOK(r, Record{"@std/ClientResponse", map[string]Value{"status": int64(response.StatusCode), "headers": headers, "body": Bytes{data}}})
 }
 

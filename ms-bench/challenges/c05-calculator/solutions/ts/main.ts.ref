@@ -1,0 +1,68 @@
+import { readFileSync } from "node:fs";
+
+class SyntaxErr extends Error {}
+
+function evaluate(line: string): string {
+  let pos = 0;
+  let divZero = false;
+  const peek = (): string => {
+    while (pos < line.length && (line[pos] === " " || line[pos] === "\t")) pos++;
+    return pos < line.length ? line[pos] : "";
+  };
+  const expr = (): bigint => {
+    let v = term();
+    for (let c = peek(); c === "+" || c === "-"; c = peek()) {
+      pos++;
+      const r = term();
+      v = c === "+" ? v + r : v - r;
+    }
+    return v;
+  };
+  const term = (): bigint => {
+    let v = unary();
+    for (let c = peek(); c === "*" || c === "/"; c = peek()) {
+      pos++;
+      const r = unary();
+      if (c === "*") v *= r;
+      else if (r === 0n) { divZero = true; v = 0n; }
+      else v /= r; // BigInt division truncates toward zero
+    }
+    return v;
+  };
+  const unary = (): bigint => {
+    if (peek() === "-") { pos++; return -unary(); }
+    return atom();
+  };
+  const atom = (): bigint => {
+    const c = peek();
+    if (c >= "0" && c <= "9") {
+      const start = pos;
+      while (pos < line.length && line[pos] >= "0" && line[pos] <= "9") pos++;
+      return BigInt(line.slice(start, pos));
+    }
+    if (c === "(") {
+      pos++;
+      const v = expr();
+      if (peek() !== ")") throw new SyntaxErr();
+      pos++;
+      return v;
+    }
+    throw new SyntaxErr();
+  };
+  try {
+    const v = expr();
+    if (peek() !== "") return "error: syntax";
+    return divZero ? "error: division by zero" : v.toString();
+  } catch (e) {
+    if (e instanceof SyntaxErr) return "error: syntax";
+    throw e;
+  }
+}
+
+let out = "";
+for (const raw of readFileSync(0, "utf8").split("\n")) {
+  const line = raw.replace(/\r$/, "");
+  if (line.trim() === "") continue;
+  out += evaluate(line) + "\n";
+}
+process.stdout.write(out);

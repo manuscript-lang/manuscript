@@ -27,7 +27,7 @@ func TestTimeReceiverFaultsAndBoundaries(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			fault, ok := recovered(action).(Fault)
-			if !ok || !(strings.Contains(fault.Message, "overflow") || strings.Contains(fault.Message, "division by zero")) {
+			if !ok || !(strings.Contains(fault.Message, "overflow") || strings.Contains(fault.Message, "division by zero") || strings.Contains(fault.Message, "value (nanoseconds) must be between")) {
 				t.Fatalf("expected arithmetic fault, got %#v", fault)
 			}
 		})

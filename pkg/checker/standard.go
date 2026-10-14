@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -15,11 +16,23 @@ import (
 var standardSymbols map[string]*Symbol
 var standardModules map[string]map[string]*Symbol
 var standardSources []*syntax.Module
-var standardTypeReferences map[*syntax.Type]*Type
 var intrinsicOperations map[string]*Type
 var standardImplementations []*Method
 var standardSourceModules = map[string]*syntax.Module{}
-var standardSourceMethods []*Method
+
+// Bundled source modules are checked lazily, once per process, the first time a
+// program (or tool) needs them. The annotated trees, symbols, and methods are
+// then shared by every later program instead of being checked again.
+var standardMu sync.Mutex
+var standardDone = map[string]*standardResult{}
+var standardChecking = map[string]bool{}
+
+type standardResult struct {
+	symbols map[string]*Symbol
+	exports map[string]*Symbol
+	methods []*Method
+}
+
 var standardOperationVariables = map[string][]*Type{}
 var standardReceiverBindings map[string]string
 var standardReceiverRequirements map[string][]receiverRequirement
@@ -33,7 +46,6 @@ type standardBindings struct {
 	Functions            map[string]string            `json:"functions"`
 	IntrinsicReceivers   map[string]string            `json:"intrinsic_receivers"`
 	Implementations      map[string]string            `json:"implementations"`
-	Receivers            map[string]string            `json:"receivers"`
 	ReceiverRequirements map[string]map[string]string `json:"receiver_requirements"`
 }
 
@@ -52,25 +64,62 @@ func ensureStandard() {
 func loadStandardSources() error {
 	standardSources = nil
 	standardSourceModules = map[string]*syntax.Module{}
+	standardDone = map[string]*standardResult{}
 	standardSymbols = map[string]*Symbol{}
 	standardModules = map[string]map[string]*Symbol{}
 	intrinsicOperations = map[string]*Type{}
 	standardImplementations = nil
 	standardReceiverBindings = map[string]string{}
 	standardReceiverRequirements = map[string][]receiverRequirement{}
+	bindings, err := readStandardBindings()
+	if err != nil {
+		return err
+	}
+	modules, err := parseStandardSources()
+	if err != nil {
+		return err
+	}
+	l := &standardLoader{bindings: bindings, c: &checker{standardDeclarations: true, Program: newProgram(nil), captures: map[int]map[*Binding]bool{}}}
+	for _, module := range modules {
+		if err := l.register(module); err != nil {
+			return err
+		}
+	}
+	l.declareIdentities()
+	l.resolveDeclarations()
+	for _, step := range []func() error{l.bindImplementations, l.bindReceivers, l.checkDefaults} {
+		if err := step(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// standardLoader builds the native standard declarations in phases.
+type standardLoader struct {
+	bindings standardBindings
+	c        *checker
+}
+
+func readStandardBindings() (standardBindings, error) {
+	var bindings standardBindings
 	data, err := stdlib.Sources.ReadFile("bindings.json")
 	if err != nil {
-		return err
+		return bindings, err
 	}
-	var bindings standardBindings
 	if err = json.Unmarshal(data, &bindings); err != nil {
-		return err
+		return bindings, err
 	}
+	return bindings, nil
+}
+
+// parseStandardSources parses the bundled declarations concurrently and
+// returns them in file order.
+func parseStandardSources() ([]*syntax.Module, error) {
 	files, err := stdlib.Sources.ReadDir(".")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	// Parse declarations concurrently; registration below keeps file order.
 	type parsed struct {
 		module *syntax.Module
 		err    error
@@ -96,127 +145,133 @@ func loadStandardSources() error {
 		}()
 	}
 	group.Wait()
-	for _, result := range results {
+	modules := make([]*syntax.Module, len(results))
+	for i, result := range results {
 		if result.err != nil {
-			return result.err
+			return nil, result.err
 		}
-		module := result.module
-		standardSources = append(standardSources, module)
-		sourceImplementation := false
-		for _, d := range module.Declarations {
-			if len(d.Body) > 0 {
+		modules[i] = result.module
+	}
+	return modules, nil
+}
+
+// register records one bundled module: a source module is checked later, on
+// demand; a native module contributes its declarations now.
+func (l *standardLoader) register(module *syntax.Module) error {
+	standardSources = append(standardSources, module)
+	sourceImplementation := false
+	for _, d := range module.Declarations {
+		if len(d.Body) > 0 {
+			sourceImplementation = true
+		}
+		for _, method := range d.Methods {
+			if len(method.Body) > 0 {
 				sourceImplementation = true
 			}
+		}
+	}
+	if sourceImplementation {
+		// Source modules use the ordinary parser and checker, including body,
+		// import visibility, default argument, and implementation rules.
+		standardSourceModules[module.File] = module
+		return nil
+	}
+	standardModules[module.File] = map[string]*Symbol{}
+	for _, d := range module.Declarations {
+		if d.Kind == syntax.KindImpl {
 			for _, method := range d.Methods {
 				if len(method.Body) > 0 {
-					sourceImplementation = true
+					return fmt.Errorf("native implementations must not have bodies: %s", method.Pos)
 				}
 			}
-		}
-		if sourceImplementation {
-			// Source modules use the ordinary parser and checker, including body,
-			// import visibility, default argument, and implementation rules.
-			standardSourceModules[module.File] = module
 			continue
 		}
-		standardModules[module.File] = map[string]*Symbol{}
-		for _, d := range module.Declarations {
-			if d.Kind == syntax.KindImpl {
-				for _, method := range d.Methods {
-					if len(method.Body) > 0 {
-						return fmt.Errorf("native implementations must not have bodies: %s", method.Pos)
-					}
-				}
-				continue
-			}
-			if d.Kind == syntax.KindTest {
-				return fmt.Errorf("standard declarations cannot contain implementation bodies: %s", d.Pos)
-			}
-			if len(d.Body) > 0 {
-				return fmt.Errorf("native declarations must not have bodies: %s", d.Pos)
-			}
-			for _, method := range d.Methods {
-				if len(method.Body) > 0 {
-					return fmt.Errorf("native receiver operations must have empty bodies: %s", method.Pos)
-				}
-			}
-			kind := d.Kind
-			if kind == "interface" {
-				kind = "contract"
-			}
-			native := d.Name
-			id := "@std/" + d.Name
-			s := &Symbol{Name: d.Name, ID: id, Kind: syntax.KindType, Module: module.File, Export: d.Export, Native: native, Decl: d}
-			if d.Kind == syntax.KindFn {
-				native = bindings.Functions[module.File+"/"+d.Name]
-				if native == "" {
-					return fmt.Errorf("missing native function binding: %s", d.Pos)
-				}
-				s.Kind = syntax.KindFn
-				s.Native = native
-				s.ID = "@std/" + native
-			} else {
-				if nativeKind := bindings.NativeTypes[module.File+"/"+d.Name]; nativeKind != "" {
-					kind = nativeKind
-				} else if kind == "native" {
-					return fmt.Errorf("opaque declaration needs a native binding: %s", d.Pos)
-				}
-				def := &Definition{Symbol: s, Kind: kind}
-				s.Type = &Type{Name: d.Name, ID: s.ID, Kind: kind, Def: def}
-				if standardSymbols[d.Name] != nil {
-					return fmt.Errorf("duplicate standard type %s", d.Name)
-				}
-				standardSymbols[d.Name] = s
-			}
-			if standardModules[module.File][d.Name] != nil {
-				return fmt.Errorf("duplicate standard declaration %s", d.Pos)
-			}
-			standardModules[module.File][d.Name] = s
+		if d.Kind == syntax.KindTest {
+			return fmt.Errorf("standard declarations cannot contain implementation bodies: %s", d.Pos)
 		}
+		if len(d.Body) > 0 {
+			return fmt.Errorf("native declarations must not have bodies: %s", d.Pos)
+		}
+		for _, method := range d.Methods {
+			if len(method.Body) > 0 {
+				return fmt.Errorf("native receiver operations must have empty bodies: %s", method.Pos)
+			}
+		}
+		kind := d.Kind
+		if kind == "interface" {
+			kind = "contract"
+		}
+		native := d.Name
+		id := "@std/" + d.Name
+		s := &Symbol{Name: d.Name, ID: id, Kind: syntax.KindType, Module: module.File, Export: d.Export, Native: native, Decl: d}
+		if d.Kind == syntax.KindFn {
+			native = l.bindings.Functions[module.File+"/"+d.Name]
+			if native == "" {
+				return fmt.Errorf("missing native function binding: %s", d.Pos)
+			}
+			s.Kind = syntax.KindFn
+			s.Native = native
+			s.ID = "@std/" + native
+		} else {
+			if nativeKind := l.bindings.NativeTypes[module.File+"/"+d.Name]; nativeKind != "" {
+				kind = nativeKind
+			} else if kind == "native" {
+				return fmt.Errorf("opaque declaration needs a native binding: %s", d.Pos)
+			}
+			def := &Definition{Symbol: s, Kind: kind}
+			s.Type = &Type{Name: d.Name, ID: s.ID, Kind: kind, Def: def}
+			if standardSymbols[d.Name] != nil {
+				return fmt.Errorf("duplicate standard type %s", d.Name)
+			}
+			standardSymbols[d.Name] = s
+		}
+		if standardModules[module.File][d.Name] != nil {
+			return fmt.Errorf("duplicate standard declaration %s", d.Pos)
+		}
+		standardModules[module.File][d.Name] = s
 	}
-	c := &checker{standardDeclarations: true, Program: &Program{TypeReferences: map[*syntax.Type]*Type{}}, captures: map[int]map[*Binding]bool{}}
-	scopeModule := func(module *syntax.Module) {
-		c.module = module
-		c.names = map[string]*Symbol{}
-		c.scope = newScope(nil)
-		for _, name := range strings.Fields("Bool Int Float String Unit Never") {
-			c.names[name] = &Symbol{Name: name, ID: name, Kind: syntax.KindType, Type: primitive(name), Export: true}
-		}
-		// Prelude equality names refer to the source-backed interfaces.
-		for _, name := range []string{"Equal", "Hashable"} {
-			symbol := standardSymbols[name]
-			imported := false
-			for _, item := range module.Imports {
-				if item.Name == name {
-					imported = true
-				}
-			}
-			if !imported && symbol.Module != module.File {
-				c.names[name] = symbol
-			}
-		}
-		for _, item := range module.Imports {
-			found := standardModules[item.Path][item.Name]
-			if found == nil || !found.Export {
-				c.error(item.NamePos, "resolution", "standard module does not export "+item.Name)
-				continue
-			}
-			c.addSymbol(item.Name, found, item.NamePos)
-		}
-		for _, d := range module.Declarations {
-			if d.Kind == syntax.KindImpl {
-				continue
-			}
-			c.addSymbol(d.Name, standardModules[module.File][d.Name], d.Pos)
-		}
+
+	return nil
+}
+
+// scopeModule opens the declaration scope of a native module: primitives, the
+// prelude, its imports, and its own declarations.
+func (l *standardLoader) scopeModule(module *syntax.Module) {
+	c := l.c
+	c.module = module
+	c.names = map[string]*Symbol{}
+	c.scope = newScope(nil)
+	for _, name := range strings.Fields("Bool Int Float String Unit Never") {
+		c.names[name] = &Symbol{Name: name, ID: name, Kind: syntax.KindType, Type: primitive(name), Export: true}
 	}
+	c.addStandardPrelude()
+	for _, item := range module.Imports {
+		found := standardModules[item.Path][item.Name]
+		if found == nil || !found.Export {
+			c.error(item.NamePos, "resolution", "standard module does not export "+item.Name)
+			continue
+		}
+		c.addSymbol(item.Name, found, item.NamePos)
+	}
+	for _, d := range module.Declarations {
+		if d.Kind == syntax.KindImpl {
+			continue
+		}
+		c.addSymbol(d.Name, standardModules[module.File][d.Name], d.Pos)
+	}
+
+}
+
+// declareIdentities declares every native nominal identity before any is resolved.
+func (l *standardLoader) declareIdentities() {
+	c := l.c
 	// All nominal identities are declared first, so standard contracts may refer to
 	// one another without bootstrapping a second, hidden Go type schema.
 	for _, module := range standardSources {
 		if standardSourceModules[module.File] != nil {
 			continue
 		}
-		scopeModule(module)
+		l.scopeModule(module)
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindImpl {
 				continue
@@ -234,11 +289,17 @@ func loadStandardSources() error {
 			}
 		}
 	}
+}
+
+// resolveDeclarations fills in native type variables, fields, cases, and
+// operation signatures.
+func (l *standardLoader) resolveDeclarations() {
+	c := l.c
 	for _, module := range standardSources {
 		if standardSourceModules[module.File] != nil {
 			continue
 		}
-		scopeModule(module)
+		l.scopeModule(module)
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindImpl {
 				continue
@@ -290,33 +351,17 @@ func loadStandardSources() error {
 			}
 		}
 	}
-	// Native adapters implement one omission value: Optional.none. Keep this
-	// source contract explicit instead of inferring defaults from field names.
-	for _, module := range standardSources {
-		if standardSourceModules[module.File] != nil {
-			continue
-		}
-		for _, declaration := range module.Declarations {
-			parameters := append(append([]syntax.Parameter{}, declaration.Params...), declaration.Fields...)
-			for _, method := range declaration.Methods {
-				parameters = append(parameters, method.Params...)
-			}
-			for _, parameter := range parameters {
-				if parameter.Default == nil {
-					continue
-				}
-				if parameter.Type.Name != "Optional" || parameter.Default.Kind != syntax.KindName || parameter.Default.Text != "none" {
-					return fmt.Errorf("native defaults must be Optional.none: %s", parameter.Pos)
-				}
-			}
-		}
-	}
+}
+
+// bindImplementations checks native impl blocks and ties each to its binding.
+func (l *standardLoader) bindImplementations() error {
+	c := l.c
 	used := map[string]bool{}
 	for _, module := range standardSources {
 		if standardSourceModules[module.File] != nil {
 			continue
 		}
-		scopeModule(module)
+		l.scopeModule(module)
 		for _, d := range module.Declarations {
 			if d.Kind != syntax.KindImpl {
 				continue
@@ -326,7 +371,7 @@ func loadStandardSources() error {
 			for _, method := range c.Methods[start:] {
 				key := module.File + "/" + d.Receiver.Name + "/" + d.Contract.Name + "/" + method.Decl.Name
 				method.ID = key
-				method.Native = bindings.Implementations[key]
+				method.Native = l.bindings.Implementations[key]
 				if method.Native == "" {
 					return fmt.Errorf("missing native implementation binding: %s", method.Decl.Pos)
 				}
@@ -334,7 +379,7 @@ func loadStandardSources() error {
 			}
 		}
 	}
-	for key := range bindings.Implementations {
+	for key := range l.bindings.Implementations {
 		if !used[key] {
 			return fmt.Errorf("unused native implementation binding: %s", key)
 		}
@@ -343,31 +388,45 @@ func loadStandardSources() error {
 	if len(c.Diagnostics) > 0 {
 		return fmt.Errorf("invalid standard declarations: %v", c.Diagnostics)
 	}
-	standardTypeReferences = c.TypeReferences
-	for receiver, name := range bindings.IntrinsicReceivers {
+	for receiver, name := range l.bindings.IntrinsicReceivers {
 		typ := standardSymbols[name]
 		if typ == nil {
 			return fmt.Errorf("missing intrinsic receiver declaration %s", name)
 		}
 		intrinsicOperations[receiver] = typ.Type
 	}
+	return nil
+}
+
+// bindReceivers attaches native receiver bindings and their requirements.
+func (l *standardLoader) bindReceivers() error {
+	c := l.c
+	intrinsicNames := map[string]string{}
+	for receiver, name := range l.bindings.IntrinsicReceivers {
+		intrinsicNames[name] = receiver
+	}
+	bound := map[string]bool{}
 	for _, module := range standardSources {
 		if standardSourceModules[module.File] != nil {
 			continue
 		}
-		scopeModule(module)
+		l.scopeModule(module)
 		for _, declaration := range module.Declarations {
 			if declaration.Kind == syntax.KindImpl {
 				continue
 			}
 			symbol := standardModules[module.File][declaration.Name]
+			receiver := declaration.Name
+			if name, ok := intrinsicNames[receiver]; ok {
+				receiver = name
+			}
 			for _, method := range declaration.Methods {
 				key := module.File + "/" + declaration.Name + "/" + method.Name
-				if native := bindings.Receivers[key]; native != "" {
+				if native := nativeabi.ReceiverBindings[receiver][method.Name]; native != "" {
 					standardReceiverBindings[symbol.ID+"/"+method.Name] = native
-					delete(bindings.Receivers, key)
+					bound[receiver+"."+method.Name] = true
 				}
-				for name, constraint := range bindings.ReceiverRequirements[key] {
+				for name, constraint := range l.bindings.ReceiverRequirements[key] {
 					if standardReceiverBindings[symbol.ID+"/"+method.Name] == "" {
 						return fmt.Errorf("receiver requirement needs a native binding: %s", key)
 					}
@@ -386,42 +445,135 @@ func loadStandardSources() error {
 					}
 					standardReceiverRequirements[symbol.ID+"/"+method.Name] = append(standardReceiverRequirements[symbol.ID+"/"+method.Name], receiverRequirement{variable, required.Type})
 				}
-				delete(bindings.ReceiverRequirements, key)
+				delete(l.bindings.ReceiverRequirements, key)
 			}
 		}
 	}
-	for key := range bindings.Receivers {
-		return fmt.Errorf("unused native receiver binding: %s", key)
+	for receiver, operations := range nativeabi.ReceiverBindings {
+		for name := range operations {
+			if !bound[receiver+"."+name] {
+				return fmt.Errorf("unused native receiver binding: %s.%s", receiver, name)
+			}
+		}
 	}
-	for key := range bindings.ReceiverRequirements {
+	for key := range l.bindings.ReceiverRequirements {
 		return fmt.Errorf("unused native receiver requirement: %s", key)
 	}
-	// Check all bundled source implementations once to publish documentation and
-	// editor symbols. Each application checks its reachable modules afresh so
-	// generated identities and mutable analysis maps remain program-local.
-	var sourceModules []*syntax.Module
+	return nil
+}
+
+// checkDefaults checks native default expressions and folds their constants.
+func (l *standardLoader) checkDefaults() error {
+	c := l.c
+	// Check native default expressions with the ordinary expression checker.
+	// Lowering prepares concrete slots before native dispatch; the runtime does
+	// not own a second default-expression schema.
 	for _, module := range standardSources {
 		if standardSourceModules[module.File] != nil {
-			sourceModules = append(sourceModules, module)
+			continue
 		}
-	}
-	program := check(sourceModules, nil, CheckOptions{})
-	if len(program.Diagnostics) > 0 {
-		return fmt.Errorf("invalid standard implementations: %v", program.Diagnostics)
-	}
-	for _, module := range program.Modules {
-		standardModules[module.File] = map[string]*Symbol{}
-		for name, symbol := range program.Symbols[module.File] {
-			if symbol.Module == module.File {
-				standardModules[module.File][name] = symbol
+		l.scopeModule(module)
+		for _, declaration := range module.Declarations {
+			if declaration.Kind == syntax.KindImpl {
+				continue
+			}
+			symbol := standardModules[module.File][declaration.Name]
+			if symbol.Kind == syntax.KindFn {
+				c.checkNativeDefaults(declaration, declaration.Params, symbol.Type, symbol.Variables)
+			} else {
+				c.checkNativeDefaults(declaration, declaration.Fields, ConstructorSignature(symbol.Type), symbol.Variables)
+				for _, operation := range symbol.Type.Def.Operations {
+					method := standardMethodDeclaration(symbol.Type, operation.Name)
+					variables := append(append([]*Type{}, symbol.Variables...), standardOperationVariables[symbol.ID+"/"+operation.Name]...)
+					c.checkNativeDefaults(method, method.Params, operation.Type, variables, symbol.Type.Kind == "contract")
+				}
 			}
 		}
 	}
-	for ref, typ := range program.TypeReferences {
-		standardTypeReferences[ref] = typ
+	var nativeModules []*syntax.Module
+	for _, module := range standardSources {
+		if standardSourceModules[module.File] == nil {
+			nativeModules = append(nativeModules, module)
+		}
 	}
-	standardSourceMethods = program.Methods[len(standardImplementations):]
+	finishModules(nativeModules)
+	if len(c.Diagnostics) > 0 {
+		return fmt.Errorf("invalid standard defaults: %v", c.Diagnostics)
+	}
 	return nil
+}
+
+func (c *checker) checkNativeDefaults(d *syntax.Declaration, params []syntax.Parameter, t *Type, variables []*Type, contract ...bool) {
+	if !hasExtendedDefaults(params) {
+		// Existing Optional.none adapters retain their allocation-free path.
+		for _, parameter := range params {
+			if parameter.Default != nil && parameter.Type.Name != "Optional" {
+				c.error(parameter.Pos, "type", "none default requires Optional; use a value matching the declared type")
+			}
+		}
+		return
+	}
+	// Keep this first native-default slice bounded. Source generic defaults and
+	// generic calls through nongeneric standard contracts retain their existing
+	// rules; native generic expression defaults need a substitution design.
+	if len(variables) != 0 {
+		c.error(d.Pos, "type", "native generic expression defaults are not supported; keep '= none' on Optional parameters or use a source wrapper")
+		return
+	}
+	if d.Kind == syntax.KindRecord && t.Result.Kind != syntax.KindRecord {
+		c.error(d.Pos, "type", "native opaque constructor expression defaults need a delivery/disposal design; keep Optional.none defaults or use a source wrapper")
+		return
+	}
+	oldScope, oldResult, oldFunction := c.scope, c.result, c.function
+	c.scope = c.variableScope(variables)
+	c.result = t.Result
+	c.serial++
+	c.function = c.serial
+	c.checkParameters(d, params, t.Params)
+	if len(contract) > 0 && contract[0] {
+		// Inherited preparation precedes an implementation's own defaults.
+		// Keep this bounded interface slice independent and free of effects;
+		// combining dependent/effectful defaults needs one ordered prologue.
+		for _, parameter := range params {
+			if e := parameter.Default; e != nil && !c.closedInterfaceDefault(e) {
+				c.error(parameter.Pos, "type", "standard interface expression defaults must be closed literals or bytes from literal text; use a source wrapper for dependent or effectful defaults")
+			}
+		}
+	}
+	c.scope, c.result, c.function = oldScope, oldResult, oldFunction
+}
+
+func (c *checker) closedInterfaceDefault(e *syntax.Expression) bool {
+	switch e.Kind {
+	case syntax.KindBool, syntax.KindNumber, syntax.KindUnit:
+		return true
+	case syntax.KindName:
+		info := infoOf(e)
+		return e.Text == "none" && info != nil && info.Binding == nil && info.Constructor != nil && info.Constructor.ID == "@std/Optional" && info.Case == "none"
+	case syntax.KindText:
+		for _, part := range e.Parts {
+			if part.Value != nil {
+				return false
+			}
+		}
+		return true
+	case syntax.KindCall:
+		if e.Left.Kind == syntax.KindMember && len(e.Args) == 0 {
+			info := infoOf(e.Left)
+			return info != nil && info.Method != nil && info.Method.Native == "to_bytes" && info.Method.Receiver.ID == "String" && c.closedInterfaceDefault(e.Left.Left)
+		}
+	}
+	return false
+}
+
+// Extended defaults need source preparation rather than the native none adapter.
+func hasExtendedDefaults(params []syntax.Parameter) bool {
+	for _, parameter := range params {
+		if e := parameter.Default; e != nil && (e.Kind != syntax.KindName || e.Text != "none") {
+			return true
+		}
+	}
+	return false
 }
 
 // sourceStandardDependencies adds reachable bundled implementations in dependency
@@ -454,28 +606,115 @@ func sourceStandardDependencies(modules []*syntax.Module) ([]*syntax.Module, []s
 	return ordered, diagnostics
 }
 
-// StandardModules exposes canonical declarations and their source positions to
-// tooling. Callers must not mutate the returned checked declarations.
-func StandardModules() []*syntax.Module {
-	ensureStandard()
-	return append([]*syntax.Module{}, standardSources...)
+// standardSource checks a bundled source module and the bundled modules it
+// imports, once. The caller holds standardMu.
+func standardSource(module *syntax.Module) *standardResult {
+	if r := standardDone[module.File]; r != nil || standardChecking[module.File] {
+		return r
+	}
+	standardChecking[module.File] = true
+	defer delete(standardChecking, module.File)
+	for _, item := range module.Imports {
+		if dependency := standardSourceModules[item.Path]; dependency != nil {
+			standardSource(dependency)
+		}
+	}
+	program := check([]*syntax.Module{module}, nil, CheckOptions{bundled: module})
+	if len(program.Diagnostics) > 0 {
+		panic(fmt.Errorf("invalid standard implementation %s: %v", module.File, program.Diagnostics))
+	}
+	r := &standardResult{symbols: program.symbols[module.File], exports: map[string]*Symbol{}}
+	for name, symbol := range r.symbols {
+		if symbol.Module == module.File {
+			r.exports[name] = symbol
+		}
+	}
+	for _, m := range program.Methods {
+		if m.Module == module.File {
+			r.methods = append(r.methods, m)
+		}
+	}
+	standardDone[module.File] = r
+	return r
 }
 
-// StandardTypeReferences exposes resolved types in canonical standard signatures.
-// Callers may change the returned map, but must not mutate the shared types.
-func StandardTypeReferences() map[*syntax.Type]*Type {
+func ensureStandardSource(module *syntax.Module) *standardResult {
+	standardMu.Lock()
+	defer standardMu.Unlock()
+	return standardSource(module)
+}
+
+// ensureStandardSources checks every bundled source module, for tools that
+// describe the whole library.
+func ensureStandardSources() {
 	ensureStandard()
-	out := make(map[*syntax.Type]*Type, len(standardTypeReferences))
-	for ref, typ := range standardTypeReferences {
-		out[ref] = typ
+	standardMu.Lock()
+	defer standardMu.Unlock()
+	for _, module := range standardSources {
+		if standardSourceModules[module.File] != nil {
+			standardSource(module)
+		}
+	}
+}
+
+// standardExports returns a standard module's declarations, checking a bundled
+// source module on first use.
+func standardExports(path string) map[string]*Symbol {
+	if module := standardSourceModules[path]; module != nil {
+		return ensureStandardSource(module).exports
+	}
+	return standardModules[path]
+}
+
+// allStandardExports describes every standard module; it checks them all.
+func allStandardExports() map[string]map[string]*Symbol {
+	ensureStandardSources()
+	out := map[string]map[string]*Symbol{}
+	for path, exports := range standardModules {
+		out[path] = exports
+	}
+	for path, r := range standardDone {
+		out[path] = r.exports
 	}
 	return out
+}
+
+// standardSourceMethods lists the methods of every bundled source module.
+func standardSourceMethods() []*Method {
+	ensureStandardSources()
+	var out []*Method
+	for _, module := range standardSources {
+		if r := standardDone[module.File]; r != nil {
+			out = append(out, r.methods...)
+		}
+	}
+	return out
+}
+
+// StandardImports lists the modules each standard module imports.
+func StandardImports() map[string][]string {
+	ensureStandard()
+	imports := map[string][]string{}
+	for _, module := range standardSources {
+		for _, item := range module.Imports {
+			imports[module.File] = append(imports[module.File], item.Path)
+		}
+	}
+	return imports
+}
+
+// StandardModules exposes canonical declarations and their source positions to
+// tooling, with every bundled module checked. Callers must not mutate the
+// returned checked declarations.
+func StandardModules() []*syntax.Module {
+	ensureStandardSources()
+	return append([]*syntax.Module{}, standardSources...)
 }
 
 func StandardExports(module string) map[string]*Symbol {
 	ensureStandard()
 	out := map[string]*Symbol{}
-	for name, symbol := range standardModules[module] {
+	for name, symbol := range standardExports(module) {
 		if symbol.Export {
 			out[name] = symbol
 		}
@@ -486,6 +725,9 @@ func StandardModuleNames() []string {
 	ensureStandard()
 	names := []string{}
 	for name := range standardModules {
+		names = append(names, name)
+	}
+	for name := range standardSourceModules {
 		names = append(names, name)
 	}
 	sort.Strings(names)

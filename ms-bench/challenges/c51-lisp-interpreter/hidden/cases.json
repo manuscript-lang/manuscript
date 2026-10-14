@@ -1,0 +1,542 @@
+[
+ {
+  "name": "basic",
+  "stdin": "(define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))\n(display (fact 10)) (newline)\n(display (map fact (list 1 2 3 4 5)))\n(newline)\n",
+  "stdout": "3628800\n(1 2 6 24 120)\n"
+ },
+ {
+  "name": "closure-counter",
+  "stdin": "(define (make-counter)\n  (let ((n 0))\n    (lambda () (set! n (+ n 1)) n)))\n(define c1 (make-counter))\n(define c2 (make-counter))\n(c1) (c1)\n(display (c1)) (display \" \") (display (c2)) (newline)\n(define (adder n) (lambda (x) (+ x n)))\n(define add5 (adder 5))\n(display (add5 10)) (newline)\n(define (compose f g) (lambda (x) (f (g x))))\n(display ((compose add5 (adder 1)) 0)) (newline)\n(define (make-acc total)\n  (lambda (amt) (set! total (+ total amt)) total))\n(define acc (make-acc 100))\n(acc 10)\n(display (acc 10)) (newline)\n",
+  "stdout": "3 1\n15\n6\n120\n"
+ },
+ {
+  "name": "error-report",
+  "stdin": "(display \"start\")\n(newline)\n(display (try (quotient 1 0) (lambda (m) m)))\n(newline)\n(display (+ 1 (car 5)))\n(display \"never\")\n",
+  "stdout": "start\ndivision by zero\nerror: car: expected pair, got 5\n"
+ },
+ {
+  "name": "tail-loop",
+  "stdin": "(define (loop i acc) (if (= i 0) acc (loop (- i 1) (+ acc i))))\n(display (loop 100000 0))\n(newline)\n",
+  "stdout": "5000050000\n"
+ },
+ {
+  "name": "arith",
+  "stdin": "(display (+ 1 2 3)) (newline)\n(display (- 10)) (newline)\n(display (- 10 3 2)) (newline)\n(display (* 2 3 4)) (newline)\n(display (+)) (newline)\n(display (*)) (newline)\n(display (quotient 17 5)) (display \" \") (display (quotient -17 5)) (display \" \") (display (quotient 17 -5)) (newline)\n(display (remainder -17 5)) (display \" \") (display (modulo -17 5)) (display \" \") (display (modulo 17 -5)) (display \" \") (display (remainder 17 -5)) (newline)\n(display (list (abs -5) (min 3 1 2) (max 3 1 2) (abs 7)))\n(newline)\n(display (list (= 1 1 1) (< 1 2 3) (< 1 3 2) (>= 3 3 2) (<= 1 1 2) (> 3 2 2)))\n",
+  "stdout": "6\n-10\n5\n24\n0\n1\n3 -3 -3\n-2 3 -3 2\n(5 1 3 7)\n(#t #t #f #t #t #f)"
+ },
+ {
+  "name": "define-lambda",
+  "stdin": "(define x 10)\n(define (square n) (* n n))\n(define cube (lambda (n) (* n n n)))\n(display (square x)) (newline)\n(display (cube 3)) (newline)\n(display square) (newline)\n(display cube) (newline)\n(display (lambda (a) a)) (newline)\n(display car) (newline)\n(define (add . xs) (apply + xs))\n(display (add 1 2 3 4)) (newline)\n(define (f a . rest) (list a rest))\n(display (f 1)) (display (f 1 2 3)) (newline)\n(display ((lambda args args) 1 2 3)) (newline)\n(display ((lambda (x) (* x 2)) 21)) (newline)\n",
+  "stdout": "100\n27\n#<procedure square>\n#<procedure cube>\n#<procedure>\n#<builtin car>\n10\n(1 ())(1 (2 3))\n(1 2 3)\n42\n"
+ },
+ {
+  "name": "closures",
+  "stdin": "(define (make-counter)\n  (let ((n 0))\n    (lambda () (set! n (+ n 1)) n)))\n(define c1 (make-counter))\n(define c2 (make-counter))\n(c1) (c1)\n(display (c1)) (display \" \") (display (c2)) (newline)\n(define (adder n) (lambda (x) (+ x n)))\n(define add5 (adder 5))\n(display (add5 10)) (newline)\n(define (compose f g) (lambda (x) (f (g x))))\n(display ((compose add5 (adder 1)) 0)) (newline)\n(define (make-acc total)\n  (lambda (amt) (set! total (+ total amt)) total))\n(define acc (make-acc 100))\n(acc 10)\n(display (acc 10)) (newline)\n",
+  "stdout": "3 1\n15\n6\n120\n"
+ },
+ {
+  "name": "lists",
+  "stdin": "(display (cons 1 2)) (newline)\n(display (cons 1 (cons 2 '()))) (newline)\n(display (list 1 2 3)) (newline)\n(display '(1 (2 3) . 4)) (newline)\n(display (car '(a b c))) (display (cdr '(a b c))) (display (cadr '(a b c))) (display (cddr '(a b c))) (display (caddr '(a b c))) (newline)\n(display (length '(1 2 3))) (display (length '())) (newline)\n(display (append '(1 2) '(3) '() '(4 5))) (newline)\n(display (append)) (display (append '(1) 2)) (newline)\n(display (reverse '(1 2 3))) (newline)\n(display (list-ref '(a b c) 2)) (display (list-tail '(a b c d) 2)) (display (list-tail '(a) 1)) (newline)\n(display (list (null? '()) (null? '(1)) (pair? '(1)) (pair? '()) (list? '(1 2)) (list? (cons 1 2)))) (newline)\n(display (range 3 7)) (display (range 5 5)) (newline)\n(define p (cons 1 2))\n(set-car! p 10) (set-cdr! p '(20))\n(display p) (newline)\n(display (member 2 '(1 2 3))) (display (member 9 '(1 2 3))) (newline)\n(display (assoc \"b\" '((\"a\" . 1) (\"b\" . 2)))) (display (assoc 'z '((a . 1)))) (newline)\n",
+  "stdout": "(1 . 2)\n(1 2)\n(1 2 3)\n(1 (2 3) . 4)\na(b c)b(c)c\n30\n(1 2 3 4 5)\n()(1 . 2)\n(3 2 1)\nc(c d)()\n(#t #f #t #f #t #f)\n(3 4 5 6)()\n(10 20)\n(2 3)#f\n(b . 2)#f\n"
+ },
+ {
+  "name": "higher-order",
+  "stdin": "(display (map (lambda (x) (* x x)) '(1 2 3 4))) (newline)\n(display (map + '(1 2 3) '(10 20 30 40))) (newline)\n(display (filter odd? '(1 2 3 4 5))) (newline)\n(display (fold + 0 '(1 2 3 4))) (newline)\n(display (fold (lambda (acc x) (cons x acc)) '() '(1 2 3))) (newline)\n(display (foldr cons '() '(1 2 3))) (newline)\n(display (foldr (lambda (x acc) (- x acc)) 0 '(10 4 1))) (newline)\n(for-each (lambda (x y) (display (+ x y)) (display \",\")) '(1 2) '(10 20)) (newline)\n(display (apply max '(3 9 2))) (display (apply + 1 2 '(3 4))) (newline)\n(display (sort '(3 1 2 5 4) <)) (display (sort '(\"pear\" \"apple\" \"fig\") string<?)) (newline)\n(display (sort '((1 . b) (0 . a) (1 . a) (0 . b)) (lambda (x y) (< (car x) (car y))))) (newline)\n(display (map (lambda (p) (car p)) '((a . 1) (b . 2)))) (newline)\n",
+  "stdout": "(1 4 9 16)\n(11 22 33)\n(1 3 5)\n10\n(3 2 1)\n(1 2 3)\n7\n11,22,\n910\n(1 2 3 4 5)(apple fig pear)\n((0 . a) (0 . b) (1 . b) (1 . a))\n(a b)\n"
+ },
+ {
+  "name": "tail-calls",
+  "stdin": "(define (loop i acc) (if (= i 0) acc (loop (- i 1) (+ acc i))))\n(display (loop 200000 0)) (newline)\n(define (even2? n) (if (= n 0) #t (odd2? (- n 1))))\n(define (odd2? n) (if (= n 0) #f (even2? (- n 1))))\n(display (even2? 100001)) (newline)\n(define (count n) (cond ((= n 0) 'done) (else (count (- n 1)))))\n(display (count 100000)) (newline)\n(define (w n) (when (> n 0) (w (- n 1))))\n(w 100000) (display \"ok\") (newline)\n(define (a n) (and #t (or #f (if (= n 0) 'fin (a (- n 1))))))\n(display (a 100000)) (newline)\n(define (b n) (begin 1 (let ((m n)) (let* ((k m)) (if (= k 0) 'b (b (- k 1)))))))\n(display (b 100000)) (newline)\n(display (let lp ((i 0) (s 0)) (if (> i 100000) s (lp (+ i 1) (+ s i))))) (newline)\n",
+  "stdout": "20000100000\n#f\ndone\nok\nfin\nb\n5000050000\n"
+ },
+ {
+  "name": "deep-recursion",
+  "stdin": "(define (sum n) (if (= n 0) 0 (+ n (sum (- n 1)))))\n(display (sum 3000)) (newline)\n(define (build n) (if (= n 0) '() (cons n (build (- n 1)))))\n(display (length (build 5000))) (newline)\n(define (inf n) (+ 1 (inf n)))\n(display \"before\") (newline)\n(inf 1)\n(display \"never\")\n",
+  "stdout": "4501500\n5000\nbefore\nerror: recursion limit exceeded\n"
+ },
+ {
+  "name": "recursion-limit-caught",
+  "stdin": "(define (inf n) (+ 1 (inf n)))\n(display (try (inf 1) (lambda (m) m))) (newline)\n(display (try (inf 1) (lambda (m) (string-append \"caught: \" m)))) (newline)\n(define (ok n) (if (= n 0) 0 (+ 1 (ok (- n 1)))))\n(display (ok 9000)) (newline)\n",
+  "stdout": "recursion limit exceeded\ncaught: recursion limit exceeded\n9000\n"
+ },
+ {
+  "name": "let-forms",
+  "stdin": "(display (let ((a 1) (b 2)) (+ a b))) (newline)\n(define a 100)\n(display (let ((a 1) (b a)) (list a b))) (newline)\n(display (let* ((a 1) (b (+ a 1)) (c (* b 2))) (list a b c))) (newline)\n(display (letrec ((ev? (lambda (n) (if (= n 0) #t (od? (- n 1))))) (od? (lambda (n) (if (= n 0) #f (ev? (- n 1)))))) (ev? 10))) (newline)\n(display (let loop ((i 0) (acc '())) (if (= i 5) (reverse acc) (loop (+ i 1) (cons (* i i) acc))))) (newline)\n(define (f)\n  (define x 1)\n  (define (g) (+ x 1))\n  (g))\n(display (f)) (newline)\n(display (let () 5)) (newline)\n",
+  "stdout": "3\n(1 100)\n(1 2 4)\n#t\n(0 1 4 9 16)\n2\n5\n"
+ },
+ {
+  "name": "conditionals",
+  "stdin": "(display (if #t 'yes 'no)) (display (if #f 'yes 'no)) (display (if 0 'zero-true 'zero-false)) (display (if '() 'nil-true 'nil-false)) (newline)\n(display (if #f 1)) (newline)\n(display (cond ((= 1 2) 'a) ((= 1 1) 'b) (else 'c))) (newline)\n(display (cond (#f 1))) (newline)\n(display (cond ((assoc 'b '((a . 1) (b . 2))) => 1) (else 'x))) (newline)\n",
+  "stdout": "yesnozero-truenil-true\n#<void>\nb\n#<void>\nerror: unbound variable: =>\n"
+ },
+ {
+  "name": "cond-test-only",
+  "stdin": "(display (cond (5) (else 6))) (display (cond (#f) (7))) (newline)\n(display (list (and) (or) (and 1 2 3) (and 1 #f 3) (or #f #f) (or #f 4 5) (and 1 (or #f 2)))) (newline)\n(display (list (when #t 1 2 3) (when #f 1) (unless #f 4) (unless #t 4))) (newline)\n(define x 0)\n(or #t (set! x 1))\n(and #f (set! x 2))\n(display x) (newline)\n(display (not 0)) (display (not #f)) (display (not '())) (newline)\n",
+  "stdout": "57\n(#t #f 3 #f #f 4 2)\n(3 #<void> 4 #<void>)\n0\n#f#t#f\n"
+ },
+ {
+  "name": "equality",
+  "stdin": "(display (list (eq? 'a 'a) (eq? 1 1) (eq? '() '()) (eq? \"a\" \"a\") (eq? '(1) '(1)) (eq? #t #t) (eq? 1 #t))) (newline)\n(display (list (equal? '(1 (2 \"x\")) '(1 (2 \"x\"))) (equal? \"a\" \"a\") (equal? 1 \"1\") (equal? '(1 2) '(1 2 3)) (equal? 'a 'a) (equal? (cons 1 2) (cons 1 2)) (equal? car car))) (newline)\n",
+  "stdout": "(#t #t #t #f #f #t #f)\n(#t #t #f #f #t #t #t)\n"
+ },
+ {
+  "name": "strings",
+  "stdin": "(display (string-length \"hello\")) (newline)\n(display (string-append \"a\" \"b\" \"c\")) (display (string-append)) (newline)\n(display (substring \"hello world\" 6 11)) (display \"|\") (display (substring \"abc\" 1 1)) (newline)\n(display (string-ref \"abc\" 1)) (newline)\n(display (list (string=? \"a\" \"a\") (string=? \"a\" \"b\") (string<? \"apple\" \"banana\") (string<? \"b\" \"a\") (string<? \"a\" \"ab\"))) (newline)\n(display (string-upcase \"Hello\")) (display (string-downcase \"HeLLo\")) (newline)\n(display (list (string->number \"42\") (string->number \"-7\") (string->number \"x1\") (string->number \"\") (string->number \"-\") (string->number \"99999999999999999999\"))) (newline)\n(display (number->string -15)) (newline)\n(display (list (string->symbol \"foo\") (symbol->string (quote bar)))) (newline)\n(write (string->list \"abc\")) (newline)\n(display (list->string (list \"x\" \"y\" \"z\"))) (newline)\n(write (string-join (list \"a\" \"b\" \"c\") \", \")) (newline)\n(write (string-split \"a,b,,c\" \",\")) (write (string-split \"\" \",\")) (write (string-split \"abc\" \",\")) (newline)\n(display (list (string-contains? \"hello\" \"ell\") (string-contains? \"hello\" \"xyz\") (string-contains? \"hello\" \"\"))) (newline)\n",
+  "stdout": "5\nabc\nworld|\nb\n(#t #f #t #f #t)\nHELLOhello\n(42 -7 #f #f #f #f)\n-15\n(foo bar)\n(\"a\" \"b\" \"c\")\nxyz\n\"a, b, c\"\n(\"a\" \"b\" \"\" \"c\")(\"\")(\"abc\")\n(#t #f #t)\n"
+ },
+ {
+  "name": "write-display",
+  "stdin": "(write \"he said \\\"hi\\\"\\n\\ttab\\\\\") (newline)\n(display \"he said \\\"hi\\\"\") (newline)\n(write (list \"a\" 1 (quote b) #t \"c d\")) (newline)\n(display (list \"a\" 1 (quote b) #t \"c d\")) (newline)\n(write (quote (1 . (2 . (3 . 4))))) (newline)\n(write (quote ((a . b) (c) ()))) (newline)\n(display (if #f #f)) (newline)\n(display (void)) (newline)\n(write (list (void) car)) (newline)\n(display '(quote x)) (newline)\n(display \"no newline at end\")\n",
+  "stdout": "\"he said \\\"hi\\\"\\n\\ttab\\\\\"\nhe said \"hi\"\n(\"a\" 1 b #t \"c d\")\n(a 1 b #t c d)\n(1 2 3 . 4)\n((a . b) (c) ())\n#<void>\n#<void>\n(#<void> #<builtin car>)\n(quote x)\nno newline at end"
+ },
+ {
+  "name": "quote-forms",
+  "stdin": "(display 'abc) (display '(a . b)) (display ''x) (display '(1 'y)) (display '#t) (display '5) (display '\"s\") (newline)\n(display (quote (+ 1 2))) (display (eval-free)) \n",
+  "stdout": "abc(a . b)(quote x)(1 (quote y))#t5s\n(+ 1 2)\nerror: unbound variable: eval-free\n"
+ },
+ {
+  "name": "comments-whitespace",
+  "stdin": "; leading comment\n(display 1) ; trailing\n(newline)\n   (display\n   2\n   )\n\n\t(newline) ;; done\n;final comment without newline",
+  "stdout": "1\n2\n"
+ },
+ {
+  "name": "symbols",
+  "stdin": "(define a-b? 1) (define +x 2) (define 1+ 3) (define - -) (define <=> 4)\n(display (list a-b? +x 1+ <=> (- 5 2))) (newline)\n(display (quote (-5 - -x 5- +5 +))) (newline)\n(define Foo 1) (define foo 2) (display (list Foo foo)) (newline)\n",
+  "stdout": "(1 2 3 4 3)\n(-5 - -x 5- +5 +)\n(1 2)\n"
+ },
+ {
+  "name": "error-user",
+  "stdin": "(display \"start\") (newline)\n(error \"something bad:\" 42 \"str\" (quote sym) (list 1 \"a\"))\n(display \"unreachable\")\n",
+  "stdout": "start\nerror: something bad: 42 \"str\" sym (1 \"a\")\n"
+ },
+ {
+  "name": "error-user-nonl",
+  "stdin": "(display \"partial\")\n(error \"boom\")\n",
+  "stdout": "partial\nerror: boom\n"
+ },
+ {
+  "name": "error-only-msg",
+  "stdin": "(error \"plain\")",
+  "stdout": "error: plain\n"
+ },
+ {
+  "name": "try-basic",
+  "stdin": "(define (safe-div a b) (try (quotient a b) (lambda (m) (string-append \"oops(\" m \")\"))))\n(display (safe-div 10 2)) (newline)\n(display (safe-div 1 0)) (newline)\n(display (try (car 5) (lambda (m) m))) (newline)\n(display (try (undefined-var) (lambda (m) m))) (newline)\n(display (try (error \"custom\" 1 2) (lambda (m) (list m (string-length m))))) (newline)\n(display (try 42 (lambda (m) m))) (newline)\n(display (try (try (error \"inner\") (lambda (m) (error \"outer from\" m))) (lambda (m) m))) (newline)\n(display (try (\"notproc\" 1) (lambda (m) m))) (newline)\n(display (try ((lambda (x) x)) (lambda (m) m))) (newline)\n(display (try (+ 1 \"a\") (lambda (m) m))) (newline)\n(display (try (+ 9223372036854775807 1) (lambda (m) m))) (newline)\n(display (try (list-ref (list 1 2) 5) (lambda (m) m))) (newline)\n",
+  "stdout": "5\noops(division by zero)\ncar: expected pair, got 5\nunbound variable: undefined-var\n(custom 1 2 10)\n42\nouter from \"inner\"\nnot a procedure: \"notproc\"\nwrong number of arguments to lambda: expected 1, got 0\n+: expected integer, got \"a\"\ninteger overflow\nlist-ref: index out of range\n"
+ },
+ {
+  "name": "try-side-effects",
+  "stdin": "(define log (quote ()))\n(define (note x) (set! log (cons x log)))\n(try (begin (note 1) (error \"x\") (note 2)) (lambda (m) (note 3)))\n(display (reverse log)) (newline)\n(display (try (map (lambda (x) (if (= x 2) (error \"bad elem\" x) x)) (list 1 2 3)) (lambda (m) m))) (newline)\n",
+  "stdout": "(1 3)\nbad elem 2\n"
+ },
+ {
+  "name": "err-unbound",
+  "stdin": "(display 1)\n(display foo)\n",
+  "stdout": "1\nerror: unbound variable: foo\n"
+ },
+ {
+  "name": "err-set-unbound",
+  "stdin": "(set! nope 1)\n",
+  "stdout": "error: unbound variable: nope\n"
+ },
+ {
+  "name": "err-not-proc",
+  "stdin": "(display \"x\")\n(5 1 2)\n",
+  "stdout": "x\nerror: not a procedure: 5\n"
+ },
+ {
+  "name": "err-not-proc-str",
+  "stdin": "(\"abc\")\n",
+  "stdout": "error: not a procedure: \"abc\"\n"
+ },
+ {
+  "name": "err-arity-lambda",
+  "stdin": "(define (f a b) a)\n(f 1)\n",
+  "stdout": "error: wrong number of arguments to f: expected 2, got 1\n"
+ },
+ {
+  "name": "err-arity-lambda-many",
+  "stdin": "(define (f a b) a)\n(f 1 2 3)\n",
+  "stdout": "error: wrong number of arguments to f: expected 2, got 3\n"
+ },
+ {
+  "name": "err-arity-rest",
+  "stdin": "(define (g a b . r) a)\n(g 1)\n",
+  "stdout": "error: wrong number of arguments to g: expected at least 2, got 1\n"
+ },
+ {
+  "name": "err-arity-anon",
+  "stdin": "((lambda (x) x))\n",
+  "stdout": "error: wrong number of arguments to lambda: expected 1, got 0\n"
+ },
+ {
+  "name": "err-arity-builtin",
+  "stdin": "(cons 1)\n",
+  "stdout": "error: wrong number of arguments to cons: expected 2, got 1\n"
+ },
+ {
+  "name": "err-arity-builtin-range",
+  "stdin": "(string-append)\n(substring \"a\")\n",
+  "stdout": "error: wrong number of arguments to substring: expected 3, got 1\n"
+ },
+ {
+  "name": "err-arity-builtin-min",
+  "stdin": "(-)\n",
+  "stdout": "error: wrong number of arguments to -: expected at least 1, got 0\n"
+ },
+ {
+  "name": "err-arity-named-let",
+  "stdin": "(let loop ((i 0)) (loop))\n",
+  "stdout": "error: wrong number of arguments to loop: expected 1, got 0\n"
+ },
+ {
+  "name": "err-type-plus",
+  "stdin": "(+ 1 \"a\")\n",
+  "stdout": "error: +: expected integer, got \"a\"\n"
+ },
+ {
+  "name": "err-type-car",
+  "stdin": "(car 5)\n",
+  "stdout": "error: car: expected pair, got 5\n"
+ },
+ {
+  "name": "err-type-car-list",
+  "stdin": "(car '())\n",
+  "stdout": "error: car: expected pair, got ()\n"
+ },
+ {
+  "name": "err-type-length",
+  "stdin": "(length (cons 1 2))\n",
+  "stdout": "error: length: expected list, got (1 . 2)\n"
+ },
+ {
+  "name": "err-type-cmp",
+  "stdin": "(< 1 'a)\n",
+  "stdout": "error: <: expected integer, got a\n"
+ },
+ {
+  "name": "err-type-strlen",
+  "stdin": "(string-length 'abc)\n",
+  "stdout": "error: string-length: expected string, got abc\n"
+ },
+ {
+  "name": "err-type-map",
+  "stdin": "(map 5 '(1 2))\n",
+  "stdout": "error: map: expected procedure, got 5\n"
+ },
+ {
+  "name": "err-type-map-list",
+  "stdin": "(map car 7)\n",
+  "stdout": "error: map: expected list, got 7\n"
+ },
+ {
+  "name": "err-type-apply",
+  "stdin": "(apply + 1 2)\n",
+  "stdout": "error: apply: expected list, got 2\n"
+ },
+ {
+  "name": "err-div0",
+  "stdin": "(display (quotient 1 0))\n",
+  "stdout": "error: division by zero\n"
+ },
+ {
+  "name": "err-mod0",
+  "stdin": "(modulo 5 0)\n",
+  "stdout": "error: division by zero\n"
+ },
+ {
+  "name": "err-overflow",
+  "stdin": "(display (* 4611686018427387904 2))\n",
+  "stdout": "error: integer overflow\n"
+ },
+ {
+  "name": "overflow-edges",
+  "stdin": "(display 9223372036854775807) (newline)\n(display -9223372036854775808) (newline)\n(display (+ 9223372036854775806 1)) (newline)\n(display (- -9223372036854775807 1)) (newline)\n(display (- -9223372036854775808))\n",
+  "stdout": "9223372036854775807\n-9223372036854775808\n9223372036854775807\n-9223372036854775808\nerror: integer overflow\n"
+ },
+ {
+  "name": "err-overflow-neg",
+  "stdin": "(abs -9223372036854775808)\n",
+  "stdout": "error: integer overflow\n"
+ },
+ {
+  "name": "err-index",
+  "stdin": "(list-ref '(1 2 3) 3)\n",
+  "stdout": "error: list-ref: index out of range\n"
+ },
+ {
+  "name": "err-index-neg",
+  "stdin": "(list-ref '(1 2 3) -1)\n",
+  "stdout": "error: list-ref: index out of range\n"
+ },
+ {
+  "name": "err-substring",
+  "stdin": "(substring \"abc\" 2 5)\n",
+  "stdout": "error: substring: index out of range\n"
+ },
+ {
+  "name": "err-string-ref",
+  "stdin": "(string-ref \"abc\" 3)\n",
+  "stdout": "error: string-ref: index out of range\n"
+ },
+ {
+  "name": "err-string-split",
+  "stdin": "(string-split \"a b\" \"  \")\n",
+  "stdout": "error: string-split: separator must be one character\n"
+ },
+ {
+  "name": "err-list-tail",
+  "stdin": "(list-tail '(1 2) 3)\n",
+  "stdout": "error: list-tail: index out of range\n"
+ },
+ {
+  "name": "err-error-nonstring",
+  "stdin": "(error 'oops 1)\n",
+  "stdout": "error: error: expected string, got oops\n"
+ },
+ {
+  "name": "err-bad-int-literal",
+  "stdin": "(display 1)\n(display 9223372036854775808)\n",
+  "stdout": "1\nerror: syntax error: integer out of range\n"
+ },
+ {
+  "name": "err-reader-paren",
+  "stdin": "(display 1)\n)\n(display 2)\n",
+  "stdout": "1\nerror: syntax error: unexpected )\n"
+ },
+ {
+  "name": "err-reader-eof",
+  "stdin": "(display 1)\n(display (+ 1 2)\n",
+  "stdout": "1\nerror: syntax error: unexpected end of input\n"
+ },
+ {
+  "name": "err-reader-string",
+  "stdin": "(display 1)\n(display \"abc)\n",
+  "stdout": "1\nerror: syntax error: unterminated string\n"
+ },
+ {
+  "name": "err-reader-escape",
+  "stdin": "(display \"a\\qb\")\n",
+  "stdout": "error: syntax error: bad escape\n"
+ },
+ {
+  "name": "err-reader-quote-eof",
+  "stdin": "(display 1)\n'",
+  "stdout": "1\nerror: syntax error: unexpected end of input\n"
+ },
+ {
+  "name": "err-reader-hash",
+  "stdin": "(display #x)\n",
+  "stdout": "error: syntax error: bad token: #x\n"
+ },
+ {
+  "name": "err-reader-dot",
+  "stdin": "(display (quote (. 1)))\n",
+  "stdout": "error: syntax error: bad dotted list\n"
+ },
+ {
+  "name": "err-reader-dot2",
+  "stdin": "(display (quote (1 . 2 3)))\n",
+  "stdout": "error: syntax error: bad dotted list\n"
+ },
+ {
+  "name": "err-reader-dot-top",
+  "stdin": ".\n",
+  "stdout": "error: syntax error: unexpected .\n"
+ },
+ {
+  "name": "err-form-if",
+  "stdin": "(if)\n",
+  "stdout": "error: syntax error: bad form: if\n"
+ },
+ {
+  "name": "err-form-if2",
+  "stdin": "(if 1 2 3 4)\n",
+  "stdout": "error: syntax error: bad form: if\n"
+ },
+ {
+  "name": "err-form-define",
+  "stdin": "(define)\n",
+  "stdout": "error: syntax error: bad form: define\n"
+ },
+ {
+  "name": "err-form-define2",
+  "stdin": "(define 5 1)\n",
+  "stdout": "error: syntax error: bad form: define\n"
+ },
+ {
+  "name": "err-form-define3",
+  "stdin": "(define x 1 2)\n",
+  "stdout": "error: syntax error: bad form: define\n"
+ },
+ {
+  "name": "err-form-lambda",
+  "stdin": "(lambda (1) 2)\n",
+  "stdout": "error: syntax error: bad form: lambda\n"
+ },
+ {
+  "name": "err-form-lambda-body",
+  "stdin": "(lambda (x))\n",
+  "stdout": "error: syntax error: bad form: lambda\n"
+ },
+ {
+  "name": "err-form-lambda-dup",
+  "stdin": "(lambda (x x) 1)\n",
+  "stdout": "error: syntax error: bad form: lambda\n"
+ },
+ {
+  "name": "err-form-let",
+  "stdin": "(let ((x)) x)\n",
+  "stdout": "error: syntax error: bad form: let\n"
+ },
+ {
+  "name": "err-form-let-body",
+  "stdin": "(let ((x 1)))\n",
+  "stdout": "error: syntax error: bad form: let\n"
+ },
+ {
+  "name": "err-form-cond",
+  "stdin": "(cond (else))\n",
+  "stdout": "error: syntax error: bad form: cond\n"
+ },
+ {
+  "name": "err-form-cond-else",
+  "stdin": "(cond (else 1) (#t 2))\n",
+  "stdout": "error: syntax error: bad form: cond\n"
+ },
+ {
+  "name": "err-form-cond-clause",
+  "stdin": "(cond 5)\n",
+  "stdout": "error: syntax error: bad form: cond\n"
+ },
+ {
+  "name": "err-form-set",
+  "stdin": "(set! 5 1)\n",
+  "stdout": "error: syntax error: bad form: set!\n"
+ },
+ {
+  "name": "err-form-quote",
+  "stdin": "(quote 1 2)\n",
+  "stdout": "error: syntax error: bad form: quote\n"
+ },
+ {
+  "name": "err-form-when",
+  "stdin": "(when #t)\n",
+  "stdout": "error: syntax error: bad form: when\n"
+ },
+ {
+  "name": "err-form-try",
+  "stdin": "(try 1)\n",
+  "stdout": "error: syntax error: bad form: try\n"
+ },
+ {
+  "name": "err-empty-app",
+  "stdin": "()\n",
+  "stdout": "error: syntax error: empty application\n"
+ },
+ {
+  "name": "err-bad-app",
+  "stdin": "(car . 1)\n",
+  "stdout": "error: syntax error: bad application\n"
+ },
+ {
+  "name": "err-lazy-form",
+  "stdin": "(define (f) (if))\n(display \"defined\") (newline)\n(f)\n",
+  "stdout": "defined\nerror: syntax error: bad form: if\n"
+ },
+ {
+  "name": "err-after-output",
+  "stdin": "(display 1) (newline) (display 2)\n(car 1)\n(display 3)\n",
+  "stdout": "1\n2\nerror: car: expected pair, got 1\n"
+ },
+ {
+  "name": "unspecified-chain",
+  "stdin": "(define x (if #f #f))\n(display x) (newline)\n(display (list (for-each display '()) (set-car! (list 1) 2)))\n",
+  "stdout": "#<void>\n(#<void> #<void>)"
+ },
+ {
+  "name": "shadow-builtin",
+  "stdin": "(define (list . xs) (quote mine))\n(display (list 1 2))\n(define car cdr)\n(display (car '(1 2)))\n(newline)\n(define if 5)\n(display (if #t 'special 'no))\n(display if)\n",
+  "stdout": "mine(2)\nspecial5"
+ },
+ {
+  "name": "internal-define-scope",
+  "stdin": "(define (f)\n  (define y 2)\n  y)\n(f)\n(display y)\n",
+  "stdout": "error: unbound variable: y\n"
+ },
+ {
+  "name": "set-closure-shared",
+  "stdin": "(define (mk)\n  (define n 0)\n  (cons (lambda () (set! n (+ n 1)) n) (lambda () n)))\n(define p (mk))\n((car p)) ((car p))\n(display ((cdr p))) (newline)\n(define x 1)\n(define (setx!) (set! x (+ x 1)))\n(setx!) (setx!)\n(display x) (newline)\n",
+  "stdout": "2\n3\n"
+ },
+ {
+  "name": "eval-order",
+  "stdin": "(define (show x) (display x) x)\n(+ (show 1) (show 2) (show 3))\n(newline)\n(list (show 'a) (show 'b))\n(newline)\n((begin (display \"f\") +) (begin (display \"1\") 1) (begin (display \"2\") 2))\n(newline)\n(let ((a (show 1)) (b (show 2))) (newline))\n",
+  "stdout": "123\nab\nf12\n12\n"
+ },
+ {
+  "name": "string-escapes-read",
+  "stdin": "(write \"tab\\there\") (newline)\n(display (string-length \"a\\nb\")) (newline)\n(write (string-append \"q\\\"\" \"\\\\\")) (newline)\n",
+  "stdout": "\"tab\\there\"\n3\n\"q\\\"\\\\\"\n"
+ },
+ {
+  "name": "symbols-as-data",
+  "stdin": "(define env '((x . 1) (y . 2)))\n(define (lookup k) (let ((p (assoc k env))) (if p (cdr p) 'missing)))\n(display (list (lookup 'x) (lookup 'y) (lookup 'z))) (newline)\n(display (map symbol? (list 'a \"a\" 1))) (newline)\n(display (list (number? 5) (number? \"5\") (string? \"s\") (boolean? #f) (boolean? 0) (procedure? car) (procedure? (lambda () 1)) (procedure? 'car))) (newline)\n(display (list (zero? 0) (zero? 1) (even? 4) (even? -3) (odd? -3) (odd? 4)))\n",
+  "stdout": "(1 2 missing)\n(#t #f #f)\n(#t #f #t #t #f #t #t #f)\n(#t #f #t #f #t #f)"
+ },
+ {
+  "name": "prog-fib-memo",
+  "stdin": "(define memo '())\n(define (fib n)\n  (if (< n 2) n\n      (let ((hit (assoc n memo)))\n        (if hit (cdr hit)\n            (let ((v (+ (fib (- n 1)) (fib (- n 2)))))\n              (set! memo (cons (cons n v) memo))\n              v)))))\n(display (fib 80)) (newline)\n(display (fib 90)) (newline)\n(display (fib 92)) (newline)\n(display (fib 93)) (newline)\n",
+  "stdout": "23416728348467685\n2880067194370816120\n7540113804746346429\nerror: integer overflow\n"
+ },
+ {
+  "name": "prog-primes",
+  "stdin": "(define (divisible? n d) (= (remainder n d) 0))\n(define (prime? n)\n  (and (> n 1)\n       (let loop ((d 2))\n         (cond ((> (* d d) n) #t)\n               ((divisible? n d) #f)\n               (else (loop (+ d 1)))))))\n(display (filter prime? (range 1 100))) (newline)\n(display (length (filter prime? (range 1 3000)))) (newline)\n",
+  "stdout": "(2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97)\n430\n"
+ },
+ {
+  "name": "prog-quicksort",
+  "stdin": "(define (qs l)\n  (if (null? l) '()\n      (let ((p (car l)) (rest (cdr l)))\n        (append (qs (filter (lambda (x) (< x p)) rest))\n                (list p)\n                (qs (filter (lambda (x) (>= x p)) rest))))))\n(display (qs '(5 3 8 1 9 2 7 3 5 0 -4 12))) (newline)\n(define (lcg s) (modulo (+ (* s 1103515245) 12345) 2147483648))\n(define (gen n s) (if (= n 0) '() (cons (modulo s 1000) (gen (- n 1) (lcg s)))))\n(define xs (gen 300 42))\n(display (equal? (qs xs) (sort xs <))) (newline)\n(display (list-tail (qs xs) 295)) (newline)\n",
+  "stdout": "(-4 0 1 2 3 3 5 5 7 8 9 12)\n#t\n(961 974 976 981 995)\n"
+ },
+ {
+  "name": "prog-queens",
+  "stdin": "(define (safe? q qs)\n  (let loop ((qs qs) (d 1))\n    (cond ((null? qs) #t)\n          ((or (= (car qs) q) (= (abs (- (car qs) q)) d)) #f)\n          (else (loop (cdr qs) (+ d 1))))))\n(define (place k n)\n  (if (= k 0) '(())\n      (apply append\n        (map (lambda (qs)\n               (apply append (map (lambda (q) (if (safe? q qs) (list (cons q qs)) '())) (range 0 n))))\n             (place (- k 1) n)))))\n(display (length (place 6 6))) (newline)\n(display (car (place 6 6))) (newline)\n(display (length (place 7 7))) (newline)\n",
+  "stdout": "4\n(4 2 0 5 3 1)\n40\n"
+ },
+ {
+  "name": "prog-meta-eval",
+  "stdin": "(define (lookup-var name env)\n  (let ((p (assoc name env)))\n    (if p (cdr p) (error \"meta: unbound\" name))))\n(define (meval e env)\n  (cond ((number? e) e)\n        ((symbol? e) (lookup-var e env))\n        ((eq? (car e) 'add) (+ (meval (cadr e) env) (meval (caddr e) env)))\n        ((eq? (car e) 'mul) (* (meval (cadr e) env) (meval (caddr e) env)))\n        ((eq? (car e) 'let1)\n         (meval (caddr e) (cons (cons (car (cadr e)) (meval (cadr (cadr e)) env)) env)))\n        (else (error \"meta: bad expr\" e))))\n(display (meval '(add 1 (mul 2 3)) '())) (newline)\n(display (meval '(let1 (x 5) (mul x (add x 1))) '())) (newline)\n(display (try (meval '(add y 1) '()) (lambda (m) m))) (newline)\n(meval '(sub 1 2) '())\n",
+  "stdout": "7\n30\nmeta: unbound y\nerror: meta: bad expr (sub 1 2)\n"
+ },
+ {
+  "name": "prog-strings-words",
+  "stdin": "(define text \"the quick brown fox jumps over the lazy dog the end\")\n(define words (string-split text \" \"))\n(define (count-word w ws) (length (filter (lambda (x) (string=? x w)) ws)))\n(define (uniq ws) (fold (lambda (acc w) (if (member w acc) acc (append acc (list w)))) '() ws))\n(for-each (lambda (w) (display w) (display \"=\") (display (count-word w words)) (display \" \")) (uniq words))\n(newline)\n(define (caps w) (string-append (string-upcase (substring w 0 1)) (substring w 1 (string-length w))))\n(display (string-join (map caps words) \" \")) (newline)\n(define (rev-str s) (list->string (reverse (string->list s))))\n(display (map rev-str (list \"abc\" \"hello\" \"\"))) (newline)\n(define (palin? s) (string=? s (rev-str s)))\n(display (filter palin? (list \"racecar\" \"abc\" \"noon\" \"a\"))) (newline)\n",
+  "stdout": "the=3 quick=1 brown=1 fox=1 jumps=1 over=1 lazy=1 dog=1 end=1 \nThe Quick Brown Fox Jumps Over The Lazy Dog The End\n(cba olleh )\n(racecar noon a)\n"
+ },
+ {
+  "name": "prog-bank-closures",
+  "stdin": "(define (make-account balance)\n  (define (withdraw amt)\n    (if (> amt balance) (error \"insufficient funds:\" balance amt)\n        (begin (set! balance (- balance amt)) balance)))\n  (define (deposit amt) (set! balance (+ balance amt)) balance)\n  (lambda (msg . args)\n    (cond ((eq? msg 'withdraw) (apply withdraw args))\n          ((eq? msg 'deposit) (apply deposit args))\n          ((eq? msg 'balance) balance)\n          (else (error \"unknown message\" msg)))))\n(define acc (make-account 100))\n(display (acc 'deposit 50)) (newline)\n(display (acc 'withdraw 30)) (newline)\n(display (try (acc 'withdraw 500) (lambda (m) m))) (newline)\n(display (acc 'balance)) (newline)\n(acc 'transfer 1)\n",
+  "stdout": "150\n120\ninsufficient funds: 120 500\n120\nerror: unknown message transfer\n"
+ },
+ {
+  "name": "prog-ycomb-hanoi",
+  "stdin": "(define (hanoi n from to via)\n  (if (= n 0) 0\n      (+ (hanoi (- n 1) from via to) 1 (hanoi (- n 1) via to from))))\n(display (hanoi 12 'a 'c 'b)) (newline)\n(define Y (lambda (f) ((lambda (x) (f (lambda (v) ((x x) v)))) (lambda (x) (f (lambda (v) ((x x) v)))))))\n(define fact (Y (lambda (self) (lambda (n) (if (= n 0) 1 (* n (self (- n 1))))))))\n(display (fact 20)) (newline)\n(display (fact 21)) (newline)\n",
+  "stdout": "4095\n2432902008176640000\nerror: integer overflow\n"
+ },
+ {
+  "name": "prog-assoc-update",
+  "stdin": "(define (update al k f default)\n  (cond ((null? al) (list (cons k (f default))))\n        ((equal? (caar-ish al) k) (cons (cons k (f (cdr (car al)))) (cdr al)))\n        (else (cons (car al) (update (cdr al) k f default)))))\n(define (caar-ish l) (car (car l)))\n(define counts (fold (lambda (al w) (update al w (lambda (n) (+ n 1)) 0)) '() '(a b a c b a)))\n(display counts) (newline)\n(display (sort counts (lambda (x y) (> (cdr x) (cdr y))))) (newline)\n",
+  "stdout": "((a . 3) (b . 2) (c . 1))\n((a . 3) (b . 2) (c . 1))\n"
+ },
+ {
+  "name": "prog-collatz",
+  "stdin": "(define (collatz n steps) (cond ((= n 1) steps) ((even? n) (collatz (quotient n 2) (+ steps 1))) (else (collatz (+ (* 3 n) 1) (+ steps 1)))))\n(define (best n best-n best-s)\n  (if (> n 3000) (list best-n best-s)\n      (let ((s (collatz n 0))) (if (> s best-s) (best (+ n 1) n s) (best (+ n 1) best-n best-s)))))\n(display (best 1 1 0)) (newline)\n",
+  "stdout": "(2919 216)\n"
+ },
+ {
+  "name": "big-list",
+  "stdin": "(define (build i acc) (if (= i 0) acc (build (- i 1) (cons i acc))))\n(define l (build 50000 '()))\n(display (length l)) (newline)\n(display (fold + 0 l)) (newline)\n(display (length (map (lambda (x) (* x 2)) l))) (newline)\n(display (car (reverse l))) (newline)\n(display (list-ref l 49999)) (newline)\n(display (length (filter even? l))) (newline)\n",
+  "stdout": "50000\n1250025000\n50000\n50000\n50000\n25000\n"
+ }
+]

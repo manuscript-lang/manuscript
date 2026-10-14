@@ -14,10 +14,9 @@ import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
-import Result from "@std/result.ms"
 
 fn amount() -> Result[Decimal, String]:
-    return ok(value: 12.50d)
+    return ok(12.50d)
 
 test "explicit standard imports":
     if not ([1, 2].length() == 2):
@@ -47,10 +46,10 @@ fn compute(value: Int) -> Int:
     return value
 
 fn ordinary() -> Result:
-    return Result.Value(value: compute(value: 3))
+    return Result.Value(compute(value: 3))
 
 test "standard spellings are ordinary names":
-    if not (List(count: 2).count == 2):
+    if not (List(2).count == 2):
         return panic(message: "check failed")
     let forward = compute
     if not (forward(value: 4) == 4):
@@ -61,7 +60,7 @@ test "standard spellings are ordinary names":
                 return panic(message: "check failed")
 ```
 
-Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected without the standard List import even though a local List exists. The local compute function is an ordinary function value.
+Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected when a module declaration replaces the canonical prelude List identity. The local compute function is an ordinary function value.
 
 Preserve ordinary generic method specialization and constructor restrictions in all existing sharing fixtures. Independently reject unimported TaskGroup, Task, Scheduler, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
 
@@ -83,23 +82,23 @@ import panic from "@std/faults.ms"
 import Bytes from "@std/bytes.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 type ClosedFile:
     marker: Unit
 
 impl File for ClosedFile:
     fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
-        return error(cause: IoError.Closed)
+        return error(IoError.Closed)
+
     fn close() -> Unit:
         return
 
 test "contract-valued cleanup":
-    with file = File(value: ClosedFile(marker: unit)):
+    with file = File(ClosedFile(unit)):
         match file.read(max_bytes: 1):
             ok(_):
                 return panic(message: "Unexpected case")
+
             error(cause):
                 if not (cause == IoError.Closed):
                     return panic(message: "check failed")
@@ -121,7 +120,6 @@ Use the accepted modules in [collection operations](../../../core-language/types
 import panic from "@std/faults.ms"
 
 import Decimal from "@std/decimal.ms"
-import Optional from "@std/optional.ms"
 
 fn quotient(value: Int, divisor: Int) -> Int:
     return value / divisor

@@ -12,11 +12,10 @@ Use a `TaskGroup` to start independent operations and retrieve each result throu
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import { TaskGroup, ExecutionError } from "@std/tasks.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 
-fn number() -> Int: return 42
-fn greeting() -> String: return "hello"
+fn number() -> Int: 42
+fn greeting() -> String: "hello"
 
 fn check() -> Result[Unit, ExecutionError]:
     with tasks = TaskGroup():
@@ -27,7 +26,7 @@ fn check() -> Result[Unit, ExecutionError]:
         let message = try greeting_task.join()
         if value != 42 or message != "hello":
             return panic("task results changed")
-        return ok(value: unit)
+        return ok(unit)
 
 test "independent typed results":
     match check():
@@ -49,7 +48,7 @@ Each `start` evaluates its receiver and callback argument before submitting that
 
 Passing `load_user()` executes that call during preparation. Pass a function such as `load_user` or an explicitly typed zero-argument closure instead. Function values, bound methods, and contract views retain their ordinary rules; saving generic `start` as a function value requires explicit specialization, such as `tasks.start[Int]`.
 
-Concurrent effect order is nondeterministic. Shared mutable data needs explicit synchronization; see [Synchronized](synchronization.md#synchronized).
+Concurrent effect order is nondeterministic. Shared mutable data needs explicit synchronization; see [Synchronized](synchronization.md#synchronized). Capturing a Map, List, or record shares its storage. See the [unsafe and guarded capture examples](sharing.md#captured-mutable-data) and the limits of the MSL105 advisory before mutating captured data.
 
 ## Errors and scope exit
 

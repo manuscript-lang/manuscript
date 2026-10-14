@@ -1,12 +1,12 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 
 # Errors returned when a byte range or numeric representation is invalid.
 export type BinaryError:
+    # Integer width is unsupported; the native codec accepts only 1, 2, 4 or 8 bytes.
     case InvalidInput
+    # A read crosses the byte buffer or a number cannot fit the requested signedness/width or result type.
     case OutOfRange
 
 # Reads a 32-bit floating-point value at `offset` using the selected byte order.
@@ -37,4 +37,5 @@ export fn write_integer(
 ) -> Result[Bytes, BinaryError]:
 
 impl Error for BinaryError:
+    # Returns a binary-prefixed diagnostic without echoing source bytes or numeric input.
     fn message() -> String:

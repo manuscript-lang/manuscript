@@ -1,7 +1,37 @@
 package msruntime
 
+// OptionalUnwrap is the checked direct-call path for Optional.unwrap. Bound
+// methods and ordinary dispatch use the same extraction and fault behavior.
+func OptionalUnwrap(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	value := receiver.(Alternative)
+	if value.Tag != "some" {
+		return Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+	}
+	result := value.Fields[0]
+	CheckCancelled(ctx)
+	return result
+}
+
 func init() {
 	variables := []LibraryParam{{"T", ""}}
+	for _, name := range []string{"ok_or", "ok_or_else"} {
+		params := []LibraryParam{{"value", "Optional[T]"}, {"cause", "E"}}
+		if name == "ok_or_else" {
+			params[1] = LibraryParam{"create", "fn()->E"}
+		}
+		libraryGeneric("optional", name, "Result[T][E]", []LibraryParam{{"T", ""}, {"E", ""}}, params, func(ctx *Execution, result string, args []Value) Value {
+			value := args[0].(Alternative)
+			if value.Tag == "some" {
+				return libraryOK(result, value.Fields[0])
+			}
+			cause := args[1]
+			if name == "ok_or_else" {
+				cause = Invoke(ctx, cause, nil)
+			}
+			return Alternative{Type: result, Tag: "error", Fields: []Value{cause}}
+		})
+	}
 	for _, name := range []string{"is_some", "is_none", "unwrap", "unwrap_or", "unwrap_or_else"} {
 		params := []LibraryParam{{"value", "Optional[T]"}}
 		result := "T"
@@ -16,6 +46,8 @@ func init() {
 		libraryGeneric("optional", name, result, variables, params, func(ctx *Execution, _ string, args []Value) Value {
 			value := args[0].(Alternative)
 			switch name {
+			case "unwrap":
+				return OptionalUnwrap(ctx, value)
 			case "is_some":
 				return value.Tag == "some"
 			case "is_none":
@@ -30,8 +62,28 @@ func init() {
 			case "unwrap_or_else":
 				return Invoke(ctx, args[1], nil)
 			default:
-				return Panic("called Optional.unwrap() on none")
+				return OptionalUnwrap(ctx, value)
 			}
 		})
 	}
+	libraryGeneric("optional", "map", "Optional[U]", []LibraryParam{{"T", ""}, {"U", ""}}, []LibraryParam{{"value", "Optional[T]"}, {"transform", "fn(value:T)->U"}}, func(ctx *Execution, result string, args []Value) Value {
+		value := args[0].(Alternative)
+		if value.Tag == "none" {
+			return Alternative{Type: result, Tag: "none"}
+		}
+		return Alternative{Type: result, Tag: "some", Fields: []Value{Invoke(ctx, args[1], []Argument{{"value", value.Fields[0]}})}}
+	})
+	libraryGeneric("optional", "and_then", "Optional[U]", []LibraryParam{{"T", ""}, {"U", ""}}, []LibraryParam{{"value", "Optional[T]"}, {"transform", "fn(value:T)->Optional[U]"}}, func(ctx *Execution, result string, args []Value) Value {
+		value := args[0].(Alternative)
+		if value.Tag == "none" {
+			return Alternative{Type: result, Tag: "none"}
+		}
+		return Invoke(ctx, args[1], []Argument{{"value", value.Fields[0]}})
+	})
+	libraryGeneric("optional", "or_else", "Optional[T]", variables, []LibraryParam{{"value", "Optional[T]"}, {"create", "fn()->Optional[T]"}}, func(ctx *Execution, _ string, args []Value) Value {
+		if args[0].(Alternative).Tag == "some" {
+			return args[0]
+		}
+		return Invoke(ctx, args[1], nil)
+	})
 }

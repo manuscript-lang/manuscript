@@ -20,7 +20,7 @@ func TestOptionalArgumentPreservesSourceTypeAndAST(t *testing.T) {
 		if len(program.Diagnostics) != 0 {
 			t.Fatal(program.Diagnostics)
 		}
-		info := program.Expressions[argument]
+		info := program.Info(argument)
 		if info.Type.ID != "Int" || info.OptionalArgument == nil || info.OptionalArgument.ID != "@std/Optional" || info.OptionalArgument.Args[0].ID != "Int" {
 			t.Fatal("lost source type or optional argument conversion", info)
 		}

@@ -71,6 +71,7 @@ func (n *network) serveStreaming() Function {
 		n.servers = append(n.servers, server)
 		n.mu.Unlock()
 		registerResource(ctx, server)
+		markConcurrent()
 		go func() {
 			if secure {
 				server.err = server.server.ServeTLS(listener, "", "")
@@ -100,6 +101,10 @@ type libraryHTTPExchange struct {
 func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Request) {
 	if !utf8.ValidString(r.URL.Path) || !utf8.ValidString(r.URL.RawQuery) || !libraryHTTPTextHeaders(r.Header) {
 		http.Error(w, "invalid UTF-8 request", 400)
+		return
+	}
+	if !normalizeHTTPRequestPath(r) {
+		http.Error(w, "invalid request path", 400)
 		return
 	}
 	s.mu.Lock()
@@ -287,7 +292,7 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 					if headerBytes > e.owner.headerLimit {
 						return libraryError(r, "LimitExceeded", "")
 					}
-					if strings.ContainsAny(value, "\r\n\x00") {
+					if !validHeaderValue(value) {
 						return libraryError(r, "InvalidInput", "")
 					}
 				}

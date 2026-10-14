@@ -7,26 +7,102 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
+	"unsafe"
 )
 
-func clampedIndex(length int, index int64, relative bool) int64 {
-	if relative {
-		index = relativeIndex(length, index)
+// StringAt is the direct path for String.at calls.
+func StringAt(ctx *Execution, text, index Value, result string) Value {
+	CheckCancelled(ctx)
+	return stringScalarAt(text.(string), index.(int64), result, false)
+}
+
+func stringScalarAt(text string, index int64, result string, asInt bool) Value {
+	ascii := isASCII(text)
+	count := len(text)
+	if !ascii {
+		count = utf8.RuneCountInString(text)
 	}
-	if index < 0 {
-		return 0
+	i := relativeIndex(count, index)
+	if i < 0 || i >= int64(count) {
+		return Alternative{Type: result, Tag: "none"}
 	}
-	if index > int64(length) {
-		return int64(length)
+	var scalar rune
+	if ascii {
+		scalar = rune(text[i])
+	} else {
+		scalar, _ = utf8.DecodeRuneInString(text[scalarOffset(text, int(i)):])
 	}
-	return index
+	var value Value = string(scalar)
+	if asInt {
+		value = int64(scalar)
+	}
+	return Alternative{result, "some", []Value{value}}
 }
 
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	add := libraryAdd
+	add("string", "length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, args []Value) Value {
+		return scalarCount(args[0].(string))
+	})
+	add("string", "is_empty", "Bool", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, args []Value) Value {
+		return len(args[0].(string)) == 0
+	})
+	add("string", "compare", "Int", []LibraryParam{p("text", "String"), p("other", "String")}, func(_ *Execution, _ string, args []Value) Value {
+		return int64(strings.Compare(args[0].(string), args[1].(string)))
+	})
+	add("string", "chars", "List[String]", []LibraryParam{p("text", "String")}, func(ctx *Execution, result string, args []Value) Value {
+		var items []Value
+		count := 0
+		for _, scalar := range args[0].(string) {
+			if count%1024 == 0 {
+				CheckCancelled(ctx)
+			}
+			items = append(items, string(scalar))
+			count++
+		}
+		return &List{Type: result, Items: items}
+	})
+	add("string", "reverse", "String", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, args []Value) Value {
+		remaining := args[0].(string)
+		var out strings.Builder
+		out.Grow(len(remaining))
+		for count := 0; len(remaining) > 0; count++ {
+			if count%1024 == 0 {
+				CheckCancelled(ctx)
+			}
+			scalar, width := utf8.DecodeLastRuneInString(remaining)
+			out.WriteRune(scalar)
+			remaining = remaining[:len(remaining)-width]
+		}
+		return out.String()
+	})
+	add("string", "lines", "List[String]", []LibraryParam{p("text", "String")}, func(ctx *Execution, result string, args []Value) Value {
+		text := args[0].(string)
+		var items []Value
+		start := 0
+		for i := 0; i < len(text); i++ {
+			if i%4096 == 0 {
+				CheckCancelled(ctx)
+			}
+			if text[i] != '\n' {
+				continue
+			}
+			end := i
+			if end > start && text[end-1] == '\r' {
+				end--
+			}
+			items = append(items, text[start:end])
+			start = i + 1
+		}
+		if start < len(text) {
+			items = append(items, text[start:])
+		}
+		return &List{Type: result, Items: items}
+	})
 	for _, spec := range []struct {
 		name, label string
 		format      byte
@@ -88,16 +164,7 @@ func init() {
 			result = "Optional[Int]"
 		}
 		add("string", name, result, []LibraryParam{p("text", "String"), p("index", "Int")}, func(_ *Execution, r string, a []Value) Value {
-			scalars := []rune(a[0].(string))
-			i := relativeIndex(len(scalars), a[1].(int64))
-			if i < 0 || i >= int64(len(scalars)) {
-				return Alternative{Type: r, Tag: "none"}
-			}
-			var value Value = string(scalars[i])
-			if name == "scalar_at" {
-				value = int64(scalars[i])
-			}
-			return Alternative{r, "some", []Value{value}}
+			return stringScalarAt(a[0].(string), a[1].(int64), r, name == "scalar_at")
 		})
 	}
 	for _, name := range []string{"index_of", "last_index_of"} {
@@ -121,21 +188,23 @@ func init() {
 			return strings.TrimRightFunc(a[0].(string), unicode.IsSpace)
 		})
 	}
-	for _, name := range []string{"slice", "substring"} {
-		add("string", name, "String", []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-			scalars := []rune(a[0].(string))
-			s := clampedIndex(len(scalars), a[1].(int64), name == "slice")
-			e := clampedIndex(len(scalars), a[2].(int64), name == "slice")
-			if s > e {
-				if name == "substring" {
-					s, e = e, s
-				} else {
-					e = s
-				}
-			}
-			return string(scalars[s:e])
-		})
-	}
+	add("string", "slice", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
+		text := a[0].(string)
+		ascii := isASCII(text)
+		count := len(text)
+		if !ascii {
+			count = utf8.RuneCountInString(text)
+		}
+		s, e, ok := librarySliceBounds(count, a[1].(int64), a[2].(int64))
+		if !ok {
+			return libraryError(r, "OutOfRange", "")
+		}
+		if ascii {
+			return libraryOK(r, text[s:e])
+		}
+		start := scalarOffset(text, int(s))
+		return libraryOK(r, text[start:start+scalarOffset(text[start:], int(e-s))])
+	})
 	for _, name := range []string{"pad_start", "pad_end"} {
 		add("string", name, libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("target_length", "Int"), p("padding", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 			text, padding := a[0].(string), a[2].(string)
@@ -143,6 +212,7 @@ func init() {
 			if target < 0 || max < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
+			max = min(max, nativeMaxBytes)
 			if int64(len(text)) > max {
 				return libraryError(r, "LimitExceeded", "")
 			}
@@ -259,7 +329,7 @@ func init() {
 			return Alternative{r, "some", []Value{int64(i)}}
 		})
 	}
-	add("bytes", "reverse", "Bytes", []LibraryParam{p("data", "Bytes")}, func(ctx *Execution, _ string, a []Value) Value {
+	add("bytes", "reversed", "Bytes", []LibraryParam{p("data", "Bytes")}, func(ctx *Execution, _ string, a []Value) Value {
 		out := append([]byte{}, a[0].(Bytes).Items...)
 		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 			CheckCancelled(ctx)
@@ -270,14 +340,50 @@ func init() {
 	add("bytes", "with_value", "Bytes", []LibraryParam{p("data", "Bytes"), p("index", "Int"), p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		items := a[0].(Bytes).Items
 		i, n := relativeIndex(len(items), a[1].(int64)), a[2].(int64)
-		if i < 0 || i >= int64(len(items)) || n < 0 || n > 255 {
-			return Panic("invalid byte update")
+		if i < 0 || i >= int64(len(items)) {
+			return libraryIndexFault("Bytes.with_value", len(items), a[1].(int64))
+		}
+		if n < 0 || n > 255 {
+			return libraryRangeFault("Bytes.with_value", "value", n, 0, 255)
 		}
 		out := append([]byte{}, items...)
 		out[i] = byte(n)
 		return Bytes{out}
 	})
 	add("bytes", "is_empty", "Bool", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return len(a[0].(Bytes).Items) == 0 })
+	add("bytes", "split", "List[Bytes]", []LibraryParam{p("data", "Bytes"), p("separator", "Bytes"), p("max_parts", "Optional[Int]")}, libraryBytesSplit)
+}
+
+func libraryBytesSplit(ctx *Execution, result string, args []Value) Value {
+	data, separator := args[0].(Bytes).Items, args[1].(Bytes).Items
+	limit := args[2].(int64)
+	if limit < 0 {
+		return Panic("split: max_parts must be nonnegative, found " + strconv.FormatInt(limit, 10))
+	}
+	out := &List{Type: result}
+	if len(separator) == 0 {
+		for i := 0; i < len(data) && int64(len(out.Items)) < limit; i++ {
+			if i%1024 == 0 {
+				CheckCancelled(ctx)
+			}
+			out.Items = append(out.Items, Bytes{data[i : i+1]})
+		}
+		return out
+	}
+	start := 0
+	for int64(len(out.Items)) < limit {
+		CheckCancelled(ctx)
+		offset := bytes.Index(data[start:], separator)
+		CheckCancelled(ctx)
+		if offset < 0 {
+			out.Items = append(out.Items, Bytes{data[start:]})
+			break
+		}
+		end := start + offset
+		out.Items = append(out.Items, Bytes{data[start:end]})
+		start = end + len(separator)
+	}
+	return out
 }
 
 // Precision formatting preserves requested trailing digits. Manuscript uses the
@@ -307,4 +413,46 @@ func formatFloatPrecision(value float64, format byte, precision int) string {
 		sign = ""
 	}
 	return mantissa + "e" + sign + strconv.Itoa(e)
+}
+
+func isASCII(text string) bool {
+	for i := 0; i < len(text); i++ {
+		if text[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
+}
+
+// scalarOffset returns the byte offset of the n-th scalar in text without allocating.
+func scalarOffset(text string, n int) int {
+	offset := 0
+	for ; n > 0 && offset < len(text); n-- {
+		_, width := utf8.DecodeRuneInString(text[offset:])
+		offset += width
+	}
+	return offset
+}
+
+// scalarCountCache remembers the last long string measured, so a loop that
+// calls scalar_length() every iteration pays for the scan once. It holds the
+// string itself, which keeps its backing memory from being reused under the
+// pointer comparison.
+type scalarCountEntry struct {
+	text  string
+	count int64
+}
+
+var scalarCountCache atomic.Pointer[scalarCountEntry]
+
+func scalarCount(text string) int64 {
+	if len(text) < 1024 {
+		return int64(utf8.RuneCountInString(text))
+	}
+	if e := scalarCountCache.Load(); e != nil && len(e.text) == len(text) && unsafe.StringData(e.text) == unsafe.StringData(text) {
+		return e.count
+	}
+	n := int64(utf8.RuneCountInString(text))
+	scalarCountCache.Store(&scalarCountEntry{text, n})
+	return n
 }

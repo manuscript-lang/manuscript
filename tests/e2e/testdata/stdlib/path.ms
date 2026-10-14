@@ -1,4 +1,10 @@
-import {posix, win32, PathError} from "@std/path.ms"
+import {
+    posix,
+    win32,
+    PathError,
+    dirname,
+    basename_without
+} from "@std/path.ms"
 import List from "@std/collections.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
@@ -39,4 +45,13 @@ test "Windows paths use explicit dialect on every platform":
     if paths.normalize("C:\\a\\..\\b") != "C:\\b": return panic("Windows normalize")
     if value(paths.relative(base: "C:\\a", target: "C:\\b")) != "..\\b": return panic(
         "Windows relative"
+    )
+
+test "module dirname and basename_without follow the host dialect":
+    if dirname("") != ".": return panic("empty dirname")
+    if basename_without(path: "dir/file.txt", suffix: ".txt") != "file": return panic(
+        "basename_without suffix"
+    )
+    if basename_without(path: "dir/file.txt", suffix: ".md") != "file.txt": return panic(
+        "basename_without keeps non-matching suffix"
     )

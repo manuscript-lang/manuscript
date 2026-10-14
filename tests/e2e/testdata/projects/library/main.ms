@@ -19,15 +19,15 @@ import posix from "@std/path.ms"
 import win32 from "@std/path.ms"
 
 fn timer_callback() -> Result[Unit, String]:
-    return ok(value: unit)
+    return ok(unit)
 
 fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
     match result:
         ok(value):
-            return ok(value: value)
+            return ok(value)
 
         error(cause):
-            return error(cause: Error(value: cause))
+            return error(Error(cause))
 
 fn exercise(path: String) -> Result[Unit, Error]:
     let written = try common_result(
@@ -170,17 +170,17 @@ fn exercise(path: String) -> Result[Unit, Error]:
     let removed = try common_result(
         result: filesystem().remove(path: path, recursive: false)
     )
-    return ok(value: unit)
+    return ok(unit)
 
 export fn main() -> Int:
-    match arguments().at(index: 0):
-        some(path):
-            match exercise(path: path):
-                ok(_):
-                    return 0
-
-                error(_):
-                    return 1
-
+    let path = match arguments().at(index: 0):
+        some(path): path
         none:
             return 2
+
+    match exercise(path: path):
+        ok(_):
+            return 0
+
+        error(_):
+            return 1

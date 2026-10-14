@@ -4,9 +4,6 @@ import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import List from "@std/collections.ms"
 import Map from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Error from "@std/errors.ms"
-import Result from "@std/result.ms"
 
 # Errors returned when a process cannot start, times out, or exceeds an output bound.
 export type CommandError:
@@ -22,19 +19,28 @@ export type CommandOutput:
     stdout: Bytes
     stderr: Bytes
 
-# Runs child programs with explicit input, output bounds, and an optional timeout.
+# Runs child programs with empty input by default, optional output bounds and timeout.
 export interface Commands:
     fn run(
         program: String,
         arguments: List[String],
-        input: Bytes,
+        input: Bytes = "".to_bytes(),
         max_output_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[CommandOutput, CommandError]
 
 # Process and operating-system controls for the current process.
+# `watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
+# `next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup
+# and finish shutdown work directly in the shielded close call after joining cancelled workers.
 export interface ProcessControl:
+    # Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
+    # This is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing.
     fn monotonic_time() -> Int
+    # Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
+    # Capacity must be 1..1048576; omission/none uses 128 buffered signals.
+    # Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
+    # Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
     fn watch_signals(
         signals: List[Int],
         capacity: Optional[Int] = none
@@ -52,7 +58,9 @@ export interface ProcessControl:
     fn info() -> Result[ProcessInfo, ProcessError]
     fn memory_usage() -> Result[MemoryUsage, ProcessError]
     fn cpu_usage() -> Result[CpuUsage, ProcessError]
+    # Returns elapsed Duration since runtime initialization, rather than host boot.
     fn uptime() -> Result[Duration, ProcessError]
+    # Reads a fresh live process environment map; non-UTF-8 entries return Unsupported.
     fn environment() -> Result[Map[String, String], ProcessError]
     fn set_environment(
         name: String,
@@ -62,12 +70,18 @@ export interface ProcessControl:
         path: String,
         max_bytes: Optional[Int] = none
     ) -> Result[Unit, ProcessError]
+    # Reads the live process directory, preserving OS failures as ProcessError.
     fn working_directory() -> Result[String, ProcessError]
     fn change_directory(path: String) -> Result[Unit, ProcessError]
+    # Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
+    # Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination.
     fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
     fn groups() -> Result[List[Int], ProcessError]
     fn resource_usage() -> Result[ResourceUsage, ProcessError]
+    # Sets mask 0..511 (0777) and returns the previous mask; Unsupported on Windows.
     fn umask(mask: Int) -> Result[Int, ProcessError]
+    # Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.
+    # Identity changes require OS permission and are Unsupported on Windows.
     fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
     fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
 
@@ -76,6 +90,7 @@ export type ProcessInfo:
     pid: Int
     parent_pid: Int
     executable: String
+    # Live native argv including argv[0]; cli.arguments() is the supplied startup tail without it.
     arguments: List[String]
     os: String
     architecture: String
@@ -84,7 +99,7 @@ export type ProcessInfo:
     effective_uid: Int
     effective_gid: Int
 
-# Memory statistics for the current process.
+# Memory statistics for the current process; every field is bytes.
 export type MemoryUsage:
     heap_used: Int
     heap_total: Int
@@ -92,12 +107,17 @@ export type MemoryUsage:
     external: Int
     resident: Int
 
-# CPU time consumed by the current process.
+# Cumulative CPU time consumed by the current process, in integer microseconds.
 export type CpuUsage:
+    # User CPU time in microseconds.
     user_microseconds: Int
+    # Kernel CPU time in microseconds.
     system_microseconds: Int
 
-# Kernel resource counters for the current process.
+# Kernel resource counters for the current process. CPU times are integer microseconds;
+# max_resident_bytes is bytes; other fields are counts, not durations or byte totals.
+# Filesystem reads/writes count native block I/O on Unix and I/O operations on Windows.
+# Unavailable Windows fault/context-switch counters are zero.
 export type ResourceUsage:
     user_microseconds: Int
     system_microseconds: Int
@@ -109,7 +129,9 @@ export type ResourceUsage:
     voluntary_switches: Int
     involuntary_switches: Int
 
-# A stream of operating-system signals selected by `watch_signals`.
+# A cancellable observer of operating-system signals selected by `watch_signals`.
+# SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
+# `next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.
 export interface SignalStream:
     fn close() -> Unit
     fn next() -> Result[Int, ProcessError]
