@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Standard library: `@std/sse.ms` decodes Server-Sent Events from byte chunks or any `ReadStream`, including HTTP response bodies, with line and event budgets and `SseError` (#470).
 - Standard library: documented one failure-mode rule (absence is `Optional`, invalid external data is `Result`, violated preconditions fault) in the errors and limits contract (#168).
 - Debugging: `ms debug` and `ms dap` embed Delve; VS Code no longer needs `dlv`.
 - Debugging: `ms debug --break <location>` and `--script <file>`, with `--json`, run non-interactively and report Manuscript function and local names and only Manuscript frames (#352).
