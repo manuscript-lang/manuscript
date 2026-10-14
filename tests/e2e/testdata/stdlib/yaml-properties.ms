@@ -30,10 +30,7 @@ fn generated(rng: Rng, depth: Int) -> YamlValue:
     var count = next(rng, 4)
 
     while count > 0:
-        entries.add(
-            text(rng),
-            generated(rng, depth + 1)
-        )
+        entries.add(text(rng), generated(rng, depth + 1))
         count = count - 1
 
     return YamlValue.ObjectValue(entries)
@@ -54,13 +51,7 @@ test "YAML stringify then parse preserves generated documents":
     var seed = 1
 
     while seed <= 300:
-        check_round_trip(
-            seed,
-            generated(
-                Rng(seed),
-                0
-            )
-        )
+        check_round_trip(seed, generated(Rng(seed), 0))
         seed = seed + 1
 
 test "YAML parse never faults on mutated documents and accepted input is stable":
@@ -69,9 +60,7 @@ test "YAML parse never faults on mutated documents and accepted input is stable"
 
     while seed <= 300:
         let rng = Rng(seed)
-        let rendered = value(
-            stringify(generated(rng, 0))
-        )
+        let rendered = value(stringify(generated(rng, 0)))
         var round = 0
 
         while round < 4:

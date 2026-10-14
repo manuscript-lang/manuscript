@@ -64,9 +64,7 @@ test "shared categories keep exact standard domain values":
     if (
         category(
             TomlError.InvalidData(line: 1, column: 2, reason: "detail")
-        ) != some(
-            ErrorCategory.InvalidData
-        )
+        ) != some(ErrorCategory.InvalidData)
     ): return panic("source TOML category")
     if category(YamlError.LimitExceeded) != some(ErrorCategory.LimitExceeded): return panic(
         "source YAML budget category"
@@ -91,11 +89,9 @@ test "shared categories keep exact standard domain values":
 
     match yaml_error(original):
         InvalidData(line, column, reason):
-            if (
-                line != 3
-                or column != 9
-                or reason != "retained detail"
-            ): return panic("category lost payload")
+            if (line != 3 or column != 9 or reason != "retained detail"): return panic(
+                "category lost payload"
+            )
         _: return panic("category changed variant")
 
 test "timeout classification keeps timeout spelling out of generic handling":

@@ -13,15 +13,9 @@ fn forward[T](task: Task[T]) -> Task[T]:
 fn exercise() -> Result[Unit, ExecutionError]:
     with group = TaskGroup():
         let start = group.start[Int]
-        let number: Task[Int] = start(
-            fn(): 41
-        )
-        let text = group.start(
-            fn(): "hello"
-        )
-        let domain = group.start(
-            fn() -> Result[Int, String]: error("expected")
-        )
+        let number: Task[Int] = start(fn(): 41)
+        let text = group.start(fn(): "hello")
+        let domain = group.start(fn() -> Result[Int, String]: error("expected"))
         let stored = Stored(forward(number))
         let handles: List[Task[Int]] = [stored.task]
         let joined = try group.join()
@@ -29,11 +23,7 @@ fn exercise() -> Result[Unit, ExecutionError]:
         let value = try stored.task.join()
         let value_again = try number.join()
         let message = try text.join()
-        if (
-            value != 41
-            or value_again != 41
-            or message != "hello"
-        ):
+        if (value != 41 or value_again != 41 or message != "hello"):
             return panic("typed results changed")
 
         for handle in handles:
@@ -59,13 +49,9 @@ fn exercise() -> Result[Unit, ExecutionError]:
             return panic("close erased result")
 
     with group = TaskGroup():
-        let first = group.start(
-            fn(): 1
-        )
+        let first = group.start(fn(): 1)
         let value = try first.join()
-        let second = group.start(
-            fn(): value + 1
-        )
+        let second = group.start(fn(): value + 1)
         let following = try second.join()
         if following != 2:
             return panic("individual join sealed group")
@@ -92,9 +78,7 @@ test "empty group joins and closes repeatedly":
 
 test "zero timeout starts no callback":
     with group = TaskGroup(0.seconds):
-        let task = group.start(
-            fn(): panic("zero timeout invoked callback")
-        )
+        let task = group.start(fn(): panic("zero timeout invoked callback"))
 
         let cause = match task.join():
             error(cause): cause

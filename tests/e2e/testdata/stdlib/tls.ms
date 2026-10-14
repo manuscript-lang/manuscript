@@ -23,17 +23,12 @@ fn hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
             headers: list_headers(Map[String, List[String]]())
         )
     )
-    let written = value(
-        exchange.write("secure".to_bytes())
-    )
+    let written = value(exchange.write("secure".to_bytes()))
     return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
     let certificates = value(
-        parse_certificates(
-            pem: certificate(),
-            max_certificates: 1
-        )
+        parse_certificates(pem: certificate(), max_certificates: 1)
     )
     if (
         certificates.length() != 1
@@ -70,20 +65,13 @@ test "TLS certificate parsing verification hostname and expiration":
     ): return panic("expiration validation")
 
 test "TLS rejects malformed PEM and certificate budgets":
-    let invalid: Result[List[CertificateInfo], TlsError] = error(
-        TlsError.InvalidData
-    )
+    let invalid: Result[List[CertificateInfo], TlsError] = error(TlsError.InvalidData)
     if parse_certificates(pem: "not PEM") != invalid: return panic("malformed PEM")
 
-    let limited: Result[List[CertificateInfo], TlsError] = error(
-        TlsError.LimitExceeded
+    let limited: Result[List[CertificateInfo], TlsError] = error(TlsError.LimitExceeded)
+    if (parse_certificates(pem: certificate(), max_certificates: 0) != limited): return panic(
+        "certificate budget"
     )
-    if (
-        parse_certificates(
-            pem: certificate(),
-            max_certificates: 0
-        ) != limited
-    ): return panic("certificate budget")
 
 test "HTTPS trusts only the explicitly supplied local test root":
     let net = network()

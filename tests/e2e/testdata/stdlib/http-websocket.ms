@@ -35,15 +35,10 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         return ok(unit)
 
     let headers = list_headers(
-        Map[String, List[String]]().add(
-            key: "X-Test",
-            value: ["manuscript"]
-        )
+        Map[String, List[String]]().add(key: "X-Test", value: ["manuscript"])
     )
     let started = value(exchange.send_headers(status: 201, headers: headers))
-    let written = value(
-        exchange.write("hello".to_bytes())
-    )
+    let written = value(exchange.write("hello".to_bytes()))
     return ok(unit)
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
@@ -97,12 +92,10 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                 )
             ):
                 if body.metadata().status != 201: return panic("streaming status")
-                if value(
-                    body.read(5)
-                ).unwrap() != "hello".to_bytes(): return panic("streaming bytes")
-                if not value(
-                    body.read(5)
-                ).is_none(): return panic("streaming EOF")
+                if value(body.read(5)).unwrap() != "hello".to_bytes(): return panic(
+                    "streaming bytes"
+                )
+                if not value(body.read(5)).is_none(): return panic("streaming EOF")
 
         let limited: Result[Unit, HttpError] = error(HttpError.LimitExceeded)
 
@@ -121,11 +114,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 
 test "WebSocket negotiates a protocol and echoes a text frame":
     let net = network()
-    let options = HttpServerOptions(
-        timeout: 3.seconds,
-        grace: 0.seconds,
-        tls: none
-    )
+    let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
 
     with server = value(
         net.serve_stream(
@@ -151,12 +140,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
         ):
             if socket.subprotocol() != "echo": return panic("WebSocket subprotocol")
 
-            let sent = value(
-                socket.send(
-                    data: "é🙂".to_bytes(),
-                    text: true
-                )
-            )
+            let sent = value(socket.send(data: "é🙂".to_bytes(), text: true))
             let message = value(socket.receive()).unwrap()
             if not message.text or message.data != "é🙂".to_bytes(): return panic(
                 "WebSocket echo"
@@ -164,15 +148,8 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 
 fn report_host(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let hosts = value(exchange.headers().text("Host")).unwrap_or([])
-    let started = value(
-        exchange.send_headers(
-            status: 200,
-            headers: headers()
-        )
-    )
-    let written = value(
-        exchange.write(hosts.join(",").to_bytes())
-    )
+    let started = value(exchange.send_headers(status: 200, headers: headers()))
+    let written = value(exchange.write(hosts.join(",").to_bytes()))
     return ok(unit)
 
 test "HTTP streaming handlers see the Host request header":

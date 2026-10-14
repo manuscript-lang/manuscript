@@ -10,26 +10,14 @@ test "omitted capacity creates an unbounded queue":
     let inferred: Queue[Int] = Queue()
 
     for unused in [1, 2]:
-        for value in [
-            1,
-            2,
-            3,
-            4,
-            5
-        ]:
+        for value in [1, 2, 3, 4, 5]:
             if not queue.enqueue(value):
                 return panic("unbounded queue rejected an item")
 
         if queue.length() != 5:
             return panic("unbounded queue lost items")
 
-        for value in [
-            1,
-            2,
-            3,
-            4,
-            5
-        ]:
+        for value in [1, 2, 3, 4, 5]:
             let expected: Optional[Int] = some(value)
             if queue.dequeue() != expected:
                 return panic("unbounded queue lost FIFO order")
@@ -87,13 +75,7 @@ test "queue elements include ordinary functions":
 test "shared queue uses explicit lock scopes":
     let shared = Synchronized(Queue[Int]())
     let operation = fn(item: Int):
-        for unused in [
-            1,
-            2,
-            3,
-            4,
-            5
-        ]:
+        for unused in [1, 2, 3, 4, 5]:
             with locked = shared.lock():
                 let queue = locked.get()
                 if not queue.enqueue(item):

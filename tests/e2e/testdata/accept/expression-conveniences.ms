@@ -78,11 +78,7 @@ test "empty list constructors have fresh typed storage":
     let contextual: List[Int] = List()
     let other = List[String]()
     empty.append("a")
-    if (
-        empty[0].unwrap() != "a"
-        or other.length() != 0
-        or contextual.length() != 0
-    ):
+    if (empty[0].unwrap() != "a" or other.length() != 0 or contextual.length() != 0):
         return panic("fresh list construction")
 
     let map = Map[String, Int]()
@@ -92,20 +88,9 @@ test "string concatenation and scalar ordering":
     let lines = ["a", "b"]
     if lines.join("\n") + "\n" != "a\nb\n":
         return panic("concatenation")
-    if not (
-        "" < "a"
-        and "a" < "aa"
-        and "é" > "z"
-        and "a" <= "a"
-        and "a" >= "a"
-    ):
+    if not ("" < "a" and "a" < "aa" and "é" > "z" and "a" <= "a" and "a" >= "a"):
         return panic("string ordering")
-    if (
-        "a" < "a"
-        or "a" > "a"
-        or "b" <= "a"
-        or "a" >= "b"
-    ):
+    if ("a" < "a" or "a" > "a" or "b" <= "a" or "a" >= "b"):
         return panic("false string comparisons")
     if "" + "value" != "value" or "value" + "" != "value":
         return panic("empty concatenation")
@@ -124,11 +109,7 @@ test "string concatenation and scalar ordering":
 test "match expressions preserve returns and cleanup":
     let present: Optional[Int] = some(value: 4)
     let absent: Optional[Int] = none
-    if (
-        early(present) != 5
-        or early(absent) != 9
-        or all_return(present) != 4
-    ):
+    if (early(present) != 5 or early(absent) != 9 or all_return(present) != 4):
         return panic("enclosing returns")
 
     let counter = Counter(count: 0)

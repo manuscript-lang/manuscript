@@ -128,11 +128,7 @@ let affordable = (
     return 0
 `,
 			want: `fn work() -> Int:
-    if (
-        active
-        and allowed
-        and remaining > 0
-    ): return 1
+    if active and allowed and remaining > 0: return 1
 
     return 0
 `,
@@ -143,11 +139,7 @@ let affordable = (
     return active or allowed and remaining > 0 or fallback
 `,
 			want: `fn work() -> Bool:
-    return (
-        active
-        or allowed and remaining > 0
-        or fallback
-    )
+    return active or allowed and remaining > 0 or fallback
 `,
 		},
 		{
@@ -156,14 +148,7 @@ let affordable = (
     send(condition: active and allowed and remaining > 0, payload: "data")
 `,
 			want: `fn work() -> Unit:
-    send(
-        condition: (
-            active
-            and allowed
-            and remaining > 0
-        ),
-        payload: "data"
-    )
+    send(condition: active and allowed and remaining > 0, payload: "data")
 `,
 		},
 		{
@@ -172,9 +157,19 @@ let affordable = (
     return active or allowed and remaining > 0
 `,
 			want: `fn work() -> Bool:
+    return active or allowed and remaining > 0
+`,
+		},
+		{
+			name: "long boolean chain wraps at the width",
+			source: `fn work() -> Bool:
+    return account_is_active and payment_is_allowed and remaining_balance > minimum_balance
+`,
+			want: `fn work() -> Bool:
     return (
-        active
-        or allowed and remaining > 0
+        account_is_active
+        and payment_is_allowed
+        and remaining_balance > minimum_balance
     )
 `,
 		},
@@ -218,12 +213,7 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
     Fifth
 } from "./contracts.ms"
 
-fn work(
-    first: Int,
-    second: Int,
-    third: Int,
-    fourth: Int
-) -> Int: return first
+fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 `,
 		},
 		{
@@ -261,10 +251,7 @@ fn work(
     return apply(value: 3, transform: fn(value: Int) -> Int: return value + 1)
 `,
 			want: `fn work() -> Int:
-    return apply(
-        value: 3,
-        transform: fn(value: Int) -> Int: return value + 1
-    )
+    return apply(value: 3, transform: fn(value: Int) -> Int: return value + 1)
 `,
 		},
 		{
@@ -304,13 +291,7 @@ fn work(
 			name: "compound defaults",
 			source: `fn work(value: Bool = active and allowed and remaining > 0) -> Bool: return value
 `,
-			want: `fn work(
-    value: Bool = (
-        active
-        and allowed
-        and remaining > 0
-    )
-) -> Bool: return value
+			want: `fn work(value: Bool = active and allowed and remaining > 0) -> Bool: return value
 `,
 		},
 		{

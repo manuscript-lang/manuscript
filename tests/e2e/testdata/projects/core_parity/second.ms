@@ -24,57 +24,31 @@ impl Error for Cause:
 
 export fn second_mapped() -> Set[Key]:
     let values = Set[Int]().add(1).add(2)
-    return transform_set(
-        values,
-        fn(n): Key(
-            0,
-            n.toString()
-        )
-    )
+    return transform_set(values, fn(n): Key(0, n.toString()))
 
 export fn second_failure(cause: Cause) -> Result[String, Error]:
     let value: Result[Int, Error] = error(cause)
-    return value.and_then(
-        fn(n): Result[String, Error].ok(n.toString())
-    )
+    return value.and_then(fn(n): Result[String, Error].ok(n.toString()))
 
 export fn second_queries() -> Bool:
     let key = Key(5, "original")
     let map = Map[Key, String]().add(key, "found")
     let set = Set[Key]().add(key)
     return (
-        locate_map(
-            map,
-            Key(5, "different")
-        ).is_none()
-        and locate_set(
-            set,
-            Key(5, "different")
-        ).is_none()
+        locate_map(map, Key(5, "different")).is_none()
+        and locate_set(set, Key(5, "different")).is_none()
     )
 
 export fn second_converted(cause: Cause) -> Result[Int, Error]:
     let missing: Optional[Int] = none
-    return convert(
-        missing,
-        fn() -> Error: cause
-    )
+    return convert(missing, fn() -> Error: cause)
 
 export fn second_folded(cause: Cause) -> Error:
     let values = Map[String, Int]().add("key", 1)
-    return values.fold[Error](
-        cause,
-        fn(acc, key, value): acc
-    )
+    return values.fold[Error](cause, fn(acc, key, value): acc)
 
 export fn second_key_transform[T: Hashable](input: Map[T, Int]) -> Map[Key, Int]:
-    return remap_keys(
-        input,
-        fn(key, value): Key(
-            0,
-            key.toString()
-        )
-    )
+    return remap_keys(input, fn(key, value): Key(0, key.toString()))
 
 export fn second_bound_keys() -> fn(
     transform: fn(key: Int, value: Int) -> Key
@@ -82,12 +56,6 @@ export fn second_bound_keys() -> fn(
     return Map[Int, Int]().add(1, 10).add(2, 20).map_keys[Key]
 
 export fn second_value_transform() -> Int:
-    let input = Map[Key, Int]().add(
-        Key(5, "original"),
-        2
-    )
-    let mapped = remap_values(
-        input,
-        fn(key, value): value + 1
-    )
+    let input = Map[Key, Int]().add(Key(5, "original"), 2)
+    let mapped = remap_values(input, fn(key, value): value + 1)
     return mapped.get(Key(5, "different")).unwrap_or(0)

@@ -89,23 +89,15 @@ test "typed compression preserves bytes limits errors and optional arguments":
 
         for level in [0, 9]:
             let encoded = value(format.compress(data, level))
-            if encoded != value(
-                compress(
-                    data,
-                    name,
-                    level,
-                    none
-                )
-            ): return panic("typed encoded bytes")
+            if encoded != value(compress(data, name, level, none)): return panic(
+                "typed encoded bytes"
+            )
             if value(format.decompress(encoded, none)) != data: return panic(
                 "typed decompression"
             )
-            if value(
-                format.decompress(
-                    encoded,
-                    data.length()
-                )
-            ) != data: return panic("typed exact budget")
+            if value(format.decompress(encoded, data.length())) != data: return panic(
+                "typed exact budget"
+            )
 
             let limited: Result[Bytes, CompressionError] = error(
                 CompressionError.LimitExceeded
@@ -137,13 +129,7 @@ test "typed compression preserves bytes limits errors and optional arguments":
     )
 
 test "typed archives retain entry limits validation and existing string calls":
-    let entries = [
-        ArchiveEntry(
-            "file.txt",
-            "data".to_bytes(),
-            false
-        )
-    ]
+    let entries = [ArchiveEntry("file.txt", "data".to_bytes(), false)]
 
     for format in [ArchiveFormat.Zip, ArchiveFormat.Tar]:
         let name = match format:
@@ -163,28 +149,18 @@ test "typed archives retain entry limits validation and existing string calls":
         let limited: Result[List[ArchiveEntry], ArchiveError] = error(
             ArchiveError.LimitExceeded
         )
-        if format.unpack(
-            encoded,
-            ArchiveLimits(max_entries: 0)
-        ) != limited: return panic("typed entry limit")
+        if format.unpack(encoded, ArchiveLimits(max_entries: 0)) != limited: return panic(
+            "typed entry limit"
+        )
 
         let invalid: Result[Bytes, ArchiveError] = error(ArchiveError.InvalidInput)
-        if format.pack(
-            [
-                ArchiveEntry(
-                    "../escape",
-                    "".to_bytes(),
-                    false
-                )
-            ]
-        ) != invalid: return panic("typed path validation")
+        if format.pack([ArchiveEntry("../escape", "".to_bytes(), false)]) != invalid: return panic(
+            "typed path validation"
+        )
         if format.pack(entries, -1) != invalid: return panic("typed negative budget")
 
     let stored = ArchiveFormat.Zip.pack
     let unpacker = ArchiveFormat.Zip.unpack
-    if value(
-        unpacker(
-            value(stored(entries, none)),
-            ArchiveLimits()
-        )
-    ) != entries: return panic("stored archive operations")
+    if value(unpacker(value(stored(entries, none)), ArchiveLimits())) != entries: return panic(
+        "stored archive operations"
+    )

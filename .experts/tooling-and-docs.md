@@ -26,6 +26,11 @@ a callback body must not consume the parameter signature's width budget.
 The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
 exercises these boundaries alongside comments and literal spellings.
 
+Update: later feedback asks for compact output that reads well on a phone and a
+desktop. Wrap only when a group exceeds 88 columns or holds a comment or
+multi-statement suite; clause counts, argument counts, lambdas, and authored line
+breaks no longer force expansion. Reintroducing such rules spreads code again.
+
 ### Inspect active List backing in the debugger
 
 Verified: typed List storage adds inactive nil slice fields to the native header.

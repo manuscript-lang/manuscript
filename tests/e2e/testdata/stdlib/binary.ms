@@ -14,14 +14,7 @@ import value from "./support/results.ms"
 
 test "binary integer boundaries and both byte orders":
     for little in [false, true]:
-        for number in [
-            -9223372036854775808,
-            -32768,
-            -1,
-            0,
-            32767,
-            9223372036854775807
-        ]:
+        for number in [-9223372036854775808, -32768, -1, 0, 32767, 9223372036854775807]:
             let data = value(
                 write_integer(
                     value: number,

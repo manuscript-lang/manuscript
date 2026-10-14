@@ -171,10 +171,7 @@ export interface HttpExchange:
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
     # Sends the status line and headers once, before any body is written.
     # The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns InvalidInput and a closed exchange returns Closed.
-    fn send_headers(
-        status: Int,
-        headers: HttpHeaders
-    ) -> Result[Unit, HttpError]
+    fn send_headers(status: Int, headers: HttpHeaders) -> Result[Unit, HttpError]
     # Switches the connection to a WebSocket after checking the `Origin` header. Requests without an Origin are accepted; otherwise it must exactly match an entry of `allowed_origins`, or, when that list is empty, match the request's own scheme and host.
     # `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns InvalidInput, and a request that is not a valid WebSocket upgrade returns Failed.
     fn upgrade(
