@@ -279,3 +279,15 @@ fn run(x: Float, s: String) -> Bool:
 		t.Fatalf("sqrt still resolves dynamically\n%s", r.Source)
 	}
 }
+
+func TestOmittedDefaultsCallDirectFunctions(t *testing.T) {
+	r := compileSource("defaults.ms", `fn scaled(base: Int, factor: Int = 2) -> Int: base * factor
+fn run() -> Int: scaled(base: 3)
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	if !strings.Contains(r.Source, "call_symbol") || strings.Contains(r.Source, "rt.Invoke(") {
+		t.Fatalf("omitted default call still dispatches dynamically\n%s", r.Source)
+	}
+}
