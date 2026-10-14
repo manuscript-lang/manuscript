@@ -1,5 +1,11 @@
 import {arguments, environment} from "@std/cli.ms"
-import {system, endianness, end_of_line} from "@std/system.ms"
+import {
+    system,
+    endianness,
+    end_of_line,
+    os_type,
+    dev_null
+} from "@std/system.ms"
 import {control, commands, CommandError, CommandOutput} from "@std/process.ms"
 import {List, Map} from "@std/collections.ms"
 import Optional from "@std/optional.ms"
@@ -28,6 +34,8 @@ test "CLI test roots have empty arguments and host metadata agrees":
     )
     if endianness() != "LE" and endianness() != "BE": return panic("endianness")
     if end_of_line() != "\n" and end_of_line() != "\r\n": return panic("line ending")
+    if os_type().byte_length() == 0: return panic("os type")
+    if dev_null().byte_length() == 0: return panic("null device")
 
 test "process environment is live while CLI environment retains its snapshot":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"

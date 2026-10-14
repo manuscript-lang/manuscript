@@ -72,13 +72,13 @@ func testListShrinking[T any](t *testing.T, typ string, initial []T, replacement
 						var result Value = alias
 						switch mode {
 						case "remove":
-							result = Invoke(ctx, NativeMember(list, "without"), []Argument{{"index", int64(0)}})
+							result = Invoke(ctx, NativeMember(list, "remove"), []Argument{{"index", int64(0)}})
 						case "splice", "clear", "clear append":
 							start, count, items := int64(0), int64(3), []Value(nil)
 							if mode == "splice" {
 								start, count, items = 1, 2, []Value{replacement}
 							}
-							result = Invoke(ctx, NativeMember(list, "with_values"), []Argument{{"start", start}, {"delete_count", count}, {"replacement", &List{Type: list.Type, Items: items}}})
+							result = Invoke(ctx, NativeMember(list, "splice"), []Argument{{"start", start}, {"delete_count", count}, {"replacement", &List{Type: list.Type, Items: items}}})
 							if mode == "clear append" {
 								ListAppend(ctx, list, replacement)
 								ListAppend(ctx, list, replacement)

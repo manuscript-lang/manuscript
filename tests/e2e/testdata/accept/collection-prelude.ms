@@ -50,12 +50,12 @@ test "map add returns receiver and retains aliases clone and insertion order":
     let bound = values.add
     bound("d", 6)
     bound(value: 7, key: "a")
-    values.with_entry("e", 8)
+    values.add("e", 8)
     if alias.keys() != ["a", "b", "c", "d", "e"]: return panic("order")
     if alias.values() != [7, 5, 4, 6, 8]: return panic("receiver identity")
     if copy.keys() != ["a", "b"] or copy.values() != [1, 2]: return panic("clone")
 
-    values.without("b").add("b", 9)
+    values.remove("b").add("b", 9)
     if values.keys() != ["a", "c", "d", "e", "b"]: return panic("reinsertion")
 
     let payload = [1]

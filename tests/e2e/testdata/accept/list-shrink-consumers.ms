@@ -8,10 +8,10 @@ fn mutate[T](values: List[T], mode: String, replacement: T) -> Unit:
         values.remove(0)
 
     if mode == "splice":
-        values.with_values(start: 1, delete_count: 2, replacement: [replacement])
+        values.splice(start: 1, delete_count: 2, replacement: [replacement])
 
     if mode == "clear" or mode == "clear_append":
-        values.with_values(
+        values.splice(
             start: 0,
             delete_count: values.length(),
             replacement: []
@@ -346,7 +346,7 @@ test "map and folds consume valid retained cells":
     let visits = Visits(0)
     let output = mapped.map(
         fn(value):
-            if visits.count == 0: mapped.without(0)
+            if visits.count == 0: mapped.remove(0)
 
             visits.count = visits.count + 1
             return value + 10
@@ -359,7 +359,7 @@ test "map and folds consume valid retained cells":
     let total = folded.fold(
         0,
         fn(accumulator, value):
-            if visits.count == 0: folded.with_values(
+            if visits.count == 0: folded.splice(
                 start: 0,
                 delete_count: 3,
                 replacement: []
@@ -380,7 +380,7 @@ test "map and folds consume valid retained cells":
     let backwards = reversed.fold_right(
         0,
         fn(accumulator, value):
-            if visits.count == 0: reversed.without(0)
+            if visits.count == 0: reversed.remove(0)
 
             visits.count = visits.count + 1
             return accumulator * 10 + value

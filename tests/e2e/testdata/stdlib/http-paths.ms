@@ -19,8 +19,8 @@ fn route(request: HttpRequest) -> HttpResponse:
         status: 200,
         headers: (
             Map[String, String]()
-            .with_entry(key: "Set-Cookie", value: "a=1")
-            .with_entry(key: "set-cookie", value: "b=2")
+            .add(key: "Set-Cookie", value: "a=1")
+            .add(key: "set-cookie", value: "b=2")
         ),
         body: "{request.path}|{request.query}".to_bytes()
     )
@@ -28,7 +28,7 @@ fn route(request: HttpRequest) -> HttpResponse:
 fn stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let sent = try exchange.send_headers(
         status: 200,
-        headers: Map[String, List[String]]().with_entry(
+        headers: Map[String, List[String]]().add(
             key: "Set-Cookie",
             value: ["a=1", "b=2"]
         )

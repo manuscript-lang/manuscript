@@ -34,8 +34,8 @@ test "domain equality and hashing select interfaces":
 
     let values = (
         Map[Key, String]()
-        .with_entry(key: a, value: "a")
-        .with_entry(key: b, value: "b")
+        .add(key: a, value: "a")
+        .add(key: b, value: "b")
     )
     if values.length() != 1: return panic("custom key lookup ignored")
     if values.get(a) != some("b"): return panic("custom key update ignored")

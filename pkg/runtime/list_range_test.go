@@ -17,19 +17,19 @@ func TestListTraversalMatchesGoRange(t *testing.T) {
 		args   []Argument
 		mutate func([]Value) []Value
 	}{
-		{"replace", "with_value", []Argument{{"index", int64(1)}, {"value", int64(9)}}, func(v []Value) []Value { v[1] = int64(9); return v }},
+		{"replace", "set", []Argument{{"index", int64(1)}, {"value", int64(9)}}, func(v []Value) []Value { v[1] = int64(9); return v }},
 		{"fill", "fill", []Argument{{"value", int64(9)}, {"start", int64(0)}, {"end", int64(3)}}, func(v []Value) []Value {
 			for i := range v {
 				v[i] = int64(9)
 			}
 			return v
 		}},
-		{"reverse", "reverse", nil, func(v []Value) []Value { slices.Reverse(v); return v }},
+		{"reverse", "reverse_in_place", nil, func(v []Value) []Value { slices.Reverse(v); return v }},
 		{"prepend", "prepend", []Argument{{"value", int64(9)}}, func(v []Value) []Value { v = append(v, nil); copy(v[1:], v[:len(v)-1]); v[0] = int64(9); return v }},
-		{"remove", "without", []Argument{{"index", int64(0)}}, func(v []Value) []Value { return append(v[:0], v[1:]...) }},
+		{"remove", "remove", []Argument{{"index", int64(0)}}, func(v []Value) []Value { return append(v[:0], v[1:]...) }},
 		{"copy backward", "copy_within", []Argument{{"target", int64(0)}, {"start", int64(1)}, {"end", int64(3)}}, func(v []Value) []Value { copy(v, v[1:3]); return v }},
 		{"copy truncated", "copy_within", []Argument{{"target", int64(2)}, {"start", int64(0)}, {"end", int64(3)}}, func(v []Value) []Value { copy(v[2:], v[:3]); return v }},
-		{"splice shrink", "with_values", []Argument{{"start", int64(1)}, {"delete_count", int64(2)}, {"replacement", &List{Type: "@std/List[Int]", Items: []Value{int64(9)}}}}, func(v []Value) []Value { v[1] = int64(9); return v[:2] }},
+		{"splice shrink", "splice", []Argument{{"start", int64(1)}, {"delete_count", int64(2)}, {"replacement", &List{Type: "@std/List[Int]", Items: []Value{int64(9)}}}}, func(v []Value) []Value { v[1] = int64(9); return v[:2] }},
 	} {
 		for _, capacity := range []int{3, 8} {
 			for _, callback := range []bool{false, true} {
@@ -105,10 +105,10 @@ func TestListRangeAppendAndSelfSplice(t *testing.T) {
 				seen = append(seen, v)
 				if len(seen) == 1 {
 					if splice {
-						Invoke(ctx, NativeMember(list, "with_values"), []Argument{{"start", int64(1)}, {"delete_count", int64(1)}, {"replacement", list}})
+						Invoke(ctx, NativeMember(list, "splice"), []Argument{{"start", int64(1)}, {"delete_count", int64(1)}, {"replacement", list}})
 					} else {
 						ListAppend(ctx, list, int64(4))
-						Invoke(ctx, NativeMember(list, "with_value"), []Argument{{"index", int64(1)}, {"value", int64(9)}})
+						Invoke(ctx, NativeMember(list, "set"), []Argument{{"index", int64(1)}, {"value", int64(9)}})
 					}
 				}
 			}

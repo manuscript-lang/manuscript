@@ -43,7 +43,7 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     )
     if mapped.length() != 1: return panic("bound map lost defining module")
 
-    let input = Set[Int]().with_value(1).with_value(2)
+    let input = Set[Int]().add(1).add(2)
     if first_generic_map(input).length() != 1:
         return panic("mapped generic output used receiver's module")
     if first_lookup() != "found": return panic("generic get_or lost key scope")

@@ -93,7 +93,7 @@ func init() {
 		}
 		return libraryOK(r, strings.Repeat(s, int(count)))
 	})
-	libraryAdd("regex", "replace", libraryResult("String", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("replacement", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("regex", "replace_all", libraryResult("String", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("replacement", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[3].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -120,7 +120,6 @@ func init() {
 		out.WriteString(text[at:])
 		return libraryOK(r, out.String())
 	})
-	libraryAlias("regex", "replace_all", "replace")
 }
 
 func libraryValidText(b []byte) bool { return utf8.Valid(b) }

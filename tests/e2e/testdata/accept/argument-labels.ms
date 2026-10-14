@@ -133,7 +133,7 @@ test "optional labels on methods and native functions":
         return panic(message: "check failed")
     if not (sum([1, 2, 3]) == 6):
         return panic(message: "check failed")
-    if not (([1, 2, 3]).reverse() == [3, 2, 1]):
+    if not (([1, 2, 3]).reverse_in_place() == [3, 2, 1]):
         return panic(message: "check failed")
     if not ([1, 2].append(3) == [1, 2, 3]):
         return panic(message: "check failed")

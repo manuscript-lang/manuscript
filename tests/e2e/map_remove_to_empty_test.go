@@ -15,7 +15,7 @@ import Set from "@std/collections.ms"
 export fn main() -> Int:
     let m = Map[String, Int]()
     m.add(key: "cap", value: 1)
-    m.without("cap")
+    m.remove("cap")
     m.add(key: "pen", value: 2)
     m.add(key: "cap", value: 3)
     if m.length() != 2: return panic("without: length {m.length()}")
@@ -33,7 +33,7 @@ export fn main() -> Int:
 
     let s = Set[String]()
     s.add("cap")
-    s.without("cap")
+    s.remove("cap")
     s.add("pen")
     s.add("cap")
     if s.length() != 2: return panic("set: length {s.length()}")

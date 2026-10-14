@@ -65,18 +65,18 @@ test "direct keyed calls preserve optional keys and values":
     )
 
     let entries = Map[Optional[Int], Optional[Int]]()
-    entries.with_entry(7, 9)
+    entries.add(7, 9)
     if not entries.contains(7) or entries.get(7).unwrap().unwrap() != 9:
         return panic("map conversion lost")
 
-    entries.with_entry(value: 10, key: 8)
+    entries.add(value: 10, key: 8)
     if entries.get(8).unwrap().unwrap() != 10: return panic(
         "reordered fallback differs"
     )
 
     let keys = Set[Optional[Int]]()
-    keys.with_value(7)
-    keys.with_value(none)
+    keys.add(7)
+    keys.add(none)
     if (
         not keys.contains(7)
         or not keys.contains(none)
@@ -102,7 +102,7 @@ test "direct calls capture receiver and arguments in written order":
 
     let entries = Map[Int, Optional[Int]]()
     var key = 1
-    entries.with_entry(
+    entries.add(
         key,
         (
             match some(7):

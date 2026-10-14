@@ -164,7 +164,7 @@ test "collection builders freeze all accumulated values":
 
 test "imported map add interoperates with with_entry":
     let values = Map[String, Int]().add("a", 1)
-    values.with_entry("b", 2).add(value: 3, key: "a")
+    values.add("b", 2).add(value: 3, key: "a")
     let add = values.add
     add("c", 4)
     if values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4]: return panic(
