@@ -68,7 +68,6 @@
     "@std/time.ms/Instant": "native",
     "@std/time.ms/Timestamp": "native",
     "@std/http.ms/HttpHeaders": "native",
-    "@std/json.ms/JsonEncodable": "contract",
     "@std/net.ms/IpAddress": "native",
     "@std/net.ms/Cidr": "native"
   },

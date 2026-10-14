@@ -173,10 +173,10 @@ func (g *generator) constructStruct(st *structType, args []syntax.Argument) ast.
 }
 
 // jsonShapes registers what @std/json's stringify cannot read from a dynamic
-// value: the declaration order of map-backed (generic) records and the payload
-// labels of alternative cases. It is emitted only for programs that import the
-// module, and keyed by the declaration's identity so every instantiation shares
-// one entry.
+// value: the declaration order of map-backed records (generic source records
+// and every standard record) and the payload labels of alternative cases. It is
+// emitted only for programs that import the module, and keyed by the
+// declaration's identity so every instantiation shares one entry.
 func (g *generator) jsonShapes() []ast.Stmt {
 	imported := false
 	for _, module := range g.program.Modules {
@@ -187,37 +187,42 @@ func (g *generator) jsonShapes() []ast.Stmt {
 	if !imported {
 		return nil
 	}
-	var stmts []ast.Stmt
+	var types []*checker.Type
 	for _, module := range g.program.Modules {
 		for _, d := range module.Declarations {
 			if d.Kind != syntax.KindRecord && d.Kind != "alternative" {
 				continue
 			}
 			s := g.program.Symbol(module.File, d.Name)
-			if s == nil || s.Type == nil || s.Native != "" || strings.HasPrefix(s.Type.ID, "@std/") {
+			if s == nil || s.Type == nil || s.Native != "" {
 				continue
 			}
-			if d.Kind == syntax.KindRecord {
-				if len(s.Variables) == 0 {
-					continue // A Go struct reports its own field order.
-				}
-				var names []string
-				for _, f := range checker.Fields(s.Type) {
-					names = append(names, f.Name)
-				}
-				stmts = append(stmts, evaluated(runtimeCall("RegisterRecordFields", textLiteral(s.Type.ID), stringSlice(names))))
+			if d.Kind == syntax.KindRecord && len(s.Variables) == 0 {
+				continue // A Go struct reports its own field order.
+			}
+			types = append(types, s.Type)
+		}
+	}
+	types = append(types, checker.StandardDataTypes()...)
+	var stmts []ast.Stmt
+	for _, t := range types {
+		if t.Kind == "record" {
+			var names []string
+			for _, f := range checker.Fields(t) {
+				names = append(names, f.Name)
+			}
+			stmts = append(stmts, evaluated(runtimeCall("RegisterRecordFields", textLiteral(t.ID), stringSlice(names))))
+			continue
+		}
+		for _, c := range checker.Cases(t) {
+			if len(c.Fields) == 0 {
 				continue
 			}
-			for _, c := range checker.Cases(s.Type) {
-				if len(c.Fields) == 0 {
-					continue
-				}
-				var labels []string
-				for _, f := range c.Fields {
-					labels = append(labels, f.Name)
-				}
-				stmts = append(stmts, evaluated(runtimeCall("RegisterCaseFields", textLiteral(s.Type.ID), textLiteral(c.Name), stringSlice(labels))))
+			var labels []string
+			for _, f := range c.Fields {
+				labels = append(labels, f.Name)
 			}
+			stmts = append(stmts, evaluated(runtimeCall("RegisterCaseFields", textLiteral(t.ID), textLiteral(c.Name), stringSlice(labels))))
 		}
 	}
 	return stmts

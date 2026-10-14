@@ -19,7 +19,7 @@ func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	add := libraryAdd
 	add("json", "parse", libraryResult("JsonValue", "JsonError"), []LibraryParam{p("text", "String"), p("limits", "Optional[JsonLimits]")}, libraryJSONParse)
-	libraryGeneric("json", "stringify", libraryResult("String", "JsonError"), []LibraryParam{p("T", "JsonEncodable")}, []LibraryParam{p("value", "T"), p("max_bytes", "Optional[Int]")}, libraryJSONStringify)
+	libraryGeneric("json", "stringify", libraryResult("String", "JsonError"), []LibraryParam{p("T", "")}, []LibraryParam{p("value", "T"), p("max_bytes", "Optional[Int]"), p("indent", "Optional[Int]")}, libraryJSONStringify)
 	add("csv", "parse", libraryResult("List[List[String]]", "CsvError"), []LibraryParam{p("text", "String"), p("options", "CsvOptions"), p("max_rows", "Optional[Int]"), p("max_cells", "Optional[Int]")}, libraryCSVParse)
 	add("csv", "stringify", libraryResult("String", "CsvError"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Optional[Int]")}, libraryCSVStringify)
 	add("html", "escape", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return html.EscapeString(a[0].(string)) })

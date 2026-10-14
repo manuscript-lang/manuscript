@@ -4,8 +4,20 @@ import {
     JsonValue,
     JsonLimits,
     JsonError,
-    JsonEncodable
+    JsonEncode
 } from "@std/json.ms"
+import {
+    timestamp,
+    duration,
+    clock,
+    Timestamp,
+    Duration,
+    Instant
+} from "@std/time.ms"
+import {Url} from "@std/url.ms"
+import Bytes from "@std/bytes.ms"
+import Decimal from "@std/decimal.ms"
+import {TextError} from "@std/errors.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -97,7 +109,7 @@ type Node:
     label: String
     next: Optional[Node]
 
-fn encoded[T: JsonEncodable](item: T) -> String:
+fn encoded[T](item: T) -> String:
     return value(stringify(value: item))
 
 test "JSON stringify encodes records in declaration order and omits none fields":
@@ -156,7 +168,8 @@ test "JSON stringify reports cycles non-finite numbers and budgets as errors":
     var node = Node(label: "a", next: none)
     node.next = some(node)
     if stringify(value: node) != invalid: return panic("cyclic record")
-    if stringify(value: 1e308 * 10.0) != invalid: return panic("infinite Float")
+    if encoded(1e308 * 10.0) != "null": return panic("infinite Float is null")
+    if encoded(1e308 * 10.0 - 1e308 * 10.0) != "null": return panic("NaN Float is null")
 
     let limited: Result[String, JsonError] = error(JsonError.LimitExceeded)
     if stringify(value: "abcdef", max_bytes: 4) != limited: return panic(
@@ -175,3 +188,210 @@ test "JSON stringify repeats shared acyclic values and reads current field value
         "shared value written twice"
     )
     if encoded(pair) == before: return panic("stringify reads current field values")
+
+fn one() -> Int:
+    return 1
+
+type Handler:
+    name: String
+    callback: fn() -> Int
+    retries: Optional[Optional[Int]]
+    note: Optional[String]
+
+type Money:
+    cents: Int
+
+impl JsonEncode for Money:
+    fn to_json() -> JsonValue:
+        return JsonValue.StringValue("usd:{self.cents}")
+
+type Invoice:
+    total: Money
+    lines: List[Money]
+
+type Failure:
+    cause: Error
+    note: String
+
+type Stamped:
+    at: Timestamp
+    took: Duration
+    data: Bytes
+    link: Url
+
+type Tagged:
+    case Named(name: String, alias: Optional[String])
+    case Plain
+
+test "JSON stringify omits values without a JSON form and writes null for list elements":
+    let handler = Handler(name: "h", callback: one, retries: none, note: none)
+    if encoded(handler) != "\{\"name\":\"h\"\}": return panic(
+        "function and none fields omitted"
+    )
+
+    handler.retries = some(none)
+    if encoded(handler) != "\{\"name\":\"h\",\"retries\":null\}": return panic(
+        "some(none) is null"
+    )
+
+    handler.retries = some(some(3))
+    if encoded(handler) != "\{\"name\":\"h\",\"retries\":3\}": return panic(
+        "nested some"
+    )
+
+    let callbacks = [one, one]
+    if encoded(callbacks) != "[null,null]": return panic("functions in a list are null")
+
+    let named = Map[String, Int]().add("a", 1)
+    if encoded(named) != "\{\"a\":1\}": return panic("map")
+
+    let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
+    if stringify(value: one) != invalid: return panic("root function has no JSON form")
+
+test "JSON stringify encodes standard-library values":
+    let at = value(timestamp(seconds: 1700000000, nanoseconds: 500000000))
+    let link = Url(
+        scheme: "https",
+        host: "example.com",
+        port: some(8080),
+        path: "/a",
+        query: "x=1",
+        fragment: ""
+    )
+    let item = Stamped(at: at, took: duration(1500), data: "hi".to_bytes(), link: link)
+    let expected = "\{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"\}"
+    if encoded(item) != expected: return panic("timestamp duration bytes url")
+
+    let failure = Failure(cause: Error(value: TextError.Text("boom")), note: "n")
+    if encoded(failure) != "\{\"cause\":\{\"message\":\"boom\"\},\"note\":\"n\"\}": return panic(
+        "error message"
+    )
+    if encoded(TextError.Text("boom")) != "\{\"Text\":\{\"message\":\"boom\"\}\}": return panic(
+        "concrete error is structural"
+    )
+
+    let ok: Result[Int, Error] = ok(5)
+    if encoded(ok) != "\{\"ok\":\{\"value\":5\}\}": return panic("result ok payload")
+    if encoded(JsonError.InvalidData) != "\"InvalidData\"": return panic(
+        "standard case name"
+    )
+    if encoded(Tagged.Named("n", none)) != "\{\"Named\":\{\"name\":\"n\"\}\}": return panic(
+        "payload case omits none"
+    )
+    if encoded(Tagged.Plain) != "\"Plain\"": return panic("payloadless case")
+
+test "JSON stringify encodes scalar map keys and rejects the rest":
+    let ints = Map[Int, String]().add(2, "b").add(1, "a")
+    if encoded(ints) != "\{\"2\":\"b\",\"1\":\"a\"\}": return panic("Int keys")
+
+    let flags = Map[Bool, Int]().add(true, 1)
+    if encoded(flags) != "\{\"true\":1\}": return panic("Bool keys")
+
+    let decimals = Map[Decimal, Int]().add(1.50d, 1)
+    if encoded(decimals) != "\{\"1.5\":1\}": return panic("Decimal keys")
+
+    let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
+    let records = Map[Money, Int]().add(Money(1), 1)
+    if stringify(value: records) != invalid: return panic("record keys")
+
+test "JSON stringify honors JsonEncode wherever the value appears":
+    let invoice = Invoice(total: Money(500), lines: [Money(200), Money(300)])
+    let expected = "\{\"total\":\"usd:500\",\"lines\":[\"usd:200\",\"usd:300\"]\}"
+    if encoded(invoice) != expected: return panic("to_json hook")
+    if encoded(Money(7)) != "\"usd:7\"": return panic("root hook")
+
+test "JSON stringify indents like JSON.stringify and clamps at ten":
+    let request = Request(
+        model: "m",
+        stream: true,
+        user: none,
+        temperature: 0.5,
+        tags: ["a"]
+    )
+    let pretty = value(stringify(value: request, indent: 2))
+    let expected = "\{\n  \"model\": \"m\",\n  \"stream\": true,\n  \"temperature\": 0.5,\n  \"tags\": [\n    \"a\"\n  ]\n\}"
+    if pretty != expected: return panic("indented output")
+
+    let empty: List[Int] = []
+    if value(stringify(value: empty, indent: 4)) != "[]": return panic(
+        "empty container"
+    )
+    if value(stringify(value: [1], indent: 0)) != "[1]": return panic(
+        "zero indent is compact"
+    )
+
+    let wide = value(stringify(value: [1], indent: 99))
+    if wide != "[\n          1\n]": return panic("indent clamps at ten")
+
+    let negative: Result[String, JsonError] = error(JsonError.InvalidInput)
+    if stringify(value: 1, indent: -1) != negative: return panic("negative indent")
+
+interface Named:
+    fn label() -> String
+
+type Person:
+    name: String
+
+impl Named for Person:
+    fn label() -> String:
+        return self.name
+
+type Holder:
+    who: Named
+    at: Instant
+    done: Unit
+
+test "JSON stringify writes interface values as the value they hold and omits monotonic instants":
+    let who = Named(value: Person(name: "p"))
+    let holder = Holder(who: who, at: clock().now(), done: unit)
+    if encoded(holder) != "\{\"who\":\{\"name\":\"p\"\}\}": return panic(
+        "interface field"
+    )
+
+    let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
+    if stringify(value: clock().now()) != invalid: return panic("root instant")
+    if stringify(value: unit) != invalid: return panic("root unit")
+
+    let failed: Result[Int, JsonError] = error(JsonError.LimitExceeded)
+    if encoded(failed) != "\{\"error\":\{\"cause\":\"LimitExceeded\"\}\}": return panic(
+        "result error payload"
+    )
+
+type Event:
+    case Created(id: Int)
+    case Deleted(id: Int)
+
+impl JsonEncode for Event:
+    fn to_json() -> JsonValue:
+        match self:
+            Created(id): return tagged("created", id)
+            Deleted(id): return tagged("deleted", id)
+
+fn tagged(kind: String, id: Int) -> JsonValue:
+    let fields = Map[String, JsonValue]().add("type", JsonValue.StringValue(kind))
+    let all = fields.add("id", JsonValue.NumberValue("{id}"))
+    return JsonValue.ObjectValue(all)
+
+type Feed:
+    events: List[Event]
+
+test "JSON stringify lets JsonEncode override the structural encoding of an alternative":
+    if encoded(Event.Created(1)) != "\{\"type\":\"created\",\"id\":1\}": return panic(
+        "custom tagged alternative"
+    )
+
+    let feed = Feed(events: [Event.Created(1), Event.Deleted(2)])
+    let expected = "\{\"events\":[\{\"type\":\"created\",\"id\":1\},\{\"type\":\"deleted\",\"id\":2\}]\}"
+    if encoded(feed) != expected: return panic("custom encoding nested in a record")
+
+type Change:
+    case Added(id: Int)
+    case Removed(id: Int)
+
+test "JSON stringify keeps cases with identical labels distinct by default":
+    if encoded(Change.Added(1)) != "\{\"Added\":\{\"id\":1\}\}": return panic(
+        "tagged Added"
+    )
+    if encoded(Change.Removed(1)) != "\{\"Removed\":\{\"id\":1\}\}": return panic(
+        "tagged Removed"
+    )

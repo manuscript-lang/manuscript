@@ -163,7 +163,7 @@ func (l *libraryLogger) Operation(name string) Function {
 		if l.max == 0 {
 			return libraryError(r, "LimitExceeded", "")
 		}
-		encoded := libraryJSONStringify(ctx, libraryRuntimeType(libraryResult("String", "LogError")), []Value{logJSON("ObjectValue", logMerge(metadata, filtered)), l.max - 1}).(Alternative)
+		encoded := libraryJSONStringify(ctx, libraryRuntimeType(libraryResult("String", "LogError")), []Value{logJSON("ObjectValue", logMerge(metadata, filtered)), l.max - 1, int64(0)}).(Alternative)
 		if encoded.Tag == "error" {
 			return Alternative{Type: r, Tag: "error", Fields: encoded.Fields}
 		}

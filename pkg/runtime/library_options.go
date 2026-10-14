@@ -53,6 +53,9 @@ func nativeDefault(name, typ, operation string) Value {
 		if name == "max_replacements" {
 			return int64(1)
 		}
+		if name == "indent" {
+			return int64(0)
+		}
 		// A single read requests a chunk, not a whole stream or a total budget.
 		if name == "max_bytes" && operation == "receive" {
 			return int64(65535)
