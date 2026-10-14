@@ -97,6 +97,27 @@ func TestPathResolveRequiresExplicitDriveBase(t *testing.T) {
 	}
 }
 
+func TestWindowsNormalizeKeepsDriveShapedComponentRelative(t *testing.T) {
+	paths := libraryPaths{windows: true}
+	for input, want := range map[string]string{
+		`.\C:`:       `.\C:`,
+		`./C:`:       `.\C:`,
+		`a\..\C:\x`:  `.\C:\x`,
+		`C:`:         `C:.`,
+		`C:\a\..\b`:  `C:\b`,
+		`a\C:`:       `a\C:`,
+		`.\C:\..\d:`: `.\d:`,
+	} {
+		got := paths.normalize(input)
+		if got != want {
+			t.Errorf("normalize(%q) = %q, want %q", input, got, want)
+		}
+		if again := paths.normalize(got); again != got {
+			t.Errorf("normalize(%q) is not idempotent: %q then %q", input, got, again)
+		}
+	}
+}
+
 func TestExpandedFileHandles(t *testing.T) {
 	ctx := RootExecution()
 	fs := &libraryFileSystem{t.TempDir()}
