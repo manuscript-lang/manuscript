@@ -84,7 +84,7 @@ values.append(3)
 # alias now contains [1, 2, 3]; copy still contains [1, 2].
 ```
 
-Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra construct new results. List `reversed()` returns a reversed shallow copy with independent outer storage. Bytes `reversed()` also returns a copy; Bytes `reverse()` remains compatible. Text and Bytes retain their existing nonmutating operations.
+Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra construct new results. List `reversed()` returns a reversed shallow copy with independent outer storage. Bytes `reversed()` also returns a copy. Text and Bytes retain their existing nonmutating operations.
 
 List `slice` returns `Result[List[T], CollectionError]` and uses strict element bounds after resolving negative bounds relative to the end: `0 <= start <= end <= length()`. Invalid bounds return `CollectionError.OutOfRange`. Successful slices copy outer storage and retain nested references. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
 

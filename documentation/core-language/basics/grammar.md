@@ -7,7 +7,7 @@ weight = 6
 
 This page is the exact syntax reference. Use it to check how a declaration, expression, block, or pattern must be written. If you are learning the language, read [source structure](syntax.md) and the practical concept pages first.
 
-Parsing checks the shape of source. The [expression rules](expressions.md), [type rules](../types/compatibility.md), and concept pages then determine whether that source is legal. The design does not prescribe a parser library or internal syntax-tree format.
+Parsing checks the shape of source. The [expression rules](expressions.md), [type rules](../types/compatibility.md), and concept pages then determine whether that source is legal.
 
 ## Source characters and tokens
 
