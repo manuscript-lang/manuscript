@@ -149,6 +149,31 @@ type Int:
     fn to_decimal() -> Decimal:
 ```
 
+### Int.to_decimal
+
+Converts to the exactly equal Decimal; no rounding occurs.
+
+```manuscript
+fn to_decimal() -> Decimal
+```
+
+### Int.to_float
+
+Converts to the nearest Float; integers beyond 2^53 in magnitude can lose low-order digits.
+
+```manuscript
+fn to_float() -> Float
+```
+
+### Int.to_string
+
+Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
+A radix outside 2 through 36 is a programming fault.
+
+```manuscript
+fn to_string(radix: Int) -> String
+```
+
 ## List {data-api-kind="Native type"}
 
 An ordered mutable collection with indexing, iteration, and transformations.
@@ -203,6 +228,14 @@ type List[T]:
     fn length() -> Int:
 ```
 
+### List.append
+
+Adds `value` at the end in place and returns this same list.
+
+```manuscript
+fn append(value: T) -> List[T]:
+```
+
 ### List.at
 
 Returns an element; negative indexes are relative to the end, and out-of-range indexes return none.
@@ -217,6 +250,31 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.concat
+
+Returns a new list holding this list's elements followed by `other`; neither operand is changed.
+
+```manuscript
+fn concat(other: List[T]) -> List[T]:
+```
+
+### List.contains
+
+Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns false.
+
+```manuscript
+fn contains(value: T) -> Bool:
+```
+
+### List.copy_within
+
+Copies the elements in [start, end) to begin at index `target`, in place, and returns this list.
+The list never grows: copying stops at the end of the list. Source bounds must satisfy 0 <= start <= end <= length() and a target must be within 0 through length(); otherwise the call faults.
+
+```manuscript
+fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
 ```
 
 ### List.count
@@ -244,12 +302,29 @@ Leaves the receiver unchanged; negative count is a programming fault.
 fn drop(count: Int) -> List[T]:
 ```
 
+### List.entries
+
+Returns a new list of `ListEntry` records pairing each zero-based index with its element, in order.
+
+```manuscript
+fn entries() -> List[ListEntry[T]]:
+```
+
 ### List.every
 
 Returns true when every value satisfies the predicate; empty lists return true.
 
 ```manuscript
 fn every(predicate: fn(value: T) -> Bool) -> Bool:
+```
+
+### List.fill
+
+Sets elements in [start, end) to `value` in place and returns this list.
+Bounds must satisfy 0 <= start <= end <= length(); negative or larger bounds fault rather than counting from the end, and an empty range changes nothing.
+
+```manuscript
+fn fill(value: T, start: Int, end: Int) -> List[T]:
 ```
 
 ### List.filter
@@ -260,12 +335,52 @@ Keeps matching values in their original order.
 fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
 ```
 
+### List.find
+
+Returns the first element for which `predicate` is true, or none; later elements are not tested after a match.
+
+```manuscript
+fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+```
+
+### List.find_index
+
+Returns the zero-based index of the first element for which `predicate` is true, or none.
+
+```manuscript
+fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+```
+
+### List.find_last
+
+Searches from the end and returns the last element for which `predicate` is true, or none.
+
+```manuscript
+fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
+```
+
 ### List.find_last_index
 
 Searches from the end and returns the last matching zero-based index, or none.
 
 ```manuscript
 fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+```
+
+### List.first
+
+Returns the first element, or none when the list is empty.
+
+```manuscript
+fn first() -> Optional[T]:
+```
+
+### List.flat_map[U]
+
+Calls `transform` on each element in order and concatenates the returned lists into one new list; the receiver is unchanged.
+
+```manuscript
+fn flat_map[U](transform: fn(value: T) -> List[U]) -> List[U]:
 ```
 
 ### List.fold[A]
@@ -292,6 +407,15 @@ Calls operation(value:) over the initial backing slice and length; element write
 fn for_each(operation: fn(value: T) -> Unit) -> Unit:
 ```
 
+### List.group_by[K: Hashable]
+
+Calls `key` once per element in order and returns a map from each distinct key to the elements that produced it.
+Keys appear in first-seen order and each group keeps the original element order.
+
+```manuscript
+fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]:
+```
+
 ### List.index_of
 
 Returns the first equal element's zero-based index, or none; elements require Equal.
@@ -309,6 +433,39 @@ Requires -length() <= index <= length(); index length() appends, and invalid ind
 fn insert(index: Int, value: T) -> List[T]:
 ```
 
+### List.is_empty
+
+Reports whether the list has no elements.
+
+```manuscript
+fn is_empty() -> Bool:
+```
+
+### List.join
+
+Concatenates the strings with `separator` between neighbors; an empty list returns an empty string.
+Available only on List[String].
+
+```manuscript
+fn join(separator: String) -> String:
+```
+
+### List.keys
+
+Returns a new list of the zero-based indexes 0 through length() - 1.
+
+```manuscript
+fn keys() -> List[Int]:
+```
+
+### List.last
+
+Returns the last element, or none when the list is empty.
+
+```manuscript
+fn last() -> Optional[T]:
+```
+
 ### List.last_index_of
 
 Returns the last equal element's zero-based index, or none; elements require Equal.
@@ -317,12 +474,36 @@ Returns the last equal element's zero-based index, or none; elements require Equ
 fn last_index_of(value: T) -> Optional[Int]:
 ```
 
+### List.length
+
+Returns the number of elements.
+
+```manuscript
+fn length() -> Int:
+```
+
+### List.map[U]
+
+Returns a new list holding `transform` applied to each element in order; the receiver is unchanged.
+
+```manuscript
+fn map[U](transform: fn(value: T) -> U) -> List[U]:
+```
+
 ### List.pop
 
 Removes and returns the last element in place, or none for an empty list.
 
 ```manuscript
 fn pop() -> Optional[T]:
+```
+
+### List.prepend
+
+Inserts `value` at index 0 in place, shifting existing elements one position later, and returns this same list.
+
+```manuscript
+fn prepend(value: T) -> List[T]:
 ```
 
 ### List.remove
@@ -405,6 +586,14 @@ Leaves the receiver unchanged; negative count is a programming fault.
 fn take(count: Int) -> List[T]:
 ```
 
+### List.to_set
+
+Returns a new set of the distinct elements, using Hashable equality; the first of equal elements is kept in insertion order.
+
+```manuscript
+fn to_set() -> Set[T]:
+```
+
 ## Map {data-api-kind="Native type"}
 
 A mutable key-value collection. Keys use explicit `Hashable` value semantics.
@@ -464,12 +653,36 @@ Calls create(key:) once for absence; an existing key leaves its value and positi
 fn add_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
 ```
 
+### Map.clear
+
+Removes every entry in place and returns this same map; aliases observe the empty map.
+
+```manuscript
+fn clear() -> Map[T, U]:
+```
+
 ### Map.clone
 
 Returns a shallow copy with independent map storage.
 
 ```manuscript
 fn clone() -> Map[T, U]:
+```
+
+### Map.contains
+
+Reports whether an equal key is present, using the key type's Hashable implementation.
+
+```manuscript
+fn contains(key: T) -> Bool:
+```
+
+### Map.entries
+
+Returns a new list of fresh `MapEntry` records in insertion order; keys and values keep their original references.
+
+```manuscript
+fn entries() -> List[MapEntry[T, U]]:
 ```
 
 ### Map.every
@@ -530,6 +743,14 @@ Calls operation(key:, value:) sequentially over an insertion-order membership sn
 fn for_each(operation: fn(key: T, value: U) -> Unit) -> Unit:
 ```
 
+### Map.get
+
+Returns the value stored for an equal key, or none when the key is absent.
+
+```manuscript
+fn get(key: T) -> Optional[U]:
+```
+
 ### Map.get_or
 
 Returns the stored value or an eagerly evaluated fallback without inserting.
@@ -544,6 +765,22 @@ Reports whether this map has no entries.
 
 ```manuscript
 fn is_empty() -> Bool:
+```
+
+### Map.keys
+
+Returns a new list of the keys in insertion order.
+
+```manuscript
+fn keys() -> List[T]:
+```
+
+### Map.length
+
+Returns the number of entries.
+
+```manuscript
+fn length() -> Int:
 ```
 
 ### Map.map[W]
@@ -564,6 +801,15 @@ Equal outputs keep the first key/position and the last input value.
 fn map_keys[W: Hashable](transform: fn(key: T, value: U) -> W) -> Map[W, U]:
 ```
 
+### Map.merge
+
+Copies every entry of `other` into this map in place and returns this map.
+Existing keys keep their position and key but take the value from `other`; new keys append in `other` order. `other` is unchanged.
+
+```manuscript
+fn merge(other: Map[T, U]) -> Map[T, U]:
+```
+
 ### Map.remove
 
 Removes an equal key and returns this same Map; remaining entries retain insertion order.
@@ -579,6 +825,14 @@ Stops at the first matching entry; empty maps return false.
 
 ```manuscript
 fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+```
+
+### Map.values
+
+Returns a new list of the values in insertion order.
+
+```manuscript
+fn values() -> List[U]:
 ```
 
 ## Never {data-api-kind="Type"}

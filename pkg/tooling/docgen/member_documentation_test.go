@@ -53,7 +53,7 @@ func TestDescriptionInventoryIncludesMissingMembers(t *testing.T) {
 		t.Fatal("missing description is not visible", report)
 	}
 	standard := Inventory(checker.StandardLibrary())
-	if standard.Members == 0 || standard.DescribedMembers == standard.Members || len(standard.Entries) != standard.Declarations+standard.Members {
-		t.Fatal("inventory omitted the undescribed standard surface", standard)
+	if standard.Members == 0 || len(standard.Entries) != standard.Declarations+standard.Members {
+		t.Fatal("inventory omitted part of the standard surface", standard)
 	}
 }
