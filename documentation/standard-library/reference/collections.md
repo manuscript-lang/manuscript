@@ -47,6 +47,8 @@ type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    fn insert(index: Int, value: T) -> List[T]:
+    fn pop() -> Optional[T]:
     fn set(index: Int, value: T) -> List[T]:
     fn remove(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
@@ -60,6 +62,8 @@ type List[T]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
     fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    fn count(predicate: fn(value: T) -> Bool) -> Int:
+    fn distinct() -> List[T]:
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
@@ -94,6 +98,22 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.count
+
+Counts values satisfying the predicate, calling it once per element in order.
+
+```manuscript
+fn count(predicate: fn(value: T) -> Bool) -> Int:
+```
+
+### List.distinct
+
+Returns a new shallow List keeping each first equal element in order; elements require Equal.
+
+```manuscript
+fn distinct() -> List[T]:
 ```
 
 ### List.drop
@@ -161,12 +181,29 @@ Returns the first equal element's zero-based index, or none; elements require Eq
 fn index_of(value: T) -> Optional[Int]:
 ```
 
+### List.insert
+
+Inserts value before index in place and returns this list; negative indexes count from the end.
+Requires -length() <= index <= length(); index length() appends, and invalid indexes fault.
+
+```manuscript
+fn insert(index: Int, value: T) -> List[T]:
+```
+
 ### List.last_index_of
 
 Returns the last equal element's zero-based index, or none; elements require Equal.
 
 ```manuscript
 fn last_index_of(value: T) -> Optional[Int]:
+```
+
+### List.pop
+
+Removes and returns the last element in place, or none for an empty list.
+
+```manuscript
+fn pop() -> Optional[T]:
 ```
 
 ### List.remove

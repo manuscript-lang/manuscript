@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -245,6 +246,58 @@ func init() {
 		// Do not clear the tail: a running range retains its initial header.
 		a[0].(*List).Items = items[:len(items)-1]
 		return a[0]
+	})
+	add("insert", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int"), p("value", "T")}, func(ctx *Execution, r string, a []Value) Value {
+		list := a[0].(*List)
+		index := a[1].(int64)
+		i := relativeIndex(len(list.Items), index)
+		if i < 0 || i > int64(len(list.Items)) {
+			return Panic(fmt.Sprintf("List.insert: index must be between %d and %d (negative indexes count from the end), found %d", -len(list.Items), len(list.Items), index))
+		}
+		list.Items = append(list.Items, nil)
+		copy(list.Items[i+1:], list.Items[i:len(list.Items)-1])
+		list.Items[i] = a[2]
+		return list
+	})
+	add("pop", "Optional[T]", elements, listParam, func(ctx *Execution, r string, a []Value) Value {
+		list := a[0].(*List)
+		if len(list.Items) == 0 {
+			return Alternative{Type: r, Tag: "none"}
+		}
+		last := list.Items[len(list.Items)-1]
+		// Do not clear the tail: a running range retains its initial header.
+		list.Items = list.Items[:len(list.Items)-1]
+		return Alternative{r, "some", []Value{last}}
+	})
+	add("count", "Int", elements, []LibraryParam{p("values", "List[T]"), p("predicate", "fn(value:T)->Bool")}, func(ctx *Execution, _ string, a []Value) Value {
+		count := int64(0)
+		for _, value := range a[0].(*List).Items {
+			CheckCancelled(ctx)
+			if Invoke(ctx, a[1], []Argument{{"value", value}}).(bool) {
+				count++
+			}
+		}
+		return count
+	})
+	add("distinct", "List[T]", equal, listParam, func(ctx *Execution, r string, a []Value) Value {
+		out := &List{Type: r, Items: []Value{}}
+		for _, value := range a[0].(*List).Items {
+			CheckCancelled(ctx)
+			seen := false
+			for i, kept := range out.Items {
+				if i%1024 == 1023 {
+					CheckCancelled(ctx)
+				}
+				if EqualIn(ctx, kept, value) {
+					seen = true
+					break
+				}
+			}
+			if !seen {
+				out.Items = append(out.Items, value)
+			}
+		}
+		return out
 	})
 	add("set_add", "Set[T]", hash, []LibraryParam{p("values", "Set[T]"), p("value", "T")}, func(ctx *Execution, _ string, a []Value) Value {
 		return setWithValue(ctx, a[0].(*Set), a[1])
