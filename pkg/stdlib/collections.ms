@@ -154,6 +154,7 @@ export type MapEntry[T: Hashable, U]:
 
 # A mutable collection of unique values using explicit `Hashable` value semantics.
 export type Set[T: Hashable]:
+    # Copies outer storage, retaining element references and insertion order.
     fn clone() -> Set[T]:
     # Reports whether this set has no elements.
     fn is_empty() -> Bool:
@@ -174,8 +175,11 @@ export type Set[T: Hashable]:
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     # Stops at the first nonmatching element; empty sets return true.
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
+    # Returns a new set with receiver values followed by right-only values in insertion order.
     fn union(right: Set[T]) -> Set[T]:
+    # Returns a new set of receiver values also in right, preserving receiver insertion order.
     fn intersection(right: Set[T]) -> Set[T]:
+    # Returns a new set of receiver values absent from right, preserving receiver insertion order.
     fn difference(right: Set[T]) -> Set[T]:
     # Returns a new set of values in exactly one operand; leaves both operands unchanged.
     fn symmetric_difference(right: Set[T]) -> Set[T]:
@@ -185,6 +189,7 @@ export type Set[T: Hashable]:
     fn is_superset_of(right: Set[T]) -> Bool:
     # Tests whether the operands have no common values.
     fn is_disjoint_from(right: Set[T]) -> Bool:
+    # Removes all values in place and returns this set; aliases observe the empty set.
     fn clear() -> Set[T]:
     # Returns a shallow list of values in insertion order.
     fn values() -> List[T]:
@@ -192,7 +197,9 @@ export type Set[T: Hashable]:
     fn entries() -> List[List[T]]:
     # Calls operation(value:) sequentially over an insertion-order membership snapshot.
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
+    # Reports whether an equal value is present, using the element's Hashable implementation.
     fn contains(value: T) -> Bool:
+    # Returns the number of distinct values currently stored.
     fn length() -> Int:
     # Adds a value in place and returns this set; an equal value retains its original payload and position.
     fn add(value: T) -> Set[T]:
