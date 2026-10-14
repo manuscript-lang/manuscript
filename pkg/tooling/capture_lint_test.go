@@ -150,21 +150,21 @@ type Counter:
 `, 1},
 		{"scheduler start", `    let values = [0]
     with jobs = Scheduler():
-        let _started = jobs.start(fn() -> Result[Unit, String]:
+        let _started = jobs.start(fn() -> Result[Unit, Error]:
             values.append(1)
             return ok(unit)
         )
 `, 1},
 		{"scheduler after", `    let values = [0]
     with jobs = Scheduler():
-        let _started = jobs.after(duration: duration(1), operation: fn() -> Result[Unit, String]:
+        let _started = jobs.after(duration: duration(1), operation: fn() -> Result[Unit, Error]:
             values.append(1)
             return ok(unit)
         )
 `, 1},
 		{"scheduler every", `    let values = [0]
     with jobs = Scheduler():
-        let _started = jobs.every(interval: duration(1), operation: fn() -> Result[Unit, String]:
+        let _started = jobs.every(interval: duration(1), operation: fn() -> Result[Unit, Error]:
             values.append(1)
             return ok(unit)
         )

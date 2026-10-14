@@ -26,7 +26,7 @@ func TestDocOutsideRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"```manuscript\n", "fn to_bytes() -> Bytes", "fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]", "history_limit", "# @std/http.ms"} {
+	for _, want := range []string{"```manuscript\n", "fn to_bytes() -> Bytes", "fn start(operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]", "history_limit", "# @std/http.ms"} {
 		if !strings.Contains(string(markdown), want) {
 			t.Errorf("missing %q", want)
 		}

@@ -71,7 +71,7 @@ impl Read for Box:
 			}
 		})
 	}
-	result := compiler.CompileSource("sharing.ms", declarations+`fn start(service: Scheduler, operation: fn() -> Result[Unit, String]) -> Unit:
+	result := compiler.CompileSource("sharing.ms", declarations+`fn start(service: Scheduler, operation: fn() -> Result[Unit, Error]) -> Unit:
     service.start(operation)
 `, compiler.Options{})
 	if !result.Success() {

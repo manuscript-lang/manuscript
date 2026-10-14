@@ -20,6 +20,9 @@ var NativeImplementations = []NativeImplementationSpec{
 			if cause.Tag == "Failed" && len(cause.Fields) == 1 {
 				return cause.Fields[0].(string)
 			}
+			if cause.Type == "@std/TextError" && cause.Tag == "Text" && len(cause.Fields) == 1 {
+				return cause.Fields[0].(string)
+			}
 			if cause.Tag == "Crashed" && len(cause.Fields) == 2 {
 				return cause.Fields[1].(string)
 			}
@@ -80,6 +83,7 @@ var standardErrorDomains = map[string]string{
 	"@std/SystemError":      "system",
 	"@std/ExecutionError":   "task execution",
 	"@std/StartError":       "scheduler",
+	"@std/TextError":        "text",
 	"@std/TimeError":        "time",
 	"@std/TlsError":         "TLS",
 	"@std/TomlError":        "TOML",

@@ -38,7 +38,7 @@ fn scheduler_probe() -> Unit:
         limit: 1,
         drain: 2.seconds
     ):
-        let task = fn() -> Result[Unit, String]:
+        let task = fn() -> Result[Unit, Error]:
             return ok(unit)
         let launch = service.start
 
