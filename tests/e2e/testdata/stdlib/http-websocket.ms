@@ -160,6 +160,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 
 test "HTTP requests reject an empty method":
     let net = network()
+
     match net.request(
         method: "",
         url: "http://127.0.0.1:1/",
