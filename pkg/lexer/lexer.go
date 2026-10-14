@@ -44,6 +44,7 @@ type scanner struct {
 	opened               []syntax.Position
 	functionDepths       []int
 	originalOffsets      []int
+	interpolations       []syntax.Position
 }
 
 func (s *scanner) pos() syntax.Position {
@@ -322,6 +323,9 @@ func (s *scanner) scanString() {
 			return
 		}
 		if b == '\n' {
+			if n := len(s.interpolations); n > 0 {
+				s.failAt(s.interpolations[n-1], "unterminated interpolation; the quote after this '{' opens a nested text that never closes ("+braceHint+")")
+			}
 			s.failAt(opened, "unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break")
 		}
 		if b < 32 {
@@ -378,6 +382,8 @@ func (s *scanner) scanInterpolation() {
 	open := s.pos()
 	open.Column--
 	open.Offset--
+	s.interpolations = append(s.interpolations, open)
+	defer func() { s.interpolations = s.interpolations[:len(s.interpolations)-1] }()
 	for s.offset < len(s.source) {
 		b := s.source[s.offset]
 		if b == '\n' || b == '\r' || b == '#' {
