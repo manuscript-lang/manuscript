@@ -57,3 +57,21 @@ fn boxed(n: Int) -> String:
 		}
 	}
 }
+
+// list.at(i).unwrap() reads the element directly instead of building an Optional.
+func TestListAtUnwrapSkipsOptional(t *testing.T) {
+	r := compileSource("at.ms", `import List from "@std/collections.ms"
+fn pick(values: List[Int], index: Int) -> Int:
+    return values.at(index).unwrap()
+
+fn keep(values: List[Int], index: Int) -> Int:
+    let found = values.at(index)
+    return found.unwrap()
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	if got := strings.Count(r.Source, "rt.ListAtUnwrap("); got != 1 {
+		t.Fatalf("fused unwrap count = %d, want 1 (a stored Optional keeps ListAt)\n%s", got, r.Source)
+	}
+}

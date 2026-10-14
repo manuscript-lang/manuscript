@@ -40,6 +40,16 @@ func ListAtParts(ctx *Execution, receiver Value, index Value) (Value, bool) {
 	return nil, false
 }
 
+// ListAtUnwrap is ListAt followed by Optional.unwrap without building the
+// Optional: the element, or the unwrap fault when the index is out of range.
+func ListAtUnwrap(ctx *Execution, receiver Value, index Value) Value {
+	value, ok := ListAtParts(ctx, receiver, index)
+	if !ok {
+		return Panic(unwrapNoneMessage)
+	}
+	return value
+}
+
 // OptionalTag is the case tag of an Optional whose presence is present.
 func OptionalTag(present bool) string {
 	if present {
