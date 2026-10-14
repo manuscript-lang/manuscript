@@ -364,7 +364,7 @@ func buildTarget(t *testing.T, run bool) string {
 }
 
 func TestDAPFailedAttachDoesNotPoisonLaunch(t *testing.T) {
-	target := buildTarget(t)
+	target := buildTarget(t, false)
 	c := startDAP(t)
 	c.request("attach", map[string]any{"mode": "local", "processId": 999999})
 	c.failure("attach", "")
