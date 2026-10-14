@@ -727,7 +727,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			_, err := libraryWriteChunks(ctx, h.file, data.(Bytes).Items, offset)
 			return finish(Unit{}, err)
 		case "read_vectors":
-			sizes := a[0].(*List).Items
+			sizes := a[0].(*List).Boxed()
 			offset := a[1].(int64)
 			var total int64
 			if offset < -1 {
@@ -763,7 +763,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			if offset < -1 {
 				return libraryError(r, "InvalidInput", "")
 			}
-			for _, v := range a[0].(*List).Items {
+			for _, v := range a[0].(*List).Boxed() {
 				var ptr *int64
 				if offset != -1 {
 					ptr = &offset

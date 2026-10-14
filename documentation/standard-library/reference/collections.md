@@ -58,7 +58,9 @@ fn message() -> String:
 
 ## List {data-api-kind="Native type"}
 
-An ordered collection of values with indexing, iteration, and transformation operations.
+An ordered mutable collection with indexing, iteration, and transformations.
+Primitive backing stores Int and Float values at 64 bits, Bool values as bytes, and String references without an element box.
+Generic forwarding retains the same List identity; clone and slice copy outer storage.
 
 ```manuscript
 type List[T]:

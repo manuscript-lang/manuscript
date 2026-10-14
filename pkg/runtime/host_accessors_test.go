@@ -74,7 +74,7 @@ func TestSourceTestsReceiveFreshHostRootsAndCleanup(t *testing.T) {
 		if !hostValue(ctx, "network").(View).Receiver.(*network).closed || !hostValue(ctx, "stdout").(View).Receiver.(*stream).closed {
 			t.Fatal("test roots survived joined test cleanup")
 		}
-		if len(hostValue(ctx, "arguments").(*List).Items) != 0 {
+		if len(hostValue(ctx, "arguments").(*List).Boxed()) != 0 {
 			t.Fatal("source test received CLI arguments")
 		}
 	}
