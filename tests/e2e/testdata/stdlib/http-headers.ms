@@ -26,13 +26,13 @@ fn handle_headers(request: HttpRequest) -> HttpResponse:
         status: 200,
         headers: (
             Map[String, String]()
-            .with_entry(key: "x-dup", value: "first")
-            .with_entry(key: "X-Dup", value: "second")
-            .with_entry(
+            .add(key: "x-dup", value: "first")
+            .add(key: "X-Dup", value: "second")
+            .add(
                 key: "Set-Cookie",
                 value: "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT"
             )
-            .with_entry(key: "set-cookie", value: "b=2")
+            .add(key: "set-cookie", value: "b=2")
         ),
         body: "ok".to_bytes()
     )
@@ -48,7 +48,7 @@ test "buffered requests support case-insensitive header lookup":
                 headers: Map[
                     String,
                     String
-                ]().with_entry(key: "content-type", value: "application/octet-stream"),
+                ]().add(key: "content-type", value: "application/octet-stream"),
                 body: "".to_bytes()
             )
         )
@@ -94,8 +94,8 @@ test "outbound collisions and buffered byte bridge retain empty fields":
                 url: "http://{server.address()}/",
                 headers: (
                     Map[String, String]()
-                    .with_entry(key: "x-dup", value: "")
-                    .with_entry(key: "X-Dup", value: "second")
+                    .add(key: "x-dup", value: "")
+                    .add(key: "X-Dup", value: "second")
                 ),
                 body: "".to_bytes(),
                 timeout: 2.seconds
@@ -114,7 +114,7 @@ fn echo_streaming_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
     ).unwrap()
     return exchange.send_headers(
         status: 200,
-        headers: Map[String, List[String]]().with_entry(
+        headers: Map[String, List[String]]().add(
             key: "X-Dup",
             value: values
         )
@@ -134,8 +134,8 @@ test "explicit server TLS absence and list bridge preserve streaming fields":
                 url: "http://{server.address()}/",
                 headers: (
                     Map[String, String]()
-                    .with_entry(key: "x-dup", value: "")
-                    .with_entry(key: "X-Dup", value: "second")
+                    .add(key: "x-dup", value: "")
+                    .add(key: "X-Dup", value: "second")
                 ),
                 body: "".to_bytes(),
                 timeout: 2.seconds
@@ -153,15 +153,15 @@ test "explicit server TLS absence and list bridge preserve streaming fields":
 test "header lookup preserves empty and repeated values and map order":
     let headers = (
         Map[String, Bytes]()
-        .with_entry(
+        .add(
             key: "x-test",
             value: "first\nsecond".to_bytes()
         )
-        .with_entry(
+        .add(
             key: "X-Test",
             value: "later".to_bytes()
         )
-        .with_entry(
+        .add(
             key: "X-Empty",
             value: "".to_bytes()
         )
@@ -189,10 +189,10 @@ test "list-valued lookup combines equivalent keys and copies membership":
     let first = ["", "first"]
     let headers = (
         Map[String, List[String]]()
-        .with_entry(key: "x-test", value: first)
-        .with_entry(key: "X-Test", value: ["second", "third"])
-        .with_entry(key: "X-Empty", value: [])
-        .with_entry(key: "K", value: ["ascii"])
+        .add(key: "x-test", value: first)
+        .add(key: "X-Test", value: ["second", "third"])
+        .add(key: "X-Empty", value: [])
+        .add(key: "K", value: ["ascii"])
     )
     let lookup = header_values
     let combined = lookup(headers: headers, name: "X-TEST").unwrap()

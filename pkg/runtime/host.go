@@ -26,8 +26,32 @@ type stream struct {
 	active              sync.WaitGroup
 	releaseFault        error
 	// pending holds bytes read ahead by read_line; read returns them first.
-	pending []byte
+	pending readAhead
 }
+
+// readAhead holds bytes a line reader took beyond the current line. The owner's
+// mutex guards it.
+type readAhead struct{ buf []byte }
+
+// take removes up to max bytes (all of them when max <= 0), reporting whether any were held.
+func (a *readAhead) take(max int) ([]byte, bool) {
+	if len(a.buf) == 0 {
+		return nil, false
+	}
+	n := len(a.buf)
+	if max > 0 && max < n {
+		n = max
+	}
+	data := a.buf[:n:n]
+	a.buf = a.buf[n:]
+	return data, true
+}
+
+// ioBytesResult and ioUnitResult are the IoError result types of stream reads and writes.
+const (
+	ioBytesResult = "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"
+	ioUnitResult  = "@std/Result[Unit][@std/IoError]"
+)
 
 func (s *stream) initialize() {
 	if s.closing != nil {
@@ -116,14 +140,7 @@ func (s *stream) Operation(name string) Function {
 		if name != "read" {
 			deadline = s.file.SetWriteDeadline
 		}
-		interruptDone := make(chan struct{})
-		stop := context.AfterFunc(ctx.Context, func() { defer close(interruptDone); deadline(time.Now()) })
-		defer func() {
-			if !stop() {
-				<-interruptDone
-			}
-			deadline(time.Time{})
-		}()
+		defer libraryInterrupt(ctx, deadline)()
 		switch name {
 		case "read":
 			n := nativeStreamReadSize(args[0])
@@ -134,15 +151,12 @@ func (s *stream) Operation(name string) Function {
 				n = 64 * 1024
 			}
 			s.mu.Lock()
-			if len(s.pending) > 0 {
-				take := min(int(n), len(s.pending))
-				data := s.pending[:take:take]
-				s.pending = s.pending[take:]
-				s.mu.Unlock()
+			data, ok := s.pending.take(int(n))
+			s.mu.Unlock()
+			if ok {
 				return Alternative{s.resultType, "ok", []Value{optional("@std/Bytes", Bytes{data}, true)}}
 			}
-			s.mu.Unlock()
-			data := make([]byte, int(n))
+			data = make([]byte, int(n))
 			read, err := s.file.Read(data)
 			CheckCancelled(ctx)
 			if err != nil && err != io.EOF {
@@ -213,7 +227,7 @@ func (f *files) Operation(name string) Function {
 		if err != nil {
 			return ioError("@std/Result[@std/File][@std/IoError]", "Unavailable", "")
 		}
-		resource := &stream{file: file, owned: true, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}
+		resource := &stream{file: file, owned: true, resultType: ioBytesResult}
 		if ctx.Context.Err() != nil {
 			file.Close()
 			CheckCancelled(ctx)
@@ -311,7 +325,7 @@ func newHostValues(arguments []string) (map[string]Value, error) {
 			}
 		}
 	}
-	return map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{""}), "control": ViewOf("@std/ProcessControl", libraryProcessControl{}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{""}), "arguments": NewList("@std/List[String]", values), "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: "@std/Result[Unit][@std/IoError]"}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: "@std/Result[Unit][@std/IoError]"}), "files": ViewOf("@std/Files", &files{""}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}, nil
+	return map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{""}), "control": ViewOf("@std/ProcessControl", libraryProcessControl{}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{""}), "arguments": NewList("@std/List[String]", values), "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: ioBytesResult}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: ioUnitResult}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: ioUnitResult}), "files": ViewOf("@std/Files", &files{""}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}, nil
 }
 func RunMain(main Value, arguments []string) (exit int) {
 	exit = 70

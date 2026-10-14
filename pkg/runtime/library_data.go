@@ -346,13 +346,12 @@ func init() {
 	})
 	// Sequential generic collection helpers retain the caller's actual list identity.
 	variable := []LibraryParam{p("T", "")}
-	libraryGeneric("collections", "reverse", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
+	libraryGeneric("collections", "reverse_in_place", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(*List)
 		v.reverse()
 		return v
 	})
-	libraryAlias("collections", "reverse_in_place", "reverse")
-	reverse := libraryFunctions["collections/reverse"].Body
+	reverse := libraryFunctions["collections/reverse_in_place"].Body
 	libraryGeneric("collections", "reversed", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(ctx *Execution, result string, a []Value) Value {
 		return reverse(ctx, result, []Value{Clone(a[0])})
 	})

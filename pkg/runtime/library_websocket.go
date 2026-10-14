@@ -3,7 +3,6 @@
 package msruntime
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -197,13 +196,7 @@ func (w *libraryWebSocket) Operation(name string) Function {
 		w.active.Add(1)
 		w.mu.Unlock()
 		defer w.active.Done()
-		done := make(chan struct{})
-		stop := context.AfterFunc(ctx.Context, func() { defer close(done); w.conn.Close() })
-		defer func() {
-			if !stop() {
-				<-done
-			}
-		}()
+		defer libraryInterruptFunc(ctx, func() { w.conn.Close() })()
 		if name == "receive" {
 			kind, reader, err := w.conn.NextReader()
 			var data []byte

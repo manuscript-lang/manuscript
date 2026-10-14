@@ -48,7 +48,7 @@ fn iteration() -> Int:
     var total = 0
     for value in values:
         if value == 1:
-            values.with_value(1, 4)
+            values.set(1, 4)
             values.append(5)
         total = total + value
     return total

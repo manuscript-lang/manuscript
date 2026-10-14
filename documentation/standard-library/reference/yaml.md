@@ -33,7 +33,7 @@ case InvalidData(line: Int, column: Int, reason: String)
 
 ### YamlError.InvalidInput
 
-One of the supplied byte, depth or value-count limits is negative.
+A supplied limit is negative, or stringify received a number whose text is not a YAML number.
 
 ```manuscript
 case InvalidInput
@@ -109,9 +109,9 @@ Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
 
 ```manuscript
 type YamlLimits:
-    max_bytes: Optional[Int]
-    max_depth: Optional[Int]
-    max_values: Optional[Int]
+    max_bytes: Optional[Int] = none
+    max_depth: Optional[Int] = none
+    max_values: Optional[Int] = none
 ```
 
 ### YamlLimits.max_bytes
@@ -119,7 +119,7 @@ type YamlLimits:
 Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
 
 ```manuscript
-max_bytes: Optional[Int]
+max_bytes: Optional[Int] = none
 ```
 
 ### YamlLimits.max_depth
@@ -127,7 +127,7 @@ max_bytes: Optional[Int]
 Maximum value depth, including scalar leaves, with the root at one.
 
 ```manuscript
-max_depth: Optional[Int]
+max_depth: Optional[Int] = none
 ```
 
 ### YamlLimits.max_values
@@ -135,7 +135,7 @@ max_depth: Optional[Int]
 Maximum containers and leaves, excluding keys; aliases count at each checked occurrence.
 
 ```manuscript
-max_values: Optional[Int]
+max_values: Optional[Int] = none
 ```
 
 ## YamlValue {data-api-kind="Alternative"}
@@ -246,5 +246,13 @@ Parses a YAML document. Unsupported YAML features and invalid input include sour
 
 ```manuscript
 fn parse(text: String, limits: Optional[YamlLimits] = none) -> Result[YamlValue, YamlError]:
+```
+
+## stringify {data-api-kind="Function"}
+
+Serializes a YAML value in block style with double-quoted strings.
+
+```manuscript
+fn stringify(value: YamlValue, max_bytes: Optional[Int] = none) -> Result[String, YamlError]:
 ```
 

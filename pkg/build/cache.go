@@ -1,6 +1,7 @@
 package build
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -146,10 +147,14 @@ func readPin(root string) (BuildPin, error) {
 		return BuildPin{}, fmt.Errorf("project build requires ms.lock; run ms lock %s: %w", shellQuote(filepath.Join(root, "ms.toml")), err)
 	}
 	var pin BuildPin
-	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&pin); err != nil {
-		return BuildPin{}, fmt.Errorf("invalid ms.lock: %w; it is generated, so delete it and run ms lock ms.toml to recreate it", err)
+		reason := "it is not a valid lock file"
+		if errors.Is(err, io.EOF) {
+			reason = "it is empty"
+		}
+		return BuildPin{}, fmt.Errorf("invalid ms.lock: %s; it is generated, so delete it and run ms lock %s to recreate it", reason, shellQuote(filepath.Join(root, "ms.toml")))
 	}
 	if err := decoder.Decode(new(any)); err != io.EOF {
 		return BuildPin{}, fmt.Errorf("ms.lock must contain exactly one JSON object; it is generated, so delete it and run ms lock ms.toml to recreate it")
@@ -170,10 +175,43 @@ func CheckPin(root string) error {
 }
 
 func comparePin(root string, expected, actual BuildPin) error {
-	if !reflect.DeepEqual(expected, actual) {
-		return fmt.Errorf("ms.lock does not match compiler/runtime, Go toolchain, or target; run ms lock %s to explicitly update", shellQuote(filepath.Join(root, "ms.toml")))
+	if reflect.DeepEqual(expected, actual) {
+		return nil
 	}
-	return nil
+	return fmt.Errorf("ms.lock does not match %s; run ms lock %s to explicitly update", strings.Join(pinDifferences(expected, actual), ", "), shellQuote(filepath.Join(root, "ms.toml")))
+}
+
+// pinDifferences names what changed in the vocabulary of the lock file.
+func pinDifferences(expected, actual BuildPin) []string {
+	var changed []string
+	if expected.Format != actual.Format {
+		changed = append(changed, "the lock format")
+	}
+	if expected.Compiler != actual.Compiler {
+		changed = append(changed, fmt.Sprintf("the compiler version (locked %s, current %s)", expected.Compiler, actual.Compiler))
+	}
+	if expected.ImplementationSHA256 != actual.ImplementationSHA256 {
+		changed = append(changed, "the compiler/runtime implementation")
+	}
+	var keys []string
+	for key := range expected.Toolchain {
+		keys = append(keys, key)
+	}
+	for key := range actual.Toolchain {
+		if _, ok := expected.Toolchain[key]; !ok {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if expected.Toolchain[key] != actual.Toolchain[key] {
+			changed = append(changed, fmt.Sprintf("toolchain %s (locked %q, current %q)", key, expected.Toolchain[key], actual.Toolchain[key]))
+		}
+	}
+	if len(changed) == 0 {
+		changed = append(changed, "the compiler/runtime, Go toolchain, or target")
+	}
+	return changed
 }
 
 func atomicWrite(filename string, data []byte, mode os.FileMode) error {
@@ -226,6 +264,26 @@ func BuildChecked(result compiler.Result, output, cacheDir string, debug bool) (
 	return BuildCheckedWithType(result, output, cacheDir, kind)
 }
 
+// checkOutputDirectory fails before any compilation when the output cannot be
+// written, so the error names the requested path instead of a staging file.
+func checkOutputDirectory(output string) error {
+	if output == "" {
+		return nil
+	}
+	dir := filepath.Dir(output)
+	info, err := os.Stat(dir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("cannot write %s: directory %s does not exist; create it or choose another -o path", output, dir)
+		}
+		return fmt.Errorf("cannot write %s: directory %s is not usable; choose another -o path", output, dir)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("cannot write %s: %s is not a directory; choose another -o path", output, dir)
+	}
+	return nil
+}
+
 // BuildCheckedWithType caches verified artifacts separately for each build type.
 func BuildCheckedWithType(result compiler.Result, output, cacheDir string, kind compiler.BuildType) (BuildMetadata, error) {
 	kind, err := compiler.ParseBuildType(string(kind))
@@ -234,6 +292,9 @@ func BuildCheckedWithType(result compiler.Result, output, cacheDir string, kind 
 	}
 	if !result.Success() || result.Program == nil || result.Source == "" {
 		return BuildMetadata{}, fmt.Errorf("cannot build a program with diagnostics; run ms check on the source and fix the reported errors first")
+	}
+	if err := checkOutputDirectory(output); err != nil {
+		return BuildMetadata{}, err
 	}
 	var expected BuildPin
 	if result.ProjectRoot != "" {

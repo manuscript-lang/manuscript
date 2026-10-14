@@ -42,7 +42,7 @@ let line = labels.join(separator: ", ")
 
 Maps and sets enumerate in insertion order, while equality ignores order. Replacing an existing map key retains its position; removing and adding it puts it at the end. `map_from_entries` uses the last value for duplicate keys and keeps the first insertion position. `merge` mutates the receiving map, replacing matching values and appending new keys.
 
-`add_default_from` calls its creation function only when the key is absent. The legacy spelling `with_default_from` remains compatible; see the [naming migration](../core-language/types/collections.md#naming-and-migration). Set algebra returns new sets: left-side traversal order is retained, followed by right-only values where applicable. Keys and set elements must satisfy [Hashable](../core-language/types/equality-and-hashing.md).
+`add_default_from` calls its creation function only when the key is absent. Set algebra returns new sets: left-side traversal order is retained, followed by right-only values where applicable. Keys and set elements must satisfy [Hashable](../core-language/types/equality-and-hashing.md).
 
 ## Text and regular expressions
 
@@ -83,7 +83,7 @@ Negative `max_parts` and `max_replacements` fault with a message naming the oper
 
 Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.
 
-`Regex.replace_all(text:, replacement:, max_bytes:)` replaces every nonoverlapping match with literal text; `$1` does not expand a capture. `Regex.replace` remains a compatible spelling. Omitted or `none` byte budgets impose no cap, zero permits only empty output, negative budgets return `RegexError.InvalidInput`, and output exceeding a supplied budget returns `RegexError.LimitExceeded`. The UTF-8 budget includes unmatched input, even when no match occurs.
+`Regex.replace_all(text:, replacement:, max_bytes:)` replaces every nonoverlapping match with literal text; `$1` does not expand a capture. Omitted or `none` byte budgets impose no cap, zero permits only empty output, negative budgets return `RegexError.InvalidInput`, and output exceeding a supplied budget returns `RegexError.LimitExceeded`. The UTF-8 budget includes unmatched input, even when no match occurs.
 
 ## Byte operations
 
@@ -94,7 +94,7 @@ Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed 
 | `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length()` respectively. |
 | `split` | Split exact binary separators into a fresh List of immutable Bytes views. `max_parts` truncates returned parts; omitted/`none` is unlimited, zero returns no parts, negatives fault. |
 | `slice` | Select a half-open byte range, returning `OutOfRange` for invalid bounds, under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
-| `with_value`, `reversed`, `reverse`, `concat`, `clone` | Return Bytes without changing the receiver. `reverse` remains a compatible spelling for `reversed`. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
+| `with_value`, `reversed`, `concat`, `clone` | Return Bytes without changing the receiver. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
 | `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
 | `to_text` | Decode valid UTF-8 or return `none`. |
 

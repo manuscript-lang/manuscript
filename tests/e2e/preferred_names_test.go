@@ -17,15 +17,11 @@ func TestPreferredNamesScopedImplementations(t *testing.T) {
 
 func TestPreferredNamesRetainFaults(t *testing.T) {
 	source := `import List from "@std/collections.ms"
-test "old set":
-    [1].with_value(1, 2)
 test "new set":
     [1].set(1, 2)
 test "bound set":
     let set = [1].set
     set(-2, 2)
-test "old remove":
-    [1].without(1)
 test "new remove":
     [1].remove(1)
 test "bound remove":
@@ -52,7 +48,7 @@ test "continues":
 		t.Fatalf("missing faults: %s", data)
 	}
 	output := string(data)
-	for _, pair := range [][2]string{{"old set", "new set"}, {"old remove", "new remove"}, {"old replace", "new replace"}} {
+	for _, pair := range [][2]string{{"old replace", "new replace"}} {
 		messages := [2]string{}
 		for i, name := range pair {
 			marker := "FAIL preferred-faults.ms::" + name + ": "
@@ -66,7 +62,7 @@ test "continues":
 			t.Fatalf("alias changed diagnostic: %q != %q", messages[0], messages[1])
 		}
 	}
-	for _, frame := range []string{"preferred-faults.ms:5:9", "preferred-faults.ms:8:5", "preferred-faults.ms:12:9", "preferred-faults.ms:15:5", "preferred-faults.ms:18:11", "preferred-faults.ms:21:11", "preferred-faults.ms:25:9", "preferred-faults.ms:28:5", "12 tests, 11 failed"} {
+	for _, frame := range []string{"preferred-faults.ms:3:9", "preferred-faults.ms:6:5", "preferred-faults.ms:8:9", "preferred-faults.ms:11:5", "preferred-faults.ms:14:11", "preferred-faults.ms:17:11", "preferred-faults.ms:19:9", "preferred-faults.ms:21:9", "preferred-faults.ms:24:5", "10 tests, 9 failed"} {
 		if !strings.Contains(output, frame) {
 			t.Errorf("missing %s: %s", frame, output)
 		}

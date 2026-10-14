@@ -15,7 +15,7 @@ func TestSyntaxErrorsStateTheFix(t *testing.T) {
 		{"unterminated paren", "fn f() -> Int:\n    return (1\n", "opened at line 2:12"},
 		{"unterminated text", "fn f() -> Int:\n    let s = \"abc\n    return 1\n", "unterminated text literal; text must close"},
 		{"semicolon", "fn f() -> Int:\n    return 1;\n", "remove the semicolon"},
-		{"top-level statement", "let x = 1\n", "put statements inside a fn"},
+		{"top-level statement", "var x = 1\n", "put statements inside a fn"},
 		{"unbraced import list", "import a, b from \"x.ms\"\n", "import {a, b} from \"path.ms\""},
 		{"missing expression", "fn f() -> Int:\n    let x = \n    return 1\n", "expected an expression, found end of line"},
 		{"standalone expression", "fn f() -> Int:\n    1 + 1\n    return 1\n", "use 'let name = ...'"},

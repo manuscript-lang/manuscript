@@ -164,10 +164,10 @@ fn use(l: List[Int], m: Map[String, Int], s: Set[Int], t: String) -> Unit:
     l.contains(1)
     m.contains("a")
     m.get("a")
-    m.with_entry("a", 1)
-    m.with_entry(value: 2, key: "b")
+    m.add("a", 1)
+    m.add(value: 2, key: "b")
     s.contains(1)
-    s.with_value(1)
+    s.add(1)
     t.at(0)
 `, compiler.Options{})
 	if !result.Success() {
@@ -178,7 +178,7 @@ fn use(l: List[Int], m: Map[String, Int], s: Set[Int], t: String) -> Unit:
 			t.Fatalf("missing direct %s", operation)
 		}
 	}
-	if strings.Count(result.Source, "rt.MapWithEntry(") != 1 || !strings.Contains(result.Source, `"with_entry"`) {
+	if strings.Count(result.Source, "rt.MapWithEntry(") != 1 || !strings.Contains(result.Source, `"add"`) {
 		t.Fatalf("reordered labels must keep ordinary dispatch:\n%s", result.Source)
 	}
 }

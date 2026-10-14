@@ -54,6 +54,9 @@ func runSourceCommand(args []string, usage string) int {
 			document.Reason = "compile_error"
 			return emitJSON(document, 1)
 		}
+		if inv.structured {
+			return emitJSON(structuredDiagnostics(result), 1)
+		}
 		return reportDiagnostics(result)
 	}
 	switch inv.command {

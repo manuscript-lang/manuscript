@@ -28,7 +28,7 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
                     let bindings = Map[
                         String,
                         JsonValue
-                    ]().with_entry(
+                    ]().add(
                         key: "worker",
                         value: JsonValue.NumberValue(
                             worker.toString()
@@ -49,7 +49,7 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
                         let fields = Map[
                             String,
                             JsonValue
-                        ]().with_entry(
+                        ]().add(
                             key: "sequence",
                             value: JsonValue.NumberValue(
                                 sequence.toString()
@@ -73,7 +73,7 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
     return ok(unit)
 
 fn exercise(mode: String, path: String) -> Result[Unit, Error]:
-    let bindings = Map[String, JsonValue]().with_entry(
+    let bindings = Map[String, JsonValue]().add(
         key: "service",
         value: JsonValue.StringValue("api")
     )
@@ -113,7 +113,7 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
             )
 
             if mode == "invalid":
-                let fields = Map[String, JsonValue]().with_entry(
+                let fields = Map[String, JsonValue]().add(
                     key: "bad",
                     value: JsonValue.NumberValue("NaN")
                 )

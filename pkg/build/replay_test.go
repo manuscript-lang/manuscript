@@ -150,14 +150,16 @@ func TestReplayRequiresMatchingImportsAndArchives(t *testing.T) {
 func TestConcurrentNativeBuildsShareWorkspace(t *testing.T) {
 	t.Setenv("MANUSCRIPT_CACHE_DIR", t.TempDir())
 	dir := t.TempDir()
+	// Sources are generated on the test goroutine; pairs share one source and
+	// build into distinct outputs.
+	sources := []string{testProgram(t, "program 0"), testProgram(t, "program 1"), testProgram(t, "program 2")}
 	var group sync.WaitGroup
 	errors := make([]error, 6)
 	for i := range errors {
 		group.Add(1)
 		go func() {
 			defer group.Done()
-			// Pairs build identical source into distinct outputs.
-			errors[i] = buildNative(testProgram(t, fmt.Sprint("program ", i/2)), executableName(dir, fmt.Sprint("program", i)), compiler.Release, nil)
+			errors[i] = buildNative(sources[i/2], executableName(dir, fmt.Sprint("program", i)), compiler.Release, nil)
 		}()
 	}
 	group.Wait()

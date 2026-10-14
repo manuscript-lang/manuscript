@@ -295,20 +295,13 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 		if _, ok := receiver.(*Map); ok {
 			labels = []string{"key"}
 		}
-	case "append", "contains", "with_value":
+	case "append", "contains":
 		labels = []string{"value"}
 		if _, ok := receiver.(*Map); ok {
 			labels = []string{"key"}
 		}
 	case "concat":
 		labels = []string{"values"}
-	case "without":
-		labels = []string{"value"}
-		if _, ok := receiver.(*Map); ok {
-			labels = []string{"key"}
-		}
-	case "with_entry":
-		labels = []string{"key", "value"}
 	}
 	return NewFunction(labels, "", func(ctx *Execution, args []Value) Value {
 		switch v := receiver.(type) {
@@ -325,9 +318,6 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 				return out
 			}
 		case *Map:
-			if name == "without" {
-				return mapRemove(ctx, v, args[0])
-			}
 			typ := typeArguments(v.Type)[1]
 			var key Value
 			if len(args) > 0 {
@@ -347,23 +337,8 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 					return optional(typ, nil, false)
 				}
 				return optional(typ, v.Entries[found].Value, true)
-			case "with_entry":
-				if found >= 0 {
-					v.ownEntries()
-					v.Entries[found].Value = args[1]
-				} else {
-					v.Entries = append(v.Entries, Entry{key, args[1]})
-					keyAppended(ctx, v)
-				}
-				return v
 			}
 		case *Set:
-			if name == "with_value" {
-				return setWithValue(ctx, v, args[0])
-			}
-			if name == "without" {
-				return setRemove(ctx, v, args[0])
-			}
 			var value Value
 			if len(args) > 0 {
 				value = args[0]

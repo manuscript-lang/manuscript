@@ -52,13 +52,13 @@ func TestListCloneSeparatesUpdateStorage(t *testing.T) {
 		name string
 		args []Argument
 	}{
-		{"with_value", []Argument{{"index", int64(-1)}, {"value", int64(9)}}},
-		{"without", []Argument{{"index", int64(1)}}},
+		{"set", []Argument{{"index", int64(-1)}, {"value", int64(9)}}},
+		{"remove", []Argument{{"index", int64(1)}}},
 		{"fill", []Argument{{"value", int64(9)}, {"start", int64(0)}, {"end", int64(4)}}},
 		{"copy_within", []Argument{{"target", int64(1)}, {"start", int64(0)}, {"end", int64(3)}}},
-		{"reverse", nil},
+		{"reverse_in_place", nil},
 		{"slice", []Argument{{"start", int64(0)}, {"end", int64(4)}}},
-		{"with_values", []Argument{{"start", int64(0)}, {"delete_count", int64(0)}, {"replacement", original}}},
+		{"splice", []Argument{{"start", int64(0)}, {"delete_count", int64(0)}, {"replacement", original}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			value := Invoke(RootExecution(), NativeMember(Clone(original), test.name), test.args)
@@ -76,12 +76,12 @@ func TestListCloneSeparatesUpdateStorage(t *testing.T) {
 		{{"start", int64(-1)}, {"delete_count", int64(0)}, {"replacement", original}},
 		{{"start", int64(1)}, {"delete_count", int64(math.MaxInt64)}, {"replacement", original}},
 	} {
-		if _, ok := recovered(func() { Invoke(RootExecution(), NativeMember(original, "with_values"), args) }).(Fault); !ok {
+		if _, ok := recovered(func() { Invoke(RootExecution(), NativeMember(original, "splice"), args) }).(Fault); !ok {
 			t.Fatal("invalid splice did not fault")
 		}
 	}
 	if _, ok := recovered(func() {
-		Invoke(RootExecution(), NativeMember(original, "with_value"), []Argument{{"index", int64(math.MinInt64)}, {"value", int64(9)}})
+		Invoke(RootExecution(), NativeMember(original, "set"), []Argument{{"index", int64(math.MinInt64)}, {"value", int64(9)}})
 	}).(Fault); !ok {
 		t.Fatal("invalid index did not fault")
 	}

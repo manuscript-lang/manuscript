@@ -113,6 +113,11 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	}
 	var signature *Type
 	var callable *Info
+	if s != nil && isConstant(s) && !e.ConstantUse {
+		c.error(e.Pos, "type", s.Name+" is a constant, not a function; remove the parentheses and write "+s.Name)
+		i.Type = primitive("<invalid>")
+		return i
+	}
 	if s != nil {
 		i.Symbol = s
 		i.Native = s.Native

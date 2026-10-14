@@ -1,7 +1,7 @@
 # TOML 1.0 parser implemented in Manuscript.
 import {List, Map} from "@std/collections.ms"
 import {parse_int, parse_float} from "@std/numbers.ms"
-import from_scalars from "@std/string.ms"
+import {from_scalars, StringBuilder} from "@std/string.ms"
 import {log, sqrt} from "@std/math.ms"
 
 # A TOML value. Date and time values retain their original TOML text.
@@ -44,7 +44,7 @@ export type TomlValue:
 
 # Errors returned for invalid limits, malformed TOML, or exceeded resource bounds.
 export type TomlError:
-    # One of the supplied input-byte, depth or value-count limits is negative.
+    # A supplied limit is negative, or stringify received a value that is not a table.
     case InvalidInput
     # Invalid syntax, duplicate/conflicting keys, unsupported value forms or numeric range failures.
     case InvalidData(
@@ -61,17 +61,17 @@ export type TomlError:
 # Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
 export type TomlLimits:
     # Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
-    max_bytes: Optional[Int]
+    max_bytes: Optional[Int] = none
     # Maximum value depth, including scalar leaves and implicit tables, with the root at one.
-    max_depth: Optional[Int]
+    max_depth: Optional[Int] = none
     # Maximum containers and leaves, excluding keys; checked during parsing and materialization.
-    max_values: Optional[Int]
+    max_values: Optional[Int] = none
 
 impl Error for TomlError:
     # Formats the source line, scalar column and parser reason for a malformed document.
     fn message() -> String:
         match self:
-            InvalidInput: return "invalid TOML limits"
+            InvalidInput: return "invalid TOML input"
             InvalidData(line, column, reason): return "TOML {line}:{column}: {reason}"
             LimitExceeded: return "TOML limit exceeded"
 
@@ -955,7 +955,7 @@ export fn parse(
     text: String,
     limits: Optional[TomlLimits] = none
 ) -> Result[TomlValue, TomlError]:
-    var options = TomlLimits(max_bytes: none, max_depth: none, max_values: none)
+    var options = TomlLimits()
 
     match limits:
         none: let ignored = unit
@@ -1133,3 +1133,224 @@ export fn parse(
         node: Node.TableNode(root),
         depth: 1
     )
+
+type Writer:
+    out: StringBuilder
+    started: Bool
+
+fn hex4(code: Int) -> String:
+    var digits = code.to_string(16)
+
+    while digits.length() < 4: digits = "0".concat(digits)
+
+    return digits
+
+fn quote_text(text: String) -> String:
+    var result = "\""
+
+    for c in text.chars():
+        let code = c.scalar_at(0).unwrap()
+
+        if c == "\"": result = result.concat("\\\"")
+        else if c == "\\": result = result.concat("\\\\")
+        else if c == "\n": result = result.concat("\\n")
+        else if c == "\t": result = result.concat("\\t")
+        else if c == "\r": result = result.concat("\\r")
+        else if code == 8: result = result.concat("\\b")
+        else if code == 12: result = result.concat("\\f")
+        else if code < 32 or code == 127: result = (
+            result
+            .concat("\\u")
+            .concat(
+                hex4(code)
+            )
+        )
+        else: result = result.concat(c)
+
+    return result.concat("\"")
+
+fn format_key(key: String) -> String:
+    var bare = key != ""
+
+    for c in key.chars():
+        if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".contains(
+            c
+        ): bare = false
+
+    if bare: return key
+
+    return quote_text(key)
+
+fn format_float(value: Float) -> String:
+    if value.is_nan(): return "nan"
+
+    if not value.is_finite():
+        if value < 0.0: return "-inf"
+
+        return "inf"
+
+    let text = value.to_string()
+
+    if (
+        text.contains(".")
+        or text.contains("e")
+        or text.contains("E")
+    ): return text
+
+    return text.concat(".0")
+
+fn inline_value(value: TomlValue) -> String:
+    match value:
+        StringValue(text): return quote_text(text)
+        IntValue(number): return number.toString()
+        FloatValue(number): return format_float(number)
+        BoolValue(flag): return flag.toString()
+        DateTimeValue(text): return text
+
+        ArrayValue(values):
+            let parts: List[String] = []
+
+            for item in values: parts.append(inline_value(item))
+
+            return "[".concat(parts.join(", ")).concat("]")
+
+        TableValue(values):
+            let parts: List[String] = []
+
+            for entry in values.entries(): parts.append(
+                format_key(entry.key).concat(" = ").concat(
+                    inline_value(entry.value)
+                )
+            )
+
+            if parts.is_empty(): return "\{\}"
+
+            return "\{ ".concat(parts.join(", ")).concat(" \}")
+
+fn table_items(values: List[TomlValue]) -> List[Map[String, TomlValue]]:
+    let tables: List[Map[String, TomlValue]] = []
+
+    for item in values:
+        match item:
+            TableValue(table): tables.append(table)
+            _: return []
+
+    return tables
+
+fn dotted(path: List[String]) -> String:
+    let parts: List[String] = []
+
+    for key in path: parts.append(format_key(key))
+
+    return parts.join(".")
+
+fn emit_header(writer: Writer, header: String) -> Unit:
+    if writer.started: writer.out.append("\n")
+
+    writer.out.append(header)
+    writer.out.append("\n")
+    writer.started = true
+
+fn section_kind(value: TomlValue) -> Int:
+    match value:
+        TableValue(_): return 1
+
+        ArrayValue(elements):
+            if (
+                not elements.is_empty()
+                and table_items(elements).length() == elements.length()
+            ): return 2
+
+            return 0
+
+        _: return 0
+
+fn emit_one(
+    writer: Writer,
+    path: List[String],
+    brackets: String,
+    table: Map[String, TomlValue]
+) -> Unit:
+    if brackets == "[[": emit_header(
+        writer,
+        "[[".concat(dotted(path)).concat("]]")
+    )
+    else: emit_header(
+        writer,
+        "[".concat(dotted(path)).concat("]")
+    )
+
+    emit_table(writer: writer, path: path, values: table)
+
+fn emit_table(
+    writer: Writer,
+    path: List[String],
+    values: Map[String, TomlValue]
+) -> Unit:
+    for entry in values.entries():
+        if section_kind(entry.value) == 0: (
+            writer
+            .out
+            .append(
+                (
+                    format_key(entry.key)
+                    .concat(" = ")
+                    .concat(
+                        inline_value(entry.value)
+                    )
+                    .concat("\n")
+                )
+            )
+        )
+
+    for entry in values.entries():
+        let child = path.clone()
+        child.append(entry.key)
+
+        match entry.value:
+            TableValue(table): emit_one(
+                writer: writer,
+                path: child,
+                brackets: "[",
+                table: table
+            )
+
+            ArrayValue(elements):
+                if section_kind(entry.value) == 2:
+                    for table in table_items(elements): emit_one(
+                        writer: writer,
+                        path: child,
+                        brackets: "[[",
+                        table: table
+                    )
+
+            _: let ignored = unit
+
+# Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
+export fn stringify(
+    value: TomlValue,
+    max_bytes: Optional[Int] = none
+) -> Result[String, TomlError]:
+    match max_bytes:
+        none: let ignored = unit
+
+        some(limit):
+            if limit < 0: return error(TomlError.InvalidInput)
+
+    let root = match value:
+        TableValue(values): values
+        _: return error(TomlError.InvalidInput)
+
+    let writer = Writer(
+        out: StringBuilder(),
+        started: false
+    )
+    emit_table(writer: writer, path: [], values: root)
+    let text = writer.out.freeze()
+
+    if not within(
+        value: text.byte_length(),
+        limit: max_bytes
+    ): return error(TomlError.LimitExceeded)
+
+    return ok(text)

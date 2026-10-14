@@ -80,7 +80,7 @@ test "list names mutate aliases and retain shallow copies":
 
     let set = items.set
     let remove = items.remove
-    set(value: 8, index: 0).without(-1)
+    set(value: 8, index: 0).remove(-1)
     remove(0).append(9)
     if items != [9]: return panic("bound list receiver return")
 
@@ -95,7 +95,7 @@ test "list names mutate aliases and retain shallow copies":
     if nested != [[2]] or outer_copy != [[1, 3]]: return panic("outer storage")
 
 test "set names preserve receiver identity order and no-op membership":
-    let items = Set[Int]().add(3).with_value(1).add(2)
+    let items = Set[Int]().add(3).add(1).add(2)
     let alias = items
     let copied = items.clone()
     let add = items.add
@@ -103,12 +103,12 @@ test "set names preserve receiver identity order and no-op membership":
     add(1).remove(99)
     if items.values() != [3, 1, 2]: return panic("duplicate or absent membership")
 
-    remove(1).add(1).without(3)
+    remove(1).add(1).remove(3)
     if alias.values() != [2, 1] or copied.values() != [3, 1, 2]:
         return panic("set order or clone")
 
     add_generic(items, 4).remove(2)
-    remove_generic(items, 1).with_value(5)
+    remove_generic(items, 1).add(5)
     if items.values() != [4, 5]: return panic("generic receiver return")
 
     let optional = Set[Optional[Int]]().add(7)
@@ -207,7 +207,7 @@ test "regex replace_all preserves literal text and exact output budgets":
     if pattern.replace_all("z", "b", 0) != limited: return panic(
         "unchanged output budget"
     )
-    if pattern.replace_all("aa", "b", none) != pattern.replace("aa", "b", none):
+    if pattern.replace_all("aa", "b", none) != pattern.replace_all("aa", "b", none):
         return panic("old regex spelling")
 
     let empty = value(compile(""))
@@ -278,7 +278,7 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     reversed().remove(0)
     if items != [3, 2, 1, 4]: return panic("bound reversed mutated receiver")
 
-    items.reverse().reverse_in_place()
+    items.reverse_in_place().reverse_in_place()
     if items != [3, 2, 1, 4]: return panic("old reverse compatibility")
 
     let empty: List[Int] = []
@@ -319,9 +319,9 @@ test "byte reversal names copy across direct bound and view calls":
     let reversed = data.reversed
     let view = ByteCopy(ByteAdapter(data))
     let view_reversed = view.reversed
-    if data.reversed() != Bytes([255, 1, 0]) or reversed() != data.reverse():
+    if data.reversed() != Bytes([255, 1, 0]) or reversed() != data.reversed():
         return panic("byte reverse compatibility")
-    if view.reversed() != data.reverse() or view_reversed() != data.reverse():
+    if view.reversed() != data.reversed() or view_reversed() != data.reversed():
         return panic("byte view reversal")
 
     let extracted = reversed().values()

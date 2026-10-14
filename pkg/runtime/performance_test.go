@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -448,7 +449,7 @@ func TestCallMethodMatchesBoundCallOutcomes(t *testing.T) {
 				if bound {
 					run = func(ctx *Execution) Value { return BoundDirect(nil, nil, result, direct).Body(ctx, nil) }
 				} else {
-					name := fmt.Sprintf("outcome/%v/%s", profiling, name)
+					name := fmt.Sprintf("outcome/%d/%v/%s", directProbeRuns.Add(1), profiling, name)
 					registerDirectProbeBody(name, direct)
 					var site MethodSite
 					run = func(ctx *Execution) Value {
@@ -470,6 +471,9 @@ func TestCallMethodMatchesBoundCallOutcomes(t *testing.T) {
 	}
 	sourceProfiling.Store(false)
 }
+
+// directProbeRuns keeps probe receiver names unique so repeated runs (-count, -shuffle) never reuse a stale registration.
+var directProbeRuns atomic.Int64
 
 func registerDirectProbeBody(typ string, direct func(*Execution, Value, []Value) Value) {
 	Register(Implementation{Receiver: typ, Contract: "probe/Speak", Name: "speak", Scope: "probe.ms", Direct: direct,

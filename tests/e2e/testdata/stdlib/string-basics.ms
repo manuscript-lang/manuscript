@@ -29,7 +29,7 @@ test "length and chars use scalars and preserve text boundaries":
 
     let characters = text.chars()
     let second = text.chars()
-    characters.with_value(0, "changed").append("new")
+    characters.set(0, "changed").append("new")
     if second != ["é", "🙂", "e", "\u{301}"] or text != "é🙂e\u{301}": return panic(
         "chars storage alias"
     )
@@ -112,7 +112,7 @@ test "String basic bound methods capture immutable receiver values":
 
     let first = lines()
     let second = lines()
-    first.with_value(0, "changed").append("new")
+    first.set(0, "changed").append("new")
     if second != ["é", "🙂"]: return panic("lines storage alias")
 
     let empty_lines = "".lines()

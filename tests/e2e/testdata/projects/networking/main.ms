@@ -68,7 +68,7 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
 
         return ok(unit)
 
-    let headers = Map[String, List[String]]().with_entry(
+    let headers = Map[String, List[String]]().add(
         key: "X-Test",
         value: ["stream"]
     )

@@ -16,7 +16,13 @@ import (
 )
 
 func init() {
-	LibraryMethods = append(LibraryMethods, LibraryMethod{"FileSystem", "open_flags", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "Int"}, {"mode", "Int"}}})
+	registerAcquiringMethods(
+		LibraryMethod{"FileSystem", "open_flags", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "Int"}, {"mode", "Int"}}},
+		LibraryMethod{"FileSystem", "open", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "String"}, {"mode", "Int"}}},
+		LibraryMethod{"FileSystem", "open_directory", libraryResult("Directory", "FileSystemError"), []LibraryParam{{"path", "String"}}},
+		LibraryMethod{"FileSystem", "watch", libraryResult("FileWatcher", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}, {"interval", "Duration"}, {"max_entries", "Optional[Int]"}}},
+		LibraryMethod{"FileSystem", "temporary", libraryResult("TemporaryDirectory", "FileSystemError"), []LibraryParam{{"prefix", "String"}}},
+	)
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Directory", "path", "String", nil},
 		{"FileHandle", "append_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
@@ -27,12 +33,8 @@ func init() {
 		{"FileSystem", "truncate", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"size", "Int"}}},
 		{"FileSystem", "set_times", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"accessed", "Timestamp"}, {"modified", "Timestamp"}, {"follow_links", "Bool"}}},
 		{"FileSystem", "hard_link", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}}},
-		{"FileSystem", "open", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "String"}, {"mode", "Int"}}},
-		{"FileSystem", "open_directory", libraryResult("Directory", "FileSystemError"), []LibraryParam{{"path", "String"}}},
 		{"FileSystem", "copy_tree", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}, {"replace", "Bool"}, {"max_entries", "Optional[Int]"}, {"max_bytes", "Optional[Int]"}}},
 		{"FileSystem", "glob", libraryResult("List[String]", "FileSystemError"), []LibraryParam{{"path", "String"}, {"pattern", "String"}, {"max_entries", "Optional[Int]"}}},
-		{"FileSystem", "watch", libraryResult("FileWatcher", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}, {"interval", "Duration"}, {"max_entries", "Optional[Int]"}}},
-		{"FileSystem", "temporary", libraryResult("TemporaryDirectory", "FileSystemError"), []LibraryParam{{"prefix", "String"}}},
 		{"FileHandle", "close", "Unit", []LibraryParam{}},
 		{"FileHandle", "read", libraryResult("Optional[Bytes]", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int]"}}},
 		{"FileHandle", "write", libraryResult("Int", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
@@ -553,14 +555,13 @@ type libraryFileHandle struct {
 	released        chan struct{}
 	gate            chan struct{}
 	// ahead holds bytes read_line took from the reader beyond the current line.
-	ahead []byte
+	ahead readAhead
 }
 
 // rewindAhead returns read-ahead bytes to the file so position-based operations see them.
 func (h *libraryFileHandle) rewindAhead() {
 	h.mu.Lock()
-	ahead := h.ahead
-	h.ahead = nil
+	ahead, _ := h.ahead.take(0)
 	h.mu.Unlock()
 	if len(ahead) > 0 {
 		h.file.Seek(-int64(len(ahead)), io.SeekCurrent)
@@ -1048,11 +1049,11 @@ func (s libraryHandleStream) Operation(name string) Function {
 	if name == "close" {
 		return s.handle.Operation("close")
 	}
-	result := "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"
+	result := ioBytesResult
 	params := []string{"max_bytes"}
 	operation := name
 	if s.write {
-		result = "@std/Result[Unit][@std/IoError]"
+		result = ioUnitResult
 		params = []string{"data"}
 		if name == "flush" {
 			params = nil
@@ -1063,17 +1064,13 @@ func (s libraryHandleStream) Operation(name string) Function {
 	}
 	return NewFunction(params, result, func(ctx *Execution, a []Value) Value {
 		if name == "read" && !s.write {
+			max, _ := a[0].(int64)
 			s.handle.mu.Lock()
-			if ahead := s.handle.ahead; len(ahead) > 0 {
-				take := len(ahead)
-				if n, ok := a[0].(int64); ok && n > 0 && int(n) < take {
-					take = int(n)
-				}
-				s.handle.ahead = ahead[take:]
-				s.handle.mu.Unlock()
-				return Alternative{result, "ok", []Value{optional("@std/Bytes", Bytes{ahead[:take:take]}, true)}}
-			}
+			data, ok := s.handle.ahead.take(int(max))
 			s.handle.mu.Unlock()
+			if ok {
+				return Alternative{result, "ok", []Value{optional("@std/Bytes", Bytes{data}, true)}}
+			}
 		}
 		value := s.handle.Operation(operation).Body(ctx, a).(Alternative)
 		if value.Tag == "ok" {

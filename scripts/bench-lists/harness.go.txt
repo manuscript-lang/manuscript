@@ -63,7 +63,7 @@ func TestNarrowSnapshotParity(t *testing.T) {
  if @@callback_write@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64)!=listSum(1024)||alias.Get(0)!=int64(7) {t.Fatal("callback write changed captured membership or alias")}
  xs=generatedList(ctx,1024)
  if @@callbacks@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64)!=listSum(1024)||!rt.Equal(xs,generatedList(ctx,1024)) {t.Fatal("readonly callback mutated values")}
- rt.Invoke(ctx,rt.NativeMember(xs,"with_value"),[]rt.Argument{{Name:"index",Value:int64(0)},{Name:"value",Value:int64(7)}})
+ rt.Invoke(ctx,rt.NativeMember(xs,"set"),[]rt.Argument{{Name:"index",Value:int64(0)},{Name:"value",Value:int64(7)}})
  if xs.Get(0)!=int64(7)||xs.Len()!=1024 {t.Fatal("deferred write changed alias")}
 }
 func BenchmarkNarrowSnapshots(b *testing.B) {
@@ -75,7 +75,7 @@ func BenchmarkNarrowSnapshots(b *testing.B) {
    input:=rt.Clone(xs).(*rt.List)
    if mode=="WriteInCallback" {listResult=@@callback_write@@.(rt.Function).Body(ctx,[]rt.Value{input})} else {
     listResult=@@callbacks@@.(rt.Function).Body(ctx,[]rt.Value{input})
-    if mode=="WriteAfterCallback" {rt.Invoke(ctx,rt.NativeMember(input,"with_value"),[]rt.Argument{{Name:"index",Value:int64(0)},{Name:"value",Value:int64(7)}})}
+    if mode=="WriteAfterCallback" {rt.Invoke(ctx,rt.NativeMember(input,"set"),[]rt.Argument{{Name:"index",Value:int64(0)},{Name:"value",Value:int64(7)}})}
    }
   }})
  }

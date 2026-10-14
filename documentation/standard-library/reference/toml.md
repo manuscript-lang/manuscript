@@ -32,7 +32,7 @@ case InvalidData(line: Int, column: Int, reason: String)
 
 ### TomlError.InvalidInput
 
-One of the supplied input-byte, depth or value-count limits is negative.
+A supplied limit is negative, or stringify received a value that is not a table.
 
 ```manuscript
 case InvalidInput
@@ -84,9 +84,9 @@ Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
 
 ```manuscript
 type TomlLimits:
-    max_bytes: Optional[Int]
-    max_depth: Optional[Int]
-    max_values: Optional[Int]
+    max_bytes: Optional[Int] = none
+    max_depth: Optional[Int] = none
+    max_values: Optional[Int] = none
 ```
 
 ### TomlLimits.max_bytes
@@ -94,7 +94,7 @@ type TomlLimits:
 Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
 
 ```manuscript
-max_bytes: Optional[Int]
+max_bytes: Optional[Int] = none
 ```
 
 ### TomlLimits.max_depth
@@ -102,7 +102,7 @@ max_bytes: Optional[Int]
 Maximum value depth, including scalar leaves and implicit tables, with the root at one.
 
 ```manuscript
-max_depth: Optional[Int]
+max_depth: Optional[Int] = none
 ```
 
 ### TomlLimits.max_values
@@ -110,7 +110,7 @@ max_depth: Optional[Int]
 Maximum containers and leaves, excluding keys; checked during parsing and materialization.
 
 ```manuscript
-max_values: Optional[Int]
+max_values: Optional[Int] = none
 ```
 
 ## TomlValue {data-api-kind="Alternative"}
@@ -246,5 +246,13 @@ Parses a TOML document into a table value and reports source line and column on 
 
 ```manuscript
 fn parse(text: String, limits: Optional[TomlLimits] = none) -> Result[TomlValue, TomlError]:
+```
+
+## stringify {data-api-kind="Function"}
+
+Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
+
+```manuscript
+fn stringify(value: TomlValue, max_bytes: Optional[Int] = none) -> Result[String, TomlError]:
 ```
 
