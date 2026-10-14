@@ -33,6 +33,7 @@ Syntax changes usually need language-design, compiler, tooling, and documentatio
 
 ## Shared guidance and checks
 
+- Before any new architectural or structural change (a new representation, layer, or pass), post a short proposal and wait for approval before implementing. State the problem, the concrete benefit being validated with evidence (measurements, or code the change removes), and the alternatives, including doing nothing. Do not start the implementation to find out whether it helps.
 - Nested `match` is an anti-pattern. Keep implementation, examples, and diagnostic remedies flat: bind a payload with an early exit, use compatible `try`, or call a small helper. `make repo-check` guards source, Markdown fences, and Go source strings; intentional syntax/semantic regressions need a scoped test allowance with a reason. The grammar remains unchanged. See [flat match flow](documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 - Shared skills live in `skills/`; `.agents/skills/` and `.claude/skills/` link to the same folders for Codex and Claude discovery. Read selected `SKILL.md` files and relevant evidence links. Keep discovery links synchronized when adding, renaming, or removing skills.
 - `AGENTS.md` is the sole source of repository guidance. `CLAUDE.md` contains only `@AGENTS.md` so Claude Code, which loads `CLAUDE.md` and not `AGENTS.md`, reads the same file; add no other content to it.
