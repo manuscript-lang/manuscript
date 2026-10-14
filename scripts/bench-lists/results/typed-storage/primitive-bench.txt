@@ -1,0 +1,15 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkPrimitiveList/Construct64K-4         	    1369	     89645 ns/op	  524434 B/op	       2 allocs/op
+BenchmarkPrimitiveList/Construct64K-4         	    1084	    101337 ns/op	  524433 B/op	       2 allocs/op
+BenchmarkPrimitiveList/Construct64K-4         	    1436	     83913 ns/op	  524433 B/op	       2 allocs/op
+BenchmarkPrimitiveList/AtUnwrap64K-4          	     154	    779810 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPrimitiveList/AtUnwrap64K-4          	     153	    785047 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPrimitiveList/AtUnwrap64K-4          	     154	    763580 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPrimitiveList/Sort64K-4              	       3	  42434877 ns/op	  524488 B/op	       4 allocs/op
+BenchmarkPrimitiveList/Sort64K-4              	       3	  42637946 ns/op	  524488 B/op	       4 allocs/op
+BenchmarkPrimitiveList/Sort64K-4              	       3	  44551903 ns/op	  524488 B/op	       4 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.125s

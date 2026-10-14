@@ -439,3 +439,22 @@ func TestPreferredNativeNamesHoverAndNavigation(t *testing.T) {
 		})
 	}
 }
+
+func TestIncrementalEditsClampOutOfRangePositions(t *testing.T) {
+	uri := "file:///tmp/clamp.ms"
+	source := "fn answer() -> Int:\n    return 42\n"
+	// Positions past the end of a line or of the document clamp, so the
+	// server's copy keeps matching the editor's.
+	edits := []any{
+		map[string]any{"range": span{position{1, 100}, position{1, 100}}, "text": " + 1"},
+		map[string]any{"range": span{position{99, 0}, position{99, 0}}, "text": "# end\n"},
+	}
+	input := frame("textDocument/didOpen", nil, map[string]any{"textDocument": document{uri, source, 1}}) + frame("textDocument/didChange", nil, map[string]any{"textDocument": document{URI: uri, Version: 2}, "contentChanges": edits}) + frame("textDocument/formatting", 3, map[string]any{"textDocument": document{URI: uri}}) + frame("shutdown", 4, nil) + frame("exit", nil, nil)
+	var output bytes.Buffer
+	if err := Serve(strings.NewReader(input), &output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "return 42 + 1") || !strings.Contains(output.String(), "# end") {
+		t.Fatal(output.String())
+	}
+}

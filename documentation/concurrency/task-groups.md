@@ -62,6 +62,6 @@ References do not extend work or resource lifetimes. A saved task handle can rea
 
 ## Timeouts
 
-`TaskGroup(timeout: 2.seconds)` applies one budget starting at the first submission. Omitted or `none` timeout adds no limit; inherited cancellation still applies. Negative timeouts fault. A zero timeout starts no callback and yields `TimedOut`; an empty group joins successfully. Timeout expiry cancels unfinished work and joins it before reporting failure.
+`TaskGroup(timeout: 2.seconds)` applies one budget starting at the first submission. Omitted or `none` timeout adds no limit; inherited cancellation still applies. Negative timeouts fault. A zero timeout starts no callback and yields `Timeout`; an empty group joins successfully. Timeout expiry cancels unfinished work and joins it before reporting failure.
 
 A group's task or descendant must not join or close that same group, or join one of its handles. These operations fault before waiting to prevent self-joining. See [joining](joining.md), [cancellation](cancellation.md), and [runtime contracts](../contributing/concurrent-runtime.md).

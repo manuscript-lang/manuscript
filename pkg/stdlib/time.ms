@@ -2,21 +2,27 @@
 
 # Errors returned by timestamp parsing, arithmetic, or range conversion.
 export type TimeError:
+    # Reserved for invalid time arguments; the current native time operations do not return it.
     case InvalidInput
+    # Reserved for time operations on a closed resource; the current native time operations do not return it.
     case Closed
+    # The text is not an RFC 3339 timestamp with a four-digit year, full date and time, and an explicit `Z` or `+hh:mm` offset.
     case InvalidData
+    # A nanosecond component is outside 0 through 999999999, or the result falls outside years 1 through 9999 or cannot be represented as a Duration.
     case OutOfRange
 
 # A monotonic clock whose readings are suitable for measuring elapsed time.
 export interface Clock:
+    # Returns the current reading of this monotonic clock.
+    # Readings are only comparable with others from the same clock and do not correspond to a calendar date.
     fn now() -> Instant
 
 # A span of elapsed time.
 export type Duration:
     # Adds signed nanoseconds; a result outside Duration's representable range faults.
-    fn add(right: Duration) -> Duration:
+    fn add(other: Duration) -> Duration:
     # Subtracts signed nanoseconds; a result outside Duration's representable range faults.
-    fn subtract(right: Duration) -> Duration:
+    fn subtract(other: Duration) -> Duration:
     # Multiplies by an integer factor; overflow faults.
     fn multiply(factor: Int) -> Duration:
     # Divides by a nonzero integer, truncating toward zero; zero faults.
@@ -26,7 +32,7 @@ export type Duration:
     # Returns the absolute value; the minimum Duration faults.
     fn abs() -> Duration:
     # Returns -1, 0, or 1.
-    fn compare(right: Duration) -> Int:
+    fn compare(other: Duration) -> Int:
     # Converts this duration to an integer number of nanoseconds.
     fn to_nanoseconds() -> Int:
     # Converts this duration to an integer number of microseconds.
@@ -45,9 +51,9 @@ export type Instant:
     # Shifts this monotonic instant by a duration.
     fn shift(duration: Duration) -> Instant:
     # Returns the elapsed duration from `right` to this instant.
-    fn difference(right: Instant) -> Duration:
+    fn difference(other: Instant) -> Duration:
     # Returns -1, 0, or 1; instants from different clock domains fault.
-    fn compare(right: Instant) -> Int:
+    fn compare(other: Instant) -> Int:
 
 # A wall-clock time with Unix seconds and nanoseconds.
 export type Timestamp:
@@ -60,12 +66,14 @@ export type Timestamp:
     # Adds a duration to this wall-clock timestamp.
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
     # Returns `self - right` as a duration.
-    fn difference(right: Timestamp) -> Result[Duration, TimeError]:
+    fn difference(other: Timestamp) -> Result[Duration, TimeError]:
     # Returns -1, 0, or 1 across the full calendar range.
-    fn compare(right: Timestamp) -> Int:
+    fn compare(other: Timestamp) -> Int:
 
 # A clock that reports calendar time.
 export interface WallClock:
+    # Returns the current calendar time as a UTC Timestamp with nanosecond precision.
+    # It can jump when the system clock is adjusted, so use Clock for elapsed time.
     fn now() -> Timestamp
 
 # Constructs a duration from a number of nanoseconds.
@@ -81,6 +89,7 @@ export fn sleep(duration: Duration) -> Unit:
 export fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]:
 
 impl Error for TimeError:
+    # Returns the fixed diagnostic `time: <reason>`, such as `time: value out of range`, without echoing the input text.
     fn message() -> String:
 
 # Returns the monotonic clock used for elapsed-time measurements.

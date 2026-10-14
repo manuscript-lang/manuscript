@@ -176,7 +176,7 @@ fn remainder(left: Float, right: Float) -> Float:
 
 ## round {data-api-kind="Function"}
 
-Rounds to the nearest whole number, with half values away from zero.
+Rounds to the nearest whole number, with ties toward positive infinity.
 
 ```manuscript
 fn round(value: Float) -> Float:

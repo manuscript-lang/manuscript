@@ -5,7 +5,7 @@ weight = 4
 
 # Build caches
 
-Unchanged native runs reuse a verified executable. After a source edit, Go can reuse compiled runtime packages while rebuilding the application. These are separate cache boundaries.
+Executables are not cached. Go reuses compiled runtime packages while `ms` rebuilds the application, and recorded compile and link commands skip most of the go command's own work.
 
 ## Current build path
 
@@ -15,11 +15,11 @@ The first build of each build level runs `go build` with command tracing and rec
 
 Programs that import none of `@std/net.ms`, `@std/http.ms`, `@std/tls.ms`, `@std/websocket.ms`, `@std/system.ms`, or `@std/process.ms`, directly or through other standard modules, link a lean runtime built with the `ms_lean` Go tag. It omits those modules' implementations and their `net/http`, `crypto/tls`, and gopsutil dependencies, which roughly halves the linker's input. Values of those modules' types can only come from their own functions, so a lean program cannot reach the omitted code. Runtime files that implement them carry `//go:build !ms_lean`; `TestLeanRuntimeImplementsLeanModules` verifies that the lean runtime registers every function and receiver method of the remaining modules.
 
-Project commands store native artifacts in the project's `.ms-cache`. Standalone `run`, `test`, `debug`, and `profile` commands use `manuscript/artifacts` beneath the operating system's user cache directory. `MANUSCRIPT_CACHE_DIR` overrides that user cache root, including the bundled toolchain cache and native workspaces. Standalone `build` stores artifacts beside its output in `.ms-cache`. A built executable is published to the cache and its output by hard link where the file system permits.
+`ms` stores no built executables: `build` writes the output, and `run`, `test`, `debug`, and `profile` build into a temporary directory removed afterwards. Reuse comes from the shared native workspace, Go's package cache, and the replay profiles below, which live in the operating system's user cache directory. `MANUSCRIPT_CACHE_DIR` overrides that root, including the bundled toolchain cache. Earlier versions wrote executables to a project `.ms-cache` (or beside a standalone `-o` output); `ms` no longer reads or removes them, so delete any that remain.
 
-Every invocation parses, checks, and lowers source before looking up a native artifact. Cache hits verify compiler/runtime inputs, toolchain/target, build level, generated source, project configuration, source contents, and executable hashes. Source edits, invalid source, mismatched project pins, and corrupt artifacts cannot silently run an old executable. Debuggable artifacts also include the source root in their identity.
+Every invocation parses, checks, and lowers source, then builds a fresh executable, so source edits, invalid source, and mismatched project pins can never run an old executable. Build metadata records compiler/runtime inputs, toolchain/target, build level, generated source, project configuration, source contents, and the executable hash; debuggable artifacts also include the source root in their identity.
 
-`run --watch` and `test --watch` keep one process across rebuilds, so standard declarations, the toolchain query, and implementation digests are computed once. An unchanged run avoids native compilation and linking. An edited program still needs Go application compilation and linking; linking the runtime and its dependencies dominates the remaining time. The first build of each runtime variant and build level compiles that runtime. The first build with an empty Go cache also compiles runtime dependencies; first use of a release binary extracts its bundled SDK, and first use of a runtime publishes its workspace. These cold paths are not instant.
+`run --watch` and `test --watch` keep one process across rebuilds, so standard declarations, the toolchain query, and implementation digests are computed once. Every rebuild still needs Go application compilation and linking; linking the runtime and its dependencies dominates the remaining time. The first build of each runtime variant and build level compiles that runtime. The first build with an empty Go cache also compiles runtime dependencies; first use of a release binary extracts its bundled SDK, and first use of a runtime publishes its workspace. These cold paths are not instant.
 
 ## Further frontend caching
 

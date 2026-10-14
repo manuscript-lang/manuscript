@@ -16,6 +16,7 @@ func TestNestingLimits(t *testing.T) {
 		"calls":         wrap(strings.Repeat("f(", deep) + "1" + strings.Repeat(")", deep)),
 		"unary":         wrap(strings.Repeat("-", deep) + "1"),
 		"operator":      wrap(strings.Repeat("1+", deep) + "1"),
+		"interpolation": wrap(strings.Repeat("\"{", deep) + "1" + strings.Repeat("}\"", deep)),
 		"member access": wrap("x" + strings.Repeat(".a", deep)),
 		"types":         "fn f(x: " + strings.Repeat("(", deep) + "Int" + strings.Repeat(")", deep) + ") -> Int:\n    return 1\n",
 	} {

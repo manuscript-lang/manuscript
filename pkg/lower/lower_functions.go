@@ -186,11 +186,13 @@ func (g *generator) directFunctionLiteral(direct *directFunction, name string, p
 func (g *generator) functionPieces(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ([]string, ast.Expr, string, []ast.Stmt, ast.Expr) {
 	oldCleanups, oldLoops, oldLabels, oldDepth, oldResult := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth, g.resultKey
 	oldNeedsCleanup, oldResultType, oldRecovers := g.needsCleanup, g.resultType, g.recovers
+	oldShape, oldTypeKey := g.resultShape, g.resultTypeKey
 	resultKey := g.key(t.Result)
 	g.resultKey = resultKey
 	g.resultType, g.recovers = "", false
+	g.resultShape, g.resultTypeKey = nil, checker.TypeKey(t.Result)
 	if direct != nil {
-		g.resultType = direct.result
+		g.resultType, g.resultShape = direct.result, direct.shape
 	}
 	g.expressionDepth = 0
 	g.cleanups = nil
@@ -205,6 +207,7 @@ func (g *generator) functionPieces(direct *directFunction, name string, params [
 		g.expressionDepth = oldDepth
 		g.resultKey = oldResult
 		g.resultType, g.recovers = oldResultType, oldRecovers
+		g.resultShape, g.resultTypeKey = oldShape, oldTypeKey
 	}()
 	var labels []string
 	for _, p := range t.Params {

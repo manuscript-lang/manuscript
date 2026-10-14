@@ -440,6 +440,11 @@ func (l *expressionLayout) sequence(nodes []layoutNode, indent, column int, pref
 		if comment && lastLine != node.token.Pos.Line && output.Len() > 0 {
 			pending = true
 		}
+		if output.Len() > 0 && !pending && !suite && lastLine != 0 && lastLine != node.token.Pos.Line {
+			// An original line break joins this line to the output line. A suite
+			// opened here is indented relative to the line that holds its header.
+			firstIndent = l.lineIndent(node.token.Pos.Line)
+		}
 		if output.Len() == 0 || pending {
 			if output.Len() > 0 {
 				write("\n")
@@ -590,12 +595,24 @@ func groupStatementExpressions(filename, source string) (string, error) {
 			wrap(start + 1)
 		}
 	}
+	// A constant's synthetic statement starts at its initializer, which may be
+	// text, so it bypasses the keyword and text-statement handling below.
+	constants := map[*syntax.Statement]bool{}
+	for _, d := range module.Declarations {
+		if d.Constant {
+			constants[d.Body[0]] = true
+		}
+	}
 	visitor := syntax.Visitor{
 		Statement: func(s *syntax.Statement) {
 			if s.Value == nil || suiteExpression(s.Value) {
 				return
 			}
 			start, ok := starts[s.Pos.Offset]
+			if ok && constants[s] {
+				wrap(start)
+				return
+			}
 			if !ok || tokens[start].Kind == lexer.String {
 				return
 			}
