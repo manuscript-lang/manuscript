@@ -21,7 +21,7 @@ when fed through the unchanged Optional/comparator ABI. Preserve one authoritati
 mutable handle across typed and generic aliases rather than keeping a boxed mirror.
 
 Apply when: optimizing Go lowering, representations, calls, or collection access.
-Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
+Evidence: none recorded.
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),
 and [generated/handwritten comparison](../scripts/bench-lowering/harness.go.txt).
 Verify: run `go run ./scripts/bench-lowering` with the pinned SDK, inspect the

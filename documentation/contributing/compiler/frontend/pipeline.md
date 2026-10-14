@@ -18,7 +18,7 @@ The compiler turns Manuscript source into Go, then uses Go to build a native exe
 
 ## Package boundaries in the design
 
-The compiler is written in Go. The backend design emits one application Go package and separate packages for adapter interface schemas. Schema packages cannot depend on the application package; see [adapter bindings](../adapters/manifests.md) for the dependency direction.
+The compiler is written in Go. The backend emits one application Go package.
 
 External adapters remain design work. The [repository architecture](../../architecture.md) describes the current pipeline and package layout.
 

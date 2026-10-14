@@ -18,19 +18,11 @@ all_packages=$("$go_tool" list ./...)
 [ -n "$all_packages" ] || { echo 'No Go packages discovered' >&2; exit 1; }
 coverpkg=$(printf '%s\n' "$all_packages" | paste -sd, -)
 
-# Packages that exist only after the compiler split are picked up when present.
-optional=''
-for directory in pkg/lower pkg/build; do
-    if [ -d "$directory" ]; then optional="$optional ./$directory"; fi
-done
-# Packages whose tests run under the race detector.
-# shellcheck disable=SC2086
-race_packages=$("$go_tool" list ./internal/debugger ./pkg/runtime ./pkg/checker ./pkg/compiler $optional ./pkg/project ./internal/cli ./pkg/tooling/...)
+# Packages whose tests run under the race detector; make race reads the same file.
+# shellcheck disable=SC2046
+race_packages=$("$go_tool" list $(cat scripts/race-packages))
 # Packages split across shards because a single test binary dominates wall time.
-split_args='./pkg/compiler ./tests/e2e'
-[ ! -d pkg/build ] || split_args="$split_args ./pkg/build"
-# shellcheck disable=SC2086
-split_packages=$("$go_tool" list $split_args)
+split_packages=$("$go_tool" list ./pkg/compiler ./tests/e2e ./pkg/build)
 
 # shellcheck disable=SC2329 # invoked through start
 run() { # name, extra flags, packages...
