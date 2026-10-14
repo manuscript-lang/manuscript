@@ -53,6 +53,18 @@ func libraryArchivePack(ctx *Execution, r string, a []Value) Value {
 		}
 		seen[key] = true
 	}
+	if a[1].(string) == "zip" {
+		for _, v := range entries {
+			f := v.(Record).Fields
+			name := f["path"].(string)
+			if f["directory"].(bool) {
+				name = strings.TrimSuffix(name, "/") + "/"
+			}
+			if len(name) > 1<<16-1 { // ZIP stores the name length in 16 bits
+				return libraryError(r, "InvalidInput", "")
+			}
+		}
+	}
 	w := &libraryLimitedWriter{max: max}
 	switch a[1].(string) {
 	case "tar":
