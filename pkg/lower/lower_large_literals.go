@@ -46,13 +46,20 @@ func (g *generator) largeListLiteral(e ir.List) ast.Expr {
 				}
 			}
 			if value == nil {
-				value = g.irValue(e.Items[at])
-				if extract == "string" {
+				if item, ok := e.Items[at].(ir.Deferred); ok && extract != "" {
+					// Use the scalar lane's native-consuming boundary for deferred
+					// source operations; its implicit conversions remain authoritative.
+					value = g.scalarValueAs(item.Source, typ.Args[0])
+				} else if extract == "string" {
+					value = g.irValue(e.Items[at])
 					// Accept an already concrete String expression without adding
 					// a second scalar lowering contract.
 					value = &ast.TypeAssertExpr{X: call(runtimeName("Value"), value), Type: ident("string")}
-				} else if extract != "" {
-					value = runtimeCall(extract, value)
+				} else {
+					value = g.irValue(e.Items[at])
+					if extract != "" {
+						value = runtimeCall(extract, value)
+					}
 				}
 			}
 			statements = append(statements, evaluated(runtimeCall(initializer, ident(list), intLiteral(at), value)))
