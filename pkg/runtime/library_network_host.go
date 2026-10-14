@@ -24,7 +24,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 	}
 	method, address := a[0].(string), a[1].(string)
 	max, timeout := a[4].(int64), a[5].(Duration)
-	if max < 0 || timeout < nativeNoTimeout {
+	if max < 0 || timeout < nativeNoTimeout || method == "" {
 		return libraryError(r, "InvalidInput", "")
 	}
 	u, err := url.Parse(address)

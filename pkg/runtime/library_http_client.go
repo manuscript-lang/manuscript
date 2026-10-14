@@ -119,7 +119,7 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 	}
 	return libraryAcquisition("HttpClient", name, func(ctx *Execution, r string, a []Value) Value {
 		max, timeout := a[4].(int64), a[5].(Duration)
-		if max < 0 || timeout < nativeNoTimeout {
+		if max < 0 || timeout < nativeNoTimeout || a[0].(string) == "" {
 			return libraryError(r, "InvalidInput", "")
 		}
 		u, err := url.Parse(a[1].(string))
