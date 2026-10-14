@@ -39,6 +39,7 @@ func (s *scope) typ(name string) *Type {
 type checker struct {
 	scopeMarker          string
 	standardDeclarations bool
+	idScope              string // prefixes ids made while checking a bundled module
 	*Program
 	module                  *syntax.Module
 	names                   map[string]*Symbol
@@ -70,6 +71,9 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 	p := newProgram(modules)
 	p.Diagnostics = dependencyDiagnostics
 	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}
+	if options.bundled != nil {
+		c.idScope = "standard_" + strings.TrimSuffix(strings.TrimPrefix(options.bundled.File, "@std/"), ".ms") + "_"
+	}
 	for _, module := range modules {
 		for _, d := range module.Declarations {
 			if d.Kind != syntax.KindInterface && d.Kind != syntax.KindImpl && len(d.Methods) > 0 {
@@ -81,21 +85,16 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 		return p
 	}
 	p.Methods = append(p.Methods, standardImplementations...)
-	if standardChecked != nil {
-		// Bundled source modules were checked once at load; adopt that result and
-		// continue numbering generated identities after theirs.
-		c.serial = standardChecked.serial
-	}
 	var checked []*syntax.Module
 	for _, module := range modules {
-		if standardChecked != nil && standardSourceModules[module.File] == module {
-			c.adoptChecked(module)
+		if standardSourceModules[module.File] == module && module != options.bundled {
+			c.adoptChecked(module, options.bundled != nil)
 			continue
 		}
 		c.checkModule(module, imports)
 		checked = append(checked, module)
 	}
-	foldConstants(checked)
+	finishModules(checked)
 	c.finiteTypeApplications()
 	c.finiteApplications()
 	c.Diagnostics = uniqueDiagnostics(c.Diagnostics)
@@ -109,15 +108,18 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 // checkModule runs the declaration passes for one module in dependency order:
 // imports and names first, then type variables, signatures, implementations,
 // defaults, and finally bodies.
-// adoptChecked takes a bundled module's symbols and methods from the load-time
-// check; its tree already carries every fact.
-func (c *checker) adoptChecked(module *syntax.Module) {
-	c.symbols[module.File] = standardChecked.symbols[module.File]
-	for _, m := range standardSourceMethods {
-		if m.Module == module.File {
-			c.Methods = append(c.Methods, m)
-		}
+// adoptChecked takes a bundled module's symbols and methods from its one check
+// (made now if no program has needed it yet); its tree already carries every
+// fact. held reports that the caller is that check and owns standardMu.
+func (c *checker) adoptChecked(module *syntax.Module, held bool) {
+	var r *standardResult
+	if held {
+		r = standardDone[module.File]
+	} else {
+		r = ensureStandardSource(module)
 	}
+	c.symbols[module.File] = r.symbols
+	c.Methods = append(c.Methods, r.methods...)
 }
 
 func (c *checker) checkModule(module *syntax.Module, imports map[*syntax.Import]string) {
@@ -302,6 +304,7 @@ func (c *checker) unique(prefix string) string {
 	if c.standardDeclarations {
 		prefix = "standard_" + prefix
 	}
+	prefix = c.idScope + prefix
 	return fmt.Sprintf("%s%d", prefix, c.serial)
 }
 
@@ -530,155 +533,195 @@ func (c *checker) statement(s *syntax.Statement) (fall, breaks bool) {
 func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 	switch s.Kind {
 	case syntax.KindBind:
-		var expected *Type
-		if s.Type != nil {
-			expected = c.resolve(s.Type, false)
-			c.wellFormed(expected, s.Type.Pos, map[string]bool{})
-		}
-		before := len(c.Diagnostics)
-		info := c.expression(s.Value, expected)
-		bound := info.Type
-		if expected != nil && len(c.Diagnostics) > before && s.Pattern != nil && s.Pattern.Kind == syntax.KindName {
-			// A failed initializer must not retype the annotated binding.
-			bound = expected
-		}
-		c.pattern(s.Pattern, bound, s.Mutable, s.Value)
-		return !info.NoReturn, info.Breaks
+		return c.checkBind(s)
 	case syntax.KindAssign:
-		if s.Target != nil {
-			target := c.expression(s.Target, nil)
-			target.Write = true
-			receiver := infoOf(s.Target.Left)
-			if !opaqueField(receiver, s.Target.Text) && (receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || (receiver.Symbol != nil && receiver.Symbol.Kind == syntax.KindType) || target.Method != nil) {
-				c.error(s.Target.Pos, "type", "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'")
-			}
-			value := c.expression(s.Value, target.Type)
-			return !target.NoReturn && !value.NoReturn, target.Breaks || value.Breaks
-		}
-		b := c.scope.binding(s.Name)
-		if b == nil {
-			if symbol := c.names[s.Name]; symbol != nil {
-				c.error(s.Pos, "type", "cannot assign to "+c.symbolDescription(symbol)+" "+s.Name+"; assignment targets are 'var' bindings and record fields")
-			} else {
-				c.error(s.Pos, "resolution", c.unknownName(s.Name))
-			}
-			c.expression(s.Value, nil)
-			return true, false
-		}
-		setAssigned(s.Value, b)
-		if !b.Mutable {
-			c.error(s.Pos, "type", "cannot assign immutable binding "+s.Name+"; declare it with 'var "+s.Name+" = ...' instead of 'let'")
-		}
-		if b.Function != c.function {
-			c.error(s.Pos, "type", "cannot assign a captured binding; closures cannot reassign outer variables, so return the new value or keep state in a record field")
-		}
-		i := c.expression(s.Value, b.Type)
-		return !i.NoReturn, i.Breaks
+		return c.checkAssign(s)
 	case syntax.KindReturn:
-		if c.returnInference != nil {
-			typ := primitive("Unit")
-			breaks := false
-			if s.Value != nil {
-				info := c.checkExpression(s.Value, c.infer(s.Value, c.returnInference.context), nil)
-				typ, breaks = info.Type, info.Breaks
-			}
-			c.returnInference.add(c, typ, s.Pos)
-			return false, breaks
-		}
-		if s.Value == nil {
-			if c.result.ID != "Unit" {
-				c.error(s.Pos, "type", "bare return requires Unit; this function returns "+c.result.String()+", so write 'return <value>'")
-			}
-		} else {
-			i := c.expression(s.Value, c.result)
-			return false, i.Breaks
-		}
-		return false, false
+		return c.checkReturn(s)
 	case syntax.KindCall:
-		var i *Info
-		if s.Value.Kind == syntax.KindMatch {
-			// A match used as a statement discards its result, so its arms need
-			// not agree on a value.
-			c.captureScope(s.Value)
-			i = c.checkExpression(s.Value, c.matchExpression(s.Value, nil, true), nil)
-		} else {
-			i = c.expression(s.Value, nil)
-		}
-		if s.Value.Kind == syntax.KindUnary && s.Value.Text == "try" && i.Type.ID != "Unit" && i.Type.ID != "<invalid>" {
-			c.error(s.Value.Pos, "type", "standalone try requires a Unit success value, found "+i.Type.String()+"; use 'let name = try ...' to keep the value or 'return try ...' to return it")
-		}
-		return !i.NoReturn, i.Breaks
+		return c.checkCallStatement(s)
 	case syntax.KindBreak, syntax.KindContinue:
 		if c.loops == 0 {
 			c.error(s.Pos, "type", s.Kind+" requires an enclosing loop; use it only inside 'for' or 'while' bodies")
 		}
 		return false, s.Kind == syntax.KindBreak
 	case syntax.KindIf:
-		i := c.expression(s.Value, primitive("Bool"))
-		a, ab := c.block(s.Body, true)
-		b, bb := true, false
-		if len(s.Else) > 0 {
-			b, bb = c.block(s.Else, true)
-		}
-		return !i.NoReturn && (a || b), i.Breaks || ab || bb
+		return c.checkIf(s)
 	case syntax.KindWhile:
-		i := c.expression(s.Value, primitive("Bool"))
-		c.loops++
-		_, br := c.block(s.Body, true)
-		c.loops--
-		literalTrue := s.Value.Kind == syntax.KindBool && s.Value.Text == "true"
-		return !i.NoReturn && (!literalTrue || br), i.Breaks
+		return c.checkWhile(s)
 	case syntax.KindFor:
-		i := c.expression(s.Value, nil)
-		element := primitive("<invalid>")
-		if std(i.Type, "List") || std(i.Type, "Set") {
-			if len(i.Type.Args) > 0 {
-				element = i.Type.Args[0]
-			}
-		} else if std(i.Type, "Map") {
-			if len(i.Type.Args) == 2 {
-				element = standard("MapEntry", i.Type.Args...)
-			}
-		} else {
-			c.error(s.Pos, "type", "for requires List, Set, or Map, found "+i.Type.String()+"; iterate a collection, e.g. a list literal [1, 2, 3]")
-		}
-		old := c.scope
-		c.scope = newScope(old)
-		setLoopBinding(s, c.bind(s.Name, element, false, s.Pos))
-		c.loops++
-		c.block(s.Body, false)
-		c.loops--
-		c.scope = old
-		return !i.NoReturn, i.Breaks
+		return c.checkFor(s)
 	case syntax.KindWith:
-		i := c.expression(s.Value, nil)
-		if !c.closeable(i.Type) {
-			c.error(s.Pos, "type", c.withNotCloseableMessage(i.Type))
-		}
-		methods := c.methods(i.Type, "close")
-		var candidates []*Method
-		for _, method := range methods {
-			if len(method.Type.Params) == 0 && method.Type.Result.ID == "Unit" {
-				if method.Contract != nil && std(method.Contract, "Closeable") {
-					candidates = []*Method{method}
-					break
-				}
-				candidates = append(candidates, method)
-			}
-		}
-		if len(candidates) == 1 {
-			setCleanup(s, candidates[0])
-		} else if len(candidates) > 1 {
-			c.error(s.Pos, "type", "with cleanup operation is ambiguous; wrap the value in an explicit contract view, e.g. Closeable(value: x)")
-		}
-		old := c.scope
-		c.scope = newScope(old)
-		setLoopBinding(s, c.bind(s.Name, i.Type, false, s.Pos))
-		fall, br := c.block(s.Body, false)
-		c.scope = old
-		return !i.NoReturn && fall, i.Breaks || br
+		return c.checkWith(s)
 	}
 	return true, false
+}
+
+// checkBind checks a binding and reports whether control falls through and whether it breaks.
+func (c *checker) checkBind(s *syntax.Statement) (bool, bool) {
+	var expected *Type
+	if s.Type != nil {
+		expected = c.resolve(s.Type, false)
+		c.wellFormed(expected, s.Type.Pos, map[string]bool{})
+	}
+	before := len(c.Diagnostics)
+	info := c.expression(s.Value, expected)
+	bound := info.Type
+	if expected != nil && len(c.Diagnostics) > before && s.Pattern != nil && s.Pattern.Kind == syntax.KindName {
+		// A failed initializer must not retype the annotated binding.
+		bound = expected
+	}
+	c.pattern(s.Pattern, bound, s.Mutable, s.Value)
+	return !info.NoReturn, info.Breaks
+}
+
+// checkAssign checks an assignment to a variable or record field and reports whether control falls through and whether it breaks.
+func (c *checker) checkAssign(s *syntax.Statement) (bool, bool) {
+	if s.Target != nil {
+		target := c.expression(s.Target, nil)
+		target.Write = true
+		receiver := infoOf(s.Target.Left)
+		if !opaqueField(receiver, s.Target.Text) && (receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || (receiver.Symbol != nil && receiver.Symbol.Kind == syntax.KindType) || target.Method != nil) {
+			c.error(s.Target.Pos, "type", "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'")
+		}
+		value := c.expression(s.Value, target.Type)
+		return !target.NoReturn && !value.NoReturn, target.Breaks || value.Breaks
+	}
+	b := c.scope.binding(s.Name)
+	if b == nil {
+		if symbol := c.names[s.Name]; symbol != nil {
+			c.error(s.Pos, "type", "cannot assign to "+c.symbolDescription(symbol)+" "+s.Name+"; assignment targets are 'var' bindings and record fields")
+		} else {
+			c.error(s.Pos, "resolution", c.unknownName(s.Name))
+		}
+		c.expression(s.Value, nil)
+		return true, false
+	}
+	setAssigned(s.Value, b)
+	if !b.Mutable {
+		c.error(s.Pos, "type", "cannot assign immutable binding "+s.Name+"; declare it with 'var "+s.Name+" = ...' instead of 'let'")
+	}
+	if b.Function != c.function {
+		c.error(s.Pos, "type", "cannot assign a captured binding; closures cannot reassign outer variables, so return the new value or keep state in a record field")
+	}
+	i := c.expression(s.Value, b.Type)
+	return !i.NoReturn, i.Breaks
+}
+
+// checkReturn checks a return and reports whether control falls through and whether it breaks.
+func (c *checker) checkReturn(s *syntax.Statement) (bool, bool) {
+	if c.returnInference != nil {
+		typ := primitive("Unit")
+		breaks := false
+		if s.Value != nil {
+			info := c.checkExpression(s.Value, c.infer(s.Value, c.returnInference.context), nil)
+			typ, breaks = info.Type, info.Breaks
+		}
+		c.returnInference.add(c, typ, s.Pos)
+		return false, breaks
+	}
+	if s.Value == nil {
+		if c.result.ID != "Unit" {
+			c.error(s.Pos, "type", "bare return requires Unit; this function returns "+c.result.String()+", so write 'return <value>'")
+		}
+	} else {
+		i := c.expression(s.Value, c.result)
+		return false, i.Breaks
+	}
+	return false, false
+}
+
+// checkCallStatement checks an expression statement and reports whether control falls through and whether it breaks.
+func (c *checker) checkCallStatement(s *syntax.Statement) (bool, bool) {
+	var i *Info
+	if s.Value.Kind == syntax.KindMatch {
+		// A match used as a statement discards its result, so its arms need
+		// not agree on a value.
+		c.captureScope(s.Value)
+		i = c.checkExpression(s.Value, c.matchExpression(s.Value, nil, true), nil)
+	} else {
+		i = c.expression(s.Value, nil)
+	}
+	if s.Value.Kind == syntax.KindUnary && s.Value.Text == "try" && i.Type.ID != "Unit" && i.Type.ID != "<invalid>" {
+		c.error(s.Value.Pos, "type", "standalone try requires a Unit success value, found "+i.Type.String()+"; use 'let name = try ...' to keep the value or 'return try ...' to return it")
+	}
+	return !i.NoReturn, i.Breaks
+}
+
+// checkIf checks an if and reports whether control falls through and whether it breaks.
+func (c *checker) checkIf(s *syntax.Statement) (bool, bool) {
+	i := c.expression(s.Value, primitive("Bool"))
+	a, ab := c.block(s.Body, true)
+	b, bb := true, false
+	if len(s.Else) > 0 {
+		b, bb = c.block(s.Else, true)
+	}
+	return !i.NoReturn && (a || b), i.Breaks || ab || bb
+}
+
+// checkWhile checks a while loop and reports whether control falls through and whether it breaks.
+func (c *checker) checkWhile(s *syntax.Statement) (bool, bool) {
+	i := c.expression(s.Value, primitive("Bool"))
+	c.loops++
+	_, br := c.block(s.Body, true)
+	c.loops--
+	literalTrue := s.Value.Kind == syntax.KindBool && s.Value.Text == "true"
+	return !i.NoReturn && (!literalTrue || br), i.Breaks
+}
+
+// checkFor checks a for loop and reports whether control falls through and whether it breaks.
+func (c *checker) checkFor(s *syntax.Statement) (bool, bool) {
+	i := c.expression(s.Value, nil)
+	element := primitive("<invalid>")
+	if std(i.Type, "List") || std(i.Type, "Set") {
+		if len(i.Type.Args) > 0 {
+			element = i.Type.Args[0]
+		}
+	} else if std(i.Type, "Map") {
+		if len(i.Type.Args) == 2 {
+			element = standard("MapEntry", i.Type.Args...)
+		}
+	} else {
+		c.error(s.Pos, "type", "for requires List, Set, or Map, found "+i.Type.String()+"; iterate a collection, e.g. a list literal [1, 2, 3]")
+	}
+	old := c.scope
+	c.scope = newScope(old)
+	setLoopBinding(s, c.bind(s.Name, element, false, s.Pos))
+	c.loops++
+	c.block(s.Body, false)
+	c.loops--
+	c.scope = old
+	return !i.NoReturn, i.Breaks
+}
+
+// checkWith checks a with block and reports whether control falls through and whether it breaks.
+func (c *checker) checkWith(s *syntax.Statement) (bool, bool) {
+	i := c.expression(s.Value, nil)
+	if !c.closeable(i.Type) {
+		c.error(s.Pos, "type", c.withNotCloseableMessage(i.Type))
+	}
+	methods := c.methods(i.Type, "close")
+	var candidates []*Method
+	for _, method := range methods {
+		if len(method.Type.Params) == 0 && method.Type.Result.ID == "Unit" {
+			if method.Contract != nil && std(method.Contract, "Closeable") {
+				candidates = []*Method{method}
+				break
+			}
+			candidates = append(candidates, method)
+		}
+	}
+	if len(candidates) == 1 {
+		setCleanup(s, candidates[0])
+	} else if len(candidates) > 1 {
+		c.error(s.Pos, "type", "with cleanup operation is ambiguous; wrap the value in an explicit contract view, e.g. Closeable(value: x)")
+	}
+	old := c.scope
+	c.scope = newScope(old)
+	setLoopBinding(s, c.bind(s.Name, i.Type, false, s.Pos))
+	fall, br := c.block(s.Body, false)
+	c.scope = old
+	return !i.NoReturn && fall, i.Breaks || br
 }
 func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable bool, source *syntax.Expression) {
 	switch p.Kind {

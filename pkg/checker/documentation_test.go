@@ -23,7 +23,7 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 		}
 	}
 	expected := 0
-	for _, symbols := range standardModules {
+	for _, symbols := range allStandardExports() {
 		for _, symbol := range symbols {
 			if symbol.Export {
 				expected++

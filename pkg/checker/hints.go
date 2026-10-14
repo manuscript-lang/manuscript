@@ -303,7 +303,7 @@ func (c *checker) exportMessage(item *syntax.Import, imports map[*syntax.Import]
 	message := "module does not export " + item.Name
 	var exports []string
 	if strings.HasPrefix(item.Path, "@std/") {
-		if _, known := standardModules[item.Path]; !known {
+		if _, native := standardModules[item.Path]; !native && standardSourceModules[item.Path] == nil {
 			return message + "; unknown standard module " + item.Path + (didYouMean(item.Path, StandardModuleNames()))
 		}
 		for name := range StandardExports(item.Path) {
