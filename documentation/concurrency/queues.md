@@ -38,7 +38,7 @@ fn is_empty() -> Bool
 
 ## Sharing a queue
 
-For concurrent access, put the queue in one `Synchronized[Queue[T]]` and hold its guard throughout every operation, including reads. Each caller acquires its own guard from the same wrapper:
+For concurrent access to a local `Queue`, put the queue in one `Synchronized[Queue[T]]` and hold its guard throughout every operation, including reads. Each caller acquires its own guard from the same wrapper:
 
 ```manuscript
 import Queue from "@std/queues.ms"
@@ -58,109 +58,60 @@ fn dequeue(shared: Synchronized[Queue[Int]]) -> Optional[Int]:
 
 The queue itself has no mutex. The compiler allows references to be passed freely and does not enforce this locking discipline. A queue or bound method obtained through `locked.get()` remains an alias after the guard closes; it must not be used concurrently outside that lock. Wrapping the same queue in two separate synchronized containers does not coordinate them. Store the queue directly in one wrapper and share that wrapper.
 
-Wrapping a queue serializes access; it does not by itself add waiting for values or free capacity. To block until the queue changes, call the guard's [`wait()`](synchronization.md#waiting-for-a-change), which releases the lock while sleeping; never poll or spin while holding the lock. Lock acquisition follows the ordinary [Synchronized cancellation and cleanup rules](synchronization.md#synchronized).
+Wrapping a queue serializes access; it does not by itself add waiting for values or free capacity. For a queue that blocks, use [`BlockingQueue`](#blocking-queue), or call the guard's [`wait()`](synchronization.md#waiting-for-a-change), which releases the lock while sleeping; never poll or spin while holding the lock. Lock acquisition follows the ordinary [Synchronized cancellation and cleanup rules](synchronization.md#synchronized).
 
 ## Blocking queue
 
-Waiting for values or free capacity composes from `Synchronized` and `wait`/`notify_all`. `BlockingQueue` below is ordinary Manuscript, not a standard type. The doc comment on the type shows how to use it; the test bounds the queue at two items, and the consumer runs in a `TaskGroup` so it cannot outlive its scope:
+`BlockingQueue[T]` is a FIFO that waits instead of failing. Import it from `@std/queues.ms`. Omit capacity for an unbounded queue, or supply a positive capacity to bound it. It synchronizes itself, so tasks share it directly with no `Synchronized` wrapper.
+
+```manuscript
+fn put(value: T) -> Bool
+fn take() -> Optional[T]
+fn close() -> Unit
+fn length() -> Int
+fn is_closed() -> Bool
+```
+
+- `put` waits while a bounded queue is full, then appends and returns `true`. It returns `false` once the queue is closed.
+- `take` waits while the queue is empty, then removes the oldest value. It returns `none` once the queue is closed and empty.
+- `close` stops new puts and wakes every waiting task. Values already queued can still be taken. Closing twice does nothing.
+- Waiting holds no lock and stops at [cancellation](cancellation.md): closing a `TaskGroup` cancels workers blocked in `take` or `put`, and they unwind without waiting for the queue.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import Queue from "@std/queues.ms"
-import Synchronized from "@std/sync.ms"
+import BlockingQueue from "@std/queues.ms"
 import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
-type QueueState[T]:
-    items: Queue[T]
-    closed: Bool
-
-# A bounded FIFO queue that blocks producers while it is full and consumers while it is empty.
-#
-# Create one with new_blocking_queue(capacity) and share it between tasks started by a TaskGroup.
-# put(queue, value) waits for free space and returns false once the queue is closed.
-# take(queue) waits for a value and returns none once the queue is closed and drained.
-# close_queue(queue) stops new puts and wakes every waiting task.
-#
-# Example: a producer feeds two workers.
-#
-#     let queue = new_blocking_queue[Int](8)
-#     with group = TaskGroup():
-#         group.start(fn(): work(queue: queue))
-#         group.start(fn(): work(queue: queue))
-#         put(queue: queue, value: 1)
-#         close_queue(queue: queue)
-#
-# Leaving the TaskGroup scope early cancels workers blocked in take; they unwind without the lock.
-type BlockingQueue[T]:
-    state: Synchronized[QueueState[T]]
-
-# Creates an empty queue holding at most capacity values.
-fn new_blocking_queue[T](capacity: Int) -> BlockingQueue[T]:
-    let state = QueueState(items: Queue[T](capacity), closed: false)
-    return BlockingQueue(state: Synchronized(state))
-
-# Waits for free space, then adds value. Returns false if the queue is closed.
-fn put[T](queue: BlockingQueue[T], value: T) -> Bool:
-    with locked = queue.state.lock():
-        while true:
-            let current = locked.get()
-            if current.closed:
-                return false
-            if current.items.enqueue(value):
-                locked.notify_all()
-                return true
-            locked.wait()
-    return false
-
-# Waits for a value and removes the oldest one. Returns none once the queue is closed and empty.
-fn take[T](queue: BlockingQueue[T]) -> Optional[T]:
-    with locked = queue.state.lock():
-        while true:
-            let current = locked.get()
-            let item = current.items.dequeue()
-            if item.is_some():
-                locked.notify_all()
-                return item
-            if current.closed:
-                return none
-            locked.wait()
-    return none
-
-# Stops new puts and wakes every waiting task. Queued values can still be taken.
-fn close_queue[T](queue: BlockingQueue[T]) -> Unit:
-    with locked = queue.state.lock():
-        let current = locked.get()
-        current.closed = true
-        locked.notify_all()
-
-fn work(queue: BlockingQueue[Int]) -> Int:
+fn work(jobs: BlockingQueue[Int]) -> Int:
     var total = 0
     while true:
-        match take(queue: queue):
+        match jobs.take():
             some(value):
                 total = total + value
             none:
                 return total
     return total
 
-test "a producer feeds a consumer through a bounded queue":
-    let queue = new_blocking_queue[Int](2)
+test "a producer feeds a worker through a bounded queue":
+    let jobs = BlockingQueue[Int](2)
     with group = TaskGroup():
-        let consumer = group.start(fn(): work(queue: queue))
+        let worker = group.start(fn(): work(jobs: jobs))
         for value in [1, 2, 3, 4, 5]:
-            if not put(queue: queue, value: value):
+            if not jobs.put(value):
                 return panic(message: "put failed")
-        close_queue(queue: queue)
-        match consumer.join():
+        jobs.close()
+        match worker.join():
             ok(total):
                 if not (total == 15):
                     return panic(message: "lost or duplicated items")
             error(_):
-                return panic(message: "consumer failed")
+                return panic(message: "worker failed")
 ```
 
-`put` blocks while the queue is full and `take` blocks while it is empty. After `close_queue`, `put` returns `false` and `take` drains the remaining items, then returns `none`. If a scope exits early, closing its group cancels consumers blocked in `wait`; they unwind without reacquiring the lock. Never join a consumer while holding the queue's lock.
+The worker drains what is queued after `close`, then `take` returns `none` and it finishes. Never join a worker from code that the worker is waiting on.
+
+To build a different waiting structure, use the guard's [`wait()` and `notify_all()`](synchronization.md#waiting-for-a-change) on a `Synchronized` value; `BlockingQueue` is built from the same ideas.
 
 ## Priority queue
 

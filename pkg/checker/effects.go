@@ -160,6 +160,8 @@ func (n *effectNode) scanMethodCall(expression *syntax.Expression, method *Metho
 		}
 	case "@std/Synchronized":
 		n.add("write")
+	case "@std/BlockingQueue":
+		n.add("read", "write")
 	case "@std/Queue":
 		if name != "enqueue" {
 			n.add("read")

@@ -59,6 +59,6 @@ fn mark_ready(ready: Synchronized[Bool]) -> Unit:
 - Cancellation, a group timeout or a host deadline interrupts `wait` without reacquiring the lock. The guard stays released, the cancellation fault unwinds the `with` scope, and closing the guard does nothing. Cleanup registered inside that scope therefore runs without the lock. Because a cancelled wait never needs the lock, a parent holding it while closing a group of waiters cannot deadlock them.
 - Closing a guard alias during `wait` makes `wait` fault when it wakes, instead of reinstating the lock.
 
-A bounded blocking queue is `Synchronized` around a [local Queue](queues.md#sharing-a-queue) and a `closed` flag, with `put` and `take` looping on `wait`.
+The standard [`BlockingQueue`](queues.md#blocking-queue) is a ready-made waiting queue. Build other waiting structures the same way: a `Synchronized` value holding the state, with each operation looping on `wait`.
 
 `Synchronized` replaces the former `State` API. Migrate each get/set/swap sequence to a `with locked = value.lock()` scope; use guard get/set within that scope. There is no implicit transaction, retry callback, mutable-reference syntax, or sharing bound.

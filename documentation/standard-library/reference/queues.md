@@ -6,6 +6,77 @@ title = "queues"
 
 Import each required symbol with `import Name from "@std/queues.ms"`.
 
+## BlockingQueue {data-api-kind="Native type"}
+
+A FIFO queue that waits instead of failing: put blocks while a bounded queue is full,
+and take blocks while the queue is empty. It synchronizes itself, so tasks share it directly.
+Waiting stops at cancellation, so a TaskGroup close unblocks every waiting task.
+
+    let jobs = BlockingQueue[Int](capacity: 8)
+    with group = TaskGroup():
+        group.start(fn(): work(jobs: jobs))   # work loops on jobs.take() until it returns none
+        jobs.put(1)
+        jobs.put(2)
+        jobs.close()                          # work drains the queued values, then sees none
+
+```manuscript
+type BlockingQueue[T]:
+    capacity: Optional[Int] = none
+    fn put(value: T) -> Bool:
+    fn take() -> Optional[T]:
+    fn close() -> Unit:
+    fn length() -> Int:
+    fn is_closed() -> Bool:
+```
+
+### BlockingQueue.capacity
+
+Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
+
+```manuscript
+capacity: Optional[Int] = none
+```
+
+### BlockingQueue.close
+
+Closes the queue and wakes every waiting task. Queued values can still be taken; later puts return false.
+
+```manuscript
+fn close() -> Unit:
+```
+
+### BlockingQueue.is_closed
+
+Reports whether close has been called.
+
+```manuscript
+fn is_closed() -> Bool:
+```
+
+### BlockingQueue.length
+
+Returns the number of values currently waiting in the queue.
+
+```manuscript
+fn length() -> Int:
+```
+
+### BlockingQueue.put
+
+Waits for free space, then adds the value and returns true. Returns false when the queue is closed.
+
+```manuscript
+fn put(value: T) -> Bool:
+```
+
+### BlockingQueue.take
+
+Waits for a value and removes the oldest. Returns none once the queue is closed and empty.
+
+```manuscript
+fn take() -> Optional[T]:
+```
+
 ## PriorityQueue {data-api-kind="Native type"}
 
 Negative compare results put left before right; equal priorities remain FIFO.

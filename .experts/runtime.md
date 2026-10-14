@@ -45,10 +45,12 @@ Verify: ordinary ancestor overlap returns 7; both lock/join orders block until c
 
 Decision: the user chose a blocking queue built from plain Manuscript, with no channels and no new type: `SynchronizedGuard.wait()` releases the lock, sleeps until `notify_all()`, then reacquires; one wait set per `Synchronized`. A single `notify()`, a separate `Condition` type, semaphores, awaitable events and `wait(timeout:)` were considered and deferred; `condition()` and a timeout can be added later without breaking this. A skeptical review shaped the cancellation and owner rules below.
 
+Decision: the user also asked for a standard `BlockingQueue[T]` in `@std/queues.ms` (native, self-synchronized; `put`/`take`/`close`/`length`/`is_closed`; omitted or none capacity is unbounded). It is separate from local `Queue`, which stays non-blocking. Waits hold no lock and stop at cancellation; the runtime file must be listed in `pkg/runtime/bundle.go` for emitted programs.
+
 Verified: a cancelled `wait` must not reacquire the lock. A shielded reacquire hangs when a parent holds the lock while closing a group of waiters, which adds an uncancellable wait that ordinary `lock()` does not have. Instead the waiter is removed, the guard stays released, the cancellation fault unwinds and the scope close is a no-op. Only the acquiring operation (execution or work lifetime) may wait/notify; a child using a captured alias would otherwise release the parent's critical section. An alias close during wait must set a flag so wake-up does not reinstall a closed guard.
 
 Apply when: changing wait/notify, lock admission, guard aliasing or cancellation delivery.
-Evidence: [runtime](../pkg/runtime/synchronized.go), [wait regressions](../pkg/runtime/synchronized_test.go), [called blocking queue](../tests/e2e/testdata/accept/blocking-queue.ms), [contract](../documentation/concurrency/synchronization.md#waiting-for-a-change).
+Evidence: [runtime](../pkg/runtime/synchronized.go), [wait regressions](../pkg/runtime/synchronized_test.go), [called blocking queues](../tests/e2e/testdata/accept/blocking-queue.ms), [standard queue](../tests/e2e/testdata/accept/stdlib-blocking-queue.ms), [BlockingQueue](../pkg/runtime/blocking_queue.go), [contract](../documentation/concurrency/synchronization.md#waiting-for-a-change).
 Verify: lost-wakeup, cancel-while-waiting with another holder, non-owner wait/notify, alias close during wait, wait on a closed guard, group close with blocked consumers, under `-race`.
 
 ### Attribute profiling at execution boundaries
