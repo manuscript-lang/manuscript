@@ -59,6 +59,12 @@ func runSourceCommand(args []string, usage string) int {
 		}
 		return reportDiagnostics(result)
 	}
+	if inv.output != "" && inv.isOneOf("emit", "inspect", "diagram") {
+		if protected := protectedOutput(inv.output, inv.filename, result.ProjectRoot); protected != "" {
+			fmt.Fprintf(os.Stderr, "-o %s would overwrite %s; choose a different output path\n", inv.output, protected)
+			return 2
+		}
+	}
 	switch inv.command {
 	case "lock":
 		return lockProject(inv.filename, result)

@@ -51,6 +51,9 @@ func usageError(format string, a ...any) int {
 // result carries the exit status for the problem it already reported.
 func parseInvocation(args []string) (*invocation, int, bool) {
 	inv := &invocation{command: args[0], filename: args[1]}
+	if inv.filename == "" {
+		return nil, usageError("ms %s: the file argument is empty; pass a .ms file, directory, or ms.toml", inv.command), false
+	}
 	inv.analysis = inv.isOneOf("check", "lint")
 	first, positional := 1, false
 	if inv.analysis && inv.filename == "--" {
@@ -141,6 +144,9 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 		default:
 			if !strings.HasPrefix(args[i], "-") {
 				if inv.analysis {
+					if args[i] == "" {
+						return usageError("ms %s: an input argument is empty; pass a .ms file, directory, or ms.toml", inv.command), false
+					}
 					inv.targets = append(inv.targets, args[i])
 					continue
 				}
