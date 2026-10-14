@@ -131,6 +131,9 @@ func Same(a, b *Type) bool {
 	if a == nil || b == nil {
 		return false
 	}
+	if a == b {
+		return true
+	}
 	if a.ID != b.ID || a.Kind != b.Kind || len(a.Args) != len(b.Args) || len(a.Params) != len(b.Params) {
 		return false
 	}

@@ -30,7 +30,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		c.error(d.Pos, "type", "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types")
 		// An impl whose receiver is not valid nominal data must not become
 		// evidence for later conversions; report the receiver's own faults only.
-		c.wellFormed(receiver, d.Pos, map[string]bool{})
+		c.wellFormed(receiver, d.Pos, map[*Type]bool{})
 		c.scope = old
 		return
 	}
@@ -136,8 +136,8 @@ func (c *checker) implementation(d *syntax.Declaration) {
 			c.error(d.Pos, "type", "missing implementation operation "+op.Name+"; add fn "+op.Name+signatureText(op.Type)+" to this impl")
 		}
 	}
-	c.wellFormed(receiver, d.Pos, map[string]bool{})
-	c.wellFormed(contract, d.Pos, map[string]bool{})
+	c.wellFormed(receiver, d.Pos, map[*Type]bool{})
+	c.wellFormed(contract, d.Pos, map[*Type]bool{})
 	c.scope = old
 }
 func overlap(a, b, x, y *Type, vars []*Type) bool {
@@ -479,15 +479,14 @@ func (c *checker) closeable(t *Type) bool {
 	}
 	return c.implements(t, standard("Closeable"))
 }
-func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool) {
+func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[*Type]bool) {
 	if t == nil {
 		return
 	}
-	key := typeKey(t)
-	if seen[key] {
+	if seen[t] {
 		return
 	}
-	seen[key] = true
+	seen[t] = true
 	if t.Def != nil && len(t.Args) == len(t.Def.Variables) {
 		sub := substitution(t)
 		for _, v := range t.Def.Variables {
@@ -519,7 +518,7 @@ func (c *checker) declarationChecks(module *syntax.Module) {
 		old := c.scope
 		c.scope = c.variableScope(s.Variables)
 		check := func(t *Type) {
-			c.wellFormed(t, d.Pos, map[string]bool{})
+			c.wellFormed(t, d.Pos, map[*Type]bool{})
 			if s.Export {
 				c.public(t, d.Pos, map[string]bool{})
 			}

@@ -22,6 +22,9 @@ func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checke
 // constructing a bound Function, resolving labels, or changing Optional storage.
 // References to bound methods still use ordinary callable dispatch.
 func (g *generator) directCollectionCall(e *syntax.Expression, arguments []syntax.Argument) ast.Expr {
+	if value := g.primitiveListUnwrap(e); value != nil {
+		return value
+	}
 	callee := g.program.Info(e.Left)
 	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Contract != nil {
 		return nil
@@ -37,11 +40,15 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 		switch g.program.Info(e.Left.Left).Type.ID {
 		case "@std/List", "@std/Map", "@std/Set":
 			if len(arguments) == 0 {
-				return g.locatedOperation(e, runtimeName("CollectionLength"), ident("ctx"), g.expression(e.Left.Left))
+				return g.locatedOperation(e, runtimeName("CollectionLengthInt"), ident("ctx"), g.expression(e.Left.Left))
 			}
 		}
 	case "append":
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
+			if typ, name := primitiveList(g.program.Info(e.Left.Left).Type); typ != "" {
+				receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
+				return g.locatedOperation(e, runtimeName("ListAppend"+name), ident("ctx"), receiver, g.scalar(arguments[0].Value, typ))
+			}
 			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
 			return g.locatedOperation(e, runtimeName("ListAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}

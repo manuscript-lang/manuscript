@@ -50,7 +50,7 @@ impl At for Custom:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListAt(", "rt.OptionalUnwrap(", "rt.NativeMemberResult(", "rt.Invoke("} {
+	for _, operation := range []string{"rt.ListAtInt(", ".Unwrap(", "rt.NativeMemberResult(", "rt.Invoke("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing expected dispatch %s", operation)
 		}
@@ -73,7 +73,7 @@ fn sizes(values: List[Int], pairs: Map[String, Int], names: Set[String], text: S
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	if strings.Count(result.Source, "rt.CollectionLength(") != 4 || strings.Count(result.Source, "rt.StringByteLength(") != 1 {
+	if strings.Count(result.Source, "rt.CollectionLengthInt(") != 4 || strings.Count(result.Source, "rt.StringByteLength(") != 1 {
 		t.Fatalf("expected direct length calls only for built-in receivers:\n%s", result.Source)
 	}
 	if !strings.Contains(result.Source, "rt.NativeMemberResult(") {
@@ -151,7 +151,7 @@ fn grow(values: List[Int]) -> Bool:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListAppend(", "rt.ListIsEmpty("} {
+	for _, operation := range []string{"rt.ListAppendInt(", "rt.ListIsEmpty("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing direct %s:\n%s", operation, result.Source)
 		}

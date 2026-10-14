@@ -8,32 +8,41 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-// A known nongeneric source declaration always holds a NewSourceFunction.
-// Its Body includes cancellation, propagation, source returns, and profiling;
-// the generated callback retains its cleanup and fault-frame defers. When every
-// argument is already in declaration order, Invoke adds only redundant label
-// preparation and a cancellation check. Keep other callable paths unchanged.
+// A known nongeneric source declaration owns its guarded Body. Resolve
+// argument slots once, capturing supplied values in written order; omitted
+// slots remain nil so the callee evaluates its checked defaults after admission.
+// Dynamic callables and generic dispatch retain ordinary Invoke.
 func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
 	symbol := g.program.Info(e).Symbol
 	if symbol == nil || symbol.Native != "" || len(symbol.Variables) != 0 || symbol.Decl == nil || symbol.Decl.Kind != syntax.KindFn {
 		return nil
 	}
 	params := symbol.Type.Params
-	if len(args) != len(params) {
+	if len(args) > len(params) {
 		return nil
 	}
-	for i, arg := range args {
-		if arg.Name != params[i].Name {
+	slots := make(map[string]int, len(params))
+	for i, p := range params {
+		slots[p.Name] = i
+	}
+	values := make([]ast.Expr, len(params))
+	for i := range values {
+		values[i] = ident("nil")
+	}
+	var captures []ast.Stmt
+	for _, arg := range args {
+		slot, ok := slots[arg.Name]
+		if !ok {
 			return nil
 		}
+		tmp := g.temp()
+		captures = append(captures, define(tmp, sourceAt(arg.Pos, g.argumentValue(arg))))
+		values[slot] = ident(tmp)
 	}
-	values := make([]ast.Expr, len(args))
-	for i, arg := range args {
-		// A later match argument can reassign a local used by an earlier
-		// argument. Force each value's capture before evaluating the next.
-		values[i] = sourceAt(arg.Pos, g.argumentValue(arg))
-	}
-	return g.locatedOperation(e, selector(&ast.TypeAssertExpr{X: ident(symbol.ID), Type: runtimeName("Function")}, "Body"), ident("ctx"), sliceLiteral(runtimeName("Value"), values...))
+	operation := g.locatedOperation(e, selector(&ast.TypeAssertExpr{X: ident(symbol.ID), Type: runtimeName("Function")}, "Body"), ident("ctx"), sliceLiteral(runtimeName("Value"), values...))
+	captures = append(captures, returned(operation))
+	return call(closure(nil, runtimeName("Value"), captures...))
+
 }
 
 // A method call on a receiver whose static type is a concrete user record or

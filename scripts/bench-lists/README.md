@@ -11,7 +11,9 @@ The COW review/results are retained as historical evidence, not current semantic
 Refs #142 and #87. This directory contains checked Manuscript workloads, a
 generated-Go benchmark runner, fresh-process allocation/RSS workers, and an
 isolated typed-storage experiment. The experiment is **not** a runtime ABI or
-language feature. Production `List` still stores `Items []Value`.
+language feature. Production primitive Lists now use typed backing. `Items []Value` remains the
+Go compatibility fallback; use storage-aware accessors. The earlier measurements
+below describe their recorded revisions.
 
 Run from the checkout root with its bundled SDK:
 

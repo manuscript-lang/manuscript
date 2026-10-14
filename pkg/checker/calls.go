@@ -360,7 +360,7 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 	}
 	r := *t
 	r.Args = actualArgs
-	c.wellFormed(&r, pos, map[string]bool{})
+	c.wellFormed(&r, pos, map[*Type]bool{})
 	return &r
 }
 

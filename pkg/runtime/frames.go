@@ -92,7 +92,7 @@ func ControlPending() bool { return controlPanics.Load() != 0 }
 // NewDirectFunction wraps a direct source function for dynamic calls. The
 // direct function already enters and leaves its own frame.
 func NewDirectFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
-	return Function{labels, result, func(ctx *Execution, args []Value) Value {
+	return Function{Labels: labels, Result: result, Body: func(ctx *Execution, args []Value) Value {
 		if sourceProfiling.Load() {
 			return profileSource(ctx, position, args, body)
 		}
@@ -113,4 +113,33 @@ func Poll(ctx *Execution, tick *uint32) {
 	if *tick++; *tick&63 == 0 {
 		CheckCancelled(ctx)
 	}
+}
+
+// NewCompiledDirectFunction is compiler proof that the wrapper copies its
+// argument Values into direct parameters and never retains the incoming slice.
+func NewCompiledDirectFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
+	f := NewDirectFunction(labels, result, position, body)
+	f.BorrowedArguments = true
+	return f
+}
+
+// Direct comparators already own Enter/Leave; attaching a typed entry must not
+// add a second guard. Profiled calls retain the ordinary boxed wrapper.
+func WithDirectIntCompare(f Function, body func(*Execution, int64, int64) int64) Function {
+	f.IntCompare = func(ctx *Execution, a, b int64) int64 {
+		if sourceProfiling.Load() {
+			return f.Body(ctx, []Value{a, b}).(int64)
+		}
+		return body(ctx, a, b)
+	}
+	return f
+}
+func WithDirectFloatCompare(f Function, body func(*Execution, float64, float64) int64) Function {
+	f.FloatCompare = func(ctx *Execution, a, b float64) int64 {
+		if sourceProfiling.Load() {
+			return f.Body(ctx, []Value{a, b}).(int64)
+		}
+		return body(ctx, a, b)
+	}
+	return f
 }

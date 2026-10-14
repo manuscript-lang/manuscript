@@ -1,0 +1,39 @@
+package main
+import (
+ "math"
+ "testing"
+ rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+)
+var unaryResult rt.Value
+func handwrittenNegate(ctx *rt.Execution, value int64, limit int64) (result int64) {
+ rt.Enter(ctx)
+ position:=@@negatePosition@@
+ defer rt.Leave(ctx,&position,"negate")
+ for index:=int64(0);index<limit;index=rt.IntAddAt(index,1,&position,"benchmark.ms:6:23") {
+  rt.CheckCancelled(ctx)
+  value=rt.IntSubtractAt(0,value,&position,"benchmark.ms:5:17")
+ }
+ return value
+}
+func TestBenchmarkParity(t *testing.T) {
+ initialize();ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ for _,limit:=range []int64{0,1,2,1023,1024} {
+  for _,v:=range []int64{0,1,-1,1000,math.MaxInt64,-math.MaxInt64} {
+   got:=@@negate@@.(rt.Function).Body(ctx,[]rt.Value{v,limit})
+   if got!=handwrittenNegate(ctx,v,limit) {t.Fatalf("negation %d/%d: %v",v,limit,got)}
+  }
+  for _,v:=range []float64{0,math.Copysign(0,-1),1.25,math.Inf(1),math.Inf(-1),math.NaN()} {
+   want:=v;for i:=int64(0);i<limit;i++ {want=-want}
+   got:=rt.FloatValue(@@negate_float@@.(rt.Function).Body(ctx,[]rt.Value{v,limit}))
+   if math.Float64bits(got)!=math.Float64bits(want) {t.Fatalf("float negation %v/%d: %v",v,limit,got)}
+  }
+ }
+}
+func BenchmarkLowering(b *testing.B) {
+ initialize();ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ ints:=[]rt.Value{int64(1000),int64(1024)}
+ floats:=[]rt.Value{float64(1.25),int64(1024)}
+ b.Run("IntNegation1024",func(b *testing.B){for b.Loop(){unaryResult=@@negate@@.(rt.Function).Body(ctx,ints)}})
+ b.Run("FloatNegation1024",func(b *testing.B){for b.Loop(){unaryResult=@@negate_float@@.(rt.Function).Body(ctx,floats)}})
+ b.Run("HandwrittenIntNegation1024",func(b *testing.B){for b.Loop(){unaryResult=handwrittenNegate(ctx,1000,1024)}})
+}

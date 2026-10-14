@@ -18,7 +18,7 @@ import (
 	"github.com/manuscript-lang/manuscript/scripts/internal/devtool"
 )
 
-//go:embed program.ms harness.go.txt production.ms production.go.txt native-defaults.ms native-defaults.go.txt
+//go:embed program.ms harness.go.txt production.ms production.go.txt native-defaults.ms native-defaults.go.txt unary.ms unary.go.txt calls.ms calls.go.txt
 var inputs embed.FS
 
 func main() {
@@ -34,9 +34,19 @@ func run() error {
 	production := flag.Bool("production", false, "benchmark primitive equality and callable cleanup in generated code")
 	nativeDefaults := flag.Bool("native-defaults", false, "benchmark generated native defaults, including callable construction")
 	baseline := flag.Bool("baseline", false, "spell defaulted arguments explicitly for a main-branch comparison")
+	unary := flag.Bool("unary", false, "benchmark scalar negation against handwritten checked Go")
+	calls := flag.Bool("calls", false, "benchmark reordered and defaulted source calls")
 	flag.Parse()
 	program, harnessFile := "program.ms", "harness.go.txt"
 	names := []string{"scalar", "calls", "items", "add"}
+	if *calls {
+		program, harnessFile = "calls.ms", "calls.go.txt"
+		names = []string{"reordered", "defaults"}
+	}
+	if *unary {
+		program, harnessFile = "unary.ms", "unary.go.txt"
+		names = []string{"negate", "negate_float"}
+	}
 	if *production {
 		program, harnessFile = "production.ms", "production.go.txt"
 		names = []string{"empty", "kept", "ints", "floats", "bools", "strings"}

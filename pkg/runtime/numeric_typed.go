@@ -86,3 +86,30 @@ func IntRemainderAt(a, b int64, position *string, site string) int64 {
 	}
 	return a % b
 }
+
+// Omitted arguments are nil only in the compiled wrapper's argument array;
+// direct entrypoints receive a scalar zero and a separate supplied flag.
+func IntArgument(value Value) int64 {
+	if value == nil {
+		return 0
+	}
+	return value.(int64)
+}
+func FloatArgument(value Value) float64 {
+	if value == nil {
+		return 0
+	}
+	return value.(float64)
+}
+func BoolArgument(value Value) bool {
+	if value == nil {
+		return false
+	}
+	return value.(bool)
+}
+func StringArgument(value Value) string {
+	if value == nil {
+		return ""
+	}
+	return value.(string)
+}

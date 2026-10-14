@@ -20,6 +20,23 @@ storage from scalar-local boxing; its typed storage adds payload allocations
 when fed through the unchanged Optional/comparator ABI. Preserve one authoritative
 mutable handle across typed and generic aliases rather than keeping a boxed mirror.
 
+Verified: scalar unary operations must retain native type metadata as well as a
+typed emitted expression; otherwise enclosing arithmetic unboxes an already
+concrete Go value. Checked subtraction from zero preserves Int negation overflow
+and operand-before-operation fault attribution without another runtime helper.
+Float unary negation preserves IEEE signed zero and NaN. Evidence:
+[eligibility regression](../pkg/lower/lower_unary_test.go),
+[native boundaries](../pkg/build/lower_unary_native_test.go), and
+[generated/handwritten unary comparison](../scripts/bench-lowering/unary.go.txt).
+
+Verified: primitive List iteration must choose its route before lowering the
+iterable. Building and abandoning the generic iterable before typed lowering
+registers duplicate nested-callable source markers. Likewise, primitive List
+literals capture earlier reads before later effectful elements; typed slice
+syntax alone does not establish that order. Evidence:
+[iterable marker regression](../pkg/lower/lower_primitive_lists_test.go),
+[native order/alias/default checks](../pkg/build/perf_issues_native_test.go).
+
 Apply when: optimizing Go lowering, representations, calls, or collection access.
 Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),

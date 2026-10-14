@@ -162,8 +162,20 @@ func (g *generator) enterNativeDefault(d *syntax.Declaration) bool {
 	return true
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
+	if self == nil && len(tail) == 0 && len(params) == 2 && len(bindings) == 2 && len(t.Params) == 2 && params[0].Default == nil && params[1].Default == nil && t.Params[0].Name == "left" && t.Params[1].Name == "right" && primitiveEqualityType(t.Result) == "int64" {
+		typ := scalarBinding(bindings[0])
+		if (typ == "int64" || typ == "float64") && scalarBinding(bindings[1]) == typ {
+			direct := &directFunction{params: []string{typ, typ}, result: "int64"}
+			literal := g.directFunctionLiteral(direct, name, params, result, body, bindings, t)
+			entry := g.temp()
+			forward := closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), returned(call(ident(entry), ident("ctx"), unbox(index(ident("args"), intLiteral(0)), typ), unbox(index(ident("args"), intLiteral(1)), typ))))
+			wrapper := runtimeCall("NewCompiledDirectFunction", stringSlice([]string{"left", "right"}), g.key(t.Result), textLiteral(result.Pos.String()), forward)
+			kind := map[string]string{"int64": "Int", "float64": "Float"}[typ]
+			return call(closure(nil, runtimeName("Function"), define(entry, literal), returned(runtimeCall("WithDirect"+kind+"Compare", wrapper, ident(entry)))))
+		}
+	}
 	labels, key, position, out, _ := g.functionPieces(nil, name, params, result, body, bindings, self, t, tail...)
-	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
+	return runtimeCall("NewCompiledSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
 }
 
 // functionParts lowers a callable's labels, result key, source position, and
@@ -223,6 +235,11 @@ func (g *generator) functionPieces(direct *directFunction, name string, params [
 			// The Go parameter is the binding; callers supply typed values.
 			if typ := direct.params[i]; typ != "" {
 				g.typed[b] = typ
+			}
+			if len(direct.defaults) > i && direct.defaults[i] {
+				value := g.scalar(params[i].Default, direct.params[i])
+				stmt := &ast.IfStmt{Cond: &ast.UnaryExpr{Op: token.NOT, X: ident("provided_" + b.ID)}, Body: block(assign(ident(b.ID), token.ASSIGN, value))}
+				out = append(out, g.locatedStatement(params[i].Default.Pos, stmt))
 			}
 			out = append(out, discard(ident(b.ID)))
 			continue

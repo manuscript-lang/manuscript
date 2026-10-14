@@ -92,7 +92,7 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 		ast.Inspect(body, func(node ast.Node) bool {
 			if c, ok := node.(*ast.CallExpr); ok {
 				if s, ok := c.Fun.(*ast.SelectorExpr); ok {
-					if s.Sel.Name == "NewSourceFunction" || s.Sel.Name == "SourceDirect" {
+					if s.Sel.Name == "NewSourceFunction" || s.Sel.Name == "NewCompiledSourceFunction" || s.Sel.Name == "SourceDirect" {
 						return false
 					}
 					if s.Sel.Name == "NewCleanupStack" {
@@ -111,7 +111,7 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 				measure(n.Body)
 			}
 		case *ast.CallExpr:
-			if selector, ok := n.Fun.(*ast.SelectorExpr); ok && selector.Sel.Name == "NewSourceFunction" {
+			if selector, ok := n.Fun.(*ast.SelectorExpr); ok && (selector.Sel.Name == "NewSourceFunction" || selector.Sel.Name == "NewCompiledSourceFunction") {
 				measure(n.Args[3].(*ast.FuncLit).Body)
 			} else if ok && selector.Sel.Name == "SourceDirect" {
 				// Direct method bodies are the third argument of SourceDirect.

@@ -274,24 +274,16 @@ func (c *checker) inferList(e *syntax.Expression, expected *Type, i *Info) *Info
 	if std(expected, "List") && len(expected.Args) == 1 {
 		element = expected.Args[0]
 	}
-	if element == nil {
-		for _, item := range e.Elements {
-			if !c.contextual(item) {
-				v := c.expression(item, nil)
-				if element == nil && v.Type.ID != "Never" {
-					element = v.Type
-				}
-			}
-		}
-	}
+	inferred := make([]*Info, len(e.Elements))
+	element = c.collectionElement(e.Elements, inferred, 0, 1, element)
 	if element == nil {
 		if !c.unknownType {
 			c.error(e.Pos, "type", "cannot infer list element type; add an annotation, e.g. let xs: List[Int] = []")
 		}
 		element = primitive("<invalid>")
 	}
-	for _, item := range e.Elements {
-		v := c.expression(item, element)
+	for at, item := range e.Elements {
+		v := c.collectionExpression(item, inferred[at], element)
 		i.NoReturn = i.NoReturn || v.NoReturn
 	}
 	i.Type = standard("List", element)
@@ -303,32 +295,32 @@ func (c *checker) inferMapLiteral(e *syntax.Expression, expected *Type, i *Info)
 		c.error(e.Pos, "resolution", "map literal requires the canonical Map type; rename the shadowing Map declaration or binding")
 	}
 	var types [2]*Type
+	inferred := make([]*Info, len(e.Elements))
 	if std(expected, "Map") && len(expected.Args) == 2 {
 		copy(types[:], expected.Args)
 	}
 	for index := range types {
-		if types[index] == nil {
-			for at := index; at < len(e.Elements); at += 2 {
-				item := e.Elements[at]
-				if !c.contextual(item) {
-					v := c.expression(item, nil)
-					if types[index] == nil && v.Type.ID != "Never" {
-						types[index] = v.Type
-					}
-				}
-			}
-		}
+		types[index] = c.collectionElement(e.Elements, inferred, index, 2, types[index])
 		if types[index] == nil {
 			c.error(e.Pos, "type", "cannot infer map key or value type; add an annotation, e.g. let m: Map[String, Int] = {}")
 			types[index] = primitive("<invalid>")
 		}
 	}
 	for at, item := range e.Elements {
-		v := c.expression(item, types[at%2])
+		v := c.collectionExpression(item, inferred[at], types[at%2])
 		i.NoReturn = i.NoReturn || v.NoReturn
 	}
 	i.Type = standard("Map", types[0], types[1])
-	c.wellFormed(i.Type, e.Pos, map[string]bool{})
+	seen := map[*Type]bool{}
+	for _, item := range e.Elements {
+		if item.Kind == syntax.KindList || item.Kind == syntax.KindMap {
+			// Literal children already checked their own bounds at their
+			// source locations, including failures. Do not traverse those
+			// same type trees (or duplicate their diagnostics) at each parent.
+			seen[c.Info(item).Type] = true
+		}
+	}
+	c.wellFormed(i.Type, e.Pos, seen)
 	return finishInfo(i)
 }
 

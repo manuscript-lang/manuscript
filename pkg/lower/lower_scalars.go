@@ -83,12 +83,21 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 			}
 		}
 	case syntax.KindCall:
+		if typ := g.primitiveCollectionType(e); typ != "" {
+			return typ
+		}
 		if direct := g.directTarget(e); direct != nil {
 			return direct.result
 		}
 	case syntax.KindUnary:
 		if e.Text == "not" {
 			return "bool"
+		}
+		if e.Text == "+" || e.Text == "-" {
+			typ := primitiveEqualityType(g.program.Info(e.Right).Type)
+			if typ == "int64" || typ == "float64" {
+				return typ
+			}
 		}
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return "int64"

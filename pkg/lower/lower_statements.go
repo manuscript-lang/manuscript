@@ -165,6 +165,11 @@ func (g *generator) loop(s *syntax.Statement) []ast.Stmt {
 	g.loopCleanup = append(g.loopCleanup, len(g.cleanups))
 	label := &loopLabel{name: g.temp(), depth: g.expressionDepth}
 	g.loopLabels = append(g.loopLabels, label)
+	if s.Kind == syntax.KindFor {
+		if typ, _ := primitiveList(g.program.Info(s.Value).Type); typ != "" {
+			g.declareTyped(g.program.LoopBinding(s))
+		}
+	}
 	body := g.loopBody(s.Body, label)
 	g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
 	g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
@@ -174,6 +179,10 @@ func (g *generator) loop(s *syntax.Statement) []ast.Stmt {
 		tick := g.temp()
 		body = append([]ast.Stmt{evaluated(runtimeCall("Poll", ident("ctx"), address(ident(tick))))}, body...)
 		loop = &ast.ForStmt{Init: define(tick, call(ident("uint32"), intLiteral(0))), Cond: g.condition(s.Value), Body: block(body...)}
+	} else if typed := g.primitiveListLoop(s, body); typed != nil {
+		// Select the typed route before lowering the iterable. Operand
+		// lowering registers source markers and must never be discarded.
+		loop = typed
 	} else {
 		b := g.program.LoopBinding(s)
 		index := g.temp()
@@ -181,7 +190,12 @@ func (g *generator) loop(s *syntax.Statement) []ast.Stmt {
 		loop = &ast.RangeStmt{Key: ident(index), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
 	}
 	if label.used {
-		loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
+		if captured, ok := loop.(*ast.BlockStmt); ok {
+			last := len(captured.List) - 1
+			captured.List[last] = &ast.LabeledStmt{Label: ident(label.name), Stmt: captured.List[last]}
+		} else {
+			loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
+		}
 	}
 	return []ast.Stmt{loop}
 }

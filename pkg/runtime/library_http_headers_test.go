@@ -33,9 +33,9 @@ func TestHTTPHeaderValues(t *testing.T) {
 		}
 	}
 	got := libraryCall(t, "http/header_values", headers, "X-Test").Fields[0].(*List)
-	got.Items[0] = "changed copy"
-	first.Items[1] = "changed input"
-	if got.Items[1] != "first" || first.Items[0] != "" || headers.Entries[0].Key != "x-test" || len(headers.Entries) != 5 {
+	got.Set(0, "changed copy")
+	first.Set(1, "changed input")
+	if got.Get(1) != "first" || first.Get(0) != "" || headers.Entries[0].Key != "x-test" || len(headers.Entries) != 5 {
 		t.Fatal("helper shared membership or mutated keys", headers, got)
 	}
 }

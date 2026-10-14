@@ -1,0 +1,17 @@
+package main
+import("testing";rt "github.com/manuscript-lang/manuscript/pkg/runtime")
+var callsResult rt.Value
+func TestBenchmarkParity(t *testing.T){
+ initialize();ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ for _,limit:=range []int64{0,1,32,1024}{
+  if @@reordered@@.(rt.Function).Body(ctx,[]rt.Value{limit})!=limit*(limit-1)/2 {t.Fatal("reordered result")}
+  if @@defaults@@.(rt.Function).Body(ctx,[]rt.Value{limit})!=limit {t.Fatal("default result")}
+ }
+}
+func BenchmarkLowering(b *testing.B){
+ initialize();ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ args:=[]rt.Value{int64(1024)}
+ for _,test:=range []struct{name string;fn rt.Value}{{"Reordered1024",@@reordered@@},{"Defaults1024",@@defaults@@}} {
+  b.Run(test.name,func(b *testing.B){for b.Loop(){callsResult=test.fn.(rt.Function).Body(ctx,args)}})
+ }
+}

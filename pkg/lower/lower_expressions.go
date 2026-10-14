@@ -274,11 +274,14 @@ func (g *generator) listValue(e *syntax.Expression, info *checker.Info) ast.Expr
 	if value := g.debugListLiteral(e, info.Type); value != nil {
 		return value
 	}
+	if value := g.primitiveListLiteral(e, info); value != nil {
+		return value
+	}
 	var elements []ast.Expr
 	for _, item := range e.Elements {
 		elements = append(elements, g.expression(item))
 	}
-	return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
+	return runtimeCall("NewList", g.key(info.Type), sliceLiteral(runtimeName("Value"), elements...))
 }
 
 // mapValue lowers a map literal.
@@ -305,6 +308,24 @@ func (g *generator) unaryValue(e *syntax.Expression, info *checker.Info) ast.Exp
 	}
 	if e.Text == "not" {
 		return &ast.UnaryExpr{Op: token.NOT, X: paren(g.condition(e.Right))}
+	}
+	if e.Text == "+" || e.Text == "-" {
+		switch typ := primitiveEqualityType(g.program.Info(e.Right).Type); typ {
+		case "int64":
+			value := g.scalar(e.Right, typ)
+			if e.Text == "+" {
+				return value
+			}
+			// Checked subtraction also rejects negating MinInt64, recording
+			// this operation's site only after the operand has completed.
+			return runtimeCall("IntSubtractAt", intLiteral(0), value, address(ident("sourcePosition")), textLiteral(e.Pos.String()))
+		case "float64":
+			value := g.numericOperand(e.Right, typ)
+			if e.Text == "+" {
+				return value
+			}
+			return &ast.UnaryExpr{Op: token.SUB, X: paren(value)}
+		}
 	}
 	return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
 }

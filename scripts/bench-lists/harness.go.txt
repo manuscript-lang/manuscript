@@ -24,14 +24,14 @@ func TestListGeneratedParity(t *testing.T) {
  ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
  for _,n:=range []int64{0,1,32,1024} {
   xs:=generatedList(ctx,n)
-  if int64(len(xs.Items))!=n {t.Fatal("length")}
+  if int64(xs.Len())!=n {t.Fatal("length")}
   want:=listSum(n)
   for _,fn:=range []rt.Value{@@iterate@@,@@callbacks@@} {
    if got:=fn.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64);got!=want {t.Fatalf("sum=%d, want %d",got,want)}
   }
   if got:=@@index@@.(rt.Function).Body(ctx,[]rt.Value{xs,n}).(int64);got!=want {t.Fatal("index checksum")}
   sorted:=@@sorted@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(*rt.List)
-  for i:=1;i<len(sorted.Items);i++ {if sorted.Items[i-1].(int64)>sorted.Items[i].(int64) {t.Fatal("sort order")}}
+  for i:=1;i<sorted.Len();i++ {if sorted.Get(i-1).(int64)>sorted.Get(i).(int64) {t.Fatal("sort order")}}
   if !rt.Equal(xs,generatedList(ctx,n)) {t.Fatal("sort mutated input")}
  }
 }
@@ -60,11 +60,11 @@ func TestNarrowSnapshotParity(t *testing.T) {
  ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
  xs:=generatedList(ctx,1024)
  alias:=xs
- if @@callback_write@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64)!=listSum(1024)||alias.Items[0]!=int64(7) {t.Fatal("callback write changed captured membership or alias")}
+ if @@callback_write@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64)!=listSum(1024)||alias.Get(0)!=int64(7) {t.Fatal("callback write changed captured membership or alias")}
  xs=generatedList(ctx,1024)
  if @@callbacks@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64)!=listSum(1024)||!rt.Equal(xs,generatedList(ctx,1024)) {t.Fatal("readonly callback mutated values")}
  rt.Invoke(ctx,rt.NativeMember(xs,"with_value"),[]rt.Argument{{Name:"index",Value:int64(0)},{Name:"value",Value:int64(7)}})
- if xs.Items[0]!=int64(7)||len(xs.Items)!=1024 {t.Fatal("deferred write changed alias")}
+ if xs.Get(0)!=int64(7)||xs.Len()!=1024 {t.Fatal("deferred write changed alias")}
 }
 func BenchmarkNarrowSnapshots(b *testing.B) {
  initialize()
@@ -93,12 +93,12 @@ func TestListMemory(t *testing.T) {
  runtime.ReadMemStats(&before)
  var xs rt.Value
  var sum int64
- if mode=="generated"||mode=="boxed" {var v *rt.List;if mode=="generated" {v=generatedList(ctx,n)} else {v=runtimeBoxedBuild(ctx,n)};xs=v;for _,x:=range v.Items {sum+=x.(int64)}} else if mode=="prototype" {v:=prototypeBuild(ctx,n);xs=v;for _,x:=range v.storage.ints {sum+=x}} else {t.Fatal("invalid memory mode")}
+ if mode=="generated"||mode=="boxed" {var v *rt.List;if mode=="generated" {v=generatedList(ctx,n)} else {v=runtimeBoxedBuild(ctx,n)};xs=v;for _,x:=range v.Capture().Values() {sum+=x.(int64)}} else if mode=="prototype" {v:=prototypeBuild(ctx,n);xs=v;for _,x:=range v.storage.ints {sum+=x}} else {t.Fatal("invalid memory mode")}
  runtime.ReadMemStats(&after)
  runtime.GC();runtime.ReadMemStats(&live)
  if sum!=listSum(n) {t.Fatal("memory checksum")}
  result:=map[string]any{"mode":mode,"elements":n,"allocated_bytes":after.TotalAlloc-before.TotalAlloc,"allocations":after.Mallocs-before.Mallocs,"retained_heap_bytes":live.HeapAlloc-before.HeapAlloc,"heap_sys_bytes":live.HeapSys}
- if v,ok:=xs.(*rt.List);ok {result["capacity"]=cap(v.Items)} else {result["capacity"]=cap(xs.(*prototypeList).storage.ints)}
+ if v,ok:=xs.(*rt.List);ok {result["capacity"]=v.Cap()} else {result["capacity"]=cap(xs.(*prototypeList).storage.ints)}
  data,err:=json.Marshal(result);if err!=nil {t.Fatal(err)};t.Log(string(data))
  runtime.KeepAlive(xs)
 }

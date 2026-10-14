@@ -72,12 +72,44 @@ representation from dropping language guarantees. Inspect `program.go` beside
 `program_test.go`; neither compilation nor process startup is in the benchmark
 loop. Use a quiet machine for time comparisons, and report allocations as well.
 
-Current generated loops still store primitive locals as `rt.Value`, extract them
-for arithmetic, and box results again on assignment. Ordered source calls avoid
-label preparation but still pass `[]rt.Value` through `Function.Body`. Lists store
-`[]rt.Value`, and `.at().unwrap()` still creates and consumes an ordinary Optional
-alternative. Generic specialization, contract dispatch, and closure snapshots
-also cross the shared value boundary.
+Concrete scalar locals and eligible top-level source-call parameters/results use
+typed Go storage. Supplied reordered arguments are captured in written order,
+then passed in parameter order. Eligible arithmetic functions with scalar defaults receive a typed zero and a
+supplied flag, then evaluate omitted defaults in callee scope after admission.
+Other prepared source calls retain omitted slots as nil; forwarding/identity
+default functions keep their boxed boundary to avoid replacement allocations. Dynamic callables,
+generic values and captured values keep their shared `Value` boundaries.
+
+Primitive Lists retain one mutable handle with typed Int/Float/Bool/String
+backing; other Lists use boxed storage. Construction, append, immediately
+consumed `.at().unwrap()` and primitive loops preserve typed operands. Stored
+Optionals retain the ordinary alternative ABI. Captured loops preserve the
+original backing and length, including visible writes and reallocation behavior.
+Named and eligible captured numeric comparators carry typed entries alongside
+their ordinary callable, with one existing source guard. Proven generated
+callbacks may borrow one argument buffer owned by each `for_each` invocation;
+arbitrary Go callbacks retain fresh arrays. See the
+[List storage ABI](../../list-storage.md) for Go interoperability.
+
+Large constant primitive literals in optimized builds use a private typed table
+and a fresh copying constructor. Tables contain immutable scalar data only;
+each source evaluation receives independent mutable backing. Debug retains its
+existing bounded boxed-table policy and source stepping. Nested collection
+checking reuses complete same-context child evidence and bounds traversal,
+without widening source inference or the parser's nesting limit.
+
+Scalar unary `+` and `-` also retain typed operands. Int negation uses checked
+subtraction from zero, preserving minimum-integer overflow and recording the
+operation's fault site after the operand completes. Float negation uses Go unary
+negation, including signed zero, infinities and NaN. Decimal retains runtime
+unary dispatch.
+
+Run `toolchain/go/bin/go run ./scripts/bench-lowering -unary -count=5` to compare
+1,024 negations with handwritten checked Go. The comparison retains execution
+admission, cancellation, source tracing and checked arithmetic. On the initial
+Linux AMD64 measurement, scalar unary lowering removed 1,024 allocations per
+iteration (8,200 to 8 B/op), with Int around 6 times and Float around 5 times
+faster. This is a bounded loop result, not a whole-program parity claim.
 
 Two bounded production optimizations use checked facts while keeping the shared
 representation and callable ABI:
@@ -109,20 +141,18 @@ same runtime/toolchain, alternating unprofiled samples on a quiet host; report
 allocation counts and timing variability rather than extrapolating to a workload
 that was not reproduced.
 
-Next, specialize noncaptured concrete scalar locals whose repeated uses remain
-in arithmetic or comparisons, converting at explicit boundaries. Do not change
-every concrete local blindly: in the benchmark's call loop, unboxing a returned
-value and boxing it again for the next call adds allocations. Keep those locals
-boxed until a separately measured typed-call path can remove both conversions.
+Further representation changes must classify uses and ABI boundaries before
+choosing storage. Unboxing a source-call result and reboxing it for the next
+dynamic call can add allocations; direct typed calls avoid those conversions.
 Specialization hoisting must retain the exact checked type arguments and recursive
 implementation scopes; matching type spellings alone do not establish reusable
 dispatch. Preserve checked overflow, Float rounding, operand order, source frames,
 cancellation, and debugger-visible names.
 
-Subsequent candidates are typed entry points for eligible known source functions
-with adapters at callable/generic boundaries, and fusion of an immediately
-consumed Optional where no alternative escapes. They need separate evidence for
-defaults, recursion, callbacks, error propagation, profiling, negative indexing,
+Remaining candidates include broader default and generic source-call eligibility
+and typed escaping alternatives. They need
+separate evidence for defaults, recursion, callbacks, error propagation, profiling,
+negative indexing,
 absent values, and fault sites. Aggregate layout changes are a later stage:
 mutable aliasing, shallow cloning, recursive data, nominal identity, and local
 implementation scopes prevent replacing every record or collection with an
@@ -133,3 +163,11 @@ benchmark candidates.
 - [Source guarantees and Go representations](value-representations.md)
 - [Evaluation order and call preparation](evaluation-order.md)
 - [Cleanup and fault lowering](cleanup-and-faults.md)
+
+Additional measurements use `scripts/bench-lowering -calls` for reordered/default
+source calls, `scripts/bench-nested-literals` for checker-only AST depth, and
+`scripts/bench-literal-source` to retain constant-literal source for native builds.
+The parser nesting guard is unchanged; the checker harness constructs its AST
+directly. Preserve a before compiler and match the runtime/SDK when comparing
+emitted sources. Native compilation and unchanged cached builds are distinct
+measurements.
