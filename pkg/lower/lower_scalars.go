@@ -52,12 +52,6 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 		return g.native(x)
 	}
 	switch e.Kind {
-	case syntax.KindMember:
-		if info.Constructor == nil && info.Method == nil && info.Native == "" {
-			if _, f := g.structFieldOf(e); f != nil {
-				return f.scalar
-			}
-		}
 	case syntax.KindCall:
 		if direct := g.directTarget(e); direct != nil {
 			return direct.result
@@ -98,6 +92,12 @@ func (g *generator) native(x ir.Expr) string {
 			return ""
 		}
 		return numericResultType(x)
+	case ir.Member:
+		if x.Info.Constructor == nil && x.Info.Method == nil && x.Info.Native == "" {
+			if _, f := g.structFieldOf(x); f != nil {
+				return f.scalar
+			}
+		}
 	case ir.Deferred:
 		return g.nativeType(x.Source)
 	}

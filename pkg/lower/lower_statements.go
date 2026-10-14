@@ -71,7 +71,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		return g.pattern(s.Pattern, g.expression(s.Value), g.nativeType(s.Value))
 	case syntax.KindAssign:
 		if s.Target != nil {
-			if st, f := g.structFieldOf(s.Target); st != nil {
+			if st, f := g.structFieldIn(g.program.Info(s.Target.Left).Type, s.Target.Text); st != nil {
 				receiver := g.structOperand(st, s.Target.Left)
 				var value ast.Expr
 				if f.scalar != "" {

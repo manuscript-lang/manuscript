@@ -31,6 +31,8 @@ func (g *generator) irValue(x ir.Expr) ast.Expr {
 		return locatedAt(x.Pos, runtimeName("Unary"), textLiteral(x.Op), g.irValue(x.Operand))
 	case ir.Binary:
 		return g.binary(x)
+	case ir.Member:
+		return g.member(x)
 	case ir.UnitLiteral:
 		return unit()
 	case ir.Text:
@@ -83,4 +85,28 @@ func (g *generator) binary(x ir.Binary) ast.Expr {
 		return value
 	}
 	return locatedAt(x.Pos, runtimeName("Binary"), textLiteral(x.Op), g.irValue(x.Left), g.irValue(x.Right))
+}
+
+// member lowers a member read by the way the checker resolved it.
+func (g *generator) member(x ir.Member) ast.Expr {
+	info := x.Info
+	if info.Constructor != nil {
+		return runtimeCall("NewAlternative", g.key(info.Constructor), textLiteral(info.Case), ident("nil"), ident("nil"))
+	}
+	if info.Method != nil {
+		if info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
+			return g.methodDefaults(info.Method, g.nativeReceiver(g.irValue(x.Receiver), x.Name, x.ReceiverType, info))
+		}
+		return g.methodDefaults(info.Method, runtimeCall("Bind", g.irValue(x.Receiver), g.key(info.Method.Contract), textLiteral(x.Name), g.typeScope(x.ReceiverType)))
+	}
+	if info.Native != "" {
+		if info.Native == "milliseconds" || info.Native == "seconds" || info.Native == "minutes" {
+			return locatedAt(x.Pos, runtimeName("NativeMember"), g.irValue(x.Receiver), textLiteral(x.Name))
+		}
+		return runtimeCall("NativeMember", g.irValue(x.Receiver), textLiteral(x.Name))
+	}
+	if st, _ := g.structFieldOf(x); st != nil {
+		return call(selector(g.irStructOperand(st, x.Receiver), "Get_"+x.Name))
+	}
+	return runtimeCall("Field", g.irValue(x.Receiver), textLiteral(x.Name))
 }
