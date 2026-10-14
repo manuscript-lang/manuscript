@@ -76,7 +76,7 @@ export type List[T]:
     fn entries() -> List[ListEntry[T]]:
     fn join(separator: String) -> String:
     fn append(value: T) -> List[T]:
-    fn concat(values: List[T]) -> List[T]:
+    fn concat(other: List[T]) -> List[T]:
     fn length() -> Int:
 
 # A mutable key-value collection. Keys use explicit `Hashable` value semantics.
@@ -160,19 +160,19 @@ export type Set[T: Hashable]:
     # Stops at the first nonmatching element; empty sets return true.
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
     # Returns a new set with receiver values followed by right-only values in insertion order.
-    fn union(right: Set[T]) -> Set[T]:
+    fn union(other: Set[T]) -> Set[T]:
     # Returns a new set of receiver values also in right, preserving receiver insertion order.
-    fn intersection(right: Set[T]) -> Set[T]:
+    fn intersection(other: Set[T]) -> Set[T]:
     # Returns a new set of receiver values absent from right, preserving receiver insertion order.
-    fn difference(right: Set[T]) -> Set[T]:
+    fn difference(other: Set[T]) -> Set[T]:
     # Returns a new set of values in exactly one operand; leaves both operands unchanged.
-    fn symmetric_difference(right: Set[T]) -> Set[T]:
+    fn symmetric_difference(other: Set[T]) -> Set[T]:
     # Tests whether every receiver value also occurs in right.
-    fn is_subset_of(right: Set[T]) -> Bool:
+    fn is_subset_of(other: Set[T]) -> Bool:
     # Tests whether every right value also occurs in the receiver.
-    fn is_superset_of(right: Set[T]) -> Bool:
+    fn is_superset_of(other: Set[T]) -> Bool:
     # Tests whether the operands have no common values.
-    fn is_disjoint_from(right: Set[T]) -> Bool:
+    fn is_disjoint_from(other: Set[T]) -> Bool:
     # Removes all values in place and returns this set; aliases observe the empty set.
     fn clear() -> Set[T]:
     # Returns a shallow list of values in insertion order.

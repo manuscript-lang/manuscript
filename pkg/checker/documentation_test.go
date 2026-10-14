@@ -92,7 +92,7 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 	}
 	for key, want := range map[string]string{
 		"@std/time.ms#Duration":    "    fn to_nanoseconds() -> Int",
-		"@std/time.ms#Instant":     "    fn difference(right: Instant) -> Duration",
+		"@std/time.ms#Instant":     "    fn difference(other: Instant) -> Duration",
 		"@std/time.ms#Timestamp":   "    fn shift(duration: Duration) -> Result[Timestamp, TimeError]",
 		"@std/collections.ms#Map":  "type Map[T: Hashable, U]:",
 		"@std/collections.ms#List": "    fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]",
