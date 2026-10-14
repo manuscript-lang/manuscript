@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -60,44 +59,11 @@ func init() {
 	}...)
 }
 
-// Stat_t fields differ by host. Reflection keeps standalone builds portable;
-// absent native fields use zero, as documented in the filesystem contract.
-func libraryStatInt(info os.FileInfo, name string) int64 {
-	v := reflect.ValueOf(info.Sys())
-	if v.Kind() == reflect.Pointer {
-		v = v.Elem()
+func libraryStatTime(stamp time.Time, info os.FileInfo) libraryTimestamp {
+	if stamp.IsZero() {
+		return libraryTimestamp{info.ModTime().UTC()}
 	}
-	if v.Kind() != reflect.Struct {
-		return 0
-	}
-	v = v.FieldByName(name)
-	if v.IsValid() {
-		if v.CanInt() {
-			return v.Int()
-		}
-		if v.CanUint() && v.Uint() <= uint64(^uint64(0)>>1) {
-			return int64(v.Uint())
-		}
-	}
-	return 0
-}
-func libraryStatTime(info os.FileInfo, names ...string) libraryTimestamp {
-	v := reflect.ValueOf(info.Sys())
-	if v.Kind() == reflect.Pointer {
-		v = v.Elem()
-	}
-	if v.Kind() == reflect.Struct {
-		for _, name := range names {
-			field := v.FieldByName(name)
-			if field.Kind() == reflect.Struct {
-				sec, ns := field.FieldByName("Sec"), field.FieldByName("Nsec")
-				if sec.IsValid() && ns.IsValid() {
-					return libraryTimestamp{time.Unix(sec.Int(), ns.Int()).UTC()}
-				}
-			}
-		}
-	}
-	return libraryTimestamp{info.ModTime().UTC()}
+	return libraryTimestamp{stamp}
 }
 func libraryPermissionBits(mode os.FileMode) int64 {
 	bits := int64(mode.Perm())
@@ -143,25 +109,16 @@ func libraryFileInfo(info os.FileInfo) Record {
 	default:
 		mode |= 0100000
 	}
-	accessed, changed := libraryStatTime(info, "Atim", "Atimespec"), libraryStatTime(info, "Ctim", "Ctimespec")
+	stat := hostos.StatInfo(info)
+	accessed, changed := libraryStatTime(stat.Atime, info), libraryStatTime(stat.Ctime, info)
 	created := hostos.BirthInfo(info)
 	hasCreated := !created.IsZero()
-	fields := map[string]Value{"name": info.Name(), "size": info.Size(), "directory": info.IsDir(), "symlink": info.Mode()&os.ModeSymlink != 0, "regular": info.Mode().IsRegular(), "modified": libraryTimestamp{info.ModTime().UTC()}, "accessed": accessed, "changed": changed, "mode": mode, "permissions": libraryPermissionBits(info.Mode()), "created": optional("@std/Timestamp", libraryTimestamp{created.UTC()}, hasCreated), "block_size": libraryStatInt(info, "Blksize"), "blocks": libraryStatInt(info, "Blocks"), "rdev": libraryStatInt(info, "Rdev"), "device": libraryStatInt(info, "Dev"), "inode": libraryStatInt(info, "Ino"), "links": libraryStatInt(info, "Nlink"), "uid": libraryStatInt(info, "Uid"), "gid": libraryStatInt(info, "Gid"), "fifo": info.Mode()&os.ModeNamedPipe != 0, "socket": info.Mode()&os.ModeSocket != 0, "block_device": info.Mode()&os.ModeDevice != 0 && info.Mode()&os.ModeCharDevice == 0, "char_device": info.Mode()&os.ModeCharDevice != 0}
+	fields := map[string]Value{"name": info.Name(), "size": info.Size(), "directory": info.IsDir(), "symlink": info.Mode()&os.ModeSymlink != 0, "regular": info.Mode().IsRegular(), "modified": libraryTimestamp{info.ModTime().UTC()}, "accessed": accessed, "changed": changed, "mode": mode, "permissions": libraryPermissionBits(info.Mode()), "created": optional("@std/Timestamp", libraryTimestamp{created.UTC()}, hasCreated), "block_size": stat.Blksize.Int(), "blocks": stat.Blocks.Int(), "rdev": stat.Rdev.Int(), "device": stat.Dev.Int(), "inode": stat.Ino.Int(), "links": stat.Nlink.Int(), "uid": stat.Uid.Int(), "gid": stat.Gid.Int(), "fifo": info.Mode()&os.ModeNamedPipe != 0, "socket": info.Mode()&os.ModeSocket != 0, "block_device": info.Mode()&os.ModeDevice != 0 && info.Mode()&os.ModeCharDevice == 0, "char_device": info.Mode()&os.ModeCharDevice != 0}
 	exact := &Map{Type: "@std/Map[String][@std/BigInt]"}
 	for _, name := range []string{"size", "mode", "device", "inode", "links", "uid", "gid", "block_size", "blocks", "rdev"} {
 		number := big.NewInt(fields[name].(int64))
-		nativeNames := map[string]string{"device": "Dev", "inode": "Ino", "links": "Nlink", "uid": "Uid", "gid": "Gid", "rdev": "Rdev", "blocks": "Blocks", "block_size": "Blksize"}
-		if nativeName := nativeNames[name]; nativeName != "" {
-			value := reflect.ValueOf(info.Sys())
-			if value.Kind() == reflect.Pointer {
-				value = value.Elem()
-			}
-			if value.Kind() == reflect.Struct {
-				value = value.FieldByName(nativeName)
-				if value.IsValid() && value.CanUint() {
-					number = new(big.Int).SetUint64(value.Uint())
-				}
-			}
+		if native, ok := map[string]hostos.Number{"device": stat.Dev, "inode": stat.Ino, "links": stat.Nlink, "uid": stat.Uid, "gid": stat.Gid, "rdev": stat.Rdev, "blocks": stat.Blocks, "block_size": stat.Blksize}[name]; ok && stat.Valid && native.IsUnsigned {
+			number = new(big.Int).SetUint64(native.Unsigned)
 		}
 		exact.Entries = append(exact.Entries, Entry{name, libraryBigInt{number}})
 	}

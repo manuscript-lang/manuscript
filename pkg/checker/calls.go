@@ -58,7 +58,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		i.Arguments = constructorArguments(e.Args, fields)
 		typ = c.instantiate(typ, fields, i.Arguments, expected, e.Pos)
 		fields = ConstructorSignature(typ).Params
-		if std(typ, "Queue") && len(e.Args) == 0 {
+		if (std(typ, "Queue") || std(typ, "BlockingQueue")) && len(e.Args) == 0 {
 			fields = nil
 		}
 		i.NoReturn = c.argumentsFor(typ.Name, e.Pos, i.Arguments, fields, ConstructorSignature(typ).Defaults)
