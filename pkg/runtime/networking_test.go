@@ -9,13 +9,16 @@ import (
 	"encoding/pem"
 	"github.com/gorilla/websocket"
 	"io"
+	"log"
 	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -335,6 +338,44 @@ func (s *networkingReadStream) Operation(name string) Function {
 		return libraryOK("@std/Result[@std/Optional[@std/Bytes]][@std/IoError]", optional("@std/Bytes", Bytes{part}, true))
 	})
 }
+
+type writerFunc func([]byte) (int, error)
+
+func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
+
+func TestNetworkingRejectedUpgradeWritesOneResponse(t *testing.T) {
+	var logs strings.Builder
+	var logMu sync.Mutex
+	log.SetOutput(writerFunc(func(p []byte) (int, error) { logMu.Lock(); defer logMu.Unlock(); return logs.Write(p) }))
+	defer log.SetOutput(os.Stderr)
+	ctx := RootExecution()
+	n := &network{}
+	defer n.Operation("close").Body(ctx, nil)
+	handler := NewFunction([]string{"exchange"}, "@std/Result[Unit][@std/HttpError]", func(child *Execution, a []Value) Value {
+		result := networkingInvoke(child, a[0], "upgrade", libraryStrings(nil), libraryStrings(nil), int64(32)).(Alternative)
+		if result.Tag != "error" {
+			t.Error("plain request upgraded")
+		}
+		return libraryOK("@std/Result[Unit][@std/HttpError]", Unit{})
+	})
+	server := librarySuccess(t, n.Operation("serve_stream").Body(ctx, []Value{"127.0.0.1:0", handler, networkingServerOptions()}))
+	address := networkingInvoke(ctx, server, "address").(string)
+	response, err := http.Get("http://" + address + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != 400 {
+		t.Fatal("status", response.StatusCode)
+	}
+	networkingInvoke(ctx, server, "close")
+	logMu.Lock()
+	defer logMu.Unlock()
+	if strings.Contains(logs.String(), "superfluous") {
+		t.Fatal(logs.String())
+	}
+}
+
 func TestNetworkingServerShutdownJoinsWebSocket(t *testing.T) {
 	ctx := RootExecution()
 	n := &network{}
