@@ -7,6 +7,19 @@ func isConstant(s *Symbol) bool {
 	return s != nil && s.Kind == syntax.KindFn && s.Decl != nil && s.Decl.Constant
 }
 
+// IsConstant reports whether the symbol is a module-level `let` constant.
+// Tooling shows its value type, not the zero-parameter function it is stored as.
+func (s *Symbol) IsConstant() bool { return isConstant(s) }
+
+// ValueType is the type a name of the symbol has as an expression: a
+// constant's own type, and the declared type of any other symbol.
+func (s *Symbol) ValueType() *Type {
+	if isConstant(s) && s.Type != nil && s.Type.Result != nil {
+		return s.Type.Result
+	}
+	return s.Type
+}
+
 // constantType resolves a constant's type once: its annotation, or the type of
 // its initializer. A constant that depends on itself is reported and typed
 // <invalid>. The use-site rewrite makes every use evaluate the initializer, so
