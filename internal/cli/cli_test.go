@@ -369,6 +369,29 @@ func TestBuildRefusesToOverwriteSources(t *testing.T) {
 	}
 }
 
+func TestEmptyInputArgumentIsRejected(t *testing.T) {
+	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	for _, args := range [][]string{{"check", ""}, {"run", ""}, {"build", ""}, {"check", source, ""}} {
+		status, _, errors := invoke(t, args...)
+		if status != 2 || !strings.Contains(errors, "empty") {
+			t.Fatalf("%v: %d, %q", args, status, errors)
+		}
+	}
+}
+
+func TestTextOutputsRefuseToOverwriteSources(t *testing.T) {
+	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	for _, command := range []string{"emit", "inspect", "diagram"} {
+		status, _, errors := invoke(t, command, source, "-o", source)
+		if status != 2 || !strings.Contains(errors, "would overwrite") {
+			t.Fatalf("%s -o source: %d, %q", command, status, errors)
+		}
+	}
+	if data, err := os.ReadFile(source); err != nil || !strings.Contains(string(data), "export fn main") {
+		t.Fatalf("source clobbered: %q, %v", data, err)
+	}
+}
+
 func TestDirectoryArgumentUsesManifestOrExplains(t *testing.T) {
 	directory := t.TempDir()
 	status, _, errors := invoke(t, "check", directory)
