@@ -52,83 +52,22 @@ func (g *generator) pattern(p *syntax.Pattern, value ast.Expr, native string) []
 }
 func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	if pre, value := g.inlineTry(s); value != nil {
-		switch s.Kind {
-		case syntax.KindBind:
-			return append(pre, g.pattern(s.Pattern, value, "")...)
-		case syntax.KindAssign:
-			target := g.program.AssignedBinding(s.Value)
-			if typ := g.typed[target]; typ != "" {
-				value = unbox(value, typ)
-			}
-			return append(pre, assign(ident(target.ID), token.ASSIGN, value))
-		case syntax.KindReturn:
-			return append(pre, returned(value))
-		default:
-			return append(pre, discard(value))
-		}
+		return append(pre, g.afterTry(s, value)...)
 	}
 	switch s.Kind {
 	case syntax.KindBind:
 		return g.pattern(s.Pattern, g.expression(s.Value), g.nativeType(s.Value))
 	case syntax.KindAssign:
-		if s.Target != nil {
-			if st, f := g.structFieldIn(g.program.Info(s.Target.Left).Type, s.Target.Text); st != nil {
-				receiver := g.structOperand(st, s.Target.Left)
-				var value ast.Expr
-				if f.scalar != "" {
-					value = g.scalar(s.Value, f.scalar)
-				} else {
-					value = g.expression(s.Value)
-				}
-				return []ast.Stmt{evaluated(call(selector(receiver, "Set_"+s.Target.Text), value))}
-			}
-			return []ast.Stmt{evaluated(runtimeCall("SetField", g.expression(s.Target.Left), textLiteral(s.Target.Text), g.expression(s.Value)))}
-		}
-		// Assignment binding identities are recorded by the checker, including shadows.
-		target := g.program.AssignedBinding(s.Value)
-		if typ := g.typed[target]; typ != "" {
-			return []ast.Stmt{assign(ident(target.ID), token.ASSIGN, g.scalar(s.Value, typ))}
-		}
-		return []ast.Stmt{assign(ident(target.ID), token.ASSIGN, g.expression(s.Value))}
+		return g.assignment(s)
 	case syntax.KindReturn:
-		value := unit()
-		if s.Value != nil {
-			if g.resultType != "" && g.expressionDepth == 0 {
-				value = g.scalar(s.Value, g.resultType)
-			} else {
-				value = g.expression(s.Value)
-			}
-		}
-		if g.expressionDepth > 0 {
-			g.recovers = true
-			value = runtimeCall("Return", value)
-		}
-		return []ast.Stmt{returned(value)}
+		return g.returnStatement(s)
 	case syntax.KindCall:
 		if s.Value.Kind == syntax.KindMatch {
 			return g.matchStatement(s.Value)
 		}
 		return []ast.Stmt{discard(g.expression(s.Value))}
 	case syntax.KindBreak, syntax.KindContinue:
-		var out []ast.Stmt
-		start := 0
-		if len(g.loopCleanup) > 0 {
-			start = g.loopCleanup[len(g.loopCleanup)-1]
-		}
-		for i := len(g.cleanups) - 1; i >= start; i-- {
-			out = append(out, evaluated(call(selector(ident(g.cleanups[i]), "Run"))))
-		}
-		label := g.loopLabels[len(g.loopLabels)-1]
-		label.used = true
-		if label.depth < g.expressionDepth || label.escaped {
-			label.escaped = true
-			return append(out, evaluated(runtimeCall("ExitLoop", ident(strconv.FormatBool(s.Kind == syntax.KindBreak)))))
-		}
-		op := token.BREAK
-		if s.Kind == syntax.KindContinue {
-			op = token.CONTINUE
-		}
-		return append(out, &ast.BranchStmt{Tok: op, Label: ident(label.name)})
+		return g.exitLoop(s)
 	case syntax.KindIf:
 		stmt := &ast.IfStmt{Cond: g.condition(s.Value), Body: block(g.body(s.Body)...)}
 		if len(s.Else) > 0 {
@@ -136,45 +75,135 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		}
 		return []ast.Stmt{stmt}
 	case syntax.KindWhile, syntax.KindFor:
-		g.loopCleanup = append(g.loopCleanup, len(g.cleanups))
-		label := &loopLabel{name: g.temp(), depth: g.expressionDepth}
-		g.loopLabels = append(g.loopLabels, label)
-		body := g.loopBody(s.Body, label)
-		g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
-		g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
-		var loop ast.Stmt
-		if s.Kind == syntax.KindWhile {
-			// The counter limits cancellation checks to every 64th iteration.
-			tick := g.temp()
-			body = append([]ast.Stmt{evaluated(runtimeCall("Poll", ident("ctx"), address(ident(tick))))}, body...)
-			loop = &ast.ForStmt{Init: define(tick, call(ident("uint32"), intLiteral(0))), Cond: g.condition(s.Value), Body: block(body...)}
-		} else {
-			b := g.program.LoopBinding(s)
-			index := g.temp()
-			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("PollIndex", ident("ctx"), ident(index)))}, body...)
-			loop = &ast.RangeStmt{Key: ident(index), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
-		}
-		if label.used {
-			loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
-		}
-		return []ast.Stmt{loop}
+		return g.loop(s)
 	case syntax.KindWith:
-		b := g.program.LoopBinding(s)
-		cleanup := g.temp()
-		g.cleanups = append(g.cleanups, cleanup)
-		body := g.body(s.Body)
-		g.cleanups = g.cleanups[:len(g.cleanups)-1]
-		contract := textLiteral("")
-		if method := g.program.Cleanup(s); method != nil && method.Contract != nil {
-			contract = g.key(method.Contract)
-		}
-		out := []ast.Stmt{define(b.ID, g.expression(s.Value)), discard(ident(b.ID)), define(cleanup, call(selector(ident("cleanupStack"), "PushContract"), ident("ctx"), ident(b.ID), contract, g.typeScope(b.Type)))}
-		g.needsCleanup = true
-		out = append(out, body...)
-		out = append(out, evaluated(call(selector(ident(cleanup), "Run"))))
-		return []ast.Stmt{block(out...)}
+		return g.with(s)
 	}
 	panic("missing lowering for " + s.Kind)
+}
+
+// afterTry completes a statement whose value was already evaluated by an
+// inline try.
+func (g *generator) afterTry(s *syntax.Statement, value ast.Expr) []ast.Stmt {
+	switch s.Kind {
+	case syntax.KindBind:
+		return g.pattern(s.Pattern, value, "")
+	case syntax.KindAssign:
+		target := g.program.AssignedBinding(s.Value)
+		if typ := g.typed[target]; typ != "" {
+			value = unbox(value, typ)
+		}
+		return []ast.Stmt{assign(ident(target.ID), token.ASSIGN, value)}
+	case syntax.KindReturn:
+		return []ast.Stmt{returned(value)}
+	}
+	return []ast.Stmt{discard(value)}
+}
+
+func (g *generator) assignment(s *syntax.Statement) []ast.Stmt {
+	if s.Target != nil {
+		if st, f := g.structFieldIn(g.program.Info(s.Target.Left).Type, s.Target.Text); st != nil {
+			receiver := g.structOperand(st, s.Target.Left)
+			var value ast.Expr
+			if f.scalar != "" {
+				value = g.scalar(s.Value, f.scalar)
+			} else {
+				value = g.expression(s.Value)
+			}
+			return []ast.Stmt{evaluated(call(selector(receiver, "Set_"+s.Target.Text), value))}
+		}
+		return []ast.Stmt{evaluated(runtimeCall("SetField", g.expression(s.Target.Left), textLiteral(s.Target.Text), g.expression(s.Value)))}
+	}
+	// Assignment binding identities are recorded by the checker, including shadows.
+	target := g.program.AssignedBinding(s.Value)
+	if typ := g.typed[target]; typ != "" {
+		return []ast.Stmt{assign(ident(target.ID), token.ASSIGN, g.scalar(s.Value, typ))}
+	}
+	return []ast.Stmt{assign(ident(target.ID), token.ASSIGN, g.expression(s.Value))}
+}
+
+func (g *generator) returnStatement(s *syntax.Statement) []ast.Stmt {
+	value := unit()
+	if s.Value != nil {
+		if g.resultType != "" && g.expressionDepth == 0 {
+			value = g.scalar(s.Value, g.resultType)
+		} else {
+			value = g.expression(s.Value)
+		}
+	}
+	if g.expressionDepth > 0 {
+		g.recovers = true
+		value = runtimeCall("Return", value)
+	}
+	return []ast.Stmt{returned(value)}
+}
+
+// exitLoop lowers break and continue, running the cleanups opened inside the
+// loop first.
+func (g *generator) exitLoop(s *syntax.Statement) []ast.Stmt {
+	var out []ast.Stmt
+	start := 0
+	if len(g.loopCleanup) > 0 {
+		start = g.loopCleanup[len(g.loopCleanup)-1]
+	}
+	for i := len(g.cleanups) - 1; i >= start; i-- {
+		out = append(out, evaluated(call(selector(ident(g.cleanups[i]), "Run"))))
+	}
+	label := g.loopLabels[len(g.loopLabels)-1]
+	label.used = true
+	if label.depth < g.expressionDepth || label.escaped {
+		label.escaped = true
+		return append(out, evaluated(runtimeCall("ExitLoop", ident(strconv.FormatBool(s.Kind == syntax.KindBreak)))))
+	}
+	op := token.BREAK
+	if s.Kind == syntax.KindContinue {
+		op = token.CONTINUE
+	}
+	return append(out, &ast.BranchStmt{Tok: op, Label: ident(label.name)})
+}
+
+func (g *generator) loop(s *syntax.Statement) []ast.Stmt {
+	g.loopCleanup = append(g.loopCleanup, len(g.cleanups))
+	label := &loopLabel{name: g.temp(), depth: g.expressionDepth}
+	g.loopLabels = append(g.loopLabels, label)
+	body := g.loopBody(s.Body, label)
+	g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
+	g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
+	var loop ast.Stmt
+	if s.Kind == syntax.KindWhile {
+		// The counter limits cancellation checks to every 64th iteration.
+		tick := g.temp()
+		body = append([]ast.Stmt{evaluated(runtimeCall("Poll", ident("ctx"), address(ident(tick))))}, body...)
+		loop = &ast.ForStmt{Init: define(tick, call(ident("uint32"), intLiteral(0))), Cond: g.condition(s.Value), Body: block(body...)}
+	} else {
+		b := g.program.LoopBinding(s)
+		index := g.temp()
+		body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("PollIndex", ident("ctx"), ident(index)))}, body...)
+		loop = &ast.RangeStmt{Key: ident(index), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
+	}
+	if label.used {
+		loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
+	}
+	return []ast.Stmt{loop}
+}
+
+// with lowers a resource scope: the cleanup runs when the body ends and is
+// also registered for returns and faults that leave it early.
+func (g *generator) with(s *syntax.Statement) []ast.Stmt {
+	b := g.program.LoopBinding(s)
+	cleanup := g.temp()
+	g.cleanups = append(g.cleanups, cleanup)
+	body := g.body(s.Body)
+	g.cleanups = g.cleanups[:len(g.cleanups)-1]
+	contract := textLiteral("")
+	if method := g.program.Cleanup(s); method != nil && method.Contract != nil {
+		contract = g.key(method.Contract)
+	}
+	out := []ast.Stmt{define(b.ID, g.expression(s.Value)), discard(ident(b.ID)), define(cleanup, call(selector(ident("cleanupStack"), "PushContract"), ident("ctx"), ident(b.ID), contract, g.typeScope(b.Type)))}
+	g.needsCleanup = true
+	out = append(out, body...)
+	out = append(out, evaluated(call(selector(ident(cleanup), "Run"))))
+	return []ast.Stmt{block(out...)}
 }
 func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func(*syntax.Arm) []ast.Stmt) []ast.Stmt {
 	tmp := g.temp()
