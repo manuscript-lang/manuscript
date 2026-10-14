@@ -350,6 +350,9 @@ func (c *checker) assignmentMismatch(actual, expected *Type) string {
 	if hint := labelMismatchHint(actual, expected); hint != "" {
 		return message + "; " + hint
 	}
+	if hint := optionalUseHint(actual, expected); hint != "" {
+		return message + "; " + hint
+	}
 	if expected.Kind != "contract" || actual == nil || actual.ID == "<invalid>" {
 		return message
 	}
@@ -379,4 +382,13 @@ func labelMismatchHint(actual, expected *Type) string {
 		}
 	}
 	return ""
+}
+
+// optionalUseHint names the fix when an Optional is used where a plain value
+// is required: the value may be absent, so it has to be unwrapped first.
+func optionalUseHint(actual, expected *Type) string {
+	if actual == nil || expected == nil || !std(actual, "Optional") || len(actual.Args) != 1 || std(expected, "Optional") {
+		return ""
+	}
+	return actual.String() + " may be absent; unwrap it first with unwrap_or(default), is_some() before unwrap(), or match"
 }

@@ -412,7 +412,14 @@ func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *In
 		common = b.Type
 	}
 	if common.ID == "Never" || !compatible(a.Type, common) || !compatible(b.Type, common) {
-		c.error(e.Pos, "type", fmt.Sprintf("operator operands require the same independently known type, found %s %s %s; convert one side so both have one type (e.g. toString() for text, or an Int/Float conversion)", a.Type, e.Text, b.Type))
+		hint := optionalUseHint(a.Type, b.Type)
+		if hint == "" {
+			hint = optionalUseHint(b.Type, a.Type)
+		}
+		if hint == "" {
+			hint = "convert one side so both have one type (e.g. toString() for text, or an Int/Float conversion)"
+		}
+		c.error(e.Pos, "type", fmt.Sprintf("operator operands require the same independently known type, found %s %s %s; %s", a.Type, e.Text, b.Type, hint))
 		c.unknownType = true // later "<invalid>" diagnostics only restate this one
 		i.Type = primitive("<invalid>")
 		if e.Text == "==" || e.Text == "!=" || isOrdering(e.Text) {
