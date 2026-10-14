@@ -9,7 +9,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-// Walk checked signatures, including callbacks, fields, cases, generic bounds,
+// Walk checked signatures, including callbacks, fields, cases, generic bounds/defaults,
 // native receiver requirements and support interfaces. Primitive APIs are leaves.
 func TestCollectionPreludePublicTypeClosure(t *testing.T) {
 	ensureStandard()
@@ -28,6 +28,7 @@ func TestCollectionPreludePublicTypeClosure(t *testing.T) {
 		for _, bound := range typ.Bounds {
 			visit(bound)
 		}
+		visit(typ.Default)
 		for _, param := range typ.Params {
 			visit(param.Type)
 		}
@@ -76,7 +77,7 @@ func TestCollectionPreludePublicTypeClosure(t *testing.T) {
 		got = append(got, name)
 	}
 	slices.Sort(got)
-	want := []string{"CollectionError", "Equal", "Error", "Hashable", "List", "ListEntry", "Map", "MapEntry", "Optional", "Result", "Set"}
+	want := []string{"CollectionError", "Equal", "Error", "Hashable", "List", "ListEntry", "Map", "MapEntry", "MissingValue", "Optional", "Result", "Set"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("support closure = %v, want %v", got, want)
 	}
@@ -89,6 +90,10 @@ func TestCollectionPreludePublicTypeClosure(t *testing.T) {
 		if p.symbols[m.File][name] != standardSymbols[name] {
 			t.Errorf("%s lost its canonical declaration identity", name)
 		}
+	}
+	variables := standardOperationVariables[standardSymbols["Optional"].ID+"/ok_or"]
+	if len(variables) != 1 || variables[0].Default == nil || variables[0].Default.Def == nil || variables[0].Default.Def.Symbol != standardSymbols["MissingValue"] {
+		t.Fatal("Optional.ok_or lost its canonical default type", variables)
 	}
 }
 

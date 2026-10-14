@@ -935,6 +935,44 @@ The payload stored for `key`; the reference is shared with the map, not copied.
 value: U
 ```
 
+## MissingValue {data-api-kind="Alternative"}
+
+The error `Optional.ok_or()` returns when no cause is given. Its message names the source file and line of the call.
+
+```manuscript
+type MissingValue:
+    case Missing(location: String)
+```
+
+```manuscript
+impl Error for MissingValue:
+    fn message() -> String:
+```
+
+### MissingValue.Missing
+
+Records where the absent value was converted to an error.
+
+```manuscript
+case Missing(location: String)
+```
+
+### MissingValue.Missing.location
+
+The calling source position, as `file:line`.
+
+```manuscript
+location: String
+```
+
+### MissingValue.Error.message
+
+Returns "missing value at" followed by the recorded source position.
+
+```manuscript
+fn message() -> String:
+```
+
 ## Never {data-api-kind="Type"}
 
 The return type of computations that cannot return a value, such as panic.
@@ -959,7 +997,7 @@ type Optional[T]:
     fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
     fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
-    fn ok_or[E](cause: E) -> Result[T, E]:
+    fn ok_or[E = MissingValue](cause: Optional[E] = none) -> Result[T, E]:
     fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
@@ -1022,9 +1060,10 @@ fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
 ### Optional.ok_or[E]
 
 Returns ok with the original payload, or error with the eager cause.
+Without a cause, E is MissingValue and the error names the calling source file and line.
 
 ```manuscript
-fn ok_or[E](cause: E) -> Result[T, E]:
+fn ok_or[E = MissingValue](cause: Optional[E] = none) -> Result[T, E]:
 ```
 
 ### Optional.ok_or_else[E]

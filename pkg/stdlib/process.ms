@@ -2,6 +2,8 @@
 
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
+import ReadStream from "@std/io.ms"
+import WriteStream from "@std/io.ms"
 
 # Errors returned when a process cannot start, times out, or exceeds an output bound.
 export type CommandError:
@@ -39,6 +41,29 @@ export interface Commands:
         max_output_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[CommandOutput, CommandError]
+    # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess for use with `with`. `arguments` follow the program name; stdin, stdout, and stderr are OS pipes. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+    fn spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]
+
+# A long-lived child process with live stdin, stdout, and stderr pipes. Closing it
+# kills the child's process group, joins it, and closes all three streams.
+export interface Subprocess:
+    # The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
+    fn stdin() -> WriteStream
+    # The child's standard output as a ReadStream over the OS pipe; reads block until output or end-of-file, and nothing is buffered without bound.
+    fn stdout() -> ReadStream
+    # The child's standard error as a ReadStream over the OS pipe, with the same blocking and backpressure behavior as stdout.
+    fn stderr() -> ReadStream
+    # Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
+    fn wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]
+    # Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it kills the direct process. Does not wait.
+    fn terminate() -> Unit
+    # Sends SIGKILL to the child's process group. Does not wait.
+    fn kill() -> Unit
+    # Kills the process group, joins the child, kills leftover group members, and closes all three streams. Idempotent; `with` calls it on scope exit.
+    fn close() -> Unit
 
 # Process and operating-system controls for the current process.
 # `watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.

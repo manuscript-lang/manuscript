@@ -409,3 +409,25 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         )
         or set_visits != [2, 1, 3]
     ): return panic("Set find stopped without a match")
+
+fn find_port(port: Optional[Int]) -> Result[Int, Error]:
+    let value = try port.ok_or()
+    return ok(value)
+
+test "ok_or without a cause records the calling file and line":
+    let absent: Optional[Int] = none
+    let direct: Result[Int, MissingValue] = absent.ok_or()
+    if not (direct.unwrap_error().message().contains("conversions-queries.ms:")): return panic(
+        "missing location"
+    )
+
+    let message = find_port(none).unwrap_error().message()
+    if not (message.starts_with("missing value at ")): return panic(message)
+    if find_port(some(8080)).unwrap() != 8080: return panic("present payload")
+
+    let named: Result[Int, String] = absent.ok_or("port")
+    if named.unwrap_error() != "port": return panic("explicit cause")
+
+    match find_port(none).unwrap_error():
+        MissingValue(found): unit
+        _: return panic("default cause is not MissingValue")

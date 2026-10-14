@@ -217,6 +217,45 @@ func (c *checker) declareTypeVariables(module *syntax.Module) {
 		}
 		c.scope = old
 	}
+	// Defaults resolve after every declaration has its variables, so a default may name
+	// a generic type declared later in the module.
+	for _, d := range module.Declarations {
+		if d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest {
+			continue
+		}
+		if s := c.names[d.Name]; s.Decl == d {
+			c.typeDefaults(d.TypeParams, s.Variables)
+		}
+	}
+}
+
+// typeDefaults resolves default type arguments. A default may use only earlier
+// parameters, must satisfy its parameter's bounds, and every parameter after the
+// first default must have one, so omitted arguments are always a suffix.
+func (c *checker) typeDefaults(params []syntax.TypeParameter, vars []*Type) {
+	defaulted := false
+	old := c.scope
+	defer func() { c.scope = old }()
+	for index, p := range params {
+		if p.Default == nil {
+			if defaulted {
+				c.error(p.Pos, "type", "type parameter "+p.Name+" needs a default because an earlier parameter has one; give "+p.Name+" a default or move it before the defaulted parameters")
+			}
+			continue
+		}
+		defaulted = true
+		c.scope = c.variableScope(vars[:index])
+		resolved := c.resolve(p.Default, false)
+		if invalidType(resolved) {
+			continue
+		}
+		for _, bound := range vars[index].Bounds {
+			if !c.satisfies(resolved, bound) {
+				c.error(p.Default.Pos, "type", c.unsatisfiedMessage(resolved, bound, "choose a default that already implements it"))
+			}
+		}
+		vars[index].Default = resolved
+	}
 }
 
 // resolveSignatures resolves every type and function signature first and the
@@ -449,8 +488,19 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 	if base.Def != nil {
 		arity = len(base.Def.Variables)
 	}
+	required := arity
+	if base.Def != nil {
+		required = requiredTypeArguments(base.Def.Variables)
+	}
+	if len(r.Args) < arity && len(r.Args) >= required {
+		r.Args = withDefaultArguments(base.Def.Variables, r.Args)
+	}
 	if len(r.Args) != arity {
-		c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments, found %d; write %s", base.Name, arity, len(r.Args), typeSketch(base.Name, arity)))
+		if required < arity {
+			c.error(t.Pos, "type", fmt.Sprintf("%s takes %d to %d type arguments, found %d; write %s", base.Name, required, arity, len(r.Args), typeSketch(base.Name, arity)))
+		} else {
+			c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments, found %d; write %s", base.Name, arity, len(r.Args), typeSketch(base.Name, arity)))
+		}
 	}
 	t.Fact = &r
 	return &r
@@ -988,8 +1038,11 @@ func (c *checker) typeExpression(e *syntax.Expression) *Type {
 		if t != nil {
 			r := *t
 			r.Args = c.resolveArguments(e.Types)
+			if r.Def != nil && len(r.Args) < len(r.Def.Variables) && len(r.Args) >= requiredTypeArguments(r.Def.Variables) {
+				r.Args = withDefaultArguments(r.Def.Variables, r.Args)
+			}
 			if r.Def == nil || len(r.Args) != len(r.Def.Variables) {
-				c.error(e.Pos, "type", "generic type arity mismatch; supply exactly the type arguments the declaration lists")
+				c.error(e.Pos, "type", "generic type arity mismatch; supply the type arguments the declaration lists, omitting only trailing ones that have defaults")
 			}
 			return &r
 		}

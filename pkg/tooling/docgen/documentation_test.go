@@ -71,7 +71,7 @@ func TestSourceDeclarationsReachDocumentation(t *testing.T) {
 
 func TestMixedPreludeModuleImportGuidance(t *testing.T) {
 	for path, guidance := range map[string][2]string{
-		"@std/errors.ms":      {"`Error` is a prelude declaration", "Import other names"},
+		"@std/errors.ms":      {"`Error` and `MissingValue` are prelude declarations", "Import other names"},
 		"@std/collections.ms": {"`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry`", "Import other names"},
 	} {
 		text := RenderModule(checker.APIModule{Path: path})

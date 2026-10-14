@@ -350,6 +350,7 @@ func (l *standardLoader) resolveDeclarations() {
 						variables[i].Bounds = append(variables[i].Bounds, c.resolve(bound, true))
 					}
 				}
+				c.typeDefaults(method.TypeParams, variables)
 				standardOperationVariables[s.ID+"/"+method.Name] = variables
 				def.Operations = append(def.Operations, Param{method.Name, c.signature(method.Params, method.Result)})
 			}

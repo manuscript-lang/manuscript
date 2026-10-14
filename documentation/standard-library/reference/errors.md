@@ -4,7 +4,7 @@ title = "errors"
 
 # @std/errors.ms
 
-`Error` is a prelude declaration; explicit imports of it are rejected.
+`Error` and `MissingValue` are prelude declarations; explicit imports of them are rejected.
 
 Import other names with `import Name from "@std/errors.ms"`.
 
@@ -121,6 +121,44 @@ The requested operation is unsupported.
 
 ```manuscript
 case Unsupported
+```
+
+## MissingValue {data-api-kind="Alternative"}
+
+The error `Optional.ok_or()` returns when no cause is given. Its message names the source file and line of the call.
+
+```manuscript
+type MissingValue:
+    case Missing(location: String)
+```
+
+```manuscript
+impl Error for MissingValue:
+    fn message() -> String:
+```
+
+### MissingValue.Missing
+
+Records where the absent value was converted to an error.
+
+```manuscript
+case Missing(location: String)
+```
+
+### MissingValue.Missing.location
+
+The calling source position, as `file:line`.
+
+```manuscript
+location: String
+```
+
+### MissingValue.Error.message
+
+Returns "missing value at" followed by the recorded source position.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## TextError {data-api-kind="Alternative"}

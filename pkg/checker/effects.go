@@ -150,7 +150,7 @@ func (n *effectNode) scanMethodCall(expression *syntax.Expression, method *Metho
 		}
 	case "@std/WriteStream":
 		n.add("external-call", "write")
-	case "@std/Network", "@std/HttpServer", "@std/Commands":
+	case "@std/Network", "@std/HttpServer", "@std/Commands", "@std/Subprocess":
 		n.add("external-call", "read", "write")
 	case "@std/SynchronizedGuard":
 		if name == "get" {

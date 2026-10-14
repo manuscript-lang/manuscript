@@ -7,7 +7,7 @@ import (
 )
 
 // Source-backed prelude types retain their standard declaration identities.
-var standardPreludeNames = []string{"Equal", "Hashable", "Optional", "Result", "Error", "List", "Map", "Set", "CollectionError", "ListEntry", "MapEntry"}
+var standardPreludeNames = []string{"Equal", "Hashable", "Optional", "Result", "Error", "List", "Map", "Set", "CollectionError", "ListEntry", "MapEntry", "MissingValue"}
 
 // IsPreludeSymbol reports whether a symbol is a canonical source-backed prelude
 // declaration. Application declarations with the same name retain their identity.

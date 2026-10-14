@@ -189,3 +189,45 @@ func TestPreludeImportPolicyUsesResolvedIdentity(t *testing.T) {
 		}
 	}
 }
+
+func TestMissingValuePreludeDefaultsAndShadowing(t *testing.T) {
+	for name, source := range map[string]string{
+		"named default result": `fn first(values: List[Int]) -> Result[Int, MissingValue]: values.at(0).ok_or()
+fn message(values: List[Int]) -> String: first(values).unwrap_error().message()
+fn widen(cause: MissingValue) -> Error: cause
+`,
+		"local name retains canonical inferred defaults": `type MissingValue:
+    value: Int
+fn local() -> MissingValue: MissingValue(1)
+fn message(values: List[Int]) -> String: values.at(0).ok_or().unwrap_error().message()
+fn defaulted[E = MissingValue](cause: Optional[E] = none) -> Optional[E]: cause
+fn own() -> Optional[MissingValue]: defaulted()
+`,
+		"qualified constructors and directed patterns": `type Other:
+    case Missing(value: Int)
+fn other() -> Other: Other.Missing(1)
+fn standard() -> MissingValue: MissingValue.Missing("location")
+fn read(value: Other) -> Int:
+    match value:
+        Missing(found): return found
+`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			result := CompileSource("missing-prelude.ms", source, Options{})
+			if !result.Success() {
+				t.Fatal(result.Diagnostics)
+			}
+			if name == "local name retains canonical inferred defaults" {
+				local := result.Program.Symbol("missing-prelude.ms", "MissingValue")
+				generic := result.Program.Symbol("missing-prelude.ms", "defaulted")
+				if checker.IsPreludeSymbol(local) || len(generic.Variables) != 1 || generic.Variables[0].Default == nil || generic.Variables[0].Default.Def == nil || generic.Variables[0].Default.Def.Symbol != local {
+					t.Fatal("local type default acquired a canonical identity", local, generic)
+				}
+			}
+		})
+	}
+	result := CompileSource("missing-prelude.ms", "type Other:\n    case Missing(value: Int)\nfn get() -> Other: Missing(1)\n", Options{AnalyzeOnly: true})
+	if result.Success() || !strings.Contains(result.Diagnostics[0].Message, "ambiguous alternative case") {
+		t.Fatal("new ambient case lost normal ambiguity rules", result.Diagnostics)
+	}
+}

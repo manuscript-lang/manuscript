@@ -15,7 +15,7 @@ Import a type outside the prelude when naming it in an annotation or constructor
 
 ## Names and identity
 
-`Bool`, `Int`, `Float`, `String`, `Unit`, `Never`, `Equal`, `Hashable`, `Optional`, `Result`, `Error`, `List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry` are available through the prelude. The `some`, `none`, `ok`, `error`, and `CollectionError` cases are available through their prelude types. Every other standard name comes from an explicit `@std/…` import. Importing one name does not expose other names from that module; wildcard imports are unsupported.
+`Bool`, `Int`, `Float`, `String`, `Unit`, `Never`, `Equal`, `Hashable`, `Optional`, `Result`, `Error`, `List`, `Map`, `Set`, `CollectionError`, `ListEntry`, `MapEntry`, and `MissingValue` are available through the prelude. The `some`, `none`, `ok`, and `error` cases and the cases of `CollectionError` and `MissingValue` are available through their prelude types. Every other standard name comes from an explicit `@std/…` import. Importing one name does not expose other names from that module; wildcard imports are unsupported.
 
 `@std` is the reserved directory supplied by the compiler distribution. Standard identities are independent of its installation path. Application declarations and imports may shadow the prelude data types and `Error`; matching a standard spelling does not give a type standard behavior. `Equal` and `Hashable` retain fixed identities. See the canonical [module scope rules](../core-language/modules/declarations.md#names-and-declaration-order).
 
@@ -23,7 +23,7 @@ Import a type outside the prelude when naming it in an annotation or constructor
 
 Explicit standard imports of the source-backed prelude declarations above now fail with `MS2003`. Delete a singleton import; in a grouped import, remove only those names and keep unrelated APIs such as `ListBuilder`, `range`, or `ErrorCategory`. The editor offers a removal quick fix. Application imports, including project aliases to same-named application types, keep their ordinary meaning.
 
-`CollectionError` is now visible in every module. If another visible alternative also defines `InvalidInput`, `LimitExceeded`, or `OutOfRange`, qualify expression constructors as `CollectionError.OutOfRange` or `OtherError.OutOfRange`. Match patterns continue to select cases from their scrutinee type.
+`CollectionError` is now visible in every module. If another visible alternative also defines `InvalidInput`, `LimitExceeded`, or `OutOfRange`, qualify expression constructors as `CollectionError.OutOfRange` or `OtherError.OutOfRange`. The same rule applies to `MissingValue.Missing` and another visible type's `Missing` case. Match patterns continue to select cases from their scrutinee type.
 
 ## Syntax that uses standard types
 

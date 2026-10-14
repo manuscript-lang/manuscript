@@ -44,7 +44,7 @@ func renderModule(module checker.APIModule, forSite bool) string {
 		b.WriteString("These names are available in the prelude; no import required.\n\n")
 		b.WriteString("Explicit imports of these prelude declarations are rejected; remove them from the import.\n\n")
 	} else if module.Path == "@std/errors.ms" {
-		b.WriteString("`Error` is a prelude declaration; explicit imports of it are rejected.\n\n")
+		b.WriteString("`Error` and `MissingValue` are prelude declarations; explicit imports of them are rejected.\n\n")
 		fmt.Fprintf(&b, "Import other names with `import Name from %q`.\n\n", module.Path)
 	} else if module.Path == "@std/collections.ms" {
 		b.WriteString("`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry` are prelude declarations; explicit imports of them are rejected.\n\n")

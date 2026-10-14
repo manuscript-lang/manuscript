@@ -122,6 +122,7 @@ Runs child programs with empty input by default, optional output bounds and time
 ```manuscript
 interface Commands:
     fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(), max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
+    fn spawn(program: String, arguments: List[String]) -> Result[Subprocess, CommandError]
 ```
 
 ### Commands.run
@@ -131,6 +132,14 @@ Output beyond `max_output_bytes` in total across both streams returns OutputLimi
 
 ```manuscript
 fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(), max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
+```
+
+### Commands.spawn
+
+Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess for use with `with`. `arguments` follow the program name; stdin, stdout, and stderr are OS pipes. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+
+```manuscript
+fn spawn(program: String, arguments: List[String]) -> Result[Subprocess, CommandError]
 ```
 
 ## CpuUsage {data-api-kind="Record"}
@@ -781,6 +790,78 @@ fn next() -> Result[Int, ProcessError]
 ```
 
 See the [shutdown cookbook](../../concurrency/shutdown.md) for runnable examples and limitations.
+
+## Subprocess {data-api-kind="Interface"}
+
+A long-lived child process with live stdin, stdout, and stderr pipes. Closing it
+kills the child's process group, joins it, and closes all three streams.
+
+```manuscript
+interface Subprocess:
+    fn stdin() -> WriteStream
+    fn stdout() -> ReadStream
+    fn stderr() -> ReadStream
+    fn wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]
+    fn terminate() -> Unit
+    fn kill() -> Unit
+    fn close() -> Unit
+```
+
+### Subprocess.close
+
+Kills the process group, joins the child, kills leftover group members, and closes all three streams. Idempotent; `with` calls it on scope exit.
+
+```manuscript
+fn close() -> Unit
+```
+
+### Subprocess.kill
+
+Sends SIGKILL to the child's process group. Does not wait.
+
+```manuscript
+fn kill() -> Unit
+```
+
+### Subprocess.stderr
+
+The child's standard error as a ReadStream over the OS pipe, with the same blocking and backpressure behavior as stdout.
+
+```manuscript
+fn stderr() -> ReadStream
+```
+
+### Subprocess.stdin
+
+The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
+
+```manuscript
+fn stdin() -> WriteStream
+```
+
+### Subprocess.stdout
+
+The child's standard output as a ReadStream over the OS pipe; reads block until output or end-of-file, and nothing is buffered without bound.
+
+```manuscript
+fn stdout() -> ReadStream
+```
+
+### Subprocess.terminate
+
+Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it kills the direct process. Does not wait.
+
+```manuscript
+fn terminate() -> Unit
+```
+
+### Subprocess.wait
+
+Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
+
+```manuscript
+fn wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]
+```
 
 ## commands {data-api-kind="Function"}
 

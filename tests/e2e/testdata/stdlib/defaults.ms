@@ -1,6 +1,12 @@
 import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
 import {base64_encode, base64_decode, EncodingError} from "@std/encoding.ms"
-import {Commands, CommandOutput, CommandError, commands} from "@std/process.ms"
+import {
+    Commands,
+    Subprocess,
+    CommandOutput,
+    CommandError,
+    commands
+} from "@std/process.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -22,6 +28,12 @@ impl Commands for Capture:
         self.last = input
         self.calls = self.calls + 1
         return ok(CommandOutput(0, input, "".to_bytes()))
+
+    fn spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]:
+        return error(CommandError.Unavailable)
 
 import Duration from "@std/time.ms"
 
@@ -59,6 +71,12 @@ impl Commands for Override:
         timeout: Optional[Duration]
     ) -> Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))
+
+    fn spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]:
+        return error(CommandError.Unavailable)
 
 test "concrete implementation defaults and interface defaults stay distinct":
     let service = Override("custom".to_bytes())

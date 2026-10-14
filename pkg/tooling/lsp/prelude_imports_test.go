@@ -6,7 +6,7 @@ import (
 )
 
 func TestCollectionSupportPreludeEditorContracts(t *testing.T) {
-	for _, name := range []string{"CollectionError", "ListEntry", "MapEntry", "Equal", "Hashable"} {
+	for _, name := range []string{"CollectionError", "ListEntry", "MapEntry", "MissingValue", "Equal", "Hashable"} {
 		items := completeSource(t, "fn use(value: "+name[:3]+"|) -> Unit: unit\n")
 		item := itemNamed(items, name)
 		if item == nil || len(item.AdditionalTextEdits) != 0 {
@@ -29,7 +29,7 @@ func TestCollectionSupportPreludeEditorContracts(t *testing.T) {
 	}
 	for _, source := range []string{"import |\n", "import {|} from \"@std/equality.ms\"\n", "import {|} from \"@std/errors.ms\"\n", "import {|} from \"@std/collections.ms\"\n"} {
 		items := completeSource(t, source)
-		for _, name := range []string{"Equal", "Hashable", "Error", "List", "Map", "Set", "ListEntry", "MapEntry", "CollectionError"} {
+		for _, name := range []string{"Equal", "Hashable", "Error", "MissingValue", "List", "Map", "Set", "ListEntry", "MapEntry", "CollectionError"} {
 			if itemNamed(items, name) != nil {
 				t.Fatal("offered redundant import", name, source)
 			}
@@ -40,6 +40,7 @@ func TestCollectionSupportPreludeEditorContracts(t *testing.T) {
 func TestRedundantPreludeImportEditorFix(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
 		for _, source := range []string{
+			"import MissingValue from \"@std/errors.ms\" # keep\nfn first(values: List[Int]) -> Result[Int, MissingValue]: values.at(0).ok_or()\n",
 			"import List from \"@std/collections.ms\" # keep\nfn count() -> Int: List[Int]().length()\n",
 			"import {ListBuilder, List} from \"@std/collections.ms\"\nfn count() -> Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n",
 			"import {\n    List, # keep\n    ListBuilder,\n} from \"@std/collections.ms\"\nfn count() -> Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n",
@@ -79,6 +80,21 @@ func TestRedundantPreludeImportEditorFix(t *testing.T) {
 			if strings.Contains(source, "# keep") && !strings.Contains(d.Text, "# keep") {
 				t.Fatal(d.Text)
 			}
+		}
+	}
+}
+
+func TestMissingValuePreludeNavigation(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		source := strings.ReplaceAll("fn first(values: List[Int]) -> Result[Int, MissingValue]: values.at(0).ok_or()\n", "\n", newline)
+		d := document{"file:///tmp/missing-prelude.ms", source, 1}
+		checked := analyze(d, map[string]document{d.URI: d})
+		if !checked.Success() {
+			t.Fatal(checked.Diagnostics)
+		}
+		target := navigation(checked, d, Position(source, strings.Index(source, "MissingValue")), "textDocument/definition")
+		if target == nil || target.([]any)[0].(map[string]any)["uri"] != "manuscript-stdlib:///errors.ms" {
+			t.Fatal(target)
 		}
 	}
 }

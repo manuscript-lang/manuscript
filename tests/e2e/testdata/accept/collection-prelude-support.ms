@@ -12,6 +12,8 @@ fn group[T, K: Hashable](values: List[T], key: fn(value: T) -> K) -> Map[K, List
 
 fn index[T: Equal](values: List[T], value: T) -> Optional[Int]: values.index_of(value)
 
+fn first(values: List[Int]) -> Result[Int, MissingValue]: values.at(0).ok_or()
+
 fn unique[T: Hashable](values: List[T]) -> Set[T]: values.to_set()
 
 fn explain(cause: CollectionError) -> String:
@@ -51,6 +53,14 @@ test "public collection support types retain their standard runtime identities":
         "Hashable bounds"
     )
     if index(values, 4).unwrap() != 1: return panic("Equal receiver bound")
+
+    let absent: Result[Int, MissingValue] = first([])
+    let missing: MissingValue = absent.unwrap_error()
+    let common: Error = missing
+    if not common.message().contains("collection-prelude-support.ms:"): return panic(
+        "default error location"
+    )
+    if first(values).unwrap() != 3: return panic("present default conversion")
 
 type OtherError:
     case OutOfRange
