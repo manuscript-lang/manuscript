@@ -1026,6 +1026,9 @@ func needHint(kind string, found lexer.Token) string {
 	case "(":
 		return "; a call or parameter list starts with '('"
 	case "from":
+		if found.Kind == "," {
+			return "; to import several names, write import {a, b} from \"path.ms\""
+		}
 		return "; imports read: import name from \"path.ms\""
 	case lexer.Name:
 		if found.Kind == "case" {
