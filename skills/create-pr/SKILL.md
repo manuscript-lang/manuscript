@@ -24,3 +24,10 @@ Start from `.github/pull_request_template.md` and put these four sections first,
 - Flag public API, diagnostic, manifest, or artifact changes and any migration.
 - Keep skills, `.experts/` entries, and discovery links in sync when the change touches them (see [manuscript-change](../manuscript-change/SKILL.md#record-durable-lessons)).
 - Do not merge with failing checks. Fix the cause; never skip or disable a test.
+
+## Merging
+
+- Open every PR ready for review, not as a draft, and enable squash auto-merge in the same step so it lands when required checks pass. The owner does not review PRs; an independent reviewer subagent challenges a structural proposal before implementation (see [AGENTS.md](../../AGENTS.md#shared-guidance-and-checks)).
+- Auto-merge only waits for green CI, so keep the PR green: watch it, merge or rebase `main` on conflicts, and fix failures from the cause rather than re-running.
+- A merge queue may be required. Do not bypass it or merge by hand while checks are pending.
+- Keep a PR small enough that its CI stays meaningful: the Go suite runs in three shards, so a PR that touches many packages waits on the slowest shard.

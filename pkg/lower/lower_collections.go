@@ -44,6 +44,9 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 	case "append":
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
 			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
+			if typ := primitiveEqualityType(g.program.Info(e.Left.Left).Type.Args[0]); typ != "" {
+				return g.locatedOperation(e, runtimeName("ListAppend"+primitiveKinds[typ]), ident("ctx"), receiver, g.scalar(arguments[0].Value, typ))
+			}
 			return g.locatedOperation(e, runtimeName("ListAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/StringBuilder" {

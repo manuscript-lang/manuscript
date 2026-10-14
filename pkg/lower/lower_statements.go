@@ -180,6 +180,10 @@ func (g *generator) loop(s *syntax.Statement) []ast.Stmt {
 	g.loopCleanup = append(g.loopCleanup, len(g.cleanups))
 	label := &loopLabel{name: g.temp(), depth: g.expressionDepth}
 	g.loopLabels = append(g.loopLabels, label)
+	element := ""
+	if s.Kind != syntax.KindWhile {
+		element = g.declareTyped(g.program.LoopBinding(s))
+	}
 	body := g.loopBody(s.Body, label)
 	g.loopCleanup = g.loopCleanup[:len(g.loopCleanup)-1]
 	g.loopLabels = g.loopLabels[:len(g.loopLabels)-1]
@@ -193,7 +197,8 @@ func (g *generator) loop(s *syntax.Statement) []ast.Stmt {
 		b := g.program.LoopBinding(s)
 		index := g.temp()
 		body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("PollIndex", ident("ctx"), ident(index)))}, body...)
-		loop = &ast.RangeStmt{Key: ident(index), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
+		iterate := "Iterate" + primitiveKinds[element]
+		loop = &ast.RangeStmt{Key: ident(index), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall(iterate, g.expression(s.Value)), Body: block(body...)}
 	}
 	if label.used {
 		loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
