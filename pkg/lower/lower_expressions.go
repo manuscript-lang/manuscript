@@ -8,11 +8,10 @@ import (
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-func (g *generator) arguments(args []ir.Argument) ast.Expr {
+func (g *generator) arguments(args []syntax.Argument) ast.Expr {
 	var values []ast.Expr
 	for _, a := range args {
 		// Go orders calls, but a later argument can mutate a plain local value.
@@ -22,18 +21,18 @@ func (g *generator) arguments(args []ir.Argument) ast.Expr {
 	}
 	return sliceLiteral(runtimeName("Argument"), values...)
 }
-func (g *generator) argumentValue(a ir.Argument) ast.Expr {
-	value := g.irValue(a.Value)
-	if target := a.Optional; target != nil {
+func (g *generator) argumentValue(a syntax.Argument) ast.Expr {
+	value := g.expression(a.Value)
+	if target := g.program.Info(a.Value).OptionalArgument; target != nil {
 		value = runtimeCall("NewAlternative", g.key(target), textLiteral("some"), stringSlice([]string{"value"}), sliceLiteral(runtimeName("Argument"), composite(nil, keyed("Name", textLiteral("value")), keyed("Value", value))))
 	}
 	return value
 }
 func (g *generator) expression(e *syntax.Expression) ast.Expr {
-	if value, ok := g.ir.Bool(e); ok {
-		return ident(strconv.FormatBool(value))
-	}
 	info := g.program.Info(e)
+	if info != nil && info.Folded {
+		return ident(strconv.FormatBool(info.Constant))
+	}
 	if info.ErrorSource == nil {
 		return g.expressionValue(e, info)
 	}
@@ -56,14 +55,11 @@ func (g *generator) expression(e *syntax.Expression) ast.Expr {
 }
 func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) ast.Expr {
 	if info.Native == "index" {
-		return locatedAt(e.Pos, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
-	}
-	if value := g.ir.Value(e, info); value != nil {
-		return g.irValue(value)
+		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	}
 	switch e.Kind {
 	case syntax.KindIndex:
-		return locatedAt(e.Pos, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
+		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	case syntax.KindMatch:
 		g.expressionDepth++
 		body := g.match(e.Left, e.Arms, func(a *syntax.Arm) []ast.Stmt {
@@ -77,10 +73,34 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		g.expressionDepth--
 		body = append(body, returned(runtimeCall("Panic", textLiteral("runtime invariant: exhaustive match"))))
 		return call(closure(nil, runtimeName("Value"), body...))
+	case syntax.KindNumber:
+		if strings.HasSuffix(e.Text, "d") {
+			return runtimeCall("DecimalLiteral", textLiteral(e.Text))
+		}
+		if strings.ContainsAny(e.Text, ".eE") {
+			value, _ := strconv.ParseFloat(e.Text, 64)
+			return call(ident("float64"), &ast.BasicLit{Kind: token.FLOAT, Value: strconv.FormatFloat(value, 'g', -1, 64)})
+		}
+		value, _ := strconv.ParseInt(e.Text, 10, 64)
+		return call(ident("int64"), signedInteger(strconv.FormatInt(value, 10)))
+	case syntax.KindBool:
+		return ident(e.Text)
+	case syntax.KindUnit:
+		return unit()
+	case syntax.KindText:
+		var values []ast.Expr
+		for _, p := range e.Parts {
+			if p.Value != nil {
+				values = append(values, runtimeCall("Format", g.expression(p.Value)))
+			} else {
+				values = append(values, textLiteral(p.Text))
+			}
+		}
+		return runtimeCall("Text", values...)
 	case syntax.KindName, syntax.KindApply:
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
 			member := e.Left
-			return g.methodDefaults(info.Method, g.nativeReceiver(g.expression(member.Left), member.Text, g.program.Info(member.Left).Type, info))
+			return g.methodDefaults(info.Method, g.nativeReceiverMember(member, info))
 		}
 		if info.Binding != nil {
 			return g.binding(info.Binding)
@@ -98,14 +118,148 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if info.Constructor != nil {
 			return runtimeCall("NewAlternative", g.key(info.Constructor), textLiteral(info.Case), ident("nil"), ident("nil"))
 		}
-	case syntax.KindUnary:
-		// Only try reaches here: every other prefix operator is an IR node.
-		args := []ast.Expr{g.expression(e.Right)}
-		if info.ScopedPropagation {
-			args = append(args, g.typeScope(info.PropagatedError))
+	case syntax.KindMember:
+		if info.Constructor != nil {
+			return runtimeCall("NewAlternative", g.key(info.Constructor), textLiteral(info.Case), ident("nil"), ident("nil"))
 		}
-		g.recovers = true
-		return runtimeCall("Try", args...)
+		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
+			return g.methodDefaults(info.Method, g.nativeReceiverMember(e, info))
+		}
+		if info.Method != nil {
+			return g.methodDefaults(info.Method, runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Info(e.Left).Type)))
+		}
+		if info.Native != "" {
+			if info.Native == "milliseconds" || info.Native == "seconds" || info.Native == "minutes" {
+				return g.locatedOperation(e, runtimeName("NativeMember"), g.expression(e.Left), textLiteral(e.Text))
+			}
+			return runtimeCall("NativeMember", g.expression(e.Left), textLiteral(e.Text))
+		}
+		if st, _ := g.structFieldOf(e); st != nil {
+			return call(selector(g.structOperand(st, e.Left), "Get_"+e.Text))
+		}
+		return runtimeCall("Field", g.expression(e.Left), textLiteral(e.Text))
+	case syntax.KindCall:
+		if info.Constructor != nil && info.Native == "view" {
+			// Select the view path before lowering ordinary call arguments.
+			// Lowering a discarded receiver tree would strand source markers
+			// and other generator state from its nested callable/match bodies.
+			receiver := e.Args[0].Value
+			return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.program.Info(receiver).Type))
+		}
+		arguments := e.Args
+		if info.Arguments != nil {
+			arguments = info.Arguments
+		}
+		if value := g.directCollectionCall(e, arguments); value != nil {
+			return value
+		}
+		if value := g.directCall(e); value != nil {
+			return value
+		}
+		if value := g.preparedSourceCall(e, arguments); value != nil {
+			return value
+		}
+		if value := g.preparedMethodCall(e, arguments); value != nil {
+			return value
+		}
+		if info.Constructor != nil && info.Native != "view" && info.Case != "" {
+			labels := g.caseLabels(info)
+			if fields := g.alternativeFields(labels, arguments); fields != nil {
+				return composite(runtimeName("Alternative"), keyed("Type", g.key(info.Type)), keyed("Tag", textLiteral(info.Case)), keyed("Fields", sliceLiteral(runtimeName("Value"), fields...)))
+			}
+		}
+		if info.Constructor != nil && info.Native != "view" && info.Case == "" {
+			if st := g.structFor(info.Constructor); st != nil && !recordDefaults(info.Constructor.Def.Symbol.Decl) {
+				if value := g.constructStruct(st, arguments); value != nil {
+					return value
+				}
+			}
+		}
+		args := g.arguments(arguments)
+		if info.Constructor != nil {
+			if info.Case != "" {
+				return runtimeCall("NewAlternative", g.key(info.Type), textLiteral(info.Case), stringSlice(g.caseLabels(info)), args)
+			}
+			if symbol := info.Constructor.Def.Symbol; recordDefaults(symbol.Decl) && (symbol.Native == "" || g.program.ParameterBindings(symbol.Decl) != nil) {
+				if symbol.Native != "" {
+					if len(arguments) == len(symbol.Decl.Fields) {
+						return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
+					}
+					callable := g.lazyValue("native constructor/"+symbol.ID, g.declaredFunction(symbol))
+					return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
+				}
+				var callable ast.Expr = ident(symbol.ID)
+				if len(symbol.Variables) > 0 {
+					callable = g.specialize(symbol, info.Constructor.Args)
+				}
+				return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
+			}
+			return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
+		}
+		var callable ast.Expr
+		if info.Symbol != nil {
+			if info.Symbol.Native != "" {
+				callable = g.nativeDefaults(info.Symbol.Decl, g.program.Info(e.Left).Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)), arguments)
+			} else {
+				callable = ident(info.Symbol.ID)
+				if len(info.Symbol.Variables) > 0 {
+					callable = g.specialize(info.Symbol, info.TypeArgs)
+				}
+			}
+		} else {
+			// Capture a dynamic callable before arguments that may replace it.
+			callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.methodCallable(e.Left, arguments))
+		}
+		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
+	case syntax.KindList:
+		if value := g.debugListLiteral(e, info.Type); value != nil {
+			return value
+		}
+		var elements []ast.Expr
+		for _, item := range e.Elements {
+			elements = append(elements, g.expression(item))
+		}
+		return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
+	case syntax.KindMap:
+		var entries []ast.Expr
+		for at := 0; at < len(e.Elements); at += 2 {
+			entries = append(entries, composite(nil, keyed("Key", g.expression(e.Elements[at])), keyed("Value", g.expression(e.Elements[at+1]))))
+		}
+		return g.locatedOperation(e, runtimeName("MapLiteral"), ident("ctx"), g.key(info.Type), sliceLiteral(runtimeName("Entry"), entries...), g.typeScope(info.Type))
+	case syntax.KindUnary:
+		if e.Text == "try" {
+			args := []ast.Expr{g.expression(e.Right)}
+			if info.ScopedPropagation {
+				args = append(args, g.typeScope(info.PropagatedError))
+			}
+			g.recovers = true
+			return runtimeCall("Try", args...)
+		}
+		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
+			return call(ident("int64"), signedInteger("-9223372036854775808"))
+		}
+		if e.Text == "not" {
+			return &ast.UnaryExpr{Op: token.NOT, X: paren(g.condition(e.Right))}
+		}
+		return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
+	case syntax.KindBinary:
+		if e.Text == "and" || e.Text == "or" {
+			op := token.LAND
+			if e.Text == "or" {
+				op = token.LOR
+			}
+			return &ast.BinaryExpr{X: paren(g.condition(e.Left)), Op: op, Y: paren(g.condition(e.Right))}
+		}
+		if e.Text == "==" || e.Text == "!=" {
+			if value := g.primitiveEquality(e); value != nil {
+				return value
+			}
+			return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.program.Info(e.Left).Type))
+		}
+		if value := g.numericBinary(e); value != nil {
+			return value
+		}
+		return g.locatedOperation(e, runtimeName("Binary"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right))
 	case syntax.KindLambda:
 		captures := append([]*checker.Binding{}, info.Captures...)
 		sort.Slice(captures, func(i, j int) bool { return captures[i].ID < captures[j].ID })
@@ -136,13 +290,13 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 	panic("missing lowering for " + e.Kind)
 }
 
-// locatedAt updates the active frame only after evaluating its operands.
+// locatedOperation updates the active frame only after evaluating its operands.
 // Nested calls can therefore report their own sites without hiding this call site
 // when they succeed. SourceAt inlines to an assignment; no expression closures or
 // per-operation recovery are needed.
-func locatedAt(pos syntax.Position, operation ast.Expr, args ...ast.Expr) ast.Expr {
+func (g *generator) locatedOperation(e *syntax.Expression, operation ast.Expr, args ...ast.Expr) ast.Expr {
 	last := len(args) - 1
-	args[last] = sourceAt(pos, args[last])
+	args[last] = sourceAt(e.Pos, args[last])
 	return call(operation, args...)
 }
 func sourceAt(pos syntax.Position, value ast.Expr) ast.Expr {
@@ -171,7 +325,7 @@ func (g *generator) caseLabels(info *checker.Info) []string {
 // alternativeFields lowers constructor arguments straight into the payload
 // slice when they are supplied once each, in payload order. Anything else
 // returns nil without lowering, leaving NewAlternative to match labels.
-func (g *generator) alternativeFields(labels []string, args []ir.Argument) []ast.Expr {
+func (g *generator) alternativeFields(labels []string, args []syntax.Argument) []ast.Expr {
 	if len(args) != len(labels) {
 		return nil
 	}

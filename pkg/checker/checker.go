@@ -69,9 +69,6 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 	modules, dependencyDiagnostics := sourceStandardDependencies(modules)
 	p := newProgram(modules)
 	p.Diagnostics = dependencyDiagnostics
-	if standardDefaults != nil {
-		p.adoptStandardDefaults(standardDefaults)
-	}
 	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}
 	for _, module := range modules {
 		for _, d := range module.Declarations {
@@ -84,65 +81,45 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 		return p
 	}
 	p.Methods = append(p.Methods, standardImplementations...)
-	for _, module := range modules {
-		c.checkModule(module, imports)
+	if standardChecked != nil {
+		// Bundled source modules were checked once at load; adopt that result and
+		// continue numbering generated identities after theirs.
+		c.serial = standardChecked.serial
 	}
+	var checked []*syntax.Module
+	for _, module := range modules {
+		if standardChecked != nil && standardSourceModules[module.File] == module {
+			c.adoptChecked(module)
+			continue
+		}
+		c.checkModule(module, imports)
+		checked = append(checked, module)
+	}
+	foldConstants(checked)
 	c.finiteTypeApplications()
 	c.finiteApplications()
 	c.Diagnostics = uniqueDiagnostics(c.Diagnostics)
 	if len(c.Diagnostics) == 0 {
 		c.effectSummaries()
 	}
+	p.serial = c.serial
 	return p
-}
-
-// adoptStandardDefaults shares the immutable checked native defaults. Analysis
-// maps themselves remain program-local, and the binding IDs have a separate namespace.
-func (p *Program) adoptStandardDefaults(defaults *Program) {
-	// Immutable checked native defaults are shared; analysis maps themselves
-	// remain program-local. Their binding IDs have a separate namespace.
-	for e, info := range defaults.expressions {
-		p.expressions[e] = info
-	}
-	for d, bindings := range defaults.parameters {
-		p.parameters[d] = bindings
-	}
-	for e, bindings := range defaults.lambdaParameters {
-		p.lambdaParameters[e] = bindings
-	}
-	for pattern, binding := range defaults.bindings {
-		p.bindings[pattern] = binding
-	}
-	for s, binding := range defaults.loopBindings {
-		p.loopBindings[s] = binding
-	}
-	for arm, bindings := range defaults.armBindings {
-		p.armBindings[arm] = bindings
-	}
-	for arm, typ := range defaults.contractPatterns {
-		p.contractPatterns[arm] = typ
-	}
-	for s, method := range defaults.cleanups {
-		p.cleanups[s] = method
-	}
-	for s, flow := range defaults.flow {
-		p.flow[s] = flow
-	}
-	for e, binding := range defaults.assignments {
-		p.assignments[e] = binding
-	}
-	for e, scope := range defaults.scopes {
-		p.scopes[e] = scope
-	}
-	for arm, conflicts := range defaults.armNameConflicts {
-		p.armNameConflicts[arm] = conflicts
-	}
-
 }
 
 // checkModule runs the declaration passes for one module in dependency order:
 // imports and names first, then type variables, signatures, implementations,
 // defaults, and finally bodies.
+// adoptChecked takes a bundled module's symbols and methods from the load-time
+// check; its tree already carries every fact.
+func (c *checker) adoptChecked(module *syntax.Module) {
+	c.symbols[module.File] = standardChecked.symbols[module.File]
+	for _, m := range standardSourceMethods {
+		if m.Module == module.File {
+			c.Methods = append(c.Methods, m)
+		}
+	}
+}
+
 func (c *checker) checkModule(module *syntax.Module, imports map[*syntax.Import]string) {
 	p := c.Program
 	c.module = module
@@ -318,7 +295,7 @@ func (c *checker) checkBodies(module *syntax.Module) {
 }
 
 func newProgram(modules []*syntax.Module) *Program {
-	return &Program{flow: map[*syntax.Statement]Flow{}, typeReferences: map[*syntax.Type]*Type{}, scopes: map[*syntax.Expression]ScopeState{}, cleanups: map[*syntax.Statement]*Method{}, Modules: modules, symbols: map[string]map[string]*Symbol{}, expressions: map[*syntax.Expression]*Info{}, bindings: map[*syntax.Pattern]*Binding{}, loopBindings: map[*syntax.Statement]*Binding{}, armBindings: map[*syntax.Arm][]*Binding{}, contractPatterns: map[*syntax.Arm]*Type{}, armNameConflicts: map[*syntax.Arm][]*Info{}, parameters: map[*syntax.Declaration][]*Binding{}, lambdaParameters: map[*syntax.Expression][]*Binding{}, assignments: map[*syntax.Expression]*Binding{}, self: map[*syntax.Declaration]*Binding{}}
+	return &Program{Modules: modules, symbols: map[string]map[string]*Symbol{}}
 }
 func (c *checker) unique(prefix string) string {
 	c.serial++
@@ -438,7 +415,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 	if len(r.Args) != arity {
 		c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments, found %d; write %s", base.Name, arity, len(r.Args), typeSketch(base.Name, arity)))
 	}
-	c.typeReferences[t] = &r
+	t.Fact = &r
 	return &r
 }
 func (c *checker) params(params []syntax.Parameter) []Param {
@@ -489,7 +466,7 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 		c.testFunction = c.function
 	}
 	if receiver != nil {
-		c.self[d] = c.bind("self", receiver, false, d.Pos)
+		setSelf(d, c.bind("self", receiver, false, d.Pos))
 	}
 	c.checkParameters(d, d.Params, t.Params)
 	fall, _ := c.block(d.Body, false)
@@ -527,7 +504,7 @@ func (c *checker) checkParameters(d *syntax.Declaration, params []syntax.Paramet
 		if i < len(params) && params[i].Default != nil {
 			c.expression(params[i].Default, p.Type)
 		}
-		c.parameters[d] = append(c.parameters[d], c.bind(p.Name, p.Type, false, pos))
+		setParameters(d, append(parametersOf(d), c.bind(p.Name, p.Type, false, pos)))
 	}
 }
 func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks bool) {
@@ -547,7 +524,7 @@ func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks boo
 	return
 }
 func (c *checker) statement(s *syntax.Statement) (fall, breaks bool) {
-	defer func() { c.flow[s] = Flow{fall} }()
+	defer func() { setFlow(s, Flow{fall}) }()
 	return c.checkStatement(s)
 }
 func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
@@ -571,7 +548,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		if s.Target != nil {
 			target := c.expression(s.Target, nil)
 			target.Write = true
-			receiver := c.expressions[s.Target.Left]
+			receiver := infoOf(s.Target.Left)
 			if !opaqueField(receiver, s.Target.Text) && (receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || (receiver.Symbol != nil && receiver.Symbol.Kind == syntax.KindType) || target.Method != nil) {
 				c.error(s.Target.Pos, "type", "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'")
 			}
@@ -588,7 +565,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			c.expression(s.Value, nil)
 			return true, false
 		}
-		c.assignments[s.Value] = b
+		setAssigned(s.Value, b)
 		if !b.Mutable {
 			c.error(s.Pos, "type", "cannot assign immutable binding "+s.Name+"; declare it with 'var "+s.Name+" = ...' instead of 'let'")
 		}
@@ -667,7 +644,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		}
 		old := c.scope
 		c.scope = newScope(old)
-		c.loopBindings[s] = c.bind(s.Name, element, false, s.Pos)
+		setLoopBinding(s, c.bind(s.Name, element, false, s.Pos))
 		c.loops++
 		c.block(s.Body, false)
 		c.loops--
@@ -690,13 +667,13 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			}
 		}
 		if len(candidates) == 1 {
-			c.cleanups[s] = candidates[0]
+			setCleanup(s, candidates[0])
 		} else if len(candidates) > 1 {
 			c.error(s.Pos, "type", "with cleanup operation is ambiguous; wrap the value in an explicit contract view, e.g. Closeable(value: x)")
 		}
 		old := c.scope
 		c.scope = newScope(old)
-		c.loopBindings[s] = c.bind(s.Name, i.Type, false, s.Pos)
+		setLoopBinding(s, c.bind(s.Name, i.Type, false, s.Pos))
 		fall, br := c.block(s.Body, false)
 		c.scope = old
 		return !i.NoReturn && fall, i.Breaks || br
@@ -706,7 +683,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable bool, source *syntax.Expression) {
 	switch p.Kind {
 	case syntax.KindName:
-		c.bindings[p] = c.bind(p.Name, t, mutable, p.Pos)
+		p.Fact = c.bind(p.Name, t, mutable, p.Pos)
 	case syntax.KindRecord:
 		if t.Kind != syntax.KindRecord {
 			c.error(p.Pos, "type", "record binding requires a record; destructure only record values, or bind the whole value to one name")
@@ -761,7 +738,7 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 	wildcard, unknownCase := false, false
 	for index := range arms {
 		arm := &arms[index]
-		c.armBindings[arm] = nil
+		setArmBindings(arm, nil)
 		name := arm.Path.Text
 		fields := []Param{}
 		if name == "_" {
@@ -807,7 +784,7 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 			if name != "_" && i < len(fields) {
 				b = c.bind(name, fields[i].Type, false, arm.Pos)
 			}
-			c.armBindings[arm] = append(c.armBindings[arm], b)
+			setArmBindings(arm, append(armBindingsOf(arm), b))
 		}
 		a, br := body(arm)
 		fall = fall || a
@@ -826,7 +803,7 @@ func (c *checker) matchContract(pos syntax.Position, arms []syntax.Arm, info *In
 	wildcard, fall, breaks := false, false, false
 	for index := range arms {
 		arm := &arms[index]
-		c.armBindings[arm] = nil
+		setArmBindings(arm, nil)
 		var target *Type
 		if arm.Path.Text == "_" {
 			if wildcard || index != len(arms)-1 {
@@ -851,12 +828,12 @@ func (c *checker) matchContract(pos syntax.Position, arms []syntax.Arm, info *In
 					c.error(arm.Pos, "type", "duplicate or unreachable concrete type pattern; match each type once and before '_'")
 				}
 				seen[key] = true
-				c.contractPatterns[arm] = target
+				setContractPattern(arm, target)
 				name := arm.Path
 				if name.Kind == syntax.KindApply {
 					name = name.Left
 				}
-				c.expressions[name] = &Info{Type: target, Symbol: target.Def.Symbol}
+				setInfo(name, &Info{Type: target, Symbol: target.Def.Symbol})
 			}
 			if len(arm.Names) != 1 {
 				c.error(arm.Pos, "type", "concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'")
@@ -870,7 +847,7 @@ func (c *checker) matchContract(pos syntax.Position, arms []syntax.Arm, info *In
 			if name != "_" && target != nil {
 				binding = c.bind(name, target, false, arm.Pos)
 			}
-			c.armBindings[arm] = append(c.armBindings[arm], binding)
+			setArmBindings(arm, append(armBindingsOf(arm), binding))
 		}
 		a, br := body(arm)
 		fall, breaks = fall || a, breaks || br
@@ -909,7 +886,7 @@ func (c *checker) typeExpression(e *syntax.Expression) *Type {
 		if s := c.names[e.Text]; s != nil && s.Kind == syntax.KindType {
 			// Constructor and qualified-case names bypass expression inference.
 			// Retain their resolved identity for import usage and navigation.
-			c.expressions[e] = &Info{Type: s.Type, Symbol: s}
+			setInfo(e, &Info{Type: s.Type, Symbol: s})
 			return s.Type
 		}
 	}
@@ -1035,7 +1012,7 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type, statemen
 			}
 			fall = fall || normal
 		}
-		scrutinee := c.expressions[e.Left]
+		scrutinee := infoOf(e.Left)
 		return &Info{Type: primitive("Unit"), NoReturn: scrutinee.NoReturn || !fall, Breaks: scrutinee.Breaks || (!scrutinee.NoReturn && breaks)}
 	}
 	result := expected
@@ -1101,7 +1078,7 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type, statemen
 		c.Diagnostics = c.Diagnostics[:checkpoint]
 		return discard()
 	}
-	scrutinee := c.expressions[e.Left]
+	scrutinee := infoOf(e.Left)
 	return &Info{Type: result, NoReturn: scrutinee.NoReturn || !fall, Breaks: scrutinee.Breaks || (!scrutinee.NoReturn && breaks)}
 }
 

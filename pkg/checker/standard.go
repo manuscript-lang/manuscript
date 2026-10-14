@@ -15,15 +15,17 @@ import (
 var standardSymbols map[string]*Symbol
 var standardModules map[string]map[string]*Symbol
 var standardSources []*syntax.Module
-var standardTypeReferences map[*syntax.Type]*Type
 var intrinsicOperations map[string]*Type
 var standardImplementations []*Method
 var standardSourceModules = map[string]*syntax.Module{}
 var standardSourceMethods []*Method
+
+// standardChecked is the one check of every bundled source module. Programs
+// share its tree annotations, symbols, and methods instead of checking again.
+var standardChecked *Program
 var standardOperationVariables = map[string][]*Type{}
 var standardReceiverBindings map[string]string
 var standardReceiverRequirements map[string][]receiverRequirement
-var standardDefaults *Program
 
 type receiverRequirement struct {
 	Variable, Constraint *Type
@@ -311,7 +313,6 @@ func loadStandardSources() error {
 	if len(c.Diagnostics) > 0 {
 		return fmt.Errorf("invalid standard declarations: %v", c.Diagnostics)
 	}
-	standardTypeReferences = c.typeReferences
 	for receiver, name := range bindings.IntrinsicReceivers {
 		typ := standardSymbols[name]
 		if typ == nil {
@@ -389,7 +390,13 @@ func loadStandardSources() error {
 			}
 		}
 	}
-	standardDefaults = c.Program
+	var nativeModules []*syntax.Module
+	for _, module := range standardSources {
+		if standardSourceModules[module.File] == nil {
+			nativeModules = append(nativeModules, module)
+		}
+	}
+	foldConstants(nativeModules)
 	if len(c.Diagnostics) > 0 {
 		return fmt.Errorf("invalid standard defaults: %v", c.Diagnostics)
 	}
@@ -414,10 +421,8 @@ func loadStandardSources() error {
 			}
 		}
 	}
-	for ref, typ := range program.typeReferences {
-		standardTypeReferences[ref] = typ
-	}
 	standardSourceMethods = program.Methods[len(standardImplementations):]
+	standardChecked = program
 	return nil
 }
 
@@ -466,7 +471,7 @@ func (c *checker) closedInterfaceDefault(e *syntax.Expression) bool {
 	case syntax.KindBool, syntax.KindNumber, syntax.KindUnit:
 		return true
 	case syntax.KindName:
-		info := c.expressions[e]
+		info := infoOf(e)
 		return e.Text == "none" && info != nil && info.Binding == nil && info.Constructor != nil && info.Constructor.ID == "@std/Optional" && info.Case == "none"
 	case syntax.KindText:
 		for _, part := range e.Parts {
@@ -477,7 +482,7 @@ func (c *checker) closedInterfaceDefault(e *syntax.Expression) bool {
 		return true
 	case syntax.KindCall:
 		if e.Left.Kind == syntax.KindMember && len(e.Args) == 0 {
-			info := c.expressions[e.Left]
+			info := infoOf(e.Left)
 			return info != nil && info.Method != nil && info.Method.Native == "to_bytes" && info.Method.Receiver.ID == "String" && c.closedInterfaceDefault(e.Left.Left)
 		}
 	}
@@ -535,9 +540,13 @@ func StandardModules() []*syntax.Module {
 // Callers may change the returned map, but must not mutate the shared types.
 func StandardTypeReferences() map[*syntax.Type]*Type {
 	ensureStandard()
-	out := make(map[*syntax.Type]*Type, len(standardTypeReferences))
-	for ref, typ := range standardTypeReferences {
-		out[ref] = typ
+	out := map[*syntax.Type]*Type{}
+	for _, module := range standardSources {
+		syntax.Nodes{Type: func(t *syntax.Type) {
+			if resolved, ok := t.Fact.(*Type); ok {
+				out[t] = resolved
+			}
+		}}.Module(module)
 	}
 	return out
 }

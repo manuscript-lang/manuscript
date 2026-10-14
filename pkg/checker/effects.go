@@ -40,7 +40,7 @@ func (c *checker) effectSummaries() {
 				if statement.Kind != syntax.KindWith {
 					return
 				}
-				method := c.cleanups[statement]
+				method := cleanupOf(statement)
 				if method != nil && method.ID != "" {
 					n.edges[method.ID] = true
 				} else if method != nil && std(method.Receiver, "SynchronizedGuard") {
@@ -50,11 +50,11 @@ func (c *checker) effectSummaries() {
 				}
 			},
 			Expression: func(expression *syntax.Expression) {
-				if info := c.expressions[expression]; info != nil && info.Native == "index" {
+				if info := infoOf(expression); info != nil && info.Native == "index" {
 					add(n, "read")
 				}
 				if expression.Kind == syntax.KindMember {
-					if receiver := c.expressions[expression.Left]; receiver != nil && receiver.Type.Kind == syntax.KindRecord && c.expressions[expression].Method == nil {
+					if receiver := infoOf(expression.Left); receiver != nil && receiver.Type.Kind == syntax.KindRecord && infoOf(expression).Method == nil {
 						add(n, "read")
 					}
 				}
@@ -65,7 +65,7 @@ func (c *checker) effectSummaries() {
 				if expression.Kind != syntax.KindCall {
 					return
 				}
-				info := c.expressions[expression]
+				info := infoOf(expression)
 				if info == nil {
 					add(n, "unknown")
 					return

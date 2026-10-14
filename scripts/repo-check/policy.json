@@ -77,16 +77,11 @@
       "pkg/project"
     ],
     "internal/debugger": [],
-    "pkg/ir": [
-      "pkg/syntax",
-      "pkg/checker"
-    ],
     "pkg/lower": [
       "pkg/syntax",
       "pkg/lexer",
       "pkg/checker",
-      "pkg/frontend",
-      "pkg/ir"
+      "pkg/frontend"
     ],
     "pkg/build": [
       ".",
@@ -99,7 +94,6 @@
       "pkg/runtime",
       "pkg/frontend",
       "pkg/compiler",
-      "pkg/ir",
       "pkg/lower"
     ]
   },
@@ -111,7 +105,6 @@
     "pkg/checker",
     "pkg/project",
     "pkg/compiler",
-    "pkg/ir",
     "pkg/lower",
     "pkg/build",
     "pkg/runtime",

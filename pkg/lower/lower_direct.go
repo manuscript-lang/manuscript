@@ -5,7 +5,6 @@ import (
 	"go/token"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -133,11 +132,11 @@ func zeroScalar(typ string) ast.Expr {
 
 // directTarget returns the direct function a call invokes with every argument
 // in declaration order and exactly typed, or nil.
-func (g *generator) directTarget(x ir.Call) *directFunction {
-	if g.direct == nil {
+func (g *generator) directTarget(e *syntax.Expression) *directFunction {
+	if e.Kind != syntax.KindCall || g.direct == nil {
 		return nil
 	}
-	info := x.Info
+	info := g.program.Info(e)
 	if info.Symbol == nil || info.Constructor != nil || info.ErrorSource != nil {
 		return nil
 	}
@@ -145,7 +144,10 @@ func (g *generator) directTarget(x ir.Call) *directFunction {
 	if direct == nil {
 		return nil
 	}
-	args := x.Args
+	args := e.Args
+	if info.Arguments != nil {
+		args = info.Arguments
+	}
 	params := info.Symbol.Type.Params
 	if len(args) != len(params) {
 		return nil
@@ -154,42 +156,46 @@ func (g *generator) directTarget(x ir.Call) *directFunction {
 		if arg.Name != params[i].Name {
 			return nil
 		}
-		if typ := direct.params[i]; typ != "" && primitiveEqualityType(arg.Type) != typ {
+		if typ := direct.params[i]; typ != "" && primitiveEqualityType(g.program.Info(arg.Value).Type) != typ {
 			return nil
 		}
 	}
 	return direct
 }
 
-func (g *generator) directCall(x ir.Call) ast.Expr {
-	direct := g.directTarget(x)
+func (g *generator) directCall(e *syntax.Expression) ast.Expr {
+	direct := g.directTarget(e)
 	if direct == nil {
 		return nil
 	}
-	args := x.Args
+	info := g.program.Info(e)
+	args := e.Args
+	if info.Arguments != nil {
+		args = info.Arguments
+	}
 	values := []ast.Expr{ident("ctx")}
 	for i, arg := range args {
 		var value ast.Expr
 		if typ := direct.params[i]; typ != "" {
-			value = g.irScalar(arg.Value, typ)
+			value = g.scalar(arg.Value, typ)
 		} else {
 			value = g.argumentValue(arg)
 		}
 		// A later match argument can reassign a local used by an earlier
 		// argument. Force each value's capture before evaluating the next,
 		// unless nothing after it can run code.
-		if g.irFree(arg.Value) && g.restFree(args[i+1:]) {
+		if g.exprFree(arg.Value) && g.restFree(args[i+1:]) {
 			values = append(values, value)
 		} else {
 			values = append(values, sourceAt(arg.Pos, value))
 		}
 	}
-	return locatedAt(x.Pos, ident(direct.name), values...)
+	return g.locatedOperation(e, ident(direct.name), values...)
 }
 
-func (g *generator) restFree(args []ir.Argument) bool {
+func (g *generator) restFree(args []syntax.Argument) bool {
 	for _, a := range args {
-		if !g.irFree(a.Value) {
+		if !g.exprFree(a.Value) {
 			return false
 		}
 	}

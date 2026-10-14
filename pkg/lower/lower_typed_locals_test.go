@@ -1,9 +1,12 @@
 package lower
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
+
+var localNumbers = regexp.MustCompile(`local\d+_`)
 
 func TestScalarLocalsAndParametersAreTypedGoVariables(t *testing.T) {
 	r := compileSource("typed.ms", `fn count(limit: Int, ratio: Float, label: String, on: Bool) -> Int:
@@ -22,19 +25,21 @@ func TestScalarLocalsAndParametersAreTypedGoVariables(t *testing.T) {
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
+	// Local numbering depends on how much was checked before this module.
+	source := localNumbers.ReplaceAllString(r.Source, "local_")
 	for _, want := range []string{
-		"(ctx *rt.Execution, local3_limit int64, local4_ratio float64, local5_label string, local6_on bool) (directResult int64)",
-		"var local7_i int64 = int64(0)",
-		"var local9_scaled float64 =",
+		"(ctx *rt.Execution, local_limit int64, local_ratio float64, local_label string, local_on bool) (directResult int64)",
+		"var local_i int64 = int64(0)",
+		"var local_scaled float64 =",
 	} {
-		if !strings.Contains(r.Source, want) {
-			t.Errorf("missing %q\n%s", want, r.Source)
+		if !strings.Contains(source, want) {
+			t.Errorf("missing %q\n%s", want, source)
 		}
 	}
 	// No loop variable is boxed: every use stays typed.
-	for _, banned := range []string{"rt.IntValue(local7_i)", "rt.IntValue(local8_hits)", "var local7_i rt.Value", "rt.Bool(local6_on)"} {
-		if strings.Contains(r.Source, banned) {
-			t.Errorf("boxed use %q\n%s", banned, r.Source)
+	for _, banned := range []string{"rt.IntValue(local_i)", "rt.IntValue(local_hits)", "var local_i rt.Value", "rt.Bool(local_on)"} {
+		if strings.Contains(source, banned) {
+			t.Errorf("boxed use %q\n%s", banned, source)
 		}
 	}
 }

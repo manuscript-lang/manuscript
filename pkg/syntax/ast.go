@@ -37,6 +37,8 @@ type Type struct {
 	Args   []*Type
 	Params []Parameter
 	Result *Type
+	// Fact is the checker's annotation of this node; nil until it is checked.
+	Fact any
 }
 type Parameter struct {
 	Pos     Position
@@ -73,6 +75,8 @@ type Declaration struct {
 	Params                     []Parameter
 	Result, Contract, Receiver *Type
 	Body                       []*Statement
+	// Fact is the checker's annotation of this node; nil until it is checked.
+	Fact any
 }
 type Case struct {
 	Pos    Position
@@ -100,12 +104,16 @@ type Expression struct {
 	Result      *Type
 	Body        []*Statement
 	Arms        []Arm
+	// Fact is the checker's annotation of this node; nil until it is checked.
+	Fact any
 }
 type Pattern struct {
 	Pos        Position
 	Kind, Name string
 	Elements   []*Pattern
 	Fields     []PatternField
+	// Fact is the checker's annotation of this node; nil until it is checked.
+	Fact any
 }
 type PatternField struct {
 	Pos     Position
@@ -119,6 +127,8 @@ type Arm struct {
 	NamePositions []Position // Original positions, parallel to Names (including _).
 	Value         *Expression
 	Body          []*Statement
+	// Fact is the checker's annotation of this node; nil until it is checked.
+	Fact any
 }
 type Statement struct {
 	Pos        Position
@@ -129,4 +139,6 @@ type Statement struct {
 	Target     *Expression
 	Value      *Expression
 	Body, Else []*Statement
+	// Fact is the checker's annotation of this node; nil until it is checked.
+	Fact any
 }
