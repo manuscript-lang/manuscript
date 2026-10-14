@@ -1,5 +1,11 @@
 import {arguments, environment} from "@std/cli.ms"
-import {system, endianness, end_of_line, os_type} from "@std/system.ms"
+import {
+    system,
+    endianness,
+    end_of_line,
+    os_type,
+    dev_null
+} from "@std/system.ms"
 import {control, commands, CommandError, CommandOutput} from "@std/process.ms"
 import {read_line} from "@std/io.ms"
 import {List, Map} from "@std/collections.ms"
@@ -29,41 +35,32 @@ test "CLI test roots have empty arguments and host metadata agrees":
     )
     if endianness() != "LE" and endianness() != "BE": return panic("endianness")
     if end_of_line() != "\n" and end_of_line() != "\r\n": return panic("line ending")
+    if os_type().byte_length() == 0: return panic("os type")
+    if dev_null().byte_length() == 0: return panic("null device")
 
 test "process environment is live while CLI environment retains its snapshot":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
     let before = system().environment(name)
     let snapshot = environment().get(name)
-    let assigned = value(
-        control().set_environment(
-            name: name,
-            value: "stdlib"
-        )
-    )
-    if system().environment(name) != some(value: "stdlib"): return panic(
-        "system environment"
-    )
+    let assigned = value(control().set_environment(name: name, value: "stdlib"))
+    if system().environment(name) != some("stdlib"): return panic("system environment")
     if environment().get(name) != snapshot: return panic(
         "CLI environment snapshot changed"
     )
-    if value(control().environment()).get(name) != some(value: "stdlib"): return panic(
+    if value(control().environment()).get(name) != some("stdlib"): return panic(
         "process environment"
     )
 
     let restored = value(control().set_environment(name: name, value: before))
 
 test "subprocess validation returns expected domain errors":
-    let invalid: Result[CommandOutput, CommandError] = error(
-        cause: CommandError.InvalidInput
+    let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
+    if commands().run(program: "", arguments: [], input: "".to_bytes()) != invalid: return panic(
+        "empty program"
     )
-    if commands().run(
-        program: "",
-        arguments: [],
-        input: "".to_bytes()
-    ) != invalid: return panic("empty program")
 
     let unavailable: Result[CommandOutput, CommandError] = error(
-        cause: CommandError.Unavailable
+        CommandError.Unavailable
     )
     if (
         commands().run(

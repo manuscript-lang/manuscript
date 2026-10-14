@@ -13,46 +13,22 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
     with group = TaskGroup():
         let tasks: List[Task[Result[Unit, Error]]] = []
 
-        for worker in [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
-        ]:
+        for worker in [0, 1, 2, 3, 4, 5, 6, 7]:
             let task = group.start(
                 fn() -> Result[Unit, Error]:
-                    let bindings = Map[
-                        String,
-                        JsonValue
-                    ]().with_entry(
+                    let bindings = Map[String, JsonValue]().add(
                         key: "worker",
                         value: JsonValue.NumberValue(
-                            text: worker.toString()
+                            worker.toString()
                         )
                     )
                     let child = logger.child(bindings)
 
-                    for sequence in [
-                        0,
-                        1,
-                        2,
-                        3,
-                        4,
-                        5,
-                        6,
-                        7
-                    ]:
-                        let fields = Map[
-                            String,
-                            JsonValue
-                        ]().with_entry(
+                    for sequence in [0, 1, 2, 3, 4, 5, 6, 7]:
+                        let fields = Map[String, JsonValue]().add(
                             key: "sequence",
                             value: JsonValue.NumberValue(
-                                text: sequence.toString()
+                                sequence.toString()
                             )
                         )
                         let logged = try child.info(
@@ -60,7 +36,7 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
                             fields: fields
                         )
 
-                    return ok(value: unit)
+                    return ok(unit)
             )
             tasks.append(task)
 
@@ -70,19 +46,15 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
             let outcome = try task.join()
             let completed = try outcome
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn exercise(mode: String, path: String) -> Result[Unit, Error]:
-    let bindings = Map[String, JsonValue]().with_entry(
+    let bindings = Map[String, JsonValue]().add(
         key: "service",
-        value: JsonValue.StringValue(value: "api")
+        value: JsonValue.StringValue("api")
     )
 
-    if (
-        mode == "file"
-        or mode == "concurrent"
-        or mode == "missing"
-    ):
+    if (mode == "file" or mode == "concurrent" or mode == "missing"):
         with transport = try file_transport(path):
             let logger = try create(
                 transport: transport,
@@ -97,30 +69,21 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
 
             let flushed = try logger.flush()
 
-        return ok(value: unit)
+        return ok(unit)
 
     with transport = stdout_transport():
         if mode == "limit":
-            let logger = try create(
-                transport: transport,
-                max_bytes: 1
-            )
+            let logger = try create(transport: transport, max_bytes: 1)
             let logged = try logger.info(message: "too large")
         else:
-            let logger = try create(
-                transport: transport,
-                bindings: bindings
-            )
+            let logger = try create(transport: transport, bindings: bindings)
 
             if mode == "invalid":
-                let fields = Map[String, JsonValue]().with_entry(
+                let fields = Map[String, JsonValue]().add(
                     key: "bad",
-                    value: JsonValue.NumberValue(text: "NaN")
+                    value: JsonValue.NumberValue("NaN")
                 )
-                let logged = try logger.info(
-                    message: "invalid",
-                    fields: fields
-                )
+                let logged = try logger.info(message: "invalid", fields: fields)
             else if mode == "closed":
                 transport.close()
                 let logged = try logger.info(message: "closed")
@@ -129,13 +92,10 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
                 let flushed = try logger.flush()
 
     with transport = stdout_transport():
-        let logger = try create(
-            transport: transport,
-            timestamp: false
-        )
+        let logger = try create(transport: transport, timestamp: false)
         let logged = try logger.info(message: "still open")
 
-    return ok(value: unit)
+    return ok(unit)
 
 export fn main() -> Int:
     let args = arguments()

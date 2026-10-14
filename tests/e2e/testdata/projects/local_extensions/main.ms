@@ -7,7 +7,7 @@ import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
 test "views and functions retain local implementations across modules":
-    let item = Item(value: 2)
+    let item = Item(2)
     if item.original() != 2:
         return panic("original implementation")
 
@@ -15,10 +15,7 @@ test "views and functions retain local implementations across modules":
     let second = second_view(item)
     if first.get() != 12 or second.get() != 22:
         return panic("returned views")
-    if (
-        read_view(Read[Int](value: first)) != 12
-        or read_view(Read[Int](value: second)) != 22
-    ):
+    if (read_view(Read[Int](first)) != 12 or read_view(Read[Int](second)) != 22):
         return panic("view conversion changed implementation")
 
     let first_call = first_method(item)
@@ -32,7 +29,7 @@ test "views and functions retain local implementations across modules":
         return panic("specialized functions")
 
     let events = ListBuilder[Int]()
-    let resource = Resource(events: events)
+    let resource = Resource(events)
 
     with first_close = first_resource(resource):
         let active = true
@@ -41,5 +38,5 @@ test "views and functions retain local implementations across modules":
         let active = true
 
     let values = events.freeze()
-    if values.at(index: 0) != some(value: 10) or values.at(index: 1) != some(value: 20):
+    if values.at(index: 0) != some(10) or values.at(index: 1) != some(20):
         return panic("cleanup views")

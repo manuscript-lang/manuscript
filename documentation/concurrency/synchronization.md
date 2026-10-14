@@ -16,7 +16,7 @@ import panic from "@std/faults.ms"
 import Synchronized from "@std/sync.ms"
 
 test "a complete update holds one lock":
-    let counter = Synchronized(value: 0)
+    let counter = Synchronized(0)
     with locked = counter.lock():
         locked.set(value: locked.get() + 1)
     with locked = counter.lock():
@@ -30,7 +30,9 @@ The lock remains held across ordinary calls and suspension until the guard close
 
 Guard aliases and saved methods use the same active acquisition. Get/set and release coordinate atomically; after release, get/set fault through every alias, even after another task acquires the container. Close is idempotent and cannot release a later acquisition. A guard may pass through helpers or be captured by concurrent work. Calls through the same guard are individually safe, but sharing it does not serialize complete sequences between those callers; acquire separately for independent critical sections.
 
-Reacquiring a lock held by the current operation or an execution ancestor faults before waiting, including from a nested joined task and shielded cleanup. Cycles between independent operations or different locks remain a programming error; acquire multiple locks in a consistent order. Keep critical sections short and avoid waiting for work that needs a held lock.
+Reacquiring a lock held by the current operation faults before waiting, including through ordinary helpers and shielded cleanup. A different operation waits, even if its execution ancestor holds the guard. A running child can wait while its parent finishes a critical section, releases the guard, and then joins the child.
+
+Cross-task lock and join cycles are not detected automatically. They remain programming errors; acquire multiple locks in a consistent order and release a held guard before joining or closing work that needs it. Ordinary lock waits observe cancellation and deadlines. A group timeout can stop an ordinary blocked task, but joining still waits for its cleanup. Shielded cleanup ignores the initiating cancellation and expired deadline, so a lock cycle in cleanup can remain blocked indefinitely. The native application host has no cleanup watchdog; cancellation and timeouts do not guarantee escape from every deadlock. See [cancellation and timeouts](cancellation.md) and [shutdown](shutdown.md#limits).
 
 Set replaces the stored value immediately. Faults, propagated errors, and cancellation do not roll back committed writes or external effects. Get returns the stored value, including the same mutable record or collection reference. Use `.clone()` while holding the guard to retain separate outer storage; nested references remain shared. The lock protects access made while held; it does not attach synchronization to every reachable object. A mutable record, collection, or local Queue obtained through get must be used entirely within the guard scope when shared, and all callers must acquire the same wrapper. Put related fields in one record inside one `Synchronized` to update their invariant together.
 

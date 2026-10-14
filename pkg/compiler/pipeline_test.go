@@ -32,7 +32,7 @@ func TestPipelinePreservesCheckedSourceForTools(t *testing.T) {
 		t.Fatal("defaults or closures bypassed optimization", lowered.Source)
 	}
 	notCount := 0
-	for expression := range lowered.Program.Expressions {
+	for expression := range lowered.Program.Expressions() {
 		if expression.Kind == syntax.KindUnary && expression.Text == "not" {
 			notCount++
 		}

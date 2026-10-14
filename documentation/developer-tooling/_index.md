@@ -8,8 +8,7 @@ weight = 5
 Use `ms` to check, format, test, build, and inspect Manuscript programs. Start with [commands and editor setup](implementation.md).
 
 - [Builds and projects](builds/_index.md): manifests, optimization levels, build pins, and caches.
-- [Source tools](source/_index.md): formatting, diagnostics, and structured edits.
-- [Debugging](debugging/_index.md): source mapping, values, and runtime metadata.
-- [Diagrams and traces](diagrams/_index.md): inspect static calls and recorded execution.
+- [Source tools](source/_index.md): formatting, diagnostics, and effects.
+- [Debugging](debugging/_index.md): source mapping, metadata, and the debugger.
 
-Pages describing planned tools identify their limits locally.
+`ms diagram` emits the static call graph as Mermaid; see [commands](implementation.md).

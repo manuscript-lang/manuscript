@@ -42,6 +42,22 @@ same native settings as `Release`; it does not promise a smaller binary than
 `Release`. Both omit debugging data to reduce binary size. Runtime stack traces
 remain available. Optimization does not change Manuscript language semantics.
 
+List literals with 256 or more items keep native compilation time and memory
+roughly proportional to their size. In `Release`, `RelWithDebInfo`, and
+`MinSizeRel`, a literal of `Int`, `Float`, `Bool`, or `String` constants
+(including negative `Int` literals) is stored once as typed program data; its
+items are boxed on first use, and every evaluation copies them into a fresh
+List. Other large literals evaluate their items in source order in blocks of
+at most 64. Construction from a constant table can cost more than the small
+literal form when the same large literal is rebuilt in a hot loop; hoist such a
+literal into a binding if that matters.
+
+Debug builds keep a separate representation for lists of more than 1,024
+primitive constants: they copy private immutable data into fresh mutable
+storage, so source stepping stays on the literal's statement. Mixed lists,
+calls, unary numeric expressions, and mutable elements keep the ordinary
+lowering in Debug.
+
 ## Defaults and command behavior
 
 The default is `Release`, except `debug` always uses `Debug` and `profile`
@@ -60,4 +76,14 @@ Select build levels on the command line. See [build pinning and cache identity](
 The compiler API offers `BuildWithType` and `BuildCheckedWithType` for explicit
 selection. `Build` defaults to Release; the existing `BuildChecked` boolean
 selects Debug when true and Release otherwise. Build levels share `ms.lock`
-toolchain pins but have distinct artifact cache identities.
+toolchain pins but have distinct build identities.
+
+`CompileSource` and `CompileFile` return the ordinary generated Go in
+`Result.Source`. Use `CompileSourceForBuild` or `CompileFileForBuild` with a
+build kind to select its lowering before generation, then pass the result and
+matching kind to `BuildCheckedWithType`. Native CLI commands use this explicit
+path. The existing `CompileSource` to `BuildChecked(..., true)` flow remains
+valid and uses ordinary lowering. `Result` keeps its original layout; there is
+no retained lowering recipe. Building always uses the supplied `Result.Source`,
+including caller edits and manually constructed results, and does not mutate
+the caller's result.

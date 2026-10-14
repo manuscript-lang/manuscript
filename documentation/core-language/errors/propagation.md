@@ -14,7 +14,7 @@ The following continues the `discount` and `DiscountError` declarations in [expe
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
     let value = try discount(price: price, percent: percent)
-    return ok(value: "Discounted price: {value}")
+    return ok("Discounted price: {value}")
 ```
 
 ## Success and failure paths
@@ -22,6 +22,22 @@ fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, Discount
 When `discount` returns `ok`, `value` contains the `Decimal` payload and the function builds its label. When it returns `error`, the enclosing function returns that error instead of executing the remaining statements.
 
 The success types differ: the called function returns a decimal, while the enclosing function returns text. Both use `DiscountError`, so the error can be forwarded unchanged.
+
+A call returning `Result[Unit, E]` can be propagated as a statement, without a throwaway binding:
+
+```manuscript
+fn prepare() -> Result[Unit, String]: ok(unit)
+
+fn ready_label() -> Result[String, String]:
+    try prepare()
+    return ok("ready")
+```
+
+Standalone `try call()` requires a `Unit` success value. For other success types, bind the value with `let name = try call()` or return it with `return try call()`; it cannot be silently discarded.
+
+Omitting `try` discards the entire Result, including any error, and produces the
+`MSL104` lint advisory. To deliberately ignore both outcomes, use an explicit
+[`_ignored` binding](results.md#discarding-a-result).
 
 ## Error compatibility
 

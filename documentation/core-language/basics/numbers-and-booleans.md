@@ -58,6 +58,8 @@ For example, `1e300.truncate_to_int()` is `none`. Float +2^63 cannot convert to 
 
 Int addition, subtraction, multiplication, and unary negation fault when the mathematical result is outside the signed 64-bit range. Division truncates toward zero. Remainder has the sign of the dividend (or is zero), satisfying `a = (a / b) * b + a % b` mathematically. A zero divisor faults for both operations. Minimum Int divided by -1 faults, while Minimum Int modulo -1 is zero. Unary negation of Minimum Int faults. Thus `-7 / 2` is -3 and `-7 % 3` is -1.
 
+Int `/` and `%` faults name the operator and the invalid right operand. Division overflow also gives both operands and the signed 64-bit result range. These remain programming faults, while BigInt division returns its declared Result error.
+
 ### Float
 
 Float operations round each operator result to binary64, nearest with ties to even; no implicit fused multiply-add or reassociation is permitted. Arithmetic overflow produces signed infinity; division by zero follows IEEE behavior, including infinity for nonzero/zero and NaN for zero/zero. Invalid Float arithmetic produces NaN, without a programming fault. Underflow rounds to a subnormal or signed zero. NaN makes every ordering comparison false; equality is false and inequality true, including against itself. Positive and negative zero compare equal. Native adapters may deliver these values. Source literals still reject a magnitude rounding to infinity. [String formatting](text-and-bytes.md#deterministic-formatting) specifies non-finite spellings.
@@ -73,6 +75,8 @@ For each Decimal operator:
 3. Round the exact value divided by `10^q` to an integer coefficient, ties to even. If it has 35 digits, shift one exact trailing zero into `q`.
 4. Require an equivalent representation with at most 34 coefficient digits and `q` in range. Otherwise overflow faults.
 
+An arithmetic overflow fault identifies the Decimal operator and operands and states the maximum finite magnitude after rounding. These diagnostics preserve the fault category and the existing arithmetic limits.
+
 There is one rounding step per operator. Do not round intermediate coefficients, reassociate operators, or saturate to the maximum finite value. Underflow produces a subnormal or zero without fault. `1d / 3d` is `0.3333333333333333333333333333333333d`. Equality and ordering compare exact stored numerical values, ignoring scale and trailing zeroes.
 
 Decimal literals are accepted only when their exact mathematical value is representable without rounding. Insignificant leading/trailing coefficient zeroes do not count against precision: `1.00d` is exact. A literal requiring 35 significant digits, such as `1.2345678901234567890123456789012345d`, or lying outside the representable grid is a compile error. `1e6144d` and `1e-6176d` are accepted; `1e6145d` and `1e-6177d` are rejected. Unary-negative literal checking follows the same magnitude rules. Runtime conversion and arithmetic are separate from source literal acceptance.
@@ -87,6 +91,49 @@ let discounted = price * (1d - percent / 100d)
 
 Use ordinary validation when invalid numbers are expected inputs. [Expected failures](../errors/results.md) shows how to return a domain error before calculating a discount; [programming faults](../errors/faults.md) explains invariant failures.
 
+#### Scale rounding and fixed places
+
+Use `round(places:)` when a calculation needs a Decimal at a chosen scale, and `to_fixed(digits:)` when output needs stable trailing zeros. Both return `Result[..., NumberError]` from `@std/numbers.ms` and operate on the exact stored value without a Float conversion. `round(places: 2)` rounds to hundredths; negative places round to tens, hundreds, and larger powers of ten. Decimal values still ignore scale: use `to_fixed(digits: 2)` to display `25.50d` as `"25.50"`.
+
+Omitting `mode` or supplying `none` chooses `RoundingMode.HalfEven`. Import `RoundingMode` from `@std/decimal.ms` to choose another mode:
+
+| Mode | Rule | `2.5d` at zero places | `-2.5d` at zero places |
+| --- | --- | --- | --- |
+| `HalfEven` | Nearest; a tie chooses an even coefficient | `2d` | `-2d` |
+| `HalfAwayFromZero` | Nearest; a tie rounds away from zero | `3d` | `-3d` |
+| `TowardZero` | Discard the fractional coefficient | `2d` | `-2d` |
+| `Floor` | Toward negative infinity | `2d` | `-3d` |
+| `Ceil` | Toward positive infinity | `3d` | `-2d` |
+
+`round` accepts places from -6144 through 6176. It returns `InvalidInput` for other places, and `OutOfRange` if the rounded number cannot be represented exactly as a Decimal. It never rounds again to fit the 34-digit arithmetic context. `to_fixed` accepts digits from 0 through 6176, returning `InvalidInput` otherwise. It uses plain notation even for large values, retains exactly the requested fractional digits, and prints any rounded zero without a minus sign. Neither method changes the receiver or the rounding of arithmetic operators.
+
+For amounts with two fractional places, this example explicitly rounds tax before adding it. Choose the scale, rounding mode, and rounding stage required by your application; Decimal does not impose a currency policy. Scaled Int cents are another option when all values and arithmetic fit the checked Int range.
+
+Save the following as `cents.ms` and run `ms test cents.ms`:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import Decimal from "@std/decimal.ms"
+import NumberError from "@std/numbers.ms"
+import panic from "@std/faults.ms"
+
+fn amount_text() -> Result[String, NumberError]:
+    let subtotal = 19.99d * 3d
+    let tax = try (subtotal * 0.0825d).round(places: 2)
+    let tax_text = try tax.to_fixed(digits: 2)
+    let total_text = try (subtotal + tax).to_fixed(digits: 2)
+    let padded = try 25.50d.to_fixed(digits: 2)
+    return ok("tax {tax_text} total {total_text} padded {padded}")
+
+test "decimal amounts":
+    match amount_text():
+        ok(text):
+            if text != "tax 4.95 total 64.92 padded 25.50":
+                return panic("unexpected amount text")
+        error(cause):
+            return panic(cause.message())
+```
+
 ## Booleans
 
 A Boolean value controls an [if statement](../control-flow/conditionals.md) or [while loop](../control-flow/loops.md). There is no numeric-to-Boolean conversion implied by using a number as a condition.
@@ -96,6 +143,8 @@ A Boolean value controls an [if statement](../control-flow/conditionals.md) or [
 `milliseconds`, `seconds`, and `minutes` are Int members: `500.milliseconds` and `2.seconds` have type `Duration`. They also work on nonliteral Int expressions; `Instant` represents a monotonic clock instant. They are used by [timeouts and deadlines](../../concurrency/cancellation.md).
 
 `Duration` is a signed 64-bit count of nanoseconds. The three unit members work on any Int expression and multiply by 1,000,000, 1,000,000,000, or 60,000,000,000 with overflow checks. Import `duration` from `@std/time.ms` to construct an exact interval from nanoseconds. Integer unit conversions truncate toward zero; floating conversions retain fractional units with binary64 rounding. `Instant` is an opaque monotonic instant in the current run's clock domain; it has no source constructor. Clock adapters and injected test clocks must preserve a single comparable domain within a run. Cross-domain comparison or subtraction faults. Duration arithmetic and Instant shifts/differences check overflow; these compiler-defined operations are enumerated in the [operator table](expressions.md).
+
+Duration and Instant overflow diagnostics name the arithmetic operation, the operands in nanoseconds, and the signed 64-bit result range; multiplication factors and divisors remain dimensionless. Duration `divide` names an invalid divisor. Unit-member conversion and Duration `negate`/`abs` faults give the allowed input range and original value. The arithmetic, rounding, clock-domain, and cancellation rules remain unchanged.
 
 `2.seconds` is 2,000,000,000 nanoseconds. Unsupported unit names and mixed arithmetic such as `2.seconds + 1` are type errors.
 

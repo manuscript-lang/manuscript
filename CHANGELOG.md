@@ -2,17 +2,22 @@
 
 ## Unreleased
 
-- Add `ms run --watch` and `ms test --watch` to rebuild and restart after each saved change.
-- Rebuild edited programs faster: native builds share a content-addressed workspace, replay recorded compile/link commands without the go command, link a lean runtime for programs without network, system, or process imports, publish artifacts by hard link, and link Debug builds with uncompressed DWARF. `ms` loads standard declarations on first use and computes build pins while checking.
-- Accept plain values for standard `Optional[T]` arguments, including `Queue[Int](capacity: 4)`, and use this convention across current call sites and examples.
-- Parse HTML strings into `HtmlNode` trees with `HtmlAttribute` records, HTML5 recovery, and optional byte, depth, and node limits.
-- Replace `@std/log.ms`'s `write` function with structured `Logger` and `Transport` interfaces: six levels, typed JSON fields, child bindings, record limits, and stdout/file/custom transports. Migrate calls to `create(transport: transport)` and `logger.info(message: message, fields: fields)`; fields now use `Map[String, JsonValue]`, and transports use scoped cleanup.
-
-- Share parsing and AST graph loading across compilation and source tools; make checking, boolean optimization, and Go lowering explicit stages while preserving the checked source model.
-- Group reusable Go packages under `pkg/`; Go callers must update the former root package imports to `github.com/manuscript-lang/manuscript/pkg/...`.
-- Add read-only verification, pinned lint tools, environment diagnostics, and checked package/build boundaries.
-- Publish documentation through GitHub Pages artifacts; generated HTML is no longer committed.
-- Reuse the CLI across conformance tests, execute complete tutorial examples, and collect dependency-package coverage.
-- Separate frontend facts from host runtime implementations and verify native signatures in integration tests.
-- Validate compressed toolchain archives before cache publication, including interrupted downloads.
-- Add repeatable dependency/pin maintenance, license inventories, and one shared release version.
+- Standard library: `@std/sse.ms` decodes Server-Sent Events from byte chunks or any `ReadStream`, including HTTP response bodies, with line and event budgets and `SseError` (#470).
+- Standard library: documented one failure-mode rule (absence is `Optional`, invalid external data is `Result`, violated preconditions fault) in the errors and limits contract (#168).
+- Debugging: `ms debug` and `ms dap` embed Delve; VS Code no longer needs `dlv`.
+- Debugging: `ms debug --break <location>` and `--script <file>`, with `--json`, run non-interactively and report Manuscript function and local names and only Manuscript frames (#352).
+- Standard library: decode JSON incrementally from byte chunks with `decoder` in `@std/jsonstream.ms`, preserving values split across chunk boundaries and applying per-value limits.
+- Tooling: `ms run --watch` and `ms test --watch`; versioned `--json` results for build, profile, fmt and test; `--flag=value` for value-taking options; check, lint and doc accept multiple inputs.
+- CLI: `-o` directories are checked before building; `ms.lock` mismatch errors name the changed field; `ms lsp` rejects arguments.
+- Builds: executables are no longer cached (every edit used to leave an unremoved 5 MB file in `.ms-cache`; delete existing ones) and `BuildChecked*` lose their cache argument; faster rebuilds through a content-addressed workspace and command replay; validated toolchain archives.
+- Builds: list literals with 256 or more items compile in time proportional to their size (100,000 Int constants: about 24 s to 2 s); deeply nested List and Map literals check in near-linear time and report an uninferable element type once.
+- Lint: MSL107 warns on nested `match`.
+- Lint: MSL109 warns when a bare identifier argument is redirected by matching-name shorthand to a parameter other than the next positional slot (#452); binding is unchanged.
+- Collections: `List.set`/`remove`/`splice`/`reverse_in_place`, `Set.add`/`remove`, `Map.remove`/`add_default`, `Bytes.reversed` and `Regex.replace_all` replace the removed copy-sounding spellings `List.with_value`/`without`/`with_values`/`reverse`, `Map.with_entry`/`without`/`with_default`/`with_default_from`, `Set.with_value`/`without`, `MapBuilder.with_entry`, `SetBuilder.with_value`, `Bytes.reverse` and `Regex.replace`; the MSL108 advisory is gone. Faults name the surviving method.
+- Collections: `List.count`, `List.distinct`, in-place `List.insert` and `List.pop`.
+- Standard library: `String.replace_n`, HTML parsing into `HtmlNode`, structured `Logger`/`Transport` replacing `log.write`, `http.header_values`, typed filesystem errors, full Unicode `upper`/`lower`.
+- Standard library: `toml.stringify` and `yaml.stringify`; `TomlLimits` and `YamlLimits` fields default to `none`.
+- Language: plain values are accepted for standard `Optional[T]` arguments; faults name operands, parameters and valid ranges.
+- Packages: reusable Go packages moved under `pkg/`; update imports to `github.com/manuscript-lang/manuscript/pkg/...`.
+- Maintenance: read-only verification, pinned tools, license inventories, one shared release version.
+- HTTP: one ordered, ASCII case-insensitive, byte-valued `HttpHeaders` across client, server, proxy and WebSocket surfaces; common `HttpResponseMetadata`; typed `HttpMethod`, `DnsKind`, `IpAddress`, `Cidr` and `IpFamily`; `HttpClient.request`/`request_stream`; buffered `serve(max_requests:)`; empty `HttpClientOptions`/`HttpServerOptions` work. See the pull request for the migration.

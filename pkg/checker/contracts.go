@@ -27,7 +27,14 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	}
 	receiver := c.resolve(d.Receiver, false)
 	if receiver.Def == nil || receiver.Def.Symbol == nil || receiver.Def.Symbol.Native != "" && !c.standardDeclarations || (receiver.Kind != syntax.KindRecord && receiver.Kind != "alternative") {
-		c.error(d.Pos, "type", "implementation receiver must be nominal source data")
+		if receiver.ID != "<invalid>" {
+			c.error(d.Pos, "type", "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types")
+		}
+		// An impl whose receiver is not valid nominal data must not become
+		// evidence for later conversions; report the receiver's own faults only.
+		c.wellFormed(receiver, d.Pos, map[string]bool{})
+		c.scope = old
+		return
 	}
 	occurs := map[string]bool{}
 	var visit func(*Type)
@@ -63,8 +70,8 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		}
 	}
 	contract := c.resolve(d.Contract, false)
-	if contract.Kind != "contract" {
-		c.error(d.Pos, "type", "implementation target must be an interface")
+	if contract.Kind != "contract" && contract.ID != "<invalid>" {
+		c.error(d.Pos, "type", "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'")
 	}
 	// An interface argument that is a receiver parameter carries the interface's
 	// declared bounds into this implementation, without changing the data type.
@@ -86,7 +93,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	contract = c.resolve(d.Contract, false)
 	for _, m := range c.Methods {
 		if c.methodVisible(m) && overlap(receiver, contract, m.Receiver, m.Contract, append(append([]*Type{}, vars...), m.Variables...)) {
-			c.error(d.Pos, "type", "duplicate or overlapping implementation")
+			c.error(d.Pos, "type", "duplicate or overlapping implementation; "+contract.String()+" is already implemented for "+receiver.String()+" (or an overlapping type), so remove one impl")
 			break
 		}
 	}
@@ -99,7 +106,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	}
 	for _, method := range d.Methods {
 		if seen[method.Name] {
-			c.error(method.Pos, "type", "duplicate implementation operation")
+			c.error(method.Pos, "type", "duplicate implementation operation "+method.Name+"; define each operation once per impl")
 		}
 		seen[method.Name] = true
 		t := c.signature(method.Params, method.Result)
@@ -116,19 +123,19 @@ func (c *checker) implementation(d *syntax.Declaration) {
 					}
 				}
 				if !Same(t, op.Type) {
-					c.error(method.Pos, "type", "implementation operation signature does not match contract")
+					c.error(method.Pos, "type", "implementation operation signature does not match contract; "+method.Name+" must be declared as fn "+method.Name+signatureText(op.Type))
 				}
 			}
 		}
 		if !found {
-			c.error(method.Pos, "type", "extra operation "+method.Name)
+			c.error(method.Pos, "type", "extra operation "+method.Name+"; "+contract.String()+" declares: "+list(paramNames(ops), 12)+" (remove it or add it to the interface)")
 		}
 		local := receiver.Def != nil && receiver.Def.Symbol != nil && receiver.Def.Symbol.Module != c.module.File
 		c.Methods = append(c.Methods, &Method{ID: c.unique("method"), Module: c.module.File, Local: local, Receiver: receiver, Contract: contract, Variables: vars, Decl: method, Type: t})
 	}
 	for _, op := range ops {
 		if !seen[op.Name] {
-			c.error(d.Pos, "type", "missing implementation operation "+op.Name)
+			c.error(d.Pos, "type", "missing implementation operation "+op.Name+"; add fn "+op.Name+signatureText(op.Type)+" to this impl")
 		}
 	}
 	c.wellFormed(receiver, d.Pos, map[string]bool{})
@@ -260,24 +267,38 @@ func (c *checker) satisfies(t, bound *Type) bool {
 	}
 	return c.implements(t, bound)
 }
-func (c *checker) property(t *Type, property string, seen map[string]bool) bool {
+
+type propertyState struct {
+	active    map[string]bool
+	completed map[string]bool
+}
+
+func (c *checker) property(t *Type, property string, state *propertyState) (result bool) {
 	if t == nil {
 		return false
 	}
 	if t.ID == "<invalid>" {
 		return true
 	}
-	if seen == nil {
-		seen = map[string]bool{}
+	if state == nil {
+		state = &propertyState{active: map[string]bool{}, completed: map[string]bool{}}
 	}
 	key := typeKey(t) + property
-	if seen[key] {
-		return true
+	if result, ok := state.completed[key]; ok {
+		return result
 	}
-	if len(seen) > 200 {
+	if state.active[key] {
+		// Equality handles cycles; structural hashing requires an acyclic shape.
+		return property != "Hashable"
+	}
+	if len(state.active) > 200 {
 		return false
 	}
-	seen[key] = true
+	state.active[key] = true
+	defer func() {
+		delete(state.active, key)
+		state.completed[key] = result
+	}()
 	if t.Kind == "variable" {
 		for _, b := range t.Bounds {
 			if std(b, property) || std(b, "Hashable") && property == "Equal" {
@@ -327,7 +348,7 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 			return false
 		}
 		for _, a := range t.Args {
-			if !c.property(a, property, seen) {
+			if !c.property(a, property, state) {
 				return false
 			}
 		}
@@ -341,13 +362,13 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	}
 	if t.Def != nil {
 		for _, f := range Fields(t) {
-			if !c.property(f.Type, property, seen) {
+			if !c.property(f.Type, property, state) {
 				return false
 			}
 		}
 		for _, cs := range Cases(t) {
 			for _, f := range cs.Fields {
-				if !c.property(f.Type, property, seen) {
+				if !c.property(f.Type, property, state) {
 					return false
 				}
 			}
@@ -432,7 +453,7 @@ func nativeMethod(t *Type, name string) *Method {
 	if intrinsic := intrinsicOperations[t.ID]; intrinsic != nil {
 		receiver = intrinsic
 	}
-	if receiver.Kind == syntax.KindNative || receiver != t || receiver.Kind == "alternative" && receiver.Def.Symbol.Native != "" {
+	if receiver.Kind == syntax.KindNative || receiver != t || standardReceiverBindings[receiver.ID+"/"+name] != "" || receiver.Kind == "alternative" && receiver.Def.Symbol.Native != "" {
 		for _, operation := range receiver.Def.Operations {
 			if operation.Name == name {
 				native := name
@@ -469,17 +490,7 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 		return
 	}
 	seen[key] = true
-	if t.Def != nil && len(t.Args) == len(t.Def.Variables) {
-		sub := substitution(t)
-		for _, v := range t.Def.Variables {
-			for _, b := range v.Bounds {
-				if !c.satisfies(sub[v.ID], Sub(b, sub)) {
-					c.error(pos, "type", sub[v.ID].String()+" does not satisfy "+b.String())
-				}
-			}
-		}
-	}
-
+	c.boundsHold(t, pos)
 	for _, a := range t.Args {
 		c.wellFormed(a, pos, seen)
 	}
@@ -487,6 +498,22 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 		c.wellFormed(p.Type, pos, seen)
 	}
 	c.wellFormed(t.Result, pos, seen)
+}
+
+// boundsHold checks t's own type arguments against its definition's bounds,
+// without descending into those arguments.
+func (c *checker) boundsHold(t *Type, pos syntax.Position) {
+	if t.Def == nil || len(t.Args) != len(t.Def.Variables) {
+		return
+	}
+	sub := substitution(t)
+	for _, v := range t.Def.Variables {
+		for _, b := range v.Bounds {
+			if !c.satisfies(sub[v.ID], Sub(b, sub)) {
+				c.error(pos, "type", c.unsatisfiedMessage(sub[v.ID], Sub(b, sub), "use a type that implements it"))
+			}
+		}
+	}
 }
 func (c *checker) declarationChecks(module *syntax.Module) {
 	for _, d := range module.Declarations {
@@ -519,7 +546,6 @@ func (c *checker) declarationChecks(module *syntax.Module) {
 			for _, op := range s.Type.Def.Operations {
 				check(op.Type)
 			}
-			c.layout(s.Type, d.Pos, map[string]*Type{}, false)
 		}
 		for _, v := range s.Variables {
 			for _, b := range v.Bounds {
@@ -535,7 +561,7 @@ func (c *checker) public(t *Type, pos syntax.Position, seen map[string]bool) {
 	}
 	seen[typeKey(t)] = true
 	if t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Module == c.module.File && !t.Def.Symbol.Export {
-		c.error(pos, "type", "public signature exposes private type "+t.Name)
+		c.error(pos, "type", "public signature exposes private type "+t.Name+"; add 'export' to its declaration or keep the function private")
 	}
 	for _, a := range t.Args {
 		c.public(a, pos, seen)
@@ -545,36 +571,36 @@ func (c *checker) public(t *Type, pos syntax.Position, seen map[string]bool) {
 	}
 	c.public(t.Result, pos, seen)
 }
-func (c *checker) layout(t *Type, pos syntax.Position, active map[string]*Type, indirect bool) {
-	if t == nil || t.Kind == "function" || t.Kind == "contract" || t.Kind == "variable" {
-		return
-	}
-	if std(t, "List") || std(t, "Set") || std(t, "Map") {
-		for _, a := range t.Args {
-			c.layout(a, pos, active, true)
-		}
-		return
-	}
-	if previous := active[t.ID]; previous != nil {
-		if !Same(previous, t) {
-			c.error(pos, "type", "recursive generic applications must preserve their parameters")
-		}
-		if !indirect {
-			c.error(pos, "type", "unguarded inline recursive layout")
-		}
-		return
-	}
-	if t.Def == nil {
-		return
-	}
-	active[t.ID] = t
-	defer delete(active, t.ID)
-	for _, f := range Fields(t) {
-		c.layout(f.Type, pos, active, indirect)
-	}
-	for _, cs := range Cases(t) {
-		for _, f := range cs.Fields {
-			c.layout(f.Type, pos, active, indirect)
+
+// unsatisfiedMessage explains a failed bound with a fix the writer can apply.
+// An impl is suggested only for data the module may declare an impl for;
+// built-in and collection types cannot take one, so they are told what to
+// use instead.
+func (c *checker) unsatisfiedMessage(t, bound *Type, alternative string) string {
+	prefix := t.String() + " does not satisfy " + bound.String() + "; "
+	switch {
+	case std(bound, "Hashable") && t.ID == "Float":
+		return t.String() + " does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal"
+	case std(bound, "Hashable") && (std(t, "List") || std(t, "Map") || std(t, "Set")):
+		return prefix + "collections have no Hashable implementation, so use a record key or join the elements into a String"
+	case t.Kind == syntax.KindRecord || t.Kind == "alternative":
+		if t.Def != nil && t.Def.Symbol != nil && (t.Def.Symbol.Native == "" || c.standardDeclarations) {
+			return prefix + "add 'impl " + bound.String() + " for " + t.String() + ":' or " + alternative
 		}
 	}
+	return prefix + alternative
+}
+
+// withNotCloseableMessage explains a failed with binding. Built-in and
+// wrapper types cannot receive an implementation, so suggesting one would send
+// the user to a second error; they need to unwrap the value first.
+func (c *checker) withNotCloseableMessage(t *Type) string {
+	name := t.String()
+	if std(t, "Result") || std(t, "Optional") {
+		return "with needs a Closeable value, but this expression is " + name + "; unwrap it first with 'try' (inside a function that returns a compatible Result) or a 'match'"
+	}
+	if t.Def == nil || t.Def.Symbol == nil || t.Def.Symbol.Native != "" || (t.Kind != syntax.KindRecord && t.Kind != "alternative") {
+		return "with needs a Closeable value, but this expression is " + name + ", which cannot implement Closeable; bind a source type that has 'impl Closeable' or declares close() -> Unit"
+	}
+	return "with requires an explicit Closeable implementation or a contract declaring close() -> Unit; " + name + " has none, so add 'impl Closeable for " + name + ":' with fn close() -> Unit"
 }

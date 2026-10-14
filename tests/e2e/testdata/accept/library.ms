@@ -55,11 +55,7 @@ fn compare(left: Int, right: Int) -> Int:
     return 0
 
 fn verify_json() -> Result[Unit, JsonError]:
-    let limits = JsonLimits(
-        max_bytes: 1024,
-        max_depth: 8,
-        max_values: 32
-    )
+    let limits = JsonLimits(max_bytes: 1024, max_depth: 8, max_values: 32)
     let value = try parse(
         text: "\{\"large\":9007199254740993,\"ok\":true\}",
         limits: limits
@@ -72,13 +68,10 @@ fn verify_json() -> Result[Unit, JsonError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn verify_encoding() -> Result[Unit, EncodingError]:
-    let bytes = try hex_decode(
-        text: "00ff42",
-        max_bytes: 3
-    )
+    let bytes = try hex_decode(text: "00ff42", max_bytes: 3)
     if not (hex_encode(data: bytes) == "00ff42"):
         return panic(message: "check failed")
     if not (
@@ -88,19 +81,16 @@ fn verify_encoding() -> Result[Unit, EncodingError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn verify_url() -> Result[Unit, UrlError]:
-    let query = try parse_query(
-        text: "a=1&a=2&space=hello+world",
-        max_entries: 3
-    )
+    let query = try parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)
     if not (query.length() == 3):
         return panic(message: "check failed")
     if not (format_query(entries: query) == "a=1&a=2&space=hello+world"):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn verify_binary() -> Result[Unit, BinaryError]:
     let binary = try write_integer(
@@ -120,7 +110,7 @@ fn verify_binary() -> Result[Unit, BinaryError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn verify_compression() -> Result[Unit, CompressionError]:
     let compressed = try compress(
@@ -138,7 +128,7 @@ fn verify_compression() -> Result[Unit, CompressionError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn verify_archive() -> Result[Unit, ArchiveError]:
     let entries = [
@@ -148,11 +138,7 @@ fn verify_archive() -> Result[Unit, ArchiveError]:
             directory: false
         )
     ]
-    let archive = try pack(
-        entries: entries,
-        format: "zip",
-        max_bytes: 1024
-    )
+    let archive = try pack(entries: entries, format: "zip", max_bytes: 1024)
     if not (
         try unpack(
             data: archive,
@@ -166,7 +152,7 @@ fn verify_archive() -> Result[Unit, ArchiveError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 test "expanded packages run through compiler":
     match verify_json():
@@ -211,19 +197,14 @@ test "expanded packages run through compiler":
         error(_):
             return panic(message: "archive failed")
 
-    if not (
-        ("a,,b").split(
-            separator: ",",
-            max_parts: 2
-        ) == ["a", ""]
-    ):
+    if not (("a,,b").split(separator: ",", max_parts: 2) == ["a", ""]):
         return panic(message: "check failed")
     if not (("é🙂").scalar_length() == 2):
         return panic(message: "check failed")
     if not (("é").scalar_values() == [233]):
         return panic(message: "check failed")
 
-    let text_success: Result[String, StringError] = ok(value: "é")
+    let text_success: Result[String, StringError] = ok("é")
     if not (from_scalars(values: [233]) == text_success):
         return panic(message: "check failed")
     if not (sqrt(value: 9.0) == 3.0):
@@ -239,56 +220,29 @@ test "expanded packages run through compiler":
     if not (([3, 1, 2]).sorted(compare: compare) == [1, 2, 3]):
         return panic(message: "check failed")
 
-    let reverse_int = [1, 2].reverse
+    let reverse_int = [1, 2].reverse_in_place
     if not (reverse_int() == [2, 1]):
         return panic(message: "check failed")
 
 test "malformed and bounded inputs return errors":
-    let failure1: Result[Bytes, EncodingError] = error(cause: EncodingError.InvalidData)
-    if not (
-        base64_decode(
-            text: "Zh==",
-            url_safe: false,
-            max_bytes: 10
-        ) == failure1
-    ):
+    let failure1: Result[Bytes, EncodingError] = error(EncodingError.InvalidData)
+    if not (base64_decode(text: "Zh==", url_safe: false, max_bytes: 10) == failure1):
         return panic(message: "check failed")
 
-    let failure2: Result[Bytes, EncodingError] = error(
-        cause: EncodingError.LimitExceeded
-    )
-    if not (
-        hex_decode(
-            text: "abcd",
-            max_bytes: 1
-        ) == failure2
-    ):
+    let failure2: Result[Bytes, EncodingError] = error(EncodingError.LimitExceeded)
+    if not (hex_decode(text: "abcd", max_bytes: 1) == failure2):
         return panic(message: "check failed")
 
-    let limits = JsonLimits(
-        max_bytes: 100,
-        max_depth: 2,
-        max_values: 10
-    )
-    let failure3: Result[JsonValue, JsonError] = error(cause: JsonError.InvalidData)
-    if not (
-        parse(
-            text: "\{\"a\":1,\"a\":2\}",
-            limits: limits
-        ) == failure3
-    ):
+    let limits = JsonLimits(max_bytes: 100, max_depth: 2, max_values: 10)
+    let failure3: Result[JsonValue, JsonError] = error(JsonError.InvalidData)
+    if not (parse(text: "\{\"a\":1,\"a\":2\}", limits: limits) == failure3):
         return panic(message: "check failed")
 
-    let failure4: Result[JsonValue, JsonError] = error(cause: JsonError.LimitExceeded)
-    if not (
-        parse(
-            text: "[[[]]]",
-            limits: limits
-        ) == failure4
-    ):
+    let failure4: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
+    if not (parse(text: "[[[]]]", limits: limits) == failure4):
         return panic(message: "check failed")
 
-    let failure5: Result[Bytes, BinaryError] = error(cause: BinaryError.OutOfRange)
+    let failure5: Result[Bytes, BinaryError] = error(BinaryError.OutOfRange)
     if not (
         write_integer(
             value: 256,

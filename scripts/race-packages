@@ -1,0 +1,9 @@
+./internal/debugger
+./pkg/runtime
+./pkg/checker
+./pkg/lower
+./pkg/compiler
+./pkg/build
+./pkg/project
+./internal/cli
+./pkg/tooling/...

@@ -25,23 +25,17 @@ fn ordered(
     state.set(value: state.get() * 10 + 5)
     return first + second + third
 
-fn unit_value(
-    value: Unit = panic("unexpected default")
-) -> Unit:
+fn unit_value(value: Unit = panic("unexpected default")) -> Unit:
     return value
 
-fn optional(
-    value: Optional[Int] = some(value: 3)
-) -> Optional[Int]:
+fn optional(value: Optional[Int] = some(3)) -> Optional[Int]:
     return value
 
 fn fail() -> Result[Int, String]:
-    return error(cause: "default failure")
+    return error("default failure")
 
-fn propagate(
-    value: Int = try fail()
-) -> Result[Int, String]:
-    return ok(value: value)
+fn propagate(value: Int = try fail()) -> Result[Int, String]:
+    return ok(value)
 
 interface Add:
     fn add(value: Int) -> Int
@@ -64,11 +58,7 @@ impl Read[T] for Box[T]:
         return value
 
 test "omitted and explicit defaults":
-    if (
-        increment() != 4
-        or increment(7) != 8
-        or increment(value: 0) != 1
-    ):
+    if (increment() != 4 or increment(7) != 8 or increment(value: 0) != 1):
         return panic("single parameter defaults")
     if combine(second: 5) != 14 or combine(third: 0, second: 5, first: 0) != 5:
         return panic("required arguments and dependent defaults")
@@ -76,16 +66,16 @@ test "omitted and explicit defaults":
         return panic("generic defaults")
 
     unit_value(unit)
-    if optional(value: none) != Optional[Int].none or optional() != some(value: 3):
+    if optional(value: none) != Optional[Int].none or optional() != some(3):
         return panic("explicit none must override default")
     if (
-        propagate() != Result[Int, String].error(cause: "default failure")
-        or propagate(7) != Result[Int, String].ok(value: 7)
+        propagate() != Result[Int, String].error("default failure")
+        or propagate(7) != Result[Int, String].ok(7)
     ):
         return panic("default propagation belongs to callee")
 
 test "default evaluation order and repeated calls":
-    let counter = Synchronized[Int](value: 0)
+    let counter = Synchronized[Int](0)
 
     with state = counter.lock():
         let total = ordered(
@@ -117,31 +107,27 @@ test "function values and captures":
         return panic("explicit function type remains compatible")
 
     var offset = 5
-    let callback = fn(value: Int = offset) -> Int:
+    let callback = fn(value: Int = offset):
         return value
     offset = 9
     if callback() != 5 or callback(0) != 0:
         return panic("default expressions capture snapshots")
 
-    let nested = fn(first: Int = 6, second: Int = first + 1) -> Int:
+    let nested = fn(first: Int = 6, second: Int = first + 1):
         return second
     if nested() != 7:
         return panic("anonymous dependent defaults")
 
 test "implementation and bound method defaults":
-    let offset = Offset(value: 4)
+    let offset = Offset(4)
     let bound = offset.add
-    if (
-        offset.add() != 8
-        or bound() != 8
-        or bound(0) != 4
-    ):
+    if (offset.add() != 8 or bound() != 8 or bound(0) != 4):
         return panic("receiver defaults")
 
-    let view = Add(value: offset)
+    let view = Add(offset)
     if view.add(2) != 6:
         return panic("contract view call")
 
-    let box = Box[String](value: "boxed")
+    let box = Box[String]("boxed")
     if box.read() != "boxed":
         return panic("generic method defaults")

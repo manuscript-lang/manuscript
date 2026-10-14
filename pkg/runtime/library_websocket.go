@@ -3,7 +3,6 @@
 package msruntime
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -18,7 +17,7 @@ import (
 
 func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
-		{"Network", "web_socket", libraryResult("WebSocket", "WebSocketError"), []LibraryParam{{"url", "String"}, {"headers", "Map[String][String]"}, {"subprotocols", "List[String]"}, {"options", "WebSocketOptions"}}},
+		{"Network", "web_socket", libraryResult("WebSocket", "WebSocketError"), []LibraryParam{{"url", "String"}, {"headers", "HttpHeaders"}, {"subprotocols", "List[String]"}, {"options", "WebSocketOptions"}}},
 		{"WebSocket", "receive", libraryResult("Optional[WebSocketMessage]", "WebSocketError"), nil},
 		{"WebSocket", "send", libraryResult("Unit", "WebSocketError"), []LibraryParam{{"data", "Bytes"}, {"text", "Bool"}}},
 		{"WebSocket", "ping", libraryResult("Unit", "WebSocketError"), []LibraryParam{{"data", "Bytes"}}},
@@ -47,12 +46,18 @@ func (n *network) webSocketDial() Function {
 			}
 		}
 		headers := http.Header{}
-		for _, entry := range a[1].(*Map).Entries {
-			key, value := entry.Key.(string), entry.Value.(string)
-			if !validHeaderName(key) || strings.ContainsAny(value, "\r\n\x00") || strings.HasPrefix(strings.ToLower(key), "sec-websocket-") || strings.EqualFold(key, "Upgrade") || strings.EqualFold(key, "Connection") || strings.EqualFold(key, "Host") {
+		for _, entry := range a[1].(*libraryHeaders).Entries {
+			key := entry.Key.(string)
+			if !validHeaderName(key) || strings.HasPrefix(strings.ToLower(key), "sec-websocket-") || strings.EqualFold(key, "Upgrade") || strings.EqualFold(key, "Connection") || strings.EqualFold(key, "Host") {
 				return libraryError(r, "InvalidInput", "")
 			}
-			headers.Set(key, value)
+			for _, item := range entry.Value.(*List).Items {
+				value := string(item.(Bytes).Items)
+				if !utf8.ValidString(value) || strings.ContainsAny(value, "\r\n\x00") {
+					return libraryError(r, "InvalidInput", "")
+				}
+				headers.Add(key, value)
+			}
 		}
 		local, cancel := contextWithLibraryTimeout(ctx, timeout)
 		defer cancel()
@@ -124,6 +129,10 @@ func (e *libraryHTTPExchange) upgrade() Function {
 		}}
 		conn, err := upgrader.Upgrade(e.writer, e.request, nil)
 		if err != nil {
+			// The upgrader already wrote its own error response.
+			e.mu.Lock()
+			e.rejected = true
+			e.mu.Unlock()
 			return libraryError(r, "Failed", err.Error())
 		}
 		resource := newLibraryWebSocket(conn, e.owner.owner, max)
@@ -197,13 +206,7 @@ func (w *libraryWebSocket) Operation(name string) Function {
 		w.active.Add(1)
 		w.mu.Unlock()
 		defer w.active.Done()
-		done := make(chan struct{})
-		stop := context.AfterFunc(ctx.Context, func() { defer close(done); w.conn.Close() })
-		defer func() {
-			if !stop() {
-				<-done
-			}
-		}()
+		defer libraryInterruptFunc(ctx, func() { w.conn.Close() })()
 		if name == "receive" {
 			kind, reader, err := w.conn.NextReader()
 			var data []byte
@@ -242,6 +245,12 @@ func (w *libraryWebSocket) Operation(name string) Function {
 			}
 			text := kind == websocket.TextMessage
 			if text && !utf8.Valid(data) {
+				// RFC 6455 section 8.1: fail the connection with 1007.
+				w.mu.Lock()
+				w.failed = true
+				w.mu.Unlock()
+				w.conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInvalidFramePayloadData, ""), time.Now().Add(100*time.Millisecond))
+				w.conn.Close()
 				return libraryError(r, "InvalidData", "")
 			}
 			return libraryOK(r, optional("@std/WebSocketMessage", Record{"@std/WebSocketMessage", map[string]Value{"data": Bytes{data}, "text": text}}, true))

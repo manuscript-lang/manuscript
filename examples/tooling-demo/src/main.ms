@@ -1,6 +1,5 @@
 import stdout from "@std/io.ms"
 import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import Queue from "@std/queues.ms"
 import total from "@math"
 import compute from "@math"
@@ -13,7 +12,7 @@ type Package:
 export fn main() -> Int:
     let package = Package(title: "Manuscript", count: 42)
     let values = [10, 20, 30]
-    let optional = Optional[Int].some(value: 5)
+    let optional = Optional[Int].some(5)
 
     match optional:
         some(value):
@@ -23,11 +22,7 @@ export fn main() -> Int:
         none:
             return 1
 
-    let sum = total(
-        first: values.length(),
-        second: 20,
-        third: 30
-    )
+    let sum = total(first: values.length(), second: 20, third: 30)
     let queue = Queue[Int](capacity: 4)
     if not queue.enqueue(package.count):
         return 1

@@ -18,16 +18,16 @@ import sleep from "@std/time.ms"
 import posix from "@std/path.ms"
 import win32 from "@std/path.ms"
 
-fn timer_callback() -> Result[Unit, String]:
-    return ok(value: unit)
+fn timer_callback() -> Result[Unit, Error]:
+    return ok(unit)
 
 fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
     match result:
         ok(value):
-            return ok(value: value)
+            return ok(value)
 
         error(cause):
-            return error(cause: Error(value: cause))
+            return error(Error(cause))
 
 fn exercise(path: String) -> Result[Unit, Error]:
     let written = try common_result(
@@ -39,10 +39,7 @@ fn exercise(path: String) -> Result[Unit, Error]:
     )
     if not (
         try common_result(
-            result: filesystem().read_file(
-                path: path,
-                max_bytes: 5
-            )
+            result: filesystem().read_file(path: path, max_bytes: 5)
         ) == "hello".to_bytes()
     ):
         return panic(message: "check failed")
@@ -59,28 +56,18 @@ fn exercise(path: String) -> Result[Unit, Error]:
     if not (bytes.length() == 16):
         return panic(message: "check failed")
 
-    let identifier = try common_result(
-        result: uuid_v4(entropy: entropy())
-    )
+    let identifier = try common_result(result: uuid_v4(entropy: entropy()))
     if not (identifier.byte_length() == 36):
         return panic(message: "check failed")
 
     let random = try common_result(
-        result: secure_int(
-            entropy: entropy(),
-            min: -2,
-            max_exclusive: 3
-        )
+        result: secure_int(entropy: entropy(), min: -2, max_exclusive: 3)
     )
     if not (random >= -2 and random < 3):
         return panic(message: "check failed")
 
     let now = wall_clock().now()
-    if not (
-        try common_result(
-            result: parse_timestamp(text: now.to_string())
-        ) == now
-    ):
+    if not (try common_result(result: parse_timestamp(text: now.to_string())) == now):
         return panic(message: "check failed")
     if not (system().info().cpu_count > 0):
         return panic(message: "check failed")
@@ -89,17 +76,11 @@ fn exercise(path: String) -> Result[Unit, Error]:
         result: filesystem().open(path: path, flags: "r+", mode: 384)
     ):
         let updated = try common_result(
-            result: file.write_at(
-                offset: 0,
-                data: "HELLO".to_bytes()
-            )
+            result: file.write_at(offset: 0, data: "HELLO".to_bytes())
         )
         if not (
             try common_result(
-                result: file.read_at(
-                    offset: 0,
-                    max_bytes: 5
-                )
+                result: file.read_at(offset: 0, max_bytes: 5)
             ) == "HELLO".to_bytes()
         ):
             return panic(message: "positional I/O failed")
@@ -170,17 +151,17 @@ fn exercise(path: String) -> Result[Unit, Error]:
     let removed = try common_result(
         result: filesystem().remove(path: path, recursive: false)
     )
-    return ok(value: unit)
+    return ok(unit)
 
 export fn main() -> Int:
-    match arguments().at(index: 0):
-        some(path):
-            match exercise(path: path):
-                ok(_):
-                    return 0
-
-                error(_):
-                    return 1
-
+    let path = match arguments().at(index: 0):
+        some(path): path
         none:
             return 2
+
+    match exercise(path: path):
+        ok(_):
+            return 0
+
+        error(_):
+            return 1

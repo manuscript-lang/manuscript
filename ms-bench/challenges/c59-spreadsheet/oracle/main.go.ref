@@ -1,0 +1,1837 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"math"
+	"os"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+const maxCol = 26
+const maxRow = 999
+
+// ---------- values ----------
+const (
+	KEmpty = iota
+	KNum
+	KStr
+	KBool
+	KErr
+)
+
+type Val struct {
+	k int
+	n float64
+	s string // string or error text
+	b bool
+}
+
+var empty = Val{k: KEmpty}
+
+func num(f float64) Val {
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return errv("#NUM!")
+	}
+	return Val{k: KNum, n: f}
+}
+func str(s string) Val  { return Val{k: KStr, s: s} }
+func boolv(b bool) Val  { return Val{k: KBool, b: b} }
+func errv(s string) Val { return Val{k: KErr, s: s} }
+
+func fmtNum(f float64) string {
+	s := strconv.FormatFloat(f, 'f', 10, 64)
+	if strings.Contains(s, ".") {
+		s = strings.TrimRight(s, "0")
+		s = strings.TrimSuffix(s, ".")
+	}
+	if s == "-0" {
+		s = "0"
+	}
+	return s
+}
+
+func (v Val) String() string {
+	switch v.k {
+	case KNum:
+		return fmtNum(v.n)
+	case KStr, KErr:
+		return v.s
+	case KBool:
+		if v.b {
+			return "TRUE"
+		}
+		return "FALSE"
+	}
+	return ""
+}
+
+var reNum = regexp.MustCompile(`^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?$`)
+
+func parseNumber(s string) (float64, bool) {
+	s = strings.TrimSpace(s)
+	if !reNum.MatchString(s) {
+		return 0, false
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil || math.IsInf(f, 0) {
+		return 0, false
+	}
+	return f, true
+}
+
+func toNum(v Val) (float64, Val) {
+	switch v.k {
+	case KEmpty:
+		return 0, Val{}
+	case KNum:
+		return v.n, Val{}
+	case KBool:
+		if v.b {
+			return 1, Val{}
+		}
+		return 0, Val{}
+	case KStr:
+		if f, ok := parseNumber(v.s); ok {
+			return f, Val{}
+		}
+		return 0, errv("#VALUE!")
+	}
+	return 0, v
+}
+
+func toBool(v Val) (bool, Val) {
+	switch v.k {
+	case KEmpty:
+		return false, Val{}
+	case KNum:
+		return v.n != 0, Val{}
+	case KBool:
+		return v.b, Val{}
+	case KStr:
+		switch strings.ToUpper(v.s) {
+		case "TRUE":
+			return true, Val{}
+		case "FALSE":
+			return false, Val{}
+		}
+		return false, errv("#VALUE!")
+	}
+	return false, v
+}
+
+// ---------- cells ----------
+type Ref struct {
+	col, row         int
+	absCol, absRow   bool
+	valid            bool
+	text             string
+}
+type Node struct {
+	kind  string // num str bool err ref rng un bin func
+	n     float64
+	s     string
+	ref   Ref
+	ref2  Ref
+	op    string
+	kids  []*Node
+}
+
+type Cell struct {
+	raw     string // stored input text ("" never stored)
+	formula *Node
+	perr    bool
+	val     Val
+	isForm  bool
+	isConst bool
+	cv      Val // constant value
+}
+
+type Sheet struct {
+	cells map[[2]int]*Cell
+	evals int
+	out   *strings.Builder
+}
+
+func colName(c int) string { return string(rune('A' + c - 1)) }
+func cellName(c, r int) string { return fmt.Sprintf("%s%d", colName(c), r) }
+
+var reRef = regexp.MustCompile(`^(\$?)([A-Za-z]+)(\$?)([0-9]+)`)
+
+func makeRef(text string) Ref {
+	m := reRef.FindStringSubmatch(text)
+	r := Ref{text: text}
+	r.absCol = m[1] == "$"
+	r.absRow = m[3] == "$"
+	letters, digits := m[2], m[4]
+	if len(letters) == 1 && len(digits) <= 3 && !strings.HasPrefix(digits, "0") {
+		row, _ := strconv.Atoi(digits)
+		c := int(strings.ToUpper(letters)[0]-'A') + 1
+		if row >= 1 && row <= maxRow && c >= 1 && c <= maxCol {
+			r.col, r.row, r.valid = c, row, true
+		}
+	}
+	return r
+}
+
+// ---------- lexer ----------
+type Tok struct {
+	kind string // num str ref rng ident err op eof
+	text string
+	pos  int
+	end  int
+	n    float64
+}
+
+func isIdStart(c byte) bool { return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
+func isIdChar(c byte) bool  { return isIdStart(c) || (c >= '0' && c <= '9') || c == '.' }
+
+func lex(s string) ([]Tok, bool) {
+	var toks []Tok
+	i := 0
+	for i < len(s) {
+		c := s[i]
+		switch {
+		case c == ' ' || c == '\t':
+			i++
+		case c == '"':
+			j := i + 1
+			var b strings.Builder
+			closed := false
+			for j < len(s) {
+				if s[j] == '"' {
+					if j+1 < len(s) && s[j+1] == '"' {
+						b.WriteByte('"')
+						j += 2
+						continue
+					}
+					closed = true
+					j++
+					break
+				}
+				b.WriteByte(s[j])
+				j++
+			}
+			if !closed {
+				return nil, false
+			}
+			toks = append(toks, Tok{kind: "str", text: b.String(), pos: i, end: j})
+			i = j
+		case (c >= '0' && c <= '9') || (c == '.' && i+1 < len(s) && s[i+1] >= '0' && s[i+1] <= '9'):
+			j := i
+			for j < len(s) && s[j] >= '0' && s[j] <= '9' {
+				j++
+			}
+			if j < len(s) && s[j] == '.' {
+				j++
+				for j < len(s) && s[j] >= '0' && s[j] <= '9' {
+					j++
+				}
+			}
+			if j < len(s) && (s[j] == 'e' || s[j] == 'E') {
+				k := j + 1
+				if k < len(s) && (s[k] == '+' || s[k] == '-') {
+					k++
+				}
+				if k < len(s) && s[k] >= '0' && s[k] <= '9' {
+					for k < len(s) && s[k] >= '0' && s[k] <= '9' {
+						k++
+					}
+					j = k
+				}
+			}
+			f, err := strconv.ParseFloat(s[i:j], 64)
+			if err != nil || math.IsInf(f, 0) {
+				return nil, false
+			}
+			toks = append(toks, Tok{kind: "num", text: s[i:j], n: f, pos: i, end: j})
+			i = j
+		case c == '#':
+			if strings.HasPrefix(s[i:], "#REF!") {
+				toks = append(toks, Tok{kind: "err", text: "#REF!", pos: i, end: i + 5})
+				i += 5
+			} else {
+				return nil, false
+			}
+		case c == '$' || isIdStart(c):
+			if m := reRef.FindString(s[i:]); m != "" {
+				end := i + len(m)
+				if end >= len(s) || (!isIdChar(s[end]) && s[end] != '(' && s[end] != '$') {
+					// maybe a range
+					if end < len(s) && s[end] == ':' {
+						if m2 := reRef.FindString(s[end+1:]); m2 != "" {
+							end2 := end + 1 + len(m2)
+							if end2 >= len(s) || (!isIdChar(s[end2]) && s[end2] != '(' && s[end2] != '$') {
+								toks = append(toks, Tok{kind: "rng", text: s[i:end2], pos: i, end: end2})
+								i = end2
+								continue
+							}
+						}
+					}
+					toks = append(toks, Tok{kind: "ref", text: m, pos: i, end: end})
+					i = end
+					continue
+				}
+			}
+			if c == '$' {
+				return nil, false
+			}
+			j := i
+			for j < len(s) && isIdChar(s[j]) {
+				j++
+			}
+			toks = append(toks, Tok{kind: "ident", text: s[i:j], pos: i, end: j})
+			i = j
+		default:
+			two := ""
+			if i+1 < len(s) {
+				two = s[i : i+2]
+			}
+			if two == "<>" || two == "<=" || two == ">=" {
+				toks = append(toks, Tok{kind: "op", text: two, pos: i, end: i + 2})
+				i += 2
+			} else if strings.IndexByte("+-*/^&=<>(),", c) >= 0 {
+				toks = append(toks, Tok{kind: "op", text: string(c), pos: i, end: i + 1})
+				i++
+			} else {
+				return nil, false
+			}
+		}
+	}
+	toks = append(toks, Tok{kind: "eof", pos: len(s), end: len(s)})
+	return toks, true
+}
+
+// ---------- parser ----------
+type Parser struct {
+	toks []Tok
+	i    int
+	bad  bool
+}
+
+func (p *Parser) cur() Tok { return p.toks[p.i] }
+func (p *Parser) isOp(o string) bool {
+	t := p.cur()
+	return t.kind == "op" && t.text == o
+}
+
+func parseFormula(src string) (n *Node, ok bool) {
+	toks, ok := lex(src)
+	if !ok {
+		return nil, false
+	}
+	p := &Parser{toks: toks}
+	defer func() {
+		if r := recover(); r != nil {
+			if _, is := r.(parseFail); is {
+				n, ok = nil, false
+				return
+			}
+			panic(r)
+		}
+	}()
+	n = p.cmp()
+	if p.cur().kind != "eof" {
+		panic(parseFail{})
+	}
+	return n, true
+}
+
+type parseFail struct{}
+
+func (p *Parser) cmp() *Node {
+	l := p.concat()
+	for {
+		t := p.cur()
+		if t.kind == "op" && (t.text == "=" || t.text == "<>" || t.text == "<" || t.text == "<=" || t.text == ">" || t.text == ">=") {
+			p.i++
+			r := p.concat()
+			l = &Node{kind: "bin", op: t.text, kids: []*Node{l, r}}
+			continue
+		}
+		return l
+	}
+}
+func (p *Parser) concat() *Node {
+	l := p.additive()
+	for p.isOp("&") {
+		p.i++
+		r := p.additive()
+		l = &Node{kind: "bin", op: "&", kids: []*Node{l, r}}
+	}
+	return l
+}
+func (p *Parser) additive() *Node {
+	l := p.mult()
+	for p.isOp("+") || p.isOp("-") {
+		op := p.cur().text
+		p.i++
+		r := p.mult()
+		l = &Node{kind: "bin", op: op, kids: []*Node{l, r}}
+	}
+	return l
+}
+func (p *Parser) mult() *Node {
+	l := p.unary()
+	for p.isOp("*") || p.isOp("/") {
+		op := p.cur().text
+		p.i++
+		r := p.unary()
+		l = &Node{kind: "bin", op: op, kids: []*Node{l, r}}
+	}
+	return l
+}
+func (p *Parser) unary() *Node {
+	if p.isOp("-") || p.isOp("+") {
+		op := p.cur().text
+		p.i++
+		x := p.unary()
+		return &Node{kind: "un", op: op, kids: []*Node{x}}
+	}
+	return p.power()
+}
+func (p *Parser) power() *Node {
+	b := p.primary()
+	if p.isOp("^") {
+		p.i++
+		e := p.unary()
+		return &Node{kind: "bin", op: "^", kids: []*Node{b, e}}
+	}
+	return b
+}
+func (p *Parser) primary() *Node {
+	t := p.cur()
+	switch t.kind {
+	case "num":
+		p.i++
+		return &Node{kind: "num", n: t.n}
+	case "str":
+		p.i++
+		return &Node{kind: "str", s: t.text}
+	case "err":
+		p.i++
+		return &Node{kind: "err", s: t.text}
+	case "ref":
+		p.i++
+		return &Node{kind: "ref", ref: makeRef(t.text)}
+	case "rng":
+		p.i++
+		k := strings.IndexByte(t.text, ':')
+		return &Node{kind: "rng", ref: makeRef(t.text[:k]), ref2: makeRef(t.text[k+1:])}
+	case "ident":
+		p.i++
+		if p.isOp("(") {
+			p.i++
+			var args []*Node
+			if p.isOp(")") {
+				p.i++
+				return &Node{kind: "func", s: strings.ToUpper(t.text), kids: args}
+			}
+			for {
+				args = append(args, p.cmp())
+				if p.isOp(",") {
+					p.i++
+					continue
+				}
+				if p.isOp(")") {
+					p.i++
+					break
+				}
+				panic(parseFail{})
+			}
+			return &Node{kind: "func", s: strings.ToUpper(t.text), kids: args}
+		}
+		switch strings.ToUpper(t.text) {
+		case "TRUE":
+			return &Node{kind: "bool", s: "TRUE"}
+		case "FALSE":
+			return &Node{kind: "bool", s: "FALSE"}
+		}
+		return &Node{kind: "err", s: "#NAME?"}
+	case "op":
+		if t.text == "(" {
+			p.i++
+			x := p.cmp()
+			if !p.isOp(")") {
+				panic(parseFail{})
+			}
+			p.i++
+			return x
+		}
+	}
+	panic(parseFail{})
+}
+
+// ---------- dependencies ----------
+func (n *Node) refs(out *[][2]int) {
+	switch n.kind {
+	case "ref":
+		if n.ref.valid {
+			*out = append(*out, [2]int{n.ref.col, n.ref.row})
+		}
+	case "rng":
+		if n.ref.valid && n.ref2.valid {
+			c1, c2 := minI(n.ref.col, n.ref2.col), maxI(n.ref.col, n.ref2.col)
+			r1, r2 := minI(n.ref.row, n.ref2.row), maxI(n.ref.row, n.ref2.row)
+			for r := r1; r <= r2; r++ {
+				for c := c1; c <= c2; c++ {
+					*out = append(*out, [2]int{c, r})
+				}
+			}
+		}
+	case "func":
+		if n.s == "ROW" || n.s == "COLUMN" {
+			return
+		}
+		for _, k := range n.kids {
+			k.refs(out)
+		}
+	default:
+		for _, k := range n.kids {
+			k.refs(out)
+		}
+	}
+}
+func minI(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+func maxI(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func (s *Sheet) precedents(c *Cell) [][2]int {
+	if c == nil || c.formula == nil {
+		return nil
+	}
+	var out [][2]int
+	c.formula.refs(&out)
+	seen := map[[2]int]bool{}
+	var res [][2]int
+	for _, k := range out {
+		if !seen[k] {
+			seen[k] = true
+			res = append(res, k)
+		}
+	}
+	return res
+}
+
+// ---------- evaluation ----------
+func (s *Sheet) cellVal(col, row int) Val {
+	c := s.cells[[2]int{col, row}]
+	if c == nil {
+		return empty
+	}
+	return c.val
+}
+
+type item struct {
+	v      Val
+	direct bool
+}
+
+func (s *Sheet) rangeCells(n *Node) ([]Val, int, int, bool) {
+	if !n.ref.valid || !n.ref2.valid {
+		return nil, 0, 0, false
+	}
+	c1, c2 := minI(n.ref.col, n.ref2.col), maxI(n.ref.col, n.ref2.col)
+	r1, r2 := minI(n.ref.row, n.ref2.row), maxI(n.ref.row, n.ref2.row)
+	var vs []Val
+	for r := r1; r <= r2; r++ {
+		for c := c1; c <= c2; c++ {
+			vs = append(vs, s.cellVal(c, r))
+		}
+	}
+	return vs, r2 - r1 + 1, c2 - c1 + 1, true
+}
+
+func (s *Sheet) collect(args []*Node) []item {
+	var items []item
+	for _, a := range args {
+		if a.kind == "rng" {
+			vs, _, _, ok := s.rangeCells(a)
+			if !ok {
+				items = append(items, item{v: errv("#REF!"), direct: true})
+				continue
+			}
+			for _, v := range vs {
+				items = append(items, item{v: v})
+			}
+		} else {
+			items = append(items, item{v: s.eval(a), direct: true})
+		}
+	}
+	return items
+}
+
+func cmpVals(a, b Val) (int, Val) {
+	if a.k == KErr {
+		return 0, a
+	}
+	if b.k == KErr {
+		return 0, b
+	}
+	if a.k == KEmpty && b.k == KEmpty {
+		return 0, Val{}
+	}
+	if a.k == KEmpty {
+		switch b.k {
+		case KNum:
+			a = num(0)
+		case KStr:
+			a = str("")
+		case KBool:
+			a = boolv(false)
+		}
+	} else if b.k == KEmpty {
+		switch a.k {
+		case KNum:
+			b = num(0)
+		case KStr:
+			b = str("")
+		case KBool:
+			b = boolv(false)
+		}
+	}
+	rank := func(v Val) int {
+		switch v.k {
+		case KNum:
+			return 0
+		case KStr:
+			return 1
+		}
+		return 2
+	}
+	if rank(a) != rank(b) {
+		if rank(a) < rank(b) {
+			return -1, Val{}
+		}
+		return 1, Val{}
+	}
+	switch a.k {
+	case KNum:
+		if a.n < b.n {
+			return -1, Val{}
+		} else if a.n > b.n {
+			return 1, Val{}
+		}
+	case KStr:
+		return strings.Compare(a.s, b.s), Val{}
+	case KBool:
+		if a.b == b.b {
+			return 0, Val{}
+		}
+		if !a.b {
+			return -1, Val{}
+		}
+		return 1, Val{}
+	}
+	return 0, Val{}
+}
+
+func (s *Sheet) eval(n *Node) Val {
+	switch n.kind {
+	case "num":
+		return num(n.n)
+	case "str":
+		return str(n.s)
+	case "bool":
+		return boolv(n.s == "TRUE")
+	case "err":
+		return errv(n.s)
+	case "ref":
+		if !n.ref.valid {
+			return errv("#REF!")
+		}
+		return s.cellVal(n.ref.col, n.ref.row)
+	case "rng":
+		return errv("#VALUE!")
+	case "un":
+		v := s.eval(n.kids[0])
+		f, e := toNum(v)
+		if e.k == KErr {
+			return e
+		}
+		if n.op == "-" {
+			return num(-f)
+		}
+		return num(f)
+	case "bin":
+		l := s.eval(n.kids[0])
+		r := s.eval(n.kids[1])
+		switch n.op {
+		case "&":
+			if l.k == KErr {
+				return l
+			}
+			if r.k == KErr {
+				return r
+			}
+			return str(l.String() + r.String())
+		case "=", "<>", "<", "<=", ">", ">=":
+			c, e := cmpVals(l, r)
+			if e.k == KErr {
+				return e
+			}
+			switch n.op {
+			case "=":
+				return boolv(c == 0)
+			case "<>":
+				return boolv(c != 0)
+			case "<":
+				return boolv(c < 0)
+			case "<=":
+				return boolv(c <= 0)
+			case ">":
+				return boolv(c > 0)
+			}
+			return boolv(c >= 0)
+		}
+		a, e := toNum(l)
+		if e.k == KErr {
+			return e
+		}
+		b, e := toNum(r)
+		if e.k == KErr {
+			return e
+		}
+		switch n.op {
+		case "+":
+			return num(a + b)
+		case "-":
+			return num(a - b)
+		case "*":
+			return num(a * b)
+		case "/":
+			if b == 0 {
+				return errv("#DIV/0!")
+			}
+			return num(a / b)
+		case "^":
+			return num(math.Pow(a, b))
+		}
+	case "func":
+		return s.call(n)
+	}
+	return errv("#VALUE!")
+}
+
+func (s *Sheet) numArg(n *Node) (float64, Val) {
+	if n.kind == "rng" {
+		return 0, errv("#VALUE!")
+	}
+	return toNum(s.eval(n))
+}
+
+func (s *Sheet) strArg(n *Node) (string, Val) {
+	if n.kind == "rng" {
+		return "", errv("#VALUE!")
+	}
+	v := s.eval(n)
+	if v.k == KErr {
+		return "", v
+	}
+	return v.String(), Val{}
+}
+
+func runes(x string) []rune { return []rune(x) }
+
+func (s *Sheet) call(n *Node) Val {
+	name := n.s
+	args := n.kids
+	na := len(args)
+	argc := func(lo, hi int) bool { return na >= lo && (hi < 0 || na <= hi) }
+	bad := errv("#VALUE!")
+	switch name {
+	case "SUM", "AVERAGE", "MIN", "MAX", "PRODUCT", "MEDIAN":
+		if na < 1 {
+			return bad
+		}
+		var nums []float64
+		for _, it := range s.collect(args) {
+			v := it.v
+			if v.k == KErr {
+				return v
+			}
+			if it.direct {
+				f, e := toNum(v)
+				if e.k == KErr {
+					return e
+				}
+				nums = append(nums, f)
+			} else if v.k == KNum {
+				nums = append(nums, v.n)
+			}
+		}
+		switch name {
+		case "SUM":
+			t := 0.0
+			for _, x := range nums {
+				t += x
+			}
+			return num(t)
+		case "AVERAGE":
+			if len(nums) == 0 {
+				return errv("#DIV/0!")
+			}
+			t := 0.0
+			for _, x := range nums {
+				t += x
+			}
+			return num(t / float64(len(nums)))
+		case "MIN", "MAX":
+			if len(nums) == 0 {
+				return num(0)
+			}
+			b := nums[0]
+			for _, x := range nums[1:] {
+				if (name == "MIN" && x < b) || (name == "MAX" && x > b) {
+					b = x
+				}
+			}
+			return num(b)
+		case "PRODUCT":
+			if len(nums) == 0 {
+				return num(0)
+			}
+			t := 1.0
+			for _, x := range nums {
+				t *= x
+			}
+			return num(t)
+		case "MEDIAN":
+			if len(nums) == 0 {
+				return errv("#NUM!")
+			}
+			sort.Float64s(nums)
+			m := len(nums) / 2
+			if len(nums)%2 == 1 {
+				return num(nums[m])
+			}
+			return num((nums[m-1] + nums[m]) / 2)
+		}
+	case "COUNT", "COUNTA":
+		if na < 1 {
+			return bad
+		}
+		c := 0
+		for _, it := range s.collect(args) {
+			if name == "COUNT" && it.v.k == KNum {
+				c++
+			}
+			if name == "COUNTA" && it.v.k != KEmpty {
+				c++
+			}
+		}
+		return num(float64(c))
+	case "IF":
+		if !argc(2, 3) {
+			return bad
+		}
+		if args[0].kind == "rng" {
+			return bad
+		}
+		b, e := toBool(s.eval(args[0]))
+		if e.k == KErr {
+			return e
+		}
+		if b {
+			return s.evalScalar(args[1])
+		}
+		if na == 3 {
+			return s.evalScalar(args[2])
+		}
+		return boolv(false)
+	case "IFERROR":
+		if na != 2 {
+			return bad
+		}
+		v := s.evalScalar(args[0])
+		if v.k == KErr {
+			return s.evalScalar(args[1])
+		}
+		return v
+	case "CHOOSE":
+		if na < 2 {
+			return bad
+		}
+		f, e := s.numArg(args[0])
+		if e.k == KErr {
+			return e
+		}
+		i := int(math.Floor(f))
+		if i < 1 || i >= na {
+			return bad
+		}
+		return s.evalScalar(args[i])
+	case "AND", "OR":
+		if na < 1 {
+			return bad
+		}
+		any := false
+		res := name == "AND"
+		for _, it := range s.collect(args) {
+			v := it.v
+			if v.k == KErr {
+				return v
+			}
+			if !it.direct && (v.k == KStr || v.k == KEmpty) {
+				continue
+			}
+			b, e := toBool(v)
+			if e.k == KErr {
+				return e
+			}
+			any = true
+			if name == "AND" {
+				res = res && b
+			} else {
+				res = res || b
+			}
+		}
+		if !any {
+			return bad
+		}
+		return boolv(res)
+	case "NOT":
+		if na != 1 || args[0].kind == "rng" {
+			return bad
+		}
+		b, e := toBool(s.eval(args[0]))
+		if e.k == KErr {
+			return e
+		}
+		return boolv(!b)
+	case "ABS", "INT", "SQRT":
+		if na != 1 {
+			return bad
+		}
+		f, e := s.numArg(args[0])
+		if e.k == KErr {
+			return e
+		}
+		switch name {
+		case "ABS":
+			return num(math.Abs(f))
+		case "INT":
+			return num(math.Floor(f))
+		}
+		if f < 0 {
+			return errv("#NUM!")
+		}
+		return num(math.Sqrt(f))
+	case "POW", "MOD":
+		if na != 2 {
+			return bad
+		}
+		a, e := s.numArg(args[0])
+		if e.k == KErr {
+			return e
+		}
+		b, e := s.numArg(args[1])
+		if e.k == KErr {
+			return e
+		}
+		if name == "POW" {
+			return num(math.Pow(a, b))
+		}
+		if b == 0 {
+			return errv("#DIV/0!")
+		}
+		return num(a - b*math.Floor(a/b))
+	case "ROUND":
+		if !argc(1, 2) {
+			return bad
+		}
+		f, e := s.numArg(args[0])
+		if e.k == KErr {
+			return e
+		}
+		d := 0.0
+		if na == 2 {
+			d, e = s.numArg(args[1])
+			if e.k == KErr {
+				return e
+			}
+		}
+		d = math.Trunc(d)
+		if d > 15 || d < -15 {
+			return errv("#NUM!")
+		}
+		p := math.Pow(10, d)
+		return num(math.Round(f*p) / p)
+	case "LEN":
+		if na != 1 {
+			return bad
+		}
+		x, e := s.strArg(args[0])
+		if e.k == KErr {
+			return e
+		}
+		return num(float64(len(runes(x))))
+	case "UPPER", "LOWER", "TRIM":
+		if na != 1 {
+			return bad
+		}
+		x, e := s.strArg(args[0])
+		if e.k == KErr {
+			return e
+		}
+		switch name {
+		case "UPPER":
+			b := []byte(x)
+			for i, c := range b {
+				if c >= 'a' && c <= 'z' {
+					b[i] = c - 32
+				}
+			}
+			return str(string(b))
+		case "LOWER":
+			b := []byte(x)
+			for i, c := range b {
+				if c >= 'A' && c <= 'Z' {
+					b[i] = c + 32
+				}
+			}
+			return str(string(b))
+		}
+		return str(strings.Join(strings.Fields(strings.ReplaceAll(x, "\t", " ")), " "))
+	case "LEFT", "RIGHT":
+		if !argc(1, 2) {
+			return bad
+		}
+		x, e := s.strArg(args[0])
+		if e.k == KErr {
+			return e
+		}
+		cnt := 1.0
+		if na == 2 {
+			cnt, e = s.numArg(args[1])
+			if e.k == KErr {
+				return e
+			}
+		}
+		if cnt < 0 {
+			return bad
+		}
+		rs := runes(x)
+		k := int(math.Floor(cnt))
+		if k > len(rs) {
+			k = len(rs)
+		}
+		if name == "LEFT" {
+			return str(string(rs[:k]))
+		}
+		return str(string(rs[len(rs)-k:]))
+	case "MID":
+		if na != 3 {
+			return bad
+		}
+		x, e := s.strArg(args[0])
+		if e.k == KErr {
+			return e
+		}
+		st, e := s.numArg(args[1])
+		if e.k == KErr {
+			return e
+		}
+		ln, e := s.numArg(args[2])
+		if e.k == KErr {
+			return e
+		}
+		if st < 1 || ln < 0 {
+			return bad
+		}
+		rs := runes(x)
+		a := int(math.Floor(st)) - 1
+		if a >= len(rs) {
+			return str("")
+		}
+		b := a + int(math.Floor(ln))
+		if b > len(rs) {
+			b = len(rs)
+		}
+		return str(string(rs[a:b]))
+	case "CONCAT":
+		if na < 1 {
+			return bad
+		}
+		var b strings.Builder
+		for _, it := range s.collect(args) {
+			if it.v.k == KErr {
+				return it.v
+			}
+			b.WriteString(it.v.String())
+		}
+		return str(b.String())
+	case "SUBSTITUTE":
+		if na != 3 {
+			return bad
+		}
+		x, e := s.strArg(args[0])
+		if e.k == KErr {
+			return e
+		}
+		o, e := s.strArg(args[1])
+		if e.k == KErr {
+			return e
+		}
+		r, e := s.strArg(args[2])
+		if e.k == KErr {
+			return e
+		}
+		if o == "" {
+			return str(x)
+		}
+		return str(strings.ReplaceAll(x, o, r))
+	case "VALUE":
+		if na != 1 {
+			return bad
+		}
+		v := s.evalScalar(args[0])
+		if v.k == KErr {
+			return v
+		}
+		if v.k == KStr {
+			if f, ok := parseNumber(v.s); ok {
+				return num(f)
+			}
+			return bad
+		}
+		f, e := toNum(v)
+		if e.k == KErr {
+			return e
+		}
+		return num(f)
+	case "ISERROR", "ISBLANK", "ISNUMBER", "ISTEXT":
+		if na != 1 {
+			return bad
+		}
+		v := s.evalScalar(args[0])
+		switch name {
+		case "ISERROR":
+			return boolv(v.k == KErr)
+		case "ISBLANK":
+			return boolv(v.k == KEmpty)
+		case "ISNUMBER":
+			return boolv(v.k == KNum)
+		}
+		return boolv(v.k == KStr)
+	case "ROW", "COLUMN":
+		if na != 1 {
+			return bad
+		}
+		a := args[0]
+		if a.kind != "ref" && a.kind != "rng" {
+			return bad
+		}
+		if !a.ref.valid {
+			return errv("#REF!")
+		}
+		if name == "ROW" {
+			return num(float64(a.ref.row))
+		}
+		return num(float64(a.ref.col))
+	case "INDEX":
+		if !argc(2, 3) || args[0].kind != "rng" {
+			return bad
+		}
+		vs, rows, cols, ok := s.rangeCells(args[0])
+		if !ok {
+			return errv("#REF!")
+		}
+		r, e := s.numArg(args[1])
+		if e.k == KErr {
+			return e
+		}
+		c := 1.0
+		if na == 3 {
+			c, e = s.numArg(args[2])
+			if e.k == KErr {
+				return e
+			}
+		} else if rows == 1 {
+			// single row: second argument selects the column
+			c, r = r, 1
+		}
+		ri, ci := int(math.Floor(r)), int(math.Floor(c))
+		if ri < 1 || ri > rows || ci < 1 || ci > cols {
+			return errv("#REF!")
+		}
+		return vs[(ri-1)*cols+(ci-1)]
+	case "COUNTIF":
+		if na != 2 || args[0].kind != "rng" {
+			return bad
+		}
+		vs, _, _, ok := s.rangeCells(args[0])
+		if !ok {
+			return errv("#REF!")
+		}
+		crit := s.evalScalar(args[1])
+		if crit.k == KErr {
+			return crit
+		}
+		op := "="
+		var target Val
+		if crit.k == KStr {
+			t := crit.s
+			for _, o := range []string{">=", "<=", "<>", ">", "<", "="} {
+				if strings.HasPrefix(t, o) {
+					op = o
+					t = t[len(o):]
+					break
+				}
+			}
+			if f, ok := parseNumber(t); ok {
+				target = num(f)
+			} else {
+				target = str(t)
+			}
+		} else {
+			target = crit
+		}
+		cnt := 0
+		for _, v := range vs {
+			if v.k != target.k {
+				if op == "<>" && v.k != KEmpty {
+					cnt++
+				}
+				continue
+			}
+			c, _ := cmpVals(v, target)
+			hit := false
+			switch op {
+			case "=":
+				hit = c == 0
+			case "<>":
+				hit = c != 0
+			case "<":
+				hit = c < 0
+			case "<=":
+				hit = c <= 0
+			case ">":
+				hit = c > 0
+			case ">=":
+				hit = c >= 0
+			}
+			if hit {
+				cnt++
+			}
+		}
+		return num(float64(cnt))
+	}
+	return errv("#NAME?")
+}
+
+func (s *Sheet) evalScalar(n *Node) Val {
+	if n.kind == "rng" {
+		return errv("#VALUE!")
+	}
+	return s.eval(n)
+}
+
+// ---------- recalculation ----------
+func (s *Sheet) setCellContent(col, row int, raw string) {
+	key := [2]int{col, row}
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		delete(s.cells, key)
+		return
+	}
+	c := &Cell{raw: raw}
+	switch {
+	case strings.HasPrefix(raw, "="):
+		c.isForm = true
+		n, ok := parseFormula(raw[1:])
+		if ok {
+			c.formula = n
+		} else {
+			c.perr = true
+			c.val = errv("#PARSE!")
+		}
+	case strings.HasPrefix(raw, "'"):
+		c.isConst = true
+		c.cv = str(raw[1:])
+		c.val = c.cv
+	default:
+		c.isConst = true
+		if f, ok := parseNumber(raw); ok {
+			c.cv = num(f)
+		} else if strings.EqualFold(raw, "true") {
+			c.cv = boolv(true)
+		} else if strings.EqualFold(raw, "false") {
+			c.cv = boolv(false)
+		} else {
+			c.cv = str(raw)
+		}
+		c.val = c.cv
+	}
+	s.cells[key] = c
+}
+
+func (s *Sheet) recalc(changed [][2]int) int {
+	// reverse dependency map for formula cells
+	rev := map[[2]int][][2]int{}
+	for k, c := range s.cells {
+		for _, p := range s.precedents(c) {
+			rev[p] = append(rev[p], k)
+		}
+	}
+	affected := map[[2]int]bool{}
+	var queue [][2]int
+	for _, k := range changed {
+		if c := s.cells[k]; c != nil && c.isForm && !affected[k] {
+			affected[k] = true
+		}
+		queue = append(queue, k)
+	}
+	visited := map[[2]int]bool{}
+	for len(queue) > 0 {
+		k := queue[0]
+		queue = queue[1:]
+		if visited[k] {
+			continue
+		}
+		visited[k] = true
+		for _, d := range rev[k] {
+			affected[d] = true
+			queue = append(queue, d)
+		}
+	}
+	// Tarjan SCC over affected subgraph
+	index := map[[2]int]int{}
+	low := map[[2]int]int{}
+	onStack := map[[2]int]bool{}
+	var stack [][2]int
+	cyc := map[[2]int]bool{}
+	idx := 0
+	var keys [][2]int
+	for k := range affected {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i][1] != keys[j][1] {
+			return keys[i][1] < keys[j][1]
+		}
+		return keys[i][0] < keys[j][0]
+	})
+	var strong func(v [2]int)
+	strong = func(v [2]int) {
+		index[v] = idx
+		low[v] = idx
+		idx++
+		stack = append(stack, v)
+		onStack[v] = true
+		selfLoop := false
+		for _, w := range s.precedents(s.cells[v]) {
+			if !affected[w] {
+				continue
+			}
+			if w == v {
+				selfLoop = true
+			}
+			if _, seen := index[w]; !seen {
+				strong(w)
+				if low[w] < low[v] {
+					low[v] = low[w]
+				}
+			} else if onStack[w] && index[w] < low[v] {
+				low[v] = index[w]
+			}
+		}
+		if low[v] == index[v] {
+			var comp [][2]int
+			for {
+				w := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				onStack[w] = false
+				comp = append(comp, w)
+				if w == v {
+					break
+				}
+			}
+			if len(comp) > 1 || selfLoop {
+				for _, w := range comp {
+					cyc[w] = true
+				}
+			}
+		}
+	}
+	for _, k := range keys {
+		if _, seen := index[k]; !seen {
+			strong(k)
+		}
+	}
+	done := map[[2]int]bool{}
+	var evalCell func(k [2]int)
+	evalCell = func(k [2]int) {
+		if done[k] {
+			return
+		}
+		done[k] = true
+		c := s.cells[k]
+		if cyc[k] {
+			c.val = errv("#CYCLE!")
+			s.evals++
+			return
+		}
+		for _, p := range s.precedents(c) {
+			if affected[p] {
+				evalCell(p)
+			}
+		}
+		if c.perr {
+			c.val = errv("#PARSE!")
+		} else {
+			c.val = s.eval(c.formula)
+			if c.val.k == KEmpty {
+				c.val = num(0)
+			}
+		}
+		s.evals++
+	}
+	for _, k := range keys {
+		evalCell(k)
+	}
+	return len(keys)
+}
+
+// ---------- CSV ----------
+func csvQuote(f string) string {
+	if strings.ContainsAny(f, ",\"\n\r") || strings.HasPrefix(f, " ") || strings.HasSuffix(f, " ") {
+		return "\"" + strings.ReplaceAll(f, "\"", "\"\"") + "\""
+	}
+	return f
+}
+
+func parseCSV(lines []string) [][]string {
+	text := strings.Join(lines, "\n")
+	var rows [][]string
+	var row []string
+	var field strings.Builder
+	inQ := false
+	started := false
+	flushField := func() {
+		row = append(row, field.String())
+		field.Reset()
+	}
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		if inQ {
+			if c == '"' {
+				if i+1 < len(text) && text[i+1] == '"' {
+					field.WriteByte('"')
+					i++
+				} else {
+					inQ = false
+				}
+			} else {
+				field.WriteByte(c)
+			}
+			continue
+		}
+		switch c {
+		case '"':
+			inQ = true
+			started = true
+		case ',':
+			flushField()
+			started = true
+		case '\n':
+			if started || field.Len() > 0 || len(row) > 0 {
+				flushField()
+				rows = append(rows, row)
+			}
+			row = nil
+			started = false
+		case '\r':
+		default:
+			field.WriteByte(c)
+			started = true
+		}
+	}
+	if started || field.Len() > 0 || len(row) > 0 {
+		flushField()
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+// ---------- shifting ----------
+func shiftFormula(src string, dc, dr int) string {
+	toks, _ := lex(src)
+	var b strings.Builder
+	last := 0
+	shiftRef := func(t string) (string, bool) {
+		r := makeRef(t)
+		if !r.valid {
+			return t, true
+		}
+		c, row := r.col, r.row
+		if !r.absCol {
+			c += dc
+		}
+		if !r.absRow {
+			row += dr
+		}
+		if c < 1 || c > maxCol || row < 1 || row > maxRow {
+			return "", false
+		}
+		out := ""
+		if r.absCol {
+			out += "$"
+		}
+		out += colName(c)
+		if r.absRow {
+			out += "$"
+		}
+		out += strconv.Itoa(row)
+		return out, true
+	}
+	for _, t := range toks {
+		if t.kind != "ref" && t.kind != "rng" {
+			continue
+		}
+		b.WriteString(src[last:t.pos])
+		last = t.end
+		if t.kind == "ref" {
+			if r, ok := shiftRef(t.text); ok {
+				b.WriteString(r)
+			} else {
+				b.WriteString("#REF!")
+			}
+		} else {
+			k := strings.IndexByte(t.text, ':')
+			r1, ok1 := shiftRef(t.text[:k])
+			r2, ok2 := shiftRef(t.text[k+1:])
+			if ok1 && ok2 {
+				b.WriteString(r1 + ":" + r2)
+			} else {
+				b.WriteString("#REF!")
+			}
+		}
+	}
+	b.WriteString(src[last:])
+	return b.String()
+}
+
+// ---------- commands ----------
+var reCell = regexp.MustCompile(`^([A-Za-z])([0-9]{1,3})$`)
+
+type Err struct{ msg string }
+
+func parseCell(t string) (int, int) {
+	m := reCell.FindStringSubmatch(t)
+	if m == nil || strings.HasPrefix(m[2], "0") {
+		panic(Err{"bad cell reference '" + t + "'"})
+	}
+	row, _ := strconv.Atoi(m[2])
+	c := int(strings.ToUpper(m[1])[0]-'A') + 1
+	if row < 1 || row > maxRow {
+		panic(Err{"bad cell reference '" + t + "'"})
+	}
+	return c, row
+}
+
+func parseRange(t string) (c1, r1, c2, r2 int) {
+	if k := strings.IndexByte(t, ':'); k >= 0 {
+		defer func() {
+			if r := recover(); r != nil {
+				panic(Err{"bad range '" + t + "'"})
+			}
+		}()
+		c1, r1 = parseCell(t[:k])
+		c2, r2 = parseCell(t[k+1:])
+	} else {
+		defer func() {
+			if r := recover(); r != nil {
+				panic(Err{"bad range '" + t + "'"})
+			}
+		}()
+		c1, r1 = parseCell(t)
+		c2, r2 = c1, r1
+	}
+	if c1 > c2 {
+		c1, c2 = c2, c1
+	}
+	if r1 > r2 {
+		r1, r2 = r2, r1
+	}
+	return
+}
+
+func (s *Sheet) usedRange() (int, int, bool) {
+	maxc, maxr := 0, 0
+	for k := range s.cells {
+		if k[0] > maxc {
+			maxc = k[0]
+		}
+		if k[1] > maxr {
+			maxr = k[1]
+		}
+	}
+	return maxc, maxr, maxc > 0
+}
+
+func (s *Sheet) p(format string, a ...interface{}) {
+	s.out.WriteString(fmt.Sprintf(format, a...) + "\n")
+}
+
+func (s *Sheet) display(c, r int) string {
+	return s.cellVal(c, r).String()
+}
+
+func (s *Sheet) rawOf(c, r int) string {
+	if cell := s.cells[[2]int{c, r}]; cell != nil {
+		return cell.raw
+	}
+	return ""
+}
+
+func main() {
+	data, _ := io.ReadAll(bufio.NewReader(os.Stdin))
+	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	var out strings.Builder
+	defer func() { os.Stdout.WriteString(out.String()) }()
+	s := &Sheet{cells: map[[2]int]*Cell{}, out: &out}
+	pos := 0
+	for pos < len(lines) {
+		ln := strings.TrimRight(lines[pos], " \t")
+		pos++
+		if strings.TrimSpace(ln) == "" || strings.HasPrefix(strings.TrimSpace(ln), "#") {
+			continue
+		}
+		out.WriteString("> " + ln + "\n")
+		trimmed := strings.TrimSpace(ln)
+		f := strings.Fields(trimmed)
+		cmd := f[0]
+		args := f[1:]
+		rest := strings.TrimSpace(trimmed[len(cmd):])
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if e, ok := r.(Err); ok {
+						out.WriteString("error: " + e.msg + "\n")
+						return
+					}
+					panic(r)
+				}
+			}()
+			switch cmd {
+			case "set":
+				if len(args) < 1 {
+					panic(Err{"usage: set CELL VALUE"})
+				}
+				c, r := parseCell(args[0])
+				val := strings.TrimSpace(rest[len(args[0]):])
+				s.setCellContent(c, r, val)
+				n := s.recalc([][2]int{{c, r}})
+				s.p("recalc %d", n)
+			case "clear":
+				if len(args) != 1 {
+					panic(Err{"usage: clear CELL"})
+				}
+				c, r := parseCell(args[0])
+				s.setCellContent(c, r, "")
+				n := s.recalc([][2]int{{c, r}})
+				s.p("recalc %d", n)
+			case "get":
+				if len(args) != 1 {
+					panic(Err{"usage: get CELL"})
+				}
+				c, r := parseCell(args[0])
+				if cell := s.cells[[2]int{c, r}]; cell == nil {
+					s.p("(empty)")
+				} else {
+					s.p("%s", cell.val.String())
+				}
+			case "show":
+				if len(args) != 1 {
+					panic(Err{"usage: show CELL"})
+				}
+				c, r := parseCell(args[0])
+				cell := s.cells[[2]int{c, r}]
+				name := cellName(c, r)
+				switch {
+				case cell == nil:
+					s.p("%s: (empty)", name)
+				case cell.isForm:
+					s.p("%s: %s => %s", name, cell.raw, cell.val.String())
+				default:
+					s.p("%s: %s", name, cell.raw)
+				}
+			case "print", "export":
+				mode := "values"
+				var rng string
+				for _, a := range args {
+					if a == "formulas" || a == "values" {
+						mode = a
+					} else if rng == "" {
+						rng = a
+					} else if cmd == "print" {
+						panic(Err{"usage: print [RANGE]"})
+					} else {
+						panic(Err{"usage: export [formulas] [RANGE]"})
+					}
+				}
+				if cmd == "print" && mode == "formulas" {
+					panic(Err{"usage: print [RANGE]"})
+				}
+				var c1, r1, c2, r2 int
+				if rng != "" {
+					c1, r1, c2, r2 = parseRange(rng)
+				} else {
+					mc, mr, any := s.usedRange()
+					if !any {
+						s.p("(empty sheet)")
+						return
+					}
+					c1, r1, c2, r2 = 1, 1, mc, mr
+				}
+				for r := r1; r <= r2; r++ {
+					var fs []string
+					for c := c1; c <= c2; c++ {
+						var v string
+						if mode == "formulas" {
+							v = s.rawOf(c, r)
+						} else {
+							v = s.display(c, r)
+						}
+						if cmd == "export" {
+							v = csvQuote(v)
+						}
+						fs = append(fs, v)
+					}
+					if cmd == "print" {
+						s.p("%s", strings.Join(fs, " | "))
+					} else {
+						s.p("%s", strings.Join(fs, ","))
+					}
+				}
+			case "import":
+				var blk []string
+				for pos < len(lines) {
+					l := lines[pos]
+					pos++
+					if l == "." {
+						break
+					}
+					blk = append(blk, l)
+				}
+				if len(args) != 1 {
+					panic(Err{"usage: import CELL"})
+				}
+				c0, r0 := parseCell(args[0])
+				rows := parseCSV(blk)
+				maxw := 0
+				for _, row := range rows {
+					if len(row) > maxw {
+						maxw = len(row)
+					}
+				}
+				if r0+len(rows)-1 > maxRow || c0+maxw-1 > maxCol {
+					panic(Err{"import out of range"})
+				}
+				var changed [][2]int
+				for i, row := range rows {
+					for j, fld := range row {
+						s.setCellContent(c0+j, r0+i, fld)
+						changed = append(changed, [2]int{c0 + j, r0 + i})
+					}
+				}
+				n := s.recalc(changed)
+				s.p("imported %d rows, %d columns; recalc %d", len(rows), maxw, n)
+			case "copy":
+				if len(args) != 2 {
+					panic(Err{"usage: copy SRC DST"})
+				}
+				sc, sr := parseCell(args[0])
+				c1, r1, c2, r2 := parseRange(args[1])
+				src := s.cells[[2]int{sc, sr}]
+				var changed [][2]int
+				for r := r1; r <= r2; r++ {
+					for c := c1; c <= c2; c++ {
+						switch {
+						case src == nil:
+							s.setCellContent(c, r, "")
+						case src.isForm:
+							s.setCellContent(c, r, "="+shiftFormula(src.raw[1:], c-sc, r-sr))
+						default:
+							s.setCellContent(c, r, src.raw)
+						}
+						changed = append(changed, [2]int{c, r})
+					}
+				}
+				n := s.recalc(changed)
+				s.p("recalc %d", n)
+			case "precedents", "dependents":
+				if len(args) != 1 {
+					panic(Err{"usage: " + cmd + " CELL"})
+				}
+				c, r := parseCell(args[0])
+				var res [][2]int
+				if cmd == "precedents" {
+					res = s.precedents(s.cells[[2]int{c, r}])
+				} else {
+					rev := map[[2]int][][2]int{}
+					for k, cell := range s.cells {
+						for _, p := range s.precedents(cell) {
+							rev[p] = append(rev[p], k)
+						}
+					}
+					seen := map[[2]int]bool{}
+					queue := [][2]int{{c, r}}
+					for len(queue) > 0 {
+						k := queue[0]
+						queue = queue[1:]
+						for _, d := range rev[k] {
+							if !seen[d] {
+								seen[d] = true
+								res = append(res, d)
+								queue = append(queue, d)
+							}
+						}
+					}
+				}
+				sort.Slice(res, func(i, j int) bool {
+					if res[i][1] != res[j][1] {
+						return res[i][1] < res[j][1]
+					}
+					return res[i][0] < res[j][0]
+				})
+				if len(res) == 0 {
+					s.p("(none)")
+					return
+				}
+				var ns []string
+				for _, k := range res {
+					ns = append(ns, cellName(k[0], k[1]))
+				}
+				s.p("%s", strings.Join(ns, " "))
+			case "stats":
+				nf := 0
+				for _, c := range s.cells {
+					if c.isForm {
+						nf++
+					}
+				}
+				s.p("cells %d formulas %d evals %d", len(s.cells), nf, s.evals)
+			default:
+				panic(Err{"unknown command '" + cmd + "'"})
+			}
+		}()
+	}
+}

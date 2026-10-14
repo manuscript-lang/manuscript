@@ -10,27 +10,15 @@ test "omitted capacity creates an unbounded queue":
     let inferred: Queue[Int] = Queue()
 
     for unused in [1, 2]:
-        for value in [
-            1,
-            2,
-            3,
-            4,
-            5
-        ]:
+        for value in [1, 2, 3, 4, 5]:
             if not queue.enqueue(value):
                 return panic("unbounded queue rejected an item")
 
         if queue.length() != 5:
             return panic("unbounded queue lost items")
 
-        for value in [
-            1,
-            2,
-            3,
-            4,
-            5
-        ]:
-            let expected: Optional[Int] = some(value: value)
+        for value in [1, 2, 3, 4, 5]:
+            let expected: Optional[Int] = some(value)
             if queue.dequeue() != expected:
                 return panic("unbounded queue lost FIFO order")
 
@@ -42,7 +30,7 @@ test "omitted capacity creates an unbounded queue":
         return panic("inferred queue rejected an item")
 
 test "local FIFO aliases and saved methods":
-    let queue = Queue[Int](capacity: 2)
+    let queue = Queue[Int](2)
     let alias = queue
     let enqueue = alias.enqueue
     let dequeue = queue.dequeue
@@ -56,8 +44,8 @@ test "local FIFO aliases and saved methods":
     if enqueue(5):
         return panic("full queue accepted an item")
 
-    let first: Optional[Int] = some(value: 3)
-    let second: Optional[Int] = some(value: 4)
+    let first: Optional[Int] = some(3)
+    let second: Optional[Int] = some(4)
     if not (alias.peek() == first and queue.length() == 2):
         return panic("peek changed the queue")
     if not (dequeue() == first and alias.dequeue() == second):
@@ -70,9 +58,9 @@ test "local FIFO aliases and saved methods":
         return panic("drained queue cannot be reused")
 
 test "queue elements include ordinary functions":
-    let queue = Queue[fn() -> Int](capacity: 1)
+    let queue = Queue[fn() -> Int](1)
     queue.enqueue(
-        fn() -> Int:
+        fn():
             return 7
     )
 
@@ -85,30 +73,24 @@ test "queue elements include ordinary functions":
             return panic("callback missing")
 
 test "shared queue uses explicit lock scopes":
-    let shared = Synchronized(value: Queue[Int]())
-    let operation = fn(item: Int) -> Unit:
-        for unused in [
-            1,
-            2,
-            3,
-            4,
-            5
-        ]:
+    let shared = Synchronized(Queue[Int]())
+    let operation = fn(item: Int):
+        for unused in [1, 2, 3, 4, 5]:
             with locked = shared.lock():
                 let queue = locked.get()
                 if not queue.enqueue(item):
                     return panic("critical section did not drain queue")
 
-                let expected: Optional[Int] = some(value: item)
+                let expected: Optional[Int] = some(item)
                 if not (queue.dequeue() == expected):
                     return panic("critical section interleaved")
-    let task1 = fn() -> Unit:
+    let task1 = fn():
         operation(item: 1)
-    let task2 = fn() -> Unit:
+    let task2 = fn():
         operation(item: 2)
-    let task3 = fn() -> Unit:
+    let task3 = fn():
         operation(item: 3)
-    let task4 = fn() -> Unit:
+    let task4 = fn():
         operation(item: 4)
 
     with group = TaskGroup():

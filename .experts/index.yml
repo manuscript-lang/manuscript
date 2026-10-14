@@ -7,15 +7,22 @@ experts:
       - "pkg/syntax/**"
       - "pkg/lexer/**"
       - "pkg/parser/**"
-      - "pkg/frontend/**"
-      - "pkg/checker/**"
-      - "pkg/compiler/**"
-      - "pkg/project/**"
       - "documentation/core-language/**"
       - "tests/e2e/**"
+  - id: compiler
+    file: compiler.md
+    topics: [checking, lowering, generated Go, build levels, native omissions, standalone bundles, fault sites]
+    paths:
+      - "pkg/frontend/**"
+      - "pkg/checker/**"
+      - "pkg/lower/**"
+      - "pkg/compiler/**"
+      - "pkg/build/**"
+      - "pkg/project/**"
+      - "documentation/contributing/compiler/**"
   - id: runtime
     file: runtime.md
-    topics: [concurrency, cancellation, cleanup, resources, networking, native APIs]
+    topics: [concurrency, cancellation, cleanup, resources, networking, native APIs, standard library]
     paths:
       - "pkg/runtime/**"
       - "pkg/stdlib/**"
@@ -26,19 +33,23 @@ experts:
       - "tests/e2e/testdata/projects/**"
   - id: tooling-and-docs
     file: tooling-and-docs.md
-    topics: [documentation, generated references, editor tooling, navigation, CLI, builds]
+    topics: [documentation, generated references, editor tooling, navigation, CLI, diagnostics]
     paths:
       - "pkg/tooling/**"
       - "extensions/**"
       - "documentation/**"
       - "website/**"
       - "internal/cli/**"
-      - "pkg/project/**"
-      - "pkg/stdlib/**"
       - "cmd/**"
-      - "pkg/compiler/**"
-      - "scripts/**"
-      - "pkg/frontend/**"
-      - ".github/workflows/**"
+      - "pkg/stdlib/**"
       - "README.md"
-      - "documentation/implementation.md"
+  - id: repository
+    file: repository.md
+    topics: [repository cleanup, package moves, publication, CI, releases]
+    paths:
+      - "scripts/**"
+      - ".github/workflows/**"
+      - "documentation/developer-tooling/implementation.md"
+      - "documentation/contributing/**"
+      - "go.mod"
+      - "Makefile"

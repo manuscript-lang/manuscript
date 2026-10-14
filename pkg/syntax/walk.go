@@ -7,6 +7,8 @@ type Visitor struct {
 	Block      func([]*Statement)
 	Statement  func(*Statement)
 	Expression func(*Expression)
+	// LeaveExpression runs after all executable children, including arm bodies.
+	LeaveExpression func(*Expression)
 }
 
 // Walk visits a declaration and its methods.
@@ -44,9 +46,6 @@ func (v Visitor) statements(body []*Statement) {
 		v.expression(s.Value)
 		v.statements(s.Body)
 		v.statements(s.Else)
-		for _, arm := range s.Arms {
-			v.statements(arm.Body)
-		}
 	}
 }
 
@@ -69,4 +68,11 @@ func (v Visitor) expression(e *Expression) {
 		v.expression(part.Value)
 	}
 	v.Callable(e.Params, e.Body)
+	for _, arm := range e.Arms {
+		v.statements(arm.Body)
+		v.expression(arm.Value)
+	}
+	if v.LeaveExpression != nil {
+		v.LeaveExpression(e)
+	}
 }

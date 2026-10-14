@@ -18,6 +18,8 @@ func declarationKind(kind string) string {
 	switch kind {
 	case "fn":
 		return "Function"
+	case "constant":
+		return "Constant"
 	case "record":
 		return "Record"
 	case "alternative":
@@ -37,7 +39,13 @@ func renderModule(module checker.APIModule, forSite bool) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n\n", module.Path)
 	if module.Path == "prelude" {
-		b.WriteString("Intrinsic names; no import required.\n\n")
+		b.WriteString("Names available in every module; no import required.\n\n")
+	} else if module.Path == "@std/optional.ms" || module.Path == "@std/result.ms" || module.Path == "@std/errors.ms" || module.Path == "@std/equality.ms" {
+		b.WriteString("These names are available in the prelude; no import required.\n\n")
+		fmt.Fprintf(&b, "Explicit imports with `import Name from %q` remain supported.\n\n", module.Path)
+	} else if module.Path == "@std/collections.ms" {
+		b.WriteString("`List`, `Map`, and `Set` are available in the prelude; no import required.\n\n")
+		fmt.Fprintf(&b, "Other names require `import Name from %q`; explicit List/Map/Set imports remain supported.\n\n", module.Path)
 	} else if strings.HasPrefix(module.Path, "@std/") {
 		fmt.Fprintf(&b, "Import each required symbol with `import Name from %q`.\n\n", module.Path)
 	}
@@ -61,9 +69,25 @@ func renderModule(module checker.APIModule, forSite bool) string {
 			}
 			continue
 		}
+		if d.Doc != "" {
+			fmt.Fprintf(&b, "%s\n\n", d.Doc)
+		}
 		fmt.Fprintf(&b, "```manuscript\n%s```\n\n", d.Declaration)
 		for _, implementation := range d.ImplementationDeclarations {
 			fmt.Fprintf(&b, "```manuscript\n%s```\n\n", implementation)
+		}
+		for _, member := range d.Members {
+			if strings.TrimSpace(member.Doc) == "" {
+				continue
+			}
+			name := d.Name + "." + member.Name
+			if member.Contract != "" {
+				name = d.Name + "." + member.Contract + "." + member.Name
+			}
+			fmt.Fprintf(&b, "### %s\n\n%s\n\n```manuscript\n%s\n```\n\n", name, member.Doc, member.Signature)
+		}
+		if forSite && module.Path == "@std/process.ms" && (d.Name == "ProcessControl" || d.Name == "SignalStream") {
+			b.WriteString("See the [shutdown cookbook](../../concurrency/shutdown.md) for runnable examples and limitations.\n\n")
 		}
 	}
 	return b.String()

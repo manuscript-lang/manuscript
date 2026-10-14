@@ -4,21 +4,21 @@ fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:
     return transform(value: value)
 
 test "function suite boundaries":
-    let dormant = fn() -> Int:
+    let dormant = fn():
         return panic(message: "body is not run at creation")
     let grouped = apply(
         transform: (
-            fn(value: Int) -> Int:
+            fn(value):
                 if value > 0:
                     return value - 1
 
                 return 0
         ),
-        value: 3,
+        value: 3
     )
     let final_argument = apply(
         value: 3,
-        transform: fn(value: Int) -> Int:
+        transform: fn(value):
             return value - 1
     )
     if not (grouped == 2):

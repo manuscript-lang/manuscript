@@ -1,6 +1,8 @@
 package msruntime
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"encoding/hex"
@@ -121,17 +123,52 @@ func TestLibraryCompressionAndArchives(t *testing.T) {
 		return Record{"@std/ArchiveEntry", map[string]Value{"path": path, "data": Bytes{[]byte(data)}, "directory": directory}}
 	}
 	for _, format := range []string{"zip", "tar"} {
-		entries := libraryList("@std/ArchiveEntry", []Value{entry("dir/", "", true), entry("dir/x", "data", false)})
+		entries := libraryList("@std/ArchiveEntry", []Value{entry("dir", "", true), entry("dir/x", "data", false)})
 		packed := librarySuccess(t, libraryCall(t, "archive/pack", entries, format, int64(10000)))
 		got := librarySuccess(t, libraryCall(t, "archive/unpack", packed, format, limits))
 		if !Equal(got, entries) {
 			t.Fatalf("%s: %#v", format, got)
 		}
 	}
+	for _, format := range []string{"zip", "tar"} {
+		// A trailing slash on a directory is accepted by pack but unpack returns the canonical slashless path.
+		packed := librarySuccess(t, libraryCall(t, "archive/pack", libraryList("@std/ArchiveEntry", []Value{entry("d/", "", true)}), format, int64(10000)))
+		got := librarySuccess(t, libraryCall(t, "archive/unpack", packed, format, limits))
+		if want := libraryList("@std/ArchiveEntry", []Value{entry("d", "", true)}); !Equal(got, want) {
+			t.Fatalf("%s trailing slash: %#v", format, got)
+		}
+	}
 	for _, path := range []string{"../x", "/x", "C:/x", "a\\b", "a/../x"} {
 		entries := libraryList("@std/ArchiveEntry", []Value{entry(path, "x", false)})
 		libraryFailure(t, libraryCall(t, "archive/pack", entries, "zip", int64(1000)), "InvalidInput")
 	}
+}
+func TestLibraryZipNamesWithoutUTF8Flag(t *testing.T) {
+	// Info-ZIP and other writers store UTF-8 names without general-purpose flag 0x800.
+	// Go's reader marks names containing `~`, control bytes, or non-ASCII as NonUTF8
+	// in that case, but valid UTF-8 text must still unpack.
+	big := Record{"@std/ArchiveLimits", map[string]Value{"max_entries": int64(10), "max_entry_bytes": int64(100), "max_total_bytes": int64(100)}}
+	build := func(name string) Bytes {
+		var buffer bytes.Buffer
+		writer := zip.NewWriter(&buffer)
+		out, err := writer.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store, NonUTF8: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		out.Write([]byte("x"))
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return Bytes{buffer.Bytes()}
+	}
+	for _, name := range []string{"backup~", "a~b/c", "caf\u00e9.txt"} {
+		got := librarySuccess(t, libraryCall(t, "archive/unpack", build(name), "zip", big))
+		items := got.(*List).Items
+		if len(items) != 1 || items[0].(Record).Fields["path"] != name {
+			t.Fatalf("%q: %#v", name, got)
+		}
+	}
+	libraryFailure(t, libraryCall(t, "archive/unpack", build("bad\xff"), "zip", big), "Unsupported")
 }
 func TestLibraryFilesystem(t *testing.T) {
 	ctx := RootExecution()
@@ -171,17 +208,18 @@ func TestLibraryHTTPClient(t *testing.T) {
 	defer server.Close()
 	n := &network{}
 	ctx := RootExecution()
-	headers := &Map{Type: "@std/Map[String][String]"}
+	headers := &libraryHeaders{}
 	call := func(path string, max int64) Value {
-		return n.Operation("request").Body(ctx, []Value{"GET", server.URL + path, headers, Bytes{}, max, Duration(time.Second)})
+		return n.Operation("request").Body(ctx, []Value{libraryHTTPMethod("GET"), server.URL + path, headers, Bytes{}, max, Duration(time.Second)})
 	}
 	response := librarySuccess(t, call("/body", 4)).(Record)
-	if response.Fields["status"] != int64(404) || string(response.Fields["body"].(Bytes).Items) != "body" {
+	if response.Fields["head"].(Record).Fields["status"] != int64(404) || string(response.Fields["body"].(Bytes).Items) != "body" {
 		t.Fatal(response)
 	}
 	libraryFailure(t, call("/body", 3), "LimitExceeded")
+	libraryFailure(t, n.Operation("request").Body(ctx, []Value{libraryHTTPMethod("GET"), "http://127.0.0.1:99999/", headers, Bytes{}, int64(10), Duration(time.Second)}), "InvalidInput")
 	redirect := librarySuccess(t, call("/redirect", 1000)).(Record)
-	if redirect.Fields["status"] != int64(302) {
+	if redirect.Fields["head"].(Record).Fields["status"] != int64(302) {
 		t.Fatal("followed redirect")
 	}
 	n.Operation("close").Body(ctx, nil)
@@ -253,7 +291,7 @@ func TestLibraryNetworkCloseInterruptsRequest(t *testing.T) {
 	n := &network{}
 	done := make(chan Value, 1)
 	go func() {
-		done <- n.Operation("request").Body(ctx, []Value{"GET", server.URL, &Map{"@std/Map[String][String]", nil}, Bytes{}, int64(100), Duration(10 * time.Second)})
+		done <- n.Operation("request").Body(ctx, []Value{libraryHTTPMethod("GET"), server.URL, &libraryHeaders{}, Bytes{}, int64(100), Duration(10 * time.Second)})
 	}()
 	<-started
 	n.Operation("close").Body(ctx, nil)

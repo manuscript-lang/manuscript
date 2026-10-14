@@ -53,6 +53,9 @@ func run(args []string) error {
 		if err := command("", devtool.Go(), "mod", "vendor"); err != nil {
 			return err
 		}
+		if err := patchDelve(); err != nil {
+			return err
+		}
 		return licenses(false)
 	case "go", "node", "version":
 		if len(args) != 2 || !regexp.MustCompile(`^\d+\.\d+\.\d+$`).MatchString(args[1]) {

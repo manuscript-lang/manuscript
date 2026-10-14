@@ -1,6 +1,7 @@
 package tooling_test
 
 import (
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 	"io/fs"
@@ -10,10 +11,80 @@ import (
 	"testing"
 )
 
+func TestFormatCompactGolden(t *testing.T) {
+	input, err := os.ReadFile("testdata/format/compact.input.ms")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := os.ReadFile("testdata/format/compact.golden.ms")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, newline := range []string{"\n", "\r\n"} {
+		source := strings.ReplaceAll(string(input), "\n", newline)
+		got, err := tooling.Format("compact.ms", source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != string(want) {
+			t.Fatalf("formatted:\n%s\nwant:\n%s", got, want)
+		}
+		assertFormatMeaning(t, "compact.ms", source, got)
+		twice, err := tooling.Format("compact.ms", got)
+		if err != nil || twice != got {
+			t.Fatalf("formatting is not idempotent: %v\n%s", err, twice)
+		}
+		for _, text := range []string{source, got} {
+			result := compiler.CompileSource("compact.ms", text, compiler.Options{Tests: true})
+			if !result.Success() {
+				t.Fatal(result.Diagnostics)
+			}
+		}
+	}
+}
+
 func TestFormatExpressionLayouts(t *testing.T) {
 	cases := []struct {
 		name, source, want string
 	}{
+		{
+			name: "module constant initializer starting before its operator",
+			source: `let prices = [12, 8, 25]
+let affordable = prices.length > 1 and prices.keep(predicate: fn(value: Int) -> Bool:
+    return value <= 10
+).length > 0
+`,
+			want: `let prices = [12, 8, 25]
+let affordable = (
+    prices.length > 1
+    and prices.keep(
+        predicate: fn(value: Int) -> Bool:
+            return value <= 10
+    ).length > 0
+)
+`,
+		},
+		{
+			name: "match arms after a try joined from a later line",
+			source: `fn work(early: Int) -> Int:
+    let result = subtract(try
+        match some(0):
+            some(_):
+                10
+            none: 10
+    )
+    return result
+`,
+			want: `fn work(early: Int) -> Int:
+    let result = subtract(
+        try match some(0):
+            some(_):
+                10
+            none: 10
+    )
+    return result
+`,
+		},
 		{
 			name: "nested computations below the width limit",
 			source: `fn work() -> Unit:
@@ -40,23 +111,14 @@ func TestFormatExpressionLayouts(t *testing.T) {
 `,
 		},
 		{
-			name: "larger and nested collections",
+			name: "compact larger and nested collections",
 			source: `fn work() -> Unit:
     let larger = [1, 2, 3, 4, 5]
     let nested = [[1, 2], [3, 4]]
 `,
 			want: `fn work() -> Unit:
-    let larger = [
-        1,
-        2,
-        3,
-        4,
-        5
-    ]
-    let nested = [
-        [1, 2],
-        [3, 4]
-    ]
+    let larger = [1, 2, 3, 4, 5]
+    let nested = [[1, 2], [3, 4]]
 `,
 		},
 		{
@@ -66,11 +128,7 @@ func TestFormatExpressionLayouts(t *testing.T) {
     return 0
 `,
 			want: `fn work() -> Int:
-    if (
-        active
-        and allowed
-        and remaining > 0
-    ): return 1
+    if active and allowed and remaining > 0: return 1
 
     return 0
 `,
@@ -81,11 +139,7 @@ func TestFormatExpressionLayouts(t *testing.T) {
     return active or allowed and remaining > 0 or fallback
 `,
 			want: `fn work() -> Bool:
-    return (
-        active
-        or allowed and remaining > 0
-        or fallback
-    )
+    return active or allowed and remaining > 0 or fallback
 `,
 		},
 		{
@@ -94,14 +148,7 @@ func TestFormatExpressionLayouts(t *testing.T) {
     send(condition: active and allowed and remaining > 0, payload: "data")
 `,
 			want: `fn work() -> Unit:
-    send(
-        condition: (
-            active
-            and allowed
-            and remaining > 0
-        ),
-        payload: "data"
-    )
+    send(condition: active and allowed and remaining > 0, payload: "data")
 `,
 		},
 		{
@@ -110,9 +157,19 @@ func TestFormatExpressionLayouts(t *testing.T) {
     return active or allowed and remaining > 0
 `,
 			want: `fn work() -> Bool:
+    return active or allowed and remaining > 0
+`,
+		},
+		{
+			name: "long boolean chain wraps at the width",
+			source: `fn work() -> Bool:
+    return account_is_active and payment_is_allowed and remaining_balance > minimum_balance
+`,
+			want: `fn work() -> Bool:
     return (
-        active
-        or allowed and remaining > 0
+        account_is_active
+        and payment_is_allowed
+        and remaining_balance > minimum_balance
     )
 `,
 		},
@@ -156,12 +213,7 @@ fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
     Fifth
 } from "./contracts.ms"
 
-fn work(
-    first: Int,
-    second: Int,
-    third: Int,
-    fourth: Int
-) -> Int: return first
+fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 `,
 		},
 		{
@@ -199,10 +251,7 @@ fn work(
     return apply(value: 3, transform: fn(value: Int) -> Int: return value + 1)
 `,
 			want: `fn work() -> Int:
-    return apply(
-        value: 3,
-        transform: fn(value: Int) -> Int: return value + 1
-    )
+    return apply(value: 3, transform: fn(value: Int) -> Int: return value + 1)
 `,
 		},
 		{
@@ -232,10 +281,7 @@ fn work(
 `,
 			want: `fn work() -> Bool:
     return (
-        [
-            [1, 2],
-            [3]
-        ].flat_map(
+        [[1, 2], [3]].flat_map(
             transform: fn(value: List[Int]) -> List[Int]: return value
         ) == [1, 2, 3]
     )
@@ -245,13 +291,7 @@ fn work(
 			name: "compound defaults",
 			source: `fn work(value: Bool = active and allowed and remaining > 0) -> Bool: return value
 `,
-			want: `fn work(
-    value: Bool = (
-        active
-        and allowed
-        and remaining > 0
-    )
-) -> Bool: return value
+			want: `fn work(value: Bool = active and allowed and remaining > 0) -> Bool: return value
 `,
 		},
 		{

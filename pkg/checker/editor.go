@@ -6,7 +6,11 @@ import (
 )
 
 // CheckOptions enables targeted editor queries without retaining every lexical scope.
-type CheckOptions struct{ ScopeMarker string }
+type CheckOptions struct {
+	ScopeMarker string
+	// bundled is the standard source module being checked for the shared cache.
+	bundled *syntax.Module
+}
 
 // ScopeState is the visible environment at a requested expression, with shadowing resolved.
 type ScopeState struct {
@@ -40,7 +44,7 @@ func (c *checker) captureScope(e *syntax.Expression) {
 			state.Symbols[name] = s
 		}
 	}
-	c.Scopes[e] = state
+	setScope(e, state)
 }
 
 // Member queries use the same resolution and generic-bound rules as calls.
@@ -65,11 +69,13 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 	if nativeMethod(receiver, "clone") != nil {
 		candidates["clone"] = true
 	}
+	seen := map[*Type]bool{}
 	var collect func(*Type)
 	collect = func(t *Type) {
-		if t == nil {
+		if t == nil || seen[t] {
 			return
 		}
+		seen[t] = true
 		if t.Def != nil {
 			for _, op := range t.Def.Operations {
 				candidates[op.Name] = true
@@ -119,7 +125,7 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 func StandardExportInventory() map[string][]*Symbol {
 	ensureStandard()
 	result := map[string][]*Symbol{}
-	for path, exports := range standardModules {
+	for path, exports := range allStandardExports() {
 		for _, symbol := range exports {
 			if symbol.Export {
 				result[path] = append(result[path], symbol)

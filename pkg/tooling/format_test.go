@@ -40,6 +40,22 @@ func TestFormatFixturesPreservesMeaningAndIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestFormatImplicitReturnPreservesOperands(t *testing.T) {
+	source := "fn sum(first_value: Int, second_value: Int, third_value: Int, fourth_value: Int) -> Int: first_value + second_value + third_value + fourth_value\n"
+	formatted, err := tooling.Format("implicit.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertFormatMeaning(t, "implicit.ms", source, formatted)
+	twice, err := tooling.Format("implicit.ms", formatted)
+	if err != nil || formatted != twice {
+		t.Fatal("implicit return formatting is not idempotent", err)
+	}
+	if result := compiler.CompileSource("implicit.ms", formatted, compiler.Options{}); !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+}
+
 // Grouping parentheses do not appear in the AST. Compare every other token's
 // spelling and the complete syntax tree with source positions removed, so
 // wrapping cannot change precedence, arguments, literals, or suite ownership.
@@ -67,6 +83,7 @@ func assertFormatMeaning(t *testing.T, filename, original, formatted string) {
 			case map[string]any:
 				delete(node, "Pos")
 				delete(node, "NamePos")
+				delete(node, "NamePositions")
 				for _, child := range node {
 					positions(child)
 				}
@@ -88,12 +105,25 @@ func assertFormatMeaning(t *testing.T, filename, original, formatted string) {
 			t.Fatal(err)
 		}
 		var result []lexer.Token
-		for _, token := range tokens {
+		for index, token := range tokens {
 			switch token.Kind {
 			case "(", ")", lexer.Newline, lexer.Indent, lexer.Dedent, lexer.EOF:
 				continue
+			case ",":
+				// A trailing comma is layout: the formatter adds or drops it.
+				next := index + 1
+				for next < len(tokens) && (tokens[next].Kind == lexer.Newline || tokens[next].Kind == lexer.Indent || tokens[next].Kind == lexer.Dedent) {
+					next++
+				}
+				if next < len(tokens) {
+					switch tokens[next].Kind {
+					case ")", "]", "}":
+						continue
+					}
+				}
 			}
 			token.Pos = syntax.Position{}
+			token.End = syntax.Position{}
 			result = append(result, token)
 		}
 		return result
@@ -153,7 +183,7 @@ func TestInspectInterface(t *testing.T) {
 
 func TestFormatGroupedImports(t *testing.T) {
 	input := "import { List,Map, } from \"@std/collections.ms\" # collections\n"
-	want := "import {List, Map,} from \"@std/collections.ms\"  # collections\n"
+	want := "import {List, Map} from \"@std/collections.ms\"  # collections\n"
 	formatted, err := tooling.Format("imports.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
@@ -166,7 +196,7 @@ func TestFormatGroupedImports(t *testing.T) {
 
 func TestFormatMultilineFunctionParameters(t *testing.T) {
 	input := "export fn render(\r\n    arguments:List[String], # arguments\r\n    output:WriteStream,\r\n)->Int:\r\n    let message=\"Arguments: {arguments.join(\",\")}\\n\"\r\n    match output.write(data:message.to_bytes()):\r\n        ok(_):\r\n            return 0\r\n        error(_):\r\n            return 1\r\n"
-	want := "export fn render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) -> Int:\n    let message = \"Arguments: {arguments.join(\",\")}\\n\"\n\n    match output.write(data: message.to_bytes()):\n        ok(_):\n            return 0\n\n        error(_):\n            return 1\n"
+	want := "export fn render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) -> Int:\n    let message = \"Arguments: {arguments.join(\",\")}\\n\"\n\n    match output.write(data: message.to_bytes()):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n"
 	formatted, err := tooling.Format("main.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
@@ -203,7 +233,34 @@ func TestFormatMapAndShorthand(t *testing.T) {
 	if err != nil || again != formatted {
 		t.Fatalf("not idempotent: %q %v", again, err)
 	}
-	if !strings.Contains(formatted, `{"a": 1, "b": {1: 2},}`) {
+	if !strings.Contains(formatted, `{"a": 1, "b": {1: 2}}`) {
 		t.Fatal(formatted)
+	}
+}
+
+func TestFormatKeepsConsecutiveConstantsTogether(t *testing.T) {
+	source := "import List from \"@std/collections.ms\"\nlet A = 1\nlet B = 2\nfn f() -> Int:\n    return A + B\n"
+	want := "import List from \"@std/collections.ms\"\n\nlet A = 1\nlet B = 2\n\nfn f() -> Int:\n    return A + B\n"
+	got, err := tooling.Format("constants.ms", source)
+	if err != nil || got != want {
+		t.Fatalf("got %q, %v", got, err)
+	}
+}
+
+func TestFormatWrapsLongConstantInitializers(t *testing.T) {
+	long := `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" + "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + "cccccccccccccccccccccccccccccccccccccc"`
+	numbers := `100000000000 + 200000000000 + 300000000000 + 400000000000 + 500000000000 + 6000000000000 + 7000000000`
+	for _, value := range []string{long, numbers} {
+		got, err := tooling.Format("constants.ms", "let A = "+value+"\n")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(got, "let A = (\n    ") || !strings.HasSuffix(got, "\n)\n") {
+			t.Fatalf("constant initializer not wrapped in parentheses:\n%s", got)
+		}
+		again, err := tooling.Format("constants.ms", got)
+		if err != nil || again != got {
+			t.Fatalf("not idempotent: %q, %v", again, err)
+		}
 	}
 }

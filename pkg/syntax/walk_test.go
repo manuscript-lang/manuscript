@@ -37,20 +37,30 @@ impl Read for Box:
 	}
 	var calls []string
 	seen := map[*syntax.Expression]bool{}
+	var stack []*syntax.Expression
 	v := syntax.Visitor{Expression: func(e *syntax.Expression) {
 		if seen[e] {
 			t.Fatal("visited an expression twice", e.Pos)
 		}
 		seen[e] = true
+		stack = append(stack, e)
 		if e.Kind == "call" && e.Left.Text == "choose" {
 			calls = append(calls, e.Args[0].Value.Text)
 		}
+	}, LeaveExpression: func(e *syntax.Expression) {
+		if len(stack) == 0 || stack[len(stack)-1] != e {
+			t.Fatal("leave callbacks do not balance nested expression traversal", e.Pos)
+		}
+		stack = stack[:len(stack)-1]
 	}}
 	for _, decl := range m.Declarations {
 		v.Walk(decl)
 	}
 	if !reflect.DeepEqual(calls, []string{"1", "2", "3", "4", "5", "6", "7", "8", "9"}) {
 		t.Fatal("lost or reordered default, closure, interpolation, arm, or method calls", calls)
+	}
+	if len(stack) != 0 {
+		t.Fatal("missing leave callbacks", stack)
 	}
 }
 

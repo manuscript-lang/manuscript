@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "S.#.....\n.##.###.\n....#...\n.####.#.\n......#E\n",
+  "stdout": "15\n"
+ },
+ {
+  "name": "no-path",
+  "stdin": "S#E\n.#.\n.#.\n",
+  "stdout": "no path\n"
+ }
+]

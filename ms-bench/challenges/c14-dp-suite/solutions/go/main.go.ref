@@ -1,0 +1,157 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+const bad = "error: bad command"
+
+func parseNum(s string) (int, bool) {
+	if len(s) < 1 || len(s) > 6 {
+		return 0, false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return 0, false
+		}
+	}
+	n, _ := strconv.Atoi(s)
+	return n, true
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func lcs(a, b string) int {
+	prev := make([]int, len(b)+1)
+	for i := 0; i < len(a); i++ {
+		cur := make([]int, len(b)+1)
+		for j := 0; j < len(b); j++ {
+			if a[i] == b[j] {
+				cur[j+1] = prev[j] + 1
+			} else {
+				cur[j+1] = max(prev[j+1], cur[j])
+			}
+		}
+		prev = cur
+	}
+	return prev[len(b)]
+}
+
+func edit(a, b string) int {
+	prev := make([]int, len(b)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(a); i++ {
+		cur := make([]int, len(b)+1)
+		cur[0] = i
+		for j := 1; j <= len(b); j++ {
+			sub := 1
+			if a[i-1] == b[j-1] {
+				sub = 0
+			}
+			cur[j] = min(min(prev[j]+1, cur[j-1]+1), prev[j-1]+sub)
+		}
+		prev = cur
+	}
+	return prev[len(b)]
+}
+
+func solveLine(line string) string {
+	t := strings.Split(line, " ")
+	switch t[0] {
+	case "lcs", "edit":
+		if len(t) != 3 || t[1] == "" || t[2] == "" {
+			return bad
+		}
+		if t[0] == "lcs" {
+			return fmt.Sprint(lcs(t[1], t[2]))
+		}
+		return fmt.Sprint(edit(t[1], t[2]))
+	case "knap":
+		if len(t) < 2 {
+			return bad
+		}
+		capacity, ok := parseNum(t[1])
+		if !ok {
+			return bad
+		}
+		best := make([]int, capacity+1)
+		for _, tok := range t[2:] {
+			p := strings.Split(tok, ":")
+			if len(p) != 2 {
+				return bad
+			}
+			w, ok1 := parseNum(p[0])
+			v, ok2 := parseNum(p[1])
+			if !ok1 || !ok2 || w < 1 {
+				return bad
+			}
+			for c := capacity; c >= w; c-- {
+				best[c] = max(best[c], best[c-w]+v)
+			}
+		}
+		return fmt.Sprint(best[capacity])
+	case "coins":
+		if len(t) < 3 {
+			return bad
+		}
+		amount, ok := parseNum(t[1])
+		if !ok {
+			return bad
+		}
+		var cs []int
+		for _, tok := range t[2:] {
+			c, ok := parseNum(tok)
+			if !ok || c < 1 {
+				return bad
+			}
+			cs = append(cs, c)
+		}
+		const inf = 1000000000
+		best := make([]int, amount+1)
+		for a := 1; a <= amount; a++ {
+			best[a] = inf
+			for _, c := range cs {
+				if c <= a && best[a-c]+1 < best[a] {
+					best[a] = best[a-c] + 1
+				}
+			}
+		}
+		if best[amount] >= inf {
+			return "impossible"
+		}
+		return fmt.Sprint(best[amount])
+	}
+	return bad
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+	for sc.Scan() {
+		l := sc.Text()
+		if strings.Trim(l, " ") == "" {
+			continue
+		}
+		w.WriteString(solveLine(l) + "\n")
+	}
+}

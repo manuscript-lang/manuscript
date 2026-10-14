@@ -2,8 +2,10 @@
 package parser
 
 import (
+	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -12,16 +14,36 @@ type Parser struct {
 	tokens          []lexer.Token
 	at              int
 	inlineStatement bool
+	inlineReturn    bool
+	blockLambda     bool
+	depth           int
+}
+
+// maxNesting bounds recursive descent so generated or hostile input produces a
+// diagnostic instead of exhausting the Go stack, which cannot be recovered.
+const maxNesting = 1000
+
+// maxChain bounds left-nested operator, member, call, and index chains, which
+// build deep trees without recursive descent.
+const maxChain = 10000
+
+func (p *Parser) link(links *int) {
+	*links++
+	if *links > maxChain {
+		p.fail(p.peek(), fmt.Sprintf("expression chain exceeds %d operators or accesses; split it into named parts", maxChain))
+	}
+}
+
+// enter counts one level of syntactic nesting; the returned function leaves it.
+func (p *Parser) enter() func() {
+	p.depth++
+	if p.depth > maxNesting {
+		p.fail(p.peek(), fmt.Sprintf("nesting exceeds %d levels; split the expression, type, or block into named parts", maxNesting))
+	}
+	return func() { p.depth-- }
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
-	return parse(file, source)
-}
-
-// ParseLibrary is retained for callers; library and application syntax are identical.
-// Deprecated: use Parse.
-func ParseLibrary(file, source string) (*syntax.Module, error) { return Parse(file, source) }
-func parse(file, source string) (module *syntax.Module, err error) {
 	tokens, err := lexer.Lex(file, source)
 	if err != nil {
 		return nil, err
@@ -46,6 +68,9 @@ func parse(file, source string) (module *syntax.Module, err error) {
 		if p.take("import") {
 			pos := p.previous().Pos
 			names := []lexer.Token{}
+			if p.peek().Kind == "*" {
+				p.fail(p.peek(), "namespace and wildcard imports are unsupported; import individual exports with 'import { Name, OtherName } from \"./module.ms\"'")
+			}
 			if p.take("{") {
 				// A named import list is nonempty and permits a trailing comma.
 				for {
@@ -58,11 +83,11 @@ func parse(file, source string) (module *syntax.Module, err error) {
 			} else {
 				names = append(names, p.need(lexer.Name))
 			}
-			p.need("from")
+			p.needFrom()
 			token := p.need(lexer.String)
 			expr := p.text(token)
 			if len(expr.Parts) != 1 || expr.Parts[0].Value != nil {
-				p.fail(token, "import paths cannot interpolate")
+				p.fail(token, "import paths cannot interpolate; write the path as plain text without {…}")
 			}
 			for _, name := range names {
 				module.Imports = append(module.Imports, &syntax.Import{Pos: pos, NamePos: name.Pos, Name: name.Text, Path: expr.Parts[0].Text})
@@ -73,7 +98,7 @@ func parse(file, source string) (module *syntax.Module, err error) {
 		exported := p.take("export")
 		d := p.declaration()
 		if exported && (d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest) {
-			p.fail(p.previous(), "only types, interfaces, and named functions can be exported")
+			p.fail(p.previous(), "only types, interfaces, and named functions can be exported; remove 'export' before this impl or test")
 		}
 		d.Export = exported
 		module.Declarations = append(module.Declarations, d)
@@ -92,12 +117,27 @@ func (p *Parser) take(k string) bool {
 func (p *Parser) need(k string) lexer.Token {
 	t := p.peek()
 	if !p.take(k) {
-		p.fail(t, "expected "+k+", found "+t.Kind)
+		p.fail(t, "expected "+describeKind(k)+", found "+describe(t)+needHint(k, t))
 	}
 	return t
 }
+
+// needFrom consumes the contextual word 'from' that ends an import's names;
+// elsewhere it is an ordinary name.
+func (p *Parser) needFrom() {
+	t := p.peek()
+	if t.Kind == lexer.Name && t.Text == "from" {
+		p.at++
+		return
+	}
+	p.fail(t, "expected 'from', found "+describe(t)+needHint("from", t))
+}
 func (p *Parser) fail(t lexer.Token, m string) {
-	panic(syntax.Diagnostic{Position: t.Pos, Phase: "parse", Message: m})
+	d := syntax.Diagnostic{Position: t.Pos, Phase: "parse", Message: m}
+	if t.End.Line > 0 {
+		d.End = &t.End
+	}
+	panic(d)
 }
 func (p *Parser) newlines() {
 	for p.take(lexer.Newline) {
@@ -109,7 +149,7 @@ func (p *Parser) end() {
 		case lexer.Newline, ",", ")", "]", "}":
 			return
 		}
-		p.fail(p.peek(), "expected end of inline statement")
+		p.fail(p.peek(), "expected end of inline statement, found "+describe(p.peek())+"; an inline body holds one simple statement, so move more statements to an indented block")
 	}
 	if p.take(lexer.Newline) {
 		p.newlines()
@@ -118,7 +158,13 @@ func (p *Parser) end() {
 	if p.at > 0 && p.previous().Kind == lexer.Dedent {
 		return
 	}
-	p.fail(p.peek(), "expected end of statement")
+	if p.blockLambda && p.peek().Kind == "," {
+		p.fail(p.peek(), "a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parentheses")
+	}
+	if p.peek().Kind == "&" {
+		p.fail(p.peek(), "'&&' is not an operator; write 'and' for logical and")
+	}
+	p.fail(p.peek(), "expected end of statement, found "+describe(p.peek())+"; put one statement per line, and join operands with an operator or a comma inside brackets")
 }
 func (p *Parser) typeParams() []syntax.TypeParameter {
 	var result []syntax.TypeParameter
@@ -145,17 +191,21 @@ func (p *Parser) typeParams() []syntax.TypeParameter {
 	p.need("]")
 	return result
 }
-func (p *Parser) parameters(defaults bool) []syntax.Parameter {
+func (p *Parser) parameters(defaults, inferred bool) []syntax.Parameter {
 	p.need("(")
 	var params []syntax.Parameter
 	if !p.take(")") {
 		for {
 			name := p.need(lexer.Name)
-			p.need(":")
-			param := syntax.Parameter{Pos: name.Pos, Name: name.Text, Type: p.typ()}
+			param := syntax.Parameter{Pos: name.Pos, Name: name.Text}
+			if p.take(":") {
+				param.Type = p.typ()
+			} else if !inferred {
+				p.need(":")
+			}
 			if p.take("=") {
 				if !defaults {
-					p.fail(p.previous(), "function types and case payloads cannot have defaults")
+					p.fail(p.previous(), "function types and case payloads cannot have defaults; put the default on a named function parameter or a record field instead")
 				}
 				param.Default = p.expression(0)
 			}
@@ -197,9 +247,10 @@ func (p *Parser) typeArgs() []*syntax.Type {
 	return types
 }
 func (p *Parser) typ() *syntax.Type {
+	defer p.enter()()
 	if p.take("fn") {
 		pos := p.previous().Pos
-		params := p.parameters(false)
+		params := p.parameters(false, false)
 		p.need("->")
 		return &syntax.Type{Pos: pos, Name: "fn", Params: params, Result: p.typ()}
 	}
@@ -217,15 +268,32 @@ func (p *Parser) declaration() *syntax.Declaration {
 	case p.take("fn"):
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
-		d.Params = p.parameters(true)
+		d.Params = p.parameters(true, false)
 		p.need("->")
 		d.Result = p.typ()
 		d.Body = p.statementSuite(false, true)
+	case p.take("let"):
+		d.Kind = syntax.KindFn
+		d.Constant = true
+		d.Name = p.need(lexer.Name).Text
+		if p.take(":") {
+			d.Result = p.typ()
+		}
+		p.need("=")
+		// A binary expression's position is its operator, so the statement
+		// starts at the first token of the initializer for source tooling.
+		start := p.peek().Pos
+		value := p.expression(0)
+		if d.Result == nil {
+			d.Result = &syntax.Type{Pos: value.Pos}
+		}
+		d.Body = []*syntax.Statement{{Pos: start, Kind: syntax.KindReturn, Value: value}}
+		p.end()
 	case p.take("test"):
 		name := p.need(lexer.String)
 		text := p.text(name)
 		if len(text.Parts) != 1 || text.Parts[0].Value != nil {
-			p.fail(name, "test names cannot interpolate")
+			p.fail(name, "test names cannot interpolate; use plain text, e.g. test \"adds numbers\":")
 		}
 		d.Name = text.Parts[0].Text
 		d.Result = &syntax.Type{Name: "Unit", Pos: token.Pos}
@@ -245,7 +313,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 			p.need("fn")
 			name := p.need(lexer.Name)
 			m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text}
-			m.Params = p.parameters(true)
+			m.Params = p.parameters(true, false)
 			p.need("->")
 			m.Result = p.typ()
 			m.Body = p.statementSuite(false, true)
@@ -253,7 +321,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 		}
 		p.need(lexer.Dedent)
 		if len(d.Methods) == 0 {
-			p.fail(token, "implementation requires operations")
+			p.fail(token, "implementation requires operations; add at least one 'fn name(...) -> Type:' under the impl")
 		}
 	case p.take("type") || p.take("interface"):
 		d.Name = p.need(lexer.Name).Text
@@ -278,11 +346,11 @@ func (p *Parser) declaration() *syntax.Declaration {
 				next = "interface"
 			}
 			if token.Kind == syntax.KindInterface && next != "interface" {
-				p.fail(p.peek(), "a type has only fields or cases; an interface has only operation signatures")
+				p.fail(p.peek(), "a type has only fields or cases; an interface has only operation signatures; declare fields as 'name: Type' in a type, and put method bodies in an 'impl' block")
 			}
 			if next != "interface" {
 				if form != "" && form != next {
-					p.fail(p.peek(), "a type cannot mix fields and cases")
+					p.fail(p.peek(), "a type cannot mix fields and cases; use either fields (a record) or 'case' lines (an alternative), and wrap shared data in a case payload")
 				}
 				form = next
 			}
@@ -290,9 +358,9 @@ func (p *Parser) declaration() *syntax.Declaration {
 				name := p.need(lexer.Name)
 				c := syntax.Case{Pos: name.Pos, Name: name.Text}
 				if p.peek().Kind == "(" {
-					c.Fields = p.parameters(false)
+					c.Fields = p.parameters(false, false)
 					if len(c.Fields) == 0 {
-						p.fail(name, "nullary cases omit parentheses")
+						p.fail(name, "nullary cases omit parentheses; write 'case "+name.Text+"' instead of 'case "+name.Text+"()'")
 					}
 				}
 				d.Cases = append(d.Cases, c)
@@ -303,7 +371,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 				if token.Kind == "type" {
 					m.TypeParams = p.typeParams()
 				}
-				m.Params = p.parameters(true)
+				m.Params = p.parameters(true, false)
 				p.need("->")
 				m.Result = p.typ()
 				if token.Kind == "interface" {
@@ -325,14 +393,14 @@ func (p *Parser) declaration() *syntax.Declaration {
 		}
 		p.need(lexer.Dedent)
 		if token.Kind == "interface" && len(d.Methods) == 0 {
-			p.fail(token, "declaration body cannot be empty")
+			p.fail(token, "declaration body cannot be empty; an interface needs at least one 'fn name(...) -> Type' operation")
 		}
 		if form == "" {
 			form = syntax.KindRecord
 		}
 		d.Kind = form
 	default:
-		p.fail(token, "expected a module declaration or import")
+		p.fail(token, "expected a module declaration or import, found "+describe(token)+"; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn")
 	}
 	return d
 }
@@ -340,15 +408,17 @@ func (p *Parser) suite() []*syntax.Statement {
 	return p.statementSuite(false)
 }
 func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statement {
-	outer := p.inlineStatement
-	defer func() { p.inlineStatement = outer }()
+	defer p.enter()()
+	outer, outerReturn, outerLambda := p.inlineStatement, p.inlineReturn, p.blockLambda
+	defer func() { p.inlineStatement, p.inlineReturn, p.blockLambda = outer, outerReturn, outerLambda }()
 	p.need(":")
 	if p.peek().Kind != lexer.Newline {
 		switch p.peek().Kind {
-		case "if", "while", "for", "with", "match":
-			p.fail(p.peek(), "inline bodies require one simple statement")
+		case "if", "while", "for", "with":
+			p.fail(p.peek(), "inline bodies require one simple statement; put '"+p.peek().Kind+"' on its own line in an indented block")
 		}
 		p.inlineStatement = true
+		p.inlineReturn = expression || len(empty) > 0
 		body := []*syntax.Statement{p.statement()}
 		p.inlineStatement = outer
 		if !expression {
@@ -357,6 +427,8 @@ func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statem
 		return body
 	}
 	p.inlineStatement = false
+	p.inlineReturn = false
+	p.blockLambda = outerLambda || expression
 	p.need(lexer.Newline)
 	p.need(lexer.Indent)
 	var body []*syntax.Statement
@@ -369,11 +441,11 @@ func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statem
 	}
 	p.need(lexer.Dedent)
 	if len(body) == 0 && (len(empty) == 0 || !empty[0]) {
-		p.fail(p.previous(), "suite cannot be empty")
+		p.fail(p.previous(), "suite cannot be empty; add at least one statement (e.g. 'return') in the indented block")
 	}
 	return body
 }
-func (p *Parser) statement() *syntax.Statement {
+func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 	t := p.peek()
 	s := &syntax.Statement{Pos: t.Pos, Kind: t.Kind}
 	switch {
@@ -410,6 +482,9 @@ func (p *Parser) statement() *syntax.Statement {
 		s.Body = p.suite()
 	case p.take("for"):
 		s.Name = p.need(lexer.Name).Text
+		if p.peek().Kind == "," {
+			p.fail(p.peek(), "for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value")
+		}
 		p.need("in")
 		s.Value = p.expression(0)
 		s.Body = p.suite()
@@ -418,47 +493,14 @@ func (p *Parser) statement() *syntax.Statement {
 		p.need("=")
 		s.Value = p.expression(0)
 		s.Body = p.suite()
-	case p.take("match"):
-		s.Value = p.expression(0)
-		p.need(":")
-		p.need(lexer.Newline)
-		p.need(lexer.Indent)
-		for {
-			p.newlines()
-			if p.peek().Kind == lexer.Dedent {
-				break
-			}
-			a := syntax.Arm{Pos: p.peek().Pos}
-			if p.take("_") {
-				a.Path = &syntax.Expression{Kind: syntax.KindName, Text: "_", Pos: a.Pos}
-			} else {
-				a.Path = p.casePath()
-				if p.take("(") {
-					for {
-						tok := p.peek()
-						if !p.take("_") {
-							p.need(lexer.Name)
-						}
-						a.Names = append(a.Names, tok.Text)
-						if !p.take(",") {
-							break
-						}
-						if p.peek().Kind == ")" {
-							break
-						}
-					}
-					p.need(")")
-				}
-			}
-			a.Body = p.suite()
-			s.Arms = append(s.Arms, a)
-		}
-		p.need(lexer.Dedent)
 	default:
 		e := p.expression(0)
+		if p.compoundAssignment() {
+			p.failCompoundAssignment(t, e)
+		}
 		if p.take("=") {
 			if (e.Kind != syntax.KindName && e.Kind != syntax.KindMember) || e.Text == "self" {
-				p.fail(t, "assignment requires a local binding name or record field")
+				p.fail(t, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, call its method such as set(index:, value:) on a List or add(key:, value:) on a Map")
 			}
 			s.Kind = syntax.KindAssign
 			if e.Kind == syntax.KindMember {
@@ -468,10 +510,26 @@ func (p *Parser) statement() *syntax.Statement {
 			}
 			s.Value = p.expression(0)
 		} else {
-			if e.Kind != syntax.KindCall {
-				p.fail(t, "only a call can be a standalone expression statement")
+			tryCall := e.Kind == syntax.KindUnary && e.Text == "try" && e.Right.Kind == syntax.KindCall
+			if !p.inlineReturn && e.Kind != syntax.KindCall && e.Kind != syntax.KindMatch && !tryCall && len(allowValue) == 0 {
+				if e.Kind == syntax.KindName && e.Text == "pass" {
+					p.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm")
+				}
+				if e.Kind == syntax.KindName && (e.Text == "const" || e.Text == "val" || e.Text == "final") {
+					p.fail(t, "'"+e.Text+"' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes")
+				}
+				if e.Kind == syntax.KindName && (e.Text == "throw" || e.Text == "raise" || e.Text == "catch") {
+					p.fail(t, "'"+e.Text+"' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'match'")
+				}
+				if e.Kind == syntax.KindName && e.Text == "elif" {
+					p.fail(t, "'elif' is not a keyword; write 'else if <condition>:' for a further branch")
+				}
+				p.fail(t, "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function")
 			}
 			s.Kind = syntax.KindCall
+			if p.inlineReturn {
+				s.Kind = syntax.KindReturn
+			}
 			s.Value = e
 		}
 		p.end()
@@ -479,8 +537,12 @@ func (p *Parser) statement() *syntax.Statement {
 	return s
 }
 func (p *Parser) pattern() *syntax.Pattern {
+	defer p.enter()()
 	t := p.peek()
 	r := &syntax.Pattern{Pos: t.Pos}
+	if t.Kind == "unit" {
+		p.fail(t, "unit is a reserved value keyword, not a binding name; choose another name such as code_unit, and use unit for the Unit value")
+	}
 	if p.take(lexer.Name) {
 		r.Kind = syntax.KindName
 		r.Name = t.Text
@@ -521,17 +583,18 @@ func (p *Parser) pattern() *syntax.Pattern {
 		p.need("}")
 		return r
 	}
-	p.fail(t, "expected a binding name, list pattern, or record pattern")
+	p.fail(t, "expected a binding name, list pattern, or record pattern, found "+describe(t)+"; write a name, [a, b], or {x, y}")
 	return nil
 }
 
 var precedence = map[string]int{"or": 1, "and": 2, "==": 4, "!=": 4, "<": 4, ">": 4, "<=": 4, ">=": 4, "+": 5, "-": 5, "*": 6, "/": 6, "%": 6}
 
 func (p *Parser) expression(min int) *syntax.Expression {
+	defer p.enter()()
 	t := p.peek()
 	var e *syntax.Expression
 	if t.Kind == "not" && min > 3 {
-		p.fail(t, "not requires grouping at this operator position")
+		p.fail(t, "not requires grouping at this operator position; wrap it in parentheses, e.g. a == (not b)")
 	}
 	if p.take("not") {
 		e = &syntax.Expression{Kind: syntax.KindUnary, Text: t.Text, Pos: t.Pos, Right: p.expression(3)}
@@ -541,16 +604,27 @@ func (p *Parser) expression(min int) *syntax.Expression {
 		e = p.primary()
 	}
 	compared := false
+	links := 0
 	for {
 		op := p.peek()
+		if p.compoundAssignment() {
+			break
+		}
+		if op.Kind == "&" {
+			p.fail(op, "'&&' is not an operator; write 'and' for logical and")
+		}
 		level := precedence[op.Kind]
 		if level == 0 || level < min {
 			break
 		}
+		if (op.Kind == "+" || op.Kind == "-") && e.Kind == syntax.KindName && p.at+2 < len(p.tokens) && p.tokens[p.at+1].Kind == op.Kind && p.tokens[p.at+2].Kind == lexer.Newline {
+			p.fail(op, "Manuscript has no '"+op.Text+op.Text+"' operator; write '"+e.Text+" = "+e.Text+" "+op.Text+" 1'")
+		}
 		if level == 4 && compared {
-			p.fail(op, "comparison operators cannot chain")
+			p.fail(op, "comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < c")
 		}
 		p.at++
+		p.link(&links)
 		e = &syntax.Expression{Kind: syntax.KindBinary, Text: op.Text, Pos: op.Pos, Left: e, Right: p.expression(level + 1)}
 		if level == 4 {
 			compared = true
@@ -586,6 +660,9 @@ func (p *Parser) primary() *syntax.Expression {
 		e = p.text(t)
 	case "(":
 		e = p.expression(0)
+		if p.peek().Kind == "," {
+			p.fail(p.peek(), "Manuscript has no tuples; declare a record with 'type Pair:' and named fields, or use a List when the items share one type")
+		}
 		p.need(")")
 	case "[":
 		e.Kind = syntax.KindList
@@ -601,6 +678,10 @@ func (p *Parser) primary() *syntax.Expression {
 			}
 			p.need("]")
 		}
+	case "match":
+		e.Kind = syntax.KindMatch
+		e.Left = p.expression(0)
+		e.Arms = p.matchArms(t)
 	case "{":
 		e.Kind = syntax.KindMap
 		if !p.take("}") {
@@ -617,20 +698,34 @@ func (p *Parser) primary() *syntax.Expression {
 	case "fn":
 		e.Kind = syntax.KindLambda
 		e.Text = ""
-		e.Params = p.parameters(true)
-		p.need("->")
-		e.Result = p.typ()
+		e.Params = p.parameters(true, true)
+		if p.take("->") {
+			e.Result = p.typ()
+		}
+		if p.peek().Kind == "=" && p.tokens[p.at+1].Kind == ">" {
+			p.fail(p.peek(), "there is no '=>' arrow function; write the result type and a colon, e.g. fn(x: Int) -> Int: x + 1")
+		}
 		e.Body = p.statementSuite(true)
 	default:
-		p.fail(t, "expected an expression")
+		if t.Kind == "if" {
+			p.fail(t, "'if' is a statement, not an expression; declare 'var name = ...' and assign it in each branch, or use 'match'")
+		}
+		p.fail(t, "expected an expression, found "+describe(t)+"; write a value, name, call, or literal here")
 	}
+	links := 0
 	for {
 		if p.take(".") {
+			p.link(&links)
+			if p.peek().Kind == "." {
+				p.fail(p.peek(), "Manuscript has no '..' range; to count, use a while loop, or import range from \"@std/collections.ms\" and loop over range(start: 0, end: 10, step: 1), which returns a Result")
+			}
 			name := p.need(lexer.Name)
 			e = &syntax.Expression{Kind: syntax.KindMember, Pos: name.Pos, Text: name.Text, Left: e}
 		} else if p.take("[") {
-			e = &syntax.Expression{Kind: syntax.KindApply, Pos: t.Pos, Left: e, Types: p.typeArgs()}
+			p.link(&links)
+			e = p.bracket(e)
 		} else if p.take("(") {
+			p.link(&links)
 			call := &syntax.Expression{Kind: syntax.KindCall, Pos: e.Pos, Left: e}
 			if !p.take(")") {
 				for {
@@ -639,7 +734,13 @@ func (p *Parser) primary() *syntax.Expression {
 						arg.Name = p.need(lexer.Name).Text
 						p.need(":")
 					}
+					if p.peek().Kind == lexer.Name && p.tokens[p.at+1].Kind == "=" {
+						p.fail(p.tokens[p.at+1], "argument labels use a colon; write "+p.peek().Text+": value")
+					}
 					arg.Value = p.expression(0)
+					if arg.Value.Kind == syntax.KindName && p.peek().Kind == "->" {
+						p.fail(p.peek(), "lambdas are written fn(name: Type) -> Result: expression, e.g. fn("+arg.Value.Text+": Int) -> Int: "+arg.Value.Text+" + 1")
+					}
 					call.Args = append(call.Args, arg)
 					if !p.take(",") {
 						break
@@ -722,33 +823,47 @@ func (p *Parser) text(token lexer.Token) *syntax.Expression {
 			i++
 		}
 		source := raw[start : i-1]
-		tokens, err := lexer.Lex(token.Pos.File, "("+source+")")
-		shift := func(position syntax.Position) syntax.Position {
-			offset := position.Offset
-			if offset > len(source)+1 {
-				offset = len(source) + 1
+		value := func() *syntax.Expression {
+			// A failure inside the braces is often a literal brace the writer
+			// forgot to escape, so every such failure also states the escape.
+			defer func() {
+				if r := recover(); r != nil {
+					if diagnostic, ok := r.(syntax.Diagnostic); ok {
+						diagnostic.Message += fmt.Sprintf(" ('{' at column %d starts an interpolation; write \\{ and \\} for literal braces)", token.Pos.Column+start)
+						panic(diagnostic)
+					}
+					panic(r)
+				}
+			}()
+			tokens, err := lexer.Lex(token.Pos.File, "("+source+")")
+			shift := func(position syntax.Position) syntax.Position {
+				offset := position.Offset
+				if offset > len(source)+1 {
+					offset = len(source) + 1
+				}
+				position.Line = token.Pos.Line
+				position.Column = token.Pos.Column + start + offset
+				position.Offset = token.Pos.Offset + start + offset
+				return position
 			}
-			position.Line = token.Pos.Line
-			position.Column = token.Pos.Column + start + offset
-			position.Offset = token.Pos.Offset + start + offset
-			return position
-		}
-		if err != nil {
-			diagnostic := err.(syntax.Diagnostic)
-			diagnostic.Position = shift(diagnostic.Position)
-			panic(diagnostic)
-		}
-		// The wrapper disables statement layout while preserving spaces inside braces.
-		closing := len(tokens) - 3
-		tokens = append(tokens[1:closing], tokens[closing+1:]...)
-		for index := range tokens {
-			tokens[index].Pos = shift(tokens[index].Pos)
-		}
-		nested := &Parser{tokens: tokens}
-		value := nested.expression(0)
-		nested.newlines()
-		nested.need(lexer.EOF)
-
+			if err != nil {
+				diagnostic := err.(syntax.Diagnostic)
+				diagnostic.Position = shift(diagnostic.Position)
+				panic(diagnostic)
+			}
+			// The wrapper disables statement layout while preserving spaces inside braces.
+			closing := len(tokens) - 3
+			tokens = append(tokens[1:closing], tokens[closing+1:]...)
+			for index := range tokens {
+				tokens[index].Pos = shift(tokens[index].Pos)
+				tokens[index].End = shift(tokens[index].End)
+			}
+			nested := &Parser{tokens: tokens, depth: p.depth}
+			value := nested.expression(0)
+			nested.newlines()
+			nested.need(lexer.EOF)
+			return value
+		}()
 		e.Parts = append(e.Parts, syntax.TextPart{Value: value})
 	}
 	flush()
@@ -756,4 +871,243 @@ func (p *Parser) text(token lexer.Token) *syntax.Expression {
 		e.Parts = []syntax.TextPart{{Text: ""}}
 	}
 	return e
+}
+
+func (p *Parser) matchArms(header lexer.Token) []syntax.Arm {
+	var arms []syntax.Arm
+	p.need(":")
+	p.need(lexer.Newline)
+	p.need(lexer.Indent)
+	for {
+		p.newlines()
+		if p.peek().Kind == lexer.Dedent {
+			if len(arms) == 0 {
+				p.fail(header, "match requires at least one arm; add a case pattern or '_' arm under the header")
+			}
+			break
+		}
+		a := syntax.Arm{Pos: p.peek().Pos}
+		if k := p.peek().Kind; k == lexer.Number || k == "true" || k == "false" {
+			p.fail(p.peek(), "literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare values with 'if x == 1:' and 'else if'")
+		}
+		if p.peek().Kind == lexer.String {
+			p.fail(p.peek(), "string-literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare strings with 'if command == \"report\":' and 'else' instead")
+		}
+		if p.take("_") {
+			a.Path = &syntax.Expression{Kind: syntax.KindName, Text: "_", Pos: a.Pos}
+		} else {
+			a.Path = p.casePath()
+			if p.take("(") {
+				for {
+					tok := p.peek()
+					if !p.take("_") {
+						p.need(lexer.Name)
+					}
+					a.Names = append(a.Names, tok.Text)
+					a.NamePositions = append(a.NamePositions, tok.Pos)
+					if p.peek().Kind == "(" {
+						p.fail(p.peek(), "patterns cannot be nested; bind the outer payload, then handle it in a separate match or helper function")
+					}
+					if !p.take(",") {
+						break
+					}
+					if p.peek().Kind == ")" {
+						break
+					}
+				}
+				p.need(")")
+			}
+		}
+		p.valueArm(&a)
+		arms = append(arms, a)
+	}
+	p.need(lexer.Dedent)
+	return arms
+}
+
+// Brackets may contain types or a value. Retain both interpretations of a
+// single name/application until name resolution identifies the receiver.
+func (p *Parser) bracket(left *syntax.Expression) *syntax.Expression {
+	start := p.at
+	var types []*syntax.Type
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if _, ok := r.(syntax.Diagnostic); !ok {
+					panic(r)
+				}
+				types = nil
+				p.at = start
+			}
+		}()
+		types = p.typeArgs()
+	}()
+	if types != nil {
+		e := &syntax.Expression{Kind: syntax.KindApply, Pos: left.Pos, Left: left, Types: types}
+		if len(types) == 1 {
+			e.Right = p.typeValue(types[0])
+		}
+		return e
+	}
+	index := p.expression(0)
+	if p.peek().Kind == ":" {
+		p.fail(p.peek(), "there is no slice syntax; call slice(start: 0, end: 2) on a List or String")
+	}
+	p.need("]")
+	return &syntax.Expression{Kind: syntax.KindIndex, Pos: left.Pos, Left: left, Right: index}
+}
+
+func (p *Parser) typeValue(t *syntax.Type) *syntax.Expression {
+	if t.Name == "fn" {
+		return nil
+	}
+	names := strings.Split(t.Name, ".")
+	e := &syntax.Expression{Kind: syntax.KindName, Pos: t.Pos, Text: names[0]}
+	token := sort.Search(len(p.tokens), func(i int) bool { return p.tokens[i].Pos.Offset >= t.Pos.Offset })
+	for index, name := range names[1:] {
+		pos := p.tokens[token+2*(index+1)].Pos
+		e = &syntax.Expression{Kind: syntax.KindMember, Pos: pos, Left: e, Text: name}
+	}
+	if len(t.Args) > 0 {
+		e = &syntax.Expression{Kind: syntax.KindApply, Pos: t.Pos, Left: e, Types: copyTypes(t.Args)}
+		if len(t.Args) == 1 {
+			e.Right = p.typeValue(t.Args[0])
+		}
+	}
+	return e
+}
+
+// An arm's final expression supplies its value; a statement-only arm yields Unit.
+func (p *Parser) valueArm(a *syntax.Arm) {
+	outer, outerReturn := p.inlineStatement, p.inlineReturn
+	defer func() { p.inlineStatement, p.inlineReturn = outer, outerReturn }()
+	p.inlineReturn = false
+	p.need(":")
+	indented := p.take(lexer.Newline)
+	if indented {
+		p.need(lexer.Indent)
+	}
+	p.inlineStatement = !indented
+	for {
+		a.Body = append(a.Body, p.statement(true))
+		if !indented {
+			break
+		}
+		p.newlines()
+		if p.peek().Kind == lexer.Dedent || p.peek().Kind == lexer.EOF {
+			break
+		}
+	}
+	last := a.Body[len(a.Body)-1]
+	if last.Kind == syntax.KindCall {
+		a.Value = last.Value
+		a.Body = a.Body[:len(a.Body)-1]
+	}
+	for _, statement := range a.Body {
+		if statement.Kind == syntax.KindCall && statement.Value.Kind != syntax.KindCall && statement.Value.Kind != syntax.KindMatch {
+			p.fail(lexer.Token{Pos: statement.Pos}, "an arm value must be its final expression")
+		}
+	}
+	if indented {
+		p.need(lexer.Dedent)
+	} else {
+		p.inlineStatement = false
+		p.end()
+	}
+}
+
+// The two possible bracket interpretations own their positions independently:
+// recovery rebases each subtree, and must never shift a shared type twice.
+func copyTypes(types []*syntax.Type) []*syntax.Type {
+	result := make([]*syntax.Type, len(types))
+	for index, typ := range types {
+		copy := *typ
+		copy.Args = copyTypes(typ.Args)
+		copy.Params = append([]syntax.Parameter(nil), typ.Params...)
+		for index := range copy.Params {
+			copy.Params[index].Type = copyTypes([]*syntax.Type{typ.Params[index].Type})[0]
+		}
+		if typ.Result != nil {
+			copy.Result = copyTypes([]*syntax.Type{typ.Result})[0]
+		}
+		result[index] = &copy
+	}
+	return result
+}
+
+// describe names a token for diagnostics in source terms.
+func describe(t lexer.Token) string {
+	switch t.Kind {
+	case lexer.Newline:
+		return "end of line"
+	case lexer.Indent:
+		return "an unexpected indented block"
+	case lexer.Dedent:
+		return "the end of the block"
+	case lexer.EOF:
+		return "end of file"
+	case lexer.Name:
+		return "name '" + t.Text + "'"
+	case lexer.Number:
+		return "number " + t.Text
+	case lexer.String:
+		return "text " + t.Text
+	}
+	return "'" + t.Kind + "'"
+}
+
+func describeKind(kind string) string {
+	switch kind {
+	case lexer.Newline:
+		return "end of line"
+	case lexer.Indent:
+		return "an indented block"
+	case lexer.Dedent:
+		return "the end of the block"
+	case lexer.EOF:
+		return "end of file"
+	case lexer.Name:
+		return "a name"
+	case lexer.Number:
+		return "a number"
+	case lexer.String:
+		return "text in double quotes"
+	}
+	return "'" + kind + "'"
+}
+
+// needHint adds the usual fix for the punctuation that is most often missing.
+func needHint(kind string, found lexer.Token) string {
+	switch kind {
+	case ":":
+		return "; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body"
+	case "->":
+		return "; every fn declares its result type after '->', e.g. fn f() -> Unit:"
+	case ")":
+		return "; close the parenthesis, separating items with commas"
+	case "]":
+		return "; close the bracket, separating items with commas"
+	case "}":
+		return "; close the brace, separating items with commas"
+	case "(":
+		return "; a call or parameter list starts with '('"
+	case "from":
+		if found.Kind == "," {
+			return "; to import several names, write import {a, b} from \"path.ms\""
+		}
+		return "; imports read: import name from \"path.ms\""
+	case lexer.Name:
+		if found.Kind == "case" {
+			return "; match arms are written without 'case', e.g. Paid(receipt): or Missing:, and 'case' only declares the cases of a type"
+		}
+		if found.Kind == found.Text {
+			return "; '" + found.Text + "' is a reserved word and cannot be used as a name"
+		}
+		return ""
+	case lexer.Newline:
+		return "; end the statement with a line break"
+	case lexer.Indent:
+		return "; indent the block body by four spaces under its header"
+	}
+	return ""
 }

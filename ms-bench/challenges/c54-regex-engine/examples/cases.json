@@ -1,0 +1,17 @@
+[
+ {
+  "name": "basic",
+  "stdin": "match\t(\\d+)-(\\d+)\ttel 12-345\nfind-all\ta*\tbaac\nreplace\t(\\w+)@(\\w+)\tme@host you@there\t$2:$1\nsplit\t\\s*,\\s*\ta , b,c\n",
+  "stdout": "0: 4..10 \"12-345\"\n1: 4..6 \"12\"\n2: 7..10 \"345\"\n0..0 \"\"\n1..3 \"aa\"\n3..3 \"\"\n4..4 \"\"\n(4 matches)\n\"host:me there:you\"\n\"a\"\n\"b\"\n\"c\"\n(3 pieces)\n"
+ },
+ {
+  "name": "named-and-lazy",
+  "stdin": "match\t(?<year>\\d{4})-(?<mon>\\d\\d)\ton 2024-05-17\nmatch\t<.*?>\t<a><b>\ntest\t(a\ta\nmatch\t(?i)HeLLo\tsay hello\n",
+  "stdout": "0: 3..10 \"2024-05\"\n1 (year): 3..7 \"2024\"\n2 (mon): 8..10 \"05\"\n0: 0..3 \"<a>\"\nerror: unmatched (\n0: 4..9 \"hello\"\n"
+ },
+ {
+  "name": "lookahead-backref",
+  "stdin": "match\t(\\w+) \\1\tthe the cat\nmatch\ta(?=b)\tacab\nfull\ta|ab\tab\nbogus\tx\ty\n",
+  "stdout": "0: 0..7 \"the the\"\n1: 0..3 \"the\"\n0: 2..3 \"a\"\n0: 0..2 \"ab\"\nerror: bad command\n"
+ }
+]
