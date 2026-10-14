@@ -19,7 +19,7 @@ Use `@std/terminal.ms` for programs that react to single key presses, redraw the
 
 This program needs an interactive terminal, so the guide shows it without running it. Ctrl-C quits:
 
-```manuscript
+```text
 import {terminal, TerminalError, TerminalEvent, EraseRegion} from "@std/terminal.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
