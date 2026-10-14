@@ -63,45 +63,14 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 	if info.Native == "index" {
 		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	}
-	if value := ir.Value(g.program, e, info); value != nil {
+	if value := g.ir.Node(e); value != nil {
 		return g.irValue(value)
 	}
 	switch e.Kind {
 	case syntax.KindIndex:
 		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	case syntax.KindMatch:
-		native := g.wantScalar > 0 && primitiveEqualityType(info.Type) != ""
-		oldExpressionResult := g.expressionResult
-		if native {
-			g.expressionResult = info.Type
-		} else {
-			g.expressionResult = nil
-		}
-		g.expressionDepth++
-		body := g.match(e.Left, e.Arms, func(a *syntax.Arm) []ast.Stmt {
-			body := g.body(a.Body)
-			value := unit()
-			if a.Value != nil {
-				if native {
-					value = g.scalarEdge(g.ir.Expression(e).Arms[a])
-				} else {
-					value = g.expression(a.Value)
-				}
-			}
-			if native && a.Value == nil {
-				value = scalarExtract(info.Type, runtimeCall("Panic", textLiteral("runtime invariant: match arm fell through")))
-			}
-			return append(body, returned(value))
-		})
-		g.expressionDepth--
-		g.expressionResult = oldExpressionResult
-		fallback := runtimeCall("Panic", textLiteral("runtime invariant: exhaustive match"))
-		if native {
-			body = append(body, returned(scalarExtract(info.Type, fallback)))
-			return call(closure(nil, nativeResultType(info.Type), body...))
-		}
-		body = append(body, returned(fallback))
-		return call(closure(nil, runtimeName("Value"), body...))
+		panic("match missing typed IR")
 	case syntax.KindName, syntax.KindApply:
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
 			member := e.Left
@@ -139,85 +108,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			}
 			return runtimeCall("NativeMember", g.expression(e.Left), textLiteral(e.Text))
 		}
-		if st, f := g.structFieldOf(e); st != nil {
-			return call(selector(g.structOperand(st, e.Left), "Get_"+f.Name))
-		}
 		return runtimeCall("Field", g.expression(e.Left), textLiteral(e.Text))
 	case syntax.KindCall:
-		if info.Constructor != nil && info.Native == "view" {
-			// Select the view path before lowering ordinary call arguments.
-			// Lowering a discarded receiver tree would strand source markers
-			// and other generator state from its nested callable/match bodies.
-			receiver := e.Args[0].Value
-			return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.program.Info(receiver).Type))
-		}
-		resolvedCall := g.ir.Expression(e).Call
-		if resolvedCall.Record != nil {
-			return g.constructStruct(resolvedCall.Record, resolvedCall.Arguments)
-		}
-		arguments := callSyntax(resolvedCall)
-		if value := g.numericCall(e); value != nil {
-			return value
-		}
-		if value := g.directCollectionCall(e, arguments); value != nil {
-			return value
-		}
-		if value := g.nativeMethodCall(e, arguments); value != nil {
-			return value
-		}
-		if value := g.nativeSourceCall(e, arguments); value != nil {
-			return value
-		}
-		if value := g.preparedSourceCall(e, arguments); value != nil {
-			return value
-		}
-		if value := g.preparedMethodCall(e, arguments); value != nil {
-			return value
-		}
-		args := g.arguments(arguments)
-		if info.Constructor != nil {
-			if info.Case != "" {
-				var labels []string
-				for _, cs := range checker.Cases(info.Constructor) {
-					if cs.Name == info.Case {
-						for _, f := range cs.Fields {
-							labels = append(labels, f.Name)
-						}
-					}
-				}
-				return runtimeCall("NewAlternative", g.key(info.Type), textLiteral(info.Case), stringSlice(labels), args)
-			}
-			if symbol := info.Constructor.Def.Symbol; recordDefaults(symbol.Decl) && (symbol.Native == "" || g.program.ParameterBindings(symbol.Decl) != nil) {
-				if symbol.Native != "" {
-					if len(arguments) == len(symbol.Decl.Fields) {
-						return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
-					}
-					callable := g.lazyValue("native constructor/"+symbol.ID, g.declaredFunction(symbol))
-					return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
-				}
-				var callable ast.Expr = ident(symbol.ID)
-				if len(symbol.Variables) > 0 {
-					callable = g.specialize(symbol, info.Constructor.Args)
-				}
-				return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
-			}
-			return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
-		}
-		var callable ast.Expr
-		if info.Symbol != nil {
-			if info.Symbol.Native != "" {
-				callable = g.nativeDefaults(info.Symbol.Decl, g.program.Info(e.Left).Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)), arguments)
-			} else {
-				callable = ident(info.Symbol.ID)
-				if len(info.Symbol.Variables) > 0 {
-					callable = g.specialize(info.Symbol, info.TypeArgs)
-				}
-			}
-		} else {
-			// Capture a dynamic callable before arguments that may replace it.
-			callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.methodCallable(e.Left, arguments))
-		}
-		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
+		panic("call missing typed IR")
 	case syntax.KindUnary:
 		if e.Text == "try" {
 			args := []ast.Expr{g.expression(e.Right)}
@@ -229,26 +122,10 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return call(ident("int64"), signedInteger("-9223372036854775808"))
 		}
-		if value := g.scalarUnary(e); value != nil {
-			return value
-		}
 		return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
 	case syntax.KindBinary:
-		if e.Text == "and" || e.Text == "or" {
-			op := token.LAND
-			if e.Text == "or" {
-				op = token.LOR
-			}
-			return &ast.BinaryExpr{X: g.scalarEdge(g.ir.Expression(e).Operation.Left), Op: op, Y: g.scalarEdge(g.ir.Expression(e).Operation.Right)}
-		}
 		if e.Text == "==" || e.Text == "!=" {
-			if value := g.primitiveEquality(e); value != nil {
-				return value
-			}
-			return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.program.Info(e.Left).Type))
-		}
-		if value := g.numericBinary(e); value != nil {
-			return value
+			return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.ir.Expression(e.Left).Type))
 		}
 		return g.locatedOperation(e, runtimeName("Binary"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right))
 	case syntax.KindLambda:
@@ -298,4 +175,116 @@ func signedInteger(value string) ast.Expr {
 		return &ast.UnaryExpr{Op: token.SUB, X: &ast.BasicLit{Kind: token.INT, Value: value[1:]}}
 	}
 	return &ast.BasicLit{Kind: token.INT, Value: value}
+}
+
+func (g *generator) matchValue(e *syntax.Expression, info *checker.Info) ast.Expr {
+	native := g.wantScalar > 0 && primitiveEqualityType(info.Type) != ""
+	oldExpressionResult := g.expressionResult
+	if native {
+		g.expressionResult = info.Type
+	} else {
+		g.expressionResult = nil
+	}
+	g.expressionDepth++
+	body := g.match(e.Left, e.Arms, func(a *syntax.Arm) []ast.Stmt {
+		body := g.body(a.Body)
+		value := unit()
+		if a.Value != nil {
+			if native {
+				value = g.scalarEdge(g.ir.Expression(e).Arms[a])
+			} else {
+				value = g.expression(a.Value)
+			}
+		}
+		if native && a.Value == nil {
+			value = scalarExtract(info.Type, runtimeCall("Panic", textLiteral("runtime invariant: match arm fell through")))
+		}
+		return append(body, returned(value))
+	})
+	g.expressionDepth--
+	g.expressionResult = oldExpressionResult
+	fallback := runtimeCall("Panic", textLiteral("runtime invariant: exhaustive match"))
+	if native {
+		body = append(body, returned(scalarExtract(info.Type, fallback)))
+		return call(closure(nil, nativeResultType(info.Type), body...))
+	}
+	body = append(body, returned(fallback))
+	return call(closure(nil, runtimeName("Value"), body...))
+}
+
+func (g *generator) callValue(e *syntax.Expression, info *checker.Info) ast.Expr {
+	if info.Constructor != nil && info.Native == "view" {
+		// Select the view path before lowering ordinary call arguments.
+		// Lowering a discarded receiver tree would strand source markers
+		// and other generator state from its nested callable/match bodies.
+		receiver := e.Args[0].Value
+		return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.program.Info(receiver).Type))
+	}
+	resolvedCall := g.ir.Expression(e).Call
+	if resolvedCall.Record != nil {
+		return g.constructStruct(resolvedCall.Record, resolvedCall.Arguments)
+	}
+	arguments := callSyntax(resolvedCall)
+	if value := g.numericCall(e); value != nil {
+		return value
+	}
+	if value := g.directCollectionCall(e, arguments); value != nil {
+		return value
+	}
+	if value := g.nativeMethodCall(e, arguments); value != nil {
+		return value
+	}
+	if value := g.nativeSourceCall(e, arguments); value != nil {
+		return value
+	}
+	if value := g.preparedSourceCall(e, arguments); value != nil {
+		return value
+	}
+	if value := g.preparedMethodCall(e, arguments); value != nil {
+		return value
+	}
+	args := g.arguments(arguments)
+	if info.Constructor != nil {
+		if info.Case != "" {
+			var labels []string
+			for _, cs := range checker.Cases(info.Constructor) {
+				if cs.Name == info.Case {
+					for _, f := range cs.Fields {
+						labels = append(labels, f.Name)
+					}
+				}
+			}
+			return runtimeCall("NewAlternative", g.key(info.Type), textLiteral(info.Case), stringSlice(labels), args)
+		}
+		if symbol := info.Constructor.Def.Symbol; recordDefaults(symbol.Decl) && (symbol.Native == "" || g.program.ParameterBindings(symbol.Decl) != nil) {
+			if symbol.Native != "" {
+				if len(arguments) == len(symbol.Decl.Fields) {
+					return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
+				}
+				callable := g.lazyValue("native constructor/"+symbol.ID, g.declaredFunction(symbol))
+				return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
+			}
+			var callable ast.Expr = ident(symbol.ID)
+			if len(symbol.Variables) > 0 {
+				callable = g.specialize(symbol, info.Constructor.Args)
+			}
+			return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
+		}
+		return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
+	}
+	var callable ast.Expr
+	if info.Symbol != nil {
+		if info.Symbol.Native != "" {
+			callable = g.nativeDefaults(info.Symbol.Decl, g.program.Info(e.Left).Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)), arguments)
+		} else {
+			callable = ident(info.Symbol.ID)
+			if len(info.Symbol.Variables) > 0 {
+				callable = g.specialize(info.Symbol, info.TypeArgs)
+			}
+		}
+	} else {
+		// Capture a dynamic callable before arguments that may replace it.
+		callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.methodCallable(e.Left, arguments))
+	}
+	return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 }

@@ -42,10 +42,11 @@ func (p *Program) resolveCall(e *syntax.Expression) *Call {
 			}
 		}
 	}
-	if signature == nil {
-		if callee := p.checked.Info(e.Left); callee != nil {
-			signature = callee.Type
-		}
+	if callee := p.checked.Info(e.Left); callee != nil && callee.Type != nil && callee.Type.Kind == "function" {
+		signature = callee.Type
+	}
+	if info.Constructor != nil && info.Case == "" && info.Constructor.Def != nil && info.Constructor.Def.Symbol != nil {
+		defaults = info.Constructor.Def.Symbol.Decl.Fields
 	}
 	if signature != nil {
 		for i, param := range signature.Params {

@@ -76,12 +76,15 @@ and [native DAP regression](../extensions/vscode/tests/interface-view-debug.test
 Verified: Go constant negation of `float64(0)` produces positive zero. Native
 Float unary lowering must perform variable arithmetic (`FloatNegate`) so source
 `-0.0`, IEEE sign bits and `toString()` retain negative zero. A direct source call
-also needs the expected parameter type when its argument is `Never`: faulting
-arguments are accepted source and must still produce compilable typed Go.
+also needs an explicit IR expected-use edge when its argument is `Never`: faulting
+arguments retain their source type while producing compilable typed Go. This
+applies to List indexes, match arms and Boolean conditions/and/or/not as well.
 Evidence: [native scalar lowering](../pkg/lower/lower_scalars.go),
 [numeric source conformance](../tests/e2e/testdata/accept/numeric-lowering.ms),
 [conversion conformance](../tests/e2e/testdata/accept/to-string.ms), and
-[actual typed boundary tests](../pkg/build/typed_list_calls_test.go).
+[actual typed boundary tests](../pkg/build/typed_list_calls_test.go),
+[IR Never native boundaries](../pkg/build/ir_never_native_test.go), and the
+[shared IR contract](../documentation/contributing/compiler/lowering/typed-ir-contract.md).
 
 Verified: selected methods are copied when the checker substitutes a receiver.
 Pointer equality with the declaration does not identify that selection. Native

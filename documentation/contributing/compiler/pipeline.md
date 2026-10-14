@@ -15,11 +15,11 @@ Each stage owns one decision, produces one value, and hands later stages facts i
 | Parse | `lexer`, `parser` | Layout, structure, positions | `syntax.Module` trees, strict or recovered |
 | Resolve names and types | `checker` | Symbols, nominal types, bounds, generic arguments, selected implementations | `checker.Program` queries (`Info`, `Symbol`, `TypeReference`) |
 | Check flow and effects | `checker` | Reachability, captures, cleanup, mutation, effects | Flow, captures, cleanup methods, `Effects` |
-| Optimize | `lower` | Boolean folding that keeps effects | Optimization facts beside the AST |
-| Lower | `lower` | Evaluation order, cleanup on every exit, defaults, call shape | Go syntax tree, one printer |
+| Elaborate and optimize | `ir` | Resolved performance nodes, conversion edges, storage/call eligibility, Boolean folding | Typed nodes and representation facts |
+| Lower | `lower` | Translate IR facts; retain pending statement/cleanup bodies | Go syntax tree, one printer |
 | Build | `build` | Toolchain, pins, cache identity | Native artifact |
 
-Canonicalization has three homes. Module and path identity is canonical after `frontend`. Types are canonical after `checker` resolves them to `checker.Type` with a `TypeKey`. Call shape (argument order, resolved labels, defaults, optional wrapping, error-source wrapping) is canonical in `checker.Info.Arguments`, `OptionalArgument`, and `ErrorSource`, but `lower` still applies it expression by expression.
+Canonicalization has three homes. Module and path identity is canonical after `frontend`. Types are canonical after `checker` resolves them to `checker.Type` with a `TypeKey`. Call shape (argument order, resolved labels, defaults, optional wrapping, error-source wrapping) is canonical in `checker.Info.Arguments`, `OptionalArgument`, and `ErrorSource`, and is materialized into explicit IR use edges and call parameter slots before performance emission.
 
 Consumers read the checked program only through `Program` methods. The tables behind them are private so their storage can change.
 
@@ -29,14 +29,16 @@ Consumers read the checked program only through `Program` methods. The tables be
 
 ## Core IR
 
-A typed, desugared core IR (`pkg/ir`) sits between `checker` and `lower`:
+`pkg/ir` now elaborates the expression forms and representation facts needed by
+performance work: literals, bindings, primitive operations, resolved calls,
+match-value edges, Lists and typed record access. See the [shared contract](lowering/typed-ir-contract.md)
+for the exact API and its backend obligations. Boolean folding uses `ir.Folder`.
+Tooling retains checked source and `Program` queries.
 
-- Every node carries its resolved `checker.Type`. No node refers to a `syntax` node for meaning; a position is kept only for diagnostics, source maps, and fault sites.
-- Names are resolved to bindings and symbols. Method calls are resolved to a selected implementation or a dynamic contract call.
-- Defaults are expanded, arguments are in evaluation order, `try` and error-source conversions are explicit, `match` arms carry their binding variables, and cleanup is an explicit scope with its exit paths.
-- Optimization rewrites IR and `lower` prints it. The boolean fold lives in `ir` (`Folder`). Tooling stays on the AST and `Program` queries, because it needs every source node.
-
-Elaboration is the one step that reads both the AST and `Program`. After it, nothing in `ir` or `lower` imports `syntax` for semantics.
+The full body IR remains a migration target. Statement bodies, dynamic default
+preparation, `try` and cleanup still cross explicit deferred boundaries. Once
+those forms migrate, `lower` will no longer need checked syntax for their meaning.
+Defaults are callee-owned evaluation facts, not eagerly expanded caller arguments.
 
 ## Migration order
 

@@ -18,9 +18,12 @@ func (g *generator) largeListLiteral(e ir.List) ast.Expr {
 	if value := g.literalListData(e); value != nil {
 		return value
 	}
-suffix:=ir.ListSuffix(typ)
- constructor,initializer:="NewSizedList","InitListValue"
- if suffix!="" {constructor="NewSized"+suffix+"List";initializer="InitList"+suffix}
+	suffix := ir.ListSuffix(typ)
+	constructor, initializer := "NewSizedList", "InitListValue"
+	if suffix != "" {
+		constructor = "NewSized" + suffix + "List"
+		initializer = "InitList" + suffix
+	}
 	list := g.temp()
 	body := []ast.Stmt{define(list, runtimeCall(constructor, g.key(typ), intLiteral(len(e.Items))))}
 	g.expressionDepth++
@@ -28,14 +31,20 @@ suffix:=ir.ListSuffix(typ)
 		end := min(start+listInitializationChunk, len(e.Items))
 		statements := make([]ast.Stmt, 0, end-start)
 		for at := start; at < end; at++ {
-var value ast.Expr
- if suffix!="" {
- constant,signedZero:=g.literalDataScalar(e.Items[at],typ.Args[0].ID)
- if !signedZero {value=constant}
- }
- if value==nil {
- if suffix!="" {value=g.scalarEdge(e.Elements[at])} else {value=g.irValue(e.Items[at])}
- }
+			var value ast.Expr
+			if suffix != "" {
+				constant, signedZero := g.literalDataScalar(e.Items[at], typ.Args[0].ID)
+				if !signedZero {
+					value = constant
+				}
+			}
+			if value == nil {
+				if suffix != "" {
+					value = g.scalarEdge(e.Elements[at])
+				} else {
+					value = g.irValue(e.Items[at])
+				}
+			}
 			statements = append(statements, evaluated(runtimeCall(initializer, ident(list), intLiteral(at), value)))
 		}
 		// Source operations keep their ordinary checkpoints and fault sites.

@@ -13,6 +13,35 @@ import (
 // every classification and checked fact is already on the node.
 func (g *generator) irValue(x ir.Expr) ast.Expr {
 	switch x := x.(type) {
+	case ir.Reference:
+		return g.binding(x.Site.Binding)
+	case ir.RecordAccess:
+		return call(selector(g.structOperand(x.Field.Record, x.Field.Receiver.Source), "Get_"+x.Field.Field.Name))
+	case ir.PrimitiveExpression:
+		e, op := x.Site.Source, x.Site.Operation
+		if op.Left.Source == nil {
+			return g.scalarUnary(e)
+		}
+		switch op.Identity {
+		case "and", "or":
+			tokenOp := token.LAND
+			if op.Identity == "or" {
+				tokenOp = token.LOR
+			}
+			return &ast.BinaryExpr{X: g.scalarEdge(op.Left), Op: tokenOp, Y: g.scalarEdge(op.Right)}
+		case "==", "!=":
+			return g.primitiveEquality(e)
+		}
+		return g.numericBinary(e)
+	case ir.MatchValue:
+		info := *g.program.Info(x.Site.Source)
+		info.Type = x.Site.SourceType
+		return g.matchValue(x.Site.Source, &info)
+	case ir.ResolvedCall:
+		info := *g.program.Info(x.Site.Source)
+		info.Type = x.Site.SourceType
+		return g.callValue(x.Site.Source, &info)
+
 	case ir.Converted:
 		return g.edgeValue(x.Use)
 	case ir.Deferred:

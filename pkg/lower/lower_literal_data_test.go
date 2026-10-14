@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
@@ -122,7 +121,7 @@ func TestLargeLiteralInitializationIsOrderedAndBounded(t *testing.T) {
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	g := &generator{program: result.Program, captures: map[*checker.Binding]string{}}
+	g := newGenerator(result.Program)
 	file := g.file("large.ms", Options{})
 	next, helpers := 0, 0
 	ast.Inspect(file, func(node ast.Node) bool {
@@ -178,7 +177,7 @@ func TestLargeLiteralInitializationUsesNativeScalarBoundary(t *testing.T) {
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	g := &generator{program: result.Program, captures: map[*checker.Binding]string{}}
+	g := newGenerator(result.Program)
 	file := g.file("native-literal.ms", Options{})
 	native := result.Program.Symbol("native-literal.ms", "read").ID + "Native"
 	initializers := 0

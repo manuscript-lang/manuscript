@@ -78,6 +78,7 @@ type Expression struct {
 // them without reclassifying checker tables. Checked is retained privately for
 // elaborating body forms that have not migrated yet.
 type Program struct {
+	nodes         map[*syntax.Expression]Expr
 	checked       *checker.Program
 	expressions   map[*syntax.Expression]*Expression
 	ScalarLocals  map[*checker.Binding]string
@@ -124,6 +125,7 @@ func ListSuffix(t *checker.Type) string {
 func Elaborate(program *checker.Program) *Program {
 	p := &Program{checked: program, expressions: map[*syntax.Expression]*Expression{}, sharedBodies: map[*syntax.Declaration]bool{}}
 	p.resolveRecords()
+	p.nodes = map[*syntax.Expression]Expr{}
 	p.selectNativeCalls()
 	p.selectNativeMethods()
 	for e, info := range program.Expressions() {

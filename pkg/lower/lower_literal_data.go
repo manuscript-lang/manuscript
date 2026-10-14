@@ -98,5 +98,6 @@ func (g *generator) literalDataScalar(x ir.Expr, expected string) (ast.Expr, boo
 			return textLiteral(text.String()), false
 		}
 
+	}
 	return nil, false
 }
