@@ -33,12 +33,17 @@ func (g *generator) orderedFirst(e *syntax.Expression) bool {
 	if g.constant(e.Left) {
 		return false
 	}
+	return containsMatch(e.Right)
+}
+
+// containsMatch reports whether e evaluates a match, whose arms are statements.
+func containsMatch(e *syntax.Expression) bool {
 	found := false
 	syntax.Visitor{Expression: func(x *syntax.Expression) {
 		if x.Kind == syntax.KindMatch {
 			found = true
 		}
-	}}.Callable(nil, []*syntax.Statement{{Kind: syntax.KindCall, Value: e.Right}})
+	}}.Callable(nil, []*syntax.Statement{{Kind: syntax.KindCall, Value: e}})
 	return found
 }
 
