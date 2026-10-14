@@ -44,27 +44,27 @@ export type TomlValue:
 
 # Errors returned for invalid limits, malformed TOML, or exceeded resource bounds.
 export type TomlError:
-    # One of the supplied input-byte, depth or value-count limits is negative.
+    # One of the supplied byte, depth or value-count limits is negative.
     case InvalidInput
-    # Invalid syntax, duplicate/conflicting keys, unsupported value forms or numeric range failures.
+    # Invalid syntax, keys, value forms, numeric ranges, date/time text or cyclic serialization values.
     case InvalidData(
-        # One-based line of the invalid token or conflicting construct.
+        # One-based line of the invalid token, or zero for an invalid serialization value.
         line: Int,
-        # One-based Unicode scalar column after CRLF normalization.
+        # One-based Unicode scalar column after normalization, or zero for serialization errors.
         column: Int,
-        # Parser diagnostic describing the rejected TOML construct.
+        # Diagnostic describing the rejected TOML syntax, value or cyclic graph.
         reason: String
     )
-    # Input, nesting or parsed/returned value counts exceed a supplied budget.
+    # Input/output bytes, nesting or parsed/serialized value counts exceed a supplied budget.
     case LimitExceeded
 
-# Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
+# Optional byte, nesting-depth, and value-count limits for TOML parsing and serialization.
 export type TomlLimits:
-    # Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
+    # Maximum UTF-8 input bytes before normalization or stringify output bytes; none adds no budget.
     max_bytes: Optional[Int]
     # Maximum value depth, including scalar leaves and implicit tables, with the root at one.
     max_depth: Optional[Int]
-    # Maximum containers and leaves, excluding keys; checked during parsing and materialization.
+    # Maximum containers and leaves, excluding keys; checked during parsing, materialization and stringify.
     max_values: Optional[Int]
 
 impl Error for TomlError:
@@ -1133,3 +1133,204 @@ export fn parse(
         node: Node.TableNode(root),
         depth: 1
     )
+
+# Private serialization helpers are pinned native bindings, not public reference APIs.
+fn same_list[T](left: List[T], right: List[T]) -> Bool:
+
+fn same_table[T](left: Map[String, T], right: Map[String, T]) -> Bool:
+
+type Writer:
+    parts: List[String]
+    bytes: Int
+    values: Int
+    limits: TomlLimits
+    active_arrays: List[List[TomlValue]]
+    active_tables: List[Map[String, TomlValue]]
+
+fn write(writer: Writer, text: String) -> Result[Unit, TomlError]:
+    let bytes = text.byte_length()
+
+    match writer.limits.max_bytes:
+        none: let ignored = unit
+        some(maximum):
+            if bytes > maximum - writer.bytes: return error(TomlError.LimitExceeded)
+
+    writer.bytes = writer.bytes + bytes
+    writer.parts.append(text)
+    return ok(unit)
+
+fn write_quoted(writer: Writer, text: String) -> Result[Unit, TomlError]:
+    let opening = try write(writer: writer, text: "\"")
+
+    for code in text.scalar_values():
+        var escaped = from_scalars([code]).unwrap()
+
+        if code == 34: escaped = "\\\""
+        else if code == 92: escaped = "\\\\"
+        else if code == 8: escaped = "\\b"
+        else if code == 9: escaped = "\\t"
+        else if code == 10: escaped = "\\n"
+        else if code == 12: escaped = "\\f"
+        else if code == 13: escaped = "\\r"
+        else if code < 32 or code == 127:
+            var digits = code.to_string(radix: 16)
+
+            while digits.scalar_length() < 4: digits = "0{digits}"
+
+            escaped = "\\u{digits}"
+
+        let written = try write(writer: writer, text: escaped)
+
+    return write(writer: writer, text: "\"")
+
+fn write_count(writer: Writer, depth: Int) -> Result[Unit, TomlError]:
+    if not within(value: depth, limit: writer.limits.max_depth): return error(
+        TomlError.LimitExceeded
+    )
+
+    writer.values = writer.values + 1
+    if not within(value: writer.values, limit: writer.limits.max_values): return error(
+        TomlError.LimitExceeded
+    )
+
+    return ok(unit)
+
+fn write_value(writer: Writer, value: TomlValue, depth: Int) -> Result[Unit, TomlError]:
+    let counted = try write_count(writer: writer, depth: depth)
+
+    match value:
+        StringValue(text): return write_quoted(writer: writer, text: text)
+        IntValue(number): return write(
+            writer: writer,
+            text: number.to_string(radix: 10)
+        )
+        FloatValue(number):
+            if number.is_nan(): return write(writer: writer, text: "nan")
+
+            if not number.is_finite():
+                if number < 0.0: return write(writer: writer, text: "-inf")
+
+                return write(writer: writer, text: "inf")
+
+            var text = number.to_string()
+
+            if not text.contains(".") and not text.lower().contains("e"): text = "{text}.0"
+
+            return write(writer: writer, text: text)
+        BoolValue(boolean):
+            if boolean: return write(writer: writer, text: "true")
+
+            return write(writer: writer, text: "false")
+        DateTimeValue(text):
+            if not datetime_valid(text): return error(
+                TomlError.InvalidData(
+                    line: 0,
+                    column: 0,
+                    reason: "invalid TOML date or time text"
+                )
+            )
+
+            return write(writer: writer, text: text)
+        ArrayValue(values):
+            for active in writer.active_arrays:
+                if same_list(left: values, right: active): return error(
+                    TomlError.InvalidData(
+                        line: 0,
+                        column: 0,
+                        reason: "cyclic TOML value"
+                    )
+                )
+
+            writer.active_arrays.append(values)
+            let opening = try write(writer: writer, text: "[")
+            var first = true
+
+            for item in values:
+                if not first: let separator = try write(writer: writer, text: ", ")
+
+                first = false
+                let written = try write_value(
+                    writer: writer,
+                    value: item,
+                    depth: (depth + 1)
+                )
+
+            writer.active_arrays.remove(writer.active_arrays.length() - 1)
+            return write(writer: writer, text: "]")
+        TableValue(values):
+            for active in writer.active_tables:
+                if same_table(left: values, right: active): return error(
+                    TomlError.InvalidData(
+                        line: 0,
+                        column: 0,
+                        reason: "cyclic TOML value"
+                    )
+                )
+
+            writer.active_tables.append(values)
+            let opening = try write(writer: writer, text: "\{")
+            var first = true
+
+            for entry in values:
+                if not first: let separator = try write(writer: writer, text: ", ")
+
+                first = false
+                let key = try write_quoted(writer: writer, text: entry.key)
+                let equals = try write(writer: writer, text: " = ")
+                let written = try write_value(
+                    writer: writer,
+                    value: entry.value,
+                    depth: (depth + 1)
+                )
+
+            writer.active_tables.remove(writer.active_tables.length() - 1)
+            return write(writer: writer, text: "\}")
+
+# Serializes a TOML table document with quoted keys, inline nested tables and ordered arrays.
+# Non-table roots, invalid date/time text and cycles return InvalidData with line/column zero.
+# Float kinds, signed zero and nonfinite values are preserved; date/time tokens retain their text.
+# Supplied limits bound UTF-8 output bytes, root-one value depth and value count; none adds no budget.
+export fn stringify(
+    value: TomlValue,
+    limits: Optional[TomlLimits] = none
+) -> Result[String, TomlError]:
+    var options = TomlLimits(max_bytes: none, max_depth: none, max_values: none)
+
+    match limits:
+        none: let ignored = unit
+        some(value): options = value
+
+    for limit in [options.max_bytes, options.max_depth, options.max_values]:
+        match limit:
+            none: let ignored = unit
+            some(value):
+                if value < 0: return error(TomlError.InvalidInput)
+
+    let entries = match value:
+        TableValue(entries): entries
+        _: return error(
+            TomlError.InvalidData(
+                line: 0,
+                column: 0,
+                reason: "TOML document root must be a table"
+            )
+        )
+
+    let writer = Writer(
+        parts: [],
+        bytes: 0,
+        values: 0,
+        limits: options,
+        active_arrays: [],
+        active_tables: []
+    )
+    let counted = try write_count(writer: writer, depth: 1)
+    writer.active_tables.append(entries)
+
+    for entry in entries:
+        let key = try write_quoted(writer: writer, text: entry.key)
+        let equals = try write(writer: writer, text: " = ")
+        let written = try write_value(writer: writer, value: entry.value, depth: 2)
+        let newline = try write(writer: writer, text: "\n")
+
+    return ok(writer.parts.join(separator: ""))

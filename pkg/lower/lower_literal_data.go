@@ -97,66 +97,6 @@ func (g *generator) literalDataScalar(x ir.Expr, expected string) (ast.Expr, boo
 			}
 			return textLiteral(text.String()), false
 		}
-	case ir.Deferred:
-		// Unary numeric expressions are outside the initial IR migration. Keep their
-		// checked syntax path until the canonical elaborator owns those nodes.
-		if x.Source.Kind == syntax.KindUnary {
-			return g.literalDataSyntaxScalar(x.Source, expected)
-		}
-	}
-	return nil, false
-}
 
-func (g *generator) literalDataSyntaxScalar(e *syntax.Expression, expected string) (ast.Expr, bool) {
-	info := g.program.Info(e)
-	if info == nil || info.ErrorSource != nil || info.Type.Kind != "primitive" || info.Type.ID != expected {
-		return nil, false
-	}
-	switch e.Kind {
-	case syntax.KindNumber, syntax.KindUnary:
-		text := e.Text
-		negative := false
-		if e.Kind == syntax.KindUnary {
-			if (e.Text != "+" && e.Text != "-") || e.Right.Kind != syntax.KindNumber {
-				return nil, false
-			}
-			text, negative = e.Right.Text, e.Text == "-"
-		}
-		if expected == "Int" {
-			if negative {
-				text = "-" + text
-			}
-			value, err := strconv.ParseInt(text, 10, 64)
-			if err != nil {
-				return nil, false
-			}
-			return signedInteger(strconv.FormatInt(value, 10)), false
-		}
-		if expected == "Float" {
-			value, err := strconv.ParseFloat(text, 64)
-			if err != nil {
-				return nil, false
-			}
-			if negative {
-				value = -value
-			}
-			return &ast.BasicLit{Kind: token.FLOAT, Value: strconv.FormatFloat(value, 'g', -1, 64)}, value == 0 && math.Signbit(value)
-		}
-	case syntax.KindBool:
-		if expected == "Bool" {
-			return ident(e.Text), false
-		}
-	case syntax.KindText:
-		if expected == "String" {
-			var text strings.Builder
-			for _, part := range e.Parts {
-				if part.Value != nil {
-					return nil, false
-				}
-				text.WriteString(part.Text)
-			}
-			return textLiteral(text.String()), false
-		}
-	}
 	return nil, false
 }

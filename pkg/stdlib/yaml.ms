@@ -39,11 +39,11 @@ export type YamlError:
     case InvalidInput
     # Malformed YAML or a form outside the supported parser's accepted grammar.
     case InvalidData(
-        # One-based source line of the offending token or construct.
+        # One-based source line of the offending token, or zero for an invalid serialization value.
         line: Int,
-        # One-based Unicode scalar column within that source line.
+        # One-based Unicode scalar column, or zero when serialization has no source location.
         column: Int,
-        # Parser diagnostic describing the malformed construct.
+        # Diagnostic describing the malformed syntax, number token or cyclic value.
         reason: String
     )
     # An explicit tag, complex key or directive unsupported by this configuration parser.
@@ -53,12 +53,12 @@ export type YamlError:
         # Diagnostic identifying the unsupported syntax or feature.
         reason: String
     )
-    # Parsing or validating the returned alias-expanded tree exceeds a supplied budget.
+    # Parsing, validating an alias-expanded tree, or serialization exceeds a supplied budget.
     case LimitExceeded
 
-# Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
+# Optional byte, nesting-depth, and value-count limits for YAML parsing and serialization.
 export type YamlLimits:
-    # Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
+    # Maximum UTF-8 input bytes before normalization or output bytes from stringify; none adds no budget.
     max_bytes: Optional[Int]
     # Maximum value depth, including scalar leaves, with the root at one.
     max_depth: Optional[Int]
@@ -80,7 +80,16 @@ type Context:
     index: Int
     limits: YamlLimits
     values: Int
-    anchors: Map[String, YamlValue]
+    anchors: Map[String, ParsedValue]
+
+# Keep implicit merge resolution on the original scalar, including aliases.
+# Quoted and block scalars are strings even when their decoded text is <<.
+type ParsedValue:
+    value: YamlValue
+    merge_key: Bool
+
+fn parsed(value: YamlValue, merge_key: Bool = false) -> ParsedValue:
+    return ParsedValue(value: value, merge_key: merge_key)
 
 type Flow:
     chars: List[String]
@@ -360,10 +369,14 @@ fn plain(text: String) -> YamlValue:
 
     return YamlValue.StringValue(text)
 
-fn anchor_name(flow: Flow) -> Result[String, YamlError]:
+fn anchor_name(flow: Flow, key: Bool = false) -> Result[String, YamlError]:
     var name = ""
 
-    while peek(flow) != "" and not " \t\n,[]\{\}".contains(peek(flow)):
+    while (
+        peek(flow) != ""
+        and not " \t\n,[]\{\}".contains(peek(flow))
+        and not (key and peek(flow) == ":")
+    ):
         name = name.concat(advance(flow))
 
     if name == "": return error(
@@ -415,7 +428,7 @@ fn merge(
 
     return ok(unit)
 
-fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]:
+fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[ParsedValue, YamlError]:
     flow_space(flow)
 
     if not key:
@@ -426,14 +439,16 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
     if c == "&":
         advance(flow)
         let name = try anchor_name(flow)
-        flow.context.values = flow.context.values - 1
-        let value = try flow_value(flow: flow, depth: depth, key: false)
+
+        if not key: flow.context.values = flow.context.values - 1
+
+        let value = try flow_value(flow: flow, depth: depth, key: key)
         flow.context.anchors.add(key: name, value: value)
         return ok(value)
 
     if c == "*":
         advance(flow)
-        let name = try anchor_name(flow)
+        let name = try anchor_name(flow: flow, key: key)
 
         match flow.context.anchors.get(name):
             some(value): return ok(value)
@@ -451,7 +466,9 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
         )
     )
     if c == "\"" or c == "'": return ok(
-        YamlValue.StringValue(try quoted(flow))
+        parsed(
+            YamlValue.StringValue(try quoted(flow))
+        )
     )
 
     if c == "[":
@@ -475,7 +492,8 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
                 )
             )
 
-            values.append(try flow_value(flow: flow, depth: depth + 1, key: false))
+            let value = try flow_value(flow: flow, depth: depth + 1, key: false)
+            values.append(value.value)
             flow_space(flow)
             if peek(flow) == "]": break
             if advance(flow) != ",": return error(
@@ -488,7 +506,9 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
             flow_space(flow)
 
         advance(flow)
-        return ok(YamlValue.ArrayValue(values))
+        return ok(
+            parsed(YamlValue.ArrayValue(values))
+        )
 
     if c == "\{":
         flow.delimited = true
@@ -515,7 +535,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
             let parsed_key = try flow_value(flow: flow, depth: depth, key: true)
             var name = ""
 
-            match parsed_key:
+            match parsed_key.value:
                 StringValue(value): name = value
                 _: return error(
                     YamlError.UnsupportedFeature(
@@ -542,15 +562,15 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
             explicit.append(name)
 
-            if name == "<<":
+            if parsed_key.merge_key:
                 let merged = try merge(
                     line: flow.line,
                     column: flow.pos + 1,
                     target: values,
-                    value: value
+                    value: value.value
                 )
             else:
-                values.add(key: name, value: value)
+                values.add(key: name, value: value.value)
 
             flow_space(flow)
             if peek(flow) == "\}": break
@@ -564,7 +584,9 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
             flow_space(flow)
 
         advance(flow)
-        return ok(YamlValue.ObjectValue(values))
+        return ok(
+            parsed(YamlValue.ObjectValue(values))
+        )
 
     var text = ""
 
@@ -583,9 +605,19 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
         text = text.concat(advance(flow))
 
     text = text.trim()
-    if key: return ok(YamlValue.StringValue(text))
+    if key: return ok(
+        parsed(
+            YamlValue.StringValue(text),
+            merge_key: text == "<<"
+        )
+    )
 
-    return ok(plain(text))
+    return ok(
+        parsed(
+            plain(text),
+            merge_key: text == "<<"
+        )
+    )
 
 # Find a mapping colon or comment outside quoted/flow values.
 fn boundary(text: String, colon: Bool) -> Int:
@@ -721,7 +753,7 @@ fn inline_value(
     context: Context,
     text: String,
     depth: Int
-) -> Result[YamlValue, YamlError]:
+) -> Result[ParsedValue, YamlError]:
     var joined = text
     let line = context.index
     let structured = (
@@ -917,7 +949,7 @@ fn block_value(
     base: Int,
     depth: Int,
     indentless: Bool
-) -> Result[YamlValue, YamlError]:
+) -> Result[ParsedValue, YamlError]:
     var remainder = text.trim_start()
     var anchor = ""
 
@@ -940,15 +972,16 @@ fn block_value(
             .trim_start()
         )
 
-    var result = YamlValue.Null
+    var result = parsed(YamlValue.Null)
 
     if remainder.starts_with("|") or remainder.starts_with(">"):
         let counted = try count(context: context, depth: depth)
-        result = try block_string(
+        let value = try block_string(
             context: context,
             header: remainder.trim_end(),
             base: base
         )
+        result = parsed(value)
     else if remainder != "":
         if not "['\"\{*&!".contains(remainder.at(0).unwrap()):
             remainder = remainder.trim_end()
@@ -1017,7 +1050,7 @@ fn block_value(
 
     return ok(result)
 
-fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError]:
+fn block(context: Context, base: Int, depth: Int) -> Result[ParsedValue, YamlError]:
     skip(context)
     let first = uncomment(context.lines.at(context.index).unwrap()).trim_start()
     if first.starts_with("?"): return error(
@@ -1068,26 +1101,26 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                         value: padding.concat(item)
                     )
                 )
-                values.append(
-                    try block(
-                        context: context,
-                        base: base + 2,
-                        depth: (depth + 1)
-                    )
+                let value = try block(
+                    context: context,
+                    base: base + 2,
+                    depth: (depth + 1)
                 )
+                values.append(value.value)
             else:
                 context.index = context.index + 1
-                values.append(
-                    try block_value(
-                        context: context,
-                        text: item,
-                        base: base,
-                        depth: (depth + 1),
-                        indentless: false
-                    )
+                let value = try block_value(
+                    context: context,
+                    text: item,
+                    base: base,
+                    depth: (depth + 1),
+                    indentless: false
                 )
+                values.append(value.value)
 
-        return ok(YamlValue.ArrayValue(values))
+        return ok(
+            parsed(YamlValue.ArrayValue(values))
+        )
 
     if boundary(text: first, colon: true) >= 0:
         let counted = try count(context: context, depth: depth)
@@ -1107,6 +1140,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
             if colon < 0: break
 
             var name = content.slice(start: 0, end: colon).unwrap_or("").trim()
+            let merge_key = name == "<<"
 
             if name.starts_with("\"") or name.starts_with("'"):
                 let flow = Flow(
@@ -1165,17 +1199,19 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 indentless: true
             )
 
-            if name == "<<":
+            if merge_key:
                 let merged = try merge(
                     line: key_line,
                     column: line_indent + 1,
                     target: values,
-                    value: value
+                    value: value.value
                 )
             else:
-                values.add(key: name, value: value)
+                values.add(key: name, value: value.value)
 
-        return ok(YamlValue.ObjectValue(values))
+        return ok(
+            parsed(YamlValue.ObjectValue(values))
+        )
 
     context.index = context.index + 1
     return block_value(
@@ -1281,7 +1317,7 @@ export fn parse(
         index: 0,
         limits: options,
         values: 0,
-        anchors: Map[String, YamlValue]()
+        anchors: Map[String, ParsedValue]()
     )
 
     # split's synthetic terminal empty line is not scalar content.
@@ -1327,7 +1363,7 @@ export fn parse(
         context.index < context.lines.length()
         and uncomment((context.lines.at(context.index).unwrap())) != "..."
     ):
-        result = try block(
+        let value = try block(
             context: context,
             base: try indentation(
                 context: context,
@@ -1335,6 +1371,7 @@ export fn parse(
             ),
             depth: 1
         )
+        result = value.value
 
     skip(context)
 
@@ -1358,3 +1395,146 @@ export fn parse(
     context.values = 0
     let valid = try validate(context: context, value: result, depth: 1)
     return ok(result)
+
+type Writer:
+    parts: List[String]
+    bytes: Int
+    values: Int
+    limits: YamlLimits
+    active: List[YamlValue]
+
+fn write(writer: Writer, text: String) -> Result[Unit, YamlError]:
+    let bytes = text.byte_length()
+
+    match writer.limits.max_bytes:
+        none: let ignored = unit
+        some(maximum):
+            if bytes > maximum - writer.bytes: return error(YamlError.LimitExceeded)
+
+    writer.bytes = writer.bytes + bytes
+    writer.parts.append(text)
+    return ok(unit)
+
+fn write_quoted(writer: Writer, text: String) -> Result[Unit, YamlError]:
+    let opening = try write(writer: writer, text: "\"")
+
+    for code in text.scalar_values():
+        var escaped = from_scalars([code]).unwrap()
+
+        if code == 34: escaped = "\\\""
+        else if code == 92: escaped = "\\\\"
+        else if code == 10: escaped = "\\n"
+        else if code == 13: escaped = "\\r"
+        else if code == 9: escaped = "\\t"
+        else if (
+            code < 32
+            or (code >= 127 and code <= 159)
+            or code == 8232
+            or code == 8233
+        ):
+            var digits = code.to_string(radix: 16)
+
+            while digits.scalar_length() < 4: digits = "0{digits}"
+
+            escaped = "\\u{digits}"
+
+        let written = try write(writer: writer, text: escaped)
+
+    return write(writer: writer, text: "\"")
+
+fn write_value(writer: Writer, value: YamlValue, depth: Int) -> Result[Unit, YamlError]:
+    if not within(value: depth, limit: writer.limits.max_depth): return error(
+        YamlError.LimitExceeded
+    )
+
+    writer.values = writer.values + 1
+    if not within(value: writer.values, limit: writer.limits.max_values): return error(
+        YamlError.LimitExceeded
+    )
+    if writer.active.contains(value): return error(
+        YamlError.InvalidData(line: 0, column: 0, reason: "cyclic YAML value")
+    )
+
+    match value:
+        Null: return write(writer: writer, text: "null")
+        BoolValue(boolean):
+            if boolean: return write(writer: writer, text: "true")
+
+            return write(writer: writer, text: "false")
+        NumberValue(text):
+            if not numeric(text): return error(
+                YamlError.InvalidData(
+                    line: 0,
+                    column: 0,
+                    reason: "invalid YAML number text"
+                )
+            )
+
+            return write(writer: writer, text: text)
+        StringValue(text): return write_quoted(writer: writer, text: text)
+        ArrayValue(values):
+            writer.active.append(value)
+            let opening = try write(writer: writer, text: "[")
+            var first = true
+
+            for item in values:
+                if not first: let separator = try write(writer: writer, text: ", ")
+
+                first = false
+                let written = try write_value(
+                    writer: writer,
+                    value: item,
+                    depth: (depth + 1)
+                )
+
+            writer.active.remove(writer.active.length() - 1)
+            return write(writer: writer, text: "]")
+        ObjectValue(values):
+            writer.active.append(value)
+            let opening = try write(writer: writer, text: "\{")
+            var first = true
+
+            for entry in values:
+                if not first: let separator = try write(writer: writer, text: ", ")
+
+                first = false
+                let key = try write_quoted(writer: writer, text: entry.key)
+                let colon = try write(writer: writer, text: ": ")
+                let written = try write_value(
+                    writer: writer,
+                    value: entry.value,
+                    depth: (depth + 1)
+                )
+
+            writer.active.remove(writer.active.length() - 1)
+            return write(writer: writer, text: "\}")
+
+# Serializes one value as flow-style YAML, quoting every string and mapping key.
+# Number tokens retain their text and must match the supported YAML core schema.
+# Cycles return InvalidData with line/column zero; shared subtrees are emitted at each occurrence.
+# Supplied limits bound UTF-8 output bytes, root-one value depth and value count; none adds no budget.
+export fn stringify(
+    value: YamlValue,
+    limits: Optional[YamlLimits] = none
+) -> Result[String, YamlError]:
+    var options = YamlLimits(max_bytes: none, max_depth: none, max_values: none)
+
+    match limits:
+        none: let ignored = unit
+        some(value): options = value
+
+    for limit in [options.max_bytes, options.max_depth, options.max_values]:
+        match limit:
+            none: let ignored = unit
+            some(value):
+                if value < 0: return error(YamlError.InvalidInput)
+
+    let writer = Writer(
+        parts: [],
+        bytes: 0,
+        values: 0,
+        limits: options,
+        active: []
+    )
+    let written = try write_value(writer: writer, value: value, depth: 1)
+    return ok(writer.parts.join(separator: ""))

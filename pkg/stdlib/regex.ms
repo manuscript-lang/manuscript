@@ -11,10 +11,30 @@ export type RegexError:
     # More matches exist than permitted, or replacement output exceeds its byte budget.
     case LimitExceeded
 
+# The first full match, with half-open Unicode scalar positions in the input.
+export type RegexMatch:
+    # Full matched text; an empty match contains empty text.
+    text: String
+    # Zero-based Unicode scalar position where the full match begins.
+    start: Int
+    # Unicode scalar position immediately after the full match.
+    end: Int
+    # Capture groups only, in pattern order; unmatched groups are none, empty matches some("").
+    groups: List[Optional[String]]
+
 # A compiled regular expression that can be reused across input strings.
 export type Regex:
     # Tests whether any match occurs; anchor the pattern explicitly to require a whole-string match.
     fn matches(text: String) -> Bool:
+    # Returns the first full match, its scalar positions and optional capture groups, or none.
+    fn find(text: String) -> Optional[RegexMatch]:
+    # Splits at nonoverlapping full matches; capture groups are not returned.
+    # Omitted/none max_parts is unlimited, zero returns no parts, negatives return InvalidInput.
+    # A cap truncates parts rather than retaining the unsplit remainder; zero-width matches follow native regexp rules.
+    fn split(
+        text: String,
+        max_parts: Optional[Int] = none
+    ) -> Result[List[String], RegexError]:
     # Returns nonoverlapping full-match text in occurrence order, excluding capture groups.
     # A supplied cap is a strict budget, not truncation; zero-width matches follow native regexp rules.
     fn find_all(

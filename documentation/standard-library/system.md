@@ -56,6 +56,10 @@ Formatting uses UTC. It omits a zero fraction and removes trailing fractional ze
 
 Construct timestamps with `timestamp` or `parse_timestamp`; inspect and transform them with receiver methods. `unix_seconds()` and `nanoseconds()` expose whole Unix seconds and the nonnegative fractional nanosecond component. Use `value.to_string()`, `value.shift(duration)`, and `value.difference(right)`.
 
+`Timestamp.format(layout:)` formats UTC using Go's reference-time layout, `Mon Jan 2 15:04:05 MST 2006`. For example, `"2006-01-02"` selects a date and `"2006-01-02T15:04:05.000000000Z07:00"` includes nine fractional digits and a zone. Literal text remains literal; an empty layout formats as empty text. `parse_timestamp_format(text:, layout:)` uses the same layout, defaults a missing zone to UTC, and normalizes an explicit offset to UTC. Empty layouts return `InvalidInput`, malformed text returns `InvalidData`, and normalized years outside 1–9999 return `OutOfRange`. Existing strict RFC3339 parsing and `to_string()` remain unchanged.
+
+An Instant has no calendar origin to format or convert to a Timestamp. Convert elapsed time with `difference(right:) -> Duration`; read `wall_clock()` when a calendar time is needed.
+
 ## System information
 
 SystemInfo has `os: String`, `architecture: String`, and `cpu_count: Int`. Each `info()` call returns a native runtime record. OS/architecture identifiers use Go names: supported distributions use `linux`, `darwin`, `windows`, and `amd64`/`arm64`; these are open host identifiers, not a promise that other hosts cannot return another name. `os_type()` returns `Linux`, `Darwin`, or `Windows_NT` on those OSes and the Go OS name otherwise. `endianness()` returns exactly `LE` or `BE`. NetworkInterface.family is exactly `IPv4` or `IPv6`. CPU count does not reserve resources.
@@ -69,6 +73,12 @@ SystemInfo has `os: String`, `architecture: String`, and `cpu_count: Int`. Each 
 `secure_int` samples uniformly from a nonempty interval that includes `min` and excludes `max_exclusive`. Rejection sampling avoids bias, including for interval widths above MaxInt64. `uuid_v4` returns a canonical lowercase RFC 9562 version-4 UUID with the correct variant.
 
 A source fake must return the exact requested byte count. Malformed fake output returns `Failed`.
+
+`secure_float(entropy:)` samples 53 unbiased bits and returns a binary64 value in `[0, 1)`. `secure_choice(entropy:, values:)` returns an optional original element; an empty input returns `ok(none)` without reading entropy. `secure_shuffle` uses Fisher–Yates and returns a fresh shallow List. Input storage is unchanged and referenced payloads remain shared. Empty and singleton shuffles read no entropy. All secure helpers retain the supplied source's original error payload; malformed byte counts return `RandomError.Failed`.
+
+For repeatable simulations or tests, `seeded(seed:)` creates a mutable `Random`, with `int`, `float`, `choice`, and `shuffle` methods. This generator is not cryptographic. Its SplitMix64 sequence adds `0x9e3779b97f4a7c15`, applies xor/right-shift 30 and multiply `0xbf58476d1ce4e5b9`, xor/right-shift 27 and multiply `0x94d049bb133111eb`, then xor/right-shift 31; all arithmetic wraps modulo 2^64. Seeds use their two's-complement bit representation. Float draws use the highest 53 bits divided by 2^53; integer draws reject the incomplete residue cycle to avoid modulo bias. Identical seeds and serial call sequences give identical results across targets.
+
+Generator aliases share state. Native word draws are synchronized, but concurrent composite calls can interleave their draws; serialize calls when reproducible ordering matters. Choice returns original payloads, and shuffle returns fresh shallow storage. Empty choices and empty/singleton shuffles consume no state. Signed integer bounds include `min` and exclude `max_exclusive`; omitted or `none` upper bounds use Int's maximum. A negative upper bound is valid when greater than `min`. Invalid ranges return `InvalidInput` without advancing the generator. Cancellation unwinds and can follow partial state or entropy consumption; no rollback is implied.
 
 For delayed and repeating callbacks, use [Scheduler](../concurrency/scheduling.md).
 

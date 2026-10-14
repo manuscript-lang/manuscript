@@ -62,7 +62,7 @@ func TestLiteralDataBoundariesAndAST(t *testing.T) {
 			if !result.Success() {
 				t.Fatal(result.Diagnostics)
 			}
-			g := &generator{program: result.Program}
+			g := newGenerator(result.Program)
 			var literal *syntax.Expression
 			for expression := range result.Program.Expressions() {
 				if expression.Kind == syntax.KindList && len(expression.Elements) == n {
@@ -179,9 +179,6 @@ func TestLargeLiteralInitializationUsesNativeScalarBoundary(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	g := &generator{program: result.Program, captures: map[*checker.Binding]string{}}
-	g.selectNativeCalls()
-	g.selectNativeMethods()
-	g.scalarLocals = g.selectScalarLocals()
 	file := g.file("native-literal.ms", Options{})
 	native := result.Program.Symbol("native-literal.ms", "read").ID + "Native"
 	initializers := 0

@@ -22,6 +22,10 @@ export type Bytes:
     fn at(index: Int) -> Optional[Int]:
     # Returns the first matching byte offset or `none`; empty `value` matches at zero.
     fn index_of(value: Bytes) -> Optional[Int]:
+    # Searches at or after a strict byte offset and returns an absolute byte offset.
+    # start must be between zero and length(), inclusive; invalid offsets fault.
+    # An empty value matches at start, including the end of the receiver.
+    fn index_of_from(value: Bytes, start: Int) -> Optional[Int]:
     # Returns the last matching byte offset or `none`; empty `value` matches at length().
     fn last_index_of(value: Bytes) -> Optional[Int]:
     # Tests whether the receiver begins with these bytes.
@@ -45,6 +49,8 @@ export type Bytes:
     fn length() -> Int:
     # Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
     fn to_text() -> Optional[String]:
+    # Encodes every byte as two lowercase hexadecimal digits, without separators.
+    fn to_hex() -> String:
 
 # Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().
 export fn values(data: Bytes) -> List[Int]:

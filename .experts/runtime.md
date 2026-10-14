@@ -198,6 +198,14 @@ Apply when: changing YAML scalar gathering, comment removal, whitespace handling
 Evidence: [YAML parser](../pkg/stdlib/yaml.ms), [called scalar regressions](../tests/e2e/testdata/stdlib/yaml.ms), [YAML contract](../documentation/standard-library/formats.md#yaml-behavior), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
 Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization.
 
+### Serializer cycle checks need container identity when leaves are nonreflexive
+
+Verified: structural ancestry equality misses a TOML cycle containing NaN because IEEE NaN is unequal to itself. TOML's private `same_list`/`same_table` native helpers compare only container references; its parser, nominal types, serializer and budgets remain source-owned. Bindings attach to exact pinned module/declaration objects, and private helper imports and user lookalikes remain rejected or ordinary source functions. A shared acyclic subtree is emitted at each occurrence rather than rejected as a cycle.
+
+Apply when: changing source-owned codecs, private stdlib/native seams, cycle guards, or standard symbol loading.
+Evidence: [TOML serializer](../pkg/stdlib/toml.ms), [ownership seam](../pkg/stdlib/README.md), [trust-boundary tests](../pkg/checker/source_native_helpers_test.go), and [NaN-cycle/shared-tree conformance](../tests/e2e/testdata/stdlib/toml-parity.ms).
+Verify: NaN-bearing list/map cycles return typed InvalidData; shared subtrees serialize twice without mutation. Keep helpers private, their generic signatures ABI-checked, and application empty functions subject to normal body checking even with a standard-looking filename. Do not add a public identity API solely for serializer plumbing.
+
 ### List traversal follows the captured Go slice header
 
 Decision: the user's later instruction explicitly supersedes List membership
@@ -264,6 +272,12 @@ and [measured storage/access paths](../scripts/bench-lists/typed-storage.md).
 Verify: fresh constructors and effectful sized initialization use two allocations,
 typed at/unwrap uses none, generic forwarding retains identity, and comparator
 profiling/returns/cancellation/depth/fault frames match ordinary source calls.
+Also exercise new List parity, sums, sorting and random helpers with typed backing;
+legacy boxed fixtures cannot expose reads of a typed List's nil Items field.
+Evidence: [parity storage regressions](../pkg/runtime/library_list_storage_parity_test.go),
+[sum tests](../pkg/runtime/library_numeric_parity_test.go), and
+[random tests](../pkg/runtime/library_random_parity_test.go).
+
 
 Verified: primitive sized initializers must use direct matching typed writes
 after fresh-state/kind/bounds checks. Routing known typed construction through
@@ -284,3 +298,26 @@ Evidence: [approved contract](https://github.com/manuscript-lang/manuscript/pull
 [retention/reentry/checkpoint/guard/allocation tests](../pkg/runtime/borrowed_arguments_test.go).
 Verify actual emitted ordinary callbacks against the prior boxed baseline; a
 runtime marked-body control does not establish compiler proof or payload parity.
+
+### Format serialization must retain syntax provenance and native delimiter limits
+
+Verified: flow YAML merge resolution cannot inspect the first character at key use.
+An anchor or alias can resolve to quoted `<<`; retain scalar-style metadata on the
+parsed value and anchor entry. Quoted/block scalars stay literal, plain `<<` merges,
+and alias key scanning stops at the mapping colon. Nested parses and anchor
+redefinitions must not leak eligibility or charge extra key depth/value budgets.
+
+Verified: pinned x/net HTML rendering writes quoted doctype identifiers verbatim,
+but its parser terminates on `>` even within either quote delimiter. Reject that
+character in public/system identifiers with HtmlError.InvalidData. Do not broaden
+this to legal `<`, ampersands, Unicode, or a usable single quote delimiter; parsed
+entities can still normalize their spelling.
+
+Apply when: changing source format parsers/serializers, anchor resolution, or HTML
+native tree conversion. Evidence: [YAML called regressions](../tests/e2e/testdata/stdlib/yaml-parity.ms),
+[pinned doctype loss and legal character tests](../pkg/runtime/library_format_parity_test.go),
+and [format contracts](../documentation/standard-library/formats.md).
+Verify: anchored/aliased quoted and block `<<` keys remain data, plain merges retain
+precedence, malformed duplicates still fail, and exact optional budgets still hold.
+Run both public/system doctype fields through the native parser and stdlib renderer,
+including both quote delimiters and legal-character positive cases.

@@ -15,6 +15,12 @@ Math functions use IEEE binary64 arithmetic. An invalid Float domain yields NaN;
 
 `round` rounds to the nearest integer, with ties toward positive infinity: `round(1.5)` is `2.0`, and `round(-1.5)` is `-1.0`. It preserves negative zero for negative inputs that round to zero. `min` and `max` propagate NaN and preserve signed-zero conventions. `abs_int(MinInt64)` faults because the positive result cannot fit in an `Int`. `pi()` and `e()` are ordinary zero-argument functions.
 
+`round_to_int`, `floor_to_int`, and `ceil_to_int` return `Optional[Int]` after rounding. They are available as Float methods and math functions; nonfinite values and results outside signed 64-bit range return `none`. `round_to_int` uses the same ties toward positive infinity as `round`. These additions keep the existing binary64 Float and signed64 Int defaults.
+
+`min_int` and `max_int` compare integers without converting them to Float. `pow_int` returns `Result[Int, NumberError]`: a negative exponent returns `InvalidInput`, and overflow returns `OutOfRange`. Zero to the zeroth power is one. Use `BigInt.pow` for wider exact integer powers. `sum_int` checks each running total and returns `OutOfRange` when one overflows, even if later elements would bring a mathematical final total back into range. `sum_float` adds in list order with ordinary IEEE behavior. Empty sums are zero.
+
+`sign` returns -1.0 or 1.0 for nonzero numbers and preserves signed zero and NaN; `sign_int` returns -1, 0, or 1. `clamp` and `clamp_int` select a value in the inclusive `minimum..maximum` range; inverted bounds fault with the original bounds. Float clamping propagates NaN. `cbrt` supports negative inputs; `asinh`, `acosh`, and `atanh` use the same IEEE domain and cancellation rules as the other native math functions.
+
 ## Parsing and formatting numbers
 
 Integer radices are 2–36. Input may have a sign and ASCII digits or letters. Parsing consumes the whole input and rejects prefixes, whitespace, and separators. An invalid radix returns `InvalidInput` when parsing and faults when formatting. An integer outside the `Int` range returns `OutOfRange`.
@@ -44,4 +50,8 @@ The three precision-formatting operations return `Result[String, NumberError]`; 
 | Convert to Int | Returns `none` outside the signed 64-bit range. |
 | Bit operations | Use mathematical two's-complement semantics. |
 
+`negate`, `abs`, and `bit_not` return new values without changing the receiver. `shift_right(count:)` is an arithmetic shift, so `-7` shifted right once is `-4`. Negative shift counts or exponents return `BigIntError.InvalidInput`. `pow(exponent:, max_bits:)` and `shift_left(count:, max_bits:)` return `LimitExceeded` when their result's magnitude bit length exceeds a supplied budget or the native ceiling of 2^28 bits (32 MiB). Omitted or `none` budgets add no caller cap; zero permits only magnitude zero. Native multiplication or shifting may delay cancellation until it returns.
+
 A very large native arithmetic operation can delay cancellation until it returns. Bound input magnitudes where that matters. Decimal keeps its [34-digit arithmetic and explicit scale rounding](../core-language/basics/numbers-and-booleans.md#decimal) contract. Its `to_fixed` method formats exact decimal values with stable trailing zeros. Decimal text parsing remains unsupported.
+
+Decimal arithmetic continues to use its existing operators. `abs` and `compare` operate on the exact stored value. Decimal `round_to_int` uses HalfEven ties; `floor_to_int` and `ceil_to_int` round in their named directions. Each returns `none` when the rounded integer is outside signed64 range. Decimal rounding therefore follows its own existing context, while Float rounding retains its established tie rule.

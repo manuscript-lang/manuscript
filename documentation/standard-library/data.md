@@ -18,11 +18,19 @@ Use receiver operations for existing data: `text.split(separator: ",")`, `bytes.
 | Binary numbers | `@std/binary.ms` | [Binary](reference/binary.md) |
 | Regular expressions | `@std/regex.ms` | [Regex](reference/regex.md) |
 
-List, Map and Set mutation is visible through aliases. `.clone()` makes a separate shallow copy. `sorted` returns a new list and accepts a comparator; there are no separate integer and string sorting helpers. Flatten a nested list with `flat_map` and an identity callback. Use `.at` for optional indexed access, including relative negative indexes on List and Bytes.
+List, Map and Set mutation is visible through aliases. `.clone()` makes a separate shallow copy. `sorted` returns a new list and accepts a comparator. Use `sorted_int`, `sorted_float`, or `sorted_strings` from `@std/collections.ms` to sort primitive lists without writing one. Flatten a nested list with `flat_map` and an identity callback. Use `.at` for optional indexed access, including relative negative indexes on List and Bytes.
 
 ## Transform and search lists
 
 `take(count:)` returns a shallow copy of the first `count` elements; `drop(count:)` returns a shallow copy after them. Counts above `length()` are clamped: taking copies the whole list, dropping returns an empty list. Zero takes an empty list or drops nothing; a negative count produces a programming fault naming the operation, parameter and original count. Both return fresh mutable List storage even for empty or whole-list copies, preserve element order and payload references, and leave the receiver unchanged. They are explicit copy operations and do not change loop or callback traversal behavior.
+
+`count(predicate:)` counts matching elements. `partition(predicate:)` returns a `ListPartition` record with fresh `matching` and `remaining` lists, preserving order and shallow payload references. `zip(other:)` returns fresh `ListPair` records with `first` and `second` fields, stopping at the shorter input's length. `distinct()` requires Equal and keeps the first occurrence under the caller's selected equality; it does not require hashing. Its current equality scan takes quadratic work for mostly distinct inputs. These operations leave the receiver's storage unchanged except for effects requested by callbacks or equality implementations.
+
+`min(compare:)` and `max(compare:)` return the selected original payload or `none` for empty input. Comparator ties keep the first visited element. `sort_in_place(compare:)` sorts stably and returns the same receiver; `sorted(compare:)` retains its fresh shallow-copy contract. Comparators return a negative, zero, or positive Int. Callbacks capture the original Go slice header and length: in-place writes remain visible, appends do not extend traversal, and reallocation keeps traversal on the old backing array. Faults and cancellation unwind and can follow partial mutation; sorting has no rollback. See the [loop contract](../core-language/control-flow/loops.md#iterable-types-and-binding).
+
+The primitive sorting functions return fresh storage and leave input unchanged. Integers use exact signed64 order, and strings use lexical scalar order without normalization or locale rules. Float sorting places NaNs first, then numbers in ascending order; stable ties retain the original signs and order of zeros. Existing `sorted(compare:)` and stored comparator-callable types remain supported. The typed functions provide comparator-free convenience without adding an ordering requirement to generic `List[T]`.
+
+`insert(index:, value:)` mutates the receiver and returns it. The strict insertion range is zero through `length()`, inclusive; invalid indexes fault with the supplied value and valid range. `pop()` removes and returns the final payload as an Optional, or returns `none` without mutation for an empty list. Both use the existing non-clearing splice behavior, preserving valid values in vacated backing cells for already-captured traversals. Numeric aggregation is available through `math.sum_int` and `math.sum_float`, with [explicit arithmetic contracts](math.md#floating-point-behavior).
 
 `map` transforms each element, `filter` keeps matching elements, and `flat_map` combines the lists returned by its callback. These operations return new lists. Callbacks run sequentially and may wait for operations.
 
@@ -83,6 +91,10 @@ Negative `max_parts` and `max_replacements` fault with a message naming the oper
 
 Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.
 
+`Regex.find(text:)` returns `Optional[RegexMatch]`. The record contains full-match `text`, half-open Unicode scalar `start`/`end` positions, and capture-only `groups: List[Optional[String]]`. A group that did not participate is `none`; a group that matched empty text is `some("")`. Each result has a fresh mutable group list. Existing `find_all` keeps its string-only result and strict match-budget behavior.
+
+`Regex.split(text:, max_parts:)` excludes separator matches and capture groups. Omission or `none` returns all parts; zero returns an empty list; a negative cap returns `RegexError.InvalidInput`. A cap truncates the parts, matching String and Bytes splitting. Nonempty separators retain empty parts, including a final empty part. Zero-width matches follow the pinned native regexp rules: an empty pattern splits `"é🙂"` into `["é", "🙂"]`, without empty edge parts. A nonempty pattern on empty input returns `[""]`; an empty pattern on empty input returns no parts. Regex engine calls may delay cancellation until they return.
+
 `Regex.replace_all(text:, replacement:, max_bytes:)` replaces every nonoverlapping match with literal text; `$1` does not expand a capture. `Regex.replace` remains a compatible spelling. Omitted or `none` byte budgets impose no cap, zero permits only empty output, negative budgets return `RegexError.InvalidInput`, and output exceeding a supplied budget returns `RegexError.LimitExceeded`. The UTF-8 budget includes unmatched input, even when no match occurs.
 
 ## Byte operations
@@ -92,13 +104,17 @@ Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed 
 | `length`, `is_empty`, `at` | Count bytes, test emptiness, or read an unsigned byte; negative lookup indexes are relative to the end. |
 | `contains`, `starts_with`, `ends_with` | Test byte subsequences, prefixes, or suffixes. |
 | `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length()` respectively. |
+| `index_of_from` | Search at or after `start`, returning an absolute byte offset or `none`. The strict range is `0..length()` inclusive; invalid offsets fault. An empty search matches at `start`. |
 | `split` | Split exact binary separators into a fresh List of immutable Bytes views. `max_parts` truncates returned parts; omitted/`none` is unlimited, zero returns no parts, negatives fault. |
 | `slice` | Select a half-open byte range, returning `OutOfRange` for invalid bounds, under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
 | `with_value`, `reversed`, `reverse`, `concat`, `clone` | Return Bytes without changing the receiver. `reverse` remains a compatible spelling for `reversed`. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
 | `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
 | `to_text` | Decode valid UTF-8 or return `none`. |
+| `to_hex` | Encode each byte as two lowercase hexadecimal digits, with no separator. Decode with the existing `encoding.hex_decode`. |
 
 Bytes stay immutable even when a native slice shares storage. Construction and extraction copy values, as described in [encoding and parsing](../core-language/basics/text-and-bytes.md#encoding-and-parsing).
+
+Existing `index_of(value:)` and `last_index_of(value:)` signatures remain unchanged, including stored method values. Replace repeated sliced searches with `index_of_from(value:, start:)` when an absolute offset is useful; returned offsets are relative to the current Bytes view, even when that view shares a larger backing array.
 
 `Bytes.split` preserves leading, interior and trailing empty parts. An empty separator yields one Bytes per byte, and gives no parts for empty data; a nonempty separator gives one empty part for empty data. It never decodes UTF-8, so separators can split a multibyte character or invalid text. A cap discards later parts instead of retaining an unsplit remainder: `Bytes([1, 0, 2, 0, 3]).split(Bytes([0]), max_parts: 2)` returns `[Bytes([1]), Bytes([2])]`. Returned Lists have independent mutable storage, while their immutable Bytes may share the input storage. Changing a result with `with_value` creates new Bytes and leaves the input and other parts unchanged.
 

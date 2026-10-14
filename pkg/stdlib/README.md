@@ -21,6 +21,8 @@ Modules with executable bodies use the ordinary checker and need no entries in `
 
 Keep a module's implementation ownership consistent: adding an executable body marks the whole module as source-owned. A typed adapter in an existing declaration-only module should use its native binding path; one source helper body does not preserve that module's other native declarations or nominal identities.
 
+A source-owned standard module may use explicitly bound private, empty function declarations for internal native helpers. Bindings attach only to the exact pinned module and declaration objects, never to application filenames. Exported helpers or declarations with both a body and a binding are rejected. These helpers retain ordinary checked signatures and native ABI verification, and are not importable public APIs. TOML serialization uses this seam to compare active List/Map container identities while preserving its source-owned parser and serializer.
+
 ## Editor navigation
 
 Editor adapters can use `tooling.StandardDeclarations` and `tooling.NavigationAt` to find hover and definition locations in `@std` documents.

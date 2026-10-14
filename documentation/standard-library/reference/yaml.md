@@ -41,7 +41,7 @@ case InvalidInput
 
 ### YamlError.LimitExceeded
 
-Parsing or validating the returned alias-expanded tree exceeds a supplied budget.
+Parsing, validating an alias-expanded tree, or serialization exceeds a supplied budget.
 
 ```manuscript
 case LimitExceeded
@@ -57,7 +57,7 @@ case UnsupportedFeature(line: Int, reason: String)
 
 ### YamlError.InvalidData.column
 
-One-based Unicode scalar column within that source line.
+One-based Unicode scalar column, or zero when serialization has no source location.
 
 ```manuscript
 column: Int
@@ -65,7 +65,7 @@ column: Int
 
 ### YamlError.InvalidData.line
 
-One-based source line of the offending token or construct.
+One-based source line of the offending token, or zero for an invalid serialization value.
 
 ```manuscript
 line: Int
@@ -73,7 +73,7 @@ line: Int
 
 ### YamlError.InvalidData.reason
 
-Parser diagnostic describing the malformed construct.
+Diagnostic describing the malformed syntax, number token or cyclic value.
 
 ```manuscript
 reason: String
@@ -105,7 +105,7 @@ fn message() -> String:
 
 ## YamlLimits {data-api-kind="Record"}
 
-Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
+Optional byte, nesting-depth, and value-count limits for YAML parsing and serialization.
 
 ```manuscript
 type YamlLimits:
@@ -116,7 +116,7 @@ type YamlLimits:
 
 ### YamlLimits.max_bytes
 
-Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
+Maximum UTF-8 input bytes before normalization or output bytes from stringify; none adds no budget.
 
 ```manuscript
 max_bytes: Optional[Int]
@@ -246,5 +246,16 @@ Parses a YAML document. Unsupported YAML features and invalid input include sour
 
 ```manuscript
 fn parse(text: String, limits: Optional[YamlLimits] = none) -> Result[YamlValue, YamlError]:
+```
+
+## stringify {data-api-kind="Function"}
+
+Serializes one value as flow-style YAML, quoting every string and mapping key.
+Number tokens retain their text and must match the supported YAML core schema.
+Cycles return InvalidData with line/column zero; shared subtrees are emitted at each occurrence.
+Supplied limits bound UTF-8 output bytes, root-one value depth and value count; none adds no budget.
+
+```manuscript
+fn stringify(value: YamlValue, limits: Optional[YamlLimits] = none) -> Result[String, YamlError]:
 ```
 

@@ -90,6 +90,20 @@ contract/default preparation when no concrete entry is available.
 Evidence: [method selection](../pkg/checker/contracts.go),
 [native method entries](../pkg/lower/lower_native_methods.go), and
 [direct-method acceptance](../tests/e2e/testdata/accept/direct-methods.ms).
+Verified: adopting expression IR can bypass a constructor optimization left in
+the old syntax switch. List literals now reach `irValue(ir.List)` before that
+switch; carry the published storage constructor into this exercised path and
+remove the duplicate syntax implementation. Large-literal policy remains owned
+by its optimization lane on the same IR path. Inspect emitted calls and execute
+them: a type-correct boxed List can pass source semantics while losing primitive
+storage and its allocation/retention properties.
+Evidence: [authoritative IR lowering](../pkg/lower/lower_ir.go),
+[elaboration](../pkg/ir/elaborate.go), and
+[Release/Debug native backing regression](../pkg/build/ir_list_storage_native_test.go).
+Verify: all four primitive literal kinds retain typed fresh backing, nested
+lists retain boxed shallow identity, and effectful operands run left to right.
+Retain the independently owned large-literal/debugger oracles and test the path
+that actual expression dispatch exercises, rather than an unreachable branch.
 
 ### Native build levels need artifact evidence
 

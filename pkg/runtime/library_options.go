@@ -82,6 +82,20 @@ func nativeOptions(operation string, params []LibraryParam, args []Value) ([]Val
 		typ := p.Type
 		if typ == "Optional[Int]" || typ == "Optional[Duration]" || typ == "Optional[JsonLimits]" || typ == "Optional[ArchiveLimits]" || typ == "Optional[HtmlLimits]" {
 			typ = strings.TrimSuffix(strings.TrimPrefix(typ, "Optional["), "]")
+			// Random upper bounds are signed values, rather than resource
+			// budgets. Keep the full Int range when unwrapping their option.
+			if p.Name == "max_exclusive" && typ == "Int" {
+				if option, ok := out[i].(Alternative); ok && strings.HasPrefix(option.Type, "@std/Optional[") {
+					if option.Tag == "none" {
+						out[i] = nativeDefault(p.Name, typ, operation)
+					} else {
+						out[i] = option.Fields[0]
+					}
+				} else if out[i] == nil {
+					out[i] = nativeDefault(p.Name, typ, operation)
+				}
+				continue
+			}
 			var ok bool
 			out[i], ok = nativeOption(out[i], typ, nativeDefault(p.Name, typ, operation))
 			if !ok {

@@ -20,6 +20,7 @@ var intrinsicOperations map[string]*Type
 var standardImplementations []*Method
 var standardSourceModules = map[string]*syntax.Module{}
 var standardSourceMethods []*Method
+var standardSourceFunctionBindings map[*syntax.Declaration]string
 var standardOperationVariables = map[string][]*Type{}
 var standardReceiverBindings map[string]string
 var standardReceiverRequirements map[string][]receiverRequirement
@@ -53,6 +54,7 @@ func ensureStandard() {
 func loadStandardSources() error {
 	standardSources = nil
 	standardSourceModules = map[string]*syntax.Module{}
+	standardSourceFunctionBindings = map[*syntax.Declaration]string{}
 	standardSymbols = map[string]*Symbol{}
 	standardModules = map[string]map[string]*Symbol{}
 	intrinsicOperations = map[string]*Type{}
@@ -118,6 +120,14 @@ func loadStandardSources() error {
 			// Source modules use the ordinary parser and checker, including body,
 			// import visibility, default argument, and implementation rules.
 			standardSourceModules[module.File] = module
+			for _, d := range module.Declarations {
+				if identity := bindings.Functions[module.File+"/"+d.Name]; identity != "" {
+					if d.Kind != syntax.KindFn || d.Export || len(d.Body) != 0 {
+						return fmt.Errorf("source-owned native helpers must be private empty functions: %s", d.Pos)
+					}
+					standardSourceFunctionBindings[d] = identity
+				}
+			}
 			continue
 		}
 		standardModules[module.File] = map[string]*Symbol{}
