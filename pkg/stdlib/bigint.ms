@@ -8,15 +8,15 @@ export type BigIntError:
 
 # An arbitrary-precision signed integer with explicit arithmetic operations.
 export type BigInt:
-    fn add(right: BigInt) -> BigInt:
-    fn subtract(right: BigInt) -> BigInt:
-    fn multiply(right: BigInt) -> BigInt:
-    fn divide(right: BigInt) -> Result[BigInt, BigIntError]:
-    fn remainder(right: BigInt) -> Result[BigInt, BigIntError]:
-    fn compare(right: BigInt) -> Int:
-    fn bit_and(right: BigInt) -> BigInt:
-    fn bit_or(right: BigInt) -> BigInt:
-    fn bit_xor(right: BigInt) -> BigInt:
+    fn add(other: BigInt) -> BigInt:
+    fn subtract(other: BigInt) -> BigInt:
+    fn multiply(other: BigInt) -> BigInt:
+    fn divide(other: BigInt) -> Result[BigInt, BigIntError]:
+    fn remainder(other: BigInt) -> Result[BigInt, BigIntError]:
+    fn compare(other: BigInt) -> Int:
+    fn bit_and(other: BigInt) -> BigInt:
+    fn bit_or(other: BigInt) -> BigInt:
+    fn bit_xor(other: BigInt) -> BigInt:
     fn to_int() -> Optional[Int]:
     fn to_string(radix: Int) -> String:
 

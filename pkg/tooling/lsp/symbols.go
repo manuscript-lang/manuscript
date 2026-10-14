@@ -44,7 +44,10 @@ func documentSymbols(result compiler.Result, d document) []any {
 		kind := 12
 		detail := ""
 		if s := result.Program.Symbol(m.File, decl.Name); s != nil && s.Decl == decl {
-			detail = s.Type.String()
+			detail = s.ValueType().String()
+			if s.IsConstant() {
+				kind = 14
+			}
 		}
 		if decl.Kind == syntax.KindRecord || decl.Kind == "contract" || decl.Kind == "alternative" {
 			kind = 5

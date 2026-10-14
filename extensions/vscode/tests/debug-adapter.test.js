@@ -96,6 +96,13 @@ test('watch rewriting respects quoted text and native member names',()=>{
  assert.equal(rewriteExpression('count + len("count")',vars,metadata),'local6_count + len("count")');
 });
 
+test('watch rewriting leaves numeric literals alone',()=>{
+ const metadata=new Map([['local1_e5',{name:'e5'}],['local2_x1',{name:'x1'}]]);
+ const vars=[{name:'local1_e5',type:'interface {}(int64)'},{name:'local2_x1',type:'interface {}(int64)'}];
+ assert.equal(rewriteExpression('1e5 + e5',vars,metadata),'1e5 + local1_e5');
+ assert.equal(rewriteExpression('0x1f + x1 + 1.5e5',vars,metadata),'0x1f + local2_x1 + 1.5e5');
+});
+
 test('nested runtime type keys render generic source types',()=>{
  assert.equal(runtimeType('@std/Result[@std/List[Int]][module/abcd#Failure]'),'Result[List[Int], Failure]');
  assert.equal(runtimeType('@std/Network'),'Network');

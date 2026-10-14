@@ -37,13 +37,12 @@ func init() {
 		{"FileSystem", "glob", libraryResult("List[String]", "FileSystemError"), []LibraryParam{{"path", "String"}, {"pattern", "String"}, {"max_entries", "Optional[Int]"}}},
 		{"FileHandle", "close", "Unit", []LibraryParam{}},
 		{"FileHandle", "read", libraryResult("Optional[Bytes]", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int]"}}},
-		{"FileHandle", "write", libraryResult("Int", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
+		{"FileHandle", "write", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
 		{"FileHandle", "read_at", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"offset", "Int"}, {"max_bytes", "Optional[Int]"}}},
-		{"FileHandle", "write_at", libraryResult("Int", "FileSystemError"), []LibraryParam{{"offset", "Int"}, {"data", "Bytes"}}},
+		{"FileHandle", "write_at", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"offset", "Int"}, {"data", "Bytes"}}},
 		{"FileHandle", "read_file", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int]"}}},
-		{"FileHandle", "write_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
 		{"FileHandle", "read_vectors", libraryResult("List[Bytes]", "FileSystemError"), []LibraryParam{{"sizes", "List[Int]"}, {"offset", "Int"}}},
-		{"FileHandle", "write_vectors", libraryResult("Int", "FileSystemError"), []LibraryParam{{"buffers", "List[Bytes]"}, {"offset", "Int"}}},
+		{"FileHandle", "write_vectors", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"buffers", "List[Bytes]"}, {"offset", "Int"}}},
 		{"FileHandle", "seek", libraryResult("Int", "FileSystemError"), []LibraryParam{{"offset", "Int"}, {"origin", "Int"}}},
 		{"FileHandle", "stat", libraryResult("FileInfo", "FileSystemError"), []LibraryParam{}},
 		{"FileHandle", "truncate", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"size", "Int"}}},
@@ -669,7 +668,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			if h.noRead {
 				return libraryError(r, "InvalidInput", "")
 			}
-		case "write", "write_file", "write_at", "append_file", "write_vectors", "truncate":
+		case "write", "write_at", "append_file", "write_vectors", "truncate":
 			if h.noWrite {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -714,7 +713,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 				return libraryError(r, code, "")
 			}
 			return finish(Bytes{b}, nil)
-		case "write", "write_file", "write_at", "append_file":
+		case "write", "write_at", "append_file":
 			var offset *int64
 			data := a[0]
 			if name == "write_at" {
@@ -725,11 +724,8 @@ func (h *libraryFileHandle) Operation(name string) Function {
 				offset = &v
 				data = a[1]
 			}
-			n, err := libraryWriteChunks(ctx, h.file, data.(Bytes).Items, offset)
-			if name == "write_file" || name == "append_file" {
-				return finish(Unit{}, err)
-			}
-			return finish(n, err)
+			_, err := libraryWriteChunks(ctx, h.file, data.(Bytes).Items, offset)
+			return finish(Unit{}, err)
 		case "read_vectors":
 			sizes := a[0].(*List).Boxed()
 			offset := a[1].(int64)
@@ -767,14 +763,12 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			if offset < -1 {
 				return libraryError(r, "InvalidInput", "")
 			}
-			var total int64
 			for _, v := range a[0].(*List).Boxed() {
 				var ptr *int64
 				if offset != -1 {
 					ptr = &offset
 				}
 				n, err := libraryWriteChunks(ctx, h.file, v.(Bytes).Items, ptr)
-				total += n
 				if offset != -1 {
 					offset += n
 				}
@@ -782,7 +776,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 					return finish(nil, err)
 				}
 			}
-			return finish(total, nil)
+			return finish(Unit{}, nil)
 		case "seek":
 			origin := a[1].(int64)
 			if origin < 0 || origin > 2 {
@@ -1059,7 +1053,7 @@ func (s libraryHandleStream) Operation(name string) Function {
 			params = nil
 			operation = "sync"
 		} else {
-			operation = "write_file"
+			operation = "write"
 		}
 	}
 	return NewFunction(params, result, func(ctx *Execution, a []Value) Value {

@@ -133,7 +133,15 @@ func WritePin(root string) error {
 	if err != nil {
 		return err
 	}
-	return atomicWrite(filepath.Join(root, "ms.lock"), append(data, '\n'), 0644)
+	path := filepath.Join(root, "ms.lock")
+	if info, err := os.Stat(path); err == nil && info.IsDir() {
+		return fmt.Errorf("cannot write %s: it is a directory; remove it and run ms lock again", path)
+	}
+	// Write through a symlinked lock so a shared lock file stays shared.
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	return atomicWrite(path, append(data, '\n'), 0644)
 }
 
 var errMissingPin = errors.New("ms.lock not found")
@@ -255,13 +263,13 @@ func writeReplacing(filename string, data []byte, mode os.FileMode, durable bool
 	return os.Rename(name, filename)
 }
 
-// BuildChecked caches only verified native artifacts. Parsing/checking still precedes it.
-func BuildChecked(result compiler.Result, output, cacheDir string, debug bool) (BuildMetadata, error) {
+// BuildChecked builds a verified native artifact. Parsing/checking still precedes it.
+func BuildChecked(result compiler.Result, output string, debug bool) (BuildMetadata, error) {
 	kind := compiler.Release
 	if debug {
 		kind = compiler.Debug
 	}
-	return BuildCheckedWithType(result, output, cacheDir, kind)
+	return BuildCheckedWithType(result, output, kind)
 }
 
 // checkOutputDirectory fails before any compilation when the output cannot be
@@ -284,8 +292,8 @@ func checkOutputDirectory(output string) error {
 	return nil
 }
 
-// BuildCheckedWithType caches verified artifacts separately for each build type.
-func BuildCheckedWithType(result compiler.Result, output, cacheDir string, kind compiler.BuildType) (BuildMetadata, error) {
+// BuildCheckedWithType builds a verified native artifact for one build type.
+func BuildCheckedWithType(result compiler.Result, output string, kind compiler.BuildType) (BuildMetadata, error) {
 	kind, err := compiler.ParseBuildType(string(kind))
 	if err != nil {
 		return BuildMetadata{}, err
@@ -339,59 +347,14 @@ func BuildCheckedWithType(result compiler.Result, output, cacheDir string, kind 
 		RuntimeTags     []string `json:",omitempty"`
 	}{metadata, digest([]byte(source)), tags})
 	metadata.BuildID = digest(identity)
-	cacheBinary, cacheMetadata := "", ""
-	if cacheDir != "" {
-		if err := os.MkdirAll(cacheDir, 0700); err != nil {
-			return metadata, err
-		}
-		cacheBinary = filepath.Join(cacheDir, metadata.BuildID+".bin")
-		cacheMetadata = filepath.Join(cacheDir, metadata.BuildID+".json")
-		info, readErr := os.ReadFile(cacheMetadata)
-		if readErr == nil {
-			var cached BuildMetadata
-			binaryDigest, binaryErr := fileDigest(cacheBinary)
-			if json.Unmarshal(info, &cached) == nil && cached.BuildID == metadata.BuildID && binaryErr == nil && binaryDigest == cached.ExecutableSHA256 {
-				expected := metadata
-				expected.ExecutableSHA256 = cached.ExecutableSHA256
-				if reflect.DeepEqual(expected, cached) {
-					if err := publishArtifact(cacheBinary, output, binaryDigest); err != nil {
-						return metadata, err
-					}
-					return cached, writeBuildMetadata(output, cached)
-				}
-			}
-		}
-	}
-	built := output
-	if cacheDir != "" {
-		// Build beside the cache entry, then publish one file to both places.
-		staging, err := os.MkdirTemp(cacheDir, ".build-")
-		if err != nil {
-			return metadata, err
-		}
-		defer os.RemoveAll(staging)
-		built = filepath.Join(staging, "program")
-	}
-	if err := buildNative(source, built, kind, tags); err != nil {
+	if err := buildNative(source, output, kind, tags); err != nil {
 		return metadata, err
 	}
-	executable, err := fileDigest(built)
+	executable, err := fileDigest(output)
 	if err != nil {
 		return metadata, err
 	}
 	metadata.ExecutableSHA256 = executable
-	if cacheDir != "" {
-		if err := os.Rename(built, cacheBinary); err != nil {
-			return metadata, err
-		}
-		data, _ := json.Marshal(metadata)
-		if err := replaceFile(cacheMetadata, data, 0600); err != nil {
-			return metadata, err
-		}
-		if err := publishArtifact(cacheBinary, output, executable); err != nil {
-			return metadata, err
-		}
-	}
 	return metadata, writeBuildMetadata(output, metadata)
 }
 
@@ -406,39 +369,6 @@ func fileDigest(filename string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
-}
-
-// publishArtifact places a verified cached executable at target. It shares
-// the file when the file system allows, and leaves a matching target as is.
-// Cache hits re-verify content hashes, so a later change to either name
-// cannot run as the cached artifact.
-func publishArtifact(cached, target, contents string) error {
-	source, err := os.Stat(cached)
-	if err != nil {
-		return err
-	}
-	if existing, err := os.Stat(target); err == nil && existing.Size() == source.Size() {
-		if os.SameFile(source, existing) {
-			return os.Chmod(target, 0755)
-		}
-		if digest, err := fileDigest(target); err == nil && digest == contents {
-			return os.Chmod(target, 0755)
-		}
-	}
-	staging := filepath.Join(filepath.Dir(target), fmt.Sprintf(".manuscript-link-%d-%s", os.Getpid(), contents[:16]))
-	os.Remove(staging)
-	if err := os.Link(cached, staging); err == nil {
-		if err := os.Rename(staging, target); err != nil {
-			os.Remove(staging)
-			return err
-		}
-		return nil
-	}
-	data, err := os.ReadFile(cached)
-	if err != nil {
-		return err
-	}
-	return replaceFile(target, data, 0755)
 }
 
 func writeBuildMetadata(output string, metadata BuildMetadata) error {

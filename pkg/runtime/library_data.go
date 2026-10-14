@@ -58,7 +58,7 @@ func init() {
 		add("string", name, "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string)) })
 	}
 	for name, f := range map[string]func(string, string) bool{"contains": strings.Contains, "starts_with": strings.HasPrefix, "ends_with": strings.HasSuffix} {
-		label := "text"
+		label := "value"
 		if name == "starts_with" {
 			label = "prefix"
 		}
@@ -270,12 +270,12 @@ func init() {
 		return libraryOK(r, libraryBigInt{v})
 	})
 	for name, f := range map[string]func(*big.Int, *big.Int, *big.Int) *big.Int{"add": (*big.Int).Add, "subtract": (*big.Int).Sub, "multiply": (*big.Int).Mul, "bit_and": (*big.Int).And, "bit_or": (*big.Int).Or, "bit_xor": (*big.Int).Xor} {
-		add("bigint", name, "BigInt", []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
+		add("bigint", name, "BigInt", []LibraryParam{p("left", "BigInt"), p("other", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
 			return libraryBigInt{f(new(big.Int), a[0].(libraryBigInt).n, a[1].(libraryBigInt).n)}
 		})
 	}
 	for _, name := range []string{"divide", "remainder"} {
-		add("bigint", name, libraryResult("BigInt", "BigIntError"), []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, r string, a []Value) Value {
+		add("bigint", name, libraryResult("BigInt", "BigIntError"), []LibraryParam{p("left", "BigInt"), p("other", "BigInt")}, func(_ *Execution, r string, a []Value) Value {
 			x, y := a[0].(libraryBigInt).n, a[1].(libraryBigInt).n
 			if y.Sign() == 0 {
 				return libraryError(r, "InvalidInput", "")
@@ -289,7 +289,7 @@ func init() {
 			return libraryOK(r, libraryBigInt{out})
 		})
 	}
-	add("bigint", "compare", "Int", []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
+	add("bigint", "compare", "Int", []LibraryParam{p("left", "BigInt"), p("other", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
 		return int64(a[0].(libraryBigInt).n.Cmp(a[1].(libraryBigInt).n))
 	})
 	add("bigint", "format", "String", []LibraryParam{p("value", "BigInt"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {

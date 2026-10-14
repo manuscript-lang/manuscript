@@ -50,7 +50,7 @@ func init() {
 		return NewList(r, out)
 	})
 	for _, name := range []string{"union", "intersection", "difference"} {
-		libraryGeneric("collections", name, "Set[T]", []LibraryParam{p("T", "Hashable")}, []LibraryParam{p("left", "Set[T]"), p("right", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
+		libraryGeneric("collections", name, "Set[T]", []LibraryParam{p("T", "Hashable")}, []LibraryParam{p("left", "Set[T]"), p("other", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
 			left, right := a[0].(*Set), a[1].(*Set)
 			var out []Value
 			for _, v := range left.Items {

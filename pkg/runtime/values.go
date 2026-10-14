@@ -480,6 +480,10 @@ func formatValue(value Value, depth int) string {
 		return v.t.UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
 	case libraryRegex:
 		return v.pattern.String()
+	case libraryIPAddress:
+		return v.address.String()
+	case libraryCidr:
+		return v.prefix.String()
 	}
 	return "[object]"
 }
@@ -491,6 +495,12 @@ func displayType(key string) string {
 	}
 	return name
 }
+
+// MaxEqualityDepth bounds how deeply == recurses through nested values (every
+// record, alternative, list, set and map level counts), so comparing a very
+// deep structure such as a long linked list is a fault instead of Go's
+// unrecoverable stack overflow. Each level uses about 1.5 KiB of Go stack.
+const MaxEqualityDepth = 250000
 
 type equalityIdentity struct {
 	pointer  any
@@ -587,6 +597,9 @@ func equal(a, b Value, state *equalityState) bool {
 			}
 			if state.active == nil {
 				state.active = map[equalityPair]bool{}
+			}
+			if len(state.active) >= MaxEqualityDepth {
+				Panic(fmt.Sprintf("equality depth limit exceeded (%d nested values)", MaxEqualityDepth))
 			}
 			state.active[pair] = true
 			defer delete(state.active, pair)

@@ -301,7 +301,7 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			labels = []string{"key"}
 		}
 	case "concat":
-		labels = []string{"values"}
+		labels = []string{"other"}
 	}
 	return NewFunction(labels, "", func(ctx *Execution, args []Value) Value {
 		switch v := receiver.(type) {

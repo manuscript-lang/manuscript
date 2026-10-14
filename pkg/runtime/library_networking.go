@@ -20,7 +20,7 @@ func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "restrict", libraryResult("Network", "NetworkError"), []LibraryParam{{"hosts", "List[String]"}, {"cidrs", "List[String]"}, {"allow_listen", "Bool"}}},
 		{"Network", "with_resolver", libraryResult("Network", "NetworkError"), []LibraryParam{{"address", "String"}}},
-		{"Network", "resolve", libraryResult("List[DnsRecord]", "NetworkError"), []LibraryParam{{"name", "String"}, {"kind", "String"}, {"max_records", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"Network", "resolve", libraryResult("List[DnsRecord]", "NetworkError"), []LibraryParam{{"name", "String"}, {"kind", "DnsKind"}, {"max_records", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
 		{"Network", "connect_unix", libraryResult("Connection", "NetworkError"), []LibraryParam{{"path", "String"}, {"timeout", "Optional[Duration]"}}},
 		{"Network", "listen_unix", libraryResult("Listener", "NetworkError"), []LibraryParam{{"path", "String"}}},
 		{"Network", "connect_tls_config", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"timeout", "Optional[Duration]"}}},
@@ -54,20 +54,15 @@ func init() {
 		}
 		return libraryOK(r, libraryList("@std/CertificateInfo", out))
 	})
-	libraryAdd("net", "parse_cidr", libraryResult("String", "NetworkError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("net", "parse_cidr", libraryResult("Cidr", "NetworkError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
 		prefix, err := netip.ParsePrefix(a[0].(string))
 		if err != nil {
 			return libraryError(r, "InvalidData", "")
 		}
-		return libraryOK(r, prefix.Masked().String())
+		return libraryOK(r, libraryCidr{prefix.Masked()})
 	})
-	libraryAdd("net", "contains_ip", libraryResult("Bool", "NetworkError"), []LibraryParam{p("cidr", "String"), p("address", "String")}, func(_ *Execution, r string, a []Value) Value {
-		prefix, e1 := netip.ParsePrefix(a[0].(string))
-		ip, e2 := netip.ParseAddr(a[1].(string))
-		if e1 != nil || e2 != nil {
-			return libraryError(r, "InvalidData", "")
-		}
-		return libraryOK(r, prefix.Contains(ip))
+	libraryAdd("net", "contains_ip", libraryResult("Bool", "NetworkError"), []LibraryParam{p("cidr", "Cidr"), p("address", "IpAddress")}, func(_ *Execution, r string, a []Value) Value {
+		return libraryOK(r, a[0].(libraryCidr).prefix.Contains(a[1].(libraryIPAddress).address))
 	})
 }
 
@@ -360,7 +355,7 @@ func (n *network) extendedOperation(name string) (Function, bool) {
 	return Function{}, false
 }
 func (n *network) resolve(ctx *Execution, r string, a []Value) Value {
-	name, kind := a[0].(string), strings.ToUpper(a[1].(string))
+	name, kind := a[0].(string), a[1].(Alternative).Tag
 	max, timeout := a[2].(int64), a[3].(Duration)
 	if max < 0 || timeout < nativeNoTimeout {
 		return libraryError(r, "InvalidInput", "")
@@ -378,7 +373,7 @@ func (n *network) resolve(ctx *Execution, r string, a []Value) Value {
 	resolver := n.resolverInstance()
 	var out []Value
 	add := func(value string, priority, weight, port int64) {
-		out = append(out, Record{"@std/DnsRecord", map[string]Value{"kind": kind, "value": value, "priority": priority, "weight": weight, "port": port}})
+		out = append(out, Record{"@std/DnsRecord", map[string]Value{"kind": a[1], "value": value, "priority": priority, "weight": weight, "port": port}})
 	}
 	var err error
 	switch kind {

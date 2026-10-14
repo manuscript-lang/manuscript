@@ -61,14 +61,14 @@ func commandHelp(command string) (string, bool) {
 	var usage, description, options, examples string
 	switch command {
 	case "check":
-		usage = "<file.ms|directory|ms.toml>... [--json]"
+		usage = "<file.ms|directory|ms.toml>... [--json] [--watch]"
 		description = "Parse, resolve imports, and type-check independent inputs without executing source.\nA project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.\nStandalone directories discover .ms files recursively, skipping hidden/vendor/node_modules directories, directory symlinks, and nested projects.\nEach input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames."
-		options = "  --json  Emit versioned JSON diagnostics instead of terminal messages\n"
-		examples = "ms check main.ms\n  ms check ms.toml --json\n  ms check src utilities.ms --json"
+		options = "  --json  Emit versioned JSON diagnostics instead of terminal messages\n  --watch Recheck after each saved change to an input or loaded module (no --json)\n"
+		examples = "ms check main.ms --watch\n  ms check main.ms\n  ms check ms.toml --json\n  ms check src utilities.ms --json"
 	case "lint":
-		usage = "<file.ms|directory|ms.toml>... [--json]"
+		usage = "<file.ms|directory|ms.toml>... [--json] [--watch]"
 		description = "Check source hygiene and semantic lint rules in independent inputs and their imports.\nA project directory selects ms.toml; standalone directories discover .ms files recursively.\nDiscovery skips hidden/vendor/node_modules directories, directory symlinks, and nested projects.\nEach input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.\nExit status is 1 when any input fails checking or has lint findings."
-		options = "  --json  Emit versioned JSON findings with stable rule codes\n"
+		options = "  --json  Emit versioned JSON findings with stable rule codes\n  --watch Recheck after each saved change to an input or loaded module (no --json)\n"
 		examples = "ms lint ms.toml\n  ms lint main.ms --json\n  ms lint src utilities.ms --json"
 	case "build":
 		usage = "<file.ms|ms.toml> [--json] [-o output] [--build-type level] [--debug]"

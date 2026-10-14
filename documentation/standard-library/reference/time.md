@@ -21,13 +21,13 @@ A span of elapsed time.
 
 ```manuscript
 type Duration:
-    fn add(right: Duration) -> Duration:
-    fn subtract(right: Duration) -> Duration:
+    fn add(other: Duration) -> Duration:
+    fn subtract(other: Duration) -> Duration:
     fn multiply(factor: Int) -> Duration:
     fn divide(divisor: Int) -> Duration:
     fn negate() -> Duration:
     fn abs() -> Duration:
-    fn compare(right: Duration) -> Int:
+    fn compare(other: Duration) -> Int:
     fn to_nanoseconds() -> Int:
     fn to_microseconds() -> Int:
     fn to_milliseconds() -> Int:
@@ -49,7 +49,7 @@ fn abs() -> Duration:
 Adds signed nanoseconds; a result outside Duration's representable range faults.
 
 ```manuscript
-fn add(right: Duration) -> Duration:
+fn add(other: Duration) -> Duration:
 ```
 
 ### Duration.compare
@@ -57,7 +57,7 @@ fn add(right: Duration) -> Duration:
 Returns -1, 0, or 1.
 
 ```manuscript
-fn compare(right: Duration) -> Int:
+fn compare(other: Duration) -> Int:
 ```
 
 ### Duration.divide
@@ -89,7 +89,7 @@ fn negate() -> Duration:
 Subtracts signed nanoseconds; a result outside Duration's representable range faults.
 
 ```manuscript
-fn subtract(right: Duration) -> Duration:
+fn subtract(other: Duration) -> Duration:
 ```
 
 ### Duration.to_hours
@@ -147,8 +147,8 @@ An instant on a monotonic clock; it is not a calendar timestamp.
 ```manuscript
 type Instant:
     fn shift(duration: Duration) -> Instant:
-    fn difference(right: Instant) -> Duration:
-    fn compare(right: Instant) -> Int:
+    fn difference(other: Instant) -> Duration:
+    fn compare(other: Instant) -> Int:
 ```
 
 ### Instant.compare
@@ -156,7 +156,7 @@ type Instant:
 Returns -1, 0, or 1; instants from different clock domains fault.
 
 ```manuscript
-fn compare(right: Instant) -> Int:
+fn compare(other: Instant) -> Int:
 ```
 
 ### Instant.difference
@@ -164,7 +164,7 @@ fn compare(right: Instant) -> Int:
 Returns the elapsed duration from `right` to this instant.
 
 ```manuscript
-fn difference(right: Instant) -> Duration:
+fn difference(other: Instant) -> Duration:
 ```
 
 ### Instant.shift
@@ -202,8 +202,8 @@ type Timestamp:
     fn unix_seconds() -> Int:
     fn nanoseconds() -> Int:
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
-    fn difference(right: Timestamp) -> Result[Duration, TimeError]:
-    fn compare(right: Timestamp) -> Int:
+    fn difference(other: Timestamp) -> Result[Duration, TimeError]:
+    fn compare(other: Timestamp) -> Int:
 ```
 
 ### Timestamp.compare
@@ -211,7 +211,7 @@ type Timestamp:
 Returns -1, 0, or 1 across the full calendar range.
 
 ```manuscript
-fn compare(right: Timestamp) -> Int:
+fn compare(other: Timestamp) -> Int:
 ```
 
 ### Timestamp.difference
@@ -219,7 +219,7 @@ fn compare(right: Timestamp) -> Int:
 Returns `self - right` as a duration.
 
 ```manuscript
-fn difference(right: Timestamp) -> Result[Duration, TimeError]:
+fn difference(other: Timestamp) -> Result[Duration, TimeError]:
 ```
 
 ### Timestamp.nanoseconds

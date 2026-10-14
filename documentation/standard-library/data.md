@@ -24,6 +24,8 @@ List, Map and Set mutation is visible through aliases. `.clone()` makes a separa
 
 `take(count:)` returns a shallow copy of the first `count` elements; `drop(count:)` returns a shallow copy after them. Counts above `length()` are clamped: taking copies the whole list, dropping returns an empty list. Zero takes an empty list or drops nothing; a negative count produces a programming fault naming the operation, parameter and original count. Both return fresh mutable List storage even for empty or whole-list copies, preserve element order and payload references, and leave the receiver unchanged. They are explicit copy operations and do not change loop or callback traversal behavior.
 
+`count(predicate:)` returns how many elements match, and `distinct()` returns a new shallow list keeping the first of each group of equal elements in their original order; like `contains`, it requires `Equal` elements and compares each element with those already kept. `insert(index:, value:)` and `pop()` mutate the receiver: `insert` accepts `-length()` through `length()` and returns the same list, while `pop` removes the last element and returns it, or `none` for an empty list.
+
 `map` transforms each element, `filter` keeps matching elements, and `flat_map` combines the lists returned by its callback. These operations return new lists. Callbacks run sequentially and may wait for operations.
 
 Inside a function or test:
