@@ -20,11 +20,8 @@ func StringAt(ctx *Execution, text, index Value, result string) Value {
 }
 
 func stringScalarAt(text string, index int64, result string, asInt bool) Value {
-	ascii := isASCII(text)
-	count := len(text)
-	if !ascii {
-		count = utf8.RuneCountInString(text)
-	}
+	count := int(scalarCount(text))
+	ascii := count == len(text)
 	i := relativeIndex(count, index)
 	if i < 0 || i >= int64(count) {
 		return Alternative{Type: result, Tag: "none"}
@@ -190,11 +187,8 @@ func init() {
 	}
 	add("string", "slice", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		text := a[0].(string)
-		ascii := isASCII(text)
-		count := len(text)
-		if !ascii {
-			count = utf8.RuneCountInString(text)
-		}
+		count := int(scalarCount(text))
+		ascii := count == len(text)
 		s, e, ok := librarySliceBounds(count, a[1].(int64), a[2].(int64))
 		if !ok {
 			return libraryError(r, "OutOfRange", "")
@@ -415,24 +409,34 @@ func formatFloatPrecision(value float64, format byte, precision int) string {
 	return mantissa + "e" + sign + strconv.Itoa(e)
 }
 
-func isASCII(text string) bool {
-	for i := 0; i < len(text); i++ {
-		if text[i] >= utf8.RuneSelf {
-			return false
+// scalarOffset returns the byte offset of the n-th scalar in text without
+// allocating. For long text it resumes from the last position found, so a loop
+// that reads scalars in increasing order scans the text once.
+func scalarOffset(text string, n int) int {
+	target := n
+	offset := 0
+	long := len(text) >= 1024
+	if long {
+		if e := scalarOffsetCache.Load(); e != nil && e.scalars <= n && len(e.text) == len(text) && unsafe.StringData(e.text) == unsafe.StringData(text) {
+			offset, n = e.offset, n-e.scalars
 		}
 	}
-	return true
-}
-
-// scalarOffset returns the byte offset of the n-th scalar in text without allocating.
-func scalarOffset(text string, n int) int {
-	offset := 0
 	for ; n > 0 && offset < len(text); n-- {
 		_, width := utf8.DecodeRuneInString(text[offset:])
 		offset += width
 	}
+	if long {
+		scalarOffsetCache.Store(&scalarOffsetEntry{text, target, offset})
+	}
 	return offset
 }
+
+type scalarOffsetEntry struct {
+	text            string
+	scalars, offset int
+}
+
+var scalarOffsetCache atomic.Pointer[scalarOffsetEntry]
 
 // scalarCountCache remembers the last long string measured, so a loop that
 // calls scalar_length() every iteration pays for the scan once. It holds the

@@ -118,6 +118,9 @@ func (c *commands) Operation(name string) Function {
 				if errors.Is(err, exec.ErrNotFound) || errors.Is(err, os.ErrNotExist) {
 					return failure("Unavailable", "")
 				}
+				if errors.Is(err, exec.ErrWaitDelay) {
+					return failure("Failed", "the command finished but a background process kept its output open; close or redirect its output, or set a timeout")
+				}
 				return failure("Failed", err.Error())
 			}
 		}
