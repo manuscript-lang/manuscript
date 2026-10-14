@@ -90,7 +90,7 @@ func parse(file, source string) (module *syntax.Module, err error) {
 			} else {
 				names = append(names, p.need(lexer.Name))
 			}
-			p.need("from")
+			p.needFrom()
 			token := p.need(lexer.String)
 			expr := p.text(token)
 			if len(expr.Parts) != 1 || expr.Parts[0].Value != nil {
@@ -127,6 +127,17 @@ func (p *Parser) need(k string) lexer.Token {
 		p.fail(t, "expected "+describeKind(k)+", found "+describe(t)+needHint(k, t))
 	}
 	return t
+}
+
+// needFrom consumes the contextual word 'from' that ends an import's names;
+// elsewhere it is an ordinary name.
+func (p *Parser) needFrom() {
+	t := p.peek()
+	if t.Kind == lexer.Name && t.Text == "from" {
+		p.at++
+		return
+	}
+	p.fail(t, "expected 'from', found "+describe(t)+needHint("from", t))
 }
 func (p *Parser) fail(t lexer.Token, m string) {
 	d := syntax.Diagnostic{Position: t.Pos, Phase: "parse", Message: m}
@@ -1026,6 +1037,9 @@ func needHint(kind string, found lexer.Token) string {
 	case "(":
 		return "; a call or parameter list starts with '('"
 	case "from":
+		if found.Kind == "," {
+			return "; to import several names, write import {a, b} from \"path.ms\""
+		}
 		return "; imports read: import name from \"path.ms\""
 	case lexer.Name:
 		if found.Kind == "case" {

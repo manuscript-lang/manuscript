@@ -62,7 +62,7 @@ func TestOptionalStandardRecordDefaults(t *testing.T) {
 func TestReceiverUtilitiesHaveOnePublicSpelling(t *testing.T) {
 	for _, module := range standardSources {
 		for _, declaration := range module.Declarations {
-			if declaration.Kind == syntax.KindFn && !declaration.Export && standardModules[module.File][declaration.Name].Native != "" {
+			if declaration.Kind == syntax.KindFn && !declaration.Export && standardExports(module.File)[declaration.Name].Native != "" {
 				t.Fatalf("private native function duplicates a receiver declaration: %s", declaration.Pos)
 			}
 		}

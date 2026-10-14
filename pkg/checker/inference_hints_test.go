@@ -10,13 +10,13 @@ import (
 )
 
 func TestKnownStandardTypeImportHint(t *testing.T) {
-	m, err := parser.Parse("import-hint.ms", "fn boxed(value: Set[Int]) -> Unit: return\n")
+	m, err := parser.Parse("import-hint.ms", "fn boxed(value: SetBuilder[Int]) -> Unit: return\n")
 	if err != nil {
 		t.Fatal(err)
 	}
 	p := checker.Check([]*syntax.Module{m}, nil)
-	if len(p.Diagnostics) != 1 || !strings.Contains(p.Diagnostics[0].Message, `add: import Set from "@std/collections.ms"`) {
-		t.Fatalf("expected canonical Set import hint, got %v", p.Diagnostics)
+	if len(p.Diagnostics) != 1 || !strings.Contains(p.Diagnostics[0].Message, `add: import SetBuilder from "@std/collections.ms"`) {
+		t.Fatalf("expected canonical SetBuilder import hint, got %v", p.Diagnostics)
 	}
 }
 

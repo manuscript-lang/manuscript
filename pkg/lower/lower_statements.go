@@ -303,19 +303,11 @@ func (g *generator) loopBody(statements []*syntax.Statement, label *loopLabel) [
 // only outside expression closures, where a Go return leaves the Manuscript
 // function.
 func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr) {
-	if g.expressionDepth > 0 || s.Value == nil || s.Target != nil {
-		return nil, nil
-	}
-	switch s.Kind {
-	case syntax.KindBind, syntax.KindAssign, syntax.KindReturn, syntax.KindCall:
-	default:
+	if g.expressionDepth > 0 || !g.program.PlainTry(s) {
 		return nil, nil
 	}
 	e := s.Value
 	info := g.program.Info(e)
-	if e.Kind != syntax.KindUnary || e.Text != "try" || info.ErrorSource != nil || g.constantBool(e) {
-		return nil, nil
-	}
 	tmp := g.temp()
 	cause := index(selector(ident(tmp), "Fields"), intLiteral(0))
 	var propagated ast.Expr = cause

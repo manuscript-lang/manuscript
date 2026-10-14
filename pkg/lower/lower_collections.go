@@ -131,21 +131,13 @@ func (g *generator) listAtMatch(value *syntax.Expression) bool {
 	if value.Kind != syntax.KindCall {
 		return false
 	}
-	info := g.program.Info(value)
-	arguments := value.Args
-	if info.Arguments != nil {
-		arguments = info.Arguments
-	}
+	arguments := g.program.Info(value).Arguments
 	callee := g.program.Info(value.Left)
 	return value.Left.Kind == syntax.KindMember && callee != nil && callee.Method != nil && callee.Method.Contract == nil && callee.Method.Native == "collections/at" && len(arguments) == 1
 }
 
 // listAtParts lowers a List.at call to the element and its presence.
 func (g *generator) listAtParts(value *syntax.Expression) ast.Expr {
-	arguments := value.Args
-	if info := g.program.Info(value); info.Arguments != nil {
-		arguments = info.Arguments
-	}
-	receiver, index := g.listAtOperands(value, arguments)
+	receiver, index := g.listAtOperands(value, g.program.Info(value).Arguments)
 	return g.locatedOperation(value, runtimeName("ListAtParts"), ident("ctx"), receiver, index)
 }

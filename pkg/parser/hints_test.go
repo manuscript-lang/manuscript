@@ -16,6 +16,7 @@ func TestSyntaxErrorsStateTheFix(t *testing.T) {
 		{"unterminated text", "fn f() -> Int:\n    let s = \"abc\n    return 1\n", "unterminated text literal; text must close"},
 		{"semicolon", "fn f() -> Int:\n    return 1;\n", "remove the semicolon"},
 		{"top-level statement", "let x = 1\n", "put statements inside a fn"},
+		{"unbraced import list", "import a, b from \"x.ms\"\n", "import {a, b} from \"path.ms\""},
 		{"missing expression", "fn f() -> Int:\n    let x = \n    return 1\n", "expected an expression, found end of line"},
 		{"standalone expression", "fn f() -> Int:\n    1 + 1\n    return 1\n", "use 'let name = ...'"},
 		{"unknown escape", "fn f() -> String:\n    return \"a\\q\"\n", "valid escapes are"},
@@ -35,6 +36,7 @@ func TestPassAndIfExpressionHints(t *testing.T) {
 		{"if expression", "fn f(a: Int) -> Int:\n    let b = if a == 1: 2 else: 3\n    return b\n", "'if' is a statement, not an expression"},
 		{"if inside arithmetic", "fn f(a: Int) -> Int:\n    return 1 + (if a == 1: 1 else: 0)\n", "'if' is a statement, not an expression"},
 		{"brace in text", "fn f() -> String:\n    return \"function() { return 1; }\"\n", "'{' at column"},
+		{"brace before closing quote", "fn f() -> String:\n    return \"a { b\"\n", "unterminated interpolation; the quote after this '{'"},
 		{"escaped quote in braces", "fn f() -> String:\n    return \"{\\\"a\\\": 1}\"\n", "'{' starts an interpolation; write \\{ and \\}"},
 		{"unmatched closing", "fn f() -> String:\n    return \"a}\"\n", "(and \\{ for the opening brace)"},
 		{"continued condition", "fn f(a: Int, b: Int) -> Bool:\n    return a > 0\n        and b > 0\n", "wrap the whole expression in parentheses"},
@@ -45,5 +47,15 @@ func TestPassAndIfExpressionHints(t *testing.T) {
 				t.Fatalf("want %q, got %v", tt.want, err)
 			}
 		})
+	}
+}
+
+func TestFromIsOnlyAKeywordInImports(t *testing.T) {
+	source := "import {a} from \"./x.ms\"\nfn f(from: Int) -> Int:\n    let to = from + 1\n    return to\n"
+	if _, err := parser.Parse("from.ms", source); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parser.Parse("from.ms", "import a \"./x.ms\"\n"); err == nil || !strings.Contains(err.Error(), "expected 'from'") {
+		t.Fatalf("want missing from, got %v", err)
 	}
 }

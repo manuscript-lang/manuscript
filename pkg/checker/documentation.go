@@ -46,7 +46,7 @@ func StandardLibrary() []APIModule {
 	for _, source := range standardSources {
 		sources[source.File] = source.Source
 	}
-	for path, symbols := range standardModules {
+	for path, symbols := range allStandardExports() {
 		for _, symbol := range symbols {
 			if symbol.Export {
 				modules[path] = append(modules[path], symbol)
@@ -65,7 +65,7 @@ func StandardLibrary() []APIModule {
 		module := APIModule{Path: path}
 		for _, symbol := range symbols {
 			d := documentSymbol(symbol, sources)
-			documentImplementations(&d, symbol, append(append([]*Method{}, standardImplementations...), standardSourceMethods...), sources)
+			documentImplementations(&d, symbol, append(append([]*Method{}, standardImplementations...), standardSourceMethods()...), sources)
 			module.Declarations = append(module.Declarations, d)
 		}
 		result = append(result, module)

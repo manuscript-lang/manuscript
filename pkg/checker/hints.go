@@ -303,7 +303,7 @@ func (c *checker) exportMessage(item *syntax.Import, imports map[*syntax.Import]
 	message := "module does not export " + item.Name
 	var exports []string
 	if strings.HasPrefix(item.Path, "@std/") {
-		if _, known := standardModules[item.Path]; !known {
+		if _, native := standardModules[item.Path]; !native && standardSourceModules[item.Path] == nil {
 			return message + "; unknown standard module " + item.Path + (didYouMean(item.Path, StandardModuleNames()))
 		}
 		for name := range StandardExports(item.Path) {
@@ -350,6 +350,9 @@ func (c *checker) assignmentMismatch(actual, expected *Type) string {
 	if hint := labelMismatchHint(actual, expected); hint != "" {
 		return message + "; " + hint
 	}
+	if hint := optionalUseHint(actual, expected); hint != "" {
+		return message + "; " + hint
+	}
 	if expected.Kind != "contract" || actual == nil || actual.ID == "<invalid>" {
 		return message
 	}
@@ -379,4 +382,13 @@ func labelMismatchHint(actual, expected *Type) string {
 		}
 	}
 	return ""
+}
+
+// optionalUseHint names the fix when an Optional is used where a plain value
+// is required: the value may be absent, so it has to be unwrapped first.
+func optionalUseHint(actual, expected *Type) string {
+	if actual == nil || expected == nil || !std(actual, "Optional") || len(actual.Args) != 1 || std(expected, "Optional") {
+		return ""
+	}
+	return actual.String() + " may be absent; unwrap it first with unwrap_or(default), is_some() before unwrap(), or match"
 }

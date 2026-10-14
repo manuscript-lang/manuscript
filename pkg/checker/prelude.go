@@ -3,7 +3,7 @@ package checker
 import "github.com/manuscript-lang/manuscript/pkg/syntax"
 
 // Source-backed prelude types retain their standard declaration identities.
-var standardPreludeNames = []string{"Equal", "Hashable", "Optional", "Result", "Error", "List", "Map"}
+var standardPreludeNames = []string{"Equal", "Hashable", "Optional", "Result", "Error", "List", "Map", "Set"}
 
 func (c *checker) addStandardPrelude() {
 	for _, name := range standardPreludeNames {

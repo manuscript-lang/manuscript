@@ -80,7 +80,7 @@ func validateStandardNativeBindings() error {
 			delete(receivers, spec.Module+"/"+spec.Name)
 			continue
 		}
-		s := standardModules["@std/"+spec.Module+".ms"][spec.Name]
+		s := standardExports("@std/" + spec.Module + ".ms")[spec.Name]
 		if s == nil {
 			return fmt.Errorf("missing source declaration for native function %s/%s", spec.Module, spec.Name)
 		}

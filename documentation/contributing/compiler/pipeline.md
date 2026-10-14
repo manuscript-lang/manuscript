@@ -15,19 +15,21 @@ One syntax tree flows through the compiler. Each pass reads the tree and annotat
 | Parse | `lexer`, `parser` | Layout, structure, positions | `syntax.Module` trees, strict or recovered |
 | Check | `checker` | Symbols, nominal types, bounds, generic arguments, selected implementations, flow, captures, cleanup | `checker.Info` on expressions, bindings on patterns, statements, arms, and declarations, resolved types on written types |
 | Fold constants | `checker` (`pass_fold.go`) | Bool constants, keeping effects | `Info.Folded` and `Info.Constant` |
+| Order arguments | `checker` (`pass_arguments.go`) | Every call's arguments in written order with labels resolved | `Info.Arguments` |
+| Mark plain `try` | `checker` (`pass_try.go`) | Statements whose whole value is a `try` that can return early | statement facts, read through `Program.PlainTry` |
 | Summarize effects | `checker` | Reads, writes, and cleanup per function | `Program.Effects` |
 | Lower | `lower` | Evaluation order, cleanup on every exit, defaults, call shape | Go syntax tree, one printer |
 | Build | `build` | Toolchain, pins, cache identity | Native artifact |
 
-Canonicalization has three homes. Module and path identity is canonical after `frontend`. Types are canonical after `checker` resolves them to `checker.Type` with a `TypeKey`. Call shape (argument order, resolved labels, defaults, optional wrapping, error-source wrapping) is canonical in `checker.Info.Arguments`, `OptionalArgument`, and `ErrorSource`.
+Canonicalization has three homes. Module and path identity is canonical after `frontend`. Types are canonical after `checker` resolves them to `checker.Type` with a `TypeKey`. Call shape (argument order, resolved labels, optional wrapping, error-source wrapping) is canonical in `checker.Info.Arguments`, `OptionalArgument`, and `ErrorSource`; lowering reads `Info.Arguments` for every call.
 
 Consumers read the checked tree through `Program` methods (`Info`, `PatternBinding`, `TypeReference`, and the iterators that walk its modules), so where a fact is stored can change without touching them.
 
 ## Checking each module once
 
-A module is checked once, and its tree keeps the result. Bundled standard modules with source bodies are checked once when the registry loads; every program shares that tree, its symbols, and its methods. A program checks only the modules the caller passed in. Because shared trees are never written after loading, concurrent compiles do not race.
+A module is checked once, and its tree keeps the result. Bundled standard modules with source bodies are checked lazily: the first program that imports one (or tooling that describes the whole library) checks it and the bundled modules it imports, under a lock, and every later program shares that tree, its symbols, and its methods. Native standard declarations are resolved when the registry loads. A program checks only the modules the caller passed in. Shared trees are never written after their one check, so concurrent compiles do not race.
 
-Generated identities (`symbol`, `local`, and the like) continue numbering after the bundled modules' identities, so they never collide with them.
+Identities generated while checking a bundled module carry a `standard_<module>_` prefix and number from zero per module, so they are the same in every run and never collide with a program's own.
 
 ## Adding a pass
 
@@ -35,8 +37,7 @@ A pass is a function over `[]*syntax.Module` that reads facts and writes new one
 
 ## Next structural steps
 
-- Move call-argument ordering (`Info.Arguments` when labels are omitted) into a pass, so lowering never branches on whether the checker filled it.
-- Move default expansion and `try` shape into passes that annotate the call or statement they affect.
+- Move default expansion into a pass. Source defaults already expand in the callee's prologue; native defaults still build their closures in `lower`, and native generic expression defaults are rejected by the checker until they have a substitution design.
 - Split `lower` by form once the passes leave it only emission.
 
 The `tests/e2e` programs and the lowering tests establish that behavior is unchanged.
