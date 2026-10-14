@@ -200,6 +200,7 @@ test "empty paths are rejected instead of resolving to the working directory":
         data: "x".to_bytes(),
         replace: true
     ) != invalid: return panic("write empty path")
+
     match fs.stat(path: "", follow_links: true):
         ok(_): return panic("stat empty path")
 
