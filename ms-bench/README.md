@@ -3,7 +3,7 @@
 Measures how effectively coding agents solve the same programming challenges in TypeScript, Go, Rust and
 Manuscript. Per run it records pass/fail against hidden tests, tokens, turns, wall time and cost.
 
-Status: 50 challenges x 4 languages with reference solutions. Runs through Harbor (preferred) or the built-in runner.
+Status: 20 challenges: 10 small programs (c03-c44, with reference solutions in all four languages) and 10 large applications of roughly 3-5k lines (c51-c60), which have no reference solutions and are validated only through the Go oracle in each challenge's `oracle/` directory (see its `gen.py`, which derives the expected outputs deterministically). One trial per challenge and language. Runs through Harbor (preferred) or the built-in runner.
 
 ## How a run works
 
@@ -27,7 +27,7 @@ cover all runs.
 python3 ms-bench/run.py list
 python3 ms-bench/run.py oracle                     # reference solutions vs hidden cases; validates the suite
 python3 ms-bench/run.py run --harness claude_code --model <model> \
-    --challenges c01,c02 --languages ms,go --repeat 3 --tag baseline
+    --challenges c03,c05 --languages ms,go --repeat 3 --tag baseline
 python3 ms-bench/report.py                         # Markdown tables from results/runs.jsonl
 python3 -m unittest discover -s ms-bench/tests
 ```
@@ -47,7 +47,7 @@ harbor run -p /tmp/ms-bench-tasks -a claude-code -m claude-haiku-5-5 -o jobs    
 Without Docker, use the local-process environment (not a sandbox; the toolchains must be on `PATH`):
 
 ```sh
-PYTHONPATH=ms-bench/harbor harbor run -p /tmp/ms-bench-tasks/c01-word-frequency-ms -a claude-code \
+PYTHONPATH=ms-bench/harbor harbor run -p /tmp/ms-bench-tasks/c03-csv-group-sum-ms -a claude-code \
     -m claude-haiku-5-5 --env local_env:LocalProcessEnvironment -o jobs
 ```
 

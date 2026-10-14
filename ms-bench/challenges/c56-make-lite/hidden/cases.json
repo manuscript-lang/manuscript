@@ -1,0 +1,377 @@
+[
+ {
+  "name": "c-project-full",
+  "stdin": "CC = gcc\nCFLAGS := -O2 -Wall\nOBJS = main.o util.o\nSRCS = $(patsubst %.o,%.c,$(OBJS))\n\n.PHONY: all clean\nall: app\n\napp: $(OBJS)\n\t$(CC) $(CFLAGS) -o $@ $^\n\t@echo built $@\n\n%.o: %.c util.h\n\t$(CC) $(CFLAGS) -c $< -o $@\n\nclean:\n\t-rm -f app $(OBJS)\n\t@echo cleaned\n====\nmain.c 10\nutil.c 12\nutil.h 5\n====\nbuild\nbuild\ntouch util.h\nbuild\nbuild app\nfiles\n",
+  "stdout": "> build\ngcc -O2 -Wall -c main.c -o main.o\ngcc -O2 -Wall -c util.c -o util.o\ngcc -O2 -Wall -o app main.o util.o\nbuilt app\n> build\nmake: Nothing to be done for 'all'.\n> touch util.h\n> build\ngcc -O2 -Wall -c main.c -o main.o\ngcc -O2 -Wall -c util.c -o util.o\ngcc -O2 -Wall -o app main.o util.o\nbuilt app\n> build app\nmake: 'app' is up to date.\n> files\napp 19\nmain.c 10\nmain.o 17\nutil.c 12\nutil.h 16\nutil.o 18\n"
+ },
+ {
+  "name": "c-project-partial",
+  "stdin": "CC = gcc\nCFLAGS := -O2 -Wall\nOBJS = main.o util.o\nSRCS = $(patsubst %.o,%.c,$(OBJS))\n\n.PHONY: all clean\nall: app\n\napp: $(OBJS)\n\t$(CC) $(CFLAGS) -o $@ $^\n\t@echo built $@\n\n%.o: %.c util.h\n\t$(CC) $(CFLAGS) -c $< -o $@\n\nclean:\n\t-rm -f app $(OBJS)\n\t@echo cleaned\n====\nmain.c 10\nutil.c 12\nutil.h 5\nmain.o 20\nutil.o 8\napp 30\n====\nbuild\nfiles\n",
+  "stdout": "> build\ngcc -O2 -Wall -c util.c -o util.o\ngcc -O2 -Wall -o app main.o util.o\nbuilt app\n> files\napp 32\nmain.c 10\nmain.o 20\nutil.c 12\nutil.h 5\nutil.o 31\n"
+ },
+ {
+  "name": "c-project-dry-and-override",
+  "stdin": "CC = gcc\nCFLAGS := -O2 -Wall\nOBJS = main.o util.o\nSRCS = $(patsubst %.o,%.c,$(OBJS))\n\n.PHONY: all clean\nall: app\n\napp: $(OBJS)\n\t$(CC) $(CFLAGS) -o $@ $^\n\t@echo built $@\n\n%.o: %.c util.h\n\t$(CC) $(CFLAGS) -c $< -o $@\n\nclean:\n\t-rm -f app $(OBJS)\n\t@echo cleaned\n====\nmain.c 10\nutil.c 12\nutil.h 5\n====\ndry\nbuild CC=clang CFLAGS=-g\nbuild\nbuild clean\nbuild\nfiles\n",
+  "stdout": "> dry\ngcc -O2 -Wall -c main.c -o main.o\ngcc -O2 -Wall -c util.c -o util.o\ngcc -O2 -Wall -o app main.o util.o\necho built app\n> build CC=clang CFLAGS=-g\nclang -g -c main.c -o main.o\nclang -g -c util.c -o util.o\nclang -g -o app main.o util.o\nbuilt app\n> build\nmake: Nothing to be done for 'all'.\n> build clean\nrm -f app main.o util.o\ncleaned\n> build\ngcc -O2 -Wall -c main.c -o main.o\ngcc -O2 -Wall -c util.c -o util.o\ngcc -O2 -Wall -o app main.o util.o\nbuilt app\n> files\napp 18\nmain.c 10\nmain.o 16\nutil.c 12\nutil.h 5\nutil.o 17\n"
+ },
+ {
+  "name": "c-project-deps-targets",
+  "stdin": "CC = gcc\nCFLAGS := -O2 -Wall\nOBJS = main.o util.o\nSRCS = $(patsubst %.o,%.c,$(OBJS))\n\n.PHONY: all clean\nall: app\n\napp: $(OBJS)\n\t$(CC) $(CFLAGS) -o $@ $^\n\t@echo built $@\n\n%.o: %.c util.h\n\t$(CC) $(CFLAGS) -c $< -o $@\n\nclean:\n\t-rm -f app $(OBJS)\n\t@echo cleaned\n====\nmain.c 10\nutil.c 12\nutil.h 5\n====\ndeps app\ndeps all\ndeps main.c\ndeps nothing\ntargets\n",
+  "stdout": "> deps app\nmain.c\nutil.h\nmain.o\nutil.c\nutil.o\n> deps all\nmain.c\nutil.h\nmain.o\nutil.c\nutil.o\napp\n> deps main.c\n(no prerequisites)\n> deps nothing\n(no prerequisites)\n> targets\ndefault: all\nall: app\napp: main.o util.o\nclean:\npattern %.o: %.c util.h\nphony: all clean\n"
+ },
+ {
+  "name": "c-project-touch-source",
+  "stdin": "CC = gcc\nCFLAGS := -O2 -Wall\nOBJS = main.o util.o\nSRCS = $(patsubst %.o,%.c,$(OBJS))\n\n.PHONY: all clean\nall: app\n\napp: $(OBJS)\n\t$(CC) $(CFLAGS) -o $@ $^\n\t@echo built $@\n\n%.o: %.c util.h\n\t$(CC) $(CFLAGS) -c $< -o $@\n\nclean:\n\t-rm -f app $(OBJS)\n\t@echo cleaned\n====\nmain.c 10\nutil.c 12\nutil.h 5\nmain.o 20\nutil.o 20\napp 30\n====\nbuild\ntouch main.c 40\nbuild\nbuild\ntouch util.c\nbuild app\n",
+  "stdout": "> build\nmake: Nothing to be done for 'all'.\n> touch main.c 40\n> build\ngcc -O2 -Wall -c main.c -o main.o\ngcc -O2 -Wall -o app main.o util.o\nbuilt app\n> build\nmake: Nothing to be done for 'all'.\n> touch util.c\n> build app\ngcc -O2 -Wall -c util.c -o util.o\ngcc -O2 -Wall -o app main.o util.o\nbuilt app\n"
+ },
+ {
+  "name": "simple-up-to-date",
+  "stdin": "a: b\n\t@echo a\nb:\n\t@echo b\n====\na 5\nb 3\n====\nbuild\n",
+  "stdout": "> build\nmake: 'a' is up to date.\n"
+ },
+ {
+  "name": "simple-newer-prereq",
+  "stdin": "a: b\n\t@echo a\nb:\n\t@echo b\n====\na 5\nb 7\n====\nbuild\nfiles\n",
+  "stdout": "> build\na\n> files\na 8\nb 7\n"
+ },
+ {
+  "name": "missing-target-rebuilds",
+  "stdin": "a: b\n\techo a\nb: c\n\techo b\n====\nc 1\n====\nbuild\nfiles\nbuild\n",
+  "stdout": "> build\necho b\nb\necho a\na\n> files\na 3\nb 2\nc 1\n> build\nmake: 'a' is up to date.\n"
+ },
+ {
+  "name": "no-rule",
+  "stdin": "a: b\n\techo a\n====\n====\nbuild\nbuild b\nbuild a b\n",
+  "stdout": "> build\nmake: *** No rule to make target 'b', needed by 'a'.  Stop.\n> build b\nmake: *** No rule to make target 'b'.  Stop.\n> build a b\nmake: *** No rule to make target 'b', needed by 'a'.  Stop.\n"
+ },
+ {
+  "name": "no-rule-needed-by",
+  "stdin": "all: x y\n\techo all\nx:\n\techo x\n====\nx 1\n====\nbuild\n",
+  "stdout": "> build\nmake: *** No rule to make target 'y', needed by 'all'.  Stop.\n"
+ },
+ {
+  "name": "source-only",
+  "stdin": "a: s\n\techo a\n====\ns 4\n====\nbuild\nbuild s\nbuild\nbuild\n",
+  "stdout": "> build\necho a\na\n> build s\nmake: 's' is up to date.\n> build\nmake: 'a' is up to date.\n> build\nmake: 'a' is up to date.\n"
+ },
+ {
+  "name": "no-recipe-rule",
+  "stdin": "a: b c\nb:\nc:\n\techo c\n====\n====\nbuild\nbuild\nbuild b\n",
+  "stdout": "> build\necho c\nc\n> build\nmake: Nothing to be done for 'a'.\n> build b\nmake: Nothing to be done for 'b'.\n"
+ },
+ {
+  "name": "default-goal-skips-dot",
+  "stdin": ".PHONY: x\n.hidden:\n\techo no\nreal: x\n\techo real\nx:\n\techo x\n====\n====\nbuild\ntargets\n",
+  "stdout": "> build\necho x\nx\necho real\nreal\n> targets\ndefault: real\n.hidden:\nreal: x\nx:\nphony: x\n"
+ },
+ {
+  "name": "no-targets",
+  "stdin": "A = 1\n====\n====\nbuild\ntargets\n",
+  "stdout": "> build\nmake: *** No targets.  Stop.\n> targets\n"
+ },
+ {
+  "name": "multi-goals",
+  "stdin": "a:\n\techo a\nb:\n\techo b\nc: a\n\techo c\n====\n====\nbuild b a\nbuild c a\nbuild c c\n",
+  "stdout": "> build b a\necho b\nb\necho a\na\n> build c a\necho c\nc\nmake: 'a' is up to date.\n> build c c\nmake: 'c' is up to date.\nmake: 'c' is up to date.\n"
+ },
+ {
+  "name": "multi-target-rule",
+  "stdin": "a b c: d\n\techo $@ from $<\nd:\n\techo d\n====\n====\nbuild c a\ntargets\nbuild b\n",
+  "stdout": "> build c a\necho d\nd\necho c from d\nc from d\necho a from d\na from d\n> targets\ndefault: a\na: d\nb: d\nc: d\nd:\n> build b\necho b from d\nb from d\n"
+ },
+ {
+  "name": "rule-merge",
+  "stdin": "a: b\na: c\n\techo $^\na: d\nb c d:\n\techo $@\n====\n====\nbuild\ndeps a\n",
+  "stdout": "> build\necho b\nb\necho c\nc\necho d\nd\necho b c d\nb c d\n> deps a\nb\nc\nd\n"
+ },
+ {
+  "name": "recipe-override-warning",
+  "stdin": "a:\n\techo one\na:\n\techo two\n====\n====\nbuild\n",
+  "stdout": "> build\nMakefile:3: warning: overriding recipe for target 'a'\necho two\ntwo\n"
+ },
+ {
+  "name": "inline-recipe",
+  "stdin": "a: ; echo inline $@\nb: a ; echo b\n\techo more\n====\n====\nbuild b\n",
+  "stdout": "> build b\necho inline a\ninline a\necho b\nb\necho more\nmore\n"
+ },
+ {
+  "name": "order-only",
+  "stdin": "app: main.o | outdir\n\techo link $^ / $|\nmain.o:\n\techo cc\noutdir:\n\ttouch outdir\n====\nmain.o 5\n====\nbuild\ntouch main.o 100\nbuild\nbuild\ntouch outdir 500\nbuild\n",
+  "stdout": "> build\ntouch outdir\necho link main.o / outdir\nlink main.o / outdir\n> touch main.o 100\n> build\necho link main.o / outdir\nlink main.o / outdir\n> build\nmake: 'app' is up to date.\n> touch outdir 500\n> build\nmake: 'app' is up to date.\n"
+ },
+ {
+  "name": "phony-always",
+  "stdin": ".PHONY: t\nt: f\n\techo test\nf:\n\ttouch f\n====\nf 5\n====\nbuild\nbuild\nfiles\n",
+  "stdout": "> build\necho test\ntest\n> build\necho test\ntest\n> files\nf 5\n"
+ },
+ {
+  "name": "phony-forces-parent",
+  "stdin": ".PHONY: gen\nout: gen\n\techo out\ngen:\n\techo gen\n====\nout 100\n====\nbuild\nbuild out\n",
+  "stdout": "> build\necho gen\ngen\necho out\nout\n> build out\necho gen\ngen\necho out\nout\n"
+ },
+ {
+  "name": "phony-file-exists",
+  "stdin": ".PHONY: clean\nclean:\n\techo cleaning\n====\nclean 3\n====\nbuild clean\nbuild clean\n",
+  "stdout": "> build clean\necho cleaning\ncleaning\n> build clean\necho cleaning\ncleaning\n"
+ },
+ {
+  "name": "circular",
+  "stdin": "a: b\n\techo a\nb: c\n\techo b\nc: a\n\techo c\n====\n====\nbuild\ndeps a\ndry a\n",
+  "stdout": "> build\nmake: *** Circular dependency detected: a -> b -> c -> a.  Stop.\n> deps a\nmake: *** Circular dependency detected: a -> b -> c -> a.  Stop.\n> dry a\nmake: *** Circular dependency detected: a -> b -> c -> a.  Stop.\n"
+ },
+ {
+  "name": "self-circular",
+  "stdin": "a: a\n\techo a\n====\n====\nbuild\n",
+  "stdout": "> build\nmake: *** Circular dependency detected: a -> a.  Stop.\n"
+ },
+ {
+  "name": "diamond",
+  "stdin": "top: l r\n\techo top\nl: base\n\techo l\nr: base\n\techo r\nbase:\n\techo base\n====\n====\nbuild\nfiles\nbuild\n",
+  "stdout": "> build\necho base\nbase\necho l\nl\necho r\nr\necho top\ntop\n> files\nbase 1\nl 2\nr 3\ntop 4\n> build\nmake: 'top' is up to date.\n"
+ },
+ {
+  "name": "failure-stops",
+  "stdin": "all: a b c\n\techo all\na:\n\techo a\nb:\n\tfalse\nc:\n\techo c\n====\n====\nbuild\nfiles\nbuild a c\n",
+  "stdout": "> build\necho a\na\nfalse\nmake: *** [Makefile:6: b] Error 1\n> files\na 1\n> build a c\nmake: 'a' is up to date.\necho c\nc\n"
+ },
+ {
+  "name": "failure-ignored",
+  "stdin": "all: a b\n\techo all\na:\n\t-false\n\techo after\nb:\n\t-exit 3\n====\n====\nbuild\nfiles\n",
+  "stdout": "> build\nfalse\nmake: [Makefile:4: a] Error 1 (ignored)\necho after\nafter\nexit 3\nmake: [Makefile:7: b] Error 3 (ignored)\necho all\nall\n> files\na 1\nall 3\nb 2\n"
+ },
+ {
+  "name": "exit-codes",
+  "stdin": "x:\n\techo start\n\texit 7\n\techo never\n====\n====\nbuild\n",
+  "stdout": "> build\necho start\nstart\nexit 7\nmake: *** [Makefile:3: x] Error 7\n"
+ },
+ {
+  "name": "silent-and-prefix",
+  "stdin": "x:\n\t@echo quiet\n\techo loud\n\t@-false\n\t-@echo both\n\t @  echo spaced\n====\n====\nbuild\n",
+  "stdout": "> build\nquiet\necho loud\nloud\nmake: [Makefile:4: x] Error 1 (ignored)\nboth\nspaced\n"
+ },
+ {
+  "name": "touch-rm-cp",
+  "stdin": "all: copy\n\t@echo done\ncopy: src\n\tcp src dst\n\ttouch made\n\trm -f junk\nsrc:\n\ttouch src\n====\njunk 1\n====\nbuild\nfiles\nbuild\nbuild copy\n",
+  "stdout": "> build\ntouch src\ncp src dst\ntouch made\nrm -f junk\ndone\n> files\nall 7\ncopy 6\ndst 4\nmade 5\nsrc 3\n> build\nmake: 'all' is up to date.\n> build copy\nmake: 'copy' is up to date.\n"
+ },
+ {
+  "name": "cp-missing",
+  "stdin": "a:\n\tcp nothere there\n\techo not reached\n====\n====\nbuild\n",
+  "stdout": "> build\ncp nothere there\ncp: cannot stat 'nothere': No such file or directory\nmake: *** [Makefile:2: a] Error 1\n"
+ },
+ {
+  "name": "echo-quotes",
+  "stdin": "a:\n\techo 'hello  world' \"x y\" z\n====\n====\nbuild\n",
+  "stdout": "> build\necho 'hello  world' \"x y\" z\nhello world x y z\n"
+ },
+ {
+  "name": "pattern-basic",
+  "stdin": "%.o: %.c\n\tcc -c $< -o $@\nall: x.o y.o\n\t@echo linked\n====\nx.c 1\ny.c 2\ny.o 5\n====\nbuild\nfiles\n",
+  "stdout": "> build\ncc -c x.c -o x.o\nlinked\n> files\nall 7\nx.c 1\nx.o 6\ny.c 2\ny.o 5\n"
+ },
+ {
+  "name": "pattern-chain",
+  "stdin": "app: a.o\n\tlink $^\n%.o: %.s\n\tas $< -o $@\n%.s: %.c\n\tcc -S $< -o $@\n====\na.c 3\n====\nbuild\nfiles\nbuild\n",
+  "stdout": "> build\ncc -S a.c -o a.s\nas a.s -o a.o\nlink a.o\n> files\na.c 3\na.o 5\na.s 4\napp 6\n> build\nmake: 'app' is up to date.\n"
+ },
+ {
+  "name": "pattern-stem",
+  "stdin": "%.txt: %.in\n\tgen $* from $< to $@\nall: foo.txt dir/bar.txt\n\t@echo ok\n====\nfoo.in 1\ndir/bar.in 1\n====\nbuild\n",
+  "stdout": "> build\ngen foo from foo.in to foo.txt\ngen dir/bar from dir/bar.in to dir/bar.txt\nok\n"
+ },
+ {
+  "name": "pattern-order",
+  "stdin": "%.o: %.c\n\tcc $<\n%.o: %.cc\n\tc++ $<\nall: a.o b.o\n\t@echo done\n====\na.c 1\na.cc 1\nb.cc 2\n====\nbuild\n",
+  "stdout": "> build\ncc a.c\nc++ b.cc\ndone\n"
+ },
+ {
+  "name": "pattern-no-match",
+  "stdin": "%.o: %.c\n\tcc $<\nall: a.o\n\t@echo done\n====\na.h 1\n====\nbuild\ndeps a.o\n",
+  "stdout": "> build\nmake: *** No rule to make target 'a.o', needed by 'all'.  Stop.\n> deps a.o\n(no prerequisites)\n"
+ },
+ {
+  "name": "pattern-plus-explicit-deps",
+  "stdin": "%.o: %.c\n\tcc $< $^\na.o: common.h\nb.o: common.h other.h\nall: a.o b.o\n\t@echo done\n====\na.c 1\nb.c 1\ncommon.h 1\nother.h 1\n====\nbuild\ndeps b.o\n",
+  "stdout": "> build\ncc a.c a.c common.h\n> deps b.o\nb.c\ncommon.h\nother.h\n"
+ },
+ {
+  "name": "explicit-beats-pattern",
+  "stdin": "%.o: %.c\n\tcc $<\na.o: a.c\n\tspecial $<\nall: a.o b.o\n\t@echo done\n====\na.c 1\nb.c 1\n====\nbuild\n",
+  "stdout": "> build\nspecial a.c\n"
+ },
+ {
+  "name": "auto-vars",
+  "stdin": "out: a b a c | d\n\techo '$@' '$<' '$^' '$?' '$|' '$$HOME'\nd:\n\ttouch d\n====\nout 10\na 5\nb 15\nc 20\n====\nbuild\nbuild\n",
+  "stdout": "> build\ntouch d\necho 'out' 'a' 'a b c' 'b c' 'd' '$HOME'\nout a a b c b c d $HOME\n> build\nmake: 'out' is up to date.\n"
+ },
+ {
+  "name": "auto-newer-only",
+  "stdin": "out: a b c\n\techo newer=$?\nb:\n\ttouch b\n====\nout 10\na 5\nb 3\nc 20\n====\nbuild\nbuild\n",
+  "stdout": "> build\necho newer=c\nnewer=c\n> build\nmake: 'out' is up to date.\n"
+ },
+ {
+  "name": "var-flavors",
+  "stdin": "A = 1\nB = $(A)\nC := $(A)\nA = 2\nD ?= keep\nD ?= no\nE ?= set\nF := x\nF += y\nG = x\nG += $(A)\nA = 3\nall:\n\techo $(A) $(B) $(C) $(D) $(E) $(F) [$(G)] [$(Z)]\n====\n====\nbuild\n",
+  "stdout": "> build\necho 3 3 1 keep set x y [x 3] []\n3 3 1 keep set x y [x 3] []\n"
+ },
+ {
+  "name": "var-braces-single",
+  "stdin": "X = hello\nY = ${X} world\nall:\n\techo ${Y} $(Y) $X $(X)x $$X\n====\n====\nbuild\n",
+  "stdout": "> build\necho hello world hello world hello hellox $X\nhello world hello world hello hellox $X\n"
+ },
+ {
+  "name": "var-override",
+  "stdin": ".PHONY: all\nCC = gcc\nFLAGS = $(CC) -O\nall:\n\techo $(CC) $(FLAGS) $(MODE)\nMODE ?= debug\n====\n====\nbuild\nbuild CC=clang\nbuild MODE=release\nbuild CC=a MODE=b FLAGS=c\n",
+  "stdout": "> build\necho gcc gcc -O debug\ngcc gcc -O debug\n> build CC=clang\necho clang clang -O debug\nclang clang -O debug\n> build MODE=release\necho gcc gcc -O release\ngcc gcc -O release\n> build CC=a MODE=b FLAGS=c\necho a c b\na c b\n"
+ },
+ {
+  "name": "var-recursive-error",
+  "stdin": "A = $(B)\nB = $(A)\nall:\n\techo $(A)\n====\n====\nbuild\n",
+  "stdout": "> build\nMakefile:4: *** Recursive variable 'A' references itself (eventually).  Stop.\n"
+ },
+ {
+  "name": "var-recursive-parse-error",
+  "stdin": "A = $(B)\nB = $(A)\nC := $(A)\nall:\n\techo c\n====\n====\nbuild\n",
+  "stdout": "> build\nMakefile:3: *** Recursive variable 'A' references itself (eventually).  Stop.\n"
+ },
+ {
+  "name": "var-space-idiom",
+  "stdin": "empty :=\nspace := $(empty) $(empty)\nlist = a b c\nall:\n\techo [$(subst $(space),+,$(list))] [$(space)]\n====\n====\nbuild\n",
+  "stdout": "> build\necho [a+b+c] [ ]\n[a+b+c] [ ]\n"
+ },
+ {
+  "name": "var-subst-ref",
+  "stdin": "SRC = a.c b.c dir/c.c\nOBJ = $(SRC:.c=.o)\nDEP = $(SRC:%.c=obj/%.d)\nall:\n\techo $(OBJ) / $(DEP)\n====\n====\nbuild\n",
+  "stdout": "> build\necho a.o b.o dir/c.o / obj/a.d obj/b.d obj/dir/c.d\na.o b.o dir/c.o / obj/a.d obj/b.d obj/dir/c.d\n"
+ },
+ {
+  "name": "var-in-targets",
+  "stdin": "T1 = one\nT2 = two\n$(T1) $(T2): common\n\techo $@\ncommon:\n\techo common\n====\n====\nbuild two\nbuild one\ntargets\n",
+  "stdout": "> build two\necho common\ncommon\necho two\ntwo\n> build one\necho one\none\n> targets\ndefault: one\none: common\ntwo: common\ncommon:\n"
+ },
+ {
+  "name": "comments-continuation",
+  "stdin": "# comment\nA = a \\\n  b \\\n  c   # trailing\nB = x\\#y\nall: dep1 \\\n dep2 # c\n\techo $(A) | $(B) \\\n\t   more\n\techo # not a make comment\ndep1 dep2:\n====\n====\nbuild\nexpand $(A)\n",
+  "stdout": "> build\necho a b c | x#y more\na b c | x#y more\necho # not a make comment\n# not a make comment\n> expand $(A)\n[a b c]\n"
+ },
+ {
+  "name": "fn-text",
+  "stdin": "L = foo.c bar.h baz.c dir/qux.cc\nall:\n\t@echo [$(subst .c,.o,$(L))] [$(patsubst %.c,%.x,$(L))] [$(patsubst %.c,out/%,$(L))] [$(strip   a   b  c )]\n\t@echo [$(findstring bar,$(L))] [$(findstring nope,$(L))] [$(filter %.c,$(L))] [$(filter-out %.c %.h,$(L))] [$(filter foo.c baz.c,$(L))]\n\t@echo [$(sort z b a b c)] [$(word 2,$(L))] [$(word 9,$(L))] [$(word 0,$(L))] [$(wordlist 2,3,$(L))] [$(wordlist 3,99,$(L))] [$(words $(L))] [$(firstword $(L))] [$(lastword $(L))]\n\t@echo [$(dir $(L) x)] [$(notdir $(L) x)] [$(suffix $(L) x.tar.gz)] [$(basename $(L) a.b/c)]\n\t@echo [$(addprefix src/,$(L))] [$(addsuffix .bak,a b)]\n====\n====\nbuild\n",
+  "stdout": "> build\n[foo.o bar.h baz.o dir/qux.oc] [foo.x bar.h baz.x dir/qux.cc] [out/foo bar.h out/baz dir/qux.cc] [a b c]\n[bar] [] [foo.c baz.c] [dir/qux.cc] [foo.c baz.c]\n[a b c z] [bar.h] [] [] [bar.h baz.c] [baz.c dir/qux.cc] [4] [foo.c] [dir/qux.cc]\n[./ ./ ./ dir/ ./] [foo.c bar.h baz.c qux.cc x] [.c .h .c .cc .gz] [foo bar baz dir/qux a.b/c]\n[src/foo.c src/bar.h src/baz.c src/dir/qux.cc] [a.bak b.bak]\n"
+ },
+ {
+  "name": "fn-foreach-if",
+  "stdin": "DIRS = a b c\nFILES = $(foreach d,$(DIRS),$(d)/x.c $(d)/y.c)\nE =\nall:\n\t@echo [$(FILES)]\n\t@echo [$(if $(E),yes,no)] [$(if x,yes,no)] [$(if $(E),yes)] [$(if  ,a,b)]\n\t@echo [$(foreach n,1 2 3,$(n)$(n))] [$(foreach n,,$(n))]\n\t@echo $(foreach a,x y,$(foreach b,1 2,$(a)$(b)))\n====\n====\nbuild\n",
+  "stdout": "> build\n[a/x.c a/y.c b/x.c b/y.c c/x.c c/y.c]\n[no] [yes] [] [b]\n[11 22 33] []\nx1 x2 y1 y2\n"
+ },
+ {
+  "name": "fn-wildcard",
+  "stdin": "SRC := $(wildcard src/*.c)\nALL := $(wildcard *.h src/?.c nothing*)\nall:\n\t@echo [$(SRC)] [$(ALL)] [$(wildcard main.c)]\n====\nsrc/b.c 1\nsrc/a.c 1\nsrc/x.h 1\nmain.c 1\na.h 1\nz.h 1\nsrc/sub/q.c 1\n====\nbuild\ntouch src/c.c\nbuild\n",
+  "stdout": "> build\n[src/a.c src/b.c] [a.h z.h src/a.c src/b.c] [main.c]\n> touch src/c.c\n> build\nmake: 'all' is up to date.\n"
+ },
+ {
+  "name": "fn-info-error",
+  "stdin": "$(info parsing)\nA := $(info immediate)x\nall:\n\t@echo run $(info expanding)\nbad:\n\t$(error boom $(A))\n====\n====\nbuild\nbuild bad\n",
+  "stdout": "> build\nparsing\nimmediate\nexpanding\nrun\n> build bad\nparsing\nimmediate\nMakefile:6: *** boom x.  Stop.\n"
+ },
+ {
+  "name": "fn-error-parse",
+  "stdin": "ifdef FAIL\n$(error stop at parse)\nendif\nall:\n\t@echo fine\n====\n====\nbuild\nbuild FAIL=1\n",
+  "stdout": "> build\nfine\n> build FAIL=1\nMakefile:2: *** stop at parse.  Stop.\n"
+ },
+ {
+  "name": "fn-nested-args",
+  "stdin": "L = a,b c\nall:\n\t@echo [$(subst $(comma),;,x$(comma)y)] [$(if $(filter a,a b),$(words 1 2 3),zero)] [$(patsubst %,[%],a b)]\ncomma := ,\n====\n====\nbuild\n",
+  "stdout": "> build\n[x;y] [3] [[a] [b]]\n"
+ },
+ {
+  "name": "fn-substitution-edge",
+  "stdin": "all:\n\t@echo [$(subst ,x,abc)] [$(subst aa,b,aaaaa)] [$(patsubst a%,X,abc bcd)] [$(patsubst abc,X,abc abcd)]\n====\n====\nbuild\n",
+  "stdout": "> build\n[abc] [bba] [X bcd] [X abcd]\n"
+ },
+ {
+  "name": "cond-ifdef",
+  "stdin": ".PHONY: all\nA = 1\nEMPTY =\nifdef A\nM1 = a-defined\nelse\nM1 = a-undef\nendif\nifdef EMPTY\nM2 = e-defined\nelse\nM2 = e-undef\nendif\nifndef NOPE\nM3 = nope-undef\nendif\nall:\n\t@echo $(M1) $(M2) $(M3)\n====\n====\nbuild\nbuild A= EMPTY=x NOPE=1\n",
+  "stdout": "> build\na-defined e-undef nope-undef\n> build A= EMPTY=x NOPE=1\na-undef e-defined\n"
+ },
+ {
+  "name": "cond-ifeq",
+  "stdin": ".PHONY: all\nMODE = debug\nifeq ($(MODE),debug)\nF = -g\nelse\nF = -O2\nendif\nifneq ($(MODE), release)\nG = notrel\nendif\nifeq (a b, a b)\nH = same\nendif\nall:\n\t@echo $(F) $(G) $(H)\n====\n====\nbuild\nbuild MODE=release\n",
+  "stdout": "> build\n-g notrel same\n> build MODE=release\n-O2 same\n"
+ },
+ {
+  "name": "cond-nested",
+  "stdin": ".PHONY: all\nA = 1\nifdef A\nifdef B\nR = ab\nelse\nR = a-only\nendif\nelse\nifdef B\nR = b\nelse\nR = none\nendif\nendif\nall:\n\t@echo $(R)\nifdef B\nbonly:\n\t@echo b\nendif\n====\n====\nbuild\nbuild B=1\nbuild B=1 bonly\ntargets B=1\n",
+  "stdout": "> build\na-only\n> build B=1\nab\n> build B=1 bonly\nb\n> targets B=1\ndefault: all\nall:\nbonly:\nphony: all\n"
+ },
+ {
+  "name": "cond-errors",
+  "stdin": "ifdef A\nall:\n\techo x\n====\n====\nbuild\n",
+  "stdout": "> build\nMakefile:1: *** missing 'endif'.  Stop.\n"
+ },
+ {
+  "name": "cond-extraneous",
+  "stdin": "all:\n\techo x\nendif\n====\n====\nbuild\n",
+  "stdout": "> build\nMakefile:3: *** extraneous 'endif'.  Stop.\n"
+ },
+ {
+  "name": "cond-else-twice",
+  "stdin": "ifdef A\nelse\nelse\nendif\n====\n====\nbuild\n",
+  "stdout": "> build\nMakefile:3: *** extraneous 'else'.  Stop.\n"
+ },
+ {
+  "name": "err-missing-separator",
+  "stdin": "all:\n\techo ok\nthis is bad\n====\n====\nbuild\ntargets\n",
+  "stdout": "> build\nMakefile:3: *** missing separator.  Stop.\n> targets\nMakefile:3: *** missing separator.  Stop.\n"
+ },
+ {
+  "name": "err-recipe-first",
+  "stdin": "\techo orphan\nall:\n\techo x\n====\n====\nbuild\n",
+  "stdout": "> build\nMakefile:1: *** recipe commences before first target.  Stop.\n"
+ },
+ {
+  "name": "err-recipe-after-var",
+  "stdin": "A = 1\n\techo orphan\n====\n====\nbuild\n",
+  "stdout": "> build\nMakefile:2: *** recipe commences before first target.  Stop.\n"
+ },
+ {
+  "name": "empty-makefile",
+  "stdin": "\n====\n====\nbuild\ntargets\nfiles\nbuild x\n",
+  "stdout": "> build\nmake: *** No targets.  Stop.\n> targets\n> files\n(no files)\n> build x\nmake: *** No rule to make target 'x'.  Stop.\n"
+ },
+ {
+  "name": "dry-run",
+  "stdin": "all: a b\n\t@echo all\na: s\n\t@echo a\n\ttouch a\nb:\n\techo b\n====\ns 5\na 9\n====\ndry\nfiles\ndry a\nbuild\ndry\ndry all b\n",
+  "stdout": "> dry\necho b\necho all\n> files\na 9\ns 5\n> dry a\nmake: 'a' is up to date.\n> build\necho b\nb\nall\n> dry\nmake: 'all' is up to date.\n> dry all b\nmake: 'all' is up to date.\nmake: 'b' is up to date.\n"
+ },
+ {
+  "name": "dry-failing-recipes",
+  "stdin": "all: x\n\techo all\nx:\n\tfalse\n\texit 4\n====\n====\ndry\nbuild\n",
+  "stdout": "> dry\nfalse\nexit 4\necho all\n> build\nfalse\nmake: *** [Makefile:4: x] Error 1\n"
+ },
+ {
+  "name": "requests-misc",
+  "stdin": "all:\n\t@echo hi\n====\nb 2\na 1\n====\nfiles\nrm a\nfiles\ntouch c 9\ntouch d\nfiles\nbogus\n# comment\n\nrm b c d\nfiles\ndeps\ntouch\n",
+  "stdout": "> files\na 1\nb 2\n> rm a\n> files\nb 2\n> touch c 9\n> touch d\n> files\nb 2\nc 9\nd 10\n> bogus\nunknown request: bogus\n> rm b c d\n> files\n(no files)\n> deps\nusage: deps TARGET\n> touch\nbad request\n"
+ },
+ {
+  "name": "expand-request",
+  "stdin": "A = x y\nB := $(A) z\nall:\n====\n====\nexpand $(A)|$(B)|$$|$(words $(B))\nexpand   padded   text  \nexpand $(UNDEF)\nexpand $(firstword $(A) $(B)) ${B}\n",
+  "stdout": "> expand $(A)|$(B)|$$|$(words $(B))\n[x y|x y z|$|3]\n> expand   padded   text\n[padded   text]\n> expand $(UNDEF)\n[]\n> expand $(firstword $(A) $(B)) ${B}\n[x x y z]\n"
+ },
+ {
+  "name": "rebuild-cascade",
+  "stdin": "a: b\n\ttouch a\nb: c\n\ttouch b\nc: d\n\ttouch c\n====\na 10\nb 10\nc 10\nd 10\n====\nbuild\ntouch d 50\nbuild\nfiles\nbuild\n",
+  "stdout": "> build\nmake: 'a' is up to date.\n> touch d 50\n> build\ntouch c\ntouch b\ntouch a\n> files\na 56\nb 54\nc 52\nd 50\n> build\nmake: 'a' is up to date.\n"
+ },
+ {
+  "name": "clock-after-touch",
+  "stdin": "x:\n\ttouch y\ny: z\n\ttouch y\n====\nz 100\n====\nbuild\nfiles\nbuild y\nfiles\ntouch z 200\nbuild y\nfiles\n",
+  "stdout": "> build\ntouch y\n> files\nx 102\ny 101\nz 100\n> build y\nmake: 'y' is up to date.\n> files\nx 102\ny 101\nz 100\n> touch z 200\n> build y\ntouch y\n> files\nx 102\ny 202\nz 200\n"
+ },
+ {
+  "name": "long-pipeline",
+  "stdin": "NAME := app\nVERSION = 1.2\nSRCS := $(wildcard src/*.c)\nOBJS := $(patsubst src/%.c,build/%.o,$(SRCS))\nHDRS := $(wildcard src/*.h)\n.PHONY: all clean dist\nall: build/$(NAME)\nbuild/$(NAME): $(OBJS) | build\n\t@echo linking $@ from $(words $(OBJS)) objects\n\tlink -o $@ $^\nbuild:\n\tmkdir build\n\ttouch build\nbuild/%.o: src/%.c $(HDRS) | build\n\tcompile $< -> $@\ndist: build/$(NAME)\n\ttar $(NAME)-$(VERSION).tar $<\n\ttouch $(NAME)-$(VERSION).tar\nclean:\n\trm -f $(OBJS) build/$(NAME)\n====\nsrc/a.c 10\nsrc/b.c 11\nsrc/c.c 12\nsrc/a.h 5\n====\ntargets\nbuild\nbuild\ntouch src/a.h\nbuild dist\nbuild dist\nbuild clean\nfiles\nbuild VERSION=2.0 dist\n",
+  "stdout": "> targets\ndefault: all\nall: build/app\nbuild/app: build/a.o build/b.o build/c.o | build\nbuild:\ndist: build/app\nclean:\npattern build/%.o: src/%.c src/a.h | build\nphony: all clean dist\n> build\nmkdir build\ntouch build\ncompile src/a.c -> build/a.o\ncompile src/b.c -> build/b.o\ncompile src/c.c -> build/c.o\nlinking build/app from 3 objects\nlink -o build/app build/a.o build/b.o build/c.o\n> build\nmake: Nothing to be done for 'all'.\n> touch src/a.h\n> build dist\ncompile src/a.c -> build/a.o\ncompile src/b.c -> build/b.o\ncompile src/c.c -> build/c.o\nlinking build/app from 3 objects\nlink -o build/app build/a.o build/b.o build/c.o\ntar app-1.2.tar build/app\ntouch app-1.2.tar\n> build dist\ntar app-1.2.tar build/app\ntouch app-1.2.tar\n> build clean\nrm -f build/a.o build/b.o build/c.o build/app\n> files\napp-1.2.tar 25\nbuild 14\nsrc/a.c 10\nsrc/a.h 19\nsrc/b.c 11\nsrc/c.c 12\n> build VERSION=2.0 dist\ncompile src/a.c -> build/a.o\ncompile src/b.c -> build/b.o\ncompile src/c.c -> build/c.o\nlinking build/app from 3 objects\nlink -o build/app build/a.o build/b.o build/c.o\ntar app-2.0.tar build/app\ntouch app-2.0.tar\n"
+ }
+]

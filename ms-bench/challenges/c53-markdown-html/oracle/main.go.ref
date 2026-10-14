@@ -1,0 +1,962 @@
+// Oracle for c53-markdown-html.
+package main
+
+import (
+	"bufio"
+	"io"
+	"os"
+	"strconv"
+	"strings"
+)
+
+// ---------- helpers ----------
+func esc(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '&':
+			b.WriteString("&amp;")
+		case '<':
+			b.WriteString("&lt;")
+		case '>':
+			b.WriteString("&gt;")
+		case '"':
+			b.WriteString("&quot;")
+		default:
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
+}
+func indentOf(l string) int {
+	n := 0
+	for n < len(l) && l[n] == ' ' {
+		n++
+	}
+	return n
+}
+func isBlank(l string) bool { return strings.TrimLeft(l, " ") == "" }
+func isPunct(c byte) bool {
+	return strings.IndexByte("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c) >= 0
+}
+func isAlnum(c byte) bool {
+	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+// ---------- inline ----------
+type Inl struct {
+	kind     string // text code em strong link image br soft delim bracket
+	text     string // text/code content; href for link; src for image
+	title    string
+	hasTitle bool
+	kids     []*Inl
+	ch       byte
+	count    int
+	orig     int
+	canOpen  bool
+	canClose bool
+	image    bool
+	active   bool
+}
+
+func isWSAt(s string, i int) bool {
+	if i < 0 || i >= len(s) {
+		return true
+	}
+	c := s[i]
+	return c == ' ' || c == '\n' || c == '\t' || c == 1
+}
+func isPunctAt(s string, i int) bool {
+	if i < 0 || i >= len(s) {
+		return false
+	}
+	return isPunct(s[i])
+}
+
+// parseLinkTail parses "(dest "title")" starting at s[i]=='('; returns end index (after ')') or -1.
+func parseLinkTail(s string, i int) (dest, title string, hasTitle bool, end int) {
+	i++
+	skip := func() {
+		for i < len(s) && (s[i] == ' ' || s[i] == '\n') {
+			i++
+		}
+	}
+	skip()
+	var d strings.Builder
+	if i < len(s) && s[i] == '<' {
+		i++
+		for {
+			if i >= len(s) || s[i] == '\n' || s[i] == '<' {
+				return "", "", false, -1
+			}
+			if s[i] == '>' {
+				i++
+				break
+			}
+			if s[i] == '\\' && i+1 < len(s) && isPunct(s[i+1]) {
+				i++
+			}
+			d.WriteByte(s[i])
+			i++
+		}
+	} else {
+		depth := 0
+		for i < len(s) {
+			c := s[i]
+			if c == ' ' || c == '\n' {
+				break
+			}
+			if c == '\\' && i+1 < len(s) && isPunct(s[i+1]) {
+				d.WriteByte(s[i+1])
+				i += 2
+				continue
+			}
+			if c == '(' {
+				depth++
+			} else if c == ')' {
+				if depth == 0 {
+					break
+				}
+				depth--
+			}
+			d.WriteByte(c)
+			i++
+		}
+		if depth != 0 {
+			return "", "", false, -1
+		}
+	}
+	save := i
+	skip()
+	if i < len(s) && s[i] == '"' && i > save {
+		i++
+		var t strings.Builder
+		for {
+			if i >= len(s) {
+				return "", "", false, -1
+			}
+			if s[i] == '\\' && i+1 < len(s) && isPunct(s[i+1]) {
+				t.WriteByte(s[i+1])
+				i += 2
+				continue
+			}
+			if s[i] == '"' {
+				i++
+				break
+			}
+			t.WriteByte(s[i])
+			i++
+		}
+		title, hasTitle = t.String(), true
+		skip()
+	}
+	if i < len(s) && s[i] == ')' {
+		return d.String(), title, hasTitle, i + 1
+	}
+	return "", "", false, -1
+}
+
+func parseInline(s string) []*Inl {
+	var nodes []*Inl
+	var buf strings.Builder
+	flush := func() {
+		if buf.Len() > 0 {
+			nodes = append(nodes, &Inl{kind: "text", text: buf.String()})
+			buf.Reset()
+		}
+	}
+	i := 0
+	for i < len(s) {
+		c := s[i]
+		switch {
+		case c == '\\':
+			if i+1 < len(s) && s[i+1] == '\n' {
+				flush()
+				nodes = append(nodes, &Inl{kind: "br"})
+				i += 2
+			} else if i+1 < len(s) && isPunct(s[i+1]) {
+				buf.WriteByte(s[i+1])
+				i += 2
+			} else {
+				buf.WriteByte(c)
+				i++
+			}
+		case c == 1 && i+1 < len(s) && s[i+1] == '\n':
+			flush()
+			nodes = append(nodes, &Inl{kind: "br"})
+			i += 2
+		case c == '\n':
+			flush()
+			nodes = append(nodes, &Inl{kind: "soft"})
+			i++
+		case c == '`':
+			j := i
+			for j < len(s) && s[j] == '`' {
+				j++
+			}
+			n := j - i
+			k := j
+			found := -1
+			for k < len(s) {
+				if s[k] == '`' {
+					m := k
+					for m < len(s) && s[m] == '`' {
+						m++
+					}
+					if m-k == n {
+						found = k
+						break
+					}
+					k = m
+				} else {
+					k++
+				}
+			}
+			if found < 0 {
+				buf.WriteString(s[i:j])
+				i = j
+			} else {
+				flush()
+				content := strings.ReplaceAll(s[j:found], "\n", " ")
+				if len(content) >= 2 && content[0] == ' ' && content[len(content)-1] == ' ' && strings.Trim(content, " ") != "" {
+					content = content[1 : len(content)-1]
+				}
+				nodes = append(nodes, &Inl{kind: "code", text: content})
+				i = found + n
+			}
+		case c == '*' || c == '_':
+			j := i
+			for j < len(s) && s[j] == c {
+				j++
+			}
+			flush()
+			prev, next := i-1, j
+			wsP, wsN := isWSAt(s, prev), isWSAt(s, next)
+			puP, puN := isPunctAt(s, prev), isPunctAt(s, next)
+			left := !wsN && (!puN || wsP || puP)
+			right := !wsP && (!puP || wsN || puN)
+			d := &Inl{kind: "delim", ch: c, count: j - i, orig: j - i}
+			if c == '*' {
+				d.canOpen, d.canClose = left, right
+			} else {
+				d.canOpen = left && (!right || puP)
+				d.canClose = right && (!left || puN)
+			}
+			nodes = append(nodes, d)
+			i = j
+		case c == '[' || (c == '!' && i+1 < len(s) && s[i+1] == '['):
+			flush()
+			img := c == '!'
+			nodes = append(nodes, &Inl{kind: "bracket", image: img, active: true})
+			if img {
+				i += 2
+			} else {
+				i++
+			}
+		case c == ']':
+			idx := -1
+			for k := len(nodes) - 1; k >= 0; k-- {
+				if nodes[k].kind == "bracket" {
+					idx = k
+					break
+				}
+			}
+			if idx < 0 {
+				buf.WriteByte(c)
+				i++
+				break
+			}
+			flush()
+			br := nodes[idx]
+			if !br.image && !br.active {
+				nodes[idx] = &Inl{kind: "text", text: "["}
+				buf.WriteByte(']')
+				i++
+				break
+			}
+			if i+1 < len(s) && s[i+1] == '(' {
+				dest, title, ht, end := parseLinkTail(s, i+1)
+				if end >= 0 {
+					kids := emphasis(append([]*Inl{}, nodes[idx+1:]...))
+					n := &Inl{kind: "link", text: dest, title: title, hasTitle: ht, kids: kids}
+					if br.image {
+						n.kind = "image"
+					}
+					nodes = append(nodes[:idx], n)
+					if !br.image {
+						for _, o := range nodes[:idx] {
+							if o.kind == "bracket" && !o.image {
+								o.active = false
+							}
+						}
+					}
+					i = end
+					break
+				}
+			}
+			if br.image {
+				nodes[idx] = &Inl{kind: "text", text: "!["}
+			} else {
+				nodes[idx] = &Inl{kind: "text", text: "["}
+			}
+			buf.WriteByte(']')
+			i++
+		default:
+			buf.WriteByte(c)
+			i++
+		}
+	}
+	flush()
+	for k, n := range nodes {
+		if n.kind == "bracket" {
+			if n.image {
+				nodes[k] = &Inl{kind: "text", text: "!["}
+			} else {
+				nodes[k] = &Inl{kind: "text", text: "["}
+			}
+		}
+	}
+	return emphasis(nodes)
+}
+
+func delimText(n *Inl) *Inl {
+	return &Inl{kind: "text", text: strings.Repeat(string(n.ch), n.count)}
+}
+
+func emphasis(nodes []*Inl) []*Inl {
+	ci := 0
+	for ci < len(nodes) {
+		cl := nodes[ci]
+		if cl.kind != "delim" || !cl.canClose {
+			ci++
+			continue
+		}
+		oi := -1
+		for j := ci - 1; j >= 0; j-- {
+			o := nodes[j]
+			if o.kind == "delim" && o.ch == cl.ch && o.canOpen && o.count > 0 {
+				if (o.canClose || cl.canOpen) && (o.orig+cl.orig)%3 == 0 && !(o.orig%3 == 0 && cl.orig%3 == 0) {
+					continue
+				}
+				oi = j
+				break
+			}
+		}
+		if oi < 0 {
+			ci++
+			continue
+		}
+		op := nodes[oi]
+		use := 1
+		if op.count >= 2 && cl.count >= 2 {
+			use = 2
+		}
+		inner := make([]*Inl, 0, ci-oi-1)
+		for _, n := range nodes[oi+1 : ci] {
+			if n.kind == "delim" {
+				inner = append(inner, delimText(n))
+			} else {
+				inner = append(inner, n)
+			}
+		}
+		kind := "em"
+		if use == 2 {
+			kind = "strong"
+		}
+		em := &Inl{kind: kind, kids: inner}
+		op.count -= use
+		cl.count -= use
+		var out []*Inl
+		out = append(out, nodes[:oi]...)
+		if op.count > 0 {
+			out = append(out, op)
+		}
+		out = append(out, em)
+		pos := len(out)
+		if cl.count > 0 {
+			out = append(out, cl)
+		}
+		out = append(out, nodes[ci+1:]...)
+		nodes = out
+		if cl.count > 0 {
+			ci = pos
+		} else {
+			ci = pos
+		}
+	}
+	for k, n := range nodes {
+		if n.kind == "delim" {
+			nodes[k] = delimText(n)
+		}
+	}
+	return nodes
+}
+
+func plain(nodes []*Inl) string {
+	var b strings.Builder
+	for _, n := range nodes {
+		switch n.kind {
+		case "text", "code":
+			b.WriteString(n.text)
+		case "soft", "br":
+			b.WriteString(" ")
+		default:
+			b.WriteString(plain(n.kids))
+		}
+	}
+	return b.String()
+}
+
+func renderInl(nodes []*Inl) string {
+	var b strings.Builder
+	for _, n := range nodes {
+		switch n.kind {
+		case "text":
+			b.WriteString(esc(n.text))
+		case "code":
+			b.WriteString("<code>" + esc(n.text) + "</code>")
+		case "em":
+			b.WriteString("<em>" + renderInl(n.kids) + "</em>")
+		case "strong":
+			b.WriteString("<strong>" + renderInl(n.kids) + "</strong>")
+		case "soft":
+			b.WriteString("\n")
+		case "br":
+			b.WriteString("<br />\n")
+		case "link":
+			b.WriteString("<a href=\"" + esc(n.text) + "\"")
+			if n.hasTitle {
+				b.WriteString(" title=\"" + esc(n.title) + "\"")
+			}
+			b.WriteString(">" + renderInl(n.kids) + "</a>")
+		case "image":
+			b.WriteString("<img src=\"" + esc(n.text) + "\" alt=\"" + esc(plain(n.kids)) + "\"")
+			if n.hasTitle {
+				b.WriteString(" title=\"" + esc(n.title) + "\"")
+			}
+			b.WriteString(" />")
+		}
+	}
+	return b.String()
+}
+
+func inline(s string) string { return renderInl(parseInline(s)) }
+
+// ---------- blocks ----------
+type Block struct {
+	kind        string // para heading hr code quote list table
+	lines       []string
+	level       int
+	info        string
+	kids        []*Block
+	items       []*Item
+	ordered     bool
+	start       int
+	loose       bool
+	aligns      []string
+	head        []string
+	rows        [][]string
+	blankBefore bool
+}
+type Item struct {
+	kids  []*Block
+	loose bool
+}
+
+func fenceOpen(l string) (ind int, ch byte, n int, info string, ok bool) {
+	ind = indentOf(l)
+	if ind > 3 || ind >= len(l) {
+		return
+	}
+	ch = l[ind]
+	if ch != '`' && ch != '~' {
+		return
+	}
+	j := ind
+	for j < len(l) && l[j] == ch {
+		j++
+	}
+	n = j - ind
+	if n < 3 {
+		return
+	}
+	info = strings.TrimSpace(l[j:])
+	if ch == '`' && strings.Contains(info, "`") {
+		return
+	}
+	ok = true
+	return
+}
+func atx(l string) (level int, content string, ok bool) {
+	ind := indentOf(l)
+	if ind > 3 {
+		return
+	}
+	j := ind
+	for j < len(l) && l[j] == '#' {
+		j++
+	}
+	n := j - ind
+	if n < 1 || n > 6 {
+		return
+	}
+	if j < len(l) && l[j] != ' ' {
+		return
+	}
+	c := strings.TrimSpace(l[j:])
+	k := len(c)
+	for k > 0 && c[k-1] == '#' {
+		k--
+	}
+	if k < len(c) && (k == 0 || c[k-1] == ' ') {
+		c = strings.TrimRight(c[:k], " ")
+	}
+	return n, c, true
+}
+func thematic(l string) bool {
+	if indentOf(l) > 3 {
+		return false
+	}
+	t := strings.ReplaceAll(l, " ", "")
+	if len(t) < 3 || (t[0] != '-' && t[0] != '*' && t[0] != '_') {
+		return false
+	}
+	for i := 0; i < len(t); i++ {
+		if t[i] != t[0] {
+			return false
+		}
+	}
+	return true
+}
+func quoteStart(l string) bool {
+	ind := indentOf(l)
+	return ind <= 3 && ind < len(l) && l[ind] == '>'
+}
+func quoteStrip(l string) string {
+	ind := indentOf(l)
+	r := l[ind+1:]
+	if strings.HasPrefix(r, " ") {
+		r = r[1:]
+	}
+	return r
+}
+
+type Marker struct {
+	ok      bool
+	ordered bool
+	ch      byte
+	num     int
+	w       int
+	first   string
+	empty   bool
+}
+
+func marker(l string) Marker {
+	ind := indentOf(l)
+	if ind > 3 || ind >= len(l) {
+		return Marker{}
+	}
+	var m Marker
+	j := ind
+	c := l[j]
+	if c == '-' || c == '*' || c == '+' {
+		m.ch = c
+		j++
+	} else if c >= '0' && c <= '9' {
+		for j < len(l) && l[j] >= '0' && l[j] <= '9' {
+			j++
+		}
+		if j-ind > 9 || j >= len(l) || (l[j] != '.' && l[j] != ')') {
+			return Marker{}
+		}
+		m.ordered = true
+		m.num, _ = strconv.Atoi(l[ind:j])
+		m.ch = l[j]
+		j++
+	} else {
+		return Marker{}
+	}
+	if j < len(l) && l[j] != ' ' {
+		return Marker{}
+	}
+	s := 0
+	for j+s < len(l) && l[j+s] == ' ' {
+		s++
+	}
+	rest := l[j+s:]
+	m.ok = true
+	if rest == "" {
+		m.empty = true
+		m.w = j + 1
+		m.first = ""
+		return m
+	}
+	k := s
+	if s >= 5 {
+		k = 1
+	}
+	m.w = j + k
+	m.first = l[j+k:]
+	return m
+}
+
+func splitCells(l string) []string {
+	t := strings.TrimSpace(l)
+	t = strings.TrimPrefix(t, "|")
+	if strings.HasSuffix(t, "|") && !strings.HasSuffix(t, "\\|") {
+		t = t[:len(t)-1]
+	}
+	var cells []string
+	var cur strings.Builder
+	for i := 0; i < len(t); i++ {
+		if t[i] == '|' && !(i > 0 && t[i-1] == '\\') {
+			cells = append(cells, strings.TrimSpace(cur.String()))
+			cur.Reset()
+		} else {
+			cur.WriteByte(t[i])
+		}
+	}
+	cells = append(cells, strings.TrimSpace(cur.String()))
+	return cells
+}
+func delimRow(l string) ([]string, bool) {
+	if !strings.Contains(l, "|") {
+		return nil, false
+	}
+	cells := splitCells(l)
+	var al []string
+	for _, c := range cells {
+		if c == "" {
+			return nil, false
+		}
+		t := c
+		left, right := strings.HasPrefix(t, ":"), strings.HasSuffix(t, ":")
+		t = strings.TrimPrefix(t, ":")
+		t = strings.TrimSuffix(t, ":")
+		if t == "" || strings.Trim(t, "-") != "" {
+			return nil, false
+		}
+		switch {
+		case left && right:
+			al = append(al, "center")
+		case left:
+			al = append(al, "left")
+		case right:
+			al = append(al, "right")
+		default:
+			al = append(al, "")
+		}
+	}
+	return al, true
+}
+
+func startsBlock(l string) bool {
+	if _, _, _, _, ok := fenceOpen(l); ok {
+		return true
+	}
+	if _, _, ok := atx(l); ok {
+		return true
+	}
+	return thematic(l) || quoteStart(l)
+}
+
+func parseBlocks(lines []string) []*Block {
+	var out []*Block
+	pending := false
+	i := 0
+	add := func(b *Block) {
+		b.blankBefore = pending && len(out) > 0
+		pending = false
+		out = append(out, b)
+	}
+	for i < len(lines) {
+		l := lines[i]
+		if isBlank(l) {
+			pending = true
+			i++
+			continue
+		}
+		if ind, ch, n, info, ok := fenceOpen(l); ok {
+			b := &Block{kind: "code", info: info}
+			i++
+			for i < len(lines) {
+				x := lines[i]
+				xi := indentOf(x)
+				if xi <= 3 && xi < len(x) && x[xi] == ch {
+					j := xi
+					for j < len(x) && x[j] == ch {
+						j++
+					}
+					if j-xi >= n && strings.TrimSpace(x[j:]) == "" {
+						i++
+						break
+					}
+				}
+				strip := indentOf(x)
+				if strip > ind {
+					strip = ind
+				}
+				b.lines = append(b.lines, x[strip:])
+				i++
+			}
+			add(b)
+			continue
+		}
+		if lv, c, ok := atx(l); ok {
+			add(&Block{kind: "heading", level: lv, lines: []string{c}})
+			i++
+			continue
+		}
+		if thematic(l) {
+			add(&Block{kind: "hr"})
+			i++
+			continue
+		}
+		if quoteStart(l) {
+			var sub []string
+			for i < len(lines) && quoteStart(lines[i]) {
+				sub = append(sub, quoteStrip(lines[i]))
+				i++
+			}
+			add(&Block{kind: "quote", kids: parseBlocks(sub)})
+			continue
+		}
+		if m := marker(l); m.ok {
+			lst := &Block{kind: "list", ordered: m.ordered, start: m.num}
+			first := m
+			loose := false
+			blanks := 0
+			for {
+				item := &Item{}
+				sub := []string{m.first}
+				i++
+				blanks = 0
+				for i < len(lines) {
+					x := lines[i]
+					if isBlank(x) {
+						blanks++
+						i++
+						continue
+					}
+					if indentOf(x) >= m.w {
+						for ; blanks > 0; blanks-- {
+							sub = append(sub, "")
+						}
+						sub = append(sub, x[m.w:])
+						i++
+						continue
+					}
+					break
+				}
+				item.kids = parseBlocks(sub)
+				for k, kid := range item.kids {
+					if k > 0 && kid.blankBefore {
+						item.loose = true
+					}
+				}
+				if item.loose {
+					loose = true
+				}
+				lst.items = append(lst.items, item)
+				// next item?
+				if i >= len(lines) {
+					break
+				}
+				nm := marker(lines[i])
+				if !nm.ok || thematic(lines[i]) || nm.ordered != first.ordered || nm.ch != first.ch {
+					break
+				}
+				if blanks > 0 {
+					loose = true
+				}
+				m = nm
+			}
+			lst.loose = loose
+			add(lst)
+			pending = blanks > 0
+			continue
+		}
+		if indentOf(l) >= 4 {
+			var cl []string
+			last := i
+			for i < len(lines) && (indentOf(lines[i]) >= 4 || isBlank(lines[i])) {
+				x := lines[i]
+				if !isBlank(x) {
+					last = i
+				}
+				s := indentOf(x)
+				if s > 4 {
+					s = 4
+				}
+				cl = append(cl, x[s:])
+				i++
+			}
+			for len(cl) > 0 && isBlank(cl[len(cl)-1]) {
+				cl = cl[:len(cl)-1]
+			}
+			add(&Block{kind: "icode", lines: cl})
+			pending = i > last+1
+			continue
+		}
+		if i+1 < len(lines) && strings.Contains(l, "|") {
+			if al, ok := delimRow(lines[i+1]); ok {
+				head := splitCells(l)
+				if len(head) == len(al) {
+					t := &Block{kind: "table", aligns: al, head: head}
+					i += 2
+					for i < len(lines) && !isBlank(lines[i]) && !startsBlock(lines[i]) {
+						cells := splitCells(lines[i])
+						for len(cells) < len(al) {
+							cells = append(cells, "")
+						}
+						t.rows = append(t.rows, cells[:len(al)])
+						i++
+					}
+					add(t)
+					continue
+				}
+			}
+		}
+		// paragraph
+		var pl []string
+		for i < len(lines) {
+			x := lines[i]
+			if isBlank(x) {
+				break
+			}
+			if len(pl) > 0 {
+				if startsBlock(x) {
+					break
+				}
+				if mm := marker(x); mm.ok && !mm.empty && (!mm.ordered || mm.num == 1) {
+					break
+				}
+			}
+			pl = append(pl, x)
+			i++
+		}
+		add(&Block{kind: "para", lines: pl})
+	}
+	return out
+}
+
+func paraText(lines []string) string {
+	var b strings.Builder
+	for k, l := range lines {
+		t := strings.TrimLeft(l, " ")
+		if k == len(lines)-1 {
+			b.WriteString(strings.TrimRight(t, " "))
+			break
+		}
+		hard := strings.HasSuffix(t, "  ")
+		t = strings.TrimRight(t, " ")
+		b.WriteString(t)
+		if hard {
+			b.WriteByte(1)
+		}
+		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+func renderBlocks(bs []*Block, tight bool) string {
+	var b strings.Builder
+	for _, x := range bs {
+		switch x.kind {
+		case "para":
+			if tight {
+				b.WriteString(inline(paraText(x.lines)))
+			} else {
+				b.WriteString("<p>" + inline(paraText(x.lines)) + "</p>\n")
+			}
+		case "heading":
+			h := strconv.Itoa(x.level)
+			b.WriteString("<h" + h + ">" + inline(x.lines[0]) + "</h" + h + ">\n")
+		case "hr":
+			b.WriteString("<hr />\n")
+		case "code", "icode":
+			b.WriteString("<pre><code")
+			if x.kind == "code" {
+				if f := strings.Fields(x.info); len(f) > 0 {
+					b.WriteString(" class=\"language-" + esc(f[0]) + "\"")
+				}
+			}
+			b.WriteString(">")
+			for _, l := range x.lines {
+				b.WriteString(esc(l) + "\n")
+			}
+			b.WriteString("</code></pre>\n")
+		case "quote":
+			b.WriteString("<blockquote>\n" + renderBlocks(x.kids, false) + "</blockquote>\n")
+		case "list":
+			tag := "ul"
+			open := "<ul>"
+			if x.ordered {
+				tag = "ol"
+				open = "<ol>"
+				if x.start != 1 {
+					open = "<ol start=\"" + strconv.Itoa(x.start) + "\">"
+				}
+			}
+			b.WriteString(open + "\n")
+			for _, it := range x.items {
+				b.WriteString("<li>")
+				var ib strings.Builder
+				for _, kid := range it.kids {
+					if kid.kind == "para" && !x.loose {
+						ib.WriteString(renderBlocks([]*Block{kid}, true))
+					} else {
+						s := ib.String()
+						if s != "" && !strings.HasSuffix(s, "\n") {
+							ib.WriteString("\n")
+						} else if s == "" {
+							ib.WriteString("\n")
+						}
+						ib.WriteString(renderBlocks([]*Block{kid}, false))
+					}
+				}
+				b.WriteString(ib.String())
+				b.WriteString("</li>\n")
+			}
+			b.WriteString("</" + tag + ">\n")
+		case "table":
+			b.WriteString("<table>\n<thead>\n<tr>\n")
+			cell := func(tag, al, text string) {
+				if al != "" {
+					b.WriteString("<" + tag + " align=\"" + al + "\">")
+				} else {
+					b.WriteString("<" + tag + ">")
+				}
+				b.WriteString(inline(text) + "</" + tag + ">\n")
+			}
+			for k, h := range x.head {
+				cell("th", x.aligns[k], h)
+			}
+			b.WriteString("</tr>\n</thead>\n")
+			if len(x.rows) > 0 {
+				b.WriteString("<tbody>\n")
+				for _, r := range x.rows {
+					b.WriteString("<tr>\n")
+					for k, c := range r {
+						cell("td", x.aligns[k], c)
+					}
+					b.WriteString("</tr>\n")
+				}
+				b.WriteString("</tbody>\n")
+			}
+			b.WriteString("</table>\n")
+		}
+	}
+	return b.String()
+}
+
+func main() {
+	data, _ := io.ReadAll(bufio.NewReader(os.Stdin))
+	s := strings.ReplaceAll(string(data), "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	lines := strings.Split(s, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	os.Stdout.WriteString(renderBlocks(parseBlocks(lines), false))
+}

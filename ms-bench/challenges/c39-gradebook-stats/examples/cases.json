@@ -1,7 +1,0 @@
-[
- {
-  "name": "basic",
-  "stdin": "assign hw1 20 30\nassign exam 50 70\nstudent ann\nstudent bob\nstudent cy\nscore ann hw1 20\nscore ann exam 41\nscore bob hw1 10\nscore bob exam 46\nreport\n",
-  "stdout": "ok\nok\nok\nok\nok\nok\nok\nok\nok\n1 ann 87.4 B\n2 bob 79.4 C\n3 cy 0.0 F\nclass: n=3 min=0.0 max=87.4 mean=55.6 median=79.4\ngrades: A=0 B=1 C=1 D=0 F=1\nassignment exam mean=58.0\nassignment hw1 mean=50.0\n"
- }
-]

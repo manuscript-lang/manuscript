@@ -1,7 +1,0 @@
-[
- {
-  "name": "basic",
-  "stdin": "pool 1.2.3 1.3.0 2.0.0 2.1.0-rc.1 0.9.9 bad\nmax ^1.2.0\nall >=1.2.3 <2.0.0 || 0.x\nmax *\ntest 2.1.0-rc.1 >=2.1.0-alpha\ntest 2.1.0-rc.1 >=2.0.0\n",
-  "stdout": "pool 5 skipped 1\n1.3.0\n0.9.9 1.2.3 1.3.0\n2.0.0\ntrue\nfalse\n"
- }
-]

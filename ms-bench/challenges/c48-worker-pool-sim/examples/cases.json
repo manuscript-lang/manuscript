@@ -1,7 +1,0 @@
-[
- {
-  "name": "basic",
-  "stdin": "pool 2 1 1\ntask a 0 5\ntask b 0 3\ntask c 1 2\ntask d 2 4 high\ntask e 2 1 fails=1\n",
-  "stdout": "a ok worker=1 start=0 end=5 attempts=1\nb ok worker=2 start=0 end=3 attempts=1\nc ok worker=2 start=3 end=5 attempts=1\nd rejected at=2\ne rejected at=2\nworker 1 busy=5\nworker 2 busy=5\nsummary ok=3 failed=0 rejected=2 makespan=5\n"
- }
-]

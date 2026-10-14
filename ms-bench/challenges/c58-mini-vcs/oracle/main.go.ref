@@ -1,0 +1,1017 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type Tree map[string]string // name -> content
+
+type Commit struct {
+	id      string
+	parents []string
+	msg     string
+	tree    Tree
+	seq     int
+}
+
+type Repo struct {
+	out      *strings.Builder
+	commits  map[string]*Commit
+	nseq     int
+	branches map[string]string // name -> commit id ("" unborn)
+	tags     map[string]string
+	head     string // branch name, or "" when detached
+	detached string // commit id when detached
+	index    Tree
+	work     Tree
+	mergeHd  string
+	mergeBr  string
+	conflict map[string]bool
+}
+
+func fnv(s string) uint64 {
+	h := uint64(14695981039346656037)
+	for i := 0; i < len(s); i++ {
+		h ^= uint64(s[i])
+		h *= 1099511628211
+	}
+	return h
+}
+func hex(s string) string { return fmt.Sprintf("%016x", fnv(s)) }
+
+func sortedNames(ts ...Tree) []string {
+	seen := map[string]bool{}
+	var res []string
+	for _, t := range ts {
+		for k := range t {
+			if !seen[k] {
+				seen[k] = true
+				res = append(res, k)
+			}
+		}
+	}
+	sort.Strings(res)
+	return res
+}
+
+func treeHash(t Tree) string {
+	var b strings.Builder
+	for _, n := range sortedNames(t) {
+		b.WriteString(n + " " + hex(t[n]) + "\n")
+	}
+	return hex(b.String())
+}
+
+func copyTree(t Tree) Tree {
+	r := Tree{}
+	for k, v := range t {
+		r[k] = v
+	}
+	return r
+}
+func treeEq(a, b Tree) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if w, ok := b[k]; !ok || w != v {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *Repo) p(format string, a ...interface{}) {
+	r.out.WriteString(fmt.Sprintf(format, a...) + "\n")
+}
+
+type Err struct{ msg string }
+
+func (r *Repo) fail(format string, a ...interface{}) {
+	panic(Err{fmt.Sprintf(format, a...)})
+}
+
+func short(id string) string { return id[:7] }
+
+func (r *Repo) headCommit() *Commit {
+	id := r.detached
+	if r.head != "" {
+		id = r.branches[r.head]
+	}
+	if id == "" {
+		return nil
+	}
+	return r.commits[id]
+}
+func (r *Repo) headTree() Tree {
+	if c := r.headCommit(); c != nil {
+		return c.tree
+	}
+	return Tree{}
+}
+
+func splitLines(c string) []string {
+	if c == "" {
+		return nil
+	}
+	return strings.Split(strings.TrimSuffix(c, "\n"), "\n")
+}
+func joinLines(ls []string) string {
+	if len(ls) == 0 {
+		return ""
+	}
+	return strings.Join(ls, "\n") + "\n"
+}
+
+// ---- refs ----
+var reHex = regexp.MustCompile(`^[0-9a-f]+$`)
+
+func (r *Repo) resolve(ref string) *Commit {
+	base := ref
+	n := 0
+	if k := strings.LastIndexByte(ref, '~'); k >= 0 {
+		num := ref[k+1:]
+		v, err := strconv.Atoi(num)
+		if err != nil || num == "" {
+			r.fail("unknown revision '%s'", ref)
+		}
+		base, n = ref[:k], v
+	}
+	var c *Commit
+	switch {
+	case base == "HEAD":
+		c = r.headCommit()
+		if c == nil {
+			r.fail("unknown revision '%s'", ref)
+		}
+	case r.branches[base] != "":
+		c = r.commits[r.branches[base]]
+	case r.tags[base] != "":
+		c = r.commits[r.tags[base]]
+	case len(base) >= 4 && reHex.MatchString(base):
+		var found []*Commit
+		for id, cm := range r.commits {
+			if strings.HasPrefix(id, base) {
+				found = append(found, cm)
+			}
+		}
+		if len(found) > 1 {
+			r.fail("ambiguous revision '%s'", ref)
+		}
+		if len(found) == 1 {
+			c = found[0]
+		}
+	}
+	if c == nil {
+		r.fail("unknown revision '%s'", ref)
+	}
+	for i := 0; i < n; i++ {
+		if len(c.parents) == 0 {
+			r.fail("unknown revision '%s'", ref)
+		}
+		c = r.commits[c.parents[0]]
+	}
+	return c
+}
+
+func (r *Repo) ancestors(c *Commit) map[string]bool {
+	seen := map[string]bool{}
+	var walk func(x *Commit)
+	walk = func(x *Commit) {
+		if seen[x.id] {
+			return
+		}
+		seen[x.id] = true
+		for _, p := range x.parents {
+			walk(r.commits[p])
+		}
+	}
+	walk(c)
+	return seen
+}
+
+// ---- diff ----
+func lcsPairs(a, b []string) [][2]int {
+	n, m := len(a), len(b)
+	L := make([][]int, n+1)
+	for i := range L {
+		L[i] = make([]int, m+1)
+	}
+	for i := n - 1; i >= 0; i-- {
+		for j := m - 1; j >= 0; j-- {
+			if a[i] == b[j] {
+				L[i][j] = L[i+1][j+1] + 1
+			} else if L[i+1][j] >= L[i][j+1] {
+				L[i][j] = L[i+1][j]
+			} else {
+				L[i][j] = L[i][j+1]
+			}
+		}
+	}
+	var res [][2]int
+	i, j := 0, 0
+	for i < n && j < m {
+		if a[i] == b[j] {
+			res = append(res, [2]int{i, j})
+			i++
+			j++
+		} else if L[i+1][j] >= L[i][j+1] {
+			i++
+		} else {
+			j++
+		}
+	}
+	return res
+}
+
+func diffLines(a, b []string) []string {
+	var out []string
+	pairs := lcsPairs(a, b)
+	i, j := 0, 0
+	for _, p := range pairs {
+		for i < p[0] {
+			out = append(out, "- "+a[i])
+			i++
+		}
+		for j < p[1] {
+			out = append(out, "+ "+b[j])
+			j++
+		}
+		out = append(out, "  "+a[i])
+		i++
+		j++
+	}
+	for i < len(a) {
+		out = append(out, "- "+a[i])
+		i++
+	}
+	for j < len(b) {
+		out = append(out, "+ "+b[j])
+		j++
+	}
+	return out
+}
+
+func (r *Repo) showDiff(a, b Tree) {
+	any := false
+	for _, n := range sortedNames(a, b) {
+		x, okx := a[n]
+		y, oky := b[n]
+		if okx && oky && x == y {
+			continue
+		}
+		any = true
+		r.p("diff %s", n)
+		if !okx {
+			r.p("new file")
+		} else if !oky {
+			r.p("deleted file")
+		}
+		for _, l := range diffLines(splitLines(x), splitLines(y)) {
+			r.p("%s", l)
+		}
+	}
+	if !any {
+		r.p("(no differences)")
+	}
+}
+
+// ---- merge ----
+func merge3(base, ours, theirs []string, label string) ([]string, bool) {
+	mo := make([]int, len(base))
+	mt := make([]int, len(base))
+	for i := range mo {
+		mo[i], mt[i] = -1, -1
+	}
+	for _, p := range lcsPairs(base, ours) {
+		mo[p[0]] = p[1]
+	}
+	for _, p := range lcsPairs(base, theirs) {
+		mt[p[0]] = p[1]
+	}
+	var out []string
+	conflict := false
+	pb, po, pt := -1, -1, -1
+	eq := func(x, y []string) bool {
+		if len(x) != len(y) {
+			return false
+		}
+		for i := range x {
+			if x[i] != y[i] {
+				return false
+			}
+		}
+		return true
+	}
+	chunk := func(sb, so, st int) {
+		B := base[pb+1 : sb]
+		O := ours[po+1 : so]
+		T := theirs[pt+1 : st]
+		switch {
+		case eq(O, B):
+			out = append(out, T...)
+		case eq(T, B):
+			out = append(out, O...)
+		case eq(O, T):
+			out = append(out, O...)
+		default:
+			conflict = true
+			out = append(out, "<<<<<<< HEAD")
+			out = append(out, O...)
+			out = append(out, "=======")
+			out = append(out, T...)
+			out = append(out, ">>>>>>> "+label)
+		}
+	}
+	for s := 0; s < len(base); s++ {
+		if mo[s] >= 0 && mt[s] >= 0 {
+			chunk(s, mo[s], mt[s])
+			out = append(out, base[s])
+			pb, po, pt = s, mo[s], mt[s]
+		}
+	}
+	chunk(len(base), len(ours), len(theirs))
+	return out, conflict
+}
+
+// ---- operations ----
+func (r *Repo) dirty() bool {
+	h := r.headTree()
+	if !treeEq(r.index, h) {
+		return true
+	}
+	for n, c := range r.index {
+		if w, ok := r.work[n]; !ok || w != c {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Repo) checkCollisions(target Tree) {
+	for _, n := range sortedNames(target) {
+		if _, tracked := r.index[n]; tracked {
+			continue
+		}
+		if _, ok := r.work[n]; ok {
+			r.fail("untracked file would be overwritten: %s", n)
+		}
+	}
+}
+
+func (r *Repo) setTree(target Tree) {
+	for n := range r.index {
+		delete(r.work, n)
+	}
+	for n, c := range target {
+		r.work[n] = c
+	}
+	r.index = copyTree(target)
+}
+
+func (r *Repo) makeCommit(parents []string, msg string, tree Tree) *Commit {
+	var b strings.Builder
+	b.WriteString("tree " + treeHash(tree) + "\n")
+	for _, p := range parents {
+		b.WriteString("parent " + p + "\n")
+	}
+	b.WriteString("\n" + msg + "\n")
+	id := hex(b.String())
+	if c, ok := r.commits[id]; ok {
+		return c
+	}
+	r.nseq++
+	c := &Commit{id: id, parents: parents, msg: msg, tree: copyTree(tree), seq: r.nseq}
+	r.commits[id] = c
+	return c
+}
+
+func (r *Repo) advance(c *Commit) {
+	if r.head != "" {
+		r.branches[r.head] = c.id
+	} else {
+		r.detached = c.id
+	}
+}
+
+func (r *Repo) commitLine(c *Commit, root bool) {
+	name := r.head
+	if name == "" {
+		name = "detached"
+	}
+	if root {
+		r.p("[%s (root-commit) %s] %s", name, short(c.id), c.msg)
+	} else {
+		r.p("[%s %s] %s", name, short(c.id), c.msg)
+	}
+}
+
+var reName = regexp.MustCompile(`^[A-Za-z0-9._/][A-Za-z0-9._/-]*$`)
+
+func (r *Repo) status() {
+	if r.head != "" {
+		r.p("On branch %s", r.head)
+	} else {
+		r.p("HEAD detached at %s", short(r.detached))
+	}
+	if r.mergeHd != "" {
+		r.p("merging: %s", r.mergeBr)
+	}
+	h := r.headTree()
+	var staged, unstaged, conflicts, untracked []string
+	for _, n := range sortedNames(h, r.index) {
+		if r.conflict[n] {
+			continue
+		}
+		hv, ho := h[n]
+		iv, io := r.index[n]
+		switch {
+		case io && !ho:
+			staged = append(staged, "new file: "+n)
+		case ho && !io:
+			staged = append(staged, "deleted: "+n)
+		case hv != iv:
+			staged = append(staged, "modified: "+n)
+		}
+	}
+	for _, n := range sortedNames(r.index) {
+		if r.conflict[n] {
+			continue
+		}
+		w, ok := r.work[n]
+		if !ok {
+			unstaged = append(unstaged, "deleted: "+n)
+		} else if w != r.index[n] {
+			unstaged = append(unstaged, "modified: "+n)
+		}
+	}
+	for n := range r.conflict {
+		conflicts = append(conflicts, "unmerged: "+n)
+	}
+	sort.Strings(conflicts)
+	for _, n := range sortedNames(r.work) {
+		if _, ok := r.index[n]; !ok && !r.conflict[n] {
+			untracked = append(untracked, n)
+		}
+	}
+	sec := func(title string, xs []string) {
+		if len(xs) == 0 {
+			return
+		}
+		r.p("%s:", title)
+		for _, x := range xs {
+			r.p("  %s", x)
+		}
+	}
+	sec("staged", staged)
+	sec("unstaged", unstaged)
+	sec("conflicts", conflicts)
+	sec("untracked", untracked)
+	if len(staged)+len(unstaged)+len(conflicts)+len(untracked) == 0 {
+		r.p("nothing to commit, working tree clean")
+	}
+}
+
+func (r *Repo) doMerge(name string) {
+	if r.mergeHd != "" {
+		r.fail("merge in progress")
+	}
+	cur := r.headCommit()
+	if cur == nil {
+		r.fail("no commits yet")
+	}
+	id, ok := r.branches[name]
+	if !ok || id == "" {
+		r.fail("unknown branch '%s'", name)
+	}
+	other := r.commits[id]
+	if r.dirty() {
+		r.fail("local changes would be overwritten")
+	}
+	ancCur := r.ancestors(cur)
+	ancOther := r.ancestors(other)
+	if ancCur[other.id] {
+		r.p("Already up to date.")
+		return
+	}
+	if ancOther[cur.id] {
+		r.checkCollisions(other.tree)
+		r.setTree(other.tree)
+		r.advance(other)
+		r.p("Fast-forward")
+		return
+	}
+	var base *Commit
+	for cid := range ancCur {
+		if ancOther[cid] {
+			c := r.commits[cid]
+			if base == nil || c.seq > base.seq {
+				base = c
+			}
+		}
+	}
+	bt := Tree{}
+	if base != nil {
+		bt = base.tree
+	}
+	ot, tt := cur.tree, other.tree
+	result := Tree{}
+	conflicts := map[string]string{}
+	workOverride := Tree{}
+	for _, n := range sortedNames(bt, ot, tt) {
+		b, hb := bt[n]
+		o, ho := ot[n]
+		t, ht := tt[n]
+		same := func(x string, hx bool, y string, hy bool) bool { return hx == hy && x == y }
+		switch {
+		case same(o, ho, t, ht):
+			if ho {
+				result[n] = o
+			}
+		case same(o, ho, b, hb):
+			if ht {
+				result[n] = t
+			}
+		case same(t, ht, b, hb):
+			if ho {
+				result[n] = o
+			}
+		default:
+			if !ho || !ht {
+				conflicts[n] = "modify/delete"
+				if ho {
+					result[n] = o
+					workOverride[n] = o
+				} else {
+					workOverride[n] = t
+				}
+			} else {
+				ml, bad := merge3(splitLines(b), splitLines(o), splitLines(t), name)
+				if !bad {
+					result[n] = joinLines(ml)
+				} else {
+					if hb {
+						conflicts[n] = "content"
+					} else {
+						conflicts[n] = "add/add"
+					}
+					result[n] = o
+					workOverride[n] = joinLines(ml)
+				}
+			}
+		}
+	}
+	// untracked collisions
+	for _, n := range sortedNames(result, workOverride) {
+		if _, tracked := r.index[n]; tracked {
+			continue
+		}
+		if _, ok := r.work[n]; ok {
+			r.fail("untracked file would be overwritten: %s", n)
+		}
+	}
+	// apply
+	for n := range r.index {
+		if _, ok := result[n]; !ok {
+			delete(r.work, n)
+		}
+	}
+	for n, c := range result {
+		r.work[n] = c
+	}
+	for n, c := range workOverride {
+		r.work[n] = c
+	}
+	r.index = copyTree(result)
+	if len(conflicts) == 0 {
+		msg := "Merge branch '" + name + "'"
+		c := r.makeCommit([]string{cur.id, other.id}, msg, result)
+		r.advance(c)
+		r.p("Merge made by the 'three-way' strategy.")
+		r.commitLine(c, false)
+		return
+	}
+	r.mergeHd = other.id
+	r.mergeBr = name
+	r.conflict = map[string]bool{}
+	var names []string
+	for n := range conflicts {
+		names = append(names, n)
+		r.conflict[n] = true
+	}
+	sort.Strings(names)
+	for _, n := range names {
+		switch conflicts[n] {
+		case "content":
+			r.p("CONFLICT (content): Merge conflict in %s", n)
+		case "add/add":
+			r.p("CONFLICT (add/add): Merge conflict in %s", n)
+		default:
+			r.p("CONFLICT (modify/delete): %s", n)
+		}
+	}
+	r.p("Automatic merge failed; fix conflicts and then commit the result.")
+}
+
+func (r *Repo) readBlock(lines []string, pos *int) []string {
+	var res []string
+	for *pos < len(lines) {
+		l := lines[*pos]
+		*pos++
+		if l == "." {
+			break
+		}
+		res = append(res, l)
+	}
+	return res
+}
+
+func (r *Repo) run(cmd string, args []string, rest string, lines []string, pos *int) {
+	switch cmd {
+	case "write", "append":
+		if len(args) != 1 {
+			r.fail("usage: %s FILE", cmd)
+		}
+		blk := r.readBlock(lines, pos)
+		old := ""
+		if cmd == "append" {
+			old = r.work[args[0]]
+		}
+		r.work[args[0]] = old + joinLines(blk)
+	case "rm":
+		if len(args) == 0 {
+			r.fail("usage: rm FILE...")
+		}
+		for _, a := range args {
+			if _, ok := r.work[a]; !ok {
+				r.fail("no such file: %s", a)
+			}
+			delete(r.work, a)
+		}
+	case "mv":
+		if len(args) != 2 {
+			r.fail("usage: mv OLD NEW")
+		}
+		c, ok := r.work[args[0]]
+		if !ok {
+			r.fail("no such file: %s", args[0])
+		}
+		delete(r.work, args[0])
+		r.work[args[1]] = c
+	case "cat":
+		if len(args) != 1 {
+			r.fail("usage: cat FILE")
+		}
+		c, ok := r.work[args[0]]
+		if !ok {
+			r.fail("no such file: %s", args[0])
+		}
+		for _, l := range splitLines(c) {
+			r.p("%s", l)
+		}
+	case "ls":
+		if len(r.work) == 0 {
+			r.p("(empty)")
+		}
+		for _, n := range sortedNames(r.work) {
+			r.p("%s", n)
+		}
+	case "add":
+		if len(args) == 0 {
+			r.fail("usage: add PATH...")
+		}
+		for _, a := range args {
+			if a == "." {
+				for _, n := range sortedNames(r.work, r.index) {
+					if c, ok := r.work[n]; ok {
+						r.index[n] = c
+					} else {
+						delete(r.index, n)
+					}
+					delete(r.conflict, n)
+				}
+				continue
+			}
+			if c, ok := r.work[a]; ok {
+				r.index[a] = c
+			} else if _, ok := r.index[a]; ok {
+				delete(r.index, a)
+			} else if r.conflict[a] {
+				// resolving a conflict by accepting a deletion
+			} else {
+				r.fail("pathspec '%s' did not match any files", a)
+			}
+			delete(r.conflict, a)
+		}
+	case "status":
+		r.status()
+	case "commit":
+		msg := strings.TrimSpace(rest)
+		if msg == "" {
+			r.fail("empty commit message")
+		}
+		if len(r.conflict) > 0 {
+			var ns []string
+			for n := range r.conflict {
+				ns = append(ns, n)
+			}
+			sort.Strings(ns)
+			r.fail("unresolved conflicts: %s", strings.Join(ns, " "))
+		}
+		cur := r.headCommit()
+		if r.mergeHd != "" {
+			c := r.makeCommit([]string{cur.id, r.mergeHd}, msg, r.index)
+			r.advance(c)
+			r.mergeHd, r.mergeBr = "", ""
+			r.commitLine(c, false)
+			return
+		}
+		if treeEq(r.index, r.headTree()) {
+			r.fail("nothing to commit")
+		}
+		var parents []string
+		if cur != nil {
+			parents = []string{cur.id}
+		}
+		c := r.makeCommit(parents, msg, r.index)
+		r.advance(c)
+		r.commitLine(c, cur == nil)
+	case "log":
+		limit := -1
+		if len(args) == 2 && args[0] == "-n" {
+			n, err := strconv.Atoi(args[1])
+			if err != nil || n < 0 {
+				r.fail("usage: log [-n N]")
+			}
+			limit = n
+		} else if len(args) != 0 {
+			r.fail("usage: log [-n N]")
+		}
+		cur := r.headCommit()
+		if cur == nil {
+			r.fail("no commits yet")
+		}
+		anc := r.ancestors(cur)
+		var cs []*Commit
+		for id := range anc {
+			cs = append(cs, r.commits[id])
+		}
+		sort.Slice(cs, func(i, j int) bool { return cs[i].seq > cs[j].seq })
+		for i, c := range cs {
+			if limit >= 0 && i >= limit {
+				break
+			}
+			if len(c.parents) == 2 {
+				r.p("%s %s (merge %s %s)", short(c.id), c.msg, short(c.parents[0]), short(c.parents[1]))
+			} else {
+				r.p("%s %s", short(c.id), c.msg)
+			}
+		}
+	case "diff":
+		switch len(args) {
+		case 0:
+			r.showDiff(r.index, r.work)
+		case 1:
+			r.showDiff(r.resolve(args[0]).tree, r.work)
+		case 2:
+			a := r.resolve(args[0])
+			b := r.resolve(args[1])
+			r.showDiff(a.tree, b.tree)
+		default:
+			r.fail("usage: diff [REF [REF]]")
+		}
+	case "branch":
+		switch {
+		case len(args) == 0:
+			var names []string
+			for n := range r.branches {
+				names = append(names, n)
+			}
+			sort.Strings(names)
+			if r.head == "" {
+				r.p("* (HEAD detached at %s)", short(r.detached))
+			}
+			for _, n := range names {
+				if n == r.head {
+					r.p("* %s", n)
+				} else {
+					r.p("  %s", n)
+				}
+			}
+		case len(args) == 2 && args[0] == "-d":
+			n := args[1]
+			id, ok := r.branches[n]
+			if !ok {
+				r.fail("branch '%s' not found", n)
+			}
+			if n == r.head {
+				r.fail("cannot delete the current branch '%s'", n)
+			}
+			cur := r.headCommit()
+			if cur == nil || !r.ancestors(cur)[id] {
+				r.fail("branch '%s' is not fully merged", n)
+			}
+			delete(r.branches, n)
+			r.p("Deleted branch %s (was %s).", n, short(id))
+		case len(args) == 1:
+			n := args[0]
+			if !reName.MatchString(n) {
+				r.fail("invalid branch name '%s'", n)
+			}
+			if _, ok := r.branches[n]; ok {
+				r.fail("branch '%s' already exists", n)
+			}
+			cur := r.headCommit()
+			if cur == nil {
+				r.fail("no commits yet")
+			}
+			r.branches[n] = cur.id
+		default:
+			r.fail("usage: branch [NAME | -d NAME]")
+		}
+	case "checkout":
+		if len(args) == 2 && args[0] == "-b" {
+			n := args[1]
+			if !reName.MatchString(n) {
+				r.fail("invalid branch name '%s'", n)
+			}
+			if _, ok := r.branches[n]; ok {
+				r.fail("branch '%s' already exists", n)
+			}
+			cur := r.headCommit()
+			if cur == nil {
+				r.fail("no commits yet")
+			}
+			r.branches[n] = cur.id
+			r.head = n
+			r.detached = ""
+			r.p("Switched to a new branch '%s'", n)
+			return
+		}
+		if len(args) != 1 {
+			r.fail("usage: checkout REF | checkout -b NAME")
+		}
+		if r.mergeHd != "" {
+			r.fail("merge in progress")
+		}
+		t := args[0]
+		if id, ok := r.branches[t]; ok {
+			if t == r.head {
+				r.p("Already on '%s'", t)
+				return
+			}
+			if id == "" {
+				r.fail("unknown revision '%s'", t)
+			}
+			if r.dirty() {
+				r.fail("local changes would be overwritten")
+			}
+			target := r.commits[id].tree
+			r.checkCollisions(target)
+			r.setTree(target)
+			r.head, r.detached = t, ""
+			r.p("Switched to branch '%s'", t)
+			return
+		}
+		c := r.resolve(t)
+		if r.dirty() {
+			r.fail("local changes would be overwritten")
+		}
+		r.checkCollisions(c.tree)
+		r.setTree(c.tree)
+		r.head, r.detached = "", c.id
+		r.p("HEAD is now at %s %s", short(c.id), c.msg)
+	case "merge":
+		if len(args) == 1 && args[0] == "--abort" {
+			if r.mergeHd == "" {
+				r.fail("no merge in progress")
+			}
+			r.resetHard(r.headCommit())
+			r.p("Merge aborted.")
+			return
+		}
+		if len(args) != 1 {
+			r.fail("usage: merge BRANCH")
+		}
+		r.doMerge(args[0])
+	case "tag":
+		if len(args) == 0 {
+			var names []string
+			for n := range r.tags {
+				names = append(names, n)
+			}
+			sort.Strings(names)
+			for _, n := range names {
+				r.p("%s", n)
+			}
+			return
+		}
+		if len(args) > 2 {
+			r.fail("usage: tag [NAME [REF]]")
+		}
+		n := args[0]
+		if !reName.MatchString(n) {
+			r.fail("invalid tag name '%s'", n)
+		}
+		if _, ok := r.tags[n]; ok {
+			r.fail("tag '%s' already exists", n)
+		}
+		ref := "HEAD"
+		if len(args) == 2 {
+			ref = args[1]
+		}
+		if ref == "HEAD" && r.headCommit() == nil {
+			r.fail("no commits yet")
+		}
+		r.tags[n] = r.resolve(ref).id
+	case "show":
+		if len(args) != 1 {
+			r.fail("usage: show REF")
+		}
+		c := r.resolve(args[0])
+		r.p("commit %s", c.id)
+		r.p("tree %s", treeHash(c.tree))
+		for _, p := range c.parents {
+			r.p("parent %s", p)
+		}
+		r.p("message: %s", c.msg)
+		r.p("files:")
+		for _, n := range sortedNames(c.tree) {
+			r.p("  %s %s", n, hex(c.tree[n])[:7])
+		}
+	case "reset":
+		if len(args) < 1 || len(args) > 2 || args[0] != "--hard" {
+			r.fail("usage: reset --hard [REF]")
+		}
+		var c *Commit
+		if len(args) == 2 {
+			c = r.resolve(args[1])
+		} else {
+			c = r.headCommit()
+			if c == nil {
+				r.fail("no commits yet")
+			}
+		}
+		r.resetHard(c)
+		r.p("HEAD is now at %s %s", short(c.id), c.msg)
+	default:
+		r.fail("unknown command '%s'", cmd)
+	}
+}
+
+func (r *Repo) resetHard(c *Commit) {
+	for n := range r.index {
+		delete(r.work, n)
+	}
+	for n := range r.headTree() {
+		delete(r.work, n)
+	}
+	for n, v := range c.tree {
+		r.work[n] = v
+	}
+	r.index = copyTree(c.tree)
+	r.advance(c)
+	r.mergeHd, r.mergeBr = "", ""
+	r.conflict = map[string]bool{}
+}
+
+func main() {
+	data, _ := io.ReadAll(bufio.NewReader(os.Stdin))
+	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	var out strings.Builder
+	defer func() { os.Stdout.WriteString(out.String()) }()
+	r := &Repo{out: &out, commits: map[string]*Commit{}, branches: map[string]string{"main": ""}, tags: map[string]string{}, head: "main", index: Tree{}, work: Tree{}, conflict: map[string]bool{}}
+	pos := 0
+	for pos < len(lines) {
+		ln := strings.TrimRight(lines[pos], " \t")
+		pos++
+		if strings.TrimSpace(ln) == "" || strings.HasPrefix(strings.TrimSpace(ln), "#") {
+			continue
+		}
+		out.WriteString("> " + ln + "\n")
+		f := strings.Fields(ln)
+		rest := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(ln), f[0]))
+		func() {
+			defer func() {
+				if x := recover(); x != nil {
+					if e, ok := x.(Err); ok {
+						out.WriteString("error: " + e.msg + "\n")
+						return
+					}
+					panic(x)
+				}
+			}()
+			r.run(f[0], f[1:], rest, lines, &pos)
+		}()
+	}
+}

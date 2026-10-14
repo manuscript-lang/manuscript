@@ -1,7 +1,0 @@
-[
- {
-  "name": "basic",
-  "stdin": "clean /a/./b/../c//d/\nclean ../x/../../y\njoin a b/../c /d\nresolve /home/me ../you/./f.txt\nrel /a/b /a/c/d\nbase /a/b.tar.gz\ndir /a/b/\next /a/b.tar.gz\ncommon /a/b/c /a/b/d /a/e\nfrob\n",
-  "stdout": "/a/c/d\n../../y\na/c/d\n/home/you/f.txt\n../c/d\nb.tar.gz\n/a/b\n.gz\n/a\nerror: bad command\n"
- }
-]
