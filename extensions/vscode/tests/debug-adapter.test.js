@@ -169,3 +169,27 @@ test('primitive and legacy List backing renders elements and rewrites watches', 
     assert.deepEqual(await adapter.valueChildren(adapter.handles.get(rendered.variablesReference),{}),[]);
   }
 });
+
+test('requests after the target ends get clear answers instead of pipe errors', async () => {
+  const output = new PassThrough(); const messages = [];
+  const parser = new Framing(message => messages.push(message));
+  output.on('data', bytes => parser.push(bytes));
+  const adapter = new ManuscriptAdapter(output);
+  adapter.receive({ type: 'event', event: 'terminated', body: {} });
+  assert.equal(adapter.ended, true);
+  const ask = async (seq, command) => { await adapter.request({ seq, type: 'request', command, arguments: {} }); return messages.find(m => m.request_seq === seq); };
+  for (const [seq, command] of [[1, 'next'], [2, 'continue'], [3, 'stepIn'], [4, 'pause']]) {
+    const reply = await ask(seq, command);
+    assert.equal(reply.success, false);
+    assert.match(reply.message, /the debuggee has exited/);
+  }
+  const threads = await ask(5, 'threads');
+  assert.equal(threads.success, false);
+  assert.match(threads.message, /session has ended/);
+  assert.doesNotMatch(JSON.stringify(messages), /TypeError|undefined/);
+  for (const [seq, command] of [[6, 'terminate'], [7, 'disconnect']]) {
+    const reply = await ask(seq, command);
+    assert.equal(reply.success, true);
+    assert.equal(reply.command, command);
+  }
+});
