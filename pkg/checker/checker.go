@@ -47,6 +47,7 @@ type checker struct {
 	returnInference         *callbackReturns
 	inferenceVariables      map[string]bool
 	checkedArguments        map[*syntax.Expression]checkedArgument
+	contextualCollections   map[*syntax.Expression]collectionContext
 	function, serial, loops int
 	testFunction            int
 	rejectedNames           map[string]bool
@@ -556,7 +557,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		var expected *Type
 		if s.Type != nil {
 			expected = c.resolve(s.Type, false)
-			c.wellFormed(expected, s.Type.Pos, map[string]bool{})
+			c.wellFormed(expected, s.Type.Pos, map[*Type]bool{})
 		}
 		before := len(c.Diagnostics)
 		info := c.expression(s.Value, expected)
@@ -842,7 +843,7 @@ func (c *checker) matchContract(pos syntax.Position, arms []syntax.Arm, info *In
 				if len(target.Def.Variables) > 0 && arm.Path.Kind != syntax.KindApply {
 					c.error(arm.Pos, "type", "concrete type pattern requires explicit type arguments; write e.g. Box[Int]")
 				}
-				c.wellFormed(target, arm.Pos, map[string]bool{})
+				c.wellFormed(target, arm.Pos, map[*Type]bool{})
 				if !c.implements(target, &contract) {
 					c.error(arm.Pos, "type", target.String()+" does not implement "+contract.String())
 				}
@@ -885,7 +886,7 @@ func (c *checker) resolveArguments(args []*syntax.Type) []*Type {
 	var result []*Type
 	for _, a := range args {
 		t := c.resolve(a, false)
-		c.wellFormed(t, a.Pos, map[string]bool{})
+		c.wellFormed(t, a.Pos, map[*Type]bool{})
 		result = append(result, t)
 	}
 	return result
@@ -963,11 +964,22 @@ func (c *checker) contextual(e *syntax.Expression) bool {
 		}
 	}
 	if e.Kind == syntax.KindList || e.Kind == syntax.KindMap {
+		if previous, ok := c.contextualCollections[e]; ok && previous.scope == c.scope && previous.module == c.module {
+			return previous.contextual
+		}
+		contextual := true
+		defer func() {
+			if c.contextualCollections == nil {
+				c.contextualCollections = map[*syntax.Expression]collectionContext{}
+			}
+			c.contextualCollections[e] = collectionContext{scope: c.scope, module: c.module, contextual: contextual}
+		}()
 		if len(e.Elements) == 0 {
 			return true
 		}
 		for _, a := range e.Elements {
 			if !c.contextual(a) {
+				contextual = false
 				return false
 			}
 		}

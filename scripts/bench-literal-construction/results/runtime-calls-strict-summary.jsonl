@@ -1,0 +1,2 @@
+{"gc": "100", "variant": "strict", "pairs": 12, "ratio": 1.2693294423910966, "lower95": 1.2364947756925846, "upper95": 1.3141131032805649, "all_slower": true}
+{"gc": "50", "variant": "strict", "pairs": 12, "ratio": 1.2399341597583429, "lower95": 1.2139911493749085, "upper95": 1.2626110340666872, "all_slower": true}

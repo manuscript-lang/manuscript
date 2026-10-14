@@ -41,6 +41,9 @@ func (g *generator) irValue(x ir.Expr) ast.Expr {
 		}
 		return runtimeCall("Text", values...)
 	case ir.List:
+		if value := g.largeListLiteral(x); value != nil {
+			return value
+		}
 		if value := g.debugListLiteral(x); value != nil {
 			return value
 		}

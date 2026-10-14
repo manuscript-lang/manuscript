@@ -5,7 +5,7 @@ weight = 94
 
 # Source guarantees and Go representations
 
-A Go value must preserve the behavior promised by its Manuscript type. For example, generated Int arithmetic must detect overflow, and generated collections must prevent mutation through an alias. The compiler and runtime enforce guarantees that unrestricted Go values do not provide on their own.
+A Go value must preserve the behavior promised by its Manuscript type. For example, generated Int arithmetic must detect overflow, and generated collections must preserve shared mutation through aliases. The compiler and runtime enforce guarantees that unrestricted Go values do not provide on their own.
 
 The frontend enforces semantics that Go representations do not provide:
 
@@ -54,3 +54,33 @@ Generic implementation bodies use checked substitutions; Go method selection can
 Int division/remainder overflow handling, Float non-finite outcomes, Decimal underflow/overflow, and checked truncation conversions follow [runtime numeric outcomes](../../../core-language/basics/numbers-and-booleans.md#runtime-numeric-outcomes), including parameterized runtime operands. Unchecked Go casts or a decimal package's defaults do not establish these semantics.
 
 See [foreign conversions](../adapters/value-conversion.md), [type checking](../frontend/type-checker.md), and [scope and capture checking](../frontend/scope-checker.md).
+
+## Large List literals
+
+Optimized lowering treats List literals with more than 1,024 elements separately
+from small expressions. Complete checked Int, Float, Bool and String literals
+use private typed constant data and the runtime's fresh-copy constructors. Int
+remains signed 64-bit and Float remains binary64. Unary numeric literals use
+those same checked widths; private initialization retains negative Float zero,
+including underflow rounded to zero. Data tables never become source List
+backing, and records, nested collections, Decimal and effectful expressions
+never become shared global elements.
+
+Other large literals allocate one fresh sized List header and backing, then fill
+it through initialization helpers of at most 64 elements. Each element finishes
+before the next begins. The runtime initialization setters add no cancellation
+checkpoints; source expressions retain their existing checkpoints, fault sites,
+cleanup and enclosing return/try/loop exits. The completed List is published only
+after `FinishListInitialization`. Typed and generic paths use the runtime's
+authoritative storage rather than accessing storage fields from lowering.
+Deferred primitive IR operands consume the canonical scalar lowering context.
+Known calls use the same native entry, argument conversions and source guard as
+other typed scalar operations; literal initialization retains that boundary.
+
+Explicit Debug keeps its existing literal policy. Compiler callers selecting a
+native build kind before lowering should use `CompileSourceForBuild` or
+`CompileFileForBuild`; builders continue to honor the supplied `Result.Source`,
+including caller edits. The Result layout and source collection APIs do not
+change. Generated Go and build pins change, so update strict project pins with
+`ms lock ms.toml` after upgrading. String/List/Bytes `slice` retains its strict
+Result contract; source callers still handle or unwrap that result.

@@ -21,6 +21,9 @@ def main():
     parser.add_argument("--output", default=".artifacts/debug-literals")
     parser.add_argument("--sizes", default="1024,1025,4000,16000,100000")
     parser.add_argument("--count", type=int, default=3)
+    parser.add_argument("--elements", default="scalar", choices=("scalar", "calls"))
+    parser.add_argument("--build-type", default="Debug",
+                        choices=("Debug", "Release", "RelWithDebInfo", "MinSizeRel"))
     args = parser.parse_args()
     root = Path(args.output).resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -28,9 +31,11 @@ def main():
     for n in sizes:
         directory = root / str(n)
         directory.mkdir(exist_ok=True)
-        source = ('import List from "@std/collections.ms"\n'
+        prefix = 'fn tick() -> Int: 7\n' if args.elements == "calls" else ""
+        elements = ("tick()" for _ in range(n)) if args.elements == "calls" else (str(i) for i in range(n))
+        source = ('import List from "@std/collections.ms"\n' + prefix +
                   'fn values() -> List[Int]:\n    return ['
-                  + ", ".join(str(i) for i in range(n)) + ']\n'
+                  + ", ".join(elements) + ']\n'
                   'export fn main() -> Int:\n'
                   f'    return values().length() - {n}\n')
         (directory / "source.ms").write_text(source)
@@ -53,7 +58,7 @@ def main():
                     with (directory / (name + ".build.log")).open("w") as file:
                         child = subprocess.Popen(
                             [binaries[name], "build", str(source),
-                             "--build-type", "Debug", "-o", str(binary)],
+                             "--build-type", args.build_type, "-o", str(binary)],
                             stdout=file, stderr=file,
                         )
                         _, status, usage = os.wait4(child.pid, 0)

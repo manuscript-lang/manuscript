@@ -1,0 +1,6 @@
+{"rep": 0, "n": 2200, "variant": "baseline", "wall": 5.328701273000661, "rss": 752552, "exit": 0, "size": 7430292}
+{"rep": 0, "n": 2200, "variant": "prototype", "wall": 2.6743110020006498, "rss": 362308, "exit": 0, "size": 6201528}
+{"rep": 1, "n": 2200, "variant": "prototype", "wall": 2.350189836000027, "rss": 335232, "exit": 0, "size": 6201492}
+{"rep": 1, "n": 2200, "variant": "baseline", "wall": 4.6867927260000215, "rss": 1002632, "exit": 0, "size": 7430292}
+{"rep": 2, "n": 2200, "variant": "baseline", "wall": 3.956097585999487, "rss": 871232, "exit": 0, "size": 7430292}
+{"rep": 2, "n": 2200, "variant": "prototype", "wall": 2.1895443339999474, "rss": 331612, "exit": 0, "size": 6201492}

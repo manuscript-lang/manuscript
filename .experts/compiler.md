@@ -169,3 +169,20 @@ Verified: executable manifests previously required an explicit entry and had no 
 Apply when: changing manifest modes, project discovery, editor overlays, or entry validation.
 Evidence: [manifest validation](../pkg/project/manifest.go), [graph loading](../pkg/frontend/modules.go), [library contracts](../documentation/developer-tooling/builds/project-configuration.md#library-projects-and-copied-dependencies), and [native regressions](../tests/e2e/library_project_test.go).
 Verify: an omitted entry checks unimported modules and executes their tests; an explicit bad entry still fails. Check unsaved unimported library files, canonical symlink entry identities, confined alias targets, and test cache invalidation after an unimported source edit. `ms.lock` pins build inputs and never claims to pin copied package content.
+
+### Nested collection checking reuses complete evidence
+
+Verified: nested collection literals first inferred independent children, then
+rebuilt the same trees under their inferred types. Combined with repeated
+context classification and type comparisons, this made List checking cubic.
+Nested Map bound walks additionally serialized every suffix type repeatedly.
+Reuse complete same-type child evidence, scope contextual classification by
+lexical identity, and visit bound graphs by checked type pointers. A literal
+child owns its bound diagnostics; traversing it again at each parent duplicates
+failures. Different callback labels, generic contexts and conversions still need
+their ordinary checks. The parser's source nesting guard remains independent.
+Evidence: [nested identity/context/allocation and bound-diagnostic regressions](../pkg/checker/collection_inference_test.go)
+and [direct-AST checker runner](../scripts/bench-nested-literals/main.go).
+Verify: doubling depth grows allocations approximately linearly; both 4K List
+and Map ASTs terminate, nested empty lists report one missing leaf context, and
+each invalid Map key reports at its own use site.
