@@ -787,6 +787,7 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 		setArmBindings(arm, nil)
 		name := arm.Path.Text
 		fields := []Param{}
+		unknownArm := false
 		if name == "_" {
 			if wildcard || index != len(arms)-1 || len(seen) == len(cases) {
 				c.error(arm.Pos, "type", "unreachable wildcard or wildcard is not last; keep one '_' arm at the end, and only when cases remain")
@@ -808,17 +809,18 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 			}
 			if !found {
 				unknownCase = true
+				unknownArm = true
 				if len(arm.Names) == 0 && name != "" && !(name[0] >= 'A' && name[0] <= 'Z') {
 					c.error(arm.Pos, "resolution", "'"+name+"' is not a case of "+info.Type.Name+"; use '_' for a catch-all arm (it cannot bind a name); cases: "+list(caseNames(info.Type), 12))
 				} else {
-					c.error(arm.Pos, "resolution", "unknown case "+name+" of "+info.Type.Name+"; cases: "+list(caseNames(info.Type), 12))
+					c.error(arm.Pos, "resolution", "unknown case "+name+" of "+info.Type.Name+"; cases: "+list(caseNames(info.Type), 12)+didYouMean(name, caseNames(info.Type)))
 				}
 			}
 			if seen[name] || wildcard {
 				c.error(arm.Pos, "type", "duplicate or unreachable case "+name+"; each case may be matched once and before any '_' arm")
 			}
 			seen[name] = true
-			if len(fields) != len(arm.Names) {
+			if found && len(fields) != len(arm.Names) {
 				c.error(arm.Pos, "type", fmt.Sprintf("case payload arity mismatch; %s has %d payload fields, found %d bindings (use _ to ignore one)", name, len(fields), len(arm.Names)))
 			}
 		}
@@ -829,6 +831,9 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 			var b *Binding
 			if name != "_" && i < len(fields) {
 				b = c.bind(name, fields[i].Type, false, arm.Pos)
+			} else if name != "_" && unknownArm {
+				// the unknown case was already reported; keep its names bound
+				b = c.bind(name, primitive("<invalid>"), false, arm.Pos)
 			}
 			setArmBindings(arm, append(armBindingsOf(arm), b))
 		}
