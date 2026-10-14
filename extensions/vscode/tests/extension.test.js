@@ -112,3 +112,12 @@ test('restart recovers from a client whose start failed', async () => {
   assert.equal(clients[1].running, true);
   await extension.deactivate();
 });
+
+test('language configuration indents block openers and dedents only else', () => {
+  const rules = require('../language-configuration.json').indentationRules;
+  const increase = new RegExp(rules.increaseIndentPattern), decrease = new RegExp(rules.decreaseIndentPattern);
+  for (const line of ['fn main():', 'if x: # note', '    else:']) assert.ok(increase.test(line), line);
+  for (const line of ['# note:', '    # heading:', 'let x = 1']) assert.ok(!increase.test(line), line);
+  assert.ok(decrease.test('    else if y:'));
+  assert.ok(!decrease.test('    case Done'));
+});
