@@ -18,6 +18,7 @@ import (
 
 	"regexp"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unicode/utf8"
@@ -48,32 +49,54 @@ var LibraryMethods = []LibraryMethod{
 	{"System", "environment", "Optional[String]", []LibraryParam{{"name", "String"}}},
 }
 
-func libraryMethod(receiver, name string, body func(*Execution, string, []Value) Value) Function {
-	for _, spec := range LibraryMethods {
-		if spec.Receiver == receiver && spec.Name == name {
-			labels := []string{}
-			for _, p := range spec.Params {
-				labels = append(labels, p.Name)
-			}
-			result := libraryRuntimeType(spec.Result)
-			implementation := func(ctx *Execution, a []Value) Value {
-				normalized, ok := nativeOptions(name, spec.Params, a)
-				if !ok {
-					return nativeOptionFailure(result, name, spec.Params, a)
-				}
-				return body(ctx, result, normalized)
-			}
-			if receiver == "ProcessControl" && name == "watch_signals" {
-				return NewAcquisition(labels, result, implementation, libraryDisposeResource)
-			}
-			if receiver == "FileSystem" && (name == "open" || name == "open_flags" || name == "open_directory" || name == "watch" || name == "watch_native" || name == "temporary") {
-				return NewAcquisition(labels, result, implementation, libraryDisposeResource)
-			}
-			return NewFunction(labels, result, implementation)
-		}
+// libraryAcquiring names the methods registered with registerAcquiringMethods:
+// their results are resources that cancellation must release if undelivered.
+var libraryAcquiring = map[[2]string]bool{}
+
+// registerAcquiringMethods registers methods whose Ok result owns a resource.
+func registerAcquiringMethods(methods ...LibraryMethod) {
+	for _, m := range methods {
+		libraryAcquiring[[2]string{m.Receiver, m.Name}] = true
 	}
-	Panic("unknown library method " + receiver + "." + name)
-	return Function{}
+	LibraryMethods = append(LibraryMethods, methods...)
+}
+
+var (
+	libraryIndexOnce sync.Once
+	libraryIndex     map[[2]string]LibraryMethod
+)
+
+func libraryMethod(receiver, name string, body func(*Execution, string, []Value) Value) Function {
+	libraryIndexOnce.Do(func() {
+		libraryIndex = make(map[[2]string]LibraryMethod, len(LibraryMethods))
+		for _, spec := range LibraryMethods {
+			key := [2]string{spec.Receiver, spec.Name}
+			if _, dup := libraryIndex[key]; !dup {
+				libraryIndex[key] = spec
+			}
+		}
+	})
+	spec, found := libraryIndex[[2]string{receiver, name}]
+	if !found {
+		Panic("unknown library method " + receiver + "." + name)
+		return Function{}
+	}
+	labels := []string{}
+	for _, p := range spec.Params {
+		labels = append(labels, p.Name)
+	}
+	result := libraryRuntimeType(spec.Result)
+	implementation := func(ctx *Execution, a []Value) Value {
+		normalized, ok := nativeOptions(name, spec.Params, a)
+		if !ok {
+			return nativeOptionFailure(result, name, spec.Params, a)
+		}
+		return body(ctx, result, normalized)
+	}
+	if libraryAcquiring[[2]string{receiver, name}] {
+		return NewAcquisition(labels, result, implementation, libraryDisposeResource)
+	}
+	return NewFunction(labels, result, implementation)
 }
 func libraryRuntimeType(s string) string { // qualified runtime keys, preserving intrinsic identifiers
 	var b strings.Builder

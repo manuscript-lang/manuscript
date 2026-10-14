@@ -16,7 +16,13 @@ import (
 )
 
 func init() {
-	LibraryMethods = append(LibraryMethods, LibraryMethod{"FileSystem", "open_flags", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "Int"}, {"mode", "Int"}}})
+	registerAcquiringMethods(
+		LibraryMethod{"FileSystem", "open_flags", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "Int"}, {"mode", "Int"}}},
+		LibraryMethod{"FileSystem", "open", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "String"}, {"mode", "Int"}}},
+		LibraryMethod{"FileSystem", "open_directory", libraryResult("Directory", "FileSystemError"), []LibraryParam{{"path", "String"}}},
+		LibraryMethod{"FileSystem", "watch", libraryResult("FileWatcher", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}, {"interval", "Duration"}, {"max_entries", "Optional[Int]"}}},
+		LibraryMethod{"FileSystem", "temporary", libraryResult("TemporaryDirectory", "FileSystemError"), []LibraryParam{{"prefix", "String"}}},
+	)
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Directory", "path", "String", nil},
 		{"FileHandle", "append_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
@@ -27,12 +33,8 @@ func init() {
 		{"FileSystem", "truncate", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"size", "Int"}}},
 		{"FileSystem", "set_times", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"accessed", "Timestamp"}, {"modified", "Timestamp"}, {"follow_links", "Bool"}}},
 		{"FileSystem", "hard_link", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}}},
-		{"FileSystem", "open", libraryResult("FileHandle", "FileSystemError"), []LibraryParam{{"path", "String"}, {"flags", "String"}, {"mode", "Int"}}},
-		{"FileSystem", "open_directory", libraryResult("Directory", "FileSystemError"), []LibraryParam{{"path", "String"}}},
 		{"FileSystem", "copy_tree", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}, {"replace", "Bool"}, {"max_entries", "Optional[Int]"}, {"max_bytes", "Optional[Int]"}}},
 		{"FileSystem", "glob", libraryResult("List[String]", "FileSystemError"), []LibraryParam{{"path", "String"}, {"pattern", "String"}, {"max_entries", "Optional[Int]"}}},
-		{"FileSystem", "watch", libraryResult("FileWatcher", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}, {"interval", "Duration"}, {"max_entries", "Optional[Int]"}}},
-		{"FileSystem", "temporary", libraryResult("TemporaryDirectory", "FileSystemError"), []LibraryParam{{"prefix", "String"}}},
 		{"FileHandle", "close", "Unit", []LibraryParam{}},
 		{"FileHandle", "read", libraryResult("Optional[Bytes]", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int]"}}},
 		{"FileHandle", "write", libraryResult("Int", "FileSystemError"), []LibraryParam{{"data", "Bytes"}}},
