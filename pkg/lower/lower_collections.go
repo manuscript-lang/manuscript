@@ -2,6 +2,7 @@ package lower
 
 import (
 	"go/ast"
+	"go/token"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
@@ -76,6 +77,19 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "String" {
 			return orderedCall(runtimeName("StringByteLength"), ident("ctx"), g.expression(e.Left.Left))
 		}
+	case "optional/is_some", "optional/is_none":
+		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/Optional" {
+			some := orderedCall(runtimeName("OptionalIsSome"), ident("ctx"), g.expression(e.Left.Left))
+			if callee.Method.Native == "optional/is_none" {
+				return &ast.UnaryExpr{Op: token.NOT, X: some}
+			}
+			return some
+		}
+	case "optional/unwrap_or":
+		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/Optional" {
+			receiver := sequence(g.expression(e.Left.Left))
+			return orderedCall(runtimeName("OptionalUnwrapOr"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
+		}
 	case "optional/unwrap":
 		if len(arguments) == 0 && g.listAtMatch(e.Left.Left) {
 			// list.at(i).unwrap() needs no Optional: read the element and fault
@@ -93,11 +107,12 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 // nativeKinds are the receiver types whose library members bind per call site.
 // Their runtime values map to the kind of the same name in the library table.
 var nativeKinds = map[string]struct{ kind, module string }{
-	"String":     {"String", "string/"},
-	"@std/Bytes": {"Bytes", "bytes/"},
-	"@std/List":  {"List", "collections/"},
-	"@std/Map":   {"Map", "collections/"},
-	"@std/Set":   {"Set", "collections/"},
+	"String":        {"String", "string/"},
+	"@std/Bytes":    {"Bytes", "bytes/"},
+	"@std/Optional": {"Optional", "optional/"},
+	"@std/List":     {"List", "collections/"},
+	"@std/Map":      {"Map", "collections/"},
+	"@std/Set":      {"Set", "collections/"},
 }
 
 // boundNativeCall lowers a call of a library member on a receiver of fixed

@@ -242,3 +242,22 @@ fn run(items: List[Int]) -> List[Int]:
 		t.Fatalf("lambda does not borrow arguments\n%s", r.Source)
 	}
 }
+
+func TestOptionalMembersLowerWithoutDynamicDispatch(t *testing.T) {
+	r := compileSource("optional.ms", `fn run(o: Optional[Int]) -> Int:
+    if o.is_some():
+        return o.unwrap_or(fallback: 0)
+    return 1
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.OptionalIsSome(", "rt.OptionalUnwrapOr("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, `"is_some"`) {
+		t.Fatalf("Optional member still dispatches by name\n%s", r.Source)
+	}
+}
