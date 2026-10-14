@@ -19,16 +19,23 @@ func primitiveList(t *checker.Type) (string, string) {
 }
 
 // Eligibility probes never lower operands: lowering registers source markers.
-func (g *generator) listUnwrapTarget(e *syntax.Expression) (string, string) {
+func (g *generator) listUnwrapCall(e *syntax.Expression) *syntax.Expression {
 	if e.Kind != syntax.KindCall || e.Left.Kind != syntax.KindMember {
-		return "", ""
+		return nil
 	}
 	info := g.program.Info(e.Left)
 	if info == nil || info.Method == nil || info.Method.Contract != nil || info.Method.Native != "optional/unwrap" || len(g.program.Info(e).Arguments) != 0 {
-		return "", ""
+		return nil
 	}
 	at := e.Left.Left
 	if !g.listAtMatch(at) {
+		return nil
+	}
+	return at
+}
+func (g *generator) listUnwrapTarget(e *syntax.Expression) (string, string) {
+	at := g.listUnwrapCall(e)
+	if at == nil {
 		return "", ""
 	}
 	return primitiveList(g.program.Info(at.Left.Left).Type)
@@ -59,14 +66,17 @@ func (g *generator) primitiveCollectionType(e *syntax.Expression) string {
 }
 
 func (g *generator) primitiveListUnwrap(e *syntax.Expression) ast.Expr {
-	_, name := g.listUnwrapTarget(e)
-	if name == "" {
+	at := g.listUnwrapCall(e)
+	if at == nil {
 		return nil
 	}
-	at := e.Left.Left
+	_, name := primitiveList(g.program.Info(at.Left.Left).Type)
 	args := g.program.Info(at).Arguments
 	receiver := sourceAt(at.Left.Left.Pos, g.expression(at.Left.Left))
 	index := g.scalar(args[0].Value, "int64")
+	if name == "" {
+		return runtimeCall("ListAtUnwrap", ident("ctx"), receiver, index, address(ident("sourcePosition")), textLiteral(at.Pos.String()), textLiteral(e.Pos.String()))
+	}
 	optional := g.locatedOperation(at, runtimeName("ListAt"+name), ident("ctx"), receiver, index)
 	return call(selector(optional, "Unwrap"), sourceAt(e.Pos, ident("ctx")))
 }

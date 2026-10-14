@@ -112,7 +112,7 @@ func testPrimitiveListRange[T comparable](t *testing.T, initial []T, create func
 					operation = "prepend"
 					args = []Argument{{"value", initial[2]}}
 				case "reverse":
-					operation = "reverse"
+					operation = "reverse_in_place"
 				case "remove":
 					operation = "remove"
 					args = []Argument{{"index", int64(1)}}
@@ -524,5 +524,61 @@ func TestListAtPartsUsesAuthoritativePrimitiveBacking(t *testing.T) {
 				t.Fatalf("%s index %d changed absence", test.typ, index)
 			}
 		}
+	}
+}
+
+type fusedLookupContext struct {
+	context.Context
+	checks, cancelAt int
+}
+
+func (c *fusedLookupContext) Err() error {
+	c.checks++
+	if c.cancelAt > 0 && c.checks >= c.cancelAt {
+		return context.Canceled
+	}
+	return c.Context.Err()
+}
+
+func TestGenericListAtUnwrapRetainsCheckpointsAndIdentity(t *testing.T) {
+	payload := NewIntList("@std/List[Int]", []int64{1000})
+	values := NewList("@std/List[@std/List[Int]]", []Value{payload})
+	for _, index := range []int64{0, -1, 1, -2, math.MinInt64} {
+		for cancelAt := 0; cancelAt <= 4; cancelAt++ {
+			observe := func(fused bool) (Value, any, string, int) {
+				ctx := RootExecution()
+				defer FinishExecution(ctx)
+				counter := &fusedLookupContext{Context: context.Background(), cancelAt: cancelAt}
+				ctx.Context = counter
+				position := "operands"
+				var value Value
+				failure := recovered(func() {
+					if fused {
+						value = ListAtUnwrap(ctx, values, index, &position, "at", "unwrap")
+						return
+					}
+					position = "at"
+					optional := ListAt(ctx, values, index, "@std/Optional[@std/List[Int]]")
+					position = "unwrap"
+					value = OptionalUnwrap(ctx, optional)
+				})
+				return value, failure, position, counter.checks
+			}
+			a, af, ap, ac := observe(false)
+			b, bf, bp, bc := observe(true)
+			if a != b || !reflect.DeepEqual(af, bf) || ap != bp || ac != bc {
+				t.Fatalf("index %d/cancel %d changed lookup: %v/%v %v/%v %s/%s %d/%d", index, cancelAt, a, b, af, bf, ap, bp, ac, bc)
+			}
+		}
+	}
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	position := ""
+	if allocations := testing.AllocsPerRun(10, func() {
+		if ListAtUnwrap(ctx, values, 0, &position, "at", "unwrap") != payload {
+			panic("payload identity")
+		}
+	}); allocations != 0 {
+		t.Fatalf("generic pointer lookup allocated %v", allocations)
 	}
 }

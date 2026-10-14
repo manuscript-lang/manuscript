@@ -250,3 +250,17 @@ func BenchmarkForEachBorrowedArguments(b *testing.B) {
 		}
 	}
 }
+
+func TestDirectSourceReturnRetainsCancellationDelivery(t *testing.T) {
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	var cancel context.CancelFunc
+	ctx.Context, cancel = context.WithCancel(ctx.Context)
+	failure := recovered(func() { Return(int64(7)) })
+	cancel()
+	expected := recovered(func() { CheckCancelled(ctx) })
+	got := recovered(func() { ControlResult(ctx, failure, "Int") })
+	if got == nil || !reflect.DeepEqual(got, expected) {
+		t.Fatalf("recovered direct return lost delivery: %v/%v", got, expected)
+	}
+}

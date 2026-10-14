@@ -76,6 +76,7 @@ func ControlResult(ctx *Execution, failure any, result string) (Value, bool) {
 	switch c := failure.(type) {
 	case sourceReturn:
 		controlPanics.Add(-1)
+		CheckCancelled(ctx)
 		return c.value, true
 	case propagation:
 		controlPanics.Add(-1)

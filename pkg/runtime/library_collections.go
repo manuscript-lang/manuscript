@@ -39,6 +39,29 @@ func ListAtParts(ctx *Execution, receiver Value, index Value) (Value, bool) {
 	return nil, false
 }
 
+// ListAtUnwrap consumes a generic immediate lookup without constructing an
+// escaping Optional. Both original operations retain their source sites and
+// admission/delivery checkpoints; the payload keeps its ordinary Value ABI.
+func ListAtUnwrap(ctx *Execution, receiver Value, index int64, position *string, atSite, unwrapSite string) Value {
+	*position = atSite
+	CheckCancelled(ctx)
+	list := receiver.(*List)
+	i := relativeIndex(list.Len(), index)
+	present := i >= 0 && i < int64(list.Len())
+	var value Value
+	if present {
+		value = list.Get(int(i))
+	}
+	CheckCancelled(ctx)
+	*position = unwrapSite
+	CheckCancelled(ctx)
+	if !present {
+		return Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+	}
+	CheckCancelled(ctx)
+	return value
+}
+
 // OptionalTag is the case tag of an Optional whose presence is present.
 func OptionalTag(present bool) string {
 	if present {
