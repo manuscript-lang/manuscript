@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Standard library: documented one failure-mode rule (absence is `Optional`, invalid external data is `Result`, violated preconditions fault) in the errors and limits contract (#168).
 - Debugging: `ms debug` and `ms dap` embed Delve; VS Code no longer needs `dlv`.
 - Tooling: `ms run --watch` and `ms test --watch`; versioned `--json` results for build, profile, fmt and test; `--flag=value` for value-taking options; check, lint and doc accept multiple inputs.
 - CLI: `-o` directories are checked before building; `ms.lock` mismatch errors name the changed field; `ms lsp` rejects arguments.
