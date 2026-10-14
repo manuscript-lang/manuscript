@@ -127,3 +127,19 @@ fn generic[T](xs: List[T], value: T) -> List[T]:
 		t.Errorf("generic call must not bind statically\n%s", r.Source)
 	}
 }
+
+func TestStandardFunctionsAreResolvedOncePerCallSite(t *testing.T) {
+	r := compileSource("standard.ms", `import {stdout} from "@std/io.ms"
+
+fn f() -> Int:
+    let out = stdout()
+    return 0
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	hoisted := regexp.MustCompile(`specialized\d+\.Get\(func\(\) rt\.Value \{\s*return rt\.StandardFunction\("io/stdout"`)
+	if !hoisted.MatchString(r.Source) {
+		t.Errorf("standard function rebuilt per call\n%s", r.Source)
+	}
+}
