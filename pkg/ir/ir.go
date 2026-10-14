@@ -107,12 +107,45 @@ type Binary struct {
 type Member struct {
 	Pos          syntax.Position
 	Receiver     Expr
+	ReceiverPos  syntax.Position
 	ReceiverType *checker.Type
 	Name         string
 	Info         *checker.Info
 }
 
+// Argument is one call argument. Optional is the Optional type a plain value
+// is wrapped into when the parameter accepts one.
+type Argument struct {
+	Pos      syntax.Position
+	Name     string
+	Value    Expr
+	Type     *checker.Type
+	Optional *checker.Type
+}
+
+// Call invokes Callee with Args, which are in the order the checker settled
+// on. A member callee is a Member, so its receiver and resolution are on the
+// node. Info holds the checker's facts for the call, including its result type
+// and whether it builds a record or alternative case.
+type Call struct {
+	Pos        syntax.Position
+	Callee     Expr
+	CalleePos  syntax.Position
+	CalleeType *checker.Type
+	Args       []Argument
+	Info       *checker.Info
+}
+
+// View converts Receiver to a contract view of its static type.
+type View struct {
+	Receiver     Expr
+	ReceiverType *checker.Type
+	Type         *checker.Type
+}
+
 func (Deferred) expr()       {}
+func (Call) expr()           {}
+func (View) expr()           {}
 func (Member) expr()         {}
 func (Local) expr()          {}
 func (Unary) expr()          {}

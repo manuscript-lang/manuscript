@@ -33,6 +33,10 @@ func (g *generator) irValue(x ir.Expr) ast.Expr {
 		return g.binary(x)
 	case ir.Member:
 		return g.member(x)
+	case ir.Call:
+		return g.call(x)
+	case ir.View:
+		return g.view(x)
 	case ir.UnitLiteral:
 		return unit()
 	case ir.Text:

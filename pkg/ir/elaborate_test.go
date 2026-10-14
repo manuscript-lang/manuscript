@@ -50,10 +50,22 @@ func TestLiteralsAreClassifiedByWrittenForm(t *testing.T) {
 }
 
 func TestUnmigratedOperandsStayDeferred(t *testing.T) {
-	program, e := elaborate(t, "fn id(n: Int) -> Int: n\nfn values() -> Bool: [id(1)].is_empty()\n")
+	program, e := elaborate(t, "fn values(xs: List[Int]) -> Bool: [xs[0]].is_empty()\n")
 	list := ir.NewElaborator(program).Value(e, program.Info(e)).(ir.List)
 	if _, ok := list.Items[0].(ir.Deferred); !ok {
+		t.Fatalf("index = %#v", list.Items[0])
+	}
+}
+
+func TestCallsCarryArgumentsAndCallee(t *testing.T) {
+	program, e := elaborate(t, "fn id(n: Int) -> Int: n\nfn values() -> Bool: [id(1)].is_empty()\n")
+	list := ir.NewElaborator(program).Value(e, program.Info(e)).(ir.List)
+	call, ok := list.Items[0].(ir.Call)
+	if !ok || len(call.Args) != 1 || call.Args[0].Name != "n" || call.Info.Symbol == nil {
 		t.Fatalf("call = %#v", list.Items[0])
+	}
+	if v, ok := call.Args[0].Value.(ir.IntLiteral); !ok || v.Value != 1 {
+		t.Fatalf("argument = %#v", call.Args[0].Value)
 	}
 }
 
