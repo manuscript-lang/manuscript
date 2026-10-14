@@ -391,10 +391,15 @@ func (g *generator) siblings(items []*syntax.Expression) []ast.Expr {
 	return out
 }
 
-// lambdaValue lowers a lambda, snapshotting its captured bindings.
-func (g *generator) lambdaValue(e *syntax.Expression, info *checker.Info) ast.Expr {
+func sortedCaptures(info *checker.Info) []*checker.Binding {
 	captures := append([]*checker.Binding{}, info.Captures...)
 	sort.Slice(captures, func(i, j int) bool { return captures[i].ID < captures[j].ID })
+	return captures
+}
+
+// lambdaValue lowers a lambda, snapshotting its captured bindings.
+func (g *generator) lambdaValue(e *syntax.Expression, info *checker.Info) ast.Expr {
+	captures := sortedCaptures(info)
 	var declarations []*ast.Field
 	var values []ast.Expr
 	old := map[*checker.Binding]string{}

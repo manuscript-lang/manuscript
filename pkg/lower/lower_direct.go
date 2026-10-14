@@ -37,6 +37,7 @@ type directFunction struct {
 func (g *generator) planDirect(functions []*checker.Symbol, options Options) {
 	g.direct = map[*checker.Symbol]*directFunction{}
 	g.directMethods = map[string]*directFunction{}
+	g.directOn = options.CPUProfile == "" && options.HeapProfile == "" && options.Trace == ""
 	if options.CPUProfile != "" || options.HeapProfile != "" || options.Trace != "" {
 		return
 	}
@@ -244,6 +245,9 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 	}
 	info := g.program.Info(e)
 	if direct, _ := g.directMethodTarget(e, info); direct != nil {
+		return direct
+	}
+	if direct := g.localClosureTarget(e, info); direct != nil {
 		return direct
 	}
 	if info.Symbol == nil || info.Constructor != nil || info.ErrorSource != nil {
