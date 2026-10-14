@@ -98,3 +98,32 @@ func TestNegationOfScalarsStaysTyped(t *testing.T) {
 		t.Errorf("dynamic negation\n%s", source)
 	}
 }
+
+func TestStaticNativeMembersBindOncePerCallSite(t *testing.T) {
+	r := compileSource("native.ms", `import {List, Set} from "@std/collections.ms"
+import StringBuilder from "@std/string.ms"
+
+fn f(xs: List[Int], text: String, seen: Set[Int]) -> String:
+    xs.set(index: 0, value: 1)
+    let doubled = seen.map(transform: fn(value: Int) -> Int: return value * 2)
+    let sb = StringBuilder()
+    sb.append(text.trim())
+    return sb.freeze()
+
+fn generic[T](xs: List[T], value: T) -> List[T]:
+    return xs.set(index: 0, value: value)
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{`BindNativeCall("List", "set"`, `BindNativeCall("String", "trim"`, `BindNativeCall("Set", "map"`, "StringBuilderAppend(", "StringBuilderFreeze("} {
+		if !strings.Contains(r.Source, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	// The generic receiver's scope is known only at run time, so it keeps
+	// ordinary dispatch.
+	if !strings.Contains(r.Source, `NativeMemberResult(`) || strings.Count(r.Source, `BindNativeCall("List", "set"`) != 1 {
+		t.Errorf("generic call must not bind statically\n%s", r.Source)
+	}
+}
