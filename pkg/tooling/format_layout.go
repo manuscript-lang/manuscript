@@ -555,7 +555,7 @@ func groupStatementExpressions(filename, source string) (string, error) {
 		if end < len(tokens) && tokens[end].Kind == ":" {
 			width++ // The condition's suite colon occupies a column too.
 		}
-		if (width > formatWidth && (booleans+operators > 0 || dots >= 2)) {
+		if width > formatWidth && (booleans+operators > 0 || dots >= 2) {
 			insert[from] += "("
 			insert[to] = ")" + insert[to]
 		}
