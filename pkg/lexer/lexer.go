@@ -222,7 +222,8 @@ func Lex(file, source string) (tokens []Token, err error) {
 				s.emit(string(b), string(b), p)
 				continue
 			}
-			s.fail(fmt.Sprintf("unexpected source character %q", b))
+			r, _ := utf8.DecodeRuneInString(s.source[s.offset:])
+			s.fail(fmt.Sprintf("unexpected source character %q", r))
 		}
 		if len(s.tokens) > lineStart {
 			last := s.tokens[len(s.tokens)-1]

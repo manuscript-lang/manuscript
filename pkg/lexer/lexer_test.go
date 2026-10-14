@@ -74,3 +74,10 @@ func TestLexicalBoundaries(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUnexpectedCharacterNamesWholeRune(t *testing.T) {
+	_, err := lexer.Lex("rune.ms", "let é = 1\n")
+	if err == nil || !strings.Contains(err.Error(), "'é'") {
+		t.Fatalf("diagnostic should quote the whole rune, got %v", err)
+	}
+}
