@@ -1234,7 +1234,8 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
     return block_value(
         context: context,
         text: first,
-        base: base,
+        # A scalar or anchor on its own line may continue at the same indentation.
+        base: base - 1,
         depth: depth,
         indentless: false
     )
