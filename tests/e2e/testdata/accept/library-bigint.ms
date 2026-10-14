@@ -14,7 +14,7 @@ fn verify_bigint() -> Result[Unit, BigIntError]:
     )
     if not (
         (
-            (large).multiply(right: large)
+            (large).multiply(other: large)
         ).to_string(radix: 10) == "340282366920938463463374607431768211456"
     ):
         return panic(message: "check failed")

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -93,6 +94,23 @@ func TestAnalysisLintAggregatesSourceAndHygiene(t *testing.T) {
 	status, stdout, stderr = invoke(t, "lint", "a.ms", "b.ms")
 	if status != 1 || stdout != "" || strings.Count(stderr, "MSL001") != 1 || !strings.Contains(stderr, "shared.ms:2:13") {
 		t.Fatalf("shared imported finding was duplicated: %d, %q, %q", status, stdout, stderr)
+	}
+}
+
+func TestLintOrdersSingleFileFindingsBySourcePosition(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	analysisFiles(t, root, map[string]string{
+		"a.ms": "fn f() -> Int:\n    return 0   \n\nfn g() -> Int:\n    let x = 1\n    return 2\n",
+	})
+	_, _, stderr := invoke(t, "lint", "a.ms")
+	last := 0
+	for _, line := range strings.Split(strings.TrimSpace(stderr), "\n") {
+		var row int
+		if _, err := fmt.Sscanf(line[strings.Index(line, "a.ms:")+len("a.ms:"):], "%d:", &row); err != nil || row < last {
+			t.Fatalf("findings are not ordered by position: %q", stderr)
+		}
+		last = row
 	}
 }
 

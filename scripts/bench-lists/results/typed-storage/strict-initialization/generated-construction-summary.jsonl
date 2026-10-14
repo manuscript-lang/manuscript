@@ -1,0 +1,4 @@
+{"gc": "100", "variant": "previous_initializer", "pairs": 12, "ratio": 1.2469003145528954, "lower95": 1.2282238179735692, "upper95": 1.2635835307113328, "all_slower": true}
+{"gc": "100", "variant": "strict_initializer", "pairs": 12, "ratio": 1.2575669720563876, "lower95": 1.2317611748618993, "upper95": 1.2832068811999906, "all_slower": true}
+{"gc": "50", "variant": "previous_initializer", "pairs": 12, "ratio": 1.2595673256744706, "lower95": 1.2316941401262378, "upper95": 1.2880890507584617, "all_slower": true}
+{"gc": "50", "variant": "strict_initializer", "pairs": 12, "ratio": 1.23096497864555, "lower95": 1.2101786466285804, "upper95": 1.2488846693436426, "all_slower": true}

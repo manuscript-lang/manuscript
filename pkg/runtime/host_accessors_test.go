@@ -64,7 +64,7 @@ func TestSourceTestsReceiveFreshHostRootsAndCleanup(t *testing.T) {
 		}
 		return Unit{}
 	})
-	if failed := RunTests([]Test{{"close and fault", first}, {"fresh root", second}}); failed != 1 {
+	if failed := RunTestsWith([]Test{{"close and fault", first}, {"fresh root", second}}, TestOptions{}); failed != 1 {
 		t.Fatalf("failed=%d, want exactly the intentional failure", failed)
 	}
 	if len(roots) != 2 || roots[0].Host == roots[1].Host {
@@ -74,7 +74,7 @@ func TestSourceTestsReceiveFreshHostRootsAndCleanup(t *testing.T) {
 		if !hostValue(ctx, "network").(View).Receiver.(*network).closed || !hostValue(ctx, "stdout").(View).Receiver.(*stream).closed {
 			t.Fatal("test roots survived joined test cleanup")
 		}
-		if len(hostValue(ctx, "arguments").(*List).Items) != 0 {
+		if len(hostValue(ctx, "arguments").(*List).Boxed()) != 0 {
 			t.Fatal("source test received CLI arguments")
 		}
 	}

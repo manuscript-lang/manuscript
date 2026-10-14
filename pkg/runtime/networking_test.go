@@ -9,13 +9,16 @@ import (
 	"encoding/pem"
 	"github.com/gorilla/websocket"
 	"io"
+	"log"
 	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -130,17 +133,17 @@ func TestNetworkingDNSRecordsAndClose(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(ctx, nil)
 	resolver := librarySuccess(t, n.Operation("with_resolver").Body(ctx, []Value{socket.LocalAddr().String()}))
-	for _, kind := range []string{"A", "a", "AAAA", "aaaa", "TXT", "txt", "MX", "mX", "NS", "nS", "PTR", "ptr", "SRV", "sRv"} {
+	for _, kind := range []string{"A", "a", "AAAA", "aaaa", "CNAME", "TXT", "txt", "MX", "mX", "NS", "nS", "PTR", "ptr", "SRV", "sRv"} {
 		name := "test."
 		if strings.EqualFold(kind, "PTR") {
 			name = "127.0.0.1"
 		}
-		records := librarySuccess(t, networkingInvoke(ctx, resolver, "resolve", name, kind, int64(8), Duration(time.Second))).(*List)
+		records := librarySuccess(t, networkingInvoke(ctx, resolver, "resolve", name, Alternative{"@std/DnsKind", strings.ToUpper(kind), nil}, int64(8), Duration(time.Second))).(*List)
 		if len(records.Items) == 0 {
 			t.Fatal(kind, "no records")
 		}
 		for _, item := range records.Items {
-			if got := item.(Record).Fields["kind"]; got != strings.ToUpper(kind) {
+			if got := item.(Record).Fields["kind"]; got.(Alternative).Tag != strings.ToUpper(kind) {
 				t.Fatalf("record kind = %s; want %s", got, strings.ToUpper(kind))
 			}
 		}
@@ -197,9 +200,9 @@ func TestNetworkingClientPoolingCookiesStreaming(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(ctx, nil)
 	client := librarySuccess(t, n.Operation("http_client").Body(ctx, []Value{networkingClientOptions()}))
-	headers := &Map{Type: "@std/Map[String][String]"}
+	headers := httpTestHeaders(&Map{Type: "@std/Map[String][String]"})
 	for i := 0; i < 2; i++ {
-		body := librarySuccess(t, networkingInvoke(ctx, client, "send", "GET", server.URL+"/redirect", headers, Bytes{}, int64(100), Duration(time.Second)))
+		body := librarySuccess(t, networkingInvoke(ctx, client, "request", libraryHTTPMethod("GET"), server.URL+"/redirect", headers, Bytes{}, int64(100), Duration(time.Second)))
 		var text strings.Builder
 		for {
 			part := librarySuccess(t, networkingInvoke(ctx, body, "read", int64(3))).(Alternative)
@@ -235,7 +238,7 @@ func TestNetworkingTLSVerificationAndHTTP2(t *testing.T) {
 	tlsOptions.Fields["roots_pem"] = roots
 	options.Fields["tls"] = tlsOptions
 	client := librarySuccess(t, n.Operation("http_client").Body(ctx, []Value{options}))
-	response := librarySuccess(t, networkingInvoke(ctx, client, "send", "GET", server.URL, &Map{Type: "@std/Map[String][String]"}, Bytes{}, int64(100), Duration(time.Second)))
+	response := librarySuccess(t, networkingInvoke(ctx, client, "request", libraryHTTPMethod("GET"), server.URL, httpTestHeaders(&Map{Type: "@std/Map[String][String]"}), Bytes{}, int64(100), Duration(time.Second)))
 	part := librarySuccess(t, networkingInvoke(ctx, response, "read", int64(100))).(Alternative)
 	if string(part.Fields[0].(Bytes).Items) != "HTTP/2.0" {
 		t.Fatal(part)
@@ -272,7 +275,7 @@ func TestNetworkingStreamingServerAndWebSocket(t *testing.T) {
 			}
 			return libraryOK("@std/Result[Unit][@std/HttpError]", Unit{})
 		}
-		librarySuccess(t, networkingInvoke(child, exchange, "send_headers", int64(200), &Map{Type: "@std/Map[String][@std/List[String]]"}))
+		librarySuccess(t, networkingInvoke(child, exchange, "send_headers", int64(200), httpTestHeaders(&Map{Type: "@std/Map[String][@std/List[String]]"})))
 		for {
 			part := librarySuccess(t, networkingInvoke(child, exchange, "read", int64(3))).(Alternative)
 			if part.Tag == "none" {
@@ -286,7 +289,7 @@ func TestNetworkingStreamingServerAndWebSocket(t *testing.T) {
 	address := networkingInvoke(ctx, server, "address").(string)
 	client := librarySuccess(t, n.Operation("http_client").Body(ctx, []Value{networkingClientOptions()}))
 	input := &networkingReadStream{data: []byte("bounded streaming upload")}
-	body := librarySuccess(t, networkingInvoke(ctx, client, "send_stream", "POST", "http://"+address, &Map{Type: "@std/Map[String][String]"}, ViewOf("@std/ReadStream", input), int64(1000), Duration(time.Second)))
+	body := librarySuccess(t, networkingInvoke(ctx, client, "request_stream", libraryHTTPMethod("POST"), "http://"+address, httpTestHeaders(&Map{Type: "@std/Map[String][String]"}), ViewOf("@std/ReadStream", input), int64(1000), Duration(time.Second)))
 	var out strings.Builder
 	for {
 		part := librarySuccess(t, networkingInvoke(ctx, body, "read", int64(4))).(Alternative)
@@ -300,7 +303,7 @@ func TestNetworkingStreamingServerAndWebSocket(t *testing.T) {
 		t.Fatal(out.String(), "borrowed input closed:", input.closed)
 	}
 	options := Record{"@std/WebSocketOptions", map[string]Value{"max_message_bytes": int64(32), "timeout": Duration(time.Second), "tls": networkingTLSOptions(), "compression": false}}
-	socket := librarySuccess(t, n.Operation("web_socket").Body(ctx, []Value{"ws://" + address + "/ws", &Map{Type: "@std/Map[String][String]"}, libraryStrings([]string{"echo"}), options}))
+	socket := librarySuccess(t, n.Operation("web_socket").Body(ctx, []Value{"ws://" + address + "/ws", httpTestHeaders(&Map{Type: "@std/Map[String][String]"}), libraryStrings([]string{"echo"}), options}))
 	if networkingInvoke(ctx, socket, "subprotocol") != "echo" {
 		t.Fatal("subprotocol")
 	}
@@ -335,6 +338,44 @@ func (s *networkingReadStream) Operation(name string) Function {
 		return libraryOK("@std/Result[@std/Optional[@std/Bytes]][@std/IoError]", optional("@std/Bytes", Bytes{part}, true))
 	})
 }
+
+type writerFunc func([]byte) (int, error)
+
+func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
+
+func TestNetworkingRejectedUpgradeWritesOneResponse(t *testing.T) {
+	var logs strings.Builder
+	var logMu sync.Mutex
+	log.SetOutput(writerFunc(func(p []byte) (int, error) { logMu.Lock(); defer logMu.Unlock(); return logs.Write(p) }))
+	defer log.SetOutput(os.Stderr)
+	ctx := RootExecution()
+	n := &network{}
+	defer n.Operation("close").Body(ctx, nil)
+	handler := NewFunction([]string{"exchange"}, "@std/Result[Unit][@std/HttpError]", func(child *Execution, a []Value) Value {
+		result := networkingInvoke(child, a[0], "upgrade", libraryStrings(nil), libraryStrings(nil), int64(32)).(Alternative)
+		if result.Tag != "error" {
+			t.Error("plain request upgraded")
+		}
+		return libraryOK("@std/Result[Unit][@std/HttpError]", Unit{})
+	})
+	server := librarySuccess(t, n.Operation("serve_stream").Body(ctx, []Value{"127.0.0.1:0", handler, networkingServerOptions()}))
+	address := networkingInvoke(ctx, server, "address").(string)
+	response, err := http.Get("http://" + address + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != 400 {
+		t.Fatal("status", response.StatusCode)
+	}
+	networkingInvoke(ctx, server, "close")
+	logMu.Lock()
+	defer logMu.Unlock()
+	if strings.Contains(logs.String(), "superfluous") {
+		t.Fatal(logs.String())
+	}
+}
+
 func TestNetworkingInvalidUTF8TextClosesWith1007(t *testing.T) {
 	ctx := RootExecution()
 	n := &network{}
@@ -378,7 +419,7 @@ func TestNetworkingServerShutdownJoinsWebSocket(t *testing.T) {
 	server := librarySuccess(t, n.Operation("serve_stream").Body(ctx, []Value{"127.0.0.1:0", handler, networkingServerOptions()}))
 	address := networkingInvoke(ctx, server, "address").(string)
 	options := Record{"@std/WebSocketOptions", map[string]Value{"max_message_bytes": int64(32), "timeout": Duration(time.Second), "tls": networkingTLSOptions(), "compression": false}}
-	socket := librarySuccess(t, n.Operation("web_socket").Body(ctx, []Value{"ws://" + address, &Map{Type: "@std/Map[String][String]"}, libraryStrings(nil), options}))
+	socket := librarySuccess(t, n.Operation("web_socket").Body(ctx, []Value{"ws://" + address, httpTestHeaders(&Map{Type: "@std/Map[String][String]"}), libraryStrings(nil), options}))
 	<-started
 	closed := make(chan struct{})
 	go func() { networkingInvoke(ctx, server, "close"); close(closed) }()
@@ -464,7 +505,7 @@ func TestNetworkingCompressedWebSocketLimit(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(ctx, nil)
 	options := Record{"@std/WebSocketOptions", map[string]Value{"max_message_bytes": int64(128), "timeout": Duration(time.Second), "tls": networkingTLSOptions(), "compression": true}}
-	socket := librarySuccess(t, n.Operation("web_socket").Body(ctx, []Value{"ws" + strings.TrimPrefix(server.URL, "http"), &Map{Type: "@std/Map[String][String]"}, libraryStrings(nil), options}))
+	socket := librarySuccess(t, n.Operation("web_socket").Body(ctx, []Value{"ws" + strings.TrimPrefix(server.URL, "http"), httpTestHeaders(&Map{Type: "@std/Map[String][String]"}), libraryStrings(nil), options}))
 	libraryFailure(t, networkingInvoke(ctx, socket, "receive"), "LimitExceeded")
 	libraryFailure(t, networkingInvoke(ctx, socket, "receive"), "Closed")
 }

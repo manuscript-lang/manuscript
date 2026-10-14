@@ -1,3 +1,5 @@
+import {headers, HttpMethod} from "@std/http.ms"
+import {text_headers, list_headers} from "./support/http.ms"
 import {
     parse_certificates,
     verify_certificates,
@@ -18,7 +20,7 @@ fn hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let started = value(
         exchange.send_headers(
             status: 200,
-            headers: Map[String, List[String]]()
+            headers: list_headers(Map[String, List[String]]())
         )
     )
     let written = value(
@@ -125,16 +127,16 @@ test "HTTPS trusts only the explicitly supplied local test root":
             )
         ):
             with response = value(
-                client.send(
-                    method: "GET",
+                client.request(
+                    method: HttpMethod.Get,
                     url: "https://{server.address()}/",
-                    headers: Map[String, String](),
+                    headers: text_headers(Map[String, String]()),
                     body: "".to_bytes(),
                     timeout: 2.seconds
                 )
             ):
                 if (
-                    response.status() != 200
+                    response.metadata().status != 200
                     or value(
                         response.read()
                     ).unwrap() != "secure".to_bytes()

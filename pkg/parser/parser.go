@@ -284,11 +284,14 @@ func (p *Parser) declaration() *syntax.Declaration {
 			d.Result = p.typ()
 		}
 		p.need("=")
+		// A binary expression's position is its operator, so the statement
+		// starts at the first token of the initializer for source tooling.
+		start := p.peek().Pos
 		value := p.expression(0)
 		if d.Result == nil {
 			d.Result = &syntax.Type{Pos: value.Pos}
 		}
-		d.Body = []*syntax.Statement{{Pos: value.Pos, Kind: syntax.KindReturn, Value: value}}
+		d.Body = []*syntax.Statement{{Pos: start, Kind: syntax.KindReturn, Value: value}}
 		p.end()
 	case p.take("test"):
 		name := p.need(lexer.String)
@@ -664,7 +667,7 @@ func (p *Parser) primary() *syntax.Expression {
 	case "match":
 		e.Kind = syntax.KindMatch
 		e.Left = p.expression(0)
-		e.Arms = p.matchArms()
+		e.Arms = p.matchArms(t)
 	case "{":
 		e.Kind = syntax.KindMap
 		if !p.take("}") {
@@ -844,7 +847,7 @@ func (p *Parser) text(token lexer.Token) *syntax.Expression {
 	return e
 }
 
-func (p *Parser) matchArms() []syntax.Arm {
+func (p *Parser) matchArms(header lexer.Token) []syntax.Arm {
 	var arms []syntax.Arm
 	p.need(":")
 	p.need(lexer.Newline)
@@ -852,6 +855,9 @@ func (p *Parser) matchArms() []syntax.Arm {
 	for {
 		p.newlines()
 		if p.peek().Kind == lexer.Dedent {
+			if len(arms) == 0 {
+				p.fail(header, "match requires at least one arm; add a case pattern or '_' arm under the header")
+			}
 			break
 		}
 		a := syntax.Arm{Pos: p.peek().Pos}

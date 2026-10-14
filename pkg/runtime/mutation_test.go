@@ -84,7 +84,7 @@ func TestSynchronizedMutableRecordAndList(t *testing.T) {
 		}()
 	}
 	workers.Wait()
-	if Field(value, "value") != int64(800) || len(Field(value, "items").(*List).Items) != 800 {
+	if Field(value, "value") != int64(800) || len(Field(value, "items").(*List).Boxed()) != 800 {
 		t.Fatal("lost protected updates")
 	}
 }

@@ -121,7 +121,7 @@ func newBuilder(typ string) *Builder {
 	b := &Builder{typ: typ}
 	switch name {
 	case "@std/ListBuilder":
-		b.value = &List{Type: "@std/List[" + args[0] + "]", Items: nil}
+		b.value = NewList("@std/List["+args[0]+"]", nil)
 	case "@std/MapBuilder":
 		b.value = &Map{Type: "@std/Map[" + args[0] + "][" + args[1] + "]"}
 	case "@std/SetBuilder":
@@ -163,7 +163,7 @@ func (b *Builder) Operation(name string) Function {
 		}
 		switch value := b.value.(type) {
 		case *List:
-			value.Items = append(value.Items, args[0])
+			value.Append(args[0])
 			b.value = value
 		case *Map, *Set:
 			named := make([]Argument, len(args))

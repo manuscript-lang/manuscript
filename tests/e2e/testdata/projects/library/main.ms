@@ -18,7 +18,7 @@ import sleep from "@std/time.ms"
 import posix from "@std/path.ms"
 import win32 from "@std/path.ms"
 
-fn timer_callback() -> Result[Unit, String]:
+fn timer_callback() -> Result[Unit, Error]:
     return ok(unit)
 
 fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:

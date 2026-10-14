@@ -6,7 +6,7 @@ Verified: source Map keys use exact equality, while HTTP field names fold ASCII 
 
 Apply when: changing HTTP adapters, repeated fields, or header representation bridges.
 Evidence: [header regressions](../pkg/runtime/library_http_header_transport_test.go), [called source checks](../tests/e2e/testdata/stdlib/http-headers.ms), and [header contracts](../documentation/standard-library/http.md#header-lookup-and-repeated-values).
-Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered byte input, streaming text input, exact Map lookup, and existing domain errors distinct. Public representation unification needs a separate migration decision.
+Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered raw-byte acceptance, streaming/client UTF-8 rejection, transport framing validation and domain errors distinct. The #171 migration uses indexed ASCII header groups and shared list membership: cache received conversions once, test alias/mutation/remove/clone semantics, and measure common lookup/proxy paths. Do not impose a blanket copy-on-read or membership-copy guarantee; explicit text extraction and clone are distinct operations.
 
 ### Empty cleanup omission needs callable ownership evidence
 
@@ -240,3 +240,47 @@ Reloading the cell afterward returned an element the predicate never matched.
 Body-versus-dispatch comparisons share the bug, so use independent expected values
 and Go operation oracles. Evidence: [search regression](../pkg/runtime/list_find_mutation_test.go)
 and [called search/view/alias consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms).
+
+Verified: List equality must capture both outer headers before checking lengths
+and invoking element Equal. Reloading live length/cells let user Equal skip a
+mismatch after left shrink, panic after right shrink, extend membership on append,
+or switch arrays after reallocation. Capture retains visible backing writes and
+shallow payload references; eager cloning would also change the contract.
+Evidence: [independent equality mutation oracle](../pkg/runtime/list_equality_mutation_test.go)
+and [native/standalone user Equal consumers](../tests/e2e/testdata/accept/list-equality-mutation.ms).
+Verify both operands under shrink, append with spare capacity, forced growth and
+replacement of later cells, including callback counts and differing tail values.
+
+Verified: primitive storage keeps the mutable slice header on the authoritative
+`*List`, with two allocations for fresh nonempty backing. A captured `ListRange`
+is a traversal header, not another mutable owner. `Items` is only legacy boxed
+construction; typed consumers use storage-aware methods. Dynamic Optional reads
+still allocate at the value boundary, so benchmark the compiler's typed access
+and comparator consumers together with storage. Typed comparator constructors
+accept raw bodies and install exactly one guarded admission; passing an already
+guarded body doubles accounting. Evidence: [storage migration](../documentation/contributing/list-storage.md),
+[primitive Go oracles and allocation/guard tests](../pkg/runtime/list_storage_test.go),
+and [measured storage/access paths](../scripts/bench-lists/typed-storage.md).
+Verify: fresh constructors and effectful sized initialization use two allocations,
+typed at/unwrap uses none, generic forwarding retains identity, and comparator
+profiling/returns/cancellation/depth/fault frames match ordinary source calls.
+
+Verified: primitive sized initializers must use direct matching typed writes
+after fresh-state/kind/bounds checks. Routing known typed construction through
+generic Len/Set made each initializer non-inlineable (Go 1.25.1 cost 118); the
+strict checks inline at cost 31 and preserve two construction allocations.
+Evidence: [strict initialization safety/allocation tests](../pkg/runtime/list_initialization_test.go),
+[approved runtime mitigation](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157742485).
+Verify actual effectful generated literals as well as this runtime control;
+inlining alone does not establish construction performance parity.
+
+Decision: the approved borrowed argument ABI is restricted to generated bodies
+that copy parameter Values and cannot retain/expose their incoming slice.
+`NewCompiledSourceFunction` delegates the ordinary source guard once; `for_each`
+reuses one buffer per invocation only for exact labels and this proof. Recursion
+must have independent buffers, unmarked callbacks may retain fresh arrays, and
+adapters conservatively drop the marker. Individual Value captures retain identity.
+Evidence: [approved contract](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157745861),
+[retention/reentry/checkpoint/guard/allocation tests](../pkg/runtime/borrowed_arguments_test.go).
+Verify actual emitted ordinary callbacks against the prior boxed baseline; a
+runtime marked-body control does not establish compiler proof or payload parity.

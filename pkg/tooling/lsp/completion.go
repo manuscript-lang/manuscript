@@ -140,7 +140,11 @@ func (k *completer) addImport(s *checker.Symbol, path string) {
 	if s.Kind == syntax.KindType {
 		kind = 7
 	}
-	k.add(s.Name, kind, s.Type, 4, callableText(s.Name, s.Type, s.Variables, k.snippets), s.Decl)
+	insert := callableText(s.Name, s.Type, s.Variables, k.snippets)
+	if s.IsConstant() {
+		kind, insert = 21, s.Name
+	}
+	k.add(s.Name, kind, s.ValueType(), 4, insert, s.Decl)
 	if len(k.items) > before {
 		item := &k.items[len(k.items)-1]
 		item.Detail += " — " + path
@@ -244,7 +248,10 @@ func (k *completer) scopeItems() {
 				insert = callableText(name, signature, s.Variables, k.snippets)
 			}
 		}
-		k.add(name, kind, s.Type, 2, insert, s.Decl)
+		if s.IsConstant() {
+			kind, insert = 21, name
+		}
+		k.add(name, kind, s.ValueType(), 2, insert, s.Decl)
 	}
 	// Preserve useful declaration suggestions even when another declaration has
 	// malformed syntax. Scope-sensitive results above only use checked snapshots.
@@ -594,6 +601,8 @@ func importCompletion(d document, docs map[string]document, c cursorContext, sni
 					kind := 3
 					if s.Kind == syntax.KindType {
 						kind = 7
+					} else if s.IsConstant() {
+						kind = 21
 					}
 					add(s.Name, path, kind, span{Position(d.Text, c.start), Position(d.Text, c.end)}, s.Name)
 				}

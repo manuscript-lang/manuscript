@@ -68,3 +68,25 @@ test "JSON independently enforces byte depth and value budgets":
             limits: JsonLimits(max_bytes: -1)
         ) != invalid
     ): return panic("negative JSON budget")
+
+test "JSON stringify rejects number text with trailing whitespace":
+    let padded: Result[String, JsonError] = error(JsonError.InvalidData)
+    if stringify(value: JsonValue.NumberValue("1\n")) != padded: return panic(
+        "trailing newline"
+    )
+    if stringify(value: JsonValue.NumberValue("1 ")) != padded: return panic(
+        "trailing space"
+    )
+
+test "JSON parse bounds nesting even without a depth limit":
+    var text = ""
+    var closing = ""
+    var i = 0
+
+    while i < 150000:
+        text = text + "["
+        closing = closing + "]"
+        i = i + 1
+
+    let limited: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
+    if parse(text: text + closing) != limited: return panic("unbounded nesting")

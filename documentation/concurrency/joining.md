@@ -22,7 +22,7 @@ Joining waits for work to finish its body and cleanup. `Task.join()` waits for o
 
 ```manuscript
 type ExecutionError:
-    case TimedOut
+    case Timeout
     case Cancelled
     case Crashed(operation: OperationId, message: String)
 ```
@@ -34,14 +34,14 @@ An operation ID identifies work for diagnostics. It does not grant scheduling, c
 1. **Construct.** Store the construction execution as the fixed parent. Register shutdown with that execution's work lifetime; lexical `with` provides an earlier cleanup boundary.
 2. **Start.** Each `start` prepares its callback and admits one typed task. A group timeout starts with the first submission. A stopped group returns a stopped handle without invoking further callbacks; a joined or closed group rejects submission with a programming fault.
 3. **Stop.** A task fault, timeout, parent cancellation, or explicit close cancels unfinished work. Returning a domain error is ordinary completion. Task outcomes committed before the stop remain available.
-4. **Join.** Group joining seals admission and waits for every started operation, including nested service shutdown and cleanup. A successful individual task join leaves admission open. Joining is never bounded by the timeout.
+4. **Join.** Group joining seals admission and waits for every started operation, including nested service shutdown and cleanup. A successful individual task join leaves admission open; a failed one waits for the stopped group, so it seals admission like a group join and a later `start` is the same programming fault. Joining is never bounded by the timeout.
 5. **Report.** Group joins and failed task joins use the outcome order below. A successful individual task join returns that task's committed value.
 
 | Condition after joining | Caller observes |
 | --- | --- |
 | The joining caller's own context was cancelled or reached its inherited deadline | The caller unwinds after cancellation and joining; no Result is delivered |
 | A task faulted in its body or cleanup | `error(cause: Crashed(...))` for the first committed fault |
-| The group's timeout expired while work was outstanding | `error(cause: TimedOut)` |
+| The group's timeout expired while work was outstanding | `error(cause: Timeout)` |
 | Explicit close cancelled unfinished work, or the fixed parent stopped while another active execution joined | `error(cause: Cancelled)` |
 | Otherwise | Group join returns `ok(value: unit)`; task join returns its cached value |
 
