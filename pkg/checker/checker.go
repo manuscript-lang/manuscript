@@ -39,6 +39,7 @@ func (s *scope) typ(name string) *Type {
 type checker struct {
 	scopeMarker          string
 	standardDeclarations bool
+	idScope              string // prefixes ids made while checking a bundled module
 	*Program
 	module                  *syntax.Module
 	names                   map[string]*Symbol
@@ -70,6 +71,9 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 	p := newProgram(modules)
 	p.Diagnostics = dependencyDiagnostics
 	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}
+	if options.bundled != nil {
+		c.idScope = "standard_" + strings.TrimSuffix(strings.TrimPrefix(options.bundled.File, "@std/"), ".ms") + "_"
+	}
 	for _, module := range modules {
 		for _, d := range module.Declarations {
 			if d.Kind != syntax.KindInterface && d.Kind != syntax.KindImpl && len(d.Methods) > 0 {
@@ -81,15 +85,10 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 		return p
 	}
 	p.Methods = append(p.Methods, standardImplementations...)
-	if standardChecked != nil {
-		// Bundled source modules were checked once at load; adopt that result and
-		// continue numbering generated identities after theirs.
-		c.serial = standardChecked.serial
-	}
 	var checked []*syntax.Module
 	for _, module := range modules {
-		if standardChecked != nil && standardSourceModules[module.File] == module {
-			c.adoptChecked(module)
+		if standardSourceModules[module.File] == module && module != options.bundled {
+			c.adoptChecked(module, options.bundled != nil)
 			continue
 		}
 		c.checkModule(module, imports)
@@ -109,15 +108,18 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 // checkModule runs the declaration passes for one module in dependency order:
 // imports and names first, then type variables, signatures, implementations,
 // defaults, and finally bodies.
-// adoptChecked takes a bundled module's symbols and methods from the load-time
-// check; its tree already carries every fact.
-func (c *checker) adoptChecked(module *syntax.Module) {
-	c.symbols[module.File] = standardChecked.symbols[module.File]
-	for _, m := range standardSourceMethods {
-		if m.Module == module.File {
-			c.Methods = append(c.Methods, m)
-		}
+// adoptChecked takes a bundled module's symbols and methods from its one check
+// (made now if no program has needed it yet); its tree already carries every
+// fact. held reports that the caller is that check and owns standardMu.
+func (c *checker) adoptChecked(module *syntax.Module, held bool) {
+	var r *standardResult
+	if held {
+		r = standardDone[module.File]
+	} else {
+		r = ensureStandardSource(module)
 	}
+	c.symbols[module.File] = r.symbols
+	c.Methods = append(c.Methods, r.methods...)
 }
 
 func (c *checker) checkModule(module *syntax.Module, imports map[*syntax.Import]string) {
@@ -302,6 +304,7 @@ func (c *checker) unique(prefix string) string {
 	if c.standardDeclarations {
 		prefix = "standard_" + prefix
 	}
+	prefix = c.idScope + prefix
 	return fmt.Sprintf("%s%d", prefix, c.serial)
 }
 

@@ -25,13 +25,7 @@ var fullRuntimeModules = map[string]bool{
 }
 
 var standardImports = sync.OnceValue(func() map[string][]string {
-	imports := map[string][]string{}
-	for _, module := range checker.StandardModules() {
-		for _, item := range module.Imports {
-			imports[module.File] = append(imports[module.File], item.Path)
-		}
-	}
-	return imports
+	return checker.StandardImports()
 })
 
 // runtimeTags returns the Go build tags selecting the runtime for program.

@@ -18,11 +18,20 @@ var standardSources []*syntax.Module
 var intrinsicOperations map[string]*Type
 var standardImplementations []*Method
 var standardSourceModules = map[string]*syntax.Module{}
-var standardSourceMethods []*Method
 
-// standardChecked is the one check of every bundled source module. Programs
-// share its tree annotations, symbols, and methods instead of checking again.
-var standardChecked *Program
+// Bundled source modules are checked lazily, once per process, the first time a
+// program (or tool) needs them. The annotated trees, symbols, and methods are
+// then shared by every later program instead of being checked again.
+var standardMu sync.Mutex
+var standardDone = map[string]*standardResult{}
+var standardChecking = map[string]bool{}
+
+type standardResult struct {
+	symbols map[string]*Symbol
+	exports map[string]*Symbol
+	methods []*Method
+}
+
 var standardOperationVariables = map[string][]*Type{}
 var standardReceiverBindings map[string]string
 var standardReceiverRequirements map[string][]receiverRequirement
@@ -55,6 +64,7 @@ func ensureStandard() {
 func loadStandardSources() error {
 	standardSources = nil
 	standardSourceModules = map[string]*syntax.Module{}
+	standardDone = map[string]*standardResult{}
 	standardSymbols = map[string]*Symbol{}
 	standardModules = map[string]map[string]*Symbol{}
 	intrinsicOperations = map[string]*Type{}
@@ -400,29 +410,6 @@ func loadStandardSources() error {
 	if len(c.Diagnostics) > 0 {
 		return fmt.Errorf("invalid standard defaults: %v", c.Diagnostics)
 	}
-	// Check all bundled source implementations once to publish documentation and
-	// editor symbols. Each application checks its reachable modules afresh so
-	// generated identities and mutable analysis maps remain program-local.
-	var sourceModules []*syntax.Module
-	for _, module := range standardSources {
-		if standardSourceModules[module.File] != nil {
-			sourceModules = append(sourceModules, module)
-		}
-	}
-	program := check(sourceModules, nil, CheckOptions{})
-	if len(program.Diagnostics) > 0 {
-		return fmt.Errorf("invalid standard implementations: %v", program.Diagnostics)
-	}
-	for _, module := range program.Modules {
-		standardModules[module.File] = map[string]*Symbol{}
-		for name, symbol := range program.symbols[module.File] {
-			if symbol.Module == module.File {
-				standardModules[module.File][name] = symbol
-			}
-		}
-	}
-	standardSourceMethods = program.Methods[len(standardImplementations):]
-	standardChecked = program
 	return nil
 }
 
@@ -529,17 +516,115 @@ func sourceStandardDependencies(modules []*syntax.Module) ([]*syntax.Module, []s
 	return ordered, diagnostics
 }
 
-// StandardModules exposes canonical declarations and their source positions to
-// tooling. Callers must not mutate the returned checked declarations.
-func StandardModules() []*syntax.Module {
+// standardSource checks a bundled source module and the bundled modules it
+// imports, once. The caller holds standardMu.
+func standardSource(module *syntax.Module) *standardResult {
+	if r := standardDone[module.File]; r != nil || standardChecking[module.File] {
+		return r
+	}
+	standardChecking[module.File] = true
+	defer delete(standardChecking, module.File)
+	for _, item := range module.Imports {
+		if dependency := standardSourceModules[item.Path]; dependency != nil {
+			standardSource(dependency)
+		}
+	}
+	program := check([]*syntax.Module{module}, nil, CheckOptions{bundled: module})
+	if len(program.Diagnostics) > 0 {
+		panic(fmt.Errorf("invalid standard implementation %s: %v", module.File, program.Diagnostics))
+	}
+	r := &standardResult{symbols: program.symbols[module.File], exports: map[string]*Symbol{}}
+	for name, symbol := range r.symbols {
+		if symbol.Module == module.File {
+			r.exports[name] = symbol
+		}
+	}
+	for _, m := range program.Methods {
+		if m.Module == module.File {
+			r.methods = append(r.methods, m)
+		}
+	}
+	standardDone[module.File] = r
+	return r
+}
+
+func ensureStandardSource(module *syntax.Module) *standardResult {
+	standardMu.Lock()
+	defer standardMu.Unlock()
+	return standardSource(module)
+}
+
+// ensureStandardSources checks every bundled source module, for tools that
+// describe the whole library.
+func ensureStandardSources() {
 	ensureStandard()
+	standardMu.Lock()
+	defer standardMu.Unlock()
+	for _, module := range standardSources {
+		if standardSourceModules[module.File] != nil {
+			standardSource(module)
+		}
+	}
+}
+
+// standardExports returns a standard module's declarations, checking a bundled
+// source module on first use.
+func standardExports(path string) map[string]*Symbol {
+	if module := standardSourceModules[path]; module != nil {
+		return ensureStandardSource(module).exports
+	}
+	return standardModules[path]
+}
+
+// allStandardExports describes every standard module; it checks them all.
+func allStandardExports() map[string]map[string]*Symbol {
+	ensureStandardSources()
+	out := map[string]map[string]*Symbol{}
+	for path, exports := range standardModules {
+		out[path] = exports
+	}
+	for path, r := range standardDone {
+		out[path] = r.exports
+	}
+	return out
+}
+
+// standardSourceMethods lists the methods of every bundled source module.
+func standardSourceMethods() []*Method {
+	ensureStandardSources()
+	var out []*Method
+	for _, module := range standardSources {
+		if r := standardDone[module.File]; r != nil {
+			out = append(out, r.methods...)
+		}
+	}
+	return out
+}
+
+// StandardImports lists the modules each standard module imports.
+func StandardImports() map[string][]string {
+	ensureStandard()
+	imports := map[string][]string{}
+	for _, module := range standardSources {
+		for _, item := range module.Imports {
+			imports[module.File] = append(imports[module.File], item.Path)
+		}
+	}
+	return imports
+}
+
+// StandardModules exposes canonical declarations and their source positions to
+// tooling, with every bundled module checked. Callers must not mutate the
+// returned checked declarations.
+func StandardModules() []*syntax.Module {
+	ensureStandardSources()
 	return append([]*syntax.Module{}, standardSources...)
 }
 
 // StandardTypeReferences exposes resolved types in canonical standard signatures.
 // Callers may change the returned map, but must not mutate the shared types.
 func StandardTypeReferences() map[*syntax.Type]*Type {
-	ensureStandard()
+	ensureStandardSources()
 	out := map[*syntax.Type]*Type{}
 	for _, module := range standardSources {
 		syntax.Nodes{Type: func(t *syntax.Type) {
@@ -554,7 +639,7 @@ func StandardTypeReferences() map[*syntax.Type]*Type {
 func StandardExports(module string) map[string]*Symbol {
 	ensureStandard()
 	out := map[string]*Symbol{}
-	for name, symbol := range standardModules[module] {
+	for name, symbol := range standardExports(module) {
 		if symbol.Export {
 			out[name] = symbol
 		}
@@ -565,6 +650,9 @@ func StandardModuleNames() []string {
 	ensureStandard()
 	names := []string{}
 	for name := range standardModules {
+		names = append(names, name)
+	}
+	for name := range standardSourceModules {
 		names = append(names, name)
 	}
 	sort.Strings(names)
