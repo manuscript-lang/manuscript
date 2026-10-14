@@ -288,7 +288,7 @@ func (k *completer) keywordItems() {
 		}
 	}
 	if c.typeContext {
-		for _, name := range []string{"Int", "Float", "String", "Bool", "Unit", "Never", "Equal", "Hashable", "Optional", "Result", "Error", "List", "Map", "Set"} {
+		for _, name := range checker.BuiltinTypeNames() {
 			k.add(name, 7, nil, 3, name, nil)
 		}
 	}
