@@ -26,6 +26,9 @@ type Function struct {
 	Body         func(*Execution, []Value) Value
 	IntCompare   func(*Execution, int64, int64) int64
 	FloatCompare func(*Execution, float64, float64) int64
+	// BorrowedArguments is an internal proof carried only by compiled bodies
+	// that copy parameter Values and never retain/expose their incoming slice.
+	BorrowedArguments bool
 }
 type Generic struct {
 	Variables []string
@@ -1078,6 +1081,15 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 		}
 		return body(ctx, args)
 	})
+}
+
+// NewCompiledSourceFunction has the same guarded Body ABI as NewSourceFunction.
+// Its raw body must copy incoming Values and never retain or expose args itself.
+// Capturing an individual copied Value, including a mutable reference, is valid.
+func NewCompiledSourceFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
+	function := NewSourceFunction(labels, result, position, body)
+	function.BorrowedArguments = true
+	return function
 }
 
 type implementationKey struct {

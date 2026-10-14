@@ -45,6 +45,7 @@ func (g *generator) irValue(x ir.Expr) ast.Expr {
 		for i, item := range x.Items {
 			elements[i] = g.irValue(item)
 		}
+		// Preserve the separately owned large-literal route and its oracle.
 		if len(x.Items) > debugListThreshold {
 			return address(composite(runtimeName("List"), keyed("Type", g.key(x.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
 		}
