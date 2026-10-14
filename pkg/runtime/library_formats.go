@@ -86,6 +86,9 @@ func init() {
 		if s != "" {
 			for _, part := range strings.Split(s, "&") {
 				CheckCancelled(ctx)
+				if part == "" {
+					continue
+				}
 				if int64(len(items)) >= n {
 					return libraryError(r, "LimitExceeded", "")
 				}
