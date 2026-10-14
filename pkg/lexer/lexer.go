@@ -33,7 +33,7 @@ func init() {
 	}
 }
 
-// Keywords returns the sorted reserved words.
+// Keywords returns the reserved words in sorted order.
 func Keywords() []string {
 	words := make([]string, 0, len(reserved))
 	for word := range reserved {

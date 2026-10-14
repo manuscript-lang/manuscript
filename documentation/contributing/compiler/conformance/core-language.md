@@ -341,7 +341,8 @@ Escaped braces are literal text; unescaped braces select interpolation. Source U
 | Replace it with `"\u{110000}"` | Parse rejection: scalar exceeds the Unicode range |
 | Replace an escape with `"\q"` | Parse rejection: unknown escape |
 | Replace `echo`'s function name with the reserved word `if` | Parse rejection: reserved word is not an identifier |
-| Add module-level `let extra = 1` after the test | Parse rejection: executable bindings belong in a block |
+| Add module-level `var extra = 1` after the test | Parse rejection: executable bindings belong in a block |
+| Add module-level `let extra = helper()` after the test | Type rejection: a constant takes literals, operators, collections, and other constants |
 | Replace `let no_value: Unit = unit` with `let no_value: Unit = 0` | Type rejection: `Int` is not `Unit` |
 | Replace it with `let smallest: Int = -9223372036854775808` | Accept: directly negated minimum Int literal |
 | Replace it with `let too_large = 9223372036854775808` | Type rejection: positive literal is outside Int range |

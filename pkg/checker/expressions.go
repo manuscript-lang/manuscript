@@ -163,6 +163,11 @@ func (c *checker) inferName(e *syntax.Expression, expected *Type, i *Info) *Info
 		if s.Kind == syntax.KindType {
 			c.error(e.Pos, "type", "type name requires a constructor call; write "+e.Text+"(field: value, ...) to build a value")
 			i.Type = primitive("<invalid>")
+		} else if isConstant(s) {
+			// A constant stands for its initializer: check the use as a call.
+			c.constantType(s)
+			e.Kind, e.Left, e.Args, e.ConstantUse = syntax.KindCall, &syntax.Expression{Pos: e.Pos, Kind: syntax.KindName, Text: e.Text}, nil, true
+			return c.call(e, expected)
 		} else {
 			i.Type = s.Type
 			i.Symbol = s

@@ -149,6 +149,10 @@ errors return 2 on stderr without a JSON document, as with `check --json`.
 `fmt --json` requires `--check`; `test --json --watch` is rejected because a
 single result cannot describe an ongoing sequence of runs.
 
+`ms inspect`, `diagram`, `emit`, and `lock` accept `--json` for failures only: when the
+source does not check, they write the same `format: 1` `diagnostics` document as
+`check --json` and exit 1. Successful output is unchanged.
+
 Formatting results contain `files` and `diagnostics`, both arrays even when empty.
 Each file has a `path` and a `status`: `clean`, `needs_formatting`, or `error`.
 Files are deduplicated by physical identity and ordered by displayed path.
@@ -165,7 +169,7 @@ Test results contain these fields:
 | Field | Meaning |
 | --- | --- |
 | `source_root` | Root for module-relative compile diagnostic paths and test names |
-| `tests` | Planned tests in execution order; each has `name`, `status`, and optional `failure` text |
+| `tests` | Planned tests in execution order; each has `name`, `status`, and optional `failure` text with its first source `position` |
 | `summary` | `available`, `selected`, `passed`, and `failed` counts |
 | `completed` | Whether the native runner reported all selected outcomes |
 | `exit_code` | Observable CLI exit status |
