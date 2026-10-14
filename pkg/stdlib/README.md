@@ -5,7 +5,7 @@ The `.ms` files here define public types, fields, cases, function signatures, an
 ## Which file defines what?
 
 - The `.ms` files define the type schemas and public API.
-- `bindings.json` maps function, receiver-operation, and implementation identities directly to native dispatch. It also records method-specific receiver requirements, such as `Equal` for list searches and `String` for list joining; it does not duplicate operation signatures or type schemas.
+- Native functions dispatch to `module/name`; `bindings.json` lists only the exceptions under `function_overrides`, and maps receiver-operation and implementation identities directly to native dispatch. It also records method-specific receiver requirements, such as `Equal` for list searches and `String` for list joining; it does not duplicate operation signatures or type schemas.
 - `intrinsics.ms` contains private operation declarations for primitive receivers and the universal `toString()` method.
 - Native receiver signatures appear once, on their type or intrinsic interface. TaskGroup and Task[T] use ordinary generic declarations; no private free-function declarations are needed for their implementations.
 

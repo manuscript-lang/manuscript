@@ -9,7 +9,7 @@ export type BinaryError:
     # A read crosses the byte buffer or a number cannot fit the requested signedness/width or result type.
     case OutOfRange
 
-# Reads a 32-bit floating-point value at `offset` using the selected byte order.
+# Reads a 64-bit floating-point value (binary64, 8 bytes) at `offset` using the selected byte order.
 export fn read_float(
     data: Bytes,
     offset: Int,
@@ -25,7 +25,7 @@ export fn read_integer(
     little_endian: Bool
 ) -> Result[Int, BinaryError]:
 
-# Encodes a 32-bit floating-point value using the selected byte order.
+# Encodes a 64-bit floating-point value (binary64) as 8 bytes using the selected byte order.
 export fn write_float(value: Float, little_endian: Bool) -> Bytes:
 
 # Encodes an integer into `width` bytes, returning an error when it does not fit.

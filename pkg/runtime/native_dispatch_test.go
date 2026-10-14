@@ -16,8 +16,8 @@ func TestNativeDispatchBoundBytesValues(t *testing.T) {
 	if !Equal(first, &List{Type: "@std/List[Int]", Items: []Value{int64(0), int64(1), int64(255)}}) {
 		t.Fatalf("unexpected byte extraction: %#v", first)
 	}
-	first.Items[0] = int64(99)
-	if got := Invoke(ctx, bound, nil).(*List); got.Items[0] != int64(0) || data.Items[0] != 0 {
+	first.Set(0, int64(99))
+	if got := Invoke(ctx, bound, nil).(*List); got.Get(0) != int64(0) || data.Items[0] != 0 {
 		t.Fatal("byte extraction aliases storage")
 	}
 	cancelledContext, cancel := context.WithCancel(ctx.Context)

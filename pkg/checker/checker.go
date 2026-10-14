@@ -53,11 +53,11 @@ type checker struct {
 	rejectedNames           map[string]bool
 	unknownType             bool
 	labelMismatch           bool
-	reportedImports         map[string]bool
 	callName                string
 	callPos                 syntax.Position
 	captures                map[int]map[*Binding]bool
 	constantsVisiting       map[*Symbol]bool
+	cycleReported           map[*Symbol]bool
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
@@ -137,6 +137,7 @@ func (c *checker) checkModule(module *syntax.Module, imports map[*syntax.Import]
 	c.declareSymbols(module)
 	c.declareTypeVariables(module)
 	c.resolveSignatures(module)
+	c.checkConstantCycles(module)
 	for _, d := range module.Declarations {
 		if d.Kind == syntax.KindImpl {
 			c.implementation(d)
@@ -311,19 +312,16 @@ func (c *checker) unique(prefix string) string {
 	return fmt.Sprintf("%s%d", prefix, c.serial)
 }
 
-// importReported records that an import hint for name was given, returning
-// whether it had already been given in this check.
-func (c *checker) importReported(name string) bool {
-	if c.module != nil {
-		name = c.module.File + "\x00" + name
+// importReported returns whether an import hint for name was already given
+// in this file. It reads the live diagnostics, so a hint dropped with a
+// speculative check does not suppress the one that is kept.
+func (c *checker) importReported(name string, pos syntax.Position) bool {
+	marker := "; add: import " + name + " from "
+	for _, d := range c.Diagnostics {
+		if d.Position.File == pos.File && strings.Contains(d.Message, marker) {
+			return true
+		}
 	}
-	if c.reportedImports[name] {
-		return true
-	}
-	if c.reportedImports == nil {
-		c.reportedImports = map[string]bool{}
-	}
-	c.reportedImports[name] = true
 	return false
 }
 func (c *checker) error(pos syntax.Position, phase, message string) {
@@ -331,8 +329,25 @@ func (c *checker) error(pos syntax.Position, phase, message string) {
 	// name only repeat the fix already given.
 	if _, rest, ok := strings.Cut(message, "; add: import "); ok && phase == "resolution" {
 		name, _, _ := strings.Cut(rest, " from ")
-		if c.importReported(name) {
+		if c.importReported(name, pos) {
 			return
+		}
+	}
+	// Statements blanked by editor recovery leave names and returns missing;
+	// the syntax error already explains every diagnostic inside that range.
+	if c.module != nil {
+		for _, span := range c.module.Recovered {
+			if pos.File == c.module.File && pos.Offset >= span.Start && pos.Offset < span.End {
+				return
+			}
+		}
+	}
+	// A declaration dropped by editor recovery has its own syntax error.
+	if c.module != nil && phase == "resolution" {
+		for _, name := range c.module.Omitted {
+			if message == "unknown binding "+name || strings.HasPrefix(message, "unknown binding "+name+";") || strings.HasPrefix(message, "unknown type "+name+";") || message == "unknown type "+name {
+				return
+			}
 		}
 	}
 	// An unresolved type is already reported where it is written; later
@@ -796,7 +811,7 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 		} else {
 			if arm.Path.Kind == syntax.KindMember {
 				qualified := c.typeExpression(arm.Path.Left)
-				if qualified == nil || !Same(qualified, info.Type) {
+				if qualified == nil || !sameQualifier(qualified, info.Type) {
 					c.error(arm.Pos, "type", "pattern belongs to a different alternative; qualify arms with the matched type, "+info.Type.Name+".<case>")
 				}
 			}
@@ -1185,4 +1200,16 @@ func opaqueField(receiver *Info, name string) bool {
 		}
 	}
 	return false
+}
+
+// sameQualifier accepts a case qualifier naming the matched alternative. A bare
+// generic name (Choice.Found) stands for every instantiation of Choice, while
+// an explicit one (Choice[Int].Found) must be the matched type.
+func sameQualifier(qualifier, matched *Type) bool {
+	for _, arg := range qualifier.Args {
+		if arg.Kind != "variable" {
+			return Same(qualifier, matched)
+		}
+	}
+	return qualifier.ID == matched.ID
 }

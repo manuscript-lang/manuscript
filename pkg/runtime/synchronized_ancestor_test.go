@@ -349,7 +349,7 @@ func TestSynchronizedTaskGroupTimeoutBreaksOrdinaryCycle(t *testing.T) {
 		t.Fatal(outcome)
 	}
 	result := outcome.value.(Alternative)
-	if result.Tag != "error" || result.Fields[0].(Alternative).Tag != "TimedOut" {
+	if result.Tag != "error" || result.Fields[0].(Alternative).Tag != "Timeout" {
 		t.Fatal(result)
 	}
 	cell.mu.Lock()

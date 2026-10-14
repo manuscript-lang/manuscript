@@ -265,7 +265,7 @@ func TestFuzzyMemberCompletion(t *testing.T) {
 
 func TestExpandedStandardMembersAndInterfaceSnippet(t *testing.T) {
 	items := completeSource(t, "import HttpClient from \"@std/http.ms\"\nfn work(client: HttpClient) -> Unit:\n    client.|\n")
-	if itemNamed(items, "send_stream") == nil {
+	if itemNamed(items, "request_stream") == nil {
 		t.Fatal(items)
 	}
 	items = completeSource(t, "inter|")

@@ -35,6 +35,9 @@ func runSourceCommand(args []string, usage string) int {
 	}
 	switch inv.command {
 	case "check", "lint":
+		if inv.watch {
+			return watchAnalysis(inv.command, inv.targets)
+		}
 		return runAnalysis(inv.command, inv.targets, inv.structured)
 	case "build", "profile":
 		return runNativeCommand(inv.command, inv.filename, inv.output, p.options, p.kind, inv.arguments, inv.profileTrace, inv.structured)
@@ -58,6 +61,12 @@ func runSourceCommand(args []string, usage string) int {
 			return emitJSON(structuredDiagnostics(result), 1)
 		}
 		return reportDiagnostics(result)
+	}
+	if inv.output != "" && inv.isOneOf("emit", "inspect", "diagram") {
+		if protected := protectedOutput(inv.output, inv.filename, result.ProjectRoot); protected != "" {
+			fmt.Fprintf(os.Stderr, "-o %s would overwrite %s; choose a different output path\n", inv.output, protected)
+			return 2
+		}
 	}
 	switch inv.command {
 	case "lock":
@@ -132,6 +141,9 @@ func runNativeProgram(inv *invocation, kind compiler.BuildType, result compiler.
 	if command == "debug" {
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 		defer cancel()
+		if inv.debugScript != "" || len(inv.debugBreaks) > 0 {
+			return runDebugScript(ctx, inv, result, executable)
+		}
 		status, err := debugger.Terminal(ctx, executable, inv.arguments)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -147,4 +159,26 @@ func runNativeProgram(inv *invocation, kind compiler.BuildType, result compiler.
 	child.Stdout = os.Stdout
 	child.Stderr = os.Stderr
 	return waitForChild(child)
+}
+
+// runDebugScript drives the Debug build from a command file or one-shot breakpoints.
+func runDebugScript(ctx context.Context, inv *invocation, result compiler.Result, executable string) int {
+	opts := debugger.Options{Breaks: inv.debugBreaks, JSON: inv.structured, Out: os.Stdout, Args: inv.arguments, Names: debugNames(result)}
+	if inv.debugScript != "" {
+		opts.Script = os.Stdin
+		if inv.debugScript != "-" {
+			file, err := os.Open(inv.debugScript)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			defer file.Close()
+			opts.Script = file
+		}
+	}
+	status, err := debugger.Script(ctx, executable, opts)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	return status
 }

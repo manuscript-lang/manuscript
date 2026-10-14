@@ -15,6 +15,8 @@ func TestSyntaxErrorsStateTheFix(t *testing.T) {
 		{"unterminated paren", "fn f() -> Int:\n    return (1\n", "opened at line 2:12"},
 		{"unterminated text", "fn f() -> Int:\n    let s = \"abc\n    return 1\n", "unterminated text literal; text must close"},
 		{"semicolon", "fn f() -> Int:\n    return 1;\n", "remove the semicolon"},
+		{"match without arms", "fn f(a: Int) -> Int:\n    match a:\n", "match requires at least one arm"},
+		{"match without arms before declaration", "fn f(a: Int) -> Int:\n    match a:\nfn g() -> Int: return 1\n", "match requires at least one arm"},
 		{"top-level statement", "var x = 1\n", "put statements inside a fn"},
 		{"unbraced import list", "import a, b from \"x.ms\"\n", "import {a, b} from \"path.ms\""},
 		{"missing expression", "fn f() -> Int:\n    let x = \n    return 1\n", "expected an expression, found end of line"},
@@ -32,6 +34,7 @@ func TestSyntaxErrorsStateTheFix(t *testing.T) {
 
 func TestPassAndIfExpressionHints(t *testing.T) {
 	for _, tt := range []struct{ name, source, want string }{
+		{"elif branch", "fn f(a: Int) -> Unit:\n    if a == 1:\n        return\n    elif a == 2:\n        return\n", "write 'else if <condition>:'"},
 		{"pass statement", "fn f(a: Int) -> Unit:\n    if a == 1:\n        pass\n", "'pass' is not a keyword; write 'unit'"},
 		{"if expression", "fn f(a: Int) -> Int:\n    let b = if a == 1: 2 else: 3\n    return b\n", "'if' is a statement, not an expression"},
 		{"if inside arithmetic", "fn f(a: Int) -> Int:\n    return 1 + (if a == 1: 1 else: 0)\n", "'if' is a statement, not an expression"},

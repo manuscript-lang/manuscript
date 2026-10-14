@@ -17,7 +17,11 @@ export type RoundingMode:
 
 # An exact decimal value. Conversions are explicit because binary floats may round.
 export type Decimal:
+    # Converts to the nearest Float, which can lose precision because binary floats cannot represent most decimal fractions exactly.
+    # Values beyond the Float range convert to an infinity.
     fn to_float() -> Float:
+    # Discards the fractional part toward zero and returns the integer, so -2.9 gives -2.
+    # Returns none when the integer part does not fit in signed 64 bits.
     fn truncate_to_int() -> Optional[Int]:
     # Rounds exactly to a multiple of `10^-places`, without converting to Float.
     # Places range from -6144 through 6176; negative places round tens, hundreds, etc.

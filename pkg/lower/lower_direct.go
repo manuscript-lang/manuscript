@@ -15,8 +15,9 @@ import (
 // own frame (rt.Enter, rt.Leave), so no wrapper layer runs per call.
 type directFunction struct {
 	name   string
-	params []string // Go scalar type per parameter, "" for Value
-	result string   // Go scalar result type, "" for Value
+	params []string  // Go scalar type per parameter, "" for Value
+	result string    // Go scalar result type, "" for Value
+	shape  *altShape // typed Result/Optional result, nil when result is scalar or Value
 }
 
 // planDirect decides which top-level functions are emitted as direct functions.
@@ -31,7 +32,7 @@ func (g *generator) planDirect(functions []*checker.Symbol, options Options) {
 		if s.Native != "" || len(s.Variables) != 0 || d == nil || d.Kind != syntax.KindFn {
 			continue
 		}
-		direct := &directFunction{name: "call_" + s.ID, result: primitiveEqualityType(s.Type.Result)}
+		direct := &directFunction{name: "call_" + s.ID, result: primitiveEqualityType(s.Type.Result), shape: alternativeShape(s.Type.Result)}
 		bindings := g.program.ParameterBindings(d)
 		if len(bindings) != len(d.Params) || len(s.Type.Params) != len(d.Params) {
 			continue
@@ -66,8 +67,12 @@ func (g *generator) directDeclaration(s *checker.Symbol) (*ast.FuncDecl, ast.Exp
 		}
 		forwarded = append(forwarded, arg)
 	}
+	var forwardCall ast.Expr = call(ident(direct.name), append([]ast.Expr{ident("ctx")}, forwarded...)...)
+	if direct.shape != nil {
+		forwardCall = call(selector(forwardCall, "Box"), g.key(s.Type.Result))
+	}
 	forward := closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"),
-		returned(call(ident(direct.name), append([]ast.Expr{ident("ctx")}, forwarded...)...)))
+		returned(forwardCall))
 	wrapper := runtimeCall("NewDirectFunction", stringSlice(labels), g.key(s.Type.Result), textLiteral(d.Result.Pos.String()), forward)
 	return decl, concreteFunction(wrapper)
 }
@@ -88,6 +93,10 @@ func (g *generator) directLiteral(direct *directFunction, name string, result *s
 		resultType = ident(direct.result)
 		zero = zeroScalar(direct.result)
 	}
+	if direct.shape != nil {
+		resultType = direct.shape.typeExpr()
+		zero = composite(direct.shape.typeExpr())
+	}
 	prologue := []ast.Stmt{
 		evaluated(runtimeCall("Enter", ident("ctx"))),
 		define("sourcePosition", textLiteral(result.Pos.String())),
@@ -96,6 +105,9 @@ func (g *generator) directLiteral(direct *directFunction, name string, result *s
 		var recovered ast.Expr = ident("value")
 		if direct.result != "" {
 			recovered = unbox(recovered, direct.result)
+		}
+		if direct.shape != nil {
+			recovered = direct.shape.unbox(recovered)
 		}
 		prologue = append(prologue, &ast.DeferStmt{Call: call(closure(nil, nil,
 			&ast.IfStmt{Cond: runtimeCall("ControlPending"), Body: block(
@@ -160,10 +172,22 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 	return direct
 }
 
+// directCall lowers a direct call to a Value-compatible expression. A typed
+// Result/Optional is boxed here so every consumer that is not try, match or
+// return sees the Alternative it always saw.
 func (g *generator) directCall(e *syntax.Expression) ast.Expr {
+	value, direct := g.typedDirectCall(e)
+	if value != nil && direct.shape != nil {
+		return call(selector(value, "Box"), g.key(g.program.Info(e).Type))
+	}
+	return value
+}
+
+// typedDirectCall lowers a direct call without boxing its typed result.
+func (g *generator) typedDirectCall(e *syntax.Expression) (ast.Expr, *directFunction) {
 	direct := g.directTarget(e)
 	if direct == nil {
-		return nil
+		return nil, nil
 	}
 	info := g.program.Info(e)
 	args := info.Arguments
@@ -184,7 +208,7 @@ func (g *generator) directCall(e *syntax.Expression) ast.Expr {
 			values = append(values, sourceAt(arg.Pos, value))
 		}
 	}
-	return g.locatedOperation(e, ident(direct.name), values...)
+	return g.locatedOperation(e, ident(direct.name), values...), direct
 }
 
 func (g *generator) restFree(args []syntax.Argument) bool {

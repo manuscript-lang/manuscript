@@ -17,7 +17,7 @@ The bounded subprocess facility is exported by `@std/process.ms`. Import `comman
 
 Omit `input` for empty standard input; `commands().run(program: "tool", arguments: [])` evaluates fresh empty bytes on each call. Supplied bytes are passed unchanged. The same default works through a stored method or a source implementation of `Commands`.
 
-`CommandError` has `InvalidInput`, `Unavailable`, `TimedOut`, `OutputLimit`, and `Failed(message: String)`. Empty/NUL program names, NUL arguments, negative bounds, and negative timeout return InvalidInput. The total stdout plus stderr bound is nonnegative. Nonzero ordinary exit is an `ok` output with that code. Timeout or output overflow stops and joins the process before returning its error; caller cancellation unwinds after joining. POSIX process groups include descendants in termination.
+`CommandError` has `InvalidInput`, `Unavailable`, `Timeout`, `OutputLimit`, and `Failed(message: String)`. Empty/NUL program names, NUL arguments, negative bounds, and negative timeout return InvalidInput. The total stdout plus stderr bound is nonnegative. Nonzero ordinary exit is an `ok` output with that code. Timeout or output overflow stops and joins the process before returning its error; caller cancellation unwinds after joining. POSIX process groups include descendants in termination.
 
 On platforms without process-group support the wrapper controls the direct process, with bounded pipe completion; descendant supervision needs a platform host contract. Interactive subprocess streams remain separate future contracts; [network sockets](network.md), [streaming HTTP](http.md) and [WebSockets](websocket.md) are implemented.
 

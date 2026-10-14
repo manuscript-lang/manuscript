@@ -159,7 +159,7 @@ func TestTaskGroupTimeoutAndFixedParent(t *testing.T) {
 		t.Fatal("submission reparented work")
 	}
 	outcome := taskResult(root, task)
-	if outcome.Tag != "error" || outcome.Fields[0].(Alternative).Tag != "TimedOut" {
+	if outcome.Tag != "error" || outcome.Fields[0].(Alternative).Tag != "Timeout" {
 		t.Fatal(outcome)
 	}
 	select {

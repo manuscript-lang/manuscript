@@ -84,7 +84,9 @@ func (f *libraryFileSystem) removalPath(s string) (string, error) {
 // Kept here so host path operations can consistently use a live directory after
 // ProcessControl.change_directory, while explicitly constructed fakes stay pinned.
 func libraryHostPath(directory, s string) (string, bool) {
-	if strings.ContainsRune(s, 0) {
+	// An empty path would otherwise resolve to the working directory, so
+	// remove(path: "", recursive: true) would delete it.
+	if s == "" || strings.ContainsRune(s, 0) {
 		return "", false
 	}
 	if filepath.IsAbs(s) {

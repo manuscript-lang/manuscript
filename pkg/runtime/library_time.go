@@ -12,12 +12,12 @@ func init() {
 		return Duration(a[0].(int64))
 	})
 	for _, operation := range []struct{ name, operator string }{{"add", "+"}, {"subtract", "-"}} {
-		libraryAdd("time", "duration_"+operation.name, "Duration", []LibraryParam{p("left", "Duration"), p("right", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
+		libraryAdd("time", "duration_"+operation.name, "Duration", []LibraryParam{p("left", "Duration"), p("other", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
 			left, right := int64(a[0].(Duration)), int64(a[1].(Duration))
 			if operation.operator == "+" {
-				return Duration(checkedTimeAdd("Duration.add", "value", "right", left, right))
+				return Duration(checkedTimeAdd("Duration.add", "value", "other", left, right))
 			}
-			return Duration(checkedTimeSub("Duration.subtract", "value", "right", left, right))
+			return Duration(checkedTimeSub("Duration.subtract", "value", "other", left, right))
 		})
 	}
 	libraryAdd("time", "duration_multiply", "Duration", []LibraryParam{p("value", "Duration"), p("factor", "Int")}, func(_ *Execution, _ string, a []Value) Value {
@@ -50,7 +50,7 @@ func init() {
 		}
 		return value
 	})
-	libraryAdd("time", "duration_compare", "Int", []LibraryParam{p("left", "Duration"), p("right", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
+	libraryAdd("time", "duration_compare", "Int", []LibraryParam{p("left", "Duration"), p("other", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
 		return libraryTimeCompare(int64(a[0].(Duration)), int64(a[1].(Duration)))
 	})
 	for _, unit := range []struct {
@@ -73,17 +73,17 @@ func init() {
 		value, offset := a[0].(Instant), int64(a[1].(Duration))
 		return Instant{value.Domain, checkedTimeAdd("Instant.shift", "value", "duration", value.Tick, offset)}
 	})
-	libraryAdd("time", "instant_difference", "Duration", []LibraryParam{p("left", "Instant"), p("right", "Instant")}, func(_ *Execution, _ string, a []Value) Value {
+	libraryAdd("time", "instant_difference", "Duration", []LibraryParam{p("left", "Instant"), p("other", "Instant")}, func(_ *Execution, _ string, a []Value) Value {
 		left, right := a[0].(Instant), a[1].(Instant)
 		sameClock(left, right)
-		return Duration(checkedTimeSub("Instant.difference", "value", "right", left.Tick, right.Tick))
+		return Duration(checkedTimeSub("Instant.difference", "value", "other", left.Tick, right.Tick))
 	})
-	libraryAdd("time", "instant_compare", "Int", []LibraryParam{p("left", "Instant"), p("right", "Instant")}, func(_ *Execution, _ string, a []Value) Value {
+	libraryAdd("time", "instant_compare", "Int", []LibraryParam{p("left", "Instant"), p("other", "Instant")}, func(_ *Execution, _ string, a []Value) Value {
 		left, right := a[0].(Instant), a[1].(Instant)
 		sameClock(left, right)
 		return libraryTimeCompare(left.Tick, right.Tick)
 	})
-	libraryAdd("time", "timestamp_compare", "Int", []LibraryParam{p("left", "Timestamp"), p("right", "Timestamp")}, func(_ *Execution, _ string, a []Value) Value {
+	libraryAdd("time", "timestamp_compare", "Int", []LibraryParam{p("left", "Timestamp"), p("other", "Timestamp")}, func(_ *Execution, _ string, a []Value) Value {
 		return int64(a[0].(libraryTimestamp).t.Compare(a[1].(libraryTimestamp).t))
 	})
 }

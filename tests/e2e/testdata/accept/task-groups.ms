@@ -102,7 +102,7 @@ test "zero timeout starts no callback":
                 return panic("zero timeout succeeded")
 
         match cause:
-            TimedOut:
+            Timeout:
                 return
 
             _:
