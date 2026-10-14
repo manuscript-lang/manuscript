@@ -1,6 +1,9 @@
 package msruntime
 
-import "iter"
+import (
+	"iter"
+	"slices"
+)
 
 // ListRange captures a backing header and its initial length without copying
 // elements. It deliberately retains the old array across receiver reallocation.
@@ -616,13 +619,14 @@ func NewSizedIntList(typ string, length int) *List {
 	}
 	return &List{Type: typ, kind: listInt, initializing: true, ints: make([]int64, length)}
 }
+
+// InitListInt is strict fresh typed construction. The compact checks inline
+// without a generic Len/Set call or a primitive Value box.
 func InitListInt(list *List, index int, value int64) {
-	checkListInitialization(list, index)
-	if list.kind == listInt {
-		list.ints[index] = value
-	} else {
-		list.Set(index, value)
+	if !list.initializing || list.kind != listInt || uint(index) >= uint(len(list.ints)) {
+		Panic("runtime invariant: invalid fresh List initialization")
 	}
+	list.ints[index] = value
 }
 
 func NewSizedFloatList(typ string, length int) *List {
@@ -631,13 +635,14 @@ func NewSizedFloatList(typ string, length int) *List {
 	}
 	return &List{Type: typ, kind: listFloat, initializing: true, floats: make([]float64, length)}
 }
+
+// InitListFloat is strict fresh typed construction. The compact checks inline
+// without a generic Len/Set call or a primitive Value box.
 func InitListFloat(list *List, index int, value float64) {
-	checkListInitialization(list, index)
-	if list.kind == listFloat {
-		list.floats[index] = value
-	} else {
-		list.Set(index, value)
+	if !list.initializing || list.kind != listFloat || uint(index) >= uint(len(list.floats)) {
+		Panic("runtime invariant: invalid fresh List initialization")
 	}
+	list.floats[index] = value
 }
 
 func NewSizedBoolList(typ string, length int) *List {
@@ -646,13 +651,14 @@ func NewSizedBoolList(typ string, length int) *List {
 	}
 	return &List{Type: typ, kind: listBool, initializing: true, bools: make([]bool, length)}
 }
+
+// InitListBool is strict fresh typed construction. The compact checks inline
+// without a generic Len/Set call or a primitive Value box.
 func InitListBool(list *List, index int, value bool) {
-	checkListInitialization(list, index)
-	if list.kind == listBool {
-		list.bools[index] = value
-	} else {
-		list.Set(index, value)
+	if !list.initializing || list.kind != listBool || uint(index) >= uint(len(list.bools)) {
+		Panic("runtime invariant: invalid fresh List initialization")
 	}
+	list.bools[index] = value
 }
 
 func NewSizedStringList(typ string, length int) *List {
@@ -661,13 +667,14 @@ func NewSizedStringList(typ string, length int) *List {
 	}
 	return &List{Type: typ, kind: listString, initializing: true, strings: make([]string, length)}
 }
+
+// InitListString is strict fresh typed construction. The compact checks inline
+// without a generic Len/Set call or a primitive Value box.
 func InitListString(list *List, index int, value string) {
-	checkListInitialization(list, index)
-	if list.kind == listString {
-		list.strings[index] = value
-	} else {
-		list.Set(index, value)
+	if !list.initializing || list.kind != listString || uint(index) >= uint(len(list.strings)) {
+		Panic("runtime invariant: invalid fresh List initialization")
 	}
+	list.strings[index] = value
 }
 
 // EqualAt compares primitive captured cells without crossing a boxed boundary.
@@ -691,4 +698,24 @@ func (r ListRange) EqualAt(ctx *Execution, index int, value Value, scope TypeSco
 		return ok && r.list.strings[index] == v
 	}
 	return EqualSelected(ctx, r.Get(index), value, scope)
+}
+
+// Primitive equality precedes custom implementation dispatch in equal. When
+// both captured headers have matching primitive backing, compare directly
+// instead of allocating a Value payload box for every corresponding cell.
+func equalPrimitiveListRanges(left, right ListRange) (bool, bool) {
+	if left.list.kind != right.list.kind {
+		return false, false
+	}
+	switch left.list.kind {
+	case listInt:
+		return slices.Equal(left.list.ints, right.list.ints), true
+	case listFloat:
+		return slices.Equal(left.list.floats, right.list.floats), true
+	case listBool:
+		return slices.Equal(left.list.bools, right.list.bools), true
+	case listString:
+		return slices.Equal(left.list.strings, right.list.strings), true
+	}
+	return false, false
 }

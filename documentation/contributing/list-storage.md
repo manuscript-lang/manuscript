@@ -34,6 +34,10 @@ setters perform non-cancelling construction writes only before
 `FinishListInitialization`. Lowering owns cancellation, checked conversions,
 left-to-right evaluation and source positions, and finishes before publishing.
 Using an initializer after completion or outside its sized bounds faults.
+Primitive setters additionally require matching typed backing and write it
+directly; boxed or differently typed backing faults. `InitListValue` retains the
+generic construction boundary. These helpers remain internal Go construction
+APIs, with no change to Manuscript's collection surface.
 
 `ListAtInt/Float/Bool/String` return typed Optional values with `Value` and
 `Present` fields. Their `Unwrap(ctx)` methods retain the ordinary none fault and
@@ -47,6 +51,16 @@ Those bodies own generated tracing and cleanup. The constructor installs ordinar
 depth guard, source-return handling and cancellation delivery. Profiling falls
 back through the ordinary source wrapper before typed admission. Passing an
 already guarded body would double admission and is invalid.
+
+`NewCompiledSourceFunction` preserves `NewSourceFunction`'s signature and guarded
+`Body`. It marks `Function.BorrowedArguments` only for raw generated bodies that
+copy parameter Values and never retain or expose their incoming `[]Value`.
+Capturing individual copied Values, including mutable references, remains valid.
+The initial consumer is `for_each` with exact `value` labels: each invocation owns
+one argument buffer, so recursive or reentrant traversals have separate buffers.
+Arbitrary `NewFunction` and `NewSourceFunction` callbacks receive fresh arrays.
+Adapters do not inherit this proof. Compiler emission and ordinary source
+performance acceptance belong to the scalar lowering integration.
 
 `ListSorted` copies storage and uses typed comparator entries when available.
 Arbitrary callbacks box once per element in temporary sorting storage, avoiding

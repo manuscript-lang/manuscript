@@ -26,6 +26,9 @@ type Function struct {
 	Body         func(*Execution, []Value) Value
 	IntCompare   func(*Execution, int64, int64) int64
 	FloatCompare func(*Execution, float64, float64) int64
+	// BorrowedArguments is an internal proof carried only by compiled bodies
+	// that copy parameter Values and never retain/expose their incoming slice.
+	BorrowedArguments bool
 }
 type Generic struct {
 	Variables []string
@@ -633,12 +636,22 @@ func equal(a, b Value, state *equalityState) bool {
 		return ok && x.Type == y.Type && x.Tag == y.Tag && equalItemsState(x.Fields, y.Fields, state)
 	case *List:
 		y, ok := b.(*List)
-		if !ok || x.Type != y.Type || x.Len() != y.Len() {
+		if !ok || x.Type != y.Type {
 			return false
 		}
+		// Element equality may mutate either outer List. Capture both headers
+		// before checking lengths; writes remain visible but growth/shrink and
+		// reallocation cannot change the arrays or membership being compared.
+		left, right := x.Capture(), y.Capture()
+		if left.Len() != right.Len() {
+			return false
+		}
+		if same, handled := equalPrimitiveListRanges(left, right); handled {
+			return same
+		}
 		child := equalityChild(state, 0)
-		for i := 0; i < x.Len(); i++ {
-			if !equal(x.Get(i), y.Get(i), child) {
+		for i := 0; i < left.Len(); i++ {
+			if !equal(left.Get(i), right.Get(i), child) {
 				return false
 			}
 		}
@@ -1068,6 +1081,15 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 		}
 		return body(ctx, args)
 	})
+}
+
+// NewCompiledSourceFunction has the same guarded Body ABI as NewSourceFunction.
+// Its raw body must copy incoming Values and never retain or expose args itself.
+// Capturing an individual copied Value, including a mutable reference, is valid.
+func NewCompiledSourceFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
+	function := NewSourceFunction(labels, result, position, body)
+	function.BorrowedArguments = true
+	return function
 }
 
 type implementationKey struct {

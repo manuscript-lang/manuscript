@@ -62,3 +62,21 @@ func TestPrimitiveListStorageStandalone(t *testing.T) {
 		t.Fatalf("standalone primitive Lists: %v\n%s", err, output)
 	}
 }
+
+func TestListEqualityMutationStandalone(t *testing.T) {
+	result := compiler.CompileFile("testdata/accept/list-equality-mutation.ms", compiler.Options{Tests: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	source, err := build.Standalone(result.Source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(t.TempDir(), "equality-mutation")
+	if err := build.Build(source, binary); err != nil {
+		t.Fatal(err)
+	}
+	if output, err := commandOutput(t, binary); err != nil || !strings.Contains(string(output), "1 tests, 0 failed") {
+		t.Fatalf("standalone equality mutation: %v\n%s", err, output)
+	}
+}

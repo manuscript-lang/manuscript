@@ -9,6 +9,9 @@ omission. Closed prototypes and the cancelled width migration are not dependenci
 | Contract | Evidence | Status |
 | --- | --- | --- |
 | One mutable identity across aliases/generics/saved methods | `TestPrimitiveListConstructorsAndAliases`, called primitive fixture | Implemented |
+| Equality under user Equal mutating either operand | `TestListEqualityCapturesBothHeadersBeforeCallbacks`, native/standalone equality fixture | Both headers captured before length/traversal |
+| Ordinary generated iteration and generic callbacks | Committed before/storage benchmarks and review ledger below | Regressions remain a combined #318 acceptance gate |
+| Borrowed compiled `for_each` arguments | Retention/reentry/Value captures/labels/wrappers/checkpoint/guard tests | Runtime control implemented; #87 emits only proven bodies |
 | Captured Go header, writes/growth/shrink/self-splice/retained tails | `TestPrimitiveListCapturedGoHeaders`, existing Go and source oracles | Implemented |
 | Fresh construction and sized non-cancelling initialization | `TestFreshSizedListInitialization` | Two allocations for nonempty backing |
 | Primitive Optional and fault/cancellation boundary | `TestPrimitiveListAccessAllocationsAndCancellation` | Zero typed read allocations |
@@ -63,6 +66,52 @@ source lowering must consume `ListAt*` before combined acceptance. Generic stabl
 sorting boxes once per element, with 2,291,172 versus 2,225,800 allocations, instead
 of the earlier per-comparison storage prototype's 2.26x regression. Fully typed
 comparators avoid both the working boxed array and per-comparison payload boxes.
+
+## Review correction: traversal allocation regressions
+
+The original acceptance summary omitted two regressions visible in the committed
+raw samples. At 65,536 Ints, the ordinary generated paths measure:
+
+| Path | baseline allocations / bytes | storage allocations / bytes | Required combined acceptance |
+| --- | ---: | ---: | --- |
+| `for` iteration | 65,535 / 524,284 | 130,912 / 1,047,504 | Measure actual emitted traversal after #318, including header adapter overhead |
+| Generic `for_each` callback | 131,090 / 1,574,029 | 196,461 / 2,097,057 | Measure ordinary boxed callbacks as well as typed callback fast paths |
+| Boxed backing, concrete accumulation local | 1 / 8 | 5 / 216 | Account for iterator function/capture overhead independent of primitive payload boxing |
+
+The callback increase is exactly 65,371 allocations: the non-small Int payloads
+boxed at the generic callback boundary. Iteration adds those payload boxes plus
+constant iterator/capture allocations. These explanations follow the stored code
+and allocation counts; they are not a profile-backed timing attribution. Smoke
+iteration times also increased, but the sequential samples do not establish a
+paired confidence estimate. Typed `CaptureList` loops and comparator controls
+cannot stand in for these ordinary paths. Combined #318 acceptance must rerun
+append/index/iteration/callback/sorting and compare allocations and bytes against
+the labeled baseline; memory savings alone do not clear these regressions.
+
+The approved narrow mitigation adds `NewCompiledSourceFunction`, delegating the
+ordinary source guard once and marking bodies that copy parameter Values without
+retaining/exposing `[]Value`. Exact-label `for_each` uses one invocation-local
+buffer; unmarked callbacks keep fresh arrays and wrappers drop the proof.
+`BenchmarkForEachBorrowedArguments` isolates the production callback boundary at
+65,536 cells, with three 100ms samples in
+[borrowed runtime controls](results/typed-storage/borrowed-arguments/).
+
+| Runtime callback control | fresh allocations / bytes | borrowed allocations / bytes |
+| --- | ---: | ---: |
+| Already boxed backing | 65,536 / 1,048,576 | 1 / 16 |
+| Typed backing with boxed callback Values | 130,907 / about 1,571,550 | 65,372 / about 522,986 |
+
+Typed backing still boxes 65,371 non-small primitive payloads. Reusing only the
+argument slots removes their allocation increase relative to the prior boxed
+callback boundary, but actual generated source remains a combined #87 gate.
+These runtime controls do not establish compiler marker proof or timing speedups.
+
+The equality review found a separate semantic bug: reloading live List headers
+let an element's user Equal shrink/extend membership or switch arrays on growth.
+Capturing both headers before length/traversal restores ordinary Go slice behavior
+without cloning backing. Independent Go and called source tests exercise both
+operands, shrink (including skipped mismatches), append with spare capacity,
+reallocation, and visible replacement of an unvisited backing cell.
 
 Reproduce with the current Makefile and writable caches:
 
