@@ -141,6 +141,10 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		i.Method = callable.Method
 		i.Native = callable.Native
 	}
+	if signature != nil && signature.ID == "<invalid>" {
+		i.Type = signature
+		return i
+	}
 	if signature == nil || signature.Kind != "function" {
 		c.error(e.Pos, "type", "callee is not a function")
 		return i

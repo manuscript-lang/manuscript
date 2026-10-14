@@ -871,6 +871,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		methods := c.methods(receiver.Type, e.Text)
 		if len(methods) != 1 {
 			c.error(e.Pos, "resolution", "unknown or ambiguous member "+e.Text)
+			// Later diagnostics that only restate the missing member are noise.
+			c.unknownType = true
+			i.Type = primitive("<invalid>")
 			return i
 		}
 		i.Method = methods[0]
