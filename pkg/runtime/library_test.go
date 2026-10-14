@@ -144,6 +144,17 @@ func TestLibraryCompressionAndArchives(t *testing.T) {
 		libraryFailure(t, libraryCall(t, "archive/pack", entries, "zip", int64(1000)), "InvalidInput")
 	}
 }
+func TestLibraryZipPackRejectsOverlongName(t *testing.T) {
+	entry := func(path string, directory bool) Value {
+		return Record{"@std/ArchiveEntry", map[string]Value{"path": path, "data": Bytes{}, "directory": directory}}
+	}
+	long := strings.Repeat("a", 65536)
+	// A 65535-byte name is the largest ZIP can store; a directory's trailing slash counts toward the limit.
+	librarySuccess(t, libraryCall(t, "archive/pack", libraryList("@std/ArchiveEntry", []Value{entry(long[:65535], false)}), "zip", int64(1<<30)))
+	libraryFailure(t, libraryCall(t, "archive/pack", libraryList("@std/ArchiveEntry", []Value{entry(long, false)}), "zip", int64(1<<30)), "InvalidInput")
+	libraryFailure(t, libraryCall(t, "archive/pack", libraryList("@std/ArchiveEntry", []Value{entry(long[:65535], true)}), "zip", int64(1<<30)), "InvalidInput")
+	librarySuccess(t, libraryCall(t, "archive/pack", libraryList("@std/ArchiveEntry", []Value{entry(long, false)}), "tar", int64(1<<30)))
+}
 func TestLibraryArchiveRejectsFileDirectoryConflict(t *testing.T) {
 	entry := func(path string, directory bool) Value {
 		return Record{"@std/ArchiveEntry", map[string]Value{"path": path, "data": Bytes{}, "directory": directory}}
