@@ -17,8 +17,15 @@
       ]
     },
     {
+      "match": "^\\s*(import)\\b[^#\"\\n]*?\\b(from)\\b",
+      "captures": {
+        "1": { "name": "keyword.control.manuscript" },
+        "2": { "name": "keyword.control.manuscript" }
+      }
+    },
+    {
       "name": "keyword.control.manuscript",
-      "match": "\\b(fn|type|interface|impl|import|from|export|let|var|if|else|for|in|while|match|case|return|with|try|break|continue|test|and|or|not|self)\\b"
+      "match": "\\b(fn|type|interface|impl|import|export|let|var|if|else|for|in|while|match|case|return|with|try|break|continue|test|and|or|not|self)\\b"
     },
     {
       "name": "constant.language.manuscript",
