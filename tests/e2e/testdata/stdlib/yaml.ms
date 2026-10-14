@@ -654,3 +654,39 @@ test "YAML stringify validates numbers and honors max_bytes":
     let exact: Result[String, YamlError] = ok("a: 1\n")
     if stringify(value: root, max_bytes: 5) != exact: return panic("exact limit")
     if stringify(value: root, max_bytes: -1) != invalid: return panic("negative limit")
+
+test "YAML scalars and anchors on their own line continue at the same indentation":
+    let folded = entries(
+        value(parse(text: "run:\n  util/check.sh\n  --flag value\nnext: 1\n"))
+    )
+    if (
+        folded.get("run").unwrap() != YamlValue.StringValue(
+            "util/check.sh --flag value"
+        )
+    ): return panic(
+        "plain scalar on its own line"
+    )
+    if folded.get("next").unwrap() != YamlValue.NumberValue("1"): return panic(
+        "sibling after scalar"
+    )
+
+    let list = items(
+        value(parse(text: "- foo\n  bar\n-\n  baz\n  qux\n"))
+    )
+    if list != [YamlValue.StringValue("foo bar"), YamlValue.StringValue("baz qux")]: return panic(
+        "sequence items"
+    )
+
+    let anchored = entries(
+        value(parse(text: "a:\n  &x\n  k: 1\nb: *x\n"))
+    )
+    if anchored.get("a").unwrap() != anchored.get("b").unwrap(): return panic(
+        "anchor on its own line"
+    )
+    if (
+        entries(anchored.get("b").unwrap()).get(
+            "k"
+        ).unwrap() != YamlValue.NumberValue("1")
+    ): return panic(
+        "anchored mapping"
+    )
