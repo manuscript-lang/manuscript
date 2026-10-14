@@ -56,11 +56,13 @@ already guarded body would double admission and is invalid.
 `Body`. It marks `Function.BorrowedArguments` only for raw generated bodies that
 copy parameter Values and never retain or expose their incoming `[]Value`.
 Capturing individual copied Values, including mutable references, remains valid.
-The initial consumer is `for_each` with exact `value` labels: each invocation owns
-one argument buffer, so recursive or reentrant traversals have separate buffers.
+Lowered lambdas use it, and the list callbacks (`for_each`, `map`, `filter`,
+`fold`, `fold_right`, `count`, `find`/`some`/`every`, `flat_map`, `group_by`) share
+one `callback` helper that borrows when the labels match exactly: each library
+invocation owns one argument buffer, so recursive or reentrant traversals have
+separate buffers.
 Arbitrary `NewFunction` and `NewSourceFunction` callbacks receive fresh arrays.
-Adapters do not inherit this proof. Compiler emission and ordinary source
-performance acceptance belong to the scalar lowering integration.
+Adapters do not inherit this proof.
 
 `ListSorted` copies storage and uses typed comparator entries when available.
 Arbitrary callbacks box once per element in temporary sorting storage, avoiding

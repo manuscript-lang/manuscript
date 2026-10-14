@@ -282,9 +282,10 @@ func init() {
 	})
 	add("count", "Int", elements, []LibraryParam{p("values", "List[T]"), p("predicate", "fn(value:T)->Bool")}, func(ctx *Execution, _ string, a []Value) Value {
 		count := int64(0)
+		predicate := newCallback(a[1], "value")
 		for _, value := range a[0].(*List).Capture().Values() {
 			CheckCancelled(ctx)
-			if Invoke(ctx, a[1], []Argument{{"value", value}}).(bool) {
+			if predicate.call1(ctx, a[1], value).(bool) {
 				count++
 			}
 		}
@@ -346,10 +347,11 @@ func init() {
 			if name == "find_last" || name == "find_last_index" {
 				start, end, step = items.Len()-1, -1, -1
 			}
+			predicate := newCallback(a[1], "value")
 			for i := start; i != end; i += step {
 				CheckCancelled(ctx)
 				value := items.Get(i)
-				matches := Invoke(ctx, a[1], []Argument{{"value", value}}).(bool)
+				matches := predicate.call1(ctx, a[1], value).(bool)
 				if name == "every" {
 					if !matches {
 						return false
@@ -380,18 +382,20 @@ func init() {
 	})
 	add("flat_map", "List[U]", []LibraryParam{p("T", ""), p("U", "")}, []LibraryParam{p("values", "List[T]"), p("transform", "fn(value:T)->List[U]")}, func(ctx *Execution, r string, a []Value) Value {
 		var out []Value
+		transform := newCallback(a[1], "value")
 		for _, v := range a[0].(*List).Capture().Values() {
 			CheckCancelled(ctx)
-			out = append(out, Invoke(ctx, a[1], []Argument{{"value", v}}).(*List).Boxed()...)
+			out = append(out, transform.call1(ctx, a[1], v).(*List).Boxed()...)
 		}
 		return NewList(r, out)
 	})
 	add("fold_right", "A", []LibraryParam{p("T", ""), p("A", "")}, []LibraryParam{p("values", "List[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		acc := a[1]
 		items := a[0].(*List).Capture()
+		step := newCallback2(a[2], "accumulator", "value")
 		for i := items.Len() - 1; i >= 0; i-- {
 			CheckCancelled(ctx)
-			acc = Invoke(ctx, a[2], []Argument{{"accumulator", acc}, {"value", items.Get(i)}})
+			acc = step.call2(ctx, a[2], acc, items.Get(i))
 		}
 		return acc
 	})
@@ -509,9 +513,10 @@ func init() {
 	add("group_by", "Map[K][List[T]]", []LibraryParam{p("T", ""), p("K", "Hashable")}, []LibraryParam{p("values", "List[T]"), p("key", "fn(value:T)->K")}, func(ctx *Execution, r string, a []Value) Value {
 		out := &Map{Type: r}
 		listType := typeArguments(r)[1]
+		keyOf := newCallback(a[1], "value")
 		for _, v := range a[0].(*List).Capture().Values() {
 			CheckCancelled(ctx)
-			key := Invoke(ctx, a[1], []Argument{{"value", v}})
+			key := keyOf.call1(ctx, a[1], v)
 			found := out.find(ctx, key)
 			if found < 0 {
 				out.Entries = append(out.Entries, Entry{key, NewList(listType, []Value{v})})
