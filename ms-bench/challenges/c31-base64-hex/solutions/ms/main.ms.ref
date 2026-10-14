@@ -56,7 +56,7 @@ fn b64_decode(t: String) -> Optional[String]:
     let vals = List[Int]()
     var i = 0
     while i < body:
-        let v = alphabet().index_of(t.slice(i, i + 1))
+        let v = alphabet().index_of(t.slice(i, i + 1).unwrap())
         if v.is_none():
             return none
         vals.append(v.unwrap())
@@ -134,8 +134,8 @@ fn run() -> Result[Unit, Error]:
         var cmd = line
         var arg = ""
         if sp.is_some():
-            cmd = line.slice(0, sp.unwrap())
-            arg = line.slice(sp.unwrap() + 1, line.length())
+            cmd = line.slice(0, sp.unwrap()).unwrap()
+            arg = line.slice(sp.unwrap() + 1, line.length()).unwrap()
         var res: Optional[String] = none
         if cmd == "b64e":
             res = some(b64_encode(arg))

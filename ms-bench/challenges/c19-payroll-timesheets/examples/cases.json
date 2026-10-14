@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "[rates]\nann=2500\nbob=1800\n[shifts]\nann,2024-03-04,09:00,17:30,30\nann,2024-03-05,08:00,18:00,0\nbob,2024-03-04,09:00,12:00,0\nbob,2024-03-04,11:00,13:00,0\ncy,2024-03-04,09:00,10:00,0\n",
+  "stdout": "line 8: rejected: overlapping shift\nline 9: rejected: unknown employee\nann | weeks=1 | worked=18:00 | regular=450.00 | overtime=0.00 | total=450.00\nbob | weeks=1 | worked=3:00 | regular=54.00 | overtime=0.00 | total=54.00\npayroll employees=2 shifts=3 rejected=2 total=504.00\n"
+ },
+ {
+  "name": "overtime",
+  "stdin": "[rates]\nann=2000\n[shifts]\nann,2024-03-04,08:00,17:00,0\nann,2024-03-05,08:00,17:00,0\nann,2024-03-06,08:00,17:00,0\nann,2024-03-07,08:00,17:00,0\nann,2024-03-08,08:00,17:00,0\nann,2024-03-09,08:00,10:30,30\n",
+  "stdout": "ann | weeks=1 | worked=47:00 | regular=800.00 | overtime=210.00 | total=1010.00\npayroll employees=1 shifts=6 rejected=0 total=1010.00\n"
+ }
+]

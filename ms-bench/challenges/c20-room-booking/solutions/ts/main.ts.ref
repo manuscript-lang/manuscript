@@ -1,0 +1,101 @@
+import { readFileSync } from "node:fs";
+
+type Booking = { room: string; date: string; st: string; en: string; a: number; b: number; n: number; act: boolean };
+
+function leap(y: number): boolean {
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+function validDate(s: string): boolean {
+  if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return false;
+  const y = Number(s.slice(0, 4)), m = Number(s.slice(5, 7)), d = Number(s.slice(8, 10));
+  if (y < 2000 || y > 2099 || m < 1 || m > 12 || d < 1) return false;
+  const dim = [31, leap(y) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+  return d <= dim;
+}
+
+function hm(s: string): number | null {
+  if (!/^[0-9]{2}:[0-9]{2}$/.test(s)) return null;
+  const h = Number(s.slice(0, 2)), m = Number(s.slice(3, 5));
+  return h > 23 || m > 59 ? null : h * 60 + m;
+}
+
+function cmp(x: string, y: string): number {
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+const rooms = new Map<string, number>();
+const used = new Set<string>();
+const book = new Map<string, Booking>();
+const order: string[] = [];
+const out: string[] = [];
+for (const l of lines) {
+  if (l.replace(/ /g, "") === "") continue;
+  const t = l.split(" ");
+  const c = t[0];
+  if (c === "room") {
+    if (t.length !== 3) out.push("error: usage");
+    else if (!/^[a-z][a-z0-9]{0,9}$/.test(t[1])) out.push("error: bad room name");
+    else if (!/^[0-9]{1,6}$/.test(t[2]) || Number(t[2]) < 1 || Number(t[2]) > 500) out.push("error: bad capacity");
+    else if (rooms.has(t[1])) out.push("error: room exists");
+    else { rooms.set(t[1], Number(t[2])); out.push("ok"); }
+  } else if (c === "book") {
+    if (t.length !== 7) { out.push("error: usage"); continue; }
+    const [, id, r, d, st, en, at] = t;
+    if (!/^[a-z0-9-]+$/.test(id)) { out.push("error: bad id"); continue; }
+    if (used.has(id)) { out.push("error: duplicate id"); continue; }
+    used.add(id);
+    const a = hm(st), b = hm(en);
+    if (!rooms.has(r)) out.push("error: unknown room");
+    else if (!validDate(d)) out.push("error: bad date");
+    else if (a === null || b === null) out.push("error: bad time");
+    else if (b <= a) out.push("error: bad range");
+    else if (a % 15 !== 0 || b % 15 !== 0) out.push("error: not aligned");
+    else if (a < 480 || b > 1200) out.push("error: outside hours");
+    else if (b - a > 240) out.push("error: too long");
+    else if (!/^[0-9]{1,6}$/.test(at) || Number(at) < 1) out.push("error: bad attendees");
+    else if (Number(at) > rooms.get(r)!) out.push("error: over capacity");
+    else {
+      const hit = order.find((x) => {
+        const k = book.get(x)!;
+        return k.act && k.room === r && k.date === d && a < k.b && k.a < b;
+      });
+      if (hit !== undefined) out.push(`error: conflict with ${hit}`);
+      else {
+        book.set(id, { room: r, date: d, st, en, a, b, n: Number(at), act: true });
+        order.push(id);
+        out.push(`ok ${id}`);
+      }
+    }
+  } else if (c === "cancel") {
+    if (t.length !== 2) out.push("error: usage");
+    else if (!book.has(t[1])) out.push("error: unknown booking");
+    else if (!book.get(t[1])!.act) out.push("error: already cancelled");
+    else { book.get(t[1])!.act = false; out.push("ok"); }
+  } else if (c === "report") {
+    if (t.length !== 1) { out.push("error: usage"); continue; }
+    for (const name of [...rooms.keys()].sort(cmp)) {
+      const bs = order
+        .filter((x) => book.get(x)!.room === name && book.get(x)!.act)
+        .sort((x, y) => {
+          const p = book.get(x)!, q = book.get(y)!;
+          return cmp(p.date, q.date) || p.a - q.a || cmp(x, y);
+        });
+      let mins = 0;
+      const dates = new Set<string>();
+      for (const x of bs) { const k = book.get(x)!; mins += k.b - k.a; dates.add(k.date); }
+      const days = dates.size;
+      const util = days === 0 ? 0 : Math.floor((mins * 200 + 720 * days) / (1440 * days));
+      out.push(`${name} cap=${rooms.get(name)} active=${bs.length} minutes=${mins} util=${util}%`);
+      for (const x of bs) {
+        const k = book.get(x)!;
+        out.push(`  ${k.date} ${k.st}-${k.en} ${x} attendees=${k.n}`);
+      }
+    }
+    const act = order.filter((x) => book.get(x)!.act).length;
+    out.push(`bookings active=${act} cancelled=${order.length - act}`);
+  } else out.push("error: unknown command");
+}
+process.stdout.write(out.map((x) => x + "\n").join(""));

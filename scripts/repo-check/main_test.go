@@ -85,7 +85,7 @@ func TestVerificationTargetsExecuteTheirContracts(t *testing.T) {
 		"verify":   {"vet ./...", "staticcheck ./...", "run ./scripts/repo-check\n", "test ./tests/examples", "maintenance licenses -check"},
 		"coverage": {"test -covermode=atomic", "-coverprofile=", "tool cover -html"},
 		"build":    {"run ./scripts/mktoolchain", "-tags exp.winarm64"},
-		"race":     {"test -race"}, "fuzz": {"-fuzz '^FuzzCompile$'"}, "e2e": {"test  ./tests/e2e"},
+		"race":     {"test -race"}, "fuzz": {"test ./pkg/build -list '^FuzzCompile$'", "test ./pkg/build -run '^$' -fuzz '^FuzzCompile$'"}, "e2e": {"test  ./tests/e2e"},
 	} {
 		t.Run(target, func(t *testing.T) {
 			output, err := exec.Command("make", "--dry-run", target).CombinedOutput()

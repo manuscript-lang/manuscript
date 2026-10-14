@@ -1,0 +1,7 @@
+[
+ {
+  "name": "basic",
+  "stdin": "room alpha 10\nroom beta 4\nbook b1 alpha 2024-03-04 09:00 10:30 6\nbook b2 alpha 2024-03-04 10:00 11:00 2\nbook b3 beta 2024-03-04 09:00 10:00 5\nbook b4 alpha 2024-03-04 10:30 11:30 3\ncancel b1\nbook b5 alpha 2024-03-04 09:10 10:00 1\nreport\n",
+  "stdout": "ok\nok\nok b1\nerror: conflict with b1\nerror: over capacity\nok b4\nok\nerror: not aligned\nalpha cap=10 active=1 minutes=60 util=8%\n  2024-03-04 10:30-11:30 b4 attendees=3\nbeta cap=4 active=0 minutes=0 util=0%\nbookings active=1 cancelled=1\n"
+ }
+]

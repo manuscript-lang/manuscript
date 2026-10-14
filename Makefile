@@ -85,7 +85,10 @@ coverage:
 fuzz:
 	"$(GO)" test ./pkg/parser -run '^$$' -fuzz '^FuzzParse$$' -fuzztime "$(FUZZTIME)"
 	"$(GO)" test ./pkg/parser -run '^$$' -fuzz '^FuzzParsePartial$$' -fuzztime "$(FUZZTIME)"
-	"$(GO)" test ./pkg/compiler -run '^$$' -fuzz '^FuzzCompile$$' -fuzztime "$(FUZZTIME)"
+	@targets=$$("$(GO)" test ./pkg/build -list '^FuzzCompile$$') && \
+		printf '%s\n' "$$targets" | grep -qxF FuzzCompile || \
+		{ echo 'FuzzCompile is not discoverable in pkg/build' >&2; exit 1; }
+	"$(GO)" test ./pkg/build -run '^$$' -fuzz '^FuzzCompile$$' -fuzztime "$(FUZZTIME)"
 
 fmt:
 	"$(GO)" fmt ./...

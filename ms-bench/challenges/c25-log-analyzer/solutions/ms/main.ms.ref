@@ -24,7 +24,10 @@ fn run() -> Result[Unit, Error]:
     let text = data.to_text().unwrap_or("")
     var valid = 0
     var malformed = 0
-    var server = 0
+    let classes = [0, 0, 0, 0, 0]
+    let latencies = List[Int]()
+    var slowest = -1
+    var slowest_text = ""
     let levels = Map[String, Int]()
     let stats = Map[String, Stat]()
     for line in text.split("\n"):
@@ -44,10 +47,17 @@ fn run() -> Result[Unit, Error]:
         valid = valid + 1
         let level = f.at(1).unwrap()
         levels.add(key: level, value: levels.get_or(key: level, fallback: 0) + 1)
-        if f.at(4).unwrap().parse_int().unwrap() >= 500:
-            server = server + 1
+        let first = f.at(4).unwrap().scalar_at(0).unwrap()
+        var cls = 4
+        if first >= 50 and first <= 53:
+            cls = first - 50
+        classes.set(cls, classes.at(cls).unwrap() + 1)
         let path = f.at(3).unwrap()
         let lat = f.at(5).unwrap().parse_int().unwrap()
+        latencies.append(lat)
+        if lat > slowest:
+            slowest = lat
+            slowest_text = "{lat} {f.at(2).unwrap()} {path} {f.at(0).unwrap()}"
         let old = stats.get_or(key: path, fallback: Stat(count: 0, total: 0))
         stats.add(key: path, value: Stat(count: old.count + 1, total: old.total + lat))
     let out = List[String]()
@@ -55,7 +65,16 @@ fn run() -> Result[Unit, Error]:
     out.append("malformed: {malformed}")
     for level in ["DEBUG", "INFO", "WARN", "ERROR"]:
         out.append("{level}: {levels.get_or(key: level, fallback: 0)}")
-    out.append("5xx: {server}")
+    let sorted_lat = latencies.sorted(compare: fn(left: Int, right: Int) -> Int:
+        return left - right
+    )
+    var p95 = 0
+    if sorted_lat.length() > 0:
+        p95 = sorted_lat.at((95 * sorted_lat.length() + 99) / 100 - 1).unwrap()
+    out.append("status: 2xx={classes.at(0).unwrap()} 3xx={classes.at(1).unwrap()} 4xx={classes.at(2).unwrap()} 5xx={classes.at(3).unwrap()} other={classes.at(4).unwrap()}")
+    out.append("p95: {p95}")
+    if slowest >= 0:
+        out.append("slowest: {slowest_text}")
     out.append("top:")
     let ranked = stats.entries().sorted(compare: fn(left: MapEntry[String, Stat], right: MapEntry[String, Stat]) -> Int:
         if left.value.count != right.value.count:
