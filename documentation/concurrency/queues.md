@@ -58,7 +58,81 @@ fn dequeue(shared: Synchronized[Queue[Int]]) -> Optional[Int]:
 
 The queue itself has no mutex. The compiler allows references to be passed freely and does not enforce this locking discipline. A queue or bound method obtained through `locked.get()` remains an alias after the guard closes; it must not be used concurrently outside that lock. Wrapping the same queue in two separate synchronized containers does not coordinate them. Store the queue directly in one wrapper and share that wrapper.
 
-Wrapping a queue serializes access; it does not add waiting for values or free capacity. Never wait for another operation to fill or drain the queue while holding its lock. Lock acquisition follows the ordinary [Synchronized cancellation and cleanup rules](synchronization.md#synchronized).
+Wrapping a queue serializes access; it does not by itself add waiting for values or free capacity. To block until the queue changes, call the guard's [`wait()`](synchronization.md#waiting-for-a-change), which releases the lock while sleeping; never poll or spin while holding the lock. Lock acquisition follows the ordinary [Synchronized cancellation and cleanup rules](synchronization.md#synchronized).
+
+## Blocking queue
+
+Waiting for values or free capacity composes from `Synchronized` and `wait`/`notify_all`. This complete test bounds the queue at two items; the consumers run in a `TaskGroup`, so they cannot outlive their scope:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import Queue from "@std/queues.ms"
+import Synchronized from "@std/sync.ms"
+import TaskGroup from "@std/tasks.ms"
+import panic from "@std/faults.ms"
+
+type QueueState:
+    items: Queue[Int]
+    closed: Bool
+
+fn put(state: Synchronized[QueueState], value: Int) -> Bool:
+    with locked = state.lock():
+        while true:
+            let current = locked.get()
+            if current.closed:
+                return false
+            if current.items.enqueue(value):
+                locked.notify_all()
+                return true
+            locked.wait()
+    return false
+
+fn take(state: Synchronized[QueueState]) -> Optional[Int]:
+    with locked = state.lock():
+        while true:
+            let current = locked.get()
+            let item = current.items.dequeue()
+            if item.is_some():
+                locked.notify_all()
+                return item
+            if current.closed:
+                return none
+            locked.wait()
+    return none
+
+fn close_queue(state: Synchronized[QueueState]) -> Unit:
+    with locked = state.lock():
+        let current = locked.get()
+        current.closed = true
+        locked.notify_all()
+
+fn drain(state: Synchronized[QueueState]) -> Int:
+    var total = 0
+    while true:
+        match take(state: state):
+            some(value):
+                total = total + value
+            none:
+                return total
+    return total
+
+test "a producer feeds a consumer through a bounded queue":
+    let state = Synchronized(QueueState(items: Queue[Int](2), closed: false))
+    with group = TaskGroup():
+        let consumer = group.start(fn(): drain(state: state))
+        for value in [1, 2, 3, 4, 5]:
+            if not put(state: state, value: value):
+                return panic(message: "put failed")
+        close_queue(state: state)
+        match consumer.join():
+            ok(total):
+                if not (total == 15):
+                    return panic(message: "lost or duplicated items")
+            error(_):
+                return panic(message: "consumer failed")
+```
+
+`put` blocks while the queue is full and `take` blocks while it is empty. After `close_queue`, `put` returns `false` and `take` drains the remaining items, then returns `none`. If a scope exits early, closing its group cancels consumers blocked in `wait`; they unwind without reacquiring the lock. Never join a consumer while holding the queue's lock.
 
 ## Priority queue
 

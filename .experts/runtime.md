@@ -41,6 +41,16 @@ Apply when: changing lock admission, cancellation, alias release, task/service j
 Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [contract](../documentation/concurrency/synchronization.md), [bounded blocking regressions](../pkg/runtime/synchronized_ancestor_test.go), and [acquisition delivery](../pkg/runtime/values.go).
 Verify: ordinary ancestor overlap returns 7; both lock/join orders block until cooperative cancellation or release. Exercise deadlines, same-operation helper/shield reentry, cancellation/delivery/release races, alias close and use after close. Shielded-cycle tests run in bounded disposable subprocesses and release aliases explicitly; no test relies on cleanup timeout escape.
 
+### Synchronized guard wait is cancellable and never reacquires on cancel
+
+Decision: the user chose a blocking queue built from plain Manuscript, with no channels and no new type: `SynchronizedGuard.wait()` releases the lock, sleeps until `notify_all()`, then reacquires; one wait set per `Synchronized`. A single `notify()`, a separate `Condition` type, semaphores, awaitable events and `wait(timeout:)` were considered and deferred; `condition()` and a timeout can be added later without breaking this. A skeptical review shaped the cancellation and owner rules below.
+
+Verified: a cancelled `wait` must not reacquire the lock. A shielded reacquire hangs when a parent holds the lock while closing a group of waiters, which adds an uncancellable wait that ordinary `lock()` does not have. Instead the waiter is removed, the guard stays released, the cancellation fault unwinds and the scope close is a no-op. Only the acquiring operation (execution or work lifetime) may wait/notify; a child using a captured alias would otherwise release the parent's critical section. An alias close during wait must set a flag so wake-up does not reinstall a closed guard.
+
+Apply when: changing wait/notify, lock admission, guard aliasing or cancellation delivery.
+Evidence: [runtime](../pkg/runtime/synchronized.go), [wait regressions](../pkg/runtime/synchronized_test.go), [called blocking queue](../tests/e2e/testdata/accept/blocking-queue.ms), [contract](../documentation/concurrency/synchronization.md#waiting-for-a-change).
+Verify: lost-wakeup, cancel-while-waiting with another holder, non-owner wait/notify, alias close during wait, wait on a closed guard, group close with blocked consumers, under `-race`.
+
 ### Attribute profiling at execution boundaries
 
 Verified: allocating pprof labels, derived executions, and trace regions for every source call can dominate a call-heavy program and create enormous traces. Source boundaries follow immutable context inheritance; task/scheduler work explicitly starts a new boundary. Nested calls keep source mapping in CPU sample stacks while reusing the boundary context. CPU labels and trace tasks/regions must follow their independently requested collectors; heap-only capture needs neither.
@@ -117,7 +127,7 @@ Verify: inspect source declarations, native bindings, compiler handling, example
 
 ### Local queues compose with explicit synchronization
 
-Decision: keep Queue a local FIFO, unbounded when capacity is omitted and bounded when a positive capacity is supplied; use Synchronized when sharing it between concurrent operations. Full and empty results return immediately. Queue has no mutex, waiting, close, or cleanup lifecycle. Wrapping it does not add channel wakeups, and every alias must use the same wrapper's lock.
+Decision: keep Queue a local FIFO, unbounded when capacity is omitted and bounded when a positive capacity is supplied; use Synchronized when sharing it between concurrent operations. Full and empty results return immediately. Queue has no mutex, waiting, close, or cleanup lifecycle. Wrapping it does not add channel wakeups by itself; blocking comes from the guard's `wait()`/`notify_all()` (see the Synchronized wait entry), and every alias must use the same wrapper's lock.
 
 Apply when: changing queue APIs, examples, sharing claims, or native collection implementations.
 Evidence: [queue contract](../documentation/concurrency/queues.md); [FIFO and synchronized-sharing tests](../pkg/runtime/queue_test.go); [source conformance](../tests/e2e/testdata/accept/queues.ms); the user's Queue simplification and capacity correction.

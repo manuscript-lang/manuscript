@@ -10,6 +10,7 @@ type Synchronized struct {
 	value   Value
 	holder  *SynchronizedGuard
 	changed chan struct{}
+	waiters []chan struct{}
 }
 
 // SynchronizedGuard is an ordinary aliasable resource. The cell mutex makes
@@ -18,6 +19,8 @@ type SynchronizedGuard struct {
 	cell     *Synchronized
 	owner    *Execution
 	lifetime *workLifetime
+	waiting  bool
+	closed   bool
 }
 
 func (s *Synchronized) Operation(name string) Function {
@@ -54,6 +57,9 @@ func (g *SynchronizedGuard) close() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.holder != g {
+		if g.waiting {
+			g.closed = true
+		}
 		return
 	}
 	s.holder = nil
@@ -68,6 +74,18 @@ func (g *SynchronizedGuard) Operation(name string) Function {
 			return Unit{}
 		})
 	}
+	switch name {
+	case "wait":
+		return NewFunction(nil, "Unit", func(ctx *Execution, _ []Value) Value {
+			g.wait(ctx)
+			return Unit{}
+		})
+	case "notify_all":
+		return NewFunction(nil, "Unit", func(ctx *Execution, _ []Value) Value {
+			g.notifyAll(ctx)
+			return Unit{}
+		})
+	}
 	labels, result := []string{}, typeArguments(g.cell.typ)[0]
 	if name == "set" {
 		labels, result = []string{"value"}, "Unit"
@@ -77,7 +95,7 @@ func (g *SynchronizedGuard) Operation(name string) Function {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.holder != g {
-			return Panic("Synchronized guard is closed; use the guard only inside its with block, and acquire a new one to access the value again")
+			return Panic(closedGuardMessage)
 		}
 		switch name {
 		case "get":
@@ -89,4 +107,98 @@ func (g *SynchronizedGuard) Operation(name string) Function {
 			return Panic("unknown SynchronizedGuard operation")
 		}
 	})
+}
+
+const closedGuardMessage = "Synchronized guard is closed; use the guard only inside its with block, and acquire a new one to access the value again"
+
+// requireOwnedHolder faults unless g is the open holder and ctx is the
+// operation that acquired it (including shielded views). Another task sharing
+// the alias must not release or signal on behalf of the holder. Caller holds s.mu.
+func (g *SynchronizedGuard) requireOwnedHolder(ctx *Execution) {
+	if g.cell.holder != g {
+		Panic(closedGuardMessage)
+	}
+	if g.owner != ctx && (ctx.Lifetime == nil || g.lifetime != ctx.Lifetime) {
+		Panic("only the operation that acquired a Synchronized guard may wait or notify through it")
+	}
+}
+
+// wait releases the lock, sleeps until notify_all, then reacquires the lock for
+// the same guard. Cancellation wakes the waiter without reacquiring: the guard
+// stays released, so a parent holding the lock while closing its waiters
+// cannot deadlock. The with-scope close is then an idempotent no-op.
+func (g *SynchronizedGuard) wait(ctx *Execution) {
+	s := g.cell
+	wake := make(chan struct{})
+	func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		g.requireOwnedHolder(ctx)
+		s.waiters = append(s.waiters, wake)
+		g.waiting = true
+		s.holder = nil
+		close(s.changed)
+		s.changed = make(chan struct{})
+	}()
+	select {
+	case <-wake:
+	case <-ctx.Context.Done():
+		g.abandonWait(wake)
+		CheckCancelled(ctx)
+	}
+	for {
+		if ctx.Context.Err() != nil {
+			g.finishWait()
+			CheckCancelled(ctx)
+		}
+		s.mu.Lock()
+		if g.closed {
+			g.waiting, g.closed = false, false
+			s.mu.Unlock()
+			Panic(closedGuardMessage)
+		}
+		if s.holder == nil {
+			s.holder = g
+			g.waiting = false
+			s.mu.Unlock()
+			return
+		}
+		changed := s.changed
+		s.mu.Unlock()
+		select {
+		case <-changed:
+		case <-ctx.Context.Done():
+		}
+	}
+}
+
+func (g *SynchronizedGuard) finishWait() {
+	g.cell.mu.Lock()
+	g.waiting = false
+	g.cell.mu.Unlock()
+}
+
+// abandonWait removes a cancelled waiter. The guard stays released.
+func (g *SynchronizedGuard) abandonWait(wake chan struct{}) {
+	s := g.cell
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, w := range s.waiters {
+		if w == wake {
+			s.waiters = append(s.waiters[:i], s.waiters[i+1:]...)
+			break
+		}
+	}
+	g.waiting = false
+}
+
+func (g *SynchronizedGuard) notifyAll(ctx *Execution) {
+	s := g.cell
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	g.requireOwnedHolder(ctx)
+	for _, waiter := range s.waiters {
+		close(waiter)
+	}
+	s.waiters = nil
 }
