@@ -146,10 +146,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			receiver := e.Args[0].Value
 			return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.program.Info(receiver).Type))
 		}
-		arguments := e.Args
-		if info.Arguments != nil {
-			arguments = info.Arguments
-		}
+		arguments := info.Arguments
 		if value := g.directCollectionCall(e, arguments); value != nil {
 			return value
 		}

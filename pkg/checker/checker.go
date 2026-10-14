@@ -94,7 +94,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 		c.checkModule(module, imports)
 		checked = append(checked, module)
 	}
-	foldConstants(checked)
+	finishModules(checked)
 	c.finiteTypeApplications()
 	c.finiteApplications()
 	c.Diagnostics = uniqueDiagnostics(c.Diagnostics)

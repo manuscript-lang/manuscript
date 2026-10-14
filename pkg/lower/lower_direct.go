@@ -144,10 +144,7 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 	if direct == nil {
 		return nil
 	}
-	args := e.Args
-	if info.Arguments != nil {
-		args = info.Arguments
-	}
+	args := info.Arguments
 	params := info.Symbol.Type.Params
 	if len(args) != len(params) {
 		return nil
@@ -169,10 +166,7 @@ func (g *generator) directCall(e *syntax.Expression) ast.Expr {
 		return nil
 	}
 	info := g.program.Info(e)
-	args := e.Args
-	if info.Arguments != nil {
-		args = info.Arguments
-	}
+	args := info.Arguments
 	values := []ast.Expr{ident("ctx")}
 	for i, arg := range args {
 		var value ast.Expr

@@ -406,7 +406,7 @@ func loadStandardSources() error {
 			nativeModules = append(nativeModules, module)
 		}
 	}
-	foldConstants(nativeModules)
+	finishModules(nativeModules)
 	if len(c.Diagnostics) > 0 {
 		return fmt.Errorf("invalid standard defaults: %v", c.Diagnostics)
 	}
