@@ -110,13 +110,13 @@ func (g *generator) alternativeLiteral(e *syntax.Expression, info *checker.Info,
 		} else {
 			value = g.argumentValue(arg)
 		}
-		fields := []ast.Expr{keyed("Val", sourceAt(arg.Pos, value))}
+		fields := []ast.Expr{keyed("Val", sequence(value))}
 		if shape.optional {
 			fields = append(fields, keyed("Some", ident("true")))
 		}
 		return composite(typ, fields...)
 	case info.Case == "error" && !shape.optional:
-		return composite(typ, keyed("Cause", sourceAt(arg.Pos, g.argumentValue(arg))), keyed("Failed", ident("true")))
+		return composite(typ, keyed("Cause", sequence(g.argumentValue(arg))), keyed("Failed", ident("true")))
 	}
 	return nil
 }

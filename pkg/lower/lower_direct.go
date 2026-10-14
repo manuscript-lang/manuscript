@@ -290,7 +290,7 @@ func (g *generator) typedDirectCall(e *syntax.Expression) (ast.Expr, *directFunc
 		receiver := e.Left.Left
 		value := g.expression(receiver)
 		if !(g.exprFree(receiver) && g.restFree(args)) {
-			value = sourceAt(receiver.Pos, value)
+			value = sequence(value)
 		}
 		values = append(values, value)
 	}
@@ -307,10 +307,10 @@ func (g *generator) typedDirectCall(e *syntax.Expression) (ast.Expr, *directFunc
 		if g.exprFree(arg.Value) && g.restFree(args[i+1:]) {
 			values = append(values, value)
 		} else {
-			values = append(values, sourceAt(arg.Pos, value))
+			values = append(values, sequence(value))
 		}
 	}
-	return g.locatedOperation(e, ident(direct.name), values...), direct
+	return orderedCall(ident(direct.name), values...), direct
 }
 
 func (g *generator) restFree(args []syntax.Argument) bool {
