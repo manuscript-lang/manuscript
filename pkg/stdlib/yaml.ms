@@ -559,14 +559,21 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
                 )
 
             flow_space(flow)
-            if advance(flow) != ":": return error(
-                flow_invalid(
-                    flow: flow,
-                    reason: "expected mapping colon"
-                )
-            )
+            var value = YamlValue.Null
 
-            let value = try flow_value(flow: flow, depth: depth + 1, key: false)
+            # A key with no colon, as in `{a, b: 1}`, maps to null.
+            if peek(flow) == "," or peek(flow) == "\}":
+                let counted = try count(context: flow.context, depth: depth + 1)
+            else:
+                if advance(flow) != ":": return error(
+                    flow_invalid(
+                        flow: flow,
+                        reason: "expected mapping colon"
+                    )
+                )
+
+                value = try flow_value(flow: flow, depth: depth + 1, key: false)
+
             if explicit.contains(name): return error(
                 flow_invalid(
                     flow: flow,
