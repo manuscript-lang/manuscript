@@ -1,0 +1,9 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkSizedIntListInitialization-4   	     883	    330485 ns/op	  524441 B/op	       2 allocs/op
+BenchmarkSizedIntListInitialization-4   	     739	    310913 ns/op	  524434 B/op	       2 allocs/op
+BenchmarkSizedIntListInitialization-4   	     794	    300221 ns/op	  524434 B/op	       2 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.807s

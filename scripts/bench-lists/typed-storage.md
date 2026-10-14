@@ -13,12 +13,12 @@ omission. Closed prototypes and the cancelled width migration are not dependenci
 | Ordinary generated iteration and generic callbacks | Committed before/storage benchmarks and review ledger below | Regressions remain a combined #318 acceptance gate |
 | Borrowed compiled `for_each` arguments | Retention/reentry/Value captures/labels/wrappers/checkpoint/guard tests | Runtime control implemented; #87 emits only proven bodies |
 | Captured Go header, writes/growth/shrink/self-splice/retained tails | `TestPrimitiveListCapturedGoHeaders`, existing Go and source oracles | Implemented |
-| Fresh construction and sized non-cancelling initialization | `TestFreshSizedListInitialization` | Two allocations for nonempty backing |
+| Fresh construction and sized non-cancelling initialization | `TestFreshSizedListInitialization`, `TestStrictPrimitiveListInitialization` | All four typed kinds inline, safe state/kind/bounds, two allocations |
 | Primitive Optional and fault/cancellation boundary | `TestPrimitiveListAccessAllocationsAndCancellation` | Zero typed read allocations |
 | Guarded primitive comparator and ordinary Body | `TestTypedComparatorGuardParity`, stable/callable parity | One admission, depth/returns/profile/cancellation/frames |
 | Natural order and Float NaN/infinity/signed zero | `TestPrimitiveNaturalSortAndFloatEdges` | Runtime seam; source omission owned by #166 |
 | Source fast access and typed comparator emission | Generated workload below | #87 dependency; boxed reads regress |
-| Large literal construction | Existing oracle unchanged | #147 consumes the pinned constructors |
+| Large literal construction | Existing oracle unchanged; actual #147 native/paired control below | Strict initializer alone does not clear effectful runtime gate |
 | Strict Result slicing | Primitive native/standalone fixture | Preserved; negative bounds resolve, errors remain values |
 
 Baseline binaries were built from main
@@ -88,6 +88,25 @@ cannot stand in for these ordinary paths. Combined #318 acceptance must rerun
 append/index/iteration/callback/sorting and compare allocations and bytes against
 the labeled baseline; memory savings alone do not clear these regressions.
 
+The #87 owner subsequently reports actual combined generated index/iteration/
+ordinary callback allocation acceptance, with exact Life and at/unwrap result
+parity, in [the combined consumer report](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157953965).
+Its production source evidence and final-head validation belong to #318; the
+provider alone does not emit those paths.
+
+The fixed compatibility iterator control also depends on benchmark shape.
+An external consumer on provider `7727cc39` reproduces 5 allocations / 216 B
+when `Iterate` is called directly inside `b.Loop`; the same traversal in an
+ordinary factored function called by the loop uses 1 / 8 B, matching the prior
+boxed result. Bundled Go 1.25.1 `testing/benchmark.go` documents that only
+syntactic loop-body calls have inlining disabled; code inside called functions
+gets ordinary optimization. Both controls remain visible. This does not promise
+that arbitrary adapters avoid iterator escapes or erase the original control.
+An isolated boxed `slices.All` specialization reduced the direct control to
+4 / 104 B but regressed the normal factored path to the same cost, so it is
+rejected and absent from the provider. [Exact external control and samples](results/typed-storage/compatibility-iterator/)
+allow reproduction with the current SDK; timings are descriptive smoke samples.
+
 The approved narrow mitigation adds `NewCompiledSourceFunction`, delegating the
 ordinary source guard once and marking bodies that copy parameter Values without
 retaining/exposing `[]Value`. Exact-label `for_each` uses one invocation-local
@@ -105,6 +124,43 @@ Typed backing still boxes 65,371 non-small primitive payloads. Reusing only the
 argument slots removes their allocation increase relative to the prior boxed
 callback boundary, but actual generated source remains a combined #87 gate.
 These runtime controls do not establish compiler marker proof or timing speedups.
+
+## Strict initialization and actual #147 consumer
+
+The approved initializer follow-up keeps fresh-state, matching-kind and sized
+bounds checks, then writes primitive backing directly. All four helpers inline
+at Go 1.25.1 cost 31, versus the previous cost 118/budget 80. Tests reject boxed,
+other primitive, published, negative, end and empty accesses; every primitive
+kind retains two fresh construction allocations. Generic `InitListValue` keeps
+its checked boxed boundary.
+
+The actual #147 consumer at `e72ffbeda34bac0e9a32ec73d3157f18fdf45ceb`, including
+main 8001f48e's IR route, passes native large-literal freshness, shallow aliases,
+effects/ordinary reads, source exits/cleanup, cancellation and source fault frames
+with strict storage overlaid. Actual generated Go confirms all 2,200 `InitListInt`
+calls inline. Identical effectful generated source is compiled against provider
+`a0c29276` and strict provider `bea5c048`; an independently generated current-main
+boxed large-literal constructor uses the prior provider for comparison.
+
+Twelve randomized paired 400ms samples for 2,200 cheap `tick()` calls, CPU 0,
+GOMAXPROCS=1, normal unprofiled runtime:
+
+| Initializer / GOGC | relative to original boxed emitter | paired bootstrap 95% interval |
+| --- | ---: | --- |
+| Previous /100 | 1.247 | 1.228–1.264 |
+| Strict /100 | 1.258 | 1.232–1.283 |
+| Previous /50 | 1.260 | 1.232–1.288 |
+| Strict /50 | 1.231 | 1.210–1.249 |
+
+Both typed paths use 2 allocations / 18,576 B; boxed uses 2 / 41,104 B. The strict
+initializer alone therefore **does not clear the effectful construction gate**.
+These measurements compare actual generated constructors with the provider
+runtime and exclude compilation; they do not include #87 scalar/direct-call
+lowering. Shared-host limits remain explicit. Parent coordination is required
+before expanding the shared construction ABI or changing the #147-owned emitter.
+[Samples, source/binary hashes, inlining and native evidence](results/typed-storage/strict-initialization/)
+retain the exact trees and reproduction commands. Separate sequential runtime
+benchmarks are controls, with no timing speedup claim.
 
 The equality review found a separate semantic bug: reloading live List headers
 let an element's user Equal shrink/extend membership or switch arrays on growth.
