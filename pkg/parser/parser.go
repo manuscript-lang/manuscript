@@ -180,6 +180,9 @@ func (p *Parser) typeParams() []syntax.TypeParameter {
 				param.Bounds = append(param.Bounds, p.namedType())
 			}
 		}
+		if p.take("=") {
+			param.Default = p.typ()
+		}
 		result = append(result, param)
 		if !p.take(",") {
 			break

@@ -203,6 +203,9 @@ func (c *checker) inferApply(e *syntax.Expression, expected *Type, i *Info) *Inf
 	}
 	if s := c.functionSymbol(e.Left); s != nil {
 		args := c.resolveArguments(e.Types)
+		if len(args) >= requiredTypeArguments(s.Variables) {
+			args = completeTypeArguments(s.Variables, args)
+		}
 		i.Symbol = s
 		i.Type = c.specialize(s.Type, s.Variables, args, e.Pos, calleeName(e))
 		i.TypeArgs = args
