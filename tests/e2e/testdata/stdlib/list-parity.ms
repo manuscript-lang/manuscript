@@ -105,3 +105,27 @@ test "List parity operations support generic and bound use":
         "bound receiver"
     )
     if values != [9]: return panic("bound receiver rebinding")
+
+test "List distinct handles large Int and String lists":
+    var numbers: List[Int] = []
+    var words: List[String] = []
+    var index = 0
+
+    while index < 60000:
+        numbers.append(index % 30000)
+        words.append("w{index % 20000}")
+        index = index + 1
+
+    let unique = numbers.distinct()
+    if (
+        unique.length() != 30000
+        or unique.first() != some(0)
+        or unique.last() != some(29999)
+    ): return panic(
+        "distinct ints"
+    )
+
+    let uniqueWords = words.distinct()
+    if uniqueWords.length() != 20000 or uniqueWords.at(1) != some("w1"): return panic(
+        "distinct strings"
+    )
