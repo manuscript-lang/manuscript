@@ -16,10 +16,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # All six targets are built in one job, in parallel after one shared SDK
-  # download, so the check list stays short; verification below stays per native OS.
   package:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -29,30 +32,23 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: test "${RELEASE_TAG#v}" = "$(cat .msversion)"
-      - name: Build self-contained archives and cross-build verifiers
+      - name: Build self-contained archive
+        run: sh scripts/package.sh "${{ matrix.os }}" "${{ matrix.arch }}"
+      # The verifier is cross-built here so the native runners need neither a
+      # checkout nor a Go installation.
+      - name: Cross-build the distribution verifier
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: '0'
+          GOTOOLCHAIN: local
+          GOENV: 'off'
         run: |
-          sh scripts/bootstrap-go.sh
           mkdir -p verifier
-          pids=''
-          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
-            os=${target%/*}
-            arch=${target#*/}
-            (
-              sh scripts/package.sh "$os" "$arch"
-              ext=''
-              if [ "$os" = windows ]; then ext=.exe; fi
-              GOOS=$os GOARCH=$arch CGO_ENABLED=0 GOTOOLCHAIN=local GOENV=off GOROOT="$PWD/toolchain/go" \
-                toolchain/go/bin/go build -mod=vendor -trimpath -o "verifier/distcheck-$os-$arch$ext" ./scripts/distcheck
-            ) > "package-$os-$arch.log" 2>&1 &
-            pids="$pids $!"
-          done
-          status=0
-          for pid in $pids; do wait "$pid" || status=1; done
-          for log in package-*.log; do echo "::group::$log"; cat "$log"; echo '::endgroup::'; done
-          exit "$status"
+          GOROOT="$PWD/toolchain/go" toolchain/go/bin/go build -mod=vendor -trimpath -o "verifier/distcheck${{ matrix.os == 'windows' && '.exe' || '' }}" ./scripts/distcheck
       - uses: actions/upload-artifact@v7
         with:
-          name: manuscript-dist
+          name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
           path: |
             dist/*.tar.gz
             dist/*.zip
@@ -60,7 +56,7 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v7
         with:
-          name: distcheck
+          name: distcheck-${{ matrix.os }}-${{ matrix.arch }}
           path: verifier/
           if-no-files-found: error
 
@@ -95,25 +91,25 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: manuscript-dist
+          name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
           path: archives
       - uses: actions/download-artifact@v8
         with:
-          name: distcheck
+          name: distcheck-${{ matrix.os }}-${{ matrix.arch }}
           path: verifier
       - name: Extract distribution into a path containing spaces
         run: |
           mkdir -p 'extracted distribution'
           if [ '${{ matrix.os }}' = windows ]; then
-            unzip -q archives/manuscript-${{ matrix.os }}-${{ matrix.arch }}.zip -d 'extracted distribution'
+            unzip -q archives/*.zip -d 'extracted distribution'
           else
-            tar -xzf archives/manuscript-${{ matrix.os }}-${{ matrix.arch }}.tar.gz -C 'extracted distribution'
+            tar -xzf archives/*.tar.gz -C 'extracted distribution'
           fi
       # Runs with no Go on PATH from the workflow; the packaged CLI is all it uses.
       - name: Verify standalone compilation and tooling without system Go
         run: |
-          verifier=verifier/distcheck-${{ matrix.os }}-${{ matrix.arch }}
-          if [ '${{ matrix.os }}' = windows ]; then verifier=$verifier.exe; fi
+          verifier=verifier/distcheck
+          if [ '${{ matrix.os }}' = windows ]; then verifier=verifier/distcheck.exe; fi
           chmod +x "$verifier"
           "./$verifier" 'extracted distribution/manuscript-${{ matrix.os }}-${{ matrix.arch }}'
 
