@@ -1,0 +1,8 @@
+{
+  "provider": "7727cc39c3cb91696462d0dec1d92c1d73277430",
+  "sdk": "bundled Go1.25.1 linux amd64",
+  "description": "External consumer compares original direct b.Loop control with ordinary factored traversal. Both results are retained; no claim all adapters avoid escapes. slices.All specialization is rejected because it regresses factored1\u21924allocs. No authoritative runtime changes.",
+  "control_sha256": "b1521c183d3083c2eb7768c6c3a08616aea70cd626a87d5ffd6f0e58e7acb987",
+  "reproduce": "Copy control_test.go.txt to /tmp/compatibility_iterator_test.go; from provider run toolchain/go/bin/go test /tmp/compatibility_iterator_test.go -run ^$ -bench ^BenchmarkCompatibilityIterator$ -benchmem -count 3 -benchtime 100ms using writable caches",
+  "compiler_rule_source": "toolchain/go/src/testing/benchmark.go:480-486 (Go1.25.1): syntactic b.Loop body calls disable inlining; functions called by the loop get normal optimization."
+}

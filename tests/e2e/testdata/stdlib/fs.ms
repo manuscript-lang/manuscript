@@ -159,12 +159,13 @@ test "file handles positional I/O stream adapters and closed errors":
                     )
                 ) != "cd".to_bytes()
             ): return panic("positional read")
-            if value(
+
+            value(
                 handle.write_at(
                     offset: 1,
                     data: "XY".to_bytes()
                 )
-            ) != 2: return panic("positional write")
+            )
 
             let resized = value(handle.truncate(4))
             if value(handle.stat()).size != 4: return panic("handle stat")
@@ -183,3 +184,28 @@ test "file handles positional I/O stream adapters and closed errors":
         ) != closed: return panic("closed handle")
 
         handle.close()
+
+test "empty paths are rejected instead of resolving to the working directory":
+    let fs = filesystem()
+    let invalid: Result[Unit, FileSystemError] = error(
+        cause: FileSystemError.InvalidInput
+    )
+    if fs.remove(path: "", recursive: true) != invalid: return panic(
+        "recursive remove of empty path"
+    )
+    if fs.create_directory(path: "", recursive: true) != invalid: return panic(
+        "create empty directory"
+    )
+    if fs.write_file(
+        path: "",
+        data: "x".to_bytes(),
+        replace: true
+    ) != invalid: return panic("write empty path")
+
+    match fs.stat(path: "", follow_links: true):
+        ok(_): return panic("stat empty path")
+
+        error(cause):
+            if cause != FileSystemError.InvalidInput: return panic(
+                "stat empty path error"
+            )

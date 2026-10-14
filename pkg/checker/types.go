@@ -253,20 +253,33 @@ func standard(name string, args ...*Type) *Type {
 }
 func std(t *Type, name string) bool { return t != nil && t.ID == "@std/"+name }
 func typeKey(t *Type) string {
+	var key strings.Builder
+	writeTypeKey(&key, t)
+	return key.String()
+}
+
+// writeTypeKey appends t's key; building nested keys by concatenation would
+// copy each inner key once per enclosing level.
+func writeTypeKey(key *strings.Builder, t *Type) {
 	if t == nil {
-		return ""
+		return
 	}
-	s := t.ID
+	key.WriteString(t.ID)
 	if t.Kind == "function" {
 		for _, p := range t.Params {
-			s += "[" + p.Name + ":" + typeKey(p.Type) + "]"
+			key.WriteString("[" + p.Name + ":")
+			writeTypeKey(key, p.Type)
+			key.WriteString("]")
 		}
-		s += "[result:" + typeKey(t.Result) + "]"
+		key.WriteString("[result:")
+		writeTypeKey(key, t.Result)
+		key.WriteString("]")
 	}
 	for _, a := range t.Args {
-		s += "[" + typeKey(a) + "]"
+		key.WriteString("[")
+		writeTypeKey(key, a)
+		key.WriteString("]")
 	}
-	return s
 }
 func TypeKey(t *Type) string { return typeKey(t) }
 func unify(pattern, actual *Type, vars map[string]bool, sub map[string]*Type) bool {

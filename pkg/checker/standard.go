@@ -43,7 +43,7 @@ type receiverRequirement struct {
 
 type standardBindings struct {
 	NativeTypes          map[string]string            `json:"native_types"`
-	Functions            map[string]string            `json:"functions"`
+	FunctionOverrides    map[string]string            `json:"function_overrides"`
 	IntrinsicReceivers   map[string]string            `json:"intrinsic_receivers"`
 	Implementations      map[string]string            `json:"implementations"`
 	ReceiverRequirements map[string]map[string]string `json:"receiver_requirements"`
@@ -205,9 +205,10 @@ func (l *standardLoader) register(module *syntax.Module) error {
 		id := "@std/" + d.Name
 		s := &Symbol{Name: d.Name, ID: id, Kind: syntax.KindType, Module: module.File, Export: d.Export, Native: native, Decl: d}
 		if d.Kind == syntax.KindFn {
-			native = l.bindings.Functions[module.File+"/"+d.Name]
-			if native == "" {
-				return fmt.Errorf("missing native function binding: %s", d.Pos)
+			// Identities are module/name unless bindings.json overrides them.
+			native = strings.TrimSuffix(strings.TrimPrefix(module.File, "@std/"), ".ms") + "/" + d.Name
+			if override := l.bindings.FunctionOverrides[module.File+"/"+d.Name]; override != "" {
+				native = override
 			}
 			s.Kind = syntax.KindFn
 			s.Native = native

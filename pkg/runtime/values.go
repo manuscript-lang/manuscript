@@ -4,9 +4,11 @@ package msruntime
 import (
 	"context"
 	"fmt"
+	"iter"
 	"os"
 	"reflect"
 	goruntime "runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -20,9 +22,14 @@ import (
 type Value = any
 type Unit struct{}
 type Function struct {
-	Labels []string
-	Result string
-	Body   func(*Execution, []Value) Value
+	Labels       []string
+	Result       string
+	Body         func(*Execution, []Value) Value
+	IntCompare   func(*Execution, int64, int64) int64
+	FloatCompare func(*Execution, float64, float64) int64
+	// BorrowedArguments is an internal proof carried only by compiled bodies
+	// that copy parameter Values and never retain/expose their incoming slice.
+	BorrowedArguments bool
 }
 type Generic struct {
 	Variables []string
@@ -48,9 +55,19 @@ type Alternative struct {
 	Type, Tag string
 	Fields    []Value
 }
+
+// List is the authoritative mutable identity. Items is the boxed fallback for
+// Go callers; typed Lists use exactly one private primitive backing slice.
+// Use constructors and accessors rather than inspecting Items.
 type List struct {
-	Type  string
-	Items []Value
+	Type         string
+	Items        []Value
+	kind         uint8
+	initializing bool
+	ints         []int64
+	floats       []float64
+	bools        []bool
+	strings      []string
 }
 
 type Map struct {
@@ -125,7 +142,7 @@ func NewAcquisition(labels []string, result string, body func(*Execution, []Valu
 	return newFunction(labels, result, body, dispose)
 }
 func newFunction(labels []string, result string, body func(*Execution, []Value) Value, dispose func(*Execution, Value)) Function {
-	return Function{labels, result, func(ctx *Execution, args []Value) (value Value) {
+	return Function{Labels: labels, Result: result, Body: func(ctx *Execution, args []Value) (value Value) {
 		defer func() {
 			if controlPanics.Load() == 0 {
 				return
@@ -182,7 +199,7 @@ type PreparedDefaults []Value
 // continue directly to the native adapter when these slots are supplied.
 func WithDefaults(callee Value, prepare Function, slots []int) Value {
 	f := callee.(Function)
-	return Function{f.Labels, f.Result, func(ctx *Execution, args []Value) Value {
+	return Function{Labels: f.Labels, Result: f.Result, Body: func(ctx *Execution, args []Value) Value {
 		CheckCancelled(ctx)
 		missing := false
 		for _, index := range slots {
@@ -209,6 +226,44 @@ type Lazy struct {
 func (l *Lazy) Get(build func() Value) Value {
 	l.once.Do(func() { l.value = build() })
 	return l.value
+}
+
+// ListTable backs one large list literal whose items are all scalar
+// constants. Generated code keeps the items as pointer-free package data, so
+// the Go compiler and the garbage collector see one plain array instead of an
+// expression or interface value per item. Every evaluation returns a List
+// with its own fresh typed storage copied from that data.
+type ListTable[T int64 | float64 | bool | string] struct{}
+
+func (t *ListTable[T]) List(typ string, data []T) *List {
+	l := newList(typ)
+	switch d := any(data).(type) {
+	case []int64:
+		if l.kind == listInt {
+			l.ints = slices.Clone(d)
+			return l
+		}
+	case []float64:
+		if l.kind == listFloat {
+			l.floats = slices.Clone(d)
+			return l
+		}
+	case []bool:
+		if l.kind == listBool {
+			l.bools = slices.Clone(d)
+			return l
+		}
+	case []string:
+		if l.kind == listString {
+			l.strings = slices.Clone(d)
+			return l
+		}
+	}
+	items := make([]Value, len(data))
+	for i, item := range data {
+		items[i] = item
+	}
+	return &List{Type: typ, Items: items}
 }
 
 func Specialize(value Value, args []string, scopes ...TypeScope) Value {
@@ -340,7 +395,7 @@ func Positions(value Value, length int) []Value {
 	var values []Value
 	switch v := value.(type) {
 	case *List:
-		values = v.Items
+		values = v.Boxed()
 	default:
 		Panic("runtime invariant: positional binding")
 	}
@@ -349,27 +404,32 @@ func Positions(value Value, length int) []Value {
 	}
 	return values
 }
-func Iterate(value Value) []Value {
+
+// Iterate remains rangeable for previously emitted programs. New primitive
+// lowering can use CaptureList plus typed element access without boxing.
+func Iterate(value Value) iter.Seq2[int, Value] { return captureIterable(value).Values() }
+func CaptureList(value Value) ListRange         { return value.(*List).Capture() }
+
+func captureIterable(value Value) ListRange {
 	switch v := value.(type) {
 	case *List:
-		// Go range captures this header/length once. Writes to its backing
-		// array remain visible; append never extends the running traversal.
-		return v.Items
+		return v.Capture()
 	case *Set:
 		v.shared = true
-		return v.Items[:len(v.Items):len(v.Items)]
+		return ListRange{List{Items: v.Items[:len(v.Items):len(v.Items)]}}
 	case *Map:
 		values := make([]Value, len(v.Entries))
 		args := typeArguments(v.Type)
-		entryType := "@std/MapEntry[" + args[0] + "][" + args[1] + "]"
+		typ := "@std/MapEntry[" + args[0] + "][" + args[1] + "]"
 		for i, e := range v.Entries {
-			values[i] = Record{entryType, map[string]Value{"key": e.Key, "value": e.Value}}
+			values[i] = Record{typ, map[string]Value{"key": e.Key, "value": e.Value}}
 		}
-		return values
+		return ListRange{List{Items: values}}
 	}
 	Panic("runtime invariant: iterable")
-	return nil
+	return ListRange{}
 }
+
 func Text(values ...Value) Value {
 	var text strings.Builder
 	for _, v := range values {
@@ -428,7 +488,7 @@ func formatValue(value Value, depth int) string {
 		}
 		return text
 	case *List:
-		return "[" + items(v.Items) + "]"
+		return "[" + items(v.Boxed()) + "]"
 	case *Map:
 		parts := make([]string, len(v.Entries))
 		for i, entry := range v.Entries {
@@ -459,6 +519,10 @@ func formatValue(value Value, depth int) string {
 		return v.t.UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
 	case libraryRegex:
 		return v.pattern.String()
+	case libraryIPAddress:
+		return v.address.String()
+	case libraryCidr:
+		return v.prefix.String()
 	}
 	return "[object]"
 }
@@ -470,6 +534,12 @@ func displayType(key string) string {
 	}
 	return name
 }
+
+// MaxEqualityDepth bounds how deeply == recurses through nested values (every
+// record, alternative, list, set and map level counts), so comparing a very
+// deep structure such as a long linked list is a fault instead of Go's
+// unrecoverable stack overflow. Each level uses about 1.5 KiB of Go stack.
+const MaxEqualityDepth = 250000
 
 type equalityIdentity struct {
 	pointer  any
@@ -567,6 +637,9 @@ func equal(a, b Value, state *equalityState) bool {
 			if state.active == nil {
 				state.active = map[equalityPair]bool{}
 			}
+			if len(state.active) >= MaxEqualityDepth {
+				Panic(fmt.Sprintf("equality depth limit exceeded (%d nested values)", MaxEqualityDepth))
+			}
 			state.active[pair] = true
 			defer delete(state.active, pair)
 		}
@@ -639,21 +712,15 @@ func equal(a, b Value, state *equalityState) bool {
 		return ok && x.Type == y.Type && x.Tag == y.Tag && equalItemsState(x.Fields, y.Fields, state)
 	case *List:
 		y, ok := b.(*List)
-		return ok && x.Type == y.Type && equalItemsState(x.Items, y.Items, equalityChild(state, 0))
+		return ok && equalLists(x, y, state)
 	case *Set:
 		y, ok := b.(*Set)
 		if !ok || x.Type != y.Type || len(x.Items) != len(y.Items) {
 			return false
 		}
+		child := equalityChild(state, 0)
 		for _, v := range x.Items {
-			found := false
-			for _, other := range y.Items {
-				if equal(v, other, equalityChild(state, 0)) {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if keyedPosition(y, v, child) < 0 {
 				return false
 			}
 		}
@@ -663,15 +730,10 @@ func equal(a, b Value, state *equalityState) bool {
 		if !ok || x.Type != y.Type || len(x.Entries) != len(y.Entries) {
 			return false
 		}
+		keys, values := equalityChild(state, 0), equalityChild(state, 1)
 		for _, e := range x.Entries {
-			found := false
-			for _, f := range y.Entries {
-				if equal(e.Key, f.Key, equalityChild(state, 0)) && equal(e.Value, f.Value, equalityChild(state, 1)) {
-					found = true
-					break
-				}
-			}
-			if !found {
+			at := keyedPosition(y, e.Key, keys)
+			if at < 0 || !equal(e.Value, y.Entries[at].Value, values) {
 				return false
 			}
 		}
@@ -679,6 +741,23 @@ func equal(a, b Value, state *equalityState) bool {
 	}
 	return false
 }
+
+// keyedPosition returns the position of the key equal to key in a Set or Map,
+// or -1. With an execution it uses the collection's hash index, so comparing
+// two collections is linear instead of quadratic; without one (hashing a
+// record key needs the execution's equality scope) it scans.
+func keyedPosition(c keyed, key Value, state *equalityState) int {
+	if state.ctx != nil {
+		return lookupKey(keyContext(state.ctx, key, state.scope), c, key)
+	}
+	for i, n := 0, c.count(); i < n; i++ {
+		if equal(c.keyAt(i), key, state) {
+			return i
+		}
+	}
+	return -1
+}
+
 func equalItemsState(a, b []Value, state *equalityState) bool {
 	if len(a) != len(b) {
 		return false
@@ -914,8 +993,6 @@ func RunTestsArgs(tests []Test, args []string) int {
 	return runTestsWith(tests, options, reporter)
 }
 
-func RunTests(tests []Test) int { return RunTestsWith(tests, TestOptions{}) }
-
 func RunTestsWith(tests []Test, options TestOptions) int {
 	return runTestsWith(tests, options, nil)
 }
@@ -1069,6 +1146,15 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 		}
 		return body(ctx, args)
 	})
+}
+
+// NewCompiledSourceFunction has the same guarded Body ABI as NewSourceFunction.
+// Its raw body must copy incoming Values and never retain or expose args itself.
+// Capturing an individual copied Value, including a mutable reference, is valid.
+func NewCompiledSourceFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
+	function := NewSourceFunction(labels, result, position, body)
+	function.BorrowedArguments = true
+	return function
 }
 
 type implementationKey struct {
@@ -1251,6 +1337,31 @@ func indexOfIn(ctx *Execution, items []Value, value Value) int {
 		}
 	}
 	return -1
+}
+
+// equalLists is separate from equal so its locals do not enlarge the frame of
+// every nested comparison; deep values are bounded by MaxEqualityDepth frames.
+func equalLists(x, y *List, state *equalityState) bool {
+	if x.Type != y.Type {
+		return false
+	}
+	// Element equality may mutate either outer List. Capture both headers
+	// before checking lengths; writes remain visible but growth/shrink and
+	// reallocation cannot change the arrays or membership being compared.
+	left, right := x.Capture(), y.Capture()
+	if left.Len() != right.Len() {
+		return false
+	}
+	if same, handled := equalPrimitiveListRanges(left, right); handled {
+		return same
+	}
+	child := equalityChild(state, 0)
+	for i := 0; i < left.Len(); i++ {
+		if !equal(left.Get(i), right.Get(i), child) {
+			return false
+		}
+	}
+	return true
 }
 
 func equalityChild(state *equalityState, index int) *equalityState {

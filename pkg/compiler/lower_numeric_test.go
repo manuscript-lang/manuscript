@@ -37,6 +37,8 @@ func TestDirectNativeCollectionLowering(t *testing.T) {
 	result := compiler.CompileSource("collections.ms", `import List from "@std/collections.ms"
 fn read(values: List[Int], index: Int) -> Int:
     return values.at(index).unwrap()
+fn stored(values: List[Int], index: Int) -> Optional[Int]:
+    return values.at(index)
 fn bound(values: List[Int]) -> Optional[Int]:
     let at = values.at
     return at(0)
@@ -50,7 +52,7 @@ impl At for Custom:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListAt(", "rt.OptionalUnwrap(", "rt.NativeMemberResult(", "rt.Invoke("} {
+	for _, operation := range []string{"rt.ListAt(", "rt.ListAtUnwrap(", "rt.NativeMemberResult(", "rt.Invoke("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing expected dispatch %s", operation)
 		}

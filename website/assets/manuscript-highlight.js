@@ -36,7 +36,8 @@
   }
 
   function tokenize(source, grammar) {
-    const rules = grammar.patterns.map(rule => ({
+    const resolve = rule => rule.include ? grammar.repository[rule.include.slice(1)] : rule;
+    const rules = grammar.patterns.map(resolve).map(rule => ({
       expression: new RegExp(rule.match || rule.begin, 'muyd'),
       kind: tokenClass(rule.name || ''),
       captures: Object.entries(rule.captures || {}).map(([group, { name }]) => [Number(group), tokenClass(name)]),

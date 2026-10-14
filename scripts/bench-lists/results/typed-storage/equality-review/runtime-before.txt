@@ -1,0 +1,18 @@
+--- FAIL: TestListEqualityCapturesBothHeadersBeforeCallbacks (0.00s)
+    --- FAIL: TestListEqualityCapturesBothHeadersBeforeCallbacks/left/shrink (0.00s)
+        list_equality_mutation_test.go:104: equality/calls=true/1, Go oracle=true/3
+    --- FAIL: TestListEqualityCapturesBothHeadersBeforeCallbacks/left/shrink_mismatch (0.00s)
+        list_equality_mutation_test.go:104: equality/calls=true/1, Go oracle=false/3
+    --- FAIL: TestListEqualityCapturesBothHeadersBeforeCallbacks/left/append (0.00s)
+        list_equality_mutation_test.go:102: captured equality panicked: runtime error: index out of range [3] with length 3
+    --- FAIL: TestListEqualityCapturesBothHeadersBeforeCallbacks/left/grow_write (0.00s)
+        list_equality_mutation_test.go:104: equality/calls=false/2, Go oracle=true/3
+    --- FAIL: TestListEqualityCapturesBothHeadersBeforeCallbacks/right/shrink (0.00s)
+        list_equality_mutation_test.go:102: captured equality panicked: runtime error: index out of range [1] with length 0
+    --- FAIL: TestListEqualityCapturesBothHeadersBeforeCallbacks/right/shrink_mismatch (0.00s)
+        list_equality_mutation_test.go:102: captured equality panicked: runtime error: index out of range [1] with length 0
+    --- FAIL: TestListEqualityCapturesBothHeadersBeforeCallbacks/right/grow_write (0.00s)
+        list_equality_mutation_test.go:104: equality/calls=false/2, Go oracle=true/3
+FAIL
+FAIL	github.com/manuscript-lang/manuscript/pkg/runtime	0.005s
+FAIL

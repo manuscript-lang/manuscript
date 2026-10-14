@@ -73,7 +73,11 @@ compiler, never generated from the candidate:
 - generated Go SHA256: `c2086ef7502812b744c8db896855f9b0333bb8c210276db43334f7e241de356c`
 - first List constructor, go/format.Node SHA256: `14f056a0e496cbba6ff77959a189419ceed5206a63a9ece9b49aa07aae677362`
 
-The enforced oracle hashes the constructor independently of stdlib registration
+Superseded by #147: optimized builds now lower this literal to a typed
+`rt.ListTable`, so the test asserts that shape instead of this hash. The hashes
+remain as the record of the original baseline.
+
+The enforced oracle hashed the constructor independently of stdlib registration
 updates on main. It was separately captured by parsing the unchanged before
 compiler's generated Go and formatting that List composite with the bundled
 Go AST formatter. This keeps unrelated stdlib API additions from requiring a

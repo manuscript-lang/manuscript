@@ -156,23 +156,32 @@ func (stack *CleanupStack) Unwind() {
 	if len(stack.actions) == 0 {
 		return
 	}
-	pending := recover()
+	// Run every action without touching the pending panic. Recovering and
+	// re-raising it at each scope nests one panic inside another per frame,
+	// which makes a fault through deeply nested scopes super-linear. Only a
+	// failing action needs the pending value, to record it as secondary.
+	var failures []any
 	for len(stack.actions) > 0 {
 		action := stack.actions[len(stack.actions)-1]
 		var failure any
 		func() { defer func() { failure = recover() }(); action.Run() }()
 		if failure != nil {
-			if primary, ok := pending.(Fault); ok {
-				primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
-				pending = primary
-			} else {
-				pending = Fault{Message: fmt.Sprint(failure)}
-			}
+			failures = append(failures, failure)
 		}
 	}
-	if pending != nil {
-		panic(pending)
+	if len(failures) == 0 {
+		return
 	}
+	pending := recover()
+	for _, failure := range failures {
+		if primary, ok := pending.(Fault); ok {
+			primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
+			pending = primary
+		} else {
+			pending = Fault{Message: fmt.Sprint(failure)}
+		}
+	}
+	panic(pending)
 }
 
 func CleanupOperation(resource Value, contract string, scopes ...TypeScope) Value {

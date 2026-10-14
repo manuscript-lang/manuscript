@@ -3,6 +3,7 @@ package parser
 import (
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"sort"
 	"strings"
 )
 
@@ -54,33 +55,102 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 		start, end := starts[index], starts[index+1]
 		lineOffset += strings.Count(source[previous:start], "\n")
 		previous = start
-		parsed, err := Parse(file, source[start:end])
+		chunk := source[start:end]
+		parsed, err := Parse(file, chunk)
+		var recovered []syntax.Diagnostic
 		if err != nil {
-			if name := declaredName(source[start:end]); name != "" {
-				module.Omitted = append(module.Omitted, name)
-			}
-			if issue, ok := err.(syntax.Diagnostic); ok {
+			parsed, recovered = recoverStatements(file, chunk, err)
+		}
+		if err != nil {
+			rebased := func(issue syntax.Diagnostic) syntax.Diagnostic {
 				issue.Position.Offset += start
 				issue.Position.Line += lineOffset
 				if issue.End != nil {
-					issue.End.Offset += start
-					issue.End.Line += lineOffset
+					end := *issue.End
+					end.Offset += start
+					end.Line += lineOffset
+					issue.End = &end
 				}
 				if issue.Fix != nil {
-					issue.Fix.Position.Offset += start
-					issue.Fix.Position.Line += lineOffset
-					issue.Fix.End.Offset += start
-					issue.Fix.End.Line += lineOffset
+					fix := *issue.Fix
+					fix.Position.Offset += start
+					fix.Position.Line += lineOffset
+					fix.End.Offset += start
+					fix.End.Line += lineOffset
+					issue.Fix = &fix
 				}
-				diagnostics = append(diagnostics, issue)
+				return issue
 			}
-			continue
+			if parsed == nil {
+				if name := declaredName(chunk); name != "" {
+					module.Omitted = append(module.Omitted, name)
+				}
+				if issue, ok := err.(syntax.Diagnostic); ok {
+					diagnostics = append(diagnostics, rebased(issue))
+				}
+				continue
+			}
+			sort.SliceStable(recovered, func(i, j int) bool { return recovered[i].Position.Offset < recovered[j].Position.Offset })
+			for _, issue := range recovered {
+				diagnostics = append(diagnostics, rebased(issue))
+			}
+			module.Recovered = append(module.Recovered, syntax.Span{Start: start, End: end})
 		}
 		rebase(parsed, start, lineOffset)
 		module.Imports = append(module.Imports, parsed.Imports...)
 		module.Declarations = append(module.Declarations, parsed.Declarations...)
 	}
 	return module, diagnostics
+}
+
+// recoverStatements retries a failed declaration chunk with each offending
+// statement (and the block it opens) blanked to spaces, so every remaining
+// statement keeps its original position. It returns nil when no bounded number
+// of blankings parses, in which case the whole declaration is omitted.
+func recoverStatements(file, chunk string, first error) (*syntax.Module, []syntax.Diagnostic) {
+	issues := []syntax.Diagnostic{}
+	lines := strings.SplitAfter(chunk, "\n")
+	err := first
+	for attempt := 0; attempt < 8; attempt++ {
+		issue, ok := err.(syntax.Diagnostic)
+		// The header line (line 1) failing means the signature is unusable.
+		if !ok || issue.Position.Line < 2 || issue.Position.Line > len(lines) {
+			return nil, nil
+		}
+		issues = append(issues, issue)
+		at := issue.Position.Line - 1
+		indent := leadingSpace(lines[at])
+		if strings.TrimSpace(lines[at]) == "" || indent == 0 {
+			return nil, nil
+		}
+		for index := at; index < len(lines); index++ {
+			if index > at && strings.TrimSpace(lines[index]) != "" && leadingSpace(lines[index]) <= indent {
+				break
+			}
+			lines[index] = blank(lines[index])
+		}
+		module, parseErr := Parse(file, strings.Join(lines, ""))
+		if parseErr == nil {
+			return module, issues
+		}
+		err = parseErr
+	}
+	return nil, nil
+}
+
+func leadingSpace(line string) int {
+	return len(line) - len(strings.TrimLeft(line, " \t"))
+}
+
+// blank replaces every byte but line breaks with a space, keeping offsets.
+func blank(line string) string {
+	bytes := []byte(line)
+	for index, b := range bytes {
+		if b != '\r' && b != '\n' {
+			bytes[index] = ' '
+		}
+	}
+	return string(bytes)
 }
 
 // declaredName reads the name a declaration chunk introduces, for chunks that

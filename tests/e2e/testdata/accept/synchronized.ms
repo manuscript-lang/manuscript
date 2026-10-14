@@ -276,7 +276,7 @@ test "ordinary cross-task lock cycle stops at the group timeout":
                 error(cause): cause
 
             match cause:
-                TimedOut:
+                Timeout:
                     locked.set(value: 3)
 
                 _:

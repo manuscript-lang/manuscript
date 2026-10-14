@@ -7,6 +7,19 @@ func isConstant(s *Symbol) bool {
 	return s != nil && s.Kind == syntax.KindFn && s.Decl != nil && s.Decl.Constant
 }
 
+// IsConstant reports whether the symbol is a module-level `let` constant.
+// Tooling shows its value type, not the zero-parameter function it is stored as.
+func (s *Symbol) IsConstant() bool { return isConstant(s) }
+
+// ValueType is the type a name of the symbol has as an expression: a
+// constant's own type, and the declared type of any other symbol.
+func (s *Symbol) ValueType() *Type {
+	if isConstant(s) && s.Type != nil && s.Type.Result != nil {
+		return s.Type.Result
+	}
+	return s.Type
+}
+
 // constantType resolves a constant's type once: its annotation, or the type of
 // its initializer. A constant that depends on itself is reported and typed
 // <invalid>. The use-site rewrite makes every use evaluate the initializer, so
@@ -17,7 +30,7 @@ func (c *checker) constantType(s *Symbol) {
 	}
 	d := s.Decl
 	if c.constantsVisiting[s] {
-		c.error(d.Pos, "type", "constant "+d.Name+" depends on itself; break the cycle or compute the value in a function")
+		c.reportConstantCycle(s)
 		s.Type = function(nil, primitive("<invalid>"))
 		return
 	}
@@ -53,6 +66,13 @@ func (c *checker) constantExpression(e *syntax.Expression) bool {
 	ok := true
 	switch e.Kind {
 	case syntax.KindNumber, syntax.KindBool, syntax.KindUnit, syntax.KindText, syntax.KindList, syntax.KindMap, syntax.KindUnary, syntax.KindBinary:
+	case syntax.KindMember:
+		// Type.Case names a payloadless case; the checker rejects other members.
+		if e.Left == nil || e.Left.Kind != syntax.KindName || c.names[e.Left.Text] == nil || c.names[e.Left.Text].Kind != syntax.KindType {
+			c.error(e.Pos, "type", "a constant takes literals, operators, collections, and other constants; compute this value in a function")
+			return false
+		}
+		return true
 	case syntax.KindName:
 		if s := c.names[e.Text]; s != nil && !isConstant(s) {
 			c.error(e.Pos, "type", "a constant can refer only to other constants, but "+e.Text+" is a "+c.symbolDescription(s)+"; compute the value in a function")
@@ -73,4 +93,63 @@ func (c *checker) constantExpression(e *syntax.Expression) bool {
 		ok = ok && c.constantExpression(part.Value)
 	}
 	return ok
+}
+
+// checkConstantCycles reports constants that reach themselves through other
+// constants. Annotated constants never need their initializer's type, so
+// constantType does not follow them; without this pass `let A: Int = B` and
+// `let B: Int = A` would pass the check and recurse until the call-depth limit.
+func (c *checker) checkConstantCycles(module *syntax.Module) {
+	state := map[*Symbol]int{} // 1 visiting, 2 done
+	var visit func(s *Symbol)
+	var walk func(e *syntax.Expression)
+	walk = func(e *syntax.Expression) {
+		if e == nil {
+			return
+		}
+		if e.Kind == syntax.KindName {
+			if t := c.names[e.Text]; isConstant(t) && t.Module == module.File {
+				visit(t)
+			}
+		}
+		walk(e.Left)
+		walk(e.Right)
+		for _, element := range e.Elements {
+			walk(element)
+		}
+		for _, part := range e.Parts {
+			walk(part.Value)
+		}
+	}
+	visit = func(s *Symbol) {
+		switch state[s] {
+		case 1:
+			c.reportConstantCycle(s)
+			return
+		case 2:
+			return
+		}
+		state[s] = 1
+		walk(s.Decl.Body[0].Value)
+		state[s] = 2
+	}
+	for _, d := range module.Declarations {
+		if !d.Constant {
+			continue
+		}
+		if s := c.names[d.Name]; s != nil && s.Decl == d {
+			visit(s)
+		}
+	}
+}
+
+func (c *checker) reportConstantCycle(s *Symbol) {
+	if c.cycleReported[s] {
+		return
+	}
+	if c.cycleReported == nil {
+		c.cycleReported = map[*Symbol]bool{}
+	}
+	c.cycleReported[s] = true
+	c.error(s.Decl.Pos, "type", "constant "+s.Decl.Name+" depends on itself; break the cycle or compute the value in a function")
 }

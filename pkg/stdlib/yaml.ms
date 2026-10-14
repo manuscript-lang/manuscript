@@ -1054,8 +1054,23 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
 
             if sequence(item) or boundary(text: item, colon: true) >= 0:
                 # Treat a compact mapping/sequence as a virtual indented first line.
+                # Its column follows the indicator, so extra spaces move the nested base.
+                let marker = (
+                    line
+                    .trim_start()
+                    .slice(
+                        start: 1,
+                        end: (line.trim_start().scalar_length())
+                    )
+                    .unwrap_or("")
+                )
+                var gap = indent(marker)
+
+                if gap == 0: gap = 1
+
+                let column = base + 1 + gap
                 var padding = ""
-                var spaces = base + 2
+                var spaces = column
 
                 while spaces > 0:
                     padding = padding.concat(" ")
@@ -1072,7 +1087,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 values.append(
                     try block(
                         context: context,
-                        base: base + 2,
+                        base: column,
                         depth: (depth + 1)
                     )
                 )
@@ -1314,6 +1329,27 @@ export fn parse(
             invalid(
                 context: context,
                 reason: "directive requires document start"
+            )
+        )
+
+    # Content after the marker on the same line starts the document body.
+    if (
+        context.index < context.lines.length()
+        and context.lines.at(context.index).unwrap().starts_with("--- ")
+    ):
+        let line = context.lines.at(context.index).unwrap()
+        let rest = line.slice(
+            start: 4,
+            end: line.scalar_length()
+        ).unwrap_or("")
+
+        if not rest.trim().starts_with("#"): (
+            context
+            .lines
+            .splice(
+                start: context.index,
+                delete_count: 1,
+                replacement: ["---", rest]
             )
         )
 
