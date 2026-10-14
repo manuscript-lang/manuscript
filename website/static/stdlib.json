@@ -1829,7 +1829,8 @@
           "kind": "interface",
           "type": "Commands",
           "operations": [
-            "run: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[CommandOutput, CommandError]"
+            "run: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = ..., timeout: Optional[Duration] = ...)-\u003eResult[CommandOutput, CommandError]",
+            "spawn: fn(program: String, arguments: List[String])-\u003eResult[Subprocess, CommandError]"
           ]
         },
         {
@@ -1945,6 +1946,20 @@
           "operations": [
             "close: fn()-\u003eUnit",
             "next: fn()-\u003eResult[Int, ProcessError]"
+          ]
+        },
+        {
+          "name": "Subprocess",
+          "kind": "interface",
+          "type": "Subprocess",
+          "operations": [
+            "close: fn()-\u003eUnit",
+            "kill: fn()-\u003eUnit",
+            "stderr: fn()-\u003eReadStream",
+            "stdin: fn()-\u003eWriteStream",
+            "stdout: fn()-\u003eReadStream",
+            "terminate: fn()-\u003eUnit",
+            "wait: fn(timeout: Optional[Duration] = ...)-\u003eResult[Int, CommandError]"
           ]
         },
         {

@@ -7,7 +7,7 @@ weight = 12
 
 API reference: [process](reference/process.md) and [io](reference/io.md).
 
-Use stream helpers for bounded reads and copies, and Commands for buffered subprocess execution. The caller supplies the streams or command service. Helpers do not acquire authority or close the streams for you.
+Use stream helpers for bounded reads and copies, and Commands for buffered or long-lived subprocess execution. The caller supplies the streams or command service. Helpers do not acquire authority or close the streams for you.
 
 ## Running commands
 
@@ -26,7 +26,7 @@ type CommandOutput:
 
 `CommandError` has `InvalidInput`, `Unavailable`, `TimedOut`, `OutputLimit`, and `Failed(message: String)`. Empty/NUL program names, NUL arguments, negative bounds, and negative timeout return InvalidInput. The total stdout plus stderr bound is nonnegative. Nonzero ordinary exit is an `ok` output with that code. Timeout or output overflow stops and joins the process before returning its error; caller cancellation unwinds after joining. POSIX process groups include descendants in termination.
 
-On platforms without process-group support the wrapper controls the direct process, with bounded pipe completion; descendant supervision needs a platform host contract. Interactive subprocess streams remain separate future contracts; [network sockets](network.md), [streaming HTTP](http.md) and [WebSockets](websocket.md) are implemented.
+On platforms without process-group support the wrapper controls the direct process, with bounded pipe completion; descendant supervision needs a platform host contract. [Managed subprocesses](#managed-subprocesses) cover interactive streams; [network sockets](network.md), [streaming HTTP](http.md) and [WebSockets](websocket.md) are implemented.
 
 ## Stream helpers
 
@@ -44,7 +44,34 @@ Source streams must return nonempty chunks within the requested size. A malforme
 
 Expected stream failures preserve their original `IoError` case and payload. Invalid UTF-8 returns `IoError.InvalidData`; an exceeded byte bound returns `IoError.LimitExceeded`. Helpers do not flatten Result or catch cancellation and faults. Convert a File view explicitly to ReadStream when required by the contract-view rules.
 
-Commands return buffered output. Interactive child-process streams are not available.
+## Managed subprocesses
+
+`commands().spawn(program, arguments)` starts a long-lived child and returns `Result[Subprocess, CommandError]`. Acquire it with `with` so scope exit, return, error, and cancellation close it:
+
+```manuscript
+import {commands} from "@std/process.ms"
+import {read_line} from "@std/io.ms"
+import panic from "@std/faults.ms"
+
+fn echo_once() -> Unit:
+    match commands().spawn(program: "cat", arguments: []):
+        error(cause): return panic(message: "spawn failed")
+        ok(child):
+            with running = child:
+                running.stdin().write("ping\n".to_bytes())
+                running.stdin().close()
+                read_line(input: running.stdout())
+```
+
+`Subprocess` exposes `stdin()`, `stdout()`, `stderr()` (shared `WriteStream`/`ReadStream` views of OS pipes), `wait(timeout)`, `terminate()`, `kill()`, and `close()`. Pipes give natural backpressure: a full pipe blocks the writer, and unread output blocks the child, so nothing is buffered without bound. Closing `stdin()` delivers EOF to the child.
+
+- `wait` returns the exit code (`-1` if a signal ended the child). `timeout` expires with `TimedOut` and leaves the child running; caller cancellation unwinds without killing it, because scope exit does that. After exit, `wait` keeps returning the recorded status, including after `close`.
+- `terminate` sends SIGTERM to the process group and `kill` sends SIGKILL; neither waits. Windows has no SIGTERM, so `terminate` kills the direct process.
+- `close` is idempotent. It kills the process group, joins the child, kills any descendants still in the group, and closes all three streams. Unread output is discarded and later stream operations return `Closed`. Cancelling the acquiring execution also kills the group. Aliases to the streams or `Subprocess` do not extend the lifetime.
+- Races: stream EOF can arrive before or after exit (descendants may keep a pipe open), so `wait` is the authority on exit. Output written before exit stays readable until `close`. A read or write blocked when `close` runs returns `Closed`.
+- Readiness is observed by reading `stdout()` or `stderr()` (for example `read_line` until a ready line); no sleep polling is needed.
+
+POSIX hosts place the child in its own process group, so descendants are cleaned up. Other platforms supervise only the direct process. Environment, working-directory, and pseudo-terminal controls are not part of this contract.
 
 ## Current process control
 

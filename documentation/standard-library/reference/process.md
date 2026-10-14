@@ -36,6 +36,7 @@ type CommandOutput:
 ```manuscript
 interface Commands:
     fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
+    fn spawn(program: String, arguments: List[String]) -> Result[Subprocess, CommandError]
 ```
 
 ## CpuUsage {data-api-kind="Record"}
@@ -143,6 +144,19 @@ type ResourceUsage:
 interface SignalStream:
     fn close() -> Unit
     fn next() -> Result[Int, ProcessError]
+```
+
+## Subprocess {data-api-kind="Interface"}
+
+```manuscript
+interface Subprocess:
+    fn stdin() -> WriteStream
+    fn stdout() -> ReadStream
+    fn stderr() -> ReadStream
+    fn wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]
+    fn terminate() -> Unit
+    fn kill() -> Unit
+    fn close() -> Unit
 ```
 
 ## commands {data-api-kind="Function"}

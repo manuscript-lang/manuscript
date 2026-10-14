@@ -117,7 +117,7 @@ func (c *checker) effectSummaries() {
 						}
 					case "@std/WriteStream":
 						add(n, "external-call", "write")
-					case "@std/Network", "@std/HttpServer", "@std/Commands":
+					case "@std/Network", "@std/HttpServer", "@std/Commands", "@std/Subprocess":
 						add(n, "external-call", "read", "write")
 					case "@std/SynchronizedGuard":
 						if name == "get" {

@@ -7,6 +7,8 @@ import Map from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Error from "@std/errors.ms"
 import Result from "@std/result.ms"
+import ReadStream from "@std/io.ms"
+import WriteStream from "@std/io.ms"
 
 # Errors returned when a process cannot start, times out, or exceeds an output bound.
 export type CommandError:
@@ -31,6 +33,18 @@ export interface Commands:
         max_output_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[CommandOutput, CommandError]
+    fn spawn(program: String, arguments: List[String]) -> Result[Subprocess, CommandError]
+
+# A long-lived child process with live stdin, stdout, and stderr pipes. Closing it
+# kills the child's process group, joins it, and closes all three streams.
+export interface Subprocess:
+    fn stdin() -> WriteStream
+    fn stdout() -> ReadStream
+    fn stderr() -> ReadStream
+    fn wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]
+    fn terminate() -> Unit
+    fn kill() -> Unit
+    fn close() -> Unit
 
 # Process and operating-system controls for the current process.
 export interface ProcessControl:
