@@ -49,7 +49,6 @@ new kind of function value.
 Proposed source syntax (a complete example for future acceptance tests):
 
 ```manuscript
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 interface Sized:
@@ -570,26 +569,28 @@ bound/native member aliases. Classify residual matches as unrelated methods,
 intentional rejection diagnostics or documented historical baselines. A grep
 count is a discovery aid, not proof of correct typed migration. In particular
 Error.message() calls/references and all retained snapshot/conversion methods
-must survive this audit. Rebase only on main; if PR497 later merges, reconcile
-declaration ownership and regenerate combined references without adopting its
-unmerged branch during this work.
+must survive this audit. Rebase only on main; PR497 has now merged, so reconcile
+the prelude from main and regenerate combined references without adopting a
+separate collection-prelude branch during this work.
 
 ## Performance evidence and acceptance
 
-The supplied audit's 18-core partition was 5 direct helpers, 6 hoisted NativeCall
-paths and 7 full-binding paths. The seven full-binding candidates are Bytes.length,
-Optional.is_some/is_none, Result.is_ok/is_error and Float.is_nan/is_finite.
-List first/last and the remaining service/time inventory are outside that 18.
+The original audited 18 candidates comprised 5 direct helpers, 6 hoisted
+NativeCall paths and 7 full-binding paths. The six hoisted candidates included
+List.first/last, Map/Set.is_empty, Bytes.is_empty and String.is_empty. The seven
+full-binding candidates are Bytes.length, Optional.is_some/is_none,
+Result.is_ok/is_error and Float.is_nan/is_finite.
 
-Static inspection of current lower_collections.go finds a discrepancy worth
-resolving before measurement: String.length has a direct StringLength branch.
-That gives 6 direct (List/Map/Set.length, List.is_empty, String.byte_length and
-String.length), 5 hoisted (Map/Set.is_empty, Bytes.is_empty, String.is_empty and
-String.scalar_length), and the same 7 bound. No lowering change between the audit
-commit and this baseline explains the difference. Retain the supplied audit as
-historical input, verify all 18 emitted expressions, and use actual current-main
-output as the benchmark baseline. This is source inspection, not an executed
-emission result or timing measurement.
+String.length and String.scalar_length were two additional candidates, already
+included in the approved migration. Across all 20 candidates, current source
+predicts 6 direct (List/Map/Set.length, List.is_empty, String.byte_length and
+String.length), 7 hoisted (List.first/last, Map/Set.is_empty, Bytes.is_empty,
+String.is_empty and String.scalar_length), and the same 7 full-binding paths.
+There is no demonstrated discrepancy with the original audit. This corrects the
+evidence inventory, not the feature scope. Verify all 20 emitted expressions and
+use actual current-main output as the benchmark baseline. These predictions are
+source inspection, not executed emission results or timing measurements. The
+remaining service/time inventory is outside these 20.
 
 Required emitted-Go shapes below are acceptance sketches, not generated output.
 Helper names are illustrative; they must return the stated typed value and
@@ -637,7 +638,7 @@ workloads. Do not run or report a hypothetical accessor implementation now.
 
 | Workload | Required controls and observation |
 | --- | --- |
-| Each of the 18 core getters, separately | Same receiver/data and consumed result; baseline current method lowering vs new accessor lowering; compare direct, hoisted and bound groups separately. |
+| Each of the 20 candidates, separately | Same receiver/data and consumed result; baseline current method lowering vs new accessor lowering; compare direct, hoisted and bound groups separately. |
 | Mixed collection reads | Mutation between reads; typed primitive and boxed List storage; first/last empty/present; stable result checksum. |
 | Presence/classification | some/none and ok/error; typed and boxed/captured receivers; Float finite/NaN/+Inf/-Inf and signed zero; avoid compile-time constants. |
 | Unicode lengths | ASCII and non-ASCII; repeated identical text and alternating strings; retain current internal cache behavior and scalar units. |
