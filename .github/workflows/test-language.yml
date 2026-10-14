@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -38,7 +38,7 @@ jobs:
       - name: Prepare SDK payload
         run: make payload
       - name: Sharded Go tests (race, or coverage)
-        run: sh scripts/ci-test.sh ${{ matrix.shard }} 4
+        run: sh scripts/ci-test.sh ${{ matrix.shard }} 3
       - uses: actions/upload-artifact@v7
         with:
           name: language-coverage-${{ matrix.shard }}
