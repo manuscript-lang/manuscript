@@ -44,7 +44,11 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 				c.labelMismatch = true
 				return
 			}
-			c.error(arg.Pos, "type", conflictingInference)
+			// A pattern without type variables has nothing to conflict; the
+			// argument check reports the plain mismatch.
+			if mentionsVariable(pattern, vars) {
+				c.error(arg.Pos, "type", conflictingInference)
+			}
 		}
 	}
 	for _, arg := range args {
@@ -227,4 +231,24 @@ func (c *checker) inferExpectedResult(variables []*Type, sub map[string]*Type, c
 	for key, value := range trial {
 		sub[key] = value
 	}
+}
+
+func mentionsVariable(t *Type, variables map[string]bool) bool {
+	if t == nil {
+		return false
+	}
+	if variables[t.ID] {
+		return true
+	}
+	for _, arg := range t.Args {
+		if mentionsVariable(arg, variables) {
+			return true
+		}
+	}
+	for _, param := range t.Params {
+		if mentionsVariable(param.Type, variables) {
+			return true
+		}
+	}
+	return mentionsVariable(t.Result, variables)
 }

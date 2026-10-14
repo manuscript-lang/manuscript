@@ -2,12 +2,18 @@
 package nativeabi
 
 var ReceiverBindings = map[string]map[string]string{
+	"IpAddress":         {"text": "net/ip_text", "family": "net/ip_family"},
+	"Cidr":              {"text": "net/cidr_text"},
+	"DnsKind":           {"text": "net/dns_kind_text"},
+	"IpFamily":          {"text": "net/ip_family_text"},
 	"NormalizationForm": {"normalize": "string/form_normalize"},
 	"HashAlgorithm":     {"digest": "crypto/hash_algorithm_digest", "hmac": "crypto/hash_algorithm_hmac"},
 	"CompressionFormat": {"compress": "compress/format_compress", "decompress": "compress/format_decompress"},
 	"ArchiveFormat":     {"pack": "archive/format_pack", "unpack": "archive/format_unpack"},
 	"Decimal":           {"round": "decimal/round", "to_fixed": "decimal/to_fixed"},
-	"HttpRequest":       {"header": "http/request_header"},
+	"HttpHeaders":       {"append": "http/headers_append", "values": "http/headers_values", "text": "http/headers_text", "names": "http/headers_names", "clone": "http/headers_clone", "remove": "http/headers_remove"},
+	"ClientResponse":    {"metadata": "http/client_response_metadata"},
+	"HttpMethod":        {"text": "http/method_text"},
 	"TaskGroup": {
 		"start": "tasks/task_group_start",
 		"join":  "tasks/task_group_join",
@@ -75,6 +81,8 @@ var ReceiverBindings = map[string]map[string]string{
 		"last":             "collections/last",
 		"is_empty":         "collections/is_empty",
 		"prepend":          "collections/prepend",
+		"insert":           "collections/insert",
+		"pop":              "collections/pop",
 		"set":              "collections/set",
 		"remove":           "collections/remove",
 		"slice":            "collections/slice",
@@ -88,6 +96,8 @@ var ReceiverBindings = map[string]map[string]string{
 		"find_last":        "collections/find_last",
 		"find_index":       "collections/find_index",
 		"find_last_index":  "collections/find_last_index",
+		"count":            "collections/count",
+		"distinct":         "collections/distinct",
 		"some":             "collections/some",
 		"every":            "collections/every",
 		"for_each":         "collections/for_each",

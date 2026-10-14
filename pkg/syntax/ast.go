@@ -56,7 +56,17 @@ type Module struct {
 	Source       string
 	Imports      []*Import
 	Declarations []*Declaration
+	// Omitted names declarations that editor recovery dropped because they did
+	// not parse; uses of them are not reported as unknown.
+	Omitted []string
+	// Recovered holds the source ranges of declarations whose invalid
+	// statements editor recovery blanked; their syntax error is already
+	// reported, so checking diagnostics inside them are suppressed.
+	Recovered []Span
 }
+
+// Span is a half-open byte range of source.
+type Span struct{ Start, End int }
 
 // Import represents one symbol binding; named import lists expand into bindings.
 type Import struct {

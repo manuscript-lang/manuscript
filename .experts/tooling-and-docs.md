@@ -26,6 +26,18 @@ a callback body must not consume the parameter signature's width budget.
 The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
 exercises these boundaries alongside comments and literal spellings.
 
+### Inspect active List backing in the debugger
+
+Verified: typed List storage adds inactive nil slice fields to the native header.
+Rendering `Items` alone exposed bookkeeping or an empty fallback instead of source
+elements. Read the kind tag for expansion and indexed watches; Delve displays a
+uint8 as `1 = 0x1`, so parse its decimal prefix. Do not infer backing from a source
+primitive type because legacy/large literals can still be boxed. Evidence:
+[primitive and native DAP regressions](../extensions/vscode/tests/debug-adapter.test.js)
+and [storage-aware renderer](../extensions/vscode/debug-adapter.js).
+Verify all four primitive backings, legacy/empty Lists, generic types and watch
+indexing; source values must not expose private header fields or inactive lengths.
+
 ### Editor recovery must preserve delimiter continuations
 
 Verified: strict parsing accepts multiline parameters, but declaration recovery previously split their column-zero closing delimiters into separate chunks whenever any declaration was malformed. This discarded valid functions and their parameter scopes in the LSP. Recovery now consults the lexer for continuation boundaries while fresh declarations still synchronize after an unmatched opener. Completion snapshots also need a match arm, rather than an ordinary statement, to repair an unfinished `match` suite.
@@ -130,3 +142,10 @@ Verified: agents act on a diagnostic only when it names the cause, the location,
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../documentation/developer-tooling/source/diagnostics.md), [checker hints](../pkg/checker/hints.go), [hint tests](../pkg/checker/hints_test.go), and [recovery](../pkg/parser/partial.go).
 Verify: run `go test ./pkg/checker ./pkg/parser ./pkg/tooling/lsp ./internal/cli`; extend the hint tests with the new message.
+
+### Debug by Manuscript position, not Go symbol
+Verified: in a Debug build `main.main` is generated glue (`initialize()` then the runtime entry), and each Manuscript function is a closure under `initialize` (`main.initialize.func1.1`), so Go symbols never name user code. Line directives map `file.ms:line` stably. Generated position bookkeeping between statements inherits phantom line numbers (a step can stop on a blank line after a statement), and `ms inspect` function entities carry only a header line, so function extent comes from the next declaration and a function breakpoint uses the first statement after the header. Scripted `ms debug` resolves names through inspection for this reason.
+
+Apply when: changing source maps, line directives, inspection spans, or the scripted debugger.
+Evidence: [session driver](../internal/debugger/session.go), [name mapping](../internal/cli/debug_names.go), [end-to-end debug tests](../tests/e2e/debug_script_test.go), [scripted debugging](../documentation/developer-tooling/debugging/debugger-integration.md#scripted-debugging-for-agents).
+Verify: `go test ./tests/e2e -run TestDebug`; a `next` over a statement must land on the next statement line, not a blank line.

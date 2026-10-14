@@ -34,7 +34,7 @@ func TestHTTPBufferedResponseHeaderCollisions(t *testing.T) {
 			}
 			handler := NewFunction([]string{"request"}, "@std/HttpResponse", func(_ *Execution, _ []Value) Value {
 				response := hostResponse(200, "ok").(Record)
-				response.Fields["headers"] = &Map{Type: "@std/Map[String][String]", Entries: entries}
+				response.Fields["headers"] = httpTestHeaders(&Map{Type: "@std/Map[String][String]", Entries: entries})
 				return response
 			})
 			service := serveTest(t, RootExecution(), handler, 1024)
@@ -71,7 +71,7 @@ func TestHTTPClientHeaderCollisions(t *testing.T) {
 		io.Copy(w, r.Body)
 	}))
 	defer server.Close()
-	for _, method := range []string{"request", "send", "send_stream"} {
+	for _, method := range []string{"buffered", "request", "request_stream"} {
 		for _, reverse := range []bool{false, true} {
 			t.Run(method+map[bool]string{false: "/forward", true: "/reverse"}[reverse], func(t *testing.T) {
 				entries := []Entry{{"x-dup", "first"}, {"X-Dup", "second"}}
@@ -80,21 +80,21 @@ func TestHTTPClientHeaderCollisions(t *testing.T) {
 					entries[0], entries[1] = entries[1], entries[0]
 					want[0], want[1] = want[1], want[0]
 				}
-				args := []Value{"POST", server.URL, &Map{Type: "@std/Map[String][String]", Entries: entries}, Bytes{[]byte("ok")}, int64(10), Duration(2 * time.Second)}
-				var headers *Map
-				if method == "request" {
-					response := librarySuccess(t, n.Operation(method).Body(ctx, args)).(Record)
-					headers = response.Fields["headers"].(*Map)
+				args := []Value{libraryHTTPMethod("POST"), server.URL, httpTestHeaders(&Map{Type: "@std/Map[String][String]", Entries: entries}), Bytes{[]byte("ok")}, int64(10), Duration(2 * time.Second)}
+				var headers *libraryHeaders
+				if method == "buffered" {
+					response := librarySuccess(t, n.Operation("request").Body(ctx, args)).(Record)
+					headers = response.Fields["head"].(Record).Fields["headers"].(*libraryHeaders)
 					if string(response.Fields["body"].(Bytes).Items) != "ok" {
 						t.Fatal(response)
 					}
 				} else {
-					if method == "send_stream" {
+					if method == "request_stream" {
 						args[3] = ViewOf("@std/ReadStream", &networkingReadStream{data: []byte("ok")})
 					}
 					body := librarySuccess(t, networkingInvoke(ctx, client, method, args...))
 					defer networkingInvoke(ctx, body, "close")
-					headers = networkingInvoke(ctx, body, "headers").(*Map)
+					headers = networkingInvoke(ctx, body, "metadata").(Record).Fields["headers"].(*libraryHeaders)
 					part := librarySuccess(t, networkingInvoke(ctx, body, "read", int64(10))).(Alternative)
 					if part.Tag != "some" || string(part.Fields[0].(Bytes).Items) != "ok" {
 						t.Fatal(part)
@@ -109,14 +109,14 @@ func TestHTTPClientHeaderCollisions(t *testing.T) {
 	}
 }
 
-func assertHTTPHeaderMap(t *testing.T, headers *Map, want map[string][]string) {
+func assertHTTPHeaderMap(t *testing.T, headers *libraryHeaders, want map[string][]string) {
 	t.Helper()
 	keys := []string{}
 	for _, entry := range headers.Entries {
 		key := entry.Key.(string)
 		keys = append(keys, key)
 		if values, ok := want[key]; ok {
-			if got := libraryStringValues(entry.Value); !reflect.DeepEqual(got, values) {
+			if got := httpTestTextValues(entry.Value); !reflect.DeepEqual(got, values) {
 				t.Errorf("%s: got %q, want %q", key, got, values)
 			}
 			delete(want, key)
@@ -132,16 +132,19 @@ func TestHTTPStreamingHeaderCollisions(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(ctx, nil)
 	handler := NewFunction([]string{"exchange"}, "@std/Result[Unit][@std/HttpError]", func(child *Execution, args []Value) Value {
-		headers := networkingInvoke(child, args[0], "headers").(*Map)
+		headers := networkingInvoke(child, args[0], "headers").(*libraryHeaders)
 		// Copying the list map keeps separate received values, including empties.
-		forward := &Map{Type: headers.Type}
+		forward := &libraryHeaders{}
 		for _, entry := range headers.Entries {
 			if !httpHeaderNameEqual(entry.Key.(string), "Connection") {
-				forward.Entries = append(forward.Entries, entry)
+				for _, value := range entry.Value.(*List).Items {
+					forward.append(entry.Key.(string), value.(Bytes))
+				}
 			}
 		}
 		headers = forward
-		headers.Entries = append(headers.Entries, Entry{"set-cookie", libraryStrings([]string{"c=3", "d=4"})})
+		headers.append("set-cookie", Bytes{[]byte("c=3")})
+		headers.append("set-cookie", Bytes{[]byte("d=4")})
 		return networkingInvoke(child, args[0], "send_headers", int64(200), headers)
 	})
 	server := librarySuccess(t, n.Operation("serve_stream").Body(ctx, []Value{"127.0.0.1:0", handler, networkingServerOptions()}))
@@ -186,7 +189,7 @@ func TestHTTPMalformedOutgoingHeaders(t *testing.T) {
 			n := &network{}
 			defer n.Operation("close").Body(ctx, nil)
 			entries := []Entry{{"X-Prefix", "validated first"}, {tc.key, tc.value}}
-			out := &Map{Type: "@std/Map[String][String]", Entries: entries}
+			out := httpTestHeaders(&Map{Type: "@std/Map[String][String]", Entries: entries})
 			buffered := serveTest(t, ctx, NewFunction([]string{"request"}, "@std/HttpResponse", func(_ *Execution, _ []Value) Value {
 				response := hostResponse(200, "ok").(Record)
 				response.Fields["headers"] = out
@@ -203,21 +206,21 @@ func TestHTTPMalformedOutgoingHeaders(t *testing.T) {
 			var requests atomic.Int64
 			peer := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests.Add(1) }))
 			defer peer.Close()
-			args := []Value{"GET", peer.URL, out, Bytes{}, int64(10), Duration(2 * time.Second)}
+			args := []Value{libraryHTTPMethod("GET"), peer.URL, out, Bytes{}, int64(10), Duration(2 * time.Second)}
 			libraryFailure(t, n.Operation("request").Body(ctx, args), "InvalidInput")
 			client := librarySuccess(t, n.Operation("http_client").Body(ctx, []Value{networkingClientOptions()}))
-			libraryFailure(t, networkingInvoke(ctx, client, "send", args...), "InvalidInput")
+			libraryFailure(t, networkingInvoke(ctx, client, "request", args...), "InvalidInput")
 			args[3] = ViewOf("@std/ReadStream", &networkingReadStream{})
-			libraryFailure(t, networkingInvoke(ctx, client, "send_stream", args...), "InvalidInput")
+			libraryFailure(t, networkingInvoke(ctx, client, "request_stream", args...), "InvalidInput")
 			if requests.Load() != 0 {
 				t.Fatal("invalid client headers reached peer")
 			}
 			// Failed send_headers is recoverable and emits none of the valid prefix.
 			result := make(chan Value, 1)
 			handler := NewFunction([]string{"exchange"}, "@std/Result[Unit][@std/HttpError]", func(child *Execution, a []Value) Value {
-				multi := &Map{Type: "@std/Map[String][@std/List[String]]", Entries: []Entry{{"X-Prefix", libraryStrings([]string{"valid"})}, {tc.key, libraryStrings([]string{tc.value})}}}
+				multi := httpTestHeaders(&Map{Type: "@std/Map[String][@std/List[String]]", Entries: []Entry{{"X-Prefix", libraryStrings([]string{"valid"})}, {tc.key, libraryStrings([]string{tc.value})}}})
 				result <- networkingInvoke(child, a[0], "send_headers", int64(200), multi)
-				return networkingInvoke(child, a[0], "send_headers", int64(201), &Map{Type: multi.Type})
+				return networkingInvoke(child, a[0], "send_headers", int64(201), &libraryHeaders{})
 			})
 			server := librarySuccess(t, n.Operation("serve_stream").Body(ctx, []Value{"127.0.0.1:0", handler, networkingServerOptions()}))
 			address := networkingInvoke(ctx, server, "address").(string)
@@ -240,17 +243,17 @@ func TestHTTPHeaderUTF8Boundaries(t *testing.T) {
 	defer n.Operation("close").Body(ctx, nil)
 	peer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Header().Set("X-Raw", "\xff") }))
 	defer peer.Close()
-	args := []Value{"GET", peer.URL, &Map{Type: "@std/Map[String][String]"}, Bytes{}, int64(10), Duration(2 * time.Second)}
+	args := []Value{libraryHTTPMethod("GET"), peer.URL, httpTestHeaders(&Map{Type: "@std/Map[String][String]"}), Bytes{}, int64(10), Duration(2 * time.Second)}
 	libraryFailure(t, n.Operation("request").Body(ctx, args), "InvalidData")
 	client := librarySuccess(t, n.Operation("http_client").Body(ctx, []Value{networkingClientOptions()}))
-	libraryFailure(t, networkingInvoke(ctx, client, "send", args...), "InvalidData")
+	libraryFailure(t, networkingInvoke(ctx, client, "request", args...), "InvalidData")
 	buffered := serveTest(t, ctx, NewFunction([]string{"request"}, "@std/HttpResponse", func(child *Execution, args []Value) Value {
-		value := Invoke(child, NativeMember(args[0], "header"), []Argument{{"name", "x-RAW"}}).(Alternative)
-		if value.Tag != "some" || !reflect.DeepEqual(value.Fields[0].(Bytes).Items, []byte{255}) {
+		value := Invoke(child, NativeMember(args[0].(Record).Fields["headers"], "values"), []Argument{{"name", "x-RAW"}}).(Alternative)
+		if value.Tag != "some" || !reflect.DeepEqual(value.Fields[0].(*List).Items[0].(Bytes).Items, []byte{255}) {
 			return hostResponse(500, "bytes lost")
 		}
-		text := Invoke(child, NativeMember(value.Fields[0], "to_text"), nil).(Alternative)
-		if text.Tag != "none" {
+		text := Invoke(child, NativeMember(args[0].(Record).Fields["headers"], "text"), []Argument{{"name", "X-Raw"}}).(Alternative)
+		if text.Tag != "error" || text.Fields[0].(Alternative).Tag != "InvalidData" {
 			return hostResponse(500, "invalid UTF-8 decoded")
 		}
 		return hostResponse(200, "ok")
@@ -302,9 +305,51 @@ func TestHTTPHeaderBridgePreservesExactEntries(t *testing.T) {
 	// Direct host maps need not have the parser's canonical keys. Canonicalizing
 	// lookup with Header.Values would repeat one spelling's values and lose others.
 	headers := http.Header{"x-dup": {"first", ""}, "X-Dup": {"second"}}
-	assertHTTPHeaderMap(t, libraryHTTPHeaders(headers), map[string][]string{"x-dup": {"first", ""}, "X-Dup": {"second"}})
+	assertHTTPHeaderMap(t, libraryHTTPHeaders(headers), map[string][]string{"X-Dup": {"second", "first", ""}})
 	//lint:ignore SA1008 Deliberately test exact lookup on a noncanonical host map.
 	if strings.Join(headers["x-dup"], ",") != "first," {
 		t.Fatal("bridge mutated host map")
+	}
+}
+
+func TestHTTPMethodValidationAndMetadataAfterClose(t *testing.T) {
+	ctx := RootExecution()
+	n := &network{}
+	defer n.Operation("close").Body(ctx, nil)
+	var calls atomic.Int64
+	peer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Header().Add("X-Method", r.Method)
+		w.Header().Add("Set-Cookie", "a=1")
+		w.Header().Add("Set-Cookie", "b=2")
+	}))
+	defer peer.Close()
+	client := librarySuccess(t, n.Operation("http_client").Body(ctx, []Value{networkingClientOptions()}))
+	for _, token := range []string{"", "BAD METHOD", "bad/name", "é", "x\r\ny"} {
+		method := Alternative{"@std/HttpMethod", "Custom", []Value{token}}
+		args := []Value{method, peer.URL, &libraryHeaders{}, Bytes{}, int64(10), Duration(time.Second)}
+		libraryFailure(t, n.Operation("request").Body(ctx, args), "InvalidInput")
+		libraryFailure(t, networkingInvoke(ctx, client, "request", args...), "InvalidInput")
+		args[3] = ViewOf("@std/ReadStream", &networkingReadStream{})
+		libraryFailure(t, networkingInvoke(ctx, client, "request_stream", args...), "InvalidInput")
+	}
+	if calls.Load() != 0 {
+		t.Fatal("malformed method reached loopback peer")
+	}
+	response := librarySuccess(t, networkingInvoke(ctx, client, "request", libraryHTTPMethod("CUSTOM"), peer.URL, &libraryHeaders{}, Bytes{}, int64(10), Duration(time.Second)))
+	first := networkingInvoke(ctx, response, "metadata").(Record)
+	networkingInvoke(ctx, response, "close")
+	next := networkingInvoke(ctx, response, "metadata").(Record)
+	if first.Fields["headers"] != next.Fields["headers"] || next.Fields["status"] != int64(200) {
+		t.Fatal("closed metadata lost identity")
+	}
+	headers := next.Fields["headers"].(*libraryHeaders)
+	values, _ := headers.values("set-cookie")
+	if !reflect.DeepEqual(httpTestTextValues(values), []string{"a=1", "b=2"}) {
+		t.Fatal("closed metadata lost cookies")
+	}
+	method, _ := headers.values("x-method")
+	if string(method.Items[0].(Bytes).Items) != "CUSTOM" {
+		t.Fatal("extension method changed")
 	}
 }

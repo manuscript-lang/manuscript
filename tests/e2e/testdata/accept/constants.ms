@@ -38,3 +38,21 @@ test "a local binding shadows a constant":
 
     if not (LIMIT == 3):
         return panic(message: "check failed")
+
+type Phase:
+    case Idle
+    case Active(count: Int)
+
+let START = Phase.Idle
+let NEXT: Phase = Idle
+
+fn phase_name(phase: Phase) -> String:
+    match phase:
+        Idle:
+            return "idle"
+        Active(count):
+            return "active {count}"
+
+test "a qualified payloadless case is a constant":
+    if not (phase_name(phase: START) == "idle" and phase_name(phase: NEXT) == "idle"):
+        return panic(message: "check failed")

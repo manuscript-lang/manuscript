@@ -16,9 +16,9 @@ import (
 func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "serve_stream", libraryResult("HttpServer", "HttpError"), []LibraryParam{{"address", "String"}, {"handler", "fn(exchange:HttpExchange)->Result[Unit][HttpError]"}, {"options", "HttpServerOptions"}}},
-		{"HttpExchange", "method", "String", nil}, {"HttpExchange", "path", "String", nil}, {"HttpExchange", "query", "String", nil}, {"HttpExchange", "headers", "Map[String][List[String]]", nil},
+		{"HttpExchange", "method", "HttpMethod", nil}, {"HttpExchange", "path", "String", nil}, {"HttpExchange", "query", "String", nil}, {"HttpExchange", "headers", "HttpHeaders", nil},
 		{"HttpExchange", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int]"}}},
-		{"HttpExchange", "send_headers", libraryResult("Unit", "HttpError"), []LibraryParam{{"status", "Int"}, {"headers", "Map[String][List[String]]"}}},
+		{"HttpExchange", "send_headers", libraryResult("Unit", "HttpError"), []LibraryParam{{"status", "Int"}, {"headers", "HttpHeaders"}}},
 		{"HttpExchange", "write", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}}},
 		{"HttpExchange", "upgrade", libraryResult("WebSocket", "WebSocketError"), []LibraryParam{{"allowed_origins", "List[String]"}, {"subprotocols", "List[String]"}, {"max_message_bytes", "Optional[Int]"}}},
 		{"HttpExchange", "close", "Unit", nil},
@@ -87,10 +87,12 @@ func (n *network) serveStreaming() Function {
 type libraryHTTPExchange struct {
 	owner                         *httpService
 	request                       *http.Request
+	headers                       *libraryHeaders
 	writer                        http.ResponseWriter
 	ctx                           *Execution
 	mu                            sync.Mutex
 	closed, sent, upgraded        bool
+	rejected                      bool
 	readGate, writeGate           chan struct{}
 	active                        sync.WaitGroup
 	remainingRead, remainingWrite int64
@@ -131,7 +133,7 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 	for key, value := range s.parent.HostServices {
 		child.HostServices[key] = value
 	}
-	exchange := &libraryHTTPExchange{owner: s, request: r, writer: w, ctx: child, remainingRead: s.bodyLimit, remainingWrite: s.responseLimit, readGate: make(chan struct{}, 1), writeGate: make(chan struct{}, 1)}
+	exchange := &libraryHTTPExchange{owner: s, request: r, headers: libraryHTTPHeaders(r.Header), writer: w, ctx: child, remainingRead: s.bodyLimit, remainingWrite: s.responseLimit, readGate: make(chan struct{}, 1), writeGate: make(chan struct{}, 1)}
 	exchange.readGate <- struct{}{}
 	exchange.writeGate <- struct{}{}
 	controller := http.NewResponseController(w)
@@ -160,7 +162,7 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 		outcome = Invoke(child, s.handler, []Argument{{"exchange", ViewOf("@std/HttpExchange", exchange)}})
 	}()
 	exchange.mu.Lock()
-	sent, upgraded := exchange.sent, exchange.upgraded
+	sent, upgraded, rejected := exchange.sent, exchange.upgraded, exchange.rejected
 	exchange.mu.Unlock()
 	if failure != nil || call.Err() != nil || outcome.(Alternative).Tag == "error" {
 		if failure != nil {
@@ -168,18 +170,18 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 				reportDiagnostic("HTTP stream handler fault: " + fmtFault(failure))
 			}
 		}
-		if !sent && !upgraded {
+		if !sent && !upgraded && !rejected {
 			status := 500
 			if call.Err() != nil {
 				status = 504
 			}
 			http.Error(w, "request failed", status)
-		} else if !upgraded {
+		} else if !upgraded && !rejected {
 			panic(http.ErrAbortHandler)
 		}
 		return
 	}
-	if !sent && !upgraded {
+	if !sent && !upgraded && !rejected {
 		w.WriteHeader(204)
 	}
 }
@@ -213,13 +215,13 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 	return libraryMethod("HttpExchange", name, func(ctx *Execution, r string, a []Value) Value {
 		switch name {
 		case "method":
-			return e.request.Method
+			return libraryHTTPMethod(e.request.Method)
 		case "path":
 			return e.request.URL.Path
 		case "query":
 			return e.request.URL.RawQuery
 		case "headers":
-			return libraryHTTPHeaders(e.request.Header)
+			return e.headers
 		case "close":
 			e.interrupt()
 			e.close()
@@ -232,7 +234,7 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 		libraryGate(ctx, gate)
 		defer func() { gate <- struct{}{} }()
 		e.mu.Lock()
-		if e.closed || e.upgraded {
+		if e.closed || e.upgraded || e.rejected {
 			e.mu.Unlock()
 			if name == "send_headers" {
 				return libraryError(r, "Closed", "")
@@ -282,12 +284,13 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 				return libraryError(r, "InvalidInput", "")
 			}
 			headerBytes := int64(0)
-			for _, entry := range a[1].(*Map).Entries {
+			for _, entry := range a[1].(*libraryHeaders).Entries {
 				key := entry.Key.(string)
 				if !libraryHeaderName(key) || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Connection") {
 					return libraryError(r, "InvalidInput", "")
 				}
-				for _, value := range libraryStringValues(entry.Value) {
+				for _, item := range entry.Value.(*List).Items {
+					value := string(item.(Bytes).Items)
 					headerBytes += int64(len(key)) + int64(len(value)) + 4
 					if headerBytes > e.owner.headerLimit {
 						return libraryError(r, "LimitExceeded", "")
@@ -297,8 +300,9 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 					}
 				}
 			}
-			for _, entry := range a[1].(*Map).Entries {
-				for _, value := range libraryStringValues(entry.Value) {
+			for _, entry := range a[1].(*libraryHeaders).Entries {
+				for _, item := range entry.Value.(*List).Items {
+					value := string(item.(Bytes).Items)
 					e.writer.Header().Add(entry.Key.(string), value)
 				}
 			}

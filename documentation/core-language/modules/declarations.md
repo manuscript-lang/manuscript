@@ -40,7 +40,7 @@ fn is_full(count: Int) -> Bool:
     return count >= LIMIT
 ```
 
-The type comes from the annotation or the initializer. The initializer is a constant expression: literals, text with constant interpolations, operators, list and map literals, nullary cases such as `none`, and other constants. Calls, constructors, functions, and `match` belong in a function. A constant that depends on itself is rejected.
+The type comes from the annotation or the initializer. The initializer is a constant expression: literals, text with constant interpolations, operators, list and map literals, payloadless cases such as `none` or `State.Ready`, and other constants. Calls, constructors, functions, and `match` belong in a function. A constant that depends on itself is rejected.
 
 A constant has no storage and no initialization order. Each use evaluates the initializer, as if the value were written at that place, so a list constant always starts as a fresh list and changing a copy never affects the constant or another user. A local binding or parameter with the same name shadows the constant. Constants cannot be assigned, and `main` must be a function.
 

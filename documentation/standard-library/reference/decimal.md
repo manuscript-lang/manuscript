@@ -39,6 +39,24 @@ HalfEven is the default; rounded zero has no minus sign. Trailing zeros are reta
 fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
 ```
 
+### Decimal.to_float
+
+Converts to the nearest Float, which can lose precision because binary floats cannot represent most decimal fractions exactly.
+Values beyond the Float range convert to an infinity.
+
+```manuscript
+fn to_float() -> Float:
+```
+
+### Decimal.truncate_to_int
+
+Discards the fractional part toward zero and returns the integer, so -2.9 gives -2.
+Returns none when the integer part does not fit in signed 64 bits.
+
+```manuscript
+fn truncate_to_int() -> Optional[Int]:
+```
+
 ## RoundingMode {data-api-kind="Alternative"}
 
 How a Decimal rounds to a multiple of the requested power of ten.

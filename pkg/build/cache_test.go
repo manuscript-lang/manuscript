@@ -82,3 +82,31 @@ func TestOutputDirectoryIsCheckedBeforeBuilding(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestWritePinKeepsSymlinkedLockAndRejectsDirectory(t *testing.T) {
+	root := t.TempDir()
+	shared := filepath.Join(t.TempDir(), "shared.lock")
+	if err := os.WriteFile(shared, []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lock := filepath.Join(root, "ms.lock")
+	if err := os.Symlink(shared, lock); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	if err := WritePin(root); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Lstat(lock); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("symlink replaced: %v %v", info, err)
+	}
+	if data, _ := os.ReadFile(shared); string(data) == "old" {
+		t.Fatal("shared lock target not updated")
+	}
+	directory := t.TempDir()
+	if err := os.Mkdir(filepath.Join(directory, "ms.lock"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := WritePin(directory); err == nil || !strings.Contains(err.Error(), "is a directory") {
+		t.Fatalf("directory lock: %v", err)
+	}
+}

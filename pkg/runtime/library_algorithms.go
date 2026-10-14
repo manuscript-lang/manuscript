@@ -1,44 +1,37 @@
 package msruntime
 
-import "sort"
-
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	vars := []LibraryParam{p("T", "")}
 	libraryGeneric("collections", "map", "List[U]", []LibraryParam{p("T", ""), p("U", "")}, []LibraryParam{p("values", "List[T]"), p("transform", "fn(value:T)->U")}, func(ctx *Execution, r string, a []Value) Value {
-		items := a[0].(*List).Items
-		out := make([]Value, len(items))
-		for i, v := range items {
+		items := a[0].(*List).Capture()
+		out := make([]Value, items.Len())
+		for i, v := range items.Values() {
 			CheckCancelled(ctx)
 			out[i] = Invoke(ctx, a[1], []Argument{{"value", v}})
 		}
-		return &List{Type: r, Items: out}
+		return NewList(r, out)
 	})
 	libraryGeneric("collections", "filter", "List[T]", vars, []LibraryParam{p("values", "List[T]"), p("predicate", "fn(value:T)->Bool")}, func(ctx *Execution, r string, a []Value) Value {
 		var out []Value
-		for _, v := range a[0].(*List).Items {
+		for _, v := range a[0].(*List).Capture().Values() {
 			CheckCancelled(ctx)
 			if Invoke(ctx, a[1], []Argument{{"value", v}}).(bool) {
 				out = append(out, v)
 			}
 		}
-		return &List{Type: r, Items: out}
+		return NewList(r, out)
 	})
 	libraryGeneric("collections", "fold", "A", []LibraryParam{p("T", ""), p("A", "")}, []LibraryParam{p("values", "List[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		acc := a[1]
-		for _, v := range a[0].(*List).Items {
+		for _, v := range a[0].(*List).Capture().Values() {
 			CheckCancelled(ctx)
 			acc = Invoke(ctx, a[2], []Argument{{"accumulator", acc}, {"value", v}})
 		}
 		return acc
 	})
 	libraryGeneric("collections", "sorted", "List[T]", vars, []LibraryParam{p("values", "List[T]"), p("compare", "fn(left:T;right:T)->Int")}, func(ctx *Execution, r string, a []Value) Value {
-		out := append([]Value{}, a[0].(*List).Items...)
-		sort.SliceStable(out, func(i, j int) bool {
-			CheckCancelled(ctx)
-			return Invoke(ctx, a[1], []Argument{{"left", out[i]}, {"right", out[j]}}).(int64) < 0
-		})
-		return &List{Type: r, Items: out}
+		return ListSorted(ctx, a[0], a[1])
 	})
 	libraryGeneric("collections", "map_keys", "List[K]", []LibraryParam{p("K", "Hashable"), p("V", "")}, []LibraryParam{p("values", "Map[K][V]")}, func(ctx *Execution, r string, a []Value) Value {
 		entries := a[0].(*Map).Entries
@@ -46,7 +39,7 @@ func init() {
 		for i, e := range entries {
 			out[i] = e.Key
 		}
-		return &List{Type: r, Items: out}
+		return NewList(r, out)
 	})
 	libraryGeneric("collections", "map_values", "List[V]", []LibraryParam{p("K", "Hashable"), p("V", "")}, []LibraryParam{p("values", "Map[K][V]")}, func(ctx *Execution, r string, a []Value) Value {
 		entries := a[0].(*Map).Entries
@@ -54,10 +47,10 @@ func init() {
 		for i, e := range entries {
 			out[i] = e.Value
 		}
-		return &List{Type: r, Items: out}
+		return NewList(r, out)
 	})
 	for _, name := range []string{"union", "intersection", "difference"} {
-		libraryGeneric("collections", name, "Set[T]", []LibraryParam{p("T", "Hashable")}, []LibraryParam{p("left", "Set[T]"), p("right", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
+		libraryGeneric("collections", name, "Set[T]", []LibraryParam{p("T", "Hashable")}, []LibraryParam{p("left", "Set[T]"), p("other", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
 			left, right := a[0].(*Set), a[1].(*Set)
 			var out []Value
 			for _, v := range left.Items {

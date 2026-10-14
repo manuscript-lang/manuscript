@@ -32,20 +32,24 @@ A bound must resolve to an interface. Type parameters are in scope in their boun
 
 Bounds are checked at every application. `Hashable` implies `Equal` for bound satisfaction and body checking. All values may be passed between operations without a sharing bound; this does not add synchronization to mutable objects. Contract types do not gain equality or hashing.
 
-`Equal` and `Hashable` are not standalone value types, generic type arguments, view constructors, or implementation targets. Their intrinsic names cannot be redefined by module declarations, imports, or type parameters. Concurrent access requires no compiler-defined bound.
+`Equal` and `Hashable` are ordinary [operation interfaces](equality-and-hashing.md) declared in `@std/equality.ms`. They work as bounds, parameter types, type arguments, explicit views (`Equal(value: x)`), and `impl` targets like any other interface. Their names are fixed in the prelude, so module declarations, imports, and type parameters cannot redefine them. Concurrent access requires no compiler-defined bound.
 
 ```manuscript
-# Rejected: a compiler bound is not a parameter type.
-fn invalid_parameter(value: Equal) -> Unit:
+type Key:
+    id: Int
+
+impl Equal for Key:
+    fn equals(other: Equal) -> Bool:
+        return true
+
+fn accepts(value: Equal) -> Unit:
     return
 
-# Rejected: Equal is not a type argument.
-let invalid_argument = identity[Equal](value: 1)
-# Rejected: no source view constructor for a compiler bound.
-let invalid_view = Equal(value: 1)
+fn use_view() -> Unit:
+    accepts(Equal(value: Key(id: 1)))
 ```
 
-`impl Equal for DataType` is also rejected; eligibility follows compiler derivation rather than a source implementation. A declaration such as `fn invalid[Hashable](value: Hashable) -> Unit:` cannot redefine `Hashable` as its type parameter.
+A declaration such as `fn invalid[Hashable](value: Hashable) -> Unit:` cannot redefine `Hashable` as its type parameter.
 
 ## Declarations and applications
 

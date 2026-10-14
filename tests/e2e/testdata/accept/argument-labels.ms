@@ -149,7 +149,7 @@ test "optional labels on methods and native functions":
         limit: 1,
         drain: 2.seconds
     ):
-        let operation = fn() -> Result[Unit, String]:
+        let operation = fn() -> Result[Unit, Error]:
             return ok(unit)
 
         match service.start(operation):
