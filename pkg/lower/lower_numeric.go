@@ -107,7 +107,7 @@ func (g *generator) numericOperand(e *syntax.Expression, goType string) ast.Expr
 
 // constant reports whether g.expression(e) is a Go constant expression.
 func (g *generator) constant(e *syntax.Expression) bool {
-	if _, ok := g.booleans[e]; ok {
+	if g.constantBool(e) {
 		return true
 	}
 	switch e.Kind {
