@@ -67,7 +67,7 @@ Unrelated domain errors still need an explicit translation. The Error interface 
 | `InvalidInput`, `InvalidData`, `LimitExceeded` | The same-name category |
 | `NotFound`, `AlreadyExists`, `PermissionDenied` | The same-name category |
 | `Unsupported`, `Closed`, `Unavailable` | The same-name category |
-| `Timeout`, `TimedOut` | `Timeout` |
+| `Timeout` | `Timeout` |
 | Custom errors or other domain cases | `none` |
 
 `Unavailable` does not imply a missing resource or denied permission. Cases such as `Failed(message)`, `Full`, `OutputLimit`, `OutOfRange`, `AuthenticationFailed`, `Cancelled`, YAML `UnsupportedFeature`, and wrapped logging causes remain domain-specific and return `none`. In particular, a timeout described only by an `IoError.Failed` message is not classified as `Timeout`. Use the concrete domain type when these distinctions matter.
@@ -117,11 +117,11 @@ Error case sets describe each domain, even when case names coincide. Filesystem,
 | `Error` view | Retains the concrete error value for type matching, while exposing only `message()` as a common operation. |
 | Scheduler callbacks | Currently use `Result[Unit, String]`; `SchedulerFailure.Failed.cause` is text, and Crashed carries a fault message. No domain-error view is implied. |
 
-The absence of a case in PathError, CryptoError, RegexError, UrlError, or JsonError does not authorize inventing a generic Failed/LimitExceeded at that boundary. The optional category query preserves those distinctions. A scheduler error migration, timeout case rename, or unified write result still needs an explicit API and compatibility decision.
+The absence of a case in PathError, CryptoError, RegexError, UrlError, or JsonError does not authorize inventing a generic Failed/LimitExceeded at that boundary. The optional category query preserves those distinctions. A scheduler error migration still needs an explicit API and compatibility decision. Every timeout case is spelled `Timeout`, and every write returns `Unit`.
 
 ### Native I/O success and EOF
 
-Native WriteStream, Connection, and FileHandle writes accept all supplied bytes on success. FileHandle count results report the complete input length; Unit results omit that count. Errors/cancellation may leave a prefix and do not report its size. Acceptance does not guarantee disk durability or peer processing. Source WriteStream implementations may buffer until flush; native stdout/stderr flush is a no-op, while the file-handle writer adapter flushes with file sync. Commands and `read_file`/`read_all` buffer whole results in memory; chunk readers, directory cursors, sockets, and streaming HTTP expose incremental delivery.
+Native WriteStream, Connection, and FileHandle writes accept all supplied bytes on success. Errors/cancellation may leave a prefix and do not report its size. Acceptance does not guarantee disk durability or peer processing. Source WriteStream implementations may buffer until flush; native stdout/stderr flush is a no-op, while the file-handle writer adapter flushes with file sync. Commands and `read_file`/`read_all` buffer whole results in memory; chunk readers, directory cursors, sockets, and streaming HTTP expose incremental delivery.
 
 | Reader | EOF contract |
 | --- | --- |

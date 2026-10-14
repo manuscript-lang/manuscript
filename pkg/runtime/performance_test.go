@@ -104,7 +104,7 @@ func TestReadLineBuffersWithoutLosingBytes(t *testing.T) {
 	fs := &libraryFileSystem{dir}
 	view := librarySuccess(t, fs.Operation("open").Body(ctx, []Value{"lines", "w+", int64(0600)}))
 	h := view.(View).Receiver.(*libraryFileHandle)
-	librarySuccess(t, h.Operation("write_file").Body(ctx, []Value{Bytes{[]byte("one\r\ntwo\n\nlast")}}))
+	librarySuccess(t, h.Operation("write").Body(ctx, []Value{Bytes{[]byte("one\r\ntwo\n\nlast")}}))
 	librarySuccess(t, h.Operation("seek").Body(ctx, []Value{int64(0), int64(0)}))
 	reader := h.Operation("reader").Body(ctx, nil)
 	next := func() Value { return libraryCall(t, "io/read_line", reader, int64(100)).Fields[0] }

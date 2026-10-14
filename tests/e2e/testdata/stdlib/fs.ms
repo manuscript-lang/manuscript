@@ -159,12 +159,13 @@ test "file handles positional I/O stream adapters and closed errors":
                     )
                 ) != "cd".to_bytes()
             ): return panic("positional read")
-            if value(
+
+            value(
                 handle.write_at(
                     offset: 1,
                     data: "XY".to_bytes()
                 )
-            ) != 2: return panic("positional write")
+            )
 
             let resized = value(handle.truncate(4))
             if value(handle.stat()).size != 4: return panic("handle stat")

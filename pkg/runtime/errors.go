@@ -101,7 +101,6 @@ var standardErrorReasons = map[string]string{
 	"Closed":               "resource is closed",
 	"Unavailable":          "service unavailable",
 	"Timeout":              "operation timed out",
-	"TimedOut":             "operation timed out",
 	"Cancelled":            "operation cancelled",
 	"Full":                 "capacity exhausted",
 	"OutOfRange":           "value out of range",
@@ -158,9 +157,6 @@ func libraryErrorCategory(value Value) Value {
 		return optional("@std/ErrorCategory", nil, false)
 	}
 	name := cause.Tag
-	if name == "TimedOut" {
-		name = "Timeout"
-	}
 	switch name {
 	case "InvalidInput", "InvalidData", "LimitExceeded", "NotFound", "AlreadyExists", "PermissionDenied", "Unsupported", "Closed", "Timeout", "Unavailable":
 		return optional("@std/ErrorCategory", Alternative{Type: "@std/ErrorCategory", Tag: name}, true)

@@ -14,7 +14,7 @@ Errors returned when a process cannot start, times out, or exceeds an output bou
 type CommandError:
     case InvalidInput
     case Unavailable
-    case TimedOut
+    case Timeout
     case OutputLimit
     case Failed(message: String)
 ```

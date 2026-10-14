@@ -29,7 +29,7 @@ export type ErrorCategory:
     case Unavailable
 
 # Queries a shared category without changing or invoking the error.
-# Recognized standard cases use their same-name category; TimedOut maps to Timeout.
+# Recognized standard cases use their same-name category.
 # Custom errors and domain-specific cases (including Failed, Full, OutputLimit, OutOfRange,
 # AuthenticationFailed and wrapped LogError causes) return none. Messages are never parsed.
 export fn category(cause: Error) -> Optional[ErrorCategory]:
