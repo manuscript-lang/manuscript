@@ -50,8 +50,8 @@ fn solve_line(line: String) -> String:
     let at = line.index_of(" ")
     if at.is_none():
         return "error"
-    let cmd = line.slice(0, at.unwrap())
-    let rest = line.slice(at.unwrap() + 1, line.length())
+    let cmd = line.slice(0, at.unwrap()).unwrap()
+    let rest = line.slice(at.unwrap() + 1, line.length()).unwrap()
     if cmd == "E":
         return encode(rest)
     if cmd == "D":

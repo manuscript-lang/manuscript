@@ -46,7 +46,7 @@ fn run() -> Result[Unit, Error]:
         else if cmd == "size":
             out.append("{live}")
         else if cmd == "dump":
-            let shown = items.slice(head, items.length())
+            let shown = items.slice(head, items.length()).unwrap()
             out.append("[{shown.join(" ")}]")
     if not out.is_empty():
         try stdout().write("{out.join("\n")}\n".to_bytes())

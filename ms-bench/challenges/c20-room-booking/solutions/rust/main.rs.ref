@@ -1,0 +1,192 @@
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::io::{self, Read, Write};
+
+struct Booking {
+    room: String,
+    date: String,
+    st: String,
+    en: String,
+    a: i64,
+    b: i64,
+    n: i64,
+    act: bool,
+}
+
+fn digits(s: &str, min: usize, max: usize) -> bool {
+    s.len() >= min && s.len() <= max && s.bytes().all(|c| c.is_ascii_digit())
+}
+
+fn leap(y: i64) -> bool {
+    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+}
+
+fn valid_date(s: &str) -> bool {
+    let b = s.as_bytes();
+    if b.len() != 10 || b[4] != b'-' || b[7] != b'-' {
+        return false;
+    }
+    if !digits(&s[0..4], 4, 4) || !digits(&s[5..7], 2, 2) || !digits(&s[8..10], 2, 2) {
+        return false;
+    }
+    let y: i64 = s[0..4].parse().unwrap();
+    let m: i64 = s[5..7].parse().unwrap();
+    let d: i64 = s[8..10].parse().unwrap();
+    if y < 2000 || y > 2099 || m < 1 || m > 12 || d < 1 {
+        return false;
+    }
+    let dim = [31, if leap(y) { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][(m - 1) as usize];
+    d <= dim
+}
+
+fn hm(s: &str) -> Option<i64> {
+    let b = s.as_bytes();
+    if b.len() != 5 || b[2] != b':' || !digits(&s[0..2], 2, 2) || !digits(&s[3..5], 2, 2) {
+        return None;
+    }
+    let h: i64 = s[0..2].parse().unwrap();
+    let m: i64 = s[3..5].parse().unwrap();
+    if h > 23 || m > 59 {
+        None
+    } else {
+        Some(h * 60 + m)
+    }
+}
+
+fn main() {
+    let mut text = String::new();
+    io::stdin().read_to_string(&mut text).unwrap();
+    let mut rooms: BTreeMap<String, i64> = BTreeMap::new();
+    let mut used: HashSet<String> = HashSet::new();
+    let mut book: HashMap<String, Booking> = HashMap::new();
+    let mut order: Vec<String> = Vec::new();
+    let mut out: Vec<String> = Vec::new();
+    for l in text.lines() {
+        if l.replace(' ', "").is_empty() {
+            continue;
+        }
+        let t: Vec<&str> = l.split(' ').collect();
+        match t[0] {
+            "room" => {
+                let name_ok = t.len() == 3
+                    && !t[1].is_empty()
+                    && t[1].len() <= 10
+                    && t[1].as_bytes()[0].is_ascii_lowercase()
+                    && t[1].bytes().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit());
+                if t.len() != 3 {
+                    out.push("error: usage".into());
+                } else if !name_ok {
+                    out.push("error: bad room name".into());
+                } else if !digits(t[2], 1, 6) || t[2].parse::<i64>().unwrap() < 1 || t[2].parse::<i64>().unwrap() > 500 {
+                    out.push("error: bad capacity".into());
+                } else if rooms.contains_key(t[1]) {
+                    out.push("error: room exists".into());
+                } else {
+                    rooms.insert(t[1].to_string(), t[2].parse().unwrap());
+                    out.push("ok".into());
+                }
+            }
+            "book" => {
+                if t.len() != 7 {
+                    out.push("error: usage".into());
+                    continue;
+                }
+                let (id, r, d, st, en, at) = (t[1], t[2], t[3], t[4], t[5], t[6]);
+                if id.is_empty() || !id.bytes().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-') {
+                    out.push("error: bad id".into());
+                    continue;
+                }
+                if used.contains(id) {
+                    out.push("error: duplicate id".into());
+                    continue;
+                }
+                used.insert(id.to_string());
+                let a = hm(st);
+                let b = hm(en);
+                let n: i64 = if digits(at, 1, 6) { at.parse().unwrap() } else { 0 };
+                if !rooms.contains_key(r) {
+                    out.push("error: unknown room".into());
+                } else if !valid_date(d) {
+                    out.push("error: bad date".into());
+                } else if a.is_none() || b.is_none() {
+                    out.push("error: bad time".into());
+                } else if b.unwrap() <= a.unwrap() {
+                    out.push("error: bad range".into());
+                } else if a.unwrap() % 15 != 0 || b.unwrap() % 15 != 0 {
+                    out.push("error: not aligned".into());
+                } else if a.unwrap() < 480 || b.unwrap() > 1200 {
+                    out.push("error: outside hours".into());
+                } else if b.unwrap() - a.unwrap() > 240 {
+                    out.push("error: too long".into());
+                } else if !digits(at, 1, 6) || n < 1 {
+                    out.push("error: bad attendees".into());
+                } else if n > rooms[r] {
+                    out.push("error: over capacity".into());
+                } else {
+                    let (a, b) = (a.unwrap(), b.unwrap());
+                    let hit = order.iter().find(|x| {
+                        let k = &book[*x];
+                        k.act && k.room == r && k.date == d && a < k.b && k.a < b
+                    });
+                    if let Some(h) = hit {
+                        out.push(format!("error: conflict with {}", h));
+                    } else {
+                        book.insert(
+                            id.to_string(),
+                            Booking { room: r.to_string(), date: d.to_string(), st: st.to_string(), en: en.to_string(), a, b, n, act: true },
+                        );
+                        order.push(id.to_string());
+                        out.push(format!("ok {}", id));
+                    }
+                }
+            }
+            "cancel" => {
+                if t.len() != 2 {
+                    out.push("error: usage".into());
+                } else if let Some(k) = book.get_mut(t[1]) {
+                    if !k.act {
+                        out.push("error: already cancelled".into());
+                    } else {
+                        k.act = false;
+                        out.push("ok".into());
+                    }
+                } else {
+                    out.push("error: unknown booking".into());
+                }
+            }
+            "report" => {
+                if t.len() != 1 {
+                    out.push("error: usage".into());
+                    continue;
+                }
+                for (name, cap) in &rooms {
+                    let mut bs: Vec<&String> = order.iter().filter(|x| book[*x].room == *name && book[*x].act).collect();
+                    bs.sort_by(|x, y| {
+                        let (p, q) = (&book[*x], &book[*y]);
+                        p.date.cmp(&q.date).then(p.a.cmp(&q.a)).then(x.cmp(y))
+                    });
+                    let mut mins = 0;
+                    let mut dates: BTreeSet<&str> = BTreeSet::new();
+                    for x in &bs {
+                        mins += book[*x].b - book[*x].a;
+                        dates.insert(&book[*x].date);
+                    }
+                    let days = dates.len() as i64;
+                    let util = if days == 0 { 0 } else { (mins * 200 + 720 * days) / (1440 * days) };
+                    out.push(format!("{} cap={} active={} minutes={} util={}%", name, cap, bs.len(), mins, util));
+                    for x in &bs {
+                        let k = &book[*x];
+                        out.push(format!("  {} {}-{} {} attendees={}", k.date, k.st, k.en, x, k.n));
+                    }
+                }
+                let act = order.iter().filter(|x| book[*x].act).count();
+                out.push(format!("bookings active={} cancelled={}", act, order.len() - act));
+            }
+            _ => out.push("error: unknown command".into()),
+        }
+    }
+    let so = io::stdout();
+    let mut o = so.lock();
+    for s in out {
+        writeln!(o, "{}", s).unwrap();
+    }
+}

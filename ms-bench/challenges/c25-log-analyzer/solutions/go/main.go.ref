@@ -36,7 +36,10 @@ func main() {
 	levels := map[string]int{}
 	count := map[string]int{}
 	total := map[string]int{}
-	valid, malformed, server := 0, 0, 0
+	valid, malformed := 0, 0
+	classes := map[byte]int{}
+	var latencies []int
+	slowest, slowText := -1, ""
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
@@ -50,11 +53,16 @@ func main() {
 		}
 		valid++
 		levels[f[1]]++
-		st, _ := strconv.Atoi(f[4])
-		if st >= 500 {
-			server++
+		c := f[4][0]
+		if c < '2' || c > '5' {
+			c = 'o'
 		}
+		classes[c]++
 		lat, _ := strconv.Atoi(f[5])
+		latencies = append(latencies, lat)
+		if lat > slowest {
+			slowest, slowText = lat, fmt.Sprintf("%d %s %s %s", lat, f[2], f[3], f[0])
+		}
 		count[f[3]]++
 		total[f[3]] += lat
 	}
@@ -64,7 +72,16 @@ func main() {
 	for _, l := range []string{"DEBUG", "INFO", "WARN", "ERROR"} {
 		fmt.Fprintf(out, "%s: %d\n", l, levels[l])
 	}
-	fmt.Fprintf(out, "5xx: %d\ntop:\n", server)
+	sort.Ints(latencies)
+	p95 := 0
+	if len(latencies) > 0 {
+		p95 = latencies[(95*len(latencies)+99)/100-1]
+	}
+	fmt.Fprintf(out, "status: 2xx=%d 3xx=%d 4xx=%d 5xx=%d other=%d\np95: %d\n", classes['2'], classes['3'], classes['4'], classes['5'], classes['o'], p95)
+	if slowest >= 0 {
+		fmt.Fprintf(out, "slowest: %s\n", slowText)
+	}
+	fmt.Fprintln(out, "top:")
 	var paths []string
 	for p := range count {
 		paths = append(paths, p)

@@ -58,7 +58,7 @@ fn run() -> Result[Unit, Error]:
             if n == 0:
                 out.append("none")
             else:
-                out.append(words.slice(at, at + n).join(" "))
+                out.append(words.slice(at, at + n).unwrap().join(" "))
     if not out.is_empty():
         try stdout().write("{out.join("\n")}\n".to_bytes())
     return stdout().flush()

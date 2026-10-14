@@ -11,7 +11,7 @@ fn trim_blanks(s: String) -> String:
         start = start + 1
     while end > start and (codes.at(end - 1).unwrap() == 32 or codes.at(end - 1).unwrap() == 9):
         end = end - 1
-    return s.slice(start, end)
+    return s.slice(start, end).unwrap()
 
 fn all_digits(s: String) -> Bool:
     if s.is_empty():
@@ -51,7 +51,7 @@ fn split_fields(line: String) -> List[String]:
             var j = i
             while j < n and chars.at(j).unwrap() != ",":
                 j = j + 1
-            fields.append(chars.slice(i, j).join(""))
+            fields.append(chars.slice(i, j).unwrap().join(""))
             i = j
         if i < n and chars.at(i).unwrap() == ",":
             i = i + 1
@@ -86,14 +86,14 @@ fn parse_date(s: String) -> Optional[String]:
     var y = 0
     var m = 0
     var d = 0
-    if s.slice(4, 5) == "-" and s.slice(7, 8) == "-" and all_digits(s.slice(0, 4)) and all_digits(s.slice(5, 7)) and all_digits(s.slice(8, 10)):
-        y = s.slice(0, 4).parse_int().unwrap()
-        m = s.slice(5, 7).parse_int().unwrap()
-        d = s.slice(8, 10).parse_int().unwrap()
-    else if s.slice(2, 3) == "/" and s.slice(5, 6) == "/" and all_digits(s.slice(0, 2)) and all_digits(s.slice(3, 5)) and all_digits(s.slice(6, 10)):
-        m = s.slice(0, 2).parse_int().unwrap()
-        d = s.slice(3, 5).parse_int().unwrap()
-        y = s.slice(6, 10).parse_int().unwrap()
+    if s.slice(4, 5).unwrap() == "-" and s.slice(7, 8).unwrap() == "-" and all_digits(s.slice(0, 4).unwrap()) and all_digits(s.slice(5, 7).unwrap()) and all_digits(s.slice(8, 10).unwrap()):
+        y = s.slice(0, 4).unwrap().parse_int().unwrap()
+        m = s.slice(5, 7).unwrap().parse_int().unwrap()
+        d = s.slice(8, 10).unwrap().parse_int().unwrap()
+    else if s.slice(2, 3).unwrap() == "/" and s.slice(5, 6).unwrap() == "/" and all_digits(s.slice(0, 2).unwrap()) and all_digits(s.slice(3, 5).unwrap()) and all_digits(s.slice(6, 10).unwrap()):
+        m = s.slice(0, 2).unwrap().parse_int().unwrap()
+        d = s.slice(3, 5).unwrap().parse_int().unwrap()
+        y = s.slice(6, 10).unwrap().parse_int().unwrap()
     else:
         return none
     if m < 1 or m > 12:
@@ -110,20 +110,20 @@ fn parse_amount(input: String) -> Optional[Int]:
     var neg = false
     if s.length() >= 2 and s.starts_with("(") and s.ends_with(")"):
         neg = true
-        s = s.slice(1, s.length() - 1)
+        s = s.slice(1, s.length() - 1).unwrap()
         if s.starts_with("-"):
             return none
     else if s.starts_with("-"):
         neg = true
-        s = s.slice(1, s.length())
+        s = s.slice(1, s.length()).unwrap()
     if s.starts_with("$"):
-        s = s.slice(1, s.length())
+        s = s.slice(1, s.length()).unwrap()
     var whole = s
     var frac = ""
     let dot = s.index_of(".")
     if dot.is_some():
-        whole = s.slice(0, dot.unwrap())
-        frac = s.slice(dot.unwrap() + 1, s.length())
+        whole = s.slice(0, dot.unwrap()).unwrap()
+        frac = s.slice(dot.unwrap() + 1, s.length()).unwrap()
         if frac.length() < 1 or frac.length() > 2 or not all_digits(frac):
             return none
     if whole.contains(","):
@@ -244,7 +244,7 @@ fn run() -> Result[Unit, Error]:
             a.credits = a.credits + t.amount
         if t.amount < 0:
             a.debits = a.debits - t.amount
-        let month = t.date.slice(0, 7)
+        let month = t.date.slice(0, 7).unwrap()
         months.add(key: month, value: months.get_or(key: month, fallback: 0) + t.amount)
     let out = List[String]()
     out.append("transactions: {txs.length()}")

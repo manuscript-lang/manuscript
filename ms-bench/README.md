@@ -74,6 +74,10 @@ cases and first-build success. Harbor records tokens and cost per trial. Use `-a
 - **Harness**: subclass `Harness` in `harnesses/` (`command()` builds argv, `parse()` returns `Usage`) and register it
   in `harnesses/__init__.py`. If the CLI reports no cost, leave `cost_source` as `none` and the base class estimates it.
 
+## Results
+
+[`results/leaderboard.md`](results/leaderboard.md) is rendered from `results/trials.jsonl` with `python3 ms-bench/leaderboard.py collect JOBS_DIR... && python3 ms-bench/leaderboard.py render`. The checked-in baseline is Claude Code with Haiku, one trial per challenge and language, against Manuscript compiler `dff66df` (docs and compiler from the same commit). `Manuscript (cheat sheet)` replaces the docs bundle with `context/manuscript-cheatsheet.md`.
+
 ## Known limits
 
 - Only the Claude Code adapter has been run. The Codex and pi adapters are written from their documented

@@ -27,7 +27,7 @@ class CoreTests(unittest.TestCase):
             visible = {c["stdin"] for c in ch.cases("examples")}
             self.assertTrue(any(c["stdin"] not in visible for c in ch.cases("hidden")), f"{ch.id}: hidden cases add nothing")
             for lid, lang in langs.items():
-                sol = ch.solution(lid) / (Path(lang["solution"]).name + ".ref")
+                sol = ch.solution(lang.get("template", lid)) / (Path(lang["solution"]).name + ".ref")
                 self.assertTrue(sol.is_file(), f"{ch.id}: missing {lid} reference solution")
 
     def test_claude_code_parse(self):

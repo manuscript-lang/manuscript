@@ -1,5 +1,4 @@
-import {stdin, stdout, read_line} from "@std/io.ms"
-import StringBuilder from "@std/string.ms"
+import {stdin, stdout, read_all} from "@std/io.ms"
 
 type Product:
     name: String
@@ -12,7 +11,7 @@ type Order:
     qty: Int
     pct: Int
 
-type Line:
+type Item:
     sku: String
     name: String
     qty: Int
@@ -24,96 +23,111 @@ type Line:
 fn is_blank(c: Int) -> Bool:
     return c == 32 or c == 9
 
-# Removes spaces and tabs (only) from both ends.
-fn trim_st(s: String) -> String:
+fn trim_blanks(s: String) -> String:
     let codes = s.scalar_values()
-    var a = 0
-    var b = codes.length()
-    while a < b and is_blank(codes.at(a).unwrap()):
-        a = a + 1
-    while b > a and is_blank(codes.at(b - 1).unwrap()):
-        b = b - 1
-    return s.slice(a, b)
+    var start = 0
+    var end = codes.length()
+    while start < end and is_blank(codes.at(start).unwrap()):
+        start = start + 1
+    while end > start and is_blank(codes.at(end - 1).unwrap()):
+        end = end - 1
+    return s.slice(start, end).unwrap()
 
-fn pad2(n: Int) -> String:
-    if n < 10:
-        return "0{n}"
-    return "{n}"
+# Splits on runs of spaces and tabs, dropping empty pieces.
+fn words(s: String) -> List[String]:
+    let out = List[String]()
+    var cur = List[String]()
+    for ch in s.chars():
+        if is_blank(ch.scalar_values().at(0).unwrap()):
+            if not cur.is_empty():
+                out.append(cur.join(""))
+                cur = List[String]()
+        else:
+            cur.append(ch)
+    if not cur.is_empty():
+        out.append(cur.join(""))
+    return out
 
-fn fmt_money(c: Int) -> String:
-    return "{c / 100}.{pad2(c % 100)}"
-
-fn round_div(a: Int, b: Int) -> Int:
-    return (a + b / 2) / b
-
-# Parses s when it is 1 to max_len ASCII digits.
-fn digits(s: String, max_len: Int) -> Optional[Int]:
-    let codes = s.scalar_values()
-    if codes.length() < 1 or codes.length() > max_len:
-        return none
-    var n = 0
-    for c in codes:
+fn digits(s: String, max: Int) -> Bool:
+    if s.is_empty() or s.length() > max:
+        return false
+    for c in s.scalar_values():
         if c < 48 or c > 57:
-            return none
-        n = n * 10 + (c - 48)
-    return some(n)
+            return false
+    return true
 
-# "D" or "D.d" / "D.dd" with up to max_int integer digits, as hundredths.
+fn has_blank(s: String) -> Bool:
+    for c in s.scalar_values():
+        if is_blank(c):
+            return true
+    return false
+
+# "D" or "D.d" / "D.dd" with at most `max_int` integer digits, as hundredths.
 fn decimal(s: String, max_int: Int) -> Optional[Int]:
-    let parts = s.split(".")
-    if parts.length() > 2:
-        return none
-    let whole = digits(parts.at(0).unwrap(), max_int)
-    if whole.is_none():
-        return none
-    var frac = 0
-    if parts.length() == 2:
-        let f = parts.at(1).unwrap()
-        let value = digits(f, 2)
-        if value.is_none():
+    var whole = s
+    var frac = ""
+    let dot = s.index_of(".")
+    if dot.is_some():
+        whole = s.slice(0, dot.unwrap()).unwrap()
+        frac = s.slice(dot.unwrap() + 1, s.length()).unwrap()
+        if not digits(frac, 2):
             return none
-        frac = value.unwrap()
-        if f.length() == 1:
-            frac = frac * 10
-    return some(whole.unwrap() * 100 + frac)
+    if not digits(whole, max_int):
+        return none
+    var cents = whole.parse_int().unwrap() * 100
+    if frac.length() == 1:
+        cents = cents + frac.parse_int().unwrap() * 10
+    else if frac.length() == 2:
+        cents = cents + frac.parse_int().unwrap()
+    return some(cents)
 
 fn money(s: String) -> Optional[Int]:
     return decimal(s, 5)
 
 fn basis_points(s: String) -> Optional[Int]:
     let bp = decimal(s, 3)
-    if bp.is_none() or bp.unwrap() > 10000:
-        return none
-    return bp
+    if bp.is_some() and bp.unwrap() <= 10000:
+        return bp
+    return none
 
-fn trimmed_parts(l: String) -> List[String]:
-    let out = List[String]()
-    for p in l.split("|"):
-        out.append(trim_st(p))
-    return out
+fn pad_two(n: Int) -> String:
+    if n < 10:
+        return "0{n}"
+    return "{n}"
 
-fn by_name(left: String, right: String) -> Int:
+fn fmt_money(c: Int) -> String:
+    return "{c / 100}.{pad_two(c % 100)}"
+
+fn round_div(a: Int, b: Int) -> Int:
+    return (a + b / 2) / b
+
+fn by_text(left: String, right: String) -> Int:
     return left.compare(right)
 
+fn split_trimmed(l: String) -> List[String]:
+    let out = List[String]()
+    for part in l.split("|"):
+        out.append(trim_blanks(part))
+    return out
+
 fn run() -> Result[Unit, Error]:
-    let lines = List[String]()
-    while true:
-        let next = try read_line(input: stdin(), max_bytes: 1048576)
-        if next.is_none():
-            break
-        lines.append(next.unwrap())
+    let data = try read_all(input: stdin())
+    let lines = data.to_text().unwrap_or("").split("\n")
+    if lines.length() > 0 and lines.at(lines.length() - 1).unwrap().is_empty():
+        lines.remove(lines.length() - 1)
     var section = ""
     let rates = Map[String, Int]()
+    var has_ship = false
     var ship_fee = 0
     var ship_free = 0
-    var has_ship = false
     let catalog = Map[String, Product]()
     let orders = List[Order]()
     let problems = List[String]()
-    var n = 0
-    for raw in lines:
-        n = n + 1
-        let l = trim_st(raw)
+    var idx = 0
+    while idx < lines.length():
+        let l = trim_blanks(lines.at(idx).unwrap())
+        idx = idx + 1
+        let n = idx
         if l.is_empty() or l.starts_with("#"):
             continue
         if l.starts_with("["):
@@ -128,93 +142,68 @@ fn run() -> Result[Unit, Error]:
                 problems.append("line {n}: unknown section")
             continue
         if section == "c":
-            let t = l.replace_all(old: "\t", new: " ").unwrap().split(" ").filter(fn(part: String) -> Bool:
-                return not part.is_empty()
-            )
+            let t = words(l)
             let head = t.at(0).unwrap()
-            var done = false
-            if head == "tax" and t.length() == 3:
-                let bp = basis_points(t.at(2).unwrap())
-                if bp.is_some():
-                    rates.add(key: t.at(1).unwrap(), value: bp.unwrap())
-                    done = true
-            else if head == "shipping" and t.length() == 3:
-                let fee = money(t.at(1).unwrap())
-                let free = money(t.at(2).unwrap())
-                if fee.is_some() and free.is_some():
-                    ship_fee = fee.unwrap()
-                    ship_free = free.unwrap()
-                    has_ship = true
-                    done = true
-            if not done:
+            if head == "tax" and t.length() == 3 and basis_points(t.at(2).unwrap()).is_some():
+                rates.add(key: t.at(1).unwrap(), value: basis_points(t.at(2).unwrap()).unwrap())
+            else if head == "shipping" and t.length() == 3 and money(t.at(1).unwrap()).is_some() and money(t.at(2).unwrap()).is_some():
+                ship_fee = money(t.at(1).unwrap()).unwrap()
+                ship_free = money(t.at(2).unwrap()).unwrap()
+                has_ship = true
+            else:
                 problems.append("line {n}: bad config")
         else if section == "p":
-            let p = trimmed_parts(l)
-            var ok = p.length() == 4
-            var price = 0
-            if ok:
-                let m = money(p.at(2).unwrap())
-                if m.is_none():
-                    ok = false
-                else:
-                    price = m.unwrap()
-            if ok:
-                let sku = p.at(0).unwrap()
-                if sku.is_empty() or sku.contains(" ") or sku.contains("\t") or p.at(1).unwrap().is_empty() or p.at(3).unwrap().is_empty():
-                    ok = false
-            if not ok:
+            let p = split_trimmed(l)
+            var price: Optional[Int] = none
+            if p.length() == 4:
+                price = money(p.at(2).unwrap())
+            if price.is_none() or p.at(0).unwrap().is_empty() or has_blank(p.at(0).unwrap()) or p.at(1).unwrap().is_empty() or p.at(3).unwrap().is_empty():
                 problems.append("line {n}: bad product")
-            else if catalog.contains(p.at(0).unwrap()):
+                continue
+            if catalog.contains(p.at(0).unwrap()):
                 problems.append("line {n}: duplicate sku")
-            else:
-                catalog.add(key: p.at(0).unwrap(), value: Product(name: p.at(1).unwrap(), cls: p.at(3).unwrap(), price: price))
+                continue
+            catalog.add(key: p.at(0).unwrap(), value: Product(name: p.at(1).unwrap(), cls: p.at(3).unwrap(), price: price.unwrap()))
         else if section == "o":
-            let p = trimmed_parts(l)
+            let p = split_trimmed(l)
             if (p.length() != 3 and p.length() != 4) or p.at(0).unwrap().is_empty():
                 problems.append("line {n}: bad order")
                 continue
-            let qty = digits(p.at(2).unwrap(), 4)
-            if qty.is_none() or qty.unwrap() < 1:
+            if not digits(p.at(2).unwrap(), 4) or p.at(2).unwrap().parse_int().unwrap() < 1:
                 problems.append("line {n}: bad quantity")
                 continue
             var pct = 0
             if p.length() == 4:
-                let d = digits(p.at(3).unwrap(), 3)
-                if d.is_none() or d.unwrap() > 100:
+                if not digits(p.at(3).unwrap(), 3) or p.at(3).unwrap().parse_int().unwrap() > 100:
                     problems.append("line {n}: bad discount")
                     continue
-                pct = d.unwrap()
+                pct = p.at(3).unwrap().parse_int().unwrap()
             if not catalog.contains(p.at(1).unwrap()):
                 problems.append("line {n}: unknown sku")
                 continue
-            orders.append(Order(customer: p.at(0).unwrap(), sku: p.at(1).unwrap(), qty: qty.unwrap(), pct: pct))
-    let invoices = Map[String, List[Line]]()
+            orders.append(Order(customer: p.at(0).unwrap(), sku: p.at(1).unwrap(), qty: p.at(2).unwrap().parse_int().unwrap(), pct: pct))
+    let invoices = Map[String, List[Item]]()
     for o in orders:
         let prod = catalog.get(o.sku).unwrap()
         let gross = prod.price * o.qty
         let disc = round_div(gross * o.pct, 100)
         let net = gross - disc
-        let tax = round_div(net * rates.get(prod.cls).unwrap_or(0), 10000)
-        let line = Line(sku: o.sku, name: prod.name, qty: o.qty, price: prod.price, net: net, disc: disc, tax: tax)
-        let existing = invoices.get(o.customer)
-        if existing.is_none():
-            let fresh = List[Line]()
-            fresh.append(line)
-            invoices.add(key: o.customer, value: fresh)
-        else:
-            existing.unwrap().append(line)
-    let out = StringBuilder()
-    let customers = invoices.keys().sorted(compare: by_name)
+        let tax = round_div(net * rates.get_or(key: prod.cls, fallback: 0), 10000)
+        if not invoices.contains(o.customer):
+            invoices.add(key: o.customer, value: List[Item]())
+        invoices.get(o.customer).unwrap().append(Item(sku: o.sku, name: prod.name, qty: o.qty, price: prod.price, net: net, disc: disc, tax: tax))
+    let out = List[String]()
     var grand = 0
+    let customers = invoices.keys().sorted(compare: by_text)
     for c in customers:
-        out.append("INVOICE {c}\n")
+        out.append("INVOICE {c}")
         var subtotal = 0
         var tax = 0
         for it in invoices.get(c).unwrap():
-            out.append("  {it.sku} {it.name} x{it.qty} @ {fmt_money(it.price)} = {fmt_money(it.net)}")
+            var note = ""
             if it.disc > 0:
-                out.append(" (-{fmt_money(it.disc)} discount)")
-            out.append("\n")
+                note = " (-{fmt_money(it.disc)} discount)"
+            out.append("  {it.sku} {it.name} x{it.qty} @ {fmt_money(it.price)} = {fmt_money(it.net)}{note}")
             subtotal = subtotal + it.net
             tax = tax + it.tax
         var shipping = 0
@@ -222,13 +211,16 @@ fn run() -> Result[Unit, Error]:
             shipping = ship_fee
         let total = subtotal + tax + shipping
         grand = grand + total
-        out.append("  subtotal {fmt_money(subtotal)}\n  tax {fmt_money(tax)}\n  shipping {fmt_money(shipping)}\n  total {fmt_money(total)}\n")
-    out.append("summary: invoices={customers.length()} grand_total={fmt_money(grand)} problems={problems.length()}\n")
+        out.append("  subtotal {fmt_money(subtotal)}")
+        out.append("  tax {fmt_money(tax)}")
+        out.append("  shipping {fmt_money(shipping)}")
+        out.append("  total {fmt_money(total)}")
+    out.append("summary: invoices={customers.length()} grand_total={fmt_money(grand)} problems={problems.length()}")
     if problems.length() > 0:
-        out.append("problems:\n")
+        out.append("problems:")
         for p in problems:
-            out.append("  {p}\n")
-    try stdout().write(out.freeze().to_bytes())
+            out.append("  {p}")
+    try stdout().write("{out.join("\n")}\n".to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
