@@ -395,11 +395,15 @@ func (p *Program) AllTypeReferences() iter.Seq2[*syntax.Type, *Type] {
 				return
 			}
 		}
-		ensureStandard()
-		for ref, typ := range StandardTypeReferences() {
-			if !yield(ref, typ) {
-				return
+		ensureStandardSources()
+		stopped := false
+		nodes := syntax.Nodes{Type: func(t *syntax.Type) {
+			if resolved, ok := t.Fact.(*Type); ok && !stopped && !yield(t, resolved) {
+				stopped = true
 			}
+		}}
+		for _, module := range standardSources {
+			nodes.Module(module)
 		}
 	}
 }

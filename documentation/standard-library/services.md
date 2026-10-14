@@ -15,4 +15,4 @@ Manuscript does not enforce a per-function authority set or manifest permissions
 
 A network or storage implementation can receive concurrent calls. Its mutable internal state must be synchronized. References do not extend a resource's open lifetime; methods coordinate active calls with close.
 
-See [sharing data](../concurrency/sharing.md) and [the foreign-code trust boundary](../contributing/compiler/adapters/value-conversion.md).
+See [sharing data](../concurrency/sharing.md).

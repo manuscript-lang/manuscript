@@ -53,4 +53,4 @@ Generic implementation bodies use checked substitutions; Go method selection can
 
 Int division/remainder overflow handling, Float non-finite outcomes, Decimal underflow/overflow, and checked truncation conversions follow [runtime numeric outcomes](../../../core-language/basics/numbers-and-booleans.md#runtime-numeric-outcomes), including parameterized runtime operands. Unchecked Go casts or a decimal package's defaults do not establish these semantics.
 
-See [foreign conversions](../adapters/value-conversion.md), [type checking](../frontend/type-checker.md), and [scope and capture checking](../frontend/scope-checker.md).
+See [type checking](../frontend/type-checker.md), and [scope and capture checking](../frontend/scope-checker.md).

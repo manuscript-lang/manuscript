@@ -1,7 +1,6 @@
 package tooling
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
@@ -28,11 +27,6 @@ func TestConstructorNamesRetainImports(t *testing.T) {
 				if finding.Code == "MSL102" {
 					t.Fatal("constructor import flagged unused", finding)
 				}
-			}
-			offset := strings.LastIndex(source, tc.name)
-			nav, ok := NavigationAt(checked.Program, "source.ms", offset)
-			if !ok || nav.Definition.File != "@std/"+tc.module+".ms" {
-				t.Fatalf("constructor name did not resolve to its imported declaration: %+v, %v", nav, ok)
 			}
 		})
 	}

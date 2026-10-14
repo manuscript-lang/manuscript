@@ -5,7 +5,7 @@ weight = 1
 
 # Source files
 
-Each Manuscript source file ends in `.ms` and is a module. Put imports, type declarations, implementations, named functions, and tests at the top level. Put executable statements and local `let` or `var` bindings inside a function or test. There is no separate `module` declaration or top-level initializer.
+Each Manuscript source file ends in `.ms` and is a module. Put imports, type declarations, implementations, named functions, constants, and tests at the top level. Put executable statements and local `let` or `var` bindings inside a function or test. There is no separate `module` declaration or top-level initializer; a top-level `let` is a [constant](../modules/declarations.md#constants), not a statement.
 
 The following `src/greeting.ms` file defines a customer and a function that creates a greeting. Read it from top to bottom:
 

@@ -72,9 +72,9 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 ## Mutation and copies
 
-`append`, `prepend`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `with_value` and `without` remain compatible spellings for `set` and `remove`, with the same receiver returns and faults. `reverse` remains a compatible spelling for `reverse_in_place`, returning the same list. `splice(start:, delete_count:, replacement:)` requires nonnegative bounds with `start <= length()` and `delete_count <= length() - start`; it stages a self-replacement and retains shallow references. Invalid bounds fault without clamping. `with_values` remains its compatible spelling. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
+`append`, `prepend`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `splice(start:, delete_count:, replacement:)` requires nonnegative bounds with `start <= length()` and `delete_count <= length() - start`; it stages a self-replacement and retains shallow references. Invalid bounds fault without clamping. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
 
-Map `add`, `remove`, `add_default`, `add_default_from`, `merge`, and `clear` update the receiver. `with_entry`, `without`, `with_default`, and `with_default_from` retain their legacy mutation and receiver returns. Set `add`, `remove`, and `clear` update the receiver; `with_value` and `without` remain compatible spellings for `add` and `remove`. Map `without` remains compatible with `remove`, including no-op absence, scoped lookup and insertion order. Their return values retain that instance for chaining.
+Map `add`, `remove`, `add_default`, `add_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver. Their return values retain that instance for chaining. Legacy spellings are listed under [Naming and migration](#naming-and-migration).
 
 ```manuscript
 let values = [1, 2]
@@ -84,7 +84,7 @@ values.append(3)
 # alias now contains [1, 2, 3]; copy still contains [1, 2].
 ```
 
-Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra construct new results. List `reversed()` returns a reversed shallow copy with independent outer storage. Bytes `reversed()` also returns a copy; Bytes `reverse()` remains compatible. Text and Bytes retain their existing nonmutating operations.
+Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra construct new results. List `reversed()` returns a reversed shallow copy with independent outer storage. Bytes `reversed()` also returns a copy. Text and Bytes retain their existing nonmutating operations.
 
 List `slice` returns `Result[List[T], CollectionError]` and uses strict element bounds after resolving negative bounds relative to the end: `0 <= start <= end <= length()`. Invalid bounds return `CollectionError.OutOfRange`. Successful slices copy outer storage and retain nested references. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
 

@@ -13,7 +13,7 @@ Tests use `test "name":` blocks and ordinary `if`/`return` guards. Import `panic
 
 ## Test runner
 
-A source `test` body is checked as a zero-parameter `Unit` function. Discovery and execution are still unspecified: the runner needs a command, file selection rules, stable test identities, duplicate-name handling, isolation, authority inputs, and a way to expect a programming fault. It must also define whether test bodies enter ordinary builds. The examples here fix expected behavior without assuming those runner decisions.
+A source `test` body is checked as a zero-parameter `Unit` function and run by `ms test`; see [commands](../../../developer-tooling/implementation.md) and `ms help test`.
 
 ## Tests in source
 
@@ -38,4 +38,4 @@ test "checked decrement":
 
 This illustrates the test-block syntax and ordinary conditional returns for failed checks. Runtime tests need fake capabilities, virtual clocks, and barriers to arrange meaningful races, rather than assuming a fixed goroutine schedule.
 
-See [completion and acquisition](../../concurrent-runtime.md#completion-and-resource-acquisition) and [complete-program evidence](programs.md).
+See [completion and acquisition](../../concurrent-runtime.md#completion-and-resource-acquisition).

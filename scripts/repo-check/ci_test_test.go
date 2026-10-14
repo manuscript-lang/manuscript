@@ -90,6 +90,11 @@ func newCIFixture(t *testing.T, build bool) ciFixture {
 		t.Fatal(err)
 	}
 	f.write(t, "scripts/ci-test.sh", string(script), 0600)
+	racePackages, err := os.ReadFile("../race-packages")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.write(t, "scripts/race-packages", string(racePackages), 0600)
 	f.write(t, "toolchain/go/bin/go", ciMockGo, 0700)
 	f.write(t, "packages", strings.Join(f.packages, "\n")+"\n", 0600)
 	f.write(t, "race-packages", strings.Join(f.race, "\n")+"\n", 0600)

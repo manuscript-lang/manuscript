@@ -87,22 +87,7 @@ func runFormat(args []string) int {
 		}
 	}
 	if structured {
-		sort.SliceStable(result.Diagnostics, func(i, j int) bool {
-			a, b := result.Diagnostics[i], result.Diagnostics[j]
-			if a.Position.File != b.Position.File {
-				return a.Position.File < b.Position.File
-			}
-			if a.Position.Line != b.Position.Line {
-				return a.Position.Line < b.Position.Line
-			}
-			if a.Position.Column != b.Position.Column {
-				return a.Position.Column < b.Position.Column
-			}
-			if a.Code != b.Code {
-				return a.Code < b.Code
-			}
-			return a.Message < b.Message
-		})
+		sortDiagnostics(result.Diagnostics)
 		return emitJSON(result, status)
 	}
 	return status

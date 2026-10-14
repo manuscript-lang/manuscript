@@ -7,7 +7,7 @@ weight = 6
 
 This page is the exact syntax reference. Use it to check how a declaration, expression, block, or pattern must be written. If you are learning the language, read [source structure](syntax.md) and the practical concept pages first.
 
-Parsing checks the shape of source. The [expression rules](expressions.md), [type rules](../types/compatibility.md), and concept pages then determine whether that source is legal. The design does not prescribe a parser library or internal syntax-tree format.
+Parsing checks the shape of source. The [expression rules](expressions.md), [type rules](../types/compatibility.md), and concept pages then determine whether that source is legal.
 
 ## Source characters and tokens
 
@@ -111,8 +111,10 @@ In the EBNF below, braces mean repetition and brackets mean an optional grammar 
 Module        = { Import | Declaration } ;
 Import        = "import", ( Name | "{", Name, { ",", Name }, [ "," ], "}" ),
                 "from", PlainStringLiteral, NEWLINE ;
-Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration)
+Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration
+              | ConstantDeclaration)
               | Implementation | TestDeclaration ;
+ConstantDeclaration = "let", Name, [ ":", Type ], "=", Expression, NEWLINE ;
 
 TypeDeclaration = "type", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, (RecordBody | AlternativeBody), DEDENT ;
@@ -161,7 +163,7 @@ Every parameter used in the interface or method signatures must occur in the nom
 
 Value types have no intersection/refinement syntax. `&` is used only to combine generic bounds, such as `T: Read & Closeable`; bound order does not affect the requirements. `Synchronized[T]` and `SynchronizedGuard[T]` are ordinary imported types, and lock scopes use existing `with` syntax.
 
-There are no module-level executable statements or `let`/`var` bindings. Functions and tests contain executable code. A snippet showing local bindings without an enclosing function is a body fragment, not a complete `.ms` module. Type paths do not introduce wildcard/namespace imports or make a private type accessible; resolution follows [module rules](../modules/declarations.md).
+There are no module-level executable statements or `var` bindings. A module-level `let` declares a [constant](../modules/declarations.md#constants); functions and tests contain all other executable code. A snippet showing local bindings without an enclosing function is a body fragment, not a complete `.ms` module. Type paths do not introduce wildcard/namespace imports or make a private type accessible; resolution follows [module rules](../modules/declarations.md).
 
 ## Statements and patterns
 

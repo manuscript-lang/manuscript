@@ -13,16 +13,7 @@ Use stream helpers for bounded reads and copies, and Commands for buffered subpr
 
 The bounded subprocess facility is exported by `@std/process.ms`. Import `commands() -> Commands` from `@std/process.ms` to obtain the host command service:
 
-```manuscript
-# Commands
-fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(),
-       max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
-
-type CommandOutput:
-    exit_code: Int
-    stdout: Bytes
-    stderr: Bytes
-```
+`Commands.run` and `CommandOutput` are declared in the [`@std/process.ms` reference](reference/process.md).
 
 Omit `input` for empty standard input; `commands().run(program: "tool", arguments: [])` evaluates fresh empty bytes on each call. Supplied bytes are passed unchanged. The same default works through a stored method or a source implementation of `Commands`.
 
