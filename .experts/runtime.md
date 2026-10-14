@@ -63,7 +63,7 @@ Verify: inspect current declarations and called behavior against the latest dire
 
 ### Sharing, resource lifetime, and work lifetime are separate
 
-Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. All values may be shared without callable proofs. Native services synchronize their internals. The user subsequently chose a single-threaded Queue with an optional capacity parameter; shared queue access uses Synchronized guards, including reads. Passing references is permitted without implying internal thread safety. A safe capture is not a declaration of intended authority.
+Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. All values may be shared without callable proofs. Native services synchronize their internals. The user subsequently chose a single-threaded Queue with an optional capacity parameter; shared queue access uses Synchronized guards, including reads. Blocking hand-off between workers is not a channel: the decided design is a `BlockingQueue[T]` in `@std/queues.ms` built on `SynchronizedGuard.wait()`/`notify_all()` (pending in #453; verify it is on main before documenting it as shipped). Passing references is permitted without implying internal thread safety. A safe capture is not a declaration of intended authority.
 
 Apply when: changing closures, task-group work, schedulers, resource wrappers, or owned resources.
 Evidence: [sharing](../documentation/concurrency/sharing.md); [joined groups](../documentation/concurrency/joining.md); [scope-exit ordering](../documentation/core-language/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
@@ -121,14 +121,14 @@ Decision: keep Queue a local FIFO, unbounded when capacity is omitted and bounde
 
 Apply when: changing queue APIs, examples, sharing claims, or native collection implementations.
 Evidence: [queue contract](../documentation/concurrency/queues.md); [FIFO and synchronized-sharing tests](../pkg/runtime/queue_test.go); [source conformance](../tests/e2e/testdata/accept/queues.ms); the user's Queue simplification and capacity correction.
-Verify: construction without capacity grows as needed; explicit zero or negative capacity faults. Bounded full enqueue returns false without changing contents, empty reads return none, draining permits reuse, and shared access under one wrapper passes race checks. Do not restore implicit synchronization or blocking channel semantics.
+Verify: construction without capacity grows as needed; explicit zero or negative capacity faults. Bounded full enqueue returns false without changing contents, empty reads return none, draining permits reuse, and shared access under one wrapper passes race checks. Do not restore implicit synchronization, and do not add channels; blocking waits belong to guards and `BlockingQueue`.
 
 ### Borrowing file descriptors must preserve pollable I/O
 
 Verified: `os.File.Fd()` can switch a pollable descriptor into blocking mode. Native metadata and sync helpers that use it can make later cancellation fail even though ordinary file tests pass. The host bridge borrows descriptors with `SyscallConn.Control` instead, preserving the runtime's deadline/cancellation behavior.
 
 Apply when: implementing native descriptor operations alongside cancellable file or stream adapters.
-Evidence: [native descriptor bridge](../internal/hostos/hostos.go), [metadata and file operations](../pkg/runtime/library_fs.go), and [pipe cancellation regression](../pkg/runtime/library_host_parity_test.go).
+Evidence: [native descriptor bridge](../internal/hostos/hostos.go), [metadata and file operations](../pkg/runtime/library_fs.go), and [pipe cancellation regression](../pkg/runtime/library_host_test.go).
 Verify: `TestExpandedHandleCancellationAndStreamAdapters` and runtime race checks, including cancellation after descriptor metadata access and closure through a shared adapter.
 
 ### One scheduler owns immediate and timed work
@@ -284,3 +284,11 @@ Evidence: [approved contract](https://github.com/manuscript-lang/manuscript/pull
 [retention/reentry/checkpoint/guard/allocation tests](../pkg/runtime/borrowed_arguments_test.go).
 Verify actual emitted ordinary callbacks against the prior boxed baseline; a
 runtime marked-body control does not establish compiler proof or payload parity.
+
+### Collection order, failure modes, and stdio cancellation are decided
+
+Decision: Map and Set iterate in insertion order, and keys use the `Hashable` interface with `Equal`. Pick a failure mode by cause: absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults. Mutators use verbs (`add`, `remove`, `clear`) and return the receiver; do not reintroduce removed alias spellings (#358). Blocking stdin/stdout reads are not made cancellable; do not add runtime machinery to interrupt them.
+
+Apply when: adding or renaming collection, standard-library, or I/O members; choosing between Optional, Result, and a fault.
+Evidence: [failure-mode rule](../documentation/standard-library/contracts.md#choosing-a-failure-mode), [collection order and mutation](../documentation/core-language/types/collections.md), and [equality interfaces](../documentation/core-language/types/equality-and-hashing.md).
+Verify: iteration after removals and re-adds keeps insertion order for the remaining keys; a new member documents its failure mode and has a doc comment with an example.
