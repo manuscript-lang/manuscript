@@ -209,7 +209,7 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 ## Linting and formatting
 
-`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), MSL106 (a match payload binding mistaken for a case or type pattern), MSL107 (nested match), and MSL108 (an equivalent preferred standard-library method name is available). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
+`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), MSL106 (a match payload binding mistaken for a case or type pattern) and MSL107 (nested match). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
 
 MSL104 warns when an expression statement discards a standard `Result`. Handle it with `match`, propagate it with `try`, or explicitly bind it as `let _ignored = operation()` when ignoring both success and failure is intentional. See [Result handling](../core-language/errors/results.md).
 
@@ -221,19 +221,6 @@ helper to match a case of the payload's type, or renaming an intentional binding
 See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns).
 
 MSL107 warns at a match nested structurally inside another match. Use an early-exit payload binding, compatible `try`, or a small helper to keep flow flat. It includes inline callbacks beneath an outer match and preserves checking/runtime behavior. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
-
-MSL108 recommends `List.set`, `List.remove`, `List.splice`, `List.reverse_in_place`, `Map.add`, `Map.remove`,
-`Map.add_default`, `Map.add_default_from`, `Set.add`, `Set.remove`,
-`MapBuilder.add`, `SetBuilder.add`, `Bytes.reversed` and `Regex.replace_all` for their
-equivalent legacy methods. The same arguments retain mutation, receiver returns,
-copy behavior, ordering, equality scopes, limits and faults. It also checks stored
-method references and uses resolved standard identities, so user methods and
-callable fields with the same names keep their own contracts. See
-[collection mutation and copies](../core-language/types/collections.md#mutation-and-copies).
-
-This advisory makes no automatic source edit. Builder `add` retains the legacy
-Unit return, while collection mutations retain the receiver return. See the
-[naming migration](../core-language/types/collections.md#naming-and-migration).
 String replacement names remain outside its preference map. In particular,
 `String.replace_first` still accepts a cap greater than one; renaming every
 `String.replace` call would conceal that behavior. Both names remain supported

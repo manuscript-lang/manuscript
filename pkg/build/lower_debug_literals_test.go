@@ -199,14 +199,14 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
     let second = values()
     let alias = first
     let copied = first.clone()
-    first.with_value(index: 0, value: 99)
+    first.set(index: 0, value: 99)
     alias.append(42)
     if alias.length() != 1101 or second.length() != 1100 or copied.length() != 1100:
         return panic("outer storage is shared across evaluations")
     if second.at(0).unwrap() != 7 or copied.at(0).unwrap() != 7 or values().at(0).unwrap() != 7:
         return panic("data table or clone was mutated")
     let first_default = defaults()
-    first_default.with_value(index: 0, value: 17)
+    first_default.set(index: 0, value: 17)
     if defaults().at(0).unwrap() != 9:
         return panic("defaults share mutable storage")
 `

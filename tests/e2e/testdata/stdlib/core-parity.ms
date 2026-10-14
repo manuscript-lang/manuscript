@@ -71,7 +71,7 @@ test "core parity operations are callable":
         fn(k, v): k == "b" and v == 2
     ).length() != 1: return panic("Map filter")
 
-    let members = Set[Int]().with_value(2).with_value(3)
+    let members = Set[Int]().add(2).add(3)
     if members.is_empty() or members.filter(
         fn(n): n == 2
     ).length() != 1: return panic("Set filter")
@@ -245,7 +245,7 @@ test "Map filter copies ordered membership and get_or never inserts":
     ).calls = 7
     if counter.calls != 7: return panic("Map filter copied payload")
 
-    selected.without("b").with_entry(
+    selected.remove("b").add(
         "d",
         Counter(4)
     )
@@ -268,7 +268,7 @@ test "Map filter copies ordered membership and get_or never inserts":
     )
     if not (empty.is_empty()): return panic("Map empty filter")
 
-    empty.with_entry("new", counter)
+    empty.add("new", counter)
     if values.contains("new"): return panic("empty Map filter aliased")
 
     let bound_filter = values.filter
@@ -281,7 +281,7 @@ test "Map filter copies ordered membership and get_or never inserts":
     let copied = snapshot.filter(
         fn(k, v):
             visits.append(k)
-            snapshot.clear().with_entry("new", 9)
+            snapshot.clear().add("new", 9)
             return v != 1
     )
     if (
@@ -305,19 +305,19 @@ impl Hashable for Key:
     fn hash() -> Int: 0
 
 test "Set filter and map copy snapshots and deduplicate in first-result order":
-    let values = Set[Int]().with_value(3).with_value(1).with_value(2)
+    let values = Set[Int]().add(3).add(1).add(2)
     let visits: List[Int] = []
     let copied = values.filter(
         fn(n):
             visits.append(n)
-            values.clear().with_value(9)
+            values.clear().add(9)
             return n != 1
     )
     if visits != [3, 1, 2] or copied.values() != [3, 2]: return panic(
         "Set filter snapshot"
     )
 
-    copied.without(3).with_value(8)
+    copied.remove(3).add(8)
     if values.values() != [9]: return panic("Set filter aliased storage")
 
     let bound_filter = copied.filter
@@ -325,7 +325,7 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
         fn(n): n == 8
     ).values() != [8]: return panic("bound Set filter")
 
-    let input = Set[Int]().with_value(2).with_value(3).with_value(4)
+    let input = Set[Int]().add(2).add(3).add(4)
     let mapped = map_set(
         input,
         fn(n): Key(
@@ -343,18 +343,18 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
     let bound = input.map[String]
     let mapped_snapshot = bound(
         transform: fn(n):
-            input.without(n).with_value(7)
+            input.remove(n).add(7)
             return n.toString()
     )
     if mapped_snapshot.values() != ["2", "3", "4"] or input.values() != [7]: return panic(
         "Set map snapshot"
     )
 
-    mapped_snapshot.with_value("8")
+    mapped_snapshot.add("8")
     if input.length() != 1: return panic("Set map aliased storage")
 
     let key = Key(5, "shared")
-    let keys = Set[Key]().with_value(key)
+    let keys = Set[Key]().add(key)
     keys.filter(
         fn(unused): true
     ).values().at(0).unwrap().label = "changed"

@@ -17,7 +17,7 @@ test "map add":
 test "map legacy":
     let builder = MapBuilder[String, Int]()
     let _result = builder.freeze()
-    builder.with_entry("a", 1)
+    builder.add("a", 1)
 test "set add":
     let builder = SetBuilder[Int]()
     let alias = builder
@@ -26,7 +26,7 @@ test "set add":
 test "set legacy":
     let builder = SetBuilder[Int]()
     let _result = builder.freeze()
-    builder.with_value(1)
+    builder.add(1)
 test "continues":
     let builder = SetBuilder[Int]()
     builder.add(1)

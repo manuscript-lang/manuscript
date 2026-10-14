@@ -329,7 +329,7 @@ func init() {
 			return Alternative{r, "some", []Value{int64(i)}}
 		})
 	}
-	add("bytes", "reverse", "Bytes", []LibraryParam{p("data", "Bytes")}, func(ctx *Execution, _ string, a []Value) Value {
+	add("bytes", "reversed", "Bytes", []LibraryParam{p("data", "Bytes")}, func(ctx *Execution, _ string, a []Value) Value {
 		out := append([]byte{}, a[0].(Bytes).Items...)
 		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 			CheckCancelled(ctx)
@@ -337,7 +337,6 @@ func init() {
 		}
 		return Bytes{out}
 	})
-	libraryAlias("bytes", "reversed", "reverse")
 	add("bytes", "with_value", "Bytes", []LibraryParam{p("data", "Bytes"), p("index", "Int"), p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		items := a[0].(Bytes).Items
 		i, n := relativeIndex(len(items), a[1].(int64)), a[2].(int64)

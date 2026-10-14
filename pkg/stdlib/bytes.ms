@@ -30,8 +30,6 @@ export type Bytes:
     fn ends_with(value: Bytes) -> Bool:
     # Returns a reversed copy without changing the receiver.
     fn reversed() -> Bytes:
-    # Compatibility spelling for reversed; returns a copy without changing the receiver.
-    fn reverse() -> Bytes:
     # Returns a copy with one byte replaced; negative indexes are relative to the end.
     # An out-of-range index or a value outside 0 through 255 faults.
     fn with_value(index: Int, value: Int) -> Bytes:

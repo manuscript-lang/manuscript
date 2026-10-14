@@ -23,16 +23,12 @@ export type List[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
     # Replaces an element in place and returns this list; negative indexes count from the end.
-    # Invalid indexes fault, with the same bounds and diagnostics as with_value.
+    # Invalid indexes fault.
     fn set(index: Int, value: T) -> List[T]:
     # Removes an element in place and returns this list; negative indexes count from the end.
-    # Invalid indexes fault, with the same bounds and diagnostics as without.
+    # Invalid indexes fault.
     # Shifts the suffix without clearing prior values retained in spare backing capacity.
     fn remove(index: Int) -> List[T]:
-    # Compatibility spelling for set; mutates and returns this list.
-    fn with_value(index: Int, value: T) -> List[T]:
-    # Compatibility spelling for remove; mutates and returns this list.
-    fn without(index: Int) -> List[T]:
     # Returns a new shallow List containing [start, end); outer storage is independent.
     # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
@@ -46,8 +42,6 @@ export type List[T]:
     fn reverse_in_place() -> List[T]:
     # Returns a reversed shallow copy with independent outer storage; nested references remain shared.
     fn reversed() -> List[T]:
-    # Compatibility spelling for reverse_in_place; mutates and returns this list.
-    fn reverse() -> List[T]:
     # Returns a new list sorted by negative/zero/positive comparator results.
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
     # Keeps matching values in their original order.
@@ -75,8 +69,6 @@ export type List[T]:
     # Replacement references stay shallow; using this same List as replacement stages its prior values.
     # Shrinking retains prior values in spare backing capacity, following captured Go slice traversal.
     fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
-    # Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior.
-    fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
     fn to_set() -> Set[T]:
@@ -123,10 +115,6 @@ export type Map[T: Hashable, U]:
     # Creates and inserts a default only when the key is absent, then returns this map.
     # Calls create(key:) once for absence; an existing key leaves its value and position unchanged.
     fn add_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
-    # Legacy spelling for add_default; mutates and returns this map, never a copy.
-    fn with_default(key: T, value: U) -> Map[T, U]:
-    # Legacy spelling for add_default_from; retains lazy creation and the receiver return.
-    fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
     fn keys() -> List[T]:
     fn values() -> List[U]:
@@ -139,13 +127,9 @@ export type Map[T: Hashable, U]:
     fn length() -> Int:
     # Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position.
     fn add(key: T, value: U) -> Map[T, U]:
-    # Compatible spelling of add, with the same mutation and receiver return.
-    fn with_entry(key: T, value: U) -> Map[T, U]:
     # Removes an equal key and returns this same Map; remaining entries retain insertion order.
     # An absent key leaves values and ordering unchanged; lookup uses the selected Equal/Hashable scope.
     fn remove(key: T) -> Map[T, U]:
-    # Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return.
-    fn without(key: T) -> Map[T, U]:
 
 # One key-value pair returned by `Map.entries`.
 export type MapEntry[T: Hashable, U]:
@@ -205,10 +189,6 @@ export type Set[T: Hashable]:
     fn add(value: T) -> Set[T]:
     # Removes an equal value in place and returns this set; an absent value leaves it unchanged.
     fn remove(value: T) -> Set[T]:
-    # Compatibility spelling for add; mutates and returns this set.
-    fn with_value(value: T) -> Set[T]:
-    # Compatibility spelling for remove; mutates and returns this set.
-    fn without(value: T) -> Set[T]:
 
 # One list index and its corresponding value.
 export type ListEntry[T]:
@@ -247,8 +227,6 @@ export type MapBuilder[T: Hashable, U]:
     # Inserts or replaces an entry in the shared builder; returns Unit like all builder mutations.
     # Replacement retains the original key and insertion position; a sealed builder faults.
     fn add(key: T, value: U) -> Unit:
-    # Legacy spelling for add, with the same Unit return and sealing behavior.
-    fn with_entry(key: T, value: U) -> Unit:
 
 # Adds unique values efficiently before freezing them into a set.
 export type SetBuilder[T: Hashable]:
@@ -256,5 +234,3 @@ export type SetBuilder[T: Hashable]:
     # Adds a value to the shared builder; returns Unit like all builder mutations.
     # Equal values retain the first payload and position; a sealed builder faults.
     fn add(value: T) -> Unit:
-    # Legacy spelling for add, with the same Unit return and sealing behavior.
-    fn with_value(value: T) -> Unit:

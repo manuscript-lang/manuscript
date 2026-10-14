@@ -197,13 +197,13 @@ test "list methods mutate explicit clones and remain typed":
         ]
     ):
         return panic(message: "check failed")
-    if not (original.clone().with_value(index: -1, value: 9) == [3, 1, 2, 9]):
+    if not (original.clone().set(index: -1, value: 9) == [3, 1, 2, 9]):
         return panic(message: "check failed")
-    if not (original.clone().without(index: 1) == [3, 2, 1]):
+    if not (original.clone().remove(index: 1) == [3, 2, 1]):
         return panic(message: "check failed")
     if not (original.slice(start: 1, end: 3).unwrap() == [1, 2]):
         return panic(message: "check failed")
-    if not (original.clone().reverse() == [1, 2, 1, 3]):
+    if not (original.clone().reverse_in_place() == [1, 2, 1, 3]):
         return panic(message: "check failed")
     if not (original.sorted(compare: compare) == [1, 1, 2, 3]):
         return panic(message: "check failed")
@@ -271,7 +271,7 @@ test "list methods mutate explicit clones and remain typed":
     if not (convert(transform: stringify) == ["3", "1", "2", "1"]):
         return panic(message: "check failed")
 
-    let reverse = original.clone().reverse
+    let reverse = original.clone().reverse_in_place
     if not (reverse() == [1, 2, 1, 3]):
         return panic(message: "check failed")
 
@@ -279,7 +279,7 @@ test "list methods mutate explicit clones and remain typed":
     if not (reduce(initial: 0, step: total) == 7):
         return panic(message: "check failed")
     if not (
-        original.clone().with_values(
+        original.clone().splice(
             start: 1,
             delete_count: 2,
             replacement: [8, 9, 10]
@@ -322,13 +322,13 @@ test "list methods mutate explicit clones and remain typed":
 test "map enumeration, merge, and clear preserve insertion order":
     let original = (
         Map[String, Int]()
-        .with_entry(key: "a", value: 1)
-        .with_entry(key: "b", value: 2)
+        .add(key: "a", value: 1)
+        .add(key: "b", value: 2)
     )
     let other = (
         Map[String, Int]()
-        .with_entry(key: "b", value: 3)
-        .with_entry(key: "c", value: 4)
+        .add(key: "b", value: 3)
+        .add(key: "c", value: 4)
     )
     let merged = original.clone().merge(other: other)
     if not (merged.keys() == ["a", "b", "c"]):
@@ -512,7 +512,7 @@ test "bytes have analogous immutable operations":
         return panic(message: "check failed")
     if not (data.slice(start: 1, end: 3).unwrap() == Bytes([2, 3])):
         return panic(message: "check failed")
-    if not (data.reverse() == Bytes([2, 3, 2, 1])):
+    if not (data.reversed() == Bytes([2, 3, 2, 1])):
         return panic(message: "check failed")
     if not (data.with_value(index: -1, value: 255) == Bytes([1, 2, 3, 255])):
         return panic(message: "check failed")
@@ -649,15 +649,15 @@ test "grouping and lazy map defaults":
     if not (group(key: parity) == grouped):
         return panic(message: "check failed")
 
-    let original = Map[String, Int]().with_entry(key: "a", value: 1)
-    if not (original.with_default(key: "a", value: 9) == original):
+    let original = Map[String, Int]().add(key: "a", value: 1)
+    if not (original.add_default(key: "a", value: 9) == original):
         return panic(message: "check failed")
-    if not (original.with_default_from(key: "a", create: must_not_run) == original):
+    if not (original.add_default_from(key: "a", create: must_not_run) == original):
         return panic(message: "check failed")
-    if not (original.clone().with_default(key: "b", value: 2).values() == [1, 2]):
+    if not (original.clone().add_default(key: "b", value: 2).values() == [1, 2]):
         return panic(message: "check failed")
     if not (
-        original.clone().with_default_from(
+        original.clone().add_default_from(
             key: "c",
             create: default_value
         ).values() == [1, 3]
@@ -827,7 +827,7 @@ fn verify_bigint_and_regex() -> Result[Unit, Error]:
         return panic(message: "check failed")
     if not (
         try common_result(
-            result: pattern.replace(
+            result: pattern.replace_all(
                 text: "a12b3",
                 replacement: "x",
                 max_bytes: 4

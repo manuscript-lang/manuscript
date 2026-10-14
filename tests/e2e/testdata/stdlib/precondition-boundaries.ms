@@ -30,12 +30,12 @@ test "byte updates retain relative bounds and immutable storage":
 
 test "list boundaries retain mutation truncation and empty ranges":
     let list = [1, 2]
-    if list.with_value(index: -2, value: 0) != [0, 2]: return panic(
+    if list.set(index: -2, value: 0) != [0, 2]: return panic(
         "relative list update"
     )
-    if list.without(-1) != [0] or list != [0]: return panic("relative removal")
+    if list.remove(-1) != [0] or list != [0]: return panic("relative removal")
 
-    list.with_values(start: 1, delete_count: 0, replacement: [1, 2])
+    list.splice(start: 1, delete_count: 0, replacement: [1, 2])
     list.fill(value: 9, start: 3, end: 3)
     list.copy_within(target: 3, start: 0, end: 3)
     if list != [0, 1, 2]: return panic("end boundaries")
@@ -43,10 +43,10 @@ test "list boundaries retain mutation truncation and empty ranges":
     list.copy_within(target: 2, start: 0, end: 3)
     if list != [0, 1, 0]: return panic("copy truncation")
 
-    list.with_values(start: 0, delete_count: 3, replacement: [])
+    list.splice(start: 0, delete_count: 3, replacement: [])
     list.fill(value: 1, start: 0, end: 0)
     list.copy_within(target: 0, start: 0, end: 0)
-    list.with_values(start: 0, delete_count: 0, replacement: [])
+    list.splice(start: 0, delete_count: 0, replacement: [])
     if list.length() != 0 or not list.at(0).is_none(): return panic("empty list")
 
 test "radix formatting retains inclusive boundaries and parse errors":

@@ -15,9 +15,9 @@ func TestCollectionQueryCallbackFaultLocations(t *testing.T) {
 				continue
 			}
 			t.Run(kind+"."+method, func(t *testing.T) {
-				parameters, constructor := "value: Int", "Set[Int]().with_value(0)"
+				parameters, constructor := "value: Int", "Set[Int]().add(0)"
 				if kind == "Map" {
-					parameters, constructor = "key: String, value: Int", "Map[String, Int]().with_entry(\"a\", 0)"
+					parameters, constructor = "key: String, value: Int", "Map[String, Int]().add(\"a\", 0)"
 				}
 				result, expression, arguments := "Bool", "1 / value == 0", "crash"
 				if method == "fold" || method == "fold_right" {

@@ -74,7 +74,7 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 `append`, `prepend`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `splice(start:, delete_count:, replacement:)` requires nonnegative bounds with `start <= length()` and `delete_count <= length() - start`; it stages a self-replacement and retains shallow references. Invalid bounds fault without clamping. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
 
-Map `add`, `remove`, `add_default`, `add_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver. Their return values retain that instance for chaining. Legacy spellings are listed under [Naming and migration](#naming-and-migration).
+Map `add`, `remove`, `add_default`, `add_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver. Map `remove` is a no-op for an absent key and keeps scoped lookup and insertion order. Their return values retain that instance for chaining.
 
 ```manuscript
 let values = [1, 2]
@@ -98,9 +98,9 @@ Map and Set loops and callbacks retain their membership snapshot contract: addit
 
 Use verbs for mutable updates and explicit `.clone()` when a separate mutable result is wanted. `concat`, `filter`, `sorted`, `reversed` and other existing transforms keep their copying contracts; a verb alone does not promise mutation on immutable String or Bytes values. Bytes `with_value` copies byte storage, while Bytes `slice` and `split` may retain immutable views.
 
-Legacy spellings remain supported compatibility APIs with their original signatures and behavior. They are never reinterpreted as copies. Migrate direct calls and stored method references using this table; argument labels and callable return types stay the same.
+The older spellings below were removed because several sounded like copies but mutated their receiver. Replace direct calls and stored method references using this table; argument labels and callable return types stay the same.
 
-| Receiver | Legacy spelling | Preferred spelling | Result |
+| Receiver | Removed spelling | Use | Result |
 | --- | --- | --- | --- |
 | List | `with_value`, `without`, `with_values`, `reverse` | `set`, `remove`, `splice`, `reverse_in_place` | Same List |
 | Map | `with_entry`, `without` | `add`, `remove` | Same Map |
@@ -112,7 +112,7 @@ Legacy spellings remain supported compatibility APIs with their original signatu
 
 Map `add_default` evaluates its value argument normally and inserts only when absent. `add_default_from` calls `create(key:)` once only when absent. Neither replaces an existing value or its insertion position. For a copy, write `map.clone().add_default(...)` explicitly.
 
-All [builder mutations](../../standard-library/builders.md) return Unit; `freeze` returns the sealed result. This convention applies to List, Map, Set, Bytes and String builders and preserves their existing function types. MSL108 recommends equivalent preferred names using checked standard identities, including stored references; user methods and callable fields keep their own contracts. Standard implementations and teaching examples use the preferred names. Compatibility tests intentionally exercise old spellings.
+All [builder mutations](../../standard-library/builders.md) return Unit; `freeze` returns the sealed result. This convention applies to List, Map, Set, Bytes and String builders and preserves their existing function types.
 
 ## Lookup and updates
 
@@ -147,7 +147,7 @@ All [builder mutations](../../standard-library/builders.md) return Unit; `freeze
 
 All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding MaxInt64 faults.
 
-`Map.add(key, value)` inserts or replaces a value and returns the same map. `with_entry` remains a compatible spelling with identical behavior.
+`Map.add(key, value)` inserts or replaces a value and returns the same map.
 
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
 

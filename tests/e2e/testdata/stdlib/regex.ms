@@ -15,7 +15,7 @@ test "regex receivers execute matching replacement and empty results":
             max_matches: 0
         )
     ).is_empty(): return panic("empty match budget")
-    if value(regex.replace(text: "a12b3", replacement: "#")) != "a#b#": return panic(
+    if value(regex.replace_all(text: "a12b3", replacement: "#")) != "a#b#": return panic(
         "replace"
     )
 
@@ -39,7 +39,7 @@ test "regex rejects invalid expressions and exhausted budgets":
         RegexError.LimitExceeded
     )
     if (
-        regex.replace(
+        regex.replace_all(
             text: "1",
             replacement: "long",
             max_bytes: 3

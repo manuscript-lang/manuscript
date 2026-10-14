@@ -1,4 +1,10 @@
-import {parse, TomlValue, TomlError, TomlLimits} from "@std/toml.ms"
+import {
+    parse,
+    stringify,
+    TomlValue,
+    TomlError,
+    TomlLimits
+} from "@std/toml.ms"
 import {List, Map} from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
@@ -300,3 +306,43 @@ test "TOML errors report the offending line and column":
     if failure("x = 1\ny = 1e") != "TOML 2:5: invalid exponent": return panic(
         "exponent position"
     )
+
+test "TOML limits fields default to none":
+    let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
+    if parse(
+        text: "a=1",
+        limits: some(TomlLimits(max_bytes: 2))
+    ) != limited: return panic(
+        "partial byte limit"
+    )
+    if parse(
+        text: "a=1",
+        limits: some(TomlLimits())
+    ) != parse(text: "a=1"): return panic(
+        "empty limits"
+    )
+
+test "TOML stringify round trips scalars tables and arrays of tables":
+    let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
+    let parsed = value(parse(text: source))
+    let text = value(stringify(value: parsed))
+    if value(parse(text: text)) != parsed: return panic("TOML stringify round trip")
+    if value(
+        stringify(
+            value: value(parse(text: text))
+        )
+    ) != text: return panic(
+        "TOML stringify is stable"
+    )
+
+test "TOML stringify requires a table root and honors max_bytes":
+    let wrong: Result[String, TomlError] = error(TomlError.InvalidInput)
+    let limited: Result[String, TomlError] = error(TomlError.LimitExceeded)
+    if stringify(value: TomlValue.IntValue(1)) != wrong: return panic("non-table root")
+
+    let root = value(parse(text: "a = 1"))
+    if stringify(value: root, max_bytes: 3) != limited: return panic("output limit")
+
+    let exact: Result[String, TomlError] = ok("a = 1\n")
+    if stringify(value: root, max_bytes: 6) != exact: return panic("exact limit")
+    if stringify(value: root, max_bytes: -1) != wrong: return panic("negative limit")

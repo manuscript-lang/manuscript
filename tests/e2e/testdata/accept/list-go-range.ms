@@ -1,7 +1,7 @@
 import panic from "@std/faults.ms"
 
 fn replace[T](values: List[T], value: T) -> Unit:
-    values.with_value(index: 1, value: value)
+    values.set(index: 1, value: value)
 
 test "range observes backing writes and keeps initial length":
     let values = [1, 2, 3]
@@ -82,7 +82,7 @@ test "nested reverse copy shrink and self splice follow initial headers":
         outer.append(value)
 
         if index == 0:
-            values.reverse()
+            values.reverse_in_place()
 
             for item in values:
                 inner.append(item)
@@ -127,7 +127,7 @@ test "nested reverse copy shrink and self splice follow initial headers":
         seen_shrinking.append(value + 1)
 
         if not shrinking.is_empty():
-            shrinking.without(0)
+            shrinking.remove(0)
 
         count = count + 1
 
@@ -146,7 +146,7 @@ test "nested reverse copy shrink and self splice follow initial headers":
         seen_self.append(value)
 
         if count == 0:
-            self_list.with_values(start: 1, delete_count: 1, replacement: self_list)
+            self_list.splice(start: 1, delete_count: 1, replacement: self_list)
 
         count = count + 1
 

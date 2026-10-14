@@ -239,7 +239,7 @@ test "expanded packages run through compiler":
     if not (([3, 1, 2]).sorted(compare: compare) == [1, 2, 3]):
         return panic(message: "check failed")
 
-    let reverse_int = [1, 2].reverse
+    let reverse_int = [1, 2].reverse_in_place
     if not (reverse_int() == [2, 1]):
         return panic(message: "check failed")
 

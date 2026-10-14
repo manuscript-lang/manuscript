@@ -63,7 +63,7 @@ test "Map transformations and directional queries are callable":
         fn(acc, k, v): acc + k
     ) != "ab": return panic("Map fold_right")
 
-    let values = Set[Int]().with_value(2).with_value(1)
+    let values = Set[Int]().add(2).add(1)
     if values.find_last(
         fn(v): true
     ).unwrap() != 1: return panic("Set find_last")
@@ -79,12 +79,12 @@ test "Map value transformation copies ordered snapshots and retains aliases":
     let counter = Counter(2)
     let source = (
         Map[Key, Counter]()
-        .with_entry(first, counter)
-        .with_entry(
+        .add(first, counter)
+        .add(
             second,
             Counter(1)
         )
-        .with_entry(
+        .add(
             third,
             Counter(3)
         )
@@ -95,10 +95,10 @@ test "Map value transformation copies ordered snapshots and retains aliases":
         fn(k, v):
             seen.append(k.label + v.count.toString())
             (
-                source.without(second).with_entry(
+                source.remove(second).add(
                     third,
                     Counter(99)
-                ).with_entry(
+                ).add(
                     Key(4, "new"),
                     Counter(4)
                 )
@@ -120,7 +120,7 @@ test "Map value transformation copies ordered snapshots and retains aliases":
     mapped.keys().at(0).unwrap().label = "shared"
     if first.label != "shared": return panic("Map.map copied keys")
 
-    mapped.without(first).with_entry(
+    mapped.remove(first).add(
         Key(5, "other"),
         Counter(5)
     )
@@ -165,7 +165,7 @@ test "Map key transformation retains first equal keys and last values":
     mapped.get(Key(0, "lookup")).unwrap().count = 9
     if three.count != 9: return panic("map_keys copied retained value")
 
-    mapped.clear().with_entry(
+    mapped.clear().add(
         Key(7, "fresh"),
         Counter(10)
     )
@@ -179,10 +179,10 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
     let mapped = bound(
         transform: fn(k, v):
             seen.append(k)
-            source.without(1).with_entry(
+            source.remove(1).add(
                 3,
                 Counter(99)
-            ).with_entry(
+            ).add(
                 4,
                 Counter(4)
             )
@@ -219,7 +219,7 @@ test "empty transformations skip callbacks and allocate independent storage":
     let mapped = source.map[Counter](
         fn(k, v): panic("empty value transform callback")
     )
-    mapped.with_entry(
+    mapped.add(
         "new",
         Counter(1)
     )
@@ -228,7 +228,7 @@ test "empty transformations skip callbacks and allocate independent storage":
     let keyed = source.map_keys[Key](
         fn(k, v): panic("empty key transform callback")
     )
-    keyed.with_entry(
+    keyed.add(
         Key(1, "new"),
         1
     )
@@ -244,12 +244,12 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
         fn(acc, k, v):
             (
                 source
-                .without("a")
-                .with_entry(
+                .remove("a")
+                .add(
                     "b",
                     Counter(99)
                 )
-                .with_entry(
+                .add(
                     "new",
                     Counter(4)
                 )
@@ -267,10 +267,10 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
 
     let original = Counter(1)
     (
-        source.clear().with_entry(
+        source.clear().add(
             "b",
             Counter(2)
-        ).with_entry("a", original).with_entry(
+        ).add("a", original).add(
             "c",
             Counter(3)
         )
@@ -281,10 +281,10 @@ test "Map reverse fold and last match retain ordered shallow snapshots":
         predicate: fn(k, v):
             seen.append(k)
             (
-                source.without("a").with_entry(
+                source.remove("a").add(
                     "b",
                     Counter(99)
-                ).with_entry(
+                ).add(
                     "new",
                     Counter(4)
                 )
@@ -307,13 +307,13 @@ test "Set reverse fold and last match preserve references and callbacks":
     let b = Key(2, "b")
     let a = Key(1, "a")
     let c = Key(3, "c")
-    let source = Set[Key]().with_value(b).with_value(a).with_value(c)
+    let source = Set[Key]().add(b).add(a).add(c)
     let initial: List[String] = []
     let folded = reverse_set(
         source,
         initial,
         fn(acc, v):
-            source.without(a).with_value(Key(4, "new"))
+            source.remove(a).add(Key(4, "new"))
             b.label = "shared"
             acc.append(v.label)
             return acc
@@ -325,13 +325,13 @@ test "Set reverse fold and last match preserve references and callbacks":
     folded.append("alias")
     if initial.length() != 4: return panic("Set.fold_right copied accumulator")
 
-    source.clear().with_value(b).with_value(a).with_value(c)
+    source.clear().add(b).add(a).add(c)
     let seen: List[Int] = []
     let find = source.find_last
     let found = find(
         fn(v):
             seen.append(v.id)
-            source.without(a).with_value(Key(4, "new"))
+            source.remove(a).add(Key(4, "new"))
             return v.id == 1
     ).unwrap()
     if seen != [3, 1]: return panic("Set.find_last snapshot or short circuit")
@@ -384,7 +384,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
         or seen_map != ["c", "a", "b"]
     ): return panic("complete reverse Map search")
 
-    let members = Set[Int]().with_value(2).with_value(1).with_value(3)
+    let members = Set[Int]().add(2).add(1).add(3)
     let seen_set: List[Int] = []
     if (
         not (

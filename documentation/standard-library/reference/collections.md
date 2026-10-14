@@ -49,14 +49,11 @@ type List[T]:
     fn prepend(value: T) -> List[T]:
     fn set(index: Int, value: T) -> List[T]:
     fn remove(index: Int) -> List[T]:
-    fn with_value(index: Int, value: T) -> List[T]:
-    fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     fn take(count: Int) -> List[T]:
     fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
     fn reversed() -> List[T]:
-    fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
@@ -72,7 +69,6 @@ type List[T]:
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
-    fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
     fn to_set() -> Set[T]:
@@ -176,19 +172,11 @@ fn last_index_of(value: T) -> Optional[Int]:
 ### List.remove
 
 Removes an element in place and returns this list; negative indexes count from the end.
-Invalid indexes fault, with the same bounds and diagnostics as without.
+Invalid indexes fault.
 Shifts the suffix without clearing prior values retained in spare backing capacity.
 
 ```manuscript
 fn remove(index: Int) -> List[T]:
-```
-
-### List.reverse
-
-Compatibility spelling for reverse_in_place; mutates and returns this list.
-
-```manuscript
-fn reverse() -> List[T]:
 ```
 
 ### List.reverse_in_place
@@ -210,7 +198,7 @@ fn reversed() -> List[T]:
 ### List.set
 
 Replaces an element in place and returns this list; negative indexes count from the end.
-Invalid indexes fault, with the same bounds and diagnostics as with_value.
+Invalid indexes fault.
 
 ```manuscript
 fn set(index: Int, value: T) -> List[T]:
@@ -261,30 +249,6 @@ Leaves the receiver unchanged; negative count is a programming fault.
 fn take(count: Int) -> List[T]:
 ```
 
-### List.with_value
-
-Compatibility spelling for set; mutates and returns this list.
-
-```manuscript
-fn with_value(index: Int, value: T) -> List[T]:
-```
-
-### List.with_values
-
-Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior.
-
-```manuscript
-fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
-```
-
-### List.without
-
-Compatibility spelling for remove; mutates and returns this list.
-
-```manuscript
-fn without(index: Int) -> List[T]:
-```
-
 ## ListBuilder {data-api-kind="Native type"}
 
 Appends values efficiently before freezing them into a list.
@@ -325,8 +289,6 @@ type Map[T: Hashable, U]:
     fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn add_default(key: T, value: U) -> Map[T, U]:
     fn add_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
-    fn with_default(key: T, value: U) -> Map[T, U]:
-    fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
     fn keys() -> List[T]:
     fn values() -> List[U]:
@@ -337,9 +299,7 @@ type Map[T: Hashable, U]:
     fn get(key: T) -> Optional[U]:
     fn length() -> Int:
     fn add(key: T, value: U) -> Map[T, U]:
-    fn with_entry(key: T, value: U) -> Map[T, U]:
     fn remove(key: T) -> Map[T, U]:
-    fn without(key: T) -> Map[T, U]:
 ```
 
 ### Map.add
@@ -485,38 +445,6 @@ Stops at the first matching entry; empty maps return false.
 fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
 ```
 
-### Map.with_default
-
-Legacy spelling for add_default; mutates and returns this map, never a copy.
-
-```manuscript
-fn with_default(key: T, value: U) -> Map[T, U]:
-```
-
-### Map.with_default_from
-
-Legacy spelling for add_default_from; retains lazy creation and the receiver return.
-
-```manuscript
-fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
-```
-
-### Map.with_entry
-
-Compatible spelling of add, with the same mutation and receiver return.
-
-```manuscript
-fn with_entry(key: T, value: U) -> Map[T, U]:
-```
-
-### Map.without
-
-Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return.
-
-```manuscript
-fn without(key: T) -> Map[T, U]:
-```
-
 ## MapBuilder {data-api-kind="Native type"}
 
 Adds entries efficiently before freezing them into a map.
@@ -525,7 +453,6 @@ Adds entries efficiently before freezing them into a map.
 type MapBuilder[T: Hashable, U]:
     fn freeze() -> Map[T, U]:
     fn add(key: T, value: U) -> Unit:
-    fn with_entry(key: T, value: U) -> Unit:
 ```
 
 ### MapBuilder.add
@@ -535,14 +462,6 @@ Replacement retains the original key and insertion position; a sealed builder fa
 
 ```manuscript
 fn add(key: T, value: U) -> Unit:
-```
-
-### MapBuilder.with_entry
-
-Legacy spelling for add, with the same Unit return and sealing behavior.
-
-```manuscript
-fn with_entry(key: T, value: U) -> Unit:
 ```
 
 ## MapEntry {data-api-kind="Record"}
@@ -586,8 +505,6 @@ type Set[T: Hashable]:
     fn length() -> Int:
     fn add(value: T) -> Set[T]:
     fn remove(value: T) -> Set[T]:
-    fn with_value(value: T) -> Set[T]:
-    fn without(value: T) -> Set[T]:
 ```
 
 ### Set.add
@@ -791,22 +708,6 @@ Returns a shallow list of values in insertion order.
 fn values() -> List[T]:
 ```
 
-### Set.with_value
-
-Compatibility spelling for add; mutates and returns this set.
-
-```manuscript
-fn with_value(value: T) -> Set[T]:
-```
-
-### Set.without
-
-Compatibility spelling for remove; mutates and returns this set.
-
-```manuscript
-fn without(value: T) -> Set[T]:
-```
-
 ## SetBuilder {data-api-kind="Native type"}
 
 Adds unique values efficiently before freezing them into a set.
@@ -815,7 +716,6 @@ Adds unique values efficiently before freezing them into a set.
 type SetBuilder[T: Hashable]:
     fn freeze() -> Set[T]:
     fn add(value: T) -> Unit:
-    fn with_value(value: T) -> Unit:
 ```
 
 ### SetBuilder.add
@@ -825,14 +725,6 @@ Equal values retain the first payload and position; a sealed builder faults.
 
 ```manuscript
 fn add(value: T) -> Unit:
-```
-
-### SetBuilder.with_value
-
-Legacy spelling for add, with the same Unit return and sealing behavior.
-
-```manuscript
-fn with_value(value: T) -> Unit:
 ```
 
 ## filled {data-api-kind="Function"}
