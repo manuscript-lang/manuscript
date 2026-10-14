@@ -151,3 +151,12 @@ func TestAnalysisChecksEntryWithoutGeneratingGo(t *testing.T) {
 		t.Fatal("checked analysis performed lowering", result.Diagnostics)
 	}
 }
+
+func TestRecoveryDoesNotReportUsesOfOmittedDeclarations(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "main.ms", "fn f() -> Int:\n    return 1 +\n\nexport fn main() -> Int:\n    return f()\n")
+	result := compiler.CompileFile(filepath.Join(root, "main.ms"), compiler.Options{Recover: true, AnalyzeOnly: true})
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Phase != "parse" {
+		t.Fatalf("expected only the syntax error, got %v", result.Diagnostics)
+	}
+}

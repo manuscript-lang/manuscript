@@ -21,7 +21,7 @@ func TestPartialParserPreservesPositionsAndStrictFailure(t *testing.T) {
 }
 
 func FuzzParsePartial(f *testing.F) {
-	for _, seed := range []string{"", "fn unfinished(\nfn valid() -> Int:\n    return 1\n", "type Box:\n    value: String\n", "# 😀\r\nfn read() -> Int:\r\n    return 2\r\n"} {
+	for _, seed := range []string{"", "fn unfinished(\nfn valid() -> Int:\n    return 1\n", "type Box:\n    value: String\n", "# 😀\r\nfn read() -> Int:\r\n    return 2\r\n", "fn (\n", "export type [\n"} {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, source string) {

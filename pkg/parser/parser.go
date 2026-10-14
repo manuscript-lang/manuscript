@@ -513,6 +513,9 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 				if e.Kind == syntax.KindName && e.Text == "pass" {
 					p.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm")
 				}
+				if e.Kind == syntax.KindName && e.Text == "elif" {
+					p.fail(t, "'elif' is not a keyword; write 'else if <condition>:' for a further branch")
+				}
 				p.fail(t, "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function")
 			}
 			s.Kind = syntax.KindCall
