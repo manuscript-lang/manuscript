@@ -185,6 +185,7 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 		var err error
 		cache, err = build.DefaultBuildCacheDir()
 		if err != nil {
+			_ = os.RemoveAll(output)
 			return fail("build", err)
 		}
 	}
@@ -198,6 +199,8 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 		executable += ".exe"
 	}
 	if _, err := build.BuildCheckedWithType(result, executable, cache, kind); err != nil {
+		// This invocation created the directory; a failed build must not block a retry.
+		_ = os.RemoveAll(output)
 		return fail("build", err)
 	}
 	verified["executable"], verified["build_metadata"] = true, true
