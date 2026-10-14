@@ -13,22 +13,22 @@ import (
 func (g *generator) markCounted() {
 	type node struct {
 		direct *directFunction
-		body   []*syntax.Statement
+		decl   *syntax.Declaration
 		edges  []*directFunction
 	}
 	nodes := map[*directFunction]*node{}
 	var order []*node
-	add := func(direct *directFunction, body []*syntax.Statement) {
-		n := &node{direct: direct, body: body}
+	add := func(direct *directFunction, decl *syntax.Declaration) {
+		n := &node{direct: direct, decl: decl}
 		nodes[direct] = n
 		order = append(order, n)
 	}
 	for s, direct := range g.direct {
-		add(direct, s.Decl.Body)
+		add(direct, s.Decl)
 	}
 	for _, m := range g.program.Methods {
 		if direct := g.directMethods[m.ID]; direct != nil {
-			add(direct, m.Decl.Body)
+			add(direct, m.Decl)
 		}
 	}
 	for _, n := range order {
@@ -56,7 +56,7 @@ func (g *generator) markCounted() {
 					n.edges = append(n.edges, g.directMethods[callee.Method.ID])
 				}
 			}
-		}}.Callable(nil, n.body)
+		}}.Callable(n.decl.Params, n.decl.Body)
 	}
 	// Tarjan's strongly connected components.
 	index := map[*node]int{}

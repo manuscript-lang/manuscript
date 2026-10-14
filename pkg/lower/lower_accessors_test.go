@@ -160,6 +160,35 @@ fn read(box: Box) -> Int: box.value
 	}
 }
 
+func TestDefaultAccessorCyclesKeepSampledDepthChecks(t *testing.T) {
+	r := compileSource("default-accessors.ms", `interface Read:
+    get value -> Int
+type Box:
+    count: Int
+impl Read for Box:
+    get value -> Int: recurse(self)
+fn recurse(box: Box, value: Int = box.value) -> Int: value
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, prefix := range []string{"func call_", "func method_"} {
+		found := false
+		for _, function := range strings.Split(r.Source, "\nfunc ")[1:] {
+			if !strings.HasPrefix("func "+function, prefix) || !strings.Contains(function, "default-accessors.ms:") {
+				continue
+			}
+			found = true
+			if !strings.Contains(function, "rt.Enter(ctx)") || !strings.Contains(function, "rt.Exit(ctx)") {
+				t.Errorf("default/accessor cycle omitted depth accounting in %s\n%s", prefix, function)
+			}
+		}
+		if !found {
+			t.Errorf("missing source cycle function %s\n%s", prefix, r.Source)
+		}
+	}
+}
+
 func TestGuardScalarAccessorValidatesOnceThenUnboxes(t *testing.T) {
 	r := compileSource("guard-accessor.ms", `import SynchronizedGuard from "@std/sync.ms"
 fn int(guard: SynchronizedGuard[Int]) -> Int: guard.value

@@ -167,6 +167,14 @@ Apply when: adding or specializing lowered runtime operations, source fault trac
 Evidence: [located lowering](../pkg/lower/lower_expressions.go), [frame capture](../pkg/runtime/frames.go), [recursive-cycle admission](../pkg/lower/lower_recursion.go), [lowering page](../documentation/contributing/compiler/lowering/_index.md#structured-go-generation), and [native location regressions](../tests/e2e/fault_locations_test.go).
 Verify: run `TestFaultSourceLocations`, including multiline operands, argument faults, default arguments, bound methods, and destructuring; preserve frame order, line numbers, and names. Do not reintroduce columns or `defer`-based recording without a new decision.
 
+Verified: making default-bearing functions direct also makes their default
+expressions part of the direct-call graph. Omitting defaults let a cycle through
+an accessor exceed MaxCallDepth after integrating #507, even though body-only
+recursion tests passed. Walk the declaration's parameters and body with the common
+Callable visitor. [Default-cycle lowering](../pkg/lower/lower_accessors_test.go)
+and [bounded native depth/cancellation](../pkg/build/accessors_native_test.go)
+regressions distinguish this from merely accepting the source.
+
 Verified: Go orders calls in an expression, but that does not establish when an
 earlier plain local read occurs relative to a later call. A right-hand match can
 mutate the left local. Direct primitive equality therefore captures its operands

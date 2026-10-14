@@ -230,6 +230,15 @@ type Loop:
 impl Read for Loop:
     get value -> Int: self.value
 fn recursive() -> Int: Loop(0).value
+type DefaultLoop:
+    remaining: Int
+impl Read for DefaultLoop:
+    get value -> Int:
+        if self.remaining <= 0: return 0
+        self.remaining = self.remaining - 1
+        return defaultRecurse(self)
+fn defaultRecurse(loop: DefaultLoop, value: Int = loop.value) -> Int: value
+fn defaultRecursive() -> Int: defaultRecurse(DefaultLoop(210000))
 `
 	result := compiler.CompileSource("fault-accessors.ms", source, compiler.Options{})
 	if !result.Success() {
@@ -239,6 +248,7 @@ fn recursive() -> Int: Loop(0).value
 		"@@direct@@", result.Program.Symbol("fault-accessors.ms", "direct").ID,
 		"@@dynamic@@", result.Program.Symbol("fault-accessors.ms", "dynamic").ID,
 		"@@recursive@@", result.Program.Symbol("fault-accessors.ms", "recursive").ID,
+		"@@defaultRecursive@@", result.Program.Symbol("fault-accessors.ms", "defaultRecursive").ID,
 	).Replace(`
 func accessorFailure(body func()) (failure any) {defer func(){failure=recover()}();body();return}
 func checkAccessorFaults() {
@@ -252,18 +262,20 @@ func checkAccessorFaults() {
   for _,frame:=range fault.Frames {found=found || strings.Contains(frame,"fault-accessors.ms:") && strings.HasSuffix(frame," in "+entry.name)}
   if !found {panic(fmt.Sprintf("accessor source frame lost for %s: %#v",entry.name,fault))}
  }
- ctx:=rt.RootExecution()
- failure:=accessorFailure(func(){@@recursive@@.(rt.Function).Body(ctx,nil)})
- rt.FinishExecution(ctx)
- fault,ok:=failure.(rt.Fault)
- if !ok || !strings.Contains(fault.Message,"call depth limit") {panic(fmt.Sprintf("accessor depth check lost: %#v",failure))}
- cancelled:=rt.RootExecution()
- var cancel context.CancelFunc
- cancelled.Context,cancel=context.WithCancel(cancelled.Context);cancel()
- expected:=accessorFailure(func(){rt.CheckCancelled(cancelled)})
- failure=accessorFailure(func(){@@recursive@@.(rt.Function).Body(cancelled,nil)})
- rt.FinishExecution(cancelled)
- if failure==nil || !reflect.DeepEqual(failure,expected) {panic(fmt.Sprintf("recursive accessor cancellation lost: %#v",failure))}
+ for _,entry:=range []rt.Value{@@recursive@@,@@defaultRecursive@@} {
+  ctx:=rt.RootExecution()
+  failure:=accessorFailure(func(){entry.(rt.Function).Body(ctx,nil)})
+  rt.FinishExecution(ctx)
+  fault,ok:=failure.(rt.Fault)
+  if !ok || !strings.Contains(fault.Message,"call depth limit") {panic(fmt.Sprintf("accessor depth check lost: %#v",failure))}
+  cancelled:=rt.RootExecution()
+  var cancel context.CancelFunc
+  cancelled.Context,cancel=context.WithCancel(cancelled.Context);cancel()
+  expected:=accessorFailure(func(){rt.CheckCancelled(cancelled)})
+  failure=accessorFailure(func(){entry.(rt.Function).Body(cancelled,nil)})
+  rt.FinishExecution(cancelled)
+  if failure==nil || !reflect.DeepEqual(failure,expected) {panic(fmt.Sprintf("recursive accessor cancellation lost: %#v",failure))}
+ }
 }
 `)
 	generated := strings.Replace(result.Source, "package main\n", "package main\nimport (\"context\";\"reflect\";\"strings\";\"fmt\")\n", 1)
