@@ -42,3 +42,5 @@ func scriptFile(file *os.File) (*os.File, func(), error) {
 }
 
 func interruptScriptOutput(file *os.File) { _ = file.SetWriteDeadline(time.Now()) }
+
+func validateScriptInput(*os.File) error { return nil }

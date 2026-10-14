@@ -1,6 +1,7 @@
 package debugger
 
 import (
+	"fmt"
 	"os"
 
 	"golang.org/x/sys/windows"
@@ -13,6 +14,24 @@ func scriptFile(file *os.File) (*os.File, func(), error) {
 		return nil, nil, err
 	}
 	return os.NewFile(uintptr(handle), file.Name()), func() {}, nil
+}
+
+func validateScriptInput(file *os.File) error {
+	raw, err := file.SyscallConn()
+	if err != nil {
+		return err
+	}
+	console := false
+	if err := raw.Control(func(handle uintptr) {
+		var mode uint32
+		console = windows.GetConsoleMode(windows.Handle(handle), &mode) == nil
+	}); err != nil {
+		return err
+	}
+	if console {
+		return fmt.Errorf("script debugging cannot cancel a Windows console stdin read safely; use --script <file> or redirected pipe input")
+	}
+	return nil
 }
 
 func interruptScriptOutput(file *os.File) {

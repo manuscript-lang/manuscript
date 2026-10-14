@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -87,6 +88,16 @@ func checkScriptDebugger(cli, directory string, environment []string, source str
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()
+	if runtime.GOOS != "linux" && runtime.GOOS != "windows" {
+		if err == nil || stderr.Len() != 0 {
+			return fmt.Errorf("unsafe scripted mode did not reject unsupported process identity: %v %s", err, &stderr)
+		}
+		var record struct{ Event, Code, Message string }
+		if decodeErr := json.NewDecoder(bytes.NewReader(output)).Decode(&record); decodeErr != nil || record.Event != "error" || record.Code != "launch" || !strings.Contains(record.Message, "identity-bound") {
+			return fmt.Errorf("unsupported script result: %v %s", decodeErr, output)
+		}
+		return nil
+	}
 	if err != nil || stderr.Len() != 0 {
 		return fmt.Errorf("standalone scripted debugger: %v\n%s\n%s", err, output, &stderr)
 	}

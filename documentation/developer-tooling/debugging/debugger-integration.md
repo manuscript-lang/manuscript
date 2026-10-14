@@ -91,6 +91,15 @@ the null device so it cannot consume debugger commands. Both `--script` and
 `--json` are required for scripted mode. `--raw-stack` includes native frames in
 all scripted stacks.
 
+Scripted mode requires an OS handle that remains bound to the launched process
+after it exits: Linux uses explicit pidfds and rejects kernels/policies without
+the required pidfd signal/wait APIs; Windows uses a retained process handle.
+Scripted mode is currently rejected on other platforms, including macOS, where
+the available PID-only interruption cannot meet that guarantee. Interactive
+`ms debug` and editor DAP retain their existing platform support.
+Windows console stdin is rejected before launch because its blocking read cannot
+be cancelled safely; use a script file or redirected pipe for `--script -`.
+
 Commands are one per line. Blank lines and lines beginning with `#` are ignored;
 the command ID is its original line number. There is no shell quoting or inline
 comment syntax; everything following `break` is the location, including spaces
@@ -145,6 +154,8 @@ records.
 
 Frames retain their native `index`, `native_function`, and a `source` flag.
 Source frame file names are relative to the validated build source root;
+embedded standard source names retain their `@std/` identity and are verified
+against the pinned bundle, not against a physical file in the project.
 native frames keep Delve's paths. Source stacks are selected from validated
 inspection files and scan at most 256 native frames. `bt` reports `truncated`
 when its depth or scan limit is reached. Unwind failures produce an error
@@ -160,6 +171,10 @@ bytes. Views are bounded to three child levels, 32 collection entries and 512
 string bytes. `truncated` and `unavailable` preserve missing data; native slots
 that no longer hold a declared container are marked unavailable after last use.
 Unsupported service values retain a type summary.
+Map children include a separate `key` view that retains the key's `truncated`
+and `unavailable` markers; the child `name` is only a display label. Distinct keys
+can share the same clipped display prefix. Incomplete keys also mark the map view
+`truncated`, so its displayed keys cannot be treated as complete identities.
 
 Output is captured in private files and delivered at command/stop and shutdown
 checkpoints, with stdout before stderr at each checkpoint. It is not delivered
@@ -170,7 +185,8 @@ boundaries and non-text output.
 
 EOF completes pending inspection commands and then cleans up. If a final
 execution command is unfinished and no later command remains, EOF cancels that
-operation by killing the owned target, joins Delve, and reaps it; it does not produce a successful
+operation through the retained OS identity, joins Delve, and reaps it before
+closing input; it does not produce a successful
 result for the interrupted command. A completed response takes precedence when
 already available. Keep an explicit `exit` after a resume command to wait for its
 stop or natural exit. SIGINT/SIGTERM, reader/writer errors, and cancellation also

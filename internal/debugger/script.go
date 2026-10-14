@@ -171,6 +171,15 @@ type commandResult struct {
 // client. It takes ownership of input, kills/reaps its target on every return,
 // and preserves the interactive Terminal path as a separate entry point.
 func Script(ctx context.Context, executable string, args []string, inspection tooling.Inspection, input io.ReadCloser, output io.Writer, rawStack bool) (returnStatus int) {
+	defer input.Close()
+	if file, ok := input.(*os.File); ok {
+		if err := validateScriptInput(file); err != nil {
+			return ScriptFailure(output, "input", err)
+		}
+	}
+	if err := scriptProcessSupported(); err != nil {
+		return ScriptFailure(output, "launch", err)
+	}
 	if input == os.Stdin {
 		file, restore, err := scriptFile(os.Stdin)
 		if err != nil {
@@ -246,14 +255,14 @@ func Script(ctx context.Context, executable string, args []string, inspection to
 	}
 	client := rpc2.NewClientFromConn(conn)
 	pid := client.ProcessPid()
-	// Retain process identity while stopped. Go uses pidfds/process handles;
-	// reacquiring a PID after a natural exit could select a reused PID.
-	target, err := os.FindProcess(pid)
+	// Bind an explicit identity while stopped. Unsupported kernels/platforms
+	// must fail closed, rather than rely on os.FindProcess's PID-only fallback.
+	target, err := openScriptProcess(pid)
 	if err != nil {
 		_ = server.Stop()
 		return ScriptFailure(output, "launch", err)
 	}
-	defer target.Release()
+	defer target.Close()
 	session := scriptSession{client: client, source: v, rawStack: rawStack}
 	w := eventWriter{output: output}
 	status, reason := 0, "eof"
@@ -296,7 +305,6 @@ func Script(ctx context.Context, executable string, args []string, inspection to
 		if file, ok := output.(*os.File); ok {
 			_ = file.SetWriteDeadline(time.Now().Add(time.Second))
 		}
-		_ = input.Close()
 		if active != nil {
 			if activeResumes {
 				err := target.Kill()
@@ -314,7 +322,9 @@ func Script(ctx context.Context, executable string, args []string, inspection to
 		// leave the process leader waitable. Reap an owned child after Delve has
 		// joined/detached; already-reaped targets (or LLDB-owned children) simply
 		// return a wait error.
-		_, _ = target.Wait()
+		target.Reap()
+		// Closing a reader can itself block. The target must already be gone.
+		_ = input.Close()
 		<-readerDone
 		if err := drain(); err != nil {
 			fail("output", err)

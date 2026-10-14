@@ -80,6 +80,9 @@ func debugTranscript(t *testing.T, cwd, source, script string, extra ...string) 
 }
 
 func TestCLIScriptedDebugHello(t *testing.T) {
+	if assertScriptUnsupportedPlatform(t) {
+		return
+	}
 	root := t.TempDir()
 	for _, name := range []string{"ms.toml", "src/main.ms"} {
 		data, err := os.ReadFile(filepath.Join("../../examples/hello", name))
@@ -146,6 +149,9 @@ func TestCLIScriptedDebugHello(t *testing.T) {
 }
 
 func TestCLIScriptedDebugOutputAndExit(t *testing.T) {
+	if assertScriptUnsupportedPlatform(t) {
+		return
+	}
 	root := t.TempDir()
 	source := filepath.Join(root, "main.ms")
 	text := "import arguments from \"@std/cli.ms\"\nimport {stdout, stderr, stdin} from \"@std/io.ms\"\nexport fn main() -> Int:\n    let input = stdin().read(max_bytes: 1)\n    let out = stdout().write(data: \"stdout:{arguments().length()}\\n\".to_bytes())\n    let err = stderr().write(data: \"stderr:λ\\n\".to_bytes())\n    return 7\n"
@@ -166,6 +172,9 @@ func TestCLIScriptedDebugOutputAndExit(t *testing.T) {
 }
 
 func TestCLIScriptedDebugSIGINT(t *testing.T) {
+	if assertScriptUnsupportedPlatform(t) {
+		return
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows does not support sending os.Interrupt")
 	}
@@ -235,6 +244,9 @@ func TestCLIScriptedDebugSIGINT(t *testing.T) {
 }
 
 func TestCLIScriptedDebugSourceValues(t *testing.T) {
+	if assertScriptUnsupportedPlatform(t) {
+		return
+	}
 	root := t.TempDir()
 	path := filepath.Join(root, "main.ms")
 	source := "type Box:\n    count: Int\ntype Holder:\n    value: Box\nfn helper(input: Int) -> Int:\n    let box = Box(count: 42)\n    let holder = Holder(value: box)\n    let items = [1, 2, 3]\n    let entries = {\"count\": 42}\n    let optional: Optional[Int] = some(5)\n    let data = \"A\".to_bytes()\n    return input + items.at(0).unwrap() + entries.get(\"count\").unwrap() + optional.unwrap() + data.length() + box.count + holder.value.count - 135\nexport fn main() -> Int:\n    return helper(input: 2)\n"
@@ -291,6 +303,9 @@ func TestCLIScriptedDebugSourceValues(t *testing.T) {
 }
 
 func TestCLIScriptedDebugUnreadOutputCancellation(t *testing.T) {
+	if assertScriptUnsupportedPlatform(t) {
+		return
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows signal delivery is exercised by its distribution runner")
 	}
@@ -347,6 +362,9 @@ func TestCLIScriptedDebugUnreadOutputCancellation(t *testing.T) {
 }
 
 func TestCLIScriptedDebugFunctionDefault(t *testing.T) {
+	if assertScriptUnsupportedPlatform(t) {
+		return
+	}
 	root := t.TempDir()
 	path := filepath.Join(root, "main.ms")
 	source := "fn answer(operation: fn() -> Int = fn() -> Int: 7) -> Int:\n    let result = operation()\n    return result\nexport fn main() -> Int:\n    return answer()\n"
@@ -391,4 +409,98 @@ func TestCLIScriptedDebugFunctionDefault(t *testing.T) {
 	if result.Location.Line != 2 {
 		t.Fatalf("bound header callback: %+v", result)
 	}
+}
+
+func assertScriptUnsupportedPlatform(t *testing.T) bool {
+	t.Helper()
+	if runtime.GOOS == "linux" || runtime.GOOS == "windows" {
+		return false
+	}
+	root := t.TempDir()
+	file := filepath.Join(root, "main.ms")
+	if err := os.WriteFile(file, []byte("export fn main() -> Int:\n    return 0\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	events, status := debugTranscript(t, root, file, "continue\nexit\n")
+	if status != 1 || len(events) != 2 || events[0].Code != "launch" || events[0].PID != 0 || !strings.Contains(events[0].Message, "identity-bound") {
+		t.Fatal("unsafe script mode accepted on a PID-only platform", status, events)
+	}
+	return true
+}
+
+func TestCLIScriptedDebugEmbeddedStandardSources(t *testing.T) {
+	if assertScriptUnsupportedPlatform(t) {
+		return
+	}
+	for _, module := range []string{"yaml", "toml"} {
+		t.Run(module, func(t *testing.T) {
+			root := t.TempDir()
+			file := filepath.Join(root, "main.ms")
+			text := "a: 1"
+			if module == "toml" {
+				text = "a = 1"
+			}
+			source := "import parse from \"@std/" + module + ".ms\"\nexport fn main() -> Int:\n    let decoded = parse(text: \"" + text + "\")\n    return 0\n"
+			if err := os.WriteFile(file, []byte(source), 0600); err != nil {
+				t.Fatal(err)
+			}
+			events, status := debugTranscript(t, root, file, "break main\ncontinue\ncontinue\nexit\n")
+			if status != 0 || events[len(events)-1].Reason != "exited" {
+				t.Fatal(status, events)
+			}
+			if _, err := os.Stat(filepath.Join(root, "@std")); !os.IsNotExist(err) {
+				t.Fatal("virtual source was materialized in the project", err)
+			}
+		})
+	}
+}
+
+func TestCLIScriptedDebugLongMapKeys(t *testing.T) {
+	if assertScriptUnsupportedPlatform(t) {
+		return
+	}
+	root := t.TempDir()
+	file := filepath.Join(root, "main.ms")
+	prefix := strings.Repeat("k", 599)
+	source := "export fn main() -> Int:\n    let entries = {\"" + prefix + "a\": 1, \"" + prefix + "b\": 2}\n    return entries.length() - 2\n"
+	if err := os.WriteFile(file, []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	events, status := debugTranscript(t, root, file, "break "+file+":3\ncontinue\nlocals\ncontinue\nexit\n")
+	if status != 0 {
+		t.Fatal(status, events)
+	}
+	var values []struct {
+		Name      string
+		Truncated bool
+		Children  []struct {
+			Name, Value string
+			Key         *struct {
+				Type, Value, Unavailable string
+				Truncated                bool
+			}
+		}
+	}
+	for _, e := range events {
+		if e.Event == "result" && len(e.Result) > 0 && e.Result[0] == '[' {
+			if err := json.Unmarshal(e.Result, &values); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for _, v := range values {
+		if v.Name != "entries" {
+			continue
+		}
+		if !v.Truncated || len(v.Children) != 2 || v.Children[0].Name != v.Children[1].Name {
+			t.Fatal("clipped native keys appeared complete", v)
+		}
+		for _, entry := range v.Children {
+			if entry.Key == nil || !entry.Key.Truncated || entry.Key.Type != "String" {
+				t.Fatal("key load state missing", entry)
+			}
+		}
+		return
+	}
+	t.Fatal("missing native map view", events)
 }

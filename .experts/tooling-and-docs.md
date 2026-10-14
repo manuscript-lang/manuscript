@@ -100,13 +100,24 @@ the checked body's first statement. Evidence and verification:
 
 Verified: closing inherited blocking stdin does not necessarily interrupt a Go
 read. Unix scripted stdio uses owned pollable duplicates and restores shared flags
-after joining I/O. Cancellation retains the target's process handle before
-execution, avoiding PID reuse, then kills/joins/reaps it without concurrent Delve
-Halt/Continue (which raced in the pinned backend). Partial JSON writes must end
+after joining I/O. A retained `os.Process` alone does not guarantee identity:
+Go can fall back to PID-only signaling on Unix. Script cancellation requires an
+explicit Linux pidfd or Windows process handle and rejects unsupported identity
+binding. Reap the target before closing input; Windows console stdin is rejected
+before launch because Close does not interrupt its synchronous console read.
+This avoids concurrent Delve Halt/Continue (which raced in the pinned backend).
+Partial JSON writes must end
 framing rather than append another event to an incomplete record. Evidence and
 verification: [script shutdown/framing tests](../internal/debugger/script_test.go),
 [stdio flags](../internal/debugger/script_file_unix_test.go), and
 [native SIGINT and unread output](../tests/e2e/debug_script_test.go).
+
+Verified: source modules such as `@std/yaml.ms` and `@std/toml.ms` enter inspection
+and build source hashes but remain embedded virtual sources. Validate their bytes
+from the pinned standard bundle, ignoring physical shadows. Map keys retain their
+own load state; a truncated key prefix is not a complete identity. Evidence and
+verification: [review regressions](../internal/debugger/review_regressions_test.go)
+and [native standard-source sessions](../tests/e2e/debug_script_test.go).
 Verified: the DAP Go-source launch modes, terminal Go-module path guessing, and an obsolete DWARF compatibility probe could still invoke external Go despite embedding Delve. The transport/client now exclude those routes; [vendor refresh](../scripts/maintenance/delve.go) reapplies the small compatibility-probe patch. Profile viewers are prebuilt into the SDK payload, not compiled on first use.
 
 Verify: run the shutdown tests with `-race`, the native editor test, and the

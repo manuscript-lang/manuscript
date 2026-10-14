@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-delve/delve/service/api"
 	"github.com/manuscript-lang/manuscript/pkg/build"
+	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
@@ -35,16 +36,19 @@ func loadSourceView(executable string, inspection tooling.Inspection) (*sourceVi
 	if err := json.Unmarshal(data, &metadata); err != nil {
 		return nil, err
 	}
-	check := func(path, want string) error {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
+	checkData := func(path string, data []byte, want string) error {
 		sum := sha256.Sum256(data)
 		if hex.EncodeToString(sum[:]) != want {
 			return fmt.Errorf("file changed since debug build: %s", path)
 		}
 		return nil
+	}
+	check := func(path, want string) error {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return checkData(path, data, want)
 	}
 	if !metadata.Debug || metadata.SourceRoot == "" || inspection.Format != 1 {
 		return nil, fmt.Errorf("script debugging requires Debug metadata and format 1 inspection")
@@ -63,7 +67,15 @@ func loadSourceView(executable string, inspection tooling.Inspection) (*sourceVi
 		if metadata.Sources[source.File] != source.SHA256 {
 			return nil, fmt.Errorf("inspection does not match debug source: %s", source.File)
 		}
-		if err := check(path, source.SHA256); err != nil {
+		if standard, ok := strings.CutPrefix(source.File, "@std/"); ok {
+			data, err := stdlib.Sources.ReadFile(standard)
+			if err != nil {
+				return nil, fmt.Errorf("read pinned source %s: %w", source.File, err)
+			}
+			if err := checkData(source.File, data, source.SHA256); err != nil {
+				return nil, err
+			}
+		} else if err := check(path, source.SHA256); err != nil {
 			return nil, err
 		}
 		v.files[path] = source.File

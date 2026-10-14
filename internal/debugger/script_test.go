@@ -204,6 +204,11 @@ func scriptTarget(t *testing.T, source string) (string, tooling.Inspection) {
 	if os.Getenv("MANUSCRIPT_DEBUG_TEST") == "" {
 		t.Skip("set MANUSCRIPT_DEBUG_TEST=1 for native debugging")
 	}
+	if scriptProcessSupported() != nil {
+		// The unsupported-platform regression exercises pre-launch rejection;
+		// native command tests apply only where safe interruption is supported.
+		t.Skip("identity-bound script process interruption unavailable on this platform")
+	}
 	root := t.TempDir()
 	path := filepath.Join(root, "main.ms")
 	if err := os.WriteFile(path, []byte(source), 0600); err != nil {

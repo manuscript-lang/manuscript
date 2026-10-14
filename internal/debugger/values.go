@@ -16,6 +16,7 @@ type sourceValue struct {
 	Children    []sourceValue `json:"children,omitempty"`
 	Truncated   bool          `json:"truncated,omitempty"`
 	Unavailable string        `json:"unavailable,omitempty"`
+	Key         *sourceValue  `json:"key,omitempty"` // maps retain key load state independently of the display name
 }
 
 var valueLoad = api.LoadConfig{FollowPointers: true, MaxVariableRecurse: 6, MaxStringLen: 512, MaxArrayValues: 32, MaxStructFields: -1}
@@ -183,9 +184,12 @@ func renderValue(variable api.Variable, name, declared string, depth int, record
 				}
 				key := renderValue(keyVariable, "", "", depth+1, recordTypes)
 				c.Name = key.Value
-				children = append(children, c)
+				value := renderValue(c, c.Name, "", depth+1, recordTypes)
+				value.Key = &key
+				r.Children = append(r.Children, value)
+				r.Truncated = r.Truncated || key.Truncated || key.Unavailable != ""
 			}
-			r.Truncated = r.Truncated || int64(len(children)) < entries.Len
+			r.Truncated = r.Truncated || int64(len(r.Children)) < entries.Len
 		} else {
 			r.Truncated = true
 		}
