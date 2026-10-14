@@ -407,6 +407,11 @@ func (g *generator) lambdaValue(e *syntax.Expression, info *checker.Info) ast.Ex
 		result = &syntax.Type{Pos: e.Pos}
 	}
 	fn := g.function("<anonymous>", e.Params, result, e.Body, g.program.LambdaBindings(e), nil, info.Type)
+	// Lambda bodies copy every incoming argument into locals before running, so
+	// library callbacks may reuse one argument buffer across calls.
+	if constructor, ok := fn.(*ast.CallExpr); ok {
+		constructor.Fun = runtimeName("NewCompiledSourceFunction")
+	}
 	for _, b := range captures {
 		if old[b] == "" {
 			delete(g.captures, b)
