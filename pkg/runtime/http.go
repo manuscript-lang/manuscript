@@ -319,6 +319,7 @@ func (s *httpService) close(ctx *Execution) {
 		panic(s.fault)
 	}
 }
+
 // requestHeaders returns the request headers including Host, which net/http
 // moves out of Header into Request.Host.
 func requestHeaders(r *http.Request) http.Header {
