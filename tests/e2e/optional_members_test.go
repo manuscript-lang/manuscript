@@ -9,7 +9,6 @@ import (
 
 func TestOptionalMembersCallDirectly(t *testing.T) {
 	result := compiler.CompileSource("optional-members.ms", `import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
 
 fn check(ok: Bool, name: String) -> Unit:
     if not ok:
