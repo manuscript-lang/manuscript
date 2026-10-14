@@ -384,3 +384,12 @@ func TestLintIgnoresBundledStandardModules(t *testing.T) {
 		t.Fatalf("%d, %q, %q", status, output, errors)
 	}
 }
+
+func TestServerCommandsRejectArguments(t *testing.T) {
+	for _, args := range [][]string{{"lsp", "extra"}, {"dap", "extra"}} {
+		status, stdout, stderr := invoke(t, args...)
+		if status != 2 || stdout != "" || !strings.Contains(stderr, "takes no arguments") {
+			t.Errorf("%v: %d, %q, %q", args, status, stdout, stderr)
+		}
+	}
+}
