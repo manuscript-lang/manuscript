@@ -14,6 +14,14 @@ import (
 // so the caller keeps its existing path for that form.
 func Value(program *checker.Program, e *syntax.Expression, info *checker.Info) Expr {
 	switch e.Kind {
+	case syntax.KindUnary:
+		if (e.Text == "-" || e.Text == "+") && e.Right.Kind == syntax.KindNumber && (Primitive(info.Type) == "int64" || Primitive(info.Type) == "float64") {
+			text := e.Right.Text
+			if e.Text == "-" {
+				text = "-" + text
+			}
+			return number(text, info.Type)
+		}
 	case syntax.KindNumber:
 		return number(e.Text, info.Type)
 	case syntax.KindBool:
@@ -32,10 +40,12 @@ func Value(program *checker.Program, e *syntax.Expression, info *checker.Info) E
 		return Text{Parts: parts, Type: info.Type}
 	case syntax.KindList:
 		items := make([]Expr, len(e.Elements))
+		elements := make([]Edge, len(e.Elements))
 		for i, item := range e.Elements {
-			items[i] = Operand(program, item)
+			elements[i] = Use(program, item, info.Type.Args[0])
+			items[i] = OperandAs(program, item, info.Type.Args[0])
 		}
-		return List{Type: info.Type, Items: items}
+		return List{Type: info.Type, Items: items, Elements: elements}
 	case syntax.KindMap:
 		entries := make([]Entry, 0, len(e.Elements)/2)
 		for at := 0; at < len(e.Elements); at += 2 {
@@ -49,10 +59,18 @@ func Value(program *checker.Program, e *syntax.Expression, info *checker.Info) E
 // Operand elaborates a child expression. A child that crosses a checked
 // boundary conversion, or has no node yet, stays deferred so lowering applies
 // the conversion.
-func Operand(program *checker.Program, e *syntax.Expression) Expr {
+func Operand(program *checker.Program, e *syntax.Expression) Expr { return OperandAs(program, e, nil) }
+
+// OperandAs retains the checked element/use expectation without overwriting
+// source types; unsupported expression bodies continue through Deferred.
+func OperandAs(program *checker.Program, e *syntax.Expression, expected *checker.Type) Expr {
 	info := program.Info(e)
-	if info == nil || info.ErrorSource != nil {
+	if info == nil {
 		return Deferred{Source: e}
+	}
+	edge := Use(program, e, expected)
+	if edge.ErrorSource != nil || edge.Optional != nil || edge.Never {
+		return Converted{Use: edge}
 	}
 	if x := Value(program, e, info); x != nil {
 		return x

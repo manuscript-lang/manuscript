@@ -23,33 +23,38 @@ func (g *generator) arguments(args []syntax.Argument) ast.Expr {
 	return sliceLiteral(runtimeName("Argument"), values...)
 }
 func (g *generator) argumentValue(a syntax.Argument) ast.Expr {
-	value := g.expression(a.Value)
-	if target := g.program.Info(a.Value).OptionalArgument; target != nil {
-		value = runtimeCall("NewAlternative", g.key(target), textLiteral("some"), stringSlice([]string{"value"}), sliceLiteral(runtimeName("Argument"), composite(nil, keyed("Name", textLiteral("value")), keyed("Value", value))))
+	return g.edgeValue(g.ir.Use(a.Value, nil))
+}
+func (g *generator) edgeValue(edge ir.Edge) ast.Expr {
+	value := g.expression(edge.Source)
+	if edge.Optional != nil {
+		value = runtimeCall("NewAlternative", g.key(edge.Optional), textLiteral("some"), stringSlice([]string{"value"}), sliceLiteral(runtimeName("Argument"), composite(nil, keyed("Name", textLiteral("value")), keyed("Value", value))))
 	}
 	return value
 }
+
 func (g *generator) expression(e *syntax.Expression) ast.Expr {
-	if value, ok := g.booleans[e]; ok {
+	if value, ok := g.folds.Bool(e); ok {
 		return ident(strconv.FormatBool(value))
 	}
 	info := g.program.Info(e)
-	if info.ErrorSource == nil {
+	boundary := g.ir.Expression(e).Boundary
+	if boundary.ErrorSource == nil {
 		return g.expressionValue(e, info)
 	}
 	original := *info
-	original.Type = info.ErrorSource
+	original.Type = boundary.ErrorSource
 	value := g.expressionValue(e, &original)
-	cause := info.ErrorSource
+	cause := boundary.ErrorSource
 	if cause.ID == "@std/Result" {
 		cause = cause.Args[1]
 		args := []ast.Expr{value, g.key(info.Type)}
-		if info.ScopedError {
+		if boundary.ScopedError {
 			args = append(args, g.typeScope(cause))
 		}
 		return runtimeCall("ErrorResult", args...)
 	}
-	if info.ScopedError {
+	if boundary.ScopedError {
 		return runtimeCall("ViewOf", textLiteral("@std/Error"), value, g.typeScope(cause))
 	}
 	return value
@@ -78,7 +83,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			value := unit()
 			if a.Value != nil {
 				if native {
-					value = g.scalarValue(a.Value)
+					value = g.scalarEdge(g.ir.Expression(e).Arms[a])
 				} else {
 					value = g.expression(a.Value)
 				}
@@ -134,6 +139,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			}
 			return runtimeCall("NativeMember", g.expression(e.Left), textLiteral(e.Text))
 		}
+		if st, f := g.structFieldOf(e); st != nil {
+			return call(selector(g.structOperand(st, e.Left), "Get_"+f.Name))
+		}
 		return runtimeCall("Field", g.expression(e.Left), textLiteral(e.Text))
 	case syntax.KindCall:
 		if info.Constructor != nil && info.Native == "view" {
@@ -143,10 +151,11 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			receiver := e.Args[0].Value
 			return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.program.Info(receiver).Type))
 		}
-		arguments := e.Args
-		if info.Arguments != nil {
-			arguments = info.Arguments
+		resolvedCall := g.ir.Expression(e).Call
+		if resolvedCall.Record != nil {
+			return g.constructStruct(resolvedCall.Record, resolvedCall.Arguments)
 		}
+		arguments := callSyntax(resolvedCall)
 		if value := g.numericCall(e); value != nil {
 			return value
 		}
@@ -230,7 +239,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			if e.Text == "or" {
 				op = token.LOR
 			}
-			return &ast.BinaryExpr{X: g.scalarValue(e.Left), Op: op, Y: g.scalarValue(e.Right)}
+			return &ast.BinaryExpr{X: g.scalarEdge(g.ir.Expression(e).Operation.Left), Op: op, Y: g.scalarEdge(g.ir.Expression(e).Operation.Right)}
 		}
 		if e.Text == "==" || e.Text == "!=" {
 			if value := g.primitiveEquality(e); value != nil {

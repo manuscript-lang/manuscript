@@ -19,6 +19,10 @@ type Expr interface{ expr() }
 // from its syntax, including checked boundary conversions.
 type Deferred struct{ Source *syntax.Expression }
 
+// Converted is a value at an explicit checked use boundary. It retains the
+// source expression and conversion order even while its body remains Deferred.
+type Converted struct{ Use Edge }
+
 // IntLiteral is a signed 64-bit integer literal.
 type IntLiteral struct {
 	Value int64
@@ -63,6 +67,9 @@ type TextPart struct {
 type List struct {
 	Type  *checker.Type
 	Items []Expr
+	// Elements parallels Items with source/expected/coercion facts for consumers
+	// that choose a typed constructor or initialization ABI.
+	Elements []Edge
 }
 
 // Map constructs a map of the given checked type. Pos is the construction
@@ -77,6 +84,7 @@ type Map struct {
 type Entry struct{ Key, Value Expr }
 
 func (Deferred) expr()       {}
+func (Converted) expr()      {}
 func (IntLiteral) expr()     {}
 func (FloatLiteral) expr()   {}
 func (DecimalLiteral) expr() {}

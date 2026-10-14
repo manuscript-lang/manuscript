@@ -71,6 +71,10 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		return g.pattern(s.Pattern, g.expression(s.Value))
 	case syntax.KindAssign:
 		if s.Target != nil {
+			if st, f := g.structFieldOf(s.Target); st != nil {
+				return []ast.Stmt{evaluated(call(selector(g.structOperand(st, s.Target.Left), "Set_"+f.Name), g.scalarValueAs(s.Value, f.Type)))}
+			}
+
 			return []ast.Stmt{evaluated(runtimeCall("SetField", g.expression(s.Target.Left), textLiteral(s.Target.Text), g.expression(s.Value)))}
 		}
 		// Assignment binding identities are recorded by the checker, including shadows.
@@ -114,7 +118,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		}
 		return append(out, &ast.BranchStmt{Tok: op, Label: ident(label.name)})
 	case syntax.KindIf:
-		stmt := &ast.IfStmt{Cond: g.scalarValue(s.Value), Body: block(g.body(s.Body)...)}
+		stmt := &ast.IfStmt{Cond: g.condition(s.Value), Body: block(g.body(s.Body)...)}
 		if len(s.Else) > 0 {
 			stmt.Else = block(g.body(s.Else)...)
 		}
@@ -129,7 +133,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		var loop ast.Stmt
 		if s.Kind == syntax.KindWhile {
 			body = append([]ast.Stmt{evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
-			loop = &ast.ForStmt{Cond: g.scalarValue(s.Value), Body: block(body...)}
+			loop = &ast.ForStmt{Cond: g.condition(s.Value), Body: block(body...)}
 		} else {
 			b := g.program.LoopBinding(s)
 			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
@@ -288,7 +292,7 @@ func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr) {
 	}
 	e := s.Value
 	info := g.program.Info(e)
-	if e.Kind != syntax.KindUnary || e.Text != "try" || info.ErrorSource != nil || g.booleans[e] {
+	if e.Kind != syntax.KindUnary || e.Text != "try" || info.ErrorSource != nil || g.constantBool(e) {
 		return nil, nil
 	}
 	tmp := g.temp()

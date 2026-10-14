@@ -5,37 +5,21 @@ import (
 	"go/token"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
 // Source implementations cannot replace builtin primitive equality. Nominal
 // data, contract views and type variables retain selected runtime dispatch.
-func primitiveEqualityType(t *checker.Type) string {
-	if t == nil || t.Kind != "primitive" || t.Def != nil || len(t.Args) != 0 {
-		return ""
-	}
-	switch t.ID {
-	case "Int":
-		return "int64"
-	case "Float":
-		return "float64"
-	case "Bool":
-		return "bool"
-	case "String":
-		return "string"
-	}
-	return ""
-}
+func primitiveEqualityType(t *checker.Type) string { return ir.Primitive(t) }
 
 func (g *generator) primitiveEquality(e *syntax.Expression) ast.Expr {
-	left := g.program.Info(e.Left).Type
-	right := g.program.Info(e.Right).Type
-	typ := primitiveEqualityType(left)
-	if typ == "" || left.ID != right.ID || primitiveEqualityType(right) != typ {
+	operation := g.ir.Expression(e).Operation
+	if operation == nil {
 		return nil
 	}
 	op := token.EQL
-	if e.Text == "!=" {
+	if operation.Identity == "!=" {
 		op = token.NEQ
 	}
 	return g.orderedScalars(e, func(a, b ast.Expr) ast.Expr { return &ast.BinaryExpr{X: a, Op: op, Y: b} })

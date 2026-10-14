@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/manuscript-lang/manuscript/pkg/checker"
 )
 
 // Keep the exact issue #277 reproduction, including its nested constructor.
@@ -40,8 +38,7 @@ func TestInterfaceViewLowersReceiverOnce(t *testing.T) {
 			if !checked.Success() {
 				t.Fatal(checked.Diagnostics)
 			}
-			optimized := optimize(checked.Program)
-			g := &generator{program: checked.Program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}}
+			g := newGenerator(checked.Program)
 			file := g.file("views.ms", Options{})
 			seen := map[string]int{}
 			ast.Inspect(file, func(node ast.Node) bool {

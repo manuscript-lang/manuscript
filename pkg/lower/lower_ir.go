@@ -3,6 +3,7 @@ package lower
 import (
 	"go/ast"
 	"go/token"
+	"math"
 	"strconv"
 
 	"github.com/manuscript-lang/manuscript/pkg/ir"
@@ -12,11 +13,16 @@ import (
 // every classification and checked fact is already on the node.
 func (g *generator) irValue(x ir.Expr) ast.Expr {
 	switch x := x.(type) {
+	case ir.Converted:
+		return g.edgeValue(x.Use)
 	case ir.Deferred:
 		return g.expression(x.Source)
 	case ir.IntLiteral:
 		return call(ident("int64"), signedInteger(strconv.FormatInt(x.Value, 10)))
 	case ir.FloatLiteral:
+		if x.Value == 0 && math.Signbit(x.Value) {
+			return runtimeCall("FloatNegate", call(ident("float64"), intLiteral(0)))
+		}
 		return call(ident("float64"), &ast.BasicLit{Kind: token.FLOAT, Value: strconv.FormatFloat(x.Value, 'g', -1, 64)})
 	case ir.DecimalLiteral:
 		return runtimeCall("DecimalLiteral", textLiteral(x.Text))

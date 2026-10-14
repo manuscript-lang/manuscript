@@ -3,7 +3,6 @@ package lower
 import (
 	"go/ast"
 	"strconv"
-	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
@@ -14,19 +13,12 @@ import (
 // argument is already in declaration order, Invoke adds only redundant label
 // preparation and a cancellation check. Keep other callable paths unchanged.
 func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
-	symbol := g.program.Info(e).Symbol
-	if symbol == nil || symbol.Native != "" || len(symbol.Variables) != 0 || symbol.Decl == nil || symbol.Decl.Kind != syntax.KindFn {
+	x := g.ir.Expression(e).Call
+	symbol := x.Symbol
+	if symbol == nil || !x.Prepared {
 		return nil
 	}
-	params := symbol.Type.Params
-	if len(args) != len(params) {
-		return nil
-	}
-	for i, arg := range args {
-		if arg.Name != params[i].Name {
-			return nil
-		}
-	}
+	args = callSyntax(x)
 	values := make([]ast.Expr, len(args))
 	for i, arg := range args {
 		// A later match argument can reassign a local used by an earlier
@@ -42,29 +34,18 @@ func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argum
 // and Argument slice that Bind and Invoke build for every call. Arguments must
 // already be in declaration order so the labels carry no information.
 func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
-	callee := g.program.Info(e.Left)
-	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Contract == nil || callee.Method.Native != "" {
+	x := g.ir.Expression(e).Call
+	if x.Symbol != nil || x.Method == nil || !x.Prepared {
 		return nil
 	}
-	receiverType := g.program.Info(e.Left.Left).Type
-	if (receiverType.Kind != syntax.KindRecord && receiverType.Kind != "alternative") || len(receiverType.Args) != 0 || hasTypeVariable(receiverType) || strings.HasPrefix(receiverType.ID, "@std/") {
-		return nil
-	}
-	params := callee.Method.Type.Params
-	if len(args) != len(params) {
-		return nil
-	}
-	for i, arg := range args {
-		if arg.Name != params[i].Name {
-			return nil
-		}
-	}
+	args = callSyntax(x)
+	receiverType := x.Receiver.Type
 	values := make([]ast.Expr, len(args))
 	for i, arg := range args {
 		values[i] = sourceAt(arg.Pos, g.argumentValue(arg))
 	}
 	site := "method" + strconv.Itoa(len(g.sites)+1)
 	g.sites = append(g.sites, site)
-	receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-	return g.locatedOperation(e, runtimeName("CallMethod"), ident("ctx"), address(ident(site)), receiver, g.key(callee.Method.Contract), textLiteral(e.Left.Text), g.typeScope(receiverType), sliceLiteral(runtimeName("Value"), values...))
+	receiver := sourceAt(e.Left.Left.Pos, g.expression(x.Receiver.Source))
+	return g.locatedOperation(e, runtimeName("CallMethod"), ident("ctx"), address(ident(site)), receiver, g.key(x.Method.Contract), textLiteral(e.Left.Text), g.typeScope(receiverType), sliceLiteral(runtimeName("Value"), values...))
 }

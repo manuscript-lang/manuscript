@@ -5,6 +5,7 @@ import (
 	"go/ast"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -19,7 +20,10 @@ type loopLabel struct {
 // Function lowering saves and restores cleanup/loop state for nested closures.
 type generator struct {
 	program          *checker.Program
-	booleans         map[*syntax.Expression]bool
+	ir               *ir.Program
+	structs          map[string]*structType
+	structOrder      []*structType
+	folds            *ir.Folder
 	module           string
 	serial           int
 	expressionDepth  int
@@ -130,3 +134,9 @@ func (g *generator) binding(b *checker.Binding) ast.Expr {
 	}
 	return ident(b.ID)
 }
+
+func newGenerator(program *checker.Program) *generator {
+	resolved := ir.Elaborate(program)
+	return &generator{program: program, ir: resolved, folds: resolved.Folds, captures: map[*checker.Binding]string{}, nativeCalls: resolved.NativeCalls, nativeMethods: resolved.NativeMethods, scalarLocals: resolved.ScalarLocals}
+}
+func (g *generator) constantBool(e *syntax.Expression) bool { _, ok := g.folds.Bool(e); return ok }

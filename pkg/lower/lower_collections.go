@@ -21,110 +21,40 @@ func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checke
 // resources. Direct calls can share their runtime implementation without
 // constructing a bound Function, resolving labels, or changing Optional storage.
 // References to bound methods still use ordinary callable dispatch.
-func (g *generator) directCollectionCall(e *syntax.Expression, arguments []syntax.Argument) ast.Expr {
-	callee := g.program.Info(e.Left)
-	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Contract != nil {
+func (g *generator) directCollectionCall(e *syntax.Expression, _ []syntax.Argument) ast.Expr {
+	x := g.ir.Expression(e).Call
+	if x.Collection == "" {
 		return nil
 	}
-	switch callee.Method.Native {
-	case "collections/at":
+	receiver := func() ast.Expr { return sourceAt(x.Receiver.Source.Pos, g.expression(x.Receiver.Source)) }
+	switch x.Collection {
+	case "ListAt":
 		if value := g.typedListAt(e); value != nil {
-			return call(selector(value, "Box"), g.key(g.program.Info(e).Type))
+			return call(selector(value, "Box"), g.key(g.ir.Expression(e).Type))
 		}
-		if len(arguments) == 1 {
-			// Force even a plain local receiver to be read before the index:
-			// a match expression in the index can reassign that local. Go does
-			// not otherwise order a variable read before a later function call.
-			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-			return g.locatedOperation(e, runtimeName("ListAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Info(e).Type))
+		return g.locatedOperation(e, runtimeName("ListAt"), ident("ctx"), receiver(), g.edgeValue(x.Arguments[0].Value), g.key(g.ir.Expression(e).Type))
+	case "ListAppend":
+		if x.ListSuffix != "" {
+			return g.locatedOperation(e, runtimeName("ListAppend"+x.ListSuffix), ident("ctx"), receiver(), g.scalarEdge(x.Arguments[0].Value))
 		}
-	case "length":
-		// Collection length reads the receiver's size; it never calls back or fails.
-		switch g.program.Info(e.Left.Left).Type.ID {
-		case "@std/List", "@std/Map", "@std/Set":
-			if len(arguments) == 0 {
-				return g.locatedOperation(e, runtimeName("CollectionLengthInt"), ident("ctx"), g.expression(e.Left.Left))
-			}
+		return g.locatedOperation(e, runtimeName("ListAppend"), ident("ctx"), receiver(), g.edgeValue(x.Arguments[0].Value))
+	case "CollectionLengthInt", "ListIsEmpty", "StringByteLength":
+		return g.locatedOperation(e, runtimeName(x.Collection), ident("ctx"), g.expression(x.Receiver.Source))
+	case "StringAt":
+		return g.locatedOperation(e, runtimeName("StringAt"), ident("ctx"), receiver(), g.edgeValue(x.Arguments[0].Value), g.key(g.ir.Expression(e).Type))
+	case "OptionalUnwrap":
+		if x.UnwrapAt != nil {
+			return call(selector(sourceAt(e.Pos, g.typedListAt(x.UnwrapAt)), "Unwrap"), ident("ctx"))
 		}
-	case "append":
-		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
-			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-			if suffix := primitiveListSuffix(g.program.Info(e.Left.Left).Type); suffix != "" {
-				return g.locatedOperation(e, runtimeName("ListAppend"+suffix), ident("ctx"), receiver, g.scalarValueAs(arguments[0].Value, g.program.Info(e.Left.Left).Type.Args[0]))
-			}
-			return g.locatedOperation(e, runtimeName("ListAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
-		}
-	case "is_empty", "collections/is_empty":
-		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
-			return g.locatedOperation(e, runtimeName("ListIsEmpty"), ident("ctx"), g.expression(e.Left.Left))
-		}
-	case "collections/contains", "contains", "get", "with_entry", "with_value", "collections/set_add", "collections/set_remove", "collections/map_add", "collections/map_remove":
-		return g.directKeyedCall(e, callee.Method.Native, arguments)
-	case "string/at":
-		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "String" {
-			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-			return g.locatedOperation(e, runtimeName("StringAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Info(e).Type))
-		}
-	case "byte_length":
-		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "String" {
-			return g.locatedOperation(e, runtimeName("StringByteLength"), ident("ctx"), g.expression(e.Left.Left))
-		}
-	case "optional/unwrap":
-		if g.typedUnwrapAt(e) {
-			return call(selector(sourceAt(e.Pos, g.typedListAt(e.Left.Left)), "Unwrap"), ident("ctx"))
-		}
-		if len(arguments) == 0 {
-			return g.locatedOperation(e, runtimeName("OptionalUnwrap"), ident("ctx"), g.expression(e.Left.Left))
-		}
+		return g.locatedOperation(e, runtimeName("OptionalUnwrap"), ident("ctx"), g.expression(x.Receiver.Source))
 	}
-	return nil
-}
-
-// directKeyedCall lowers membership and keyed access on built-in List, Map,
-// and Set receivers. The element or key scope travels as data, replacing the
-// per-call Execution copy of a bound native member.
-func (g *generator) directKeyedCall(e *syntax.Expression, native string, arguments []syntax.Argument) ast.Expr {
-	receiverType := g.program.Info(e.Left.Left).Type
-	if len(receiverType.Args) == 0 {
-		return nil
+	args := []ast.Expr{ident("ctx"), receiver()}
+	for _, a := range x.Arguments {
+		args = append(args, sourceAt(a.Pos, g.edgeValue(a.Value)))
 	}
-	name, count := "", len(arguments)
-	switch receiverType.ID + "/" + native {
-	case "@std/List/collections/contains":
-		name = "ListContains"
-	case "@std/Map/contains":
-		name = "MapContains"
-	case "@std/Map/get":
-		name = "MapGet"
-	case "@std/Map/with_entry", "@std/Map/collections/map_add":
-		name = "MapWithEntry"
-	case "@std/Map/collections/map_remove":
-		name = "MapRemove"
-	case "@std/Set/contains":
-		name = "SetContains"
-	case "@std/Set/with_value", "@std/Set/collections/set_add":
-		name = "SetWithValue"
-	case "@std/Set/collections/set_remove":
-		name = "SetRemove"
-	default:
-		return nil
+	args = append(args, g.typeScope(x.Receiver.Type.Args[0]))
+	if x.Collection == "MapGet" {
+		args = append(args, g.key(g.ir.Expression(e).Type))
 	}
-	if want := map[string]int{"MapWithEntry": 2}[name]; (want == 0 && count != 1) || (want != 0 && count != want) {
-		return nil
-	}
-	if name == "MapWithEntry" && (arguments[0].Name == "value" || arguments[1].Name == "key") {
-		return nil
-	}
-	// Read the receiver before the arguments, as for List.at.
-	args := []ast.Expr{ident("ctx"), sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))}
-	for _, argument := range arguments {
-		// Reuse checked conversions and capture each value before a later
-		// argument can mutate an earlier local, just as ordinary calls do.
-		args = append(args, sourceAt(argument.Pos, g.argumentValue(argument)))
-	}
-	args = append(args, g.typeScope(receiverType.Args[0]))
-	if name == "MapGet" {
-		args = append(args, g.key(g.program.Info(e).Type))
-	}
-	return g.locatedOperation(e, runtimeName(name), args...)
+	return g.locatedOperation(e, runtimeName(x.Collection), args...)
 }

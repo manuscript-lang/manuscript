@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -13,110 +14,6 @@ import (
 // Every declaration retains its ordinary first-class callable. Defaults with
 // omissions and generics use that callable; fully supplied calls may reorder
 // their captured arguments without changing written evaluation order.
-func (g *generator) selectNativeCalls() {
-	g.nativeCalls = map[*checker.Symbol]bool{}
-	for _, m := range g.program.Modules {
-		for _, d := range m.Declarations {
-			if d.Kind != syntax.KindFn {
-				continue
-			}
-			s := g.program.Symbol(m.File, d.Name)
-			g.nativeCalls[s] = s.Native == "" && len(s.Variables) == 0 && !hasTypeVariable(s.Type)
-		}
-	}
-}
-func (g *generator) nativeCallAvailable(e *syntax.Expression) bool {
-	info := g.program.Info(e)
-	if info == nil || !g.nativeCalls[info.Symbol] {
-		return false
-	}
-	args := e.Args
-	if info.Arguments != nil {
-		args = info.Arguments
-	}
-	if len(args) > len(info.Symbol.Type.Params) {
-		return false
-	}
-	present := map[string]bool{}
-	for _, a := range args {
-		present[a.Name] = true
-	}
-	for i, p := range info.Symbol.Type.Params {
-		if !present[p.Name] && !nativeDefault(info.Symbol, i) {
-			return false
-		}
-	}
-	return true
-}
-
-// The boxed adapter can share the typed body only when its inputs stay native
-// and its output is newly computed. Otherwise lower a boxed adapter from the
-// same checked body, preserving the original box for identity/capture/storage.
-func (g *generator) shareNativeBody(s *checker.Symbol) bool {
-	return g.nativeBodyCompatible(s.Decl.Params, s.Decl.Body, g.program.ParameterBindings(s.Decl), s.Type)
-}
-func (g *generator) nativeBodyCompatible(params []syntax.Parameter, body []*syntax.Statement, bindings []*checker.Binding, t *checker.Type) bool {
-	parameters := map[*checker.Binding]bool{}
-	for i, b := range bindings {
-		parameters[b] = true
-		if params[i].Default != nil || t.Defaults[t.Params[i].Name] {
-			return false
-		}
-	}
-	allowed := map[*syntax.Expression]bool{}
-	var uses []*syntax.Expression
-	valid := true
-	syntax.Visitor{Statement: func(stmt *syntax.Statement) {
-		if primitiveEqualityType(t.Result) != "" && stmt.Kind == syntax.KindReturn && !g.freshScalar(stmt.Value) {
-			valid = false
-		}
-	}, Expression: func(e *syntax.Expression) {
-		info := g.program.Info(e)
-		if info == nil {
-			return
-		}
-		if parameters[info.Binding] {
-			uses = append(uses, e)
-		}
-		if e.Kind == syntax.KindLambda {
-			for _, b := range info.Captures {
-				if parameters[b] {
-					valid = false
-				}
-			}
-		}
-		if e.Kind == syntax.KindBinary && g.nativeBinaryOperands(e) {
-			allowed[e.Left], allowed[e.Right] = true, true
-		}
-		if e.Kind == syntax.KindUnary && (e.Text == "-" || e.Text == "not") {
-			allowed[e.Right] = true
-		}
-	}}.Callable(params, body)
-	for _, e := range uses {
-		if primitiveEqualityType(g.program.Info(e).Type) != "" && !allowed[e] {
-			valid = false
-		}
-	}
-	return valid
-}
-func (g *generator) freshScalar(e *syntax.Expression) bool {
-	if e == nil {
-		return false
-	}
-	switch e.Kind {
-	case syntax.KindNumber, syntax.KindBool:
-		return true
-	case syntax.KindBinary:
-		return g.nativeBinaryOperands(e)
-	case syntax.KindUnary:
-		return e.Text == "-" || e.Text == "not"
-	case syntax.KindName:
-		return g.scalarLocals[g.program.Info(e).Binding] != ""
-	case syntax.KindCall:
-		return g.numericCallName(e) != "" || g.typedCollectionScalar(e)
-	}
-	return false
-}
 
 func (g *generator) nativeFunction(s *checker.Symbol) ([]ast.Decl, ast.Expr) {
 	return g.nativeCallable(s, nil, s.Decl.Name)
@@ -193,85 +90,52 @@ func (g *generator) nativeCallable(s *checker.Symbol, self *checker.Binding, nam
 	return decls, adapter
 }
 
-func (g *generator) nativeSourceCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
-	if !g.nativeCallAvailable(e) {
+func (g *generator) nativeSourceCall(e *syntax.Expression, _ []syntax.Argument) ast.Expr {
+	x := g.ir.Expression(e).Call
+	if x.Symbol == nil || !x.Native {
 		return nil
 	}
-	s := g.program.Info(e).Symbol
-	// A boxed identity/forwarding call must keep the box it already owns.
+	s := x.Symbol
 	if g.wantScalar == 0 && !g.shareNativeBody(s) {
 		return nil
 	}
-	ordered := true
-	previous := -1
-	for _, a := range args {
-		for i, p := range s.Type.Params {
-			if p.Name == a.Name {
-				ordered = ordered && i > previous
-				previous = i
-			}
-		}
-	}
-	if ordered {
-		byName := map[string]syntax.Argument{}
-		for _, a := range args {
-			byName[a.Name] = a
-		}
-		values := []ast.Expr{ident("ctx")}
-		for _, p := range s.Type.Params {
-			value := nativeZero(p.Type)
-			if a, present := byName[p.Name]; present {
-				if primitiveEqualityType(p.Type) != "" {
-					value = g.scalarValueAs(a.Value, p.Type)
-				} else {
-					value = g.argumentValue(a)
-				}
-				value = sourceAt(a.Pos, value)
-			}
-			values = append(values, value)
-		}
-		for i, p := range s.Type.Params {
-			if nativeDefault(s, i) {
-				_, present := byName[p.Name]
-				values = append(values, ident(strconv.FormatBool(present)))
-			}
-		}
-		return g.locatedOperation(e, ident(s.ID+"Native"), values...)
-	}
-	var captures []ast.Stmt
-	byName := map[string]ast.Expr{}
-	for _, a := range args {
-		name := g.temp()
-		var typ *checker.Type
-		for _, p := range s.Type.Params {
-			if p.Name == a.Name {
-				typ = p.Type
-			}
-		}
-		var value ast.Expr
-		if primitiveEqualityType(typ) != "" {
-			value = g.scalarValueAs(a.Value, typ)
-		} else {
-			value = g.argumentValue(a)
-		}
-		captures = append(captures, define(name, sourceAt(a.Pos, value)))
-		byName[a.Name] = ident(name)
-	}
 	values := []ast.Expr{ident("ctx")}
-	for _, p := range s.Type.Params {
-		value := byName[p.Name]
+	bySlot := make([]ast.Expr, len(x.Parameters))
+	var captures []ast.Stmt
+	for _, a := range x.Arguments {
+		value := g.callArgument(a)
+		value = sourceAt(a.Pos, value)
+		if !x.Ordered {
+			name := g.temp()
+			captures = append(captures, define(name, value))
+			value = ident(name)
+		}
+		bySlot[a.Slot] = value
+	}
+	for slot, p := range x.Parameters {
+		value := bySlot[slot]
 		if value == nil {
 			value = nativeZero(p.Type)
 		}
 		values = append(values, value)
 	}
-	for i, p := range s.Type.Params {
-		if nativeDefault(s, i) {
-			values = append(values, ident(strconv.FormatBool(byName[p.Name] != nil)))
+	for _, p := range x.Parameters {
+		if p.Omittable {
+			values = append(values, ident(strconv.FormatBool(p.Supplied)))
 		}
+	}
+	if x.Ordered {
+		return g.locatedOperation(e, ident(s.ID+"Native"), values...)
 	}
 	captures = append(captures, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(e.Pos.String())), returned(call(ident(s.ID+"Native"), values...)))
 	return call(closure(nil, nativeResultType(s.Type.Result), captures...))
+}
+
+func (g *generator) callArgument(a ir.Argument) ast.Expr {
+	if ir.Primitive(a.Value.Expected) != "" {
+		return g.scalarEdge(a.Value)
+	}
+	return g.edgeValue(a.Value)
 }
 
 func nativeResultType(t *checker.Type) ast.Expr {
@@ -295,26 +159,4 @@ func nativeZero(t *checker.Type) ast.Expr {
 		return textLiteral("")
 	}
 	return ident("nil")
-}
-
-func comparatorKind(t *checker.Type, params []syntax.Parameter) string {
-	if t == nil || hasTypeVariable(t) || primitiveEqualityType(t.Result) != "int64" || len(t.Params) != 2 {
-		return ""
-	}
-	for i, p := range t.Params {
-		if params[i].Default != nil || t.Defaults[p.Name] {
-			return ""
-		}
-	}
-	a, b := primitiveEqualityType(t.Params[0].Type), primitiveEqualityType(t.Params[1].Type)
-	if a != b {
-		return ""
-	}
-	if a == "int64" {
-		return "Int"
-	}
-	if a == "float64" {
-		return "Float"
-	}
-	return ""
 }

@@ -21,11 +21,8 @@ type Options struct {
 
 // Go lowers a checked program to Go source using its resolved identities.
 func Go(program *checker.Program, entry string, options Options) (string, error) {
-	optimized := optimize(program)
-	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}, debugLiterals: options.DebugLiterals}
-	g.selectNativeCalls()
-	g.selectNativeMethods()
-	g.scalarLocals = g.selectScalarLocals()
+	g := newGenerator(program)
+	g.debugLiterals = options.DebugLiterals
 
 	file := g.file(entry, options)
 	if g.loweringError != nil {
@@ -37,6 +34,7 @@ func Go(program *checker.Program, entry string, options Options) (string, error)
 // file assembles the Go tree; executable source is serialized only by printGo.
 func (g *generator) file(entry string, options Options) *ast.File {
 	program := g.program
+	g.planStructs()
 	imports := []*ast.ImportSpec{
 		{Name: ident("rt"), Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/manuscript-lang/manuscript/pkg/runtime"`}},
 		{Path: &ast.BasicLit{Kind: token.STRING, Value: `"os"`}},
@@ -44,6 +42,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 	file := &ast.File{Name: ident("main"), Imports: imports, Decls: []ast.Decl{
 		&ast.GenDecl{Tok: token.IMPORT, Specs: []ast.Spec{imports[0], imports[1]}},
 	}}
+	file.Decls = append(file.Decls, g.structDeclarations()...)
 	var functions []*checker.Symbol
 	for _, module := range program.Modules {
 		for _, d := range module.Declarations {
@@ -55,6 +54,10 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		}
 	}
 	var initialize []ast.Stmt
+	for _, st := range g.structOrder {
+		initialize = append(initialize, evaluated(runtimeCall("RegisterStruct", textLiteral(st.Key), closure(nil, runtimeName("Struct"), returned(address(composite(ident(st.Name))))))))
+	}
+
 	for _, s := range functions {
 		g.module = s.Module
 		var value ast.Expr

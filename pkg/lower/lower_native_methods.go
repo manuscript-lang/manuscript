@@ -8,94 +8,45 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-func (g *generator) selectNativeMethods() {
-	g.nativeMethods = map[string]*checker.Method{}
-	for _, m := range g.program.Methods {
-		if m.Native == "" && len(m.Variables) == 0 && !hasTypeVariable(m.Receiver) && !hasTypeVariable(m.Type) {
-			g.nativeMethods[m.ID] = m
-		}
-	}
-}
 func methodSymbol(m *checker.Method) *checker.Symbol {
 	return &checker.Symbol{ID: m.ID, Module: m.Module, Decl: m.Decl, Type: m.Type}
 }
-func (g *generator) nativeMethodAvailable(e *syntax.Expression) bool {
-	if e.Kind != syntax.KindCall || e.Left.Kind != syntax.KindMember {
-		return false
-	}
-	info := g.program.Info(e.Left)
-	if info == nil || info.Method == nil || g.nativeMethods[info.Method.ID] == nil {
-		return false
-	}
-	receiver := g.program.Info(e.Left.Left).Type
-	if receiver.Kind == "contract" || hasTypeVariable(receiver) {
-		return false
-	}
-	args := e.Args
-	if converted := g.program.Info(e).Arguments; converted != nil {
-		args = converted
-	}
-	// Omitted inherited interface defaults retain their existing preparation.
-	return len(args) == len(info.Method.Type.Params)
-}
-func (g *generator) nativeMethodCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
-	if !g.nativeMethodAvailable(e) {
+
+func (g *generator) nativeMethodCall(e *syntax.Expression, _ []syntax.Argument) ast.Expr {
+	x := g.ir.Expression(e).Call
+	if x.Method == nil || !x.Native {
 		return nil
 	}
-	m := g.nativeMethods[g.program.Info(e.Left).Method.ID]
+	m := g.nativeMethods[x.Method.ID]
 	s := methodSymbol(m)
 	if g.wantScalar == 0 && !g.shareNativeBody(s) {
 		return nil
 	}
-	ordered := true
-	for i, a := range args {
-		ordered = ordered && a.Name == m.Type.Params[i].Name
-	}
-	receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-	var captures []ast.Stmt
+	receiver := sourceAt(x.Receiver.Source.Pos, g.expression(x.Receiver.Source))
 	values := []ast.Expr{ident("ctx"), receiver}
-	if ordered {
-		for i, a := range args {
-			var value ast.Expr
-			if primitiveEqualityType(m.Type.Params[i].Type) != "" {
-				value = g.scalarValueAs(a.Value, m.Type.Params[i].Type)
-			} else {
-				value = g.argumentValue(a)
-			}
-			values = append(values, sourceAt(a.Pos, value))
-		}
-	} else {
+	bySlot := make([]ast.Expr, len(x.Parameters))
+	var captures []ast.Stmt
+	if !x.Ordered {
 		name := g.temp()
 		captures = append(captures, define(name, receiver))
 		values[1] = ident(name)
-		byName := map[string]ast.Expr{}
-		for _, a := range args {
-			var t *checker.Type
-			for _, p := range m.Type.Params {
-				if p.Name == a.Name {
-					t = p.Type
-				}
-			}
-			var value ast.Expr
-			if primitiveEqualityType(t) != "" {
-				value = g.scalarValueAs(a.Value, t)
-			} else {
-				value = g.argumentValue(a)
-			}
-			name := g.temp()
-			captures = append(captures, define(name, sourceAt(a.Pos, value)))
-			byName[a.Name] = ident(name)
-		}
-		for _, p := range m.Type.Params {
-			values = append(values, byName[p.Name])
-		}
 	}
-	for i := range m.Type.Params {
-		if nativeDefault(s, i) {
+	for _, a := range x.Arguments {
+		value := sourceAt(a.Pos, g.callArgument(a))
+		if !x.Ordered {
+			name := g.temp()
+			captures = append(captures, define(name, value))
+			value = ident(name)
+		}
+		bySlot[a.Slot] = value
+	}
+	values = append(values, bySlot...)
+	for _, p := range x.Parameters {
+		if p.Omittable {
 			values = append(values, ident("true"))
 		}
 	}
-	if ordered {
+	if x.Ordered {
 		return g.locatedOperation(e, ident(m.ID+"Native"), values...)
 	}
 	captures = append(captures, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(e.Pos.String())), returned(call(ident(m.ID+"Native"), values...)))

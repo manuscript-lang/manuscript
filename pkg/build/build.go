@@ -65,6 +65,8 @@ func Standalone(source string) (string, error) {
 		}
 	}
 	add(parsed)
+	generated := declarations
+	declarations = nil
 	entries, err := msruntime.Sources.ReadDir(".")
 	if err != nil {
 		return "", err
@@ -94,10 +96,23 @@ func Standalone(source string) (string, error) {
 	for _, path := range paths {
 		group.Specs = append(group.Specs, imports[path])
 	}
-	merged := &ast.File{Comments: parsed.Comments, Name: ast.NewIdent("main"), Decls: append([]ast.Decl{group}, declarations...)}
+	// Each part prints from its own tree: source directives are comments, and
+	// the printer places comments by position, so interleaving trees parsed from
+	// different files would relocate them away from their statements.
 	var buffer bytes.Buffer
-	if err := format.Node(&buffer, fset, merged); err != nil {
-		return "", err
+	buffer.WriteString("package main\n\n")
+	for _, part := range []*ast.File{
+		{Name: ast.NewIdent("main"), Decls: []ast.Decl{group}},
+		{Name: ast.NewIdent("main"), Decls: generated, Comments: parsed.Comments},
+		{Name: ast.NewIdent("main"), Decls: declarations},
+	} {
+		var printed bytes.Buffer
+		if err := format.Node(&printed, fset, part); err != nil {
+			return "", err
+		}
+		text := bytes.TrimPrefix(printed.Bytes(), []byte("package main\n"))
+		buffer.Write(text)
+		buffer.WriteString("\n")
 	}
 	formatted, err := format.Source(buffer.Bytes())
 	return string(formatted), err

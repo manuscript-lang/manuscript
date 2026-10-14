@@ -313,6 +313,13 @@ func ErrorResult(value Value, result string, scopes ...TypeScope) Value {
 	return v
 }
 func NewRecord(typ string, args []Argument) Value {
+	if build := structFactories[typ]; build != nil {
+		s := build()
+		for _, arg := range args {
+			s.StructSet(structIndex(s, arg.Name), arg.Value)
+		}
+		return s
+	}
 	fields := map[string]Value{}
 	for _, arg := range args {
 		fields[arg.Name] = arg.Value
@@ -330,10 +337,21 @@ func NewAlternative(typ, tag string, labels []string, args []Argument) Value {
 	}
 	return Alternative{typ, tag, values}
 }
-func Field(value Value, name string) Value           { return readField(value.(Record).Fields, name) }
-func SetField(value Value, name string, field Value) { writeField(value.(Record).Fields, name, field) }
-func Tag(value Value) string                         { return value.(Alternative).Tag }
-func Payload(value Value, index int) Value           { return value.(Alternative).Fields[index] }
+func Field(value Value, name string) Value {
+	if s, ok := value.(Struct); ok {
+		return s.StructGet(structIndex(s, name))
+	}
+	return readField(value.(Record).Fields, name)
+}
+func SetField(value Value, name string, field Value) {
+	if s, ok := value.(Struct); ok {
+		s.StructSet(structIndex(s, name), field)
+		return
+	}
+	writeField(value.(Record).Fields, name, field)
+}
+func Tag(value Value) string               { return value.(Alternative).Tag }
+func Payload(value Value, index int) Value { return value.(Alternative).Fields[index] }
 func Positions(value Value, length int) []Value {
 	var values []Value
 	switch v := value.(type) {
@@ -410,6 +428,8 @@ func formatValue(value Value, depth int) string {
 		return "unit"
 	case Decimal:
 		return v.String()
+	case Struct:
+		return formatValue(structRecord(v), depth)
 	case Record:
 		fields := fieldsSnapshot(v.Fields)
 		names := make([]string, 0, len(fields))
@@ -485,6 +505,8 @@ type equalityState struct {
 
 func equalityID(value Value) (equalityIdentity, bool) {
 	switch v := value.(type) {
+	case Struct:
+		return equalityIdentity{v, v.StructType(), "record"}, true
 	case Record:
 		return equalityIdentity{reflect.ValueOf(v.Fields).UnsafePointer(), v.Type, "record"}, true
 	case *List:
@@ -616,6 +638,8 @@ func equal(a, b Value, state *equalityState) bool {
 			}
 		}
 		return true
+	case Struct:
+		return equal(structRecord(x), structValue(b), state)
 	case Record:
 		y, ok := b.(Record)
 		if !ok || x.Type != y.Type {
@@ -830,6 +854,8 @@ func ContractReceiver(value Value) Value {
 }
 func ConcreteType(value Value) string {
 	switch value := value.(type) {
+	case Struct:
+		return value.StructType()
 	case Record:
 		return value.Type
 	case Alternative:
@@ -1264,4 +1290,12 @@ func TraceSource(ctx *Execution, position *string, name string) {
 		}
 		panic(failure)
 	}
+}
+
+// structValue converts a generated struct to its record snapshot.
+func structValue(v Value) Value {
+	if s, ok := v.(Struct); ok {
+		return structRecord(s)
+	}
+	return v
 }
