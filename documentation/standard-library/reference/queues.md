@@ -12,13 +12,6 @@ A FIFO queue that waits instead of failing: put blocks while a bounded queue is 
 and take blocks while the queue is empty. It synchronizes itself, so tasks share it directly.
 Waiting stops at cancellation, so a TaskGroup close unblocks every waiting task.
 
-    let jobs = BlockingQueue[Int](capacity: 8)
-    with group = TaskGroup():
-        group.start(fn(): work(jobs: jobs))   # work loops on jobs.take() until it returns none
-        jobs.put(1)
-        jobs.put(2)
-        jobs.close()                          # work drains the queued values, then sees none
-
 ```manuscript
 type BlockingQueue[T]:
     capacity: Optional[Int] = none
