@@ -303,3 +303,13 @@ Decision: Map and Set iterate in insertion order, and keys use the `Hashable` in
 Apply when: adding or renaming collection, standard-library, or I/O members; choosing between Optional, Result, and a fault.
 Evidence: [failure-mode rule](../documentation/standard-library/contracts.md#choosing-a-failure-mode), [collection order and mutation](../documentation/core-language/types/collections.md), and [equality interfaces](../documentation/core-language/types/equality-and-hashing.md).
 Verify: iteration after removals and re-adds keeps insertion order for the remaining keys; a new member documents its failure mode and has a doc comment with an example.
+
+### JSON object construction is `stringify` over typed values, not builders
+
+Decision: the owner rejected a `JsonValue` builder API (PR 477: `from_string`, `object`, `object_optional`, ...) for issue 466 and asked for `json.stringify` to accept any Manuscript type. `stringify[T: JsonEncodable]` encodes records (declaration order, `Optional` fields omitted when `none`), alternatives, lists, sets, `Map[String, V]`, numbers and `JsonValue` directly. Do not restore wrapping helpers.
+
+Verified: `JsonEncodable` is a structural bound derived from the type's shape in the checker (like `Equal`/`Hashable`), so functions, interfaces, resources, `Bytes`, `Result`, `Optional[Optional[T]]` and non-String map keys fail at compile time with the field path. Dynamic values lack declaration order for generic (map-backed) records and the labels of alternative payloads, so the lowerer registers them (`RegisterRecordFields`/`RegisterCaseFields`) only for programs importing `@std/json.ms`; nongeneric records are Go structs that report their own order. Standard-library records are deliberately not encodable, which is why no registry covers them.
+
+Apply when: changing `stringify`, adding a structural bound, adding a codec (YAML/TOML typed encoding should reuse the same property and registry), or adding a value kind that would be encodable.
+Evidence: [stringify declaration](../pkg/stdlib/json.ms), [bound check](../pkg/checker/json_encodable.go), [encoder](../pkg/runtime/library_json_encode.go), [registration](../pkg/lower/lower_structs.go), [encoding table](../documentation/standard-library/formats.md#writing-json-from-manuscript-values), [accepted and rejected shapes](../pkg/checker/json_encodable_test.go), [native conformance](../tests/e2e/testdata/stdlib/json.ms).
+Verify: a generic `Box[T]` with an `Optional[T]` field encodes in declaration order with the field omitted; a record with a function field fails `ms check` naming `field callback of Request`; keep the checker's accepted shapes and the encoder's value switch in step when adding a type.

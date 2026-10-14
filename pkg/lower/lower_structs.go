@@ -171,3 +171,54 @@ func (g *generator) constructStruct(st *structType, args []syntax.Argument) ast.
 	}
 	return call(runtimeName("Value"), address(composite(ident(st.name), elements...)))
 }
+
+// jsonShapes registers what @std/json's stringify cannot read from a dynamic
+// value: the declaration order of map-backed (generic) records and the payload
+// labels of alternative cases. It is emitted only for programs that import the
+// module, and keyed by the declaration's identity so every instantiation shares
+// one entry.
+func (g *generator) jsonShapes() []ast.Stmt {
+	imported := false
+	for _, module := range g.program.Modules {
+		for _, item := range module.Imports {
+			imported = imported || item.Path == "@std/json.ms"
+		}
+	}
+	if !imported {
+		return nil
+	}
+	var stmts []ast.Stmt
+	for _, module := range g.program.Modules {
+		for _, d := range module.Declarations {
+			if d.Kind != syntax.KindRecord && d.Kind != "alternative" {
+				continue
+			}
+			s := g.program.Symbol(module.File, d.Name)
+			if s == nil || s.Type == nil || s.Native != "" || strings.HasPrefix(s.Type.ID, "@std/") {
+				continue
+			}
+			if d.Kind == syntax.KindRecord {
+				if len(s.Variables) == 0 {
+					continue // A Go struct reports its own field order.
+				}
+				var names []string
+				for _, f := range checker.Fields(s.Type) {
+					names = append(names, f.Name)
+				}
+				stmts = append(stmts, evaluated(runtimeCall("RegisterRecordFields", textLiteral(s.Type.ID), stringSlice(names))))
+				continue
+			}
+			for _, c := range checker.Cases(s.Type) {
+				if len(c.Fields) == 0 {
+					continue
+				}
+				var labels []string
+				for _, f := range c.Fields {
+					labels = append(labels, f.Name)
+				}
+				stmts = append(stmts, evaluated(runtimeCall("RegisterCaseFields", textLiteral(s.Type.ID), textLiteral(c.Name), stringSlice(labels))))
+			}
+		}
+	}
+	return stmts
+}

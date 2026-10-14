@@ -30,6 +30,8 @@ func declarationKind(kind string) string {
 		return "Type"
 	case "native":
 		return "Native type"
+	case "contract":
+		return "Bound"
 	default:
 		return kind
 	}

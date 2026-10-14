@@ -134,6 +134,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 	for _, st := range g.structOrder {
 		initialize = append(initialize, evaluated(runtimeCall("RegisterStruct", textLiteral(st.key), closure(nil, runtimeName("Struct"), returned(address(composite(ident(st.name))))))))
 	}
+	initialize = append(initialize, g.jsonShapes()...)
 	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("initialize"), Type: functionType(nil, nil), Body: block(initialize...)})
 	main := []ast.Stmt{evaluated(call(ident("initialize")))}
 	if options.Tests {

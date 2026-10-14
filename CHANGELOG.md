@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Standard library: `json.stringify` accepts any Manuscript value whose type satisfies the new structural bound `JsonEncodable` (records in declaration order, `Optional` fields omitted when `none`, alternatives, lists, sets, `Map[String, V]`, numbers and `JsonValue`), so building a `JsonValue` first is unnecessary. Functions, interfaces, resources, `Bytes`, `Result` and other standard types are rejected at compile time with the offending field path; cycles and non-finite `Float` return `InvalidData` (#466).
 - Standard library: `Optional.ok_or` takes an optional cause (`ok_or[E = MissingValue]`); without one it returns a `MissingValue` (`@std/errors.ms`) whose message names the calling file and line.
 - Standard library: `@std/sse.ms` decodes Server-Sent Events from byte chunks or any `ReadStream`, including HTTP response bodies, with line and event budgets and `SseError` (#470).
 - Standard library: documented one failure-mode rule (absence is `Optional`, invalid external data is `Result`, violated preconditions fault) in the errors and limits contract (#168).

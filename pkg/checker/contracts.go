@@ -228,6 +228,9 @@ func (c *checker) implements(receiver, contract *Type) bool {
 	if std(contract, "Equal") || std(contract, "Hashable") {
 		return c.property(receiver, contract.Name, nil)
 	}
+	if std(contract, "JsonEncodable") {
+		return c.jsonEncodable(receiver)
+	}
 	if receiver.Kind == "variable" {
 		for _, bound := range receiver.Bounds {
 			if Same(bound, contract) {
@@ -264,6 +267,9 @@ func (c *checker) boundsSatisfied(vars []*Type, sub map[string]*Type) bool {
 func (c *checker) satisfies(t, bound *Type) bool {
 	if std(bound, "Equal") || std(bound, "Hashable") {
 		return c.property(t, bound.Name, nil)
+	}
+	if std(bound, "JsonEncodable") {
+		return c.jsonEncodable(t)
 	}
 	return c.implements(t, bound)
 }
@@ -579,6 +585,8 @@ func (c *checker) public(t *Type, pos syntax.Position, seen map[string]bool) {
 func (c *checker) unsatisfiedMessage(t, bound *Type, alternative string) string {
 	prefix := t.String() + " does not satisfy " + bound.String() + "; "
 	switch {
+	case std(bound, "JsonEncodable"):
+		return prefix + c.jsonRejection(t, map[string]bool{})
 	case std(bound, "Hashable") && t.ID == "Float":
 		return t.String() + " does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal"
 	case std(bound, "Hashable") && (std(t, "List") || std(t, "Map") || std(t, "Set")):

@@ -19,7 +19,7 @@ func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	add := libraryAdd
 	add("json", "parse", libraryResult("JsonValue", "JsonError"), []LibraryParam{p("text", "String"), p("limits", "Optional[JsonLimits]")}, libraryJSONParse)
-	add("json", "stringify", libraryResult("String", "JsonError"), []LibraryParam{p("value", "JsonValue"), p("max_bytes", "Optional[Int]")}, libraryJSONStringify)
+	libraryGeneric("json", "stringify", libraryResult("String", "JsonError"), []LibraryParam{p("T", "JsonEncodable")}, []LibraryParam{p("value", "T"), p("max_bytes", "Optional[Int]")}, libraryJSONStringify)
 	add("csv", "parse", libraryResult("List[List[String]]", "CsvError"), []LibraryParam{p("text", "String"), p("options", "CsvOptions"), p("max_rows", "Optional[Int]"), p("max_cells", "Optional[Int]")}, libraryCSVParse)
 	add("csv", "stringify", libraryResult("String", "CsvError"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Optional[Int]")}, libraryCSVStringify)
 	add("html", "escape", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return html.EscapeString(a[0].(string)) })
@@ -278,95 +278,6 @@ func (w *libraryLimitedWriter) Write(p []byte) (int, error) {
 		return 0, io.ErrShortBuffer
 	}
 	return w.Buffer.Write(p)
-}
-func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
-	max := a[1].(int64)
-	if max < 0 {
-		return libraryError(r, "InvalidInput", "")
-	}
-	w := &libraryLimitedWriter{max: max}
-	code := "InvalidData"
-	active := map[equalityIdentity]bool{}
-	var emit func(Value, int) error
-	write := func(s string) error { _, err := w.Write([]byte(s)); return err }
-	emit = func(value Value, depth int) error {
-		CheckCancelled(ctx)
-		v := value.(Alternative)
-		if v.Tag == "ArrayValue" || v.Tag == "ObjectValue" {
-			identity, _ := equalityID(v.Fields[0])
-			if active[identity] {
-				return io.ErrUnexpectedEOF
-			}
-			active[identity] = true
-			defer delete(active, identity)
-		}
-		switch v.Tag {
-		case "Null":
-			return write("null")
-		case "BoolValue":
-			return write(strconv.FormatBool(v.Fields[0].(bool)))
-		case "StringValue":
-			text := v.Fields[0].(string)
-			if int64(len(text)) > w.max-int64(w.Len()) {
-				w.overflow = true
-				return io.ErrShortBuffer
-			}
-			b, _ := json.Marshal(text)
-			_, err := w.Write(b)
-			return err
-		case "NumberValue":
-			s := v.Fields[0].(string)
-			if !json.Valid([]byte(s)) || s == "" || s[0] != '-' && (s[0] < '0' || s[0] > '9') || s[len(s)-1] < '0' || s[len(s)-1] > '9' {
-				return io.ErrUnexpectedEOF
-			}
-			return write(s)
-		case "ArrayValue":
-			if err := write("["); err != nil {
-				return err
-			}
-			for i, x := range v.Fields[0].(*List).Boxed() {
-				if i > 0 {
-					if err := write(","); err != nil {
-						return err
-					}
-				}
-				if err := emit(x, depth+1); err != nil {
-					return err
-				}
-			}
-			return write("]")
-		case "ObjectValue":
-			if err := write("{"); err != nil {
-				return err
-			}
-			for i, e := range v.Fields[0].(*Map).Entries {
-				if i > 0 {
-					if err := write(","); err != nil {
-						return err
-					}
-				}
-				key, _ := json.Marshal(e.Key.(string))
-				if _, err := w.Write(key); err != nil {
-					return err
-				}
-				if err := write(":"); err != nil {
-					return err
-				}
-				if err := emit(e.Value, depth+1); err != nil {
-					return err
-				}
-			}
-			return write("}")
-		}
-		return io.ErrUnexpectedEOF
-	}
-	if err := emit(a[0], 0); err != nil {
-		if w.overflow {
-			code = "LimitExceeded"
-		}
-		return libraryError(r, code, "")
-	}
-	return libraryOK(r, w.String())
 }
 func libraryCSVOptions(v Value) (rune, bool, bool) {
 	f := v.(Record).Fields

@@ -13,7 +13,7 @@ Use these modules to parse and write JSON, YAML, TOML, CSV, URLs, and HTML trees
 
 JSON numbers keep their exact valid token text, including integers larger than 2^53. They are not automatically converted to `Float`. `stringify` also validates `NumberValue` text because an application can construct that case directly.
 
-Parsing accepts one document. It rejects trailing values, duplicate decoded object keys, and unpaired surrogate escapes. Object order follows Map insertion order. There is no reflection-based record serialization or execution hook.
+Parsing accepts one document. It rejects trailing values, duplicate decoded object keys, and unpaired surrogate escapes. Object order follows Map insertion order.
 
 `JsonLimits` uses nonnegative limits:
 
@@ -46,6 +46,63 @@ test "decode JSON Lines split across chunks":
     if first.length() != 1 or second.length() != 1: return panic("expected one value per feed")
     if reader.finish().unwrap().length() != 0: return panic("unexpected trailing value")
 ```
+
+### Writing JSON from Manuscript values
+
+`stringify` takes any value whose type satisfies `JsonEncodable` and writes it directly, so a request body needs no `JsonValue` wrapping:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import stringify from "@std/json.ms"
+import panic from "@std/faults.ms"
+
+type Message:
+    role: String
+    content: String
+
+type Request:
+    model: String
+    stream: Bool
+    user: Optional[String]
+    messages: List[Message]
+
+test "stringify encodes typed values":
+    let request = Request(
+        model: "example",
+        stream: true,
+        user: none,
+        messages: [Message(role: "user", content: "hi")]
+    )
+    let expected = "\{\"model\":\"example\",\"stream\":true,\"messages\":[\{\"role\":\"user\",\"content\":\"hi\"\}]\}"
+    if stringify(value: request).unwrap() != expected: return panic("unexpected request body")
+```
+
+The compiler derives `JsonEncodable` from a type's shape. It is satisfied by:
+
+- `Bool`, `Int`, `Float`, `String`, `Decimal`, `BigInt`, and `JsonValue`;
+- `Optional[T]`, `List[T]`, and `Set[T]` of an encodable `T`;
+- `Map[String, V]` with an encodable `V`;
+- records and alternatives whose fields are all encodable, including generic and recursive ones.
+
+It is not satisfied by functions, interfaces, resources, `Bytes`, `Duration`, `Instant`, `Timestamp`, `Unit`, `Result`, `Error`, or any other standard-library record or alternative. Passing such a value, or a record with such a field, is a compile error that names the field path, such as `field callback of Request: functions cannot be encoded`. A generic helper declares `[T: JsonEncodable]` to forward its argument. The bound cannot be implemented or overridden; to encode a type differently, convert it to a record or `JsonValue` first.
+
+The encoding is fixed:
+
+| Value | JSON |
+| --- | --- |
+| Record | Object with fields in declaration order. |
+| Field of type `Optional[T]` holding `none` | The member is omitted. |
+| `Optional` anywhere else (root, list element, map value) holding `none` | `null`. `some(x)` encodes as `x`. |
+| `Optional[Optional[T]]` | Rejected at compile time, because `none` and `some(none)` would both be `null`. |
+| Alternative case without payload | The case name as a string: `"Dot"`. |
+| Alternative case with payload | `{"Circle":{"radius":2}}`: the case name keys an object of its labeled fields, which follow the field rules above. |
+| `List`, `Set` | Array in list order or set insertion order. |
+| `Map[String, V]` | Object in insertion order; keys are already unique. |
+| `Int`, `BigInt`, `Decimal` | Exact decimal digits. |
+| `Float` | Shortest decimal that parses back to the same `Float`, without a trailing `.0`; an exponent only below `1e-6` or from `1e21`. `NaN` and infinities return `InvalidData`. |
+| `JsonValue` | Written as stored, validating `NumberValue` text. |
+
+`stringify` reads the value when it runs and returns a new `String`, so later mutation does not change the text. A value that reaches itself returns `InvalidData`; one value referenced twice without a cycle is written twice. `max_bytes` bounds the output and returns `LimitExceeded` when exceeded.
 
 Stringify produces compact JSON and escapes `<`, `>`, and `&` as `\u003c`, `\u003e`, and `\u0026`. It is not a canonical format for signing.
 

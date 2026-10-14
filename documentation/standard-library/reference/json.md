@@ -6,6 +6,18 @@ title = "json"
 
 Import each required symbol with `import Name from "@std/json.ms"`.
 
+## JsonEncodable {data-api-kind="Bound"}
+
+Bound satisfied by every type that `stringify` can encode: Bool, Int, Float, String, Decimal and
+BigInt; JsonValue; Optional, List and Set of encodable types; Map with String keys and encodable
+values; and records or alternatives whose fields are all encodable. Functions, interfaces, resources,
+Bytes, time values, Unit, Result and other standard-library types do not satisfy it. The compiler
+derives the property from the type's shape, so it cannot be implemented or overridden.
+
+```manuscript
+type JsonEncodable:
+```
+
 ## JsonError {data-api-kind="Alternative"}
 
 Errors returned for malformed JSON or configured input and nesting limits.
@@ -201,9 +213,32 @@ fn parse(text: String, limits: Optional[JsonLimits] = none) -> Result[JsonValue,
 
 ## stringify {data-api-kind="Function"}
 
-Serializes a JSON value. `max_bytes` bounds output when supplied.
+Encodes any value whose type satisfies JsonEncodable as compact JSON text.
+
+- Record fields appear in declaration order. A field of type `Optional[T]` is omitted when `none`.
+- Any other `none` (a list element, a map value, the root) is `null`; `Optional[Optional[T]]` is rejected.
+- An alternative case without payload is its name as a string, `"Circle"`. A case with payload is an
+  object keyed by the case name whose value is an object of its labeled fields: `{"Circle":{"radius":2}}`.
+- Map entries and Set elements keep insertion order; maps must have String keys.
+- Int, BigInt and Decimal are written as exact decimal digits; Float uses the shortest decimal that
+  parses back to the same value, and NaN or an infinity returns InvalidData.
+- A JsonValue is written as it is, so parsed documents can be mixed with typed data.
+- Strings are UTF-8 JSON strings; `<`, `>` and `&` are written as Unicode escapes.
+- Values are read when `stringify` runs, so later mutation does not change the text. A value reachable
+  from itself returns InvalidData; shared but acyclic values are written each time they appear.
+
+`max_bytes` bounds the output; exceeding it returns LimitExceeded and a negative bound InvalidInput.
 
 ```manuscript
-fn stringify(value: JsonValue, max_bytes: Optional[Int] = none) -> Result[String, JsonError]:
+type Request:
+    model: String
+    stream: Bool
+    user: Optional[String]
+
+stringify(value: Request(model: "example", stream: true, user: none))
+```
+
+```manuscript
+fn stringify[T: JsonEncodable](value: T, max_bytes: Optional[Int] = none) -> Result[String, JsonError]:
 ```
 
