@@ -6,7 +6,7 @@ Verified: source Map keys use exact equality, while HTTP field names fold ASCII 
 
 Apply when: changing HTTP adapters, repeated fields, or header representation bridges.
 Evidence: [header regressions](../pkg/runtime/library_http_header_transport_test.go), [called source checks](../tests/e2e/testdata/stdlib/http-headers.ms), and [header contracts](../documentation/standard-library/http.md#header-lookup-and-repeated-values).
-Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered raw-byte acceptance, streaming/client UTF-8 rejection, transport framing validation and domain errors distinct. The held #171 migration uses indexed ASCII header groups and shared list membership: cache received conversions once, test alias/mutation/remove/clone semantics, and measure common lookup/proxy paths. Do not impose a blanket copy-on-read or membership-copy guarantee; explicit text extraction and clone are distinct operations. Public migration needs parent review before merge.
+Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered raw-byte acceptance, streaming/client UTF-8 rejection, transport framing validation and domain errors distinct. The #171 migration uses indexed ASCII header groups and shared list membership: cache received conversions once, test alias/mutation/remove/clone semantics, and measure common lookup/proxy paths. Do not impose a blanket copy-on-read or membership-copy guarantee; explicit text extraction and clone are distinct operations.
 
 ### Empty cleanup omission needs callable ownership evidence
 
