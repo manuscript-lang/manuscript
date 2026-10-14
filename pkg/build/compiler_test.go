@@ -271,6 +271,19 @@ func FuzzCompile(f *testing.F) {
 	for _, s := range []string{"fn f() -> Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() -> Box[Int]:\n    return Box(value: 1)\n", "import panic from \"@std/faults.ms\"\n\nimport List from \"@std/collections.ms\"\ntest \"list\":\n    let values = [1, 2]\n    if not (values.length() == 2):\n        return panic(message: \"check failed\")\n"} {
 		f.Add(s)
 	}
+	// Seed from the accept and reject conformance programs so mutation starts
+	// from every language feature, not three tiny modules.
+	for _, pattern := range []string{"../../tests/e2e/testdata/accept/*.ms", "../../tests/e2e/testdata/reject/*.ms"} {
+		paths, err := filepath.Glob(pattern)
+		if err != nil {
+			f.Fatal(err)
+		}
+		for _, path := range paths {
+			if data, err := os.ReadFile(path); err == nil && len(data) <= 8000 {
+				f.Add(string(data))
+			}
+		}
+	}
 	f.Fuzz(func(t *testing.T, source string) {
 		if len(source) > 16000 {
 			t.Skip()

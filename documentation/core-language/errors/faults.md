@@ -38,7 +38,7 @@ A fault aborts the current operation after cleanup. Programming faults are disti
 
 ## Runaway recursion
 
-Source calls may nest 200,000 deep. A call past that limit is a programming fault, `call depth limit exceeded (200000 nested calls)`, with the source frames of the innermost calls and a note that outer frames are omitted. It unwinds, runs cleanup, and fails a test like any other fault, so the rest of a test run continues. Any fault trace keeps only its innermost 32 frames.
+Source calls may nest 200,000 deep. A call past that limit is a programming fault, `call depth limit exceeded (200000 nested calls)`, with the source frames of the innermost calls and a note that outer frames are omitted. It unwinds, runs cleanup, and fails a test like any other fault, so the rest of a test run continues. Any fault trace keeps only its innermost 32 frames. Comparing values with `==` or `!=` recurses through nested records, alternatives, and collections; past 250,000 nested values the comparison is the fault `equality depth limit exceeded (250000 nested values)`, so a very long linked structure cannot crash the process.
 
 ## Cleanup and observation
 

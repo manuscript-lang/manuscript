@@ -24,6 +24,8 @@ type invocation struct {
 	buildTypeName                      string
 	buildTypeSet                       bool
 	testTimeout, testFilter            string
+	debugScript                        string   // ms debug --script: command file, or - for stdin
+	debugBreaks                        []string // ms debug --break: one-shot breakpoints
 	arguments                          []string // forwarded to the program after --
 }
 
@@ -127,6 +129,18 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 				return usageError("invalid --timeout %q; use a duration such as 30s or 2m, or 0 to disable", value), false
 			}
 			inv.testTimeout = value
+		case "--script":
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
+				return usageError("--script requires a file of debugger commands, or - for standard input, e.g. --script commands.txt"), false
+			}
+			inv.debugScript = value
+		case "--break":
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
+				return usageError("--break requires file:line or a function name, e.g. --break src/main.ms:7"), false
+			}
+			inv.debugBreaks = append(inv.debugBreaks, value)
 		case "--trace":
 			if inv.command == "profile" {
 				inv.profileTrace = true
@@ -220,6 +234,15 @@ func (inv *invocation) validate() (plan, int, bool) {
 			testArgs = append(testArgs, "--filter="+inv.testFilter)
 		}
 		inv.arguments = append(testArgs, inv.arguments...)
+	}
+	if (inv.debugScript != "" || len(inv.debugBreaks) > 0) && command != "debug" {
+		return p, usageError("--script and --break are valid only for ms debug, not ms %s; run 'ms help %s' for the options this command accepts", command, command), false
+	}
+	if inv.debugScript != "" && len(inv.debugBreaks) > 0 {
+		return p, usageError("--script and --break cannot be combined; put break commands in the script or use --break alone"), false
+	}
+	if command == "debug" && inv.structured && inv.debugScript == "" && len(inv.debugBreaks) == 0 {
+		return p, usageError("ms debug --json requires --script or --break; the interactive terminal has no structured output"), false
 	}
 	if inv.watch && inv.structured {
 		return p, usageError("--json cannot be combined with --watch; remove --watch for one versioned result"), false

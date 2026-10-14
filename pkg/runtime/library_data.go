@@ -135,12 +135,16 @@ func init() {
 		return libraryOK(result, b.String())
 	})
 	add("string", "slice_scalars", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, result string, a []Value) Value {
-		r := []rune(a[0].(string))
+		text := a[0].(string)
+		count, ascii := stringShape(text)
 		s, e := a[1].(int64), a[2].(int64)
-		if s < 0 || e < s || e > int64(len(r)) {
+		if s < 0 || e < s || e > count {
 			return libraryError(result, "OutOfRange", "")
 		}
-		return libraryOK(result, string(r[s:e]))
+		if ascii {
+			return libraryOK(result, text[s:e])
+		}
+		return libraryOK(result, text[scalarIndexOffset(text, int(s)):scalarIndexOffset(text, int(e))])
 	})
 	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return scalarCount(a[0].(string)) })
 	add("encoding", "hex_encode", "String", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return hex.EncodeToString(a[0].(Bytes).Items) })

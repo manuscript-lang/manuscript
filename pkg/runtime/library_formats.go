@@ -11,6 +11,7 @@ import (
 
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -411,33 +412,46 @@ func libraryCSVStringify(ctx *Execution, r string, a []Value) Value {
 		return libraryError(r, "InvalidInput", "")
 	}
 	w := &libraryLimitedWriter{max: n}
-	writer := csv.NewWriter(w)
-	writer.Comma = delimiter
-	writer.UseCRLF = crlf
+	ending := "\n"
+	if crlf {
+		ending = "\r\n"
+	}
 	for _, row := range a[0].(*List).Items {
 		CheckCancelled(ctx)
 		record := libraryStringValues(row)
-		// encoding/csv emits a bare line ending for a sole empty field,
-		// which its reader skips. Quote it to retain this row on round trip.
+		// A sole empty field would be a bare line ending, which the reader
+		// skips as a blank line. Quote it to retain this row on round trip.
 		if len(record) == 1 && record[0] == "" {
-			text := "\"\"\n"
-			if crlf {
-				text = "\"\"\r\n"
+			record[0] = "\"\""
+		} else {
+			for i, field := range record {
+				record[i] = libraryCSVField(field, delimiter, crlf)
 			}
-			if _, err := w.Write([]byte(text)); err != nil {
-				return libraryError(r, "LimitExceeded", "")
-			}
-			continue
 		}
-		if err := writer.Write(record); err != nil {
-			return libraryError(r, "LimitExceeded", "")
-		}
-		writer.Flush()
-		if writer.Error() != nil {
+		line := strings.Join(record, string(delimiter)) + ending
+		if _, err := w.Write([]byte(line)); err != nil {
 			return libraryError(r, "LimitExceeded", "")
 		}
 	}
 	return libraryOK(r, w.String())
+}
+
+// libraryCSVField quotes a cell when the reader could not otherwise recover it.
+// Unlike encoding/csv's writer, it keeps a lone carriage return in a quoted
+// cell in CRLF mode instead of dropping it.
+func libraryCSVField(field string, delimiter rune, crlf bool) string {
+	if field == "" {
+		return field
+	}
+	first, _ := utf8.DecodeRuneInString(field)
+	if field != `\.` && !strings.ContainsAny(field, "\"\r\n"+string(delimiter)) && !unicode.IsSpace(first) {
+		return field
+	}
+	field = strings.ReplaceAll(field, "\"", "\"\"")
+	if crlf {
+		field = strings.ReplaceAll(strings.ReplaceAll(field, "\r\n", "\n"), "\n", "\r\n")
+	}
+	return "\"" + field + "\""
 }
 func libraryURLValue(r string, u *url.URL) Value {
 	port := optional("Int", nil, false)
