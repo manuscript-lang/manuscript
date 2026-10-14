@@ -6858,12 +6858,68 @@ type Duration:
     fn to_hours() -> Float:
 ```
 
+### Duration.abs
+
+Returns the absolute value; the minimum Duration faults.
+
+```manuscript
+fn abs() -> Duration:
+```
+
 ### Duration.add
 
 Adds signed nanoseconds; a result outside Duration's representable range faults.
 
 ```manuscript
 fn add(right: Duration) -> Duration:
+```
+
+### Duration.compare
+
+Returns -1, 0, or 1.
+
+```manuscript
+fn compare(right: Duration) -> Int:
+```
+
+### Duration.divide
+
+Divides by a nonzero integer, truncating toward zero; zero faults.
+
+```manuscript
+fn divide(divisor: Int) -> Duration:
+```
+
+### Duration.multiply
+
+Multiplies by an integer factor; overflow faults.
+
+```manuscript
+fn multiply(factor: Int) -> Duration:
+```
+
+### Duration.negate
+
+Negates this duration; the minimum Duration faults.
+
+```manuscript
+fn negate() -> Duration:
+```
+
+### Duration.subtract
+
+Subtracts signed nanoseconds; a result outside Duration's representable range faults.
+
+```manuscript
+fn subtract(right: Duration) -> Duration:
+```
+
+### Duration.to_hours
+
+Converts this duration to floating-point hours.
+
+```manuscript
+fn to_hours() -> Float:
 ```
 
 ### Duration.to_microseconds
@@ -6880,6 +6936,14 @@ Converts this duration to an integer number of milliseconds.
 
 ```manuscript
 fn to_milliseconds() -> Int:
+```
+
+### Duration.to_minutes
+
+Converts this duration to floating-point minutes.
+
+```manuscript
+fn to_minutes() -> Float:
 ```
 
 ### Duration.to_nanoseconds
@@ -6909,6 +6973,14 @@ type Instant:
     fn shift(duration: Duration) -> Instant:
     fn difference(right: Instant) -> Duration:
     fn compare(right: Instant) -> Int:
+```
+
+### Instant.compare
+
+Returns -1, 0, or 1; instants from different clock domains fault.
+
+```manuscript
+fn compare(right: Instant) -> Int:
 ```
 
 ### Instant.difference
@@ -6960,6 +7032,14 @@ type Timestamp:
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
     fn difference(right: Timestamp) -> Result[Duration, TimeError]:
     fn compare(right: Timestamp) -> Int:
+```
+
+### Timestamp.compare
+
+Returns -1, 0, or 1 across the full calendar range.
+
+```manuscript
+fn compare(right: Timestamp) -> Int:
 ```
 
 ### Timestamp.difference

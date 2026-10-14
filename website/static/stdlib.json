@@ -7951,7 +7951,7 @@
               "name": "abs",
               "kind": "operation",
               "signature": "fn abs() -\u003e Duration:",
-              "doc": ""
+              "doc": "Returns the absolute value; the minimum Duration faults."
             },
             {
               "name": "add",
@@ -7963,37 +7963,37 @@
               "name": "compare",
               "kind": "operation",
               "signature": "fn compare(right: Duration) -\u003e Int:",
-              "doc": ""
+              "doc": "Returns -1, 0, or 1."
             },
             {
               "name": "divide",
               "kind": "operation",
               "signature": "fn divide(divisor: Int) -\u003e Duration:",
-              "doc": ""
+              "doc": "Divides by a nonzero integer, truncating toward zero; zero faults."
             },
             {
               "name": "multiply",
               "kind": "operation",
               "signature": "fn multiply(factor: Int) -\u003e Duration:",
-              "doc": ""
+              "doc": "Multiplies by an integer factor; overflow faults."
             },
             {
               "name": "negate",
               "kind": "operation",
               "signature": "fn negate() -\u003e Duration:",
-              "doc": ""
+              "doc": "Negates this duration; the minimum Duration faults."
             },
             {
               "name": "subtract",
               "kind": "operation",
               "signature": "fn subtract(right: Duration) -\u003e Duration:",
-              "doc": ""
+              "doc": "Subtracts signed nanoseconds; a result outside Duration's representable range faults."
             },
             {
               "name": "to_hours",
               "kind": "operation",
               "signature": "fn to_hours() -\u003e Float:",
-              "doc": ""
+              "doc": "Converts this duration to floating-point hours."
             },
             {
               "name": "to_microseconds",
@@ -8011,7 +8011,7 @@
               "name": "to_minutes",
               "kind": "operation",
               "signature": "fn to_minutes() -\u003e Float:",
-              "doc": ""
+              "doc": "Converts this duration to floating-point minutes."
             },
             {
               "name": "to_nanoseconds",
@@ -8042,7 +8042,7 @@
               "name": "compare",
               "kind": "operation",
               "signature": "fn compare(right: Instant) -\u003e Int:",
-              "doc": ""
+              "doc": "Returns -1, 0, or 1; instants from different clock domains fault."
             },
             {
               "name": "difference",
@@ -8127,7 +8127,7 @@
               "name": "compare",
               "kind": "operation",
               "signature": "fn compare(right: Timestamp) -\u003e Int:",
-              "doc": ""
+              "doc": "Returns -1, 0, or 1 across the full calendar range."
             },
             {
               "name": "difference",
