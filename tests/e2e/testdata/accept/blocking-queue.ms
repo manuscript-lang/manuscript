@@ -30,10 +30,7 @@ type BlockingQueue[T]:
 
 # Creates an empty queue holding at most capacity values.
 fn new_blocking_queue[T](capacity: Int) -> BlockingQueue[T]:
-    let state = QueueState(
-        items: Queue[T](capacity),
-        closed: false
-    )
+    let state = QueueState(items: Queue[T](capacity), closed: false)
     return BlockingQueue(state: Synchronized(state))
 
 # Waits for free space, then adds value. Returns false if the queue is closed.
@@ -100,12 +97,8 @@ test "bounded producer and consumers block and finish":
     let queue = new_blocking_queue[Int](2)
 
     with group = TaskGroup():
-        let first = group.start(
-            fn(): work(queue: queue)
-        )
-        let second = group.start(
-            fn(): work(queue: queue)
-        )
+        let first = group.start(fn(): work(queue: queue))
+        let second = group.start(fn(): work(queue: queue))
 
         for value in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             if not put(queue: queue, value: value):
@@ -121,6 +114,4 @@ test "group close cancels a blocked consumer":
     let queue = new_blocking_queue[Int](2)
 
     with group = TaskGroup():
-        group.start(
-            fn(): work(queue: queue)
-        )
+        group.start(fn(): work(queue: queue))

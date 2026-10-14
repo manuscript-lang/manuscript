@@ -26,12 +26,8 @@ test "bounded put and take block until the other side acts":
     let jobs = BlockingQueue[Int](2)
 
     with group = TaskGroup():
-        let first = group.start(
-            fn(): work(jobs: jobs)
-        )
-        let second = group.start(
-            fn(): work(jobs: jobs)
-        )
+        let first = group.start(fn(): work(jobs: jobs))
+        let second = group.start(fn(): work(jobs: jobs))
 
         for value in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             if not jobs.put(value):
@@ -70,6 +66,4 @@ test "group close cancels a blocked taker":
     let jobs = BlockingQueue[Int](1)
 
     with group = TaskGroup():
-        group.start(
-            fn(): work(jobs: jobs)
-        )
+        group.start(fn(): work(jobs: jobs))
