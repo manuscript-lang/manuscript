@@ -38,7 +38,7 @@ Verified: another operation can close a guard alias while its owner is blocked j
 Verified: acquisition delivery uses one final cancellation observation for both disposal and unwind. Two checks can discard an acquired guard without disposing it. Keep PR 230's disposal fix; later cancellation after successful delivery belongs to caller cleanup.
 
 Apply when: changing lock admission, cancellation, alias release, task/service joining or acquisition delivery.
-Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [contract](../documentation/concurrency/synchronization.md), [bounded blocking regressions](../pkg/runtime/synchronized_ancestor_test.go), and [acquisition delivery](../pkg/runtime/values.go).
+Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [contract](../documentation/concurrency/synchronization.md), [bounded blocking regressions](../pkg/runtime/synchronized_ancestor_test.go), and [acquisition delivery](../pkg/runtime/functions.go).
 Verify: ordinary ancestor overlap returns 7; both lock/join orders block until cooperative cancellation or release. Exercise deadlines, same-operation helper/shield reentry, cancellation/delivery/release races, alias close and use after close. Shielded-cycle tests run in bounded disposable subprocesses and release aliases explicitly; no test relies on cleanup timeout escape.
 
 ### Attribute profiling at execution boundaries
@@ -264,6 +264,17 @@ and [measured storage/access paths](../scripts/bench-lists/typed-storage.md).
 Verify: fresh constructors and effectful sized initialization use two allocations,
 typed at/unwrap uses none, generic forwarding retains identity, and comparator
 profiling/returns/cancellation/depth/fault frames match ordinary source calls.
+
+Verified: source-return consumption can be shared, but recovery must run directly
+in a deferred function. Boxed returns retain nil Values without a type assertion;
+typed comparator returns still assert Int and check delivery cancellation before
+releasing call depth. A generic payload assertion would reject the boxed nil case.
+Evidence: [call boundaries](../pkg/runtime/functions.go),
+[boxed return regressions](../pkg/runtime/performance_test.go), and
+[typed return cancellation](../pkg/runtime/list_storage_test.go).
+Verify those guard cases and allocation assertions; use
+`BenchmarkSourceDirectDispatch` for the source wrapper, since the raw method-site
+benchmark does not exercise it.
 
 Verified: primitive sized initializers must use direct matching typed writes
 after fresh-state/kind/bounds checks. Routing known typed construction through

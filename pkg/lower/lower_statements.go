@@ -39,7 +39,7 @@ func (g *generator) pattern(p *syntax.Pattern, value ast.Expr, native string) []
 	}
 	if p.Kind == syntax.KindList {
 		positions := g.temp()
-		out = append(out, define(positions, runtimeCall("Positions", ident(tmp), sourceAt(p.Pos, intLiteral(len(p.Elements))))), discard(ident(positions)))
+		out = append(out, define(positions, runtimeCall("Positions", ident(tmp), sequence(intLiteral(len(p.Elements))))), discard(ident(positions)))
 		for i, child := range p.Elements {
 			out = append(out, g.pattern(child, index(ident(positions), intLiteral(i)), "")...)
 		}
@@ -112,7 +112,7 @@ func (g *generator) assignment(s *syntax.Statement) []ast.Stmt {
 		// order that variable read before the later call.
 		receiverValue := g.expression(s.Target.Left)
 		if containsMatch(s.Value) && !g.constant(s.Target.Left) {
-			receiverValue = sourceAt(s.Target.Left.Pos, receiverValue)
+			receiverValue = sequence(receiverValue)
 		}
 		if st, f := g.structFieldOf(s.Target); st != nil {
 			receiver := g.structPointer(st, receiverValue)
