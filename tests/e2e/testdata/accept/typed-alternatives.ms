@@ -209,3 +209,12 @@ test "optional and payload kinds":
                 return panic(message: "closure return ok")
         error(_):
             return panic(message: "closure return error")
+
+test "list at unwrap":
+    let items = [10, 20, 30]
+    if not (items.at(0).unwrap() == 10):
+        return panic(message: "first")
+    if not (items.at(-1).unwrap() == 30):
+        return panic(message: "negative index")
+    if not (items.at(1).unwrap() + items.at(2).unwrap() == 50):
+        return panic(message: "sum")
