@@ -1,0 +1,17 @@
+[
+ {
+  "name": "ex-linear",
+  "stdin": "write a.txt\nhello\n.\nadd a.txt\ncommit first\nwrite a.txt\nhello\nworld\n.\ndiff\nadd a.txt\ncommit second\nlog\nstatus\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit first\n[main (root-commit) 2e911f0] first\n> write a.txt\n> diff\ndiff a.txt\n  hello\n+ world\n> add a.txt\n> commit second\n[main d38b6de] second\n> log\nd38b6de second\n2e911f0 first\n> status\nOn branch main\nnothing to commit, working tree clean\n"
+ },
+ {
+  "name": "ex-merge",
+  "stdin": "write a.txt\n1\n2\n3\n.\nadd a.txt\ncommit base\ncheckout -b feat\nwrite a.txt\n1\n2\n3\n4\n.\nadd a.txt\ncommit feat\ncheckout main\nwrite a.txt\n0\n1\n2\n3\n.\nadd a.txt\ncommit main\nmerge feat\ncat a.txt\nlog\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit base\n[main (root-commit) 30e19c3] base\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit feat\n[feat 21416d0] feat\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit main\n[main cdfc7f6] main\n> merge feat\nMerge made by the 'three-way' strategy.\n[main 929a1eb] Merge branch 'feat'\n> cat a.txt\n0\n1\n2\n3\n4\n> log\n929a1eb Merge branch 'feat' (merge cdfc7f6 21416d0)\ncdfc7f6 main\n21416d0 feat\n30e19c3 base\n"
+ },
+ {
+  "name": "ex-conflict",
+  "stdin": "write a.txt\nx\n.\nadd a.txt\ncommit base\ncheckout -b feat\nwrite a.txt\nfeat\n.\nadd a.txt\ncommit feat\ncheckout main\nwrite a.txt\nmain\n.\nadd a.txt\ncommit main\nmerge feat\ncat a.txt\nstatus\ncommit too early\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit base\n[main (root-commit) 2ddb496] base\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit feat\n[feat 7698e62] feat\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit main\n[main e25c2d2] main\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> cat a.txt\n<<<<<<< HEAD\nmain\n=======\nfeat\n>>>>>>> feat\n> status\nOn branch main\nmerging: feat\nconflicts:\n  unmerged: a.txt\n> commit too early\nerror: unresolved conflicts: a.txt\n"
+ }
+]

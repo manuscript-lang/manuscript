@@ -133,6 +133,11 @@ func (p libraryPaths) normalize(s string) string {
 	if p.windows && len(root) == 2 && len(stack) == 0 {
 		value = root + "."
 	}
+	// A relative first component shaped like a drive ("./C:") must not become
+	// a drive-relative path once the leading "." is removed.
+	if p.windows && root == "" && len(stack) > 0 && p.root(stack[0]) != "" {
+		value = "./" + value
+	}
 	return p.native(value)
 }
 func (p libraryPaths) parse(original string) Record {

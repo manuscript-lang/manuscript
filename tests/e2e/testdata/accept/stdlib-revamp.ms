@@ -21,7 +21,7 @@ impl Equal for Key:
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: return self.id
+    fn hash() -> Int: self.id
 
 fn compare(left: Key, right: Key) -> Int:
     return left.id - right.id
@@ -32,17 +32,13 @@ test "domain equality and hashing select interfaces":
     if not (a == b): return panic("custom equality ignored")
     if not (a.hash() == b.hash()): return panic("custom hash ignored")
 
-    let values = (
-        Map[Key, String]()
-        .with_entry(key: a, value: "a")
-        .with_entry(key: b, value: "b")
-    )
+    let values = (Map[Key, String]().add(key: a, value: "a").add(key: b, value: "b"))
     if values.length() != 1: return panic("custom key lookup ignored")
-    if values.get(a) != some(value: "b"): return panic("custom key update ignored")
+    if values.get(a) != some("b"): return panic("custom key update ignored")
     if not ([a].contains(b)): return panic("custom search ignored")
 
-    let view = Equal(value: Equal(value: a))
-    if not (view.equals(Equal(value: b))): return panic("interface view ignored")
+    let view = Equal(Equal(a))
+    if not (view.equals(Equal(b))): return panic("interface view ignored")
 
 test "stable priority queue and optional capacity":
     let queue = PriorityQueue(compare: compare)
@@ -62,10 +58,7 @@ test "stable priority queue and optional capacity":
 
         none: return panic("missing item")
 
-    let bounded = PriorityQueue(
-        compare: compare,
-        capacity: 1
-    )
+    let bounded = PriorityQueue(compare: compare, capacity: 1)
     if not (bounded.enqueue(Key(id: 1, label: "only"))): return panic("enqueue failed")
     if bounded.enqueue(Key(id: 0, label: "full")): return panic("capacity ignored")
 
@@ -76,14 +69,11 @@ test "limits can be omitted or supplied":
 
         error(_): return panic("omitted limit rejected")
 
-    match "ab".repeat(
-        count: 3,
-        max_bytes: 5
-    ):
+    match "ab".repeat(count: 3, max_bytes: 5):
         ok(_): return panic("supplied limit ignored")
         error(_): return
 
-fn operation() -> Result[Unit, String]: return ok(value: unit)
+fn operation() -> Result[Unit, Error]: ok(unit)
 
 test "one scheduler admits and schedules work":
     with scheduler = Scheduler():
@@ -104,13 +94,13 @@ impl ReadStream for EmptyReader:
             none: self.requested = 0
             some(value): self.requested = value
 
-        return ok(value: none)
+        return ok(none)
 
-    fn close() -> Unit: return
+    fn close() -> Unit: unit
 
 test "native compositions preserve Optional arguments for source implementations":
-    let reader = EmptyReader(requested: -1)
-    let stream = ReadStream(value: reader)
+    let reader = EmptyReader(-1)
+    let stream = ReadStream(reader)
     let omitted = stream.read()
     if reader.requested != 0: return panic(
         "omitted limit did not reach the source implementation"

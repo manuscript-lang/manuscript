@@ -42,12 +42,12 @@ func NewTaskGroup(ctx *Execution, args []Argument) Value {
 		if a.Name == "timeout" {
 			value, valid := nativeOption(a.Value, "Duration", nil)
 			if !valid {
-				return Panic("TaskGroup timeout must be nonnegative")
+				return durationParameterFault("TaskGroup", "timeout", a.Value)
 			}
 			if value != nil {
 				duration := value.(Duration)
 				if duration < 0 {
-					return Panic("TaskGroup timeout must be nonnegative")
+					return durationParameterFault("TaskGroup", "timeout", a.Value)
 				}
 				timeout = &duration
 			}
@@ -81,7 +81,7 @@ func (g *TaskGroup) stopLocked(failure Value) {
 	g.cancel()
 }
 func executionCancelled() Value { return Alternative{Type: "@std/ExecutionError", Tag: "Cancelled"} }
-func executionTimedOut() Value  { return Alternative{Type: "@std/ExecutionError", Tag: "TimedOut"} }
+func executionTimeout() Value   { return Alternative{Type: "@std/ExecutionError", Tag: "Timeout"} }
 
 func (g *TaskGroup) start(ctx *Execution, typ string, operation Value) Value {
 	CheckCancelled(ctx)
@@ -89,7 +89,7 @@ func (g *TaskGroup) start(ctx *Execution, typ string, operation Value) Value {
 	g.mu.Lock()
 	if g.sealed || g.closing {
 		g.mu.Unlock()
-		return Panic("TaskGroup is joined or closed")
+		return Panic("TaskGroup is joined or closed; start tasks before join/close, or create a new TaskGroup")
 	}
 	if g.timeout != nil && g.timer == nil && !g.expired {
 		if *g.timeout == 0 {
@@ -100,13 +100,13 @@ func (g *TaskGroup) start(ctx *Execution, typ string, operation Value) Value {
 				defer g.mu.Unlock()
 				g.expired = true
 				if g.active > 0 {
-					g.stopLocked(executionTimedOut())
+					g.stopLocked(executionTimeout())
 				}
 			})
 		}
 	}
 	if g.expired {
-		g.stopLocked(executionTimedOut())
+		g.stopLocked(executionTimeout())
 	}
 	if g.context.Err() != nil && g.failure == nil {
 		g.stopLocked(executionCancelled())
@@ -119,6 +119,7 @@ func (g *TaskGroup) start(ctx *Execution, typ string, operation Value) Value {
 	g.active++
 	g.workers.Add(1)
 	g.mu.Unlock()
+	markConcurrent()
 	go func() {
 		defer g.workers.Done()
 		var value Value
@@ -164,6 +165,7 @@ func (g *TaskGroup) sealLocked() chan struct{} {
 	if !g.sealed {
 		g.sealed = true
 		g.joined = make(chan struct{})
+		markConcurrent()
 		go func() {
 			g.workers.Wait()
 			g.mu.Lock()

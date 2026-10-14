@@ -50,7 +50,7 @@ fn prepare_receiver(state: Synchronized[Int]) -> Offset:
     if not (next(state) == 0):
         return panic(message: "check failed")
 
-    return Offset(delta: 2)
+    return Offset(2)
 
 fn prepare_function(state: Synchronized[Int]) -> fn(value: Int) -> Int:
     if not (next(state) == 4):
@@ -66,9 +66,7 @@ test "optional labels on single-parameter functions":
     if not (increment(3) == increment(value: 3)):
         return panic(message: "check failed")
 
-    let multiline = increment(
-        3,
-    )
+    let multiline = increment(3)
     if not (multiline == 4):
         return panic(message: "check failed")
     if not (identity(7) == 7):
@@ -90,7 +88,7 @@ test "optional labels on single-parameter functions":
     if not (specialized(8) == 8):
         return panic(message: "check failed")
 
-    let closure = fn(value: Int) -> Int:
+    let closure = fn(value: Int):
         return value * 2
     if not (closure(3) == 6):
         return panic(message: "check failed")
@@ -98,25 +96,20 @@ test "optional labels on single-parameter functions":
         return panic(message: "check failed")
 
     let result = apply(
-        fn(value: Int) -> Int:
+        fn(value):
             return value + 2
     )
     if not (result == 6):
         return panic(message: "check failed")
-    if not (
-        subtract(
-            deduction: increment(1),
-            amount: increment(8)
-        ) == 7
-    ):
+    if not (subtract(deduction: increment(1), amount: increment(8)) == 7):
         return panic(message: "check failed")
 
 test "optional labels on methods and native functions":
-    let offset = Offset(delta: 3)
+    let offset = Offset(3)
     if not (offset.apply(4) == 7):
         return panic(message: "check failed")
 
-    let view = Increment(value: offset)
+    let view = Increment(offset)
     if not (view.apply(4) == 7):
         return panic(message: "check failed")
 
@@ -133,24 +126,21 @@ test "optional labels on methods and native functions":
         return panic(message: "check failed")
     if not (sum([1, 2, 3]) == 6):
         return panic(message: "check failed")
-    if not (([1, 2, 3]).reverse() == [3, 2, 1]):
+    if not (([1, 2, 3]).reverse_in_place() == [3, 2, 1]):
         return panic(message: "check failed")
     if not ([1, 2].append(3) == [1, 2, 3]):
         return panic(message: "check failed")
 
     let lookup = [4, 5].at
-    let expected: Optional[Int] = some(value: 5)
+    let expected: Optional[Int] = some(5)
     if not (lookup(1) == expected):
         return panic(message: "check failed")
-    if not ([4, 5].at(0) == some(value: 4)):
+    if not ([4, 5].at(0) == some(4)):
         return panic(message: "check failed")
 
-    with service = Scheduler(
-        limit: 1,
-        drain: 2.seconds
-    ):
-        let operation = fn() -> Result[Unit, String]:
-            return ok(value: unit)
+    with service = Scheduler(limit: 1, drain: 2.seconds):
+        let operation = fn() -> Result[Unit, Error]:
+            return ok(unit)
 
         match service.start(operation):
             ok(_):
@@ -162,7 +152,7 @@ test "optional labels on methods and native functions":
                     return panic(message: "check failed")
 
 test "omitted labels preserve evaluation order":
-    let state = Synchronized(value: 0)
+    let state = Synchronized(0)
     if not (prepare_receiver(state).apply(next(state)) == 3):
         return panic(message: "check failed")
 
@@ -170,12 +160,7 @@ test "omitted labels preserve evaluation order":
         if not (locked.get() == 2):
             return panic(message: "check failed")
 
-    if not (
-        subtract(
-            deduction: next(state),
-            amount: next(state)
-        ) == 1
-    ):
+    if not (subtract(deduction: next(state), amount: next(state)) == 1):
         return panic(message: "check failed")
 
     with locked = state.lock():

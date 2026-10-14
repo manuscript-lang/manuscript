@@ -9,8 +9,8 @@ fn identity[T](value: T) -> T:
 
 fn probe() -> Result[Unit, ExecutionError]:
     let first = fn() -> Result[Int, String]:
-        return ok(value: 3)
-    let second = fn() -> Bool:
+        return ok(3)
+    let second = fn():
         return true
 
     with group = TaskGroup():
@@ -29,7 +29,7 @@ fn probe() -> Result[Unit, ExecutionError]:
             error(_):
                 return panic(message: "Unexpected case")
 
-        return ok(value: unit)
+        return ok(unit)
 
 test "typed task helper":
     match probe():
@@ -42,18 +42,18 @@ test "typed task helper":
 fn describe(outcome: Result[Int, Int]) -> Result[Int, String]:
     match outcome:
         ok(value):
-            return ok(value: value)
+            return ok(value)
 
         error(cause):
-            return error(cause: "Error {cause}")
+            return error("Error {cause}")
 
 test "explicit error conversion":
-    let failed: Result[Int, Int] = error(cause: 7)
-    let expected: Result[Int, String] = error(cause: "Error 7")
+    let failed: Result[Int, Int] = error(7)
+    let expected: Result[Int, String] = error("Error 7")
     if not (describe(outcome: failed) == expected):
         return panic(message: "check failed")
 
-    let succeeded: Result[Int, Int] = ok(value: 3)
-    let unchanged: Result[Int, String] = ok(value: 3)
+    let succeeded: Result[Int, Int] = ok(3)
+    let unchanged: Result[Int, String] = ok(3)
     if not (describe(outcome: succeeded) == unchanged):
         return panic(message: "check failed")

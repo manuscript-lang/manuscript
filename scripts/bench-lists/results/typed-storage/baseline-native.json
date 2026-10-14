@@ -1,0 +1,77 @@
+{
+  "cli": "/workspace/manuscript/ms",
+  "cli_sha256": "21f20ecd2e3b8930d53d56d38d98e0193587791bf4f27bef0e9f3232f2d2dfe4",
+  "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "build_type": "Release",
+  "results": [
+    {
+      "name": "append",
+      "elements": 1000000,
+      "samples": [
+        {
+          "seconds": 0.31601886499998955,
+          "peak_rss_kib": 79224
+        },
+        {
+          "seconds": 0.27468161799998825,
+          "peak_rss_kib": 74424
+        },
+        {
+          "seconds": 0.2568458009999972,
+          "peak_rss_kib": 78968
+        }
+      ],
+      "median_seconds": 0.27468161799998825,
+      "median_peak_rss_kib": 78968,
+      "binary_sha256": "88de5f32b7516aef399ba87d499d4c915931f132909a29e35a47cfcb822422c7"
+    },
+    {
+      "name": "append",
+      "elements": 4000000,
+      "samples": [
+        {
+          "seconds": 0.5850494850000132,
+          "peak_rss_kib": 253048
+        },
+        {
+          "seconds": 0.6476761019999913,
+          "peak_rss_kib": 310520
+        },
+        {
+          "seconds": 0.7039932910000175,
+          "peak_rss_kib": 291064
+        }
+      ],
+      "median_seconds": 0.6476761019999913,
+      "median_peak_rss_kib": 291064,
+      "binary_sha256": "2a520807096599b7bf2c98ed7ff590928abad16f95baf546d4d0947b668cd6ed"
+    },
+    {
+      "name": "sort",
+      "elements": 200000,
+      "samples": [
+        {
+          "seconds": 0.8202686109999888,
+          "peak_rss_kib": 29664
+        },
+        {
+          "seconds": 0.8837859740000056,
+          "peak_rss_kib": 30012
+        },
+        {
+          "seconds": 0.8731993030000069,
+          "peak_rss_kib": 30652
+        }
+      ],
+      "median_seconds": 0.8731993030000069,
+      "median_peak_rss_kib": 30012,
+      "binary_sha256": "2bcd8df0d6ba1659a992ab01981fab6a5d623cae217acc2583888b4cda5b748f"
+    }
+  ]
+}

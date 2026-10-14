@@ -96,3 +96,15 @@ fn construct(state: State) -> Options:
 		}
 	}
 }
+
+func TestUniversalToStringReadsWithoutInvokingResources(t *testing.T) {
+	source := "fn text[T](value: T) -> String:\n    return value.toString()\n"
+	result := compiler.CompileSource("conversion.ms", source, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	effects := result.Program.Effects[result.Program.Symbol("conversion.ms", "text").ID]
+	if len(effects) != 1 || effects[0] != "read" {
+		t.Fatal("string conversion reads mutable data without invoking resources", effects)
+	}
+}

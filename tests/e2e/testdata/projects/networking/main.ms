@@ -1,3 +1,4 @@
+import {headers, HttpMethod} from "@std/http.ms"
 import network from "@std/net.ms"
 import panic from "@std/faults.ms"
 
@@ -35,15 +36,15 @@ fn websocket_error(cause: WebSocketError) -> HttpError:
             return HttpError.Timeout
 
         Failed(message):
-            return HttpError.Failed(message: message)
+            return HttpError.Failed(message)
 
 fn socket_result[T](result: Result[T, WebSocketError]) -> Result[T, HttpError]:
     match result:
         ok(value):
-            return ok(value: value)
+            return ok(value)
 
         error(cause):
-            return error(cause: websocket_error(cause))
+            return error(websocket_error(cause))
 
 fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     if exchange.path() == "/ws":
@@ -64,22 +65,20 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
                     )
 
                 none:
-                    return ok(value: unit)
+                    return ok(unit)
 
-        return ok(value: unit)
+        return ok(unit)
 
-    let headers = Map[String, List[String]]().with_entry(
-        key: "X-Test",
-        value: ["stream"]
-    )
-    let started = try exchange.send_headers(status: 200, headers: headers)
+    let fields = headers()
+    let appended = try fields.append("X-Test", "stream".to_bytes())
+    let started = try exchange.send_headers(status: 200, headers: fields)
 
     match exchange.write(data: "hello from streaming Manuscript".to_bytes()):
         ok(_):
-            return ok(value: unit)
+            return ok(unit)
 
         error(_):
-            return error(cause: HttpError.Failed(message: "write failed"))
+            return error(HttpError.Failed("write failed"))
 
 fn exercise() -> Result[Unit, HttpError]:
     let tls = TlsOptions(
@@ -116,32 +115,32 @@ fn exercise() -> Result[Unit, HttpError]:
         )
 
         with client = try network().http_client(options: client_options):
-            with response = try client.send(
-                method: "GET",
+            with response = try client.request(
+                method: HttpMethod.Get,
                 url: "http://{server.address()}/",
-                headers: Map[String, String](),
+                headers: headers(),
                 body: "".to_bytes(),
                 max_response_bytes: 1024,
                 timeout: 2.seconds
             ):
-                if not (response.status() == 200):
+                if not (response.metadata().status == 200):
                     return panic(message: "check failed")
 
-                match response.read(max_bytes: 1024):
-                    ok(part):
-                        match part:
-                            some(data):
-                                if not (
-                                    data.to_text() == some(
-                                        value: "hello from streaming Manuscript"
-                                    )
-                                ):
-                                    return panic(message: "check failed")
-
-                            none:
-                                return panic(message: "Unexpected case")
-
+                let part = match response.read(max_bytes: 1024):
+                    ok(part): part
                     error(_):
+                        return panic(message: "Unexpected case")
+
+                match part:
+                    some(data):
+                        if not (
+                            data.to_text() == some(
+                                "hello from streaming Manuscript"
+                            )
+                        ):
+                            return panic(message: "check failed")
+
+                    none:
                         return panic(message: "Unexpected case")
 
         let websocket_options = WebSocketOptions(
@@ -154,7 +153,7 @@ fn exercise() -> Result[Unit, HttpError]:
         with socket = try socket_result(
             result: network().web_socket(
                 url: "ws://{server.address()}/ws",
-                headers: Map[String, String](),
+                headers: headers(),
                 subprotocols: ["echo"],
                 options: websocket_options
             )
@@ -173,13 +172,13 @@ fn exercise() -> Result[Unit, HttpError]:
                 some(message):
                     if not (message.text):
                         return panic(message: "check failed")
-                    if not (message.data.to_text() == some(value: "echo me")):
+                    if not (message.data.to_text() == some("echo me")):
                         return panic(message: "check failed")
 
                 none:
                     return panic(message: "Unexpected case")
 
-    return ok(value: unit)
+    return ok(unit)
 
 export fn main() -> Int:
     match exercise():

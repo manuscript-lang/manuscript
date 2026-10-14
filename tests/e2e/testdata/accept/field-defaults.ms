@@ -19,7 +19,7 @@ type Data:
     number: Int = 5
     values: List[Int] = [number]
     callback: fn() -> Int = (
-        fn() -> Int:
+        fn():
             return number
     )
 
@@ -29,15 +29,11 @@ type Box[T]:
 
 type Explicit:
     nothing: Unit = panic("Unit default must be skipped")
-    option: Optional[Int] = some(value: 9)
+    option: Optional[Int] = some(9)
 
 test "record defaults and explicit overrides":
     let data = Data()
-    if (
-        data.number != 5
-        or data.values.at(0).unwrap() != 5
-        or data.callback() != 5
-    ):
+    if (data.number != 5 or data.values.at(0).unwrap() != 5 or data.callback() != 5):
         return panic("dependent field and closure defaults")
 
     let changed = Data(number: 0)
@@ -104,6 +100,6 @@ fn no_op() -> Unit:
 test "ordinary empty declarations and interface omission":
     no_op()
     let marker = Marker()
-    let view = ReadWithDefault(value: Reader())
+    let view = ReadWithDefault(Reader())
     if view.get() != 5 or view.get(fallback: 7) != 7:
         return panic("interface Optional defaults must reach source implementations")

@@ -7,6 +7,10 @@
 /.hugo_build.lock
 /website/.hugo_build.lock
 /.artifacts/
+
+# API downloads generated from the checked declarations by make docs / make book-check
+/website/static/stdlib.md
+/website/static/stdlib.json
 /.tools/
 
 # Browser verification artifacts

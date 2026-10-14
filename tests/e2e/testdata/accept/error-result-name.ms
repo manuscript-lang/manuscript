@@ -12,7 +12,7 @@ fn general(value: Result) -> Error:
     return value
 
 test "an application error named Result retains its nominal identity":
-    let original = Result(diagnostic: "application diagnostic")
+    let original = Result("application diagnostic")
     let cause = general(original)
     if cause.message() != "application diagnostic":
         return panic(message: "application Result was treated as a standard Result")

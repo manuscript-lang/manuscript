@@ -1,0 +1,73 @@
+import { readFileSync } from "node:fs";
+
+const lines = readFileSync(0, "utf8").split("\n");
+const [nameA, nameB, ctxText, nText, mText] = lines[0].split(/[ \t]+/).filter((x) => x !== "");
+const ctx = Number(ctxText);
+const n = Number(nText);
+const m = Number(mText);
+const a = lines.slice(1, 1 + n);
+const b = lines.slice(1 + n, 1 + n + m);
+
+// L[i][j] = LCS length of a[i..] and b[j..], stored flat.
+const w = m + 1;
+const L = new Int32Array((n + 1) * w);
+for (let i = n - 1; i >= 0; i--) {
+  for (let j = m - 1; j >= 0; j--) {
+    L[i * w + j] = a[i] === b[j] ? L[(i + 1) * w + j + 1] + 1 : Math.max(L[(i + 1) * w + j], L[i * w + j + 1]);
+  }
+}
+
+type Op = { t: string; s: string };
+const ops: Op[] = [];
+{
+  let i = 0;
+  let j = 0;
+  while (i < n || j < m) {
+    if (i < n && j < m && a[i] === b[j]) {
+      ops.push({ t: " ", s: a[i] });
+      i++;
+      j++;
+    } else if (j === m || (i < n && L[(i + 1) * w + j] >= L[i * w + j + 1])) {
+      ops.push({ t: "-", s: a[i] });
+      i++;
+    } else {
+      ops.push({ t: "+", s: b[j] });
+      j++;
+    }
+  }
+}
+
+const changes: number[] = [];
+ops.forEach((o, k) => {
+  if (o.t !== " ") changes.push(k);
+});
+const out: string[] = [];
+if (changes.length > 0) {
+  out.push(`--- ${nameA}`, `+++ ${nameB}`);
+  const groups: number[][] = [[changes[0]]];
+  for (const k of changes.slice(1)) {
+    const g = groups[groups.length - 1];
+    if (k - g[g.length - 1] - 1 <= 2 * ctx) g.push(k);
+    else groups.push([k]);
+  }
+  const range = (start: number, len: number) => {
+    const s = start + (len > 0 ? 1 : 0);
+    return len === 1 ? `${s}` : `${s},${len}`;
+  };
+  for (const g of groups) {
+    const lo = Math.max(0, g[0] - ctx);
+    const hi = Math.min(ops.length, g[g.length - 1] + 1 + ctx);
+    let sa = 0;
+    let sb = 0;
+    for (const o of ops.slice(0, lo)) {
+      if (o.t !== "+") sa++;
+      if (o.t !== "-") sb++;
+    }
+    const body = ops.slice(lo, hi);
+    const la = body.filter((o) => o.t !== "+").length;
+    const lb = body.filter((o) => o.t !== "-").length;
+    out.push(`@@ -${range(sa, la)} +${range(sb, lb)} @@`);
+    for (const o of body) out.push(o.t + o.s);
+  }
+}
+process.stdout.write(out.map((o) => o + "\n").join(""));

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
@@ -15,7 +16,7 @@ func TestLocalInterfaceExtensions(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(t.TempDir(), "extensions")
-	if err := compiler.Build(result.Source, binary); err != nil {
+	if err := build.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
 	output, err := exec.Command(binary).CombinedOutput()

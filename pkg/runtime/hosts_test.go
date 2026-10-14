@@ -11,12 +11,12 @@ import (
 )
 
 func hostResponse(status int64, text string) Value {
-	return Record{"@std/HttpResponse", map[string]Value{"status": status, "headers": &Map{"@std/Map[String][String]", nil}, "body": Bytes{[]byte(text)}}}
+	return Record{"@std/HttpResponse", map[string]Value{"status": status, "headers": httpTestHeaders(&Map{Type: "@std/Map[String][String]"}), "body": Bytes{[]byte(text)}}}
 }
 func serveTest(t *testing.T, root *Execution, handler Function, bodyLimit int64) *httpService {
 	t.Helper()
 	network := &network{}
-	result := Invoke(root, network.Operation("serve"), []Argument{{"address", "127.0.0.1:0"}, {"handler", handler}, {"limit", int64(1)}, {"max_body_bytes", bodyLimit}, {"max_response_bytes", int64(32)}, {"timeout", Duration(time.Second)}, {"grace", Duration(0)}}).(Alternative)
+	result := Invoke(root, network.Operation("serve"), []Argument{{"address", "127.0.0.1:0"}, {"handler", handler}, {"max_requests", int64(1)}, {"max_body_bytes", bodyLimit}, {"max_response_bytes", int64(32)}, {"timeout", Duration(time.Second)}, {"grace", Duration(0)}}).(Alternative)
 	if result.Tag != "ok" {
 		t.Fatal(result)
 	}
@@ -187,7 +187,7 @@ func TestSubprocessOutputAndLimit(t *testing.T) {
 		}
 	}
 	result := Invoke(root, commands.Operation("run"), []Argument{{"program", "/bin/printf"}, {"arguments", &List{}}, {"input", Bytes{}}, {"max_output_bytes", int64(8)}, {"timeout", Duration(0)}}).(Alternative)
-	if result.Tag != "error" || result.Fields[0].(Alternative).Tag != "TimedOut" {
+	if result.Tag != "error" || result.Fields[0].(Alternative).Tag != "Timeout" {
 		t.Fatal(result)
 	}
 }

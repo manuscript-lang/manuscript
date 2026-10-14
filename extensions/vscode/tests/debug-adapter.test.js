@@ -5,6 +5,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { Framing, frame, ManuscriptAdapter, sourceType, mapName, rewriteExpression, runtimeType } = require(process.env.MANUSCRIPT_DAP_ADAPTER || '../debug-adapter');
+require('./interface-view-debug.test');
 
 test('DAP framing preserves fragmented UTF-8 and multiple messages', () => {
   const messages = []; const parser = new Framing(message => messages.push(message));
@@ -26,13 +27,13 @@ test('Manuscript values use source names and lazy structured handles', async () 
 });
 
 test('native DAP source stepping and Manuscript record/list/variant rendering', { skip: !process.env.MANUSCRIPT_DAP_TEST, timeout: 60000 }, async () => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript dap test '));
+  const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript dap test ')));
   const program = path.join(directory, 'main.ms');
-  const source = 'import List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1\n';
+  const source = 'import List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let floats = [1.25, 2.5]\n    let bools = [true, false]\n    let strings = ["a", "b"]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1 + floats.length() - 2 + bools.length() - 2 + strings.length() - 2\n';
   await fs.writeFile(program, source);
   const returnLine = source.split('\n').findIndex(line => line.trim().startsWith('return box.')) + 1;
   const output = new PassThrough(); const messages = []; const waiters = [];
-  const adapter = new ManuscriptAdapter(output, { compiler: process.env.MANUSCRIPT_MS, delve: process.env.MANUSCRIPT_DLV });
+  const adapter = new ManuscriptAdapter(output, { compiler: process.env.MANUSCRIPT_MS });
   const parser = new Framing(message => { messages.push(message); for (const wake of waiters.splice(0)) wake(); });
   output.on('data', bytes => parser.push(bytes));
   const wait = async predicate => { while (true) { const index = messages.findIndex(predicate); if (index >= 0) return messages.splice(index, 1)[0]; await new Promise(resolve => waiters.push(resolve)); } };
@@ -44,7 +45,8 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
     assert.equal(capabilities.supportsSetVariable, false);
     assert.equal(capabilities.supportsSetExpression, false);
     const launch = request('launch', { program, stopOnEntry: false });
-    await wait(message => message.event === 'initialized');
+    const initialized = await wait(message => message.event === 'initialized' || (message.request_seq === launch && !message.success));
+    assert.equal(initialized.event, 'initialized', initialized.message);
     const breakpoints = await response(request('setBreakpoints', { source: { path: program }, breakpoints: [{ line: returnLine }] }));
     assert.equal(breakpoints.breakpoints[0].verified, true);
     const configured = request('configurationDone');
@@ -66,6 +68,11 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
     assert.equal(fields.variables.find(variable => variable.name === 'count').value, '42');
     const items = locals.variables.find(variable => variable.name === 'items'); assert.equal(items.type, 'List[Int]');
     const values = await response(request('variables', { variablesReference: items.variablesReference })); assert.equal(values.variables.length, 3);
+    for(const [name,want] of [['floats','1.25'],['bools','true'],['strings','"a"']]) {
+      const list=locals.variables.find(variable=>variable.name===name);assert.ok(list,name);
+      const expanded=await response(request('variables',{variablesReference:list.variablesReference}));assert.equal(expanded.variables.length,2,name);
+      const first=await response(request('evaluate',{frameId:stack.stackFrames[0].id,expression:name+'[0]',context:'watch'}));assert.equal(first.result,want,name);
+    }
     const watch = await response(request('evaluate',{frameId:stack.stackFrames[0].id,expression:'box.count',context:'watch'}));assert.equal(watch.result,'42');
     const element = await response(request('evaluate',{frameId:stack.stackFrames[0].id,expression:'items[0]',context:'watch'}));assert.equal(element.result,'1');
     const optional = locals.variables.find(variable => variable.name === 'optional'); assert.equal(optional.value, 'some');
@@ -87,6 +94,13 @@ test('watch rewriting respects quoted text and native member names',()=>{
  const vars=[{name:'local5_box',type:'interface {}(main.Record)'},{name:'local6_count',type:'interface {}(int64)'}];
  assert.equal(rewriteExpression('box.count',vars,metadata),'local5_box.(data).Fields["count"]');
  assert.equal(rewriteExpression('count + len("count")',vars,metadata),'local6_count + len("count")');
+});
+
+test('watch rewriting leaves numeric literals alone',()=>{
+ const metadata=new Map([['local1_e5',{name:'e5'}],['local2_x1',{name:'x1'}]]);
+ const vars=[{name:'local1_e5',type:'interface {}(int64)'},{name:'local2_x1',type:'interface {}(int64)'}];
+ assert.equal(rewriteExpression('1e5 + e5',vars,metadata),'1e5 + local1_e5');
+ assert.equal(rewriteExpression('0x1f + x1 + 1.5e5',vars,metadata),'0x1f + local2_x1 + 1.5e5');
 });
 
 test('nested runtime type keys render generic source types',()=>{
@@ -138,4 +152,44 @@ test('typed task handles and groups expose work state without native bookkeeping
   ];
   const state = await adapter.valueChildren(adapter.handles.get(group.variablesReference), {});
   assert.deepEqual(state.map(field => field.name), ['Active tasks', 'Joined']);
+});
+
+test('primitive and legacy List backing renders elements and rewrites watches', async () => {
+  for (const [kind,field,type,value] of [[0,'Items','interface {}(int64)','interface {}(int64) 42'],[1,'ints','int64','42'],[2,'floats','float64','1.25'],[3,'bools','bool','false'],[4,'strings','string','"text"']]) {
+    const adapter=new ManuscriptAdapter(new PassThrough());
+    const fields=[{name:'Type',value:'"@std/List[Int]"'},{name:'Items',variablesReference:kind===0?7:0},{name:'kind',value:kind+' = 0x'+kind.toString(16)},{name:'initializing',value:'false'},...['ints','floats','bools','strings'].map(name=>({name,variablesReference:name===field?7:0}))];
+    adapter.children=async ref=>ref===5?[{name:'data',variablesReference:6}]:ref===6?fields:ref===7?[{name:'[0]',type,value,variablesReference:0}]:[];
+    const rendered=adapter.render({name:'local1_items',type:'interface {}(*msruntime.List)',value:'{Type: "@std/List[Int]", Items: []interface {} len: 0, ints: []int64 len: 1}',variablesReference:5},'items','List[Int]');
+    assert.equal(rendered.value,'List[Int]');
+    const elements=await adapter.valueChildren(adapter.handles.get(rendered.variablesReference),{});
+    assert.equal(elements.length,1);assert.equal(elements[0].name,'[0]');assert.ok(!elements.some(v=>v.name==='kind'));
+    const vars=[{name:'local1_items',type:'interface {}(*msruntime.List)',listField:field}];
+    assert.equal(rewriteExpression('items[0]',vars,new Map([['local1_items',{name:'items'}]])),`local1_items.(data).${field}[0]`);
+    fields.find(v=>v.name===field).variablesReference=0;
+    assert.deepEqual(await adapter.valueChildren(adapter.handles.get(rendered.variablesReference),{}),[]);
+  }
+});
+
+test('requests after the target ends get clear answers instead of pipe errors', async () => {
+  const output = new PassThrough(); const messages = [];
+  const parser = new Framing(message => messages.push(message));
+  output.on('data', bytes => parser.push(bytes));
+  const adapter = new ManuscriptAdapter(output);
+  adapter.receive({ type: 'event', event: 'terminated', body: {} });
+  assert.equal(adapter.ended, true);
+  const ask = async (seq, command) => { await adapter.request({ seq, type: 'request', command, arguments: {} }); return messages.find(m => m.request_seq === seq); };
+  for (const [seq, command] of [[1, 'next'], [2, 'continue'], [3, 'stepIn'], [4, 'pause']]) {
+    const reply = await ask(seq, command);
+    assert.equal(reply.success, false);
+    assert.match(reply.message, /the debuggee has exited/);
+  }
+  const threads = await ask(5, 'threads');
+  assert.equal(threads.success, false);
+  assert.match(threads.message, /session has ended/);
+  assert.doesNotMatch(JSON.stringify(messages), /TypeError|undefined/);
+  for (const [seq, command] of [[6, 'terminate'], [7, 'disconnect']]) {
+    const reply = await ask(seq, command);
+    assert.equal(reply.success, true);
+    assert.equal(reply.command, command);
+  }
 });

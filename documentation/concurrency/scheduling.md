@@ -9,10 +9,9 @@ weight = 4
 
 ```manuscript
 import Scheduler from "@std/tasks.ms"
-import Result from "@std/result.ms"
 
-fn send() -> Result[Unit, String]:
-    return ok(value: unit)
+fn send() -> Result[Unit, Error]:
+    return ok(unit)
 
 fn start_work() -> Unit:
     with scheduler = Scheduler():
@@ -21,7 +20,7 @@ fn start_work() -> Unit:
         let repeated = scheduler.every(interval: 1.seconds, operation: send)
 ```
 
-The three admission operations return `Result[OperationId, StartError]`. They share `status(id)`, `cancel(id)`, failure reporting, and scoped shutdown. `after` accepts a nonnegative delay; `every` requires a positive interval. Invalid durations return `InvalidInput`. A repeating callback runs sequentially and waits its interval after each completion; missed intervals do not accumulate callbacks. A returned failure stops repetition and reaches the reporter.
+The three admission operations return `Result[OperationId, StartError]`. They share `status(id)`, `cancel(id)`, failure reporting, and scoped shutdown. `after` accepts a nonnegative delay; `every` requires a positive interval. Invalid durations return `InvalidInput`. A repeating callback runs sequentially and waits its interval after each completion; missed intervals do not accumulate callbacks. A returned failure stops repetition and reaches the reporter as `SchedulerFailure.Failed(operation, cause)`, where `cause` is the callback's `Error` value unchanged. Return a domain error directly, or `TextError.Text("message")` from `@std/errors.ms` when only text is meant; the reporter can match the concrete type or call `category(cause)`. A callback that returned `Result[Unit, String]` must now return an `Error`.
 
 `Scheduler()` has no admission or status-history cap. Supply `limit: n` to bound accepted unfinished operations, or `history_limit: n` to retain only the most recent completed statuses. A supplied admission limit must be positive; history may be zero. Optional `reporter` and `drain` use Optional callback and Duration values. Their defaults are the host diagnostic sink and immediate cancellation on close. Omitted caps and explicit `none` mean unbounded.
 

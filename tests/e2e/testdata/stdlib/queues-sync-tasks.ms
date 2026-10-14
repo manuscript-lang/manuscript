@@ -14,48 +14,41 @@ import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn compare(left: Int, right: Int) -> Int: return left - right
+fn compare(left: Int, right: Int) -> Int: left - right
 
-fn operation() -> Result[Unit, String]: return ok(value: unit)
+fn operation() -> Result[Unit, Error]: ok(unit)
 
-fn first() -> Int: return 1
+fn first() -> Int: 1
 
-fn second() -> String: return "two"
+fn second() -> String: "two"
 
 test "FIFO capacity empty reads draining and reuse":
-    let queue = Queue[Int](capacity: 2)
+    let queue = Queue[Int](2)
     if not queue.is_empty() or not queue.peek().is_none(): return panic("empty queue")
-    if (
-        not queue.enqueue(1)
-        or not queue.enqueue(2)
-        or queue.enqueue(3)
-    ): return panic("queue capacity")
-    if queue.peek() != some(value: 1) or queue.length() != 2: return panic("queue peek")
-    if queue.dequeue() != some(value: 1) or queue.dequeue() != some(value: 2): return panic(
-        "FIFO"
+    if (not queue.enqueue(1) or not queue.enqueue(2) or queue.enqueue(3)): return panic(
+        "queue capacity"
     )
+    if queue.peek() != some(1) or queue.length() != 2: return panic("queue peek")
+    if queue.dequeue() != some(1) or queue.dequeue() != some(2): return panic("FIFO")
     if not queue.dequeue().is_none() or not queue.enqueue(4): return panic(
         "queue reuse"
     )
 
 test "priority queue orders values and honors capacity":
-    let queue = PriorityQueue(
-        compare: compare,
-        capacity: 3
-    )
+    let queue = PriorityQueue(compare: compare, capacity: 3)
     queue.enqueue(3)
     queue.enqueue(1)
     queue.enqueue(2)
     if queue.enqueue(0): return panic("priority capacity")
-    if queue.peek() != some(value: 1): return panic("priority peek")
+    if queue.peek() != some(1): return panic("priority peek")
 
     for expected in [1, 2, 3]:
-        if queue.dequeue() != some(value: expected): return panic("priority order")
+        if queue.dequeue() != some(expected): return panic("priority order")
 
     if not queue.is_empty(): return panic("priority drain")
 
 test "synchronized guards update and release for later acquisition":
-    let state = Synchronized(value: 1)
+    let state = Synchronized(1)
 
     with guard = state.lock():
         if guard.get() != 1: return panic("guard read")

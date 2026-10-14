@@ -106,6 +106,23 @@ func libraryGlobEnds(atoms []libraryGlobAtom, value []rune, start int) map[int]b
 	positions := map[int]bool{start: true}
 	for _, atom := range atoms {
 		next := map[int]bool{}
+		if atom.kind == 's' {
+			// A star reaches every position from the earliest start onward, so
+			// later starts add nothing. Expanding each start separately made a
+			// run of stars quadratic in the segment length.
+			earliest := len(value) + 1
+			for at := range positions {
+				earliest = min(earliest, at)
+			}
+			for i := earliest; i <= len(value); i++ {
+				next[i] = true
+			}
+			positions = next
+			if len(positions) == 0 {
+				break
+			}
+			continue
+		}
 		for at := range positions {
 			switch atom.kind {
 			case 'l':
@@ -122,10 +139,6 @@ func libraryGlobEnds(atoms []libraryGlobAtom, value []rune, start int) map[int]b
 					if matched {
 						next[at+1] = true
 					}
-				}
-			case 's':
-				for i := at; i <= len(value); i++ {
-					next[i] = true
 				}
 			default:
 				accepted := map[int]bool{}

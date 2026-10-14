@@ -5,7 +5,7 @@ weight = 1
 
 # Declarations and calls
 
-A function names its inputs, declares their types, and declares the type it returns. Its body runs in source order. Use `return` to send a value back to the caller. A short body can stay on one line: `fn double(value: Int) -> Int: return value * 2`. See the [suite rules](../basics/grammar.md#statements-and-patterns) for inline bodies.
+A function names its inputs, declares their types, and declares the type it returns. Its body runs in source order. Use `return` to send a value back from a multiline body. A short expression body can stay on one line and return implicitly: `fn double(value: Int) -> Int: value * 2`. See the [suite rules](../basics/grammar.md#statements-and-patterns) for inline bodies.
 
 ```manuscript
 fn decrement(value: Int) -> Int:
@@ -26,27 +26,31 @@ Parameters belong to the function body's lexical scope. A local declaration cann
 
 ## Argument names
 
-A function with exactly one declared parameter accepts either `function(value)` or `function(name: value)`. The omitted label resolves to that sole parameter. For functions with more than one parameter, a bare identifier matching a parameter name is shorthand for `name: name`. Other argument expressions require `name: value`; the name identifies the declared parameter.
+Argument labels are optional. An unlabeled expression supplies the first parameter not filled by an earlier argument, in declaration order. An explicit `name: value` supplies that named parameter in any order.
+
+For compatibility, a bare identifier matching a parameter name remains shorthand for `name: name` when the callable has multiple parameters. This selects the named parameter even when it is already filled, in which case the call is rejected as a duplicate. Parenthesizing an identifier makes it positional: `(name)` is an ordinary expression. `ms lint` reports advisory **MSL109** when shorthand selects a parameter other than the next unfilled positional one; write `left: right` or `(right)` for positional intent, or `right: right` to keep the binding explicit. Binding itself is unchanged.
 
 ```manuscript
 fn reduce(amount: Int, deduction: Int) -> Int:
     return amount - deduction
 
+let remaining = reduce(10, 3)
+let explicit_remaining = reduce(amount: 10, deduction: 3)
+let mixed = reduce(deduction: 3, 10)
 let amount = 10
 let deduction = 3
-let remaining = reduce(amount, deduction)
-let explicit_remaining = reduce(amount: 10, deduction: 3)
-let next = decrement(3)
-let explicit = decrement(value: 3)
+let shorthand = reduce(deduction, amount)
 ```
 
-The rule applies to ordinary functions, methods, function values, and library APIs. Count the callable's declared parameters, including optional API parameters, rather than the arguments supplied at a particular call. A method's implicit receiver does not count as a parameter. Constructors and explicit contract views still require labels, including `some(value: ...)`, `ok(value: ...)`, `error(cause: ...)`, and `Contract(value: receiver)`. A zero-parameter function uses `()`.
+All four results are `7`. Resolve each argument from left to right; labels do not reserve parameters for later arguments. For example, `reduce(10, amount: 3)` supplies `amount` twice and fails, while `reduce(amount: 10, 3)` supplies `deduction` positionally. Unknown labels do not fill a declared parameter. Once every parameter is filled, another positional argument is an error. Arguments never skip a parameter merely because it has a default.
+
+The rule applies to ordinary and generic functions, methods, function values, library APIs, record and alternative-case constructors, and explicit contract views. A method's implicit receiver is evaluated before its arguments and does not consume a positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Existing labeled calls and function matching-name shorthand retain their meaning. Function-type parameter names remain part of [type identity](function-values-and-closures.md); omitting invocation labels does not make differently named callback signatures compatible.
 
 TaskGroup.start accepts one zero-argument function and infers a typed Task[T] handle. Task and group joins use ordinary receiver calls; see [task groups](../../concurrency/task-groups.md).
 
 Match payload bindings such as `some(value):` are patterns, rather than calls; see [pattern matching](../control-flow/pattern-matching.md).
 
-A parameter with a default may be omitted; every other parameter remains required. An `Optional[T]` parameter without a default is still required: callers explicitly supply `none` when absent. A supplied `T` is wrapped once as `some(value: ...)` for a standard `Optional[T]` parameter; see [optional arguments](../types/optionals.md#passing-optional-arguments). Variadic parameters and argument spreading are not supported. Existing trusted library API contracts may explicitly permit omitted named arguments; that permission does not follow from an `Optional` value type. Unknown labels, duplicate arguments, missing required arguments, and unlabeled expressions without matching-name shorthand are compile errors. Shorthand matches names rather than positions, may mix with explicit labels, and follows ordinary lexical name resolution. For example, `reduce(deduction, amount)` still passes each variable to its matching parameter. `reduce(amount + 1, deduction)` requires an explicit `amount:` label. Supplying both `decrement(3, value: 4)` arguments duplicates the sole parameter and is rejected. Supplied values must be compatible with the declared parameter types under [type compatibility](../types/compatibility.md); labels do not authorize numeric or contract conversions.
+A parameter with a default may be omitted; every other parameter remains required. An `Optional[T]` parameter without a default is still required: callers explicitly supply `none` when absent. A supplied `T` is wrapped once as `some(value: ...)` for a standard `Optional[T]` parameter; see [optional arguments](../types/optionals.md#passing-optional-arguments). Variadic parameters and argument spreading are not supported. Existing trusted library API contracts may explicitly permit omitted arguments; that permission does not follow from an `Optional` value type. Unknown labels, duplicate arguments, missing required arguments, and excess positional arguments are compile errors. Supplied values must be compatible with the declared parameter types under [type compatibility](../types/compatibility.md); optional labels do not authorize numeric or contract conversions.
 
 ## Default arguments
 
@@ -57,20 +61,22 @@ fn subtract(amount: Int, deduction: Int = 1) -> Int:
     return amount - deduction
 
 fn example() -> Int:
-    let usual = subtract(amount: 5)
-    let explicit = subtract(amount: 5, deduction: 2)
+    let usual = subtract(5)
+    let explicit = subtract(5, 2)
     return usual + explicit
 ```
 
-`usual` is `4` and `explicit` is `3`. A function whose sole parameter has a default also accepts `function()`. Multi-parameter functions accept matching-name shorthand even when only one argument is supplied; other supplied expressions still require labels. Defaults may appear before required parameters because labels identify arguments.
+`usual` is `4` and `explicit` is `3`. A function whose sole parameter has a default also accepts `function()`. Defaults may appear before required parameters. To omit an earlier default and supply a later required parameter, use its label: `fn choose(first: Int = 1, second: Int) -> Int: second` accepts `choose(second: 2)`. Calling `choose(2)` supplies `first` and reports missing `second`.
 
 A default is checked against its explicit parameter type in the function's lexical scope. It may use imports, module declarations, earlier parameters, and an implementation method's `self`. Current and later parameters are not yet in scope. Anonymous functions may use captured outer bindings in defaults; those bindings follow the ordinary snapshot and sharing rules.
 
 Evaluate the callable and all supplied arguments first, in written order. Then evaluate omitted defaults once each in parameter declaration order, before entering the body. Defaults run afresh on each invocation; supplying a value skips its default entirely. Explicit `none`, `unit`, `false`, and zero are supplied values. A failing default prevents later defaults and the body from running. `try` in a default propagates from the called function under its declared result type.
 
-Named functions, anonymous functions, and implementation methods with bodies may declare defaults. Interface operation signatures, function-type annotations, record fields, and alternative payloads cannot. A method default permits omission through its concrete receiver or inferred bound method value; calls through an interface view follow the interface's required signature. Defaults do not provide generic inference: omitted arguments supply no type evidence, and a generic default must type-check under the declared bounds.
+Named functions, anonymous functions, and implementation methods with bodies may declare defaults. Function-type annotations and alternative payloads cannot. Application interface signatures only permit `= none` defaults on Optional parameters. Pinned standard declarations may also supply checked expressions, such as empty command input; these are prepared before native dispatch and inherited by source implementations of that standard interface. A concrete implementation's explicit parameter default takes precedence; an interface view uses the interface default. Record fields have their own [default expressions](../types/records.md#construction). A method default permits omission through its concrete receiver or inferred bound method value; calls through an interface view follow the interface's signature. Defaults do not provide generic inference: omitted arguments supply no type evidence, and a generic default must type-check under the declared bounds.
 
 An inferred immutable local copy of a callable retains its defaults. Explicit function-type annotations, mutable bindings, function parameters and results, fields, and generic forwarding require the full argument list. Defaults are not part of function-type identity; a defaulted function can be passed wherever its complete labeled signature is expected.
+
+The current native standard-library slice supports expression defaults on nongeneric functions and ordinary record fields. Standard interface expression defaults must be closed literals or bytes converted from literal text; dependent or effectful inherited defaults require a combined ordering design. Native generic expression defaults and expression defaults on opaque native constructors remain unsupported. A recursive native default expansion is rejected during lowering; ordinary source wrappers retain their runtime recursion behavior.
 
 ## Collections as arguments
 
@@ -88,7 +94,7 @@ let total = sum([1, 2, 3])
 let empty = sum([])
 ```
 
-The argument supplies one list reference. An existing `List[Int]` can be passed as `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list. Function values use the ordinary type `fn(values: List[Int]) -> Int`, and functions with multiple list parameters follow the same matching-name shorthand rule.
+The argument supplies one list reference. An existing `List[Int]` can be passed as `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list. Function values use the ordinary type `fn(values: List[Int]) -> Int`, and functions with multiple list parameters follow the same optional-label rule.
 
 See [collections](../types/collections.md) for list literals and element requirements.
 
@@ -102,7 +108,7 @@ This also matters for [concurrency APIs](../../concurrency/task-groups.md#prepar
 
 ## Unit and Never
 
-`unit` is the single value of `Unit`. A `Unit` function may use `return`, `return unit`, or fall through the end of its body. Other functions must return a compatible value on every reachable normal exit; bare `return` and reachable fallthrough are compile errors. There is no implicit return of a block's final expression.
+`unit` is the single value of `Unit`. A `Unit` function may use `return`, `return unit`, or fall through the end of its body. Other functions must return a compatible value on every reachable normal exit; bare `return` and reachable fallthrough are compile errors. A single-line function expression body returns its value: `fn double(value: Int) -> Int: value * 2`. Multiline bodies require explicit `return`; their final expression is not an implicit return.
 
 ```manuscript
 import panic from "@std/faults.ms"

@@ -112,10 +112,17 @@ func TestRawTerminalOnPseudoTerminal(t *testing.T) {
 	if closed := next(time.Second).Fields[0].(Alternative); closed.Tag != "Closed" {
 		t.Fatalf("after close: %+v", closed)
 	}
+	var output []byte
 	buffer := make([]byte, 256)
 	master.SetReadDeadline(time.Now().Add(time.Second))
-	n, _ := master.Read(buffer)
-	if !strings.Contains(string(buffer[:n]), "\x1b[?1049h") || !strings.Contains(string(buffer[:n]), "\x1b[?1049l") {
-		t.Fatalf("alternate screen sequences: %q", buffer[:n])
+	for !strings.Contains(string(output), "\x1b[?1049l") {
+		n, err := master.Read(buffer)
+		output = append(output, buffer[:n]...)
+		if err != nil {
+			break
+		}
+	}
+	if !strings.Contains(string(output), "\x1b[?1049h") || !strings.Contains(string(output), "\x1b[?1049l") {
+		t.Fatalf("alternate screen sequences: %q", output)
 	}
 }

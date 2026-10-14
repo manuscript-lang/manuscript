@@ -7,6 +7,28 @@ import (
 	"testing/fstest"
 )
 
+func TestRequiredWorkflowTriggers(t *testing.T) {
+	for _, test := range []struct {
+		name, events string
+		valid        bool
+	}{
+		{"unfiltered", "  pull_request:\n  merge_group:\n    types: [checks_requested]\n", true},
+		{"missing PR", "  merge_group:\n    types: [checks_requested]\n", false},
+		{"missing queue", "  pull_request:\n", false},
+		{"paths", "  pull_request:\n    paths: ['**/*.go']\n  merge_group:\n    types: [checks_requested]\n", false},
+		{"ignored paths", "  pull_request:\n    paths-ignore: ['documentation/**']\n  merge_group:\n    types: [checks_requested]\n", false},
+		{"queue activity", "  pull_request:\n  merge_group:\n    types: [destroyed]\n", false},
+		{"malformed", "  pull_request: [\n", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := checkWorkflowTriggers([]byte("on:\n" + test.events))
+			if (err == nil) != test.valid {
+				t.Fatalf("valid=%v, got %v", test.valid, err)
+			}
+		})
+	}
+}
+
 func TestStandardSyntaxGate(t *testing.T) {
 	valid := fstest.MapFS{
 		"process.ms":    {Data: []byte("export fn commands() -> Commands:\n")},
@@ -21,7 +43,7 @@ func TestStandardSyntaxGate(t *testing.T) {
 		"receiver": "type Data:\n    fn read() -> Int\n",
 		"schema":   "type Data:\n    count Int\n",
 		"default":  "type Data:\n    count: Int =\n",
-		"trailing": "fn valid() -> Unit:\nlet invalid = 3\n",
+		"trailing": "fn valid() -> Unit:\nvar invalid = 3\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			files := fstest.MapFS{"broken.ms": {Data: []byte(source)}}
@@ -48,7 +70,7 @@ func TestBoundaryRejectsHostRuntimeInFrontend(t *testing.T) {
 
 func TestMissingNodeCannotSilentlyReachLowering(t *testing.T) {
 	t.Chdir("../..")
-	missing, err := missingKinds("pkg/compiler/lower_expressions.go", "expressionValue", []string{"lambda", "future-node"})
+	missing, err := missingKinds("pkg/lower/lower_expressions.go", "expressionValue", []string{"lambda", "future-node"})
 	if err != nil || len(missing) != 1 || missing[0] != "future-node" {
 		t.Fatal(missing, err)
 	}
@@ -62,8 +84,8 @@ func TestVerificationTargetsExecuteTheirContracts(t *testing.T) {
 	for target, expected := range map[string][]string{
 		"verify":   {"vet ./...", "staticcheck ./...", "run ./scripts/repo-check\n", "test ./tests/examples", "maintenance licenses -check"},
 		"coverage": {"test -covermode=atomic", "-coverprofile=", "tool cover -html"},
-		"build":    {"run ./scripts/mktoolchain", "-tags bundled_toolchain"},
-		"race":     {"test -race"}, "fuzz": {"-fuzz '^FuzzCompile$'"}, "e2e": {"test  ./tests/e2e"},
+		"build":    {"run ./scripts/mktoolchain", "-tags exp.winarm64"},
+		"race":     {"test -race"}, "fuzz": {"test ./pkg/build -list '^FuzzCompile$'", "test ./pkg/build -run '^$' -fuzz '^FuzzCompile$'"}, "e2e": {"test  ./tests/e2e"},
 	} {
 		t.Run(target, func(t *testing.T) {
 			output, err := exec.Command("make", "--dry-run", target).CombinedOutput()

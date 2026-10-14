@@ -1,6 +1,9 @@
 package msruntime
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // LibrarySpec describes native calling conventions; integration tests compare
 // them with the authoritative checked Manuscript declarations.
@@ -18,10 +21,17 @@ var libraryFunctions = map[string]LibrarySpec{}
 
 func libraryAdd(module, name, result string, params []LibraryParam, body func(*Execution, string, []Value) Value) {
 	original := body
+	adaptOptions := nativeParamsNeedOptions(params)
+	plan := planOptions(name, params)
 	body = func(ctx *Execution, result string, args []Value) Value {
-		normalized, ok := nativeOptions(name, params, args)
+		// Ordinary native calls already have their ordered argument slots.
+		// Only adapters (or direct callers with missing slots) need a copy.
+		if !adaptOptions && len(args) >= len(params) {
+			return original(ctx, result, args)
+		}
+		normalized, ok := plan.normalize(args)
 		if !ok {
-			return nativeOptionFailure(result)
+			return nativeOptionFailure(result, name, params, args)
 		}
 		return original(ctx, result, normalized)
 	}
@@ -33,6 +43,15 @@ func libraryGeneric(module, name, result string, variables, params []LibraryPara
 	libraryAdd(module, name, result, params, body)
 	Library[len(Library)-1].Variables = variables
 	libraryFunctions[module+"/"+name] = Library[len(Library)-1]
+}
+
+// libraryAlias gives a receiver alias its own ABI identity while retaining the
+// original implementation, option defaults and failure diagnostics.
+func libraryAlias(module, name, original string) {
+	spec := libraryFunctions[module+"/"+original]
+	spec.Name = name
+	Library = append(Library, spec)
+	libraryFunctions[module+"/"+name] = spec
 }
 func libraryFunction(name, result string) (Value, bool) {
 	spec, ok := libraryFunctions[name]
@@ -50,14 +69,16 @@ func libraryFunction(name, result string) (Value, bool) {
 	return NewFunction(labels, result, body), true
 }
 
-// Callback traversals snapshot membership so callbacks can safely update the
-// original collection. Elements themselves retain their ordinary references.
+// List callbacks range over their initial slice header without copying. Map
+// and Set callbacks retain their independent membership snapshot contract.
 func invokeLibrary(spec LibrarySpec, ctx *Execution, result string, args []Value) Value {
 	if spec.Module == "collections" {
 		switch spec.Name {
-		case "map", "filter", "fold", "fold_right", "find", "find_last", "find_index", "find_last_index", "some", "every", "for_each", "flat_map", "group_by", "map_for_each", "set_for_each":
-			args = append([]Value{}, args...)
-			args[0] = Clone(args[0])
+		case "map", "filter", "fold", "fold_right", "find", "find_last", "find_index", "find_last_index", "some", "every", "for_each", "flat_map", "group_by", "map_for_each", "set_for_each", "map_filter", "set_filter", "set_map", "map_fold", "map_find", "map_some", "map_every", "set_fold", "set_find", "set_some", "set_every", "map_transform", "map_transform_keys", "map_fold_right", "set_fold_right", "map_find_last", "set_find_last":
+			if _, list := args[0].(*List); !list {
+				args = append([]Value{}, args...)
+				args[0] = Clone(args[0])
+			}
 		}
 	}
 	return spec.Body(ctx, result, args)
@@ -79,17 +100,14 @@ func libraryErrorFields(result, code string, fields []Value) Value {
 	errorType := result[start+2 : len(result)-1]
 	return Alternative{result, "error", []Value{Alternative{errorType, code, fields}}}
 }
-func libraryResult(typ, errorType string) string   { return "Result[" + typ + "][" + errorType + "]" }
-func libraryList(typ string, values []Value) *List { return &List{"@std/List[" + typ + "]", values} }
-func libraryStrings(values []string) *List {
-	items := make([]Value, len(values))
-	for i, s := range values {
-		items[i] = s
-	}
-	return libraryList("String", items)
+func libraryResult(typ, errorType string) string { return "Result[" + typ + "][" + errorType + "]" }
+func libraryList(typ string, values []Value) *List {
+	return NewList("@std/List["+typ+"]", values)
 }
+func libraryStrings(values []string) *List { return NewStringList("@std/List[String]", values) }
+
 func libraryStringValues(v Value) []string {
-	items := v.(*List).Items
+	items := v.(*List).Boxed()
 	out := make([]string, len(items))
 	for i, x := range items {
 		out[i] = x.(string)
@@ -102,10 +120,33 @@ func libraryBound(result string, n int64) Value {
 	}
 	return nil
 }
-func librarySlice(length int, start, end int64) {
+
+// librarySliceBounds resolves negative bounds against the end and reports
+// whether 0 <= start <= end <= length holds afterward.
+func librarySliceBounds(length int, start, end int64) (int64, int64, bool) {
+	start, end = relativeIndex(length, start), relativeIndex(length, end)
+	return start, end, start >= 0 && end >= start && end <= int64(length)
+}
+
+func librarySlice(operation string, length int, start, end int64) {
 	if start < 0 || end < start || end > int64(length) {
-		Panic("invalid half-open slice bounds")
+		Panic(fmt.Sprintf("%s: start/end must satisfy 0 <= start <= end <= %d; found start %d and end %d", operation, length, start, end))
 	}
+}
+
+// Faults retain the supplied argument, before relative-index or option normalization.
+func libraryRangeFault(operation, parameter string, value Value, minimum, maximum int64) Value {
+	if option, ok := value.(Alternative); ok && option.Tag == "some" && strings.HasPrefix(option.Type, "@std/Optional[") {
+		value = option.Fields[0]
+	}
+	return Panic(fmt.Sprintf("%s: %s must be between %d and %d, found %s", operation, parameter, minimum, maximum, Format(value)))
+}
+
+func libraryIndexFault(operation string, length int, index int64) Value {
+	if length == 0 {
+		return Panic(fmt.Sprintf("%s: index has no valid value for an empty collection, found %d", operation, index))
+	}
+	return Panic(fmt.Sprintf("%s: index must be between %d and %d (negative indexes count from the end), found %d", operation, -length, length-1, index))
 }
 
 func libraryDisposeResource(ctx *Execution, value Value) {
@@ -117,3 +158,11 @@ func libraryDisposeResource(ctx *Execution, value Value) {
 	}
 	Invoke(Shield(ctx), Bind(value, "", "close"), nil)
 }
+
+// Native allocation ceilings apply even when a caller supplies no limit or a
+// larger one, so a huge count returns LimitExceeded instead of exhausting
+// memory or reaching a Go allocation panic.
+const (
+	nativeMaxItems = 1 << 28
+	nativeMaxBytes = 1 << 30
+)

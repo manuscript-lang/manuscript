@@ -16,25 +16,24 @@ import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn positive(value: Int) -> Bool: return value > 0
+fn positive(value: Int) -> Bool: value > 0
 
-fn twice(value: Int) -> Int: return value * 2
+fn twice(value: Int) -> Int: value * 2
 
-fn duplicate(value: Int) -> List[Int]: return [value, value]
+fn duplicate(value: Int) -> List[Int]: [value, value]
 
-fn sum(accumulator: Int, value: Int) -> Int: return accumulator + value
+fn sum(accumulator: Int, value: Int) -> Int: accumulator + value
 
-fn parity(value: Int) -> Int: return value % 2
+fn parity(value: Int) -> Int: value % 2
 
 test "list search callbacks empty identities and folding":
     let list = [-1, 2, 0, 3]
+    if (list.find(positive) != some(2) or list.find_last(positive) != some(3)): return panic(
+        "find"
+    )
     if (
-        list.find(positive) != some(value: 2)
-        or list.find_last(positive) != some(value: 3)
-    ): return panic("find")
-    if (
-        list.find_index(positive) != some(value: 1)
-        or list.find_last_index(positive) != some(value: 3)
+        list.find_index(positive) != some(1)
+        or list.find_last_index(positive) != some(3)
     ): return panic("find indices")
     if list.filter(positive).map(twice) != [4, 6]: return panic("sequential callbacks")
     if ([1, 2]).flat_map(duplicate) != [1, 1, 2, 2]: return panic("flat map")
@@ -52,14 +51,14 @@ test "list search callbacks empty identities and folding":
     )
 
     let groups = ([1, 2, 3]).group_by(parity)
-    if groups.get(1) != some(value: [1, 3]) or groups.get(0) != some(value: [2]): return panic(
+    if groups.get(1) != some([1, 3]) or groups.get(0) != some([2]): return panic(
         "group order"
     )
 
 test "list mutation and clone keep separate storage":
     let original = [1, 2, 3]
     let copy = original.clone()
-    copy.with_values(start: 1, delete_count: 1, replacement: [8, 9])
+    copy.splice(start: 1, delete_count: 1, replacement: [8, 9])
     if copy != [1, 8, 9, 3] or original != [1, 2, 3]: return panic("splice clone")
 
     copy.fill(value: 0, start: 1, end: 3)
@@ -78,10 +77,10 @@ test "maps preserve insertion order and overwrite duplicate keys":
     let map = map_from_entries(entries)
     if map.keys() != ["a", "b"] or map.values() != [3, 2]: return panic("map order")
 
-    map.with_default(key: "a", value: 99)
-    if map.get("a") != some(value: 3): return panic("default overwrote value")
+    map.add_default(key: "a", value: 99)
+    if map.get("a") != some(3): return panic("default overwrote value")
 
-    let copy = map.clone().without("a")
+    let copy = map.clone().remove("a")
     if copy.keys() != ["b"] or map.keys() != ["a", "b"]: return panic("map clone")
     if not map.get("missing").is_none(): return panic("missing key")
 
@@ -99,32 +98,40 @@ test "set algebra removes duplicates and preserves values":
     if not left.is_disjoint_from(([3]).to_set()): return panic("disjoint")
 
 test "collection constructors validate bounds and exact limits":
-    if (
-        value(
-            range(
-                start: 3,
-                end: -1,
-                step: -1,
-                max_items: 4
-            )
-        ) != [3, 2, 1, 0]
-    ): return panic("descending range")
+    if (value(range(start: 3, end: -1, step: -1, max_items: 4)) != [3, 2, 1, 0]): return panic(
+        "descending range"
+    )
     if value(filled(value: "x", count: 2)) != ["x", "x"]: return panic("filled")
 
     let invalid: Result[List[Int], CollectionError] = error(
-        cause: CollectionError.InvalidInput
+        CollectionError.InvalidInput
     )
     if range(start: 0, end: 1, step: 0) != invalid: return panic("zero step")
 
     let limited: Result[List[Int], CollectionError] = error(
-        cause: CollectionError.LimitExceeded
+        CollectionError.LimitExceeded
     )
-    if range(
-        start: 0,
-        end: 3,
-        step: 1,
-        max_items: 2
-    ) != limited: return panic("range budget")
+    if range(start: 0, end: 3, step: 1, max_items: 2) != limited: return panic(
+        "range budget"
+    )
+
+test "huge sizes return LimitExceeded instead of exhausting memory":
+    let limited: Result[List[Int], CollectionError] = error(
+        CollectionError.LimitExceeded
+    )
+    if filled(value: 1, count: 9223372036854775807) != limited: return panic(
+        "filled huge"
+    )
+    if (
+        filled(
+            value: 1,
+            count: 4611686018427387904,
+            max_items: 9223372036854775807
+        ) != limited
+    ): return panic("filled huge explicit limit")
+    if range(start: 0, end: 9223372036854775807, step: 1) != limited: return panic(
+        "range huge"
+    )
 
 test "collection builders freeze all accumulated values":
     let list = ListBuilder[Int]()
@@ -133,11 +140,20 @@ test "collection builders freeze all accumulated values":
     if list.freeze() != [1, 2] or list.freeze() != [1, 2]: return panic("list builder")
 
     let map = MapBuilder[String, Int]()
-    map.with_entry(key: "a", value: 1)
-    map.with_entry(key: "a", value: 2)
-    if map.freeze().get("a") != some(value: 2): return panic("map builder")
+    map.add(key: "a", value: 1)
+    map.add(key: "a", value: 2)
+    if map.freeze().get("a") != some(2): return panic("map builder")
 
     let set = SetBuilder[Int]()
-    set.with_value(1)
-    set.with_value(1)
+    set.add(1)
+    set.add(1)
     if set.freeze().values() != [1]: return panic("set builder")
+
+test "imported map add interoperates with with_entry":
+    let values = Map[String, Int]().add("a", 1)
+    values.add("b", 2).add(value: 3, key: "a")
+    let add = values.add
+    add("c", 4)
+    if values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4]: return panic(
+        "map add compatibility"
+    )

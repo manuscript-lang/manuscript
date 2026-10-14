@@ -24,7 +24,7 @@ Start a [command-line program](cli.md) to use those services in an application.
 - [Time and system information](system.md)
 - [Cryptography and randomness](crypto.md)
 - [Sockets and TLS](network.md), then [HTTP](http.md) and [WebSockets](websocket.md)
-- [Logging](tooling.md)
+- [Logging](logging.md)
 - [Terminal input and cursor control](terminal.md)
 
 Continue with [concurrent work](../concurrency/_index.md) when operations need to run together. Use the [API reference](reference/_index.md) to look up exact declarations and [special call rules](call-rules.md) for additional compiler checks.

@@ -51,7 +51,6 @@ fn last() -> Int: return 2
     match save(payload):
         ok(_):
             return 0
-
         error(_):
             return 1
 `,
@@ -118,11 +117,9 @@ fn last() -> Int: return 2
     match value:
         first: return 1
         second: return 2
-
         third:
             let result = calculate()
             return result
-
         _: return 0
 
     return 3
@@ -170,7 +167,6 @@ impl Run for Runner:
         # Keep these comments together.
         match value:
             one: return 1
-
             # Fallback explanation.
             _:
                 return 2
@@ -238,7 +234,7 @@ fn example() -> Int:
 `,
 		},
 		{
-			name: "multiline expressions remain intact",
+			name: "multiline expressions collapse unless commented",
 			source: `fn example(
     value: Int = choose(
         first: 1,
@@ -257,22 +253,14 @@ fn example() -> Int:
     ): return next
     return 0
 `,
-			want: `fn example(
-    value: Int = choose(
-        first: 1,
-        second: 2
-    )
-) -> Int:
+			want: `fn example(value: Int = choose(first: 1, second: 2)) -> Int:
     let text = "# if value: return {value}"
     let next = choose(
         first: value,
         # Explain this argument.
         second: 2
     )
-    if (
-        next > 0
-        and value > 0
-    ): return next
+    if (next > 0 and value > 0): return next
 
     return 0
 `,

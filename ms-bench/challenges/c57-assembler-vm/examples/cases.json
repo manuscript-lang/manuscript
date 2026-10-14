@@ -1,0 +1,22 @@
+[
+ {
+  "name": "ex-sum",
+  "stdin": "main: in r0\n mov r1, 0\nl: add r1, r0\n dec r0\n cmp r0, 0\n jg l\n out r1\n halt\n====\n10\n",
+  "stdout": "55\n-- halted after 44 steps\nregs: r0=0 r1=55 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "ex-hello",
+  "stdin": ".data\nmsg: .asciz \"Hi!\\n\"\n.text\nmain: mov r0, msg\nl: mov r1, [r0]\n cmp r1, 0\n je d\n outc r1\n inc r0\n jmp l\nd: halt\n",
+  "stdout": "Hi!\n-- halted after 29 steps\nregs: r0=4 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=1 L=0\n"
+ },
+ {
+  "name": "ex-trap",
+  "stdin": "main: mov r0, 5\n mov r1, 0\n div r0, r1\n halt\n",
+  "stdout": "-- trap: division by zero (pc=2 line=3) after 2 steps\nregs: r0=5 r1=0 r2=0 r3=0 r4=0 r5=0 r6=0 r7=0 sp=4096 bp=0\nflags: Z=0 L=0\n"
+ },
+ {
+  "name": "ex-error",
+  "stdin": "main: out 1\n bogus r0\n",
+  "stdout": "asm error line 2: unknown mnemonic 'bogus'\n"
+ }
+]

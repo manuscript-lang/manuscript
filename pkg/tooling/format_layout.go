@@ -63,22 +63,9 @@ func formatExpressionLayout(filename, source string) (string, error) {
 				return // Interpolation is part of one atomic string token.
 			}
 			g.items = true
-			g.force = g.force || len(e.Args) >= 4
 			for _, arg := range e.Args {
-				if arg.Value.Kind == syntax.KindLambda || (len(e.Args) > 1 && complexArgument(arg.Value)) {
+				if blockLambda(arg.Value) {
 					g.force = true
-				}
-			}
-			if len(e.Args) == 1 && e.Args[0].Value.Kind == syntax.KindCall {
-				for _, arg := range e.Args[0].Value.Args {
-					g.force = g.force || complexArgument(arg.Value)
-				}
-			}
-		case syntax.KindList:
-			if g := layout.byOpen[e.Pos.Offset]; g != nil {
-				g.force = g.force || len(e.Elements) >= 5
-				for _, element := range e.Elements {
-					g.force = g.force || element.Kind == syntax.KindList
 				}
 			}
 		case syntax.KindMap:
@@ -127,20 +114,10 @@ func formatExpressionLayout(filename, source string) (string, error) {
 	return output.String(), nil
 }
 
-func complexArgument(e *syntax.Expression) bool {
-	switch e.Kind {
-	case syntax.KindCall, syntax.KindLambda:
-		return true
-	case syntax.KindList:
-		return len(e.Elements) > 2
-	case syntax.KindMap:
-		return len(e.Elements) > 4
-	case syntax.KindBinary:
-		return e.Left.Kind == syntax.KindBinary || e.Right.Kind == syntax.KindBinary
-	case syntax.KindUnary:
-		return complexArgument(e.Right)
-	}
-	return false
+// blockLambda reports a lambda whose body is a suite of several statements;
+// a one-expression lambda stays inline when the call fits the line.
+func blockLambda(e *syntax.Expression) bool {
+	return e.Kind == syntax.KindLambda && len(e.Body) > 1
 }
 
 func (l *expressionLayout) parameters(params []syntax.Parameter) {
@@ -148,10 +125,6 @@ func (l *expressionLayout) parameters(params []syntax.Parameter) {
 		if g := l.byItem[params[0].Pos.Offset]; g != nil {
 			g.parameters = true
 			g.items = true
-			g.force = g.force || len(params) >= 4
-			for _, param := range params {
-				g.force = g.force || (param.Default != nil && complexArgument(param.Default))
-			}
 		}
 	}
 	for _, param := range params {
@@ -249,7 +222,11 @@ func (l *expressionLayout) tree(tokens []lexer.Token) []layoutNode {
 				g.close = tokens[at]
 				code = append(code, g.close)
 				at++
-				g.force = token.Pos.Line != g.close.Pos.Line
+				// Only a nested suite keeps a group multi-line; authored line
+				// breaks otherwise collapse when the group fits.
+				for _, child := range g.nodes {
+					g.force = g.force || child.token.Kind == lexer.Newline
+				}
 				l.byOpen[token.Pos.Offset] = g
 				for _, child := range g.nodes {
 					if !layoutToken(child.token.Kind) && child.token.Kind != formatComment {
@@ -346,6 +323,7 @@ func layoutOperators(nodes []layoutNode) (string, int) {
 }
 
 func (l *expressionLayout) group(g *layoutGroup, indent, column, following int) string {
+	g = trimTrailingComma(g)
 	flat := g.open.Text + flatLayout(g.nodes) + g.close.Text
 	suffix := following
 	if g.parameters {
@@ -353,7 +331,8 @@ func (l *expressionLayout) group(g *layoutGroup, indent, column, following int) 
 		if at := strings.IndexByte(tail, ':'); at >= 0 {
 			tail = tail[:at]
 		}
-		suffix = max(suffix, utf8.RuneCountInString(tail))
+		// A callback body and enclosing arguments do not belong to its signature.
+		suffix = utf8.RuneCountInString(tail)
 	}
 	force := g.force || column+utf8.RuneCountInString(flat)+suffix > formatWidth
 	operator, count := layoutOperators(g.nodes)
@@ -363,7 +342,6 @@ func (l *expressionLayout) group(g *layoutGroup, indent, column, following int) 
 			booleans++
 		}
 	}
-	force = force || booleans >= 2
 	if g.items || (operator == "." && count < 2) {
 		operator = ""
 	}
@@ -446,6 +424,11 @@ func (l *expressionLayout) sequence(nodes []layoutNode, indent, column int, pref
 		if comment && lastLine != node.token.Pos.Line && output.Len() > 0 {
 			pending = true
 		}
+		if output.Len() > 0 && !pending && !suite && lastLine != 0 && lastLine != node.token.Pos.Line {
+			// An original line break joins this line to the output line. A suite
+			// opened here is indented relative to the line that holds its header.
+			firstIndent = l.lineIndent(node.token.Pos.Line)
+		}
 		if output.Len() == 0 || pending {
 			if output.Len() > 0 {
 				write("\n")
@@ -473,6 +456,14 @@ func (l *expressionLayout) sequence(nodes []layoutNode, indent, column int, pref
 			var tail []layoutNode
 			for _, next := range nodes[index+1:] {
 				if next.token.Kind == lexer.Newline || next.token.Kind == formatComment {
+					break
+				}
+				if next.group != nil && len(next.group.nodes) > 0 {
+					// The next group has its own continuation boundary. Its
+					// contents must not force this group (such as a list before
+					// a map callback) to expand as well.
+					next.group = nil
+					tail = append(tail, next)
 					break
 				}
 				tail = append(tail, next)
@@ -564,7 +555,7 @@ func groupStatementExpressions(filename, source string) (string, error) {
 		if end < len(tokens) && tokens[end].Kind == ":" {
 			width++ // The condition's suite colon occupies a column too.
 		}
-		if booleans >= 2 || (width > formatWidth && (booleans+operators > 0 || dots >= 2)) {
+		if width > formatWidth && (booleans+operators > 0 || dots >= 2) {
 			insert[from] += "("
 			insert[to] = ")" + insert[to]
 		}
@@ -588,18 +579,34 @@ func groupStatementExpressions(filename, source string) (string, error) {
 			wrap(start + 1)
 		}
 	}
+	// A constant's synthetic statement starts at its initializer, which may be
+	// text, so it bypasses the keyword and text-statement handling below.
+	constants := map[*syntax.Statement]bool{}
+	for _, d := range module.Declarations {
+		if d.Constant {
+			constants[d.Body[0]] = true
+		}
+	}
 	visitor := syntax.Visitor{
 		Statement: func(s *syntax.Statement) {
 			if s.Value == nil || suiteExpression(s.Value) {
 				return
 			}
 			start, ok := starts[s.Pos.Offset]
+			if ok && constants[s] {
+				wrap(start)
+				return
+			}
 			if !ok || tokens[start].Kind == lexer.String {
 				return
 			}
 			switch s.Kind {
-			case syntax.KindIf, syntax.KindWhile, syntax.KindMatch, syntax.KindReturn:
+			case syntax.KindIf, syntax.KindWhile:
 				start++
+			case syntax.KindReturn:
+				if tokens[start].Kind == syntax.KindReturn {
+					start++
+				}
 			case syntax.KindBind, syntax.KindAssign, syntax.KindWith, syntax.KindFor:
 				target := "="
 				if s.Kind == syntax.KindFor {
@@ -705,5 +712,25 @@ func suiteExpression(e *syntax.Expression) bool {
 	for e.Kind == syntax.KindUnary {
 		e = e.Right
 	}
-	return e.Kind == syntax.KindLambda
+	return e.Kind == syntax.KindLambda || e.Kind == syntax.KindMatch
+}
+
+// trimTrailingComma drops an authored trailing comma when the group has no
+// comments or suites, so a group that collapses onto one line reads cleanly.
+func trimTrailingComma(g *layoutGroup) *layoutGroup {
+	last := len(g.nodes) - 1
+	for last >= 0 && layoutToken(g.nodes[last].token.Kind) {
+		last--
+	}
+	if last < 0 || g.nodes[last].group != nil || g.nodes[last].token.Kind != "," {
+		return g
+	}
+	for _, node := range g.nodes {
+		if node.token.Kind == formatComment {
+			return g
+		}
+	}
+	trimmed := *g
+	trimmed.nodes = g.nodes[:last]
+	return &trimmed
 }

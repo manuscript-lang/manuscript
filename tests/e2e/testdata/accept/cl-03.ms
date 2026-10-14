@@ -15,9 +15,6 @@ fn customer_name(customer: Customer) -> String:
     return "{value}: {display_name}"
 
 test "nominal record and nested binding":
-    let customer = Customer(
-        id: CustomerId(value: "c1"),
-        name: "Ada"
-    )
+    let customer = Customer(id: CustomerId("c1"), name: "Ada")
     if not (customer_name(customer: customer) == "c1: Ada"):
         return panic(message: "check failed")

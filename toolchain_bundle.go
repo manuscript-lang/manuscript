@@ -1,5 +1,3 @@
-//go:build bundled_toolchain
-
 package manuscriptsupport
 
 import _ "embed"

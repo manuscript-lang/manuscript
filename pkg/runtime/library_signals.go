@@ -9,7 +9,8 @@ import (
 )
 
 func init() {
-	LibraryMethods = append(LibraryMethods, LibraryMethod{"ProcessControl", "watch_signals", libraryResult("SignalStream", "ProcessError"), []LibraryParam{{"signals", "List[Int]"}, {"capacity", "Optional[Int]"}}}, LibraryMethod{"SignalStream", "close", "Unit", nil}, LibraryMethod{"SignalStream", "next", libraryResult("Int", "ProcessError"), nil})
+	registerAcquiringMethods(LibraryMethod{"ProcessControl", "watch_signals", libraryResult("SignalStream", "ProcessError"), []LibraryParam{{"signals", "List[Int]"}, {"capacity", "Optional[Int]"}}})
+	LibraryMethods = append(LibraryMethods, LibraryMethod{"SignalStream", "close", "Unit", nil}, LibraryMethod{"SignalStream", "next", libraryResult("Int", "ProcessError"), nil})
 }
 
 type librarySignalStream struct {
@@ -26,7 +27,7 @@ func libraryNewSignalStream(ctx *Execution, r string, a []Value) Value {
 		return libraryError(r, "InvalidInput", "")
 	}
 	var signals []os.Signal
-	for _, value := range a[0].(*List).Items {
+	for _, value := range a[0].(*List).Boxed() {
 		n := value.(int64)
 		if n <= 0 || n > 64 || n == int64(syscall.SIGKILL) || n == hostos.Constants()["SIGSTOP"] {
 			return libraryError(r, "InvalidInput", "")

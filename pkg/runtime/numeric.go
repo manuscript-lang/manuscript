@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"fmt"
 	"github.com/manuscript-lang/manuscript/internal/decimal"
 	"math"
 	"math/big"
@@ -8,25 +9,17 @@ import (
 	"strings"
 )
 
-func Integer(text string) Value {
-	n, err := strconv.ParseInt(text, 10, 64)
-	if err != nil {
-		return Panic("Int literal out of range")
-	}
-	return n
-}
-func Float(text string) Value { n, _ := strconv.ParseFloat(text, 64); return n }
 func checkedAdd(a, b int64) int64 {
 	r := a + b
 	if b > 0 && r < a || b < 0 && r > a {
-		Panic("Int overflow")
+		intOverflow()
 	}
 	return r
 }
 func checkedSub(a, b int64) int64 {
 	r := a - b
 	if b < 0 && r < a || b > 0 && r > a {
-		Panic("Int overflow")
+		intOverflow()
 	}
 	return r
 }
@@ -35,11 +28,11 @@ func checkedMul(a, b int64) int64 {
 		return 0
 	}
 	if a == math.MinInt64 && b == -1 || b == math.MinInt64 && a == -1 {
-		Panic("Int overflow")
+		intOverflow()
 	}
 	r := a * b
 	if r/b != a {
-		Panic("Int overflow")
+		intOverflow()
 	}
 	return r
 }
@@ -55,7 +48,7 @@ func Unary(op string, value Value) Value {
 		switch v := value.(type) {
 		case int64:
 			if v == math.MinInt64 {
-				return Panic("Int overflow")
+				intOverflow()
 			}
 			return -v
 		case float64:
@@ -74,6 +67,20 @@ func Binary(op string, a, b Value) Value {
 		return !Equal(a, b)
 	}
 	switch x := a.(type) {
+	case string:
+		y := b.(string)
+		switch op {
+		case "+":
+			return x + y
+		case "<":
+			return x < y
+		case "<=":
+			return x <= y
+		case ">":
+			return x > y
+		case ">=":
+			return x >= y
+		}
 	case int64:
 		y := b.(int64)
 		switch op {
@@ -84,18 +91,9 @@ func Binary(op string, a, b Value) Value {
 		case "*":
 			return checkedMul(x, y)
 		case "/":
-			if y == 0 {
-				return Panic("division by zero")
-			}
-			if x == math.MinInt64 && y == -1 {
-				return Panic("Int overflow")
-			}
-			return x / y
+			return IntDivide(x, y)
 		case "%":
-			if y == 0 {
-				return Panic("division by zero")
-			}
-			return x % y
+			return IntRemainder(x, y)
 		case "<":
 			return x < y
 		case "<=":
@@ -148,18 +146,18 @@ func Binary(op string, a, b Value) Value {
 			result.Mul(x.Value, y.Value)
 		case "/":
 			if y.Value.Sign() == 0 {
-				return Panic("Decimal division by zero")
+				return Panic("Decimal./: division by zero; right must be nonzero, found 0")
 			}
 			result.Quo(x.Value, y.Value)
 		}
-		return roundDecimal(result)
+		return roundDecimal(result, op, x, y)
 	case Duration:
 		y := b.(Duration)
 		switch op {
 		case "+":
-			return Duration(checkedAdd(int64(x), int64(y)))
+			return Duration(checkedTimeAdd("Duration.+", "left", "right", int64(x), int64(y)))
 		case "-":
-			return Duration(checkedSub(int64(x), int64(y)))
+			return Duration(checkedTimeSub("Duration.-", "left", "right", int64(x), int64(y)))
 		case "<":
 			return x < y
 		case "<=":
@@ -174,7 +172,7 @@ func Binary(op string, a, b Value) Value {
 			sameClock(x, y)
 			switch op {
 			case "-":
-				return Duration(checkedSub(x.Tick, y.Tick))
+				return Duration(checkedTimeSub("Instant.-", "left", "right", x.Tick, y.Tick))
 			case "<":
 				return x.Tick < y.Tick
 			case "<=":
@@ -187,9 +185,9 @@ func Binary(op string, a, b Value) Value {
 		}
 		y := b.(Duration)
 		if op == "+" {
-			return Instant{x.Domain, checkedAdd(x.Tick, int64(y))}
+			return Instant{x.Domain, checkedTimeAdd("Instant.+", "value", "duration", x.Tick, int64(y))}
 		}
-		return Instant{x.Domain, checkedSub(x.Tick, int64(y))}
+		return Instant{x.Domain, checkedTimeSub("Instant.-", "value", "duration", x.Tick, int64(y))}
 	}
 	return Panic("runtime invariant: binary operator")
 }
@@ -249,7 +247,11 @@ func duration(value Value, name string) Value {
 	if name == "minutes" {
 		scale = 60000000000
 	}
-	return Duration(checkedMul(value.(int64), scale))
+	n := value.(int64)
+	if n < math.MinInt64/scale || n > math.MaxInt64/scale {
+		return libraryRangeFault("Int."+name, "value", n, math.MinInt64/scale, math.MaxInt64/scale)
+	}
+	return Duration(n * scale)
 }
 
 type Decimal struct{ Value *big.Rat }
@@ -291,7 +293,7 @@ func decimalExponent(r *big.Rat) int {
 	}
 	return e
 }
-func roundDecimal(r *big.Rat) Decimal {
+func roundDecimal(r *big.Rat, operation string, left, right Decimal) Decimal {
 	if r.Sign() == 0 {
 		return Decimal{new(big.Rat)}
 	}
@@ -323,7 +325,7 @@ func roundDecimal(r *big.Rat) Decimal {
 		out.Quo(out, new(big.Rat).SetInt(pow10(-q)))
 	}
 	if out.Sign() != 0 && decimalExponent(out) > 6144 {
-		Panic("Decimal overflow")
+		Panic(fmt.Sprintf("Decimal.%s: overflow; found left %s and right %s; rounded magnitude must be at most 9.999999999999999999999999999999999e6144 (34 significant digits)", operation, left.String(), right.String()))
 	}
 	return Decimal{out}
 }

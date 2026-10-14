@@ -16,7 +16,6 @@ func init() {
 	LibraryMethods = append(LibraryMethods,
 		LibraryMethod{"Terminal", "capabilities", "TerminalCapabilities", nil},
 		LibraryMethod{"Terminal", "size", libraryResult("TerminalSize", "TerminalError"), nil},
-		LibraryMethod{"Terminal", "raw_mode", libraryResult("RawTerminal", "TerminalError"), []LibraryParam{{"alternate_screen", "Bool"}}},
 		LibraryMethod{"RawTerminal", "close", "Unit", nil},
 		LibraryMethod{"RawTerminal", "next_event", libraryResult("Optional[TerminalEvent]", "TerminalError"), []LibraryParam{{"timeout", "Optional[Duration]"}}},
 		LibraryMethod{"RawTerminal", "size", libraryResult("TerminalSize", "TerminalError"), nil},
@@ -24,6 +23,7 @@ func init() {
 		LibraryMethod{"RawTerminal", "show_cursor", libraryResult("Unit", "TerminalError"), []LibraryParam{{"visible", "Bool"}}},
 		LibraryMethod{"RawTerminal", "erase", libraryResult("Unit", "TerminalError"), []LibraryParam{{"region", "EraseRegion"}}},
 	)
+	registerAcquiringMethods(LibraryMethod{"Terminal", "raw_mode", libraryResult("RawTerminal", "TerminalError"), []LibraryParam{{"alternate_screen", "Bool"}}})
 	libraryAdd("terminal", "terminal", "Terminal", nil, func(ctx *Execution, _ string, _ []Value) Value {
 		return hostValue(ctx, "terminal")
 	})

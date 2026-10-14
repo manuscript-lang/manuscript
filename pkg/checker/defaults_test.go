@@ -15,11 +15,10 @@ func TestDefaultArgumentBoundaries(t *testing.T) {
 		{"later parameter", "fn f(first: Int = second, second: Int = 2) -> Int:\n    return first\n", "unknown binding second"},
 		{"self reference", "fn f(value: Int = value) -> Int:\n    return value\n", "unknown binding value"},
 		{"missing required", "fn f(first: Int = 1, second: Int) -> Int:\n    return first + second\nfn call() -> Int:\n    return f()\n", "missing argument second"},
-		{"labels still required", "fn f(first: Int = 1, second: Int = 2) -> Int:\n    return first + second\nfn call() -> Int:\n    return f(3)\n", "argument labels are required"},
 		{"duplicate argument", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    return f(2, value: 3)\n", "duplicate argument value"},
 		{"unknown label", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    return f(other: 3)\n", "unknown argument other"},
 		{"default does not infer generics", "fn f[T](value: T = 3) -> T:\n    return value\n", "expected T, found Int"},
-		{"omitted generic source", "fn f[T](value: T, copy: T = value) -> T:\n    return copy\nfn call() -> Int:\n    return f()\n", "cannot infer type argument T"},
+		{"omitted generic source", "fn f[T](value: T, copy: T = value) -> T:\n    return copy\nfn call() -> Int:\n    return f()\n", "missing argument value"},
 		{"annotation erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn call() -> Int:\n    let copy: fn(value: Int) -> Int = f\n    return copy()\n", "missing argument value"},
 		{"mutable binding erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn g(value: Int) -> Int:\n    return value\nfn call() -> Int:\n    var copy = f\n    copy = g\n    return copy()\n", "missing argument value"},
 		{"function parameter erases defaults", "fn f(value: Int = 1) -> Int:\n    return value\nfn apply(callback: fn(value: Int) -> Int) -> Int:\n    return callback()\n", "missing argument value"},
@@ -58,7 +57,7 @@ func TestDefaultsDoNotMutateSourceAST(t *testing.T) {
 		if len(p.Diagnostics) != 0 {
 			t.Fatal(p.Diagnostics)
 		}
-		if len(call.Args) != 0 || len(p.Expressions[call].Arguments) != 0 || m.Declarations[0].Params[0].Default != original {
+		if len(call.Args) != 0 || len(p.Info(call).Arguments) != 0 || m.Declarations[0].Params[0].Default != original {
 			t.Fatal("checking rewrote a default or inserted source arguments")
 		}
 	}
@@ -102,13 +101,13 @@ func TestUnknownTypeDoesNotCascade(t *testing.T) {
 	}
 }
 
-func TestLabelDiagnosticNamesParameter(t *testing.T) {
+func TestPositionalCallNeedsNoLabelDiagnostic(t *testing.T) {
 	m, err := parser.Parse("labels.ms", "fn f(a: Int, b: Int) -> Int:\n    return a + b\nfn call() -> Int:\n    return f(1, 2)\n")
 	if err != nil {
 		t.Fatal(err)
 	}
 	p := checker.Check([]*syntax.Module{m}, nil)
-	if len(p.Diagnostics) != 2 || !strings.Contains(p.Diagnostics[0].Message, "write a: ...") || !strings.Contains(p.Diagnostics[1].Message, "write b: ...") {
+	if len(p.Diagnostics) != 0 {
 		t.Fatal(p.Diagnostics)
 	}
 }

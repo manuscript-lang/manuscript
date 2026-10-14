@@ -1,0 +1,72 @@
+package main
+
+import (
+ "reflect"
+ "sort"
+ "strconv"
+ "testing"
+ rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+)
+
+// Isolated representation experiment. Production runtime dispatch does NOT
+// recognize this type. One storage handle is authoritative across typed/Value
+// aliases; there is no mutable boxed mirror. Only primitive Int is prototyped.
+type prototypeList struct {typ string;storage *prototypeStorage}
+type prototypeStorage struct {ints []int64}
+func newPrototype() *prototypeList {return &prototypeList{typ:"@std/List[Int]",storage:&prototypeStorage{}}}
+func (l *prototypeList) appendInt(ctx *rt.Execution,v int64) *prototypeList {rt.CheckCancelled(ctx);l.storage.ints=append(l.storage.ints,v);return l}
+func prototypeAppendValue(ctx *rt.Execution,receiver,value rt.Value) rt.Value {return receiver.(*prototypeList).appendInt(ctx,rt.IntValue(value))}
+func (l *prototypeList) rangeItems() []int64 {return l.storage.ints}
+func (l *prototypeList) update(ctx *rt.Execution,i int,v int64) {rt.CheckCancelled(ctx);l.storage.ints[i]=v}
+func (l *prototypeList) clone() *prototypeList {return &prototypeList{typ:l.typ,storage:&prototypeStorage{ints:append([]int64(nil),l.storage.ints...)}}}
+func (l *prototypeList) atValue(ctx *rt.Execution,i int64) rt.Value {
+ rt.CheckCancelled(ctx)
+ if i<0 {i+=int64(len(l.storage.ints))}
+ value:=rt.Alternative{Type:"@std/Optional[Int]",Tag:"none"}
+ if i>=0&&i<int64(len(l.storage.ints)) {value.Tag="some";value.Fields=[]rt.Value{l.storage.ints[i]}}
+ rt.CheckCancelled(ctx);return value
+}
+func prototypeBuild(ctx *rt.Execution,n int64) *prototypeList {
+ xs:=newPrototype()
+ for i:=int64(0);i<n;i=rt.IntAdd(i,1) {rt.CheckCancelled(ctx);xs.appendInt(ctx,rt.IntRemainder(rt.IntMultiply(i,7919),100003))}
+ return xs
+}
+// Same concrete scalar locals/checks as prototypeBuild; isolates boxed storage.
+func runtimeBoxedBuild(ctx *rt.Execution,n int64) *rt.List {
+ xs:=&rt.List{Type:"@std/List[Int]"}
+ for i:=int64(0);i<n;i=rt.IntAdd(i,1) {rt.CheckCancelled(ctx);rt.ListAppend(ctx,xs,rt.IntRemainder(rt.IntMultiply(i,7919),100003))}
+ return xs
+}
+func benchmarkPrototype(b *testing.B,ctx *rt.Execution,n int64) {
+ xs:=prototypeBuild(ctx,n)
+ b.Run("AppendRuntimeBoxed64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=runtimeBoxedBuild(ctx,n)}})
+ b.Run("AppendPrototype64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=prototypeBuild(ctx,n)}})
+ b.Run("IndexPrototypeBoxed64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for i:=int64(0);i<n;i=rt.IntAdd(i,1) {rt.CheckCancelled(ctx);total=rt.IntAdd(total,rt.IntValue(rt.OptionalUnwrap(ctx,xs.atValue(ctx,i))))};listResult=total}})
+ b.Run("IteratePrototypeTyped64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for _,x:=range xs.rangeItems(){rt.CheckCancelled(ctx);total=rt.IntAdd(total,x)};listResult=total}})
+ boxed:=runtimeBoxedBuild(ctx,n)
+ b.Run("IndexRuntimeBoxedTypedLocals64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for i:=int64(0);i<n;i=rt.IntAdd(i,1) {rt.CheckCancelled(ctx);total=rt.IntAdd(total,rt.IntValue(rt.OptionalUnwrap(ctx,rt.ListAt(ctx,boxed,i,"@std/Optional[Int]"))))};listResult=total}})
+ b.Run("IterateRuntimeBoxedTypedLocals64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for _,x:=range rt.Iterate(boxed){rt.CheckCancelled(ctx);total=rt.IntAdd(total,x.(int64))};listResult=total}})
+ compare:=@@compare@@
+ b.Run("SortPrototypeBoxedCallback64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){out:=xs.clone();sort.SliceStable(out.storage.ints,func(i,j int)bool{rt.CheckCancelled(ctx);return rt.Invoke(ctx,compare,[]rt.Argument{{Name:"left",Value:out.storage.ints[i]},{Name:"right",Value:out.storage.ints[j]}}).(int64)<0});listResult=out}})
+ // Synthetic backing-copy control for #147 coordination. These tables are
+ // built outside timing on the heap; this is not #238's static-table lowering.
+ for _,count:=range []int64{16000,100000} {
+  typedTable:=prototypeBuild(ctx,count)
+  boxedTable:=runtimeBoxedBuild(ctx,count)
+  b.Run("LiteralCopyTyped"+strconv.Itoa(int(count)),func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=typedTable.clone()}})
+  b.Run("LiteralCopyBoxed"+strconv.Itoa(int(count)),func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=rt.Clone(boxedTable)}})
+ }
+}
+func TestListPrototypeAliases(t *testing.T) {
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ xs:=newPrototype();var boxed rt.Value=xs
+ typedAlias:=&prototypeList{typ:xs.typ,storage:xs.storage}
+ appendValue:=rt.NewFunction([]string{"value"},xs.typ,func(ctx *rt.Execution,args []rt.Value)rt.Value{return prototypeAppendValue(ctx,boxed,args[0])})
+ for i:=int64(0);i<1024;i++ {if i%2==0 {xs.appendInt(ctx,i)} else {rt.Invoke(ctx,appendValue,[]rt.Argument{{Name:"value",Value:i}})}}
+ if len(typedAlias.storage.ints)!=1024 {t.Fatal("alias lost growth")}
+ snap:=xs.rangeItems();copy:=typedAlias.clone()
+ typedAlias.update(ctx,0,99);prototypeAppendValue(ctx,boxed,int64(1024))
+ if xs.storage.ints[0]!=99||len(xs.storage.ints)!=1025||snap[0]!=99||len(snap)!=1024||copy.storage.ints[0]!=0||len(copy.storage.ints)!=1024 {t.Fatal("alias, clone or captured range diverged")}
+ if !reflect.DeepEqual(xs.atValue(ctx,-1),rt.Alternative{Type:"@std/Optional[Int]",Tag:"some",Fields:[]rt.Value{int64(1024)}}) {t.Fatal("negative at")}
+ if xs.atValue(ctx,-1026).(rt.Alternative).Tag!="none" {t.Fatal("optional bounds")}
+}

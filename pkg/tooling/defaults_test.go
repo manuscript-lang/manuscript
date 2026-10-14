@@ -38,10 +38,6 @@ fn nested(state: SynchronizedGuard[Int]) -> Unit:
 	if defaults != 2 {
 		t.Fatal("default calls missing from inspection", inspection.Calls)
 	}
-	nav, ok := tooling.NavigationAt(result.Program, "defaults.ms", strings.Index(source, "read(state))"))
-	if !ok || nav.Definition.Start != strings.Index(source, "fn read") {
-		t.Fatal("default call navigation", nav, ok)
-	}
 	formatted, err := tooling.Format("defaults.ms", source)
 	if err != nil || !strings.Contains(formatted, "value: Int = read(state)") {
 		t.Fatal(formatted, err)

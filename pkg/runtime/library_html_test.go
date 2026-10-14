@@ -55,3 +55,26 @@ func TestHTMLParseCancellation(t *testing.T) {
 		t.Fatal("HTML parse lost cancellation")
 	}
 }
+
+func TestHTMLUnescapeCancellationAndMetadata(t *testing.T) {
+	function := StandardFunction("html/unescape", "String").(Function)
+	if strings.Join(function.Labels, ",") != "text" || function.Result != "String" {
+		t.Fatal("wrong HTML unescape metadata", function.Labels, function.Result)
+	}
+	ctx := RootExecution()
+	cancelledContext, cancel := context.WithCancel(ctx.Context)
+	cancel()
+	ctx.Context = cancelledContext
+	if failure := recovered(func() { Invoke(ctx, function, []Argument{{"text", ""}}) }); failure != (cancelled{}) {
+		t.Fatalf("HTML unescape lost entry cancellation: %#v", failure)
+	}
+	ctx = RootExecution()
+	workContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	work := &stringWorkCancellation{Context: workContext, cancel: cancel}
+	ctx.Context = work
+	failure := recovered(func() { function.Body(ctx, []Value{strings.Repeat("&amp;é", 1024)}) })
+	if _, ok := failure.(cancelled); !ok || work.checks < 2 {
+		t.Fatalf("HTML unescape lost post-codec cancellation: %#v (%d checks)", failure, work.checks)
+	}
+}

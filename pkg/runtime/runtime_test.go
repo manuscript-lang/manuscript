@@ -60,7 +60,7 @@ func TestClonedCollectionSnapshots(t *testing.T) {
 	ctx := RootExecution()
 	original := &Map{Type: "@std/Map[String][Int]"}
 	add := func(m *Map, key string, value int64) *Map {
-		return Invoke(ctx, NativeMember(m, "with_entry"), []Argument{{"value", value}, {"key", key}}).(*Map)
+		return Invoke(ctx, NativeMember(m, "add"), []Argument{{"value", value}, {"key", key}}).(*Map)
 	}
 	a := add(Clone(original).(*Map), "a", 1)
 	b := add(Clone(a).(*Map), "b", 2)
@@ -68,7 +68,7 @@ func TestClonedCollectionSnapshots(t *testing.T) {
 	if len(original.Entries) != 0 || a.Entries[0].Value != int64(1) || updated.Entries[0].Key != "a" || updated.Entries[0].Value != int64(3) {
 		t.Fatal("update mutated an alias or changed order")
 	}
-	removed := Invoke(ctx, NativeMember(Clone(updated), "without"), []Argument{{"key", "a"}}).(*Map)
+	removed := Invoke(ctx, NativeMember(Clone(updated), "remove"), []Argument{{"key", "a"}}).(*Map)
 	reinserted := add(removed, "a", 4)
 	if reinserted.Entries[1].Key != "a" {
 		t.Fatal("reinsertion order")
@@ -124,6 +124,31 @@ func TestCleanupStackReleasesCompletedActions(t *testing.T) {
 	}
 	if len(stack.actions) != 0 || len(events) != 100 {
 		t.Fatal("retained completed scopes or closed twice")
+	}
+}
+
+func nestedCleanupFault(execution *Execution, depth int, closed *int) {
+	if depth == 0 {
+		Panic("bottom")
+	}
+	stack := NewCleanupStack()
+	defer stack.Unwind()
+	stack.Push(execution, cleanupResource{"scope", &[]string{}, false})
+	*closed++
+	nestedCleanupFault(execution, depth-1, closed)
+}
+
+func TestCleanupUnwindIsLinearThroughNestedScopes(t *testing.T) {
+	// Recovering and re-raising a fault in every scope nests one panic per
+	// frame; 20000 scopes took tens of seconds that way.
+	closed := 0
+	started := time.Now()
+	failure := recovered(func() { nestedCleanupFault(RootExecution(), 20000, &closed) })
+	if fault, ok := failure.(Fault); !ok || fault.Message != "bottom" || len(fault.Secondary) != 0 || closed != 20000 {
+		t.Fatalf("lost the primary fault or a scope: %#v closed=%d", failure, closed)
+	}
+	if elapsed := time.Since(started); elapsed > 10*time.Second {
+		t.Fatalf("unwinding nested scopes took %v", elapsed)
 	}
 }
 

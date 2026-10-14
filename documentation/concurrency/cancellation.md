@@ -47,7 +47,9 @@ Scheduler service cancellation reaches the work admitted under that service. Can
 
 Completed external writes remain completed. Cancellation does not provide rollback; a transaction's explicit resource contract does.
 
-Cleanup is shielded from the initiating cancellation and expired work deadline. It may exceed that deadline; it retains capability authority and remains subject to [host escalation](../contributing/concurrent-runtime.md#host-escalation). See [foreign cancellation](../contributing/compiler/adapters/cancellation.md) and [cleanup faults](../core-language/cleanup/cleanup-faults.md).
+Cleanup is shielded from the initiating cancellation and expired work deadline. It may exceed that deadline; it retains capability authority and remains subject to [host escalation](../contributing/concurrent-runtime.md#host-escalation). See [cleanup faults](../core-language/cleanup/cleanup-faults.md).
+
+For native application shutdown, use registered `with` cleanup; observing SIGINT/SIGTERM does not claim the signal or protect code after `SignalStream.next()`. See the [shutdown cookbook](shutdown.md) for a runnable server, cancelled-worker ordering, and current host limitations.
 
 ## Waiting for a synchronized value
 
@@ -55,13 +57,15 @@ Cleanup is shielded from the initiating cancellation and expired work deadline. 
 
 Cancellation of a lock holder unwinds its `with` scope and closes the guard. It never releases the lock while the holder is still running. Updates already made through `locked.set()` remain committed; releasing the guard does not roll them back. Guard cleanup is idempotent and shielded from the initiating cancellation. See [synchronizing updates](synchronization.md#synchronized).
 
+Cross-task lock cycles wait rather than faulting automatically. Cancellation or a group timeout can stop an ordinary lock waiter, but cannot cancel a shielded cleanup wait or abandon a mandatory cleanup join. Release a held guard before joining work that needs it; deadlines do not guarantee escape from cleanup cycles.
+
 ## Timeouts
 
 Timeouts are named library arguments, not syntax annotations. Duration values come from the standard time API; naming `Duration` requires its own import from `@std/time.ms`.
 
 `TaskGroup(timeout: 2.seconds)` sets one group budget, starting with the first submission. The budget applies across its operations; `timeout` is the only budget argument.
 
-On expiry, unfinished tasks stop and join before a failed task or group join reports TimedOut. A timeout bounds ordinary work, not cleanup or joining. Foreign code that does not cooperate can delay joining; [host escalation](../contributing/concurrent-runtime.md#host-escalation) is the final fallback.
+On expiry, unfinished tasks stop and join before a failed task or group join reports Timeout. A timeout bounds ordinary work, not cleanup or joining. Foreign code that does not cooperate can delay joining; [host escalation](../contributing/concurrent-runtime.md#host-escalation) is the final fallback.
 
 To share one budget across sequential steps, submit one callback containing those steps:
 
@@ -79,7 +83,7 @@ Hosts establish deadlines for application, session, CLI, and request execution c
 
 Budgets use the runtime's monotonic timer, not a `Clock` capability or calendar time. A test runner may virtualize that timer; a fake `Clock` value does not affect execution budgets.
 
-When the caller's own deadline expires, the caller unwinds after its groups join; it does not receive `TimedOut`. Only a group's own timeout produces `TimedOut`.
+When the caller's own deadline expires, the caller unwinds after its groups join; it does not receive `Timeout`. Only a group's own timeout produces `Timeout`.
 
 Scheduler work inherits the service's fixed execution context, including that context's deadline. It does not inherit the submitting request's deadline. A service cannot revive cancelled work or extend its host's deadline. Its context is selected at construction, not at each call to `start`.
 

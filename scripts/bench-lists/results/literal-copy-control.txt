@@ -1,0 +1,17 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-literal-controls
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLists/LiteralCopyTyped16000-4         	    5360	     45313 ns/op	  131129 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyTyped16000-4         	    5356	     51182 ns/op	  131128 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyTyped16000-4         	    5408	     62271 ns/op	  131128 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyBoxed16000-4         	    1065	    221529 ns/op	  262193 B/op	       2 allocs/op
+BenchmarkLists/LiteralCopyBoxed16000-4         	    1194	    327986 ns/op	  262193 B/op	       2 allocs/op
+BenchmarkLists/LiteralCopyBoxed16000-4         	     879	    515110 ns/op	  262192 B/op	       2 allocs/op
+BenchmarkLists/LiteralCopyTyped100000-4        	     951	    251756 ns/op	  802872 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyTyped100000-4        	     956	    233260 ns/op	  802872 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyTyped100000-4        	     916	    226394 ns/op	  802872 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyBoxed100000-4        	     198	   1713348 ns/op	 1605685 B/op	       2 allocs/op
+BenchmarkLists/LiteralCopyBoxed100000-4        	     148	   1457483 ns/op	 1605684 B/op	       2 allocs/op
+BenchmarkLists/LiteralCopyBoxed100000-4        	     210	   1163225 ns/op	 1605684 B/op	       2 allocs/op
+PASS
