@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"math"
 	"strconv"
 	"strings"
 
@@ -12,7 +13,11 @@ import (
 // as info, which may differ from the program's own facts when a boundary
 // conversion wraps the value. It returns nil for a form that has no node yet,
 // so the caller keeps its existing path for that form.
-func Value(program *checker.Program, e *syntax.Expression, info *checker.Info) Expr {
+func (el *Elaborator) Value(e *syntax.Expression, info *checker.Info) Expr {
+	program := el.program
+	if value, constant := el.Bool(e); constant {
+		return BoolLiteral{Value: value, Type: info.Type}
+	}
 	switch e.Kind {
 	case syntax.KindNumber:
 		return number(e.Text, info.Type)
@@ -24,7 +29,7 @@ func Value(program *checker.Program, e *syntax.Expression, info *checker.Info) E
 		parts := make([]TextPart, len(e.Parts))
 		for i, p := range e.Parts {
 			if p.Value != nil {
-				parts[i].Value = Operand(program, p.Value)
+				parts[i].Value = el.Operand(p.Value)
 			} else {
 				parts[i].Text = p.Text
 			}
@@ -33,13 +38,32 @@ func Value(program *checker.Program, e *syntax.Expression, info *checker.Info) E
 	case syntax.KindList:
 		items := make([]Expr, len(e.Elements))
 		for i, item := range e.Elements {
-			items[i] = Operand(program, item)
+			items[i] = el.Operand(item)
 		}
 		return List{Type: info.Type, Items: items}
+	case syntax.KindName:
+		// A name that selects a method or resolves to a symbol stays deferred.
+		if info.Method == nil && info.Binding != nil {
+			return Local{Binding: info.Binding, Type: info.Type}
+		}
+	case syntax.KindUnary:
+		if e.Text == "try" {
+			return nil
+		}
+		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
+			return IntLiteral{Value: math.MinInt64, Type: info.Type}
+		}
+		return Unary{Pos: e.Pos, Op: e.Text, Operand: el.Operand(e.Right), Type: info.Type}
+	case syntax.KindBinary:
+		left, right := program.Info(e.Left), program.Info(e.Right)
+		if left == nil || right == nil {
+			return nil
+		}
+		return Binary{Pos: e.Pos, Op: e.Text, Left: el.Operand(e.Left), Right: el.Operand(e.Right), LeftType: left.Type, RightType: right.Type, Type: info.Type}
 	case syntax.KindMap:
 		entries := make([]Entry, 0, len(e.Elements)/2)
 		for at := 0; at < len(e.Elements); at += 2 {
-			entries = append(entries, Entry{Key: Operand(program, e.Elements[at]), Value: Operand(program, e.Elements[at+1])})
+			entries = append(entries, Entry{Key: el.Operand(e.Elements[at]), Value: el.Operand(e.Elements[at+1])})
 		}
 		return Map{Pos: e.Pos, Type: info.Type, Entries: entries}
 	}
@@ -49,12 +73,12 @@ func Value(program *checker.Program, e *syntax.Expression, info *checker.Info) E
 // Operand elaborates a child expression. A child that crosses a checked
 // boundary conversion, or has no node yet, stays deferred so lowering applies
 // the conversion.
-func Operand(program *checker.Program, e *syntax.Expression) Expr {
-	info := program.Info(e)
+func (el *Elaborator) Operand(e *syntax.Expression) Expr {
+	info := el.program.Info(e)
 	if info == nil || info.ErrorSource != nil {
 		return Deferred{Source: e}
 	}
-	if x := Value(program, e, info); x != nil {
+	if x := el.Value(e, info); x != nil {
 		return x
 	}
 	return Deferred{Source: e}

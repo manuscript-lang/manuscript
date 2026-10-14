@@ -41,7 +41,7 @@ func TestLiteralsAreClassifiedByWrittenForm(t *testing.T) {
 	} {
 		t.Run(tc.written, func(t *testing.T) {
 			program, e := elaborate(t, "import Decimal from \"@std/decimal.ms\"\nfn values() -> Bool: ["+tc.written+"].is_empty()\n")
-			list := ir.Value(program, e, program.Info(e)).(ir.List)
+			list := ir.NewElaborator(program).Value(e, program.Info(e)).(ir.List)
 			if len(list.Items) != 1 || !tc.check(list.Items[0]) {
 				t.Fatalf("got %#v", list.Items)
 			}
@@ -51,8 +51,82 @@ func TestLiteralsAreClassifiedByWrittenForm(t *testing.T) {
 
 func TestUnmigratedOperandsStayDeferred(t *testing.T) {
 	program, e := elaborate(t, "fn id(n: Int) -> Int: n\nfn values() -> Bool: [id(1)].is_empty()\n")
-	list := ir.Value(program, e, program.Info(e)).(ir.List)
+	list := ir.NewElaborator(program).Value(e, program.Info(e)).(ir.List)
 	if _, ok := list.Items[0].(ir.Deferred); !ok {
 		t.Fatalf("call = %#v", list.Items[0])
 	}
+}
+
+// expression finds the first expression of the given kind written in main.ms.
+func expression(t *testing.T, program *checker.Program, kind string) *syntax.Expression {
+	t.Helper()
+	for e := range program.Expressions() {
+		if e.Pos.File == "main.ms" && e.Kind == kind {
+			return e
+		}
+	}
+	t.Fatal("no " + kind)
+	return nil
+}
+
+func TestOperatorsAndLocalsAreElaborated(t *testing.T) {
+	program, _ := elaborate(t, "fn f(a: Int, b: Int) -> Bool:\n    let c = a + b < 3\n    return [not c].is_empty()\n")
+	el := ir.NewElaborator(program)
+	var sum *syntax.Expression
+	for e := range program.Expressions() {
+		if e.Pos.File == "main.ms" && e.Kind == syntax.KindBinary && e.Text == "+" {
+			sum = e
+		}
+	}
+	if sum == nil {
+		t.Fatal("no sum")
+	}
+	x, ok := el.Operand(sum).(ir.Binary)
+	if !ok || x.Op != "+" {
+		t.Fatalf("binary = %#v", el.Operand(sum))
+	}
+	if _, ok := x.Left.(ir.Local); !ok {
+		t.Fatalf("operand = %#v", x.Left)
+	}
+	if x.LeftType.ID != "Int" || x.RightType.ID != "Int" {
+		t.Fatalf("operand types = %v, %v", x.LeftType, x.RightType)
+	}
+	unary := expression(t, program, syntax.KindUnary)
+	if u, ok := el.Operand(unary).(ir.Unary); !ok || u.Op != "not" {
+		t.Fatalf("unary = %#v", el.Operand(unary))
+	}
+}
+
+func TestMinimumIntegerLiteralAndConstantFold(t *testing.T) {
+	program, _ := elaborate(t, "fn f() -> Bool: [-9223372036854775808, 1].is_empty() or not false\n")
+	el := ir.NewElaborator(program)
+	var sawMinimum, sawFold bool
+	for e := range program.Expressions() {
+		if e.Pos.File != "main.ms" {
+			continue
+		}
+		switch x := el.Operand(e).(type) {
+		case ir.IntLiteral:
+			sawMinimum = sawMinimum || x.Value == -9223372036854775808
+		case ir.BoolLiteral:
+			sawFold = sawFold || x.Value
+		}
+	}
+	if !sawMinimum || !sawFold {
+		t.Fatalf("minimum literal %v, folded not false %v", sawMinimum, sawFold)
+	}
+}
+
+func TestSymbolNamesStayDeferred(t *testing.T) {
+	program, _ := elaborate(t, "fn id(n: Int) -> Int: n\nfn f() -> Bool: [id(1)].is_empty()\n")
+	el := ir.NewElaborator(program)
+	for e := range program.Expressions() {
+		if e.Pos.File == "main.ms" && e.Kind == syntax.KindName && e.Text == "id" {
+			if _, ok := el.Operand(e).(ir.Deferred); !ok {
+				t.Fatalf("symbol name = %#v", el.Operand(e))
+			}
+			return
+		}
+	}
+	t.Fatal("no symbol name")
 }

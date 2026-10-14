@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -30,7 +29,7 @@ func (g *generator) argumentValue(a syntax.Argument) ast.Expr {
 	return value
 }
 func (g *generator) expression(e *syntax.Expression) ast.Expr {
-	if value, ok := g.folds.Bool(e); ok {
+	if value, ok := g.ir.Bool(e); ok {
 		return ident(strconv.FormatBool(value))
 	}
 	info := g.program.Info(e)
@@ -58,7 +57,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 	if info.Native == "index" {
 		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	}
-	if value := ir.Value(g.program, e, info); value != nil {
+	if value := g.ir.Value(e, info); value != nil {
 		return g.irValue(value)
 	}
 	switch e.Kind {
@@ -192,39 +191,13 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		}
 		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 	case syntax.KindUnary:
-		if e.Text == "try" {
-			args := []ast.Expr{g.expression(e.Right)}
-			if info.ScopedPropagation {
-				args = append(args, g.typeScope(info.PropagatedError))
-			}
-			g.recovers = true
-			return runtimeCall("Try", args...)
+		// Only try reaches here: every other prefix operator is an IR node.
+		args := []ast.Expr{g.expression(e.Right)}
+		if info.ScopedPropagation {
+			args = append(args, g.typeScope(info.PropagatedError))
 		}
-		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
-			return call(ident("int64"), signedInteger("-9223372036854775808"))
-		}
-		if e.Text == "not" {
-			return &ast.UnaryExpr{Op: token.NOT, X: paren(g.condition(e.Right))}
-		}
-		return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
-	case syntax.KindBinary:
-		if e.Text == "and" || e.Text == "or" {
-			op := token.LAND
-			if e.Text == "or" {
-				op = token.LOR
-			}
-			return &ast.BinaryExpr{X: paren(g.condition(e.Left)), Op: op, Y: paren(g.condition(e.Right))}
-		}
-		if e.Text == "==" || e.Text == "!=" {
-			if value := g.primitiveEquality(e); value != nil {
-				return value
-			}
-			return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.program.Info(e.Left).Type))
-		}
-		if value := g.numericBinary(e); value != nil {
-			return value
-		}
-		return g.locatedOperation(e, runtimeName("Binary"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right))
+		g.recovers = true
+		return runtimeCall("Try", args...)
 	case syntax.KindLambda:
 		captures := append([]*checker.Binding{}, info.Captures...)
 		sort.Slice(captures, func(i, j int) bool { return captures[i].ID < captures[j].ID })
@@ -260,8 +233,11 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 // when they succeed. SourceAt inlines to an assignment; no expression closures or
 // per-operation recovery are needed.
 func (g *generator) locatedOperation(e *syntax.Expression, operation ast.Expr, args ...ast.Expr) ast.Expr {
+	return locatedAt(e.Pos, operation, args...)
+}
+func locatedAt(pos syntax.Position, operation ast.Expr, args ...ast.Expr) ast.Expr {
 	last := len(args) - 1
-	args[last] = sourceAt(e.Pos, args[last])
+	args[last] = sourceAt(pos, args[last])
 	return call(operation, args...)
 }
 func sourceAt(pos syntax.Position, value ast.Expr) ast.Expr {

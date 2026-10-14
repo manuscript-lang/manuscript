@@ -5,23 +5,24 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-// Folder decides which Bool expressions are compile-time constants. It folds
-// without evaluating calls or changing numeric fault behavior; native
-// optimization stays the Go compiler's job.
-type Folder struct {
+// Elaborator turns checked expressions into IR nodes. It also decides which
+// Bool expressions are compile-time constants, folding without evaluating
+// calls or changing numeric fault behavior; native optimization stays the Go
+// compiler's job.
+type Elaborator struct {
 	program *checker.Program
 	known   map[*syntax.Expression]fold
 }
 
 type fold struct{ value, constant bool }
 
-// NewFolder returns a Folder that memoizes its answers for program.
-func NewFolder(program *checker.Program) *Folder {
-	return &Folder{program: program, known: map[*syntax.Expression]fold{}}
+// NewElaborator returns an Elaborator for program.
+func NewElaborator(program *checker.Program) *Elaborator {
+	return &Elaborator{program: program, known: map[*syntax.Expression]fold{}}
 }
 
 // Bool reports the constant value of e and whether e is a constant.
-func (f *Folder) Bool(e *syntax.Expression) (value, constant bool) {
+func (f *Elaborator) Bool(e *syntax.Expression) (value, constant bool) {
 	if known, ok := f.known[e]; ok {
 		return known.value, known.constant
 	}
@@ -30,7 +31,7 @@ func (f *Folder) Bool(e *syntax.Expression) (value, constant bool) {
 	return value, constant
 }
 
-func (f *Folder) fold(e *syntax.Expression) (bool, bool) {
+func (f *Elaborator) fold(e *syntax.Expression) (bool, bool) {
 	info := f.program.Info(e)
 	if info == nil || info.Type.ID != "Bool" {
 		return false, false

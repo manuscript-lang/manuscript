@@ -20,7 +20,7 @@ type loopLabel struct {
 // Function lowering saves and restores cleanup/loop state for nested closures.
 type generator struct {
 	program          *checker.Program
-	folds            *ir.Folder
+	ir               *ir.Elaborator
 	module           string
 	serial           int
 	expressionDepth  int
@@ -47,12 +47,12 @@ type generator struct {
 }
 
 func newGenerator(program *checker.Program) *generator {
-	return &generator{program: program, folds: ir.NewFolder(program), captures: map[*checker.Binding]string{}, typed: map[*checker.Binding]string{}}
+	return &generator{program: program, ir: ir.NewElaborator(program), captures: map[*checker.Binding]string{}, typed: map[*checker.Binding]string{}}
 }
 
 // constantBool reports whether e folds to a Bool constant.
 func (g *generator) constantBool(e *syntax.Expression) bool {
-	_, constant := g.folds.Bool(e)
+	_, constant := g.ir.Bool(e)
 	return constant
 }
 
