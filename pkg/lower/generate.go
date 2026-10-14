@@ -94,6 +94,9 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			scope = m.Module
 		}
 		fields := []ast.Expr{keyed("Receiver", textLiteral(checker.TypeKey(m.Receiver))), keyed("Contract", textLiteral(checker.TypeKey(m.Contract))), keyed("Name", textLiteral(m.Decl.Name)), keyed("Scope", textLiteral(scope)), keyed("Variables", stringSlice(vars))}
+		if m.Accessor {
+			fields = append(fields, keyed("Accessor", ident("true")))
+		}
 		// Consecutive standard implementations register as one data table,
 		// which compiles much faster than a closure for each.
 		if m.Native != "" {
@@ -102,6 +105,10 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			continue
 		}
 		flushNatives()
+		if m.Accessor {
+			g.registerAccessor(m, fields, &file.Decls, &initialize)
+			continue
+		}
 		if direct := g.directMethods[m.ID]; direct != nil {
 			decl, forward := g.directMethodDeclaration(m, direct)
 			file.Decls = append(file.Decls, decl)

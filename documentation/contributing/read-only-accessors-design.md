@@ -4,17 +4,16 @@ title = "Read-only accessors: design proposal"
 
 # Read-only accessors and the approved standard-library migration
 
-Status: **proposed; design only; awaiting independent reviewer approval**.
+Status: **approved design; implementation under verification**.
 Baseline: `main` at `477b4c916cd772f0f7f7229dc502e99385c855d0` (2026-10-14).
 The earlier audit used `4eda0e22`; both checkouts contain 44 standard modules.
-This document does not claim that the proposed syntax or lowering exists.
+The independent reviewer approved revised design commit `46c46a29105e1aabb969d22cce96825b52dc0b8a`; the parent relayed approval before implementation. Implementation integrates `main` at `e56ed8cc`, including #497 and source-owned standard documentation from #501.
 
 The user approved designing consistent live read-only accessors for the precise
 inventory below. `Error.message()` and **every implementation of it remain
-methods**. The parent appoints an independent skeptical reviewer. Implementation
-starts only after the parent relays that reviewer's explicit approval. This
-document is not approval, and its author must not approve their own proposal.
-Do not publish a PR in this design stage. Keep the work separate from collection
+methods**. The parent appointed an independent skeptical reviewer and relayed explicit
+approval before implementation. The design author did not self-approve.
+PR publication remains stopped until final review of the tested result. Keep the work separate from collection
 prelude PR497, debugger work, and the stopped broad performance branch.
 
 ## Problem and decision
@@ -312,7 +311,7 @@ exception inferred from observational behavior.
 ### Keep one annotated tree and explicit member identity
 
 Current architecture is syntax nodes with checker facts attached through Fact
-([AST](../../pkg/syntax/ast.go), [checked facts](../../pkg/checker/model.go)).
+([AST](https://github.com/manuscript-lang/manuscript/blob/main/pkg/syntax/ast.go), [checked facts](https://github.com/manuscript-lang/manuscript/blob/main/pkg/checker/model.go)).
 Keep that architecture. Mark operation declarations in the existing Methods
 collection as accessors (for example `Declaration.Accessor` while retaining the
 ordinary callable body representation). Do not synthesize a call in source,
@@ -321,7 +320,7 @@ Retain source spans for the head, name, type and body; extend the shared visitor
 and declaration consumers without losing any body traversal.
 
 Currently Definition.Operations is `[]Param` (name/function type), and Method
-has no member category ([types](../../pkg/checker/types.go)). Replace the
+has no member category ([types](https://github.com/manuscript-lang/manuscript/blob/main/pkg/checker/types.go)). Replace the
 operation descriptor with a small checked descriptor carrying name, member kind
 (method/accessor), callable implementation signature, and declaration identity.
 An accessor's internal callable signature has no explicit parameters and result
@@ -342,13 +341,13 @@ Method, including module ownership and inherited receiver bounds.
 
 ### Resolve reads before callable fast paths
 
-Member inference in [expressions.go](../../pkg/checker/expressions.go) currently
+Member inference in [expressions.go](https://github.com/manuscript-lang/manuscript/blob/main/pkg/checker/expressions.go) currently
 returns method function types, with separate Int unit handling. Resolve a member
 once, attach its kind, and project the accessor's result type for reads. Check
 assignment against the resolved kind, with a dedicated read-only diagnostic.
 Remove the special Int-unit branch after declarations/bindings represent it.
 
-[nativeCallable](../../pkg/checker/native_members.go) is a critical second path:
+[nativeCallable](https://github.com/manuscript-lang/manuscript/blob/main/pkg/checker/native_members.go) is a critical second path:
 it can install a callable Info without ordinary inferMember. It must use the
 same member resolver/kind and must never treat an accessor as a method callable
 or specialize it as one. Old `xs.length()` should reach the accessor diagnostic,
@@ -365,7 +364,7 @@ types; guard.get is separately renamed. Do not auto-specialize an accessor with
 
 ### Effects and callable graphs include reads
 
-[effectSummaries](../../pkg/checker/effects.go) currently identifies record field
+[effectSummaries](https://github.com/manuscript-lang/manuscript/blob/main/pkg/checker/effects.go) currently identifies record field
 reads at KindMember and most callable effects at KindCall. Simply changing
 KindMember lowering would drop source getter effects and misclassify native
 ones. At a resolved accessor read, add the same source implementation edge or
@@ -380,14 +379,14 @@ propagate their actual write/external/unknown effects. Do not narrow unrelated
 effect classifications in this migration.
 
 Accessor execution edges also belong in source reachability, inspection/call
-diagrams and [recursive-cycle detection](../../pkg/lower/lower_recursion.go).
+diagrams and [recursive-cycle detection](https://github.com/manuscript-lang/manuscript/blob/main/pkg/lower/lower_recursion.go).
 Mutually recursive accessors and method/accessor cycles must participate in the
 same SCC/depth accounting as calls. A bound method reference alone remains a
 value construction; an accessor member expression executes. Update all consumers
 that currently use KindCall as a proxy for execution. Reuse checked resolution
 and indexed descriptors; do not repeatedly rescan declarations per read.
 
-In particular, triedScan in [lower_try.go](../../pkg/lower/lower_try.go) currently
+In particular, triedScan in [lower_try.go](https://github.com/manuscript-lang/manuscript/blob/main/pkg/lower/lower_try.go) currently
 visits only the receiver of KindMember without marking an effect. An accessor
 read must mark an execution barrier there. In `consume(x.property, try fail())`,
 hoisting the failing try must not skip x.property's code, validation, cancellation
@@ -404,7 +403,7 @@ the lightweight frontend/nativeabi dependency boundary.
 
 Keep existing internal native operation identities where possible. For example,
 Duration.seconds binds `time/duration_seconds`; public to_seconds disappears.
-Rename the public key in [ReceiverBindings](../../internal/nativeabi/receivers.go),
+Rename the public key in [ReceiverBindings](https://github.com/manuscript-lang/manuscript/blob/main/internal/nativeabi/receivers.go),
 not the underlying algorithm. Remove accessor names from callable native member
 factories and method caches. bindings.json remains an identity/authorization
 manifest, not a duplicate public signature/accessor schema. Runtime ABI metadata
@@ -734,7 +733,6 @@ returned to review before broadening scope. Recover by reverting the coherent
 feature/migration set, not by retaining half of a dual API. Do not mix rollback
 with unrelated PR497/debugger/performance changes.
 
-All naming choices and the migration boundary are resolved above. **No additional
-user preference is required to review this proposal.** The remaining decision
-is the independent reviewer's approval, relayed by the parent. Until that gate,
-implementation and PR publication remain stopped.
+All naming choices and the migration boundary are resolved above. The independent
+design approval gate is satisfied. Implementation remains within this approved
+scope; PR publication awaits final review of the tested result.

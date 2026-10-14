@@ -260,6 +260,9 @@ func NativeMember(receiver Value, name string) Value {
 	return NativeMemberResult(receiver, name, "")
 }
 func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope) Value {
+	if nativeAccessorMember(receiver, name) {
+		return Panic("read-only accessor " + name + " is not a method; read it without ()")
+	}
 	if len(scopes) > 0 {
 		original := NativeMemberResult(receiver, name, result).(Function)
 		originalBody := original.Body
@@ -302,9 +305,6 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 	if native, ok := receiver.(Native); ok {
 		return native.Operation(name)
 	}
-	if name == "milliseconds" || name == "seconds" || name == "minutes" {
-		return duration(receiver, name)
-	}
 	labels := []string{}
 	switch name {
 	case "get":
@@ -324,8 +324,6 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 		switch v := receiver.(type) {
 		case *List:
 			switch name {
-			case "length":
-				return int64(v.Len())
 			case "append":
 				v.Append(args[0])
 				return v
@@ -340,13 +338,8 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			if len(args) > 0 {
 				key = args[0]
 			}
-			found := -1
-			if name != "length" {
-				found = v.find(ctx, key)
-			}
+			found := v.find(ctx, key)
 			switch name {
-			case "length":
-				return int64(len(v.Entries))
 			case "contains":
 				return found >= 0
 			case "get":
@@ -360,20 +353,13 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			if len(args) > 0 {
 				value = args[0]
 			}
-			found := -1
-			if name != "length" {
-				found = v.find(ctx, value)
-			}
+			found := v.find(ctx, value)
 			switch name {
-			case "length":
-				return int64(len(v.Items))
 			case "contains":
 				return found >= 0
 			}
 		case string:
 			switch name {
-			case "byte_length":
-				return int64(len(v))
 			case "to_bytes":
 				return Bytes{[]byte(v)}
 			case "parse_int":
@@ -397,8 +383,6 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			}
 		case Bytes:
 			switch name {
-			case "length":
-				return int64(len(v.Items))
 			case "concat":
 				return Bytes{append(append([]byte{}, v.Items...), args[0].(Bytes).Items...)}
 			case "to_text":

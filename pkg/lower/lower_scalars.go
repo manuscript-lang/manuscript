@@ -85,6 +85,15 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 		}
 		return g.numericResult(e)
 	case syntax.KindMember:
+		if info.Method != nil && info.Method.Accessor {
+			if g.nativeAccessorHelper(e, info) != "" {
+				return primitiveEqualityType(info.Type)
+			}
+			if direct := g.directAccessorTarget(e, info); direct != nil {
+				return direct.result
+			}
+			return ""
+		}
 		if info.Constructor == nil && info.Method == nil && info.Native == "" {
 			if _, f := g.structFieldOf(e); f != nil {
 				return f.scalar

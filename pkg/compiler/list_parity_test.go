@@ -14,7 +14,7 @@ func TestListParityRejectInvalidContracts(t *testing.T) {
 		{"pop is Optional", `fn wrong() -> Int: [1].pop()`, "Optional[Int]"},
 		{"distinct requires Equal", `fn wrong() -> Int:
     let values = [fn() -> Int: 1]
-    return values.distinct().length()`, "member distinct on List[fn()->Int]"},
+    return values.distinct().length`, "member distinct on List[fn()->Int]"},
 		{"distinct payload type stays exact", `fn wrong() -> List[String]: [1].distinct()`, "List[Int]"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

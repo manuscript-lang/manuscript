@@ -12,14 +12,14 @@ export type Bytes:
     # A cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data.
     fn split(separator: Bytes, max_parts: Optional[Int] = none) -> List[Bytes]:
     # Selects [start, end) in bytes; negative bounds are relative to the end.
-    # Bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
+    # Bounds outside 0 <= start <= end <= length return CollectionError.OutOfRange.
     # The immutable result may share storage with the receiver.
     fn slice(start: Int, end: Int) -> Result[Bytes, CollectionError]:
     # Returns an unsigned byte; negative indexes are relative to the end, and out-of-range indexes return `none`.
     fn at(index: Int) -> Optional[Int]:
     # Returns the first matching byte offset or `none`; empty `value` matches at zero.
     fn index_of(value: Bytes) -> Optional[Int]:
-    # Returns the last matching byte offset or `none`; empty `value` matches at length().
+    # Returns the last matching byte offset or `none`; empty `value` matches at length.
     fn last_index_of(value: Bytes) -> Optional[Int]:
     # Tests whether the receiver begins with these bytes.
     fn starts_with(prefix: Bytes) -> Bool:
@@ -31,13 +31,13 @@ export type Bytes:
     # An out-of-range index or a value outside 0 through 255 faults.
     fn with_value(index: Int, value: Int) -> Bytes:
     # Tests whether the receiver contains no bytes.
-    fn is_empty() -> Bool:
+    get is_empty -> Bool:
     # Returns a fresh mutable list of unsigned byte values; changing it leaves the Bytes unchanged.
     fn values() -> List[Int]:
     # Returns concatenated bytes without changing either operand.
     fn concat(other: Bytes) -> Bytes:
     # Returns the number of bytes, not the number of Unicode characters.
-    fn length() -> Int:
+    get length -> Int:
     # Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
     fn to_text() -> Optional[String]:
 

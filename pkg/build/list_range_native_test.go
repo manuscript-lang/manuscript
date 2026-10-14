@@ -17,7 +17,7 @@ fn callback_fault(values: List[Int]) -> Unit:
     )
 fn callback_cancel(values: List[Int], stop: fn() -> Unit) -> Unit:
     values.for_each(fn(value):
-        values.splice(start: 0, delete_count: values.length(), replacement: [])
+        values.splice(start: 0, delete_count: values.length, replacement: [])
         stop()
     )
 `

@@ -30,8 +30,8 @@ fn last() -> Int: return 2
 			name: "bindings guards and outcome handling",
 			source: `fn process(input: String) -> Int:
     let records = parse(input)
-    if records.length() == 0: return 0
-    if records.length() > 100: return 1
+    if records.length == 0: return 0
+    if records.length > 100: return 1
     let report = summarize(records)
     let payload = encode(report)
     match save(payload):
@@ -42,8 +42,8 @@ fn last() -> Int: return 2
 `,
 			want: `fn process(input: String) -> Int:
     let records = parse(input)
-    if records.length() == 0: return 0
-    if records.length() > 100: return 1
+    if records.length == 0: return 0
+    if records.length > 100: return 1
 
     let report = summarize(records)
     let payload = encode(report)

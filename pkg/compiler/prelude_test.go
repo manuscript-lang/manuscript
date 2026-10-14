@@ -70,7 +70,7 @@ fn use() -> Int: List(3) + Map(4) + Set(5)
     let Set = fn(value: Int) -> Int: value
     let items = [1]
     let entries = {1: 2}
-    return List(3) + Map(4) + Set(5) + items.length() + entries.length()
+    return List(3) + Map(4) + Set(5) + items.length + entries.length
 `,
 		"type parameters": `fn identity[List, Map, Set](left: List, right: Map, other: Set) -> Set: other
 `,

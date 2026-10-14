@@ -50,7 +50,7 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
     )
 
     let nested: Optional[Optional[Int]] = some(missing)
-    if not nested.is_some() or not nested.unwrap().is_none(): return panic(
+    if not nested.is_some or not nested.unwrap().is_none: return panic(
         "nested optional flattened"
     )
 
@@ -63,7 +63,7 @@ test "Result propagation and Error views preserve concrete causes":
     if propagate(success) != expected: return panic("try success")
 
     let view = Error(JsonError.InvalidData)
-    if view.message().byte_length() == 0: return panic("error message")
+    if view.message().byte_length == 0: return panic("error message")
 
     match view:
         JsonError(cause):
@@ -81,7 +81,7 @@ test "custom equality and hashing define map key identity":
         .add(key: first, value: "a")
         .add(key: second, value: "b")
     )
-    if map.length() != 1 or map.get(first) != some("b"): return panic(
+    if map.length != 1 or map.get(first) != some("b"): return panic(
         "domain map identity"
     )
 

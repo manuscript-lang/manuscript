@@ -39,7 +39,7 @@ export interface WebSocket:
     # Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
     fn send(data: Bytes, text: Bool) -> Result[Unit, WebSocketError]
     # Returns the subprotocol the server selected during the handshake, or an empty string when none was negotiated.
-    fn subprotocol() -> String
+    get subprotocol -> String
 
 # A received message and whether its payload is UTF-8 text.
 export type WebSocketMessage:

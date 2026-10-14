@@ -201,7 +201,7 @@ export fn system() -> System:
 #
 # ## Time value methods
 #
-# Use `clock().now()` for monotonic instants and receiver methods for existing time values. For example, `2.seconds.to_milliseconds()` returns `2000`, `start.shift(2.seconds).difference(start)` returns `2.seconds`, and `wall_clock().now().to_string()` formats the current UTC timestamp.
+# Use `clock().now()` for monotonic instants and receiver methods for existing time values. For example, `2.seconds.milliseconds` returns `2000`, `start.shift(2.seconds).difference(start)` returns `2.seconds`, and `wall_clock().now().to_string()` formats the current UTC timestamp.
 #
 # Method names and signatures are in the [`@std/time.ms` reference](reference/time.md).
 #

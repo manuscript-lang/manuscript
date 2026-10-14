@@ -77,7 +77,7 @@ Use `unwrap` when presence is established or absence is a programming error:
 
 ```manuscript
 fn greet(name: Optional[String]) -> String:
-    if name.is_some():
+    if name.is_some:
         return "Hello, " + name.unwrap()
     return "Hello!"
 ```

@@ -33,9 +33,15 @@ func TestStringBasicsCancellation(t *testing.T) {
 			if name == "compare" {
 				args = append(args, Argument{"other", "text"})
 			}
-			failure := recovered(func() { Invoke(ctx, NativeMemberResult("text", name, ""), args) })
+			failure := recovered(func() {
+				if name == "length" || name == "is_empty" {
+					NativeAccessorRead(ctx, "text", name)
+					return
+				}
+				Invoke(ctx, NativeMemberResult("text", name, ""), args)
+			})
 			if _, ok := failure.(cancelled); !ok {
-				t.Fatalf("cancelled bound String.%s became %#v", name, failure)
+				t.Fatalf("cancelled String.%s became %#v", name, failure)
 			}
 		})
 	}

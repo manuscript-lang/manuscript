@@ -46,7 +46,7 @@ test "List pop removes and returns the last element":
 
     values.pop()
     values.pop()
-    if values.pop().is_some() or not (values.is_empty()): return panic("pop empty")
+    if values.pop().is_some or not (values.is_empty): return panic("pop empty")
 
 type Box:
     value: Int
@@ -61,7 +61,7 @@ test "List pop and distinct retain payload references":
     let lists = [nested, [1], [2]]
     let unique = lists.distinct()
     unique.at(0).unwrap().append(3)
-    if unique.length() != 2 or nested != [1, 3]: return panic("distinct payload cloned")
+    if unique.length != 2 or nested != [1, 3]: return panic("distinct payload cloned")
 
 test "List distinct keeps the first equal element in order":
     let values = [3, 1, 3, 2, 1]
@@ -69,7 +69,7 @@ test "List distinct keeps the first equal element in order":
     if unique != [3, 1, 2] or values != [3, 1, 3, 2, 1]: return panic("distinct order")
 
     unique.append(4)
-    if values.length() != 5: return panic("distinct storage alias")
+    if values.length != 5: return panic("distinct storage alias")
 
     let words = ["b", "a", "b"]
     if words.distinct() != ["b", "a"]: return panic("distinct text")
@@ -77,10 +77,10 @@ test "List distinct keeps the first equal element in order":
     let empty: List[Int] = []
     let copy = empty.distinct()
     copy.append(1)
-    if not (empty.is_empty()): return panic("empty distinct alias")
+    if not (empty.is_empty): return panic("empty distinct alias")
 
 fn unique_count[T: Equal](values: List[T]) -> Int:
-    return values.distinct().length()
+    return values.distinct().length
 
 test "List parity operations support generic and bound use":
     if unique_count([1, 1, 2]) != 2: return panic("generic distinct")
@@ -107,13 +107,11 @@ test "List distinct handles large Int and String lists":
         index = index + 1
 
     let unique = numbers.distinct()
-    if (
-        unique.length() != 30000
-        or unique.first() != some(0)
-        or unique.last() != some(29999)
-    ): return panic("distinct ints")
+    if (unique.length != 30000 or unique.first != some(0) or unique.last != some(29999)): return panic(
+        "distinct ints"
+    )
 
     let uniqueWords = words.distinct()
-    if uniqueWords.length() != 20000 or uniqueWords.at(1) != some("w1"): return panic(
+    if uniqueWords.length != 20000 or uniqueWords.at(1) != some("w1"): return panic(
         "distinct strings"
     )

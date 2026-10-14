@@ -37,7 +37,7 @@ fn new_blocking_queue[T](capacity: Int) -> BlockingQueue[T]:
 fn put[T](queue: BlockingQueue[T], value: T) -> Bool:
     with locked = queue.state.lock():
         while true:
-            let current = locked.get()
+            let current = locked.value
             if current.closed:
                 return false
 
@@ -53,10 +53,10 @@ fn put[T](queue: BlockingQueue[T], value: T) -> Bool:
 fn take[T](queue: BlockingQueue[T]) -> Optional[T]:
     with locked = queue.state.lock():
         while true:
-            let current = locked.get()
+            let current = locked.value
             let item = current.items.dequeue()
 
-            if item.is_some():
+            if item.is_some:
                 locked.notify_all()
                 return item
 
@@ -70,7 +70,7 @@ fn take[T](queue: BlockingQueue[T]) -> Optional[T]:
 # Stops new puts and wakes every waiting task. Queued values can still be taken.
 fn close_queue[T](queue: BlockingQueue[T]) -> Unit:
     with locked = queue.state.lock():
-        let current = locked.get()
+        let current = locked.value
         current.closed = true
         locked.notify_all()
 

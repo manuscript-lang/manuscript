@@ -23,7 +23,7 @@ test "primitive storage retains generic record Optional and saved aliases":
     append(17)
     wrapped.unwrap().set(0, 41)
     if not (
-        values.length() == 4099
+        values.length == 4099
         and record.values[0].unwrap() == 41
         and values[-1].unwrap() == 17
     ):
@@ -35,7 +35,7 @@ test "primitive storage retains generic record Optional and saved aliases":
         return panic("primitive clone shares backing")
 
     let nested: List[Optional[Int]] = [some(7), none]
-    if not (nested[0].unwrap().unwrap() == 7 and nested[1].unwrap().is_none()):
+    if not (nested[0].unwrap().unwrap() == 7 and nested[1].unwrap().is_none):
         return panic("generic Optional payload was stored as a primitive")
 
 test "Float Bool and String preserve mutation traversal and width":

@@ -7,18 +7,15 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-// A `let` bound to a typed direct call that returns a Result or Optional keeps
-// the typed Result[T]/Option[T] when the name is only ever the scrutinee of a
-// match in the function that declares it. It is then neither boxed into an
-// Alternative nor tested through Tag/Payload assertions. Any other use of the
-// name, and any capture of it, keeps the boxed form.
+// An immutable local produced by a typed call or accessor keeps its typed
+// Result[T]/Option[T] when every use is a match scrutinee or native presence
+// flag in the declaring function. Other uses and captures keep it boxed.
 type altUses struct {
-	names, scrutinees int
-	captured          bool
+	names, scrutinees, flags int
+	captured                 bool
 }
 
-// planAltLets counts, for every binding, its name uses, its uses as a match
-// scrutinee and whether a closure captures it.
+// planAltLets counts name uses, representation-safe consumers and captures.
 func (g *generator) planAltLets() {
 	g.altUses = map[*checker.Binding]*altUses{}
 	uses := func(b *checker.Binding) *altUses {
@@ -38,6 +35,14 @@ func (g *generator) planAltLets() {
 		if e.Kind == syntax.KindName && info.Binding != nil && info.Method == nil {
 			uses(info.Binding).names++
 		}
+		if e.Kind == syntax.KindMember && info.Method != nil && info.Method.Accessor && e.Left != nil && e.Left.Kind == syntax.KindName {
+			switch info.Method.Native {
+			case "optional/is_some", "optional/is_none", "result/is_ok", "result/is_error":
+				if b := g.program.Info(e.Left).Binding; b != nil {
+					uses(b).flags++
+				}
+			}
+		}
 		if e.Kind == syntax.KindMatch && e.Left != nil && e.Left.Kind == syntax.KindName {
 			if b := g.program.Info(e.Left).Binding; b != nil {
 				uses(b).scrutinees++
@@ -49,15 +54,14 @@ func (g *generator) planAltLets() {
 	}
 }
 
-// altLet lowers `let name = call(...)` as a typed variable, or returns nil
-// when the binding does not qualify.
+// altLet keeps an eligible immutable alternative local in its typed form.
 func (g *generator) altLet(s *syntax.Statement) []ast.Stmt {
-	if s.Pattern.Kind != syntax.KindName || s.Value.Kind != syntax.KindCall {
+	if s.Pattern.Kind != syntax.KindName || (s.Value.Kind != syntax.KindCall && s.Value.Kind != syntax.KindMember) {
 		return nil
 	}
 	b := g.program.PatternBinding(s.Pattern)
 	u := g.altUses[b]
-	if b == nil || b.Mutable || u == nil || u.captured || u.names != u.scrutinees || u.names == 0 {
+	if b == nil || b.Mutable || u == nil || u.captured || u.names != u.scrutinees+u.flags || u.names == 0 {
 		return nil
 	}
 	value, direct := g.typedDirectCall(s.Value)

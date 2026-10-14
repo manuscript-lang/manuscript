@@ -48,6 +48,7 @@ type checker struct {
 	returnInference         *callbackReturns
 	inferenceVariables      map[string]bool
 	checkedArguments        map[*syntax.Expression]checkedArgument
+	accessorSource          *accessorSourceTokens
 	function, serial, loops int
 	testFunction            int
 	rejectedNames           map[string]bool
@@ -301,7 +302,7 @@ func (c *checker) resolveSignaturePass(module *syntax.Module, constants bool) {
 					c.error(m.Pos, "type", "duplicate operation "+m.Name+"; rename or remove one of them")
 				}
 				seen[m.Name] = true
-				def.Operations = append(def.Operations, Param{m.Name, c.signature(m.Params, m.Result)})
+				def.Operations = append(def.Operations, Operation{Name: m.Name, Type: c.signature(m.Params, m.Result), Accessor: m.Accessor, Decl: m})
 			}
 		}
 		c.scope = old
@@ -676,7 +677,13 @@ func (c *checker) checkAssign(s *syntax.Statement) (bool, bool) {
 		target := c.expression(s.Target, nil)
 		target.Write = true
 		receiver := infoOf(s.Target.Left)
-		if !opaqueField(receiver, s.Target.Text) && (receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || (receiver.Symbol != nil && receiver.Symbol.Kind == syntax.KindType) || target.Method != nil) {
+		if target.Method != nil && target.Method.Accessor {
+			fix := "read it as a value instead"
+			if std(target.Method.Receiver, "SynchronizedGuard") && s.Target.Text == "value" {
+				fix = "use guard.set(value: ...) to replace the guarded value"
+			}
+			c.error(s.Target.Pos, "type", "cannot assign to read-only accessor "+s.Target.Text+"; "+fix)
+		} else if !opaqueField(receiver, s.Target.Text) && (receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || (receiver.Symbol != nil && receiver.Symbol.Kind == syntax.KindType) || target.Method != nil) {
 			c.error(s.Target.Pos, "type", "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'")
 		}
 		value := c.expression(s.Value, target.Type)
@@ -798,7 +805,7 @@ func (c *checker) checkWith(s *syntax.Statement) (bool, bool) {
 	methods := c.methods(i.Type, "close")
 	var candidates []*Method
 	for _, method := range methods {
-		if len(method.Type.Params) == 0 && method.Type.Result.ID == "Unit" {
+		if !method.Accessor && len(method.Type.Params) == 0 && method.Type.Result.ID == "Unit" {
 			if method.Contract != nil && std(method.Contract, "Closeable") {
 				candidates = []*Method{method}
 				break

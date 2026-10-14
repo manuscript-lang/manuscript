@@ -49,9 +49,9 @@ export interface Connection:
     # Safe to call repeatedly; later calls wait for the first. Reads and writes afterwards return Closed.
     fn close() -> Unit
     # Returns this end's address as `host:port` text, with IPv6 hosts in brackets; for Unix sockets it is the socket path.
-    fn local_address() -> String
+    get local_address -> String
     # Returns the remote end's address as `host:port` text, with IPv6 hosts in brackets.
-    fn peer_address() -> String
+    get peer_address -> String
     # Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
     fn read(
         max_bytes: Optional[Int] = none,
@@ -76,7 +76,7 @@ export type Datagram:
 # A connectionless socket for sending and receiving datagrams.
 export interface DatagramSocket:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when binding port 0.
-    fn address() -> String
+    get address -> String
     # Closes the socket, interrupting calls in progress, and waits for them to stop.
     # Safe to call repeatedly.
     fn close() -> Unit
@@ -113,7 +113,7 @@ export type DnsKind:
     # Service location records with priority, weight and port.
     case SRV
     # Returns the uppercase wire category.
-    fn text() -> String:
+    get text -> String:
 
 # Numeric address families reported by IP values and host interfaces.
 export type IpFamily:
@@ -122,14 +122,14 @@ export type IpFamily:
     # A sixteen-byte numeric address.
     case IPv6
     # Returns IPv4 or IPv6.
-    fn text() -> String:
+    get text -> String:
 
 # A validated numeric IPv4/IPv6 address without a port or zone.
 export type IpAddress:
     # Returns canonical text; mapped IPv6 input is normalized to IPv4.
     fn text() -> String:
     # Returns the normalized address family.
-    fn family() -> IpFamily:
+    get family -> IpFamily:
 
 # A validated, masked numeric CIDR range.
 export type Cidr:
@@ -155,7 +155,7 @@ export interface Listener:
     # On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
     fn accept(timeout: Optional[Duration] = none) -> Result[Connection, NetworkError]
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
-    fn address() -> String
+    get address -> String
     # Stops accepting, interrupts a pending `accept`, and waits for it to stop.
     # Safe to call repeatedly; connections already accepted stay open.
     fn close() -> Unit

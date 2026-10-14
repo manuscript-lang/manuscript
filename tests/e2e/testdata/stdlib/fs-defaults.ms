@@ -53,7 +53,7 @@ test "filesystem writes default to exclusive creation through aliases and bounds
     let fs = filesystem()
 
     with temporary = value(fs.temporary("manuscript-default-write-")):
-        let path = "{temporary.path()}/file"
+        let path = "{temporary.path}/file"
         value(fs.write_file(path, "first".to_bytes()))
         let write = fs.write_file
         let alias = write
@@ -65,15 +65,15 @@ test "filesystem writes default to exclusive creation through aliases and bounds
         value(alias(path, "second".to_bytes(), replace: true))
         if text(fs, path) != "second": return panic("explicit replacement lost")
 
-        value(generic_write(fs, "{temporary.path()}/generic", "generic".to_bytes()))
+        value(generic_write(fs, "{temporary.path}/generic", "generic".to_bytes()))
         rejected(fs.write_file("", "invalid".to_bytes()))
 
 test "filesystem file copies default to no replacement and retain byte limits":
     let fs: FileSystem = filesystem()
 
     with temporary = value(fs.temporary("manuscript-default-copy-")):
-        let source = "{temporary.path()}/source"
-        let destination = "{temporary.path()}/destination"
+        let source = "{temporary.path}/source"
+        let destination = "{temporary.path}/destination"
         value(fs.write_file(source, "source".to_bytes()))
         let copy = fs.copy_file
         let alias = copy
@@ -87,34 +87,30 @@ test "filesystem file copies default to no replacement and retain byte limits":
         value(copy(source, destination, replace: true, max_bytes: none))
         if text(fs, destination) != "changed": return panic("explicit copy replacement")
 
-        value(generic_copy(fs, source, "{temporary.path()}/generic"))
+        value(generic_copy(fs, source, "{temporary.path}/generic"))
         let limited: Result[Unit, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-        if fs.copy_file(source, "{temporary.path()}/limited", max_bytes: 0) != limited: return panic(
+        if fs.copy_file(source, "{temporary.path}/limited", max_bytes: 0) != limited: return panic(
             "zero byte limit"
         )
-        if fs.copy_file(source, "{temporary.path()}/limited", max_bytes: 6) != limited: return panic(
+        if fs.copy_file(source, "{temporary.path}/limited", max_bytes: 6) != limited: return panic(
             "copy byte limit"
         )
 
         let invalid: Result[Unit, FileSystemError] = error(FileSystemError.InvalidInput)
-        if (
-            fs.copy_file(
-                source,
-                "{temporary.path()}/negative",
-                max_bytes: -1
-            ) != invalid
-        ): return panic("negative byte limit")
+        if (fs.copy_file(source, "{temporary.path}/negative", max_bytes: -1) != invalid): return panic(
+            "negative byte limit"
+        )
 
-        value(copy(source, "{temporary.path()}/exact", max_bytes: 7))
+        value(copy(source, "{temporary.path}/exact", max_bytes: 7))
 
 test "filesystem tree copies default to no replacement with distinct budgets":
     let fs = filesystem()
 
     with temporary = value(fs.temporary("manuscript-default-tree-")):
-        let source = "{temporary.path()}/source"
-        let destination = "{temporary.path()}/destination"
+        let source = "{temporary.path}/source"
+        let destination = "{temporary.path}/destination"
         value(fs.create_directory(source))
         value(fs.write_file("{source}/data", "abc".to_bytes()))
         let copy = fs.copy_tree
@@ -133,30 +129,26 @@ test "filesystem tree copies default to no replacement with distinct budgets":
             "explicit tree replacement"
         )
 
-        value(generic_tree(fs, source, "{temporary.path()}/generic"))
+        value(generic_tree(fs, source, "{temporary.path}/generic"))
         let limited: Result[Unit, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-        if copy(source, "{temporary.path()}/entries", max_entries: 1) != limited: return panic(
+        if copy(source, "{temporary.path}/entries", max_entries: 1) != limited: return panic(
             "entry budget"
         )
-        if copy(source, "{temporary.path()}/bytes", max_bytes: 2) != limited: return panic(
+        if copy(source, "{temporary.path}/bytes", max_bytes: 2) != limited: return panic(
             "byte budget"
         )
 
         let invalid: Result[Unit, FileSystemError] = error(FileSystemError.InvalidInput)
-        if (
-            copy(
-                source,
-                "{temporary.path()}/negative-entry",
-                max_entries: -1
-            ) != invalid
-        ): return panic("negative entries")
-        if copy(source, "{temporary.path()}/negative-byte", max_bytes: -1) != invalid: return panic(
+        if (copy(source, "{temporary.path}/negative-entry", max_entries: -1) != invalid): return panic(
+            "negative entries"
+        )
+        if copy(source, "{temporary.path}/negative-byte", max_bytes: -1) != invalid: return panic(
             "negative bytes"
         )
 
-        value(copy(source, "{temporary.path()}/exact", max_entries: 2, max_bytes: 3))
+        value(copy(source, "{temporary.path}/exact", max_entries: 2, max_bytes: 3))
 
 test "filesystem directory creation defaults to requiring an existing parent":
     let fs = filesystem()
@@ -164,11 +156,11 @@ test "filesystem directory creation defaults to requiring an existing parent":
     with temporary = value(fs.temporary("manuscript-default-directory-")):
         let create = fs.create_directory
         let alias = create
-        let child = "{temporary.path()}/missing/child"
+        let child = "{temporary.path}/missing/child"
         rejected(alias(child))
         rejected(create(child, false))
         rejected(generic_directory(fs, child))
-        if value(fs.list(temporary.path())).length() != 0: return panic(
+        if value(fs.list(temporary.path)).length != 0: return panic(
             "default created parents"
         )
 
@@ -177,14 +169,14 @@ test "filesystem directory creation defaults to requiring an existing parent":
             "recursive creation"
         )
 
-        value(generic_directory(fs, "{temporary.path()}/generic"))
+        value(generic_directory(fs, "{temporary.path}/generic"))
         rejected(create(""))
 
 test "filesystem removal defaults to retaining nonempty trees":
     let fs = filesystem()
 
     with temporary = value(fs.temporary("manuscript-default-remove-")):
-        let directory = "{temporary.path()}/nonempty"
+        let directory = "{temporary.path}/nonempty"
         let path = "{directory}/keep"
         value(fs.create_directory(directory))
         value(fs.write_file(path, "keep".to_bytes()))
@@ -196,11 +188,11 @@ test "filesystem removal defaults to retaining nonempty trees":
         if text(fs, path) != "keep": return panic("default removed descendants")
 
         value(remove(directory, recursive: true))
-        let empty = "{temporary.path()}/empty"
+        let empty = "{temporary.path}/empty"
         value(fs.create_directory(empty))
         value(alias(empty))
-        value(fs.write_file("{temporary.path()}/file", "file".to_bytes()))
-        value(generic_remove(fs, "{temporary.path()}/file"))
+        value(fs.write_file("{temporary.path}/file", "file".to_bytes()))
+        value(generic_remove(fs, "{temporary.path}/file"))
         rejected(remove(""))
 
 test "filesystem default preparation retains written argument order":
@@ -211,11 +203,7 @@ test "filesystem default preparation retains written argument order":
         value(
             fs.write_file(
                 data: data_argument(log),
-                path: argument(
-                    log,
-                    "path",
-                    "{temporary.path()}/ordered"
-                )
+                path: argument(log, "path", "{temporary.path}/ordered")
             )
         )
         if log != ["data", "path"]: return panic("default reordered supplied arguments")
@@ -226,12 +214,12 @@ test "filesystem default preparation retains written argument order":
                 destination: argument(
                     log,
                     "destination",
-                    "{temporary.path()}/copy"
+                    "{temporary.path}/copy"
                 ),
                 source: argument(
                     log,
                     "source",
-                    "{temporary.path()}/ordered"
+                    "{temporary.path}/ordered"
                 )
             )
         )

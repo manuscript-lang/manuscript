@@ -7,7 +7,7 @@ type Parser:
 
 # Skips blanks and returns the next character code, or 0 at the end of the line.
 fn peek(p: Parser) -> Int:
-    while p.pos < p.chars.length():
+    while p.pos < p.chars.length:
         let c = p.chars.at(p.pos).unwrap()
         if c != 32 and c != 9:
             return c
@@ -18,7 +18,7 @@ fn atom(p: Parser) -> Result[Int, String]:
     let c = peek(p)
     if c >= 48 and c <= 57:
         var value = 0
-        while p.pos < p.chars.length():
+        while p.pos < p.chars.length:
             let d = p.chars.at(p.pos).unwrap()
             if d < 48 or d > 57:
                 break
@@ -87,10 +87,10 @@ fn evaluate(line: String) -> String:
 fn run() -> Result[Unit, Error]:
     while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
-        if next.is_none():
+        if next.is_none:
             break
         let line = next.unwrap().replace(old: "\r", new: "")
-        if line.trim().is_empty():
+        if line.trim().is_empty:
             continue
         try stdout().write("{evaluate(line)}\n".to_bytes())
     return stdout().flush()

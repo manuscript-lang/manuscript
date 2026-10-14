@@ -12,7 +12,7 @@ import (
 func TestDefaultExpressionsParticipateInTooling(t *testing.T) {
 	source := `import SynchronizedGuard from "@std/sync.ms"
 fn read(state: SynchronizedGuard[Int]) -> Int:
-    return state.get()
+    return state.value
 fn named(state: SynchronizedGuard[Int], value: Int = read(state)) -> Int:
     return value
 fn nested(state: SynchronizedGuard[Int]) -> Unit:

@@ -2,7 +2,6 @@ package lower
 
 import (
 	"go/ast"
-	"go/token"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
@@ -25,7 +24,7 @@ func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checke
 // References to bound methods still use ordinary callable dispatch.
 func (g *generator) directCollectionCall(e *syntax.Expression, arguments []syntax.Argument) ast.Expr {
 	callee := g.program.Info(e.Left)
-	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Contract != nil {
+	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Contract != nil {
 		return nil
 	}
 	switch callee.Method.Native {
@@ -33,14 +32,6 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 		if len(arguments) == 1 {
 			receiver, index := g.listAtOperands(e, arguments)
 			return orderedCall(runtimeName("ListAt"), ident("ctx"), receiver, index, g.key(g.program.Info(e).Type))
-		}
-	case "length":
-		// Collection length reads the receiver's size; it never calls back or fails.
-		switch g.program.Info(e.Left.Left).Type.ID {
-		case "@std/List", "@std/Map", "@std/Set":
-			if len(arguments) == 0 {
-				return orderedCall(runtimeName("CollectionLength"), ident("ctx"), g.expression(e.Left.Left))
-			}
 		}
 	case "append":
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
@@ -58,32 +49,12 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/StringBuilder" {
 			return orderedCall(runtimeName("StringBuilderFreeze"), ident("ctx"), g.expression(e.Left.Left))
 		}
-	case "is_empty", "collections/is_empty":
-		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
-			return orderedCall(runtimeName("ListIsEmpty"), ident("ctx"), g.expression(e.Left.Left))
-		}
 	case "collections/contains", "contains", "get", "collections/set_add", "collections/set_remove", "collections/map_add", "collections/map_remove":
 		return g.directKeyedCall(e, callee.Method.Native, arguments)
 	case "string/at":
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "String" {
 			receiver := sequence(g.expression(e.Left.Left))
 			return orderedCall(runtimeName("StringAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Info(e).Type))
-		}
-	case "string/length":
-		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "String" {
-			return orderedCall(runtimeName("StringLength"), ident("ctx"), sequence(g.expression(e.Left.Left)))
-		}
-	case "byte_length":
-		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "String" {
-			return orderedCall(runtimeName("StringByteLength"), ident("ctx"), g.expression(e.Left.Left))
-		}
-	case "optional/is_some", "optional/is_none":
-		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/Optional" {
-			some := orderedCall(runtimeName("OptionalIsSome"), ident("ctx"), g.expression(e.Left.Left))
-			if callee.Method.Native == "optional/is_none" {
-				return &ast.UnaryExpr{Op: token.NOT, X: some}
-			}
-			return some
 		}
 	case "optional/unwrap_or":
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/Optional" {
@@ -233,7 +204,7 @@ func (g *generator) mapGetMatch(value *syntax.Expression) bool {
 		return false
 	}
 	callee := g.program.Info(value.Left)
-	if callee == nil || callee.Method == nil || callee.Method.Contract != nil || callee.Method.Native != "get" || len(g.program.Info(value).Arguments) != 1 {
+	if callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Contract != nil || callee.Method.Native != "get" || len(g.program.Info(value).Arguments) != 1 {
 		return false
 	}
 	receiver := g.program.Info(value.Left.Left)

@@ -23,7 +23,7 @@ fn grow(list: List[Int], value: Int) -> Int:
     return value
 
 fn nested(items: List[Int]) -> List[Int]:
-    return items.map(fn(value: Int) -> Int: items.map(fn(inner: Int) -> Int: inner + value).length() + value)
+    return items.map(fn(value: Int) -> Int: items.map(fn(inner: Int) -> Int: inner + value).length + value)
 
 test "list callbacks":
     let items = List[Int]()
@@ -34,7 +34,7 @@ test "list callbacks":
     let doubled = items.map(fn(value: Int) -> Int: value * 2)
     check(ok: doubled.at(index: 4) == some(8), name: "map")
     let even = items.filter(fn(value: Int) -> Bool: value % 2 == 0)
-    check(ok: even.length() == 3, name: "filter")
+    check(ok: even.length == 3, name: "filter")
     check(ok: items.fold(initial: 0, step: fn(accumulator: Int, value: Int) -> Int: accumulator + value) == 10, name: "fold")
     check(ok: items.count(predicate: fn(value: Int) -> Bool: value > 1) == 3, name: "count")
     let retained = List[fn() -> Int]()
@@ -45,7 +45,7 @@ test "list callbacks":
     grown.append(value: 1)
     grown.append(value: 2)
     let seen = grown.map(fn(value: Int) -> Int: grow(list: grown, value: value))
-    check(ok: seen.length() == 2 and grown.length() == 4, name: "append during map")
+    check(ok: seen.length == 2 and grown.length == 4, name: "append during map")
     check(ok: nested(items: items).at(index: 2) == some(7), name: "reentrant map")
 `, compiler.Options{Tests: true})
 	output, err := execute(t, result)

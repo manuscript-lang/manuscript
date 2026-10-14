@@ -341,7 +341,7 @@ func (o IntOptional) Box(result string) Alternative {
 func (o IntOptional) Unwrap(ctx *Execution) int64 {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -394,7 +394,7 @@ func (o FloatOptional) Box(result string) Alternative {
 func (o FloatOptional) Unwrap(ctx *Execution) float64 {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -447,7 +447,7 @@ func (o BoolOptional) Box(result string) Alternative {
 func (o BoolOptional) Unwrap(ctx *Execution) bool {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -500,7 +500,7 @@ func (o StringOptional) Box(result string) Alternative {
 func (o StringOptional) Unwrap(ctx *Execution) string {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value

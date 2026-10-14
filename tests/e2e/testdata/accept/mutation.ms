@@ -104,7 +104,7 @@ test "Synchronized protects record mutation without replacement":
 
         while remaining > 0:
             with guard = counter.lock():
-                guard.get().increment()
+                guard.value.increment()
 
             remaining = remaining - 1
 
@@ -117,7 +117,7 @@ test "Synchronized protects record mutation without replacement":
         match group.join():
             ok(_):
                 with guard = counter.lock():
-                    if not (guard.get().val == 400):
+                    if not (guard.value.val == 400):
                         return panic(message: "synchronized mutation lost updates")
 
             error(_):
@@ -146,19 +146,15 @@ test "list growth and saved clone methods preserve current contents":
     let copy = clone()
     alias.append(2048)
     values.set(index: 0, value: -1)
-    if not (alias.length() == 2049 and alias.last() == some(2048)):
+    if not (alias.length == 2049 and alias.last == some(2048)):
         return panic(message: "growth lost the aliased collection header")
-    if not (
-        copy.length() == 2048
-        and copy.first() == some(0)
-        and copy.last() == some(2047)
-    ):
+    if not (copy.length == 2048 and copy.first == some(0) and copy.last == some(2047)):
         return panic(message: "saved clone method failed to separate current storage")
 
     let empty: List[Int] = []
     let empty_copy = empty.clone()
     empty_copy.append(1)
-    if not (empty.length() == 0 and empty_copy.length() == 1):
+    if not (empty.length == 0 and empty_copy.length == 1):
         return panic(message: "empty clone retained mutable storage")
 
 test "collection clones retain nested object references":
@@ -175,10 +171,10 @@ test "collection clones retain nested object references":
             entry.value.val = 7
 
     if not (
-        values.length() == 1
-        and copied_values.length() == 2
-        and entries.length() == 1
-        and copied_entries.length() == 2
+        values.length == 1
+        and copied_values.length == 2
+        and entries.length == 1
+        and copied_entries.length == 2
     ):
         return panic(message: "cloned collection storage was still shared")
 
@@ -209,7 +205,7 @@ test "map and set clear affect aliases while copies retain contents":
         return panic(message: "map replacement or merge lost identity")
 
     entries.clear()
-    if not (alias.length() == 0 and copy.length() == 1):
+    if not (alias.length == 0 and copy.length == 1):
         return panic(message: "map clear changed a clone or lost an alias")
 
     let values = Set[Int]().add(1)
@@ -220,7 +216,7 @@ test "map and set clear affect aliases while copies retain contents":
         return panic(message: "set duplicate or missing removal changed membership")
 
     values.clear()
-    if not (set_alias.length() == 0 and set_copy.length() == 1):
+    if not (set_alias.length == 0 and set_copy.length == 1):
         return panic(message: "set clear changed a clone or lost an alias")
 
 type Choice:
@@ -269,7 +265,7 @@ test "mutable recursive graphs compare and clone without recursion failures":
         return panic(message: "cloning a cyclic graph did not separate record fields")
 
     copy.children.append(Node(value: 3, children: []))
-    if not (left.children.length() == 2):
+    if not (left.children.length == 2):
         return panic(message: "cyclic graph clone was not shallow")
 
     right.value = 4

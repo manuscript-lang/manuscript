@@ -91,6 +91,10 @@ func matchType(pattern, actual string, vars map[string]bool, sub map[string]stri
 
 type Implementation struct {
 	Receiver, Contract, Name string
+	// Accessor distinguishes executable reads from callable members.
+	Accessor bool
+	// Read executes an accessor without constructing a bound Function.
+	Read func(*Execution, Value, map[string]string, map[string]TypeScope) Value
 	// Scope is empty for implementations in the receiver's defining module.
 	Scope     string
 	Variables []string
@@ -171,6 +175,9 @@ func Bind(receiver Value, contract, name string, scopes ...TypeScope) Value {
 		return method
 	}
 
+	if resolveMemberImplementation(ConcreteType(receiver), contract, name, scope, true) != nil {
+		return Panic("read-only accessor " + name + " is not a method; read it without ()")
+	}
 	return NativeMember(receiver, name)
 }
 
@@ -191,6 +198,7 @@ func implementationScopes(pattern string, scope TypeScope, vars map[string]bool,
 
 type implementationKey struct {
 	typ, contract, name, module, args string
+	accessor                          bool
 }
 
 // resolvedImplementation is the receiver-independent outcome of a lookup.
@@ -279,8 +287,15 @@ func implementationFunction(receiver Value, contract, name string, scope TypeSco
 }
 
 func resolveImplementation(typ, contract, name string, scope TypeScope) *resolvedImplementation {
+	return resolveMemberImplementation(typ, contract, name, scope, false)
+}
+
+func resolveMemberImplementation(typ, contract, name string, scope TypeScope, accessor bool) *resolvedImplementation {
 	for _, at := range implementationsByName[name] {
 		m := &implementations[at]
+		if m.Accessor != accessor {
+			continue
+		}
 		if m.Scope != "" && m.Scope != scope.Module {
 			continue
 		}

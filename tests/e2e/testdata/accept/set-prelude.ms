@@ -4,12 +4,12 @@ fn insert[T: Hashable](values: Set[T], value: T) -> Set[T]: values.add(value)
 
 test "set construction and methods need no import":
     let values: Set[Int] = Set()
-    if not values.is_empty(): return panic("empty constructor")
+    if not values.is_empty: return panic("empty constructor")
 
     insert(values, 3).add(value: 1).add(3)
     let add = values.add
     add(2)
-    if values.length() != 3 or not values.contains(2): return panic("add and contains")
+    if values.length != 3 or not values.contains(2): return panic("add and contains")
     if values.values() != [3, 1, 2]: return panic("deduplication and insertion order")
 
     let copy = values.clone()
@@ -26,7 +26,7 @@ test "set construction and methods need no import":
     )
 
     let nested: List[Set[Int]] = [values]
-    if nested[0].unwrap().length() != 2: return panic("nested annotation")
+    if nested[0].unwrap().length != 2: return panic("nested annotation")
 
     values.clear()
-    if not values.is_empty() or copy.length() != 3: return panic("clear")
+    if not values.is_empty or copy.length != 3: return panic("clear")

@@ -75,7 +75,7 @@ func TestSynchronizedMutableRecordAndList(t *testing.T) {
 			ctx := RootExecution()
 			for range 100 {
 				guard := Invoke(ctx, NativeMember(cell, "lock"), nil).(*SynchronizedGuard)
-				current := Invoke(ctx, guard.Operation("get"), nil)
+				current := SynchronizedGuardValueRead(ctx, guard)
 				n := Field(current, "value").(int64) + 1
 				SetField(current, "value", n)
 				Invoke(ctx, NativeMember(Field(current, "items"), "append"), []Argument{{"value", n}})

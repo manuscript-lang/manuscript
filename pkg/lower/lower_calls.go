@@ -55,7 +55,7 @@ func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argum
 // already be in declaration order so the labels carry no information.
 func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
 	callee := g.program.Info(e.Left)
-	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Contract == nil || callee.Method.Native != "" {
+	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Contract == nil || callee.Method.Native != "" {
 		return nil
 	}
 	receiverType := g.program.Info(e.Left.Left).Type

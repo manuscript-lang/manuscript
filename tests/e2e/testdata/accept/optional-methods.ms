@@ -16,17 +16,17 @@ fn increment(value: Int) -> Int: value + 1
 test "Optional presence and extraction preserve false and zero":
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    if not (present.is_some()): return panic("zero was absent")
-    if present.is_none(): return panic("some reported none")
-    if missing.is_some(): return panic("none reported some")
-    if not (missing.is_none()): return panic("none was present")
+    if not (present.is_some): return panic("zero was absent")
+    if present.is_none: return panic("some reported none")
+    if missing.is_some: return panic("none reported some")
+    if not (missing.is_none): return panic("none was present")
     if present.unwrap() != 0: return panic("payload lost")
 
     let flag: Optional[Bool] = some(false)
     if flag.unwrap(): return panic("false payload lost")
     if value_or(value: missing, fallback: 7) != 7: return panic("generic fallback")
     if value_or(value: present, fallback: 7) != 0: return panic("generic payload")
-    if missing.is_some():
+    if missing.is_some:
         return panic(missing.unwrap().toString())
 
 test "Optional fallbacks distinguish eager and lazy evaluation":
@@ -45,8 +45,8 @@ test "Optional fallbacks distinguish eager and lazy evaluation":
 test "Optional methods retain generic payload and receiver identity":
     let inner: Optional[Int] = none
     let outer: Optional[Optional[Int]] = some(inner)
-    if not (outer.is_some()): return panic("nested optional flattened")
-    if not (outer.unwrap().is_none()): return panic("nested none lost")
+    if not (outer.is_some): return panic("nested optional flattened")
+    if not (outer.unwrap().is_none): return panic("nested none lost")
 
     let counter = Counter(0)
     let record: Optional[Counter] = some(counter)
@@ -68,9 +68,7 @@ test "Optional fallbacks preserve standard option records":
     let missing: Optional[JsonLimits] = none
     let extracted = missing.unwrap_or(limits)
     if extracted.max_bytes.unwrap() != -1: return panic("generic record normalized")
-    if not (extracted.max_depth.is_none()): return panic(
-        "generic record default changed"
-    )
+    if not (extracted.max_depth.is_none): return panic("generic record default changed")
 
     extracted.max_values = some(7)
     if limits.max_values.unwrap() != 7: return panic(

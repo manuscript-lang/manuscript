@@ -64,20 +64,21 @@ func TestDirectLengthLowering(t *testing.T) {
 interface Measure:
     fn length() -> Int
 impl Measure for Sized:
-    fn length() -> Int: return self.items.length()
+    fn length() -> Int: return self.items.length
 fn sizes(values: List[Int], pairs: Map[String, Int], names: Set[String], text: String, sized: Sized) -> Int:
     let measure = Measure(value: sized)
-    let length = values.length
-    return values.length() + pairs.length() + names.length() + text.byte_length() + measure.length() + length()
+    let receiver = values
+    let length: fn() -> Int = fn() -> Int: receiver.length
+    return values.length + pairs.length + names.length + text.byte_length + measure.length() + length()
 `, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	if strings.Count(result.Source, "rt.CollectionLength(") != 4 || strings.Count(result.Source, "rt.StringByteLength(") != 1 {
+	if strings.Count(result.Source, "rt.ListLengthRead(") != 3 || strings.Count(result.Source, "rt.MapLengthRead(") != 1 || strings.Count(result.Source, "rt.SetLengthRead(") != 1 || strings.Count(result.Source, "rt.StringByteLengthRead(") != 1 {
 		t.Fatalf("expected direct length calls only for built-in receivers:\n%s", result.Source)
 	}
-	if !strings.Contains(result.Source, "rt.NativeMemberResult(") {
-		t.Fatal("bound method reference must keep ordinary callable dispatch")
+	if strings.Contains(result.Source, "rt.NativeMemberResult(") {
+		t.Fatal("accessor reference must read a value directly")
 	}
 }
 
@@ -147,12 +148,12 @@ fn use() -> Int:
 func TestDirectListAppendAndIsEmptyLowering(t *testing.T) {
 	result := compiler.CompileSource("append.ms", `fn grow(values: List[Int]) -> Bool:
     values.append(1)
-    return values.is_empty()
+    return values.is_empty
 `, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListAppendInt(", "rt.ListIsEmpty("} {
+	for _, operation := range []string{"rt.ListAppendInt(", "rt.ListIsEmptyRead("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing direct %s:\n%s", operation, result.Source)
 		}

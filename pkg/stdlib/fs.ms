@@ -305,7 +305,7 @@ export interface FileHandle:
 # An open directory that yields one child per read and must be closed.
 export interface Directory:
     # Returns the path this cursor was opened with.
-    fn path() -> String
+    get path -> String
     # Releases the directory handle.
     # Safe to call repeatedly; later reads return Closed.
     fn close() -> Unit
@@ -328,7 +328,7 @@ export interface TemporaryDirectory:
     # Safe to call repeatedly.
     fn close() -> Unit
     # Returns the absolute path of the directory, created under the host's temporary root.
-    fn path() -> String
+    get path -> String
 
 # One filesystem change and the affected path.
 export type FileEvent:

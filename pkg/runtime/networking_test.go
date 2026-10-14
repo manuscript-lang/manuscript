@@ -33,6 +33,9 @@ func networkingClientOptions() Record {
 	return Record{"@std/HttpClientOptions", map[string]Value{"max_redirects": int64(4), "max_idle_connections": int64(8), "max_header_bytes": int64(65536), "idle_timeout": Duration(time.Minute), "decompress": true, "cookies": true, "tls": networkingTLSOptions()}}
 }
 func networkingInvoke(ctx *Execution, v Value, name string, a ...Value) Value {
+	if len(a) == 0 && nativeAccessorMember(ContractReceiver(v), name) {
+		return NativeAccessorRead(ctx, v, name)
+	}
 	return Bind(v, "", name).(Function).Body(ctx, a)
 }
 func TestNetworkingListenerReuseAfterCancellation(t *testing.T) {

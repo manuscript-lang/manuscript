@@ -4,7 +4,7 @@ import "strings"
 
 // OptionalUnwrap is the checked direct-call path for Optional.unwrap. Bound
 // methods and ordinary dispatch use the same extraction and fault behavior.
-const unwrapNoneMessage = "called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default"
+const unwrapNoneMessage = "called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default"
 
 func OptionalUnwrap(ctx *Execution, receiver Value) Value {
 	CheckCancelled(ctx)

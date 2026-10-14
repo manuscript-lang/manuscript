@@ -3,7 +3,7 @@ package msruntime
 import "sync"
 
 // Synchronized protects replacement of a value. Its mutex is held only during
-// admission, get/set, and release, never while user code executes or waits.
+// admission, value reads, set, and release, never while user code executes or waits.
 type Synchronized struct {
 	mu      sync.Mutex
 	typ     string
@@ -68,6 +68,9 @@ func (g *SynchronizedGuard) close() {
 }
 
 func (g *SynchronizedGuard) Operation(name string) Function {
+	if name == "get" || name == "value" {
+		Panic("read-only accessor is not a method")
+	}
 	if name == "close" {
 		return NewFunction(nil, "Unit", func(_ *Execution, _ []Value) Value {
 			g.close()
@@ -98,8 +101,6 @@ func (g *SynchronizedGuard) Operation(name string) Function {
 			return Panic(closedGuardMessage)
 		}
 		switch name {
-		case "get":
-			return s.value
 		case "set":
 			s.value = args[0]
 			return Unit{}

@@ -70,7 +70,7 @@ export type ClientResponse:
     body: Bytes
     # Returns current head without copying; record clone is shallow.
     # Clone headers explicitly when separate mutable membership is needed.
-    fn metadata() -> HttpResponseMetadata:
+    get metadata -> HttpResponseMetadata:
 
 # Known HTTP methods, plus extension tokens validated by outgoing operations.
 export type HttpMethod:
@@ -98,7 +98,7 @@ export type HttpMethod:
         value: String
     )
     # Returns the method token; outgoing requests reject malformed Custom tokens.
-    fn text() -> String:
+    get text -> String:
 
 # Reusable HTTP client with connection pooling and explicit response limits.
 # Outbound headers retain separate values in their stored order.
@@ -157,14 +157,14 @@ export interface HttpExchange:
     # Later operations return Closed.
     fn close() -> Unit
     # Returns the request headers as shared mutable fields with every repeated value retained.
-    fn headers() -> HttpHeaders
+    get headers -> HttpHeaders
     # Returns the request method, using the Custom case for extension tokens.
-    fn method() -> HttpMethod
+    get method -> HttpMethod
     # Returns the percent-decoded request path with dot segments resolved.
     # Requests with an encoded slash or NUL are rejected before the handler runs.
-    fn path() -> String
+    get path -> String
     # Returns the raw query string without the leading `?`; it is empty when there is none.
-    fn query() -> String
+    get query -> String
     # Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past `max_body_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
@@ -207,7 +207,7 @@ export type HttpResponse:
 # A running HTTP server. Close it to stop accepting new requests.
 export interface HttpServer:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
-    fn address() -> String
+    get address -> String
     # Stops accepting connections, waits up to the grace period for in-flight requests, then cancels the rest and waits for them.
     # Safe to call repeatedly. A request handler calling close on its own server faults, and a shutdown error is raised as a fault.
     fn close() -> Unit
@@ -239,7 +239,7 @@ export interface ResponseBody:
     # Safe to call repeatedly; reads afterwards return Closed. A fully read body lets the connection be reused.
     fn close() -> Unit
     # Returns the response head (status and headers) without copying; it stays available after close.
-    fn metadata() -> HttpResponseMetadata
+    get metadata -> HttpResponseMetadata
     # Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past the request's `max_response_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
@@ -262,7 +262,7 @@ impl Error for HttpError:
 #
 # ## Protocols
 #
-# `Network.serve` invokes a handler with a buffered `HttpRequest` and emits its `HttpResponse`. `Network.request` buffers the response into `ClientResponse`. `HttpClient.request` and `request_stream` return a scoped `ResponseBody`; its status and headers use the same `metadata()` record as buffered responses, and its body is read incrementally. Streaming servers receive `HttpExchange`. TLS-enabled reusable clients and streaming servers support HTTP/1.1 and HTTP/2.
+# `Network.serve` invokes a handler with a buffered `HttpRequest` and emits its `HttpResponse`. `Network.request` buffers the response into `ClientResponse`. `HttpClient.request` and `request_stream` return a scoped `ResponseBody`; its status and headers use the same `metadata` record as buffered responses, and its body is read incrementally. Streaming servers receive `HttpExchange`. TLS-enabled reusable clients and streaming servers support HTTP/1.1 and HTTP/2.
 #
 # ## Configuration
 #
@@ -300,7 +300,7 @@ impl Error for HttpError:
 #
 # `values(name)` returns `Optional[List[Bytes]]`. An absent name returns `none`; a present name with no values returns `some` empty list. The list is shared membership: repeated lookups return the same list, appends are visible through existing aliases, and list edits affect subsequent sends. `remove(name)` detaches that name; old list aliases remain usable but no longer affect the header object. Reinserting a removed name gives it a new position/list. `clone()` explicitly copies the names and list membership while sharing immutable Bytes. `names()` returns an ordered list of spellings. These are mutable data, subject to ordinary explicit synchronization when shared between tasks.
 #
-# Transport adapters convert received host headers once. Header and metadata reads do not copy membership. Buffered `ClientResponse.metadata()` returns the current `response.head`: reads share that mutable record while head is unchanged. Replacing `response.head` detaches old aliases, which remain usable but no longer describe the current head. `ResponseBody.metadata()` returns its stored mutable record, including after close. Status/headers edits are alias-visible and do not alter the received wire response.
+# Transport adapters convert received host headers once. Header and metadata reads do not copy membership. Buffered `ClientResponse.metadata` returns the current `response.head`: reads share that mutable record while head is unchanged. Replacing `response.head` detaches old aliases, which remain usable but no longer describe the current head. `ResponseBody.metadata` returns its stored mutable record, including after close. Status/headers edits are alias-visible and do not alter the received wire response.
 #
 # Record clone is shallow. `response.clone()` copies the buffered response record fields while sharing head; `response.head.clone()` copies metadata fields while sharing headers. To separate mutable header membership, explicitly clone headers and assign that object to the copied metadata. No record or header membership is copied merely by reading metadata.
 #
@@ -314,7 +314,7 @@ impl Error for HttpError:
 #
 # Encode each old String value as Bytes and call `append` in the original insertion order. For old list-valued maps, append every list item separately; never select only the first/last value or join cookies. Replace buffered `request.header(name)` and list-map `header_values` with `request.headers.values(name)` or explicit `text(name)`. Buffered headers are no longer newline-joined. A proxy can pass the same header type after removing host-managed framing and hop-by-hop fields; use `clone()` when those edits should be local.
 #
-# Use `response.metadata().status` and `response.metadata().headers` for buffered and streaming response consumption. Buffered ClientResponse construction uses `head: HttpResponseMetadata` and `body: Bytes`; fake constructors build head once. Outgoing HttpResponse retains its status/headers/body construction fields. Reusable client `send`/`send_stream` calls become `request`/`request_stream`; their results remain streaming `ResponseBody`, and streaming uploads still borrow ReadStream. `Network.request` continues to buffer ClientResponse. This rename does not consume or materialize a streaming body. Buffered `serve(limit:)` becomes `serve(max_requests:)`, matching HttpServerOptions without changing omitted/zero/negative handling.
+# Use `response.metadata.status` and `response.metadata.headers` for buffered and streaming response consumption. Buffered ClientResponse construction uses `head: HttpResponseMetadata` and `body: Bytes`; fake constructors build head once. Outgoing HttpResponse retains its status/headers/body construction fields. Reusable client `send`/`send_stream` calls become `request`/`request_stream`; their results remain streaming `ResponseBody`, and streaming uploads still borrow ReadStream. `Network.request` continues to buffer ClientResponse. This rename does not consume or materialize a streaming body. Buffered `serve(limit:)` becomes `serve(max_requests:)`, matching HttpServerOptions without changing omitted/zero/negative handling.
 #
 # Method parameters and incoming request methods use `HttpMethod.Get`, `Head`, `Post`, `Put`, `Patch`, `Delete`, `Connect`, `Options`, `Trace`, or `Custom(value)`. `text()` returns the token, and outgoing requests reject empty/malformed Custom tokens as `HttpError.InvalidInput`. Case-sensitive extension tokens remain available. WebSocket and TLS option naming is unchanged.
 #
@@ -334,7 +334,7 @@ impl Error for HttpError:
 #     let first = feed(decoder: created, chunk: "event: tick\r\ndata: 1\r".to_bytes()).unwrap()
 #     let second = feed(decoder: created, chunk: "\n\r\n".to_bytes()).unwrap()
 #
-#     if first.length() != 0 or second.length() != 1: return panic("one event expected")
+#     if first.length != 0 or second.length != 1: return panic("one event expected")
 #     if second.at(0).unwrap().event != "tick": return panic("event type")
 #
 #     finish(created).unwrap()
@@ -351,7 +351,7 @@ impl Error for HttpError:
 #     let events = try reader(input: borrow_body(response))
 #     while true:
 #         let event = try next_event(events)
-#         if event.is_none(): break
+#         if event.is_none: break
 #         use(event.unwrap())
 # ```
 #

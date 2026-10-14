@@ -45,7 +45,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 				continue
 			}
 			kind := 1
-			if strings.HasPrefix(entry.key, "field:") {
+			if strings.HasPrefix(entry.key, "field:") || entry.info.Method != nil && entry.info.Method.Accessor {
 				kind = 7
 			} else if strings.HasPrefix(entry.key, "parameter:") {
 				kind = 8
@@ -67,7 +67,9 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 				if expression == nil || info == nil || expression.Pos.File != m.File || expression.Text == "" {
 					continue
 				}
-				if info.Symbol != nil && info.Symbol.Kind == syntax.KindType {
+				if info.Method != nil && info.Method.Accessor {
+					resolved[expression.Pos.Offset] = 7
+				} else if info.Symbol != nil && info.Symbol.Kind == syntax.KindType {
 					resolved[expression.Pos.Offset] = 6
 				} else if info.Type != nil && info.Type.Kind == "function" && (info.Symbol == nil || !info.Symbol.IsConstant()) {
 					resolved[expression.Pos.Offset] = 5
@@ -103,6 +105,13 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 		default:
 			if token.Kind != "" && token.Kind[0] >= 'a' && token.Kind[0] <= 'z' {
 				kind = 0
+			}
+		}
+		if token.Kind == lexer.Name && token.Text == "get" && index+2 < len(tokens) && tokens[index+1].Kind == lexer.Name && tokens[index+2].Kind == "->" {
+			lineStart := strings.LastIndex(d.Text[:token.Pos.Offset], "\n") + 1
+			if strings.TrimSpace(d.Text[lineStart:token.Pos.Offset]) == "" {
+				kind = 0
+				resolved[tokens[index+1].Pos.Offset] = 7
 			}
 		}
 		if token.Kind == lexer.Name {

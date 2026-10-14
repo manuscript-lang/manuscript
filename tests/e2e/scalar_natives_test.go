@@ -27,7 +27,7 @@ test "typed math":
     check(ok: min(left: 1.0, right: 2.0) == 1.0 and max(left: 1.0, right: 2.0) == 2.0, name: "min max")
     check(ok: remainder(left: 7.0, right: 4.0) == 3.0, name: "remainder")
     check(ok: atan2(y: 0.0, x: 1.0) == 0.0, name: "atan2")
-    check(ok: sqrt(value: 0.0 - 1.0).is_nan() and sqrt(value: 1.0).is_finite(), name: "classification")
+    check(ok: sqrt(value: 0.0 - 1.0).is_nan and sqrt(value: 1.0).is_finite, name: "classification")
     var total = 0.0
     var i = 0
     while i < 4:

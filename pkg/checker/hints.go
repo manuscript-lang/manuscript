@@ -431,3 +431,18 @@ func uncalledFunctionHint(actual, expected *Type) string {
 	}
 	return "this is a function; call it with parentheses to get its " + expected.String() + " result"
 }
+
+func operationNames(operations []Operation) []string {
+	names := make([]string, 0, len(operations))
+	for _, operation := range operations {
+		names = append(names, operation.Name)
+	}
+	return names
+}
+
+func operationDeclaration(operation Operation) string {
+	if operation.Accessor {
+		return "get " + operation.Name + " -> " + operation.Type.Result.String()
+	}
+	return "fn " + operation.Name + signatureText(operation.Type)
+}

@@ -80,16 +80,15 @@ type Queue struct {
 }
 
 func (q *Queue) Operation(name string) Function {
+	if name == "length" || name == "is_empty" || name == "peek" {
+		Panic("read-only accessor is not a method")
+	}
 	element := typeArguments(q.typ)[0]
 	labels, result := []string{}, "@std/Optional["+element+"]"
 	switch name {
 	case "enqueue":
 		labels, result = []string{"value"}, "Bool"
-	case "length":
-		result = "Int"
-	case "is_empty":
-		result = "Bool"
-	case "dequeue", "peek":
+	case "dequeue":
 	default:
 		Panic("unknown Queue operation")
 	}
@@ -101,10 +100,6 @@ func (q *Queue) Operation(name string) Function {
 			}
 			q.items = append(q.items, args[0])
 			return true
-		case "length":
-			return int64(len(q.items))
-		case "is_empty":
-			return len(q.items) == 0
 		default:
 			if len(q.items) == 0 {
 				return optional(element, nil, false)
