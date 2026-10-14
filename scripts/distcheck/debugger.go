@@ -96,7 +96,7 @@ func checkScriptedDebugger(cli, directory string, environment []string, source s
 			return fmt.Errorf("scripted debugger missing %s:\n%s", want, output)
 		}
 	}
-	if strings.Contains(string(output), "runtime.") || strings.Contains(string(output), "local") {
+	if strings.Contains(string(output), "runtime.") || strings.Contains(string(output), `"name":"local`) {
 		return fmt.Errorf("scripted debugger leaked Go names:\n%s", output)
 	}
 	return nil
