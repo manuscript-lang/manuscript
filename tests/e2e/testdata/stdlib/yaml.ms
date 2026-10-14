@@ -710,3 +710,36 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
     if entries(list.last().unwrap()).get("d").unwrap() != YamlValue.NumberValue("4"): return panic(
         "single space marker"
     )
+
+fn repeated(text: String, count: Int) -> String:
+    if count <= 0: return ""
+    if count == 1: return text
+
+    let half = repeated(text: text, count: count / 2)
+    if count % 2 == 1: return half.concat(half).concat(text)
+
+    return half.concat(half)
+
+test "YAML long plain scalars and large mappings parse in linear time":
+    let long = repeated(text: "x", count: 300000)
+    let scalar = entries(
+        value(parse(text: "a: {long}"))
+    )
+    if scalar.get("a").unwrap() != YamlValue.StringValue(long): return panic(
+        "long plain scalar"
+    )
+
+    var keys = ""
+    var index = 0
+
+    while index < 30000:
+        keys = keys.concat("k{index}: 1\n")
+        index = index + 1
+
+    if entries(
+        value(parse(text: keys))
+    ).length() != 30000: return panic("many keys")
+
+    match parse(text: keys.concat("k7: 2\n")):
+        ok(_): return panic("duplicate key after many keys")
+        error(_): return
