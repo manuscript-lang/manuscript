@@ -43,9 +43,9 @@ func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argum
 	for i, arg := range args {
 		// A later match argument can reassign a local used by an earlier
 		// argument. Force each value's capture before evaluating the next.
-		values[i] = sourceAt(arg.Pos, g.argumentValue(arg))
+		values[i] = sequence(g.argumentValue(arg))
 	}
-	return g.locatedOperation(e, selector(&ast.TypeAssertExpr{X: callee, Type: runtimeName("Function")}, "Body"), ident("ctx"), sliceLiteral(runtimeName("Value"), values...))
+	return orderedCall(selector(&ast.TypeAssertExpr{X: callee, Type: runtimeName("Function")}, "Body"), ident("ctx"), sliceLiteral(runtimeName("Value"), values...))
 }
 
 // A method call on a receiver whose static type is a concrete user record or
@@ -73,10 +73,10 @@ func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argum
 	}
 	values := make([]ast.Expr, len(args))
 	for i, arg := range args {
-		values[i] = sourceAt(arg.Pos, g.argumentValue(arg))
+		values[i] = sequence(g.argumentValue(arg))
 	}
 	site := "method" + strconv.Itoa(len(g.sites)+1)
 	g.sites = append(g.sites, site)
-	receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-	return g.locatedOperation(e, runtimeName("CallMethod"), ident("ctx"), address(ident(site)), receiver, g.key(callee.Method.Contract), textLiteral(e.Left.Text), g.typeScope(receiverType), sliceLiteral(runtimeName("Value"), values...))
+	receiver := sequence(g.expression(e.Left.Left))
+	return orderedCall(runtimeName("CallMethod"), ident("ctx"), address(ident(site)), receiver, g.key(callee.Method.Contract), textLiteral(e.Left.Text), g.typeScope(receiverType), sliceLiteral(runtimeName("Value"), values...))
 }

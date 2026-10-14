@@ -65,9 +65,7 @@ test "Float Bool and String preserve mutation traversal and width":
 
 test "stable sort and strict Result slice preserve separate storage":
     let values = [7, 1, 4, 8, 2, 5]
-    let sorted = values.sorted(
-        fn(left, right): return left % 3 - right % 3
-    )
+    let sorted = values.sorted(fn(left, right): return left % 3 - right % 3)
     sorted.set(0, 99)
     if values[0].unwrap() != 7:
         return panic("sorting shared outer backing")

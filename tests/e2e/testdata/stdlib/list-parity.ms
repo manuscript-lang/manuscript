@@ -11,19 +11,13 @@ test "List count calls the predicate once per element":
     if even != 2 or seen != values: return panic("count matches")
 
     let empty: List[Int] = []
-    if empty.count(
-        fn(value: Int) -> Bool: true
-    ) != 0: return panic("empty count")
+    if empty.count(fn(value: Int) -> Bool: true) != 0: return panic("empty count")
 
 test "List insert mutates in place and returns the same list":
     let values = [1, 3]
     let alias = values
     let returned = values.insert(1, 2)
-    if (
-        values != [1, 2, 3]
-        or alias != [1, 2, 3]
-        or returned != values
-    ): return panic(
+    if (values != [1, 2, 3] or alias != [1, 2, 3] or returned != values): return panic(
         "middle insert"
     )
 
@@ -46,11 +40,9 @@ test "List pop removes and returns the last element":
     let values = [1, 2, 3]
     let alias = values
     let last = values.pop()
-    if (
-        last != some(3)
-        or values != [1, 2]
-        or alias != [1, 2]
-    ): return panic("pop last")
+    if (last != some(3) or values != [1, 2] or alias != [1, 2]): return panic(
+        "pop last"
+    )
 
     values.pop()
     values.pop()
@@ -99,9 +91,7 @@ test "List parity operations support generic and bound use":
     let count = values.count
     values = [9]
     insert(index: 2, value: 3)
-    if pop() != some(3) or count(
-        fn(value: Int) -> Bool: value > 0
-    ) != 2: return panic(
+    if pop() != some(3) or count(fn(value: Int) -> Bool: value > 0) != 2: return panic(
         "bound receiver"
     )
     if values != [9]: return panic("bound receiver rebinding")
@@ -121,9 +111,7 @@ test "List distinct handles large Int and String lists":
         unique.length() != 30000
         or unique.first() != some(0)
         or unique.last() != some(29999)
-    ): return panic(
-        "distinct ints"
-    )
+    ): return panic("distinct ints")
 
     let uniqueWords = words.distinct()
     if uniqueWords.length() != 20000 or uniqueWords.at(1) != some("w1"): return panic(

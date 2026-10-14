@@ -11,33 +11,15 @@ import panic from "@std/faults.ms"
 
 test "Map removal keeps direct bound generic and defining-module key scopes":
     let first = id_map()
-    id_direct(
-        first,
-        Key(1, "different")
-    )
-    id_bound(
-        first,
-        Key(2, "different")
-    )
-    id_generic(
-        first,
-        Key(3, "different")
-    )
+    id_direct(first, Key(1, "different"))
+    id_bound(first, Key(2, "different"))
+    id_generic(first, Key(3, "different"))
     if not first.is_empty(): return panic("id scope")
 
     let second = label_map()
-    label_direct(
-        second,
-        Key(99, "one")
-    )
-    label_bound(
-        second,
-        Key(99, "two")
-    )
-    label_generic(
-        second,
-        Key(99, "three")
-    )
+    label_direct(second, Key(99, "one"))
+    label_bound(second, Key(99, "two"))
+    label_generic(second, Key(99, "three"))
     if not second.is_empty(): return panic("label scope")
 
     let returned_values = id_map()

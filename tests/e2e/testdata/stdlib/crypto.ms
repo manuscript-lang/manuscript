@@ -79,9 +79,7 @@ test "authenticated encryption detects wrong associated data":
         ) != "secret".to_bytes()
     ): return panic("AES GCM roundtrip")
 
-    let failed: Result[Bytes, CryptoError] = error(
-        CryptoError.AuthenticationFailed
-    )
+    let failed: Result[Bytes, CryptoError] = error(CryptoError.AuthenticationFailed)
     if (
         open(
             key: key,
@@ -104,27 +102,16 @@ test "authenticated encryption detects wrong associated data":
 test "Ed25519 signatures verify only the signed data":
     let seed = "01234567890123456789012345678901".to_bytes()
     let key = value(public_key(seed))
-    let signature = value(
-        sign(
-            seed: seed,
-            data: "message".to_bytes()
-        )
+    let signature = value(sign(seed: seed, data: "message".to_bytes()))
+    if not verify(key: key, data: "message".to_bytes(), signature: signature): return panic(
+        "signature verification"
     )
-    if not verify(
-        key: key,
-        data: "message".to_bytes(),
-        signature: signature
-    ): return panic("signature verification")
-    if verify(
-        key: key,
-        data: "changed".to_bytes(),
-        signature: signature
-    ): return panic("signature forgery")
-    if not constant_time_equal(
-        left: seed,
-        right: seed.clone()
-    ): return panic("constant time equality")
-    if constant_time_equal(
-        left: seed,
-        right: "short".to_bytes()
-    ): return panic("different lengths")
+    if verify(key: key, data: "changed".to_bytes(), signature: signature): return panic(
+        "signature forgery"
+    )
+    if not constant_time_equal(left: seed, right: seed.clone()): return panic(
+        "constant time equality"
+    )
+    if constant_time_equal(left: seed, right: "short".to_bytes()): return panic(
+        "different lengths"
+    )

@@ -70,10 +70,7 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         return ok(unit)
 
     let fields = headers()
-    let appended = try fields.append(
-        "X-Test",
-        "stream".to_bytes()
-    )
+    let appended = try fields.append("X-Test", "stream".to_bytes())
     let started = try exchange.send_headers(status: 200, headers: fields)
 
     match exchange.write(data: "hello from streaming Manuscript".to_bytes()):

@@ -66,9 +66,7 @@ test "optional labels on single-parameter functions":
     if not (increment(3) == increment(value: 3)):
         return panic(message: "check failed")
 
-    let multiline = increment(
-        3,
-    )
+    let multiline = increment(3)
     if not (multiline == 4):
         return panic(message: "check failed")
     if not (identity(7) == 7):
@@ -103,12 +101,7 @@ test "optional labels on single-parameter functions":
     )
     if not (result == 6):
         return panic(message: "check failed")
-    if not (
-        subtract(
-            deduction: increment(1),
-            amount: increment(8)
-        ) == 7
-    ):
+    if not (subtract(deduction: increment(1), amount: increment(8)) == 7):
         return panic(message: "check failed")
 
 test "optional labels on methods and native functions":
@@ -145,10 +138,7 @@ test "optional labels on methods and native functions":
     if not ([4, 5].at(0) == some(4)):
         return panic(message: "check failed")
 
-    with service = Scheduler(
-        limit: 1,
-        drain: 2.seconds
-    ):
+    with service = Scheduler(limit: 1, drain: 2.seconds):
         let operation = fn() -> Result[Unit, Error]:
             return ok(unit)
 
@@ -170,12 +160,7 @@ test "omitted labels preserve evaluation order":
         if not (locked.get() == 2):
             return panic(message: "check failed")
 
-    if not (
-        subtract(
-            deduction: next(state),
-            amount: next(state)
-        ) == 1
-    ):
+    if not (subtract(deduction: next(state), amount: next(state)) == 1):
         return panic(message: "check failed")
 
     with locked = state.lock():

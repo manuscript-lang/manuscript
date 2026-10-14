@@ -16,30 +16,15 @@ import value from "./support/results.ms"
 
 fn repeated_headers() -> HttpHeaders:
     let fields = headers()
-    let first = value(
-        fields.append(
-            "x-dup",
-            "first".to_bytes()
-        )
-    )
-    let second = value(
-        fields.append(
-            "X-Dup",
-            "second".to_bytes()
-        )
-    )
+    let first = value(fields.append("x-dup", "first".to_bytes()))
+    let second = value(fields.append("X-Dup", "second".to_bytes()))
     let cookie = value(
         fields.append(
             "Set-Cookie",
             "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT".to_bytes()
         )
     )
-    let other = value(
-        fields.append(
-            "set-cookie",
-            "b=2".to_bytes()
-        )
-    )
+    let other = value(fields.append("set-cookie", "b=2".to_bytes()))
     return fields
 
 fn handle_headers(request: HttpRequest) -> HttpResponse:
@@ -48,11 +33,7 @@ fn handle_headers(request: HttpRequest) -> HttpResponse:
         "case-insensitive received fields"
     )
 
-    return HttpResponse(
-        status: 200,
-        headers: repeated_headers(),
-        body: "ok".to_bytes()
-    )
+    return HttpResponse(status: 200, headers: repeated_headers(), body: "ok".to_bytes())
 
 test "one header type preserves repeated values through buffered requests":
     with server = value(
@@ -81,12 +62,7 @@ test "one header type preserves repeated values through buffered requests":
             )
         ): return panic("cookies combined or lost")
 
-        let appended = value(
-            metadata.headers.append(
-                "x-dup",
-                "third".to_bytes()
-            )
-        )
+        let appended = value(metadata.headers.append("x-dup", "third".to_bytes()))
         if (
             value(response.metadata().headers.text("X-Dup")) != some(
                 ["first", "second", "third"]
@@ -129,76 +105,42 @@ test "streaming proxy uses the same byte-valued header type":
 test "lookup shares mutable membership and clone separates it":
     let fields = repeated_headers()
     let values = fields.values("X-DUP").unwrap()
-    let appended = value(
-        fields.append(
-            "x-dup",
-            "third".to_bytes()
-        )
-    )
+    let appended = value(fields.append("x-dup", "third".to_bytes()))
     if values.length() != 3: return panic("lookup copied membership")
 
-    let changed = values.set(
-        0,
-        "changed".to_bytes()
-    )
+    let changed = values.set(0, "changed".to_bytes())
     if fields.values("x-dup").unwrap().at(0) != some("changed".to_bytes()): return panic(
         "list mutation not shared"
     )
 
     let copy = fields.clone()
     let copied_values = copy.values("x-dup").unwrap()
-    let copied_changed = copied_values.set(
-        0,
-        "copy".to_bytes()
-    )
+    let copied_changed = copied_values.set(0, "copy".to_bytes())
     if fields.values("x-dup").unwrap().at(0) != some("changed".to_bytes()): return panic(
         "clone shared membership"
     )
     if not fields.values("missing").is_none(): return panic("absent header")
 
-    let k = value(
-        fields.append(
-            "K",
-            "ASCII".to_bytes()
-        )
-    )
+    let k = value(fields.append("K", "ASCII".to_bytes()))
     if not fields.values("K").is_none(): return panic("Unicode folding")
 
     let removed = fields.remove("X-DUP")
-    let new_field = value(
-        fields.append(
-            "X-Dup",
-            "new".to_bytes()
-        )
-    )
+    let new_field = value(fields.append("X-Dup", "new".to_bytes()))
     if values.length() != 3 or fields.values("x-dup").unwrap().length() != 1: return panic(
         "removed list alias reattached"
     )
 
 test "explicit text extraction fails with typed UTF8 error":
     let fields = headers()
-    let valid = value(
-        fields.append(
-            "Raw",
-            "first".to_bytes()
-        )
-    )
-    let invalid = value(
-        fields.append(
-            "raw",
-            Bytes(values: [255])
-        )
-    )
+    let valid = value(fields.append("Raw", "first".to_bytes()))
+    let invalid = value(fields.append("raw", Bytes(values: [255])))
 
     match fields.text("RAW"):
         ok(_): return panic("invalid UTF8 accepted")
         error(cause):
             if cause != HttpError.InvalidData: return panic("wrong UTF8 error")
 
-    match fields.append(
-        "bad name",
-        "value".to_bytes()
-    ):
+    match fields.append("bad name", "value".to_bytes()):
         ok(_): return panic("malformed name accepted")
         error(cause):
             if cause != HttpError.InvalidInput: return panic("wrong name error")
@@ -217,9 +159,7 @@ test "empty options and an omitted request body use checked defaults":
             options: HttpServerOptions()
         )
     ):
-        with client = value(
-            network().http_client(options: HttpClientOptions())
-        ):
+        with client = value(network().http_client(options: HttpClientOptions())):
             with response = value(
                 client.request(
                     method: HttpMethod.Get,

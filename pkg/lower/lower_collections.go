@@ -31,56 +31,60 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 	case "collections/at":
 		if len(arguments) == 1 {
 			receiver, index := g.listAtOperands(e, arguments)
-			return g.locatedOperation(e, runtimeName("ListAt"), ident("ctx"), receiver, index, g.key(g.program.Info(e).Type))
+			return orderedCall(runtimeName("ListAt"), ident("ctx"), receiver, index, g.key(g.program.Info(e).Type))
 		}
 	case "length":
 		// Collection length reads the receiver's size; it never calls back or fails.
 		switch g.program.Info(e.Left.Left).Type.ID {
 		case "@std/List", "@std/Map", "@std/Set":
 			if len(arguments) == 0 {
-				return g.locatedOperation(e, runtimeName("CollectionLength"), ident("ctx"), g.expression(e.Left.Left))
+				return orderedCall(runtimeName("CollectionLength"), ident("ctx"), g.expression(e.Left.Left))
 			}
 		}
 	case "append":
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
-			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
+			receiver := sequence(g.expression(e.Left.Left))
 			if typ := primitiveEqualityType(g.program.Info(e.Left.Left).Type.Args[0]); typ != "" {
-				return g.locatedOperation(e, runtimeName("ListAppend"+primitiveKinds[typ]), ident("ctx"), receiver, g.scalar(arguments[0].Value, typ))
+				return orderedCall(runtimeName("ListAppend"+primitiveKinds[typ]), ident("ctx"), receiver, g.scalar(arguments[0].Value, typ))
 			}
-			return g.locatedOperation(e, runtimeName("ListAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
+			return orderedCall(runtimeName("ListAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/StringBuilder" {
-			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-			return g.locatedOperation(e, runtimeName("StringBuilderAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
+			receiver := sequence(g.expression(e.Left.Left))
+			return orderedCall(runtimeName("StringBuilderAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}
 	case "freeze":
 		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/StringBuilder" {
-			return g.locatedOperation(e, runtimeName("StringBuilderFreeze"), ident("ctx"), g.expression(e.Left.Left))
+			return orderedCall(runtimeName("StringBuilderFreeze"), ident("ctx"), g.expression(e.Left.Left))
 		}
 	case "is_empty", "collections/is_empty":
 		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
-			return g.locatedOperation(e, runtimeName("ListIsEmpty"), ident("ctx"), g.expression(e.Left.Left))
+			return orderedCall(runtimeName("ListIsEmpty"), ident("ctx"), g.expression(e.Left.Left))
 		}
 	case "collections/contains", "contains", "get", "collections/set_add", "collections/set_remove", "collections/map_add", "collections/map_remove":
 		return g.directKeyedCall(e, callee.Method.Native, arguments)
 	case "string/at":
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "String" {
-			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-			return g.locatedOperation(e, runtimeName("StringAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Info(e).Type))
+			receiver := sequence(g.expression(e.Left.Left))
+			return orderedCall(runtimeName("StringAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Info(e).Type))
+		}
+	case "string/length":
+		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "String" {
+			return orderedCall(runtimeName("StringLength"), ident("ctx"), sequence(g.expression(e.Left.Left)))
 		}
 	case "byte_length":
 		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "String" {
-			return g.locatedOperation(e, runtimeName("StringByteLength"), ident("ctx"), g.expression(e.Left.Left))
+			return orderedCall(runtimeName("StringByteLength"), ident("ctx"), g.expression(e.Left.Left))
 		}
 	case "optional/unwrap":
 		if len(arguments) == 0 && g.listAtMatch(e.Left.Left) {
 			// list.at(i).unwrap() needs no Optional: read the element and fault
 			// at the unwrap site when it is absent.
 			receiver, index := g.listAtOperands(e.Left.Left, g.program.Info(e.Left.Left).Arguments)
-			return g.locatedOperation(e, runtimeName("ListAtUnwrap"), ident("ctx"), receiver, index)
+			return orderedCall(runtimeName("ListAtUnwrap"), ident("ctx"), receiver, index)
 		}
 		if len(arguments) == 0 {
-			return g.locatedOperation(e, runtimeName("OptionalUnwrap"), ident("ctx"), g.expression(e.Left.Left))
+			return orderedCall(runtimeName("OptionalUnwrap"), ident("ctx"), g.expression(e.Left.Left))
 		}
 	}
 	return g.boundNativeCall(e, callee, arguments)
@@ -126,11 +130,11 @@ func (g *generator) boundNativeCall(e *syntax.Expression, callee *checker.Info, 
 	}
 	// Read the receiver before the arguments, as ordinary dispatch does, and
 	// capture each value before a later argument can mutate an earlier local.
-	values := []ast.Expr{sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))}
+	values := []ast.Expr{sequence(g.expression(e.Left.Left))}
 	for _, argument := range arguments {
-		values = append(values, sourceAt(argument.Pos, g.argumentValue(argument)))
+		values = append(values, sequence(g.argumentValue(argument)))
 	}
-	return g.locatedOperation(e, runtimeName("CallNative"), ident("ctx"), g.lazyValue(identity, runtimeCall("BindNativeCall", bind...)), sliceLiteral(runtimeName("Value"), values...))
+	return orderedCall(runtimeName("CallNative"), ident("ctx"), g.lazyValue(identity, runtimeCall("BindNativeCall", bind...)), sliceLiteral(runtimeName("Value"), values...))
 }
 
 // directKeyedCall lowers membership and keyed access on built-in List, Map,
@@ -169,17 +173,17 @@ func (g *generator) directKeyedCall(e *syntax.Expression, native string, argumen
 		return nil
 	}
 	// Read the receiver before the arguments, as for List.at.
-	args := []ast.Expr{ident("ctx"), sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))}
+	args := []ast.Expr{ident("ctx"), sequence(g.expression(e.Left.Left))}
 	for _, argument := range arguments {
 		// Reuse checked conversions and capture each value before a later
 		// argument can mutate an earlier local, just as ordinary calls do.
-		args = append(args, sourceAt(argument.Pos, g.argumentValue(argument)))
+		args = append(args, sequence(g.argumentValue(argument)))
 	}
 	args = append(args, g.typeScope(receiverType.Args[0]))
 	if name == "MapGet" {
 		args = append(args, g.key(g.program.Info(e).Type))
 	}
-	return g.locatedOperation(e, runtimeName(name), args...)
+	return orderedCall(runtimeName(name), args...)
 }
 
 // listAtOperands lowers the receiver and index of a List.at call.
@@ -187,7 +191,7 @@ func (g *generator) listAtOperands(e *syntax.Expression, arguments []syntax.Argu
 	// Force even a plain local receiver to be read before the index:
 	// a match expression in the index can reassign that local. Go does
 	// not otherwise order a variable read before a later function call.
-	return sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left)), g.argumentValue(arguments[0])
+	return sequence(g.expression(e.Left.Left)), g.argumentValue(arguments[0])
 }
 
 // listAtMatch reports whether value is a direct List.at call, whose Optional
@@ -204,5 +208,41 @@ func (g *generator) listAtMatch(value *syntax.Expression) bool {
 // listAtParts lowers a List.at call to the element and its presence.
 func (g *generator) listAtParts(value *syntax.Expression) ast.Expr {
 	receiver, index := g.listAtOperands(value, g.program.Info(value).Arguments)
-	return g.locatedOperation(value, runtimeName("ListAtParts"), ident("ctx"), receiver, index)
+	return orderedCall(runtimeName("ListAtParts"), ident("ctx"), receiver, index)
+}
+
+// mapGetMatch reports whether value is a direct Map.get call, whose Optional
+// result a match can consume as a value and a presence flag.
+func (g *generator) mapGetMatch(value *syntax.Expression) bool {
+	if value.Kind != syntax.KindCall || value.Left.Kind != syntax.KindMember {
+		return false
+	}
+	callee := g.program.Info(value.Left)
+	if callee == nil || callee.Method == nil || callee.Method.Contract != nil || callee.Method.Native != "get" || len(g.program.Info(value).Arguments) != 1 {
+		return false
+	}
+	receiver := g.program.Info(value.Left.Left)
+	return receiver != nil && receiver.Type != nil && receiver.Type.ID == "@std/Map" && len(receiver.Type.Args) > 0
+}
+
+// mapGetParts lowers a Map.get call to the value and its presence.
+func (g *generator) mapGetParts(value *syntax.Expression) ast.Expr {
+	argument := g.program.Info(value).Arguments[0]
+	receiver := sequence(g.expression(value.Left.Left))
+	key := sequence(g.argumentValue(argument))
+	return orderedCall(runtimeName("MapGetParts"), ident("ctx"), receiver, key, g.typeScope(g.program.Info(value.Left.Left).Type.Args[0]))
+}
+
+// optionalParts reports whether value is a direct lookup a match consumes as
+// an element and a presence flag instead of an Optional.
+func (g *generator) optionalParts(value *syntax.Expression) bool {
+	return g.listAtMatch(value) || g.mapGetMatch(value)
+}
+
+// lookupParts lowers an optionalParts lookup to its element and presence.
+func (g *generator) lookupParts(value *syntax.Expression) ast.Expr {
+	if g.listAtMatch(value) {
+		return g.listAtParts(value)
+	}
+	return g.mapGetParts(value)
 }

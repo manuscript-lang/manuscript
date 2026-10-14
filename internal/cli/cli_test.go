@@ -190,7 +190,7 @@ func TestFormattingCheckAndPermissionPreservation(t *testing.T) {
 	}{
 		{"spacing", "fn value() -> Int:   \n    return 3   \n", "fn value() -> Int:\n    return 3\n"},
 		{"paragraphs", "fn value() -> Int:\n    if true: return 3\n    return 0\n", "fn value() -> Int:\n    if true: return 3\n\n    return 0\n"},
-		{"expressions", "fn value() -> Int:\n    return sum(left: read(1), right: 2)\n", "fn value() -> Int:\n    return sum(\n        left: read(1),\n        right: 2\n    )\n"},
+		{"expressions", "fn value() -> Int:\n    return sum(left:read(1),right:2)\n", "fn value() -> Int:\n    return sum(left: read(1), right: 2)\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			checkFormattingAndPermissions(t, tc.source, tc.want)

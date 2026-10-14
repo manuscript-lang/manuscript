@@ -1,7 +1,5 @@
 package msruntime
 
-import "fmt"
-
 // NewIntCompareFunction keeps an ordinary callable and a typed comparison entry
 // on the same value. The supplied body retains generated source tracing/cleanup.
 func NewIntCompareFunction(labels []string, result, position string, body func(*Execution, int64, int64) int64) Function {
@@ -20,8 +18,8 @@ func NewFloatCompareFunction(labels []string, result, position string, body func
 	return f
 }
 
-// Keep this wrapper aligned with NewSourceFunction: scalar callbacks still have
-// source returns, the depth guard, profiling and entry/delivery cancellation.
+// Scalar callbacks retain an inline guard and typed delivery checkpoint. Source
+// return consumption and limit faults are shared with boxed calls.
 func sourceComparator[T any](body func(*Execution, T, T) int64, boxed func(*Execution, []Value) Value) func(*Execution, T, T) int64 {
 	return func(ctx *Execution, left, right T) (value int64) {
 		if sourceProfiling.Load() {
@@ -31,8 +29,7 @@ func sourceComparator[T any](body func(*Execution, T, T) int64, boxed func(*Exec
 		if ctx != nil && ctx.calls != nil {
 			calls := ctx.calls
 			if calls.depth++; calls.depth > MaxCallDepth {
-				calls.depth--
-				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
+				sourceDepthFault(calls)
 			}
 			defer func() { calls.depth-- }()
 		}
@@ -41,9 +38,8 @@ func sourceComparator[T any](body func(*Execution, T, T) int64, boxed func(*Exec
 				return
 			}
 			if failure := recover(); failure != nil {
-				if returned, ok := failure.(sourceReturn); ok {
-					controlPanics.Add(-1)
-					value = returned.value.(int64)
+				if returned, ok := consumeSourceReturn(failure); ok {
+					value = returned.(int64)
 					CheckCancelled(ctx)
 					return
 				}

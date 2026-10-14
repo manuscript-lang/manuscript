@@ -46,18 +46,7 @@ impl Read for Reader:
 test "shared counter protects complete updates":
     let counter = Synchronized(0)
     let operation = fn():
-        for unused in [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10
-        ]:
+        for unused in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             with locked = counter.lock():
                 increment(locked: locked)
 

@@ -18,17 +18,13 @@ import value from "./support/results.ms"
 
 test "URL canonicalization and relative references":
     let url = value(parse("https://EXAMPLE.com:443/a/b?q=1#fragment"))
-    if url.host != "example.com" or url.port != some(443): return panic(
-        "host and port"
-    )
+    if url.host != "example.com" or url.port != some(443): return panic("host and port")
     if value(format(url)) != "https://example.com:443/a/b?q=1#fragment": return panic(
         "URL format"
     )
     if (
         value(
-            format(
-                value(resolve(base: url, reference: "../c"))
-            )
+            format(value(resolve(base: url, reference: "../c")))
         ) != "https://example.com:443/c"
     ): return panic("relative reference")
     if encode_component("a b/é") != "a%20b%2F%C3%A9": return panic("component escaping")
@@ -45,13 +41,10 @@ test "URL query retains duplicate keys empty values and spaces":
         "query order"
     )
 
-    let limited: Result[List[QueryEntry], UrlError] = error(
-        UrlError.LimitExceeded
+    let limited: Result[List[QueryEntry], UrlError] = error(UrlError.LimitExceeded)
+    if parse_query(text: "a=1&b=2", max_entries: 1) != limited: return panic(
+        "query limit"
     )
-    if parse_query(
-        text: "a=1&b=2",
-        max_entries: 1
-    ) != limited: return panic("query limit")
 
     let invalid: Result[String, UrlError] = error(UrlError.InvalidData)
     if decode_component("%zz") != invalid: return panic("malformed escape")
@@ -61,12 +54,7 @@ test "URL query skips empty segments":
     if format_query(entries) != "a=1&b=2": return panic("empty segments kept")
     if not value(parse_query(text: "&&")).is_empty(): return panic("only separators")
 
-    let bounded = value(
-        parse_query(
-            text: "a=1&&b=2",
-            max_entries: 2
-        )
-    )
+    let bounded = value(parse_query(text: "a=1&&b=2", max_entries: 2))
     if bounded.length() != 2: return panic("empty segments counted")
 
 test "URL format rejects queries that would not round trip":

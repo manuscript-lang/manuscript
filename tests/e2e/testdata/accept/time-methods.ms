@@ -27,9 +27,9 @@ test "duration arithmetic and conversion":
     if negative.to_microseconds() != -1500 or negative.to_milliseconds() != -1:
         return panic("duration truncation")
     if (
-        interval.add(
-            1.seconds
-        ).subtract(500.milliseconds).multiply(3).divide(2) != 3.seconds
+        interval.add(1.seconds).subtract(500.milliseconds).multiply(3).divide(
+            2
+        ) != 3.seconds
     ):
         return panic("duration arithmetic")
     if duration(-7).divide(3) != duration(-2) or interval.negate().abs() != interval:
@@ -128,9 +128,7 @@ test "timestamp methods and expected range failures":
                 return panic("unexpected timestamp difference error")
 
         _:
-            return panic(
-                "timestamp difference must reject duration overflow"
-            )
+            return panic("timestamp difference must reject duration overflow")
 
     if maximum.compare(minimum) != 1:
         return panic("timestamp compare must work across full range")

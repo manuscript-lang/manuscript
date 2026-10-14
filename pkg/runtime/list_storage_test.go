@@ -393,12 +393,23 @@ func TestTypedComparatorGuardParity(t *testing.T) {
 	if len(fault.Frames) != 1 || !strings.HasSuffix(fault.Frames[0], " in compare") {
 		t.Fatalf("source frame lost: %#v", fault)
 	}
-	work, cancel := context.WithCancel(ctx.Context)
-	child := *ctx
-	child.Context = work
-	stopping := NewIntCompareFunction([]string{"left", "right"}, "Int", "cancel.ms:1:1", func(*Execution, int64, int64) int64 { cancel(); return 0 })
-	if _, ok := recovered(func() { stopping.IntCompare(&child, 1, 2) }).(cancelled); !ok {
-		t.Fatal("typed delivery ignored cancellation")
+	for _, sourceReturn := range []bool{false, true} {
+		work, cancel := context.WithCancel(ctx.Context)
+		child := *ctx
+		child.Context = work
+		stopping := NewIntCompareFunction([]string{"left", "right"}, "Int", "cancel.ms:1:1", func(*Execution, int64, int64) int64 {
+			cancel()
+			if sourceReturn {
+				Return(int64(0))
+			}
+			return 0
+		})
+		if _, ok := recovered(func() { stopping.IntCompare(&child, 1, 2) }).(cancelled); !ok {
+			t.Fatalf("typed delivery ignored cancellation (source return=%v)", sourceReturn)
+		}
+		if ctx.calls.depth != 0 {
+			t.Fatal("cancelled comparator retained its call depth")
+		}
 	}
 }
 
