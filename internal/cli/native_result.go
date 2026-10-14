@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/manuscript-lang/manuscript/pkg/build"
@@ -161,6 +162,10 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 			fmt.Fprintf(os.Stderr, "-o %s is a directory; pass a file path (e.g. -o %s)\n", displayOutput, filepath.Join(displayOutput, "program"))
 			return 2
 		}
+		if protected := protectedOutput(output, filename, result.ProjectRoot); protected != "" {
+			fmt.Fprintf(os.Stderr, "-o %s would overwrite %s; choose a different executable path\n", displayOutput, protected)
+			return 2
+		}
 		if _, err := build.BuildCheckedWithType(result, output, kind); err != nil {
 			return fail("build", err)
 		}
@@ -255,4 +260,26 @@ func writeProfileReference(directory, executable string, result compiler.Result,
 		err = os.WriteFile(filepath.Join(directory, "inspection.json"), inspection, 0600)
 	}
 	return err
+}
+
+// protectedOutput names the source, manifest, or lock file an -o path would
+// replace, or returns "" when the output is safe to write.
+func protectedOutput(output, input, projectRoot string) string {
+	candidates := []string{input}
+	if projectRoot != "" {
+		candidates = append(candidates, filepath.Join(projectRoot, "ms.toml"), filepath.Join(projectRoot, "ms.lock"))
+	}
+	if info, err := os.Stat(output); err == nil {
+		for _, candidate := range candidates {
+			if other, err := os.Stat(candidate); err == nil && os.SameFile(info, other) {
+				return filepath.Base(candidate)
+			}
+		}
+	}
+	base := filepath.Base(output)
+	switch {
+	case strings.HasSuffix(base, ".ms"), base == "ms.toml", base == "ms.lock":
+		return base
+	}
+	return ""
 }

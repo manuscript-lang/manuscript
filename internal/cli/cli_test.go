@@ -356,6 +356,19 @@ func TestArgumentMistakesNameTheProblem(t *testing.T) {
 	}
 }
 
+func TestBuildRefusesToOverwriteSources(t *testing.T) {
+	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	for _, target := range []string{source, filepath.Join(filepath.Dir(source), "ms.toml"), filepath.Join(filepath.Dir(source), "other.ms")} {
+		status, _, errors := invoke(t, "build", source, "-o", target)
+		if status != 2 || !strings.Contains(errors, "would overwrite") {
+			t.Fatalf("-o %s: %d, %q", target, status, errors)
+		}
+	}
+	if data, err := os.ReadFile(source); err != nil || !strings.Contains(string(data), "export fn main") {
+		t.Fatalf("source clobbered: %q, %v", data, err)
+	}
+}
+
 func TestDirectoryArgumentUsesManifestOrExplains(t *testing.T) {
 	directory := t.TempDir()
 	status, _, errors := invoke(t, "check", directory)
