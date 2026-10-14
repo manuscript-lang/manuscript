@@ -1,7 +1,0 @@
-[
- {
-  "name": "basic",
-  "stdin": "(a[b]c)\n(]\n((x)\n",
-  "stdout": "ok\nerror 2\nerror 1\n"
- }
-]

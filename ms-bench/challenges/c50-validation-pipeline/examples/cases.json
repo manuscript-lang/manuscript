@@ -1,7 +1,0 @@
-[
- {
-  "name": "basic",
-  "stdin": "trim name\nrequired name\nint age 0 120\n---\nname= bob ,age=30\nname=,age=5\nname=al,age=200\nname=cy,age=x\n",
-  "stdout": "record 1: ok age=30,name=bob\nrecord 2: FAILED step 2 (required name): name is required\nrecord 3: FAILED step 3 (int age 0 120): age out of range 0..120\nrecord 4: FAILED step 3 (int age 0 120): age is not an integer\nsummary records=4 ok=1 failed=3\nfailed at step 2 (required name): 1\nfailed at step 3 (int age 0 120): 2\n"
- }
-]

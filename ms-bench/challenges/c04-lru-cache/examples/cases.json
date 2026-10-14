@@ -1,7 +1,0 @@
-[
- {
-  "name": "basic",
-  "stdin": "2\nput a 1\nput b 2\nget a\nput c 3\nget b\nkeys\n",
-  "stdout": "1\nmiss\nc a\n"
- }
-]

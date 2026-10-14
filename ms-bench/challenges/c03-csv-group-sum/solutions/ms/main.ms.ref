@@ -38,16 +38,16 @@ fn parse_line(line: String) -> Optional[Record]:
     var category = ""
     var amount = ""
     if line.starts_with("\""):
-        let rest = line.slice(1, line.length())
+        let rest = line.slice(1, line.length()).unwrap()
         let close = rest.index_of("\"")
         if close.is_none():
             return none
         let at = close.unwrap()
-        category = rest.slice(0, at)
-        let after = rest.slice(at + 1, rest.length())
+        category = rest.slice(0, at).unwrap()
+        let after = rest.slice(at + 1, rest.length()).unwrap()
         if not after.starts_with(","):
             return none
-        amount = after.slice(1, after.length())
+        amount = after.slice(1, after.length()).unwrap()
     else:
         let parts = line.split(",")
         if parts.length() != 2:

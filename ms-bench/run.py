@@ -94,6 +94,9 @@ def main():
     bad = 0
     for ch in chs:
         for lid, lang in langs.items():
+            if a.cmd == "oracle" and not (ch.solution(lang.get("template", lid)) / (Path(lang["solution"]).name + ".ref")).is_file():
+                print(f"SKIP {ch.id} {lid} (no reference solution; cases come from the challenge's Go oracle)")
+                continue
             for _ in range(repeat):
                 rec = run_one(ch, lid, lang, harness, model, timeout, keep, out, tag)
                 g = rec["grade"]

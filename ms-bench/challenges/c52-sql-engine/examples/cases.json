@@ -1,0 +1,17 @@
+[
+ {
+  "name": "basic",
+  "stdin": "CREATE TABLE dept (id INT PRIMARY KEY, name TEXT NOT NULL, city TEXT);\nCREATE TABLE emp (id INT PRIMARY KEY, name TEXT NOT NULL, dept_id INT, salary INT, title TEXT);\nINSERT INTO dept VALUES (1, 'Engineering', 'Berlin'), (2, 'Sales', 'Paris'), (3, 'Support', NULL), (4, 'Legal', 'Rome');\nINSERT INTO emp VALUES\n  (1, 'Alice', 1, 120, 'lead'),\n  (2, 'Bob', 1, 100, 'dev'),\n  (3, 'Carol', 2, 90, 'rep'),\n  (4, 'Dan', 2, 95, 'rep'),\n  (5, 'Eve', NULL, 70, NULL),\n  (6, 'Frank', 3, 60, 'agent'),\n  (7, 'Grace', 1, 100, 'dev'),\n  (8, 'Heidi', 3, NULL, 'agent');\nSELECT name, salary FROM emp WHERE salary > 95 ORDER BY name;\nSELECT d.name, COUNT(*) AS n FROM dept d JOIN emp e ON e.dept_id = d.id GROUP BY d.name ORDER BY n DESC, d.name;\nUPDATE emp SET salary = salary + 5 WHERE dept_id = 2;\nSELECT name, salary FROM emp WHERE dept_id = 2;\n",
+  "stdout": "ok\nok\ninserted 4\ninserted 8\nname|salary\nAlice|120\nBob|100\nGrace|100\n(3 rows)\nname|n\nEngineering|3\nSales|2\nSupport|2\n(3 rows)\nupdated 2\nname|salary\nCarol|95\nDan|100\n(2 rows)\n"
+ },
+ {
+  "name": "errors",
+  "stdin": "CREATE TABLE t (a INT PRIMARY KEY, b TEXT);\nINSERT INTO t VALUES (1, 'x');\nINSERT INTO t VALUES (1, 'y');\nSELECT c FROM t;\nSELECT * FROM nope;\nSELECT 1 +;\nSELECT a, b FROM t;\n",
+  "stdout": "ok\ninserted 1\nerror: duplicate primary key: 1\nerror: no such column: c\nerror: no such table: nope\nerror: syntax error\na|b\n1|x\n(1 rows)\n"
+ },
+ {
+  "name": "left-join-null",
+  "stdin": "CREATE TABLE dept (id INT PRIMARY KEY, name TEXT NOT NULL, city TEXT);\nCREATE TABLE emp (id INT PRIMARY KEY, name TEXT NOT NULL, dept_id INT, salary INT, title TEXT);\nINSERT INTO dept VALUES (1, 'Engineering', 'Berlin'), (2, 'Sales', 'Paris'), (3, 'Support', NULL), (4, 'Legal', 'Rome');\nINSERT INTO emp VALUES\n  (1, 'Alice', 1, 120, 'lead'),\n  (2, 'Bob', 1, 100, 'dev'),\n  (3, 'Carol', 2, 90, 'rep'),\n  (4, 'Dan', 2, 95, 'rep'),\n  (5, 'Eve', NULL, 70, NULL),\n  (6, 'Frank', 3, 60, 'agent'),\n  (7, 'Grace', 1, 100, 'dev'),\n  (8, 'Heidi', 3, NULL, 'agent');\nSELECT d.name, e.name FROM dept d LEFT JOIN emp e ON e.dept_id = d.id AND e.salary > 100 ORDER BY d.id;\nSELECT title, COUNT(*), SUM(salary) FROM emp GROUP BY title ORDER BY title;\n",
+  "stdout": "ok\nok\ninserted 4\ninserted 8\nname|name\nEngineering|Alice\nSales|NULL\nSupport|NULL\nLegal|NULL\n(4 rows)\ntitle|?column?|?column?\nNULL|1|70\nagent|2|60\ndev|2|200\nlead|1|120\nrep|2|185\n(5 rows)\n"
+ }
+]

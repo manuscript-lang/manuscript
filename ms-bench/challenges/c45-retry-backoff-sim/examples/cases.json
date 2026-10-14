@@ -1,7 +1,0 @@
-[
- {
-  "name": "basic",
-  "stdin": "policy 100 2 1000 4 0 0 7\ndown 0 250\nreq a 0\nreq b 50\nreq c 400\n",
-  "stdout": "t=0 a #1 down retry@100\nt=50 b #1 down retry@150\nt=100 a #2 down retry@300\nt=150 b #2 down retry@350\nt=300 a #3 ok\nt=350 b #3 ok\nt=400 c #1 ok\na ok attempts=3 done=300\nb ok attempts=3 done=350\nc ok attempts=1 done=400\ntotal ok=3 failed=0 attempts=7\n"
- }
-]

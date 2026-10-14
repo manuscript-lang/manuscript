@@ -105,12 +105,15 @@ def export_one(ch, lang_id, lang, out: Path, ms_binary: Path | None, agent_timeo
     )
     sol = ch.solution(lang.get("template", lang_id)) / (Path(lang["solution"]).name + ".ref")
     (d / "solution").mkdir()
-    shutil.copy(sol, d / "solution" / "reference")
-    (d / "solution" / "solve.sh").write_text(
-        "#!/bin/bash\n"
-        f"mkdir -p \"$(dirname /app/{lang['solution']})\"\n"
-        f"cp \"$(dirname \"$0\")/reference\" /app/{lang['solution']}\n"
-    )
+    if sol.exists():
+        shutil.copy(sol, d / "solution" / "reference")
+        (d / "solution" / "solve.sh").write_text(
+            "#!/bin/bash\n"
+            f"mkdir -p \"$(dirname /app/{lang['solution']})\"\n"
+            f"cp \"$(dirname \"$0\")/reference\" /app/{lang['solution']}\n"
+        )
+    else:  # large challenges are oracle-validated in Go only; the oracle agent has nothing to apply
+        (d / "solution" / "solve.sh").write_text("#!/bin/bash\necho 'no reference solution for this language' >&2\nexit 1\n")
     for f in (tests / "test.sh", d / "solution" / "solve.sh"):
         f.chmod(0o755)
     return d
