@@ -81,16 +81,16 @@ func Inspect(program *checker.Program) Inspection {
 		}
 		result.Locals = append(result.Locals, Local{binding.ID, binding.Name, binding.Type.String(), sourceSpan(module, pos)})
 	}
-	for declaration, binding := range program.Self {
+	for declaration, binding := range program.SelfBindings() {
 		local(binding, declaration.Pos)
 	}
-	for pattern, binding := range program.Bindings {
+	for pattern, binding := range program.PatternBindings() {
 		local(binding, pattern.Pos)
 	}
-	for statement, binding := range program.LoopBindings {
+	for statement, binding := range program.LoopBindings() {
 		local(binding, statement.Pos)
 	}
-	for declaration, bindings := range program.Parameters {
+	for declaration, bindings := range program.Parameters() {
 		params := declaration.Params
 		if declaration.Kind == syntax.KindRecord {
 			params = declaration.Fields
@@ -101,14 +101,14 @@ func Inspect(program *checker.Program) Inspection {
 			}
 		}
 	}
-	for expression, bindings := range program.LambdaParameters {
+	for expression, bindings := range program.LambdaParameters() {
 		for index, binding := range bindings {
 			if index < len(expression.Params) {
 				local(binding, expression.Params[index].Pos)
 			}
 		}
 	}
-	for arm, bindings := range program.ArmBindings {
+	for arm, bindings := range program.ArmBindings() {
 		for _, binding := range bindings {
 			local(binding, arm.Pos)
 		}
@@ -129,18 +129,18 @@ func Inspect(program *checker.Program) Inspection {
 			if declaration.Kind == syntax.KindTest || declaration.Kind == syntax.KindImpl {
 				continue
 			}
-			symbol := program.Symbols[module.File][declaration.Name]
-			symbolIDs[symbol] = module.File + "#" + declaration.Kind + "#" + declaration.Name
+			symbol := program.Symbol(module.File, declaration.Name)
+			symbolIDs[symbol] = module.File + "#" + entityKind(declaration) + "#" + declaration.Name
 		}
 	}
 	for _, module := range program.Modules {
 		result.Sources = append(result.Sources, Source{module.File, hash(module.Source)})
 		for _, declaration := range module.Declarations {
-			id := module.File + "#" + declaration.Kind + "#" + declaration.Name
-			entity := Entity{ID: id, Kind: declaration.Kind, Name: declaration.Name, Span: sourceSpan(module, declaration.Pos), Exported: declaration.Export}
-			if symbol := program.Symbols[module.File][declaration.Name]; symbol != nil && symbol.Decl == declaration {
+			id := module.File + "#" + entityKind(declaration) + "#" + declaration.Name
+			entity := Entity{ID: id, Kind: entityKind(declaration), Name: declaration.Name, Span: sourceSpan(module, declaration.Pos), Exported: declaration.Export}
+			if symbol := program.Symbol(module.File, declaration.Name); symbol != nil && symbol.Decl == declaration {
 				entity.GoID = symbol.ID
-				entity.Type = symbol.Type.String()
+				entity.Type = symbol.ValueType().String()
 				entity.Effects = program.Effects[symbol.ID]
 			}
 			if declaration.Kind == syntax.KindImpl {
@@ -151,7 +151,10 @@ func Inspect(program *checker.Program) Inspection {
 			visitor := syntax.Visitor{Expression: func(e *syntax.Expression) {
 				if e.Kind == syntax.KindCall {
 					site := CallSite{ID: fmt.Sprintf("%s#call#%d", module.File, e.Pos.Offset), Owner: entity.ID, Target: "indirect", Kind: "function", Span: sourceSpan(module, e.Pos)}
-					info := program.Expressions[e]
+					if e.ConstantUse {
+						site.Kind = "constant"
+					}
+					info := program.Info(e)
 					if info != nil {
 						if info.Symbol != nil {
 							site.Target = symbolIDs[info.Symbol]
@@ -181,7 +184,7 @@ func Inspect(program *checker.Program) Inspection {
 				result.Statements = append(result.Statements, sourceSpan(module, s.Pos))
 				if s.Kind == syntax.KindWith {
 					target := "indirect.close"
-					if method := program.Cleanups[s]; method != nil {
+					if method := program.Cleanup(s); method != nil {
 						target = methodIDs[method.ID]
 						if target == "" {
 							target = method.Receiver.String() + ".close"
@@ -231,4 +234,13 @@ func Diagram(inspection Inspection) string {
 		fmt.Fprintf(&output, "    %s -->|%s| %s\n", owner, call.Kind, target)
 	}
 	return output.String()
+}
+
+// entityKind names a declaration's entity. A constant is stored as a function
+// without parameters, but tools should see a constant of the value's type.
+func entityKind(declaration *syntax.Declaration) string {
+	if declaration.Constant {
+		return "constant"
+	}
+	return declaration.Kind
 }

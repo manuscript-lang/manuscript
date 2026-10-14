@@ -13,6 +13,7 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"os"
@@ -45,6 +46,9 @@ func check() error {
 		return fmt.Errorf("usage: repo-check [-format]")
 	}
 	if err := checkStandardSyntax(os.DirFS("pkg/stdlib"), "pkg/stdlib"); err != nil {
+		return err
+	}
+	if err := checkNestedMatches(); err != nil {
 		return err
 	}
 
@@ -81,7 +85,7 @@ func check() error {
 	}
 	var issues []string
 	issues = append(issues, dependencyIssues(rules, packages)...)
-	hashFile, err := parser.ParseFile(token.NewFileSet(), "pkg/compiler/cache.go", nil, 0)
+	hashFile, err := parser.ParseFile(token.NewFileSet(), "pkg/build/cache.go", nil, 0)
 	if err != nil {
 		return err
 	}
@@ -103,7 +107,7 @@ func check() error {
 		}
 		return true
 	})
-	hashed["pkg/compiler"] = true // Its unqualified ImplementationSources is in the same package.
+	hashed["pkg/build"] = true // Its unqualified ImplementationSources is in the same package.
 	for _, name := range rules.Pinned {
 		if !hashed[name] {
 			issues = append(issues, "implementation hash omits "+name)
@@ -156,21 +160,23 @@ func check() error {
 			return err
 		}
 	}
-	release, err := os.ReadFile(".github/workflows/release.yml")
-	if err != nil {
-		return err
-	}
-	if !strings.Contains(string(release), "'**/*.go'") {
-		issues = append(issues, "release workflow must cover all Go sources, including platform helpers")
+	for _, path := range []string{".github/workflows/cicd.yml", ".github/workflows/release.yml"} {
+		workflow, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if err := checkWorkflowTriggers(workflow); err != nil {
+			issues = append(issues, path+": "+err.Error())
+		}
 	}
 	for _, stage := range []struct {
 		path, function string
 		kinds          []string
 	}{
-		{"pkg/compiler/lower_statements.go", "statement", syntax.StatementKinds()},
-		{"pkg/compiler/lower_expressions.go", "expressionValue", syntax.ExpressionKinds()},
+		{"pkg/lower/lower_statements.go", "statement", syntax.StatementKinds()},
+		{"pkg/lower/lower_expressions.go", "expressionValue", syntax.ExpressionKinds()},
 		{"pkg/checker/checker.go", "checkStatement", syntax.StatementKinds()},
-		{"pkg/checker/checker.go", "infer", syntax.ExpressionKinds()},
+		{"pkg/checker/expressions.go", "infer", syntax.ExpressionKinds()},
 	} {
 		missing, err := missingKinds(stage.path, stage.function, stage.kinds)
 		if err != nil {
@@ -223,11 +229,60 @@ func check() error {
 		issues = append(issues, "module Go language version disagrees with pinned SDK")
 	}
 
+	if err := checkExtensionVersion(); err != nil {
+		issues = append(issues, err.Error())
+	}
+
 	sort.Strings(issues)
 	if len(issues) > 0 {
 		return fmt.Errorf("repository invariants:\n- %s", strings.Join(issues, "\n- "))
 	}
 	fmt.Println("Package boundaries, implementation pins, native bundles, and release triggers agree.")
+	return nil
+}
+
+// checkExtensionVersion keeps the VS Code extension on the release version.
+func checkExtensionVersion() error {
+	release, err := os.ReadFile(".msversion")
+	if err != nil {
+		return err
+	}
+	data, err := os.ReadFile("extensions/vscode/package.json")
+	if err != nil {
+		return err
+	}
+	var manifest struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return err
+	}
+	if manifest.Version != strings.TrimSpace(string(release)) {
+		return fmt.Errorf("extensions/vscode/package.json version %s disagrees with .msversion", manifest.Version)
+	}
+	return nil
+}
+
+// Required workflows must report on every PR and on the queue's combined commit.
+func checkWorkflowTriggers(data []byte) error {
+	var workflow struct {
+		On map[string]struct {
+			Paths       []string `yaml:"paths"`
+			PathsIgnore []string `yaml:"paths-ignore"`
+			Types       []string `yaml:"types"`
+		} `yaml:"on"`
+	}
+	if err := yaml.Unmarshal(data, &workflow); err != nil {
+		return fmt.Errorf("parse workflow: %w", err)
+	}
+	pr, ok := workflow.On["pull_request"]
+	if !ok || len(pr.Paths) != 0 || len(pr.PathsIgnore) != 0 {
+		return fmt.Errorf("required checks must run on every pull request without path filters")
+	}
+	queue, ok := workflow.On["merge_group"]
+	if !ok || len(queue.Types) != 1 || queue.Types[0] != "checks_requested" {
+		return fmt.Errorf("required checks must run on merge_group checks_requested")
+	}
 	return nil
 }
 

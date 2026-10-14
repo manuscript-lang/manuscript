@@ -1,17 +1,18 @@
 package checker
 
-func collectionMutation(receiver *Type, name string) bool {
+// CollectionMutation reports whether a standard collection method mutates its receiver.
+func CollectionMutation(receiver *Type, name string) bool {
 	if std(receiver, "List") {
 		switch name {
-		case "append", "prepend", "with_value", "without", "with_values", "fill", "copy_within", "reverse":
+		case "append", "prepend", "insert", "pop", "set", "remove", "splice", "fill", "copy_within", "reverse_in_place":
 			return true
 		}
 	}
 	if std(receiver, "Map") {
 		switch name {
-		case "with_entry", "without", "with_default", "with_default_from", "merge", "clear":
+		case "add", "remove", "add_default", "add_default_from", "merge", "clear":
 			return true
 		}
 	}
-	return std(receiver, "Set") && (name == "with_value" || name == "without" || name == "clear")
+	return std(receiver, "Set") && (name == "add" || name == "remove" || name == "clear")
 }

@@ -42,13 +42,22 @@ else
     target_sdk="$staging/sdk/go"
 fi
 "$host_go" run ./scripts/mktoolchain "$target_sdk" "$staging/build-payload.tar.gz" "$target_os" "$target_arch"
-GOOS="$target_os" GOARCH="$target_arch" "$host_go" build -tags bundled_toolchain -overlay "$staging/build-payload.tar.gz.overlay.json" -trimpath -mod=vendor -o "$bundle/$executable" ./cmd/ms
+# Delve gates its Windows ARM64 native backend behind this upstream build tag.
+# It has no effect on other targets, and does not enable CGO.
+GOOS="$target_os" GOARCH="$target_arch" "$host_go" build -tags exp.winarm64 -overlay "$staging/build-payload.tar.gz.overlay.json" -trimpath -mod=vendor -o "$bundle/$executable" ./cmd/ms
 mkdir -p "$bundle/examples/hello/src" "$bundle/licenses"
 cp examples/hello/ms.toml "$bundle/examples/hello/"
 cp examples/hello/src/main.ms "$bundle/examples/hello/src/"
 # Ship each vendored dependency's license under its source identity.
 find vendor -type f \( -name 'LICENSE*' -o -name 'COPYING*' -o -name 'PATENTS*' \) | while IFS= read -r notice; do
     destination="$bundle/licenses/$notice"
+    mkdir -p "$(dirname "$destination")"
+    cp "$notice" "$destination"
+done
+# The prebuilt profile viewers also include packages vendored by the Go SDK.
+find "$target_sdk/src" -type f \( -name 'LICENSE*' -o -name 'NOTICE*' -o -name 'COPYING*' -o -name 'PATENTS*' \) | while IFS= read -r notice; do
+    relative=${notice#"$target_sdk/"}
+    destination="$bundle/licenses/go/$relative"
     mkdir -p "$(dirname "$destination")"
     cp "$notice" "$destination"
 done

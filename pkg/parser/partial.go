@@ -3,6 +3,7 @@ package parser
 import (
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"sort"
 	"strings"
 )
 
@@ -30,7 +31,7 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 			// rather than counting delimiter characters in source text.
 			if !declaration && len(starts) > 0 {
 				_, err := lexer.Lex(file, source[starts[len(starts)-1]:offset])
-				if issue, ok := err.(syntax.Diagnostic); ok && issue.Message == "unterminated delimiter" {
+				if issue, ok := err.(syntax.Diagnostic); ok && strings.HasPrefix(issue.Message, "unterminated delimiter") {
 					offset += len(line)
 					continue
 				}
@@ -54,20 +55,123 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 		start, end := starts[index], starts[index+1]
 		lineOffset += strings.Count(source[previous:start], "\n")
 		previous = start
-		parsed, err := Parse(file, source[start:end])
+		chunk := source[start:end]
+		parsed, err := Parse(file, chunk)
+		var recovered []syntax.Diagnostic
 		if err != nil {
-			if issue, ok := err.(syntax.Diagnostic); ok {
+			parsed, recovered = recoverStatements(file, chunk, err)
+		}
+		if err != nil {
+			rebased := func(issue syntax.Diagnostic) syntax.Diagnostic {
 				issue.Position.Offset += start
 				issue.Position.Line += lineOffset
-				diagnostics = append(diagnostics, issue)
+				if issue.End != nil {
+					end := *issue.End
+					end.Offset += start
+					end.Line += lineOffset
+					issue.End = &end
+				}
+				if issue.Fix != nil {
+					fix := *issue.Fix
+					fix.Position.Offset += start
+					fix.Position.Line += lineOffset
+					fix.End.Offset += start
+					fix.End.Line += lineOffset
+					issue.Fix = &fix
+				}
+				return issue
 			}
-			continue
+			if parsed == nil {
+				if name := declaredName(chunk); name != "" {
+					module.Omitted = append(module.Omitted, name)
+				}
+				if issue, ok := err.(syntax.Diagnostic); ok {
+					diagnostics = append(diagnostics, rebased(issue))
+				}
+				continue
+			}
+			sort.SliceStable(recovered, func(i, j int) bool { return recovered[i].Position.Offset < recovered[j].Position.Offset })
+			for _, issue := range recovered {
+				diagnostics = append(diagnostics, rebased(issue))
+			}
+			module.Recovered = append(module.Recovered, syntax.Span{Start: start, End: end})
 		}
 		rebase(parsed, start, lineOffset)
 		module.Imports = append(module.Imports, parsed.Imports...)
 		module.Declarations = append(module.Declarations, parsed.Declarations...)
 	}
 	return module, diagnostics
+}
+
+// recoverStatements retries a failed declaration chunk with each offending
+// statement (and the block it opens) blanked to spaces, so every remaining
+// statement keeps its original position. It returns nil when no bounded number
+// of blankings parses, in which case the whole declaration is omitted.
+func recoverStatements(file, chunk string, first error) (*syntax.Module, []syntax.Diagnostic) {
+	issues := []syntax.Diagnostic{}
+	lines := strings.SplitAfter(chunk, "\n")
+	err := first
+	for attempt := 0; attempt < 8; attempt++ {
+		issue, ok := err.(syntax.Diagnostic)
+		// The header line (line 1) failing means the signature is unusable.
+		if !ok || issue.Position.Line < 2 || issue.Position.Line > len(lines) {
+			return nil, nil
+		}
+		issues = append(issues, issue)
+		at := issue.Position.Line - 1
+		indent := leadingSpace(lines[at])
+		if strings.TrimSpace(lines[at]) == "" || indent == 0 {
+			return nil, nil
+		}
+		for index := at; index < len(lines); index++ {
+			if index > at && strings.TrimSpace(lines[index]) != "" && leadingSpace(lines[index]) <= indent {
+				break
+			}
+			lines[index] = blank(lines[index])
+		}
+		module, parseErr := Parse(file, strings.Join(lines, ""))
+		if parseErr == nil {
+			return module, issues
+		}
+		err = parseErr
+	}
+	return nil, nil
+}
+
+func leadingSpace(line string) int {
+	return len(line) - len(strings.TrimLeft(line, " \t"))
+}
+
+// blank replaces every byte but line breaks with a space, keeping offsets.
+func blank(line string) string {
+	bytes := []byte(line)
+	for index, b := range bytes {
+		if b != '\r' && b != '\n' {
+			bytes[index] = ' '
+		}
+	}
+	return string(bytes)
+}
+
+// declaredName reads the name a declaration chunk introduces, for chunks that
+// failed to parse.
+func declaredName(chunk string) string {
+	for _, line := range strings.Split(chunk, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		fields := strings.Fields(strings.TrimPrefix(trimmed, "export "))
+		if len(fields) < 2 || (fields[0] != "fn" && fields[0] != "type" && fields[0] != "interface") {
+			return ""
+		}
+		names := strings.FieldsFunc(fields[1], func(r rune) bool { return r == '(' || r == '[' || r == ':' })
+		if len(names) == 0 {
+			return ""
+		}
+		return names[0]
+	}
+	return ""
 }
 func rebase(module *syntax.Module, offset, lines int) {
 	position := func(p *syntax.Position) { p.Offset += offset; p.Line += lines }
@@ -130,6 +234,15 @@ func rebase(module *syntax.Module, offset, lines int) {
 		parameters(e.Params)
 		typ(e.Result)
 		body(e.Body)
+		for i := range e.Arms {
+			position(&e.Arms[i].Pos)
+			for index := range e.Arms[i].NamePositions {
+				position(&e.Arms[i].NamePositions[index])
+			}
+			expression(e.Arms[i].Path)
+			body(e.Arms[i].Body)
+			expression(e.Arms[i].Value)
+		}
 	}
 	body = func(statements []*syntax.Statement) {
 		for _, s := range statements {
@@ -140,11 +253,6 @@ func rebase(module *syntax.Module, offset, lines int) {
 			expression(s.Value)
 			body(s.Body)
 			body(s.Else)
-			for i := range s.Arms {
-				position(&s.Arms[i].Pos)
-				expression(s.Arms[i].Path)
-				body(s.Arms[i].Body)
-			}
 		}
 	}
 	declaration = func(d *syntax.Declaration) {

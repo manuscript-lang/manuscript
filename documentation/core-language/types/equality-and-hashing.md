@@ -33,7 +33,9 @@ Strings compare exact Unicode scalar sequences without normalization. Bytes comp
 | `Map[K, V]` | Equal associations, independent of insertion order | Unsupported |
 | `Set[T]` | Equal members, independent of insertion order | Unsupported |
 
-Structural equality terminates on cyclic data. Collections prevent automatic hashing derivation. Functions, resource handles, and service handles have no implicit equality. Interface views expose their declared operations; use `.equals` to compare through an Equal view.
+List equality captures both backing slices and their initial lengths before comparing elements. If an element's `Equal` implementation mutates either List, writes to captured backing remain visible, while append, shrink, or reallocation do not change the compared membership. This follows the [captured-header traversal rules](collections.md#mutation-and-copies), without copying elements.
+
+Structural equality terminates on cyclic data. Collections and recursive data shapes prevent automatic hashing derivation. Recursive values can form mutable cycles; an explicit `Equal`/`Hashable` pair may instead hash a stable domain identity. Functions, resource handles, and service handles have no implicit equality. Interface views expose their declared operations; use `.equals` to compare through an Equal view.
 
 ## Domain identity
 
@@ -53,7 +55,7 @@ impl Equal for CustomerKey:
             _: return false
 
 impl Hashable for CustomerKey:
-    fn hash() -> Int: return self.id
+    fn hash() -> Int: self.id
 ```
 
 These implementations apply to equality operators, collection searches, and key lookup. An equality override disables automatic structural hashing: provide a matching explicit hash before using that type as a key. Implementation visibility follows [ordinary contract rules](contracts.md#coherence-and-visibility), including local extensions and generic specialization.
@@ -62,4 +64,4 @@ These implementations apply to equality operators, collection searches, and key 
 
 For Hashable values, equality must be reflexive, symmetric, and transitive, and equal values must produce equal hashes. Unequal values may collide; equality resolves collisions. Hashes are implementation-dependent lookup aids, not stable IDs or a serialization format.
 
-Keep a stored key's equality and hash behavior unchanged. Remove it before mutating its identity and reinsert afterward. `.clone()` copies outer storage while nested references remain shared. Equality and hash functions should be deterministic and must not depend on authority, resource open state, or wall-clock time.
+Keep a stored key's equality and hash behavior unchanged. Remove it before mutating its identity and reinsert afterward. A mutated key is filed under its old hash, so lookups by the old or the new value no longer find it. A custom `hash` is called whenever a key is inserted or looked up. `.clone()` copies outer storage while nested references remain shared. Equality and hash functions should be deterministic and must not depend on authority, resource open state, or wall-clock time.

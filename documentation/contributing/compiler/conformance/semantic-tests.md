@@ -13,7 +13,7 @@ Tests use `test "name":` blocks and ordinary `if`/`return` guards. Import `panic
 
 ## Test runner
 
-A source `test` body is checked as a zero-parameter `Unit` function. Discovery and execution are still unspecified: the runner needs a command, file selection rules, stable test identities, duplicate-name handling, isolation, authority inputs, and a way to expect a programming fault. It must also define whether test bodies enter ordinary builds. The examples here fix expected behavior without assuming those runner decisions.
+A source `test` body is checked as a zero-parameter `Unit` function and run by `ms test`; see [commands](../../../developer-tooling/implementation.md) and `ms help test`.
 
 ## Tests in source
 
@@ -25,7 +25,7 @@ Verify ordinary generic inference through Task[T] annotations, fields, collectio
 
 Module conformance covers relative, user-alias, and explicit standard imports, the reserved `@std` alias, standard declaration identity independent of installation path, rejection of missing imports and standard-name collisions, manifest-relative configuration, canonical file identity, project containment after symlink resolution, visibility, and cycle rejection. Check aliases at complete segment boundaries and invalidate cached analysis when relevant configuration changes. [Project configuration](../../../developer-tooling/builds/project-configuration.md) defines the accepted and rejected paths; external Manuscript dependency projects are unsupported.
 
-List-argument conformance covers empty, one-element, and multi-element lists, passing existing lists, multiple list parameters, and calls through function values. Check both labeled and unlabeled single-parameter calls, including generic inference and contextual empty lists. Require labels for multi-parameter functions; reject unknown labels, duplicate arguments, missing arguments, incompatible list element types, and incompatible argument types. Accept function and contract-view elements. Use controlled capability calls to verify left-to-right list-element evaluation and source order between arguments, including closure creation and `with` initialization.
+List-argument conformance covers empty, one-element, and multi-element lists, passing existing lists, multiple list parameters, and calls through function values. Check both labeled and unlabeled single-parameter calls, including generic inference and contextual empty lists. Accept positional, labeled, and mixed multi-parameter calls while preserving matching-name shorthand; reject unknown labels, duplicate arguments, missing or excess arguments, incompatible list element types, and incompatible argument types. Accept function and contract-view elements. Use controlled capability calls to verify left-to-right list-element evaluation and source order between arguments, including closure creation and `with` initialization.
 
 ```manuscript
 import panic from "@std/faults.ms"
@@ -38,4 +38,4 @@ test "checked decrement":
 
 This illustrates the test-block syntax and ordinary conditional returns for failed checks. Runtime tests need fake capabilities, virtual clocks, and barriers to arrange meaningful races, rather than assuming a fixed goroutine schedule.
 
-See [completion and acquisition](../../concurrent-runtime.md#completion-and-resource-acquisition) and [complete-program evidence](programs.md).
+See [completion and acquisition](../../concurrent-runtime.md#completion-and-resource-acquisition).

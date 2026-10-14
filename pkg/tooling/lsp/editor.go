@@ -10,7 +10,15 @@ import (
 )
 
 // Offset validates LSP positions, rejecting offsets inside surrogate pairs.
-func Offset(source string, p position) (int, error) {
+func Offset(source string, p position) (int, error) { return offset(source, p, false) }
+
+// editOffset resolves a change range the way the protocol asks servers to:
+// a character past the end of a line, or a line past the end of the document,
+// clamps instead of rejecting the edit. Rejecting would leave this server's
+// copy of the document out of step with the editor's for every later change.
+func editOffset(source string, p position) (int, error) { return offset(source, p, true) }
+
+func offset(source string, p position, clamp bool) (int, error) {
 	if p.Line < 0 || p.Character < 0 {
 		return 0, fmt.Errorf("negative position")
 	}
@@ -18,6 +26,9 @@ func Offset(source string, p position) (int, error) {
 	for line := 0; line < p.Line; line++ {
 		next := strings.IndexByte(source[at:], '\n')
 		if next < 0 {
+			if clamp {
+				return len(source), nil
+			}
 			return 0, fmt.Errorf("line outside document")
 		}
 		at += next + 1
@@ -38,7 +49,7 @@ func Offset(source string, p position) (int, error) {
 			return 0, fmt.Errorf("position splits a surrogate pair")
 		}
 	}
-	if column != p.Character {
+	if column != p.Character && !clamp {
 		return 0, fmt.Errorf("character outside line")
 	}
 	return at, nil
@@ -328,7 +339,7 @@ func queryEditor(d document, docs map[string]document, c cursorContext) editorAn
 		result = analyzeOptions(modified, copy, compiler.Options{AnalyzeOnly: true, Recover: true, ScopeMarker: marker})
 		if result.Program != nil {
 			found := false
-			for e := range result.Program.Scopes {
+			for e := range result.Program.ScopeMarkers() {
 				if e.Text == marker {
 					found = true
 					break
@@ -408,7 +419,7 @@ func queryEditor(d document, docs map[string]document, c cursorContext) editorAn
 	}
 	analysis := editorAnalysis{result: result, document: modified, marker: marker}
 	if result.Program != nil {
-		for e, state := range result.Program.Scopes {
+		for e, state := range result.Program.ScopeMarkers() {
 			if e.Pos.File == moduleFile(result, modified) && e.Text == marker {
 				analysis.expression = e
 				analysis.scope = state

@@ -25,28 +25,27 @@ func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 		breaks[line] = true
 	}
 	// Imports may be interleaved with declarations. Separate each import
-	// section while keeping consecutive imports together.
-	imports := map[int]bool{}
+	// section while keeping consecutive imports, and consecutive constants,
+	// together.
+	groups := map[int]string{}
 	var topLevel []int
 	for _, declaration := range module.Declarations {
 		topLevel = append(topLevel, declaration.Pos.Line)
+		if declaration.Constant {
+			groups[declaration.Pos.Line] = "constant"
+		}
 	}
 	for _, item := range module.Imports {
-		if !imports[item.Pos.Line] {
+		if groups[item.Pos.Line] == "" {
 			topLevel = append(topLevel, item.Pos.Line)
 		}
-		imports[item.Pos.Line] = true
+		groups[item.Pos.Line] = "import"
 	}
 	sort.Ints(topLevel)
 	for i := 1; i < len(topLevel); i++ {
-		if !imports[topLevel[i-1]] || !imports[topLevel[i]] {
+		if groups[topLevel[i-1]] == "" || groups[topLevel[i-1]] != groups[topLevel[i]] {
 			before(topLevel[i])
 		}
-	}
-	indentedArm := func(arm syntax.Arm) bool {
-		header, body := lines[arm.Pos.Line-1], lines[arm.Body[0].Pos.Line-1]
-		return len(body)-len(strings.TrimLeft(body, " ")) >
-			len(header)-len(strings.TrimLeft(header, " "))
 	}
 	visitor := syntax.Visitor{
 		Block: func(body []*syntax.Statement) {
@@ -57,14 +56,6 @@ func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 				}
 				if paragraphBlock(previous) || paragraphBlock(current) ||
 					(guardStatement(previous) && !guardStatement(current)) {
-					before(current.Pos.Line)
-				}
-			}
-		},
-		Statement: func(statement *syntax.Statement) {
-			for i := 1; i < len(statement.Arms); i++ {
-				previous, current := statement.Arms[i-1], statement.Arms[i]
-				if indentedArm(previous) || indentedArm(current) {
 					before(current.Pos.Line)
 				}
 			}
@@ -95,10 +86,13 @@ func guardStatement(statement *syntax.Statement) bool {
 }
 
 func paragraphBlock(statement *syntax.Statement) bool {
+	if statement.Value != nil && statement.Value.Kind == syntax.KindMatch {
+		return true
+	}
 	switch statement.Kind {
 	case syntax.KindIf:
 		return !guardStatement(statement)
-	case syntax.KindWhile, syntax.KindFor, syntax.KindWith, syntax.KindMatch:
+	case syntax.KindWhile, syntax.KindFor, syntax.KindWith:
 		return true
 	}
 	return false

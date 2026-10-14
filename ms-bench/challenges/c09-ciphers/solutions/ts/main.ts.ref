@@ -1,0 +1,49 @@
+import { readFileSync } from "node:fs";
+
+function isUpper(c: number) { return c >= 65 && c <= 90; }
+function isLower(c: number) { return c >= 97 && c <= 122; }
+
+function transform(text: string, keyAt: (i: number) => number, sign: number): string {
+  let out = "";
+  let i = 0;
+  for (const ch of text) {
+    const c = ch.codePointAt(0)!;
+    if (isUpper(c) || isLower(c)) {
+      const base = isUpper(c) ? 65 : 97;
+      const k = keyAt(i);
+      out += String.fromCharCode((((c - base + sign * k) % 26) + 26) % 26 + base);
+      i++;
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
+function solveLine(line: string): string {
+  const i1 = line.indexOf(" ");
+  const i2 = i1 < 0 ? -1 : line.indexOf(" ", i1 + 1);
+  const i3 = i2 < 0 ? -1 : line.indexOf(" ", i2 + 1);
+  if (i3 < 0 || i3 + 1 >= line.length) return "error: bad command";
+  const cipher = line.slice(0, i1);
+  const mode = line.slice(i1 + 1, i2);
+  const key = line.slice(i2 + 1, i3);
+  const text = line.slice(i3 + 1);
+  if (cipher !== "caesar" && cipher !== "vigenere") return "error: bad cipher";
+  if (mode !== "enc" && mode !== "dec") return "error: bad mode";
+  const sign = mode === "enc" ? 1 : -1;
+  if (cipher === "caesar") {
+    if (!/^-?[0-9]{1,7}$/.test(key)) return "error: bad key";
+    const k = Number(key);
+    return transform(text, () => k, sign);
+  }
+  if (!/^[A-Za-z]+$/.test(key)) return "error: bad key";
+  const ks = [...key].map((c) => c.toLowerCase().charCodeAt(0) - 97);
+  return transform(text, (i) => ks[i % ks.length], sign);
+}
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+let out = "";
+for (const l of lines) if (l.replace(/ /g, "") !== "") out += solveLine(l) + "\n";
+process.stdout.write(out);

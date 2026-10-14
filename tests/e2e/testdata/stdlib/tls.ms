@@ -1,3 +1,5 @@
+import {headers, HttpMethod} from "@std/http.ms"
+import {text_headers, list_headers} from "./support/http.ms"
 import {
     parse_certificates,
     verify_certificates,
@@ -18,13 +20,13 @@ fn hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let started = value(
         exchange.send_headers(
             status: 200,
-            headers: Map[String, List[String]]()
+            headers: list_headers(Map[String, List[String]]())
         )
     )
     let written = value(
         exchange.write("secure".to_bytes())
     )
-    return ok(value: unit)
+    return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
     let certificates = value(
@@ -47,7 +49,7 @@ test "TLS certificate parsing verification hostname and expiration":
             now: now
         )
     )
-    let failed: Result[Unit, TlsError] = error(cause: TlsError.AuthenticationFailed)
+    let failed: Result[Unit, TlsError] = error(TlsError.AuthenticationFailed)
     if (
         verify_certificates(
             chain_pem: certificate(),
@@ -69,12 +71,12 @@ test "TLS certificate parsing verification hostname and expiration":
 
 test "TLS rejects malformed PEM and certificate budgets":
     let invalid: Result[List[CertificateInfo], TlsError] = error(
-        cause: TlsError.InvalidData
+        TlsError.InvalidData
     )
     if parse_certificates(pem: "not PEM") != invalid: return panic("malformed PEM")
 
     let limited: Result[List[CertificateInfo], TlsError] = error(
-        cause: TlsError.LimitExceeded
+        TlsError.LimitExceeded
     )
     if (
         parse_certificates(
@@ -125,16 +127,16 @@ test "HTTPS trusts only the explicitly supplied local test root":
             )
         ):
             with response = value(
-                client.send(
-                    method: "GET",
+                client.request(
+                    method: HttpMethod.Get,
                     url: "https://{server.address()}/",
-                    headers: Map[String, String](),
+                    headers: text_headers(Map[String, String]()),
                     body: "".to_bytes(),
                     timeout: 2.seconds
                 )
             ):
                 if (
-                    response.status() != 200
+                    response.metadata().status != 200
                     or value(
                         response.read()
                     ).unwrap() != "secure".to_bytes()

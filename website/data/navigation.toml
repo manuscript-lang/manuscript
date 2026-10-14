@@ -1,6 +1,6 @@
 [[groups]]
 label = "Read the docs"
-paths = ["learn/getting-started", "learn/tour", "core-language", "standard-library", "concurrency", "developer-tooling"]
+paths = ["learn/getting-started", "learn/tour", "learn/common-tasks", "learn/testing", "core-language", "standard-library", "concurrency", "developer-tooling"]
 
 [[groups]]
 label = "Look up a rule"

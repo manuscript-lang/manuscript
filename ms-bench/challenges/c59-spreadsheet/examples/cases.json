@@ -1,0 +1,17 @@
+[
+ {
+  "name": "ex-basic",
+  "stdin": "set A1 10\nset A2 20\nset A3 =SUM(A1:A2)*2\nget A3\nset A1 5\nget A3\nshow A3\nstats\n",
+  "stdout": "> set A1 10\nrecalc 0\n> set A2 20\nrecalc 0\n> set A3 =SUM(A1:A2)*2\nrecalc 1\n> get A3\n60\n> set A1 5\nrecalc 1\n> get A3\n50\n> show A3\nA3: =SUM(A1:A2)*2 => 50\n> stats\ncells 3 formulas 1 evals 2\n"
+ },
+ {
+  "name": "ex-cycle-error",
+  "stdin": "set A1 =B1+1\nset B1 =A1\nget A1\nset C1 =IFERROR(A1,0)+1\nget C1\nset B1 7\nget A1\nget C1\n",
+  "stdout": "> set A1 =B1+1\nrecalc 1\n> set B1 =A1\nrecalc 2\n> get A1\n#CYCLE!\n> set C1 =IFERROR(A1,0)+1\nrecalc 1\n> get C1\n1\n> set B1 7\nrecalc 2\n> get A1\n8\n> get C1\n9\n"
+ },
+ {
+  "name": "ex-csv-copy",
+  "stdin": "import A1\nitem,qty,price,total\npen,3,1.5,=B2*C2\nink,2,4,=B3*C3\n.\ncopy D3 D4\nset D4 =SUM(D2:D3)\nexport\nexport formulas D2:D4\n",
+  "stdout": "> import A1\nimported 3 rows, 4 columns; recalc 2\n> copy D3 D4\nrecalc 1\n> set D4 =SUM(D2:D3)\nrecalc 1\n> export\nitem,qty,price,total\npen,3,1.5,4.5\nink,2,4,8\n,,,12.5\n> export formulas D2:D4\n=B2*C2\n=B3*C3\n=SUM(D2:D3)\n"
+ }
+]

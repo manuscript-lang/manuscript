@@ -6,6 +6,7 @@ import {Queue} from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
 import {stdout, WriteStream} from "@std/io.ms"
 import Result from "@std/result.ms"
+import Bytes from "@std/bytes.ms"
 
 fn emit(message: String) -> Unit:
     match stdout().write(message.to_bytes()):
@@ -22,7 +23,7 @@ impl Closeable for Resource:
             error(_): return panic("cleanup transcript write failed")
 
 test "panic unwinds Closeable":
-    with resource = Resource(output: stdout()):
+    with resource = Resource(stdout()):
         return panic("intentional stdlib panic")
 
 test "absent Optional unwrap faults":
@@ -35,19 +36,25 @@ test "sealed builder mutation faults":
     builder.append(1)
 
 test "zero queue capacity faults":
-    let queue = Queue[Int](capacity: 0)
+    let queue = Queue[Int](0)
 
 test "negative queue capacity faults":
-    let queue = Queue[Int](capacity: -1)
+    let queue = Queue[Int](-1)
 
 test "stale synchronized guard faults":
-    let state = Synchronized(value: 1)
+    let state = Synchronized(1)
     let guard = state.lock()
     guard.close()
     let impossible = guard.get()
 
-test "invalid list slice faults":
-    let impossible = ([1, 2]).slice(start: 0, end: 3)
+test "unwrapping an out of range slice faults":
+    let impossible = ([1, 2]).slice(start: 0, end: 3).unwrap()
+
+test "negative split limit faults":
+    let impossible = "a,b,c".split(separator: ",", max_parts: -1)
+
+test "negative replace limit faults":
+    let impossible = "aaa".replace(old: "a", new: "b", max_replacements: -1)
 
 test "runner continues with fresh roots after faults":
     emit("fresh root after stdlib faults\n")

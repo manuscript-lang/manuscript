@@ -32,6 +32,9 @@ func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 		return nil
 	}
 	receiver := c.expression(member.Left, nil)
+	if invalidType(receiver.Type) {
+		return &Info{Type: primitive("<invalid>")}
+	}
 	if receiver.Type.Kind == syntax.KindRecord && member.Text != "toString" {
 		for _, field := range Fields(receiver.Type) {
 			if field.Name == member.Text {
@@ -47,39 +50,30 @@ func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 	}
 	m := methods[0]
 	info := &Info{Type: m.Type, Method: m, Native: m.Native, NoReturn: receiver.NoReturn}
-	c.Expressions[member] = info
+	setInfo(member, info)
 	return info
 }
 
-func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info) {
+func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info, expected *Type) {
 	vars := info.Method.Variables
+	context := &callInferenceContext{result: info.Type.Result, expected: expected, pos: e.Pos}
 	var supplied []*Type
 	if e.Left.Kind == syntax.KindApply {
 		supplied = c.resolveArguments(e.Left.Types)
 	} else if len(vars) > 0 {
 		sub := map[string]*Type{}
-		for _, arg := range functionArguments(e.Args, info.Type.Params) {
-			if c.contextual(arg.Value) {
-				continue
-			}
-			actual := c.independentArgument(arg.Value)
-			if actual == nil {
-				continue
-			}
-			for _, param := range info.Type.Params {
-				if param.Name == arg.Name && !c.unifyArgument(param.Type, actual.Type, variableSet(vars), sub) {
-					c.error(arg.Pos, "type", "conflicting generic inference")
-				}
-			}
-		}
+		c.inferArguments(functionArguments(e.Args, info.Type.Params), info.Type.Params, vars, sub, context)
 		for _, v := range vars {
 			supplied = append(supplied, sub[v.ID])
 		}
 	}
 	copy := *info
 	if len(vars) > 0 || e.Left.Kind == syntax.KindApply {
-		copy.Type = c.specialize(info.Type, vars, supplied, e.Pos)
+		copy.Type = c.specialize(info.Type, vars, supplied, e.Pos, calleeName(e.Left))
 	}
-	c.Expressions[e.Left] = &copy
+	if context.conflict {
+		copy.Type.Result = primitive("<invalid>")
+	}
+	setInfo(e.Left, &copy)
 	*info = copy
 }

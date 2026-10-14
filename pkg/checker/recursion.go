@@ -17,7 +17,7 @@ func (c *checker) finiteApplications() {
 	for _, module := range c.Modules {
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindFn || d.Kind == syntax.KindRecord {
-				s := c.Symbols[module.File][d.Name]
+				s := c.symbols[module.File][d.Name]
 				if len(s.Variables) > 0 {
 					nodes[s.ID] = applicationNode{s.Variables, d}
 				}
@@ -34,7 +34,7 @@ func (c *checker) finiteApplications() {
 	edges := map[string][]applicationEdge{}
 	for id, node := range nodes {
 		syntax.Visitor{Expression: func(e *syntax.Expression) {
-			info := c.Expressions[e]
+			info := infoOf(e)
 			if info == nil {
 				return
 			}
@@ -91,7 +91,7 @@ func (c *checker) finiteApplications() {
 						}
 					}
 					if !equal {
-						c.error(edge.pos, "type", "recursive generic applications must preserve their parameters")
+						c.error(edge.pos, "type", "recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])")
 					}
 					continue
 				}

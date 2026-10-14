@@ -1,0 +1,23 @@
+{
+  "before_revision": "1634262f",
+  "after_revision": "5d18e41e",
+  "after_worktree_changes": "List.for_each declaration comment and regenerated API descriptions only at binary build; runtime/lowering clean",
+  "go_version": "go version go1.25.1 linux/amd64",
+  "artifact_sha256": {
+    "before": {
+      "program.ms": "e7ce60a0d0a4b2742a70601de34ecf98f096ae513304516feb31a93848bf2b33",
+      "program.go": "0ccb6b6235b1d054e3c2405a4dfaa4ed405fa441a676b7c84d9a5c202c0ae529",
+      "harness_test.go": "ef78e2424305dd976dcf41c55563abe738f8891ee07f6dcb832484070015b199",
+      "prototype_test.go": "d5b3c598710da3f373347b4d69840136942206aaec8ed862d936c973273ec563",
+      "lists.test": "e8c13e6d0c3a24a725dec17a9e1e3690050bf59f5e7d2a28e8022606aead813f"
+    },
+    "after": {
+      "program.ms": "e7ce60a0d0a4b2742a70601de34ecf98f096ae513304516feb31a93848bf2b33",
+      "program.go": "0ccb6b6235b1d054e3c2405a4dfaa4ed405fa441a676b7c84d9a5c202c0ae529",
+      "harness_test.go": "ef78e2424305dd976dcf41c55563abe738f8891ee07f6dcb832484070015b199",
+      "prototype_test.go": "2de15d848de2f351400db387bfb954daa0b4fbdb21cf2150ab681981ad02ee6a",
+      "lists.test": "7a984a3c94597e01270e69859ec4706b15ab961b8a5a42a06a394c2ba4cf2f9e"
+    }
+  },
+  "generated_program_and_harness_identical": true
+}
