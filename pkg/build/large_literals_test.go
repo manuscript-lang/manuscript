@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
@@ -193,5 +194,93 @@ func TestLargeLiteralFrozenBaselineParity(t *testing.T) {
 		if data, err := exec.Command(binary).CombinedOutput(); err != nil {
 			t.Fatalf("oracle execution: %v\n%s", err, data)
 		}
+	}
+}
+
+func TestLargeLiteralCancellationDuringInitialization(t *testing.T) {
+	source := `type Counter:
+    value: Int
+fn tick(counter: Counter) -> Int:
+    counter.value = counter.value + 1
+    return counter.value
+fn values(counter: Counter) -> List[Int]: return ` + repeatedLiteral("tick(counter)", 1100) + "\n"
+	result := compiler.CompileSource("large-cancel.ms", source, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	tick := result.Program.Symbol("large-cancel.ms", "tick").ID
+	values := result.Program.Symbol("large-cancel.ms", "values").ID
+	counter := result.Program.Symbol("large-cancel.ms", "Counter").Type
+	result.Source = strings.Replace(result.Source, "\"os\"", "\"os\"\n\"context\"\n\"reflect\"", 1)
+	result.Source += fmt.Sprintf(`
+func init() {
+ initialize()
+ root:=rt.RootExecution()
+ defer rt.FinishExecution(root)
+ cancelled:=*root
+ var cancel context.CancelFunc
+ cancelled.Context,cancel=context.WithCancel(root.Context)
+ cancel()
+ failure:=func(body func())(got any){defer func(){got=recover()}();body();return}
+ expected:=failure(func(){rt.CheckCancelled(&cancelled)})
+ c:=rt.NewRecord(%q,[]rt.Argument{{Name:"value",Value:int64(0)}})
+ args:=[]rt.Value{c}
+ got:=failure(func(){%s.(rt.Function).Body(&cancelled,args)})
+ if !reflect.DeepEqual(got,expected) || rt.IntValue(rt.Field(c,"value"))!=0 {os.Exit(81)}
+ running:=*root
+ running.Context,cancel=context.WithCancel(root.Context)
+ defer cancel()
+ original:=%s.(rt.Function)
+ calls:=0
+ replacement:=original
+ replacement.Body=func(ctx *rt.Execution,args []rt.Value)rt.Value{
+  calls++
+  value:=original.Body(ctx,args)
+  if calls==65 {cancel()}
+  return value
+ }
+ %s=replacement
+ got=failure(func(){%s.(rt.Function).Body(&running,args)})
+ if !reflect.DeepEqual(got,expected) || calls!=66 || rt.IntValue(rt.Field(c,"value"))!=65 {os.Exit(82)}
+}
+`, checker.TypeKey(counter), values, tick, tick, values)
+	binary := filepath.Join(t.TempDir(), "cancel")
+	if _, err := BuildCheckedWithType(result, binary, "", compiler.Release); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := exec.Command(binary).CombinedOutput(); err != nil {
+		t.Fatalf("large initialization cancellation: %v\n%s", err, data)
+	}
+}
+
+func TestLargeLiteralFaultKeepsSourceFrames(t *testing.T) {
+	source := `fn fail(value: Int) -> Int:
+    return 1 / value
+fn values() -> List[Int]:
+    return [` + strings.Repeat("7, ", 1099) + `fail(0)]
+export fn main() -> Int:
+    return values().length()
+`
+	result := compiler.CompileSource("large-fault.ms", source, compiler.Options{Entry: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	binary := filepath.Join(t.TempDir(), "fault")
+	if _, err := BuildCheckedWithType(result, binary, "", compiler.Release); err != nil {
+		t.Fatal(err)
+	}
+	data, err := exec.Command(binary).CombinedOutput()
+	exit, ok := err.(*exec.ExitError)
+	if !ok || exit.ExitCode() != 70 {
+		t.Fatalf("expected source fault: %v\n%s", err, data)
+	}
+	output := string(data)
+	for _, frame := range []string{"large-fault.ms:2:14 in fail", fmt.Sprintf("large-fault.ms:4:%d in values", strings.Index(strings.Split(source, "\n")[3], "fail(0)")+1), "large-fault.ms:6:12 in main"} {
+		if !strings.Contains(output, frame) {
+			t.Fatalf("missing %q in source frames:\n%s", frame, output)
+		}
+	}
+	if strings.Count(output, "  at ") != 3 || strings.Contains(output, "temporary") || strings.Contains(output, "manuscript.generated.go") {
+		t.Fatalf("initializer helper leaked into source frames:\n%s", output)
 	}
 }
