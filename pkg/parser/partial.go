@@ -95,7 +95,11 @@ func declaredName(chunk string) string {
 		if len(fields) < 2 || (fields[0] != "fn" && fields[0] != "type" && fields[0] != "interface") {
 			return ""
 		}
-		return strings.FieldsFunc(fields[1], func(r rune) bool { return r == '(' || r == '[' || r == ':' })[0]
+		names := strings.FieldsFunc(fields[1], func(r rune) bool { return r == '(' || r == '[' || r == ':' })
+		if len(names) == 0 {
+			return ""
+		}
+		return names[0]
 	}
 	return ""
 }
