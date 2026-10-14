@@ -14,6 +14,8 @@ type Type struct {
 	Result         *Type
 	Def            *Definition
 	Bounds         []*Type
+	// Default is a type variable's default argument, in terms of earlier variables.
+	Default *Type
 	// Defaults marks omittable parameters on a known source callable.
 	// It is erased by explicit function types and generic inference.
 	Defaults map[string]bool
@@ -320,4 +322,50 @@ func variableSet(types []*Type) map[string]bool {
 }
 func formatMismatch(actual, expected *Type) string {
 	return fmt.Sprintf("expected %s, found %s", expected, actual)
+}
+
+// requiredTypeArguments counts the leading type variables without a default.
+func requiredTypeArguments(vars []*Type) int {
+	for index, v := range vars {
+		if v.Default != nil {
+			return index
+		}
+	}
+	return len(vars)
+}
+
+// completeTypeArguments fills unresolved (nil) and omitted trailing arguments from
+// defaults, in terms of the arguments before them; other nils are left for the
+// caller to report.
+func completeTypeArguments(vars, args []*Type) []*Type {
+	result := append([]*Type(nil), args...)
+	sub := map[string]*Type{}
+	for index, v := range vars {
+		if index >= len(result) {
+			result = append(result, nil)
+		}
+		if result[index] == nil && v.Default != nil {
+			result[index] = Sub(v.Default, sub)
+		}
+		if result[index] != nil {
+			sub[v.ID] = result[index]
+		}
+	}
+	return result
+}
+
+// withDefaultArguments extends explicit arguments with the defaults of the
+// remaining variables, each in terms of the arguments before it.
+func withDefaultArguments(vars, args []*Type) []*Type {
+	result := append([]*Type(nil), args...)
+	sub := map[string]*Type{}
+	for index, a := range result {
+		sub[vars[index].ID] = a
+	}
+	for _, v := range vars[len(args):] {
+		a := Sub(v.Default, sub)
+		sub[v.ID] = a
+		result = append(result, a)
+	}
+	return result
 }

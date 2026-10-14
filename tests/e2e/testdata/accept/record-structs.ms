@@ -33,11 +33,7 @@ test "struct records read write compare format and clone":
     b.x = 5
     if a == b:
         return panic(message: "mutated record still equal")
-    if not (
-        a.x == 1
-        and b.x == 5
-        and shifted(a, by: 3).y == 5
-    ):
+    if not (a.x == 1 and b.x == 5 and shifted(a, by: 3).y == 5):
         return panic(message: "field read or write failed")
 
     let copy = a.clone()

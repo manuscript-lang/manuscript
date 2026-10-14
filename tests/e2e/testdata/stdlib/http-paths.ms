@@ -59,11 +59,9 @@ fn check_route(url: String, expected: String) -> Unit:
     if response.metadata().status != 200 or response.body != expected.to_bytes(): return panic(
         "path or raw query changed"
     )
-    if (
-        value(response.metadata().headers.text("SET-cookie")) != some(
-            ["a=1", "b=2"]
-        )
-    ): return panic("#257 repeated cookies regressed")
+    if (value(response.metadata().headers.text("SET-cookie")) != some(["a=1", "b=2"])): return panic(
+        "#257 repeated cookies regressed"
+    )
 
 fn check_rejected(url: String) -> Unit:
     let response = value(

@@ -69,6 +69,8 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 		return "int64"
 	case syntax.KindBool:
 		return "bool"
+	case syntax.KindText:
+		return "string"
 	case syntax.KindName:
 		return g.typedLocal(e)
 	case syntax.KindBinary:

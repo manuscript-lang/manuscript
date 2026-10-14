@@ -105,10 +105,22 @@ func assertFormatMeaning(t *testing.T, filename, original, formatted string) {
 			t.Fatal(err)
 		}
 		var result []lexer.Token
-		for _, token := range tokens {
+		for index, token := range tokens {
 			switch token.Kind {
 			case "(", ")", lexer.Newline, lexer.Indent, lexer.Dedent, lexer.EOF:
 				continue
+			case ",":
+				// A trailing comma is layout: the formatter adds or drops it.
+				next := index + 1
+				for next < len(tokens) && (tokens[next].Kind == lexer.Newline || tokens[next].Kind == lexer.Indent || tokens[next].Kind == lexer.Dedent) {
+					next++
+				}
+				if next < len(tokens) {
+					switch tokens[next].Kind {
+					case ")", "]", "}":
+						continue
+					}
+				}
 			}
 			token.Pos = syntax.Position{}
 			token.End = syntax.Position{}
@@ -171,7 +183,7 @@ func TestInspectInterface(t *testing.T) {
 
 func TestFormatGroupedImports(t *testing.T) {
 	input := "import { List,Map, } from \"@std/collections.ms\" # collections\n"
-	want := "import {List, Map,} from \"@std/collections.ms\"  # collections\n"
+	want := "import {List, Map} from \"@std/collections.ms\"  # collections\n"
 	formatted, err := tooling.Format("imports.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
@@ -221,7 +233,7 @@ func TestFormatMapAndShorthand(t *testing.T) {
 	if err != nil || again != formatted {
 		t.Fatalf("not idempotent: %q %v", again, err)
 	}
-	if !strings.Contains(formatted, `{"a": 1, "b": {1: 2},}`) {
+	if !strings.Contains(formatted, `{"a": 1, "b": {1: 2}}`) {
 		t.Fatal(formatted)
 	}
 }

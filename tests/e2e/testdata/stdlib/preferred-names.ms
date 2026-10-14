@@ -71,11 +71,7 @@ test "list names mutate aliases and retain shallow copies":
     let copied = items.clone()
     let returned = items.set(index: -1, value: 4)
     returned.remove(index: 0)
-    if (
-        items != [2, 4]
-        or alias != [2, 4]
-        or copied != [1, 2, 3]
-    ):
+    if (items != [2, 4] or alias != [2, 4] or copied != [1, 2, 3]):
         return panic("list alias or clone behavior")
 
     let set = items.set
@@ -137,10 +133,7 @@ impl FirstReplacement for TextAdapter:
 
 test "explicit views and bound views preserve native mutation and field shadowing":
     let items = [1, 2, 3]
-    let adapter = ListAdapter(
-        items,
-        fn(index: Int, value: Int) -> List[Int]: [99]
-    )
+    let adapter = ListAdapter(items, fn(index: Int, value: Int) -> List[Int]: [99])
     if adapter.set(0, 8) != [99] or items != [1, 2, 3]:
         return panic("callable field shadowing")
 
@@ -266,11 +259,7 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     let copied = items.reversed()
     let reverse = items.reverse_in_place
     reverse().append(4)
-    if (
-        items != [3, 2, 1, 4]
-        or alias != [3, 2, 1, 4]
-        or copied != [3, 2, 1]
-    ):
+    if (items != [3, 2, 1, 4] or alias != [3, 2, 1, 4] or copied != [3, 2, 1]):
         return panic("reverse receiver or independent copy")
 
     copied.set(0, 8)
@@ -293,18 +282,12 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     let shallow = nested.reversed()
     let shared = shallow.at(0).unwrap()
     shared.value = 9
-    shallow.set(
-        1,
-        Cell(7)
-    )
+    shallow.set(1, Cell(7))
     if nested.at(0).unwrap().value != 1 or nested.at(1).unwrap().value != 9:
         return panic("reversed copy depth")
 
     let viewed = [4, 5]
-    let adapter = ListAdapter(
-        viewed,
-        fn(index: Int, value: Int) -> List[Int]: [99]
-    )
+    let adapter = ListAdapter(viewed, fn(index: Int, value: Int) -> List[Int]: [99])
     let view = ListMutation(adapter)
     let view_reverse = view.reverse_in_place
     let view_reversed = view.reversed

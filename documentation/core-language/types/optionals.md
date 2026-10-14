@@ -106,9 +106,9 @@ Use [Result](../errors/results.md) when a failure needs an explanation. An absen
 
 ## Converting absence to a Result
 
-`ok_or(cause: Error) -> Result[T, Error]` returns `ok` with the original present payload, or `error` with `cause` when absent. The cause is an ordinary eager argument, including when the Optional is present, and must implement `Error`; the original error and its concrete type pass through unchanged. `ok_or_else[E](create: fn() -> E) -> Result[T, E]` calls `create` once only for absence and keeps any error type `E`. It runs in the caller's execution context; faults and cancellation propagate normally. Both conversions retain payload references and nested Optional/Result values.
+`ok_or[E = MissingValue](cause: Optional[E] = none) -> Result[T, E]` returns `ok` with the original present payload, or `error` with `cause` when absent. The cause is an ordinary eager argument, including when the Optional is present, and `E` can be any type; it does not need an Error implementation. `ok_or_else[E](create: fn() -> E) -> Result[T, E]` calls `create` once only for absence. It runs in the caller's execution context; faults and cancellation propagate normally. Both conversions retain payload references and nested Optional/Result values.
 
-Omit the cause to get a `MissingValue` from `@std/errors.ms`. It records the source file and line of the `ok_or()` call, and its `message()` reports them, for example `missing value at src/main.ms:12`. The position is captured when the absent value becomes an error and costs nothing on the present path. A hand-built `MissingValue.Missing(location: ...)` supplies its own location. `try` flattens the conversion in any function whose error type is `Error`:
+Omit the cause to get a `MissingValue` from `@std/errors.ms`: with nothing to infer `E` from, it takes its [default type argument](generics.md#default-type-arguments). The error records the source file and line of the `ok_or()` call, and its `message()` reports them, for example `missing value at src/main.ms:12`. The position is captured when the absent value becomes an error and costs nothing on the present path. A hand-built `MissingValue.Missing(location: ...)` supplies its own location. Because `MissingValue` implements `Error`, `try` flattens the conversion in any function whose error type is `Error`:
 
 ```manuscript
 fn port_number(text: String) -> Result[Int, Error]:
@@ -116,7 +116,7 @@ fn port_number(text: String) -> Result[Int, Error]:
     return ok(port)
 ```
 
-A function with a domain error type cannot return the `Error` result directly. Use `ok_or_else` with a domain error, or match the Optional.
+A context that fixes another error type, such as returning `Result[Int, String]`, needs a cause: omitting it there faults with `called Optional.ok_or() without a cause for an error type other than MissingValue`.
 
 Use [Result.to_optional](../errors/results.md#converting-success-to-an-optional) to keep success while discarding an error.
 

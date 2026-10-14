@@ -44,21 +44,13 @@ export fn second_generic() -> fn(value: Item) -> Int:
 
 test "second local extensions":
     let item = Item(2)
-    if (
-        item.get() != 22
-        or invoke(item) != 22
-        or relay(item) != 22
-    ):
+    if (item.get() != 22 or invoke(item) != 22 or relay(item) != 22):
         return panic("local dispatch")
     if as_view(item).get() != 22:
         return panic("generic view")
 
     let holder = Holder(item)
-    if (
-        holder.get() != 22
-        or invoke(holder) != 22
-        or holder.extract() != 22
-    ):
+    if (holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22):
         return panic("nested generic dispatch")
     if Box("hello").get() != "hello":
         return panic("generic extension")

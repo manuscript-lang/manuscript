@@ -14,7 +14,7 @@ test "function suite boundaries":
 
                 return 0
         ),
-        value: 3,
+        value: 3
     )
     let final_argument = apply(
         value: 3,
