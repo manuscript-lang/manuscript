@@ -26,7 +26,7 @@ const watchGrace = 5 * time.Second
 // running until a replacement builds, so a failed edit only reports
 // diagnostics. One process keeps standard declarations, the toolchain query,
 // and build pins warm across rebuilds.
-func watchProgram(command, filename string, options compiler.Options, kind compiler.BuildType, cache string, arguments []string) int {
+func watchProgram(command, filename string, options compiler.Options, kind compiler.BuildType, arguments []string) int {
 	directory, err := os.MkdirTemp("", "manuscript-watch-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -53,19 +53,9 @@ func watchProgram(command, filename string, options compiler.Options, kind compi
 			fmt.Fprintln(os.Stderr, "ms: waiting for changes")
 			return
 		}
-		buildCache := cache
-		if buildCache == "" && result.ProjectRoot != "" {
-			buildCache = filepath.Join(result.ProjectRoot, ".ms-cache")
-		}
-		if buildCache == "" {
-			if buildCache, err = build.DefaultBuildCacheDir(); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				return
-			}
-		}
 		generation++
 		executable := filepath.Join(directory, fmt.Sprintf("program-%d", generation))
-		if _, err := build.BuildCheckedWithType(result, executable, buildCache, kind); err != nil {
+		if _, err := build.BuildCheckedWithType(result, executable, kind); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			fmt.Fprintln(os.Stderr, "ms: waiting for changes")
 			return
@@ -124,6 +114,56 @@ func watchProgram(command, filename string, options compiler.Options, kind compi
 			rebuild(changed, "restarted")
 		}
 	}
+}
+
+// watchAnalysis reruns check or lint after each saved change to the targets,
+// their manifests, or any local module they loaded. Findings and errors keep
+// it watching; the status of a single run is not an exit status here.
+func watchAnalysis(command string, targets []string) int {
+	stops := make(chan os.Signal, 2)
+	signal.Notify(stops, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(stops)
+
+	watched := map[string]fileState{}
+	cycle := func() {
+		_, files := analyze(command, targets, false)
+		watched = map[string]fileState{}
+		for _, path := range append(files, absolutePaths(targets)...) {
+			watched[path] = statFile(path)
+		}
+		fmt.Fprintln(os.Stderr, "ms: waiting for changes")
+	}
+	cycle()
+
+	poll := time.NewTicker(watchInterval)
+	defer poll.Stop()
+	var settle <-chan time.Time
+	for {
+		select {
+		case <-stops:
+			return 130
+		case <-poll.C:
+			for path, previous := range watched {
+				if current := statFile(path); current != previous {
+					watched[path] = current
+					settle = time.After(watchSettle)
+				}
+			}
+		case <-settle:
+			settle = nil
+			cycle()
+		}
+	}
+}
+
+func absolutePaths(paths []string) []string {
+	var absolute []string
+	for _, path := range paths {
+		if full, err := filepath.Abs(path); err == nil {
+			absolute = append(absolute, full)
+		}
+	}
+	return absolute
 }
 
 // watchedFiles lists the manifest and every local module the program loaded.

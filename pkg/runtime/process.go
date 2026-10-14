@@ -108,7 +108,7 @@ func (c *commands) Operation(name string) Function {
 			return failure("OutputLimit", "")
 		}
 		if lifetime.Err() != nil {
-			return failure("TimedOut", "")
+			return failure("Timeout", "")
 		}
 		code := int64(0)
 		if err != nil {
@@ -117,6 +117,9 @@ func (c *commands) Operation(name string) Function {
 			} else {
 				if errors.Is(err, exec.ErrNotFound) || errors.Is(err, os.ErrNotExist) {
 					return failure("Unavailable", "")
+				}
+				if errors.Is(err, exec.ErrWaitDelay) {
+					return failure("Failed", "the command finished but a background process kept its output open; close or redirect its output, or set a timeout")
 				}
 				return failure("Failed", err.Error())
 			}

@@ -25,9 +25,9 @@ export type Bytes:
     # Returns the last matching byte offset or `none`; empty `value` matches at length().
     fn last_index_of(value: Bytes) -> Optional[Int]:
     # Tests whether the receiver begins with these bytes.
-    fn starts_with(value: Bytes) -> Bool:
+    fn starts_with(prefix: Bytes) -> Bool:
     # Tests whether the receiver ends with these bytes.
-    fn ends_with(value: Bytes) -> Bool:
+    fn ends_with(suffix: Bytes) -> Bool:
     # Returns a reversed copy without changing the receiver.
     fn reversed() -> Bytes:
     # Returns a copy with one byte replaced; negative indexes are relative to the end.
@@ -38,7 +38,7 @@ export type Bytes:
     # Returns a fresh mutable list of unsigned byte values; changing it leaves the Bytes unchanged.
     fn values() -> List[Int]:
     # Returns concatenated bytes without changing either operand.
-    fn concat(values: Bytes) -> Bytes:
+    fn concat(other: Bytes) -> Bytes:
     # Returns the number of bytes, not the number of Unicode characters.
     fn length() -> Int:
     # Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.

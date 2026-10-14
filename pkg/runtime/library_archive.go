@@ -192,7 +192,7 @@ func libraryArchiveUnpack(ctx *Execution, r string, a []Value) Value {
 		}
 		for _, file := range reader.File {
 			CheckCancelled(ctx)
-			if file.NonUTF8 || !file.Mode().IsRegular() && !file.Mode().IsDir() {
+			if file.NonUTF8 && !utf8.ValidString(file.Name) || !file.Mode().IsRegular() && !file.Mode().IsDir() {
 				return libraryError(r, "Unsupported", "")
 			}
 			if file.UncompressedSize64 > uint64(entryMax) || file.UncompressedSize64 > uint64(total) {

@@ -383,7 +383,7 @@ test "standard diagnostics preserve messages and wrapped causes":
         return panic(message: "command error lost diagnostic")
     if (
         Error(
-            ExecutionError.TimedOut
+            ExecutionError.Timeout
         ).message() != "task execution: operation timed out"
     ):
         return panic(message: "execution error has no diagnostic")

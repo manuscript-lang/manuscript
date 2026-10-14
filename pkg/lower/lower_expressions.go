@@ -277,18 +277,16 @@ func (g *generator) listValue(e *syntax.Expression, info *checker.Info) ast.Expr
 	if value := g.largeListValue(e, info); value != nil {
 		return value
 	}
-	var elements []ast.Expr
-	for _, item := range e.Elements {
-		elements = append(elements, g.expression(item))
-	}
+	elements := g.siblings(e.Elements)
 	return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
 }
 
 // mapValue lowers a map literal.
 func (g *generator) mapValue(e *syntax.Expression, info *checker.Info) ast.Expr {
 	var entries []ast.Expr
-	for at := 0; at < len(e.Elements); at += 2 {
-		entries = append(entries, composite(nil, keyed("Key", g.expression(e.Elements[at])), keyed("Value", g.expression(e.Elements[at+1]))))
+	operands := g.siblings(e.Elements)
+	for at := 0; at < len(operands); at += 2 {
+		entries = append(entries, composite(nil, keyed("Key", operands[at]), keyed("Value", operands[at+1])))
 	}
 	return g.locatedOperation(e, runtimeName("MapLiteral"), ident("ctx"), g.key(info.Type), sliceLiteral(runtimeName("Entry"), entries...), g.typeScope(info.Type))
 }
@@ -325,12 +323,31 @@ func (g *generator) binaryValue(e *syntax.Expression) ast.Expr {
 		if value := g.primitiveEquality(e); value != nil {
 			return value
 		}
-		return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.program.Info(e.Left).Type))
+		operands := g.siblings([]*syntax.Expression{e.Left, e.Right})
+		return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), operands[0], operands[1], g.typeScope(g.program.Info(e.Left).Type))
 	}
 	if value := g.numericBinary(e); value != nil {
 		return value
 	}
-	return g.locatedOperation(e, runtimeName("Binary"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right))
+	operands := g.siblings([]*syntax.Expression{e.Left, e.Right})
+	return g.locatedOperation(e, runtimeName("Binary"), textLiteral(e.Text), operands[0], operands[1])
+}
+
+// siblings lowers operands that one Go expression evaluates together. Go
+// orders calls but not a plain variable read against a later call, and a match
+// arm can assign a local an earlier operand reads, so such an operand is
+// captured in source order first.
+func (g *generator) siblings(items []*syntax.Expression) []ast.Expr {
+	out := make([]ast.Expr, len(items))
+	later := false
+	for i := len(items) - 1; i >= 0; i-- {
+		out[i] = g.expression(items[i])
+		if later && !g.constant(items[i]) {
+			out[i] = sourceAt(items[i].Pos, out[i])
+		}
+		later = later || containsMatch(items[i])
+	}
+	return out
 }
 
 // lambdaValue lowers a lambda, snapshotting its captured bindings.

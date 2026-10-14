@@ -93,7 +93,7 @@ Exceeded limits return `LimitExceeded`. The input String is already in memory, a
 
 The path keeps escaped separators, the query stays encoded, and the fragment is decoded. Resolving a relative URL merges it with the base path and removes dot segments. `Url` is an ordinary record, so `format` and `resolve` validate values constructed by application code too. Unsupported opaque URLs return `InvalidData`.
 
-Query entries retain duplicates and order. A bare key has an empty value; `+` represents a space. Component encoding preserves only ASCII unreserved characters. Decoding rejects invalid UTF-8.
+Query entries retain duplicates and order. Empty segments, as in `a=1&&b=2` or a trailing `&`, are skipped and do not count toward `max_entries`. A bare key has an empty value; `+` represents a space. Component encoding preserves only ASCII unreserved characters. Decoding rejects invalid UTF-8.
 
 Hostnames are not normalized through IDNA; absent and empty queries have the same representation.
 

@@ -76,7 +76,7 @@ Select build levels on the command line. See [build pinning and cache identity](
 The compiler API offers `BuildWithType` and `BuildCheckedWithType` for explicit
 selection. `Build` defaults to Release; the existing `BuildChecked` boolean
 selects Debug when true and Release otherwise. Build levels share `ms.lock`
-toolchain pins but have distinct artifact cache identities.
+toolchain pins but have distinct build identities.
 
 `CompileSource` and `CompileFile` return the ordinary generated Go in
 `Result.Source`. Use `CompileSourceForBuild` or `CompileFileForBuild` with a

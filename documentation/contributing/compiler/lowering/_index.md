@@ -133,3 +133,14 @@ benchmark candidates.
 - [Source guarantees and Go representations](value-representations.md)
 - [Evaluation order and call preparation](evaluation-order.md)
 - [Cleanup and fault lowering](cleanup-and-faults.md)
+- A nongeneric top-level function whose checked result is `Result[T, E]` or
+  `Optional[T]` returns the runtime's `Result[T]`/`Option[T]` (`T` a Go scalar
+  or `Value`; the error cause stays a `Value`) instead of an `Alternative`.
+  Only `return`, statement-level `try`, and `match` on a typed call produce or
+  consume the typed form; every other consumer, including arguments, equality,
+  formatting, first-class function values, and the dynamic wrapper, receives the
+  boxed `Alternative` with the call's own type key, so nothing dynamic observes a
+  typed value. Returns inside generated match closures stay boxed and are
+  unboxed by the function's recovery path. Test display and equality parity,
+  error views, closures that return, and `try` in nested positions, and measure
+  the `try`/`match` benchmark before and after.

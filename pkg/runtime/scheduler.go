@@ -265,12 +265,12 @@ func (b *Scheduler) reportLoop() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					reportDiagnostic(fmt.Sprintf("scheduler %v: %v", report.failure.Fields[0], report.failure.Fields[1]))
+					reportDiagnostic(fmt.Sprintf("scheduler %v: %v", report.failure.Fields[0], schedulerCauseText(report.failure.Fields[1])))
 					reportDiagnostic(fmt.Sprint("Scheduler reporter fault: ", r))
 				}
 			}()
 			if b.reporter == nil {
-				reportDiagnostic(fmt.Sprint("Scheduler failure: ", report.failure.Fields[1]))
+				reportDiagnostic(fmt.Sprint("Scheduler failure: ", schedulerCauseText(report.failure.Fields[1])))
 			} else {
 				child := newExecution(owned(b.parent, context.WithoutCancel(b.context), b), context.WithoutCancel(b.context))
 				defer FinishExecution(child)
@@ -370,3 +370,18 @@ func reportDiagnostic(message string) {
 	}
 }
 func FlushDiagnostics() { diagnostics.work.Wait() }
+
+// schedulerCauseText renders a Failed cause through its Error message. Crashed
+// reports already carry text. A faulting message implementation must not stop
+// failure reporting.
+func schedulerCauseText(cause Value) (text string) {
+	if text, ok := cause.(string); ok {
+		return text
+	}
+	defer func() {
+		if recover() != nil {
+			text = fmt.Sprint(cause)
+		}
+	}()
+	return fmt.Sprint(Invoke(RootExecution(), Bind(cause, "@std/Error", "message"), nil))
+}
