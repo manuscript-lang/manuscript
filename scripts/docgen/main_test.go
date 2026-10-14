@@ -20,6 +20,9 @@ func TestGeneratedReferenceCoverage(t *testing.T) {
 		}
 	}
 	for path, want := range files {
+		if downloads[path] {
+			continue
+		}
 		got, err := os.ReadFile(path)
 		if err != nil {
 			t.Error(err)

@@ -154,8 +154,11 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 
 func pathRequirement(flag string) string {
 	example := "out.pprof"
-	if flag == "-o" || flag == "--output" || flag == "--out-dir" {
-		example = "out.go"
+	switch flag {
+	case "--out-dir":
+		example = "profile-bundle"
+	case "-o", "--output":
+		example = "out.txt"
 	}
 	return flag + " requires a path argument, e.g. " + flag + " " + example
 }
@@ -219,7 +222,7 @@ func (inv *invocation) validate() (plan, int, bool) {
 		return p, usageError("--watch requires run or test, not %s; use ms run <file> --watch or ms test <file> --watch", command), false
 	}
 	if inv.formatCheck && command != "fmt" ||
-		inv.structured && !inv.isOneOf("check", "lint", "test", "build", "profile") ||
+		inv.structured && !inv.isOneOf(jsonCommands...) ||
 		inv.debug && !inv.isOneOf("build", "run", "test") {
 		return p, usageError("%s; run 'ms help %s' for the options this command accepts", invalidFlag(command, inv.formatCheck, inv.structured, inv.debug), command), false
 	}

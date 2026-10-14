@@ -3,6 +3,7 @@ package msruntime
 import (
 	"bytes"
 	"strings"
+	"sync"
 	"unicode/utf8"
 )
 
@@ -14,47 +15,32 @@ func init() {
 			return libraryError(r, "InvalidInput", "")
 		}
 		var b []byte
-		var take func() []byte
-		var unread func(rest []byte)
+		var mu *sync.Mutex
+		var ahead *readAhead
 		switch stream := streamReceiver(a[0]).(type) {
 		case *stream:
-			take = func() []byte {
-				stream.mu.Lock()
-				defer stream.mu.Unlock()
-				data := stream.pending
-				stream.pending = nil
-				return data
-			}
-			unread = func(rest []byte) {
-				stream.mu.Lock()
-				stream.pending = rest
-				stream.mu.Unlock()
-			}
+			mu, ahead = &stream.mu, &stream.pending
 		case libraryHandleStream:
 			if !stream.write {
-				h := stream.handle
-				take = func() []byte {
-					h.mu.Lock()
-					defer h.mu.Unlock()
-					data := h.ahead
-					h.ahead = nil
-					return data
-				}
-				unread = func(rest []byte) {
-					h.mu.Lock()
-					h.ahead = rest
-					h.mu.Unlock()
-				}
+				mu, ahead = &stream.handle.mu, &stream.handle.ahead
 			}
 		}
-		if unread == nil {
+		if ahead == nil {
 			return readLineByByte(ctx, r, a[0], max)
 		}
+		take := func() []byte {
+			mu.Lock()
+			defer mu.Unlock()
+			data, _ := ahead.take(0)
+			return data
+		}
+		unread := func(rest []byte) {
+			mu.Lock()
+			ahead.buf = rest
+			mu.Unlock()
+		}
 		for {
-			var chunk []byte
-			if take != nil {
-				chunk = take()
-			}
+			chunk := take()
 			if len(chunk) == 0 {
 				v := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int", int64(65536), true)}}).(Alternative)
 				if v.Tag == "error" {

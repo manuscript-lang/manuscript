@@ -18,6 +18,8 @@ func declarationKind(kind string) string {
 	switch kind {
 	case "fn":
 		return "Function"
+	case "constant":
+		return "Constant"
 	case "record":
 		return "Record"
 	case "alternative":
