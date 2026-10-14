@@ -88,20 +88,7 @@ func runAnalysis(command string, targets []string, structured bool) int {
 		status = 1
 	}
 	if structured {
-		document := struct {
-			Format      int                 `json:"format"`
-			Diagnostics []commandDiagnostic `json:"diagnostics"`
-		}{1, diagnostics}
-		// Keep the original compact successful lint document spelling.
-		if command == "lint" && !selection.collection && len(issues) == 0 {
-			data, err := json.Marshal(document)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				return 1
-			}
-			fmt.Println(string(data))
-			return status
-		}
+		document := diagnosticsDocument{1, diagnostics}
 		return emitJSON(document, status)
 	}
 	for _, issue := range diagnostics {
