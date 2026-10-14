@@ -14,12 +14,15 @@ import (
 // plain Go function with typed scalar parameters and result. Calls that name
 // it with every argument in order call it directly; the dynamic Function in
 // its symbol variable only forwards to it. The function admits and leaves its
-// own frame (rt.Enter, rt.Leave), so no wrapper layer runs per call.
+// own call-depth accounting when it can recurse, so no wrapper layer runs per call.
 type directFunction struct {
 	name   string
 	params []string  // Go scalar type per parameter, "" for Value
 	result string    // Go scalar result type, "" for Value
 	shape  *altShape // typed Result/Optional result, nil when result is scalar or Value
+	// counted marks a function in a cycle of direct calls: it admits itself
+	// with rt.Enter and leaves with rt.Exit so runaway recursion is a fault.
+	counted bool
 	// receiver marks a method: the Go function takes its receiver as the
 	// Value parameter after ctx.
 	receiver bool
@@ -60,6 +63,7 @@ func (g *generator) planDirect(functions []*checker.Symbol, options Options) {
 			g.directMethods[m.ID] = direct
 		}
 	}
+	g.markCounted()
 }
 
 // planDirectMethod decides whether a source method of a nongeneric record or
@@ -119,8 +123,12 @@ func (g *generator) directMethodDeclaration(m *checker.Method, direct *directFun
 	if direct.shape != nil {
 		forwardCall = call(selector(forwardCall, "Box"), g.key(m.Type.Result))
 	}
+	// A dynamic entry counts depth, so a cycle through dynamic dispatch is bounded.
 	forward := closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("receiver", runtimeName("Value")), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"),
-		returned(forwardCall))
+		evaluated(runtimeCall("Enter", ident("ctx"))),
+		define("value", forwardCall),
+		evaluated(runtimeCall("Exit", ident("ctx"))),
+		returned(ident("value")))
 	return decl, forward
 }
 
@@ -173,9 +181,13 @@ func (g *generator) directLiteral(direct *directFunction, name string, result *s
 		resultType = direct.shape.typeExpr()
 		zero = composite(direct.shape.typeExpr())
 	}
-	prologue := []ast.Stmt{
-		evaluated(runtimeCall("Enter", ident("ctx"))),
-		define("sourcePosition", textLiteral(result.Pos.String())),
+	var prologue []ast.Stmt
+	if g.recovers {
+		// Recovering a control panic abandons the callees that were entered.
+		prologue = append(prologue, define("entryDepth", runtimeCall("Depth", ident("ctx"))))
+	}
+	if direct.counted {
+		prologue = append(prologue, evaluated(runtimeCall("Enter", ident("ctx"))))
 	}
 	if g.recovers {
 		var recovered ast.Expr = ident("value")
@@ -188,7 +200,7 @@ func (g *generator) directLiteral(direct *directFunction, name string, result *s
 		prologue = append(prologue, &ast.DeferStmt{Call: call(closure(nil, nil,
 			&ast.IfStmt{Cond: runtimeCall("ControlPending"), Body: block(
 				&ast.IfStmt{Init: define("failure", call(ident("recover"))), Cond: &ast.BinaryExpr{X: ident("failure"), Op: token.NEQ, Y: ident("nil")}, Body: block(
-					&ast.IfStmt{Init: &ast.AssignStmt{Lhs: []ast.Expr{ident("value"), ident("ok")}, Tok: token.DEFINE, Rhs: []ast.Expr{runtimeCall("ControlResult", ident("ctx"), ident("failure"), g.key(t.Result))}}, Cond: ident("ok"), Body: block(
+					&ast.IfStmt{Init: &ast.AssignStmt{Lhs: []ast.Expr{ident("value"), ident("ok")}, Tok: token.DEFINE, Rhs: []ast.Expr{runtimeCall("ControlResult", ident("ctx"), ident("entryDepth"), ident("failure"), g.key(t.Result))}}, Cond: ident("ok"), Body: block(
 						assign(ident("directResult"), token.ASSIGN, recovered),
 						&ast.ReturnStmt{},
 					)},
@@ -197,12 +209,14 @@ func (g *generator) directLiteral(direct *directFunction, name string, result *s
 			)},
 		))})
 	}
-	prologue = append(prologue, &ast.DeferStmt{Call: runtimeCall("Leave", ident("ctx"), address(ident("sourcePosition")), textLiteral(name))})
 	if g.needsCleanup {
 		prologue = append(prologue, define("cleanupStack", runtimeCall("NewCleanupStack")), &ast.DeferStmt{Call: call(selector(ident("cleanupStack"), "Unwind"))})
 	}
 	out := append(prologue, body...)
 	out = append(out, g.locatedStatement(syntax.Position{File: "manuscript.generated.go", Line: 1}, returned(zero)))
+	if direct.counted {
+		out = exitOnReturn(out)
+	}
 	lit := closure(params, resultType, out...)
 	lit.Type.Results.List[0].Names = []*ast.Ident{ident("directResult")}
 	return lit

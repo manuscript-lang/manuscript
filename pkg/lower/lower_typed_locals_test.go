@@ -89,7 +89,7 @@ func TestNegationOfScalarsStaysTyped(t *testing.T) {
 		t.Fatal(r.Diagnostics)
 	}
 	source := localNumbers.ReplaceAllString(r.Source, "local_")
-	for _, want := range []string{"var local_step int64 = int64(-1)", "rt.IntNegateAt(local_a,", "var local_c float64 = -local_b"} {
+	for _, want := range []string{"var local_step int64 = int64(-1)", "rt.IntNegateAt(local_a)", "var local_c float64 = -local_b"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("missing %q\n%s", want, source)
 		}
@@ -138,7 +138,7 @@ fn f() -> Int:
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	hoisted := regexp.MustCompile(`specialized\d+\.Get\(func\(\) rt\.Value \{\s*return rt\.StandardFunction\("io/stdout"`)
+	hoisted := regexp.MustCompile(`specialized\d+\.Get\(func\(\) rt\.Value \{\s*(?:/\*line [^*]*\*/)?\s*return rt.StandardFunction\("io/stdout"`)
 	if !hoisted.MatchString(r.Source) {
 		t.Errorf("standard function rebuilt per call\n%s", r.Source)
 	}
@@ -172,5 +172,33 @@ fn id(x: Int) -> Int:
 		if panics := strings.Contains(r.Source, "rt.Try("); panics == tc.hoisted {
 			t.Errorf("%s: rt.Try present=%v, want %v\n%s", name, panics, !tc.hoisted, r.Source)
 		}
+	}
+}
+
+// Appending to and ranging over a List of a primitive element type neither
+// boxes the element nor asserts it back.
+func TestPrimitiveListAppendAndRangeAreUnboxed(t *testing.T) {
+	r := compileSource("list.ms", `import List from "@std/collections.ms"
+fn sum(count: Int) -> Int:
+    let items = List[Int]()
+    var i = 0
+    while i < count:
+        items.append(value: i)
+        i = i + 1
+    var total = 0
+    for v in items:
+        total = total + v
+    return total
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.ListAppendInt(", "rt.IterateInt("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, "rt.IntValue(local") {
+		t.Fatalf("range element asserted\n%s", r.Source)
 	}
 }

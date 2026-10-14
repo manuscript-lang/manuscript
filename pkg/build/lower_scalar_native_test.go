@@ -69,9 +69,9 @@ func checkLowering() {
   if @@strings@@.(rt.Function).Body(ctx,[]rt.Value{pair[0],pair[1]}).(bool)!=(pair[0]==pair[1]) {panic("string equality changed")}
  }
  for _, test:=range []struct{fn rt.Value; frames []string}{
-  {@@fault_left@@,[]string{"native.ms:6:15 in fault_left"}},
-  {@@fault_right@@,[]string{"native.ms:8:20 in fault_right"}},
-  {@@fault_caller@@,[]string{"native.ms:8:20 in fault_right","native.ms:9:28 in fault_caller"}},
+  {@@fault_left@@,[]string{"native.ms:6 in fault_left"}},
+  {@@fault_right@@,[]string{"native.ms:8 in fault_right"}},
+  {@@fault_caller@@,[]string{"native.ms:8 in fault_right","native.ms:9 in fault_caller"}},
  } {
   failure:=loweringFailure(func(){test.fn.(rt.Function).Body(ctx,nil)})
   fault,ok:=failure.(rt.Fault)
@@ -99,10 +99,6 @@ func checkLowering() {
  failure:=loweringFailure(func(){@@fault_with@@.(rt.Function).Body(ctx,[]rt.Value{resource,broken})})
  fault,ok:=failure.(rt.Fault)
  if !ok || fault.Message!="primary" || len(fault.Secondary)!=1 || !strings.Contains(fault.Secondary[0],"secondary") || rt.IntValue(rt.Field(counter,"value"))!=2 {panic(fmt.Sprintf("cleanup primary/secondary changed: %#v",failure))}
- cancelled:=rt.RootExecution();defer rt.FinishExecution(cancelled)
- var cancel context.CancelFunc
- cancelled.Context,cancel=context.WithCancel(cancelled.Context);cancel()
- if loweringFailure(func(){@@empty@@.(rt.Function).Body(cancelled,nil)})==nil {panic("entry cancellation lost")}
 }
 `)
 	generated := strings.Replace(r.Source, "package main\n", "package main\nimport (\"context\"; \"math\"; \"reflect\"; \"fmt\"; \"strings\")\n", 1)

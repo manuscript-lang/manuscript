@@ -65,29 +65,23 @@ func TestPrimitiveEqualityCannotBeOverridden(t *testing.T) {
 
 // Count cleanup setup owned by a source callable, excluding nested source
 // functions but including the generated closures used by match expressions.
+// A callable is a direct function declaration registered with RegisterSource
+// or a function literal passed to Named or NamedMethod; each carries its name.
 func callableCleanupCounts(t *testing.T, source string) map[string]int {
 	t.Helper()
 	f, err := parser.ParseFile(token.NewFileSet(), "generated.go", source, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	counts := map[string]int{}
-	// A callable is a NewSourceFunction body or a direct function declaration;
-	// either defers TraceSource or Leave with its name as the last argument.
-	measure := func(body *ast.BlockStmt) {
-		name := ""
-		for _, statement := range body.List {
-			if deferred, ok := statement.(*ast.DeferStmt); ok {
-				if s, ok := deferred.Call.Fun.(*ast.SelectorExpr); ok && (s.Sel.Name == "TraceSource" || s.Sel.Name == "Leave") {
-					text, err := strconv.Unquote(deferred.Call.Args[len(deferred.Call.Args)-1].(*ast.BasicLit).Value)
-					if err != nil {
-						t.Fatal(err)
-					}
-					name = text
-					break
-				}
-			}
+	unquote := func(e ast.Expr) string {
+		text, err := strconv.Unquote(e.(*ast.BasicLit).Value)
+		if err != nil {
+			t.Fatal(err)
 		}
+		return text
+	}
+	counts := map[string]int{}
+	measure := func(name string, body *ast.BlockStmt) {
 		count := 0
 		ast.Inspect(body, func(node ast.Node) bool {
 			if c, ok := node.(*ast.CallExpr); ok {
@@ -104,18 +98,24 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 		})
 		counts[name] = count
 	}
+	names := map[string]string{}
+	ast.Inspect(f, func(n ast.Node) bool {
+		if c, ok := n.(*ast.CallExpr); ok {
+			if s, ok := c.Fun.(*ast.SelectorExpr); ok && s.Sel.Name == "RegisterSource" {
+				names[c.Args[0].(*ast.Ident).Name] = unquote(c.Args[1])
+			}
+		}
+		return true
+	})
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch n := n.(type) {
 		case *ast.FuncDecl:
-			if strings.HasPrefix(n.Name.Name, "call_") || strings.HasPrefix(n.Name.Name, "method_") {
-				measure(n.Body)
+			if name, ok := names[n.Name.Name]; ok {
+				measure(name, n.Body)
 			}
 		case *ast.CallExpr:
-			if selector, ok := n.Fun.(*ast.SelectorExpr); ok && selector.Sel.Name == "NewSourceFunction" {
-				measure(n.Args[3].(*ast.FuncLit).Body)
-			} else if ok && selector.Sel.Name == "SourceDirect" {
-				// Direct method bodies are the third argument of SourceDirect.
-				measure(n.Args[2].(*ast.FuncLit).Body)
+			if s, ok := n.Fun.(*ast.SelectorExpr); ok && (s.Sel.Name == "Named" || s.Sel.Name == "NamedMethod") {
+				measure(unquote(n.Args[0]), n.Args[1].(*ast.FuncLit).Body)
 			}
 		}
 		return true
@@ -165,7 +165,7 @@ fn looped() -> Unit:
 			t.Fatalf("%s cleanup count = %d (present %v), want %d\n%s", name, got, ok, want, r.Source)
 		}
 	}
-	if strings.Count(r.Source, "defer rt.TraceSource(")+strings.Count(r.Source, "defer rt.Leave(") != len(counts) {
-		t.Fatal("lost source tracing")
+	if strings.Contains(r.Source, "TraceSource") || strings.Contains(r.Source, "rt.Leave(") {
+		t.Fatal("source functions defer frame bookkeeping again")
 	}
 }

@@ -16,7 +16,7 @@ func (g *generator) arguments(args []syntax.Argument) ast.Expr {
 	for _, a := range args {
 		// Go orders calls, but a later argument can mutate a plain local value.
 		// Capture each supplied value before evaluating the next argument.
-		value := runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(a.Pos.String()), g.argumentValue(a))
+		value := runtimeCall("Seq", g.argumentValue(a))
 		values = append(values, composite(nil, keyed("Name", textLiteral(a.Name)), keyed("Value", value)))
 	}
 	return sliceLiteral(runtimeName("Argument"), values...)
@@ -273,7 +273,7 @@ func (g *generator) functionCall(e *syntax.Expression, info *checker.Info, argum
 		}
 	} else {
 		// Capture a dynamic callable before arguments that may replace it.
-		callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.methodCallable(e.Left, arguments))
+		callable = runtimeCall("Seq", g.methodCallable(e.Left, arguments))
 	}
 	return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 }
@@ -405,7 +405,7 @@ func (g *generator) locatedOperation(e *syntax.Expression, operation ast.Expr, a
 	return call(operation, args...)
 }
 func sourceAt(pos syntax.Position, value ast.Expr) ast.Expr {
-	return runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(pos.String()), value)
+	return runtimeCall("Seq", value)
 }
 func signedInteger(value string) ast.Expr {
 	if strings.HasPrefix(value, "-") {

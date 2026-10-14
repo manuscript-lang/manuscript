@@ -127,7 +127,13 @@ func (f Fault) Error() string {
 	return message
 }
 
-func Panic(message string) Value { panic(Fault{Message: message}) }
+func Panic(message string) Value { panic(newFault(message)) }
+
+// newFault records the source frames of the stack that raises it.
+func newFault(message string) Fault {
+	frames, truncated := captureFrames()
+	return Fault{Message: message, Frames: frames, Truncated: truncated}
+}
 func Bool(v Value) bool {
 	if b, ok := v.(bool); ok {
 		return b
@@ -409,6 +415,13 @@ func Positions(value Value, length int) []Value {
 // lowering can use CaptureList plus typed element access without boxing.
 func Iterate(value Value) iter.Seq2[int, Value] { return captureIterable(value).Values() }
 func CaptureList(value Value) ListRange         { return value.(*List).Capture() }
+
+// IterateInt, IterateFloat, IterateBool and IterateString are Iterate for an
+// iterable whose elements are that primitive type.
+func IterateInt(value Value) iter.Seq2[int, int64]     { return captureIterable(value).Ints() }
+func IterateFloat(value Value) iter.Seq2[int, float64] { return captureIterable(value).Floats() }
+func IterateBool(value Value) iter.Seq2[int, bool]     { return captureIterable(value).Bools() }
+func IterateString(value Value) iter.Seq2[int, string] { return captureIterable(value).Strings() }
 
 func captureIterable(value Value) ListRange {
 	switch v := value.(type) {
@@ -1122,11 +1135,7 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 				calls.depth--
 				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
 			}
-			defer func() {
-				if calls.depth--; calls.depth == 0 {
-					calls.traceFull = false
-				}
-			}()
+			defer func() { calls.depth-- }()
 		}
 		defer func() {
 			if controlPanics.Load() == 0 {
@@ -1183,11 +1192,7 @@ func SourceDirect(position, result string, body func(*Execution, Value, []Value)
 				calls.depth--
 				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
 			}
-			defer func() {
-				if calls.depth--; calls.depth == 0 {
-					calls.traceFull = false
-				}
-			}()
+			defer func() { calls.depth-- }()
 		}
 		defer func() {
 			if controlPanics.Load() == 0 {
@@ -1402,31 +1407,9 @@ func LoopBody(body func() Value) (exit int) {
 	return 0
 }
 
-// SourceAt records an operation's site after its operands have been evaluated.
-func SourceAt[T any](position *string, site string, value T) T {
-	*position = site
-	return value
-}
-
-// TraceSource runs once per source function, after its cleanup has completed.
-func TraceSource(ctx *Execution, position *string, name string) {
-	if ctx != nil && ctx.calls != nil && ctx.calls.traceFull {
-		return
-	}
-	if failure := recover(); failure != nil {
-		if fault, ok := failure.(Fault); ok {
-			fault.Frames = append(append([]string{}, fault.Frames...), *position+" in "+name)
-			if len(fault.Frames) >= maxFaultFrames && ctx != nil && ctx.calls != nil {
-				// Re-raising at every frame makes unwinding a deep stack
-				// quadratic, so outer frames are no longer recorded.
-				fault.Truncated = true
-				ctx.calls.traceFull = true
-			}
-			panic(fault)
-		}
-		panic(failure)
-	}
-}
+// Seq returns value after evaluating it in place, which orders the operand
+// before the calls that follow it in a Go expression.
+func Seq[T any](value T) T { return value }
 
 // structValue converts a generated struct to its record snapshot.
 func structValue(v Value) Value {

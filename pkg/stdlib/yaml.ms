@@ -148,8 +148,9 @@ fn folded_break(flow: Flow, escaped: Bool) -> String:
 
 fn quoted(flow: Flow) -> Result[String, YamlError]:
     let quote = advance(flow)
-    var result = ""
-    var whitespace = ""
+    # Append through a builder: per-character concatenation is quadratic on long strings.
+    let result = StringBuilder()
+    var whitespace = StringBuilder()
 
     while true:
         let c = advance(flow)
@@ -158,55 +159,55 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
         )
 
         if c == quote:
-            result = result.concat(whitespace)
-            whitespace = ""
+            result.append(whitespace.freeze())
+            whitespace = StringBuilder()
 
             if quote == "'" and peek(flow) == "'":
                 advance(flow)
-                result = result.concat("'")
+                result.append("'")
                 continue
 
-            return ok(result)
+            return ok(result.freeze())
 
         if c == "\n":
-            whitespace = ""
-            result = result.concat(folded_break(flow: flow, escaped: false))
+            whitespace = StringBuilder()
+            result.append(folded_break(flow: flow, escaped: false))
             continue
 
         if c == " " or c == "\t":
-            whitespace = whitespace.concat(c)
+            whitespace.append(c)
             continue
 
-        result = result.concat(whitespace)
-        whitespace = ""
+        result.append(whitespace.freeze())
+        whitespace = StringBuilder()
 
         if c != "\\" or quote == "'":
-            result = result.concat(c)
+            result.append(c)
             continue
 
         let escaped = advance(flow)
 
         if escaped == "\n":
-            result = result.concat(folded_break(flow: flow, escaped: true))
-        else if escaped == "0": result = result.concat("\u{0}")
-        else if escaped == "a": result = result.concat("\u{7}")
-        else if escaped == "b": result = result.concat("\u{8}")
-        else if escaped == "t" or escaped == "\t": result = result.concat("\t")
-        else if escaped == "n": result = result.concat("\n")
-        else if escaped == "v": result = result.concat("\u{b}")
-        else if escaped == "f": result = result.concat("\u{c}")
-        else if escaped == "r": result = result.concat("\r")
-        else if escaped == "e": result = result.concat("\u{1b}")
+            result.append(folded_break(flow: flow, escaped: true))
+        else if escaped == "0": result.append("\u{0}")
+        else if escaped == "a": result.append("\u{7}")
+        else if escaped == "b": result.append("\u{8}")
+        else if escaped == "t" or escaped == "\t": result.append("\t")
+        else if escaped == "n": result.append("\n")
+        else if escaped == "v": result.append("\u{b}")
+        else if escaped == "f": result.append("\u{c}")
+        else if escaped == "r": result.append("\r")
+        else if escaped == "e": result.append("\u{1b}")
         else if (
             escaped == " "
             or escaped == "\""
             or escaped == "/"
             or escaped == "\\"
-        ): result = result.concat(escaped)
-        else if escaped == "N": result = result.concat("\u{85}")
-        else if escaped == "_": result = result.concat("\u{a0}")
-        else if escaped == "L": result = result.concat("\u{2028}")
-        else if escaped == "P": result = result.concat("\u{2029}")
+        ): result.append(escaped)
+        else if escaped == "N": result.append("\u{85}")
+        else if escaped == "_": result.append("\u{a0}")
+        else if escaped == "L": result.append("\u{2028}")
+        else if escaped == "P": result.append("\u{2029}")
         else if (
             escaped == "x"
             or escaped == "u"
@@ -249,7 +250,7 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
                         reason: "invalid Unicode scalar"
                     )
                 )
-                ok(text): result = result.concat(text)
+                ok(text): result.append(text)
 
         else:
             return error(
@@ -902,7 +903,7 @@ fn block_string(
         )
         context.index = context.index + 1
 
-    var result = ""
+    let builder = StringBuilder()
     var index = 0
     var content = false
 
@@ -911,7 +912,7 @@ fn block_string(
 
         if part != "": content = true
 
-        result = result.concat(part)
+        builder.append(part)
         var separator = "\n"
 
         if (
@@ -939,17 +940,30 @@ fn block_string(
             and not context.final_break
         ): separator = ""
 
-        result = result.concat(separator)
+        builder.append(separator)
         index = index + 1
+
+    var result = builder.freeze()
 
     if mode != "+":
         let final_break = result.ends_with("\n")
 
-        while result.ends_with("\n"): result = (
+        # Count the final run of line feeds once: trimming one scalar at a time is quadratic.
+        let pieces = result.split(separator: "\n")
+        var trailing = 0
+
+        while (
+            trailing < pieces.length()
+            and pieces.at(-1 - trailing).unwrap_or("x") == ""
+        ): trailing = trailing + 1
+
+        if trailing == pieces.length(): trailing = trailing - 1
+
+        result = (
             result
             .slice(
                 start: 0,
-                end: (result.scalar_length() - 1)
+                end: (result.scalar_length() - trailing)
             )
             .unwrap_or("")
         )
@@ -1003,6 +1017,8 @@ fn block_value(
     else if remainder != "":
         if not "['\"\{*&!".contains(remainder.at(0).unwrap()):
             remainder = remainder.trim_end()
+            let joined = StringBuilder()
+            joined.append(remainder)
             var probe = context.index
             var blanks = 0
 
@@ -1038,9 +1054,12 @@ fn block_value(
                         separator = separator.concat("\n")
                         blanks = blanks - 1
 
-                remainder = remainder.concat(separator).concat(next.trim())
+                joined.append(separator)
+                joined.append(next.trim())
                 probe = probe + 1
                 context.index = probe
+
+            remainder = joined.freeze()
 
         result = try inline_value(context: context, text: remainder, depth: depth)
     else:
@@ -1457,28 +1476,26 @@ fn hex4(code: Int) -> String:
     return digits
 
 fn quote_text(text: String) -> String:
-    var result = "\""
+    let result = StringBuilder()
+    result.append("\"")
 
     for c in text.chars():
         let code = c.scalar_at(0).unwrap()
 
-        if c == "\"": result = result.concat("\\\"")
-        else if c == "\\": result = result.concat("\\\\")
-        else if c == "\n": result = result.concat("\\n")
-        else if c == "\t": result = result.concat("\\t")
-        else if c == "\r": result = result.concat("\\r")
-        else if code == 8: result = result.concat("\\b")
-        else if code == 12: result = result.concat("\\f")
-        else if code < 32 or code == 127: result = (
-            result
-            .concat("\\u")
-            .concat(
-                hex4(code)
-            )
-        )
-        else: result = result.concat(c)
+        if c == "\"": result.append("\\\"")
+        else if c == "\\": result.append("\\\\")
+        else if c == "\n": result.append("\\n")
+        else if c == "\t": result.append("\\t")
+        else if c == "\r": result.append("\\r")
+        else if code == 8: result.append("\\b")
+        else if code == 12: result.append("\\f")
+        else if code < 32 or code == 127:
+            result.append("\\u")
+            result.append(hex4(code))
+        else: result.append(c)
 
-    return result.concat("\"")
+    result.append("\"")
+    return result.freeze()
 
 fn format_key(key: String) -> String:
     var plain = key != ""
