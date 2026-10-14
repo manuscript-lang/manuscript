@@ -6,17 +6,19 @@ func init() {
 	libraryGeneric("collections", "map", "List[U]", []LibraryParam{p("T", ""), p("U", "")}, []LibraryParam{p("values", "List[T]"), p("transform", "fn(value:T)->U")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Capture()
 		out := make([]Value, items.Len())
+		transform := newCallback(a[1], "value")
 		for i, v := range items.Values() {
 			CheckCancelled(ctx)
-			out[i] = Invoke(ctx, a[1], []Argument{{"value", v}})
+			out[i] = transform.call1(ctx, a[1], v)
 		}
 		return NewList(r, out)
 	})
 	libraryGeneric("collections", "filter", "List[T]", vars, []LibraryParam{p("values", "List[T]"), p("predicate", "fn(value:T)->Bool")}, func(ctx *Execution, r string, a []Value) Value {
 		var out []Value
+		predicate := newCallback(a[1], "value")
 		for _, v := range a[0].(*List).Capture().Values() {
 			CheckCancelled(ctx)
-			if Invoke(ctx, a[1], []Argument{{"value", v}}).(bool) {
+			if predicate.call1(ctx, a[1], v).(bool) {
 				out = append(out, v)
 			}
 		}
@@ -24,9 +26,10 @@ func init() {
 	})
 	libraryGeneric("collections", "fold", "A", []LibraryParam{p("T", ""), p("A", "")}, []LibraryParam{p("values", "List[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		acc := a[1]
+		step := newCallback2(a[2], "accumulator", "value")
 		for _, v := range a[0].(*List).Capture().Values() {
 			CheckCancelled(ctx)
-			acc = Invoke(ctx, a[2], []Argument{{"accumulator", acc}, {"value", v}})
+			acc = step.call2(ctx, a[2], acc, v)
 		}
 		return acc
 	})

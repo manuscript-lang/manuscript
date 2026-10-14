@@ -3,6 +3,7 @@ package lower
 import (
 	"go/ast"
 	"go/token"
+	"strconv"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -124,12 +125,19 @@ func (g *generator) alternativeLiteral(e *syntax.Expression, info *checker.Info,
 // value's tag and bind its payload without boxing or assertions.
 func (g *generator) typedMatch(tmp string, value ast.Expr, shape *altShape, arms []syntax.Arm, body func(*syntax.Arm) []ast.Stmt) []ast.Stmt {
 	out := []ast.Stmt{define(tmp, value)}
+	// Switch on the typed flag rather than the string Tag: Go compiles a bool
+	// switch to one branch, while string tags cost per-match phis and
+	// comparisons that make large functions superlinear to build.
+	flag, trueCase := "Failed", "error"
+	if shape.optional {
+		flag, trueCase = "Some", "some"
+	}
 	var cases []ast.Stmt
 	for at := range arms {
 		a := &arms[at]
 		clause := &ast.CaseClause{}
 		if a.Path.Text != "_" {
-			clause.List = []ast.Expr{textLiteral(a.Path.Text)}
+			clause.List = []ast.Expr{ident(strconv.FormatBool(a.Path.Text == trueCase))}
 		}
 		for _, b := range g.program.ArmBindingsFor(a) {
 			if b == nil {
@@ -155,5 +163,5 @@ func (g *generator) typedMatch(tmp string, value ast.Expr, shape *altShape, arms
 		clause.Body = append(clause.Body, body(a)...)
 		cases = append(cases, clause)
 	}
-	return append(out, &ast.SwitchStmt{Tag: call(selector(ident(tmp), "Tag")), Body: block(cases...)})
+	return append(out, &ast.SwitchStmt{Tag: selector(ident(tmp), flag), Body: block(cases...)})
 }
