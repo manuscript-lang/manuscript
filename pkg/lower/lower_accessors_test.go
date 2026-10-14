@@ -72,6 +72,30 @@ fn immediate(n: Int) -> Bool: option(n).is_some and result(n).is_ok
 	}
 }
 
+func TestPresenceAccessorsPreserveDirectLocalClosureResults(t *testing.T) {
+	r := compileSource("closure-flags.ms", `fn flags(values: List[Int]) -> Bool:
+    let option = fn() -> Optional[Int]: values.first
+    let result = fn() -> Result[Int, String]: ok(values.length)
+    let optional = option()
+    let outcome = result()
+    return optional.is_some and outcome.is_ok
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	source := localNumbers.ReplaceAllString(r.Source, "local_")
+	for _, want := range []string{"rt.NamedFunc(", "local_optional rt.Option[int64]", "local_outcome rt.Result[int64]", "rt.OptionalSomeRead(", "rt.ResultOKRead("} {
+		if !strings.Contains(source, want) {
+			t.Errorf("missing direct closure/accessor form %q\n%s", want, source)
+		}
+	}
+	for _, forbidden := range []string{"rt.Invoke(", "local_optional.Box(", "local_outcome.Box("} {
+		if strings.Contains(source, forbidden) {
+			t.Errorf("direct closure/accessor path boxed or dispatched via %q\n%s", forbidden, source)
+		}
+	}
+}
+
 func TestSourceAccessorsUseDirectFunctionsAndDynamicEvidence(t *testing.T) {
 	r := compileSource("source-accessors.ms", `interface Size:
     get length -> Int

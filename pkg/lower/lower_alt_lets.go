@@ -11,8 +11,9 @@ import (
 // Result[T]/Option[T] when every use is a match scrutinee or native presence
 // flag in the declaring function. Other uses and captures keep it boxed.
 type altUses struct {
-	names, scrutinees, flags int
-	captured                 bool
+	names, scrutinees, flags, calls int
+	captured                        bool
+	callSites                       []*syntax.Expression
 }
 
 // planAltLets counts name uses, representation-safe consumers and captures.
@@ -41,6 +42,13 @@ func (g *generator) planAltLets() {
 				if b := g.program.Info(e.Left).Binding; b != nil {
 					uses(b).flags++
 				}
+			}
+		}
+		if e.Kind == syntax.KindCall && e.Left != nil && e.Left.Kind == syntax.KindName {
+			if callee := g.program.Info(e.Left); callee != nil && callee.Binding != nil {
+				u := uses(callee.Binding)
+				u.calls++
+				u.callSites = append(u.callSites, e)
 			}
 		}
 		if e.Kind == syntax.KindMatch && e.Left != nil && e.Left.Kind == syntax.KindName {

@@ -87,6 +87,18 @@ func Named(name string, body func(*Execution, []Value) Value) func(*Execution, [
 	return body
 }
 
+// NamedFunc is Named for a typed direct function literal.
+func NamedFunc[F any](name string, fn F) F {
+	pointer := reflect.ValueOf(fn).Pointer()
+	if _, seen := sourcePointers.Load(pointer); !seen {
+		if _, key := goFunctionName(fn); key != "" {
+			sourceNames.Store(key, name)
+		}
+		sourcePointers.Store(pointer, true)
+	}
+	return fn
+}
+
 // NamedMethod is Named for the receiver-first bodies of implementations.
 func NamedMethod(name string, body func(*Execution, Value, []Value) Value) func(*Execution, Value, []Value) Value {
 	pointer := reflect.ValueOf(body).Pointer()

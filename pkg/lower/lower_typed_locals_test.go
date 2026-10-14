@@ -279,3 +279,37 @@ fn run(x: Float, s: String) -> Bool:
 		t.Fatalf("sqrt still resolves dynamically\n%s", r.Source)
 	}
 }
+
+func TestOmittedDefaultsCallDirectFunctions(t *testing.T) {
+	r := compileSource("defaults.ms", `fn scaled(base: Int, factor: Int = 2) -> Int: base * factor
+fn run() -> Int: scaled(base: 3)
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	if !strings.Contains(r.Source, "call_symbol") || strings.Contains(r.Source, "rt.Invoke(") {
+		t.Fatalf("omitted default call still dispatches dynamically\n%s", r.Source)
+	}
+}
+
+func TestDirectOnlyLambdasLowerToTypedFunctions(t *testing.T) {
+	r := compileSource("closure.ms", `fn run(count: Int) -> Int:
+    let add = fn(a: Int, b: Int) -> Int: a + b
+    var total = 0
+    var i = 0
+    while i < count:
+        total = add(a: total, b: i)
+        i = i + 1
+    return total
+
+fn shared() -> List[Int]:
+    let double = fn(value: Int) -> Int: value * 2
+    return [1].map(double)
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	if strings.Count(r.Source, "rt.NamedFunc(") != 1 {
+		t.Fatalf("exactly the direct-only lambda should be typed\n%s", r.Source)
+	}
+}

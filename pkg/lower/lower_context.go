@@ -30,6 +30,7 @@ type generator struct {
 	captures         map[*checker.Binding]string
 	typed            map[*checker.Binding]string // Go type of scalar bindings declared as typed variables
 	direct           map[*checker.Symbol]*directFunction
+	directOn         bool                       // profiling off: direct functions and closures are emitted
 	directMethods    map[string]*directFunction // by checker.Method.ID, which checked copies of a method share
 	structs          map[string]*structType
 	structOrder      []*structType
@@ -42,10 +43,11 @@ type generator struct {
 	hoistedByKey     map[string]string // call-site identity to Lazy variable
 	defaultExpansion map[*syntax.Declaration]bool
 	loweringError    error
-	altUses          map[*checker.Binding]*altUses     // name, scrutinee and capture counts of every binding
-	altLocals        map[*checker.Binding]*altShape    // lets declared as typed Result/Optional variables
-	tried            map[*syntax.Expression]triedValue // nested try operands already evaluated by early returns
-	sites            []string                          // package-level MethodSite variables, one per direct method call
+	altUses          map[*checker.Binding]*altUses        // name, scrutinee and capture counts of every binding
+	altLocals        map[*checker.Binding]*altShape       // lets declared as typed Result/Optional variables
+	localClosures    map[*checker.Binding]*directFunction // immutable lets of a lambda only ever called directly
+	tried            map[*syntax.Expression]triedValue    // nested try operands already evaluated by early returns
+	sites            []string                             // package-level MethodSite variables, one per direct method call
 	debugLiterals    bool
 	literalData      []ast.Decl // immutable scalar input, never source collection storage
 }

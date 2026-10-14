@@ -26,6 +26,10 @@ type directFunction struct {
 	// receiver marks a method: the Go function takes its receiver as the
 	// Value parameter after ctx.
 	receiver bool
+	// defaulted marks parameters a caller may omit. They are Value parameters
+	// that arrive nil when omitted; the body fills in the default, so defaults
+	// evaluate in the callee's scope exactly as for a dynamic call.
+	defaulted []bool
 }
 
 // planDirect decides which top-level functions are emitted as direct functions.
@@ -33,6 +37,7 @@ type directFunction struct {
 func (g *generator) planDirect(functions []*checker.Symbol, options Options) {
 	g.direct = map[*checker.Symbol]*directFunction{}
 	g.directMethods = map[string]*directFunction{}
+	g.directOn = options.CPUProfile == "" && options.HeapProfile == "" && options.Trace == ""
 	if options.CPUProfile != "" || options.HeapProfile != "" || options.Trace != "" {
 		return
 	}
@@ -46,17 +51,17 @@ func (g *generator) planDirect(functions []*checker.Symbol, options Options) {
 		if len(bindings) != len(d.Params) || len(s.Type.Params) != len(d.Params) {
 			continue
 		}
-		eligible := true
 		for i, p := range d.Params {
-			// Omitted arguments reach the function as nil; only dynamic calls omit.
-			if p.Default != nil || s.Type.Defaults[s.Type.Params[i].Name] {
-				eligible = false
+			omittable := p.Default != nil || s.Type.Defaults[s.Type.Params[i].Name]
+			direct.defaulted = append(direct.defaulted, omittable)
+			if omittable {
+				// Omitted arguments reach the function as nil, which a typed scalar cannot hold.
+				direct.params = append(direct.params, "")
+				continue
 			}
 			direct.params = append(direct.params, scalarBinding(bindings[i]))
 		}
-		if eligible {
-			g.direct[s] = direct
-		}
+		g.direct[s] = direct
 	}
 	for i, m := range g.program.Methods {
 		if direct := g.planDirectMethod(m, i); direct != nil {
@@ -242,6 +247,9 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 	if direct, _ := g.directMethodTarget(e, info); direct != nil {
 		return direct
 	}
+	if direct := g.localClosureTarget(e, info); direct != nil {
+		return direct
+	}
 	if info.Symbol == nil || info.Constructor != nil || info.ErrorSource != nil {
 		return nil
 	}
@@ -251,8 +259,14 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 	}
 	args := info.Arguments
 	params := info.Symbol.Type.Params
-	if len(args) != len(params) {
+	if len(args) > len(params) {
 		return nil
+	}
+	// Trailing parameters may be omitted only when they have defaults.
+	for i := len(args); i < len(params); i++ {
+		if !direct.defaulted[i] {
+			return nil
+		}
 	}
 	for i, arg := range args {
 		if arg.Name != params[i].Name {
@@ -316,6 +330,9 @@ func (g *generator) typedDirectCall(e *syntax.Expression) (ast.Expr, *directFunc
 		} else {
 			values = append(values, sequence(value))
 		}
+	}
+	for i := len(args); i < len(direct.params); i++ {
+		values = append(values, call(runtimeName("Value"), ident("nil")))
 	}
 	return orderedCall(ident(direct.name), values...), direct
 }
