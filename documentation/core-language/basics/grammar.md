@@ -233,6 +233,6 @@ Each example is an independent rejected form. A syntax error does not require th
 
 ## Nesting limits
 
-The parser rejects expressions, types, patterns, and blocks nested more than 1000 levels deep, and a single chain of more than 10000 operators, member accesses, calls, or indexes. The diagnostic names the position (`parse: nesting exceeds 1000 levels`) so generated or pasted input cannot exhaust the compiler's stack.
+The parser rejects expressions, types, patterns, blocks, and text literals nested inside interpolations nested more than 1000 levels deep, and a single chain of more than 10000 operators, member accesses, calls, or indexes. The diagnostic names the position (`parse: nesting exceeds 1000 levels`) so generated or pasted input cannot exhaust the compiler's stack.
 
 [Back to language basics](_index.md) · [Expressions and operators](expressions.md)
