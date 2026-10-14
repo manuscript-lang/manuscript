@@ -1,0 +1,2 @@
+# Unified diff context retains a leading space before original Go indentation.
+scripts/maintenance/delve-script.patch -whitespace

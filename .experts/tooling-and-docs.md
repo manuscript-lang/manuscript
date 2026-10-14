@@ -102,8 +102,18 @@ Verified: closing inherited blocking stdin does not necessarily interrupt a Go
 read. Unix scripted stdio uses owned pollable duplicates and restores shared flags
 after joining I/O. A retained `os.Process` alone does not guarantee identity:
 Go can fall back to PID-only signaling on Unix. Script cancellation requires an
-explicit Linux pidfd or Windows process handle and rejects unsupported identity
-binding. Reap the target before closing input; Windows console stdin is rejected
+explicit Linux pidfd, Windows process handle, or opted-in Apple debugserver
+connection. Linux cleanup checks actual exit codes, then drains only the private
+process group’s pending sibling wait records after Delve joins; ptrace stops can
+be reported even when only WEXITED was requested. Darwin starts debugserver with
+`-K`, confirms no-ack/kill-on-disconnect, latches every resume/single-step dispatch,
+and joins commands before RSP kill and helper close/wait. Detach, natural exit,
+and launch failures share teardown; a stopped-target NOTE_EXIT registration
+confirms completion. No helper PID signal follows concurrent Wait. See
+[adapter regressions](../vendor/github.com/go-delve/delve/pkg/proc/gdbserial/script_session_test.go),
+[private-group wait isolation](../internal/debugger/script_process_linux_test.go),
+and [refresh replay](../scripts/maintenance/delve_test.go). Installed-Xcode
+behavior still requires native Darwin checks. Reap the target before closing input; Windows console stdin is rejected
 before launch because Close does not interrupt its synchronous console read.
 This avoids concurrent Delve Halt/Continue (which raced in the pinned backend).
 Partial JSON writes must end

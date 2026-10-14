@@ -41,6 +41,7 @@ repo-check:
 
 unit:
 	"$(GO)" test ./pkg/syntax ./pkg/lexer ./pkg/parser ./pkg/frontend ./pkg/project ./pkg/checker ./pkg/runtime ./pkg/tooling/... ./scripts/repo-check
+	"$(GO)" test ./scripts/maintenance github.com/go-delve/delve/pkg/proc/gdbserial -run 'TestDelveScriptPatch|TestScriptSession'
 
 stdlib-check:
 	"$(GO)" test ./tests/e2e -run '^TestStandardLibrarySources$$'

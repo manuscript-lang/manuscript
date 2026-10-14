@@ -88,7 +88,7 @@ func checkScriptDebugger(cli, directory string, environment []string, source str
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()
-	if runtime.GOOS != "linux" && runtime.GOOS != "windows" {
+	if runtime.GOOS != "linux" && runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
 		if err == nil || stderr.Len() != 0 {
 			return fmt.Errorf("unsafe scripted mode did not reject unsupported process identity: %v %s", err, &stderr)
 		}

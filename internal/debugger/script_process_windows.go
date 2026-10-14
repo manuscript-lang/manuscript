@@ -18,7 +18,7 @@ func openScriptProcess(pid int) (scriptProcess, error) {
 	return &scriptWindowsProcess{handle: handle}, nil
 }
 
-func (p *scriptWindowsProcess) Kill() error {
+func (p *scriptWindowsProcess) Interrupt() error {
 	state, err := windows.WaitForSingleObject(p.handle, 0)
 	if err != nil {
 		return err
@@ -29,5 +29,8 @@ func (p *scriptWindowsProcess) Kill() error {
 	return windows.TerminateProcess(p.handle, 1)
 }
 
-func (p *scriptWindowsProcess) Reap()        { _, _ = windows.WaitForSingleObject(p.handle, windows.INFINITE) }
+func (p *scriptWindowsProcess) Reap() error {
+	_, err := windows.WaitForSingleObject(p.handle, windows.INFINITE)
+	return err
+}
 func (p *scriptWindowsProcess) Close() error { return windows.CloseHandle(p.handle) }

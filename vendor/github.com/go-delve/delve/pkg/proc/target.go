@@ -32,6 +32,8 @@ type LaunchFlags uint8
 const (
 	LaunchForeground LaunchFlags = 1 << iota
 	LaunchDisableASLR
+	// LaunchScripted opts into connection-owned debugserver interruption.
+	LaunchScripted
 )
 
 // Target represents the process being debugged.

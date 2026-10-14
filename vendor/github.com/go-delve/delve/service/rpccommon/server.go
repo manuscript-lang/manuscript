@@ -87,6 +87,14 @@ func NewServer(config *service.Config) *ServerImpl {
 	}
 }
 
+// SessionInterrupt acquires a session-bound interruption function before any
+// command dispatch. It is for embedded scripted sessions, not an RPC extension.
+func (s *ServerImpl) SessionInterrupt() (func() error, error) {
+	group, unlock := s.debugger.LockTargetGroup()
+	defer unlock()
+	return group.SessionInterrupt()
+}
+
 // Stop stops the JSON-RPC server.
 func (s *ServerImpl) Stop() error {
 	s.log.Debug("stopping")

@@ -28,6 +28,7 @@ type gdbConn struct {
 	outbuf bytes.Buffer
 
 	running bool
+	session *scriptSessionControl // opt-in; immutable after Connect
 
 	direction proc.Direction // direction of execution
 
@@ -588,7 +589,7 @@ func (conn *gdbConn) resume(cctx *proc.ContinueOnceContext, threads map[int]*gdb
 		fmt.Fprint(&conn.outbuf, "$bc")
 	}
 	cctx.StopMu.Lock()
-	if err := conn.send(conn.outbuf.Bytes()); err != nil {
+	if err := conn.sendExecution(conn.outbuf.Bytes()); err != nil {
 		cctx.StopMu.Unlock()
 		return stopPacket{}, err
 	}
@@ -603,7 +604,8 @@ func (conn *gdbConn) resume(cctx *proc.ContinueOnceContext, threads map[int]*gdb
 		close(cctx.ResumeChan)
 		cctx.ResumeChan = nil
 	}
-	return conn.waitForvContStop("resume", "-1", tu)
+	sp, err := conn.waitForvContStop("resume", "-1", tu)
+	return sp, conn.finishExecution(err)
 }
 
 // step executes a 'vCont' command on the specified thread with 's' action.
@@ -615,11 +617,11 @@ func (conn *gdbConn) step(th *gdbThread, tu *threadUpdater, ignoreFaultSignal bo
 		}
 		conn.outbuf.Reset()
 		fmt.Fprint(&conn.outbuf, "$bs")
-		if err := conn.send(conn.outbuf.Bytes()); err != nil {
+		if err := conn.sendExecution(conn.outbuf.Bytes()); err != nil {
 			return err
 		}
 		_, err := conn.waitForvContStop("singlestep", threadID, tu)
-		return err
+		return conn.finishExecution(err)
 	}
 
 	var _SIGBUS uint8
@@ -640,13 +642,14 @@ func (conn *gdbConn) step(th *gdbThread, tu *threadUpdater, ignoreFaultSignal bo
 		} else {
 			fmt.Fprintf(&conn.outbuf, "$vCont;S%02x:%s", sig, threadID)
 		}
-		if err := conn.send(conn.outbuf.Bytes()); err != nil {
+		if err := conn.sendExecution(conn.outbuf.Bytes()); err != nil {
 			return err
 		}
 		if tu != nil {
 			tu.Reset()
 		}
 		sp, err := conn.waitForvContStop("singlestep", threadID, tu)
+		err = conn.finishExecution(err)
 		sig = sp.sig
 		if err != nil {
 			return err
@@ -695,10 +698,22 @@ func (conn *gdbConn) waitForvContStop(context, threadID string, tu *threadUpdate
 	count := 0
 	failed := false
 	for {
-		conn.conn.SetReadDeadline(time.Now().Add(heartbeatInterval))
+		deadline := time.Now().Add(heartbeatInterval)
+		if conn.session != nil {
+			conn.session.setReadDeadline(deadline)
+		} else {
+			conn.conn.SetReadDeadline(deadline)
+		}
 		resp, err := conn.recv(nil, context, false)
-		conn.conn.SetReadDeadline(time.Time{})
+		if conn.session != nil {
+			conn.session.setReadDeadline(time.Now().Add(scriptIOTimeout))
+		} else {
+			conn.conn.SetReadDeadline(time.Time{})
+		}
 		if neterr, isneterr := err.(net.Error); isneterr && neterr.Timeout() {
+			if conn.session != nil && conn.session.cancelled() {
+				return stopPacket{}, err
+			}
 			// Debugserver sometimes forgets to inform us that inferior stopped,
 			// sending this status request after a timeout helps us get unstuck.
 			// Debugserver will not respond to this request unless inferior is
@@ -881,6 +896,9 @@ func (conn *gdbConn) parseStopPacket(resp []byte, threadID string, tu *threadUpd
 		return false, sp, nil
 
 	case 'O':
+		if conn.session != nil {
+			return false, sp, fmt.Errorf("debugserver sent mixed output instead of redirected target streams")
+		}
 		data := make([]byte, 0, len(resp[1:])/2)
 		for i := 1; i < len(resp); i += 2 {
 			n, _ := strconv.ParseUint(string(resp[i:i+2]), 16, 8)
@@ -898,6 +916,9 @@ const ctrlC = 0x03 // the ASCII character for ^C
 
 // executes a ctrl-C on the line
 func (conn *gdbConn) sendCtrlC() error {
+	if conn.session != nil {
+		conn.session.setWriteDeadline(time.Now().Add(scriptIOTimeout))
+	}
 	conn.log.Debug("<- interrupt")
 	_, err := conn.conn.Write([]byte{ctrlC})
 	return err
@@ -1157,9 +1178,17 @@ func (conn *gdbConn) threadStopInfo(threadID string) (sp stopPacket, err error) 
 		// this change.
 		// See https://github.com/go-delve/delve/issues/3013.
 
-		conn.conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+		if conn.session != nil {
+			conn.session.setReadDeadline(time.Now().Add(10 * time.Millisecond))
+		} else {
+			conn.conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+		}
 		resp, err = conn.recv(conn.outbuf.Bytes(), "thread stop info", false)
-		conn.conn.SetReadDeadline(time.Time{})
+		if conn.session != nil {
+			conn.session.setReadDeadline(time.Now().Add(scriptIOTimeout))
+		} else {
+			conn.conn.SetReadDeadline(time.Time{})
+		}
 		if err != nil {
 			if neterr, isneterr := err.(net.Error); isneterr && neterr.Timeout() {
 				return stopPacket{}, fmt.Errorf("qThreadStopInfo mismatch, requested %s got %s", sp.threadID, threadID)
@@ -1320,6 +1349,9 @@ func (conn *gdbConn) memoryRegionInfo(addr uint64) (*memoryRegionInfo, error) {
 //
 //	https://sourceware.org/gdb/onlinedocs/gdb/Overview.html#Overview
 func (conn *gdbConn) exec(cmd []byte, context string) ([]byte, error) {
+	if conn.session != nil {
+		conn.session.setReadDeadline(time.Now().Add(scriptIOTimeout))
+	}
 	if err := conn.send(cmd); err != nil {
 		return nil, err
 	}
@@ -1329,6 +1361,14 @@ func (conn *gdbConn) exec(cmd []byte, context string) ([]byte, error) {
 const hexdigit = "0123456789abcdef"
 
 func (conn *gdbConn) send(cmd []byte) error {
+	if conn.session != nil {
+		conn.session.setReadDeadline(time.Now().Add(scriptIOTimeout))
+		conn.session.setWriteDeadline(time.Now().Add(scriptIOTimeout))
+	}
+	return conn.sendPacket(cmd)
+}
+
+func (conn *gdbConn) sendPacket(cmd []byte) error {
 	if len(cmd) == 0 || cmd[0] != '$' {
 		panic("gdb protocol error: command doesn't start with '$'")
 	}

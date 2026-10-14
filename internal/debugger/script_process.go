@@ -1,9 +1,9 @@
 package debugger
 
-// Script cancellation must refer to a retained OS process identity. A cached
-// os.Process can still use a recyclable PID, so it is not this contract.
+// Script cancellation binds an OS process identity or the owning debugserver
+// connection. A cached os.Process can use a recyclable PID and is insufficient.
 type scriptProcess interface {
-	Kill() error
-	Reap()
+	Interrupt() error
+	Reap() error
 	Close() error
 }

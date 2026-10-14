@@ -88,12 +88,15 @@ the null device so it cannot consume debugger commands. Both `--script` and
 `--json` are required for scripted mode. `--raw-stack` includes native frames in
 all scripted stacks.
 
-Scripted mode requires an OS handle that remains bound to the launched process
-after it exits: Linux uses explicit pidfds and rejects kernels/policies without
-the required pidfd signal/wait APIs; Windows uses a retained process handle.
-Scripted mode is currently rejected on other platforms, including macOS, where
-the available PID-only interruption cannot meet that guarantee. Interactive
-`ms debug` and editor DAP retain their existing platform support.
+Scripted cancellation remains bound to the launched process: Linux uses explicit
+pidfds and rejects kernels/policies without the required signal/wait APIs; Windows
+uses a retained process handle. macOS requires Apple debugserver, launched with
+kill-on-error and confirmed no-ack/kill-on-disconnect support. Cancellation uses
+its existing connection, joins the command, then kills through RSP and closes/joins
+the helper without PID signaling. A registered kqueue event confirms target exit.
+Unsupported backends or capability failures report a launch error. Stub diagnostics
+do not share script input/output; unexpected mixed RSP output is an error.
+Interactive `ms debug` and editor DAP retain their existing platform settings.
 Windows console stdin is rejected before launch because its blocking read cannot
 be cancelled safely; use a script file or redirected pipe for `--script -`.
 
@@ -182,9 +185,9 @@ boundaries and non-text output.
 
 EOF completes pending inspection commands and then cleans up. If a final
 execution command is unfinished and no later command remains, EOF cancels that
-operation through the retained OS identity, joins Delve, and reaps it before
-closing input; it does not produce a successful
-result for the interrupted command. A completed response takes precedence when
+operation through the retained process identity or debugserver connection, joins
+Delve, and observes target exit before closing input; it does not produce a
+successful result for the interrupted command. A completed response takes precedence when
 already available. Keep an explicit `exit` after a resume command to wait for its
 stop or natural exit. SIGINT/SIGTERM, reader/writer errors, and cancellation also
 clean up launched targets.

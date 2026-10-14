@@ -44,6 +44,17 @@ type TargetGroup struct {
 	CanDump bool
 }
 
+// SessionInterrupt binds cancellation while the group is stopped and locked.
+// The returned function never reads mutable selected-target or validity state.
+func (grp *TargetGroup) SessionInterrupt() (func() error, error) {
+	if control, ok := grp.Selected.proc.(interface {
+		SessionInterrupt() (func() error, error)
+	}); ok {
+		return control.SessionInterrupt()
+	}
+	return nil, fmt.Errorf("backend has no connection-owned session interruption")
+}
+
 // NewTargetGroupConfig contains the configuration for a new TargetGroup object,
 type NewTargetGroupConfig struct {
 	DebugInfoDirs       []string   // Directories to search for split debug info

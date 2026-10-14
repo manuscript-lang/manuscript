@@ -1,6 +1,7 @@
 package debugger
 
 import (
+	"context"
 	"debug/dwarf"
 	"debug/elf"
 	"debug/macho"
@@ -96,6 +97,9 @@ const (
 // provided, a new process will be launched. Otherwise, the debugger will try
 // to attach to an existing process with AttachPid.
 type Config struct {
+	// Scripted enables Manuscript's connection-owned debugserver lifecycle.
+	Scripted        bool
+	ScriptedContext context.Context
 	// WorkingDir is working directory of the new process. This field is used
 	// only when launching a new process.
 	WorkingDir string
@@ -273,6 +277,9 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.TargetGroup, e
 	processArgs[0] = fullpath
 
 	launchFlags := proc.LaunchFlags(0)
+	if d.config.Scripted {
+		launchFlags |= proc.LaunchScripted
+	}
 	if d.config.Foreground {
 		launchFlags |= proc.LaunchForeground
 	}
@@ -284,7 +291,7 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.TargetGroup, e
 	case "native":
 		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Stdin, d.config.Stdout, d.config.Stderr)
 	case "lldb":
-		return betterGdbserialLaunchError(gdbserial.LLDBLaunch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, [3]string{d.config.Stdin, d.config.Stdout.Path, d.config.Stderr.Path}))
+		return betterGdbserialLaunchError(gdbserial.LLDBLaunchWithContext(d.config.ScriptedContext, processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, [3]string{d.config.Stdin, d.config.Stdout.Path, d.config.Stderr.Path}))
 	case "rr":
 		if d.target != nil {
 			// restart should not call us if the backend is 'rr'
@@ -326,7 +333,7 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.TargetGroup, e
 
 	case "default":
 		if runtime.GOOS == "darwin" {
-			return betterGdbserialLaunchError(gdbserial.LLDBLaunch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, [3]string{d.config.Stdin, d.config.Stdout.Path, d.config.Stderr.Path}))
+			return betterGdbserialLaunchError(gdbserial.LLDBLaunchWithContext(d.config.ScriptedContext, processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, [3]string{d.config.Stdin, d.config.Stdout.Path, d.config.Stderr.Path}))
 		}
 		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Stdin, d.config.Stdout, d.config.Stderr)
 	default:

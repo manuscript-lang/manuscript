@@ -413,7 +413,7 @@ func TestCLIScriptedDebugFunctionDefault(t *testing.T) {
 
 func assertScriptUnsupportedPlatform(t *testing.T) bool {
 	t.Helper()
-	if runtime.GOOS == "linux" || runtime.GOOS == "windows" {
+	if runtime.GOOS == "linux" || runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		return false
 	}
 	root := t.TempDir()

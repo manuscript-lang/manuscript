@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -244,22 +245,25 @@ func Script(ctx context.Context, executable string, args []string, inspection to
 	defer conn.Close()
 	server := rpccommon.NewServer(&service.Config{
 		Listener: listener, ProcessArgs: append([]string{executable}, args...), APIVersion: 2,
-		Debugger: delve.Config{Backend: "default", WorkingDir: ".", CheckGoVersion: true, ExecuteKind: delve.ExecutingExistingFile,
+		Debugger: delve.Config{Backend: "default", WorkingDir: ".", CheckGoVersion: true, ExecuteKind: delve.ExecutingExistingFile, Scripted: runtime.GOOS == "darwin", ScriptedContext: ctx,
 			Stdin: os.DevNull, Stdout: proc.OutputRedirect{Path: outputs[0].file.Name()}, Stderr: proc.OutputRedirect{Path: outputs[1].file.Name()}},
 	})
 	if err := ctx.Err(); err != nil {
 		return ScriptFailure(output, "cancelled", err)
 	}
 	if err := server.Run(); err != nil {
+		if ctx.Err() != nil {
+			return ScriptFailure(output, "cancelled", err)
+		}
 		return ScriptFailure(output, "launch", err)
 	}
 	client := rpc2.NewClientFromConn(conn)
 	pid := client.ProcessPid()
 	// Bind an explicit identity while stopped. Unsupported kernels/platforms
 	// must fail closed, rather than rely on os.FindProcess's PID-only fallback.
-	target, err := openScriptProcess(pid)
+	target, err := bindScriptProcess(server, pid)
 	if err != nil {
-		_ = server.Stop()
+		err = errors.Join(err, server.Stop())
 		return ScriptFailure(output, "launch", err)
 	}
 	defer target.Close()
@@ -298,7 +302,8 @@ func Script(ctx context.Context, executable string, args []string, inspection to
 	}
 	// Join before stopping the service. Concurrent Delve Halt/Continue races
 	// inside the pinned backend; interrupt only this session's launched process
-	// through the OS instead. A stopped target is killed/reaped by server.Stop.
+	// through its retained OS identity or debugserver connection. A stopped
+	// target is killed by server.Stop, after the command joins.
 	defer func() {
 		cancel()
 		stopWriter()
@@ -306,8 +311,8 @@ func Script(ctx context.Context, executable string, args []string, inspection to
 			_ = file.SetWriteDeadline(time.Now().Add(time.Second))
 		}
 		if active != nil {
-			if activeResumes {
-				err := target.Kill()
+			if activeResumes || scriptInterruptsInspection() {
+				err := target.Interrupt()
 				if err != nil && !errors.Is(err, os.ErrProcessDone) {
 					fail("cleanup", err)
 				}
@@ -322,7 +327,9 @@ func Script(ctx context.Context, executable string, args []string, inspection to
 		// leave the process leader waitable. Reap an owned child after Delve has
 		// joined/detached; already-reaped targets (or LLDB-owned children) simply
 		// return a wait error.
-		target.Reap()
+		if err := target.Reap(); err != nil {
+			fail("cleanup", err)
+		}
 		// Closing a reader can itself block. The target must already be gone.
 		_ = input.Close()
 		<-readerDone

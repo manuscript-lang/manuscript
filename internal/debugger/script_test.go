@@ -279,6 +279,7 @@ func TestScriptNativeCleanup(t *testing.T) {
 type notifyWriter struct {
 	bytes.Buffer
 	commands chan struct{}
+	stops    chan struct{}
 }
 
 func (w *notifyWriter) Write(data []byte) (int, error) {
@@ -288,7 +289,81 @@ func (w *notifyWriter) Write(data []byte) (int, error) {
 		default:
 		}
 	}
+	if bytes.Contains(data, []byte(`"event":"stop"`)) && bytes.Contains(data, []byte(`"reason":"breakpoint"`)) {
+		select {
+		case w.stops <- struct{}{}:
+		default:
+		}
+	}
 	return w.Buffer.Write(data)
+}
+
+// Next and step-out can run forever even though they are stepping commands.
+// Cancellation/EOF must interrupt and join them just like continue.
+func TestScriptNativeSteppingCleanup(t *testing.T) {
+	executable, inspection := scriptTarget(t, "fn spin() -> Int:\n    var number = 0\n    while number == 0:\n        number = number + 0\n    return number\nexport fn main() -> Int:\n    return spin()\n")
+	for _, command := range []string{"next", "step-out"} {
+		for _, mode := range []string{"dispatch-cancel", "running-cancel", "running-eof"} {
+			t.Run(command+"/"+mode, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				input, writer, err := os.Pipe()
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer writer.Close()
+				out := notifyWriter{commands: make(chan struct{}, 3), stops: make(chan struct{}, 1)}
+				done := make(chan int, 1)
+				go func() { done <- Script(ctx, executable, nil, inspection, input, &out, false) }()
+				function := "main"
+				if command == "step-out" {
+					function = "spin"
+				}
+				_, _ = io.WriteString(writer, "break "+function+"\ncontinue\n")
+				select {
+				case <-out.stops:
+				case <-ctx.Done():
+					t.Fatal(ctx.Err())
+				}
+				<-out.commands // break acknowledgement
+				<-out.commands // continue acknowledgement
+				_, _ = io.WriteString(writer, command+"\n")
+				select {
+				case <-out.commands:
+				case <-ctx.Done():
+					t.Fatal(ctx.Err())
+				}
+				if mode != "dispatch-cancel" {
+					<-time.After(100 * time.Millisecond)
+				}
+				wantStatus, wantReason := 1, "cancelled"
+				if mode == "running-eof" {
+					_ = writer.Close()
+					wantStatus, wantReason = 0, "eof"
+				} else {
+					cancel()
+				}
+				select {
+				case status := <-done:
+					if status != wantStatus {
+						t.Fatalf("status %d, want %d", status, wantStatus)
+					}
+				case <-time.After(10 * time.Second):
+					t.Fatal("stepping command did not join")
+				}
+				events := decodeEvents(t, out.Bytes())
+				assertReaped(t, events)
+				for _, event := range events {
+					if event.Event == "result" && event.CommandID == 3 {
+						t.Fatal("interrupted stepping command reported success")
+					}
+				}
+				if last := events[len(events)-1]; last.Reason != wantReason {
+					t.Fatalf("exit %+v, want %s", last, wantReason)
+				}
+			})
+		}
+	}
 }
 
 func TestScriptNativeCancellation(t *testing.T) {

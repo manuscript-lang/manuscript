@@ -31,7 +31,7 @@ func TestScriptProcessHandleSurvivesReap(t *testing.T) {
 	if err := child.Wait(); err != nil {
 		t.Fatal(err)
 	}
-	if err := target.Kill(); !errors.Is(err, os.ErrProcessDone) {
+	if err := target.Interrupt(); !errors.Is(err, os.ErrProcessDone) {
 		t.Fatalf("signal after reap: %v", err)
 	}
 	target.Reap()

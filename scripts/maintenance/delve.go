@@ -1,10 +1,16 @@
 package main
 
 import (
+	"bytes"
+	_ "embed"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 )
+
+//go:embed delve-script.patch
+var delveScriptPatch []byte
 
 func patchDelve() error {
 	const path = "vendor/github.com/go-delve/delve/service/debugger/debugger.go"
@@ -32,11 +38,32 @@ func patchDelve() error {
 }
 `
 	source := string(data)
-	if strings.Contains(source, after) {
+	if !strings.Contains(source, after) {
+		if strings.Count(source, before) != 1 {
+			return fmt.Errorf("Delve compatibility probe changed; review the no-external-Go patch")
+		}
+		if err := os.WriteFile(path, []byte(strings.Replace(source, before, after, 1)), 0644); err != nil {
+			return err
+		}
+	}
+	return applyDelveScriptPatch(".")
+}
+
+func applyDelveScriptPatch(directory string) error {
+	apply := func(args ...string) error {
+		cmd := exec.Command("git", append([]string{"apply"}, args...)...)
+		cmd.Dir, cmd.Stdin = directory, bytes.NewReader(delveScriptPatch)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("%w: %s", err, output)
+		}
 		return nil
 	}
-	if strings.Count(source, before) != 1 {
-		return fmt.Errorf("Delve compatibility probe changed; review the no-external-Go patch")
+	if err := apply("--check", "-"); err != nil {
+		if reverse := apply("--reverse", "--check", "-"); reverse == nil {
+			return nil
+		}
+		return fmt.Errorf("Delve scripted session patch changed; review pinned backend: %w", err)
 	}
-	return os.WriteFile(path, []byte(strings.Replace(source, before, after, 1)), 0644)
+	return apply("-")
 }

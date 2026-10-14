@@ -63,6 +63,7 @@ package gdbserial
 
 import (
 	"bytes"
+	"context"
 	"debug/macho"
 	"encoding/binary"
 	"errors"
@@ -164,8 +165,12 @@ type gdbProcess struct {
 
 	breakpointKind int // breakpoint kind to pass to 'z' and 'Z' when creating software breakpoints
 
-	process  *os.Process
-	waitChan chan *os.ProcessState
+	process        *os.Process
+	waitChan       chan *os.ProcessState
+	scripted       bool
+	scriptClose    sync.Once
+	scriptCloseErr error
+	scriptContext  context.Context
 
 	onDetach func() // called after a successful detach
 }
@@ -226,6 +231,10 @@ type gdbRegnames struct {
 // Detach.
 // Use Listen, Dial or Connect to complete connection.
 func newProcess(process *os.Process) *gdbProcess {
+	return newScriptProcess(process, false)
+}
+
+func newScriptProcess(process *os.Process, scripted bool) *gdbProcess {
 	logger := logflags.GdbWireLogger()
 	p := &gdbProcess{
 		conn: gdbConn{
@@ -243,6 +252,7 @@ func newProcess(process *os.Process) *gdbProcess {
 		gcmdok:         true,
 		threadStopInfo: true,
 		process:        process,
+		scripted:       scripted,
 	}
 
 	switch p.bi.Arch.Name {
@@ -270,10 +280,17 @@ func newProcess(process *os.Process) *gdbProcess {
 	}
 
 	if process != nil {
-		p.waitChan = make(chan *os.ProcessState)
+		capacity := 0
+		if scripted {
+			capacity = 1
+		}
+		p.waitChan = make(chan *os.ProcessState, capacity)
 		go func() {
 			state, _ := process.Wait()
 			p.waitChan <- state
+			if scripted {
+				close(p.waitChan)
+			}
 		}()
 	}
 
@@ -282,7 +299,11 @@ func newProcess(process *os.Process) *gdbProcess {
 
 // Listen waits for a connection from the stub.
 func (p *gdbProcess) Listen(listener net.Listener, path, cmdline string, pid int, debugInfoDirs []string, stopReason proc.StopReason) (*proc.TargetGroup, error) {
-	acceptChan := make(chan net.Conn)
+	acceptChan := make(chan net.Conn, 1)
+	var cancelled <-chan struct{}
+	if p.scripted {
+		cancelled = p.scriptContext.Done()
+	}
 
 	go func() {
 		conn, _ := listener.Accept()
@@ -290,6 +311,12 @@ func (p *gdbProcess) Listen(listener net.Listener, path, cmdline string, pid int
 	}()
 
 	select {
+	case <-cancelled:
+		listener.Close()
+		if conn := <-acceptChan; conn != nil {
+			conn.Close()
+		}
+		return nil, p.scriptContext.Err()
 	case conn := <-acceptChan:
 		listener.Close()
 		if conn == nil {
@@ -298,6 +325,11 @@ func (p *gdbProcess) Listen(listener net.Listener, path, cmdline string, pid int
 		return p.Connect(conn, path, cmdline, pid, debugInfoDirs, stopReason)
 	case status := <-p.waitChan:
 		listener.Close()
+		if p.scripted {
+			if conn := <-acceptChan; conn != nil {
+				conn.Close()
+			}
+		}
 		if err := checkRosettaExpensive(); err != nil {
 			return nil, err
 		}
@@ -333,10 +365,33 @@ func (p *gdbProcess) Dial(addr string, path, cmdline string, pid int, debugInfoD
 func (p *gdbProcess) Connect(conn net.Conn, path, cmdline string, pid int, debugInfoDirs []string, stopReason proc.StopReason) (*proc.TargetGroup, error) {
 	p.conn.conn = conn
 	p.conn.pid = pid
+	if p.scripted {
+		conn.SetDeadline(time.Now().Add(30 * time.Second))
+		joined := make(chan struct{})
+		// Initialization performs its own deadline changes and internal steps.
+		// Close the fixed startup connection so none can erase cancellation.
+		stop := context.AfterFunc(p.scriptContext, func() { conn.Close(); close(joined) })
+		defer func() {
+			if !stop() {
+				<-joined
+			}
+			conn.SetDeadline(time.Time{})
+		}()
+	}
 	err := p.conn.handshake(p.regnames)
 	if err != nil {
 		conn.Close()
 		return nil, err
+	}
+	if p.scripted {
+		if p.conn.ack || !p.conn.isDebugserver {
+			return nil, errors.New("scripted session requires Apple debugserver in no-ack mode")
+		}
+		resp, err := p.conn.exec([]byte("$QSetDetachOnError:0"), "script/kill-on-error")
+		if err != nil || string(resp) != "OK" {
+			return nil, fmt.Errorf("debugserver kill-on-error confirmation failed: %q: %v", resp, err)
+		}
+		p.conn.session = &scriptSessionControl{conn: conn}
 	}
 
 	if p.conn.isDebugserver {
@@ -460,6 +515,12 @@ func getLdEnvVars() []string {
 // it to launch the specified target program with the specified arguments
 // (cmd) on the specified directory wd.
 func LLDBLaunch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs []string, tty string, redirects [3]string) (*proc.TargetGroup, error) {
+	return LLDBLaunchWithContext(nil, cmd, wd, flags, debugInfoDirs, tty, redirects)
+}
+
+// LLDBLaunchWithContext preserves ordinary launches and adds cancellation only
+// for an explicitly opted-in scripted session.
+func LLDBLaunchWithContext(ctx context.Context, cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs []string, tty string, redirects [3]string) (_ *proc.TargetGroup, result error) {
 	if runtime.GOOS == "windows" {
 		return nil, ErrUnsupportedOS
 	}
@@ -468,6 +529,18 @@ func LLDBLaunch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs [
 	}
 
 	foreground := flags&proc.LaunchForeground != 0
+	scripted := flags&proc.LaunchScripted != 0
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if scripted {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+	}
 
 	var (
 		isDebugserver bool
@@ -483,9 +556,14 @@ func LLDBLaunch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs [
 		if err != nil {
 			return nil, err
 		}
+		defer listener.Close()
 		ldEnvVars := getLdEnvVars()
 		args := make([]string, 0, len(cmd)+4+len(ldEnvVars))
 		args = append(args, ldEnvVars...)
+		if scripted {
+			// Disable detach on communication failure before the target launches.
+			args = append(args, "-K")
+		}
 
 		if tty != "" {
 			args = append(args, "--stdio-path", tty)
@@ -525,6 +603,9 @@ func LLDBLaunch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs [
 
 		process = commandLogger(debugserverExecutable, args...)
 	} else {
+		if scripted {
+			return nil, errors.New("scripted session requires Apple debugserver")
+		}
 		if _, err = exec.LookPath("lldb-server"); err != nil {
 			return nil, &ErrBackendUnavailable{}
 		}
@@ -545,6 +626,11 @@ func LLDBLaunch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs [
 			foregroundSignalsIgnore()
 		}
 		process.Stdin = os.Stdin
+	}
+	if scripted {
+		// The inferior uses explicit redirect paths. Stub diagnostics and stdin
+		// must not share the script's JSON output or command input.
+		process.Stdin, process.Stdout, process.Stderr = nil, nil, nil
 	}
 	if wd != "" {
 		process.Dir = wd
@@ -573,8 +659,16 @@ func LLDBLaunch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs [
 		return nil, err
 	}
 
-	p := newProcess(process.Process)
+	p := newScriptProcess(process.Process, scripted)
+	p.scriptContext = ctx
 	p.conn.isDebugserver = isDebugserver
+	if scripted {
+		defer func() {
+			if result != nil {
+				result = errors.Join(result, p.closeScriptSession())
+			}
+		}()
+	}
 
 	var grp *proc.TargetGroup
 	if listener != nil {
@@ -1081,13 +1175,28 @@ func (p *gdbProcess) getCtrlC(cctx *proc.ContinueOnceContext) bool {
 // if 'kill' is true it will also kill the process.
 // The _pid argument is unused as follow exec
 // mode is not implemented with this backend.
-func (p *gdbProcess) Detach(_pid int, kill bool) error {
+func (p *gdbProcess) Detach(_pid int, kill bool) (result error) {
+	if p.scripted {
+		defer func() { result = errors.Join(result, p.closeScriptSession()) }()
+		if p.conn.session != nil {
+			p.conn.session.beginTeardown()
+		}
+		if p.conn.conn != nil {
+			p.conn.conn.SetDeadline(time.Now().Add(scriptIOTimeout))
+		}
+	}
 	if kill && !p.exited {
 		err := p.conn.kill()
 		if err != nil {
 			if _, exited := err.(proc.ErrProcessExited); !exited {
 				return err
 			}
+			p.exited = true
+		}
+		if p.scripted {
+			// An interrupt can leave an extra stop reply before the kill's X
+			// reply. Never follow the kill with D: closing the -K helper retains
+			// tracing until target exit even when that first reply was a stop.
 			p.exited = true
 		}
 	}
@@ -1097,19 +1206,27 @@ func (p *gdbProcess) Detach(_pid int, kill bool) error {
 		}
 	}
 	if p.process != nil {
-		p.process.Kill()
-		<-p.waitChan
-		p.process = nil
+		if p.scripted {
+			p.closeScriptSession()
+		} else {
+			p.process.Kill()
+			<-p.waitChan
+			p.process = nil
+		}
 	}
 	p.detached = true
 	return nil
 }
 
 func (p *gdbProcess) Close() error {
+	var sessionErr error
+	if p.scripted {
+		sessionErr = p.closeScriptSession()
+	}
 	if p.onDetach != nil {
 		p.onDetach()
 	}
-	return p.bi.Close()
+	return errors.Join(sessionErr, p.bi.Close())
 }
 
 // Restart will restart the process from the given position.
