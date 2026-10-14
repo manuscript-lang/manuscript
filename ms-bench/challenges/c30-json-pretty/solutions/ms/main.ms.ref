@@ -27,7 +27,9 @@ fn is_hex(c: Int) -> Bool:
     return is_digit(c) or (c >= 97 and c <= 102) or (c >= 65 and c <= 70)
 
 fn word(p: Parser, w: String) -> Bool:
-    if p.text.slice(p.pos, p.pos + w.length()) != w:
+    if p.pos + w.length() > p.codes.length():
+        return false
+    if p.text.slice(p.pos, p.pos + w.length()).unwrap() != w:
         return false
     p.pos = p.pos + w.length()
     p.out.append(w)
@@ -44,7 +46,7 @@ fn parse_string(p: Parser) -> Bool:
             return false
         if c == 34:
             p.pos = p.pos + 1
-            p.out.append(p.text.slice(start, p.pos))
+            p.out.append(p.text.slice(start, p.pos).unwrap())
             return true
         if c == 92:
             p.pos = p.pos + 1
@@ -94,7 +96,7 @@ fn parse_number(p: Parser) -> Bool:
             p.pos = p.pos + 1
         if not digits(p):
             return false
-    p.out.append(p.text.slice(start, p.pos))
+    p.out.append(p.text.slice(start, p.pos).unwrap())
     return true
 
 fn indent(p: Parser, n: Int) -> Unit:

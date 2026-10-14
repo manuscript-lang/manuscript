@@ -1,0 +1,205 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+type fieldRange struct {
+	name   string
+	lo, hi int
+}
+
+var ranges = []fieldRange{{"minute", 0, 59}, {"hour", 0, 23}, {"day-of-month", 1, 31}, {"month", 1, 12}, {"day-of-week", 0, 6}}
+
+func daysFromCivil(y, m, d int) int {
+	if m <= 2 {
+		y--
+	}
+	era := y / 400
+	yoe := y - era*400
+	mp := m - 3
+	if m <= 2 {
+		mp = m + 9
+	}
+	doy := (153*mp+2)/5 + d - 1
+	doe := yoe*365 + yoe/4 - yoe/100 + doy
+	return era*146097 + doe - 719468
+}
+
+func civilFromDays(z int) (int, int, int) {
+	z += 719468
+	era := z / 146097
+	doe := z - era*146097
+	yoe := (doe - doe/1460 + doe/36524 - doe/146096) / 365
+	y := yoe + era*400
+	doy := doe - (365*yoe + yoe/4 - yoe/100)
+	mp := (5*doy + 2) / 153
+	d := doy - (153*mp+2)/5 + 1
+	m := mp + 3
+	if mp >= 10 {
+		m = mp - 9
+	}
+	if m <= 2 {
+		y++
+	}
+	return y, m, d
+}
+
+// digits parses s when it is lo..hi ASCII digits.
+func digits(s string, lo, hi int) (int, bool) {
+	if len(s) < lo || len(s) > hi {
+		return 0, false
+	}
+	n := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return 0, false
+		}
+		n = n*10 + int(s[i]-'0')
+	}
+	return n, true
+}
+
+func parseField(text string, lo, hi int) []bool {
+	set := make([]bool, hi+1)
+	for _, item := range strings.Split(text, ",") {
+		parts := strings.Split(item, "/")
+		if len(parts) > 2 {
+			return nil
+		}
+		body := parts[0]
+		step := 1
+		if len(parts) == 2 {
+			s, ok := digits(parts[1], 1, 2)
+			if !ok || s < 1 {
+				return nil
+			}
+			step = s
+		}
+		var a, b int
+		if body == "*" {
+			a, b = lo, hi
+		} else if v, ok := digits(body, 1, 2); ok {
+			if len(parts) == 2 {
+				return nil
+			}
+			a, b = v, v
+		} else {
+			r := strings.Split(body, "-")
+			if len(r) != 2 {
+				return nil
+			}
+			x, ok1 := digits(r[0], 1, 2)
+			y, ok2 := digits(r[1], 1, 2)
+			if !ok1 || !ok2 || x > y {
+				return nil
+			}
+			a, b = x, y
+		}
+		if a < lo || b > hi {
+			return nil
+		}
+		for v := a; v <= b; v += step {
+			set[v] = true
+		}
+	}
+	return set
+}
+
+func parseStart(s string) (int, int, bool) {
+	if len(s) != 16 || s[4] != '-' || s[7] != '-' || s[10] != 'T' || s[13] != ':' {
+		return 0, 0, false
+	}
+	y, ok1 := digits(s[0:4], 4, 4)
+	mo, ok2 := digits(s[5:7], 2, 2)
+	d, ok3 := digits(s[8:10], 2, 2)
+	h, ok4 := digits(s[11:13], 2, 2)
+	mi, ok5 := digits(s[14:16], 2, 2)
+	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || y < 1970 || y > 2099 || mo < 1 || mo > 12 || d < 1 || h > 23 || mi > 59 {
+		return 0, 0, false
+	}
+	lens := []int{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+	if (y%4 == 0 && y%100 != 0) || y%400 == 0 {
+		lens[1] = 29
+	}
+	if d > lens[mo-1] {
+		return 0, 0, false
+	}
+	return daysFromCivil(y, mo, d), h*60 + mi, true
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+	for n := 1; sc.Scan(); n++ {
+		l := sc.Text()
+		if strings.Trim(l, " ") == "" {
+			continue
+		}
+		pre := fmt.Sprintf("line %d:", n)
+		t := strings.Split(l, " ")
+		if len(t) != 7 {
+			fmt.Fprintln(w, pre, "error: bad line")
+			continue
+		}
+		startDay, startMin, ok := parseStart(t[0])
+		if !ok {
+			fmt.Fprintln(w, pre, "error: bad start")
+			continue
+		}
+		count, ok := digits(t[1], 1, 2)
+		if !ok || count < 1 || count > 20 {
+			fmt.Fprintln(w, pre, "error: bad count")
+			continue
+		}
+		sets := make([][]bool, 5)
+		bad := ""
+		for i := 0; i < 5; i++ {
+			sets[i] = parseField(t[2+i], ranges[i].lo, ranges[i].hi)
+			if sets[i] == nil {
+				bad = ranges[i].name
+				break
+			}
+		}
+		if bad != "" {
+			fmt.Fprintln(w, pre, "error: bad "+bad)
+			continue
+		}
+		var runs []string
+	search:
+		for k := 0; k <= 3000; k++ {
+			day := startDay + k
+			y, m, d := civilFromDays(day)
+			if !sets[3][m] || !sets[2][d] || !sets[4][(day+4)%7] {
+				continue
+			}
+			for h := 0; h < 24; h++ {
+				if !sets[1][h] {
+					continue
+				}
+				for mn := 0; mn < 60; mn++ {
+					if !sets[0][mn] || (k == 0 && h*60+mn <= startMin) {
+						continue
+					}
+					runs = append(runs, fmt.Sprintf("%04d-%02d-%02d %02d:%02d", y, m, d, h, mn))
+					if len(runs) == count {
+						break search
+					}
+				}
+			}
+		}
+		if len(runs) == 0 {
+			fmt.Fprintln(w, pre, "never")
+			continue
+		}
+		fmt.Fprintf(w, "%s %d runs\n", pre, len(runs))
+		for _, r := range runs {
+			fmt.Fprintln(w, r)
+		}
+	}
+}

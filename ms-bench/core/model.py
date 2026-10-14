@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REPO = ROOT.parent
+# Documentation for the Manuscript context bundle comes from here; override to pin a different checkout.
+REPO = Path(os.environ.get("MSBENCH_REPO", ROOT.parent))
 
 
 @dataclass
