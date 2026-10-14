@@ -98,6 +98,12 @@ representation and callable ABI:
   profiling, and cancellation. Test functions with and without cleanup across
   return, fault, cancellation, match exits, and nested closures, and measure the
   call benchmark with the same ABI before and after.
+- A `try` nested in a statement's value (`a + try f()`, `g(try f())`) is evaluated
+  ahead of the statement with an early Go return, like a whole-statement `try`,
+  when everything the statement evaluates before it is a literal, a name or an
+  earlier `try` (`hoistTries`). Otherwise (short-circuit operands, earlier calls,
+  closures, `match`) it keeps the panic form. Test failure order with side
+  effects before and after each `try`.
 
 Run `toolchain/go/bin/go run ./scripts/bench-lowering -production -count=5`
 to retain and measure the actual generated code. It covers an empty callable, a

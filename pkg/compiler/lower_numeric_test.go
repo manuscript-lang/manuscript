@@ -116,12 +116,14 @@ fn bound(n: Int) -> Result[Int, String]:
     return ok(v + 1)
 fn nested(n: Int) -> Result[Int, String]:
     return ok((try parse(n: n)) + 1)
+fn guarded(n: Int) -> Result[Bool, String]:
+    return ok(n > 0 and (try parse(n: n)) > 0)
 `, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
 	if strings.Count(result.Source, "rt.Try(") != 1 {
-		t.Fatalf("only the nested try keeps the panic form:\n%s", result.Source)
+		t.Fatalf("only the try under a short-circuit keeps the panic form:\n%s", result.Source)
 	}
 }
 

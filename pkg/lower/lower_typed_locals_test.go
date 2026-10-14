@@ -143,3 +143,34 @@ fn f() -> Int:
 		t.Errorf("standard function rebuilt per call\n%s", r.Source)
 	}
 }
+
+func TestNestedTryReturnsInsteadOfPanicking(t *testing.T) {
+	const prelude = `fn step(n: Int) -> Result[Int, String]:
+    if n < 0:
+        return error(cause: "bad")
+    return ok(value: n)
+
+fn id(x: Int) -> Int:
+    return x
+
+`
+	for name, tc := range map[string]struct {
+		body    string
+		hoisted bool
+	}{
+		"operands":   {"    let v = (try step(n: a)) + (try step(n: a + 1))\n    return ok(value: v)\n", true},
+		"argument":   {"    return ok(value: id(x: try step(n: a)))\n", true},
+		"after call": {"    let w = id(x: a)\n    let v = w + try step(n: a)\n    return ok(value: v)\n", true},
+		// id runs before the try in source order and would run after it.
+		"effect first":  {"    return ok(value: id(x: a) + (try step(n: a)))\n", false},
+		"short circuit": {"    let v = a > 0 and (try step(n: a)) > 0\n    return ok(value: a)\n", false},
+	} {
+		r := compileSource("try.ms", prelude+"fn run(a: Int) -> Result[Int, String]:\n"+tc.body)
+		if !r.Success() {
+			t.Fatalf("%s: %v", name, r.Diagnostics)
+		}
+		if panics := strings.Contains(r.Source, "rt.Try("); panics == tc.hoisted {
+			t.Errorf("%s: rt.Try present=%v, want %v\n%s", name, panics, !tc.hoisted, r.Source)
+		}
+	}
+}
