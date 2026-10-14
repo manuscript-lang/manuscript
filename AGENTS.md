@@ -17,7 +17,7 @@ Manuscript is a statically typed language implemented in Go. Source `.ms` files 
 | --- | --- |
 | Syntax, types, calls, imports, interfaces, language semantics | [language-design](skills/language-design/SKILL.md) |
 | Syntax nodes, lexer/parser, checking, lowering, module resolution, build pins/cache, native toolchain | [compiler](skills/compiler/SKILL.md) |
-| Execution, resources, cancellation, cleanup, concurrency, native dispatch, standard declarations, bindings, API parity | [runtime](skills/runtime/SKILL.md) |
+| Execution, resources, cancellation, cleanup, concurrency, native dispatch, standard declarations, bindings, API design | [runtime](skills/runtime/SKILL.md) |
 | Formatter, lint, inspection, LSP, VS Code, CLI, debugger | [tooling](skills/tooling/SKILL.md) |
 | Tutorials, exact rules, generated API reference, Hugo book/publication | [documentation](skills/documentation/SKILL.md) |
 | Package organization, dependency policy, pins, CI, releases, repository cleanup | [repository-maintenance](skills/repository-maintenance/SKILL.md) |
