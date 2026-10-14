@@ -50,6 +50,19 @@ func duplicateIO(original *os.File) (*os.File, func() error, error) {
 	return os.NewFile(uintptr(handle), original.Name()), func() error { return nil }, nil
 }
 
+func boundedFileWrite(file *os.File) bool {
+	raw, err := file.SyscallConn()
+	if err != nil {
+		return false
+	}
+	var kind uint32
+	var typeErr error
+	err = raw.Control(func(fd uintptr) { kind, typeErr = windows.GetFileType(windows.Handle(fd)) })
+	// Pipe I/O is interrupted by the owned handle close and, for synchronous
+	// inherited handles, the joined worker's CancelSynchronousIo loop.
+	return err == nil && typeErr == nil && kind == windows.FILE_TYPE_PIPE
+}
+
 func replaceConsoleStdio(input, output, errorOutput *os.File) (func() error, error) {
 	streams := []struct {
 		file     *os.File

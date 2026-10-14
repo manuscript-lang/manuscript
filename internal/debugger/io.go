@@ -1,12 +1,59 @@
 package debugger
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
+
+const diagnosticWriteBudget = 100 * time.Millisecond
+
+// reportBounded attempts a diagnostic only through known immediate writers or
+// interruptible output. Never leave a reporting goroutine behind on timeout.
+func reportBounded(ctx context.Context, out io.Writer, callerCanInterrupt bool, interrupt func(), write func() error) error {
+	if ctx.Err() != nil {
+		return nil
+	}
+	switch writer := out.(type) {
+	case *os.File:
+		if !boundedFileWrite(writer) {
+			return nil
+		}
+	case *bytes.Buffer, *strings.Builder:
+	default:
+		if out != io.Discard && !callerCanInterrupt {
+			return nil
+		}
+	}
+	ctx, cancel := context.WithTimeout(ctx, diagnosticWriteBudget)
+	defer cancel()
+	_, err := runCancelable(ctx, interrupt, func() (int, error) { return 1, write() })
+	return err
+}
+
+// ReportError makes a best-effort CLI diagnostic after session cleanup. It
+// preserves borrowed stderr and skips transports whose write cannot be bounded.
+// In particular stdout and stderr may share an unread pipe after a script error.
+func ReportError(ctx context.Context, out *os.File, cause error) (err error) {
+	if cause == nil || ctx.Err() != nil {
+		return nil
+	}
+	opts, restore, err := ownScriptIO(Options{Out: out})
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, restore()) }()
+	return reportBounded(ctx, opts.Out, false, opts.CancelIO, func() error {
+		_, err := fmt.Fprintln(opts.Out, cause)
+		return err
+	})
+}
 
 // runCancelable joins both the session and its I/O interrupter. On Windows,
 // cancellation must stay armed until the worker ends: CancelSynchronousIo only

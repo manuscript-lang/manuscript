@@ -50,13 +50,21 @@ func duplicateIO(original *os.File) (*os.File, func() error, error) {
 	// call Fd; Go preserves a preexisting flag, keeping concurrent Close useful.
 	file := os.NewFile(uintptr(fd), original.Name())
 	info, err := file.Stat()
-	if err == nil && !info.Mode().IsRegular() && original.Name() != os.DevNull {
-		err = file.SetDeadline(time.Time{})
+	if err == nil && !info.Mode().IsRegular() {
+		var nullInfo os.FileInfo
+		nullInfo, err = os.Stat(os.DevNull)
+		if err == nil && !os.SameFile(info, nullInfo) {
+			err = file.SetDeadline(time.Time{})
+		}
 	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("prepare cancellable %s: %w", original.Name(), errors.Join(err, file.Close(), undo()))
 	}
 	return file, undo, nil
+}
+
+func boundedFileWrite(file *os.File) bool {
+	return file.SetWriteDeadline(time.Time{}) == nil
 }
 
 func replaceConsoleStdio(_, _, _ *os.File) (func() error, error) {

@@ -182,7 +182,7 @@ func runDebugScript(ctx context.Context, inv *invocation, result compiler.Result
 	}
 	status, err := debugger.Script(ctx, executable, opts)
 	if err != nil && ctx.Err() == nil {
-		fmt.Fprintln(os.Stderr, err)
+		_ = debugger.ReportError(ctx, os.Stderr, err)
 	}
 	return status
 }

@@ -78,9 +78,48 @@ func TestScriptReportsInputErrors(t *testing.T) {
 		var out bytes.Buffer
 		s := session{opts: Options{Out: &out, JSON: true}}
 		s.script(input)
-		if s.ioErr == nil || !s.failed || !strings.Contains(out.String(), `"event":"error"`) {
-			t.Fatalf("input error hidden: %v, %s", s.ioErr, &out)
+		if s.ioErr == nil || !s.failed || out.Len() != 0 || s.ready() {
+			t.Fatalf("input failure not latched before cleanup: %v, %s", s.ioErr, &out)
 		}
+		if err := reportBounded(context.Background(), &out, false, func() {}, func() error {
+			return writeEvent(&out, true, Event{Event: "error", Message: s.inputErr.Error()})
+		}); err != nil || !strings.Contains(out.String(), `"event":"error"`) {
+			t.Fatalf("healthy output lost the input diagnostic: %v, %s", err, &out)
+		}
+	}
+}
+
+type unexpectedReportWriter struct{ called bool }
+
+func (w *unexpectedReportWriter) Write([]byte) (int, error) {
+	w.called = true
+	return 0, errors.New("writer has no interruption contract")
+}
+
+func TestInputDiagnosticSkipsUninterruptibleWriters(t *testing.T) {
+	out := &unexpectedReportWriter{}
+	opts, restore, err := ownScriptIO(Options{Out: out})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restore()
+	if opts.CancelIO == nil {
+		t.Fatal("test must exercise the automatic ownership hook")
+	}
+	if err := reportBounded(context.Background(), opts.Out, false, opts.CancelIO, func() error {
+		return writeEvent(opts.Out, true, Event{Event: "error", Message: "failed input"})
+	}); err != nil || out.called {
+		t.Fatalf("uninterruptible writer used: %v, called %v", err, out.called)
+	}
+}
+
+func TestInputFailureCannotReplaceOutputFailure(t *testing.T) {
+	cause := io.ErrClosedPipe
+	out := &unexpectedReportWriter{}
+	s := session{opts: Options{Out: out}, ioErr: cause}
+	s.script(readerError{io.ErrUnexpectedEOF})
+	if s.ioErr != cause || s.inputErr != nil || out.called {
+		t.Fatalf("output failure latch replaced: %v, input %v, wrote %v", s.ioErr, s.inputErr, out.called)
 	}
 }
 

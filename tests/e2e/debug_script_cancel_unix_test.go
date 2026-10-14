@@ -128,3 +128,42 @@ func TestDebugScriptInterruptsBlockedTargetOutput(t *testing.T) {
 		t.Fatal("debug remained blocked on stderr after interrupt")
 	}
 }
+
+func TestDebugScriptFatalInputWithFullSharedOutput(t *testing.T) {
+	root := t.TempDir()
+	source, commands := filepath.Join(root, "main.ms"), filepath.Join(root, "commands.txt")
+	if err := os.WriteFile(source, []byte("export fn main() -> Int:\n    return 0\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(commands, []byte(strings.Repeat("x", 1024*1024+1)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	status, events, stderr := cliStreams(t, "debug", source, "--json", "--script", commands)
+	if status != 1 || !bytes.Contains(events, []byte("bufio.Scanner: token too long")) || !strings.Contains(stderr, "read debug commands") {
+		t.Fatalf("healthy output lost the input failure: %d\n%s\n%s", status, events, stderr)
+	}
+	reader, sharedOutput, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	defer sharedOutput.Close()
+	if err := sharedOutput.SetWriteDeadline(time.Now().Add(10 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := sharedOutput.Write(make([]byte, 1024*1024)); n == 0 || !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Fatalf("shared stdout/stderr did not fill: %d, %v", n, err)
+	}
+	if err := sharedOutput.SetWriteDeadline(time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, cliBinary, "debug", source, "--json", "--script", commands)
+	command.Stdout, command.Stderr = sharedOutput, sharedOutput
+	err = command.Run()
+	var exit *exec.ExitError
+	if ctx.Err() != nil || !errors.As(err, &exit) || exit.ExitCode() != 1 {
+		t.Fatalf("fatal input blocked on shared stdout/stderr: %v, ctx %v", err, ctx.Err())
+	}
+}

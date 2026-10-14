@@ -47,7 +47,7 @@ func TestNativeDebugLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	modes := []string{"one-shot-invalid", "script-eof", "script-read-error", "script-output-error", "script-cancel-input", "script-cancel-output", "continue-cancel", "terminal-cancel", "terminal-embedded-prompt-cancel", "terminal-cancel-stderr", "terminal-eof"}
+	modes := []string{"one-shot-invalid", "script-eof", "script-read-error", "script-output-error", "script-full-output-read-error", "script-full-output-oversized", "script-null-input", "script-null-stdio", "terminal-null-stdio", "script-cancel-input", "script-cancel-output", "continue-cancel", "terminal-cancel", "terminal-embedded-prompt-cancel", "terminal-cancel-stderr", "terminal-eof"}
 	if runtime.GOOS == "windows" {
 		modes = append(modes, "terminal-console-cancel")
 	}
@@ -58,6 +58,23 @@ func TestNativeDebugLifecycle(t *testing.T) {
 			defer cancel()
 			cmd := exec.CommandContext(ctx, self, "-test.run=^TestNativeDebugLifecycleChild$", "-test.timeout=18s")
 			cmd.Env = append(os.Environ(), "XDG_CONFIG_HOME="+filepath.Join(root, "config"), "MANUSCRIPT_DEBUG_CHILD="+mode, "MANUSCRIPT_DEBUG_TARGET="+target, "MANUSCRIPT_DEBUG_SOURCE="+source, "MANUSCRIPT_DEBUG_PID="+pidFile, "MANUSCRIPT_DEBUG_CANCEL="+cancelFile)
+			if strings.Contains(mode, "null-") {
+				null, err := os.OpenFile(os.DevNull, os.O_RDWR, 0)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer null.Close()
+				cmd.Stdin, cmd.Stdout, cmd.Stderr = null, null, null
+				if err := cmd.Run(); err != nil {
+					t.Fatalf("native redirected null streams: %v", err)
+				}
+				if mode == "script-null-stdio" {
+					assertTargetExited(t, pidFile)
+				} else if fileExists(pidFile) {
+					t.Fatal("EOF from null input unexpectedly ran the target")
+				}
+				return
+			}
 			input, err := cmd.StdinPipe()
 			if err != nil {
 				t.Fatal(err)
@@ -130,7 +147,7 @@ func TestNativeDebugLifecycle(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if mode != "script-cancel-output" {
+			if !unreadSessionOutput(mode) {
 				_, _ = io.Copy(&captured, reader)
 			}
 			if err := cmd.Wait(); err != nil {
@@ -145,6 +162,10 @@ func TestNativeDebugLifecycle(t *testing.T) {
 			assertTargetExited(t, pidFile)
 		})
 	}
+}
+
+func unreadSessionOutput(mode string) bool {
+	return mode == "script-cancel-output" || strings.HasPrefix(mode, "script-full-output-")
 }
 
 func assertTargetExited(t *testing.T, pidFile string) {
@@ -204,6 +225,51 @@ func (stopErrorWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+type inputDiagnosticWriter struct {
+	output  *os.File
+	pidFile string
+}
+
+func (w inputDiagnosticWriter) Write(p []byte) (int, error) {
+	if !bytes.Contains(p, []byte(`"event":"error"`)) {
+		return len(p), nil
+	}
+	pid, err := os.ReadFile(w.pidFile)
+	if err != nil {
+		return 0, err
+	}
+	n, err := strconv.Atoi(string(pid))
+	if err != nil || processAlive(n) {
+		return 0, errors.New("input diagnostic started before target cleanup")
+	}
+	return w.output.Write(p)
+}
+
+func fullDiagnosticOutput(t *testing.T, pidFile string) (io.Writer, func(), func() error) {
+	t.Helper()
+	prime, restorePrime, err := duplicateIO(os.Stdout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	_, err = runCancelable(ctx, func() { _ = prime.Close() }, func() (int, error) {
+		_, err := prime.Write(make([]byte, 512*1024))
+		return 1, err
+	})
+	cancel()
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("output pipe did not fill: %v", err)
+	}
+	if err := restorePrime(); err != nil {
+		t.Fatal(err)
+	}
+	output, restore, err := duplicateIO(os.Stdout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return inputDiagnosticWriter{output: output, pidFile: pidFile}, func() { _ = output.Close() }, restore
+}
+
 func TestNativeDebugLifecycleChild(t *testing.T) {
 	mode := os.Getenv("MANUSCRIPT_DEBUG_CHILD")
 	if mode == "" {
@@ -232,6 +298,7 @@ func TestNativeDebugLifecycleChild(t *testing.T) {
 	}()
 	var status int
 	var err error
+	cleanupCalls := 0
 	if strings.HasPrefix(mode, "terminal-") {
 		if mode == "terminal-embedded-prompt-cancel" {
 			restore, err := embeddedTerminalIO("break " + source + ":4\ncontinue\nprint \"LIFECYCLE_READY\"\n")
@@ -269,6 +336,23 @@ func TestNativeDebugLifecycleChild(t *testing.T) {
 			opts.Script = strings.NewReader("continue\n")
 		case "script-read-error":
 			opts.Script = io.MultiReader(opts.Script, readerError{io.ErrUnexpectedEOF})
+		case "script-full-output-read-error", "script-full-output-oversized":
+			var restore func() error
+			opts.Out, opts.CancelIO, restore = fullDiagnosticOutput(t, pidFile)
+			closeOutput := opts.CancelIO
+			opts.CancelIO = func() { cleanupCalls++; closeOutput() }
+			defer func() {
+				if err := restore(); err != nil {
+					t.Error(err)
+				}
+			}()
+			if mode == "script-full-output-read-error" {
+				opts.Script = io.MultiReader(opts.Script, readerError{io.ErrUnexpectedEOF})
+			} else {
+				opts.Script = io.MultiReader(opts.Script, strings.NewReader(strings.Repeat("x", 1024*1024+1)))
+			}
+		case "script-null-input":
+			opts.Script = os.Stdin
 		case "script-output-error":
 			opts.Out = stopErrorWriter{}
 		}
@@ -281,17 +365,37 @@ func TestNativeDebugLifecycleChild(t *testing.T) {
 		wantStatus, wantErr = 1, context.Canceled
 	case mode == "script-read-error":
 		wantStatus, wantErr = 1, io.ErrUnexpectedEOF
+	case mode == "script-full-output-read-error":
+		wantStatus, wantErr = 1, io.ErrUnexpectedEOF
+	case mode == "script-full-output-oversized":
+		wantStatus, wantErr = 1, bufio.ErrTooLong
 	case mode == "script-output-error":
 		wantStatus, wantErr = 1, io.ErrClosedPipe
 	case mode == "one-shot-invalid":
 		wantStatus = 1
 	}
 	if status != wantStatus || (wantErr == nil && err != nil) || (wantErr != nil && !errors.Is(err, wantErr)) {
-		if mode == "script-cancel-output" {
+		if unreadSessionOutput(mode) {
 			fmt.Fprintf(os.Stderr, "session result %d, %v; want %d, %v\n", status, err, wantStatus, wantErr)
 			os.Exit(1)
 		}
 		t.Fatalf("session result %d, %v; want %d, %v", status, err, wantStatus, wantErr)
+	}
+	if strings.HasPrefix(mode, "script-full-output-") {
+		if ctx.Err() != nil || !errors.Is(err, context.DeadlineExceeded) || cleanupCalls != 1 {
+			fmt.Fprintf(os.Stderr, "fatal input did not return with its own diagnostic budget: ctx %v, err %v, cleanup %d\n", ctx.Err(), err, cleanupCalls)
+			os.Exit(1)
+		}
+	}
+	if strings.Contains(mode, "null-") {
+		for _, file := range []*os.File{os.Stdin, os.Stdout, os.Stderr} {
+			if _, err := file.Write([]byte("borrowed handle still open")); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := file.Read(make([]byte, 1)); !errors.Is(err, io.EOF) {
+				t.Fatalf("borrowed null handle no longer reads EOF: %v", err)
+			}
+		}
 	}
 	if strings.HasPrefix(mode, "terminal-") {
 		path, err := config.GetConfigFilePath(".dbg_history")
@@ -309,7 +413,7 @@ func TestNativeDebugLifecycleChild(t *testing.T) {
 			}
 		}
 	}
-	if mode == "script-cancel-output" {
+	if unreadSessionOutput(mode) {
 		// The parent deliberately leaves stdout unread. Avoid the test runner's
 		// PASS record blocking after the session and its cleanup have returned.
 		cancel()

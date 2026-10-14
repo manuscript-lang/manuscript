@@ -125,9 +125,21 @@ func Script(ctx context.Context, executable string, opts Options) (status int, e
 		return 1, err
 	}
 	restoreIO := func() error { return nil }
+	var s *session
+	var interrupt func()
+	callerCanInterruptOutput := opts.CancelIO != nil
 	defer func() {
 		stopErr := server.Stop()
-		if closeErr := errors.Join(stopErr, restoreIO()); closeErr != nil {
+		var reportErr error
+		if s != nil && s.inputErr != nil {
+			// Reporting cannot delay target cleanup. Only a transport whose
+			// write can be interrupted gets a best-effort error event.
+			reportErr = reportBounded(ctx, s.opts.Out, callerCanInterruptOutput, interrupt, func() error {
+				return writeEvent(s.opts.Out, s.opts.JSON, Event{Event: "error", Message: s.inputErr.Error()})
+			})
+			interrupt()
+		}
+		if closeErr := errors.Join(stopErr, reportErr, restoreIO()); closeErr != nil {
 			status, err = 1, errors.Join(err, closeErr)
 		}
 	}()
@@ -137,10 +149,10 @@ func Script(ctx context.Context, executable string, opts Options) (status int, e
 	if err != nil {
 		return 1, err
 	}
-	s := &session{client: rpc2.NewClientFromConn(conn), opts: opts, names: opts.Names, ctx: ctx}
+	s = &session{client: rpc2.NewClientFromConn(conn), opts: opts, names: opts.Names, ctx: ctx}
 	defer s.client.Disconnect(false)
 	var cancelIO sync.Once
-	interrupt := func() {
+	interrupt = func() {
 		_ = s.client.Disconnect(false)
 		if opts.CancelIO != nil {
 			cancelIO.Do(opts.CancelIO)
@@ -153,7 +165,7 @@ func Script(ctx context.Context, executable string, opts Options) (status int, e
 			s.script(opts.Script)
 		}
 		if s.failed || s.ioErr != nil {
-			if s.ioErr != nil {
+			if s.ioErr != nil && s.inputErr == nil {
 				interrupt()
 			}
 			return 1, s.ioErr
@@ -170,13 +182,14 @@ func redirectToStderr() proc.OutputRedirect {
 }
 
 type session struct {
-	client service.Client
-	opts   Options
-	names  Names
-	exited bool
-	failed bool
-	ctx    context.Context
-	ioErr  error
+	client   service.Client
+	opts     Options
+	names    Names
+	exited   bool
+	failed   bool
+	ctx      context.Context
+	ioErr    error
+	inputErr error
 }
 
 func (s *session) oneShot() {
@@ -192,6 +205,9 @@ func (s *session) oneShot() {
 }
 
 func (s *session) script(input io.Reader) {
+	if !s.ready() {
+		return
+	}
 	lines := bufio.NewScanner(input)
 	lines.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for lines.Scan() {
@@ -210,8 +226,9 @@ func (s *session) script(input io.Reader) {
 		}
 	}
 	if err := lines.Err(); err != nil {
-		s.fail("read debug commands: " + err.Error())
-		s.ioErr = errors.Join(s.ioErr, fmt.Errorf("read debug commands: %w", err))
+		s.failed = true
+		s.inputErr = fmt.Errorf("read debug commands: %w", err)
+		s.ioErr = s.inputErr
 	}
 }
 
@@ -516,25 +533,29 @@ func (s *session) emit(e Event) {
 	if !s.ready() {
 		return
 	}
+	s.ioErr = writeEvent(s.opts.Out, s.opts.JSON, e)
+}
+
+func writeEvent(out io.Writer, structured bool, e Event) error {
 	var data []byte
-	if s.opts.JSON {
+	if structured {
 		var err error
 		data, err = json.Marshal(e)
 		if err != nil {
-			s.ioErr = fmt.Errorf("encode debug event: %w", err)
-			return
+			return fmt.Errorf("encode debug event: %w", err)
 		}
 		data = append(data, '\n')
 	} else {
 		data = []byte(e.text())
 	}
-	n, err := s.opts.Out.Write(data)
+	n, err := out.Write(data)
 	if err == nil && n != len(data) {
 		err = io.ErrShortWrite
 	}
 	if err != nil {
-		s.ioErr = fmt.Errorf("write debug event: %w", err)
+		return fmt.Errorf("write debug event: %w", err)
 	}
+	return nil
 }
 
 func (e Event) text() string {
