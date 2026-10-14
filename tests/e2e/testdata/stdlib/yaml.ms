@@ -1,4 +1,10 @@
-import {parse, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
+import {
+    parse,
+    stringify,
+    YamlValue,
+    YamlError,
+    YamlLimits
+} from "@std/yaml.ms"
 import {List, Map} from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
@@ -22,31 +28,260 @@ fn limits(
     values: Optional[Int]
 ) -> Optional[YamlLimits]:
     return some(
-        value: YamlLimits(
+        YamlLimits(
             max_bytes: bytes,
             max_depth: depth,
             max_values: values
         )
     )
 
+type ScalarCase:
+    text: String
+    expected: String
+
+fn scalar(text: String, expected: String) -> Unit:
+    let root = entries(
+        value(parse(text: text))
+    )
+    if root.get("a").unwrap() != YamlValue.StringValue(expected): return panic(
+        "scalar folding: {text}"
+    )
+
+test "YAML issue 133 folded paragraph":
+    scalar(text: "a: >\n  x\n  y\n\n  z\n", expected: "x y\nz\n")
+
+test "YAML issue 133 folded multiple blank lines":
+    scalar(text: "a: >\n  x\n\n\n  z\n", expected: "x\n\nz\n")
+
+test "YAML issue 133 single quoted paragraph":
+    scalar(text: "a: 'x\n\n  y'", expected: "x\ny")
+
+test "YAML issue 133 double quoted paragraphs":
+    scalar(text: "a: \"x\n\n\n  y\"", expected: "x\n\ny")
+
+test "YAML issue 133 plain paragraph before sibling":
+    scalar(text: "a: x\n\n  y\nb: 1", expected: "x\ny")
+
+test "YAML quoted folding trims physical whitespace and preserves escapes":
+    let cases = [
+        ScalarCase(text: "a: 'x \t\n \t\n  y'", expected: "x\ny"),
+        ScalarCase(text: "a: \"x \t\n \t\n\n  y\"", expected: "x\n\ny"),
+        ScalarCase(text: "a: ' x  \n  y '", expected: " x y "),
+        ScalarCase(text: "a: \"x\\t\n  y\"", expected: "x\t y"),
+        ScalarCase(text: "a: \"x\\ \n  y\"", expected: "x  y"),
+        ScalarCase(text: "a: \"x \\\n  y\"", expected: "x y"),
+        ScalarCase(text: "a: \"x \\\n \t\n\n  y\"", expected: "x \n\ny"),
+        ScalarCase(
+            text: "a: 'x\n\n  # hash: text\n\n  it''s y' # outside",
+            expected: "x\n# hash: text\nit's y"
+        ),
+        ScalarCase(
+            text: "a: \"x\n\n  \\\"y\\\"\" # outside",
+            expected: "x\n\"y\""
+        )
+    ]
+
+    for example in cases:
+        for ending in ["\n", "\r\n", "\r"]:
+            scalar(
+                text: (
+                    example
+                    .text
+                    .replace(
+                        old: "\n",
+                        new: ending,
+                        max_replacements: (
+                            example
+                            .text
+                            .byte_length()
+                        )
+                    )
+                ),
+                expected: example.expected
+            )
+
+    if value(parse(text: "'x\n\n  y'")) != YamlValue.StringValue("x\ny"):
+        return panic("root quoted paragraph")
+
+    let flow = items(
+        value(parse(text: "['x\n\n  y', \"z\\\n\n  w\"]"))
+    )
+    if flow != [YamlValue.StringValue("x\ny"), YamlValue.StringValue("z\nw")]:
+        return panic("quoted folding inside flow collection")
+
+test "YAML folded and literal blocks respect paragraphs indentation and chomping":
+    let cases = [
+        ScalarCase(text: "a: >-\n  x\n \n  y\n\n", expected: "x\ny"),
+        ScalarCase(text: "a: >\n  x\n\n  y\n\n\n", expected: "x\ny\n"),
+        ScalarCase(text: "a: >+\n  x\n\n  y\n\n\n", expected: "x\ny\n\n\n"),
+        ScalarCase(text: "a: >2-\n  x\n\n\n  y\n", expected: "x\n\ny"),
+        ScalarCase(
+            text: "a: >\n  x\n\n    y\n\n  z\n",
+            expected: "x\n\n  y\n\nz\n"
+        ),
+        ScalarCase(text: "a: >2-\n  x\n   \n  y\n", expected: "x\n \ny"),
+        ScalarCase(
+            text: "a: >2-\n  x\n\n  \ty\n\n  z\n",
+            expected: "x\n\n\ty\n\nz"
+        ),
+        ScalarCase(text: "a: >-\n\n  x\n\n  y\n", expected: "\nx\ny"),
+        ScalarCase(text: "a: |\n  x\n\n  y\n", expected: "x\n\ny\n"),
+        ScalarCase(text: "a: |+\n  x\n\n", expected: "x\n\n"),
+        ScalarCase(text: "a: >\n  x", expected: "x"),
+        ScalarCase(text: "a: |\n  x", expected: "x"),
+        ScalarCase(text: "a: >+\n  x\n\n  y", expected: "x\ny"),
+        ScalarCase(text: "a: >\n\n", expected: ""),
+        ScalarCase(text: "a: >+\n\n", expected: "\n"),
+        ScalarCase(text: "a: |-\n\n", expected: ""),
+        ScalarCase(text: "a: >\n   \n", expected: ""),
+        ScalarCase(text: "a: >+\n   \n", expected: "\n"),
+        ScalarCase(text: "a: >2+\n   \n", expected: " \n"),
+        ScalarCase(text: "a: >\n \t\n", expected: "\t\n")
+    ]
+
+    for example in cases:
+        for ending in ["\n", "\r\n", "\r"]:
+            scalar(
+                text: (
+                    example
+                    .text
+                    .replace(
+                        old: "\n",
+                        new: ending,
+                        max_replacements: (
+                            example
+                            .text
+                            .byte_length()
+                        )
+                    )
+                ),
+                expected: example.expected
+            )
+
+test "YAML plain paragraphs retain boundaries and nested collections":
+    for ending in ["\n", "\r\n", "\r"]:
+        let text = "a: x  \n \t\n\n  y \t\n  z\n\nb: 1\n"
+        let root = entries(
+            value(
+                parse(
+                    text: text.replace(
+                        old: "\n",
+                        new: ending,
+                        max_replacements: text.byte_length()
+                    )
+                )
+            )
+        )
+        if root.get("a").unwrap() != YamlValue.StringValue("x\n\ny z"):
+            return panic("plain whitespace paragraphs")
+        if root.get("b").unwrap() != YamlValue.NumberValue("1"):
+            return panic("plain folding consumed sibling")
+
+    let root = entries(
+        value(parse(text: "a:\n  - x\n\n    y\n  - z\nb: 1\n"))
+    )
+    if (
+        items(root.get("a").unwrap()) != [
+            YamlValue.StringValue("x\ny"),
+            YamlValue.StringValue("z")
+        ]
+    ):
+        return panic("sequence plain paragraph")
+
+    scalar(text: "a: x\n\n# comment\nb: 1\n", expected: "x")
+    scalar(text: "a: x\n\n", expected: "x")
+
+test "YAML blank line folding retains byte node and malformed input contracts":
+    let text = "a: \"é\r\n\r\n  y\"\r\n"
+    let expected = value(parse(text: text))
+    if (
+        value(
+            parse(
+                text: text,
+                limits: limits(
+                    bytes: text.byte_length(),
+                    depth: 2,
+                    values: 2
+                )
+            )
+        ) != expected
+    ):
+        return panic("exact original byte and node budgets")
+
+    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
+    if (
+        parse(
+            text: text,
+            limits: limits(
+                bytes: text.byte_length() - 1,
+                depth: none,
+                values: none
+            )
+        ) != limited
+    ):
+        return panic("byte budget precedes line ending normalization")
+    if (
+        parse(
+            text: text,
+            limits: limits(bytes: none, depth: none, values: 1)
+        ) != limited
+    ):
+        return panic("folding does not alter value counting")
+
+    for text in [
+        "a: 'x\n\n  y",
+        "a: \"x\n\n  y",
+        "a: \"x\\\n\n  y\\q\"",
+        "a: x\n\n  b: y",
+        "a: x\n\n  - y",
+        "a: x\n\n \ty",
+        "a: x\n # comment\n  y",
+        "a: >--\n\n  x",
+        "a: >\n  x\n \t\n  y",
+        "a: >2\n  x\n y"
+    ]:
+        let cause = match parse(text: text):
+            ok(_): return panic("malformed multiline scalar accepted: {text}")
+            error(cause): cause
+
+        match cause:
+            InvalidData(line, column, reason):
+                if (
+                    line < 1
+                    or column < 1
+                    or reason == ""
+                ): return panic("multiline diagnostic")
+            _: return panic("wrong multiline error")
+
+    let cause = match parse(text: "a: x\n\n  b: y"):
+        error(cause): cause
+        ok(_): return panic("indented mapping accepted as plain continuation")
+
+    match cause:
+        InvalidData(line, column, _):
+            if line != 3 or column != 1: return panic(
+                "continuation error position"
+            )
+        _: return panic("wrong continuation error")
+
 test "YAML block mappings sequences exact scalars and core schema":
     let text = "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
     let root = entries(
         value(parse(text: text))
     )
-    if root.get("name").unwrap() != YamlValue.StringValue(value: "é🙂"): return panic(
+    if root.get("name").unwrap() != YamlValue.StringValue("é🙂"): return panic(
         "YAML Unicode"
     )
-    if root.get("large").unwrap() != YamlValue.NumberValue(text: "9007199254740993"): return panic(
+    if root.get("large").unwrap() != YamlValue.NumberValue("9007199254740993"): return panic(
         "YAML precision"
     )
-    if root.get("boolean").unwrap() != YamlValue.BoolValue(value: true): return panic(
+    if root.get("boolean").unwrap() != YamlValue.BoolValue(true): return panic(
         "core boolean"
     )
-    if root.get("legacy").unwrap() != YamlValue.StringValue(value: "yes"): return panic(
+    if root.get("legacy").unwrap() != YamlValue.StringValue("yes"): return panic(
         "YAML 1.2 yes"
     )
-    if root.get("date").unwrap() != YamlValue.StringValue(value: "2024-02-29"): return panic(
+    if root.get("date").unwrap() != YamlValue.StringValue("2024-02-29"): return panic(
         "core date"
     )
     if root.get("empty").unwrap() != YamlValue.Null: return panic("empty scalar")
@@ -55,8 +290,8 @@ test "YAML block mappings sequences exact scalars and core schema":
             root.get("values").unwrap()
         ) != [
             YamlValue.Null,
-            YamlValue.BoolValue(value: false),
-            YamlValue.NumberValue(text: "0xFF")
+            YamlValue.BoolValue(false),
+            YamlValue.NumberValue("0xFF")
         ]
     ): return panic("indentless sequence")
 
@@ -65,12 +300,12 @@ test "YAML block mappings sequences exact scalars and core schema":
         people.length() != 2
         or entries(
             people.first().unwrap()
-        ).get("age").unwrap() != YamlValue.NumberValue(text: "37")
+        ).get("age").unwrap() != YamlValue.NumberValue("37")
     ): return panic("compact mappings")
     if (
         items(
             entries(people.last().unwrap()).get("skills").unwrap()
-        ).first().unwrap() != YamlValue.StringValue(value: "compilers")
+        ).first().unwrap() != YamlValue.StringValue("compilers")
     ): return panic("nested compact mapping")
 
 test "YAML flow collections quotes escapes comments and multiline values":
@@ -84,17 +319,17 @@ test "YAML flow collections quotes escapes comments and multiline values":
     if (
         entries(
             root.get("flow").unwrap()
-        ).get("name").unwrap() != YamlValue.StringValue(value: "it's # fine")
+        ).get("name").unwrap() != YamlValue.StringValue("it's # fine")
     ): return panic("single quotes")
     if (
         items(
             entries(root.get("flow").unwrap()).get("list").unwrap()
-        ).last().unwrap() != YamlValue.StringValue(value: "é☺")
+        ).last().unwrap() != YamlValue.StringValue("é☺")
     ): return panic("quoted escape")
     if (
         root.get(
             "url"
-        ).unwrap() != YamlValue.StringValue(value: "https://example.org/#fragment")
+        ).unwrap() != YamlValue.StringValue("https://example.org/#fragment")
     ): return panic("URL comment")
     if items(root.get("multiline").unwrap()).length() != 3: return panic(
         "multiline flow"
@@ -102,9 +337,9 @@ test "YAML flow collections quotes escapes comments and multiline values":
     if (
         root.get(
             "text"
-        ).unwrap() != YamlValue.StringValue(value: "a long continued sentence")
+        ).unwrap() != YamlValue.StringValue("a long continued sentence")
     ): return panic("plain folding")
-    if value(parse(text: "'literal\\n'")) != YamlValue.StringValue(value: "literal\\n"): return panic(
+    if value(parse(text: "'literal\\n'")) != YamlValue.StringValue("literal\\n"): return panic(
         "literal quote"
     )
 
@@ -119,18 +354,18 @@ test "YAML literal folded and chomped block scalars preserve content":
     if (
         root.get(
             "literal"
-        ).unwrap() != YamlValue.StringValue(value: "first # text\nsecond\n")
+        ).unwrap() != YamlValue.StringValue("first # text\nsecond\n")
     ): return panic("literal block")
-    if root.get("folded").unwrap() != YamlValue.StringValue(value: "hello world"): return panic(
+    if root.get("folded").unwrap() != YamlValue.StringValue("hello world"): return panic(
         "folded block"
     )
-    if root.get("keep").unwrap() != YamlValue.StringValue(value: "line\n\n"): return panic(
+    if root.get("keep").unwrap() != YamlValue.StringValue("line\n\n"): return panic(
         "keep chomping"
     )
-    if root.get("explicit").unwrap() != YamlValue.StringValue(value: "indented"): return panic(
+    if root.get("explicit").unwrap() != YamlValue.StringValue("indented"): return panic(
         "explicit indentation"
     )
-    if root.get("tabs").unwrap() != YamlValue.StringValue(value: "\tcontent"): return panic(
+    if root.get("tabs").unwrap() != YamlValue.StringValue("\tcontent"): return panic(
         "tabs in scalar content"
     )
 
@@ -145,10 +380,10 @@ test "YAML anchors aliases merge keys and override precedence":
 
     let config = entries(root.get("config").unwrap())
     if (
-        config.get("retries").unwrap() != YamlValue.NumberValue(text: "5")
-        or config.get("enabled").unwrap() != YamlValue.BoolValue(value: true)
+        config.get("retries").unwrap() != YamlValue.NumberValue("5")
+        or config.get("enabled").unwrap() != YamlValue.BoolValue(true)
     ): return panic("merge override")
-    if root.get("alias").unwrap() != YamlValue.NumberValue(text: "42"): return panic(
+    if root.get("alias").unwrap() != YamlValue.NumberValue("42"): return panic(
         "scalar anchor"
     )
     if root.get("flow_alias").unwrap() != root.get("flow").unwrap(): return panic(
@@ -164,15 +399,15 @@ test "YAML anchors aliases merge keys and override precedence":
     )
     let c = entries(merged.get("c").unwrap())
     if (
-        c.get("x").unwrap() != YamlValue.NumberValue(text: "1")
-        or c.get("y").unwrap() != YamlValue.NumberValue(text: "4")
+        c.get("x").unwrap() != YamlValue.NumberValue("1")
+        or c.get("y").unwrap() != YamlValue.NumberValue("4")
     ): return panic("merge precedence")
 
 test "YAML documents BOM CRLF empty input and version directive":
     let root = value(
         parse(text: "\u{feff}%YAML 1.2\r\n---\r\na: 1\r\n...\r\n# done\r\n")
     )
-    if entries(root).get("a").unwrap() != YamlValue.NumberValue(text: "1"): return panic(
+    if entries(root).get("a").unwrap() != YamlValue.NumberValue("1"): return panic(
         "document markers"
     )
     if value(parse(text: "# comment\n")) != YamlValue.Null: return panic("empty YAML")
@@ -202,41 +437,43 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
         "---\na: 1\n---\nb: 2",
         "a: |0\n  text"
     ]:
-        match parse(text: text):
+        let cause = match parse(text: text):
             ok(_): return panic("invalid YAML accepted: {text}")
 
-            error(cause):
-                match cause:
-                    InvalidData(line, column, reason):
-                        if (
-                            line < 1
-                            or column < 1
-                            or reason == ""
-                        ): return panic("YAML diagnostic details")
+            error(cause): cause
 
-                        let boundary = Error(value: cause)
-                        if not boundary.message().starts_with("YAML "): return panic(
-                            "source YAML Error"
-                        )
+        match cause:
+            InvalidData(line, column, reason):
+                if (
+                    line < 1
+                    or column < 1
+                    or reason == ""
+                ): return panic("YAML diagnostic details")
 
-                    _: return panic("wrong YAML error")
+                let boundary = Error(cause)
+                if not boundary.message().starts_with("YAML "): return panic(
+                    "source YAML Error"
+                )
+
+            _: return panic("wrong YAML error")
 
     for text in [
         "!custom value",
         "? complex\n: value",
         "%TAG ! tag:example.org\n---\na: 1"
     ]:
-        match parse(text: text):
+        let cause = match parse(text: text):
             ok(_): return panic("unsupported YAML accepted")
 
-            error(cause):
-                match cause:
-                    UnsupportedFeature(_, _): let expected = unit
-                    _: return panic("expected unsupported feature")
+            error(cause): cause
+
+        match cause:
+            UnsupportedFeature(_, _): let expected = unit
+            _: return panic("expected unsupported feature")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
-    let limited: Result[YamlValue, YamlError] = error(cause: YamlError.LimitExceeded)
-    let invalid: Result[YamlValue, YamlError] = error(cause: YamlError.InvalidInput)
+    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
+    let invalid: Result[YamlValue, YamlError] = error(YamlError.InvalidInput)
     if (
         parse(
             text: "é",
@@ -295,7 +532,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
                 depth: 1,
                 values: 1
             )
-        ) != parse(text: "", limits: none)
+        ) != parse(text: "")
     ): return panic("empty exact limits")
     if (
         parse(
@@ -339,7 +576,7 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
         "-0",
         "0001"
     ]:
-        if value(parse(text: text)) != YamlValue.NumberValue(text: text): return panic(
+        if value(parse(text: text)) != YamlValue.NumberValue(text): return panic(
             "YAML number treated as string: {text}"
         )
 
@@ -353,6 +590,96 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
         "it's plain",
         "text [with] punctuation"
     ]:
-        if value(parse(text: text)) != YamlValue.StringValue(value: text): return panic(
+        if value(parse(text: text)) != YamlValue.StringValue(text): return panic(
             "plain scalar resolved incorrectly: {text}"
         )
+
+fn failure(text: String) -> String:
+    match parse(text: text):
+        ok(_): return "accepted"
+        error(cause): return cause.message()
+
+test "YAML merge and block header errors name their own line":
+    if failure("<<: 1") != "YAML 1:1: merge requires mappings": return panic(
+        "single line merge"
+    )
+    if failure("x: 1\ny: 2\n<<: 1") != "YAML 3:1: merge requires mappings": return panic(
+        "later merge"
+    )
+    if failure("a: |x") != "YAML 1:5: invalid block scalar header": return panic(
+        "header"
+    )
+    if failure("x: 1\ny: |x\nz: 3") != "YAML 2:5: invalid block scalar header": return panic(
+        "later header"
+    )
+
+test "YAML limits fields default to none":
+    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
+    if parse(
+        text: "a: 1",
+        limits: some(YamlLimits(max_bytes: 2))
+    ) != limited: return panic(
+        "partial byte limit"
+    )
+    if parse(
+        text: "a: 1",
+        limits: some(YamlLimits())
+    ) != parse(text: "a: 1"): return panic(
+        "empty limits"
+    )
+
+test "YAML stringify round trips scalars sequences and mappings":
+    let source = "title: \"é🙂 \\\"q\\\" \\t tab\"\nnone: null\nflag: true\nint: -42\nfloat: 1.5e3\nlist:\n  - 1\n  - two\n  - [3, 4]\n  - a: 1\n    b: [x, y]\nempty_list: []\nempty_map: \{\}\n\"odd key\": 1\n\"true\": 2\nnested:\n  deep:\n    value: ok\n"
+    let parsed = value(parse(text: source))
+    let text = value(stringify(value: parsed))
+    if value(parse(text: text)) != parsed: return panic("YAML stringify round trip")
+    if value(
+        stringify(
+            value: value(parse(text: text))
+        )
+    ) != text: return panic(
+        "YAML stringify is stable"
+    )
+
+test "YAML stringify validates numbers and honors max_bytes":
+    let invalid: Result[String, YamlError] = error(YamlError.InvalidInput)
+    let limited: Result[String, YamlError] = error(YamlError.LimitExceeded)
+    if stringify(value: YamlValue.NumberValue("not a number")) != invalid: return panic(
+        "invalid number text"
+    )
+
+    let root = value(parse(text: "a: 1"))
+    if stringify(value: root, max_bytes: 3) != limited: return panic("output limit")
+
+    let exact: Result[String, YamlError] = ok("a: 1\n")
+    if stringify(value: root, max_bytes: 5) != exact: return panic("exact limit")
+    if stringify(value: root, max_bytes: -1) != invalid: return panic("negative limit")
+
+test "YAML document start marker accepts same-line content":
+    if value(parse(text: "--- a")) != YamlValue.StringValue("a"): return panic(
+        "scalar after marker"
+    )
+    if items(
+        value(parse(text: "--- [1, 2]"))
+    ).length() != 2: return panic(
+        "flow after marker"
+    )
+    if value(parse(text: "--- # note\na: 1")) != value(parse(text: "a: 1")): return panic(
+        "comment after marker"
+    )
+
+test "YAML compact mapping after a sequence marker follows the marker's spacing":
+    let root = value(
+        parse(text: "-   a: 1\n    b: 2\n-  - x\n   - y\n- c: 3\n  d: 4\n")
+    )
+    let list = items(root)
+    if list.length() != 3: return panic("sequence length")
+
+    let first = entries(list.first().unwrap())
+    if first.get("b").unwrap() != YamlValue.NumberValue("2"): return panic(
+        "wide marker spacing"
+    )
+    if items(list.at(1).unwrap()).length() != 2: return panic("wide nested sequence")
+    if entries(list.last().unwrap()).get("d").unwrap() != YamlValue.NumberValue("4"): return panic(
+        "single space marker"
+    )

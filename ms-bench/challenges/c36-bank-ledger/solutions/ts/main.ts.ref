@@ -1,0 +1,102 @@
+import { readFileSync } from "node:fs";
+
+type Account = { bal: number; lim: number; ops: number; rej: number; frozen: boolean };
+const FEE = 5;
+const accounts = new Map<string, Account>();
+const out: string[] = [];
+let fees = 0;
+
+const isDigits = (s: string) => /^[0-9]+$/.test(s);
+const arity: Record<string, number> = { open: 3, deposit: 3, withdraw: 3, transfer: 4, freeze: 2, unfreeze: 2, report: 1 };
+
+for (const line of readFileSync(0, "utf8").split("\n")) {
+  const t = line.split(/[ \t]+/).filter((x) => x !== "");
+  if (t.length === 0) continue;
+  const cmd = t[0];
+  if (!(cmd in arity) || t.length !== arity[cmd]) {
+    out.push("error: bad command");
+    continue;
+  }
+  if (cmd === "report") {
+    let total = 0;
+    for (const id of [...accounts.keys()].sort()) {
+      const a = accounts.get(id)!;
+      total += a.bal;
+      out.push(`${id} balance=${a.bal} limit=${a.lim} ops=${a.ops} rejected=${a.rej} frozen=${a.frozen ? "yes" : "no"}`);
+    }
+    out.push(`total balance=${total} fees=${fees}`);
+    continue;
+  }
+  if (cmd === "open") {
+    if (!isDigits(t[2])) out.push("error: invalid limit");
+    else if (accounts.has(t[1])) out.push(`error: account exists ${t[1]}`);
+    else {
+      accounts.set(t[1], { bal: 0, lim: parseInt(t[2], 10), ops: 0, rej: 0, frozen: false });
+      out.push("ok");
+    }
+    continue;
+  }
+  if (cmd === "freeze" || cmd === "unfreeze") {
+    const a = accounts.get(t[1]);
+    if (!a) out.push(`error: unknown account ${t[1]}`);
+    else {
+      a.frozen = cmd === "freeze";
+      out.push("ok");
+    }
+    continue;
+  }
+  const ids = cmd === "transfer" ? [t[1], t[2]] : [t[1]];
+  const amountText = t[t.length - 1];
+  const missing = ids.find((i) => !accounts.has(i));
+  if (missing !== undefined) {
+    out.push(`error: unknown account ${missing}`);
+    continue;
+  }
+  const reject = (id: string, msg: string) => {
+    accounts.get(id)!.rej++;
+    out.push(msg);
+  };
+  if (cmd === "transfer" && ids[0] === ids[1]) {
+    reject(ids[0], "error: same account");
+    continue;
+  }
+  if (!isDigits(amountText) || parseInt(amountText, 10) <= 0) {
+    reject(ids[0], "error: invalid amount");
+    continue;
+  }
+  const frozen = ids.find((i) => accounts.get(i)!.frozen);
+  if (frozen !== undefined) {
+    reject(frozen, `error: account frozen ${frozen}`);
+    continue;
+  }
+  const n = parseInt(amountText, 10);
+  const a = accounts.get(ids[0])!;
+  if (cmd === "deposit") {
+    a.bal += n;
+    a.ops++;
+    out.push(`ok ${a.bal}`);
+    continue;
+  }
+  let next = a.bal - n;
+  let fee = 0;
+  if (a.bal >= 0 && next < 0) {
+    next -= FEE;
+    fee = FEE;
+  }
+  if (next < -a.lim) {
+    reject(ids[0], `error: overdraft limit exceeded ${ids[0]}`);
+    continue;
+  }
+  a.bal = next;
+  a.ops++;
+  fees += fee;
+  const sfx = fee ? ` fee=${fee}` : "";
+  if (cmd === "withdraw") out.push(`ok ${next}${sfx}`);
+  else {
+    const b = accounts.get(ids[1])!;
+    b.bal += n;
+    b.ops++;
+    out.push(`ok ${next} ${b.bal}${sfx}`);
+  }
+}
+process.stdout.write(out.map((l) => l + "\n").join(""));

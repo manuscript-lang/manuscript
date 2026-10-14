@@ -21,9 +21,9 @@ fn verify_url() -> Result[Unit, UrlError]:
     if not (try decode_component(text: "%C3%A9") == "é"):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 test "URLs preserve escaped path structure":
-    let expected: Result[Unit, UrlError] = ok(value: unit)
+    let expected: Result[Unit, UrlError] = ok(unit)
     if not (verify_url() == expected):
         return panic(message: "check failed")

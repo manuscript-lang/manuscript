@@ -46,7 +46,7 @@ type Scheduler struct {
 }
 
 func inherit(parent *Execution, ctx context.Context) *Execution {
-	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: parent.Owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host}
+	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: parent.Owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host, calls: &callState{}}
 }
 func owned(parent *Execution, ctx context.Context, owner *Scheduler) *Execution {
 	owners := map[*Scheduler]bool{}
@@ -54,7 +54,7 @@ func owned(parent *Execution, ctx context.Context, owner *Scheduler) *Execution 
 		owners[key] = value
 	}
 	owners[owner] = true
-	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host}
+	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host, calls: &callState{}}
 }
 func NewScheduler(ctx *Execution, args []Argument) Value {
 	limit, historyLimit := int64(0), int64(-1)
@@ -65,37 +65,44 @@ func NewScheduler(ctx *Execution, args []Argument) Value {
 		case "limit":
 			value, valid := nativeOption(a.Value, "Int", int64(0))
 			if !valid {
-				return Panic("invalid Scheduler limit")
+				return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(^uint(0)>>1))
 			}
 			limit = value.(int64)
 			if limit == 0 && a.Value != nil {
 				if v, ok := a.Value.(Alternative); !ok || v.Tag != "none" {
-					return Panic("Scheduler limit must be positive")
+					return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(^uint(0)>>1))
 				}
 			}
 		case "history_limit":
 			value, valid := nativeOption(a.Value, "Int", int64(-1))
 			if !valid {
-				return Panic("invalid Scheduler history limit")
+				return libraryRangeFault("Scheduler", "history_limit", a.Value, 0, int64(^uint(0)>>1))
 			}
 			historyLimit = value.(int64)
 		case "drain":
 			value, valid := nativeOption(a.Value, "Duration", Duration(0))
 			if !valid {
-				return Panic("invalid Scheduler drain")
+				return durationParameterFault("Scheduler", "drain", a.Value)
 			}
 			drain = value.(Duration)
 		case "reporter":
 			reporter, _ = nativeOption(a.Value, "fn", nil)
 		}
 	}
-	if limit < 0 || historyLimit < -1 || drain < 0 || limit > int64(^uint(0)>>1) || historyLimit > int64(^uint(0)>>1) {
-		return Panic("invalid Scheduler limits")
+	if limit < 0 || limit > int64(^uint(0)>>1) {
+		return libraryRangeFault("Scheduler", "limit", limit, 1, int64(^uint(0)>>1))
+	}
+	if historyLimit < -1 || historyLimit > int64(^uint(0)>>1) {
+		return libraryRangeFault("Scheduler", "history_limit", historyLimit, 0, int64(^uint(0)>>1))
+	}
+	if drain < 0 {
+		return durationParameterFault("Scheduler", "drain", drain)
 	}
 	parent, cancel := context.WithCancel(ctx.Context)
 	b := &Scheduler{parent: ctx, context: parent, cancel: cancel, limit: int(limit), historyLimit: int(historyLimit), drain: time.Duration(drain), reporter: reporter, active: map[OperationId]*schedulerJob{}, history: map[OperationId]string{}, schedules: map[OperationId]scheduledOperation{}, changed: make(chan struct{}, 1), done: make(chan struct{}), reportReady: make(chan struct{}, 1)}
 	registerService(ctx, b)
 	b.reporting.Add(1)
+	markConcurrent()
 	go b.reportLoop()
 	return b
 }
@@ -165,6 +172,7 @@ func (b *Scheduler) startScheduled(ctx *Execution, operation Value, schedule *sc
 	b.active[id] = job
 	b.jobs.Add(1)
 	b.mu.Unlock()
+	markConcurrent()
 	go func() {
 		defer b.jobs.Done()
 		defer close(job.done)
@@ -257,12 +265,12 @@ func (b *Scheduler) reportLoop() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					reportDiagnostic(fmt.Sprintf("scheduler %v: %v", report.failure.Fields[0], report.failure.Fields[1]))
+					reportDiagnostic(fmt.Sprintf("scheduler %v: %v", report.failure.Fields[0], schedulerCauseText(report.failure.Fields[1])))
 					reportDiagnostic(fmt.Sprint("Scheduler reporter fault: ", r))
 				}
 			}()
 			if b.reporter == nil {
-				reportDiagnostic(fmt.Sprint("Scheduler failure: ", report.failure.Fields[1]))
+				reportDiagnostic(fmt.Sprint("Scheduler failure: ", schedulerCauseText(report.failure.Fields[1])))
 			} else {
 				child := newExecution(owned(b.parent, context.WithoutCancel(b.context), b), context.WithoutCancel(b.context))
 				defer FinishExecution(child)
@@ -342,6 +350,8 @@ var diagnostics = struct {
 }{queue: make(chan string, 128)}
 
 func init() {
+	// The writer touches only strings, never records, so it does not mark
+	// concurrent work; every goroutine that runs user code marks it itself.
 	go func() {
 		for message := range diagnostics.queue {
 			fmt.Fprintln(os.Stderr, message)
@@ -360,3 +370,18 @@ func reportDiagnostic(message string) {
 	}
 }
 func FlushDiagnostics() { diagnostics.work.Wait() }
+
+// schedulerCauseText renders a Failed cause through its Error message. Crashed
+// reports already carry text. A faulting message implementation must not stop
+// failure reporting.
+func schedulerCauseText(cause Value) (text string) {
+	if text, ok := cause.(string); ok {
+		return text
+	}
+	defer func() {
+		if recover() != nil {
+			text = fmt.Sprint(cause)
+		}
+	}()
+	return fmt.Sprint(Invoke(RootExecution(), Bind(cause, "@std/Error", "message"), nil))
+}

@@ -1,0 +1,22 @@
+[
+ {
+  "name": "basic",
+  "stdin": "(define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))\n(display (fact 10)) (newline)\n(display (map fact (list 1 2 3 4 5)))\n(newline)\n",
+  "stdout": "3628800\n(1 2 6 24 120)\n"
+ },
+ {
+  "name": "closure-counter",
+  "stdin": "(define (make-counter)\n  (let ((n 0))\n    (lambda () (set! n (+ n 1)) n)))\n(define c1 (make-counter))\n(define c2 (make-counter))\n(c1) (c1)\n(display (c1)) (display \" \") (display (c2)) (newline)\n(define (adder n) (lambda (x) (+ x n)))\n(define add5 (adder 5))\n(display (add5 10)) (newline)\n(define (compose f g) (lambda (x) (f (g x))))\n(display ((compose add5 (adder 1)) 0)) (newline)\n(define (make-acc total)\n  (lambda (amt) (set! total (+ total amt)) total))\n(define acc (make-acc 100))\n(acc 10)\n(display (acc 10)) (newline)\n",
+  "stdout": "3 1\n15\n6\n120\n"
+ },
+ {
+  "name": "error-report",
+  "stdin": "(display \"start\")\n(newline)\n(display (try (quotient 1 0) (lambda (m) m)))\n(newline)\n(display (+ 1 (car 5)))\n(display \"never\")\n",
+  "stdout": "start\ndivision by zero\nerror: car: expected pair, got 5\n"
+ },
+ {
+  "name": "tail-loop",
+  "stdin": "(define (loop i acc) (if (= i 0) acc (loop (- i 1) (+ acc i))))\n(display (loop 100000 0))\n(newline)\n",
+  "stdout": "5000050000\n"
+ }
+]

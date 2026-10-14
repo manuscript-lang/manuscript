@@ -27,19 +27,3 @@ func ParseBuildType(name string) (BuildType, error) {
 	}
 	return "", fmt.Errorf("unknown build type %q; expected Debug, Release, RelWithDebInfo, or MinSizeRel", name)
 }
-
-func (kind BuildType) sourcePaths() bool { return kind == Debug || kind == RelWithDebInfo }
-
-func (kind BuildType) nativeFlags() []string {
-	switch kind {
-	case Debug:
-		// Uncompressed DWARF links faster; Debug artifacts favor rebuild time.
-		return []string{"-gcflags=all=-N -l", "-ldflags=-compressdwarf=false"}
-	case RelWithDebInfo:
-		return nil
-	default:
-		// Go has no size-specific optimizer; both release types use its
-		// normal optimizer and omit symbol tables and DWARF information.
-		return []string{"-trimpath", "-ldflags=-s -w"}
-	}
-}

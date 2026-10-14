@@ -1,0 +1,85 @@
+// Build this worker against before/after runtime checkouts with the bundled SDK.
+package main
+
+import (
+ "encoding/json"
+ "flag"
+ "os"
+ "runtime"
+ "runtime/debug"
+ "strconv"
+ "strings"
+
+ rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+)
+
+func main() {
+ mode:=flag.String("mode","clear","clear, prefix, remove, overwrite, or release")
+ count:=flag.Int("count",4096,"payload count")
+ payload:=flag.Int("payload",8192,"bytes per payload")
+ flag.Parse()
+ if *count<1||*payload<0 {panic("invalid size")}
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ runtime.GC()
+ var before,live,after runtime.MemStats
+ runtime.ReadMemStats(&before)
+ values:=&rt.List{Type:"@std/List[@std/Bytes]",Items:make([]rt.Value,*count)}
+ for i:=range values.Items {
+  data:=make([]byte,*payload)
+  for j:=0;j<len(data);j+=os.Getpagesize() {data[j]=byte(i+1)}
+  if len(data)>0 {data[len(data)-1]=byte(i+1)}
+  values.Items[i]=rt.Bytes{Items:data}
+ }
+ runtime.GC()
+ runtime.ReadMemStats(&live)
+ shrink(ctx,values,*mode,*count)
+ debug.FreeOSMemory() // Deliberate diagnostic GC/scavenge; excluded from timing claims.
+ runtime.ReadMemStats(&after)
+ report:=map[string]any{
+  "mode":*mode,"count":*count,"payload_bytes":*payload,"length":len(values.Items),"capacity":cap(values.Items),
+  "live_heap_bytes":int64(live.HeapAlloc)-int64(before.HeapAlloc),
+  "after_heap_bytes":int64(after.HeapAlloc)-int64(before.HeapAlloc),
+  "operation_allocated_bytes":after.TotalAlloc-live.TotalAlloc,"operation_allocations":after.Mallocs-live.Mallocs,
+  "after_rss_kib":currentRSS(),
+ }
+ if err:=json.NewEncoder(os.Stdout).Encode(report);err!=nil {panic(err)}
+ runtime.KeepAlive(values)
+}
+
+func currentRSS() int64 {
+ if runtime.GOOS!="linux" {return 0}
+ data,err:=os.ReadFile("/proc/self/status");if err!=nil {panic(err)}
+ for _,line:=range strings.Split(string(data),"\n") {
+  if strings.HasPrefix(line,"VmRSS:") {
+   fields:=strings.Fields(line)
+   n,err:=strconv.ParseInt(fields[1],10,64);if err!=nil {panic(err)}
+   return n
+  }
+ }
+ panic("missing Linux RSS")
+}
+
+func shrink(ctx *rt.Execution, values *rt.List, mode string, count int) {
+ if mode=="remove" {
+  remove:=rt.NativeMember(values,"remove")
+  for len(values.Items)>0 {
+   if rt.Invoke(ctx,remove,[]rt.Argument{{Name:"index",Value:int64(len(values.Items)-1)}})!=values {panic("remove lost receiver")}
+  }
+  return
+ }
+ deleted:=count
+ if mode=="prefix" {deleted--}
+ empty:=&rt.List{Type:values.Type}
+ if rt.Invoke(ctx,rt.NativeMember(values,"splice"),[]rt.Argument{
+  {Name:"start",Value:int64(0)},{Name:"delete_count",Value:int64(deleted)},{Name:"replacement",Value:empty},
+ })!=values {panic("splice lost receiver")}
+ switch mode {
+ case "clear","prefix":
+ case "overwrite":
+  for i:=0;i<count;i++ {rt.ListAppend(ctx,values,rt.Bytes{})}
+ case "release":
+  values.Items=nil // Explicit external Go header release, after any traversal ends.
+ default:
+  panic("invalid mode")
+ }
+}

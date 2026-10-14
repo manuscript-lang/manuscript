@@ -11,6 +11,7 @@ import (
 
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -22,6 +23,12 @@ func init() {
 	add("csv", "parse", libraryResult("List[List[String]]", "CsvError"), []LibraryParam{p("text", "String"), p("options", "CsvOptions"), p("max_rows", "Optional[Int]"), p("max_cells", "Optional[Int]")}, libraryCSVParse)
 	add("csv", "stringify", libraryResult("String", "CsvError"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Optional[Int]")}, libraryCSVStringify)
 	add("html", "escape", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return html.EscapeString(a[0].(string)) })
+	add("html", "unescape", "String", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, args []Value) Value {
+		CheckCancelled(ctx)
+		text := html.UnescapeString(args[0].(string))
+		CheckCancelled(ctx)
+		return text
+	})
 	add("url", "encode_component", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value {
 		text := a[0].(string)
 		var b strings.Builder
@@ -80,6 +87,9 @@ func init() {
 		if s != "" {
 			for _, part := range strings.Split(s, "&") {
 				CheckCancelled(ctx)
+				if part == "" {
+					continue
+				}
 				if int64(len(items)) >= n {
 					return libraryError(r, "LimitExceeded", "")
 				}
@@ -95,21 +105,18 @@ func init() {
 		return libraryOK(r, libraryList("@std/QueryEntry", items))
 	})
 	add("url", "format_query", "String", []LibraryParam{p("entries", "List[QueryEntry]")}, func(_ *Execution, _ string, a []Value) Value {
-		parts := make([]string, len(a[0].(*List).Items))
-		for i, v := range a[0].(*List).Items {
+		parts := make([]string, len(a[0].(*List).Boxed()))
+		for i, v := range a[0].(*List).Boxed() {
 			f := v.(Record).Fields
 			parts[i] = url.QueryEscape(f["key"].(string)) + "=" + url.QueryEscape(f["value"].(string))
 		}
 		return strings.Join(parts, "&")
 	})
-	add("net", "parse_ip", libraryResult("String", "NetworkError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
-		ip := net.ParseIP(a[0].(string))
-		if ip == nil {
-			return libraryError(r, "InvalidData", "")
-		}
-		return libraryOK(r, ip.String())
-	})
+	add("net", "parse_ip", libraryResult("IpAddress", "NetworkError"), []LibraryParam{p("text", "String")}, libraryParseIP)
 }
+
+// jsonDepthCeiling is the deepest container nesting parse accepts.
+const jsonDepthCeiling = 100000
 
 // Parsing uses tokens to retain exact numbers and reject duplicate object keys.
 func libraryJSONParse(ctx *Execution, r string, a []Value) Value {
@@ -121,6 +128,11 @@ func libraryJSONParse(ctx *Execution, r string, a []Value) Value {
 	}
 	if int64(len(text)) > maxBytes {
 		return libraryError(r, "LimitExceeded", "")
+	}
+	// The parser recurses per container, so unbounded nesting would overflow the
+	// Go stack; an unset depth budget still stops at a generous ceiling.
+	if maxDepth > jsonDepthCeiling {
+		maxDepth = jsonDepthCeiling
 	}
 	// Go's decoder replaces unpaired surrogate escapes; reject them before decoding.
 	if !libraryJSONUnicode(ctx, text) {
@@ -304,7 +316,7 @@ func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
 			return err
 		case "NumberValue":
 			s := v.Fields[0].(string)
-			if !json.Valid([]byte(s)) || s == "" || s[0] != '-' && (s[0] < '0' || s[0] > '9') {
+			if !json.Valid([]byte(s)) || s == "" || s[0] != '-' && (s[0] < '0' || s[0] > '9') || s[len(s)-1] < '0' || s[len(s)-1] > '9' {
 				return io.ErrUnexpectedEOF
 			}
 			return write(s)
@@ -312,7 +324,7 @@ func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
 			if err := write("["); err != nil {
 				return err
 			}
-			for i, x := range v.Fields[0].(*List).Items {
+			for i, x := range v.Fields[0].(*List).Boxed() {
 				if i > 0 {
 					if err := write(","); err != nil {
 						return err
@@ -400,20 +412,46 @@ func libraryCSVStringify(ctx *Execution, r string, a []Value) Value {
 		return libraryError(r, "InvalidInput", "")
 	}
 	w := &libraryLimitedWriter{max: n}
-	writer := csv.NewWriter(w)
-	writer.Comma = delimiter
-	writer.UseCRLF = crlf
-	for _, row := range a[0].(*List).Items {
+	ending := "\n"
+	if crlf {
+		ending = "\r\n"
+	}
+	for _, row := range a[0].(*List).Boxed() {
 		CheckCancelled(ctx)
-		if err := writer.Write(libraryStringValues(row)); err != nil {
-			return libraryError(r, "LimitExceeded", "")
+		record := libraryStringValues(row)
+		// A sole empty field would be a bare line ending, which the reader
+		// skips as a blank line. Quote it to retain this row on round trip.
+		if len(record) == 1 && record[0] == "" {
+			record[0] = "\"\""
+		} else {
+			for i, field := range record {
+				record[i] = libraryCSVField(field, delimiter, crlf)
+			}
 		}
-		writer.Flush()
-		if writer.Error() != nil {
+		line := strings.Join(record, string(delimiter)) + ending
+		if _, err := w.Write([]byte(line)); err != nil {
 			return libraryError(r, "LimitExceeded", "")
 		}
 	}
 	return libraryOK(r, w.String())
+}
+
+// libraryCSVField quotes a cell when the reader could not otherwise recover it.
+// Unlike encoding/csv's writer, it keeps a lone carriage return in a quoted
+// cell in CRLF mode instead of dropping it.
+func libraryCSVField(field string, delimiter rune, crlf bool) string {
+	if field == "" {
+		return field
+	}
+	first, _ := utf8.DecodeRuneInString(field)
+	if field != `\.` && !strings.ContainsAny(field, "\"\r\n"+string(delimiter)) && !unicode.IsSpace(first) {
+		return field
+	}
+	field = strings.ReplaceAll(field, "\"", "\"\"")
+	if crlf {
+		field = strings.ReplaceAll(strings.ReplaceAll(field, "\r\n", "\n"), "\n", "\r\n")
+	}
+	return "\"" + field + "\""
 }
 func libraryURLValue(r string, u *url.URL) Value {
 	port := optional("Int", nil, false)
@@ -451,10 +489,35 @@ func libraryURL(v Value) (*url.URL, error) {
 	if err != nil || !utf8.ValidString(decoded) {
 		return nil, io.ErrUnexpectedEOF
 	}
+	if !validURLQuery(f["query"].(string)) || strings.ContainsAny(host, " <>\"") {
+		return nil, io.ErrUnexpectedEOF
+	}
 	u := &url.URL{Scheme: f["scheme"].(string), Host: host, Path: decoded, RawPath: raw, RawQuery: f["query"].(string), Fragment: f["fragment"].(string)}
 	parsed, err := url.Parse(u.String())
 	if err != nil || parsed.Scheme == "" || parsed.User != nil || strings.ContainsAny(host, "/@\\\r\n") {
 		return nil, io.ErrUnexpectedEOF
 	}
 	return u, nil
+}
+
+// validURLQuery rejects query text that would not round-trip through parse: a
+// '#' starts the fragment, spaces and controls are not allowed raw, and '%'
+// must begin a two-digit escape.
+func validURLQuery(query string) bool {
+	for i := 0; i < len(query); i++ {
+		c := query[i]
+		switch {
+		case c == '#' || c == ' ' || c < 0x20 || c == 0x7f:
+			return false
+		case c == '%':
+			if i+2 >= len(query) || !isHexDigit(query[i+1]) || !isHexDigit(query[i+2]) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func isHexDigit(c byte) bool {
+	return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'
 }

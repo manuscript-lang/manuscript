@@ -1,0 +1,77 @@
+[
+ {
+  "name": "basic",
+  "stdin": "lcs AGGTAB GXTXAYB\nedit kitten sitting\nknap 10 5:10 4:40 6:30 3:50\ncoins 11 1 2 5\ncoins 3 2\nedit a\nknap 5 0:3\n",
+  "stdout": "4\n3\n90\n3\nimpossible\nerror: bad command\nerror: bad command\n"
+ },
+ {
+  "name": "small",
+  "stdin": "lcs abc abc\nedit abc xyz\ncoins 0 7\nknap 0 1:1\n",
+  "stdout": "3\n3\n0\n0\n"
+ },
+ {
+  "name": "lcs-edge",
+  "stdin": "lcs a b\nlcs a a\nlcs abc cba\nlcs aaaa aa\nlcs abcdef fedcba\nlcs ab ba\n",
+  "stdout": "0\n1\n1\n2\n1\n1\n"
+ },
+ {
+  "name": "edit-edge",
+  "stdin": "edit a a\nedit a b\nedit abc a\nedit a abc\nedit intention execution\nedit sunday saturday\nedit flaw lawn\n",
+  "stdout": "0\n1\n2\n2\n5\n3\n2\n"
+ },
+ {
+  "name": "knap-edge",
+  "stdin": "knap 0 1:5 2:6\nknap 100\nknap 1 1:0\nknap 3 3:7 1:3 2:5\nknap 50 10:60 20:100 30:120\nknap 4 5:100\nknap 5 5:100 5:100\n",
+  "stdout": "0\n0\n0\n8\n220\n0\n100\n"
+ },
+ {
+  "name": "coins-edge",
+  "stdin": "coins 7 2 4\ncoins 7 2 4 7\ncoins 6 1 3 4\ncoins 100 1 5 10 25\ncoins 1 2 3\ncoins 12 12\ncoins 13 4 3\n",
+  "stdout": "impossible\n1\n2\n4\nimpossible\n1\n4\n"
+ },
+ {
+  "name": "bad-lcs-edit",
+  "stdin": "lcs a\nlcs a b c\nedit \nedit  b\nedit a  b\nLCS a b\nlcs\n",
+  "stdout": "error: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\n"
+ },
+ {
+  "name": "bad-knap",
+  "stdin": "knap\nknap x 1:1\nknap 5 1\nknap 5 1:\nknap 5 :1\nknap 5 1:1:1\nknap 5 -1:1\nknap 5 1:-1\nknap 5 0:1\nknap 1234567 1:1\nknap 5 1:1234567\nknap 5 1:1  2:2\n",
+  "stdout": "error: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\n"
+ },
+ {
+  "name": "bad-coins",
+  "stdin": "coins\ncoins 5\ncoins x 1\ncoins 5 0\ncoins 5 1 0\ncoins 5 a\ncoins -5 1\ncoins 5 1  2\n",
+  "stdout": "error: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\nerror: bad command\n"
+ },
+ {
+  "name": "unknown",
+  "stdin": "foo a b\nfib 10\n lcs a b\n",
+  "stdout": "error: bad command\nerror: bad command\nerror: bad command\n"
+ },
+ {
+  "name": "blank-lines",
+  "stdin": "\n  \nlcs ab ab\n\n  \nedit a b\n",
+  "stdout": "2\n1\n"
+ },
+ {
+  "name": "big-strings",
+  "stdin": "lcs ctaattcttgttttagttcttactgtattaggtgggcatgataacgaagggaaccacggcccgggaccgttctgtacttgagaccaccgttctaaggttctcacccacgattgtgagaaataacaagactcatttagagcgacagaatttgggagcggctaatgttgtcattctacccgacataacgttcaacgtctagtcggtgactcgtgacaagtgggccacaccgttgcgcggtaaaggcgccactgtatatacactcacgtaaaccacttgtagaggcttagatgaatccagcgt acatgtctctgcgccagcaccctgaccacgagccgccagcatgttcatctcgcgattatgtgggaagaccctgttttatcagactttggttgtggcacgattactaactccctacgcaggacaaaactcaggttataaaatcacaggaactgccggttctcctcgtcaatgtcctggtgaagacaaagacgtttcgtcacttcgagagggtcatatattgagagcgcagttagggcgggtaattgagtggccagcctctgttgaatgactcttagggtttggttcgcttttgcatgcaca\nedit acacactcccatgcattacatcccgtgccggtgctgcggaacttgaaatttccagtacgtggtaaataatcacagtcgacgagcgactttagtagaacgatatacctaaacgcccaccccggtccaatatgtatttgagcacggatctagcaaccaaccgagtcgctattaagaaaaaaattctatctcgcttggatagactggtcgtagaagtaacgataacgctgtctatcccgtctcactttgctct tcgtccacttcaccagcgtgacctctcctgtcgactcaggtacttgaaagcgcagattttcacagcgaaagtcgtcccaggccgcgctggtcgaggggagcgctctccatggtgagacagtgaagcacggatttggtggtctgctaagttttacggatgattgtcgaatagtgtcatcgggtccaggcaaggctccaaatcaccaactcaaccaacctcaaaaccgacgagagttcagttggtatatcgg\nedit babbbaaaaabbabbaaabaababbbabbbaaabbbaabbbbabbbabaababbabbababaabaaaabbababbaaaaaababbbbbbaabbaaabbbabaaaabbaaabbaabababbababbbbaabaaaaaaaaaaababababbabbaabaaaabbbbabbaabbbbbbbabbaaabaaabbbbbbbabbbabbbbaabaabbbabbaabaaaabbaaaaabaabbaabaaababaaaabababbbbabaaaababaaabaaababaaabaabbbbaabaababaaaabbaabba bbaabbabab\n",
+  "stdout": "193\n135\n290\n"
+ },
+ {
+  "name": "big-knap",
+  "stdin": "knap 800 7:315 45:386 42:269 16:138 48:130 19:375 5:337 29:155 30:350 56:203 26:398 59:60 17:114 56:461 21:183 52:133 24:411 41:323 34:76 11:282 43:339 18:84 1:333 5:62 39:172 2:42 18:104 55:500 25:206 38:478 29:458 39:48 56:328 44:453 8:296 38:326 41:186 12:442 7:382 56:249 33:344 13:138 29:319 14:248 52:144 33:130 7:62 53:45 18:143 8:14\nknap 3000 7:315 45:386 42:269 16:138 48:130 19:375 5:337 29:155 30:350 56:203 26:398 59:60 17:114 56:461 21:183 52:133 24:411 41:323 34:76 11:282 43:339 18:84 1:333 5:62 39:172 2:42 18:104 55:500 25:206 38:478 29:458 39:48 56:328 44:453 8:296 38:326 41:186 12:442 7:382 56:249 33:344 13:138 29:319 14:248 52:144 33:130 7:62 53:45 18:143 8:14\n",
+  "stdout": "10017\n12174\n"
+ },
+ {
+  "name": "big-coins",
+  "stdin": "coins 9999 7 13 29 101\ncoins 10000 3 7 11 17 23\ncoins 99999 1000 3\n",
+  "stdout": "99\n436\n432\n"
+ },
+ {
+  "name": "no-trailing-newline",
+  "stdin": "lcs a a\ncoins 4 2",
+  "stdout": "1\n2\n"
+ }
+]

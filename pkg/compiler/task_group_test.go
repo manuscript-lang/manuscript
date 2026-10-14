@@ -14,7 +14,7 @@ import Result from "@std/result.ms"
 		{"task constructor", "fn f() -> Unit:\n    let task = Task[Int]()\n", "no source constructor"},
 		{"callback arity", "fn work(value: Int) -> Int: return value\nfn f(group: TaskGroup) -> Unit:\n    group.start(work)\n", "expected fn()"},
 		{"nonfunction callback", "fn f(group: TaskGroup) -> Unit:\n    group.start(3)\n", "cannot infer"},
-		{"result mismatch", "fn f(group: TaskGroup) -> Unit:\n    let task: Task[String] = group.start(fn() -> Int: return 3)\n", "expected Task[String]"},
+		{"result mismatch", "fn f(group: TaskGroup) -> Unit:\n    let task: Task[String] = group.start(fn() -> Int: return 3)\n", "expected fn()->String, found fn()->Int"},
 		{"group result is Unit", "fn f(group: TaskGroup) -> Result[Int, ExecutionError]:\n    return group.join()\n", "expected Result[Int"},
 		{"no task equality", "fn f(task: Task[Int]) -> Bool:\n    return task == task\n", "equality requires Equal"},
 		{"no group cloning", "fn f(group: TaskGroup) -> Unit:\n    group.clone()\n", "unknown or ambiguous member"},

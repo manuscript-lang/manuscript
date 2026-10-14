@@ -1,0 +1,8 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/range-before
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNarrowSnapshots/ReadOnly         	      20	  12049306 ns/op	 2622748 B/op	  131095 allocs/op
+BenchmarkNarrowSnapshots/WriteInCallback  	      18	  12832391 ns/op	 3672039 B/op	  131107 allocs/op
+BenchmarkNarrowSnapshots/WriteAfterCallback         	      19	  12773115 ns/op	 3671790 B/op	  131109 allocs/op
+PASS

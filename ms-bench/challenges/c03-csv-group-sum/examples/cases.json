@@ -1,0 +1,7 @@
+[
+ {
+  "name": "basic",
+  "stdin": "fruit,1.50\n\"a,b\",2\nfruit,0.5\noops\nveg,x\n",
+  "stdout": "a,b: 2.00\nfruit: 2.00\nskipped: 2\n"
+ }
+]

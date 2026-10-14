@@ -18,7 +18,8 @@
       "pkg/lexer",
       "pkg/parser",
       "pkg/stdlib",
-      "internal/decimal"
+      "internal/decimal",
+      "internal/nativeabi"
     ],
     "pkg/runtime": [
       "internal/decimal",
@@ -33,8 +34,8 @@
       "pkg/checker",
       "pkg/project",
       "pkg/stdlib",
-      "pkg/runtime",
-      "pkg/frontend"
+      "pkg/frontend",
+      "pkg/lower"
     ],
     "pkg/tooling": [
       "pkg/syntax",
@@ -55,14 +56,18 @@
       "pkg/frontend"
     ],
     "internal/cli": [
+      "internal/nativeabi",
       "pkg/compiler",
+      "pkg/project",
       "pkg/syntax",
       "pkg/tooling",
       "pkg/tooling/lsp",
       "pkg/tooling/docgen",
       "pkg/checker",
       "pkg/stdlib",
-      "."
+      ".",
+      "internal/debugger",
+      "pkg/build"
     ],
     "cmd/ms": [
       "internal/cli"
@@ -71,6 +76,26 @@
       "pkg/syntax",
       "pkg/parser",
       "pkg/project"
+    ],
+    "internal/debugger": [],
+    "pkg/lower": [
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/checker",
+      "pkg/frontend"
+    ],
+    "pkg/build": [
+      ".",
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/parser",
+      "pkg/checker",
+      "pkg/project",
+      "pkg/stdlib",
+      "pkg/runtime",
+      "pkg/frontend",
+      "pkg/compiler",
+      "pkg/lower"
     ]
   },
   "pinned": [
@@ -81,6 +106,8 @@
     "pkg/checker",
     "pkg/project",
     "pkg/compiler",
+    "pkg/lower",
+    "pkg/build",
     "pkg/runtime",
     "pkg/stdlib"
   ],

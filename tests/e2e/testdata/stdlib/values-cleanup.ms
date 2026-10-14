@@ -21,7 +21,7 @@ impl Equal for Key:
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: return self.id
+    fn hash() -> Int: self.id
 
 type Resource:
     order: List[Int]
@@ -38,14 +38,14 @@ fn leave(order: List[Int]) -> Int:
 
 fn propagate(result: Result[Int, JsonError]) -> Result[Int, JsonError]:
     let found = try result
-    return ok(value: found + 1)
+    return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
-    let counter = Counter(calls: 0)
-    let create = fn() -> Int:
+    let counter = Counter(0)
+    let create = fn():
         counter.calls = counter.calls + 1
         return 42
-    let present: Optional[Int] = some(value: 0)
+    let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
     if present.unwrap_or_else(create) != 0 or counter.calls != 0: return panic(
         "eager lazy fallback"
@@ -54,20 +54,20 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
         "missing fallback"
     )
 
-    let nested: Optional[Optional[Int]] = some(value: missing)
+    let nested: Optional[Optional[Int]] = some(missing)
     if not nested.is_some() or not nested.unwrap().is_none(): return panic(
         "nested optional flattened"
     )
 
 test "Result propagation and Error views preserve concrete causes":
-    let failed: Result[Int, JsonError] = error(cause: JsonError.InvalidData)
+    let failed: Result[Int, JsonError] = error(JsonError.InvalidData)
     if propagate(failed) != failed: return panic("try changed cause")
 
-    let success: Result[Int, JsonError] = ok(value: 3)
-    let expected: Result[Int, JsonError] = ok(value: 4)
+    let success: Result[Int, JsonError] = ok(3)
+    let expected: Result[Int, JsonError] = ok(4)
     if propagate(success) != expected: return panic("try success")
 
-    let view = Error(value: JsonError.InvalidData)
+    let view = Error(JsonError.InvalidData)
     if view.message().byte_length() == 0: return panic("error message")
 
     match view:
@@ -83,10 +83,10 @@ test "custom equality and hashing define map key identity":
 
     let map = (
         Map[Key, String]()
-        .with_entry(key: first, value: "a")
-        .with_entry(key: second, value: "b")
+        .add(key: first, value: "a")
+        .add(key: second, value: "b")
     )
-    if map.length() != 1 or map.get(first) != some(value: "b"): return panic(
+    if map.length() != 1 or map.get(first) != some("b"): return panic(
         "domain map identity"
     )
 

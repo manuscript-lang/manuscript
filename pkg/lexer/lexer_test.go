@@ -1,6 +1,8 @@
 package lexer_test
 
 import (
+	"os"
+	"sort"
 	"strings"
 	"testing"
 
@@ -51,6 +53,8 @@ func TestLexicalBoundaries(t *testing.T) {
 		"unicode name":        "fn café() -> Unit:\n    return\n",
 		"tab":                 "fn value() -> Unit:\n\treturn\n",
 		"lone CR":             "fn value() -> Unit:\r    return\n",
+		"lone CR in comment":  "fn value() -> Unit:\n    return # note\rmore\n",
+		"lone CR at end":      "fn value() -> Unit:\n    return\n# end\r",
 		"jumped indentation":  "fn value() -> Unit:\n        return\n",
 		"leading zero":        "fn value() -> Int:\n    return 03\n",
 		"hex":                 "fn value() -> Int:\n    return 0xff\n",
@@ -72,5 +76,93 @@ func TestLexicalBoundaries(t *testing.T) {
 	source := "fn value() -> String:\n    return \"héllo \\u{1F600} {1 + 2} \\{literal\\}\"\n"
 	if _, err := lexer.Lex("unicode.ms", source); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestTokenEndPositionsUseOriginalBytes(t *testing.T) {
+	source := "fn f() -> String:\r\n    return \"é\" # keep\r\n"
+	tokens, err := lexer.Lex("ends.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, token := range tokens {
+		if token.End.File != token.Pos.File || token.End.Offset < token.Pos.Offset || token.End.Offset > len(source) {
+			t.Fatalf("invalid token range: %+v", token)
+		}
+		if token.Text != "" && source[token.Pos.Offset:token.End.Offset] != token.Text {
+			t.Fatalf("incorrect original range: %+v", token)
+		}
+		if token.Kind == lexer.String && (token.End.Column != token.Pos.Column+len(token.Text) || token.End.Line != 2) {
+			t.Fatalf("incorrect UTF-8 end: %+v", token)
+		}
+	}
+}
+
+func TestUnexpectedNonASCIICharacterNamesTheRune(t *testing.T) {
+	for source, want := range map[string]string{
+		"let é = 1\n":     "'é'",
+		"return 0 // 日\n": "'日'",
+		"let x = 1 + 日\n": "'日'",
+	} {
+		_, err := lexer.Lex("a.ms", source)
+		if err == nil || !strings.Contains(err.Error(), "unexpected source character "+want) {
+			t.Fatalf("%q: %v", source, err)
+		}
+	}
+}
+
+func TestUnknownEscapeIsReportedAtTheBackslash(t *testing.T) {
+	_, err := lexer.Lex("escape.ms", "let s = \"a\\qb\"\n")
+	if err == nil {
+		t.Fatal("expected an unknown escape error")
+	}
+	diagnostic, ok := err.(syntax.Diagnostic)
+	if !ok {
+		t.Fatalf("expected a diagnostic, got %T", err)
+	}
+	if diagnostic.Position.Column != 11 || !strings.Contains(diagnostic.Message, "unknown text escape \\q") {
+		t.Fatalf("unexpected diagnostic %v at column %d", diagnostic.Message, diagnostic.Position.Column)
+	}
+}
+
+func TestDelimiterContinuationMayDedentBelowSuite(t *testing.T) {
+	for _, source := range []string{
+		"fn f() -> Int:\n    let x = [\n1,\n2,\n]\n    return 0\n",
+		"fn f() -> Int:\n    let x = (1 +\n2)\n    return 0\n",
+		"fn f() -> Int:\n    if true:\n        let x = [\n1\n]\n        return 0\n    return 1\n",
+	} {
+		tokens, err := lexer.Lex("continuation.ms", source)
+		if err != nil {
+			t.Fatalf("%q: %v", source, err)
+		}
+		depth := 0
+		for _, token := range tokens {
+			switch token.Kind {
+			case lexer.Indent:
+				depth++
+			case lexer.Dedent:
+				depth--
+			}
+			if token.Text == "1" && depth < 1 {
+				t.Fatalf("%q: continuation closed the suite", source)
+			}
+		}
+	}
+}
+
+func TestGrammarGuideListsEveryReservedWord(t *testing.T) {
+	data, err := os.ReadFile("../../documentation/core-language/basics/grammar.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, after, ok := strings.Cut(string(data), "The reserved words are:\n\n```manuscript\n")
+	if !ok {
+		t.Fatal("grammar.md has no reserved-word block")
+	}
+	block, _, _ := strings.Cut(after, "```")
+	documented := strings.Fields(block)
+	sort.Strings(documented)
+	if got, want := strings.Join(documented, " "), strings.Join(lexer.Keywords(), " "); got != want {
+		t.Fatalf("grammar.md reserved words differ from the lexer:\n docs: %s\nlexer: %s", got, want)
 	}
 }

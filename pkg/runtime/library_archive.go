@@ -37,7 +37,7 @@ func libraryArchivePack(ctx *Execution, r string, a []Value) Value {
 	if max < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}
-	entries := a[0].(*List).Items
+	entries := a[0].(*List).Boxed()
 	seen := map[string]bool{}
 	for _, v := range entries {
 		CheckCancelled(ctx)
@@ -192,7 +192,7 @@ func libraryArchiveUnpack(ctx *Execution, r string, a []Value) Value {
 		}
 		for _, file := range reader.File {
 			CheckCancelled(ctx)
-			if file.NonUTF8 || !file.Mode().IsRegular() && !file.Mode().IsDir() {
+			if file.NonUTF8 && !utf8.ValidString(file.Name) || !file.Mode().IsRegular() && !file.Mode().IsDir() {
 				return libraryError(r, "Unsupported", "")
 			}
 			if file.UncompressedSize64 > uint64(entryMax) || file.UncompressedSize64 > uint64(total) {

@@ -1,0 +1,155 @@
+package main
+
+import (
+ "testing"
+ "context"
+ "math"
+ "reflect"
+ rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+)
+
+var benchmarkResult rt.Value
+
+// These handwritten versions change local scalar representation only. Keep the
+// same Value ABI, source function wrappers, checked arithmetic, source fault
+// positions, cancellation checkpoints, cleanup defers, List storage and Optional
+// operations. They are candidate representation measurements, not raw Go loops
+// that silently remove Manuscript's observable guarantees.
+func typedScalar() rt.Function {
+ return rt.NewSourceFunction([]string{"limit"},"Int",@@scalarPosition@@,func(ctx *rt.Execution,args []rt.Value) rt.Value {
+  sourcePosition:=@@scalarPosition@@
+  defer rt.TraceSource(&sourcePosition,"scalar")
+  cleanupStack:=rt.NewCleanupStack()
+  defer cleanupStack.Unwind()
+  limit:=rt.IntValue(args[0])
+  sourcePosition="benchmark.ms:4:5"
+  var total int64
+  sourcePosition="benchmark.ms:5:5"
+  var index int64
+  sourcePosition="benchmark.ms:6:5"
+  for index<limit {
+   rt.CheckCancelled(ctx)
+   sourcePosition="benchmark.ms:7:9"
+   total=rt.IntAdd(total,rt.SourceAt(&sourcePosition,"benchmark.ms:7:23",index))
+   sourcePosition="benchmark.ms:8:9"
+   index=rt.IntAdd(index,rt.SourceAt(&sourcePosition,"benchmark.ms:8:23",int64(1)))
+  }
+  sourcePosition="benchmark.ms:9:5"
+  return total
+ })
+}
+func typedCalls() rt.Function {
+ return rt.NewSourceFunction([]string{"limit"},"Int",@@callsPosition@@,func(ctx *rt.Execution,args []rt.Value) rt.Value {
+  sourcePosition:=@@callsPosition@@
+  defer rt.TraceSource(&sourcePosition,"calls")
+  cleanupStack:=rt.NewCleanupStack()
+  defer cleanupStack.Unwind()
+  limit:=rt.IntValue(args[0])
+  sourcePosition="benchmark.ms:14:5"
+  var total int64
+  sourcePosition="benchmark.ms:15:5"
+  var index int64
+  sourcePosition="benchmark.ms:16:5"
+  for index<limit {
+   rt.CheckCancelled(ctx)
+   sourcePosition="benchmark.ms:17:9"
+   // Retain the real lowered callee and SourceAt captures. This isolates locals
+   // from the separate question of specializing the source-call ABI.
+   total=rt.IntValue(@@add@@.(rt.Function).Body(ctx,rt.SourceAt(&sourcePosition,"benchmark.ms:17:17",[]rt.Value{
+    rt.SourceAt(&sourcePosition,"benchmark.ms:17:21",total),
+    rt.SourceAt(&sourcePosition,"benchmark.ms:17:34",index),
+   })))
+   sourcePosition="benchmark.ms:18:9"
+   index=rt.IntAdd(index,rt.SourceAt(&sourcePosition,"benchmark.ms:18:23",int64(1)))
+  }
+  sourcePosition="benchmark.ms:19:5"
+  return total
+ })
+}
+func typedItems() rt.Function {
+ return rt.NewSourceFunction([]string{"values","limit"},"Int",@@itemsPosition@@,func(ctx *rt.Execution,args []rt.Value) rt.Value {
+  sourcePosition:=@@itemsPosition@@
+  defer rt.TraceSource(&sourcePosition,"items")
+  cleanupStack:=rt.NewCleanupStack()
+  defer cleanupStack.Unwind()
+  values:=args[0]
+  limit:=rt.IntValue(args[1])
+  sourcePosition="benchmark.ms:22:5"
+  var total int64
+  sourcePosition="benchmark.ms:23:5"
+  var index int64
+  sourcePosition="benchmark.ms:24:5"
+  for index<limit {
+   rt.CheckCancelled(ctx)
+   sourcePosition="benchmark.ms:25:9"
+   total=rt.IntAdd(total,rt.SourceAt(&sourcePosition,"benchmark.ms:25:23",rt.IntValue(rt.OptionalUnwrap(ctx,
+    rt.SourceAt(&sourcePosition,"benchmark.ms:25:42",rt.ListAt(ctx,
+     rt.SourceAt(&sourcePosition,"benchmark.ms:25:25",values),index,
+     rt.SourceAt(&sourcePosition,"benchmark.ms:25:32","@std/Optional[Int]"),
+    )),
+   ))))
+   sourcePosition="benchmark.ms:26:9"
+   index=rt.IntAdd(index,rt.SourceAt(&sourcePosition,"benchmark.ms:26:23",int64(1)))
+  }
+  sourcePosition="benchmark.ms:27:5"
+  return total
+ })
+}
+
+func cases(limit int64) []struct{name string; lowered,typed rt.Function; args []rt.Value} {
+ values:=&rt.List{Type:"@std/List[Int]"}
+ for i:=int64(0);i<limit;i++ {values.Items=append(values.Items,i)}
+ return []struct{name string; lowered,typed rt.Function; args []rt.Value}{
+  {"Scalar",@@scalar@@.(rt.Function),typedScalar(),[]rt.Value{limit}},
+  {"Calls",@@calls@@.(rt.Function),typedCalls(),[]rt.Value{limit}},
+  {"Items",@@items@@.(rt.Function),typedItems(),[]rt.Value{values,limit}},
+ }
+}
+func TestBenchmarkParity(t *testing.T) {
+ initialize()
+ ctx:=rt.RootExecution()
+ defer rt.FinishExecution(ctx)
+ for _,n:=range []int64{0,1,32,256,1024} {
+  for _,test:=range cases(n) {
+   want:=n*(n-1)/2
+   if got:=rt.IntValue(test.lowered.Body(ctx,test.args));got!=want {t.Fatalf("%s lowered=%d, want %d",test.name,got,want)}
+   if got:=rt.IntValue(test.typed.Body(ctx,test.args));got!=want {t.Fatalf("%s typed=%d, want %d",test.name,got,want)}
+  }
+ }
+ for _,args:=range [][]rt.Value{
+  {&rt.List{Type:"@std/List[Int]"},int64(1)},
+  {&rt.List{Type:"@std/List[Int]",Items:[]rt.Value{int64(math.MaxInt64),int64(1)}},int64(2)},
+ } {
+  got,want:=failure(typedItems(),ctx,args),failure(@@items@@.(rt.Function),ctx,args)
+  if want==nil || !reflect.DeepEqual(got,want) {t.Fatalf("fault/frame mismatch: %v != %v",got,want)}
+ }
+ cancelled:=rt.RootExecution()
+ defer rt.FinishExecution(cancelled)
+ var cancel context.CancelFunc
+ cancelled.Context,cancel=context.WithCancel(cancelled.Context)
+ cancel()
+ for _,test:=range cases(32) {
+  got,want:=failure(test.typed,cancelled,test.args),failure(test.lowered,cancelled,test.args)
+  if want==nil || !reflect.DeepEqual(got,want) {t.Fatalf("%s cancellation mismatch: %v != %v",test.name,got,want)}
+ }
+}
+func failure(fn rt.Function,ctx *rt.Execution,args []rt.Value)(failure any) {
+ defer func(){failure=recover()}()
+ fn.Body(ctx,args)
+ return nil
+}
+func BenchmarkLowering(b *testing.B) {
+ initialize()
+ ctx:=rt.RootExecution()
+ defer rt.FinishExecution(ctx)
+ for _,test:=range cases(1024) {
+  b.Run(test.name,func(b *testing.B){
+   for _,variant:=range []struct{name string; fn rt.Function}{{"Generated",test.lowered},{"HandwrittenTypedLocals",test.typed}} {
+    b.Run(variant.name,func(b *testing.B){
+     b.ReportAllocs()
+     for b.Loop() {benchmarkResult=variant.fn.Body(ctx,test.args)}
+    })
+   }
+  })
+ }
+}

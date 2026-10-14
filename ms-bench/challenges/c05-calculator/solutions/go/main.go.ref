@@ -1,0 +1,125 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+type parser struct {
+	s       string
+	pos     int
+	divZero bool
+}
+
+type syntaxError struct{}
+
+func (p *parser) skip() {
+	for p.pos < len(p.s) && (p.s[p.pos] == ' ' || p.s[p.pos] == '\t') {
+		p.pos++
+	}
+}
+
+func (p *parser) peek() byte {
+	p.skip()
+	if p.pos >= len(p.s) {
+		return 0
+	}
+	return p.s[p.pos]
+}
+
+func (p *parser) expr() int64 {
+	v := p.term()
+	for c := p.peek(); c == '+' || c == '-'; c = p.peek() {
+		p.pos++
+		r := p.term()
+		if c == '+' {
+			v += r
+		} else {
+			v -= r
+		}
+	}
+	return v
+}
+
+func (p *parser) term() int64 {
+	v := p.unary()
+	for c := p.peek(); c == '*' || c == '/'; c = p.peek() {
+		p.pos++
+		r := p.unary()
+		if c == '*' {
+			v *= r
+		} else if r == 0 {
+			p.divZero = true
+			v = 0
+		} else {
+			v /= r
+		}
+	}
+	return v
+}
+
+func (p *parser) unary() int64 {
+	if p.peek() == '-' {
+		p.pos++
+		return -p.unary()
+	}
+	return p.atom()
+}
+
+func (p *parser) atom() int64 {
+	c := p.peek()
+	switch {
+	case c >= '0' && c <= '9':
+		var v int64
+		for p.pos < len(p.s) && p.s[p.pos] >= '0' && p.s[p.pos] <= '9' {
+			v = v*10 + int64(p.s[p.pos]-'0')
+			p.pos++
+		}
+		return v
+	case c == '(':
+		p.pos++
+		v := p.expr()
+		if p.peek() != ')' {
+			panic(syntaxError{})
+		}
+		p.pos++
+		return v
+	}
+	panic(syntaxError{})
+}
+
+func eval(line string) (res string) {
+	defer func() {
+		if r := recover(); r != nil {
+			if _, ok := r.(syntaxError); !ok {
+				panic(r)
+			}
+			res = "error: syntax"
+		}
+	}()
+	p := &parser{s: line}
+	v := p.expr()
+	if p.peek() != 0 || p.pos < len(p.s) {
+		return "error: syntax"
+	}
+	if p.divZero {
+		return "error: division by zero"
+	}
+	return fmt.Sprint(v)
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	for sc.Scan() {
+		line := strings.TrimRight(sc.Text(), "\r")
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		fmt.Fprintln(out, eval(line))
+	}
+}

@@ -45,3 +45,9 @@ test('highlighting preserves Unicode, HTML-like strings, decimals, and scientifi
   assert.ok(tokens.some(token => token.kind === 'mi' && token.text === '12.50d'));
   assert.ok(tokens.some(token => token.kind === 'mi' && token.text === '1e-3'));
 });
+
+test('from is a keyword only on import lines', () => {
+  const keywords = source => tokenize(source).filter(token => token.kind === 'k').map(token => token.text);
+  assert.deepEqual(keywords('import {a, b} from "x.ms"\n'), ['import', 'from']);
+  assert.deepEqual(keywords('let from = 2\n'), ['let']);
+});

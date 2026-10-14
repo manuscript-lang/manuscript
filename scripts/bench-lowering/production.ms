@@ -1,0 +1,90 @@
+import Closeable from "@std/cleanup.ms"
+
+type Resource:
+    value: Int
+
+impl Closeable for Resource:
+    fn close() -> Unit: return
+
+fn empty(value: Int) -> Int: value
+
+fn kept(resource: Resource) -> Int:
+    with active = resource: return 1
+
+    return 0
+
+fn ints(
+    left: Int,
+    right: Int,
+    limit: Int,
+    resource: Resource
+) -> Int:
+    with active = resource:
+        var count = 0
+        var index = 0
+
+        while index < limit:
+            if left == right: count = count + 1
+
+            index = index + 1
+
+        return count
+
+    return 0
+
+fn floats(
+    left: Float,
+    right: Float,
+    limit: Int,
+    resource: Resource
+) -> Int:
+    with active = resource:
+        var count = 0
+        var index = 0
+
+        while index < limit:
+            if left == right: count = count + 1
+
+            index = index + 1
+
+        return count
+
+    return 0
+
+fn bools(
+    left: Bool,
+    right: Bool,
+    limit: Int,
+    resource: Resource
+) -> Int:
+    with active = resource:
+        var count = 0
+        var index = 0
+
+        while index < limit:
+            if left == right: count = count + 1
+
+            index = index + 1
+
+        return count
+
+    return 0
+
+fn strings(
+    left: String,
+    right: String,
+    limit: Int,
+    resource: Resource
+) -> Int:
+    with active = resource:
+        var count = 0
+        var index = 0
+
+        while index < limit:
+            if left == right: count = count + 1
+
+            index = index + 1
+
+        return count
+
+    return 0

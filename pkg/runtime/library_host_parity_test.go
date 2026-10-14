@@ -112,7 +112,7 @@ func TestExpandedFileHandles(t *testing.T) {
 		}())
 	}
 	defer op("close")
-	librarySuccess(t, op("write_file", Bytes{[]byte("hello\r\nworld\n")}))
+	librarySuccess(t, op("write", Bytes{[]byte("hello\r\nworld\n")}))
 	libraryFailure(t, call("open", "file", "wx", int64(0600)), "AlreadyExists")
 	if got := librarySuccess(t, op("read_at", int64(0), int64(5))).(Bytes); string(got.Items) != "hello" {
 		t.Fatal(got)
@@ -120,7 +120,7 @@ func TestExpandedFileHandles(t *testing.T) {
 	librarySuccess(t, op("write_at", int64(0), Bytes{[]byte("HELLO")}))
 	librarySuccess(t, op("seek", int64(0), int64(0)))
 	lines := librarySuccess(t, op("read_lines", int64(64), int64(2))).(*List)
-	if len(lines.Items) != 2 || lines.Items[0] != "HELLO" || lines.Items[1] != "world" {
+	if lines.Len() != 2 || lines.Get(0) != "HELLO" || lines.Get(1) != "world" {
 		t.Fatal(lines)
 	}
 	librarySuccess(t, op("seek", int64(0), int64(0)))
@@ -157,7 +157,7 @@ func TestExpandedFileSystem(t *testing.T) {
 	libraryFailure(t, call("copy_tree", "source", "limited", false, int64(10), int64(4)), "LimitExceeded")
 	librarySuccess(t, call("copy_tree", "source", "copy", false, int64(3), int64(5)))
 	matches := librarySuccess(t, call("glob", "copy", "**/*.txt", int64(1))).(*List)
-	if len(matches.Items) != 1 || matches.Items[0] != filepath.Join("sub", "a.txt") {
+	if matches.Len() != 1 || matches.Get(0) != filepath.Join("sub", "a.txt") {
 		t.Fatal(matches)
 	}
 	libraryFailure(t, call("glob", "copy", "[", int64(1)), "InvalidInput")
@@ -242,7 +242,14 @@ func TestExpandedSystemAndProcess(t *testing.T) {
 		for _, name := range []string{"constrained_memory", "available_memory", "title"} {
 			librarySuccess(t, control.Operation(name).Body(ctx, nil))
 		}
-		for _, name := range []string{"cpus", "metrics", "os_release", "os_version"} {
+		// Windows CPU discovery uses WMI. Without a caller deadline the
+		// provider adds a three-second fallback, which can expire during
+		// hosted-runner startup. Give this success probe an explicit bounded
+		// budget; production calls retain their existing timeout behavior.
+		cpuContext, cancelCPU := context.WithTimeout(ctx.Context, 10*time.Second)
+		defer cancelCPU()
+		librarySuccess(t, system.Operation("cpus").Body(inherit(ctx, cpuContext), nil))
+		for _, name := range []string{"metrics", "os_release", "os_version"} {
 			librarySuccess(t, system.Operation(name).Body(ctx, nil))
 		}
 		for _, name := range []string{"cpu_usage", "resource_usage"} {
@@ -266,6 +273,47 @@ func TestExpandedSystemAndProcess(t *testing.T) {
 	}
 	if _, ok := libraryParseEnvironment("BAD KEY=value"); ok {
 		t.Fatal("accepted invalid env name")
+	}
+}
+
+func TestExpandedSystemAndProcessCPUCancellation(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		make func(context.Context) (context.Context, context.CancelFunc)
+		want error
+	}{
+		{"cancelled", context.WithCancel, context.Canceled},
+		{"deadline", func(parent context.Context) (context.Context, context.CancelFunc) {
+			return context.WithDeadline(parent, time.Now().Add(-time.Second))
+		}, context.DeadlineExceeded},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := RootExecution()
+			lifetime, cancel := test.make(ctx.Context)
+			cancel()
+			ctx = inherit(ctx, lifetime)
+			if ctx.Context.Err() != test.want {
+				t.Fatal(ctx.Context.Err())
+			}
+			system := &librarySystem{}
+			failure := recovered(func() { system.Operation("cpus").Body(ctx, nil) })
+			if _, ok := failure.(cancelled); !ok {
+				t.Fatalf("caller cancellation became a CPU result: %#v", failure)
+			}
+		})
+	}
+}
+
+func TestExpandedSystemAndProcessCPUProviderDeadline(t *testing.T) {
+	// A provider's internal timeout leaves the caller live. It is an OS
+	// failure in the existing SystemError domain, rather than cancellation.
+	ctx := RootExecution()
+	CheckCancelled(ctx)
+	result := libraryOSResult("@std/Result[@std/List[@std/CpuInfo]][@std/SystemError]", nil, context.DeadlineExceeded)
+	libraryFailure(t, result, "Failed")
+	cause := result.(Alternative).Fields[0].(Alternative)
+	if cause.Type != "@std/SystemError" || cause.Fields[0] != context.DeadlineExceeded.Error() {
+		t.Fatalf("provider deadline lost its domain or diagnostic: %#v", cause)
 	}
 }
 
@@ -735,4 +783,36 @@ func TestProcessSignalStreamAndMonotonicTime(t *testing.T) {
 	}
 	Bind(view, "", "close").(Function).Body(ctx, nil)
 	libraryFailure(t, Bind(view, "", "next").(Function).Body(ctx, nil), "Closed")
+}
+
+func TestFileSystemErrorMapping(t *testing.T) {
+	ctx := RootExecution()
+	dir := t.TempDir()
+	fs := &libraryFileSystem{dir}
+	call := func(name string, a ...Value) Value { return fs.Operation(name).Body(ctx, a) }
+	librarySuccess(t, call("create_directory", "dir", false))
+	librarySuccess(t, call("write_file", "dir/child", Bytes{[]byte("x")}, false))
+	librarySuccess(t, call("write_file", "file", Bytes{[]byte("abc")}, false))
+	libraryFailure(t, call("remove", "dir", false), "NotEmpty")
+	libraryFailure(t, call("list", "file", nil), "InvalidInput")
+	libraryFailure(t, call("read_file", "dir", nil), "InvalidInput")
+	libraryFailure(t, call("create_directory", "file", false), "AlreadyExists")
+
+	ro := librarySuccess(t, call("open", "file", "r", int64(0)))
+	write := func(h Value, name string, a ...Value) Value {
+		fn := Bind(h, "", name).(Function)
+		var args []Argument
+		for i, v := range a {
+			args = append(args, Argument{Name: fn.Labels[i], Value: v})
+		}
+		return Invoke(ctx, fn, args)
+	}
+	defer write(ro, "close")
+	libraryFailure(t, write(ro, "write", Bytes{[]byte("z")}), "InvalidInput")
+	libraryFailure(t, write(ro, "seek", int64(-1), int64(0)), "InvalidInput")
+	libraryFailure(t, write(ro, "seek", int64(0), int64(3)), "InvalidInput")
+	wo := librarySuccess(t, call("open", "file", "a", int64(0)))
+	defer write(wo, "close")
+	libraryFailure(t, write(wo, "read", int64(1)), "InvalidInput")
+	libraryFailure(t, write(wo, "read_file", int64(100)), "InvalidInput")
 }

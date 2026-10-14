@@ -1,0 +1,3249 @@
+// Oracle for c55-jq-lite: a jq subset.
+package main
+
+import (
+	"bufio"
+	"encoding/base64"
+	"fmt"
+	"io"
+	"math"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+	"unicode/utf8"
+)
+
+// ============ values ============
+type V interface{}
+type Obj struct {
+	keys []string
+	m    map[string]V
+}
+
+func newObj() *Obj { return &Obj{m: map[string]V{}} }
+func (o *Obj) set(k string, v V) *Obj {
+	n := &Obj{keys: o.keys, m: make(map[string]V, len(o.m)+1)}
+	for kk, vv := range o.m {
+		n.m[kk] = vv
+	}
+	if _, ok := n.m[k]; !ok {
+		n.keys = append(append([]string{}, o.keys...), k)
+	}
+	n.m[k] = v
+	return n
+}
+func (o *Obj) del(k string) *Obj {
+	if _, ok := o.m[k]; !ok {
+		return o
+	}
+	n := &Obj{m: map[string]V{}}
+	for _, kk := range o.keys {
+		if kk != k {
+			n.keys = append(n.keys, kk)
+			n.m[kk] = o.m[kk]
+		}
+	}
+	return n
+}
+func (o *Obj) sortedKeys() []string {
+	k := append([]string{}, o.keys...)
+	sort.Strings(k)
+	return k
+}
+
+type JqErr struct{ v V }
+
+func throw(f string, a ...interface{}) { panic(JqErr{fmt.Sprintf(f, a...)}) }
+
+func typeName(v V) string {
+	switch v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "boolean"
+	case float64:
+		return "number"
+	case string:
+		return "string"
+	case []V:
+		return "array"
+	}
+	return "object"
+}
+func truthy(v V) bool {
+	if v == nil {
+		return false
+	}
+	if b, ok := v.(bool); ok {
+		return b
+	}
+	return true
+}
+
+func fmtNum(f float64) string {
+	if math.IsNaN(f) {
+		return "null"
+	}
+	if math.IsInf(f, 1) {
+		return "1.7976931348623157e+308"
+	}
+	if math.IsInf(f, -1) {
+		return "-1.7976931348623157e+308"
+	}
+	if f == math.Trunc(f) && math.Abs(f) < 1e17 {
+		return strconv.FormatInt(int64(f), 10)
+	}
+	return strconv.FormatFloat(f, 'f', -1, 64)
+}
+
+func quoteJSON(s string) string {
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range s {
+		switch {
+		case r == '"':
+			b.WriteString("\\\"")
+		case r == '\\':
+			b.WriteString("\\\\")
+		case r == '\n':
+			b.WriteString("\\n")
+		case r == '\t':
+			b.WriteString("\\t")
+		case r == '\r':
+			b.WriteString("\\r")
+		case r == '\b':
+			b.WriteString("\\b")
+		case r == '\f':
+			b.WriteString("\\f")
+		case r < 0x20 || r == 0x7f:
+			fmt.Fprintf(&b, "\\u%04x", r)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
+}
+
+func toJSON(v V) string {
+	var b strings.Builder
+	writeJSON(&b, v)
+	return b.String()
+}
+func writeJSON(b *strings.Builder, v V) {
+	switch x := v.(type) {
+	case nil:
+		b.WriteString("null")
+	case bool:
+		if x {
+			b.WriteString("true")
+		} else {
+			b.WriteString("false")
+		}
+	case float64:
+		b.WriteString(fmtNum(x))
+	case string:
+		b.WriteString(quoteJSON(x))
+	case []V:
+		b.WriteByte('[')
+		for i, e := range x {
+			if i > 0 {
+				b.WriteByte(',')
+			}
+			writeJSON(b, e)
+		}
+		b.WriteByte(']')
+	case *Obj:
+		b.WriteByte('{')
+		for i, k := range x.keys {
+			if i > 0 {
+				b.WriteByte(',')
+			}
+			b.WriteString(quoteJSON(k))
+			b.WriteByte(':')
+			writeJSON(b, x.m[k])
+		}
+		b.WriteByte('}')
+	}
+}
+
+func order(v V) int {
+	switch x := v.(type) {
+	case nil:
+		return 0
+	case bool:
+		if x {
+			return 2
+		}
+		return 1
+	case float64:
+		return 3
+	case string:
+		return 4
+	case []V:
+		return 5
+	}
+	return 6
+}
+func cmpV(a, b V) int {
+	oa, ob := order(a), order(b)
+	if oa != ob {
+		if oa < ob {
+			return -1
+		}
+		return 1
+	}
+	switch x := a.(type) {
+	case float64:
+		y := b.(float64)
+		if x < y {
+			return -1
+		} else if x > y {
+			return 1
+		}
+		return 0
+	case string:
+		return strings.Compare(x, b.(string))
+	case []V:
+		y := b.([]V)
+		for i := 0; i < len(x) && i < len(y); i++ {
+			if c := cmpV(x[i], y[i]); c != 0 {
+				return c
+			}
+		}
+		if len(x) < len(y) {
+			return -1
+		} else if len(x) > len(y) {
+			return 1
+		}
+		return 0
+	case *Obj:
+		y := b.(*Obj)
+		ka, kb := x.sortedKeys(), y.sortedKeys()
+		var ak, bk []V
+		for _, k := range ka {
+			ak = append(ak, k)
+		}
+		for _, k := range kb {
+			bk = append(bk, k)
+		}
+		if c := cmpV(ak, bk); c != 0 {
+			return c
+		}
+		for _, k := range ka {
+			if c := cmpV(x.m[k], y.m[k]); c != 0 {
+				return c
+			}
+		}
+		return 0
+	}
+	return 0
+}
+
+// ============ JSON parser ============
+type JP struct {
+	s string
+	i int
+}
+type jsonErr struct{}
+
+func (p *JP) ws() {
+	for p.i < len(p.s) && (p.s[p.i] == ' ' || p.s[p.i] == '\t' || p.s[p.i] == '\n' || p.s[p.i] == '\r') {
+		p.i++
+	}
+}
+func (p *JP) fail() { panic(jsonErr{}) }
+func (p *JP) value() V {
+	p.ws()
+	if p.i >= len(p.s) {
+		p.fail()
+	}
+	c := p.s[p.i]
+	switch {
+	case c == '{':
+		p.i++
+		o := newObj()
+		p.ws()
+		if p.i < len(p.s) && p.s[p.i] == '}' {
+			p.i++
+			return o
+		}
+		for {
+			p.ws()
+			if p.i >= len(p.s) || p.s[p.i] != '"' {
+				p.fail()
+			}
+			k := p.str()
+			p.ws()
+			if p.i >= len(p.s) || p.s[p.i] != ':' {
+				p.fail()
+			}
+			p.i++
+			v := p.value()
+			o = o.set(k, v)
+			p.ws()
+			if p.i < len(p.s) && p.s[p.i] == ',' {
+				p.i++
+				continue
+			}
+			if p.i < len(p.s) && p.s[p.i] == '}' {
+				p.i++
+				return o
+			}
+			p.fail()
+		}
+	case c == '[':
+		p.i++
+		arr := []V{}
+		p.ws()
+		if p.i < len(p.s) && p.s[p.i] == ']' {
+			p.i++
+			return arr
+		}
+		for {
+			arr = append(arr, p.value())
+			p.ws()
+			if p.i < len(p.s) && p.s[p.i] == ',' {
+				p.i++
+				continue
+			}
+			if p.i < len(p.s) && p.s[p.i] == ']' {
+				p.i++
+				return arr
+			}
+			p.fail()
+		}
+	case c == '"':
+		return p.str()
+	case strings.HasPrefix(p.s[p.i:], "true"):
+		p.i += 4
+		return true
+	case strings.HasPrefix(p.s[p.i:], "false"):
+		p.i += 5
+		return false
+	case strings.HasPrefix(p.s[p.i:], "null"):
+		p.i += 4
+		return nil
+	case c == '-' || (c >= '0' && c <= '9'):
+		j := p.i
+		if p.s[j] == '-' {
+			j++
+		}
+		if j >= len(p.s) || p.s[j] < '0' || p.s[j] > '9' {
+			p.fail()
+		}
+		if p.s[j] == '0' {
+			j++
+		} else {
+			for j < len(p.s) && p.s[j] >= '0' && p.s[j] <= '9' {
+				j++
+			}
+		}
+		if j < len(p.s) && p.s[j] == '.' {
+			j++
+			k := j
+			for j < len(p.s) && p.s[j] >= '0' && p.s[j] <= '9' {
+				j++
+			}
+			if j == k {
+				p.fail()
+			}
+		}
+		if j < len(p.s) && (p.s[j] == 'e' || p.s[j] == 'E') {
+			j++
+			if j < len(p.s) && (p.s[j] == '+' || p.s[j] == '-') {
+				j++
+			}
+			k := j
+			for j < len(p.s) && p.s[j] >= '0' && p.s[j] <= '9' {
+				j++
+			}
+			if j == k {
+				p.fail()
+			}
+		}
+		f, err := strconv.ParseFloat(p.s[p.i:j], 64)
+		if err != nil {
+			p.fail()
+		}
+		p.i = j
+		return f
+	}
+	p.fail()
+	return nil
+}
+func (p *JP) hex4() rune {
+	if p.i+4 > len(p.s) {
+		p.fail()
+	}
+	n, err := strconv.ParseUint(p.s[p.i:p.i+4], 16, 32)
+	if err != nil {
+		p.fail()
+	}
+	p.i += 4
+	return rune(n)
+}
+func (p *JP) str() string {
+	p.i++
+	var b strings.Builder
+	for {
+		if p.i >= len(p.s) {
+			p.fail()
+		}
+		c := p.s[p.i]
+		p.i++
+		switch {
+		case c == '"':
+			return b.String()
+		case c < 0x20:
+			p.fail()
+		case c == '\\':
+			if p.i >= len(p.s) {
+				p.fail()
+			}
+			e := p.s[p.i]
+			p.i++
+			switch e {
+			case '"', '\\', '/':
+				b.WriteByte(e)
+			case 'b':
+				b.WriteByte('\b')
+			case 'f':
+				b.WriteByte('\f')
+			case 'n':
+				b.WriteByte('\n')
+			case 'r':
+				b.WriteByte('\r')
+			case 't':
+				b.WriteByte('\t')
+			case 'u':
+				r := p.hex4()
+				if r >= 0xD800 && r < 0xDC00 && strings.HasPrefix(p.s[p.i:], "\\u") {
+					save := p.i
+					p.i += 2
+					r2 := p.hex4()
+					if r2 >= 0xDC00 && r2 < 0xE000 {
+						r = 0x10000 + (r-0xD800)<<10 + (r2 - 0xDC00)
+					} else {
+						p.i = save
+						r = 0xFFFD
+					}
+				} else if r >= 0xD800 && r < 0xE000 {
+					r = 0xFFFD
+				}
+				b.WriteRune(r)
+			default:
+				p.fail()
+			}
+		default:
+			b.WriteByte(c)
+		}
+	}
+}
+
+// parse a complete JSON text
+func parseJSONText(s string) (v V, ok bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			if _, is := r.(jsonErr); is {
+				ok = false
+				return
+			}
+			panic(r)
+		}
+	}()
+	p := &JP{s: s}
+	v = p.value()
+	p.ws()
+	if p.i != len(p.s) {
+		return nil, false
+	}
+	return v, true
+}
+
+// ============ AST ============
+type Node struct {
+	kind   string
+	s      string
+	num    float64
+	val    V
+	kids   []*Node
+	parts  []StrPart
+	format string
+	ents   []ObjEnt
+	pats   []*Pat
+	def    *Def
+	op     string
+	args   []*Node
+}
+type StrPart struct {
+	lit  string
+	node *Node
+}
+type ObjEnt struct {
+	key  *Node // evaluates to key
+	val  *Node
+	vsrc string
+}
+type Pat struct {
+	kind string // var arr obj
+	name string
+	elems []*Pat
+	ents  []PatEnt
+}
+type PatEnt struct {
+	keyNode *Node
+	keyVar  string // for {$name}
+	pat     *Pat
+}
+type Def struct {
+	name   string
+	params []string
+	body   *Node
+}
+
+type SyntaxErr struct{}
+
+type Parser struct {
+	s string
+	i int
+}
+
+func (p *Parser) bad() { panic(SyntaxErr{}) }
+func (p *Parser) ws() {
+	for p.i < len(p.s) {
+		c := p.s[p.i]
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+			p.i++
+		} else if c == '#' {
+			for p.i < len(p.s) && p.s[p.i] != '\n' {
+				p.i++
+			}
+		} else {
+			break
+		}
+	}
+}
+func isIdStart(c byte) bool { return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
+func isIdChar(c byte) bool  { return isIdStart(c) || (c >= '0' && c <= '9') }
+func (p *Parser) peekWord() string {
+	p.ws()
+	j := p.i
+	if j < len(p.s) && isIdStart(p.s[j]) {
+		for j < len(p.s) && isIdChar(p.s[j]) {
+			j++
+		}
+		return p.s[p.i:j]
+	}
+	return ""
+}
+func (p *Parser) isWord(w string) bool { return p.peekWord() == w }
+func (p *Parser) eatWord(w string) bool {
+	if p.isWord(w) {
+		p.i += len(w)
+		return true
+	}
+	return false
+}
+func (p *Parser) expectWord(w string) {
+	if !p.eatWord(w) {
+		p.bad()
+	}
+}
+func (p *Parser) at(t string) bool {
+	p.ws()
+	return strings.HasPrefix(p.s[p.i:], t)
+}
+func (p *Parser) eat(t string) bool {
+	if p.at(t) {
+		p.i += len(t)
+		return true
+	}
+	return false
+}
+func (p *Parser) expect(t string) {
+	if !p.eat(t) {
+		p.bad()
+	}
+}
+
+var keywords = map[string]bool{"def": true, "if": true, "then": true, "elif": true, "else": true, "end": true, "as": true, "reduce": true, "foreach": true, "try": true, "catch": true, "and": true, "or": true, "label": true, "import": true, "include": true, "__loc__": true}
+
+func (p *Parser) parsePipe() *Node {
+	if p.isWord("def") {
+		d := p.parseDef()
+		body := p.parsePipe()
+		return &Node{kind: "funcdef", def: d, kids: []*Node{body}}
+	}
+	l := p.parseComma()
+	if p.at("|") && !p.at("|=") {
+		p.i++
+		r := p.parsePipe()
+		return &Node{kind: "pipe", kids: []*Node{l, r}}
+	}
+	return l
+}
+func (p *Parser) parseDef() *Def {
+	p.expectWord("def")
+	name := p.peekWord()
+	if name == "" || keywords[name] {
+		p.bad()
+	}
+	p.i += len(name)
+	d := &Def{name: name}
+	var binds []string
+	if p.eat("(") {
+		for {
+			p.ws()
+			isVar := p.eat("$")
+			w := p.peekWord()
+			if w == "" || keywords[w] {
+				p.bad()
+			}
+			p.i += len(w)
+			d.params = append(d.params, w)
+			if isVar {
+				binds = append(binds, w)
+			}
+			if p.eat(";") {
+				continue
+			}
+			p.expect(")")
+			break
+		}
+	}
+	p.expect(":")
+	body := p.parsePipe()
+	p.expect(";")
+	for k := len(binds) - 1; k >= 0; k-- {
+		b := binds[k]
+		body = &Node{kind: "as", kids: []*Node{{kind: "call", s: b}, body}, pats: []*Pat{{kind: "var", name: b}}}
+	}
+	d.body = body
+	return d
+}
+func (p *Parser) parseComma() *Node {
+	l := p.parseAlt()
+	for p.at(",") {
+		p.i++
+		r := p.parseAlt()
+		l = &Node{kind: "comma", kids: []*Node{l, r}}
+	}
+	return l
+}
+func (p *Parser) parseAlt() *Node {
+	l := p.parseAssign()
+	if p.at("//") && !p.at("//=") {
+		p.i += 2
+		r := p.parseAlt()
+		return &Node{kind: "alt", kids: []*Node{l, r}}
+	}
+	return l
+}
+func (p *Parser) parseAssign() *Node {
+	l := p.parseOr()
+	for _, op := range []string{"//=", "|=", "+=", "-=", "*=", "/=", "%=", "="} {
+		if p.at(op) {
+			if op == "=" && p.at("==") {
+				break
+			}
+			p.i += len(op)
+			r := p.parseAlt2()
+			n := &Node{kind: "assign", op: op, kids: []*Node{l, r}}
+			if p.at("=") && !p.at("==") || p.at("|=") || p.at("+=") || p.at("-=") || p.at("*=") || p.at("/=") || p.at("%=") || p.at("//=") {
+				p.bad()
+			}
+			return n
+		}
+	}
+	return l
+}
+
+// right-hand side of an assignment: binds tighter than '//' and ','
+func (p *Parser) parseAlt2() *Node { return p.parseOr() }
+
+func (p *Parser) parseOr() *Node {
+	l := p.parseAnd()
+	for p.isWord("or") {
+		p.i += 2
+		r := p.parseAnd()
+		l = &Node{kind: "or", kids: []*Node{l, r}}
+	}
+	return l
+}
+func (p *Parser) parseAnd() *Node {
+	l := p.parseCmp()
+	for p.isWord("and") {
+		p.i += 3
+		r := p.parseCmp()
+		l = &Node{kind: "and", kids: []*Node{l, r}}
+	}
+	return l
+}
+func (p *Parser) cmpOp() string {
+	for _, op := range []string{"==", "!=", "<=", ">=", "<", ">"} {
+		if p.at(op) {
+			return op
+		}
+	}
+	return ""
+}
+func (p *Parser) parseCmp() *Node {
+	l := p.parseAdd()
+	if op := p.cmpOp(); op != "" {
+		p.i += len(op)
+		r := p.parseAdd()
+		if p.cmpOp() != "" {
+			p.bad()
+		}
+		return &Node{kind: "binop", op: op, kids: []*Node{l, r}}
+	}
+	return l
+}
+func (p *Parser) parseAdd() *Node {
+	l := p.parseMul()
+	for {
+		if p.at("+") && !p.at("+=") {
+			p.i++
+			l = &Node{kind: "binop", op: "+", kids: []*Node{l, p.parseMul()}}
+		} else if p.at("-") && !p.at("-=") {
+			p.i++
+			l = &Node{kind: "binop", op: "-", kids: []*Node{l, p.parseMul()}}
+		} else {
+			return l
+		}
+	}
+}
+func (p *Parser) parseMul() *Node {
+	l := p.parseUnary()
+	for {
+		var op string
+		switch {
+		case p.at("*") && !p.at("*="):
+			op = "*"
+		case p.at("/") && !p.at("//") && !p.at("/="):
+			op = "/"
+		case p.at("%") && !p.at("%="):
+			op = "%"
+		default:
+			return l
+		}
+		p.i++
+		l = &Node{kind: "binop", op: op, kids: []*Node{l, p.parseUnary()}}
+	}
+}
+func (p *Parser) parseUnary() *Node {
+	if p.at("-") && !p.at("-=") {
+		p.i++
+		return &Node{kind: "neg", kids: []*Node{p.parseUnary()}}
+	}
+	return p.parseTermAs()
+}
+
+func (p *Parser) parseTermAs() *Node {
+	t := p.parsePostfix()
+	if p.isWord("as") {
+		p.i += 2
+		pats := p.parsePatterns()
+		p.expect("|")
+		body := p.parsePipe()
+		return &Node{kind: "as", kids: []*Node{t, body}, pats: pats}
+	}
+	return t
+}
+
+func (p *Parser) parsePatterns() []*Pat {
+	pats := []*Pat{p.parsePattern()}
+	return pats
+}
+func (p *Parser) parsePattern() *Pat {
+	p.ws()
+	if p.eat("$") {
+		w := p.peekWord()
+		if w == "" || keywords[w] {
+			p.bad()
+		}
+		p.i += len(w)
+		return &Pat{kind: "var", name: w}
+	}
+	if p.eat("[") {
+		pt := &Pat{kind: "arr"}
+		for {
+			pt.elems = append(pt.elems, p.parsePattern())
+			if p.eat(",") {
+				continue
+			}
+			p.expect("]")
+			return pt
+		}
+	}
+	if p.eat("{") {
+		pt := &Pat{kind: "obj"}
+		for {
+			p.ws()
+			var e PatEnt
+			if p.eat("$") {
+				w := p.peekWord()
+				if w == "" || keywords[w] {
+					p.bad()
+				}
+				p.i += len(w)
+				e.keyVar = w
+				if p.eat(":") {
+					e.pat = p.parsePattern()
+				}
+				e.keyNode = &Node{kind: "lit", val: w}
+			} else if p.at("(") {
+				p.i++
+				e.keyNode = p.parsePipe()
+				p.expect(")")
+				p.expect(":")
+				e.pat = p.parsePattern()
+			} else if p.at("\"") {
+				e.keyNode = p.parseString("")
+				p.expect(":")
+				e.pat = p.parsePattern()
+			} else {
+				w := p.peekWord()
+				if w == "" {
+					p.bad()
+				}
+				p.i += len(w)
+				e.keyNode = &Node{kind: "lit", val: w}
+				p.expect(":")
+				e.pat = p.parsePattern()
+			}
+			pt.ents = append(pt.ents, e)
+			if p.eat(",") {
+				continue
+			}
+			p.expect("}")
+			return pt
+		}
+	}
+	p.bad()
+	return nil
+}
+
+func (p *Parser) parsePostfix() *Node {
+	t := p.parseTerm()
+	for {
+		if p.i >= len(p.s) {
+			return t
+		}
+		c := p.s[p.i]
+		switch {
+		case c == '.' && p.i+1 < len(p.s) && p.s[p.i+1] == '"':
+			p.i++
+			k := p.parseString("")
+			t = &Node{kind: "index", kids: []*Node{t, k}}
+		case c == '.' && p.i+1 < len(p.s) && isIdStart(p.s[p.i+1]):
+			p.i++
+			j := p.i
+			for j < len(p.s) && isIdChar(p.s[j]) {
+				j++
+			}
+			t = &Node{kind: "index", kids: []*Node{t, {kind: "lit", val: p.s[p.i:j]}}}
+			p.i = j
+		case c == '.' && p.i+1 < len(p.s) && p.s[p.i+1] == '[':
+			p.i++
+		case c == '[':
+			t = p.parseBracket(t)
+		case c == '?':
+			p.i++
+			t = &Node{kind: "try", kids: []*Node{t}}
+		default:
+			return t
+		}
+	}
+}
+func (p *Parser) parseBracket(t *Node) *Node {
+	p.expect("[")
+	if p.eat("]") {
+		return &Node{kind: "iterate", kids: []*Node{t}}
+	}
+	if p.eat(":") {
+		to := p.parsePipe()
+		p.expect("]")
+		return &Node{kind: "slice", kids: []*Node{t, nil, to}}
+	}
+	idx := p.parsePipe()
+	if p.eat(":") {
+		if p.eat("]") {
+			return &Node{kind: "slice", kids: []*Node{t, idx, nil}}
+		}
+		to := p.parsePipe()
+		p.expect("]")
+		return &Node{kind: "slice", kids: []*Node{t, idx, to}}
+	}
+	p.expect("]")
+	return &Node{kind: "index", kids: []*Node{t, idx}}
+}
+
+func (p *Parser) parseString(format string) *Node {
+	p.expect("\"")
+	n := &Node{kind: "str", format: format}
+	var b strings.Builder
+	for {
+		if p.i >= len(p.s) {
+			p.bad()
+		}
+		c := p.s[p.i]
+		p.i++
+		switch {
+		case c == '"':
+			if b.Len() > 0 || len(n.parts) == 0 {
+				n.parts = append(n.parts, StrPart{lit: b.String()})
+			}
+			return n
+		case c == '\\':
+			if p.i >= len(p.s) {
+				p.bad()
+			}
+			e := p.s[p.i]
+			p.i++
+			switch e {
+			case '"', '\\', '/':
+				b.WriteByte(e)
+			case 'n':
+				b.WriteByte('\n')
+			case 't':
+				b.WriteByte('\t')
+			case 'r':
+				b.WriteByte('\r')
+			case 'b':
+				b.WriteByte('\b')
+			case 'f':
+				b.WriteByte('\f')
+			case 'u':
+				jp := &JP{s: p.s, i: p.i}
+				var r rune
+				func() {
+					defer func() {
+						if x := recover(); x != nil {
+							p.bad()
+						}
+					}()
+					r = jp.hex4()
+					if r >= 0xD800 && r < 0xDC00 && strings.HasPrefix(jp.s[jp.i:], "\\u") {
+						save := jp.i
+						jp.i += 2
+						r2 := jp.hex4()
+						if r2 >= 0xDC00 && r2 < 0xE000 {
+							r = 0x10000 + (r-0xD800)<<10 + (r2 - 0xDC00)
+						} else {
+							jp.i = save
+							r = 0xFFFD
+						}
+					} else if r >= 0xD800 && r < 0xE000 {
+						r = 0xFFFD
+					}
+				}()
+				p.i = jp.i
+				b.WriteRune(r)
+			case '(':
+				if b.Len() > 0 {
+					n.parts = append(n.parts, StrPart{lit: b.String()})
+					b.Reset()
+				}
+				e := p.parsePipe()
+				p.expect(")")
+				n.parts = append(n.parts, StrPart{node: e})
+			default:
+				p.bad()
+			}
+		default:
+			b.WriteByte(c)
+		}
+	}
+}
+
+func (p *Parser) parseNumber() *Node {
+	j := p.i
+	for j < len(p.s) && p.s[j] >= '0' && p.s[j] <= '9' {
+		j++
+	}
+	if j < len(p.s) && p.s[j] == '.' {
+		j++
+		for j < len(p.s) && p.s[j] >= '0' && p.s[j] <= '9' {
+			j++
+		}
+	}
+	if j < len(p.s) && (p.s[j] == 'e' || p.s[j] == 'E') {
+		k := j + 1
+		if k < len(p.s) && (p.s[k] == '+' || p.s[k] == '-') {
+			k++
+		}
+		if k < len(p.s) && p.s[k] >= '0' && p.s[k] <= '9' {
+			for k < len(p.s) && p.s[k] >= '0' && p.s[k] <= '9' {
+				k++
+			}
+			j = k
+		}
+	}
+	f, err := strconv.ParseFloat(p.s[p.i:j], 64)
+	if err != nil {
+		p.bad()
+	}
+	p.i = j
+	return &Node{kind: "lit", val: f}
+}
+
+func (p *Parser) parseTerm() *Node {
+	p.ws()
+	if p.i >= len(p.s) {
+		p.bad()
+	}
+	c := p.s[p.i]
+	switch {
+	case c == '.':
+		if strings.HasPrefix(p.s[p.i:], "..") {
+			p.i += 2
+			return &Node{kind: "call", s: "recurse"}
+		}
+		if p.i+1 < len(p.s) && p.s[p.i+1] >= '0' && p.s[p.i+1] <= '9' {
+			return p.parseNumber()
+		}
+		if p.i+1 < len(p.s) && p.s[p.i+1] == '"' {
+			p.i++
+			k := p.parseString("")
+			return &Node{kind: "index", kids: []*Node{{kind: "id"}, k}}
+		}
+		if p.i+1 < len(p.s) && isIdStart(p.s[p.i+1]) {
+			p.i++
+			j := p.i
+			for j < len(p.s) && isIdChar(p.s[j]) {
+				j++
+			}
+			n := &Node{kind: "index", kids: []*Node{{kind: "id"}, {kind: "lit", val: p.s[p.i:j]}}}
+			p.i = j
+			return n
+		}
+		p.i++
+		return &Node{kind: "id"}
+	case c >= '0' && c <= '9':
+		return p.parseNumber()
+	case c == '"':
+		return p.parseString("")
+	case c == '@':
+		p.i++
+		w := p.peekWord()
+		if w == "" {
+			p.bad()
+		}
+		p.i += len(w)
+		switch w {
+		case "text", "json", "csv", "tsv", "html", "uri", "base64", "base64d":
+		default:
+			p.bad()
+		}
+		if p.at("\"") {
+			return p.parseString(w)
+		}
+		return &Node{kind: "format", s: w}
+	case c == '$':
+		p.i++
+		w := p.peekWord()
+		if w == "" || keywords[w] {
+			p.bad()
+		}
+		p.i += len(w)
+		return &Node{kind: "var", s: w}
+	case c == '(':
+		p.i++
+		e := p.parsePipe()
+		p.expect(")")
+		return &Node{kind: "paren", kids: []*Node{e}}
+	case c == '[':
+		p.i++
+		if p.eat("]") {
+			return &Node{kind: "array"}
+		}
+		e := p.parsePipe()
+		p.expect("]")
+		return &Node{kind: "array", kids: []*Node{e}}
+	case c == '{':
+		return p.parseObject()
+	case isIdStart(c):
+		w := p.peekWord()
+		switch w {
+		case "if":
+			p.i += 2
+			return p.parseIf()
+		case "try":
+			p.i += 3
+			body := p.parsePostfix()
+			n := &Node{kind: "try", kids: []*Node{body}}
+			if p.eatWord("catch") {
+				n.kids = append(n.kids, p.parsePostfix())
+			}
+			return n
+		case "reduce", "foreach":
+			p.i += len(w)
+			src := p.parsePostfix()
+			p.expectWord("as")
+			pats := p.parsePatterns()
+			p.expect("(")
+			init := p.parsePipe()
+			p.expect(";")
+			upd := p.parsePipe()
+			n := &Node{kind: w, pats: pats, kids: []*Node{src, init, upd}}
+			if w == "foreach" && p.eat(";") {
+				n.kids = append(n.kids, p.parsePipe())
+			}
+			p.expect(")")
+			return n
+		case "def":
+			p.bad()
+		}
+		if keywords[w] {
+			p.bad()
+		}
+		p.i += len(w)
+		switch w {
+		case "null":
+			return &Node{kind: "lit", val: nil}
+		case "true":
+			return &Node{kind: "lit", val: true}
+		case "false":
+			return &Node{kind: "lit", val: false}
+		}
+		n := &Node{kind: "call", s: w}
+		if p.i < len(p.s) && p.s[p.i] == '(' {
+			p.i++
+			for {
+				n.args = append(n.args, p.parsePipe())
+				if p.eat(";") {
+					continue
+				}
+				p.expect(")")
+				break
+			}
+		}
+		return n
+	}
+	p.bad()
+	return nil
+}
+
+func (p *Parser) parseIf() *Node {
+	cond := p.parsePipe()
+	p.expectWord("then")
+	th := p.parsePipe()
+	n := &Node{kind: "if", kids: []*Node{cond, th}}
+	if p.eatWord("elif") {
+		n.kids = append(n.kids, p.parseIf())
+		return n
+	}
+	if p.eatWord("else") {
+		n.kids = append(n.kids, p.parsePipe())
+	}
+	p.expectWord("end")
+	return n
+}
+
+func (p *Parser) parseObject() *Node {
+	p.expect("{")
+	n := &Node{kind: "object"}
+	if p.eat("}") {
+		return n
+	}
+	for {
+		p.ws()
+		var e ObjEnt
+		switch {
+		case p.at("$"):
+			p.i++
+			w := p.peekWord()
+			if w == "" || keywords[w] {
+				p.bad()
+			}
+			p.i += len(w)
+			e.key = &Node{kind: "lit", val: w}
+			e.val = &Node{kind: "var", s: w}
+		case p.at("("):
+			p.i++
+			k := p.parsePipe()
+			p.expect(")")
+			e.key = k
+			p.expect(":")
+			e.val = p.parseObjVal()
+		case p.at("\""):
+			k := p.parseString("")
+			e.key = k
+			if p.eat(":") {
+				e.val = p.parseObjVal()
+			} else {
+				e.val = &Node{kind: "index", kids: []*Node{{kind: "id"}, k}}
+			}
+		case p.at("@"):
+			k := p.parseTerm()
+			e.key = k
+			if p.eat(":") {
+				e.val = p.parseObjVal()
+			} else {
+				p.bad()
+			}
+		default:
+			w := p.peekWord()
+			if w == "" {
+				if p.i < len(p.s) && p.s[p.i] >= '0' && p.s[p.i] <= '9' {
+					p.bad()
+				}
+				p.bad()
+			}
+			p.i += len(w)
+			e.key = &Node{kind: "lit", val: w}
+			if p.eat(":") {
+				e.val = p.parseObjVal()
+			} else {
+				e.val = &Node{kind: "index", kids: []*Node{{kind: "id"}, {kind: "lit", val: w}}}
+			}
+		}
+		n.ents = append(n.ents, e)
+		if p.eat(",") {
+			continue
+		}
+		p.expect("}")
+		return n
+	}
+}
+func (p *Parser) parseObjVal() *Node {
+	l := p.parseAlt()
+	if p.at("|") && !p.at("|=") {
+		p.i++
+		r := p.parseObjVal()
+		return &Node{kind: "pipe", kids: []*Node{l, r}}
+	}
+	return l
+}
+
+// ============ environment ============
+type Closure struct {
+	node *Node
+	env  *Env
+}
+type FuncV struct {
+	def *Def
+	env *Env // env in which body runs (set after creation for recursion)
+}
+type Env struct {
+	parent *Env
+	kind   int // 0 var, 1 def, 2 closure param
+	name   string
+	arity  int
+	val    V
+	fn     *FuncV
+	cl     *Closure
+}
+
+func (e *Env) lookupVar(name string) (V, bool) {
+	for x := e; x != nil; x = x.parent {
+		if x.kind == 0 && x.name == name {
+			return x.val, true
+		}
+	}
+	return nil, false
+}
+func (e *Env) lookupFn(name string, arity int) *Env {
+	for x := e; x != nil; x = x.parent {
+		if x.kind == 1 && x.name == name && x.arity == arity {
+			return x
+		}
+		if x.kind == 2 && x.name == name && arity == 0 {
+			return x
+		}
+	}
+	return nil
+}
+
+// ============ static check ============
+var nativeFns = map[string]bool{}
+
+func init() {
+	for _, s := range strings.Fields(`empty/0 not/0 length/0 keys/0 keys_unsorted/0 has/1 contains/1 add/0 sort/0 reverse/0 unique/0 min/0 max/0
+		floor/0 ceil/0 round/0 sqrt/0 abs/0 tostring/0 tonumber/0 type/0 ascii_downcase/0 ascii_upcase/0 explode/0 implode/0
+		from_entries/0 tojson/0 fromjson/0 transpose/0 error/0 error/1 select/1 range/1 range/2 range/3 limit/2 first/1
+		path/1 getpath/1 setpath/2 delpaths/1 sort_by/1 group_by/1 unique_by/1 min_by/1 max_by/1 startswith/1 endswith/1
+		ltrimstr/1 rtrimstr/1 split/1 join/1 indices/1 pow/2 toarray/0 recurse/0 infinite/0 nan/0 isnan/0`) {
+		nativeFns[s] = true
+	}
+}
+
+type Scope struct {
+	parent *Scope
+	kind   int
+	name   string
+	arity  int
+}
+
+func (s *Scope) hasVar(n string) bool {
+	for x := s; x != nil; x = x.parent {
+		if x.kind == 0 && x.name == n {
+			return true
+		}
+	}
+	return false
+}
+func (s *Scope) hasFn(n string, a int) bool {
+	for x := s; x != nil; x = x.parent {
+		if x.kind == 1 && x.name == n && x.arity == a {
+			return true
+		}
+	}
+	return false
+}
+
+type StaticErr struct{ msg string }
+
+func bindPatVars(pt *Pat, sc *Scope) *Scope {
+	switch pt.kind {
+	case "var":
+		return &Scope{parent: sc, kind: 0, name: pt.name}
+	case "arr":
+		for _, e := range pt.elems {
+			sc = bindPatVars(e, sc)
+		}
+	case "obj":
+		for _, e := range pt.ents {
+			if e.keyVar != "" {
+				sc = &Scope{parent: sc, kind: 0, name: e.keyVar}
+			}
+			if e.pat != nil {
+				sc = bindPatVars(e.pat, sc)
+			}
+		}
+	}
+	return sc
+}
+func checkPatKeys(pt *Pat, sc *Scope) {
+	switch pt.kind {
+	case "arr":
+		for _, e := range pt.elems {
+			checkPatKeys(e, sc)
+		}
+	case "obj":
+		for _, e := range pt.ents {
+			check(e.keyNode, sc)
+			if e.pat != nil {
+				checkPatKeys(e.pat, sc)
+			}
+		}
+	}
+}
+
+func check(n *Node, sc *Scope) {
+	if n == nil {
+		return
+	}
+	switch n.kind {
+	case "var":
+		if !sc.hasVar(n.s) {
+			panic(StaticErr{"$" + n.s + " is not defined"})
+		}
+		return
+	case "call":
+		a := len(n.args)
+		if !sc.hasFn(n.s, a) && !nativeFns[n.s+"/"+strconv.Itoa(a)] {
+			panic(StaticErr{n.s + "/" + strconv.Itoa(a) + " is not defined"})
+		}
+		for _, x := range n.args {
+			check(x, sc)
+		}
+		return
+	case "funcdef":
+		d := n.def
+		inner := &Scope{parent: sc, kind: 1, name: d.name, arity: len(d.params)}
+		bs := inner
+		for _, pn := range d.params {
+			bs = &Scope{parent: bs, kind: 1, name: pn, arity: 0}
+		}
+		check(d.body, bs)
+		check(n.kids[0], inner)
+		return
+	case "as":
+		check(n.kids[0], sc)
+		checkPatKeys(n.pats[0], sc)
+		check(n.kids[1], bindPatVars(n.pats[0], sc))
+		return
+	case "reduce", "foreach":
+		check(n.kids[0], sc)
+		checkPatKeys(n.pats[0], sc)
+		check(n.kids[1], sc)
+		ns := bindPatVars(n.pats[0], sc)
+		for _, k := range n.kids[2:] {
+			check(k, ns)
+		}
+		return
+	case "str":
+		for _, p := range n.parts {
+			if p.node != nil {
+				check(p.node, sc)
+			}
+		}
+		return
+	case "object":
+		for _, e := range n.ents {
+			check(e.key, sc)
+			check(e.val, sc)
+		}
+		return
+	}
+	for _, k := range n.kids {
+		check(k, sc)
+	}
+	for _, k := range n.args {
+		check(k, sc)
+	}
+}
+
+// ============ evaluator ============
+type Item struct {
+	v    V
+	p    []V
+	mode int8 // 0 plain, 1 path-tracking, 2 invalid path
+}
+type Emit func(Item) bool
+
+func plainOf(in Item, v V) Item {
+	if in.mode > 0 {
+		return Item{v: v, mode: 2}
+	}
+	return Item{v: v}
+}
+func strip(in Item) Item { return Item{v: in.v} }
+
+func appendPath(p []V, k V) []V {
+	n := make([]V, len(p)+1)
+	copy(n, p)
+	n[len(p)] = k
+	return n
+}
+
+type passErr struct {
+	id  int
+	err JqErr
+}
+
+var tryCounter int
+
+func (e *Env) with(x *Env) *Env { x.parent = e; return x }
+
+func eval(n *Node, env *Env, in Item, out Emit) bool {
+	switch n.kind {
+	case "id":
+		return out(in)
+	case "paren":
+		return eval(n.kids[0], env, in, out)
+	case "lit":
+		return out(plainOf(in, n.val))
+	case "var":
+		v, _ := env.lookupVar(n.s)
+		return out(plainOf(in, v))
+	case "format":
+		return out(plainOf(in, applyFormat(n.s, in.v)))
+	case "str":
+		return evalStr(n, env, in, out)
+	case "array":
+		arr := []V{}
+		if len(n.kids) > 0 {
+			eval(n.kids[0], env, strip(in), func(x Item) bool { arr = append(arr, x.v); return true })
+		}
+		return out(plainOf(in, arr))
+	case "object":
+		return evalObject(n, env, in, out)
+	case "neg":
+		return eval(n.kids[0], env, strip(in), func(x Item) bool {
+			f, ok := x.v.(float64)
+			if !ok {
+				throw("%s cannot be negated", typeName(x.v))
+			}
+			return out(plainOf(in, -f))
+		})
+	case "pipe":
+		return eval(n.kids[0], env, in, func(x Item) bool { return eval(n.kids[1], env, x, out) })
+	case "comma":
+		if !eval(n.kids[0], env, in, out) {
+			return false
+		}
+		return eval(n.kids[1], env, in, out)
+	case "binop":
+		return eval(n.kids[1], env, strip(in), func(r Item) bool {
+			return eval(n.kids[0], env, strip(in), func(l Item) bool {
+				return out(plainOf(in, binop(n.op, l.v, r.v)))
+			})
+		})
+	case "and", "or":
+		return eval(n.kids[0], env, strip(in), func(l Item) bool {
+			if n.kind == "and" && !truthy(l.v) {
+				return out(plainOf(in, false))
+			}
+			if n.kind == "or" && truthy(l.v) {
+				return out(plainOf(in, true))
+			}
+			return eval(n.kids[1], env, strip(in), func(r Item) bool { return out(plainOf(in, truthy(r.v))) })
+		})
+	case "alt":
+		return evalAlt(n, env, in, out)
+	case "if":
+		return eval(n.kids[0], env, strip(in), func(c Item) bool {
+			if truthy(c.v) {
+				return eval(n.kids[1], env, in, out)
+			}
+			if len(n.kids) > 2 {
+				return eval(n.kids[2], env, in, out)
+			}
+			return out(in)
+		})
+	case "try":
+		return evalTry(n, env, in, out)
+	case "index":
+		return eval(n.kids[1], env, strip(in), func(k Item) bool {
+			return eval(n.kids[0], env, in, func(t Item) bool {
+				return out(indexItem(t, k.v))
+			})
+		})
+	case "slice":
+		var fromN, toN = n.kids[1], n.kids[2]
+		runIdx := func(f func(from, to V) bool) bool {
+			do := func(from V) bool {
+				if toN == nil {
+					return f(from, nil)
+				}
+				return eval(toN, env, strip(in), func(t Item) bool { return f(from, t.v) })
+			}
+			if fromN == nil {
+				return do(nil)
+			}
+			return eval(fromN, env, strip(in), func(fr Item) bool { return do(fr.v) })
+		}
+		return runIdx(func(from, to V) bool {
+			return eval(n.kids[0], env, in, func(t Item) bool {
+				if t.mode > 0 {
+					throw("Slices are not supported in path expressions")
+				}
+				return out(plainOf(in, sliceValue(t.v, from, to)))
+			})
+		})
+	case "iterate":
+		return eval(n.kids[0], env, in, func(t Item) bool {
+			if t.mode == 2 {
+				throw("Invalid path expression with result %s", toJSON(t.v))
+			}
+			switch x := t.v.(type) {
+			case []V:
+				for i, e := range x {
+					it := plainOf(t, e)
+					if t.mode == 1 {
+						it = Item{v: e, p: appendPath(t.p, float64(i)), mode: 1}
+					}
+					if !out(it) {
+						return false
+					}
+				}
+				return true
+			case *Obj:
+				for _, k := range x.keys {
+					it := plainOf(t, x.m[k])
+					if t.mode == 1 {
+						it = Item{v: x.m[k], p: appendPath(t.p, k), mode: 1}
+					}
+					if !out(it) {
+						return false
+					}
+				}
+				return true
+			}
+			throw("Cannot iterate over %s", typeName(t.v))
+			return true
+		})
+	case "funcdef":
+		fv := &FuncV{def: n.def}
+		e := &Env{parent: env, kind: 1, name: n.def.name, arity: len(n.def.params), fn: fv}
+		fv.env = e
+		return eval(n.kids[0], e, in, out)
+	case "call":
+		return evalCall(n, env, in, out)
+	case "as":
+		return eval(n.kids[0], env, strip(in), func(s Item) bool {
+			return bindPattern(n.pats[0], s.v, env, in, func(e2 *Env) bool { return eval(n.kids[1], e2, in, out) })
+		})
+	case "reduce":
+		return eval(n.kids[1], env, strip(in), func(init Item) bool {
+			state := init.v
+			eval(n.kids[0], env, strip(in), func(s Item) bool {
+				return bindPattern(n.pats[0], s.v, env, in, func(e2 *Env) bool {
+					var last V
+					got := false
+					eval(n.kids[2], e2, Item{v: state}, func(u Item) bool { last = u.v; got = true; return true })
+					if got {
+						state = last
+					} else {
+						state = nil
+					}
+					return true
+				})
+			})
+			return out(plainOf(in, state))
+		})
+	case "foreach":
+		return eval(n.kids[1], env, strip(in), func(init Item) bool {
+			state := init.v
+			cont := true
+			eval(n.kids[0], env, strip(in), func(s Item) bool {
+				return bindPattern(n.pats[0], s.v, env, in, func(e2 *Env) bool {
+					return eval(n.kids[2], e2, Item{v: state}, func(u Item) bool {
+						state = u.v
+						if len(n.kids) > 3 {
+							return eval(n.kids[3], e2, Item{v: u.v}, func(x Item) bool {
+								if !out(plainOf(in, x.v)) {
+									cont = false
+									return false
+								}
+								return true
+							})
+						}
+						if !out(plainOf(in, u.v)) {
+							cont = false
+							return false
+						}
+						return true
+					})
+				}) && cont
+			})
+			return cont
+		})
+	case "assign":
+		return evalAssign(n, env, in, out)
+	}
+	panic("unknown node " + n.kind)
+}
+
+func evalAlt(n *Node, env *Env, in Item, out Emit) (result bool) {
+	tryCounter++
+	id := tryCounter
+	any := false
+	stopped := false
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				switch e := r.(type) {
+				case JqErr:
+				case passErr:
+					if e.id == id {
+						panic(e.err)
+					}
+					panic(r)
+				default:
+					panic(r)
+				}
+			}
+		}()
+		eval(n.kids[0], env, in, func(x Item) bool {
+			if !truthy(x.v) {
+				return true
+			}
+			any = true
+			if !passThrough(id, out, x) {
+				stopped = true
+				return false
+			}
+			return true
+		})
+	}()
+	if stopped {
+		return false
+	}
+	if any {
+		return true
+	}
+	return eval(n.kids[1], env, in, out)
+}
+
+func evalTry(n *Node, env *Env, in Item, out Emit) (result bool) {
+	tryCounter++
+	id := tryCounter
+	defer func() {
+		if r := recover(); r != nil {
+			switch e := r.(type) {
+			case JqErr:
+				if len(n.kids) > 1 {
+					result = eval(n.kids[1], env, plainOf(in, e.v), out)
+				} else {
+					result = true
+				}
+			case passErr:
+				if e.id == id {
+					panic(e.err)
+				}
+				panic(r)
+			default:
+				panic(r)
+			}
+		}
+	}()
+	return eval(n.kids[0], env, in, func(x Item) bool {
+		return passThrough(id, out, x)
+	})
+}
+func passThrough(id int, out Emit, x Item) (res bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			if je, ok := r.(JqErr); ok {
+				panic(passErr{id, je})
+			}
+			panic(r)
+		}
+	}()
+	return out(x)
+}
+
+func evalStr(n *Node, env *Env, in Item, out Emit) bool {
+	var rec func(i int, suffix string) bool
+	rec = func(i int, suffix string) bool {
+		if i < 0 {
+			return out(plainOf(in, suffix))
+		}
+		part := n.parts[i]
+		if part.node == nil {
+			return rec(i-1, part.lit+suffix)
+		}
+		return eval(part.node, env, strip(in), func(x Item) bool {
+			var s string
+			if n.format == "" {
+				s = tostring(x.v)
+			} else {
+				s = applyFormat(n.format, x.v).(string)
+			}
+			return rec(i-1, s+suffix)
+		})
+	}
+	return rec(len(n.parts)-1, "")
+}
+
+func evalObject(n *Node, env *Env, in Item, out Emit) bool {
+	type kv struct {
+		k string
+		v V
+	}
+	var rec func(i int, acc []kv) bool
+	rec = func(i int, acc []kv) bool {
+		if i < 0 {
+			o := newObj()
+			for _, p := range acc {
+				o = o.set(p.k, p.v)
+			}
+			return out(plainOf(in, o))
+		}
+		e := n.ents[i]
+		return eval(e.key, env, strip(in), func(k Item) bool {
+			ks, ok := k.v.(string)
+			if !ok {
+				throw("Object keys must be strings")
+			}
+			return eval(e.val, env, strip(in), func(v Item) bool {
+				return rec(i-1, append([]kv{{ks, v.v}}, acc...))
+			})
+		})
+	}
+	return rec(len(n.ents)-1, nil)
+}
+
+func bindPattern(pt *Pat, v V, env *Env, in Item, k func(*Env) bool) bool {
+	switch pt.kind {
+	case "var":
+		return k(env.with(&Env{kind: 0, name: pt.name, val: v}))
+	case "arr":
+		if v != nil {
+			if _, ok := v.([]V); !ok {
+				throw("Cannot index %s with number", typeName(v))
+			}
+		}
+		var rec func(i int, e *Env) bool
+		rec = func(i int, e *Env) bool {
+			if i == len(pt.elems) {
+				return k(e)
+			}
+			var el V
+			if arr, ok := v.([]V); ok && i < len(arr) {
+				el = arr[i]
+			}
+			return bindPattern(pt.elems[i], el, e, in, func(e2 *Env) bool { return rec(i+1, e2) })
+		}
+		return rec(0, env)
+	case "obj":
+		var rec func(i int, e *Env) bool
+		rec = func(i int, e *Env) bool {
+			if i == len(pt.ents) {
+				return k(e)
+			}
+			ent := pt.ents[i]
+			return eval(ent.keyNode, e, strip(in), func(kk Item) bool {
+				ks, ok := kk.v.(string)
+				if !ok {
+					throw("Cannot index %s with %s", typeName(v), typeName(kk.v))
+				}
+				var el V
+				switch o := v.(type) {
+				case nil:
+				case *Obj:
+					el = o.m[ks]
+				default:
+					throw("Cannot index %s with string \"%s\"", typeName(v), ks)
+				}
+				e2 := e
+				if ent.keyVar != "" {
+					e2 = e2.with(&Env{kind: 0, name: ent.keyVar, val: el})
+				}
+				if ent.pat == nil {
+					return rec(i+1, e2)
+				}
+				return bindPattern(ent.pat, el, e2, in, func(e3 *Env) bool { return rec(i+1, e3) })
+			})
+		}
+		return rec(0, env)
+	}
+	return true
+}
+
+// ---- indexing ----
+func indexValue(t V, k V) V {
+	switch x := t.(type) {
+	case nil:
+		switch k.(type) {
+		case string, float64, nil:
+			return nil
+		}
+		throw("Cannot index null with %s", typeName(k))
+	case *Obj:
+		ks, ok := k.(string)
+		if !ok {
+			throw("Cannot index object with %s", typeName(k))
+		}
+		return x.m[ks]
+	case []V:
+		f, ok := k.(float64)
+		if !ok {
+			if ks, ok2 := k.(string); ok2 {
+				throw("Cannot index array with string \"%s\"", ks)
+			}
+			throw("Cannot index array with %s", typeName(k))
+		}
+		i := int(math.Floor(f))
+		if i < 0 {
+			i += len(x)
+		}
+		if i < 0 || i >= len(x) {
+			return nil
+		}
+		return x[i]
+	}
+	if ks, ok := k.(string); ok {
+		throw("Cannot index %s with string \"%s\"", typeName(t), ks)
+	}
+	throw("Cannot index %s with %s", typeName(t), typeName(k))
+	return nil
+}
+func indexItem(t Item, k V) Item {
+	if t.mode == 2 {
+		throw("Invalid path expression with result %s", toJSON(t.v))
+	}
+	v := indexValue(t.v, k)
+	if t.mode == 1 {
+		return Item{v: v, p: appendPath(t.p, k), mode: 1}
+	}
+	return Item{v: v}
+}
+
+func sliceBounds(l int, from, to V) (int, int) {
+	fi, ti := 0, l
+	if from != nil {
+		f, ok := from.(float64)
+		if !ok {
+			throw("Start and end indices of an array slice must be numbers")
+		}
+		if f < 0 {
+			f += float64(l)
+		}
+		f = math.Floor(f)
+		if f < 0 {
+			f = 0
+		}
+		if f > float64(l) {
+			f = float64(l)
+		}
+		fi = int(f)
+	}
+	if to != nil {
+		f, ok := to.(float64)
+		if !ok {
+			throw("Start and end indices of an array slice must be numbers")
+		}
+		if f < 0 {
+			f += float64(l)
+		}
+		f = math.Ceil(f)
+		if f < 0 {
+			f = 0
+		}
+		if f > float64(l) {
+			f = float64(l)
+		}
+		ti = int(f)
+	}
+	if ti < fi {
+		ti = fi
+	}
+	return fi, ti
+}
+func sliceValue(t V, from, to V) V {
+	switch x := t.(type) {
+	case nil:
+		return nil
+	case []V:
+		a, b := sliceBounds(len(x), from, to)
+		return append([]V{}, x[a:b]...)
+	case string:
+		r := []rune(x)
+		a, b := sliceBounds(len(r), from, to)
+		return string(r[a:b])
+	}
+	throw("Cannot index %s with object", typeName(t))
+	return nil
+}
+
+// ---- paths ----
+func getPath(v V, p []V) V {
+	for _, k := range p {
+		if v == nil {
+			return nil
+		}
+		v = indexValue(v, k)
+	}
+	return v
+}
+func setPath(v V, p []V, nv V) V {
+	if len(p) == 0 {
+		return nv
+	}
+	k := p[0]
+	switch ks := k.(type) {
+	case string:
+		switch o := v.(type) {
+		case nil:
+			return newObj().set(ks, setPath(nil, p[1:], nv))
+		case *Obj:
+			return o.set(ks, setPath(o.m[ks], p[1:], nv))
+		}
+		throw("Cannot index %s with string \"%s\"", typeName(v), ks)
+	case float64:
+		switch a := v.(type) {
+		case nil, []V:
+			var arr []V
+			if a != nil {
+				arr = a.([]V)
+			}
+			i := int(math.Floor(ks))
+			if i < 0 {
+				i += len(arr)
+				if i < 0 {
+					throw("Out of bounds negative array index")
+				}
+			}
+			var cur V
+			if i < len(arr) {
+				cur = arr[i]
+			}
+			n := append([]V{}, arr...)
+			for len(n) <= i {
+				n = append(n, nil)
+			}
+			n[i] = setPath(cur, p[1:], nv)
+			return n
+		}
+		throw("Cannot index %s with number", typeName(v))
+	}
+	throw("Invalid path component %s", toJSON(k))
+	return nil
+}
+func delPath(v V, p []V) V {
+	if len(p) == 0 || v == nil {
+		return v
+	}
+	k := p[0]
+	if len(p) == 1 {
+		switch x := v.(type) {
+		case *Obj:
+			ks, ok := k.(string)
+			if !ok {
+				throw("Cannot delete field at object index of %s", typeName(k))
+			}
+			return x.del(ks)
+		case []V:
+			f, ok := k.(float64)
+			if !ok {
+				throw("Cannot delete field at array index of %s", typeName(k))
+			}
+			i := int(math.Floor(f))
+			if i < 0 {
+				i += len(x)
+			}
+			if i < 0 || i >= len(x) {
+				return v
+			}
+			return append(append([]V{}, x[:i]...), x[i+1:]...)
+		}
+		throw("Cannot delete field at index of %s", typeName(v))
+	}
+	child := indexValue(v, k)
+	if child == nil {
+		return v
+	}
+	return setPath(v, []V{k}, delPath(child, p[1:]))
+}
+func delPaths(v V, ps []V) V {
+	sorted := append([]V{}, ps...)
+	sort.SliceStable(sorted, func(a, b int) bool { return cmpV(sorted[a], sorted[b]) > 0 })
+	for _, p := range sorted {
+		arr, ok := p.([]V)
+		if !ok {
+			throw("Path must be specified as an array")
+		}
+		v = delPath(v, arr)
+	}
+	return v
+}
+
+func collectPaths(f *Node, env *Env, in V) [][]V {
+	var res [][]V
+	eval(f, env, Item{v: in, p: []V{}, mode: 1}, func(x Item) bool {
+		if x.mode != 1 {
+			throw("Invalid path expression with result %s", toJSON(x.v))
+		}
+		res = append(res, x.p)
+		return true
+	})
+	return res
+}
+
+func evalAssign(n *Node, env *Env, in Item, out Emit) bool {
+	lhs, rhs := n.kids[0], n.kids[1]
+	if n.op == "|=" {
+		paths := collectPaths(lhs, env, in.v)
+		cur := in.v
+		var dels []V
+		for _, p := range paths {
+			old := getPath(cur, p)
+			var nv V
+			got := false
+			eval(rhs, env, Item{v: old}, func(x Item) bool { nv = x.v; got = true; return false })
+			if got {
+				cur = setPath(cur, p, nv)
+			} else {
+				dels = append(dels, append([]V{}, p...))
+			}
+		}
+		if len(dels) > 0 {
+			cur = delPaths(cur, dels)
+		}
+		return out(plainOf(in, cur))
+	}
+	return eval(rhs, env, strip(in), func(r Item) bool {
+		paths := collectPaths(lhs, env, in.v)
+		cur := in.v
+		for _, p := range paths {
+			var nv V
+			if n.op == "=" {
+				nv = r.v
+			} else {
+				old := getPath(cur, p)
+				switch n.op {
+				case "//=":
+					if truthy(old) {
+						nv = old
+					} else {
+						nv = r.v
+					}
+				default:
+					nv = binop(n.op[:1], old, r.v)
+				}
+			}
+			cur = setPath(cur, p, nv)
+		}
+		return out(plainOf(in, cur))
+	})
+}
+
+// ---- arithmetic ----
+func deepMerge(a, b *Obj) *Obj {
+	res := a
+	for _, k := range b.keys {
+		bv := b.m[k]
+		if av, ok := res.m[k]; ok {
+			ao, ok1 := av.(*Obj)
+			bo, ok2 := bv.(*Obj)
+			if ok1 && ok2 {
+				res = res.set(k, deepMerge(ao, bo))
+				continue
+			}
+		}
+		res = res.set(k, bv)
+	}
+	return res
+}
+
+func binop(op string, l, r V) V {
+	switch op {
+	case "==":
+		return cmpV(l, r) == 0
+	case "!=":
+		return cmpV(l, r) != 0
+	case "<":
+		return cmpV(l, r) < 0
+	case "<=":
+		return cmpV(l, r) <= 0
+	case ">":
+		return cmpV(l, r) > 0
+	case ">=":
+		return cmpV(l, r) >= 0
+	case "+":
+		if l == nil {
+			return r
+		}
+		if r == nil {
+			return l
+		}
+		switch a := l.(type) {
+		case float64:
+			if b, ok := r.(float64); ok {
+				return a + b
+			}
+		case string:
+			if b, ok := r.(string); ok {
+				return a + b
+			}
+		case []V:
+			if b, ok := r.([]V); ok {
+				return append(append([]V{}, a...), b...)
+			}
+		case *Obj:
+			if b, ok := r.(*Obj); ok {
+				res := a
+				for _, k := range b.keys {
+					res = res.set(k, b.m[k])
+				}
+				return res
+			}
+		}
+		throw("%s and %s cannot be added", typeName(l), typeName(r))
+	case "-":
+		switch a := l.(type) {
+		case float64:
+			if b, ok := r.(float64); ok {
+				return a - b
+			}
+		case []V:
+			if b, ok := r.([]V); ok {
+				res := []V{}
+				for _, x := range a {
+					keep := true
+					for _, y := range b {
+						if cmpV(x, y) == 0 {
+							keep = false
+							break
+						}
+					}
+					if keep {
+						res = append(res, x)
+					}
+				}
+				return res
+			}
+		}
+		throw("%s and %s cannot be subtracted", typeName(l), typeName(r))
+	case "*":
+		switch a := l.(type) {
+		case float64:
+			switch b := r.(type) {
+			case float64:
+				return a * b
+			case string:
+				return repeatStr(b, a)
+			}
+		case string:
+			if b, ok := r.(float64); ok {
+				return repeatStr(a, b)
+			}
+		case *Obj:
+			if b, ok := r.(*Obj); ok {
+				return deepMerge(a, b)
+			}
+		}
+		throw("%s and %s cannot be multiplied", typeName(l), typeName(r))
+	case "/":
+		switch a := l.(type) {
+		case float64:
+			if b, ok := r.(float64); ok {
+				if b == 0 {
+					throw("division by zero")
+				}
+				return a / b
+			}
+		case string:
+			if b, ok := r.(string); ok {
+				return splitStr(a, b)
+			}
+		}
+		throw("%s and %s cannot be divided", typeName(l), typeName(r))
+	case "%":
+		if a, ok := l.(float64); ok {
+			if b, ok := r.(float64); ok {
+				ai, bi := truncInt(a), truncInt(b)
+				if bi == 0 {
+					throw("division by zero")
+				}
+				return float64(ai % bi)
+			}
+		}
+		throw("%s and %s cannot be divided", typeName(l), typeName(r))
+	}
+	panic("bad op " + op)
+}
+func truncInt(f float64) int64 {
+	if f >= 9.2e18 {
+		return math.MaxInt64
+	}
+	if f <= -9.2e18 {
+		return math.MinInt64
+	}
+	return int64(f)
+}
+func repeatStr(s string, n float64) V {
+	if n <= 0 {
+		return nil
+	}
+	c := int(math.Ceil(n))
+	if n < 1 {
+		c = 1
+	}
+	return strings.Repeat(s, c)
+}
+func splitStr(s, sep string) V {
+	if s == "" {
+		return []V{}
+	}
+	var parts []string
+	if sep == "" {
+		for _, r := range s {
+			parts = append(parts, string(r))
+		}
+	} else {
+		parts = strings.Split(s, sep)
+	}
+	res := make([]V, len(parts))
+	for i, p := range parts {
+		res[i] = p
+	}
+	return res
+}
+
+func tostring(v V) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return toJSON(v)
+}
+
+// ---- formats ----
+func applyFormat(name string, v V) V {
+	switch name {
+	case "text":
+		return tostring(v)
+	case "json":
+		return toJSON(v)
+	case "csv", "tsv":
+		arr, ok := v.([]V)
+		if !ok {
+			throw("%s cannot be %s-formatted, only an array can be", typeName(v), name)
+		}
+		var parts []string
+		for _, e := range arr {
+			switch x := e.(type) {
+			case nil:
+				parts = append(parts, "")
+			case bool:
+				parts = append(parts, strconv.FormatBool(x))
+			case float64:
+				parts = append(parts, fmtNum(x))
+			case string:
+				if name == "csv" {
+					parts = append(parts, "\""+strings.ReplaceAll(x, "\"", "\"\"")+"\"")
+				} else {
+					r := strings.NewReplacer("\\", "\\\\", "\t", "\\t", "\n", "\\n", "\r", "\\r")
+					parts = append(parts, r.Replace(x))
+				}
+			default:
+				throw("%s is not valid in a csv row", typeName(e))
+			}
+		}
+		if name == "csv" {
+			return strings.Join(parts, ",")
+		}
+		return strings.Join(parts, "\t")
+	case "html":
+		r := strings.NewReplacer("<", "&lt;", ">", "&gt;", "&", "&amp;", "'", "&#39;", "\"", "&quot;")
+		return r.Replace(tostring(v))
+	case "uri":
+		var b strings.Builder
+		for _, c := range []byte(tostring(v)) {
+			if isIdChar(c) && c != '_' || c == '-' || c == '.' || c == '~' || c == '_' {
+				b.WriteByte(c)
+			} else {
+				fmt.Fprintf(&b, "%%%02X", c)
+			}
+		}
+		return b.String()
+	case "base64":
+		return base64.StdEncoding.EncodeToString([]byte(tostring(v)))
+	case "base64d":
+		s := tostring(v)
+		s = strings.TrimRight(s, "=")
+		d, err := base64.RawStdEncoding.DecodeString(s)
+		if err != nil {
+			throw("%s is not valid base64 data", toJSON(v))
+		}
+		return string(d)
+	}
+	return nil
+}
+
+// ---- calls ----
+func argKinds(name string, v V, kinds ...string) {
+	t := typeName(v)
+	for _, k := range kinds {
+		if k == t {
+			return
+		}
+	}
+	throw("%s: expected %s, got %s", name, strings.Join(kinds, " or "), t)
+}
+
+func evalCall(n *Node, env *Env, in Item, out Emit) bool {
+	name := n.s
+	ar := len(n.args)
+	if f := env.lookupFn(name, ar); f != nil {
+		if f.kind == 2 {
+			return eval(f.cl.node, f.cl.env, in, out)
+		}
+		d := f.fn.def
+		return eval(d.body, bindParams(f.fn.env, d, n.args, env), in, out)
+	}
+	return builtin(n, env, in, out)
+}
+func bindParams(base *Env, d *Def, args []*Node, callerEnv *Env) *Env {
+	e := base
+	for i, pn := range d.params {
+		e = &Env{parent: e, kind: 2, name: pn, cl: &Closure{args[i], callerEnv}}
+	}
+	return e
+}
+
+func sortItems(arr []V) []V {
+	res := append([]V{}, arr...)
+	sort.SliceStable(res, func(a, b int) bool { return cmpV(res[a], res[b]) < 0 })
+	return res
+}
+
+// keys for *_by: [f outputs]
+func byKey(f *Node, env *Env, v V) V {
+	k := []V{}
+	eval(f, env, Item{v: v}, func(x Item) bool { k = append(k, x.v); return true })
+	return k
+}
+
+func containsV(a, b V) bool {
+	switch x := a.(type) {
+	case *Obj:
+		y, ok := b.(*Obj)
+		if !ok {
+			break
+		}
+		for _, k := range y.keys {
+			av, ok := x.m[k]
+			if !ok || !containsV(av, y.m[k]) {
+				return false
+			}
+		}
+		return true
+	case []V:
+		y, ok := b.([]V)
+		if !ok {
+			break
+		}
+		for _, be := range y {
+			found := false
+			for _, ae := range x {
+				if typeName(ae) == typeName(be) && containsV(ae, be) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+		return true
+	case string:
+		y, ok := b.(string)
+		if !ok {
+			break
+		}
+		return strings.Contains(x, y)
+	}
+	if typeName(a) != typeName(b) {
+		throw("%s and %s cannot have their containment checked", typeName(a), typeName(b))
+	}
+	return cmpV(a, b) == 0
+}
+
+func flattenV(arr []V, depth float64) []V {
+	res := []V{}
+	for _, e := range arr {
+		if sub, ok := e.([]V); ok && depth != 0 {
+			res = append(res, flattenV(sub, depth-1)...)
+		} else {
+			res = append(res, e)
+		}
+	}
+	return res
+}
+
+func indicesOf(in V, x V) V {
+	res := []V{}
+	switch a := in.(type) {
+	case nil:
+		return nil
+	case string:
+		s, ok := x.(string)
+		if !ok {
+			throw("indices: expected string, got %s", typeName(x))
+		}
+		if s == "" {
+			return nil
+		}
+		rs := []rune(a)
+		sr := []rune(s)
+		for i := 0; i+len(sr) <= len(rs); i++ {
+			if string(rs[i:i+len(sr)]) == s {
+				res = append(res, float64(i))
+			}
+		}
+		return res
+	case []V:
+		if sub, ok := x.([]V); ok {
+			if len(sub) == 0 {
+				return nil
+			}
+			for i := 0; i+len(sub) <= len(a); i++ {
+				match := true
+				for j := range sub {
+					if cmpV(a[i+j], sub[j]) != 0 {
+						match = false
+						break
+					}
+				}
+				if match {
+					res = append(res, float64(i))
+				}
+			}
+			return res
+		}
+		for i, e := range a {
+			if cmpV(e, x) == 0 {
+				res = append(res, float64(i))
+			}
+		}
+		return res
+	}
+	throw("indices: expected string or array or null, got %s", typeName(in))
+	return nil
+}
+
+func oneArg(n *Node, env *Env, in Item, k func(v V) bool) bool {
+	return eval(n.args[0], env, strip(in), func(x Item) bool { return k(x.v) })
+}
+
+func builtin(n *Node, env *Env, in Item, out Emit) bool {
+	name := n.s
+	v := in.v
+	emit := func(r V) bool { return out(plainOf(in, r)) }
+	switch name + "/" + strconv.Itoa(len(n.args)) {
+	case "empty/0":
+		return true
+	case "not/0":
+		return emit(!truthy(v))
+	case "error/0":
+		panic(JqErr{v})
+	case "error/1":
+		return oneArg(n, env, in, func(m V) bool { panic(JqErr{m}) })
+	case "select/1":
+		return eval(n.args[0], env, strip(in), func(c Item) bool {
+			if truthy(c.v) {
+				return out(in)
+			}
+			return true
+		})
+	case "recurse/0":
+		var rec func(it Item) bool
+		rec = func(it Item) bool {
+			if !out(it) {
+				return false
+			}
+			switch x := it.v.(type) {
+			case []V:
+				for i, e := range x {
+					c := plainOf(it, e)
+					if it.mode == 1 {
+						c = Item{v: e, p: appendPath(it.p, float64(i)), mode: 1}
+					}
+					if !rec(c) {
+						return false
+					}
+				}
+			case *Obj:
+				for _, k := range x.keys {
+					c := plainOf(it, x.m[k])
+					if it.mode == 1 {
+						c = Item{v: x.m[k], p: appendPath(it.p, k), mode: 1}
+					}
+					if !rec(c) {
+						return false
+					}
+				}
+			}
+			return true
+		}
+		return rec(in)
+	case "length/0":
+		switch x := v.(type) {
+		case nil:
+			return emit(0.0)
+		case float64:
+			return emit(math.Abs(x))
+		case string:
+			return emit(float64(utf8.RuneCountInString(x)))
+		case []V:
+			return emit(float64(len(x)))
+		case *Obj:
+			return emit(float64(len(x.keys)))
+		}
+		throw("%s has no length", typeName(v))
+	case "keys/0", "keys_unsorted/0":
+		switch x := v.(type) {
+		case *Obj:
+			var ks []string
+			if name == "keys" {
+				ks = x.sortedKeys()
+			} else {
+				ks = x.keys
+			}
+			res := []V{}
+			for _, k := range ks {
+				res = append(res, k)
+			}
+			return emit(res)
+		case []V:
+			res := []V{}
+			for i := range x {
+				res = append(res, float64(i))
+			}
+			return emit(res)
+		}
+		throw("%s has no keys", typeName(v))
+	case "has/1":
+		return oneArg(n, env, in, func(k V) bool {
+			switch x := v.(type) {
+			case *Obj:
+				if ks, ok := k.(string); ok {
+					_, has := x.m[ks]
+					return emit(has)
+				}
+			case []V:
+				if f, ok := k.(float64); ok {
+					return emit(f >= 0 && f < float64(len(x)))
+				}
+			}
+			throw("Cannot check whether %s has a %s key", typeName(v), typeName(k))
+			return true
+		})
+	case "contains/1":
+		return oneArg(n, env, in, func(b V) bool { return emit(containsV(v, b)) })
+	case "add/0":
+		var acc V
+		switch x := v.(type) {
+		case []V:
+			for _, e := range x {
+				acc = binop("+", acc, e)
+			}
+		case *Obj:
+			for _, k := range x.keys {
+				acc = binop("+", acc, x.m[k])
+			}
+		case nil:
+			throw("Cannot iterate over null")
+		default:
+			throw("Cannot iterate over %s", typeName(v))
+		}
+		return emit(acc)
+	case "sort/0":
+		argKinds("sort", v, "array")
+		return emit(sortItems(v.([]V)))
+	case "reverse/0":
+		switch x := v.(type) {
+		case nil:
+			return emit([]V{})
+		case string:
+			r := []rune(x)
+			for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
+				r[i], r[j] = r[j], r[i]
+			}
+			return emit(string(r))
+		case []V:
+			res := make([]V, len(x))
+			for i, e := range x {
+				res[len(x)-1-i] = e
+			}
+			return emit(res)
+		}
+		throw("reverse: expected array or string or null, got %s", typeName(v))
+	case "unique/0":
+		argKinds("unique", v, "array")
+		s := sortItems(v.([]V))
+		res := []V{}
+		for i, e := range s {
+			if i == 0 || cmpV(e, s[i-1]) != 0 {
+				res = append(res, e)
+			}
+		}
+		return emit(res)
+	case "min/0", "max/0":
+		argKinds(name, v, "array")
+		arr := v.([]V)
+		if len(arr) == 0 {
+			return emit(nil)
+		}
+		best := arr[0]
+		for _, e := range arr[1:] {
+			c := cmpV(e, best)
+			if (name == "min" && c < 0) || (name == "max" && c >= 0) {
+				best = e
+			}
+		}
+		return emit(best)
+	case "floor/0", "ceil/0", "round/0", "sqrt/0", "abs/0":
+		argKinds(name, v, "number")
+		f := v.(float64)
+		switch name {
+		case "floor":
+			f = math.Floor(f)
+		case "ceil":
+			f = math.Ceil(f)
+		case "round":
+			f = math.Round(f)
+		case "sqrt":
+			if f < 0 {
+				return emit(nil)
+			}
+			f = math.Sqrt(f)
+		case "abs":
+			f = math.Abs(f)
+		}
+		return emit(f)
+	case "pow/2":
+		return eval(n.args[0], env, strip(in), func(a Item) bool {
+			return eval(n.args[1], env, strip(in), func(b Item) bool {
+				argKinds("pow", a.v, "number")
+				argKinds("pow", b.v, "number")
+				r := math.Pow(a.v.(float64), b.v.(float64))
+				if math.IsNaN(r) || math.IsInf(r, 0) {
+					return emit(nil)
+				}
+				return emit(r)
+			})
+		})
+	case "tostring/0":
+		return emit(tostring(v))
+	case "tonumber/0":
+		switch x := v.(type) {
+		case float64:
+			return emit(x)
+		case string:
+			if f, ok := parseNumStrict(x); ok {
+				return emit(f)
+			}
+			throw("Cannot parse %s as number", quoteJSON(x))
+		}
+		throw("tonumber: expected string or number, got %s", typeName(v))
+	case "type/0":
+		return emit(typeName(v))
+	case "ascii_downcase/0", "ascii_upcase/0":
+		argKinds(name, v, "string")
+		s := v.(string)
+		b := []byte(s)
+		for i, c := range b {
+			if name == "ascii_downcase" && c >= 'A' && c <= 'Z' {
+				b[i] = c + 32
+			}
+			if name == "ascii_upcase" && c >= 'a' && c <= 'z' {
+				b[i] = c - 32
+			}
+		}
+		return emit(string(b))
+	case "explode/0":
+		argKinds("explode", v, "string")
+		res := []V{}
+		for _, r := range v.(string) {
+			res = append(res, float64(r))
+		}
+		return emit(res)
+	case "implode/0":
+		argKinds("implode", v, "array")
+		var b strings.Builder
+		for _, e := range v.([]V) {
+			f, ok := e.(float64)
+			if !ok {
+				throw("implode: expected number, got %s", typeName(e))
+			}
+			b.WriteRune(rune(int(f)))
+		}
+		return emit(b.String())
+	case "from_entries/0":
+		argKinds("from_entries", v, "array")
+		o := newObj()
+		for _, e := range v.([]V) {
+			eo, ok := e.(*Obj)
+			if !ok {
+				throw("from_entries: expected object, got %s", typeName(e))
+			}
+			var k V
+			for _, kn := range []string{"key", "k", "name", "Name", "K", "Key"} {
+				if x, ok := eo.m[kn]; ok && truthy(x) {
+					k = x
+					break
+				}
+			}
+			ks, isStr := k.(string)
+			if !isStr {
+				ks = toJSON(k)
+			}
+			var val V
+			for _, vn := range []string{"value", "v", "Value", "V"} {
+				if x, ok := eo.m[vn]; ok {
+					val = x
+					break
+				}
+			}
+			o = o.set(ks, val)
+		}
+		return emit(o)
+	case "tojson/0":
+		return emit(toJSON(v))
+	case "fromjson/0":
+		argKinds("fromjson", v, "string")
+		r, ok := parseJSONText(v.(string))
+		if !ok {
+			throw("fromjson: invalid JSON text")
+		}
+		return emit(r)
+	case "transpose/0":
+		argKinds("transpose", v, "array")
+		arr := v.([]V)
+		mx := 0
+		for _, r := range arr {
+			ra, ok := r.([]V)
+			if !ok {
+				throw("transpose: expected array, got %s", typeName(r))
+			}
+			if len(ra) > mx {
+				mx = len(ra)
+			}
+		}
+		res := []V{}
+		for j := 0; j < mx; j++ {
+			row := []V{}
+			for _, r := range arr {
+				ra := r.([]V)
+				if j < len(ra) {
+					row = append(row, ra[j])
+				} else {
+					row = append(row, nil)
+				}
+			}
+			res = append(res, row)
+		}
+		return emit(res)
+	case "toarray/0":
+		if _, ok := v.([]V); ok {
+			return emit(v)
+		}
+		return emit([]V{v})
+	case "range/1":
+		return oneArg(n, env, in, func(a V) bool { return rangeGen(0.0, a, 1.0, emit) })
+	case "range/2":
+		return eval(n.args[0], env, strip(in), func(a Item) bool {
+			return eval(n.args[1], env, strip(in), func(b Item) bool { return rangeGen(a.v, b.v, 1.0, emit) })
+		})
+	case "range/3":
+		return eval(n.args[0], env, strip(in), func(a Item) bool {
+			return eval(n.args[1], env, strip(in), func(b Item) bool {
+				return eval(n.args[2], env, strip(in), func(c Item) bool { return rangeGen(a.v, b.v, c.v, emit) })
+			})
+		})
+	case "limit/2":
+		return eval(n.args[0], env, strip(in), func(c Item) bool {
+			cnt, ok := c.v.(float64)
+			if !ok {
+				throw("limit: expected number, got %s", typeName(c.v))
+			}
+			if cnt <= 0 {
+				return true
+			}
+			count := 0
+			down := false
+			eval(n.args[1], env, in, func(x Item) bool {
+				count++
+				if !out(x) {
+					down = true
+					return false
+				}
+				return float64(count) < cnt
+			})
+			return !down
+		})
+	case "first/1":
+		down := false
+		eval(n.args[0], env, in, func(x Item) bool {
+			if !out(x) {
+				down = true
+			}
+			return false
+		})
+		return !down
+	case "path/1":
+		return eval(n.args[0], env, Item{v: v, p: []V{}, mode: 1}, func(x Item) bool {
+			if x.mode != 1 {
+				throw("Invalid path expression with result %s", toJSON(x.v))
+			}
+			return emit(append([]V{}, x.p...))
+		})
+	case "getpath/1":
+		return oneArg(n, env, in, func(p V) bool {
+			pa, ok := p.([]V)
+			if !ok {
+				throw("Path must be specified as an array")
+			}
+			res := getPath(v, pa)
+			if in.mode == 1 {
+				np := append(append([]V{}, in.p...), pa...)
+				return out(Item{v: res, p: np, mode: 1})
+			}
+			return out(plainOf(in, res))
+		})
+	case "setpath/2":
+		return eval(n.args[0], env, strip(in), func(p Item) bool {
+			return eval(n.args[1], env, strip(in), func(nv Item) bool {
+				pa, ok := p.v.([]V)
+				if !ok {
+					throw("Path must be specified as an array")
+				}
+				return emit(setPath(v, pa, nv.v))
+			})
+		})
+	case "delpaths/1":
+		return oneArg(n, env, in, func(ps V) bool {
+			pa, ok := ps.([]V)
+			if !ok {
+				throw("Paths must be specified as an array")
+			}
+			return emit(delPaths(v, pa))
+		})
+	case "sort_by/1", "group_by/1", "unique_by/1", "min_by/1", "max_by/1":
+		argKinds(name, v, "array")
+		arr := v.([]V)
+		type pair struct{ k, v V }
+		ps := make([]pair, len(arr))
+		for i, e := range arr {
+			ps[i] = pair{byKey(n.args[0], env, e), e}
+		}
+		switch name {
+		case "min_by", "max_by":
+			if len(ps) == 0 {
+				return emit(nil)
+			}
+			best := ps[0]
+			for _, p := range ps[1:] {
+				c := cmpV(p.k, best.k)
+				if (name == "min_by" && c < 0) || (name == "max_by" && c >= 0) {
+					best = p
+				}
+			}
+			return emit(best.v)
+		}
+		sort.SliceStable(ps, func(a, b int) bool { return cmpV(ps[a].k, ps[b].k) < 0 })
+		if name == "sort_by" {
+			res := []V{}
+			for _, p := range ps {
+				res = append(res, p.v)
+			}
+			return emit(res)
+		}
+		res := []V{}
+		var cur []V
+		var curKey V
+		for i, p := range ps {
+			if i == 0 || cmpV(p.k, curKey) != 0 {
+				if cur != nil {
+					if name == "group_by" {
+						res = append(res, cur)
+					} else {
+						res = append(res, cur[0])
+					}
+				}
+				cur = []V{p.v}
+				curKey = p.k
+			} else {
+				cur = append(cur, p.v)
+			}
+		}
+		if cur != nil {
+			if name == "group_by" {
+				res = append(res, cur)
+			} else {
+				res = append(res, cur[0])
+			}
+		}
+		return emit(res)
+	case "startswith/1", "endswith/1":
+		return oneArg(n, env, in, func(a V) bool {
+			argKinds(name, v, "string")
+			argKinds(name, a, "string")
+			if name == "startswith" {
+				return emit(strings.HasPrefix(v.(string), a.(string)))
+			}
+			return emit(strings.HasSuffix(v.(string), a.(string)))
+		})
+	case "ltrimstr/1", "rtrimstr/1":
+		return oneArg(n, env, in, func(a V) bool {
+			s, ok1 := v.(string)
+			t, ok2 := a.(string)
+			if ok1 && ok2 {
+				if name == "ltrimstr" {
+					return emit(strings.TrimPrefix(s, t))
+				}
+				return emit(strings.TrimSuffix(s, t))
+			}
+			return emit(v)
+		})
+	case "split/1":
+		return oneArg(n, env, in, func(a V) bool {
+			argKinds("split", v, "string")
+			argKinds("split", a, "string")
+			return emit(splitStr(v.(string), a.(string)))
+		})
+	case "join/1":
+		return oneArg(n, env, in, func(a V) bool {
+			argKinds("join", v, "array")
+			argKinds("join", a, "string")
+			var parts []string
+			for _, e := range v.([]V) {
+				switch x := e.(type) {
+				case nil:
+					parts = append(parts, "")
+				case string:
+					parts = append(parts, x)
+				case float64, bool:
+					parts = append(parts, toJSON(x))
+				default:
+					throw("join: cannot join %s", typeName(e))
+				}
+			}
+			return emit(strings.Join(parts, a.(string)))
+		})
+	case "indices/1":
+		return oneArg(n, env, in, func(a V) bool { return emit(indicesOf(v, a)) })
+	case "infinite/0":
+		return emit(math.Inf(1))
+	case "nan/0":
+		return emit(math.NaN())
+	case "isnan/0":
+		argKinds("isnan", v, "number")
+		return emit(math.IsNaN(v.(float64)))
+	}
+	panic("unimplemented builtin " + name)
+}
+
+func rangeGen(from, to, by V, emit func(V) bool) bool {
+	f, ok1 := from.(float64)
+	t, ok2 := to.(float64)
+	b, ok3 := by.(float64)
+	if !ok1 || !ok2 || !ok3 {
+		throw("Range bounds must be numeric")
+	}
+	if b == 0 {
+		throw("Range step must not be zero")
+	}
+	if b > 0 {
+		for x := f; x < t; x += b {
+			if !emit(x) {
+				return false
+			}
+		}
+	} else {
+		for x := f; x > t; x += b {
+			if !emit(x) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func parseNumStrict(s string) (float64, bool) {
+	i := 0
+	if i < len(s) && s[i] == '-' {
+		i++
+	}
+	st := i
+	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+		i++
+	}
+	digits := i - st
+	if i < len(s) && s[i] == '.' {
+		i++
+		fs := i
+		for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+			i++
+		}
+		digits += i - fs
+	}
+	if digits == 0 {
+		return 0, false
+	}
+	if i < len(s) && (s[i] == 'e' || s[i] == 'E') {
+		i++
+		if i < len(s) && (s[i] == '+' || s[i] == '-') {
+			i++
+		}
+		es := i
+		for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+			i++
+		}
+		if i == es {
+			return 0, false
+		}
+	}
+	if i != len(s) {
+		return 0, false
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0, false
+	}
+	return f, true
+}
+
+// ============ prelude (jq source) ============
+const prelude = `
+def values: select(. != null);
+def nulls: select(. == null);
+def booleans: select(type == "boolean");
+def numbers: select(type == "number");
+def strings: select(type == "string");
+def arrays: select(type == "array");
+def objects: select(type == "object");
+def iterables: select(type == "array" or type == "object");
+def scalars: select(type != "array" and type != "object");
+def map(f): [.[] | f];
+def map_values(f): .[] |= f;
+def recurse(f): def r: ., (f | r); r;
+def recurse(f; cond): def r: ., (f | select(cond) | r); r;
+def to_entries: [keys_unsorted[] as $k | {key: $k, value: .[$k]}];
+def with_entries(f): to_entries | map(f) | from_entries;
+def del(f): delpaths([path(f)]);
+def paths: path(..) | select(length > 0);
+def paths(node_filter): . as $dot | paths | select(. as $p | $dot | getpath($p) | node_filter);
+def leaf_paths: paths(scalars);
+def isempty(g): first((g | false), true);
+def any(g; cond): isempty(first(g | cond | select(.))) | not;
+def all(g; cond): isempty(first(g | cond | select(. | not)));
+def any(f): any(.[]; f);
+def all(f): all(.[]; f);
+def any: any(.);
+def all: all(.);
+def in(xs): . as $x | xs | has($x);
+def inside(xs): . as $x | xs | contains($x);
+def until(cond; update): def _until: if cond then . else (update | _until) end; _until;
+def while(cond; update): def _while: if cond then ., (update | _while) else empty end; _while;
+def repeat(f): def _repeat: ., (f | _repeat); _repeat;
+def walk(f): def w: if type == "object" then map_values(w) elif type == "array" then map(w) else . end | f; w;
+def first: .[0];
+def last: .[-1];
+def last(f): reduce f as $x (null; $x);
+def nth($n): .[$n];
+def nth($n; f): if $n < 0 then error("Out of bounds negative array index") else last(limit($n + 1; f)) end;
+def add(f): reduce f as $x (null; . + $x);
+def flatten($x): if $x < 0 then error("flatten depth must not be negative") elif type != "array" then error("flatten: expected array, got " + type) else reduce .[] as $i ([]; if ($i | type) == "array" and $x != 0 then . + ($i | flatten($x - 1)) else . + [$i] end) end;
+def flatten: flatten(1000000);
+def index($i): indices($i) | .[0];
+def rindex($i): indices($i) | .[-1:][0];
+def combinations_unused: .;
+`
+
+func init() {
+	for _, s := range strings.Fields(`values/0 nulls/0 booleans/0 numbers/0 strings/0 arrays/0 objects/0 iterables/0 scalars/0 map/1 map_values/1 recurse/1 recurse/0 recurse/2 to_entries/0 with_entries/1 del/1 paths/0 paths/1 leaf_paths/0 isempty/1 any/2 all/2 any/1 all/1 any/0 all/0 in/1 inside/1 until/2 while/2 repeat/1 walk/1 first/0 last/0 last/1 nth/1 nth/2 add/1 flatten/0 flatten/1 index/1 rindex/1`) {
+		_ = s
+	}
+}
+
+func buildBase() (*Env, *Scope) {
+	p := &Parser{s: prelude + " ."}
+	n := p.parsePipe()
+	var env *Env
+	var sc *Scope
+	for n.kind == "funcdef" {
+		fv := &FuncV{def: n.def}
+		e := &Env{parent: env, kind: 1, name: n.def.name, arity: len(n.def.params), fn: fv}
+		fv.env = e
+		env = e
+		sc = &Scope{parent: sc, kind: 1, name: n.def.name, arity: len(n.def.params)}
+		n = n.kids[0]
+	}
+	return env, sc
+}
+
+// ============ main ============
+func main() {
+	data, _ := io.ReadAll(bufio.NewReader(os.Stdin))
+	text := string(data)
+	nl := strings.IndexByte(text, '\n')
+	first, rest := text, ""
+	if nl >= 0 {
+		first, rest = text[:nl], text[nl+1:]
+	}
+	first = strings.TrimRight(first, "\r")
+	raw, slurp, nullIn := false, false, false
+	for {
+		switch {
+		case strings.HasPrefix(first, "-r "):
+			raw = true
+		case strings.HasPrefix(first, "-s "):
+			slurp = true
+		case strings.HasPrefix(first, "-n "):
+			nullIn = true
+		default:
+			goto done
+		}
+		first = first[3:]
+	}
+done:
+	var outb strings.Builder
+	defer func() { os.Stdout.WriteString(outb.String()) }()
+
+	base, bscope := buildBase()
+	var prog *Node
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				switch e := r.(type) {
+				case SyntaxErr:
+					outb.WriteString("error: syntax error\n")
+					prog = nil
+				case StaticErr:
+					outb.WriteString("error: " + e.msg + "\n")
+					prog = nil
+				default:
+					panic(r)
+				}
+			}
+		}()
+		p := &Parser{s: first}
+		prog = p.parsePipe()
+		p.ws()
+		if p.i != len(p.s) {
+			p.bad()
+		}
+		check(prog, bscope)
+	}()
+	if prog == nil {
+		return
+	}
+	run := func(v V) {
+		defer func() {
+			if r := recover(); r != nil {
+				if e, ok := r.(JqErr); ok {
+					if s, isStr := e.v.(string); isStr {
+						outb.WriteString("error: " + s + "\n")
+					} else {
+						outb.WriteString("error: (not a string): " + toJSON(e.v) + "\n")
+					}
+					return
+				}
+				panic(r)
+			}
+		}()
+		eval(prog, base, Item{v: v}, func(x Item) bool {
+			if s, ok := x.v.(string); ok && raw {
+				outb.WriteString(s + "\n")
+			} else {
+				outb.WriteString(toJSON(x.v) + "\n")
+			}
+			return true
+		})
+	}
+	if nullIn {
+		run(nil)
+		return
+	}
+	jp := &JP{s: rest}
+	var vals []V
+	bad := false
+	for {
+		jp.ws()
+		if jp.i >= len(jp.s) {
+			break
+		}
+		var v V
+		ok := func() (ok bool) {
+			defer func() {
+				if r := recover(); r != nil {
+					if _, is := r.(jsonErr); is {
+						ok = false
+						return
+					}
+					panic(r)
+				}
+			}()
+			v = jp.value()
+			return true
+		}()
+		if !ok {
+			bad = true
+			break
+		}
+		if slurp {
+			vals = append(vals, v)
+		} else {
+			run(v)
+		}
+	}
+	if slurp && !bad {
+		if vals == nil {
+			vals = []V{}
+		}
+		run(vals)
+	}
+	if bad {
+		outb.WriteString("error: invalid JSON input\n")
+	}
+}

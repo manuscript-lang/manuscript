@@ -1,8 +1,8 @@
 import panic from "@std/faults.ms"
 
-fn double(value: Int) -> Int: return value * 2
+fn double(value: Int) -> Int: value * 2
 
-fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int: return transform(value)
+fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int: transform(value)
 
 fn choose(value: Int) -> Int:
     if value > 0: return double(value)
@@ -20,12 +20,12 @@ test "inline functions and branches":
     if alternate(0) != 0: return panic("inline else if failed")
     if alternate(3) != 1: return panic("mixed branch failed")
 
-    let increment = fn(value: Int) -> Int: return value + 1
+    let increment = fn(value: Int): value + 1
     if increment(2) != 3: return panic("inline closure failed")
 
     let result = apply(
         value: 4,
-        transform: fn(value: Int) -> Int: return value * 3
+        transform: fn(value): value * 3
     )
     if result != 12: return panic("inline callback failed")
 

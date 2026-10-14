@@ -5,7 +5,7 @@ weight = 1
 
 # Source files
 
-Each Manuscript source file ends in `.ms` and is a module. Put imports, type declarations, implementations, named functions, and tests at the top level. Put executable statements and local `let` or `var` bindings inside a function or test. There is no separate `module` declaration or top-level initializer.
+Each Manuscript source file ends in `.ms` and is a module. Put imports, type declarations, implementations, named functions, constants, and tests at the top level. Put executable statements and local `let` or `var` bindings inside a function or test. There is no separate `module` declaration or top-level initializer; a top-level `let` is a [constant](../modules/declarations.md#constants), not a statement.
 
 The following `src/greeting.ms` file defines a customer and a function that creates a greeting. Read it from top to bottom:
 
@@ -25,7 +25,7 @@ export fn welcome(customer: Customer) -> String:
 
 Indentation defines blocks. Indented suites require exactly four additional spaces at each nesting level, and the formatter preserves that rule. Tabs in code and semicolons are rejected. Blank and comment-only lines do not change a block. The fields belong to `Customer` because they are indented under its declaration. The first return belongs to the `if` block; the second belongs directly to the function body.
 
-Function calls may omit the argument label when the function has exactly one parameter. Functions with more than one parameter allow matching-name shorthand, such as `reduce(amount, deduction)`; other expressions require labels. Constructors name their fields. See [declarations and calls](../functions/declarations-and-calls.md) for the call rules.
+Function and constructor calls accept positional arguments, optional labels, and mixtures of both. Matching-name shorthand remains available, such as `reduce(amount, deduction)`. See [declarations and calls](../functions/declarations-and-calls.md) for the call rules.
 
 Expressions inside parentheses, brackets, or braces can span lines. This lets a call list its arguments on separate lines without changing their evaluation order:
 

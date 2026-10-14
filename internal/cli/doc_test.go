@@ -13,7 +13,7 @@ import (
 func TestDocOutsideRepository(t *testing.T) {
 	directory := t.TempDir()
 	t.Chdir(directory)
-	t.Setenv("MANUSCRIPT_GO", filepath.Join(directory, "no-go-toolchain"))
+	t.Setenv("PATH", t.TempDir())
 	for _, args := range [][]string{
 		{"doc", "--stdlib", "-o", "stdlib.md"},
 		{"doc", "--stdlib", "--json", "-o", "stdlib.json"},
@@ -26,7 +26,7 @@ func TestDocOutsideRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"```manuscript\n", "fn to_bytes() -> Bytes", "fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]", "history_limit", "# @std/http.ms"} {
+	for _, want := range []string{"```manuscript\n", "fn to_bytes() -> Bytes", "fn start(operation: fn() -> Result[Unit, Error]) -> Result[OperationId, StartError]", "history_limit", "# @std/http.ms"} {
 		if !strings.Contains(string(markdown), want) {
 			t.Errorf("missing %q", want)
 		}

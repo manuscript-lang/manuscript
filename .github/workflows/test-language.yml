@@ -7,20 +7,63 @@ on:
 permissions:
   contents: read
 
+# Each unit of work runs exactly once per run. Jobs are grouped by shared inputs,
+# not by topic: static checks and the editor tests share one setup, the Go suite
+# is sharded, and the editor tests reuse the CLI built for the hello run.
 jobs:
-  fast:
-    name: Fast feedback
+  # Every Go test runs once: in-process packages under the race detector, the
+  # rest (unit, stdlib, examples, native end-to-end) with coverage.
+  go:
+    name: Go tests (shard ${{ matrix.shard }})
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
+        with:
+          path: toolchain/
+          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
+      - name: Prepare SDK payload
+        run: make payload
+      - name: Sharded Go tests (race, or coverage)
+        run: sh scripts/ci-test.sh ${{ matrix.shard }} 4
+      - uses: actions/upload-artifact@v7
+        with:
+          name: language-coverage-${{ matrix.shard }}
+          path: .artifacts/coverage/
+
+  # Static checks, then the bundled CLI built once and reused by the editor
+  # tests, sharing one checkout and one SDK/linter setup. Generated docs and the
+  # book are checked once, by "Build design book" in cicd.yml.
+  dist:
+    name: Static, CLI, fuzz, and editor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: extensions/vscode/package-lock.json
+      - uses: actions/cache@v6
         with:
           path: |
             toolchain/
@@ -28,87 +71,17 @@ jobs:
           key: devtools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256', 'scripts/devtools.env', 'scripts/devtools.sha256') }}
       - name: Prepare verified SDK and pinned linters
         run: make setup
-      - name: Read-only verification, unit tests, and tutorial checks
-        run: make verify
-
-  conformance:
-    name: Native conformance and coverage
-    needs: fast
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: .go-version
-          cache: true
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-      - uses: actions/cache@v4
-        with:
-          path: toolchain/
-          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
-      - name: Unit and native end-to-end coverage, including dependency packages
-        run: make coverage
-      - uses: actions/upload-artifact@v4
-        with:
-          name: language-coverage
-          path: .artifacts/coverage/
+      - name: Format, vet, lint, repo rules, licenses
+        run: make check lint repo-check licenses-check
       - name: Build bundled CLI and run hello
         run: |
           make build
           ./ms check examples/hello/ms.toml
           ./ms lock examples/hello/ms.toml
           ./ms run examples/hello/ms.toml -- first second
-      - uses: actions/upload-artifact@v4
-        with:
-          name: manuscript-test-cli
-          path: ms
-      - name: Verify offline standalone distribution
-        run: make dist-check
-
-  stress:
-    needs: fast
-    strategy:
-      fail-fast: false
-      matrix:
-        check: [race, fuzz]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: .go-version
-          cache: true
-      - uses: actions/cache@v4
-        with:
-          path: toolchain/
-          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
-      - name: Runtime/compiler stress checks
-        run: make "${{ matrix.check }}"
-
-  extension:
-    name: Editor and native debugger
-    needs: conformance
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: .go-version
-          cache: true
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: npm
-          cache-dependency-path: extensions/vscode/package-lock.json
-      - uses: actions/download-artifact@v4
-        with:
-          name: manuscript-test-cli
-      - name: Install pinned native debugger
-        run: |
-          chmod +x ms
-          go install github.com/go-delve/delve/cmd/dlv@v1.25.2
+      # Standalone distribution checks run once, per target, in release.yml.
+      - name: Parser and compiler fuzzing
+        run: make fuzz
       - name: Validate and package VS Code extension
         working-directory: extensions/vscode
         run: |
@@ -117,42 +90,51 @@ jobs:
       - name: Native Manuscript DAP integration
         working-directory: extensions/vscode
         run: |
-          MANUSCRIPT_DAP_TEST=1 MANUSCRIPT_MS="$GITHUB_WORKSPACE/ms" MANUSCRIPT_DLV="$(go env GOPATH)/bin/dlv" MANUSCRIPT_DAP_ADAPTER="$PWD/dist/debug-adapter.js" node tests/debug-adapter.test.js
-      - uses: actions/upload-artifact@v4
+          MANUSCRIPT_DAP_TEST=1 MANUSCRIPT_MS="$GITHUB_WORKSPACE/ms" MANUSCRIPT_DAP_ADAPTER="$PWD/dist/debug-adapter.js" node --test tests/debug-adapter.test.js tests/debug-large-literal.test.js
+      - uses: actions/upload-artifact@v7
         with:
           name: manuscript-vscode
           path: extensions/vscode/*.vsix
 
+  # Linux host behavior is covered by the Go shards.
   host-stdlib:
-    needs: fast
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     env:
       CGO_ENABLED: '0'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
       - name: Native host compatibility and Node.js coverage
         shell: bash
         run: |
-          go test ./pkg/runtime ./pkg/compiler ./tests/e2e -run 'TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
+          make payload
+          packages='./pkg/runtime ./pkg/compiler ./tests/e2e'
+          if [ -d pkg/build ]; then packages="$packages ./pkg/build"; fi
+          # shellcheck disable=SC2086
+          toolchain/go/bin/go test $packages -run 'TestFileSystem|TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestShutdownCookbook|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
 
-  # Keep one stable required check; every applicable job must pass before merging.
+  # Keep one stable required check; every job must pass before merging.
   test:
-    needs: [fast, conformance, stress, extension, host-stdlib]
+    needs: [go, dist, host-stdlib]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require all language checks
         env:
           RESULTS: ${{ join(needs.*.result, ',') }}
-        run: test "$RESULTS" = 'success,success,success,success,success'
+        run: |
+          case ",$RESULTS," in
+            *,failure,*|*,cancelled,*|*,skipped,*) exit 1 ;;
+          esac

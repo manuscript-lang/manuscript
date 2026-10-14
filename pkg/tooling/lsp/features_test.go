@@ -238,9 +238,44 @@ func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
 	}
 }
 
+func TestBytesValuesHoverIncludesOperationContract(t *testing.T) {
+	source := `import Bytes from "@std/bytes.ms"
+import List from "@std/collections.ms"
+fn extract(data: Bytes) -> List[Int]:
+    let bound: fn() -> List[Int] = data.values
+    return data.values()
+`
+	d := document{"file:///tmp/bytes-values-hover.ms", source, 1}
+	checked := analyze(d, map[string]document{d.URI: d})
+	if !checked.Success() {
+		t.Fatal(checked.Diagnostics)
+	}
+	for _, offset := range []int{strings.Index(source, "values\n"), strings.Index(source, "values()")} {
+		hover := navigation(checked, d, Position(source, offset), "textDocument/hover")
+		if hover == nil {
+			t.Fatal("missing Bytes.values hover")
+		}
+		text := hover.(map[string]any)["contents"].(map[string]any)["value"].(string)
+		if !strings.Contains(text, "fn()->List[Int]") || !strings.Contains(text, "fresh mutable list") || !strings.Contains(text, "leaves the Bytes unchanged") {
+			t.Fatalf("operation contract missing: %s", text)
+		}
+	}
+}
+
+func TestBytesConstructorRetainsValuesSignature(t *testing.T) {
+	for _, call := range []string{"Bytes(|", "Bytes(values: |"} {
+		source := "import Bytes from \"@std/bytes.ms\"\nimport List from \"@std/collections.ms\"\nfn make() -> Bytes:\n    return " + call + "\n"
+		result := signatureSource(t, source)
+		signature := result["signatures"].([]any)[0].(map[string]any)
+		if signature["label"] != "Bytes(values: List[Int]) -> Bytes" {
+			t.Fatalf("%s: constructor argument lost with field removal: %v", call, signature)
+		}
+	}
+}
+
 func TestNavigationWithinStandardLibrary(t *testing.T) {
 	for _, item := range []struct{ file, needle, target, name string }{
-		{"collections.ms", "Optional from", "optional.ms", "Optional"},
+		{"collections.ms", "Result[List[T]", "result.ms", "Result"},
 		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
 		{"collections.ms", "List[T]) ->", "collections.ms", "List"},
 		{"cli.ms", "List from", "collections.ms", "List"},
@@ -359,5 +394,67 @@ func TestShorthandRenamePreservesBothNames(t *testing.T) {
 		if !strings.Contains(string(data), tc.expanded) {
 			t.Fatalf("missing %q in %s", tc.expanded, data)
 		}
+	}
+}
+
+func TestPreferredNativeNamesHoverAndNavigation(t *testing.T) {
+	for _, tc := range []struct{ name, receiver, contract, module string }{
+		{"set", "List[Int]", "Replaces an element in place", "collections.ms"},
+		{"splice", "List[Int]", "mutating and returning this List", "collections.ms"},
+		{"remove", "Map[Int, Int]", "remaining entries retain insertion order", "collections.ms"},
+		{"reverse_in_place", "List[Int]", "Reverses this list in place", "collections.ms"},
+		{"reversed", "List[Int]", "independent outer storage", "collections.ms"},
+		{"reversed", "Bytes", "reversed copy", "bytes.ms"},
+		{"remove", "List[Int]", "Removes an element in place", "collections.ms"},
+		{"add", "Set[Int]", "Adds a value in place", "collections.ms"},
+		{"remove", "Set[Int]", "Removes an equal value in place", "collections.ms"},
+		{"replace_first", "String", "an explicit cap can replace more", "intrinsics.ms"},
+		{"replace_n", "String", "count limits replacements", "intrinsics.ms"},
+		{"replace_all", "Regex", "literal replacement text", "regex.ms"},
+	} {
+		t.Run(tc.receiver+"/"+tc.name, func(t *testing.T) {
+			source := "import {List, Set} from \"@std/collections.ms\"\nimport Bytes from \"@std/bytes.ms\"\nimport Regex from \"@std/regex.ms\"\nfn check(receiver: " + tc.receiver + ") -> Unit:\n    let bound = receiver." + tc.name + "\n"
+			d := document{"file:///tmp/preferred-names-hover.ms", source, 1}
+			checked := analyze(d, map[string]document{d.URI: d})
+			if !checked.Success() {
+				t.Fatal(checked.Diagnostics)
+			}
+			pos := Position(source, strings.LastIndex(source, tc.name))
+			hover := navigation(checked, d, pos, "textDocument/hover")
+			if hover == nil {
+				t.Fatal("missing hover")
+			}
+			text := hover.(map[string]any)["contents"].(map[string]any)["value"].(string)
+			if !strings.Contains(text, tc.contract) {
+				t.Fatalf("missing contract: %s", text)
+			}
+			target := navigation(checked, d, pos, "textDocument/definition")
+			if target == nil {
+				t.Fatal("missing definition")
+			}
+			location := target.([]any)[0].(map[string]any)
+			if location["uri"] != "manuscript-stdlib:///"+tc.module {
+				t.Fatal(location)
+			}
+		})
+	}
+}
+
+func TestIncrementalEditsClampOutOfRangePositions(t *testing.T) {
+	uri := "file:///tmp/clamp.ms"
+	source := "fn answer() -> Int:\n    return 42\n"
+	// Positions past the end of a line or of the document clamp, so the
+	// server's copy keeps matching the editor's.
+	edits := []any{
+		map[string]any{"range": span{position{1, 100}, position{1, 100}}, "text": " + 1"},
+		map[string]any{"range": span{position{99, 0}, position{99, 0}}, "text": "# end\n"},
+	}
+	input := frame("textDocument/didOpen", nil, map[string]any{"textDocument": document{uri, source, 1}}) + frame("textDocument/didChange", nil, map[string]any{"textDocument": document{URI: uri, Version: 2}, "contentChanges": edits}) + frame("textDocument/formatting", 3, map[string]any{"textDocument": document{URI: uri}}) + frame("shutdown", 4, nil) + frame("exit", nil, nil)
+	var output bytes.Buffer
+	if err := Serve(strings.NewReader(input), &output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "return 42 + 1") || !strings.Contains(output.String(), "# end") {
+		t.Fatal(output.String())
 	}
 }

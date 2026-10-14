@@ -35,12 +35,12 @@ fn early(output: WriteStream) -> Int:
             return report(output: output, label: "return value", value: 5)
 
 fn failure() -> Result[Int, String]:
-    return error(cause: "expected")
+    return error("expected")
 
 fn propagate(output: WriteStream) -> Result[Int, String]:
     with resource = Resource(label: "propagation", output: output):
         let number = try failure()
-        return ok(value: number)
+        return ok(number)
 
 fn iterable(output: WriteStream) -> List[Int]:
     output.write(data: "iterable\n".to_bytes())

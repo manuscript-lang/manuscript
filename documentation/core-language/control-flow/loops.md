@@ -22,9 +22,64 @@ fn sum(values: List[Int]) -> Int:
 
 The list contains integers. Each iteration binds an element and updates the accumulator. Addition uses checked `Int` arithmetic, so overflow is a [programming fault](../errors/faults.md).
 
+## Counting loops
+
+Use a counter and `while` to repeat work a fixed number of times without allocating a list. This complete test visits indexes 0 through 4:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import panic from "@std/faults.ms"
+
+test "five iterations":
+    var index = 0
+    var total = 0
+    while index < 5:
+        total = total + index
+        index = index + 1
+    if index != 5 or total != 10:
+        return panic("Expected five iterations and total 10")
+```
+
+Increment the counter before any `continue` that would skip its update. With a nonpositive iteration count, an initial `index = 0` and condition `index < count` execute no body.
+
+When you need a list of numbers, import `range` from `@std/collections.ms`. It includes `start`, excludes `end`, and requires an explicit nonzero `step`. It returns `Result[List[Int], CollectionError]`, so handle the result before using `for`:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import range from "@std/collections.ms"
+import panic from "@std/faults.ms"
+
+test "sum indexes":
+    match range(start: 0, end: 5, step: 1):
+        ok(indexes):
+            var total = 0
+            for index in indexes:
+                total = total + index
+            if total != 10:
+                return panic("Expected 10, got {total}")
+        error(cause):
+            return panic("Could not build range: {cause.message()}")
+
+test "zero step is rejected":
+    let cause = match range(start: 0, end: 5, step: 0):
+        ok(_): return panic("Expected an invalid step error")
+        error(cause): cause
+
+    match cause:
+        InvalidInput: unit
+        _: return panic("Expected InvalidInput")
+
+```
+
+Save either complete example as `test.ms` and run `ms test test.ms`. A failed check calls `panic`; see [testing](../../learn/testing.md).
+
+A positive step moves upward; a negative step moves downward. `range(start: 5, end: 0, step: -2)` produces `[5, 3, 1]`. Equal endpoints or a step directed away from the end produce an empty list. `step: 0` returns `InvalidInput`; `max_items` optionally bounds allocation and returns `LimitExceeded` when exceeded. See the [range declaration](../../standard-library/reference/collections.md#range).
+
+`for index in 0..5:` is unsupported. A direct `for index in range(...)` also fails because a `Result` is not an iterable. In a function returning a compatible `Result`, `let indexes = try range(start: 0, end: 5, step: 1)` is another way to unwrap before the loop.
+
 ## Iterable types and binding
 
-Evaluate a `for`'s iterable expression once before entering the loop and snapshot its membership. Mutations to the collection do not change the current traversal; referenced elements remain shared. The loop introduces one immutable identifier per iteration; it does not accept a binding pattern or a type annotation. The closed set of supported iterables is:
+Evaluate a `for`'s iterable expression once before entering the loop. A List traversal captures its backing slice and initial length without copying: later element writes can be observed, append does not extend the traversal, and reallocation leaves it reading the original array. Map and Set snapshot their membership. Referenced elements remain shared. The loop introduces one immutable identifier per iteration; it does not accept a binding pattern or a type annotation. The closed set of supported iterables is:
 
 | Iterable | Iteration binding type | Traversal order |
 | --- | --- | --- |

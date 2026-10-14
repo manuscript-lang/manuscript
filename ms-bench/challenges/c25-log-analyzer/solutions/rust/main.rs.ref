@@ -1,0 +1,68 @@
+use std::collections::HashMap;
+use std::io::{self, Read, Write};
+
+fn digits(s: &str) -> bool {
+    !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    let levels = ["DEBUG", "INFO", "WARN", "ERROR"];
+    let methods = ["GET", "POST", "PUT", "DELETE"];
+    let mut level_counts = [0usize; 4];
+    let mut stats: HashMap<String, (usize, u64)> = HashMap::new();
+    let (mut valid, mut malformed) = (0, 0);
+    let mut classes = [0usize; 5];
+    let mut latencies: Vec<u64> = Vec::new();
+    let mut slowest: Option<(u64, String)> = None;
+    for line in input.split('\n') {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let f: Vec<&str> = line.split(' ').collect();
+        let lv = if f.len() == 6 { levels.iter().position(|l| *l == f[1]) } else { None };
+        let ok = f.len() == 6
+            && !f[0].is_empty()
+            && lv.is_some()
+            && methods.contains(&f[2])
+            && f[3].starts_with('/')
+            && f[4].len() == 3
+            && digits(f[4])
+            && digits(f[5])
+            && f[5].len() <= 9;
+        if !ok {
+            malformed += 1;
+            continue;
+        }
+        valid += 1;
+        level_counts[lv.unwrap()] += 1;
+        let c = f[4].as_bytes()[0];
+        classes[if (b'2'..=b'5').contains(&c) { (c - b'2') as usize } else { 4 }] += 1;
+        let lat: u64 = f[5].parse().unwrap();
+        latencies.push(lat);
+        if slowest.as_ref().map_or(true, |(l, _)| lat > *l) {
+            slowest = Some((lat, format!("{} {} {} {}", lat, f[2], f[3], f[0])));
+        }
+        let e = stats.entry(f[3].to_string()).or_insert((0, 0));
+        e.0 += 1;
+        e.1 += f[5].parse::<u64>().unwrap();
+    }
+    let mut out = format!("valid: {}\nmalformed: {}\n", valid, malformed);
+    for (i, l) in levels.iter().enumerate() {
+        out.push_str(&format!("{}: {}\n", l, level_counts[i]));
+    }
+    latencies.sort();
+    let p95 = if latencies.is_empty() { 0 } else { latencies[(95 * latencies.len() + 99) / 100 - 1] };
+    out.push_str(&format!("status: 2xx={} 3xx={} 4xx={} 5xx={} other={}\np95: {}\n", classes[0], classes[1], classes[2], classes[3], classes[4], p95));
+    if let Some((_, text)) = &slowest {
+        out.push_str(&format!("slowest: {}\n", text));
+    }
+    out.push_str("top:\n");
+    let mut ranked: Vec<(&String, &(usize, u64))> = stats.iter().collect();
+    ranked.sort_by(|a, b| b.1 .0.cmp(&a.1 .0).then(a.0.cmp(b.0)));
+    for (path, (n, sum)) in ranked.into_iter().take(3) {
+        out.push_str(&format!("{} {} avg={}\n", path, n, sum / *n as u64));
+    }
+    io::stdout().write_all(out.as_bytes()).unwrap();
+}

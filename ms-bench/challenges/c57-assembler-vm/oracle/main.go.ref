@@ -1,0 +1,900 @@
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"strconv"
+	"strings"
+)
+
+const memSize = 4096
+
+type AsmErr struct {
+	line int
+	msg  string
+}
+
+func fail(line int, format string, a ...interface{}) {
+	panic(AsmErr{line, fmt.Sprintf(format, a...)})
+}
+
+var regNames = map[string]int{"r0": 0, "r1": 1, "r2": 2, "r3": 3, "r4": 4, "r5": 5, "r6": 6, "r7": 7, "sp": 8, "bp": 9}
+var regList = []string{"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"}
+
+type Operand struct {
+	kind  byte // 'r' register, 'i' immediate, 'm' memory
+	reg   int
+	hasR  bool   // memory with base register
+	expr  string // immediate expr, or memory offset expr (with sign included) or absolute expr
+	raw   string
+	value int32 // resolved immediate / offset
+}
+
+type Instr struct {
+	mn   string
+	ops  []*Operand
+	line int
+}
+
+type DataItem struct {
+	kind  string // word, fill
+	exprs []string
+	line  int
+	vals  []int32
+	count int
+	fill  string
+}
+
+type Asm struct {
+	labels  map[string]int32
+	isCode  map[string]bool
+	equs    map[string]string
+	equLine map[string]int
+	instrs  []*Instr
+	data    []DataItem
+	dataLen int
+	budget  int
+	section string
+}
+
+func isIdentStart(c byte) bool {
+	return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+func isIdentChar(c byte) bool { return isIdentStart(c) || (c >= '0' && c <= '9') || c == '.' }
+
+func stripComment(s string) string {
+	inStr, inChr := false, false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case inStr:
+			if c == '\\' {
+				i++
+			} else if c == '"' {
+				inStr = false
+			}
+		case inChr:
+			if c == '\\' {
+				i++
+			} else if c == '\'' {
+				inChr = false
+			}
+		case c == '"':
+			inStr = true
+		case c == '\'':
+			inChr = true
+		case c == ';':
+			return s[:i]
+		}
+	}
+	return s
+}
+
+func splitOperands(s string) []string {
+	var res []string
+	depth := 0
+	start := 0
+	inChr := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if inChr {
+			if c == '\\' {
+				i++
+			} else if c == '\'' {
+				inChr = false
+			}
+			continue
+		}
+		switch c {
+		case '\'':
+			inChr = true
+		case '[':
+			depth++
+		case ']':
+			depth--
+		case ',':
+			if depth == 0 {
+				res = append(res, strings.TrimSpace(s[start:i]))
+				start = i + 1
+			}
+		}
+	}
+	return append(res, strings.TrimSpace(s[start:]))
+}
+
+func parseEscape(c byte) (byte, bool) {
+	switch c {
+	case 'n':
+		return '\n', true
+	case 't':
+		return '\t', true
+	case '0':
+		return 0, true
+	case '\\':
+		return '\\', true
+	case '\'':
+		return '\'', true
+	case '"':
+		return '"', true
+	}
+	return 0, false
+}
+
+func parseString(line int, s string) []int32 {
+	s = strings.TrimSpace(s)
+	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+		fail(line, "invalid string")
+	}
+	body := s[1 : len(s)-1]
+	var res []int32
+	for i := 0; i < len(body); i++ {
+		c := body[i]
+		if c == '"' {
+			fail(line, "invalid string")
+		}
+		if c == '\\' {
+			i++
+			if i >= len(body) {
+				fail(line, "invalid string")
+			}
+			e, ok := parseEscape(body[i])
+			if !ok {
+				fail(line, "invalid string")
+			}
+			c = e
+		}
+		res = append(res, int32(c))
+	}
+	return res
+}
+
+func (a *Asm) defineSymbol(line int, name string) {
+	if _, ok := regNames[name]; ok {
+		fail(line, "reserved name '%s'", name)
+	}
+	if _, ok := a.labels[name]; ok {
+		fail(line, "duplicate symbol '%s'", name)
+	}
+	if _, ok := a.equs[name]; ok {
+		fail(line, "duplicate symbol '%s'", name)
+	}
+}
+
+func classify(line int, s string) *Operand {
+	if s == "" {
+		fail(line, "invalid operand ''")
+	}
+	if r, ok := regNames[s]; ok {
+		return &Operand{kind: 'r', reg: r, raw: s}
+	}
+	if s[0] == '[' {
+		if s[len(s)-1] != ']' {
+			fail(line, "invalid operand '%s'", s)
+		}
+		inner := strings.TrimSpace(s[1 : len(s)-1])
+		if inner == "" {
+			fail(line, "invalid operand '%s'", s)
+		}
+		op := &Operand{kind: 'm', raw: s}
+		// split into signed terms
+		type term struct {
+			sign byte
+			text string
+		}
+		var terms []term
+		cur := term{sign: '+'}
+		inChr := false
+		started := false
+		for i := 0; i < len(inner); i++ {
+			c := inner[i]
+			if inChr {
+				cur.text += string(c)
+				if c == '\\' && i+1 < len(inner) {
+					i++
+					cur.text += string(inner[i])
+				} else if c == '\'' {
+					inChr = false
+				}
+				continue
+			}
+			if c == '\'' {
+				inChr = true
+				cur.text += string(c)
+				started = true
+				continue
+			}
+			if (c == '+' || c == '-') && (started || strings.TrimSpace(cur.text) != "") {
+				terms = append(terms, cur)
+				cur = term{sign: c}
+				started = false
+				continue
+			}
+			if (c == '+' || c == '-') && !started && strings.TrimSpace(cur.text) == "" {
+				if len(terms) == 0 && c == '-' && cur.sign == '+' {
+					cur.sign = '-'
+					continue
+				}
+				fail(line, "invalid operand '%s'", s)
+			}
+			cur.text += string(c)
+			if c != ' ' && c != '\t' {
+				started = true
+			}
+		}
+		terms = append(terms, cur)
+		var rest []string
+		for _, t := range terms {
+			tx := strings.TrimSpace(t.text)
+			if tx == "" {
+				fail(line, "invalid operand '%s'", s)
+			}
+			if r, ok := regNames[tx]; ok {
+				if op.hasR || t.sign == '-' {
+					fail(line, "invalid operand '%s'", s)
+				}
+				op.hasR = true
+				op.reg = r
+				continue
+			}
+			rest = append(rest, string(t.sign)+tx)
+		}
+		if len(rest) == 0 {
+			op.expr = "0"
+		} else {
+			op.expr = strings.Join(rest, "")
+		}
+		return op
+	}
+	return &Operand{kind: 'i', expr: s, raw: s}
+}
+
+// operand shape table: each instruction lists allowed kinds per operand position
+var shapes = map[string][]string{
+	"mov": {"r", "rim"}, // special-cased for mem dst
+	"add": {"r", "rim"}, "sub": {"r", "rim"}, "mul": {"r", "rim"}, "div": {"r", "rim"}, "mod": {"r", "rim"},
+	"and": {"r", "rim"}, "or": {"r", "rim"}, "xor": {"r", "rim"}, "shl": {"r", "rim"}, "shr": {"r", "rim"}, "sar": {"r", "rim"},
+	"cmp": {"r", "rim"},
+	"neg": {"r"}, "not": {"r"}, "inc": {"r"}, "dec": {"r"}, "pop": {"r"}, "in": {"r"},
+	"push": {"rim"}, "out": {"rim"}, "outc": {"rim"},
+	"lea": {"r", "m"},
+	"jmp": {"i"}, "je": {"i"}, "jne": {"i"}, "jz": {"i"}, "jnz": {"i"}, "jl": {"i"}, "jle": {"i"}, "jg": {"i"}, "jge": {"i"}, "call": {"i"},
+	"ret": {}, "halt": {}, "nop": {},
+}
+
+func kindOK(allowed string, k byte) bool { return strings.IndexByte(allowed, k) >= 0 }
+
+func (a *Asm) pass1(text string) {
+	a.labels = map[string]int32{}
+	a.isCode = map[string]bool{}
+	a.equs = map[string]string{}
+	a.equLine = map[string]int{}
+	a.budget = 100000
+	a.section = "text"
+	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	for idx, raw := range lines {
+		ln := idx + 1
+		s := strings.TrimSpace(stripComment(raw))
+		for s != "" {
+			// label?
+			if isIdentStart(s[0]) {
+				j := 0
+				for j < len(s) && isIdentChar(s[j]) {
+					j++
+				}
+				if j < len(s) && s[j] == ':' {
+					name := s[:j]
+					a.defineSymbol(ln, name)
+					if a.section == "text" {
+						a.labels[name] = int32(len(a.instrs))
+						a.isCode[name] = true
+					} else {
+						a.labels[name] = int32(a.dataLen)
+					}
+					s = strings.TrimSpace(s[j+1:])
+					continue
+				}
+			}
+			break
+		}
+		if s == "" {
+			continue
+		}
+		var head, rest string
+		if k := strings.IndexAny(s, " \t"); k >= 0 {
+			head, rest = s[:k], strings.TrimSpace(s[k:])
+		} else {
+			head = s
+		}
+		if head[0] == '.' {
+			a.directive(ln, head, rest)
+			continue
+		}
+		if a.section != "text" {
+			fail(ln, "instruction in data section")
+		}
+		shape, ok := shapes[head]
+		if !ok {
+			fail(ln, "unknown mnemonic '%s'", head)
+		}
+		var ops []*Operand
+		if rest != "" {
+			for _, o := range splitOperands(rest) {
+				ops = append(ops, classify(ln, o))
+			}
+		}
+		if len(ops) != len(shape) {
+			fail(ln, "wrong number of operands for '%s'", head)
+		}
+		for i, o := range ops {
+			allowed := shape[i]
+			if head == "mov" && i == 0 {
+				allowed = "rm"
+			}
+			if !kindOK(allowed, o.kind) {
+				fail(ln, "invalid operands for '%s'", head)
+			}
+		}
+		if head == "mov" && ops[0].kind == 'm' && ops[1].kind == 'm' {
+			fail(ln, "invalid operands for 'mov'")
+		}
+		a.instrs = append(a.instrs, &Instr{mn: head, ops: ops, line: ln})
+	}
+}
+
+func (a *Asm) directive(ln int, head, rest string) {
+	switch head {
+	case ".text":
+		if rest != "" {
+			fail(ln, "invalid operand '%s'", rest)
+		}
+		a.section = "text"
+	case ".data":
+		if rest != "" {
+			fail(ln, "invalid operand '%s'", rest)
+		}
+		a.section = "data"
+	case ".equ":
+		parts := splitOperands(rest)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			fail(ln, "wrong number of operands for '.equ'")
+		}
+		name := parts[0]
+		ok := isIdentStart(name[0])
+		for i := 0; i < len(name); i++ {
+			if !isIdentChar(name[i]) {
+				ok = false
+			}
+		}
+		if !ok {
+			fail(ln, "invalid operand '%s'", name)
+		}
+		a.defineSymbol(ln, name)
+		a.equs[name] = parts[1]
+		a.equLine[name] = ln
+	case ".budget":
+		n, err := strconv.Atoi(rest)
+		if err != nil || n < 1 || n > 10000000 {
+			fail(ln, "invalid operand '%s'", rest)
+		}
+		a.budget = n
+	case ".word", ".ascii", ".asciz", ".space":
+		if a.section != "data" {
+			fail(ln, "data directive in text section")
+		}
+		item := DataItem{line: ln}
+		switch head {
+		case ".word":
+			if rest == "" {
+				fail(ln, "wrong number of operands for '.word'")
+			}
+			item.kind = "word"
+			item.exprs = splitOperands(rest)
+			item.count = len(item.exprs)
+		case ".ascii", ".asciz":
+			vals := parseString(ln, rest)
+			if head == ".asciz" {
+				vals = append(vals, 0)
+			}
+			item.kind = "const"
+			item.vals = vals
+			item.count = len(vals)
+		case ".space":
+			parts := splitOperands(rest)
+			if len(parts) < 1 || len(parts) > 2 || parts[0] == "" {
+				fail(ln, "wrong number of operands for '.space'")
+			}
+			n := a.eval(ln, parts[0], nil)
+			if n < 0 {
+				fail(ln, "invalid operand '%s'", parts[0])
+			}
+			item.kind = "fill"
+			item.count = int(n)
+			item.fill = "0"
+			if len(parts) == 2 {
+				item.fill = parts[1]
+			}
+			if item.count > memSize {
+				fail(ln, "data section too large")
+			}
+		}
+		if a.dataLen+item.count > memSize {
+			fail(ln, "data section too large")
+		}
+		a.dataLen += item.count
+		a.data = append(a.data, item)
+	default:
+		fail(ln, "unknown directive '%s'", head)
+	}
+}
+
+// ---- expressions ----
+func (a *Asm) eval(ln int, expr string, stack []string) int32 {
+	s := strings.TrimSpace(expr)
+	if s == "" {
+		fail(ln, "invalid expression '%s'", expr)
+	}
+	var total int64
+	i := 0
+	sign := int64(1)
+	expectTerm := true
+	first := true
+	for i < len(s) {
+		for i < len(s) && (s[i] == ' ' || s[i] == '\t') {
+			i++
+		}
+		if i >= len(s) {
+			break
+		}
+		if !expectTerm {
+			if s[i] == '+' {
+				sign = 1
+			} else if s[i] == '-' {
+				sign = -1
+			} else {
+				fail(ln, "invalid expression '%s'", expr)
+			}
+			i++
+			expectTerm = true
+			continue
+		}
+		if first && (s[i] == '-' || s[i] == '+') {
+			if s[i] == '-' {
+				sign = -1
+			}
+			i++
+			first = false
+			continue
+		}
+		first = false
+		// term
+		var v int64
+		c := s[i]
+		switch {
+		case c >= '0' && c <= '9':
+			j := i
+			for j < len(s) && isIdentChar(s[j]) {
+				j++
+			}
+			tok := s[i:j]
+			var n uint64
+			var err error
+			switch {
+			case strings.HasPrefix(tok, "0x"):
+				n, err = strconv.ParseUint(tok[2:], 16, 64)
+			case strings.HasPrefix(tok, "0b"):
+				n, err = strconv.ParseUint(tok[2:], 2, 64)
+			default:
+				n, err = strconv.ParseUint(tok, 10, 64)
+			}
+			if err != nil {
+				if ne, ok := err.(*strconv.NumError); ok && ne.Err == strconv.ErrRange {
+					fail(ln, "immediate out of range")
+				}
+				fail(ln, "invalid expression '%s'", expr)
+			}
+			if n > 0xFFFFFFFF {
+				fail(ln, "immediate out of range")
+			}
+			v = int64(n)
+			i = j
+		case c == '\'':
+			if i+2 < len(s) && s[i+1] != '\\' && s[i+2] == '\'' {
+				v = int64(s[i+1])
+				i += 3
+			} else if i+3 < len(s) && s[i+1] == '\\' && s[i+3] == '\'' {
+				e, ok := parseEscape(s[i+2])
+				if !ok {
+					fail(ln, "invalid expression '%s'", expr)
+				}
+				v = int64(e)
+				i += 4
+			} else {
+				fail(ln, "invalid expression '%s'", expr)
+			}
+		case isIdentStart(c):
+			j := i
+			for j < len(s) && isIdentChar(s[j]) {
+				j++
+			}
+			name := s[i:j]
+			v = int64(a.symbol(ln, name, stack))
+			i = j
+		default:
+			fail(ln, "invalid expression '%s'", expr)
+		}
+		total += sign * v
+		sign = 1
+		expectTerm = false
+	}
+	if expectTerm {
+		fail(ln, "invalid expression '%s'", expr)
+	}
+	return int32(uint32(total))
+}
+
+func (a *Asm) symbol(ln int, name string, stack []string) int32 {
+	if v, ok := a.labels[name]; ok {
+		return v
+	}
+	if e, ok := a.equs[name]; ok {
+		for _, s := range stack {
+			if s == name {
+				fail(ln, "circular definition of '%s'", name)
+			}
+		}
+		return a.eval(ln, e, append(stack, name))
+	}
+	fail(ln, "undefined symbol '%s'", name)
+	return 0
+}
+
+func (a *Asm) pass2() (mem []int32) {
+	mem = make([]int32, memSize)
+	// walk data items and instructions in line order
+	type ev struct {
+		line int
+		f    func()
+	}
+	var evs []ev
+	pos := 0
+	for i := range a.data {
+		it := &a.data[i]
+		p := pos
+		pos += it.count
+		evs = append(evs, ev{it.line, func() {
+			switch it.kind {
+			case "word":
+				for k, e := range it.exprs {
+					mem[p+k] = a.eval(it.line, e, nil)
+				}
+			case "const":
+				for k, v := range it.vals {
+					mem[p+k] = v
+				}
+			case "fill":
+				v := a.eval(it.line, it.fill, nil)
+				for k := 0; k < it.count; k++ {
+					mem[p+k] = v
+				}
+			}
+		}})
+	}
+	for _, in := range a.instrs {
+		in := in
+		evs = append(evs, ev{in.line, func() {
+			for _, o := range in.ops {
+				switch o.kind {
+				case 'i':
+					o.value = a.eval(in.line, o.expr, nil)
+					if in.mn[0] == 'j' || in.mn == "call" {
+						if o.value < 0 || int(o.value) >= len(a.instrs) {
+							fail(in.line, "invalid jump target")
+						}
+					}
+				case 'm':
+					o.value = a.eval(in.line, o.expr, nil)
+				}
+			}
+		}})
+	}
+	// stable order by line
+	for i := 1; i < len(evs); i++ {
+		for j := i; j > 0 && evs[j-1].line > evs[j].line; j-- {
+			evs[j-1], evs[j] = evs[j], evs[j-1]
+		}
+	}
+	for _, e := range evs {
+		e.f()
+	}
+	return mem
+}
+
+// ---- VM ----
+type Trap struct{ msg string }
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	text := strings.ReplaceAll(string(data), "\r\n", "\n")
+	var src, inp string
+	lines := strings.Split(text, "\n")
+	var srcLines, inLines []string
+	seen := false
+	for _, l := range lines {
+		if !seen && l == "====" {
+			seen = true
+			continue
+		}
+		if seen {
+			inLines = append(inLines, l)
+		} else {
+			srcLines = append(srcLines, l)
+		}
+	}
+	src = strings.Join(srcLines, "\n")
+	inp = strings.Join(inLines, "\n")
+	var inputs []int32
+	for _, f := range strings.Fields(inp) {
+		if n, err := strconv.ParseInt(f, 10, 64); err == nil {
+			inputs = append(inputs, int32(uint32(n)))
+		}
+	}
+	var out strings.Builder
+	defer func() { os.Stdout.WriteString(out.String()) }()
+
+	a := &Asm{}
+	var mem []int32
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if e, ok := r.(AsmErr); ok {
+					out.Reset()
+					out.WriteString(fmt.Sprintf("asm error line %d: %s\n", e.line, e.msg))
+					a = nil
+					return
+				}
+				panic(r)
+			}
+		}()
+		a.pass1(src)
+		mem = a.pass2()
+	}()
+	if a == nil {
+		return
+	}
+	var regs [10]int32
+	regs[8] = memSize
+	pc := 0
+	if v, ok := a.labels["main"]; ok && a.isCode["main"] {
+		pc = int(v)
+	}
+	steps := 0
+	flagZ, flagL := false, false
+	inPos := 0
+	trap := ""
+	trapLine := "-"
+	halted := false
+
+	addr := func(o *Operand) int32 {
+		v := o.value
+		if o.hasR {
+			v = regs[o.reg] + v
+		}
+		return v
+	}
+	read := func(o *Operand) int32 {
+		switch o.kind {
+		case 'r':
+			return regs[o.reg]
+		case 'i':
+			return o.value
+		}
+		ad := addr(o)
+		if ad < 0 || ad >= memSize {
+			panic(Trap{fmt.Sprintf("memory access out of range: %d", ad)})
+		}
+		return mem[ad]
+	}
+	write := func(o *Operand, v int32) {
+		if o.kind == 'r' {
+			regs[o.reg] = v
+			return
+		}
+		ad := addr(o)
+		if ad < 0 || ad >= memSize {
+			panic(Trap{fmt.Sprintf("memory access out of range: %d", ad)})
+		}
+		mem[ad] = v
+	}
+	push := func(v int32) {
+		if regs[8] <= 0 {
+			panic(Trap{"stack overflow"})
+		}
+		regs[8]--
+		mem[regs[8]] = v
+	}
+	pop := func() int32 {
+		if regs[8] >= memSize {
+			panic(Trap{"stack underflow"})
+		}
+		v := mem[regs[8]]
+		regs[8]++
+		return v
+	}
+	for !halted && trap == "" {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if t, ok := r.(Trap); ok {
+						trap = t.msg
+						return
+					}
+					panic(r)
+				}
+			}()
+			if pc < 0 || pc >= len(a.instrs) {
+				panic(Trap{"pc out of range"})
+			}
+			in := a.instrs[pc]
+			trapLine = strconv.Itoa(in.line)
+			if steps >= a.budget {
+				panic(Trap{"budget exceeded"})
+			}
+			next := pc + 1
+			o := in.ops
+			switch in.mn {
+			case "nop":
+			case "halt":
+				halted = true
+			case "mov":
+				write(o[0], read(o[1]))
+			case "add":
+				regs[o[0].reg] += read(o[1])
+			case "sub":
+				regs[o[0].reg] -= read(o[1])
+			case "mul":
+				regs[o[0].reg] *= read(o[1])
+			case "div", "mod":
+				d := read(o[1])
+				if d == 0 {
+					panic(Trap{"division by zero"})
+				}
+				x := regs[o[0].reg]
+				if d == -1 {
+					if in.mn == "div" {
+						x = -x
+					} else {
+						x = 0
+					}
+				} else if in.mn == "div" {
+					x = x / d
+				} else {
+					x = x % d
+				}
+				regs[o[0].reg] = x
+			case "and":
+				regs[o[0].reg] &= read(o[1])
+			case "or":
+				regs[o[0].reg] |= read(o[1])
+			case "xor":
+				regs[o[0].reg] ^= read(o[1])
+			case "shl":
+				regs[o[0].reg] = int32(uint32(regs[o[0].reg]) << (uint32(read(o[1])) & 31))
+			case "shr":
+				regs[o[0].reg] = int32(uint32(regs[o[0].reg]) >> (uint32(read(o[1])) & 31))
+			case "sar":
+				regs[o[0].reg] = regs[o[0].reg] >> (uint32(read(o[1])) & 31)
+			case "neg":
+				regs[o[0].reg] = -regs[o[0].reg]
+			case "not":
+				regs[o[0].reg] = ^regs[o[0].reg]
+			case "inc":
+				regs[o[0].reg]++
+			case "dec":
+				regs[o[0].reg]--
+			case "cmp":
+				x, y := regs[o[0].reg], read(o[1])
+				flagZ, flagL = x == y, x < y
+			case "lea":
+				regs[o[0].reg] = addr(o[1])
+			case "jmp":
+				next = int(o[0].value)
+			case "je", "jz":
+				if flagZ {
+					next = int(o[0].value)
+				}
+			case "jne", "jnz":
+				if !flagZ {
+					next = int(o[0].value)
+				}
+			case "jl":
+				if flagL {
+					next = int(o[0].value)
+				}
+			case "jle":
+				if flagL || flagZ {
+					next = int(o[0].value)
+				}
+			case "jg":
+				if !flagL && !flagZ {
+					next = int(o[0].value)
+				}
+			case "jge":
+				if !flagL {
+					next = int(o[0].value)
+				}
+			case "push":
+				push(read(o[0]))
+			case "pop":
+				regs[o[0].reg] = pop()
+			case "call":
+				push(int32(pc + 1))
+				next = int(o[0].value)
+			case "ret":
+				v := pop()
+				next = int(v)
+			case "out":
+				out.WriteString(strconv.Itoa(int(read(o[0]))) + "\n")
+			case "outc":
+				v := read(o[0])
+				if v < 0 || v > 127 {
+					panic(Trap{"invalid character"})
+				}
+				out.WriteByte(byte(v))
+			case "in":
+				if inPos >= len(inputs) {
+					panic(Trap{"input exhausted"})
+				}
+				regs[o[0].reg] = inputs[inPos]
+				inPos++
+			}
+			steps++
+			pc = next
+		}()
+	}
+	if out.Len() > 0 && !strings.HasSuffix(out.String(), "\n") {
+		out.WriteString("\n")
+	}
+	if halted {
+		out.WriteString(fmt.Sprintf("-- halted after %d steps\n", steps))
+	} else {
+		line := trapLine
+		if trap == "pc out of range" {
+			line = "-"
+		}
+		out.WriteString(fmt.Sprintf("-- trap: %s (pc=%d line=%s) after %d steps\n", trap, pc, line, steps))
+	}
+	var rs []string
+	for i, n := range regList {
+		rs = append(rs, fmt.Sprintf("%s=%d", n, regs[i]))
+	}
+	out.WriteString("regs: " + strings.Join(rs, " ") + "\n")
+	b2i := func(b bool) int {
+		if b {
+			return 1
+		}
+		return 0
+	}
+	out.WriteString(fmt.Sprintf("flags: Z=%d L=%d\n", b2i(flagZ), b2i(flagL)))
+}
+

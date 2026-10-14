@@ -1,0 +1,29 @@
+{
+  "before_revision": "694683c0",
+  "after_base_revision": "477309574affa41e43ea09ed3cf1a65a672f18c5",
+  "after_changes": "No-copy List traversal plus approved non-clearing without/splice fix; consumer tests and declaration comments dirty when binaries were built. Runtime sources hashed below.",
+  "go_version": "go version go1.25.1 linux/amd64",
+  "generated_program_and_harness_identical": true,
+  "artifact_sha256": {
+    "before": {
+      "program.ms": "e7ce60a0d0a4b2742a70601de34ecf98f096ae513304516feb31a93848bf2b33",
+      "program.go": "0ccb6b6235b1d054e3c2405a4dfaa4ed405fa441a676b7c84d9a5c202c0ae529",
+      "harness_test.go": "ef78e2424305dd976dcf41c55563abe738f8891ee07f6dcb832484070015b199",
+      "lists.test": "ce1a9ef48cfc8bc51fb6df86fbf44cbd57dc5b4a1e84eee190b82700b5163c1e"
+    },
+    "after": {
+      "program.ms": "e7ce60a0d0a4b2742a70601de34ecf98f096ae513304516feb31a93848bf2b33",
+      "program.go": "0ccb6b6235b1d054e3c2405a4dfaa4ed405fa441a676b7c84d9a5c202c0ae529",
+      "harness_test.go": "ef78e2424305dd976dcf41c55563abe738f8891ee07f6dcb832484070015b199",
+      "lists.test": "d2d732eeca43e14b95df14b1facefa82a4a9c342e4144955ae72493057767b7d"
+    }
+  },
+  "retention_worker_sha256": "4f9d8abff169665a0e941ff5e159181e7ebdd327975ebac2e8e234e9a59a9b3a",
+  "after_runtime_sha256": {
+    "pkg/runtime/values.go": "4e28e8bf6aad83f7a8c5101aeb62fed5d7c2c83f710273fa21215d75c578f4e7",
+    "pkg/runtime/collections.go": "cc18b65fd8563e04626bb91f1db7785cac73fc1a90d744891ab9a5dd5e267e8d",
+    "pkg/runtime/library.go": "e616ba6646f68b9b75c43b74c4926244af4081a4ac15b0275bd840d3a97c5e84",
+    "pkg/runtime/library_collections.go": "2ac4d359e0d83c11690e0769e21183aae064ecd60590f37ee82ea90221ccccff",
+    "pkg/runtime/library_data.go": "1bcd84216285079f2db26eda361300853e50a8a346535f99fb19a0c3f6038970"
+  }
+}

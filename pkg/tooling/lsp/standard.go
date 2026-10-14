@@ -70,5 +70,5 @@ func sourceSymbols(result compiler.Result, file string) map[string]*checker.Symb
 	if strings.HasPrefix(file, "@std/") {
 		return checker.StandardExports(file)
 	}
-	return result.Program.Symbols[file]
+	return result.Program.ModuleSymbols(file)
 }
