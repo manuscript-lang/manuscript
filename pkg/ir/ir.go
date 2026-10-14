@@ -76,7 +76,35 @@ type Map struct {
 // Entry is one key and value of a Map, evaluated in written order.
 type Entry struct{ Key, Value Expr }
 
+// Local reads a local binding.
+type Local struct {
+	Binding *checker.Binding
+	Type    *checker.Type
+}
+
+// Unary applies a prefix operator other than try. Pos is the site reported
+// when the operation fails.
+type Unary struct {
+	Pos     syntax.Position
+	Op      string
+	Operand Expr
+	Type    *checker.Type
+}
+
+// Binary applies an infix operator. LeftType and RightType are the checked
+// types of the operands, which select the operation lowering emits.
+type Binary struct {
+	Pos                 syntax.Position
+	Op                  string
+	Left, Right         Expr
+	LeftType, RightType *checker.Type
+	Type                *checker.Type
+}
+
 func (Deferred) expr()       {}
+func (Local) expr()          {}
+func (Unary) expr()          {}
+func (Binary) expr()         {}
 func (IntLiteral) expr()     {}
 func (FloatLiteral) expr()   {}
 func (DecimalLiteral) expr() {}

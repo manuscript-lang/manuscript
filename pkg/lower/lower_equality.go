@@ -5,6 +5,7 @@ import (
 	"go/token"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -27,20 +28,18 @@ func primitiveEqualityType(t *checker.Type) string {
 	return ""
 }
 
-func (g *generator) primitiveEquality(e *syntax.Expression) ast.Expr {
-	left := g.program.Info(e.Left).Type
-	right := g.program.Info(e.Right).Type
-	typ := primitiveEqualityType(left)
-	if typ == "" || left.ID != right.ID || primitiveEqualityType(right) != typ {
+func (g *generator) primitiveEquality(x ir.Binary) ast.Expr {
+	typ := primitiveEqualityType(x.LeftType)
+	if !equalityIsPrimitive(x) {
 		return nil
 	}
 	op := token.EQL
-	if e.Text == "!=" {
+	if x.Op == "!=" {
 		op = token.NEQ
 	}
 	// Operands that cannot be changed by the other operand compare directly.
-	if isLiteral(e.Left) || isLiteral(e.Right) || g.effectFree(e.Left) && g.effectFree(e.Right) {
-		return &ast.BinaryExpr{X: paren(g.scalar(e.Left, typ)), Op: op, Y: paren(g.scalar(e.Right, typ))}
+	if isLiteral(x.Left) || isLiteral(x.Right) || g.effectFree(x.Left) && g.effectFree(x.Right) {
+		return &ast.BinaryExpr{X: paren(g.irScalar(x.Left, typ)), Op: op, Y: paren(g.irScalar(x.Right, typ))}
 	}
 	// Capture once in source order. A Go binary expression can read an earlier
 	// local after a later operand's call/match has mutated it. The explicit
@@ -50,25 +49,41 @@ func (g *generator) primitiveEquality(e *syntax.Expression) ast.Expr {
 		return &ast.TypeAssertExpr{X: call(runtimeName("Value"), value), Type: ident(typ)}
 	}
 	return call(closure(nil, ident("bool"),
-		define(a, extract(g.expression(e.Left))),
-		define(b, extract(g.expression(e.Right))),
-		returned(sourceAt(e.Pos, &ast.BinaryExpr{X: ident(a), Op: op, Y: ident(b)})),
+		define(a, extract(g.irValue(x.Left))),
+		define(b, extract(g.irValue(x.Right))),
+		returned(sourceAt(x.Pos, &ast.BinaryExpr{X: ident(a), Op: op, Y: ident(b)})),
 	))
 }
 
-func isLiteral(e *syntax.Expression) bool {
-	return e.Kind == syntax.KindNumber || e.Kind == syntax.KindBool
+// equalityIsPrimitive reports whether both operands share one builtin primitive type.
+func equalityIsPrimitive(x ir.Binary) bool {
+	typ := primitiveEqualityType(x.LeftType)
+	return typ != "" && x.LeftType.ID == x.RightType.ID && primitiveEqualityType(x.RightType) == typ
 }
 
-// effectFree reports whether evaluating e runs no user code and assigns no
+func isLiteral(x ir.Expr) bool {
+	switch x := x.(type) {
+	case ir.IntLiteral, ir.FloatLiteral, ir.DecimalLiteral, ir.BoolLiteral:
+		return true
+	case ir.Deferred:
+		return x.Source.Kind == syntax.KindNumber || x.Source.Kind == syntax.KindBool
+	}
+	return false
+}
+
+// effectFree reports whether evaluating x runs no user code and assigns no
 // variable, so it cannot change what a sibling operand reads.
-func (g *generator) effectFree(e *syntax.Expression) bool {
-	switch e.Kind {
-	case syntax.KindNumber, syntax.KindBool, syntax.KindName:
-		return g.program.Info(e).Method == nil
-	case syntax.KindBinary:
-		info := g.program.Info(e)
-		return info.ErrorSource == nil && g.nativeType(e) != "" && g.effectFree(e.Left) && g.effectFree(e.Right)
+func (g *generator) effectFree(x ir.Expr) bool {
+	switch x := x.(type) {
+	case ir.IntLiteral, ir.FloatLiteral, ir.DecimalLiteral, ir.BoolLiteral, ir.Local:
+		return true
+	case ir.Binary:
+		return g.native(x) != "" && g.effectFree(x.Left) && g.effectFree(x.Right)
+	case ir.Deferred:
+		switch x.Source.Kind {
+		case syntax.KindNumber, syntax.KindBool, syntax.KindName:
+			return g.program.Info(x.Source).Method == nil
+		}
 	}
 	return false
 }
