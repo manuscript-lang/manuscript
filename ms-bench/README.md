@@ -76,7 +76,7 @@ cases and first-build success. Harbor records tokens and cost per trial. Use `-a
 
 ## Results
 
-[`results/leaderboard.md`](results/leaderboard.md) is rendered from `results/trials.jsonl` with `python3 ms-bench/leaderboard.py collect JOBS_DIR... && python3 ms-bench/leaderboard.py render`. The checked-in baseline is Claude Code with Haiku, one trial per challenge and language, against Manuscript compiler `dff66df` (docs and compiler from the same commit). A resumed or repeated job keeps only the latest trial per challenge, language, agent and model. The first 50-challenge baseline predates the 20-challenge set and is not in the current file. `Manuscript (cheat sheet)` replaces the docs bundle with `context/manuscript-cheatsheet.md`.
+[`results/leaderboard.md`](results/leaderboard.md) is rendered from `results/trials.jsonl` with `python3 ms-bench/leaderboard.py collect JOBS_DIR... && python3 ms-bench/leaderboard.py render`. The checked-in baseline is Claude Code with Haiku, one trial per challenge and language, against Manuscript compiler `dff66df` (docs and compiler from the same commit). A resumed or repeated job keeps only the latest trial per challenge, language, agent and model. The specs of c52, c55, c58, c59 and c60 were tightened after the checked-in run (several cases failed in most languages because the spec left oracle behaviour unstated), so those challenges' results predate the current specs and have not been re-run. The first 50-challenge baseline predates the 20-challenge set and is not in the current file. `Manuscript (cheat sheet)` replaces the docs bundle with `context/manuscript-cheatsheet.md`.
 
 ## Known limits
 
