@@ -152,6 +152,17 @@ func buildTarget(t *testing.T, run bool) string {
 	return out
 }
 
+func TestDAPFailedAttachDoesNotPoisonLaunch(t *testing.T) {
+	target := buildTarget(t)
+	c := startDAP(t)
+	c.request("attach", map[string]any{"mode": "local", "processId": 999999})
+	c.failure("attach", "")
+	c.request("launch", map[string]any{"mode": "exec", "program": target, "stopOnEntry": true})
+	if r := c.response("launch"); !r.GetResponse().Success {
+		t.Fatalf("launch after failed attach: %+v", r)
+	}
+}
+
 func TestDAPRequestsBeforeSessionAreRejected(t *testing.T) {
 	c := startDAP(t)
 	for command, args := range map[string]any{
