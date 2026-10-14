@@ -107,7 +107,7 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch n := n.(type) {
 		case *ast.FuncDecl:
-			if strings.HasPrefix(n.Name.Name, "call_") {
+			if strings.HasPrefix(n.Name.Name, "call_") || strings.HasPrefix(n.Name.Name, "method_") {
 				measure(n.Body)
 			}
 		case *ast.CallExpr:

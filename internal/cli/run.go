@@ -120,7 +120,7 @@ func runStdlib(args []string, usage string) int {
 		return 2
 	}
 	if err := stdlib.Materialize(args[1]); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "ms stdlib: cannot write declarations to %s: %v\n", args[1], err)
 		return 1
 	}
 	return 0

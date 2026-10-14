@@ -415,6 +415,38 @@ fn merge(
 
     return ok(unit)
 
+# A plain scalar continued across lines folds each break into one space; blank lines stay breaks.
+fn fold_plain(text: String) -> String:
+    if not text.contains("\n"): return text
+
+    var result = ""
+    var blanks = 0
+    var first = true
+
+    for line in text.split(separator: "\n"):
+        let trimmed = line.trim()
+
+        if trimmed == "":
+            blanks = blanks + 1
+            continue
+
+        if first: result = trimmed
+        else if blanks == 0: result = result.concat(" ").concat(trimmed)
+        else:
+            var breaks = ""
+            var remaining = blanks
+
+            while remaining > 0:
+                breaks = breaks.concat("\n")
+                remaining = remaining - 1
+
+            result = result.concat(breaks).concat(trimmed)
+
+        blanks = 0
+        first = false
+
+    return result
+
 fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]:
     flow_space(flow)
 
@@ -584,6 +616,9 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
         text = text.concat(advance(flow))
 
     text = text.trim()
+
+    if flow.delimited: text = fold_plain(text)
+
     if key: return ok(YamlValue.StringValue(text))
 
     return ok(plain(text))

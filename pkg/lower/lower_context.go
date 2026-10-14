@@ -30,6 +30,7 @@ type generator struct {
 	captures         map[*checker.Binding]string
 	typed            map[*checker.Binding]string // Go type of scalar bindings declared as typed variables
 	direct           map[*checker.Symbol]*directFunction
+	directMethods    map[string]*directFunction // by checker.Method.ID, which checked copies of a method share
 	structs          map[string]*structType
 	structOrder      []*structType
 	resultType       string    // Go scalar result of the direct function being lowered, or ""
@@ -41,7 +42,8 @@ type generator struct {
 	hoistedByKey     map[string]string // call-site identity to Lazy variable
 	defaultExpansion map[*syntax.Declaration]bool
 	loweringError    error
-	sites            []string // package-level MethodSite variables, one per direct method call
+	tried            map[*syntax.Expression]triedValue // nested try operands already evaluated by early returns
+	sites            []string                          // package-level MethodSite variables, one per direct method call
 	debugLiterals    bool
 	literalData      []ast.Decl // immutable scalar input, never source collection storage
 }

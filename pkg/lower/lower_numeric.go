@@ -3,6 +3,7 @@ package lower
 import (
 	"go/ast"
 	"go/token"
+	"strconv"
 
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
@@ -122,4 +123,38 @@ func (g *generator) constant(e *syntax.Expression) bool {
 		return g.nativeType(e) != "" && g.constant(e.Left) && g.constant(e.Right)
 	}
 	return false
+}
+
+// negationType is the Go scalar type of a unary minus over a checked Int or
+// Float operand, or "".
+func (g *generator) negationType(e *syntax.Expression) string {
+	if e.Kind != syntax.KindUnary || e.Text != "-" {
+		return ""
+	}
+	switch g.program.Info(e.Right).Type.ID {
+	case "Int":
+		return "int64"
+	case "Float":
+		return "float64"
+	}
+	return ""
+}
+
+// negation lowers unary minus over a statically typed operand without boxing.
+// An Int literal folds to a constant; other Int operands fault at the site on
+// overflow, like the dynamic operator. A constant Float stays hidden from the Go
+// compiler so negative zero keeps its sign.
+func (g *generator) negation(e *syntax.Expression) ast.Expr {
+	switch g.negationType(e) {
+	case "int64":
+		if e.Right.Kind == syntax.KindNumber && g.nativeType(e.Right) == "int64" {
+			if value, err := strconv.ParseInt(e.Right.Text, 10, 64); err == nil {
+				return call(ident("int64"), signedInteger(strconv.FormatInt(-value, 10)))
+			}
+		}
+		return runtimeCall("IntNegateAt", g.scalar(e.Right, "int64"), address(ident("sourcePosition")), textLiteral(e.Pos.String()))
+	case "float64":
+		return &ast.UnaryExpr{Op: token.SUB, X: paren(g.numericOperand(e.Right, "float64"))}
+	}
+	return nil
 }

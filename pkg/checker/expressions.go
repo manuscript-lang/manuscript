@@ -177,8 +177,10 @@ func (c *checker) inferName(e *syntax.Expression, expected *Type, i *Info) *Info
 		}
 		return i
 	}
-	typ, cs := c.findCase(e.Text, e.Pos)
-	if typ != nil && len(cs.Fields) == 0 {
+	typ, cs, ambiguous := c.findCase(e.Text, e.Pos)
+	if ambiguous {
+		i.Type = primitive("<invalid>")
+	} else if typ != nil && len(cs.Fields) == 0 {
 		i.Constructor = c.instantiate(typ, nil, nil, expected, e.Pos)
 		i.Case = cs.Name
 		i.Type = i.Constructor
@@ -260,6 +262,8 @@ func (c *checker) inferMember(e *syntax.Expression, expected *Type, i *Info) *In
 	methods := c.methods(receiver.Type, e.Text)
 	if len(methods) != 1 {
 		c.error(e.Pos, "resolution", c.unknownMember(receiver.Type, e.Text))
+		// Later diagnostics that only restate the missing member are noise.
+		i.Type = primitive("<invalid>")
 		return i
 	}
 	i.Method = methods[0]
@@ -447,7 +451,7 @@ func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *In
 	switch {
 	case logical:
 		i.Type = primitive("Bool")
-		if !compatible(a.Type, i.Type) || !compatible(b.Type, i.Type) {
+		if (!compatible(a.Type, i.Type) || !compatible(b.Type, i.Type)) && !invalidType(a.Type) && !invalidType(b.Type) {
 			c.error(e.Pos, "type", "logical operands require Bool, found "+a.Type.String()+" and "+b.Type.String()+"; compare explicitly, e.g. x != 0")
 		}
 		return i
@@ -488,7 +492,7 @@ func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *In
 		}
 	default:
 		i.Type = common
-		if !numeric(common) && !(common.ID == "String" && e.Text == "+") && !(std(common, "Duration") && (e.Text == "+" || e.Text == "-")) {
+		if common.ID != "<invalid>" && !numeric(common) && !(common.ID == "String" && e.Text == "+") && !(std(common, "Duration") && (e.Text == "+" || e.Text == "-")) {
 			c.error(e.Pos, "type", "arithmetic requires numeric operands")
 		}
 		if e.Text == "%" && common.ID != "Int" {

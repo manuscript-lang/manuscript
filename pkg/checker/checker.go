@@ -214,9 +214,20 @@ func (c *checker) declareTypeVariables(module *syntax.Module) {
 	}
 }
 
+// resolveSignatures resolves every type and function signature first and the
+// constants last, so a constant may name a case of a type declared after it.
 func (c *checker) resolveSignatures(module *syntax.Module) {
+	for pass := 0; pass < 2; pass++ {
+		c.resolveSignaturePass(module, pass == 1)
+	}
+}
+
+func (c *checker) resolveSignaturePass(module *syntax.Module, constants bool) {
 	for _, d := range module.Declarations {
 		if d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest {
+			continue
+		}
+		if d.Constant != constants {
 			continue
 		}
 		s := c.names[d.Name]
@@ -464,7 +475,13 @@ func (c *checker) signature(params []syntax.Parameter, result *syntax.Type) *Typ
 	return t
 }
 func (c *checker) bind(name string, t *Type, mutable bool, pos syntax.Position) *Binding {
-	if c.scope.bindings[name] != nil || c.scope.types[name] != nil {
+	return c.bindReporting(name, t, mutable, pos, true)
+}
+
+// bindReporting binds a name; report=false suppresses the duplicate-binding
+// error for callers that already diagnosed the duplicate.
+func (c *checker) bindReporting(name string, t *Type, mutable bool, pos syntax.Position, report bool) *Binding {
+	if report && (c.scope.bindings[name] != nil || c.scope.types[name] != nil) {
 		c.error(pos, "type", "duplicate local binding "+name+"; this scope already has that name, so choose another name or assign to the existing 'var'")
 	}
 	if mutable {
@@ -517,7 +534,12 @@ func (c *checker) checkFieldDefaults(d *syntax.Declaration, s *Symbol) {
 }
 
 func (c *checker) checkParameters(d *syntax.Declaration, params []syntax.Parameter, types []Param) {
+	seen := map[string]bool{}
 	for i, p := range types {
+		// A repeated parameter name is reported by the signature; do not add a
+		// second "duplicate local binding" for it.
+		repeated := seen[p.Name]
+		seen[p.Name] = true
 		pos := d.Pos
 		if i < len(params) {
 			pos = params[i].Pos
@@ -525,7 +547,7 @@ func (c *checker) checkParameters(d *syntax.Declaration, params []syntax.Paramet
 		if i < len(params) && params[i].Default != nil {
 			c.expression(params[i].Default, p.Type)
 		}
-		setParameters(d, append(parametersOf(d), c.bind(p.Name, p.Type, false, pos)))
+		setParameters(d, append(parametersOf(d), c.bindReporting(p.Name, p.Type, false, pos, !repeated)))
 	}
 }
 func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks bool) {
@@ -977,22 +999,23 @@ func caseOf(t *Type, name string) (Case, bool) {
 	}
 	return Case{}, false
 }
-func (c *checker) findCase(name string, pos syntax.Position) (*Type, Case) {
-	var found *Type
-	var cs Case
+
+// findCase resolves an unqualified case name. ambiguous reports that the
+// failure was already diagnosed, so callers must not add an unknown-name error.
+func (c *checker) findCase(name string, pos syntax.Position) (found *Type, cs Case, ambiguous bool) {
 	for _, s := range c.names {
 		if s.Kind == syntax.KindType && s.Type.Kind == "alternative" {
 			if candidate, ok := caseOf(s.Type, name); ok {
 				if found != nil {
 					c.error(pos, "resolution", "ambiguous alternative case "+name+"; qualify it with its type, e.g. Type."+name)
-					return nil, Case{}
+					return nil, Case{}, true
 				}
 				found = s.Type
 				cs = candidate
 			}
 		}
 	}
-	return found, cs
+	return found, cs, false
 }
 func (c *checker) contextual(e *syntax.Expression) bool {
 	if e.Kind == syntax.KindLambda {

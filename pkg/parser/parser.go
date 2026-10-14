@@ -44,13 +44,6 @@ func (p *Parser) enter() func() {
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
-	return parse(file, source)
-}
-
-// ParseLibrary is retained for callers; library and application syntax are identical.
-// Deprecated: use Parse.
-func ParseLibrary(file, source string) (*syntax.Module, error) { return Parse(file, source) }
-func parse(file, source string) (module *syntax.Module, err error) {
 	tokens, err := lexer.Lex(file, source)
 	if err != nil {
 		return nil, err
@@ -167,6 +160,9 @@ func (p *Parser) end() {
 	}
 	if p.blockLambda && p.peek().Kind == "," {
 		p.fail(p.peek(), "a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parentheses")
+	}
+	if p.peek().Kind == "&" {
+		p.fail(p.peek(), "'&&' is not an operator; write 'and' for logical and")
 	}
 	p.fail(p.peek(), "expected end of statement, found "+describe(p.peek())+"; put one statement per line, and join operands with an operator or a comma inside brackets")
 }
@@ -486,6 +482,9 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 		s.Body = p.suite()
 	case p.take("for"):
 		s.Name = p.need(lexer.Name).Text
+		if p.peek().Kind == "," {
+			p.fail(p.peek(), "for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value")
+		}
 		p.need("in")
 		s.Value = p.expression(0)
 		s.Body = p.suite()
@@ -501,7 +500,7 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 		}
 		if p.take("=") {
 			if (e.Kind != syntax.KindName && e.Kind != syntax.KindMember) || e.Text == "self" {
-				p.fail(t, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field")
+				p.fail(t, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, call its method such as set(index:, value:) on a List or add(key:, value:) on a Map")
 			}
 			s.Kind = syntax.KindAssign
 			if e.Kind == syntax.KindMember {
@@ -515,6 +514,12 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 			if !p.inlineReturn && e.Kind != syntax.KindCall && e.Kind != syntax.KindMatch && !tryCall && len(allowValue) == 0 {
 				if e.Kind == syntax.KindName && e.Text == "pass" {
 					p.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm")
+				}
+				if e.Kind == syntax.KindName && (e.Text == "const" || e.Text == "val" || e.Text == "final") {
+					p.fail(t, "'"+e.Text+"' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes")
+				}
+				if e.Kind == syntax.KindName && (e.Text == "throw" || e.Text == "raise" || e.Text == "catch") {
+					p.fail(t, "'"+e.Text+"' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'match'")
 				}
 				if e.Kind == syntax.KindName && e.Text == "elif" {
 					p.fail(t, "'elif' is not a keyword; write 'else if <condition>:' for a further branch")
@@ -605,9 +610,15 @@ func (p *Parser) expression(min int) *syntax.Expression {
 		if p.compoundAssignment() {
 			break
 		}
+		if op.Kind == "&" {
+			p.fail(op, "'&&' is not an operator; write 'and' for logical and")
+		}
 		level := precedence[op.Kind]
 		if level == 0 || level < min {
 			break
+		}
+		if (op.Kind == "+" || op.Kind == "-") && e.Kind == syntax.KindName && p.at+2 < len(p.tokens) && p.tokens[p.at+1].Kind == op.Kind && p.tokens[p.at+2].Kind == lexer.Newline {
+			p.fail(op, "Manuscript has no '"+op.Text+op.Text+"' operator; write '"+e.Text+" = "+e.Text+" "+op.Text+" 1'")
 		}
 		if level == 4 && compared {
 			p.fail(op, "comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < c")
@@ -649,6 +660,9 @@ func (p *Parser) primary() *syntax.Expression {
 		e = p.text(t)
 	case "(":
 		e = p.expression(0)
+		if p.peek().Kind == "," {
+			p.fail(p.peek(), "Manuscript has no tuples; declare a record with 'type Pair:' and named fields, or use a List when the items share one type")
+		}
 		p.need(")")
 	case "[":
 		e.Kind = syntax.KindList
@@ -688,6 +702,9 @@ func (p *Parser) primary() *syntax.Expression {
 		if p.take("->") {
 			e.Result = p.typ()
 		}
+		if p.peek().Kind == "=" && p.tokens[p.at+1].Kind == ">" {
+			p.fail(p.peek(), "there is no '=>' arrow function; write the result type and a colon, e.g. fn(x: Int) -> Int: x + 1")
+		}
 		e.Body = p.statementSuite(true)
 	default:
 		if t.Kind == "if" {
@@ -699,6 +716,9 @@ func (p *Parser) primary() *syntax.Expression {
 	for {
 		if p.take(".") {
 			p.link(&links)
+			if p.peek().Kind == "." {
+				p.fail(p.peek(), "Manuscript has no '..' range; to count, use a while loop, or import range from \"@std/collections.ms\" and loop over range(start: 0, end: 10, step: 1), which returns a Result")
+			}
 			name := p.need(lexer.Name)
 			e = &syntax.Expression{Kind: syntax.KindMember, Pos: name.Pos, Text: name.Text, Left: e}
 		} else if p.take("[") {
@@ -714,7 +734,13 @@ func (p *Parser) primary() *syntax.Expression {
 						arg.Name = p.need(lexer.Name).Text
 						p.need(":")
 					}
+					if p.peek().Kind == lexer.Name && p.tokens[p.at+1].Kind == "=" {
+						p.fail(p.tokens[p.at+1], "argument labels use a colon; write "+p.peek().Text+": value")
+					}
 					arg.Value = p.expression(0)
+					if arg.Value.Kind == syntax.KindName && p.peek().Kind == "->" {
+						p.fail(p.peek(), "lambdas are written fn(name: Type) -> Result: expression, e.g. fn("+arg.Value.Text+": Int) -> Int: "+arg.Value.Text+" + 1")
+					}
 					call.Args = append(call.Args, arg)
 					if !p.take(",") {
 						break
@@ -861,6 +887,9 @@ func (p *Parser) matchArms(header lexer.Token) []syntax.Arm {
 			break
 		}
 		a := syntax.Arm{Pos: p.peek().Pos}
+		if k := p.peek().Kind; k == lexer.Number || k == "true" || k == "false" {
+			p.fail(p.peek(), "literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare values with 'if x == 1:' and 'else if'")
+		}
 		if p.peek().Kind == lexer.String {
 			p.fail(p.peek(), "string-literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare strings with 'if command == \"report\":' and 'else' instead")
 		}
@@ -921,6 +950,9 @@ func (p *Parser) bracket(left *syntax.Expression) *syntax.Expression {
 		return e
 	}
 	index := p.expression(0)
+	if p.peek().Kind == ":" {
+		p.fail(p.peek(), "there is no slice syntax; call slice(start: 0, end: 2) on a List or String")
+	}
 	p.need("]")
 	return &syntax.Expression{Kind: syntax.KindIndex, Pos: left.Pos, Left: left, Right: index}
 }

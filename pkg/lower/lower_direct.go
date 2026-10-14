@@ -3,6 +3,8 @@ package lower
 import (
 	"go/ast"
 	"go/token"
+	"strconv"
+	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -18,12 +20,16 @@ type directFunction struct {
 	params []string  // Go scalar type per parameter, "" for Value
 	result string    // Go scalar result type, "" for Value
 	shape  *altShape // typed Result/Optional result, nil when result is scalar or Value
+	// receiver marks a method: the Go function takes its receiver as the
+	// Value parameter after ctx.
+	receiver bool
 }
 
 // planDirect decides which top-level functions are emitted as direct functions.
 // Profiling needs every call to pass the dynamic wrapper, which labels it.
 func (g *generator) planDirect(functions []*checker.Symbol, options Options) {
 	g.direct = map[*checker.Symbol]*directFunction{}
+	g.directMethods = map[string]*directFunction{}
 	if options.CPUProfile != "" || options.HeapProfile != "" || options.Trace != "" {
 		return
 	}
@@ -49,13 +55,80 @@ func (g *generator) planDirect(functions []*checker.Symbol, options Options) {
 			g.direct[s] = direct
 		}
 	}
+	for i, m := range g.program.Methods {
+		if direct := g.planDirectMethod(m, i); direct != nil {
+			g.directMethods[m.ID] = direct
+		}
+	}
+}
+
+// planDirectMethod decides whether a source method of a nongeneric record or
+// alternative is emitted as a direct function that takes its receiver first.
+func (g *generator) planDirectMethod(m *checker.Method, index int) *directFunction {
+	d := m.Decl
+	if m.Native != "" || d == nil || d.Kind != syntax.KindFn || len(m.Variables) != 0 || m.Receiver == nil || m.Contract == nil {
+		return nil
+	}
+	if (m.Receiver.Kind != syntax.KindRecord && m.Receiver.Kind != "alternative") || len(m.Receiver.Args) != 0 || hasTypeVariable(m.Receiver) || strings.HasPrefix(m.Receiver.ID, "@std/") {
+		return nil
+	}
+	bindings := g.program.ParameterBindings(d)
+	if g.program.SelfBinding(d) == nil || len(bindings) != len(d.Params) || len(m.Type.Params) != len(d.Params) {
+		return nil
+	}
+	direct := &directFunction{name: "method_" + strconv.Itoa(index+1), result: primitiveEqualityType(m.Type.Result), shape: alternativeShape(m.Type.Result), receiver: true}
+	for i, p := range d.Params {
+		// Omitted arguments reach a method as nil; only dynamic calls omit.
+		if p.Default != nil || m.Type.Defaults[m.Type.Params[i].Name] {
+			return nil
+		}
+		direct.params = append(direct.params, scalarBinding(bindings[i]))
+	}
+	// A standard interface can grant omission to parameters the source method
+	// declares without a default; those are prepared before the call.
+	if m.Contract.Def != nil && m.Contract.Def.Symbol != nil {
+		for _, cd := range m.Contract.Def.Symbol.Decl.Methods {
+			if cd.Name != d.Name {
+				continue
+			}
+			for _, p := range cd.Params {
+				if p.Default != nil {
+					return nil
+				}
+			}
+		}
+	}
+	return direct
+}
+
+// directMethodDeclaration emits the Go declaration of a direct method and the
+// forwarding body the dynamic implementation table calls.
+func (g *generator) directMethodDeclaration(m *checker.Method, direct *directFunction) (*ast.FuncDecl, ast.Expr) {
+	d := m.Decl
+	literal := g.directFunctionLiteral(direct, m.Receiver.Name+"."+d.Name, d.Params, d.Result, d.Body, g.program.ParameterBindings(d), g.program.SelfBinding(d), m.Type).(*ast.FuncLit)
+	decl := &ast.FuncDecl{Name: ident(direct.name), Type: literal.Type, Body: literal.Body}
+	forwarded := []ast.Expr{ident("ctx"), ident("receiver")}
+	for i := range m.Type.Params {
+		var arg ast.Expr = index(ident("args"), intLiteral(i))
+		if direct.params[i] != "" {
+			arg = unbox(arg, direct.params[i])
+		}
+		forwarded = append(forwarded, arg)
+	}
+	var forwardCall ast.Expr = call(ident(direct.name), forwarded...)
+	if direct.shape != nil {
+		forwardCall = call(selector(forwardCall, "Box"), g.key(m.Type.Result))
+	}
+	forward := closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("receiver", runtimeName("Value")), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"),
+		returned(forwardCall))
+	return decl, forward
 }
 
 // directFunction emits the Go declaration and the dynamic wrapper for s.
 func (g *generator) directDeclaration(s *checker.Symbol) (*ast.FuncDecl, ast.Expr) {
 	d := s.Decl
 	direct := g.direct[s]
-	literal := g.directFunctionLiteral(direct, d.Name, d.Params, d.Result, d.Body, g.program.ParameterBindings(d), s.Type).(*ast.FuncLit)
+	literal := g.directFunctionLiteral(direct, d.Name, d.Params, d.Result, d.Body, g.program.ParameterBindings(d), nil, s.Type).(*ast.FuncLit)
 	decl := &ast.FuncDecl{Name: ident(direct.name), Type: literal.Type, Body: literal.Body}
 	var forwarded []ast.Expr
 	var labels []string
@@ -80,6 +153,9 @@ func (g *generator) directDeclaration(s *checker.Symbol) (*ast.FuncDecl, ast.Exp
 // directLiteral assembles the Go function literal for a lowered direct body.
 func (g *generator) directLiteral(direct *directFunction, name string, result *syntax.Type, bindings []*checker.Binding, t *checker.Type, body []ast.Stmt) ast.Expr {
 	params := []*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")})}
+	if direct.receiver {
+		params = append(params, field("receiver", runtimeName("Value")))
+	}
 	for i, b := range bindings {
 		var typ ast.Expr = runtimeName("Value")
 		if direct.params[i] != "" {
@@ -149,6 +225,9 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 		return nil
 	}
 	info := g.program.Info(e)
+	if direct, _ := g.directMethodTarget(e, info); direct != nil {
+		return direct
+	}
 	if info.Symbol == nil || info.Constructor != nil || info.ErrorSource != nil {
 		return nil
 	}
@@ -192,6 +271,15 @@ func (g *generator) typedDirectCall(e *syntax.Expression) (ast.Expr, *directFunc
 	info := g.program.Info(e)
 	args := info.Arguments
 	values := []ast.Expr{ident("ctx")}
+	if direct.receiver {
+		// The receiver is evaluated before the arguments.
+		receiver := e.Left.Left
+		value := g.expression(receiver)
+		if !(g.exprFree(receiver) && g.restFree(args)) {
+			value = sourceAt(receiver.Pos, value)
+		}
+		values = append(values, value)
+	}
 	for i, arg := range args {
 		var value ast.Expr
 		if typ := direct.params[i]; typ != "" {
@@ -218,4 +306,39 @@ func (g *generator) restFree(args []syntax.Argument) bool {
 		}
 	}
 	return true
+}
+
+// directMethodTarget returns the direct method a call of a concrete record or
+// alternative receiver invokes with every argument in declaration order and
+// exactly typed, with the method, or nil.
+func (g *generator) directMethodTarget(e *syntax.Expression, info *checker.Info) (*directFunction, *checker.Method) {
+	if len(g.directMethods) == 0 || e.Left == nil || e.Left.Kind != syntax.KindMember || info.ErrorSource != nil || info.Constructor != nil {
+		return nil, nil
+	}
+	callee := g.program.Info(e.Left)
+	if callee == nil || callee.Method == nil {
+		return nil, nil
+	}
+	direct := g.directMethods[callee.Method.ID]
+	if direct == nil {
+		return nil, nil
+	}
+	receiverType := g.program.Info(e.Left.Left).Type
+	if (receiverType.Kind != syntax.KindRecord && receiverType.Kind != "alternative") || len(receiverType.Args) != 0 || hasTypeVariable(receiverType) || receiverType.ID != callee.Method.Receiver.ID {
+		return nil, nil
+	}
+	args := info.Arguments
+	params := callee.Method.Type.Params
+	if len(args) != len(params) {
+		return nil, nil
+	}
+	for i, arg := range args {
+		if arg.Name != params[i].Name {
+			return nil, nil
+		}
+		if typ := direct.params[i]; typ != "" && primitiveEqualityType(g.program.Info(arg.Value).Type) != typ {
+			return nil, nil
+		}
+	}
+	return direct, callee.Method
 }

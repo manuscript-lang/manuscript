@@ -48,6 +48,23 @@ func TestFormatExpressionLayouts(t *testing.T) {
 		name, source, want string
 	}{
 		{
+			name: "module constant initializer starting before its operator",
+			source: `let prices = [12, 8, 25]
+let affordable = prices.length > 1 and prices.keep(predicate: fn(value: Int) -> Bool:
+    return value <= 10
+).length > 0
+`,
+			want: `let prices = [12, 8, 25]
+let affordable = (
+    prices.length > 1
+    and prices.keep(
+        predicate: fn(value: Int) -> Bool:
+            return value <= 10
+    ).length > 0
+)
+`,
+		},
+		{
 			name: "match arms after a try joined from a later line",
 			source: `fn work(early: Int) -> Int:
     let result = subtract(try
