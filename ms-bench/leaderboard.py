@@ -106,7 +106,7 @@ def read_trial(d: Path) -> dict | None:
         "first_build_ok": detail.get("first_build_ok"), "builds": detail.get("builds"),
         "tokens_in": ar.get("n_input_tokens") or 0, "tokens_cached": ar.get("n_cache_tokens") or 0,
         "tokens_out": ar.get("n_output_tokens") or 0, "cost_usd": ar.get("cost_usd") or 0.0,
-        "turns": turns, "wall_s": round(wall, 1), "input_by_source": src,
+        "turns": turns, "wall_s": round(wall, 1), "input_by_source": src, "started": r.get("started_at") or "",
     }
 
 
@@ -122,6 +122,10 @@ def collect(dirs):
                 t = read_trial(d)
                 if t:
                     rows[t["trial"]] = t
+    latest = {}  # a resumed job reruns trials; keep one (the latest) per challenge, language, agent and model
+    for t in sorted(rows.values(), key=lambda t: t.get("started", "")):
+        latest[(t["challenge"], t["language"], t["agent"], t["model"])] = t
+    rows = {t["trial"]: t for t in latest.values()}
     TRIALS.parent.mkdir(exist_ok=True)
     TRIALS.write_text("".join(json.dumps(t) + "\n" for t in sorted(rows.values(), key=lambda t: t["trial"])))
     print(f"{len(rows)} trials in {TRIALS}")
