@@ -11,7 +11,7 @@ Parsing checks the shape of source. The [expression rules](expressions.md), [typ
 
 ## Source characters and tokens
 
-Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical lines; CRLF is normalized to LF before tokenization, and a lone CR is rejected. Identifiers use ASCII letters, digits, and underscores: `[A-Za-z_][A-Za-z0-9_]*`. Names are case-sensitive. A lone `_` is a pattern placeholder rather than an identifier. Unicode is supported in text literals and comments, not identifiers.
+Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical lines; CRLF is normalized to LF before tokenization, and a lone CR is rejected everywhere, including inside comments. Identifiers use ASCII letters, digits, and underscores: `[A-Za-z_][A-Za-z0-9_]*`. Names are case-sensitive. A lone `_` is a pattern placeholder rather than an identifier. Unicode is supported in text literals and comments, not identifiers.
 
 The reserved words are:
 
