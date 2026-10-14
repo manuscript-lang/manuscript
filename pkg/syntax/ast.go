@@ -56,6 +56,9 @@ type Module struct {
 	Source       string
 	Imports      []*Import
 	Declarations []*Declaration
+	// Omitted names declarations that editor recovery dropped because they did
+	// not parse; uses of them are not reported as unknown.
+	Omitted []string
 }
 
 // Import represents one symbol binding; named import lists expand into bindings.

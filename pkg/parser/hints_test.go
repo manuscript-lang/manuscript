@@ -32,6 +32,7 @@ func TestSyntaxErrorsStateTheFix(t *testing.T) {
 
 func TestPassAndIfExpressionHints(t *testing.T) {
 	for _, tt := range []struct{ name, source, want string }{
+		{"elif branch", "fn f(a: Int) -> Unit:\n    if a == 1:\n        return\n    elif a == 2:\n        return\n", "write 'else if <condition>:'"},
 		{"pass statement", "fn f(a: Int) -> Unit:\n    if a == 1:\n        pass\n", "'pass' is not a keyword; write 'unit'"},
 		{"if expression", "fn f(a: Int) -> Int:\n    let b = if a == 1: 2 else: 3\n    return b\n", "'if' is a statement, not an expression"},
 		{"if inside arithmetic", "fn f(a: Int) -> Int:\n    return 1 + (if a == 1: 1 else: 0)\n", "'if' is a statement, not an expression"},

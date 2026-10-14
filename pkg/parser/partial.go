@@ -56,6 +56,9 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 		previous = start
 		parsed, err := Parse(file, source[start:end])
 		if err != nil {
+			if name := declaredName(source[start:end]); name != "" {
+				module.Omitted = append(module.Omitted, name)
+			}
 			if issue, ok := err.(syntax.Diagnostic); ok {
 				issue.Position.Offset += start
 				issue.Position.Line += lineOffset
@@ -78,6 +81,22 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 		module.Declarations = append(module.Declarations, parsed.Declarations...)
 	}
 	return module, diagnostics
+}
+// declaredName reads the name a declaration chunk introduces, for chunks that
+// failed to parse.
+func declaredName(chunk string) string {
+	for _, line := range strings.Split(chunk, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		fields := strings.Fields(strings.TrimPrefix(trimmed, "export "))
+		if len(fields) < 2 || (fields[0] != "fn" && fields[0] != "type" && fields[0] != "interface") {
+			return ""
+		}
+		return strings.FieldsFunc(fields[1], func(r rune) bool { return r == '(' || r == '[' || r == ':' })[0]
+	}
+	return ""
 }
 func rebase(module *syntax.Module, offset, lines int) {
 	position := func(p *syntax.Position) { p.Offset += offset; p.Line += lines }

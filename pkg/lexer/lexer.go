@@ -332,6 +332,9 @@ func (s *scanner) scanString() {
 			s.fail("literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}")
 		}
 		if b == '\\' {
+			backslash := s.pos()
+			backslash.Column--
+			backslash.Offset--
 			if s.offset == len(s.source) {
 				s.fail("unterminated text escape; a backslash needs a following character, e.g. \\n")
 			}
@@ -363,7 +366,7 @@ func (s *scanner) scanString() {
 				}
 				s.advance()
 			} else if !strings.ContainsRune("\"\\nrt{}", rune(c)) {
-				s.fail(fmt.Sprintf("unknown text escape \\%c; valid escapes are \\n \\t \\r \\\\ \\\" \\{ \\} and \\u{H}", c))
+				s.failAt(backslash, fmt.Sprintf("unknown text escape \\%c; valid escapes are \\n \\t \\r \\\\ \\\" \\{ \\} and \\u{H}", c))
 			}
 		} else if b == '{' {
 			s.scanInterpolation()
