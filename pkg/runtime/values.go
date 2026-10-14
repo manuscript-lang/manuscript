@@ -450,6 +450,12 @@ func Text(values ...Value) Value {
 	}
 	return text.String()
 }
+
+// FormatInt, FormatFloat and FormatBool are Format for a value of known type.
+func FormatInt(value int64) string     { return strconv.FormatInt(value, 10) }
+func FormatFloat(value float64) string { return formatFloat(value) }
+func FormatBool(value bool) string     { return strconv.FormatBool(value) }
+
 func Format(value Value) string {
 	return formatValue(value, 0)
 }

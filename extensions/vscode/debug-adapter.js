@@ -136,6 +136,7 @@ class ManuscriptAdapter {
       if (pending) { this.pending.delete(message.request_seq); message.success ? pending.resolve(message.body || {}) : pending.reject(new Error(message.message || 'Debugger request failed')); }
       return;
     }
+    if (message.event === 'terminated') this.ended = true;
     if (message.event === 'continued' || message.event === 'stopped') {
       this.handles.clear(); this.frames.clear(); this.sourceScopes.clear();
     }
@@ -241,7 +242,20 @@ class ManuscriptAdapter {
     args.mode = 'exec'; args.outputMode = 'remote'; delete args.compilerPath; delete args.inspection;
     return this.native('launch', args);
   }
+  // After terminated the debugger process is gone. Requests that cannot succeed
+  // get a clear answer instead of a failure writing to a closed pipe.
+  async endedRequest(request) {
+    if (request.command === 'disconnect' || request.command === 'terminate') {
+      await this.cleanup();
+      return this.respond(request, {});
+    }
+    const resumes = ['continue', 'next', 'stepIn', 'stepOut', 'stepBack', 'reverseContinue', 'pause'];
+    this.respond(request, {}, false, resumes.includes(request.command)
+      ? `the debuggee has exited: ${request.command} has nothing to resume`
+      : `the debug session has ended: ${request.command} is no longer available`);
+  }
   async request(request) {
+    if (this.ended) return this.endedRequest(request);
     try {
       await this.start(request.arguments?.compilerPath || this.options.compiler || 'ms');
       const args = request.arguments || {}; let body;

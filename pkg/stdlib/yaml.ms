@@ -1087,6 +1087,166 @@ fn block_value(
 
     return ok(result)
 
+fn pad(width: Int) -> String:
+    let builder = StringBuilder()
+    var spaces = width
+
+    while spaces > 0:
+        builder.append(" ")
+        spaces = spaces - 1
+
+    return builder.freeze()
+
+# Columns of the nested sequence levels opened by consecutive compact `- ` indicators.
+fn nested_columns(line: String, base: Int) -> List[Int]:
+    let chars = line.split(separator: "")
+    let columns: List[Int] = []
+    var marker = base
+
+    while chars.at(marker).unwrap_or("") == "-":
+        var next = marker + 1
+
+        while chars.at(next).unwrap_or("") == " ": next = next + 1
+
+        if next == marker + 1 or chars.at(next).unwrap_or("") != "-": break
+
+        let after = chars.at(next + 1).unwrap_or("")
+        if (
+            after != ""
+            and after != " "
+            and after != "\t"
+        ): break
+
+        columns.append(next)
+        marker = next
+
+    return columns
+
+fn sequence_items(
+    context: Context,
+    values: List[YamlValue],
+    base: Int,
+    depth: Int
+) -> Result[Unit, YamlError]:
+    while context.index < context.lines.length():
+        skip(context)
+        if context.index >= context.lines.length(): break
+
+        let line = uncomment(context.lines.at(context.index).unwrap())
+        let line_indent = try indentation(context: context, text: line)
+        if line_indent < base: break
+        if line_indent != base or not sequence(line.trim_start()): break
+
+        let item = (
+            line
+            .trim_start()
+            .slice(
+                start: 1,
+                end: (line.trim_start().scalar_length())
+            )
+            .unwrap_or("")
+            .trim_start()
+        )
+
+        let chain = nested_columns(line: line, base: base)
+
+        if chain.length() > 0:
+            # A run of compact sequence indicators (`- - x`) opens one level per
+            # indicator. Scan the line once and rewrite it once instead of per level.
+            let innermost = chain.at(chain.length() - 1).unwrap()
+            let frames: List[List[YamlValue]] = []
+            var level = 1
+
+            while level <= chain.length():
+                let counted = try count(context: context, depth: (depth + level))
+                frames.append([])
+                level = level + 1
+
+            (
+                context
+                .lines
+                .set(
+                    index: context.index,
+                    value: pad(innermost).concat(
+                        (
+                            line
+                            .slice(
+                                start: innermost,
+                                end: line.scalar_length()
+                            )
+                            .unwrap_or("")
+                        )
+                    )
+                )
+            )
+            level = chain.length()
+            var nested = frames.at(level - 1).unwrap()
+            let ran = try sequence_items(
+                context: context,
+                values: nested,
+                base: innermost,
+                depth: (depth + level)
+            )
+            var value = YamlValue.ArrayValue(nested)
+            level = level - 1
+
+            while level >= 1:
+                nested = frames.at(level - 1).unwrap()
+                nested.append(value)
+                let resumed = try sequence_items(
+                    context: context,
+                    values: nested,
+                    base: chain.at(level - 1).unwrap(),
+                    depth: (depth + level)
+                )
+                value = YamlValue.ArrayValue(nested)
+                level = level - 1
+
+            values.append(value)
+        else if sequence(item) or boundary(text: item, colon: true) >= 0:
+            # Treat a compact mapping/sequence as a virtual indented first line.
+            # Its column follows the indicator, so extra spaces move the nested base.
+            let marker = (
+                line
+                .trim_start()
+                .slice(
+                    start: 1,
+                    end: (line.trim_start().scalar_length())
+                )
+                .unwrap_or("")
+            )
+            var gap = indent(marker)
+
+            if gap == 0: gap = 1
+
+            let column = base + 1 + gap
+            (
+                context.lines.set(
+                    index: context.index,
+                    value: pad(column).concat(item)
+                )
+            )
+            values.append(
+                try block(
+                    context: context,
+                    base: column,
+                    depth: (depth + 1)
+                )
+            )
+        else:
+            context.index = context.index + 1
+            values.append(
+                try block_value(
+                    context: context,
+                    text: item,
+                    base: base,
+                    depth: (depth + 1),
+                    indentless: false
+                )
+            )
+
+    return ok(unit)
+
 fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError]:
     skip(context)
     let first = uncomment(context.lines.at(context.index).unwrap()).trim_start()
@@ -1100,78 +1260,12 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
     if sequence(first):
         let counted = try count(context: context, depth: depth)
         let values: List[YamlValue] = []
-
-        while context.index < context.lines.length():
-            skip(context)
-            if context.index >= context.lines.length(): break
-
-            let line = uncomment(context.lines.at(context.index).unwrap())
-            let line_indent = try indentation(context: context, text: line)
-            if line_indent < base: break
-            if line_indent != base or not sequence(line.trim_start()): break
-
-            let item = (
-                line
-                .trim_start()
-                .slice(
-                    start: 1,
-                    end: (line.trim_start().scalar_length())
-                )
-                .unwrap_or("")
-                .trim_start()
-            )
-
-            if sequence(item) or boundary(text: item, colon: true) >= 0:
-                # Treat a compact mapping/sequence as a virtual indented first line.
-                # Its column follows the indicator, so extra spaces move the nested base.
-                let marker = (
-                    line
-                    .trim_start()
-                    .slice(
-                        start: 1,
-                        end: (line.trim_start().scalar_length())
-                    )
-                    .unwrap_or("")
-                )
-                var gap = indent(marker)
-
-                if gap == 0: gap = 1
-
-                let column = base + 1 + gap
-                var padding = ""
-                var spaces = column
-
-                while spaces > 0:
-                    padding = padding.concat(" ")
-                    spaces = spaces - 1
-
-                (
-                    context
-                    .lines
-                    .set(
-                        index: context.index,
-                        value: padding.concat(item)
-                    )
-                )
-                values.append(
-                    try block(
-                        context: context,
-                        base: column,
-                        depth: (depth + 1)
-                    )
-                )
-            else:
-                context.index = context.index + 1
-                values.append(
-                    try block_value(
-                        context: context,
-                        text: item,
-                        base: base,
-                        depth: (depth + 1),
-                        indentless: false
-                    )
-                )
-
+        let ran = try sequence_items(
+            context: context,
+            values: values,
+            base: base,
+            depth: depth
+        )
         return ok(YamlValue.ArrayValue(values))
 
     if boundary(text: first, colon: true) >= 0:

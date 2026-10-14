@@ -126,15 +126,37 @@ func numberValue(e *syntax.Expression) ast.Expr {
 
 // textValue lowers text with interpolated parts.
 func (g *generator) textValue(e *syntax.Expression) ast.Expr {
-	var values []ast.Expr
+	var result ast.Expr
+	join := func(part ast.Expr) {
+		if result == nil {
+			result = part
+			return
+		}
+		result = &ast.BinaryExpr{X: result, Op: token.ADD, Y: part}
+	}
 	for _, p := range e.Parts {
-		if p.Value != nil {
-			values = append(values, runtimeCall("Format", g.expression(p.Value)))
-		} else {
-			values = append(values, textLiteral(p.Text))
+		if p.Value == nil {
+			join(textLiteral(p.Text))
+			continue
+		}
+		value := g.expression(p.Value)
+		switch g.nativeType(p.Value) {
+		case "string":
+			join(value)
+		case "int64":
+			join(runtimeCall("FormatInt", value))
+		case "float64":
+			join(runtimeCall("FormatFloat", value))
+		case "bool":
+			join(runtimeCall("FormatBool", value))
+		default:
+			join(runtimeCall("Format", value))
 		}
 	}
-	return runtimeCall("Text", values...)
+	if result == nil {
+		return textLiteral("")
+	}
+	return result
 }
 
 // nameValue lowers a reference; nil means the name resolved to nothing
