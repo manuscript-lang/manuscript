@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkCompatibilityIterator/DirectBLoop-4         	     141	    844522 ns/op	     216 B/op	       5 allocs/op
+BenchmarkCompatibilityIterator/DirectBLoop-4         	     141	    850237 ns/op	     216 B/op	       5 allocs/op
+BenchmarkCompatibilityIterator/DirectBLoop-4         	     152	    800822 ns/op	     216 B/op	       5 allocs/op
+BenchmarkCompatibilityIterator/FactoredProduction-4  	     198	    602367 ns/op	       8 B/op	       1 allocs/op
+BenchmarkCompatibilityIterator/FactoredProduction-4  	     180	    682310 ns/op	       8 B/op	       1 allocs/op
+BenchmarkCompatibilityIterator/FactoredProduction-4  	     168	    675934 ns/op	       8 B/op	       1 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.733s

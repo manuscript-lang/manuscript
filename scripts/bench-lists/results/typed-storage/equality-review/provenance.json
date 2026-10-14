@@ -1,0 +1,10 @@
+{
+  "unsafe_runtime_base": "02282673 (8c656906 provider merged with main e2c69c73, before equality edits)",
+  "unsafe_cli_revision": "8c6569060fd9b073350c7bc2fa665c8fc3ceb189",
+  "unsafe_cli_sha256": "e80a16e86fcc777f6c1d9ac5280930c9c74c429f372fb89b9ed2f25f41ffcfad",
+  "runtime_test": "TestListEqualityCapturesBothHeadersBeforeCallbacks; unsafe -count=1, fixed -count=3",
+  "source_fixture": "tests/e2e/testdata/accept/list-equality-mutation.ms",
+  "source_sha256": "7b4ec92570ed265077b89452bc239361827977d3281d9793be93afdad33f8108",
+  "after_native_command": "go test ./tests/e2e -run 'TestCoreConformance/(list-equality-mutation|primitive-list-storage|list-go-range|list-shrink-consumers)|TestListEqualityMutationStandalone|TestPrimitiveListStorageStandalone|TestListGoRangeStandalone|TestListShrinkConsumersStandalone' -count=1",
+  "SDK": "bundled Go 1.25.1"
+}

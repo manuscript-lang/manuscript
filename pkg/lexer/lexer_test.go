@@ -53,6 +53,8 @@ func TestLexicalBoundaries(t *testing.T) {
 		"unicode name":        "fn café() -> Unit:\n    return\n",
 		"tab":                 "fn value() -> Unit:\n\treturn\n",
 		"lone CR":             "fn value() -> Unit:\r    return\n",
+		"lone CR in comment":  "fn value() -> Unit:\n    return # note\rmore\n",
+		"lone CR at end":      "fn value() -> Unit:\n    return\n# end\r",
 		"jumped indentation":  "fn value() -> Unit:\n        return\n",
 		"leading zero":        "fn value() -> Int:\n    return 03\n",
 		"hex":                 "fn value() -> Int:\n    return 0xff\n",
@@ -133,6 +135,31 @@ func TestMultilineHeaderSuiteIsMeasuredFromItsFirstLine(t *testing.T) {
 	shifted := "fn f() -> Int:\n    if (\n        g(\n            a: 1\n        )\n            ):\n                return 1\n    return 0\n"
 	if _, err := lexer.Lex("header.ms", shifted); err == nil || !strings.Contains(err.Error(), "four spaces after its header") {
 		t.Fatalf("accepted a suite measured from the closing line: %v", err)
+	}
+}
+
+func TestDelimiterContinuationMayDedentBelowSuite(t *testing.T) {
+	for _, source := range []string{
+		"fn f() -> Int:\n    let x = [\n1,\n2,\n]\n    return 0\n",
+		"fn f() -> Int:\n    let x = (1 +\n2)\n    return 0\n",
+		"fn f() -> Int:\n    if true:\n        let x = [\n1\n]\n        return 0\n    return 1\n",
+	} {
+		tokens, err := lexer.Lex("continuation.ms", source)
+		if err != nil {
+			t.Fatalf("%q: %v", source, err)
+		}
+		depth := 0
+		for _, token := range tokens {
+			switch token.Kind {
+			case lexer.Indent:
+				depth++
+			case lexer.Dedent:
+				depth--
+			}
+			if token.Text == "1" && depth < 1 {
+				t.Fatalf("%q: continuation closed the suite", source)
+			}
+		}
 	}
 }
 

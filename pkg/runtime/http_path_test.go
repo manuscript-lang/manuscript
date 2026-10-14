@@ -42,18 +42,12 @@ func TestHTTPPathContractLoopback(t *testing.T) {
 			n := &network{}
 			defer n.Operation("close").Body(ctx, nil)
 			var calls atomic.Int64
-			makeHeaders := func(path, query string, lists bool) *Map {
-				headers := &Map{Type: "@std/Map[String][String]", Entries: []Entry{
+			makeHeaders := func(path, query string, lists bool) *libraryHeaders {
+				headers := httpTestHeaders(&Map{Type: "@std/Map[String][String]", Entries: []Entry{
 					{"X-Path", path}, {"X-Query", query},
 					{"x-dup", "first"}, {"X-Dup", "second"},
 					{"Set-Cookie", "a=1"}, {"set-cookie", "b=2"},
-				}}
-				if lists {
-					headers.Type = "@std/Map[String][@std/List[String]]"
-					for i := range headers.Entries {
-						headers.Entries[i].Value = libraryStrings([]string{headers.Entries[i].Value.(string)})
-					}
-				}
+				}})
 				return headers
 			}
 			var address string
@@ -116,10 +110,10 @@ func TestHTTPInvalidPortsAllClients(t *testing.T) {
 	defer n.Operation("close").Body(ctx, nil)
 	client := librarySuccess(t, n.Operation("http_client").Body(ctx, []Value{networkingClientOptions()}))
 	for _, address := range []string{"http://127.0.0.1:99999/", "http://127.0.0.1:65536/", "http://127.0.0.1:99999999999999999999999/", "http://127.0.0.1:-1/", "http://[::1"} {
-		args := []Value{"GET", address, &Map{Type: "@std/Map[String][String]"}, Bytes{}, int64(100), Duration(time.Second)}
+		args := []Value{libraryHTTPMethod("GET"), address, httpTestHeaders(&Map{Type: "@std/Map[String][String]"}), Bytes{}, int64(100), Duration(time.Second)}
 		libraryFailure(t, n.Operation("request").Body(ctx, args), "InvalidInput")
-		libraryFailure(t, networkingInvoke(ctx, client, "send", args...), "InvalidInput")
+		libraryFailure(t, networkingInvoke(ctx, client, "request", args...), "InvalidInput")
 		args[3] = ViewOf("@std/ReadStream", &networkingReadStream{})
-		libraryFailure(t, networkingInvoke(ctx, client, "send_stream", args...), "InvalidInput")
+		libraryFailure(t, networkingInvoke(ctx, client, "request_stream", args...), "InvalidInput")
 	}
 }

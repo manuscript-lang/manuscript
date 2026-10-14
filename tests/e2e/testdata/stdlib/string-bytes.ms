@@ -185,3 +185,49 @@ test "empty text splits into one part and case mapping is full Unicode":
     if "ΑΣ".lower() != "ας": return panic("final sigma")
     if "İ".lower() != "i\u{307}": return panic("dotted capital I")
     if "Maße".upper() != "MASSE": return panic("upper mixed")
+
+test "indexing and slicing long mixed-width text matches scalar positions":
+    let block = "aé€🙂"
+    let text = value(block.repeat(count: 600))
+    if text.length() != 2400: return panic("long length")
+
+    # Forward, backward and jumping reads of the same long text.
+    var forward = 0
+    var step = 0
+
+    while step < 2400:
+        forward = forward + text.scalar_at(step).unwrap()
+        step = step + 1
+
+    var backward = 0
+    step = 2399
+
+    while step >= 0:
+        backward = backward + text.scalar_at(step).unwrap()
+        step = step - 1
+
+    if forward != 600 * (97 + 233 + 8364 + 128578) or backward != forward: return panic(
+        "scalar sums"
+    )
+    if (
+        text.at(1200) != some("a")
+        or text.at(2399) != some("🙂")
+        or text.at(-2) != some("€")
+    ): return panic(
+        "scalar at positions"
+    )
+    if value(text.slice(start: 1199, end: 1203)) != "🙂aé€": return panic("slice mid")
+    if value(text.slice(start: 2396, end: 2400)) != block: return panic("slice tail")
+    if value(text.slice(start: 0, end: 4)) != block: return panic("slice head")
+    if value(text.slice(start: 7, end: 7)) != "": return panic("empty slice")
+    if value(text.slice_scalars(start: 1199, end: 1203)) != "🙂aé€": return panic(
+        "slice_scalars mid"
+    )
+    if value(text.slice_scalars(start: 2399, end: 2400)) != "🙂": return panic(
+        "slice_scalars last"
+    )
+
+    let out_of_range: Result[String, StringError] = error(cause: StringError.OutOfRange)
+    if text.slice_scalars(start: 2400, end: 2401) != out_of_range: return panic(
+        "slice_scalars bound"
+    )

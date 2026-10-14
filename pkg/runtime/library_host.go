@@ -552,7 +552,7 @@ func init() {
 		}
 		return libraryOK(r, libraryTimestamp{t})
 	})
-	libraryAdd("time", "difference", libraryResult("Duration", "TimeError"), []LibraryParam{p("left", "Timestamp"), p("right", "Timestamp")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("time", "difference", libraryResult("Duration", "TimeError"), []LibraryParam{p("left", "Timestamp"), p("other", "Timestamp")}, func(_ *Execution, r string, a []Value) Value {
 		x, y := a[0].(libraryTimestamp).t, a[1].(libraryTimestamp).t
 		d := x.Sub(y)
 		if !y.Add(d).Equal(x) {

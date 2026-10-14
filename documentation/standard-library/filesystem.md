@@ -15,7 +15,7 @@ Import `filesystem()` from `@std/fs.ms` to obtain the filesystem service. Acquir
 
 ```manuscript
 with file = try filesystem().open(path: path, flags: "r+", mode: 384):
-    let written = try file.write_at(offset: 0, data: "HELLO".to_bytes())
+    try file.write_at(offset: 0, data: "HELLO".to_bytes())
     let bytes = try file.read_at(offset: 0, max_bytes: 5)
     let synced = try file.sync()
 ```
@@ -26,9 +26,9 @@ with file = try filesystem().open(path: path, flags: "r+", mode: 384):
 
 `read_file` limits cumulative bytes and closes its handle on every exit. `write_file`, `copy_file`, and `copy_tree` default to `replace: false`, refusing existing destinations. `write_file` creates exclusively; explicit `replace: true` may truncate existing data. Default creation permissions are 0600 for files and 0700 for directories, subject to platform behavior. Writes and copies can leave a partial destination after an error.
 
-`FileHandle` supports sequential `read`/`write`, positional `read_at`/`write_at`, bounded `read_file`, `write_file`, `append_file`, `read_vectors`/`write_vectors`, `read_lines`, `seek`, `stat`, `truncate`, `chmod`, `chown`, `set_times`, `sync`, `data_sync`, and idempotent `close`. Offsets, sizes, and returned counts are bytes. Omitted chunk reads request 64 KiB; supplied chunk sizes must be positive and are clamped to 64 KiB. A chunk may be shorter than requested; sequential EOF is `none`, positional EOF is empty `Bytes`. `read_vectors` accepts each size up to 64 KiB and a combined size up to 16 MiB. Vector offset `-1` uses the current position. Seek origins are `0` (start), `1` (current), and `2` (end). `read_file`, `write_file`, and `read_lines` start at the current position. Line reads validate UTF-8, remove line terminators, and enforce both byte and line limits.
+`FileHandle` supports sequential `read`/`write`, positional `read_at`/`write_at`, bounded `read_file`, `append_file`, `read_vectors`/`write_vectors`, `read_lines`, `seek`, `stat`, `truncate`, `chmod`, `chown`, `set_times`, `sync`, `data_sync`, and idempotent `close`. Offsets, sizes, and returned counts are bytes. Omitted chunk reads request 64 KiB; supplied chunk sizes must be positive and are clamped to 64 KiB. A chunk may be shorter than requested; sequential EOF is `none`, positional EOF is empty `Bytes`. `read_vectors` accepts each size up to 64 KiB and a combined size up to 16 MiB. Vector offset `-1` uses the current position. Seek origins are `0` (start), `1` (current), and `2` (end). `read_file` and `read_lines` start at the current position. Line reads validate UTF-8, remove line terminators, and enforce both byte and line limits.
 
-Native `write`, `write_at`, and `write_vectors` loop until every input byte is written, returning the complete count on success. Their `Int` result is not a short-write success contract. On failure, the Result contains only the error; a count of the external prefix is not returned. `write_file` and `append_file` on a handle also write completely but return Unit. Neither repositions or truncates an existing handle; handle `append_file` appends only if its open mode includes append. Positional I/O leaves the shared sequential position unchanged.
+Native `write`, `write_at`, `write_vectors`, and `append_file` loop until every input byte is written and return `Unit`, matching `WriteStream.write` and `Connection.write`. On failure, the Result contains only the error; a count of the external prefix is not returned. Neither repositions or truncates an existing handle; handle `append_file` appends only if its open mode includes append. Positional I/O leaves the shared sequential position unchanged.
 
 ## Streams and close
 

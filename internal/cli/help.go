@@ -61,14 +61,14 @@ func commandHelp(command string) (string, bool) {
 	var usage, description, options, examples string
 	switch command {
 	case "check":
-		usage = "<file.ms|directory|ms.toml>... [--json]"
+		usage = "<file.ms|directory|ms.toml>... [--json] [--watch]"
 		description = "Parse, resolve imports, and type-check independent inputs without executing source.\nA project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.\nStandalone directories discover .ms files recursively, skipping hidden/vendor/node_modules directories, directory symlinks, and nested projects.\nEach input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames."
-		options = "  --json  Emit versioned JSON diagnostics instead of terminal messages\n"
-		examples = "ms check main.ms\n  ms check ms.toml --json\n  ms check src utilities.ms --json"
+		options = "  --json  Emit versioned JSON diagnostics instead of terminal messages\n  --watch Recheck after each saved change to an input or loaded module (no --json)\n"
+		examples = "ms check main.ms --watch\n  ms check main.ms\n  ms check ms.toml --json\n  ms check src utilities.ms --json"
 	case "lint":
-		usage = "<file.ms|directory|ms.toml>... [--json]"
+		usage = "<file.ms|directory|ms.toml>... [--json] [--watch]"
 		description = "Check source hygiene and semantic lint rules in independent inputs and their imports.\nA project directory selects ms.toml; standalone directories discover .ms files recursively.\nDiscovery skips hidden/vendor/node_modules directories, directory symlinks, and nested projects.\nEach input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.\nExit status is 1 when any input fails checking or has lint findings."
-		options = "  --json  Emit versioned JSON findings with stable rule codes\n"
+		options = "  --json  Emit versioned JSON findings with stable rule codes\n  --watch Recheck after each saved change to an input or loaded module (no --json)\n"
 		examples = "ms lint ms.toml\n  ms lint main.ms --json\n  ms lint src utilities.ms --json"
 	case "build":
 		usage = "<file.ms|ms.toml> [--json] [-o output] [--build-type level] [--debug]"
@@ -119,8 +119,8 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms dap"
 	case "debug":
 		usage = "<file.ms|ms.toml> [-- program arguments]"
-		description = "Build without optimization or inlining, then start the embedded Delve terminal.\nNo dlv executable is needed. On macOS, Xcode command line tools supply debugserver. Arguments after -- are passed to the application."
-		examples = "ms debug ms.toml\n  ms debug main.ms -- first second"
+		description = "Build without optimization or inlining, then start the embedded Delve terminal.\nNo dlv executable is needed. On macOS, Xcode command line tools supply debugserver. Arguments after -- are passed to the application.\nWith --script or --break the session is non-interactive and reports Manuscript names, lines, and only Manuscript stack frames."
+		examples = "ms debug ms.toml\n  ms debug main.ms -- first second\n  ms debug ms.toml --break src/main.ms:7 --json\n  ms debug ms.toml --script commands.txt"
 	case "lock":
 		usage = "<ms.toml> [--json]"
 		options = jsonErrorsHelp
@@ -156,8 +156,8 @@ func commandHelp(command string) (string, bool) {
 		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
 		examples = "ms dap"
 	case "debug":
-		usage = "<file.ms|ms.toml> [--build-type Debug] [-- program arguments]"
-		options += "  --build-type Debug  Debug is required for Delve\n"
+		usage = "<file.ms|ms.toml> [--build-type Debug] [--break location]... | --script file [--json] [-- program arguments]"
+		options += "  --build-type Debug  Debug is required for Delve\n  --break <location>  Run to the first of file:line or function name, report the stop, and exit (repeatable)\n  --script <file>     Run debugger commands from a file, or - for standard input\n  --json              With --script or --break, print JSON Lines events instead of text\n  Script commands: break, clear, breakpoints, continue, next, step, stepout, stack, locals, print <name>, exit\n"
 	}
 	text := fmt.Sprintf("Usage: ms %s", command)
 	if usage != "" {

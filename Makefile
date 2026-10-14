@@ -86,6 +86,10 @@ fuzz:
 	"$(GO)" test ./pkg/parser -run '^$$' -fuzz '^FuzzParse$$' -fuzztime "$(FUZZTIME)"
 	"$(GO)" test ./pkg/parser -run '^$$' -fuzz '^FuzzParsePartial$$' -fuzztime "$(FUZZTIME)"
 	"$(GO)" test ./pkg/tooling -run '^$$' -fuzz '^FuzzFormat$$' -fuzztime "$(FUZZTIME)"
+	"$(GO)" test ./pkg/runtime -run '^$$' -fuzz '^FuzzJSONRoundTrip$$' -fuzztime "$(FUZZTIME)"
+	"$(GO)" test ./pkg/runtime -run '^$$' -fuzz '^FuzzCSVRoundTrip$$' -fuzztime "$(FUZZTIME)"
+	"$(GO)" test ./pkg/runtime -run '^$$' -fuzz '^FuzzCodecRoundTrip$$' -fuzztime "$(FUZZTIME)"
+	"$(GO)" test ./pkg/runtime -run '^$$' -fuzz '^FuzzURLFormatStable$$' -fuzztime "$(FUZZTIME)"
 	@targets=$$("$(GO)" test ./pkg/build -list '^FuzzCompile$$') && \
 		printf '%s\n' "$$targets" | grep -qxF FuzzCompile || \
 		{ echo 'FuzzCompile is not discoverable in pkg/build' >&2; exit 1; }

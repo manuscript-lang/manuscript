@@ -44,16 +44,37 @@ func lintFindings(result compiler.Result) []tooling.LintFinding {
 			findings = append(findings, finding)
 		}
 	}
+	sort.SliceStable(findings, func(i, j int) bool {
+		a, b := findings[i].Position, findings[j].Position
+		if a.File != b.File {
+			return a.File < b.File
+		}
+		if a.Line != b.Line {
+			return a.Line < b.Line
+		}
+		return a.Column < b.Column
+	})
 	return findings
 }
 
 func runAnalysis(command string, targets []string, structured bool) int {
+	status, _ := analyze(command, targets, structured)
+	return status
+}
+
+// analyze runs check or lint once and also returns the files that decide its
+// result, so a watcher knows what to poll.
+func analyze(command string, targets []string, structured bool) (int, []string) {
 	selection, err := selectAnalysisInputs(targets)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return 1
+		return 1, nil
 	}
 	inputs, issues := analyzeSelection(command, selection)
+	var files []string
+	for _, input := range inputs {
+		files = append(files, watchedFiles(input.input.path, input.result)...)
+	}
 	diagnostics := []commandDiagnostic{}
 	for _, issue := range issues {
 		diagnostics = append(diagnostics, sourceDiagnostic(issue))
@@ -89,7 +110,7 @@ func runAnalysis(command string, targets []string, structured bool) int {
 	}
 	if structured {
 		document := diagnosticsDocument{1, diagnostics}
-		return emitJSON(document, status)
+		return emitJSON(document, status), files
 	}
 	for _, issue := range diagnostics {
 		if !selection.collection && len(inputs) == 1 && inputs[0].result.SourceRoot != "" && !filepath.IsAbs(issue.Position.File) {
@@ -110,7 +131,7 @@ func runAnalysis(command string, targets []string, structured bool) int {
 		}
 		fmt.Fprintf(os.Stderr, "%d %s; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n", count, plural(count, "error", "errors"))
 	}
-	return status
+	return status, files
 }
 
 // sortDiagnostics orders by position, then code and message, so every command

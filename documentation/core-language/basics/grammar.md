@@ -11,7 +11,7 @@ Parsing checks the shape of source. The [expression rules](expressions.md), [typ
 
 ## Source characters and tokens
 
-Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical lines; CRLF is normalized to LF before tokenization, and a lone CR is rejected. Identifiers use ASCII letters, digits, and underscores: `[A-Za-z_][A-Za-z0-9_]*`. Names are case-sensitive. A lone `_` is a pattern placeholder rather than an identifier. Unicode is supported in text literals and comments, not identifiers.
+Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical lines; CRLF is normalized to LF before tokenization, and a lone CR is rejected everywhere, including inside comments. Identifiers use ASCII letters, digits, and underscores: `[A-Za-z_][A-Za-z0-9_]*`. Names are case-sensitive. A lone `_` is a pattern placeholder rather than an identifier. Unicode is supported in text literals and comments, not identifiers.
 
 The reserved words are:
 
@@ -233,6 +233,6 @@ Each example is an independent rejected form. A syntax error does not require th
 
 ## Nesting limits
 
-The parser rejects expressions, types, patterns, and blocks nested more than 1000 levels deep, and a single chain of more than 10000 operators, member accesses, calls, or indexes. The diagnostic names the position (`parse: nesting exceeds 1000 levels`) so generated or pasted input cannot exhaust the compiler's stack.
+The parser rejects expressions, types, patterns, blocks, and text literals nested inside interpolations nested more than 1000 levels deep, and a single chain of more than 10000 operators, member accesses, calls, or indexes. The diagnostic names the position (`parse: nesting exceeds 1000 levels`) so generated or pasted input cannot exhaust the compiler's stack.
 
 [Back to language basics](_index.md) · [Expressions and operators](expressions.md)

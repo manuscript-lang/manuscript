@@ -83,7 +83,7 @@ test "limits can be omitted or supplied":
         ok(_): return panic("supplied limit ignored")
         error(_): return
 
-fn operation() -> Result[Unit, String]: ok(unit)
+fn operation() -> Result[Unit, Error]: ok(unit)
 
 test "one scheduler admits and schedules work":
     with scheduler = Scheduler():

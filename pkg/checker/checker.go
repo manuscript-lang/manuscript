@@ -57,6 +57,7 @@ type checker struct {
 	callPos                 syntax.Position
 	captures                map[int]map[*Binding]bool
 	constantsVisiting       map[*Symbol]bool
+	cycleReported           map[*Symbol]bool
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
@@ -136,6 +137,7 @@ func (c *checker) checkModule(module *syntax.Module, imports map[*syntax.Import]
 	c.declareSymbols(module)
 	c.declareTypeVariables(module)
 	c.resolveSignatures(module)
+	c.checkConstantCycles(module)
 	for _, d := range module.Declarations {
 		if d.Kind == syntax.KindImpl {
 			c.implementation(d)
@@ -329,6 +331,15 @@ func (c *checker) error(pos syntax.Position, phase, message string) {
 		name, _, _ := strings.Cut(rest, " from ")
 		if c.importReported(name, pos) {
 			return
+		}
+	}
+	// Statements blanked by editor recovery leave names and returns missing;
+	// the syntax error already explains every diagnostic inside that range.
+	if c.module != nil {
+		for _, span := range c.module.Recovered {
+			if pos.File == c.module.File && pos.Offset >= span.Start && pos.Offset < span.End {
+				return
+			}
 		}
 	}
 	// A declaration dropped by editor recovery has its own syntax error.
