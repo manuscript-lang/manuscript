@@ -581,7 +581,7 @@ func init() {
 		if name == "symmetric_difference" {
 			result = "Set[T]"
 		}
-		add(name, result, hash, []LibraryParam{p("left", "Set[T]"), p("right", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
+		add(name, result, hash, []LibraryParam{p("left", "Set[T]"), p("other", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
 			left, right := a[0].(*Set), a[1].(*Set)
 			if name == "is_superset_of" {
 				left, right = right, left

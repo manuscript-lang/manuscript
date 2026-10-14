@@ -80,7 +80,7 @@ type List[T]:
     fn entries() -> List[ListEntry[T]]:
     fn join(separator: String) -> String:
     fn append(value: T) -> List[T]:
-    fn concat(values: List[T]) -> List[T]:
+    fn concat(other: List[T]) -> List[T]:
     fn length() -> Int:
 ```
 
@@ -527,13 +527,13 @@ type Set[T: Hashable]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
-    fn union(right: Set[T]) -> Set[T]:
-    fn intersection(right: Set[T]) -> Set[T]:
-    fn difference(right: Set[T]) -> Set[T]:
-    fn symmetric_difference(right: Set[T]) -> Set[T]:
-    fn is_subset_of(right: Set[T]) -> Bool:
-    fn is_superset_of(right: Set[T]) -> Bool:
-    fn is_disjoint_from(right: Set[T]) -> Bool:
+    fn union(other: Set[T]) -> Set[T]:
+    fn intersection(other: Set[T]) -> Set[T]:
+    fn difference(other: Set[T]) -> Set[T]:
+    fn symmetric_difference(other: Set[T]) -> Set[T]:
+    fn is_subset_of(other: Set[T]) -> Bool:
+    fn is_superset_of(other: Set[T]) -> Bool:
+    fn is_disjoint_from(other: Set[T]) -> Bool:
     fn clear() -> Set[T]:
     fn values() -> List[T]:
     fn entries() -> List[List[T]]:
@@ -581,7 +581,7 @@ fn contains(value: T) -> Bool:
 Returns a new set of receiver values absent from right, preserving receiver insertion order.
 
 ```manuscript
-fn difference(right: Set[T]) -> Set[T]:
+fn difference(other: Set[T]) -> Set[T]:
 ```
 
 ### Set.entries
@@ -654,7 +654,7 @@ fn for_each(operation: fn(value: T) -> Unit) -> Unit:
 Returns a new set of receiver values also in right, preserving receiver insertion order.
 
 ```manuscript
-fn intersection(right: Set[T]) -> Set[T]:
+fn intersection(other: Set[T]) -> Set[T]:
 ```
 
 ### Set.is_disjoint_from
@@ -662,7 +662,7 @@ fn intersection(right: Set[T]) -> Set[T]:
 Tests whether the operands have no common values.
 
 ```manuscript
-fn is_disjoint_from(right: Set[T]) -> Bool:
+fn is_disjoint_from(other: Set[T]) -> Bool:
 ```
 
 ### Set.is_empty
@@ -678,7 +678,7 @@ fn is_empty() -> Bool:
 Tests whether every receiver value also occurs in right.
 
 ```manuscript
-fn is_subset_of(right: Set[T]) -> Bool:
+fn is_subset_of(other: Set[T]) -> Bool:
 ```
 
 ### Set.is_superset_of
@@ -686,7 +686,7 @@ fn is_subset_of(right: Set[T]) -> Bool:
 Tests whether every right value also occurs in the receiver.
 
 ```manuscript
-fn is_superset_of(right: Set[T]) -> Bool:
+fn is_superset_of(other: Set[T]) -> Bool:
 ```
 
 ### Set.length
@@ -726,7 +726,7 @@ fn some(predicate: fn(value: T) -> Bool) -> Bool:
 Returns a new set of values in exactly one operand; leaves both operands unchanged.
 
 ```manuscript
-fn symmetric_difference(right: Set[T]) -> Set[T]:
+fn symmetric_difference(other: Set[T]) -> Set[T]:
 ```
 
 ### Set.union
@@ -734,7 +734,7 @@ fn symmetric_difference(right: Set[T]) -> Set[T]:
 Returns a new set with receiver values followed by right-only values in insertion order.
 
 ```manuscript
-fn union(right: Set[T]) -> Set[T]:
+fn union(other: Set[T]) -> Set[T]:
 ```
 
 ### Set.values
