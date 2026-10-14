@@ -126,18 +126,11 @@ func runAnalysis(command string, targets []string, structured bool) int {
 	return status
 }
 
-func orderedAnalysisDiagnostics(issues []commandDiagnostic) []commandDiagnostic {
-	seen := map[string]bool{}
-	unique := issues[:0]
-	for _, issue := range issues {
-		data, _ := json.Marshal(issue)
-		if key := string(data); !seen[key] {
-			seen[key] = true
-			unique = append(unique, issue)
-		}
-	}
-	sort.SliceStable(unique, func(i, j int) bool {
-		a, b := unique[i], unique[j]
+// sortDiagnostics orders by position, then code and message, so every command
+// reports the same diagnostics in the same order.
+func sortDiagnostics(issues []commandDiagnostic) {
+	sort.SliceStable(issues, func(i, j int) bool {
+		a, b := issues[i], issues[j]
 		if a.Position.File != b.Position.File {
 			return a.Position.File < b.Position.File
 		}
@@ -152,6 +145,19 @@ func orderedAnalysisDiagnostics(issues []commandDiagnostic) []commandDiagnostic 
 		}
 		return a.Message < b.Message
 	})
+}
+
+func orderedAnalysisDiagnostics(issues []commandDiagnostic) []commandDiagnostic {
+	seen := map[string]bool{}
+	unique := issues[:0]
+	for _, issue := range issues {
+		data, _ := json.Marshal(issue)
+		if key := string(data); !seen[key] {
+			seen[key] = true
+			unique = append(unique, issue)
+		}
+	}
+	sortDiagnostics(unique)
 	return unique
 }
 
