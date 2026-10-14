@@ -26,6 +26,7 @@ Commands:
   debug    Start an application in the embedded Delve debugger
   dap      Serve one native debugger session on stdin/stdout
   lock     Create or update project build pins
+  cache    Remove build caches (ms cache clean)
   init     Create a new project with a manifest, entry, test, and .gitignore
   doc      Generate public API documentation
   stdlib   Write bundled standard library declarations to a directory
@@ -127,6 +128,8 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms lock ms.toml"
 	case "doc":
 		return docHelp, true
+	case "cache":
+		return cacheHelp, true
 	case "init":
 		return initHelp, true
 	case "stdlib":

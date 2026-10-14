@@ -47,6 +47,8 @@ func standaloneCommand(name string) (func(args []string, usage string) int, bool
 		return func(args []string, _ string) int { return runHelp(args[1:]) }, true
 	case "doc":
 		return func(args []string, _ string) int { return runDoc(args[1:]) }, true
+	case "cache":
+		return func(args []string, _ string) int { return runCache(args[1:]) }, true
 	case "init":
 		return func(args []string, _ string) int { return runInit(args[1:]) }, true
 	case "fmt":

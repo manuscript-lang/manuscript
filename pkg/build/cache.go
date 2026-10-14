@@ -285,6 +285,9 @@ func BuildCheckedWithType(result compiler.Result, output, cacheDir string, kind 
 		}
 		cacheBinary = filepath.Join(cacheDir, metadata.BuildID+".bin")
 		cacheMetadata = filepath.Join(cacheDir, metadata.BuildID+".json")
+		defer pruneBuildCache(cacheDir, CacheLimit)
+		// Touch before verifying so a concurrent prune keeps this entry.
+		touchCacheEntry(cacheMetadata)
 		info, readErr := os.ReadFile(cacheMetadata)
 		if readErr == nil {
 			var cached BuildMetadata
@@ -293,10 +296,10 @@ func BuildCheckedWithType(result compiler.Result, output, cacheDir string, kind 
 				expected := metadata
 				expected.ExecutableSHA256 = cached.ExecutableSHA256
 				if reflect.DeepEqual(expected, cached) {
-					if err := publishArtifact(cacheBinary, output, binaryDigest); err != nil {
-						return metadata, err
+					// A failed publish (for example, an entry evicted meanwhile) rebuilds.
+					if publishArtifact(cacheBinary, output, binaryDigest) == nil {
+						return cached, writeBuildMetadata(output, cached)
 					}
-					return cached, writeBuildMetadata(output, cached)
 				}
 			}
 		}

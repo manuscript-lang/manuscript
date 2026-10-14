@@ -57,7 +57,7 @@ func plural(n int, one, many string) string {
 	return many
 }
 
-var commandNames = []string{"check", "lint", "build", "emit", "run", "test", "fmt", "inspect", "diagram", "profile", "debug", "lock", "init", "doc", "stdlib", "lsp", "help"}
+var commandNames = []string{"check", "lint", "build", "emit", "run", "test", "fmt", "inspect", "diagram", "profile", "debug", "lock", "cache", "init", "doc", "stdlib", "lsp", "help"}
 
 // unknownCommand names the nearest command and lists the rest.
 func unknownCommand(name string) {

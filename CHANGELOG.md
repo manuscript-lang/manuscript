@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Bound each native build cache (`.ms-cache` and the per-user artifact cache) to about 128 MiB by evicting least recently used entries after builds, remove abandoned staging files, rebuild instead of failing when a cache hit is evicted concurrently, and add `ms cache clean` to remove project and user build caches. Previously every source edit left a 5 MB executable behind forever.
 - Fix Map and Set lookups after removing the last remaining key: a stale key index made later distinct keys share one entry (#316).
 - Add receiver-returning `Map.remove` and `List.splice` aliases, preserving legacy lookup, insertion order, strict splice bounds and faults; extend native dispatch, mutation analysis and preferred-name advisories.
 - Add `String.replace_n` with a required finite replacement cap and the existing literal/scalar, zero/negative and fault behavior; current `replace`/`replace_first` signatures remain compatible.

@@ -88,7 +88,7 @@ func TestHelpForEveryCommand(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	for _, command := range []string{
 		"check", "lint", "lsp", "profile", "debug", "build", "emit", "run",
-		"test", "fmt", "inspect", "diagram", "lock", "init", "doc", "stdlib", "help",
+		"test", "fmt", "inspect", "diagram", "lock", "cache", "init", "doc", "stdlib", "help",
 	} {
 		for _, args := range [][]string{
 			{command, "--help"}, {command, "-h"}, {"help", command},
