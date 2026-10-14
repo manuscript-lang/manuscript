@@ -183,7 +183,9 @@ func (g *generator) nativeCallable(s *checker.Symbol, self *checker.Binding, nam
 		if kind := comparatorKind(s.Type, s.Decl.Params); kind != "" {
 			adapter = runtimeCall("New"+kind+"CompareFunction", stringSlice(labels), key, textLiteral(position), ident(raw))
 		} else {
-			adapter = runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), returned(call(ident(raw), boxed...))))
+			// The adapter passes scalar/Value copies to the raw body, which has
+			// no access to this incoming slice, even when a Value is captured.
+			adapter = runtimeCall("NewCompiledSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), returned(call(ident(raw), boxed...))))
 		}
 	} else {
 		adapter = g.declaredFunction(s)

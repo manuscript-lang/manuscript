@@ -43,7 +43,7 @@ func verifyTypedCalls(){
  ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
  observed:=&observedContext{Context:ctx.Context};ctx.Context=observed
  compare:=@@compare@@.(rt.Function)
- if compare.IntCompare==nil {panic("missing named typed comparator")}
+ if compare.IntCompare==nil || !compare.BorrowedArguments {panic("missing marked named typed comparator")}
  if compare.IntCompare(ctx,10000,20000)!=-10000 || observed.checks!=2 {panic(fmt.Sprintf("callback guard checks=%d",observed.checks))}
  observed.checks=0
  if compare.Body(ctx,[]rt.Value{int64(10000),int64(20000)}).(int64)!=-10000 || observed.checks!=2 {panic("boxed callback guard changed")}
@@ -56,7 +56,7 @@ func verifyTypedCalls(){
  if captured.IntCompare==nil || captured.IntCompare(ctx,10000,20000)!=-10000 || captured.Body(ctx,[]rt.Value{int64(10000),int64(20000)}).(int64)!=-10000 {panic("captured callback parity")}
  values:=rt.NewIntList("@std/List[Int]",[]int64{10000,20000})
  args:=[]rt.Value{values,int64(-1)}
- if @@read@@.(rt.Function).Body(ctx,args)!=int64(20000) {panic("relative typed read")}
+ if !@@read@@.(rt.Function).BorrowedArguments || @@read@@.(rt.Function).Body(ctx,args)!=int64(20000) {panic("marked relative typed read")}
  for range 10 {typedResult=@@read@@.(rt.Function).Body(ctx,args)}
  var before,after runtime.MemStats;runtime.ReadMemStats(&before)
  for range 1000 {typedResult=@@read@@.(rt.Function).Body(ctx,args)}

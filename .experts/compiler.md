@@ -23,6 +23,17 @@ capture allocations; typed controls cannot replace these acceptance workloads.
 See [the explicit allocation ledger](../scripts/bench-lists/typed-storage.md#review-correction-traversal-allocation-regressions). Preserve one authoritative
 mutable handle across typed and generic aliases rather than keeping a boxed mirror.
 
+Decision: [the parent approved](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157745861)
+borrowing argument arrays only for generated bodies that copy parameter Values
+and cannot retain/expose the incoming slice. Capturing individual Values is safe;
+arbitrary Go callbacks and unproven wrappers remain unmarked. Each `for_each`
+invocation owns its buffer, including reentry. Native adapters call a raw body
+with scalar/Value copies; ordinary source bodies bind slots before executing
+source expressions. Generated tails keep the conservative constructor until
+audited. Exercise [captured callback/reentry conformance](../tests/e2e/testdata/accept/typed-list-lowering.ms)
+and [native marker/fault/cancellation checks](../pkg/build/typed_list_calls_test.go)
+alongside runtime retention/allocation controls before expanding this seam.
+
 Apply when: optimizing Go lowering, representations, calls, or collection access.
 Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),

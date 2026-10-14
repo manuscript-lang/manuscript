@@ -165,7 +165,15 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 		return runtimeCall("New"+kind+"CompareFunction", stringSlice(labels), key, textLiteral(position), closure(parameters, ident("int64"), out...))
 	}
 	labels, key, position, out := g.functionParts(name, params, result, body, bindings, self, t, tail...)
-	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
+	constructor := "NewSourceFunction"
+	if len(tail) == 0 {
+		// functionParts copies each slot into its parameter binding before any
+		// source body/default runs. Source expressions can capture those Values,
+		// but cannot refer to the incoming Go slice. Generated adapter tails
+		// retain the conservative constructor until separately audited.
+		constructor = "NewCompiledSourceFunction"
+	}
+	return runtimeCall(constructor, stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
 }
 
 // functionParts lowers a callable's labels, result key, source position, and

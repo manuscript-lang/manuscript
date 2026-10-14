@@ -8,7 +8,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-// A known nongeneric source declaration always holds a NewSourceFunction.
+// A known nongeneric source declaration always holds a guarded source Function.
 // Its Body includes cancellation, propagation, source returns, and profiling;
 // the generated callback retains its cleanup and fault-frame defers. When every
 // argument is already in declaration order, Invoke adds only redundant label

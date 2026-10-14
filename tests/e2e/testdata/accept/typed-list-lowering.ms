@@ -84,3 +84,30 @@ test "typed access match range and comparator preserve generic aliases":
     if independent.length() != 1: return panic(
         "strict Result slicing and separate backing"
     )
+
+let reentered_values: List[Int] = []
+
+fn reentered(value: Int) -> Unit:
+    reentered_values.append(value)
+
+    if value == 1: [10, 20].for_each(reentered)
+
+    reentered_values.append(value)
+
+test "callback parameter captures survive borrowed slots and reentry":
+    let retained: List[fn() -> Int] = []
+    let keep = fn(value: Int) -> Unit:
+        retained.append(fn() -> Int: value)
+    let values = [10000, 20000, 30000]
+    let each = values.for_each
+    each(keep)
+    let seen: List[Int] = []
+
+    for callback in retained:
+        seen.append(callback())
+
+    if seen != values: return panic("retained callback parameter was overwritten")
+
+    [1, 2].for_each(reentered)
+    if reentered_values != [1, 10, 10, 20, 20, 1, 2, 2]:
+        return panic("reentrant callback changed its admitted parameter")

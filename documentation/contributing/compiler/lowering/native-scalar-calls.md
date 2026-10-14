@@ -37,6 +37,14 @@ checked body with boxed parameters. This preserves existing input boxes instead
 of keeping parallel native and boxed local storage. Generic and dynamic calls
 retain their callable preparation and selected implementation scopes.
 
+Generated boxed bodies copy argument slots into their parameter bindings and
+cannot retain or expose the incoming Go argument slice. `NewCompiledSourceFunction`
+marks this guarantee. Captured individual Values keep their usual identity and
+lifetime. `for_each` may reuse one buffer local to that invocation only when the
+callback has the marker and exactly the declared labels. Reentrant invocations
+get independent buffers. Arbitrary Go callbacks and unproven wrappers retain
+fresh argument arrays and all paths keep admission and delivery checkpoints.
+
 ## One source boundary
 
 `runtime.SourceCall` owns source admission, call-depth accounting, source returns,
@@ -110,12 +118,13 @@ Manuscript source signatures and numeric defaults are unchanged. Rebuild native
 artifacts and exported generated Go with the matching compiler/runtime pair;
 implementation pins invalidate cached artifacts. Generated code now uses
 additional runtime entry points. Go consumers constructing `Implementation` or `Function` should use keyed
-fields: the additive `DirectGuarded`, `IntCompare` and `FloatCompare` fields
+fields: the additive `DirectGuarded`, `IntCompare`, `FloatCompare` and
+`BorrowedArguments` fields
 change unkeyed composite literals. See the [List ABI migration](../../list-storage.md)
 for constructors and authoritative backing access. Hand-authored source callbacks can keep using
 `NewSourceFunction`, and ordinary native callbacks keep using `NewFunction`.
 
 The signal and diagnostic-output goroutines do not execute source code or touch
 user record fields, so they do not enable record locking. Task groups,
-schedulers, servers and watchers still mark concurrency before source work is
+schedulers, servers, watchers and test runners still mark concurrency before source work is
 spawned. Records retain their existing layout and shallow-clone behavior.

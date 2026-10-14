@@ -75,12 +75,12 @@ func run() error {
 	var replacements []string
 	if *workloads {
 		constructor := "&rt.List{Type: \"@std/List[Int]\", Items: boxedValues}"
-		if strings.Contains(result.Source, "rt.NewList(") {
+		if strings.Contains(result.Source, "rt.ListAtInt(") {
 			constructor = "rt.NewList(\"@std/List[Int]\", boxedValues)"
 		}
 		replacements = append(replacements, "@@listConstructor@@", constructor)
 		sortConstructor := "&rt.List{Type: \"@std/List[Int]\", Items: source}"
-		if strings.Contains(result.Source, "rt.NewList(") {
+		if strings.Contains(result.Source, "rt.ListAtInt(") {
 			sortConstructor = "rt.NewList(\"@std/List[Int]\",source)"
 		}
 		replacements = append(replacements, "@@sortConstructor@@", sortConstructor)
