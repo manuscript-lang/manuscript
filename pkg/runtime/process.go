@@ -5,13 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/manuscript-lang/manuscript/internal/hostos"
 	"os"
 	"os/exec"
-	"reflect"
 	"sort"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -89,10 +88,7 @@ func (c *commands) Operation(name string) Function {
 		defer cancel()
 		output := &boundedOutput{remaining: limit, cancel: cancel}
 		command := exec.CommandContext(execution, program, arguments...)
-		command.SysProcAttr = &syscall.SysProcAttr{}
-		group := reflect.ValueOf(command.SysProcAttr).Elem().FieldByName("Setpgid")
-		if group.IsValid() && group.CanSet() {
-			group.SetBool(true)
+		if hostos.SetProcessGroup(command) {
 			command.Cancel = func() error {
 				process, err := os.FindProcess(-command.Process.Pid)
 				if err != nil {
