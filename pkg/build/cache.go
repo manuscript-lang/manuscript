@@ -133,7 +133,15 @@ func WritePin(root string) error {
 	if err != nil {
 		return err
 	}
-	return atomicWrite(filepath.Join(root, "ms.lock"), append(data, '\n'), 0644)
+	path := filepath.Join(root, "ms.lock")
+	if info, err := os.Stat(path); err == nil && info.IsDir() {
+		return fmt.Errorf("cannot write %s: it is a directory; remove it and run ms lock again", path)
+	}
+	// Write through a symlinked lock so a shared lock file stays shared.
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	return atomicWrite(path, append(data, '\n'), 0644)
 }
 
 var errMissingPin = errors.New("ms.lock not found")
