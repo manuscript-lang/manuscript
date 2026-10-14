@@ -1,0 +1,1239 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type Var struct {
+	val    string
+	simple bool
+}
+type Cmd struct {
+	text string
+	line int
+}
+type Rule struct {
+	prereqs   []string
+	oo        []string
+	recipe    []Cmd
+	hasRecipe bool
+}
+type PRule struct {
+	pat     string
+	prereqs []string
+	oo      []string
+	recipe  []Cmd
+}
+type Fatal struct{ msg string }
+
+type LL struct {
+	text   string
+	line   int
+	recipe bool
+}
+
+type Make struct {
+	out       *strings.Builder
+	vars      map[string]*Var
+	locked    map[string]bool
+	rules     map[string]*Rule
+	order     []string
+	prules    []*PRule
+	phony     map[string]bool
+	phonyList []string
+	def       string
+	files     map[string]int
+	clock     *int
+	curLine   int
+	expanding map[string]bool
+	dry       bool
+	done      map[string]bool
+	changed   map[string]bool
+	ran       int
+}
+
+type Env struct {
+	auto   map[string]string
+	locals map[string]string
+}
+
+func (m *Make) fatal(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	if m.curLine > 0 {
+		panic(Fatal{fmt.Sprintf("Makefile:%d: *** %s.  Stop.", m.curLine, msg)})
+	}
+	panic(Fatal{fmt.Sprintf("make: *** %s.  Stop.", msg)})
+}
+
+// ---------- expansion ----------
+func isSpace(c byte) bool { return c == ' ' || c == '\t' }
+
+func trim(s string) string { return strings.Trim(s, " \t") }
+
+func matchClose(s string, i int) int {
+	// s[i] is the opener ( or {; returns index of matching closer or -1
+	open := s[i]
+	cl := byte(')')
+	if open == '{' {
+		cl = '}'
+	}
+	depth := 0
+	for j := i; j < len(s); j++ {
+		if s[j] == open {
+			depth++
+		} else if s[j] == cl {
+			depth--
+			if depth == 0 {
+				return j
+			}
+		}
+	}
+	return -1
+}
+
+func splitArgs(s string) []string {
+	var args []string
+	depth := 0
+	start := 0
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '(', '{':
+			depth++
+		case ')', '}':
+			depth--
+		case ',':
+			if depth == 0 {
+				args = append(args, s[start:i])
+				start = i + 1
+			}
+		}
+	}
+	return append(args, s[start:])
+}
+
+var funcNames = map[string]bool{"subst": true, "patsubst": true, "strip": true, "findstring": true, "filter": true, "filter-out": true, "sort": true, "word": true, "wordlist": true, "words": true, "firstword": true, "lastword": true, "dir": true, "notdir": true, "suffix": true, "basename": true, "addsuffix": true, "addprefix": true, "wildcard": true, "foreach": true, "if": true, "info": true, "error": true}
+
+func (m *Make) expand(s string, env *Env) string {
+	if !strings.Contains(s, "$") {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c != '$' {
+			b.WriteByte(c)
+			continue
+		}
+		if i+1 >= len(s) {
+			break
+		}
+		n := s[i+1]
+		switch {
+		case n == '$':
+			b.WriteByte('$')
+			i++
+		case n == '(' || n == '{':
+			j := matchClose(s, i+1)
+			if j < 0 {
+				m.fatal("unterminated variable reference")
+			}
+			b.WriteString(m.expandRef(s[i+2:j], env))
+			i = j
+		default:
+			b.WriteString(m.lookup(string(n), env))
+			i++
+		}
+	}
+	return b.String()
+}
+
+func (m *Make) lookup(name string, env *Env) string {
+	if env != nil {
+		if v, ok := env.locals[name]; ok {
+			return v
+		}
+		if v, ok := env.auto[name]; ok {
+			return v
+		}
+	}
+	v := m.vars[name]
+	if v == nil {
+		return ""
+	}
+	if v.simple {
+		return v.val
+	}
+	if m.expanding[name] {
+		m.fatal("Recursive variable '%s' references itself (eventually)", name)
+	}
+	m.expanding[name] = true
+	r := m.expand(v.val, env)
+	delete(m.expanding, name)
+	return r
+}
+
+func words(s string) []string { return strings.Fields(s) }
+
+func patMatch(pat, w string) (string, bool) {
+	i := strings.IndexByte(pat, '%')
+	if i < 0 {
+		return "", pat == w
+	}
+	pre, suf := pat[:i], pat[i+1:]
+	if len(w) >= len(pre)+len(suf) && strings.HasPrefix(w, pre) && strings.HasSuffix(w, suf) {
+		return w[len(pre) : len(w)-len(suf)], true
+	}
+	return "", false
+}
+
+func patsubst(pat, repl, text string) string {
+	var res []string
+	for _, w := range words(text) {
+		stem, ok := patMatch(pat, w)
+		if !ok {
+			res = append(res, w)
+			continue
+		}
+		if strings.Contains(pat, "%") {
+			res = append(res, strings.Replace(repl, "%", stem, 1))
+		} else {
+			res = append(res, repl)
+		}
+	}
+	return strings.Join(res, " ")
+}
+
+func (m *Make) expandRef(inner string, env *Env) string {
+	// function call?
+	sp := strings.IndexAny(inner, " \t")
+	if sp > 0 && funcNames[inner[:sp]] {
+		return m.callFunc(inner[:sp], trim(inner[sp:]), env)
+	}
+	name := m.expand(inner, env)
+	// substitution reference $(VAR:a=b)
+	if k := strings.IndexByte(name, ':'); k > 0 {
+		if e := strings.IndexByte(name[k+1:], '='); e >= 0 {
+			base := name[:k]
+			from := name[k+1 : k+1+e]
+			to := name[k+2+e:]
+			if !strings.Contains(from, "%") {
+				from = "%" + from
+				to = "%" + to
+			}
+			return patsubst(from, to, m.lookup(trim(base), env))
+		}
+	}
+	return m.lookup(trim(name), env)
+}
+
+func globMatch(p, s string) bool {
+	if p == "" {
+		return s == ""
+	}
+	switch p[0] {
+	case '*':
+		for k := 0; k <= len(s); k++ {
+			if k > 0 && s[k-1] == '/' {
+				break
+			}
+			if globMatch(p[1:], s[k:]) {
+				return true
+			}
+		}
+		return false
+	case '?':
+		return s != "" && s[0] != '/' && globMatch(p[1:], s[1:])
+	}
+	return s != "" && s[0] == p[0] && globMatch(p[1:], s[1:])
+}
+
+func (m *Make) callFunc(name, rawArgs string, env *Env) string {
+	args := splitArgs(rawArgs)
+	for i := range args {
+		args[i] = trim(args[i])
+	}
+	arg := func(i int) string {
+		if i < len(args) {
+			return args[i]
+		}
+		return ""
+	}
+	ex := func(i int) string { return m.expand(arg(i), env) }
+	switch name {
+	case "subst":
+		from, to, text := ex(0), ex(1), ex(2)
+		if from == "" {
+			return text
+		}
+		return strings.ReplaceAll(text, from, to)
+	case "patsubst":
+		return patsubst(ex(0), ex(1), ex(2))
+	case "strip":
+		return strings.Join(words(ex(0)), " ")
+	case "findstring":
+		a := ex(0)
+		if strings.Contains(ex(1), a) {
+			return a
+		}
+		return ""
+	case "filter", "filter-out":
+		pats := words(ex(0))
+		var res []string
+		for _, w := range words(ex(1)) {
+			ok := false
+			for _, p := range pats {
+				if _, mt := patMatch(p, w); mt {
+					ok = true
+					break
+				}
+			}
+			if ok == (name == "filter") {
+				res = append(res, w)
+			}
+		}
+		return strings.Join(res, " ")
+	case "sort":
+		ws := words(ex(0))
+		sort.Strings(ws)
+		var res []string
+		for i, w := range ws {
+			if i == 0 || w != ws[i-1] {
+				res = append(res, w)
+			}
+		}
+		return strings.Join(res, " ")
+	case "word":
+		n, err := strconv.Atoi(ex(0))
+		ws := words(ex(1))
+		if err != nil || n < 1 || n > len(ws) {
+			return ""
+		}
+		return ws[n-1]
+	case "wordlist":
+		s, e1 := strconv.Atoi(ex(0))
+		e, e2 := strconv.Atoi(ex(1))
+		ws := words(ex(2))
+		if e1 != nil || e2 != nil || s < 1 || e < s {
+			return ""
+		}
+		if s > len(ws) {
+			return ""
+		}
+		if e > len(ws) {
+			e = len(ws)
+		}
+		return strings.Join(ws[s-1:e], " ")
+	case "words":
+		return strconv.Itoa(len(words(ex(0))))
+	case "firstword":
+		ws := words(ex(0))
+		if len(ws) == 0 {
+			return ""
+		}
+		return ws[0]
+	case "lastword":
+		ws := words(ex(0))
+		if len(ws) == 0 {
+			return ""
+		}
+		return ws[len(ws)-1]
+	case "dir", "notdir", "suffix", "basename":
+		var res []string
+		for _, w := range words(ex(0)) {
+			sl := strings.LastIndexByte(w, '/')
+			base := w[sl+1:]
+			switch name {
+			case "dir":
+				if sl < 0 {
+					res = append(res, "./")
+				} else {
+					res = append(res, w[:sl+1])
+				}
+			case "notdir":
+				res = append(res, base)
+			case "suffix":
+				if d := strings.LastIndexByte(base, '.'); d >= 0 {
+					res = append(res, base[d:])
+				}
+			case "basename":
+				if d := strings.LastIndexByte(base, '.'); d >= 0 {
+					res = append(res, w[:sl+1]+base[:d])
+				} else {
+					res = append(res, w)
+				}
+			}
+		}
+		return strings.Join(res, " ")
+	case "addprefix", "addsuffix":
+		a := ex(0)
+		var res []string
+		for _, w := range words(ex(1)) {
+			if name == "addprefix" {
+				res = append(res, a+w)
+			} else {
+				res = append(res, w+a)
+			}
+		}
+		return strings.Join(res, " ")
+	case "wildcard":
+		var res []string
+		for _, p := range words(ex(0)) {
+			var ms []string
+			for f := range m.files {
+				if globMatch(p, f) {
+					ms = append(ms, f)
+				}
+			}
+			sort.Strings(ms)
+			res = append(res, ms...)
+		}
+		return strings.Join(res, " ")
+	case "foreach":
+		v := ex(0)
+		list := words(ex(1))
+		var res []string
+		for _, w := range list {
+			loc := map[string]string{}
+			if env != nil {
+				for k, x := range env.locals {
+					loc[k] = x
+				}
+			}
+			loc[v] = w
+			var auto map[string]string
+			if env != nil {
+				auto = env.auto
+			}
+			res = append(res, m.expand(arg(2), &Env{auto: auto, locals: loc}))
+		}
+		return strings.Join(res, " ")
+	case "if":
+		if trim(ex(0)) != "" {
+			return ex(1)
+		}
+		return ex(2)
+	case "info":
+		m.out.WriteString(ex(0) + "\n")
+		return ""
+	case "error":
+		m.fatal("%s", ex(0))
+	}
+	return ""
+}
+
+// ---------- parsing ----------
+func logicalLines(text string) []LL {
+	phys := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	var res []LL
+	for i := 0; i < len(phys); i++ {
+		ln := phys[i]
+		start := i + 1
+		for strings.HasSuffix(ln, "\\") && i+1 < len(phys) {
+			i++
+			ln = strings.TrimRight(ln[:len(ln)-1], " \t") + " " + strings.TrimLeft(phys[i], " \t")
+		}
+		if strings.HasPrefix(ln, "\t") {
+			t := trim(ln)
+			if t == "" {
+				continue
+			}
+			res = append(res, LL{text: strings.TrimLeft(ln, "\t"), line: start, recipe: true})
+			continue
+		}
+		// strip comment
+		var b strings.Builder
+		for k := 0; k < len(ln); k++ {
+			if ln[k] == '\\' && k+1 < len(ln) && ln[k+1] == '#' {
+				b.WriteByte('#')
+				k++
+				continue
+			}
+			if ln[k] == '#' {
+				break
+			}
+			b.WriteByte(ln[k])
+		}
+		t := trim(b.String())
+		if t == "" {
+			continue
+		}
+		res = append(res, LL{text: t, line: start})
+	}
+	return res
+}
+
+func findColon(s string) int {
+	depth := 0
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '$':
+			if i+1 < len(s) && (s[i+1] == '(' || s[i+1] == '{') {
+				depth++
+				i++
+			}
+		case ')', '}':
+			if depth > 0 {
+				depth--
+			}
+		case ':':
+			if depth == 0 {
+				return i
+			}
+		case ';':
+			if depth == 0 {
+				return -1
+			}
+		}
+	}
+	return -1
+}
+
+type condFrame struct {
+	active, parent, taken, seenElse bool
+	line                            int
+}
+
+func (m *Make) parse(text string) {
+	lines := logicalLines(text)
+	var conds []condFrame
+	active := func() bool {
+		if len(conds) == 0 {
+			return true
+		}
+		return conds[len(conds)-1].active
+	}
+	type pending struct {
+		rules  []*Rule
+		prules []*PRule
+		names  []string
+		cmds   []Cmd
+		line   int
+	}
+	var cur *pending
+	flush := func() {
+		if cur == nil {
+			return
+		}
+		if len(cur.cmds) > 0 {
+			for i, r := range cur.rules {
+				if r.hasRecipe {
+					m.out.WriteString(fmt.Sprintf("Makefile:%d: warning: overriding recipe for target '%s'\n", cur.line, cur.names[i]))
+				}
+				r.recipe = cur.cmds
+				r.hasRecipe = true
+			}
+			for _, p := range cur.prules {
+				p.recipe = cur.cmds
+			}
+		}
+		cur = nil
+	}
+	for _, l := range lines {
+		m.curLine = l.line
+		t := l.text
+		if !l.recipe {
+			w := t
+			rest := ""
+			if k := strings.IndexAny(t, " \t"); k >= 0 {
+				w, rest = t[:k], trim(t[k:])
+			}
+			switch w {
+			case "ifdef", "ifndef":
+				flush()
+				fr := condFrame{parent: active(), line: l.line}
+				if fr.parent {
+					v := m.vars[trim(m.expand(rest, nil))]
+					def := v != nil && v.val != ""
+					fr.active = def == (w == "ifdef")
+					fr.taken = fr.active
+				}
+				conds = append(conds, fr)
+				continue
+			case "ifeq", "ifneq":
+				flush()
+				fr := condFrame{parent: active(), line: l.line}
+				if fr.parent {
+					r := rest
+					if len(r) < 2 || r[0] != '(' || r[len(r)-1] != ')' {
+						m.fatal("invalid syntax in conditional")
+					}
+					as := splitArgs(r[1 : len(r)-1])
+					if len(as) != 2 {
+						m.fatal("invalid syntax in conditional")
+					}
+					eq := trim(m.expand(trim(as[0]), nil)) == trim(m.expand(trim(as[1]), nil))
+					fr.active = eq == (w == "ifeq")
+					fr.taken = fr.active
+				}
+				conds = append(conds, fr)
+				continue
+			case "else":
+				flush()
+				if len(conds) == 0 || conds[len(conds)-1].seenElse {
+					m.fatal("extraneous 'else'")
+				}
+				fr := &conds[len(conds)-1]
+				fr.seenElse = true
+				fr.active = fr.parent && !fr.taken
+				continue
+			case "endif":
+				flush()
+				if len(conds) == 0 {
+					m.fatal("extraneous 'endif'")
+				}
+				conds = conds[:len(conds)-1]
+				continue
+			}
+		}
+		if !active() {
+			continue
+		}
+		if l.recipe {
+			if cur == nil {
+				m.fatal("recipe commences before first target")
+			}
+			cur.cmds = append(cur.cmds, Cmd{t, l.line})
+			continue
+		}
+		flush()
+		// assignment?
+		eq := strings.IndexByte(t, '=')
+		col := findColon(t)
+		isAssign := false
+		if eq >= 0 {
+			if col < 0 || col > eq || col == eq-1 {
+				isAssign = true
+			}
+		}
+		if isAssign {
+			op := "="
+			nameEnd := eq
+			if eq > 0 && (t[eq-1] == ':' || t[eq-1] == '?' || t[eq-1] == '+') {
+				op = string(t[eq-1]) + "="
+				nameEnd = eq - 1
+			}
+			name := trim(m.expand(t[:nameEnd], nil))
+			if name == "" {
+				m.fatal("empty variable name")
+			}
+			val := trim(t[eq+1:])
+			if m.locked[name] {
+				continue
+			}
+			old := m.vars[name]
+			switch op {
+			case "=":
+				m.vars[name] = &Var{val: val}
+			case ":=":
+				m.vars[name] = &Var{val: m.expand(val, nil), simple: true}
+			case "?=":
+				if old == nil {
+					m.vars[name] = &Var{val: val}
+				}
+			case "+=":
+				if old == nil {
+					m.vars[name] = &Var{val: val}
+				} else if old.simple {
+					add := m.expand(val, nil)
+					nv := old.val
+					if nv != "" && add != "" {
+						nv += " "
+					}
+					m.vars[name] = &Var{val: nv + add, simple: true}
+				} else {
+					nv := old.val
+					if nv != "" && val != "" {
+						nv += " "
+					}
+					m.vars[name] = &Var{val: nv + val}
+				}
+			}
+			continue
+		}
+		if col < 0 {
+			if trim(m.expand(t, nil)) == "" {
+				continue
+			}
+			m.fatal("missing separator")
+		}
+		inline := ""
+		hasInline := false
+		rest := t[col+1:]
+		if sc := strings.IndexByte(rest, ';'); sc >= 0 {
+			inline = trim(rest[sc+1:])
+			hasInline = true
+			rest = rest[:sc]
+		}
+		targets := words(m.expand(t[:col], nil))
+		pre := m.expand(rest, nil)
+		var normal, oo []string
+		if k := strings.IndexByte(pre, '|'); k >= 0 {
+			normal = words(pre[:k])
+			oo = words(pre[k+1:])
+		} else {
+			normal = words(pre)
+		}
+		if len(targets) == 1 && targets[0] == ".PHONY" {
+			for _, p := range normal {
+				if !m.phony[p] {
+					m.phony[p] = true
+					m.phonyList = append(m.phonyList, p)
+				}
+			}
+			cur = &pending{line: l.line}
+			continue
+		}
+		cur = &pending{line: l.line}
+		for _, tg := range targets {
+			if strings.Contains(tg, "%") {
+				p := &PRule{pat: tg, prereqs: normal, oo: oo}
+				m.prules = append(m.prules, p)
+				cur.prules = append(cur.prules, p)
+				continue
+			}
+			r := m.rules[tg]
+			if r == nil {
+				r = &Rule{}
+				m.rules[tg] = r
+				m.order = append(m.order, tg)
+				if m.def == "" && !strings.HasPrefix(tg, ".") {
+					m.def = tg
+				}
+			}
+			r.prereqs = append(r.prereqs, normal...)
+			r.oo = append(r.oo, oo...)
+			cur.rules = append(cur.rules, r)
+			cur.names = append(cur.names, tg)
+		}
+		if hasInline && inline != "" {
+			cur.cmds = append(cur.cmds, Cmd{inline, l.line})
+		}
+	}
+	flush()
+	m.curLine = 0
+	if len(conds) > 0 {
+		m.curLine = conds[len(conds)-1].line
+		m.fatal("missing 'endif'")
+	}
+}
+
+// ---------- building ----------
+type Resolved struct {
+	prereqs []string
+	oo      []string
+	recipe  []Cmd
+	has     bool
+	stem    string
+	found   bool
+}
+
+func (m *Make) findPattern(t string, depth int) *PRule {
+	var stemOut string
+	_ = stemOut
+	for _, p := range m.prules {
+		if len(p.recipe) == 0 {
+			continue
+		}
+		stem, ok := patMatch(p.pat, t)
+		if !ok || stem == "" {
+			continue
+		}
+		good := true
+		for _, q := range append(append([]string{}, p.prereqs...), p.oo...) {
+			q = strings.Replace(q, "%", stem, 1)
+			if !m.canMake(q, depth+1) {
+				good = false
+				break
+			}
+		}
+		if good {
+			return p
+		}
+	}
+	return nil
+}
+
+func (m *Make) canMake(t string, depth int) bool {
+	if _, ok := m.files[t]; ok {
+		return true
+	}
+	if m.rules[t] != nil || m.phony[t] {
+		return true
+	}
+	if depth > 8 {
+		return false
+	}
+	return m.findPattern(t, depth) != nil
+}
+
+func (m *Make) resolve(t string) Resolved {
+	r := Resolved{}
+	e := m.rules[t]
+	if e != nil {
+		r.found = true
+		if e.hasRecipe {
+			r.prereqs, r.oo, r.recipe, r.has = e.prereqs, e.oo, e.recipe, true
+			return r
+		}
+	}
+	if p := m.findPattern(t, 0); p != nil {
+		stem, _ := patMatch(p.pat, t)
+		r.found = true
+		r.stem = stem
+		for _, q := range p.prereqs {
+			r.prereqs = append(r.prereqs, strings.Replace(q, "%", stem, 1))
+		}
+		for _, q := range p.oo {
+			r.oo = append(r.oo, strings.Replace(q, "%", stem, 1))
+		}
+		if e != nil {
+			r.prereqs = append(r.prereqs, e.prereqs...)
+			r.oo = append(r.oo, e.oo...)
+		}
+		r.recipe = p.recipe
+		r.has = true
+		return r
+	}
+	if e != nil {
+		r.prereqs, r.oo = e.prereqs, e.oo
+	}
+	return r
+}
+
+func uniq(xs []string) []string {
+	seen := map[string]bool{}
+	var res []string
+	for _, x := range xs {
+		if !seen[x] {
+			seen[x] = true
+			res = append(res, x)
+		}
+	}
+	return res
+}
+
+type BuildErr struct{}
+
+func (m *Make) fail(format string, a ...interface{}) {
+	m.out.WriteString(fmt.Sprintf(format, a...) + "\n")
+	panic(BuildErr{})
+}
+
+func (m *Make) update(t, needed string, stack []string) bool {
+	if m.done[t] {
+		return m.changed[t]
+	}
+	for i, s := range stack {
+		if s == t {
+			m.fail("make: *** Circular dependency detected: %s.  Stop.", strings.Join(append(append([]string{}, stack[i:]...), t), " -> "))
+		}
+	}
+	res := m.resolve(t)
+	_, exists := m.files[t]
+	if !res.found {
+		if exists {
+			m.done[t] = true
+			return false
+		}
+		if m.phony[t] {
+			m.done[t] = true
+			m.changed[t] = true
+			return true
+		}
+		if needed != "" {
+			m.fail("make: *** No rule to make target '%s', needed by '%s'.  Stop.", t, needed)
+		}
+		m.fail("make: *** No rule to make target '%s'.  Stop.", t)
+	}
+	stack = append(stack, t)
+	anyChanged := false
+	anyNewer := false
+	tm := m.files[t]
+	for _, p := range uniq(res.prereqs) {
+		ch := m.update(p, t, stack)
+		if ch {
+			anyChanged = true
+		}
+		if pm, ok := m.files[p]; ok && exists && pm > tm {
+			anyNewer = true
+		}
+	}
+	for _, p := range uniq(res.oo) {
+		m.update(p, t, stack)
+	}
+	_, exists = m.files[t]
+	ph := m.phony[t]
+	need := ph || !exists || anyChanged || anyNewer
+	ch := false
+	if need {
+		ch = true
+		if res.has {
+			m.runRecipe(t, res, exists, tm)
+			if !ph && !m.dry {
+				*m.clock++
+				m.files[t] = *m.clock
+			}
+		}
+	}
+	m.done[t] = true
+	m.changed[t] = ch
+	return ch
+}
+
+func (m *Make) runRecipe(t string, res Resolved, existed bool, tm int) {
+	m.ran++
+	var normal []string = uniq(res.prereqs)
+	var newer []string
+	for _, p := range normal {
+		if !existed || m.changed[p] || m.files[p] > tm {
+			newer = append(newer, p)
+		}
+	}
+	first := ""
+	if len(res.prereqs) > 0 {
+		first = res.prereqs[0]
+	}
+	env := &Env{auto: map[string]string{
+		"@": t, "<": first, "^": strings.Join(normal, " "), "?": strings.Join(newer, " "),
+		"*": res.stem, "|": strings.Join(uniq(res.oo), " "),
+	}}
+	for _, c := range res.recipe {
+		m.curLine = c.line
+		text := m.expand(c.text, env)
+		m.curLine = 0
+		silent, ignore := false, false
+		text = trim(text)
+		for len(text) > 0 && (text[0] == '@' || text[0] == '-' || text[0] == '+') {
+			if text[0] == '@' {
+				silent = true
+			} else if text[0] == '-' {
+				ignore = true
+			}
+			text = trim(text[1:])
+		}
+		if m.dry {
+			m.out.WriteString(text + "\n")
+			continue
+		}
+		if !silent {
+			m.out.WriteString(text + "\n")
+		}
+		code := m.simulate(text)
+		if code != 0 {
+			if ignore {
+				m.out.WriteString(fmt.Sprintf("make: [Makefile:%d: %s] Error %d (ignored)\n", c.line, t, code))
+			} else {
+				m.out.WriteString(fmt.Sprintf("make: *** [Makefile:%d: %s] Error %d\n", c.line, t, code))
+				panic(BuildErr{})
+			}
+		}
+	}
+}
+
+func (m *Make) simulate(text string) int {
+	f := strings.Fields(text)
+	if len(f) == 0 {
+		return 0
+	}
+	args := f[1:]
+	switch f[0] {
+	case "false":
+		return 1
+	case "exit":
+		if len(args) == 0 {
+			return 0
+		}
+		n, err := strconv.Atoi(args[0])
+		if err != nil {
+			return 2
+		}
+		return n
+	case "touch":
+		for _, a := range args {
+			if !strings.HasPrefix(a, "-") {
+				*m.clock++
+				m.files[a] = *m.clock
+			}
+		}
+	case "rm":
+		for _, a := range args {
+			if !strings.HasPrefix(a, "-") {
+				delete(m.files, a)
+			}
+		}
+	case "cp":
+		if len(args) == 2 {
+			if _, ok := m.files[args[0]]; !ok {
+				m.out.WriteString(fmt.Sprintf("cp: cannot stat '%s': No such file or directory\n", args[0]))
+				return 1
+			}
+			*m.clock++
+			m.files[args[1]] = *m.clock
+		}
+	case "echo":
+		var parts []string
+		for _, a := range args {
+			a = strings.NewReplacer("'", "", "\"", "").Replace(a)
+			parts = append(parts, a)
+		}
+		m.out.WriteString(strings.Join(parts, " ") + "\n")
+	}
+	return 0
+}
+
+func (m *Make) goalMessage(g string, ranBefore int) {
+	if m.ran > ranBefore {
+		return
+	}
+	res := m.resolve(g)
+	_, exists := m.files[g]
+	if res.has || (exists && !m.phony[g]) {
+		m.out.WriteString(fmt.Sprintf("make: '%s' is up to date.\n", g))
+	} else {
+		m.out.WriteString(fmt.Sprintf("make: Nothing to be done for '%s'.\n", g))
+	}
+}
+
+func (m *Make) build(goals []string) {
+	m.done = map[string]bool{}
+	m.changed = map[string]bool{}
+	if len(goals) == 0 {
+		if m.def == "" {
+			m.out.WriteString("make: *** No targets.  Stop.\n")
+			return
+		}
+		goals = []string{m.def}
+	}
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if _, ok := r.(BuildErr); ok {
+					return
+				}
+				panic(r)
+			}
+		}()
+		for _, g := range goals {
+			before := m.ran
+			m.update(g, "", nil)
+			m.goalMessage(g, before)
+		}
+	}()
+}
+
+func (m *Make) deps(t string) {
+	var res []string
+	seen := map[string]bool{}
+	var visit func(x string, stack []string)
+	visit = func(x string, stack []string) {
+		for i, s := range stack {
+			if s == x {
+				m.fail("make: *** Circular dependency detected: %s.  Stop.", strings.Join(append(append([]string{}, stack[i:]...), x), " -> "))
+			}
+		}
+		r := m.resolve(x)
+		stack = append(stack, x)
+		for _, p := range append(append([]string{}, uniq(r.prereqs)...), uniq(r.oo)...) {
+			if seen[p] {
+				continue
+			}
+			visit(p, stack)
+			if !seen[p] {
+				seen[p] = true
+				res = append(res, p)
+			}
+		}
+	}
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if _, ok := r.(BuildErr); ok {
+					res = nil
+					return
+				}
+				panic(r)
+			}
+		}()
+		visit(t, nil)
+		if len(res) == 0 {
+			m.out.WriteString("(no prerequisites)\n")
+		}
+		for _, x := range res {
+			m.out.WriteString(x + "\n")
+		}
+	}()
+}
+
+func (m *Make) targets() {
+	if m.def != "" {
+		m.out.WriteString("default: " + m.def + "\n")
+	}
+	for _, t := range m.order {
+		r := m.rules[t]
+		s := t + ":"
+		if len(r.prereqs) > 0 {
+			s += " " + strings.Join(r.prereqs, " ")
+		}
+		if len(r.oo) > 0 {
+			s += " | " + strings.Join(r.oo, " ")
+		}
+		m.out.WriteString(s + "\n")
+	}
+	for _, p := range m.prules {
+		s := "pattern " + p.pat + ":"
+		if len(p.prereqs) > 0 {
+			s += " " + strings.Join(p.prereqs, " ")
+		}
+		if len(p.oo) > 0 {
+			s += " | " + strings.Join(p.oo, " ")
+		}
+		m.out.WriteString(s + "\n")
+	}
+	if len(m.phonyList) > 0 {
+		m.out.WriteString("phony: " + strings.Join(m.phonyList, " ") + "\n")
+	}
+}
+
+func main() {
+	data, _ := io.ReadAll(bufio.NewReader(os.Stdin))
+	text := strings.ReplaceAll(string(data), "\r\n", "\n")
+	parts := []string{""}
+	for _, ln := range strings.Split(text, "\n") {
+		if ln == "====" && len(parts) < 3 {
+			parts = append(parts, "")
+			continue
+		}
+		last := len(parts) - 1
+		parts[last] += ln + "\n"
+	}
+	for len(parts) < 3 {
+		parts = append(parts, "")
+	}
+	makefile, table, reqs := parts[0], parts[1], parts[2]
+	files := map[string]int{}
+	clock := 0
+	for _, ln := range strings.Split(table, "\n") {
+		f := strings.Fields(ln)
+		if len(f) == 2 {
+			n, _ := strconv.Atoi(f[1])
+			files[f[0]] = n
+			if n > clock {
+				clock = n
+			}
+		}
+	}
+	var out strings.Builder
+	defer func() { os.Stdout.WriteString(out.String()) }()
+
+	newMake := func(ov map[string]string, ovOrder []string) *Make {
+		m := &Make{out: &out, vars: map[string]*Var{}, locked: map[string]bool{}, rules: map[string]*Rule{}, phony: map[string]bool{}, files: files, clock: &clock, expanding: map[string]bool{}}
+		for _, k := range ovOrder {
+			m.vars[k] = &Var{val: ov[k]}
+			m.locked[k] = true
+		}
+		return m
+	}
+	// run f with a freshly parsed Makefile; returns false on fatal parse error
+	withMake := func(ov map[string]string, ovOrder []string, f func(m *Make)) {
+		m := newMake(ov, ovOrder)
+		defer func() {
+			if r := recover(); r != nil {
+				switch e := r.(type) {
+				case Fatal:
+					out.WriteString(e.msg + "\n")
+				case BuildErr:
+				default:
+					panic(r)
+				}
+			}
+		}()
+		m.parse(makefile)
+		f(m)
+	}
+	for _, ln := range strings.Split(reqs, "\n") {
+		ln = strings.TrimRight(ln, "\r ")
+		if strings.TrimSpace(ln) == "" || strings.HasPrefix(strings.TrimSpace(ln), "#") {
+			continue
+		}
+		out.WriteString("> " + ln + "\n")
+		f := strings.Fields(ln)
+		cmd := f[0]
+		args := f[1:]
+		ov := map[string]string{}
+		var ovOrder []string
+		var targs []string
+		for _, a := range args {
+			if k := strings.IndexByte(a, '='); k > 0 && (cmd == "build" || cmd == "dry" || cmd == "deps" || cmd == "targets") {
+				if _, ok := ov[a[:k]]; !ok {
+					ovOrder = append(ovOrder, a[:k])
+				}
+				ov[a[:k]] = a[k+1:]
+			} else {
+				targs = append(targs, a)
+			}
+		}
+		switch cmd {
+		case "build", "dry":
+			withMake(ov, ovOrder, func(m *Make) {
+				m.dry = cmd == "dry"
+				m.build(targs)
+			})
+		case "deps":
+			withMake(ov, ovOrder, func(m *Make) {
+				if len(targs) != 1 {
+					out.WriteString("usage: deps TARGET\n")
+					return
+				}
+				m.deps(targs[0])
+			})
+		case "targets":
+			withMake(ov, ovOrder, func(m *Make) { m.targets() })
+		case "expand":
+			rest := strings.TrimSpace(strings.TrimPrefix(ln, "expand"))
+			withMake(nil, nil, func(m *Make) {
+				out.WriteString("[" + m.expand(rest, nil) + "]\n")
+			})
+		case "files":
+			var names []string
+			for n := range files {
+				names = append(names, n)
+			}
+			sort.Strings(names)
+			if len(names) == 0 {
+				out.WriteString("(no files)\n")
+			}
+			for _, n := range names {
+				out.WriteString(fmt.Sprintf("%s %d\n", n, files[n]))
+			}
+		case "touch":
+			if len(args) == 1 {
+				clock++
+				files[args[0]] = clock
+			} else if len(args) == 2 {
+				n, err := strconv.Atoi(args[1])
+				if err != nil {
+					out.WriteString("bad request\n")
+					break
+				}
+				files[args[0]] = n
+				if n > clock {
+					clock = n
+				}
+			} else {
+				out.WriteString("bad request\n")
+			}
+		case "rm":
+			for _, a := range args {
+				delete(files, a)
+			}
+		default:
+			out.WriteString("unknown request: " + cmd + "\n")
+		}
+	}
+}

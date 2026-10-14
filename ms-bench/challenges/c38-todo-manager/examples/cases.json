@@ -1,7 +1,0 @@
-[
- {
-  "name": "basic",
-  "stdin": "add 2 2024-02-28 Write report\nadd 1 - Call mom\nadd 1 2024-03-01 Pay rent\nsnooze 1 2\ndone 2\nlist 2024-03-01\nsummary 2024-03-01\nagenda 2024-02-29 3\n",
-  "stdout": "added 1\nadded 2\nadded 3\nok 2024-03-01\nok\n. 3 p1 2024-03-01 Pay rent\n. 1 p2 2024-03-01 Write report\nopen=2 done=1 overdue=0 today=2 upcoming=0 nodue=0\nnext: 2024-03-01 x2\n2024-02-29: -\n2024-03-01: 3,1\n2024-03-02: -\n"
- }
-]

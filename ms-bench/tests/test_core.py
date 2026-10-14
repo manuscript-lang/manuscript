@@ -26,6 +26,9 @@ class CoreTests(unittest.TestCase):
             self.assertGreater(len(ch.cases("hidden")), len(ch.cases("examples")) - 1, ch.id)
             visible = {c["stdin"] for c in ch.cases("examples")}
             self.assertTrue(any(c["stdin"] not in visible for c in ch.cases("hidden")), f"{ch.id}: hidden cases add nothing")
+            if (ch.dir / "oracle").is_dir():  # large challenges: Go oracle only, no per-language references
+                self.assertTrue(list((ch.dir / "oracle").glob("*.ref")), f"{ch.id}: empty oracle")
+                continue
             for lid, lang in langs.items():
                 sol = ch.solution(lang.get("template", lid)) / (Path(lang["solution"]).name + ".ref")
                 self.assertTrue(sol.is_file(), f"{ch.id}: missing {lid} reference solution")
