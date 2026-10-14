@@ -48,6 +48,16 @@ depth guard, source-return handling and cancellation delivery. Profiling falls
 back through the ordinary source wrapper before typed admission. Passing an
 already guarded body would double admission and is invalid.
 
+`NewCompiledSourceFunction` preserves `NewSourceFunction`'s signature and guarded
+`Body`. It marks `Function.BorrowedArguments` only for raw generated bodies that
+copy parameter Values and never retain or expose their incoming `[]Value`.
+Capturing individual copied Values, including mutable references, remains valid.
+The initial consumer is `for_each` with exact `value` labels: each invocation owns
+one argument buffer, so recursive or reentrant traversals have separate buffers.
+Arbitrary `NewFunction` and `NewSourceFunction` callbacks receive fresh arrays.
+Adapters do not inherit this proof. Compiler emission and ordinary source
+performance acceptance belong to the scalar lowering integration.
+
 `ListSorted` copies storage and uses typed comparator entries when available.
 Arbitrary callbacks box once per element in temporary sorting storage, avoiding
 boxing at every comparison. `ListSortInPlace` captures backing and swaps it in

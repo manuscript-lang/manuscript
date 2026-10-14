@@ -1,0 +1,13 @@
+{
+  "base_ref": "358a2c7925cca8b73595b8cb3ee8be5945ad62c5",
+  "description": "Dirty narrow borrowed ABI runtime controls on integrated main8001f48e; strict initialization also present locally but not exercised by these controls. Runtime controls, not generated-source acceptance.",
+  "command": "env GOCACHE=/tmp/ms-go-cache GOPATH=/tmp/ms-go XDG_CACHE_HOME=/tmp/ms-cache toolchain/go/bin/go test ./pkg/runtime -run TestForEachUnmarked|TestCompiled|TestBorrowed|TestTypedComparatorGuardParity -bench ^BenchmarkForEachBorrowedArguments$ -benchmem -count 3 -benchtime 100ms",
+  "source_sha256": {
+    "pkg/runtime/values.go": "d8007a36dafa24e2281bdc523ab0be8a6a736499b8e18389aed26a36dbc64a9b",
+    "pkg/runtime/collections.go": "7a2c54a03d17b689a2faac07ef1367c790c18c16f509b82f170fc2bc7c850b11",
+    "pkg/runtime/library_collections.go": "305d2c2945021b10b71600c8aed70b1abdf1f26ea7755af5a1bf2063a18fe7fe",
+    "pkg/runtime/list_comparator.go": "9a06cca5475dd8b69cbd78f15c5c9cb269016205cba5611a0db2bba6c7c53dd2",
+    "pkg/runtime/list_callbacks.go": "c4ac43037eebfbb49695508a4e3dd60f19259f8c6b7db176d1d576df0f30ba5f",
+    "pkg/runtime/borrowed_arguments_test.go": "26f3f9c3ddb78104e7d983064a98ab47bdea13d633db07fd64d232b7c0334917"
+  }
+}

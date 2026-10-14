@@ -264,3 +264,14 @@ and [measured storage/access paths](../scripts/bench-lists/typed-storage.md).
 Verify: fresh constructors and effectful sized initialization use two allocations,
 typed at/unwrap uses none, generic forwarding retains identity, and comparator
 profiling/returns/cancellation/depth/fault frames match ordinary source calls.
+
+Decision: the approved borrowed argument ABI is restricted to generated bodies
+that copy parameter Values and cannot retain/expose their incoming slice.
+`NewCompiledSourceFunction` delegates the ordinary source guard once; `for_each`
+reuses one buffer per invocation only for exact labels and this proof. Recursion
+must have independent buffers, unmarked callbacks may retain fresh arrays, and
+adapters conservatively drop the marker. Individual Value captures retain identity.
+Evidence: [approved contract](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157745861),
+[retention/reentry/checkpoint/guard/allocation tests](../pkg/runtime/borrowed_arguments_test.go).
+Verify actual emitted ordinary callbacks against the prior boxed baseline; a
+runtime marked-body control does not establish compiler proof or payload parity.
