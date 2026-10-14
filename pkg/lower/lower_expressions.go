@@ -274,6 +274,9 @@ func (g *generator) listValue(e *syntax.Expression, info *checker.Info) ast.Expr
 	if value := g.debugListLiteral(e, info.Type); value != nil {
 		return value
 	}
+	if value := g.largeListValue(e, info); value != nil {
+		return value
+	}
 	elements := g.siblings(e.Elements)
 	// Large literals keep the separately owned boxed route and its oracle.
 	if len(elements) > debugListThreshold {

@@ -39,6 +39,33 @@ multiple literals, child RSS and ELF segments; a lower GC target exposed a
 repeatable construction slowdown despite faster native compilation. Treat those
 as separate review costs. Evidence: [literal memory/runtime controls](../scripts/bench-debug-literals/README.md#current-matched-main-evidence-after-api-review).
 
+Verified (#147): the Go compiler's cost for a large `[]rt.Value{int64(n), ...}`
+literal is per item, not only per function: moving it into a helper function
+did not help (100K Ints: ~26 s vs ~34 s raw `go build`), while pointer-free
+typed package data (`[]int64{...}`) compiled in ~1.3 s over the empty-program
+floor. Optimized builds therefore keep constant items as typed data and box
+them once into an `rt.ListTable` cache; each evaluation copies the cache into
+fresh storage. Its heap-boxed items cost ~1.35x construction in a rebuild loop
+versus the old rodata-backed literal; per-evaluation boxing (no cache) was ~3x.
+Computed items are assigned in immediately called closures of at most 64; mark
+each assignment with its item's source line, or the closures' physical lines
+shift `//line` attribution for profiles and debuggers. Raise `expressionDepth`
+around them exactly as match-expression closures do.
+Evidence: [large-list lowering](../pkg/lower/lower_large_lists.go),
+[shape tests](../pkg/lower/lower_large_lists_test.go), and
+[native semantics/fault frames](../pkg/build/lower_large_lists_test.go).
+Verify: `ms build` of 100K Int constants and of 16K calls; the native tests
+mutate one of two evaluations and stop a literal via `try` and `return`.
+
+Verified (#147): nested literal checking was cubic (lists) to quartic (maps)
+because each level re-checked the item that had just supplied the element type,
+`wellFormed` re-walked already-checked argument types, and `typeKey` built
+nested keys by string concatenation. Reuse the supplier's checked info, check
+only the literal's own bounds, and write keys into one builder. A nested empty
+literal under an unknown expected type reports nothing more.
+Evidence: [allocation-scaling and single-diagnostic tests](../pkg/checker/nested_literal_test.go).
+Verify: depth-997 `[[...1...]]` checks in ~0.05 s (was ~5.3 s).
+
 Verified: direct native calls must use `argumentValue`, not raw `expression`,
 for supplied arguments. Checking can attach implicit Optional wrapping while
 the expression retains its payload type; bypassing that evidence stored an Int
