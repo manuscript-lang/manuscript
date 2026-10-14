@@ -161,3 +161,18 @@ test "WebSocket negotiates a protocol and echoes a text frame":
             if not message.text or message.data != "é🙂".to_bytes(): return panic(
                 "WebSocket echo"
             )
+
+test "HTTP requests reject an empty method":
+    let net = network()
+
+    match net.request(
+        method: "",
+        url: "http://127.0.0.1:1/",
+        headers: Map[String, String](),
+        body: "".to_bytes(),
+        timeout: 1.seconds
+    ):
+        ok(_): return panic("empty method accepted")
+
+        error(cause):
+            if cause != HttpError.InvalidInput: return panic("empty method error")

@@ -119,7 +119,11 @@ func (g *generator) structDeclarations() []ast.Decl {
 
 // structOperand returns the receiver of a field access as the Go struct pointer.
 func (g *generator) structOperand(st *structType, e *syntax.Expression) ast.Expr {
-	return &ast.TypeAssertExpr{X: g.expression(e), Type: &ast.StarExpr{X: ident(st.name)}}
+	return g.structPointer(st, g.expression(e))
+}
+
+func (g *generator) structPointer(st *structType, value ast.Expr) ast.Expr {
+	return &ast.TypeAssertExpr{X: value, Type: &ast.StarExpr{X: ident(st.name)}}
 }
 
 // structField resolves a source field access on a record-typed operand.

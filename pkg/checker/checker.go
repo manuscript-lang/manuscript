@@ -333,6 +333,15 @@ func (c *checker) error(pos syntax.Position, phase, message string) {
 			return
 		}
 	}
+	// Statements blanked by editor recovery leave names and returns missing;
+	// the syntax error already explains every diagnostic inside that range.
+	if c.module != nil {
+		for _, span := range c.module.Recovered {
+			if pos.File == c.module.File && pos.Offset >= span.Start && pos.Offset < span.End {
+				return
+			}
+		}
+	}
 	// A declaration dropped by editor recovery has its own syntax error.
 	if c.module != nil && phase == "resolution" {
 		for _, name := range c.module.Omitted {

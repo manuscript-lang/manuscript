@@ -679,15 +679,9 @@ func equal(a, b Value, state *equalityState) bool {
 		if !ok || x.Type != y.Type || len(x.Items) != len(y.Items) {
 			return false
 		}
+		child := equalityChild(state, 0)
 		for _, v := range x.Items {
-			found := false
-			for _, other := range y.Items {
-				if equal(v, other, equalityChild(state, 0)) {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if keyedPosition(y, v, child) < 0 {
 				return false
 			}
 		}
@@ -697,15 +691,10 @@ func equal(a, b Value, state *equalityState) bool {
 		if !ok || x.Type != y.Type || len(x.Entries) != len(y.Entries) {
 			return false
 		}
+		keys, values := equalityChild(state, 0), equalityChild(state, 1)
 		for _, e := range x.Entries {
-			found := false
-			for _, f := range y.Entries {
-				if equal(e.Key, f.Key, equalityChild(state, 0)) && equal(e.Value, f.Value, equalityChild(state, 1)) {
-					found = true
-					break
-				}
-			}
-			if !found {
+			at := keyedPosition(y, e.Key, keys)
+			if at < 0 || !equal(e.Value, y.Entries[at].Value, values) {
 				return false
 			}
 		}
@@ -713,6 +702,23 @@ func equal(a, b Value, state *equalityState) bool {
 	}
 	return false
 }
+
+// keyedPosition returns the position of the key equal to key in a Set or Map,
+// or -1. With an execution it uses the collection's hash index, so comparing
+// two collections is linear instead of quadratic; without one (hashing a
+// record key needs the execution's equality scope) it scans.
+func keyedPosition(c keyed, key Value, state *equalityState) int {
+	if state.ctx != nil {
+		return lookupKey(keyContext(state.ctx, key, state.scope), c, key)
+	}
+	for i, n := 0, c.count(); i < n; i++ {
+		if equal(c.keyAt(i), key, state) {
+			return i
+		}
+	}
+	return -1
+}
+
 func equalItemsState(a, b []Value, state *equalityState) bool {
 	if len(a) != len(b) {
 		return false
@@ -947,8 +953,6 @@ func RunTestsArgs(tests []Test, args []string) int {
 	}
 	return runTestsWith(tests, options, reporter)
 }
-
-func RunTests(tests []Test) int { return RunTestsWith(tests, TestOptions{}) }
 
 func RunTestsWith(tests []Test, options TestOptions) int {
 	return runTestsWith(tests, options, nil)

@@ -101,8 +101,15 @@ func (g *generator) afterTry(s *syntax.Statement, value ast.Expr) []ast.Stmt {
 
 func (g *generator) assignment(s *syntax.Statement) []ast.Stmt {
 	if s.Target != nil {
+		// The receiver is evaluated before the replacement value. A match in
+		// the value can reassign the local the receiver names, and Go does not
+		// order that variable read before the later call.
+		receiverValue := g.expression(s.Target.Left)
+		if containsMatch(s.Value) && !g.constant(s.Target.Left) {
+			receiverValue = sourceAt(s.Target.Left.Pos, receiverValue)
+		}
 		if st, f := g.structFieldOf(s.Target); st != nil {
-			receiver := g.structOperand(st, s.Target.Left)
+			receiver := g.structPointer(st, receiverValue)
 			var value ast.Expr
 			if f.scalar != "" {
 				value = g.scalar(s.Value, f.scalar)
@@ -111,7 +118,7 @@ func (g *generator) assignment(s *syntax.Statement) []ast.Stmt {
 			}
 			return []ast.Stmt{evaluated(call(selector(receiver, "Set_"+s.Target.Text), value))}
 		}
-		return []ast.Stmt{evaluated(runtimeCall("SetField", g.expression(s.Target.Left), textLiteral(s.Target.Text), g.expression(s.Value)))}
+		return []ast.Stmt{evaluated(runtimeCall("SetField", receiverValue, textLiteral(s.Target.Text), g.expression(s.Value)))}
 	}
 	// Assignment binding identities are recorded by the checker, including shadows.
 	target := g.program.AssignedBinding(s.Value)
