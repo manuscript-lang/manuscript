@@ -209,6 +209,7 @@ test "empty options and an omitted request body use checked defaults":
         "client Bool defaults changed"
     )
     if not HttpServerOptions().tls.is_none(): return panic("server TLS default changed")
+
     with server = value(
         network().serve_stream(
             address: "127.0.0.1:0",
@@ -216,7 +217,9 @@ test "empty options and an omitted request body use checked defaults":
             options: HttpServerOptions()
         )
     ):
-        with client = value(network().http_client(options: HttpClientOptions())):
+        with client = value(
+            network().http_client(options: HttpClientOptions())
+        ):
             with response = value(
                 client.request(
                     method: HttpMethod.Get,
@@ -224,4 +227,6 @@ test "empty options and an omitted request body use checked defaults":
                     headers: repeated_headers()
                 )
             ):
-                if response.metadata().status != 200: return panic("plain request failed")
+                if response.metadata().status != 200: return panic(
+                    "plain request failed"
+                )
