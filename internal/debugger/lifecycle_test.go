@@ -157,3 +157,48 @@ func TestDAPFailedAttachDoesNotPoisonLaunch(t *testing.T) {
 		t.Fatalf("launch after failed attach: %+v", r)
 	}
 }
+
+func TestDAPRequestsBeforeSessionAreRejected(t *testing.T) {
+	c := startDAP(t)
+	for command, args := range map[string]any{
+		"pause":             map[string]any{"threadId": 1},
+		"continue":          map[string]any{"threadId": 1},
+		"next":              map[string]any{"threadId": 1},
+		"stepIn":            map[string]any{"threadId": 1},
+		"stepOut":           map[string]any{"threadId": 1},
+		"threads":           map[string]any{},
+		"stackTrace":        map[string]any{"threadId": 1},
+		"scopes":            map[string]any{"frameId": 1},
+		"variables":         map[string]any{"variablesReference": 1},
+		"evaluate":          map[string]any{"expression": "x"},
+		"configurationDone": map[string]any{},
+		"setBreakpoints":    map[string]any{"source": map[string]string{"path": "/x.ms"}, "breakpoints": []map[string]int{{"line": 1}}},
+	} {
+		c.request(command, args)
+		c.failure(command, "send launch or attach before "+command)
+	}
+	// Rejected requests leave the adapter usable: a launch still answers.
+	c.request("launch", map[string]any{"mode": "exec", "program": "/nonexistent/target"})
+	c.failure("launch", "")
+	c.request("pause", map[string]any{"threadId": 1})
+	c.failure("pause", "send launch or attach before pause")
+}
+
+func TestDAPRequestsAreAcceptedOnceSessionExists(t *testing.T) {
+	target := buildTarget(t)
+	c := startDAP(t)
+	c.request("launch", map[string]any{"mode": "exec", "program": target, "outputMode": "remote"})
+	if r := c.response("launch"); !r.GetResponse().Success {
+		t.Fatalf("launch: %+v", r)
+	}
+	// setBreakpoints arrives after initialized and before the launch response
+	// is read by some clients; it must reach Delve.
+	c.request("setBreakpoints", map[string]any{"source": map[string]string{"path": "/x.ms"}, "breakpoints": []map[string]int{}})
+	if r := c.response("setBreakpoints"); !r.GetResponse().Success {
+		t.Fatalf("setBreakpoints: %+v", r)
+	}
+	c.request("threads", map[string]any{})
+	if r := c.response("threads"); !r.GetResponse().Success {
+		t.Fatalf("threads: %+v", r)
+	}
+}

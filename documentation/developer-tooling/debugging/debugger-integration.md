@@ -55,6 +55,8 @@ an installation with no Apple developer tools works.
 
 A failed `attach` leaves no session behind: the next `launch` or `attach` starts from a clean target selection instead of retrying the earlier process id.
 
+Requests that need a debug session (`pause`, `continue`, `next`, `threads`, `setBreakpoints`, and the rest) sent before a successful `launch` or `attach` get an ordinary DAP error response, `no debug session: send launch or attach before <command>`, instead of reaching Delve, which dereferences a missing debugger on `pause`.
+
 DAP launch requests must use `mode: exec` with an already compiled target. Compile Manuscript with `ms build --debug`; Delve’s Go-source build/test modes are rejected before tool discovery.
 
 Go-module source-path guessing is not used for Manuscript targets; source maps provide their paths, and explicit `substitute-path` rules remain available. The vendored Delve compatibility probe for pre-Go-1.11 builds is disabled; dependency refresh reapplies this patch.

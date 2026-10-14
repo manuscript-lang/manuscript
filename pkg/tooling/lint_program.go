@@ -14,15 +14,25 @@ func LintProgram(program *checker.Program) []LintFinding {
 	if program == nil || len(program.Diagnostics) > 0 {
 		return findings
 	}
-	reads := map[*checker.Binding]int{}
-	for _, info := range program.Expressions() {
-		if info != nil && info.Binding != nil {
-			reads[info.Binding]++
-		}
-	}
+	reads := bindingReads(program)
 	for pattern, binding := range program.PatternBindings() {
 		if binding != nil && reads[binding] == 0 && !strings.HasPrefix(binding.Name, "_") {
 			findings = append(findings, LintFinding{"MSL101", "Local binding " + binding.Name + " is never read", pattern.Pos})
+		}
+	}
+	conflicts := map[*syntax.Arm][]*checker.Info{}
+	for arm, found := range program.ArmNameConflicts() {
+		conflicts[arm] = found
+	}
+	for arm, bindings := range program.ArmBindings() {
+		for index, binding := range bindings {
+			// MSL106 already explains a payload name that shadows a case or type.
+			if index < len(conflicts[arm]) && conflicts[arm][index] != nil {
+				continue
+			}
+			if binding != nil && reads[binding] == 0 && !strings.HasPrefix(binding.Name, "_") {
+				findings = append(findings, LintFinding{"MSL101", "Local binding " + binding.Name + " is never read", armBindingPosition(arm, index)})
+			}
 		}
 	}
 	// Use the checker's resolved identities, not a second lexical approximation.
@@ -90,4 +100,35 @@ func LintProgram(program *checker.Program) []LintFinding {
 		return findings[i].Code < findings[j].Code
 	})
 	return findings
+}
+
+// bindingReads counts reads of each binding. A read inside the right-hand
+// side of an assignment to the same binding (`total = total + 2`) only feeds
+// that binding's next value, so it does not make the binding observable.
+func bindingReads(program *checker.Program) map[*checker.Binding]int {
+	reads := map[*checker.Binding]int{}
+	for _, info := range program.Expressions() {
+		if info != nil && info.Binding != nil {
+			reads[info.Binding]++
+		}
+	}
+	for value := range program.Expressions() {
+		assigned := program.AssignedBinding(value)
+		if assigned == nil {
+			continue
+		}
+		syntax.Visitor{Expression: func(e *syntax.Expression) {
+			if info := program.Info(e); info != nil && info.Binding == assigned {
+				reads[assigned]--
+			}
+		}}.Callable(nil, []*syntax.Statement{{Kind: syntax.KindReturn, Value: value}})
+	}
+	return reads
+}
+
+func armBindingPosition(arm *syntax.Arm, index int) syntax.Position {
+	if index < len(arm.NamePositions) {
+		return arm.NamePositions[index]
+	}
+	return arm.Pos
 }

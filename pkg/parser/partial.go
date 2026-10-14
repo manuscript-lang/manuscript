@@ -3,7 +3,9 @@ package parser
 import (
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -63,6 +65,7 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 		}
 		if err != nil {
 			rebased := func(issue syntax.Diagnostic) syntax.Diagnostic {
+				issue.Message = shiftOpened(issue.Message, lineOffset)
 				issue.Position.Offset += start
 				issue.Position.Line += lineOffset
 				if issue.End != nil {
@@ -113,12 +116,23 @@ func recoverStatements(file, chunk string, first error) (*syntax.Module, []synta
 	err := first
 	for attempt := 0; attempt < 8; attempt++ {
 		issue, ok := err.(syntax.Diagnostic)
+		if !ok {
+			return nil, nil
+		}
+		// An unterminated delimiter is reported at the end of the chunk; the
+		// statement to drop is the one that opened it. Only the first failure
+		// is redirected: a delimiter left open by an earlier blanking is a
+		// cascade, and the declaration is omitted rather than reported twice.
+		line := issue.Position.Line
+		if opened := openedLine(issue.Message); opened > 0 && attempt == 0 {
+			line = opened
+		}
 		// The header line (line 1) failing means the signature is unusable.
-		if !ok || issue.Position.Line < 2 || issue.Position.Line > len(lines) {
+		if line < 2 || line > len(lines) {
 			return nil, nil
 		}
 		issues = append(issues, issue)
-		at := issue.Position.Line - 1
+		at := line - 1
 		indent := leadingSpace(lines[at])
 		if strings.TrimSpace(lines[at]) == "" || indent == 0 {
 			return nil, nil
@@ -136,6 +150,29 @@ func recoverStatements(file, chunk string, first error) (*syntax.Module, []synta
 		err = parseErr
 	}
 	return nil, nil
+}
+
+var openedAt = regexp.MustCompile(`^unterminated delimiter .* opened at line (\d+):`)
+
+// openedLine reads the line an unterminated-delimiter diagnostic names, or 0.
+func openedLine(message string) int {
+	match := openedAt.FindStringSubmatch(message)
+	if match == nil {
+		return 0
+	}
+	line, _ := strconv.Atoi(match[1])
+	return line
+}
+
+// shiftOpened rewrites the chunk-relative opener line in an
+// unterminated-delimiter message to the file-relative line.
+func shiftOpened(message string, lines int) string {
+	match := openedAt.FindStringSubmatchIndex(message)
+	if match == nil || lines == 0 {
+		return message
+	}
+	line := openedLine(message) + lines
+	return message[:match[2]] + strconv.Itoa(line) + message[match[3]:]
 }
 
 func leadingSpace(line string) int {
