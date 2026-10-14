@@ -58,6 +58,9 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		if out := g.altLet(s); out != nil {
 			return out
 		}
+		if out := g.localClosure(s); out != nil {
+			return out
+		}
 		return g.pattern(s.Pattern, g.expression(s.Value), g.nativeType(s.Value))
 	case syntax.KindAssign:
 		return g.assignment(s)

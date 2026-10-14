@@ -13,8 +13,9 @@ import (
 // Alternative nor tested through Tag/Payload assertions. Any other use of the
 // name, and any capture of it, keeps the boxed form.
 type altUses struct {
-	names, scrutinees int
-	captured          bool
+	names, scrutinees, calls int
+	captured                 bool
+	callSites                []*syntax.Expression
 }
 
 // planAltLets counts, for every binding, its name uses, its uses as a match
@@ -37,6 +38,13 @@ func (g *generator) planAltLets() {
 		}
 		if e.Kind == syntax.KindName && info.Binding != nil && info.Method == nil {
 			uses(info.Binding).names++
+		}
+		if e.Kind == syntax.KindCall && e.Left != nil && e.Left.Kind == syntax.KindName {
+			if callee := g.program.Info(e.Left); callee != nil && callee.Binding != nil {
+				u := uses(callee.Binding)
+				u.calls++
+				u.callSites = append(u.callSites, e)
+			}
 		}
 		if e.Kind == syntax.KindMatch && e.Left != nil && e.Left.Kind == syntax.KindName {
 			if b := g.program.Info(e.Left).Binding; b != nil {
