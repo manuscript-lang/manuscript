@@ -170,6 +170,17 @@ func MapGet(ctx *Execution, receiver, key Value, scope TypeScope, result string)
 	return Alternative{Type: result, Tag: "some", Fields: []Value{m.Entries[found].Value}}
 }
 
+// MapGetParts is MapGet without the Optional: the value and whether the key exists.
+func MapGetParts(ctx *Execution, receiver, key Value, scope TypeScope) (Value, bool) {
+	CheckCancelled(ctx)
+	m := receiver.(*Map)
+	found := m.find(keyContext(ctx, key, scope), key)
+	if found < 0 {
+		return nil, false
+	}
+	return m.Entries[found].Value, true
+}
+
 // MapWithEntry is the direct path for Map.with_entry calls.
 func MapWithEntry(ctx *Execution, receiver, key, value Value, scope TypeScope) Value {
 	CheckCancelled(ctx)
@@ -234,6 +245,12 @@ func setRemove(ctx *Execution, s *Set, value Value) Value {
 }
 
 // StringByteLength is the direct path for String.byte_length calls.
+// StringLength is the direct path for String.length: the count of Unicode scalars.
+func StringLength(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	return scalarCount(receiver.(string))
+}
+
 func StringByteLength(ctx *Execution, receiver Value) Value {
 	CheckCancelled(ctx)
 	return int64(len(receiver.(string)))

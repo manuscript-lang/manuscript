@@ -68,6 +68,10 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
 			return g.locatedOperation(e, runtimeName("StringAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Info(e).Type))
 		}
+	case "string/length":
+		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "String" {
+			return g.locatedOperation(e, runtimeName("StringLength"), ident("ctx"), sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left)))
+		}
 	case "byte_length":
 		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "String" {
 			return g.locatedOperation(e, runtimeName("StringByteLength"), ident("ctx"), g.expression(e.Left.Left))
@@ -205,4 +209,40 @@ func (g *generator) listAtMatch(value *syntax.Expression) bool {
 func (g *generator) listAtParts(value *syntax.Expression) ast.Expr {
 	receiver, index := g.listAtOperands(value, g.program.Info(value).Arguments)
 	return g.locatedOperation(value, runtimeName("ListAtParts"), ident("ctx"), receiver, index)
+}
+
+// mapGetMatch reports whether value is a direct Map.get call, whose Optional
+// result a match can consume as a value and a presence flag.
+func (g *generator) mapGetMatch(value *syntax.Expression) bool {
+	if value.Kind != syntax.KindCall || value.Left.Kind != syntax.KindMember {
+		return false
+	}
+	callee := g.program.Info(value.Left)
+	if callee == nil || callee.Method == nil || callee.Method.Contract != nil || callee.Method.Native != "get" || len(g.program.Info(value).Arguments) != 1 {
+		return false
+	}
+	receiver := g.program.Info(value.Left.Left)
+	return receiver != nil && receiver.Type != nil && receiver.Type.ID == "@std/Map" && len(receiver.Type.Args) > 0
+}
+
+// mapGetParts lowers a Map.get call to the value and its presence.
+func (g *generator) mapGetParts(value *syntax.Expression) ast.Expr {
+	argument := g.program.Info(value).Arguments[0]
+	receiver := sourceAt(value.Left.Left.Pos, g.expression(value.Left.Left))
+	key := sourceAt(argument.Pos, g.argumentValue(argument))
+	return g.locatedOperation(value, runtimeName("MapGetParts"), ident("ctx"), receiver, key, g.typeScope(g.program.Info(value.Left.Left).Type.Args[0]))
+}
+
+// optionalParts reports whether value is a direct lookup a match consumes as
+// an element and a presence flag instead of an Optional.
+func (g *generator) optionalParts(value *syntax.Expression) bool {
+	return g.listAtMatch(value) || g.mapGetMatch(value)
+}
+
+// lookupParts lowers an optionalParts lookup to its element and presence.
+func (g *generator) lookupParts(value *syntax.Expression) ast.Expr {
+	if g.listAtMatch(value) {
+		return g.listAtParts(value)
+	}
+	return g.mapGetParts(value)
 }

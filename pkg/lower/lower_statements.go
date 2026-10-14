@@ -230,7 +230,7 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 	if b, shape := g.altLocalOf(value); shape != nil {
 		return g.typedMatch(tmp, ident(b.ID), shape, arms, body)
 	}
-	if !contractMatch && !g.listAtMatch(value) {
+	if !contractMatch && !g.optionalParts(value) {
 		if typed, direct := g.typedDirectCall(value); typed != nil && direct.shape != nil {
 			return g.typedMatch(tmp, typed, direct.shape, arms, body)
 		}
@@ -238,9 +238,9 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 	out := []ast.Stmt{define(tmp, g.expression(value))}
 	tag := "Tag"
 	var present string
-	if !contractMatch && g.listAtMatch(value) {
+	if !contractMatch && g.optionalParts(value) {
 		present = g.temp()
-		out = []ast.Stmt{&ast.AssignStmt{Lhs: []ast.Expr{ident(tmp), ident(present)}, Tok: token.DEFINE, Rhs: []ast.Expr{g.listAtParts(value)}}}
+		out = []ast.Stmt{&ast.AssignStmt{Lhs: []ast.Expr{ident(tmp), ident(present)}, Tok: token.DEFINE, Rhs: []ast.Expr{g.lookupParts(value)}}}
 	}
 	if contractMatch {
 		out = append(out, assign(ident(tmp), token.ASSIGN, runtimeCall("ContractReceiver", ident(tmp))))
