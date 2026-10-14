@@ -673,26 +673,7 @@ func equal(a, b Value, state *equalityState) bool {
 		return ok && x.Type == y.Type && x.Tag == y.Tag && equalItemsState(x.Fields, y.Fields, state)
 	case *List:
 		y, ok := b.(*List)
-		if !ok || x.Type != y.Type {
-			return false
-		}
-		// Element equality may mutate either outer List. Capture both headers
-		// before checking lengths; writes remain visible but growth/shrink and
-		// reallocation cannot change the arrays or membership being compared.
-		left, right := x.Capture(), y.Capture()
-		if left.Len() != right.Len() {
-			return false
-		}
-		if same, handled := equalPrimitiveListRanges(left, right); handled {
-			return same
-		}
-		child := equalityChild(state, 0)
-		for i := 0; i < left.Len(); i++ {
-			if !equal(left.Get(i), right.Get(i), child) {
-				return false
-			}
-		}
-		return true
+		return ok && equalLists(x, y, state)
 	case *Set:
 		y, ok := b.(*Set)
 		if !ok || x.Type != y.Type || len(x.Items) != len(y.Items) {
@@ -1313,6 +1294,31 @@ func indexOfIn(ctx *Execution, items []Value, value Value) int {
 		}
 	}
 	return -1
+}
+
+// equalLists is separate from equal so its locals do not enlarge the frame of
+// every nested comparison; deep values are bounded by MaxEqualityDepth frames.
+func equalLists(x, y *List, state *equalityState) bool {
+	if x.Type != y.Type {
+		return false
+	}
+	// Element equality may mutate either outer List. Capture both headers
+	// before checking lengths; writes remain visible but growth/shrink and
+	// reallocation cannot change the arrays or membership being compared.
+	left, right := x.Capture(), y.Capture()
+	if left.Len() != right.Len() {
+		return false
+	}
+	if same, handled := equalPrimitiveListRanges(left, right); handled {
+		return same
+	}
+	child := equalityChild(state, 0)
+	for i := 0; i < left.Len(); i++ {
+		if !equal(left.Get(i), right.Get(i), child) {
+			return false
+		}
+	}
+	return true
 }
 
 func equalityChild(state *equalityState, index int) *equalityState {

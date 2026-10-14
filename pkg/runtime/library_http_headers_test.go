@@ -20,7 +20,7 @@ func httpTestHeaders(input *Map) *libraryHeaders {
 		case Bytes:
 			out.append(name, v)
 		case *List:
-			for _, value := range v.Items {
+			for _, value := range v.Boxed() {
 				switch v := value.(type) {
 				case string:
 					out.append(name, Bytes{[]byte(v)})
