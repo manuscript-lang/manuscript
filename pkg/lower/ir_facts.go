@@ -6,25 +6,8 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-func primitiveListSuffix(t *checker.Type) string { return ir.ListSuffix(t) }
-func (g *generator) nativeCallAvailable(e *syntax.Expression) bool {
-	x := g.ir.Expression(e)
-	return x.Call != nil && x.Call.Symbol != nil && x.Call.Native
-}
-func (g *generator) nativeMethodAvailable(e *syntax.Expression) bool {
-	x := g.ir.Expression(e)
-	return x.Call != nil && x.Call.Method != nil && x.Call.Native
-}
 func (g *generator) shareNativeBody(s *checker.Symbol) bool { return g.ir.ShareNativeBody(s) }
-func (g *generator) nativeBodyCompatible(params []syntax.Parameter, body []*syntax.Statement, bindings []*checker.Binding, t *checker.Type) bool {
-	return g.ir.BodyCompatible(params, body, bindings, t)
-}
-func comparatorKind(t *checker.Type, params []syntax.Parameter) string {
-	return ir.ComparatorKind(t, params)
-}
-func (g *generator) nativeBinaryOperands(e *syntax.Expression) bool {
-	return g.ir.Expression(e).Operation != nil
-}
+
 func (g *generator) typedListAtSuffix(e *syntax.Expression) string {
 	if e == nil {
 		return ""
@@ -35,14 +18,7 @@ func (g *generator) typedListAtSuffix(e *syntax.Expression) string {
 	}
 	return ""
 }
-func (g *generator) typedUnwrapAt(e *syntax.Expression) bool {
-	x := g.ir.Expression(e)
-	return x.Call != nil && x.Call.UnwrapAt != nil
-}
-func (g *generator) typedCollectionScalar(e *syntax.Expression) bool {
-	x := g.ir.Expression(e)
-	return x.Call != nil && (x.Call.UnwrapAt != nil || x.Call.Collection == "CollectionLengthInt")
-}
+
 func (g *generator) numericCallName(e *syntax.Expression) string {
 	x := g.ir.Expression(e)
 	if x.Call != nil {

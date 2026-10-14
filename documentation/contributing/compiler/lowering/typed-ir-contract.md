@@ -16,10 +16,11 @@ eligibility analysis in `lower`.
 | --- | --- | --- |
 | Source and resolved type | `Expression.Pos`, `Type`, `SourceType` | Preserve source sites and raw type before error widening |
 | Value use and conversion | `Edge.Type`, `Expected`, `Never`, `ErrorSource`, `ScopedError`, `Optional` | Apply error widening before Optional wrapping; extract Never at the expected native type |
-| Name/storage identity | `Reference`, `Binding`, `ScalarLocals` | Keep captures and existing boxed identity/forwarding/storage boundaries |
+| Name/storage identity | `Reference`, `Binding`, `ScalarLocals`, `Callable` | Keep captures and existing boxed identity/forwarding/storage boundaries |
 | Primitive operation | `PrimitiveExpression`, `Operation.Identity`, ordered operand edges | Capture an earlier value before a later effect; keep short-circuit operands in their region |
 | Call identity | `ResolvedCall`, selected symbol/method, type arguments, receiver edge | Capture a receiver/callable before supplied arguments |
 | Call evaluation and defaults | Written-order `Call.Arguments`, parameter `Slot`, `Parameters.Supplied`, `Omittable`, `Default` | Reorder captured values only; evaluate omitted defaults inside the callee |
+| Captured List traversal | `Program.Ranges`, receiver/use edge, binding and reader suffix | Keep captured membership and a check on every iteration |
 | List access and unwrap | Resolved collection operation, primitive suffix, separate `UnwrapAt` | Retain distinct access/unwrap sites and cancellation checkpoints |
 | List construction | `List.Items`, parallel `List.Elements` expected-use edges | Use the authoritative constructor/initializer ABI and fresh mutable backing |
 | Record representation | `Record`, `FieldUse`, resolved construction | Retain main's generated structs and runtime `Struct` compatibility |

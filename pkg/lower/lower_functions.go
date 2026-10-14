@@ -153,7 +153,7 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 	oldParameters, oldResult, oldWant := g.nativeParameters, g.nativeResult, g.wantScalar
 	g.nativeParameters, g.nativeResult, g.wantScalar = nil, nil, 0
 	defer func() { g.nativeParameters, g.nativeResult, g.wantScalar = oldParameters, oldResult, oldWant }()
-	if kind := comparatorKind(t, params); self == nil && len(tail) == 0 && kind != "" && g.nativeBodyCompatible(params, body, bindings, t) {
+	if kind := g.ir.Body(body).Comparator; self == nil && len(tail) == 0 && kind != "" && g.ir.Body(body).Shared {
 		g.nativeParameters = map[*checker.Binding]bool{}
 		g.nativeResult = t.Result
 		parameters := []*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")})}

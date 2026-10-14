@@ -34,6 +34,10 @@ fn wrapped() -> Int: optional(7)
 fn generic() -> Int: identity(7)
 fn indexed(values: List[Int]) -> Int: values.at(panic("index")).unwrap()
 `)
+	callable := p.Callables[checked.Symbol("resolved.ms", "choose").Decl]
+	if len(callable.Bindings) != 2 || !callable.Parameters[1].Omittable || callable.Shared {
+		t.Fatal("callable proof lost defaults or binding boundary")
+	}
 	seen := map[string]bool{}
 	for e := range checked.Expressions() {
 		x := p.Expression(e)
@@ -172,6 +176,47 @@ fn zero() -> List[Float]: [-0.0, 0.0]
 		}
 		if list.Type.Args[0].ID == "Float" && !math.Signbit(list.Items[0].(ir.FloatLiteral).Value) {
 			t.Fatal("negative zero lost")
+		}
+	}
+}
+
+func TestResolvedRecordAndRangeFacts(t *testing.T) {
+	checked, p := resolve(t, `type Box:
+    value: Int
+fn read(box: Box) -> Int: box.value
+fn made(value: Int) -> Box: Box(value)
+fn write(box: Box, value: Int) -> Unit:
+    box.value = value
+fn total(items: List[Int]) -> Int:
+    var result = 0
+    for item in items:
+        result = result + item
+    return result
+`)
+	if len(p.RecordOrder) != 1 || p.RecordOrder[0].Fields[0].Primitive != "int64" {
+		t.Fatal("typed record layout lost")
+	}
+	recordAccess, construction := false, false
+	for e := range checked.Expressions() {
+		if p.Fields[e] != nil {
+			if _, ok := p.Node(e).(ir.RecordAccess); !ok {
+				t.Fatal("field escaped IR")
+			}
+			recordAccess = true
+		}
+		if x := p.Expression(e).Call; x != nil && x.Record != nil {
+			construction = true
+			if x.Arguments[0].Value.Expected.ID != "Int" {
+				t.Fatal("constructor field expectation lost")
+			}
+		}
+	}
+	if !recordAccess || !construction || len(p.Ranges) != 1 {
+		t.Fatal("missing record/range facts")
+	}
+	for _, r := range p.Ranges {
+		if !r.List || r.ListSuffix != "Int" || r.Binding == nil || r.Value.Type.ID != "@std/List" {
+			t.Fatal(r)
 		}
 	}
 }

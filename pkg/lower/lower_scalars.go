@@ -78,10 +78,7 @@ func (g *generator) bindingValue(b *checker.Binding, e *syntax.Expression) ast.E
 }
 func (g *generator) returnValue(e *syntax.Expression) ast.Expr {
 	if g.nativeResult != nil && g.expressionDepth == 0 {
-		if g.ir.Expression(e).Type.ID == "Never" {
-			return scalarExtract(g.nativeResult, g.expression(e))
-		}
-		return g.scalarValue(e)
+		return g.scalarEdge(g.ir.Use(e, g.nativeResult))
 	}
 	return g.expression(e)
 }

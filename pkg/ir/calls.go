@@ -154,8 +154,3 @@ func (p *Program) resolveCall(e *syntax.Expression) *Call {
 	}
 	return x
 }
-
-// ComparatorKind is the resolved runtime comparator seam for a callable.
-func ComparatorKind(t *checker.Type, params []syntax.Parameter) string {
-	return comparatorKind(t, params)
-}

@@ -40,7 +40,7 @@ func (g *generator) nativeCallable(s *checker.Symbol, self *checker.Binding, nam
 		values = append(values, ident(b.ID))
 	}
 	for i := range s.Type.Params {
-		if nativeDefault(s, i) {
+		if g.ir.Callables[s.Decl].Parameters[i].Omittable {
 			parameters = append(parameters, field(nativePresence(i), ident("bool")))
 			values = append(values, ident(nativePresence(i)))
 		}
@@ -77,7 +77,7 @@ func (g *generator) nativeCallable(s *checker.Symbol, self *checker.Binding, nam
 		for i, p := range s.Type.Params {
 			boxed = append(boxed, scalarExtract(p.Type, index(ident("args"), intLiteral(i))))
 		}
-		if kind := comparatorKind(s.Type, s.Decl.Params); kind != "" {
+		if kind := g.ir.Callables[s.Decl].Comparator; kind != "" {
 			adapter = runtimeCall("New"+kind+"CompareFunction", stringSlice(labels), key, textLiteral(position), ident(raw))
 		} else {
 			// The adapter passes scalar/Value copies to the raw body, which has
@@ -145,9 +145,6 @@ func nativeResultType(t *checker.Type) ast.Expr {
 	return runtimeName("Value")
 }
 
-func nativeDefault(s *checker.Symbol, index int) bool {
-	return s.Decl.Params[index].Default != nil || s.Type.Defaults[s.Type.Params[index].Name]
-}
 func nativePresence(index int) string { return "suppliedArgument" + strconv.Itoa(index) }
 func nativeZero(t *checker.Type) ast.Expr {
 	switch primitiveEqualityType(t) {

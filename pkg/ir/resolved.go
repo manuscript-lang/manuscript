@@ -88,8 +88,9 @@ type Program struct {
 	Records       map[string]*Record
 	RecordOrder   []*Record
 	Fields        map[*syntax.Expression]*FieldUse
-	sharedBodies  map[*syntax.Declaration]bool
-	bodies        map[*syntax.Statement]bool
+	Callables     map[*syntax.Declaration]*Callable
+	Ranges        map[*syntax.Statement]Range
+	bodies        map[*syntax.Statement]*Callable
 }
 
 func (p *Program) Expression(e *syntax.Expression) *Expression { return p.expressions[e] }
@@ -123,7 +124,7 @@ func ListSuffix(t *checker.Type) string {
 
 // Elaborate resolves performance nodes once, without rewriting checked source.
 func Elaborate(program *checker.Program) *Program {
-	p := &Program{checked: program, expressions: map[*syntax.Expression]*Expression{}, sharedBodies: map[*syntax.Declaration]bool{}}
+	p := &Program{checked: program, expressions: map[*syntax.Expression]*Expression{}, Callables: map[*syntax.Declaration]*Callable{}}
 	p.resolveRecords()
 	p.nodes = map[*syntax.Expression]Expr{}
 	p.selectNativeCalls()
@@ -184,8 +185,8 @@ func Elaborate(program *checker.Program) *Program {
 		p.expressions[e] = x
 	}
 	p.ScalarLocals = p.selectScalarLocals()
-	p.sharedBodies = map[*syntax.Declaration]bool{}
-	p.bodies = map[*syntax.Statement]bool{}
+	p.Callables = map[*syntax.Declaration]*Callable{}
+	p.bodies = map[*syntax.Statement]*Callable{}
 	for _, module := range program.Modules {
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindFn {
@@ -201,10 +202,17 @@ func Elaborate(program *checker.Program) *Program {
 	}
 	for e, info := range program.Expressions() {
 		if e.Kind == syntax.KindLambda && len(e.Body) > 0 {
-			p.bodies[e.Body[0]] = p.nativeBodyCompatible(e.Params, e.Body, program.LambdaBindings(e), info.Type)
+			p.bodies[e.Body[0]] = p.callable(e.Params, e.Body, program.LambdaBindings(e), info.Type)
 		}
 	}
 
+	p.Ranges = map[*syntax.Statement]Range{}
+	for statement, b := range program.LoopBindings() {
+		if statement.Kind == syntax.KindFor {
+			t := program.Info(statement.Value).Type
+			p.Ranges[statement] = Range{Value: Use(program, statement.Value, nil), Binding: b, List: t.ID == "@std/List", ListSuffix: ListSuffix(t)}
+		}
+	}
 	p.Folds = NewFolder(program)
 	return p
 }
@@ -214,17 +222,11 @@ var boolType = &checker.Type{Name: "Bool", ID: "Bool", Kind: "primitive"}
 // BoolUse supplies the expected type for if/while without changing Never.
 func (p *Program) BoolUse(e *syntax.Expression) Edge { return p.Use(e, boolType) }
 
-func (p *Program) ShareNativeBody(s *checker.Symbol) bool { return p.sharedBodies[s.Decl] }
+func (p *Program) ShareNativeBody(s *checker.Symbol) bool { return p.Callables[s.Decl].Shared }
 func (p *Program) recordBody(s *checker.Symbol) {
-	value := p.nativeBodyCompatible(s.Decl.Params, s.Decl.Body, p.checked.ParameterBindings(s.Decl), s.Type)
-	p.sharedBodies[s.Decl] = value
+	x := p.callable(s.Decl.Params, s.Decl.Body, p.checked.ParameterBindings(s.Decl), s.Type)
+	p.Callables[s.Decl] = x
 	if len(s.Decl.Body) > 0 {
-		p.bodies[s.Decl.Body[0]] = value
+		p.bodies[s.Decl.Body[0]] = x
 	}
-}
-func (p *Program) BodyCompatible(params []syntax.Parameter, body []*syntax.Statement, bindings []*checker.Binding, t *checker.Type) bool {
-	if len(body) == 0 {
-		return false
-	}
-	return p.bodies[body[0]]
 }

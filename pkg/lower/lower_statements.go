@@ -137,9 +137,9 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		} else {
 			b := g.program.LoopBinding(s)
 			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
-			if typ := g.program.Info(s.Value).Type; typ.ID == "@std/List" {
+			if rangeFact := g.ir.Ranges[s]; rangeFact.List {
 				reader := "Get"
-				if suffix := primitiveListSuffix(typ); suffix != "" && g.typedBinding(b) {
+				if suffix := rangeFact.ListSuffix; suffix != "" && g.typedBinding(b) {
 					reader = suffix
 				}
 				header, at := g.temp(), g.temp()
