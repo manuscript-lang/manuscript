@@ -221,7 +221,7 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
 		}
 		transcripts = append(transcripts, string(data))
 	}
-	if transcripts[0] != transcripts[1] || !strings.Contains(transcripts[1], "debug-fault.ms:3:14 in fail") || !strings.Contains(transcripts[1], "debug-fault.ms:6:12 in main") {
+	if transcripts[0] != transcripts[1] || !strings.Contains(transcripts[1], "debug-fault.ms:3 in fail") || !strings.Contains(transcripts[1], "debug-fault.ms:6 in main") {
 		t.Fatalf("fault order changed: %q", transcripts)
 	}
 }

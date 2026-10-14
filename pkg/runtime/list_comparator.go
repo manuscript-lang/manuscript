@@ -34,11 +34,7 @@ func sourceComparator[T any](body func(*Execution, T, T) int64, boxed func(*Exec
 				calls.depth--
 				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
 			}
-			defer func() {
-				if calls.depth--; calls.depth == 0 {
-					calls.traceFull = false
-				}
-			}()
+			defer func() { calls.depth-- }()
 		}
 		defer func() {
 			if controlPanics.Load() == 0 {

@@ -45,8 +45,7 @@ import Decimal from "@std/decimal.ms"
 		source += fmt.Sprintf("test %q:\n    let minimum = duration(-9223372036854775808)\n    let maximum = duration(9223372036854775807)\n    let divide = minimum.divide\n", name)
 		line := strings.Count(source, "\n") + 1
 		call := "    let impossible = " + tc.call
-		column := strings.IndexByte(call, '|') + 1
-		frames = append(frames, fmt.Sprintf("numeric-preconditions.ms:%d:%d in test %s", line, column, name))
+		frames = append(frames, fmt.Sprintf("numeric-preconditions.ms:%d in test %s", line, name))
 		source += strings.ReplaceAll(call, "|", "") + "\n"
 	}
 	source += "test \"continues after numeric faults\":\n    let valid = 1\n"

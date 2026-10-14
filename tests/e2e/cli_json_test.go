@@ -86,7 +86,7 @@ test "third=after":
 	if doc.Stdout != string(humanOut) || stderr != humanErr || stderr != "user stderr\n" {
 		t.Fatalf("streams changed: stdout=%q/%q stderr=%q/%q", doc.Stdout, humanOut, stderr, humanErr)
 	}
-	if doc.Summary.Available != 3 || doc.Summary.Selected != 3 || doc.Summary.Passed != 2 || doc.Summary.Failed != 1 || doc.Tests[0].Status != "passed" || doc.Tests[1].Status != "failed" || doc.Tests[2].Status != "passed" || !strings.Contains(doc.Tests[1].Failure, "expected failure") || !strings.Contains(doc.Tests[1].Failure, "test=a=b.ms:9:") || doc.SourceRoot != root {
+	if doc.Summary.Available != 3 || doc.Summary.Selected != 3 || doc.Summary.Passed != 2 || doc.Summary.Failed != 1 || doc.Tests[0].Status != "passed" || doc.Tests[1].Status != "failed" || doc.Tests[2].Status != "passed" || !strings.Contains(doc.Tests[1].Failure, "expected failure") || !strings.Contains(doc.Tests[1].Failure, "test=a=b.ms:9") || doc.SourceRoot != root {
 		t.Fatalf("outcomes/locations/order: %s", output)
 	}
 	for _, filter := range []string{"first=pass", "nothing=matches"} {

@@ -24,8 +24,19 @@ position separately. The printer replaces each entire label line with a
 column-one `//line` directive and checks that every marker was printed exactly
 once. These markers use a separate counter from generated local names. Nested
 closures, default arguments, actual loop labels, and generated fallback returns
-retain their own locations. Runtime `SourceAt` and `TraceSource` calls remain
-ordinary AST nodes with the same operand evaluation order.
+retain their own locations. A statement that prints on several Go lines repeats
+its directive, in `/*line*/` form on lines that can hold a call, so every
+physical line keeps the statement's source line. `Seq` orders operands.
+
+Source functions carry no per-call frame bookkeeping. A fault captures its frames
+once, where it is created, from the Go stack: `RegisterSource` and `Named` map
+each generated function to its source name, and the `//line` directives give the
+file and line. Frames therefore hold lines only, and a call spanning several
+source lines reports the line of its statement. Only direct functions in a
+recursive call cycle, and dynamic entries, call `Enter`/`Exit` to count depth;
+the depth limit and cancellation are sampled every 256th entry, so the limit may
+be exceeded by up to 256 frames and a function without loops or counted calls
+does not observe cancellation.
 
 Lowering should erase high-level abstractions when checked facts establish an
 equivalent concrete Go representation. Building AST nodes alone does not make

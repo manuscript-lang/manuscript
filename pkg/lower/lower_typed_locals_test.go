@@ -89,7 +89,7 @@ func TestNegationOfScalarsStaysTyped(t *testing.T) {
 		t.Fatal(r.Diagnostics)
 	}
 	source := localNumbers.ReplaceAllString(r.Source, "local_")
-	for _, want := range []string{"var local_step int64 = int64(-1)", "rt.IntNegateAt(local_a,", "var local_c float64 = -local_b"} {
+	for _, want := range []string{"var local_step int64 = int64(-1)", "rt.IntNegateAt(local_a)", "var local_c float64 = -local_b"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("missing %q\n%s", want, source)
 		}
@@ -138,7 +138,7 @@ fn f() -> Int:
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	hoisted := regexp.MustCompile(`specialized\d+\.Get\(func\(\) rt\.Value \{\s*return rt\.StandardFunction\("io/stdout"`)
+	hoisted := regexp.MustCompile(`specialized\d+\.Get\(func\(\) rt\.Value \{\s*(?:/\*line [^*]*\*/)?\s*return rt.StandardFunction\("io/stdout"`)
 	if !hoisted.MatchString(r.Source) {
 		t.Errorf("standard function rebuilt per call\n%s", r.Source)
 	}
