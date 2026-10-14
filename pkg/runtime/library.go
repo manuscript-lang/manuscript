@@ -22,13 +22,14 @@ var libraryFunctions = map[string]LibrarySpec{}
 func libraryAdd(module, name, result string, params []LibraryParam, body func(*Execution, string, []Value) Value) {
 	original := body
 	adaptOptions := nativeParamsNeedOptions(params)
+	plan := planOptions(name, params)
 	body = func(ctx *Execution, result string, args []Value) Value {
 		// Ordinary native calls already have their ordered argument slots.
 		// Only adapters (or direct callers with missing slots) need a copy.
 		if !adaptOptions && len(args) >= len(params) {
 			return original(ctx, result, args)
 		}
-		normalized, ok := nativeOptions(name, params, args)
+		normalized, ok := plan.normalize(args)
 		if !ok {
 			return nativeOptionFailure(result, name, params, args)
 		}

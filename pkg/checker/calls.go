@@ -84,7 +84,12 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		}
 	}
 	if callee.Kind == syntax.KindName && c.scope.binding(callee.Text) == nil && c.names[callee.Text] == nil {
-		alternative, cs = c.findCase(callee.Text, callee.Pos)
+		var ambiguous bool
+		alternative, cs, ambiguous = c.findCase(callee.Text, callee.Pos)
+		if ambiguous {
+			i.Type = primitive("<invalid>")
+			return i
+		}
 	}
 	if alternative != nil {
 		if len(cs.Fields) == 0 {
@@ -157,6 +162,10 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		signature = callable.Type
 		i.Method = callable.Method
 		i.Native = callable.Native
+	}
+	if signature != nil && signature.ID == "<invalid>" {
+		i.Type = signature
+		return i
 	}
 	if signature == nil || signature.Kind != "function" {
 		c.notCallable(e, signature)

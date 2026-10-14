@@ -14,9 +14,21 @@ import (
 // argument is already in declaration order, Invoke adds only redundant label
 // preparation and a cancellation check. Keep other callable paths unchanged.
 func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
-	symbol := g.program.Info(e).Symbol
-	if symbol == nil || symbol.Native != "" || len(symbol.Variables) != 0 || symbol.Decl == nil || symbol.Decl.Kind != syntax.KindFn {
+	info := g.program.Info(e)
+	symbol := info.Symbol
+	if symbol == nil || symbol.Native != "" || symbol.Decl == nil || symbol.Decl.Kind != syntax.KindFn {
 		return nil
+	}
+	// A generic function is specialized once per program when its type
+	// arguments are static; otherwise the call keeps ordinary dispatch.
+	var callee ast.Expr = ident(symbol.ID)
+	if len(symbol.Variables) != 0 {
+		for _, arg := range info.TypeArgs {
+			if hasTypeVariable(arg) {
+				return nil
+			}
+		}
+		callee = g.specialize(symbol, info.TypeArgs)
 	}
 	params := symbol.Type.Params
 	if len(args) != len(params) {
@@ -33,7 +45,7 @@ func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argum
 		// argument. Force each value's capture before evaluating the next.
 		values[i] = sourceAt(arg.Pos, g.argumentValue(arg))
 	}
-	return g.locatedOperation(e, selector(&ast.TypeAssertExpr{X: ident(symbol.ID), Type: runtimeName("Function")}, "Body"), ident("ctx"), sliceLiteral(runtimeName("Value"), values...))
+	return g.locatedOperation(e, selector(&ast.TypeAssertExpr{X: callee, Type: runtimeName("Function")}, "Body"), ident("ctx"), sliceLiteral(runtimeName("Value"), values...))
 }
 
 // A method call on a receiver whose static type is a concrete user record or

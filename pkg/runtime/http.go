@@ -197,7 +197,7 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid or oversized request body", 413)
 		return
 	}
-	headers := libraryHTTPHeaders(r.Header)
+	headers := libraryHTTPHeaders(requestHeaders(r))
 	request := Record{"@std/HttpRequest", map[string]Value{"method": libraryHTTPMethod(r.Method), "path": r.URL.Path, "query": r.URL.RawQuery, "headers": headers, "body": Bytes{data}}}
 	var response Value
 	var failure any
@@ -320,6 +320,19 @@ func (s *httpService) close(ctx *Execution) {
 	if s.fault != nil {
 		panic(s.fault)
 	}
+}
+
+// requestHeaders returns the request headers including Host, which net/http
+// moves out of Header into Request.Host.
+func requestHeaders(r *http.Request) http.Header {
+	headers := r.Header.Clone()
+	if headers == nil {
+		headers = http.Header{}
+	}
+	if r.Host != "" {
+		headers.Set("Host", r.Host)
+	}
+	return headers
 }
 func sortedHeaderNames(headers http.Header) []string {
 	names := make([]string, 0, len(headers))

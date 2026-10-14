@@ -302,6 +302,27 @@ func TestFailedProfileDoesNotCreateAnArtifactDirectory(t *testing.T) {
 	}
 }
 
+func TestFailedProfileBuildRemovesItsArtifactDirectory(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "ms.toml"), []byte("[project]\nname = \"stale\"\nsource = \".\"\nentry = \"main.ms\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte("export fn main() -> Int:\n    return 0\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "ms.lock"), []byte("stale\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(t.TempDir(), "profile")
+	status, _, errors := invoke(t, "profile", filepath.Join(root, "ms.toml"), "-o", output)
+	if status != 1 || errors == "" {
+		t.Fatalf("stale lock profile: %d, %q", status, errors)
+	}
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatal("failed build left a profile directory that blocks a retry", err)
+	}
+}
+
 func TestCLIErrorsNameTheFix(t *testing.T) {
 	status, _, errors := invoke(t, "chek", "x.ms")
 	if status != 2 || !strings.Contains(errors, "Did you mean 'ms check'?") {

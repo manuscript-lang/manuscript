@@ -29,6 +29,9 @@ func (g *generator) argumentValue(a syntax.Argument) ast.Expr {
 	return value
 }
 func (g *generator) expression(e *syntax.Expression) ast.Expr {
+	if t, ok := g.tried[e]; ok {
+		return t.value
+	}
 	info := g.program.Info(e)
 	if info != nil && info.Folded {
 		return ident(strconv.FormatBool(info.Constant))
@@ -255,7 +258,13 @@ func (g *generator) functionCall(e *syntax.Expression, info *checker.Info, argum
 	var callable ast.Expr
 	if info.Symbol != nil {
 		if info.Symbol.Native != "" {
-			callable = g.nativeDefaults(info.Symbol.Decl, g.program.Info(e.Left).Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)), arguments)
+			standard := runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type))
+			callable = g.nativeDefaults(info.Symbol.Decl, g.program.Info(e.Left).Type, standard, arguments)
+			if callable == ast.Expr(standard) && !hasTypeVariable(info.Type) {
+				// A standard function with no default expressions is stateless:
+				// resolve it once instead of rebuilding its Function per call.
+				callable = g.lazyValue("standard function\x00"+info.Symbol.Native+"\x00"+checker.TypeKey(info.Type), standard)
+			}
 		} else {
 			callable = ident(info.Symbol.ID)
 			if len(info.Symbol.Variables) > 0 {
@@ -310,6 +319,9 @@ func (g *generator) unaryValue(e *syntax.Expression, info *checker.Info) ast.Exp
 	}
 	if e.Text == "not" {
 		return &ast.UnaryExpr{Op: token.NOT, X: paren(g.condition(e.Right))}
+	}
+	if negated := g.negation(e); negated != nil {
+		return negated
 	}
 	return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
 }

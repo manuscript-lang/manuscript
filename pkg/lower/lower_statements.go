@@ -53,6 +53,9 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	if pre, value, native := g.inlineTry(s); value != nil {
 		return append(pre, g.afterTry(s, value, native)...)
 	}
+	if pre := g.hoistTries(s); pre != nil {
+		return append(pre, g.statement(s)...)
+	}
 	switch s.Kind {
 	case syntax.KindBind:
 		return g.pattern(s.Pattern, g.expression(s.Value), g.nativeType(s.Value))
@@ -323,7 +326,13 @@ func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr, string
 	if g.expressionDepth > 0 || !g.program.PlainTry(s) {
 		return nil, nil, ""
 	}
-	e := s.Value
+	return g.tryReturn(s.Value)
+}
+
+// tryReturn evaluates a `try` expression into statements that return the
+// error result on failure, and the expression that yields the success value
+// with its Go type ("" for a boxed Value).
+func (g *generator) tryReturn(e *syntax.Expression) ([]ast.Stmt, ast.Expr, string) {
 	info := g.program.Info(e)
 	tmp := g.temp()
 	if typed, direct := g.typedDirectCall(e.Right); typed != nil && direct.shape != nil && !direct.shape.optional {

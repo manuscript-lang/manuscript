@@ -56,6 +56,10 @@ func runInit(args []string) int {
 			fmt.Fprintln(os.Stderr, "unexpected init argument:", arg, "; ms init takes at most one directory, e.g. ms init hello")
 			return 2
 		}
+		if arg == "" {
+			fmt.Fprintln(os.Stderr, "ms init: the directory is empty; pass a directory name such as ms init hello, or omit it for the current directory")
+			return 2
+		}
 		directory, given = arg, true
 	}
 	absolute, err := filepath.Abs(directory)
@@ -74,22 +78,23 @@ func runInit(args []string) int {
 			return 1
 		}
 	}
-	if err := os.MkdirAll(filepath.Join(absolute, "src"), 0o755); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	fail := func(err error) int {
+		fmt.Fprintf(os.Stderr, "ms init: cannot create project in %s: %v\n", directory, err)
 		return 1
+	}
+	if err := os.MkdirAll(filepath.Join(absolute, "src"), 0o755); err != nil {
+		return fail(err)
 	}
 	for _, file := range files {
 		if err := os.WriteFile(filepath.Join(absolute, file.name), []byte(file.content), 0o644); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
+			return fail(err)
 		}
 	}
 	if err := ignoreBuildCache(filepath.Join(absolute, ".gitignore")); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+		return fail(err)
 	}
 	fmt.Println("Created project in", directory)
-	fmt.Println("Next: ms run", filepath.Join(directory, "ms.toml"), "-- first second")
+	fmt.Println("Next: ms run", shellQuote(filepath.Join(directory, "ms.toml")), "-- first second")
 	return 0
 }
 
@@ -129,4 +134,12 @@ func projectName(directory string) string {
 		return name
 	}
 	return "app"
+}
+
+// shellQuote quotes a path for display in a command the user can paste.
+func shellQuote(path string) string {
+	if !strings.ContainsAny(path, " \t\n'\"\\$`!&;|<>()*?[]{}#~") {
+		return path
+	}
+	return "'" + strings.ReplaceAll(path, "'", `'\''`) + "'"
 }

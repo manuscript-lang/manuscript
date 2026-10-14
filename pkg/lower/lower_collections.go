@@ -2,6 +2,7 @@ package lower
 
 import (
 	"go/ast"
+	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -45,6 +46,14 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
 			return g.locatedOperation(e, runtimeName("ListAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}
+		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/StringBuilder" {
+			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
+			return g.locatedOperation(e, runtimeName("StringBuilderAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
+		}
+	case "freeze":
+		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/StringBuilder" {
+			return g.locatedOperation(e, runtimeName("StringBuilderFreeze"), ident("ctx"), g.expression(e.Left.Left))
+		}
 	case "is_empty", "collections/is_empty":
 		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
 			return g.locatedOperation(e, runtimeName("ListIsEmpty"), ident("ctx"), g.expression(e.Left.Left))
@@ -71,7 +80,54 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 			return g.locatedOperation(e, runtimeName("OptionalUnwrap"), ident("ctx"), g.expression(e.Left.Left))
 		}
 	}
-	return nil
+	return g.boundNativeCall(e, callee, arguments)
+}
+
+// nativeKinds are the receiver types whose library members bind per call site.
+// Their runtime values map to the kind of the same name in the library table.
+var nativeKinds = map[string]struct{ kind, module string }{
+	"String":     {"String", "string/"},
+	"@std/Bytes": {"Bytes", "bytes/"},
+	"@std/List":  {"List", "collections/"},
+	"@std/Map":   {"Map", "collections/"},
+	"@std/Set":   {"Set", "collections/"},
+}
+
+// boundNativeCall lowers a call of a library member on a receiver of fixed
+// kind with every argument supplied in order. The member, result type and
+// equality scope are static, so a hoisted NativeCall replaces the bound
+// Function and Argument slice that ordinary dispatch builds per call.
+func (g *generator) boundNativeCall(e *syntax.Expression, callee *checker.Info, arguments []syntax.Argument) ast.Expr {
+	receiverType := g.program.Info(e.Left.Left).Type
+	native, ok := nativeKinds[receiverType.ID]
+	name := e.Left.Text
+	if !ok || callee.Type == nil || !strings.HasPrefix(callee.Method.Native, native.module) || name == "equals" || name == "hash" || name == "clone" || name == "toString" {
+		return nil
+	}
+	kind := native.kind
+	if len(arguments) != len(callee.Type.Params) {
+		return nil
+	}
+	for i, argument := range arguments {
+		if argument.Name != callee.Type.Params[i].Name {
+			return nil
+		}
+	}
+	if hasTypeVariable(receiverType) || hasTypeVariable(callee.Type.Result) {
+		return nil
+	}
+	bind := []ast.Expr{textLiteral(kind), textLiteral(name), textLiteral(callee.Method.Native), g.key(callee.Type.Result), g.typeScope(receiverType)}
+	identity := g.module + "\x00native call\x00" + kind + "." + name + "\x00" + checker.TypeKey(receiverType) + "\x00" + checker.TypeKey(callee.Type.Result)
+	if callee.Method.Native == "collections/set_map" || callee.Method.Native == "collections/map_transform_keys" {
+		bind = append(bind, g.typeScope(callee.Type.Result))
+	}
+	// Read the receiver before the arguments, as ordinary dispatch does, and
+	// capture each value before a later argument can mutate an earlier local.
+	values := []ast.Expr{sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))}
+	for _, argument := range arguments {
+		values = append(values, sourceAt(argument.Pos, g.argumentValue(argument)))
+	}
+	return g.locatedOperation(e, runtimeName("CallNative"), ident("ctx"), g.lazyValue(identity, runtimeCall("BindNativeCall", bind...)), sliceLiteral(runtimeName("Value"), values...))
 }
 
 // directKeyedCall lowers membership and keyed access on built-in List, Map,

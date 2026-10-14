@@ -133,7 +133,7 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 	for key, value := range s.parent.HostServices {
 		child.HostServices[key] = value
 	}
-	exchange := &libraryHTTPExchange{owner: s, request: r, headers: libraryHTTPHeaders(r.Header), writer: w, ctx: child, remainingRead: s.bodyLimit, remainingWrite: s.responseLimit, readGate: make(chan struct{}, 1), writeGate: make(chan struct{}, 1)}
+	exchange := &libraryHTTPExchange{owner: s, request: r, headers: libraryHTTPHeaders(requestHeaders(r)), writer: w, ctx: child, remainingRead: s.bodyLimit, remainingWrite: s.responseLimit, readGate: make(chan struct{}, 1), writeGate: make(chan struct{}, 1)}
 	exchange.readGate <- struct{}{}
 	exchange.writeGate <- struct{}{}
 	controller := http.NewResponseController(w)

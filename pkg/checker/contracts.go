@@ -27,7 +27,9 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	}
 	receiver := c.resolve(d.Receiver, false)
 	if receiver.Def == nil || receiver.Def.Symbol == nil || receiver.Def.Symbol.Native != "" && !c.standardDeclarations || (receiver.Kind != syntax.KindRecord && receiver.Kind != "alternative") {
-		c.error(d.Pos, "type", "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types")
+		if receiver.ID != "<invalid>" {
+			c.error(d.Pos, "type", "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types")
+		}
 		// An impl whose receiver is not valid nominal data must not become
 		// evidence for later conversions; report the receiver's own faults only.
 		c.wellFormed(receiver, d.Pos, map[string]bool{})
@@ -68,7 +70,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		}
 	}
 	contract := c.resolve(d.Contract, false)
-	if contract.Kind != "contract" {
+	if contract.Kind != "contract" && contract.ID != "<invalid>" {
 		c.error(d.Pos, "type", "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'")
 	}
 	// An interface argument that is a receiver parameter carries the interface's

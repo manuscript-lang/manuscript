@@ -76,6 +76,15 @@ func IntDivideAt(a, b int64, position *string, site string) int64 {
 	return a / b
 }
 
+// IntNegateAt negates a, recording the site only when -a overflows.
+func IntNegateAt(a int64, position *string, site string) int64 {
+	if a == math.MinInt64 {
+		*position = site
+		Unary("-", a)
+	}
+	return -a
+}
+
 func IntRemainderAt(a, b int64, position *string, site string) int64 {
 	if b == 0 {
 		*position = site
