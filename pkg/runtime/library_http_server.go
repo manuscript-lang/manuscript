@@ -219,7 +219,7 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 		case "query":
 			return e.request.URL.RawQuery
 		case "headers":
-			return libraryHTTPHeaders(e.request.Header)
+			return libraryHTTPHeaders(requestHeaders(e.request))
 		case "close":
 			e.interrupt()
 			e.close()

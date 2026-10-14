@@ -199,8 +199,9 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	headers := &Map{Type: "@std/Map[String][@std/Bytes]"}
 	// Header iteration is sorted for stable source-visible insertion order.
-	for _, name := range sortedHeaderNames(r.Header) {
-		headers.Entries = append(headers.Entries, Entry{name, Bytes{[]byte(strings.Join(r.Header[name], "\n"))}})
+	received := requestHeaders(r)
+	for _, name := range sortedHeaderNames(received) {
+		headers.Entries = append(headers.Entries, Entry{name, Bytes{[]byte(strings.Join(received[name], "\n"))}})
 	}
 	request := Record{"@std/HttpRequest", map[string]Value{"method": r.Method, "path": r.URL.Path, "query": r.URL.RawQuery, "headers": headers, "body": Bytes{data}}}
 	var response Value
@@ -317,6 +318,18 @@ func (s *httpService) close(ctx *Execution) {
 	if s.fault != nil {
 		panic(s.fault)
 	}
+}
+// requestHeaders returns the request headers including Host, which net/http
+// moves out of Header into Request.Host.
+func requestHeaders(r *http.Request) http.Header {
+	headers := r.Header.Clone()
+	if headers == nil {
+		headers = http.Header{}
+	}
+	if r.Host != "" {
+		headers.Set("Host", r.Host)
+	}
+	return headers
 }
 func sortedHeaderNames(headers http.Header) []string {
 	names := make([]string, 0, len(headers))

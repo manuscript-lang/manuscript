@@ -157,3 +157,31 @@ test "WebSocket negotiates a protocol and echoes a text frame":
             if not message.text or message.data != "é🙂".to_bytes(): return panic(
                 "WebSocket echo"
             )
+
+fn report_host(exchange: HttpExchange) -> Result[Unit, HttpError]:
+    let hosts = exchange.headers().get("Host").unwrap_or([])
+    let started = value(exchange.send_headers(status: 200, headers: Map[String, List[String]]()))
+    let written = value(exchange.write(hosts.join(",").to_bytes()))
+    return ok(value: unit)
+
+test "HTTP streaming handlers see the Host request header":
+    let net = network()
+    let options = HttpServerOptions(max_requests: 2, timeout: 3.seconds, grace: 0.seconds, tls: none)
+
+    with server = value(
+        net.serve_stream(
+            address: "127.0.0.1:0",
+            handler: report_host,
+            options: options
+        )
+    ):
+        let response = value(
+            net.request(
+                method: "GET",
+                url: "http://{server.address()}/",
+                headers: Map[String, String](),
+                body: "".to_bytes(),
+                timeout: 2.seconds
+            )
+        )
+        if response.body != server.address().to_bytes(): return panic("Host header missing")
