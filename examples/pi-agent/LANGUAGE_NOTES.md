@@ -9,13 +9,13 @@ behavior, not proposed language features as though they already exist.
 | `async`, Promise, `Promise.all` | Ordinary functions and `TaskGroup` with `Task[ToolResult]` | I like having one function kind. Parallel work and its joined lifetime are explicit at the batch boundary. Typed task results require more collection/unwrap code. |
 | Thrown tool/provider errors | `Result[T, Error]`, flat match and `try` | I like seeing the expected failure contract at each boundary. Programming faults remain separate. Adapters must consciously translate operational failures into Result. |
 | Discriminated union objects | `Content`, `Role`, `Event`, `StopReason` alternatives | Exhaustive matching makes lifecycle handling reviewable. Optional fields on a shared Message record still permit invalid role/field combinations; distinct message variants could improve this application API. |
-| TypeBox schema plus inferred parameters | `JsonValue` and a tool-specific validation function | The untrusted boundary is visible, and normalized arguments stay typed as JSON. A reusable JSON Schema validation library would remove repeated adapter work without adding syntax. |
-| Structural interfaces and partial hook overrides | Nominal records, typed callbacks, complete ToolResult replacement | Explicit shapes improve local understanding. Complete replacement is clear but verbose; typed update records could express omission without `unknown` or object spreads. |
+| TypeBox schema plus inferred parameters | `JsonValue`, automatic schema validation, and optional native validators | The untrusted boundary is visible. Completing the port required a source validator with coercion, references, constraints and format predicates. A reusable JSON Schema library would remove this application-level work without adding syntax. |
+| Structural interfaces and partial hook overrides | Nominal records, typed callbacks, and ToolResultPatch | Explicit Optional fields express omission without `unknown` or object spreads. Content replacement deliberately drops stale structured output; that behavior belongs in the finalization pipeline. |
 | Closure sharing in an event-loop application | Shared references with explicit `Synchronized` guards | The control queue and tool-event gate show exactly where sharing is protected. Read-only callback contracts still rely on discipline because exported record fields and nested payloads are mutable. |
 | Array indexing returns an element (possibly undefined) | List indexing returns `Optional[T]` | Absence cannot disappear. Inside a proven in-range `entries()` loop, repeated `.unwrap()` is noisy; stronger tooling explanations or an indexed iteration API could help. |
 | Positional arguments are unambiguous | A bare identifier matching a parameter name retains argument-name shorthand | Optional labels are pleasant, but `Config(model, sink)` bound the local `model` function to the String `model` field. `Config(stream: model, emit: sink)` fixes it. A targeted diagnostic explaining the binding would reduce correction cycles. |
 | Async iterators deliver stream events | A provider callback delivers typed partial snapshots | Less runtime machinery is needed, and consumers settle before the next step. A standard typed stream/channel abstraction could supply buffering and backpressure for adapters that need decoupled consumption. |
-| AbortSignal shared through callbacks | A synchronized cooperative control token | It is straightforward to trace cancellation. A source-usable cancellation handle that interrupts native HTTP/process waits would make this core easier to connect to real providers; this token alone cannot do that. |
+| AbortSignal shared through callbacks | A synchronized cooperative control token and an owned HTTP client | The proxy can interrupt a blocked request/read by closing its owned client. A source-usable cancellation handle would remove the watcher and compose with HTTP/process waits; the token alone cannot interrupt them. |
 | Fluent APIs and direct object methods | Exported functions operating on Agent records | Dependencies and operations remain clear. Source record methods require an explicit interface implementation, so functions avoid a ceremonial interface created only for method syntax. |
 
 The compiler caught callback-label mismatches and missing Optional extraction
@@ -25,7 +25,75 @@ The formatter's expansion of long grouped imports and higher-order calls also
 made the source noticeably longer; compact layout around typed callbacks is an
 opportunity to improve scanability while preserving the current syntax.
 
-The most useful next improvements are libraries and tooling: JSON validation,
-provider streaming adapters, cancellable native operations, and diagnostics for
-mixed positional/name-shorthand calls. This port required no compiler, syntax,
-standard-library, or runtime changes.
+The most useful next improvements are libraries and tooling: reusable JSON
+validation, blocking handoff/wakeup APIs, cancellable native operations, and
+diagnostics for mixed positional/name-shorthand calls. This port required no
+compiler, syntax, standard-library, or runtime changes.
+
+## What completing the core taught us
+
+**Use lexical lifetime to settle application state.** `RunSettlement` implements
+Closeable and clears busy/pending/partial state on return, typed-error propagation
+and programming-fault unwinding. `UpdateLifetime` similarly revokes saved provider
+and tool update callbacks when their operation faults. This replaced normal-path
+cleanup assumptions with source-level scopes. The fault tests distinguish both
+state settlement and late-callback suppression; neither requires changing native
+faults into ordinary Results.
+
+**Concentrate synchronization at actual task boundaries.** TypeScript's event-loop
+callbacks did not require the cross-thread event gate needed by parallel native
+tools. That gate protects completion events and after hooks; Control protects
+cross-task enqueue, abort and run settlement. Race-free execution alone does not
+justify guarding all application state. A blocking queue with one state-owning
+consumer remains a useful alternative architecture. The current standard Queue
+is local and nonblocking, so this port does not pretend it supplies that behavior.
+`wait_for_idle` and the proxy cancellation watcher use suspending 1 ms polling;
+a native wakeup/cancellation API would remove that extra task/polling work.
+
+**Snapshots need deliberate storage boundaries.** `.clone()` is shallow. The
+validator deep-copies JSON before preparation/normalization; transcript declarations
+copy schemas; partial proxy snapshots copy their content-list and signature-map
+storage. Callbacks still receive nested references and must treat them as read-only.
+Readonly views or a reusable deep-JSON-copy API could reduce this discipline and
+the stringify/parse bridge, without requiring general ownership syntax.
+
+**Opaque payloads affect the entire alternative's equality.** Adding a cancellation
+handle to ToolCall meant Event no longer derived Equal, including comparisons to
+the payloadless AgentStart case. Matching `AgentStart:` is the appropriate way to
+inspect its tag. Do not invent equality for resource handles just to keep a
+convenience comparison compiling.
+
+**Use explicit host values for shared configuration.** Module-level `let` values
+are use-site constants, not a mutable process registry. A StreamRuntime supplied
+to Config lets several agents share a default stream deliberately and permits
+independent hosts. Record defaults create fresh runtimes; sharing requires passing
+the same value. This preserves Manuscript's visible-dependency direction.
+
+**Read signatures instead of assuming familiar spellings.** Float parsing is
+`parse_float` from `@std/numbers.ms`; String's parse helper is `parse_int`.
+ResponseBody and ReadStream are distinct contracts, so the proxy supplies a small
+explicit adapter. A view is `ReadStream(value)`, not `value as ReadStream`.
+Import renaming has no syntax. Callback parameter labels remain part of function
+identity, including inside Optional. The compiler caught these mistakes before
+native execution. Opportunities are better discoverability and composable APIs,
+not automatically adding every construct another language provides.
+
+The indexing and call-binding observations are tracked in
+[#451](https://github.com/manuscript-lang/manuscript/issues/451) and
+[#452](https://github.com/manuscript-lang/manuscript/issues/452). These issues
+request design review; this port does not change either language rule.
+
+Finally, native feature coverage and TypeScript identity are different claims.
+The completed scheduling tests distinguish initial listener steering, failed-turn
+hooks, terminated batches with queued input, and preparation-message events.
+Native HTTP tests distinguish parser correctness from actually interrupting a
+blocked read. The README records the schema-engine and native API boundaries;
+test counts alone are not a substitute for checking upstream contracts.
+
+Run completion identity and cancellation identity also need separate treatment.
+Queues and idle-wait generations live in shared orchestration state, while each
+run receives a fresh cancellation control. Reusing one mutable abort flag resets
+signals retained by earlier callers. The native regression keeps an aborted token,
+starts a successful second run, and checks that the old token remains aborted.
+When choosing defaults, remember that `unwrap_or(default)` evaluates its fallback
+eagerly; conditional extraction avoids allocating an unused synchronization object.

@@ -284,3 +284,33 @@ Evidence: [approved contract](https://github.com/manuscript-lang/manuscript/pull
 [retention/reentry/checkpoint/guard/allocation tests](../pkg/runtime/borrowed_arguments_test.go).
 Verify actual emitted ordinary callbacks against the prior boxed baseline; a
 runtime marked-body control does not establish compiler proof or payload parity.
+
+### Application callback lifetimes need cleanup on faults too
+
+Verified: marking a saved callback inactive only after its producer returns
+normally leaves it usable after a programming fault. Source-level Closeable
+scopes can settle an agent's run state and revoke update callbacks on normal,
+Result-error and fault exits without swallowing the fault. Keep shared callback
+admission synchronized, while the scope's close bookkeeping remains task-local.
+An external idle waiter must observe completion after awaited end listeners and
+scope cleanup; a later reset must not erase its captured run generation.
+Cancellation identity is separate: keep a fresh per-run token so an old aborted
+token remains aborted when subsequent runs begin.
+
+Apply when: implementing source applications with retained stream callbacks,
+background tasks, observable busy state or idle waiting.
+Evidence: [RunSettlement and UpdateLifetime](../examples/pi-agent/src/agent.ms),
+[retained-callback fault and listener-settlement tests](../examples/pi-agent/src/test.ms),
+and [cleanup exits](../documentation/core-language/cleanup/exit-order.md).
+Verify: a producer faults after saving its update callback; after joining the
+failed task, invoking that callback emits no update and the agent is idle. Keep
+an aborted token across a successful second run and check its state remains true. Also
+hold an end listener until released and verify idle waiting does not finish early.
+
+Open: a blocking handoff queue and source-usable cancellation/wakeup handle could
+replace the native agent's polling and some event synchronization. Existing Queue
+remains local/nonblocking; discussion of that alternative is not a shipped API
+or authorization to change the standard Queue contract.
+Evidence: [current Queue declaration](../pkg/stdlib/queues.ms),
+[agent ownership and native adaptations](../examples/pi-agent/README.md#ownership-and-native-adaptations),
+and [language notes](../examples/pi-agent/LANGUAGE_NOTES.md).

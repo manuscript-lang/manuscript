@@ -80,6 +80,13 @@ Apply when: changing calls, grammar, inference or editor assistance.
 Evidence: [canonical call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names); [binding/source preservation tests](../pkg/checker/positional_arguments_test.go); [native calls](../tests/e2e/testdata/accept/positional-arguments.ms).
 Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding.
 
+Open: [issue #452](https://github.com/manuscript-lang/manuscript/issues/452)
+records a concrete collision between apparently positional arguments and preserved
+name shorthand. The Pi port uses explicit `stream:`/`emit:` labels where a local
+callback named `model` would select the String model field. Filing the issue does
+not change the current call rule; preserve reordered shorthand until a later
+explicit design decision adopts a migration.
+
 ### Recover concrete contract receivers through checked matching
 
 Decision: a common Error contract must allow generic diagnostics and specific handling without discarding the concrete error. The user requested constructing errors once and passing them directly into the root Error interface. An explicit implementation establishes the relationship; assignments, arguments, returns, Result error widening, and `try` can use it without a written view conversion. Ordinary domain fields contain typed details. Unrelated domains and other interfaces retain exact compatibility. Contract matches use concrete record/alternative type patterns with exactly one receiver binding and a final wildcard for other implementations.
@@ -162,6 +169,12 @@ Apply when: changing matching, collection lookup, type application parsing, or e
 Evidence: [match values](../documentation/core-language/control-flow/pattern-matching.md#arm-values), [list lookup](../documentation/core-language/types/collections.md#lookup-and-updates), and [native expression conformance](../tests/e2e/testdata/accept/expression-conveniences.ms).
 Verify: use `items[index].unwrap_or(0)` for absent indexes, keep `identity[Int]` specialization, and exercise enclosing returns, propagation, cleanup, and loop exits from match arms. An effects-only arm ending in a value-returning call needs an explicit `unit` when another arm produces Unit.
 
+Open: [issue #451](https://github.com/manuscript-lang/manuscript/issues/451)
+revisits the extraction cost at known-valid indexed accesses. It is a usability
+proposal, not evidence that bracket indexing now unwraps or faults. The native
+agent's indexed lists still extract Optional explicitly; no language change was
+made while completing the port.
+
 ### Infer local callback signatures from context
 
 Decision: the user explicitly permits callback parameter and result inference. Known function contexts supply omitted parameter types; callback bodies can supply generic output evidence after inputs are known, including success types within a partially known Result context. Named public signatures stay explicit, and callable argument labels retain their existing function identity. Following [issue #81](https://github.com/manuscript-lang/manuscript/issues/81), contextual anonymous functions adopt the expected call labels independently of local parameter names; lowering must dispatch using those context labels while binding body names by position. Use existing argument/field defaults to omit redundant values; do not treat every Optional parameter as implicitly defaulted.
@@ -192,3 +205,19 @@ Open: hoisting scalar constants to Go constants for performance.
 Apply when: changing top-level declarations, name resolution of module symbols, or the formatter's blank-line rules.
 Evidence: [constants rules](../documentation/core-language/modules/declarations.md#constants), [checker](../pkg/checker/constants.go), [diagnostics](../tests/e2e/constants_test.go), and [native fixture](../tests/e2e/testdata/accept/constants.ms).
 Verify: `ms run` on a module using an exported constant from another module, a local `let` shadowing a constant, and `A()` on a constant rejected.
+
+### Inspect alternative tags without requiring resource equality
+
+Verified: an alternative containing a record with an opaque native handle does
+not derive Equal merely because the particular case being compared has no payload.
+Adding synchronized cancellation context to a tool call therefore made Event
+ineligible for `event == Event.AgentStart`. Use a flat tagged match for event-kind
+inspection; do not manufacture handle equality as a workaround.
+
+Apply when: adding capability/resource fields to records used in alternative
+payloads, or porting discriminated-union comparisons.
+Evidence: [equality rules](../documentation/core-language/types/equality-and-hashing.md),
+[agent event types](../examples/pi-agent/src/types.ms), and
+[native lifecycle tests](../examples/pi-agent/src/test.ms).
+Verify: the core suite checks initial AgentStart using a tagged match and retains
+opaque cancellation context on tool calls; `ms check` accepts that inspection.
