@@ -668,6 +668,7 @@ func equal(a, b Value, state *equalityState) bool {
 	}
 	return false
 }
+
 // keyedPosition returns the position of the key equal to key in a Set or Map,
 // or -1. With an execution it uses the collection's hash index, so comparing
 // two collections is linear instead of quadratic; without one (hashing a
