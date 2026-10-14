@@ -20,7 +20,7 @@ from statistics import mean, pstdev
 ROOT = Path(__file__).resolve().parent
 TRIALS = ROOT / "results" / "trials.jsonl"
 BOARD = ROOT / "results" / "leaderboard.md"
-LANG_NAMES = {"ts": "TypeScript", "go": "Go", "rust": "Rust", "ms": "Manuscript", "ms_cheat": "Manuscript (cheat sheet)"}
+LANG_NAMES = {"ts": "TypeScript", "go": "Go", "rust": "Rust", "ms": "Manuscript"}
 MIN_RUNS = 3  # cells with fewer trials are marked provisional
 
 
@@ -165,7 +165,7 @@ def source_table(rows):
              "Input tokens include cache reads. `base` is the system prompt plus the task, re-sent on every step, so it scales with turns; `docs` is the Manuscript docs bundle when the agent reads it;",
              "`reads` is other file and command output; `build` is check/build/run output (compile-error retries); `writes` is edited code echoed back; `model output` is the agent's own text and tool calls.", "",
              "| language | input | output | " + " | ".join(CATEGORIES) + " |", "|---|---:|---:|" + "---:|" * len(CATEGORIES)]
-    for lang in ("ts", "go", "rust", "ms", "ms_cheat"):
+    for lang in ("ts", "go", "rust", "ms"):
         ok = [t for t in rows if t["language"] == lang and t["pass"] and t.get("input_by_source")]
         if not ok:
             continue
