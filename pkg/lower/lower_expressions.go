@@ -237,10 +237,10 @@ func (g *generator) callValue(e *syntax.Expression, info *checker.Info) ast.Expr
 	if value := g.nativeSourceCall(e, arguments); value != nil {
 		return value
 	}
-	if value := g.preparedSourceCall(e, arguments); value != nil {
+	if value := g.preparedSourceCall(e); value != nil {
 		return value
 	}
-	if value := g.preparedMethodCall(e, arguments); value != nil {
+	if value := g.preparedMethodCall(e); value != nil {
 		return value
 	}
 	args := g.arguments(arguments)

@@ -27,12 +27,16 @@ type Converted struct{ Use Edge }
 type IntLiteral struct {
 	Value int64
 	Type  *checker.Type
+	// Unary retains the existing conservative Debug table policy. Release
+	// constant tables can consume this already elaborated value.
+	Unary bool
 }
 
 // FloatLiteral is a 64-bit floating-point literal.
 type FloatLiteral struct {
 	Value float64
 	Type  *checker.Type
+	Unary bool
 }
 
 // DecimalLiteral is a decimal literal; Text keeps the written digits and suffix.

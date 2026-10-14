@@ -20,7 +20,14 @@ func Value(program *checker.Program, e *syntax.Expression, info *checker.Info) E
 			if e.Text == "-" {
 				text = "-" + text
 			}
-			return number(text, info.Type)
+			switch value := number(text, info.Type).(type) {
+			case IntLiteral:
+				value.Unary = true
+				return value
+			case FloatLiteral:
+				value.Unary = true
+				return value
+			}
 		}
 	case syntax.KindNumber:
 		return number(e.Text, info.Type)

@@ -32,6 +32,8 @@ may have omission permission without an available default expression; the callab
 owns preparation. Default permission is not function-type identity.
 
 Unary Int minima and Float negative zero are elaborated as typed constants.
+Their origin remains explicit so Debug retains its conservative table eligibility
+while Release tables use the typed value.
 Constant-table consumers use those nodes rather than parsing unary syntax again.
 Effectful large literals use the same expected-use edges as scalar calls,
 including Never and checked Optional/Error conversions. Initialization chunks

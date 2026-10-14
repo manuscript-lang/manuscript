@@ -41,11 +41,11 @@ func (g *generator) debugListLiteral(list ir.List) ast.Expr {
 func (g *generator) debugLiteralScalar(x ir.Expr) ast.Expr {
 	switch x := x.(type) {
 	case ir.IntLiteral:
-		if isPrimitive(x.Type, "Int") {
+		if !x.Unary && isPrimitive(x.Type, "Int") {
 			return g.irValue(x)
 		}
 	case ir.FloatLiteral:
-		if isPrimitive(x.Type, "Float") {
+		if !x.Unary && isPrimitive(x.Type, "Float") {
 			return g.irValue(x)
 		}
 	case ir.BoolLiteral:

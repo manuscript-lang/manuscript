@@ -12,13 +12,13 @@ import (
 // the generated callback retains its cleanup and fault-frame defers. When every
 // argument is already in declaration order, Invoke adds only redundant label
 // preparation and a cancellation check. Keep other callable paths unchanged.
-func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
+func (g *generator) preparedSourceCall(e *syntax.Expression) ast.Expr {
 	x := g.ir.Expression(e).Call
 	symbol := x.Symbol
 	if symbol == nil || !x.Prepared {
 		return nil
 	}
-	args = callSyntax(x)
+	args := callSyntax(x)
 	values := make([]ast.Expr, len(args))
 	for i, arg := range args {
 		// A later match argument can reassign a local used by an earlier
@@ -33,12 +33,12 @@ func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argum
 // implementation's direct body, skipping the bound Function, argument labels,
 // and Argument slice that Bind and Invoke build for every call. Arguments must
 // already be in declaration order so the labels carry no information.
-func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
+func (g *generator) preparedMethodCall(e *syntax.Expression) ast.Expr {
 	x := g.ir.Expression(e).Call
 	if x.Symbol != nil || x.Method == nil || !x.Prepared {
 		return nil
 	}
-	args = callSyntax(x)
+	args := callSyntax(x)
 	receiverType := x.Receiver.Type
 	values := make([]ast.Expr, len(args))
 	for i, arg := range args {
