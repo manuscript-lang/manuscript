@@ -120,8 +120,9 @@ func (c *dapClient) failure(command, want string) {
 	}
 }
 
-// buildTarget compiles a small native program that exits with status 0.
-func buildTarget(t *testing.T) string {
+// buildTarget compiles a small native program that exits with status 0, or
+// runs until killed when run is true.
+func buildTarget(t *testing.T, run bool) string {
 	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("native debugger lifecycle tests run on Unix")
@@ -130,8 +131,12 @@ func buildTarget(t *testing.T) string {
 	if err != nil {
 		t.Skip("go tool unavailable")
 	}
+	source := "package main\n\nfunc main() {}\n"
+	if run {
+		source = "package main\n\nimport \"time\"\n\nfunc main() { time.Sleep(time.Minute) }\n"
+	}
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n\nfunc main() { println(\"done\") }\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module target\n\ngo 1.21\n"), 0o600); err != nil {
@@ -174,7 +179,7 @@ func TestDAPRequestsBeforeSessionAreRejected(t *testing.T) {
 }
 
 func TestDAPRequestsAreAcceptedOnceSessionExists(t *testing.T) {
-	target := buildTarget(t)
+	target := buildTarget(t, false)
 	c := startDAP(t)
 	c.request("launch", map[string]any{"mode": "exec", "program": target, "outputMode": "remote"})
 	if r := c.response("launch"); !r.GetResponse().Success {
@@ -189,5 +194,79 @@ func TestDAPRequestsAreAcceptedOnceSessionExists(t *testing.T) {
 	c.request("threads", map[string]any{})
 	if r := c.response("threads"); !r.GetResponse().Success {
 		t.Fatalf("threads: %+v", r)
+	}
+}
+
+// untilTerminated reads through the terminated event and reports whether an
+// exited event came before it.
+func (c *dapClient) untilTerminated() (sawExited bool) {
+	c.t.Helper()
+	c.next("terminated event", func(m dap.Message) bool {
+		switch m.(type) {
+		case *dap.ExitedEvent:
+			sawExited = true
+		case *dap.TerminatedEvent:
+			return true
+		}
+		return false
+	})
+	return sawExited
+}
+
+func launchToExit(t *testing.T) *dapClient {
+	c := startDAP(t)
+	c.request("launch", map[string]any{"mode": "exec", "program": buildTarget(t, false), "outputMode": "remote"})
+	c.response("launch")
+	c.request("configurationDone", map[string]any{})
+	if c.untilTerminated() {
+		t.Fatal("exited event reported without a known exit code")
+	}
+	return c
+}
+
+func TestDAPResumingAfterExitIsRejected(t *testing.T) {
+	c := launchToExit(t)
+	for _, command := range []string{"next", "stepIn", "stepOut", "continue", "pause"} {
+		c.request(command, map[string]any{"threadId": 1})
+		c.failure(command, "the debuggee has exited")
+	}
+	// Rejected requests produce no stopped event with reason error.
+	c.request("threads", map[string]any{})
+	c.next("threads response", func(m dap.Message) bool {
+		if e, ok := m.(*dap.StoppedEvent); ok {
+			t.Fatalf("unexpected stopped event: %+v", e)
+		}
+		r, ok := m.(dap.ResponseMessage)
+		return ok && r.GetResponse().Command == "threads"
+	})
+}
+
+func TestDAPTerminate(t *testing.T) {
+	succeeds := func(t *testing.T, c *dapClient) {
+		t.Helper()
+		c.request("terminate", map[string]any{})
+		if r := c.response("terminate"); !r.GetResponse().Success {
+			t.Fatalf("terminate: %+v", r)
+		}
+	}
+	t.Run("after exit", func(t *testing.T) { succeeds(t, launchToExit(t)) })
+	t.Run("before launch", func(t *testing.T) { succeeds(t, startDAP(t)) })
+	t.Run("running target", func(t *testing.T) {
+		c := startDAP(t)
+		c.request("launch", map[string]any{"mode": "exec", "program": buildTarget(t, true), "outputMode": "remote"})
+		c.response("launch")
+		c.request("configurationDone", map[string]any{})
+		c.response("configurationDone")
+		succeeds(t, c)
+		c.untilTerminated()
+	})
+}
+
+func TestDAPNoDebugExitReportsExitCode(t *testing.T) {
+	c := startDAP(t)
+	c.request("launch", map[string]any{"mode": "exec", "program": buildTarget(t, false), "noDebug": true})
+	c.response("launch")
+	if !c.untilTerminated() {
+		t.Fatal("no exited event although Delve printed the exit status")
 	}
 }
