@@ -35,6 +35,9 @@ func runSourceCommand(args []string, usage string) int {
 	}
 	switch inv.command {
 	case "check", "lint":
+		if inv.watch {
+			return watchAnalysis(inv.command, inv.targets)
+		}
 		return runAnalysis(inv.command, inv.targets, inv.structured)
 	case "build", "profile":
 		return runNativeCommand(inv.command, inv.filename, inv.output, p.options, p.kind, inv.arguments, inv.profileTrace, inv.structured)

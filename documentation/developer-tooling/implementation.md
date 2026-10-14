@@ -44,6 +44,8 @@ ms test test.ms --watch
 
 `--watch` keeps one `ms` process alive, rebuilds after each saved change to the manifest or any loaded local module, and restarts the program. The running program is interrupted, given five seconds to finish cleanup, and then killed, but only after its replacement builds; a failed edit prints diagnostics and keeps watching. Each restart reports the time from the save. Interrupting `ms` interrupts the program and exits with status 130. See [cache boundaries](builds/incremental-compilation.md) for what a rebuild still compiles and links.
 
+`ms check <targets> --watch` and `ms lint <targets> --watch` rerun the analysis after each saved change to a target, its manifest, or any local module it loaded, printing the usual diagnostics each time. Errors and lint findings keep watching; interrupting exits with status 130. `--json` cannot be combined with `--watch`. Files added to a watched directory are picked up on the next change to a watched file.
+
 Project lint checks hygiene in every reachable local module and runs semantic rules on the checked program. [Library projects](builds/project-configuration.md#library-projects-and-copied-dependencies) include all source modules and discovered tests. `--json` reports stable rule codes and module-relative positions.
 
 ## Source inspection and API documentation
