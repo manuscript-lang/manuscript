@@ -29,6 +29,7 @@ type Entity struct {
 	Name     string   `json:"name"`
 	Type     string   `json:"type,omitempty"`
 	Span     Span     `json:"span"`
+	Entry    *Span    `json:"entry,omitempty"` // first statement of this callable's own body
 	Exported bool     `json:"exported"`
 	Effects  []string `json:"effects,omitempty"`
 }
@@ -138,6 +139,10 @@ func Inspect(program *checker.Program) Inspection {
 		for _, declaration := range module.Declarations {
 			id := module.File + "#" + declaration.Kind + "#" + declaration.Name
 			entity := Entity{ID: id, Kind: declaration.Kind, Name: declaration.Name, Span: sourceSpan(module, declaration.Pos), Exported: declaration.Export}
+			if declaration.Kind == syntax.KindFn && len(declaration.Body) > 0 {
+				entry := sourceSpan(module, declaration.Body[0].Pos)
+				entity.Entry = &entry
+			}
 			if symbol := program.Symbol(module.File, declaration.Name); symbol != nil && symbol.Decl == declaration {
 				entity.GoID = symbol.ID
 				entity.Type = symbol.Type.String()
@@ -196,6 +201,8 @@ func Inspect(program *checker.Program) Inspection {
 				if len(method.Body) > 0 {
 					checked := methods[method]
 					entity = Entity{ID: methodIDs[checked.ID], GoID: checked.ID, Kind: "method", Name: implementation.Name + "." + method.Name, Type: checked.Type.String(), Span: sourceSpan(module, method.Pos), Effects: program.Effects[checked.ID]}
+					entry := sourceSpan(module, method.Body[0].Pos)
+					entity.Entry = &entry
 					result.Entities = append(result.Entities, entity)
 					visitor.Callable(method.Params, method.Body)
 				}

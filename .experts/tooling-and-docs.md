@@ -90,6 +90,23 @@ Evidence: [embedded services](../internal/debugger/debugger.go),
 [shutdown race regressions](../internal/debugger/debugger_test.go),
 [copied-binary debugger checks](../scripts/distcheck/debugger.go), and
 [platform contract](../documentation/developer-tooling/debugging/debugger-integration.md).
+
+Verified: inspection's general statement list includes default-argument callback
+bodies before the containing function's body; header spans do not bound callable
+bodies. Function breakpoints must use the explicit callable `entry`, derived from
+the checked body's first statement. Evidence and verification:
+[inspection regression](../pkg/tooling/inspect_entry_test.go) and
+[native default-callback breakpoint](../tests/e2e/debug_script_test.go).
+
+Verified: closing inherited blocking stdin does not necessarily interrupt a Go
+read. Unix scripted stdio uses owned pollable duplicates and restores shared flags
+after joining I/O. Cancellation retains the target's process handle before
+execution, avoiding PID reuse, then kills/joins/reaps it without concurrent Delve
+Halt/Continue (which raced in the pinned backend). Partial JSON writes must end
+framing rather than append another event to an incomplete record. Evidence and
+verification: [script shutdown/framing tests](../internal/debugger/script_test.go),
+[stdio flags](../internal/debugger/script_file_unix_test.go), and
+[native SIGINT and unread output](../tests/e2e/debug_script_test.go).
 Verified: the DAP Go-source launch modes, terminal Go-module path guessing, and an obsolete DWARF compatibility probe could still invoke external Go despite embedding Delve. The transport/client now exclude those routes; [vendor refresh](../scripts/maintenance/delve.go) reapplies the small compatibility-probe patch. Profile viewers are prebuilt into the SDK payload, not compiled on first use.
 
 Verify: run the shutdown tests with `-race`, the native editor test, and the

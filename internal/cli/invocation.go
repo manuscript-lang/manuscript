@@ -21,6 +21,8 @@ type invocation struct {
 	profileTrace                       bool
 	formatCheck, structured            bool
 	debug, watch                       bool
+	debugScript                        string
+	rawStack                           bool
 	buildTypeName                      string
 	buildTypeSet                       bool
 	testTimeout, testFilter            string
@@ -101,6 +103,17 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 			inv.formatCheck = true
 		case "--json":
 			inv.structured = true
+		case "--raw-stack":
+			inv.rawStack = true
+		case "--script":
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
+				return usageError("--script requires a path or - for stdin"), false
+			}
+			if inv.debugScript != "" {
+				return usageError("--script may only be specified once"), false
+			}
+			inv.debugScript = value
 		case "--build-type":
 			value, ok := requiredValue(args, &i, value, inline)
 			if !ok {
@@ -219,9 +232,15 @@ func (inv *invocation) validate() (plan, int, bool) {
 		return p, usageError("--watch requires run or test, not %s; use ms run <file> --watch or ms test <file> --watch", command), false
 	}
 	if inv.formatCheck && command != "fmt" ||
-		inv.structured && !inv.isOneOf("check", "lint", "test", "build", "profile") ||
+		inv.structured && !inv.isOneOf("check", "lint", "test", "build", "profile", "debug") ||
 		inv.debug && !inv.isOneOf("build", "run", "test") {
 		return p, usageError("%s; run 'ms help %s' for the options this command accepts", invalidFlag(command, inv.formatCheck, inv.structured, inv.debug), command), false
+	}
+	if (inv.debugScript != "" || inv.rawStack) && command != "debug" {
+		return p, usageError("--script and --raw-stack require ms debug"), false
+	}
+	if command == "debug" && (inv.structured != (inv.debugScript != "") || inv.rawStack && inv.debugScript == "") {
+		return p, usageError("script debugging requires --script <path|-> and --json together; --raw-stack is optional"), false
 	}
 	kind, err := compiler.ParseBuildType(inv.buildTypeName)
 	if err != nil {

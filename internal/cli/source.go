@@ -49,6 +49,9 @@ func runSourceCommand(args []string, usage string) int {
 	}
 	result := compiler.CompileFileForBuild(inv.filename, p.options, p.kind)
 	if !result.Success() {
+		if inv.command == "debug" && inv.structured {
+			return debugger.ScriptFailure(os.Stdout, "compile", fmt.Errorf("%v", result.Diagnostics))
+		}
 		if inv.structured && inv.command == "test" {
 			document := newTestResult(result)
 			document.Reason = "compile_error"
@@ -108,6 +111,9 @@ func runNativeProgram(inv *invocation, kind compiler.BuildType, result compiler.
 	jsonTest := inv.structured && command == "test"
 	// failure reports a build-stage error in the format the command was asked for.
 	failure := func(phase string, err error) int {
+		if command == "debug" && inv.structured {
+			return debugger.ScriptFailure(os.Stdout, phase, err)
+		}
 		if jsonTest {
 			return testJSONError(filename, result, phase, err)
 		}
@@ -136,6 +142,18 @@ func runNativeProgram(inv *invocation, kind compiler.BuildType, result compiler.
 		return failure("build", err)
 	}
 	if command == "debug" {
+		if inv.debugScript != "" {
+			input := os.Stdin
+			if inv.debugScript != "-" {
+				input, err = os.Open(inv.debugScript)
+				if err != nil {
+					return failure("input", err)
+				}
+			}
+			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+			defer cancel()
+			return debugger.Script(ctx, executable, inv.arguments, tooling.Inspect(result.Program), input, os.Stdout, inv.rawStack)
+		}
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 		defer cancel()
 		status, err := debugger.Terminal(ctx, executable, inv.arguments)

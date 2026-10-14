@@ -75,6 +75,60 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 			return fmt.Errorf("standalone terminal missing %q:\n%s", want, output)
 		}
 	}
+	return checkScriptDebugger(cli, directory, environment, source)
+}
+
+func checkScriptDebugger(cli, directory string, environment []string, source string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, cli, "debug", source, "--script=-", "--json")
+	cmd.Dir, cmd.Env = directory, environment
+	cmd.Stdin = strings.NewReader("break main\ncontinue\nnext\nnext\nlocals\nbt 3\nbt 20 --raw\ncontinue\nexit\n")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	if err != nil || stderr.Len() != 0 {
+		return fmt.Errorf("standalone scripted debugger: %v\n%s\n%s", err, output, &stderr)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(output))
+	sequence, sourceLocal, sourceFrame, rawFrame, exited := 0, false, false, false, false
+	for decoder.More() {
+		var record struct {
+			Version, Seq  int
+			Event, Reason string
+			Locals        []struct{ Name, Type, Value string }
+			Result        json.RawMessage
+			Location      struct {
+				Function string
+				Source   bool
+			}
+			TargetStatus *int `json:"target_status"`
+		}
+		if err := decoder.Decode(&record); err != nil {
+			return fmt.Errorf("script JSONL: %w", err)
+		}
+		sequence++
+		if record.Version != 1 || record.Seq != sequence {
+			return fmt.Errorf("script version/sequence mismatch")
+		}
+		if record.Event == "stop" && record.Location.Source && record.Location.Function == "main" {
+			sourceFrame = true
+		}
+		for _, local := range record.Locals {
+			if local.Name == "result" && local.Type == "Int" && local.Value == "42" {
+				sourceLocal = true
+			}
+		}
+		if bytes.Contains(record.Result, []byte(`"source":false`)) {
+			rawFrame = true
+		}
+		if record.Event == "exit" && record.Reason == "exited" && record.TargetStatus != nil && *record.TargetStatus == 0 {
+			exited = true
+		}
+	}
+	if !sourceLocal || !sourceFrame || !rawFrame || !exited {
+		return fmt.Errorf("standalone scripted source/stack/exit evidence missing:\n%s", output)
+	}
 	return nil
 }
 

@@ -118,9 +118,10 @@ func commandHelp(command string) (string, bool) {
 		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
 		examples = "ms dap"
 	case "debug":
-		usage = "<file.ms|ms.toml> [-- program arguments]"
+		usage = "<file.ms|ms.toml> [--script path --json] [--raw-stack] [-- program arguments]"
 		description = "Build without optimization or inlining, then start the embedded Delve terminal.\nNo dlv executable is needed. On macOS, Xcode command line tools supply debugserver. Arguments after -- are passed to the application."
-		examples = "ms debug ms.toml\n  ms debug main.ms -- first second"
+		options = "  --script <path|->  Read debug commands from a file or stdin (-); requires --json\n  --json             Emit version 1 JSONL command/result, stop, output, error, exit records\n  --raw-stack        Include native runtime frames in scripted stacks\n"
+		examples = "ms debug ms.toml\n  ms debug main.ms -- first second\n  ms debug ms.toml --script commands.txt --json -- first second"
 	case "lock":
 		usage = "<ms.toml>"
 		description = "Create or update project-root ms.lock with compiler/runtime, Go toolchain,\nand target pins. Run again after changing the compiler or toolchain.\nRequires a project manifest, rather than a standalone source file."

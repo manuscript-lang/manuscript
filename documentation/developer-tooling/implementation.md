@@ -286,7 +286,11 @@ They can exceed the soft limit; the formatter does not split or rewrite them.
 
 ## Debugging and profiling
 
-`ms debug` is also available for Delve's terminal UI. Existing project pin validation remains in effect; use `ms lock ms.toml` explicitly after a toolchain/compiler change.
+`ms debug` runs Delve's terminal UI, or accepts `--script commands.txt --json`
+for source names/values, filtered stacks, and separate target output events.
+See [scripted debugging](debugging/debugger-integration.md#scripted-debugging)
+for commands, JSONL records, and cleanup behavior. Existing project pin validation
+remains in effect; use `ms lock ms.toml` explicitly after a toolchain/compiler change.
 
 Profiling is explicit and local: CPU/heap use pprof and execution traces use Go tracing. New files are created exclusively with mode 0600; existing files are never overwritten. Profiles flush before process exit, including handled faults and signal cancellation. A setup or heap-write error returns exit code 70. Only one capture can run at a time in a process. Use optimized builds for representative samples and retain matching native metadata.
 
@@ -294,7 +298,7 @@ Source entry boundaries contribute `ms.source` CPU labels and, when tracing, `so
 
 Profiling still changes execution time and allocation behavior. CPU capture also waits for samples to flush at shutdown, and heap capture forces a garbage collection. Tracing can add substantial time and disk usage, especially with many work operations or allocations. Measure an unprofiled executable separately when comparing performance; neither capture wall time nor instrumented CPU samples establish normal program speed.
 
-The checker analyzes each affected module rather than incrementally reusing individual syntax/type nodes. Public rename is conservative about identifier collisions. The debugger retains native runtime frames as subdued entries, and complex watch expressions retain native Go syntax. These behaviors are explicit rather than hidden by unsupported capabilities.
+The checker analyzes each affected module rather than incrementally reusing individual syntax/type nodes. Public rename is conservative about identifier collisions. The VS Code debugger retains native runtime frames as subdued entries, and complex watch expressions retain native Go syntax. Scripted stacks filter source frames by default and provide an explicit raw option.
 
 `ms profile module-or-project --out-dir new-directory` captures `cpu.pprof` and `heap.pprof` and retains the optimized executable, build/source metadata, static inspection, and a bundle manifest for reproducible symbolization. `-o` and `--output` remain compatible aliases for `--out-dir`. Add `--trace` to also capture `trace.out`. Trace capture is now opt-in: the default bundle omits the trace file and its manifest entry. Existing directories are rejected. For individual output paths, use the existing `ms run … --cpu-profile path --heap-profile path --trace path` options; every requested output is captured.
 

@@ -100,7 +100,7 @@ func invalidFlag(command string, formatCheck, structured, debug bool) string {
 	case formatCheck && command != "fmt":
 		return "--check is valid only for ms fmt, not ms " + command
 	case structured:
-		return "--json is valid only for ms check, lint, test, build, and profile, not ms " + command
+		return "--json is valid only for ms check, lint, test, build, profile, and scripted debug, not ms " + command
 	case debug:
 		return "--debug is valid only for ms build, run, and test, not ms " + command
 	}

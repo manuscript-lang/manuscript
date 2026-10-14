@@ -76,7 +76,7 @@
       "pkg/parser",
       "pkg/project"
     ],
-    "internal/debugger": [],
+    "internal/debugger": ["pkg/tooling", "pkg/build"],
     "pkg/lower": [
       "pkg/syntax",
       "pkg/lexer",
