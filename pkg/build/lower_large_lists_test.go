@@ -124,7 +124,7 @@ test "a return inside a large literal leaves the function":
 			t.Fatal("Release did not lower large literals to tables and chunks")
 		}
 		binary := filepath.Join(t.TempDir(), "program")
-		if _, err := BuildCheckedWithType(r, binary, "", kind); err != nil {
+		if _, err := BuildCheckedWithType(r, binary, kind); err != nil {
 			t.Fatal(err)
 		}
 		data, err := exec.Command(binary).CombinedOutput()
@@ -148,7 +148,7 @@ func TestLargeListLiteralFaultFrames(t *testing.T) {
 			t.Fatal(r.Diagnostics)
 		}
 		binary := filepath.Join(t.TempDir(), "program")
-		if _, err := BuildCheckedWithType(r, binary, "", kind); err != nil {
+		if _, err := BuildCheckedWithType(r, binary, kind); err != nil {
 			t.Fatal(err)
 		}
 		data, err := exec.Command(binary).CombinedOutput()
