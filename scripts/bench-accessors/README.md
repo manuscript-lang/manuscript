@@ -80,8 +80,8 @@ service/guard/dynamic-dispatch performance from these core loops.
 
 ## Retained measurement, 2026-10-14
 
-The [baseline metadata](results/baseline-metadata.json) identifies current main
-1383851e; [accessor metadata](results/accessors-metadata.json) identifies
+The [baseline metadata](results/baseline-metadata.json) identifies main at
+measurement time, 1383851e; [accessor metadata](results/accessors-metadata.json) identifies
 31d00fb7 plus the documented integration worktree. Both use the pinned Go 1.25.1
 SDK on linux/amd64, one native benchmark CPU, five 200ms samples per workload,
 and 1024 reads per operation. The native transcript records the Xeon 8573C host.
@@ -99,6 +99,9 @@ length still bind. The accessor versions of all 20 core reads use direct helpers
 The unchanged-method control's median increased by 0.94%; Unicode String.length
 increased by 1.2% with no evidence of a timing shift in its five samples. Do not
 claim that every getter improves or generalize these loops to application speed.
+Later integration with #507/#508 has its own
+[verification record](results/verification/main-integration-f253bf39.md); it does
+not change this comparison baseline or its raw samples.
 Permutation p-values are exploratory and have no multiple-comparison correction.
 
 The handwritten control calls the existing generic CollectionLengthInt helper,
