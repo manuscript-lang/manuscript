@@ -41,7 +41,7 @@ func TestInterfaceViewLowersReceiverOnce(t *testing.T) {
 				t.Fatal(checked.Diagnostics)
 			}
 			optimized := optimize(checked.Program)
-			g := &generator{program: checked.Program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}}
+			g := &generator{program: checked.Program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}, typed: map[*checker.Binding]string{}}
 			file := g.file("views.ms", Options{})
 			seen := map[string]int{}
 			ast.Inspect(file, func(node ast.Node) bool {

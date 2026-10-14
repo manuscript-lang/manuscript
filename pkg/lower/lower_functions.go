@@ -132,6 +132,18 @@ func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 		args = append(args, composite(runtimeName("Argument"), keyed("Name", textLiteral(field.Name)), keyed("Value", ident(g.program.ParameterBindings(d)[i].ID))))
 	}
 	t := checker.ConstructorSignature(s.Type)
+	if st := g.structFor(s.Type); st != nil {
+		var elements []ast.Expr
+		for i, f := range st.fields {
+			var value ast.Expr = ident(g.program.ParameterBindings(d)[i].ID)
+			if f.scalar != "" {
+				value = unbox(value, f.scalar)
+			}
+			elements = append(elements, keyed(fieldName(f.name), value))
+		}
+		return g.function(d.Name, d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.ParameterBindings(d), nil, t,
+			returned(call(runtimeName("Value"), address(composite(ident(st.name), elements...)))))
+	}
 	return g.function(d.Name, d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.ParameterBindings(d), nil, t,
 		returned(runtimeCall("ConstructWithContext", ident("ctx"), g.key(s.Type), sliceLiteral(runtimeName("Argument"), args...))))
 }
@@ -150,7 +162,7 @@ func (g *generator) enterNativeDefault(d *syntax.Declaration) bool {
 	return true
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
-	labels, key, position, out := g.functionParts(name, params, result, body, bindings, self, t, tail...)
+	labels, key, position, out, _ := g.functionPieces(nil, name, params, result, body, bindings, self, t, tail...)
 	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
 }
 
@@ -158,10 +170,28 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 // body statements. A method body reads its receiver from the identifier
 // "receiver", which the enclosing closure supplies.
 func (g *generator) functionParts(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ([]string, ast.Expr, string, []ast.Stmt) {
+	labels, key, position, out, _ := g.functionPieces(nil, name, params, result, body, bindings, self, t, tail...)
+	return labels, key, position, out
+}
+
+// directFunctionLiteral lowers a direct function to its Go function literal.
+func (g *generator) directFunctionLiteral(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, t *checker.Type) ast.Expr {
+	_, _, _, _, literal := g.functionPieces(direct, name, params, result, body, bindings, nil, t)
+	return literal
+}
+
+// functionPieces lowers a source callable. With direct set it also yields the
+// Go function literal of a direct function instead of the dynamic wrapper's
+// statements.
+func (g *generator) functionPieces(direct *directFunction, name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ([]string, ast.Expr, string, []ast.Stmt, ast.Expr) {
 	oldCleanups, oldLoops, oldLabels, oldDepth, oldResult := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth, g.resultKey
-	oldNeedsCleanup := g.needsCleanup
+	oldNeedsCleanup, oldResultType, oldRecovers := g.needsCleanup, g.resultType, g.recovers
 	resultKey := g.key(t.Result)
 	g.resultKey = resultKey
+	g.resultType, g.recovers = "", false
+	if direct != nil {
+		g.resultType = direct.result
+	}
 	g.expressionDepth = 0
 	g.cleanups = nil
 	g.needsCleanup = false
@@ -174,6 +204,7 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 		g.loopLabels = oldLabels
 		g.expressionDepth = oldDepth
 		g.resultKey = oldResult
+		g.resultType, g.recovers = oldResultType, oldRecovers
 	}()
 	var labels []string
 	for _, p := range t.Params {
@@ -188,6 +219,20 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 		out = append(out, define(self.ID, ident("receiver")), discard(ident(self.ID)))
 	}
 	for i, b := range bindings {
+		if direct != nil {
+			// The Go parameter is the binding; callers supply typed values.
+			if typ := direct.params[i]; typ != "" {
+				g.typed[b] = typ
+			}
+			out = append(out, discard(ident(b.ID)))
+			continue
+		}
+		if typ := scalarBinding(b); typ != "" && params[i].Default == nil && !t.Defaults[t.Params[i].Name] {
+			// A required scalar argument is never nil; copy it into a typed variable.
+			g.typed[b] = typ
+			out = append(out, &ast.DeclStmt{Decl: variable(b.ID, ident(typ), unbox(index(ident("args"), intLiteral(i)), typ))}, discard(ident(b.ID)))
+			continue
+		}
 		out = append(out, define(b.ID, index(ident("args"), intLiteral(i))), discard(ident(b.ID)))
 		// Checked source values are concrete (including Unit and Optional.none);
 		// Invoke leaves nil only for an omitted argument.
@@ -201,6 +246,9 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 	}
 	out = append(out, g.body(body)...)
 	out = append(out, tail...)
+	if direct != nil {
+		return nil, nil, "", nil, g.directLiteral(direct, name, result, bindings, t, out)
+	}
 	// Defaults and generated match closures belong to this callable; nested
 	// source functions save their own flag. Lexical cleanup lists are empty again
 	// after lowering each scope, so their final length cannot prove absence.
@@ -209,5 +257,5 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 	}
 	out = append(prologue, out...)
 	out = append(out, g.locatedStatement(syntax.Position{File: "manuscript.generated.go", Line: 1}, returned(unit())))
-	return labels, resultKey, result.Pos.String(), out
+	return labels, resultKey, result.Pos.String(), out, nil
 }

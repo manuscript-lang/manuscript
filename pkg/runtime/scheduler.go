@@ -350,7 +350,8 @@ var diagnostics = struct {
 }{queue: make(chan string, 128)}
 
 func init() {
-	markConcurrent()
+	// The writer touches only strings, never records, so it does not mark
+	// concurrent work; every goroutine that runs user code marks it itself.
 	go func() {
 		for message := range diagnostics.queue {
 			fmt.Fprintln(os.Stderr, message)

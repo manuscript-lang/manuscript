@@ -34,6 +34,8 @@ function exec(command, args) {
 }
 function runtimeKind(variable) {
   const text = variable.type || '';
+  // Source records lower to generated Go structs whose fields carry an f_ prefix.
+  if (/\bmain\.record_\w+/.test(text)) return 'Struct';
   const match = /(?:main|msruntime|runtime)\.(Record|Alternative|List|Set|Map|Bytes|View|Unit|Function|TaskGroup|Task|Scheduler|Queue|PriorityQueue|Synchronized|SynchronizedGuard|OperationId)(?:\)|$)/.exec(text);
   return match ? match[1] : '';
 }
@@ -71,6 +73,7 @@ function rewriteExpression(expression, variables, metadata) {
     // Delve's .(data) exposes the concrete interface value without depending
     // on runtime package names, and retains pointers for collection access.
     if(simple[2] && kind==='Record') return `${variable.name}.(data).Fields[${JSON.stringify(simple[2])}]`;
+    if(simple[2] && kind==='Struct') return `${variable.name}.(data).f_${simple[2]}`;
     if(simple[3] && ['List','Set','Bytes'].includes(kind)) return `${variable.name}.(data).Items[${simple[3]}]`;
     if(!simple[2] && !simple[3]) return variable.name;
   }
@@ -171,6 +174,7 @@ class ManuscriptAdapter {
     }
     const serviceFields={TaskGroup:{active:'Active tasks',sealed:'Joined',closing:'Closing',closed:'Closed',failure:'Execution failure'},Task:{id:'Operation',value:'Result',committed:'Completed',group:'Task group'},PriorityQueue:{capacity:'Capacity',items:'Queued priorities',compare:'Comparator'},Queue:{capacity:'Capacity',items:'Queued values'},Synchronized:{value:'Value',holder:'Active guard'},SynchronizedGuard:{cell:'Synchronized value'},Scheduler:{limit:'Admission limit',active:'Active operations',history:'Recent outcomes',closing:'Closing',closed:'Closed'}}[handle.kind];
     if(serviceFields) return children.filter(v=>serviceFields[v.name]).map(v=>this.render(v,serviceFields[v.name]));
+    if (handle.kind === 'Struct') return children.filter(v => v.name.startsWith('f_')).map(v => this.render(v, v.name.slice(2)));
     const fieldName = { Record: 'Fields', Alternative: 'Fields', List: 'Items', Set: 'Items', Bytes: 'Items', Map: 'Entries', View: 'Receiver' }[handle.kind];
     if (!fieldName) return children.map(v => this.render(v));
     const field = children.find(v => v.name === fieldName);

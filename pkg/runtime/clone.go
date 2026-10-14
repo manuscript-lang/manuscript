@@ -5,11 +5,14 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 )
 
 // Clone copies a data value's own storage. Nested values retain their references.
 func Clone(value Value) Value {
 	switch v := value.(type) {
+	case Struct:
+		return v.StructClone()
 	case Record:
 		return Record{v.Type, fieldsCopy(v.Fields)}
 	case Alternative:
@@ -42,6 +45,10 @@ func markConcurrent() { concurrentWork.Store(true) }
 
 func fieldLock(fields map[string]Value) *sync.RWMutex {
 	return &fieldLocks[(reflect.ValueOf(fields).Pointer()>>4)%fieldLockShards]
+}
+
+func ownerLock(owner unsafe.Pointer) *sync.RWMutex {
+	return &fieldLocks[(uintptr(owner)>>4)%fieldLockShards]
 }
 
 func readField(fields map[string]Value, name string) Value {
