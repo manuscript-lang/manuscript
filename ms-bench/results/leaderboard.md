@@ -1,32 +1,32 @@
 # ms-bench leaderboard
 
-235 trials (1 errored and excluded). Pass rate counts all scored trials; tokens, turns, wall time and cost average over passing trials only. Ranked by pass rate, then cost.
+96 trials (1 errored and excluded). Pass rate counts all scored trials; tokens, turns, wall time and cost average over passing trials only. Ranked by pass rate, then cost.
 
 ### Languages (all models)
 
 | rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | Manuscript (cheat sheet) | 49 | 96% | 53% | 644k | 14.1 | 156.8 | $0.025 |
-| 2 | Rust | 46 | 96% | 98% | 196k | 6.2 | 59.6 | $0.011 |
-| 3 | TypeScript | 46 | 93% | 96% | 160k | 5.5 | 46.1 | $0.009 |
-| 4 | Go | 46 | 93% | 67% | 177k | 6.0 | 50.7 | $0.010 |
-| 5 | Manuscript | 47 | 85% | 53% | 1088k | 20.4 | 226.8 | $0.033 |
+| 1 | Rust | 19 | 79% | 95% | 490k | 7.1 | 185.2 | $0.075 |
+| 2 | Manuscript | 19 | 79% | 74% | 5074k | 36.2 | 581.5 | $0.414 |
+| 3 | TypeScript | 19 | 74% | 100% | 633k | 7.8 | 199.3 | $0.076 |
+| 4 | Go | 19 | 74% | 74% | 948k | 9.4 | 330.6 | $0.133 |
+| 5 | Manuscript (cheat sheet) | 19 | 74% | 47% | 3253k | 25.6 | 415.6 | $0.292 |
 
 ### Models (all languages)
 
 | rank | agent / model | trials | pass | first build ok | tokens | turns | wall s | cost |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | claude-code / claude-haiku-5-5 | 234 | 93% | 73% | 447k | 10.3 | 107.0 | $0.018 |
+| 1 | claude-code / claude-haiku-5-5 | 95 | 76% | 78% | 2099k | 17.3 | 343.6 | $0.199 |
 
 ### Model x language
 
 | rank | model / language | trials | pass | first build ok | tokens | turns | wall s | cost |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | claude-haiku-5-5 / Manuscript (cheat sheet) | 49 | 96% | 53% | 644k | 14.1 | 156.8 | $0.025 |
-| 2 | claude-haiku-5-5 / Rust | 46 | 96% | 98% | 196k | 6.2 | 59.6 | $0.011 |
-| 3 | claude-haiku-5-5 / TypeScript | 46 | 93% | 96% | 160k | 5.5 | 46.1 | $0.009 |
-| 4 | claude-haiku-5-5 / Go | 46 | 93% | 67% | 177k | 6.0 | 50.7 | $0.010 |
-| 5 | claude-haiku-5-5 / Manuscript | 47 | 85% | 53% | 1088k | 20.4 | 226.8 | $0.033 |
+| 1 | claude-haiku-5-5 / Rust | 19 | 79% | 95% | 490k | 7.1 | 185.2 | $0.075 |
+| 2 | claude-haiku-5-5 / Manuscript | 19 | 79% | 74% | 5074k | 36.2 | 581.5 | $0.414 |
+| 3 | claude-haiku-5-5 / TypeScript | 19 | 74% | 100% | 633k | 7.8 | 199.3 | $0.076 |
+| 4 | claude-haiku-5-5 / Go | 19 | 74% | 74% | 948k | 9.4 | 330.6 | $0.133 |
+| 5 | claude-haiku-5-5 / Manuscript (cheat sheet) | 19 | 74% | 47% | 3253k | 25.6 | 415.6 | $0.292 |
 
 ### Where the input tokens go (passing trials, mean per trial)
 
@@ -35,91 +35,51 @@ Input tokens include cache reads. `base` is the system prompt plus the task, re-
 
 | language | input | output | base | docs | reads | build | writes | model output |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| TypeScript | 151k | 8.6k | 122k | 0k | 0k | 6k | 0k | 23k |
-| Go | 167k | 9.9k | 133k | 0k | 3k | 5k | 0k | 27k |
-| Rust | 184k | 11.9k | 137k | 0k | 3k | 5k | 0k | 39k |
-| Manuscript | 1063k | 24.6k | 451k | 274k | 29k | 32k | 1k | 275k |
-| Manuscript (cheat sheet) | 622k | 22.4k | 315k | 17k | 45k | 42k | 1k | 202k |
-
-### Category: abstraction
-
-| rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | TypeScript (provisional) | 1 | 100% | 100% | 163k | 5.0 | 71.2 | $0.014 |
-| 2 | Rust (provisional) | 1 | 100% | 100% | 314k | 7.0 | 129.1 | $0.025 |
-| 3 | Manuscript (cheat sheet) (provisional) | 1 | 100% | 0% | 710k | 15.0 | 137.4 | $0.029 |
-| 4 | Go (provisional) | 1 | 0% | 0% | - | - | - | - |
-| 5 | Manuscript (provisional) | 1 | 0% | 0% | - | - | - | - |
+| TypeScript | 588k | 44.1k | 193k | 0k | 1k | 23k | 1k | 371k |
+| Go | 884k | 63.9k | 219k | 0k | 16k | 8k | 1k | 640k |
+| Rust | 447k | 43.3k | 174k | 0k | 7k | 8k | 0k | 257k |
+| Manuscript | 4988k | 86.4k | 887k | 644k | 232k | 91k | 2k | 3131k |
+| Manuscript (cheat sheet) | 3181k | 72.0k | 633k | 30k | 211k | 110k | 4k | 2194k |
 
 ### Category: algorithms
 
 | rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | TypeScript (provisional) | 6 | 100% | 100% | 131k | 5.2 | 29.7 | $0.005 |
-| 2 | Rust (provisional) | 6 | 100% | 100% | 138k | 5.3 | 32.9 | $0.006 |
-| 3 | Manuscript (cheat sheet) (provisional) | 5 | 100% | 20% | 513k | 12.6 | 111.0 | $0.018 |
-| 4 | Manuscript (provisional) | 6 | 100% | 67% | 1518k | 26.5 | 375.3 | $0.040 |
-| 5 | Go (provisional) | 6 | 83% | 50% | 157k | 6.0 | 32.6 | $0.006 |
+| 1 | TypeScript (provisional) | 3 | 100% | 100% | 142k | 5.3 | 35.4 | $0.006 |
+| 2 | Rust (provisional) | 3 | 100% | 100% | 143k | 5.3 | 38.7 | $0.007 |
+| 3 | Manuscript (cheat sheet) (provisional) | 2 | 100% | 0% | 803k | 18.0 | 160.5 | $0.025 |
+| 4 | Manuscript (provisional) | 3 | 100% | 67% | 2120k | 34.0 | 572.7 | $0.057 |
+| 5 | Go (provisional) | 3 | 67% | 67% | 184k | 6.5 | 42.5 | $0.008 |
 
 ### Category: applications
 
 | rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | TypeScript | 15 | 93% | 87% | 215k | 6.4 | 66.8 | $0.013 |
-| 2 | Go | 15 | 93% | 87% | 208k | 6.1 | 73.5 | $0.015 |
-| 3 | Rust | 15 | 93% | 93% | 261k | 7.0 | 91.2 | $0.018 |
-| 4 | Manuscript (cheat sheet) | 15 | 93% | 67% | 828k | 15.6 | 195.1 | $0.034 |
-| 5 | Manuscript | 15 | 87% | 60% | 1226k | 20.2 | 254.9 | $0.042 |
+| 1 | TypeScript (provisional) | 12 | 67% | 100% | 1007k | 9.8 | 325.3 | $0.130 |
+| 2 | Rust (provisional) | 12 | 67% | 92% | 792k | 8.8 | 312.3 | $0.134 |
+| 3 | Go (provisional) | 12 | 67% | 75% | 1541k | 12.2 | 547.2 | $0.228 |
+| 4 | Manuscript (provisional) | 12 | 67% | 75% | 8426k | 48.4 | 821.4 | $0.745 |
+| 5 | Manuscript (cheat sheet) (provisional) | 12 | 58% | 58% | 6009k | 39.1 | 714.2 | $0.564 |
 
 ### Category: data
 
 | rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | TypeScript (provisional) | 2 | 100% | 100% | 140k | 5.5 | 31.2 | $0.005 |
-| 2 | Rust (provisional) | 2 | 100% | 100% | 145k | 5.5 | 37.1 | $0.006 |
-| 3 | Go (provisional) | 2 | 100% | 50% | 148k | 5.5 | 37.4 | $0.006 |
-| 4 | Manuscript (cheat sheet) (provisional) | 5 | 100% | 60% | 437k | 10.4 | 104.2 | $0.021 |
-| 5 | Manuscript (provisional) | 2 | 100% | 50% | 719k | 15.5 | 91.9 | $0.023 |
-
-### Category: data-formats
-
-| rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | TypeScript (provisional) | 3 | 100% | 100% | 141k | 5.3 | 44.7 | $0.008 |
-| 2 | Rust (provisional) | 3 | 100% | 100% | 150k | 5.7 | 36.9 | $0.008 |
-| 3 | Go (provisional) | 3 | 100% | 100% | 147k | 5.3 | 41.8 | $0.009 |
-| 4 | Manuscript (cheat sheet) (provisional) | 3 | 100% | 67% | 568k | 14.7 | 105.7 | $0.020 |
-| 5 | Manuscript (provisional) | 3 | 100% | 33% | 1479k | 27.7 | 258.1 | $0.040 |
-
-### Category: data-structures
-
-| rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | TypeScript (provisional) | 5 | 100% | 100% | 120k | 5.0 | 22.1 | $0.004 |
-| 2 | Rust (provisional) | 5 | 100% | 100% | 139k | 5.6 | 31.4 | $0.005 |
-| 3 | Go (provisional) | 5 | 100% | 40% | 164k | 6.6 | 28.8 | $0.006 |
-| 4 | Manuscript (cheat sheet) (provisional) | 5 | 100% | 20% | 641k | 17.0 | 200.2 | $0.020 |
-| 5 | Manuscript (provisional) | 5 | 80% | 60% | 946k | 20.5 | 259.3 | $0.026 |
-
-### Category: number-theory
-
-| rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | TypeScript (provisional) | 2 | 100% | 100% | 130k | 5.0 | 33.7 | $0.006 |
-| 2 | Go (provisional) | 2 | 100% | 50% | 155k | 6.0 | 36.1 | $0.006 |
-| 3 | Rust (provisional) | 2 | 100% | 100% | 190k | 6.5 | 50.2 | $0.009 |
-| 4 | Manuscript (provisional) | 2 | 100% | 50% | 585k | 13.5 | 94.8 | $0.020 |
-| 5 | Manuscript (cheat sheet) (provisional) | 2 | 100% | 50% | 946k | 21.5 | 266.4 | $0.031 |
+| 1 | TypeScript (provisional) | 1 | 100% | 100% | 123k | 5.0 | 24.1 | $0.004 |
+| 2 | Rust (provisional) | 1 | 100% | 100% | 127k | 5.0 | 32.5 | $0.005 |
+| 3 | Go (provisional) | 1 | 100% | 100% | 132k | 5.0 | 34.2 | $0.005 |
+| 4 | Manuscript (provisional) | 1 | 100% | 100% | 482k | 12.0 | 71.1 | $0.017 |
+| 5 | Manuscript (cheat sheet) (provisional) | 2 | 100% | 0% | 427k | 10.5 | 106.4 | $0.021 |
 
 ### Category: parsing
 
 | rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | TypeScript (provisional) | 3 | 100% | 100% | 194k | 5.7 | 83.3 | $0.015 |
-| 2 | Go (provisional) | 3 | 100% | 67% | 230k | 6.3 | 88.9 | $0.017 |
-| 3 | Rust (provisional) | 3 | 100% | 100% | 279k | 7.0 | 102.1 | $0.020 |
-| 4 | Manuscript (cheat sheet) (provisional) | 3 | 100% | 67% | 1021k | 17.0 | 243.2 | $0.036 |
-| 5 | Manuscript (provisional) | 3 | 67% | 67% | 908k | 16.0 | 156.9 | $0.035 |
+| 1 | TypeScript (provisional) | 1 | 100% | 100% | 128k | 5.0 | 31.6 | $0.005 |
+| 2 | Rust (provisional) | 1 | 100% | 100% | 130k | 5.0 | 31.1 | $0.006 |
+| 3 | Go (provisional) | 1 | 100% | 0% | 158k | 6.0 | 36.3 | $0.006 |
+| 4 | Manuscript (cheat sheet) (provisional) | 1 | 100% | 100% | 301k | 9.0 | 69.9 | $0.013 |
+| 5 | Manuscript (provisional) | 1 | 100% | 100% | 508k | 13.0 | 77.4 | $0.017 |
 
 ### Category: state-machines
 
@@ -127,7 +87,7 @@ Input tokens include cache reads. `base` is the system prompt plus the task, re-
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
 | 1 | Go (provisional) | 1 | 100% | 100% | 157k | 5.0 | 64.1 | $0.011 |
 | 2 | Rust (provisional) | 1 | 100% | 100% | 199k | 6.0 | 66.7 | $0.012 |
-| 3 | Manuscript (cheat sheet) (provisional) | 2 | 100% | 100% | 444k | 10.0 | 120.7 | $0.024 |
+| 3 | Manuscript (cheat sheet) (provisional) | 1 | 100% | 100% | 291k | 7.0 | 104.0 | $0.021 |
 | 4 | Manuscript (provisional) | 1 | 100% | 100% | 633k | 12.0 | 133.1 | $0.029 |
 | 5 | TypeScript (provisional) | 1 | 0% | 100% | - | - | - | - |
 
@@ -135,48 +95,38 @@ Input tokens include cache reads. `base` is the system prompt plus the task, re-
 
 | rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | TypeScript (provisional) | 4 | 100% | 100% | 113k | 4.5 | 26.3 | $0.005 |
-| 2 | Rust (provisional) | 4 | 100% | 100% | 153k | 5.8 | 32.4 | $0.006 |
-| 3 | Go (provisional) | 4 | 100% | 25% | 180k | 6.8 | 35.0 | $0.007 |
-| 4 | Manuscript (cheat sheet) (provisional) | 4 | 100% | 50% | 445k | 12.2 | 111.4 | $0.016 |
-| 5 | Manuscript (provisional) | 4 | 75% | 25% | 758k | 18.0 | 140.7 | $0.021 |
-
-### Category: text
-
-| rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | Go (provisional) | 4 | 100% | 100% | 123k | 5.0 | 24.9 | $0.005 |
-| 2 | Manuscript (provisional) | 5 | 80% | 40% | 725k | 18.0 | 113.2 | $0.020 |
-| 3 | TypeScript (provisional) | 4 | 75% | 100% | 103k | 4.3 | 22.0 | $0.004 |
-| 4 | Rust (provisional) | 4 | 75% | 100% | 121k | 5.0 | 24.5 | $0.005 |
-| 5 | Manuscript (cheat sheet) (provisional) | 4 | 75% | 50% | 234k | 7.7 | 52.0 | $0.010 |
-
-### Tier 1
-
-| rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | TypeScript (provisional) | 6 | 100% | 100% | 112k | 4.7 | 22.9 | $0.004 |
-| 2 | Rust (provisional) | 6 | 100% | 100% | 131k | 5.3 | 25.3 | $0.004 |
-| 3 | Go (provisional) | 6 | 100% | 50% | 159k | 6.3 | 25.9 | $0.005 |
-| 4 | Manuscript (provisional) | 7 | 100% | 29% | 685k | 17.0 | 110.3 | $0.019 |
-| 5 | Manuscript (cheat sheet) (provisional) | 6 | 83% | 50% | 369k | 11.2 | 115.2 | $0.012 |
+| 1 | TypeScript (provisional) | 1 | 100% | 100% | 126k | 5.0 | 25.4 | $0.004 |
+| 2 | Go (provisional) | 1 | 100% | 100% | 130k | 5.0 | 31.3 | $0.005 |
+| 3 | Rust (provisional) | 1 | 100% | 100% | 131k | 5.0 | 33.0 | $0.006 |
+| 4 | Manuscript (cheat sheet) (provisional) | 1 | 100% | 0% | 429k | 11.0 | 111.4 | $0.019 |
+| 5 | Manuscript (provisional) | 1 | 100% | 0% | 718k | 17.0 | 151.0 | $0.021 |
 
 ### Tier 2
 
 | rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | Go | 19 | 100% | 53% | 155k | 5.8 | 37.4 | $0.007 |
-| 2 | Manuscript (cheat sheet) | 19 | 100% | 47% | 533k | 13.4 | 141.8 | $0.021 |
-| 3 | TypeScript | 19 | 95% | 100% | 131k | 5.1 | 33.1 | $0.006 |
-| 4 | Rust | 19 | 95% | 95% | 167k | 5.9 | 44.4 | $0.008 |
-| 5 | Manuscript | 19 | 84% | 63% | 885k | 18.2 | 203.4 | $0.027 |
+| 1 | TypeScript (provisional) | 4 | 100% | 100% | 119k | 4.8 | 27.8 | $0.005 |
+| 2 | Go (provisional) | 4 | 100% | 50% | 135k | 5.2 | 29.9 | $0.005 |
+| 3 | Rust (provisional) | 4 | 100% | 100% | 134k | 5.2 | 31.5 | $0.006 |
+| 4 | Manuscript (cheat sheet) (provisional) | 4 | 100% | 0% | 453k | 11.8 | 126.4 | $0.019 |
+| 5 | Manuscript (provisional) | 4 | 100% | 75% | 870k | 18.2 | 270.5 | $0.024 |
 
 ### Tier 3
 
 | rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | Manuscript (cheat sheet) | 24 | 96% | 58% | 796k | 15.3 | 178.2 | $0.032 |
-| 2 | Rust | 21 | 95% | 100% | 242k | 6.7 | 83.6 | $0.016 |
-| 3 | TypeScript | 21 | 90% | 90% | 202k | 6.2 | 65.6 | $0.013 |
-| 4 | Go | 21 | 86% | 86% | 207k | 6.1 | 73.0 | $0.014 |
-| 5 | Manuscript | 21 | 81% | 52% | 1444k | 23.8 | 296.8 | $0.046 |
+| 1 | Rust (provisional) | 5 | 100% | 100% | 166k | 5.6 | 51.3 | $0.010 |
+| 2 | Manuscript (cheat sheet) (provisional) | 5 | 100% | 40% | 649k | 14.8 | 146.8 | $0.024 |
+| 3 | Manuscript (provisional) | 5 | 100% | 80% | 1313k | 22.0 | 260.6 | $0.042 |
+| 4 | TypeScript (provisional) | 5 | 80% | 100% | 142k | 5.2 | 36.1 | $0.007 |
+| 5 | Go (provisional) | 5 | 80% | 80% | 179k | 6.0 | 54.1 | $0.010 |
+
+### Tier 5
+
+| rank | language | trials | pass | first build ok | tokens | turns | wall s | cost |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | TypeScript (provisional) | 10 | 60% | 100% | 1302k | 11.5 | 422.4 | $0.170 |
+| 2 | Rust (provisional) | 10 | 60% | 90% | 998k | 9.7 | 399.2 | $0.175 |
+| 3 | Go (provisional) | 10 | 60% | 80% | 2002k | 14.5 | 715.4 | $0.301 |
+| 4 | Manuscript (provisional) | 10 | 60% | 70% | 11011k | 60.0 | 1056.2 | $0.985 |
+| 5 | Manuscript (cheat sheet) (provisional) | 10 | 50% | 70% | 8098k | 47.4 | 915.8 | $0.779 |
