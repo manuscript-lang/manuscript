@@ -1,0 +1,64 @@
+{
+  "implementation_head": "366be95fee72695ce33db37f65560b114354b05f",
+  "go": "1.25.1",
+  "checks": {
+    "verify": {
+      "command": "make verify",
+      "exit": 0,
+      "log_sha256": "d9276392ca8cb2b732fc98c124dd46bdf36ae5f9608c9c55ae4eed399efd92ea"
+    },
+    "all_go": {
+      "command": "toolchain/go/bin/go test ./...",
+      "exit": 0,
+      "log_sha256": "0f9420e8177ca180c6dbf5860e6cbb90ec38761ebbe94ff473e507ed435412c5"
+    },
+    "race": {
+      "command": "toolchain/go/bin/go test -race ./pkg/checker ./pkg/lower ./pkg/build ./pkg/runtime",
+      "exit": 0,
+      "log_sha256": "6594e3b94c834f3c826a050e3e22242a5f3c5bb09145259d43f076d4f609afb5"
+    },
+    "generated_refs": {
+      "command": "make docs",
+      "exit": 0,
+      "log_sha256": "a797220c72a767fbcf217a6639f7063cb2977c8e512e205d5494871c1a652c9f"
+    },
+    "book": {
+      "command": "make book-check HUGO=/workspace/manuscript/.tools/hugo/hugo",
+      "exit": 0,
+      "log_sha256": "a2d425cc4267e6f949c523a4b70d3eab6cf8eb3873f05644ba77e5322f0cd14a"
+    },
+    "fuzz": {
+      "command": "make fuzz FUZZTIME=10s",
+      "exit": 0,
+      "log_sha256": "318dc4bdca4569a7ef7def1771b20c5f1dbe07a28b285bde893dabdc131ef7f6"
+    },
+    "offline_distribution": {
+      "command": "make dist-check",
+      "exit": 0,
+      "log_sha256": "54940909ea00495eb1c0dab1b2097005fc595166b46a78d3c85c3439673d45c0"
+    }
+  },
+  "native_e2e_seconds": 330.731,
+  "race_seconds": {
+    "checker": 8.345,
+    "lower": 50.26,
+    "build": 297.005,
+    "runtime": 20.481
+  },
+  "github_required_runs": {
+    "CI/CD": {
+      "id": 38491263631,
+      "conclusion": "success"
+    },
+    "distributions": {
+      "id": 38491263611,
+      "conclusion": "success"
+    }
+  },
+  "fuzz_target_packages": [
+    "pkg/parser:FuzzParse",
+    "pkg/parser:FuzzParsePartial",
+    "pkg/build:FuzzCompile"
+  ],
+  "notes": "No required checks were skipped or weakened. Code/native source remains unchanged by the following evidence-only commit; final required checks must still complete on its exact SHA."
+}

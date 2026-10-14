@@ -1,0 +1,31 @@
+{
+  "production_head": "366be95fee72695ce33db37f65560b114354b05f",
+  "main": "c939b441c00c46624d6e62e6e07077d195595124",
+  "scalar_baseline": "ca0f0caffb8fbef4b055eda9bd71a50dd87112b4",
+  "runtime_provider": "81ecacc8029897f5a0d314f79c853c5d4d6621ff",
+  "runtime_initialization": "bea5c048ebf261eaa6d9ca6937c9aefc250ec75f",
+  "go": "1.25.1",
+  "hashes": {
+    "baseline_cli": "faa70161a32f2dc3cfd0096400f02b9855ac8c658b5a568a8d23d0253f839d59",
+    "production_cli": "41350758677aaa35b177d8d141c62eba210fa2d7029b05c727fd2d3cbaf43292",
+    "baseline_runtime": "83d8710ff5d47a84f50fa20cad45755fb53048d557d83774e06356a1464bb4fb",
+    "production_runtime": "149f71f3e0ebb042dee785414a666a12a2f38dc4a34757388c7fdee4540ee8c3"
+  },
+  "sources": {
+    "baseline": {
+      "cache_source": "/tmp/ms147-production-cache/manuscript/workspaces/c2e4bff991bc623175ec15d539543192/apps/e044eb245726af20b30e8f2a8c615225/main.go",
+      "source_sha256": "2c0e8083b5ffb8937aaf69eae167d54eb564fb1841282e6613f84c74100e1841",
+      "elements": 2200,
+      "variant": "baseline",
+      "symbol": "symbol2"
+    },
+    "prototype": {
+      "cache_source": "/tmp/ms147-production-cache/manuscript/workspaces/c2e4bff991bc623175ec15d539543192/apps/2377bcbf78762d192feb90ec3a4f26ce/main.go",
+      "source_sha256": "dc94147338a1b5cbb666a7b45dacaa4f8cec0aef02bbc484764c4a467b9a7888",
+      "elements": 2200,
+      "variant": "prototype",
+      "symbol": "symbol2"
+    }
+  },
+  "limits": "Shared host. 12 randomized400ms pairs per GC, GOMAXPROCS1, CPU0; compilation/linking separate. Initial cold CLI build is retained and identified, not treated as a warmed build sample. Scalar baseline temporary worktree CLI uses buildvcs=false; native builds remain self-contained."
+}

@@ -27,6 +27,21 @@ scalar boundary for deferred primitive operands; no expanded storage ABI is
 needed. The independently published #326 remains draft until the parent selects
 the dependency integration order and exact-head required checks finish.
 
+Production head `366be95fee72695ce33db37f65560b114354b05f` now includes main
+`c939b441`, #315 `81ecacc8`, and #318 `ca0f0caf`. Twelve fresh randomized 400ms
+pairs against the actual #318-only boxed emitter reproduce the result:
+GOGC100 ratio **0.692 [0.671,0.710]**, GOGC50 **0.645 [0.630,0.660]**.
+Both allocate twice; B/op remains 41,104→18,576. See
+`results/runtime-production-calls*.jsonl` and `results/production-provenance.json`
+for raw rows and source/runtime/CLI hashes. The emitted source hashes match the
+published joint control. Dependency implementations remain owned by their lanes.
+
+This production head passes `make verify`, all `go test ./...` (native e2e
+330.731s), targeted checker/lower/build/runtime races, `make docs`, book validation,
+and all three 10s fuzz targets, including restored `FuzzCompile`. Required
+CI/CD 38491263631 and distributions 38491263611 both succeeded. The copied
+distribution check also passes using only ms, without system Go, dlv or downloads.
+
 Scalar constants and checker scaling meet the measured gates. The effectful
 initializer without #87 remains held. The first 2,200 cheap-call control regressed by
 20–24%; same-runtime controls confirmed about 26% emitter overhead. Strict
@@ -43,9 +58,9 @@ then uses the existing fresh-copy `NewIntList`. At 2,200 cells Go puts this inpu
 on the stack, retaining two heap allocations. It reduces the regression to
 GOGC100 1.105[1.081,1.135] and GOGC50 1.102[1.074,1.130], but remains slower.
 This control is not production lowering and does not establish 100K allocation
-parity. Parent coordination will test #87's actual native-consuming/direct-call
-path before approving a larger constructor seam. This rejected control is not
-promoted.
+parity. The actual #87 native-consuming/direct-call path was tested before expanding
+the constructor seam. The control remains rejected;
+the actual joint result is recorded below.
 
 The joint control now uses #87 at
 `92a73898110396a9457bc1244222c4319eb16614` and #147's native-consuming adapter
