@@ -1,0 +1,64 @@
+Generated source and benchmark harness: /workspace/ms87-baseline/.artifacts/87/serial-main
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/87/serial-main
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkWorkloads/Loop1024/Generated-4         	    2953	     41272 ns/op	   13648 B/op	    1706 allocs/op
+BenchmarkWorkloads/Loop1024/Generated-4         	    3153	     39943 ns/op	   13648 B/op	    1706 allocs/op
+BenchmarkWorkloads/Loop1024/Generated-4         	    3304	     40927 ns/op	   13648 B/op	    1706 allocs/op
+BenchmarkWorkloads/Loop1024/HandwrittenGo-4     	  122269	       956.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Loop1024/HandwrittenGo-4     	  112648	       951.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Loop1024/HandwrittenGo-4     	  124731	       966.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Calls1024/Generated-4        	    1094	     96905 ns/op	   46416 B/op	    2730 allocs/op
+BenchmarkWorkloads/Calls1024/Generated-4        	    1278	     96281 ns/op	   46416 B/op	    2730 allocs/op
+BenchmarkWorkloads/Calls1024/Generated-4        	    1263	     94853 ns/op	   46416 B/op	    2730 allocs/op
+BenchmarkWorkloads/Calls1024/HandwrittenGo-4    	   63003	      1831 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Calls1024/HandwrittenGo-4    	   68982	      1755 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Calls1024/HandwrittenGo-4    	   66369	      1767 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/AtUnwrap1024/Generated-4     	     958	    119450 ns/op	   96264 B/op	    3841 allocs/op
+BenchmarkWorkloads/AtUnwrap1024/Generated-4     	    1110	    114488 ns/op	   96264 B/op	    3841 allocs/op
+BenchmarkWorkloads/AtUnwrap1024/Generated-4     	    1081	    117102 ns/op	   96264 B/op	    3841 allocs/op
+BenchmarkWorkloads/AtUnwrap1024/HandwrittenGo-4 	   57052	      2043 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/AtUnwrap1024/HandwrittenGo-4 	   57422	      2175 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/AtUnwrap1024/HandwrittenGo-4 	   57440	      2097 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/MatchAt1024/Generated-4      	     888	    125483 ns/op	   96264 B/op	    3841 allocs/op
+BenchmarkWorkloads/MatchAt1024/Generated-4      	     831	    134398 ns/op	   96264 B/op	    3841 allocs/op
+BenchmarkWorkloads/MatchAt1024/Generated-4      	     745	    152423 ns/op	   96264 B/op	    3841 allocs/op
+BenchmarkWorkloads/MatchAt1024/HandwrittenGo-4  	   55717	      2065 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/MatchAt1024/HandwrittenGo-4  	   54248	      2195 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/MatchAt1024/HandwrittenGo-4  	   54331	      2235 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Range4/Generated-4           	 1000000	       110.0 ns/op	      32 B/op	       4 allocs/op
+BenchmarkWorkloads/Range4/Generated-4           	 1000000	       111.1 ns/op	      32 B/op	       4 allocs/op
+BenchmarkWorkloads/Range4/Generated-4           	  930093	       110.6 ns/op	      32 B/op	       4 allocs/op
+BenchmarkWorkloads/Range4/HandwrittenGo-4       	14629742	         7.948 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Range4/HandwrittenGo-4       	15026139	         8.410 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Range4/HandwrittenGo-4       	12435217	         9.538 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Life128x128x50/Generated-4   	       1	 762806228 ns/op	593400848 B/op	13989347 allocs/op
+BenchmarkWorkloads/Life128x128x50/Generated-4   	       1	 727892373 ns/op	593400416 B/op	13989341 allocs/op
+BenchmarkWorkloads/Life128x128x50/Generated-4   	       1	 737830247 ns/op	593400080 B/op	13989338 allocs/op
+BenchmarkWorkloads/Life128x128x50/HandwrittenGo-4         	      13	   9000307 ns/op	 6684716 B/op	      51 allocs/op
+BenchmarkWorkloads/Life128x128x50/HandwrittenGo-4         	      12	   9296477 ns/op	 6684728 B/op	      51 allocs/op
+BenchmarkWorkloads/Life128x128x50/HandwrittenGo-4         	      13	   9095213 ns/op	 6684701 B/op	      51 allocs/op
+BenchmarkWorkloads/SortNamed64K-4                         	       2	  75546818 ns/op	26746120 B/op	 1284848 allocs/op
+BenchmarkWorkloads/SortNamed64K-4                         	       2	  82065034 ns/op	26746096 B/op	 1284848 allocs/op
+BenchmarkWorkloads/SortNamed64K-4                         	       2	  78737986 ns/op	26746104 B/op	 1284848 allocs/op
+BenchmarkWorkloads/SortCaptured64K-4                      	       2	  81879570 ns/op	26746304 B/op	 1284853 allocs/op
+BenchmarkWorkloads/SortCaptured64K-4                      	       2	  83039241 ns/op	26746320 B/op	 1284853 allocs/op
+BenchmarkWorkloads/SortCaptured64K-4                      	       2	  81596580 ns/op	26746352 B/op	 1284853 allocs/op
+BenchmarkWorkloads/Identity-4                             	 4026921	        29.94 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Identity-4                             	 3349618	        32.79 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Identity-4                             	 3859639	        32.69 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWorkloads/Forwarded-4                            	 1390413	        85.02 ns/op	      16 B/op	       1 allocs/op
+BenchmarkWorkloads/Forwarded-4                            	 1367252	        86.32 ns/op	      16 B/op	       1 allocs/op
+BenchmarkWorkloads/Forwarded-4                            	 1424972	        83.38 ns/op	      16 B/op	       1 allocs/op
+BenchmarkWorkloads/Copied-4                               	 1267485	        94.97 ns/op	      16 B/op	       1 allocs/op
+BenchmarkWorkloads/Copied-4                               	 1208827	        97.95 ns/op	      16 B/op	       1 allocs/op
+BenchmarkWorkloads/Copied-4                               	 1268397	        94.72 ns/op	      16 B/op	       1 allocs/op
+BenchmarkWorkloads/Capture-4                              	  674353	       184.3 ns/op	     112 B/op	       4 allocs/op
+BenchmarkWorkloads/Capture-4                              	  495343	       247.6 ns/op	     112 B/op	       4 allocs/op
+BenchmarkWorkloads/Capture-4                              	  640632	       171.0 ns/op	     112 B/op	       4 allocs/op
+BenchmarkWorkloads/Stored-4                               	 1000000	       119.9 ns/op	      88 B/op	       3 allocs/op
+BenchmarkWorkloads/Stored-4                               	  956480	       135.8 ns/op	      88 B/op	       3 allocs/op
+BenchmarkWorkloads/Stored-4                               	 1000000	       117.1 ns/op	      88 B/op	       3 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/.artifacts/87/serial-main	11.419s

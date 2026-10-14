@@ -1,0 +1,23 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/87/final-lists
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkLists/AppendGenerated64K-4         	     100	   1038933 ns/op	 2512360 B/op	      29 allocs/op
+BenchmarkLists/AppendGenerated64K-4         	     100	   1049753 ns/op	 2512311 B/op	      29 allocs/op
+BenchmarkLists/AppendGenerated64K-4         	     105	   1107044 ns/op	 2512308 B/op	      29 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	     100	   1019786 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	     100	   1017315 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	     100	   1056487 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     193	    617530 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     193	    624569 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     186	    653436 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      21	   5681522 ns/op	 1048505 B/op	  130925 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      20	   5638353 ns/op	 1048504 B/op	  130925 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      20	   5482791 ns/op	 1048498 B/op	  130925 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       3	  46840666 ns/op	  525192 B/op	      15 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       3	  47888550 ns/op	  525192 B/op	      15 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       3	  49453814 ns/op	  525192 B/op	      15 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	    1374	     77207 ns/op	  524432 B/op	       2 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	    1128	    111552 ns/op	  524433 B/op	       2 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	    1150	    105233 ns/op	  524433 B/op	       2 allocs/op
+PASS

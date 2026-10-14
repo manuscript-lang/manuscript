@@ -1,0 +1,8 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/87/runtime-iterator-main
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkLists/IterateRuntimeBoxedTypedLocals64K-4         	     445	    270992 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateRuntimeBoxedTypedLocals64K-4         	     459	    275614 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateRuntimeBoxedTypedLocals64K-4         	     435	    263473 ns/op	       8 B/op	       1 allocs/op
+PASS

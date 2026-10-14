@@ -1,0 +1,23 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/87/serial-lists-main
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkLists/AppendGenerated64K-4         	      20	   7111532 ns/op	 6585518 B/op	  130681 allocs/op
+BenchmarkLists/AppendGenerated64K-4         	      18	   5612330 ns/op	 6585516 B/op	  130681 allocs/op
+BenchmarkLists/AppendGenerated64K-4         	      18	   5722239 ns/op	 6585510 B/op	  130681 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	      12	   9861325 ns/op	 6813744 B/op	  327424 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	       9	  11479790 ns/op	 6813722 B/op	  327424 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	      12	   9397711 ns/op	 6813716 B/op	  327424 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     100	   1288491 ns/op	  524282 B/op	   65535 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     100	   1293907 ns/op	  524283 B/op	   65535 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     100	   1272179 ns/op	  524284 B/op	   65535 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      16	   7599310 ns/op	 1574035 B/op	  131090 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      15	   7644911 ns/op	 1574027 B/op	  131090 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      14	   7968564 ns/op	 1574027 B/op	  131090 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       1	 205834310 ns/op	52647544 B/op	 2225801 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       1	 198139732 ns/op	52652920 B/op	 2225806 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       1	 206012014 ns/op	52647400 B/op	 2225800 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	     142	    744652 ns/op	 1048624 B/op	       2 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	     212	    626371 ns/op	 1048624 B/op	       2 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	     181	    709545 ns/op	 1048624 B/op	       2 allocs/op
+PASS

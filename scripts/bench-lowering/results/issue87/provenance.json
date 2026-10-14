@@ -1,0 +1,42 @@
+{
+  "main": "8001f48e6d3dccc5e5ba8ca59f2ec24b63194c64",
+  "candidate_benchmark": "dbf8cb03d25543d36136a29965151811ea8aecba",
+  "candidate_publication": "92a73898110396a9457bc1244222c4319eb16614",
+  "provider": "a0c29276c52d83472b06a1874b870919d76cd8bd",
+  "later_provider": "7727cc39c3cb91696462d0dec1d92c1d73277430",
+  "later_provider_note": "Only strict fresh-state initialization and its evidence change runtime behavior; workload emission in these samples uses NewList, append and access, not InitList setters.",
+  "sdk": "Go1.25.1 bundled pinned SDK",
+  "platform": "linux/amd64",
+  "cpu": "AMD EPYC9V74",
+  "gomaxprocs": 4,
+  "count": 3,
+  "benchtime": "100ms",
+  "environment": {
+    "GOFLAGS": "-buildvcs=false",
+    "GOCACHE": "/tmp/ms87-go-cache",
+    "GOPATH": "/tmp/ms87-go",
+    "XDG_CACHE_HOME": "separate writable main and candidate caches"
+  },
+  "comparison_note": "Same workload/harness with constructor/header spelling adapted to each runtime ABI; handwritten Go omits language fault/cancellation/source depth accounting. Serial smoke samples on a shared host, not paired confidence estimates.",
+  "source_hashes": {
+    "scripts/bench-lowering/workloads.ms": "ebb1e87fbdbbb85ae5e945b873a0a90384f466c7c11ae8ba54da98be3f4d0763",
+    "scripts/bench-lowering/workloads.go.txt": "6016f3ca59eb33476e2a92e2dbf0ea52dd06443093593499e1a35078ad31420c",
+    "scripts/bench-lists/program.ms": "e7ce60a0d0a4b2742a70601de34ecf98f096ae513304516feb31a93848bf2b33"
+  },
+  "generated_hashes": {
+    "main_workloads": "e0921e936a51ab6bcfc0f3fc83d25677a61bf5d787cf0e143baf0dabeb378b9c",
+    "candidate_workloads": "65d2005c6039efd9f4dde47ca9afa7c11af8de7f6761319c636284bf7fec5966",
+    "main_lists": "0ccb6b6235b1d054e3c2405a4dfaa4ed405fa441a676b7c84d9a5c202c0ae529",
+    "candidate_lists": "5b2a93c2220dab921eec2e6f485b5de4e946d5d99b43a2a9b396efa297754013"
+  },
+  "commands": [
+    "go run ./scripts/bench-lowering -workloads -count=3 -benchtime=100ms -output=<output>",
+    "go run ./scripts/bench-lists -bench='BenchmarkLists/(AppendGenerated|IndexGenerated|IterateGenerated|CallbacksGenerated|SortGenerated|CloneSnapshot)' -count=3 -benchtime=100ms -output=<output>",
+    "go run ./scripts/bench-lists -bench='BenchmarkLists/IterateRuntimeBoxedTypedLocals64K' -count=3 -benchtime=100ms -output=<output>"
+  ],
+  "acceptance_pending": [
+    "Compatibility Iterate fixed allocation/time regression remains with runtime owner.",
+    "Exact-head hosted required checks and protected merge remain with parent.",
+    "Related #147 effectful literal workload requires its own joint consumer evidence."
+  ]
+}
