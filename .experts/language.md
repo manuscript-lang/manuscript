@@ -78,7 +78,7 @@ Decision: support grouped symbol imports and brace Map literals. The user's newe
 
 Apply when: changing calls, grammar, inference or editor assistance.
 Evidence: [canonical call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names); [binding/source preservation tests](../pkg/checker/positional_arguments_test.go); [native calls](../tests/e2e/testdata/accept/positional-arguments.ms).
-Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding.
+Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding. Open (issue #452): a bare identifier can silently select another parameter; [MSL109](../pkg/tooling/bare_argument_lint.go) warns without changing binding, while making bare arguments positional remains an undecided language change needing a migration for reordered shorthand calls.
 
 ### Recover concrete contract receivers through checked matching
 
