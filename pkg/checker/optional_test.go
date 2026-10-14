@@ -40,10 +40,14 @@ func TestMatchArmBindingsSurviveRepeatedFunctionLiteralChecks(t *testing.T) {
 	if len(program.Diagnostics) != 0 {
 		t.Fatal(program.Diagnostics)
 	}
-	if len(program.ArmBindings) != 2 {
-		t.Fatalf("expected two checked arms, got %d", len(program.ArmBindings))
+	arms := map[*syntax.Arm][]*checker.Binding{}
+	for arm, bindings := range program.ArmBindings() {
+		arms[arm] = bindings
 	}
-	for arm, bindings := range program.ArmBindings {
+	if len(arms) != 2 {
+		t.Fatalf("expected two checked arms, got %d", len(arms))
+	}
+	for arm, bindings := range arms {
 		if len(bindings) != len(arm.Names) {
 			t.Fatalf("arm %s recorded %d bindings for %d names", arm.Path.Text, len(bindings), len(arm.Names))
 		}
