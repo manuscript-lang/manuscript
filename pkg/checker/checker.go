@@ -57,6 +57,7 @@ type checker struct {
 	callName                string
 	callPos                 syntax.Position
 	captures                map[int]map[*Binding]bool
+	constantsVisiting       map[*Symbol]bool
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
@@ -223,7 +224,9 @@ func (c *checker) resolveSignatures(module *syntax.Module) {
 		}
 		old := c.scope
 		c.scope = c.variableScope(s.Variables)
-		if s.Kind == syntax.KindFn {
+		if d.Constant {
+			c.constantType(s)
+		} else if s.Kind == syntax.KindFn {
 			s.Type = c.signature(d.Params, d.Result)
 		} else {
 			def := s.Type.Def
@@ -281,7 +284,7 @@ func (c *checker) checkBodies(module *syntax.Module) {
 	for _, d := range module.Declarations {
 		if d.Kind == syntax.KindFn {
 			s := c.names[d.Name]
-			if s.Decl == d {
+			if s.Decl == d && !(d.Constant && s.Type.Result.ID == "<invalid>") {
 				c.checkFunction(d, s.Type, s.Variables, nil)
 			}
 		}
@@ -1130,6 +1133,10 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type, statemen
 func (c *checker) symbolDescription(s *Symbol) string {
 	imported := s.Module != c.module.File
 	switch {
+	case isConstant(s) && imported:
+		return "imported constant"
+	case isConstant(s):
+		return "constant"
 	case s.Kind == syntax.KindFn && imported:
 		return "imported function"
 	case s.Kind == syntax.KindFn:
