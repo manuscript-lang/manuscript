@@ -3,8 +3,11 @@ package lsp
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/manuscript-lang/manuscript/pkg/lexer"
 )
 
 func TestLocalExtensionCompletionAndNavigation(t *testing.T) {
@@ -83,7 +86,7 @@ func itemNamed(items []completionItem, name string) *completionItem {
 }
 
 func TestPreludeCompletionNeedsNoImport(t *testing.T) {
-	for _, name := range []string{"Optional", "Result", "Error", "List", "Map"} {
+	for _, name := range []string{"Optional", "Result", "Error", "List", "Map", "Set"} {
 		items := completeSource(t, "fn work(value: "+name[:2]+"|) -> Unit:\n    return\n")
 		item := itemNamed(items, name)
 		if item == nil || len(item.AdditionalTextEdits) != 0 {
@@ -93,7 +96,7 @@ func TestPreludeCompletionNeedsNoImport(t *testing.T) {
 }
 
 func TestCollectionPreludeExpressionCompletionNeedsNoImport(t *testing.T) {
-	for _, name := range []string{"List", "Map"} {
+	for _, name := range []string{"List", "Map", "Set"} {
 		items := completeSource(t, "fn work() -> Unit:\n    "+name[:2]+"|\n")
 		item := itemNamed(items, name)
 		if item == nil || len(item.AdditionalTextEdits) != 0 {
@@ -126,6 +129,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"locals before cursor", "fn answer() -> Int:\n    let before = 1\n    be|\n    let behind = 2\n    return before\n", []string{"before"}, []string{"behind"}},
 		{"siblings hidden", "fn answer() -> Int:\n    if true:\n        let secret = 1\n    sec|\n    return 0\n", nil, []string{"secret"}},
 		{"list methods", "import List from \"@std/collections.ms\"\nfn count(items: List[Int]) -> Int:\n    return items.|\n", []string{"length", "at", "append", "concat"}, []string{"byte_length", "send"}},
+		{"prelude set methods", "fn count(items: Set[Int]) -> Int:\n    return items.|\n", []string{"length", "contains", "add", "remove"}, []string{"at", "append", "send"}},
 		{"member prefix", "fn size(text: String) -> Int:\n    return text.byte_|\n", []string{"byte_length"}, []string{"parse_int"}},
 		{"record fields", "type Point:\n    x: Int\n    y: String\nfn read(point: Point) -> Int:\n    return point.|\n", []string{"x", "y"}, []string{"length"}},
 		{"native opaque fields", "import Queue from \"@std/queues.ms\"\nfn read(queue: Queue[Int]) -> Unit:\n    queue.|\n", []string{"enqueue", "dequeue", "peek", "length", "is_empty"}, []string{"capacity", "send", "receive", "close"}},
@@ -261,7 +265,7 @@ func TestFuzzyMemberCompletion(t *testing.T) {
 
 func TestExpandedStandardMembersAndInterfaceSnippet(t *testing.T) {
 	items := completeSource(t, "import HttpClient from \"@std/http.ms\"\nfn work(client: HttpClient) -> Unit:\n    client.|\n")
-	if itemNamed(items, "send_stream") == nil {
+	if itemNamed(items, "request_stream") == nil {
 		t.Fatal(items)
 	}
 	items = completeSource(t, "inter|")
@@ -307,13 +311,13 @@ func TestGroupedImportCompletion(t *testing.T) {
 
 func TestCollectionPreludeEditorContracts(t *testing.T) {
 	for _, newline := range []string{"\n", "\r\n"} {
-		source := strings.ReplaceAll("fn use(values: List[Int], entries: Map[String, Int]) -> Unit:\n    entries.add(\"a\", 1)\n", "\n", newline)
+		source := strings.ReplaceAll("fn use(values: List[Int], entries: Map[String, Int], unique: Set[Int]) -> Unit:\n    entries.add(\"a\", 1)\n", "\n", newline)
 		d := document{"file:///tmp/collections.ms", source, 1}
 		r := analyze(d, map[string]document{d.URI: d})
 		if !r.Success() {
 			t.Fatal(r.Diagnostics)
 		}
-		for _, name := range []string{"List", "Map", "add"} {
+		for _, name := range []string{"List", "Map", "Set", "add"} {
 			target := navigation(r, d, Position(source, strings.Index(source, name)), "textDocument/definition")
 			if target == nil || target.([]any)[0].(map[string]any)["uri"] != "manuscript-stdlib:///collections.ms" {
 				t.Fatal(name, target)
@@ -333,5 +337,18 @@ func TestCollectionPreludeEditorContracts(t *testing.T) {
 	local := completeSource(t, "type Map[K,V]:\n    value: V\nfn use(entries: Map[String, Int]) -> Unit:\n    entries.|\n")
 	if itemNamed(local, "add") != nil || itemNamed(local, "value") == nil {
 		t.Fatal(local)
+	}
+	local = completeSource(t, "type Set[T]:\n    value: T\nfn use(values: Set[Int]) -> Unit:\n    values.|\n")
+	if itemNamed(local, "add") != nil || itemNamed(local, "value") == nil {
+		t.Fatal(local)
+	}
+}
+
+func TestStatementKeywordsAreReserved(t *testing.T) {
+	reserved := lexer.Keywords()
+	for _, word := range statementKeywords {
+		if !slices.Contains(reserved, word) {
+			t.Errorf("%q is not a reserved word", word)
+		}
 	}
 }

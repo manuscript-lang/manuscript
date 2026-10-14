@@ -24,6 +24,8 @@ List, Map and Set mutation is visible through aliases. `.clone()` makes a separa
 
 `take(count:)` returns a shallow copy of the first `count` elements; `drop(count:)` returns a shallow copy after them. Counts above `length()` are clamped: taking copies the whole list, dropping returns an empty list. Zero takes an empty list or drops nothing; a negative count produces a programming fault naming the operation, parameter and original count. Both return fresh mutable List storage even for empty or whole-list copies, preserve element order and payload references, and leave the receiver unchanged. They are explicit copy operations and do not change loop or callback traversal behavior.
 
+`count(predicate:)` returns how many elements match, and `distinct()` returns a new shallow list keeping the first of each group of equal elements in their original order; like `contains`, it requires `Equal` elements and compares each element with those already kept. `insert(index:, value:)` and `pop()` mutate the receiver: `insert` accepts `-length()` through `length()` and returns the same list, while `pop` removes the last element and returns it, or `none` for an empty list.
+
 `map` transforms each element, `filter` keeps matching elements, and `flat_map` combines the lists returned by its callback. These operations return new lists. Callbacks run sequentially and may wait for operations.
 
 Inside a function or test:
@@ -36,13 +38,13 @@ let line = labels.join(separator: ", ")
 # line is "item 1, item 2".
 ```
 
-Import `List` from `@std/collections.ms` for the bracket literal. `find` and `find_index` stop at the first match and return an `Optional`; `find_last` and `find_last_index` search from the end. `index_of` and `last_index_of` search by equality. `for_each` runs a sequential callback and returns Unit. `some` and `every` return a `Bool`; an empty list produces false and true respectively. `fold` and `fold_right` require an initial accumulator, which may have a different type from the elements. Sorting is stable and requires an explicit comparator. See [search and enumeration](../core-language/types/collections.md#search-and-enumeration) for callback labels, entry shapes, and Set relation operations.
+`List`, `Map`, and `Set` are available without imports. `find` and `find_index` stop at the first match and return an `Optional`; `find_last` and `find_last_index` search from the end. `index_of` and `last_index_of` search by equality. `for_each` runs a sequential callback and returns Unit. `some` and `every` return a `Bool`; an empty list produces false and true respectively. `fold` and `fold_right` require an initial accumulator, which may have a different type from the elements. Sorting is stable and requires an explicit comparator. See [search and enumeration](../core-language/types/collections.md#search-and-enumeration) for callback labels, entry shapes, and Set relation operations.
 
 ## Map and set order
 
 Maps and sets enumerate in insertion order, while equality ignores order. Replacing an existing map key retains its position; removing and adding it puts it at the end. `map_from_entries` uses the last value for duplicate keys and keeps the first insertion position. `merge` mutates the receiving map, replacing matching values and appending new keys.
 
-`add_default_from` calls its creation function only when the key is absent. The legacy spelling `with_default_from` remains compatible; see the [naming migration](../core-language/types/collections.md#naming-and-migration). Set algebra returns new sets: left-side traversal order is retained, followed by right-only values where applicable. Keys and set elements must satisfy [Hashable](../core-language/types/equality-and-hashing.md).
+`add_default_from` calls its creation function only when the key is absent. Set algebra returns new sets: left-side traversal order is retained, followed by right-only values where applicable. Keys and set elements must satisfy [Hashable](../core-language/types/equality-and-hashing.md).
 
 ## Text and regular expressions
 
@@ -83,7 +85,7 @@ Negative `max_parts` and `max_replacements` fault with a message naming the oper
 
 Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.
 
-`Regex.replace_all(text:, replacement:, max_bytes:)` replaces every nonoverlapping match with literal text; `$1` does not expand a capture. `Regex.replace` remains a compatible spelling. Omitted or `none` byte budgets impose no cap, zero permits only empty output, negative budgets return `RegexError.InvalidInput`, and output exceeding a supplied budget returns `RegexError.LimitExceeded`. The UTF-8 budget includes unmatched input, even when no match occurs.
+`Regex.replace_all(text:, replacement:, max_bytes:)` replaces every nonoverlapping match with literal text; `$1` does not expand a capture. Omitted or `none` byte budgets impose no cap, zero permits only empty output, negative budgets return `RegexError.InvalidInput`, and output exceeding a supplied budget returns `RegexError.LimitExceeded`. The UTF-8 budget includes unmatched input, even when no match occurs.
 
 ## Byte operations
 
@@ -94,7 +96,7 @@ Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed 
 | `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length()` respectively. |
 | `split` | Split exact binary separators into a fresh List of immutable Bytes views. `max_parts` truncates returned parts; omitted/`none` is unlimited, zero returns no parts, negatives fault. |
 | `slice` | Select a half-open byte range, returning `OutOfRange` for invalid bounds, under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
-| `with_value`, `reversed`, `reverse`, `concat`, `clone` | Return Bytes without changing the receiver. `reverse` remains a compatible spelling for `reversed`. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
+| `with_value`, `reversed`, `concat`, `clone` | Return Bytes without changing the receiver. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
 | `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
 | `to_text` | Decode valid UTF-8 or return `none`. |
 

@@ -48,8 +48,6 @@ test "unread message count":
 ## Lists, maps, and sets
 
 ```manuscript
-import Set from "@std/collections.ms"
-
 let tags = ["docs", "release"]
 tags.append("featured")
 let original = tags.clone()
@@ -68,7 +66,7 @@ match visits.get("/help"):
         let label = "No visits yet"
 ```
 
-List and Map are available without imports; Set needs the import shown above. Lists preserve order, maps look up values by key, and sets keep distinct values. Updates mutate the collection. Assignment shares the same collection; `.clone()` makes a shallow copy. Lookup returns an `Optional`: `some(value)` or `none`.
+List, Map, and Set are available without imports. Lists preserve order, maps look up values by key, and sets keep distinct values. Updates mutate the collection. Assignment shares the same collection; `.clone()` makes a shallow copy. Lookup returns an `Optional`: `some(value)` or `none`.
 
 ## Conditions and loops
 

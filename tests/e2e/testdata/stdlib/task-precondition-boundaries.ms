@@ -2,7 +2,7 @@ import panic from "@std/faults.ms"
 import {Scheduler, TaskGroup} from "@std/tasks.ms"
 import {duration, sleep} from "@std/time.ms"
 
-fn pass() -> Result[Unit, String]: return ok(unit)
+fn pass() -> Result[Unit, Error]: return ok(unit)
 
 test "scheduler bounds preserve omission none zero and positive meanings":
     with omitted = Scheduler():

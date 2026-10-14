@@ -70,9 +70,9 @@ test "struct records with mixed field types":
 
 test "struct records as keys and defaults":
     let set: Set[Point] = Set[Point]()
-    set.with_value(Point(x: 1, y: 1))
-    set.with_value(Point(x: 1, y: 1))
-    set.with_value(Point(x: 2, y: 1))
+    set.add(Point(x: 1, y: 1))
+    set.add(Point(x: 1, y: 1))
+    set.add(Point(x: 2, y: 1))
     if set.length() != 2:
         return panic(message: "record keys must hash structurally")
 

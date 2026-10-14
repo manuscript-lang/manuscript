@@ -7,7 +7,7 @@ weight = 3
 
 Use `List[T]` for an ordered sequence, `Map[K, V]` for key/value entries, and `Set[T]` for distinct values. The type arguments state the element, key, and value types. All three collections are mutable references. Assignment retains the same instance; `.clone()` copies its storage.
 
-`List` and `Map` are available in the prelude without imports. Explicit imports from `@std/collections.ms` remain valid. Import `Set` and other collection names when needed. Literals use the canonical standard types; a module declaration or import that replaces `List` or `Map` makes its corresponding literal invalid.
+`List`, `Map`, and `Set` are available in the prelude without imports. Explicit imports from `@std/collections.ms` remain valid. Import other collection names when needed. Literals use the canonical standard types; a module declaration or import that replaces `List` or `Map` makes its corresponding literal invalid.
 
 | Type | Contents |
 | --- | --- |
@@ -72,9 +72,9 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 ## Mutation and copies
 
-`append`, `prepend`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `with_value` and `without` remain compatible spellings for `set` and `remove`, with the same receiver returns and faults. `reverse` remains a compatible spelling for `reverse_in_place`, returning the same list. `splice(start:, delete_count:, replacement:)` requires nonnegative bounds with `start <= length()` and `delete_count <= length() - start`; it stages a self-replacement and retains shallow references. Invalid bounds fault without clamping. `with_values` remains its compatible spelling. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
+`append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `insert(index:, value:)` places a value before `index`, accepting `-length()` through `length()`; `length()` appends, and other indexes fault with the valid range. `pop()` also updates the list: it removes the last element and returns it as `some(value)`, or returns `none` for an empty list. `splice(start:, delete_count:, replacement:)` requires nonnegative bounds with `start <= length()` and `delete_count <= length() - start`; it stages a self-replacement and retains shallow references. Invalid bounds fault without clamping. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
 
-Map `add`, `remove`, `add_default`, `add_default_from`, `merge`, and `clear` update the receiver. `with_entry`, `without`, `with_default`, and `with_default_from` retain their legacy mutation and receiver returns. Set `add`, `remove`, and `clear` update the receiver; `with_value` and `without` remain compatible spellings for `add` and `remove`. Map `without` remains compatible with `remove`, including no-op absence, scoped lookup and insertion order. Their return values retain that instance for chaining.
+Map `add`, `remove`, `add_default`, `add_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver. Map `remove` is a no-op for an absent key and keeps scoped lookup and insertion order. Their return values retain that instance for chaining.
 
 ```manuscript
 let values = [1, 2]
@@ -84,7 +84,7 @@ values.append(3)
 # alias now contains [1, 2, 3]; copy still contains [1, 2].
 ```
 
-Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra construct new results. List `reversed()` returns a reversed shallow copy with independent outer storage. Bytes `reversed()` also returns a copy; Bytes `reverse()` remains compatible. Text and Bytes retain their existing nonmutating operations.
+Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra construct new results. List `reversed()` returns a reversed shallow copy with independent outer storage. Bytes `reversed()` also returns a copy. Text and Bytes retain their existing nonmutating operations.
 
 List `slice` returns `Result[List[T], CollectionError]` and uses strict element bounds after resolving negative bounds relative to the end: `0 <= start <= end <= length()`. Invalid bounds return `CollectionError.OutOfRange`. Successful slices copy outer storage and retain nested references. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
 
@@ -98,9 +98,9 @@ Map and Set loops and callbacks retain their membership snapshot contract: addit
 
 Use verbs for mutable updates and explicit `.clone()` when a separate mutable result is wanted. `concat`, `filter`, `sorted`, `reversed` and other existing transforms keep their copying contracts; a verb alone does not promise mutation on immutable String or Bytes values. Bytes `with_value` copies byte storage, while Bytes `slice` and `split` may retain immutable views.
 
-Legacy spellings remain supported compatibility APIs with their original signatures and behavior. They are never reinterpreted as copies. Migrate direct calls and stored method references using this table; argument labels and callable return types stay the same.
+The older spellings below were removed because several sounded like copies but mutated their receiver. Replace direct calls and stored method references using this table; argument labels and callable return types stay the same.
 
-| Receiver | Legacy spelling | Preferred spelling | Result |
+| Receiver | Removed spelling | Use | Result |
 | --- | --- | --- | --- |
 | List | `with_value`, `without`, `with_values`, `reverse` | `set`, `remove`, `splice`, `reverse_in_place` | Same List |
 | Map | `with_entry`, `without` | `add`, `remove` | Same Map |
@@ -112,7 +112,7 @@ Legacy spellings remain supported compatibility APIs with their original signatu
 
 Map `add_default` evaluates its value argument normally and inserts only when absent. `add_default_from` calls `create(key:)` once only when absent. Neither replaces an existing value or its insertion position. For a copy, write `map.clone().add_default(...)` explicitly.
 
-All [builder mutations](../../standard-library/builders.md) return Unit; `freeze` returns the sealed result. This convention applies to List, Map, Set, Bytes and String builders and preserves their existing function types. MSL108 recommends equivalent preferred names using checked standard identities, including stored references; user methods and callable fields keep their own contracts. Standard implementations and teaching examples use the preferred names. Compatibility tests intentionally exercise old spellings.
+All [builder mutations](../../standard-library/builders.md) return Unit; `freeze` returns the sealed result. This convention applies to List, Map, Set, Bytes and String builders and preserves their existing function types.
 
 ## Lookup and updates
 
@@ -122,6 +122,7 @@ All [builder mutations](../../standard-library/builders.md) return Unit; `freeze
 | `List[T]` | `length() -> Int`; `at(index: Int) -> Optional[T]`; `[index] -> Optional[T]` |
 | `List[T]` | `append(value: T) -> List[T]`; `concat(values: List[T]) -> List[T]` |
 | `List[T]` | `set(index: Int, value: T) -> List[T]`; `remove(index: Int) -> List[T]` |
+| `List[T]` | `insert(index: Int, value: T) -> List[T]`; `pop() -> Optional[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
 | `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
 | `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
@@ -147,7 +148,7 @@ All [builder mutations](../../standard-library/builders.md) return Unit; `freeze
 
 All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding MaxInt64 faults.
 
-`Map.add(key, value)` inserts or replaces a value and returns the same map. `with_entry` remains a compatible spelling with identical behavior.
+`Map.add(key, value)` inserts or replaces a value and returns the same map.
 
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
 
@@ -159,6 +160,8 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` look keys up by ha
 | --- | --- |
 | List `index_of(value:)`, `last_index_of(value:)` | First or last equal element's zero-based index, or `none`; these searches require `Equal` elements. |
 | List `find_index(predicate:)`, `find_last_index(predicate:)` | First or last matching index, or `none`. `find` and `find_last` return the matching value instead. |
+| List `count(predicate:)` | Number of elements whose predicate returns true, calling it once per element in order. |
+| List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
 | List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` records containing `index` and `value`. |
 | Map `keys()`, `values()`, `entries()` | New lists in insertion order; entries are `MapEntry[K, V]` records with `key` and `value`. |
 | Set `values()`, `entries()` | New lists in insertion order; `entries()` returns `List[List[T]]`, with each inner list `[value, value]`. |

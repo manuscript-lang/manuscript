@@ -142,14 +142,14 @@ test "records alternatives and collections convert":
     )
     let map = (
         Map[String, Int]()
-        .with_entry(key: "b", value: 2)
-        .with_entry(key: "a", value: 1)
+        .add(key: "b", value: 2)
+        .add(key: "a", value: 1)
     )
     check(
         value: map.toString(),
         expected: "Map(b: 2, a: 1)"
     )
-    let set = Set[Int]().with_value(2).with_value(1)
+    let set = Set[Int]().add(2).add(1)
     check(
         value: set.toString(),
         expected: "Set(2, 1)"

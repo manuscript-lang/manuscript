@@ -5,7 +5,7 @@ description: Organize or maintain Manuscript packages, shared guidance, embedded
 
 # Repository maintenance
 
-Use for cleanup, package moves, scripts/pins, CI/releases, or the skill catalog. Read [architecture](../../documentation/contributing/architecture.md), [maintenance](../../documentation/contributing/maintenance.md), and [lessons](../../.experts/repository.md).
+Use for cleanup, package moves, pins (`scripts/devtools.env`, `.go-version`, `.msversion`), CI/releases, or the skill catalog. Read [architecture](../../documentation/contributing/architecture.md), [maintenance](../../documentation/contributing/maintenance.md), and [lessons](../../.experts/repository.md).
 
 - Simplify duplicated traversal, queries, serialization, forwarding, and CLI paths as well as layout. Name the work removed; add a layer only for a concrete contract.
 - Respect ownership/public import paths, `scripts/repo-check/policy.json`, frontend isolation, and exhaustive checked/lowered syntax kinds.

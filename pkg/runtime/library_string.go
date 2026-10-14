@@ -119,7 +119,7 @@ func init() {
 		})
 	}
 
-	add("string", "concat", "String", []LibraryParam{p("text", "String"), p("values", "String")}, func(_ *Execution, _ string, a []Value) Value { return a[0].(string) + a[1].(string) })
+	add("string", "concat", "String", []LibraryParam{p("text", "String"), p("other", "String")}, func(_ *Execution, _ string, a []Value) Value { return a[0].(string) + a[1].(string) })
 	add("string", "normalize", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("form", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[2].(int64)
 		if max < 0 {
@@ -311,7 +311,14 @@ func init() {
 		if name == "starts_with" || name == "ends_with" {
 			result = "Bool"
 		}
-		add("bytes", name, result, []LibraryParam{p("data", "Bytes"), p("value", "Bytes")}, func(_ *Execution, r string, a []Value) Value {
+		label := "value"
+		if name == "starts_with" {
+			label = "prefix"
+		}
+		if name == "ends_with" {
+			label = "suffix"
+		}
+		add("bytes", name, result, []LibraryParam{p("data", "Bytes"), p(label, "Bytes")}, func(_ *Execution, r string, a []Value) Value {
 			data, value := a[0].(Bytes).Items, a[1].(Bytes).Items
 			if name == "starts_with" {
 				return bytes.HasPrefix(data, value)
@@ -329,7 +336,7 @@ func init() {
 			return Alternative{r, "some", []Value{int64(i)}}
 		})
 	}
-	add("bytes", "reverse", "Bytes", []LibraryParam{p("data", "Bytes")}, func(ctx *Execution, _ string, a []Value) Value {
+	add("bytes", "reversed", "Bytes", []LibraryParam{p("data", "Bytes")}, func(ctx *Execution, _ string, a []Value) Value {
 		out := append([]byte{}, a[0].(Bytes).Items...)
 		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 			CheckCancelled(ctx)
@@ -337,7 +344,6 @@ func init() {
 		}
 		return Bytes{out}
 	})
-	libraryAlias("bytes", "reversed", "reverse")
 	add("bytes", "with_value", "Bytes", []LibraryParam{p("data", "Bytes"), p("index", "Int"), p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		items := a[0].(Bytes).Items
 		i, n := relativeIndex(len(items), a[1].(int64)), a[2].(int64)

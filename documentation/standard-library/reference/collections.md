@@ -4,9 +4,9 @@ title = "collections"
 
 # @std/collections.ms
 
-`List` and `Map` are available in the prelude; no import required.
+`List`, `Map`, and `Set` are available in the prelude; no import required.
 
-Other names require `import Name from "@std/collections.ms"`; explicit List/Map imports remain supported.
+Other names require `import Name from "@std/collections.ms"`; explicit List/Map/Set imports remain supported.
 
 ## CollectionError {data-api-kind="Alternative"}
 
@@ -47,22 +47,23 @@ type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    fn insert(index: Int, value: T) -> List[T]:
+    fn pop() -> Optional[T]:
     fn set(index: Int, value: T) -> List[T]:
     fn remove(index: Int) -> List[T]:
-    fn with_value(index: Int, value: T) -> List[T]:
-    fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     fn take(count: Int) -> List[T]:
     fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
     fn reversed() -> List[T]:
-    fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
     fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    fn count(predicate: fn(value: T) -> Bool) -> Int:
+    fn distinct() -> List[T]:
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
@@ -72,7 +73,6 @@ type List[T]:
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
-    fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
     fn to_set() -> Set[T]:
@@ -80,7 +80,7 @@ type List[T]:
     fn entries() -> List[ListEntry[T]]:
     fn join(separator: String) -> String:
     fn append(value: T) -> List[T]:
-    fn concat(values: List[T]) -> List[T]:
+    fn concat(other: List[T]) -> List[T]:
     fn length() -> Int:
 ```
 
@@ -98,6 +98,22 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.count
+
+Counts values satisfying the predicate, calling it once per element in order.
+
+```manuscript
+fn count(predicate: fn(value: T) -> Bool) -> Int:
+```
+
+### List.distinct
+
+Returns a new shallow List keeping each first equal element in order; elements require Equal.
+
+```manuscript
+fn distinct() -> List[T]:
 ```
 
 ### List.drop
@@ -165,6 +181,15 @@ Returns the first equal element's zero-based index, or none; elements require Eq
 fn index_of(value: T) -> Optional[Int]:
 ```
 
+### List.insert
+
+Inserts value before index in place and returns this list; negative indexes count from the end.
+Requires -length() <= index <= length(); index length() appends, and invalid indexes fault.
+
+```manuscript
+fn insert(index: Int, value: T) -> List[T]:
+```
+
 ### List.last_index_of
 
 Returns the last equal element's zero-based index, or none; elements require Equal.
@@ -173,22 +198,22 @@ Returns the last equal element's zero-based index, or none; elements require Equ
 fn last_index_of(value: T) -> Optional[Int]:
 ```
 
+### List.pop
+
+Removes and returns the last element in place, or none for an empty list.
+
+```manuscript
+fn pop() -> Optional[T]:
+```
+
 ### List.remove
 
 Removes an element in place and returns this list; negative indexes count from the end.
-Invalid indexes fault, with the same bounds and diagnostics as without.
+Invalid indexes fault.
 Shifts the suffix without clearing prior values retained in spare backing capacity.
 
 ```manuscript
 fn remove(index: Int) -> List[T]:
-```
-
-### List.reverse
-
-Compatibility spelling for reverse_in_place; mutates and returns this list.
-
-```manuscript
-fn reverse() -> List[T]:
 ```
 
 ### List.reverse_in_place
@@ -210,7 +235,7 @@ fn reversed() -> List[T]:
 ### List.set
 
 Replaces an element in place and returns this list; negative indexes count from the end.
-Invalid indexes fault, with the same bounds and diagnostics as with_value.
+Invalid indexes fault.
 
 ```manuscript
 fn set(index: Int, value: T) -> List[T]:
@@ -261,30 +286,6 @@ Leaves the receiver unchanged; negative count is a programming fault.
 fn take(count: Int) -> List[T]:
 ```
 
-### List.with_value
-
-Compatibility spelling for set; mutates and returns this list.
-
-```manuscript
-fn with_value(index: Int, value: T) -> List[T]:
-```
-
-### List.with_values
-
-Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior.
-
-```manuscript
-fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
-```
-
-### List.without
-
-Compatibility spelling for remove; mutates and returns this list.
-
-```manuscript
-fn without(index: Int) -> List[T]:
-```
-
 ## ListBuilder {data-api-kind="Native type"}
 
 Appends values efficiently before freezing them into a list.
@@ -325,8 +326,6 @@ type Map[T: Hashable, U]:
     fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn add_default(key: T, value: U) -> Map[T, U]:
     fn add_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
-    fn with_default(key: T, value: U) -> Map[T, U]:
-    fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
     fn keys() -> List[T]:
     fn values() -> List[U]:
@@ -337,9 +336,7 @@ type Map[T: Hashable, U]:
     fn get(key: T) -> Optional[U]:
     fn length() -> Int:
     fn add(key: T, value: U) -> Map[T, U]:
-    fn with_entry(key: T, value: U) -> Map[T, U]:
     fn remove(key: T) -> Map[T, U]:
-    fn without(key: T) -> Map[T, U]:
 ```
 
 ### Map.add
@@ -485,38 +482,6 @@ Stops at the first matching entry; empty maps return false.
 fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
 ```
 
-### Map.with_default
-
-Legacy spelling for add_default; mutates and returns this map, never a copy.
-
-```manuscript
-fn with_default(key: T, value: U) -> Map[T, U]:
-```
-
-### Map.with_default_from
-
-Legacy spelling for add_default_from; retains lazy creation and the receiver return.
-
-```manuscript
-fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
-```
-
-### Map.with_entry
-
-Compatible spelling of add, with the same mutation and receiver return.
-
-```manuscript
-fn with_entry(key: T, value: U) -> Map[T, U]:
-```
-
-### Map.without
-
-Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return.
-
-```manuscript
-fn without(key: T) -> Map[T, U]:
-```
-
 ## MapBuilder {data-api-kind="Native type"}
 
 Adds entries efficiently before freezing them into a map.
@@ -525,7 +490,6 @@ Adds entries efficiently before freezing them into a map.
 type MapBuilder[T: Hashable, U]:
     fn freeze() -> Map[T, U]:
     fn add(key: T, value: U) -> Unit:
-    fn with_entry(key: T, value: U) -> Unit:
 ```
 
 ### MapBuilder.add
@@ -535,14 +499,6 @@ Replacement retains the original key and insertion position; a sealed builder fa
 
 ```manuscript
 fn add(key: T, value: U) -> Unit:
-```
-
-### MapBuilder.with_entry
-
-Legacy spelling for add, with the same Unit return and sealing behavior.
-
-```manuscript
-fn with_entry(key: T, value: U) -> Unit:
 ```
 
 ## MapEntry {data-api-kind="Record"}
@@ -571,13 +527,13 @@ type Set[T: Hashable]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
-    fn union(right: Set[T]) -> Set[T]:
-    fn intersection(right: Set[T]) -> Set[T]:
-    fn difference(right: Set[T]) -> Set[T]:
-    fn symmetric_difference(right: Set[T]) -> Set[T]:
-    fn is_subset_of(right: Set[T]) -> Bool:
-    fn is_superset_of(right: Set[T]) -> Bool:
-    fn is_disjoint_from(right: Set[T]) -> Bool:
+    fn union(other: Set[T]) -> Set[T]:
+    fn intersection(other: Set[T]) -> Set[T]:
+    fn difference(other: Set[T]) -> Set[T]:
+    fn symmetric_difference(other: Set[T]) -> Set[T]:
+    fn is_subset_of(other: Set[T]) -> Bool:
+    fn is_superset_of(other: Set[T]) -> Bool:
+    fn is_disjoint_from(other: Set[T]) -> Bool:
     fn clear() -> Set[T]:
     fn values() -> List[T]:
     fn entries() -> List[List[T]]:
@@ -586,8 +542,6 @@ type Set[T: Hashable]:
     fn length() -> Int:
     fn add(value: T) -> Set[T]:
     fn remove(value: T) -> Set[T]:
-    fn with_value(value: T) -> Set[T]:
-    fn without(value: T) -> Set[T]:
 ```
 
 ### Set.add
@@ -596,6 +550,38 @@ Adds a value in place and returns this set; an equal value retains its original 
 
 ```manuscript
 fn add(value: T) -> Set[T]:
+```
+
+### Set.clear
+
+Removes all values in place and returns this set; aliases observe the empty set.
+
+```manuscript
+fn clear() -> Set[T]:
+```
+
+### Set.clone
+
+Copies outer storage, retaining element references and insertion order.
+
+```manuscript
+fn clone() -> Set[T]:
+```
+
+### Set.contains
+
+Reports whether an equal value is present, using the element's Hashable implementation.
+
+```manuscript
+fn contains(value: T) -> Bool:
+```
+
+### Set.difference
+
+Returns a new set of receiver values absent from right, preserving receiver insertion order.
+
+```manuscript
+fn difference(other: Set[T]) -> Set[T]:
 ```
 
 ### Set.entries
@@ -663,12 +649,20 @@ Calls operation(value:) sequentially over an insertion-order membership snapshot
 fn for_each(operation: fn(value: T) -> Unit) -> Unit:
 ```
 
+### Set.intersection
+
+Returns a new set of receiver values also in right, preserving receiver insertion order.
+
+```manuscript
+fn intersection(other: Set[T]) -> Set[T]:
+```
+
 ### Set.is_disjoint_from
 
 Tests whether the operands have no common values.
 
 ```manuscript
-fn is_disjoint_from(right: Set[T]) -> Bool:
+fn is_disjoint_from(other: Set[T]) -> Bool:
 ```
 
 ### Set.is_empty
@@ -684,7 +678,7 @@ fn is_empty() -> Bool:
 Tests whether every receiver value also occurs in right.
 
 ```manuscript
-fn is_subset_of(right: Set[T]) -> Bool:
+fn is_subset_of(other: Set[T]) -> Bool:
 ```
 
 ### Set.is_superset_of
@@ -692,7 +686,15 @@ fn is_subset_of(right: Set[T]) -> Bool:
 Tests whether every right value also occurs in the receiver.
 
 ```manuscript
-fn is_superset_of(right: Set[T]) -> Bool:
+fn is_superset_of(other: Set[T]) -> Bool:
+```
+
+### Set.length
+
+Returns the number of distinct values currently stored.
+
+```manuscript
+fn length() -> Int:
 ```
 
 ### Set.map[U: Hashable]
@@ -724,7 +726,15 @@ fn some(predicate: fn(value: T) -> Bool) -> Bool:
 Returns a new set of values in exactly one operand; leaves both operands unchanged.
 
 ```manuscript
-fn symmetric_difference(right: Set[T]) -> Set[T]:
+fn symmetric_difference(other: Set[T]) -> Set[T]:
+```
+
+### Set.union
+
+Returns a new set with receiver values followed by right-only values in insertion order.
+
+```manuscript
+fn union(other: Set[T]) -> Set[T]:
 ```
 
 ### Set.values
@@ -735,22 +745,6 @@ Returns a shallow list of values in insertion order.
 fn values() -> List[T]:
 ```
 
-### Set.with_value
-
-Compatibility spelling for add; mutates and returns this set.
-
-```manuscript
-fn with_value(value: T) -> Set[T]:
-```
-
-### Set.without
-
-Compatibility spelling for remove; mutates and returns this set.
-
-```manuscript
-fn without(value: T) -> Set[T]:
-```
-
 ## SetBuilder {data-api-kind="Native type"}
 
 Adds unique values efficiently before freezing them into a set.
@@ -759,7 +753,6 @@ Adds unique values efficiently before freezing them into a set.
 type SetBuilder[T: Hashable]:
     fn freeze() -> Set[T]:
     fn add(value: T) -> Unit:
-    fn with_value(value: T) -> Unit:
 ```
 
 ### SetBuilder.add
@@ -769,14 +762,6 @@ Equal values retain the first payload and position; a sealed builder faults.
 
 ```manuscript
 fn add(value: T) -> Unit:
-```
-
-### SetBuilder.with_value
-
-Legacy spelling for add, with the same Unit return and sealing behavior.
-
-```manuscript
-fn with_value(value: T) -> Unit:
 ```
 
 ## filled {data-api-kind="Function"}

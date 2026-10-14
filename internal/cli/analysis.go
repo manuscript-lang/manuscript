@@ -48,12 +48,23 @@ func lintFindings(result compiler.Result) []tooling.LintFinding {
 }
 
 func runAnalysis(command string, targets []string, structured bool) int {
+	status, _ := analyze(command, targets, structured)
+	return status
+}
+
+// analyze runs check or lint once and also returns the files that decide its
+// result, so a watcher knows what to poll.
+func analyze(command string, targets []string, structured bool) (int, []string) {
 	selection, err := selectAnalysisInputs(targets)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return 1
+		return 1, nil
 	}
 	inputs, issues := analyzeSelection(command, selection)
+	var files []string
+	for _, input := range inputs {
+		files = append(files, watchedFiles(input.input.path, input.result)...)
+	}
 	diagnostics := []commandDiagnostic{}
 	for _, issue := range issues {
 		diagnostics = append(diagnostics, sourceDiagnostic(issue))
@@ -88,21 +99,8 @@ func runAnalysis(command string, targets []string, structured bool) int {
 		status = 1
 	}
 	if structured {
-		document := struct {
-			Format      int                 `json:"format"`
-			Diagnostics []commandDiagnostic `json:"diagnostics"`
-		}{1, diagnostics}
-		// Keep the original compact successful lint document spelling.
-		if command == "lint" && !selection.collection && len(issues) == 0 {
-			data, err := json.Marshal(document)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				return 1
-			}
-			fmt.Println(string(data))
-			return status
-		}
-		return emitJSON(document, status)
+		document := diagnosticsDocument{1, diagnostics}
+		return emitJSON(document, status), files
 	}
 	for _, issue := range diagnostics {
 		if !selection.collection && len(inputs) == 1 && inputs[0].result.SourceRoot != "" && !filepath.IsAbs(issue.Position.File) {
@@ -123,21 +121,14 @@ func runAnalysis(command string, targets []string, structured bool) int {
 		}
 		fmt.Fprintf(os.Stderr, "%d %s; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n", count, plural(count, "error", "errors"))
 	}
-	return status
+	return status, files
 }
 
-func orderedAnalysisDiagnostics(issues []commandDiagnostic) []commandDiagnostic {
-	seen := map[string]bool{}
-	unique := issues[:0]
-	for _, issue := range issues {
-		data, _ := json.Marshal(issue)
-		if key := string(data); !seen[key] {
-			seen[key] = true
-			unique = append(unique, issue)
-		}
-	}
-	sort.SliceStable(unique, func(i, j int) bool {
-		a, b := unique[i], unique[j]
+// sortDiagnostics orders by position, then code and message, so every command
+// reports the same diagnostics in the same order.
+func sortDiagnostics(issues []commandDiagnostic) {
+	sort.SliceStable(issues, func(i, j int) bool {
+		a, b := issues[i], issues[j]
 		if a.Position.File != b.Position.File {
 			return a.Position.File < b.Position.File
 		}
@@ -152,6 +143,19 @@ func orderedAnalysisDiagnostics(issues []commandDiagnostic) []commandDiagnostic 
 		}
 		return a.Message < b.Message
 	})
+}
+
+func orderedAnalysisDiagnostics(issues []commandDiagnostic) []commandDiagnostic {
+	seen := map[string]bool{}
+	unique := issues[:0]
+	for _, issue := range issues {
+		data, _ := json.Marshal(issue)
+		if key := string(data); !seen[key] {
+			seen[key] = true
+			unique = append(unique, issue)
+		}
+	}
+	sortDiagnostics(unique)
 	return unique
 }
 

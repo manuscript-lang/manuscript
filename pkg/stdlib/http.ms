@@ -8,7 +8,6 @@ import Duration from "@std/time.ms"
 import IoError from "@std/io.ms"
 import List from "@std/collections.ms"
 import Listener from "@std/net.ms"
-import Map from "@std/collections.ms"
 import NetworkError from "@std/net.ms"
 import ReadStream from "@std/io.ms"
 import TlsOptions from "@std/tls.ms"
@@ -26,37 +25,90 @@ export type HttpError:
     case Timeout
     case Failed(message: String)
 
-# Buffered HTTP response metadata and body. Header names have canonical spelling;
-# Map lookup is case-sensitive. Lists preserve separate values in received order.
-export type ClientResponse:
-    status: Int
-    headers: Map[String, List[String]]
-    body: Bytes
+# Mutable HTTP fields with ASCII case-insensitive names and separate byte values.
+# Names keep first-insertion order and spelling; values keep append order.
+# Lookup shares list membership. Use clone() to separate mutable membership.
+export type HttpHeaders:
+    # Appends raw bytes under a valid HTTP name; invalid names return InvalidInput.
+    # Transport operations additionally validate UTF-8, framing and field values.
+    fn append(name: String, value: Bytes) -> Result[Unit, HttpError]:
+    # Returns shared mutable membership, or none for an absent name.
+    fn values(name: String) -> Optional[List[Bytes]]:
+    # Decodes every value; invalid UTF-8 returns InvalidData without partial success.
+    fn text(name: String) -> Result[Optional[List[String]], HttpError]:
+    # Returns first-inserted spellings in insertion order.
+    fn names() -> List[String]:
+    # Removes a name; existing list aliases are detached from this header object.
+    fn remove(name: String) -> Bool:
+    # Copies name/list membership and shares immutable Bytes values.
+    fn clone() -> HttpHeaders:
 
-# Finds all values under ASCII case-equivalent names without changing Map keys.
-# Returns none if absent, or some(empty) for a present empty list. Copies list
-# membership and preserves Map insertion order followed by each list's order.
-export fn header_values(
-    headers: Map[String, List[String]],
-    name: String
-) -> Optional[List[String]]:
+# Creates empty mutable headers. No header values are joined or comma-combined.
+export fn headers() -> HttpHeaders:
+
+# Response status and headers shared by buffered and streaming response access.
+export type HttpResponseMetadata:
+    # The received status; editing metadata leaves wire/body behavior unchanged.
+    status: Int
+    # The shared mutable fields, with every repeated value retained.
+    headers: HttpHeaders
+
+# Buffered response body with explicit common metadata access.
+export type ClientResponse:
+    # Current mutable metadata; replacing head detaches existing metadata aliases.
+    head: HttpResponseMetadata
+    # The complete response payload within the supplied byte bound.
+    body: Bytes
+    # Returns current head without copying; record clone is shallow.
+    # Clone headers explicitly when separate mutable membership is needed.
+    fn metadata() -> HttpResponseMetadata:
+
+# Known HTTP methods, plus extension tokens validated by outgoing operations.
+export type HttpMethod:
+    # Requests the selected representation.
+    case Get
+    # Requests response metadata without a body.
+    case Head
+    # Submits a representation for processing.
+    case Post
+    # Replaces the selected representation.
+    case Put
+    # Applies a partial modification.
+    case Patch
+    # Removes the selected representation.
+    case Delete
+    # Establishes a tunnel to the request target.
+    case Connect
+    # Asks which communication options the target supports, without transferring a body.
+    case Options
+    # Requests a diagnostic loopback.
+    case Trace
+    # Carries an extension token; requests reject empty or malformed tokens.
+    case Custom(
+        # The method token; it must be a non-empty HTTP token such as PURGE.
+        value: String
+    )
+    # Returns the method token; outgoing requests reject malformed Custom tokens.
+    fn text() -> String:
 
 # Reusable HTTP client with connection pooling and explicit response limits.
-# Outbound case-equivalent header keys append values in Map insertion order.
+# Outbound headers retain separate values in their stored order.
 export interface HttpClient:
     fn close() -> Unit
-    fn send(
-        method: String,
+    # Sends immutable Bytes and returns a scoped streaming response body.
+    fn request(
+        method: HttpMethod,
         url: String,
-        headers: Map[String, String],
-        body: Bytes,
+        headers: HttpHeaders,
+        body: Bytes = "".to_bytes(),
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[ResponseBody, HttpError]
-    fn send_stream(
-        method: String,
+    # Borrows ReadStream upload data through the scoped response lifetime.
+    fn request_stream(
+        method: HttpMethod,
         url: String,
-        headers: Map[String, String],
+        headers: HttpHeaders,
         body: ReadStream,
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
@@ -68,23 +120,29 @@ export type HttpClientOptions:
     max_idle_connections: Optional[Int] = none
     max_header_bytes: Optional[Int] = none
     idle_timeout: Optional[Duration] = none
-    decompress: Bool
-    cookies: Bool
-    tls: TlsOptions
+    decompress: Bool = false
+    cookies: Bool = false
+    tls: TlsOptions = TlsOptions(
+        server_name: "",
+        roots_pem: "",
+        certificate_pem: "",
+        private_key_pem: "",
+        alpn: [],
+        require_client_certificate: false
+    )
 
 # One streaming server exchange. Read or write incrementally and close when done.
-# Received header names have canonical spelling; Map lookup is case-sensitive.
-# Sending case-equivalent names appends each list in Map insertion order.
+# Received headers are one shared mutable object; repeated values stay separate.
 export interface HttpExchange:
     fn close() -> Unit
-    fn headers() -> Map[String, List[String]]
-    fn method() -> String
+    fn headers() -> HttpHeaders
+    fn method() -> HttpMethod
     fn path() -> String
     fn query() -> String
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
     fn send_headers(
         status: Int,
-        headers: Map[String, List[String]]
+        headers: HttpHeaders
     ) -> Result[Unit, HttpError]
     fn upgrade(
         allowed_origins: List[String],
@@ -95,22 +153,16 @@ export interface HttpExchange:
 
 # Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:
-    method: String
+    method: HttpMethod
     path: String
     query: String
-    headers: Map[String, Bytes]
+    headers: HttpHeaders
     body: Bytes
-    # Finds a header using ASCII case-insensitive names, or returns `none`.
-    # Leaves Map keys unchanged. Repeated received values remain newline-joined bytes.
-    # If a manually built Map has equivalent names, returns its first matching entry.
-    fn header(name: String) -> Optional[Bytes]:
 
 # Buffered response returned by the simple HTTP server handler.
-# Case-equivalent header keys emit separate values in Map insertion order.
-# Use HttpExchange.send_headers for repeated values under one exact Map key.
 export type HttpResponse:
     status: Int
-    headers: Map[String, String]
+    headers: HttpHeaders
     body: Bytes
 
 # A running HTTP server. Close it to stop accepting new requests.
@@ -127,15 +179,15 @@ export type HttpServerOptions:
     max_header_bytes: Optional[Int] = none
     timeout: Optional[Duration] = none
     grace: Optional[Duration] = none
-    tls: Optional[TlsOptions]
+    tls: Optional[TlsOptions] = none
 
-# Streaming response body returned by HTTP client operations. Header names have
-# canonical spelling; Map lookup is case-sensitive. Lists keep received order.
+# Streaming response body returned by reusable HTTP client operations.
+# Metadata remains available after close and shares one mutable header object.
 export interface ResponseBody:
     fn close() -> Unit
-    fn headers() -> Map[String, List[String]]
+    # Returns the response head (status and headers) without copying; it stays available after close.
+    fn metadata() -> HttpResponseMetadata
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
-    fn status() -> Int
 
 impl Error for HttpError:
     fn message() -> String:

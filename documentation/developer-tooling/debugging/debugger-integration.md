@@ -5,17 +5,14 @@ weight = 120
 
 # Debugger transport and source interpretation
 
-The debugger design has two parts: Go tools control execution, while a Manuscript layer explains source values, concurrent operations, and generated frames. A native line number alone cannot explain a source alternative or a cleanup frame.
-
-Delve DAP provides native debugger transport; a Manuscript debugger layer renders source values and marks generated cleanup and runtime frames. Native line mapping alone does not provide that interpretation.
+Delve provides debugger transport. `internal/debugger` only embeds Delve; Manuscript value interpretation lives in the VS Code adapter.
 
 ## Embedded debugger
 
 `ms debug main.ms -- argument` builds Debug code and runs Delve’s terminal in
 `ms`. The VS Code adapter starts `ms dap`, which serves one DAP session over
 stdin/stdout using private editor pipes. Disconnect, connection loss,
-or termination stops the service and reaps a launched target. The adapter keeps
-its existing source maps, checked names, value rendering, and stepping protocol.
+or termination stops the service and reaps a launched target.
 Only `manuscript.serverPath` is needed; `manuscript.delvePath` is obsolete.
 
 Delve v1.25.2 is pinned and vendored. Manuscript imports the public
@@ -191,9 +188,3 @@ result for the interrupted command. A completed response takes precedence when
 already available. Keep an explicit `exit` after a resume command to wait for its
 stop or natural exit. SIGINT/SIGTERM, reader/writer errors, and cancellation also
 clean up launched targets.
-
-## Inspecting TaskGroup, Scheduler, and with
-
-The required debug conformance program steps through API admission, concurrent operations, joining, and cleanup. It must demonstrate source stepping, value rendering, and operation and service inspection together; native line mapping alone cannot establish that behavior.
-
-See [complete-program evidence](../../contributing/compiler/conformance/programs.md), [metadata](metadata.md), and [Go line mapping](source-mapping.md).

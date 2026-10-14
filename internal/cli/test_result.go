@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 
 	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
@@ -31,6 +33,20 @@ type testCaseResult struct {
 	Name    string `json:"name"`
 	Status  string `json:"status"`
 	Failure string `json:"failure,omitempty"`
+	// Position is the first source location named by Failure ("at file:line:col"), so agents need not parse the text.
+	Position *syntax.Position `json:"position,omitempty"`
+}
+
+var failureLocation = regexp.MustCompile(`(?m)^\s+at (.+):(\d+):(\d+)(?: in |$)`)
+
+func failurePosition(failure string) *syntax.Position {
+	match := failureLocation.FindStringSubmatch(failure)
+	if match == nil {
+		return nil
+	}
+	line, _ := strconv.Atoi(match[2])
+	column, _ := strconv.Atoi(match[3])
+	return &syntax.Position{File: match[1], Line: line, Column: column}
 }
 
 type testSummary struct {
@@ -160,6 +176,7 @@ func readTestEvents(path string, document *testResult) error {
 					return fmt.Errorf("test result without a start")
 				}
 				item.Status, item.Failure = event.Event, event.Failure
+				item.Position = failurePosition(event.Failure)
 				if event.Event == "passed" {
 					document.Summary.Passed++
 				} else {

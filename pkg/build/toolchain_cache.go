@@ -79,16 +79,6 @@ func userCacheRoot() (string, error) {
 	return filepath.Abs(cache)
 }
 
-// DefaultBuildCacheDir supplies a persistent per-user cache for module runs
-// without a project. Build identity and executable hashes are still verified.
-func DefaultBuildCacheDir() (string, error) {
-	root, err := userCacheRoot()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, "manuscript", "artifacts"), nil
-}
-
 // Publish only a complete build payload. Concurrent ms processes can extract independently;
 // the first atomic rename wins and all processes use the same immutable directory.
 func materializeToolchain(archive []byte, cache string) (string, error) {

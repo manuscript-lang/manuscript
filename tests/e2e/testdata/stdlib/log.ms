@@ -117,7 +117,7 @@ test "child bindings snapshot membership and merge without mutating inputs":
     )
 
     with transport = stream_transport(WriteStream(output)):
-        let bindings = Map[String, JsonValue]().with_entry(
+        let bindings = Map[String, JsonValue]().add(
             key: "service",
             value: JsonValue.StringValue("api")
         )
@@ -128,23 +128,23 @@ test "child bindings snapshot membership and merge without mutating inputs":
                 timestamp: false
             )
         )
-        bindings.with_entry(
+        bindings.add(
             key: "service",
             value: JsonValue.StringValue("changed")
         )
-        let child_fields = Map[String, JsonValue]().with_entry(
+        let child_fields = Map[String, JsonValue]().add(
             key: "request",
             value: JsonValue.NumberValue("7")
         )
         let child = logger.child(child_fields)
-        child_fields.with_entry(
+        child_fields.add(
             key: "request",
             value: JsonValue.NumberValue("9")
         )
         logger.set_level(LogLevel.Fatal)
         if child.level() != LogLevel.Info: return panic("child level snapshot")
 
-        let fields = Map[String, JsonValue]().with_entry(
+        let fields = Map[String, JsonValue]().add(
             key: "service",
             value: JsonValue.StringValue("worker")
         )
@@ -210,7 +210,7 @@ test "limits and invalid JSON reject before writing":
                 timestamp: false
             )
         )
-        let bad = Map[String, JsonValue]().with_entry(
+        let bad = Map[String, JsonValue]().add(
             key: "n",
             value: JsonValue.NumberValue("NaN")
         )

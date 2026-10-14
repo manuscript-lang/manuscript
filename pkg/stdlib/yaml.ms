@@ -1,7 +1,7 @@
 # Configuration-oriented YAML 1.2 parser implemented in Manuscript.
 import {List, Map} from "@std/collections.ms"
 import parse_int from "@std/numbers.ms"
-import from_scalars from "@std/string.ms"
+import {from_scalars, StringBuilder} from "@std/string.ms"
 
 # A YAML value represented as null, boolean, number text, string, array, or object.
 export type YamlValue:
@@ -35,7 +35,7 @@ export type YamlValue:
 
 # Errors returned for malformed YAML, unsupported features, or exceeded resource limits.
 export type YamlError:
-    # One of the supplied byte, depth or value-count limits is negative.
+    # A supplied limit is negative, or stringify received a number whose text is not a YAML number.
     case InvalidInput
     # Malformed YAML or a form outside the supported parser's accepted grammar.
     case InvalidData(
@@ -59,17 +59,17 @@ export type YamlError:
 # Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
 export type YamlLimits:
     # Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
-    max_bytes: Optional[Int]
+    max_bytes: Optional[Int] = none
     # Maximum value depth, including scalar leaves, with the root at one.
-    max_depth: Optional[Int]
+    max_depth: Optional[Int] = none
     # Maximum containers and leaves, excluding keys; aliases count at each checked occurrence.
-    max_values: Optional[Int]
+    max_values: Optional[Int] = none
 
 impl Error for YamlError:
     # Formats parser positions and reason text; match the typed fields for programmatic handling.
     fn message() -> String:
         match self:
-            InvalidInput: return "invalid YAML limits"
+            InvalidInput: return "invalid YAML input"
             InvalidData(line, column, reason): return "YAML {line}:{column}: {reason}"
             UnsupportedFeature(line, reason): return "YAML {line}: {reason}"
             LimitExceeded: return "YAML limit exceeded"
@@ -1053,8 +1053,23 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
 
             if sequence(item) or boundary(text: item, colon: true) >= 0:
                 # Treat a compact mapping/sequence as a virtual indented first line.
+                # Its column follows the indicator, so extra spaces move the nested base.
+                let marker = (
+                    line
+                    .trim_start()
+                    .slice(
+                        start: 1,
+                        end: (line.trim_start().scalar_length())
+                    )
+                    .unwrap_or("")
+                )
+                var gap = indent(marker)
+
+                if gap == 0: gap = 1
+
+                let column = base + 1 + gap
                 var padding = ""
-                var spaces = base + 2
+                var spaces = column
 
                 while spaces > 0:
                     padding = padding.concat(" ")
@@ -1071,7 +1086,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 values.append(
                     try block(
                         context: context,
-                        base: base + 2,
+                        base: column,
                         depth: (depth + 1)
                     )
                 )
@@ -1213,7 +1228,7 @@ export fn parse(
     text: String,
     limits: Optional[YamlLimits] = none
 ) -> Result[YamlValue, YamlError]:
-    var options = YamlLimits(max_bytes: none, max_depth: none, max_values: none)
+    var options = YamlLimits()
 
     match limits:
         none: let ignored = unit
@@ -1358,3 +1373,169 @@ export fn parse(
     context.values = 0
     let valid = try validate(context: context, value: result, depth: 1)
     return ok(result)
+
+fn hex4(code: Int) -> String:
+    var digits = code.to_string(16)
+
+    while digits.length() < 4: digits = "0".concat(digits)
+
+    return digits
+
+fn quote_text(text: String) -> String:
+    var result = "\""
+
+    for c in text.chars():
+        let code = c.scalar_at(0).unwrap()
+
+        if c == "\"": result = result.concat("\\\"")
+        else if c == "\\": result = result.concat("\\\\")
+        else if c == "\n": result = result.concat("\\n")
+        else if c == "\t": result = result.concat("\\t")
+        else if c == "\r": result = result.concat("\\r")
+        else if code == 8: result = result.concat("\\b")
+        else if code == 12: result = result.concat("\\f")
+        else if code < 32 or code == 127: result = (
+            result
+            .concat("\\u")
+            .concat(
+                hex4(code)
+            )
+        )
+        else: result = result.concat(c)
+
+    return result.concat("\"")
+
+fn format_key(key: String) -> String:
+    var plain = key != ""
+
+    for c in key.chars():
+        if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".contains(
+            c
+        ): plain = false
+
+    if plain and "0123456789-".contains(key.chars().first().unwrap()): plain = false
+
+    if (
+        plain
+        and [
+            "null",
+            "true",
+            "false",
+            "yes",
+            "no",
+            "on",
+            "off",
+            "y",
+            "n"
+        ].contains(
+            key.lower()
+        )
+    ): plain = false
+
+    if plain: return key
+
+    return quote_text(key)
+
+# A number keeps its original token, so it must resolve back to a number.
+fn valid_number(text: String) -> Bool:
+    match parse(text: text):
+        ok(parsed): return parsed == YamlValue.NumberValue(text)
+        error(_): return false
+
+fn scalar_text(value: YamlValue) -> Result[String, YamlError]:
+    match value:
+        Null: return ok("null")
+        BoolValue(flag): return ok(flag.toString())
+        StringValue(text): return ok(quote_text(text))
+
+        NumberValue(text):
+            if not valid_number(text): return error(YamlError.InvalidInput)
+
+            return ok(text)
+
+        ArrayValue(values):
+            if values.is_empty(): return ok("[]")
+
+            return ok("")
+
+        ObjectValue(values):
+            if values.is_empty(): return ok("\{\}")
+
+            return ok("")
+
+fn is_block(value: YamlValue) -> Bool:
+    match value:
+        ArrayValue(values): return not values.is_empty()
+        ObjectValue(values): return not values.is_empty()
+        _: return false
+
+fn emit_block(
+    out: StringBuilder,
+    value: YamlValue,
+    indent: String
+) -> Result[Unit, YamlError]:
+    match value:
+        ArrayValue(values):
+            for item in values:
+                if is_block(item):
+                    out.append(indent.concat("-\n"))
+                    try emit_block(
+                        out: out,
+                        value: item,
+                        indent: indent.concat("  ")
+                    )
+                else:
+                    let text = try scalar_text(item)
+                    out.append(indent.concat("- ").concat(text).concat("\n"))
+
+            return ok(unit)
+
+        ObjectValue(values):
+            for entry in values.entries():
+                let key = format_key(entry.key)
+
+                if is_block(entry.value):
+                    out.append(indent.concat(key).concat(":\n"))
+                    try emit_block(
+                        out: out,
+                        value: entry.value,
+                        indent: indent.concat("  ")
+                    )
+                else:
+                    let text = try scalar_text(entry.value)
+                    out.append(
+                        indent.concat(key).concat(": ").concat(
+                            text
+                        ).concat("\n")
+                    )
+
+            return ok(unit)
+
+        _: return ok(unit)
+
+# Serializes a YAML value in block style with double-quoted strings.
+export fn stringify(
+    value: YamlValue,
+    max_bytes: Optional[Int] = none
+) -> Result[String, YamlError]:
+    match max_bytes:
+        none: let ignored = unit
+
+        some(limit):
+            if limit < 0: return error(YamlError.InvalidInput)
+
+    let out = StringBuilder()
+
+    if is_block(value): try emit_block(out: out, value: value, indent: "")
+    else:
+        let text = try scalar_text(value)
+        out.append(text.concat("\n"))
+
+    let text = out.freeze()
+
+    if not within(
+        value: text.byte_length(),
+        limit: max_bytes
+    ): return error(YamlError.LimitExceeded)
+
+    return ok(text)

@@ -68,7 +68,7 @@ test "conversions and collection queries are callable":
         )
     ): return panic("Map every")
 
-    let values = Set[Int]().with_value(2).with_value(1)
+    let values = Set[Int]().add(2).add(1)
     if values.fold(
         0,
         fn(acc, n): acc + n
@@ -160,12 +160,12 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
             if k == "b":
                 (
                     values
-                    .with_entry(
+                    .add(
                         "a",
                         Counter(99)
                     )
-                    .without("c")
-                    .with_entry(
+                    .remove("c")
+                    .add(
                         "d",
                         Counter(4)
                     )
@@ -193,7 +193,7 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
     let success: Result[Int, Counter] = ok(2)
     let nested = (
         Map[String, Int]()
-        .with_entry("a", 3)
+        .add("a", 3)
         .fold(
             success,
             fn(acc, k, v): acc.map(
@@ -212,10 +212,10 @@ test "Map find returns fresh entry shells with original payload references":
         fn(k, v):
             visits.append(k)
             (
-                values.without("a").with_entry(
+                values.remove("a").add(
                     "c",
                     Counter(99)
-                ).with_entry(
+                ).add(
                     "new",
                     Counter(9)
                 )
@@ -229,7 +229,7 @@ test "Map find returns fresh entry shells with original payload references":
     ):
         return panic("Map find order snapshot or short circuit")
 
-    let source = Map[String, Counter]().with_entry("b", counter)
+    let source = Map[String, Counter]().add("b", counter)
     let find = source.find
     let original = find(
         fn(k, v): true
@@ -270,15 +270,15 @@ test "Map predicates short circuit over snapshots including empty receivers":
             some(
                 fn(k, v):
                     seen.append(k)
-                    values.without("a").with_entry("c", 99).with_entry("new", 4)
+                    values.remove("a").add("c", 99).add("new", 4)
                     return v == 1
             )
         )
         or seen != ["b", "a"]
     ): return panic("Map some snapshot or short circuit")
 
-    values.clear().with_entry("b", 2).with_entry("a", 1).with_entry("c", 3)
-    seen.with_values(
+    values.clear().add("b", 2).add("a", 1).add("c", 3)
+    seen.splice(
         0,
         seen.length(),
         []
@@ -288,7 +288,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
         every(
             predicate: fn(k, v):
                 seen.append(k)
-                values.without("a").with_entry("c", 99).with_entry("new", 4)
+                values.remove("a").add("c", 99).add("new", 4)
                 return v > 1
         )
         or seen != ["b", "a"]
@@ -331,14 +331,14 @@ test "Set fold and find preserve ordered snapshots and reference identity":
     let a = Key(1, "a")
     let b = Key(2, "b")
     let c = Key(3, "c")
-    let values = Set[Key]().with_value(b).with_value(a).with_value(c)
+    let values = Set[Key]().add(b).add(a).add(c)
     let initial: List[String] = []
     let visits = reduce_set(
         values,
         initial,
         fn(acc, v):
             if v.id == 2:
-                values.without(a).without(c).with_value(Key(4, "d"))
+                values.remove(a).remove(c).add(Key(4, "d"))
                 c.label = "shared"
 
             acc.append(v.label)
@@ -358,13 +358,13 @@ test "Set fold and find preserve ordered snapshots and reference identity":
     ).append("empty alias")
     if initial.length() != 5: return panic("empty Set fold changed initial identity")
 
-    values.clear().with_value(b).with_value(a).with_value(c)
+    values.clear().add(b).add(a).add(c)
     let seen: List[Int] = []
     let find = values.find
     let found = find(
         fn(v):
             seen.append(v.id)
-            values.without(a).with_value(Key(4, "new"))
+            values.remove(a).add(Key(4, "new"))
             return v.id == 1
     ).unwrap()
     if seen != [2, 1]: return panic("Set find snapshot or short circuit")
@@ -381,13 +381,13 @@ test "Set fold and find preserve ordered snapshots and reference identity":
         .is_none()
     ): return panic("empty Set find")
 
-    let flags = Set[Bool]().with_value(false)
+    let flags = Set[Bool]().add(false)
     if flags.find(
         fn(v): true
     ).unwrap(): return panic("false match disappeared")
 
 test "Set predicates short circuit over snapshots and keep empty identities":
-    let values = Set[Int]().with_value(2).with_value(1).with_value(3)
+    let values = Set[Int]().add(2).add(1).add(3)
     let seen: List[Int] = []
     let some = values.some
     if (
@@ -395,15 +395,15 @@ test "Set predicates short circuit over snapshots and keep empty identities":
             some(
                 fn(v):
                     seen.append(v)
-                    values.without(1).with_value(4)
+                    values.remove(1).add(4)
                     return v == 1
             )
         )
         or seen != [2, 1]
     ): return panic("Set some snapshot or short circuit")
 
-    values.clear().with_value(2).with_value(1).with_value(3)
-    seen.with_values(
+    values.clear().add(2).add(1).add(3)
+    seen.splice(
         0,
         seen.length(),
         []
@@ -413,7 +413,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
         every(
             fn(v):
                 seen.append(v)
-                values.without(1).with_value(4)
+                values.remove(1).add(4)
                 return v > 1
         )
         or seen != [2, 1]
@@ -429,7 +429,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
         )
     ): return panic("empty Set every")
 
-    let complete = Set[Int]().with_value(2).with_value(1)
+    let complete = Set[Int]().add(2).add(1)
     if complete.some(
         fn(v): false
     ) or not (
@@ -458,7 +458,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         or map_visits != ["b", "a", "c"]
     ): return panic("Map some stopped without a match")
 
-    map_visits.with_values(
+    map_visits.splice(
         0,
         map_visits.length(),
         []
@@ -474,7 +474,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         or map_visits != ["b", "a", "c"]
     ): return panic("Map every stopped without a failure")
 
-    map_visits.with_values(
+    map_visits.splice(
         0,
         map_visits.length(),
         []
@@ -492,7 +492,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         or map_visits != ["b", "a", "c"]
     ): return panic("Map find stopped without a match")
 
-    let set = Set[Int]().with_value(2).with_value(1).with_value(3)
+    let set = Set[Int]().add(2).add(1).add(3)
     let set_visits: List[Int] = []
     if set.some(
         fn(v):
@@ -500,7 +500,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
             return false
     ) or set_visits != [2, 1, 3]: return panic("Set some stopped without a match")
 
-    set_visits.with_values(
+    set_visits.splice(
         0,
         set_visits.length(),
         []
@@ -516,7 +516,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         or set_visits != [2, 1, 3]
     ): return panic("Set every stopped without a failure")
 
-    set_visits.with_values(
+    set_visits.splice(
         0,
         set_visits.length(),
         []

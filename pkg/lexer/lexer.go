@@ -4,6 +4,7 @@ package lexer
 import (
 	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"sort"
 	"strings"
 	"unicode/utf8"
 )
@@ -27,10 +28,21 @@ const (
 var reserved = map[string]bool{}
 
 func init() {
-	for _, s := range strings.Fields("and break case continue else export false fn for from if impl import in interface let match not or return self test true try type unit var while with") {
+	for _, s := range strings.Fields("and break case continue else export false fn for if impl import in interface let match not or return self test true try type unit var while with") {
 		reserved[s] = true
 	}
 }
+
+// Keywords returns the reserved words in sorted order.
+func Keywords() []string {
+	words := make([]string, 0, len(reserved))
+	for word := range reserved {
+		words = append(words, word)
+	}
+	sort.Strings(words)
+	return words
+}
+
 func letter(b byte) bool { return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b == '_' }
 func digit(b byte) bool  { return b >= '0' && b <= '9' }
 
@@ -332,6 +344,9 @@ func (s *scanner) scanString() {
 			s.fail("literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}")
 		}
 		if b == '\\' {
+			backslash := s.pos()
+			backslash.Column--
+			backslash.Offset--
 			if s.offset == len(s.source) {
 				s.fail("unterminated text escape; a backslash needs a following character, e.g. \\n")
 			}
@@ -363,7 +378,7 @@ func (s *scanner) scanString() {
 				}
 				s.advance()
 			} else if !strings.ContainsRune("\"\\nrt{}", rune(c)) {
-				s.fail(fmt.Sprintf("unknown text escape \\%c; valid escapes are \\n \\t \\r \\\\ \\\" \\{ \\} and \\u{H}", c))
+				s.failAt(backslash, fmt.Sprintf("unknown text escape \\%c; valid escapes are \\n \\t \\r \\\\ \\\" \\{ \\} and \\u{H}", c))
 			}
 		} else if b == '{' {
 			s.scanInterpolation()

@@ -90,7 +90,7 @@ func parse(file, source string) (module *syntax.Module, err error) {
 			} else {
 				names = append(names, p.need(lexer.Name))
 			}
-			p.need("from")
+			p.needFrom()
 			token := p.need(lexer.String)
 			expr := p.text(token)
 			if len(expr.Parts) != 1 || expr.Parts[0].Value != nil {
@@ -127,6 +127,17 @@ func (p *Parser) need(k string) lexer.Token {
 		p.fail(t, "expected "+describeKind(k)+", found "+describe(t)+needHint(k, t))
 	}
 	return t
+}
+
+// needFrom consumes the contextual word 'from' that ends an import's names;
+// elsewhere it is an ordinary name.
+func (p *Parser) needFrom() {
+	t := p.peek()
+	if t.Kind == lexer.Name && t.Text == "from" {
+		p.at++
+		return
+	}
+	p.fail(t, "expected 'from', found "+describe(t)+needHint("from", t))
 }
 func (p *Parser) fail(t lexer.Token, m string) {
 	d := syntax.Diagnostic{Position: t.Pos, Phase: "parse", Message: m}
@@ -265,6 +276,23 @@ func (p *Parser) declaration() *syntax.Declaration {
 		p.need("->")
 		d.Result = p.typ()
 		d.Body = p.statementSuite(false, true)
+	case p.take("let"):
+		d.Kind = syntax.KindFn
+		d.Constant = true
+		d.Name = p.need(lexer.Name).Text
+		if p.take(":") {
+			d.Result = p.typ()
+		}
+		p.need("=")
+		// A binary expression's position is its operator, so the statement
+		// starts at the first token of the initializer for source tooling.
+		start := p.peek().Pos
+		value := p.expression(0)
+		if d.Result == nil {
+			d.Result = &syntax.Type{Pos: value.Pos}
+		}
+		d.Body = []*syntax.Statement{{Pos: start, Kind: syntax.KindReturn, Value: value}}
+		p.end()
 	case p.take("test"):
 		name := p.need(lexer.String)
 		text := p.text(name)
@@ -376,7 +404,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 		}
 		d.Kind = form
 	default:
-		p.fail(token, "expected a module declaration or import, found "+describe(token)+"; top level holds only import, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn")
+		p.fail(token, "expected a module declaration or import, found "+describe(token)+"; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn")
 	}
 	return d
 }
@@ -487,6 +515,9 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 			if !p.inlineReturn && e.Kind != syntax.KindCall && e.Kind != syntax.KindMatch && !tryCall && len(allowValue) == 0 {
 				if e.Kind == syntax.KindName && e.Text == "pass" {
 					p.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm")
+				}
+				if e.Kind == syntax.KindName && e.Text == "elif" {
+					p.fail(t, "'elif' is not a keyword; write 'else if <condition>:' for a further branch")
 				}
 				p.fail(t, "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function")
 			}
@@ -636,7 +667,7 @@ func (p *Parser) primary() *syntax.Expression {
 	case "match":
 		e.Kind = syntax.KindMatch
 		e.Left = p.expression(0)
-		e.Arms = p.matchArms()
+		e.Arms = p.matchArms(t)
 	case "{":
 		e.Kind = syntax.KindMap
 		if !p.take("}") {
@@ -816,7 +847,7 @@ func (p *Parser) text(token lexer.Token) *syntax.Expression {
 	return e
 }
 
-func (p *Parser) matchArms() []syntax.Arm {
+func (p *Parser) matchArms(header lexer.Token) []syntax.Arm {
 	var arms []syntax.Arm
 	p.need(":")
 	p.need(lexer.Newline)
@@ -824,6 +855,9 @@ func (p *Parser) matchArms() []syntax.Arm {
 	for {
 		p.newlines()
 		if p.peek().Kind == lexer.Dedent {
+			if len(arms) == 0 {
+				p.fail(header, "match requires at least one arm; add a case pattern or '_' arm under the header")
+			}
 			break
 		}
 		a := syntax.Arm{Pos: p.peek().Pos}

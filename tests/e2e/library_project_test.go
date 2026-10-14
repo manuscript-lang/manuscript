@@ -77,10 +77,6 @@ test "root":
 			t.Fatalf("library tests: %v %s", err, data)
 		}
 	}
-	files, err := filepath.Glob(filepath.Join(root, ".ms-cache", "*.bin"))
-	if err != nil || len(files) != 1 {
-		t.Fatalf("library test cache: %v %v", files, err)
-	}
 	// Editing an unimported source module must invalidate native test artifacts.
 	write("src/other.ms", "import panic from \"@std/faults.ms\"\nexport fn other() -> Int: return 4\ntest \"unimported\":\n    return panic(\"changed unimported test\")\n")
 	data, err := run("test", manifest)

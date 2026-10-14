@@ -34,28 +34,48 @@ func TestCollectionPreludeAndShadowing(t *testing.T) {
     let empty: Map[String, Int] = {}
     return Map[String, Int]().add("a", nested[1].unwrap()[0].unwrap()).get("a").unwrap()
 `,
-		"explicit imports": `import {List, Map} from "@std/collections.ms"
-fn use() -> Int: List[Int]().length() + Map[Int, Int]().length()
+		"unimported set annotations and methods": `type Selection:
+    values: Set[Int]
+fn keep[T: Hashable](values: Set[T], value: T) -> Set[T]: values.add(value)
+fn use() -> Set[Int]:
+    let values: Set[Int] = Set[Int]()
+    let nested: List[Set[Int]] = [values]
+    return keep(nested[0].unwrap(), 1)
+`,
+		"contextual set construction": `fn use() -> Set[Int]:
+    let values: Set[Int] = Set()
+    return values.add(1)
+`,
+		"local set retains its own bounds": `type Set[T]:
+    value: T
+fn use() -> Set[List[Int]]: Set([1])
+`,
+		"explicit imports": `import {List, Map, Set} from "@std/collections.ms"
+fn use() -> Int: List[Int]().length() + Map[Int, Int]().length() + Set[Int]().length()
 `,
 		"ordinary types": `type List[T]:
     value: T
 type Map[K, V]:
     key: K
     value: V
-fn use() -> Int: List(3).value + Map("a", 4).value
+type Set[T]:
+    value: T
+fn use() -> Int: List(3).value + Map("a", 4).value + Set(5).value
 `,
 		"function names": `fn List(value: Int) -> Int: value
 fn Map(value: Int) -> Int: value
-fn use() -> Int: List(3) + Map(4)
+fn Set(value: Int) -> Int: value
+fn use() -> Int: List(3) + Map(4) + Set(5)
 `,
 		"local callable bindings": `fn f() -> Int:
     let List = fn(value: Int) -> Int: value
     let Map = fn(value: Int) -> Int: value
+    let Set = fn(value: Int) -> Int: value
     let items = [1]
     let entries = {1: 2}
-    return List(3) + Map(4) + items.length() + entries.length()
+    return List(3) + Map(4) + Set(5) + items.length() + entries.length()
 `,
-		"type parameters": `fn identity[List, Map](left: List, right: Map) -> List: left
+		"type parameters": `fn identity[List, Map, Set](left: List, right: Map, other: Set) -> Set: other
 `,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -74,6 +94,12 @@ fn use() -> Int: List(3) + Map(4)
 		"missing value":                "fn f(m: Map[Int,Int]) -> Unit:\n    m.add(1)\n",
 		"duplicate imports":            "import List from \"@std/collections.ms\"\nimport List from \"@std/collections.ms\"\n",
 		"import declaration collision": "import Map from \"@std/collections.ms\"\ntype Map[K,V]:\n    value: V\n",
+		"wrong set element":            "fn f(values: Set[Int]) -> Unit:\n    values.add(true)\n",
+		"unhashable set element":       "fn f(values: Set[List[Int]]) -> Unit:\n    return\n",
+		"local set has no native add":  "type Set[T]:\n    value: T\nfn f(values: Set[Int]) -> Unit:\n    values.add(1)\n",
+		"set needs element type":       "fn f() -> Unit:\n    let values = Set()\n",
+		"duplicate set imports":        "import Set from \"@std/collections.ms\"\nimport Set from \"@std/collections.ms\"\n",
+		"set import collision":         "import Set from \"@std/collections.ms\"\ntype Set[T]:\n    value: T\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			r := CompileSource("prelude.ms", source, Options{AnalyzeOnly: true})
@@ -110,9 +136,11 @@ func TestCollectionPreludeImportedNamesRetainIdentity(t *testing.T) {
     value: T
 export type Map[K,V]:
     value: V
+export type Set[T]:
+    value: T
 `,
-		"main.ms": `import {List,Map} from "./local.ms"
-fn f() -> Int: List(1).value + Map[String,Int](2).value
+		"main.ms": `import {List,Map,Set} from "./local.ms"
+fn f() -> Int: List(1).value + Map[String,Int](2).value + Set(3).value
 `,
 	} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {

@@ -214,7 +214,7 @@ Save as `get.ms`. Import `network` from `@std/net.ms`; the buffered response has
 ```manuscript
 import arguments from "@std/cli.ms"
 import Map from "@std/collections.ms"
-import HttpError from "@std/http.ms"
+import {HttpError, HttpMethod, headers} from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"
 
@@ -223,10 +223,10 @@ fn run() -> Result[Unit, Error]:
     if url.is_none():
         return error(HttpError.InvalidInput)
     let response = try network().request(
-        "GET", url.unwrap(), Map[String, String](), "".to_bytes(),
+        HttpMethod.Get, url.unwrap(), headers(), "".to_bytes(),
         max_response_bytes: 1048576
     )
-    if response.status != 200:
+    if response.metadata().status != 200:
         return error(HttpError.InvalidData)
     let text = response.body.to_text()
     if text.is_none():

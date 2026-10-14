@@ -81,7 +81,7 @@ func (g *TaskGroup) stopLocked(failure Value) {
 	g.cancel()
 }
 func executionCancelled() Value { return Alternative{Type: "@std/ExecutionError", Tag: "Cancelled"} }
-func executionTimedOut() Value  { return Alternative{Type: "@std/ExecutionError", Tag: "TimedOut"} }
+func executionTimeout() Value   { return Alternative{Type: "@std/ExecutionError", Tag: "Timeout"} }
 
 func (g *TaskGroup) start(ctx *Execution, typ string, operation Value) Value {
 	CheckCancelled(ctx)
@@ -100,13 +100,13 @@ func (g *TaskGroup) start(ctx *Execution, typ string, operation Value) Value {
 				defer g.mu.Unlock()
 				g.expired = true
 				if g.active > 0 {
-					g.stopLocked(executionTimedOut())
+					g.stopLocked(executionTimeout())
 				}
 			})
 		}
 	}
 	if g.expired {
-		g.stopLocked(executionTimedOut())
+		g.stopLocked(executionTimeout())
 	}
 	if g.context.Err() != nil && g.failure == nil {
 		g.stopLocked(executionCancelled())

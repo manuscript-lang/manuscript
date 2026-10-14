@@ -19,7 +19,7 @@ test "Map remove direct and bound preserve aliases order and no-op absence":
     empty.remove(1).add(2, "two")
     if empty.get(2) != some("two"): return panic("empty receiver return")
 
-    let legacy = values.clone().without(4)
+    let legacy = values.clone().remove(4)
     let preferred = values.clone().remove(4)
     if legacy != preferred: return panic("legacy equivalence")
 
@@ -83,7 +83,7 @@ test "List splice direct and bound retain self staging and receiver returns":
     splice(1, 4, [9]).append(5)
     if alias != [1, 9, 4, 5]: return panic("bound splice")
 
-    let legacy = values.clone().with_values(0, 1, [7])
+    let legacy = values.clone().splice(0, 1, [7])
     let preferred = values.clone().splice(0, 1, [7])
     if legacy != preferred: return panic("legacy equivalence")
 

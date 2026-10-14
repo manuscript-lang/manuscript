@@ -7,12 +7,12 @@ import (
 
 func TestListFindReturnsVisitedValueAfterMutation(t *testing.T) {
 	for _, name := range []string{"find", "find_last", "find_index", "find_last_index"} {
-		for _, writer := range []string{"with_value", "set", "without", "remove"} {
+		for _, writer := range []string{"set", "remove"} {
 			t.Run(name+"/"+writer, func(t *testing.T) {
 				ctx := RootExecution()
 				defer FinishExecution(ctx)
 				reverse := name == "find_last" || name == "find_last_index"
-				remove := writer == "without" || writer == "remove"
+				remove := writer == "remove"
 				target := int64(1)
 				if reverse {
 					target = 3

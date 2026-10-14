@@ -83,8 +83,8 @@ test "custom equality and hashing define map key identity":
 
     let map = (
         Map[Key, String]()
-        .with_entry(key: first, value: "a")
-        .with_entry(key: second, value: "b")
+        .add(key: first, value: "a")
+        .add(key: second, value: "b")
     )
     if map.length() != 1 or map.get(first) != some("b"): return panic(
         "domain map identity"

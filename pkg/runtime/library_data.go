@@ -58,7 +58,7 @@ func init() {
 		add("string", name, "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string)) })
 	}
 	for name, f := range map[string]func(string, string) bool{"contains": strings.Contains, "starts_with": strings.HasPrefix, "ends_with": strings.HasSuffix} {
-		label := "text"
+		label := "value"
 		if name == "starts_with" {
 			label = "prefix"
 		}
@@ -270,12 +270,12 @@ func init() {
 		return libraryOK(r, libraryBigInt{v})
 	})
 	for name, f := range map[string]func(*big.Int, *big.Int, *big.Int) *big.Int{"add": (*big.Int).Add, "subtract": (*big.Int).Sub, "multiply": (*big.Int).Mul, "bit_and": (*big.Int).And, "bit_or": (*big.Int).Or, "bit_xor": (*big.Int).Xor} {
-		add("bigint", name, "BigInt", []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
+		add("bigint", name, "BigInt", []LibraryParam{p("left", "BigInt"), p("other", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
 			return libraryBigInt{f(new(big.Int), a[0].(libraryBigInt).n, a[1].(libraryBigInt).n)}
 		})
 	}
 	for _, name := range []string{"divide", "remainder"} {
-		add("bigint", name, libraryResult("BigInt", "BigIntError"), []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, r string, a []Value) Value {
+		add("bigint", name, libraryResult("BigInt", "BigIntError"), []LibraryParam{p("left", "BigInt"), p("other", "BigInt")}, func(_ *Execution, r string, a []Value) Value {
 			x, y := a[0].(libraryBigInt).n, a[1].(libraryBigInt).n
 			if y.Sign() == 0 {
 				return libraryError(r, "InvalidInput", "")
@@ -289,7 +289,7 @@ func init() {
 			return libraryOK(r, libraryBigInt{out})
 		})
 	}
-	add("bigint", "compare", "Int", []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
+	add("bigint", "compare", "Int", []LibraryParam{p("left", "BigInt"), p("other", "BigInt")}, func(_ *Execution, _ string, a []Value) Value {
 		return int64(a[0].(libraryBigInt).n.Cmp(a[1].(libraryBigInt).n))
 	})
 	add("bigint", "format", "String", []LibraryParam{p("value", "BigInt"), p("radix", "Int")}, func(_ *Execution, _ string, a []Value) Value {
@@ -346,7 +346,7 @@ func init() {
 	})
 	// Sequential generic collection helpers retain the caller's actual list identity.
 	variable := []LibraryParam{p("T", "")}
-	libraryGeneric("collections", "reverse", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
+	libraryGeneric("collections", "reverse_in_place", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(*List)
 		out := v.Items
 		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
@@ -354,8 +354,7 @@ func init() {
 		}
 		return v
 	})
-	libraryAlias("collections", "reverse_in_place", "reverse")
-	reverse := libraryFunctions["collections/reverse"].Body
+	reverse := libraryFunctions["collections/reverse_in_place"].Body
 	libraryGeneric("collections", "reversed", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(ctx *Execution, result string, a []Value) Value {
 		return reverse(ctx, result, []Value{Clone(a[0])})
 	})

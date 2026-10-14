@@ -53,6 +53,9 @@ func usageError(format string, a ...any) int {
 // result carries the exit status for the problem it already reported.
 func parseInvocation(args []string) (*invocation, int, bool) {
 	inv := &invocation{command: args[0], filename: args[1]}
+	if inv.filename == "" {
+		return nil, usageError("ms %s: the file argument is empty; pass a .ms file, directory, or ms.toml", inv.command), false
+	}
 	inv.analysis = inv.isOneOf("check", "lint")
 	first, positional := 1, false
 	if inv.analysis && inv.filename == "--" {
@@ -154,6 +157,9 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 		default:
 			if !strings.HasPrefix(args[i], "-") {
 				if inv.analysis {
+					if args[i] == "" {
+						return usageError("ms %s: an input argument is empty; pass a .ms file, directory, or ms.toml", inv.command), false
+					}
 					inv.targets = append(inv.targets, args[i])
 					continue
 				}
@@ -167,8 +173,11 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 
 func pathRequirement(flag string) string {
 	example := "out.pprof"
-	if flag == "-o" || flag == "--output" || flag == "--out-dir" {
-		example = "out.go"
+	switch flag {
+	case "--out-dir":
+		example = "profile-bundle"
+	case "-o", "--output":
+		example = "out.txt"
 	}
 	return flag + " requires a path argument, e.g. " + flag + " " + example
 }
@@ -226,13 +235,13 @@ func (inv *invocation) validate() (plan, int, bool) {
 		inv.arguments = append(testArgs, inv.arguments...)
 	}
 	if inv.watch && inv.structured {
-		return p, usageError("--json cannot be combined with --watch; remove --watch for one versioned test result"), false
+		return p, usageError("--json cannot be combined with --watch; remove --watch for one versioned result"), false
 	}
-	if inv.watch && !inv.isOneOf("run", "test") {
-		return p, usageError("--watch requires run or test, not %s; use ms run <file> --watch or ms test <file> --watch", command), false
+	if inv.watch && !inv.isOneOf("check", "lint", "run", "test") {
+		return p, usageError("--watch requires check, lint, run, or test, not %s; use ms check <file> --watch or ms run <file> --watch", command), false
 	}
 	if inv.formatCheck && command != "fmt" ||
-		inv.structured && !inv.isOneOf("check", "lint", "test", "build", "profile", "debug") ||
+		inv.structured && !inv.isOneOf(jsonCommands...) ||
 		inv.debug && !inv.isOneOf("build", "run", "test") {
 		return p, usageError("%s; run 'ms help %s' for the options this command accepts", invalidFlag(command, inv.formatCheck, inv.structured, inv.debug), command), false
 	}

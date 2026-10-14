@@ -18,7 +18,8 @@
       "pkg/lexer",
       "pkg/parser",
       "pkg/stdlib",
-      "internal/decimal"
+      "internal/decimal",
+      "internal/nativeabi"
     ],
     "pkg/runtime": [
       "internal/decimal",

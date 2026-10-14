@@ -229,11 +229,37 @@ func check() error {
 		issues = append(issues, "module Go language version disagrees with pinned SDK")
 	}
 
+	if err := checkExtensionVersion(); err != nil {
+		issues = append(issues, err.Error())
+	}
+
 	sort.Strings(issues)
 	if len(issues) > 0 {
 		return fmt.Errorf("repository invariants:\n- %s", strings.Join(issues, "\n- "))
 	}
 	fmt.Println("Package boundaries, implementation pins, native bundles, and release triggers agree.")
+	return nil
+}
+
+// checkExtensionVersion keeps the VS Code extension on the release version.
+func checkExtensionVersion() error {
+	release, err := os.ReadFile(".msversion")
+	if err != nil {
+		return err
+	}
+	data, err := os.ReadFile("extensions/vscode/package.json")
+	if err != nil {
+		return err
+	}
+	var manifest struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return err
+	}
+	if manifest.Version != strings.TrimSpace(string(release)) {
+		return fmt.Errorf("extensions/vscode/package.json version %s disagrees with .msversion", manifest.Version)
+	}
 	return nil
 }
 

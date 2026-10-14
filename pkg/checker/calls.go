@@ -51,7 +51,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			return i
 		}
 		fields := ConstructorSignature(typ).Params
-		if std(typ, "Task") || std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
+		if std(typ, "Task") || std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") || std(typ, "HttpHeaders") || std(typ, "IpAddress") || std(typ, "Cidr") {
 			c.error(e.Pos, "type", "standard type has no source constructor: "+typ.String()+"; create it with a literal or the standard function documented for it (ms doc)")
 			return i
 		}
@@ -113,6 +113,11 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	}
 	var signature *Type
 	var callable *Info
+	if s != nil && isConstant(s) && !e.ConstantUse {
+		c.error(e.Pos, "type", s.Name+" is a constant, not a function; remove the parentheses and write "+s.Name)
+		i.Type = primitive("<invalid>")
+		return i
+	}
 	if s != nil {
 		i.Symbol = s
 		i.Native = s.Native

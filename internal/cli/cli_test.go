@@ -74,7 +74,7 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 		{"build", "missing.ms", "--build-type", "Release", "--debug"},
 		{"debug", "missing.ms", "--build-type", "RelWithDebInfo"},
 		{"build", "missing.ms", "--build-type", "Debug", "--build-type", "Release"},
-		{"build", "missing.ms", "--watch"}, {"check", "missing.ms", "--watch"},
+		{"build", "missing.ms", "--watch"}, {"check", "missing.ms", "--watch", "--json"},
 		{"run", "missing.ms", "--watch", "--trace", "trace.out"},
 	} {
 		status, output, errors := invoke(t, args...)
@@ -356,6 +356,42 @@ func TestArgumentMistakesNameTheProblem(t *testing.T) {
 	}
 }
 
+func TestBuildRefusesToOverwriteSources(t *testing.T) {
+	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	for _, target := range []string{source, filepath.Join(filepath.Dir(source), "ms.toml"), filepath.Join(filepath.Dir(source), "other.ms")} {
+		status, _, errors := invoke(t, "build", source, "-o", target)
+		if status != 2 || !strings.Contains(errors, "would overwrite") {
+			t.Fatalf("-o %s: %d, %q", target, status, errors)
+		}
+	}
+	if data, err := os.ReadFile(source); err != nil || !strings.Contains(string(data), "export fn main") {
+		t.Fatalf("source clobbered: %q, %v", data, err)
+	}
+}
+
+func TestEmptyInputArgumentIsRejected(t *testing.T) {
+	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	for _, args := range [][]string{{"check", ""}, {"run", ""}, {"build", ""}, {"check", source, ""}} {
+		status, _, errors := invoke(t, args...)
+		if status != 2 || !strings.Contains(errors, "empty") {
+			t.Fatalf("%v: %d, %q", args, status, errors)
+		}
+	}
+}
+
+func TestTextOutputsRefuseToOverwriteSources(t *testing.T) {
+	source := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
+	for _, command := range []string{"emit", "inspect", "diagram"} {
+		status, _, errors := invoke(t, command, source, "-o", source)
+		if status != 2 || !strings.Contains(errors, "would overwrite") {
+			t.Fatalf("%s -o source: %d, %q", command, status, errors)
+		}
+	}
+	if data, err := os.ReadFile(source); err != nil || !strings.Contains(string(data), "export fn main") {
+		t.Fatalf("source clobbered: %q, %v", data, err)
+	}
+}
+
 func TestDirectoryArgumentUsesManifestOrExplains(t *testing.T) {
 	directory := t.TempDir()
 	status, _, errors := invoke(t, "check", directory)
@@ -382,5 +418,14 @@ func TestLintIgnoresBundledStandardModules(t *testing.T) {
 	status, output, errors := invoke(t, "lint", source)
 	if status != 0 || strings.Contains(errors, "@std/") || output != "" {
 		t.Fatalf("%d, %q, %q", status, output, errors)
+	}
+}
+
+func TestServerCommandsRejectArguments(t *testing.T) {
+	for _, args := range [][]string{{"lsp", "extra"}, {"dap", "extra"}} {
+		status, stdout, stderr := invoke(t, args...)
+		if status != 2 || stdout != "" || !strings.Contains(stderr, "takes no arguments") {
+			t.Errorf("%v: %d, %q, %q", args, status, stdout, stderr)
+		}
 	}
 }

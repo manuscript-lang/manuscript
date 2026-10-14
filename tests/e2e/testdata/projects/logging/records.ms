@@ -5,39 +5,39 @@ import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 
 export fn emit(logger: Logger) -> Result[Unit, LogError]:
-    let bindings = Map[String, JsonValue]().with_entry(
+    let bindings = Map[String, JsonValue]().add(
         key: "request",
         value: JsonValue.StringValue("req-1")
     )
     let child = logger.child(bindings)
     let fields = Map[String, JsonValue]()
-    fields.with_entry(
+    fields.add(
         key: "count",
         value: JsonValue.NumberValue("9007199254740993")
     )
-    fields.with_entry(
+    fields.add(
         key: "ok",
         value: JsonValue.BoolValue(true)
     )
-    fields.with_entry(
+    fields.add(
         key: "nested",
         value: JsonValue.ArrayValue(
             [JsonValue.Null, JsonValue.BoolValue(false)]
         )
     )
-    fields.with_entry(
+    fields.add(
         key: "service",
         value: JsonValue.StringValue("worker")
     )
-    fields.with_entry(
+    fields.add(
         key: "level",
         value: JsonValue.NumberValue("0")
     )
-    fields.with_entry(
+    fields.add(
         key: "msg",
         value: JsonValue.StringValue("spoofed")
     )
-    fields.with_entry(
+    fields.add(
         key: "time",
         value: JsonValue.NumberValue("0")
     )

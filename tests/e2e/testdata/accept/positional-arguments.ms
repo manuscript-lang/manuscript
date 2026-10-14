@@ -159,8 +159,8 @@ test "methods native APIs function values and contextual labels":
         return panic("context labels and local callback names")
 
     let memo = Map[Int, Int]()
-    let ignored = memo.with_entry(1, 7)
-    let add = memo.with_entry
+    let ignored = memo.add(1, 7)
+    let add = memo.add
     let more = add(value: 8, 2)
     if memo.get(1).unwrap() != 7 or memo.get(2).unwrap() != 8: return panic(
         "native multi parameter methods"

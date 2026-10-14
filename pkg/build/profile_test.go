@@ -38,7 +38,7 @@ func TestNativeProfileExitAndFlush(t *testing.T) {
 				t.Fatal(result.Diagnostics)
 			}
 			binary := filepath.Join(root, "program")
-			if _, err := build.BuildCheckedWithType(result, binary, "", compiler.RelWithDebInfo); err != nil {
+			if _, err := build.BuildCheckedWithType(result, binary, compiler.RelWithDebInfo); err != nil {
 				t.Fatal(err)
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

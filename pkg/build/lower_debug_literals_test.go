@@ -146,42 +146,39 @@ func TestDebugLiteralNativeCompatibility(t *testing.T) {
 		t.Fatal(r.Diagnostics)
 	}
 	root := t.TempDir()
-	cache := filepath.Join(root, "cache")
 	for _, kind := range []compiler.BuildType{compiler.Release, compiler.Debug, compiler.RelWithDebInfo, compiler.MinSizeRel} {
 		selected := compiler.CompileSourceForBuild("literal.ms", source, compiler.Options{Entry: true}, kind)
 		if !selected.Success() {
 			t.Fatal(selected.Diagnostics)
 		}
 		binary := filepath.Join(root, string(kind))
-		meta, err := BuildCheckedWithType(selected, binary, cache, kind)
+		meta, err := BuildCheckedWithType(selected, binary, kind)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if data, err := exec.Command(binary).CombinedOutput(); err != nil {
 			t.Fatalf("%s: %v\n%s", kind, err, data)
 		}
-		restored := filepath.Join(root, string(kind)+"-restored")
-		copy, err := BuildCheckedWithType(selected, restored, cache, kind)
-		if err != nil || copy.BuildID != meta.BuildID || copy.ExecutableSHA256 != meta.ExecutableSHA256 {
-			t.Fatal("cache did not retain build mode", err)
+		if meta.BuildType != kind {
+			t.Fatal("build type not recorded", meta.BuildType)
 		}
 	}
 	// CompileSource -> the existing boolean Debug API needs no new options.
-	if _, err := BuildChecked(r, filepath.Join(root, "boolean-debug"), cache, true); err != nil {
+	if _, err := BuildChecked(r, filepath.Join(root, "boolean-debug"), true); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(r.Source, "debugLiteralData") {
 		t.Fatal("legacy compiler representation changed")
 	}
 	manual := compiler.Result{SourceRoot: r.SourceRoot, Program: r.Program, Source: r.Source}
-	if _, err := BuildChecked(manual, filepath.Join(root, "manual-debug"), cache, true); err != nil {
+	if _, err := BuildChecked(manual, filepath.Join(root, "manual-debug"), true); err != nil {
 		t.Fatal(err)
 	}
 	for _, original := range []compiler.Result{r, compiler.CompileSourceForBuild("literal.ms", source, compiler.Options{Entry: true}, compiler.Debug)} {
 		changed := original
 		changed.Source += "\nfunc init() { os.Exit(17) }\n"
 		binary := filepath.Join(root, "edited-debug")
-		if _, err := BuildCheckedWithType(changed, binary, "", compiler.Debug); err != nil {
+		if _, err := BuildCheckedWithType(changed, binary, compiler.Debug); err != nil {
 			t.Fatal(err)
 		}
 		err := exec.Command(binary).Run()
@@ -202,14 +199,14 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
     let second = values()
     let alias = first
     let copied = first.clone()
-    first.with_value(index: 0, value: 99)
+    first.set(index: 0, value: 99)
     alias.append(42)
     if alias.length() != 1101 or second.length() != 1100 or copied.length() != 1100:
         return panic("outer storage is shared across evaluations")
     if second.at(0).unwrap() != 7 or copied.at(0).unwrap() != 7 or values().at(0).unwrap() != 7:
         return panic("data table or clone was mutated")
     let first_default = defaults()
-    first_default.with_value(index: 0, value: 17)
+    first_default.set(index: 0, value: 17)
     if defaults().at(0).unwrap() != 9:
         return panic("defaults share mutable storage")
 `
@@ -223,7 +220,7 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
 			t.Fatal(r.Diagnostics)
 		}
 		binary := filepath.Join(t.TempDir(), "program")
-		if _, err := BuildCheckedWithType(r, binary, "", kind); err != nil {
+		if _, err := BuildCheckedWithType(r, binary, kind); err != nil {
 			t.Fatal(err)
 		}
 		data, err := exec.Command(binary).CombinedOutput()
@@ -243,7 +240,7 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
 			t.Fatal(r.Diagnostics)
 		}
 		binary := filepath.Join(t.TempDir(), "program")
-		if _, err := BuildCheckedWithType(r, binary, "", kind); err != nil {
+		if _, err := BuildCheckedWithType(r, binary, kind); err != nil {
 			t.Fatal(err)
 		}
 		data, err := exec.Command(binary).CombinedOutput()

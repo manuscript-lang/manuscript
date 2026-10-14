@@ -34,8 +34,8 @@ test "domain equality and hashing select interfaces":
 
     let values = (
         Map[Key, String]()
-        .with_entry(key: a, value: "a")
-        .with_entry(key: b, value: "b")
+        .add(key: a, value: "a")
+        .add(key: b, value: "b")
     )
     if values.length() != 1: return panic("custom key lookup ignored")
     if values.get(a) != some("b"): return panic("custom key update ignored")
@@ -83,7 +83,7 @@ test "limits can be omitted or supplied":
         ok(_): return panic("supplied limit ignored")
         error(_): return
 
-fn operation() -> Result[Unit, String]: ok(unit)
+fn operation() -> Result[Unit, Error]: ok(unit)
 
 test "one scheduler admits and schedules work":
     with scheduler = Scheduler():

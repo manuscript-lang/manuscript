@@ -219,7 +219,7 @@ func scriptTarget(t *testing.T, source string) (string, tooling.Inspection) {
 		t.Fatal(result.Diagnostics)
 	}
 	executable := filepath.Join(root, "program")
-	if _, err := build.BuildCheckedWithType(result, executable, "", compiler.Debug); err != nil {
+	if _, err := build.BuildCheckedWithType(result, executable, compiler.Debug); err != nil {
 		t.Fatal(err)
 	}
 	return executable, tooling.Inspect(result.Program)
