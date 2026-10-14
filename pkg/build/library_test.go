@@ -201,7 +201,7 @@ fn constructed() -> Result[Unit, Error]:
 func TestAllStandardErrorsImplementError(t *testing.T) {
 	for _, module := range checker.StandardLibrary() {
 		if module.Path == "prelude" {
-			continue
+			continue // Prelude aliases retain their defining module's identity.
 		}
 		for _, declaration := range module.Declarations {
 			if declaration.Kind != "alternative" || !strings.HasSuffix(declaration.Name, "Error") {
@@ -265,7 +265,7 @@ func TestBundledRuntimeImportAliasesAgree(t *testing.T) {
 
 func TestTimeSchedulingAcceptsOrdinaryCallbackValues(t *testing.T) {
 	source := `import Scheduler from "@std/tasks.ms"
-fn start_timer(operation: fn() -> Result[Unit, String]) -> Unit:
+fn start_timer(operation: fn() -> Result[Unit, Error]) -> Unit:
     with scheduler = Scheduler():
         let schedule = scheduler.after
         let id = schedule(duration: 0.milliseconds, operation: operation)

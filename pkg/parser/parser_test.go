@@ -31,7 +31,8 @@ func TestDesignFixtures(t *testing.T) {
 }
 func TestRejectSyntax(t *testing.T) {
 	for name, source := range map[string]string{
-		"module binding":        "let value = 3\n",
+		"module var":            "var value = 3\n",
+		"constant no value":     "let value\n",
 		"comparison chain":      "fn f() -> Bool:\n    return 1 < 2 < 3\n",
 		"two spaces":            "fn f() -> Int:\n  return 1\n",
 		"default function type": "fn f(value: fn(x: Int = 1) -> Int) -> Unit:\n    return\n",

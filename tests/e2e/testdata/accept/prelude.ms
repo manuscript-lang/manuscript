@@ -24,9 +24,7 @@ test "prelude cases and optional methods need no imports":
         return panic("presence check failed")
     if inferred.unwrap() != 3 or qualified.unwrap() != 5:
         return panic("payload changed")
-    if absent.unwrap_or(9) != 9 or absent.unwrap_or_else(
-        fn() -> Int: return 11
-    ) != 11:
+    if absent.unwrap_or(9) != 9 or absent.unwrap_or_else(fn() -> Int: return 11) != 11:
         return panic("fallback failed")
 
     match success():
@@ -45,8 +43,6 @@ test "prelude Error preserves concrete failures through try":
 
     match cause:
         Failure(value):
-            if value.message_text != "failed": return panic(
-                "error payload lost"
-            )
+            if value.message_text != "failed": return panic("error payload lost")
 
         _: return panic("concrete error lost")

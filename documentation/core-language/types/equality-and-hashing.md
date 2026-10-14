@@ -9,7 +9,7 @@ weight = 8
 
 `Hashable` supplies an internal lookup code for **map keys and set elements**, which also require `Equal`. A map uses the hash to find an entry quickly, then checks equality to distinguish keys that happen to have the same hash. A set uses the same process to recognize an existing element.
 
-`Equal` and `Hashable` are operation interfaces defined in `@std/equality.ms`. Their names remain available in the prelude for generic bounds; explicit imports also work. Equality and hashing are independent of sharing and resource lifetime.
+`Equal` and `Hashable` are operation interfaces defined in `@std/equality.ms`. Their names remain available in the prelude for generic bounds and ordinary interface use; explicit imports of these canonical types are redundant and rejected. Equality and hashing are independent of sharing and resource lifetime.
 
 ```manuscript
 interface Equal:
@@ -33,6 +33,8 @@ Strings compare exact Unicode scalar sequences without normalization. Bytes comp
 | `Map[K, V]` | Equal associations, independent of insertion order | Unsupported |
 | `Set[T]` | Equal members, independent of insertion order | Unsupported |
 
+List equality captures both backing slices and their initial lengths before comparing elements. If an element's `Equal` implementation mutates either List, writes to captured backing remain visible, while append, shrink, or reallocation do not change the compared membership. This follows the [captured-header traversal rules](collections.md#mutation-and-copies), without copying elements.
+
 Structural equality terminates on cyclic data. Collections and recursive data shapes prevent automatic hashing derivation. Recursive values can form mutable cycles; an explicit `Equal`/`Hashable` pair may instead hash a stable domain identity. Functions, resource handles, and service handles have no implicit equality. Interface views expose their declared operations; use `.equals` to compare through an Equal view.
 
 ## Domain identity
@@ -40,7 +42,6 @@ Structural equality terminates on cyclic data. Collections and recursive data sh
 An explicit implementation can select identity instead of every field:
 
 ```manuscript
-
 type CustomerKey:
     id: Int
     label: String

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -42,10 +43,9 @@ type receiverRequirement struct {
 
 type standardBindings struct {
 	NativeTypes          map[string]string            `json:"native_types"`
-	Functions            map[string]string            `json:"functions"`
+	FunctionOverrides    map[string]string            `json:"function_overrides"`
 	IntrinsicReceivers   map[string]string            `json:"intrinsic_receivers"`
 	Implementations      map[string]string            `json:"implementations"`
-	Receivers            map[string]string            `json:"receivers"`
 	ReceiverRequirements map[string]map[string]string `json:"receiver_requirements"`
 }
 
@@ -205,9 +205,10 @@ func (l *standardLoader) register(module *syntax.Module) error {
 		id := "@std/" + d.Name
 		s := &Symbol{Name: d.Name, ID: id, Kind: syntax.KindType, Module: module.File, Export: d.Export, Native: native, Decl: d}
 		if d.Kind == syntax.KindFn {
-			native = l.bindings.Functions[module.File+"/"+d.Name]
-			if native == "" {
-				return fmt.Errorf("missing native function binding: %s", d.Pos)
+			// Identities are module/name unless bindings.json overrides them.
+			native = strings.TrimSuffix(strings.TrimPrefix(module.File, "@std/"), ".ms") + "/" + d.Name
+			if override := l.bindings.FunctionOverrides[module.File+"/"+d.Name]; override != "" {
+				native = override
 			}
 			s.Kind = syntax.KindFn
 			s.Native = native
@@ -404,6 +405,11 @@ func (l *standardLoader) bindImplementations() error {
 // bindReceivers attaches native receiver bindings and their requirements.
 func (l *standardLoader) bindReceivers() error {
 	c := l.c
+	intrinsicNames := map[string]string{}
+	for receiver, name := range l.bindings.IntrinsicReceivers {
+		intrinsicNames[name] = receiver
+	}
+	bound := map[string]bool{}
 	for _, module := range standardSources {
 		if standardSourceModules[module.File] != nil {
 			continue
@@ -414,11 +420,15 @@ func (l *standardLoader) bindReceivers() error {
 				continue
 			}
 			symbol := standardModules[module.File][declaration.Name]
+			receiver := declaration.Name
+			if name, ok := intrinsicNames[receiver]; ok {
+				receiver = name
+			}
 			for _, method := range declaration.Methods {
 				key := module.File + "/" + declaration.Name + "/" + method.Name
-				if native := l.bindings.Receivers[key]; native != "" {
+				if native := nativeabi.ReceiverBindings[receiver][method.Name]; native != "" {
 					standardReceiverBindings[symbol.ID+"/"+method.Name] = native
-					delete(l.bindings.Receivers, key)
+					bound[receiver+"."+method.Name] = true
 				}
 				for name, constraint := range l.bindings.ReceiverRequirements[key] {
 					if standardReceiverBindings[symbol.ID+"/"+method.Name] == "" {
@@ -443,8 +453,12 @@ func (l *standardLoader) bindReceivers() error {
 			}
 		}
 	}
-	for key := range l.bindings.Receivers {
-		return fmt.Errorf("unused native receiver binding: %s", key)
+	for receiver, operations := range nativeabi.ReceiverBindings {
+		for name := range operations {
+			if !bound[receiver+"."+name] {
+				return fmt.Errorf("unused native receiver binding: %s.%s", receiver, name)
+			}
+		}
 	}
 	for key := range l.bindings.ReceiverRequirements {
 		return fmt.Errorf("unused native receiver requirement: %s", key)
@@ -699,21 +713,6 @@ func StandardImports() map[string][]string {
 func StandardModules() []*syntax.Module {
 	ensureStandardSources()
 	return append([]*syntax.Module{}, standardSources...)
-}
-
-// StandardTypeReferences exposes resolved types in canonical standard signatures.
-// Callers may change the returned map, but must not mutate the shared types.
-func StandardTypeReferences() map[*syntax.Type]*Type {
-	ensureStandardSources()
-	out := map[*syntax.Type]*Type{}
-	for _, module := range standardSources {
-		syntax.Nodes{Type: func(t *syntax.Type) {
-			if resolved, ok := t.Fact.(*Type); ok {
-				out[t] = resolved
-			}
-		}}.Module(module)
-	}
-	return out
 }
 
 func StandardExports(module string) map[string]*Symbol {

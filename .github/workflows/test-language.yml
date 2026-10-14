@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -38,7 +38,7 @@ jobs:
       - name: Prepare SDK payload
         run: make payload
       - name: Sharded Go tests (race, or coverage)
-        run: sh scripts/ci-test.sh ${{ matrix.shard }} 4
+        run: sh scripts/ci-test.sh ${{ matrix.shard }} 3
       - uses: actions/upload-artifact@v7
         with:
           name: language-coverage-${{ matrix.shard }}
@@ -113,17 +113,14 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .node-version
-      - name: Native host compatibility and Node.js coverage
+      - name: Native host compatibility
         shell: bash
         run: |
           make payload
           packages='./pkg/runtime ./pkg/compiler ./tests/e2e'
           if [ -d pkg/build ]; then packages="$packages ./pkg/build"; fi
           # shellcheck disable=SC2086
-          toolchain/go/bin/go test $packages -run 'TestFileSystem|TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestShutdownCookbook|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
+          toolchain/go/bin/go test $packages -run 'TestFileSystem|TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestPathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestConstantCatalogs|TestProcessSignalStream|TestShutdownCookbook|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
 
   # Keep one stable required check; every job must pass before merging.
   test:

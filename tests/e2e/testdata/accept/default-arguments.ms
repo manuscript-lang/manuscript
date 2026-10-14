@@ -23,22 +23,16 @@ fn ordered(
     state.set(value: state.get() * 10 + 5)
     return first + second + third
 
-fn unit_value(
-    value: Unit = panic("unexpected default")
-) -> Unit:
+fn unit_value(value: Unit = panic("unexpected default")) -> Unit:
     return value
 
-fn optional(
-    value: Optional[Int] = some(3)
-) -> Optional[Int]:
+fn optional(value: Optional[Int] = some(3)) -> Optional[Int]:
     return value
 
 fn fail() -> Result[Int, String]:
     return error("default failure")
 
-fn propagate(
-    value: Int = try fail()
-) -> Result[Int, String]:
+fn propagate(value: Int = try fail()) -> Result[Int, String]:
     return ok(value)
 
 interface Add:
@@ -62,11 +56,7 @@ impl Read[T] for Box[T]:
         return value
 
 test "omitted and explicit defaults":
-    if (
-        increment() != 4
-        or increment(7) != 8
-        or increment(value: 0) != 1
-    ):
+    if (increment() != 4 or increment(7) != 8 or increment(value: 0) != 1):
         return panic("single parameter defaults")
     if combine(second: 5) != 14 or combine(third: 0, second: 5, first: 0) != 5:
         return panic("required arguments and dependent defaults")
@@ -129,11 +119,7 @@ test "function values and captures":
 test "implementation and bound method defaults":
     let offset = Offset(4)
     let bound = offset.add
-    if (
-        offset.add() != 8
-        or bound() != 8
-        or bound(0) != 4
-    ):
+    if (offset.add() != 8 or bound() != 8 or bound(0) != 4):
         return panic("receiver defaults")
 
     let view = Add(offset)

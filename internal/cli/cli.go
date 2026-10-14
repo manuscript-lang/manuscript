@@ -57,7 +57,11 @@ func plural(n int, one, many string) string {
 	return many
 }
 
-var commandNames = []string{"check", "lint", "build", "emit", "run", "test", "fmt", "inspect", "diagram", "profile", "debug", "lock", "init", "doc", "stdlib", "lsp", "help"}
+// commandNames lists every dispatched command; a test keeps it equal to the help text.
+var commandNames = []string{"check", "lint", "build", "emit", "run", "test", "fmt", "inspect", "diagram", "profile", "pprof", "trace", "debug", "dap", "lock", "init", "doc", "stdlib", "lsp", "help", "version"}
+
+// jsonCommands accept --json; fmt and doc parse their own options but share the spelling.
+var jsonCommands = []string{"check", "lint", "test", "build", "profile", "inspect", "diagram", "emit", "lock", "fmt", "doc", "debug"}
 
 // unknownCommand names the nearest command and lists the rest.
 func unknownCommand(name string) {
@@ -100,7 +104,7 @@ func invalidFlag(command string, formatCheck, structured, debug bool) string {
 	case formatCheck && command != "fmt":
 		return "--check is valid only for ms fmt, not ms " + command
 	case structured:
-		return "--json is valid only for ms check, lint, test, build, and profile, not ms " + command
+		return "--json is valid only for ms " + strings.Join(jsonCommands, ", ") + ", not ms " + command
 	case debug:
 		return "--debug is valid only for ms build, run, and test, not ms " + command
 	}

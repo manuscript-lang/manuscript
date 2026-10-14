@@ -15,10 +15,26 @@ func TestSyntaxErrorsStateTheFix(t *testing.T) {
 		{"unterminated paren", "fn f() -> Int:\n    return (1\n", "opened at line 2:12"},
 		{"unterminated text", "fn f() -> Int:\n    let s = \"abc\n    return 1\n", "unterminated text literal; text must close"},
 		{"semicolon", "fn f() -> Int:\n    return 1;\n", "remove the semicolon"},
-		{"top-level statement", "let x = 1\n", "put statements inside a fn"},
+		{"match without arms", "fn f(a: Int) -> Int:\n    match a:\n", "match requires at least one arm"},
+		{"match without arms before declaration", "fn f(a: Int) -> Int:\n    match a:\nfn g() -> Int: return 1\n", "match requires at least one arm"},
+		{"top-level statement", "var x = 1\n", "put statements inside a fn"},
 		{"unbraced import list", "import a, b from \"x.ms\"\n", "import {a, b} from \"path.ms\""},
 		{"missing expression", "fn f() -> Int:\n    let x = \n    return 1\n", "expected an expression, found end of line"},
 		{"standalone expression", "fn f() -> Int:\n    1 + 1\n    return 1\n", "use 'let name = ...'"},
+		{"increment", "fn f() -> Int:\n    var i = 0\n    i++\n    return i\n", "write 'i = i + 1'"},
+		{"decrement", "fn f() -> Int:\n    var i = 0\n    i--\n    return i\n", "write 'i = i - 1'"},
+		{"range operator", "fn f() -> Int:\n    for i in 0..10:\n        return i\n    return 0\n", "import range from \"@std/collections.ms\""},
+		{"tuple", "fn f() -> Int:\n    let p = (1, 2)\n    return 0\n", "has no tuples; declare a record"},
+		{"number match pattern", "fn f(a: Int) -> Int:\n    match a:\n        1: return 2\n", "literal match patterns are unsupported"},
+		{"index assignment", "fn f(a: List[Int]) -> Unit:\n    a[0] = 1\n", "call its method such as set(index:, value:)"},
+		{"for with index", "fn f() -> Int:\n    for i, x in [1]:\n        return i\n    return 0\n", "loop over the entries"},
+		{"arrow function", "fn f() -> Int:\n    let n = [1].map(fn(x) => x + 1)\n    return 0\n", "there is no '=>' arrow function"},
+		{"bare lambda", "fn f() -> Int:\n    let n = [1].map(x -> x + 1)\n    return 0\n", "lambdas are written fn(name: Type)"},
+		{"equals label", "fn g(x: Int) -> Int:\n    return x\nfn f() -> Int:\n    return g(x = 1)\n", "labels use a colon; write x: value"},
+		{"const", "fn f() -> Int:\n    const x = 1\n    return x\n", "'const' is not a keyword; write 'let name = ...'"},
+		{"throw", "fn f() -> Int:\n    throw \"x\"\n    return 0\n", "failures are values"},
+		{"slice syntax", "fn f() -> Int:\n    return [1][0:2]\n", "there is no slice syntax"},
+		{"logical and", "fn f() -> Int:\n    if true && false:\n        return 1\n    return 0\n", "write 'and'"},
 		{"unknown escape", "fn f() -> String:\n    return \"a\\q\"\n", "valid escapes are"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -32,6 +48,7 @@ func TestSyntaxErrorsStateTheFix(t *testing.T) {
 
 func TestPassAndIfExpressionHints(t *testing.T) {
 	for _, tt := range []struct{ name, source, want string }{
+		{"elif branch", "fn f(a: Int) -> Unit:\n    if a == 1:\n        return\n    elif a == 2:\n        return\n", "write 'else if <condition>:'"},
 		{"pass statement", "fn f(a: Int) -> Unit:\n    if a == 1:\n        pass\n", "'pass' is not a keyword; write 'unit'"},
 		{"if expression", "fn f(a: Int) -> Int:\n    let b = if a == 1: 2 else: 3\n    return b\n", "'if' is a statement, not an expression"},
 		{"if inside arithmetic", "fn f(a: Int) -> Int:\n    return 1 + (if a == 1: 1 else: 0)\n", "'if' is a statement, not an expression"},

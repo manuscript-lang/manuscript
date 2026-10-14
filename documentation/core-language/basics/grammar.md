@@ -7,11 +7,11 @@ weight = 6
 
 This page is the exact syntax reference. Use it to check how a declaration, expression, block, or pattern must be written. If you are learning the language, read [source structure](syntax.md) and the practical concept pages first.
 
-Parsing checks the shape of source. The [expression rules](expressions.md), [type rules](../types/compatibility.md), and concept pages then determine whether that source is legal. The design does not prescribe a parser library or internal syntax-tree format.
+Parsing checks the shape of source. The [expression rules](expressions.md), [type rules](../types/compatibility.md), and concept pages then determine whether that source is legal.
 
 ## Source characters and tokens
 
-Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical lines; CRLF is normalized to LF before tokenization, and a lone CR is rejected. Identifiers use ASCII letters, digits, and underscores: `[A-Za-z_][A-Za-z0-9_]*`. Names are case-sensitive. A lone `_` is a pattern placeholder rather than an identifier. Unicode is supported in text literals and comments, not identifiers.
+Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical lines; CRLF is normalized to LF before tokenization, and a lone CR is rejected everywhere, including inside comments. Identifiers use ASCII letters, digits, and underscores: `[A-Za-z_][A-Za-z0-9_]*`. Names are case-sensitive. A lone `_` is a pattern placeholder rather than an identifier. Unicode is supported in text literals and comments, not identifiers.
 
 The reserved words are:
 
@@ -111,8 +111,10 @@ In the EBNF below, braces mean repetition and brackets mean an optional grammar 
 Module        = { Import | Declaration } ;
 Import        = "import", ( Name | "{", Name, { ",", Name }, [ "," ], "}" ),
                 "from", PlainStringLiteral, NEWLINE ;
-Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration)
+Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration
+              | ConstantDeclaration)
               | Implementation | TestDeclaration ;
+ConstantDeclaration = "let", Name, [ ":", Type ], "=", Expression, NEWLINE ;
 
 TypeDeclaration = "type", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, (RecordBody | AlternativeBody), DEDENT ;
@@ -161,7 +163,7 @@ Every parameter used in the interface or method signatures must occur in the nom
 
 Value types have no intersection/refinement syntax. `&` is used only to combine generic bounds, such as `T: Read & Closeable`; bound order does not affect the requirements. `Synchronized[T]` and `SynchronizedGuard[T]` are ordinary imported types, and lock scopes use existing `with` syntax.
 
-There are no module-level executable statements or `let`/`var` bindings. Functions and tests contain executable code. A snippet showing local bindings without an enclosing function is a body fragment, not a complete `.ms` module. Type paths do not introduce wildcard/namespace imports or make a private type accessible; resolution follows [module rules](../modules/declarations.md).
+There are no module-level executable statements or `var` bindings. A module-level `let` declares a [constant](../modules/declarations.md#constants); functions and tests contain all other executable code. A snippet showing local bindings without an enclosing function is a body fragment, not a complete `.ms` module. Type paths do not introduce wildcard/namespace imports or make a private type accessible; resolution follows [module rules](../modules/declarations.md).
 
 ## Statements and patterns
 
@@ -231,6 +233,6 @@ Each example is an independent rejected form. A syntax error does not require th
 
 ## Nesting limits
 
-The parser rejects expressions, types, patterns, and blocks nested more than 1000 levels deep, and a single chain of more than 10000 operators, member accesses, calls, or indexes. The diagnostic names the position (`parse: nesting exceeds 1000 levels`) so generated or pasted input cannot exhaust the compiler's stack.
+The parser rejects expressions, types, patterns, blocks, and text literals nested inside interpolations nested more than 1000 levels deep, and a single chain of more than 10000 operators, member accesses, calls, or indexes. The diagnostic names the position (`parse: nesting exceeds 1000 levels`) so generated or pasted input cannot exhaust the compiler's stack.
 
 [Back to language basics](_index.md) · [Expressions and operators](expressions.md)

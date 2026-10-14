@@ -211,3 +211,78 @@ func TestIndexForgetsKeysRemovedDownToEmpty(t *testing.T) {
 		}
 	}
 }
+
+// Removing a hashed key must not invalidate the index: a rebuild would rehash
+// every remaining key on the next lookup, making remove-then-lookup loops
+// quadratic in hash calls.
+func TestRemovingHashedKeysDoesNotRehashTheRest(t *testing.T) {
+	ctx := RootExecution()
+	const n = 200
+	s := &Set{Type: "@std/Set[CustomKey]"}
+	m := &Map{Type: "@std/Map[CustomKey][Int]"}
+	for i := int64(0); i < n; i++ {
+		s.add(ctx, customKey(i, "k"))
+		m.put(ctx, customKey(i, "k"), i)
+	}
+	s.find(ctx, customKey(0, "k"))
+	before := customHashCalls.Load()
+	for i := int64(0); i < n-1; i++ {
+		s.removeAt(ctx, s.find(ctx, customKey(i, "k")))
+		m.removeAt(ctx, m.find(ctx, customKey(i, "k")))
+		if got := s.find(ctx, customKey(n-1, "k")); got != n-2-int(i) {
+			t.Fatalf("after removing %d: last key at %d, want %d", i, got, n-2-int(i))
+		}
+		if got := m.find(ctx, customKey(n-1, "k")); got != n-2-int(i) {
+			t.Fatalf("after removing %d: map last key at %d, want %d", i, got, n-2-int(i))
+		}
+	}
+	// A constant number of hashes per iteration; a rebuild would add ~n per lookup.
+	if calls := customHashCalls.Load() - before; calls > 10*n {
+		t.Fatalf("%d hash calls for %d removals; the index was rebuilt", calls, n)
+	}
+}
+
+func TestRemovalKeepsMixedKeyKindsConsistent(t *testing.T) {
+	ctx := RootExecution()
+	m := &Map{Type: "@std/Map[@std/Equal][Int]"}
+	keys := []Value{"a", pointKey(1, 1), int64(7), pointKey(2, 2), "b", pointKey(3, 3), int64(8)}
+	for i, key := range keys {
+		m.put(ctx, key, int64(i))
+	}
+	for len(keys) > 0 {
+		at := len(keys) / 2
+		m.removeAt(ctx, m.find(ctx, keys[at]))
+		keys = append(keys[:at], keys[at+1:]...)
+		for want, key := range keys {
+			if got := m.find(ctx, key); got != want {
+				t.Fatalf("find(%v) = %d, want %d after removal at %d", key, got, want, at)
+			}
+		}
+	}
+}
+
+// Removing from the front and the back, then appending, must keep every
+// surviving key reachable at its current position.
+func TestIndexPositionsAfterMixedRemovals(t *testing.T) {
+	ctx := RootExecution()
+	s := &Set{Type: "@std/Set[Int]"}
+	for i := int64(0); i < 10; i++ {
+		s.add(ctx, i)
+	}
+	s.removeAt(ctx, s.find(ctx, int64(9))) // tail: ids still equal positions
+	s.add(ctx, int64(20))
+	s.removeAt(ctx, s.find(ctx, int64(0))) // front: switches to explicit ids
+	s.removeAt(ctx, s.find(ctx, int64(5)))
+	s.add(ctx, int64(9))
+	want := []int64{1, 2, 3, 4, 6, 7, 8, 20, 9}
+	for i, v := range want {
+		if got := s.find(ctx, v); got != i {
+			t.Fatalf("find(%d) = %d, want %d", v, got, i)
+		}
+	}
+	for _, gone := range []int64{0, 5} {
+		if s.find(ctx, gone) >= 0 {
+			t.Fatalf("removed %d still found", gone)
+		}
+	}
+}

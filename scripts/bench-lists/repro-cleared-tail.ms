@@ -9,7 +9,7 @@ export fn main() -> Int:
         total = total + value
 
         if count == 0:
-            values.without(0)
+            values.remove(0)
 
         count = count + 1
 

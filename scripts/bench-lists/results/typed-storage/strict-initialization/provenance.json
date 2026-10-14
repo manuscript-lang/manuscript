@@ -1,0 +1,61 @@
+{
+  "prior_provider": "a0c29276c52d83472b06a1874b870919d76cd8bd",
+  "strict_provider": "bea5c048ebf261eaa6d9ca6937c9aefc250ec75f",
+  "consumer": "e72ffbeda34bac0e9a32ec73d3157f18fdf45ceb",
+  "baseline_emitter": "a0c29276 current main8001f48e original boxed large IR list route",
+  "description": "Actual CLI-generated Release2,200 tick() source; identical #147 generated code compiled against prior versus strict provider. Boxed baseline compiled against prior provider. No compiler #87 integration, same64-bit defaults. No timing profiles or compilation in paired samples. Shared host limits apply.",
+  "source_sha256": {
+    "boxed_emitter": {
+      "path": "/tmp/142-init-cli-pairs/2200/baseline/main.go",
+      "sha256": "93b89f4cdc6dcbed6393096ee191bee71c466fdf776aaf1b1c6880f10932d5ca"
+    },
+    "147_effectful_emitter": {
+      "path": "/tmp/142-init-cli-pairs/2200/prototype/main.go",
+      "sha256": "417434a75f8b0701d4db729b39d3caa3a81108cf7e34167a51457ad68dce8668"
+    },
+    "strict_effectful_emitter": {
+      "path": "/tmp/142-init-cli-pairs/2200/strict/main.go",
+      "sha256": "417434a75f8b0701d4db729b39d3caa3a81108cf7e34167a51457ad68dce8668"
+    },
+    "boxed_benchmark": {
+      "path": "/tmp/142-init-cli-pairs/2200/baseline/program_test.go",
+      "sha256": "9239c64af1fed62e36fa655dc7799f74449e608c8a225e181d4a4b1d380fb280"
+    },
+    "effectful_benchmark": {
+      "path": "/tmp/142-init-cli-pairs/2200/prototype/program_test.go",
+      "sha256": "9239c64af1fed62e36fa655dc7799f74449e608c8a225e181d4a4b1d380fb280"
+    },
+    "strict_runtime": {
+      "path": "pkg/runtime/list_storage.go",
+      "sha256": "a2df4b868acbae0ea678bba872d282165b7c08040239baada9ec7d5e8f7a7134"
+    },
+    "prior_runtime": {
+      "path": "/tmp/142-init-before-source.go",
+      "sha256": "c733af623c07bbed876f2d126e2398b8c54b598f0514b42279bfa9052e3e178c"
+    },
+    "boxed_runtime_test": {
+      "path": "/tmp/142-init-cli-pairs/2200/baseline/runtime.test",
+      "sha256": "282326350a5ba35f59ffad44785ffb1e17c8ec409d7bbb98fca0e8394f08bacc"
+    },
+    "prior_runtime_test": {
+      "path": "/tmp/142-init-cli-pairs/2200/prototype/runtime.test",
+      "sha256": "25f7cefcda7f99ba040837ef342ebc59b7ebdf678bd5d527c6a8b2f550f98f8f"
+    },
+    "strict_runtime_test": {
+      "path": "/tmp/142-init-cli-pairs/2200/strict/runtime.test",
+      "sha256": "d8355cf05bff1c55115704ad2e0047651a8707ca57c1aed3a5bb30bda1069caa"
+    },
+    "baseline_cli": {
+      "path": "/tmp/142-init-baseline-ms",
+      "sha256": "e83e6ee76eec85c59c08f5289157e896240bd8371aeaa5831bb2503a8653ad1e"
+    },
+    "147_cli": {
+      "path": "/tmp/142-147-emitter-ms",
+      "sha256": "61d6881c422e4184f68c90d6015893ed643ddf81b9f90cc87e7d776bffcdb8b9"
+    }
+  },
+  "sdk": "bundled Go1.25.1 linux amd64",
+  "paired_command": "python3 scripts/bench-debug-literals/runtime_pairs.py --binary baseline=/tmp/142-init-cli-pairs/2200/baseline/runtime.test --binary previous_initializer=/tmp/142-init-cli-pairs/2200/prototype/runtime.test --binary strict_initializer=/tmp/142-init-cli-pairs/2200/strict/runtime.test --output /tmp/142-init-runtime-pairs.jsonl --cpu 0 --gc 100,50 --count 12 --benchtime 400ms",
+  "native_command": "go test ./pkg/build -run ^TestLargeLiteral(NativeSemantics|FrozenBaselineParity|CancellationDuringInitialization|FaultKeepsSourceFrames)$ on consumer with strict storage file overlaid",
+  "generated_inlined_InitListInt_calls": 2200
+}

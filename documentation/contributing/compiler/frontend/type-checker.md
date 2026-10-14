@@ -37,4 +37,4 @@ Accept source according to the [normative grammar](../../../core-language/basics
 
 These requirements derive from the [core language guide](../../../core-language/_index.md), with accepted and rejected modules in [core conformance](../conformance/core-language.md). The rules specify observable inference and compatibility; checker data structures and internal pass organization remain implementation choices. A module-level `test` body is a zero-parameter Unit function for static checking: ordinary local scopes, bare-return/fallthrough rules, and Result propagation restrictions apply. Test discovery and runner execution remain separate tooling contracts.
 
-Type information feeds [typed IR](typed-ir.md), [generated representations](../lowering/value-representations.md), and [structural tools](../../../developer-tooling/source/structural-editing.md).
+Type information feeds [typed IR](typed-ir.md) and [generated representations](../lowering/value-representations.md).

@@ -22,13 +22,14 @@ var libraryFunctions = map[string]LibrarySpec{}
 func libraryAdd(module, name, result string, params []LibraryParam, body func(*Execution, string, []Value) Value) {
 	original := body
 	adaptOptions := nativeParamsNeedOptions(params)
+	plan := planOptions(name, params)
 	body = func(ctx *Execution, result string, args []Value) Value {
 		// Ordinary native calls already have their ordered argument slots.
 		// Only adapters (or direct callers with missing slots) need a copy.
 		if !adaptOptions && len(args) >= len(params) {
 			return original(ctx, result, args)
 		}
-		normalized, ok := nativeOptions(name, params, args)
+		normalized, ok := plan.normalize(args)
 		if !ok {
 			return nativeOptionFailure(result, name, params, args)
 		}
@@ -101,17 +102,12 @@ func libraryErrorFields(result, code string, fields []Value) Value {
 }
 func libraryResult(typ, errorType string) string { return "Result[" + typ + "][" + errorType + "]" }
 func libraryList(typ string, values []Value) *List {
-	return &List{Type: "@std/List[" + typ + "]", Items: values}
+	return NewList("@std/List["+typ+"]", values)
 }
-func libraryStrings(values []string) *List {
-	items := make([]Value, len(values))
-	for i, s := range values {
-		items[i] = s
-	}
-	return libraryList("String", items)
-}
+func libraryStrings(values []string) *List { return NewStringList("@std/List[String]", values) }
+
 func libraryStringValues(v Value) []string {
-	items := v.(*List).Items
+	items := v.(*List).Boxed()
 	out := make([]string, len(items))
 	for i, x := range items {
 		out[i] = x.(string)

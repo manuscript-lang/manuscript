@@ -3,9 +3,11 @@ package build_test
 import (
 	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -69,7 +71,7 @@ impl Read for Box:
 			}
 		})
 	}
-	result := compiler.CompileSource("sharing.ms", declarations+`fn start(service: Scheduler, operation: fn() -> Result[Unit, String]) -> Unit:
+	result := compiler.CompileSource("sharing.ms", declarations+`fn start(service: Scheduler, operation: fn() -> Result[Unit, Error]) -> Unit:
     service.start(operation)
 `, compiler.Options{})
 	if !result.Success() {
@@ -269,11 +271,56 @@ func FuzzCompile(f *testing.F) {
 	for _, s := range []string{"fn f() -> Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() -> Box[Int]:\n    return Box(value: 1)\n", "import panic from \"@std/faults.ms\"\n\ntest \"list\":\n    let values = [1, 2]\n    if not (values.length() == 2):\n        return panic(message: \"check failed\")\n"} {
 		f.Add(s)
 	}
+	// Seed from the accept and reject conformance programs so mutation starts
+	// from every language feature, not three tiny modules.
+	for _, pattern := range []string{"../../tests/e2e/testdata/accept/*.ms", "../../tests/e2e/testdata/reject/*.ms"} {
+		paths, err := filepath.Glob(pattern)
+		if err != nil {
+			f.Fatal(err)
+		}
+		for _, path := range paths {
+			if data, err := os.ReadFile(path); err == nil && len(data) <= 8000 {
+				f.Add(string(data))
+			}
+		}
+	}
 	f.Fuzz(func(t *testing.T, source string) {
 		if len(source) > 16000 {
 			t.Skip()
 		}
-		_ = compiler.CompileSource("fuzz.ms", source, compiler.Options{})
+		first := compiler.CompileSource("fuzz.ms", source, compiler.Options{})
+		second := compiler.CompileSource("fuzz.ms", source, compiler.Options{})
+		if !reflect.DeepEqual(first.Diagnostics, second.Diagnostics) {
+			t.Fatalf("diagnostics are not deterministic for %q", source)
+		}
+		inSource := func(position syntax.Position) bool {
+			return position.File != "fuzz.ms" || position.Line >= 1 && position.Column >= 1 && position.Offset >= 0 && position.Offset <= len(source)
+		}
+		for _, diagnostic := range first.Diagnostics {
+			if diagnostic.Phase == "" || diagnostic.Message == "" || !inSource(diagnostic.Position) {
+				t.Fatalf("malformed diagnostic %#v for %q", diagnostic, source)
+			}
+			if diagnostic.End != nil && (!inSource(*diagnostic.End) || diagnostic.End.File == diagnostic.Position.File && diagnostic.End.Offset < diagnostic.Position.Offset) {
+				t.Fatalf("diagnostic range %#v is outside the source %q", diagnostic, source)
+			}
+			if fix := diagnostic.Fix; fix != nil && (!inSource(fix.Position) || !inSource(fix.End) || fix.End.Offset < fix.Position.Offset) {
+				t.Fatalf("diagnostic fix %#v is outside the source %q", diagnostic, source)
+			}
+		}
+		// A machine-applicable fix must remove its own diagnostic.
+		for _, diagnostic := range first.Diagnostics {
+			fix := diagnostic.Fix
+			if fix == nil || fix.Position.File != "fuzz.ms" || fix.End.Offset > len(source) {
+				continue
+			}
+			fixed := source[:fix.Position.Offset] + fix.Replacement + source[fix.End.Offset:]
+			for _, remaining := range compiler.CompileSource("fuzz.ms", fixed, compiler.Options{}).Diagnostics {
+				if remaining.Message == diagnostic.Message && remaining.Position == diagnostic.Position {
+					t.Fatalf("fix for %q leaves the diagnostic: %q -> %q", diagnostic.Message, source, fixed)
+				}
+			}
+			break
+		}
 	})
 }
 
@@ -398,7 +445,7 @@ func TestServiceBoundaries(t *testing.T) {
 		})
 	}
 }
-func TestPinsNativeCacheAndBuildMetadata(t *testing.T) {
+func TestPinsAndBuildMetadata(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "ms.toml", "[project]\nname = \"cache\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n")
 	source := "export fn main() -> Int:\n    return 0\n"
@@ -408,8 +455,7 @@ func TestPinsNativeCacheAndBuildMetadata(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(root, "program")
-	cache := filepath.Join(root, "cache")
-	if _, err := build.BuildChecked(result, binary, cache, false); err != nil {
+	if _, err := build.BuildChecked(result, binary, false); err != nil {
 		t.Fatal("project did not build without ms.lock", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "ms.lock")); err != nil {
@@ -418,31 +464,22 @@ func TestPinsNativeCacheAndBuildMetadata(t *testing.T) {
 	if err := build.CheckPin(root); err != nil {
 		t.Fatal(err)
 	}
-	first, err := build.BuildChecked(result, binary, cache, false)
+	first, err := build.BuildChecked(result, binary, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	info, err := os.Stat(binary)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := build.BuildChecked(result, binary, cache, false)
+	second, err := build.BuildChecked(result, binary, false)
 	if err != nil || first.BuildID != second.BuildID {
-		t.Fatal("cache miss or identity changed", err)
+		t.Fatal("build identity changed", err)
 	}
-	after, _ := os.Stat(binary)
-	if after.ModTime() != info.ModTime() {
-		t.Fatal("unchanged binary was rewritten")
+	if _, err := os.Stat(filepath.Join(root, ".ms-cache")); !os.IsNotExist(err) {
+		t.Fatal("build wrote a cache directory", err)
 	}
 	if err := build.VerifyBuild(binary, map[string]string{"src/main.ms": source, "ms.toml": result.Configuration}); err != nil {
 		t.Fatal(err)
 	}
 	if err := build.VerifyBuild(binary, map[string]string{"src/main.ms": source + "# edited\n", "ms.toml": result.Configuration}); err == nil {
 		t.Fatal("stale source accepted")
-	}
-	write(t, root, "cache/"+first.BuildID+".bin", "corrupt")
-	if _, err := build.BuildChecked(result, binary, cache, false); err != nil {
-		t.Fatal("corrupt cache was not rebuilt", err)
 	}
 	write(t, root, "program", "corrupt")
 	if err := build.VerifyBuild(binary, map[string]string{"src/main.ms": source, "ms.toml": result.Configuration}); err == nil {
@@ -577,7 +614,7 @@ func TestNativeProfilesAndDebugSources(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	binary := filepath.Join(root, "program")
-	metadata, err := build.BuildChecked(result, binary, "", true)
+	metadata, err := build.BuildChecked(result, binary, true)
 	if err != nil {
 		t.Fatal(err)
 	}

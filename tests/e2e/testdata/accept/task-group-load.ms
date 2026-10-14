@@ -13,12 +13,7 @@ fn load() -> Result[Summary, ExecutionError]:
     with tasks = TaskGroup():
         let count_task = tasks.start(count)
         let label_task = tasks.start(label)
-        return ok(
-            Summary(
-                count: try count_task.join(),
-                label: try label_task.join()
-            )
-        )
+        return ok(Summary(count: try count_task.join(), label: try label_task.join()))
 
 test "load independent typed values":
     match load():

@@ -46,11 +46,7 @@ test "record fields mutate through aliases methods views and captures":
     let copied = box.clone()
     replace(box: box, value: "new")
     copied.child.val = 9
-    if not (
-        box.value == "new"
-        and copied.value == "old"
-        and box.child.val == 9
-    ):
+    if not (box.value == "new" and copied.value == "old" and box.child.val == 9):
         return panic(message: "clones must be shallow")
 
     let log: List[Int] = []
@@ -64,37 +60,29 @@ test "collection updates retain identity and clone separates storage":
     let copy = values.clone()
     let append = values.append
     append(3)
-    values.prepend(0).with_value(index: 1, value: 9)
+    values.prepend(0).set(index: 1, value: 9)
     if not (alias == [0, 9, 2, 3] and copy == [1, 2]):
         return panic(message: "list aliases lost storage or length")
 
-    values.without(1).reverse().fill(value: 8, start: 0, end: 1)
+    values.remove(1).reverse_in_place().fill(value: 8, start: 0, end: 1)
     if not (alias == [8, 2, 0]):
         return panic(message: "list updates must mutate")
 
-    values.with_values(start: 1, delete_count: 1, replacement: values)
-    if not (
-        alias == [
-            8,
-            8,
-            2,
-            0,
-            0
-        ]
-    ):
+    values.splice(start: 1, delete_count: 1, replacement: values)
+    if not (alias == [8, 8, 2, 0, 0]):
         return panic(message: "self replacement failed")
 
-    let map = Map[String, Int]().with_entry(key: "a", value: 1)
+    let map = Map[String, Int]().add(key: "a", value: 1)
     let map_alias = map
     let map_copy = map.clone()
-    map.with_entry(key: "b", value: 2).without("a")
+    map.add(key: "b", value: 2).remove("a")
     if not (map_alias.keys() == ["b"] and map_copy.keys() == ["a"]):
         return panic(message: "map aliases or clone failed")
 
-    let set = Set[Int]().with_value(1)
+    let set = Set[Int]().add(1)
     let set_alias = set
     let set_copy = set.clone()
-    set.with_value(2).without(1)
+    set.add(2).remove(1)
     if not (set_alias.values() == [2] and set_copy.values() == [1]):
         return panic(message: "set aliases or clone failed")
 
@@ -157,7 +145,7 @@ test "list growth and saved clone methods preserve current contents":
 
     let copy = clone()
     alias.append(2048)
-    values.with_value(index: 0, value: -1)
+    values.set(index: 0, value: -1)
     if not (alias.length() == 2049 and alias.last() == some(2048)):
         return panic(message: "growth lost the aliased collection header")
     if not (
@@ -178,12 +166,9 @@ test "collection clones retain nested object references":
     let values = [child]
     let copied_values = values.clone()
     copied_values.append(Val(2))
-    let entries = Map[String, Val]().with_entry(key: "child", value: child)
+    let entries = Map[String, Val]().add(key: "child", value: child)
     let copied_entries = entries.clone()
-    copied_entries.with_entry(
-        key: "other",
-        value: Val(3)
-    )
+    copied_entries.add(key: "other", value: Val(3))
 
     for entry in copied_entries.entries():
         if entry.key == "child":
@@ -210,12 +195,12 @@ test "collection clones retain nested object references":
             return panic(message: "cloning removed an original map entry")
 
 test "map and set clear affect aliases while copies retain contents":
-    let entries = Map[String, Int]().with_entry(key: "a", value: 1)
+    let entries = Map[String, Int]().add(key: "a", value: 1)
     let alias = entries
     let copy = entries.clone()
-    let update = entries.with_entry
+    let update = entries.add
     update(key: "a", value: 2)
-    entries.merge(Map[String, Int]().with_entry(key: "b", value: 3))
+    entries.merge(Map[String, Int]().add(key: "b", value: 3))
     if not (
         alias.keys() == ["a", "b"]
         and alias.values() == [2, 3]
@@ -227,10 +212,10 @@ test "map and set clear affect aliases while copies retain contents":
     if not (alias.length() == 0 and copy.length() == 1):
         return panic(message: "map clear changed a clone or lost an alias")
 
-    let values = Set[Int]().with_value(1)
+    let values = Set[Int]().add(1)
     let set_alias = values
     let set_copy = values.clone()
-    values.with_value(1).with_value(2).without(9)
+    values.add(1).add(2).remove(9)
     if not (set_alias.values() == [1, 2] and set_copy.values() == [1]):
         return panic(message: "set duplicate or missing removal changed membership")
 

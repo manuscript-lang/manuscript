@@ -29,37 +29,27 @@ test "contextual callbacks and inline returns":
     let offset = 3
     let strings = (
         [1, 2, 3]
-        .filter(
-            fn(item): item > 1
-        )
-        .map(
-            fn(number): (number + offset).toString()
-        )
+        .filter(fn(item): item > 1)
+        .map(fn(number): (number + offset).toString())
     )
     if strings.join(",") != "5,6": return panic("callback inference")
 
-    let result = apply(
-        transform: fn(item): item + offset,
-        value: 2
-    )
+    let result = apply(transform: fn(item): item + offset, value: 2)
     if result != 5: return panic("generic callback")
 
-    if chain(
-        second: fn(item): item + 2,
-        first: fn(): 3
-    ) != 5: return panic("deferred callback")
-
-    let callback = Callback(
-        fn(item: Int): item + 1
+    if chain(second: fn(item): item + 2, first: fn(): 3) != 5: return panic(
+        "deferred callback"
     )
+
+    let callback = Callback(fn(item: Int): item + 1)
     if callback.transform(3) != 4: return panic("constructor inference")
 
     let view = Read(Box(7))
     if view.get() != 7: return panic("constructor payloads")
 
-    if invoke() != 0 or invoke(
-        fn(item): item + 1
-    ) != 5: return panic("optional callback")
+    if invoke() != 0 or invoke(fn(item): item + 1) != 5: return panic(
+        "optional callback"
+    )
 
     let functions: List[fn(value: Int) -> Int] = [fn(item): item + 4]
     if functions.at(0).unwrap()(2) != 6: return panic("list callback")
@@ -69,9 +59,7 @@ test "contextual callbacks and inline returns":
         return value + inner().scalar_length()
     if nested(2) != 6: return panic("nested return inference")
 
-    let success = with_result(
-        fn(): ok(4)
-    )
+    let success = with_result(fn(): ok(4))
     if success != Result[Int, String].ok(4): return panic("partial Result context")
 
     let propagated = with_result(

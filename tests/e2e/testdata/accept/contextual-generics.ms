@@ -53,15 +53,11 @@ test "expected generic results preserve behavior and call order":
     let empty: Optional[Int] = forward()
     if not empty.is_none(): return panic("expected none")
 
-    let values: List[Optional[Int]] = [1, 2].map(
-        fn(item): absent()
-    )
+    let values: List[Optional[Int]] = [1, 2].map(fn(item): absent())
     if values.length() != 2: return panic("native contextual result")
     if not values.at(0).unwrap().is_none(): return panic("native callback result")
 
-    let callback: fn(value: Int) -> String = transform(
-        fn(item): item.toString()
-    )
+    let callback: fn(value: Int) -> String = transform(fn(item): item.toString())
     if callback(7) != "7": return panic("contextual callback parameter")
 
     let defaulted: fn(value: Int) -> Int = from_callback(

@@ -14,17 +14,7 @@ fn selected_sum(values: List[Int]) -> Int:
     return total
 
 test "iteration control":
-    if not (
-        selected_sum(
-            values: [
-                2,
-                0,
-                3,
-                -1,
-                9
-            ]
-        ) == 5
-    ):
+    if not (selected_sum(values: [2, 0, 3, -1, 9]) == 5):
         return panic(message: "check failed")
     if not (selected_sum(values: []) == 0):
         return panic(message: "check failed")

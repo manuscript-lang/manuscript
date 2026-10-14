@@ -31,10 +31,7 @@ test "issue 187 programs need no collection imports":
     if rolls.length() != 5: return panic("annotation or match")
 
     let points = Map[Point, Int]()
-    points.add(
-        Point(1, 2),
-        7
-    )
+    points.add(Point(1, 2), 7)
     if points.get(Point(1, 2)).unwrap() != 7: return panic("constructor")
 
     let nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
@@ -50,12 +47,12 @@ test "map add returns receiver and retains aliases clone and insertion order":
     let bound = values.add
     bound("d", 6)
     bound(value: 7, key: "a")
-    values.with_entry("e", 8)
+    values.add("e", 8)
     if alias.keys() != ["a", "b", "c", "d", "e"]: return panic("order")
     if alias.values() != [7, 5, 4, 6, 8]: return panic("receiver identity")
     if copy.keys() != ["a", "b"] or copy.values() != [1, 2]: return panic("clone")
 
-    values.without("b").add("b", 9)
+    values.remove("b").add("b", 9)
     if values.keys() != ["a", "c", "d", "e", "b"]: return panic("reinsertion")
 
     let payload = [1]
@@ -72,11 +69,7 @@ test "map add retains optional wrapping and generic bound calls":
     if values.get(1).unwrap().unwrap() != 3: return panic("optional conversion")
     if values.get(4).unwrap().unwrap() != 5: return panic("bound conversion")
 
-    let generic = update[Optional[Int], Optional[Int]](
-        values,
-        some(6),
-        some(7)
-    )
+    let generic = update[Optional[Int], Optional[Int]](values, some(6), some(7))
     generic.add(8, 9)
     if values.get(6).unwrap().unwrap() != 7 or values.get(8).unwrap().unwrap() != 9: return panic(
         "generic receiver"

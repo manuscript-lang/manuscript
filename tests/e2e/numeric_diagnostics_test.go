@@ -16,10 +16,10 @@ func TestNumericPreconditionDiagnostics(t *testing.T) {
 		{"1d |/ 0d", "Decimal./: division by zero; right must be nonzero, found 0"},
 		{"minimum.|divide(0)", "Duration.divide: division by zero; divisor must be nonzero, found 0"},
 		{"minimum.|divide(-1)", "Duration.divide: overflow; found value (nanoseconds) -9223372036854775808 and divisor -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
-		{"maximum.|add(duration(1))", "Duration.add: overflow; found value (nanoseconds) 9223372036854775807 and right (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
-		{"minimum.|add(duration(-1))", "Duration.add: overflow; found value (nanoseconds) -9223372036854775808 and right (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
-		{"minimum.|subtract(duration(1))", "Duration.subtract: overflow; found value (nanoseconds) -9223372036854775808 and right (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
-		{"maximum.|subtract(duration(-1))", "Duration.subtract: overflow; found value (nanoseconds) 9223372036854775807 and right (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
+		{"maximum.|add(duration(1))", "Duration.add: overflow; found value (nanoseconds) 9223372036854775807 and other (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
+		{"minimum.|add(duration(-1))", "Duration.add: overflow; found value (nanoseconds) -9223372036854775808 and other (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
+		{"minimum.|subtract(duration(1))", "Duration.subtract: overflow; found value (nanoseconds) -9223372036854775808 and other (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
+		{"maximum.|subtract(duration(-1))", "Duration.subtract: overflow; found value (nanoseconds) 9223372036854775807 and other (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
 		{"maximum.|multiply(2)", "Duration.multiply: overflow; found value (nanoseconds) 9223372036854775807 and factor 2; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
 		{"minimum.|multiply(-1)", "Duration.multiply: overflow; found value (nanoseconds) -9223372036854775808 and factor -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
 		{"duration(-1).|multiply(-9223372036854775808)", "Duration.multiply: overflow; found value (nanoseconds) -1 and factor -9223372036854775808; result nanoseconds must be between -9223372036854775808 and 9223372036854775807"},
@@ -45,8 +45,7 @@ import Decimal from "@std/decimal.ms"
 		source += fmt.Sprintf("test %q:\n    let minimum = duration(-9223372036854775808)\n    let maximum = duration(9223372036854775807)\n    let divide = minimum.divide\n", name)
 		line := strings.Count(source, "\n") + 1
 		call := "    let impossible = " + tc.call
-		column := strings.IndexByte(call, '|') + 1
-		frames = append(frames, fmt.Sprintf("numeric-preconditions.ms:%d:%d in test %s", line, column, name))
+		frames = append(frames, fmt.Sprintf("numeric-preconditions.ms:%d in test %s", line, name))
 		source += strings.ReplaceAll(call, "|", "") + "\n"
 	}
 	source += "test \"continues after numeric faults\":\n    let valid = 1\n"

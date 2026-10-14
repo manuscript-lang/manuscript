@@ -3,8 +3,11 @@ package lsp
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/manuscript-lang/manuscript/pkg/lexer"
 )
 
 func TestLocalExtensionCompletionAndNavigation(t *testing.T) {
@@ -262,7 +265,7 @@ func TestFuzzyMemberCompletion(t *testing.T) {
 
 func TestExpandedStandardMembersAndInterfaceSnippet(t *testing.T) {
 	items := completeSource(t, "import HttpClient from \"@std/http.ms\"\nfn work(client: HttpClient) -> Unit:\n    client.|\n")
-	if itemNamed(items, "send_stream") == nil {
+	if itemNamed(items, "request_stream") == nil {
 		t.Fatal(items)
 	}
 	items = completeSource(t, "inter|")
@@ -340,5 +343,14 @@ func TestCollectionPreludeEditorContracts(t *testing.T) {
 	local = completeSource(t, "type Set[T]:\n    value: T\nfn use(values: Set[Int]) -> Unit:\n    values.|\n")
 	if itemNamed(local, "add") != nil || itemNamed(local, "value") == nil {
 		t.Fatal(local)
+	}
+}
+
+func TestStatementKeywordsAreReserved(t *testing.T) {
+	reserved := lexer.Keywords()
+	for _, word := range statementKeywords {
+		if !slices.Contains(reserved, word) {
+			t.Errorf("%q is not a reserved word", word)
+		}
 	}
 }

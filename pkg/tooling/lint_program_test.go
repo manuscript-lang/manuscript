@@ -70,6 +70,49 @@ func TestImportUsesStayWithinTheirModule(t *testing.T) {
 	}
 }
 
+func unreadBindings(t *testing.T, source string) []string {
+	t.Helper()
+	checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
+	if !checked.Success() {
+		t.Fatal(checked.Diagnostics)
+	}
+	var names []string
+	for _, finding := range LintProgram(checked.Program) {
+		if finding.Code == "MSL101" {
+			names = append(names, finding.Message)
+		}
+	}
+	return names
+}
+
+func TestSelfAssignmentDoesNotCountAsRead(t *testing.T) {
+	flagged := "fn answer() -> Int:\n    var total = 0\n    total = total + 2\n    return 0\n"
+	if got := unreadBindings(t, flagged); len(got) != 1 || got[0] != "Local binding total is never read" {
+		t.Fatal("a binding read only by assignments to itself must be unread", got)
+	}
+	for name, source := range map[string]string{
+		"returned":     "fn answer() -> Int:\n    var total = 0\n    total = total + 2\n    return total\n",
+		"other target": "fn answer() -> Int:\n    var total = 0\n    var other = 0\n    other = total + 1\n    total = total + 2\n    return other\n",
+		"condition":    "fn answer() -> Int:\n    var total = 0\n    total = total + 2\n    if total > 1:\n        return 1\n    return 0\n",
+	} {
+		if got := unreadBindings(t, source); len(got) != 0 {
+			t.Fatal(name, "binding is observable", got)
+		}
+	}
+}
+
+func TestMatchArmPayloadBindingsAreLinted(t *testing.T) {
+	prefix := "fn parse(text: String) -> Result[Int, String]:\n    return ok(1)\n"
+	flagged := prefix + "fn answer() -> Int:\n    match parse(\"1\"):\n        ok(value): return 1\n        error(e): return 2\n"
+	if got := unreadBindings(t, flagged); len(got) != 2 {
+		t.Fatal("unread payload bindings must be reported", got)
+	}
+	clean := prefix + "fn answer() -> Int:\n    match parse(\"1\"):\n        ok(value): return value\n        error(_): return 2\n"
+	if got := unreadBindings(t, clean); len(got) != 0 {
+		t.Fatal("read or ignored payload bindings must not be reported", got)
+	}
+}
+
 func TestListLiteralNeedsNoImport(t *testing.T) {
 	source := "fn answer() -> Int:\n    let items = [1, 2, 3]\n    return items.length()\n"
 	checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
@@ -78,7 +121,7 @@ func TestListLiteralNeedsNoImport(t *testing.T) {
 	}
 	for _, finding := range LintProgram(checked.Program) {
 		if finding.Code == "MSL102" {
-			t.Fatal("prelude literal reported an import", finding)
+			t.Fatal("prelude literal flagged unused", finding)
 		}
 	}
 }

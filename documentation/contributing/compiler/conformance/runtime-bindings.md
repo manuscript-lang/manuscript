@@ -71,7 +71,7 @@ Run `tests/e2e/testdata/accept/task-groups.ms` for annotated and inferred handle
 
 Reject Task construction, non-function or nonzero-argument start callbacks, Task result type mismatches, group-join result annotations other than Unit, equality/hashing/cloning of task handles or groups, and unspecialized generic start function values. Direct try in Unit tests remains invalid; helper functions must return the exact Result error type.
 
-For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn(id: Int) -> Int`. Reject start operations returning Int or plain Unit; accept only `fn() -> Result[Unit, String]`. Use controlled reporter fixtures to verify String errors, crashes, status expiry, bounded overflow fallback, and reporter-fault fallback without recursive reporting.
+For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn(id: Int) -> Int`. Reject start operations returning Int or plain Unit; accept only `fn() -> Result[Unit, Error]`. Use controlled reporter fixtures to verify String errors, crashes, status expiry, bounded overflow fallback, and reporter-fault fallback without recursive reporting.
 
 ## Sharing and contract cleanup
 

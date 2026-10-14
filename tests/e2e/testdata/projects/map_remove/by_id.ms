@@ -13,18 +13,9 @@ impl Hashable for Key:
 export fn id_map() -> Map[Key, Int]:
     return (
         Map[Key, Int]()
-        .add(
-            Key(1, "one"),
-            10
-        )
-        .add(
-            Key(2, "two"),
-            20
-        )
-        .add(
-            Key(3, "three"),
-            30
-        )
+        .add(Key(1, "one"), 10)
+        .add(Key(2, "two"), 20)
+        .add(Key(3, "three"), 30)
     )
 
 export fn id_direct(values: Map[Key, Int], key: Key) -> Map[Key, Int]:

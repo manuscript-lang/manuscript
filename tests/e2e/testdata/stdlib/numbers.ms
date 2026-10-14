@@ -19,13 +19,7 @@ test "numbers radix and signed boundaries":
 test "numbers reject whitespace separators overflow and invalid radix":
     let invalid: Result[Int, NumberError] = error(NumberError.InvalidData)
 
-    for text in [
-        " 1",
-        "1_0",
-        "0x10",
-        "+",
-        "١"
-    ]:
+    for text in [" 1", "1_0", "0x10", "+", "١"]:
         if parse_int(text: text, radix: 10) != invalid: return panic("nondecimal input")
 
     let overflow: Result[Int, NumberError] = error(NumberError.OutOfRange)

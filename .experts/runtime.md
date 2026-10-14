@@ -6,7 +6,7 @@ Verified: source Map keys use exact equality, while HTTP field names fold ASCII 
 
 Apply when: changing HTTP adapters, repeated fields, or header representation bridges.
 Evidence: [header regressions](../pkg/runtime/library_http_header_transport_test.go), [called source checks](../tests/e2e/testdata/stdlib/http-headers.ms), and [header contracts](../documentation/standard-library/http.md#header-lookup-and-repeated-values).
-Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered byte input, streaming text input, exact Map lookup, and existing domain errors distinct. Public representation unification needs a separate migration decision.
+Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered raw-byte acceptance, streaming/client UTF-8 rejection, transport framing validation and domain errors distinct. The #171 migration uses indexed ASCII header groups and shared list membership: cache received conversions once, test alias/mutation/remove/clone semantics, and measure common lookup/proxy paths. Do not impose a blanket copy-on-read or membership-copy guarantee; explicit text extraction and clone are distinct operations.
 
 ### Empty cleanup omission needs callable ownership evidence
 
@@ -38,7 +38,7 @@ Verified: another operation can close a guard alias while its owner is blocked j
 Verified: acquisition delivery uses one final cancellation observation for both disposal and unwind. Two checks can discard an acquired guard without disposing it. Keep PR 230's disposal fix; later cancellation after successful delivery belongs to caller cleanup.
 
 Apply when: changing lock admission, cancellation, alias release, task/service joining or acquisition delivery.
-Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [user decision](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df), [contract](../documentation/concurrency/synchronization.md), [bounded blocking regressions](../pkg/runtime/synchronized_ancestor_test.go), and [acquisition delivery](../pkg/runtime/values.go).
+Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [contract](../documentation/concurrency/synchronization.md), [bounded blocking regressions](../pkg/runtime/synchronized_ancestor_test.go), and [acquisition delivery](../pkg/runtime/functions.go).
 Verify: ordinary ancestor overlap returns 7; both lock/join orders block until cooperative cancellation or release. Exercise deadlines, same-operation helper/shield reentry, cancellation/delivery/release races, alias close and use after close. Shielded-cycle tests run in bounded disposable subprocesses and release aliases explicitly; no test relies on cleanup timeout escape.
 
 ### Attribute profiling at execution boundaries
@@ -53,17 +53,17 @@ Verify: measure unprofiled execution separately from capture setup/flush; repeat
 
 ### Newer stdlib direction needs checkout reconciliation
 
-Decision: the stdlib request calls for Node.js/JavaScript contract parity with consolidated grouping and one spelling per operation; optional limits/timeouts honored when supplied; removal of the speculative resource-pooling API; equality and hashing interfaces; and a priority queue. This supersedes the older derived-only equality preference. The combined scheduling service is `Scheduler`, with one lifecycle for immediate and timed work.
+Decision: the stdlib request calls for consolidated grouping and one spelling per operation; optional limits/timeouts honored when supplied; removal of the speculative resource-pooling API; equality and hashing interfaces; and a priority queue. This supersedes the older derived-only equality preference. The combined scheduling service is `Scheduler`, with one lifecycle for immediate and timed work.
 
 Verified: canonical declarations, runtime dispatch, checker rules, conformance, and generated references now implement this direction. Optional also has presence and extraction methods; keep routine absence handling available without requiring a match.
 
 Apply when: changing library signatures, bounds/interfaces, queue APIs, scheduling, grouping, examples, or documentation.
-Evidence: [the user request](codex://threads/01a13126-1245-730b-9e5d-16ca2dc7501f); [current declarations](../pkg/stdlib/README.md); [stdlib contract](../documentation/standard-library/contracts.md); [runtime regressions](../pkg/runtime/stdlib_revamp_test.go); [compiled Optional methods](../tests/e2e/testdata/accept/optional-methods.ms).
+Evidence: [current declarations](../pkg/stdlib/README.md); [stdlib contract](../documentation/standard-library/contracts.md); [runtime regressions](../pkg/runtime/stdlib_revamp_test.go); [compiled Optional methods](../tests/e2e/testdata/accept/optional-methods.ms).
 Verify: inspect current declarations and called behavior against the latest direction. Preserve omitted/none/explicit-limit behavior, custom equality/hash coherence, and joined Scheduler shutdown. Do not restore removed APIs from older documentation or another branch.
 
 ### Sharing, resource lifetime, and work lifetime are separate
 
-Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. All values may be shared without callable proofs. Native services synchronize their internals. The user subsequently chose a single-threaded Queue with an optional capacity parameter; shared queue access uses Synchronized guards, including reads. Passing references is permitted without implying internal thread safety. A safe capture is not a declaration of intended authority.
+Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. All values may be shared without callable proofs. Native services synchronize their internals. The user subsequently chose a single-threaded Queue with an optional capacity parameter; shared queue access uses Synchronized guards, including reads. Blocking hand-off between workers is not a channel: the decided design is a `BlockingQueue[T]` in `@std/queues.ms` built on `SynchronizedGuard.wait()`/`notify_all()` (pending in #453; verify it is on main before documenting it as shipped). Passing references is permitted without implying internal thread safety. A safe capture is not a declaration of intended authority.
 
 Apply when: changing closures, task-group work, schedulers, resource wrappers, or owned resources.
 Evidence: [sharing](../documentation/concurrency/sharing.md); [joined groups](../documentation/concurrency/joining.md); [scope-exit ordering](../documentation/core-language/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
@@ -78,7 +78,7 @@ Verified: a queued transport operation can acquire a ready gate even when its li
 Decision: the networking request explicitly required finishing networking rather than deferring gaps, with HTTP/3 excluded for that task. Public signatures alone did not meet the requested scope; cancellation, close, bounded streaming, and shutdown were part of the behavior.
 
 Apply when: adding native network APIs or declaring a networking change complete.
-Evidence: [scope corrections in Solidify networking implementation](codex://threads/01a12ce1-c9ff-70e4-bb2c-51749183e03b); [network coverage and limits](../documentation/contributing/architecture.md#standard-library-and-runtime); [network regression cases](../pkg/runtime/networking_test.go).
+Evidence: [network coverage and limits](../documentation/contributing/architecture.md#standard-library-and-runtime); [network regression cases](../pkg/runtime/networking_test.go).
 Verify: run relevant native and compiled cases for blocked I/O cancellation, concurrent close, bounded input/output, and shutdown joining. Check the actual request's protocol scope; retain implementation limits explicitly when a path remains uncooperative.
 
 ### Standard-library errors describe their domain
@@ -121,21 +121,21 @@ Decision: keep Queue a local FIFO, unbounded when capacity is omitted and bounde
 
 Apply when: changing queue APIs, examples, sharing claims, or native collection implementations.
 Evidence: [queue contract](../documentation/concurrency/queues.md); [FIFO and synchronized-sharing tests](../pkg/runtime/queue_test.go); [source conformance](../tests/e2e/testdata/accept/queues.ms); the user's Queue simplification and capacity correction.
-Verify: construction without capacity grows as needed; explicit zero or negative capacity faults. Bounded full enqueue returns false without changing contents, empty reads return none, draining permits reuse, and shared access under one wrapper passes race checks. Do not restore implicit synchronization or blocking channel semantics.
+Verify: construction without capacity grows as needed; explicit zero or negative capacity faults. Bounded full enqueue returns false without changing contents, empty reads return none, draining permits reuse, and shared access under one wrapper passes race checks. Do not restore implicit synchronization, and do not add channels; blocking waits belong to guards and `BlockingQueue`.
 
 ### Borrowing file descriptors must preserve pollable I/O
 
 Verified: `os.File.Fd()` can switch a pollable descriptor into blocking mode. Native metadata and sync helpers that use it can make later cancellation fail even though ordinary file tests pass. The host bridge borrows descriptors with `SyscallConn.Control` instead, preserving the runtime's deadline/cancellation behavior.
 
 Apply when: implementing native descriptor operations alongside cancellable file or stream adapters.
-Evidence: [native descriptor bridge](../internal/hostos/hostos.go), [metadata and file operations](../pkg/runtime/library_fs.go), and [pipe cancellation regression](../pkg/runtime/library_host_parity_test.go).
+Evidence: [native descriptor bridge](../internal/hostos/hostos.go), [metadata and file operations](../pkg/runtime/library_fs.go), and [pipe cancellation regression](../pkg/runtime/library_host_test.go).
 Verify: `TestExpandedHandleCancellationAndStreamAdapters` and runtime race checks, including cancellation after descriptor metadata access and closure through a shared adapter.
 
 ### One scheduler owns immediate and timed work
 
 Decision: the stdlib revamp merges the work service and scheduled timers into `Scheduler`, with one ID/status/cancel/restart/report/close lifecycle. Time retains sequential sleep and clock values. Admission/history caps are optional, as are native operation budgets/deadlines. Explicit zero must not be confused with omission.
 
-Apply when: changing scheduling, native adapters, optional limits, or Node/JS coverage mappings.
+Apply when: changing scheduling, native adapters, optional limits, or native adapter mappings.
 Evidence: [task declarations](../pkg/stdlib/tasks.ms), [limit contract](../documentation/standard-library/contracts.md), [runtime cases](../pkg/runtime/stdlib_revamp_test.go), and [native host mappings](../documentation/standard-library/filesystem.md#timers-and-scheduling).
 Verify: omit a cap and admit more work; supplied caps still reject excess. Restart returns a fresh ID after joining the old operation, and parent shutdown joins callback cleanup. Check native optional arguments in legacy host adapters as well as LibraryMethods.
 
@@ -240,3 +240,66 @@ Reloading the cell afterward returned an element the predicate never matched.
 Body-versus-dispatch comparisons share the bug, so use independent expected values
 and Go operation oracles. Evidence: [search regression](../pkg/runtime/list_find_mutation_test.go)
 and [called search/view/alias consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms).
+
+Verified: List equality must capture both outer headers before checking lengths
+and invoking element Equal. Reloading live length/cells let user Equal skip a
+mismatch after left shrink, panic after right shrink, extend membership on append,
+or switch arrays after reallocation. Capture retains visible backing writes and
+shallow payload references; eager cloning would also change the contract.
+Evidence: [independent equality mutation oracle](../pkg/runtime/list_equality_mutation_test.go)
+and [native/standalone user Equal consumers](../tests/e2e/testdata/accept/list-equality-mutation.ms).
+Verify both operands under shrink, append with spare capacity, forced growth and
+replacement of later cells, including callback counts and differing tail values.
+
+Verified: primitive storage keeps the mutable slice header on the authoritative
+`*List`, with two allocations for fresh nonempty backing. A captured `ListRange`
+is a traversal header, not another mutable owner. `Items` is only legacy boxed
+construction; typed consumers use storage-aware methods. Dynamic Optional reads
+still allocate at the value boundary, so benchmark the compiler's typed access
+and comparator consumers together with storage. Typed comparator constructors
+accept raw bodies and install exactly one guarded admission; passing an already
+guarded body doubles accounting. Evidence: [storage migration](../documentation/contributing/list-storage.md),
+[primitive Go oracles and allocation/guard tests](../pkg/runtime/list_storage_test.go),
+and [measured storage/access paths](../scripts/bench-lists/typed-storage.md).
+Verify: fresh constructors and effectful sized initialization use two allocations,
+typed at/unwrap uses none, generic forwarding retains identity, and comparator
+profiling/returns/cancellation/depth/fault frames match ordinary source calls.
+
+Verified: source-return consumption can be shared, but recovery must run directly
+in a deferred function. Boxed returns retain nil Values without a type assertion;
+typed comparator returns still assert Int and check delivery cancellation before
+releasing call depth. A generic payload assertion would reject the boxed nil case.
+Evidence: [call boundaries](../pkg/runtime/functions.go),
+[boxed return regressions](../pkg/runtime/performance_test.go), and
+[typed return cancellation](../pkg/runtime/list_storage_test.go).
+Verify those guard cases and allocation assertions; use
+`BenchmarkSourceDirectDispatch` for the source wrapper, since the raw method-site
+benchmark does not exercise it.
+
+Verified: primitive sized initializers must use direct matching typed writes
+after fresh-state/kind/bounds checks. Routing known typed construction through
+generic Len/Set made each initializer non-inlineable (Go 1.25.1 cost 118); the
+strict checks inline at cost 31 and preserve two construction allocations.
+Evidence: [strict initialization safety/allocation tests](../pkg/runtime/list_initialization_test.go),
+[approved runtime mitigation](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157742485).
+Verify actual effectful generated literals as well as this runtime control;
+inlining alone does not establish construction performance parity.
+
+Decision: the approved borrowed argument ABI is restricted to generated bodies
+that copy parameter Values and cannot retain/expose their incoming slice.
+`NewCompiledSourceFunction` delegates the ordinary source guard once; `for_each`
+reuses one buffer per invocation only for exact labels and this proof. Recursion
+must have independent buffers, unmarked callbacks may retain fresh arrays, and
+adapters conservatively drop the marker. Individual Value captures retain identity.
+Evidence: [approved contract](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157745861),
+[retention/reentry/checkpoint/guard/allocation tests](../pkg/runtime/borrowed_arguments_test.go).
+Verify actual emitted ordinary callbacks against the prior boxed baseline; a
+runtime marked-body control does not establish compiler proof or payload parity.
+
+### Collection order, failure modes, and stdio cancellation are decided
+
+Decision: Map and Set iterate in insertion order, and keys use the `Hashable` interface with `Equal`. Pick a failure mode by cause: absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults. Mutators use verbs (`add`, `remove`, `clear`) and return the receiver; do not reintroduce removed alias spellings (#358). Blocking stdin/stdout reads are not made cancellable; do not add runtime machinery to interrupt them.
+
+Apply when: adding or renaming collection, standard-library, or I/O members; choosing between Optional, Result, and a fault.
+Evidence: [failure-mode rule](../documentation/standard-library/contracts.md#choosing-a-failure-mode), [collection order and mutation](../documentation/core-language/types/collections.md), and [equality interfaces](../documentation/core-language/types/equality-and-hashing.md).
+Verify: iteration after removals and re-adds keeps insertion order for the remaining keys; a new member documents its failure mode and has a doc comment with an example.

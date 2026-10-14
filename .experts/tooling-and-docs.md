@@ -26,6 +26,23 @@ a callback body must not consume the parameter signature's width budget.
 The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
 exercises these boundaries alongside comments and literal spellings.
 
+Update: later feedback asks for compact output that reads well on a phone and a
+desktop. Wrap only when a group exceeds 88 columns or holds a comment or
+multi-statement suite; clause counts, argument counts, lambdas, and authored line
+breaks no longer force expansion. Reintroducing such rules spreads code again.
+
+### Inspect active List backing in the debugger
+
+Verified: typed List storage adds inactive nil slice fields to the native header.
+Rendering `Items` alone exposed bookkeeping or an empty fallback instead of source
+elements. Read the kind tag for expansion and indexed watches; Delve displays a
+uint8 as `1 = 0x1`, so parse its decimal prefix. Do not infer backing from a source
+primitive type because legacy/large literals can still be boxed. Evidence:
+[primitive and native DAP regressions](../extensions/vscode/tests/debug-adapter.test.js)
+and [storage-aware renderer](../extensions/vscode/debug-adapter.js).
+Verify all four primitive backings, legacy/empty Lists, generic types and watch
+indexing; source values must not expose private header fields or inactive lengths.
+
 ### Editor recovery must preserve delimiter continuations
 
 Verified: strict parsing accepts multiline parameters, but declaration recovery previously split their column-zero closing delimiters into separate chunks whenever any declaration was malformed. This discarded valid functions and their parameter scopes in the LSP. Recovery now consults the lexer for continuation boundaries while fresh declarations still synchronize after an unmatched opener. Completion snapshots also need a match arm, rather than an ordinary statement, to repair an unfinished `match` suite.
@@ -38,14 +55,14 @@ Verify: multiline function parameters retain their original LF/CRLF positions, n
 
 Decision: the user asked to keep standard type definitions in Manuscript so editor tooling can use them. Verified architecture: `pkg/stdlib/*.ms` supplies public schemas and signatures; `bindings.json` maps identities to native dispatch. Generated documentation and navigation consume this source-backed contract.
 
-Verified: bundled modules containing bodies use ordinary Manuscript parsing, checking, and lowering. Recheck reachable source implementations in each program rather than mutating shared registry symbols. Publish only module-owned exports: a checked module's name table also contains imported symbols and prelude types, which must not become new exports. Native declarations retain empty bodies and ABI bindings; all standard modules use ordinary parsing. Evidence: [standard source loader](../pkg/checker/standard.go), [reachability and visibility regressions](../pkg/compiler/source_stdlib_test.go), and [source navigation](../pkg/tooling/navigation_test.go).
+Verified: bundled modules containing bodies use ordinary Manuscript parsing, checking, and lowering. Recheck reachable source implementations in each program rather than mutating shared registry symbols. Publish only module-owned exports: a checked module's name table also contains imported symbols and prelude types, which must not become new exports. Native declarations retain empty bodies and ABI bindings; all standard modules use ordinary parsing. Evidence: [standard source loader](../pkg/checker/standard.go), [reachability and visibility regressions](../pkg/compiler/source_stdlib_test.go), and [source navigation](../pkg/tooling/lsp/navigation_test.go).
 
 Verified: navigation must continue after the first jump into a standard declaration. Register the virtual document scheme with the language client and retain the standard loader's resolved type references for tooling; reparsing library signatures as executable workspace modules loses their checked context. Keep virtual documents immutable and outside workspace source overlays.
 
 Verified: standard source syntax must also pass ordinary `parser.Parse` and formatting. A permissive library-only parser concealed missing bodies, mixed receiver signatures, and field-default errors. The user requires ordinary empty functions with colon headers, including receiver functions, and empty opaque schemas with colons. Do not replace these with a `native` modifier. Binding authorization belongs to checking. Disk editor documents reuse pinned bindings only for exact source matches, while syntax validity is independently tested. Both repo-check modes validate working-tree stdlib sources through the strict frontend and return a positioned error before checker initialization, so `make check`, `make repo-check`, and CI verification reject invalid syntax directly. Evidence: [all-source parsing and formatting](../pkg/stdlib/sources_test.go), [empty-function grammar boundaries](../pkg/parser/empty_declarations_test.go), [disk document checks](../pkg/tooling/lsp/standard_test.go), and [syntax gate regressions](../scripts/repo-check/main_test.go).
 
 Apply when: adding standard APIs, changing their signatures, or extending hover/navigation/documentation.
-Evidence: [source-definition request](codex://threads/01a12ce1-c9ff-70e4-bb2c-51749183e03b); [declaration ownership](../pkg/stdlib/README.md); [embedded sources](../pkg/stdlib/sources.go); [documentation generator](../scripts/docgen/main.go).
+Evidence: [declaration ownership](../pkg/stdlib/README.md); [embedded sources](../pkg/stdlib/sources.go); [documentation generator](../scripts/docgen/main.go).
 Evidence for continued navigation: [standard loader](../pkg/checker/standard.go), [virtual document analysis](../pkg/tooling/lsp/analysis.go), [navigation regression tests](../pkg/tooling/lsp/features_test.go), [read-only session test](../pkg/tooling/lsp/server_test.go), and [client restart test](../extensions/vscode/tests/extension.test.js).
 Verify: native calling signatures agree with the declarations, editor definitions reach the declaration and can follow imports and signature types from there, and generated references pass the existing freshness check. Update the source or generator when output changes. Regenerate from combined source after integration: adding List/Map to the prelude makes their receiver additions appear in the prelude reference as well as the collections reference. Conflict-free merges can still leave generated prelude/download artifacts stale; post-merge docs-check caught this for #262/#269, and combined generation restores those methods. Member-description extraction changes also require combined regeneration, even when merged signature strings remain current.
 
@@ -64,10 +81,10 @@ Verify: build the book with destination cleanup and confirm there is no standard
 Decision: public documentation should focus on Manuscript and what readers can build. Remove comparisons with other languages, coverage maps, implementation inventories, and review bookkeeping. Keep one getting-started guide; modules, references, and cleanup belong in the language reference, application builds in developer tools, and compiler internals in contributor documentation. Use clear topic names and keep the sidebar, overview, and reading order consistent. Teach basics, functions, types, control flow, errors, modules, and resource management before library services and concurrent work. Library topics should be directly reachable; group scheduling, sharing, synchronization, and queues with concurrent work. State availability and limits beside the affected feature. Use practical, example-first progression through variables, collections, functions, types, errors, and modules; keep indexes short and link to exact rules. Clearly separate intentional rejection examples from the usual runnable path. A basic destructuring example should not require task-group work and error propagation.
 
 Apply when: adding tutorials, revising design chapters, or explaining new syntax.
-Evidence: [documentation simplification discussion](codex://threads/01a12bf3-438d-7c72-a846-7443cea58e3a); [clarity and duplication request](codex://threads/01a12ae0-579b-7890-89d4-c0091474a2f5); [learn index](../documentation/learn/_index.md).
+Evidence: [learn index](../documentation/learn/_index.md).
 Verify: run the displayed source and commands with the stated prerequisites; check that the reading path introduces dependencies before using them. Sidebar and previous/next links use the same [navigation order](../website/data/navigation.toml); the [publication checks](../tests/docs/publication.test.cjs) compare their rendered order. Build the book with its current strict checks and link to canonical rules instead of repeating them.
 
-Verified: a `manuscript-example` annotation alone does not put a chapter into the executable example suite. The harness discovers introductory tutorials and explicitly listed guides; the logging guide needed an inventory entry before its annotated stdout example was checked or run. See [the example inventory](../tests/examples/examples_test.go) and [the logging example](../documentation/standard-library/packages/tooling.md). When adding complete examples outside the introductory chapters, confirm that their file appears in the harness and run its named subtest with `MANUSCRIPT_EXAMPLES_NATIVE=1`.
+Verified: a `manuscript-example` annotation alone does not put a chapter into the executable example suite. The harness discovers introductory tutorials and explicitly listed guides; the logging guide needed an inventory entry before its annotated stdout example was checked or run. See [the example inventory](../tests/examples/examples_test.go) and [the logging example](../documentation/standard-library/logging.md). When adding complete examples outside the introductory chapters, confirm that their file appears in the harness and run its named subtest with `MANUSCRIPT_EXAMPLES_NATIVE=1`.
 
 Task recipes must also preserve I/O failure: matching a failed stdout write and returning success hides an undelivered result. [Common tasks](../documentation/learn/common-tasks.md) forwards write/flush errors to a nonzero entry status. The same [example harness](../tests/examples/examples_test.go) supplies isolated files, stdin, and loopback HTTP plus additional expected-failure cases; type checking alone cannot establish the displayed output, EOF handling, or failure status. See [annotation fields and native execution](../documentation/contributing/development.md#conformance-and-coverage).
 
@@ -76,7 +93,7 @@ Task recipes must also preserve I/O failure: matching a failed stdout write and 
 Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. The later requirement makes the bundled toolchain mandatory: no external override, PATH fallback, or ambient Go configuration may select another tool. OS-specific prerequisites such as Apple debugserver remain permitted. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
 
 Apply when: adding CLI tooling or making claims about installation requirements.
-Evidence: [ms doc request](codex://threads/01a12d4a-0182-7672-aa00-53f2bdfde033); [native build contract](../documentation/developer-tooling/builds/reproducibility.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
+Evidence: [native build contract](../documentation/developer-tooling/builds/reproducibility.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
 Verify: exercise a copied binary outside the checkout with empty caches, no Go on PATH, and package downloads disabled. Include ordinary/debug builds and profiling so the reduced payload covers emitted runtime references. Confirm actual debugger backend prerequisites separately; do not generalize one platform’s prerequisites to all tooling.
 
 Verified: embedding Delve uses its public `service`/`pkg` APIs, not restricted
@@ -128,5 +145,12 @@ Verify: regenerate both reference sources and the website with destination clean
 Verified: agents act on a diagnostic only when it names the cause, the location, and a concrete fix (nearest name, import line, valid options). Messages therefore read `<cause>; <fix>`. `Diagnostic.Code` classifies only the text before the first `; `, so fix text cannot change a rule code. Partial parsing recovers from an unterminated delimiter by matching the message prefix, and the lexer reports it at end of file; moving that position or exact wording breaks editor recovery. A follow-on error that only restates `<invalid>` after an unknown name or operand mismatch is suppressed, but a genuine mismatch that mentions `<invalid>` (callback arity) must still surface.
 
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
-Evidence: [message-shape rule](../documentation/developer-tooling/source/diagnostics.md), [catalogue](../documentation/contributing/diagnostics-catalogue.md), [checker hints](../pkg/checker/hints.go), [hint tests](../pkg/checker/hints_test.go), and [recovery](../pkg/parser/partial.go).
+Evidence: [message-shape rule](../documentation/developer-tooling/source/diagnostics.md), [checker hints](../pkg/checker/hints.go), [hint tests](../pkg/checker/hints_test.go), and [recovery](../pkg/parser/partial.go).
 Verify: run `go test ./pkg/checker ./pkg/parser ./pkg/tooling/lsp ./internal/cli`; extend the hint tests with the new message.
+
+### Debug by Manuscript position, not Go symbol
+Verified: in a Debug build `main.main` is generated glue (`initialize()` then the runtime entry), and each Manuscript function is a closure under `initialize` (`main.initialize.func1.1`), so Go symbols never name user code. Line directives map `file.ms:line` stably. Generated position bookkeeping between statements inherits phantom line numbers (a step can stop on a blank line after a statement), and `ms inspect` function entities carry only a header line, so function extent comes from the next declaration and a function breakpoint uses the first statement after the header. Scripted `ms debug` resolves names through inspection for this reason.
+
+Apply when: changing source maps, line directives, inspection spans, or the scripted debugger.
+Evidence: [session driver](../internal/debugger/session.go), [name mapping](../internal/cli/debug_names.go), [end-to-end debug tests](../tests/e2e/debug_script_test.go), [scripted debugging](../documentation/developer-tooling/debugging/debugger-integration.md#scripted-debugging-for-agents).
+Verify: `go test ./tests/e2e -run TestDebug`; a `next` over a statement must land on the next statement line, not a blank line.

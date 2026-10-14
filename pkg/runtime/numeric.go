@@ -9,25 +9,17 @@ import (
 	"strings"
 )
 
-func Integer(text string) Value {
-	n, err := strconv.ParseInt(text, 10, 64)
-	if err != nil {
-		return Panic("Int literal out of range")
-	}
-	return n
-}
-func Float(text string) Value { n, _ := strconv.ParseFloat(text, 64); return n }
 func checkedAdd(a, b int64) int64 {
 	r := a + b
 	if b > 0 && r < a || b < 0 && r > a {
-		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+		intOverflow()
 	}
 	return r
 }
 func checkedSub(a, b int64) int64 {
 	r := a - b
 	if b < 0 && r < a || b > 0 && r > a {
-		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+		intOverflow()
 	}
 	return r
 }
@@ -36,11 +28,11 @@ func checkedMul(a, b int64) int64 {
 		return 0
 	}
 	if a == math.MinInt64 && b == -1 || b == math.MinInt64 && a == -1 {
-		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+		intOverflow()
 	}
 	r := a * b
 	if r/b != a {
-		Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+		intOverflow()
 	}
 	return r
 }
@@ -56,7 +48,7 @@ func Unary(op string, value Value) Value {
 		switch v := value.(type) {
 		case int64:
 			if v == math.MinInt64 {
-				return Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+				intOverflow()
 			}
 			return -v
 		case float64:

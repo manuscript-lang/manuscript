@@ -24,8 +24,24 @@ position separately. The printer replaces each entire label line with a
 column-one `//line` directive and checks that every marker was printed exactly
 once. These markers use a separate counter from generated local names. Nested
 closures, default arguments, actual loop labels, and generated fallback returns
-retain their own locations. Runtime `SourceAt` and `TraceSource` calls remain
-ordinary AST nodes with the same operand evaluation order.
+retain their own locations. A statement that prints on several Go lines repeats
+its directive, in `/*line*/` form on lines that can hold a call, so every
+physical line keeps the statement's source line. `Seq` orders operands.
+
+A `let` bound to a typed direct call that returns a `Result` or `Optional` stays
+a typed `Result[T]`/`Option[T]` variable when every use of the name is the
+scrutinee of a `match` in its own function and no closure captures it. Any other
+use, a `var`, or a capture keeps the boxed `Alternative`.
+
+Source functions carry no per-call frame bookkeeping. A fault captures its frames
+once, where it is created, from the Go stack: `RegisterSource` and `Named` map
+each generated function to its source name, and the `//line` directives give the
+file and line. Frames therefore hold lines only, and a call spanning several
+source lines reports the line of its statement. Only direct functions in a
+recursive call cycle, and dynamic entries, call `Enter`/`Exit` to count depth;
+the depth limit and cancellation are sampled every 256th entry, so the limit may
+be exceeded by up to 256 frames and a function without loops or counted calls
+does not observe cancellation.
 
 Lowering should erase high-level abstractions when checked facts establish an
 equivalent concrete Go representation. Building AST nodes alone does not make
@@ -98,6 +114,20 @@ representation and callable ABI:
   profiling, and cancellation. Test functions with and without cleanup across
   return, fault, cancellation, match exits, and nested closures, and measure the
   call benchmark with the same ABI before and after.
+- A source method of a nongeneric record or alternative is a direct Go function
+  (`method_N`) taking its receiver after `ctx`, with typed scalar parameters and
+  result like a top-level direct function. A call whose receiver has that exact
+  checked type and supplies every argument in order calls it without runtime
+  method resolution (`planDirectMethod`); views, generic receivers, defaults and
+  reordered labels keep `CallMethod`. The implementation table still registers
+  the method, so dynamic calls forward to the same function. Test receiver and
+  argument order, `try` on a method result, and fault frame names.
+- A `try` nested in a statement's value (`a + try f()`, `g(try f())`) is evaluated
+  ahead of the statement with an early Go return, like a whole-statement `try`,
+  when everything the statement evaluates before it is a literal, a name or an
+  earlier `try` (`hoistTries`). Otherwise (short-circuit operands, earlier calls,
+  closures, `match`) it keeps the panic form. Test failure order with side
+  effects before and after each `try`.
 
 Run `toolchain/go/bin/go run ./scripts/bench-lowering -production -count=5`
 to retain and measure the actual generated code. It covers an empty callable, a
@@ -133,3 +163,14 @@ benchmark candidates.
 - [Source guarantees and Go representations](value-representations.md)
 - [Evaluation order and call preparation](evaluation-order.md)
 - [Cleanup and fault lowering](cleanup-and-faults.md)
+- A nongeneric top-level function whose checked result is `Result[T, E]` or
+  `Optional[T]` returns the runtime's `Result[T]`/`Option[T]` (`T` a Go scalar
+  or `Value`; the error cause stays a `Value`) instead of an `Alternative`.
+  Only `return`, statement-level `try`, and `match` on a typed call produce or
+  consume the typed form; every other consumer, including arguments, equality,
+  formatting, first-class function values, and the dynamic wrapper, receives the
+  boxed `Alternative` with the call's own type key, so nothing dynamic observes a
+  typed value. Returns inside generated match closures stay boxed and are
+  unboxed by the function's recovery path. Test display and equality parity,
+  error views, closures that return, and `try` in nested positions, and measure
+  the `try`/`match` benchmark before and after.

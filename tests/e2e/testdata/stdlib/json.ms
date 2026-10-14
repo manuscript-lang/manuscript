@@ -15,14 +15,9 @@ test "JSON exact numbers Unicode and nested roundtrip":
     if value(parse(text: "\"\\uD83D\\uDE00\"")) != JsonValue.StringValue("😀"): return panic(
         "surrogate pair"
     )
-    if (
-        value(
-            stringify(
-                value: value(parse(text: "null")),
-                max_bytes: 4
-            )
-        ) != "null"
-    ): return panic("exact budget")
+    if (value(stringify(value: value(parse(text: "null")), max_bytes: 4)) != "null"): return panic(
+        "exact budget"
+    )
 
 test "JSON rejects duplicate keys malformed Unicode and trailing values":
     let invalid: Result[JsonValue, JsonError] = error(JsonError.InvalidData)
@@ -39,29 +34,39 @@ test "JSON rejects duplicate keys malformed Unicode and trailing values":
 
 test "JSON independently enforces byte depth and value budgets":
     let limited: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
-    if (
-        parse(
-            text: "null",
-            limits: JsonLimits(max_bytes: 3)
-        ) != limited
-    ): return panic("JSON byte budget")
-    if (
-        parse(
-            text: "[[[]]]",
-            limits: JsonLimits(max_depth: 2)
-        ) != limited
-    ): return panic("JSON depth budget")
-    if (
-        parse(
-            text: "[1,2]",
-            limits: JsonLimits(max_values: 2)
-        ) != limited
-    ): return panic("JSON value budget")
+    if (parse(text: "null", limits: JsonLimits(max_bytes: 3)) != limited): return panic(
+        "JSON byte budget"
+    )
+    if (parse(text: "[[[]]]", limits: JsonLimits(max_depth: 2)) != limited): return panic(
+        "JSON depth budget"
+    )
+    if (parse(text: "[1,2]", limits: JsonLimits(max_values: 2)) != limited): return panic(
+        "JSON value budget"
+    )
 
     let invalid: Result[JsonValue, JsonError] = error(JsonError.InvalidInput)
-    if (
-        parse(
-            text: "null",
-            limits: JsonLimits(max_bytes: -1)
-        ) != invalid
-    ): return panic("negative JSON budget")
+    if (parse(text: "null", limits: JsonLimits(max_bytes: -1)) != invalid): return panic(
+        "negative JSON budget"
+    )
+
+test "JSON stringify rejects number text with trailing whitespace":
+    let padded: Result[String, JsonError] = error(JsonError.InvalidData)
+    if stringify(value: JsonValue.NumberValue("1\n")) != padded: return panic(
+        "trailing newline"
+    )
+    if stringify(value: JsonValue.NumberValue("1 ")) != padded: return panic(
+        "trailing space"
+    )
+
+test "JSON parse bounds nesting even without a depth limit":
+    var text = ""
+    var closing = ""
+    var i = 0
+
+    while i < 150000:
+        text = text + "["
+        closing = closing + "]"
+        i = i + 1
+
+    let limited: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
+    if parse(text: text + closing) != limited: return panic("unbounded nesting")

@@ -21,10 +21,9 @@ fn parity(value: Int) -> Int: value % 2
 
 test "list search callbacks empty identities and folding":
     let list = [-1, 2, 0, 3]
-    if (
-        list.find(positive) != some(2)
-        or list.find_last(positive) != some(3)
-    ): return panic("find")
+    if (list.find(positive) != some(2) or list.find_last(positive) != some(3)): return panic(
+        "find"
+    )
     if (
         list.find_index(positive) != some(1)
         or list.find_last_index(positive) != some(3)
@@ -92,16 +91,9 @@ test "set algebra removes duplicates and preserves values":
     if not left.is_disjoint_from(([3]).to_set()): return panic("disjoint")
 
 test "collection constructors validate bounds and exact limits":
-    if (
-        value(
-            range(
-                start: 3,
-                end: -1,
-                step: -1,
-                max_items: 4
-            )
-        ) != [3, 2, 1, 0]
-    ): return panic("descending range")
+    if (value(range(start: 3, end: -1, step: -1, max_items: 4)) != [3, 2, 1, 0]): return panic(
+        "descending range"
+    )
     if value(filled(value: "x", count: 2)) != ["x", "x"]: return panic("filled")
 
     let invalid: Result[List[Int], CollectionError] = error(
@@ -112,12 +104,9 @@ test "collection constructors validate bounds and exact limits":
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
-    if range(
-        start: 0,
-        end: 3,
-        step: 1,
-        max_items: 2
-    ) != limited: return panic("range budget")
+    if range(start: 0, end: 3, step: 1, max_items: 2) != limited: return panic(
+        "range budget"
+    )
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
     let limited: Result[List[Int], CollectionError] = error(
@@ -133,11 +122,9 @@ test "huge sizes return LimitExceeded instead of exhausting memory":
             max_items: 9223372036854775807
         ) != limited
     ): return panic("filled huge explicit limit")
-    if range(
-        start: 0,
-        end: 9223372036854775807,
-        step: 1
-    ) != limited: return panic("range huge")
+    if range(start: 0, end: 9223372036854775807, step: 1) != limited: return panic(
+        "range huge"
+    )
 
 test "collection builders freeze all accumulated values":
     let list = ListBuilder[Int]()
@@ -157,7 +144,7 @@ test "collection builders freeze all accumulated values":
 
 test "imported map add interoperates with with_entry":
     let values = Map[String, Int]().add("a", 1)
-    values.with_entry("b", 2).add(value: 3, key: "a")
+    values.add("b", 2).add(value: 3, key: "a")
     let add = values.add
     add("c", 4)
     if values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4]: return panic(

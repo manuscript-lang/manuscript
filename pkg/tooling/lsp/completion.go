@@ -140,7 +140,11 @@ func (k *completer) addImport(s *checker.Symbol, path string) {
 	if s.Kind == syntax.KindType {
 		kind = 7
 	}
-	k.add(s.Name, kind, s.Type, 4, callableText(s.Name, s.Type, s.Variables, k.snippets), s.Decl)
+	insert := callableText(s.Name, s.Type, s.Variables, k.snippets)
+	if s.IsConstant() {
+		kind, insert = 21, s.Name
+	}
+	k.add(s.Name, kind, s.ValueType(), 4, insert, s.Decl)
 	if len(k.items) > before {
 		item := &k.items[len(k.items)-1]
 		item.Detail += " — " + path
@@ -220,6 +224,44 @@ func (k *completer) scopeItems() {
 			symbols = result.Program.ModuleSymbols(m.File)
 		}
 	}
+	if c.typeContext && analysis.expression == nil {
+		// Signature markers are type syntax rather than captured expressions.
+		// Use the checked variables of the enclosing callable before offering
+		// module symbols, so a type parameter retains its own identity and arity.
+		for _, symbol := range symbols {
+			decl := symbol.Decl
+			if decl == nil || decl.Pos.File != moduleFile(result, analysis.document) || decl.Pos.Offset > c.start {
+				continue
+			}
+			headerEnd := len(analysis.document.Text)
+			if len(decl.Body) > 0 {
+				headerEnd = decl.Body[0].Pos.Offset
+			} else {
+				depth := 0
+				for _, token := range editorTokens(analysis.document.Text[decl.Pos.Offset:]) {
+					switch token.kind {
+					case "(", "[", "{":
+						depth++
+					case ")", "]", "}":
+						depth--
+					case ":":
+						if depth == 0 {
+							headerEnd = decl.Pos.Offset + token.start
+						}
+					}
+					if headerEnd != len(analysis.document.Text) {
+						break
+					}
+				}
+			}
+			if c.end > headerEnd {
+				continue
+			}
+			for _, variable := range symbol.Variables {
+				k.add(variable.Name, 25, variable, 1, variable.Name, nil)
+			}
+		}
+	}
 	for name, s := range symbols {
 		if c.typeContext && s.Kind != syntax.KindType {
 			continue
@@ -244,7 +286,10 @@ func (k *completer) scopeItems() {
 				insert = callableText(name, signature, s.Variables, k.snippets)
 			}
 		}
-		k.add(name, kind, s.Type, 2, insert, s.Decl)
+		if s.IsConstant() {
+			kind, insert = 21, name
+		}
+		k.add(name, kind, s.ValueType(), 2, insert, s.Decl)
 	}
 	// Preserve useful declaration suggestions even when another declaration has
 	// malformed syntax. Scope-sensitive results above only use checked snapshots.
@@ -263,11 +308,15 @@ func (k *completer) scopeItems() {
 
 // keywordItems offers statement and declaration keywords (with snippet
 // templates), literals, and the built-in type names.
+// statementKeywords start a statement inside a body; the rest of the reserved
+// words continue another construct (else, in) or start a declaration.
+var statementKeywords = []string{"let", "var", "if", "else", "for", "while", "match", "with", "return", "break", "continue"}
+
 func (k *completer) keywordItems() {
 	d, c := k.d, k.c
 	lineStart := strings.LastIndex(d.Text[:c.start], "\n") + 1
 	if strings.TrimSpace(d.Text[lineStart:c.start]) == "" {
-		words := []string{"let", "var", "if", "else", "for", "while", "match", "with", "return"}
+		words := statementKeywords
 		if lineStart == c.start {
 			words = []string{"fn", "type", "interface", "impl", "import", "export", "test"}
 		}
@@ -288,7 +337,19 @@ func (k *completer) keywordItems() {
 		}
 	}
 	if c.typeContext {
-		for _, name := range []string{"Int", "Float", "String", "Bool", "Unit", "Never", "Equal", "Hashable", "Optional", "Result", "Error", "List", "Map", "Set"} {
+		symbols := k.analysis.scope.Symbols
+		if len(symbols) == 0 && k.result.Program != nil {
+			if m := module(k.result, k.analysis.document); m != nil {
+				symbols = k.result.Program.ModuleSymbols(m.File)
+			}
+		}
+		for _, name := range checker.PreludeTypeNames() {
+			if _, bound := k.analysis.scope.Bindings[name]; bound {
+				continue
+			}
+			if symbol := symbols[name]; symbol != nil && symbol.Kind != syntax.KindType {
+				continue
+			}
 			k.add(name, 7, nil, 3, name, nil)
 		}
 	}
@@ -613,6 +674,8 @@ func importCompletion(d document, docs map[string]document, c cursorContext, sni
 				kind := 3
 				if s.Kind == syntax.KindType {
 					kind = 7
+				} else if s.IsConstant() {
+					kind = 21
 				}
 				add(s.Name, path, kind, span{Position(d.Text, c.start), Position(d.Text, c.end)}, s.Name)
 			}

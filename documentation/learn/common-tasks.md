@@ -213,7 +213,7 @@ Save as `get.ms`. Import `network` from `@std/net.ms`; the buffered response has
 <!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from HTTP\n"},"stdout":"hello from HTTP\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1},{"args":["invalid URL"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/cli.ms"
-import HttpError from "@std/http.ms"
+import {HttpError, HttpMethod, headers} from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"
 
@@ -222,10 +222,10 @@ fn run() -> Result[Unit, Error]:
     if url.is_none():
         return error(HttpError.InvalidInput)
     let response = try network().request(
-        "GET", url.unwrap(), Map[String, String](), "".to_bytes(),
+        HttpMethod.Get, url.unwrap(), headers(), "".to_bytes(),
         max_response_bytes: 1048576
     )
-    if response.status != 200:
+    if response.metadata().status != 200:
         return error(HttpError.InvalidData)
     let text = response.body.to_text()
     if text.is_none():

@@ -31,11 +31,7 @@ type Explicit:
 
 test "record defaults and explicit overrides":
     let data = Data()
-    if (
-        data.number != 5
-        or data.values.at(0).unwrap() != 5
-        or data.callback() != 5
-    ):
+    if (data.number != 5 or data.values.at(0).unwrap() != 5 or data.callback() != 5):
         return panic("dependent field and closure defaults")
 
     let changed = Data(number: 0)

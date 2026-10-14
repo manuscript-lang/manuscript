@@ -56,6 +56,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 	}
 	var initialize []ast.Stmt
 	g.planDirect(functions, options)
+	g.planAltLets()
 	for _, s := range functions {
 		g.module = s.Module
 		var value ast.Expr
@@ -63,6 +64,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			var decl *ast.FuncDecl
 			decl, value = g.directDeclaration(s)
 			file.Decls = append(file.Decls, decl)
+			initialize = append(initialize, evaluated(runtimeCall("RegisterSource", ident(decl.Name.Name), textLiteral(s.Decl.Name))))
 		} else if len(s.Variables) > 0 {
 			var vars []string
 			for _, v := range s.Variables {
@@ -100,16 +102,30 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			continue
 		}
 		flushNatives()
+		if direct := g.directMethods[m.ID]; direct != nil {
+			decl, forward := g.directMethodDeclaration(m, direct)
+			file.Decls = append(file.Decls, decl)
+			initialize = append(initialize, evaluated(runtimeCall("RegisterSource", ident(decl.Name.Name), textLiteral(m.Receiver.Name+"."+m.Decl.Name))))
+			var labels []string
+			for _, p := range m.Type.Params {
+				labels = append(labels, p.Name)
+			}
+			name := "direct" + strconv.Itoa(len(initialize)+1)
+			initialize = append(initialize, define(name, forward))
+			fields = append(fields, keyed("Direct", ident(name)), keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(runtimeCall("BoundDirect", ident("receiver"), stringSlice(labels), g.key(m.Type.Result), ident(name))))))
+			initialize = append(initialize, evaluated(runtimeCall("Register", composite(runtimeName("Implementation"), fields...))))
+			continue
+		}
 		labels, resultKey, position, body := g.functionParts(m.Receiver.Name+"."+m.Decl.Name, m.Decl.Params, m.Decl.Result, m.Decl.Body, program.ParameterBindings(m.Decl), program.SelfBinding(m.Decl), m.Type)
 		if len(m.Variables) == 0 && !mentionsTypeBindings(body) {
 			// A nongeneric method body needs only its receiver, so call sites
 			// can run it without building a bound Function for each call.
 			name := "direct" + strconv.Itoa(len(initialize)+1)
 			direct := closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("receiver", runtimeName("Value")), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...)
-			initialize = append(initialize, define(name, runtimeCall("SourceDirect", textLiteral(position), resultKey, direct)))
+			initialize = append(initialize, define(name, runtimeCall("SourceDirect", textLiteral(position), resultKey, runtimeCall("NamedMethod", textLiteral(m.Receiver.Name+"."+m.Decl.Name), direct))))
 			fields = append(fields, keyed("Direct", ident(name)), keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(runtimeCall("BoundDirect", ident("receiver"), stringSlice(labels), resultKey, ident(name))))))
 		} else {
-			fn := runtimeCall("NewSourceFunction", stringSlice(labels), resultKey, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...))
+			fn := runtimeCall("NewSourceFunction", stringSlice(labels), resultKey, textLiteral(position), runtimeCall("Named", textLiteral(m.Receiver.Name+"."+m.Decl.Name), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...)))
 			fields = append(fields, keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(fn))))
 		}
 		initialize = append(initialize, evaluated(runtimeCall("Register", composite(runtimeName("Implementation"), fields...))))

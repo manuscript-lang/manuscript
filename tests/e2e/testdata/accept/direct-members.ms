@@ -27,15 +27,12 @@ test "list members match generic dispatch":
     let points: List[Point] = [Point(x: 1, y: 2)]
     if not points.contains(Point(x: 1, y: 2)):
         return panic(message: "record contains")
-    if not contains_generic(
-        values: points,
-        value: Point(x: 1, y: 2)
-    ):
+    if not contains_generic(values: points, value: Point(x: 1, y: 2)):
         return panic(message: "generic contains")
 
 test "map and set members":
     let m: Map[String, Int] = {}
-    let updated = m.with_entry("a", 1).with_entry("a", 2).with_entry("b", 3)
+    let updated = m.add("a", 1).add("a", 2).add("b", 3)
     if not (updated.get("a").unwrap() == 2):
         return panic(message: "overwrite")
     if updated.get("z").is_some():
@@ -44,7 +41,7 @@ test "map and set members":
         return panic(message: "map contains")
 
     let s: Set[Int] = Set()
-    let grown = s.with_value(1).with_value(1).with_value(2)
+    let grown = s.add(1).add(1).add(2)
     if not (grown.length() == 2):
         return panic(message: "set size")
     if not grown.contains(2):

@@ -40,3 +40,16 @@ func BenchmarkEqualInt(b *testing.B) {
 		EqualIn(ctx, int64(1), int64(2))
 	}
 }
+
+func BenchmarkMapRemoveFront(b *testing.B) {
+	ctx := RootExecution()
+	for i := 0; i < b.N; i++ {
+		m := &Map{Type: "@std/Map[@std/Equal][Int]"}
+		for k := int64(0); k < 20000; k++ {
+			m.put(ctx, k, k)
+		}
+		for k := int64(0); k < 20000; k++ {
+			m.removeAt(ctx, m.find(ctx, k))
+		}
+	}
+}

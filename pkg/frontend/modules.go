@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/project"
@@ -28,7 +27,7 @@ func LoadFile(filename string, options Options) Graph {
 	if options.Module != "" {
 		config.Entry = options.Module
 	}
-	overlay, err := canonicalOverlay(config.Root, options.Overlay)
+	overlay, err := project.CanonicalOverlay(config.Root, options.Overlay)
 	if err != nil {
 		graph.Diagnostics = []syntax.Diagnostic{diagnostic(filename, "resolution", err)}
 		return graph
@@ -81,30 +80,6 @@ func sourceProject(filename string) (project.Project, bool, error) {
 	}
 	root, err := filepath.EvalSymlinks(filepath.Dir(absolute))
 	return project.Project{Root: root, Entry: absolute, Aliases: map[string]string{}}, false, err
-}
-
-// Canonicalize editor snapshots exactly as filesystem reads and imports are
-// canonicalized. Two spellings of one file cannot select conflicting content.
-func canonicalOverlay(root string, overlay map[string]string) (map[string]string, error) {
-	normalized := make(map[string]string, len(overlay))
-	filenames := make([]string, 0, len(overlay))
-	for filename := range overlay {
-		filenames = append(filenames, filename)
-	}
-	sort.Strings(filenames)
-	for _, filename := range filenames {
-		source := overlay[filename]
-		canonical, err := project.SourcePath(root, filename, overlay)
-		if err != nil {
-			// Documents outside this project never enter its module graph.
-			continue
-		}
-		if previous, ok := normalized[canonical]; ok && previous != source {
-			return nil, fmt.Errorf("conflicting editor overlays for %s; two spellings of one path carry different unsaved contents, so send a single snapshot per file", canonical)
-		}
-		normalized[canonical] = source
-	}
-	return normalized, nil
 }
 
 type moduleLoader struct {

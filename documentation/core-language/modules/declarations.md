@@ -27,7 +27,24 @@ Other standard declarations are explicit imports from the compiler-supplied `@st
 
 An unqualified case shorthand is considered only when ordinary lexical name lookup finds no binding or declaration of that name. The candidate cases come from visible alternative types from the prelude, declared in the module, or imported by name. Exactly one candidate is required; an expected type cannot choose among multiple candidates. `Type.Case` explicitly selects the nominal alternative. Match-pattern case lookup uses the scrutinee type, as specified by [pattern matching](../control-flow/pattern-matching.md).
 
-Import renaming, namespace imports, re-exports, and wildcard imports have no syntax. A dotted type path does not create a module namespace; callers import each needed exported type by its own name. Qualified alternative constructors remain supported. Module-level executable statements and bindings are rejected; local-value examples elsewhere are function-body fragments.
+Import renaming, namespace imports, re-exports, and wildcard imports have no syntax. A dotted type path does not create a module namespace; callers import each needed exported type by its own name. Qualified alternative constructors remain supported. Module-level executable statements and `var` bindings are rejected; local-value examples elsewhere are function-body fragments. A module-level `let` declares a [constant](#constants).
+
+## Constants
+
+A module-level `let` names a value that every function in the module can use. Add `export` to share it with other modules.
+
+```manuscript
+export let MAX_ITEMS = 100
+let NAMES: List[String] = ["Ada", "Grace"]
+let LIMIT = MAX_ITEMS * 2
+
+fn is_full(count: Int) -> Bool:
+    return count >= LIMIT
+```
+
+The type comes from the annotation or the initializer. The initializer is a constant expression: literals, text with constant interpolations, operators, list and map literals, payloadless cases such as `none` or `State.Ready`, and other constants. Calls, constructors, functions, and `match` belong in a function. A constant that depends on itself is rejected.
+
+A constant has no storage and no initialization order. Each use evaluates the initializer, as if the value were written at that place, so a list constant always starts as a fresh list and changing a copy never affects the constant or another user. A local binding or parameter with the same name shadows the constant. Constants cannot be assigned, and `main` must be a function.
 
 ## A visible contract
 

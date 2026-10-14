@@ -42,12 +42,9 @@ test "compression omission equals explicit level six for every format":
         if value(method(data, level: 6)) != expected: return panic(
             "explicit bound level"
         )
-        if value(
-            format.compress(
-                data,
-                max_bytes: expected.length()
-            )
-        ) != expected: return panic("exact output budget")
+        if value(format.compress(data, max_bytes: expected.length())) != expected: return panic(
+            "exact output budget"
+        )
         if value(format.decompress(expected)) != data: return panic("typed round trip")
         if value(decompress(expected, name)) != data: return panic("string round trip")
 
@@ -59,14 +56,9 @@ test "compression omission equals explicit level six for every format":
 
         let full = forwarded(method)
         let free = forwarded(compress)
-        if value(
-            free(
-                data,
-                name,
-                6,
-                none
-            )
-        ) != expected: return panic("forwarded string call")
+        if value(free(data, name, 6, none)) != expected: return panic(
+            "forwarded string call"
+        )
         if value(full(data, 6, none)) != expected: return panic(
             "full-signature forwarded call"
         )
@@ -115,10 +107,7 @@ test "compression default preparation retains supplied argument order":
     let log: List[String] = []
     let data = "data".to_bytes()
     let encoded = value(
-        compress(
-            format: chosen(log, "gzip"),
-            data: supplied(log, data)
-        )
+        compress(format: chosen(log, "gzip"), data: supplied(log, data))
     )
     if log != ["format", "data"]: return panic("default reordered supplied arguments")
     if value(decompress(encoded, "gzip")) != data: return panic(

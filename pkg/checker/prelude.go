@@ -20,6 +20,14 @@ func isPreludeSymbol(symbol *Symbol) bool {
 	return symbol != nil && slices.Contains(standardPreludeNames, symbol.Name) && standardSymbols[symbol.Name] == symbol
 }
 
+// primitiveNames are the built-in types every module sees without an import.
+var primitiveNames = []string{"Bool", "Int", "Float", "String", "Unit", "Never"}
+
+// PreludeTypeNames lists every type name available without an import.
+func PreludeTypeNames() []string {
+	return append(append([]string{}, primitiveNames...), standardPreludeNames...)
+}
+
 func (c *checker) addStandardPrelude() {
 	for _, name := range standardPreludeNames {
 		symbol := standardSymbols[name]

@@ -473,7 +473,7 @@ export fn main() -> Int:
     if clock().now() - before < 0.milliseconds:
         return 1
     with service = Scheduler(limit: 1):
-        let task = fn() -> Result[Unit, String]:
+        let task = fn() -> Result[Unit, Error]:
             close_output()
             return ok(value: unit)
         let id = match service.start(task):

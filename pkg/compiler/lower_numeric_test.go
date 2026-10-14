@@ -36,6 +36,8 @@ fn fraction(value: Float) -> Float:
 func TestDirectNativeCollectionLowering(t *testing.T) {
 	result := compiler.CompileSource("collections.ms", `fn read(values: List[Int], index: Int) -> Int:
     return values.at(index).unwrap()
+fn stored(values: List[Int], index: Int) -> Optional[Int]:
+    return values.at(index)
 fn bound(values: List[Int]) -> Optional[Int]:
     let at = values.at
     return at(0)
@@ -49,7 +51,7 @@ impl At for Custom:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListAt(", "rt.OptionalUnwrap(", "rt.NativeMemberResult(", "rt.Invoke("} {
+	for _, operation := range []string{"rt.ListAt(", "rt.ListAtUnwrap(", "rt.NativeMemberResult(", "rt.Invoke("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing expected dispatch %s", operation)
 		}
@@ -112,12 +114,14 @@ fn bound(n: Int) -> Result[Int, String]:
     return ok(v + 1)
 fn nested(n: Int) -> Result[Int, String]:
     return ok((try parse(n: n)) + 1)
+fn guarded(n: Int) -> Result[Bool, String]:
+    return ok(n > 0 and (try parse(n: n)) > 0)
 `, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
 	if strings.Count(result.Source, "rt.Try(") != 1 {
-		t.Fatalf("only the nested try keeps the panic form:\n%s", result.Source)
+		t.Fatalf("only the try under a short-circuit keeps the panic form:\n%s", result.Source)
 	}
 }
 
@@ -148,7 +152,7 @@ func TestDirectListAppendAndIsEmptyLowering(t *testing.T) {
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListAppend(", "rt.ListIsEmpty("} {
+	for _, operation := range []string{"rt.ListAppendInt(", "rt.ListIsEmpty("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing direct %s:\n%s", operation, result.Source)
 		}
@@ -160,10 +164,10 @@ func TestDirectKeyedAndStringLowering(t *testing.T) {
     l.contains(1)
     m.contains("a")
     m.get("a")
-    m.with_entry("a", 1)
-    m.with_entry(value: 2, key: "b")
+    m.add("a", 1)
+    m.add(value: 2, key: "b")
     s.contains(1)
-    s.with_value(1)
+    s.add(1)
     t.at(0)
 `, compiler.Options{})
 	if !result.Success() {
@@ -174,7 +178,7 @@ func TestDirectKeyedAndStringLowering(t *testing.T) {
 			t.Fatalf("missing direct %s", operation)
 		}
 	}
-	if strings.Count(result.Source, "rt.MapWithEntry(") != 1 || !strings.Contains(result.Source, `"with_entry"`) {
+	if strings.Count(result.Source, "rt.MapWithEntry(") != 1 || !strings.Contains(result.Source, `"add"`) {
 		t.Fatalf("reordered labels must keep ordinary dispatch:\n%s", result.Source)
 	}
 }
@@ -202,8 +206,8 @@ fn reordered(c: Counter) -> Int:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	if strings.Count(result.Source, "rt.CallMethod(") != 1 || strings.Count(result.Source, "var method1 rt.MethodSite") != 1 {
-		t.Fatalf("only the in-order concrete call is direct:\n%s", result.Source)
+	if strings.Count(result.Source, "rt.CallMethod(") != 0 || !strings.Contains(result.Source, "func method_") || !strings.Contains(result.Source, "return method_") && !strings.Contains(result.Source, "= method_") {
+		t.Fatalf("the in-order concrete call is a direct Go call:\n%s", result.Source)
 	}
 	if strings.Count(result.Source, "rt.Bind(") != 3 {
 		t.Fatalf("views, omitted defaults, and reordered labels keep Bind:\n%s", result.Source)

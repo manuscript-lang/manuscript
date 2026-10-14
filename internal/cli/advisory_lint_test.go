@@ -16,8 +16,7 @@ func TestSafetyAdvisoriesDoNotBecomeCheckErrors(t *testing.T) {
 		{"nested match", "fn use(value: Optional[Int]) -> Unit:\n    match value:\n        some(_):\n            match value:\n                some(_): unit\n                none: unit\n        none: unit\n", "MSL107", 4},
 		{"pattern binding", "import filesystem from \"@std/fs.ms\"\nfn use(path: String) -> Int:\n    match filesystem().stat(path: path, follow_links: true):\n        error(NotFound): return 1\n        ok(_): return 0\n", "MSL106", 4},
 		{"discarded result", "fn fail() -> Result[Int, String]:\n    return error(\"boom\")\nfn use() -> Unit:\n    fail()\n", "MSL104", 4},
-		{"concurrent capture", "import TaskGroup from \"@std/tasks.ms\"\nfn use() -> Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() -> Unit:\n            shared.with_entry(key: 1, value: 2)\n        )\n", "MSL105", 6},
-		{"preferred collection name", "fn use(values: List[Int]) -> Unit:\n    values.with_value(index: 0, value: 1)\n", "MSL108", 2},
+		{"concurrent capture", "import TaskGroup from \"@std/tasks.ms\"\nfn use() -> Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() -> Unit:\n            shared.add(key: 1, value: 2)\n        )\n", "MSL105", 6},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			file := sourceFile(t, tc.source)

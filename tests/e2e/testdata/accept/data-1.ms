@@ -17,13 +17,8 @@ test "dynamic mutable data and explicit copies":
     if not ([1].at(index: 5) == absent):
         return panic(message: "check failed")
 
-    let original = Map[String, Int]().with_entry(key: "a", value: 1)
-    let updated = (
-        original
-        .clone()
-        .with_entry(key: "b", value: 2)
-        .with_entry(key: "a", value: 3)
-    )
+    let original = Map[String, Int]().add(key: "a", value: 1)
+    let updated = (original.clone().add(key: "b", value: 2).add(key: "a", value: 3))
     if not (original.get(key: "a") == some(1)):
         return panic(message: "check failed")
     if not (updated.get(key: "a") == some(3)):

@@ -54,58 +54,19 @@ test "filesystem writes default to exclusive creation through aliases and bounds
 
     with temporary = value(fs.temporary("manuscript-default-write-")):
         let path = "{temporary.path()}/file"
-        value(
-            fs.write_file(
-                path,
-                "first".to_bytes()
-            )
-        )
+        value(fs.write_file(path, "first".to_bytes()))
         let write = fs.write_file
         let alias = write
-        rejected(
-            alias(
-                path,
-                "second".to_bytes()
-            )
-        )
-        rejected(
-            write(
-                path,
-                "second".to_bytes(),
-                replace: false
-            )
-        )
-        rejected(
-            generic_write(
-                fs,
-                path,
-                "second".to_bytes()
-            )
-        )
+        rejected(alias(path, "second".to_bytes()))
+        rejected(write(path, "second".to_bytes(), replace: false))
+        rejected(generic_write(fs, path, "second".to_bytes()))
         if text(fs, path) != "first": return panic("omission replaced existing data")
 
-        value(
-            alias(
-                path,
-                "second".to_bytes(),
-                replace: true
-            )
-        )
+        value(alias(path, "second".to_bytes(), replace: true))
         if text(fs, path) != "second": return panic("explicit replacement lost")
 
-        value(
-            generic_write(
-                fs,
-                "{temporary.path()}/generic",
-                "generic".to_bytes()
-            )
-        )
-        rejected(
-            fs.write_file(
-                "",
-                "invalid".to_bytes()
-            )
-        )
+        value(generic_write(fs, "{temporary.path()}/generic", "generic".to_bytes()))
+        rejected(fs.write_file("", "invalid".to_bytes()))
 
 test "filesystem file copies default to no replacement and retain byte limits":
     let fs: FileSystem = filesystem()
@@ -113,35 +74,17 @@ test "filesystem file copies default to no replacement and retain byte limits":
     with temporary = value(fs.temporary("manuscript-default-copy-")):
         let source = "{temporary.path()}/source"
         let destination = "{temporary.path()}/destination"
-        value(
-            fs.write_file(
-                source,
-                "source".to_bytes()
-            )
-        )
+        value(fs.write_file(source, "source".to_bytes()))
         let copy = fs.copy_file
         let alias = copy
         value(alias(source, destination))
-        value(
-            fs.write_file(
-                source,
-                "changed".to_bytes(),
-                true
-            )
-        )
+        value(fs.write_file(source, "changed".to_bytes(), true))
         rejected(copy(source, destination))
         rejected(fs.copy_file(source, destination, replace: false))
         rejected(generic_copy(fs, source, destination))
         if text(fs, destination) != "source": return panic("copy overwrote destination")
 
-        value(
-            copy(
-                source,
-                destination,
-                replace: true,
-                max_bytes: none
-            )
-        )
+        value(copy(source, destination, replace: true, max_bytes: none))
         if text(fs, destination) != "changed": return panic("explicit copy replacement")
 
         value(generic_copy(fs, source, "{temporary.path()}/generic"))
@@ -173,22 +116,11 @@ test "filesystem tree copies default to no replacement with distinct budgets":
         let source = "{temporary.path()}/source"
         let destination = "{temporary.path()}/destination"
         value(fs.create_directory(source))
-        value(
-            fs.write_file(
-                "{source}/data",
-                "abc".to_bytes()
-            )
-        )
+        value(fs.write_file("{source}/data", "abc".to_bytes()))
         let copy = fs.copy_tree
         let alias = copy
         value(alias(source, destination))
-        value(
-            fs.write_file(
-                "{source}/data",
-                "xyz".to_bytes(),
-                true
-            )
-        )
+        value(fs.write_file("{source}/data", "xyz".to_bytes(), true))
         rejected(copy(source, destination))
         rejected(copy(source, destination, false))
         rejected(generic_tree(fs, source, destination))
@@ -196,15 +128,7 @@ test "filesystem tree copies default to no replacement with distinct budgets":
             "tree replaced existing data"
         )
 
-        value(
-            copy(
-                source,
-                destination,
-                true,
-                max_entries: none,
-                max_bytes: none
-            )
-        )
+        value(copy(source, destination, true, max_entries: none, max_bytes: none))
         if text(fs, "{destination}/data") != "xyz": return panic(
             "explicit tree replacement"
         )
@@ -232,14 +156,7 @@ test "filesystem tree copies default to no replacement with distinct budgets":
             "negative bytes"
         )
 
-        value(
-            copy(
-                source,
-                "{temporary.path()}/exact",
-                max_entries: 2,
-                max_bytes: 3
-            )
-        )
+        value(copy(source, "{temporary.path()}/exact", max_entries: 2, max_bytes: 3))
 
 test "filesystem directory creation defaults to requiring an existing parent":
     let fs = filesystem()
@@ -251,9 +168,9 @@ test "filesystem directory creation defaults to requiring an existing parent":
         rejected(alias(child))
         rejected(create(child, false))
         rejected(generic_directory(fs, child))
-        if value(
-            fs.list(temporary.path())
-        ).length() != 0: return panic("default created parents")
+        if value(fs.list(temporary.path())).length() != 0: return panic(
+            "default created parents"
+        )
 
         value(create(child, recursive: true))
         if not value(fs.stat(child, follow_links: false)).directory: return panic(
@@ -270,12 +187,7 @@ test "filesystem removal defaults to retaining nonempty trees":
         let directory = "{temporary.path()}/nonempty"
         let path = "{directory}/keep"
         value(fs.create_directory(directory))
-        value(
-            fs.write_file(
-                path,
-                "keep".to_bytes()
-            )
-        )
+        value(fs.write_file(path, "keep".to_bytes()))
         let remove = fs.remove
         let alias = remove
         rejected(alias(directory))
@@ -287,12 +199,7 @@ test "filesystem removal defaults to retaining nonempty trees":
         let empty = "{temporary.path()}/empty"
         value(fs.create_directory(empty))
         value(alias(empty))
-        value(
-            fs.write_file(
-                "{temporary.path()}/file",
-                "file".to_bytes()
-            )
-        )
+        value(fs.write_file("{temporary.path()}/file", "file".to_bytes()))
         value(generic_remove(fs, "{temporary.path()}/file"))
         rejected(remove(""))
 

@@ -6,11 +6,7 @@ fn first[T](left: T, right: T) -> T: left
 
 fn size(values: Map[String, Int]) -> Int: values.length()
 
-fn optional_size(values: Optional[Map[String, Int]]) -> Int: (
-    values
-    .unwrap()
-    .length()
-)
+fn optional_size(values: Optional[Map[String, Int]]) -> Int: (values.unwrap().length())
 
 fn mark(log: List[Int], value: Int) -> Int:
     log.append(value)
@@ -30,7 +26,7 @@ test "map literals and matching argument names":
     let stored: fn(amount: Int, deduction: Int) -> Int = subtract
     if stored(amount, deduction) != 7: return panic("function value")
 
-    let values = {"a": 1, "b": 2, "a": 3,}
+    let values = {"a": 1, "b": 2, "a": 3}
     if values.length() != 2 or values.get("a").unwrap() != 3: return panic(
         "duplicate key"
     )
@@ -41,11 +37,9 @@ test "map literals and matching argument names":
     )
 
     let empty: Map[String, Int] = {}
-    if (
-        empty.length() != 0
-        or size({}) != 0
-        or optional_size({}) != 0
-    ): return panic("empty context")
+    if (empty.length() != 0 or size({}) != 0 or optional_size({}) != 0): return panic(
+        "empty context"
+    )
 
     let nested: Map[String, Map[String, Int]] = {"a": {}, "b": {"c": 1}}
     if nested.get("b").unwrap().get("c").unwrap() != 1: return panic("nested map")
@@ -55,7 +49,7 @@ test "map literals and matching argument names":
 
     let key = "c"
     let value = 5
-    values.with_entry(value, key)
+    values.add(value, key)
     if values.get(key).unwrap() != value: return panic("method shorthand")
 
     let log: List[Int] = []
@@ -68,7 +62,7 @@ test "map literals and matching argument names":
     )
 
     let shared = {"x": values}
-    values.with_entry(key: "d", value: 6)
+    values.add(key: "d", value: 6)
     if shared.get("x").unwrap().get("d").unwrap() != 6: return panic(
         "shared references"
     )

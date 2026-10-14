@@ -2,12 +2,26 @@
 
 ### Generated Go serves performance; lowering code serves maintainability
 
-Decision: the user wants highly optimized generated Go and explicitly permits
-mechanical, non-idiomatic output. Erase high-level abstractions using checked
-facts where semantics allow; readability of emitted Go is not a constraint.
-Maintainable compiler code, precise source/debugger mapping, and supported
-platform behavior remain requirements. Unsafe or runtime-internal techniques
-need documented invariants and tests.
+Decision: the user wants highly optimized generated Go, on par with
+hand-written Go, and explicitly permits mechanical, non-idiomatic output. Erase
+high-level abstractions using checked facts where semantics allow; readability of
+emitted Go is not a constraint. Maintainable compiler code, precise
+source/debugger mapping, and supported platform behavior remain requirements.
+Unsafe or runtime-internal techniques need documented invariants and tests.
+
+Decision: the language is designed to lower cheaply, so use Go's own
+mechanisms. `try` returns the error as a Go value instead of panicking; source
+methods become plain Go methods called directly; `Optional` and `Result` stay
+typed rather than boxed; faults need not be checked per function, only caught at
+the process or task boundary, so there is no per-call `defer`/`recover`
+bookkeeping. Merged so far: nested `try` as early returns (#450), direct methods
+of concrete records (#454), fault frames derived from the Go stack with
+`file:line`-only caller frames and depth/cancellation sampled every 256th entry
+in recursive cycles (#460), and typed `Result`/`Optional` for matched-only `let`s
+(#462). Record fields, parameters, `var`s, captures, `List.at` payloads, and
+closures remain boxed and are the next gaps. The skeptical review narrowed #462
+because the record-field case was risky; a pointer-as-Optional was measured and
+rejected for scalars, since `*T` allocates on every `some(Int)`.
 
 Verified: concrete scalar locals can eliminate repeated boxing in arithmetic
 loops, but unboxing a source-call result and reboxing it for the next call can
@@ -17,11 +31,14 @@ representation; Go's optimizer does not reliably remove those allocations.
 Verified: primitive List storage also needs a use/ABI classification. The
 [numeric List experiment](../scripts/bench-lists/README.md) separates boxed
 storage from scalar-local boxing; its typed storage adds payload allocations
-when fed through the unchanged Optional/comparator ABI. Preserve one authoritative
+when fed through the unchanged Optional/comparator ABI. The production storage
+review also found ordinary iteration/callback payload boxing and constant iterator
+capture allocations; typed controls cannot replace these acceptance workloads.
+See [the explicit allocation ledger](../scripts/bench-lists/typed-storage.md#review-correction-traversal-allocation-regressions). Preserve one authoritative
 mutable handle across typed and generic aliases rather than keeping a boxed mirror.
 
 Apply when: optimizing Go lowering, representations, calls, or collection access.
-Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
+Evidence: [lowering direction and what it already does](../documentation/contributing/compiler/lowering/_index.md#structured-go-generation),
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),
 and [generated/handwritten comparison](../scripts/bench-lowering/harness.go.txt).
 Verify: run `go run ./scripts/bench-lowering` with the pinned SDK, inspect the
@@ -35,6 +52,32 @@ that static data. The bounded Debug prototype measured zero/one/repeated calls,
 multiple literals, child RSS and ELF segments; a lower GC target exposed a
 repeatable construction slowdown despite faster native compilation. Treat those
 as separate review costs. Evidence: [literal memory/runtime controls](../scripts/bench-debug-literals/README.md#current-matched-main-evidence-after-api-review).
+
+Verified (#147): the Go compiler's cost for a large `[]rt.Value{int64(n), ...}`
+literal is per item, not only per function: moving it into a helper function
+did not help (100K Ints: ~26 s vs ~34 s raw `go build`), while pointer-free
+typed package data (`[]int64{...}`) compiled in ~1.3 s over the empty-program
+floor. Optimized builds therefore keep constant scalar items as pointer-free typed
+package data; `rt.ListTable[T].List` copies it into a fresh typed List per
+evaluation (typed primitive storage, #438), so nothing is boxed per item. Other
+large literals keep chunked `[]rt.Value` items. Computed items are assigned in immediately called closures of at most 64; mark
+each assignment with its item's source line, or the closures' physical lines
+shift `//line` attribution for profiles and debuggers. Raise `expressionDepth`
+around them exactly as match-expression closures do.
+Evidence: [large-list lowering](../pkg/lower/lower_large_lists.go),
+[shape tests](../pkg/lower/lower_large_lists_test.go), and
+[native semantics/fault frames](../pkg/build/lower_large_lists_test.go).
+Verify: `ms build` of 100K Int constants and of 16K calls; the native tests
+mutate one of two evaluations and stop a literal via `try` and `return`.
+
+Verified (#147): nested literal checking was cubic (lists) to quartic (maps)
+because each level re-checked the item that had just supplied the element type,
+`wellFormed` re-walked already-checked argument types, and `typeKey` built
+nested keys by string concatenation. Reuse the supplier's checked info, check
+only the literal's own bounds, and write keys into one builder. A nested empty
+literal under an unknown expected type reports nothing more.
+Evidence: [allocation-scaling and single-diagnostic tests](../pkg/checker/nested_literal_test.go).
+Verify: depth-997 `[[...1...]]` checks in ~0.05 s (was ~5.3 s).
 
 Verified: direct native calls must use `argumentValue`, not raw `expression`,
 for supplied arguments. Checking can attach implicit Optional wrapping while
@@ -61,7 +104,7 @@ and [native DAP regression](../extensions/vscode/tests/interface-view-debug.test
 
 ### Native build levels need artifact evidence
 
-Verified: Go omits recorded linker flags from build information when `-trimpath` is enabled. Check symbol/DWARF sections and executable size to verify stripping, rather than treating a missing recorded `-ldflags` value as a build failure. Both Debug and optimized RelWithDebInfo retain local source paths, so both need source-root-sensitive cache identities.
+Verified: Go omits recorded linker flags from build information when `-trimpath` is enabled. Check symbol/DWARF sections and executable size to verify stripping, rather than treating a missing recorded `-ldflags` value as a build failure. Both Debug and optimized RelWithDebInfo retain local source paths, so both need source-root-sensitive build identity (`SourceRoot` in the build metadata).
 
 Apply when: changing native optimization, symbol settings, or build caches.
 Evidence: [build level contract](../documentation/developer-tooling/builds/build-levels.md), [native flags](../pkg/compiler/build_type.go), [cache identity](../pkg/build/cache.go), and [native artifact checks](../pkg/build/build_type_test.go).
@@ -92,8 +135,9 @@ Verify: inspect the generated defaults; exercise [native defaults](../tests/e2e/
 ### Standalone runtime imports share one alias namespace
 
 Verified: native builds keep the embedded runtime in its own package; merging it into the application forced Go to recompile host services after every source edit. Writing the 15 MB dependency bundle into a fresh directory took about as long as compiling and linking, and changing directories defeated package-cache reuse for Debug; a shared content-addressed workspace removed both. After that, the go command's package loading cost about 100 ms per edit, so rebuilds replay the traced compile/link of `package main` and fall back to `go build` on any mismatch. Linking was then the floor: about 230 ms Release, dominated by loading 108 MB of package archives, half of them `net/http`, `crypto/tls`, and gopsutil. Programs that import no network, system, or process module now link an `ms_lean` runtime without them (about 150 ms). Values of those modules' types only originate from their own functions, which makes module imports a sound selection rule. Keep heavy native dependencies in `!ms_lean` files, list their modules in the compiler's full-runtime set, and let the lean inventory test catch omissions. Per-process costs matter at this scale: loading standard declarations in `checker` package init cost 33 ms on every `ms` invocation, and garbage collection was about a third of that; load them on first use, overlap the pin with checking, and keep the language server on Go's default GC target. Keep single-file merging confined to `emit`. A separately compiled runtime also changes Delve type names, so debugger watches use Delve's `.(data)` rather than hard-coded `main.Record` assertions.
-Evidence: [native assembly](../pkg/build/build.go), [shared workspace](../pkg/build/workspace.go), [command replay](../pkg/build/replay.go), [runtime variants](../pkg/build/variant.go), [lean stubs](../pkg/runtime/lean.go), [cache boundaries](../documentation/developer-tooling/builds/incremental-compilation.md), [standalone artifact invalidation](../tests/e2e/run_cache_test.go), and [native debugger checks](../extensions/vscode/tests/debug-adapter.test.js).
-Verify: run native conformance and the native DAP test; compare both unchanged runs and edited-source builds with warm Go caches for Release and Debug. Unchanged runs exercise executable caching and do not establish runtime package reuse after edits. Check that replay profiles exist under the workspace and that a missing archive or tool falls back to `go build`.
+Decision: built executables are not cached (#362). Each source edit left a 5 MB executable that nothing removed, while a hit saved only the Go compile and link (about 0.3 s on a small program). `build` writes its output and `run`, `test`, `debug`, and `profile` build into a temporary directory; reuse comes from the shared workspace, Go's package cache, and replay profiles.
+Evidence: [native assembly](../pkg/build/build.go), [shared workspace](../pkg/build/workspace.go), [command replay](../pkg/build/replay.go), [runtime variants](../pkg/build/variant.go), [lean stubs](../pkg/runtime/lean.go), [cache boundaries](../documentation/developer-tooling/builds/incremental-compilation.md), and [native debugger checks](../extensions/vscode/tests/debug-adapter.test.js).
+Verify: run native conformance and the native DAP test; compare edited-source builds with warm Go caches for Release and Debug, since an unchanged rebuild no longer shows reuse of anything cached. Check that replay profiles exist under the workspace and that a missing archive or tool falls back to `go build`.
 
 Verified: standalone generation merges runtime declarations and deduplicates imports by import path. Inconsistent aliases for the same Go package can pass ordinary runtime package compilation while breaking every emitted application. Platform helper packages also need inclusion in the standalone dependency bundle; embedding the main runtime sources alone does not carry imported repository packages.
 
@@ -113,13 +157,15 @@ Apply when: adding standard operations or moving runtime code.
 Evidence: [source receiver constraints](../pkg/checker/native_members.go), [ABI tests](../pkg/checker/library_test.go), [dependency and bundle policy](../scripts/repo-check/policy.json), and [policy checks](../scripts/repo-check/main.go).
 Verify: run `make verify` and native conformance. New bundled internal sources must enter the dependency bundle and implementation identity.
 
-### Fault sites must be recorded after operands finish
+### Fault frames come from the Go stack and line directives
 
-Verified: a function's return-type position identifies its declaration, not a failing expression. Generated functions retain a local source position and append one named frame while unwinding a fault. Update that position after evaluating an operation's operands: a successful nested call must not hide the enclosing operation's site, while an operand that faults must keep its own site. Statement fallbacks cover implicit operations; list destructuring records the pattern after evaluating its initializer.
+Decision: the user rejected per-call bookkeeping (`Enter`/`defer Leave` cost about 10 ns per call and fib(35) ran 9x Go). A fault captures its frames once, where it is created, from the Go stack: `RegisterSource` and `Named` map generated functions to source names, and `//line` directives give the file and line (#460). Frames are `file:line in function` with no column, and a call that spans several source lines reports its statement's line. Accepted costs: the depth limit may be exceeded by up to 256 frames, and a function without loops or recursive calls does not observe cancellation.
 
-Apply when: adding or specializing lowered runtime operations, source fault traces, or native call fast paths.
-Evidence: [located lowering](../pkg/lower/lower_expressions.go), [source frames](../pkg/runtime/values.go), and [native location regressions](../tests/e2e/fault_locations_test.go).
-Verify: run `TestFaultSourceLocations`, including multiline operands, argument faults, default arguments, bound methods, and destructuring; preserve exact frame order, columns, and names. Keep statement line directives on the operation rather than an inserted bookkeeping line.
+Verified: a function's return-type position identifies its declaration, not a failing expression, so the located statement carries the directive. Keep statement line directives on the operation, not on an inserted bookkeeping line, and keep operands lowered before the operation that can fault so a successful nested call does not take over the enclosing site.
+
+Apply when: adding or specializing lowered runtime operations, source fault traces, native call fast paths, or anything that tempts per-call recovery or position tracking.
+Evidence: [located lowering](../pkg/lower/lower_expressions.go), [frame capture](../pkg/runtime/frames.go), [recursive-cycle admission](../pkg/lower/lower_recursion.go), [lowering page](../documentation/contributing/compiler/lowering/_index.md#structured-go-generation), and [native location regressions](../tests/e2e/fault_locations_test.go).
+Verify: run `TestFaultSourceLocations`, including multiline operands, argument faults, default arguments, bound methods, and destructuring; preserve frame order, line numbers, and names. Do not reintroduce columns or `defer`-based recording without a new decision.
 
 Verified: Go orders calls in an expression, but that does not establish when an
 earlier plain local read occurs relative to a later call. A right-hand match can

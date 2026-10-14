@@ -1,9 +1,12 @@
 import {
-    header_values,
+    headers,
+    HttpHeaders,
+    HttpMethod,
     HttpRequest,
     HttpResponse,
     HttpExchange,
     HttpError,
+    HttpClientOptions,
     HttpServerOptions
 } from "@std/http.ms"
 import network from "@std/net.ms"
@@ -11,209 +14,159 @@ import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
-fn handle_headers(request: HttpRequest) -> HttpResponse:
-    if request.header("content-type") != some("application/octet-stream".to_bytes()):
-        return panic("case-insensitive request header")
-    if request.header("CONTENT-TYPE") != request.header("Content-Type"):
-        return panic("header spelling differs")
-    if request.headers.get("content-type").is_some():
-        return panic("raw Map keys changed")
-    if request.headers.get("Content-Type") != request.header("content-type"):
-        return panic("canonical Map key missing")
+fn repeated_headers() -> HttpHeaders:
+    let fields = headers()
+    let first = value(fields.append("x-dup", "first".to_bytes()))
+    let second = value(fields.append("X-Dup", "second".to_bytes()))
+    let cookie = value(
+        fields.append(
+            "Set-Cookie",
+            "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT".to_bytes()
+        )
+    )
+    let other = value(fields.append("set-cookie", "b=2".to_bytes()))
+    return fields
 
-    return HttpResponse(
-        status: 200,
-        headers: (
-            Map[String, String]()
-            .with_entry(key: "x-dup", value: "first")
-            .with_entry(key: "X-Dup", value: "second")
-            .with_entry(
-                key: "Set-Cookie",
-                value: "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT"
-            )
-            .with_entry(key: "set-cookie", value: "b=2")
-        ),
-        body: "ok".to_bytes()
+fn handle_headers(request: HttpRequest) -> HttpResponse:
+    if request.method != HttpMethod.Get: return panic("typed request method")
+    if value(request.headers.text("X-DUP")) != some(["first", "second"]): return panic(
+        "case-insensitive received fields"
     )
 
-test "buffered requests support case-insensitive header lookup":
+    return HttpResponse(status: 200, headers: repeated_headers(), body: "ok".to_bytes())
+
+test "one header type preserves repeated values through buffered requests":
     with server = value(
-        network().serve(address: "127.0.0.1:0", handler: handle_headers)
+        network().serve(
+            address: "127.0.0.1:0",
+            handler: handle_headers,
+            max_requests: 2
+        )
     ):
         let response = value(
             network().request(
-                method: "GET",
+                method: HttpMethod.Get,
                 url: "http://{server.address()}/",
-                headers: Map[
-                    String,
-                    String
-                ]().with_entry(key: "content-type", value: "application/octet-stream"),
+                headers: repeated_headers(),
                 body: "".to_bytes()
             )
         )
-        if response.status != 200: return panic("header handler failed")
-        if response.headers.get("X-Dup") != some(["first", "second"]):
-            return panic("case-colliding response values lost")
-        if (
-            response.headers.get("Set-Cookie") != some(
-                [
-                    "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT",
-                    "b=2"
-                ]
-            )
-        ):
-            return panic("cookies combined or lost")
-        if response.headers.get("x-dup").is_some():
-            return panic("Map lookup changed")
-        if (
-            header_values(headers: response.headers, name: "x-DUP") != some(
-                ["first", "second"]
-            )
-        ):
-            return panic("case-insensitive response lookup lost values")
-
-fn echo_buffered_headers(request: HttpRequest) -> HttpResponse:
-    let raw = request.header("X-DUP").unwrap()
-    let values = raw.to_text().unwrap().split("\n")
-    if values != ["", "second"]: return panic("joined bytes bridge lost values")
-
-    return HttpResponse(
-        status: 200,
-        headers: Map[String, String](),
-        body: "ok".to_bytes()
-    )
-
-test "outbound collisions and buffered byte bridge retain empty fields":
-    with server = value(
-        network().serve(address: "127.0.0.1:0", handler: echo_buffered_headers)
-    ):
-        let response = value(
-            network().request(
-                method: "GET",
-                url: "http://{server.address()}/",
-                headers: (
-                    Map[String, String]()
-                    .with_entry(key: "x-dup", value: "")
-                    .with_entry(key: "X-Dup", value: "second")
-                ),
-                body: "".to_bytes(),
-                timeout: 2.seconds
-            )
+        let metadata = response.metadata()
+        if metadata.status != 200: return panic("metadata status")
+        if value(metadata.headers.text("x-dup")) != some(["first", "second"]): return panic(
+            "response repeats lost"
         )
-        if response.status != 200: return panic("buffered bridge handler failed")
+        if (
+            value(metadata.headers.text("SET-COOKIE")) != some(
+                ["a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT", "b=2"]
+            )
+        ): return panic("cookies combined or lost")
 
-    if not Bytes(values: [255]).to_text().is_none(): return panic(
-        "invalid UTF-8 converted to text"
+        let appended = value(metadata.headers.append("x-dup", "third".to_bytes()))
+        if (
+            value(response.metadata().headers.text("X-Dup")) != some(
+                ["first", "second", "third"]
+            )
+        ): return panic("metadata copied header object")
+
+fn echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
+    let received = exchange.headers()
+    if value(received.text("X-DUP")) != some(["first", "second"]): return error(
+        HttpError.InvalidData
     )
 
-fn echo_streaming_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let values = header_values(
-        headers: exchange.headers(),
-        name: "x-DUP"
-    ).unwrap()
-    return exchange.send_headers(
-        status: 200,
-        headers: Map[String, List[String]]().with_entry(
-            key: "X-Dup",
-            value: values
-        )
-    )
+    let output = received.clone()
+    let removed_connection = output.remove("Connection")
+    let removed_length = output.remove("Content-Length")
+    return exchange.send_headers(status: 200, headers: output)
 
-test "explicit server TLS absence and list bridge preserve streaming fields":
+test "streaming proxy uses the same byte-valued header type":
     with server = value(
         network().serve_stream(
             address: "127.0.0.1:0",
-            handler: echo_streaming_headers,
+            handler: echo_headers,
             options: HttpServerOptions(tls: none)
         )
     ):
         let response = value(
             network().request(
-                method: "GET",
+                method: HttpMethod.Get,
                 url: "http://{server.address()}/",
-                headers: (
-                    Map[String, String]()
-                    .with_entry(key: "x-dup", value: "")
-                    .with_entry(key: "X-Dup", value: "second")
-                ),
-                body: "".to_bytes(),
-                timeout: 2.seconds
+                headers: repeated_headers(),
+                body: "".to_bytes()
             )
         )
         if (
-            response.status != 200
-            or response.headers.get("X-Dup") != some(["", "second"])
-        ):
-            return panic("streaming list bridge lost fields")
+            value(response.metadata().headers.text("x-DUP")) != some(
+                ["first", "second"]
+            )
+        ): return panic("stream proxy lost fields")
 
-    if not HttpServerOptions(tls: none).tls.is_none():
-        return panic("explicit server TLS absence changed")
+test "lookup shares mutable membership and clone separates it":
+    let fields = repeated_headers()
+    let values = fields.values("X-DUP").unwrap()
+    let appended = value(fields.append("x-dup", "third".to_bytes()))
+    if values.length() != 3: return panic("lookup copied membership")
 
-test "header lookup preserves empty and repeated values and map order":
-    let headers = (
-        Map[String, Bytes]()
-        .with_entry(
-            key: "x-test",
-            value: "first\nsecond".to_bytes()
+    let changed = values.set(0, "changed".to_bytes())
+    if fields.values("x-dup").unwrap().at(0) != some("changed".to_bytes()): return panic(
+        "list mutation not shared"
+    )
+
+    let copy = fields.clone()
+    let copied_values = copy.values("x-dup").unwrap()
+    let copied_changed = copied_values.set(0, "copy".to_bytes())
+    if fields.values("x-dup").unwrap().at(0) != some("changed".to_bytes()): return panic(
+        "clone shared membership"
+    )
+    if not fields.values("missing").is_none(): return panic("absent header")
+
+    let k = value(fields.append("K", "ASCII".to_bytes()))
+    if not fields.values("K").is_none(): return panic("Unicode folding")
+
+    let removed = fields.remove("X-DUP")
+    let new_field = value(fields.append("X-Dup", "new".to_bytes()))
+    if values.length() != 3 or fields.values("x-dup").unwrap().length() != 1: return panic(
+        "removed list alias reattached"
+    )
+
+test "explicit text extraction fails with typed UTF8 error":
+    let fields = headers()
+    let valid = value(fields.append("Raw", "first".to_bytes()))
+    let invalid = value(fields.append("raw", Bytes(values: [255])))
+
+    match fields.text("RAW"):
+        ok(_): return panic("invalid UTF8 accepted")
+        error(cause):
+            if cause != HttpError.InvalidData: return panic("wrong UTF8 error")
+
+    match fields.append("bad name", "value".to_bytes()):
+        ok(_): return panic("malformed name accepted")
+        error(cause):
+            if cause != HttpError.InvalidInput: return panic("wrong name error")
+
+test "empty options and an omitted request body use checked defaults":
+    let client_options = HttpClientOptions()
+    if client_options.decompress or client_options.cookies: return panic(
+        "client Bool defaults changed"
+    )
+    if not HttpServerOptions().tls.is_none(): return panic("server TLS default changed")
+
+    with server = value(
+        network().serve_stream(
+            address: "127.0.0.1:0",
+            handler: echo_headers,
+            options: HttpServerOptions()
         )
-        .with_entry(
-            key: "X-Test",
-            value: "later".to_bytes()
-        )
-        .with_entry(
-            key: "X-Empty",
-            value: "".to_bytes()
-        )
-    )
-    let request = HttpRequest(
-        method: "GET",
-        path: "/",
-        query: "",
-        headers: headers,
-        body: "".to_bytes()
-    )
-    let lookup = request.header
-    if lookup("X-TEST") != some("first\nsecond".to_bytes()): return panic(
-        "first matching key"
-    )
-    if request.header("x-empty") != some("".to_bytes()): return panic(
-        "empty header is present"
-    )
-    if not request.header("missing").is_none(): return panic("missing header")
-    if headers.get("X-Test") != some("later".to_bytes()): return panic(
-        "lookup mutated Map"
-    )
-
-test "list-valued lookup combines equivalent keys and copies membership":
-    let first = ["", "first"]
-    let headers = (
-        Map[String, List[String]]()
-        .with_entry(key: "x-test", value: first)
-        .with_entry(key: "X-Test", value: ["second", "third"])
-        .with_entry(key: "X-Empty", value: [])
-        .with_entry(key: "K", value: ["ascii"])
-    )
-    let lookup = header_values
-    let combined = lookup(headers: headers, name: "X-TEST").unwrap()
-    if combined != ["", "first", "second", "third"]: return panic(
-        "values lost or reordered"
-    )
-
-    combined.append("copy")
-    first.append("input")
-    if combined != ["", "first", "second", "third", "copy"]: return panic(
-        "input changed copy membership"
-    )
-    if first != ["", "first", "input"]: return panic("copy changed input membership")
-    if headers.keys() != ["x-test", "X-Test", "X-Empty", "K"]: return panic(
-        "lookup changed keys"
-    )
-    if header_values(headers: headers, name: "x-empty") != some(List[String]()): return panic(
-        "present empty list became absent"
-    )
-    if not header_values(headers: headers, name: "missing").is_none(): return panic(
-        "missing name present"
-    )
-    if not header_values(headers: headers, name: "K").is_none(): return panic(
-        "Unicode fold used for an HTTP name"
-    )
+    ):
+        with client = value(network().http_client(options: HttpClientOptions())):
+            with response = value(
+                client.request(
+                    method: HttpMethod.Get,
+                    url: "http://{server.address()}/",
+                    headers: repeated_headers()
+                )
+            ):
+                if response.metadata().status != 200: return panic(
+                    "plain request failed"
+                )

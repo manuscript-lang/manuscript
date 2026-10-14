@@ -13,13 +13,7 @@ Use Timestamp for wall-clock time and Duration for a time interval. Access the c
 
 Use `clock().now()` for monotonic instants and receiver methods for existing time values. For example, `2.seconds.to_milliseconds()` returns `2000`, `start.shift(2.seconds).difference(start)` returns `2.seconds`, and `wall_clock().now().to_string()` formats the current UTC timestamp.
 
-| Type | Methods |
-| --- | --- |
-| Duration | `add(right)`, `subtract(right)`, `multiply(factor)`, `divide(divisor)`, `negate()`, `abs()`, `compare(right)` |
-| Duration | `to_nanoseconds()`, `to_microseconds()`, `to_milliseconds()` return Int; `to_seconds()`, `to_minutes()`, `to_hours()` return Float |
-| Instant | `shift(duration) -> Instant`, `difference(right) -> Duration`, `compare(right) -> Int` |
-| Timestamp | `to_string() -> String`, `unix_seconds() -> Int`, `nanoseconds() -> Int`, `compare(right) -> Int` |
-| Timestamp | `shift(duration) -> Result[Timestamp, TimeError]`, `difference(right) -> Result[Duration, TimeError]` |
+Method names and signatures are in the [`@std/time.ms` reference](reference/time.md).
 
 `duration(nanoseconds)` constructs an exact signed 64-bit interval. Integer unit conversions and division truncate toward zero; floating conversions retain fractional units with binary64 rounding. Arithmetic overflow, division by zero, and negating or taking the absolute value of the minimum Duration fault. Duration methods agree with the existing addition/subtraction operators.
 
@@ -58,7 +52,7 @@ Construct timestamps with `timestamp` or `parse_timestamp`; inspect and transfor
 
 ## System information
 
-SystemInfo has `os: String`, `architecture: String`, and `cpu_count: Int`. Each `info()` call returns a native runtime record. OS/architecture identifiers use Go names: supported distributions use `linux`, `darwin`, `windows`, and `amd64`/`arm64`; these are open host identifiers, not a promise that other hosts cannot return another name. `os_type()` returns `Linux`, `Darwin`, or `Windows_NT` on those OSes and the Go OS name otherwise. `endianness()` returns exactly `LE` or `BE`. NetworkInterface.family is exactly `IPv4` or `IPv6`. CPU count does not reserve resources.
+SystemInfo has `os: String`, `architecture: String`, and `cpu_count: Int`. Each `info()` call returns a native runtime record. OS/architecture identifiers use Go names: supported distributions use `linux`, `darwin`, `windows`, and `amd64`/`arm64`; these are open host identifiers, not a promise that other hosts cannot return another name. `os_type()` returns `Linux`, `Darwin`, or `Windows_NT` on those OSes and the Go OS name otherwise. `endianness()` returns exactly `LE` or `BE`. NetworkInterface.family is `IpFamily.IPv4` or `IpFamily.IPv6` from `@std/net.ms`; its `text()` returns the prior spelling. CPU count does not reserve resources.
 
 `working_directory` on the native root returns the live process working directory and faults if the OS lookup fails; the fallible ProcessControl query returns a domain error. `temporary_directory` queries the host temp root without checking or creating it; filesystem temporary-directory factories [create resources](filesystem.md#directories-and-metadata). `environment` returns `none` if the variable is absent or its value cannot be represented as UTF-8. The CLI `environment()` accessor returns a startup snapshot. Importing System supplies its interface; calling the imported `system()` accessor obtains the service. The imported ProcessControl service provides explicit process-wide directory and environment mutation; see [process control](process.md#current-process-control).
 

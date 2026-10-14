@@ -1,7 +1,7 @@
 import panic from "@std/faults.ms"
 
 fn replace[T](values: List[T], value: T) -> Unit:
-    values.with_value(index: 1, value: value)
+    values.set(index: 1, value: value)
 
 test "range observes backing writes and keeps initial length":
     let values = [1, 2, 3]
@@ -56,11 +56,7 @@ test "callbacks use current backing and stored methods retain aliases":
             seen.append(value)
             values.fill(value: 8, start: 0, end: 3)
     )
-    if not (
-        seen == [1, 8, 8]
-        and clone == [1, 2, 3]
-        and values == [8, 8, 8]
-    ):
+    if not (seen == [1, 8, 8] and clone == [1, 2, 3] and values == [8, 8, 8]):
         return panic("callback copied membership or clone shared outer storage")
 
     let mapped = [1, 2, 3]
@@ -82,7 +78,7 @@ test "nested reverse copy shrink and self splice follow initial headers":
         outer.append(value)
 
         if index == 0:
-            values.reverse()
+            values.reverse_in_place()
 
             for item in values:
                 inner.append(item)
@@ -127,15 +123,11 @@ test "nested reverse copy shrink and self splice follow initial headers":
         seen_shrinking.append(value + 1)
 
         if not shrinking.is_empty():
-            shrinking.without(0)
+            shrinking.remove(0)
 
         count = count + 1
 
-    if not (
-        count == 3
-        and shrinking.is_empty()
-        and seen_shrinking == [2, 4, 4]
-    ):
+    if not (count == 3 and shrinking.is_empty() and seen_shrinking == [2, 4, 4]):
         return panic("shrink changed captured traversal length")
 
     let self_list = [1, 2, 3]
@@ -146,7 +138,7 @@ test "nested reverse copy shrink and self splice follow initial headers":
         seen_self.append(value)
 
         if count == 0:
-            self_list.with_values(start: 1, delete_count: 1, replacement: self_list)
+            self_list.splice(start: 1, delete_count: 1, replacement: self_list)
 
         count = count + 1
 
@@ -169,11 +161,7 @@ test "clone slice and nested references retain their own contracts":
         fn(value):
             seen.append(value.value)
             value.value = value.value + 1
-            values.fill(
-                value: Child(9),
-                start: 0,
-                end: 2
-            )
+            values.fill(value: Child(9), start: 0, end: 2)
     )
     if not (
         seen == [1, 9]

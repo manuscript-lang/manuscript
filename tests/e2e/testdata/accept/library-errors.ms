@@ -10,10 +10,7 @@ fn encoding_error(cause: EncodingError) -> ApplicationError:
     return Encoding(cause)
 
 fn decode_bad_input() -> Result[Unit, ApplicationError]:
-    match hex_decode(
-        text: "zz",
-        max_bytes: 10
-    ):
+    match hex_decode(text: "zz", max_bytes: 10):
         ok(_):
             return ok(unit)
 
@@ -32,16 +29,9 @@ fn json_error_code(cause: JsonError) -> Int:
             return 3
 
 test "JSON errors need only JSON cases":
-    let limits = JsonLimits(
-        max_bytes: 100,
-        max_depth: 8,
-        max_values: 32
-    )
+    let limits = JsonLimits(max_bytes: 100, max_depth: 8, max_values: 32)
 
-    match parse(
-        text: "[",
-        limits: limits
-    ):
+    match parse(text: "[", limits: limits):
         ok(_):
             return panic(message: "malformed JSON succeeded")
 
@@ -74,10 +64,7 @@ impl Error for TaggedError[T]:
         return "tagged failure"
 
 fn decode_generically() -> Result[Unit, Error]:
-    let bytes = try hex_decode(
-        text: "zz",
-        max_bytes: 10
-    )
+    let bytes = try hex_decode(text: "zz", max_bytes: 10)
     return ok(unit)
 
 fn propagate_generic() -> Result[Unit, Error]:
@@ -213,11 +200,7 @@ test "domain error fields survive propagation without a wrapper":
 
         error(cause): cause
 
-    if (
-        cause.path != "settings.json"
-        or cause.attempt != 2
-        or not cause.retryable
-    ):
+    if (cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable):
         return panic(message: "lost typed error fields")
 
     let message = cause.message
@@ -228,11 +211,7 @@ test "domain error fields survive propagation without a wrapper":
 
     match generic:
         ReadError(read):
-            if (
-                read.path != "settings.json"
-                or read.attempt != 2
-                or not read.retryable
-            ):
+            if (read.path != "settings.json" or read.attempt != 2 or not read.retryable):
                 return panic(message: "generic boundary lost typed fields")
 
         _:
@@ -291,9 +270,7 @@ test "specific errors pass directly into Error boundaries":
                     or read.attempt != 3
                     or not read.retryable
                 ):
-                    return panic(
-                        message: "Error boundary copied or lost typed fields"
-                    )
+                    return panic(message: "Error boundary copied or lost typed fields")
 
                 read.path = "changed.json"
                 read.path = "settings.json"
@@ -341,11 +318,7 @@ test "domain case payloads need no Error implementation":
 
     match cause:
         InvalidField(field, expected, actual):
-            if (
-                field != "attempt"
-                or expected != 1
-                or actual != 0
-            ):
+            if (field != "attempt" or expected != 1 or actual != 0):
                 return panic(message: "domain case lost typed fields")
 
 test "standard error diagnostics work directly":
@@ -366,9 +339,7 @@ test "standard diagnostics preserve messages and wrapped causes":
     if Error(sink).message() != "sink diagnostic":
         return panic(message: "log error lost underlying diagnostic")
 
-    let file_sink = LogError.FileSystem(
-        FileSystemError.Failed("file sink diagnostic")
-    )
+    let file_sink = LogError.FileSystem(FileSystemError.Failed("file sink diagnostic"))
     if Error(file_sink).message() != "file sink diagnostic":
         return panic(message: "log file error lost underlying diagnostic")
     if (
@@ -379,7 +350,7 @@ test "standard diagnostics preserve messages and wrapped causes":
         return panic(message: "command error lost diagnostic")
     if (
         Error(
-            ExecutionError.TimedOut
+            ExecutionError.Timeout
         ).message() != "task execution: operation timed out"
     ):
         return panic(message: "execution error has no diagnostic")

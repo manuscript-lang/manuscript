@@ -2,7 +2,7 @@ import panic from "@std/faults.ms"
 import {Scheduler, TaskGroup} from "@std/tasks.ms"
 import {duration, sleep} from "@std/time.ms"
 
-fn pass() -> Result[Unit, String]: return ok(unit)
+fn pass() -> Result[Unit, Error]: return ok(unit)
 
 test "scheduler bounds preserve omission none zero and positive meanings":
     with omitted = Scheduler():
@@ -11,11 +11,7 @@ test "scheduler bounds preserve omission none zero and positive meanings":
     with absent = Scheduler(limit: none, history_limit: none, drain: none):
         if not absent.start(pass).is_ok(): return panic("none scheduler")
 
-    with zero = Scheduler(
-        limit: 1,
-        history_limit: 0,
-        drain: duration(0)
-    ):
+    with zero = Scheduler(limit: 1, history_limit: 0, drain: duration(0)):
         if not zero.start(pass).is_ok(): return panic("zero history/drain")
 
     with maximum = Scheduler(

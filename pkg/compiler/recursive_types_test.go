@@ -16,6 +16,7 @@ func TestRecursiveTypesPreserveInitializationAndHashing(t *testing.T) {
 		{"set element", "" + recursive + "fn f(values: Set[Node]) -> Unit: return\n", "does not satisfy Hashable"},
 		{"generic hash bound", recursive + "fn hash[T: Hashable](value: T) -> Int: return value.hash()\nfn f(node: Node) -> Int: return hash(node)\n", "does not satisfy Hashable"},
 		{"generic callback expansion", "type Grow[T]:\n    next: fn() -> Grow[List[T]]\n", "recursive generic applications"},
+		{"mutual expansion reached from another root", "type B[T]:\n    a: A[List[T]]\ntype A[T]:\n    b: B[T]\ntype C[T]:\n    b: B[T]\n", "recursive generic applications"},
 		{"generic contract expansion", "interface Grow[T]:\n    fn next() -> Grow[List[T]]\n", "recursive generic applications"},
 		{"expanding implemented interface parameter", `interface I[T]:
     fn f(x: I[List[T]]) -> Int

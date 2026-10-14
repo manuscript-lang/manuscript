@@ -16,7 +16,7 @@ func (g *generator) arguments(args []syntax.Argument) ast.Expr {
 	for _, a := range args {
 		// Go orders calls, but a later argument can mutate a plain local value.
 		// Capture each supplied value before evaluating the next argument.
-		value := runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(a.Pos.String()), g.argumentValue(a))
+		value := sequence(g.argumentValue(a))
 		values = append(values, composite(nil, keyed("Name", textLiteral(a.Name)), keyed("Value", value)))
 	}
 	return sliceLiteral(runtimeName("Argument"), values...)
@@ -29,6 +29,9 @@ func (g *generator) argumentValue(a syntax.Argument) ast.Expr {
 	return value
 }
 func (g *generator) expression(e *syntax.Expression) ast.Expr {
+	if t, ok := g.tried[e]; ok {
+		return t.value
+	}
 	info := g.program.Info(e)
 	if info != nil && info.Folded {
 		return ident(strconv.FormatBool(info.Constant))
@@ -55,11 +58,11 @@ func (g *generator) expression(e *syntax.Expression) ast.Expr {
 }
 func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) ast.Expr {
 	if info.Native == "index" {
-		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
+		return orderedCall(runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	}
 	switch e.Kind {
 	case syntax.KindIndex:
-		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
+		return orderedCall(runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	case syntax.KindMatch:
 		return g.matchValue(e)
 	case syntax.KindNumber:
@@ -123,15 +126,37 @@ func numberValue(e *syntax.Expression) ast.Expr {
 
 // textValue lowers text with interpolated parts.
 func (g *generator) textValue(e *syntax.Expression) ast.Expr {
-	var values []ast.Expr
+	var result ast.Expr
+	join := func(part ast.Expr) {
+		if result == nil {
+			result = part
+			return
+		}
+		result = &ast.BinaryExpr{X: result, Op: token.ADD, Y: part}
+	}
 	for _, p := range e.Parts {
-		if p.Value != nil {
-			values = append(values, runtimeCall("Format", g.expression(p.Value)))
-		} else {
-			values = append(values, textLiteral(p.Text))
+		if p.Value == nil {
+			join(textLiteral(p.Text))
+			continue
+		}
+		value := g.expression(p.Value)
+		switch g.nativeType(p.Value) {
+		case "string":
+			join(value)
+		case "int64":
+			join(runtimeCall("FormatInt", value))
+		case "float64":
+			join(runtimeCall("FormatFloat", value))
+		case "bool":
+			join(runtimeCall("FormatBool", value))
+		default:
+			join(runtimeCall("Format", value))
 		}
 	}
-	return runtimeCall("Text", values...)
+	if result == nil {
+		return textLiteral("")
+	}
+	return result
 }
 
 // nameValue lowers a reference; nil means the name resolved to nothing
@@ -174,7 +199,7 @@ func (g *generator) memberValue(e *syntax.Expression, info *checker.Info) ast.Ex
 	}
 	if info.Native != "" {
 		if info.Native == "milliseconds" || info.Native == "seconds" || info.Native == "minutes" {
-			return g.locatedOperation(e, runtimeName("NativeMember"), g.expression(e.Left), textLiteral(e.Text))
+			return orderedCall(runtimeName("NativeMember"), g.expression(e.Left), textLiteral(e.Text))
 		}
 		return runtimeCall("NativeMember", g.expression(e.Left), textLiteral(e.Text))
 	}
@@ -235,18 +260,18 @@ func (g *generator) constructorCall(e *syntax.Expression, info *checker.Info, ar
 	if symbol := info.Constructor.Def.Symbol; recordDefaults(symbol.Decl) && (symbol.Native == "" || g.program.ParameterBindings(symbol.Decl) != nil) {
 		if symbol.Native != "" {
 			if len(arguments) == len(symbol.Decl.Fields) {
-				return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
+				return orderedCall(runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
 			}
 			callable := g.lazyValue("native constructor/"+symbol.ID, g.declaredFunction(symbol))
-			return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
+			return orderedCall(runtimeName("Invoke"), ident("ctx"), callable, args)
 		}
 		var callable ast.Expr = ident(symbol.ID)
 		if len(symbol.Variables) > 0 {
 			callable = g.specialize(symbol, info.Constructor.Args)
 		}
-		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
+		return orderedCall(runtimeName("Invoke"), ident("ctx"), callable, args)
 	}
-	return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
+	return orderedCall(runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
 
 }
 
@@ -255,7 +280,13 @@ func (g *generator) functionCall(e *syntax.Expression, info *checker.Info, argum
 	var callable ast.Expr
 	if info.Symbol != nil {
 		if info.Symbol.Native != "" {
-			callable = g.nativeDefaults(info.Symbol.Decl, g.program.Info(e.Left).Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)), arguments)
+			standard := runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type))
+			callable = g.nativeDefaults(info.Symbol.Decl, g.program.Info(e.Left).Type, standard, arguments)
+			if callable == ast.Expr(standard) && !hasTypeVariable(info.Type) {
+				// A standard function with no default expressions is stateless:
+				// resolve it once instead of rebuilding its Function per call.
+				callable = g.lazyValue("standard function\x00"+info.Symbol.Native+"\x00"+checker.TypeKey(info.Type), standard)
+			}
 		} else {
 			callable = ident(info.Symbol.ID)
 			if len(info.Symbol.Variables) > 0 {
@@ -264,9 +295,9 @@ func (g *generator) functionCall(e *syntax.Expression, info *checker.Info, argum
 		}
 	} else {
 		// Capture a dynamic callable before arguments that may replace it.
-		callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.methodCallable(e.Left, arguments))
+		callable = sequence(g.methodCallable(e.Left, arguments))
 	}
-	return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
+	return orderedCall(runtimeName("Invoke"), ident("ctx"), callable, args)
 }
 
 // listValue lowers a list literal.
@@ -274,20 +305,25 @@ func (g *generator) listValue(e *syntax.Expression, info *checker.Info) ast.Expr
 	if value := g.debugListLiteral(e, info.Type); value != nil {
 		return value
 	}
-	var elements []ast.Expr
-	for _, item := range e.Elements {
-		elements = append(elements, g.expression(item))
+	if value := g.largeListValue(e, info); value != nil {
+		return value
 	}
-	return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
+	elements := g.siblings(e.Elements)
+	// Large literals keep the separately owned boxed route and its oracle.
+	if len(elements) > debugListThreshold {
+		return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
+	}
+	return runtimeCall("NewList", g.key(info.Type), sliceLiteral(runtimeName("Value"), elements...))
 }
 
 // mapValue lowers a map literal.
 func (g *generator) mapValue(e *syntax.Expression, info *checker.Info) ast.Expr {
 	var entries []ast.Expr
-	for at := 0; at < len(e.Elements); at += 2 {
-		entries = append(entries, composite(nil, keyed("Key", g.expression(e.Elements[at])), keyed("Value", g.expression(e.Elements[at+1]))))
+	operands := g.siblings(e.Elements)
+	for at := 0; at < len(operands); at += 2 {
+		entries = append(entries, composite(nil, keyed("Key", operands[at]), keyed("Value", operands[at+1])))
 	}
-	return g.locatedOperation(e, runtimeName("MapLiteral"), ident("ctx"), g.key(info.Type), sliceLiteral(runtimeName("Entry"), entries...), g.typeScope(info.Type))
+	return orderedCall(runtimeName("MapLiteral"), ident("ctx"), g.key(info.Type), sliceLiteral(runtimeName("Entry"), entries...), g.typeScope(info.Type))
 }
 
 // unaryValue lowers try, negation, not, and other unary operators.
@@ -306,7 +342,10 @@ func (g *generator) unaryValue(e *syntax.Expression, info *checker.Info) ast.Exp
 	if e.Text == "not" {
 		return &ast.UnaryExpr{Op: token.NOT, X: paren(g.condition(e.Right))}
 	}
-	return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
+	if negated := g.negation(e); negated != nil {
+		return negated
+	}
+	return orderedCall(runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
 }
 
 // binaryValue lowers logical, equality, numeric, and generic binary operators.
@@ -322,12 +361,31 @@ func (g *generator) binaryValue(e *syntax.Expression) ast.Expr {
 		if value := g.primitiveEquality(e); value != nil {
 			return value
 		}
-		return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.program.Info(e.Left).Type))
+		operands := g.siblings([]*syntax.Expression{e.Left, e.Right})
+		return orderedCall(runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), operands[0], operands[1], g.typeScope(g.program.Info(e.Left).Type))
 	}
 	if value := g.numericBinary(e); value != nil {
 		return value
 	}
-	return g.locatedOperation(e, runtimeName("Binary"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right))
+	operands := g.siblings([]*syntax.Expression{e.Left, e.Right})
+	return orderedCall(runtimeName("Binary"), textLiteral(e.Text), operands[0], operands[1])
+}
+
+// siblings lowers operands that one Go expression evaluates together. Go
+// orders calls but not a plain variable read against a later call, and a match
+// arm can assign a local an earlier operand reads, so such an operand is
+// captured in source order first.
+func (g *generator) siblings(items []*syntax.Expression) []ast.Expr {
+	out := make([]ast.Expr, len(items))
+	later := false
+	for i := len(items) - 1; i >= 0; i-- {
+		out[i] = g.expression(items[i])
+		if later && !g.constant(items[i]) {
+			out[i] = sequence(out[i])
+		}
+		later = later || containsMatch(items[i])
+	}
+	return out
 }
 
 // lambdaValue lowers a lambda, snapshotting its captured bindings.
@@ -349,6 +407,11 @@ func (g *generator) lambdaValue(e *syntax.Expression, info *checker.Info) ast.Ex
 		result = &syntax.Type{Pos: e.Pos}
 	}
 	fn := g.function("<anonymous>", e.Params, result, e.Body, g.program.LambdaBindings(e), nil, info.Type)
+	// Lambda bodies copy every incoming argument into locals before running, so
+	// library callbacks may reuse one argument buffer across calls.
+	if constructor, ok := fn.(*ast.CallExpr); ok {
+		constructor.Fun = runtimeName("NewCompiledSourceFunction")
+	}
 	for _, b := range captures {
 		if old[b] == "" {
 			delete(g.captures, b)
@@ -359,17 +422,16 @@ func (g *generator) lambdaValue(e *syntax.Expression, info *checker.Info) ast.Ex
 	return call(closure(declarations, runtimeName("Function"), returned(fn)), values...)
 }
 
-// locatedOperation updates the active frame only after evaluating its operands.
-// Nested calls can therefore report their own sites without hiding this call site
-// when they succeed. SourceAt inlines to an assignment; no expression closures or
-// per-operation recovery are needed.
-func (g *generator) locatedOperation(e *syntax.Expression, operation ast.Expr, args ...ast.Expr) ast.Expr {
+// orderedCall makes the final operand a Go call, retaining its evaluation order
+// relative to other calls. Earlier plain reads still need their explicit capture
+// or sequence wrapper; this helper does not capture them.
+func orderedCall(operation ast.Expr, args ...ast.Expr) ast.Expr {
 	last := len(args) - 1
-	args[last] = sourceAt(e.Pos, args[last])
+	args[last] = sequence(args[last])
 	return call(operation, args...)
 }
-func sourceAt(pos syntax.Position, value ast.Expr) ast.Expr {
-	return runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(pos.String()), value)
+func sequence(value ast.Expr) ast.Expr {
+	return runtimeCall("Seq", value)
 }
 func signedInteger(value string) ast.Expr {
 	if strings.HasPrefix(value, "-") {
@@ -405,7 +467,7 @@ func (g *generator) alternativeFields(labels []string, args []syntax.Argument) [
 	}
 	fields := make([]ast.Expr, len(args))
 	for i, a := range args {
-		fields[i] = sourceAt(a.Pos, g.argumentValue(a))
+		fields[i] = sequence(g.argumentValue(a))
 	}
 	return fields
 }

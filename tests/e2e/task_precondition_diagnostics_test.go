@@ -27,7 +27,7 @@ func TestTaskPreconditionDiagnostics(t *testing.T) {
 		name := fmt.Sprintf("task precondition %d", i)
 		source += fmt.Sprintf("test %q:\n", name)
 		line := strings.Count(source, "\n") + 1
-		frames = append(frames, fmt.Sprintf("task-preconditions.ms:%d:22 in test %s", line, name))
+		frames = append(frames, fmt.Sprintf("task-preconditions.ms:%d in test %s", line, name))
 		source += "    let impossible = " + tc.call + "\n"
 	}
 	source += "test \"continues after task preconditions\":\n    sleep(duration(0))\n"

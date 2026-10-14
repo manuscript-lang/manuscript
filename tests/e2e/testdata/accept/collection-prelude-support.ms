@@ -45,10 +45,7 @@ test "public collection support types retain their standard runtime identities":
         OutOfRange: unit
         _: return panic("scrutinee directed pattern")
 
-    let grouped: Map[Int, List[Int]] = group(
-        values,
-        fn(value: Int) -> Int: value % 2
-    )
+    let grouped: Map[Int, List[Int]] = group(values, fn(value: Int) -> Int: value % 2)
     let distinct: Set[Int] = unique(values)
     if grouped.get(1).unwrap() != [3] or distinct.values() != [3, 4]: return panic(
         "Hashable bounds"

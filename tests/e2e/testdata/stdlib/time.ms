@@ -15,9 +15,9 @@ test "timestamps preserve nanoseconds and shift across epoch":
     if epoch.unix_seconds() != 0 or epoch.nanoseconds() != 123: return panic(
         "timestamp units"
     )
-    if value(
-        parse_timestamp(epoch.to_string())
-    ) != epoch: return panic("timestamp roundtrip")
+    if value(parse_timestamp(epoch.to_string())) != epoch: return panic(
+        "timestamp roundtrip"
+    )
 
     let later = value(epoch.shift(2.seconds))
     if value(later.difference(epoch)) != 2.seconds: return panic("time difference")
@@ -41,6 +41,6 @@ test "host clocks are usable and zero sleep completes":
     if monotonic.now() < before: return panic("clock went backwards")
 
     let now = wall_clock().now()
-    if value(
-        parse_timestamp(now.to_string())
-    ) != now: return panic("wall clock roundtrip")
+    if value(parse_timestamp(now.to_string())) != now: return panic(
+        "wall clock roundtrip"
+    )

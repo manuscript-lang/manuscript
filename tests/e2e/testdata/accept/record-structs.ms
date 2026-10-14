@@ -29,11 +29,7 @@ test "struct records read write compare format and clone":
     b.x = 5
     if a == b:
         return panic(message: "mutated record still equal")
-    if not (
-        a.x == 1
-        and b.x == 5
-        and shifted(a, by: 3).y == 5
-    ):
+    if not (a.x == 1 and b.x == 5 and shifted(a, by: 3).y == 5):
         return panic(message: "field read or write failed")
 
     let copy = a.clone()
@@ -66,9 +62,9 @@ test "struct records with mixed field types":
 
 test "struct records as keys and defaults":
     let set: Set[Point] = Set[Point]()
-    set.with_value(Point(x: 1, y: 1))
-    set.with_value(Point(x: 1, y: 1))
-    set.with_value(Point(x: 2, y: 1))
+    set.add(Point(x: 1, y: 1))
+    set.add(Point(x: 1, y: 1))
+    set.add(Point(x: 2, y: 1))
     if set.length() != 2:
         return panic(message: "record keys must hash structurally")
 

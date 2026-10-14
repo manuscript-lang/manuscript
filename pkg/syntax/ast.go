@@ -56,7 +56,17 @@ type Module struct {
 	Source       string
 	Imports      []*Import
 	Declarations []*Declaration
+	// Omitted names declarations that editor recovery dropped because they did
+	// not parse; uses of them are not reported as unknown.
+	Omitted []string
+	// Recovered holds the source ranges of declarations whose invalid
+	// statements editor recovery blanked; their syntax error is already
+	// reported, so checking diagnostics inside them are suppressed.
+	Recovered []Span
 }
+
+// Span is a half-open byte range of source.
+type Span struct{ Start, End int }
 
 // Import represents one symbol binding; named import lists expand into bindings.
 type Import struct {
@@ -65,9 +75,14 @@ type Import struct {
 	Name, Path string
 }
 type Declaration struct {
-	Pos                        Position
-	Kind, Name                 string
-	Export                     bool
+	Pos        Position
+	Kind, Name string
+	Export     bool
+	// Constant marks a module-level `let` constant. It is stored as a function
+	// without parameters whose body returns the initializer, and every use
+	// evaluates that initializer. Result is the annotation, or a placeholder
+	// at the initializer's position until the checker infers the type.
+	Constant                   bool
 	TypeParams                 []TypeParameter
 	Fields                     []Parameter
 	Cases                      []Case
@@ -104,6 +119,9 @@ type Expression struct {
 	Result      *Type
 	Body        []*Statement
 	Arms        []Arm
+	// ConstantUse marks a call the checker made from a module-level constant's
+	// name; a written `NAME()` is rejected.
+	ConstantUse bool
 	// Fact is the checker's annotation of this node; nil until it is checked.
 	Fact any
 }

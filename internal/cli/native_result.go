@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/manuscript-lang/manuscript/pkg/build"
@@ -156,19 +157,16 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 	if pathErr != nil {
 		return fail("build", pathErr)
 	}
-	cache := ""
-	if result.ProjectRoot != "" {
-		cache = filepath.Join(result.ProjectRoot, ".ms-cache")
-	}
 	if command == "build" {
 		if info, err := os.Stat(output); err == nil && info.IsDir() {
 			fmt.Fprintf(os.Stderr, "-o %s is a directory; pass a file path (e.g. -o %s)\n", displayOutput, filepath.Join(displayOutput, "program"))
 			return 2
 		}
-		if cache == "" {
-			cache = filepath.Join(filepath.Dir(output), ".ms-cache")
+		if protected := protectedOutput(output, filename, result.ProjectRoot); protected != "" {
+			fmt.Fprintf(os.Stderr, "-o %s would overwrite %s; choose a different executable path\n", displayOutput, protected)
+			return 2
 		}
-		if _, err := build.BuildCheckedWithType(result, output, cache, kind); err != nil {
+		if _, err := build.BuildCheckedWithType(result, output, kind); err != nil {
 			return fail("build", err)
 		}
 		verified["executable"], verified["build_metadata"] = true, true
@@ -181,13 +179,6 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 	if err := os.Mkdir(output, 0700); err != nil {
 		return fail("artifact", fmt.Errorf("profile directory must be new: %w; choose a path that does not exist with --out-dir <directory>", err))
 	}
-	if cache == "" {
-		var err error
-		cache, err = build.DefaultBuildCacheDir()
-		if err != nil {
-			return fail("build", err)
-		}
-	}
 	directory, err := os.MkdirTemp("", "manuscript-run-")
 	if err != nil {
 		return fail("execution", err)
@@ -197,7 +188,9 @@ func runNativeCommand(command, filename, output string, options compiler.Options
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
-	if _, err := build.BuildCheckedWithType(result, executable, cache, kind); err != nil {
+	if _, err := build.BuildCheckedWithType(result, executable, kind); err != nil {
+		// This invocation created the directory; a failed build must not block a retry.
+		_ = os.RemoveAll(output)
 		return fail("build", err)
 	}
 	verified["executable"], verified["build_metadata"] = true, true
@@ -269,4 +262,26 @@ func writeProfileReference(directory, executable string, result compiler.Result,
 		err = os.WriteFile(filepath.Join(directory, "inspection.json"), inspection, 0600)
 	}
 	return err
+}
+
+// protectedOutput names the source, manifest, or lock file an -o path would
+// replace, or returns "" when the output is safe to write.
+func protectedOutput(output, input, projectRoot string) string {
+	candidates := []string{input}
+	if projectRoot != "" {
+		candidates = append(candidates, filepath.Join(projectRoot, "ms.toml"), filepath.Join(projectRoot, "ms.lock"))
+	}
+	if info, err := os.Stat(output); err == nil {
+		for _, candidate := range candidates {
+			if other, err := os.Stat(candidate); err == nil && os.SameFile(info, other) {
+				return filepath.Base(candidate)
+			}
+		}
+	}
+	base := filepath.Base(output)
+	switch {
+	case strings.HasSuffix(base, ".ms"), base == "ms.toml", base == "ms.lock":
+		return base
+	}
+	return ""
 }

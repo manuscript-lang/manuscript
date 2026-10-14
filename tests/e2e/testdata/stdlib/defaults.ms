@@ -21,13 +21,7 @@ impl Commands for Capture:
     ) -> Result[CommandOutput, CommandError]:
         self.last = input
         self.calls = self.calls + 1
-        return ok(
-            CommandOutput(
-                0,
-                input,
-                "".to_bytes()
-            )
-        )
+        return ok(CommandOutput(0, input, "".to_bytes()))
 
 import Duration from "@std/time.ms"
 
@@ -38,14 +32,8 @@ type Override:
     input: Bytes
 
 test "bound receiver is captured before supplied arguments":
-    let first = Capture(
-        "first".to_bytes(),
-        0
-    )
-    let second = Capture(
-        "second".to_bytes(),
-        0
-    )
+    let first = Capture("first".to_bytes(), 0)
+    let second = Capture("second".to_bytes(), 0)
     var selected = first
     let index: Optional[Int] = some(0)
     let output = value(
@@ -59,11 +47,7 @@ test "bound receiver is captured before supplied arguments":
             arguments: []
         )
     )
-    if (
-        first.calls != 1
-        or second.calls != 0
-        or output.stdout.length() != 0
-    ):
+    if (first.calls != 1 or second.calls != 0 or output.stdout.length() != 0):
         return panic("receiver capture order changed")
 
 impl Commands for Override:
@@ -74,13 +58,7 @@ impl Commands for Override:
         max_output_bytes: Optional[Int] = none,
         timeout: Optional[Duration]
     ) -> Result[CommandOutput, CommandError]:
-        return ok(
-            CommandOutput(
-                0,
-                input,
-                "".to_bytes()
-            )
-        )
+        return ok(CommandOutput(0, input, "".to_bytes()))
 
 test "concrete implementation defaults and interface defaults stay distinct":
     let service = Override("custom".to_bytes())
@@ -106,11 +84,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     alias.delimiter = ";"
     alias.line_ending = "\r\n"
     let second = CsvOptions()
-    if (
-        first.delimiter != ";"
-        or second.delimiter != ","
-        or second.line_ending != "\n"
-    ):
+    if (first.delimiter != ";" or second.delimiter != "," or second.line_ending != "\n"):
         return panic("CSV construction must allocate fresh mutable storage")
     if CsvOptions(delimiter: "\t").line_ending != "\n": return panic("ending default")
     if CsvOptions(line_ending: "\r\n").delimiter != ",": return panic(
@@ -136,10 +110,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
         return panic("distinct CSV budgets")
 
     let invalid: Result[String, CsvError] = error(CsvError.InvalidInput)
-    if stringify(
-        [["a"]],
-        options: CsvOptions(delimiter: "")
-    ) != invalid:
+    if stringify([["a"]], options: CsvOptions(delimiter: "")) != invalid:
         return panic("explicit invalid options still validate")
 
 test "Base64 defaults support stored functions and explicit alphabets":
@@ -172,10 +143,7 @@ test "Base64 defaults support stored functions and explicit alphabets":
     if base64_decode("/w==", max_bytes: 0) != limited: return panic("zero is present")
 
 test "Commands defaults cross concrete bound view and generic boundaries":
-    let capture = Capture(
-        "x".to_bytes(),
-        0
-    )
+    let capture = Capture("x".to_bytes(), 0)
     let bound = capture.run
     if value(bound(program: "fake", arguments: [])).stdout.length() != 0:
         return panic("bound input default")
@@ -194,15 +162,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
         return panic("explicit input payload retains value")
 
     let forwarded = forward(view.run)
-    if value(
-        forwarded(
-            "fake",
-            [],
-            input,
-            none,
-            none
-        )
-    ).stdout.at(0).unwrap() != 42:
+    if value(forwarded("fake", [], input, none, none)).stdout.at(0).unwrap() != 42:
         return panic("generic forwarding preserves full callable ABI")
     if capture.calls != 6: return panic("each invocation executes once")
 

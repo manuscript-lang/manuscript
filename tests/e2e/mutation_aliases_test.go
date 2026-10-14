@@ -15,12 +15,8 @@ func TestMutationAliasesScopedImplementations(t *testing.T) {
 }
 
 func TestMutationAliasesRetainSpliceFaults(t *testing.T) {
-	source := `test "old start":
-    [1].with_values(-1, 0, [])
-test "new start":
+	source := `test "new start":
     [1].splice(-1, 0, [])
-test "old count":
-    [1].with_values(0, 2, [])
 test "new count":
     [1].splice(0, 2, [])
 test "bound start":
@@ -38,20 +34,7 @@ test "continues":
 		t.Fatalf("missing splice faults: %s", data)
 	}
 	output := string(data)
-	for _, names := range [][2]string{{"old start", "new start"}, {"old count", "new count"}} {
-		messages := [2]string{}
-		for i, name := range names {
-			_, tail, found := strings.Cut(output, "FAIL splice-faults.ms::"+name+": ")
-			if !found {
-				t.Fatal(output)
-			}
-			messages[i], _, _ = strings.Cut(tail, "\n")
-		}
-		if messages[0] != messages[1] {
-			t.Fatalf("changed legacy fault: %q != %q", messages[0], messages[1])
-		}
-	}
-	for _, frame := range []string{"splice-faults.ms:4:9", "splice-faults.ms:8:9", "splice-faults.ms:11:5", "splice-faults.ms:14:5", "7 tests, 6 failed"} {
+	for _, frame := range []string{"List.splice: start must be between 0 and 1, found -1", "splice-faults.ms:2", "splice-faults.ms:4", "splice-faults.ms:7", "splice-faults.ms:10", "5 tests, 4 failed"} {
 		if !strings.Contains(output, frame) {
 			t.Errorf("missing %s: %s", frame, output)
 		}

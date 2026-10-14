@@ -103,10 +103,11 @@ fn recognize(value: Other) -> Int:
         OutOfRange: return 1
 `,
 		"nonprelude imports": `import {ListBuilder, MapBuilder, SetBuilder, range, filled, map_from_entries} from "@std/collections.ms"
-import {ErrorCategory, category} from "@std/errors.ms"
+import {ErrorCategory, TextError, category} from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 fn bytes() -> Bytes: Bytes([1])
 fn build() -> List[Int]: ListBuilder[Int]().freeze()
+fn text_error(message: String) -> TextError: TextError.Text(message)
 `,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -172,6 +173,19 @@ func TestPreludeImportPolicyUsesResolvedIdentity(t *testing.T) {
 	for _, issue := range result.Diagnostics {
 		if issue.Code() != "MS2003" {
 			t.Fatal(issue)
+		}
+	}
+	for _, source := range []string{
+		"import List as ImportedList from \"@std/collections.ms\"\n",
+		"import {List as ImportedList} from \"@std/collections.ms\"\n",
+		"export import List from \"@std/collections.ms\"\n",
+	} {
+		result := CompileSource("unsupported-import.ms", source, Options{AnalyzeOnly: true})
+		if result.Success() || result.Source != "" {
+			t.Fatal("unsupported import syntax bypassed the policy", source)
+		}
+		if result.Diagnostics[0].Phase != "parse" {
+			t.Fatal("changed existing syntax rejection", result.Diagnostics)
 		}
 	}
 }

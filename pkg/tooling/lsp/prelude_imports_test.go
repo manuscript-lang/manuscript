@@ -148,3 +148,37 @@ func TestCompactApplicationImportCompletionKeepsSameNamedTypes(t *testing.T) {
 		t.Fatal(items)
 	}
 }
+
+func TestPreludeTypeCompletionRespectsShadowing(t *testing.T) {
+	for _, source := range []string{
+		"fn ListEntry() -> Int: 1\nfn use(value: ListE|) -> Unit: unit\n",
+		"fn use() -> Unit:\n    let ListEntry = fn() -> Int: 1\n    let value: ListE|\n",
+		"fn use() -> Unit:\n    let ListEntry = fn() -> Int: 1\n    var value: ListE|\n",
+	} {
+		if item := itemNamed(completeSource(t, source), "ListEntry"); item != nil {
+			t.Fatal("offered an inaccessible prelude type", source, item)
+		}
+	}
+	for _, source := range []string{
+		"type ListEntry:\n    value: Int\nfn use(value: ListE|) -> Unit: unit\n",
+	} {
+		item := itemNamed(completeSource(t, source), "ListEntry")
+		if item == nil || len(item.AdditionalTextEdits) != 0 {
+			t.Fatal("lost a visible application type", source, item)
+		}
+	}
+	for _, newline := range []string{"\n", "\r\n"} {
+		for _, source := range []string{
+			"fn use[ListEntry](value: ListE|) -> Unit: unit\n",
+			"fn use[ListEntry](value: ListE|) -> Unit:\n",
+			"fn use[ListEntry](value: ListE|) -> Unit:\nfn other() -> Unit: unit\n",
+			"fn use[ListEntry](value: ListE|) -> Unit: unit\nfn broken(\n",
+		} {
+			source = strings.ReplaceAll(source, "\n", newline)
+			item := itemNamed(completeSource(t, source), "ListEntry")
+			if item == nil || item.Kind != 25 || item.Detail != "ListEntry" || item.TextEdit.(map[string]any)["newText"] != "ListEntry" || len(item.AdditionalTextEdits) != 0 {
+				t.Fatal("type parameter acquired canonical prelude identity or arity", source, item)
+			}
+		}
+	}
+}

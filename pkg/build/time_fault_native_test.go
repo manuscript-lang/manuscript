@@ -36,11 +36,11 @@ func timeFailure(body func()) (failure any) {defer func(){failure=recover()}();b
 func checkTimeFrames() {
  ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
  for _,tc:=range []struct{fn rt.Value;args []rt.Value;message,frame string}{
-  {@@shift@@,[]rt.Value{rt.Instant{Tick:9223372036854775807},rt.Duration(1)},"Instant.shift: overflow; found value (nanoseconds) 9223372036854775807 and duration (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807","time-fault.ms:3:18 in shift"},
-  {@@difference@@,[]rt.Value{rt.Instant{Tick:9223372036854775807},rt.Instant{Tick:-1}},"Instant.difference: overflow; found value (nanoseconds) 9223372036854775807 and right (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807","time-fault.ms:5:17 in difference"},
-  {@@plus@@,[]rt.Value{rt.Instant{Tick:9223372036854775807},rt.Duration(1)},"Instant.+: overflow; found value (nanoseconds) 9223372036854775807 and duration (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807","time-fault.ms:7:18 in plus"},
-  {@@minus@@,[]rt.Value{rt.Instant{Tick:-9223372036854775808},rt.Duration(1)},"Instant.-: overflow; found value (nanoseconds) -9223372036854775808 and duration (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807","time-fault.ms:9:18 in minus"},
-  {@@elapsed@@,[]rt.Value{rt.Instant{Tick:9223372036854775807},rt.Instant{Tick:-1}},"Instant.-: overflow; found left (nanoseconds) 9223372036854775807 and right (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807","time-fault.ms:11:17 in elapsed"},
+  {@@shift@@,[]rt.Value{rt.Instant{Tick:9223372036854775807},rt.Duration(1)},"Instant.shift: overflow; found value (nanoseconds) 9223372036854775807 and duration (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807","time-fault.ms:3 in shift"},
+  {@@difference@@,[]rt.Value{rt.Instant{Tick:9223372036854775807},rt.Instant{Tick:-1}},"Instant.difference: overflow; found value (nanoseconds) 9223372036854775807 and other (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807","time-fault.ms:5 in difference"},
+  {@@plus@@,[]rt.Value{rt.Instant{Tick:9223372036854775807},rt.Duration(1)},"Instant.+: overflow; found value (nanoseconds) 9223372036854775807 and duration (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807","time-fault.ms:7 in plus"},
+  {@@minus@@,[]rt.Value{rt.Instant{Tick:-9223372036854775808},rt.Duration(1)},"Instant.-: overflow; found value (nanoseconds) -9223372036854775808 and duration (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807","time-fault.ms:9 in minus"},
+  {@@elapsed@@,[]rt.Value{rt.Instant{Tick:9223372036854775807},rt.Instant{Tick:-1}},"Instant.-: overflow; found left (nanoseconds) 9223372036854775807 and right (nanoseconds) -1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807","time-fault.ms:11 in elapsed"},
  } {
   failure:=timeFailure(func(){tc.fn.(rt.Function).Body(ctx,tc.args)})
   fault,ok:=failure.(rt.Fault)

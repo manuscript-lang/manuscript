@@ -10,7 +10,7 @@ test('Debug large scalar literal keeps source steps, locals, watches and fresh s
   const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript large literal dap ')));
   const program = path.join(directory, 'main.ms');
   const literal = Array(1100).fill('7').join(', ');
-  const source = `\nexport fn main() -> Int:\n    let items = [${literal}]\n\n\n    let again = [${literal}]\n\n\n    items.with_value(index: 0, value: 99)\n\n\n    return again.at(0).unwrap() - 7\n`;
+  const source = `\nexport fn main() -> Int:\n    let items = [${literal}]\n\n\n    let again = [${literal}]\n\n\n    items.set(index: 0, value: 99)\n\n\n    return again.at(0).unwrap() - 7\n`;
   const returnLine = 12;
   await fs.writeFile(program, source);
   const output = new PassThrough(); const messages = []; const waiters = [];

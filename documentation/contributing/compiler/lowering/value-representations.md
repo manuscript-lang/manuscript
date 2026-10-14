@@ -38,8 +38,15 @@ operation. Equality still uses the selected implementation scope.
 Direct calls to the checked native `List.at` and `Optional.unwrap` operations
 share runtime helpers with bound-method dispatch, avoiding temporary callable
 wrappers. Indexing still returns an Optional, including `none` for out-of-range
-indexes; it does not introduce unchecked access. Bound methods and generic
-callable dispatch retain the ordinary ABI. The reproducible native workloads in
+indexes; it does not introduce unchecked access. Library members of `String`,
+`Bytes`, `List`, `Map`, and `Set` called on a statically typed receiver with
+every argument supplied in order bind once per call site and run the same
+library body, equality scope, and cancellation checkpoints without building a
+bound Function per call. `StringBuilder.append` and `freeze`, standard free
+functions without default expressions, and generic functions with static type
+arguments are likewise resolved once. Unary minus over `Int` and `Float` stays
+typed. Bound methods, callbacks, and calls with dynamic type arguments retain
+the ordinary ABI. The reproducible native workloads in
 `scripts/benchmarks/` measure numeric loops, calls, list reads, and Game of Life;
 they do not establish that values or source functions are fully unboxed.
 
@@ -53,4 +60,4 @@ Generic implementation bodies use checked substitutions; Go method selection can
 
 Int division/remainder overflow handling, Float non-finite outcomes, Decimal underflow/overflow, and checked truncation conversions follow [runtime numeric outcomes](../../../core-language/basics/numbers-and-booleans.md#runtime-numeric-outcomes), including parameterized runtime operands. Unchecked Go casts or a decimal package's defaults do not establish these semantics.
 
-See [foreign conversions](../adapters/value-conversion.md), [type checking](../frontend/type-checker.md), and [scope and capture checking](../frontend/scope-checker.md).
+See [type checking](../frontend/type-checker.md), and [scope and capture checking](../frontend/scope-checker.md).

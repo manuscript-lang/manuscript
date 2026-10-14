@@ -26,12 +26,6 @@ export type Regex:
         replacement: String,
         max_bytes: Optional[Int] = none
     ) -> Result[String, RegexError]:
-    # Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
-    fn replace(
-        text: String,
-        replacement: String,
-        max_bytes: Optional[Int] = none
-    ) -> Result[String, RegexError]:
 
 # Compiles a regular expression. Invalid pattern syntax is returned as an error.
 export fn compile(pattern: String) -> Result[Regex, RegexError]:

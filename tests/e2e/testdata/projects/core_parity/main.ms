@@ -34,15 +34,10 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     )
 
     let bound = first_bound_map()
-    let mapped = bound(
-        fn(n): Key(
-            0,
-            n.toString()
-        )
-    )
+    let mapped = bound(fn(n): Key(0, n.toString()))
     if mapped.length() != 1: return panic("bound map lost defining module")
 
-    let input = Set[Int]().with_value(1).with_value(2)
+    let input = Set[Int]().add(1).add(2)
     if first_generic_map(input).length() != 1:
         return panic("mapped generic output used receiver's module")
     if first_lookup() != "found": return panic("generic get_or lost key scope")
@@ -104,19 +99,9 @@ test "Map transformations preserve input and output equality evidence":
 
     let bound_one = first_bound_keys()
     let bound_two = second_bound_keys()
-    if bound_one(
-        fn(key, value): Key(
-            0,
-            key.toString()
-        )
-    ).length() != 1:
+    if bound_one(fn(key, value): Key(0, key.toString())).length() != 1:
         return panic("bound key transform lost first scope")
-    if bound_two(
-        fn(key, value): Key(
-            0,
-            key.toString()
-        )
-    ).length() != 2:
+    if bound_two(fn(key, value): Key(0, key.toString())).length() != 2:
         return panic("bound key transform lost second scope")
     if first_value_transform() != 3 or second_value_transform() != 0:
         return panic("value transform changed key equality scope")

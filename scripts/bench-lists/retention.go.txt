@@ -61,7 +61,7 @@ func currentRSS() int64 {
 
 func shrink(ctx *rt.Execution, values *rt.List, mode string, count int) {
  if mode=="remove" {
-  remove:=rt.NativeMember(values,"without")
+  remove:=rt.NativeMember(values,"remove")
   for len(values.Items)>0 {
    if rt.Invoke(ctx,remove,[]rt.Argument{{Name:"index",Value:int64(len(values.Items)-1)}})!=values {panic("remove lost receiver")}
   }
@@ -70,7 +70,7 @@ func shrink(ctx *rt.Execution, values *rt.List, mode string, count int) {
  deleted:=count
  if mode=="prefix" {deleted--}
  empty:=&rt.List{Type:values.Type}
- if rt.Invoke(ctx,rt.NativeMember(values,"with_values"),[]rt.Argument{
+ if rt.Invoke(ctx,rt.NativeMember(values,"splice"),[]rt.Argument{
   {Name:"start",Value:int64(0)},{Name:"delete_count",Value:int64(deleted)},{Name:"replacement",Value:empty},
  })!=values {panic("splice lost receiver")}
  switch mode {
