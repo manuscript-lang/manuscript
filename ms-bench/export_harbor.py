@@ -26,7 +26,6 @@ BASE_IMAGES = {
     "go": "golang:1.25-bookworm",
     "rust": "rust:1-bookworm",
     "ms": "ubuntu:24.04",
-    "ms_cheat": "ubuntu:24.04",
 }
 
 DOCKERFILE = """FROM {base}
