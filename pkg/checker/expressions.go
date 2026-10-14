@@ -451,7 +451,7 @@ func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *In
 	switch {
 	case logical:
 		i.Type = primitive("Bool")
-		if !compatible(a.Type, i.Type) || !compatible(b.Type, i.Type) {
+		if (!compatible(a.Type, i.Type) || !compatible(b.Type, i.Type)) && !invalidType(a.Type) && !invalidType(b.Type) {
 			c.error(e.Pos, "type", "logical operands require Bool, found "+a.Type.String()+" and "+b.Type.String()+"; compare explicitly, e.g. x != 0")
 		}
 		return i
@@ -492,7 +492,7 @@ func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *In
 		}
 	default:
 		i.Type = common
-		if !numeric(common) && !(common.ID == "String" && e.Text == "+") && !(std(common, "Duration") && (e.Text == "+" || e.Text == "-")) {
+		if common.ID != "<invalid>" && !numeric(common) && !(common.ID == "String" && e.Text == "+") && !(std(common, "Duration") && (e.Text == "+" || e.Text == "-")) {
 			c.error(e.Pos, "type", "arithmetic requires numeric operands")
 		}
 		if e.Text == "%" && common.ID != "Int" {
