@@ -11,7 +11,10 @@ import (
 func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 	var out []ast.Stmt
 	for _, s := range body {
-		out = append(out, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String())))
+		// Bookkeeping must map to the upcoming statement too. Otherwise its
+		// physical Go lines inherit the previous directive and create misleading
+		// debugger stops, especially inside typed bodies and scalar closures.
+		out = append(out, g.locatedStatement(s.Pos, assign(ident("sourcePosition"), token.ASSIGN, textLiteral(s.Pos.String()))))
 		statements := g.statement(s)
 		statements[0] = g.locatedStatement(s.Pos, statements[0])
 		out = append(out, statements...)
@@ -21,7 +24,12 @@ func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 func (g *generator) pattern(p *syntax.Pattern, value ast.Expr) []ast.Stmt {
 	if p.Kind == syntax.KindName {
 		b := g.program.PatternBinding(p)
-		return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, runtimeName("Value"), value)}, discard(ident(b.ID))}
+		typ := runtimeName("Value")
+		if scalar := g.scalarLocals[b]; scalar != "" {
+			typ = ident(scalar)
+			value = scalarExtract(b.Type, value)
+		}
+		return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, typ, value)}, discard(ident(b.ID))}
 	}
 	tmp := g.temp()
 	out := []ast.Stmt{define(tmp, value), discard(ident(tmp))}
@@ -54,20 +62,30 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	}
 	switch s.Kind {
 	case syntax.KindBind:
+		if s.Pattern.Kind == syntax.KindName {
+			b := g.program.PatternBinding(s.Pattern)
+			if g.typedBinding(b) {
+				return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, ident(g.scalarLocals[b]), g.scalarValue(s.Value))}, discard(ident(b.ID))}
+			}
+		}
 		return g.pattern(s.Pattern, g.expression(s.Value))
 	case syntax.KindAssign:
 		if s.Target != nil {
 			return []ast.Stmt{evaluated(runtimeCall("SetField", g.expression(s.Target.Left), textLiteral(s.Target.Text), g.expression(s.Value)))}
 		}
 		// Assignment binding identities are recorded by the checker, including shadows.
-		return []ast.Stmt{assign(ident(g.program.AssignedBinding(s.Value).ID), token.ASSIGN, g.expression(s.Value))}
+		b := g.program.AssignedBinding(s.Value)
+		return []ast.Stmt{assign(ident(b.ID), token.ASSIGN, g.bindingValue(b, s.Value))}
 	case syntax.KindReturn:
 		value := unit()
 		if s.Value != nil {
-			value = g.expression(s.Value)
+			value = g.returnValue(s.Value)
 		}
 		if g.expressionDepth > 0 {
 			value = runtimeCall("Return", value)
+			if g.expressionResult != nil {
+				value = scalarExtract(g.expressionResult, value)
+			}
 		}
 		return []ast.Stmt{returned(value)}
 	case syntax.KindCall:
@@ -96,7 +114,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		}
 		return append(out, &ast.BranchStmt{Tok: op, Label: ident(label.name)})
 	case syntax.KindIf:
-		stmt := &ast.IfStmt{Cond: runtimeCall("Bool", g.expression(s.Value)), Body: block(g.body(s.Body)...)}
+		stmt := &ast.IfStmt{Cond: g.scalarValue(s.Value), Body: block(g.body(s.Body)...)}
 		if len(s.Else) > 0 {
 			stmt.Else = block(g.body(s.Else)...)
 		}
@@ -111,10 +129,23 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		var loop ast.Stmt
 		if s.Kind == syntax.KindWhile {
 			body = append([]ast.Stmt{evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
-			loop = &ast.ForStmt{Cond: runtimeCall("Bool", g.expression(s.Value)), Body: block(body...)}
+			loop = &ast.ForStmt{Cond: g.scalarValue(s.Value), Body: block(body...)}
 		} else {
 			b := g.program.LoopBinding(s)
 			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
+			if typ := g.program.Info(s.Value).Type; typ.ID == "@std/List" {
+				reader := "Get"
+				if suffix := primitiveListSuffix(typ); suffix != "" && g.typedBinding(b) {
+					reader = suffix
+				}
+				header, at := g.temp(), g.temp()
+				body = append([]ast.Stmt{define(b.ID, call(selector(ident(header), reader), ident(at)))}, body...)
+				loop = &ast.ForStmt{Init: define(at, intLiteral(0)), Cond: &ast.BinaryExpr{X: ident(at), Op: token.LSS, Y: call(selector(ident(header), "Len"))}, Post: &ast.IncDecStmt{X: ident(at), Tok: token.INC}, Body: block(body...)}
+				if label.used {
+					loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
+				}
+				return []ast.Stmt{block(define(header, runtimeCall("CaptureList", g.expression(s.Value))), loop)}
+			}
 			loop = &ast.RangeStmt{Key: ident("_"), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
 		}
 		if label.used {
@@ -142,7 +173,14 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func(*syntax.Arm) []ast.Stmt) []ast.Stmt {
 	tmp := g.temp()
 	contractMatch := g.program.Info(value).Type.Kind == "contract"
-	out := []ast.Stmt{define(tmp, g.expression(value))}
+	typed := g.typedListAtSuffix(value) != ""
+	var initializer ast.Expr
+	if typed {
+		initializer = g.typedListAt(value)
+	} else {
+		initializer = g.expression(value)
+	}
+	out := []ast.Stmt{define(tmp, initializer)}
 	tag := "Tag"
 	if contractMatch {
 		out = append(out, assign(ident(tmp), token.ASSIGN, runtimeCall("ContractReceiver", ident(tmp))))
@@ -153,7 +191,10 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 		a := &arms[at]
 		clause := &ast.CaseClause{}
 		if a.Path.Text != "_" {
-			key := textLiteral(a.Path.Text)
+			var key ast.Expr = textLiteral(a.Path.Text)
+			if typed {
+				key = ident(strconv.FormatBool(a.Path.Text == "some"))
+			}
 			if contractMatch {
 				key = g.key(g.program.ContractPattern(a))
 			}
@@ -162,6 +203,12 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 		for i, b := range g.program.ArmBindingsFor(a) {
 			if b != nil {
 				var value ast.Expr = runtimeCall("Payload", ident(tmp), intLiteral(i))
+				if typed {
+					value = selector(ident(tmp), "Value")
+					if !g.typedBinding(b) {
+						value = call(runtimeName("Value"), value)
+					}
+				}
 				if contractMatch {
 					value = ident(tmp)
 				}
@@ -171,7 +218,11 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 		clause.Body = append(clause.Body, body(a)...)
 		cases = append(cases, clause)
 	}
-	return append(out, &ast.SwitchStmt{Tag: runtimeCall(tag, ident(tmp)), Body: block(cases...)})
+	var discriminant ast.Expr = runtimeCall(tag, ident(tmp))
+	if typed {
+		discriminant = selector(ident(tmp), "Present")
+	}
+	return append(out, &ast.SwitchStmt{Tag: discriminant, Body: block(cases...)})
 }
 
 // A match in statement position lowers to a Go switch in the enclosing body,

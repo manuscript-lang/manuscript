@@ -162,3 +162,5 @@ test('primitive and legacy List backing renders elements and rewrites watches', 
     assert.deepEqual(await adapter.valueChildren(adapter.handles.get(rendered.variablesReference),{}),[]);
   }
 });
+
+require('./native-scalar-debug.test.js');

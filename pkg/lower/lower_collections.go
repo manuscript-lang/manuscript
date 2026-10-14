@@ -28,6 +28,9 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 	}
 	switch callee.Method.Native {
 	case "collections/at":
+		if value := g.typedListAt(e); value != nil {
+			return call(selector(value, "Box"), g.key(g.program.Info(e).Type))
+		}
 		if len(arguments) == 1 {
 			// Force even a plain local receiver to be read before the index:
 			// a match expression in the index can reassign that local. Go does
@@ -40,12 +43,15 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 		switch g.program.Info(e.Left.Left).Type.ID {
 		case "@std/List", "@std/Map", "@std/Set":
 			if len(arguments) == 0 {
-				return g.locatedOperation(e, runtimeName("CollectionLength"), ident("ctx"), g.expression(e.Left.Left))
+				return g.locatedOperation(e, runtimeName("CollectionLengthInt"), ident("ctx"), g.expression(e.Left.Left))
 			}
 		}
 	case "append":
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
 			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
+			if suffix := primitiveListSuffix(g.program.Info(e.Left.Left).Type); suffix != "" {
+				return g.locatedOperation(e, runtimeName("ListAppend"+suffix), ident("ctx"), receiver, g.scalarValueAs(arguments[0].Value, g.program.Info(e.Left.Left).Type.Args[0]))
+			}
 			return g.locatedOperation(e, runtimeName("ListAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}
 	case "is_empty", "collections/is_empty":
@@ -64,6 +70,9 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 			return g.locatedOperation(e, runtimeName("StringByteLength"), ident("ctx"), g.expression(e.Left.Left))
 		}
 	case "optional/unwrap":
+		if g.typedUnwrapAt(e) {
+			return call(selector(sourceAt(e.Pos, g.typedListAt(e.Left.Left)), "Unwrap"), ident("ctx"))
+		}
 		if len(arguments) == 0 {
 			return g.locatedOperation(e, runtimeName("OptionalUnwrap"), ident("ctx"), g.expression(e.Left.Left))
 		}
