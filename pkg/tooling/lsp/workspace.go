@@ -121,7 +121,12 @@ func workspaceSymbols(docs map[string]document, roots []string, query string) []
 			}
 		}
 	}
+	analyzed := map[string]bool{}
 	for _, d := range documents {
+		if analyzed[d.URI] {
+			continue
+		}
+		analyzed[d.URI] = true
 		checked := workspaceAnalysis(d, docs)
 		for _, entry := range sourceIndex(checked) {
 			if strings.HasPrefix(entry.pos.File, "@std/") || !entry.declaration || entry.info == nil || entry.info.Symbol == nil && entry.info.Method == nil || !strings.Contains(strings.ToLower(entry.name), strings.ToLower(query)) {
