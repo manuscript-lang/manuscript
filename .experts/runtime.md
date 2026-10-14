@@ -265,6 +265,15 @@ Verify: fresh constructors and effectful sized initialization use two allocation
 typed at/unwrap uses none, generic forwarding retains identity, and comparator
 profiling/returns/cancellation/depth/fault frames match ordinary source calls.
 
+Verified: primitive sized initializers must use direct matching typed writes
+after fresh-state/kind/bounds checks. Routing known typed construction through
+generic Len/Set made each initializer non-inlineable (Go1.25.1 cost118); the
+strict checks inline at cost31 and preserve two construction allocations.
+Evidence: [strict initialization safety/allocation tests](../pkg/runtime/list_initialization_test.go),
+[approved runtime mitigation](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157742485).
+Verify actual effectful generated literals as well as this runtime control;
+inlining alone does not establish construction performance parity.
+
 Decision: the approved borrowed argument ABI is restricted to generated bodies
 that copy parameter Values and cannot retain/expose their incoming slice.
 `NewCompiledSourceFunction` delegates the ordinary source guard once; `for_each`
