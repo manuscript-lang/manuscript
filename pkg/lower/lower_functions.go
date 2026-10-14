@@ -180,6 +180,21 @@ func (g *generator) directFunctionLiteral(direct *directFunction, name string, p
 	return literal
 }
 
+// omittedArgument fills in a parameter the caller left out (nil). Checked
+// source values are concrete (including Unit and Optional.none); Invoke and
+// direct calls leave nil only for an omitted argument.
+func (g *generator) omittedArgument(b *checker.Binding, param syntax.Parameter, name string, t *checker.Type) []ast.Stmt {
+	var out []ast.Stmt
+	if param.Default == nil && t.Defaults[name] && b.Type.ID == "@std/Optional" {
+		out = append(out, &ast.IfStmt{Cond: &ast.BinaryExpr{X: ident(b.ID), Op: token.EQL, Y: ident("nil")}, Body: block(assign(ident(b.ID), token.ASSIGN, runtimeCall("NewAlternative", g.key(b.Type), textLiteral("none"), ident("nil"), ident("nil"))))})
+	}
+	if param.Default != nil {
+		stmt := &ast.IfStmt{Cond: &ast.BinaryExpr{X: ident(b.ID), Op: token.EQL, Y: ident("nil")}, Body: block(assign(ident(b.ID), token.ASSIGN, g.expression(param.Default)))}
+		out = append(out, g.locatedStatement(param.Default.Pos, stmt))
+	}
+	return out
+}
+
 // functionPieces lowers a source callable. With direct set it also yields the
 // Go function literal of a direct function instead of the dynamic wrapper's
 // statements.
@@ -225,6 +240,9 @@ func (g *generator) functionPieces(direct *directFunction, name string, params [
 				g.typed[b] = typ
 			}
 			out = append(out, discard(ident(b.ID)))
+			if direct.params[i] == "" {
+				out = append(out, g.omittedArgument(b, params[i], t.Params[i].Name, t)...)
+			}
 			continue
 		}
 		if typ := scalarBinding(b); typ != "" && params[i].Default == nil && !t.Defaults[t.Params[i].Name] {
@@ -234,15 +252,7 @@ func (g *generator) functionPieces(direct *directFunction, name string, params [
 			continue
 		}
 		out = append(out, define(b.ID, index(ident("args"), intLiteral(i))), discard(ident(b.ID)))
-		// Checked source values are concrete (including Unit and Optional.none);
-		// Invoke leaves nil only for an omitted argument.
-		if params[i].Default == nil && t.Defaults[t.Params[i].Name] && b.Type.ID == "@std/Optional" {
-			out = append(out, &ast.IfStmt{Cond: &ast.BinaryExpr{X: ident(b.ID), Op: token.EQL, Y: ident("nil")}, Body: block(assign(ident(b.ID), token.ASSIGN, runtimeCall("NewAlternative", g.key(b.Type), textLiteral("none"), ident("nil"), ident("nil"))))})
-		}
-		if params[i].Default != nil {
-			stmt := &ast.IfStmt{Cond: &ast.BinaryExpr{X: ident(b.ID), Op: token.EQL, Y: ident("nil")}, Body: block(assign(ident(b.ID), token.ASSIGN, g.expression(params[i].Default)))}
-			out = append(out, g.locatedStatement(params[i].Default.Pos, stmt))
-		}
+		out = append(out, g.omittedArgument(b, params[i], t.Params[i].Name, t)...)
 	}
 	out = append(out, g.body(body)...)
 	out = append(out, tail...)
