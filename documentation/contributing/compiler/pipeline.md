@@ -1,51 +1,42 @@
 +++
-title = "Pipeline and core IR"
+title = "Pipeline and passes"
 weight = 0
 +++
 
-# Pipeline and core IR
+# Pipeline and passes
 
-Each stage owns one decision, produces one value, and hands later stages facts instead of spellings. This page says where each decision is made and where the next structural step goes.
+One syntax tree flows through the compiler. Each pass reads the tree and annotates it; none builds a second tree. A node carries the checker's facts in its `Fact` field, so a checked tree is self-sufficient: lowering and tooling need no side tables.
 
-## What each stage decides
+## Passes
 
-| Stage | Package | Decides | Produces |
+| Pass | Package | Decides | Writes on the tree |
 | --- | --- | --- | --- |
-| Resolve modules | `frontend`, `project` | Canonical module identity, import cycles, overlays | `frontend.Graph` of ASTs in dependency order |
+| Resolve modules | `frontend`, `project` | Canonical module identity, import cycles, overlays | `frontend.Graph` of trees in dependency order |
 | Parse | `lexer`, `parser` | Layout, structure, positions | `syntax.Module` trees, strict or recovered |
-| Resolve names and types | `checker` | Symbols, nominal types, bounds, generic arguments, selected implementations | `checker.Program` queries (`Info`, `Symbol`, `TypeReference`) |
-| Check flow and effects | `checker` | Reachability, captures, cleanup, mutation, effects | Flow, captures, cleanup methods, `Effects` |
-| Optimize | `lower` | Boolean folding that keeps effects | Optimization facts beside the AST |
+| Check | `checker` | Symbols, nominal types, bounds, generic arguments, selected implementations, flow, captures, cleanup | `checker.Info` on expressions, bindings on patterns, statements, arms, and declarations, resolved types on written types |
+| Fold constants | `checker` (`pass_fold.go`) | Bool constants, keeping effects | `Info.Folded` and `Info.Constant` |
+| Summarize effects | `checker` | Reads, writes, and cleanup per function | `Program.Effects` |
 | Lower | `lower` | Evaluation order, cleanup on every exit, defaults, call shape | Go syntax tree, one printer |
 | Build | `build` | Toolchain, pins, cache identity | Native artifact |
 
-Canonicalization has three homes. Module and path identity is canonical after `frontend`. Types are canonical after `checker` resolves them to `checker.Type` with a `TypeKey`. Call shape (argument order, resolved labels, defaults, optional wrapping, error-source wrapping) is canonical in `checker.Info.Arguments`, `OptionalArgument`, and `ErrorSource`, but `lower` still applies it expression by expression.
+Canonicalization has three homes. Module and path identity is canonical after `frontend`. Types are canonical after `checker` resolves them to `checker.Type` with a `TypeKey`. Call shape (argument order, resolved labels, defaults, optional wrapping, error-source wrapping) is canonical in `checker.Info.Arguments`, `OptionalArgument`, and `ErrorSource`.
 
-Consumers read the checked program only through `Program` methods. The tables behind them are private so their storage can change.
+Consumers read the checked tree through `Program` methods (`Info`, `PatternBinding`, `TypeReference`, and the iterators that walk its modules), so where a fact is stored can change without touching them.
 
-## The gap
+## Checking each module once
 
-`lower` still receives the AST plus checked facts and re-derives structure while it emits Go: it matches on `syntax.Kind`, then consults `Info` for each case. That mixes three concerns in about 2,100 lines: desugaring (defaults, `try`, `match`, cleanup, method dispatch), optimization, and Go emission. Optimization cannot see desugared structure, and emission cannot be tested without a source program.
+A module is checked once, and its tree keeps the result. Bundled standard modules with source bodies are checked once when the registry loads; every program shares that tree, its symbols, and its methods. A program checks only the modules the caller passed in. Because shared trees are never written after loading, concurrent compiles do not race.
 
-## Core IR
+Generated identities (`symbol`, `local`, and the like) continue numbering after the bundled modules' identities, so they never collide with them.
 
-A typed, desugared core IR (`pkg/ir`) sits between `checker` and `lower`:
+## Adding a pass
 
-- Every node carries its resolved `checker.Type`. No node refers to a `syntax` node for meaning; a position is kept only for diagnostics, source maps, and fault sites.
-- Names are resolved to bindings and symbols. Method calls are resolved to a selected implementation or a dynamic contract call.
-- Defaults are expanded, arguments are in evaluation order, `try` and error-source conversions are explicit, `match` arms carry their binding variables, and cleanup is an explicit scope with its exit paths.
-- Optimization rewrites IR and `lower` prints it. The boolean fold lives in `ir` (`Folder`). Tooling stays on the AST and `Program` queries, because it needs every source node.
+A pass is a function over `[]*syntax.Module` that reads facts and writes new ones on the node. Put it in its own file beside the stage it follows, give its output a field on the existing fact (as `pass_fold.go` does), and run it from `check` for the modules it checked. Tooling that needs the tree as written must not depend on a pass that rewrites syntax; passes here only annotate.
 
-Elaboration is the one step that reads both the AST and `Program`. After it, nothing in `ir` or `lower` imports `syntax` for semantics.
+## Next structural steps
 
-## Migration order
-
-Each step merges on its own and keeps observable behavior; generated Go need not be byte-identical.
-
-1. Define `ir` nodes and elaborate expressions that need no cleanup or match: literals, names, calls, member access, collections, text, unary and binary operations. Done so far: literals, text, collections, local names, and unary and binary operators, member reads, and calls and contract views (`Local`, `Unary`, `Binary`, `Member`, `Call`, `View`). Symbol names and `try` stay `Deferred`.
-2. Move the boolean fold onto IR. Done: `ir.Folder` replaces the `lower` optimizer and its `booleans` table.
-3. Elaborate statements, `match`, `try`, and defaults.
-4. Elaborate cleanup scopes and function bodies; remove `lower`'s reads of `Program` tables.
-5. Replace the table storage behind `Program` where the IR no longer needs it.
+- Move call-argument ordering (`Info.Arguments` when labels are omitted) into a pass, so lowering never branches on whether the checker filled it.
+- Move default expansion and `try` shape into passes that annotate the call or statement they affect.
+- Split `lower` by form once the passes leave it only emission.
 
 The `tests/e2e` programs and the lowering tests establish that behavior is unchanged.

@@ -34,7 +34,7 @@ func (c *checker) finiteApplications() {
 	edges := map[string][]applicationEdge{}
 	for id, node := range nodes {
 		syntax.Visitor{Expression: func(e *syntax.Expression) {
-			info := c.expressions[e]
+			info := infoOf(e)
 			if info == nil {
 				return
 			}

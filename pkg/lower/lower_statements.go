@@ -5,7 +5,6 @@ import (
 	"go/token"
 	"strconv"
 
-	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -102,7 +101,7 @@ func (g *generator) afterTry(s *syntax.Statement, value ast.Expr) []ast.Stmt {
 
 func (g *generator) assignment(s *syntax.Statement) []ast.Stmt {
 	if s.Target != nil {
-		if st, f := g.structFieldIn(g.program.Info(s.Target.Left).Type, s.Target.Text); st != nil {
+		if st, f := g.structFieldOf(s.Target); st != nil {
 			receiver := g.structOperand(st, s.Target.Left)
 			var value ast.Expr
 			if f.scalar != "" {
@@ -211,9 +210,9 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 	out := []ast.Stmt{define(tmp, g.expression(value))}
 	tag := "Tag"
 	var present string
-	if call, ok := g.listAt(value); ok && !contractMatch {
+	if !contractMatch && g.listAtMatch(value) {
 		present = g.temp()
-		out = []ast.Stmt{&ast.AssignStmt{Lhs: []ast.Expr{ident(tmp), ident(present)}, Tok: token.DEFINE, Rhs: []ast.Expr{g.listAtParts(call)}}}
+		out = []ast.Stmt{&ast.AssignStmt{Lhs: []ast.Expr{ident(tmp), ident(present)}, Tok: token.DEFINE, Rhs: []ast.Expr{g.listAtParts(value)}}}
 	}
 	if contractMatch {
 		out = append(out, assign(ident(tmp), token.ASSIGN, runtimeCall("ContractReceiver", ident(tmp))))
@@ -354,24 +353,14 @@ func (g *generator) positionFree(s *syntax.Statement) bool {
 // exprFree reports whether e is built only from literals, typed locals, and
 // scalar operations, so lowering it runs no call and no unlocated operation.
 func (g *generator) exprFree(e *syntax.Expression) bool {
-	return e != nil && g.irFree(g.ir.Operand(e))
-}
-
-// irFree is exprFree over an elaborated expression.
-func (g *generator) irFree(x ir.Expr) bool {
-	if g.native(x) == "" {
+	if e == nil || g.nativeType(e) == "" {
 		return false
 	}
-	switch x := x.(type) {
-	case ir.IntLiteral, ir.FloatLiteral, ir.BoolLiteral, ir.Local:
+	switch e.Kind {
+	case syntax.KindNumber, syntax.KindBool, syntax.KindName:
 		return true
-	case ir.Binary:
-		return g.irFree(x.Left) && g.irFree(x.Right)
-	case ir.Deferred:
-		switch x.Source.Kind {
-		case syntax.KindNumber, syntax.KindBool, syntax.KindName:
-			return true
-		}
+	case syntax.KindBinary:
+		return g.exprFree(e.Left) && g.exprFree(e.Right)
 	}
 	return false
 }

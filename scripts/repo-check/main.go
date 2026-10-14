@@ -169,23 +169,21 @@ func check() error {
 			issues = append(issues, path+": "+err.Error())
 		}
 	}
-	// A stage may split its kinds across several functions while expressions
-	// move into the IR; together they must handle every kind.
 	for _, stage := range []struct {
-		handlers []kindHandler
-		kinds    []string
+		path, function string
+		kinds          []string
 	}{
-		{[]kindHandler{{"pkg/lower/lower_statements.go", "statement"}}, syntax.StatementKinds()},
-		{[]kindHandler{{"pkg/lower/lower_expressions.go", "expressionValue"}, {"pkg/ir/elaborate.go", "Value"}}, syntax.ExpressionKinds()},
-		{[]kindHandler{{"pkg/checker/checker.go", "checkStatement"}}, syntax.StatementKinds()},
-		{[]kindHandler{{"pkg/checker/expressions.go", "infer"}}, syntax.ExpressionKinds()},
+		{"pkg/lower/lower_statements.go", "statement", syntax.StatementKinds()},
+		{"pkg/lower/lower_expressions.go", "expressionValue", syntax.ExpressionKinds()},
+		{"pkg/checker/checker.go", "checkStatement", syntax.StatementKinds()},
+		{"pkg/checker/expressions.go", "infer", syntax.ExpressionKinds()},
 	} {
-		missing, err := missingKinds(stage.handlers, stage.kinds)
+		missing, err := missingKinds(stage.path, stage.function, stage.kinds)
 		if err != nil {
 			return err
 		}
 		for _, kind := range missing {
-			issues = append(issues, stage.handlers[0].path+" "+stage.handlers[0].function+" does not handle "+kind)
+			issues = append(issues, stage.path+" "+stage.function+" does not handle "+kind)
 		}
 	}
 
@@ -338,10 +336,7 @@ func dependencyIssues(rules policy, packages map[string]pkg) []string {
 	return issues
 }
 
-// kindHandler names a function whose switch on a syntax Kind handles kinds.
-type kindHandler struct{ path, function string }
-
-func missingKinds(handlers []kindHandler, kinds []string) ([]string, error) {
+func missingKinds(path, function string, kinds []string) ([]string, error) {
 	constants := map[string]string{}
 	definitions, err := parser.ParseFile(token.NewFileSet(), "pkg/syntax/kinds.go", nil, 0)
 	if err != nil {
@@ -355,40 +350,38 @@ func missingKinds(handlers []kindHandler, kinds []string) ([]string, error) {
 		}
 		return true
 	})
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+	if err != nil {
+		return nil, err
+	}
 	seen := map[string]bool{}
-	for _, handler := range handlers {
-		file, err := parser.ParseFile(token.NewFileSet(), handler.path, nil, 0)
-		if err != nil {
-			return nil, err
+	for _, declaration := range file.Decls {
+		fn, ok := declaration.(*ast.FuncDecl)
+		if !ok || fn.Name.Name != function {
+			continue
 		}
-		for _, declaration := range file.Decls {
-			fn, ok := declaration.(*ast.FuncDecl)
-			if !ok || fn.Name.Name != handler.function {
-				continue
+		ast.Inspect(fn.Body, func(node ast.Node) bool {
+			branch, ok := node.(*ast.SwitchStmt)
+			if !ok {
+				return true
 			}
-			ast.Inspect(fn.Body, func(node ast.Node) bool {
-				branch, ok := node.(*ast.SwitchStmt)
-				if !ok {
-					return true
-				}
-				tag, ok := branch.Tag.(*ast.SelectorExpr)
-				if !ok || tag.Sel.Name != "Kind" {
-					return true
-				}
-				for _, statement := range branch.Body.List {
-					for _, label := range statement.(*ast.CaseClause).List {
-						switch value := label.(type) {
-						case *ast.BasicLit:
-							key, _ := strconv.Unquote(value.Value)
-							seen[key] = true
-						case *ast.SelectorExpr:
-							seen[constants[value.Sel.Name]] = true
-						}
+			tag, ok := branch.Tag.(*ast.SelectorExpr)
+			if !ok || tag.Sel.Name != "Kind" {
+				return true
+			}
+			for _, statement := range branch.Body.List {
+				for _, label := range statement.(*ast.CaseClause).List {
+					switch value := label.(type) {
+					case *ast.BasicLit:
+						key, _ := strconv.Unquote(value.Value)
+						seen[key] = true
+					case *ast.SelectorExpr:
+						seen[constants[value.Sel.Name]] = true
 					}
 				}
-				return true
-			})
-		}
+			}
+			return true
+		})
 	}
 	var missing []string
 	for _, kind := range kinds {

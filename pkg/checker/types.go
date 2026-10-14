@@ -85,32 +85,21 @@ type Info struct {
 	Arguments []syntax.Argument
 	// OptionalArgument wraps this supplied argument once without changing its source type.
 	OptionalArgument *Type
+	// Folded reports that the expression is a compile-time Bool constant whose
+	// value is Constant. The fold pass sets both.
+	Folded, Constant bool
+	foldDone         bool
 	// inferenceDeferred records body checks that need a later callback result context.
 	inferenceDeferred bool
 }
 type Flow struct{ FallsThrough bool }
 type Program struct {
-	flow             map[*syntax.Statement]Flow
-	scopes           map[*syntax.Expression]ScopeState
-	cleanups         map[*syntax.Statement]*Method
-	Effects          map[string][]string
-	Modules          []*syntax.Module
-	typeReferences   map[*syntax.Type]*Type
-	symbols          map[string]map[string]*Symbol
-	expressions      map[*syntax.Expression]*Info
-	bindings         map[*syntax.Pattern]*Binding
-	loopBindings     map[*syntax.Statement]*Binding
-	armBindings      map[*syntax.Arm][]*Binding
-	contractPatterns map[*syntax.Arm]*Type
-	parameters       map[*syntax.Declaration][]*Binding
-	lambdaParameters map[*syntax.Expression][]*Binding
-	self             map[*syntax.Declaration]*Binding
-	assignments      map[*syntax.Expression]*Binding
-	Methods          []*Method
-	Diagnostics      []syntax.Diagnostic
-	// ArmNameConflicts retains type/case identities before payload names bind.
-	// Entries parallel Arm.Names; lexical values and type variables yield nil.
-	armNameConflicts map[*syntax.Arm][]*Info
+	Effects     map[string][]string
+	Modules     []*syntax.Module
+	symbols     map[string]map[string]*Symbol
+	Methods     []*Method
+	Diagnostics []syntax.Diagnostic
+	serial      int // identities handed out while checking
 }
 
 func (t *Type) String() string {

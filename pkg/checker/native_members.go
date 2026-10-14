@@ -50,7 +50,7 @@ func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 	}
 	m := methods[0]
 	info := &Info{Type: m.Type, Method: m, Native: m.Native, NoReturn: receiver.NoReturn}
-	c.expressions[member] = info
+	setInfo(member, info)
 	return info
 }
 
@@ -74,6 +74,6 @@ func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info, expecte
 	if context.conflict {
 		copy.Type.Result = primitive("<invalid>")
 	}
-	c.expressions[e.Left] = &copy
+	setInfo(e.Left, &copy)
 	*info = copy
 }

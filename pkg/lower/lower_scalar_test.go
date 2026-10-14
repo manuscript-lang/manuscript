@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -40,7 +41,7 @@ func TestPrimitiveEqualityEligibility(t *testing.T) {
 			}
 			// Scalar parameters are typed variables, so the comparison needs no assertion.
 			goType := primitiveEqualityType(r.Program.ParameterBindings(r.Program.Symbol("scalar.ms", "equal").Decl)[0].Type)
-			if tc.direct && (!strings.Contains(r.Source, "local4_left "+goType+", ") || !strings.Contains(r.Source, " != ")) {
+			if tc.direct && (!regexp.MustCompile(`local\d+_left `+goType+`, `).MatchString(r.Source) || !strings.Contains(r.Source, " != ")) {
 				t.Fatal("missing typed direct equality", r.Source)
 			}
 		})
