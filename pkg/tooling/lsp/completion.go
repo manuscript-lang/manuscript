@@ -633,7 +633,16 @@ func importCompletion(d document, docs map[string]document, c cursorContext, sni
 	path, knownPath := "", false
 	rest := editorTokens(d.Text[c.end:])
 	for at, token := range rest {
-		if token.kind == "name" && token.text == "from" && at+1 < len(rest) && rest[at+1].kind == "string" {
+		if token.kind == "\n" && braces <= 0 || token.kind == "name" && token.text == "import" {
+			break // Do not borrow a module path from a later declaration.
+		}
+		switch token.kind {
+		case "{":
+			braces++
+		case "}":
+			braces--
+		}
+		if braces == 0 && token.kind == "name" && token.text == "from" && at+1 < len(rest) && rest[at+1].kind == "string" {
 			parsed, err := strconv.Unquote(rest[at+1].text)
 			path, knownPath = parsed, err == nil
 			break

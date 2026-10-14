@@ -149,6 +149,27 @@ func TestCompactApplicationImportCompletionKeepsSameNamedTypes(t *testing.T) {
 	}
 }
 
+func TestImportCompletionKeepsCurrentDeclarationBoundary(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		for _, source := range []string{
+			"import {Li|}\nimport{stdout}from\"@std/io.ms\"\n",
+			"import {\n    Li|\n}\nimport{stdout}from\"@std/io.ms\"\n",
+			"import {Li|\nimport{stdout}from\"@std/io.ms\"\n",
+			"import Li|\nimport{stdout}from\"@std/io.ms\"\n",
+			"import {\n    Li|\n}from\"@std/collections.ms\"\nimport{stdout}from\"@std/io.ms\"\n",
+		} {
+			source = strings.ReplaceAll(source, "\n", newline)
+			items := completeSource(t, source)
+			if itemNamed(items, "ListBuilder") == nil {
+				t.Fatal("next declaration concealed the current import's candidates", source, items)
+			}
+			if itemNamed(items, "List") != nil {
+				t.Fatal("offered a redundant prelude import", source)
+			}
+		}
+	}
+}
+
 func TestPreludeTypeCompletionRespectsShadowing(t *testing.T) {
 	for _, source := range []string{
 		"fn ListEntry() -> Int: 1\nfn use(value: ListE|) -> Unit: unit\n",
