@@ -1,0 +1,271 @@
+{
+  "revision": "f01d88003284cc21ffda49284b04694c53f8cd8a",
+  "dirty": " M pkg/compiler/lower_expressions.go\n M pkg/runtime/builtin_parity_test.go\n M pkg/runtime/bundle.go\n M pkg/runtime/clone.go\n M pkg/runtime/collections.go\n M pkg/runtime/host.go\n M pkg/runtime/host_accessors_test.go\n M pkg/runtime/library.go\n M pkg/runtime/library_algorithms.go\n M pkg/runtime/library_archive.go\n M pkg/runtime/library_collections.go\n M pkg/runtime/library_data.go\n M pkg/runtime/library_formats.go\n M pkg/runtime/library_fs.go\n M pkg/runtime/library_host_parity_test.go\n M pkg/runtime/library_http_headers.go\n M pkg/runtime/library_http_headers_test.go\n M pkg/runtime/library_signals.go\n M pkg/runtime/library_string.go\n M pkg/runtime/library_system.go\n M pkg/runtime/list_range_test.go\n M pkg/runtime/mutation_test.go\n M pkg/runtime/native_dispatch_test.go\n M pkg/runtime/process.go\n M pkg/runtime/services.go\n M pkg/runtime/services_test.go\n M pkg/runtime/values.go\n M scripts/bench-lists/harness.go.txt\n?? pkg/runtime/list_comparator.go\n?? pkg/runtime/list_sort.go\n?? pkg/runtime/list_storage.go\n?? pkg/runtime/list_storage_test.go\n",
+  "binary_sha256": "67ec941f2c2ef5a2cbd80f03860982c4b2939ca17d5af8998a5bb7f6d6fe5ce4",
+  "samples": [
+    {
+      "allocated_bytes": 41678176,
+      "allocations": 39,
+      "capacity": 1055744,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "Int",
+      "retained_heap_bytes": 8444640,
+      "seconds": 0.08170708299996932,
+      "peak_rss_kib": 44616
+    },
+    {
+      "allocated_bytes": 41678080,
+      "allocations": 38,
+      "capacity": 1055744,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "Int",
+      "retained_heap_bytes": 8444544,
+      "seconds": 0.08186537000005956,
+      "peak_rss_kib": 40648
+    },
+    {
+      "allocated_bytes": 41678176,
+      "allocations": 39,
+      "capacity": 1055744,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "Int",
+      "retained_heap_bytes": 8444640,
+      "seconds": 0.04748311499997726,
+      "peak_rss_kib": 40904
+    },
+    {
+      "allocated_bytes": 41678176,
+      "allocations": 39,
+      "capacity": 1055744,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "Float",
+      "retained_heap_bytes": 8444640,
+      "seconds": 0.051832648999948105,
+      "peak_rss_kib": 40776
+    },
+    {
+      "allocated_bytes": 41678272,
+      "allocations": 40,
+      "capacity": 1055744,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "Float",
+      "retained_heap_bytes": 8444736,
+      "seconds": 0.054006899000000885,
+      "peak_rss_kib": 40776
+    },
+    {
+      "allocated_bytes": 41678176,
+      "allocations": 39,
+      "capacity": 1055744,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "Float",
+      "retained_heap_bytes": 8444640,
+      "seconds": 0.034995762999983526,
+      "peak_rss_kib": 42568
+    },
+    {
+      "allocated_bytes": 5241600,
+      "allocations": 33,
+      "capacity": 1114112,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "Bool",
+      "retained_heap_bytes": 1112704,
+      "seconds": 0.011160409000012805,
+      "peak_rss_kib": 16072
+    },
+    {
+      "allocated_bytes": 5241600,
+      "allocations": 33,
+      "capacity": 1114112,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "Bool",
+      "retained_heap_bytes": 1112800,
+      "seconds": 0.00978691600005277,
+      "peak_rss_kib": 15432
+    },
+    {
+      "allocated_bytes": 5241600,
+      "allocations": 33,
+      "capacity": 1114112,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "Bool",
+      "retained_heap_bytes": 1112704,
+      "seconds": 0.009464991999948325,
+      "peak_rss_kib": 15048
+    },
+    {
+      "allocated_bytes": 88017264,
+      "allocations": 38,
+      "capacity": 1109504,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "String",
+      "retained_heap_bytes": 17750656,
+      "seconds": 0.08000027899993256,
+      "peak_rss_kib": 72008
+    },
+    {
+      "allocated_bytes": 88017264,
+      "allocations": 38,
+      "capacity": 1109504,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "String",
+      "retained_heap_bytes": 17750656,
+      "seconds": 0.0735587570000007,
+      "peak_rss_kib": 71624
+    },
+    {
+      "allocated_bytes": 88017264,
+      "allocations": 38,
+      "capacity": 1109504,
+      "elements": 1000000,
+      "header_bytes": 144,
+      "kind": "String",
+      "retained_heap_bytes": 17750656,
+      "seconds": 0.09002784699998756,
+      "peak_rss_kib": 72136
+    },
+    {
+      "allocated_bytes": 160716224,
+      "allocations": 46,
+      "capacity": 4035584,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "Int",
+      "retained_heap_bytes": 32283552,
+      "seconds": 0.1719962710000118,
+      "peak_rss_kib": 133896
+    },
+    {
+      "allocated_bytes": 160716320,
+      "allocations": 47,
+      "capacity": 4035584,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "Int",
+      "retained_heap_bytes": 32283552,
+      "seconds": 0.14959137699997882,
+      "peak_rss_kib": 114248
+    },
+    {
+      "allocated_bytes": 160716128,
+      "allocations": 45,
+      "capacity": 4035584,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "Int",
+      "retained_heap_bytes": 32283360,
+      "seconds": 0.11069253199991635,
+      "peak_rss_kib": 113864
+    },
+    {
+      "allocated_bytes": 160716128,
+      "allocations": 45,
+      "capacity": 4035584,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "Float",
+      "retained_heap_bytes": 32283456,
+      "seconds": 0.140053910000006,
+      "peak_rss_kib": 121544
+    },
+    {
+      "allocated_bytes": 160716320,
+      "allocations": 47,
+      "capacity": 4035584,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "Float",
+      "retained_heap_bytes": 32283568,
+      "seconds": 0.14269618899993475,
+      "peak_rss_kib": 134728
+    },
+    {
+      "allocated_bytes": 160716320,
+      "allocations": 47,
+      "capacity": 4035584,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "Float",
+      "retained_heap_bytes": 32283552,
+      "seconds": 0.1913907590000008,
+      "peak_rss_kib": 122056
+    },
+    {
+      "allocated_bytes": 21109504,
+      "allocations": 39,
+      "capacity": 4317184,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "Bool",
+      "retained_heap_bytes": 4315776,
+      "seconds": 0.03853986599995096,
+      "peak_rss_kib": 27080
+    },
+    {
+      "allocated_bytes": 21109600,
+      "allocations": 40,
+      "capacity": 4317184,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "Bool",
+      "retained_heap_bytes": 4315872,
+      "seconds": 0.048390799000003426,
+      "peak_rss_kib": 27208
+    },
+    {
+      "allocated_bytes": 21109600,
+      "allocations": 40,
+      "capacity": 4317184,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "Bool",
+      "retained_heap_bytes": 4321472,
+      "seconds": 0.04753739199998108,
+      "peak_rss_kib": 24392
+    },
+    {
+      "allocated_bytes": 338108240,
+      "allocations": 51,
+      "capacity": 4237824,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "String",
+      "retained_heap_bytes": 67809376,
+      "seconds": 0.42202283599999646,
+      "peak_rss_kib": 245640
+    },
+    {
+      "allocated_bytes": 338102736,
+      "allocations": 45,
+      "capacity": 4237824,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "String",
+      "retained_heap_bytes": 67803872,
+      "seconds": 0.5744403039999497,
+      "peak_rss_kib": 217032
+    },
+    {
+      "allocated_bytes": 338102752,
+      "allocations": 46,
+      "capacity": 4237824,
+      "elements": 4000000,
+      "header_bytes": 144,
+      "kind": "String",
+      "retained_heap_bytes": 67809392,
+      "seconds": 0.592696247000049,
+      "peak_rss_kib": 223176
+    }
+  ]
+}

@@ -1,17 +1,15 @@
 # Numeric List storage measurements and staged representation plan
 
-**Direction updates:** the user's default Int32/Float32 migration is owned by its
-dedicated task; the 64-bit results here describe the historical/current pre-migration
-ABI, not permission to narrow storage independently. Later user direction also
-supersedes List traversal snapshots/COW: capture backing and initial length once,
-permit backing writes, never extend traversal on append, and follow Go reallocation
-behavior. Explicit clone/slice results and Map/Set snapshots remain independent.
-The COW review/results are retained as historical evidence, not current semantics.
+**Current direction:** Int/Float remain 64-bit; the user cancelled the width
+migration. Primitive production storage and its access/comparator seams are now
+implemented in [the typed storage review](typed-storage.md). Earlier numbers and
+prototypes below remain historical evidence. List traversal captures backing and
+initial length, with visible writes and non-clearing retained tails.
 
 Refs #142 and #87. This directory contains checked Manuscript workloads, a
 generated-Go benchmark runner, fresh-process allocation/RSS workers, and an
 isolated typed-storage experiment. The experiment is **not** a runtime ABI or
-language feature. Production `List` still stores `Items []Value`.
+language feature. The old prototype is separate from the production implementation described above.
 
 Run from the checkout root with its bundled SDK:
 
@@ -125,8 +123,7 @@ semantic change, deterministic Go-reference cases, zero-allocation boundary and
 paired normal-runtime and retained-memory evidence. Shrinking uses non-clearing
 shift-and-reslice semantics; prior values remain in spare capacity until overwritten
 or released, preserving valid typed consumption by a captured traversal.
-Production List storage remains boxed `[]Value`;
-typed storage and numeric-width changes remain separate work.
+Primitive storage is now typed; see the current review above. Numeric widths remain unchanged.
 
 ## Historical bounded COW change
 
@@ -157,59 +154,12 @@ bounded change does not solve boxed element storage or callback dispatch cost.
 
 ## Authoritative typed representation
 
-Keep `*List` as the single source identity and shared mutable handle. An
-internal backing object owns exactly one representation: target default Int
-`[]int32` and Float `[]float32`, explicit wider numeric types where required,
-Bool `[]bool`, or generic `[]Value`. Select widths only after the dedicated language
-range/rounding/ABI migration. `List[Int]` remains Int-backed
-even when passed through `Value`, a generic function, a record, Optional,
-Result, a closure, a contract view or a saved method. A typed projection must
-reference the backing object, never copy its slice header into an independent
-mutable owner. No lazy boxed mirror is permitted.
-Growth replaces the array field inside that same backing object; replacing the
-backing object itself would strand previously captured typed projections. A
-running traversal retains its captured old array if growth reallocates.
-
-The Int-only prototype uses `*prototypeStorage` to make that invariant explicit.
-Typed and boxed aliases plus a bound append function see growth and updates
-through the same handle. Range slices capture the initial header without COW;
-clones allocate a fresh handle and array. The prototype is deliberately absent
-from production dispatch. It does not establish complete nested/recursive,
-equality/hash, native-service, debugger or generic ABI compatibility.
-
-Prefer exact checked element identity or resolved generic type identity for
-storage selection. Never guess from observed payload values: empty lists,
-Optional elements, function values and contract views must retain their actual
-types. Primitive storage never silently widens to another numeric type. Other
-elements retain ordinary references in the boxed representation. No unsafe
-memory layout, interface-data pointer tricks or Go runtime internals are needed.
-
-Migrate in reviewable stages:
-
-1. Centralize every List constructor, read, traversal capture, append and in-place write
-   behind storage-aware helpers while retaining the old backing representation.
-   Include runtime adapters/builders, formatting, positional binding, equality,
-   native ABI, standalone bundles, pins and debugger watches. Distinguish List
-   accesses from Set/Bytes fields with the same spelling. Run source/native
-   parity and benchmark helper overhead before proceeding.
-2. Introduce tagged backing kinds and typed constructors/read/write operations
-   after all consumers have migrated. Preserve one authoritative handle across
-   every native/generic boundary. Replace `Items` entirely at cutover; retaining
-   an exported, independently mutable mirror would violate alias semantics.
-3. Lower statically known primitive operations to typed handles and locals.
-   Known `.at().unwrap()` can avoid an allocated Optional only with relative
-   negative indexes, absence faults, operand order, cancellation checkpoints
-   and source frames preserved. Generic reads continue boxing individual
-   elements, never materializing another mutable list.
-4. Specialize proven primitive comparator/callback calls or introduce an
-   internal typed source-call ABI. Keep function-value adapters at generic
-   boundaries; retain stable sort, comparator order/effects/faults, mutation
-   and cancellation. An arbitrary user comparator cannot be replaced with a
-   built-in numeric order. Public sort/API expansion remains #166's scope.
-
-The typed source-call ABI must also retain #214's call-depth accounting and
-control-transfer/fault bookkeeping. Returning a typed scalar is not permission
-to bypass those source-call guards or the current checked record-field boundary.
+The current [Go ABI guide](../../documentation/contributing/list-storage.md)
+defines the implementation and migration. A single `*List` owns its typed slice
+header directly, retaining two constructor allocations without a separate backing
+owner. Captured headers are traversal views, never mutable owners. No boxed mirror
+exists. The earlier three-allocation Int prototype remains a historical control.
+Default Int/Float widths are 64-bit; closed width experiments stay closed.
 
 ## Integration risks and acceptance gates
 
@@ -217,7 +167,7 @@ to bypass those source-call guards or the current checked record-field boundary.
   runtime adapters and external Go callers. Cutover is a coordinated ABI change;
   a compatibility accessor cannot support arbitrary direct writes to a mirror.
   Native/standalone embedding, implementation hashes and debugger expectations
-  must move together. The bounded traversal change leaves that ABI intact.
+  must move together. The typed cutover migrates consumers through the storage-aware helpers.
 - **Captured backing:** audit every mutator, overlapping/self splices, callback
   reentry, early exits, cancellation and faults. Preserve shallow references.
   Synchronization remains the caller's responsibility for shared collections.

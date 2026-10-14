@@ -1434,7 +1434,7 @@
       "status": "equivalent",
       "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in the filesystem package guide.",
       "targets": [
-        "@std/fs.ms/FileHandle.write_file"
+        "@std/fs.ms/FileHandle.write"
       ]
     },
     {

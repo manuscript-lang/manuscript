@@ -144,6 +144,8 @@ func workspaceSymbols(docs map[string]document, roots []string, query string) []
 			kind := 12
 			if entry.info.Symbol != nil && entry.info.Symbol.Kind == "type" {
 				kind = 5
+			} else if entry.info.Symbol != nil && entry.info.Symbol.IsConstant() {
+				kind = 14
 			}
 			result = append(result, map[string]any{"name": entry.name, "kind": kind, "location": location})
 		}

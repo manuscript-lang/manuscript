@@ -9,14 +9,6 @@ import (
 	"strings"
 )
 
-func Integer(text string) Value {
-	n, err := strconv.ParseInt(text, 10, 64)
-	if err != nil {
-		return Panic("Int literal out of range")
-	}
-	return n
-}
-func Float(text string) Value { n, _ := strconv.ParseFloat(text, 64); return n }
 func checkedAdd(a, b int64) int64 {
 	r := a + b
 	if b > 0 && r < a || b < 0 && r > a {

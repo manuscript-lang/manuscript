@@ -127,6 +127,31 @@ func TestCleanupStackReleasesCompletedActions(t *testing.T) {
 	}
 }
 
+func nestedCleanupFault(execution *Execution, depth int, closed *int) {
+	if depth == 0 {
+		Panic("bottom")
+	}
+	stack := NewCleanupStack()
+	defer stack.Unwind()
+	stack.Push(execution, cleanupResource{"scope", &[]string{}, false})
+	*closed++
+	nestedCleanupFault(execution, depth-1, closed)
+}
+
+func TestCleanupUnwindIsLinearThroughNestedScopes(t *testing.T) {
+	// Recovering and re-raising a fault in every scope nests one panic per
+	// frame; 20000 scopes took tens of seconds that way.
+	closed := 0
+	started := time.Now()
+	failure := recovered(func() { nestedCleanupFault(RootExecution(), 20000, &closed) })
+	if fault, ok := failure.(Fault); !ok || fault.Message != "bottom" || len(fault.Secondary) != 0 || closed != 20000 {
+		t.Fatalf("lost the primary fault or a scope: %#v closed=%d", failure, closed)
+	}
+	if elapsed := time.Since(started); elapsed > 10*time.Second {
+		t.Fatalf("unwinding nested scopes took %v", elapsed)
+	}
+}
+
 // runTasks exercises the public group lifecycle for existing service regressions.
 func runTasks(ctx *Execution, result string, operations []Value, timeout *Duration) Value {
 	var args []Argument
