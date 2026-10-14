@@ -57,12 +57,6 @@ func plural(n int, one, many string) string {
 	return many
 }
 
-// commandNames lists every dispatched command; a test keeps it equal to the help text.
-var commandNames = []string{"check", "lint", "build", "emit", "run", "test", "fmt", "inspect", "diagram", "profile", "pprof", "trace", "debug", "dap", "lock", "init", "doc", "stdlib", "lsp", "help", "version"}
-
-// jsonCommands accept --json; fmt and doc parse their own options but share the spelling.
-var jsonCommands = []string{"check", "lint", "test", "build", "profile", "inspect", "diagram", "emit", "lock", "fmt", "doc"}
-
 // unknownCommand names the nearest command and lists the rest.
 func unknownCommand(name string) {
 	fmt.Fprintln(os.Stderr, "unknown command:", name)

@@ -199,10 +199,11 @@ func (inv *invocation) validate() (plan, int, bool) {
 		unknownCommand(command)
 		return p, 2, false
 	}
-	if inv.output != "" && !inv.isOneOf("build", "emit", "inspect", "diagram", "profile") {
-		return p, usageError("-o and --output are valid only for ms build, emit, inspect, diagram, doc, or profile, not ms %s; run 'ms help %s' for its options", command, command), false
+	spec := specOf(command)
+	if inv.output != "" && !spec.output {
+		return p, usageError("-o and --output are valid only for ms %s or doc, not ms %s; run 'ms help %s' for its options", list(append(namesWhere(func(c commandSpec) bool { return c.output && c.name != "profile" }), "profile")), command, command), false
 	}
-	if (inv.testTimeout != "" || inv.testFilter != "") && command != "test" {
+	if (inv.testTimeout != "" || inv.testFilter != "") && !spec.testOptions {
 		return p, usageError("--timeout and --filter are valid only for ms test, not ms %s; run 'ms help %s' for the options this command accepts", command, command), false
 	}
 	if command == "test" {
@@ -218,12 +219,12 @@ func (inv *invocation) validate() (plan, int, bool) {
 	if inv.watch && inv.structured {
 		return p, usageError("--json cannot be combined with --watch; remove --watch for one versioned result"), false
 	}
-	if inv.watch && !inv.isOneOf("check", "lint", "run", "test") {
-		return p, usageError("--watch requires check, lint, run, or test, not %s; use ms check <file> --watch or ms run <file> --watch", command), false
+	if inv.watch && !spec.watch {
+		return p, usageError("--watch requires %s, not %s; use ms check <file> --watch or ms run <file> --watch", list(namesWhere(func(c commandSpec) bool { return c.watch })), command), false
 	}
 	if inv.formatCheck && command != "fmt" ||
-		inv.structured && !inv.isOneOf(jsonCommands...) ||
-		inv.debug && !inv.isOneOf("build", "run", "test") {
+		inv.structured && !spec.json ||
+		inv.debug && !spec.debug {
 		return p, usageError("%s; run 'ms help %s' for the options this command accepts", invalidFlag(command, inv.formatCheck, inv.structured, inv.debug), command), false
 	}
 	kind, err := compiler.ParseBuildType(inv.buildTypeName)
@@ -231,8 +232,8 @@ func (inv *invocation) validate() (plan, int, bool) {
 		fmt.Fprintln(os.Stderr, err)
 		return p, 2, false
 	}
-	if inv.buildTypeSet && !inv.isOneOf("build", "run", "test", "debug", "profile") {
-		return p, usageError("--build-type requires build, run, test, debug, or profile, not %s; remove the flag", command), false
+	if inv.buildTypeSet && !spec.buildType {
+		return p, usageError("--build-type requires %s, not %s; remove the flag", list(namesWhere(func(c commandSpec) bool { return c.buildType })), command), false
 	}
 	switch {
 	case inv.debug || command == "debug":
@@ -243,7 +244,7 @@ func (inv *invocation) validate() (plan, int, bool) {
 	case command == "profile" && !inv.buildTypeSet:
 		kind = compiler.RelWithDebInfo
 	}
-	if inv.hasProfilePaths() && command != "run" {
+	if inv.hasProfilePaths() && !spec.profilePaths {
 		return p, usageError("profiling paths (--cpu-profile, --heap-profile, --trace) require run, not %s; use ms run <file> with them, or ms profile <file> [--trace] for a bundle", command), false
 	}
 	if inv.watch && inv.hasProfilePaths() {
