@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"strconv"
 
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -181,9 +182,9 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 	out := []ast.Stmt{define(tmp, g.expression(value))}
 	tag := "Tag"
 	var present string
-	if !contractMatch && g.listAtMatch(value) {
+	if call, ok := g.listAt(value); ok && !contractMatch {
 		present = g.temp()
-		out = []ast.Stmt{&ast.AssignStmt{Lhs: []ast.Expr{ident(tmp), ident(present)}, Tok: token.DEFINE, Rhs: []ast.Expr{g.listAtParts(value)}}}
+		out = []ast.Stmt{&ast.AssignStmt{Lhs: []ast.Expr{ident(tmp), ident(present)}, Tok: token.DEFINE, Rhs: []ast.Expr{g.listAtParts(call)}}}
 	}
 	if contractMatch {
 		out = append(out, assign(ident(tmp), token.ASSIGN, runtimeCall("ContractReceiver", ident(tmp))))
@@ -324,14 +325,24 @@ func (g *generator) positionFree(s *syntax.Statement) bool {
 // exprFree reports whether e is built only from literals, typed locals, and
 // scalar operations, so lowering it runs no call and no unlocated operation.
 func (g *generator) exprFree(e *syntax.Expression) bool {
-	if e == nil || g.nativeType(e) == "" {
+	return e != nil && g.irFree(g.ir.Operand(e))
+}
+
+// irFree is exprFree over an elaborated expression.
+func (g *generator) irFree(x ir.Expr) bool {
+	if g.native(x) == "" {
 		return false
 	}
-	switch e.Kind {
-	case syntax.KindNumber, syntax.KindBool, syntax.KindName:
+	switch x := x.(type) {
+	case ir.IntLiteral, ir.FloatLiteral, ir.BoolLiteral, ir.Local:
 		return true
-	case syntax.KindBinary:
-		return g.exprFree(e.Left) && g.exprFree(e.Right)
+	case ir.Binary:
+		return g.irFree(x.Left) && g.irFree(x.Right)
+	case ir.Deferred:
+		switch x.Source.Kind {
+		case syntax.KindNumber, syntax.KindBool, syntax.KindName:
+			return true
+		}
 	}
 	return false
 }

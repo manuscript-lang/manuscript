@@ -147,7 +147,7 @@ func (g *generator) irStructOperand(st *structType, receiver ir.Expr) ast.Expr {
 
 // constructStruct lowers a record construction, or returns nil when the call
 // does not name every field exactly once.
-func (g *generator) constructStruct(st *structType, args []syntax.Argument) ast.Expr {
+func (g *generator) constructStruct(st *structType, args []ir.Argument) ast.Expr {
 	if len(args) != len(st.fields) {
 		return nil
 	}
@@ -163,7 +163,7 @@ func (g *generator) constructStruct(st *structType, args []syntax.Argument) ast.
 		f := st.field(a.Name)
 		var value ast.Expr
 		if f.scalar != "" {
-			value = g.scalar(a.Value, f.scalar)
+			value = g.irScalar(a.Value, f.scalar)
 		} else {
 			value = g.argumentValue(a)
 		}

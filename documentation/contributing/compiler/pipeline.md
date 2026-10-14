@@ -42,7 +42,7 @@ Elaboration is the one step that reads both the AST and `Program`. After it, not
 
 Each step merges on its own and keeps observable behavior; generated Go need not be byte-identical.
 
-1. Define `ir` nodes and elaborate expressions that need no cleanup or match: literals, names, calls, member access, collections, text, unary and binary operations. Done so far: literals, text, collections, local names, and unary and binary operators (`Local`, `Unary`, `Binary`). Calls, member access, symbol names, and `try` stay `Deferred`.
+1. Define `ir` nodes and elaborate expressions that need no cleanup or match: literals, names, calls, member access, collections, text, unary and binary operations. Done so far: literals, text, collections, local names, and unary and binary operators, member reads, and calls and contract views (`Local`, `Unary`, `Binary`, `Member`, `Call`, `View`). Symbol names and `try` stay `Deferred`.
 2. Move the boolean fold onto IR. Done: `ir.Folder` replaces the `lower` optimizer and its `booleans` table.
 3. Elaborate statements, `match`, `try`, and defaults.
 4. Elaborate cleanup scopes and function bodies; remove `lower`'s reads of `Program` tables.

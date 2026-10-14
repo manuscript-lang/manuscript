@@ -6,6 +6,7 @@ import (
 	"go/token"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -24,7 +25,7 @@ func recordDefaults(d *syntax.Declaration) bool {
 // Native Optional.none adapters already implement omission. Other defaults use
 // the same checked per-call prologue as source functions, then tail-dispatch to
 // the existing native body with full concrete argument slots.
-func (g *generator) nativeDefaults(d *syntax.Declaration, t *checker.Type, callee ast.Expr, supplied ...[]syntax.Argument) ast.Expr {
+func (g *generator) nativeDefaults(d *syntax.Declaration, t *checker.Type, callee ast.Expr, supplied ...[]ir.Argument) ast.Expr {
 	value := g.nativeDefaultParameters(d, t, nil, callee, supplied...)
 	if value == callee || hasTypeVariable(t) {
 		return value
@@ -34,7 +35,7 @@ func (g *generator) nativeDefaults(d *syntax.Declaration, t *checker.Type, calle
 	return g.lazyValue("native defaults/"+d.Pos.String()+"/"+checker.TypeKey(t), value)
 }
 
-func (g *generator) nativeDefaultParameters(d *syntax.Declaration, t *checker.Type, overridden map[string]bool, callee ast.Expr, supplied ...[]syntax.Argument) ast.Expr {
+func (g *generator) nativeDefaultParameters(d *syntax.Declaration, t *checker.Type, overridden map[string]bool, callee ast.Expr, supplied ...[]ir.Argument) ast.Expr {
 	if d == nil || g.program.ParameterBindings(d) == nil {
 		return callee
 	}
@@ -77,7 +78,7 @@ func (g *generator) nativeDefaultParameters(d *syntax.Declaration, t *checker.Ty
 	return runtimeCall("WithDefaults", callee, concreteFunction(prepare), sliceLiteral(ident("int"), slots...))
 }
 
-func (g *generator) methodDefaults(m *checker.Method, callee ast.Expr, supplied ...[]syntax.Argument) ast.Expr {
+func (g *generator) methodDefaults(m *checker.Method, callee ast.Expr, supplied ...[]ir.Argument) ast.Expr {
 	if m.Native != "" {
 		return g.nativeDefaultParameters(m.Decl, m.Type, nil, callee, supplied...)
 	}
@@ -102,16 +103,16 @@ func (g *generator) methodDefaults(m *checker.Method, callee ast.Expr, supplied 
 // A direct member call carries checked omission facts. Avoid materializing a
 // default wrapper when every new default is supplied; old none adapters still
 // receive exactly the slots they handled before this feature.
-func (g *generator) methodCallable(e *syntax.Expression, arguments []syntax.Argument) ast.Expr {
-	info := g.program.Info(e)
-	if e.Kind != syntax.KindMember || info.Method == nil {
-		return g.expression(e)
+func (g *generator) methodCallable(x ir.Call) ast.Expr {
+	member, ok := calleeMember(x)
+	if !ok || member.Info.Method == nil {
+		return g.irValue(x.Callee)
 	}
-	m := info.Method
+	m := member.Info.Method
 	if m.Contract == nil && m.Native != "" && m.Native != "contract" {
-		return g.methodDefaults(m, g.nativeReceiverMember(e, info), arguments)
+		return g.methodDefaults(m, g.nativeReceiver(g.irValue(member.Receiver), member.Name, member.ReceiverType, member.Info), x.Args)
 	}
-	return g.methodDefaults(m, runtimeCall("Bind", g.expression(e.Left), g.key(m.Contract), textLiteral(e.Text), g.typeScope(g.program.Info(e.Left).Type)), arguments)
+	return g.methodDefaults(m, runtimeCall("Bind", g.irValue(member.Receiver), g.key(m.Contract), textLiteral(member.Name), g.typeScope(member.ReceiverType)), x.Args)
 }
 func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 	d := s.Decl

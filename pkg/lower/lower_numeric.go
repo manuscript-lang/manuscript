@@ -50,6 +50,19 @@ func containsMatch(x ir.Expr) bool {
 			}
 		}}.Callable(nil, []*syntax.Statement{{Kind: syntax.KindCall, Value: x.Source}})
 		return found
+	case ir.Call:
+		if containsMatch(x.Callee) {
+			return true
+		}
+		for _, a := range x.Args {
+			if containsMatch(a.Value) {
+				return true
+			}
+		}
+	case ir.View:
+		return containsMatch(x.Receiver)
+	case ir.Member:
+		return containsMatch(x.Receiver)
 	case ir.Unary:
 		return containsMatch(x.Operand)
 	case ir.Binary:

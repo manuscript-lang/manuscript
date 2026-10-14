@@ -51,12 +51,6 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 	if x := g.ir.Operand(e); !isDeferred(x) {
 		return g.native(x)
 	}
-	switch e.Kind {
-	case syntax.KindCall:
-		if direct := g.directTarget(e); direct != nil {
-			return direct.result
-		}
-	}
 	return ""
 }
 
@@ -97,6 +91,10 @@ func (g *generator) native(x ir.Expr) string {
 			if _, f := g.structFieldOf(x); f != nil {
 				return f.scalar
 			}
+		}
+	case ir.Call:
+		if direct := g.directTarget(x); direct != nil {
+			return direct.result
 		}
 	case ir.Deferred:
 		return g.nativeType(x.Source)

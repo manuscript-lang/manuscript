@@ -52,7 +52,32 @@ func (el *Elaborator) Value(e *syntax.Expression, info *checker.Info) Expr {
 		if receiver := program.Info(e.Left); receiver != nil {
 			receiverType = receiver.Type
 		}
-		return Member{Pos: e.Pos, Receiver: el.Operand(e.Left), ReceiverType: receiverType, Name: e.Text, Info: info}
+		return Member{Pos: e.Pos, Receiver: el.Operand(e.Left), ReceiverPos: e.Left.Pos, ReceiverType: receiverType, Name: e.Text, Info: info}
+	case syntax.KindCall:
+		if info.Constructor != nil && info.Native == "view" {
+			receiver := program.Info(e.Args[0].Value)
+			if receiver == nil {
+				return nil
+			}
+			return View{Receiver: el.Operand(e.Args[0].Value), ReceiverType: receiver.Type, Type: info.Type}
+		}
+		syntaxArgs := e.Args
+		if info.Arguments != nil {
+			syntaxArgs = info.Arguments
+		}
+		args := make([]Argument, len(syntaxArgs))
+		for i, a := range syntaxArgs {
+			value := program.Info(a.Value)
+			if value == nil {
+				return nil
+			}
+			args[i] = Argument{Pos: a.Pos, Name: a.Name, Value: el.Operand(a.Value), Type: value.Type, Optional: value.OptionalArgument}
+		}
+		call := Call{Pos: e.Pos, Callee: el.Operand(e.Left), CalleePos: e.Left.Pos, Args: args, Info: info}
+		if callee := program.Info(e.Left); callee != nil {
+			call.CalleeType = callee.Type
+		}
+		return call
 	case syntax.KindUnary:
 		if e.Text == "try" {
 			return nil

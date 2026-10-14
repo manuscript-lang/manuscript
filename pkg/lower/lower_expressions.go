@@ -8,10 +8,11 @@ import (
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-func (g *generator) arguments(args []syntax.Argument) ast.Expr {
+func (g *generator) arguments(args []ir.Argument) ast.Expr {
 	var values []ast.Expr
 	for _, a := range args {
 		// Go orders calls, but a later argument can mutate a plain local value.
@@ -21,9 +22,9 @@ func (g *generator) arguments(args []syntax.Argument) ast.Expr {
 	}
 	return sliceLiteral(runtimeName("Argument"), values...)
 }
-func (g *generator) argumentValue(a syntax.Argument) ast.Expr {
-	value := g.expression(a.Value)
-	if target := g.program.Info(a.Value).OptionalArgument; target != nil {
+func (g *generator) argumentValue(a ir.Argument) ast.Expr {
+	value := g.irValue(a.Value)
+	if target := a.Optional; target != nil {
 		value = runtimeCall("NewAlternative", g.key(target), textLiteral("some"), stringSlice([]string{"value"}), sliceLiteral(runtimeName("Argument"), composite(nil, keyed("Name", textLiteral("value")), keyed("Value", value))))
 	}
 	return value
@@ -55,14 +56,14 @@ func (g *generator) expression(e *syntax.Expression) ast.Expr {
 }
 func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) ast.Expr {
 	if info.Native == "index" {
-		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
+		return locatedAt(e.Pos, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	}
 	if value := g.ir.Value(e, info); value != nil {
 		return g.irValue(value)
 	}
 	switch e.Kind {
 	case syntax.KindIndex:
-		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
+		return locatedAt(e.Pos, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	case syntax.KindMatch:
 		g.expressionDepth++
 		body := g.match(e.Left, e.Arms, func(a *syntax.Arm) []ast.Stmt {
@@ -79,7 +80,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 	case syntax.KindName, syntax.KindApply:
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
 			member := e.Left
-			return g.methodDefaults(info.Method, g.nativeReceiverMember(member, info))
+			return g.methodDefaults(info.Method, g.nativeReceiver(g.expression(member.Left), member.Text, g.program.Info(member.Left).Type, info))
 		}
 		if info.Binding != nil {
 			return g.binding(info.Binding)
@@ -97,79 +98,6 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if info.Constructor != nil {
 			return runtimeCall("NewAlternative", g.key(info.Constructor), textLiteral(info.Case), ident("nil"), ident("nil"))
 		}
-	case syntax.KindCall:
-		if info.Constructor != nil && info.Native == "view" {
-			// Select the view path before lowering ordinary call arguments.
-			// Lowering a discarded receiver tree would strand source markers
-			// and other generator state from its nested callable/match bodies.
-			receiver := e.Args[0].Value
-			return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.program.Info(receiver).Type))
-		}
-		arguments := e.Args
-		if info.Arguments != nil {
-			arguments = info.Arguments
-		}
-		if value := g.directCollectionCall(e, arguments); value != nil {
-			return value
-		}
-		if value := g.directCall(e); value != nil {
-			return value
-		}
-		if value := g.preparedSourceCall(e, arguments); value != nil {
-			return value
-		}
-		if value := g.preparedMethodCall(e, arguments); value != nil {
-			return value
-		}
-		if info.Constructor != nil && info.Native != "view" && info.Case != "" {
-			labels := g.caseLabels(info)
-			if fields := g.alternativeFields(labels, arguments); fields != nil {
-				return composite(runtimeName("Alternative"), keyed("Type", g.key(info.Type)), keyed("Tag", textLiteral(info.Case)), keyed("Fields", sliceLiteral(runtimeName("Value"), fields...)))
-			}
-		}
-		if info.Constructor != nil && info.Native != "view" && info.Case == "" {
-			if st := g.structFor(info.Constructor); st != nil && !recordDefaults(info.Constructor.Def.Symbol.Decl) {
-				if value := g.constructStruct(st, arguments); value != nil {
-					return value
-				}
-			}
-		}
-		args := g.arguments(arguments)
-		if info.Constructor != nil {
-			if info.Case != "" {
-				return runtimeCall("NewAlternative", g.key(info.Type), textLiteral(info.Case), stringSlice(g.caseLabels(info)), args)
-			}
-			if symbol := info.Constructor.Def.Symbol; recordDefaults(symbol.Decl) && (symbol.Native == "" || g.program.ParameterBindings(symbol.Decl) != nil) {
-				if symbol.Native != "" {
-					if len(arguments) == len(symbol.Decl.Fields) {
-						return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
-					}
-					callable := g.lazyValue("native constructor/"+symbol.ID, g.declaredFunction(symbol))
-					return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
-				}
-				var callable ast.Expr = ident(symbol.ID)
-				if len(symbol.Variables) > 0 {
-					callable = g.specialize(symbol, info.Constructor.Args)
-				}
-				return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
-			}
-			return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
-		}
-		var callable ast.Expr
-		if info.Symbol != nil {
-			if info.Symbol.Native != "" {
-				callable = g.nativeDefaults(info.Symbol.Decl, g.program.Info(e.Left).Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)), arguments)
-			} else {
-				callable = ident(info.Symbol.ID)
-				if len(info.Symbol.Variables) > 0 {
-					callable = g.specialize(info.Symbol, info.TypeArgs)
-				}
-			}
-		} else {
-			// Capture a dynamic callable before arguments that may replace it.
-			callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.methodCallable(e.Left, arguments))
-		}
-		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 	case syntax.KindUnary:
 		// Only try reaches here: every other prefix operator is an IR node.
 		args := []ast.Expr{g.expression(e.Right)}
@@ -208,13 +136,10 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 	panic("missing lowering for " + e.Kind)
 }
 
-// locatedOperation updates the active frame only after evaluating its operands.
+// locatedAt updates the active frame only after evaluating its operands.
 // Nested calls can therefore report their own sites without hiding this call site
 // when they succeed. SourceAt inlines to an assignment; no expression closures or
 // per-operation recovery are needed.
-func (g *generator) locatedOperation(e *syntax.Expression, operation ast.Expr, args ...ast.Expr) ast.Expr {
-	return locatedAt(e.Pos, operation, args...)
-}
 func locatedAt(pos syntax.Position, operation ast.Expr, args ...ast.Expr) ast.Expr {
 	last := len(args) - 1
 	args[last] = sourceAt(pos, args[last])
@@ -246,7 +171,7 @@ func (g *generator) caseLabels(info *checker.Info) []string {
 // alternativeFields lowers constructor arguments straight into the payload
 // slice when they are supplied once each, in payload order. Anything else
 // returns nil without lowering, leaving NewAlternative to match labels.
-func (g *generator) alternativeFields(labels []string, args []syntax.Argument) []ast.Expr {
+func (g *generator) alternativeFields(labels []string, args []ir.Argument) []ast.Expr {
 	if len(args) != len(labels) {
 		return nil
 	}
