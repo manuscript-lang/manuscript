@@ -50,6 +50,8 @@ type TypeParameter struct {
 	Pos    Position
 	Name   string
 	Bounds []*Type
+	// Default is the type argument used when none is supplied or inferred; nil when required.
+	Default *Type
 }
 type Module struct {
 	File         string

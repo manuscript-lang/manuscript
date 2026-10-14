@@ -299,6 +299,9 @@ func rebase(module *syntax.Module, offset, lines int) {
 			for _, bound := range d.TypeParams[i].Bounds {
 				typ(bound)
 			}
+			if d.TypeParams[i].Default != nil {
+				typ(d.TypeParams[i].Default)
+			}
 		}
 		parameters(d.Fields)
 		parameters(d.Params)
