@@ -201,6 +201,9 @@
     "@std/collections.ms/List/contains": {
       "T": "Equal"
     },
+    "@std/collections.ms/List/distinct": {
+      "T": "Equal"
+    },
     "@std/collections.ms/List/index_of": {
       "T": "Equal"
     },

@@ -22,6 +22,11 @@ export type List[T]:
     fn last() -> Optional[T]:
     fn is_empty() -> Bool:
     fn prepend(value: T) -> List[T]:
+    # Inserts value before index in place and returns this list; negative indexes count from the end.
+    # Requires -length() <= index <= length(); index length() appends, and invalid indexes fault.
+    fn insert(index: Int, value: T) -> List[T]:
+    # Removes and returns the last element in place, or none for an empty list.
+    fn pop() -> Optional[T]:
     # Replaces an element in place and returns this list; negative indexes count from the end.
     # Invalid indexes fault.
     fn set(index: Int, value: T) -> List[T]:
@@ -51,6 +56,10 @@ export type List[T]:
     fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
     # Searches from the end and returns the last matching zero-based index, or none.
     fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    # Counts values satisfying the predicate, calling it once per element in order.
+    fn count(predicate: fn(value: T) -> Bool) -> Int:
+    # Returns a new shallow List keeping each first equal element in order; elements require Equal.
+    fn distinct() -> List[T]:
     # Returns true when at least one value satisfies the predicate.
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
     # Returns true when every value satisfies the predicate; empty lists return true.
