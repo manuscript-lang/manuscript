@@ -29,7 +29,7 @@ test('Manuscript values use source names and lazy structured handles', async () 
 test('native DAP source stepping and Manuscript record/list/variant rendering', { skip: !process.env.MANUSCRIPT_DAP_TEST, timeout: 60000 }, async () => {
   const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript dap test ')));
   const program = path.join(directory, 'main.ms');
-  const source = 'import List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1\n';
+  const source = 'import List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let floats = [1.25, 2.5]\n    let bools = [true, false]\n    let strings = ["a", "b"]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1 + floats.length() - 2 + bools.length() - 2 + strings.length() - 2\n';
   await fs.writeFile(program, source);
   const returnLine = source.split('\n').findIndex(line => line.trim().startsWith('return box.')) + 1;
   const output = new PassThrough(); const messages = []; const waiters = [];
@@ -68,6 +68,11 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
     assert.equal(fields.variables.find(variable => variable.name === 'count').value, '42');
     const items = locals.variables.find(variable => variable.name === 'items'); assert.equal(items.type, 'List[Int]');
     const values = await response(request('variables', { variablesReference: items.variablesReference })); assert.equal(values.variables.length, 3);
+    for(const [name,want] of [['floats','1.25'],['bools','true'],['strings','"a"']]) {
+      const list=locals.variables.find(variable=>variable.name===name);assert.ok(list,name);
+      const expanded=await response(request('variables',{variablesReference:list.variablesReference}));assert.equal(expanded.variables.length,2,name);
+      const first=await response(request('evaluate',{frameId:stack.stackFrames[0].id,expression:name+'[0]',context:'watch'}));assert.equal(first.result,want,name);
+    }
     const watch = await response(request('evaluate',{frameId:stack.stackFrames[0].id,expression:'box.count',context:'watch'}));assert.equal(watch.result,'42');
     const element = await response(request('evaluate',{frameId:stack.stackFrames[0].id,expression:'items[0]',context:'watch'}));assert.equal(element.result,'1');
     const optional = locals.variables.find(variable => variable.name === 'optional'); assert.equal(optional.value, 'some');
@@ -147,4 +152,20 @@ test('typed task handles and groups expose work state without native bookkeeping
   ];
   const state = await adapter.valueChildren(adapter.handles.get(group.variablesReference), {});
   assert.deepEqual(state.map(field => field.name), ['Active tasks', 'Joined']);
+});
+
+test('primitive and legacy List backing renders elements and rewrites watches', async () => {
+  for (const [kind,field,type,value] of [[0,'Items','interface {}(int64)','interface {}(int64) 42'],[1,'ints','int64','42'],[2,'floats','float64','1.25'],[3,'bools','bool','false'],[4,'strings','string','"text"']]) {
+    const adapter=new ManuscriptAdapter(new PassThrough());
+    const fields=[{name:'Type',value:'"@std/List[Int]"'},{name:'Items',variablesReference:kind===0?7:0},{name:'kind',value:kind+' = 0x'+kind.toString(16)},{name:'initializing',value:'false'},...['ints','floats','bools','strings'].map(name=>({name,variablesReference:name===field?7:0}))];
+    adapter.children=async ref=>ref===5?[{name:'data',variablesReference:6}]:ref===6?fields:ref===7?[{name:'[0]',type,value,variablesReference:0}]:[];
+    const rendered=adapter.render({name:'local1_items',type:'interface {}(*msruntime.List)',value:'{Type: "@std/List[Int]", Items: []interface {} len: 0, ints: []int64 len: 1}',variablesReference:5},'items','List[Int]');
+    assert.equal(rendered.value,'List[Int]');
+    const elements=await adapter.valueChildren(adapter.handles.get(rendered.variablesReference),{});
+    assert.equal(elements.length,1);assert.equal(elements[0].name,'[0]');assert.ok(!elements.some(v=>v.name==='kind'));
+    const vars=[{name:'local1_items',type:'interface {}(*msruntime.List)',listField:field}];
+    assert.equal(rewriteExpression('items[0]',vars,new Map([['local1_items',{name:'items'}]])),`local1_items.(data).${field}[0]`);
+    fields.find(v=>v.name===field).variablesReference=0;
+    assert.deepEqual(await adapter.valueChildren(adapter.handles.get(rendered.variablesReference),{}),[]);
+  }
 });

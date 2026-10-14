@@ -49,21 +49,21 @@ func init() {
 		if !present {
 			return libraryOK(result, optional("@std/List[String]", nil, false))
 		}
-		out := &List{Type: "@std/List[String]"}
+		out := NewList("@std/List[String]", nil)
 		for _, value := range values.Items {
 			CheckCancelled(ctx)
 			data := value.(Bytes).Items
 			if !utf8.Valid(data) {
 				return libraryError(result, "InvalidData", "")
 			}
-			out.Items = append(out.Items, string(data))
+			out.Append(string(data))
 		}
 		return libraryOK(result, optional("@std/List[String]", out, true))
 	})
 	libraryAdd("http", "headers_names", "List[String]", []LibraryParam{{"headers", "HttpHeaders"}}, func(_ *Execution, _ string, args []Value) Value {
-		out := &List{Type: "@std/List[String]"}
+		out := NewList("@std/List[String]", nil)
 		for _, entry := range args[0].(*libraryHeaders).Entries {
-			out.Items = append(out.Items, entry.Key)
+			out.Append(entry.Key)
 		}
 		return out
 	})
