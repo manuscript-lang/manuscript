@@ -1,0 +1,4 @@
+[project]
+name = "pi-agent"
+source = "./src"
+entry = "./src/main.ms"
