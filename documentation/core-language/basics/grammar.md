@@ -16,10 +16,12 @@ Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical 
 The reserved words are:
 
 ```manuscript
-and break case continue else export false fn for from if
+and break case continue else export false fn for if
 impl import in interface let match not or return self test true try type
 unit var while with
 ```
+
+`from` is a keyword only after the names of an import; elsewhere it is an ordinary name, as in `let from = 2`.
 
 `self` names the implicit implementation receiver; it cannot be declared as a parameter or binding. Built-in type names and alternative constructors are names resolved by the type checker, not lexical keywords.
 
