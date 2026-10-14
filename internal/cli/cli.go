@@ -228,7 +228,9 @@ func Run(args []string) int {
 		return watchProgram(command, filename, options, kind, "", arguments)
 	}
 	result := compiler.CompileFile(filename, options)
-	if structured && command == "check" {
+	// Lint --json reports compile failures in the same machine-readable shape
+	// as check --json so parse and type errors never fall back to plain text.
+	if structured && (command == "check" || command == "lint" && !result.Success()) {
 		if result.Diagnostics == nil {
 			result.Diagnostics = []syntax.Diagnostic{}
 		}

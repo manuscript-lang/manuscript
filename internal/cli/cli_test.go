@@ -251,6 +251,20 @@ func TestProjectLintChecksImportedSource(t *testing.T) {
 	}
 }
 
+func TestLintJSONReportsCompileFailuresAsJSON(t *testing.T) {
+	file := sourceFile(t, "fn broken( -> Int:\n    return 1\n")
+	status, output, errors := invoke(t, "lint", file, "--json")
+	var result struct {
+		Format      int `json:"format"`
+		Diagnostics []struct {
+			Phase string `json:"phase"`
+		} `json:"diagnostics"`
+	}
+	if status != 1 || errors != "" || json.Unmarshal([]byte(output), &result) != nil || result.Format != 1 || len(result.Diagnostics) == 0 {
+		t.Fatalf("%d, %q, %q", status, output, errors)
+	}
+}
+
 func TestSourceCommandsNeedNoNativeToolchain(t *testing.T) {
 	t.Setenv("MANUSCRIPT_GO", filepath.Join(t.TempDir(), "missing-go"))
 	file := sourceFile(t, "export fn value() -> Int:\n    return 3\n")
