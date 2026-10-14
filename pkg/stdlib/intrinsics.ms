@@ -129,8 +129,12 @@ interface StringOperations:
 
 # Conversion operations for machine-sized integers.
 interface IntOperations:
+    # Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
+    # A radix outside 2 through 36 is a programming fault.
     fn to_string(radix: Int) -> String
+    # Converts to the nearest Float; integers beyond 2^53 in magnitude can lose low-order digits.
     fn to_float() -> Float
+    # Converts to the exactly equal Decimal; no rounding occurs.
     fn to_decimal() -> Decimal
 
 # Formatting and classification operations for floating-point values.

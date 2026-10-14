@@ -2,13 +2,19 @@
 
 # Errors returned by timestamp parsing, arithmetic, or range conversion.
 export type TimeError:
+    # Reserved for invalid time arguments; the current native time operations do not return it.
     case InvalidInput
+    # Reserved for time operations on a closed resource; the current native time operations do not return it.
     case Closed
+    # The text is not an RFC 3339 timestamp with a four-digit year, full date and time, and an explicit `Z` or `+hh:mm` offset.
     case InvalidData
+    # A nanosecond component is outside 0 through 999999999, or the result falls outside years 1 through 9999 or cannot be represented as a Duration.
     case OutOfRange
 
 # A monotonic clock whose readings are suitable for measuring elapsed time.
 export interface Clock:
+    # Returns the current reading of this monotonic clock.
+    # Readings are only comparable with others from the same clock and do not correspond to a calendar date.
     fn now() -> Instant
 
 # A span of elapsed time.
@@ -66,6 +72,8 @@ export type Timestamp:
 
 # A clock that reports calendar time.
 export interface WallClock:
+    # Returns the current calendar time as a UTC Timestamp with nanosecond precision.
+    # It can jump when the system clock is adjusted, so use Clock for elapsed time.
     fn now() -> Timestamp
 
 # Constructs a duration from a number of nanoseconds.
@@ -81,6 +89,7 @@ export fn sleep(duration: Duration) -> Unit:
 export fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]:
 
 impl Error for TimeError:
+    # Returns the fixed diagnostic `time: <reason>`, such as `time: value out of range`, without echoing the input text.
     fn message() -> String:
 
 # Returns the monotonic clock used for elapsed-time measurements.

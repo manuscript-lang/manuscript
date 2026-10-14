@@ -15,6 +15,15 @@ interface Clock:
     fn now() -> Instant
 ```
 
+### Clock.now
+
+Returns the current reading of this monotonic clock.
+Readings are only comparable with others from the same clock and do not correspond to a calendar date.
+
+```manuscript
+fn now() -> Instant
+```
+
 ## Duration {data-api-kind="Native type"}
 
 A span of elapsed time.
@@ -192,6 +201,46 @@ impl Error for TimeError:
     fn message() -> String:
 ```
 
+### TimeError.Closed
+
+Reserved for time operations on a closed resource; the current native time operations do not return it.
+
+```manuscript
+case Closed
+```
+
+### TimeError.InvalidData
+
+The text is not an RFC 3339 timestamp with a four-digit year, full date and time, and an explicit `Z` or `+hh:mm` offset.
+
+```manuscript
+case InvalidData
+```
+
+### TimeError.InvalidInput
+
+Reserved for invalid time arguments; the current native time operations do not return it.
+
+```manuscript
+case InvalidInput
+```
+
+### TimeError.OutOfRange
+
+A nanosecond component is outside 0 through 999999999, or the result falls outside years 1 through 9999 or cannot be represented as a Duration.
+
+```manuscript
+case OutOfRange
+```
+
+### TimeError.Error.message
+
+Returns the fixed diagnostic `time: <reason>`, such as `time: value out of range`, without echoing the input text.
+
+```manuscript
+fn message() -> String:
+```
+
 ## Timestamp {data-api-kind="Native type"}
 
 A wall-clock time with Unix seconds and nanoseconds.
@@ -261,6 +310,15 @@ A clock that reports calendar time.
 ```manuscript
 interface WallClock:
     fn now() -> Timestamp
+```
+
+### WallClock.now
+
+Returns the current calendar time as a UTC Timestamp with nanosecond precision.
+It can jump when the system clock is adjusted, so use Clock for elapsed time.
+
+```manuscript
+fn now() -> Timestamp
 ```
 
 ## clock {data-api-kind="Function"}
