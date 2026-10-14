@@ -61,3 +61,16 @@ func TestConstantDocumentSymbolsAreConstants(t *testing.T) {
 		t.Fatalf("symbol kinds %v", kinds)
 	}
 }
+
+func TestHoverSurvivesSyntaxErrorInsideCalledFunction(t *testing.T) {
+	source := "fn work(a: Int) -> Int:\n    let b = a + 1\n    let c = = 3\n    return b\n\nexport fn main() -> Int:\n    return work(2)\n"
+	d := document{"file:///tmp/recovered.ms", source, 1}
+	checked := analyze(d, map[string]document{d.URI: d})
+	if len(checked.Diagnostics) != 1 {
+		t.Fatal(checked.Diagnostics)
+	}
+	hover, ok := navigation(checked, d, Position(source, strings.LastIndex(source, "work")), "textDocument/hover").(map[string]any)
+	if !ok || !strings.Contains(hover["contents"].(map[string]any)["value"].(string), "work: fn(a: Int)->Int") {
+		t.Fatalf("hover %v", hover)
+	}
+}
