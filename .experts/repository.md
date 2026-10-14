@@ -8,6 +8,8 @@ Apply when: changing CI package discovery, test selection, or sharding.
 Evidence: [shard runner](../scripts/ci-test.sh), [failure and inventory regressions](../scripts/repo-check/ci_test_test.go), and [end-to-end setup](../tests/e2e/harness_test.go).
 Verify: run `go test ./scripts/repo-check -run '^TestCITest'`; injected discovery failures must exit nonzero, and four shards must select every test/package exactly once.
 
+Verified: `go test -fuzz` can report success with no matching fuzz function after a package move. The compiler target now lives in `pkg/build`; its Makefile recipe checks successful exact-name discovery before fuzzing. [Fuzz target regressions](../scripts/repo-check/fuzz_test.go) reject missing targets and failed discovery even when partial output contains the expected name. When moving test packages, verify fuzz discovery and observe actual executions, not only the process exit code.
+
 ### Repository cleanup must remove duplicated work and layers
 
 Decision: the user's codebase cleanup request includes simplifying the implementation as a whole; reorganizing files alone does not satisfy it. Consolidate duplicated behavior and remove avoidable work before adding abstraction layers.
