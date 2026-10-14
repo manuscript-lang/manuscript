@@ -464,7 +464,13 @@ func (c *checker) signature(params []syntax.Parameter, result *syntax.Type) *Typ
 	return t
 }
 func (c *checker) bind(name string, t *Type, mutable bool, pos syntax.Position) *Binding {
-	if c.scope.bindings[name] != nil || c.scope.types[name] != nil {
+	return c.bindReporting(name, t, mutable, pos, true)
+}
+
+// bindReporting binds a name; report=false suppresses the duplicate-binding
+// error for callers that already diagnosed the duplicate.
+func (c *checker) bindReporting(name string, t *Type, mutable bool, pos syntax.Position, report bool) *Binding {
+	if report && (c.scope.bindings[name] != nil || c.scope.types[name] != nil) {
 		c.error(pos, "type", "duplicate local binding "+name+"; this scope already has that name, so choose another name or assign to the existing 'var'")
 	}
 	if mutable {
@@ -517,7 +523,12 @@ func (c *checker) checkFieldDefaults(d *syntax.Declaration, s *Symbol) {
 }
 
 func (c *checker) checkParameters(d *syntax.Declaration, params []syntax.Parameter, types []Param) {
+	seen := map[string]bool{}
 	for i, p := range types {
+		// A repeated parameter name is reported by the signature; do not add a
+		// second "duplicate local binding" for it.
+		repeated := seen[p.Name]
+		seen[p.Name] = true
 		pos := d.Pos
 		if i < len(params) {
 			pos = params[i].Pos
@@ -525,7 +536,7 @@ func (c *checker) checkParameters(d *syntax.Declaration, params []syntax.Paramet
 		if i < len(params) && params[i].Default != nil {
 			c.expression(params[i].Default, p.Type)
 		}
-		setParameters(d, append(parametersOf(d), c.bind(p.Name, p.Type, false, pos)))
+		setParameters(d, append(parametersOf(d), c.bindReporting(p.Name, p.Type, false, pos, !repeated)))
 	}
 }
 func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks bool) {
