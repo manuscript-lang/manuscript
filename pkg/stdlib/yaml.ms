@@ -512,6 +512,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
                 )
             )
 
+            let quoted_key = peek(flow) == "\"" or peek(flow) == "'"
             let parsed_key = try flow_value(flow: flow, depth: depth, key: true)
             var name = ""
 
@@ -542,7 +543,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
             explicit.append(name)
 
-            if name == "<<":
+            if name == "<<" and not quoted_key:
                 let merged = try merge(
                     line: flow.line,
                     column: flow.pos + 1,
@@ -1108,7 +1109,9 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
 
             var name = content.slice(start: 0, end: colon).unwrap_or("").trim()
 
-            if name.starts_with("\"") or name.starts_with("'"):
+            let quoted_key = name.starts_with("\"") or name.starts_with("'")
+
+            if quoted_key:
                 let flow = Flow(
                     chars: name.split(separator: ""),
                     pos: 0,
@@ -1165,7 +1168,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 indentless: true
             )
 
-            if name == "<<":
+            if name == "<<" and not quoted_key:
                 let merged = try merge(
                     line: key_line,
                     column: line_indent + 1,
