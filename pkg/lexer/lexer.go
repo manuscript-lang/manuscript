@@ -399,6 +399,11 @@ func (s *scanner) scanString() {
 	s.fail("unterminated text literal")
 }
 
+// maxInterpolationDepth bounds nested text literals inside interpolations. The
+// parser re-lexes every interpolation, so deeper nesting would cost time
+// proportional to depth times source size before the parser's own limit applies.
+const maxInterpolationDepth = 1000
+
 const braceHint = "'{' starts an interpolation; write \\{ and \\} for literal braces"
 
 func (s *scanner) scanInterpolation() {
@@ -407,6 +412,9 @@ func (s *scanner) scanInterpolation() {
 	open := s.pos()
 	open.Column--
 	open.Offset--
+	if len(s.interpolations) >= maxInterpolationDepth {
+		s.failAt(open, fmt.Sprintf("nesting exceeds %d levels; split the expression, type, or block into named parts", maxInterpolationDepth))
+	}
 	s.interpolations = append(s.interpolations, open)
 	defer func() { s.interpolations = s.interpolations[:len(s.interpolations)-1] }()
 	for s.offset < len(s.source) {
