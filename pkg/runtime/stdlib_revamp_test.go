@@ -170,7 +170,7 @@ func TestWebsocketOmittedDeadline(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(Shield(ctx), nil)
 	options := Record{"@std/WebSocketOptions", map[string]Value{"tls": networkingTLSOptions(), "compression": false}}
-	value := librarySuccess(t, Invoke(ctx, n.Operation("web_socket"), []Argument{{"url", "ws" + strings.TrimPrefix(server.URL, "http")}, {"headers", &Map{Type: "@std/Map[String][String]"}}, {"subprotocols", libraryStrings(nil)}, {"options", options}}))
+	value := librarySuccess(t, Invoke(ctx, n.Operation("web_socket"), []Argument{{"url", "ws" + strings.TrimPrefix(server.URL, "http")}, {"headers", httpTestHeaders(&Map{Type: "@std/Map[String][String]"})}, {"subprotocols", libraryStrings(nil)}, {"options", options}}))
 	<-upgraded
 	Invoke(ctx, Bind(value, "", "close"), nil)
 }
@@ -180,13 +180,13 @@ func TestHTTPOmittedBudgets(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(Shield(ctx), nil)
 	handler := NewFunction([]string{"request"}, "@std/HttpResponse", func(_ *Execution, _ []Value) Value {
-		return Record{"@std/HttpResponse", map[string]Value{"status": int64(200), "headers": &Map{Type: "@std/Map[String][String]"}, "body": Bytes{[]byte("ok")}}}
+		return Record{"@std/HttpResponse", map[string]Value{"status": int64(200), "headers": httpTestHeaders(&Map{Type: "@std/Map[String][String]"}), "body": Bytes{[]byte("ok")}}}
 	})
 	server := librarySuccess(t, Invoke(ctx, n.Operation("serve"), []Argument{{"address", "127.0.0.1:0"}, {"handler", handler}}))
 	defer Invoke(ctx, Bind(server, "", "close"), nil)
 	address := Invoke(ctx, Bind(server, "", "address"), nil).(string)
-	response := librarySuccess(t, Invoke(ctx, n.Operation("request"), []Argument{{"method", "GET"}, {"url", "http://" + address}, {"headers", &Map{Type: "@std/Map[String][String]"}}, {"body", Bytes{}}})).(Record)
-	if response.Fields["status"] != int64(200) || string(response.Fields["body"].(Bytes).Items) != "ok" {
+	response := librarySuccess(t, Invoke(ctx, n.Operation("request"), []Argument{{"method", libraryHTTPMethod("GET")}, {"url", "http://" + address}, {"headers", httpTestHeaders(&Map{Type: "@std/Map[String][String]"})}, {"body", Bytes{}}})).(Record)
+	if response.Fields["head"].(Record).Fields["status"] != int64(200) || string(response.Fields["body"].(Bytes).Items) != "ok" {
 		t.Fatal(response)
 	}
 }

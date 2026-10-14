@@ -13,3 +13,4 @@
 - Language: plain values are accepted for standard `Optional[T]` arguments; faults name operands, parameters and valid ranges.
 - Packages: reusable Go packages moved under `pkg/`; update imports to `github.com/manuscript-lang/manuscript/pkg/...`.
 - Maintenance: read-only verification, pinned tools, license inventories, one shared release version.
+- HTTP: one ordered, ASCII case-insensitive, byte-valued `HttpHeaders` across client, server, proxy and WebSocket surfaces; common `HttpResponseMetadata`; typed `HttpMethod`, `DnsKind`, `IpAddress`, `Cidr` and `IpFamily`; `HttpClient.request`/`request_stream`; buffered `serve(max_requests:)`; empty `HttpClientOptions`/`HttpServerOptions` work. See the pull request for the migration.

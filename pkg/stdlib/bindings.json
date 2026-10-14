@@ -40,7 +40,6 @@
     "@std/html.ms/escape": "html/escape",
     "@std/html.ms/unescape": "html/unescape",
     "@std/html.ms/parse": "html/parse",
-    "@std/http.ms/header_values": "http/header_values",
     "@std/io.ms/copy": "io/copy",
     "@std/io.ms/files": "io/files",
     "@std/io.ms/read_all": "io/read_all",
@@ -134,7 +133,8 @@
     "@std/url.ms/format_query": "url/format_query",
     "@std/url.ms/parse": "url/parse",
     "@std/url.ms/parse_query": "url/parse_query",
-    "@std/url.ms/resolve": "url/resolve"
+    "@std/url.ms/resolve": "url/resolve",
+    "@std/http.ms/headers": "http/headers"
   },
   "implementations": {
     "@std/archive.ms/ArchiveError/Error/message": "errors/message",
@@ -195,7 +195,10 @@
     "@std/tasks.ms/TaskGroup": "native",
     "@std/time.ms/Duration": "native",
     "@std/time.ms/Instant": "native",
-    "@std/time.ms/Timestamp": "native"
+    "@std/time.ms/Timestamp": "native",
+    "@std/http.ms/HttpHeaders": "native",
+    "@std/net.ms/IpAddress": "native",
+    "@std/net.ms/Cidr": "native"
   },
   "receiver_requirements": {
     "@std/collections.ms/List/contains": {
