@@ -69,3 +69,59 @@ test "negate minimum":
 		t.Fatalf("negation changed: %v\n%s", err, output)
 	}
 }
+
+func TestBoundNativeMembersKeepSemantics(t *testing.T) {
+	result := compiler.CompileSource("bound.ms", `import panic from "@std/faults.ms"
+import {List, Set, Map} from "@std/collections.ms"
+import StringBuilder from "@std/string.ms"
+
+type Folded:
+    name: String
+
+impl Equal for Folded:
+    fn equals(other: Equal) -> Bool:
+        return true
+
+impl Hashable for Folded:
+    fn hash() -> Int:
+        return 1
+
+fn check(ok: Bool, name: String) -> Unit:
+    if not ok:
+        return panic(message: name)
+
+fn replace_first[T](xs: List[T], value: T) -> List[T]:
+    return xs.set(index: 0, value: value)
+
+test "string members":
+    check(ok: "  a,b ".trim().split(separator: ",").length() == 2, name: "trim split")
+    check(ok: "abc".upper() == "ABC", name: "upper")
+test "list members":
+    let xs = [1, 2, 3]
+    xs.set(index: -1, value: 9)
+    check(ok: xs.at(index: 2) == some(9), name: "negative set")
+    check(ok: replace_first(xs: xs, value: 5).at(index: 0) == some(5), name: "generic set")
+    check(ok: xs.contains(value: 9), name: "contains")
+test "custom equality is kept for bound members":
+    let a = Set[Folded]()
+    a.add(value: Folded(name: "x"))
+    a.add(value: Folded(name: "y"))
+    check(ok: a.length() == 1, name: "set add uses Equal")
+    let mapped = a.map(transform: fn(value: Folded) -> Folded: return Folded(name: "z"))
+    check(ok: mapped.length() == 1, name: "set map deduplicates")
+test "builder":
+    let sb = StringBuilder()
+    sb.append("a")
+    sb.append("b")
+    check(ok: sb.freeze() == "ab", name: "freeze")
+    check(ok: sb.freeze() == "ab", name: "repeat freeze")
+test "sealed builder":
+    let sb = StringBuilder()
+    sb.freeze()
+    sb.append("late")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err == nil || !strings.Contains(string(output), "5 tests, 1 failed") || strings.Count(string(output), "builder is sealed") != 1 {
+		t.Fatalf("bound members changed: %v\n%s", err, output)
+	}
+}

@@ -104,9 +104,16 @@ func (g *generator) structDeclarations() []ast.Decl {
 				value = unbox(value, f.scalar)
 			}
 			sets = append(sets, &ast.CaseClause{List: []ast.Expr{intLiteral(i)}, Body: []ast.Stmt{evaluated(runtimeCall("WriteField", ident("r"), slot, value))}})
-			var read ast.Expr = runtimeCall("ReadField", ident("r"), slot)
-			method("Get_"+f.name, nil, f.goType(), returned(read))
-			method("Set_"+f.name, []*ast.Field{field("value", f.goType())}, nil, evaluated(runtimeCall("WriteField", ident("r"), slot, ident("value"))))
+			// The unshared fast path is a plain field access small enough for Go to
+			// inline; the locked path stays out of line.
+			shared := &ast.IfStmt{Cond: runtimeCall("SharedFields")}
+			method("slowGet_"+f.name, nil, f.goType(), returned(runtimeCall("ReadField", ident("r"), slot)))
+			method("slowSet_"+f.name, []*ast.Field{field("value", f.goType())}, nil, evaluated(runtimeCall("WriteField", ident("r"), slot, ident("value"))))
+			getShared, setShared := *shared, *shared
+			getShared.Body = block(returned(call(selector(ident("r"), "slowGet_"+f.name))))
+			setShared.Body = block(evaluated(call(selector(ident("r"), "slowSet_"+f.name), ident("value"))), &ast.ReturnStmt{})
+			method("Get_"+f.name, nil, f.goType(), &getShared, returned(selector(ident("r"), fieldName(f.name))))
+			method("Set_"+f.name, []*ast.Field{field("value", f.goType())}, nil, &setShared, assign(selector(ident("r"), fieldName(f.name)), token.ASSIGN, ident("value")))
 		}
 		gets = append(gets, &ast.CaseClause{Body: []ast.Stmt{returned(ident("nil"))}})
 		sets = append(sets, &ast.CaseClause{})
