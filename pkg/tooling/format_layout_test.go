@@ -48,6 +48,23 @@ func TestFormatExpressionLayouts(t *testing.T) {
 		name, source, want string
 	}{
 		{
+			name: "module constant initializer starting before its operator",
+			source: `let prices = [12, 8, 25]
+let affordable = prices.length > 1 and prices.keep(predicate: fn(value: Int) -> Bool:
+    return value <= 10
+).length > 0
+`,
+			want: `let prices = [12, 8, 25]
+let affordable = (
+    prices.length > 1
+    and prices.keep(
+        predicate: fn(value: Int) -> Bool:
+            return value <= 10
+    ).length > 0
+)
+`,
+		},
+		{
 			name: "nested computations below the width limit",
 			source: `fn work() -> Unit:
     send(destination: resolve(name: service, region: region), payload: encode(build(records)))

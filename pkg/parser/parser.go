@@ -284,11 +284,14 @@ func (p *Parser) declaration() *syntax.Declaration {
 			d.Result = p.typ()
 		}
 		p.need("=")
+		// An expression's position can be an operator or member name; the
+		// synthesized return starts where the initializer's source starts.
+		first := p.peek()
 		value := p.expression(0)
 		if d.Result == nil {
 			d.Result = &syntax.Type{Pos: value.Pos}
 		}
-		d.Body = []*syntax.Statement{{Pos: value.Pos, Kind: syntax.KindReturn, Value: value}}
+		d.Body = []*syntax.Statement{{Pos: first.Pos, Kind: syntax.KindReturn, Value: value}}
 		p.end()
 	case p.take("test"):
 		name := p.need(lexer.String)
