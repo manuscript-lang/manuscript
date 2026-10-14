@@ -267,8 +267,8 @@ profiling/returns/cancellation/depth/fault frames match ordinary source calls.
 
 Verified: primitive sized initializers must use direct matching typed writes
 after fresh-state/kind/bounds checks. Routing known typed construction through
-generic Len/Set made each initializer non-inlineable (Go1.25.1 cost118); the
-strict checks inline at cost31 and preserve two construction allocations.
+generic Len/Set made each initializer non-inlineable (Go 1.25.1 cost 118); the
+strict checks inline at cost 31 and preserve two construction allocations.
 Evidence: [strict initialization safety/allocation tests](../pkg/runtime/list_initialization_test.go),
 [approved runtime mitigation](https://github.com/manuscript-lang/manuscript/pull/315#issuecomment-6157742485).
 Verify actual effectful generated literals as well as this runtime control;

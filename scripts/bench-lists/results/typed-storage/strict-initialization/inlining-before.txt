@@ -1,0 +1,5 @@
+pkg/runtime/list_storage.go:601:6: cannot inline InitListValue: function too complex: cost 168 exceeds budget 80
+pkg/runtime/list_storage.go:622:6: cannot inline InitListInt: function too complex: cost 118 exceeds budget 80
+pkg/runtime/list_storage.go:637:6: cannot inline InitListFloat: function too complex: cost 118 exceeds budget 80
+pkg/runtime/list_storage.go:652:6: cannot inline InitListBool: function too complex: cost 118 exceeds budget 80
+pkg/runtime/list_storage.go:667:6: cannot inline InitListString: function too complex: cost 118 exceeds budget 80
