@@ -101,15 +101,6 @@ func (c *dapClient) response(command string) dap.ResponseMessage {
 	return m.(dap.ResponseMessage)
 }
 
-func (c *dapClient) event(name string) dap.EventMessage {
-	c.t.Helper()
-	m := c.next(name+" event", func(m dap.Message) bool {
-		e, ok := m.(dap.EventMessage)
-		return ok && e.GetEvent().Event == name
-	})
-	return m.(dap.EventMessage)
-}
-
 // failure expects an unsuccessful response whose message mentions want.
 func (c *dapClient) failure(command, want string) {
 	c.t.Helper()
