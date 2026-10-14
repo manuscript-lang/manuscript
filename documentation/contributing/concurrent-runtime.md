@@ -42,7 +42,7 @@ A native acquisition API must close a newly acquired resource if cancellation or
 
 A source helper returning an open resource must handle resources it acquires but fails to return. Its resource factory/delivery contract is explicit. Merely returning a resource reference cannot cancel a `with` registration or keep the resource open.
 
-Scheduler operations have no resource-valued result delivery; each operation manages acquisitions through its own scopes. See [adapter acquisition](compiler/adapters/cancellation.md) and [resource release](../core-language/cleanup/resource-release.md).
+Scheduler operations have no resource-valued result delivery; each operation manages acquisitions through its own scopes. See [resource release](../core-language/cleanup/resource-release.md).
 
 ## Adapter execution contexts
 
@@ -54,7 +54,7 @@ Operation IDs support diagnostics and traces.
 
 Cleanup receives a shielded context that ignores the initiating cancellation and expired ordinary-work deadline. It preserves authority; a host cleanup/escalation policy is separate from the request budget. Adapters must support safe resource closure and must not return from a cancelled operation while its foreign work is still outstanding.
 
-See [blocking adapters](compiler/adapters/cancellation.md), [deadlines](../concurrency/cancellation.md#deadlines), and [runtime/library layering](compiler/lowering/function-and-task-calls.md).
+See [deadlines](../concurrency/cancellation.md#deadlines), and [runtime/library layering](compiler/lowering/function-and-task-calls.md).
 
 ## Host escalation
 
