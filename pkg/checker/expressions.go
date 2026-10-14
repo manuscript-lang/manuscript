@@ -177,8 +177,10 @@ func (c *checker) inferName(e *syntax.Expression, expected *Type, i *Info) *Info
 		}
 		return i
 	}
-	typ, cs := c.findCase(e.Text, e.Pos)
-	if typ != nil && len(cs.Fields) == 0 {
+	typ, cs, ambiguous := c.findCase(e.Text, e.Pos)
+	if ambiguous {
+		i.Type = primitive("<invalid>")
+	} else if typ != nil && len(cs.Fields) == 0 {
 		i.Constructor = c.instantiate(typ, nil, nil, expected, e.Pos)
 		i.Case = cs.Name
 		i.Type = i.Constructor

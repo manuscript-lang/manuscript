@@ -84,7 +84,12 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		}
 	}
 	if callee.Kind == syntax.KindName && c.scope.binding(callee.Text) == nil && c.names[callee.Text] == nil {
-		alternative, cs = c.findCase(callee.Text, callee.Pos)
+		var ambiguous bool
+		alternative, cs, ambiguous = c.findCase(callee.Text, callee.Pos)
+		if ambiguous {
+			i.Type = primitive("<invalid>")
+			return i
+		}
 	}
 	if alternative != nil {
 		if len(cs.Fields) == 0 {
