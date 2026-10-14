@@ -22,7 +22,7 @@ Joining waits for work to finish its body and cleanup. `Task.join()` waits for o
 
 ```manuscript
 type ExecutionError:
-    case TimedOut
+    case Timeout
     case Cancelled
     case Crashed(operation: OperationId, message: String)
 ```
@@ -41,7 +41,7 @@ An operation ID identifies work for diagnostics. It does not grant scheduling, c
 | --- | --- |
 | The joining caller's own context was cancelled or reached its inherited deadline | The caller unwinds after cancellation and joining; no Result is delivered |
 | A task faulted in its body or cleanup | `error(cause: Crashed(...))` for the first committed fault |
-| The group's timeout expired while work was outstanding | `error(cause: TimedOut)` |
+| The group's timeout expired while work was outstanding | `error(cause: Timeout)` |
 | Explicit close cancelled unfinished work, or the fixed parent stopped while another active execution joined | `error(cause: Cancelled)` |
 | Otherwise | Group join returns `ok(value: unit)`; task join returns its cached value |
 

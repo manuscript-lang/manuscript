@@ -204,8 +204,8 @@ export interface FileHandle:
     fn close() -> Unit
     # Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
-    # Writes all bytes on success and returns their count; errors can leave a prefix without a count.
-    fn write(data: Bytes) -> Result[Int, FileSystemError]
+    # Writes all bytes at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
+    fn write(data: Bytes) -> Result[Unit, FileSystemError]
     # Writes at the current position; appends only when the handle was opened in append mode.
     fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
     # Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
@@ -213,18 +213,16 @@ export interface FileHandle:
         offset: Int,
         max_bytes: Optional[Int] = none
     ) -> Result[Bytes, FileSystemError]
-    # Writes all bytes at a nonnegative offset without moving the position; returns the full count.
-    fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
+    # Writes all bytes at a nonnegative offset without moving the position; errors can leave a prefix.
+    fn write_at(offset: Int, data: Bytes) -> Result[Unit, FileSystemError]
     # Reads remaining bytes from the current position; EOF returns empty Bytes.
     fn read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
-    # Writes all bytes at the current position; does not truncate or reposition this handle.
-    fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
     fn read_vectors(
         sizes: List[Int],
         offset: Int
     ) -> Result[List[Bytes], FileSystemError]
-    # Writes every buffer and returns the total byte count; offset -1 uses the current position.
-    fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
+    # Writes every buffer; offset -1 uses the current position.
+    fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Unit, FileSystemError]
     # Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).
     # Other origins return InvalidInput; the OS validates the resulting offset.
     fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]

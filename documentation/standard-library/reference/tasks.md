@@ -12,7 +12,7 @@ Why a task or task group did not complete successfully.
 
 ```manuscript
 type ExecutionError:
-    case TimedOut
+    case Timeout
     case Cancelled
     case Crashed(operation: OperationId, message: String)
 ```

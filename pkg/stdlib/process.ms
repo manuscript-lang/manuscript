@@ -9,7 +9,7 @@ import Map from "@std/collections.ms"
 export type CommandError:
     case InvalidInput
     case Unavailable
-    case TimedOut
+    case Timeout
     case OutputLimit
     case Failed(message: String)
 

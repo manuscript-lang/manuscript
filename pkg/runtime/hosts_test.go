@@ -187,7 +187,7 @@ func TestSubprocessOutputAndLimit(t *testing.T) {
 		}
 	}
 	result := Invoke(root, commands.Operation("run"), []Argument{{"program", "/bin/printf"}, {"arguments", &List{}}, {"input", Bytes{}}, {"max_output_bytes", int64(8)}, {"timeout", Duration(0)}}).(Alternative)
-	if result.Tag != "error" || result.Fields[0].(Alternative).Tag != "TimedOut" {
+	if result.Tag != "error" || result.Fields[0].(Alternative).Tag != "Timeout" {
 		t.Fatal(result)
 	}
 }

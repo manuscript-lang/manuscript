@@ -65,7 +65,7 @@ Timeouts are named library arguments, not syntax annotations. Duration values co
 
 `TaskGroup(timeout: 2.seconds)` sets one group budget, starting with the first submission. The budget applies across its operations; `timeout` is the only budget argument.
 
-On expiry, unfinished tasks stop and join before a failed task or group join reports TimedOut. A timeout bounds ordinary work, not cleanup or joining. Foreign code that does not cooperate can delay joining; [host escalation](../contributing/concurrent-runtime.md#host-escalation) is the final fallback.
+On expiry, unfinished tasks stop and join before a failed task or group join reports Timeout. A timeout bounds ordinary work, not cleanup or joining. Foreign code that does not cooperate can delay joining; [host escalation](../contributing/concurrent-runtime.md#host-escalation) is the final fallback.
 
 To share one budget across sequential steps, submit one callback containing those steps:
 
@@ -83,7 +83,7 @@ Hosts establish deadlines for application, session, CLI, and request execution c
 
 Budgets use the runtime's monotonic timer, not a `Clock` capability or calendar time. A test runner may virtualize that timer; a fake `Clock` value does not affect execution budgets.
 
-When the caller's own deadline expires, the caller unwinds after its groups join; it does not receive `TimedOut`. Only a group's own timeout produces `TimedOut`.
+When the caller's own deadline expires, the caller unwinds after its groups join; it does not receive `Timeout`. Only a group's own timeout produces `Timeout`.
 
 Scheduler work inherits the service's fixed execution context, including that context's deadline. It does not inherit the submitting request's deadline. A service cannot revive cancelled work or extend its host's deadline. Its context is selected at construction, not at each call to `start`.
 

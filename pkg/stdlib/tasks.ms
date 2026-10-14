@@ -29,7 +29,7 @@ export type SchedulerFailure:
 
 # Why a task or task group did not complete successfully.
 export type ExecutionError:
-    case TimedOut
+    case Timeout
     case Cancelled
     case Crashed(operation: OperationId, message: String)
 
