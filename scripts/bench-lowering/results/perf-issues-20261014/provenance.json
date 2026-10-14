@@ -1,0 +1,36 @@
+{
+  "compiler_baseline": "13ce9969; initial List baseline includes the independent unary-local patch",
+  "compiler_candidate": "1431645ccbbebeb5d774cca7203c4d8afe60835d",
+  "sdk": "go1.25.1 linux/amd64",
+  "cpu": "AMD EPYC 9V74",
+  "issues": [
+    142,
+    147,
+    251,
+    253
+  ],
+  "limits": [
+    "Shared host: timing samples are observations, not whole-application speed claims.",
+    "Original List baseline binary retains its original runtime; call/literal emitted source comparisons use a matched current runtime.",
+    "List allocation counts are stable on the final candidate; intermediate timings distinguish stages.",
+    "Map baseline was stopped after exceeding five minutes at depth500; no Map timing speedup claimed.",
+    "Native build repeated rows reuse Go build cache; compare first generated-source compilation separately.",
+    "Memory report has one process per workload; retained backing and RSS are distinct metrics.",
+    "General escaping Result/Optional/user-enum layout, generic boxing and dynamic-call ABI remain unchanged."
+  ],
+  "source_hashes": {
+    ".artifacts/issues-before/program.go": "5e2cd4edc1d88ee881f73d8b152ce6fe0b2fcc18fa1861a5e9555685cdfc4256",
+    ".artifacts/perf-issues/lists-final/program.go": "04de7b62c2a2f2781901ff78b2fe6663d6cffe6644ed319df20a123a8392fbdc",
+    ".artifacts/perf-issues/calls-before/program.go": "0614621afb650e972efbc834f58fd4303a850b289066184653bfb1e67c4e4265",
+    ".artifacts/perf-issues/calls-after/program.go": "88e3843253ef3b7b5d4a5c6e31637e4ddc680f5b02e8da550d4d5039fdf0183c",
+    ".artifacts/perf-issues/literal-before-100000/program.go": "ee1984f1e8fb36c9bf24c037b2f34f44446714d87878e18408800d74f45d55b7",
+    ".artifacts/perf-issues/literal-after-100000/program.go": "54f18e0c578868bd27ead8ac13b08804c6e0e7a3c16bb92098e39ae5703af7a0"
+  },
+  "reproduce": [
+    "toolchain/go/bin/go run ./scripts/bench-lists -count=3 -benchtime=200ms",
+    "toolchain/go/bin/go run ./scripts/bench-lowering -calls -count=3 -benchtime=200ms",
+    "toolchain/go/bin/go run ./scripts/bench-nested-literals -depths=500,1000,2000,4000 -count=3",
+    "toolchain/go/bin/go run ./scripts/bench-literal-source -count=100000 -output=.artifacts/literal-source",
+    "python3 scripts/bench-lists/memory.py --binary .artifacts/list-bench/lists.test --output .artifacts/list-memory --runs=3"
+  ]
+}

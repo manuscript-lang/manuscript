@@ -1,0 +1,9 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/perf-issues/literal-before-100000
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkLiteral-4   	     319	    674001 ns/op	 1605776 B/op	       2 allocs/op
+BenchmarkLiteral-4   	     489	    472872 ns/op	 1605776 B/op	       2 allocs/op
+BenchmarkLiteral-4   	     463	    490635 ns/op	 1605776 B/op	       2 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/.artifacts/perf-issues/literal-before-100000	0.707s

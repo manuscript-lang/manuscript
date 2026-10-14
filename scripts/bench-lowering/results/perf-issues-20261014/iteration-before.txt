@@ -1,0 +1,8 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/issues-before
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkLists/IterateGenerated64K-4         	    1364	    180308 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateGenerated64K-4         	    1408	    179377 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateGenerated64K-4         	    1412	    176598 ns/op	       8 B/op	       1 allocs/op
+PASS

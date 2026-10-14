@@ -1,0 +1,13 @@
+Generated source and benchmark harness: /workspace/manuscript/.artifacts/perf-issues/calls-after
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/perf-issues/calls-after
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkLowering/Reordered1024-4         	   16862	     14152 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/Reordered1024-4         	   14598	     16172 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/Reordered1024-4         	   16875	     14240 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/Defaults1024-4          	   16863	     14195 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/Defaults1024-4          	   17580	     13739 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/Defaults1024-4          	   17178	     13859 ns/op	       8 B/op	       1 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/.artifacts/perf-issues/calls-after	1.443s

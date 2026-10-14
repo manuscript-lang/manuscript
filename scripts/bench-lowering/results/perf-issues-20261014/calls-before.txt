@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/perf-issues/calls-before
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkLowering/Reordered1024-4         	    2367	     93094 ns/op	   54930 B/op	    3794 allocs/op
+BenchmarkLowering/Reordered1024-4         	    2125	     95790 ns/op	   54928 B/op	    3794 allocs/op
+BenchmarkLowering/Reordered1024-4         	    2738	    104093 ns/op	   54928 B/op	    3794 allocs/op
+BenchmarkLowering/Defaults1024-4          	    2581	    132951 ns/op	   49160 B/op	    3073 allocs/op
+BenchmarkLowering/Defaults1024-4          	    1917	    117935 ns/op	   49160 B/op	    3073 allocs/op
+BenchmarkLowering/Defaults1024-4          	    2277	    107631 ns/op	   49160 B/op	    3073 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/.artifacts/perf-issues/calls-before	1.539s

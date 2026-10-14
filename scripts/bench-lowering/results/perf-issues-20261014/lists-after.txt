@@ -1,0 +1,20 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/issues-after
+cpu: AMD EPYC 9V74 80-Core Processor                
+BenchmarkLists/AppendGenerated64K-4         	     100	   1154823 ns/op	 2512366 B/op	      29 allocs/op
+BenchmarkLists/AppendGenerated64K-4         	     100	   1134105 ns/op	 2512302 B/op	      29 allocs/op
+BenchmarkLists/AppendGenerated64K-4         	      97	   1147562 ns/op	 2512308 B/op	      29 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	     100	   1063513 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	     100	   1043668 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	      87	   1172084 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     488	    283997 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     457	    329498 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     480	    250161 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      33	   3436094 ns/op	  523909 B/op	   65390 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      30	   3567139 ns/op	  523908 B/op	   65390 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      33	   3387841 ns/op	  523907 B/op	   65390 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       3	  38782028 ns/op	  525192 B/op	      15 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       3	  39551774 ns/op	  525192 B/op	      15 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       3	  40095384 ns/op	  525192 B/op	      15 allocs/op
+PASS
