@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"go/ast"
 	"go/format"
 	"go/token"
@@ -72,7 +73,7 @@ func TestLiteralDataBoundariesAndAST(t *testing.T) {
 			if literal == nil {
 				t.Fatal("missing checked literal")
 			}
-			value := g.literalListData(literal, result.Program.Info(literal).Type)
+			value := g.literalListData(ir.Value(result.Program, literal, result.Program.Info(literal)).(ir.List))
 			if (value != nil) != (n > largeListThreshold) {
 				t.Fatal("wrong data threshold")
 			}

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -17,8 +17,9 @@ const largeListThreshold = 1024
 // literalListData retains immutable scalar input in a typed private array.
 // The runtime constructor copies that data into fresh authoritative List backing
 // on every evaluation. No source collection or mutable element is globalized.
-func (g *generator) literalListData(e *syntax.Expression, typ *checker.Type) ast.Expr {
-	if g.debugLiterals || len(e.Elements) <= largeListThreshold || typ.ID != "@std/List" || len(typ.Args) != 1 {
+func (g *generator) literalListData(e ir.List) ast.Expr {
+	typ := e.Type
+	if g.debugLiterals || len(e.Items) <= largeListThreshold || typ.ID != "@std/List" || len(typ.Args) != 1 {
 		return nil
 	}
 	element := typ.Args[0]
@@ -38,9 +39,9 @@ func (g *generator) literalListData(e *syntax.Expression, typ *checker.Type) ast
 	default:
 		return nil
 	}
-	values := make([]ast.Expr, len(e.Elements))
+	values := make([]ast.Expr, len(e.Items))
 	var negativeZero []ast.Expr
-	for at, item := range e.Elements {
+	for at, item := range e.Items {
 		value, signedZero := g.literalDataScalar(item, element.ID)
 		if value == nil {
 			return nil
@@ -71,7 +72,42 @@ func (g *generator) literalListData(e *syntax.Expression, typ *checker.Type) ast
 // Probe eligibility without lowering any expression: abandoned lowered trees
 // can strand source markers or captures. Checked identities establish the exact
 // representation, and numeric parsing uses the current Int64/binary64 contract.
-func (g *generator) literalDataScalar(e *syntax.Expression, expected string) (ast.Expr, bool) {
+func (g *generator) literalDataScalar(x ir.Expr, expected string) (ast.Expr, bool) {
+	switch x := x.(type) {
+	case ir.IntLiteral:
+		if expected == "Int" && isPrimitive(x.Type, expected) {
+			return signedInteger(strconv.FormatInt(x.Value, 10)), false
+		}
+	case ir.FloatLiteral:
+		if expected == "Float" && isPrimitive(x.Type, expected) {
+			return &ast.BasicLit{Kind: token.FLOAT, Value: strconv.FormatFloat(x.Value, 'g', -1, 64)}, x.Value == 0 && math.Signbit(x.Value)
+		}
+	case ir.BoolLiteral:
+		if expected == "Bool" && isPrimitive(x.Type, expected) {
+			return ident(strconv.FormatBool(x.Value)), false
+		}
+	case ir.Text:
+		if expected == "String" && isPrimitive(x.Type, expected) {
+			var text strings.Builder
+			for _, part := range x.Parts {
+				if part.Value != nil {
+					return nil, false
+				}
+				text.WriteString(part.Text)
+			}
+			return textLiteral(text.String()), false
+		}
+	case ir.Deferred:
+		// Unary numeric expressions are outside the initial IR migration. Keep their
+		// checked syntax path until the canonical elaborator owns those nodes.
+		if x.Source.Kind == syntax.KindUnary {
+			return g.literalDataSyntaxScalar(x.Source, expected)
+		}
+	}
+	return nil, false
+}
+
+func (g *generator) literalDataSyntaxScalar(e *syntax.Expression, expected string) (ast.Expr, bool) {
 	info := g.program.Info(e)
 	if info == nil || info.ErrorSource != nil || info.Type.Kind != "primitive" || info.Type.ID != expected {
 		return nil, false

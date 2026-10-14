@@ -3,19 +3,19 @@ package lower
 import (
 	"go/ast"
 
-	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 )
 
 // The bound limits native compiler work on effectful literals. Scalar constant
 // tables have no large executable initializer and do not use these helpers.
 const listInitializationChunk = 64
 
-func (g *generator) largeListLiteral(e *syntax.Expression, typ *checker.Type) ast.Expr {
-	if g.debugLiterals || len(e.Elements) <= largeListThreshold {
+func (g *generator) largeListLiteral(e ir.List) ast.Expr {
+	typ := e.Type
+	if g.debugLiterals || len(e.Items) <= largeListThreshold {
 		return nil
 	}
-	if value := g.literalListData(e, typ); value != nil {
+	if value := g.literalListData(e); value != nil {
 		return value
 	}
 	constructor, initializer, extract := "NewSizedList", "InitListValue", ""
@@ -32,21 +32,21 @@ func (g *generator) largeListLiteral(e *syntax.Expression, typ *checker.Type) as
 		}
 	}
 	list := g.temp()
-	body := []ast.Stmt{define(list, runtimeCall(constructor, g.key(typ), intLiteral(len(e.Elements))))}
+	body := []ast.Stmt{define(list, runtimeCall(constructor, g.key(typ), intLiteral(len(e.Items))))}
 	g.expressionDepth++
-	for start := 0; start < len(e.Elements); start += listInitializationChunk {
-		end := min(start+listInitializationChunk, len(e.Elements))
+	for start := 0; start < len(e.Items); start += listInitializationChunk {
+		end := min(start+listInitializationChunk, len(e.Items))
 		statements := make([]ast.Stmt, 0, end-start)
 		for at := start; at < end; at++ {
 			var value ast.Expr
 			if extract != "" {
-				constant, signedZero := g.literalDataScalar(e.Elements[at], typ.Args[0].ID)
+				constant, signedZero := g.literalDataScalar(e.Items[at], typ.Args[0].ID)
 				if !signedZero {
 					value = constant
 				}
 			}
 			if value == nil {
-				value = g.expression(e.Elements[at])
+				value = g.irValue(e.Items[at])
 				if extract == "string" {
 					// Accept an already concrete String expression without adding
 					// a second scalar lowering contract.
