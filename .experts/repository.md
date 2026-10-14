@@ -1,5 +1,13 @@
 # Repository maintenance lessons
 
+### CI discovery failures must not become empty shards
+
+Verified: a successful pipeline filter can hide a failed Go discovery command under POSIX `set -e`. `go test -list` also runs the end-to-end `TestMain`, which builds the CLI and can fail before listing tests. Capture Go output in checked assignments before filtering; reuse the complete package inventory and reject an empty split-package test inventory. An individual shard may legitimately select no tests.
+
+Apply when: changing CI package discovery, test selection, or sharding.
+Evidence: [shard runner](../scripts/ci-test.sh), [failure and inventory regressions](../scripts/repo-check/ci_test_test.go), and [end-to-end setup](../tests/e2e/harness_test.go).
+Verify: run `go test ./scripts/repo-check -run '^TestCITest'`; injected discovery failures must exit nonzero, and four shards must select every test/package exactly once.
+
 ### Repository cleanup must remove duplicated work and layers
 
 Decision: the user's codebase cleanup request includes simplifying the implementation as a whole; reorganizing files alone does not satisfy it. Consolidate duplicated behavior and remove avoidable work before adding abstraction layers.

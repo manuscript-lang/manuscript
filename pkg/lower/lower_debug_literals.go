@@ -3,7 +3,7 @@ package lower
 import (
 	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"go/ast"
 	"strings"
 )
@@ -13,12 +13,12 @@ const debugListThreshold = 1024
 // Debug alone trades repeated construction cost for less native compilation.
 // Only complete immutable scalar lists qualify; mixed/effectful lists retain
 // the existing expression and control-flow lowering in every build mode.
-func (g *generator) debugListLiteral(e *syntax.Expression, typ *checker.Type) ast.Expr {
-	if !g.debugLiterals || len(e.Elements) <= debugListThreshold {
+func (g *generator) debugListLiteral(list ir.List) ast.Expr {
+	if !g.debugLiterals || len(list.Items) <= debugListThreshold {
 		return nil
 	}
-	values := make([]ast.Expr, len(e.Elements))
-	for i, item := range e.Elements {
+	values := make([]ast.Expr, len(list.Items))
+	for i, item := range list.Items {
 		values[i] = g.debugLiteralScalar(item)
 		if values[i] == nil {
 			return nil
@@ -32,38 +32,42 @@ func (g *generator) debugListLiteral(e *syntax.Expression, typ *checker.Type) as
 	// Appending to nil allocates fresh mutable storage without exposing data.
 	items := call(ident("append"), call(sliceOf(runtimeName("Value")), ident("nil")), &ast.SliceExpr{X: ident(dataName)})
 	items.Ellipsis = 1
-	return address(composite(runtimeName("List"), keyed("Type", g.key(typ)), keyed("Items", items)))
+	return address(composite(runtimeName("List"), keyed("Type", g.key(list.Type)), keyed("Items", items)))
 }
 
 // A literal's syntax alone is insufficient: retain the checked primitive
 // identity and reject conversions and every mutable/reference-bearing value.
-// Unary numbers retain normal lowering, including the sign of rounded zero;
-// numeric widths and rounding belong to checked expression lowering.
-func (g *generator) debugLiteralScalar(e *syntax.Expression) ast.Expr {
-	info := g.program.Info(e)
-	if info.ErrorSource != nil || info.Type.Kind != "primitive" {
-		return nil
-	}
-	switch e.Kind {
-	case syntax.KindNumber:
-		if info.Type.ID == "Int" || info.Type.ID == "Float" {
-			return g.expression(e)
+// Numeric widths and rounding belong to checked expression lowering.
+func (g *generator) debugLiteralScalar(x ir.Expr) ast.Expr {
+	switch x := x.(type) {
+	case ir.IntLiteral:
+		if isPrimitive(x.Type, "Int") {
+			return g.irValue(x)
 		}
-	case syntax.KindBool:
-		if info.Type.ID == "Bool" {
-			return ident(e.Text)
+	case ir.FloatLiteral:
+		if isPrimitive(x.Type, "Float") {
+			return g.irValue(x)
 		}
-	case syntax.KindText:
-		if info.Type.ID == "String" {
-			var text strings.Builder
-			for _, part := range e.Parts {
-				if part.Value != nil {
-					return nil
-				}
-				text.WriteString(part.Text)
+	case ir.BoolLiteral:
+		if isPrimitive(x.Type, "Bool") {
+			return g.irValue(x)
+		}
+	case ir.Text:
+		if !isPrimitive(x.Type, "String") {
+			return nil
+		}
+		var text strings.Builder
+		for _, part := range x.Parts {
+			if part.Value != nil {
+				return nil
 			}
-			return textLiteral(text.String())
+			text.WriteString(part.Text)
 		}
+		return textLiteral(text.String())
 	}
 	return nil
+}
+
+func isPrimitive(t *checker.Type, id string) bool {
+	return t.Kind == "primitive" && t.ID == id
 }
