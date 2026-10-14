@@ -38,7 +38,7 @@ fn is_empty() -> Bool
 
 ## Sharing a queue
 
-For concurrent access, put the queue in one `Synchronized[Queue[T]]` and hold its guard throughout every operation, including reads. Each caller acquires its own guard from the same wrapper:
+For concurrent access to a local `Queue`, put the queue in one `Synchronized[Queue[T]]` and hold its guard throughout every operation, including reads. Each caller acquires its own guard from the same wrapper:
 
 ```manuscript
 import Queue from "@std/queues.ms"
@@ -58,7 +58,60 @@ fn dequeue(shared: Synchronized[Queue[Int]]) -> Optional[Int]:
 
 The queue itself has no mutex. The compiler allows references to be passed freely and does not enforce this locking discipline. A queue or bound method obtained through `locked.get()` remains an alias after the guard closes; it must not be used concurrently outside that lock. Wrapping the same queue in two separate synchronized containers does not coordinate them. Store the queue directly in one wrapper and share that wrapper.
 
-Wrapping a queue serializes access; it does not add waiting for values or free capacity. Never wait for another operation to fill or drain the queue while holding its lock. Lock acquisition follows the ordinary [Synchronized cancellation and cleanup rules](synchronization.md#synchronized).
+Wrapping a queue serializes access; it does not by itself add waiting for values or free capacity. For a queue that blocks, use [`BlockingQueue`](#blocking-queue), or call the guard's [`wait()`](synchronization.md#waiting-for-a-change), which releases the lock while sleeping; never poll or spin while holding the lock. Lock acquisition follows the ordinary [Synchronized cancellation and cleanup rules](synchronization.md#synchronized).
+
+## Blocking queue
+
+`BlockingQueue[T]` is a FIFO that waits instead of failing. Import it from `@std/queues.ms`. Omit capacity for an unbounded queue, or supply a positive capacity to bound it. It synchronizes itself, so tasks share it directly with no `Synchronized` wrapper.
+
+```manuscript
+fn put(value: T) -> Bool
+fn take() -> Optional[T]
+fn close() -> Unit
+fn length() -> Int
+fn is_closed() -> Bool
+```
+
+- `put` waits while a bounded queue is full, then appends and returns `true`. It returns `false` once the queue is closed.
+- `take` waits while the queue is empty, then removes the oldest value. It returns `none` once the queue is closed and empty.
+- `close` stops new puts and wakes every waiting task. Values already queued can still be taken. Closing twice does nothing.
+- Waiting holds no lock and stops at [cancellation](cancellation.md): closing a `TaskGroup` cancels workers blocked in `take` or `put`, and they unwind without waiting for the queue.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import BlockingQueue from "@std/queues.ms"
+import TaskGroup from "@std/tasks.ms"
+import panic from "@std/faults.ms"
+
+fn work(jobs: BlockingQueue[Int]) -> Int:
+    var total = 0
+    while true:
+        match jobs.take():
+            some(value):
+                total = total + value
+            none:
+                return total
+    return total
+
+test "a producer feeds a worker through a bounded queue":
+    let jobs = BlockingQueue[Int](2)
+    with group = TaskGroup():
+        let worker = group.start(fn(): work(jobs: jobs))
+        for value in [1, 2, 3, 4, 5]:
+            if not jobs.put(value):
+                return panic(message: "put failed")
+        jobs.close()
+        match worker.join():
+            ok(total):
+                if not (total == 15):
+                    return panic(message: "lost or duplicated items")
+            error(_):
+                return panic(message: "worker failed")
+```
+
+The worker drains what is queued after `close`, then `take` returns `none` and it finishes. Never join a worker from code that the worker is waiting on.
+
+To build a different waiting structure, use the guard's [`wait()` and `notify_all()`](synchronization.md#waiting-for-a-change) on a `Synchronized` value; `BlockingQueue` is built from the same ideas.
 
 ## Priority queue
 

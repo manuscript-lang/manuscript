@@ -41,6 +41,8 @@ Holds a synchronization lock. Closing the guard releases the lock.
 type SynchronizedGuard[T]:
     fn get() -> T:
     fn set(value: T) -> Unit:
+    fn wait() -> Unit:
+    fn notify_all() -> Unit:
     fn close() -> Unit:
 ```
 
@@ -60,11 +62,28 @@ Returns the original guarded payload, without cloning; a closed guard faults.
 fn get() -> T:
 ```
 
+### SynchronizedGuard.notify_all
+
+Call it after changing the shared value so waiting tasks re-check it. It wakes every task waiting on this Synchronized; the guard must be open and owned by the caller.
+
+```manuscript
+fn notify_all() -> Unit:
+```
+
 ### SynchronizedGuard.set
 
 Replaces the guarded payload without copying it; a closed guard faults.
 
 ```manuscript
 fn set(value: T) -> Unit:
+```
+
+### SynchronizedGuard.wait
+
+Releases the lock, waits for notify_all, then reacquires it before returning; re-check state in a loop.
+Use it in a loop, such as: while queue_is_empty: locked.wait(). Only the acquiring task may call it. Cancellation interrupts the wait without reacquiring, leaving the guard released.
+
+```manuscript
+fn wait() -> Unit:
 ```
 

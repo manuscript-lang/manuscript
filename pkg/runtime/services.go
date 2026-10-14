@@ -28,6 +28,21 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 			return libraryRangeFault("Queue", "capacity", args[0].Value, 1, int64(^uint(0)>>1))
 		}
 		return &Queue{typ: typ, capacity: int(capacity)}
+	case "@std/BlockingQueue":
+		capacity := 0
+		if len(args) > 0 {
+			value, valid := nativeOption(args[0].Value, "Int", int64(0))
+			if !valid {
+				return libraryRangeFault("BlockingQueue", "capacity", args[0].Value, 1, int64(^uint(0)>>1))
+			}
+			if option, ok := args[0].Value.(Alternative); !ok || option.Tag != "none" {
+				if value.(int64) <= 0 || value.(int64) > int64(^uint(0)>>1) {
+					return libraryRangeFault("BlockingQueue", "capacity", args[0].Value, 1, int64(^uint(0)>>1))
+				}
+				capacity = int(value.(int64))
+			}
+		}
+		return newBlockingQueue(typ, capacity)
 	case "@std/PriorityQueue":
 		q := &PriorityQueue{typ: typ}
 		for _, arg := range args {

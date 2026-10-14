@@ -53,6 +53,7 @@
     "@std/collections.ms/Set": "native",
     "@std/collections.ms/SetBuilder": "native",
     "@std/decimal.ms/Decimal": "native",
+    "@std/queues.ms/BlockingQueue": "native",
     "@std/queues.ms/PriorityQueue": "native",
     "@std/queues.ms/Queue": "native",
     "@std/regex.ms/Regex": "native",
