@@ -1,5 +1,5 @@
 # Configuration-oriented YAML 1.2 parser implemented in Manuscript.
-import {List, Map} from "@std/collections.ms"
+import {List, Map, Set} from "@std/collections.ms"
 import parse_int from "@std/numbers.ms"
 import {from_scalars, StringBuilder} from "@std/string.ms"
 
@@ -533,7 +533,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
         advance(flow)
         let values = Map[String, YamlValue]()
-        let explicit: List[String] = []
+        let explicit = Set[String]()
         flow_space(flow)
 
         while peek(flow) != "\}":
@@ -573,7 +573,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
                 )
             )
 
-            explicit.append(name)
+            explicit.add(name)
 
             if name == "<<" and not quoted_key:
                 let merged = try merge(
@@ -599,7 +599,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
         advance(flow)
         return ok(YamlValue.ObjectValue(values))
 
-    var text = ""
+    let start = flow.pos
 
     while (
         peek(flow) != ""
@@ -613,9 +613,17 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
             )
         )
 
-        text = text.concat(advance(flow))
+        advance(flow)
 
-    text = text.trim()
+    # Slice once: appending each character to a string is quadratic on long scalars.
+    var text = (
+        flow
+        .chars
+        .slice(start: start, end: flow.pos)
+        .unwrap_or([])
+        .join("")
+        .trim()
+    )
 
     if flow.delimited: text = fold_plain(text)
 
@@ -1143,7 +1151,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
     if boundary(text: first, colon: true) >= 0:
         let counted = try count(context: context, depth: depth)
         let values = Map[String, YamlValue]()
-        let explicit: List[String] = []
+        let explicit = Set[String]()
 
         while context.index < context.lines.length():
             skip(context)
@@ -1198,7 +1206,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 )
             )
 
-            explicit.append(name)
+            explicit.add(name)
             let text = (
                 content
                 .slice(
