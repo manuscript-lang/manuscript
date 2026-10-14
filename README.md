@@ -18,7 +18,7 @@ Manuscript's tools share the compiler's understanding of the program:
 
 - **Agents get structured evidence.** JSON diagnostics and checked source inspection expose symbols, call sites, source hashes, and effects. Static call diagrams and Markdown/JSON API exports make the program and its dependencies inspectable.
 - **Editors understand the contracts.** Typed completion works in unfinished calls; named arguments and auto-imports follow checked scope. Project-wide rename checks the proposed edits before returning them. Standard-library definitions are navigable Manuscript source.
-- **Runtime behavior stays connected to source.** Native debugging through Delve shows `.ms` frames, values, and execution/service state. CPU and heap profiles and execution traces carry source and work attribution; profile bundles retain the executable and matching metadata.
+- **Runtime behavior stays connected to source.** Native debugging through Delve maps native lines to `.ms` source; the VS Code adapter also renders Manuscript values. CPU and heap profiles and execution traces carry source and work attribution; profile bundles retain the executable and matching metadata.
 
 See the [tooling guide](documentation/developer-tooling/implementation.md) and [VS Code integration](extensions/vscode/README.md) for setup and current limits.
 

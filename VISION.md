@@ -66,9 +66,6 @@ That is an opportunity, not an assumption that ecosystem challenges disappear. M
 6. Learn from actual agent use. Exercise agents on realistic applications, record where they struggle, and improve the language and tools based on what happens.
 7. Treat the toolchain and ecosystem as part of the language. Compilation, debugging, profiling, libraries, and deployment all contribute to whether Manuscript can serve real projects.
 
-## Concrete walkthrough — TBD
-
-Add a real example from the Manuscript repository: an application or feature implemented in Manuscript, the diagram generated from its code, and the compiler or tool feedback encountered along the way. This section should show the intended experience in practice and link readers to the working repository.
 
 ## What success looks like
 
