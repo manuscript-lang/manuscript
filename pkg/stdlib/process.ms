@@ -44,7 +44,10 @@ export interface Commands:
         timeout: Optional[Duration] = none
     ) -> Result[CommandOutput, CommandError]
     # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess for use with `with`. `arguments` follow the program name; stdin, stdout, and stderr are OS pipes. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
-    fn spawn(program: String, arguments: List[String]) -> Result[Subprocess, CommandError]
+    fn spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]
 
 # A long-lived child process with live stdin, stdout, and stderr pipes. Closing it
 # kills the child's process group, joins it, and closes all three streams.
