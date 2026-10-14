@@ -72,6 +72,7 @@ ms debug ms.toml --script commands.txt
 
 - `--break <location>` (repeatable) installs breakpoints, runs to the first stop, reports it, kills the program, and exits. A rejected breakpoint ends setup before the program runs. It exits 1 if setup fails or the program ends without reaching a breakpoint.
 - `--script <file>` (or `-` for standard input) runs one command per line; blank lines and lines starting with `#` are ignored. Commands: `break <location>`, `clear <id>`, `breakpoints`, `continue`, `next`, `step`, `stepout`, `stack`, `locals`, `print <name>`, and `exit`. A failed command reports an error and makes the final status 1; the script continues. Input or event-output failures end the session with status 1. EOF and `exit` end the session and kill the target.
+- Input-failure diagnostics are best effort after target shutdown. Interruptible transports get a short write budget; non-interruptible output may omit the diagnostic. The failure still returns status 1.
 - `--json` prints one JSON object per line on standard output: `breakpoint`, `stop`, `stack`, `locals`, `value`, `cleared`, `breakpoints`, `exit`, and `error` events. The program's own output goes to standard error so standard output stays parseable. Without `--json` the same events print as plain text with no prompts or ANSI escapes.
 - A location is `file:line` (relative to the project or source root, or absolute) or the name of a function declared in Manuscript source. A function name stops at its first statement; a name declared in more than one module is ambiguous, so use `file:line`.
 

@@ -118,6 +118,17 @@ and [Windows console regression](../internal/debugger/process_windows_test.go).
 Verify console behavior on a native Windows host; pipe tests and cross-compilation
 do not validate `ReadConsoleInputW` cancellation or console mode restoration.
 
+Verified: a fatal command-reader error must be latched before reporting it;
+stop the target before a bounded, joined diagnostic attempt. A final CLI stderr
+write can block again when stderr shares the unread event-output pipe, so it
+uses the same owned reporting path. Identify the null device by descriptor
+identity, since inherited stdio retains names such as `/dev/stdin` even when
+redirected to `/dev/null`. Evidence: [full-output and redirected-stream cases](../internal/debugger/native_lifecycle_test.go),
+[shared-output CLI regression](../tests/e2e/debug_script_cancel_unix_test.go),
+and [borrowed descriptor/deadline regressions](../internal/debugger/io_unix_test.go).
+These are debugger-owned CLI transports; they do not change the runtime/stdlib
+stdio cancellation contract.
+
 Open: disconnecting the client joins client calls but does not stop an active
 backend operation. Public service Stop still owns target cleanup. Delve resets
 manual-stop requests before Continue, and gdbserial ignores manual stops while

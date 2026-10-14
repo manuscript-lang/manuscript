@@ -336,6 +336,7 @@ func TestNativeDebugLifecycleChild(t *testing.T) {
 			opts.Script = strings.NewReader("continue\n")
 		case "script-read-error":
 			opts.Script = io.MultiReader(opts.Script, readerError{io.ErrUnexpectedEOF})
+			opts.CancelIO = func() { cleanupCalls++ }
 		case "script-full-output-read-error", "script-full-output-oversized":
 			var restore func() error
 			opts.Out, opts.CancelIO, restore = fullDiagnosticOutput(t, pidFile)
@@ -386,6 +387,9 @@ func TestNativeDebugLifecycleChild(t *testing.T) {
 			fmt.Fprintf(os.Stderr, "fatal input did not return with its own diagnostic budget: ctx %v, err %v, cleanup %d\n", ctx.Err(), err, cleanupCalls)
 			os.Exit(1)
 		}
+	}
+	if mode == "script-read-error" && cleanupCalls != 1 {
+		t.Fatalf("healthy input diagnostic invoked cleanup %d times", cleanupCalls)
 	}
 	if strings.Contains(mode, "null-") {
 		for _, file := range []*os.File{os.Stdin, os.Stdout, os.Stderr} {

@@ -131,6 +131,32 @@ func TestInputFailureCannotReplaceOutputFailure(t *testing.T) {
 	}
 }
 
+func TestInputDiagnosticSkipsRegularFiles(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "output")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	opts, restore, err := ownScriptIO(Options{Out: file})
+	if err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	err = reportBounded(context.Background(), opts.Out, false, opts.CancelIO, func() error {
+		called = true
+		return writeEvent(opts.Out, true, Event{Event: "error", Message: "failed input"})
+	})
+	if err != nil || called {
+		t.Fatalf("attempted an unbounded regular-file write: %v, called %v", err, called)
+	}
+	if err := restore(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.WriteString("borrowed file still open"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestScriptStopsAfterOutputFailure(t *testing.T) {
 	for _, json := range []bool{false, true} {
 		for _, short := range []bool{false, true} {
