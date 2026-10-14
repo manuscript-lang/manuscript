@@ -85,6 +85,3 @@ func buildParameters(receiver bool) []*ast.Field {
 func concreteFunction(fn ast.Expr) ast.Expr {
 	return call(closure(nil, runtimeName("Function"), define("typeArgs", composite(typeArguments())), discard(ident("typeArgs")), returned(fn)))
 }
-func variableStmt(name string, typ ast.Expr) ast.Stmt {
-	return &ast.DeclStmt{Decl: variable(name, typ, nil)}
-}
