@@ -30,6 +30,7 @@ type generator struct {
 	captures         map[*checker.Binding]string
 	typed            map[*checker.Binding]string // Go type of scalar bindings declared as typed variables
 	direct           map[*checker.Symbol]*directFunction
+	directMethods    map[string]*directFunction // by checker.Method.ID, which checked copies of a method share
 	structs          map[string]*structType
 	structOrder      []*structType
 	resultType       string    // Go scalar result of the direct function being lowered, or ""
