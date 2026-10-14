@@ -22,7 +22,6 @@ type Bytes:
     fn starts_with(value: Bytes) -> Bool:
     fn ends_with(value: Bytes) -> Bool:
     fn reversed() -> Bytes:
-    fn reverse() -> Bytes:
     fn with_value(index: Int, value: Int) -> Bytes:
     fn is_empty() -> Bool:
     fn values() -> List[Int]:
@@ -101,14 +100,6 @@ Returns the number of bytes, not the number of Unicode characters.
 
 ```manuscript
 fn length() -> Int:
-```
-
-### Bytes.reverse
-
-Compatibility spelling for reversed; returns a copy without changing the receiver.
-
-```manuscript
-fn reverse() -> Bytes:
 ```
 
 ### Bytes.reversed

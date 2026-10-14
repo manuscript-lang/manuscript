@@ -57,6 +57,6 @@ fn callback_write(values: List[Int]) -> Int:
             total.value = total.value + value
 
             if value == 0:
-                values.with_value(index: 0, value: 7)
+                values.set(index: 0, value: 7)
     )
     return total.value

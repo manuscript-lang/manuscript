@@ -1,4 +1,10 @@
-import {parse, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
+import {
+    parse,
+    stringify,
+    YamlValue,
+    YamlError,
+    YamlLimits
+} from "@std/yaml.ms"
 import {List, Map} from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
@@ -606,3 +612,45 @@ test "YAML merge and block header errors name their own line":
     if failure("x: 1\ny: |x\nz: 3") != "YAML 2:5: invalid block scalar header": return panic(
         "later header"
     )
+
+test "YAML limits fields default to none":
+    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
+    if parse(
+        text: "a: 1",
+        limits: some(YamlLimits(max_bytes: 2))
+    ) != limited: return panic(
+        "partial byte limit"
+    )
+    if parse(
+        text: "a: 1",
+        limits: some(YamlLimits())
+    ) != parse(text: "a: 1"): return panic(
+        "empty limits"
+    )
+
+test "YAML stringify round trips scalars sequences and mappings":
+    let source = "title: \"é🙂 \\\"q\\\" \\t tab\"\nnone: null\nflag: true\nint: -42\nfloat: 1.5e3\nlist:\n  - 1\n  - two\n  - [3, 4]\n  - a: 1\n    b: [x, y]\nempty_list: []\nempty_map: \{\}\n\"odd key\": 1\n\"true\": 2\nnested:\n  deep:\n    value: ok\n"
+    let parsed = value(parse(text: source))
+    let text = value(stringify(value: parsed))
+    if value(parse(text: text)) != parsed: return panic("YAML stringify round trip")
+    if value(
+        stringify(
+            value: value(parse(text: text))
+        )
+    ) != text: return panic(
+        "YAML stringify is stable"
+    )
+
+test "YAML stringify validates numbers and honors max_bytes":
+    let invalid: Result[String, YamlError] = error(YamlError.InvalidInput)
+    let limited: Result[String, YamlError] = error(YamlError.LimitExceeded)
+    if stringify(value: YamlValue.NumberValue("not a number")) != invalid: return panic(
+        "invalid number text"
+    )
+
+    let root = value(parse(text: "a: 1"))
+    if stringify(value: root, max_bytes: 3) != limited: return panic("output limit")
+
+    let exact: Result[String, YamlError] = ok("a: 1\n")
+    if stringify(value: root, max_bytes: 5) != exact: return panic("exact limit")
+    if stringify(value: root, max_bytes: -1) != invalid: return panic("negative limit")

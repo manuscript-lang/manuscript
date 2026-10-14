@@ -69,8 +69,8 @@ test "default insertion keeps eager and lazy calls and receiver identity":
         "adapter order"
     )
 
-    let legacy: fn(key: String, value: Int) -> Map[String, Int] = values.with_default
-    legacy("a", 100).with_default_from("ff", create)
+    let legacy: fn(key: String, value: Int) -> Map[String, Int] = values.add_default
+    legacy("a", 100).add_default_from("ff", create)
     if counter.calls != 4 or values.get("a") != some(1): return panic(
         "legacy compatibility"
     )
@@ -86,7 +86,7 @@ test "all builders keep Unit mutation function types":
     let map = MapBuilder[String, Int]()
     let map_alias = map
     let add_map: fn(key: String, value: Int) -> Unit = map.add
-    let legacy_map: fn(key: String, value: Int) -> Unit = map_alias.with_entry
+    let legacy_map: fn(key: String, value: Int) -> Unit = map_alias.add
     let _unit: Unit = add_map("a", 1)
     map_alias.add("b", 2)
     let adapter = EntryBuilder(EntryAdapter(map_alias))
@@ -103,7 +103,7 @@ test "all builders keep Unit mutation function types":
 
     let set = SetBuilder[Int]()
     let add_set: fn(value: Int) -> Unit = set.add
-    let legacy_set: fn(value: Int) -> Unit = set.with_value
+    let legacy_set: fn(value: Int) -> Unit = set.add
     add_set(2)
     set.add(1)
     legacy_set(2)

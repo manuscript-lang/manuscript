@@ -23,7 +23,7 @@ impl Error for Cause:
     fn message() -> String: "second {self.count}"
 
 export fn second_mapped() -> Set[Key]:
-    let values = Set[Int]().with_value(1).with_value(2)
+    let values = Set[Int]().add(1).add(2)
     return transform_set(
         values,
         fn(n): Key(
@@ -40,8 +40,8 @@ export fn second_failure(cause: Cause) -> Result[String, Error]:
 
 export fn second_queries() -> Bool:
     let key = Key(5, "original")
-    let map = Map[Key, String]().with_entry(key, "found")
-    let set = Set[Key]().with_value(key)
+    let map = Map[Key, String]().add(key, "found")
+    let set = Set[Key]().add(key)
     return (
         locate_map(
             map,
@@ -61,7 +61,7 @@ export fn second_converted(cause: Cause) -> Result[Int, Error]:
     )
 
 export fn second_folded(cause: Cause) -> Error:
-    let values = Map[String, Int]().with_entry("key", 1)
+    let values = Map[String, Int]().add("key", 1)
     return values.fold[Error](
         cause,
         fn(acc, key, value): acc
@@ -79,10 +79,10 @@ export fn second_key_transform[T: Hashable](input: Map[T, Int]) -> Map[Key, Int]
 export fn second_bound_keys() -> fn(
     transform: fn(key: Int, value: Int) -> Key
 ) -> Map[Key, Int]:
-    return Map[Int, Int]().with_entry(1, 10).with_entry(2, 20).map_keys[Key]
+    return Map[Int, Int]().add(1, 10).add(2, 20).map_keys[Key]
 
 export fn second_value_transform() -> Int:
-    let input = Map[Key, Int]().with_entry(
+    let input = Map[Key, Int]().add(
         Key(5, "original"),
         2
     )

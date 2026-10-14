@@ -58,7 +58,7 @@ test "map literals and matching argument names":
 
     let key = "c"
     let value = 5
-    values.with_entry(value, key)
+    values.add(value, key)
     if values.get(key).unwrap() != value: return panic("method shorthand")
 
     let log: List[Int] = []
@@ -71,7 +71,7 @@ test "map literals and matching argument names":
     )
 
     let shared = {"x": values}
-    values.with_entry(key: "d", value: 6)
+    values.add(key: "d", value: 6)
     if shared.get("x").unwrap().get("d").unwrap() != 6: return panic(
         "shared references"
     )

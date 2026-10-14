@@ -60,7 +60,7 @@ export fn main() -> Int:
 fn crash(value: Int) -> Int:
     return 1 / value
 export fn main() -> Int:
-    let value = Set[Int]().with_value(0)
+    let value = Set[Int]().add(0)
     return value.map(crash).length()
 `, false, []string{"fault.ms:3:14 in crash", "fault.ms:6:18 in main"}},
 		{"Optional callback fault", `fn crash(value: Int) -> Optional[Int]:

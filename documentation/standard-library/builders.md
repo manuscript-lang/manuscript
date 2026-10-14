@@ -21,7 +21,7 @@ Collection builders are exported by `@std/collections.ms`; BytesBuilder by `@std
 | `BytesBuilder` | `append(value: Int) -> Unit`, `concat(values: Bytes) -> Unit` | `Bytes` |
 | `StringBuilder` | `append(value: String) -> Unit` | `String` |
 
-All builder mutations return `Unit`; they update the builder through its existing reference. MapBuilder `with_entry` and SetBuilder `with_value` remain supported compatibility spellings with identical Unit function types. Prefer `add` in new code and stored method references. Ordinary collection mutators return their collection for chaining; builders return their constructed value only from `freeze`. See the [migration table](../core-language/types/collections.md#naming-and-migration).
+All builder mutations return `Unit`; they update the builder through its existing reference. Ordinary collection mutators return their collection for chaining; builders return their constructed value only from `freeze`. See the [migration table](../core-language/types/collections.md#naming-and-migration).
 
 `freeze()` seals the shared local object and returns its result. Repeated freeze returns the same value. List, Map, and Set results are ordinary mutable collections; sealing prevents further builder operations, not mutation through the result. Use `.clone()` to retain a separate copy. Every builder mutation through any alias after sealing is a programming fault. Byte append requires 0 through 255. Map replacement preserves insertion position; set insertion ignores an already present value. Builders have no implicit cleanup or ownership transfer.
 

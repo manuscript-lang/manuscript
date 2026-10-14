@@ -129,14 +129,14 @@ test "recursive domain hashing uses explicit implementations":
     if left != right or left.hash() != right.hash():
         panic("explicit cyclic identity hashing failed")
 
-    let values = Map[Link, Int]().with_entry(key: left, value: 9)
-    let members = Set[Link]().with_value(left)
+    let values = Map[Link, Int]().add(key: left, value: 9)
+    let members = Set[Link]().add(left)
 
     if values.get(right).unwrap() != 9 or not members.contains(right):
         panic("explicit recursive key lookup failed")
 
-    values.with_entry(key: right, value: 10)
-    members.with_value(right)
+    values.add(key: right, value: 10)
+    members.add(right)
 
     if (
         values.length() != 1

@@ -13,12 +13,12 @@ func TestListRangeNativeFaultAndCancellation(t *testing.T) {
 import panic from "@std/faults.ms"
 fn callback_fault(values: List[Int]) -> Unit:
     values.for_each(fn(value):
-        values.without(0)
+        values.remove(0)
         panic("range failure")
     )
 fn callback_cancel(values: List[Int], stop: fn() -> Unit) -> Unit:
     values.for_each(fn(value):
-        values.with_values(start: 0, delete_count: values.length(), replacement: [])
+        values.splice(start: 0, delete_count: values.length(), replacement: [])
         stop()
     )
 `

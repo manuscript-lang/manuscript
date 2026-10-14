@@ -13,7 +13,7 @@ fn run() -> Unit:
     let counters = {"hits": 0}
     with tasks = TaskGroup():
         let _task = tasks.start(fn():
-            counters.with_entry(key: "hits", value: 1)
+            counters.add(key: "hits", value: 1)
         )
 `
 	checked := compiler.CompileSource("capture.ms", source, compiler.Options{AnalyzeOnly: true})
@@ -44,7 +44,7 @@ type Counter:
 		{"map update", `    let values = {"hits": 0}
     with tasks = TaskGroup():
         let _task = tasks.start(fn():
-            values.with_entry(key: "hits", value: 1)
+            values.add(key: "hits", value: 1)
         )
 `, 1},
 		{"list update", `    let values = [0]
@@ -88,7 +88,7 @@ type Counter:
 		{"set update", `    let values = [0].to_set()
     with tasks = TaskGroup():
         let _task = tasks.start(fn():
-            values.with_value(1)
+            values.add(1)
         )
 `, 1},
 		{"read only record", `    let counter = Counter(0)
@@ -109,7 +109,7 @@ type Counter:
     with tasks = TaskGroup():
         let _task = tasks.start(fn():
             with locked = values.lock():
-                locked.get().with_entry(key: "hits", value: 1)
+                locked.get().add(key: "hits", value: 1)
         )
 `, 0},
 		{"guard local update", `    let values = Synchronized({"hits": 0})
@@ -117,7 +117,7 @@ type Counter:
         let _task = tasks.start(fn():
             with locked = values.lock():
                 let protected = locked.get()
-                protected.with_entry(key: "hits", value: 1)
+                protected.add(key: "hits", value: 1)
         )
 `, 0},
 		{"local mutation", `    let values = [0]
@@ -255,10 +255,10 @@ func TestConcurrentCaptureLintDocumentationFragments(t *testing.T) {
 		declaration, operation string
 		count                  int
 	}{
-		{`let counts = {"hits": 0}`, `counts.with_entry(key: "hits", value: counts.get("hits").unwrap_or(0) + 1)`, 1},
+		{`let counts = {"hits": 0}`, `counts.add(key: "hits", value: counts.get("hits").unwrap_or(0) + 1)`, 1},
 		{`let counts = Synchronized({"hits": 0})`, `with locked = counts.lock():
                 let values = locked.get()
-                values.with_entry(key: "hits", value: values.get("hits").unwrap_or(0) + 1)`, 0},
+                values.add(key: "hits", value: values.get("hits").unwrap_or(0) + 1)`, 0},
 	} {
 		source := `import Map from "@std/collections.ms"
 import TaskGroup from "@std/tasks.ms"

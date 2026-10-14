@@ -135,18 +135,11 @@ func newBuilder(typ string) *Builder {
 }
 func (b *Builder) Operation(name string) Function {
 	// Builder verbs retain the established Unit ABI and the same sealing lock.
-	if name == "add" {
-		if receiver, _ := splitType(b.typ); receiver == "@std/MapBuilder" {
-			name = "with_entry"
-		} else {
-			name = "with_value"
-		}
-	}
 	labels := []string{}
-	if name == "append" || name == "with_value" {
+	if name == "append" || name == "add" {
 		labels = []string{"value"}
 	}
-	if name == "with_entry" {
+	if receiver, _ := splitType(b.typ); name == "add" && receiver == "@std/MapBuilder" {
 		labels = []string{"key", "value"}
 	}
 	if name == "concat" {

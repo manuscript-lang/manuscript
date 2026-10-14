@@ -417,7 +417,6 @@ type Bytes:
     fn starts_with(value: Bytes) -> Bool:
     fn ends_with(value: Bytes) -> Bool:
     fn reversed() -> Bytes:
-    fn reverse() -> Bytes:
     fn with_value(index: Int, value: Int) -> Bytes:
     fn is_empty() -> Bool:
     fn values() -> List[Int]:
@@ -496,14 +495,6 @@ Returns the number of bytes, not the number of Unicode characters.
 
 ```manuscript
 fn length() -> Int:
-```
-
-### Bytes.reverse
-
-Compatibility spelling for reversed; returns a copy without changing the receiver.
-
-```manuscript
-fn reverse() -> Bytes:
 ```
 
 ### Bytes.reversed
@@ -716,14 +707,11 @@ type List[T]:
     fn prepend(value: T) -> List[T]:
     fn set(index: Int, value: T) -> List[T]:
     fn remove(index: Int) -> List[T]:
-    fn with_value(index: Int, value: T) -> List[T]:
-    fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     fn take(count: Int) -> List[T]:
     fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
     fn reversed() -> List[T]:
-    fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
@@ -739,7 +727,6 @@ type List[T]:
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
-    fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
     fn to_set() -> Set[T]:
@@ -843,19 +830,11 @@ fn last_index_of(value: T) -> Optional[Int]:
 ### List.remove
 
 Removes an element in place and returns this list; negative indexes count from the end.
-Invalid indexes fault, with the same bounds and diagnostics as without.
+Invalid indexes fault.
 Shifts the suffix without clearing prior values retained in spare backing capacity.
 
 ```manuscript
 fn remove(index: Int) -> List[T]:
-```
-
-### List.reverse
-
-Compatibility spelling for reverse_in_place; mutates and returns this list.
-
-```manuscript
-fn reverse() -> List[T]:
 ```
 
 ### List.reverse_in_place
@@ -877,7 +856,7 @@ fn reversed() -> List[T]:
 ### List.set
 
 Replaces an element in place and returns this list; negative indexes count from the end.
-Invalid indexes fault, with the same bounds and diagnostics as with_value.
+Invalid indexes fault.
 
 ```manuscript
 fn set(index: Int, value: T) -> List[T]:
@@ -928,30 +907,6 @@ Leaves the receiver unchanged; negative count is a programming fault.
 fn take(count: Int) -> List[T]:
 ```
 
-### List.with_value
-
-Compatibility spelling for set; mutates and returns this list.
-
-```manuscript
-fn with_value(index: Int, value: T) -> List[T]:
-```
-
-### List.with_values
-
-Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior.
-
-```manuscript
-fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
-```
-
-### List.without
-
-Compatibility spelling for remove; mutates and returns this list.
-
-```manuscript
-fn without(index: Int) -> List[T]:
-```
-
 ## ListBuilder
 
 **Native type**
@@ -998,8 +953,6 @@ type Map[T: Hashable, U]:
     fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn add_default(key: T, value: U) -> Map[T, U]:
     fn add_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
-    fn with_default(key: T, value: U) -> Map[T, U]:
-    fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
     fn keys() -> List[T]:
     fn values() -> List[U]:
@@ -1010,9 +963,7 @@ type Map[T: Hashable, U]:
     fn get(key: T) -> Optional[U]:
     fn length() -> Int:
     fn add(key: T, value: U) -> Map[T, U]:
-    fn with_entry(key: T, value: U) -> Map[T, U]:
     fn remove(key: T) -> Map[T, U]:
-    fn without(key: T) -> Map[T, U]:
 ```
 
 ### Map.add
@@ -1158,38 +1109,6 @@ Stops at the first matching entry; empty maps return false.
 fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
 ```
 
-### Map.with_default
-
-Legacy spelling for add_default; mutates and returns this map, never a copy.
-
-```manuscript
-fn with_default(key: T, value: U) -> Map[T, U]:
-```
-
-### Map.with_default_from
-
-Legacy spelling for add_default_from; retains lazy creation and the receiver return.
-
-```manuscript
-fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
-```
-
-### Map.with_entry
-
-Compatible spelling of add, with the same mutation and receiver return.
-
-```manuscript
-fn with_entry(key: T, value: U) -> Map[T, U]:
-```
-
-### Map.without
-
-Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return.
-
-```manuscript
-fn without(key: T) -> Map[T, U]:
-```
-
 ## MapBuilder
 
 **Native type**
@@ -1200,7 +1119,6 @@ Adds entries efficiently before freezing them into a map.
 type MapBuilder[T: Hashable, U]:
     fn freeze() -> Map[T, U]:
     fn add(key: T, value: U) -> Unit:
-    fn with_entry(key: T, value: U) -> Unit:
 ```
 
 ### MapBuilder.add
@@ -1210,14 +1128,6 @@ Replacement retains the original key and insertion position; a sealed builder fa
 
 ```manuscript
 fn add(key: T, value: U) -> Unit:
-```
-
-### MapBuilder.with_entry
-
-Legacy spelling for add, with the same Unit return and sealing behavior.
-
-```manuscript
-fn with_entry(key: T, value: U) -> Unit:
 ```
 
 ## MapEntry
@@ -1265,8 +1175,6 @@ type Set[T: Hashable]:
     fn length() -> Int:
     fn add(value: T) -> Set[T]:
     fn remove(value: T) -> Set[T]:
-    fn with_value(value: T) -> Set[T]:
-    fn without(value: T) -> Set[T]:
 ```
 
 ### Set.add
@@ -1470,22 +1378,6 @@ Returns a shallow list of values in insertion order.
 fn values() -> List[T]:
 ```
 
-### Set.with_value
-
-Compatibility spelling for add; mutates and returns this set.
-
-```manuscript
-fn with_value(value: T) -> Set[T]:
-```
-
-### Set.without
-
-Compatibility spelling for remove; mutates and returns this set.
-
-```manuscript
-fn without(value: T) -> Set[T]:
-```
-
 ## SetBuilder
 
 **Native type**
@@ -1496,7 +1388,6 @@ Adds unique values efficiently before freezing them into a set.
 type SetBuilder[T: Hashable]:
     fn freeze() -> Set[T]:
     fn add(value: T) -> Unit:
-    fn with_value(value: T) -> Unit:
 ```
 
 ### SetBuilder.add
@@ -1506,14 +1397,6 @@ Equal values retain the first payload and position; a sealed builder faults.
 
 ```manuscript
 fn add(value: T) -> Unit:
-```
-
-### SetBuilder.with_value
-
-Legacy spelling for add, with the same Unit return and sealing behavior.
-
-```manuscript
-fn with_value(value: T) -> Unit:
 ```
 
 ## filled
@@ -5945,7 +5828,6 @@ type Regex:
     fn matches(text: String) -> Bool:
     fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
     fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
-    fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
 ```
 
 ### Regex.find_all
@@ -5963,14 +5845,6 @@ Tests whether any match occurs; anchor the pattern explicitly to require a whole
 
 ```manuscript
 fn matches(text: String) -> Bool:
-```
-
-### Regex.replace
-
-Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
-
-```manuscript
-fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
 ```
 
 ### Regex.replace_all
@@ -7195,7 +7069,7 @@ case InvalidData(line: Int, column: Int, reason: String)
 
 ### TomlError.InvalidInput
 
-One of the supplied input-byte, depth or value-count limits is negative.
+A supplied limit is negative, or stringify received a value that is not a table.
 
 ```manuscript
 case InvalidInput
@@ -7249,9 +7123,9 @@ Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
 
 ```manuscript
 type TomlLimits:
-    max_bytes: Optional[Int]
-    max_depth: Optional[Int]
-    max_values: Optional[Int]
+    max_bytes: Optional[Int] = none
+    max_depth: Optional[Int] = none
+    max_values: Optional[Int] = none
 ```
 
 ### TomlLimits.max_bytes
@@ -7259,7 +7133,7 @@ type TomlLimits:
 Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
 
 ```manuscript
-max_bytes: Optional[Int]
+max_bytes: Optional[Int] = none
 ```
 
 ### TomlLimits.max_depth
@@ -7267,7 +7141,7 @@ max_bytes: Optional[Int]
 Maximum value depth, including scalar leaves and implicit tables, with the root at one.
 
 ```manuscript
-max_depth: Optional[Int]
+max_depth: Optional[Int] = none
 ```
 
 ### TomlLimits.max_values
@@ -7275,7 +7149,7 @@ max_depth: Optional[Int]
 Maximum containers and leaves, excluding keys; checked during parsing and materialization.
 
 ```manuscript
-max_values: Optional[Int]
+max_values: Optional[Int] = none
 ```
 
 ## TomlValue
@@ -7415,6 +7289,16 @@ Parses a TOML document into a table value and reports source line and column on 
 
 ```manuscript
 fn parse(text: String, limits: Optional[TomlLimits] = none) -> Result[TomlValue, TomlError]:
+```
+
+## stringify
+
+**Function**
+
+Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
+
+```manuscript
+fn stringify(value: TomlValue, max_bytes: Optional[Int] = none) -> Result[String, TomlError]:
 ```
 
 # @std/url.ms
@@ -7733,7 +7617,7 @@ case InvalidData(line: Int, column: Int, reason: String)
 
 ### YamlError.InvalidInput
 
-One of the supplied byte, depth or value-count limits is negative.
+A supplied limit is negative, or stringify received a number whose text is not a YAML number.
 
 ```manuscript
 case InvalidInput
@@ -7811,9 +7695,9 @@ Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
 
 ```manuscript
 type YamlLimits:
-    max_bytes: Optional[Int]
-    max_depth: Optional[Int]
-    max_values: Optional[Int]
+    max_bytes: Optional[Int] = none
+    max_depth: Optional[Int] = none
+    max_values: Optional[Int] = none
 ```
 
 ### YamlLimits.max_bytes
@@ -7821,7 +7705,7 @@ type YamlLimits:
 Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
 
 ```manuscript
-max_bytes: Optional[Int]
+max_bytes: Optional[Int] = none
 ```
 
 ### YamlLimits.max_depth
@@ -7829,7 +7713,7 @@ max_bytes: Optional[Int]
 Maximum value depth, including scalar leaves, with the root at one.
 
 ```manuscript
-max_depth: Optional[Int]
+max_depth: Optional[Int] = none
 ```
 
 ### YamlLimits.max_values
@@ -7837,7 +7721,7 @@ max_depth: Optional[Int]
 Maximum containers and leaves, excluding keys; aliases count at each checked occurrence.
 
 ```manuscript
-max_values: Optional[Int]
+max_values: Optional[Int] = none
 ```
 
 ## YamlValue
@@ -7952,6 +7836,16 @@ Parses a YAML document. Unsupported YAML features and invalid input include sour
 
 ```manuscript
 fn parse(text: String, limits: Optional[YamlLimits] = none) -> Result[YamlValue, YamlError]:
+```
+
+## stringify
+
+**Function**
+
+Serializes a YAML value in block style with double-quoted strings.
+
+```manuscript
+fn stringify(value: YamlValue, max_bytes: Optional[Int] = none) -> Result[String, YamlError]:
 ```
 
 # prelude
@@ -8132,14 +8026,11 @@ type List[T]:
     fn prepend(value: T) -> List[T]:
     fn set(index: Int, value: T) -> List[T]:
     fn remove(index: Int) -> List[T]:
-    fn with_value(index: Int, value: T) -> List[T]:
-    fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     fn take(count: Int) -> List[T]:
     fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
     fn reversed() -> List[T]:
-    fn reverse() -> List[T]:
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
@@ -8155,7 +8046,6 @@ type List[T]:
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
-    fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
     fn to_set() -> Set[T]:
@@ -8259,19 +8149,11 @@ fn last_index_of(value: T) -> Optional[Int]:
 ### List.remove
 
 Removes an element in place and returns this list; negative indexes count from the end.
-Invalid indexes fault, with the same bounds and diagnostics as without.
+Invalid indexes fault.
 Shifts the suffix without clearing prior values retained in spare backing capacity.
 
 ```manuscript
 fn remove(index: Int) -> List[T]:
-```
-
-### List.reverse
-
-Compatibility spelling for reverse_in_place; mutates and returns this list.
-
-```manuscript
-fn reverse() -> List[T]:
 ```
 
 ### List.reverse_in_place
@@ -8293,7 +8175,7 @@ fn reversed() -> List[T]:
 ### List.set
 
 Replaces an element in place and returns this list; negative indexes count from the end.
-Invalid indexes fault, with the same bounds and diagnostics as with_value.
+Invalid indexes fault.
 
 ```manuscript
 fn set(index: Int, value: T) -> List[T]:
@@ -8344,30 +8226,6 @@ Leaves the receiver unchanged; negative count is a programming fault.
 fn take(count: Int) -> List[T]:
 ```
 
-### List.with_value
-
-Compatibility spelling for set; mutates and returns this list.
-
-```manuscript
-fn with_value(index: Int, value: T) -> List[T]:
-```
-
-### List.with_values
-
-Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior.
-
-```manuscript
-fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
-```
-
-### List.without
-
-Compatibility spelling for remove; mutates and returns this list.
-
-```manuscript
-fn without(index: Int) -> List[T]:
-```
-
 ## Map
 
 **Native type**
@@ -8390,8 +8248,6 @@ type Map[T: Hashable, U]:
     fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn add_default(key: T, value: U) -> Map[T, U]:
     fn add_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
-    fn with_default(key: T, value: U) -> Map[T, U]:
-    fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
     fn keys() -> List[T]:
     fn values() -> List[U]:
@@ -8402,9 +8258,7 @@ type Map[T: Hashable, U]:
     fn get(key: T) -> Optional[U]:
     fn length() -> Int:
     fn add(key: T, value: U) -> Map[T, U]:
-    fn with_entry(key: T, value: U) -> Map[T, U]:
     fn remove(key: T) -> Map[T, U]:
-    fn without(key: T) -> Map[T, U]:
 ```
 
 ### Map.add
@@ -8548,38 +8402,6 @@ Stops at the first matching entry; empty maps return false.
 
 ```manuscript
 fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
-```
-
-### Map.with_default
-
-Legacy spelling for add_default; mutates and returns this map, never a copy.
-
-```manuscript
-fn with_default(key: T, value: U) -> Map[T, U]:
-```
-
-### Map.with_default_from
-
-Legacy spelling for add_default_from; retains lazy creation and the receiver return.
-
-```manuscript
-fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
-```
-
-### Map.with_entry
-
-Compatible spelling of add, with the same mutation and receiver return.
-
-```manuscript
-fn with_entry(key: T, value: U) -> Map[T, U]:
-```
-
-### Map.without
-
-Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return.
-
-```manuscript
-fn without(key: T) -> Map[T, U]:
 ```
 
 ## Never
@@ -8876,8 +8698,6 @@ type Set[T: Hashable]:
     fn length() -> Int:
     fn add(value: T) -> Set[T]:
     fn remove(value: T) -> Set[T]:
-    fn with_value(value: T) -> Set[T]:
-    fn without(value: T) -> Set[T]:
 ```
 
 ### Set.add
@@ -9079,22 +8899,6 @@ Returns a shallow list of values in insertion order.
 
 ```manuscript
 fn values() -> List[T]:
-```
-
-### Set.with_value
-
-Compatibility spelling for add; mutates and returns this set.
-
-```manuscript
-fn with_value(value: T) -> Set[T]:
-```
-
-### Set.without
-
-Compatibility spelling for remove; mutates and returns this set.
-
-```manuscript
-fn without(value: T) -> Set[T]:
 ```
 
 ## String

@@ -416,7 +416,6 @@
             "is_empty: fn()-\u003eBool",
             "last_index_of: fn(value: Bytes)-\u003eOptional[Int]",
             "length: fn()-\u003eInt",
-            "reverse: fn()-\u003eBytes",
             "reversed: fn()-\u003eBytes",
             "slice: fn(start: Int, end: Int)-\u003eResult[Bytes, CollectionError]",
             "split: fn(separator: Bytes, max_parts: Optional[Int] = ...)-\u003eList[Bytes]",
@@ -479,12 +478,6 @@
               "kind": "operation",
               "signature": "fn length() -\u003e Int:",
               "doc": "Returns the number of bytes, not the number of Unicode characters."
-            },
-            {
-              "name": "reverse",
-              "kind": "operation",
-              "signature": "fn reverse() -\u003e Bytes:",
-              "doc": "Compatibility spelling for reversed; returns a copy without changing the receiver."
             },
             {
               "name": "reversed",
@@ -695,7 +688,6 @@
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
             "prepend: fn(value: T)-\u003eList[T]",
             "remove: fn(index: Int)-\u003eList[T]",
-            "reverse: fn()-\u003eList[T]",
             "reverse_in_place: fn()-\u003eList[T]",
             "reversed: fn()-\u003eList[T]",
             "set: fn(index: Int, value: T)-\u003eList[T]",
@@ -704,10 +696,7 @@
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
             "splice: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
             "take: fn(count: Int)-\u003eList[T]",
-            "to_set: fn()-\u003eSet[T]",
-            "with_value: fn(index: Int, value: T)-\u003eList[T]",
-            "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
-            "without: fn(index: Int)-\u003eList[T]"
+            "to_set: fn()-\u003eSet[T]"
           ],
           "members": [
             {
@@ -894,13 +883,7 @@
               "name": "remove",
               "kind": "operation",
               "signature": "fn remove(index: Int) -\u003e List[T]:",
-              "doc": "Removes an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as without.\nShifts the suffix without clearing prior values retained in spare backing capacity."
-            },
-            {
-              "name": "reverse",
-              "kind": "operation",
-              "signature": "fn reverse() -\u003e List[T]:",
-              "doc": "Compatibility spelling for reverse_in_place; mutates and returns this list."
+              "doc": "Removes an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault.\nShifts the suffix without clearing prior values retained in spare backing capacity."
             },
             {
               "name": "reverse_in_place",
@@ -918,7 +901,7 @@
               "name": "set",
               "kind": "operation",
               "signature": "fn set(index: Int, value: T) -\u003e List[T]:",
-              "doc": "Replaces an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as with_value."
+              "doc": "Replaces an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault."
             },
             {
               "name": "slice",
@@ -955,24 +938,6 @@
               "kind": "operation",
               "signature": "fn to_set() -\u003e Set[T]:",
               "doc": ""
-            },
-            {
-              "name": "with_value",
-              "kind": "operation",
-              "signature": "fn with_value(index: Int, value: T) -\u003e List[T]:",
-              "doc": "Compatibility spelling for set; mutates and returns this list."
-            },
-            {
-              "name": "with_values",
-              "kind": "operation",
-              "signature": "fn with_values(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
-              "doc": "Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior."
-            },
-            {
-              "name": "without",
-              "kind": "operation",
-              "signature": "fn without(index: Int) -\u003e List[T]:",
-              "doc": "Compatibility spelling for remove; mutates and returns this list."
             }
           ]
         },
@@ -1064,11 +1029,7 @@
             "merge: fn(other: Map[T, U])-\u003eMap[T, U]",
             "remove: fn(key: T)-\u003eMap[T, U]",
             "some: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eBool",
-            "values: fn()-\u003eList[U]",
-            "with_default: fn(key: T, value: U)-\u003eMap[T, U]",
-            "with_default_from: fn(key: T, create: fn(key: T)-\u003eU)-\u003eMap[T, U]",
-            "with_entry: fn(key: T, value: U)-\u003eMap[T, U]",
-            "without: fn(key: T)-\u003eMap[T, U]"
+            "values: fn()-\u003eList[U]"
           ],
           "members": [
             {
@@ -1220,30 +1181,6 @@
               "kind": "operation",
               "signature": "fn values() -\u003e List[U]:",
               "doc": ""
-            },
-            {
-              "name": "with_default",
-              "kind": "operation",
-              "signature": "fn with_default(key: T, value: U) -\u003e Map[T, U]:",
-              "doc": "Legacy spelling for add_default; mutates and returns this map, never a copy."
-            },
-            {
-              "name": "with_default_from",
-              "kind": "operation",
-              "signature": "fn with_default_from(key: T, create: fn(key: T) -\u003e U) -\u003e Map[T, U]:",
-              "doc": "Legacy spelling for add_default_from; retains lazy creation and the receiver return."
-            },
-            {
-              "name": "with_entry",
-              "kind": "operation",
-              "signature": "fn with_entry(key: T, value: U) -\u003e Map[T, U]:",
-              "doc": "Compatible spelling of add, with the same mutation and receiver return."
-            },
-            {
-              "name": "without",
-              "kind": "operation",
-              "signature": "fn without(key: T) -\u003e Map[T, U]:",
-              "doc": "Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return."
             }
           ]
         },
@@ -1258,8 +1195,7 @@
           ],
           "operations": [
             "add: fn(key: T, value: U)-\u003eUnit",
-            "freeze: fn()-\u003eMap[T, U]",
-            "with_entry: fn(key: T, value: U)-\u003eUnit"
+            "freeze: fn()-\u003eMap[T, U]"
           ],
           "members": [
             {
@@ -1273,12 +1209,6 @@
               "kind": "operation",
               "signature": "fn freeze() -\u003e Map[T, U]:",
               "doc": ""
-            },
-            {
-              "name": "with_entry",
-              "kind": "operation",
-              "signature": "fn with_entry(key: T, value: U) -\u003e Unit:",
-              "doc": "Legacy spelling for add, with the same Unit return and sealing behavior."
             }
           ]
         },
@@ -1343,9 +1273,7 @@
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "symmetric_difference: fn(right: Set[T])-\u003eSet[T]",
             "union: fn(right: Set[T])-\u003eSet[T]",
-            "values: fn()-\u003eList[T]",
-            "with_value: fn(value: T)-\u003eSet[T]",
-            "without: fn(value: T)-\u003eSet[T]"
+            "values: fn()-\u003eList[T]"
           ],
           "members": [
             {
@@ -1497,18 +1425,6 @@
               "kind": "operation",
               "signature": "fn values() -\u003e List[T]:",
               "doc": "Returns a shallow list of values in insertion order."
-            },
-            {
-              "name": "with_value",
-              "kind": "operation",
-              "signature": "fn with_value(value: T) -\u003e Set[T]:",
-              "doc": "Compatibility spelling for add; mutates and returns this set."
-            },
-            {
-              "name": "without",
-              "kind": "operation",
-              "signature": "fn without(value: T) -\u003e Set[T]:",
-              "doc": "Compatibility spelling for remove; mutates and returns this set."
             }
           ]
         },
@@ -1522,8 +1438,7 @@
           ],
           "operations": [
             "add: fn(value: T)-\u003eUnit",
-            "freeze: fn()-\u003eSet[T]",
-            "with_value: fn(value: T)-\u003eUnit"
+            "freeze: fn()-\u003eSet[T]"
           ],
           "members": [
             {
@@ -1537,12 +1452,6 @@
               "kind": "operation",
               "signature": "fn freeze() -\u003e Set[T]:",
               "doc": ""
-            },
-            {
-              "name": "with_value",
-              "kind": "operation",
-              "signature": "fn with_value(value: T) -\u003e Unit:",
-              "doc": "Legacy spelling for add, with the same Unit return and sealing behavior."
             }
           ]
         },
@@ -6641,7 +6550,6 @@
           "operations": [
             "find_all: fn(text: String, max_matches: Optional[Int] = ...)-\u003eResult[List[String], RegexError]",
             "matches: fn(text: String)-\u003eBool",
-            "replace: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]",
             "replace_all: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]"
           ],
           "members": [
@@ -6656,12 +6564,6 @@
               "kind": "operation",
               "signature": "fn matches(text: String) -\u003e Bool:",
               "doc": "Tests whether any match occurs; anchor the pattern explicitly to require a whole-string match."
-            },
-            {
-              "name": "replace",
-              "kind": "operation",
-              "signature": "fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -\u003e Result[String, RegexError]:",
-              "doc": "Compatibility spelling for replace_all; replaces every match, with identical limits and errors."
             },
             {
               "name": "replace_all",
@@ -8460,7 +8362,7 @@
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": "One of the supplied input-byte, depth or value-count limits is negative."
+              "doc": "A supplied limit is negative, or stringify received a value that is not a table."
             },
             {
               "name": "LimitExceeded",
@@ -8512,19 +8414,19 @@
             {
               "name": "max_bytes",
               "kind": "field",
-              "signature": "max_bytes: Optional[Int]",
+              "signature": "max_bytes: Optional[Int] = none",
               "doc": "Maximum UTF-8 input bytes before CRLF normalization; none adds no budget."
             },
             {
               "name": "max_depth",
               "kind": "field",
-              "signature": "max_depth: Optional[Int]",
+              "signature": "max_depth: Optional[Int] = none",
               "doc": "Maximum value depth, including scalar leaves and implicit tables, with the root at one."
             },
             {
               "name": "max_values",
               "kind": "field",
-              "signature": "max_values: Optional[Int]",
+              "signature": "max_values: Optional[Int] = none",
               "doc": "Maximum containers and leaves, excluding keys; checked during parsing and materialization."
             }
           ]
@@ -8635,6 +8537,12 @@
           "doc": "Parses a TOML document into a table value and reports source line and column on invalid input.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[TomlLimits] = ...)-\u003eResult[TomlValue, TomlError]"
+        },
+        {
+          "name": "stringify",
+          "doc": "Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.",
+          "kind": "fn",
+          "type": "fn(value: TomlValue, max_bytes: Optional[Int] = ...)-\u003eResult[String, TomlError]"
         }
       ]
     },
@@ -9023,7 +8931,7 @@
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": "One of the supplied byte, depth or value-count limits is negative."
+              "doc": "A supplied limit is negative, or stringify received a number whose text is not a YAML number."
             },
             {
               "name": "LimitExceeded",
@@ -9093,19 +9001,19 @@
             {
               "name": "max_bytes",
               "kind": "field",
-              "signature": "max_bytes: Optional[Int]",
+              "signature": "max_bytes: Optional[Int] = none",
               "doc": "Maximum UTF-8 input bytes before line-ending normalization; none adds no budget."
             },
             {
               "name": "max_depth",
               "kind": "field",
-              "signature": "max_depth: Optional[Int]",
+              "signature": "max_depth: Optional[Int] = none",
               "doc": "Maximum value depth, including scalar leaves, with the root at one."
             },
             {
               "name": "max_values",
               "kind": "field",
-              "signature": "max_values: Optional[Int]",
+              "signature": "max_values: Optional[Int] = none",
               "doc": "Maximum containers and leaves, excluding keys; aliases count at each checked occurrence."
             }
           ]
@@ -9197,6 +9105,12 @@
           "doc": "Parses a YAML document. Unsupported YAML features and invalid input include source locations.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[YamlLimits] = ...)-\u003eResult[YamlValue, YamlError]"
+        },
+        {
+          "name": "stringify",
+          "doc": "Serializes a YAML value in block style with double-quoted strings.",
+          "kind": "fn",
+          "type": "fn(value: YamlValue, max_bytes: Optional[Int] = ...)-\u003eResult[String, YamlError]"
         }
       ]
     },
@@ -9390,7 +9304,6 @@
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
             "prepend: fn(value: T)-\u003eList[T]",
             "remove: fn(index: Int)-\u003eList[T]",
-            "reverse: fn()-\u003eList[T]",
             "reverse_in_place: fn()-\u003eList[T]",
             "reversed: fn()-\u003eList[T]",
             "set: fn(index: Int, value: T)-\u003eList[T]",
@@ -9399,10 +9312,7 @@
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
             "splice: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
             "take: fn(count: Int)-\u003eList[T]",
-            "to_set: fn()-\u003eSet[T]",
-            "with_value: fn(index: Int, value: T)-\u003eList[T]",
-            "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
-            "without: fn(index: Int)-\u003eList[T]"
+            "to_set: fn()-\u003eSet[T]"
           ],
           "members": [
             {
@@ -9589,13 +9499,7 @@
               "name": "remove",
               "kind": "operation",
               "signature": "fn remove(index: Int) -\u003e List[T]:",
-              "doc": "Removes an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as without.\nShifts the suffix without clearing prior values retained in spare backing capacity."
-            },
-            {
-              "name": "reverse",
-              "kind": "operation",
-              "signature": "fn reverse() -\u003e List[T]:",
-              "doc": "Compatibility spelling for reverse_in_place; mutates and returns this list."
+              "doc": "Removes an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault.\nShifts the suffix without clearing prior values retained in spare backing capacity."
             },
             {
               "name": "reverse_in_place",
@@ -9613,7 +9517,7 @@
               "name": "set",
               "kind": "operation",
               "signature": "fn set(index: Int, value: T) -\u003e List[T]:",
-              "doc": "Replaces an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as with_value."
+              "doc": "Replaces an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault."
             },
             {
               "name": "slice",
@@ -9650,24 +9554,6 @@
               "kind": "operation",
               "signature": "fn to_set() -\u003e Set[T]:",
               "doc": ""
-            },
-            {
-              "name": "with_value",
-              "kind": "operation",
-              "signature": "fn with_value(index: Int, value: T) -\u003e List[T]:",
-              "doc": "Compatibility spelling for set; mutates and returns this list."
-            },
-            {
-              "name": "with_values",
-              "kind": "operation",
-              "signature": "fn with_values(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
-              "doc": "Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior."
-            },
-            {
-              "name": "without",
-              "kind": "operation",
-              "signature": "fn without(index: Int) -\u003e List[T]:",
-              "doc": "Compatibility spelling for remove; mutates and returns this list."
             }
           ]
         },
@@ -9705,11 +9591,7 @@
             "merge: fn(other: Map[T, U])-\u003eMap[T, U]",
             "remove: fn(key: T)-\u003eMap[T, U]",
             "some: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eBool",
-            "values: fn()-\u003eList[U]",
-            "with_default: fn(key: T, value: U)-\u003eMap[T, U]",
-            "with_default_from: fn(key: T, create: fn(key: T)-\u003eU)-\u003eMap[T, U]",
-            "with_entry: fn(key: T, value: U)-\u003eMap[T, U]",
-            "without: fn(key: T)-\u003eMap[T, U]"
+            "values: fn()-\u003eList[U]"
           ],
           "members": [
             {
@@ -9861,30 +9743,6 @@
               "kind": "operation",
               "signature": "fn values() -\u003e List[U]:",
               "doc": ""
-            },
-            {
-              "name": "with_default",
-              "kind": "operation",
-              "signature": "fn with_default(key: T, value: U) -\u003e Map[T, U]:",
-              "doc": "Legacy spelling for add_default; mutates and returns this map, never a copy."
-            },
-            {
-              "name": "with_default_from",
-              "kind": "operation",
-              "signature": "fn with_default_from(key: T, create: fn(key: T) -\u003e U) -\u003e Map[T, U]:",
-              "doc": "Legacy spelling for add_default_from; retains lazy creation and the receiver return."
-            },
-            {
-              "name": "with_entry",
-              "kind": "operation",
-              "signature": "fn with_entry(key: T, value: U) -\u003e Map[T, U]:",
-              "doc": "Compatible spelling of add, with the same mutation and receiver return."
-            },
-            {
-              "name": "without",
-              "kind": "operation",
-              "signature": "fn without(key: T) -\u003e Map[T, U]:",
-              "doc": "Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return."
             }
           ]
         },
@@ -10137,9 +9995,7 @@
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "symmetric_difference: fn(right: Set[T])-\u003eSet[T]",
             "union: fn(right: Set[T])-\u003eSet[T]",
-            "values: fn()-\u003eList[T]",
-            "with_value: fn(value: T)-\u003eSet[T]",
-            "without: fn(value: T)-\u003eSet[T]"
+            "values: fn()-\u003eList[T]"
           ],
           "members": [
             {
@@ -10291,18 +10147,6 @@
               "kind": "operation",
               "signature": "fn values() -\u003e List[T]:",
               "doc": "Returns a shallow list of values in insertion order."
-            },
-            {
-              "name": "with_value",
-              "kind": "operation",
-              "signature": "fn with_value(value: T) -\u003e Set[T]:",
-              "doc": "Compatibility spelling for add; mutates and returns this set."
-            },
-            {
-              "name": "without",
-              "kind": "operation",
-              "signature": "fn without(value: T) -\u003e Set[T]:",
-              "doc": "Compatibility spelling for remove; mutates and returns this set."
             }
           ]
         },

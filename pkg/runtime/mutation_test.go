@@ -25,7 +25,7 @@ func TestMutableListReusesCapacityAndBoundMethodSeesCurrentStorage(t *testing.T)
 	if list.Items[0] != int64(1) {
 		t.Fatal("clone retained backing storage")
 	}
-	Invoke(ctx, NativeMember(list, "with_values"), []Argument{{"start", int64(1)}, {"delete_count", int64(1)}, {"replacement", list}})
+	Invoke(ctx, NativeMember(list, "splice"), []Argument{{"start", int64(1)}, {"delete_count", int64(1)}, {"replacement", list}})
 	if !Equal(list, libraryList("Int", []Value{int64(1), int64(1), int64(2), int64(3), int64(3)})) {
 		t.Fatal(list)
 	}

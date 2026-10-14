@@ -96,7 +96,7 @@ test "bytes copy slice search and UTF8 validation":
     if data.slice(start: -10, end: 2) != byte_range: return panic(
         "byte slice before zero"
     )
-    if data.reverse() != Bytes([1, 255, 1, 0]): return panic("byte reverse")
+    if data.reversed() != Bytes([1, 255, 1, 0]): return panic("byte reverse")
 
     let copied = data.clone().with_value(index: 0, value: 42)
     if copied.at(0) != some(42) or data.at(0) != some(0): return panic(
@@ -110,7 +110,7 @@ test "bytes copy slice search and UTF8 validation":
 test "Bytes values direct bound and free calls return independent lists":
     let input = [0, 1, 255]
     let data = Bytes(values: input)
-    input.with_value(index: 0, value: 42)
+    input.set(index: 0, value: 42)
     let extract: fn() -> List[Int] = data.values
     if data.values() != [0, 1, 255] or extract() != values(data: data): return panic(
         "byte extraction or constructor changed"
@@ -119,9 +119,9 @@ test "Bytes values direct bound and free calls return independent lists":
     let direct = data.values()
     let bound = extract()
     let free = values(data: data)
-    direct.with_value(index: 0, value: 99)
+    direct.set(index: 0, value: 99)
     bound.append(12)
-    free.reverse()
+    free.reverse_in_place()
     if data.values() != [0, 1, 255] or extract() != [0, 1, 255]: return panic(
         "byte values alias receiver or another extraction"
     )
