@@ -24,6 +24,9 @@ type statementFacts struct {
 	loop    *Binding
 	cleanup *Method
 	flow    *Flow
+	// plainTry marks a statement whose whole value is a `try`, so a failure can
+	// leave the function by an ordinary return.
+	plainTry bool
 }
 
 type armFacts struct {
@@ -282,6 +285,13 @@ func (p *Program) AssignedBinding(target *syntax.Expression) *Binding {
 
 // Cleanup returns the cleanup method a cleanup statement runs.
 func (p *Program) Cleanup(s *syntax.Statement) *Method { return cleanupOf(s) }
+
+// PlainTry reports whether a statement's whole value is a `try` whose error
+// needs no conversion at an Error boundary.
+func (p *Program) PlainTry(s *syntax.Statement) bool {
+	f := statementFactsOf(s)
+	return f != nil && f.plainTry
+}
 
 // FlowOf reports whether control can fall through a statement; ok is false for an unchecked one.
 func (p *Program) FlowOf(s *syntax.Statement) (flow Flow, ok bool) {

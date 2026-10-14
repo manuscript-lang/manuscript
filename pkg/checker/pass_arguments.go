@@ -20,4 +20,5 @@ func orderArguments(modules []*syntax.Module) {
 func finishModules(modules []*syntax.Module) {
 	foldConstants(modules)
 	orderArguments(modules)
+	markPlainTry(modules)
 }
