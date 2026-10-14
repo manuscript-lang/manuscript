@@ -246,6 +246,27 @@ func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position) *
 	}
 	return Sub(t, sub)
 }
+
+// mentionsVariable reports whether a type still contains an unresolved variable.
+func mentionsVariable(t *Type, vars map[string]bool) bool {
+	if t == nil {
+		return false
+	}
+	if vars[t.ID] {
+		return true
+	}
+	for _, a := range t.Args {
+		if mentionsVariable(a, vars) {
+			return true
+		}
+	}
+	for _, p := range t.Params {
+		if mentionsVariable(p.Type, vars) {
+			return true
+		}
+	}
+	return mentionsVariable(t.Result, vars)
+}
 func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, expected *Type, pos syntax.Position) *Type {
 	if t.Def == nil {
 		return t
@@ -276,7 +297,8 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 			if field.Name != arg.Name || c.errorAssignable(actual.Type, Sub(field.Type, sub)) {
 				continue
 			}
-			if !c.unifyArgument(Sub(field.Type, sub), actual.Type, variableSet(vars), sub) {
+			target := Sub(field.Type, sub)
+			if !c.unifyArgument(target, actual.Type, variableSet(vars), sub) && mentionsVariable(target, variableSet(vars)) {
 				c.error(arg.Pos, "type", "constructor arguments conflict with expected type")
 			}
 		}
