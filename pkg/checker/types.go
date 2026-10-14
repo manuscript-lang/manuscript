@@ -72,6 +72,7 @@ type Info struct {
 	Method      *Method
 	Native      string
 	NoReturn    bool
+	Breaks      bool
 	Write       bool
 	Captures    []*Binding
 	TypeArgs    []*Type
@@ -84,27 +85,21 @@ type Info struct {
 	Arguments []syntax.Argument
 	// OptionalArgument wraps this supplied argument once without changing its source type.
 	OptionalArgument *Type
+	// Folded reports that the expression is a compile-time Bool constant whose
+	// value is Constant. The fold pass sets both.
+	Folded, Constant bool
+	foldDone         bool
+	// inferenceDeferred records body checks that need a later callback result context.
+	inferenceDeferred bool
 }
 type Flow struct{ FallsThrough bool }
 type Program struct {
-	Flow             map[*syntax.Statement]Flow
-	Scopes           map[*syntax.Expression]ScopeState
-	Cleanups         map[*syntax.Statement]*Method
-	Effects          map[string][]string
-	Modules          []*syntax.Module
-	TypeReferences   map[*syntax.Type]*Type
-	Symbols          map[string]map[string]*Symbol
-	Expressions      map[*syntax.Expression]*Info
-	Bindings         map[*syntax.Pattern]*Binding
-	LoopBindings     map[*syntax.Statement]*Binding
-	ArmBindings      map[*syntax.Arm][]*Binding
-	ContractPatterns map[*syntax.Arm]*Type
-	Parameters       map[*syntax.Declaration][]*Binding
-	LambdaParameters map[*syntax.Expression][]*Binding
-	Self             map[*syntax.Declaration]*Binding
-	Assignments      map[*syntax.Expression]*Binding
-	Methods          []*Method
-	Diagnostics      []syntax.Diagnostic
+	Effects     map[string][]string
+	Modules     []*syntax.Module
+	symbols     map[string]map[string]*Symbol
+	Methods     []*Method
+	Diagnostics []syntax.Diagnostic
+	serial      int // identities handed out while checking
 }
 
 func (t *Type) String() string {
@@ -214,9 +209,14 @@ func Fields(t *Type) []Param {
 	return result
 }
 
-// ConstructorSignature describes a record's named fields and omission permissions.
+// ConstructorSignature describes constructor inputs and omission permissions.
+// Native constructor inputs need not be readable data fields.
 func ConstructorSignature(t *Type) *Type {
-	signature := function(Fields(t), t)
+	params := Fields(t)
+	if std(t, "Bytes") {
+		params = []Param{{"values", standard("List", primitive("Int"))}}
+	}
+	signature := function(params, t)
 	if t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Decl != nil {
 		for _, field := range t.Def.Symbol.Decl.Fields {
 			if field.Default != nil {
@@ -253,20 +253,33 @@ func standard(name string, args ...*Type) *Type {
 }
 func std(t *Type, name string) bool { return t != nil && t.ID == "@std/"+name }
 func typeKey(t *Type) string {
+	var key strings.Builder
+	writeTypeKey(&key, t)
+	return key.String()
+}
+
+// writeTypeKey appends t's key; building nested keys by concatenation would
+// copy each inner key once per enclosing level.
+func writeTypeKey(key *strings.Builder, t *Type) {
 	if t == nil {
-		return ""
+		return
 	}
-	s := t.ID
+	key.WriteString(t.ID)
 	if t.Kind == "function" {
 		for _, p := range t.Params {
-			s += "[" + p.Name + ":" + typeKey(p.Type) + "]"
+			key.WriteString("[" + p.Name + ":")
+			writeTypeKey(key, p.Type)
+			key.WriteString("]")
 		}
-		s += "[result:" + typeKey(t.Result) + "]"
+		key.WriteString("[result:")
+		writeTypeKey(key, t.Result)
+		key.WriteString("]")
 	}
 	for _, a := range t.Args {
-		s += "[" + typeKey(a) + "]"
+		key.WriteString("[")
+		writeTypeKey(key, a)
+		key.WriteString("]")
 	}
-	return s
 }
 func TypeKey(t *Type) string { return typeKey(t) }
 func unify(pattern, actual *Type, vars map[string]bool, sub map[string]*Type) bool {

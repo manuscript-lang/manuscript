@@ -12,7 +12,7 @@ import {
 import {second_error, relay} from "./second.ms"
 
 test "Error boundaries retain selected local and generic implementations":
-    let original = DomainFailure(code: 7)
+    let original = DomainFailure(7)
     let first = first_error(original)
     let second = second_error(original)
     if first.message() != "first 7" or second.message() != "second 7":

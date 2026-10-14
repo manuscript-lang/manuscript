@@ -1,0 +1,1228 @@
+// Oracle for c51-lisp-interpreter. Reads a program on stdin, writes the output to stdout.
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"fmt"
+	"io"
+	"math"
+	"math/big"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+const limit = 10000
+const inf = 1 << 30
+
+type Value interface{}
+type Symbol struct{ n string }
+type Pair struct{ a, d Value }
+type NilT struct{}
+type VoidT struct{}
+type Lam struct {
+	params []*Symbol
+	rest   *Symbol
+	body   []Value
+	env    *Env
+	name   string
+}
+type Builtin struct {
+	name   string
+	lo, hi int
+	fn     func(a []Value, d int) Value
+}
+type Env struct {
+	v map[string]Value
+	p *Env
+}
+type LispErr struct {
+	msg string
+	syn bool
+}
+
+var NIL = &NilT{}
+var VOID = &VoidT{}
+var symtab = map[string]*Symbol{}
+var out bytes.Buffer
+
+func sym(n string) *Symbol {
+	if s, ok := symtab[n]; ok {
+		return s
+	}
+	s := &Symbol{n}
+	symtab[n] = s
+	return s
+}
+func fail(f string, a ...interface{}) { panic(LispErr{msg: fmt.Sprintf(f, a...)}) }
+func syn(f string, a ...interface{})  { panic(LispErr{msg: fmt.Sprintf(f, a...), syn: true}) }
+
+func isList(x Value) bool {
+	for {
+		p, ok := x.(*Pair)
+		if !ok {
+			return x == Value(NIL)
+		}
+		x = p.d
+	}
+}
+func toSlice(x Value) []Value {
+	var r []Value
+	for {
+		p, ok := x.(*Pair)
+		if !ok {
+			return r
+		}
+		r = append(r, p.a)
+		x = p.d
+	}
+}
+func fromSlice(l []Value, tail Value) Value {
+	r := tail
+	for i := len(l) - 1; i >= 0; i-- {
+		r = &Pair{l[i], r}
+	}
+	return r
+}
+func list(l []Value) Value { return fromSlice(l, NIL) }
+
+var esc = map[byte]string{'\n': "\\n", '\t': "\\t", '\\': "\\\\", '"': "\\\""}
+
+func show(x Value, disp bool) string {
+	switch v := x.(type) {
+	case *NilT:
+		return "()"
+	case *VoidT:
+		return "#<void>"
+	case bool:
+		if v {
+			return "#t"
+		}
+		return "#f"
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case string:
+		if disp {
+			return v
+		}
+		var b strings.Builder
+		b.WriteByte('"')
+		for i := 0; i < len(v); i++ {
+			if e, ok := esc[v[i]]; ok {
+				b.WriteString(e)
+			} else {
+				b.WriteByte(v[i])
+			}
+		}
+		b.WriteByte('"')
+		return b.String()
+	case *Symbol:
+		return v.n
+	case *Lam:
+		if v.name != "" {
+			return "#<procedure " + v.name + ">"
+		}
+		return "#<procedure>"
+	case *Builtin:
+		return "#<builtin " + v.name + ">"
+	}
+	var parts []string
+	for {
+		p, ok := x.(*Pair)
+		if !ok {
+			break
+		}
+		parts = append(parts, show(p.a, disp))
+		x = p.d
+	}
+	s := strings.Join(parts, " ")
+	if x != Value(NIL) {
+		s += " . " + show(x, disp)
+	}
+	return "(" + s + ")"
+}
+
+func chk(b *big.Int) int64 {
+	if !b.IsInt64() {
+		fail("integer overflow")
+	}
+	return b.Int64()
+}
+func chkAdd(a, b int64) int64 { return chk(new(big.Int).Add(big.NewInt(a), big.NewInt(b))) }
+func chkSub(a, b int64) int64 { return chk(new(big.Int).Sub(big.NewInt(a), big.NewInt(b))) }
+func chkMul(a, b int64) int64 { return chk(new(big.Int).Mul(big.NewInt(a), big.NewInt(b))) }
+
+func need(name, kind string, v Value) Value {
+	ok := false
+	switch kind {
+	case "integer":
+		_, ok = v.(int64)
+	case "string":
+		_, ok = v.(string)
+	case "list":
+		ok = isList(v)
+	case "pair":
+		_, ok = v.(*Pair)
+	case "symbol":
+		_, ok = v.(*Symbol)
+	case "procedure":
+		switch v.(type) {
+		case *Lam, *Builtin:
+			ok = true
+		}
+	}
+	if !ok {
+		fail("%s: expected %s, got %s", name, kind, show(v, false))
+	}
+	return v
+}
+func nint(name string, v Value) int64  { return need(name, "integer", v).(int64) }
+func nstr(name string, v Value) string { return need(name, "string", v).(string) }
+func nlist(name string, v Value) []Value {
+	return toSlice(need(name, "list", v))
+}
+func npair(name string, v Value) *Pair { return need(name, "pair", v).(*Pair) }
+func ints(name string, a []Value) []int64 {
+	r := make([]int64, len(a))
+	for i, v := range a {
+		r[i] = nint(name, v)
+	}
+	return r
+}
+
+var builtins = map[string]*Builtin{}
+
+func bi(name string, lo, hi int, fn func(a []Value, d int) Value) {
+	builtins[name] = &Builtin{name, lo, hi, fn}
+}
+
+func tq(x, y int64) int64 {
+	if y == -1 {
+		return chkSub(0, x)
+	}
+	return x / y
+}
+
+func equal(x, y Value) bool {
+	for {
+		px, ok1 := x.(*Pair)
+		py, ok2 := y.(*Pair)
+		if ok1 && ok2 {
+			if !equal(px.a, py.a) {
+				return false
+			}
+			x, y = px.d, py.d
+			continue
+		}
+		if ok1 || ok2 {
+			return false
+		}
+		return x == y
+	}
+}
+func eqp(x, y Value) bool {
+	switch x.(type) {
+	case int64, bool, *Symbol, *NilT:
+		return x == y
+	}
+	return false
+}
+
+func init() {
+	bi("+", 0, inf, func(a []Value, d int) Value {
+		var r int64
+		for _, v := range ints("+", a) {
+			r = chkAdd(r, v)
+		}
+		return r
+	})
+	bi("-", 1, inf, func(a []Value, d int) Value {
+		v := ints("-", a)
+		if len(v) == 1 {
+			return chkSub(0, v[0])
+		}
+		r := v[0]
+		for _, x := range v[1:] {
+			r = chkSub(r, x)
+		}
+		return r
+	})
+	bi("*", 0, inf, func(a []Value, d int) Value {
+		var r int64 = 1
+		for _, v := range ints("*", a) {
+			r = chkMul(r, v)
+		}
+		return r
+	})
+	div := func(name string, f func(x, y int64) int64) {
+		bi(name, 2, 2, func(a []Value, d int) Value {
+			v := ints(name, a)
+			if v[1] == 0 {
+				fail("division by zero")
+			}
+			return f(v[0], v[1])
+		})
+	}
+	div("quotient", tq)
+	div("remainder", func(x, y int64) int64 {
+		if y == -1 {
+			return 0
+		}
+		return x % y
+	})
+	div("modulo", func(x, y int64) int64 {
+		if y == -1 {
+			return 0
+		}
+		m := x % y
+		if m != 0 && (m < 0) != (y < 0) {
+			m += y
+		}
+		return m
+	})
+	bi("abs", 1, 1, func(a []Value, d int) Value {
+		v := nint("abs", a[0])
+		if v < 0 {
+			return chkSub(0, v)
+		}
+		return v
+	})
+	bi("min", 1, inf, func(a []Value, d int) Value {
+		v := ints("min", a)
+		m := v[0]
+		for _, x := range v {
+			if x < m {
+				m = x
+			}
+		}
+		return m
+	})
+	bi("max", 1, inf, func(a []Value, d int) Value {
+		v := ints("max", a)
+		m := v[0]
+		for _, x := range v {
+			if x > m {
+				m = x
+			}
+		}
+		return m
+	})
+	cmp := func(name string, f func(x, y int64) bool) {
+		bi(name, 2, inf, func(a []Value, d int) Value {
+			v := ints(name, a)
+			for i := 0; i+1 < len(v); i++ {
+				if !f(v[i], v[i+1]) {
+					return false
+				}
+			}
+			return true
+		})
+	}
+	cmp("=", func(x, y int64) bool { return x == y })
+	cmp("<", func(x, y int64) bool { return x < y })
+	cmp(">", func(x, y int64) bool { return x > y })
+	cmp("<=", func(x, y int64) bool { return x <= y })
+	cmp(">=", func(x, y int64) bool { return x >= y })
+	bi("not", 1, 1, func(a []Value, d int) Value { return a[0] == Value(false) })
+	bi("eq?", 2, 2, func(a []Value, d int) Value { return eqp(a[0], a[1]) })
+	bi("equal?", 2, 2, func(a []Value, d int) Value { return equal(a[0], a[1]) })
+	bi("cons", 2, 2, func(a []Value, d int) Value { return &Pair{a[0], a[1]} })
+	bi("car", 1, 1, func(a []Value, d int) Value { return npair("car", a[0]).a })
+	bi("cdr", 1, 1, func(a []Value, d int) Value { return npair("cdr", a[0]).d })
+	bi("cadr", 1, 1, func(a []Value, d int) Value { return npair("cadr", npair("cadr", a[0]).d).a })
+	bi("cddr", 1, 1, func(a []Value, d int) Value { return npair("cddr", npair("cddr", a[0]).d).d })
+	bi("caddr", 1, 1, func(a []Value, d int) Value {
+		return npair("caddr", npair("caddr", npair("caddr", a[0]).d).d).a
+	})
+	bi("set-car!", 2, 2, func(a []Value, d int) Value { npair("set-car!", a[0]).a = a[1]; return VOID })
+	bi("set-cdr!", 2, 2, func(a []Value, d int) Value { npair("set-cdr!", a[0]).d = a[1]; return VOID })
+	bi("list", 0, inf, func(a []Value, d int) Value { return list(a) })
+	bi("length", 1, 1, func(a []Value, d int) Value { return int64(len(nlist("length", a[0]))) })
+	bi("append", 0, inf, func(a []Value, d int) Value {
+		if len(a) == 0 {
+			return NIL
+		}
+		for _, v := range a[:len(a)-1] {
+			need("append", "list", v)
+		}
+		r := a[len(a)-1]
+		for i := len(a) - 2; i >= 0; i-- {
+			r = fromSlice(toSlice(a[i]), r)
+		}
+		return r
+	})
+	bi("reverse", 1, 1, func(a []Value, d int) Value {
+		l := nlist("reverse", a[0])
+		r := make([]Value, len(l))
+		for i, v := range l {
+			r[len(l)-1-i] = v
+		}
+		return list(r)
+	})
+	bi("list-ref", 2, 2, func(a []Value, d int) Value {
+		l := nlist("list-ref", a[0])
+		i := nint("list-ref", a[1])
+		if i < 0 || i >= int64(len(l)) {
+			fail("list-ref: index out of range")
+		}
+		return l[i]
+	})
+	bi("list-tail", 2, 2, func(a []Value, d int) Value {
+		x := need("list-tail", "list", a[0])
+		i := nint("list-tail", a[1])
+		if i < 0 || i > int64(len(toSlice(x))) {
+			fail("list-tail: index out of range")
+		}
+		for ; i > 0; i-- {
+			x = x.(*Pair).d
+		}
+		return x
+	})
+	pred := func(name string, f func(v Value) bool) {
+		bi(name, 1, 1, func(a []Value, d int) Value { return f(a[0]) })
+	}
+	pred("null?", func(v Value) bool { return v == Value(NIL) })
+	pred("pair?", func(v Value) bool { _, ok := v.(*Pair); return ok })
+	pred("list?", isList)
+	pred("number?", func(v Value) bool { _, ok := v.(int64); return ok })
+	pred("string?", func(v Value) bool { _, ok := v.(string); return ok })
+	pred("symbol?", func(v Value) bool { _, ok := v.(*Symbol); return ok })
+	pred("boolean?", func(v Value) bool { _, ok := v.(bool); return ok })
+	pred("procedure?", func(v Value) bool {
+		switch v.(type) {
+		case *Lam, *Builtin:
+			return true
+		}
+		return false
+	})
+	bi("zero?", 1, 1, func(a []Value, d int) Value { return nint("zero?", a[0]) == 0 })
+	bi("even?", 1, 1, func(a []Value, d int) Value { return nint("even?", a[0])%2 == 0 })
+	bi("odd?", 1, 1, func(a []Value, d int) Value { return nint("odd?", a[0])%2 != 0 })
+
+	lists := func(name string, ls []Value) [][]Value {
+		r := make([][]Value, len(ls))
+		for i, l := range ls {
+			r[i] = nlist(name, l)
+		}
+		return r
+	}
+	rows := func(ls [][]Value) [][]Value {
+		n := -1
+		for _, l := range ls {
+			if n < 0 || len(l) < n {
+				n = len(l)
+			}
+		}
+		r := make([][]Value, n)
+		for i := 0; i < n; i++ {
+			for _, l := range ls {
+				r[i] = append(r[i], l[i])
+			}
+		}
+		return r
+	}
+	bi("map", 2, inf, func(a []Value, d int) Value {
+		need("map", "procedure", a[0])
+		var r []Value
+		for _, t := range rows(lists("map", a[1:])) {
+			r = append(r, applyProc(a[0], t, d))
+		}
+		return list(r)
+	})
+	bi("for-each", 2, inf, func(a []Value, d int) Value {
+		need("for-each", "procedure", a[0])
+		for _, t := range rows(lists("for-each", a[1:])) {
+			applyProc(a[0], t, d)
+		}
+		return VOID
+	})
+	bi("filter", 2, 2, func(a []Value, d int) Value {
+		need("filter", "procedure", a[0])
+		var r []Value
+		for _, v := range lists("filter", a[1:])[0] {
+			if applyProc(a[0], []Value{v}, d) != Value(false) {
+				r = append(r, v)
+			}
+		}
+		return list(r)
+	})
+	bi("fold", 3, 3, func(a []Value, d int) Value {
+		need("fold", "procedure", a[0])
+		acc := a[1]
+		for _, v := range lists("fold", a[2:])[0] {
+			acc = applyProc(a[0], []Value{acc, v}, d)
+		}
+		return acc
+	})
+	bi("foldr", 3, 3, func(a []Value, d int) Value {
+		need("foldr", "procedure", a[0])
+		acc := a[1]
+		l := lists("foldr", a[2:])[0]
+		for i := len(l) - 1; i >= 0; i-- {
+			acc = applyProc(a[0], []Value{l[i], acc}, d)
+		}
+		return acc
+	})
+	bi("apply", 2, inf, func(a []Value, d int) Value {
+		need("apply", "procedure", a[0])
+		need("apply", "list", a[len(a)-1])
+		args := append(append([]Value{}, a[1:len(a)-1]...), toSlice(a[len(a)-1])...)
+		return applyProc(a[0], args, d)
+	})
+	bi("assoc", 2, 2, func(a []Value, d int) Value {
+		for _, v := range lists("assoc", a[1:])[0] {
+			p := npair("assoc", v)
+			if equal(a[0], p.a) {
+				return p
+			}
+		}
+		return false
+	})
+	bi("member", 2, 2, func(a []Value, d int) Value {
+		x := need("member", "list", a[1])
+		for {
+			p, ok := x.(*Pair)
+			if !ok {
+				return false
+			}
+			if equal(a[0], p.a) {
+				return p
+			}
+			x = p.d
+		}
+	})
+	bi("sort", 2, 2, func(a []Value, d int) Value {
+		l := nlist("sort", a[0])
+		f := need("sort", "procedure", a[1])
+		var ms func(l []Value) []Value
+		ms = func(l []Value) []Value {
+			if len(l) <= 1 {
+				return l
+			}
+			m := len(l) / 2
+			x, y := ms(l[:m]), ms(l[m:])
+			var r []Value
+			i, j := 0, 0
+			for i < len(x) && j < len(y) {
+				if applyProc(f, []Value{y[j], x[i]}, d) != Value(false) {
+					r = append(r, y[j])
+					j++
+				} else {
+					r = append(r, x[i])
+					i++
+				}
+			}
+			r = append(r, x[i:]...)
+			return append(r, y[j:]...)
+		}
+		return list(ms(append([]Value{}, l...)))
+	})
+	_ = sort.Ints
+	bi("range", 2, 2, func(a []Value, d int) Value {
+		lo, hi := nint("range", a[0]), nint("range", a[1])
+		var r []Value
+		for i := lo; i < hi; i++ {
+			r = append(r, i)
+		}
+		return list(r)
+	})
+	bi("string-length", 1, 1, func(a []Value, d int) Value { return int64(len(nstr("string-length", a[0]))) })
+	bi("string-append", 0, inf, func(a []Value, d int) Value {
+		var b strings.Builder
+		for _, v := range a {
+			b.WriteString(nstr("string-append", v))
+		}
+		return b.String()
+	})
+	bi("substring", 3, 3, func(a []Value, d int) Value {
+		s := nstr("substring", a[0])
+		i, j := nint("substring", a[1]), nint("substring", a[2])
+		if !(0 <= i && i <= j && j <= int64(len(s))) {
+			fail("substring: index out of range")
+		}
+		return s[i:j]
+	})
+	bi("string-ref", 2, 2, func(a []Value, d int) Value {
+		s := nstr("string-ref", a[0])
+		i := nint("string-ref", a[1])
+		if i < 0 || i >= int64(len(s)) {
+			fail("string-ref: index out of range")
+		}
+		return s[i : i+1]
+	})
+	bi("string=?", 2, 2, func(a []Value, d int) Value { return nstr("string=?", a[0]) == nstr("string=?", a[1]) })
+	bi("string<?", 2, 2, func(a []Value, d int) Value { return nstr("string<?", a[0]) < nstr("string<?", a[1]) })
+	bi("string-upcase", 1, 1, func(a []Value, d int) Value { return strings.ToUpper(nstr("string-upcase", a[0])) })
+	bi("string-downcase", 1, 1, func(a []Value, d int) Value { return strings.ToLower(nstr("string-downcase", a[0])) })
+	bi("string->number", 1, 1, func(a []Value, d int) Value {
+		s := nstr("string->number", a[0])
+		t := strings.TrimPrefix(s, "-")
+		if t == "" {
+			return false
+		}
+		for i := 0; i < len(t); i++ {
+			if t[i] < '0' || t[i] > '9' {
+				return false
+			}
+		}
+		n, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return false
+		}
+		return n
+	})
+	bi("number->string", 1, 1, func(a []Value, d int) Value { return strconv.FormatInt(nint("number->string", a[0]), 10) })
+	bi("string->symbol", 1, 1, func(a []Value, d int) Value { return sym(nstr("string->symbol", a[0])) })
+	bi("symbol->string", 1, 1, func(a []Value, d int) Value {
+		return need("symbol->string", "symbol", a[0]).(*Symbol).n
+	})
+	bi("string->list", 1, 1, func(a []Value, d int) Value {
+		s := nstr("string->list", a[0])
+		var r []Value
+		for i := 0; i < len(s); i++ {
+			r = append(r, s[i:i+1])
+		}
+		return list(r)
+	})
+	bi("list->string", 1, 1, func(a []Value, d int) Value {
+		var b strings.Builder
+		for _, v := range nlist("list->string", a[0]) {
+			b.WriteString(nstr("list->string", v))
+		}
+		return b.String()
+	})
+	bi("string-join", 2, 2, func(a []Value, d int) Value {
+		l := nlist("string-join", a[0])
+		sep := nstr("string-join", a[1])
+		parts := make([]string, len(l))
+		for i, v := range l {
+			parts[i] = nstr("string-join", v)
+		}
+		return strings.Join(parts, sep)
+	})
+	bi("string-split", 2, 2, func(a []Value, d int) Value {
+		s, p := nstr("string-split", a[0]), nstr("string-split", a[1])
+		if len(p) != 1 {
+			fail("string-split: separator must be one character")
+		}
+		var r []Value
+		for _, x := range strings.Split(s, p) {
+			r = append(r, x)
+		}
+		return list(r)
+	})
+	bi("string-contains?", 2, 2, func(a []Value, d int) Value {
+		return strings.Contains(nstr("string-contains?", a[0]), nstr("string-contains?", a[1]))
+	})
+	bi("display", 1, 1, func(a []Value, d int) Value { out.WriteString(show(a[0], true)); return VOID })
+	bi("write", 1, 1, func(a []Value, d int) Value { out.WriteString(show(a[0], false)); return VOID })
+	bi("newline", 0, 0, func(a []Value, d int) Value { out.WriteString("\n"); return VOID })
+	bi("void", 0, 0, func(a []Value, d int) Value { return VOID })
+	bi("error", 1, inf, func(a []Value, d int) Value {
+		m := nstr("error", a[0])
+		for _, v := range a[1:] {
+			m += " " + show(v, false)
+		}
+		fail("%s", m)
+		return nil
+	})
+}
+
+// ---- reader ----
+type Reader struct {
+	s string
+	i int
+}
+
+func isWS(c byte) bool    { return c == ' ' || c == '\t' || c == '\n' || c == '\r' }
+func isDelim(c byte) bool { return isWS(c) || c == '(' || c == ')' || c == '"' || c == ';' }
+
+func (r *Reader) skip() {
+	for r.i < len(r.s) {
+		if isWS(r.s[r.i]) {
+			r.i++
+		} else if r.s[r.i] == ';' {
+			for r.i < len(r.s) && r.s[r.i] != '\n' {
+				r.i++
+			}
+		} else {
+			break
+		}
+	}
+}
+
+func isDigits(t string) bool {
+	if t == "" {
+		return false
+	}
+	for i := 0; i < len(t); i++ {
+		if t[i] < '0' || t[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// read returns (value, ok); ok is false at end of input when top is true.
+func (r *Reader) read(top bool) (Value, bool) {
+	r.skip()
+	s := r.s
+	if r.i >= len(s) {
+		if top {
+			return nil, false
+		}
+		syn("syntax error: unexpected end of input")
+	}
+	c := s[r.i]
+	switch c {
+	case ')':
+		syn("syntax error: unexpected )")
+	case '\'':
+		r.i++
+		v, _ := r.read(false)
+		return &Pair{sym("quote"), &Pair{v, NIL}}, true
+	case '"':
+		r.i++
+		var b []byte
+		for {
+			if r.i >= len(s) {
+				syn("syntax error: unterminated string")
+			}
+			c := s[r.i]
+			r.i++
+			if c == '"' {
+				return string(b), true
+			}
+			if c == '\\' {
+				if r.i >= len(s) {
+					syn("syntax error: unterminated string")
+				}
+				e := s[r.i]
+				r.i++
+				switch e {
+				case 'n':
+					b = append(b, '\n')
+				case 't':
+					b = append(b, '\t')
+				case '\\':
+					b = append(b, '\\')
+				case '"':
+					b = append(b, '"')
+				default:
+					syn("syntax error: bad escape")
+				}
+			} else {
+				b = append(b, c)
+			}
+		}
+	case '(':
+		r.i++
+		var items []Value
+		var tail Value = NIL
+		for {
+			r.skip()
+			if r.i >= len(s) {
+				syn("syntax error: unexpected end of input")
+			}
+			if s[r.i] == ')' {
+				r.i++
+				break
+			}
+			if s[r.i] == '.' && (r.i+1 >= len(s) || isDelim(s[r.i+1])) {
+				r.i++
+				if len(items) == 0 {
+					syn("syntax error: bad dotted list")
+				}
+				tail, _ = r.read(false)
+				r.skip()
+				if r.i >= len(s) {
+					syn("syntax error: unexpected end of input")
+				}
+				if s[r.i] != ')' {
+					syn("syntax error: bad dotted list")
+				}
+				r.i++
+				break
+			}
+			v, _ := r.read(false)
+			items = append(items, v)
+		}
+		return fromSlice(items, tail), true
+	}
+	j := r.i
+	for j < len(s) && !isDelim(s[j]) {
+		j++
+	}
+	tok := s[r.i:j]
+	r.i = j
+	switch {
+	case tok == ".":
+		syn("syntax error: unexpected .")
+	case tok == "#t":
+		return true, true
+	case tok == "#f":
+		return false, true
+	case tok[0] == '#':
+		syn("syntax error: bad token: %s", tok)
+	}
+	if isDigits(strings.TrimPrefix(tok, "-")) {
+		n, err := strconv.ParseInt(tok, 10, 64)
+		if err != nil {
+			syn("syntax error: integer out of range")
+		}
+		return n, true
+	}
+	return sym(tok), true
+}
+
+// ---- evaluator ----
+func bad(name string) { syn("syntax error: bad form: %s", name) }
+
+func newEnv(p *Env) *Env { return &Env{map[string]Value{}, p} }
+func lookup(env *Env, s *Symbol) Value {
+	for e := env; e != nil; e = e.p {
+		if v, ok := e.v[s.n]; ok {
+			return v
+		}
+	}
+	fail("unbound variable: %s", s.n)
+	return nil
+}
+func setvar(env *Env, s *Symbol, v Value) {
+	for e := env; e != nil; e = e.p {
+		if _, ok := e.v[s.n]; ok {
+			e.v[s.n] = v
+			return
+		}
+	}
+	fail("unbound variable: %s", s.n)
+}
+
+func arityText(lo, hi int) string {
+	if hi >= inf {
+		return fmt.Sprintf("at least %d", lo)
+	}
+	if lo == hi {
+		return strconv.Itoa(lo)
+	}
+	return fmt.Sprintf("%d to %d", lo, hi)
+}
+
+func bindArgs(f *Lam, args []Value) *Env {
+	n := len(f.params)
+	if len(args) < n || (f.rest == nil && len(args) > n) {
+		hi := n
+		if f.rest != nil {
+			hi = inf
+		}
+		name := f.name
+		if name == "" {
+			name = "lambda"
+		}
+		fail("wrong number of arguments to %s: expected %s, got %d", name, arityText(n, hi), len(args))
+	}
+	e := newEnv(f.env)
+	for i, p := range f.params {
+		e.v[p.n] = args[i]
+	}
+	if f.rest != nil {
+		e.v[f.rest.n] = list(append([]Value{}, args[n:]...))
+	}
+	return e
+}
+
+func callBuiltin(f *Builtin, args []Value, d int) Value {
+	n := len(args)
+	if n < f.lo || n > f.hi {
+		fail("wrong number of arguments to %s: expected %s, got %d", f.name, arityText(f.lo, f.hi), n)
+	}
+	return f.fn(args, d)
+}
+
+func applyProc(f Value, args []Value, d int) Value {
+	switch p := f.(type) {
+	case *Builtin:
+		return callBuiltin(p, args, d)
+	case *Lam:
+		if d+1 > limit {
+			fail("recursion limit exceeded")
+		}
+		e := bindArgs(p, args)
+		for _, b := range p.body[:len(p.body)-1] {
+			ev(b, e, d+1, false)
+		}
+		return ev(p.body[len(p.body)-1], e, d+1, true)
+	}
+	fail("not a procedure: %s", show(f, false))
+	return nil
+}
+
+func parseParams(p Value) ([]*Symbol, *Symbol, bool) {
+	var params []*Symbol
+	var rest *Symbol
+	for {
+		pp, ok := p.(*Pair)
+		if !ok {
+			break
+		}
+		s, ok := pp.a.(*Symbol)
+		if !ok {
+			return nil, nil, false
+		}
+		params = append(params, s)
+		p = pp.d
+	}
+	if p != Value(NIL) {
+		s, ok := p.(*Symbol)
+		if !ok {
+			return nil, nil, false
+		}
+		rest = s
+	}
+	seen := map[string]bool{}
+	names := []string{}
+	for _, s := range params {
+		names = append(names, s.n)
+	}
+	if rest != nil {
+		names = append(names, rest.n)
+	}
+	for _, n := range names {
+		if seen[n] {
+			return nil, nil, false
+		}
+		seen[n] = true
+	}
+	return params, rest, true
+}
+
+type binding struct {
+	s *Symbol
+	e Value
+}
+
+func parseBindings(b Value) ([]binding, bool) {
+	if !isList(b) {
+		return nil, false
+	}
+	var r []binding
+	for _, x := range toSlice(b) {
+		if !isList(x) {
+			return nil, false
+		}
+		l := toSlice(x)
+		if len(l) != 2 {
+			return nil, false
+		}
+		s, ok := l[0].(*Symbol)
+		if !ok {
+			return nil, false
+		}
+		r = append(r, binding{s, l[1]})
+	}
+	return r, true
+}
+
+func truthy(v Value) bool { return v != Value(false) }
+
+func ev(x Value, env *Env, d int, entered bool) Value {
+	for {
+		if s, ok := x.(*Symbol); ok {
+			return lookup(env, s)
+		}
+		pr, ok := x.(*Pair)
+		if !ok {
+			if x == Value(NIL) {
+				syn("syntax error: empty application")
+			}
+			return x
+		}
+		if !isList(x) {
+			syn("syntax error: bad application")
+		}
+		h := pr.a
+		items := toSlice(x)
+		n := len(items)
+		if hs, ok := h.(*Symbol); ok {
+			k := hs.n
+			switch k {
+			case "quote":
+				if n != 2 {
+					bad(k)
+				}
+				return items[1]
+			case "if":
+				if n != 3 && n != 4 {
+					bad(k)
+				}
+				if truthy(ev(items[1], env, d, false)) {
+					x = items[2]
+				} else if n == 4 {
+					x = items[3]
+				} else {
+					return VOID
+				}
+				continue
+			case "define":
+				if n < 3 {
+					bad(k)
+				}
+				switch t := items[1].(type) {
+				case *Symbol:
+					if n != 3 {
+						bad(k)
+					}
+					v := ev(items[2], env, d, false)
+					if l, ok := v.(*Lam); ok && l.name == "" {
+						if ip, ok := items[2].(*Pair); ok && ip.a == Value(sym("lambda")) {
+							l.name = t.n
+						}
+					}
+					env.v[t.n] = v
+					return VOID
+				case *Pair:
+					nm, ok := t.a.(*Symbol)
+					if !ok {
+						bad(k)
+					}
+					params, rest, ok := parseParams(t.d)
+					if !ok {
+						bad(k)
+					}
+					env.v[nm.n] = &Lam{params, rest, items[2:], env, nm.n}
+					return VOID
+				}
+				bad(k)
+			case "set!":
+				s, ok := items[1].(*Symbol)
+				if n != 3 || !ok {
+					bad(k)
+				}
+				setvar(env, s, ev(items[2], env, d, false))
+				return VOID
+			case "lambda":
+				if n < 3 {
+					bad(k)
+				}
+				params, rest, ok := parseParams(items[1])
+				if !ok {
+					bad(k)
+				}
+				return &Lam{params, rest, items[2:], env, ""}
+			case "begin":
+				if n == 1 {
+					return VOID
+				}
+				for _, b := range items[1 : n-1] {
+					ev(b, env, d, false)
+				}
+				x = items[n-1]
+				continue
+			case "let", "let*", "letrec":
+				if n < 3 {
+					bad(k)
+				}
+				if nm, ok := items[1].(*Symbol); ok && k == "let" {
+					if n < 4 {
+						bad(k)
+					}
+					bs, ok := parseBindings(items[2])
+					if !ok {
+						bad(k)
+					}
+					vals := make([]Value, len(bs))
+					syms := make([]Value, len(bs))
+					for i, b := range bs {
+						vals[i] = ev(b.e, env, d, false)
+						syms[i] = b.s
+					}
+					params, _, ok := parseParams(list(syms))
+					if !ok {
+						bad(k)
+					}
+					fe := newEnv(env)
+					lam := &Lam{params, nil, items[3:], fe, nm.n}
+					fe.v[nm.n] = lam
+					env = bindArgs(lam, vals)
+					for _, b := range items[3 : n-1] {
+						ev(b, env, d, false)
+					}
+					x = items[n-1]
+					continue
+				}
+				bs, ok := parseBindings(items[1])
+				if !ok {
+					bad(k)
+				}
+				ne := newEnv(env)
+				if k == "let" {
+					vals := make([]Value, len(bs))
+					for i, b := range bs {
+						vals[i] = ev(b.e, env, d, false)
+					}
+					for i, b := range bs {
+						ne.v[b.s.n] = vals[i]
+					}
+				} else {
+					for _, b := range bs {
+						ne.v[b.s.n] = ev(b.e, ne, d, false)
+					}
+				}
+				env = ne
+				for _, b := range items[2 : n-1] {
+					ev(b, env, d, false)
+				}
+				x = items[n-1]
+				continue
+			case "cond":
+				var chosen []Value
+				for ci, cl := range items[1:] {
+					if !isList(cl) || cl == Value(NIL) {
+						bad(k)
+					}
+					parts := toSlice(cl)
+					if parts[0] == Value(sym("else")) {
+						if ci != n-2 || len(parts) < 2 {
+							bad(k)
+						}
+						chosen = parts[1:]
+						break
+					}
+					v := ev(parts[0], env, d, false)
+					if truthy(v) {
+						if len(parts) == 1 {
+							return v
+						}
+						chosen = parts[1:]
+						break
+					}
+				}
+				if chosen == nil {
+					return VOID
+				}
+				for _, b := range chosen[:len(chosen)-1] {
+					ev(b, env, d, false)
+				}
+				x = chosen[len(chosen)-1]
+				continue
+			case "and":
+				if n == 1 {
+					return true
+				}
+				for _, b := range items[1 : n-1] {
+					if !truthy(ev(b, env, d, false)) {
+						return false
+					}
+				}
+				x = items[n-1]
+				continue
+			case "or":
+				if n == 1 {
+					return false
+				}
+				for _, b := range items[1 : n-1] {
+					if v := ev(b, env, d, false); truthy(v) {
+						return v
+					}
+				}
+				x = items[n-1]
+				continue
+			case "when", "unless":
+				if n < 3 {
+					bad(k)
+				}
+				if truthy(ev(items[1], env, d, false)) != (k == "when") {
+					return VOID
+				}
+				for _, b := range items[2 : n-1] {
+					ev(b, env, d, false)
+				}
+				x = items[n-1]
+				continue
+			case "try":
+				if n != 3 {
+					bad(k)
+				}
+				v, e := tryEval(items[1], env, d)
+				if e == nil {
+					return v
+				}
+				h2 := ev(items[2], env, d, false)
+				return applyProc(h2, []Value{e.msg}, d)
+			}
+		}
+		f := ev(h, env, d, false)
+		args := make([]Value, n-1)
+		for i, a := range items[1:] {
+			args[i] = ev(a, env, d, false)
+		}
+		switch p := f.(type) {
+		case *Builtin:
+			return callBuiltin(p, args, d)
+		case *Lam:
+			if !entered {
+				d++
+				entered = true
+				if d > limit {
+					fail("recursion limit exceeded")
+				}
+			}
+			env = bindArgs(p, args)
+			for _, b := range p.body[:len(p.body)-1] {
+				ev(b, env, d, false)
+			}
+			x = p.body[len(p.body)-1]
+		default:
+			fail("not a procedure: %s", show(f, false))
+		}
+	}
+}
+
+func tryEval(x Value, env *Env, d int) (v Value, e *LispErr) {
+	defer func() {
+		if r := recover(); r != nil {
+			le, ok := r.(LispErr)
+			if !ok || le.syn {
+				panic(r)
+			}
+			e = &le
+		}
+	}()
+	return ev(x, env, d, false), nil
+}
+
+func run(src string) {
+	genv := newEnv(nil)
+	for k, b := range builtins {
+		genv.v[k] = b
+	}
+	r := &Reader{s: src}
+	defer func() {
+		if rec := recover(); rec != nil {
+			le, ok := rec.(LispErr)
+			if !ok {
+				panic(rec)
+			}
+			if out.Len() > 0 && out.Bytes()[out.Len()-1] != '\n' {
+				out.WriteString("\n")
+			}
+			out.WriteString("error: " + le.msg + "\n")
+		}
+	}()
+	for {
+		x, ok := r.read(true)
+		if !ok {
+			return
+		}
+		ev(x, genv, 0, false)
+	}
+}
+
+func main() {
+	data, _ := io.ReadAll(bufio.NewReader(os.Stdin))
+	run(string(data))
+	os.Stdout.Write(out.Bytes())
+	_ = math.MaxInt64
+}

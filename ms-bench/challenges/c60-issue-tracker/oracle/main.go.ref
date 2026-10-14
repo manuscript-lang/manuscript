@@ -1,0 +1,1791 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+var priorities = []string{"low", "medium", "high", "critical"}
+
+func prioOrd(p string) int {
+	for i, x := range priorities {
+		if x == p {
+			return i + 1
+		}
+	}
+	return 0
+}
+
+type Comment struct {
+	t     int
+	actor string
+	text  string
+}
+type Issue struct {
+	id       int
+	title    string
+	state    string
+	priority string
+	assignee string
+	reporter string
+	points   int
+	hasPts   bool
+	due      string
+	labels   []string
+	comments []Comment
+	created  int
+	updated  int
+}
+type Entry struct {
+	t      int
+	actor  string
+	id     int
+	detail string
+}
+type Trans struct {
+	to       string
+	requires []string
+}
+type View struct {
+	name string
+	raw  string
+}
+
+type Tracker struct {
+	out      *strings.Builder
+	hasWf    bool
+	states   []string
+	initial  string
+	final    map[string]bool
+	trans    map[string][]Trans
+	issues   map[int]*Issue
+	nextID   int
+	clock    int
+	actor    string
+	today    string
+	log      []Entry
+	views    map[string]*View
+	viewList []string
+}
+
+type Err struct{ msg string }
+
+func fail(format string, a ...interface{}) { panic(Err{fmt.Sprintf(format, a...)}) }
+func (t *Tracker) p(format string, a ...interface{}) {
+	t.out.WriteString(fmt.Sprintf(format, a...) + "\n")
+}
+
+// ---------- tokenizer ----------
+func tokenize(s string) []string {
+	var toks []string
+	i := 0
+	for i < len(s) {
+		for i < len(s) && (s[i] == ' ' || s[i] == '\t') {
+			i++
+		}
+		if i >= len(s) {
+			break
+		}
+		var b strings.Builder
+		for i < len(s) && s[i] != ' ' && s[i] != '\t' {
+			if s[i] == '"' {
+				i++
+				closed := false
+				for i < len(s) {
+					if s[i] == '\\' && i+1 < len(s) && (s[i+1] == '"' || s[i+1] == '\\') {
+						b.WriteByte(s[i+1])
+						i += 2
+						continue
+					}
+					if s[i] == '"' {
+						closed = true
+						i++
+						break
+					}
+					b.WriteByte(s[i])
+					i++
+				}
+				if !closed {
+					fail("unterminated quote")
+				}
+				continue
+			}
+			b.WriteByte(s[i])
+			i++
+		}
+		toks = append(toks, b.String())
+	}
+	return toks
+}
+
+var reDate = regexp.MustCompile(`^(\d{4})-(\d{2})-(\d{2})$`)
+
+func validDate(s string) bool {
+	m := reDate.FindStringSubmatch(s)
+	if m == nil {
+		return false
+	}
+	y, _ := strconv.Atoi(m[1])
+	mo, _ := strconv.Atoi(m[2])
+	d, _ := strconv.Atoi(m[3])
+	if y < 1 || mo < 1 || mo > 12 || d < 1 {
+		return false
+	}
+	dim := []int{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+	if mo == 2 && (y%4 == 0 && (y%100 != 0 || y%400 == 0)) {
+		return d <= 29
+	}
+	return d <= dim[mo-1]
+}
+
+var reLabel = regexp.MustCompile(`^[a-z0-9_-]+$`)
+var reStateName = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+var reViewName = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
+
+func (t *Tracker) disp(v string) string {
+	if v == "" {
+		return "-"
+	}
+	return v
+}
+
+// ---------- workflow ----------
+var guardFields = map[string]bool{"assignee": true, "points": true, "due": true, "labels": true, "reporter": true}
+
+func (t *Tracker) defineWorkflow(lines []string) {
+	if len(t.issues) > 0 || t.nextID > 1 {
+		fail("workflow: cannot redefine after issues were created")
+	}
+	var states []string
+	seen := map[string]bool{}
+	reg := func(s string) {
+		if !reStateName.MatchString(s) {
+			fail("workflow: bad state name '%s'", s)
+		}
+		if !seen[s] {
+			seen[s] = true
+			states = append(states, s)
+		}
+	}
+	initial := ""
+	final := map[string]bool{}
+	trans := map[string][]Trans{}
+	count := 0
+	type tl struct {
+		src     string
+		entries []Trans
+	}
+	var tls []tl
+	var errMsg string
+	for _, raw := range lines {
+		ln := strings.TrimSpace(raw)
+		if ln == "" || strings.HasPrefix(ln, "#") {
+			continue
+		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if e, ok := r.(Err); ok {
+						if errMsg == "" {
+							errMsg = e.msg
+						}
+						return
+					}
+					panic(r)
+				}
+			}()
+			switch {
+			case strings.HasPrefix(ln, "initial:"):
+				v := strings.TrimSpace(ln[len("initial:"):])
+				if initial != "" {
+					fail("workflow: initial state defined twice")
+				}
+				reg(v)
+				initial = v
+			case strings.HasPrefix(ln, "final:"):
+				for _, v := range strings.Split(ln[len("final:"):], ",") {
+					v = strings.TrimSpace(v)
+					reg(v)
+					final[v] = true
+				}
+			case strings.Contains(ln, "->"):
+				k := strings.Index(ln, "->")
+				src := strings.TrimSpace(ln[:k])
+				reg(src)
+				var entries []Trans
+				for _, e := range strings.Split(ln[k+2:], ",") {
+					e = strings.TrimSpace(e)
+					f := strings.Fields(e)
+					if len(f) == 0 {
+						fail("workflow: bad line '%s'", ln)
+					}
+					tr := Trans{to: f[0]}
+					reg(f[0])
+					if len(f) == 3 && f[1] == "requires" {
+						for _, g := range strings.Split(f[2], "+") {
+							if !guardFields[g] {
+								fail("workflow: bad guard field '%s'", g)
+							}
+							tr.requires = append(tr.requires, g)
+						}
+					} else if len(f) != 1 {
+						fail("workflow: bad line '%s'", ln)
+					}
+					entries = append(entries, tr)
+				}
+				tls = append(tls, tl{src, entries})
+			default:
+				fail("workflow: bad line '%s'", ln)
+			}
+		}()
+		if errMsg != "" {
+			break
+		}
+	}
+	if errMsg != "" {
+		fail("%s", errMsg)
+	}
+	if initial == "" {
+		fail("workflow: initial state missing")
+	}
+	for _, x := range tls {
+		if final[x.src] {
+			fail("workflow: '%s' is final and cannot have transitions", x.src)
+		}
+		trans[x.src] = append(trans[x.src], x.entries...)
+		count += len(x.entries)
+	}
+	t.hasWf = true
+	t.states, t.initial, t.final, t.trans = states, initial, final, trans
+	t.p("workflow ok: %d states, %d transitions", len(states), count)
+}
+
+// ---------- issue mutation ----------
+func (t *Tracker) get(arg string) *Issue {
+	s := strings.TrimPrefix(arg, "#")
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 1 || !regexp.MustCompile(`^[0-9]+$`).MatchString(s) {
+		fail("bad issue id '%s'", arg)
+	}
+	is := t.issues[n]
+	if is == nil {
+		fail("no such issue #%d", n)
+	}
+	return is
+}
+
+func (t *Tracker) entry(is *Issue, detail string) {
+	t.log = append(t.log, Entry{t.clock, t.actor, is.id, detail})
+}
+
+func parseInt(s string) (int, bool) {
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 || n > 1000000 || (len(s) > 1 && s[0] == '0') || s[0] == '+' {
+		return 0, false
+	}
+	return n, true
+}
+
+func normLabels(v string) []string {
+	if v == "none" || v == "" {
+		return nil
+	}
+	set := map[string]bool{}
+	var res []string
+	for _, l := range strings.Split(v, ",") {
+		l = strings.ToLower(l)
+		if !reLabel.MatchString(l) {
+			fail("bad label '%s'", l)
+		}
+		if !set[l] {
+			set[l] = true
+			res = append(res, l)
+		}
+	}
+	sort.Strings(res)
+	return res
+}
+
+var fieldOrder = []string{"title", "priority", "assignee", "points", "due", "labels", "reporter"}
+
+type Change map[string]string
+
+func (t *Tracker) fieldVal(is *Issue, f string) string {
+	switch f {
+	case "title":
+		return is.title
+	case "priority":
+		return is.priority
+	case "assignee":
+		return is.assignee
+	case "reporter":
+		return is.reporter
+	case "points":
+		if is.hasPts {
+			return strconv.Itoa(is.points)
+		}
+		return ""
+	case "due":
+		return is.due
+	case "labels":
+		return strings.Join(is.labels, ",")
+	}
+	return ""
+}
+
+func (t *Tracker) validate(f, v string) {
+	switch f {
+	case "title":
+		if strings.TrimSpace(v) == "" {
+			fail("empty title")
+		}
+	case "priority":
+		if prioOrd(v) == 0 {
+			fail("bad priority '%s'", v)
+		}
+	case "points":
+		if v != "none" {
+			if _, ok := parseInt(v); !ok {
+				fail("bad points '%s'", v)
+			}
+		}
+	case "due":
+		if v != "none" && !validDate(v) {
+			fail("bad date '%s'", v)
+		}
+	case "labels":
+		normLabels(v)
+	case "assignee", "reporter":
+		if v == "" {
+			fail("empty %s", f)
+		}
+	}
+}
+
+func (t *Tracker) apply(is *Issue, ch Change) []string {
+	var details []string
+	for _, f := range fieldOrder {
+		v, ok := ch[f]
+		if !ok {
+			continue
+		}
+		old := t.fieldVal(is, f)
+		nv := v
+		switch f {
+		case "assignee", "reporter", "due":
+			if v == "none" {
+				nv = ""
+			}
+		case "points":
+			if v == "none" {
+				nv = ""
+			}
+		case "labels":
+			nv = strings.Join(normLabels(v), ",")
+		}
+		if old == nv {
+			continue
+		}
+		switch f {
+		case "title":
+			is.title = nv
+		case "priority":
+			is.priority = nv
+		case "assignee":
+			is.assignee = nv
+		case "reporter":
+			is.reporter = nv
+		case "due":
+			is.due = nv
+		case "points":
+			if nv == "" {
+				is.hasPts, is.points = false, 0
+			} else {
+				n, _ := strconv.Atoi(nv)
+				is.hasPts, is.points = true, n
+			}
+		case "labels":
+			is.labels = normLabels(nv)
+		}
+		details = append(details, fmt.Sprintf("%s: %s -> %s", f, t.disp(old), t.disp(nv)))
+	}
+	return details
+}
+
+func (t *Tracker) checkEditable(is *Issue) {
+	if t.final[is.state] {
+		fail("#%d is in final state '%s'", is.id, is.state)
+	}
+}
+
+func (t *Tracker) parseChanges(toks []string, allowTitleKey bool) Change {
+	ch := Change{}
+	for _, tk := range toks {
+		k := strings.Index(tk, "=")
+		if k <= 0 {
+			fail("expected field=value, got '%s'", tk)
+		}
+		f, v := tk[:k], tk[k+1:]
+		if f == "state" {
+			fail("use move to change state")
+		}
+		ok := false
+		for _, x := range fieldOrder {
+			if x == f {
+				ok = true
+			}
+		}
+		if !ok {
+			fail("unknown field '%s'", f)
+		}
+		t.validate(f, v)
+		ch[f] = v
+	}
+	return ch
+}
+
+func (t *Tracker) doCreate(toks []string) {
+	if !t.hasWf {
+		fail("no workflow defined")
+	}
+	if len(toks) < 1 {
+		fail("usage: create TITLE [field=value...]")
+	}
+	title := toks[0]
+	if strings.TrimSpace(title) == "" {
+		fail("empty title")
+	}
+	ch := t.parseChanges(toks[1:], false)
+	t.clock++
+	is := &Issue{id: t.nextID, title: title, state: t.initial, priority: "medium", reporter: "", created: t.clock, updated: t.clock}
+	is.reporter = t.actor
+	t.nextID++
+	t.issues[is.id] = is
+	t.entry(is, fmt.Sprintf("created \"%s\"", title))
+	// apply changes, but reporting them as part of creation entry
+	for _, d := range t.apply(is, ch) {
+		t.entry(is, d)
+	}
+	t.p("created #%d", is.id)
+}
+
+func (t *Tracker) doEdit(is *Issue, toks []string) {
+	t.checkEditable(is)
+	ch := t.parseChanges(toks, true)
+	if len(ch) == 0 {
+		fail("usage: edit ID field=value...")
+	}
+	snapshot := *is
+	t.clock++
+	ds := t.apply(is, ch)
+	if len(ds) == 0 {
+		t.clock--
+		*is = snapshot
+		t.p("#%d unchanged", is.id)
+		return
+	}
+	is.updated = t.clock
+	for _, d := range ds {
+		t.entry(is, d)
+	}
+	t.p("updated #%d", is.id)
+}
+
+func (t *Tracker) doLabel(is *Issue, toks []string) {
+	t.checkEditable(is)
+	if len(toks) == 0 {
+		fail("usage: label ID +label -label...")
+	}
+	set := map[string]bool{}
+	for _, l := range is.labels {
+		set[l] = true
+	}
+	for _, tk := range toks {
+		if tk == "" {
+			fail("bad label ''")
+		}
+		op := byte('+')
+		name := tk
+		if tk[0] == '+' || tk[0] == '-' {
+			op = tk[0]
+			name = tk[1:]
+		}
+		name = strings.ToLower(name)
+		if !reLabel.MatchString(name) {
+			fail("bad label '%s'", name)
+		}
+		if op == '+' {
+			set[name] = true
+		} else {
+			delete(set, name)
+		}
+	}
+	var ls []string
+	for l := range set {
+		ls = append(ls, l)
+	}
+	sort.Strings(ls)
+	t.doEdit(is, []string{"labels=" + orNone(strings.Join(ls, ","))})
+}
+
+func orNone(s string) string {
+	if s == "" {
+		return "none"
+	}
+	return s
+}
+
+func (t *Tracker) doMove(is *Issue, target string, comment string) {
+	if t.final[is.state] {
+		fail("#%d is in final state '%s'", is.id, is.state)
+	}
+	known := false
+	for _, s := range t.states {
+		if s == target {
+			known = true
+		}
+	}
+	if !known {
+		fail("unknown state '%s'", target)
+	}
+	if target == is.state {
+		fail("already in state '%s'", target)
+	}
+	var tr *Trans
+	for i := range t.trans[is.state] {
+		if t.trans[is.state][i].to == target {
+			tr = &t.trans[is.state][i]
+			break
+		}
+	}
+	if tr == nil {
+		fail("transition '%s -> %s' not allowed", is.state, target)
+	}
+	var missing []string
+	for _, g := range tr.requires {
+		if t.fieldVal(is, g) == "" {
+			missing = append(missing, g)
+		}
+	}
+	if len(missing) > 0 {
+		fail("cannot move #%d to %s: missing %s", is.id, target, strings.Join(missing, ", "))
+	}
+	t.clock++
+	old := is.state
+	is.state = target
+	is.updated = t.clock
+	t.entry(is, fmt.Sprintf("state: %s -> %s", old, target))
+	if comment != "" {
+		is.comments = append(is.comments, Comment{t.clock, t.actor, comment})
+		t.entry(is, "comment: "+comment)
+	}
+	t.p("moved #%d: %s -> %s", is.id, old, target)
+}
+
+// ---------- queries ----------
+type Pred func(is *Issue) bool
+
+type QTok struct {
+	kind  string // "(", ")", "word", "term"
+	text  string
+	field string
+	op    string
+	value string
+	quoted bool
+}
+
+var qops = []string{"!=", "<=", ">=", ":", "<", ">", "~"}
+
+func lexQuery(s string) []QTok {
+	var toks []QTok
+	i := 0
+	for i < len(s) {
+		c := s[i]
+		switch {
+		case c == ' ' || c == '\t':
+			i++
+		case c == '(' || c == ')':
+			toks = append(toks, QTok{kind: string(c), text: string(c)})
+			i++
+		default:
+			j := i
+			for j < len(s) && ((s[j] >= 'a' && s[j] <= 'z') || s[j] == '_') {
+				j++
+			}
+			field := s[i:j]
+			op := ""
+			if field != "" {
+				for _, o := range qops {
+					if strings.HasPrefix(s[j:], o) {
+						op = o
+						break
+					}
+				}
+			}
+			if op != "" {
+				k := j + len(op)
+				var val strings.Builder
+				quoted := false
+				if k < len(s) && s[k] == '"' {
+					quoted = true
+					k++
+					closed := false
+					for k < len(s) {
+						if s[k] == '\\' && k+1 < len(s) && (s[k+1] == '"' || s[k+1] == '\\') {
+							val.WriteByte(s[k+1])
+							k += 2
+							continue
+						}
+						if s[k] == '"' {
+							closed = true
+							k++
+							break
+						}
+						val.WriteByte(s[k])
+						k++
+					}
+					if !closed {
+						fail("query: unterminated quote")
+					}
+				} else {
+					for k < len(s) && s[k] != ' ' && s[k] != '\t' && s[k] != '(' && s[k] != ')' {
+						val.WriteByte(s[k])
+						k++
+					}
+				}
+				toks = append(toks, QTok{kind: "term", field: field, op: op, value: val.String(), quoted: quoted, text: s[i:k]})
+				i = k
+			} else {
+				k := i
+				for k < len(s) && s[k] != ' ' && s[k] != '\t' && s[k] != '(' && s[k] != ')' {
+					k++
+				}
+				toks = append(toks, QTok{kind: "word", text: s[i:k]})
+				i = k
+			}
+		}
+	}
+	return toks
+}
+
+type QParser struct {
+	t     *Tracker
+	toks  []QTok
+	i     int
+	views map[string]bool // views referenced
+}
+
+func (p *QParser) peek() *QTok {
+	if p.i < len(p.toks) {
+		return &p.toks[p.i]
+	}
+	return nil
+}
+
+func (t *Tracker) parseQuery(s string, refs map[string]bool) Pred {
+	toks := lexQuery(s)
+	if len(toks) == 0 {
+		return func(*Issue) bool { return true }
+	}
+	p := &QParser{t: t, toks: toks, views: refs}
+	pr := p.or()
+	if tk := p.peek(); tk != nil {
+		fail("query: unexpected token '%s'", tk.text)
+	}
+	return pr
+}
+
+func (p *QParser) or() Pred {
+	l := p.and()
+	for {
+		tk := p.peek()
+		if tk != nil && tk.kind == "word" && tk.text == "OR" {
+			p.i++
+			r := p.and()
+			a, b := l, r
+			l = func(is *Issue) bool { return a(is) || b(is) }
+			continue
+		}
+		return l
+	}
+}
+func (p *QParser) startsAtom() bool {
+	tk := p.peek()
+	if tk == nil {
+		return false
+	}
+	return tk.kind == "(" || tk.kind == "term" || (tk.kind == "word" && tk.text == "NOT")
+}
+func (p *QParser) and() Pred {
+	l := p.not()
+	for {
+		tk := p.peek()
+		if tk != nil && tk.kind == "word" && tk.text == "AND" {
+			p.i++
+			r := p.not()
+			a, b := l, r
+			l = func(is *Issue) bool { return a(is) && b(is) }
+			continue
+		}
+		if p.startsAtom() {
+			r := p.not()
+			a, b := l, r
+			l = func(is *Issue) bool { return a(is) && b(is) }
+			continue
+		}
+		return l
+	}
+}
+func (p *QParser) not() Pred {
+	tk := p.peek()
+	if tk != nil && tk.kind == "word" && tk.text == "NOT" {
+		p.i++
+		x := p.not()
+		return func(is *Issue) bool { return !x(is) }
+	}
+	return p.atom()
+}
+func (p *QParser) atom() Pred {
+	tk := p.peek()
+	if tk == nil {
+		fail("query: unexpected end of query")
+	}
+	switch tk.kind {
+	case "(":
+		p.i++
+		x := p.or()
+		c := p.peek()
+		if c == nil {
+			fail("query: unexpected end of query")
+		}
+		if c.kind != ")" {
+			fail("query: unexpected token '%s'", c.text)
+		}
+		p.i++
+		return x
+	case "term":
+		p.i++
+		return p.term(*tk)
+	}
+	fail("query: unexpected token '%s'", tk.text)
+	return nil
+}
+
+func eqci(a, b string) bool { return strings.ToLower(a) == strings.ToLower(b) }
+
+func cmpInt(a, b int, op string) bool {
+	switch op {
+	case ":":
+		return a == b
+	case "!=":
+		return a != b
+	case "<":
+		return a < b
+	case "<=":
+		return a <= b
+	case ">":
+		return a > b
+	}
+	return a >= b
+}
+
+func (p *QParser) term(tk QTok) Pred {
+	t := p.t
+	f, op, val := tk.field, tk.op, tk.value
+	badOp := func() { fail("query: bad operator '%s' for field '%s'", op, f) }
+	badVal := func(v string) { fail("query: bad value '%s' for field '%s'", v, f) }
+	alts := []string{val}
+	if !tk.quoted && strings.Contains(val, "|") && (op == ":" || op == "!=" || op == "~") {
+		alts = strings.Split(val, "|")
+	}
+	neg := op == "!="
+	anyOf := func(match func(v string) bool) bool {
+		for _, a := range alts {
+			if match(a) {
+				return true
+			}
+		}
+		return false
+	}
+	strField := func(get func(is *Issue) string) Pred {
+		if op != ":" && op != "!=" && op != "~" {
+			badOp()
+		}
+		return func(is *Issue) bool {
+			v := get(is)
+			var m bool
+			if op == "~" {
+				m = v != "" && anyOf(func(a string) bool { return strings.Contains(strings.ToLower(v), strings.ToLower(a)) })
+			} else {
+				m = anyOf(func(a string) bool {
+					if a == "none" {
+						return v == ""
+					}
+					return v != "" && eqci(v, a)
+				})
+				if neg {
+					m = !m
+				}
+			}
+			return m
+		}
+	}
+	numField := func(get func(is *Issue) (int, bool), allowNone bool) Pred {
+		if op == "~" {
+			badOp()
+		}
+		type alt struct {
+			none bool
+			n    int
+		}
+		var as []alt
+		for _, a := range alts {
+			if a == "none" && allowNone && (op == ":" || op == "!=") {
+				as = append(as, alt{none: true})
+				continue
+			}
+			n, ok := parseInt(a)
+			if !ok {
+				badVal(a)
+			}
+			as = append(as, alt{n: n})
+		}
+		if len(as) > 1 && op != ":" && op != "!=" {
+			badVal(val)
+		}
+		return func(is *Issue) bool {
+			v, has := get(is)
+			if op == ":" || op == "!=" {
+				m := false
+				for _, a := range as {
+					if a.none {
+						m = m || !has
+					} else {
+						m = m || (has && v == a.n)
+					}
+				}
+				if neg {
+					return !m
+				}
+				return m
+			}
+			return has && cmpInt(v, as[0].n, op)
+		}
+	}
+	switch f {
+	case "id":
+		return numField(func(is *Issue) (int, bool) { return is.id, true }, false)
+	case "created":
+		return numField(func(is *Issue) (int, bool) { return is.created, true }, false)
+	case "updated":
+		return numField(func(is *Issue) (int, bool) { return is.updated, true }, false)
+	case "points":
+		return numField(func(is *Issue) (int, bool) { return is.points, is.hasPts }, true)
+	case "title":
+		return strField(func(is *Issue) string { return is.title })
+	case "assignee":
+		return strField(func(is *Issue) string { return is.assignee })
+	case "reporter":
+		return strField(func(is *Issue) string { return is.reporter })
+	case "text":
+		if op != "~" {
+			badOp()
+		}
+		return func(is *Issue) bool {
+			return anyOf(func(a string) bool {
+				a = strings.ToLower(a)
+				if strings.Contains(strings.ToLower(is.title), a) {
+					return true
+				}
+				for _, c := range is.comments {
+					if strings.Contains(strings.ToLower(c.text), a) {
+						return true
+					}
+				}
+				return false
+			})
+		}
+	case "state":
+		if op != ":" && op != "!=" {
+			badOp()
+		}
+		for _, a := range alts {
+			known := false
+			for _, s := range t.states {
+				if s == a {
+					known = true
+				}
+			}
+			if !known {
+				badVal(a)
+			}
+		}
+		return func(is *Issue) bool {
+			m := anyOf(func(a string) bool { return is.state == a })
+			if neg {
+				return !m
+			}
+			return m
+		}
+	case "priority":
+		if op == "~" {
+			badOp()
+		}
+		var ords []int
+		for _, a := range alts {
+			o := prioOrd(a)
+			if o == 0 {
+				badVal(a)
+			}
+			ords = append(ords, o)
+		}
+		if len(ords) > 1 && op != ":" && op != "!=" {
+			badVal(val)
+		}
+		return func(is *Issue) bool {
+			po := prioOrd(is.priority)
+			if op == ":" || op == "!=" {
+				m := false
+				for _, o := range ords {
+					m = m || po == o
+				}
+				if neg {
+					return !m
+				}
+				return m
+			}
+			return cmpInt(po, ords[0], op)
+		}
+	case "due":
+		if op == "~" {
+			badOp()
+		}
+		for _, a := range alts {
+			if !(a == "none" && (op == ":" || op == "!=")) && !validDate(a) {
+				badVal(a)
+			}
+		}
+		if len(alts) > 1 && op != ":" && op != "!=" {
+			badVal(val)
+		}
+		return func(is *Issue) bool {
+			if op == ":" || op == "!=" {
+				m := anyOf(func(a string) bool {
+					if a == "none" {
+						return is.due == ""
+					}
+					return is.due == a
+				})
+				if neg {
+					return !m
+				}
+				return m
+			}
+			if is.due == "" {
+				return false
+			}
+			c := strings.Compare(is.due, val)
+			return cmpInt(c, 0, op)
+		}
+	case "label", "labels":
+		if op != ":" && op != "!=" && op != "~" {
+			badOp()
+		}
+		return func(is *Issue) bool {
+			m := anyOf(func(a string) bool {
+				if a == "none" && op != "~" {
+					return len(is.labels) == 0
+				}
+				for _, l := range is.labels {
+					if op == "~" {
+						if strings.Contains(l, strings.ToLower(a)) {
+							return true
+						}
+					} else if l == strings.ToLower(a) {
+						return true
+					}
+				}
+				return false
+			})
+			if neg {
+				return !m
+			}
+			return m
+		}
+	case "is":
+		if op != ":" {
+			badOp()
+		}
+		for _, a := range alts {
+			switch a {
+			case "open", "final", "overdue", "unassigned":
+			default:
+				badVal(a)
+			}
+		}
+		return func(is *Issue) bool {
+			return anyOf(func(a string) bool {
+				switch a {
+				case "open":
+					return !t.final[is.state]
+				case "final":
+					return t.final[is.state]
+				case "overdue":
+					return is.due != "" && is.due < t.today && !t.final[is.state]
+				}
+				return is.assignee == ""
+			})
+		}
+	case "has":
+		if op != ":" {
+			badOp()
+		}
+		for _, a := range alts {
+			switch a {
+			case "assignee", "due", "points", "labels", "comments", "reporter":
+			default:
+				badVal(a)
+			}
+		}
+		return func(is *Issue) bool {
+			return anyOf(func(a string) bool {
+				switch a {
+				case "assignee":
+					return is.assignee != ""
+				case "due":
+					return is.due != ""
+				case "points":
+					return is.hasPts
+				case "labels":
+					return len(is.labels) > 0
+				case "comments":
+					return len(is.comments) > 0
+				}
+				return is.reporter != ""
+			})
+		}
+	case "view":
+		if op != ":" {
+			badOp()
+		}
+		v := t.views[val]
+		if v == nil {
+			fail("query: unknown view '%s'", val)
+		}
+		if p.views != nil {
+			p.views[val] = true
+		}
+		filt, _, _, _ := t.splitQuery(v.raw)
+		sub := t.parseQuery(filt, p.views)
+		return sub
+	}
+	fail("query: unknown field '%s'", f)
+	return nil
+}
+
+var reLimit = regexp.MustCompile(`(^|\s)limit\s+(\S+)\s*$`)
+var reSort = regexp.MustCompile(`(^|\s)sort\s+(.*)$`)
+
+func (t *Tracker) splitQuery(raw string) (filter string, sortSpec string, limit int, hasLimit bool) {
+	s := strings.TrimSpace(raw)
+	limit = -1
+	if m := reLimit.FindStringSubmatch(s); m != nil {
+		n, ok := parseInt(m[2])
+		if !ok {
+			fail("bad limit '%s'", m[2])
+		}
+		limit, hasLimit = n, true
+		s = strings.TrimSpace(s[:len(s)-len(m[0])])
+	}
+	if m := reSort.FindStringSubmatchIndex(s); m != nil {
+		sortSpec = strings.TrimSpace(s[m[4]:m[5]])
+		s = strings.TrimSpace(s[:m[2]])
+		if sortSpec == "" {
+			fail("bad sort ''")
+		}
+	}
+	return s, sortSpec, limit, hasLimit
+}
+
+func (t *Tracker) sortKey(f string, is *Issue) (string, int, bool) {
+	// returns (string key, int key, present); numeric when string key empty and f numeric
+	switch f {
+	case "id":
+		return "", is.id, true
+	case "created":
+		return "", is.created, true
+	case "updated":
+		return "", is.updated, true
+	case "priority":
+		return "", prioOrd(is.priority), true
+	case "points":
+		return "", is.points, is.hasPts
+	case "state":
+		for i, s := range t.states {
+			if s == is.state {
+				return "", i, true
+			}
+		}
+	case "title":
+		return strings.ToLower(is.title), 0, true
+	case "assignee":
+		return strings.ToLower(is.assignee), 0, is.assignee != ""
+	case "reporter":
+		return strings.ToLower(is.reporter), 0, is.reporter != ""
+	case "due":
+		return is.due, 0, is.due != ""
+	}
+	return "", 0, false
+}
+
+var sortFields = map[string]bool{"id": true, "created": true, "updated": true, "priority": true, "points": true, "state": true, "title": true, "assignee": true, "reporter": true, "due": true}
+
+func (t *Tracker) runQuery(filter, sortSpec string, limit int) []*Issue {
+	pred := t.parseQuery(filter, nil)
+	type sf struct {
+		f    string
+		desc bool
+	}
+	var sfs []sf
+	if sortSpec != "" {
+		for _, tk := range strings.FieldsFunc(sortSpec, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' }) {
+			desc := false
+			if strings.HasPrefix(tk, "-") {
+				desc = true
+				tk = tk[1:]
+			}
+			if !sortFields[tk] {
+				fail("bad sort field '%s'", tk)
+			}
+			sfs = append(sfs, sf{tk, desc})
+		}
+	}
+	var res []*Issue
+	for _, is := range t.issues {
+		if pred(is) {
+			res = append(res, is)
+		}
+	}
+	sort.Slice(res, func(i, j int) bool {
+		a, b := res[i], res[j]
+		for _, s := range sfs {
+			as, an, ap := t.sortKey(s.f, a)
+			bs, bn, bp := t.sortKey(s.f, b)
+			c := 0
+			switch {
+			case ap && !bp:
+				c = -1
+			case !ap && bp:
+				c = 1
+			case ap && bp:
+				if as != bs {
+					if as < bs {
+						c = -1
+					} else {
+						c = 1
+					}
+				} else if an != bn {
+					if an < bn {
+						c = -1
+					} else {
+						c = 1
+					}
+				}
+			}
+			if s.desc {
+				c = -c
+			}
+			if c != 0 {
+				return c < 0
+			}
+		}
+		return a.id < b.id
+	})
+	if limit >= 0 && len(res) > limit {
+		res = res[:limit]
+	}
+	return res
+}
+
+func (t *Tracker) printIssues(res []*Issue) {
+	for _, is := range res {
+		pts := "-"
+		if is.hasPts {
+			pts = strconv.Itoa(is.points)
+		}
+		t.p("#%d | %s | %s | %s | %s | %s | %s | %s", is.id, is.state, is.priority, t.disp(is.assignee), pts, t.disp(is.due), t.disp(strings.Join(is.labels, ",")), is.title)
+	}
+	if len(res) == 1 {
+		t.p("(1 issue)")
+	} else {
+		t.p("(%d issues)", len(res))
+	}
+}
+
+func (t *Tracker) doList(raw string) {
+	filter, sortSpec, limit, _ := t.splitQuery(raw)
+	t.printIssues(t.runQuery(filter, sortSpec, limit))
+}
+
+// ---------- views ----------
+func (t *Tracker) viewDeps(raw string) map[string]bool {
+	refs := map[string]bool{}
+	filt, _, _, _ := t.splitQuery(raw)
+	t.parseQuery(filt, refs)
+	return refs
+}
+
+func (t *Tracker) reaches(from, target string, seen map[string]bool) bool {
+	if from == target {
+		return true
+	}
+	if seen[from] {
+		return false
+	}
+	seen[from] = true
+	v := t.views[from]
+	if v == nil {
+		return false
+	}
+	for r := range t.viewDeps(v.raw) {
+		if t.reaches(r, target, seen) {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *Tracker) doView(args []string, rest string) {
+	if len(args) == 0 {
+		fail("usage: view save|run|list|show|delete")
+	}
+	sub := args[0]
+	restAfter := func(n int) string {
+		s := strings.TrimSpace(rest)
+		for i := 0; i < n; i++ {
+			s = strings.TrimSpace(s[len(strings.Fields(s)[0]):])
+		}
+		return s
+	}
+	switch sub {
+	case "save":
+		if len(args) < 2 {
+			fail("usage: view save NAME QUERY")
+		}
+		name := args[1]
+		if !reViewName.MatchString(name) {
+			fail("bad view name '%s'", name)
+		}
+		raw := restAfter(2)
+		filt, ss, _, _ := t.splitQuery(raw)
+		refs := map[string]bool{}
+		t.parseQuery(filt, refs)
+		for _, tk := range strings.FieldsFunc(ss, func(r rune) bool { return r == ',' || r == ' ' }) {
+			if !sortFields[strings.TrimPrefix(tk, "-")] {
+				fail("bad sort field '%s'", strings.TrimPrefix(tk, "-"))
+			}
+		}
+		for r := range refs {
+			if t.reaches(r, name, map[string]bool{}) {
+				fail("view '%s' would reference itself", name)
+			}
+		}
+		if t.views[name] == nil {
+			t.viewList = append(t.viewList, name)
+		}
+		t.views[name] = &View{name, raw}
+		t.p("saved view %s", name)
+	case "run":
+		if len(args) < 2 {
+			fail("usage: view run NAME [sort FIELDS] [limit N]")
+		}
+		v := t.views[args[1]]
+		if v == nil {
+			fail("unknown view '%s'", args[1])
+		}
+		filt, ss, lim, hasLim := t.splitQuery(v.raw)
+		extra := restAfter(2)
+		if extra != "" {
+			f2, s2, l2, h2 := t.splitQuery(extra)
+			if f2 != "" {
+				fail("unexpected '%s'", f2)
+			}
+			if s2 != "" {
+				ss = s2
+			}
+			if h2 {
+				lim, hasLim = l2, true
+			}
+		}
+		_ = hasLim
+		t.printIssues(t.runQuery(filt, ss, lim))
+	case "list":
+		if len(t.views) == 0 {
+			t.p("(no views)")
+			return
+		}
+		var names []string
+		for n := range t.views {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		for _, n := range names {
+			t.p("%s: %s", n, t.views[n].raw)
+		}
+	case "show":
+		if len(args) != 2 {
+			fail("usage: view show NAME")
+		}
+		v := t.views[args[1]]
+		if v == nil {
+			fail("unknown view '%s'", args[1])
+		}
+		t.p("%s: %s", v.name, v.raw)
+	case "delete":
+		if len(args) != 2 {
+			fail("usage: view delete NAME")
+		}
+		if t.views[args[1]] == nil {
+			fail("unknown view '%s'", args[1])
+		}
+		var users []string
+		for n, v := range t.views {
+			if n != args[1] && t.viewDeps(v.raw)[args[1]] {
+				users = append(users, n)
+			}
+		}
+		if len(users) > 0 {
+			sort.Strings(users)
+			fail("view '%s' is used by '%s'", args[1], users[0])
+		}
+		delete(t.views, args[1])
+		t.p("deleted view %s", args[1])
+	default:
+		fail("usage: view save|run|list|show|delete")
+	}
+}
+
+// ---------- reports ----------
+func (t *Tracker) sortedIssues() []*Issue {
+	var res []*Issue
+	for _, is := range t.issues {
+		res = append(res, is)
+	}
+	sort.Slice(res, func(i, j int) bool { return res[i].id < res[j].id })
+	return res
+}
+
+func (t *Tracker) doReport(args []string, rest string) {
+	if len(args) == 0 {
+		fail("usage: report summary|workload|labels|timeline")
+	}
+	switch args[0] {
+	case "summary":
+		all := t.sortedIssues()
+		open, fin := 0, 0
+		byState := map[string]int{}
+		byPrio := map[string]int{}
+		unassigned, overdue, pts := 0, 0, 0
+		for _, is := range all {
+			byState[is.state]++
+			byPrio[is.priority]++
+			if t.final[is.state] {
+				fin++
+				continue
+			}
+			open++
+			if is.assignee == "" {
+				unassigned++
+			}
+			if is.due != "" && is.due < t.today {
+				overdue++
+			}
+			if is.hasPts {
+				pts += is.points
+			}
+		}
+		t.p("issues: %d (open %d, final %d)", len(all), open, fin)
+		t.p("by state:")
+		for _, s := range t.states {
+			t.p("  %s: %d", s, byState[s])
+		}
+		t.p("by priority:")
+		for i := len(priorities) - 1; i >= 0; i-- {
+			t.p("  %s: %d", priorities[i], byPrio[priorities[i]])
+		}
+		t.p("unassigned: %d", unassigned)
+		t.p("overdue: %d", overdue)
+		t.p("open points: %d", pts)
+	case "workload":
+		type w struct {
+			name   string
+			n, pts int
+		}
+		m := map[string]*w{}
+		un := &w{name: "unassigned"}
+		for _, is := range t.sortedIssues() {
+			if t.final[is.state] {
+				continue
+			}
+			x := un
+			if is.assignee != "" {
+				k := strings.ToLower(is.assignee)
+				if m[k] == nil {
+					m[k] = &w{name: is.assignee}
+				}
+				x = m[k]
+			}
+			x.n++
+			if is.hasPts {
+				x.pts += is.points
+			}
+		}
+		var ws []*w
+		for _, x := range m {
+			ws = append(ws, x)
+		}
+		sort.Slice(ws, func(i, j int) bool {
+			if ws[i].pts != ws[j].pts {
+				return ws[i].pts > ws[j].pts
+			}
+			if ws[i].n != ws[j].n {
+				return ws[i].n > ws[j].n
+			}
+			return strings.ToLower(ws[i].name) < strings.ToLower(ws[j].name)
+		})
+		if un.n > 0 {
+			ws = append(ws, un)
+		}
+		if len(ws) == 0 {
+			t.p("(no open issues)")
+			return
+		}
+		for _, x := range ws {
+			word := "issues"
+			if x.n == 1 {
+				word = "issue"
+			}
+			t.p("%s: %d %s, %d points", x.name, x.n, word, x.pts)
+		}
+	case "labels":
+		filt := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(rest), "labels"))
+		res := t.runQuery(filt, "", -1)
+		cnt := map[string]int{}
+		for _, is := range res {
+			for _, l := range is.labels {
+				cnt[l]++
+			}
+		}
+		var ls []string
+		for l := range cnt {
+			ls = append(ls, l)
+		}
+		sort.Slice(ls, func(i, j int) bool {
+			if cnt[ls[i]] != cnt[ls[j]] {
+				return cnt[ls[i]] > cnt[ls[j]]
+			}
+			return ls[i] < ls[j]
+		})
+		if len(ls) == 0 {
+			t.p("(no labels)")
+		}
+		for _, l := range ls {
+			t.p("%s: %d", l, cnt[l])
+		}
+	case "timeline":
+		if len(args) != 2 {
+			fail("usage: report timeline ID")
+		}
+		is := t.get(args[1])
+		type iv struct {
+			state string
+			from  int
+		}
+		ivs := []iv{{t.initial, is.created}}
+		for _, e := range t.log {
+			if e.id == is.id && strings.HasPrefix(e.detail, "state: ") {
+				k := strings.Index(e.detail, " -> ")
+				ivs = append(ivs, iv{e.detail[k+4:], e.t})
+			}
+		}
+		for i, x := range ivs {
+			end := t.clock
+			if i+1 < len(ivs) {
+				end = ivs[i+1].from
+			}
+			t.p("%s: t=%d..%d (%d)", x.state, x.from, end, end-x.from)
+		}
+	default:
+		fail("usage: report summary|workload|labels|timeline")
+	}
+}
+
+// ---------- commands ----------
+func (t *Tracker) show(is *Issue) {
+	pts := "-"
+	if is.hasPts {
+		pts = strconv.Itoa(is.points)
+	}
+	t.p("#%d %s", is.id, is.title)
+	t.p("  state: %s", is.state)
+	t.p("  priority: %s", is.priority)
+	t.p("  assignee: %s", t.disp(is.assignee))
+	t.p("  points: %s", pts)
+	t.p("  due: %s", t.disp(is.due))
+	if len(is.labels) == 0 {
+		t.p("  labels: -")
+	} else {
+		t.p("  labels: %s", strings.Join(is.labels, ", "))
+	}
+	t.p("  reporter: %s", t.disp(is.reporter))
+	t.p("  created: t=%d, updated: t=%d", is.created, is.updated)
+	t.p("  comments: %d", len(is.comments))
+	for _, c := range is.comments {
+		t.p("    [t=%d %s] %s", c.t, c.actor, c.text)
+	}
+}
+
+func (t *Tracker) doBulk(rest string) {
+	k := strings.Index(" "+rest+" ", " where ")
+	if k < 0 {
+		fail("usage: bulk ACTION... where QUERY")
+	}
+	actionText := strings.TrimSpace((" " + rest + " ")[:k])
+	query := strings.TrimSpace((" " + rest + " ")[k+len(" where "):])
+	toks := tokenize(actionText)
+	if len(toks) == 0 {
+		fail("usage: bulk ACTION... where QUERY")
+	}
+	switch toks[0] {
+	case "move":
+		if len(toks) != 2 {
+			fail("usage: bulk move STATE where QUERY")
+		}
+	case "assign":
+		if len(toks) != 2 {
+			fail("usage: bulk assign NAME where QUERY")
+		}
+	case "label":
+		if len(toks) < 2 {
+			fail("usage: bulk label +label... where QUERY")
+		}
+	case "set":
+		if len(toks) < 2 {
+			fail("usage: bulk set field=value... where QUERY")
+		}
+	default:
+		fail("unknown bulk action '%s'", toks[0])
+	}
+	res := t.runQuery(query, "", -1)
+	ok, bad := 0, 0
+	for _, is := range res {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if e, isE := r.(Err); isE {
+						t.p("#%d error: %s", is.id, e.msg)
+						bad++
+						return
+					}
+					panic(r)
+				}
+			}()
+			switch toks[0] {
+			case "move":
+				t.doMove(is, toks[1], "")
+			case "assign":
+				t.doEdit(is, []string{"assignee=" + toks[1]})
+			case "label":
+				t.doLabel(is, toks[1:])
+			case "set":
+				t.doEdit(is, toks[1:])
+			}
+			ok++
+		}()
+	}
+	t.p("bulk: %d ok, %d failed", ok, bad)
+}
+
+func (t *Tracker) exec(cmd string, args []string, rest string, lines []string, pos *int) {
+	switch cmd {
+	case "workflow":
+		var blk []string
+		for *pos < len(lines) {
+			l := lines[*pos]
+			*pos++
+			if strings.TrimSpace(l) == "end" {
+				break
+			}
+			blk = append(blk, l)
+		}
+		t.defineWorkflow(blk)
+	case "actor":
+		if len(args) != 1 {
+			fail("usage: actor NAME")
+		}
+		t.actor = args[0]
+		t.p("actor is %s", args[0])
+	case "today":
+		if len(args) != 1 || !validDate(args[0]) {
+			if len(args) == 1 {
+				fail("bad date '%s'", args[0])
+			}
+			fail("usage: today DATE")
+		}
+		t.today = args[0]
+		t.p("today is %s", args[0])
+	case "create":
+		toks := tokenize(rest)
+		t.doCreate(toks)
+	case "edit":
+		toks := tokenize(rest)
+		if len(toks) < 1 {
+			fail("usage: edit ID field=value...")
+		}
+		is := t.get(toks[0])
+		t.doEdit(is, toks[1:])
+	case "label":
+		toks := tokenize(rest)
+		if len(toks) < 1 {
+			fail("usage: label ID +label -label...")
+		}
+		is := t.get(toks[0])
+		t.doLabel(is, toks[1:])
+	case "assign":
+		toks := tokenize(rest)
+		if len(toks) != 2 {
+			fail("usage: assign ID NAME")
+		}
+		is := t.get(toks[0])
+		t.doEdit(is, []string{"assignee=" + toks[1]})
+	case "move":
+		if len(args) < 2 {
+			fail("usage: move ID STATE [comment...]")
+		}
+		is := t.get(args[0])
+		comment := strings.TrimSpace(strings.TrimSpace(strings.TrimSpace(rest)[len(args[0]):])[len(args[1]):])
+		t.doMove(is, args[1], comment)
+	case "comment":
+		if len(args) < 2 {
+			fail("usage: comment ID TEXT")
+		}
+		is := t.get(args[0])
+		text := strings.TrimSpace(strings.TrimSpace(rest)[len(args[0]):])
+		t.clock++
+		is.comments = append(is.comments, Comment{t.clock, t.actor, text})
+		is.updated = t.clock
+		t.entry(is, "comment: "+text)
+		t.p("commented #%d", is.id)
+	case "delete":
+		if len(args) != 1 {
+			fail("usage: delete ID")
+		}
+		is := t.get(args[0])
+		t.clock++
+		t.entry(is, "deleted")
+		delete(t.issues, is.id)
+		t.p("deleted #%d", is.id)
+	case "show":
+		if len(args) != 1 {
+			fail("usage: show ID")
+		}
+		t.show(t.get(args[0]))
+	case "list":
+		t.doList(rest)
+	case "view":
+		t.doView(args, rest)
+	case "report":
+		t.doReport(args, rest)
+	case "bulk":
+		t.doBulk(rest)
+	case "log":
+		var id = -1
+		tail := -1
+		a := args
+		if len(a) >= 1 && a[0] != "tail" {
+			id = t.getLogID(a[0])
+			a = a[1:]
+		}
+		if len(a) == 2 && a[0] == "tail" {
+			n, ok := parseInt(a[1])
+			if !ok {
+				fail("bad tail '%s'", a[1])
+			}
+			tail = n
+			a = nil
+		}
+		if len(a) != 0 {
+			fail("usage: log [ID] [tail N]")
+		}
+		var es []Entry
+		for _, e := range t.log {
+			if id < 0 || e.id == id {
+				es = append(es, e)
+			}
+		}
+		if tail >= 0 && len(es) > tail {
+			es = es[len(es)-tail:]
+		}
+		if len(es) == 0 {
+			t.p("(no log entries)")
+		}
+		for _, e := range es {
+			t.p("t=%d %s #%d %s", e.t, e.actor, e.id, e.detail)
+		}
+	default:
+		fail("unknown command '%s'", cmd)
+	}
+}
+
+func (t *Tracker) getLogID(arg string) int {
+	s := strings.TrimPrefix(arg, "#")
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 1 || !regexp.MustCompile(`^[0-9]+$`).MatchString(s) {
+		fail("bad issue id '%s'", arg)
+	}
+	if n >= t.nextID {
+		fail("no such issue #%d", n)
+	}
+	return n
+}
+
+func main() {
+	data, _ := io.ReadAll(bufio.NewReader(os.Stdin))
+	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	var out strings.Builder
+	defer func() { os.Stdout.WriteString(out.String()) }()
+	t := &Tracker{out: &out, issues: map[int]*Issue{}, nextID: 1, actor: "system", today: "1970-01-01", views: map[string]*View{}, final: map[string]bool{}, trans: map[string][]Trans{}}
+	pos := 0
+	for pos < len(lines) {
+		ln := strings.TrimRight(lines[pos], " \t")
+		pos++
+		tr := strings.TrimSpace(ln)
+		if tr == "" || strings.HasPrefix(tr, "#") {
+			continue
+		}
+		out.WriteString("> " + ln + "\n")
+		f := strings.Fields(tr)
+		rest := strings.TrimSpace(tr[len(f[0]):])
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if e, ok := r.(Err); ok {
+						out.WriteString("error: " + e.msg + "\n")
+						return
+					}
+					panic(r)
+				}
+			}()
+			t.exec(f[0], f[1:], rest, lines, &pos)
+		}()
+	}
+}

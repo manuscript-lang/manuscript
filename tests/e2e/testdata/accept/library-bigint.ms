@@ -14,14 +14,14 @@ fn verify_bigint() -> Result[Unit, BigIntError]:
     )
     if not (
         (
-            (large).multiply(right: large)
+            (large).multiply(other: large)
         ).to_string(radix: 10) == "340282366920938463463374607431768211456"
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 test "large integers are exact":
-    let expected: Result[Unit, BigIntError] = ok(value: unit)
+    let expected: Result[Unit, BigIntError] = ok(unit)
     if not (verify_bigint() == expected):
         return panic(message: "check failed")

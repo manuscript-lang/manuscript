@@ -1,0 +1,17 @@
+[
+ {
+  "name": "basic",
+  "stdin": ".users | map(select(.age >= 18) | {name, adult: true})\n{\"users\":[{\"name\":\"A\",\"age\":20},{\"name\":\"B\",\"age\":10},{\"name\":\"C\",\"age\":33}]}\n",
+  "stdout": "[{\"name\":\"A\",\"adult\":true},{\"name\":\"C\",\"adult\":true}]\n"
+ },
+ {
+  "name": "reduce-and-format",
+  "stdin": "reduce .[] as $x ({}; .[$x.k] += $x.v) | to_entries[] | \"\\(.key)=\\(.value)\"\n[{\"k\":\"a\",\"v\":1},{\"k\":\"b\",\"v\":2},{\"k\":\"a\",\"v\":3}]\n",
+  "stdout": "\"a=4\"\n\"b=2\"\n"
+ },
+ {
+  "name": "errors",
+  "stdin": "-r .[] | if type == \"string\" then ascii_upcase else error(\"bad: \\(. | tojson)\") end\n[\"x\",\"y\"] [1] [\"z\"]\n",
+  "stdout": "X\nY\nerror: bad: 1\nZ\n"
+ }
+]

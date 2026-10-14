@@ -19,11 +19,30 @@ Types, interfaces, module functions, and imported symbols share one ordinary mod
 
 The intrinsic core type names are only `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. They cover primitive literals, ordinary arithmetic, and function/control-flow typing. The source-backed standard interfaces `Equal` and `Hashable` also have fixed identities; importing them explicitly is permitted. A module declaration, import, or type parameter cannot redefine these names. They are resolved names rather than lexical keywords. Ordinary local bindings may shadow outer names, but a shadowed value name cannot be used as a type.
 
-All other standard declarations are explicit imports from the compiler-supplied `@std` directory, including `Decimal`, `Bytes`, collections, `Optional`, `Result`, `Closeable`, and runtime/host APIs. See [standard imports](../../standard-library/imports.md) and the [API reference](../../standard-library/reference/_index.md) for their import paths. These names are ordinary exports: without an import, a module may declare its own `Result`, `List`, or `TaskGroup`. Import/declaration collisions still fail. Compiler support follows the canonical standard declaration identity, never its spelling. Optional/Result case shorthand becomes visible when its alternative type is imported and follows ordinary lookup and ambiguity rules; qualify `Result[T, E].error` when a local spelling shadows it.
+`Optional`, `Result`, `Error`, `List`, `Map`, and `Set` are source-backed standard declarations in the prelude. They need no imports. Their cases (`some`, `none`, `ok`, and `error`) follow ordinary lookup and ambiguity rules; qualify `Result[T, E].error` when a local spelling shadows it. Explicit imports from `@std/optional.ms`, `@std/result.ms`, `@std/errors.ms`, and `@std/collections.ms` remain supported. A module declaration or import with one of these type names selects that identity instead of the prelude type; import/declaration collisions still fail.
 
-An unqualified case shorthand is considered only when ordinary lexical name lookup finds no binding or declaration of that name. The candidate cases come from visible alternative types declared in the module or imported by name. Exactly one candidate is required; an expected type cannot choose among multiple candidates. `Type.Case` explicitly selects the nominal alternative. Match-pattern case lookup uses the scrutinee type, as specified by [pattern matching](../control-flow/pattern-matching.md).
+Other standard declarations are explicit imports from the compiler-supplied `@std` directory, including `Decimal`, `Bytes`, collection builders, `Closeable`, and runtime/host APIs. See [standard imports](../../standard-library/imports.md) and the [API reference](../../standard-library/reference/_index.md) for their import paths. Compiler support follows the canonical standard declaration identity, never its spelling.
 
-Import renaming, namespace imports, re-exports, and wildcard imports have no syntax. A dotted type path does not create a module namespace; callers import each needed exported type by its own name. Qualified alternative constructors remain supported. Module-level executable statements and bindings are rejected; local-value examples elsewhere are function-body fragments.
+An unqualified case shorthand is considered only when ordinary lexical name lookup finds no binding or declaration of that name. The candidate cases come from visible alternative types from the prelude, declared in the module, or imported by name. Exactly one candidate is required; an expected type cannot choose among multiple candidates. `Type.Case` explicitly selects the nominal alternative. Match-pattern case lookup uses the scrutinee type, as specified by [pattern matching](../control-flow/pattern-matching.md).
+
+Import renaming, namespace imports, re-exports, and wildcard imports have no syntax. A dotted type path does not create a module namespace; callers import each needed exported type by its own name. Qualified alternative constructors remain supported. Module-level executable statements and `var` bindings are rejected; local-value examples elsewhere are function-body fragments. A module-level `let` declares a [constant](#constants).
+
+## Constants
+
+A module-level `let` names a value that every function in the module can use. Add `export` to share it with other modules.
+
+```manuscript
+export let MAX_ITEMS = 100
+let NAMES: List[String] = ["Ada", "Grace"]
+let LIMIT = MAX_ITEMS * 2
+
+fn is_full(count: Int) -> Bool:
+    return count >= LIMIT
+```
+
+The type comes from the annotation or the initializer. The initializer is a constant expression: literals, text with constant interpolations, operators, list and map literals, payloadless cases such as `none` or `State.Ready`, and other constants. Calls, constructors, functions, and `match` belong in a function. A constant that depends on itself is rejected.
+
+A constant has no storage and no initialization order. Each use evaluates the initializer, as if the value were written at that place, so a list constant always starts as a fresh list and changing a copy never affects the constant or another user. A local binding or parameter with the same name shadows the constant. Constants cannot be assigned, and `main` must be a function.
 
 ## A visible contract
 
@@ -52,7 +71,7 @@ type PrivateToken:
 
 # Rejected: callers cannot name the internal result type.
 export fn issue() -> PrivateToken:
-    return PrivateToken(value: "token")
+    return PrivateToken("token")
 ```
 
 Exporting a record exposes every field and its constructor; exporting an alternative exposes every case and payload field; exporting an `interface` exposes every operation. Opaque exports and selective member visibility are unsupported. See [public data surfaces](../types/records.md#public-data-surfaces).
@@ -63,11 +82,10 @@ An `impl` in a source type's defining module becomes available wherever that typ
 
 ```manuscript
 import { List, Map } from "@std/collections.ms"
-import Result from "@std/result.ms"
 import TaskGroup from "@std/tasks.ms"
 ```
 
-`@std` is always available without an `[aliases]` entry and cannot be overridden. Importing one export does not bring its signature's other type names into scope. For example, importing TaskGroup permits constructing a group and matching inferred join results, but writing `Result` or `ExecutionError` in an annotation requires their own imports. Importing a contract supplies its interface. Separately imported host accessors return service values when called.
+`@std` is always available without an `[aliases]` entry and cannot be overridden. Importing one export does not bring its signature's other type names into scope. For example, importing TaskGroup permits constructing a group and matching inferred join results, but writing `ExecutionError` in an annotation requires its own import; `Result` is already in the prelude. Importing a contract supplies its interface. Separately imported host accessors return service values when called.
 
 ## Optional aliases
 

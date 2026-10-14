@@ -6,7 +6,7 @@
   "publisher": "manuscript-lang",
   "license": "UNLICENSED",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.91.0"
   },
   "main": "./dist/extension.js",
   "categories": [
@@ -45,11 +45,6 @@
           "type": "string",
           "default": "ms",
           "description": "Path to the Manuscript compiler and language server."
-        },
-        "manuscript.delvePath": {
-          "type": "string",
-          "default": "dlv",
-          "description": "Path to Delve for native source debugging."
         }
       }
     },
@@ -183,10 +178,10 @@
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^10.1.2"
   },
   "devDependencies": {
-    "@vscode/vsce": "^3.2.2",
+    "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2"
   },
   "capabilities": {

@@ -20,7 +20,7 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Bound](core-language/types/generics.md) | A requirement on a type parameter, such as supporting comparison or supplying a particular operation. |
 | [Equal](core-language/types/equality-and-hashing.md) | A standard interface for comparing values with `==`, `!=`, or `equals`. Built-in data compares by contents; explicit implementations can select domain identity. |
 | [Hashable](core-language/types/equality-and-hashing.md) | A standard interface for computing lookup hashes. Map keys and set elements must also implement Equal. |
-| [Intrinsic / prelude](standard-library/imports.md) | The small set of types and standard equality interfaces available without imports. |
+| [Intrinsic / prelude](standard-library/imports.md) | Types and interfaces available without imports, including Optional, Result, Error, and the standard equality interfaces. |
 | [Result](core-language/errors/results.md) | Either a success value or an expected error value. Callers can handle or forward the error. |
 | [Optional](core-language/types/optionals.md) | Either a present value or `none`. Absence does not carry an error explanation. |
 | [Fault](core-language/errors/faults.md) | A programming failure, such as a violated invariant. It ends the current operation after cleanup. |
@@ -37,7 +37,6 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Unwind](core-language/cleanup/exit-order.md) | Leave active scopes and run their registered cleanup. |
 | [Shielded cleanup](core-language/cleanup/cleanup-faults.md) | Cleanup that can run despite the cancellation or deadline that ended ordinary work. |
 | [Host](contributing/concurrent-runtime.md) | The runtime entry point that runs a CLI application or handles HTTP requests. |
-| [Adapter](contributing/compiler/adapters/_index.md) | A declared bridge between Manuscript and foreign code, such as Go. |
 | [Typed IR](contributing/compiler/frontend/typed-ir.md) | The compiler's internal program representation after names and types have been checked. |
 | [Lowering](contributing/compiler/lowering/_index.md) | Translating checked Manuscript operations into generated Go while preserving their behavior. |
 | [Conformance](contributing/compiler/conformance/_index.md) | Tests and evidence that the implementation follows the language's rules. |

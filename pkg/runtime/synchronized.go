@@ -34,17 +34,11 @@ func (s *Synchronized) Operation(name string) Function {
 				s.mu.Unlock()
 				return guard
 			}
-			reentrant := s.holder.owner == ctx
-			for life := ctx.Lifetime; life != nil; life = life.parent {
-				if life == s.holder.lifetime {
-					reentrant = true
-					break
-				}
-			}
+			reentrant := s.holder.owner == ctx || ctx.Lifetime != nil && s.holder.lifetime == ctx.Lifetime
 			changed := s.changed
 			s.mu.Unlock()
 			if reentrant {
-				return Panic("cannot acquire a Synchronized lock held by this operation or an ancestor")
+				return Panic("cannot acquire a Synchronized lock held by this operation")
 			}
 			select {
 			case <-changed:
@@ -83,7 +77,7 @@ func (g *SynchronizedGuard) Operation(name string) Function {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.holder != g {
-			return Panic("Synchronized guard is closed")
+			return Panic("Synchronized guard is closed; use the guard only inside its with block, and acquire a new one to access the value again")
 		}
 		switch name {
 		case "get":

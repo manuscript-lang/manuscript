@@ -1,0 +1,56 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-7bd-before
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLists/AppendGenerated64K-4         	       3	  60093184 ns/op	 6585546 B/op	  130681 allocs/op
+BenchmarkLists/AppendGenerated64K-4         	       2	  74066552 ns/op	 6585608 B/op	  130682 allocs/op
+BenchmarkLists/AppendGenerated64K-4         	       6	  18851045 ns/op	 6585621 B/op	  130682 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	       6	  55296726 ns/op	 6813741 B/op	  327424 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	       3	  34057927 ns/op	 6813781 B/op	  327424 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	       5	  23595509 ns/op	 6813753 B/op	  327424 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	      50	   3846521 ns/op	  524281 B/op	   65535 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	      62	   4351562 ns/op	  524282 B/op	   65535 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	      75	   6827264 ns/op	  524282 B/op	   65535 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	       1	 164940203 ns/op	 2622704 B/op	  131093 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	       2	  50162085 ns/op	 2622688 B/op	  131093 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	       3	  44363285 ns/op	 2622688 B/op	  131093 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       1	1236438034 ns/op	52652968 B/op	 2225806 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       1	1060292643 ns/op	52648136 B/op	 2225807 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       1	1465655681 ns/op	52647432 B/op	 2225800 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	     100	   2200862 ns/op	 1048624 B/op	       2 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	     100	   2041578 ns/op	 1048624 B/op	       2 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	     100	   2044787 ns/op	 1048624 B/op	       2 allocs/op
+BenchmarkLists/AppendRuntimeBoxed64K-4      	      12	  11567769 ns/op	 6063238 B/op	   65398 allocs/op
+BenchmarkLists/AppendRuntimeBoxed64K-4      	       8	  14174165 ns/op	 6063250 B/op	   65398 allocs/op
+BenchmarkLists/AppendRuntimeBoxed64K-4      	       7	  34900093 ns/op	 6063252 B/op	   65398 allocs/op
+BenchmarkLists/AppendPrototype64K-4         	      18	   7273526 ns/op	 2512184 B/op	      28 allocs/op
+BenchmarkLists/AppendPrototype64K-4         	      10	  12403344 ns/op	 2512190 B/op	      28 allocs/op
+BenchmarkLists/AppendPrototype64K-4         	      12	  16978212 ns/op	 2512189 B/op	      28 allocs/op
+BenchmarkLists/IndexPrototypeBoxed64K-4     	       1	 110869298 ns/op	 5765872 B/op	  196444 allocs/op
+BenchmarkLists/IndexPrototypeBoxed64K-4     	       1	 124621632 ns/op	 5765984 B/op	  196445 allocs/op
+BenchmarkLists/IndexPrototypeBoxed64K-4     	       1	 260159454 ns/op	 5765968 B/op	  196445 allocs/op
+BenchmarkLists/IteratePrototypeTyped64K-4   	     100	   2470483 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IteratePrototypeTyped64K-4   	     231	    480302 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IteratePrototypeTyped64K-4   	     100	   1197266 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IndexRuntimeBoxedTypedLocals64K-4         	       2	  71731268 ns/op	 5242896 B/op	  131073 allocs/op
+BenchmarkLists/IndexRuntimeBoxedTypedLocals64K-4         	       1	 123743269 ns/op	 5242992 B/op	  131074 allocs/op
+BenchmarkLists/IndexRuntimeBoxedTypedLocals64K-4         	       2	  57439206 ns/op	 5242944 B/op	  131073 allocs/op
+BenchmarkLists/IterateRuntimeBoxedTypedLocals64K-4       	      78	   1505532 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateRuntimeBoxedTypedLocals64K-4       	     259	    573411 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IterateRuntimeBoxedTypedLocals64K-4       	     100	   1097685 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/SortPrototypeBoxedCallback64K-4           	       1	1133370688 ns/op	74604144 B/op	 5035880 allocs/op
+BenchmarkLists/SortPrototypeBoxedCallback64K-4           	       1	 536695868 ns/op	74603456 B/op	 5035874 allocs/op
+BenchmarkLists/SortPrototypeBoxedCallback64K-4           	       1	1489610128 ns/op	74603536 B/op	 5035876 allocs/op
+BenchmarkLists/LiteralCopyTyped16000-4                   	     480	    259284 ns/op	  131128 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyTyped16000-4                   	     100	   1313598 ns/op	  131129 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyTyped16000-4                   	     132	   1033222 ns/op	  131128 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyBoxed16000-4                   	     123	   1002277 ns/op	  262195 B/op	       2 allocs/op
+BenchmarkLists/LiteralCopyBoxed16000-4                   	     100	   2045719 ns/op	  262192 B/op	       2 allocs/op
+BenchmarkLists/LiteralCopyBoxed16000-4                   	     189	    776959 ns/op	  262192 B/op	       2 allocs/op
+BenchmarkLists/LiteralCopyTyped100000-4                  	     100	   2570325 ns/op	  802873 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyTyped100000-4                  	     100	   1641738 ns/op	  802874 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyTyped100000-4                  	     100	   1042345 ns/op	  802873 B/op	       3 allocs/op
+BenchmarkLists/LiteralCopyBoxed100000-4                  	      87	   8533954 ns/op	 1605682 B/op	       2 allocs/op
+BenchmarkLists/LiteralCopyBoxed100000-4                  	     100	   9404979 ns/op	 1605681 B/op	       2 allocs/op
+BenchmarkLists/LiteralCopyBoxed100000-4                  	     100	   5378791 ns/op	 1605681 B/op	       2 allocs/op
+PASS

@@ -1,6 +1,5 @@
 import stdout from "@std/io.ms"
 import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import Queue from "@std/queues.ms"
 import total from "@math"
 import compute from "@math"
@@ -13,7 +12,7 @@ type Package:
 export fn main() -> Int:
     let package = Package(title: "Manuscript", count: 42)
     let values = [10, 20, 30]
-    let optional = Optional[Int].some(value: 5)
+    let optional = Optional[Int].some(5)
 
     match optional:
         some(value):

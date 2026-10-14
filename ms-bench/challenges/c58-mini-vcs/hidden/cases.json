@@ -1,0 +1,287 @@
+[
+ {
+  "name": "files-basic",
+  "stdin": "write a.txt\nhello\nworld\n.\ncat a.txt\nappend a.txt\nmore\n.\ncat a.txt\nls\nmv a.txt b.txt\nls\ncat a.txt\nrm b.txt\nrm b.txt\nls\ncat\nmv x\nmv q r\nrm\nwrite\nappend new.txt\nx\ny\n.\ncat new.txt\nwrite empty.txt\n.\ncat empty.txt\nls\n",
+  "stdout": "> write a.txt\n> cat a.txt\nhello\nworld\n> append a.txt\n> cat a.txt\nhello\nworld\nmore\n> ls\na.txt\n> mv a.txt b.txt\n> ls\nb.txt\n> cat a.txt\nerror: no such file: a.txt\n> rm b.txt\n> rm b.txt\nerror: no such file: b.txt\n> ls\n(empty)\n> cat\nerror: usage: cat FILE\n> mv x\nerror: usage: mv OLD NEW\n> mv q r\nerror: no such file: q\n> rm\nerror: usage: rm FILE...\n> write\nerror: usage: write FILE\n> append new.txt\n> cat new.txt\nx\ny\n> write empty.txt\n> cat empty.txt\n> ls\nempty.txt\nnew.txt\n"
+ },
+ {
+  "name": "status-fresh",
+  "stdin": "status\nls\nlog\nbranch\nbranch x\ntag\ntag t\nshow HEAD\nmerge x\ncheckout -b y\ncommit nothing\nadd .\nadd nothing\n",
+  "stdout": "> status\nOn branch main\nnothing to commit, working tree clean\n> ls\n(empty)\n> log\nerror: no commits yet\n> branch\n* main\n> branch x\nerror: no commits yet\n> tag\n> tag t\nerror: no commits yet\n> show HEAD\nerror: unknown revision 'HEAD'\n> merge x\nerror: no commits yet\n> checkout -b y\nerror: no commits yet\n> commit nothing\nerror: nothing to commit\n> add .\n> add nothing\nerror: pathspec 'nothing' did not match any files\n"
+ },
+ {
+  "name": "first-commit",
+  "stdin": "write a\n1\n.\nwrite b\n2\n.\nstatus\nadd a\nstatus\ncommit first\nstatus\nadd b\ncommit second commit message\nstatus\nlog\nlog -n 1\nlog -n 0\nlog -n x\nlog 5\n",
+  "stdout": "> write a\n> write b\n> status\nOn branch main\nuntracked:\n  a\n  b\n> add a\n> status\nOn branch main\nstaged:\n  new file: a\nuntracked:\n  b\n> commit first\n[main (root-commit) 04b1759] first\n> status\nOn branch main\nuntracked:\n  b\n> add b\n> commit second commit message\n[main f072342] second commit message\n> status\nOn branch main\nnothing to commit, working tree clean\n> log\nf072342 second commit message\n04b1759 first\n> log -n 1\nf072342 second commit message\n> log -n 0\n> log -n x\nerror: usage: log [-n N]\n> log 5\nerror: usage: log [-n N]\n"
+ },
+ {
+  "name": "commit-errors",
+  "stdin": "write a\n1\n.\ncommit\ncommit  \ncommit no add\nadd a\ncommit ok\ncommit again\nadd a\ncommit again\n",
+  "stdout": "> write a\n> commit\nerror: empty commit message\n> commit\nerror: empty commit message\n> commit no add\nerror: nothing to commit\n> add a\n> commit ok\n[main (root-commit) 84e3d10] ok\n> commit again\nerror: nothing to commit\n> add a\n> commit again\nerror: nothing to commit\n"
+ },
+ {
+  "name": "status-sections",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\nwrite b.txt\nbee\n.\nwrite a.txt\none\nchanged\n.\nstatus\nadd a.txt\nstatus\nwrite a.txt\nthird edit\n.\nstatus\nrm a.txt\nstatus\nadd a.txt\nstatus\nadd .\nstatus\ncommit del\nstatus\nls\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> write b.txt\n> write a.txt\n> status\nOn branch main\nunstaged:\n  modified: a.txt\nuntracked:\n  b.txt\n> add a.txt\n> status\nOn branch main\nstaged:\n  modified: a.txt\nuntracked:\n  b.txt\n> write a.txt\n> status\nOn branch main\nstaged:\n  modified: a.txt\nunstaged:\n  modified: a.txt\nuntracked:\n  b.txt\n> rm a.txt\n> status\nOn branch main\nstaged:\n  modified: a.txt\nunstaged:\n  deleted: a.txt\nuntracked:\n  b.txt\n> add a.txt\n> status\nOn branch main\nstaged:\n  deleted: a.txt\nuntracked:\n  b.txt\n> add .\n> status\nOn branch main\nstaged:\n  deleted: a.txt\n  new file: b.txt\n> commit del\n[main f07574a] del\n> status\nOn branch main\nnothing to commit, working tree clean\n> ls\nb.txt\n"
+ },
+ {
+  "name": "add-dot-deletion",
+  "stdin": "write a\nA\n.\nwrite b\nB\n.\nwrite c\nC\n.\nadd .\ncommit abc\nrm a\nwrite c\nC2\n.\nwrite d\nD\n.\nstatus\nadd .\nstatus\ncommit mixed\nshow HEAD\nls\n",
+  "stdout": "> write a\n> write b\n> write c\n> add .\n> commit abc\n[main (root-commit) ce09b7c] abc\n> rm a\n> write c\n> write d\n> status\nOn branch main\nunstaged:\n  deleted: a\n  modified: c\nuntracked:\n  d\n> add .\n> status\nOn branch main\nstaged:\n  deleted: a\n  modified: c\n  new file: d\n> commit mixed\n[main dd2dd85] mixed\n> show HEAD\ncommit dd2dd8556eed7513\ntree 6b4edd13f12a9ec3\nparent ce09b7cd1c93c9b5\nmessage: mixed\nfiles:\n  b 0912de0\n  c 0c84eb1\n  d 08fe760\n> ls\nb\nc\nd\n"
+ },
+ {
+  "name": "add-paths-partial",
+  "stdin": "write a\nA\n.\nwrite b\nB\n.\nadd a b nothere c\nstatus\nadd b\nstatus\n",
+  "stdout": "> write a\n> write b\n> add a b nothere c\nerror: pathspec 'nothere' did not match any files\n> status\nOn branch main\nstaged:\n  new file: a\n  new file: b\n> add b\n> status\nOn branch main\nstaged:\n  new file: a\n  new file: b\n"
+ },
+ {
+  "name": "overwrite-and-recommit",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\nwrite a.txt\nsame\n.\nwrite a.txt\none\ntwo\nthree\nfour\nfive\n.\nstatus\nadd a.txt\ncommit noop\nstatus\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> write a.txt\n> write a.txt\n> status\nOn branch main\nnothing to commit, working tree clean\n> add a.txt\n> commit noop\nerror: nothing to commit\n> status\nOn branch main\nnothing to commit, working tree clean\n"
+ },
+ {
+  "name": "identical-trees-different-msgs",
+  "stdin": "write a\nx\n.\nadd a\ncommit m1\nbranch b1\nbranch b2\nwrite a\ny\n.\nadd a\ncommit same msg\ncheckout b1\nwrite a\ny\n.\nadd a\ncommit same msg\nlog\ncheckout b2\nwrite a\ny\n.\nadd a\ncommit same msg\nlog\nbranch\n",
+  "stdout": "> write a\n> add a\n> commit m1\n[main (root-commit) 52fd88e] m1\n> branch b1\n> branch b2\n> write a\n> add a\n> commit same msg\n[main 0b786ef] same msg\n> checkout b1\nSwitched to branch 'b1'\n> write a\n> add a\n> commit same msg\n[b1 0b786ef] same msg\n> log\n0b786ef same msg\n52fd88e m1\n> checkout b2\nSwitched to branch 'b2'\n> write a\n> add a\n> commit same msg\n[b2 0b786ef] same msg\n> log\n0b786ef same msg\n52fd88e m1\n> branch\n  b1\n* b2\n  main\n"
+ },
+ {
+  "name": "show-and-refs",
+  "stdin": "write a\n1\n2\n.\nadd a\ncommit c1\nwrite a\n1\n2\n3\n.\nwrite b\nbb\n.\nadd .\ncommit c2\nwrite a\nz\n.\nadd a\ncommit c3\nshow HEAD\nshow HEAD~1\nshow HEAD~2\nshow HEAD~3\nshow HEAD~x\nshow nope\nshow a1b1798\nshow zz\nshow abc\ntag v1 HEAD~1\ntag v2\ntag v1\ntag bad name\ntag\nshow v1\nshow v1~1\nshow main~2\nshow main\nshow\nshow a b\n",
+  "stdout": "> write a\n> add a\n> commit c1\n[main (root-commit) a1b1798] c1\n> write a\n> write b\n> add .\n> commit c2\n[main c9949c9] c2\n> write a\n> add a\n> commit c3\n[main 261d618] c3\n> show HEAD\ncommit 261d618c98d830c3\ntree 74af25ff57740add\nparent c9949c9e1d7ef2d1\nmessage: c3\nfiles:\n  a 08f79e0\n  b 0042fe1\n> show HEAD~1\ncommit c9949c9e1d7ef2d1\ntree 06f2e1e64d5a5613\nparent a1b1798587c13003\nmessage: c2\nfiles:\n  a fb3efa1\n  b 0042fe1\n> show HEAD~2\ncommit a1b1798587c13003\ntree f3abefa05db40b8e\nmessage: c1\nfiles:\n  a 7a2385f\n> show HEAD~3\nerror: unknown revision 'HEAD~3'\n> show HEAD~x\nerror: unknown revision 'HEAD~x'\n> show nope\nerror: unknown revision 'nope'\n> show a1b1798\ncommit a1b1798587c13003\ntree f3abefa05db40b8e\nmessage: c1\nfiles:\n  a 7a2385f\n> show zz\nerror: unknown revision 'zz'\n> show abc\nerror: unknown revision 'abc'\n> tag v1 HEAD~1\n> tag v2\n> tag v1\nerror: tag 'v1' already exists\n> tag bad name\nerror: unknown revision 'name'\n> tag\nv1\nv2\n> show v1\ncommit c9949c9e1d7ef2d1\ntree 06f2e1e64d5a5613\nparent a1b1798587c13003\nmessage: c2\nfiles:\n  a fb3efa1\n  b 0042fe1\n> show v1~1\ncommit a1b1798587c13003\ntree f3abefa05db40b8e\nmessage: c1\nfiles:\n  a 7a2385f\n> show main~2\ncommit a1b1798587c13003\ntree f3abefa05db40b8e\nmessage: c1\nfiles:\n  a 7a2385f\n> show main\ncommit 261d618c98d830c3\ntree 74af25ff57740add\nparent c9949c9e1d7ef2d1\nmessage: c3\nfiles:\n  a 08f79e0\n  b 0042fe1\n> show\nerror: usage: show REF\n> show a b\nerror: usage: show REF\n"
+ },
+ {
+  "name": "ref-prefix-ambiguity",
+  "stdin": "write a\n1\n.\nadd a\ncommit one\nwrite a\n2\n.\nadd a\ncommit two\nshow 0000\nshow ffff\nshow 0afb51d\nlog -n 1\n",
+  "stdout": "> write a\n> add a\n> commit one\n[main (root-commit) dd6e512] one\n> write a\n> add a\n> commit two\n[main 0afb51d] two\n> show 0000\nerror: unknown revision '0000'\n> show ffff\nerror: unknown revision 'ffff'\n> show 0afb51d\ncommit 0afb51dde451da8e\ntree a93916b1e5ac0100\nparent dd6e51269324f2af\nmessage: two\nfiles:\n  a 0802fe0\n> log -n 1\n0afb51d two\n"
+ },
+ {
+  "name": "diff-working",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\nwrite a.txt\none\nTWO\nthree\nsix\nfive\nseven\n.\nwrite new.txt\nfresh\n.\ndiff\nadd a.txt\ndiff\nadd .\ndiff\ndiff HEAD\ncommit next\ndiff\ndiff HEAD~1\nrm a.txt\ndiff HEAD\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> write a.txt\n> write new.txt\n> diff\ndiff a.txt\n  one\n- two\n+ TWO\n  three\n- four\n+ six\n  five\n+ seven\ndiff new.txt\nnew file\n+ fresh\n> add a.txt\n> diff\ndiff new.txt\nnew file\n+ fresh\n> add .\n> diff\n(no differences)\n> diff HEAD\ndiff a.txt\n  one\n- two\n+ TWO\n  three\n- four\n+ six\n  five\n+ seven\ndiff new.txt\nnew file\n+ fresh\n> commit next\n[main 6d58c56] next\n> diff\n(no differences)\n> diff HEAD~1\ndiff a.txt\n  one\n- two\n+ TWO\n  three\n- four\n+ six\n  five\n+ seven\ndiff new.txt\nnew file\n+ fresh\n> rm a.txt\n> diff HEAD\ndiff a.txt\ndeleted file\n- one\n- TWO\n- three\n- six\n- five\n- seven\n"
+ },
+ {
+  "name": "diff-refs",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\nwrite a.txt\none\nthree\nfive\nsix\n.\nwrite b.txt\nbee\n.\nadd .\ncommit second\nrm b.txt\nadd .\ncommit third\ndiff HEAD~2 HEAD~1\ndiff HEAD~1 HEAD\ndiff HEAD~2 HEAD\ndiff HEAD HEAD\ndiff HEAD~5\ndiff a b c\ndiff HEAD~1 nope\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> write a.txt\n> write b.txt\n> add .\n> commit second\n[main 38c8be3] second\n> rm b.txt\n> add .\n> commit third\n[main d4a8b54] third\n> diff HEAD~2 HEAD~1\ndiff a.txt\n  one\n- two\n  three\n- four\n  five\n+ six\ndiff b.txt\nnew file\n+ bee\n> diff HEAD~1 HEAD\ndiff b.txt\ndeleted file\n- bee\n> diff HEAD~2 HEAD\ndiff a.txt\n  one\n- two\n  three\n- four\n  five\n+ six\n> diff HEAD HEAD\n(no differences)\n> diff HEAD~5\nerror: unknown revision 'HEAD~5'\n> diff a b c\nerror: usage: diff [REF [REF]]\n> diff HEAD~1 nope\nerror: unknown revision 'nope'\n"
+ },
+ {
+  "name": "diff-lcs-ties",
+  "stdin": "write f\na\nb\na\nb\na\n.\nadd f\ncommit base\nwrite f\nb\na\nb\na\nb\n.\ndiff\nwrite f\na\na\na\n.\ndiff\nwrite f\nx\na\nb\na\nb\na\nx\n.\ndiff\nwrite f\n.\ndiff\nwrite f\nb\nb\n.\ndiff\n",
+  "stdout": "> write f\n> add f\n> commit base\n[main (root-commit) 8bf4d67] base\n> write f\n> diff\ndiff f\n- a\n  b\n  a\n  b\n  a\n+ b\n> write f\n> diff\ndiff f\n  a\n- b\n  a\n- b\n  a\n> write f\n> diff\ndiff f\n+ x\n  a\n  b\n  a\n  b\n  a\n+ x\n> write f\n> diff\ndiff f\n- a\n- b\n- a\n- b\n- a\n> write f\n> diff\ndiff f\n- a\n  b\n- a\n  b\n- a\n"
+ },
+ {
+  "name": "diff-duplicates-moved",
+  "stdin": "write f\n1\n2\n3\n4\n5\n6\n.\nadd f\ncommit base\nwrite f\n4\n5\n6\n1\n2\n3\n.\ndiff\nwrite f\n1\n2\n3\n3\n4\n5\n6\n6\n.\ndiff\n",
+  "stdout": "> write f\n> add f\n> commit base\n[main (root-commit) 29c83c7] base\n> write f\n> diff\ndiff f\n- 1\n- 2\n- 3\n  4\n  5\n  6\n+ 1\n+ 2\n+ 3\n> write f\n> diff\ndiff f\n  1\n  2\n  3\n+ 3\n  4\n  5\n  6\n+ 6\n"
+ },
+ {
+  "name": "branch-basic",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\nbranch\nbranch dev\nbranch feature/x\nbranch dev\nbranch bad..name!\nbranch\nbranch -d nope\nbranch -d main\nbranch -d dev\nbranch\nbranch -d feature/x\nbranch -d\nbranch a b c\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> branch\n* main\n> branch dev\n> branch feature/x\n> branch dev\nerror: branch 'dev' already exists\n> branch bad..name!\nerror: invalid branch name 'bad..name!'\n> branch\n  dev\n  feature/x\n* main\n> branch -d nope\nerror: branch 'nope' not found\n> branch -d main\nerror: cannot delete the current branch 'main'\n> branch -d dev\nDeleted branch dev (was b326906).\n> branch\n  feature/x\n* main\n> branch -d feature/x\nDeleted branch feature/x (was b326906).\n> branch -d\nerror: invalid branch name '-d'\n> branch a b c\nerror: usage: branch [NAME | -d NAME]\n"
+ },
+ {
+  "name": "branch-delete-unmerged",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b topic\nwrite t.txt\nt\n.\nadd t.txt\ncommit topic work\ncheckout main\nbranch -d topic\nmerge topic\nbranch -d topic\nbranch\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b topic\nSwitched to a new branch 'topic'\n> write t.txt\n> add t.txt\n> commit topic work\n[topic efe752a] topic work\n> checkout main\nSwitched to branch 'main'\n> branch -d topic\nerror: branch 'topic' is not fully merged\n> merge topic\nFast-forward\n> branch -d topic\nDeleted branch topic (was efe752a).\n> branch\n* main\n"
+ },
+ {
+  "name": "checkout-basic",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b dev\nwrite a.txt\ndev\n.\nadd a.txt\ncommit dev change\ncat a.txt\ncheckout main\ncat a.txt\ncheckout dev\ncat a.txt\ncheckout dev\ncheckout nothere\ncheckout -b dev\ncheckout -b\nstatus\nlog\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b dev\nSwitched to a new branch 'dev'\n> write a.txt\n> add a.txt\n> commit dev change\n[dev 915ba04] dev change\n> cat a.txt\ndev\n> checkout main\nSwitched to branch 'main'\n> cat a.txt\none\ntwo\nthree\nfour\nfive\n> checkout dev\nSwitched to branch 'dev'\n> cat a.txt\ndev\n> checkout dev\nAlready on 'dev'\n> checkout nothere\nerror: unknown revision 'nothere'\n> checkout -b dev\nerror: branch 'dev' already exists\n> checkout -b\nerror: unknown revision '-b'\n> status\nOn branch dev\nnothing to commit, working tree clean\n> log\n915ba04 dev change\nb326906 initial\n"
+ },
+ {
+  "name": "checkout-dirty",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b dev\ncheckout main\nwrite a.txt\nmod\n.\ncheckout dev\nadd a.txt\ncheckout dev\ncommit mod\ncheckout dev\nstatus\nwrite z.txt\nuntracked\n.\ncheckout main\nls\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b dev\nSwitched to a new branch 'dev'\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> checkout dev\nerror: local changes would be overwritten\n> add a.txt\n> checkout dev\nerror: local changes would be overwritten\n> commit mod\n[main b726cc4] mod\n> checkout dev\nSwitched to branch 'dev'\n> status\nOn branch dev\nnothing to commit, working tree clean\n> write z.txt\n> checkout main\nSwitched to branch 'main'\n> ls\na.txt\nz.txt\n"
+ },
+ {
+  "name": "checkout-deleted-tracked",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b dev\ncheckout main\nrm a.txt\ncheckout dev\nstatus\nadd a.txt\nstatus\ncheckout dev\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b dev\nSwitched to a new branch 'dev'\n> checkout main\nSwitched to branch 'main'\n> rm a.txt\n> checkout dev\nerror: local changes would be overwritten\n> status\nOn branch main\nunstaged:\n  deleted: a.txt\n> add a.txt\n> status\nOn branch main\nstaged:\n  deleted: a.txt\n> checkout dev\nerror: local changes would be overwritten\n"
+ },
+ {
+  "name": "checkout-untracked-collision",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b dev\nwrite n.txt\nfrom dev\n.\nadd n.txt\ncommit add n\ncheckout main\nwrite n.txt\nlocal untracked\n.\ncheckout dev\ncat n.txt\nrm n.txt\ncheckout dev\ncat n.txt\nls\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b dev\nSwitched to a new branch 'dev'\n> write n.txt\n> add n.txt\n> commit add n\n[dev 84f5cb9] add n\n> checkout main\nSwitched to branch 'main'\n> write n.txt\n> checkout dev\nerror: untracked file would be overwritten: n.txt\n> cat n.txt\nlocal untracked\n> rm n.txt\n> checkout dev\nSwitched to branch 'dev'\n> cat n.txt\nfrom dev\n> ls\na.txt\nn.txt\n"
+ },
+ {
+  "name": "checkout-removes-files",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b dev\nwrite extra.txt\nx\n.\nwrite a.txt\nA\n.\nadd .\ncommit dev\ncheckout main\nls\ncat a.txt\nwrite keep.txt\nuntracked stays\n.\ncheckout dev\nls\ncheckout main\nls\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b dev\nSwitched to a new branch 'dev'\n> write extra.txt\n> write a.txt\n> add .\n> commit dev\n[dev eb3c16b] dev\n> checkout main\nSwitched to branch 'main'\n> ls\na.txt\n> cat a.txt\none\ntwo\nthree\nfour\nfive\n> write keep.txt\n> checkout dev\nSwitched to branch 'dev'\n> ls\na.txt\nextra.txt\nkeep.txt\n> checkout main\nSwitched to branch 'main'\n> ls\na.txt\nkeep.txt\n"
+ },
+ {
+  "name": "detached-head",
+  "stdin": "write a\n1\n.\nadd a\ncommit c1\nwrite a\n2\n.\nadd a\ncommit c2\nwrite a\n3\n.\nadd a\ncommit c3\ncheckout HEAD~2\nstatus\ncat a\nbranch\nwrite a\nd\n.\nadd a\ncommit on detached\nlog\nbranch saved\nbranch\ncheckout main\nlog\ncheckout saved\nlog -n 2\ncheckout 636fc50\ncheckout main\n",
+  "stdout": "> write a\n> add a\n> commit c1\n[main (root-commit) 636fc50] c1\n> write a\n> add a\n> commit c2\n[main 256d526] c2\n> write a\n> add a\n> commit c3\n[main 3bc319a] c3\n> checkout HEAD~2\nHEAD is now at 636fc50 c1\n> status\nHEAD detached at 636fc50\nnothing to commit, working tree clean\n> cat a\n1\n> branch\n* (HEAD detached at 636fc50)\n  main\n> write a\n> add a\n> commit on detached\n[detached 51b52ca] on detached\n> log\n51b52ca on detached\n636fc50 c1\n> branch saved\n> branch\n* (HEAD detached at 51b52ca)\n  main\n  saved\n> checkout main\nSwitched to branch 'main'\n> log\n3bc319a c3\n256d526 c2\n636fc50 c1\n> checkout saved\nSwitched to branch 'saved'\n> log -n 2\n51b52ca on detached\n636fc50 c1\n> checkout 636fc50\nHEAD is now at 636fc50 c1\n> checkout main\nSwitched to branch 'main'\n"
+ },
+ {
+  "name": "detached-tag",
+  "stdin": "write a\n1\n.\nadd a\ncommit c1\ntag release\nwrite a\n2\n.\nadd a\ncommit c2\ncheckout release\ncat a\nstatus\ncheckout main\ncat a\ncheckout release~1\ntag late\n",
+  "stdout": "> write a\n> add a\n> commit c1\n[main (root-commit) 636fc50] c1\n> tag release\n> write a\n> add a\n> commit c2\n[main 256d526] c2\n> checkout release\nHEAD is now at 636fc50 c1\n> cat a\n1\n> status\nHEAD detached at 636fc50\nnothing to commit, working tree clean\n> checkout main\nSwitched to branch 'main'\n> cat a\n2\n> checkout release~1\nerror: unknown revision 'release~1'\n> tag late\n"
+ },
+ {
+  "name": "merge-fast-forward",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite b.txt\nb\n.\nadd b.txt\ncommit b\nwrite c.txt\nc\n.\nadd c.txt\ncommit c\ncheckout main\nmerge feat\nlog\nls\nstatus\nmerge feat\nmerge main\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write b.txt\n> add b.txt\n> commit b\n[feat b8ab53b] b\n> write c.txt\n> add c.txt\n> commit c\n[feat f2e7d49] c\n> checkout main\nSwitched to branch 'main'\n> merge feat\nFast-forward\n> log\nf2e7d49 c\nb8ab53b b\nb326906 initial\n> ls\na.txt\nb.txt\nc.txt\n> status\nOn branch main\nnothing to commit, working tree clean\n> merge feat\nAlready up to date.\n> merge main\nAlready up to date.\n"
+ },
+ {
+  "name": "merge-up-to-date",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\ncheckout main\nwrite m.txt\nm\n.\nadd m.txt\ncommit m\nmerge feat\nlog -n 1\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> checkout main\nSwitched to branch 'main'\n> write m.txt\n> add m.txt\n> commit m\n[main 194cc61] m\n> merge feat\nAlready up to date.\n> log -n 1\n194cc61 m\n"
+ },
+ {
+  "name": "merge-clean-different-files",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite f.txt\nfeat file\n.\nadd f.txt\ncommit feat file\ncheckout main\nwrite m.txt\nmain file\n.\nadd m.txt\ncommit main file\nmerge feat\nls\nlog\nstatus\nshow HEAD\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write f.txt\n> add f.txt\n> commit feat file\n[feat 3513dc8] feat file\n> checkout main\nSwitched to branch 'main'\n> write m.txt\n> add m.txt\n> commit main file\n[main 57de8bd] main file\n> merge feat\nMerge made by the 'three-way' strategy.\n[main 5a304bc] Merge branch 'feat'\n> ls\na.txt\nf.txt\nm.txt\n> log\n5a304bc Merge branch 'feat' (merge 57de8bd 3513dc8)\n57de8bd main file\n3513dc8 feat file\nb326906 initial\n> status\nOn branch main\nnothing to commit, working tree clean\n> show HEAD\ncommit 5a304bcd4da04355\ntree 8e19e2dad0b0aff1\nparent 57de8bd17b2c6ee2\nparent 3513dc8f2b41451a\nmessage: Merge branch 'feat'\nfiles:\n  a.txt 691f27a\n  f.txt 017a8be\n  m.txt b66d6f3\n"
+ },
+ {
+  "name": "merge-clean-same-file-different-regions",
+  "stdin": "write a.txt\n1\n2\n3\n4\n5\n6\n7\n8\n.\nadd a.txt\ncommit base\ncheckout -b feat\nwrite a.txt\n1\n2\n3\n4\n5\n6\n7\neight\n.\nadd a.txt\ncommit tail\ncheckout main\nwrite a.txt\none\n2\n3\n4\n5\n6\n7\n8\n.\nadd a.txt\ncommit head\nmerge feat\ncat a.txt\nstatus\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit base\n[main (root-commit) 162c961] base\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit tail\n[feat dbddaf0] tail\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit head\n[main b705c46] head\n> merge feat\nMerge made by the 'three-way' strategy.\n[main fefb782] Merge branch 'feat'\n> cat a.txt\none\n2\n3\n4\n5\n6\n7\neight\n> status\nOn branch main\nnothing to commit, working tree clean\n"
+ },
+ {
+  "name": "merge-both-same-change",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite a.txt\none\nTWO\nthree\nfour\nfive\n.\nadd a.txt\ncommit feat\ncheckout main\nwrite a.txt\none\nTWO\nthree\nfour\nfive\n.\nadd a.txt\ncommit main\nmerge feat\ncat a.txt\nlog -n 1\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit feat\n[feat 869c1f3] feat\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit main\n[main d2ff8a0] main\n> merge feat\nMerge made by the 'three-way' strategy.\n[main 16b1dd6] Merge branch 'feat'\n> cat a.txt\none\nTWO\nthree\nfour\nfive\n> log -n 1\n16b1dd6 Merge branch 'feat' (merge d2ff8a0 869c1f3)\n"
+ },
+ {
+  "name": "merge-conflict-content",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite a.txt\none\nfeat two\nthree\nfour\nfive\n.\nadd a.txt\ncommit feat\ncheckout main\nwrite a.txt\none\nmain two\nthree\nfour\nfive\n.\nadd a.txt\ncommit main\nmerge feat\nstatus\ncat a.txt\nlog -n 1\ncommit try\nadd a.txt\nstatus\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit feat\n[feat 5db1367] feat\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit main\n[main d5cff18] main\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> status\nOn branch main\nmerging: feat\nconflicts:\n  unmerged: a.txt\n> cat a.txt\none\n<<<<<<< HEAD\nmain two\n=======\nfeat two\n>>>>>>> feat\nthree\nfour\nfive\n> log -n 1\nd5cff18 main\n> commit try\nerror: unresolved conflicts: a.txt\n> add a.txt\n> status\nOn branch main\nmerging: feat\nstaged:\n  modified: a.txt\n"
+ },
+ {
+  "name": "merge-conflict-resolve",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite a.txt\nfeat\n.\nadd a.txt\ncommit feat\ncheckout main\nwrite a.txt\nmain\n.\nadd a.txt\ncommit main\nmerge feat\nwrite a.txt\nresolved\n.\nstatus\nadd a.txt\nstatus\ncommit Resolved merge\nstatus\nlog\ncheckout feat\ncat a.txt\ncheckout main\ncat a.txt\nshow HEAD\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit feat\n[feat 737426f] feat\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit main\n[main d4a11dd] main\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> write a.txt\n> status\nOn branch main\nmerging: feat\nconflicts:\n  unmerged: a.txt\n> add a.txt\n> status\nOn branch main\nmerging: feat\nstaged:\n  modified: a.txt\n> commit Resolved merge\n[main e90a404] Resolved merge\n> status\nOn branch main\nnothing to commit, working tree clean\n> log\ne90a404 Resolved merge (merge d4a11dd 737426f)\nd4a11dd main\n737426f feat\nb326906 initial\n> checkout feat\nSwitched to branch 'feat'\n> cat a.txt\nfeat\n> checkout main\nSwitched to branch 'main'\n> cat a.txt\nresolved\n> show HEAD\ncommit e90a404a45d6ddbe\ntree 13d3e4f4fb8a22e8\nparent d4a11dd263c59eea\nparent 737426feaf4219ae\nmessage: Resolved merge\nfiles:\n  a.txt 94aec9d\n"
+ },
+ {
+  "name": "merge-in-progress-errors",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite a.txt\nf\n.\nadd a.txt\ncommit f\ncheckout main\nwrite a.txt\nm\n.\nadd a.txt\ncommit m\nmerge feat\nmerge feat\ncheckout feat\ncommit\ncommit stuck\nbranch -d feat\nmerge --abort\nmerge --abort\nstatus\ncat a.txt\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit f\n[feat 4551f4e] f\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit m\n[main ee54d4c] m\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> merge feat\nerror: merge in progress\n> checkout feat\nerror: merge in progress\n> commit\nerror: empty commit message\n> commit stuck\nerror: unresolved conflicts: a.txt\n> branch -d feat\nerror: branch 'feat' is not fully merged\n> merge --abort\nMerge aborted.\n> merge --abort\nerror: no merge in progress\n> status\nOn branch main\nnothing to commit, working tree clean\n> cat a.txt\nm\n"
+ },
+ {
+  "name": "merge-abort",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite a.txt\nf\n.\nwrite new.txt\nnew from feat\n.\nadd .\ncommit f\ncheckout main\nwrite a.txt\nm\n.\nadd a.txt\ncommit m\nmerge feat\nls\nstatus\nwrite scratch.txt\ns\n.\nmerge --abort\nls\ncat a.txt\nstatus\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> write new.txt\n> add .\n> commit f\n[feat 954b1ee] f\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit m\n[main ee54d4c] m\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> ls\na.txt\nnew.txt\n> status\nOn branch main\nmerging: feat\nstaged:\n  new file: new.txt\nconflicts:\n  unmerged: a.txt\n> write scratch.txt\n> merge --abort\nMerge aborted.\n> ls\na.txt\nscratch.txt\n> cat a.txt\nm\n> status\nOn branch main\nuntracked:\n  scratch.txt\n"
+ },
+ {
+  "name": "merge-multiple-conflicts-sorted",
+  "stdin": "write z.txt\nz\n.\nwrite a.txt\na\n.\nwrite m.txt\nm\n.\nadd .\ncommit base\ncheckout -b feat\nwrite z.txt\nz-feat\n.\nwrite a.txt\na-feat\n.\nwrite m.txt\nm-feat\n.\nwrite q.txt\nq1\n.\nadd .\ncommit feat\ncheckout main\nwrite z.txt\nz-main\n.\nwrite a.txt\na-main\n.\nwrite q.txt\nq2\n.\nadd .\ncommit main\nmerge feat\nstatus\ncat q.txt\ncat m.txt\ncommit early\nadd a.txt\ncommit early\nadd z.txt q.txt\ncommit done\n",
+  "stdout": "> write z.txt\n> write a.txt\n> write m.txt\n> add .\n> commit base\n[main (root-commit) b54bafa] base\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write z.txt\n> write a.txt\n> write m.txt\n> write q.txt\n> add .\n> commit feat\n[feat 1c131bc] feat\n> checkout main\nSwitched to branch 'main'\n> write z.txt\n> write a.txt\n> write q.txt\n> add .\n> commit main\n[main 18bb8b5] main\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nCONFLICT (add/add): Merge conflict in q.txt\nCONFLICT (content): Merge conflict in z.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> status\nOn branch main\nmerging: feat\nstaged:\n  modified: m.txt\nconflicts:\n  unmerged: a.txt\n  unmerged: q.txt\n  unmerged: z.txt\n> cat q.txt\n<<<<<<< HEAD\nq2\n=======\nq1\n>>>>>>> feat\n> cat m.txt\nm-feat\n> commit early\nerror: unresolved conflicts: a.txt q.txt z.txt\n> add a.txt\n> commit early\nerror: unresolved conflicts: q.txt z.txt\n> add z.txt q.txt\n> commit done\n[main a88a59e] done\n"
+ },
+ {
+  "name": "merge-modify-delete",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\nwrite b.txt\nbee\n.\nadd b.txt\ncommit b\ncheckout -b feat\nrm b.txt\nadd b.txt\ncommit delete b\ncheckout main\nwrite b.txt\nbee changed\n.\nadd b.txt\ncommit modify b\nmerge feat\nstatus\nls\ncat b.txt\nadd b.txt\ncommit keep modified\nls\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> write b.txt\n> add b.txt\n> commit b\n[main 9737bc2] b\n> checkout -b feat\nSwitched to a new branch 'feat'\n> rm b.txt\n> add b.txt\n> commit delete b\n[feat ea94326] delete b\n> checkout main\nSwitched to branch 'main'\n> write b.txt\n> add b.txt\n> commit modify b\n[main ba9ae41] modify b\n> merge feat\nCONFLICT (modify/delete): b.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> status\nOn branch main\nmerging: feat\nconflicts:\n  unmerged: b.txt\n> ls\na.txt\nb.txt\n> cat b.txt\nbee changed\n> add b.txt\n> commit keep modified\n[main ea5905c] keep modified\n> ls\na.txt\nb.txt\n"
+ },
+ {
+  "name": "merge-delete-modify",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\nwrite b.txt\nbee\n.\nadd b.txt\ncommit b\ncheckout -b feat\nwrite b.txt\nbee changed\n.\nadd b.txt\ncommit modify b\ncheckout main\nrm b.txt\nadd b.txt\ncommit delete b\nmerge feat\nstatus\nls\ncat b.txt\nrm b.txt\nadd b.txt\nstatus\ncommit accept delete\nls\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> write b.txt\n> add b.txt\n> commit b\n[main 9737bc2] b\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write b.txt\n> add b.txt\n> commit modify b\n[feat ba9ae41] modify b\n> checkout main\nSwitched to branch 'main'\n> rm b.txt\n> add b.txt\n> commit delete b\n[main ea94326] delete b\n> merge feat\nCONFLICT (modify/delete): b.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> status\nOn branch main\nmerging: feat\nconflicts:\n  unmerged: b.txt\n> ls\na.txt\nb.txt\n> cat b.txt\nbee changed\n> rm b.txt\n> add b.txt\n> status\nOn branch main\nmerging: feat\nnothing to commit, working tree clean\n> commit accept delete\n[main 46e7521] accept delete\n> ls\na.txt\n"
+ },
+ {
+  "name": "merge-one-side-deletes-unchanged",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\nwrite b.txt\nbee\n.\nadd b.txt\ncommit b\ncheckout -b feat\nrm b.txt\nadd b.txt\ncommit delete b\ncheckout main\nwrite c.txt\nc\n.\nadd c.txt\ncommit add c\nmerge feat\nls\nstatus\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> write b.txt\n> add b.txt\n> commit b\n[main 9737bc2] b\n> checkout -b feat\nSwitched to a new branch 'feat'\n> rm b.txt\n> add b.txt\n> commit delete b\n[feat ea94326] delete b\n> checkout main\nSwitched to branch 'main'\n> write c.txt\n> add c.txt\n> commit add c\n[main 05bb428] add c\n> merge feat\nMerge made by the 'three-way' strategy.\n[main 39e0368] Merge branch 'feat'\n> ls\na.txt\nc.txt\n> status\nOn branch main\nnothing to commit, working tree clean\n"
+ },
+ {
+  "name": "merge-add-add",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite n.txt\nfeat n\n.\nadd n.txt\ncommit feat n\ncheckout main\nwrite n.txt\nmain n\n.\nadd n.txt\ncommit main n\nmerge feat\ncat n.txt\nstatus\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write n.txt\n> add n.txt\n> commit feat n\n[feat 75d1fe7] feat n\n> checkout main\nSwitched to branch 'main'\n> write n.txt\n> add n.txt\n> commit main n\n[main 296e0c3] main n\n> merge feat\nCONFLICT (add/add): Merge conflict in n.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> cat n.txt\n<<<<<<< HEAD\nmain n\n=======\nfeat n\n>>>>>>> feat\n> status\nOn branch main\nmerging: feat\nconflicts:\n  unmerged: n.txt\n"
+ },
+ {
+  "name": "merge-add-add-identical",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite n.txt\nsame\n.\nadd n.txt\ncommit feat n\ncheckout main\nwrite n.txt\nsame\n.\nadd n.txt\ncommit main n\nmerge feat\ncat n.txt\nstatus\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write n.txt\n> add n.txt\n> commit feat n\n[feat 883f97d] feat n\n> checkout main\nSwitched to branch 'main'\n> write n.txt\n> add n.txt\n> commit main n\n[main 5b4f94c] main n\n> merge feat\nMerge made by the 'three-way' strategy.\n[main 87115af] Merge branch 'feat'\n> cat n.txt\nsame\n> status\nOn branch main\nnothing to commit, working tree clean\n"
+ },
+ {
+  "name": "merge-dirty-tree",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite f.txt\nf\n.\nadd f.txt\ncommit f\ncheckout main\nwrite m.txt\nm\n.\nadd m.txt\ncommit m\nwrite a.txt\ndirty\n.\nmerge feat\nadd a.txt\nmerge feat\ncommit stage\nmerge feat\nls\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write f.txt\n> add f.txt\n> commit f\n[feat 111ae57] f\n> checkout main\nSwitched to branch 'main'\n> write m.txt\n> add m.txt\n> commit m\n[main 194cc61] m\n> write a.txt\n> merge feat\nerror: local changes would be overwritten\n> add a.txt\n> merge feat\nerror: local changes would be overwritten\n> commit stage\n[main 6998a45] stage\n> merge feat\nMerge made by the 'three-way' strategy.\n[main 4311cd8] Merge branch 'feat'\n> ls\na.txt\nf.txt\nm.txt\n"
+ },
+ {
+  "name": "merge-untracked-collision",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite f.txt\nf\n.\nadd f.txt\ncommit f\ncheckout main\nwrite m.txt\nm\n.\nadd m.txt\ncommit m\nwrite f.txt\nuntracked\n.\nmerge feat\nrm f.txt\nmerge feat\nls\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write f.txt\n> add f.txt\n> commit f\n[feat 111ae57] f\n> checkout main\nSwitched to branch 'main'\n> write m.txt\n> add m.txt\n> commit m\n[main 194cc61] m\n> write f.txt\n> merge feat\nerror: untracked file would be overwritten: f.txt\n> rm f.txt\n> merge feat\nMerge made by the 'three-way' strategy.\n[main 3dcdef5] Merge branch 'feat'\n> ls\na.txt\nf.txt\nm.txt\n"
+ },
+ {
+  "name": "merge-unknown-branch",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\nmerge nope\nmerge\nmerge a b\ncheckout -b x\nmerge x\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> merge nope\nerror: unknown branch 'nope'\n> merge\nerror: usage: merge BRANCH\n> merge a b\nerror: usage: merge BRANCH\n> checkout -b x\nSwitched to a new branch 'x'\n> merge x\nAlready up to date.\n"
+ },
+ {
+  "name": "merge-line-level-adjacent",
+  "stdin": "write a.txt\na\nb\nc\nd\ne\n.\nadd a.txt\ncommit base\ncheckout -b feat\nwrite a.txt\na\nB\nc\nd\ne\n.\nadd a.txt\ncommit feat\ncheckout main\nwrite a.txt\na\nb\nC\nd\ne\n.\nadd a.txt\ncommit main\nmerge feat\ncat a.txt\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit base\n[main (root-commit) 515f294] base\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit feat\n[feat 1a6f0b9] feat\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit main\n[main e518b8f] main\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> cat a.txt\na\n<<<<<<< HEAD\nb\nC\n=======\nB\nc\n>>>>>>> feat\nd\ne\n"
+ },
+ {
+  "name": "merge-line-level-separated",
+  "stdin": "write a.txt\na\nb\nc\nd\ne\n.\nadd a.txt\ncommit base\ncheckout -b feat\nwrite a.txt\na\nB\nc\nd\ne\n.\nadd a.txt\ncommit feat\ncheckout main\nwrite a.txt\na\nb\nc\nD\ne\n.\nadd a.txt\ncommit main\nmerge feat\ncat a.txt\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit base\n[main (root-commit) 515f294] base\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit feat\n[feat 1a6f0b9] feat\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit main\n[main df550d4] main\n> merge feat\nMerge made by the 'three-way' strategy.\n[main f5a9633] Merge branch 'feat'\n> cat a.txt\na\nB\nc\nD\ne\n"
+ },
+ {
+  "name": "merge-insert-delete-mix",
+  "stdin": "write a.txt\n1\n2\n3\n4\n5\n6\n.\nadd a.txt\ncommit base\ncheckout -b feat\nwrite a.txt\n1\n3\n4\n5\n5.5\n6\n.\nadd a.txt\ncommit feat\ncheckout main\nwrite a.txt\n0\n1\n2\n3\n4\n6\n7\n.\nadd a.txt\ncommit main\nmerge feat\ncat a.txt\nstatus\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit base\n[main (root-commit) be08218] base\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit feat\n[feat 3b6037a] feat\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit main\n[main 7207ca0] main\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> cat a.txt\n0\n1\n3\n4\n<<<<<<< HEAD\n=======\n5\n5.5\n>>>>>>> feat\n6\n7\n> status\nOn branch main\nmerging: feat\nconflicts:\n  unmerged: a.txt\n"
+ },
+ {
+  "name": "merge-conflict-multi-hunk",
+  "stdin": "write a.txt\n1\n2\n3\n4\n5\n6\n7\n.\nadd a.txt\ncommit base\ncheckout -b feat\nwrite a.txt\nF1\n2\n3\nF4\n5\n6\nF7\n.\nadd a.txt\ncommit feat\ncheckout main\nwrite a.txt\nM1\n2\n3\n4\n5\n6\nM7\n.\nadd a.txt\ncommit main\nmerge feat\ncat a.txt\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit base\n[main (root-commit) e22d6dc] base\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit feat\n[feat fce40d3] feat\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit main\n[main 46d16f9] main\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> cat a.txt\n<<<<<<< HEAD\nM1\n=======\nF1\n>>>>>>> feat\n2\n3\nF4\n5\n6\n<<<<<<< HEAD\nM7\n=======\nF7\n>>>>>>> feat\n"
+ },
+ {
+  "name": "merge-conflict-delete-vs-change-lines",
+  "stdin": "write a.txt\nx\ny\nz\n.\nadd a.txt\ncommit base\ncheckout -b feat\nwrite a.txt\nx\nz\n.\nadd a.txt\ncommit feat\ncheckout main\nwrite a.txt\nx\nY\nz\n.\nadd a.txt\ncommit main\nmerge feat\ncat a.txt\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit base\n[main (root-commit) 1b050df] base\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit feat\n[feat c479a3f] feat\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit main\n[main ebe5f4a] main\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> cat a.txt\nx\n<<<<<<< HEAD\nY\n=======\n>>>>>>> feat\nz\n"
+ },
+ {
+  "name": "merge-empty-file-results",
+  "stdin": "write a.txt\nx\n.\nadd a.txt\ncommit base\ncheckout -b feat\nwrite a.txt\n.\nadd a.txt\ncommit empty\ncheckout main\nwrite b.txt\nb\n.\nadd b.txt\ncommit b\nmerge feat\nls\ncat a.txt\nshow HEAD\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit base\n[main (root-commit) 2ddb496] base\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit empty\n[feat 014a43a] empty\n> checkout main\nSwitched to branch 'main'\n> write b.txt\n> add b.txt\n> commit b\n[main 8b8e084] b\n> merge feat\nMerge made by the 'three-way' strategy.\n[main ca6c8b4] Merge branch 'feat'\n> ls\na.txt\nb.txt\n> cat a.txt\n> show HEAD\ncommit ca6c8b4be0006429\ntree fe3098dc7813d3a4\nparent 8b8e084e9b21a946\nparent 014a43a816d0fd5e\nmessage: Merge branch 'feat'\nfiles:\n  a.txt cbf29ce\n  b.txt 08a61e0\n"
+ },
+ {
+  "name": "merge-criss-cross",
+  "stdin": "write a\nbase\n.\nadd a\ncommit root\ncheckout -b x\nwrite xf\nx1\n.\nadd xf\ncommit x1\ncheckout main\nbranch y\nwrite mf\nm1\n.\nadd mf\ncommit m1\nmerge x\ncheckout y\nwrite yf\ny1\n.\nadd yf\ncommit y1\nmerge x\ncheckout x\nwrite xf\nx2\n.\nadd xf\ncommit x2\nmerge main\nls\nlog\n",
+  "stdout": "> write a\n> add a\n> commit root\n[main (root-commit) a4aae35] root\n> checkout -b x\nSwitched to a new branch 'x'\n> write xf\n> add xf\n> commit x1\n[x de50254] x1\n> checkout main\nSwitched to branch 'main'\n> branch y\n> write mf\n> add mf\n> commit m1\n[main 3cbd359] m1\n> merge x\nMerge made by the 'three-way' strategy.\n[main 96f0534] Merge branch 'x'\n> checkout y\nSwitched to branch 'y'\n> write yf\n> add yf\n> commit y1\n[y 705e050] y1\n> merge x\nMerge made by the 'three-way' strategy.\n[y 55db3ec] Merge branch 'x'\n> checkout x\nSwitched to branch 'x'\n> write xf\n> add xf\n> commit x2\n[x 71f02ff] x2\n> merge main\nMerge made by the 'three-way' strategy.\n[x c77fa11] Merge branch 'main'\n> ls\na\nmf\nxf\n> log\nc77fa11 Merge branch 'main' (merge 71f02ff 96f0534)\n71f02ff x2\n96f0534 Merge branch 'x' (merge 3cbd359 de50254)\n3cbd359 m1\nde50254 x1\na4aae35 root\n"
+ },
+ {
+  "name": "merge-base-nearest",
+  "stdin": "write a.txt\n1\n2\n3\n.\nadd a.txt\ncommit c1\ncheckout -b feat\nwrite a.txt\n1\n2\n3\n4\n.\nadd a.txt\ncommit c2 feat\ncheckout main\nmerge feat\nwrite a.txt\n0\n1\n2\n3\n4\n.\nadd a.txt\ncommit c3 main\ncheckout feat\nwrite a.txt\n1\n2\n3\n4\n5\n.\nadd a.txt\ncommit c4 feat\ncheckout main\nmerge feat\ncat a.txt\nlog\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit c1\n[main (root-commit) f4661d4] c1\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit c2 feat\n[feat c105be8] c2 feat\n> checkout main\nSwitched to branch 'main'\n> merge feat\nFast-forward\n> write a.txt\n> add a.txt\n> commit c3 main\n[main eae46bc] c3 main\n> checkout feat\nSwitched to branch 'feat'\n> write a.txt\n> add a.txt\n> commit c4 feat\n[feat cfc7a5a] c4 feat\n> checkout main\nSwitched to branch 'main'\n> merge feat\nMerge made by the 'three-way' strategy.\n[main e15da04] Merge branch 'feat'\n> cat a.txt\n0\n1\n2\n3\n4\n5\n> log\ne15da04 Merge branch 'feat' (merge eae46bc cfc7a5a)\ncfc7a5a c4 feat\neae46bc c3 main\nc105be8 c2 feat\nf4661d4 c1\n"
+ },
+ {
+  "name": "reset-hard",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\nwrite b.txt\nbee\n.\nadd b.txt\ncommit b\nwrite a.txt\nx\n.\nwrite junk\nj\n.\nadd a.txt\nreset --hard\nstatus\ncat a.txt\nls\nreset --hard HEAD~1\nls\nlog\nstatus\nreset --hard nope\nreset\nreset --soft\nreset --hard a b\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> write b.txt\n> add b.txt\n> commit b\n[main 9737bc2] b\n> write a.txt\n> write junk\n> add a.txt\n> reset --hard\nHEAD is now at 9737bc2 b\n> status\nOn branch main\nuntracked:\n  junk\n> cat a.txt\none\ntwo\nthree\nfour\nfive\n> ls\na.txt\nb.txt\njunk\n> reset --hard HEAD~1\nHEAD is now at b326906 initial\n> ls\na.txt\njunk\n> log\nb326906 initial\n> status\nOn branch main\nuntracked:\n  junk\n> reset --hard nope\nerror: unknown revision 'nope'\n> reset\nerror: usage: reset --hard [REF]\n> reset --soft\nerror: usage: reset --hard [REF]\n> reset --hard a b\nerror: usage: reset --hard [REF]\n"
+ },
+ {
+  "name": "reset-hard-conflict",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite a.txt\nf\n.\nadd a.txt\ncommit f\ncheckout main\nwrite a.txt\nm\n.\nadd a.txt\ncommit m\nmerge feat\nreset --hard\nstatus\ncat a.txt\nmerge --abort\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit f\n[feat 4551f4e] f\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit m\n[main ee54d4c] m\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> reset --hard\nHEAD is now at ee54d4c m\n> status\nOn branch main\nnothing to commit, working tree clean\n> cat a.txt\nm\n> merge --abort\nerror: no merge in progress\n"
+ },
+ {
+  "name": "reset-moves-branch",
+  "stdin": "write a\n1\n.\nadd a\ncommit c1\nwrite a\n2\n.\nadd a\ncommit c2\nwrite a\n3\n.\nadd a\ncommit c3\nbranch keep\nreset --hard HEAD~2\nlog\nbranch\ncat a\ncheckout keep\ncat a\nlog -n 1\n",
+  "stdout": "> write a\n> add a\n> commit c1\n[main (root-commit) 636fc50] c1\n> write a\n> add a\n> commit c2\n[main 256d526] c2\n> write a\n> add a\n> commit c3\n[main 3bc319a] c3\n> branch keep\n> reset --hard HEAD~2\nHEAD is now at 636fc50 c1\n> log\n636fc50 c1\n> branch\n  keep\n* main\n> cat a\n1\n> checkout keep\nSwitched to branch 'keep'\n> cat a\n3\n> log -n 1\n3bc319a c3\n"
+ },
+ {
+  "name": "tags-and-refs-in-diff",
+  "stdin": "write a\n1\n.\nadd a\ncommit c1\ntag v1\nwrite a\n2\n.\nadd a\ncommit c2\ntag v2\ndiff v1 v2\ndiff v1\ndiff v2 v1\ntag\nbranch v1\ncheckout v1\nbranch\n",
+  "stdout": "> write a\n> add a\n> commit c1\n[main (root-commit) 636fc50] c1\n> tag v1\n> write a\n> add a\n> commit c2\n[main 256d526] c2\n> tag v2\n> diff v1 v2\ndiff a\n- 1\n+ 2\n> diff v1\ndiff a\n- 1\n+ 2\n> diff v2 v1\ndiff a\n- 2\n+ 1\n> tag\nv1\nv2\n> branch v1\n> checkout v1\nSwitched to branch 'v1'\n> branch\n  main\n* v1\n"
+ },
+ {
+  "name": "long-workflow",
+  "stdin": "write README\n# project\n.\nwrite src/main.c\nint main() { return 0; }\n.\nadd .\ncommit initial import\ncheckout -b feature/login\nwrite src/login.c\nvoid login() {}\n.\nwrite README\n# project\nlogin support\n.\nadd .\ncommit add login\ncheckout main\nwrite src/main.c\nint main() { return 1; }\n.\nadd src/main.c\ncommit fix exit code\ncheckout -b feature/docs\nwrite docs/guide.md\nguide\n.\nadd docs/guide.md\ncommit docs\ncheckout main\nmerge feature/login\nmerge feature/docs\nlog\nls\ntag v1.0\ncheckout feature/login\nwrite src/login.c\nvoid login() { auth(); }\n.\nadd .\ncommit auth\ncheckout main\nmerge feature/login\ndiff v1.0 HEAD\nbranch -d feature/login\nbranch -d feature/docs\nbranch\nstatus\n",
+  "stdout": "> write README\n> write src/main.c\n> add .\n> commit initial import\n[main (root-commit) a9cabbb] initial import\n> checkout -b feature/login\nSwitched to a new branch 'feature/login'\n> write src/login.c\n> write README\n> add .\n> commit add login\n[feature/login 7f208fa] add login\n> checkout main\nSwitched to branch 'main'\n> write src/main.c\n> add src/main.c\n> commit fix exit code\n[main b880e5d] fix exit code\n> checkout -b feature/docs\nSwitched to a new branch 'feature/docs'\n> write docs/guide.md\n> add docs/guide.md\n> commit docs\n[feature/docs a08046d] docs\n> checkout main\nSwitched to branch 'main'\n> merge feature/login\nMerge made by the 'three-way' strategy.\n[main 3fa1303] Merge branch 'feature/login'\n> merge feature/docs\nMerge made by the 'three-way' strategy.\n[main 1cf0c43] Merge branch 'feature/docs'\n> log\n1cf0c43 Merge branch 'feature/docs' (merge 3fa1303 a08046d)\n3fa1303 Merge branch 'feature/login' (merge b880e5d 7f208fa)\na08046d docs\nb880e5d fix exit code\n7f208fa add login\na9cabbb initial import\n> ls\nREADME\ndocs/guide.md\nsrc/login.c\nsrc/main.c\n> tag v1.0\n> checkout feature/login\nSwitched to branch 'feature/login'\n> write src/login.c\n> add .\n> commit auth\n[feature/login c038286] auth\n> checkout main\nSwitched to branch 'main'\n> merge feature/login\nMerge made by the 'three-way' strategy.\n[main 7e74fd3] Merge branch 'feature/login'\n> diff v1.0 HEAD\ndiff src/login.c\n- void login() {}\n+ void login() { auth(); }\n> branch -d feature/login\nDeleted branch feature/login (was c038286).\n> branch -d feature/docs\nDeleted branch feature/docs (was a08046d).\n> branch\n* main\n> status\nOn branch main\nnothing to commit, working tree clean\n"
+ },
+ {
+  "name": "conflict-then-continue-work",
+  "stdin": "write a.txt\none\ntwo\nthree\nfour\nfive\n.\nadd a.txt\ncommit initial\ncheckout -b feat\nwrite a.txt\nF\n.\nadd a.txt\ncommit F\ncheckout main\nwrite a.txt\nM\n.\nadd a.txt\ncommit M\nmerge feat\nwrite a.txt\nboth\n.\nadd a.txt\ncommit merged\nwrite a.txt\nafter\n.\nadd a.txt\ncommit more\nlog\nmerge feat\nbranch -d feat\nbranch\n",
+  "stdout": "> write a.txt\n> add a.txt\n> commit initial\n[main (root-commit) b326906] initial\n> checkout -b feat\nSwitched to a new branch 'feat'\n> write a.txt\n> add a.txt\n> commit F\n[feat fd5f14a] F\n> checkout main\nSwitched to branch 'main'\n> write a.txt\n> add a.txt\n> commit M\n[main 138c170] M\n> merge feat\nCONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.\n> write a.txt\n> add a.txt\n> commit merged\n[main e2c9ea2] merged\n> write a.txt\n> add a.txt\n> commit more\n[main 946c84b] more\n> log\n946c84b more\ne2c9ea2 merged (merge 138c170 fd5f14a)\n138c170 M\nfd5f14a F\nb326906 initial\n> merge feat\nAlready up to date.\n> branch -d feat\nDeleted branch feat (was fd5f14a).\n> branch\n* main\n"
+ },
+ {
+  "name": "script-edge-cases",
+  "stdin": "# comment line\n\n   \nfrobnicate\nwrite a\nx\n.\nadd a\ncommit c\nstatus extra\nls extra\ncat a b\nwrite b\nunterminated\nstill content\n",
+  "stdout": "> frobnicate\nerror: unknown command 'frobnicate'\n> write a\n> add a\n> commit c\n[main (root-commit) 211b67f] c\n> status extra\nOn branch main\nnothing to commit, working tree clean\n> ls extra\na\n> cat a b\nerror: usage: cat FILE\n> write b\n"
+ }
+]

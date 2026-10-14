@@ -7,9 +7,13 @@ import (
 
 // Code groups stable rule families; message text remains readable and contextual.
 func (d Diagnostic) Code() string {
-	message := d.Message
+	// Messages read "<cause>; <fix>". Only the cause identifies the rule.
+	message, _, _ := strings.Cut(d.Message, "; ")
 	switch d.Phase {
 	case "parse":
+		if strings.HasPrefix(message, "string-literal match patterns") {
+			return "MS1000"
+		}
 		if strings.Contains(message, "indent") || strings.Contains(message, "suite") || strings.Contains(message, "tabs") {
 			return "MS1002"
 		}
@@ -42,9 +46,11 @@ func (d Diagnostic) Code() string {
 }
 func (d Diagnostic) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Code     string   `json:"code"`
-		Phase    string   `json:"phase"`
-		Message  string   `json:"message"`
-		Position Position `json:"position"`
-	}{d.Code(), d.Phase, d.Message, d.Position})
+		Code     string         `json:"code"`
+		Phase    string         `json:"phase"`
+		Message  string         `json:"message"`
+		Position Position       `json:"position"`
+		End      *Position      `json:"end,omitempty"`
+		Fix      *DiagnosticFix `json:"fix,omitempty"`
+	}{d.Code(), d.Phase, d.Message, d.Position, d.End, d.Fix})
 }

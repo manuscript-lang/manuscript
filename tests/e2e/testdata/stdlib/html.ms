@@ -78,12 +78,12 @@ test "HTML parses nested elements attributes entities and comments":
                 ]
             ): return panic("HTML attributes")
             if (
-                items.at(0).unwrap() != HtmlNode.Text(text: "Hello ")
+                items.at(0).unwrap() != HtmlNode.Text("Hello ")
                 or items.at(
                     2
-                ).unwrap() != HtmlNode.Text(text: " <world>")
+                ).unwrap() != HtmlNode.Text(" <world>")
             ): return panic("HTML text ordering or entities")
-            if items.at(3).unwrap() != HtmlNode.Comment(text: "note"): return panic(
+            if items.at(3).unwrap() != HtmlNode.Comment("note"): return panic(
                 "HTML comment"
             )
             if (
@@ -140,39 +140,36 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
             system_id: "system"
         )
     ): return panic("doctype identifiers")
-    if nodes.at(1).unwrap() != HtmlNode.Comment(text: "before"): return panic(
+    if nodes.at(1).unwrap() != HtmlNode.Comment("before"): return panic(
         "document comment"
     )
 
     let body = children(children(nodes.at(2).unwrap()).at(1).unwrap())
 
-    match body.at(0).unwrap():
+    let svg_items = match body.at(0).unwrap():
         Element(tag, namespace, _, items):
             if tag != "svg" or namespace != "svg": return panic("SVG namespace")
-
-            match items.at(0).unwrap():
-                Element(_, child_namespace, attributes, _):
-                    if (
-                        child_namespace != "svg"
-                        or attributes.at(
-                            0
-                        ).unwrap() != HtmlAttribute(
-                            name: "href",
-                            namespace: "xlink",
-                            value: "#icon"
-                        )
-                    ): return panic("namespaced attribute")
-
-                _: return panic("expected SVG anchor")
-
+            items
         _: return panic("expected SVG")
+
+    match svg_items.at(0).unwrap():
+        Element(_, child_namespace, attributes, _):
+            if (
+                child_namespace != "svg"
+                or attributes.at(0).unwrap() != HtmlAttribute(
+                    name: "href",
+                    namespace: "xlink",
+                    value: "#icon"
+                )
+            ): return panic("namespaced attribute")
+        _: return panic("expected SVG anchor")
 
     if text_content(body.at(1).unwrap()) != "if (a < b) x = '&amp;';": return panic(
         "script raw text"
     )
 
 test "HTML honors optional byte depth and node limits":
-    let empty = value(parse(text: "", limits: none))
+    let empty = value(parse(text: ""))
     if (
         value(
             parse(
@@ -194,7 +191,7 @@ test "HTML honors optional byte depth and node limits":
         ) != value(parse(text: "é"))
     ): return panic("omitted HTML limits")
 
-    let limited: Result[HtmlNode, HtmlError] = error(cause: HtmlError.LimitExceeded)
+    let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
     if (
         parse(
             text: "é",
@@ -214,7 +211,7 @@ test "HTML honors optional byte depth and node limits":
         ) != limited
     ): return panic("implicit node count limit")
 
-    let invalid: Result[HtmlNode, HtmlError] = error(cause: HtmlError.InvalidInput)
+    let invalid: Result[HtmlNode, HtmlError] = error(HtmlError.InvalidInput)
     if (
         parse(
             text: "",

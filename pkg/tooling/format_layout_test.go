@@ -1,6 +1,7 @@
 package tooling_test
 
 import (
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 	"io/fs"
@@ -10,10 +11,63 @@ import (
 	"testing"
 )
 
+func TestFormatCompactGolden(t *testing.T) {
+	input, err := os.ReadFile("testdata/format/compact.input.ms")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := os.ReadFile("testdata/format/compact.golden.ms")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, newline := range []string{"\n", "\r\n"} {
+		source := strings.ReplaceAll(string(input), "\n", newline)
+		got, err := tooling.Format("compact.ms", source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != string(want) {
+			t.Fatalf("formatted:\n%s\nwant:\n%s", got, want)
+		}
+		assertFormatMeaning(t, "compact.ms", source, got)
+		twice, err := tooling.Format("compact.ms", got)
+		if err != nil || twice != got {
+			t.Fatalf("formatting is not idempotent: %v\n%s", err, twice)
+		}
+		for _, text := range []string{source, got} {
+			result := compiler.CompileSource("compact.ms", text, compiler.Options{Tests: true})
+			if !result.Success() {
+				t.Fatal(result.Diagnostics)
+			}
+		}
+	}
+}
+
 func TestFormatExpressionLayouts(t *testing.T) {
 	cases := []struct {
 		name, source, want string
 	}{
+		{
+			name: "match arms after a try joined from a later line",
+			source: `fn work(early: Int) -> Int:
+    let result = subtract(try
+        match some(0):
+            some(_):
+                10
+            none: 10
+    )
+    return result
+`,
+			want: `fn work(early: Int) -> Int:
+    let result = subtract(
+        try match some(0):
+            some(_):
+                10
+            none: 10
+    )
+    return result
+`,
+		},
 		{
 			name: "nested computations below the width limit",
 			source: `fn work() -> Unit:
@@ -40,23 +94,14 @@ func TestFormatExpressionLayouts(t *testing.T) {
 `,
 		},
 		{
-			name: "larger and nested collections",
+			name: "compact larger and nested collections",
 			source: `fn work() -> Unit:
     let larger = [1, 2, 3, 4, 5]
     let nested = [[1, 2], [3, 4]]
 `,
 			want: `fn work() -> Unit:
-    let larger = [
-        1,
-        2,
-        3,
-        4,
-        5
-    ]
-    let nested = [
-        [1, 2],
-        [3, 4]
-    ]
+    let larger = [1, 2, 3, 4, 5]
+    let nested = [[1, 2], [3, 4]]
 `,
 		},
 		{
@@ -232,10 +277,7 @@ fn work(
 `,
 			want: `fn work() -> Bool:
     return (
-        [
-            [1, 2],
-            [3]
-        ].flat_map(
+        [[1, 2], [3]].flat_map(
             transform: fn(value: List[Int]) -> List[Int]: return value
         ) == [1, 2, 3]
     )

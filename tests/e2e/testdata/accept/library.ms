@@ -72,7 +72,7 @@ fn verify_json() -> Result[Unit, JsonError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn verify_encoding() -> Result[Unit, EncodingError]:
     let bytes = try hex_decode(
@@ -88,7 +88,7 @@ fn verify_encoding() -> Result[Unit, EncodingError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn verify_url() -> Result[Unit, UrlError]:
     let query = try parse_query(
@@ -100,7 +100,7 @@ fn verify_url() -> Result[Unit, UrlError]:
     if not (format_query(entries: query) == "a=1&a=2&space=hello+world"):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn verify_binary() -> Result[Unit, BinaryError]:
     let binary = try write_integer(
@@ -120,7 +120,7 @@ fn verify_binary() -> Result[Unit, BinaryError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn verify_compression() -> Result[Unit, CompressionError]:
     let compressed = try compress(
@@ -138,7 +138,7 @@ fn verify_compression() -> Result[Unit, CompressionError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn verify_archive() -> Result[Unit, ArchiveError]:
     let entries = [
@@ -166,7 +166,7 @@ fn verify_archive() -> Result[Unit, ArchiveError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 test "expanded packages run through compiler":
     match verify_json():
@@ -223,7 +223,7 @@ test "expanded packages run through compiler":
     if not (("é").scalar_values() == [233]):
         return panic(message: "check failed")
 
-    let text_success: Result[String, StringError] = ok(value: "é")
+    let text_success: Result[String, StringError] = ok("é")
     if not (from_scalars(values: [233]) == text_success):
         return panic(message: "check failed")
     if not (sqrt(value: 9.0) == 3.0):
@@ -239,12 +239,12 @@ test "expanded packages run through compiler":
     if not (([3, 1, 2]).sorted(compare: compare) == [1, 2, 3]):
         return panic(message: "check failed")
 
-    let reverse_int = [1, 2].reverse
+    let reverse_int = [1, 2].reverse_in_place
     if not (reverse_int() == [2, 1]):
         return panic(message: "check failed")
 
 test "malformed and bounded inputs return errors":
-    let failure1: Result[Bytes, EncodingError] = error(cause: EncodingError.InvalidData)
+    let failure1: Result[Bytes, EncodingError] = error(EncodingError.InvalidData)
     if not (
         base64_decode(
             text: "Zh==",
@@ -255,7 +255,7 @@ test "malformed and bounded inputs return errors":
         return panic(message: "check failed")
 
     let failure2: Result[Bytes, EncodingError] = error(
-        cause: EncodingError.LimitExceeded
+        EncodingError.LimitExceeded
     )
     if not (
         hex_decode(
@@ -270,7 +270,7 @@ test "malformed and bounded inputs return errors":
         max_depth: 2,
         max_values: 10
     )
-    let failure3: Result[JsonValue, JsonError] = error(cause: JsonError.InvalidData)
+    let failure3: Result[JsonValue, JsonError] = error(JsonError.InvalidData)
     if not (
         parse(
             text: "\{\"a\":1,\"a\":2\}",
@@ -279,7 +279,7 @@ test "malformed and bounded inputs return errors":
     ):
         return panic(message: "check failed")
 
-    let failure4: Result[JsonValue, JsonError] = error(cause: JsonError.LimitExceeded)
+    let failure4: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
     if not (
         parse(
             text: "[[[]]]",
@@ -288,7 +288,7 @@ test "malformed and bounded inputs return errors":
     ):
         return panic(message: "check failed")
 
-    let failure5: Result[Bytes, BinaryError] = error(cause: BinaryError.OutOfRange)
+    let failure5: Result[Bytes, BinaryError] = error(BinaryError.OutOfRange)
     if not (
         write_integer(
             value: 256,

@@ -1,0 +1,554 @@
+{
+  "baseline_sha": "694683c04250d1d4b59f7bf19c164009d243b164",
+  "go": "go1.25.1 linux/amd64",
+  "cpu_quota": "400000 100000",
+  "candidate_source_sha256": {
+    "synchronized.go": "de6c83fea5f0a1b6152824595f8fe42b23656bb8f7ddb927485a607e8a567ae8",
+    "task_group.go": "5200328fdc8e7104de39f91a766e97b88229ecde71e81a7e1ff7d2997b2a7665",
+    "scheduler.go": "b8f9334b08a929e49b7c66a72abb2fa754ab46121f1fa51981b8b32536e6631d",
+    "lifetime.go": "8053a8a0268be42bcdb9836fbf484fa69fa739f407880f4355585a059a2a443f",
+    "synchronized_benchmark_test.go": "26379bc3273d051e81eb11ac131627050596ff5b0cb45b1a08cb350937740aa6"
+  },
+  "samples": [
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedUncontended",
+      "ns": 169.9,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle",
+      "ns": 2971.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks",
+      "ns": 3031.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedUncontended",
+      "ns": 168.5,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle",
+      "ns": 3060.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks",
+      "ns": 3005.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedUncontended",
+      "ns": 171.7,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle",
+      "ns": 3069.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks",
+      "ns": 3070.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedUncontended",
+      "ns": 187.6,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle",
+      "ns": 2997.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks",
+      "ns": 3015.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedUncontended",
+      "ns": 168.8,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle",
+      "ns": 3051.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks",
+      "ns": 3091.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedUncontended",
+      "ns": 172.7,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle",
+      "ns": 3059.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks",
+      "ns": 3007.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedUncontended",
+      "ns": 170.8,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle",
+      "ns": 2988.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks",
+      "ns": 2995.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedUncontended",
+      "ns": 174.5,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle",
+      "ns": 2973.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks",
+      "ns": 2976.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedUncontended",
+      "ns": 168.9,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle",
+      "ns": 3014.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks",
+      "ns": 3017.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedUncontended",
+      "ns": 171.6,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle",
+      "ns": 2980.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks",
+      "ns": 2996.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedUncontended-4",
+      "ns": 171.2,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle-4",
+      "ns": 4538.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks-4",
+      "ns": 2055.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedUncontended-4",
+      "ns": 178.4,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle-4",
+      "ns": 4371.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks-4",
+      "ns": 2185.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedUncontended-4",
+      "ns": 169.4,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle-4",
+      "ns": 4490.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks-4",
+      "ns": 1780.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedUncontended-4",
+      "ns": 181.1,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle-4",
+      "ns": 4695.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks-4",
+      "ns": 1927.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedUncontended-4",
+      "ns": 181.7,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle-4",
+      "ns": 4359.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks-4",
+      "ns": 1792.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedUncontended-4",
+      "ns": 159.4,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle-4",
+      "ns": 4318.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks-4",
+      "ns": 1355.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedUncontended-4",
+      "ns": 166.8,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle-4",
+      "ns": 4543.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks-4",
+      "ns": 1720.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedUncontended-4",
+      "ns": 161.2,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle-4",
+      "ns": 4587.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks-4",
+      "ns": 1482.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedUncontended-4",
+      "ns": 164.5,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle-4",
+      "ns": 4405.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks-4",
+      "ns": 1430.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedUncontended-4",
+      "ns": 173.4,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedTaskLifecycle-4",
+      "ns": 4593.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "blocking",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkSynchronizedIndependentTasks-4",
+      "ns": 1734.0,
+      "bytes": 2104,
+      "allocations": 42
+    }
+  ]
+}

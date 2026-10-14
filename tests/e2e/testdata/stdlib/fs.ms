@@ -6,6 +6,77 @@ import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
+fn expect_fs_error[T](
+    outcome: Result[T, FileSystemError],
+    expected: FileSystemError
+) -> Unit:
+    match outcome:
+        ok(_): return panic("filesystem misuse succeeded")
+        error(cause):
+            if cause != expected: return panic("wrong filesystem error")
+
+test "ordinary filesystem misuse retains typed cases":
+    let fs = filesystem()
+
+    with temporary = value(fs.temporary("manuscript-errors-")):
+        let directory = "{temporary.path()}/directory"
+        let file = "{temporary.path()}/file"
+        let created = value(fs.create_directory(path: directory, recursive: false))
+        let child = value(
+            fs.write_file(
+                path: "{directory}/child",
+                data: "x".to_bytes(),
+                replace: false
+            )
+        )
+        let written = value(
+            fs.write_file(
+                path: file,
+                data: "abc".to_bytes(),
+                replace: false
+            )
+        )
+        expect_fs_error(
+            outcome: fs.remove(path: directory, recursive: false),
+            expected: FileSystemError.NotEmpty
+        )
+        expect_fs_error(
+            outcome: fs.list(path: file),
+            expected: FileSystemError.InvalidInput
+        )
+        expect_fs_error(
+            outcome: fs.read_file(path: directory),
+            expected: FileSystemError.InvalidInput
+        )
+        expect_fs_error(
+            outcome: fs.create_directory(path: file, recursive: false),
+            expected: FileSystemError.AlreadyExists
+        )
+
+        with reader = value(fs.open(path: file, flags: "r", mode: 384)):
+            expect_fs_error(
+                outcome: reader.write("x".to_bytes()),
+                expected: FileSystemError.InvalidInput
+            )
+            expect_fs_error(
+                outcome: reader.seek(offset: -1, origin: 0),
+                expected: FileSystemError.InvalidInput
+            )
+            expect_fs_error(
+                outcome: reader.seek(offset: 0, origin: 3),
+                expected: FileSystemError.InvalidInput
+            )
+
+        with writer = value(fs.open(path: file, flags: "a", mode: 384)):
+            expect_fs_error(
+                outcome: writer.read(1),
+                expected: FileSystemError.InvalidInput
+            )
+            expect_fs_error(
+                outcome: writer.read_file(),
+                expected: FileSystemError.InvalidInput
+            )
+
 test "filesystem scoped temporary directories and bounded file reads":
     let fs = filesystem()
     var directory = ""
@@ -30,7 +101,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         ): return panic("read file")
 
         let limited: Result[Bytes, FileSystemError] = error(
-            cause: FileSystemError.LimitExceeded
+            FileSystemError.LimitExceeded
         )
         if fs.read_file(
             path: path,
@@ -38,7 +109,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         ) != limited: return panic("file byte limit")
 
         let exists: Result[Unit, FileSystemError] = error(
-            cause: FileSystemError.AlreadyExists
+            FileSystemError.AlreadyExists
         )
         if (
             fs.write_file(
@@ -88,12 +159,13 @@ test "file handles positional I/O stream adapters and closed errors":
                     )
                 ) != "cd".to_bytes()
             ): return panic("positional read")
-            if value(
+
+            value(
                 handle.write_at(
                     offset: 1,
                     data: "XY".to_bytes()
                 )
-            ) != 2: return panic("positional write")
+            )
 
             let resized = value(handle.truncate(4))
             if value(handle.stat()).size != 4: return panic("handle stat")
@@ -104,7 +176,7 @@ test "file handles positional I/O stream adapters and closed errors":
             ) != "aXYd".to_bytes(): return panic("reader adapter")
 
         let closed: Result[Bytes, FileSystemError] = error(
-            cause: FileSystemError.Closed
+            FileSystemError.Closed
         )
         if handle.read_at(
             offset: 0,
@@ -112,3 +184,28 @@ test "file handles positional I/O stream adapters and closed errors":
         ) != closed: return panic("closed handle")
 
         handle.close()
+
+test "empty paths are rejected instead of resolving to the working directory":
+    let fs = filesystem()
+    let invalid: Result[Unit, FileSystemError] = error(
+        cause: FileSystemError.InvalidInput
+    )
+    if fs.remove(path: "", recursive: true) != invalid: return panic(
+        "recursive remove of empty path"
+    )
+    if fs.create_directory(path: "", recursive: true) != invalid: return panic(
+        "create empty directory"
+    )
+    if fs.write_file(
+        path: "",
+        data: "x".to_bytes(),
+        replace: true
+    ) != invalid: return panic("write empty path")
+
+    match fs.stat(path: "", follow_links: true):
+        ok(_): return panic("stat empty path")
+
+        error(cause):
+            if cause != FileSystemError.InvalidInput: return panic(
+                "stat empty path error"
+            )

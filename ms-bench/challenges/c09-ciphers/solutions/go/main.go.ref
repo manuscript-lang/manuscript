@@ -1,0 +1,103 @@
+package main
+
+import (
+	"bufio"
+	"os"
+	"strings"
+)
+
+func isLetter(c rune) bool { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
+
+func transform(text string, keyAt func(i int) int, sign int) string {
+	var sb strings.Builder
+	i := 0
+	for _, c := range text {
+		if isLetter(c) {
+			base := 'a'
+			if c < 'a' {
+				base = 'A'
+			}
+			k := keyAt(i)
+			v := (int(c-base)+sign*k)%26 + 26
+			sb.WriteRune(rune(v%26) + base)
+			i++
+		} else {
+			sb.WriteRune(c)
+		}
+	}
+	return sb.String()
+}
+
+func solveLine(line string) string {
+	parts := make([]string, 0, 4)
+	rest := line
+	for len(parts) < 3 {
+		i := strings.IndexByte(rest, ' ')
+		if i < 0 {
+			return "error: bad command"
+		}
+		parts = append(parts, rest[:i])
+		rest = rest[i+1:]
+	}
+	if rest == "" {
+		return "error: bad command"
+	}
+	cipher, mode, key, text := parts[0], parts[1], parts[2], rest
+	if cipher != "caesar" && cipher != "vigenere" {
+		return "error: bad cipher"
+	}
+	if mode != "enc" && mode != "dec" {
+		return "error: bad mode"
+	}
+	sign := 1
+	if mode == "dec" {
+		sign = -1
+	}
+	if cipher == "caesar" {
+		digits := key
+		neg := false
+		if strings.HasPrefix(digits, "-") {
+			neg = true
+			digits = digits[1:]
+		}
+		if len(digits) < 1 || len(digits) > 7 {
+			return "error: bad key"
+		}
+		k := 0
+		for _, c := range digits {
+			if c < '0' || c > '9' {
+				return "error: bad key"
+			}
+			k = k*10 + int(c-'0')
+		}
+		if neg {
+			k = -k
+		}
+		return transform(text, func(int) int { return k }, sign)
+	}
+	if key == "" {
+		return "error: bad key"
+	}
+	ks := make([]int, 0, len(key))
+	for _, c := range key {
+		if !isLetter(c) {
+			return "error: bad key"
+		}
+		ks = append(ks, int(strings.ToLower(string(c))[0]-'a'))
+	}
+	return transform(text, func(i int) int { return ks[i%len(ks)] }, sign)
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+	for sc.Scan() {
+		l := sc.Text()
+		if strings.Trim(l, " ") == "" {
+			continue
+		}
+		w.WriteString(solveLine(l) + "\n")
+	}
+}

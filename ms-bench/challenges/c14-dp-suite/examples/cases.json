@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "lcs AGGTAB GXTXAYB\nedit kitten sitting\nknap 10 5:10 4:40 6:30 3:50\ncoins 11 1 2 5\ncoins 3 2\nedit a\nknap 5 0:3\n",
+  "stdout": "4\n3\n90\n3\nimpossible\nerror: bad command\nerror: bad command\n"
+ },
+ {
+  "name": "small",
+  "stdin": "lcs abc abc\nedit abc xyz\ncoins 0 7\nknap 0 1:1\n",
+  "stdout": "3\n3\n0\n0\n"
+ }
+]

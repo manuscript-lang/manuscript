@@ -102,7 +102,7 @@ test "records alternatives and collections convert":
         expected: person.toString()
     )
     check(
-        value: Outcome.Ready(value: person).toString(),
+        value: Outcome.Ready(person).toString(),
         expected: "Outcome.Ready(Person(age: 37, name: Ada))"
     )
     check(
@@ -110,8 +110,8 @@ test "records alternatives and collections convert":
         expected: "Outcome.Waiting"
     )
     let absent: Optional[Int] = none
-    let present: Optional[Int] = some(value: 3)
-    let result: Result[Int, String] = error(cause: "failed")
+    let present: Optional[Int] = some(3)
+    let result: Result[Int, String] = error("failed")
     check(
         value: absent.toString(),
         expected: "Optional.none"
@@ -142,19 +142,19 @@ test "records alternatives and collections convert":
     )
     let map = (
         Map[String, Int]()
-        .with_entry(key: "b", value: 2)
-        .with_entry(key: "a", value: 1)
+        .add(key: "b", value: 2)
+        .add(key: "a", value: 1)
     )
     check(
         value: map.toString(),
         expected: "Map(b: 2, a: 1)"
     )
-    let set = Set[Int]().with_value(2).with_value(1)
+    let set = Set[Int]().add(2).add(1)
     check(
         value: set.toString(),
         expected: "Set(2, 1)"
     )
-    let bytes = Bytes(values: [0, 65, 255])
+    let bytes = Bytes([0, 65, 255])
     check(
         value: bytes.toString(),
         expected: "Bytes(0, 65, 255)"
@@ -178,7 +178,7 @@ test "generics views bound methods functions and resources":
         value: bound_stringify(person),
         expected: person.toString()
     )
-    let view = Named(value: person)
+    let view = Named(person)
     check(
         value: view.toString(),
         expected: person.toString()
@@ -197,7 +197,7 @@ test "generics views bound methods functions and resources":
         expected: "[function]"
     )
     check(value: "{answer}", expected: "[function]")
-    let queue = Queue[Int](capacity: 1)
+    let queue = Queue[Int](1)
     check(
         value: queue.toString(),
         expected: "[object]"
@@ -218,7 +218,7 @@ test "generics views bound methods functions and resources":
         )
 
 test "interpolation and bound conversion evaluate each receiver once":
-    let state = Synchronized[Int](value: 1)
+    let state = Synchronized[Int](1)
     check(
         value: "{next(state)}|{next(state)}",
         expected: "Person(age: 1, name: Ada)|Person(age: 2, name: Ada)"

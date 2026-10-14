@@ -145,10 +145,10 @@ func TestLoggingCLI(t *testing.T) {
 	})
 
 	for _, test := range []struct{ mode, diagnostic string }{
-		{"missing", "FileSystemError.NotFound"},
-		{"invalid", "LogError.InvalidData"},
-		{"limit", "LogError.LimitExceeded"},
-		{"closed", "LogError.Closed"},
+		{"missing", "filesystem: file or directory not found"},
+		{"invalid", "logging: invalid data"},
+		{"limit", "logging: limit exceeded"},
+		{"closed", "logging: resource is closed"},
 	} {
 		t.Run("failure "+test.mode, func(t *testing.T) {
 			output, err := commandOutput(t, binary, test.mode, filepath.Join(root, "missing", "events.ndjson"))
