@@ -1,5 +1,7 @@
 package msruntime
 
+import "strings"
+
 // OptionalUnwrap is the checked direct-call path for Optional.unwrap. Bound
 // methods and ordinary dispatch use the same extraction and fault behavior.
 const unwrapNoneMessage = "called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default"
@@ -18,11 +20,13 @@ func OptionalUnwrap(ctx *Execution, receiver Value) Value {
 func init() {
 	variables := []LibraryParam{{"T", ""}}
 	for _, name := range []string{"ok_or", "ok_or_else"} {
-		params := []LibraryParam{{"value", "Optional[T]"}, {"cause", "E"}}
+		params := []LibraryParam{{"value", "Optional[T]"}, {"cause", "Optional[Error]"}}
+		result, variables := "Result[T][Error]", []LibraryParam{{"T", ""}}
 		if name == "ok_or_else" {
 			params[1] = LibraryParam{"create", "fn()->E"}
+			result, variables = "Result[T][E]", []LibraryParam{{"T", ""}, {"E", ""}}
 		}
-		libraryGeneric("optional", name, "Result[T][E]", []LibraryParam{{"T", ""}, {"E", ""}}, params, func(ctx *Execution, result string, args []Value) Value {
+		libraryGeneric("optional", name, result, variables, params, func(ctx *Execution, result string, args []Value) Value {
 			value := args[0].(Alternative)
 			if value.Tag == "some" {
 				return libraryOK(result, value.Fields[0])
@@ -30,6 +34,8 @@ func init() {
 			cause := args[1]
 			if name == "ok_or_else" {
 				cause = Invoke(ctx, cause, nil)
+			} else {
+				cause = okOrCause(cause)
 			}
 			return Alternative{Type: result, Tag: "error", Fields: []Value{cause}}
 		})
@@ -88,4 +94,23 @@ func init() {
 		}
 		return Invoke(ctx, args[1], nil)
 	})
+}
+
+// okOrCause unwraps an explicit cause. An omitted one becomes a MissingValue
+// naming the calling source position, which only the absent path pays for.
+func okOrCause(cause Value) Value {
+	if option, ok := cause.(Alternative); ok && strings.HasPrefix(option.Type, "@std/Optional[") {
+		if option.Tag == "some" {
+			return option.Fields[0]
+		}
+		cause = nil
+	}
+	if cause != nil {
+		return cause
+	}
+	location := "unknown location"
+	if frames, _ := captureFrames(); len(frames) > 0 {
+		location, _, _ = strings.Cut(frames[0], " in ")
+	}
+	return Alternative{Type: "@std/MissingValue", Tag: "Missing", Fields: []Value{location}}
 }

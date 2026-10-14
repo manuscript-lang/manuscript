@@ -1,15 +1,19 @@
 import {Map, Set, List, MapEntry} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import {Equal, Hashable} from "@std/equality.ms"
+import MissingValue from "@std/errors.ms"
 
 type Counter:
     calls: Int
+
+impl Error for Counter:
+    fn message() -> String: "counter"
 
 fn counted(counter: Counter) -> Counter:
     counter.calls = counter.calls + 1
     return counter
 
-fn require_value[T, E](value: Optional[T], cause: E) -> Result[T, E]:
+fn require_value[T](value: Optional[T], cause: Error) -> Result[T, Error]:
     return value.ok_or(cause)
 
 fn require_lazy[T, E](value: Optional[T], create: fn() -> E) -> Result[T, E]:
@@ -41,7 +45,7 @@ fn locate[K: Hashable, V](
 test "conversions and collection queries are callable":
     let present: Optional[Int] = some(2)
     let missing: Optional[Int] = none
-    if present.ok_or("absent").unwrap() != 2: return panic("Optional eager conversion")
+    if present.ok_or().unwrap() != 2: return panic("Optional eager conversion")
     if missing.ok_or_else(
         fn(): "absent"
     ).unwrap_error() != "absent": return panic("Optional lazy conversion")
@@ -98,7 +102,11 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
         return panic("eager conversion skipped cause expression")
 
     let cause = require_value(missing, counter).unwrap_error()
-    cause.calls = 2
+
+    match cause:
+        Counter(shared): shared.calls = 2
+        _: return panic("conversion lost the error type")
+
     if counter.calls != 2: return panic("conversion copied error")
 
     let create = fn() -> Counter: counted(counter)
@@ -111,8 +119,12 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     error_result.unwrap_error().calls = 4
     if counter.calls != 4: return panic("lazy conversion copied cause")
 
-    let bound = missing.ok_or[Counter]
-    bound(cause: counter).unwrap_error().calls = 5
+    let bound = missing.ok_or
+
+    match bound(cause: counter).unwrap_error():
+        Counter(shared): shared.calls = 5
+        _: return panic("bound conversion lost the error type")
+
     if counter.calls != 5: return panic("bound eager conversion lost receiver")
 
     let bound_lazy = missing.ok_or_else[Counter]
@@ -131,22 +143,22 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     if counter.calls != 7: return panic("Result conversion copied success")
 
     let nested: Optional[Optional[Int]] = some(none)
-    let converted = nested.ok_or("absent")
+    let converted = nested.ok_or()
     if not (converted.is_ok()) or not (converted.to_optional().unwrap().is_none()):
         return panic("conversion flattened nested Optional")
 
     let false_value: Optional[Bool] = some(false)
-    if false_value.ok_or(unit).to_optional().unwrap(): return panic(
+    if false_value.ok_or().to_optional().unwrap(): return panic(
         "false payload changed"
     )
 
     let unit_value: Optional[Unit] = some(unit)
-    if not (unit_value.ok_or(false).to_optional().is_some()): return panic(
+    if not (unit_value.ok_or().to_optional().is_some()): return panic(
         "Unit payload disappeared"
     )
 
     let nested_result: Optional[Result[Int, String]] = some(error("nested"))
-    if nested_result.ok_or(false).to_optional().unwrap().unwrap_error() != "nested":
+    if nested_result.ok_or().to_optional().unwrap().unwrap_error() != "nested":
         return panic("conversion flattened nested Result")
 
 test "Map fold uses ordered snapshots and returns accumulator aliases":
@@ -533,3 +545,17 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         )
         or set_visits != [2, 1, 3]
     ): return panic("Set find stopped without a match")
+
+fn find_port(port: Optional[Int]) -> Result[Int, Error]:
+    let value = try port.ok_or()
+    return ok(value)
+
+test "ok_or without a cause records the calling file and line":
+    let message = find_port(none).unwrap_error().message()
+    if not (message.contains("conversions-queries.ms:")): return panic(message)
+    if not (message.starts_with("missing value at ")): return panic(message)
+    if find_port(some(8080)).unwrap() != 8080: return panic("present payload")
+
+    match find_port(none).unwrap_error():
+        MissingValue(missing): unit
+        _: return panic("default cause is not MissingValue")

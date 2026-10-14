@@ -26,6 +26,7 @@ export type Optional[T]:
     # Calls create once only when absent, returning its Optional unchanged.
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
     # Returns ok with the original payload, or error with the eager cause.
-    fn ok_or[E](cause: E) -> Result[T, E]:
+    # Without a cause, the error is a MissingValue naming the calling source file and line.
+    fn ok_or(cause: Optional[Error] = none) -> Result[T, Error]:
     # Constructs an error once only for none; present payloads remain unchanged.
     fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:

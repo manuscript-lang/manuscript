@@ -859,7 +859,7 @@ type Optional[T]:
     fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
     fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
-    fn ok_or[E](cause: E) -> Result[T, E]:
+    fn ok_or(cause: Optional[Error] = none) -> Result[T, Error]:
     fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
@@ -919,12 +919,13 @@ Transforms a present payload; none remains absent.
 fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
 ```
 
-### Optional.ok_or[E]
+### Optional.ok_or
 
 Returns ok with the original payload, or error with the eager cause.
+Without a cause, the error is a MissingValue naming the calling source file and line.
 
 ```manuscript
-fn ok_or[E](cause: E) -> Result[T, E]:
+fn ok_or(cause: Optional[Error] = none) -> Result[T, Error]:
 ```
 
 ### Optional.ok_or_else[E]
