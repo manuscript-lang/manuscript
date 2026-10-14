@@ -14,6 +14,7 @@ import (
 
 	"github.com/manuscript-lang/manuscript/pkg/frontend"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
 
 const nestedMatchAllowance = "manuscript:allow-nested-match "
@@ -46,6 +47,17 @@ func checkNestedMatches() error {
 			return err
 		}
 		found, err := nestedMatchIssues(path, string(source))
+		if err != nil {
+			return err
+		}
+		issues = append(issues, found...)
+	}
+	guides, err := docgen.GuideFiles()
+	if err != nil {
+		return err
+	}
+	for path, data := range guides {
+		found, err := nestedMatchIssues(path, string(data))
 		if err != nil {
 			return err
 		}

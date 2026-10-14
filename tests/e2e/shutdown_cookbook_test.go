@@ -17,16 +17,19 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
 
 // Compile the published examples themselves, rather than a fixture copy that
 // could drift away from the cookbook. tests/examples also checks these fences.
 func shutdownExamples(t *testing.T) map[string]string {
 	t.Helper()
-	data, err := os.ReadFile("../../documentation/concurrency/shutdown.md")
+	guides, err := docgen.GuideFiles()
 	if err != nil {
 		t.Fatal(err)
 	}
+	data := guides["documentation/concurrency/shutdown.md"]
 	blocks := regexp.MustCompile("(?s)<!-- manuscript-example: (.*?) -->\\s*```manuscript\\n(.*?)```")
 	examples := map[string]string{}
 	for _, block := range blocks.FindAllStringSubmatch(string(data), -1) {
