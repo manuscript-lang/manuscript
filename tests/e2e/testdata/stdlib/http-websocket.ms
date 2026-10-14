@@ -160,13 +160,25 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 
 fn report_host(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let hosts = exchange.headers().get("Host").unwrap_or([])
-    let started = value(exchange.send_headers(status: 200, headers: Map[String, List[String]]()))
-    let written = value(exchange.write(hosts.join(",").to_bytes()))
+    let started = value(
+        exchange.send_headers(
+            status: 200,
+            headers: Map[String, List[String]]()
+        )
+    )
+    let written = value(
+        exchange.write(hosts.join(",").to_bytes())
+    )
     return ok(value: unit)
 
 test "HTTP streaming handlers see the Host request header":
     let net = network()
-    let options = HttpServerOptions(max_requests: 2, timeout: 3.seconds, grace: 0.seconds, tls: none)
+    let options = HttpServerOptions(
+        max_requests: 2,
+        timeout: 3.seconds,
+        grace: 0.seconds,
+        tls: none
+    )
 
     with server = value(
         net.serve_stream(
@@ -184,4 +196,6 @@ test "HTTP streaming handlers see the Host request header":
                 timeout: 2.seconds
             )
         )
-        if response.body != server.address().to_bytes(): return panic("Host header missing")
+        if response.body != server.address().to_bytes(): return panic(
+            "Host header missing"
+        )
