@@ -85,14 +85,21 @@ test "typed access match range and comparator preserve generic aliases":
         "strict Result slicing and separate backing"
     )
 
-let reentered_values: List[Int] = []
+fn reentered(seen: List[Int], value: Int) -> Unit:
+    seen.append(value)
 
-fn reentered(value: Int) -> Unit:
-    reentered_values.append(value)
+    if value == 1:
+        [10, 20].for_each(fn(value): reentered(seen, value))
 
-    if value == 1: [10, 20].for_each(reentered)
+    seen.append(value)
 
-    reentered_values.append(value)
+fn generic_copy[T](values: List[T]) -> List[T]:
+    let copied: List[T] = []
+
+    for value in values:
+        copied.append(value)
+
+    return copied
 
 test "callback parameter captures survive borrowed slots and reentry":
     let retained: List[fn() -> Int] = []
@@ -108,6 +115,20 @@ test "callback parameter captures survive borrowed slots and reentry":
 
     if seen != values: return panic("retained callback parameter was overwritten")
 
-    [1, 2].for_each(reentered)
+    let loop_captures: List[fn() -> Int] = []
+
+    for value in values:
+        loop_captures.append(fn() -> Int: value)
+
+    let loop_seen: List[Int] = []
+
+    for callback in loop_captures:
+        loop_seen.append(callback())
+
+    if loop_seen != values or generic_copy(values) != values:
+        return panic("captured or generic List loop changed its Values")
+
+    let reentered_values: List[Int] = []
+    [1, 2].for_each(fn(value): reentered(reentered_values, value))
     if reentered_values != [1, 10, 10, 20, 20, 1, 2, 2]:
         return panic("reentrant callback changed its admitted parameter")
