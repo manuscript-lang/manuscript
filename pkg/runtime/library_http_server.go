@@ -92,6 +92,7 @@ type libraryHTTPExchange struct {
 	ctx                           *Execution
 	mu                            sync.Mutex
 	closed, sent, upgraded        bool
+	rejected                      bool
 	readGate, writeGate           chan struct{}
 	active                        sync.WaitGroup
 	remainingRead, remainingWrite int64
@@ -161,7 +162,7 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 		outcome = Invoke(child, s.handler, []Argument{{"exchange", ViewOf("@std/HttpExchange", exchange)}})
 	}()
 	exchange.mu.Lock()
-	sent, upgraded := exchange.sent, exchange.upgraded
+	sent, upgraded, rejected := exchange.sent, exchange.upgraded, exchange.rejected
 	exchange.mu.Unlock()
 	if failure != nil || call.Err() != nil || outcome.(Alternative).Tag == "error" {
 		if failure != nil {
@@ -169,18 +170,18 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 				reportDiagnostic("HTTP stream handler fault: " + fmtFault(failure))
 			}
 		}
-		if !sent && !upgraded {
+		if !sent && !upgraded && !rejected {
 			status := 500
 			if call.Err() != nil {
 				status = 504
 			}
 			http.Error(w, "request failed", status)
-		} else if !upgraded {
+		} else if !upgraded && !rejected {
 			panic(http.ErrAbortHandler)
 		}
 		return
 	}
-	if !sent && !upgraded {
+	if !sent && !upgraded && !rejected {
 		w.WriteHeader(204)
 	}
 }
@@ -233,7 +234,7 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 		libraryGate(ctx, gate)
 		defer func() { gate <- struct{}{} }()
 		e.mu.Lock()
-		if e.closed || e.upgraded {
+		if e.closed || e.upgraded || e.rejected {
 			e.mu.Unlock()
 			if name == "send_headers" {
 				return libraryError(r, "Closed", "")

@@ -129,6 +129,10 @@ func (e *libraryHTTPExchange) upgrade() Function {
 		}}
 		conn, err := upgrader.Upgrade(e.writer, e.request, nil)
 		if err != nil {
+			// The upgrader already wrote its own error response.
+			e.mu.Lock()
+			e.rejected = true
+			e.mu.Unlock()
 			return libraryError(r, "Failed", err.Error())
 		}
 		resource := newLibraryWebSocket(conn, e.owner.owner, max)
