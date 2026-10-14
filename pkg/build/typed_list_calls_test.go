@@ -57,11 +57,14 @@ func verifyTypedCalls(){
  values:=rt.NewIntList("@std/List[Int]",[]int64{10000,20000})
  args:=[]rt.Value{values,int64(-1)}
  if !@@read@@.(rt.Function).BorrowedArguments || @@read@@.(rt.Function).Body(ctx,args)!=int64(20000) {panic("marked relative typed read")}
+ previousProcs:=runtime.GOMAXPROCS(1);defer runtime.GOMAXPROCS(previousProcs)
  for range 10 {typedResult=@@read@@.(rt.Function).Body(ctx,args)}
  var before,after runtime.MemStats;runtime.ReadMemStats(&before)
  for range 1000 {typedResult=@@read@@.(rt.Function).Body(ctx,args)}
  runtime.ReadMemStats(&after)
- if allocations:=after.Mallocs-before.Mallocs;allocations>1000 {panic(fmt.Sprintf("read allocations %d per1000",allocations))}
+ // Match testing.AllocsPerRun: a single P and integer average exclude fixed
+ // runtime bookkeeping without allowing an extra allocation on every read.
+ if allocations:=(after.Mallocs-before.Mallocs)/1000;allocations>1 {panic(fmt.Sprintf("read allocations %d per call",allocations))}
  args[1]=int64(4)
  failure:=caught(func(){@@read@@.(rt.Function).Body(ctx,args)})
  if fault,ok:=failure.(rt.Fault);!ok || !strings.Contains(fault.Message,"Optional.unwrap() on none") || len(fault.Frames)==0 || !strings.Contains(fault.Frames[0],"in read") {panic(fmt.Sprintf("typed absent fault %#v",failure))}
