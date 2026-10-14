@@ -2,11 +2,13 @@ package msruntime
 
 // OptionalUnwrap is the checked direct-call path for Optional.unwrap. Bound
 // methods and ordinary dispatch use the same extraction and fault behavior.
+const unwrapNoneMessage = "called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default"
+
 func OptionalUnwrap(ctx *Execution, receiver Value) Value {
 	CheckCancelled(ctx)
 	value := receiver.(Alternative)
 	if value.Tag != "some" {
-		return Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		return Panic(unwrapNoneMessage)
 	}
 	result := value.Fields[0]
 	CheckCancelled(ctx)

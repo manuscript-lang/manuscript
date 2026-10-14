@@ -61,6 +61,12 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 			return g.locatedOperation(e, runtimeName("StringByteLength"), ident("ctx"), g.expression(e.Left.Left))
 		}
 	case "optional/unwrap":
+		if len(arguments) == 0 && g.listAtMatch(e.Left.Left) {
+			// list.at(i).unwrap() needs no Optional: read the element and fault
+			// at the unwrap site when it is absent.
+			receiver, index := g.listAtOperands(e.Left.Left, g.program.Info(e.Left.Left).Arguments)
+			return g.locatedOperation(e, runtimeName("ListAtUnwrap"), ident("ctx"), receiver, index)
+		}
 		if len(arguments) == 0 {
 			return g.locatedOperation(e, runtimeName("OptionalUnwrap"), ident("ctx"), g.expression(e.Left.Left))
 		}

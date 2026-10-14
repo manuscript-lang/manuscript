@@ -27,6 +27,12 @@ export fn main() -> Int:
     let add = values.add
     return add(value: crash(), key: 1).length()
 `, false, []string{"fault.ms:2:14 in crash", "fault.ms:6:23 in main"}},
+		{"List at unwrap out of range", `import List from "@std/collections.ms"
+fn pick(values: List[Int], index: Int) -> Int:
+    return values.at(index).unwrap()
+export fn main() -> Int:
+    return pick([1, 2, 3], 3)
+`, false, []string{"fault.ms:3:29 in pick", "fault.ms:5:12 in main"}},
 		{"Result unwrap", `fn deep(value: Result[Int, String]) -> Int:
     return value.unwrap()
 export fn main() -> Int:

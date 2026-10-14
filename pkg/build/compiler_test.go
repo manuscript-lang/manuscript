@@ -3,9 +3,11 @@ package build_test
 import (
 	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -288,7 +290,39 @@ func FuzzCompile(f *testing.F) {
 		if len(source) > 16000 {
 			t.Skip()
 		}
-		_ = compiler.CompileSource("fuzz.ms", source, compiler.Options{})
+		first := compiler.CompileSource("fuzz.ms", source, compiler.Options{})
+		second := compiler.CompileSource("fuzz.ms", source, compiler.Options{})
+		if !reflect.DeepEqual(first.Diagnostics, second.Diagnostics) {
+			t.Fatalf("diagnostics are not deterministic for %q", source)
+		}
+		inSource := func(position syntax.Position) bool {
+			return position.File != "fuzz.ms" || position.Line >= 1 && position.Column >= 1 && position.Offset >= 0 && position.Offset <= len(source)
+		}
+		for _, diagnostic := range first.Diagnostics {
+			if diagnostic.Phase == "" || diagnostic.Message == "" || !inSource(diagnostic.Position) {
+				t.Fatalf("malformed diagnostic %#v for %q", diagnostic, source)
+			}
+			if diagnostic.End != nil && (!inSource(*diagnostic.End) || diagnostic.End.File == diagnostic.Position.File && diagnostic.End.Offset < diagnostic.Position.Offset) {
+				t.Fatalf("diagnostic range %#v is outside the source %q", diagnostic, source)
+			}
+			if fix := diagnostic.Fix; fix != nil && (!inSource(fix.Position) || !inSource(fix.End) || fix.End.Offset < fix.Position.Offset) {
+				t.Fatalf("diagnostic fix %#v is outside the source %q", diagnostic, source)
+			}
+		}
+		// A machine-applicable fix must remove its own diagnostic.
+		for _, diagnostic := range first.Diagnostics {
+			fix := diagnostic.Fix
+			if fix == nil || fix.Position.File != "fuzz.ms" || fix.End.Offset > len(source) {
+				continue
+			}
+			fixed := source[:fix.Position.Offset] + fix.Replacement + source[fix.End.Offset:]
+			for _, remaining := range compiler.CompileSource("fuzz.ms", fixed, compiler.Options{}).Diagnostics {
+				if remaining.Message == diagnostic.Message && remaining.Position == diagnostic.Position {
+					t.Fatalf("fix for %q leaves the diagnostic: %q -> %q", diagnostic.Message, source, fixed)
+				}
+			}
+			break
+		}
 	})
 }
 
