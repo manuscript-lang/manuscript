@@ -94,6 +94,9 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 		if direct := g.directTarget(e); direct != nil {
 			return direct.result
 		}
+		if entry, _, ok := g.scalarNativeCall(e); ok {
+			return entry.result
+		}
 	case syntax.KindUnary:
 		if e.Text == "not" {
 			return "bool"
