@@ -133,9 +133,13 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		} else {
 			b := g.program.LoopBinding(s)
 			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
-			if suffix := primitiveListSuffix(g.program.Info(s.Value).Type); suffix != "" && g.typedBinding(b) {
+			if typ := g.program.Info(s.Value).Type; typ.ID == "@std/List" {
+				reader := "Get"
+				if suffix := primitiveListSuffix(typ); suffix != "" && g.typedBinding(b) {
+					reader = suffix
+				}
 				header, at := g.temp(), g.temp()
-				body = append([]ast.Stmt{define(b.ID, call(selector(ident(header), suffix), ident(at)))}, body...)
+				body = append([]ast.Stmt{define(b.ID, call(selector(ident(header), reader), ident(at)))}, body...)
 				loop = &ast.ForStmt{Init: define(at, intLiteral(0)), Cond: &ast.BinaryExpr{X: ident(at), Op: token.LSS, Y: call(selector(ident(header), "Len"))}, Post: &ast.IncDecStmt{X: ident(at), Tok: token.INC}, Body: block(body...)}
 				if label.used {
 					loop = &ast.LabeledStmt{Label: ident(label.name), Stmt: loop}
