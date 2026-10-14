@@ -1,4 +1,3 @@
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 export fn main() -> Int:
     let values = [1, 2, 3, 4, 5, 6, 7, 8]

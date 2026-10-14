@@ -1,8 +1,6 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
-import Result from "@std/result.ms"
 
 fn amount() -> Result[Decimal, String]:
     return ok(12.50d)

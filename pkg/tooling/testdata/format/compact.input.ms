@@ -1,4 +1,3 @@
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int: transform(value)
 type Choice:

@@ -68,3 +68,15 @@ func TestSourceDeclarationsReachDocumentation(t *testing.T) {
 
 	}
 }
+
+func TestMixedPreludeModuleImportGuidance(t *testing.T) {
+	for path, guidance := range map[string][2]string{
+		"@std/errors.ms":      {"`Error` is a prelude declaration", "Import other names"},
+		"@std/collections.ms": {"`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry`", "Import other names"},
+	} {
+		text := RenderModule(checker.APIModule{Path: path})
+		if !strings.Contains(text, guidance[0]) || !strings.Contains(text, guidance[1]) || !strings.Contains(text, "explicit imports") || strings.Contains(text, "These names are available") {
+			t.Fatal(path, text)
+		}
+	}
+}

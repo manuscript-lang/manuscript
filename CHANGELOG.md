@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Make collection prelude access canonical: add source-backed `CollectionError`, `ListEntry`, and `MapEntry`; reject explicit standard imports of all source-backed prelude types/interfaces with `MS2003` and an editor removal fix. Remove these imports from existing source; keep builders, factories and unrelated APIs explicitly imported. Application-owned same-named types retain shadowing. Qualify ambiguous `CollectionError` case constructors with `Type.Case`. See [migration guidance](documentation/standard-library/imports.md#migrating-prelude-imports).
+
 - Fix Map and Set lookups after removing the last remaining key: a stale key index made later distinct keys share one entry (#316).
 - Add receiver-returning `Map.remove` and `List.splice` aliases, preserving legacy lookup, insertion order, strict splice bounds and faults; extend native dispatch, mutation analysis and preferred-name advisories.
 - Add `String.replace_n` with a required finite replacement cap and the existing literal/scalar, zero/negative and fault behavior; current `replace`/`replace_first` signatures remain compatible.

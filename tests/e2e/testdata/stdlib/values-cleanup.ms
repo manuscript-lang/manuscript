@@ -1,9 +1,4 @@
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-import {Equal, Hashable} from "@std/equality.ms"
-import Error from "@std/errors.ms"
 import Closeable from "@std/cleanup.ms"
-import {List, Map} from "@std/collections.ms"
 import JsonError from "@std/json.ms"
 import panic from "@std/faults.ms"
 

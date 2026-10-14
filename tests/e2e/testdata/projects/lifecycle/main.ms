@@ -3,8 +3,6 @@ import panic from "@std/faults.ms"
 
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
-import Result from "@std/result.ms"
-import List from "@std/collections.ms"
 
 type Resource:
     label: String

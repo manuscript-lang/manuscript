@@ -8,8 +8,6 @@ import {
 import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@std/http.ms"
 import network from "@std/net.ms"
 import timestamp from "@std/time.ms"
-import {List, Map} from "@std/collections.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import {certificate, private_key} from "./support/certificates.ms"
 import value from "./support/results.ms"

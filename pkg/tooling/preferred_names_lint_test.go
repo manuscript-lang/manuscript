@@ -23,8 +23,8 @@ func TestPreferredNamesFollowResolvedNativeMethods(t *testing.T) {
 		{"Map lazy default", "", "Map[Int, Int]", "with_default_from", "add_default_from", "key: 1, create: fn(key): key + 7", "mutates and returns the receiver"},
 		{"Map builder", "import MapBuilder from \"@std/collections.ms\"\n", "MapBuilder[Int, Int]", "with_entry", "add", "key: 1, value: 7", "mutates the builder and returns Unit"},
 		{"Set builder", "import SetBuilder from \"@std/collections.ms\"\n", "SetBuilder[Int]", "with_value", "add", "value: 7", "mutates the builder and returns Unit"},
-		{"Set add", "import Set from \"@std/collections.ms\"\n", "Set[Int]", "with_value", "add", "value: 7", "mutates and returns the receiver"},
-		{"Set remove", "import Set from \"@std/collections.ms\"\n", "Set[Int]", "without", "remove", "value: 7", "mutates and returns the receiver"},
+		{"Set add", "", "Set[Int]", "with_value", "add", "value: 7", "mutates and returns the receiver"},
+		{"Set remove", "", "Set[Int]", "without", "remove", "value: 7", "mutates and returns the receiver"},
 		{"Bytes reverse", "import Bytes from \"@std/bytes.ms\"\n", "Bytes", "reverse", "reversed", "", "returns a copy"},
 		{"Regex replace", "import Regex from \"@std/regex.ms\"\n", "Regex", "replace", "replace_all", "text: \"aaa\", replacement: \"b\"", "replaces all matches"},
 	} {

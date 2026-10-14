@@ -23,7 +23,6 @@ import {
 } from "./second.ms"
 import {Key, Cause} from "./domain.ms"
 import panic from "@std/faults.ms"
-import {Map, Set, List} from "@std/collections.ms"
 
 test "mapped output keeps lexical Hashable and Equal evidence":
     let by_id = first_mapped()

@@ -29,6 +29,7 @@ Compound assignment (`+=`, `-=`, `*=`, `/=`, `%=`) points at the full operator a
 | --- | --- |
 | `unknown binding`, `unknown type` | Nearest declared name, else the standard module to import, else how to declare it. |
 | `module does not export` | Nearest export, else the module's declared export list without implicit prelude or imported symbols, plus named-import guidance; private names say to add `export`. |
+| `redundant prelude import` (`MS2003`) | Remove the canonical prelude binding from the import and use its ambient declaration; the machine fix preserves neighboring bindings and comments. |
 | `unknown or ambiguous member` | Nearest field or operation, else the available ones. |
 | `missing argument`, `unknown argument`, `duplicate argument` | The parameter and its type at the call site; the parameter list. |
 | `too many positional arguments` | Every parameter is already supplied; remove the excess argument. |

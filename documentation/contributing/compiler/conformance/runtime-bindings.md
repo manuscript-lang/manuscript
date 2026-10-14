@@ -12,7 +12,6 @@ These fixtures check standard imports and API identities, concurrent sharing, da
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
 
 fn amount() -> Result[Decimal, String]:

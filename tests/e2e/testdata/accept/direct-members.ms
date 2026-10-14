@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 
-import {List, Map, Set} from "@std/collections.ms"
-
 type Point:
     x: Int
     y: Int

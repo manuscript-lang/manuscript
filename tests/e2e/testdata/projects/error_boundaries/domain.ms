@@ -1,5 +1,3 @@
-import Error from "@std/errors.ms"
-
 export type DomainFailure:
     code: Int
 

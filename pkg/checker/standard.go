@@ -251,6 +251,9 @@ func (l *standardLoader) scopeModule(module *syntax.Module) {
 			c.error(item.NamePos, "resolution", "standard module does not export "+item.Name)
 			continue
 		}
+		if isPreludeSymbol(found) {
+			c.redundantPreludeImport(module, item)
+		}
 		c.addSymbol(item.Name, found, item.NamePos)
 	}
 	for _, d := range module.Declarations {

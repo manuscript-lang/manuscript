@@ -1,8 +1,4 @@
 import {parse, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
-import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-import Error from "@std/errors.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

@@ -1,7 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
 import IoError from "@std/io.ms"
-import Map from "@std/collections.ms"
 import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import JsonValue from "@std/json.ms"

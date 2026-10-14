@@ -2,8 +2,6 @@
 
 import BigInt from "@std/bigint.ms"
 import Bytes from "@std/bytes.ms"
-import Map from "@std/collections.ms"
-import List from "@std/collections.ms"
 import ReadStream from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 import Duration from "@std/time.ms"

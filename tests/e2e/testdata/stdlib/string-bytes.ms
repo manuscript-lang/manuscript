@@ -1,8 +1,5 @@
 import {from_scalars, StringError, StringBuilder} from "@std/string.ms"
 import {Bytes, BytesBuilder, values} from "@std/bytes.ms"
-import {CollectionError, List} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

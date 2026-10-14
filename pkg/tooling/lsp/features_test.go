@@ -30,7 +30,7 @@ func TestSignatureHelpIncompleteNamedCalls(t *testing.T) {
 	if signature["label"] != "sum(left: Int, right: Int) -> Int" || signature["documentation"] == nil {
 		t.Fatal(signature)
 	}
-	generic := signatureSource(t, "import List from \"@std/collections.ms\"\nfn work(values: List[String]) -> Unit:\n    values.append(value: |\n")
+	generic := signatureSource(t, "fn work(values: List[String]) -> Unit:\n    values.append(value: |\n")
 	if !strings.Contains(generic["signatures"].([]any)[0].(map[string]any)["label"].(string), "String") {
 		t.Fatal(generic)
 	}
@@ -157,7 +157,7 @@ func TestSymbolRangesAndInferredTypeHints(t *testing.T) {
 	}
 }
 func TestCodeActionFilteringAndUnusedImportFix(t *testing.T) {
-	source := "import List from \"@std/collections.ms\"\nfn answer() -> Int:\n    return 42\n"
+	source := "import ListBuilder from \"@std/collections.ms\"\nfn answer() -> Int:\n    return 42\n"
 	d := document{"file:///tmp/actions.ms", source, 6}
 	checked := analyze(d, map[string]document{d.URI: d})
 	actions := editorActions(d, checked, span{position{}, Position(source, len(source))}, []string{"quickfix"})
@@ -175,7 +175,7 @@ func TestCodeActionFilteringAndUnusedImportFix(t *testing.T) {
 }
 
 func TestWildcardBindingsRemainSafeAcrossEditorFeatures(t *testing.T) {
-	source := "import Optional from \"@std/optional.ms\"\nfn answer(value: Optional[Int]) -> Int:\n    match value:\n        some(_):\n            return 1\n        none:\n            return 0\n"
+	source := "fn answer(value: Optional[Int]) -> Int:\n    match value:\n        some(_):\n            return 1\n        none:\n            return 0\n"
 	d := document{"file:///tmp/wildcard.ms", source, 1}
 	docs := map[string]document{d.URI: d}
 	checked := workspaceAnalysis(d, docs)
@@ -200,7 +200,7 @@ func TestWildcardBindingsRemainSafeAcrossEditorFeatures(t *testing.T) {
 }
 
 func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
-	source := "import List from \"@std/collections.ms\"\nfn count(values: List[String]) -> Int:\n    return values.length()\n"
+	source := "fn count(values: List[String]) -> Int:\n    return values.length()\n"
 	d := document{"file:///tmp/standard-navigation.ms", source, 1}
 	docs := map[string]document{d.URI: d}
 	standardURI := "manuscript-stdlib:///collections.ms"
@@ -213,7 +213,7 @@ func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
 	if !checked.Success() {
 		t.Fatal(checked.Diagnostics)
 	}
-	for _, pos := range []position{{0, 8}, {1, 18}, {2, 20}} {
+	for _, pos := range []position{{0, 18}, {1, 20}} {
 		locations := navigation(checked, d, pos, "textDocument/definition")
 		if locations == nil {
 			t.Fatalf("missing standard definition at %v", pos)
@@ -240,7 +240,6 @@ func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
 
 func TestBytesValuesHoverIncludesOperationContract(t *testing.T) {
 	source := `import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 fn extract(data: Bytes) -> List[Int]:
     let bound: fn() -> List[Int] = data.values
     return data.values()
@@ -264,7 +263,7 @@ fn extract(data: Bytes) -> List[Int]:
 
 func TestBytesConstructorRetainsValuesSignature(t *testing.T) {
 	for _, call := range []string{"Bytes(|", "Bytes(values: |"} {
-		source := "import Bytes from \"@std/bytes.ms\"\nimport List from \"@std/collections.ms\"\nfn make() -> Bytes:\n    return " + call + "\n"
+		source := "import Bytes from \"@std/bytes.ms\"\nfn make() -> Bytes:\n    return " + call + "\n"
 		result := signatureSource(t, source)
 		signature := result["signatures"].([]any)[0].(map[string]any)
 		if signature["label"] != "Bytes(values: List[Int]) -> Bytes" {
@@ -278,7 +277,6 @@ func TestNavigationWithinStandardLibrary(t *testing.T) {
 		{"collections.ms", "Result[List[T]", "result.ms", "Result"},
 		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
 		{"collections.ms", "List[T]) ->", "collections.ms", "List"},
-		{"cli.ms", "List from", "collections.ms", "List"},
 		{"cli.ms", "List[String]", "collections.ms", "List"},
 	} {
 		t.Run(item.file+"/"+item.needle, func(t *testing.T) {
@@ -413,7 +411,7 @@ func TestPreferredNativeNamesHoverAndNavigation(t *testing.T) {
 		{"replace_all", "Regex", "literal replacement text", "regex.ms"},
 	} {
 		t.Run(tc.receiver+"/"+tc.name, func(t *testing.T) {
-			source := "import {List, Set} from \"@std/collections.ms\"\nimport Bytes from \"@std/bytes.ms\"\nimport Regex from \"@std/regex.ms\"\nfn check(receiver: " + tc.receiver + ") -> Unit:\n    let bound = receiver." + tc.name + "\n"
+			source := "import Bytes from \"@std/bytes.ms\"\nimport Regex from \"@std/regex.ms\"\nfn check(receiver: " + tc.receiver + ") -> Unit:\n    let bound = receiver." + tc.name + "\n"
 			d := document{"file:///tmp/preferred-names-hover.ms", source, 1}
 			checked := analyze(d, map[string]document{d.URI: d})
 			if !checked.Success() {

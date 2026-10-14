@@ -213,7 +213,6 @@ Save as `get.ms`. Import `network` from `@std/net.ms`; the buffered response has
 <!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from HTTP\n"},"stdout":"hello from HTTP\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1},{"args":["invalid URL"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/cli.ms"
-import Map from "@std/collections.ms"
 import HttpError from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"

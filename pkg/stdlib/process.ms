@@ -2,8 +2,6 @@
 
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
 
 # Errors returned when a process cannot start, times out, or exceeds an output bound.
 export type CommandError:

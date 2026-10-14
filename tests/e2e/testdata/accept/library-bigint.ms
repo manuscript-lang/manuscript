@@ -3,7 +3,6 @@ import panic from "@std/faults.ms"
 import parse from "@std/bigint.ms"
 
 import BigInt from "@std/bigint.ms"
-import Result from "@std/result.ms"
 import BigIntError from "@std/bigint.ms"
 
 fn verify_bigint() -> Result[Unit, BigIntError]:

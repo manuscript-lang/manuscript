@@ -4,13 +4,13 @@ title = "collections"
 
 # @std/collections.ms
 
-`List`, `Map`, and `Set` are available in the prelude; no import required.
+`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry` are prelude declarations; explicit imports of them are rejected.
 
-Other names require `import Name from "@std/collections.ms"`; explicit List/Map/Set imports remain supported.
+Import other names with `import Name from "@std/collections.ms"`.
 
 ## CollectionError {data-api-kind="Alternative"}
 
-Errors returned when a collection factory exceeds its supplied item limit.
+Invalid factory input, an exceeded item limit, or invalid collection slice bounds.
 
 ```manuscript
 type CollectionError:
@@ -24,12 +24,36 @@ impl Error for CollectionError:
     fn message() -> String:
 ```
 
+### CollectionError.InvalidInput
+
+A factory argument is invalid, such as a negative count or a zero range step.
+
+```manuscript
+case InvalidInput
+```
+
+### CollectionError.LimitExceeded
+
+A factory would produce more items than its supplied max_items limit.
+
+```manuscript
+case LimitExceeded
+```
+
 ### CollectionError.OutOfRange
 
 A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
 
 ```manuscript
 case OutOfRange
+```
+
+### CollectionError.Error.message
+
+Describes invalid input, an exceeded item limit, or an out-of-range slice.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## List {data-api-kind="Native type"}
@@ -305,6 +329,22 @@ type ListEntry[T]:
     value: T
 ```
 
+### ListEntry.index
+
+The zero-based position of this value in the enumerated list.
+
+```manuscript
+index: Int
+```
+
+### ListEntry.value
+
+The original element reference; mutable payloads remain shared with the list.
+
+```manuscript
+value: T
+```
+
 ## Map {data-api-kind="Native type"}
 
 A mutable key-value collection. Keys use explicit `Hashable` value semantics.
@@ -553,6 +593,22 @@ One key-value pair returned by `Map.entries`.
 type MapEntry[T: Hashable, U]:
     key: T
     value: U
+```
+
+### MapEntry.key
+
+The original key reference, retaining its selected equality and hashing semantics.
+
+```manuscript
+key: T
+```
+
+### MapEntry.value
+
+The stored value reference; mutable payloads remain shared with the map.
+
+```manuscript
+value: U
 ```
 
 ## Set {data-api-kind="Native type"}

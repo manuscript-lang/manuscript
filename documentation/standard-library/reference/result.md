@@ -6,7 +6,7 @@ title = "result"
 
 These names are available in the prelude; no import required.
 
-Explicit imports with `import Name from "@std/result.ms"` remain supported.
+Explicit imports of these prelude declarations are rejected; remove them from the import.
 
 ## Result {data-api-kind="Alternative"}
 

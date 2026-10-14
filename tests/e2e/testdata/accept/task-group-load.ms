@@ -1,5 +1,4 @@
 import {TaskGroup, ExecutionError} from "@std/tasks.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 
 type Summary:

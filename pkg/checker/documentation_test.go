@@ -45,7 +45,7 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 			t.Fatalf("lost bounds or native methods: %+v", d)
 		}
 	}
-	for _, pair := range [][2]string{{"Optional", "optional"}, {"Result", "result"}, {"Error", "errors"}, {"List", "collections"}, {"Map", "collections"}, {"Set", "collections"}} {
+	for _, pair := range [][2]string{{"Optional", "optional"}, {"Result", "result"}, {"Error", "errors"}, {"List", "collections"}, {"Map", "collections"}, {"Set", "collections"}, {"ListEntry", "collections"}, {"MapEntry", "collections"}, {"CollectionError", "collections"}} {
 		if exports["prelude#"+pair[0]].Declaration != exports["@std/"+pair[1]+".ms#"+pair[0]].Declaration {
 			t.Fatalf("prelude %s lost its source declaration", pair[0])
 		}

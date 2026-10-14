@@ -50,9 +50,6 @@ fn use() -> Set[Int]:
     value: T
 fn use() -> Set[List[Int]]: Set([1])
 `,
-		"explicit imports": `import {List, Map, Set} from "@std/collections.ms"
-fn use() -> Int: List[Int]().length() + Map[Int, Int]().length() + Set[Int]().length()
-`,
 		"ordinary types": `type List[T]:
     value: T
 type Map[K, V]:
@@ -105,6 +102,17 @@ fn use() -> Int: List(3) + Map(4) + Set(5)
 			r := CompileSource("prelude.ms", source, Options{AnalyzeOnly: true})
 			if r.Success() {
 				t.Fatal("accepted invalid source")
+			}
+			if strings.Contains(name, "duplicate") || strings.Contains(name, "collision") {
+				found := false
+				for _, diagnostic := range r.Diagnostics {
+					if strings.Contains(diagnostic.Message, "duplicate or intrinsic name") {
+						found = true
+					}
+				}
+				if !found {
+					t.Fatal("import policy hid the ordinary collision", r.Diagnostics)
+				}
 			}
 			if strings.Contains(name, "shadows literal") && (len(r.Diagnostics) != 1 || !strings.Contains(r.Diagnostics[0].Message, "rename the shadowing")) {
 				t.Fatal(r.Diagnostics)

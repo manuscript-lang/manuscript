@@ -7,8 +7,6 @@ import {
     copy
 } from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import MemoryStream from "./support/streams.ms"
 import value from "./support/results.ms"

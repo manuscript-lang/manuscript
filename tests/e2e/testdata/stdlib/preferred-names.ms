@@ -1,4 +1,3 @@
-import {List, Set} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
 import {compile, Regex, RegexError} from "@std/regex.ms"
 import panic from "@std/faults.ms"

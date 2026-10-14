@@ -1,7 +1,3 @@
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-import Set from "@std/collections.ms"
-import Equal from "@std/equality.ms"
 import panic from "@std/faults.ms"
 
 type Point:

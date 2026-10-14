@@ -17,7 +17,7 @@ import (
 )
 
 func debugLiteralSource() string {
-	return "import List from \"@std/collections.ms\"\nfn values() -> List[Int]:\n    return [" + strings.TrimSuffix(strings.Repeat("7, ", 1100), ", ") + "]\nexport fn main() -> Int:\n    return values().length() - 1100\n"
+	return "fn values() -> List[Int]:\n    return [" + strings.TrimSuffix(strings.Repeat("7, ", 1100), ", ") + "]\nexport fn main() -> Int:\n    return values().length() - 1100\n"
 }
 
 func TestDebugLiteralBuildSelection(t *testing.T) {
@@ -123,7 +123,7 @@ func TestDebugLiteralEligibility(t *testing.T) {
 		{"List[Int]", "[7]", "", false},
 	} {
 		t.Run(tc.typ+tc.element, func(t *testing.T) {
-			s := "import List from \"@std/collections.ms\"\n" + tc.extra + "fn values(value: Int) -> List[" + tc.typ + "]:\n    return [" + strings.TrimSuffix(strings.Repeat(tc.element+", ", 1100), ", ") + "]\n"
+			s := "" + tc.extra + "fn values(value: Int) -> List[" + tc.typ + "]:\n    return [" + strings.TrimSuffix(strings.Repeat(tc.element+", ", 1100), ", ") + "]\n"
 			r := compiler.CompileSource("literal.ms", s, compiler.Options{})
 			if !r.Success() {
 				t.Fatal(r.Diagnostics)
@@ -195,7 +195,7 @@ func TestDebugLiteralNativeCompatibility(t *testing.T) {
 }
 
 func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
-	source := "import List from \"@std/collections.ms\"\nimport panic from \"@std/faults.ms\"\nfn values() -> List[Int]:\n    return [" + strings.TrimSuffix(strings.Repeat("7, ", 1100), ", ") + "]\n"
+	source := "import panic from \"@std/faults.ms\"\nfn values() -> List[Int]:\n    return [" + strings.TrimSuffix(strings.Repeat("7, ", 1100), ", ") + "]\n"
 	source += "fn defaults(items: List[Int] = [" + strings.TrimSuffix(strings.Repeat("9, ", 1100), ", ") + "]) -> List[Int]: items\n"
 	source += `test "fresh Debug data":
     let first = values()
@@ -231,7 +231,7 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
 			t.Fatalf("%s: %v\n%s", kind, err, data)
 		}
 	}
-	fault := "import List from \"@std/collections.ms\"\nfn fail() -> Int:\n    return 1 / 0\nexport fn main() -> Int:\n    let data = [" + strings.TrimSuffix(strings.Repeat("7, ", 1100), ", ") + "]\n    return fail()\n"
+	fault := "fn fail() -> Int:\n    return 1 / 0\nexport fn main() -> Int:\n    let data = [" + strings.TrimSuffix(strings.Repeat("7, ", 1100), ", ") + "]\n    return fail()\n"
 	r = compiler.CompileSource("debug-fault.ms", fault, compiler.Options{Entry: true})
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
@@ -252,7 +252,7 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
 		}
 		transcripts = append(transcripts, string(data))
 	}
-	if transcripts[0] != transcripts[1] || !strings.Contains(transcripts[1], "debug-fault.ms:3:14 in fail") || !strings.Contains(transcripts[1], "debug-fault.ms:6:12 in main") {
+	if transcripts[0] != transcripts[1] || !strings.Contains(transcripts[1], "debug-fault.ms:2:14 in fail") || !strings.Contains(transcripts[1], "debug-fault.ms:5:12 in main") {
 		t.Fatalf("fault order changed: %q", transcripts)
 	}
 }

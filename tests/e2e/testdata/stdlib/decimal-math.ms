@@ -16,7 +16,6 @@ import {
     cos,
     pi
 } from "@std/math.ms"
-import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
 test "decimal arithmetic is exact and conversion truncates":

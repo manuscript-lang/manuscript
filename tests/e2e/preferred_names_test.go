@@ -16,8 +16,7 @@ func TestPreferredNamesScopedImplementations(t *testing.T) {
 }
 
 func TestPreferredNamesRetainFaults(t *testing.T) {
-	source := `import List from "@std/collections.ms"
-test "old set":
+	source := `test "old set":
     [1].with_value(1, 2)
 test "new set":
     [1].set(1, 2)
@@ -66,7 +65,7 @@ test "continues":
 			t.Fatalf("alias changed diagnostic: %q != %q", messages[0], messages[1])
 		}
 	}
-	for _, frame := range []string{"preferred-faults.ms:5:9", "preferred-faults.ms:8:5", "preferred-faults.ms:12:9", "preferred-faults.ms:15:5", "preferred-faults.ms:18:11", "preferred-faults.ms:21:11", "preferred-faults.ms:25:9", "preferred-faults.ms:28:5", "12 tests, 11 failed"} {
+	for _, frame := range []string{"preferred-faults.ms:4:9", "preferred-faults.ms:7:5", "preferred-faults.ms:11:9", "preferred-faults.ms:14:5", "preferred-faults.ms:17:11", "preferred-faults.ms:20:11", "preferred-faults.ms:24:9", "preferred-faults.ms:27:5", "12 tests, 11 failed"} {
 		if !strings.Contains(output, frame) {
 			t.Errorf("missing %s: %s", frame, output)
 		}

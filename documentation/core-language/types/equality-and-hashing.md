@@ -40,7 +40,6 @@ Structural equality terminates on cyclic data. Collections and recursive data sh
 An explicit implementation can select identity instead of every field:
 
 ```manuscript
-import {Equal, Hashable} from "@std/equality.ms"
 
 type CustomerKey:
     id: Int

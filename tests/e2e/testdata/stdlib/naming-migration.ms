@@ -1,4 +1,4 @@
-import {MapBuilder, SetBuilder, ListBuilder, Set} from "@std/collections.ms"
+import {MapBuilder, SetBuilder, ListBuilder} from "@std/collections.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 import panic from "@std/faults.ms"

@@ -14,7 +14,7 @@ Functions, methods, function values, record/case constructors and contract views
 - `Queue[T]()` creates an unbounded local FIFO. `Queue[T](capacity: 4)` supplies a fixed positive bound through its `capacity: Optional[Int]` constructor argument; supplied payloads are wrapped once under the [optional argument rules](https://manuscript-lang.github.io/manuscript/core-language/types/optionals/#passing-optional-arguments). A nonpositive explicit capacity is a programming fault. Shared access requires `Synchronized[Queue[T]]`.
 - `Synchronized[T](value: T)` stores a value behind a mutex. Its `lock()` returns a `SynchronizedGuard[T]` for `with`; guard get/set require an active acquisition, and close releases it.
 - `Bytes(values: List[Int])` constructs bytes. The runtime checks the byte range.
-- Prelude `List[T]()`, `Map[K, V]()`, and `Set[T]()` construct empty collections, with explicit type arguments or a complete expected type. Collection constructors and list/map literals need no imports; explicit imports remain supported. Map keys and Set elements still require `Hashable`. `Map.add(key, value)` inserts or replaces a value, returns the receiver and preserves the original key and insertion position; `with_entry` remains compatible.
+- Prelude `List[T]()`, `Map[K, V]()`, and `Set[T]()` construct empty collections, with explicit type arguments or a complete expected type. Their public support types `CollectionError`, `ListEntry`, and `MapEntry` are also in the prelude. Explicit standard imports of prelude declarations are rejected; remove those names from the import. Map keys and Set elements still require `Hashable`. `Map.add(key, value)` inserts or replaces a value, returns the receiver and preserves the original key and insertion position; `with_entry` remains compatible.
 - `Task`, `SynchronizedGuard`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Durations use literals; other values come from APIs or conversions.
 - `.clone()` is built in on records, alternatives, List, Map, Set, and Bytes and returns the same concrete data type with separate outer storage. It does not clone nested handles or introduce a method on native services.
 - Records use their listed fields as constructor arguments, with optional labels and declaration-order positional slots. Alternatives construct one listed case. Interfaces describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
@@ -667,15 +667,15 @@ fn environment() -> Map[String, String]:
 
 # @std/collections.ms
 
-`List`, `Map`, and `Set` are available in the prelude; no import required.
+`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry` are prelude declarations; explicit imports of them are rejected.
 
-Other names require `import Name from "@std/collections.ms"`; explicit List/Map/Set imports remain supported.
+Import other names with `import Name from "@std/collections.ms"`.
 
 ## CollectionError
 
 **Alternative**
 
-Errors returned when a collection factory exceeds its supplied item limit.
+Invalid factory input, an exceeded item limit, or invalid collection slice bounds.
 
 ```manuscript
 type CollectionError:
@@ -689,12 +689,36 @@ impl Error for CollectionError:
     fn message() -> String:
 ```
 
+### CollectionError.InvalidInput
+
+A factory argument is invalid, such as a negative count or a zero range step.
+
+```manuscript
+case InvalidInput
+```
+
+### CollectionError.LimitExceeded
+
+A factory would produce more items than its supplied max_items limit.
+
+```manuscript
+case LimitExceeded
+```
+
 ### CollectionError.OutOfRange
 
 A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
 
 ```manuscript
 case OutOfRange
+```
+
+### CollectionError.Error.message
+
+Describes invalid input, an exceeded item limit, or an out-of-range slice.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## List
@@ -976,6 +1000,22 @@ type ListEntry[T]:
     value: T
 ```
 
+### ListEntry.index
+
+The zero-based position of this value in the enumerated list.
+
+```manuscript
+index: Int
+```
+
+### ListEntry.value
+
+The original element reference; mutable payloads remain shared with the list.
+
+```manuscript
+value: T
+```
+
 ## Map
 
 **Native type**
@@ -1230,6 +1270,22 @@ One key-value pair returned by `Map.entries`.
 type MapEntry[T: Hashable, U]:
     key: T
     value: U
+```
+
+### MapEntry.key
+
+The original key reference, retaining its selected equality and hashing semantics.
+
+```manuscript
+key: T
+```
+
+### MapEntry.value
+
+The stored value reference; mutable payloads remain shared with the map.
+
+```manuscript
+value: U
 ```
 
 ## Set
@@ -2224,7 +2280,7 @@ fn hex_encode(data: Bytes) -> String:
 
 These names are available in the prelude; no import required.
 
-Explicit imports with `import Name from "@std/equality.ms"` remain supported.
+Explicit imports of these prelude declarations are rejected; remove them from the import.
 
 ## Equal
 
@@ -2267,9 +2323,9 @@ fn hash() -> Int
 
 # @std/errors.ms
 
-These names are available in the prelude; no import required.
+`Error` is a prelude declaration; explicit imports of it are rejected.
 
-Explicit imports with `import Name from "@std/errors.ms"` remain supported.
+Import other names with `import Name from "@std/errors.ms"`.
 
 ## Error
 
@@ -4884,7 +4940,7 @@ fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]:
 
 These names are available in the prelude; no import required.
 
-Explicit imports with `import Name from "@std/optional.ms"` remain supported.
+Explicit imports of these prelude declarations are rejected; remove them from the import.
 
 ## Optional
 
@@ -6046,7 +6102,7 @@ fn compile(pattern: String) -> Result[Regex, RegexError]:
 
 These names are available in the prelude; no import required.
 
-Explicit imports with `import Name from "@std/result.ms"` remain supported.
+Explicit imports of these prelude declarations are rejected; remove them from the import.
 
 ## Result
 
@@ -7968,6 +8024,56 @@ Boolean truth values true and false; conditions require this type.
 type Bool:
 ```
 
+## CollectionError
+
+**Alternative**
+
+Invalid factory input, an exceeded item limit, or invalid collection slice bounds.
+
+```manuscript
+type CollectionError:
+    case InvalidInput
+    case LimitExceeded
+    case OutOfRange
+```
+
+```manuscript
+impl Error for CollectionError:
+    fn message() -> String:
+```
+
+### CollectionError.InvalidInput
+
+A factory argument is invalid, such as a negative count or a zero range step.
+
+```manuscript
+case InvalidInput
+```
+
+### CollectionError.LimitExceeded
+
+A factory would produce more items than its supplied max_items limit.
+
+```manuscript
+case LimitExceeded
+```
+
+### CollectionError.OutOfRange
+
+A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
+
+```manuscript
+case OutOfRange
+```
+
+### CollectionError.Error.message
+
+Describes invalid input, an exceeded item limit, or an out-of-range slice.
+
+```manuscript
+fn message() -> String:
+```
+
 ## Equal
 
 **Interface**
@@ -8368,6 +8474,34 @@ Compatibility spelling for remove; mutates and returns this list.
 fn without(index: Int) -> List[T]:
 ```
 
+## ListEntry
+
+**Record**
+
+One list index and its corresponding value.
+
+```manuscript
+type ListEntry[T]:
+    index: Int
+    value: T
+```
+
+### ListEntry.index
+
+The zero-based position of this value in the enumerated list.
+
+```manuscript
+index: Int
+```
+
+### ListEntry.value
+
+The original element reference; mutable payloads remain shared with the list.
+
+```manuscript
+value: T
+```
+
 ## Map
 
 **Native type**
@@ -8580,6 +8714,34 @@ Compatibility spelling for remove, with the same mutation, scoped lookup and rec
 
 ```manuscript
 fn without(key: T) -> Map[T, U]:
+```
+
+## MapEntry
+
+**Record**
+
+One key-value pair returned by `Map.entries`.
+
+```manuscript
+type MapEntry[T: Hashable, U]:
+    key: T
+    value: U
+```
+
+### MapEntry.key
+
+The original key reference, retaining its selected equality and hashing semantics.
+
+```manuscript
+key: T
+```
+
+### MapEntry.value
+
+The stored value reference; mutable payloads remain shared with the map.
+
+```manuscript
+value: U
 ```
 
 ## Never

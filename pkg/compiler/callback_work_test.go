@@ -12,7 +12,7 @@ func TestDeepContextualCallbacksCheckedOnce(t *testing.T) {
 	// Rechecking every successful callback probe doubled work at each level.
 	// This depth is cheap when each body is retained under its final signature.
 	expression := strings.Repeat("[1].map(fn(item): ", 40) + "1" + strings.Repeat(")", 40)
-	source := "import List from \"@std/collections.ms\"\nfn first() -> Unit:\n    let values = " + expression + "\n"
+	source := "fn first() -> Unit:\n    let values = " + expression + "\n"
 	result := compiler.CompileSource("nested-callbacks.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)

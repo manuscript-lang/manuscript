@@ -1,4 +1,3 @@
-import {List, Map} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn subtract(amount: Int, deduction: Int) -> Int: amount - deduction

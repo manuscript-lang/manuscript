@@ -1,8 +1,6 @@
 import panic from "@std/faults.ms"
 
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 
 test "explicit byte conversion":
     if not ("é".byte_length() == 2):

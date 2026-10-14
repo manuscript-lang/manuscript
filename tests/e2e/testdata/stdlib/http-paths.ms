@@ -9,7 +9,6 @@ import {
 } from "@std/http.ms"
 import network from "@std/net.ms"
 import TlsOptions from "@std/tls.ms"
-import {List, Map} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"

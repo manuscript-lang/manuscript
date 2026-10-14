@@ -6,9 +6,7 @@ import (
 )
 
 func TestNativeMethodConstraints(t *testing.T) {
-	prelude := `import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-fn stringify(value: Int) -> String:
+	prelude := `fn stringify(value: Int) -> String:
     return "{value}"
 fn wrong_label(item: Int) -> String:
     return "{item}"
@@ -44,17 +42,13 @@ fn callback() -> Unit:
 
 func TestNativeMethodRetainsGenericReceiverBounds(t *testing.T) {
 	for _, source := range []string{
-		`import List from "@std/collections.ms"
-fn search[T: Equal](values: List[T], value: T) -> Bool:
+		`fn search[T: Equal](values: List[T], value: T) -> Bool:
     return values.contains(value: value)
 `,
-		`import List from "@std/collections.ms"
-import Set from "@std/collections.ms"
-fn unique[T: Hashable](values: List[T]) -> Set[T]:
+		`fn unique[T: Hashable](values: List[T]) -> Set[T]:
     return values.to_set()
 `,
-		`import List from "@std/collections.ms"
-fn convert[T, U](values: List[T], transform: fn(value: T) -> U) -> List[U]:
+		`fn convert[T, U](values: List[T], transform: fn(value: T) -> U) -> List[U]:
     return values.map(transform: transform)
 `,
 	} {
@@ -63,8 +57,7 @@ fn convert[T, U](values: List[T], transform: fn(value: T) -> U) -> List[U]:
 			t.Fatal(result.Diagnostics)
 		}
 	}
-	source := `import List from "@std/collections.ms"
-fn search[T](values: List[T], value: T) -> Bool:
+	source := `fn search[T](values: List[T], value: T) -> Bool:
     return values.contains(value: value)
 `
 	if result := CompileSource("bounds.ms", source, Options{}); result.Success() {

@@ -8,7 +8,6 @@ import {
 } from "@std/http.ms"
 import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
-import {List, Map} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

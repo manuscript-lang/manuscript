@@ -1,4 +1,3 @@
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn apply[T, U](value: T, transform: fn(value: T) -> U) -> U: transform(value)

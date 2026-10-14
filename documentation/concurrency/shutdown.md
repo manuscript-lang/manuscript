@@ -15,7 +15,6 @@ Save this example as `observe.ms`, build it with `ms build observe.ms -o observe
 
 <!-- manuscript-example: {"mode":"signal","name":"observer"} -->
 ```manuscript
-import List from "@std/collections.ms"
 import stdout from "@std/io.ms"
 import control from "@std/process.ms"
 import sleep from "@std/time.ms"
@@ -58,7 +57,6 @@ Save as `shutdown.ms` and run `ms build shutdown.ms -o shutdown`:
 <!-- manuscript-example: {"mode":"signal","name":"server"} -->
 ```manuscript
 import Closeable from "@std/cleanup.ms"
-import List from "@std/collections.ms"
 import stdout from "@std/io.ms"
 import {network, Listener, Connection} from "@std/net.ms"
 import control from "@std/process.ms"

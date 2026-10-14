@@ -17,7 +17,6 @@ This complete program writes one JSON line to stdout. `try` propagates logging f
 ```manuscript
 import {create, stdout_transport} from "@std/log.ms"
 import JsonValue from "@std/json.ms"
-import Map from "@std/collections.ms"
 
 fn announce() -> Result[Unit, Error]:
     with transport = stdout_transport():

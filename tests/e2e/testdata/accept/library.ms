@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
 import parse from "@std/json.ms"
 import stringify from "@std/json.ms"
@@ -30,7 +28,6 @@ import UrlError from "@std/url.ms"
 import BinaryError from "@std/binary.ms"
 import CompressionError from "@std/compress.ms"
 import ArchiveError from "@std/archive.ms"
-import Result from "@std/result.ms"
 
 import pack from "@std/archive.ms"
 import unpack from "@std/archive.ms"

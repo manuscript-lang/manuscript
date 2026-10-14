@@ -1,18 +1,11 @@
 import {
-    List,
-    Map,
-    Set,
     ListBuilder,
     MapBuilder,
     SetBuilder,
     range,
     filled,
-    CollectionError,
-    MapEntry,
     map_from_entries
 } from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

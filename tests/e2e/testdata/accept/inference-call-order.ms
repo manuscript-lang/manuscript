@@ -1,4 +1,3 @@
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn identity[T](value: T) -> T: value

@@ -1,5 +1,4 @@
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 test "Bytes split is binary safe":

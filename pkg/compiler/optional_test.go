@@ -11,7 +11,7 @@ func TestOptionalArgumentsCompose(t *testing.T) {
 		for range 32 {
 			argument = "number(" + argument + ")"
 		}
-		source := "import Optional from \"@std/optional.ms\"\nfn number(value: Optional[Int]) -> Int: return value.unwrap()\nfn call() -> Int: return " + argument + "\n"
+		source := "fn number(value: Optional[Int]) -> Int: return value.unwrap()\nfn call() -> Int: return " + argument + "\n"
 		result := CompileSource("nested.ms", source, Options{})
 		if result.Success() != (payload == "4") {
 			t.Fatal("incorrect nested argument compatibility", result.Diagnostics)
@@ -39,7 +39,7 @@ func TestOptionalArgumentBoundaries(t *testing.T) {
 		{"duplicate label", "fn f(value: Optional[Int]) -> Unit: return\nfn call() -> Unit: f(4, value: 5)\n", "duplicate argument value"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			source := "import Optional from \"@std/optional.ms\"\nimport List from \"@std/collections.ms\"\n" + tt.source
+			source := "" + tt.source
 			result := CompileSource("optional.ms", source, Options{AnalyzeOnly: true})
 			for _, diagnostic := range result.Diagnostics {
 				if strings.Contains(diagnostic.Message, tt.want) {
@@ -59,26 +59,21 @@ func TestOptionalArgumentBoundaries(t *testing.T) {
 
 func TestOptionalMethodsRejectInvalidContracts(t *testing.T) {
 	for name, source := range map[string]string{
-		"wrong fallback": `import Optional from "@std/optional.ms"
-fn wrong(value: Optional[Int]) -> Int:
+		"wrong fallback": `fn wrong(value: Optional[Int]) -> Int:
     return value.unwrap_or("missing")
 `,
-		"wrong lazy fallback result": `import Optional from "@std/optional.ms"
-fn create() -> String: return "missing"
+		"wrong lazy fallback result": `fn create() -> String: return "missing"
 fn wrong(value: Optional[Int]) -> Int:
     return value.unwrap_or_else(create)
 `,
-		"lazy fallback requires zero parameters": `import Optional from "@std/optional.ms"
-fn create(value: Int) -> Int: return value
+		"lazy fallback requires zero parameters": `fn create(value: Int) -> Int: return value
 fn wrong(value: Optional[Int]) -> Int:
     return value.unwrap_or_else(create)
 `,
-		"nested values do not flatten": `import Optional from "@std/optional.ms"
-fn wrong(value: Optional[Optional[Int]]) -> Int:
+		"nested values do not flatten": `fn wrong(value: Optional[Optional[Int]]) -> Int:
     return value.unwrap()
 `,
-		"result does not inherit optional predicates": `import Result from "@std/result.ms"
-fn wrong(value: Result[Int, String]) -> Bool:
+		"result does not inherit optional predicates": `fn wrong(value: Result[Int, String]) -> Bool:
     return value.is_some()
 `,
 		"local names do not inherit native methods": `type Optional[T]:

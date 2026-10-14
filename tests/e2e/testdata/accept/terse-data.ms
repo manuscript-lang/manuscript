@@ -1,6 +1,3 @@
-import {Map, List} from "@std/collections.ms"
-import {Equal, Hashable} from "@std/equality.ms"
-import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
 fn subtract(amount: Int, deduction: Int = 1) -> Int: amount - deduction

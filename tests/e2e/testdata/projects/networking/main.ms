@@ -1,10 +1,6 @@
 import network from "@std/net.ms"
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import HttpError from "@std/http.ms"
 import WebSocketError from "@std/websocket.ms"
 import IoError from "@std/io.ms"

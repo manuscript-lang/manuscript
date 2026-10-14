@@ -1,7 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 
 # Errors returned when an archive cannot be read or written.
 export type ArchiveError:

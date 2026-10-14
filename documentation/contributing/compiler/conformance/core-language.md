@@ -119,7 +119,6 @@ test "nominal record and nested binding":
 Public-surface rejection fixture:
 
 ```manuscript
-import List from "@std/collections.ms"
 
 type PrivateId:
     value: String
@@ -137,7 +136,6 @@ Contract: [collections](../../../core-language/types/collections.md) and [destru
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 
 fn difference(values: List[Int]) -> Int:
     let [first, second] = values
@@ -276,7 +274,6 @@ Contract: [loops](../../../core-language/control-flow/loops.md).
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 
 fn selected_sum(values: List[Int]) -> Int:
     var total = 0
@@ -467,7 +464,6 @@ Contract: [contract views](../../../core-language/types/contracts.md#explicit-co
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 
 interface ReadValue[T]:
     fn get() -> T
@@ -531,7 +527,6 @@ Contract: [records](../../../core-language/types/records.md) and [generics](../.
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 
 type Tree[T]:
     value: T
@@ -562,9 +557,6 @@ Contract: [loops](../../../core-language/control-flow/loops.md) and [collections
 ```manuscript
 import panic from "@std/faults.ms"
 
-import Map from "@std/collections.ms"
-import MapEntry from "@std/collections.ms"
-import Set from "@std/collections.ms"
 
 fn map_total(values: Map[String, Int]) -> Int:
     var total = 0
@@ -705,7 +697,6 @@ Contract: [equality and hashing](../../../core-language/types/equality-and-hashi
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
 
 type Callback:
@@ -755,7 +746,6 @@ Contract: [compatibility and expected types](../../../core-language/types/compat
 ```manuscript
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 
 type Input:
     names: List[Optional[String]]

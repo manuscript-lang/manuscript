@@ -1,12 +1,9 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
 import Synchronized from "@std/sync.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import ListBuilder from "@std/collections.ms"
 import MapBuilder from "@std/collections.ms"
 import SetBuilder from "@std/collections.ms"

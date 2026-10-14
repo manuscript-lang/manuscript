@@ -1,6 +1,4 @@
 import {TaskGroup, Task, ExecutionError} from "@std/tasks.ms"
-import Result from "@std/result.ms"
-import List from "@std/collections.ms"
 import Closeable from "@std/cleanup.ms"
 import panic from "@std/faults.ms"
 

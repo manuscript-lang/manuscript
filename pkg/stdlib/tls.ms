@@ -1,7 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 import Timestamp from "@std/time.ms"
 
 # Errors returned when TLS configuration, certificates, or peer authentication fail.

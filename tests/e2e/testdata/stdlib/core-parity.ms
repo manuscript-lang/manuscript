@@ -1,8 +1,4 @@
-import Result from "@std/result.ms"
-import Optional from "@std/optional.ms"
-import {List, Map, Set} from "@std/collections.ms"
 import panic from "@std/faults.ms"
-import {Equal, Hashable} from "@std/equality.ms"
 import JsonLimits from "@std/json.ms"
 
 type Counter:

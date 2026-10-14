@@ -1,8 +1,10 @@
 # Canonical standard-library declarations. Implementations are native.
 
-# Errors returned when a collection factory exceeds its supplied item limit.
+# Invalid factory input, an exceeded item limit, or invalid collection slice bounds.
 export type CollectionError:
+    # A factory argument is invalid, such as a negative count or a zero range step.
     case InvalidInput
+    # A factory would produce more items than its supplied max_items limit.
     case LimitExceeded
     # A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
     case OutOfRange
@@ -149,7 +151,9 @@ export type Map[T: Hashable, U]:
 
 # One key-value pair returned by `Map.entries`.
 export type MapEntry[T: Hashable, U]:
+    # The original key reference, retaining its selected equality and hashing semantics.
     key: T
+    # The stored value reference; mutable payloads remain shared with the map.
     value: U
 
 # A mutable collection of unique values using explicit `Hashable` value semantics.
@@ -212,7 +216,9 @@ export type Set[T: Hashable]:
 
 # One list index and its corresponding value.
 export type ListEntry[T]:
+    # The zero-based position of this value in the enumerated list.
     index: Int
+    # The original element reference; mutable payloads remain shared with the list.
     value: T
 
 # Creates a list containing `value` repeated `count` times.
@@ -234,6 +240,7 @@ export fn range(
 export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) -> Map[K, V]:
 
 impl Error for CollectionError:
+    # Describes invalid input, an exceeded item limit, or an out-of-range slice.
     fn message() -> String:
 
 # Appends values efficiently before freezing them into a list.

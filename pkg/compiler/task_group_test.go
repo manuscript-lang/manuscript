@@ -8,7 +8,6 @@ import (
 
 func TestTaskGroupTypeBoundaries(t *testing.T) {
 	prefix := `import { TaskGroup, Task, ExecutionError } from "@std/tasks.ms"
-import Result from "@std/result.ms"
 `
 	for _, tt := range []struct{ name, body, want string }{
 		{"task constructor", "fn f() -> Unit:\n    let task = Task[Int]()\n", "no source constructor"},

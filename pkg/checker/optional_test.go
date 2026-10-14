@@ -9,7 +9,7 @@ import (
 )
 
 func TestOptionalArgumentPreservesSourceTypeAndAST(t *testing.T) {
-	module, err := parser.Parse("optional.ms", "import Optional from \"@std/optional.ms\"\nfn f(value: Optional[Int]) -> Int: return value.unwrap()\nfn call() -> Int: return f(4)\n")
+	module, err := parser.Parse("optional.ms", "fn f(value: Optional[Int]) -> Int: return value.unwrap()\nfn call() -> Int: return f(4)\n")
 	if err != nil {
 		t.Fatal(err)
 	}

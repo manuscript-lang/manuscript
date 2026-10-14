@@ -169,6 +169,11 @@ func (c *checker) importSymbols(module *syntax.Module, imports map[*syntax.Impor
 			c.Diagnostics = append(c.Diagnostics, syntax.Diagnostic{Position: item.NamePos, End: &end, Phase: "resolution", Message: c.exportMessage(item, imports)})
 			continue
 		}
+		if isPreludeSymbol(found) {
+			c.redundantPreludeImport(module, item)
+		}
+		// Keep the resolved identity for recovery, so the import diagnostic does
+		// not cascade into errors in otherwise valid collection API usage.
 		c.addSymbol(item.Name, found, item.NamePos)
 	}
 }

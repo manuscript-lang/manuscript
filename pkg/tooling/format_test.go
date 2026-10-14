@@ -170,8 +170,8 @@ func TestInspectInterface(t *testing.T) {
 }
 
 func TestFormatGroupedImports(t *testing.T) {
-	input := "import { List,Map, } from \"@std/collections.ms\" # collections\n"
-	want := "import {List, Map,} from \"@std/collections.ms\"  # collections\n"
+	input := "import { ListBuilder,MapBuilder, } from \"@std/collections.ms\" # collections\n"
+	want := "import {ListBuilder, MapBuilder,} from \"@std/collections.ms\"  # collections\n"
 	formatted, err := tooling.Format("imports.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)

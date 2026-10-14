@@ -1,6 +1,5 @@
 import panic from "@std/faults.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import List from "@std/collections.ms"
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import from_int from "@std/bigint.ms"
 import {parse_int, NumberError} from "@std/numbers.ms"

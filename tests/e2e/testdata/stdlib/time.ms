@@ -7,7 +7,6 @@ import {
     wall_clock,
     sleep
 } from "@std/time.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

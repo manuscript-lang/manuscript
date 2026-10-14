@@ -10,7 +10,6 @@ import (
 // Removing the only entry and then adding distinct keys must keep them distinct.
 func TestMapAndSetRemoveToEmptyThenAdd(t *testing.T) {
 	source := `import panic from "@std/faults.ms"
-import Set from "@std/collections.ms"
 
 export fn main() -> Int:
     let m = Map[String, Int]()

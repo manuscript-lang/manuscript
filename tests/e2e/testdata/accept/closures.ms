@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-
 fn apply(value: Int, action: fn(value: Int) -> Int) -> Int:
     return action(value: value)
 

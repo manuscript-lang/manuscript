@@ -11,12 +11,11 @@ func TestConstructorNamesRetainImports(t *testing.T) {
 	for _, tc := range []struct {
 		name, module, expression string
 	}{
-		{"Set", "collections", "Set[String]()"},
-		{"List", "collections", "List[String]()"},
-		{"Map", "collections", "Map[String, Int]()"},
+		{"SetBuilder", "collections", "SetBuilder[String]()"},
+		{"ListBuilder", "collections", "ListBuilder[String]()"},
+		{"MapBuilder", "collections", "MapBuilder[String, Int]()"},
 		{"Queue", "queues", "Queue[Int]()"},
 		{"CsvOptions", "csv", `CsvOptions(delimiter: ",", line_ending: "\\n")`},
-		{"Optional", "optional", "Optional[Int].some(1)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "import " + tc.name + " from \"@std/" + tc.module + ".ms\"\nfn example() -> Unit:\n    " + tc.expression + "\n"

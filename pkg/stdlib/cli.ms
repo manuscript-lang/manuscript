@@ -1,8 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-
 # Returns the host-supplied startup arguments, excluding the executable path.
 # Repeated calls share the same mutable list; mutations do not rewrite native argv.
 export fn arguments() -> List[String]:

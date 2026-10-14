@@ -1,4 +1,4 @@
-import {filled, List, CollectionError} from "@std/collections.ms"
+import {filled} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 fn make_cells() -> List[Int]:
     match filled(value: 0, count: 16384):

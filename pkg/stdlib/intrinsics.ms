@@ -1,5 +1,4 @@
 # Source locations for the fixed intrinsic receiver operations.
-import List from "@std/collections.ms"
 import StringError from "@std/string.ms"
 import NumberError from "@std/numbers.ms"
 import Bytes from "@std/bytes.ms"

@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 import {Synchronized, SynchronizedGuard} from "@std/sync.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 fn increment(value: Int = 3) -> Int:
     return value + 1

@@ -29,7 +29,6 @@ test "use a typed compression format":
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import {ArchiveFormat, ArchiveEntry} from "@std/archive.ms"
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 test "use a typed archive format":

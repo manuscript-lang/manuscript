@@ -49,32 +49,29 @@ export fn main() -> Int:
     let value: Result[Int, String] = error("expected failure")
     return value.unwrap_or_else(crash)
 `, false, []string{"fault.ms:2:14 in crash", "fault.ms:5:18 in main"}},
-		{"Map filter callback fault", `import Map from "@std/collections.ms"
-fn crash(key: String, value: Int) -> Bool:
+		{"Map filter callback fault", `fn crash(key: String, value: Int) -> Bool:
     return 1 / value == 0
 export fn main() -> Int:
     let value: Map[String, Int] = {"a": 0}
     return value.filter(crash).length()
-`, false, []string{"fault.ms:3:14 in crash", "fault.ms:6:18 in main"}},
-		{"Set map callback fault", `import Set from "@std/collections.ms"
-fn crash(value: Int) -> Int:
+`, false, []string{"fault.ms:2:14 in crash", "fault.ms:5:18 in main"}},
+		{"Set map callback fault", `fn crash(value: Int) -> Int:
     return 1 / value
 export fn main() -> Int:
     let value = Set[Int]().with_value(0)
     return value.map(crash).length()
-`, false, []string{"fault.ms:3:14 in crash", "fault.ms:6:18 in main"}},
+`, false, []string{"fault.ms:2:14 in crash", "fault.ms:5:18 in main"}},
 		{"Optional callback fault", `fn crash(value: Int) -> Optional[Int]:
     return some(1 / value)
 export fn main() -> Int:
     let value: Optional[Int] = some(0)
     return value.and_then(crash).unwrap()
 `, false, []string{"fault.ms:2:19 in crash", "fault.ms:5:18 in main"}},
-		{"unwrap and caller", `import List from "@std/collections.ms"
-fn deep(l: List[Int], i: Int) -> Int:
+		{"unwrap and caller", `fn deep(l: List[Int], i: Int) -> Int:
     return l.at(i).unwrap()
 export fn main() -> Int:
     return deep(l: [1], i: 5)
-`, false, []string{"fault.ms:3:20 in deep", "fault.ms:5:12 in main"}},
+`, false, []string{"fault.ms:2:20 in deep", "fault.ms:4:12 in main"}},
 		{"test panic", `import panic from "@std/faults.ms"
 test "several checks":
     let good = 2 + 3
@@ -123,13 +120,12 @@ export fn main() -> Int:
     let run = item.run
     return run()
 `, false, []string{"fault.ms:7:18 in Item.run", "fault.ms:11:12 in main"}},
-		{"destructuring", `import List from "@std/collections.ms"
-fn empty() -> List[Int]:
+		{"destructuring", `fn empty() -> List[Int]:
     return []
 export fn main() -> Int:
     let [value] = empty()
     return value
-`, false, []string{"fault.ms:5:9 in main"}},
+`, false, []string{"fault.ms:4:9 in main"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			result := compiler.CompileSource("fault.ms", tc.source, compiler.Options{Tests: tc.tests, Entry: !tc.tests})

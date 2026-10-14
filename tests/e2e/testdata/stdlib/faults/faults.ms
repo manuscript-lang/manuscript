@@ -1,11 +1,9 @@
 import panic from "@std/faults.ms"
 import Closeable from "@std/cleanup.ms"
-import {Optional} from "@std/optional.ms"
-import {List, ListBuilder} from "@std/collections.ms"
+import {ListBuilder} from "@std/collections.ms"
 import {Queue} from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
 import {stdout, WriteStream} from "@std/io.ms"
-import Result from "@std/result.ms"
 import Bytes from "@std/bytes.ms"
 
 fn emit(message: String) -> Unit:

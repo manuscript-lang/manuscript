@@ -1,7 +1,6 @@
 import panic from "@std/faults.ms"
 
 import check_cancelled from "@std/tasks.ms"
-import Result from "@std/result.ms"
 import TaskGroup from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
 import Scheduler from "@std/tasks.ms"

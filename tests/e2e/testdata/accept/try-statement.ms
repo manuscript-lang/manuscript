@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-
 fn parse(n: Int) -> Result[Int, String]:
     if n < 0:
         return error("neg")

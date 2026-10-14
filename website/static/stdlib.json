@@ -613,7 +613,7 @@
       "declarations": [
         {
           "name": "CollectionError",
-          "doc": "Errors returned when a collection factory exceeds its supplied item limit.",
+          "doc": "Invalid factory input, an exceeded item limit, or invalid collection slice bounds.",
           "kind": "alternative",
           "type": "CollectionError",
           "cases": [
@@ -629,13 +629,13 @@
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "A factory argument is invalid, such as a negative count or a zero range step."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "A factory would produce more items than its supplied max_items limit."
             },
             {
               "name": "OutOfRange",
@@ -647,7 +647,7 @@
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Describes invalid input, an exceeded item limit, or an out-of-range slice.",
               "contract": "Error"
             }
           ],
@@ -1020,13 +1020,13 @@
               "name": "index",
               "kind": "field",
               "signature": "index: Int",
-              "doc": ""
+              "doc": "The zero-based position of this value in the enumerated list."
             },
             {
               "name": "value",
               "kind": "field",
               "signature": "value: T",
-              "doc": ""
+              "doc": "The original element reference; mutable payloads remain shared with the list."
             }
           ]
         },
@@ -1300,13 +1300,13 @@
               "name": "key",
               "kind": "field",
               "signature": "key: T",
-              "doc": ""
+              "doc": "The original key reference, retaining its selected equality and hashing semantics."
             },
             {
               "name": "value",
               "kind": "field",
               "signature": "value: U",
-              "doc": ""
+              "doc": "The stored value reference; mutable payloads remain shared with the map."
             }
           ]
         },
@@ -9210,6 +9210,50 @@
           "type": "Bool"
         },
         {
+          "name": "CollectionError",
+          "doc": "Invalid factory input, an exceeded item limit, or invalid collection slice bounds.",
+          "kind": "alternative",
+          "type": "CollectionError",
+          "cases": [
+            "InvalidInput",
+            "LimitExceeded",
+            "OutOfRange"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "members": [
+            {
+              "name": "InvalidInput",
+              "kind": "case",
+              "signature": "case InvalidInput",
+              "doc": "A factory argument is invalid, such as a negative count or a zero range step."
+            },
+            {
+              "name": "LimitExceeded",
+              "kind": "case",
+              "signature": "case LimitExceeded",
+              "doc": "A factory would produce more items than its supplied max_items limit."
+            },
+            {
+              "name": "OutOfRange",
+              "kind": "case",
+              "signature": "case OutOfRange",
+              "doc": "A slice bound lies outside 0 \u003c= start \u003c= end \u003c= length() after negative bounds are resolved from the end."
+            },
+            {
+              "name": "message",
+              "kind": "operation",
+              "signature": "fn message() -\u003e String:",
+              "doc": "Describes invalid input, an exceeded item limit, or an out-of-range slice.",
+              "contract": "Error"
+            }
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "Equal",
           "doc": "Equality and hashing are ordinary operation interfaces. Built-in data retains\nits value semantics; an explicit implementation selects domain identity.",
           "kind": "interface",
@@ -9672,6 +9716,33 @@
           ]
         },
         {
+          "name": "ListEntry",
+          "doc": "One list index and its corresponding value.",
+          "kind": "record",
+          "type": "ListEntry[T]",
+          "type_parameters": [
+            "T"
+          ],
+          "fields": [
+            "index: Int",
+            "value: T"
+          ],
+          "members": [
+            {
+              "name": "index",
+              "kind": "field",
+              "signature": "index: Int",
+              "doc": "The zero-based position of this value in the enumerated list."
+            },
+            {
+              "name": "value",
+              "kind": "field",
+              "signature": "value: T",
+              "doc": "The original element reference; mutable payloads remain shared with the list."
+            }
+          ]
+        },
+        {
           "name": "Map",
           "doc": "A mutable key-value collection. Keys use explicit `Hashable` value semantics.",
           "kind": "native",
@@ -9885,6 +9956,34 @@
               "kind": "operation",
               "signature": "fn without(key: T) -\u003e Map[T, U]:",
               "doc": "Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return."
+            }
+          ]
+        },
+        {
+          "name": "MapEntry",
+          "doc": "One key-value pair returned by `Map.entries`.",
+          "kind": "record",
+          "type": "MapEntry[T, U]",
+          "type_parameters": [
+            "T: Hashable",
+            "U"
+          ],
+          "fields": [
+            "key: T",
+            "value: U"
+          ],
+          "members": [
+            {
+              "name": "key",
+              "kind": "field",
+              "signature": "key: T",
+              "doc": "The original key reference, retaining its selected equality and hashing semantics."
+            },
+            {
+              "name": "value",
+              "kind": "field",
+              "signature": "value: U",
+              "doc": "The stored value reference; mutable payloads remain shared with the map."
             }
           ]
         },

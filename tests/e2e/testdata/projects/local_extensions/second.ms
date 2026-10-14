@@ -1,4 +1,3 @@
-import Optional from "@std/optional.ms"
 import {Item, Box, Holder, Choice} from "./domain.ms"
 import {Read, invoke, relay, as_view} from "./contracts.ms"
 import Closeable from "@std/cleanup.ms"

@@ -9,8 +9,7 @@ import (
 )
 
 func TestStandardLibraryNavigation(t *testing.T) {
-	source := `import List from "@std/collections.ms"
-import system from "@std/system.ms"
+	source := `import system from "@std/system.ms"
 fn length(values: List[Int]) -> Int:
     return values.length()
 fn os_name() -> String:
@@ -20,7 +19,7 @@ fn os_name() -> String:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, item := range []struct{ needle, file, definition string }{{"List from", "@std/collections.ms", "type List"}, {"List[Int]", "@std/collections.ms", "type List"}, {"length()", "@std/collections.ms", "length()"}, {"system()", "@std/system.ms", "fn system()"}, {"info()", "@std/system.ms", "info()"}, {".os", "@std/system.ms", "os:"}} {
+	for _, item := range []struct{ needle, file, definition string }{{"List[Int]", "@std/collections.ms", "type List"}, {"length()", "@std/collections.ms", "length()"}, {"system()", "@std/system.ms", "fn system()"}, {"info()", "@std/system.ms", "info()"}, {".os", "@std/system.ms", "os:"}} {
 		offset := strings.LastIndex(source, item.needle)
 		if item.needle == ".os" {
 			offset++
@@ -47,12 +46,12 @@ fn os_name() -> String:
 }
 
 func TestGroupedImportNavigation(t *testing.T) {
-	source := "import {\n    List,\n    Map,\n} from \"@std/collections.ms\"\n"
+	source := "import {\n    ListBuilder,\n    MapBuilder,\n} from \"@std/collections.ms\"\n"
 	result := compiler.CompileSource("navigation.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, name := range []string{"List", "Map"} {
+	for _, name := range []string{"ListBuilder", "MapBuilder"} {
 		nav, ok := tooling.NavigationAt(result.Program, "navigation.ms", strings.Index(source, name))
 		if !ok || nav.Definition.File != "@std/collections.ms" || !strings.HasPrefix(nav.Hover, name+":") {
 			t.Fatalf("%s: %+v, %v", name, nav, ok)
@@ -64,8 +63,7 @@ func TestGroupedImportNavigation(t *testing.T) {
 }
 
 func TestNativeGenericMethodNavigation(t *testing.T) {
-	source := `import List from "@std/collections.ms"
-fn label(value: Int) -> String:
+	source := `fn label(value: Int) -> String:
     return "{value}"
 test "methods":
     let labels = [1].map(transform: label)
@@ -90,7 +88,6 @@ test "methods":
 
 func TestBytesValuesNavigation(t *testing.T) {
 	source := `import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 fn extract(data: Bytes) -> List[Int]:
     let bound: fn() -> List[Int] = data.values
     return data.values()
@@ -108,8 +105,7 @@ fn extract(data: Bytes) -> List[Int]:
 }
 
 func TestCommonErrorNavigation(t *testing.T) {
-	source := `import Error from "@std/errors.ms"
-import JsonError from "@std/json.ms"
+	source := `import JsonError from "@std/json.ms"
 fn describe(cause: Error) -> String:
     match cause:
         JsonError(json):
@@ -122,7 +118,7 @@ fn describe(cause: Error) -> String:
 		t.Fatal(result.Diagnostics)
 	}
 	for _, item := range []struct{ needle, file string }{
-		{"import Error from", "@std/errors.ms"},
+		{"Error) ->", "@std/errors.ms"},
 		{"JsonError(json)", "@std/json.ms"},
 		{"json.message()", "@std/json.ms"},
 		{"cause.message()", "@std/errors.ms"},
@@ -163,7 +159,6 @@ func TestNavigationWithinStandardLibrary(t *testing.T) {
 		{"collections.ms", "Result[List[T]", "result.ms", "Result"},
 		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
 		{"collections.ms", "List[T]) ->", "collections.ms", "List"},
-		{"cli.ms", "List from", "collections.ms", "List"},
 		{"cli.ms", "List[String]", "collections.ms", "List"},
 	} {
 		t.Run(item.file+"/"+item.needle, func(t *testing.T) {

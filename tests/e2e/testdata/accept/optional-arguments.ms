@@ -1,8 +1,4 @@
-import Optional from "@std/optional.ms"
 import Queue from "@std/queues.ms"
-import List from "@std/collections.ms"
-import Result from "@std/result.ms"
-import Error from "@std/errors.ms"
 import panic from "@std/faults.ms"
 
 fn number(value: Optional[Int] = none) -> Int: value.unwrap_or(-1)

@@ -14,6 +14,54 @@ Boolean truth values true and false; conditions require this type.
 type Bool:
 ```
 
+## CollectionError {data-api-kind="Alternative"}
+
+Invalid factory input, an exceeded item limit, or invalid collection slice bounds.
+
+```manuscript
+type CollectionError:
+    case InvalidInput
+    case LimitExceeded
+    case OutOfRange
+```
+
+```manuscript
+impl Error for CollectionError:
+    fn message() -> String:
+```
+
+### CollectionError.InvalidInput
+
+A factory argument is invalid, such as a negative count or a zero range step.
+
+```manuscript
+case InvalidInput
+```
+
+### CollectionError.LimitExceeded
+
+A factory would produce more items than its supplied max_items limit.
+
+```manuscript
+case LimitExceeded
+```
+
+### CollectionError.OutOfRange
+
+A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
+
+```manuscript
+case OutOfRange
+```
+
+### CollectionError.Error.message
+
+Describes invalid input, an exceeded item limit, or an out-of-range slice.
+
+```manuscript
+fn message() -> String:
+```
+
 ## Equal {data-api-kind="Interface"}
 
 Equality and hashing are ordinary operation interfaces. Built-in data retains
@@ -402,6 +450,32 @@ Compatibility spelling for remove; mutates and returns this list.
 fn without(index: Int) -> List[T]:
 ```
 
+## ListEntry {data-api-kind="Record"}
+
+One list index and its corresponding value.
+
+```manuscript
+type ListEntry[T]:
+    index: Int
+    value: T
+```
+
+### ListEntry.index
+
+The zero-based position of this value in the enumerated list.
+
+```manuscript
+index: Int
+```
+
+### ListEntry.value
+
+The original element reference; mutable payloads remain shared with the list.
+
+```manuscript
+value: T
+```
+
 ## Map {data-api-kind="Native type"}
 
 A mutable key-value collection. Keys use explicit `Hashable` value semantics.
@@ -612,6 +686,32 @@ Compatibility spelling for remove, with the same mutation, scoped lookup and rec
 
 ```manuscript
 fn without(key: T) -> Map[T, U]:
+```
+
+## MapEntry {data-api-kind="Record"}
+
+One key-value pair returned by `Map.entries`.
+
+```manuscript
+type MapEntry[T: Hashable, U]:
+    key: T
+    value: U
+```
+
+### MapEntry.key
+
+The original key reference, retaining its selected equality and hashing semantics.
+
+```manuscript
+key: T
+```
+
+### MapEntry.value
+
+The stored value reference; mutable payloads remain shared with the map.
+
+```manuscript
+value: U
 ```
 
 ## Never {data-api-kind="Type"}

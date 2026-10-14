@@ -1,6 +1,4 @@
-import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
-import Result from "@std/result.ms"
 import {parse, JsonError, JsonLimits} from "@std/json.ms"
 import {EncodingError, hex_decode} from "@std/encoding.ms"
 
@@ -59,9 +57,7 @@ test "explicit error mapping preserves the cause":
         return panic(message: "error mapping lost its cause")
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.
-import Error from "@std/errors.ms"
 import IoError from "@std/io.ms"
-import List from "@std/collections.ms"
 
 type CustomError:
     detail: String

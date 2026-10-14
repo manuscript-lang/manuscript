@@ -43,7 +43,7 @@ func FuzzParsePartial(f *testing.F) {
 }
 
 func TestPartialGroupedImportsPreserveSymbolOffsets(t *testing.T) {
-	source := "fn first() -> Int:\n    return 1\nimport {\nList,\nMap,\n} from \"@std/collections.ms\"\nfn broken(\nfn later() -> Int:\n    return 2\n"
+	source := "fn first() -> Int:\n    return 1\nimport {\nListBuilder,\nMapBuilder,\n} from \"@std/collections.ms\"\nfn broken(\nfn later() -> Int:\n    return 2\n"
 	module, issues := ParsePartial("grouped.ms", source)
 	if len(issues) == 0 || len(module.Imports) != 2 || len(module.Declarations) != 2 {
 		t.Fatal(module, issues)

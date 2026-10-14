@@ -17,9 +17,11 @@ errors. Single-symbol `import Name from "./module.ms"` remains supported.
 
 Types, interfaces, module functions, and imported symbols share one ordinary module namespace. Duplicate names, import/declaration collisions, and function overloading are rejected. Imports and declarations may appear in any order: collect names and signatures before checking bodies, so forward references and mutually recursive functions work. Type layout cycles follow the separate [recursive data rule](../types/records.md#recursive-data), not module-cycle rules.
 
-The intrinsic core type names are only `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. They cover primitive literals, ordinary arithmetic, and function/control-flow typing. The source-backed standard interfaces `Equal` and `Hashable` also have fixed identities; importing them explicitly is permitted. A module declaration, import, or type parameter cannot redefine these names. They are resolved names rather than lexical keywords. Ordinary local bindings may shadow outer names, but a shadowed value name cannot be used as a type.
+The intrinsic core type names are only `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. They cover primitive literals, ordinary arithmetic, and function/control-flow typing. The source-backed standard interfaces `Equal` and `Hashable` also have fixed identities and are available through the prelude. A module declaration, import, or type parameter cannot redefine these names. They are resolved names rather than lexical keywords. Ordinary local bindings may shadow outer names, but a shadowed value name cannot be used as a type.
 
-`Optional`, `Result`, `Error`, `List`, `Map`, and `Set` are source-backed standard declarations in the prelude. They need no imports. Their cases (`some`, `none`, `ok`, and `error`) follow ordinary lookup and ambiguity rules; qualify `Result[T, E].error` when a local spelling shadows it. Explicit imports from `@std/optional.ms`, `@std/result.ms`, `@std/errors.ms`, and `@std/collections.ms` remain supported. A module declaration or import with one of these type names selects that identity instead of the prelude type; import/declaration collisions still fail.
+`Optional`, `Result`, `Error`, `List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry` are source-backed standard declarations in the prelude. Their cases (`some`, `none`, `ok`, `error`, and the `CollectionError` cases) follow ordinary lookup and ambiguity rules; qualify `Result[T, E].error` or `CollectionError.OutOfRange` when needed. A module declaration or application import with one of these type names selects that identity instead of the prelude type; import/declaration collisions still fail. Collection operations retain their canonical signature types even when an application declaration shadows a support type name.
+
+Explicit imports that resolve to any canonical source-backed prelude declaration, including `Equal` and `Hashable`, are rejected with `MS2003`. Remove the named binding from a grouped import, or delete a singleton import. This rule checks declaration identity, so it permits application-owned types with the same names and imports through project aliases. Import renaming and re-exports remain unsupported. Other exports from these standard modules, such as collection factories and builders or `ErrorCategory`, require explicit imports.
 
 Other standard declarations are explicit imports from the compiler-supplied `@std` directory, including `Decimal`, `Bytes`, collection builders, `Closeable`, and runtime/host APIs. See [standard imports](../../standard-library/imports.md) and the [API reference](../../standard-library/reference/_index.md) for their import paths. Compiler support follows the canonical standard declaration identity, never its spelling.
 
@@ -64,7 +66,6 @@ An `impl` in a source type's defining module becomes available wherever that typ
 ## Standard-library imports
 
 ```manuscript
-import { List, Map } from "@std/collections.ms"
 import TaskGroup from "@std/tasks.ms"
 ```
 
