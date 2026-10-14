@@ -4,12 +4,41 @@ import TaskGroup from "@std/tasks.ms"
 import Task from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
-type QueueState:
-    items: Queue[Int]
+type QueueState[T]:
+    items: Queue[T]
     closed: Bool
 
-fn put(state: Synchronized[QueueState], value: Int) -> Bool:
-    with locked = state.lock():
+# A bounded FIFO queue that blocks producers while it is full and consumers while it is empty.
+#
+# Create one with new_blocking_queue(capacity) and share it between tasks started by a TaskGroup.
+# put(queue, value) waits for free space and returns false once the queue is closed.
+# take(queue) waits for a value and returns none once the queue is closed and drained.
+# close_queue(queue) stops new puts and wakes every waiting task.
+#
+# Example: a producer feeds two workers.
+#
+#     let queue = new_blocking_queue[Int](8)
+#     with group = TaskGroup():
+#         group.start(fn(): work(queue: queue))
+#         group.start(fn(): work(queue: queue))
+#         put(queue: queue, value: 1)
+#         close_queue(queue: queue)
+#
+# Leaving the TaskGroup scope early cancels workers blocked in take; they unwind without the lock.
+type BlockingQueue[T]:
+    state: Synchronized[QueueState[T]]
+
+# Creates an empty queue holding at most capacity values.
+fn new_blocking_queue[T](capacity: Int) -> BlockingQueue[T]:
+    let state = QueueState(
+        items: Queue[T](capacity),
+        closed: false
+    )
+    return BlockingQueue(state: Synchronized(state))
+
+# Waits for free space, then adds value. Returns false if the queue is closed.
+fn put[T](queue: BlockingQueue[T], value: T) -> Bool:
+    with locked = queue.state.lock():
         while true:
             let current = locked.get()
             if current.closed:
@@ -23,8 +52,9 @@ fn put(state: Synchronized[QueueState], value: Int) -> Bool:
 
     return false
 
-fn take(state: Synchronized[QueueState]) -> Optional[Int]:
-    with locked = state.lock():
+# Waits for a value and removes the oldest one. Returns none once the queue is closed and empty.
+fn take[T](queue: BlockingQueue[T]) -> Optional[T]:
+    with locked = queue.state.lock():
         while true:
             let current = locked.get()
             let item = current.items.dequeue()
@@ -40,17 +70,18 @@ fn take(state: Synchronized[QueueState]) -> Optional[Int]:
 
     return none
 
-fn close_queue(state: Synchronized[QueueState]) -> Unit:
-    with locked = state.lock():
+# Stops new puts and wakes every waiting task. Queued values can still be taken.
+fn close_queue[T](queue: BlockingQueue[T]) -> Unit:
+    with locked = queue.state.lock():
         let current = locked.get()
         current.closed = true
         locked.notify_all()
 
-fn drain(state: Synchronized[QueueState]) -> Int:
+fn work(queue: BlockingQueue[Int]) -> Int:
     var total = 0
 
     while true:
-        match take(state: state):
+        match take(queue: queue):
             some(value):
                 total = total + value
             none:
@@ -58,7 +89,7 @@ fn drain(state: Synchronized[QueueState]) -> Int:
 
     return total
 
-fn try_total(task: Task[Int]) -> Int:
+fn total_of(task: Task[Int]) -> Int:
     match task.join():
         ok(total):
             return total
@@ -66,40 +97,30 @@ fn try_total(task: Task[Int]) -> Int:
             return panic(message: "consumer failed")
 
 test "bounded producer and consumers block and finish":
-    let state = Synchronized(
-        QueueState(
-            items: Queue[Int](2),
-            closed: false
-        )
-    )
+    let queue = new_blocking_queue[Int](2)
 
     with group = TaskGroup():
         let first = group.start(
-            fn(): drain(state: state)
+            fn(): work(queue: queue)
         )
         let second = group.start(
-            fn(): drain(state: state)
+            fn(): work(queue: queue)
         )
 
         for value in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
-            if not put(state: state, value: value):
+            if not put(queue: queue, value: value):
                 return panic(message: "put failed")
 
-        close_queue(state: state)
-        let left = try_total(task: first)
-        let right = try_total(task: second)
+        close_queue(queue: queue)
+        let left = total_of(task: first)
+        let right = total_of(task: second)
         if not (left + right == 55):
             return panic(message: "lost or duplicated items")
 
 test "group close cancels a blocked consumer":
-    let state = Synchronized(
-        QueueState(
-            items: Queue[Int](2),
-            closed: false
-        )
-    )
+    let queue = new_blocking_queue[Int](2)
 
     with group = TaskGroup():
         group.start(
-            fn(): drain(state: state)
+            fn(): work(queue: queue)
         )

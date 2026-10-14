@@ -62,7 +62,7 @@ Wrapping a queue serializes access; it does not by itself add waiting for values
 
 ## Blocking queue
 
-Waiting for values or free capacity composes from `Synchronized` and `wait`/`notify_all`. This complete test bounds the queue at two items; the consumers run in a `TaskGroup`, so they cannot outlive their scope:
+Waiting for values or free capacity composes from `Synchronized` and `wait`/`notify_all`. `BlockingQueue` below is ordinary Manuscript, not a standard type. The doc comment on the type shows how to use it; the test bounds the queue at two items, and the consumer runs in a `TaskGroup` so it cannot outlive its scope:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -71,12 +71,38 @@ import Synchronized from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
-type QueueState:
-    items: Queue[Int]
+type QueueState[T]:
+    items: Queue[T]
     closed: Bool
 
-fn put(state: Synchronized[QueueState], value: Int) -> Bool:
-    with locked = state.lock():
+# A bounded FIFO queue that blocks producers while it is full and consumers while it is empty.
+#
+# Create one with new_blocking_queue(capacity) and share it between tasks started by a TaskGroup.
+# put(queue, value) waits for free space and returns false once the queue is closed.
+# take(queue) waits for a value and returns none once the queue is closed and drained.
+# close_queue(queue) stops new puts and wakes every waiting task.
+#
+# Example: a producer feeds two workers.
+#
+#     let queue = new_blocking_queue[Int](8)
+#     with group = TaskGroup():
+#         group.start(fn(): work(queue: queue))
+#         group.start(fn(): work(queue: queue))
+#         put(queue: queue, value: 1)
+#         close_queue(queue: queue)
+#
+# Leaving the TaskGroup scope early cancels workers blocked in take; they unwind without the lock.
+type BlockingQueue[T]:
+    state: Synchronized[QueueState[T]]
+
+# Creates an empty queue holding at most capacity values.
+fn new_blocking_queue[T](capacity: Int) -> BlockingQueue[T]:
+    let state = QueueState(items: Queue[T](capacity), closed: false)
+    return BlockingQueue(state: Synchronized(state))
+
+# Waits for free space, then adds value. Returns false if the queue is closed.
+fn put[T](queue: BlockingQueue[T], value: T) -> Bool:
+    with locked = queue.state.lock():
         while true:
             let current = locked.get()
             if current.closed:
@@ -87,8 +113,9 @@ fn put(state: Synchronized[QueueState], value: Int) -> Bool:
             locked.wait()
     return false
 
-fn take(state: Synchronized[QueueState]) -> Optional[Int]:
-    with locked = state.lock():
+# Waits for a value and removes the oldest one. Returns none once the queue is closed and empty.
+fn take[T](queue: BlockingQueue[T]) -> Optional[T]:
+    with locked = queue.state.lock():
         while true:
             let current = locked.get()
             let item = current.items.dequeue()
@@ -100,16 +127,17 @@ fn take(state: Synchronized[QueueState]) -> Optional[Int]:
             locked.wait()
     return none
 
-fn close_queue(state: Synchronized[QueueState]) -> Unit:
-    with locked = state.lock():
+# Stops new puts and wakes every waiting task. Queued values can still be taken.
+fn close_queue[T](queue: BlockingQueue[T]) -> Unit:
+    with locked = queue.state.lock():
         let current = locked.get()
         current.closed = true
         locked.notify_all()
 
-fn drain(state: Synchronized[QueueState]) -> Int:
+fn work(queue: BlockingQueue[Int]) -> Int:
     var total = 0
     while true:
-        match take(state: state):
+        match take(queue: queue):
             some(value):
                 total = total + value
             none:
@@ -117,13 +145,13 @@ fn drain(state: Synchronized[QueueState]) -> Int:
     return total
 
 test "a producer feeds a consumer through a bounded queue":
-    let state = Synchronized(QueueState(items: Queue[Int](2), closed: false))
+    let queue = new_blocking_queue[Int](2)
     with group = TaskGroup():
-        let consumer = group.start(fn(): drain(state: state))
+        let consumer = group.start(fn(): work(queue: queue))
         for value in [1, 2, 3, 4, 5]:
-            if not put(state: state, value: value):
+            if not put(queue: queue, value: value):
                 return panic(message: "put failed")
-        close_queue(state: state)
+        close_queue(queue: queue)
         match consumer.join():
             ok(total):
                 if not (total == 15):
