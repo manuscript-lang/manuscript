@@ -53,6 +53,13 @@ func (c *checker) constantExpression(e *syntax.Expression) bool {
 	ok := true
 	switch e.Kind {
 	case syntax.KindNumber, syntax.KindBool, syntax.KindUnit, syntax.KindText, syntax.KindList, syntax.KindMap, syntax.KindUnary, syntax.KindBinary:
+	case syntax.KindMember:
+		// Type.Case names a payloadless case; the checker rejects other members.
+		if e.Left == nil || e.Left.Kind != syntax.KindName || c.names[e.Left.Text] == nil || c.names[e.Left.Text].Kind != syntax.KindType {
+			c.error(e.Pos, "type", "a constant takes literals, operators, collections, and other constants; compute this value in a function")
+			return false
+		}
+		return true
 	case syntax.KindName:
 		if s := c.names[e.Text]; s != nil && !isConstant(s) {
 			c.error(e.Pos, "type", "a constant can refer only to other constants, but "+e.Text+" is a "+c.symbolDescription(s)+"; compute the value in a function")
