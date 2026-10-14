@@ -166,9 +166,9 @@ test "HTTP requests reject an empty method":
     let net = network()
 
     match net.request(
-        method: "",
+        method: HttpMethod.Custom(value: ""),
         url: "http://127.0.0.1:1/",
-        headers: Map[String, String](),
+        headers: headers(),
         body: "".to_bytes(),
         timeout: 1.seconds
     ):
