@@ -45,6 +45,9 @@ func (g *generator) typedLocal(e *syntax.Expression) string {
 // nativeType is the Go type g.expression(e) has when it is not the Value
 // interface, or "".
 func (g *generator) nativeType(e *syntax.Expression) string {
+	if t, ok := g.tried[e]; ok {
+		return t.native
+	}
 	if g.constantBool(e) {
 		return "bool"
 	}
