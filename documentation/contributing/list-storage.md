@@ -34,6 +34,10 @@ setters perform non-cancelling construction writes only before
 `FinishListInitialization`. Lowering owns cancellation, checked conversions,
 left-to-right evaluation and source positions, and finishes before publishing.
 Using an initializer after completion or outside its sized bounds faults.
+Primitive setters additionally require matching typed backing and write it
+directly; boxed or differently typed backing faults. `InitListValue` retains the
+generic construction boundary. These helpers remain internal Go construction
+APIs, with no change to Manuscript's collection surface.
 
 `ListAtInt/Float/Bool/String` return typed Optional values with `Value` and
 `Present` fields. Their `Unwrap(ctx)` methods retain the ordinary none fault and

@@ -1,7 +1,7 @@
 goos: linux
 goarch: amd64
 pkg: github.com/manuscript-lang/manuscript/pkg/runtime
-cpu: AMD EPYC 9V74 80-Core Processor                
+cpu: AMD EPYC 9V74 80-Core Processor
 BenchmarkForEachBorrowedArguments/BoxedBacking/FreshArgs-4         	      28	   4269315 ns/op	 1048579 B/op	   65536 allocs/op
 BenchmarkForEachBorrowedArguments/BoxedBacking/FreshArgs-4         	      27	   4355768 ns/op	 1048780 B/op	   65536 allocs/op
 BenchmarkForEachBorrowedArguments/BoxedBacking/FreshArgs-4         	      26	   4218192 ns/op	 1048577 B/op	   65536 allocs/op
