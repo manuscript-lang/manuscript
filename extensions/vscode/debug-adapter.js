@@ -81,6 +81,7 @@ function rewriteExpression(expression, variables, metadata) {
   while(at<expression.length) {
     const ch=expression[at];
     if(ch==='"' || ch==="'") {const quote=ch;result+=ch;at++;while(at<expression.length) {const char=expression[at++];result+=char;if(char==='\\' && at<expression.length) {result+=expression[at++];continue;}if(char===quote) break;}continue;}
+    if(/[0-9]/.test(ch)) {const start=at++;while(at<expression.length && (/[A-Za-z0-9_]/.test(expression[at]) || (expression[at]==='.' && /[0-9]/.test(expression[at+1]||'')))) at++;result+=expression.slice(start,at);continue;}
     if(/[A-Za-z_]/.test(ch)) {const start=at++;while(at<expression.length && /[A-Za-z0-9_]/.test(expression[at])) at++;const name=expression.slice(start,at);result+=(start>0 && expression[start-1]==='.')?name:(visible.get(name)?.name || name);continue;}
     result+=ch;at++;
   }
@@ -193,8 +194,8 @@ class ManuscriptAdapter {
     const digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
     if (!metadata.debug || digest(await fs.readFile(program)) !== metadata.executable_sha256) throw new Error('Debug executable does not match its metadata');
     this.sourceRoot = metadata.source_root;
-    if (metadata.sources['ms.toml']) { if (digest(await fs.readFile(path.join(this.sourceRoot,'ms.toml'))) !== metadata.sources['ms.toml']) throw new Error('Project configuration changed since build'); }
     if (!this.sourceRoot) throw new Error('Debug build lacks source mapping');
+    if (metadata.sources['ms.toml']) { if (digest(await fs.readFile(path.join(this.sourceRoot,'ms.toml'))) !== metadata.sources['ms.toml']) throw new Error('Project configuration changed since build'); }
     for (const source of inspection.sources) {
       const file = path.resolve(this.sourceRoot, source.file);
       if (metadata.sources[source.file] !== source.sha256 || digest(await fs.readFile(file)) !== source.sha256) throw new Error(`Source changed since build: ${source.file}`);
