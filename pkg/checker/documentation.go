@@ -110,6 +110,11 @@ func documentSymbol(symbol *Symbol, sources map[string]string) APIDeclaration {
 			keyword = "interface"
 		}
 		d.Declaration = documentDeclaration(decl, keyword, decl.Name, source)
+		if decl.Constant {
+			d.Kind = "constant"
+			d.Type = symbol.Type.Result.String()
+			d.Declaration = "let " + decl.Name + ": " + d.Type + "\n"
+		}
 		d.Doc = leadingComment(source, decl.Pos.Offset)
 		d.Members = documentMembers(decl, source, symbol.Type)
 	} else if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
