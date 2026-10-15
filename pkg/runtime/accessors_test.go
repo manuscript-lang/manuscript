@@ -4,10 +4,49 @@ import (
 	"context"
 	"math"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
 )
+
+func TestListTransformResultsPreserveDynamicFallbackAndAccessorReads(t *testing.T) {
+	for _, test := range []struct {
+		typ    string
+		values []Value
+	}{
+		{"@std/List[Int]", []Value{int64(1), optional("Int", nil, false), int64(3)}},
+		{"@std/List[Float]", []Value{float64(1), "mixed", float64(3)}},
+		{"@std/List[Bool]", []Value{true, "mixed", false}},
+		{"@std/List[String]", []Value{"first", int64(2), "last"}},
+	} {
+		for _, method := range []string{"map", "filter"} {
+			t.Run(test.typ+"/"+method, func(t *testing.T) {
+				ctx := RootExecution()
+				defer FinishExecution(ctx)
+				source := NewList(test.typ, test.values)
+				label := "transform"
+				callback := NewFunction([]string{"value"}, typeArguments(test.typ)[0], func(_ *Execution, args []Value) Value { return args[0] })
+				if method == "filter" {
+					label = "predicate"
+					callback = NewFunction([]string{"value"}, "Bool", func(*Execution, []Value) Value { return true })
+				}
+				result := Invoke(ctx, NativeMemberResult(source, method, test.typ), []Argument{{label, callback}}).(*List)
+				if !reflect.DeepEqual(result.Boxed(), test.values) || result == source {
+					t.Fatal("transform lost fallback values or fresh outer storage")
+				}
+				if ListLengthRead(ctx, result) != 3 || ListIsEmptyRead(ctx, result) || !reflect.DeepEqual(ListFirstRead(ctx, result).(Alternative).Fields[0], test.values[0]) || !reflect.DeepEqual(ListLastRead(ctx, result).(Alternative).Fields[0], test.values[2]) {
+					t.Fatal("accessors lost fallback length or endpoints")
+				}
+				result.Set(0, test.values[1])
+				result.Append(test.values[0])
+				if ListLengthRead(ctx, result) != 4 || !reflect.DeepEqual(ListFirstRead(ctx, result).(Alternative).Fields[0], test.values[1]) || !reflect.DeepEqual(ListLastRead(ctx, result).(Alternative).Fields[0], test.values[0]) || !reflect.DeepEqual(source.Boxed(), test.values) {
+					t.Fatal("fallback accessor reads cached values or changed source storage")
+				}
+			})
+		}
+	}
+}
 
 func TestAccessorReadsStayLiveAndKeepPayloadAliases(t *testing.T) {
 	ctx := RootExecution()

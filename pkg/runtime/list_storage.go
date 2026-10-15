@@ -642,14 +642,20 @@ func (l *List) copySliceChecked(ctx *Execution, start, end int) *List {
 // value does not fit its typed storage.
 func (l *List) store(i int, v Value) {
 	if !l.accepts(v) {
-		boxed := make([]Value, l.Len())
-		for j := range boxed {
-			boxed[j] = l.Get(j)
-		}
-		l.kind, l.ints, l.floats, l.bools, l.strings = listBoxed, nil, nil, nil, nil
-		l.Items = boxed
+		l.boxStorage()
 	}
 	l.Set(i, v)
+}
+
+// boxStorage retains current values when private result construction discovers
+// a payload outside its selected primitive storage.
+func (l *List) boxStorage() {
+	boxed := make([]Value, l.Len())
+	for i := range boxed {
+		boxed[i] = l.Get(i)
+	}
+	l.kind, l.ints, l.floats, l.bools, l.strings = listBoxed, nil, nil, nil, nil
+	l.Items = boxed
 }
 
 func (l *List) allocate(n int) {

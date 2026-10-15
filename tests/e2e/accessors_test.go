@@ -7,6 +7,67 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
+func TestAccessorsComposeWithTypedListTransformResults(t *testing.T) {
+	result := compiler.CompileSource("accessor-list-results.ms", `import panic from "@std/faults.ms"
+
+fn check(ok: Bool, name: String) -> Unit:
+    if not ok:
+        return panic(name)
+
+fn forwarded[T](items: List[T]) -> List[T]:
+    return items.map(fn(value: T) -> T: value).filter(fn(value: T) -> Bool: true)
+
+fn mutate(items: List[Int], value: Int) -> Int:
+    if value == 1:
+        items.set(1, 7)
+        items.append(9)
+    return value
+
+test "primitive transform results retain live list accessors":
+    let source = [1, 2, 3]
+    let ints = source.map(fn(value: Int) -> Int: value * 2).filter(fn(value: Int) -> Bool: value > 2)
+    let read_last = fn() -> Optional[Int]: ints.last
+    check(ints.length == 2 and not ints.is_empty and ints.first == some(4) and read_last() == some(6), "initial Int reads")
+    ints.append(8)
+    ints.set(0, -4)
+    check(ints.length == 3 and ints.first == some(-4) and read_last() == some(8), "live Int reads")
+    check(source.length == 3 and source.first == some(1) and source.last == some(3), "independent result storage")
+    let floats = [1.5, 2.5].map(fn(value: Float) -> Float: value + 1.0).filter(fn(value: Float) -> Bool: value > 2.0)
+    check(floats.length == 2 and floats.first == some(2.5) and floats.last == some(3.5), "Float reads")
+    let flags = [true, false].map(fn(value: Bool) -> Bool: not value).filter(fn(value: Bool) -> Bool: true)
+    check(flags.length == 2 and flags.first == some(false) and flags.last == some(true), "Bool reads")
+    let words = ["a", "bb"].map(fn(value: String) -> String: value + "!").filter(fn(value: String) -> Bool: value.length > 1)
+    check(words.length == 2 and words.first == some("a!") and words.last == some("bb!"), "String reads")
+    let empty = ints.filter(fn(value: Int) -> Bool: false)
+    check(empty.is_empty and empty.length == 0 and empty.first.is_none and empty.last.is_none, "empty result absence")
+    empty.append(12)
+    check(not empty.is_empty and empty.first == some(12) and empty.last == some(12), "empty result stays mutable")
+
+test "generic boxed transform results retain optional payloads and aliases":
+    let missing: Optional[Int] = none
+    let options = forwarded([missing, some(2)])
+    check(options.length == 2 and options.first.is_some and options.first.unwrap().is_none and options.last.unwrap() == some(2), "nested Optional absence")
+    let child = [10]
+    let children = forwarded([child])
+    let first = children.first.unwrap()
+    let last = children.last.unwrap()
+    first.append(11)
+    check(child.length == 2 and last.length == 2 and children.first.unwrap().last == some(11), "shallow result aliases")
+    children.append([20])
+    check(children.length == 2 and children.last.unwrap().first == some(20) and first.first == some(10), "live boxed result reads")
+
+test "transform callbacks keep captured traversal while accessors stay live":
+    let source = [1, 2]
+    let mapped = source.map(fn(value: Int) -> Int: mutate(source, value))
+    check(mapped.length == 2 and mapped.first == some(1) and mapped.last == some(7), "captured traversal")
+    check(source.length == 3 and source.last == some(9), "callback mutation is live")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "3 tests, 0 failed") {
+		t.Fatalf("accessor typed List result integration: %v\n%s", err, output)
+	}
+}
+
 func TestAccessorReceiversComposeWithStandardContractOperations(t *testing.T) {
 	result := compiler.CompileSource("accessor-contract-operations.ms", `import panic from "@std/faults.ms"
 import {Clock, Instant, clock} from "@std/time.ms"
