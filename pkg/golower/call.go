@@ -259,7 +259,33 @@ func (g *gen) nativeCall(s *checker.Symbol, typeArgs []*checker.Type, args []ast
 		targs = append(targs, g.goType(a))
 	}
 	g.noteNative(nativeName(s.Native))
-	return call(generic(rtName(nativeName(s.Native)), targs...), append([]ast.Expr{ident("ctx")}, args...)...)
+	bind := map[string]*checker.Type{}
+	for i, v := range s.Variables {
+		if i < len(typeArgs) {
+			bind[v.ID] = typeArgs[i]
+		}
+	}
+	leading := append([]ast.Expr{ident("ctx")}, g.capabilityArgs(checker.BoundCapabilities(s.Variables), bind)...)
+	return call(generic(rtName(nativeName(s.Native)), targs...), append(leading, args...)...)
+}
+
+// capabilityArgs supplies the Equal capabilities a native operation takes
+// after the execution: the generated equality of each constrained type.
+// Hashable needs no argument; Go's comparable constraint is that capability.
+func (g *gen) capabilityArgs(caps []checker.Capability, bind map[string]*checker.Type) []ast.Expr {
+	var out []ast.Expr
+	for _, c := range caps {
+		if c.Property != "Equal" {
+			continue
+		}
+		t := bind[c.Variable.ID]
+		if t == nil {
+			g.fail("equality capability for %s is not determined", c.Variable.Name)
+			continue
+		}
+		out = append(out, g.equalFunc(t))
+	}
+	return out
 }
 
 // nativeFunctionValue is a standard function used as a value.
@@ -267,6 +293,13 @@ func (g *gen) nativeFunctionValue(s *checker.Symbol, typeArgs []*checker.Type, i
 	var targs []ast.Expr
 	for _, a := range typeArgs {
 		targs = append(targs, g.goType(a))
+	}
+	if len(checker.BoundCapabilities(s.Variables)) > 0 {
+		for _, c := range checker.BoundCapabilities(s.Variables) {
+			if c.Property == "Equal" {
+				g.fail("%s needs an equality capability and cannot be used as a function value", s.Name)
+			}
+		}
 	}
 	g.noteNative(nativeName(s.Native))
 	return generic(rtName(nativeName(s.Native)), targs...)
@@ -356,8 +389,12 @@ func (g *gen) invokeMethod(m *checker.Method, receiverType *checker.Type, receiv
 func (g *gen) nativeMethodCall(m *checker.Method, receiverType *checker.Type, receiver ast.Expr, name string, args []ast.Expr, calleeInfo *checker.Info) ast.Expr {
 	fn := g.nativeMethodName(m, receiverType)
 	g.noteNative(fn)
-	targs := g.nativeTypeArguments(m, receiverType, calleeInfo)
-	return call(generic(rtName(fn), targs...), append([]ast.Expr{ident("ctx"), receiver}, args...)...)
+	targs, bind := g.nativeTypeArguments(m, receiverType, calleeInfo)
+	leading := []ast.Expr{ident("ctx")}
+	if op, ok := checker.NativeOperationFor(receiverType, m.Decl.Name); ok {
+		leading = append(leading, g.capabilityArgs(checker.OperationCapabilities(receiverType, op.Requirements, op.Variables), bind)...)
+	}
+	return call(generic(rtName(fn), targs...), append(append(leading, receiver), args...)...)
 }
 
 func (g *gen) nativeMethodName(m *checker.Method, receiverType *checker.Type) string {
@@ -371,10 +408,14 @@ func (g *gen) nativeMethodName(m *checker.Method, receiverType *checker.Type) st
 // nativeTypeArguments are the receiver's type arguments followed by the
 // operation's own, which the checker leaves implicit: they are recovered by
 // unifying the generic operation signature with the specialized callee type.
-func (g *gen) nativeTypeArguments(m *checker.Method, receiverType *checker.Type, calleeInfo *checker.Info) []ast.Expr {
+func (g *gen) nativeTypeArguments(m *checker.Method, receiverType *checker.Type, calleeInfo *checker.Info) ([]ast.Expr, map[string]*checker.Type) {
 	var targs []ast.Expr
-	for _, a := range receiverType.Args {
+	bind := map[string]*checker.Type{}
+	for i, a := range receiverType.Args {
 		targs = append(targs, g.goType(a))
+		if receiverType.Def != nil && i < len(receiverType.Def.Variables) {
+			bind[receiverType.Def.Variables[i].ID] = a
+		}
 	}
 	if len(m.Variables) > 0 && calleeInfo != nil {
 		sub, ok := checker.Unify(m.Type, g.sub(calleeInfo.Type), m.Variables)
@@ -383,11 +424,12 @@ func (g *gen) nativeTypeArguments(m *checker.Method, receiverType *checker.Type,
 		}
 		for _, v := range m.Variables {
 			if t := sub[v.ID]; t != nil {
+				bind[v.ID] = t
 				targs = append(targs, g.goType(t))
 			} else {
 				g.fail("type argument %s of %s is not determined", v.Name, m.Native)
 			}
 		}
 	}
-	return targs
+	return targs, bind
 }

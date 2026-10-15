@@ -3,14 +3,6 @@
 // no interface-typed value ABI, no runtime type keys, and no boxing.
 package rt
 
-import (
-	msruntime "github.com/manuscript-lang/manuscript/pkg/runtime"
-)
-
-// Execution carries cancellation, call depth, and the host roots of one
-// running task.
-type Execution = msruntime.Execution
-
 // Unit is the only value of the Unit type.
 type Unit = struct{}
 
@@ -39,9 +31,26 @@ func Ok[T, E any](v T) Result[T, E] { return Result[T, E]{Val: v} }
 // Fail returns a failed Result.
 func Fail[T, E any](e E) Result[T, E] { return Result[T, E]{Err: e, Failed: true} }
 
-// Fault raises a Manuscript fault with message.
-func Fault(message string) { msruntime.Panic(message) }
+// Eq is the equality of T that a native operation needs when T is not a Go
+// comparable type or has an explicit Equal implementation. The program passes
+// the equality it generated; Go-comparable types use Equals.
+type Eq[T any] = func(*Execution, T, T) bool
 
 // Seq is the identity; it marks an operand that must be evaluated before its
 // siblings. Go orders calls, and Seq makes a plain read a call.
 func Seq[T any](v T) T { return v }
+
+// Zero is the zero value of T.
+func Zero[T any]() T {
+	var zero T
+	return zero
+}
+
+// Unreachable marks code a checked program cannot reach.
+func Unreachable() { Raise("runtime invariant: unreachable") }
+
+// Panic is the standard faults.panic operation.
+func Panic(_ *Execution, message string) Unit {
+	Raise(message)
+	return Unit{}
+}

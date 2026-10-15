@@ -60,7 +60,8 @@ func (g *gen) accessor(e *syntax.Expression, info *checker.Info) ast.Expr {
 	case m.Native != "" && m.Contract == nil:
 		fn := g.nativeMethodName(m, receiverType)
 		g.noteNative(fn)
-		return call(generic(rtName(fn), g.nativeTypeArguments(m, receiverType, nil)...), ident("ctx"), receiver)
+		targs, _ := g.nativeTypeArguments(m, receiverType, nil)
+		return call(generic(rtName(fn), targs...), ident("ctx"), receiver)
 	case m.Native != "":
 		g.noteNative(implName(m, receiverType))
 		return call(rtName(implName(m, receiverType)), ident("ctx"), receiver)

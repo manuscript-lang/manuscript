@@ -57,6 +57,10 @@ func scalarGo(t *checker.Type) string {
 	return ""
 }
 
+// valueNatives are immutable standard types the runtime represents as plain Go
+// values: nanosecond counts, not pointers to them.
+var valueNatives = map[string]bool{"@std/Duration": true, "@std/Instant": true, "@std/Timestamp": true}
+
 // isReference reports whether t lowers to a Go pointer: a type whose holders
 // observe each other's mutation or identity. Everything else is a value and is
 // never mutated after construction. See
@@ -67,6 +71,8 @@ func isReference(t *checker.Type) bool {
 		return false
 	case isStd(t, "List"), isStd(t, "Map"), isStd(t, "Set"):
 		return true
+	case valueNatives[t.ID]:
+		return false
 	case t.Kind == "record", t.Kind == "native":
 		return true
 	}

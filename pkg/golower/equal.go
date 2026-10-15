@@ -134,10 +134,3 @@ func (g *gen) equalBody(t *checker.Type) []ast.Stmt {
 	g.fail("no equality for %s", t)
 	return []ast.Stmt{returned(ident("false"))}
 }
-
-// hasherFor is the key strategy of a Map or Set over key. nil selects Go's
-// built-in comparison, which is Manuscript's key equality for scalars and for
-// record references.
-func (g *gen) hasherFor(key *checker.Type) ast.Expr {
-	return ident("nil")
-}

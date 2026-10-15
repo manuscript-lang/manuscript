@@ -1,11 +1,11 @@
 package rt
 
 import (
+	"fmt"
 	"math"
 	"math/bits"
 	"strconv"
-
-	msruntime "github.com/manuscript-lang/manuscript/pkg/runtime"
+	"strings"
 )
 
 // Checked Int arithmetic: overflow and division faults are Manuscript faults.
@@ -38,14 +38,14 @@ func IntMultiply(a, b int64) int64 {
 
 func IntDivide(a, b int64) int64 {
 	if b == 0 || a == math.MinInt64 && b == -1 {
-		return msruntime.IntDivide(a, b)
+		intDivisionFault(a, b)
 	}
 	return a / b
 }
 
 func IntRemainder(a, b int64) int64 {
 	if b == 0 {
-		return msruntime.IntRemainder(a, b)
+		Raise("Int.%: remainder by zero; right must be nonzero, found 0")
 	}
 	if b == -1 {
 		return 0
@@ -61,12 +61,62 @@ func IntNegate(a int64) int64 {
 }
 
 func intOverflow() {
-	msruntime.Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+	Raise("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 }
 
-func FormatInt(v int64) string  { return strconv.FormatInt(v, 10) }
-func FormatBool(v bool) string  { return strconv.FormatBool(v) }
-func FormatFloat(v float64) string { return msruntime.Format(v) }
+func FormatInt(v int64) string { return strconv.FormatInt(v, 10) }
+func FormatBool(v bool) string { return strconv.FormatBool(v) }
+func FormatFloat(v float64) string {
+	switch {
+	case math.IsNaN(v):
+		return "NaN"
+	case math.IsInf(v, 1):
+		return "Infinity"
+	case math.IsInf(v, -1):
+		return "-Infinity"
+	case v == 0 && math.Signbit(v):
+		return "-0"
+	case v == 0:
+		return "0"
+	}
+	mantissa, exponent, _ := strings.Cut(strconv.FormatFloat(math.Abs(v), 'e', -1, 64), "e")
+	e, _ := strconv.Atoi(exponent)
+	return renderDecimal(strings.ReplaceAll(mantissa, ".", ""), e, math.Signbit(v))
+}
+
+func renderDecimal(digits string, exponent int, negative bool) string {
+	sign := ""
+	if negative {
+		sign = "-"
+	}
+	digits = strings.TrimRight(digits, "0")
+	if exponent >= -6 && exponent <= 20 {
+		point := exponent + 1
+		if point <= 0 {
+			return sign + "0." + strings.Repeat("0", -point) + digits
+		}
+		if point >= len(digits) {
+			return sign + digits + strings.Repeat("0", point-len(digits))
+		}
+		return sign + digits[:point] + "." + digits[point:]
+	}
+	out := sign + digits[:1]
+	if len(digits) > 1 {
+		out += "." + digits[1:]
+	}
+	exp := strconv.Itoa(exponent)
+	if exponent >= 0 {
+		exp = "+" + exp
+	}
+	return out + "e" + exp
+}
+
+func intDivisionFault(a, b int64) {
+	if b == 0 {
+		Raise("Int./: division by zero; right must be nonzero, found 0")
+	}
+	Raise(fmt.Sprintf("Int./: overflow; found left %d and right %d; result must be between %d and %d", a, b, int64(math.MinInt64), int64(math.MaxInt64)))
+}
 
 // Equals is == for types Go compares directly.
 func Equals[T comparable](_ *Execution, a, b T) bool { return a == b }

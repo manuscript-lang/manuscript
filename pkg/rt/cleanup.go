@@ -2,8 +2,6 @@ package rt
 
 import (
 	"fmt"
-
-	msruntime "github.com/manuscript-lang/manuscript/pkg/runtime"
 )
 
 // CleanupAction is one registered `with` close operation.
@@ -48,15 +46,15 @@ func (a *CleanupAction) Run() {
 		a.close = nil
 		func() {
 			defer func() { failure = recover() }()
-			close(msruntime.Shield(a.ctx))
+			close(Shield(a.ctx))
 		}()
 	}
 	if failure != nil {
-		if primary, ok := pending.(msruntime.Fault); ok {
+		if primary, ok := pending.(Fault); ok {
 			primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
 			panic(primary)
 		}
-		panic(msruntime.Fault{Message: fmt.Sprint(failure)})
+		panic(Fault{Message: fmt.Sprint(failure)})
 	}
 	if pending != nil {
 		panic(pending)
@@ -82,11 +80,11 @@ func (s *CleanupStack) Unwind() {
 	}
 	pending := recover()
 	for _, failure := range failures {
-		if primary, ok := pending.(msruntime.Fault); ok {
+		if primary, ok := pending.(Fault); ok {
 			primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
 			pending = primary
 		} else {
-			pending = msruntime.Fault{Message: fmt.Sprint(failure)}
+			pending = Fault{Message: fmt.Sprint(failure)}
 		}
 	}
 	panic(pending)

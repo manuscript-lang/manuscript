@@ -7,10 +7,13 @@ type List[T any] struct {
 	Items []T
 }
 
+// NewList returns a list holding items.
+func NewList[T any](items ...T) *List[T] { return &List[T]{Items: items} }
+
 // Positions checks that a list has exactly n elements, for destructuring.
 func Positions[T any](l *List[T], n int) []T {
 	if len(l.Items) != n {
-		Fault("destructuring length mismatch; the pattern binds " + FormatInt(int64(n)) + " names but the list has " + FormatInt(int64(len(l.Items))) + " elements")
+		Raise("destructuring length mismatch; the pattern binds " + FormatInt(int64(n)) + " names but the list has " + FormatInt(int64(len(l.Items))) + " elements")
 	}
 	return l.Items
 }
