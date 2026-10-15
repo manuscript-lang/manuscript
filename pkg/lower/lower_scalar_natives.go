@@ -11,8 +11,9 @@ import (
 // typed runtime implementation. A member's receiver is its first parameter.
 type scalarNative struct {
 	function string
-	params   []string
-	result   string
+	params   []string // "" is a boxed Value
+	result   string   // "" is a boxed Value
+	receiver string   // Manuscript type ID of a Value receiver, when params[0] is ""
 }
 
 func floats(function string, count int) scalarNative {
@@ -20,7 +21,7 @@ func floats(function string, count int) scalarNative {
 	for i := range params {
 		params[i] = "float64"
 	}
-	return scalarNative{function, params, "float64"}
+	return scalarNative{function: function, params: params, result: "float64"}
 }
 
 var scalarNatives = map[string]scalarNative{
@@ -33,21 +34,26 @@ var scalarNatives = map[string]scalarNative{
 	"math/truncate": floats("MathTruncate", 1), "math/pow": floats("MathPow", 2), "math/min": floats("MathMin", 2),
 	"math/max": floats("MathMax", 2), "math/hypot": floats("MathHypot", 2), "math/atan2": floats("MathAtan2", 2),
 	"math/remainder": floats("MathRemainder", 2),
-	"math/abs_int":   {"MathAbsInt", []string{"int64"}, "int64"},
+	"math/abs_int":   {function: "MathAbsInt", params: []string{"int64"}, result: "int64"},
 
-	"math/is_nan":    {"MathIsNaN", []string{"float64"}, "bool"},
-	"math/is_finite": {"MathIsFinite", []string{"float64"}, "bool"},
+	"math/is_nan":    {function: "MathIsNaN", params: []string{"float64"}, result: "bool"},
+	"math/is_finite": {function: "MathIsFinite", params: []string{"float64"}, result: "bool"},
 
-	"string/length":      {"StringLengthScalar", []string{"string"}, "int64"},
-	"string/is_empty":    {"StringIsEmpty", []string{"string"}, "bool"},
-	"string/compare":     {"StringCompare", []string{"string", "string"}, "int64"},
-	"string/concat":      {"StringConcat", []string{"string", "string"}, "string"},
-	"string/trim":        {"StringTrim", []string{"string"}, "string"},
-	"string/upper":       {"StringUpper", []string{"string"}, "string"},
-	"string/lower":       {"StringLower", []string{"string"}, "string"},
-	"string/contains":    {"StringContains", []string{"string", "string"}, "bool"},
-	"string/starts_with": {"StringStartsWith", []string{"string", "string"}, "bool"},
-	"string/ends_with":   {"StringEndsWith", []string{"string", "string"}, "bool"},
+	"string/length":        {function: "StringLengthScalar", params: []string{"string"}, result: "int64"},
+	"string/is_empty":      {function: "StringIsEmpty", params: []string{"string"}, result: "bool"},
+	"string/compare":       {function: "StringCompare", params: []string{"string", "string"}, result: "int64"},
+	"string/concat":        {function: "StringConcat", params: []string{"string", "string"}, result: "string"},
+	"string/split":         {function: "StringSplit", params: []string{"string", "string"}},
+	"string/replace":       {function: "StringReplaceFirst", params: []string{"string", "string", "string"}, result: "string"},
+	"string/replace_first": {function: "StringReplaceFirst", params: []string{"string", "string", "string"}, result: "string"},
+	"string/join":          {function: "StringJoin", params: []string{"", "string"}, result: "string", receiver: "@std/List"},
+
+	"string/trim":        {function: "StringTrim", params: []string{"string"}, result: "string"},
+	"string/upper":       {function: "StringUpper", params: []string{"string"}, result: "string"},
+	"string/lower":       {function: "StringLower", params: []string{"string"}, result: "string"},
+	"string/contains":    {function: "StringContains", params: []string{"string", "string"}, result: "bool"},
+	"string/starts_with": {function: "StringStartsWith", params: []string{"string", "string"}, result: "bool"},
+	"string/ends_with":   {function: "StringEndsWith", params: []string{"string", "string"}, result: "bool"},
 }
 
 var scalarTypeNames = map[string]string{"string": "String", "float64": "Float", "int64": "Int", "bool": "Bool"}
@@ -75,7 +81,11 @@ func (g *generator) scalarNativeCall(e *syntax.Expression) (scalarNative, []*syn
 		native = callee.Method.Native
 		entry, ok := scalarNatives[native]
 		receiver := g.program.Info(e.Left.Left)
-		if !ok || receiver == nil || receiver.Type == nil || len(entry.params) == 0 || receiver.Type.ID != scalarTypeNames[entry.params[0]] {
+		want := entry.receiver
+		if want == "" && len(entry.params) > 0 {
+			want = scalarTypeNames[entry.params[0]]
+		}
+		if !ok || receiver == nil || receiver.Type == nil || want == "" || receiver.Type.ID != want {
 			return scalarNative{}, nil, false
 		}
 		operands = append(operands, e.Left.Left)
@@ -83,8 +93,15 @@ func (g *generator) scalarNativeCall(e *syntax.Expression) (scalarNative, []*syn
 		return scalarNative{}, nil, false
 	}
 	entry, ok := scalarNatives[native]
-	if !ok || len(info.Arguments) != len(params) || len(operands)+len(params) != len(entry.params) {
+	if !ok || len(info.Arguments) > len(params) || len(operands)+len(info.Arguments) != len(entry.params) {
 		return scalarNative{}, nil, false
+	}
+	// A typed entry may leave out only trailing parameters declared "= none".
+	for i := len(info.Arguments); i < len(params); i++ {
+		decl := g.declaredParams(info, callee)
+		if decl == nil || len(decl) != len(params) || !isNoneDefault(decl[i].Default) {
+			return scalarNative{}, nil, false
+		}
 	}
 	for i, argument := range info.Arguments {
 		if argument.Name != params[i].Name {
@@ -104,7 +121,12 @@ func (g *generator) scalarNativeValue(e *syntax.Expression) ast.Expr {
 	}
 	values := make([]ast.Expr, len(operands))
 	for i, operand := range operands {
-		value := g.scalar(operand, entry.params[i])
+		var value ast.Expr
+		if entry.params[i] == "" {
+			value = g.expression(operand)
+		} else {
+			value = g.scalar(operand, entry.params[i])
+		}
 		// A later match argument can reassign a local used by an earlier one.
 		free := g.exprFree(operand)
 		for _, later := range operands[i+1:] {
@@ -116,4 +138,16 @@ func (g *generator) scalarNativeValue(e *syntax.Expression) ast.Expr {
 		values[i] = value
 	}
 	return call(runtimeName(entry.function), values...)
+}
+
+// declaredParams returns the declaration parameters of the standard function
+// or member a call resolves to.
+func (g *generator) declaredParams(info *checker.Info, callee *checker.Info) []syntax.Parameter {
+	switch {
+	case info.Symbol != nil && info.Symbol.Decl != nil:
+		return info.Symbol.Decl.Params
+	case callee.Method != nil && callee.Method.Decl != nil:
+		return callee.Method.Decl.Params
+	}
+	return nil
 }

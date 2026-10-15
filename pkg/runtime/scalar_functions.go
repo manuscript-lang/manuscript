@@ -3,6 +3,7 @@ package msruntime
 import (
 	"math"
 	"strings"
+	"unicode/utf8"
 )
 
 // Typed implementations of pure scalar standard functions. The library table
@@ -56,3 +57,49 @@ func StringLengthScalar(text string) int64       { return scalarCount(text) }
 func StringIsEmpty(text string) bool             { return len(text) == 0 }
 func StringCompare(left, right string) int64     { return int64(strings.Compare(left, right)) }
 func StringConcat(left, right string) string     { return left + right }
+
+// StringSplit and StringReplaceFirst are the calls that omit the optional cap;
+// the library bodies share stringSplitLimit and stringReplaceLimit.
+func StringSplit(text, separator string) Value {
+	return stringSplitLimit(text, separator, nativeUnlimited)
+}
+func StringReplaceFirst(text, old, new string) string {
+	return stringReplaceLimit(text, old, new, 1)
+}
+func StringJoin(parts Value, separator string) string {
+	if list := parts.(*List); list.kind == listString {
+		return strings.Join(list.strings, separator)
+	}
+	return strings.Join(libraryStringValues(parts), separator)
+}
+
+func stringSplitLimit(text, separator string, n int64) Value {
+	if n < 0 {
+		return Panic("split requires nonnegative max_parts; pass 0 or a positive count")
+	}
+	if n == 0 {
+		return libraryStrings(nil)
+	}
+	if n > int64(len(text))+1 {
+		n = int64(len(text)) + 1
+	}
+	parts := strings.Split(text, separator)
+	if int64(len(parts)) > n {
+		parts = parts[:n]
+	}
+	return &List{Type: "@std/List[String]", kind: listString, strings: parts}
+}
+
+func stringReplaceLimit(text, old, new string, n int64) string {
+	if n < 0 {
+		Panic("invalid replacement bounds")
+	}
+	bound := int64(len(text))
+	if old == "" {
+		bound = int64(utf8.RuneCountInString(text)) + 1
+	}
+	if n > bound {
+		n = bound
+	}
+	return strings.Replace(text, old, new, int(n))
+}

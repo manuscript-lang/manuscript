@@ -123,15 +123,24 @@ func (g *generator) boundNativeCall(e *syntax.Expression, callee *checker.Info, 
 	receiverType := g.program.Info(e.Left.Left).Type
 	native, ok := nativeKinds[receiverType.ID]
 	name := e.Left.Text
-	if !ok || callee.Type == nil || !strings.HasPrefix(callee.Method.Native, native.module) || name == "equals" || name == "hash" || name == "clone" || name == "toString" {
+	joinsList := receiverType.ID == "@std/List" && callee.Method.Native == "string/join"
+	if !ok || callee.Type == nil || !(strings.HasPrefix(callee.Method.Native, native.module) || joinsList) || name == "equals" || name == "hash" || name == "clone" || name == "toString" {
 		return nil
 	}
 	kind := native.kind
-	if len(arguments) != len(callee.Type.Params) {
+	if len(arguments) > len(callee.Type.Params) {
 		return nil
 	}
 	for i, argument := range arguments {
 		if argument.Name != callee.Type.Params[i].Name {
+			return nil
+		}
+	}
+	// Trailing parameters declared "= none" reach the body as nil, exactly as
+	// they do through Invoke; any other default needs its prepared expression.
+	decl := callee.Method.Decl
+	for i := len(arguments); i < len(callee.Type.Params); i++ {
+		if decl == nil || len(decl.Params) != len(callee.Type.Params) || !isNoneDefault(decl.Params[i].Default) {
 			return nil
 		}
 	}
@@ -148,6 +157,9 @@ func (g *generator) boundNativeCall(e *syntax.Expression, callee *checker.Info, 
 	values := []ast.Expr{sequence(g.expression(e.Left.Left))}
 	for _, argument := range arguments {
 		values = append(values, sequence(g.argumentValue(argument)))
+	}
+	for i := len(arguments); i < len(callee.Type.Params); i++ {
+		values = append(values, call(runtimeName("Value"), ident("nil")))
 	}
 	return orderedCall(runtimeName("CallNative"), ident("ctx"), g.lazyValue(identity, runtimeCall("BindNativeCall", bind...)), sliceLiteral(runtimeName("Value"), values...))
 }
@@ -260,4 +272,8 @@ func (g *generator) lookupParts(value *syntax.Expression) ast.Expr {
 		return g.listAtParts(value)
 	}
 	return g.mapGetParts(value)
+}
+
+func isNoneDefault(e *syntax.Expression) bool {
+	return e != nil && e.Kind == syntax.KindName && e.Text == "none"
 }
