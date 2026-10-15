@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Tooling: `ms search` fuzzy-searches the standard library, `ms symbol file:line:col` reports a symbol's type, definition, and references, and `ms guide` prints the language cheat sheet and standard-library index and module docs, so agents need no protocol server.
 - Builds: generated Go is fully typed. `Int`, `Float`, `Bool`, `String` and every record, collection, alternative, `Optional`, `Result`, contract and function lower to their own Go type with no boxing, and the lean runtime variant is gone. Reusable packages are now `pkg/lower` (was `pkg/golower`) and `pkg/runtime` (the typed `rt`).
 - Language: a `Map` or `Set` matches keys with the `Equal`/`Hashable` implementations visible where it was created; an operation obtained from another module no longer switches a collection to that module's implementations.
 - Tooling: `make stdgen` regenerates the standard-runtime declarations from the `@std` sources.

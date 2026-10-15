@@ -52,6 +52,10 @@
       "pkg/tooling",
       "pkg/frontend"
     ],
+    "pkg/tooling/guide": [
+      "pkg/checker",
+      "pkg/compiler"
+    ],
     "internal/cli": [
       "internal/nativeabi",
       "pkg/compiler",
@@ -59,6 +63,7 @@
       "pkg/syntax",
       "pkg/tooling",
       "pkg/tooling/lsp",
+      "pkg/tooling/guide",
       "pkg/tooling/docgen",
       "pkg/checker",
       "pkg/stdlib",

@@ -28,6 +28,9 @@ Commands:
   lock     Create or update project build pins
   init     Create a new project with a manifest, entry, test, and .gitignore
   lsp      Serve the language server on stdin/stdout
+  search   Fuzzy-search the standard library
+  symbol   Show the type, definition, and references at a position
+  guide    Print the language cheat sheet and standard-library reference
   help     Show help for a command
   version  Print the compiler version
 
@@ -126,6 +129,12 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms lock ms.toml"
 	case "init":
 		return initHelp, true
+	case "search":
+		return searchHelp, true
+	case "symbol":
+		return symbolHelp, true
+	case "guide":
+		return guideHelp, true
 	case "lsp":
 		description = "Serve the language server over stdin/stdout until the client disconnects.\nConfigure an LSP-capable editor to launch ms lsp. No file argument is needed."
 		examples = "ms lsp"
@@ -195,7 +204,7 @@ func requestsHelp(command string, args []string) bool {
 			if command != "profile" {
 				i++
 			}
-		case "-o", "--output", "--out-dir", "--cpu-profile", "--heap-profile", "--build-type", "--timeout", "--filter", "--test", "--match", "--exclude", "--repeat", "--shuffle":
+		case "-o", "--output", "--out-dir", "--cpu-profile", "--heap-profile", "--build-type", "--limit", "--timeout", "--filter", "--test", "--match", "--exclude", "--repeat", "--shuffle":
 			// A flag value is not a help request, even if it is spelled --help.
 			i++
 		}

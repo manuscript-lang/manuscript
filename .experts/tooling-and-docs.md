@@ -214,3 +214,11 @@ Evidence: [guide extraction](../pkg/tooling/docgen/guides.go),
 [source example discovery](../tests/examples/examples_test.go).
 Verify: source checks and tutorial discovery work without generated Markdown;
 `make book-check` generates the mounted pages and validates routes and downloads.
+
+### Agent help is CLI commands, not a protocol server
+
+Decision: the user evaluated an MCP server (PR #528), judged the CLI the better surface for coding agents, and had it removed. Agents with a shell already get compact output from `check`, `lint`, `fmt`, and `test`; the gaps became `ms search`, `ms symbol`, and `ms guide`. Keep the command set small and useful. Search is fuzzy, the guide stays short because agents reread it, and the standard-library index is built from `checker.StandardLibrary()`, never from `ms doc` or `ms stdlib` (both removed). A new `--json` command must join `jsonCommands`.
+
+Apply when: adding agent-facing commands, changing search ranking, or touching the cheat sheet or standard-library index.
+Evidence: [search](../pkg/tooling/guide/search.go), [guide](../pkg/tooling/guide/guide.go), [cheat sheet](../pkg/tooling/guide/cheatsheet.md), [commands](../internal/cli/agent.go), and [agent commands](../documentation/developer-tooling/implementation.md#commands-for-agents).
+Verify: `go test ./pkg/tooling/guide ./internal/cli`; search tests pin typo, synonym, partial, and dedup behavior; the cheat sheet's program must check and stay under 2,500 bytes.

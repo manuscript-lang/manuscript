@@ -13,6 +13,9 @@ ms lint ms.toml --json
 ms fmt source.ms --check
 ms fmt ms.toml --check
 ms lsp
+ms search read file lines
+ms symbol src/main.ms:5:18
+ms guide stdlib json
 ms debug source.ms -- arg1
 ms debug source.ms --break source.ms:7 --json
 ms debug ms.toml --script commands.txt
@@ -59,6 +62,18 @@ ms diagram ms.toml -o calls.mmd
 ```
 
 These commands use source checking without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
+
+## Commands for agents
+
+Agents with a shell need no protocol server: three small commands answer what the compiler commands do not, and each prints only what is needed to act.
+
+| Command | Behavior |
+| --- | --- |
+| `ms search <words>...` | Fuzzy search over bundled standard declarations and members (typos, partial words, synonyms, any word order). Each match prints module, name, signature, and a one-line description; `--limit n` (default 5, at most 15) and `--json` |
+| `ms symbol <file.ms>:<line>:<column>` | Type, definition, and references at a 1-based position, from the language server's analysis; `--json` |
+| `ms guide [stdlib [module]]` | Markdown reference: the language cheat sheet, the standard-library index (generated, so it cannot drift), or one module's declarations and docs |
+
+Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which already print compact diagnostics and failures (`--json` for complete documents). The index is built from the checker's definitions, so it does not depend on any exported declaration files. The cheat sheet stays under 2,500 bytes because agents read it every session, and a test checks its complete program.
 
 ## Selecting independent analysis inputs
 

@@ -52,6 +52,12 @@ func standaloneCommand(name string) (func(args []string, usage string) int, bool
 		return runDAP, true
 	case "lsp":
 		return runLSP, true
+	case "search":
+		return runSearch, true
+	case "symbol":
+		return runSymbol, true
+	case "guide":
+		return runGuide, true
 	}
 	return nil, false
 }
