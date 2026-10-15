@@ -242,26 +242,6 @@ fn f() -> Duration:
 	}
 }
 
-func TestNativeAccessorKindMismatchIsRejected(t *testing.T) {
-	ensureStandard()
-	definition := standardSymbols["List"].Type.Def
-	for index := range definition.Operations {
-		operation := &definition.Operations[index]
-		if operation.Name != "length" {
-			continue
-		}
-		previous := operation.Accessor
-		operation.Accessor = false
-		err := validateStandardNativeBindings()
-		operation.Accessor = previous
-		if err == nil || !strings.Contains(err.Error(), "member kind does not match") {
-			t.Fatalf("method metadata silently satisfied an accessor binding: %v", err)
-		}
-		return
-	}
-	t.Fatal("missing List.length declaration")
-}
-
 func TestAccessorLocalImplementationVisibilityAndSubstitution(t *testing.T) {
 	base, err := parser.Parse("base.ms", `export type Box[T]:
     stored: T

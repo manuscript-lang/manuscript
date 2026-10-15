@@ -26,5 +26,5 @@ func (c *checker) checkTestFixture(module *syntax.Module) {
 		c.error(factory.Decl.Pos, "type", "make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it")
 		return
 	}
-	c.TestFixtures[module.File] = &TestFixture{Factory: factory, Type: result}
+	c.TestFixtures[module.File] = &TestFixture{Factory: factory, Type: result, Hooks: standard("TestHooks")}
 }

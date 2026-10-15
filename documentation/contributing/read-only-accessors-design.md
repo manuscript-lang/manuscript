@@ -4,6 +4,8 @@ title = "Read-only accessors: design proposal"
 
 # Read-only accessors and the approved standard-library migration
 
+> Historical record. Implementation details here (the `Value` ABI, `CallMethod`, and the old runtime files) describe the lowering before the typed Go representation; see [Go representation](go-lowering-representation.md) for the current one.
+
 Status: **approved design; implementation independently reviewed; draft PR authorized; merge held**.
 Baseline: `main` at `477b4c916cd772f0f7f7229dc502e99385c855d0` (2026-10-14).
 The earlier audit used `4eda0e22`; both checkouts contain 44 standard modules.

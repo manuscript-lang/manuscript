@@ -3,8 +3,13 @@ package build
 import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+// directivePattern matches both the line form (//line file:N) at the start of a
+// line and the inline form (/*line file:N*/) that lowering repeats before calls.
+var directivePattern = regexp.MustCompile(`(^//line |/\*line )([^\n]*?)(:\d+)`)
 
 // debugSource binds generated line directives to the actual source tree. Native
 // release builds retain portable logical paths; builds with debugging information include this root.
@@ -18,18 +23,15 @@ func debugSource(result compiler.Result) string {
 	}
 	lines := strings.Split(result.Source, "\n")
 	for index, line := range lines {
-		if !strings.HasPrefix(line, "//line ") {
-			continue
-		}
-		directive := strings.TrimPrefix(line, "//line ")
-		colon := strings.LastIndexByte(directive, ':')
-		if colon < 0 {
-			continue
-		}
-		if absolute, ok := paths[directive[:colon]]; ok {
+		lines[index] = directivePattern.ReplaceAllStringFunc(line, func(match string) string {
+			parts := directivePattern.FindStringSubmatch(match)
+			absolute, ok := paths[parts[2]]
+			if !ok {
+				return match
+			}
 			absolute = strings.NewReplacer("\n", "_", "\r", "_").Replace(absolute)
-			lines[index] = "//line " + absolute + directive[colon:]
-		}
+			return parts[1] + absolute + parts[3]
+		})
 	}
 	return strings.Join(lines, "\n")
 }

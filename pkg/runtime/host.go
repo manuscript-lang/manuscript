@@ -2,396 +2,272 @@ package msruntime
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 	"unicode/utf8"
 )
 
-type Native interface{ Operation(string) Function }
-type stream struct {
-	admitted            int
-	mu                  sync.Mutex
-	file                *os.File
-	closed, owned       bool
-	resultType          string
-	readGate, writeGate chan struct{}
-	closing, released   chan struct{}
-	active              sync.WaitGroup
-	releaseFault        error
-	// pending holds bytes read ahead by read_line; read returns them first.
-	pending readAhead
-}
+// HostRoots are the program's capabilities to the host: standard streams,
+// arguments, environment, and service handles. They are private to one CLI run
+// or test; derived executions share them, so importing an accessor never
+// creates a second service instance.
+type HostRoots struct {
+	once sync.Once
+	err  error
 
-// readAhead holds bytes a line reader took beyond the current line. The owner's
-// mutex guards it.
-type readAhead struct{ buf []byte }
+	// Arguments is the program's argument list; Environment is the snapshot of
+	// the process environment taken when the roots were initialized.
+	Arguments   *List[string]
+	Environment *Map[string, string]
 
-// take removes up to max bytes (all of them when max <= 0), reporting whether any were held.
-func (a *readAhead) take(max int) ([]byte, bool) {
-	if len(a.buf) == 0 {
-		return nil, false
-	}
-	n := len(a.buf)
-	if max > 0 && max < n {
-		n = max
-	}
-	data := a.buf[:n:n]
-	a.buf = a.buf[n:]
-	return data, true
-}
+	Stdin  ReadStream
+	Stdout WriteStream
+	Stderr WriteStream
 
-// ioBytesResult and ioUnitResult are the IoError result types of stream reads and writes.
-const (
-	ioBytesResult = "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"
-	ioUnitResult  = "@std/Result[Unit][@std/IoError]"
-)
+	Files      Files
+	Filesystem FileSystem
+	Commands   Commands
+	Control    ProcessControl
+	Clock      Clock
+	WallClock  WallClock
+	Entropy    Entropy
+	System     System
+	Terminal   Terminal
 
-func (s *stream) initialize() {
-	if s.closing != nil {
-		return
-	}
-	s.closing = make(chan struct{})
-	s.released = make(chan struct{})
-	s.readGate = make(chan struct{}, 1)
-	s.writeGate = make(chan struct{}, 1)
-	s.readGate <- struct{}{}
-	s.writeGate <- struct{}{}
-}
-func (s *stream) close() {
-	s.mu.Lock()
-	s.initialize()
-	if s.closed {
-		released := s.released
-		s.mu.Unlock()
-		<-released
-		if s.releaseFault != nil {
-			Panic(s.releaseFault.Error())
-		}
-		return
-	}
-	s.closed = true
-	close(s.closing)
-	active := s.admitted
-	s.mu.Unlock()
-	if active > 0 {
-		s.file.SetReadDeadline(time.Now())
-		s.file.SetWriteDeadline(time.Now())
-	}
-	if s.owned {
-		s.releaseFault = s.file.Close()
-	}
-	s.active.Wait()
-	close(s.released)
-	if s.releaseFault != nil {
-		Panic(s.releaseFault.Error())
-	}
-}
-func (s *stream) Operation(name string) Function {
-	if name == "close" {
-		return NewFunction(nil, "Unit", func(_ *Execution, _ []Value) Value { s.close(); return Unit{} })
-	}
-	labels := []string{}
-	if name == "read" {
-		labels = []string{"max_bytes"}
-	}
-	if name == "write" {
-		labels = []string{"data"}
-	}
-	return NewFunction(labels, s.resultType, func(ctx *Execution, args []Value) Value {
-		s.mu.Lock()
-		s.initialize()
-		gate := s.readGate
-		if name != "read" {
-			gate = s.writeGate
-		}
-		closing := s.closing
-		closed := s.closed
-		s.mu.Unlock()
-		if closed {
-			return ioError(s.resultType, "Closed", "")
-		}
-		select {
-		case <-gate:
-		case <-closing:
-			return ioError(s.resultType, "Closed", "")
-		case <-ctx.Context.Done():
-			CheckCancelled(ctx)
-		}
-		defer func() { gate <- struct{}{} }()
-		s.mu.Lock()
-		if s.closed {
-			s.mu.Unlock()
-			return ioError(s.resultType, "Closed", "")
-		}
-		s.active.Add(1)
-		s.admitted++
-		s.mu.Unlock()
-		defer func() { s.mu.Lock(); s.admitted--; s.mu.Unlock(); s.active.Done() }()
-		CheckCancelled(ctx)
-		// Pollable files support deadlines. Regular files complete synchronously.
-		deadline := s.file.SetReadDeadline
-		if name != "read" {
-			deadline = s.file.SetWriteDeadline
-		}
-		defer libraryInterrupt(ctx, deadline)()
-		switch name {
-		case "read":
-			n := nativeStreamReadSize(args[0])
-			if n <= 0 {
-				return ioError(s.resultType, "InvalidInput", "")
-			}
-			if n > 64*1024 {
-				n = 64 * 1024
-			}
-			s.mu.Lock()
-			data, ok := s.pending.take(int(n))
-			s.mu.Unlock()
-			if ok {
-				return Alternative{s.resultType, "ok", []Value{optional("@std/Bytes", Bytes{data}, true)}}
-			}
-			data = make([]byte, int(n))
-			read, err := s.file.Read(data)
-			CheckCancelled(ctx)
-			if err != nil && err != io.EOF {
-				s.mu.Lock()
-				closed := s.closed
-				s.mu.Unlock()
-				if closed {
-					return ioError(s.resultType, "Closed", "")
-				}
-				return ioError(s.resultType, "Failed", err.Error())
-			}
-			if read == 0 && err == io.EOF {
-				return Alternative{s.resultType, "ok", []Value{optional("@std/Bytes", nil, false)}}
-			}
-			return Alternative{s.resultType, "ok", []Value{optional("@std/Bytes", Bytes{data[:read]}, true)}}
-		case "write":
-			data := args[0].(Bytes).Items
-			for len(data) > 0 {
-				n, err := s.file.Write(data)
-				CheckCancelled(ctx)
-				if err != nil {
-					s.mu.Lock()
-					closed := s.closed
-					s.mu.Unlock()
-					if closed {
-						return ioError(s.resultType, "Closed", "")
-					}
-					return ioError(s.resultType, "Failed", err.Error())
-				}
-				if n == 0 {
-					return ioError(s.resultType, "Failed", "short write")
-				}
-				data = data[n:]
-			}
-			return Alternative{s.resultType, "ok", []Value{Unit{}}}
-		case "flush":
-			return Alternative{s.resultType, "ok", []Value{Unit{}}}
-		}
-		return Panic("unavailable stream operation")
-	})
-}
+	// Network is installed by the network module; it is nil until then.
+	Network Network
 
-func ioError(result, tag, message string) Value {
-	fields := []Value{}
-	if tag == "Failed" {
-		fields = append(fields, message)
-	}
-	return Alternative{result, "error", []Value{Alternative{"@std/IoError", tag, fields}}}
-}
-
-type files struct{ directory string }
-
-func (f *files) Operation(name string) Function {
-	return NewAcquisition([]string{"path"}, "@std/Result[@std/File][@std/IoError]", func(ctx *Execution, args []Value) Value {
-		CheckCancelled(ctx)
-		name := args[0].(string)
-		if strings.ContainsRune(name, 0) {
-			return ioError("@std/Result[@std/File][@std/IoError]", "InvalidInput", "")
-		}
-		if !filepath.IsAbs(name) {
-			var ok bool
-			name, ok = libraryHostPath(f.directory, name)
-			if !ok {
-				return ioError("@std/Result[@std/File][@std/IoError]", "Unavailable", "")
-			}
-		}
-		file, err := os.Open(name)
-		if err != nil {
-			return ioError("@std/Result[@std/File][@std/IoError]", "Unavailable", "")
-		}
-		resource := &stream{file: file, owned: true, resultType: ioBytesResult}
-		if ctx.Context.Err() != nil {
-			file.Close()
-			CheckCancelled(ctx)
-		}
-		return Alternative{"@std/Result[@std/File][@std/IoError]", "ok", []Value{ViewOf("@std/File", resource)}}
-	}, func(ctx *Execution, value Value) {
-		result := value.(Alternative)
-		if result.Tag == "ok" {
-			Invoke(Shield(ctx), Bind(result.Fields[0], "", "close"), nil)
-		}
-	})
-}
-
-type clock struct {
-	domain *clockDomain
-	start  time.Time
-}
-
-func (c *clock) Operation(name string) Function {
-	return NewFunction(nil, "@std/Instant", func(_ *Execution, _ []Value) Value { return Instant{c.domain, int64(time.Since(c.start))} })
-}
-
-// hostRoots are private to one CLI run or test. Derived execution contexts share
-// the same roots; importing an accessor never creates another service instance.
-type hostRoots struct {
-	once      sync.Once
 	arguments []string
-	values    map[string]Value
-	err       error
-}
-
-func (h *hostRoots) initialize() error {
-	h.once.Do(func() { h.values, h.err = newHostValues(h.arguments) })
-	return h.err
-}
-
-func hostValue(ctx *Execution, name string) Value {
-	if ctx == nil || ctx.Host == nil {
-		return Panic("host services are unavailable in this execution")
-	}
-	if err := ctx.Host.initialize(); err != nil {
-		return Panic(err.Error())
-	}
-	return ctx.Host.values[name]
 }
 
 func init() {
-	for _, root := range []struct{ module, name, result string }{
-		{"cli", "arguments", "List[String]"},
-		{"cli", "environment", "Map[String][String]"},
-		{"io", "stdin", "ReadStream"},
-		{"io", "stdout", "WriteStream"},
-		{"io", "stderr", "WriteStream"},
-		{"io", "files", "Files"},
-		{"fs", "filesystem", "FileSystem"},
-		{"net", "network", "Network"},
-		{"process", "commands", "Commands"},
-		{"process", "control", "ProcessControl"},
-		{"terminal", "terminal", "Terminal"},
-		{"time", "clock", "Clock"},
-		{"time", "wall_clock", "WallClock"},
-		{"random", "entropy", "Entropy"},
-		{"system", "system", "System"},
-	} {
-		libraryAdd(root.module, root.name, root.result, nil, func(ctx *Execution, _ string, _ []Value) Value {
-			return hostValue(ctx, root.name)
-		})
+	// RunMain and RunTests hand the program arguments to the host before main
+	// runs. A startup failure (non-UTF-8 arguments or environment) is reported
+	// by the first accessor that needs the roots.
+	hostArguments = func(ctx *Execution, args []string) {
+		if ctx.State.Host == nil {
+			ctx.State.Host = &HostRoots{}
+		}
+		ctx.State.Host.Initialize(args)
 	}
+	hostShutdown = func(ctx *Execution) { ctx.State.Host.Shutdown(ctx) }
 }
 
-func newHostValues(arguments []string) (map[string]Value, error) {
-	values := make([]Value, len(arguments))
-	for i, a := range arguments {
+// NewHostRoots returns uninitialized roots for a run with arguments.
+func NewHostRoots(arguments []string) *HostRoots { return &HostRoots{arguments: arguments} }
+
+// Initialize creates the root services once. Later calls return the first
+// call's outcome. args are the program arguments; nil keeps those given to
+// NewHostRoots.
+func (h *HostRoots) Initialize(args []string) error {
+	h.once.Do(func() {
+		if args != nil {
+			h.arguments = args
+		}
+		h.err = h.build()
+	})
+	return h.err
+}
+
+func (h *HostRoots) build() error {
+	values := make([]string, len(h.arguments))
+	for i, a := range h.arguments {
 		if !utf8.ValidString(a) {
-			return nil, fmt.Errorf("process arguments are not valid UTF-8")
+			return fmt.Errorf("process arguments are not valid UTF-8")
 		}
 		values[i] = a
 	}
-	environment := &Map{Type: "@std/Map[String][String]"}
+	environment := NewMap[string, string]()
 	for _, entry := range os.Environ() {
 		if !utf8.ValidString(entry) {
-			return nil, fmt.Errorf("process environment is not valid UTF-8")
+			return fmt.Errorf("process environment is not valid UTF-8")
 		}
-		name, value, ok := strings.Cut(entry, "=")
-		if ok {
-			replaced := false
-			for i, e := range environment.Entries {
-				if e.Key == name {
-					environment.Entries[i].Value = value
-					replaced = true
-					break
-				}
-			}
-			if !replaced {
-				environment.Entries = append(environment.Entries, Entry{name, value})
-			}
+		if name, value, ok := strings.Cut(entry, "="); ok {
+			environment.Put(name, value)
 		}
 	}
-	return map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{""}), "control": ViewOf("@std/ProcessControl", libraryProcessControl{}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{""}), "terminal": ViewOf("@std/Terminal", libraryTerminal{}), "arguments": NewList("@std/List[String]", values), "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: ioBytesResult}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: ioUnitResult}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: ioUnitResult}), "files": ViewOf("@std/Files", &files{""}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}, nil
+	h.Arguments = NewList(values...)
+	h.Environment = environment
+	h.Filesystem = &osFileSystem{}
+	h.Control = osProcessControl{}
+	h.Entropy = osEntropy{}
+	h.WallClock = osWallClock{}
+	h.System = &osSystem{}
+	h.Terminal = osTerminal{}
+	h.Stdin = newHostStream(os.Stdin, false)
+	h.Stdout = newHostStream(os.Stdout, false)
+	h.Stderr = newHostStream(os.Stderr, false)
+	h.Files = &osFiles{}
+	h.Commands = osCommands{}
+	h.Clock = &osClock{domain: &ClockDomain{}, start: time.Now()}
+	return nil
 }
-func RunMain(main Value, arguments []string) (exit int) {
-	exit = 70
-	defer FlushDiagnostics()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(signals)
+
+// Shutdown releases the standard streams and the network service after main
+// and every joined operation have finished. A fault while closing is
+// reported to the caller as a Fault panic like any other cleanup fault.
+func (h *HostRoots) Shutdown(ctx *Execution) {
+	if h == nil || h.Initialize(nil) != nil {
+		return
+	}
+	ctx = Shield(ctx)
+	type closer interface{ Close(*Execution) Unit }
+	var failures []any
+	closeOne := func(c closer) {
+		defer func() {
+			if r := recover(); r != nil {
+				failures = append(failures, r)
+			}
+		}()
+		c.Close(ctx)
+	}
+	closeOne(h.Stdin)
+	closeOne(h.Stdout)
+	closeOne(h.Stderr)
+	if h.Network != nil {
+		if c, ok := h.Network.(closer); ok {
+			closeOne(c)
+		}
+	}
+	if len(failures) > 0 {
+		panic(failures[0])
+	}
+}
+
+// hostRoots returns the initialized roots of ctx.
+func hostRoots(ctx *Execution) *HostRoots {
+	if ctx == nil || ctx.State == nil || ctx.State.Host == nil {
+		Raise("host services are unavailable in this execution")
+	}
+	if err := ctx.State.Host.Initialize(nil); err != nil {
+		Raise(err.Error())
+	}
+	return ctx.State.Host
+}
+
+// Cli_Arguments is the cli.arguments root accessor.
+func Cli_Arguments(ctx *Execution) *List[string] { return hostRoots(ctx).Arguments }
+
+// Cli_Environment is the cli.environment root accessor: a snapshot taken at
+// startup.
+func Cli_Environment(ctx *Execution) *Map[string, string] { return hostRoots(ctx).Environment }
+
+// Io_Stdin is the io.stdin root accessor.
+func Io_Stdin(ctx *Execution) ReadStream { return hostRoots(ctx).Stdin }
+
+// Io_Stdout is the io.stdout root accessor.
+func Io_Stdout(ctx *Execution) WriteStream { return hostRoots(ctx).Stdout }
+
+// Io_Stderr is the io.stderr root accessor.
+func Io_Stderr(ctx *Execution) WriteStream { return hostRoots(ctx).Stderr }
+
+// Io_Files is the io.files root accessor.
+func Io_Files(ctx *Execution) Files { return hostRoots(ctx).Files }
+
+// Fs_Filesystem is the fs.filesystem root accessor.
+func Fs_Filesystem(ctx *Execution) FileSystem { return hostRoots(ctx).Filesystem }
+
+// Process_Commands is the process.commands root accessor.
+func Process_Commands(ctx *Execution) Commands { return hostRoots(ctx).Commands }
+
+// Process_Control is the process.control root accessor.
+func Process_Control(ctx *Execution) ProcessControl { return hostRoots(ctx).Control }
+
+// Time_Clock is the time.clock root accessor.
+func Time_Clock(ctx *Execution) Clock { return hostRoots(ctx).Clock }
+
+// Time_WallClock is the time.wall_clock root accessor.
+func Time_WallClock(ctx *Execution) WallClock { return hostRoots(ctx).WallClock }
+
+// System_System is the system.system root accessor.
+func System_System(ctx *Execution) System { return hostRoots(ctx).System }
+
+// Terminal_Terminal is the terminal.terminal root accessor.
+func Terminal_Terminal(ctx *Execution) Terminal { return hostRoots(ctx).Terminal }
+
+// osWallClock reads the host's calendar time.
+type osWallClock struct{}
+
+var _ WallClock = osWallClock{}
+
+func (osWallClock) Now(*Execution) Timestamp { return timestampOf(time.Now()) }
+
+// osClock reads a monotonic clock whose instants carry its domain.
+type osClock struct {
+	domain *ClockDomain
+	start  time.Time
+}
+
+var _ Clock = (*osClock)(nil)
+
+func (c *osClock) Now(*Execution) Instant {
+	return Instant{Domain: c.domain, Tick: int64(time.Since(c.start))}
+}
+
+// Shared host helpers.
+
+var errInvalidInput = errors.New("invalid filesystem operation")
+var errLimit = errors.New("limit exceeded")
+var errEncoding = errors.New("name is not UTF-8")
+
+// hostPath resolves s against directory, or the live working directory when
+// directory is empty. An empty or NUL-containing path is invalid: an empty path
+// would resolve to the working directory itself.
+func hostPath(directory, s string) (string, bool) {
+	if s == "" || strings.ContainsRune(s, 0) {
+		return "", false
+	}
+	if filepath.IsAbs(s) {
+		return s, true
+	}
+	if directory == "" {
+		workingDirectoryMu.Lock()
+		defer workingDirectoryMu.Unlock()
+		var err error
+		directory, err = os.Getwd()
+		if err != nil {
+			return "", false
+		}
+	}
+	return filepath.Join(directory, s), true
+}
+
+var workingDirectoryMu sync.Mutex
+
+// interruptFunc runs interrupt when ctx is cancelled. The returned stop
+// disarms it and, when it already started, waits for it to finish.
+func interruptFunc(ctx *Execution, interrupt func()) func() {
 	done := make(chan struct{})
-	defer close(done)
-	var mu sync.Mutex
-	signalExit := 0
-	go func() {
-		select {
-		case s := <-signals:
-			mu.Lock()
-			if s == os.Interrupt {
-				signalExit = 130
-			} else {
-				signalExit = 143
-			}
-			mu.Unlock()
-			cancel()
-		case <-done:
+	stop := context.AfterFunc(ctx.Context, func() { defer close(done); interrupt() })
+	return func() {
+		if !stop() {
+			<-done
 		}
-	}()
-	execution := &Execution{Context: ctx, Lifetime: &workLifetime{}, Host: &hostRoots{arguments: arguments}, calls: &callState{}}
-	defer func() {
-		if r := recover(); r != nil {
-			if _, ok := r.(cancelled); ok {
-				mu.Lock()
-				exit = signalExit
-				mu.Unlock()
-				if exit == 0 {
-					exit = 70
-				}
-			} else {
-				fmt.Fprintln(os.Stderr, r)
-				exit = 70
-			}
-		} else if ctx.Err() != nil {
-			mu.Lock()
-			exit = signalExit
-			mu.Unlock()
-			if exit == 0 {
-				exit = 70
-			}
-		}
-	}()
-	if err := execution.Host.initialize(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 70
 	}
-	// Host roots remain available until main and every joined operation finish.
-	defer Cleanup(execution, hostValue(execution, "stdin"))
-	defer Cleanup(execution, hostValue(execution, "stdout"))
-	defer Cleanup(execution, hostValue(execution, "stderr"))
-	defer Cleanup(execution, hostValue(execution, "network"))
-	defer FinishExecution(execution)
-	defer terminalRestoreAll()
-	value := Invoke(execution, main, nil).(int64)
-	CheckCancelled(execution)
-	if value < 0 || value > 125 {
-		Panic("main exit code must be between 0 and 125; return 0 for success or a small positive Int for failure (126 and above are reserved by shells)")
-	}
-	return int(value)
 }
+
+// interruptDeadline expires an I/O deadline on cancellation; the returned stop
+// also clears the deadline.
+func interruptDeadline(ctx *Execution, deadline func(time.Time) error) func() {
+	stop := interruptFunc(ctx, func() { deadline(time.Now()) })
+	return func() {
+		stop()
+		deadline(time.Time{})
+	}
+}
+
+// optionLimit resolves an optional limit: none selects fallback, a negative
+// value is invalid.
+func optionLimit(v Option[int64], fallback int64) (int64, bool) {
+	if !v.Some {
+		return fallback, true
+	}
+	return v.Val, v.Val >= 0
+}
+
+const unlimited = int64(^uint64(0) >> 1)

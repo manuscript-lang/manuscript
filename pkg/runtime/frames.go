@@ -1,12 +1,15 @@
 package msruntime
 
 import (
-	"fmt"
 	"reflect"
 	goruntime "runtime"
 	"strconv"
 	"sync"
+	"sync/atomic"
 )
+
+// MaxCallDepth bounds nested calls of functions in a recursive cycle.
+const MaxCallDepth = 200000
 
 // maxFaultFrames bounds the trace kept on a fault; deeper frames are counted.
 const maxFaultFrames = 32
@@ -33,7 +36,7 @@ func enterSlow(ctx *Execution) {
 	calls := ctx.calls
 	if calls.depth > MaxCallDepth {
 		calls.depth--
-		Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
+		Raise("call depth limit exceeded (" + strconv.Itoa(MaxCallDepth) + " nested calls)")
 	}
 	if isDone(ctx.Context) {
 		calls.depth--
@@ -42,7 +45,7 @@ func enterSlow(ctx *Execution) {
 }
 
 // Exit pairs with Enter on a normal return. A panic unwinds past it; the code
-// that recovers restores the depth it saw (see Depth and ControlResult).
+// that recovers restores the depth it saw (see Depth and RestoreDepth).
 func Exit(ctx *Execution) { ctx.calls.depth-- }
 
 // Depth reports the current call depth, for code that recovers a panic.
@@ -51,6 +54,13 @@ func Depth(ctx *Execution) int64 {
 		return 0
 	}
 	return ctx.calls.depth
+}
+
+// RestoreDepth resets the call depth to a value read earlier with Depth.
+func RestoreDepth(ctx *Execution, depth int64) {
+	if ctx != nil && ctx.calls != nil {
+		ctx.calls.depth = depth
+	}
 }
 
 // sourceNames maps the Go name of a source function to the name its frames
@@ -68,26 +78,15 @@ func goFunctionName(fn any) (uintptr, string) {
 	return pointer, ""
 }
 
-// RegisterSource names a direct source function in fault traces.
+// RegisterSource names a direct source function in fault traces. The argument
+// is used only for its code pointer; it is not a value ABI.
 func RegisterSource(fn any, name string) {
 	if _, key := goFunctionName(fn); key != "" {
 		sourceNames.Store(key, name)
 	}
 }
 
-// Named names a source function body in fault traces and returns it.
-func Named(name string, body func(*Execution, []Value) Value) func(*Execution, []Value) Value {
-	pointer := reflect.ValueOf(body).Pointer()
-	if _, seen := sourcePointers.Load(pointer); !seen {
-		if _, key := goFunctionName(body); key != "" {
-			sourceNames.Store(key, name)
-		}
-		sourcePointers.Store(pointer, true)
-	}
-	return body
-}
-
-// NamedFunc is Named for a typed direct function literal.
+// NamedFunc names a function literal in fault traces and returns it.
 func NamedFunc[F any](name string, fn F) F {
 	pointer := reflect.ValueOf(fn).Pointer()
 	if _, seen := sourcePointers.Load(pointer); !seen {
@@ -99,16 +98,17 @@ func NamedFunc[F any](name string, fn F) F {
 	return fn
 }
 
-// NamedMethod is Named for the receiver-first bodies of implementations.
-func NamedMethod(name string, body func(*Execution, Value, []Value) Value) func(*Execution, Value, []Value) Value {
-	pointer := reflect.ValueOf(body).Pointer()
-	if _, seen := sourcePointers.Load(pointer); !seen {
-		if _, key := goFunctionName(body); key != "" {
-			sourceNames.Store(key, name)
-		}
-		sourcePointers.Store(pointer, true)
+// Site records that the code of one lambda expression is already registered,
+// so evaluating the expression again costs one atomic load.
+type Site struct{ done atomic.Bool }
+
+// Named names a lambda in fault traces on first evaluation and returns it.
+func Named[F any](site *Site, name string, fn F) F {
+	if !site.done.Load() {
+		NamedFunc(name, fn)
+		site.done.Store(true)
 	}
-	return body
+	return fn
 }
 
 // captureFrames names the registered source functions on the current stack,
@@ -131,63 +131,4 @@ func captureFrames() (frames []string, truncated bool) {
 		}
 	}
 	return frames, n == len(pcs)
-}
-
-// ControlResult turns a propagation or source-return panic raised inside a
-// direct function into that function's result. Other panics are not handled.
-func ControlResult(ctx *Execution, depth int64, failure any, result string) (Value, bool) {
-	switch c := failure.(type) {
-	case sourceReturn:
-		controlPanics.Add(-1)
-		restoreDepth(ctx, depth)
-		return c.value, true
-	case propagation:
-		controlPanics.Add(-1)
-		restoreDepth(ctx, depth)
-		CheckCancelled(ctx)
-		return Alternative{Type: result, Tag: "error", Fields: []Value{c.Cause}}, true
-	}
-	return nil, false
-}
-
-func restoreDepth(ctx *Execution, depth int64) {
-	if ctx != nil && ctx.calls != nil {
-		ctx.calls.depth = depth
-	}
-}
-
-// ControlPending reports whether a propagation, source-return or loop-exit
-// panic may be in flight, so unwinding layers can skip recover otherwise.
-func ControlPending() bool { return controlPanics.Load() != 0 }
-
-// NewDirectFunction wraps a direct source function for dynamic calls. The
-// direct function already enters and leaves its own frame.
-func NewDirectFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
-	return Function{Labels: labels, Result: result, Body: func(ctx *Execution, args []Value) Value {
-		// The wrapper counts depth: a cycle through dynamic calls is bounded here.
-		Enter(ctx)
-		var value Value
-		if sourceProfiling.Load() {
-			value = profileSource(ctx, position, args, body)
-		} else {
-			value = body(ctx, args)
-		}
-		Exit(ctx)
-		return value
-	}}
-}
-
-// Poll checks cancellation on every 64th call, for loops whose iterations
-// make no checked call of their own.
-// PollIndex is Poll for range loops, which already count their iterations.
-func PollIndex(ctx *Execution, index int) {
-	if index&63 == 63 {
-		CheckCancelled(ctx)
-	}
-}
-
-func Poll(ctx *Execution, tick *uint32) {
-	if *tick++; *tick&63 == 0 {
-		CheckCancelled(ctx)
-	}
 }

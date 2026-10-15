@@ -110,6 +110,7 @@ type Flow struct{ FallsThrough bool }
 type TestFixture struct {
 	Factory *Symbol
 	Type    *Type
+	Hooks   *Type // the standard TestHooks contract the fixture implements
 }
 
 type Program struct {

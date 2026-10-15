@@ -97,7 +97,7 @@ func inspectProgram(command, output string, result compiler.Result) int {
 	if command == "diagram" {
 		return writeOutput(output, []byte(tooling.Diagram(inspection)))
 	}
-	data, err := json.MarshalIndent(inspection, "", "  ")
+	data, err := json.MarshalIndent(inspectionWithGoLocals(result), "", "  ")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

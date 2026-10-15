@@ -154,7 +154,7 @@ bounded change does not solve boxed element storage or callback dispatch cost.
 
 ## Authoritative typed representation
 
-The current [Go ABI guide](../../documentation/contributing/list-storage.md)
+The current [Go representation guide](../../documentation/contributing/go-lowering-representation.md)
 defines the implementation and migration. A single `*List` owns its typed slice
 header directly, retaining two constructor allocations without a separate backing
 owner. Captured headers are traversal views, never mutable owners. No boxed mirror

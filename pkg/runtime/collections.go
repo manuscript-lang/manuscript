@@ -1,468 +1,184 @@
 package msruntime
 
 import (
-	"fmt"
 	"math"
-	"math/big"
-	"slices"
-	"strconv"
-	"unicode/utf8"
+	"sync"
 )
 
-// MapLiteral inserts evaluated entries using the same equality and ordering as with_entry.
-func MapLiteral(ctx *Execution, typ string, entries []Entry, scope TypeScope) *Map {
-	child := *ctx
-	if len(scope.Args) > 0 {
-		child.EqualityScope = scope.Args[0]
+// Errors_Message_CollectionError is the fixed diagnostic `collection: <reason>`.
+func Errors_Message_CollectionError(_ *Execution, e CollectionError) string {
+	switch e.(type) {
+	case CollectionError_InvalidInput:
+		return "collection: invalid input"
+	case CollectionError_LimitExceeded:
+		return "collection: limit exceeded"
+	case CollectionError_OutOfRange:
+		return "collection: value out of range"
 	}
-	result := &Map{Type: typ}
-	for _, entry := range entries {
-		CheckCancelled(&child)
-		mapPut(&child, result, entry.Key, entry.Value)
-	}
-	return result
+	return "collection: operation failed"
 }
 
-func spliceList(list *List, start, count int, replacement *List) {
-	switch list.kind {
-	case listInt:
-		list.ints = spliceItems(list.ints, start, count, listInts(replacement), list == replacement)
-	case listFloat:
-		list.floats = spliceItems(list.floats, start, count, listFloats(replacement), list == replacement)
-	case listBool:
-		list.bools = spliceItems(list.bools, start, count, listBools(replacement), list == replacement)
-	case listString:
-		list.strings = spliceItems(list.strings, start, count, listStrings(replacement), list == replacement)
-	default:
-		items := replacement.Items
-		if replacement.kind != listBoxed {
-			items = replacement.Boxed()
+// Collections_Filled creates a list of count copies of value. An omitted
+// maxItems leaves only the runtime ceiling.
+func Collections_Filled[T any](ctx *Execution, value T, count int64, maxItems Option[int64]) Result[*List[T], CollectionError] {
+	limit := int64(math.MaxInt64)
+	if maxItems.Some {
+		limit = maxItems.Val
+	}
+	if count < 0 || limit < 0 {
+		return Fail[*List[T], CollectionError](CollectionError_InvalidInput{})
+	}
+	if count > min(limit, nativeMaxItems) {
+		return Fail[*List[T], CollectionError](CollectionError_LimitExceeded{})
+	}
+	out, tick := make([]T, count), uint32(0)
+	for i := range out {
+		Poll(ctx, &tick)
+		out[i] = value
+	}
+	return Ok[*List[T], CollectionError](&List[T]{Items: out})
+}
+
+// Collections_Range creates the integers from start up to but excluding end.
+func Collections_Range(ctx *Execution, start, end, step int64, maxItems Option[int64]) Result[*List[int64], CollectionError] {
+	limit := int64(math.MaxInt64)
+	if maxItems.Some {
+		limit = maxItems.Val
+	}
+	if step == 0 || limit < 0 {
+		return Fail[*List[int64], CollectionError](CollectionError_InvalidInput{})
+	}
+	limit = min(limit, nativeMaxItems)
+	// Count the terms first so a huge range fails before allocating.
+	var span, size uint64
+	if step > 0 && start < end {
+		span, size = uint64(end)-uint64(start), uint64(step)
+	} else if step < 0 && start > end {
+		span, size = uint64(start)-uint64(end), -uint64(step)
+	}
+	if span > 0 && (span-1)/size >= uint64(limit) {
+		return Fail[*List[int64], CollectionError](CollectionError_LimitExceeded{})
+	}
+	var out []int64
+	tick := uint32(0)
+	for n := start; step > 0 && n < end || step < 0 && n > end; {
+		Poll(ctx, &tick)
+		if int64(len(out)) == limit {
+			return Fail[*List[int64], CollectionError](CollectionError_LimitExceeded{})
 		}
-		list.Items = spliceItems(list.Items, start, count, items, list == replacement)
-	}
-}
-func spliceItems[T any](items []T, start, count int, replacement []T, self bool) []T {
-	if self {
-		replacement = append([]T(nil), replacement...)
-	}
-	oldLength := len(items)
-	newLength := oldLength - count + len(replacement)
-	if newLength < oldLength-count {
-		Panic("list replacement length overflow")
-	}
-	if newLength > oldLength {
-		items = slices.Grow(items, newLength-oldLength)[:newLength]
-	}
-	copy(items[start+len(replacement):], items[start+count:oldLength])
-	copy(items[start:], replacement)
-	// Non-clearing reslice preserves valid values in captured traversal tails.
-	return items[:newLength]
-}
-
-func optional(typ string, value Value, present bool) Value {
-	if !present {
-		return Alternative{Type: "@std/Optional[" + typ + "]", Tag: "none"}
-	}
-	return Alternative{Type: "@std/Optional[" + typ + "]", Tag: "some", Fields: []Value{value}}
-}
-func constructor(typ string, args []Argument) Value {
-	name, _ := splitType(typ)
-	switch name {
-	case "@std/List":
-		return newList(typ)
-	case "@std/Map":
-		return &Map{Type: typ}
-	case "@std/Set":
-		return &Set{Type: typ}
-	case "@std/Bytes":
-		values := args[0].Value.(*List).Boxed()
-		bytes := make([]byte, len(values))
-		for i, v := range values {
-			n := v.(int64)
-			if n < 0 || n > 255 {
-				return libraryRangeFault("Bytes", fmt.Sprintf("values[%d]", i), n, 0, 255)
-			}
-			bytes[i] = byte(n)
+		out = append(out, n)
+		// An overflowing next term lies outside every representable end.
+		if step > 0 && n > math.MaxInt64-step || step < 0 && n < math.MinInt64-step {
+			break
 		}
-		return Bytes{bytes}
+		n += step
 	}
-	if fields := nativeOptionRecords[typ]; fields != nil {
-		present := map[string]bool{}
-		for _, arg := range args {
-			present[arg.Name] = true
-		}
-		for name, fieldType := range fields {
-			if !present[name] {
-				args = append(args, Argument{name, optional(libraryRuntimeType(fieldType), nil, false)})
-			}
-		}
-	}
-	return NewRecord(typ, args)
+	return Ok[*List[int64], CollectionError](&List[int64]{Items: out})
 }
-func Construct(typ string, args []Argument) Value { return constructor(typ, args) }
 
-// CollectionLength is the direct path for List, Map, and Set length calls.
-func CollectionLength(ctx *Execution, receiver Value) Value {
+// Collections_MapFromEntries builds a map; later entries replace earlier
+// values for a repeated key.
+func Collections_MapFromEntries[K comparable, V any](ctx *Execution, keys *Keys[K], entries *List[*MapEntry[K, V]]) *Map[K, V] {
+	items, tick := entries.Items, uint32(0)
+	out := NewMapWith[K, V](keys)
 	CheckCancelled(ctx)
-	switch v := receiver.(type) {
-	case *List:
-		return int64(v.Len())
-	case *Map:
-		return int64(len(v.Entries))
-	case *Set:
-		return int64(len(v.Items))
+	for _, e := range items {
+		Poll(ctx, &tick)
+		out.Put(e.Key, e.Value)
 	}
-	return Panic("runtime invariant: collection receiver")
+	return out
 }
 
-// ListAppend is the direct path for List.append calls.
-func ListAppend(ctx *Execution, receiver, value Value) Value {
-	CheckCancelled(ctx)
-	list := receiver.(*List)
-	list.Append(value)
-	return list
+// builderSealed is the fault of a mutation after freeze.
+func builderSealed() { Raise("builder is sealed") }
+
+// ListBuilder appends values before freezing them into a list.
+type ListBuilder[T any] struct {
+	mu     sync.Mutex
+	list   *List[T]
+	sealed bool
 }
 
-// ListIsEmpty is the direct path for List.is_empty calls.
-func ListIsEmpty(ctx *Execution, receiver Value) Value {
-	CheckCancelled(ctx)
-	return receiver.(*List).Len() == 0
-}
+// NewListBuilder returns an empty builder.
+func NewListBuilder[T any]() *ListBuilder[T] { return &ListBuilder[T]{list: &List[T]{}} }
 
-// keyContext selects the equality scope for a keyed lookup. Primitive keys
-// compare without it, so only composite keys pay for the context copy.
-func keyContext(ctx *Execution, key Value, scope TypeScope) *Execution {
-	switch key.(type) {
-	case int64, string:
-		return ctx
+// ListBuilder_Append adds value to the end.
+func ListBuilder_Append[T any](_ *Execution, b *ListBuilder[T], value T) Unit {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.sealed {
+		builderSealed()
 	}
-	child := *ctx
-	child.EqualityScope = scope
-	return &child
+	b.list.Items = append(b.list.Items, value)
+	return Unit{}
 }
 
-// ListContains is the direct path for List.contains calls.
-func ListContains(ctx *Execution, receiver, value Value, scope TypeScope) Value {
-	items := receiver.(*List).Capture()
-	for i := 0; i < items.Len(); i++ {
-		CheckCancelled(ctx)
-		if items.EqualAt(ctx, i, value, scope) {
-			return true
-		}
-	}
-	return false
+// ListBuilder_Freeze seals the builder and returns its list without copying.
+func ListBuilder_Freeze[T any](_ *Execution, b *ListBuilder[T]) *List[T] {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.sealed = true
+	return b.list
 }
 
-// MapContains is the direct path for Map.contains calls.
-func MapContains(ctx *Execution, receiver, key Value, scope TypeScope) Value {
-	CheckCancelled(ctx)
-	return receiver.(*Map).find(keyContext(ctx, key, scope), key) >= 0
+// MapBuilder adds entries before freezing them into a map.
+type MapBuilder[T comparable, U any] struct {
+	mu     sync.Mutex
+	m      *Map[T, U]
+	sealed bool
 }
 
-// MapGet is the direct path for Map.get calls.
-func MapGet(ctx *Execution, receiver, key Value, scope TypeScope, result string) Value {
-	CheckCancelled(ctx)
-	m := receiver.(*Map)
-	found := m.find(keyContext(ctx, key, scope), key)
-	if found < 0 {
-		return Alternative{Type: result, Tag: "none"}
-	}
-	return Alternative{Type: result, Tag: "some", Fields: []Value{m.Entries[found].Value}}
+// NewMapBuilder returns an empty builder.
+func NewMapBuilder[T comparable, U any](keys *Keys[T]) *MapBuilder[T, U] {
+	return &MapBuilder[T, U]{m: NewMapWith[T, U](keys)}
 }
 
-// MapGetParts is MapGet without the Optional: the value and whether the key exists.
-func MapGetParts(ctx *Execution, receiver, key Value, scope TypeScope) (Value, bool) {
-	CheckCancelled(ctx)
-	m := receiver.(*Map)
-	found := m.find(keyContext(ctx, key, scope), key)
-	if found < 0 {
-		return nil, false
+// MapBuilder_Add inserts or replaces an entry.
+func MapBuilder_Add[T comparable, U any](_ *Execution, b *MapBuilder[T, U], key T, value U) Unit {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.sealed {
+		builderSealed()
 	}
-	return m.Entries[found].Value, true
+	b.m.Put(key, value)
+	return Unit{}
 }
 
-// MapWithEntry is the direct path for Map.with_entry calls.
-func MapWithEntry(ctx *Execution, receiver, key, value Value, scope TypeScope) Value {
-	CheckCancelled(ctx)
-	m := receiver.(*Map)
-	child := keyContext(ctx, key, scope)
-	if found := m.find(child, key); found >= 0 {
-		m.ownEntries()
-		m.Entries[found].Value = value
-	} else {
-		m.Entries = append(m.Entries, Entry{key, value})
-		keyAppended(child, m)
-	}
-	return m
+// MapBuilder_Freeze seals the builder and returns its map without copying.
+func MapBuilder_Freeze[T comparable, U any](_ *Execution, b *MapBuilder[T, U]) *Map[T, U] {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.sealed = true
+	return b.m
 }
 
-// MapRemove retains insertion order and returns the mutable receiver.
-func MapRemove(ctx *Execution, receiver, key Value, scope TypeScope) Value {
-	CheckCancelled(ctx)
-	return mapRemove(keyContext(ctx, key, scope), receiver.(*Map), key)
+// SetBuilder adds unique values before freezing them into a set.
+type SetBuilder[T comparable] struct {
+	mu     sync.Mutex
+	s      *Set[T]
+	sealed bool
 }
 
-// Bound members already select their key's equality scope.
-func mapRemove(ctx *Execution, m *Map, key Value) Value {
-	if found := m.find(ctx, key); found >= 0 {
-		m.removeAt(ctx, found)
-	}
-	return m
+// NewSetBuilder returns an empty builder.
+func NewSetBuilder[T comparable](keys *Keys[T]) *SetBuilder[T] {
+	return &SetBuilder[T]{s: NewSetWith[T](keys)}
 }
 
-// SetContains is the direct path for Set.contains calls.
-func SetContains(ctx *Execution, receiver, value Value, scope TypeScope) Value {
-	CheckCancelled(ctx)
-	return receiver.(*Set).find(keyContext(ctx, value, scope), value) >= 0
+// SetBuilder_Add adds value; an equal value keeps the first payload.
+func SetBuilder_Add[T comparable](_ *Execution, b *SetBuilder[T], value T) Unit {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.sealed {
+		builderSealed()
+	}
+	b.s.Add(value)
+	return Unit{}
 }
 
-// SetWithValue is the direct path for Set.with_value and Set.add calls.
-func SetWithValue(ctx *Execution, receiver, value Value, scope TypeScope) Value {
-	CheckCancelled(ctx)
-	return setWithValue(keyContext(ctx, value, scope), receiver.(*Set), value)
-}
-
-// Bound native members already select their equality scope at invocation.
-func setWithValue(ctx *Execution, s *Set, value Value) Value {
-	if s.find(ctx, value) < 0 {
-		s.Items = append(s.Items, value)
-		keyAppended(ctx, s)
-	}
-	return s
-}
-
-// SetRemove retains insertion order and returns the mutable receiver.
-func SetRemove(ctx *Execution, receiver, value Value, scope TypeScope) Value {
-	CheckCancelled(ctx)
-	return setRemove(keyContext(ctx, value, scope), receiver.(*Set), value)
-}
-
-func setRemove(ctx *Execution, s *Set, value Value) Value {
-	if found := s.find(ctx, value); found >= 0 {
-		s.removeAt(ctx, found)
-	}
-	return s
-}
-
-// StringByteLength is the direct path for String.byte_length calls.
-// StringLength is the direct path for String.length: the count of Unicode scalars.
-func StringLength(ctx *Execution, receiver Value) Value {
-	CheckCancelled(ctx)
-	return scalarCount(receiver.(string))
-}
-
-func StringByteLength(ctx *Execution, receiver Value) Value {
-	CheckCancelled(ctx)
-	return int64(len(receiver.(string)))
-}
-
-func NativeMember(receiver Value, name string) Value {
-	return NativeMemberResult(receiver, name, "")
-}
-func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope) Value {
-	if nativeAccessorMember(receiver, name) {
-		return Panic("read-only accessor " + name + " is not a method; read it without ()")
-	}
-	if len(scopes) > 0 {
-		original := NativeMemberResult(receiver, name, result).(Function)
-		originalBody := original.Body
-		// Scoped adaptation does not inherit the compiled body proof.
-		original.BorrowedArguments = false
-		original.Body = func(ctx *Execution, args []Value) Value {
-			child := *ctx
-			child.EqualityScope = scopes[0]
-			if len(scopes[0].Args) > 0 {
-				child.EqualityScope = scopes[0].Args[0]
-			}
-			// Key/element transformations deduplicate outputs, whose evidence
-			// can differ from the receiver key/element's scope.
-			_, set := receiver.(*Set)
-			_, mapping := receiver.(*Map)
-			outputKeys := set && name == "map" || mapping && name == "map_keys"
-			if outputKeys && len(scopes) > 1 && len(scopes[1].Args) > 0 {
-				child.EqualityScope = scopes[1].Args[0]
-			}
-			return originalBody(&child, args)
-		}
-		return original
-	}
-	if name == "equals" {
-		return NewFunction([]string{"other"}, "Bool", func(ctx *Execution, args []Value) Value { return EqualIn(ctx, receiver, args[0]) })
-	}
-	if name == "hash" {
-		return NewFunction(nil, "Int", func(ctx *Execution, _ []Value) Value { return HashIn(ctx, receiver) })
-	}
-
-	if name == "clone" {
-		return NewFunction(nil, result, func(_ *Execution, _ []Value) Value { return Clone(receiver) })
-	}
-	if name == "toString" {
-		return NewFunction(nil, "String", func(_ *Execution, _ []Value) Value { return Format(receiver) })
-	}
-	if function, ok := nativeLibraryMember(receiver, name, result); ok {
-		return function
-	}
-	if native, ok := receiver.(Native); ok {
-		return native.Operation(name)
-	}
-	labels := []string{}
-	switch name {
-	case "get":
-		labels = []string{"index"}
-		if _, ok := receiver.(*Map); ok {
-			labels = []string{"key"}
-		}
-	case "append", "contains":
-		labels = []string{"value"}
-		if _, ok := receiver.(*Map); ok {
-			labels = []string{"key"}
-		}
-	case "concat":
-		labels = []string{"other"}
-	}
-	return NewFunction(labels, "", func(ctx *Execution, args []Value) Value {
-		switch v := receiver.(type) {
-		case *List:
-			switch name {
-			case "append":
-				v.Append(args[0])
-				return v
-			case "concat":
-				out := v.CopySlice(0, v.Len())
-				out.appendList(args[0].(*List))
-				return out
-			}
-		case *Map:
-			typ := typeArguments(v.Type)[1]
-			var key Value
-			if len(args) > 0 {
-				key = args[0]
-			}
-			found := v.find(ctx, key)
-			switch name {
-			case "contains":
-				return found >= 0
-			case "get":
-				if found < 0 {
-					return optional(typ, nil, false)
-				}
-				return optional(typ, v.Entries[found].Value, true)
-			}
-		case *Set:
-			var value Value
-			if len(args) > 0 {
-				value = args[0]
-			}
-			found := v.find(ctx, value)
-			switch name {
-			case "contains":
-				return found >= 0
-			}
-		case string:
-			switch name {
-			case "to_bytes":
-				return StringToBytes(v)
-			case "parse_int":
-				return StringParseInt(v)
-			}
-		case Bytes:
-			switch name {
-			case "concat":
-				return Bytes{append(append([]byte{}, v.Items...), args[0].(Bytes).Items...)}
-			case "to_text":
-				return optional("String", string(v.Items), utf8.Valid(v.Items))
-			}
-		case int64:
-			switch name {
-			case "to_float":
-				return float64(v)
-			case "to_decimal":
-				return DecimalLiteral(strconv.FormatInt(v, 10))
-			}
-		case float64:
-			if name == "truncate_to_int" {
-				if math.IsNaN(v) || math.IsInf(v, 0) || v >= 9223372036854775808.0 || v < -9223372036854775808.0 {
-					return optional("Int", nil, false)
-				}
-				return optional("Int", int64(v), true)
-			}
-		case Decimal:
-			switch name {
-			case "to_float":
-				f, _ := v.Value.Float64()
-				return f
-			case "truncate_to_int":
-				n := v.Value.Num()
-				d := v.Value.Denom()
-				q := new(big.Int).Quo(n, d)
-				if !q.IsInt64() {
-					return optional("Int", nil, false)
-				}
-				return optional("Int", q.Int64(), true)
-			}
-		}
-		return Panic("runtime invariant: unavailable member " + name)
-	})
-}
-
-// Index implements List bracket lookup with the same Optional result as at.
-func Index(value, index Value) Value {
-	list := value.(*List)
-	_, types := splitType(list.Type)
-	i := relativeIndex(list.Len(), index.(int64))
-	if i < 0 || i >= int64(list.Len()) {
-		return optional(types[0], nil, false)
-	}
-	return optional(types[0], list.Get(int(i)), true)
-}
-
-// MapGetPartsInt is MapGetParts for a Map with Int keys; the key is not boxed.
-func MapGetPartsInt(ctx *Execution, receiver Value, key int64) (Value, bool) {
-	CheckCancelled(ctx)
-	m := receiver.(*Map)
-	found := lookupInt(ctx, m, key)
-	if found < 0 {
-		return nil, false
-	}
-	return m.Entries[found].Value, true
-}
-
-// MapWithEntryInt is MapWithEntry for a Map with Int keys; an existing key is
-// replaced without boxing it.
-func MapWithEntryInt(ctx *Execution, receiver Value, key int64, value Value) Value {
-	CheckCancelled(ctx)
-	m := receiver.(*Map)
-	if found := lookupInt(ctx, m, key); found >= 0 {
-		m.ownEntries()
-		m.Entries[found].Value = value
-	} else {
-		m.Entries = append(m.Entries, Entry{key, value})
-		keyAppended(ctx, m)
-	}
-	return m
-}
-
-// MapGetPartsString is MapGetParts for a Map with String keys.
-func MapGetPartsString(ctx *Execution, receiver Value, key string) (Value, bool) {
-	CheckCancelled(ctx)
-	m := receiver.(*Map)
-	found := lookupString(ctx, m, key)
-	if found < 0 {
-		return nil, false
-	}
-	return m.Entries[found].Value, true
-}
-
-// MapWithEntryString is MapWithEntry for a Map with String keys.
-func MapWithEntryString(ctx *Execution, receiver Value, key string, value Value) Value {
-	CheckCancelled(ctx)
-	m := receiver.(*Map)
-	if found := lookupString(ctx, m, key); found >= 0 {
-		m.ownEntries()
-		m.Entries[found].Value = value
-	} else {
-		m.Entries = append(m.Entries, Entry{key, value})
-		keyAppended(ctx, m)
-	}
-	return m
+// SetBuilder_Freeze seals the builder and returns its set without copying.
+func SetBuilder_Freeze[T comparable](_ *Execution, b *SetBuilder[T]) *Set[T] {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.sealed = true
+	return b.s
 }

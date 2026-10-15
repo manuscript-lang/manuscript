@@ -14,11 +14,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const (
-	rawResult   = "@std/Result[@std/RawTerminal][@std/TerminalError]"
-	eventResult = "@std/Result[@std/Optional[@std/TerminalEvent]][@std/TerminalError]"
-)
-
 func openPseudoTerminal(t *testing.T) (master, slave *os.File) {
 	t.Helper()
 	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0)
@@ -60,37 +55,40 @@ func TestRawTerminalOnPseudoTerminal(t *testing.T) {
 	}
 	before := localFlags(t, slave)
 	ctx := &Execution{Context: context.Background()}
-	opened := libraryNewRawTerminal(ctx, rawResult, true).(Alternative)
-	if opened.Tag != "ok" {
+	opened := newRawTerminal(true)
+	if opened.Failed {
 		t.Fatalf("raw_mode: %+v", opened)
 	}
-	raw := opened.Fields[0].(View).Receiver.(*libraryRawTerminal)
+	raw := opened.Val.(*osRawTerminal)
 	if localFlags(t, slave)&(unix.ICANON|unix.ECHO|unix.ISIG) != 0 {
 		t.Fatal("raw mode left line discipline enabled")
 	}
-	if again := libraryNewRawTerminal(ctx, rawResult, false).(Alternative); again.Fields[0].(Alternative).Tag != "Busy" {
+	if again := newRawTerminal(false); !again.Failed || again.Err != (TerminalError_Busy{}) {
 		t.Fatalf("second raw mode: %+v", again)
 	}
 
-	next := func(timeout time.Duration) Alternative {
-		return raw.next(ctx, eventResult, timeout).(Alternative)
+	next := func(timeout time.Duration) Result[Option[TerminalEvent], TerminalError] {
+		return raw.next(ctx, Some(Duration(timeout)))
 	}
-	event := func(timeout time.Duration) Alternative {
-		return next(timeout).Fields[0].(Alternative).Fields[0].(Alternative)
+	event := func(timeout time.Duration) TerminalEvent {
+		result := next(timeout)
+		if result.Failed || !result.Val.Some {
+			t.Fatalf("no event: %+v", result)
+		}
+		return result.Val.Val
 	}
 	master.WriteString("a\x1b[A")
 	first, second := event(2*time.Second), event(2*time.Second)
-	if first.Tag != "Text" || first.Fields[0] != "a" || second.Tag != "Key" || second.Fields[0] != "up" {
+	if first != (TerminalEvent_Text{Text: "a"}) || second != (TerminalEvent_Key{Name: "up"}) {
 		t.Fatalf("events: %+v %+v", first, second)
 	}
-	if none := next(20 * time.Millisecond).Fields[0].(Alternative); none.Tag != "none" {
+	if none := next(20 * time.Millisecond); none.Failed || none.Val.Some {
 		t.Fatalf("timeout: %+v", none)
 	}
 
 	unix.IoctlSetWinsize(int(slave.Fd()), unix.TIOCSWINSZ, &unix.Winsize{Row: 30, Col: 100})
 	syscall.Kill(os.Getpid(), syscall.SIGWINCH)
-	resize := event(2 * time.Second)
-	if resize.Tag != "Resize" || resize.Fields[0] != int64(100) || resize.Fields[1] != int64(30) {
+	if resize := event(2 * time.Second); resize != (TerminalEvent_Resize{Columns: 100, Rows: 30}) {
 		t.Fatalf("resize: %+v", resize)
 	}
 
@@ -102,14 +100,14 @@ func TestRawTerminalOnPseudoTerminal(t *testing.T) {
 				t.Error("cancelled wait returned")
 			}
 		}()
-		raw.next(&Execution{Context: cancelled}, eventResult, -1)
+		raw.next(&Execution{Context: cancelled}, None[Duration]())
 	}()
 
 	raw.close()
 	if after := localFlags(t, slave); after != before {
 		t.Fatalf("settings not restored: %x != %x", after, before)
 	}
-	if closed := next(time.Second).Fields[0].(Alternative); closed.Tag != "Closed" {
+	if closed := raw.NextEvent(ctx, Some(Duration(time.Second))); !closed.Failed || closed.Err != (TerminalError_Closed{}) {
 		t.Fatalf("after close: %+v", closed)
 	}
 	var output []byte

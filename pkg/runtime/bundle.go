@@ -1,8 +1,69 @@
 package msruntime
 
-import "embed"
+import (
+	"embed"
+	"go/build/constraint"
+	"io/fs"
+	"strings"
+)
 
-// Sources is embedded so generated programs can be built without runtime downloads.
-//
-//go:embed accessors.go accessors_lean.go accessors_native.go accessors_network.go values.go functions.go methods.go equality.go format.go test_runner.go test_fixture.go priority_queue.go blocking_queue.go library_options.go library_options_schema.go hashing.go keyindex.go clone.go errors.go numeric.go numeric_typed.go typed_alternatives.go frames.go struct.go collections.go list_storage.go list_callbacks.go callback.go list_sort.go list_comparator.go tasks.go task_group.go host.go scheduler.go lifetime.go services.go synchronized.go http.go process.go library.go library_decimal.go library_testing.go library_optional.go library_result.go library_data.go library_formats.go library_html.go library_crypto.go library_codec_selectors.go library_host.go library_time.go library_net.go library_algorithms.go library_archive.go library_tools.go library_log.go library_networking.go library_http_headers.go library_network_values.go library_http_client.go library_http_server.go library_websocket.go library_tls.go profile.go test_events.go library_collections.go library_string.go native_library_members.go native_call.go scalar_functions.go library_fs.go library_fs_copy.go library_fs_glob.go library_watch.go library_path.go library_glob.go scheduler_timers.go library_system.go library_signals.go library_terminal.go library_terminal_input.go library_fs_host.go library_network_host.go lean.go
-var Sources embed.FS
+//go:embed *.go
+var sources embed.FS
+
+// Sources holds the runtime files a generated program builds with, embedded so
+// builds need no download. Tests and the rtcheck signature checks are not part
+// of a build and are not visible through Sources.
+var Sources buildFiles
+
+type buildFiles struct{}
+
+func (buildFiles) include(name string) bool {
+	if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || name == "bundle.go" {
+		return false
+	}
+	data, err := sources.ReadFile(name)
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "package ") {
+			break
+		}
+		if expression, err := constraint.Parse(line); err == nil {
+			return expression.Eval(func(string) bool { return false })
+		}
+	}
+	return true
+}
+
+// ReadDir lists the files of a build.
+func (b buildFiles) ReadDir(name string) ([]fs.DirEntry, error) {
+	entries, err := sources.ReadDir(name)
+	if err != nil {
+		return nil, err
+	}
+	kept := entries[:0:0]
+	for _, entry := range entries {
+		if b.include(entry.Name()) {
+			kept = append(kept, entry)
+		}
+	}
+	return kept, nil
+}
+
+// ReadFile reads one file of a build.
+func (b buildFiles) ReadFile(name string) ([]byte, error) {
+	if !b.include(name) {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+	}
+	return sources.ReadFile(name)
+}
+
+// Open opens one file of a build, or the directory listing.
+func (b buildFiles) Open(name string) (fs.File, error) {
+	if name != "." && !b.include(name) {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+	}
+	return sources.Open(name)
+}

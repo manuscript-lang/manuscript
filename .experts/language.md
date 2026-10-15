@@ -13,7 +13,7 @@ Verify: new confined overlay files compile without being written to disk; overla
 Decision: the user requested conversion with `toString()` on everything. This supersedes the previous restriction of interpolation to scalars. Conversion is available in unconstrained generic code and uses the same representations as interpolation; ordinary type compatibility at assignment, call, and return boundaries remains explicit.
 
 Apply when: changing interpolation, member resolution, formatting, or editor member queries.
-Evidence: [canonical conversion rules](../documentation/core-language/basics/text-and-bytes.md#converting-values-to-string); [native source conformance](../tests/e2e/testdata/accept/to-string.ms); [opaque and cyclic formatting checks](../pkg/runtime/format_test.go).
+Evidence: [canonical conversion rules](../documentation/core-language/basics/text-and-bytes.md#converting-values-to-string); [native source conformance](../tests/e2e/testdata/accept/to-string.ms); opaque and cyclic formatting checks.
 Verify: a record and an unconstrained `T` both support `.toString()` and direct interpolation; a closed resource converts without invoking an operation; passing that record directly to a String parameter is still rejected.
 
 ### Invalid bounds must not survive recovery
@@ -141,7 +141,7 @@ Decision: the approved migration uses one `get name -> T` member declaration for
 Verified: accessor kind must survive interface conformance, lexical implementation evidence and runtime dispatch identity. Native-looking interface types can have source implementations, so static helper selection must exclude contract dispatch. Scalar/tag reads preserve their representation; static reads do not manufacture bound callables. Accessor reads are execution edges for effects, recursion, `try` ordering, inspection and source breakpoints.
 
 Apply when: changing members, interface evidence, native dispatch, accessor lowering or editor metadata.
-Evidence: [canonical accessor rules](../documentation/core-language/types/contracts.md#read-only-accessors), [approved inventory](../documentation/contributing/read-only-accessors-design.md), [exact standard inventory and Error checks](../pkg/stdlib/accessors_test.go), [checked member rules](../pkg/checker/accessors_test.go), [emitted forms](../pkg/lower/lower_accessors_test.go), and [native source/interface semantics](../pkg/build/accessors_native_test.go).
+Evidence: [canonical accessor rules](../documentation/core-language/types/contracts.md#read-only-accessors), [approved inventory](../documentation/contributing/read-only-accessors-design.md), [exact standard inventory and Error checks](../pkg/stdlib/accessors_test.go), [checked member rules](../pkg/checker/accessors_test.go), emitted forms, and [native source/interface semantics](../pkg/build/accessors_native_test.go).
 Verify: read a side-effecting receiver once; observe later mutations and aliases; reject assignment and method/accessor conformance mismatches; execute source implementations of standard interfaces through concrete, generic and view paths; retain Error.message callable references. Search bare diagnostic remedies as well as receiver-prefixed calls: the stale `is_some()` recipe in optionalUseHint survived a member-call search and sent users to another diagnostic. [Diagnostic regressions](../pkg/checker/hints_test.go) pin the accessor spelling.
 
 ### Optional values need presence accessors and extraction methods
@@ -192,7 +192,7 @@ Evidence: [callback rules](../documentation/core-language/functions/function-val
 Verified: Go orders function calls left to right but does not guarantee that a plain variable argument is read before a later call. Replacing bound-method construction with `ListAt(ctx, receiver, indexExpression, ...)` let a match expression in the index reassign the receiver before it was captured. An inline `SourceAt` call captures the receiver first while preserving fault attribution; direct scalar lowering likewise extracts operands through calls.
 
 Apply when: removing bound-call wrappers or lowering expressions directly to Go operations.
-Evidence: [direct collection lowering](../pkg/lower/lower_collections.go), [receiver reassignment regression](../tests/e2e/testdata/accept/collection-call-order.ms), and [evaluation-order contract](../documentation/contributing/compiler/lowering/evaluation-order.md).
+Evidence: direct collection lowering, [receiver reassignment regression](../tests/e2e/testdata/accept/collection-call-order.ms), and [evaluation-order contract](../documentation/contributing/compiler/lowering/evaluation-order.md).
 Verify: a list receiver initially containing 7 still returns 7 when its index expression reassigns the local to a list containing 9; receiver and argument expressions each execute once in written order.
 
 ### Module-level constants are use-site evaluations, not stored values

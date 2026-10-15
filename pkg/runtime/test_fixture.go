@@ -7,25 +7,25 @@ import (
 	"time"
 )
 
-// TestFixture is one checked, file-local make_fixture factory and its dispatch scope.
+// TestFixture is one checked, file-local make_fixture factory. Create builds
+// the instance, publishes it to the file's tests, and returns it as TestHooks.
 type TestFixture struct {
 	File   string
-	Create Value
-	Scope  TypeScope
+	Create func(*Execution) TestHooks
 }
 
 type fixtureState struct {
 	definition      *TestFixture
 	owner           *Execution
 	cancel          context.CancelFunc
-	instance        Value
+	hooks           TestHooks
 	created, failed bool
 	poisoned        atomic.Bool
 	retained        []context.CancelFunc
 }
 
 type fixtureOutcome struct {
-	value     Value
+	value     TestHooks
 	failure   any
 	abandoned bool
 	release   context.CancelFunc
@@ -33,9 +33,9 @@ type fixtureOutcome struct {
 
 // fixturePhase keeps successful creation contexts alive until file teardown.
 // A timeout cancels only this phase; teardown gets its own bounded context.
-func fixturePhase(owner *Execution, timeout time.Duration, operation func(*Execution) Value) fixtureOutcome {
+func fixturePhase(owner *Execution, timeout time.Duration, operation func(*Execution) TestHooks) fixtureOutcome {
 	ctx, cancel := context.WithCancel(owner.Context)
-	execution := inherit(owner, ctx)
+	execution := owner.child(ctx)
 	done := make(chan fixtureOutcome, 1)
 	go func() {
 		result := fixtureOutcome{}
@@ -77,31 +77,22 @@ func fixturePhase(owner *Execution, timeout time.Duration, operation func(*Execu
 	}
 }
 
-func (s *fixtureState) hook(ctx *Execution, name string) Value {
-	return Invoke(ctx, Bind(s.instance, "@std/TestHooks", name, s.definition.Scope), nil)
-}
-
 func (s *fixtureState) setup(timeout time.Duration) (string, fixtureOutcome) {
-	result := fixturePhase(s.owner, timeout, func(ctx *Execution) Value {
-		if err := ctx.Host.initialize(); err != nil {
-			return Panic(err.Error())
-		}
-		return Invoke(ctx, s.definition.Create, nil)
-	})
+	result := fixturePhase(s.owner, timeout, s.definition.Create)
 	if result.release != nil {
 		s.retained = append(s.retained, result.release)
 	}
 	if result.failure != nil {
 		s.failed = true
 		if result.value != nil {
-			s.instance = result.value
+			s.hooks = result.value
 			s.created = true
 		}
 		s.poisoned.Store(result.abandoned)
 		return "make_fixture", result
 	}
-	s.instance, s.created = result.value, true
-	result = fixturePhase(s.owner, timeout, func(ctx *Execution) Value { return s.hook(ctx, "before_all") })
+	s.hooks, s.created = result.value, true
+	result = fixturePhase(s.owner, timeout, func(ctx *Execution) TestHooks { s.hooks.BeforeAll(ctx); return nil })
 	if result.release != nil {
 		s.retained = append(s.retained, result.release)
 	}
@@ -110,25 +101,20 @@ func (s *fixtureState) setup(timeout time.Duration) (string, fixtureOutcome) {
 	return "before_all", result
 }
 
-func closeTestOwner(ctx *Execution) {
-	defer Cleanup(ctx, hostValue(ctx, "stdin"))
-	defer Cleanup(ctx, hostValue(ctx, "stdout"))
-	defer Cleanup(ctx, hostValue(ctx, "stderr"))
-	defer Cleanup(ctx, hostValue(ctx, "network"))
-	defer FinishExecution(ctx)
-}
-
 func (s *fixtureState) shutdown(timeout time.Duration) fixtureOutcome {
 	cleanupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cleanupOwner := inherit(s.owner, cleanupContext)
-	result := fixturePhase(cleanupOwner, timeout, func(ctx *Execution) Value {
+	cleanupOwner := s.owner.child(cleanupContext)
+	result := fixturePhase(cleanupOwner, timeout, func(ctx *Execution) TestHooks {
 		// Cleanup also runs when after_all itself faults.
-		defer closeTestOwner(ctx)
-		if s.created {
-			return s.hook(ctx, "after_all")
+		if hostShutdown != nil {
+			defer Cleanup(ctx, hostShutdown)
 		}
-		return Unit{}
+		defer FinishExecution(ctx)
+		if s.created {
+			s.hooks.AfterAll(ctx)
+		}
+		return nil
 	})
 	if result.release != nil {
 		result.release()
@@ -165,7 +151,7 @@ func testCleanupFailure(primary, cleanup any) any {
 
 func (s *fixtureState) test(test Test) Test {
 	original := test.Run
-	test.Run = NewFunction(nil, "Unit", func(ctx *Execution, _ []Value) (value Value) {
+	test.Run = func(ctx *Execution) (value Unit) {
 		defer func() {
 			failure := recover()
 			if s.poisoned.Load() {
@@ -185,14 +171,14 @@ func (s *fixtureState) test(test Test) Test {
 				return
 			}
 			var cleanup any
-			func() { defer func() { cleanup = recover() }(); s.hook(Shield(ctx), "after_each") }()
+			func() { defer func() { cleanup = recover() }(); s.hooks.AfterEach(Shield(ctx)) }()
 			if failure = testCleanupFailure(failure, cleanup); failure != nil {
 				panic(failure)
 			}
 		}()
-		s.hook(ctx, "before_each")
-		return Invoke(ctx, original, []Argument{{Name: "fixture", Value: s.instance}})
-	})
+		s.hooks.BeforeEach(ctx)
+		return original(ctx)
+	}
 	return test
 }
 

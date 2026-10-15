@@ -42,7 +42,7 @@ Evidence: [pin input bundles](../pkg/build/cache.go), [project source embedding]
 Verify: include moved behavior in implementation hashing and release workflow path filters; run `make docs-check`, `make book-check`, and `make dist-check`. Build `.artifacts/book/` with destination cleanup and verify the Pages artifact deployment; generated HTML is no longer a source commit.
 
 Verified: reusable Go packages live in `pkg/`. Moving runtime code requires updating both the runtime import emitted by the compiler and the package queried by SDK payload discovery; ordinary package tests do not exercise payload discovery. Package-relative conformance fixture paths must also account for the additional directory level.
-Evidence: [generated runtime import](../pkg/lower/generate.go), [SDK dependency discovery](../scripts/mktoolchain/main.go), [compiler fixtures](../pkg/build/compiler_test.go), and [layout and Go import migration](../documentation/contributing/architecture.md).
+Evidence: generated runtime import, [SDK dependency discovery](../scripts/mktoolchain/main.go), [compiler fixtures](../pkg/build/compiler_test.go), and [layout and Go import migration](../documentation/contributing/architecture.md).
 Verify: run native conformance and `make dist-check` after a package move, alongside the repository dependency/pin checks.
 
 ### Pages deployment and Pages administration have different permissions

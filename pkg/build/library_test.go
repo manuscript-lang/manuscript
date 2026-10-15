@@ -17,17 +17,18 @@ import (
 )
 
 func TestPublicLibraryFunctionsAreImportable(t *testing.T) {
-	for _, spec := range rt.Library {
-		if checker.StandardExports("@std/" + spec.Module + ".ms")[spec.Name] == nil {
-			continue
+	for _, module := range checker.StandardModuleNames() {
+		for name := range checker.StandardExports(module) {
+			t.Run(module+"/"+name, func(t *testing.T) {
+				source := fmt.Sprintf("import %s from \"%s\"\n", name, module)
+				result := compiler.CompileSource("imports.ms", source, compiler.Options{})
+				for _, d := range result.Diagnostics {
+					if !strings.Contains(d.Message, "redundant prelude import") {
+						t.Fatal(result.Diagnostics)
+					}
+				}
+			})
 		}
-		t.Run(spec.Module+"/"+spec.Name, func(t *testing.T) {
-			source := fmt.Sprintf("import %s from \"@std/%s.ms\"\n", spec.Name, spec.Module)
-			result := compiler.CompileSource("imports.ms", source, compiler.Options{})
-			if !result.Success() {
-				t.Fatal(result.Diagnostics)
-			}
-		})
 	}
 }
 func TestOpaqueLibraryTypesCannotBeConstructed(t *testing.T) {
