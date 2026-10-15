@@ -144,6 +144,7 @@ func (c *checker) checkModule(module *syntax.Module, imports map[*syntax.Import]
 			c.implementation(d)
 		}
 	}
+	c.checkTestFixture(module)
 	c.checkDefaults(module)
 	c.checkBodies(module)
 	c.declarationChecks(module)
@@ -357,7 +358,7 @@ func (c *checker) checkBodies(module *syntax.Module) {
 }
 
 func newProgram(modules []*syntax.Module) *Program {
-	return &Program{Modules: modules, symbols: map[string]map[string]*Symbol{}}
+	return &Program{Modules: modules, TestFixtures: map[string]*TestFixture{}, symbols: map[string]map[string]*Symbol{}}
 }
 func (c *checker) unique(prefix string) string {
 	c.serial++
@@ -558,6 +559,11 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 	c.testFunction = 0
 	if d.Kind == syntax.KindTest {
 		c.testFunction = c.function
+	}
+	if d.Kind == syntax.KindTest {
+		if fixture := c.TestFixtures[c.module.File]; fixture != nil {
+			writableDeclarationFacts(d).fixture = c.bind("fixture", fixture.Type, false, d.Pos)
+		}
 	}
 	if receiver != nil {
 		setSelf(d, c.bind("self", receiver, false, d.Pos))

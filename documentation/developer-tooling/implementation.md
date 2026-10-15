@@ -173,16 +173,21 @@ Test results contain these fields:
 | Field | Meaning |
 | --- | --- |
 | `source_root` | Root for module-relative compile diagnostic paths and test names |
-| `tests` | Planned tests in execution order; each has `name`, `status`, and optional `failure` text with its first source `position` |
-| `summary` | `available`, `selected`, `passed`, and `failed` counts |
-| `completed` | Whether the native runner reported all selected outcomes |
+| `tests` | Planned tests in execution order; each has an execution `index`, `name`, `status`, `duration_ns`, and optional `failure` text with its first source `position` |
+| `summary` | `available` declaration count; `selected`, `passed`, `failed`, `skipped`, and `not_run` execution counts; total `duration_ns` |
+| `completed` | Whether the native runner finished its plan (also true for listing or fail-fast) |
 | `exit_code` | Observable CLI exit status |
 | `stdout` | Complete captured native stdout, including runner and test-written output |
 | `stdout_base64` | Present instead of stdout text when bytes are not valid UTF-8; `stdout` is then empty |
 | `diagnostics` | Existing compile diagnostics, or execution/build/report errors; an empty array on ordinary runs |
-| `reason` | Optional `no_tests`, `no_match`, `compile_error`, `build_error`, `execution_error`, or `argument_error` |
+| `fixture_errors` | Optional file-level lifecycle failures with `file`, `phase`, `failure`, and optional source `position` |
+| `reason` | Optional `fixture_error`, `fixture_abandoned`, `cancelled`, `listed`, `fail_fast`, `no_tests`, `no_match`, `compile_error`, `build_error`, `execution_error`, or `argument_error` |
 
-Completed tests have status `passed` or `failed`. If the process stops early,
+Completed tests have status `passed`, `failed`, or `skipped`. Listing sets
+`listed: true` and leaves every selected test `not_run`; fail-fast leaves its
+remaining executions `not_run`. The optional `repeat` count and `shuffle_seed`
+describe execution order. Repeated names have distinct indices and durations.
+Per-test durations include cleanup; total duration includes runner overhead. If the process stops early,
 the active test is `incomplete`, later planned tests are `not_run`, and completed
 outcomes remain available. Failure text retains source frames and timeout details.
 The native test executable writes outcomes through a separate result channel;

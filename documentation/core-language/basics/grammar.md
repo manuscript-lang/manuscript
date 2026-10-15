@@ -16,12 +16,16 @@ Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical 
 The reserved words are:
 
 ```manuscript
-and break case continue else export false fn for if
+and break case continue else export false fixture fn for if
 impl import in interface let match not or return self test true try type
 unit var while with
 ```
 
 `from` is a keyword only after the names of an import; elsewhere it is an ordinary name, as in `let from = 2`. `get` is contextual at an accessor declaration head; it remains an ordinary name in `fn get()`, `get: Int` fields, parameters, bindings, and member expressions.
+
+`fixture` names the file fixture inside test blocks when a local `make_fixture`
+factory returns a concrete `TestHooks` implementer. It cannot be declared as a
+parameter or binding. See [file fixtures](../../standard-library/testing.md#file-fixtures).
 
 `self` names the implicit implementation receiver; it cannot be declared as a parameter or binding. Built-in type names and alternative constructors are names resolved by the type checker, not lexical keywords.
 
@@ -135,12 +139,13 @@ ReceiverMethod = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
                       "->", Type, FunctionSuite ;
 Implementation = "impl", NamedType, "for", NamedType, ":", NEWLINE,
-                 INDENT, OperationDeclaration, { OperationDeclaration }, DEDENT ;
+                 [ INDENT, OperationDeclaration, { OperationDeclaration }, DEDENT ] ;
 OperationDeclaration = MethodDeclaration | AccessorDeclaration ;
 MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, FunctionSuite ;
 AccessorDeclaration = "get", Name, "->", Type, FunctionSuite ;
 FunctionSuite = ":", (Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
+(* Only canonical TestHooks implementations may omit operations; missing hooks are no-ops. *)
 Parameters    = Parameter, { ",", Parameter }, [ "," ] ;
 Parameter     = Name, ":", Type ;
 FunctionParameters = FunctionParameter, { ",", FunctionParameter }, [ "," ] ;

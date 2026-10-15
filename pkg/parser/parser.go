@@ -349,7 +349,10 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.Receiver = p.namedType()
 		p.need(":")
 		p.need(lexer.Newline)
-		p.need(lexer.Indent)
+		p.newlines()
+		if !p.take(lexer.Indent) {
+			return d
+		}
 		for p.peek().Kind != lexer.Dedent {
 			p.newlines()
 			if p.peek().Kind == lexer.Dedent {
@@ -358,9 +361,6 @@ func (p *Parser) declaration() *syntax.Declaration {
 			d.Methods = append(d.Methods, p.operation(false, false))
 		}
 		p.need(lexer.Dedent)
-		if len(d.Methods) == 0 {
-			p.fail(token, "implementation requires operations; add at least one 'fn name(...) -> Type:' under the impl")
-		}
 	case p.take("type") || p.take("interface"):
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
@@ -524,7 +524,7 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 			p.failCompoundAssignment(t, e)
 		}
 		if p.take("=") {
-			if (e.Kind != syntax.KindName && e.Kind != syntax.KindMember) || e.Text == "self" {
+			if (e.Kind != syntax.KindName && e.Kind != syntax.KindMember) || (e.Text == "self" || e.Text == "fixture") {
 				p.fail(t, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, call its method such as set(index:, value:) on a List or add(key:, value:) on a Map")
 			}
 			s.Kind = syntax.KindAssign
@@ -674,7 +674,7 @@ func (p *Parser) primary() *syntax.Expression {
 	p.at++
 	e := &syntax.Expression{Kind: syntax.KindName, Text: t.Text, Pos: t.Pos}
 	switch t.Kind {
-	case lexer.Name, "self":
+	case lexer.Name, "self", "fixture":
 	case lexer.Number:
 		e.Kind = syntax.KindNumber
 	case "true", "false":

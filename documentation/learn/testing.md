@@ -5,28 +5,22 @@ weight = 4
 
 # Testing
 
-A `test "name":` block runs when you invoke `ms test`. A block passes when it finishes normally; `panic` from `@std/faults.ms` fails it with a message. There is no `assert` statement or built-in `expect` function. Write a condition that calls `panic`, or define a helper for the values you compare.
+A `test "name":` block runs when you invoke `ms test`. A block passes when it finishes normally; `panic` from `@std/faults.ms` fails it with a message. Import reusable TDD assertions or BDD expectations from `@std/testing.ms`.
 
 Save this complete file as `test.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/faults.ms"
+import {expect_equal} from "@std/testing.ms"
 
 fn add(a: Int, b: Int) -> Int:
     return a + b
-
-fn expect_equal(actual: Int, expected: Int) -> Unit:
-    if actual != expected:
-        return panic("Expected {expected}, got {actual}")
 
 test "addition":
     expect_equal(add(1, 2), 3)
 
 test "zero is unchanged":
-    let actual = add(0, 7)
-    if actual != 7:
-        return panic("Expected 7, got {actual}")
+    expect_equal(add(0, 7), 7)
 ```
 
 ```sh
@@ -35,9 +29,9 @@ ms test test.ms --filter addition
 ms test test.ms --timeout 10s
 ```
 
-The helper is an ordinary function specialized for `Int`. Define a helper with the appropriate parameter types when testing text or another type. It evaluates the actual and expected values once and includes both in its failure message. `return panic(...)` stops the test; `panic` never returns normally.
+The generic equality helper works with numbers, text, collections, and types implementing `Equal`. It evaluates arguments once and reports expected and actual values. `assert_equal` provides the equivalent TDD spelling.
 
-To see a failure, change the first test's expected value from `3` to `4`. The CLI prints a line containing `FAIL test.ms::addition: Expected 4, got 3`, reports one failed test, and returns a nonzero exit status. Restore `3` to make both tests pass. There is no need for `main` in a tests file, and `ms test` does not execute an application's `main`.
+To see a failure, change the first test's expected value from `3` to `4`. The CLI prints a line containing `FAIL test.ms::addition: expected 4, got 3`, reports one failed test, and returns a nonzero exit status. Restore `3` to make both tests pass. There is no need for `main` in a tests file, and `ms test` does not execute an application's `main`.
 
 ## Run tests in a project
 
@@ -70,4 +64,52 @@ match result:
         return panic("Expected success, got {cause.message()}")
 ```
 
-The fragment assumes `Result[Int, Error]` and the `Int` helper above. Handle domain-specific error cases explicitly when a test is meant to check a failure. See [Results](../core-language/errors/results.md) and [programming faults](../core-language/errors/faults.md).
+The fragment assumes `Result[Int, Error]` and the imported equality helper above. Handle domain-specific error cases explicitly when a test is meant to check a failure. See [Results](../core-language/errors/results.md) and [programming faults](../core-language/errors/faults.md).
+
+## Select, repeat, and profile
+
+```sh
+ms test ms.toml --list
+ms test ms.toml --test 'tests/math_test.ms::addition' --json
+ms test ms.toml --match 'addition|zero' --exclude 'slow' --fail-fast
+ms test ms.toml --repeat 10 --shuffle 42
+ms test ms.toml --filter addition --cpu-profile cpu.pprof --heap-profile heap.pprof --trace trace.out
+ms pprof -top cpu.pprof
+```
+
+Copy exact `module::name` identities from `--list`. Repeating `--test` selects
+several exact names. Exact selections form a union; `--filter`, `--match` and
+`--exclude` further restrict that union. Inclusion and exclusion regexes match
+any part of the full identity. Unknown exact names and empty selections fail.
+Listing checks and builds source but never invokes test bodies. Each repetition
+uses a fresh root execution; process globals and external fixtures remain shared.
+Shuffle uses the supplied integer seed, and repeats use the same shuffled order.
+Fail-fast leaves the remaining selected executions as `not_run` in JSON.
+
+Profiling captures the selected tests in one process, including runner and cleanup
+cost. Capture paths resolve from the CLI invocation directory and must be new. Profiles flush even when assertions fail. `--list` and
+`--watch` cannot be combined with profiling. Longer or repeated tests yield more
+useful CPU samples; profiling adds overhead. Profiled tests default to
+`RelWithDebInfo`; `--build-type` can select another build.
+
+`expect_some`, `expect_ok`, and `expect_error` return checked payloads;
+`expect_fault` checks programming faults. `skip(reason)` marks a test skipped
+while running lexical cleanup. Write each independently selected and reported
+case as a `test` block. See the
+[testing helper reference](../standard-library/testing.md) for contracts and examples.
+
+## Shared setup and teardown
+
+Without a local `make_fixture`, tests run normally and no lifecycle hooks run.
+
+A test file can define `fn make_fixture() -> T`, where the concrete return type
+implements `TestHooks` from `@std/testing.ms`. The runner creates one instance
+for the file, and its test blocks access it as `fixture`. Hooks use `self`.
+The optional hooks are `before_all`, `before_each`, `after_each`, and `after_all`;
+all take no arguments and return `Unit`.
+
+Put construction in `make_fixture`, reset shared state in `before_each`, and
+release resources in `after_all`. The instance is created only when the file
+has selected tests, and remains shared across repetitions. See
+[file fixtures](../standard-library/testing.md#file-fixtures) for a complete
+example, failure handling, timeout behavior, and cancellation cleanup.

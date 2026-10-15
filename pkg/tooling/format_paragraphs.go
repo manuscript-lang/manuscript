@@ -64,7 +64,7 @@ func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 	for _, declaration := range module.Declarations {
 		// Implementation bodies are separate reading units. Interface
 		// signatures remain a compact list of the contract's operations.
-		if declaration.Kind == syntax.KindImpl {
+		if declaration.Kind == syntax.KindImpl && len(declaration.Methods) > 1 {
 			for _, method := range declaration.Methods[1:] {
 				before(method.Pos.Line)
 			}

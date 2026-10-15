@@ -223,6 +223,14 @@ func declaration(result compiler.Result, i *checker.Info) syntax.Position {
 		return i.Method.Decl.Pos
 	}
 	if i.Binding != nil {
+		for decl, binding := range result.Program.FixtureBindings() {
+			if binding == i.Binding {
+				if fixture := result.Program.TestFixtures[decl.Pos.File]; fixture != nil {
+					return fixture.Factory.Decl.Pos
+				}
+				return decl.Pos
+			}
+		}
 		// Ordinary locals already resolve through the source index above.
 		// The implicit self binding is anchored at its method declaration.
 		for decl, binding := range result.Program.SelfBindings() {

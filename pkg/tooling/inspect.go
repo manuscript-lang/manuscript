@@ -81,6 +81,9 @@ func Inspect(program *checker.Program) Inspection {
 		}
 		result.Locals = append(result.Locals, Local{binding.ID, binding.Name, binding.Type.String(), sourceSpan(module, pos)})
 	}
+	for declaration, binding := range program.FixtureBindings() {
+		local(binding, declaration.Pos)
+	}
 	for declaration, binding := range program.SelfBindings() {
 		local(binding, declaration.Pos)
 	}

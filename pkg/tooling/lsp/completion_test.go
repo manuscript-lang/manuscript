@@ -354,3 +354,25 @@ func TestStatementKeywordsAreReserved(t *testing.T) {
 		}
 	}
 }
+
+func TestFileFixtureCompletion(t *testing.T) {
+	source := `import TestHooks from "@std/testing.ms"
+type State:
+    count: Int
+fn make_fixture() -> State:
+    return State(0)
+impl TestHooks for State:
+test "one":
+    fixture.|
+`
+	items := completeSource(t, source)
+	found := false
+	for _, item := range items {
+		if item.Label == "count" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("fixture field completion missing: %+v", items)
+	}
+}
