@@ -315,6 +315,11 @@ func NewIntList(typ string, values []int64) *List {
 	return &List{Type: typ, kind: listInt, ints: append([]int64(nil), values...)}
 }
 
+// OwnIntList adopts values, which a list literal freshly allocated, as its backing.
+func OwnIntList(typ string, values []int64) *List {
+	return &List{Type: typ, kind: listInt, ints: values}
+}
+
 // ListAppendInt is the unboxed primitive append boundary.
 func ListAppendInt(ctx *Execution, receiver Value, value int64) Value {
 	CheckCancelled(ctx)
@@ -366,6 +371,11 @@ func ListAtInt(ctx *Execution, receiver Value, index int64) IntOptional {
 // NewFloatList copies values into fresh mutable backing; typ is the exact checked key.
 func NewFloatList(typ string, values []float64) *List {
 	return &List{Type: typ, kind: listFloat, floats: append([]float64(nil), values...)}
+}
+
+// OwnFloatList adopts values, which a list literal freshly allocated, as its backing.
+func OwnFloatList(typ string, values []float64) *List {
+	return &List{Type: typ, kind: listFloat, floats: values}
 }
 
 // ListAppendFloat is the unboxed primitive append boundary.
@@ -421,6 +431,11 @@ func NewBoolList(typ string, values []bool) *List {
 	return &List{Type: typ, kind: listBool, bools: append([]bool(nil), values...)}
 }
 
+// OwnBoolList adopts values, which a list literal freshly allocated, as its backing.
+func OwnBoolList(typ string, values []bool) *List {
+	return &List{Type: typ, kind: listBool, bools: values}
+}
+
 // ListAppendBool is the unboxed primitive append boundary.
 func ListAppendBool(ctx *Execution, receiver Value, value bool) Value {
 	CheckCancelled(ctx)
@@ -472,6 +487,11 @@ func ListAtBool(ctx *Execution, receiver Value, index int64) BoolOptional {
 // NewStringList copies values into fresh mutable backing; typ is the exact checked key.
 func NewStringList(typ string, values []string) *List {
 	return &List{Type: typ, kind: listString, strings: append([]string(nil), values...)}
+}
+
+// OwnStringList adopts values, which a list literal freshly allocated, as its backing.
+func OwnStringList(typ string, values []string) *List {
+	return &List{Type: typ, kind: listString, strings: values}
 }
 
 // ListAppendString is the unboxed primitive append boundary.
