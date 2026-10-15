@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `@std/terminal.ms` with terminal capability and size queries, scoped raw input that decodes text, key, and resize events, and cursor visibility, positioning, and erase operations; terminal state is restored on close, error, fault, or cancellation (Linux, macOS, and Windows).
 - Language: `CollectionError`, `ListEntry`, `MapEntry`, and `MissingValue` join the source-backed collection prelude. Explicit imports of canonical prelude types now report MS2003 with a removal fix; remove those bindings, retaining imports for builders and unrelated APIs. Application types with the same names keep ordinary import and shadowing behavior.
 - Standard library: `Optional.ok_or` takes an optional cause (`ok_or[E = MissingValue]`); without one it returns a `MissingValue` (`@std/errors.ms`) whose message names the calling file and line.
 - Standard library: `@std/sse.ms` decodes Server-Sent Events from byte chunks or any `ReadStream`, including HTTP response bodies, with line and event budgets and `SseError` (#470).

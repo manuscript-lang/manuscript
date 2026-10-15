@@ -286,6 +286,7 @@ func init() {
 		{"net", "network", "Network"},
 		{"process", "commands", "Commands"},
 		{"process", "control", "ProcessControl"},
+		{"terminal", "terminal", "Terminal"},
 		{"time", "clock", "Clock"},
 		{"time", "wall_clock", "WallClock"},
 		{"random", "entropy", "Entropy"},
@@ -325,7 +326,7 @@ func newHostValues(arguments []string) (map[string]Value, error) {
 			}
 		}
 	}
-	return map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{""}), "control": ViewOf("@std/ProcessControl", libraryProcessControl{}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{""}), "arguments": NewList("@std/List[String]", values), "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: ioBytesResult}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: ioUnitResult}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: ioUnitResult}), "files": ViewOf("@std/Files", &files{""}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}, nil
+	return map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{""}), "control": ViewOf("@std/ProcessControl", libraryProcessControl{}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{""}), "terminal": ViewOf("@std/Terminal", libraryTerminal{}), "arguments": NewList("@std/List[String]", values), "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: ioBytesResult}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: ioUnitResult}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: ioUnitResult}), "files": ViewOf("@std/Files", &files{""}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}, nil
 }
 func RunMain(main Value, arguments []string) (exit int) {
 	exit = 70
@@ -386,6 +387,7 @@ func RunMain(main Value, arguments []string) (exit int) {
 	defer Cleanup(execution, hostValue(execution, "stderr"))
 	defer Cleanup(execution, hostValue(execution, "network"))
 	defer FinishExecution(execution)
+	defer terminalRestoreAll()
 	value := Invoke(execution, main, nil).(int64)
 	CheckCancelled(execution)
 	if value < 0 || value > 125 {
