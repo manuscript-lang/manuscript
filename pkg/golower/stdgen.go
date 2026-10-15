@@ -105,13 +105,18 @@ func skippedOperation(op checker.NativeOperation) bool {
 }
 
 // typeParams renders type variables as a Go type parameter list.
-func (g *gen) typeParams(vars []*checker.Type) *ast.FieldList {
+func (g *gen) typeParams(vars []*checker.Type, hashable ...map[string]bool) *ast.FieldList {
 	if len(vars) == 0 {
 		return nil
 	}
 	list := &ast.FieldList{}
 	for _, v := range vars {
 		constraint := "any"
+		for _, h := range hashable {
+			if h[v.ID] {
+				constraint = "comparable"
+			}
+		}
 		for _, b := range v.Bounds {
 			if isStd(b, "Hashable") {
 				constraint = "comparable"
@@ -212,11 +217,11 @@ func (g *gen) capabilityFields(caps []checker.Capability) []*ast.Field {
 }
 
 // functionCheck emits `func check_Name[...]() { var _ func(...) R = Name[...] }`.
-func (g *gen) functionCheck(name string, vars []*checker.Type, params []*ast.Field, result ast.Expr, target ast.Expr) ast.Decl {
+func (g *gen) functionCheck(name string, vars []*checker.Type, params []*ast.Field, result ast.Expr, target ast.Expr, hashable ...map[string]bool) ast.Decl {
 	fn := &ast.FuncType{Params: &ast.FieldList{List: unnamed(params)}, Results: &ast.FieldList{List: []*ast.Field{{Type: result}}}}
 	spec := &ast.ValueSpec{Names: []*ast.Ident{ident("_")}, Type: fn, Values: []ast.Expr{target}}
 	return &ast.FuncDecl{
-		Name: ident("check_" + g.checkName(name)), Type: &ast.FuncType{TypeParams: g.typeParams(vars), Params: &ast.FieldList{}},
+		Name: ident("check_" + g.checkName(name)), Type: &ast.FuncType{TypeParams: g.typeParams(vars, hashable...), Params: &ast.FieldList{}},
 		Body: block(&ast.DeclStmt{Decl: &ast.GenDecl{Tok: token.VAR, Specs: []ast.Spec{spec}}}),
 	}
 }
@@ -282,7 +287,14 @@ func (g *gen) standardOperationCheck(op checker.NativeOperation) ast.Decl {
 	for _, p := range op.Type.Params {
 		params = append(params, field(p.Name, g.goType(p.Type)))
 	}
-	return g.functionCheck(name, vars, params, g.goType(op.Type.Result), generic(ident(name), varArgs(vars)...))
+	// A requirement that a receiver variable be Hashable makes it comparable.
+	hashable := map[string]bool{}
+	for _, c := range caps {
+		if c.Property == "Hashable" {
+			hashable[c.Variable.ID] = true
+		}
+	}
+	return g.functionCheck(name, vars, params, g.goType(op.Type.Result), generic(ident(name), varArgs(vars)...), hashable)
 }
 
 // receiverType is the Go type of a receiver written in its own variables.
