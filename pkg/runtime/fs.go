@@ -672,7 +672,7 @@ func (f *osFileSystem) Glob(ctx *Execution, path, pattern string, maxEntries Opt
 			if int64(len(items)) >= max {
 				return errLimit
 			}
-			items = append(items, rel)
+			items = append(items, filepath.ToSlash(rel))
 		}
 		return nil
 	})
