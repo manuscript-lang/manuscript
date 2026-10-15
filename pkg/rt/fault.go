@@ -29,7 +29,3 @@ func Raise(message string) {
 	frames, truncated := captureFrames()
 	panic(Fault{Message: message, Frames: frames, Truncated: truncated})
 }
-
-// captureFrames names the registered source frames of the current stack.
-// The runtime core fills this in (frames.go).
-func captureFrames() (frames []string, truncated bool) { return nil, false }
