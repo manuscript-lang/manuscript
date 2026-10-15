@@ -77,13 +77,16 @@ These commands use source checking and embedded declarations without a Go instal
 
 | Tool | Behavior |
 | --- | --- |
-| `check`, `lint` | The `--json` diagnostics of `ms check` and `ms lint` for `paths` (files, directories, `ms.toml`) or a `source` snippet checked as a standalone `main.ms` |
-| `fmt` | Formatted text for `source`; for `paths`, a `--check --json` report, or an in-place rewrite when `write` is true |
-| `test`, `run`, `build` | Act only on a project: an `ms.toml` or its directory. They reject single files, program arguments, and stdin, so the manifest alone decides what runs. `test` takes an optional `filter`; every call takes a bounded `timeout_seconds` and output is capped at 256 KiB per stream |
-| `std_lookup` | Fuzzy search over bundled standard declarations and members (typos, partial words, any word order), returning import path, signature, and doc. Built from the checker's definitions, not from another command |
-| `inspect` | The `ms inspect --json` document for a file or project |
+| `check`, `lint` | Diagnostics (`file:line:col CODE message`, at most 40) for `paths` (files, directories, `ms.toml`) or a `source` snippet checked as a standalone `main.ms`; `ok: no diagnostics` when clean |
+| `fmt` | Formatted text for `source`; for `paths`, the files that need formatting, or an in-place rewrite when `write` is true |
+| `test`, `run`, `build` | Act only on a project: an `ms.toml` or its directory. They reject single files, program arguments, and stdin, so the manifest alone decides what runs. `test` returns a count line plus failing tests only (optional `filter`); `run` returns the exit status and clipped stdout/stderr; `build` returns `ok: builds` or the errors. `timeout` (seconds) is bounded, and a client that sends a progress token gets `notifications/progress` while they run |
+| `std_lookup` | Fuzzy search over bundled standard declarations and members (typos, partial words, synonyms, any word order), returning module, name, signature, and a one-line doc. Built from the checker's definitions, not from another command |
+| `symbol_info` | Type, definition, and references at a 1-based `line` and `column`, from the language server's analysis |
+| `inspect` | Declarations with types and locations for a file or project (at most 120) |
 
-The prompts `manuscript_cheatsheet`, `write_idiomatic_manuscript`, and `fix_diagnostic` are each under 800 bytes, because agents rediscover them every session. The longer references are resources read on demand: `manuscript://cheatsheet`, `manuscript://stdlib` (generated index), and `manuscript://stdlib/<module>`. A test pins the size limits and checks the cheat sheet's complete program. Tool results are the CLI's own JSON documents, so their schemas follow the CLI's format versions.
+Every result is compact on purpose: failures, locations, and counts, never whole JSON documents, and no result exceeds 12,000 characters (long text keeps its head and tail). Use the CLI's `--json` for complete documents. Tool schemas stay under 2,800 bytes in total.
+
+The prompts `manuscript_cheatsheet`, `write_idiomatic_manuscript`, and `fix_diagnostic` are each under 800 bytes, because agents rediscover them every session. The longer references are resources read on demand: `manuscript://cheatsheet`, `manuscript://stdlib` (generated index), and `manuscript://stdlib/<module>`. A test pins the size limits and checks the cheat sheet's complete program. Results are derived from the CLI's JSON documents and the language server's analysis.
 
 ## Selecting independent analysis inputs
 

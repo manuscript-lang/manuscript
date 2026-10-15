@@ -55,7 +55,8 @@
     "pkg/tooling/mcp": [
       "pkg/checker",
       "pkg/compiler",
-      "pkg/tooling"
+      "pkg/tooling",
+      "pkg/tooling/lsp"
     ],
     "internal/cli": [
       "internal/nativeabi",

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/lsp"
 )
 
 type tool struct {
@@ -19,6 +20,7 @@ type tool struct {
 	InputSchema map[string]any `json:"inputSchema"`
 	Annotations map[string]any `json:"annotations,omitempty"`
 	handler     func(*Server, context.Context, json.RawMessage) (string, error)
+	slow        bool // reports progress while a build or run is in flight
 }
 
 // toolError is a failure the agent can act on; it becomes an isError result.
@@ -27,102 +29,88 @@ type toolError string
 func (e toolError) Error() string { return string(e) }
 
 func obj(required []string, properties map[string]any) map[string]any {
-	schema := map[string]any{"type": "object", "properties": properties, "additionalProperties": false}
+	schema := map[string]any{"type": "object", "properties": properties}
 	if len(required) > 0 {
 		schema["required"] = required
 	}
 	return schema
 }
 
-func str(description string) map[string]any {
-	return map[string]any{"type": "string", "description": description}
+func pathList() map[string]any {
+	return map[string]any{"type": "array", "items": map[string]any{"type": "string"}}
 }
 
-func integer(description string) map[string]any {
-	return map[string]any{"type": "integer", "description": description}
+func seconds() map[string]any {
+	return map[string]any{"type": "integer", "description": "seconds"}
 }
 
-func pathList(description string) map[string]any {
-	return map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": description}
-}
-
-func readOnly(open bool) map[string]any {
-	return map[string]any{"readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": open}
-}
+func readOnly() map[string]any { return map[string]any{"readOnlyHint": true} }
 
 var tools = []tool{
 	{
 		Name:        "check",
-		Description: "Type-check without running. Returns JSON diagnostics (empty list = valid); messages read '<cause>; <fix>'. Pass paths (files, dirs, ms.toml) or source.",
-		InputSchema: obj(nil, map[string]any{"paths": pathList("Files, directories, or ms.toml projects to check."), "source": str("Manuscript source to check as a standalone main.ms.")}),
-		Annotations: readOnly(false),
+		Description: "Type-check without running. Diagnostics read '<cause>; <fix>'. Pass paths (files, dirs, ms.toml) or source.",
+		InputSchema: obj(nil, map[string]any{"paths": pathList(), "source": map[string]any{"type": "string"}}),
+		Annotations: readOnly(),
 		handler: func(s *Server, ctx context.Context, raw json.RawMessage) (string, error) {
 			return s.analyze(ctx, "check", raw)
 		},
 	},
 	{
 		Name:        "lint",
-		Description: "Lint rules as JSON findings with stable codes. Pass paths or source.",
-		InputSchema: obj(nil, map[string]any{"paths": pathList("Files, directories, or ms.toml projects to lint."), "source": str("Manuscript source to lint as a standalone main.ms.")}),
-		Annotations: readOnly(false),
+		Description: "Lint rules with stable codes. Pass paths or source.",
+		InputSchema: obj(nil, map[string]any{"paths": pathList(), "source": map[string]any{"type": "string"}}),
+		Annotations: readOnly(),
 		handler: func(s *Server, ctx context.Context, raw json.RawMessage) (string, error) {
 			return s.analyze(ctx, "lint", raw)
 		},
 	},
 	{
 		Name:        "fmt",
-		Description: "source: returns formatted text. paths: reports unformatted files, or rewrites them when write is true.",
-		InputSchema: obj(nil, map[string]any{
-			"source": str("Manuscript source to format; the formatted source is returned."),
-			"paths":  pathList("Files, directories, or ms.toml projects to format."),
-			"write":  map[string]any{"type": "boolean", "description": "Rewrite paths in place instead of only reporting. Default false."},
-		}),
-		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false},
+		Description: "source: returns formatted text. paths: lists unformatted files, or rewrites them when write is true.",
+		InputSchema: obj(nil, map[string]any{"source": map[string]any{"type": "string"}, "paths": pathList(), "write": map[string]any{"type": "boolean"}}),
 		handler:     (*Server).format,
 	},
 	{
 		Name:        "test",
-		Description: "Run a project's tests; returns JSON results. Project (ms.toml or its directory) only.",
-		InputSchema: obj([]string{"project"}, map[string]any{
-			"project":         str("Path to ms.toml, or the directory containing it."),
-			"filter":          str("Run only tests whose module::name contains this text."),
-			"timeout_seconds": integer("Stop the whole run after this many seconds. Default 120, maximum 600."),
-		}),
-		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": false, "openWorldHint": true},
+		Description: "Run a project's tests; returns failures only. Project (ms.toml or its directory) only.",
+		InputSchema: obj([]string{"project"}, map[string]any{"project": map[string]any{"type": "string"}, "filter": map[string]any{"type": "string"}, "timeout": seconds()}),
 		handler:     (*Server).test,
+		slow:        true,
 	},
 	{
 		Name:        "run",
-		Description: "Build and run a project's main; returns exit code, stdout, stderr. Project (ms.toml or its directory) only; no arguments or stdin.",
-		InputSchema: obj([]string{"project"}, map[string]any{
-			"project":         str("Path to ms.toml, or the directory containing it."),
-			"timeout_seconds": integer("Stop the program after this many seconds. Default 30, maximum 300."),
-		}),
-		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": false, "openWorldHint": true},
+		Description: "Build and run a project's main. Project only; no arguments or stdin.",
+		InputSchema: obj([]string{"project"}, map[string]any{"project": map[string]any{"type": "string"}, "timeout": seconds()}),
 		handler:     (*Server).run,
+		slow:        true,
 	},
 	{
 		Name:        "build",
-		Description: "Check that a project builds natively; returns JSON, discards the binary. Project only.",
-		InputSchema: obj([]string{"project"}, map[string]any{
-			"project":         str("Path to ms.toml, or the directory containing it."),
-			"timeout_seconds": integer("Stop the build after this many seconds. Default 300, maximum 600."),
-		}),
-		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": false, "openWorldHint": false},
+		Description: "Check that a project builds natively; the binary is discarded. Project only.",
+		InputSchema: obj([]string{"project"}, map[string]any{"project": map[string]any{"type": "string"}, "timeout": seconds()}),
 		handler:     (*Server).build,
+		slow:        true,
 	},
 	{
 		Name:        "std_lookup",
-		Description: "Fuzzy-search the standard library (typos and loose words fine). Returns import path, signature, doc. Use before calling any std API.",
-		InputSchema: obj([]string{"query"}, map[string]any{"query": str("Words describing the API, in any order."), "limit": integer("Maximum matches. Default 8, maximum 25.")}),
-		Annotations: readOnly(false),
+		Description: "Fuzzy-search the standard library (typos, loose words). Use before calling any std API.",
+		InputSchema: obj([]string{"query"}, map[string]any{"query": map[string]any{"type": "string"}, "limit": map[string]any{"type": "integer"}}),
+		Annotations: readOnly(),
 		handler:     (*Server).stdLookup,
 	},
 	{
+		Name:        "symbol_info",
+		Description: "Type, definition, and references of the symbol at a 1-based line and column.",
+		InputSchema: obj([]string{"path", "line", "column"}, map[string]any{"path": map[string]any{"type": "string"}, "line": map[string]any{"type": "integer"}, "column": map[string]any{"type": "integer"}}),
+		Annotations: readOnly(),
+		handler:     (*Server).symbolInfo,
+	},
+	{
 		Name:        "inspect",
-		Description: "Checked symbols, types and call sites of a file or project as JSON (capped).",
-		InputSchema: obj([]string{"path"}, map[string]any{"path": str("A .ms file, or an ms.toml project.")}),
-		Annotations: readOnly(false),
+		Description: "List a file's or project's declarations with types and locations.",
+		InputSchema: obj([]string{"path"}, map[string]any{"path": map[string]any{"type": "string"}}),
+		Annotations: readOnly(),
 		handler:     (*Server).inspect,
 	},
 }
@@ -133,6 +121,9 @@ func (s *Server) callTool(ctx context.Context, params json.RawMessage) (any, *rp
 	var p struct {
 		Name      string          `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
+		Meta      struct {
+			ProgressToken json.RawMessage `json:"progressToken"`
+		} `json:"_meta"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, &rpcError{codeInvalidParams, "invalid tools/call parameters: " + err.Error()}
@@ -144,6 +135,9 @@ func (s *Server) callTool(ctx context.Context, params json.RawMessage) (any, *rp
 		if len(p.Arguments) == 0 {
 			p.Arguments = json.RawMessage("{}")
 		}
+		if t.slow {
+			defer s.reportProgress(p.Meta.ProgressToken, p.Name)()
+		}
 		text, err := t.handler(s, ctx, p.Arguments)
 		if err != nil {
 			return toolResult(err.Error(), true), nil
@@ -154,7 +148,7 @@ func (s *Server) callTool(ctx context.Context, params json.RawMessage) (any, *rp
 }
 
 func toolResult(text string, failed bool) map[string]any {
-	return map[string]any{"content": []map[string]any{{"type": "text", "text": text}}, "isError": failed}
+	return map[string]any{"content": []map[string]any{{"type": "text", "text": clip(text, 12000)}}, "isError": failed}
 }
 
 func decode(raw json.RawMessage, into any) error {
@@ -206,21 +200,22 @@ func absolutePaths(paths []string) ([]string, error) {
 	return out, nil
 }
 
-// jsonOrFailure returns a command's JSON report. Exit status 1 with a report means
-// findings were found, which is a normal result; anything else is a failure to relay.
-func jsonOrFailure(out Output) (string, error) {
+// reported renders a command's JSON report with format. Exit status 1 with a
+// report means findings were found, which is a normal result; anything else is
+// a failure to relay.
+func reported(out Output, format func(string) string) (string, error) {
 	if out.TimedOut {
 		return "", toolError("timed out")
 	}
 	if strings.TrimSpace(out.Stdout) != "" && out.Code <= 1 {
-		return strings.TrimRight(out.Stdout, "\n") + truncationNote(out), nil
+		return format(out.Stdout) + truncationNote(out), nil
 	}
-	return "", toolError(strings.TrimSpace(out.Stderr + out.Stdout))
+	return "", toolError(clip(strings.TrimSpace(out.Stderr+out.Stdout), maxText))
 }
 
 func truncationNote(out Output) string {
 	if out.Truncated {
-		return "\n[output truncated at 256 KiB]"
+		return "\n[output truncated]"
 	}
 	return ""
 }
@@ -242,7 +237,7 @@ func (s *Server) analyze(ctx context.Context, command string, raw json.RawMessag
 			if err != nil {
 				return "", err
 			}
-			return jsonOrFailure(out)
+			return reported(out, diagnosticsReport)
 		})
 	}
 	paths, err := absolutePaths(in.Paths)
@@ -253,7 +248,7 @@ func (s *Server) analyze(ctx context.Context, command string, raw json.RawMessag
 	if err != nil {
 		return "", err
 	}
-	return jsonOrFailure(out)
+	return reported(out, diagnosticsReport)
 }
 
 func (s *Server) format(ctx context.Context, raw json.RawMessage) (string, error) {
@@ -291,9 +286,9 @@ func (s *Server) format(ctx context.Context, raw json.RawMessage) (string, error
 		if out.Code != 0 {
 			return "", toolError(strings.TrimSpace(out.Stderr + out.Stdout))
 		}
-		return "formatted " + strings.Join(in.Paths, ", "), nil
+		return "ok: formatted", nil
 	}
-	return jsonOrFailure(out)
+	return reported(out, formatReport)
 }
 
 // project resolves an ms.toml. Execution tools take nothing else: the manifest
@@ -333,7 +328,7 @@ func (s *Server) test(ctx context.Context, raw json.RawMessage) (string, error) 
 	var in struct {
 		Project string `json:"project"`
 		Filter  string `json:"filter"`
-		Timeout int    `json:"timeout_seconds"`
+		Timeout int    `json:"timeout"`
 	}
 	if err := decode(raw, &in); err != nil {
 		return "", err
@@ -354,12 +349,12 @@ func (s *Server) test(ctx context.Context, raw json.RawMessage) (string, error) 
 	if out.TimedOut {
 		return "", toolError(fmt.Sprintf("test run stopped after %d seconds", int(timeout.Seconds())))
 	}
-	text, err := jsonOrFailure(out)
+	text, err := reported(out, testReport)
 	if err != nil {
 		return "", err
 	}
 	if strings.TrimSpace(out.Stderr) != "" {
-		text += "\n\nstderr:\n" + strings.TrimRight(out.Stderr, "\n")
+		text += "\nstderr:\n" + clip(strings.TrimRight(out.Stderr, "\n"), 1500)
 	}
 	return text, nil
 }
@@ -367,7 +362,7 @@ func (s *Server) test(ctx context.Context, raw json.RawMessage) (string, error) 
 func (s *Server) run(ctx context.Context, raw json.RawMessage) (string, error) {
 	var in struct {
 		Project string `json:"project"`
-		Timeout int    `json:"timeout_seconds"`
+		Timeout int    `json:"timeout"`
 	}
 	if err := decode(raw, &in); err != nil {
 		return "", err
@@ -383,11 +378,16 @@ func (s *Server) run(ctx context.Context, raw json.RawMessage) (string, error) {
 	}
 	var b strings.Builder
 	if out.TimedOut {
-		fmt.Fprintf(&b, "stopped after %d seconds\n", int(timeout.Seconds()))
+		fmt.Fprintf(&b, "stopped after %d seconds", int(timeout.Seconds()))
 	} else {
-		fmt.Fprintf(&b, "exit code: %d\n", out.Code)
+		fmt.Fprintf(&b, "exit %d", out.Code)
 	}
-	fmt.Fprintf(&b, "--- stdout ---\n%s\n--- stderr ---\n%s", out.Stdout, out.Stderr)
+	if text := strings.TrimRight(out.Stdout, "\n"); text != "" {
+		b.WriteString("\nstdout:\n" + clip(text, 4000))
+	}
+	if text := strings.TrimRight(out.Stderr, "\n"); text != "" {
+		b.WriteString("\nstderr:\n" + clip(text, 2000))
+	}
 	b.WriteString(truncationNote(out))
 	return b.String(), nil
 }
@@ -395,7 +395,7 @@ func (s *Server) run(ctx context.Context, raw json.RawMessage) (string, error) {
 func (s *Server) build(ctx context.Context, raw json.RawMessage) (string, error) {
 	var in struct {
 		Project string `json:"project"`
-		Timeout int    `json:"timeout_seconds"`
+		Timeout int    `json:"timeout"`
 	}
 	if err := decode(raw, &in); err != nil {
 		return "", err
@@ -413,7 +413,7 @@ func (s *Server) build(ctx context.Context, raw json.RawMessage) (string, error)
 	if err != nil {
 		return "", err
 	}
-	return jsonOrFailure(out)
+	return reported(out, buildReport)
 }
 
 func (s *Server) stdLookup(_ context.Context, raw json.RawMessage) (string, error) {
@@ -427,7 +427,7 @@ func (s *Server) stdLookup(_ context.Context, raw json.RawMessage) (string, erro
 	if strings.TrimSpace(in.Query) == "" {
 		return "", toolError("query is required")
 	}
-	limit := min(in.Limit, 25)
+	limit := min(in.Limit, 15)
 	return formatMatches(in.Query, Lookup(in.Query, limit)), nil
 }
 
@@ -446,5 +446,23 @@ func (s *Server) inspect(ctx context.Context, raw json.RawMessage) (string, erro
 	if err != nil {
 		return "", err
 	}
-	return jsonOrFailure(out)
+	return reported(out, inspectReport)
+}
+
+func (s *Server) symbolInfo(_ context.Context, raw json.RawMessage) (string, error) {
+	var in struct {
+		Path         string `json:"path"`
+		Line, Column int
+	}
+	if err := decode(raw, &in); err != nil {
+		return "", err
+	}
+	if in.Path == "" {
+		return "", toolError("path is required")
+	}
+	info, err := lsp.QuerySymbol(in.Path, in.Line, in.Column)
+	if err != nil {
+		return "", toolError(err.Error())
+	}
+	return symbolReport(info.Hover, info.Definition, info.References, info.Diagnostics), nil
 }

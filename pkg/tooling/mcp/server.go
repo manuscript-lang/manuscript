@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"time"
 )
 
 // supportedVersions lists the protocol revisions the server speaks, newest first.
@@ -171,3 +172,38 @@ func (s *Server) initialize(params json.RawMessage) any {
 }
 
 const instructions = "Write and verify .ms source. Read the manuscript_cheatsheet prompt once, std_lookup any std API before use, check after every edit. test, run, and build take a project ms.toml only."
+
+// progressInterval spaces progress notifications during slow tools.
+var progressInterval = 5 * time.Second
+
+// reportProgress sends notifications/progress until the returned stop function
+// runs. Clients that sent no progress token get nothing.
+func (s *Server) reportProgress(token json.RawMessage, tool string) (stop func()) {
+	if len(token) == 0 {
+		return func() {}
+	}
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(progressInterval)
+		defer ticker.Stop()
+		for n := 1; ; n++ {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				s.notify("notifications/progress", map[string]any{"progressToken": token, "progress": n, "message": tool + " running"})
+			}
+		}
+	}()
+	return func() { close(done) }
+}
+
+func (s *Server) notify(method string, params any) {
+	data, err := json.Marshal(map[string]any{"jsonrpc": "2.0", "method": method, "params": params})
+	if err != nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, _ = s.out.Write(append(data, '\n'))
+}

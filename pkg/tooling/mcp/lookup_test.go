@@ -16,6 +16,9 @@ func TestLookupFindsAPIsFromLooseQueries(t *testing.T) {
 		{"regex replace", "@std/regex.ms", "Regex.replace_all"},
 		{"base64 encode", "@std/encoding.ms", "base64_encode"},
 		{"sorted", "prelude", "List.sorted"},
+		{"sort by", "prelude", "List.sorted"},
+		{"read stdin lines", "@std/io.ms", "read_line"},
+		{"uppercase", "prelude", "String.upper"},
 	}
 	for _, c := range cases {
 		matches := Lookup(c.query, 3)

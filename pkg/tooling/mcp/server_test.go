@@ -87,7 +87,7 @@ func TestMalformedInputGetsParseError(t *testing.T) {
 func TestToolsListMatchesHandlers(t *testing.T) {
 	r := session(t, nil, `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
 	listed := r[1]["result"].(map[string]any)["tools"].([]any)
-	want := []string{"check", "lint", "fmt", "test", "run", "build", "std_lookup", "inspect"}
+	want := []string{"check", "lint", "fmt", "test", "run", "build", "std_lookup", "symbol_info", "inspect"}
 	if len(listed) != len(want) {
 		t.Fatalf("tools = %d, want %d", len(listed), len(want))
 	}
@@ -118,7 +118,7 @@ func TestExecutionToolsAcceptOnlyProjects(t *testing.T) {
 		callRequest(2, "test", `{"project":`+quote(empty)+`}`),
 		callRequest(3, "build", `{}`),
 		callRequest(4, "run", `{"project":`+quote(dir)+`,"args":["--evil"]}`),
-		callRequest(5, "test", `{"project":`+quote(dir)+`,"filter":"add","timeout_seconds":5000}`),
+		callRequest(5, "test", `{"project":`+quote(dir)+`,"filter":"add","timeout":5000}`),
 	)
 	for _, id := range []int{1, 2, 3, 4} {
 		if _, failed := toolText(t, r[id]); !failed {
@@ -146,9 +146,9 @@ func TestRunReportsExitCodeOutputAndTimeout(t *testing.T) {
 		outputs = outputs[1:]
 		return next, nil
 	}
-	r := session(t, exec, callRequest(1, "run", `{"project":`+quote(dir)+`}`), callRequest(2, "run", `{"project":`+quote(dir)+`,"timeout_seconds":2}`))
+	r := session(t, exec, callRequest(1, "run", `{"project":`+quote(dir)+`}`), callRequest(2, "run", `{"project":`+quote(dir)+`,"timeout":2}`))
 	text, failed := toolText(t, r[1])
-	if failed || !strings.Contains(text, "exit code: 3") || !strings.Contains(text, "hi\n") || !strings.Contains(text, "warn") {
+	if failed || !strings.Contains(text, "exit 3") || !strings.Contains(text, "hi") || !strings.Contains(text, "warn") {
 		t.Errorf("run = %q", text)
 	}
 	text, _ = toolText(t, r[2])
@@ -172,7 +172,7 @@ func TestAnalysisToolsNeedExactlyOneInput(t *testing.T) {
 		}
 	}
 	for _, id := range []int{3, 4} {
-		if text, failed := toolText(t, r[id]); failed || !strings.Contains(text, "diagnostics") {
+		if text, failed := toolText(t, r[id]); failed || !strings.Contains(text, "ok: no diagnostics") {
 			t.Errorf("call %d = %q %v", id, text, failed)
 		}
 	}
@@ -191,7 +191,7 @@ func TestFormatSourceNeedsNoSubprocess(t *testing.T) {
 
 func TestStdLookupTool(t *testing.T) {
 	r := session(t, nil, callRequest(1, "std_lookup", `{"query":"jsn parse","limit":2}`), callRequest(2, "std_lookup", `{"query":""}`))
-	if text, failed := toolText(t, r[1]); failed || !strings.Contains(text, "@std/json.ms") || !strings.Contains(text, "fn parse") {
+	if text, failed := toolText(t, r[1]); failed || !strings.Contains(text, "@std/json.ms") || !strings.Contains(text, "fn parse") || strings.Contains(text, "```") {
 		t.Errorf("lookup = %q", text)
 	}
 	if _, failed := toolText(t, r[2]); !failed {
@@ -252,7 +252,7 @@ func quote(s string) string {
 	return string(data)
 }
 
-// Agents rediscover prompts and tool descriptions every session, so keep them short.
+// Agents rediscover prompts and tool schemas every session, so keep them short.
 func TestDiscoveredTextStaysSmall(t *testing.T) {
 	for _, p := range prompts {
 		text, err := p.build(map[string]string{"task": "x", "diagnostic": "x"})
@@ -260,12 +260,94 @@ func TestDiscoveredTextStaysSmall(t *testing.T) {
 			t.Errorf("prompt %s: %d bytes, %v", p.Name, len(text), err)
 		}
 	}
+	data, err := json.Marshal(toolDefinitions())
+	if err != nil || len(data) > 2800 {
+		t.Errorf("tools/list is %d bytes, %v", len(data), err)
+	}
 	for _, tl := range tools {
-		if len(tl.Description) > 260 {
+		if len(tl.Description) > 130 {
 			t.Errorf("tool %s description is %d bytes", tl.Name, len(tl.Description))
 		}
 	}
 	if len(instructions) > 260 {
 		t.Errorf("instructions are %d bytes", len(instructions))
+	}
+}
+
+func TestSymbolInfoTool(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "main.ms")
+	source := "fn double(value: Int) -> Int:\n    return value * 2\n\nexport fn main() -> Int:\n    return double(4) - 8\n"
+	if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := session(t, nil, callRequest(1, "symbol_info", `{"path":`+quote(path)+`,"line":5,"column":12}`), callRequest(2, "symbol_info", `{"path":`+quote(path)+`,"line":0,"column":1}`))
+	text, failed := toolText(t, r[1])
+	if failed || !strings.Contains(text, "type: ") || !strings.Contains(text, "defined: ") || !strings.Contains(text, "references (2)") {
+		t.Errorf("symbol_info = %q", text)
+	}
+	if _, failed := toolText(t, r[2]); !failed {
+		t.Error("line 0 should fail")
+	}
+}
+
+func TestCompactReportsShowOnlyWhatNeedsAction(t *testing.T) {
+	passing := `{"tests":[{"name":"a","status":"passed"}],"summary":{"selected":1,"passed":1},"completed":true,"diagnostics":[]}`
+	if got := testReport(passing); got != "1 passed, 0 failed" {
+		t.Errorf("passing = %q", got)
+	}
+	failing := `{"tests":[{"name":"t::x","status":"failed","failure":"expected 3, got 2"},{"name":"t::y","status":"passed"}],"summary":{"passed":1,"failed":1},"completed":true,"diagnostics":[]}`
+	if got := testReport(failing); got != "1 passed, 1 failed\nFAIL t::x: expected 3, got 2" {
+		t.Errorf("failing = %q", got)
+	}
+	var many strings.Builder
+	many.WriteString(`{"diagnostics":[`)
+	for i := 0; i < 100; i++ {
+		if i > 0 {
+			many.WriteString(",")
+		}
+		many.WriteString(`{"code":"MS1","message":"m","position":{"file":"f.ms","line":1,"column":1}}`)
+	}
+	many.WriteString("]}")
+	got := diagnosticsReport(many.String())
+	if lines := strings.Count(got, "\n"); lines > maxLines+2 || !strings.Contains(got, "... 60 more") {
+		t.Errorf("diagnostics not capped: %d lines", lines)
+	}
+	if got := buildReport(`{"completed":true,"exit_code":0,"output":"/tmp/x","diagnostics":[]}`); got != "ok: builds" {
+		t.Errorf("build = %q", got)
+	}
+	if got := formatReport(`{"files":[{"path":"a.ms","status":"clean"},{"path":"b.ms","status":"needs_formatting"}],"diagnostics":[{"code":"MSF001","message":"x","position":{}}]}`); !strings.Contains(got, "b.ms") || strings.Contains(got, "a.ms") || strings.Contains(got, "MSF001") {
+		t.Errorf("format = %q", got)
+	}
+	if got := clip(strings.Repeat("x", 20000), 1000); len(got) > 1100 || !strings.Contains(got, "omitted") {
+		t.Errorf("clip = %d bytes", len(got))
+	}
+}
+
+func TestSlowToolsReportProgress(t *testing.T) {
+	old := progressInterval
+	progressInterval = 10 * time.Millisecond
+	defer func() { progressInterval = old }()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "ms.toml"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	slow := func(context.Context, string, []string, time.Duration) (Output, error) {
+		time.Sleep(80 * time.Millisecond)
+		return Output{}, nil
+	}
+	var out bytes.Buffer
+	server := &Server{Exec: slow}
+	request := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"run","arguments":{"project":` + quote(dir) + `},"_meta":{"progressToken":"p1"}}}` + "\n"
+	if err := server.Serve(context.Background(), strings.NewReader(request), &out); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(out.String(), `"notifications/progress"`) < 2 || !strings.Contains(out.String(), `"progressToken":"p1"`) {
+		t.Errorf("no progress in %s", out.String())
+	}
+	out.Reset()
+	request = strings.Replace(request, `,"_meta":{"progressToken":"p1"}`, "", 1)
+	_ = (&Server{Exec: slow}).Serve(context.Background(), strings.NewReader(request), &out)
+	if strings.Contains(out.String(), "progress") {
+		t.Error("progress sent without a token")
 	}
 }

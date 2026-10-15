@@ -41,15 +41,15 @@ func standardIndex() []entry {
 	return index
 }
 
-// firstBlock keeps the leading paragraph and at most 8 lines, so a native type
+// firstBlock keeps the leading paragraph and at most 5 lines, so a native type
 // with dozens of members cannot flood a result.
 func firstBlock(s string) string {
 	if before, _, found := strings.Cut(s, "\n\n"); found {
 		s = before
 	}
 	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
-	if len(lines) > 8 {
-		lines = append(lines[:8], "    ...")
+	if len(lines) > 5 {
+		lines = append(lines[:5], "    ...")
 	}
 	return strings.Join(lines, "\n")
 }
@@ -87,6 +87,23 @@ func splitWords(s string) []string {
 	return words
 }
 
+var stopWords = map[string]bool{"a": true, "an": true, "the": true, "of": true, "to": true, "in": true, "for": true, "with": true, "by": true, "from": true, "and": true, "or": true, "how": true, "do": true, "i": true}
+
+// significantWords drops filler so "sort by key" matches on "sort" and "key".
+func significantWords(query string) []string {
+	all := splitWords(query)
+	var kept []string
+	for _, w := range all {
+		if !stopWords[w] {
+			kept = append(kept, w)
+		}
+	}
+	if len(kept) == 0 {
+		return all
+	}
+	return kept
+}
+
 // Match is one ranked lookup result.
 type Match struct {
 	Module, Name, Kind, Signature, Doc string
@@ -97,26 +114,30 @@ type Match struct {
 // Every query word must match somewhere, tolerating prefixes, subsequences,
 // and small typos, so "read file", "jsn parse", and "fs.read" all find APIs.
 func Lookup(query string, limit int) []Match {
-	tokens := splitWords(query)
+	tokens := significantWords(query)
 	if len(tokens) == 0 {
 		return nil
 	}
 	if limit <= 0 {
-		limit = 8
+		limit = 5
 	}
 	// Prefer entries matching every word; when none do, fall back to the
 	// entries matching the most words so "read stdin lines" still finds help.
 	var matches []Match
 	best := 0
 	for _, e := range standardIndex() {
-		total, matched := 0, 0
+		total, matched, strong := 0, 0, 0
 		for _, token := range tokens {
 			if score := scoreToken(token, e); score > 0 {
 				total += score
 				matched++
+				if score >= strongScore {
+					strong++
+				}
 			}
 		}
-		if matched == 0 || matched < best {
+		// A partial match must hinge on a name or module word, never on prose alone.
+		if matched == 0 || matched < best || matched < len(tokens) && strong == 0 {
 			continue
 		}
 		if matched > best {
@@ -172,7 +193,26 @@ func dropDuplicates(matches []Match) []Match {
 	return out
 }
 
+// strongScore separates name and module matches from matches in documentation prose.
+const strongScore = 25
+
+// synonyms maps common phrasing to the library's own words.
+var synonyms = map[string][]string{
+	"sort": {"sorted"}, "order": {"sorted"}, "uppercase": {"upper"}, "lowercase": {"lower"},
+	"size": {"length", "count"}, "len": {"length"}, "delete": {"remove"}, "push": {"append"},
+	"print": {"write", "stdout"}, "stdin": {"read_line"}, "concat": {"join", "concat"},
+	"split": {"split", "lines"}, "env": {"environment"}, "random": {"random"},
+}
+
 func scoreToken(token string, e entry) int {
+	best := scoreWords(token, e)
+	for _, alias := range synonyms[token] {
+		best = max(best, scoreWords(alias, e)*9/10)
+	}
+	return best
+}
+
+func scoreWords(token string, e entry) int {
 	best := 0
 	for _, word := range e.words {
 		best = max(best, scoreWord(token, word, 100))
@@ -181,8 +221,8 @@ func scoreToken(token string, e entry) int {
 		best = max(best, scoreWord(token, word, 60))
 	}
 	for _, word := range e.docWords {
-		if len(token) >= 3 {
-			best = max(best, scoreWord(token, word, 20))
+		if len(token) >= 4 {
+			best = max(best, scoreWord(token, word, 12))
 		}
 	}
 	return best
@@ -197,9 +237,11 @@ func scoreWord(token, word string, weight int) int {
 		return weight * 7 / 10
 	case len(token) >= 3 && strings.Contains(word, token):
 		return weight / 2
+	case weight < 50:
+		return 0 // prose matches must be exact words or prefixes
 	case len(token) >= 3 && isSubsequence(token, word):
 		return weight * 3 / 10
-	case len(token) >= 4 && editDistance(token, word) <= allowedTypos(len(token)):
+	case len(token) >= 5 && editDistance(token, word) <= allowedTypos(len(token)):
 		return weight * 4 / 10
 	}
 	return 0
@@ -268,20 +310,14 @@ func firstSentence(doc string) string {
 
 func formatMatches(query string, matches []Match) string {
 	if len(matches) == 0 {
-		return fmt.Sprintf("No standard-library match for %q. Try fewer or broader words, or read the manuscript://stdlib resource for the module list.", query)
+		return fmt.Sprintf("No standard-library match for %q. Try fewer or broader words.", query)
 	}
 	var b strings.Builder
-	for i, m := range matches {
-		if i > 0 {
-			b.WriteString("\n")
-		}
-		fmt.Fprintf(&b, "%s · %s `%s`\n", m.Module, m.Kind, m.Name)
-		if m.Signature != "" {
-			fmt.Fprintf(&b, "```manuscript\n%s\n```\n", strings.TrimRight(m.Signature, "\n"))
-		}
+	for _, m := range matches {
+		fmt.Fprintf(&b, "%s %s\n%s\n", m.Module, m.Name, strings.TrimRight(m.Signature, "\n"))
 		if m.Doc != "" {
-			fmt.Fprintf(&b, "%s\n", m.Doc)
+			fmt.Fprintf(&b, "  %s\n", m.Doc)
 		}
 	}
-	return b.String()
+	return clip(strings.TrimRight(b.String(), "\n"), 4000)
 }
