@@ -38,10 +38,7 @@ func wantFSError[T any](t *testing.T, r Result[T, FileSystemError], want FileSys
 }
 
 func TestHostRootsAccessors(t *testing.T) {
-	ctx := RootExecution()
-	if err := ctx.State.Host.Initialize([]string{"a", "b"}); err != nil {
-		t.Fatal(err)
-	}
+	ctx := rootExecution(context.Background(), []string{"a", "b"})
 	if got := Cli_Arguments(ctx).Items; len(got) != 2 || got[0] != "a" {
 		t.Fatalf("arguments %v", got)
 	}
