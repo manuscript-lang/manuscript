@@ -214,6 +214,28 @@ var implementationGeneration atomic.Uint64
 // MethodSite caches the direct body last resolved for one call site.
 type MethodSite struct {
 	entry atomic.Pointer[methodEntry]
+	// second keeps a different receiver type from evicting the first at a
+	// site that alternates between two implementations.
+	second atomic.Pointer[methodEntry]
+}
+
+func (site *MethodSite) lookup(typ string) *methodEntry {
+	generation := implementationGeneration.Load()
+	if e := site.entry.Load(); e != nil && e.typ == typ && e.generation == generation {
+		return e
+	}
+	if e := site.second.Load(); e != nil && e.typ == typ && e.generation == generation {
+		return e
+	}
+	return nil
+}
+
+// remember keeps the newest resolution first and demotes the previous one.
+func (site *MethodSite) remember(e *methodEntry) {
+	if old := site.entry.Load(); old != nil && old.generation == e.generation && old.typ != e.typ {
+		site.second.Store(old)
+	}
+	site.entry.Store(e)
 }
 
 type methodEntry struct {
@@ -226,11 +248,23 @@ type methodEntry struct {
 // alternative type. Arguments are already in declaration order.
 func CallMethod(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
 	typ := ConcreteType(receiver)
-	if e := site.entry.Load(); e != nil && e.typ == typ && e.generation == implementationGeneration.Load() {
+	if e := site.lookup(typ); e != nil {
 		CheckCancelled(ctx)
 		return e.direct(ctx, receiver, args)
 	}
 	return callMethodSlow(ctx, site, receiver, contract, name, scope, args)
+}
+
+// CallInterface calls a method through an interface-typed receiver: the
+// explicit view is unwrapped, then the call shares CallMethod's per-site cache.
+func CallInterface(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
+	if view, ok := receiver.(View); ok {
+		if contract == "" {
+			contract = view.Type
+		}
+		receiver, scope = view.Receiver, view.Scope
+	}
+	return CallMethod(ctx, site, receiver, contract, name, scope, args)
 }
 
 func callMethodSlow(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
@@ -247,7 +281,7 @@ func callMethodSlow(ctx *Execution, site *MethodSite, receiver Value, contract, 
 				implementationCache.Store(key, resolved)
 			}
 			if resolved != nil && resolved.impl.Direct != nil {
-				site.entry.Store(&methodEntry{generation: generation, typ: typ, direct: resolved.impl.Direct})
+				site.remember(&methodEntry{generation: generation, typ: typ, direct: resolved.impl.Direct})
 				CheckCancelled(ctx)
 				return resolved.impl.Direct(ctx, receiver, args)
 			}

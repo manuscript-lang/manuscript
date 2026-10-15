@@ -2,7 +2,6 @@ package msruntime
 
 import (
 	"github.com/manuscript-lang/manuscript/internal/nativeabi"
-	"math"
 	"strings"
 )
 
@@ -253,17 +252,17 @@ func StringByteLengthRead(ctx *Execution, receiver Value) int64 {
 }
 func StringLengthRead(ctx *Execution, receiver Value) int64 {
 	CheckCancelled(ctx)
-	return scalarCount(receiver.(string))
+	return StringLengthScalar(receiver.(string))
 }
 func StringScalarLengthRead(ctx *Execution, receiver Value) int64 {
 	CheckCancelled(ctx)
-	v := scalarCount(receiver.(string))
+	v := StringLengthScalar(receiver.(string))
 	CheckCancelled(ctx)
 	return v
 }
 func StringIsEmptyRead(ctx *Execution, receiver Value) bool {
 	CheckCancelled(ctx)
-	v := receiver.(string) == ""
+	v := StringIsEmpty(receiver.(string))
 	CheckCancelled(ctx)
 	return v
 }
@@ -290,13 +289,13 @@ func ResultErrorRead(ctx *Execution, failed bool) bool {
 }
 func FloatNaNRead(ctx *Execution, value float64) bool {
 	CheckCancelled(ctx)
-	v := math.IsNaN(value)
+	v := MathIsNaN(value)
 	CheckCancelled(ctx)
 	return v
 }
 func FloatFiniteRead(ctx *Execution, value float64) bool {
 	CheckCancelled(ctx)
-	v := !math.IsNaN(value) && !math.IsInf(value, 0)
+	v := MathIsFinite(value)
 	CheckCancelled(ctx)
 	return v
 }

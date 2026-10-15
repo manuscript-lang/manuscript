@@ -60,3 +60,89 @@ test "overflow":
 		t.Fatalf("expected overflow fault\n%s", output)
 	}
 }
+
+func TestScalarMembersMatchDynamicCalls(t *testing.T) {
+	result := compiler.CompileSource("scalar-members.ms", `import panic from "@std/faults.ms"
+
+fn check(ok: Bool, name: String) -> Unit:
+    if not ok:
+        return panic(message: name)
+
+test "string and float members":
+    let text = "héllo"
+    check(ok: text.length == 5 and not text.is_empty and "".is_empty, name: "length")
+    check(ok: "a".compare(other: "b") == 0 - 1 and "b".compare(other: "b") == 0, name: "compare")
+    check(ok: text.concat(other: "!") == "héllo!", name: "concat")
+    check(ok: (0.0 / 0.0).is_nan and not (1.0).is_nan and (1.0).is_finite, name: "float")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "PASS") {
+		t.Fatalf("scalar members changed: %v\n%s", err, output)
+	}
+}
+
+func TestStringSplitReplaceJoinMatchDynamicCalls(t *testing.T) {
+	result := compiler.CompileSource("split-replace-join.ms", `import panic from "@std/faults.ms"
+
+fn check(ok: Bool, name: String) -> Unit:
+    if not ok:
+        return panic(message: name)
+
+test "omitted and supplied caps":
+    check(ok: "a,b,c".split(separator: ",").length == 3, name: "split")
+    check(ok: "a,b,c".split(separator: ",", max_parts: some(2)).length == 2, name: "split cap")
+    check(ok: "a,b,c".split(separator: ",", max_parts: none).length == 3, name: "split none")
+    check(ok: "".split(separator: ",").length == 1, name: "split empty")
+    check(ok: "abc".split(separator: "").length == 3, name: "split scalars")
+    check(ok: "a-b-c".replace(old: "-", new: "+") == "a+b-c", name: "replace first")
+    check(ok: "a-b-c".replace(old: "-", new: "+", max_replacements: some(2)) == "a+b+c", name: "replace cap")
+    check(ok: "a-b-c".replace_first(old: "-", new: "+") == "a+b-c", name: "replace_first")
+    check(ok: "ab".replace(old: "", new: "_") == "_ab", name: "replace empty old")
+    check(ok: "".replace(old: "x", new: "y") == "", name: "replace empty text")
+    check(ok: ["a", "b", "c"].join(separator: "-") == "a-b-c", name: "join")
+    let none_left: List[String] = []
+    check(ok: none_left.join(separator: "-") == "", name: "join empty")
+    var parts = ["x"]
+    parts.append(value: "y")
+    check(ok: parts.join(separator: "") == "xy", name: "join appended")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "PASS") {
+		t.Fatalf("string split/replace/join changed: %v\n%s", err, output)
+	}
+}
+
+func TestNegativeSplitCapStillFaults(t *testing.T) {
+	result := compiler.CompileSource("split-fault.ms", `test "negative":
+    "a,b".split(separator: ",", max_parts: some(0 - 1))
+`, compiler.Options{Tests: true})
+	output, _ := execute(t, result)
+	if !strings.Contains(string(output), "max_parts must be nonnegative") {
+		t.Fatalf("expected split fault\n%s", output)
+	}
+}
+
+func TestBoundNativeCallsOmitNoneDefaults(t *testing.T) {
+	result := compiler.CompileSource("bound-omitted.ms", `import panic from "@std/faults.ms"
+
+fn check(ok: Bool, name: String) -> Unit:
+    if not ok:
+        return panic(message: name)
+
+test "omitted none defaults":
+    match "ab".repeat(count: 2):
+        ok(v):
+            check(ok: v == "abab", name: "repeat")
+        error(_):
+            check(ok: false, name: "repeat error")
+    match "ab".pad_start(target_length: 4, padding: "-"):
+        ok(v):
+            check(ok: v == "--ab", name: "pad_start")
+        error(_):
+            check(ok: false, name: "pad_start error")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "PASS") {
+		t.Fatalf("omitted none defaults changed: %v\n%s", err, output)
+	}
+}

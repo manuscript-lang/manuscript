@@ -79,3 +79,41 @@ test "accessors retain semantics in direct defaults and local closures":
 		t.Fatalf("accessor direct-call integration: %v\n%s", err, output)
 	}
 }
+
+func TestAccessorsComposeWithDefaultConstructorsAndNativeCalls(t *testing.T) {
+	result := compiler.CompileSource("accessor-main512.ms", `import panic from "@std/faults.ms"
+interface Size:
+    get length -> Int
+    fn scaled(factor: Int) -> Int
+type Counter:
+    size: Int
+    reads: Int
+impl Size for Counter:
+    get length -> Int:
+        self.reads = self.reads + 1
+        return self.size
+    fn scaled(factor: Int) -> Int: self.size * factor
+type Options:
+    source: Counter
+    observed: Int = source.length
+    parts: List[String] = "a,b".split(",")
+fn via_view(value: Size) -> Int: value.length + value.scaled(2)
+test "accessors compose with merged optimizations":
+    let counter = Counter(3, 0)
+    let first = Options(counter)
+    if first.observed != 3 or first.parts.length != 2 or counter.reads != 1:
+        return panic("constructor default read changed")
+    counter.size = 4
+    if via_view(Size(counter)) != 12 or counter.reads != 2:
+        return panic("interface method cache changed accessor reads")
+    let second = Options(counter, 99, ["explicit"])
+    if second.observed != 99 or counter.reads != 2:
+        return panic("explicit constructor arguments executed defaults")
+    if "a-b-c".replace("-", "+") != "a+b-c" or "abc".is_empty:
+        return panic("native optional defaults or scalar reads changed")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "1 tests, 0 failed") {
+		t.Fatalf("accessor main integration: %v\n%s", err, output)
+	}
+}

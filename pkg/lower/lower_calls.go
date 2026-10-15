@@ -55,11 +55,15 @@ func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argum
 // already be in declaration order so the labels carry no information.
 func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
 	callee := g.program.Info(e.Left)
-	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Contract == nil || callee.Method.Native != "" {
+	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Contract == nil || (callee.Method.Native != "" && callee.Method.Native != "contract") {
 		return nil
 	}
 	receiverType := g.program.Info(e.Left.Left).Type
-	if (receiverType.Kind != syntax.KindRecord && receiverType.Kind != "alternative") || len(receiverType.Args) != 0 || hasTypeVariable(receiverType) || strings.HasPrefix(receiverType.ID, "@std/") {
+	viaInterface := receiverType.Kind == "contract"
+	if callee.Method.Native == "contract" && !viaInterface {
+		return nil
+	}
+	if (receiverType.Kind != syntax.KindRecord && receiverType.Kind != "alternative" && !viaInterface) || len(receiverType.Args) != 0 || hasTypeVariable(receiverType) || strings.HasPrefix(receiverType.ID, "@std/") {
 		return nil
 	}
 	params := callee.Method.Type.Params
@@ -78,5 +82,9 @@ func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argum
 	site := "method" + strconv.Itoa(len(g.sites)+1)
 	g.sites = append(g.sites, site)
 	receiver := sequence(g.expression(e.Left.Left))
-	return orderedCall(runtimeName("CallMethod"), ident("ctx"), address(ident(site)), receiver, g.key(callee.Method.Contract), textLiteral(e.Left.Text), g.typeScope(receiverType), sliceLiteral(runtimeName("Value"), values...))
+	entry := "CallMethod"
+	if viaInterface {
+		entry = "CallInterface"
+	}
+	return orderedCall(runtimeName(entry), ident("ctx"), address(ident(site)), receiver, g.key(callee.Method.Contract), textLiteral(e.Left.Text), g.typeScope(receiverType), sliceLiteral(runtimeName("Value"), values...))
 }
