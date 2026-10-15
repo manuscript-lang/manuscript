@@ -312,7 +312,7 @@ func TestCompactReportsShowOnlyWhatNeedsAction(t *testing.T) {
 	if lines := strings.Count(got, "\n"); lines > maxLines+2 || !strings.Contains(got, "... 60 more") {
 		t.Errorf("diagnostics not capped: %d lines", lines)
 	}
-	if got := buildReport(`{"completed":true,"exit_code":0,"output":"/tmp/x","diagnostics":[]}`); got != "ok: builds" {
+	if got := buildReport(`{"completed":true,"exit_code":0,"output":"/tmp/x","diagnostics":[]}`); got != "ok: built /tmp/x" {
 		t.Errorf("build = %q", got)
 	}
 	if got := formatReport(`{"files":[{"path":"a.ms","status":"clean"},{"path":"b.ms","status":"needs_formatting"}],"diagnostics":[{"code":"MSF001","message":"x","position":{}}]}`); !strings.Contains(got, "b.ms") || strings.Contains(got, "a.ms") || strings.Contains(got, "MSF001") {
@@ -349,5 +349,26 @@ func TestSlowToolsReportProgress(t *testing.T) {
 	_ = (&Server{Exec: slow}).Serve(context.Background(), strings.NewReader(request), &out)
 	if strings.Contains(out.String(), "progress") {
 		t.Error("progress sent without a token")
+	}
+}
+
+func TestBuildKeepsTheBinaryInTheIgnoredCache(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "ms.toml"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var args []string
+	exec := func(_ context.Context, _ string, a []string, _ time.Duration) (Output, error) {
+		args = a
+		return Output{Stdout: `{"completed":true,"exit_code":0,"output":"` + a[len(a)-1] + `","diagnostics":[]}`}, nil
+	}
+	r := session(t, exec, callRequest(1, "build", `{"project":`+quote(dir)+`}`))
+	text, failed := toolText(t, r[1])
+	want := filepath.Join(dir, ".ms-cache", "bin")
+	if failed || !strings.HasPrefix(text, "ok: built "+want) || !strings.HasPrefix(args[len(args)-1], want) {
+		t.Errorf("build = %q (%v), args %v", text, failed, args)
+	}
+	if info, err := os.Stat(want); err != nil || !info.IsDir() {
+		t.Errorf("output directory missing: %v", err)
 	}
 }

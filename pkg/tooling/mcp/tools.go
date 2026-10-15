@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -87,7 +88,7 @@ var tools = []tool{
 	},
 	{
 		Name:        "build",
-		Description: "Check that a project builds natively; the binary is discarded. Project only.",
+		Description: "Build a project natively; returns the binary path (in .ms-cache/bin). Project only.",
 		InputSchema: obj([]string{"project"}, map[string]any{"project": map[string]any{"type": "string"}, "timeout": seconds()}),
 		handler:     (*Server).build,
 		slow:        true,
@@ -404,12 +405,16 @@ func (s *Server) build(ctx context.Context, raw json.RawMessage) (string, error)
 	if err != nil {
 		return "", err
 	}
-	scratch, err := os.MkdirTemp("", "ms-mcp-build-")
-	if err != nil {
+	// .ms-cache is where `ms init` already tells git to ignore build output.
+	directory := filepath.Join(dir, ".ms-cache", "bin")
+	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return "", toolError(err.Error())
 	}
-	defer os.RemoveAll(scratch)
-	out, err := s.exec(ctx, dir, clampSeconds(in.Timeout, 300, 600), "build", manifest, "--json", "-o", filepath.Join(scratch, "program"))
+	name := "program"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	out, err := s.exec(ctx, dir, clampSeconds(in.Timeout, 300, 600), "build", manifest, "--json", "-o", filepath.Join(directory, name))
 	if err != nil {
 		return "", err
 	}

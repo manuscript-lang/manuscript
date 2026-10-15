@@ -166,6 +166,7 @@ func buildReport(raw string) string {
 	var doc struct {
 		Completed   bool         `json:"completed"`
 		ExitCode    int          `json:"exit_code"`
+		Output      string       `json:"output"`
 		Stdout      string       `json:"stdout"`
 		Diagnostics []diagnostic `json:"diagnostics"`
 	}
@@ -173,7 +174,7 @@ func buildReport(raw string) string {
 		return clip(raw, maxText)
 	}
 	if doc.Completed && len(doc.Diagnostics) == 0 {
-		return "ok: builds"
+		return "ok: built " + doc.Output
 	}
 	lines := []string{fmt.Sprintf("build failed (exit %d)", doc.ExitCode)}
 	lines = append(lines, diagnosticLines(doc.Diagnostics)...)
