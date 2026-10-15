@@ -11,7 +11,9 @@ The user authorized pushing the branch and opening a draft PR; merge remains hel
 The parent relayed explicit independent approval of design commit
 `46c46a29105e1aabb969d22cce96825b52dc0b8a` before implementation began.
 
-Post-publication #519 fixture migration and generic-record composition are recorded in
+Post-publication #520 fixture migration and primitive-literal composition are recorded in
+`scripts/bench-accessors/results/verification/main-integration-cd381fc4.md`.
+The preceding #519 fixture migration and generic-record composition are recorded in
 `scripts/bench-accessors/results/verification/main-integration-bb450ff0.md`.
 The preceding #518 composition and conflict resolution are recorded in
 `scripts/bench-accessors/results/verification/main-integration-967e9127.md`.
