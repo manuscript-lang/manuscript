@@ -88,6 +88,9 @@ func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argum
 	receiver := sequence(g.expression(e.Left.Left))
 	entry := "CallMethod"
 	if viaInterface {
+		if d := g.interfaceDispatcher(callee.Method.Contract, e.Left.Text, len(params)); d != nil {
+			return orderedCall(ident(d.name), append([]ast.Expr{ident("ctx"), address(ident(site)), receiver, g.typeScope(receiverType)}, values...)...)
+		}
 		entry = "CallInterface"
 	}
 	return orderedCall(runtimeName(entry), ident("ctx"), address(ident(site)), receiver, g.key(callee.Method.Contract), textLiteral(e.Left.Text), g.typeScope(receiverType), sliceLiteral(runtimeName("Value"), values...))

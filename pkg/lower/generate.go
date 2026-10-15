@@ -160,6 +160,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		initialize = append(initialize, evaluated(runtimeCall("RegisterStruct", textLiteral(st.key), closure(nil, runtimeName("Struct"), returned(address(composite(ident(st.name))))))))
 	}
 	file.Decls = append(file.Decls, g.structDeclarations()...)
+	file.Decls = append(file.Decls, g.dispatcherDeclarations()...)
 	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("initialize"), Type: functionType(nil, nil), Body: block(initialize...)})
 	for _, name := range g.hoisted {
 		file.Decls = append(file.Decls, variable(name, runtimeName("Lazy"), nil))
