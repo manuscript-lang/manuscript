@@ -28,7 +28,6 @@ Commands:
   lock     Create or update project build pins
   init     Create a new project with a manifest, entry, test, and .gitignore
   doc      Generate public API documentation
-  stdlib   Write bundled standard library declarations to a directory
   lsp      Serve the language server on stdin/stdout
   help     Show help for a command
   version  Print the compiler version
@@ -130,10 +129,6 @@ func commandHelp(command string) (string, bool) {
 		return docHelp, true
 	case "init":
 		return initHelp, true
-	case "stdlib":
-		usage = "<directory>"
-		description = "Materialize bundled standard library .ms declarations and bindings.json.\nCreate the directory if needed and replace matching files already in it.\nThese are API declarations for tooling, rather than executable implementations."
-		examples = "ms stdlib ./stdlib"
 	case "lsp":
 		description = "Serve the language server over stdin/stdout until the client disconnects.\nConfigure an LSP-capable editor to launch ms lsp. No file argument is needed."
 		examples = "ms lsp"

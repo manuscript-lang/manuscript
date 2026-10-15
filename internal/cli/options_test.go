@@ -177,23 +177,13 @@ func TestDocProjectDirectoryAndUsage(t *testing.T) {
 	}
 }
 
-func TestStdlibDeclarationsAndInlineDocOutput(t *testing.T) {
+func TestStdlibInlineDocOutput(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, "stdlib=a=b.json")
 	status, stdout, stderr := invoke(t, "doc", "--output="+docs, "--stdlib", "--json")
 	data, err := os.ReadFile(docs)
 	if status != 0 || stdout != "" || stderr != "" || err != nil || !strings.Contains(string(data), `"modules"`) {
 		t.Fatalf("stdlib docs: %d, %q, %q, %v", status, stdout, stderr, err)
-	}
-	declarations := filepath.Join(root, "declarations=a=b")
-	status, _, stderr = invoke(t, "stdlib", declarations)
-	if status != 0 || stderr != "" {
-		t.Fatalf("stdlib declarations: %d, %q", status, stderr)
-	}
-	for _, name := range []string{"cli.ms", "bindings.json"} {
-		if _, err := os.Stat(filepath.Join(declarations, name)); err != nil {
-			t.Fatal(err)
-		}
 	}
 }
 

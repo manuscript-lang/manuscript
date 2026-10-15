@@ -138,7 +138,6 @@ func check() error {
 		{"diagram", manifest, "-o", filepath.Join(directory, "calls.mmd")},
 		{"doc", project, "--output=" + filepath.Join(directory, "api=v1.md")},
 		{"doc", "--stdlib", "--json", "--output=" + filepath.Join(directory, "stdlib=v1.json")},
-		{"stdlib", filepath.Join(directory, "stdlib")},
 		{"lint", filepath.Join(project, "test.ms"), "--json"},
 	} {
 		if _, err := run(cli, arguments...); err != nil {

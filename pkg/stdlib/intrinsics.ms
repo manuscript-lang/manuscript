@@ -500,7 +500,7 @@ interface FloatOperations:
 #
 # `pkg/tooling/docgen/description_backlog.json` records exact existing gaps during #176's sweep. This temporary list only shrinks: new gaps fail, invalid prose cannot use it, and described/removed entries make the old key stale. It is not an internal/generated exemption. Public synthetic primitive entries require descriptions too. Private `ValueOperations`/`CloneOperations` are implementation declarations; their universal calls have canonical call rules rather than becoming importable interfaces. No blanket public-description exemption is supported.
 #
-# Run `ms stdlib <directory>` to export the exact pinned source files for an editor that needs documents on disk. These APIs provide navigation data; an editor integration must supply its own LSP server and transport.
+# These APIs provide navigation data; an editor integration must supply its own LSP server and transport.
 #
 # For user-facing imports and API behavior, see the [standard-library guide](../../documentation/standard-library/_index.md).
 #
