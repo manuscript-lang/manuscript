@@ -52,3 +52,7 @@ func StringLower(text string) string             { return libraryLower(text) }
 func StringContains(value, part string) bool     { return strings.Contains(value, part) }
 func StringStartsWith(value, prefix string) bool { return strings.HasPrefix(value, prefix) }
 func StringEndsWith(value, suffix string) bool   { return strings.HasSuffix(value, suffix) }
+func StringLengthScalar(text string) int64       { return scalarCount(text) }
+func StringIsEmpty(text string) bool             { return len(text) == 0 }
+func StringCompare(left, right string) int64     { return int64(strings.Compare(left, right)) }
+func StringConcat(left, right string) string     { return left + right }

@@ -60,3 +60,23 @@ test "overflow":
 		t.Fatalf("expected overflow fault\n%s", output)
 	}
 }
+
+func TestScalarMembersMatchDynamicCalls(t *testing.T) {
+	result := compiler.CompileSource("scalar-members.ms", `import panic from "@std/faults.ms"
+
+fn check(ok: Bool, name: String) -> Unit:
+    if not ok:
+        return panic(message: name)
+
+test "string and float members":
+    let text = "héllo"
+    check(ok: text.length() == 5 and not text.is_empty() and "".is_empty(), name: "length")
+    check(ok: "a".compare(other: "b") == 0 - 1 and "b".compare(other: "b") == 0, name: "compare")
+    check(ok: text.concat(other: "!") == "héllo!", name: "concat")
+    check(ok: (0.0 / 0.0).is_nan() and not (1.0).is_nan() and (1.0).is_finite(), name: "float")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "PASS") {
+		t.Fatalf("scalar members changed: %v\n%s", err, output)
+	}
+}

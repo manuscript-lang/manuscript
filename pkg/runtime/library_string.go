@@ -43,13 +43,13 @@ func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	add := libraryAdd
 	add("string", "length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, args []Value) Value {
-		return scalarCount(args[0].(string))
+		return StringLengthScalar(args[0].(string))
 	})
 	add("string", "is_empty", "Bool", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, args []Value) Value {
-		return len(args[0].(string)) == 0
+		return StringIsEmpty(args[0].(string))
 	})
 	add("string", "compare", "Int", []LibraryParam{p("text", "String"), p("other", "String")}, func(_ *Execution, _ string, args []Value) Value {
-		return int64(strings.Compare(args[0].(string), args[1].(string)))
+		return StringCompare(args[0].(string), args[1].(string))
 	})
 	add("string", "chars", "List[String]", []LibraryParam{p("text", "String")}, func(ctx *Execution, result string, args []Value) Value {
 		var items []Value
@@ -116,7 +116,7 @@ func init() {
 		})
 	}
 
-	add("string", "concat", "String", []LibraryParam{p("text", "String"), p("other", "String")}, func(_ *Execution, _ string, a []Value) Value { return a[0].(string) + a[1].(string) })
+	add("string", "concat", "String", []LibraryParam{p("text", "String"), p("other", "String")}, func(_ *Execution, _ string, a []Value) Value { return StringConcat(a[0].(string), a[1].(string)) })
 	add("string", "normalize", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("form", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[2].(int64)
 		if max < 0 {
