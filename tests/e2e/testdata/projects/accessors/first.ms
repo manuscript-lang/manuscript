@@ -1,4 +1,10 @@
-import {Item, Read, Observed, generic, as_view} from "./domain.ms"
+import {
+    Item,
+    Read,
+    Observed,
+    generic,
+    as_view
+} from "./domain.ms"
 
 impl Read[Int] for Item:
     get value -> Int:
@@ -16,6 +22,7 @@ export fn first_capture(item: Item) -> fn() -> Int:
 
 impl Observed for Item:
     get length -> Int: self.count
+
     fn read() -> Int: self.count + 10
 
 export fn first_observed(item: Item) -> Observed:

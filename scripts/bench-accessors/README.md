@@ -1,5 +1,38 @@
 # Accessor lowering measurements
 
+## Isolated guard and Logger reads
+
+`contention.py` compiles one common runtime-package test template through Go
+overlays in immutable method-era/current trees. Only two public API adapters
+differ: guard.get()/Logger.level() via Bind/Invoke versus their receiver-only
+accessor helpers. It does not modify production sources. The identical safety
+controls preserve admission/delivery cancellation, receiver unwrapping, the actual
+mutex, live state, guard-holder validation and result representation. Historical
+public dispatch retains its wrapper checks; controls do not erase those costs.
+
+```sh
+GOCACHE=/tmp/manuscript-accessor-go-cache GOPATH=/tmp/manuscript-accessor-go XDG_CACHE_HOME=/tmp/manuscript-accessor-cache python3 scripts/bench-accessors/contention.py --baseline /absolute/path/to/1383851e --current "$PWD" --go toolchain/go/bin/go --output .artifacts/accessor-contention
+```
+
+Without `--measure`, this only builds and executes live-value, stale-guard and
+coordinated cancellation probes, both normally and under the race detector.
+After independent harness review, add `--measure` for five alternating-order
+samples per revision (200ms uncontended, 200 fixed blocked iterations), with
+GOMAXPROCS=2 and benchmark CPU=2. Retain metadata, generated files, raw samples
+and medians. Run on a quiet host after broad verification.
+
+Receiver/Execution construction is outside timing. Logger results are consumed
+as tags without LogLevel equality, transport, formatting or I/O. Complete
+uncontended reads include their dispatch and checks. Blocked-read setup holds the
+actual mutex and inspects the named reader's stack until mutex blocking is
+proven; no sleep establishes contention. Only release-to-result is timed,
+including unlock, rescheduling and channel delivery. Binding performed before
+the blocked acquisition is outside that timed interval, including its allocations.
+Release latency and its allocation counters therefore cannot describe full-read
+throughput, getter-only cost or total binding allocations. Forced contention and
+stack inspection are synthetic scheduling conditions; report the safety controls
+and raw dispersion rather than attributing latency differences solely to dispatch.
+
 Run the same harness against an unmodified method-era checkout and the accessor
 checkout with the same pinned SDK. The source changes only at approved member
 reads; `-legacy` spells those reads as calls. The harness resolves source symbols

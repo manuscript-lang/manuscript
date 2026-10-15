@@ -24,5 +24,9 @@ test "accessor views and closures retain local implementation evidence":
 
     let first_methods = first_observed(item)
     let second_methods = second_observed(item)
-    if invoke_observed(first_methods) != 18 or invoke_observed(second_methods) != 28 or invoke_observed(first_methods) != 18:
+    if (
+        invoke_observed(first_methods) != 18
+        or invoke_observed(second_methods) != 28
+        or invoke_observed(first_methods) != 18
+    ):
         return panic("cached methods and accessor reads lost view evidence")
