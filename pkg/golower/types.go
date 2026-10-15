@@ -57,6 +57,22 @@ func scalarGo(t *checker.Type) string {
 	return ""
 }
 
+// isReference reports whether t lowers to a Go pointer: a type whose holders
+// observe each other's mutation or identity. Everything else is a value and is
+// never mutated after construction. See
+// documentation/contributing/go-lowering-representation.md.
+func isReference(t *checker.Type) bool {
+	switch {
+	case t == nil:
+		return false
+	case isStd(t, "List"), isStd(t, "Map"), isStd(t, "Set"):
+		return true
+	case t.Kind == "record", t.Kind == "native":
+		return true
+	}
+	return false
+}
+
 // goType is the single Go type of a Manuscript type. Type variables must have
 // been substituted: monomorphization leaves none.
 func (g *gen) goType(t *checker.Type) ast.Expr {
@@ -92,8 +108,7 @@ func (g *gen) goType(t *checker.Type) ast.Expr {
 		return g.stdType(t)
 	}
 	decl := g.declare(t)
-	switch t.Kind {
-	case "record":
+	if isReference(t) {
 		return pointerTo(ident(decl.name))
 	}
 	return ident(decl.name)
@@ -108,7 +123,7 @@ func (g *gen) stdType(t *checker.Type) ast.Expr {
 		args = append(args, g.goType(a))
 	}
 	typ := generic(name, args...)
-	if t.Kind == "record" || t.Kind == "native" {
+	if isReference(t) {
 		return pointerTo(typ)
 	}
 	return typ
