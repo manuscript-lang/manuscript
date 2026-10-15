@@ -56,38 +56,13 @@ func init() {
 		add("string", name, "Bool", []LibraryParam{p("value", "String"), p(label, "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string), a[1].(string)) })
 	}
 	add("string", "split", "List[String]", []LibraryParam{p("text", "String"), p("separator", "String"), p("max_parts", "Optional[Int]")}, func(_ *Execution, _ string, a []Value) Value {
-		n := a[2].(int64)
-		if n < 0 {
-			return Panic("split requires nonnegative max_parts; pass 0 or a positive count")
-		}
-		if n == 0 {
-			return libraryStrings(nil)
-		}
-		if n > int64(len(a[0].(string)))+1 {
-			n = int64(len(a[0].(string))) + 1
-		}
-		parts := strings.Split(a[0].(string), a[1].(string))
-		if int64(len(parts)) > n {
-			parts = parts[:n]
-		}
-		return libraryStrings(parts)
+		return stringSplitLimit(a[0].(string), a[1].(string), a[2].(int64))
 	})
 	add("string", "join", "String", []LibraryParam{p("parts", "List[String]"), p("separator", "String")}, func(_ *Execution, _ string, a []Value) Value {
-		return strings.Join(libraryStringValues(a[0]), a[1].(string))
+		return StringJoin(a[0], a[1].(string))
 	})
 	add("string", "replace", "String", []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_replacements", "Optional[Int]")}, func(_ *Execution, _ string, a []Value) Value {
-		n := a[3].(int64)
-		if n < 0 {
-			return Panic("invalid replacement bounds")
-		}
-		bound := int64(len(a[0].(string)))
-		if a[1].(string) == "" {
-			bound = int64(utf8.RuneCountInString(a[0].(string))) + 1
-		}
-		if n > bound {
-			n = bound
-		}
-		return strings.Replace(a[0].(string), a[1].(string), a[2].(string), int(n))
+		return stringReplaceLimit(a[0].(string), a[1].(string), a[2].(string), a[3].(int64))
 	})
 	libraryAlias("string", "replace_first", "replace")
 	// A required count has its own ABI shape, while the prepared legacy body
