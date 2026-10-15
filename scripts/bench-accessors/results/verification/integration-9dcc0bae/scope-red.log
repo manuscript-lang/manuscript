@@ -1,0 +1,5 @@
+--- FAIL: TestInterfaceMethodSiteRetainsLexicalViewScope (0.00s)
+    performance_test.go:385: view 1 read 1
+FAIL
+FAIL	github.com/manuscript-lang/manuscript/pkg/runtime	0.005s
+FAIL

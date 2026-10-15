@@ -6,9 +6,14 @@ weight = 28
 # Read-only accessor implementation evidence
 
 The implementation follows the [approved design](read-only-accessors-design.md).
-The feature and its sole review correction have independent code-review approval. No pull request has been published.
+The feature and its review corrections have independent code-review approval. No pull request has been published.
 The parent relayed explicit independent approval of design commit
 `46c46a29105e1aabb969d22cce96825b52dc0b8a` before implementation began.
+
+Latest integrated checks and measured guard/Logger evidence are recorded in the
+repository file `scripts/bench-accessors/results/verification/main-integration-9dcc0bae.md`.
+The original measurements and coverage below remain historical evidence for
+their stated revisions.
 
 ## Scope and integration base
 

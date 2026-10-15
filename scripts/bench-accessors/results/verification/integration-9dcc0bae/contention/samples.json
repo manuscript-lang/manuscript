@@ -1,0 +1,722 @@
+[
+  {
+    "revision": "baseline",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/Public-2",
+    "iterations": 1496793,
+    "ns_op": 155.3,
+    "bytes_op": 176.0,
+    "allocs_op": 4.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/SafetyControl-2",
+    "iterations": 12107268,
+    "ns_op": 19.42,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/Public-2",
+    "iterations": 731154,
+    "ns_op": 337.4,
+    "bytes_op": 376.0,
+    "allocs_op": 7.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2",
+    "iterations": 4626816,
+    "ns_op": 53.18,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/Public-2",
+    "iterations": 200,
+    "ns_op": 1267.0,
+    "bytes_op": 1.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1395.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2",
+    "iterations": 200,
+    "ns_op": 1711.0,
+    "bytes_op": 65.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1344.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/Public-2",
+    "iterations": 12046808,
+    "ns_op": 19.87,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/SafetyControl-2",
+    "iterations": 12575466,
+    "ns_op": 21.62,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/Public-2",
+    "iterations": 4460013,
+    "ns_op": 51.78,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2",
+    "iterations": 4828022,
+    "ns_op": 49.56,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/Public-2",
+    "iterations": 200,
+    "ns_op": 992.7,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 921.2,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2",
+    "iterations": 200,
+    "ns_op": 1156.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 1,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1075.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/Public-2",
+    "iterations": 11770998,
+    "ns_op": 20.07,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/SafetyControl-2",
+    "iterations": 12628258,
+    "ns_op": 21.58,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/Public-2",
+    "iterations": 4264084,
+    "ns_op": 55.01,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2",
+    "iterations": 4413124,
+    "ns_op": 57.21,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/Public-2",
+    "iterations": 200,
+    "ns_op": 1139.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1321.0,
+    "bytes_op": 28.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2",
+    "iterations": 200,
+    "ns_op": 1339.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1253.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/Public-2",
+    "iterations": 1228446,
+    "ns_op": 170.5,
+    "bytes_op": 176.0,
+    "allocs_op": 4.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/SafetyControl-2",
+    "iterations": 12419294,
+    "ns_op": 19.48,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/Public-2",
+    "iterations": 699718,
+    "ns_op": 401.5,
+    "bytes_op": 376.0,
+    "allocs_op": 7.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2",
+    "iterations": 4677582,
+    "ns_op": 52.42,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/Public-2",
+    "iterations": 200,
+    "ns_op": 1679.0,
+    "bytes_op": 2.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1182.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2",
+    "iterations": 200,
+    "ns_op": 2388.0,
+    "bytes_op": 66.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 2,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1164.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/Public-2",
+    "iterations": 1497926,
+    "ns_op": 158.3,
+    "bytes_op": 176.0,
+    "allocs_op": 4.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/SafetyControl-2",
+    "iterations": 12231898,
+    "ns_op": 18.86,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/Public-2",
+    "iterations": 726174,
+    "ns_op": 332.3,
+    "bytes_op": 376.0,
+    "allocs_op": 7.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2",
+    "iterations": 4651303,
+    "ns_op": 51.27,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/Public-2",
+    "iterations": 200,
+    "ns_op": 1072.0,
+    "bytes_op": 2.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1038.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2",
+    "iterations": 200,
+    "ns_op": 3242.0,
+    "bytes_op": 66.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1472.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/Public-2",
+    "iterations": 11473186,
+    "ns_op": 19.81,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/SafetyControl-2",
+    "iterations": 12649058,
+    "ns_op": 18.97,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/Public-2",
+    "iterations": 4303048,
+    "ns_op": 57.09,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2",
+    "iterations": 4582639,
+    "ns_op": 51.41,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/Public-2",
+    "iterations": 200,
+    "ns_op": 995.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1499.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2",
+    "iterations": 200,
+    "ns_op": 2464.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 3,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 9445.0,
+    "bytes_op": 65.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/Public-2",
+    "iterations": 11015874,
+    "ns_op": 20.09,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/SafetyControl-2",
+    "iterations": 12587400,
+    "ns_op": 21.67,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/Public-2",
+    "iterations": 4436029,
+    "ns_op": 52.8,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2",
+    "iterations": 4536206,
+    "ns_op": 50.67,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/Public-2",
+    "iterations": 200,
+    "ns_op": 1098.0,
+    "bytes_op": 1.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1022.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2",
+    "iterations": 200,
+    "ns_op": 1757.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1332.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/Public-2",
+    "iterations": 1446234,
+    "ns_op": 164.7,
+    "bytes_op": 176.0,
+    "allocs_op": 4.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/SafetyControl-2",
+    "iterations": 12576354,
+    "ns_op": 18.89,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/Public-2",
+    "iterations": 684738,
+    "ns_op": 341.5,
+    "bytes_op": 376.0,
+    "allocs_op": 7.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2",
+    "iterations": 4555023,
+    "ns_op": 51.1,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/Public-2",
+    "iterations": 200,
+    "ns_op": 1198.0,
+    "bytes_op": 3.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 875.5,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2",
+    "iterations": 200,
+    "ns_op": 1535.0,
+    "bytes_op": 65.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 4,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1369.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/Public-2",
+    "iterations": 1503174,
+    "ns_op": 151.9,
+    "bytes_op": 176.0,
+    "allocs_op": 4.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/SafetyControl-2",
+    "iterations": 12682617,
+    "ns_op": 19.53,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/Public-2",
+    "iterations": 750381,
+    "ns_op": 347.8,
+    "bytes_op": 376.0,
+    "allocs_op": 7.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2",
+    "iterations": 4222885,
+    "ns_op": 50.27,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/Public-2",
+    "iterations": 200,
+    "ns_op": 1042.0,
+    "bytes_op": 2.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1120.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2",
+    "iterations": 200,
+    "ns_op": 2757.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "baseline",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1304.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/Public-2",
+    "iterations": 11950489,
+    "ns_op": 19.81,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorUncontended/GuardValue/SafetyControl-2",
+    "iterations": 12635176,
+    "ns_op": 18.85,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/Public-2",
+    "iterations": 4434616,
+    "ns_op": 52.53,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2",
+    "iterations": 4782628,
+    "ns_op": 55.4,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/Public-2",
+    "iterations": 200,
+    "ns_op": 966.1,
+    "bytes_op": 1.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 914.3,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  {
+    "revision": "current",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2",
+    "iterations": 200,
+    "ns_op": 1327.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  {
+    "revision": "current",
+    "sample": 5,
+    "benchmark": "BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2",
+    "iterations": 200,
+    "ns_op": 1491.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  }
+]

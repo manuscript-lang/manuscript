@@ -1,0 +1,264 @@
+package msruntime
+
+import (
+	"context"
+	"fmt"
+	"runtime"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+// The driver substitutes only the public API adapters between revisions.
+func accessorGuardPublic(ctx *Execution, receiver Value) Value {
+	return Invoke(ctx, Bind(receiver, "", "get"), nil)
+}
+func accessorLoggerPublic(ctx *Execution, receiver Value) Value {
+	return Invoke(ctx, Bind(receiver, "@std/Logger", "level"), nil)
+}
+
+type accessorRead func(*Execution, Value) Value
+
+func accessorGuardSafety(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	g := ContractReceiver(receiver).(*SynchronizedGuard)
+	s := g.cell
+	s.mu.Lock()
+	if s.holder != g {
+		s.mu.Unlock()
+		return Panic(closedGuardMessage)
+	}
+	value := s.value
+	s.mu.Unlock()
+	CheckCancelled(ctx)
+	return value
+}
+
+func accessorLoggerSafety(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	l := ContractReceiver(receiver).(*libraryLogger)
+	l.mu.Lock()
+	threshold := l.threshold
+	l.mu.Unlock()
+	value := Alternative{Type: "@std/LogLevel", Tag: logLevels[threshold]}
+	CheckCancelled(ctx)
+	return value
+}
+
+type accessorReadCase struct {
+	receiver Value
+	mutex    *sync.Mutex
+	write    func(int)
+	check    func(Value, int) bool
+	cleanup  func()
+}
+
+func accessorCase(ctx *Execution, name string) accessorReadCase {
+	if name == "GuardValue" {
+		cell := &Synchronized{typ: "@std/Synchronized[Int]", value: int64(0), changed: make(chan struct{})}
+		guard := cell.Operation("lock").Body(ctx, nil).(*SynchronizedGuard)
+		return accessorReadCase{receiver: guard, mutex: &cell.mu,
+			write: func(n int) {
+				if cell.holder != guard {
+					panic("benchmark guard is not holder")
+				}
+				cell.value = int64(n)
+			},
+			check:   func(v Value, n int) bool { value, ok := v.(int64); return ok && value == int64(n) },
+			cleanup: guard.close}
+	}
+	logger := &libraryLogger{threshold: 2}
+	return accessorReadCase{receiver: ViewOf("@std/Logger", logger), mutex: &logger.mu,
+		write: func(n int) { logger.threshold = n % len(logLevels) },
+		check: func(v Value, n int) bool {
+			value, ok := v.(Alternative)
+			return ok && value.Type == "@std/LogLevel" && value.Tag == logLevels[n%len(logLevels)]
+		}, cleanup: func() {}}
+}
+
+type accessorOutcome struct {
+	value   Value
+	failure any
+}
+
+func accessorCapture(read accessorRead, ctx *Execution, receiver Value) (out accessorOutcome) {
+	defer func() { out.failure = recover() }()
+	out.value = read(ctx, receiver)
+	return
+}
+
+//go:noinline
+func accessorBlockedReader(read accessorRead, ctx *Execution, receiver Value, done chan<- accessorOutcome) {
+	done <- accessorCapture(read, ctx, receiver)
+}
+
+// Setup only: establish actual mutex blocking before the timed release.
+func accessorAwaitMutex(buffer []byte) error {
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		stacks := string(buffer[:runtime.Stack(buffer, true)])
+		for _, stack := range strings.Split(stacks, "\n\n") {
+			if strings.Contains(stack, "accessorBlockedReader") &&
+				(strings.Contains(stack, "[sync.Mutex.Lock]") || strings.Contains(stack, "[semacquire]")) &&
+				(strings.Contains(stack, "(*Mutex).Lock") || strings.Contains(stack, "(*Mutex).lockSlow")) {
+				return nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("reader was not proven mutex-blocked within 5s")
+		}
+		runtime.Gosched()
+	}
+}
+
+var accessorReadModes = []struct {
+	name          string
+	guard, logger accessorRead
+}{
+	{"Public", accessorGuardPublic, accessorLoggerPublic},
+	{"SafetyControl", accessorGuardSafety, accessorLoggerSafety},
+}
+
+func TestAccessorContentionParity(t *testing.T) {
+	for _, kind := range []string{"GuardValue", "LoggerLevel"} {
+		for _, mode := range accessorReadModes {
+			t.Run(kind+"/"+mode.name, func(t *testing.T) {
+				read := mode.guard
+				if kind == "LoggerLevel" {
+					read = mode.logger
+				}
+				ctx := RootExecution()
+				defer FinishExecution(ctx)
+				c := accessorCase(ctx, kind)
+				defer c.cleanup()
+				for n := 0; n < 12; n++ {
+					c.mutex.Lock()
+					c.write(n)
+					c.mutex.Unlock()
+					out := accessorCapture(read, ctx, c.receiver)
+					if out.failure != nil || !c.check(out.value, n) {
+						t.Fatalf("live read %d: %+v", n, out)
+					}
+				}
+				buffer := make([]byte, 512<<10)
+				c.mutex.Lock()
+				c.write(17)
+				done := make(chan accessorOutcome, 1)
+				go accessorBlockedReader(read, ctx, c.receiver, done)
+				err := accessorAwaitMutex(buffer)
+				c.mutex.Unlock()
+				out := <-done
+				if err != nil {
+					t.Fatal(err)
+				}
+				if out.failure != nil || !c.check(out.value, 17) {
+					t.Fatalf("blocked live read: %+v", out)
+				}
+				var cancel context.CancelFunc
+				ctx.Context, cancel = context.WithCancel(ctx.Context)
+				defer cancel()
+				c.mutex.Lock()
+				go accessorBlockedReader(read, ctx, c.receiver, done)
+				err = accessorAwaitMutex(buffer)
+				cancel()
+				c.mutex.Unlock()
+				out = <-done
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, ok := out.failure.(cancelled); !ok {
+					t.Fatalf("delivery must observe cancellation: %+v", out)
+				}
+				if kind == "GuardValue" {
+					fresh := RootExecution()
+					defer FinishExecution(fresh)
+					c.cleanup()
+					out = accessorCapture(read, fresh, c.receiver)
+					if out.failure == nil || !strings.Contains(fmt.Sprint(out.failure), closedGuardMessage) {
+						t.Fatalf("stale guard must fault: %+v", out)
+					}
+				}
+			})
+		}
+	}
+}
+
+var accessorIntSink int64
+var accessorTagSink string
+
+func accessorConsume(value Value) {
+	if n, ok := value.(int64); ok {
+		accessorIntSink = n
+	} else {
+		accessorTagSink = value.(Alternative).Tag
+	}
+}
+
+func BenchmarkAccessorUncontended(b *testing.B) {
+	for _, kind := range []string{"GuardValue", "LoggerLevel"} {
+		for _, mode := range accessorReadModes {
+			b.Run(kind+"/"+mode.name, func(b *testing.B) {
+				read := mode.guard
+				if kind == "LoggerLevel" {
+					read = mode.logger
+				}
+				ctx := RootExecution()
+				defer FinishExecution(ctx)
+				c := accessorCase(ctx, kind)
+				defer c.cleanup()
+				c.mutex.Lock()
+				c.write(17)
+				c.mutex.Unlock()
+				if out := accessorCapture(read, ctx, c.receiver); out.failure != nil || !c.check(out.value, 17) {
+					b.Fatalf("setup read: %+v", out)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				for n := 0; n < b.N; n++ {
+					accessorConsume(read(ctx, c.receiver))
+				}
+				b.StopTimer()
+			})
+		}
+	}
+}
+
+func BenchmarkAccessorReleaseLatency(b *testing.B) {
+	for _, kind := range []string{"GuardValue", "LoggerLevel"} {
+		for _, mode := range accessorReadModes {
+			b.Run(kind+"/"+mode.name, func(b *testing.B) {
+				b.StopTimer()
+				read := mode.guard
+				if kind == "LoggerLevel" {
+					read = mode.logger
+				}
+				ctx := RootExecution()
+				defer FinishExecution(ctx)
+				c := accessorCase(ctx, kind)
+				defer c.cleanup()
+				buffer := make([]byte, 512<<10)
+				b.ReportAllocs()
+				for n := 0; n < b.N; n++ {
+					c.mutex.Lock()
+					c.write(n)
+					done := make(chan accessorOutcome, 1)
+					go accessorBlockedReader(read, ctx, c.receiver, done)
+					if err := accessorAwaitMutex(buffer); err != nil {
+						c.mutex.Unlock()
+						<-done
+						b.Fatal(err)
+					}
+					b.StartTimer()
+					c.mutex.Unlock()
+					out := <-done
+					b.StopTimer()
+					if out.failure != nil || !c.check(out.value, n) {
+						b.Fatalf("released read: %+v", out)
+					}
+					accessorConsume(out.value)
+				}
+			})
+		}
+	}
+}
