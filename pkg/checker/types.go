@@ -105,13 +105,22 @@ type Info struct {
 	inferenceDeferred bool
 }
 type Flow struct{ FallsThrough bool }
+
+// TestFixture preserves the checked factory identity and concrete injected type.
+type TestFixture struct {
+	Factory *Symbol
+	Type    *Type
+	Hooks   *Type // the standard TestHooks contract the fixture implements
+}
+
 type Program struct {
-	Effects     map[string][]string
-	Modules     []*syntax.Module
-	symbols     map[string]map[string]*Symbol
-	Methods     []*Method
-	Diagnostics []syntax.Diagnostic
-	serial      int // identities handed out while checking
+	TestFixtures map[string]*TestFixture
+	Effects      map[string][]string
+	Modules      []*syntax.Module
+	symbols      map[string]map[string]*Symbol
+	Methods      []*Method
+	Diagnostics  []syntax.Diagnostic
+	serial       int // identities handed out while checking
 }
 
 func (t *Type) String() string {

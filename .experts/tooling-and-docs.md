@@ -109,6 +109,51 @@ Evidence: [embedded services](../internal/debugger/debugger.go),
 [platform contract](../documentation/developer-tooling/debugging/debugger-integration.md).
 Verified: the DAP Go-source launch modes, terminal Go-module path guessing, and an obsolete DWARF compatibility probe could still invoke external Go despite embedding Delve. The transport/client now exclude those routes; [vendor refresh](../scripts/maintenance/delve.go) reapplies the small compatibility-probe patch. Profile viewers are prebuilt into the SDK payload, not compiled on first use.
 
+Verified: terminal Close only restores modes; it does not interrupt a blocked
+prompt. Embedded terminal sessions need owned interruptible stdio, a joined
+SIGINT guard, and canceled prompt deliveries before restoring borrowed handles.
+On Unix, set nonblocking mode before constructing the duplicate so Delve's
+paging writer calling `Fd` cannot disable cancellation; restore shared flags
+after target shutdown. Windows console input bypasses Go's file reader, so
+cancel the stable worker thread's synchronous I/O until it joins and restore
+console modes through the original handles. [Vendor refresh](../scripts/maintenance/delve_terminal.go)
+preserves the small terminal/liner lifecycle patches. Evidence:
+[owned I/O](../internal/debugger/io.go), [native lifecycle regressions](../internal/debugger/native_lifecycle_test.go),
+and [Windows console regression](../internal/debugger/process_windows_test.go).
+Verify console behavior on a native Windows host; pipe tests and cross-compilation
+do not validate `ReadConsoleInputW` cancellation or console mode restoration.
+
+Verified: a fatal command-reader error must be latched before reporting it;
+stop the target before a bounded, joined diagnostic attempt. A final CLI stderr
+write can block again when stderr shares the unread event-output pipe, so it
+uses the same owned reporting path. Identify the null device by descriptor
+identity, since inherited stdio retains names such as `/dev/stdin` even when
+redirected to `/dev/null`. Evidence: [full-output and redirected-stream cases](../internal/debugger/native_lifecycle_test.go),
+[shared-output CLI regression](../tests/e2e/debug_script_cancel_unix_test.go),
+and [borrowed descriptor/deadline regressions](../internal/debugger/io_unix_test.go).
+These are debugger-owned CLI transports; they do not change the runtime/stdlib
+stdio cancellation contract.
+
+Verified: Delve consumes `OutputRedirect.File` and closes it after Windows
+launch. Scripted JSON redirects must pass distinct owned stderr duplicates,
+with fallback cleanup for failed launches; passing borrowed `os.Stderr` closes
+the caller's diagnostics. Evidence: [Delve redirect ownership](../vendor/github.com/go-delve/delve/pkg/proc/native/proc.go),
+[Windows launch](../vendor/github.com/go-delve/delve/pkg/proc/native/proc_windows.go),
+and [borrowed stderr regression](../internal/debugger/io_windows_test.go).
+For full-pipe Windows tests, complete writes up to the queried pipe capacity;
+a canceled oversized write does not establish retained buffer contents. Keep
+test failure diagnostics on a separate file when stdio is unread or null.
+
+Open: disconnecting the client joins client calls but does not stop an active
+backend operation. Public service Stop still owns target cleanup. Delve resets
+manual-stop requests before Continue, and gdbserial ignores manual stops while
+its connection is outside Continue; prompt/stream cancellation tests do not
+establish cancellation across every native step. Evidence:
+[Continue](../vendor/github.com/go-delve/delve/pkg/proc/target_exec.go) and
+[gdbserial stop](../vendor/github.com/go-delve/delve/pkg/proc/gdbserial/gdbserver.go).
+Verify native cancellation during dispatch and single-step before expanding
+the shutdown guarantee beyond the tested lifecycle paths.
+
 Verify: run the shutdown tests with `-race`, the native editor test, and the
 six-target standalone distribution checks after changing Delve or its transport.
 

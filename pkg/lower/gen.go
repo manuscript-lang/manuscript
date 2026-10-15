@@ -68,7 +68,7 @@ func duplicateNames(program *checker.Program) map[string]bool {
 		for _, module := range program.Modules {
 			for _, d := range module.Declarations {
 				switch d.Kind {
-				case syntax.KindFn, syntax.KindType, syntax.KindTest, syntax.KindInterface:
+				case syntax.KindFn, syntax.KindType, syntax.KindRecord, "alternative", syntax.KindTest, syntax.KindInterface:
 					count[sanitize(d.Name)]++
 					if d.Kind == syntax.KindTest {
 						count["test_"+sanitize(d.Name)]++
@@ -269,6 +269,7 @@ func (g *gen) file(entry string, options Options) *ast.File {
 	}}
 	var tests []ast.Expr
 	var main *funcDecl
+	fixtures, setup := g.fixtures(options)
 	for _, module := range g.program.Modules {
 		g.module = module.File
 		for _, d := range module.Declarations {
@@ -284,7 +285,7 @@ func (g *gen) file(entry string, options Options) *ast.File {
 				}
 			case syntax.KindTest:
 				if options.Tests {
-					tests = append(tests, g.test(module.File, d))
+					tests = append(tests, g.test(module.File, d, fixtures[module.File]))
 				}
 			}
 		}
@@ -293,8 +294,13 @@ func (g *gen) file(entry string, options Options) *ast.File {
 	var body []ast.Stmt
 	switch {
 	case options.Tests:
+		run := ast.Expr(rtCall("RunTests", ident("tests"), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}))
+		if options.CPUProfile != "" || options.HeapProfile != "" || options.Trace != "" {
+			run = rtCall("Profile", textLiteral(options.CPUProfile), textLiteral(options.HeapProfile), textLiteral(options.Trace), closure(nil, ident("int"), returned(run)))
+		}
+		body = append(body, setup...)
 		body = append(body, define("tests", sliceLiteral(rtName("Test"), tests...)),
-			&ast.IfStmt{Cond: binary(rtCall("RunTests", ident("tests"), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}), token.GTR, intLiteral(0)),
+			&ast.IfStmt{Cond: binary(run, token.GTR, intLiteral(0)),
 				Body: block(evaluated(call(selector(ident("os"), "Exit"), intLiteral(1))))})
 	case options.Entry && main != nil:
 		run := ast.Expr(rtCall("RunMain", ident(main.name), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}))
@@ -311,8 +317,41 @@ func (g *gen) file(entry string, options Options) *ast.File {
 	return file
 }
 
-// test registers a test block as a function and returns its table entry.
-func (g *gen) test(module string, d *syntax.Declaration) ast.Expr {
+// fixture is the Go state of one file's make_fixture: the variable that
+// holds the instance and the runtime fixture that creates it.
+type fixture struct{ holder, runtime string }
+
+// fixtures declares the test fixtures of the modules that define make_fixture,
+// in module order. The runner creates each instance on first use; the file's
+// tests read it from the holder.
+func (g *gen) fixtures(options Options) (map[string]*fixture, []ast.Stmt) {
+	found := map[string]*fixture{}
+	var setup []ast.Stmt
+	if !options.Tests {
+		return found, nil
+	}
+	for _, module := range g.program.Modules {
+		checked := g.program.TestFixtures[module.File]
+		if checked == nil {
+			continue
+		}
+		g.module = module.File
+		n := itoa(len(found))
+		f := &fixture{holder: "fixtureValue" + n, runtime: "fixture" + n}
+		found[module.File] = f
+		factory := g.function(checked.Factory, nil)
+		create := closure([]*ast.Field{field("ctx", pointerTo(rtName("Execution")))}, rtName("TestHooks"),
+			assign(ident(f.holder), token.ASSIGN, call(ident(factory.name), ident("ctx"))),
+			returned(g.viewOf(ident(f.holder), checked.Type, checked.Hooks)))
+		setup = append(setup, varDecl(f.holder, g.goType(checked.Type), nil),
+			define(f.runtime, address(composite(rtName("TestFixture"), keyed("File", textLiteral(module.File)), keyed("Create", create)))))
+	}
+	return found, setup
+}
+
+// test registers a test block as a function and returns its table entry. A
+// test in a file with a fixture receives the shared instance as `fixture`.
+func (g *gen) test(module string, d *syntax.Declaration, fixture *fixture) ast.Expr {
 	key := "test:" + module + "::" + d.Name
 	name := "test_" + sanitize(d.Name)
 	if g.dup[name] {
@@ -322,7 +361,15 @@ func (g *gen) test(module string, d *syntax.Declaration) ast.Expr {
 		typ: &checker.Type{Kind: "function", ID: "fn", Name: "fn", Result: unitType}}
 	f.fn = f
 	g.touch(&f.node)
-	return composite(nil, keyed("Name", textLiteral(module+"::"+d.Name)), keyed("Run", ident(f.name)))
+	var run ast.Expr = ident(f.name)
+	entry := []ast.Expr{keyed("Name", textLiteral(module+"::"+d.Name))}
+	if fixture != nil {
+		run = closure([]*ast.Field{field("ctx", pointerTo(rtName("Execution")))}, rtName("Unit"),
+			returned(call(ident(f.name), ident("ctx"), ident(fixture.holder))))
+		entry = append(entry, keyed("Run", run), keyed("Fixture", ident(fixture.runtime)))
+		return composite(nil, entry...)
+	}
+	return composite(nil, append(entry, keyed("Run", run))...)
 }
 
 // assemble lowers every function instance reachable from the roots, a wave at

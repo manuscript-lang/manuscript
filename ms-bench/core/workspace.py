@@ -61,7 +61,7 @@ def make_workspace(ch: Challenge, lang_id: str, lang: dict, dest: Path) -> str:
     os.chmod(dest / "check.sh", 0o755)
     for ctx in lang.get("context", []):
         if ctx == "@stdlib":
-            subprocess.run(["ms", "stdlib", str(dest / "docs" / "stdlib")], check=True, capture_output=True)
+            shutil.copytree(REPO / "pkg" / "stdlib", dest / "docs" / "stdlib", ignore=shutil.ignore_patterns("*.go"), dirs_exist_ok=True)
         elif ctx.startswith("@repo/"):
             shutil.copytree(REPO / ctx[6:], dest / "docs", dirs_exist_ok=True)
     return (

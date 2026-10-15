@@ -37,6 +37,7 @@ type HostRoots struct {
 	WallClock  WallClock
 	Entropy    Entropy
 	System     System
+	Terminal   Terminal
 
 	// Network is installed by the network module; it is nil until then.
 	Network Network
@@ -97,6 +98,7 @@ func (h *HostRoots) build() error {
 	h.Entropy = osEntropy{}
 	h.WallClock = osWallClock{}
 	h.System = &osSystem{}
+	h.Terminal = osTerminal{}
 	h.Stdin = newHostStream(os.Stdin, false)
 	h.Stdout = newHostStream(os.Stdout, false)
 	h.Stderr = newHostStream(os.Stderr, false)
@@ -184,6 +186,9 @@ func Time_WallClock(ctx *Execution) WallClock { return hostRoots(ctx).WallClock 
 
 // System_System is the system.system root accessor.
 func System_System(ctx *Execution) System { return hostRoots(ctx).System }
+
+// Terminal_Terminal is the terminal.terminal root accessor.
+func Terminal_Terminal(ctx *Execution) Terminal { return hostRoots(ctx).Terminal }
 
 // osWallClock reads the host's calendar time.
 type osWallClock struct{}

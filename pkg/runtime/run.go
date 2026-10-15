@@ -11,8 +11,9 @@ import (
 
 // Test is one test block of the generated program.
 type Test struct {
-	Name string
-	Run  func(*Execution) Unit
+	Name    string
+	Run     func(*Execution) Unit
+	Fixture *TestFixture
 }
 
 // Exit statuses of RunMain.
@@ -78,6 +79,7 @@ func RunMain(main func(*Execution) int64, args []string) (exit int) {
 		defer Cleanup(execution, hostShutdown)
 	}
 	defer FinishExecution(execution)
+	defer terminalRestoreAll()
 	value := main(execution)
 	CheckCancelled(execution)
 	if value < 0 || value > maxMainExit {

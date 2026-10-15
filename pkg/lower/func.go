@@ -119,6 +119,10 @@ func (g *gen) lowerFunction(f *funcDecl) {
 		params = append(params, fld)
 		prologue = append(prologue, fill...)
 	}
+	if fixture := g.program.FixtureBinding(d); fixture != nil {
+		params = append(params, field(g.bindingName(fixture), g.goType(fixture.Type)))
+		prologue = append(prologue, g.keepUnused(fixture)...)
+	}
 	body := g.body(d.Body, g.fn.result)
 	body = append(prologue, body...)
 	body = g.finishBody(body, g.fn.result)

@@ -32,6 +32,7 @@
     "@std/system.ms/SystemError/Error/message": "errors/message",
     "@std/tasks.ms/ExecutionError/Error/message": "errors/message",
     "@std/tasks.ms/StartError/Error/message": "errors/message",
+    "@std/terminal.ms/TerminalError/Error/message": "errors/message",
     "@std/time.ms/TimeError/Error/message": "errors/message",
     "@std/tls.ms/TlsError/Error/message": "errors/message",
     "@std/url.ms/UrlError/Error/message": "errors/message",

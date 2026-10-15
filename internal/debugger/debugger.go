@@ -4,9 +4,11 @@ package debugger
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/go-delve/delve/pkg/config"
 	"github.com/go-delve/delve/pkg/terminal"
@@ -49,10 +51,22 @@ func DAP(ctx context.Context, transport io.ReadWriteCloser) {
 	<-done
 }
 
+var terminalStdioMu sync.Mutex
+
 // Terminal runs the ordinary Delve terminal against an in-process RPC service.
 // The private pipe is never exposed as a network listener. Delve owns Ctrl-C;
 // the caller cancels ctx on termination so a launched target is reaped.
-func Terminal(ctx context.Context, executable string, args []string) (int, error) {
+func Terminal(ctx context.Context, executable string, args []string) (status int, err error) {
+	if err := ctx.Err(); err != nil {
+		return 1, err
+	}
+	// Delve/liner use process stdio and console handles for editing and modes.
+	// A CLI has one terminal; serialize ownership for embedded callers too.
+	terminalStdioMu.Lock()
+	defer terminalStdioMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return 1, err
+	}
 	listener, conn := service.ListenerPipe()
 	defer listener.Close()
 	defer conn.Close()
@@ -60,30 +74,60 @@ func Terminal(ctx context.Context, executable string, args []string) (int, error
 		Listener: listener, ProcessArgs: append([]string{executable}, args...), APIVersion: 2,
 		Debugger: delve.Config{Backend: "default", WorkingDir: ".", CheckGoVersion: true, ExecuteKind: delve.ExecutingExistingFile},
 	})
+	if err := ctx.Err(); err != nil {
+		return 1, err
+	}
 	if err := server.Run(); err != nil {
 		return 1, err
 	}
-	defer server.Stop()
+	restoreIO, restoreErrors := func() error { return nil }, func() error { return nil }
+	defer func() {
+		stopErr := server.Stop()
+		if closeErr := errors.Join(stopErr, restoreErrors(), restoreIO()); closeErr != nil {
+			status, err = 1, errors.Join(err, closeErr)
+		}
+	}()
+	// Launch may call Fd on inherited files. Own them after that call so their
+	// shared flags remain nonblocking throughout terminal reads and writes.
+	var opts, errorOpts Options
+	opts, restoreIO, err = ownScriptIO(Options{Script: os.Stdin, Out: os.Stdout})
+	if err != nil {
+		return 1, err
+	}
+	errorOpts, restoreErrors, err = ownScriptIO(Options{Out: os.Stderr})
+	if err != nil {
+		return 1, err
+	}
 	conf, err := config.LoadConfig()
 	if err != nil {
 		return 1, err
 	}
-	term := terminal.New(msClient{rpc2.NewClientFromConn(conn)}, conf)
-	type result struct {
-		status int
-		err    error
+	input, output, errorOutput := opts.Script.(*os.File), opts.Out.(*os.File), errorOpts.Out.(*os.File)
+	undoConsole, err := replaceConsoleStdio(input, output, errorOutput)
+	if err != nil {
+		return 1, err
 	}
-	done := make(chan result, 1)
-	go func() { status, err := term.Run(); done <- result{status, err} }()
-	select {
-	case result := <-done:
-		return result.status, result.err
-	case <-ctx.Done():
-		// Run can be blocked reading a terminal. Restore it before the CLI exits;
-		// the deferred server stop halts and detaches the target first.
-		term.Close()
-		return 1, ctx.Err()
-	}
+	defer func() {
+		if consoleErr := undoConsole(); consoleErr != nil {
+			status, err = 1, errors.Join(err, consoleErr)
+		}
+	}()
+	oldInput, oldOutput, oldError := os.Stdin, os.Stdout, os.Stderr
+	os.Stdin, os.Stdout, os.Stderr = input, output, errorOutput
+	defer func() { os.Stdin, os.Stdout, os.Stderr = oldInput, oldOutput, oldError }()
+	interruptIO := func() { opts.CancelIO(); errorOpts.CancelIO() }
+	client := rpc2.NewClientFromConn(conn)
+	defer client.Disconnect(false)
+	return runCancelable(ctx, func() {
+		_ = client.Disconnect(false)
+		interruptIO()
+	}, func() (int, error) {
+		term := terminal.New(msClient{client}, conf)
+		status, err := term.RunWithContext(ctx)
+		interruptIO()
+		term.WaitForInput()
+		return status, err
+	})
 }
 
 // Manuscript source maps already identify source files. Delve's Go-module path

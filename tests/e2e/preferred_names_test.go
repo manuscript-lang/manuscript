@@ -67,3 +67,11 @@ test "continues":
 		}
 	}
 }
+
+func TestSameTypeNamesAcrossModules(t *testing.T) {
+	result := compiler.CompileFile("testdata/projects/same_type_names/main.ms", compiler.Options{Tests: true})
+	data, err := execute(t, result)
+	if err != nil || !strings.HasSuffix(strings.TrimSpace(string(data)), "1 tests, 0 failed") {
+		t.Fatalf("same type names: %v\n%s", err, data)
+	}
+}

@@ -139,13 +139,17 @@ func runNativeProgram(inv *invocation, kind compiler.BuildType, result compiler.
 		return failure("build", err)
 	}
 	if command == "debug" {
-		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+		signals := []os.Signal{syscall.SIGTERM}
+		if inv.debugScript != "" || len(inv.debugBreaks) > 0 {
+			signals = append(signals, os.Interrupt)
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), signals...)
 		defer cancel()
 		if inv.debugScript != "" || len(inv.debugBreaks) > 0 {
 			return runDebugScript(ctx, inv, result, executable)
 		}
 		status, err := debugger.Terminal(ctx, executable, inv.arguments)
-		if err != nil {
+		if err != nil && ctx.Err() == nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		return status
@@ -177,8 +181,8 @@ func runDebugScript(ctx context.Context, inv *invocation, result compiler.Result
 		}
 	}
 	status, err := debugger.Script(ctx, executable, opts)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	if err != nil && ctx.Err() == nil {
+		_ = debugger.ReportError(ctx, os.Stderr, err)
 	}
 	return status
 }

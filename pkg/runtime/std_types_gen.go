@@ -1780,6 +1780,132 @@ type WorkStatus_Unknown struct {
 func (WorkStatus_Unknown) isWorkStatus() {
 }
 
+type TerminalError interface {
+	isTerminalError()
+}
+type TerminalError_InvalidInput struct {
+}
+
+func (TerminalError_InvalidInput) isTerminalError() {
+}
+
+type TerminalError_NotTerminal struct {
+}
+
+func (TerminalError_NotTerminal) isTerminalError() {
+}
+
+type TerminalError_Unsupported struct {
+}
+
+func (TerminalError_Unsupported) isTerminalError() {
+}
+
+type TerminalError_Busy struct {
+}
+
+func (TerminalError_Busy) isTerminalError() {
+}
+
+type TerminalError_Closed struct {
+}
+
+func (TerminalError_Closed) isTerminalError() {
+}
+
+type TerminalError_Failed struct {
+	Message string
+}
+
+func (TerminalError_Failed) isTerminalError() {
+}
+
+type TerminalSize struct {
+	Columns int64
+	Rows    int64
+}
+type TerminalCapabilities struct {
+	InputIsTerminal  bool
+	OutputIsTerminal bool
+	ErrorIsTerminal  bool
+	RawMode          bool
+	ResizeEvents     bool
+	Colors           int64
+}
+type TerminalEvent interface {
+	isTerminalEvent()
+}
+type TerminalEvent_Text struct {
+	Text string
+}
+
+func (TerminalEvent_Text) isTerminalEvent() {
+}
+
+type TerminalEvent_Key struct {
+	Name  string
+	Ctrl  bool
+	Alt   bool
+	Shift bool
+}
+
+func (TerminalEvent_Key) isTerminalEvent() {
+}
+
+type TerminalEvent_Resize struct {
+	Columns int64
+	Rows    int64
+}
+
+func (TerminalEvent_Resize) isTerminalEvent() {
+}
+
+type EraseRegion interface {
+	isEraseRegion()
+}
+type EraseRegion_Screen struct {
+}
+
+func (EraseRegion_Screen) isEraseRegion() {
+}
+
+type EraseRegion_Line struct {
+}
+
+func (EraseRegion_Line) isEraseRegion() {
+}
+
+type EraseRegion_LineEnd struct {
+}
+
+func (EraseRegion_LineEnd) isEraseRegion() {
+}
+
+type EraseRegion_LineStart struct {
+}
+
+func (EraseRegion_LineStart) isEraseRegion() {
+}
+
+type Terminal interface {
+	Capabilities(ctx *Execution) *TerminalCapabilities
+	Size(ctx *Execution) Result[*TerminalSize, TerminalError]
+	RawMode(ctx *Execution, a0 bool) Result[RawTerminal, TerminalError]
+}
+type RawTerminal interface {
+	Close(ctx *Execution) Unit
+	NextEvent(ctx *Execution, a0 Option[Duration]) Result[Option[TerminalEvent], TerminalError]
+	Size(ctx *Execution) Result[*TerminalSize, TerminalError]
+	MoveCursor(ctx *Execution, a0 int64, a1 int64) Result[Unit, TerminalError]
+	ShowCursor(ctx *Execution, a0 bool) Result[Unit, TerminalError]
+	Erase(ctx *Execution, a0 EraseRegion) Result[Unit, TerminalError]
+}
+type TestHooks interface {
+	BeforeAll(ctx *Execution) Unit
+	BeforeEach(ctx *Execution) Unit
+	AfterEach(ctx *Execution) Unit
+	AfterAll(ctx *Execution) Unit
+}
 type TimeError interface {
 	isTimeError()
 }
