@@ -185,3 +185,15 @@ func Bytes_ToText(_ *Execution, b *Bytes) Option[string] {
 	}
 	return Some(string(b.Data))
 }
+
+// NewBytesFromValues is the Bytes constructor: every value must fit a byte.
+func NewBytesFromValues(values *List[int64]) *Bytes {
+	data := make([]byte, len(values.Items))
+	for i, v := range values.Items {
+		if v < 0 || v > 255 {
+			rangeFault("Bytes", "values["+FormatInt(int64(i))+"]", v, 0, 255)
+		}
+		data[i] = byte(v)
+	}
+	return &Bytes{Data: data}
+}

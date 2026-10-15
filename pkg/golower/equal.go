@@ -78,7 +78,7 @@ func (g *gen) equalBody(t *checker.Type) []ast.Stmt {
 	for _, m := range g.program.ResolveMethods(g.module, t, "equals") {
 		if m.Contract != nil && m.Contract.ID == "@std/Equal" && m.Native == "" {
 			f := g.methodFunction(m, t)
-			return []ast.Stmt{returned(call(ident(f.name), ident("ctx"), ident("a"), ident("b")))}
+			return []ast.Stmt{returned(call(ident(f.name), ident("ctx"), ident("a"), g.viewOf(ident("b"), t, m.Contract)))}
 		}
 	}
 	a, b := ident("a"), ident("b")
