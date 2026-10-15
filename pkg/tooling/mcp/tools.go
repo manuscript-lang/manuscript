@@ -52,9 +52,8 @@ func readOnly(open bool) map[string]any {
 
 var tools = []tool{
 	{
-		Name: "check",
-		Description: "Parse and type-check Manuscript without running it. Returns versioned JSON diagnostics (code, phase, message, position); an empty list means the input is valid. " +
-			"Each message reads '<cause>; <fix>'. Pass paths (files, directories, or ms.toml) or source (a snippet checked as a standalone file). Run after every edit.",
+		Name:        "check",
+		Description: "Type-check without running. Returns JSON diagnostics (empty list = valid); messages read '<cause>; <fix>'. Pass paths (files, dirs, ms.toml) or source.",
 		InputSchema: obj(nil, map[string]any{"paths": pathList("Files, directories, or ms.toml projects to check."), "source": str("Manuscript source to check as a standalone main.ms.")}),
 		Annotations: readOnly(false),
 		handler: func(s *Server, ctx context.Context, raw json.RawMessage) (string, error) {
@@ -62,9 +61,8 @@ var tools = []tool{
 		},
 	},
 	{
-		Name: "lint",
-		Description: "Check source hygiene and semantic lint rules. Returns versioned JSON findings with stable rule codes. " +
-			"Pass paths (files, directories, or ms.toml) or source (checked as a standalone main.ms).",
+		Name:        "lint",
+		Description: "Lint rules as JSON findings with stable codes. Pass paths or source.",
 		InputSchema: obj(nil, map[string]any{"paths": pathList("Files, directories, or ms.toml projects to lint."), "source": str("Manuscript source to lint as a standalone main.ms.")}),
 		Annotations: readOnly(false),
 		handler: func(s *Server, ctx context.Context, raw json.RawMessage) (string, error) {
@@ -72,9 +70,8 @@ var tools = []tool{
 		},
 	},
 	{
-		Name: "fmt",
-		Description: "Format Manuscript. With source, returns the formatted text and touches no files. With paths, reports unformatted files as JSON, " +
-			"or rewrites them in place when write is true.",
+		Name:        "fmt",
+		Description: "source: returns formatted text. paths: reports unformatted files, or rewrites them when write is true.",
 		InputSchema: obj(nil, map[string]any{
 			"source": str("Manuscript source to format; the formatted source is returned."),
 			"paths":  pathList("Files, directories, or ms.toml projects to format."),
@@ -84,9 +81,8 @@ var tools = []tool{
 		handler:     (*Server).format,
 	},
 	{
-		Name: "test",
-		Description: "Run the test blocks of a project, selected by its ms.toml. Returns the versioned JSON result with per-test status, failure output, and diagnostics. " +
-			"Accepts only a project (an ms.toml or its directory), never arbitrary source files or program arguments.",
+		Name:        "test",
+		Description: "Run a project's tests; returns JSON results. Project (ms.toml or its directory) only.",
 		InputSchema: obj([]string{"project"}, map[string]any{
 			"project":         str("Path to ms.toml, or the directory containing it."),
 			"filter":          str("Run only tests whose module::name contains this text."),
@@ -96,9 +92,8 @@ var tools = []tool{
 		handler:     (*Server).test,
 	},
 	{
-		Name: "run",
-		Description: "Build and run a project's entry point (main() -> Int) as defined by its ms.toml. Returns the exit code, stdout, and stderr. " +
-			"Accepts only a project (an ms.toml or its directory); no program arguments or stdin. Output is capped and the run is stopped at the timeout.",
+		Name:        "run",
+		Description: "Build and run a project's main; returns exit code, stdout, stderr. Project (ms.toml or its directory) only; no arguments or stdin.",
 		InputSchema: obj([]string{"project"}, map[string]any{
 			"project":         str("Path to ms.toml, or the directory containing it."),
 			"timeout_seconds": integer("Stop the program after this many seconds. Default 30, maximum 300."),
@@ -107,9 +102,8 @@ var tools = []tool{
 		handler:     (*Server).run,
 	},
 	{
-		Name: "build",
-		Description: "Verify that a project builds a native executable. Returns the versioned JSON build result; the executable is discarded. " +
-			"Accepts only a project (an ms.toml or its directory). Use run to execute it.",
+		Name:        "build",
+		Description: "Check that a project builds natively; returns JSON, discards the binary. Project only.",
 		InputSchema: obj([]string{"project"}, map[string]any{
 			"project":         str("Path to ms.toml, or the directory containing it."),
 			"timeout_seconds": integer("Stop the build after this many seconds. Default 300, maximum 600."),
@@ -118,16 +112,15 @@ var tools = []tool{
 		handler:     (*Server).build,
 	},
 	{
-		Name: "std_lookup",
-		Description: "Fuzzy-search the bundled standard library for functions, types, and members. Returns the import path, declaration signature, and doc for the best matches. " +
-			"Tolerates partial words, typos, and natural phrases such as 'read file', 'jsn parse', or 'http server'. Use before calling an API you have not seen; never guess standard signatures.",
+		Name:        "std_lookup",
+		Description: "Fuzzy-search the standard library (typos and loose words fine). Returns import path, signature, doc. Use before calling any std API.",
 		InputSchema: obj([]string{"query"}, map[string]any{"query": str("Words describing the API, in any order."), "limit": integer("Maximum matches. Default 8, maximum 25.")}),
 		Annotations: readOnly(false),
 		handler:     (*Server).stdLookup,
 	},
 	{
 		Name:        "inspect",
-		Description: "Emit checked symbols, types, call sites, and statement spans for a file or project as JSON. Large for big projects; output is capped.",
+		Description: "Checked symbols, types and call sites of a file or project as JSON (capped).",
 		InputSchema: obj([]string{"path"}, map[string]any{"path": str("A .ms file, or an ms.toml project.")}),
 		Annotations: readOnly(false),
 		handler:     (*Server).inspect,

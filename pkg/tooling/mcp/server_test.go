@@ -208,14 +208,14 @@ func TestPromptsAndResources(t *testing.T) {
 		`{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"manuscript://stdlib/json"}}`,
 		`{"jsonrpc":"2.0","id":6,"method":"resources/read","params":{"uri":"manuscript://nope"}}`,
 		`{"jsonrpc":"2.0","id":7,"method":"resources/list"}`,
-		`{"jsonrpc":"2.0","id":8,"method":"prompts/get","params":{"name":"stdlib_cheatsheet"}}`)
-	if n := len(r[1]["result"].(map[string]any)["prompts"].([]any)); n != 4 {
+		`{"jsonrpc":"2.0","id":8,"method":"resources/read","params":{"uri":"manuscript://stdlib"}}`)
+	if n := len(r[1]["result"].(map[string]any)["prompts"].([]any)); n != 3 {
 		t.Errorf("prompts = %d", n)
 	}
 	promptText := func(id int) string {
 		return r[id]["result"].(map[string]any)["messages"].([]any)[0].(map[string]any)["content"].(map[string]any)["text"].(string)
 	}
-	if !strings.Contains(promptText(2), "Manuscript cheat sheet") || !strings.Contains(promptText(3), "sum a list") {
+	if !strings.Contains(promptText(2), "Manuscript rules") || !strings.Contains(promptText(3), "sum a list") {
 		t.Error("prompt text missing")
 	}
 	if r[4]["error"] == nil || r[6]["error"] == nil {
@@ -225,7 +225,8 @@ func TestPromptsAndResources(t *testing.T) {
 	if !strings.Contains(content, "# @std/json.ms") {
 		t.Errorf("resource = %.80q", content)
 	}
-	if !strings.Contains(promptText(8), "@std/fs.ms") || !strings.Contains(promptText(8), "prelude") {
+	index := r[8]["result"].(map[string]any)["contents"].([]any)[0].(map[string]any)["text"].(string)
+	if !strings.Contains(index, "@std/fs.ms") || !strings.Contains(index, "prelude") {
 		t.Error("stdlib index incomplete")
 	}
 	if n := len(r[7]["result"].(map[string]any)["resources"].([]any)); n < 20 {
@@ -249,4 +250,22 @@ func TestCheatsheetProgramChecks(t *testing.T) {
 func quote(s string) string {
 	data, _ := json.Marshal(s)
 	return string(data)
+}
+
+// Agents rediscover prompts and tool descriptions every session, so keep them short.
+func TestDiscoveredTextStaysSmall(t *testing.T) {
+	for _, p := range prompts {
+		text, err := p.build(map[string]string{"task": "x", "diagnostic": "x"})
+		if err != nil || len(text) > 800 {
+			t.Errorf("prompt %s: %d bytes, %v", p.Name, len(text), err)
+		}
+	}
+	for _, tl := range tools {
+		if len(tl.Description) > 260 {
+			t.Errorf("tool %s description is %d bytes", tl.Name, len(tl.Description))
+		}
+	}
+	if len(instructions) > 260 {
+		t.Errorf("instructions are %d bytes", len(instructions))
+	}
 }

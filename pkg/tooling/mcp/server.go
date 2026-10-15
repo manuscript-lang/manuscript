@@ -170,6 +170,4 @@ func (s *Server) initialize(params json.RawMessage) any {
 	}
 }
 
-const instructions = "Manuscript tools for writing and verifying .ms source. Call std_lookup before using a standard-library API you have not seen, " +
-	"and check after every edit. Read the manuscript_cheatsheet prompt or manuscript://cheatsheet resource first when new to the language. " +
-	"test, run, and build act on a project's ms.toml only."
+const instructions = "Write and verify .ms source. Read the manuscript_cheatsheet prompt once, std_lookup any std API before use, check after every edit. test, run, and build take a project ms.toml only."

@@ -83,7 +83,7 @@ These commands use source checking and embedded declarations without a Go instal
 | `std_lookup` | Fuzzy search over bundled standard declarations and members (typos, partial words, any word order), returning import path, signature, and doc. Built from the checker's definitions, not from another command |
 | `inspect` | The `ms inspect --json` document for a file or project |
 
-The prompts `manuscript_cheatsheet`, `stdlib_cheatsheet`, `write_idiomatic_manuscript`, and `fix_diagnostic`, and the resources `manuscript://cheatsheet`, `manuscript://stdlib`, and `manuscript://stdlib/<module>` give agents the language rules and API index. The cheat sheet's complete program is checked by the package tests; the standard-library index is generated, so it cannot drift. Tool results are the CLI's own JSON documents, so their schemas follow the CLI's format versions.
+The prompts `manuscript_cheatsheet`, `write_idiomatic_manuscript`, and `fix_diagnostic` are each under 800 bytes, because agents rediscover them every session. The longer references are resources read on demand: `manuscript://cheatsheet`, `manuscript://stdlib` (generated index), and `manuscript://stdlib/<module>`. A test pins the size limits and checks the cheat sheet's complete program. Tool results are the CLI's own JSON documents, so their schemas follow the CLI's format versions.
 
 ## Selecting independent analysis inputs
 

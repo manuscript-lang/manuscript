@@ -25,51 +25,43 @@ type prompt struct {
 	build       func(args map[string]string) (string, error)
 }
 
+// Prompts are rediscovered on every session, so each stays within about 150 tokens.
+// The longer reference lives in resources, which agents read on demand.
+const quickRules = `Manuscript rules:
+- 4-space indent; no print (write bytes via @std/io.ms); main() -> Int is the exit status.
+- let binds once, var reassigns; Optional is some(x)/none; no implicit conversions.
+- Errors: Result ok(v)/error(e); try unwraps or returns. Never nest match.
+- Methods only via interface + impl I for T. Tests: test "name": blocks.
+- std_lookup every std API before use; check after each edit. Full guide: manuscript://cheatsheet.`
+
 var prompts = []prompt{
 	{
 		Name:        "manuscript_cheatsheet",
-		Description: "Compact language reference: syntax, types, control flow, errors, tests, and the check-and-fix workflow. Read before writing Manuscript.",
-		build:       func(map[string]string) (string, error) { return cheatsheet, nil },
-	},
-	{
-		Name:        "stdlib_cheatsheet",
-		Description: "Index of every standard-library module and its exported names, generated from the bundled declarations. Use std_lookup for signatures.",
-		build:       func(map[string]string) (string, error) { return stdlibIndex(), nil },
+		Description: "Core Manuscript rules in a few lines.",
+		build:       func(map[string]string) (string, error) { return quickRules, nil },
 	},
 	{
 		Name:        "write_idiomatic_manuscript",
-		Description: "Frame a coding task: write Manuscript for a goal, verified with the manuscript tools.",
-		Arguments:   []promptArgument{{Name: "task", Description: "What the program or change should do.", Required: true}},
+		Description: "Write Manuscript for a task and verify it.",
+		Arguments:   []promptArgument{{Name: "task", Description: "What to build.", Required: true}},
 		build: func(args map[string]string) (string, error) {
 			task := strings.TrimSpace(args["task"])
 			if task == "" {
 				return "", fmt.Errorf("task is required")
 			}
-			return "Write Manuscript for this task:\n\n" + task + "\n\n" +
-				"Method: read the manuscript_cheatsheet prompt if you have not. Use std_lookup for every standard API before calling it. " +
-				"Handle expected failures with Result and try, keep match flat, and prefer small functions. " +
-				"After each edit run check, then fmt, then lint; add test blocks and run test on the project's ms.toml. " +
-				"Finish only when check and test report no diagnostics or failures, and say which you ran.", nil
+			return quickRules + "\n\nTask: " + task + "\nDone when check and test are clean.", nil
 		},
 	},
 	{
 		Name:        "fix_diagnostic",
-		Description: "Repair a Manuscript diagnostic: apply the fix its message names, then re-check.",
-		Arguments: []promptArgument{
-			{Name: "diagnostic", Description: "The diagnostic JSON or message from check or lint.", Required: true},
-			{Name: "source", Description: "The source the diagnostic refers to, if not already in context."},
-		},
+		Description: "Fix a diagnostic, then re-check.",
+		Arguments:   []promptArgument{{Name: "diagnostic", Description: "Message or JSON from check or lint.", Required: true}},
 		build: func(args map[string]string) (string, error) {
 			diagnostic := strings.TrimSpace(args["diagnostic"])
 			if diagnostic == "" {
 				return "", fmt.Errorf("diagnostic is required")
 			}
-			text := "Fix this Manuscript diagnostic:\n\n" + diagnostic + "\n\n"
-			if source := strings.TrimSpace(args["source"]); source != "" {
-				text += "Source:\n\n```manuscript\n" + source + "\n```\n\n"
-			}
-			return text + "Diagnostic messages read '<cause>; <fix>': apply the named fix at the reported position rather than restructuring. " +
-				"If it names a standard API, confirm the signature with std_lookup. Re-run check until the diagnostics are empty, then run test if the project has tests.", nil
+			return "Diagnostic: " + diagnostic + "\nMessages read '<cause>; <fix>': apply the fix at the position, nothing more; re-run check.", nil
 		},
 	},
 }
@@ -104,12 +96,12 @@ func getPrompt(params json.RawMessage) (any, *rpcError) {
 // declarations the checker uses so it cannot drift from the library.
 func stdlibIndex() string {
 	var b strings.Builder
-	b.WriteString("# Standard library index\n\nImport with `import Name from \"@std/<module>.ms\"`. Names under `prelude` need no import. Use std_lookup for signatures and docs.\n")
+	b.WriteString("# Standard library\n\n`import Name from \"@std/<module>.ms\"`; `prelude` names need no import. std_lookup gives signatures.\n")
 	for _, module := range checker.StandardLibrary() {
 		fmt.Fprintf(&b, "\n## %s\n", module.Path)
 		names := make([]string, 0, len(module.Declarations))
 		for _, d := range module.Declarations {
-			names = append(names, d.Name+" ("+d.Kind+")")
+			names = append(names, d.Name)
 		}
 		b.WriteString(strings.Join(names, ", "))
 		b.WriteString("\n")
