@@ -145,7 +145,14 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	}
 	for _, op := range ops {
 		if !seen[op.Name] {
-			c.error(d.Pos, "type", "missing implementation operation "+op.Name+"; add "+operationDeclaration(op)+" to this impl")
+			if std(contract, "TestHooks") {
+				// This standard lifecycle contract has no-op defaults; retain ordinary
+				// checked methods so interface calls and generic bounds use normal dispatch.
+				method := &syntax.Declaration{Kind: syntax.KindFn, Name: op.Name, Pos: d.Pos, Result: &syntax.Type{Name: "Unit", Pos: d.Pos}}
+				c.Methods = append(c.Methods, &Method{ID: c.unique("method"), Module: c.module.File, Local: receiver.Def.Symbol.Module != c.module.File, Receiver: receiver, Contract: contract, Variables: vars, Decl: method, Type: op.Type})
+			} else {
+				c.error(d.Pos, "type", "missing implementation operation "+op.Name+"; add "+operationDeclaration(op)+" to this impl")
+			}
 		}
 	}
 	c.wellFormed(receiver, d.Pos, map[string]bool{})

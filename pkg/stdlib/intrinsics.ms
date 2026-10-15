@@ -172,6 +172,7 @@ interface FloatOperations:
 # Start with [imports](imports.md), then learn how to obtain [external services](services.md). [Errors and limits](contracts.md) apply across the library.
 #
 # Start a [command-line program](cli.md) to use those services in an application.
+# Use [testing helpers](testing.md) for assertions.
 #
 # ## Work with data
 #

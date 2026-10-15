@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +26,7 @@ type invocation struct {
 	buildTypeName                      string
 	buildTypeSet                       bool
 	testTimeout, testFilter            string
+	testOptions                        []string
 	debugScript                        string   // ms debug --script: command file, or - for stdin
 	debugBreaks                        []string // ms debug --break: one-shot breakpoints
 	arguments                          []string // forwarded to the program after --
@@ -115,6 +118,29 @@ func (inv *invocation) parseOptions(args []string, first int, positional bool) (
 				return usageError("--build-type may only be specified once; remove the duplicate flag"), false
 			}
 			inv.buildTypeName, inv.buildTypeSet = value, true
+		case "--list", "--fail-fast":
+			inv.testOptions = append(inv.testOptions, flag)
+		case "--test", "--match", "--exclude", "--repeat", "--shuffle":
+			value, ok := requiredValue(args, &i, value, inline)
+			if !ok {
+				return usageError("%s requires a value; run 'ms help test' for examples", flag), false
+			}
+			if flag == "--match" || flag == "--exclude" {
+				if _, err := regexp.Compile(value); err != nil {
+					return usageError("invalid %s: %v; supply a valid regular expression", flag, err), false
+				}
+			}
+			if flag == "--repeat" {
+				if n, err := strconv.Atoi(value); err != nil || n <= 0 {
+					return usageError("invalid --repeat; use a positive integer"), false
+				}
+			}
+			if flag == "--shuffle" {
+				if _, err := strconv.ParseInt(value, 10, 64); err != nil {
+					return usageError("invalid --shuffle; use an integer seed"), false
+				}
+			}
+			inv.testOptions = append(inv.testOptions, flag+"="+value)
 		case "--timeout", "--filter":
 			value, ok := requiredValue(args, &i, value, inline)
 			if !ok {
@@ -222,11 +248,11 @@ func (inv *invocation) validate() (plan, int, bool) {
 	if inv.output != "" && !inv.isOneOf("build", "emit", "inspect", "diagram", "profile") {
 		return p, usageError("-o and --output are valid only for ms build, emit, inspect, diagram, doc, or profile, not ms %s; run 'ms help %s' for its options", command, command), false
 	}
-	if (inv.testTimeout != "" || inv.testFilter != "") && command != "test" {
-		return p, usageError("--timeout and --filter are valid only for ms test, not ms %s; run 'ms help %s' for the options this command accepts", command, command), false
+	if (inv.testTimeout != "" || inv.testFilter != "" || len(inv.testOptions) > 0) && command != "test" {
+		return p, usageError("test selection options are valid only for ms test, not ms %s; run 'ms help %s' for the options this command accepts", command, command), false
 	}
 	if command == "test" {
-		var testArgs []string
+		testArgs := append([]string{}, inv.testOptions...)
 		if inv.testTimeout != "" {
 			testArgs = append(testArgs, "--timeout="+inv.testTimeout)
 		}
@@ -269,14 +295,31 @@ func (inv *invocation) validate() (plan, int, bool) {
 			return p, usageError("debug requires build type Debug; remove --build-type or pass --build-type Debug"), false
 		}
 		kind = compiler.Debug
-	case command == "profile" && !inv.buildTypeSet:
+	case (command == "profile" || (command == "test" && inv.hasProfilePaths())) && !inv.buildTypeSet:
 		kind = compiler.RelWithDebInfo
 	}
-	if inv.hasProfilePaths() && command != "run" {
-		return p, usageError("profiling paths (--cpu-profile, --heap-profile, --trace) require run, not %s; use ms run <file> with them, or ms profile <file> [--trace] for a bundle", command), false
+	if inv.hasProfilePaths() && !inv.isOneOf("run", "test") {
+		return p, usageError("profiling paths (--cpu-profile, --heap-profile, --trace) require run or test, not %s; use ms test <file> or ms run <file> with them, or ms profile <file> [--trace] for a bundle", command), false
+	}
+	if command == "test" && inv.hasProfilePaths() && slices.Contains(inv.testOptions, "--list") {
+		return p, usageError("--list cannot be combined with profiling flags; select and run a test to profile it"), false
 	}
 	if inv.watch && inv.hasProfilePaths() {
 		return p, usageError("--watch cannot be combined with profiling flags; run the profile once without --watch"), false
+	}
+	// Test execution changes working directory for fixtures. Capture paths belong
+	// to the caller, just as they do for ms run.
+	if command == "test" {
+		for _, path := range []*string{&inv.cpuProfile, &inv.heapProfile, &inv.tracePath} {
+			if *path == "" {
+				continue
+			}
+			absolute, err := filepath.Abs(*path)
+			if err != nil {
+				return p, usageError("cannot resolve profile path: %v; run from an accessible directory", err), false
+			}
+			*path = absolute
+		}
 	}
 	p.options.CPUProfile, p.options.HeapProfile, p.options.Trace = inv.cpuProfile, inv.heapProfile, inv.tracePath
 	p.kind = kind

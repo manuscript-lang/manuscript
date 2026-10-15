@@ -323,3 +323,55 @@ Decision: Map and Set iterate in insertion order, and keys use the `Hashable` in
 Apply when: adding or renaming collection, standard-library, or I/O members; choosing between Optional, Result, and a fault.
 Evidence: [failure-mode rule](../pkg/stdlib/intrinsics.ms), [collection order and mutation](../documentation/core-language/types/collections.md), and [equality interfaces](../documentation/core-language/types/equality-and-hashing.md).
 Verify: iteration after removals and re-adds keeps insertion order for the remaining keys; a new member documents its failure mode and has a doc comment with an example.
+
+### Test plans distinguish declarations from executions
+
+Verified: listing and fail-fast complete a plan with unrun entries; repeat creates
+separate indexed executions of one declaration. Reader completion must account
+for skip and intentional unrun outcomes without masking an active incomplete test.
+
+Apply when: changing test options, event reporting, or testing helpers.
+Evidence: [event reader checks](../internal/cli/test_result_test.go),
+[native runner checks](../tests/e2e/testing_runner_test.go), and
+[helper contracts](../pkg/stdlib/testing.ms).
+Verify: list executes no bodies, fail-fast retains later not_run entries, repeated
+names retain indices, and fault assertions propagate cancellation and skip.
+Standalone builds combine runtime imports into one file: alias math/rand as
+mathrand so shuffle does not collide with crypto/rand. Run the existing native
+Standalone regressions when adding runtime imports; ordinary package builds
+do not expose this collision.
+
+### Testing helpers do not duplicate test blocks
+
+Decision: the user removed `describe` and `it` callback helpers because wrapping
+those steps in an existing `test` block duplicates grouping without creating
+independently selectable or reported cases. Keep assertions directly usable in
+ordinary test blocks; do not restore these wrappers without a new direction.
+
+Apply when: adding BDD helpers or test suite grouping.
+Evidence: the user's explicit removal request in this conversation;
+[testing declarations](../pkg/stdlib/testing.ms).
+Verify: standard testing exports contain assertions, fail and skip, with no
+callback suite wrappers.
+
+### File fixtures own a separate lifetime from each test
+
+Decision: the user chose an ordinary local make_fixture() convention and a
+concrete return type implementing TestHooks; tests use the implicit fixture
+binding, while hooks use self. No additional declaration or nesting is required.
+Omitted hooks are no-ops elaborated only for the canonical standard interface;
+written hooks retain ordinary signature checking and dispatch.
+
+Verified: file roots retain fixture resources while each test uses independent
+hosts and work scopes. Listing performs no setup. Unjoined fixture work poisons
+further use and suppresses owner teardown; closing resources concurrently with
+that work would race the resource owner. Cooperative cancellation runs teardown
+with a fresh bounded cleanup context.
+
+Apply when: changing fixture injection, runner hook ordering, or default hooks.
+Evidence: [checked fixtures](../pkg/checker/test_fixture.go),
+[lifecycle regressions](../tests/e2e/test_fixture_test.go),
+[owner lifetime checks](../pkg/runtime/test_fixture_test.go).
+Verify: no setup for --list, one construction across repetitions, per-file
+isolation, ordinary interface calls to omitted hooks, and failure/cancellation
+cleanup with preserved machine outcomes.

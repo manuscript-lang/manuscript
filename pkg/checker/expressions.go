@@ -153,6 +153,11 @@ func (c *checker) inferText(e *syntax.Expression, expected *Type, i *Info) *Info
 }
 
 func (c *checker) inferName(e *syntax.Expression, expected *Type, i *Info) *Info {
+	if e.Text == "fixture" && c.scope.binding(e.Text) == nil {
+		c.error(e.Pos, "resolution", "fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this file")
+		i.Type = primitive("<invalid>")
+		return i
+	}
 	if b := c.scope.binding(e.Text); b != nil {
 		i.Type = b.Type
 		i.Binding = b
