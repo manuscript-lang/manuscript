@@ -79,8 +79,20 @@ func (g *gen) lowerFunction(f *funcDecl) {
 	body := g.body(d.Body, g.fn.result)
 	body = append(prologue, body...)
 	body = g.finishBody(body, g.fn.result)
+	body = g.cleanupPrologue(body)
 	f.out = &ast.FuncDecl{Name: ident(f.name), Type: functionType(params, g.goType(g.fn.result)), Body: block(body...)}
 	g.decls = append(g.decls, f.out)
+}
+
+// cleanupPrologue creates the function's cleanup stack when its body uses with.
+func (g *gen) cleanupPrologue(body []ast.Stmt) []ast.Stmt {
+	if !g.fn.cleanup {
+		return body
+	}
+	return append([]ast.Stmt{
+		define("cs", address(composite(rtName("CleanupStack")))),
+		&ast.DeferStmt{Call: call(selector(ident("cs"), "Unwind"))},
+	}, body...)
 }
 
 // finishBody terminates a body Go cannot prove returns: Unit functions return

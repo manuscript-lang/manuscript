@@ -71,6 +71,8 @@ func (g *gen) goType(t *checker.Type) ast.Expr {
 	switch {
 	case t.Kind == "primitive":
 		return rtName("Unit")
+	case t.Kind == "variable" && g.inRuntime:
+		return ident(t.Name)
 	case t.Kind == "variable":
 		g.fail("type variable %s was not instantiated; this is a Manuscript lowering bug", t.Name)
 		return ident("struct{}")
@@ -222,7 +224,7 @@ func (g *gen) alternativeDecl(d *typeDecl) []ast.Decl {
 		name := g.caseName(d, c.Name)
 		decls = append(decls, typeSpec(name, &ast.StructType{Fields: &ast.FieldList{List: fields}}),
 			&ast.FuncDecl{
-				Recv: &ast.FieldList{List: []*ast.Field{field("", ident(name))}},
+				Recv: &ast.FieldList{List: []*ast.Field{{Type: ident(name)}}},
 				Name: ident(marker), Type: functionType(nil, nil), Body: block(),
 			})
 	}

@@ -233,7 +233,7 @@ func (g *gen) text(e *syntax.Expression) ast.Expr {
 func (g *gen) indexValue(e *syntax.Expression) ast.Expr {
 	t := g.info(e.Left).Type
 	operands := g.operandsAs([]*syntax.Expression{e.Left, e.Right}, []*checker.Type{t, intType})
-	return rtCall("List_At", generic(ident(""), g.goType(t.Args[0])), operands[0], operands[1])
+	return call(generic(rtName("List_At"), g.goType(t.Args[0])), ident("ctx"), operands[0], operands[1])
 }
 
 func (g *gen) list(e *syntax.Expression, info *checker.Info) ast.Expr {
@@ -405,6 +405,7 @@ func (g *gen) lambda(e *syntax.Expression, info *checker.Info) ast.Expr {
 	g.markUsed(e.Params, e.Body)
 	body := append(prologue, g.body(e.Body, result)...)
 	body = g.finishBody(body, result)
+	body = g.cleanupPrologue(body)
 	fn := closure(params, g.goType(result), body...)
 	for b, old := range restore {
 		if old == nil {

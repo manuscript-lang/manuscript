@@ -108,7 +108,7 @@ func (g *gen) viewMethod(view string, from, contract *checker.Type, op checker.O
 
 func (g *gen) invokeAccessorBody(m *checker.Method, from *checker.Type, receiver ast.Expr, name string) ast.Expr {
 	if m.Native != "" && m.Contract != nil {
-		return call(rtName(nativeName(m.Native)), ident("ctx"), receiver)
+		return call(rtName(implName(m, g.sub(from))), ident("ctx"), receiver)
 	}
 	f := g.methodFunction(m, from)
 	return call(ident(f.name), ident("ctx"), receiver)

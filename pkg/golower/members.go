@@ -55,8 +55,8 @@ func (g *gen) accessor(e *syntax.Expression, info *checker.Info) ast.Expr {
 		g.noteNative(fn)
 		return call(generic(rtName(fn), g.nativeTypeArguments(m, receiverType, nil)...), ident("ctx"), receiver)
 	case m.Native != "":
-		g.noteNative(nativeName(m.Native))
-		return call(rtName(nativeName(m.Native)), ident("ctx"), receiver)
+		g.noteNative(implName(m, receiverType))
+		return call(rtName(implName(m, receiverType)), ident("ctx"), receiver)
 	}
 	f := g.methodFunction(m, receiverType)
 	return call(ident(f.name), ident("ctx"), receiver)

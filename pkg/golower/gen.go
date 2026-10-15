@@ -61,6 +61,8 @@ type gen struct {
 	captured   map[*checker.Binding]string    // snapshot names of captured variables
 	used       map[*checker.Binding]bool      // variables some expression reads
 	localEq    int
+	checks    map[string]int
+	inRuntime  bool // generating the runtime package itself: type variables stay variables
 
 	// The function being lowered.
 	fn *funcState
@@ -77,11 +79,14 @@ type funcState struct {
 	switches int
 	// mutables names the reassignable variables of the function.
 	mutables map[string]bool
+	// withs names the actions of the open `with` scopes.
+	withs []string
 }
 
 type loopState struct {
 	label    string
 	switches int // value of funcState.switches where the loop starts
+	withs    int // number of open cleanups where the loop starts
 	used     bool
 }
 

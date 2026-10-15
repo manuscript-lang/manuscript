@@ -104,6 +104,11 @@ func (g *gen) defaultArgument(i int, p checker.Param, c callee, slots []ast.Expr
 		// An omittable Optional parameter without an expression defaults to none.
 		return composite(g.goType(p.Type))
 	}
+	// Declarations of standard native records default omittable Optional
+	// fields to none and carry no checked expression.
+	if d := c.decls[i].Default; g.program.Info(d) == nil && d.Kind == syntax.KindName && d.Text == "none" {
+		return composite(g.goType(p.Type))
+	}
 	savedModule := g.module
 	g.module = c.module
 	defer func() { g.module = savedModule }()
@@ -216,6 +221,12 @@ func (g *gen) dynamicCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 
 // nativeName is the runtime function implementing a native by convention:
 // module functions are Module_Function and receiver operations Type_Operation.
+// implName is the runtime function of a native contract implementation; one
+// exists per receiver type because Go has no overloading.
+func implName(m *checker.Method, receiver *checker.Type) string {
+	return nativeName(m.Native) + "_" + sanitize(receiver.Name)
+}
+
 func nativeName(key string) string {
 	var parts []string
 	for _, part := range strings.Split(key, "/") {
@@ -326,12 +337,12 @@ func (g *gen) invokeMethod(m *checker.Method, receiverType *checker.Type, receiv
 	receiverType = g.sub(receiverType)
 	switch {
 	case m.Native == "contract":
-		return call(selector(receiver, fieldName(name)), append([]ast.Expr{ident("ctx")}, args...)...)
+		return call(selector(receiver, camel(name)), append([]ast.Expr{ident("ctx")}, args...)...)
 	case m.Native != "" && m.Contract == nil:
 		return g.nativeMethodCall(m, receiverType, receiver, name, args, calleeInfo)
 	case m.Native != "":
-		g.noteNative(nativeName(m.Native))
-		return call(rtName(nativeName(m.Native)), append([]ast.Expr{ident("ctx"), receiver}, args...)...)
+		g.noteNative(implName(m, g.sub(receiverType)))
+		return call(rtName(implName(m, g.sub(receiverType))), append([]ast.Expr{ident("ctx"), receiver}, args...)...)
 	}
 	f := g.methodFunction(m, receiverType)
 	return call(ident(f.name), append([]ast.Expr{ident("ctx"), receiver}, args...)...)
@@ -352,7 +363,7 @@ func (g *gen) nativeMethodName(m *checker.Method, receiverType *checker.Type) st
 	if receiverType.Kind == "primitive" {
 		base = receiverType.ID
 	}
-	return base + "_" + camel(m.Native)
+	return base + "_" + camel(m.Decl.Name)
 }
 
 // nativeTypeArguments are the receiver's type arguments followed by the

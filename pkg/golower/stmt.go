@@ -46,9 +46,9 @@ func (g *gen) statementKind(s *syntax.Statement) []ast.Stmt {
 	case syntax.KindReturn:
 		return g.returnStatement(s)
 	case syntax.KindBreak:
-		return []ast.Stmt{g.branch(token.BREAK)}
+		return g.branch(token.BREAK)
 	case syntax.KindContinue:
-		return []ast.Stmt{g.branch(token.CONTINUE)}
+		return g.branch(token.CONTINUE)
 	case syntax.KindIf:
 		return g.ifStatement(s)
 	case syntax.KindWhile, syntax.KindFor:
@@ -182,18 +182,23 @@ var (
 
 // branch is break or continue for the innermost loop. Inside a match's Go
 // switch a bare break would leave the switch, so the loop is labeled then.
-func (g *gen) branch(tok token.Token) ast.Stmt {
+func (g *gen) branch(tok token.Token) []ast.Stmt {
 	loop := g.fn.loops[len(g.fn.loops)-1]
+	var out []ast.Stmt
+	// Leaving the loop's body closes the resources it registered, innermost first.
+	for i := len(g.fn.withs) - 1; i >= loop.withs; i-- {
+		out = append(out, evaluated(call(selector(ident(g.fn.withs[i]), "Run"))))
+	}
 	if g.fn.switches > loop.switches {
 		loop.used = true
-		return &ast.BranchStmt{Tok: tok, Label: ident(loop.label)}
+		return append(out, &ast.BranchStmt{Tok: tok, Label: ident(loop.label)})
 	}
-	return &ast.BranchStmt{Tok: tok}
+	return append(out, &ast.BranchStmt{Tok: tok})
 }
 
 // loop lowers while and for. Every back edge polls for cancellation.
 func (g *gen) loop(s *syntax.Statement) []ast.Stmt {
-	state := &loopState{label: g.temp(), switches: g.fn.switches}
+	state := &loopState{label: g.temp(), switches: g.fn.switches, withs: len(g.fn.withs)}
 	g.fn.loops = append(g.fn.loops, state)
 	out := g.loopStatements(s)
 	g.fn.loops = g.fn.loops[:len(g.fn.loops)-1]
@@ -251,8 +256,35 @@ func (g *gen) rangeLoop(s *syntax.Statement, binding *checker.Binding, iterable 
 	return nil
 }
 
-// with registers a lexical cleanup; added when cleanup stacks land.
+// with registers a lexical cleanup. The close operation runs when the block
+// ends normally, before break and continue leave it, and from the function's
+// deferred unwind on return, error, fault, or cancellation.
 func (g *gen) with(s *syntax.Statement) []ast.Stmt {
-	g.fail("with is not lowered yet")
-	return nil
+	b := g.program.LoopBinding(s)
+	value := g.expr(s.Value)
+	g.fn.cleanup = true
+	name := g.bindingName(b)
+	action := g.temp()
+	resource := g.sub(b.Type)
+	closer := g.closeOperation(s, resource, ident(name))
+	out := []ast.Stmt{define(name, value)}
+	out = append(out, g.keepUnused(b)...)
+	register := call(selector(ident("cs"), "Push"), ident("ctx"), closure([]*ast.Field{field("ctx", pointerTo(rtName("Execution")))}, nil, evaluated(closer)))
+	out = append(out, define(action, register))
+	g.fn.withs = append(g.fn.withs, action)
+	out = append(out, g.body(s.Body, nil)...)
+	g.fn.withs = g.fn.withs[:len(g.fn.withs)-1]
+	out = append(out, evaluated(call(selector(ident(action), "Run"))))
+	return []ast.Stmt{block(out...)}
+}
+
+// closeOperation calls the resource's close implementation.
+func (g *gen) closeOperation(s *syntax.Statement, resource *checker.Type, value ast.Expr) ast.Expr {
+	m := g.program.Cleanup(s)
+	if m == nil {
+		g.fail("%s: with has no close operation", s.Pos)
+		return ident("nil")
+	}
+	m = g.resolveMethod(m, resource, "close")
+	return g.invokeMethod(m, resource, value, "close", nil, nil)
 }
