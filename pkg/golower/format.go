@@ -110,6 +110,7 @@ func (g *gen) formatBody(t *checker.Type) []ast.Stmt {
 			clauses = append(clauses, &ast.CaseClause{List: []ast.Expr{caseType}, Body: []ast.Stmt{returned(result)}})
 		}
 		sw := &ast.TypeSwitchStmt{Assign: &ast.AssignStmt{Lhs: []ast.Expr{ident("x")}, Tok: token.DEFINE, Rhs: []ast.Expr{&ast.TypeAssertExpr{X: v}}}, Body: block(clauses...)}
+		trimSwitch(sw, "x")
 		return []ast.Stmt{guard, sw, returned(textLiteral(""))}
 	case t.Kind == "contract":
 		return []ast.Stmt{returned(textLiteral("[" + t.Name + "]"))}

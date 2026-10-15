@@ -120,7 +120,11 @@ func (g *gen) equalBody(t *checker.Type) []ast.Stmt {
 		for _, c := range cases {
 			caseType := g.caseType(t, c.Name)
 			var body []ast.Stmt
-			body = append(body, &ast.AssignStmt{Lhs: []ast.Expr{ident("y"), ident("ok")}, Tok: token.DEFINE, Rhs: []ast.Expr{&ast.TypeAssertExpr{X: b, Type: caseType}}})
+			other := "y"
+			if len(c.Fields) == 0 {
+				other = "_"
+			}
+			body = append(body, &ast.AssignStmt{Lhs: []ast.Expr{ident(other), ident("ok")}, Tok: token.DEFINE, Rhs: []ast.Expr{&ast.TypeAssertExpr{X: b, Type: caseType}}})
 			cond := ast.Expr(ident("ok"))
 			for _, f := range c.Fields {
 				cond = binary(cond, token.LAND, g.equal(f.Type, selector(ident("x"), fieldName(f.Name)), selector(ident("y"), fieldName(f.Name)), nil))
@@ -129,6 +133,7 @@ func (g *gen) equalBody(t *checker.Type) []ast.Stmt {
 			clauses = append(clauses, &ast.CaseClause{List: []ast.Expr{caseType}, Body: body})
 		}
 		sw := &ast.TypeSwitchStmt{Assign: &ast.AssignStmt{Lhs: []ast.Expr{ident("x")}, Tok: token.DEFINE, Rhs: []ast.Expr{&ast.TypeAssertExpr{X: a}}}, Body: block(clauses...)}
+		trimSwitch(sw, "x")
 		return []ast.Stmt{sw, returned(ident("false"))}
 	}
 	g.fail("no equality for %s", t)

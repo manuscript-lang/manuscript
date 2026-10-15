@@ -68,7 +68,12 @@ func (g *gen) match(e *syntax.Expression, result string, resultType *checker.Typ
 
 // useSwitchVariable keeps `switch s := x.(type)` valid when no clause reads s.
 func (g *gen) useSwitchVariable(out []ast.Stmt, name string) []ast.Stmt {
-	sw := out[len(out)-1].(*ast.TypeSwitchStmt)
+	trimSwitch(out[len(out)-1].(*ast.TypeSwitchStmt), name)
+	return out
+}
+
+// trimSwitch drops the variable of a type switch when no clause reads it.
+func trimSwitch(sw *ast.TypeSwitchStmt, name string) {
 	used := false
 	ast.Inspect(sw.Body, func(n ast.Node) bool {
 		if id, ok := n.(*ast.Ident); ok && id.Name == name {
@@ -79,7 +84,6 @@ func (g *gen) useSwitchVariable(out []ast.Stmt, name string) []ast.Stmt {
 	if !used {
 		sw.Assign = &ast.ExprStmt{X: &ast.TypeAssertExpr{X: sw.Assign.(*ast.AssignStmt).Rhs[0].(*ast.TypeAssertExpr).X}}
 	}
-	return out
 }
 
 // armBody lowers an arm's statements and final value.

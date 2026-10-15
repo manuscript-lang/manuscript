@@ -19,7 +19,7 @@ func (g *gen) callExpr(e *syntax.Expression, info *checker.Info) ast.Expr {
 		return g.recordCall(e, info)
 	case info.Symbol != nil:
 		return g.symbolCall(e, info)
-	case info.Method != nil:
+	case info.Method != nil && callsMember(e.Left):
 		return g.methodCall(e, info)
 	}
 	return g.dynamicCall(e, info)
@@ -216,14 +216,15 @@ func (g *gen) caseCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 func (g *gen) dynamicCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 	calleeInfo := g.info(e.Left)
 	signature := calleeInfo.Type
-	mark := len(g.fn.pre)
 	target := g.expr(e.Left)
 	c := callee{params: signature.Params, defaults: signature.Defaults}
 	if alias := g.aliases[calleeInfo.Binding]; alias != nil && calleeInfo.Binding != nil {
 		c = g.calleeOf(alias, signature)
 	}
 	if !trivial(target) && effectsOf(target).calls {
-		g.fn.pre = append(g.fn.pre[:mark:mark], append([]ast.Stmt{define(g.temp(), target)}, g.fn.pre[mark:]...)...)
+		name := g.temp()
+		g.fn.pre = append(g.fn.pre, define(name, target))
+		target = ident(name)
 	}
 	args := g.arguments(info.Arguments, c)
 	return call(target, append([]ast.Expr{ident("ctx")}, args...)...)
@@ -466,4 +467,13 @@ func (g *gen) nativeTypeArguments(m *checker.Method, receiverType *checker.Type,
 		}
 	}
 	return targs, bind
+}
+
+// callsMember reports whether callee names a member, possibly with explicit
+// type arguments, rather than being the result of another call.
+func callsMember(callee *syntax.Expression) bool {
+	if callee.Kind == syntax.KindApply {
+		callee = callee.Left
+	}
+	return callee.Kind == syntax.KindMember
 }
