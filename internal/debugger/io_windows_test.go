@@ -50,8 +50,8 @@ func TestScriptRedirectKeepsBorrowedStderrOpen(t *testing.T) {
 				if err := output.cleanup(); err != nil {
 					t.Fatal(err)
 				}
-				if _, err := output.file.Stat(); !errors.Is(err, os.ErrClosed) {
-					t.Fatalf("unused redirect survived cleanup: %v", err)
+				if err := output.file.Close(); !errors.Is(err, os.ErrClosed) {
+					t.Fatalf("redirect was not already closed: %v", err)
 				}
 			}
 			if _, err := borrowed.WriteString("borrowed stderr still open"); err != nil {
