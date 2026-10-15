@@ -39,3 +39,18 @@ func TestCharacterPositionCountsUTF16Units(t *testing.T) {
 		t.Fatalf("position = %+v, %v", p, err)
 	}
 }
+
+func TestSearchSymbolsRanksExactBeforePrefixBeforeSubstring(t *testing.T) {
+	dir := t.TempDir()
+	source := "fn parse_all() -> Int:\n    return 1\n\nfn reparse() -> Int:\n    return 2\n\nfn parse() -> Int:\n    return 3\n\nexport fn main() -> Int:\n    return parse()\n"
+	if err := os.WriteFile(filepath.Join(dir, "main.ms"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	matches, total, err := SearchSymbols(dir, "parse", 2)
+	if err != nil || total != 3 || len(matches) != 2 || matches[0].Name != "parse" || matches[1].Name != "parse_all" {
+		t.Fatalf("matches = %+v, total %d, %v", matches, total, err)
+	}
+	if len(matches[0].References) != 2 || !strings.Contains(matches[0].Hover, "parse") {
+		t.Errorf("parse = %+v", matches[0])
+	}
+}
