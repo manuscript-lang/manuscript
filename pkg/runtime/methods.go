@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -209,6 +210,8 @@ type MethodSite struct {
 	// second keeps a different receiver type from evicting the first at a
 	// site that alternates between two implementations.
 	second atomic.Pointer[methodEntry]
+	// operation caches a native service's bound operation for CallOperation.
+	operation atomic.Pointer[operationEntry]
 }
 
 func (site *MethodSite) lookup(typ string) *methodEntry {
@@ -245,6 +248,39 @@ func CallMethod(ctx *Execution, site *MethodSite, receiver Value, contract, name
 		return e.direct(ctx, receiver, args)
 	}
 	return callMethodSlow(ctx, site, receiver, contract, name, scope, args)
+}
+
+// CallOperation calls a method of a standard contract whose arguments are
+// already in declaration order. It resolves exactly as Bind does but skips the
+// Argument slice and label matching that Invoke performs. A native service
+// held by pointer (a clock, a stream) builds its operation once per call site
+// and reuses it while the same service is the receiver.
+func CallOperation(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
+	inner := receiver
+	if view, ok := inner.(View); ok {
+		inner = view.Receiver
+	}
+	if native, ok := inner.(Native); ok && name != "toString" && reflect.TypeOf(inner).Kind() == reflect.Pointer {
+		if e := site.operation.Load(); e != nil && e.receiver == inner {
+			CheckCancelled(ctx)
+			return e.function.Body(ctx, args)
+		}
+		function := native.Operation(name)
+		site.operation.Store(&operationEntry{receiver: inner, function: function})
+		CheckCancelled(ctx)
+		return function.Body(ctx, args)
+	}
+	f, ok := Bind(receiver, contract, name, scope).(Function)
+	if !ok {
+		return Panic("runtime invariant: callee is not specialized")
+	}
+	CheckCancelled(ctx)
+	return f.Body(ctx, args)
+}
+
+type operationEntry struct {
+	receiver Value
+	function Function
 }
 
 // CallInterface calls a method through an interface-typed receiver: the
