@@ -60,15 +60,11 @@ ms doc src/library.ms -o api.md
 ms doc ms.toml --json -o api.json
 ms doc --stdlib -o stdlib.md
 ms doc --stdlib --json -o stdlib.json
-ms stdlib exported-standard-sources
 ```
 
 These commands use source checking and embedded declarations without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
 
-`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. A contiguous `#` comment block directly above a declaration or member, at the same indentation and with no intervening blank line, is its description. Markdown renders these descriptions beside the corresponding signatures; JSON carries declaration `doc` strings and an additive `members` array with `name`, `kind`, `signature`, `doc`, and an optional implementation `contract`. Schema version 2 retains string arrays for `fields`, `cases`, and method `operations`, and adds `accessors` plus member kind `accessor` for read-only value members. Empty member descriptions stay visible as empty `doc` strings; the tool does not invent text from a signature. Inline case payloads do not inherit the case's description. Project docs include reachable local modules; library projects include all source modules and discovered tests. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
-
-`ms stdlib <directory>` writes source declarations and bindings for tooling;
-`ms doc --stdlib` renders API documentation. These outputs serve different tasks.
+`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. A contiguous `#` comment block directly above a declaration or member, at the same indentation and with no intervening blank line, is its description. Markdown renders these descriptions beside the corresponding signatures; JSON carries declaration `doc` strings and an additive `members` array with `name`, `kind`, `signature`, `doc`, and an optional implementation `contract`. Schema version 2 retains string arrays for `fields`, `cases`, and method `operations`, and adds `accessors` plus member kind `accessor` for read-only value members. Empty member descriptions stay visible as empty `doc` strings; the tool does not invent text from a signature. Inline case payloads do not inherit the case's description. Project docs include reachable local modules; library projects include all source modules and discovered tests. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. The `--stdlib` reference describes the compiler version bundled in that binary; it does not download a library.
 
 ## Selecting independent analysis inputs
 
