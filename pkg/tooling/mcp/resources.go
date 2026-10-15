@@ -2,10 +2,10 @@ package mcp
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
 
 type resource struct {
@@ -70,9 +70,30 @@ func resourceText(uri string) (string, bool) {
 		name := strings.TrimPrefix(uri, stdlibPrefix)
 		for _, module := range checker.StandardLibrary() {
 			if moduleShortName(module.Path) == name {
-				return docgen.RenderModule(module), true
+				return renderModule(module), true
 			}
 		}
 	}
 	return "", false
+}
+
+// renderModule writes one module's declarations and documented members as Markdown.
+func renderModule(module checker.APIModule) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# %s\n\n", module.Path)
+	for _, d := range module.Declarations {
+		fmt.Fprintf(&b, "## %s\n\n**%s**\n\n", d.Name, d.Kind)
+		if d.Doc != "" {
+			fmt.Fprintf(&b, "%s\n\n", d.Doc)
+		}
+		if d.Declaration != "" {
+			fmt.Fprintf(&b, "```manuscript\n%s```\n\n", d.Declaration)
+		}
+		for _, m := range d.Members {
+			if strings.TrimSpace(m.Doc) != "" {
+				fmt.Fprintf(&b, "### %s.%s\n\n%s\n\n```manuscript\n%s\n```\n\n", d.Name, m.Name, m.Doc, m.Signature)
+			}
+		}
+	}
+	return b.String()
 }

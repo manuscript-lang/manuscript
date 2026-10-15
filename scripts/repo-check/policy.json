@@ -55,8 +55,7 @@
     "pkg/tooling/mcp": [
       "pkg/checker",
       "pkg/compiler",
-      "pkg/tooling",
-      "pkg/tooling/docgen"
+      "pkg/tooling"
     ],
     "internal/cli": [
       "internal/nativeabi",

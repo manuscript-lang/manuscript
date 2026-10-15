@@ -217,7 +217,7 @@ Verify: source checks and tutorial discovery work without generated Markdown;
 
 ### The MCP server wraps the CLI and never depends on `ms stdlib`
 
-Decision: the user chose `ms mcp` as a thin adapter. Execution tools (`test`, `run`, `build`) accept only a project's `ms.toml`, never a file, argument list, or stdin, so the manifest decides what runs. `std_lookup` is fuzzy. Cheat sheets ship as prompts and resources. The user said `ms stdlib` will be removed: build the lookup index from `checker.StandardLibrary()` and the embedded sources, not from that command's output.
+Decision: the user chose `ms mcp` as a thin adapter. Execution tools (`test`, `run`, `build`) accept only a project's `ms.toml`, never a file, argument list, or stdin, so the manifest decides what runs. `std_lookup` is fuzzy. Cheat sheets ship as prompts and resources. The user is removing `ms stdlib` and `ms doc`: build the lookup index and resources from `checker.StandardLibrary()`, not from those commands or their renderer.
 
 Apply when: adding an MCP tool or changing what an existing one accepts, or touching the standard-library index.
 Evidence: [server](../pkg/tooling/mcp/server.go), [tools](../pkg/tooling/mcp/tools.go), [lookup](../pkg/tooling/mcp/lookup.go), [tests](../pkg/tooling/mcp/server_test.go), and [agent tools](../documentation/developer-tooling/implementation.md#agent-tools-over-mcp).
