@@ -47,7 +47,9 @@ type generator struct {
 	altLocals        map[*checker.Binding]*altShape       // lets declared as typed Result/Optional variables
 	localClosures    map[*checker.Binding]*directFunction // immutable lets of a lambda only ever called directly
 	tried            map[*syntax.Expression]triedValue    // nested try operands already evaluated by early returns
-	sites            []string                             // package-level MethodSite variables, one per direct method call
+	dispatchers      map[string]*dispatcher               // interface method dispatchers by contract and method, nil when none applies
+	dispatchOrder    []*dispatcher
+	sites            []string // package-level MethodSite variables, one per direct method call
 	debugLiterals    bool
 	literalData      []ast.Decl // immutable scalar input, never source collection storage
 }
