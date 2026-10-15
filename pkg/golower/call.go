@@ -1,0 +1,380 @@
+package golower
+
+import (
+	"go/ast"
+	"strings"
+
+	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
+)
+
+// callExpr lowers a call of a function, method, constructor, or function value.
+func (g *gen) callExpr(e *syntax.Expression, info *checker.Info) ast.Expr {
+	switch {
+	case info.Constructor != nil && info.Native == "view":
+		return g.viewCall(e, info)
+	case info.Constructor != nil && info.Case != "":
+		return g.caseCall(e, info)
+	case info.Constructor != nil:
+		return g.recordCall(e, info)
+	case info.Symbol != nil:
+		return g.symbolCall(e, info)
+	case info.Method != nil:
+		return g.methodCall(e, info)
+	}
+	return g.dynamicCall(e, info)
+}
+
+// callee describes the parameters of the callable being invoked: their types
+// in declaration order, the source declarations that carry their defaults, and
+// the bindings those defaults may read.
+type callee struct {
+	params   []checker.Param
+	decls    []syntax.Parameter
+	bindings []*checker.Binding
+	defaults map[string]bool
+	module   string
+}
+
+// arguments lowers the supplied arguments in written order, fills omitted
+// parameters from their defaults, and returns the values in declaration order.
+func (g *gen) arguments(args []syntax.Argument, c callee) []ast.Expr {
+	index := map[string]int{}
+	for i, p := range c.params {
+		index[p.Name] = i
+	}
+	items := make([]*syntax.Expression, len(args))
+	types := make([]*checker.Type, len(args))
+	for i, a := range args {
+		items[i] = a.Value
+		types[i] = g.sub(c.params[index[a.Name]].Type)
+	}
+	values := g.operandsAs(items, types)
+	slots := make([]ast.Expr, len(c.params))
+	order := make([]int, len(args))
+	for i, a := range args {
+		slots[index[a.Name]] = values[i]
+		order[i] = index[a.Name]
+	}
+	// Go evaluates the call's operands left to right in declaration order.
+	// When the written order differs, capture the operands that run code so
+	// source order wins.
+	if !ascending(order) {
+		running := 0
+		for _, v := range values {
+			if effectsOf(v).calls {
+				running++
+			}
+		}
+		if running > 1 {
+			for _, at := range order {
+				if effectsOf(slots[at]).calls {
+					slots[at] = g.spill(slots[at])
+				}
+			}
+		}
+	}
+	for i, p := range c.params {
+		if slots[i] != nil {
+			continue
+		}
+		slots[i] = g.defaultArgument(i, p, c, slots)
+	}
+	return slots
+}
+
+func ascending(order []int) bool {
+	for i := 1; i < len(order); i++ {
+		if order[i] < order[i-1] {
+			return false
+		}
+	}
+	return true
+}
+
+// defaultArgument evaluates the default of an omitted parameter. The default
+// is written in the callee's scope and may read earlier parameters, so each of
+// those is bound to the value this call supplied.
+func (g *gen) defaultArgument(i int, p checker.Param, c callee, slots []ast.Expr) ast.Expr {
+	if i >= len(c.decls) || c.decls[i].Default == nil {
+		if !c.defaults[p.Name] {
+			g.fail("missing argument %s", p.Name)
+			return ident("nil")
+		}
+		// An omittable Optional parameter without an expression defaults to none.
+		return composite(g.goType(p.Type))
+	}
+	savedModule := g.module
+	g.module = c.module
+	defer func() { g.module = savedModule }()
+	savedCaptured := g.captured
+	g.captured = map[*checker.Binding]string{}
+	for k, v := range savedCaptured {
+		g.captured[k] = v
+	}
+	defer func() { g.captured = savedCaptured }()
+	for j := 0; j < i && j < len(c.bindings); j++ {
+		slots[j] = g.spill(slots[j])
+		if id, ok := slots[j].(*ast.Ident); ok {
+			g.captured[c.bindings[j]] = id.Name
+		} else if trivial(slots[j]) {
+			name := g.temp()
+			g.fn.pre = append(g.fn.pre, define(name, slots[j]))
+			slots[j] = ident(name)
+			g.captured[c.bindings[j]] = name
+		}
+	}
+	return g.valueAs(c.decls[i].Default, p.Type)
+}
+
+func (g *gen) calleeOf(s *checker.Symbol, t *checker.Type) callee {
+	c := callee{params: t.Params, defaults: t.Defaults, module: s.Module}
+	if d := s.Decl; d != nil {
+		c.decls = d.Params
+		c.bindings = g.program.ParameterBindings(d)
+	}
+	return c
+}
+
+// symbolCall calls a named function, instantiating it when generic.
+func (g *gen) symbolCall(e *syntax.Expression, info *checker.Info) ast.Expr {
+	s := info.Symbol
+	signature := g.info(e.Left).Type
+	args := g.arguments(info.Arguments, g.calleeOf(s, signature))
+	if s.Native != "" {
+		return g.nativeCall(s, info.TypeArgs, args)
+	}
+	f := g.function(s, info.TypeArgs)
+	return call(ident(f.name), append([]ast.Expr{ident("ctx")}, args...)...)
+}
+
+// recordCall constructs a record. Omitted fields take their defaults.
+func (g *gen) recordCall(e *syntax.Expression, info *checker.Info) ast.Expr {
+	t := g.sub(info.Constructor)
+	signature := checker.ConstructorSignature(t)
+	c := callee{params: signature.Params, defaults: signature.Defaults}
+	if t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Decl != nil {
+		d := t.Def.Symbol.Decl
+		c.decls, c.module = d.Fields, t.Def.Symbol.Module
+		c.bindings = g.program.ParameterBindings(d)
+	}
+	args := g.arguments(info.Arguments, c)
+	return g.construct(t, args)
+}
+
+// construct builds a record from field values in declaration order.
+func (g *gen) construct(t *checker.Type, values []ast.Expr) ast.Expr {
+	if isStdType(t) {
+		return g.stdRecord(t, values)
+	}
+	d := g.declare(t)
+	var elements []ast.Expr
+	for i, f := range checker.Fields(t) {
+		elements = append(elements, keyed(fieldName(f.Name), values[i]))
+	}
+	return address(composite(ident(d.name), elements...))
+}
+
+func (g *gen) stdRecord(t *checker.Type, values []ast.Expr) ast.Expr {
+	name := strings.TrimPrefix(t.ID, "@std/")
+	var typeArgs []ast.Expr
+	for _, a := range t.Args {
+		typeArgs = append(typeArgs, g.goType(a))
+	}
+	return call(generic(rtName("New"+name), typeArgs...), values...)
+}
+
+// caseCall constructs a sum-type case from its payload.
+func (g *gen) caseCall(e *syntax.Expression, info *checker.Info) ast.Expr {
+	t := g.sub(info.Constructor)
+	var params []checker.Param
+	for _, c := range checker.Cases(t) {
+		if c.Name == info.Case {
+			params = c.Fields
+		}
+	}
+	args := g.arguments(info.Arguments, callee{params: params})
+	return g.caseValue(t, info.Case, args)
+}
+
+// dynamicCall calls a function value.
+func (g *gen) dynamicCall(e *syntax.Expression, info *checker.Info) ast.Expr {
+	calleeInfo := g.info(e.Left)
+	signature := calleeInfo.Type
+	mark := len(g.fn.pre)
+	target := g.expr(e.Left)
+	c := callee{params: signature.Params, defaults: signature.Defaults}
+	if alias := g.aliases[calleeInfo.Binding]; alias != nil && calleeInfo.Binding != nil {
+		c = g.calleeOf(alias, signature)
+	}
+	if !trivial(target) && effectsOf(target).calls {
+		g.fn.pre = append(g.fn.pre[:mark:mark], append([]ast.Stmt{define(g.temp(), target)}, g.fn.pre[mark:]...)...)
+	}
+	args := g.arguments(info.Arguments, c)
+	return call(target, append([]ast.Expr{ident("ctx")}, args...)...)
+}
+
+// nativeName is the runtime function implementing a native by convention:
+// module functions are Module_Function and receiver operations Type_Operation.
+func nativeName(key string) string {
+	var parts []string
+	for _, part := range strings.Split(key, "/") {
+		parts = append(parts, camel(part))
+	}
+	return strings.Join(parts, "_")
+}
+
+func camel(snake string) string {
+	var b strings.Builder
+	upper := true
+	for _, r := range snake {
+		if r == '_' {
+			upper = true
+			continue
+		}
+		if upper && r >= 'a' && r <= 'z' {
+			r -= 'a' - 'A'
+		}
+		upper = false
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+// nativeCall calls a runtime function for a standard module function.
+func (g *gen) nativeCall(s *checker.Symbol, typeArgs []*checker.Type, args []ast.Expr) ast.Expr {
+	var targs []ast.Expr
+	for _, a := range typeArgs {
+		targs = append(targs, g.goType(a))
+	}
+	g.noteNative(nativeName(s.Native))
+	return call(generic(rtName(nativeName(s.Native)), targs...), append([]ast.Expr{ident("ctx")}, args...)...)
+}
+
+// nativeFunctionValue is a standard function used as a value.
+func (g *gen) nativeFunctionValue(s *checker.Symbol, typeArgs []*checker.Type, info *checker.Info) ast.Expr {
+	var targs []ast.Expr
+	for _, a := range typeArgs {
+		targs = append(targs, g.goType(a))
+	}
+	g.noteNative(nativeName(s.Native))
+	return generic(rtName(nativeName(s.Native)), targs...)
+}
+
+// noteNative records a runtime function the program uses, for the
+// completeness check between standard declarations and the runtime.
+func (g *gen) noteNative(name string) {
+	if g.natives == nil {
+		g.natives = map[string]bool{}
+	}
+	g.natives[name] = true
+}
+
+// methodCall calls a method: a source implementation resolved statically, a
+// native receiver operation, or an operation on a contract value.
+func (g *gen) methodCall(e *syntax.Expression, info *checker.Info) ast.Expr {
+	member := e.Left
+	if member.Kind == syntax.KindApply {
+		member = member.Left
+	}
+	calleeInfo := g.info(e.Left)
+	if calleeInfo != nil && calleeInfo.Method != nil {
+		info = &checker.Info{Method: calleeInfo.Method, Type: info.Type, Arguments: info.Arguments, TypeArgs: info.TypeArgs, Native: info.Native}
+	}
+	receiverType := g.info(member.Left).Type
+	m := g.resolveMethod(info.Method, receiverType, member.Text)
+	signature := g.sub(calleeInfo.Type)
+	c := callee{params: signature.Params, defaults: signature.Defaults, module: g.module}
+	if m.Decl != nil {
+		c.decls = m.Decl.Params
+		c.bindings = g.program.ParameterBindings(m.Decl)
+	}
+	// The receiver is evaluated before the arguments.
+	receiver := g.spillIfCalls(g.expr(member.Left))
+	args := g.arguments(info.Arguments, c)
+	return g.invokeMethod(m, receiverType, receiver, member.Text, args, calleeInfo)
+}
+
+// spillIfCalls captures a receiver that runs code so arguments cannot run first.
+func (g *gen) spillIfCalls(e ast.Expr) ast.Expr {
+	if effects := effectsOf(e); effects.calls || effects.reads {
+		return g.spill(e)
+	}
+	return e
+}
+
+// resolveMethod re-resolves the operation after type variables are replaced:
+// a bound variable's contract operation becomes the concrete implementation.
+func (g *gen) resolveMethod(m *checker.Method, receiver *checker.Type, name string) *checker.Method {
+	receiver = g.sub(receiver)
+	if m.Native == "contract" && receiver.Kind == "contract" {
+		return m
+	}
+	if len(g.subst) == 0 && m.Native != "contract" {
+		return m
+	}
+	for _, candidate := range g.program.ResolveMethods(g.module, receiver, name) {
+		if m.Contract == nil || candidate.Contract == nil || candidate.Contract.ID == g.sub(m.Contract).ID {
+			return candidate
+		}
+	}
+	return m
+}
+
+// invokeMethod emits the call for a resolved method.
+func (g *gen) invokeMethod(m *checker.Method, receiverType *checker.Type, receiver ast.Expr, name string, args []ast.Expr, calleeInfo *checker.Info) ast.Expr {
+	receiverType = g.sub(receiverType)
+	switch {
+	case m.Native == "contract":
+		return call(selector(receiver, fieldName(name)), append([]ast.Expr{ident("ctx")}, args...)...)
+	case m.Native != "" && m.Contract == nil:
+		return g.nativeMethodCall(m, receiverType, receiver, name, args, calleeInfo)
+	case m.Native != "":
+		g.noteNative(nativeName(m.Native))
+		return call(rtName(nativeName(m.Native)), append([]ast.Expr{ident("ctx"), receiver}, args...)...)
+	}
+	f := g.methodFunction(m, receiverType)
+	return call(ident(f.name), append([]ast.Expr{ident("ctx"), receiver}, args...)...)
+}
+
+// nativeMethodCall calls the runtime function for a native receiver
+// operation, named Type_Operation and instantiated at the receiver's and the
+// operation's type arguments.
+func (g *gen) nativeMethodCall(m *checker.Method, receiverType *checker.Type, receiver ast.Expr, name string, args []ast.Expr, calleeInfo *checker.Info) ast.Expr {
+	fn := g.nativeMethodName(m, receiverType)
+	g.noteNative(fn)
+	targs := g.nativeTypeArguments(m, receiverType, calleeInfo)
+	return call(generic(rtName(fn), targs...), append([]ast.Expr{ident("ctx"), receiver}, args...)...)
+}
+
+func (g *gen) nativeMethodName(m *checker.Method, receiverType *checker.Type) string {
+	base := receiverType.Name
+	if receiverType.Kind == "primitive" {
+		base = receiverType.ID
+	}
+	return base + "_" + camel(m.Native)
+}
+
+// nativeTypeArguments are the receiver's type arguments followed by the
+// operation's own, which the checker leaves implicit: they are recovered by
+// unifying the generic operation signature with the specialized callee type.
+func (g *gen) nativeTypeArguments(m *checker.Method, receiverType *checker.Type, calleeInfo *checker.Info) []ast.Expr {
+	var targs []ast.Expr
+	for _, a := range receiverType.Args {
+		targs = append(targs, g.goType(a))
+	}
+	if len(m.Variables) > 0 && calleeInfo != nil {
+		sub, ok := checker.Unify(m.Type, g.sub(calleeInfo.Type), m.Variables)
+		if !ok {
+			g.fail("cannot infer the type arguments of %s", m.Native)
+		}
+		for _, v := range m.Variables {
+			if t := sub[v.ID]; t != nil {
+				targs = append(targs, g.goType(t))
+			} else {
+				g.fail("type argument %s of %s is not determined", v.Name, m.Native)
+			}
+		}
+	}
+	return targs
+}
