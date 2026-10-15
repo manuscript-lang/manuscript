@@ -13,8 +13,8 @@ import (
 // captures, generic values, and call boundaries retain the shared Value ABI.
 // Nonprimitive equality retains the checker's selected implementation scope.
 func (g *generator) numericBinary(e *syntax.Expression) ast.Expr {
-	left := g.program.Info(e.Left).Type
-	right := g.program.Info(e.Right).Type
+	left := g.info(e.Left).Type
+	right := g.info(e.Right).Type
 	if left.ID != right.ID || left.ID != "Int" && left.ID != "Float" {
 		return nil
 	}
@@ -60,7 +60,7 @@ func (g *generator) orderedNumeric(e *syntax.Expression, goType string) ast.Expr
 }
 
 func (g *generator) numericOperation(e *syntax.Expression, a, b ast.Expr) ast.Expr {
-	left := g.program.Info(e.Left).Type
+	left := g.info(e.Left).Type
 	switch e.Text {
 	case "<", "<=", ">", ">=":
 		op := map[string]token.Token{"<": token.LSS, "<=": token.LEQ, ">": token.GTR, ">=": token.GEQ}[e.Text]
@@ -81,8 +81,8 @@ func (g *generator) numericOperation(e *syntax.Expression, a, b ast.Expr) ast.Ex
 
 // numericResult is the Go type numericBinary yields for e, or "".
 func (g *generator) numericResult(e *syntax.Expression) string {
-	left := g.program.Info(e.Left).Type
-	right := g.program.Info(e.Right).Type
+	left := g.info(e.Left).Type
+	right := g.info(e.Right).Type
 	if left.ID != right.ID || left.ID != "Int" && left.ID != "Float" {
 		return ""
 	}
@@ -130,7 +130,7 @@ func (g *generator) negationType(e *syntax.Expression) string {
 	if e.Kind != syntax.KindUnary || e.Text != "-" {
 		return ""
 	}
-	switch g.program.Info(e.Right).Type.ID {
+	switch g.info(e.Right).Type.ID {
 	case "Int":
 		return "int64"
 	case "Float":

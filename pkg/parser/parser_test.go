@@ -60,6 +60,9 @@ func FuzzParse(f *testing.F) {
 	for _, s := range []string{"fn f() -> Unit:\n    return\n", "import panic from \"@std/faults.ms\"\n\ntest \"text\":\n    if not (\"{1}\" == \"1\"):\n        return panic(message: \"check failed\")\n", "type Item:\n    value: Int\n"} {
 		f.Add(s)
 	}
+	f.Add("interface Read[T]:\n    get value -> T\nimpl Read[Int] for Box:\n    get value -> Int: self.get\n")
+	f.Add("type Box[T]:\n    get: T\n    get value -> T:\n    fn get() -> T:\n")
+	f.Add("interface Read:\n    get value() -> Int\n    get callback -> fn(value: Int) -> Int\n")
 	f.Fuzz(func(t *testing.T, source string) {
 		if len(source) > 16000 {
 			t.Skip()
@@ -149,18 +152,18 @@ func TestRejectInterfaceSyntax(t *testing.T) {
 
 func TestNamedImports(t *testing.T) {
 	for _, source := range []string{
-		"import List from \"@std/collections.ms\"\n",
-		"import { List } from \"@std/collections.ms\"\n",
-		"import { List, Map } from \"@std/collections.ms\"\n",
-		"import {\n    List, # first\n    Map,\n} from \"@std/collections.ms\"\n",
+		"import ListBuilder from \"@std/collections.ms\"\n",
+		"import { ListBuilder } from \"@std/collections.ms\"\n",
+		"import { ListBuilder, MapBuilder } from \"@std/collections.ms\"\n",
+		"import {\n    ListBuilder, # first\n    MapBuilder,\n} from \"@std/collections.ms\"\n",
 	} {
 		module, err := parser.Parse("imports.ms", source)
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := []string{"List"}
-		if strings.Contains(source, "Map") {
-			want = append(want, "Map")
+		want := []string{"ListBuilder"}
+		if strings.Contains(source, "MapBuilder") {
+			want = append(want, "MapBuilder")
 		}
 		if len(module.Imports) != len(want) {
 			t.Fatal(module.Imports)

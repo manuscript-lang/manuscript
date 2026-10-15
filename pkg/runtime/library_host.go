@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/manuscript-lang/manuscript/internal/hostos"
+	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 
 	"math/big"
 
@@ -28,6 +29,9 @@ type LibraryMethod struct {
 	Receiver, Name, Result string
 	Params                 []LibraryParam
 }
+
+// IsAccessor reports the native operation category; source owns its signature.
+func (m LibraryMethod) IsAccessor() bool { return nativeabi.IsAccessor(m.Receiver, m.Name) }
 
 var LibraryMethods = []LibraryMethod{
 	{"FileSystem", "read_file", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"path", "String"}, {"max_bytes", "Optional[Int]"}}},
@@ -67,6 +71,9 @@ var (
 )
 
 func libraryMethod(receiver, name string, body func(*Execution, string, []Value) Value) Function {
+	if nativeabi.IsAccessor(receiver, name) {
+		Panic("read-only accessor " + receiver + "." + name + " is not a method")
+	}
 	libraryIndexOnce.Do(func() {
 		libraryIndex = make(map[[2]string]LibraryMethod, len(LibraryMethods))
 		for _, spec := range LibraryMethods {

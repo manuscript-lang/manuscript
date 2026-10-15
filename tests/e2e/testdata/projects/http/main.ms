@@ -1,7 +1,6 @@
 import {headers, HttpMethod} from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"
-import Map from "@std/collections.ms"
 import HttpRequest from "@std/http.ms"
 import HttpResponse from "@std/http.ms"
 
@@ -29,6 +28,6 @@ export fn main() -> Int:
 
         ok(acquired):
             with server = acquired:
-                stdout().write(data: "{server.address()}\n".to_bytes())
+                stdout().write(data: "{server.address}\n".to_bytes())
                 let outcome = server.wait()
                 return 0

@@ -21,7 +21,7 @@ fn wrong(values: Map[String, Int]) -> Map[String, Int]: values.map(transform)`, 
 		{"last Map match returns entry", `fn wrong(values: Map[String, Int]) -> Optional[Int]: values.find_last(fn(k, v): true)`, "MapEntry"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			result := CompileSource("transform.ms", "import {Map, Set} from \"@std/collections.ms\"\n"+test.source+"\n", Options{AnalyzeOnly: true})
+			result := CompileSource("transform.ms", ""+test.source+"\n", Options{AnalyzeOnly: true})
 			if result.Success() {
 				t.Fatal("accepted incompatible contract")
 			}
@@ -34,8 +34,7 @@ fn wrong(values: Map[String, Int]) -> Map[String, Int]: values.map(transform)`, 
 		})
 	}
 	t.Run("value output stays unconstrained", func(t *testing.T) {
-		result := CompileSource("transform.ms", `import Map from "@std/collections.ms"
-fn allowed(values: Map[String, Int]) -> Map[String, Float]:
+		result := CompileSource("transform.ms", `fn allowed(values: Map[String, Int]) -> Map[String, Float]:
     return values.map(fn(key, value): value.to_float())
 `, Options{AnalyzeOnly: true})
 		if !result.Success() {

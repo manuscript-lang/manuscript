@@ -1,23 +1,10 @@
 import from_int from "@std/bigint.ms"
 import compile from "@std/regex.ms"
 import panic from "@std/faults.ms"
-import {
-    List,
-    ListEntry,
-    Map,
-    MapEntry,
-    Set,
-    filled,
-    range,
-    map_from_entries
-} from "@std/collections.ms"
+import {filled, range, map_from_entries} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-import Error from "@std/errors.ms"
 import NumberError from "@std/numbers.ms"
 import StringError from "@std/string.ms"
-import CollectionError from "@std/collections.ms"
 
 fn positive(value: Int) -> Bool:
     return value > 0
@@ -50,7 +37,7 @@ fn observe(value: Int) -> Unit:
         return panic(message: "check failed")
 
 fn observe_entry(key: String, value: Int) -> Unit:
-    if not (key.byte_length() > 0):
+    if not (key.byte_length > 0):
         return panic(message: "check failed")
     if not (value > 0):
         return panic(message: "check failed")
@@ -132,19 +119,19 @@ test "list methods mutate explicit clones and remain typed":
         return panic(message: "check failed")
     if not (original.at(index: 9223372036854775807) == absent):
         return panic(message: "check failed")
-    if not (original.first() == some(3)):
+    if not (original.first == some(3)):
         return panic(message: "check failed")
-    if not (original.last() == some(1)):
+    if not (original.last == some(1)):
         return panic(message: "check failed")
 
     let empty: List[Int] = []
-    if not (empty.first() == absent):
+    if not (empty.first == absent):
         return panic(message: "check failed")
-    if not (empty.last() == absent):
+    if not (empty.last == absent):
         return panic(message: "check failed")
-    if not (empty.is_empty()):
+    if not (empty.is_empty):
         return panic(message: "check failed")
-    if not (not original.is_empty()):
+    if not (not original.is_empty):
         return panic(message: "check failed")
     if not (original.contains(value: 2)):
         return panic(message: "check failed")
@@ -294,7 +281,7 @@ test "map enumeration, merge, and clear preserve insertion order":
     let get_keys = merged.keys
     if not (get_keys() == ["a", "b", "c"]):
         return panic(message: "check failed")
-    if not (original.clone().clear().length() == 0):
+    if not (original.clone().clear().length == 0):
         return panic(message: "check failed")
     if not (original.values() == [1, 2]):
         return panic(message: "check failed")
@@ -368,11 +355,11 @@ test "string methods use Unicode scalars":
         return panic(message: "check failed")
     if not ("é🙂é".slice(start: -2, end: 3).unwrap() == "🙂é"):
         return panic(message: "check failed")
-    if not ("é🙂é".slice(start: 2, end: 1).is_error()):
+    if not ("é🙂é".slice(start: 2, end: 1).is_error):
         return panic(message: "check failed")
-    if not ("é🙂é".slice(start: -99, end: 1).is_error()):
+    if not ("é🙂é".slice(start: -99, end: 1).is_error):
         return panic(message: "check failed")
-    if not ("é🙂".scalar_length() == 2):
+    if not ("é🙂".scalar_length == 2):
         return panic(message: "check failed")
     if not ("é🙂".scalar_values() == [233, 128578]):
         return panic(message: "check failed")
@@ -434,9 +421,9 @@ test "bytes have analogous immutable operations":
         return panic(message: "check failed")
     if not (data.with_value(index: -1, value: 255) == Bytes([1, 2, 3, 255])):
         return panic(message: "check failed")
-    if not (Bytes([]).is_empty()):
+    if not (Bytes([]).is_empty):
         return panic(message: "check failed")
-    if not (not data.is_empty()):
+    if not (not data.is_empty):
         return panic(message: "check failed")
     if not (data == Bytes([1, 2, 3, 2])):
         return panic(message: "check failed")
@@ -444,9 +431,9 @@ test "bytes have analogous immutable operations":
         return panic(message: "check failed")
     if not (1.5.to_string() == "1.5"):
         return panic(message: "check failed")
-    if not (1.5.is_finite()):
+    if not (1.5.is_finite):
         return panic(message: "check failed")
-    if not (not 1.5.is_nan()):
+    if not (not 1.5.is_nan):
         return panic(message: "check failed")
 
 test "growth limits and invalid inputs return values":

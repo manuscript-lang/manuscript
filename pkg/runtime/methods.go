@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -91,6 +92,10 @@ func matchType(pattern, actual string, vars map[string]bool, sub map[string]stri
 
 type Implementation struct {
 	Receiver, Contract, Name string
+	// Accessor distinguishes executable reads from callable members.
+	Accessor bool
+	// Read executes an accessor without constructing a bound Function.
+	Read func(*Execution, Value, map[string]string, map[string]TypeScope) Value
 	// Scope is empty for implementations in the receiver's defining module.
 	Scope     string
 	Variables []string
@@ -171,6 +176,9 @@ func Bind(receiver Value, contract, name string, scopes ...TypeScope) Value {
 		return method
 	}
 
+	if resolveMemberImplementation(ConcreteType(receiver), contract, name, scope, true) != nil {
+		return Panic("read-only accessor " + name + " is not a method; read it without ()")
+	}
 	return NativeMember(receiver, name)
 }
 
@@ -191,6 +199,7 @@ func implementationScopes(pattern string, scope TypeScope, vars map[string]bool,
 
 type implementationKey struct {
 	typ, contract, name, module, args string
+	accessor                          bool
 }
 
 // resolvedImplementation is the receiver-independent outcome of a lookup.
@@ -206,11 +215,36 @@ var implementationGeneration atomic.Uint64
 // MethodSite caches the direct body last resolved for one call site.
 type MethodSite struct {
 	entry atomic.Pointer[methodEntry]
+	// second keeps a different receiver type from evicting the first at a
+	// site that alternates between two implementations.
+	second atomic.Pointer[methodEntry]
+	// operation caches a native service's bound operation for CallOperation.
+	operation atomic.Pointer[operationEntry]
+}
+
+func (site *MethodSite) lookup(typ, module string) *methodEntry {
+	generation := implementationGeneration.Load()
+	if e := site.entry.Load(); e != nil && e.typ == typ && e.module == module && e.generation == generation {
+		return e
+	}
+	if e := site.second.Load(); e != nil && e.typ == typ && e.module == module && e.generation == generation {
+		return e
+	}
+	return nil
+}
+
+// remember keeps the newest resolution first and demotes the previous one.
+func (site *MethodSite) remember(e *methodEntry) {
+	if old := site.entry.Load(); old != nil && old.generation == e.generation && (old.typ != e.typ || old.module != e.module) {
+		site.second.Store(old)
+	}
+	site.entry.Store(e)
 }
 
 type methodEntry struct {
 	generation uint64
 	typ        string
+	module     string
 	direct     func(*Execution, Value, []Value) Value
 }
 
@@ -218,11 +252,60 @@ type methodEntry struct {
 // alternative type. Arguments are already in declaration order.
 func CallMethod(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
 	typ := ConcreteType(receiver)
-	if e := site.entry.Load(); e != nil && e.typ == typ && e.generation == implementationGeneration.Load() {
-		CheckCancelled(ctx)
-		return e.direct(ctx, receiver, args)
+	// Interface views can bring different lexical evidence to one call site.
+	// Argument scopes require the ordinary specialization path below.
+	if len(scope.Args) == 0 {
+		if e := site.lookup(typ, scope.Module); e != nil {
+			CheckCancelled(ctx)
+			return e.direct(ctx, receiver, args)
+		}
 	}
 	return callMethodSlow(ctx, site, receiver, contract, name, scope, args)
+}
+
+// CallOperation calls a method of a standard contract whose arguments are
+// already in declaration order. It resolves exactly as Bind does but skips the
+// Argument slice and label matching that Invoke performs. A native service
+// held by pointer (a clock, a stream) builds its operation once per call site
+// and reuses it while the same service is the receiver.
+func CallOperation(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
+	inner := receiver
+	if view, ok := inner.(View); ok {
+		inner = view.Receiver
+	}
+	if native, ok := inner.(Native); ok && name != "toString" && reflect.TypeOf(inner).Kind() == reflect.Pointer {
+		if e := site.operation.Load(); e != nil && e.receiver == inner {
+			CheckCancelled(ctx)
+			return e.function.Body(ctx, args)
+		}
+		function := native.Operation(name)
+		site.operation.Store(&operationEntry{receiver: inner, function: function})
+		CheckCancelled(ctx)
+		return function.Body(ctx, args)
+	}
+	f, ok := Bind(receiver, contract, name, scope).(Function)
+	if !ok {
+		return Panic("runtime invariant: callee is not specialized")
+	}
+	CheckCancelled(ctx)
+	return f.Body(ctx, args)
+}
+
+type operationEntry struct {
+	receiver Value
+	function Function
+}
+
+// CallInterface calls a method through an interface-typed receiver: the
+// explicit view is unwrapped, then the call shares CallMethod's per-site cache.
+func CallInterface(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
+	if view, ok := receiver.(View); ok {
+		if contract == "" {
+			contract = view.Type
+		}
+		receiver, scope = view.Receiver, view.Scope
+	}
+	return CallMethod(ctx, site, receiver, contract, name, scope, args)
 }
 
 func callMethodSlow(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
@@ -239,7 +322,7 @@ func callMethodSlow(ctx *Execution, site *MethodSite, receiver Value, contract, 
 				implementationCache.Store(key, resolved)
 			}
 			if resolved != nil && resolved.impl.Direct != nil {
-				site.entry.Store(&methodEntry{generation: generation, typ: typ, direct: resolved.impl.Direct})
+				site.remember(&methodEntry{generation: generation, typ: typ, module: scope.Module, direct: resolved.impl.Direct})
 				CheckCancelled(ctx)
 				return resolved.impl.Direct(ctx, receiver, args)
 			}
@@ -279,8 +362,15 @@ func implementationFunction(receiver Value, contract, name string, scope TypeSco
 }
 
 func resolveImplementation(typ, contract, name string, scope TypeScope) *resolvedImplementation {
+	return resolveMemberImplementation(typ, contract, name, scope, false)
+}
+
+func resolveMemberImplementation(typ, contract, name string, scope TypeScope, accessor bool) *resolvedImplementation {
 	for _, at := range implementationsByName[name] {
 		m := &implementations[at]
+		if m.Accessor != accessor {
+			continue
+		}
 		if m.Scope != "" && m.Scope != scope.Module {
 			continue
 		}

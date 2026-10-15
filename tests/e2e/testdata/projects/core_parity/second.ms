@@ -7,8 +7,6 @@ import {
     remap_keys,
     remap_values
 } from "./helpers.ms"
-import {Map, Set} from "@std/collections.ms"
-import {Equal, Hashable} from "@std/equality.ms"
 
 impl Equal for Key:
     fn equals(other: Equal) -> Bool:
@@ -17,7 +15,7 @@ impl Equal for Key:
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: self.label.scalar_length()
+    fn hash() -> Int: self.label.scalar_length
 
 impl Error for Cause:
     fn message() -> String: "second {self.count}"
@@ -35,8 +33,8 @@ export fn second_queries() -> Bool:
     let map = Map[Key, String]().add(key, "found")
     let set = Set[Key]().add(key)
     return (
-        locate_map(map, Key(5, "different")).is_none()
-        and locate_set(set, Key(5, "different")).is_none()
+        locate_map(map, Key(5, "different")).is_none
+        and locate_set(set, Key(5, "different")).is_none
     )
 
 export fn second_converted(cause: Cause) -> Result[Int, Error]:

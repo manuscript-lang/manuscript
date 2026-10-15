@@ -1,21 +1,16 @@
 import {from_scalars, StringError, StringBuilder} from "@std/string.ms"
 import {Bytes, BytesBuilder, values} from "@std/bytes.ms"
-import {CollectionError, List} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 test "Unicode scalar indexing differs from byte length":
     let text = "aé🙂"
-    if text.byte_length() != 7 or text.scalar_length() != 3: return panic(
-        "Unicode lengths"
-    )
+    if text.byte_length != 7 or text.scalar_length != 3: return panic("Unicode lengths")
     if text.scalar_values() != [97, 233, 128578]: return panic("scalar values")
     if text.at(-1) != some("🙂") or text.scalar_at(1) != some(233): return panic(
         "scalar indexing"
     )
-    if not text.at(3).is_none(): return panic("out of bounds optional")
+    if not text.at(3).is_none: return panic("out of bounds optional")
     if value(from_scalars(text.scalar_values())) != text: return panic(
         "scalar roundtrip"
     )
@@ -63,7 +58,7 @@ test "strings honor omitted none zero and explicit output limits":
 test "bytes copy slice search and UTF8 validation":
     let data = Bytes([0, 1, 255, 1])
     if data.at(-1) != some(1): return panic("negative byte index")
-    if not data.at(4).is_none(): return panic("missing byte")
+    if not data.at(4).is_none: return panic("missing byte")
     if data.index_of(Bytes([1])) != some(1): return panic("byte search")
     if data.last_index_of(Bytes([1])) != some(3): return panic("last byte search")
     if data.slice(start: 1, end: 3).unwrap() != Bytes([1, 255]): return panic(
@@ -84,7 +79,7 @@ test "bytes copy slice search and UTF8 validation":
 
     let copied = data.clone().with_value(index: 0, value: 42)
     if copied.at(0) != some(42) or data.at(0) != some(0): return panic("clone storage")
-    if not Bytes([255]).to_text().is_none(): return panic("invalid UTF8 accepted")
+    if not Bytes([255]).to_text().is_none: return panic("invalid UTF8 accepted")
     if "é".to_bytes().to_text() != some("é"): return panic("UTF8 roundtrip")
 
 test "Bytes values direct bound and free calls return independent lists":
@@ -168,7 +163,7 @@ test "empty text splits into one part and case mapping is full Unicode":
 test "indexing and slicing long mixed-width text matches scalar positions":
     let block = "aé€🙂"
     let text = value(block.repeat(count: 600))
-    if text.length() != 2400: return panic("long length")
+    if text.length != 2400: return panic("long length")
 
     # Forward, backward and jumping reads of the same long text.
     var forward = 0

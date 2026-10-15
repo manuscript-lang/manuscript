@@ -1,6 +1,3 @@
-import {Map, Set, MapEntry} from "@std/collections.ms"
-import Hashable from "@std/equality.ms"
-
 export fn transform_set[T: Hashable, U: Hashable](
     values: Set[T],
     transform: fn(value: T) -> U

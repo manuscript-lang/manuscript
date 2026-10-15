@@ -5,7 +5,7 @@ description: Implement or review Manuscript native execution, resources, cancell
 
 # Runtime
 
-Use for `pkg/runtime/`, `internal/hostos/`, `pkg/stdlib/*.ms`, `bindings.json`, or lowering that changes execution. Read [runtime lessons](../../.experts/runtime.md), [cleanup](../../documentation/core-language/cleanup/_index.md), and [concurrency](../../documentation/concurrency/_index.md).
+Use for `pkg/runtime/`, `internal/hostos/`, `pkg/stdlib/*.ms`, `bindings.json`, or lowering that changes execution. Read [runtime lessons](../../.experts/runtime.md), [cleanup](../../documentation/core-language/cleanup/_index.md), and [concurrency](../../pkg/stdlib/tasks.ms).
 
 - State observable result/error identity, evaluation order, aliasing, cancellation, close, join, and use-after-close behavior before editing.
 - Keep sharing, resource lifetime, and work lifetime separate. Passing references needs no sharing proof and does not extend resource lifetime. Explicit synchronization protects complete shared updates; local Queue has no implicit locks/waiting/close.
@@ -22,11 +22,11 @@ Use for `pkg/runtime/`, `internal/hostos/`, `pkg/stdlib/*.ms`, `bindings.json`, 
 
 ## Standard library
 
-For standard APIs (intrinsic/native members, design), read [declaration ownership](../../pkg/stdlib/README.md), [contracts](../../documentation/standard-library/contracts.md), [runtime lessons](../../.experts/runtime.md), and [taste](../language-design-taste/SKILL.md).
+For standard APIs (intrinsic/native members, design), read [declaration ownership](../../pkg/stdlib/intrinsics.ms), [contracts](../../pkg/stdlib/intrinsics.ms), [runtime lessons](../../.experts/runtime.md), and [taste](../language-design-taste/SKILL.md).
 
 - Inspect [newer stdlib direction](../../.experts/runtime.md#newer-stdlib-direction-needs-checkout-reconciliation) and current source first. Distinguish requested changes from shipped interfaces/bounds, removals, optional limits, and scheduling consolidation.
 - Give each operation one appropriate module/spelling. Cover units, defaults, errors, streaming, mutation, edge cases, and cancellation; use Manuscript's execution model.
-- Pick the failure mode by the [one rule](../../documentation/standard-library/contracts.md#choosing-a-failure-mode): absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults with operation, argument, and valid range. Mutators take verbs (`set`, `remove`, `add`); copies keep past-tense or noun names. Do not restore the removed copy-sounding aliases (`with_value`, `without`, `with_entry`).
+- Pick the failure mode by the [one rule](../../pkg/stdlib/intrinsics.ms): absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults with operation, argument, and valid range. Mutators take verbs (`set`, `remove`, `add`); copies keep past-tense or noun names. Do not restore the removed copy-sounding aliases (`with_value`, `without`, `with_entry`).
 - Every standard type and function carries a doc comment, and a type's comment includes a short usage example; it appears in the generated reference.
 - Audit omitted, `none`, valid, and invalid explicit limits/timeouts. The latest direction makes them optional and honored when supplied; do not impose mandatory limits without new direction. Document resource consequences and errors.
 - Checked `.ms` source owns public signatures. Trace declaration → binding → checker call/receiver rules → native dispatch → called source tests → editor information → generated reference.

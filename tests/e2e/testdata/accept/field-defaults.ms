@@ -1,6 +1,4 @@
 import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 
 type Counter:
     value: Int = 0
@@ -45,7 +43,7 @@ test "record defaults and explicit overrides":
         return panic("explicit field overrides dependent defaults")
 
     let explicit = Explicit(nothing: unit, option: none)
-    if not explicit.option.is_none():
+    if not explicit.option.is_none:
         return panic("explicit none must override a default")
 
     let box = Box(value: "text")
@@ -80,7 +78,7 @@ test "mutable defaults have fresh storage":
     let first = Data()
     let second = Data()
     first.values.append(8)
-    if first.values.length() != 2 or second.values.length() != 1:
+    if first.values.length != 2 or second.values.length != 1:
         return panic("record defaults must not share collection storage")
 
 interface ReadWithDefault:

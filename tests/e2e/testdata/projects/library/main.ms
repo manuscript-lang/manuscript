@@ -1,4 +1,3 @@
-import Optional from "@std/optional.ms"
 import control from "@std/process.ms"
 import arguments from "@std/cli.ms"
 import entropy from "@std/random.ms"
@@ -7,9 +6,6 @@ import system from "@std/system.ms"
 import wall_clock from "@std/time.ms"
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import Result from "@std/result.ms"
-import Error from "@std/errors.ms"
 import uuid_v4 from "@std/random.ms"
 import secure_int from "@std/random.ms"
 import parse_timestamp from "@std/time.ms"
@@ -53,11 +49,11 @@ fn exercise(path: String) -> Result[Unit, Error]:
         return panic(message: "check failed")
 
     let bytes = try common_result(result: entropy().bytes(count: 16))
-    if not (bytes.length() == 16):
+    if not (bytes.length == 16):
         return panic(message: "check failed")
 
     let identifier = try common_result(result: uuid_v4(entropy: entropy()))
-    if not (identifier.byte_length() == 36):
+    if not (identifier.byte_length == 36):
         return panic(message: "check failed")
 
     let random = try common_result(
@@ -106,7 +102,7 @@ fn exercise(path: String) -> Result[Unit, Error]:
             )
         )
         let events = try common_result(result: watcher.next())
-        if not (events.length() > 0):
+        if not (events.length > 0):
             return panic(message: "native watch returned no event")
 
     with scheduler = Scheduler():

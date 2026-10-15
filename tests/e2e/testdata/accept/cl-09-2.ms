@@ -1,5 +1,3 @@
-import Optional from "@std/optional.ms"
-
 fn absent[T]() -> Optional[T]:
     return none
 

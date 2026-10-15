@@ -41,8 +41,7 @@ fn first() -> Result[Int, String]:
 }
 
 func TestUnknownTypeDoesNotCascadeIntoInference(t *testing.T) {
-	source := `import Set from "@std/collections.ms"
-fn collect[T, U](items: List[T], step: fn(value: T) -> Result[List[U], MissingError]) -> Result[List[U], MissingError]:
+	source := `fn collect[T, U](items: List[T], step: fn(value: T) -> Result[List[U], MissingError]) -> Result[List[U], MissingError]:
     return step(items.at(0).unwrap())
 fn first() -> Unit:
     let result = collect(items: [1, 2], step: fn(value: Int) -> Result[List[Int], MissingError]: ok([value]))

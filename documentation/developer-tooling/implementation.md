@@ -60,15 +60,11 @@ ms doc src/library.ms -o api.md
 ms doc ms.toml --json -o api.json
 ms doc --stdlib -o stdlib.md
 ms doc --stdlib --json -o stdlib.json
-ms stdlib exported-standard-sources
 ```
 
 These commands use source checking and embedded declarations without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
 
-`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. A contiguous `#` comment block directly above a declaration or member, at the same indentation and with no intervening blank line, is its description. Markdown renders these descriptions beside the corresponding signatures; JSON carries declaration `doc` strings and an additive `members` array with `name`, `kind`, `signature`, `doc`, and an optional implementation `contract`. Existing `fields`, `cases`, and `operations` arrays remain strings under schema version 1. Empty member descriptions stay visible as empty `doc` strings; the tool does not invent text from a signature. Inline case payloads do not inherit the case's description. Project docs include reachable local modules; library projects include all source modules and discovered tests. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
-
-`ms stdlib <directory>` writes source declarations and bindings for tooling;
-`ms doc --stdlib` renders API documentation. These outputs serve different tasks.
+`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. A contiguous `#` comment block directly above a declaration or member, at the same indentation and with no intervening blank line, is its description. Markdown renders these descriptions beside the corresponding signatures; JSON carries declaration `doc` strings and an additive `members` array with `name`, `kind`, `signature`, `doc`, and an optional implementation `contract`. Schema version 2 retains string arrays for `fields`, `cases`, and method `operations`, and adds `accessors` plus member kind `accessor` for read-only value members. Empty member descriptions stay visible as empty `doc` strings; the tool does not invent text from a signature. Inline case payloads do not inherit the case's description. Project docs include reachable local modules; library projects include all source modules and discovered tests. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. The `--stdlib` reference describes the compiler version bundled in that binary; it does not download a library.
 
 ## Selecting independent analysis inputs
 
@@ -173,16 +169,21 @@ Test results contain these fields:
 | Field | Meaning |
 | --- | --- |
 | `source_root` | Root for module-relative compile diagnostic paths and test names |
-| `tests` | Planned tests in execution order; each has `name`, `status`, and optional `failure` text with its first source `position` |
-| `summary` | `available`, `selected`, `passed`, and `failed` counts |
-| `completed` | Whether the native runner reported all selected outcomes |
+| `tests` | Planned tests in execution order; each has an execution `index`, `name`, `status`, `duration_ns`, and optional `failure` text with its first source `position` |
+| `summary` | `available` declaration count; `selected`, `passed`, `failed`, `skipped`, and `not_run` execution counts; total `duration_ns` |
+| `completed` | Whether the native runner finished its plan (also true for listing or fail-fast) |
 | `exit_code` | Observable CLI exit status |
 | `stdout` | Complete captured native stdout, including runner and test-written output |
 | `stdout_base64` | Present instead of stdout text when bytes are not valid UTF-8; `stdout` is then empty |
 | `diagnostics` | Existing compile diagnostics, or execution/build/report errors; an empty array on ordinary runs |
-| `reason` | Optional `no_tests`, `no_match`, `compile_error`, `build_error`, `execution_error`, or `argument_error` |
+| `fixture_errors` | Optional file-level lifecycle failures with `file`, `phase`, `failure`, and optional source `position` |
+| `reason` | Optional `fixture_error`, `fixture_abandoned`, `cancelled`, `listed`, `fail_fast`, `no_tests`, `no_match`, `compile_error`, `build_error`, `execution_error`, or `argument_error` |
 
-Completed tests have status `passed` or `failed`. If the process stops early,
+Completed tests have status `passed`, `failed`, or `skipped`. Listing sets
+`listed: true` and leaves every selected test `not_run`; fail-fast leaves its
+remaining executions `not_run`. The optional `repeat` count and `shuffle_seed`
+describe execution order. Repeated names have distinct indices and durations.
+Per-test durations include cleanup; total duration includes runner overhead. If the process stops early,
 the active test is `incomplete`, later planned tests are `not_run`, and completed
 outcomes remain available. Failure text retains source frames and timeout details.
 The native test executable writes outcomes through a separate result channel;
@@ -203,7 +204,7 @@ test execution/build/report failures. No test output is truncated.
 
 The server supports incremental document synchronization with validated UTF-16 ranges, compiler diagnostics and advisory lint codes, hierarchical document symbols, workspace symbol search, semantic tokens, folding, inferred-local type hints, typed hover, definition/type-definition navigation, highlights, project references, signature help, formatting, import organization, and versioned code actions and rename edits.
 
-Completion is derived from the checker's actual lexical scope and member-resolution rules. It resolves shadowing and offers visible parameters/locals, generic-bound operations, substituted record fields and collection/service methods, variant cases, named call arguments, generic/call snippets, standard and project auto-imports, and import names/paths. Used arguments, inaccessible opaque fields, and locals in sibling scopes are excluded. Snippets are offered only when the client supports them. Accepting an auto-import creates an explicit ordinary import.
+Completion is derived from the checker's actual lexical scope and member-resolution rules. It resolves shadowing and offers visible parameters/locals, generic-bound operations, substituted record fields, read-only accessor values and collection/service methods, variant cases, named call arguments, generic/call snippets, standard and project auto-imports, and import names/paths. Used arguments, inaccessible opaque fields, and locals in sibling scopes are excluded. Snippets are offered only when the client supports them. Accepting an auto-import creates an explicit ordinary import.
 
 Incomplete member accesses and calls are analyzed using a private cursor snapshot. Declaration recovery retains unaffected source with original positions. Recovery is exclusive to editor analysis: strict checking, formatting, and native builds never accept repaired source. A parse error elsewhere does not erase completion or outlining for valid declarations. Analysis skips Go lowering and caches normal document results until source or watched files change. Member completion's local benchmark is included in `completion_test.go`.
 

@@ -1,4 +1,3 @@
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn apply[T, U](value: T, transform: fn(value: T) -> U) -> U: transform(value)
@@ -50,7 +49,7 @@ test "callback inference retains captures and contextual metadata":
         return panic("optional callback wrapping")
 
     let missing = choose(first: fn(): none, second: fn(): some(3))
-    if not missing.is_none(): return panic("failed probe needed final context")
+    if not missing.is_none: return panic("failed probe needed final context")
 
     let failure = with_result(
         fn():
@@ -82,7 +81,7 @@ test "later returns repair incomplete and convertible evidence":
 
             return some(1)
     )
-    if not value.is_none(): return panic("contextual absent specialization")
+    if not value.is_none: return panic("contextual absent specialization")
 
     let cause = from_callback(
         fn():

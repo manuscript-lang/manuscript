@@ -63,7 +63,7 @@ func (h *triedScan) visit(e *syntax.Expression) bool {
 	if e == nil {
 		return true
 	}
-	info := h.g.program.Info(e)
+	info := h.g.info(e)
 	if info == nil || info.Folded {
 		return true
 	}
@@ -128,7 +128,13 @@ func (h *triedScan) visit(e *syntax.Expression) bool {
 		h.effect = true
 		return true
 	case syntax.KindMember:
-		return h.visit(e.Left)
+		if !h.visit(e.Left) {
+			return false
+		}
+		if info.Method != nil && info.Method.Accessor {
+			h.effect = true
+		}
+		return true
 	case syntax.KindIndex:
 		if !h.visit(e.Left) || !h.visit(e.Right) {
 			return false

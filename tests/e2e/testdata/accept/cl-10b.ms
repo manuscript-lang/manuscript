@@ -1,8 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-
 interface ReadValue[T]:
     fn get() -> T
 

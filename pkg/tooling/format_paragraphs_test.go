@@ -30,8 +30,8 @@ fn last() -> Int: return 2
 			name: "bindings guards and outcome handling",
 			source: `fn process(input: String) -> Int:
     let records = parse(input)
-    if records.length() == 0: return 0
-    if records.length() > 100: return 1
+    if records.length == 0: return 0
+    if records.length > 100: return 1
     let report = summarize(records)
     let payload = encode(report)
     match save(payload):
@@ -42,8 +42,8 @@ fn last() -> Int: return 2
 `,
 			want: `fn process(input: String) -> Int:
     let records = parse(input)
-    if records.length() == 0: return 0
-    if records.length() > 100: return 1
+    if records.length == 0: return 0
+    if records.length > 100: return 1
 
     let report = summarize(records)
     let payload = encode(report)
@@ -127,8 +127,7 @@ fn last() -> Int: return 2
 		},
 		{
 			name: "comments stay attached",
-			source: `import List from "@std/collections.ms"
-# A public contract.
+			source: `# A public contract.
 export interface Run:
     fn first() -> Int
     fn second() -> Int
@@ -148,9 +147,7 @@ impl Run for Runner:
 # Application entry.
 fn main() -> Int: return 0
 `,
-			want: `import List from "@std/collections.ms"
-
-# A public contract.
+			want: `# A public contract.
 export interface Run:
     fn first() -> Int
     fn second() -> Int

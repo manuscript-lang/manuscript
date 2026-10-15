@@ -1,6 +1,4 @@
-import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
-import Result from "@std/result.ms"
 import {parse, JsonError, JsonLimits} from "@std/json.ms"
 import {EncodingError, hex_decode} from "@std/encoding.ms"
 
@@ -49,9 +47,7 @@ test "explicit error mapping preserves the cause":
         return panic(message: "error mapping lost its cause")
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.
-import Error from "@std/errors.ms"
 import IoError from "@std/io.ms"
-import List from "@std/collections.ms"
 
 type CustomError:
     detail: String
@@ -384,7 +380,7 @@ import Synchronized from "@std/sync.ms"
 
 fn counted_view(count: Synchronized[Int]) -> Label[String]:
     with locked = count.lock():
-        locked.set(value: locked.get() + 1)
+        locked.set(value: locked.value + 1)
 
     return Label[String](Labelled("label diagnostic"))
 
@@ -400,7 +396,7 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
             return panic(message: "unrelated contract pattern did not run")
 
     with locked = count.lock():
-        if locked.get() != 1:
+        if locked.value != 1:
             return panic(message: "contract scrutinee was evaluated more than once")
 
     let view = Label[String](Labelled("separate handler"))

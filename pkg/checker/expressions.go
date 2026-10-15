@@ -31,7 +31,11 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 			i.ScopedError = c.errorNeedsScope(cause)
 			i.Type = expected
 		} else {
-			c.error(e.Pos, "type", c.assignmentMismatch(i.Type, expected))
+			message := c.assignmentMismatch(i.Type, expected)
+			if i.Method != nil && i.Method.Accessor && expected.Kind == "function" {
+				message += "; this accessor reads a value immediately; bind its receiver once, then use an explicit closure to read it on invocation"
+			}
+			c.error(e.Pos, "type", message)
 		}
 	}
 	if expected != nil && expected.Kind == "function" && Same(i.Type, expected) {
@@ -149,6 +153,11 @@ func (c *checker) inferText(e *syntax.Expression, expected *Type, i *Info) *Info
 }
 
 func (c *checker) inferName(e *syntax.Expression, expected *Type, i *Info) *Info {
+	if e.Text == "fixture" && c.scope.binding(e.Text) == nil {
+		c.error(e.Pos, "resolution", "fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this file")
+		i.Type = primitive("<invalid>")
+		return i
+	}
 	if b := c.scope.binding(e.Text); b != nil {
 		i.Type = b.Type
 		i.Binding = b
@@ -203,6 +212,9 @@ func (c *checker) inferApply(e *syntax.Expression, expected *Type, i *Info) *Inf
 	}
 	if s := c.functionSymbol(e.Left); s != nil {
 		args := c.resolveArguments(e.Types)
+		if len(args) >= requiredTypeArguments(s.Variables) {
+			args = completeTypeArguments(s.Variables, args)
+		}
 		i.Symbol = s
 		i.Type = c.specialize(s.Type, s.Variables, args, e.Pos, calleeName(e))
 		i.TypeArgs = args
@@ -254,14 +266,13 @@ func (c *checker) inferMember(e *syntax.Expression, expected *Type, i *Info) *In
 			return i
 		}
 	}
-	if receiver.Type.ID == "Int" && (e.Text == "seconds" || e.Text == "milliseconds" || e.Text == "minutes") {
-		i.Type = standard("Duration")
-		i.Native = e.Text
-		return i
-	}
 	methods := c.methods(receiver.Type, e.Text)
 	if len(methods) != 1 {
-		c.error(e.Pos, "resolution", c.unknownMember(receiver.Type, e.Text))
+		if replacement := migratedAccessorName(receiver.Type, e.Text); replacement != "" {
+			c.renamedAccessor(e, receiver.Type, replacement)
+		} else {
+			c.error(e.Pos, "resolution", c.unknownMember(receiver.Type, e.Text))
+		}
 		// Later diagnostics that only restate the missing member are noise.
 		i.Type = primitive("<invalid>")
 		return i
@@ -269,6 +280,10 @@ func (c *checker) inferMember(e *syntax.Expression, expected *Type, i *Info) *In
 	i.Method = methods[0]
 	i.Type = methods[0].Type
 	i.Native = methods[0].Native
+	if methods[0].Accessor {
+		i.Type = methods[0].Type.Result
+		return finishInfo(i)
+	}
 	if methods[0].Native != "" && methods[0].Native != "contract" && len(methods[0].Variables) > 0 {
 		c.error(e.Pos, "type", "a generic method value requires explicit specialization; write the type arguments or call it with arguments")
 	}

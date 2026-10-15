@@ -56,7 +56,7 @@ export fn text(rng: Rng) -> String:
     var count = next(rng, 4)
 
     while count > 0:
-        out = out + pieces[next(rng, pieces.length())].unwrap_or("")
+        out = out + pieces[next(rng, pieces.length)].unwrap_or("")
         count = count - 1
 
     return out
@@ -64,11 +64,11 @@ export fn text(rng: Rng) -> String:
 # Deletes, inserts or replaces one character-sized piece of source text.
 export fn mutate(rng: Rng, source: String) -> String:
     let chars = source.chars()
-    let at = next(rng, chars.length() + 1)
+    let at = next(rng, chars.length + 1)
     let kind = next(rng, 3)
 
-    if kind != 1 and at < chars.length(): chars.remove(at)
+    if kind != 1 and at < chars.length: chars.remove(at)
 
-    if kind != 0: chars.insert(at, pieces[next(rng, pieces.length())].unwrap_or(""))
+    if kind != 0: chars.insert(at, pieces[next(rng, pieces.length)].unwrap_or(""))
 
     return chars.join("")

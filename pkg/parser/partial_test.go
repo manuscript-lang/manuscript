@@ -24,6 +24,8 @@ func FuzzParsePartial(f *testing.F) {
 	for _, seed := range []string{"", "fn unfinished(\nfn valid() -> Int:\n    return 1\n", "type Box:\n    value: String\n", "# 😀\r\nfn read() -> Int:\r\n    return 2\r\n", "fn (\n", "export type [\n"} {
 		f.Add(seed)
 	}
+	f.Add("interface Read[T]:\n    get broken ->\n    get callback -> fn(\nvalue: T,\n) -> T\n")
+	f.Add("impl Read for Box:\r\n    get value -> Int:\r\n        let broken =\r\n    fn get() -> Int: self.value\r\n")
 	f.Fuzz(func(t *testing.T, source string) {
 		module, issues := ParsePartial("fuzz.ms", source)
 		if module == nil || module.Source != source {
@@ -43,7 +45,7 @@ func FuzzParsePartial(f *testing.F) {
 }
 
 func TestPartialGroupedImportsPreserveSymbolOffsets(t *testing.T) {
-	source := "fn first() -> Int:\n    return 1\nimport {\nList,\nMap,\n} from \"@std/collections.ms\"\nfn broken(\nfn later() -> Int:\n    return 2\n"
+	source := "fn first() -> Int:\n    return 1\nimport {\nListBuilder,\nMapBuilder,\n} from \"@std/collections.ms\"\nfn broken(\nfn later() -> Int:\n    return 2\n"
 	module, issues := ParsePartial("grouped.ms", source)
 	if len(issues) == 0 || len(module.Imports) != 2 || len(module.Declarations) != 2 {
 		t.Fatal(module, issues)

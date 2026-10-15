@@ -5,10 +5,6 @@ import {
     TomlError,
     TomlLimits
 } from "@std/toml.ms"
-import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-import Error from "@std/errors.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -75,7 +71,7 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
     )
 
     let array = items(root.get("array").unwrap())
-    if array.length() != 3: return panic("array")
+    if array.length != 3: return panic("array")
 
     let person = entries(array.at(2).unwrap())
     if person.get("name").unwrap() != TomlValue.StringValue("Ada"): return panic(
@@ -98,18 +94,18 @@ test "TOML implicit parents dotted keys and arrays of tables":
     ): return panic("implicit parent")
 
     let products = items(root.get("products").unwrap())
-    if products.length() != 2: return panic("table array")
+    if products.length != 2: return panic("table array")
     if (
-        entries(entries(products.first().unwrap()).get("meta").unwrap()).get(
+        entries(entries(products.first.unwrap()).get("meta").unwrap()).get(
             "stock"
         ).unwrap() != TomlValue.IntValue(3)
     ): return panic("array child table")
-    if items(entries(products.last().unwrap()).get("variants").unwrap()).length() != 2: return panic(
+    if items(entries(products.last.unwrap()).get("variants").unwrap()).length != 2: return panic(
         "nested table arrays"
     )
 
     let dotted = entries(value(parse(text: "a.b.c = 1\na.b.d = 2\n")))
-    if entries(entries(dotted.get("a").unwrap()).get("b").unwrap()).length() != 2: return panic(
+    if entries(entries(dotted.get("a").unwrap()).get("b").unwrap()).length != 2: return panic(
         "dotted assignment"
     )
 
@@ -214,19 +210,19 @@ test "TOML nonfinite floats CRLF and repeated separators":
 
     match root.get("positive").unwrap():
         FloatValue(number):
-            if number.is_finite() or number < 0.0: return panic("positive infinity")
+            if number.is_finite or number < 0.0: return panic("positive infinity")
 
         _: return panic("expected float")
 
     match root.get("negative").unwrap():
         FloatValue(number):
-            if number.is_finite() or number > 0.0: return panic("negative infinity")
+            if number.is_finite or number > 0.0: return panic("negative infinity")
 
         _: return panic("expected float")
 
     match root.get("nan").unwrap():
         FloatValue(number):
-            if not number.is_nan(): return panic("NaN")
+            if not number.is_nan: return panic("NaN")
 
         _: return panic("expected float")
 

@@ -1,11 +1,9 @@
 import panic from "@std/faults.ms"
 
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 
 test "explicit byte conversion":
-    if not ("é".byte_length() == 2):
+    if not ("é".byte_length == 2):
         return panic(message: "check failed")
     if not ("é".to_bytes().to_text() == some("é")):
         return panic(message: "check failed")

@@ -5,10 +5,6 @@ import {
     YamlError,
     YamlLimits
 } from "@std/yaml.ms"
-import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-import Error from "@std/errors.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -85,7 +81,7 @@ test "YAML quoted folding trims physical whitespace and preserves escapes":
                         max_replacements: (
                             example
                             .text
-                            .byte_length()
+                            .byte_length
                         )
                     )
                 ),
@@ -141,7 +137,7 @@ test "YAML folded and literal blocks respect paragraphs indentation and chomping
                         max_replacements: (
                             example
                             .text
-                            .byte_length()
+                            .byte_length
                         )
                     )
                 ),
@@ -157,7 +153,7 @@ test "YAML plain paragraphs retain boundaries and nested collections":
                     text: text.replace(
                         old: "\n",
                         new: ending,
-                        max_replacements: text.byte_length()
+                        max_replacements: text.byte_length
                     )
                 )
             )
@@ -187,7 +183,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
             parse(
                 text: text,
                 limits: limits(
-                    bytes: text.byte_length(),
+                    bytes: text.byte_length,
                     depth: 2,
                     values: 2
                 )
@@ -201,7 +197,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         parse(
             text: text,
             limits: limits(
-                bytes: text.byte_length() - 1,
+                bytes: text.byte_length - 1,
                 depth: none,
                 values: none
             )
@@ -277,15 +273,15 @@ test "YAML block mappings sequences exact scalars and core schema":
 
     let people = items(root.get("people").unwrap())
     if (
-        people.length() != 2
-        or entries(people.first().unwrap()).get(
+        people.length != 2
+        or entries(people.first.unwrap()).get(
             "age"
         ).unwrap() != YamlValue.NumberValue("37")
     ): return panic("compact mappings")
     if (
         items(
-            entries(people.last().unwrap()).get("skills").unwrap()
-        ).first().unwrap() != YamlValue.StringValue("compilers")
+            entries(people.last.unwrap()).get("skills").unwrap()
+        ).first.unwrap() != YamlValue.StringValue("compilers")
     ): return panic("nested compact mapping")
 
 test "YAML flow collections quotes escapes comments and multiline values":
@@ -304,16 +300,14 @@ test "YAML flow collections quotes escapes comments and multiline values":
     if (
         items(
             entries(root.get("flow").unwrap()).get("list").unwrap()
-        ).last().unwrap() != YamlValue.StringValue("é☺")
+        ).last.unwrap() != YamlValue.StringValue("é☺")
     ): return panic("quoted escape")
     if (
         root.get("url").unwrap() != YamlValue.StringValue(
             "https://example.org/#fragment"
         )
     ): return panic("URL comment")
-    if items(root.get("multiline").unwrap()).length() != 3: return panic(
-        "multiline flow"
-    )
+    if items(root.get("multiline").unwrap()).length != 3: return panic("multiline flow")
     if (root.get("text").unwrap() != YamlValue.StringValue("a long continued sentence")): return panic(
         "plain folding"
     )
@@ -388,7 +382,7 @@ test "YAML documents BOM CRLF empty input and version directive":
     if value(parse(text: "---\n...\n")) != YamlValue.Null: return panic(
         "empty document"
     )
-    if items(value(parse(text: "- - 1\n  - 2\n- - 3\n"))).length() != 2: return panic(
+    if items(value(parse(text: "- - 1\n  - 2\n- - 3\n"))).length != 2: return panic(
         "compact sequences"
     )
 
@@ -601,7 +595,7 @@ test "YAML quoted merge key is an ordinary string key":
     if block.get("<<").unwrap() != YamlValue.NumberValue("1"): return panic(
         "block quoted key"
     )
-    if block.length() != 2: return panic("block entries")
+    if block.length != 2: return panic("block entries")
 
     let single = entries(value(parse(text: "'<<': 2\n")))
     if single.get("<<").unwrap() != YamlValue.NumberValue("2"): return panic(
@@ -654,7 +648,7 @@ test "YAML document start marker accepts same-line content":
     if value(parse(text: "--- a")) != YamlValue.StringValue("a"): return panic(
         "scalar after marker"
     )
-    if items(value(parse(text: "--- [1, 2]"))).length() != 2: return panic(
+    if items(value(parse(text: "--- [1, 2]"))).length != 2: return panic(
         "flow after marker"
     )
     if value(parse(text: "--- # note\na: 1")) != value(parse(text: "a: 1")): return panic(
@@ -666,14 +660,14 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
         parse(text: "-   a: 1\n    b: 2\n-  - x\n   - y\n- c: 3\n  d: 4\n")
     )
     let list = items(root)
-    if list.length() != 3: return panic("sequence length")
+    if list.length != 3: return panic("sequence length")
 
-    let first = entries(list.first().unwrap())
+    let first = entries(list.first.unwrap())
     if first.get("b").unwrap() != YamlValue.NumberValue("2"): return panic(
         "wide marker spacing"
     )
-    if items(list.at(1).unwrap()).length() != 2: return panic("wide nested sequence")
-    if entries(list.last().unwrap()).get("d").unwrap() != YamlValue.NumberValue("4"): return panic(
+    if items(list.at(1).unwrap()).length != 2: return panic("wide nested sequence")
+    if entries(list.last.unwrap()).get("d").unwrap() != YamlValue.NumberValue("4"): return panic(
         "single space marker"
     )
 
@@ -700,7 +694,7 @@ test "YAML long plain scalars and large mappings parse in linear time":
         keys = keys.concat("k{index}: 1\n")
         index = index + 1
 
-    if entries(value(parse(text: keys))).length() != 30000: return panic("many keys")
+    if entries(value(parse(text: keys))).length != 30000: return panic("many keys")
 
     match parse(text: keys.concat("k7: 2\n")):
         ok(_): return panic("duplicate key after many keys")
@@ -709,7 +703,7 @@ test "YAML long plain scalars and large mappings parse in linear time":
 test "YAML flow mapping keys without a colon map to null":
     let root = entries(value(parse(text: "a: \{x, y: 1, z\}\nb: \{\"q\", r: [1]\}")))
     let first = entries(root.get("a").unwrap())
-    if first.length() != 3: return panic("flow keys")
+    if first.length != 3: return panic("flow keys")
     if first.get("x").unwrap() != YamlValue.Null: return panic("first null key")
     if first.get("y").unwrap() != YamlValue.NumberValue("1"): return panic(
         "explicit value"
@@ -778,14 +772,12 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
             )
         )
     )
-    if small.length() != 3: return panic("compact chain top level")
+    if small.length != 3: return panic("compact chain top level")
 
-    let first = items(small.first().unwrap())
-    if first.length() != 2: return panic("compact chain middle level")
-    if items(first.first().unwrap()).length() != 2: return panic(
-        "compact chain innermost"
-    )
-    if first.last().unwrap() != YamlValue.StringValue("z"): return panic(
+    let first = items(small.first.unwrap())
+    if first.length != 2: return panic("compact chain middle level")
+    if items(first.first.unwrap()).length != 2: return panic("compact chain innermost")
+    if first.last.unwrap() != YamlValue.StringValue("z"): return panic(
         "compact chain resumes outer level"
     )
 
@@ -796,9 +788,9 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
 
     while level < depth:
         let inner = items(root)
-        if inner.length() != 1: return panic("deep chain width")
+        if inner.length != 1: return panic("deep chain width")
 
-        root = inner.first().unwrap()
+        root = inner.first.unwrap()
         level = level + 1
 
     if items(root) != [YamlValue.StringValue("x")]: return panic("deep chain leaf")

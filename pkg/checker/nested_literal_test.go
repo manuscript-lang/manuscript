@@ -10,7 +10,7 @@ import (
 )
 
 func nestedLiteral(open, leaf, close string, depth int) string {
-	return "import List from \"@std/collections.ms\"\nimport Map from \"@std/collections.ms\"\nfn example() -> Int:\n    let x = " +
+	return "fn example() -> Int:\n    let x = " +
 		strings.Repeat(open, depth) + leaf + strings.Repeat(close, depth) + "\n    return 0\n"
 }
 

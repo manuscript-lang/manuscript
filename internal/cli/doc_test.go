@@ -42,7 +42,7 @@ func TestDocOutsideRepository(t *testing.T) {
 	if err := json.Unmarshal(data, &reference); err != nil {
 		t.Fatal(err)
 	}
-	if reference.Format != 1 || len(reference.Modules) != len(checker.StandardLibrary()) {
+	if reference.Format != 2 || len(reference.Modules) != len(checker.StandardLibrary()) {
 		t.Fatalf("invalid snapshot: %+v", reference)
 	}
 }

@@ -6,8 +6,7 @@ import {
     entropy
 } from "@std/random.ms"
 import Bytes from "@std/bytes.ms"
-import {List, filled} from "@std/collections.ms"
-import Result from "@std/result.ms"
+import {filled} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -49,7 +48,7 @@ test "random errors propagate and invalid ranges do not read entropy":
     if uuid_v4(Entropy(FailedEntropy("source failed"))) != failed: return panic(
         "entropy error lost"
     )
-    if value(entropy().bytes(16)).length() != 16: return panic("host entropy")
+    if value(entropy().bytes(16)).length != 16: return panic("host entropy")
 
 test "random accepts negative exclusive upper bounds":
     let source = ZeroEntropy(0)

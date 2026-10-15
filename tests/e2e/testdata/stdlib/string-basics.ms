@@ -1,9 +1,8 @@
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
-test "String basic counterparts are callable":
-    if "é🙂".length() != 2: return panic("scalar length")
-    if not ("".is_empty()) or "a".is_empty(): return panic("empty text")
+test "String accessors and methods preserve their units":
+    if "é🙂".length != 2: return panic("scalar length")
+    if not ("".is_empty) or "a".is_empty: return panic("empty text")
     if "é🙂".chars() != ["é", "🙂"]: return panic("scalar chars")
     if "é🙂".reverse() != "🙂é": return panic("scalar reverse")
     if ("a".compare("b") != -1 or "b".compare("a") != 1 or "é".compare("é") != 0): return panic(
@@ -13,15 +12,15 @@ test "String basic counterparts are callable":
 
 test "length and chars use scalars and preserve text boundaries":
     let text = "é🙂e\u{301}"
-    if text.length() != 4 or text.length() != text.scalar_length(): return panic(
+    if text.length != 4 or text.length != text.scalar_length: return panic(
         "String length unit"
     )
     if text.chars() != ["é", "🙂", "e", "\u{301}"]: return panic(
         "combining scalar chars"
     )
-    if "👩\u{200d}🚀".length() != 3: return panic("graphemes are not scalars")
+    if "👩\u{200d}🚀".length != 3: return panic("graphemes are not scalars")
     if "a\u{0}b".chars() != ["a", "\u{0}", "b"]: return panic("NUL scalar lost")
-    if not ("".chars().is_empty()) or "".length() != 0: return panic(
+    if not ("".chars().is_empty) or "".length != 0: return panic(
         "empty scalar collection"
     )
 
@@ -86,13 +85,14 @@ test "lines preserve interior empties and recognize LF and CRLF only":
             "line boundary: {line_case.text.toString()}"
         )
 
-test "String basic bound methods capture immutable receiver values":
+test "String methods and accessor closures capture immutable receiver values":
     var text = "é\n🙂\n"
     let chars = text.chars
     let lines = text.lines
     let reverse = text.reverse
-    let length = text.length
-    let empty = text.is_empty
+    let captured_text = text
+    let length: fn() -> Int = fn() -> Int: captured_text.length
+    let empty: fn() -> Bool = fn() -> Bool: captured_text.is_empty
     let compare = text.compare
     text = "changed"
     if chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"]: return panic(
@@ -110,4 +110,4 @@ test "String basic bound methods capture immutable receiver values":
 
     let empty_lines = "".lines()
     empty_lines.append("new")
-    if not ("".lines().is_empty()): return panic("empty lines storage alias")
+    if not ("".lines().is_empty): return panic("empty lines storage alias")

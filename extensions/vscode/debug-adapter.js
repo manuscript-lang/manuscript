@@ -215,7 +215,7 @@ class ManuscriptAdapter {
       if (metadata.sources[source.file] !== source.sha256 || digest(await fs.readFile(file)) !== source.sha256) throw new Error(`Source changed since build: ${source.file}`);
     }
     this.locals = new Map(inspection.locals.map(local => [local.go_id, local]));
-    this.entities = inspection.entities.filter(e => e.kind === 'fn' || e.kind === 'method');
+    this.entities = inspection.entities.filter(e => e.kind === 'fn' || e.kind === 'method' || e.kind === 'accessor' && e.go_id);
   }
   async launch(args) {
     args = { ...args };

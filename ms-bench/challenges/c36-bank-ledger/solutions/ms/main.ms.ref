@@ -16,11 +16,11 @@ type Ledger:
 fn fields(line: String) -> List[String]:
     let spaced = line.replace_all(old: "\t", new: " ").unwrap()
     return spaced.split(" ").filter(fn(part: String) -> Bool:
-        return not part.is_empty()
+        return not part.is_empty
     )
 
 fn all_digits(s: String) -> Bool:
-    if s.is_empty():
+    if s.is_empty:
         return false
     for c in s.scalar_values():
         if c < 48 or c > 57:
@@ -65,7 +65,7 @@ fn money(l: Ledger, cmd: String, t: List[String]) -> Unit:
     let ids = [t.at(1).unwrap()]
     if cmd == "transfer":
         ids.append(t.at(2).unwrap())
-    let amount_text = t.at(t.length() - 1).unwrap()
+    let amount_text = t.at(t.length - 1).unwrap()
     for id in ids:
         if not l.accounts.contains(id):
             return emit(l, "error: unknown account {id}")
@@ -105,7 +105,7 @@ fn money(l: Ledger, cmd: String, t: List[String]) -> Unit:
 
 fn step(l: Ledger, t: List[String]) -> Unit:
     let cmd = t.at(0).unwrap()
-    if arity(cmd) != t.length():
+    if arity(cmd) != t.length:
         return emit(l, "error: bad command")
     if cmd == "report":
         return report(l)
@@ -121,7 +121,7 @@ fn step(l: Ledger, t: List[String]) -> Unit:
     if cmd == "freeze" or cmd == "unfreeze":
         let id = t.at(1).unwrap()
         let found = l.accounts.get(id)
-        if found.is_none():
+        if found.is_none:
             return emit(l, "error: unknown account {id}")
         found.unwrap().frozen = cmd == "freeze"
         return emit(l, "ok")
@@ -131,10 +131,10 @@ fn run() -> Result[Unit, Error]:
     let l = Ledger(accounts: Map[String, Account](), out: StringBuilder(), fees: 0)
     while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
-        if next.is_none():
+        if next.is_none:
             break
         let t = fields(next.unwrap())
-        if t.is_empty():
+        if t.is_empty:
             continue
         step(l, t)
     try stdout().write(l.out.freeze().to_bytes())

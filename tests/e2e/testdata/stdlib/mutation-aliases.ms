@@ -35,14 +35,14 @@ test "Map remove captures its receiver before the key and keeps conversions":
                 some(key)
             none: some(0)
     )
-    if not first.is_empty() or second.get(1) != some(20):
+    if not first.is_empty or second.get(1) != some(20):
         return panic("receiver order or Some conversion")
 
     var captured = second
     let remove = captured.remove
     captured = first
     remove(1)
-    if not second.is_empty(): return panic("stored receiver capture")
+    if not second.is_empty: return panic("stored receiver capture")
 
 interface MapRemoval:
     fn remove(key: Int) -> Map[Int, String]
@@ -59,7 +59,7 @@ test "Map explicit and bound interface views preserve field shadowing":
     let values = Map[Int, String]().add(1, "one").add(2, "two").add(3, "three")
     let marker = Map[Int, String]().add(9, "field")
     let adapter = MapAdapter(values, fn(key: Int) -> Map[Int, String]: marker)
-    if adapter.remove(1) != marker or values.length() != 3:
+    if adapter.remove(1) != marker or values.length != 3:
         return panic("callable field shadowing")
 
     let view = MapRemoval(adapter)
@@ -84,10 +84,10 @@ test "List splice direct and bound retain self staging and receiver returns":
     let preferred = values.clone().splice(0, 1, [7])
     if legacy != preferred: return panic("legacy equivalence")
 
-    values.splice(values.length(), 0, [6])
+    values.splice(values.length, 0, [6])
     if alias != [1, 9, 4, 5, 6]: return panic("end insertion")
 
-    values.splice(0, values.length(), []).append(8)
+    values.splice(0, values.length, []).append(8)
     if alias != [8]: return panic("full shrink return")
 
     let empty: List[Int] = []

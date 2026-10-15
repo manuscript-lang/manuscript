@@ -1,6 +1,4 @@
-import {Map, Set, List, MapEntry} from "@std/collections.ms"
 import panic from "@std/faults.ms"
-import {Equal, Hashable} from "@std/equality.ms"
 
 type Counter:
     calls: Int
@@ -47,7 +45,7 @@ test "conversions and collection queries are callable":
     )
 
     let failed: Result[Int, String] = error("failed")
-    if not (failed.to_optional().is_none()): return panic("Result conversion")
+    if not (failed.to_optional().is_none): return panic("Result conversion")
 
     let entries: Map[String, Int] = {"b": 2, "a": 1}
     if entries.fold(0, fn(acc, k, v): acc + v) != 3: return panic("Map fold")
@@ -92,7 +90,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     )
 
     let failure: Result[Counter, List[Int]] = error([1, 2])
-    if not (success_only(failure).is_none()): return panic(
+    if not (success_only(failure).is_none): return panic(
         "unconstrained error conversion"
     )
 
@@ -103,7 +101,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 
     let nested: Optional[Optional[Int]] = some(none)
     let converted = nested.ok_or("absent")
-    if not (converted.is_ok()) or not (converted.to_optional().unwrap().is_none()):
+    if not (converted.is_ok) or not (converted.to_optional().unwrap().is_none):
         return panic("conversion flattened nested Optional")
 
     let false_value: Optional[Bool] = some(false)
@@ -112,7 +110,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     )
 
     let unit_value: Optional[Unit] = some(unit)
-    if not (unit_value.ok_or(false).to_optional().is_some()): return panic(
+    if not (unit_value.ok_or(false).to_optional().is_some): return panic(
         "Unit payload disappeared"
     )
 
@@ -139,7 +137,7 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
         return panic("Map fold snapshot order or shallow references")
 
     visits.append("alias")
-    if initial.length() != 4: return panic("Map fold copied accumulator")
+    if initial.length != 4: return panic("Map fold copied accumulator")
 
     let empty = Map[String, Counter]()
     let fold = empty.fold[List[String]]
@@ -148,7 +146,7 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
         initial: initial
     )
     untouched.append("empty alias")
-    if initial.length() != 5: return panic("empty fold changed initial identity")
+    if initial.length != 5: return panic("empty fold changed initial identity")
 
     let success: Result[Int, Counter] = ok(2)
     let nested = (
@@ -185,10 +183,10 @@ test "Map find returns fresh entry shells with original payload references":
     if source.find(fn(k, v): true).unwrap().key != "b": return panic(
         "find reused entry shell"
     )
-    if not (source.find(fn(k, v): false).is_none()): return panic("missing Map match")
+    if not (source.find(fn(k, v): false).is_none): return panic("missing Map match")
 
     let empty = Map[String, Counter]()
-    if not (empty.find(fn(k, v): panic("empty Map find callback")).is_none()): return panic(
+    if not (empty.find(fn(k, v): panic("empty Map find callback")).is_none): return panic(
         "empty Map find"
     )
 
@@ -209,7 +207,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     ): return panic("Map some snapshot or short circuit")
 
     values.clear().add("b", 2).add("a", 1).add("c", 3)
-    seen.splice(0, seen.length(), [])
+    seen.splice(0, seen.length, [])
     let every = values.every
     if (
         every(
@@ -268,13 +266,13 @@ test "Set fold and find preserve ordered snapshots and reference identity":
     )
 
     visits.append("alias")
-    if initial.length() != 4: return panic("Set fold copied initial")
+    if initial.length != 4: return panic("Set fold copied initial")
 
     let bound_empty = Set[Key]().fold[List[String]]
     bound_empty(initial, fn(acc, v): panic("empty Set fold callback")).append(
         "empty alias"
     )
-    if initial.length() != 5: return panic("empty Set fold changed initial identity")
+    if initial.length != 5: return panic("empty Set fold changed initial identity")
 
     values.clear().add(b).add(a).add(c)
     let seen: List[Int] = []
@@ -291,7 +289,7 @@ test "Set fold and find preserve ordered snapshots and reference identity":
     if a.label != "found": return panic("Set find copied payload")
 
     values.clear()
-    if not (values.find(fn(v): panic("empty Set find callback")).is_none()): return panic(
+    if not (values.find(fn(v): panic("empty Set find callback")).is_none): return panic(
         "empty Set find"
     )
 
@@ -315,7 +313,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     ): return panic("Set some snapshot or short circuit")
 
     values.clear().add(2).add(1).add(3)
-    seen.splice(0, seen.length(), [])
+    seen.splice(0, seen.length, [])
     let every = values.every
     if (
         every(
@@ -338,7 +336,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     let complete = Set[Int]().add(2).add(1)
     if complete.some(fn(v): false) or not (complete.every(fn(v): true)):
         return panic("Set terminal predicate result")
-    if not (complete.find(fn(v): false).is_none()): return panic("missing Set match")
+    if not (complete.find(fn(v): false).is_none): return panic("missing Set match")
 
 test "nonmatching queries and all-true predicates visit the complete snapshot":
     let map: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
@@ -352,7 +350,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         or map_visits != ["b", "a", "c"]
     ): return panic("Map some stopped without a match")
 
-    map_visits.splice(0, map_visits.length(), [])
+    map_visits.splice(0, map_visits.length, [])
     if (
         not (
             map.every(
@@ -364,7 +362,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         or map_visits != ["b", "a", "c"]
     ): return panic("Map every stopped without a failure")
 
-    map_visits.splice(0, map_visits.length(), [])
+    map_visits.splice(0, map_visits.length, [])
     if (
         not (
             map
@@ -373,7 +371,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
                     map_visits.append(k)
                     return false
             )
-            .is_none()
+            .is_none
         )
         or map_visits != ["b", "a", "c"]
     ): return panic("Map find stopped without a match")
@@ -386,7 +384,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
             return false
     ) or set_visits != [2, 1, 3]: return panic("Set some stopped without a match")
 
-    set_visits.splice(0, set_visits.length(), [])
+    set_visits.splice(0, set_visits.length, [])
     if (
         not (
             set.every(
@@ -398,7 +396,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         or set_visits != [2, 1, 3]
     ): return panic("Set every stopped without a failure")
 
-    set_visits.splice(0, set_visits.length(), [])
+    set_visits.splice(0, set_visits.length, [])
     if (
         not (
             set
@@ -407,7 +405,29 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
                     set_visits.append(v)
                     return false
             )
-            .is_none()
+            .is_none
         )
         or set_visits != [2, 1, 3]
     ): return panic("Set find stopped without a match")
+
+fn find_port(port: Optional[Int]) -> Result[Int, Error]:
+    let value = try port.ok_or()
+    return ok(value)
+
+test "ok_or without a cause records the calling file and line":
+    let absent: Optional[Int] = none
+    let direct: Result[Int, MissingValue] = absent.ok_or()
+    if not (direct.unwrap_error().message().contains("conversions-queries.ms:")): return panic(
+        "missing location"
+    )
+
+    let message = find_port(none).unwrap_error().message()
+    if not (message.starts_with("missing value at ")): return panic(message)
+    if find_port(some(8080)).unwrap() != 8080: return panic("present payload")
+
+    let named: Result[Int, String] = absent.ok_or("port")
+    if named.unwrap_error() != "port": return panic("explicit cause")
+
+    match find_port(none).unwrap_error():
+        MissingValue(found): unit
+        _: return panic("default cause is not MissingValue")

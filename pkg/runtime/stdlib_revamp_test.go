@@ -56,7 +56,7 @@ func TestPriorityQueueOrderingAndFaultRecovery(t *testing.T) {
 			t.Fatal(want, got)
 		}
 	}
-	if Invoke(ctx, q.Operation("peek"), nil).(Alternative).Tag != "none" {
+	if NativeAccessorRead(ctx, q, "peek").(Alternative).Tag != "none" {
 		t.Fatal("empty heap")
 	}
 	Invoke(ctx, q.Operation("enqueue"), []Argument{{"value", int64(2)}})
@@ -138,7 +138,7 @@ func TestNetworkOptionalDeadlinesAndBudgets(t *testing.T) {
 	defer n.Operation("close").Body(Shield(ctx), nil)
 	listener := librarySuccess(t, Invoke(ctx, n.Operation("listen"), []Argument{{"address", "127.0.0.1:0"}}))
 	defer Invoke(Shield(ctx), Bind(listener, "", "close"), nil)
-	address := Invoke(ctx, Bind(listener, "", "address"), nil)
+	address := NativeAccessorRead(ctx, listener, "address")
 	connected := make(chan Value, 1)
 	go func() { connected <- Invoke(ctx, n.Operation("connect"), []Argument{{"address", address}}) }()
 	accepted := librarySuccess(t, Invoke(ctx, Bind(listener, "", "accept"), nil))
@@ -184,7 +184,7 @@ func TestHTTPOmittedBudgets(t *testing.T) {
 	})
 	server := librarySuccess(t, Invoke(ctx, n.Operation("serve"), []Argument{{"address", "127.0.0.1:0"}, {"handler", handler}}))
 	defer Invoke(ctx, Bind(server, "", "close"), nil)
-	address := Invoke(ctx, Bind(server, "", "address"), nil).(string)
+	address := NativeAccessorRead(ctx, server, "address").(string)
 	response := librarySuccess(t, Invoke(ctx, n.Operation("request"), []Argument{{"method", libraryHTTPMethod("GET")}, {"url", "http://" + address}, {"headers", httpTestHeaders(&Map{Type: "@std/Map[String][String]"})}, {"body", Bytes{}}})).(Record)
 	if response.Fields["head"].(Record).Fields["status"] != int64(200) || string(response.Fields["body"].(Bytes).Items) != "ok" {
 		t.Fatal(response)

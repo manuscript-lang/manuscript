@@ -1,0 +1,22 @@
+{
+  "historical_approved_design": "46c46a29105e1aabb969d22cce96825b52dc0b8a",
+  "preserved_implementation": "fb66c3b4520bee9620962715e55a9298f09e05de",
+  "preserved_recursion_fix": "789a4452816128fae9de7d1b515543897279abe7",
+  "integrated_main": "9dcc0bae6f6e269dafe794b4ff3b8def9825d6bb",
+  "merge_reviewed_with_blocker": "8b4dd16f43b528ef8ad339460c6ceeb4ef5a4110",
+  "approved_production_correction": "1ff193c04a90965b969678f3a253c33220ca3edf",
+  "approved_code_and_harness": "800547bb60c0b7926f77572b1236a2c198043b12",
+  "historical_benchmark_baseline": "1383851ebb24d2dc8a0a13d8cec0021bf32e833d",
+  "historical_coverage_revision": "12a26d19",
+  "historical_coverage_percent": 78.0,
+  "fresh_coverage_measured": false,
+  "publication": "held; no push or PR",
+  "upstream_ci_run": 38665989875,
+  "upstream_ci_url": "https://github.com/manuscript-lang/manuscript/actions/runs/38665989875",
+  "fresh_emitted_go_sha256": "1a197b745aad18a9c532997ad36b5aad899d4be66e091ea3b2b138ce6de1af55",
+  "current_node": "v24.13.0",
+  "node_archive_pin": "e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e  node-v24.13.0-linux-x64.tar.xz",
+  "go": "go version go1.25.1 linux/amd64",
+  "cli_sha256": "812e638292ecfb2ddc0fd6120ec4cf859ee8cc990c3eac86251504048814c5b2",
+  "linux_archive_sha256": "366c2df88c4b6136b55d31daedcdc7a2b22e54dce129f4cf4598408627576e1a"
+}

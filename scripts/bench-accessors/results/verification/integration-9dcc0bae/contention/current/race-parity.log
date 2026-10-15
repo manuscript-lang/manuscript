@@ -1,0 +1,11 @@
+=== RUN   TestAccessorContentionParity
+=== RUN   TestAccessorContentionParity/GuardValue/Public
+=== RUN   TestAccessorContentionParity/GuardValue/SafetyControl
+=== RUN   TestAccessorContentionParity/LoggerLevel/Public
+=== RUN   TestAccessorContentionParity/LoggerLevel/SafetyControl
+--- PASS: TestAccessorContentionParity (0.00s)
+    --- PASS: TestAccessorContentionParity/GuardValue/Public (0.00s)
+    --- PASS: TestAccessorContentionParity/GuardValue/SafetyControl (0.00s)
+    --- PASS: TestAccessorContentionParity/LoggerLevel/Public (0.00s)
+    --- PASS: TestAccessorContentionParity/LoggerLevel/SafetyControl (0.00s)
+PASS

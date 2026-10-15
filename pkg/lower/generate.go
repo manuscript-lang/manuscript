@@ -43,7 +43,6 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		&ast.GenDecl{Tok: token.IMPORT, Specs: []ast.Spec{imports[0], imports[1]}},
 	}}
 	g.planStructs()
-	file.Decls = append(file.Decls, g.structDeclarations()...)
 	var functions []*checker.Symbol
 	for _, module := range program.Modules {
 		for _, d := range module.Declarations {
@@ -94,6 +93,9 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			scope = m.Module
 		}
 		fields := []ast.Expr{keyed("Receiver", textLiteral(checker.TypeKey(m.Receiver))), keyed("Contract", textLiteral(checker.TypeKey(m.Contract))), keyed("Name", textLiteral(m.Decl.Name)), keyed("Scope", textLiteral(scope)), keyed("Variables", stringSlice(vars))}
+		if m.Accessor {
+			fields = append(fields, keyed("Accessor", ident("true")))
+		}
 		// Consecutive standard implementations register as one data table,
 		// which compiles much faster than a closure for each.
 		if m.Native != "" {
@@ -102,6 +104,10 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			continue
 		}
 		flushNatives()
+		if m.Accessor {
+			g.registerAccessor(m, fields, &file.Decls, &initialize)
+			continue
+		}
 		if direct := g.directMethods[m.ID]; direct != nil {
 			decl, forward := g.directMethodDeclaration(m, direct)
 			file.Decls = append(file.Decls, decl)
@@ -131,24 +137,41 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		initialize = append(initialize, evaluated(runtimeCall("Register", composite(runtimeName("Implementation"), fields...))))
 	}
 	flushNatives()
-	for _, st := range g.structOrder {
-		initialize = append(initialize, evaluated(runtimeCall("RegisterStruct", textLiteral(st.key), closure(nil, runtimeName("Struct"), returned(address(composite(ident(st.name))))))))
-	}
-	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("initialize"), Type: functionType(nil, nil), Body: block(initialize...)})
 	main := []ast.Stmt{evaluated(call(ident("initialize")))}
 	if options.Tests {
 		var tests []ast.Expr
 		for _, module := range program.Modules {
 			g.module = module.File
+			fixtureName := ""
+			if fixture := program.TestFixtures[module.File]; fixture != nil {
+				fixtureName = "fixture" + strconv.Itoa(len(main))
+				main = append(main, define(fixtureName, address(composite(runtimeName("TestFixture"), keyed("File", textLiteral(module.File)), keyed("Create", ident(fixture.Factory.ID)), keyed("Scope", composite(runtimeName("TypeScope"), keyed("Module", textLiteral(module.File))))))))
+			}
 			for _, d := range module.Declarations {
 				if d.Kind != syntax.KindTest {
 					continue
 				}
-				fn := g.function("test "+d.Name, nil, d.Result, d.Body, nil, nil, &checker.Type{Kind: "function", Result: &checker.Type{ID: "Unit"}})
-				tests = append(tests, composite(nil, keyed("Name", textLiteral(module.File+"::"+d.Name)), keyed("Run", concreteFunction(fn))))
+				var params []syntax.Parameter
+				var bindings []*checker.Binding
+				t := &checker.Type{Kind: "function", Result: &checker.Type{ID: "Unit"}}
+				if binding := program.FixtureBinding(d); binding != nil {
+					params = []syntax.Parameter{{Name: "fixture", Pos: d.Pos}}
+					bindings = []*checker.Binding{binding}
+					t.Params = []checker.Param{{Name: "fixture", Type: binding.Type}}
+				}
+				fn := g.function("test "+d.Name, params, d.Result, d.Body, bindings, nil, t)
+				fields := []ast.Expr{keyed("Name", textLiteral(module.File+"::"+d.Name)), keyed("Run", concreteFunction(fn))}
+				if fixtureName != "" {
+					fields = append(fields, keyed("Fixture", ident(fixtureName)))
+				}
+				tests = append(tests, composite(nil, fields...))
 			}
 		}
-		main = append(main, define("tests", sliceLiteral(runtimeName("Test"), tests...)), &ast.IfStmt{Cond: &ast.BinaryExpr{X: runtimeCall("RunTestsArgs", ident("tests"), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}), Op: token.GTR, Y: intLiteral(0)}, Body: block(evaluated(call(selector(ident("os"), "Exit"), intLiteral(1))))})
+		run := runtimeCall("RunTestsArgs", ident("tests"), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)})
+		if options.CPUProfile != "" || options.HeapProfile != "" || options.Trace != "" {
+			run = runtimeCall("Profile", textLiteral(options.CPUProfile), textLiteral(options.HeapProfile), textLiteral(options.Trace), closure(nil, ident("int"), returned(run)))
+		}
+		main = append(main, define("tests", sliceLiteral(runtimeName("Test"), tests...)), &ast.IfStmt{Cond: &ast.BinaryExpr{X: run, Op: token.GTR, Y: intLiteral(0)}, Body: block(evaluated(call(selector(ident("os"), "Exit"), intLiteral(1))))})
 	} else if options.Entry {
 		run := runtimeCall("RunMain", ident(program.Symbol(entry, "main").ID), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)})
 		if options.CPUProfile != "" || options.HeapProfile != "" || options.Trace != "" {
@@ -159,6 +182,17 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		main = append(main, discard(selector(ident("os"), "Args")))
 	}
 	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("main"), Type: functionType(nil, nil), Body: block(main...)})
+	instances, registrations := g.lowerInstances()
+	file.Decls = append(file.Decls, instances...)
+	initialize = append(initialize, registrations...)
+	// Generic record instantiations are discovered while bodies and tests are
+	// lowered, so their declarations and registrations come last.
+	for _, st := range g.structOrder {
+		initialize = append(initialize, evaluated(runtimeCall("RegisterStruct", textLiteral(st.key), closure(nil, runtimeName("Struct"), returned(address(composite(ident(st.name))))))))
+	}
+	file.Decls = append(file.Decls, g.structDeclarations()...)
+	file.Decls = append(file.Decls, g.dispatcherDeclarations()...)
+	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("initialize"), Type: functionType(nil, nil), Body: block(initialize...)})
 	for _, name := range g.hoisted {
 		file.Decls = append(file.Decls, variable(name, runtimeName("Lazy"), nil))
 	}

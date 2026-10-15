@@ -18,8 +18,6 @@ func TestBoundNativeCallMatchesBoundMember(t *testing.T) {
 		{"String", "split", "string/split", "@std/List[String]", func() Value { return "a,b" }, []string{"separator"}, []Value{","}},
 		{"List", "set", "collections/set", "@std/List[Int]", func() Value { return NewList("@std/List[Int]", []Value{int64(1), int64(2)}) }, []string{"index", "value"}, []Value{int64(-1), int64(9)}},
 		{"List", "contains", "collections/contains", "Bool", func() Value { return NewList("@std/List[Int]", []Value{int64(1)}) }, []string{"value"}, []Value{int64(1)}},
-		// A member without a library body keeps ordinary dispatch.
-		{"List", "length", "length", "Int", func() Value { return NewList("@std/List[Int]", []Value{int64(1)}) }, nil, nil},
 	} {
 		var arguments []Argument
 		for i, label := range tc.labels {

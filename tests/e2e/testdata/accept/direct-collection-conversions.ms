@@ -1,4 +1,3 @@
-import {List, Map, Set} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 fn append_generic[T](values: List[Optional[T]], value: T) -> Unit:
@@ -17,21 +16,21 @@ test "direct append preserves checked argument conversions":
     values.append(none)
     if values.at(0).unwrap().unwrap() != 7 or values.at(1).unwrap().unwrap() != 8:
         return panic("append lost some wrapping")
-    if not values.at(2).unwrap().is_none(): return panic("explicit none was wrapped")
+    if not values.at(2).unwrap().is_none: return panic("explicit none was wrapped")
 
     let flags: List[Optional[Bool]] = []
     flags.append(false)
-    if flags.at(0).unwrap().is_none() or flags.at(0).unwrap().unwrap():
+    if flags.at(0).unwrap().is_none or flags.at(0).unwrap().unwrap():
         return panic("false became absent")
 
     let units: List[Optional[Unit]] = []
     units.append(unit)
-    if units.at(0).unwrap().is_none(): return panic("Unit became absent")
+    if units.at(0).unwrap().is_none: return panic("Unit became absent")
 
     let inner: Optional[Int] = none
     let nested: List[Optional[Optional[Int]]] = []
     nested.append(inner)
-    if nested.at(0).unwrap().is_none() or not nested.at(0).unwrap().unwrap().is_none():
+    if nested.at(0).unwrap().is_none or not nested.at(0).unwrap().unwrap().is_none:
         return panic("some(none) was flattened")
 
     let callbacks: List[Optional[fn(value: Int) -> Int]] = []
@@ -75,7 +74,7 @@ test "direct keyed calls preserve optional keys and values":
     let keys = Set[Optional[Int]]()
     keys.add(7)
     keys.add(none)
-    if (not keys.contains(7) or not keys.contains(none) or keys.length() != 2):
+    if (not keys.contains(7) or not keys.contains(none) or keys.length != 2):
         return panic("set conversion lost")
 
 test "direct calls capture receiver and arguments in written order":
@@ -91,7 +90,7 @@ test "direct calls capture receiver and arguments in written order":
                 none: 0
         ) + 0
     )
-    if first.at(0).unwrap().unwrap() != 7 or not second.is_empty():
+    if first.at(0).unwrap().unwrap() != 7 or not second.is_empty:
         return panic("receiver read moved past argument")
 
     let entries = Map[Int, Optional[Int]]()

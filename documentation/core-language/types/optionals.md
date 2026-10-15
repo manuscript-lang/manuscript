@@ -46,12 +46,12 @@ Omission still requires a default or a declared library omission permission. An 
 
 ## Checking and extracting values
 
-Optional has receiver methods for presence checks and extraction:
+Optional has presence accessors and extraction methods:
 
-| Method | Behavior |
+| Member | Behavior |
 | --- | --- |
-| `is_some() -> Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
-| `is_none() -> Bool` | Whether the optional is absent |
+| `is_some: Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
+| `is_none: Bool` | Whether the optional is absent |
 | `unwrap() -> T` | Return the contained value; [fault](../errors/faults.md) with `called Optional.unwrap() on none` when absent |
 | `unwrap_or(fallback: T) -> T` | Return the contained value or the supplied fallback |
 | `unwrap_or_else(create: fn() -> T) -> T` | Return the contained value or call `create` once when absent |
@@ -77,7 +77,7 @@ Use `unwrap` when presence is established or absence is a programming error:
 
 ```manuscript
 fn greet(name: Optional[String]) -> String:
-    if name.is_some():
+    if name.is_some:
         return "Hello, " + name.unwrap()
     return "Hello!"
 ```
@@ -106,14 +106,17 @@ Use [Result](../errors/results.md) when a failure needs an explanation. An absen
 
 ## Converting absence to a Result
 
-`ok_or[E](cause: E) -> Result[T, E]` returns `ok` with the original present payload, or `error` with `cause` when absent. The cause expression is an ordinary eager argument, including when the Optional is present. `E` can be any type and does not need an Error implementation.
+`ok_or[E = MissingValue](cause: Optional[E] = none) -> Result[T, E]` returns `ok` with the original present payload, or `error` with `cause` when absent. The cause is an ordinary eager argument, including when the Optional is present, and `E` can be any type; it does not need an Error implementation. `ok_or_else[E](create: fn() -> E) -> Result[T, E]` calls `create` once only for absence. It runs in the caller's execution context; faults and cancellation propagate normally. Both conversions retain payload references and nested Optional/Result values.
 
-`ok_or_else[E](create: fn() -> E) -> Result[T, E]` calls `create` once only for absence. It runs in the caller's execution context; faults and cancellation propagate normally. Both conversions retain payload references and nested Optional/Result values.
+Omit the cause to get the prelude `MissingValue`, defined in `@std/errors.ms` without needing an import: with nothing to infer `E` from, it takes its [default type argument](generics.md#default-type-arguments). The error records the source file and line of the `ok_or()` call, and its `message()` reports them, for example `missing value at src/main.ms:12`. The position is captured when the absent value becomes an error and costs nothing on the present path. A hand-built `MissingValue.Missing(location: ...)` supplies its own location. Because `MissingValue` implements `Error`, `try` flattens the conversion in any function whose error type is `Error`:
 
 ```manuscript
-fn require_name(name: Optional[String]) -> Result[String, String]:
-    return name.ok_or("missing name")
+fn port_number(text: String) -> Result[Int, Error]:
+    let port = try text.parse_int().ok_or()
+    return ok(port)
 ```
+
+A context that fixes another error type, such as returning `Result[Int, String]`, needs a cause: omitting it there faults with `called Optional.ok_or() without a cause for an error type other than MissingValue`.
 
 Use [Result.to_optional](../errors/results.md#converting-success-to-an-optional) to keep success while discarding an error.
 

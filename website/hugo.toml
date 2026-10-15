@@ -45,3 +45,11 @@ disableKinds = ['taxonomy', 'term', 'RSS']
 [[module.mounts]]
   source = '../extensions/vscode/syntaxes/manuscript.tmLanguage.json'
   target = 'assets/manuscript-grammar.json'
+
+# Library guides and references are generated from the pinned .ms sources.
+[[module.mounts]]
+  source = '../documentation'
+  target = 'content'
+[[module.mounts]]
+  source = '../.artifacts/docs/documentation'
+  target = 'content'

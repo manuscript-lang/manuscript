@@ -68,7 +68,7 @@ func TestExpandedSystemAndProcessTempQueryVersusCreation(t *testing.T) {
 		t.Fatal(err)
 	}
 	scoped := librarySuccess(t, fs.Operation("temporary").Body(ctx, []Value{"scoped-"}))
-	scopedPath := Bind(scoped, "", "path").(Function).Body(ctx, nil).(string)
+	scopedPath := NativeAccessorRead(ctx, scoped, "path").(string)
 	Bind(scoped, "", "close").(Function).Body(Shield(ctx), nil)
 	if _, err := os.Stat(scopedPath); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("scoped temp remains: %v", err)

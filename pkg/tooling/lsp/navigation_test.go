@@ -50,16 +50,16 @@ func definitionAt(t *testing.T, source string, offset int) (file, text, hover st
 }
 
 func TestStandardLibraryNavigation(t *testing.T) {
-	source := `import List from "@std/collections.ms"
+	source := `import ListBuilder from "@std/collections.ms"
 import system from "@std/system.ms"
 fn length(values: List[Int]) -> Int:
-    return values.length()
+    return values.length
 fn os_name() -> String:
     return system().info().os
 `
-	for _, item := range []struct{ needle, file, definition string }{{"List from", "@std/collections.ms", "List[T]:"}, {"List[Int]", "@std/collections.ms", "List[T]:"}, {"length()", "@std/collections.ms", "length()"}, {"system()", "@std/system.ms", "system()"}, {"info()", "@std/system.ms", "info()"}, {".os", "@std/system.ms", "os:"}} {
+	for _, item := range []struct{ needle, file, definition string }{{"ListBuilder from", "@std/collections.ms", "ListBuilder[T]:"}, {"List[Int]", "@std/collections.ms", "List[T]:"}, {".length", "@std/collections.ms", "length -> Int"}, {"system()", "@std/system.ms", "system()"}, {"info()", "@std/system.ms", "info()"}, {".os", "@std/system.ms", "os:"}} {
 		offset := strings.LastIndex(source, item.needle)
-		if item.needle == ".os" {
+		if item.needle == ".os" || item.needle == ".length" {
 			offset++
 		}
 		file, text, hover := definitionAt(t, source, offset)
@@ -70,8 +70,8 @@ fn os_name() -> String:
 }
 
 func TestGroupedImportNavigation(t *testing.T) {
-	source := "import {\n    List,\n    Map,\n} from \"@std/collections.ms\"\n"
-	for _, name := range []string{"List", "Map"} {
+	source := "import {\n    ListBuilder,\n    MapBuilder,\n} from \"@std/collections.ms\"\n"
+	for _, name := range []string{"ListBuilder", "MapBuilder"} {
 		file, _, hover := definitionAt(t, source, strings.Index(source, name))
 		if file != "@std/collections.ms" || !strings.Contains(hover, name+":") {
 			t.Fatalf("%s: %s %q", name, file, hover)
@@ -83,8 +83,7 @@ func TestGroupedImportNavigation(t *testing.T) {
 }
 
 func TestNativeGenericMethodNavigation(t *testing.T) {
-	source := `import List from "@std/collections.ms"
-fn label(value: Int) -> String:
+	source := `fn label(value: Int) -> String:
     return "{value}"
 test "methods":
     let labels = [1].map(transform: label)
@@ -105,7 +104,6 @@ test "methods":
 
 func TestBytesValuesNavigation(t *testing.T) {
 	source := `import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 fn extract(data: Bytes) -> List[Int]:
     let bound: fn() -> List[Int] = data.values
     return data.values()
@@ -119,8 +117,7 @@ fn extract(data: Bytes) -> List[Int]:
 }
 
 func TestCommonErrorNavigation(t *testing.T) {
-	source := `import Error from "@std/errors.ms"
-import JsonError from "@std/json.ms"
+	source := `import JsonError from "@std/json.ms"
 fn describe(cause: Error) -> String:
     match cause:
         JsonError(json):
@@ -128,14 +125,13 @@ fn describe(cause: Error) -> String:
         _:
             return cause.message()
 `
-	// LSP resolves an interface-method call to a concrete implementation
-	// rather than the contract in errors.ms, so cause.message() only asserts
-	// that it lands on some standard message() declaration.
+	// Dynamic interface operations follow their checked contract declaration;
+	// concrete receivers retain their selected implementation.
 	for _, item := range []struct{ needle, file string }{
-		{"import Error from", "@std/errors.ms"},
+		{"Error) ->", "@std/errors.ms"},
 		{"JsonError(json)", "@std/json.ms"},
 		{"json.message()", "@std/json.ms"},
-		{"cause.message()", ""},
+		{"cause.message()", "@std/errors.ms"},
 	} {
 		offset := strings.LastIndex(source, item.needle)
 		if strings.HasPrefix(item.needle, "import ") {
@@ -145,10 +141,7 @@ fn describe(cause: Error) -> String:
 			offset += strings.Index(item.needle, "message")
 		}
 		file, text, _ := definitionAt(t, source, offset)
-		if item.file == "" && strings.HasPrefix(file, "@std/") && strings.HasPrefix(text, "message()") {
-			continue
-		}
-		if file != item.file {
+		if file != item.file || strings.Contains(item.needle, ".message") && !strings.HasPrefix(text, "message()") {
 			t.Fatalf("%s: %q", item.needle, file)
 		}
 	}
@@ -180,7 +173,7 @@ func TestSourceStandardLibraryNavigation(t *testing.T) {
 	}
 }
 
-func TestConstructorNamesNavigateToImports(t *testing.T) {
+func TestConstructorNamesNavigateToCanonicalDeclarations(t *testing.T) {
 	for _, tc := range []struct {
 		name, module, expression string
 	}{
@@ -192,10 +185,13 @@ func TestConstructorNamesNavigateToImports(t *testing.T) {
 		{"Optional", "optional", "Optional[Int].some(1)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "import " + tc.name + " from \"@std/" + tc.module + ".ms\"\nfn example() -> Unit:\n    " + tc.expression + "\n"
+			source := "fn example() -> Unit:\n    " + tc.expression + "\n"
+			if tc.name == "Queue" || tc.name == "CsvOptions" {
+				source = "import " + tc.name + " from \"@std/" + tc.module + ".ms\"\n" + source
+			}
 			file, _, _ := definitionAt(t, source, strings.LastIndex(source, tc.name))
 			if file != "@std/"+tc.module+".ms" {
-				t.Fatalf("constructor name did not resolve to its imported declaration: %q", file)
+				t.Fatalf("constructor name did not resolve to its canonical declaration: %q", file)
 			}
 		})
 	}

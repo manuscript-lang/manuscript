@@ -17,7 +17,7 @@ func TestInterfaceAndReceiverHints(t *testing.T) {
 		want         []string
 	}{
 		{"view in return", declarations + implementation + "fn shape() -> Shape: Sq(2)\n", []string{"expected Shape, found Sq", "Sq implements Shape", "Shape(value: ...)"}},
-		{"view in list", "import List from \"@std/collections.ms\"\n" + declarations + implementation + "fn shapes() -> List[Shape]: [Sq(2)]\n", []string{"expected Shape, found Sq", "Shape(value: ...)"}},
+		{"view in list", "" + declarations + implementation + "fn shapes() -> List[Shape]: [Sq(2)]\n", []string{"expected Shape, found Sq", "Shape(value: ...)"}},
 		{"view in call", declarations + implementation + "fn area(shape: Shape) -> Int: shape.area()\nfn run() -> Int: area(Sq(2))\n", []string{"expected Shape, found Sq", "Shape(value: ...)"}},
 		{"generic view", "interface Read[T]:\n    fn get() -> T\ntype Box[T]:\n    item: T\nimpl Read[T] for Box[T]:\n    fn get() -> T: self.item\nfn read() -> Read[Int]: Box(1)\n", []string{"Box[Int] implements Read[Int]", "Read[Int](value: ...)"}},
 		{"missing implementation", declarations + "fn shape() -> Shape: Sq(2)\n", []string{"expected Shape, found Sq", "no applicable", "impl Shape for Sq"}},

@@ -1,4 +1,3 @@
-import Equal from "@std/equality.ms"
 import panic from "@std/faults.ms"
 
 type Element:
@@ -36,7 +35,7 @@ fn check_equality(side: String, mutation: String) -> Unit:
         let next_action = target[1].unwrap().on_equal
 
         if mutation == "shrink" or mutation == "shrink_mismatch":
-            target.splice(0, target.length(), [])
+            target.splice(0, target.length, [])
             return
 
         if mutation == "append":

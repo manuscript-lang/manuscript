@@ -39,7 +39,7 @@ func checkAnalysisCollections(cli, directory string, environment []string) error
 				Format  int
 				Modules []struct{ Path string }
 			}
-			if json.Unmarshal(output, &reference) != nil || reference.Format != 1 || len(reference.Modules) != 2 || reference.Modules[0].Path != "analysis/left/main.ms" || reference.Modules[1].Path != "analysis/right/main.ms" {
+			if json.Unmarshal(output, &reference) != nil || reference.Format != 2 || len(reference.Modules) != 2 || reference.Modules[0].Path != "analysis/left/main.ms" || reference.Modules[1].Path != "analysis/right/main.ms" {
 				return fmt.Errorf("independent documentation identities: %s", output)
 			}
 		}

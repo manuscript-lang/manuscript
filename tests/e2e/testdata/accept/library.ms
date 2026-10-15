@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
 import parse from "@std/json.ms"
 import stringify from "@std/json.ms"
@@ -30,7 +28,6 @@ import UrlError from "@std/url.ms"
 import BinaryError from "@std/binary.ms"
 import CompressionError from "@std/compress.ms"
 import ArchiveError from "@std/archive.ms"
-import Result from "@std/result.ms"
 
 import pack from "@std/archive.ms"
 import unpack from "@std/archive.ms"
@@ -85,7 +82,7 @@ fn verify_encoding() -> Result[Unit, EncodingError]:
 
 fn verify_url() -> Result[Unit, UrlError]:
     let query = try parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)
-    if not (query.length() == 3):
+    if not (query.length == 3):
         return panic(message: "check failed")
     if not (format_query(entries: query) == "a=1&a=2&space=hello+world"):
         return panic(message: "check failed")
@@ -199,7 +196,7 @@ test "expanded packages run through compiler":
 
     if not (("a,,b").split(separator: ",", max_parts: 2) == ["a", ""]):
         return panic(message: "check failed")
-    if not (("é🙂").scalar_length() == 2):
+    if not (("é🙂").scalar_length == 2):
         return panic(message: "check failed")
     if not (("é").scalar_values() == [233]):
         return panic(message: "check failed")

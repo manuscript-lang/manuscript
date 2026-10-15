@@ -34,8 +34,7 @@ fn fraction(value: Float) -> Float:
 }
 
 func TestDirectNativeCollectionLowering(t *testing.T) {
-	result := compiler.CompileSource("collections.ms", `import List from "@std/collections.ms"
-fn read(values: List[Int], index: Int) -> Int:
+	result := compiler.CompileSource("collections.ms", `fn read(values: List[Int], index: Int) -> Int:
     return values.at(index).unwrap()
 fn stored(values: List[Int], index: Int) -> Optional[Int]:
     return values.at(index)
@@ -60,26 +59,26 @@ impl At for Custom:
 }
 
 func TestDirectLengthLowering(t *testing.T) {
-	result := compiler.CompileSource("length.ms", `import {List, Map, Set} from "@std/collections.ms"
-type Sized:
+	result := compiler.CompileSource("length.ms", `type Sized:
     items: List[Int]
 interface Measure:
     fn length() -> Int
 impl Measure for Sized:
-    fn length() -> Int: return self.items.length()
+    fn length() -> Int: return self.items.length
 fn sizes(values: List[Int], pairs: Map[String, Int], names: Set[String], text: String, sized: Sized) -> Int:
     let measure = Measure(value: sized)
-    let length = values.length
-    return values.length() + pairs.length() + names.length() + text.byte_length() + measure.length() + length()
+    let receiver = values
+    let length: fn() -> Int = fn() -> Int: receiver.length
+    return values.length + pairs.length + names.length + text.byte_length + measure.length() + length()
 `, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	if strings.Count(result.Source, "rt.CollectionLength(") != 4 || strings.Count(result.Source, "rt.StringByteLength(") != 1 {
+	if strings.Count(result.Source, "rt.ListLengthRead(") != 3 || strings.Count(result.Source, "rt.MapLengthRead(") != 1 || strings.Count(result.Source, "rt.SetLengthRead(") != 1 || strings.Count(result.Source, "rt.StringByteLengthRead(") != 1 {
 		t.Fatalf("expected direct length calls only for built-in receivers:\n%s", result.Source)
 	}
-	if !strings.Contains(result.Source, "rt.NativeMemberResult(") {
-		t.Fatal("bound method reference must keep ordinary callable dispatch")
+	if strings.Contains(result.Source, "rt.NativeMemberResult(") {
+		t.Fatal("accessor reference must read a value directly")
 	}
 }
 
@@ -129,7 +128,8 @@ fn guarded(n: Int) -> Result[Bool, String]:
 
 func TestStaticSpecializationIsHoisted(t *testing.T) {
 	result := compiler.CompileSource("hoist.ms", `fn ident[T](x: T) -> T:
-    return x
+    let items = [x]
+    return items.at(index: 0).unwrap()
 fn twice[T](x: T) -> T:
     return ident(x: ident(x: x))
 fn use() -> Int:
@@ -146,16 +146,44 @@ fn use() -> Int:
 	}
 }
 
-func TestDirectListAppendAndIsEmptyLowering(t *testing.T) {
-	result := compiler.CompileSource("append.ms", `import List from "@std/collections.ms"
-fn grow(values: List[Int]) -> Bool:
-    values.append(1)
-    return values.is_empty()
+func TestParametricGenericFunctionsAreInstantiatedPerType(t *testing.T) {
+	result := compiler.CompileSource("instance.ms", `fn ident[T](x: T) -> T:
+    return x
+fn pick[T](first: Bool, left: T, right: T) -> T:
+    var chosen = left
+    if not first:
+        chosen = right
+    return chosen
+fn use() -> String:
+    let number = ident(x: 1)
+    let ratio = pick(first: false, left: 1.5, right: 2.5)
+    let text = ident(x: "go")
+    if number == 1 and ratio == 2.5:
+        return text
+    return ""
 `, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListAppendInt(", "rt.ListIsEmpty("} {
+	for _, want := range []string{"directResult int64)", "directResult float64)", "directResult string)"} {
+		if strings.Count(result.Source, "_i") == 0 || !strings.Contains(result.Source, want) {
+			t.Fatalf("missing typed instance %q:\n%s", want, result.Source)
+		}
+	}
+	if strings.Contains(result.Source, "rt.Specialize(") {
+		t.Fatalf("instantiated calls must not build dynamic specializations:\n%s", result.Source)
+	}
+}
+
+func TestDirectListAppendAndIsEmptyLowering(t *testing.T) {
+	result := compiler.CompileSource("append.ms", `fn grow(values: List[Int]) -> Bool:
+    values.append(1)
+    return values.is_empty
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	for _, operation := range []string{"rt.ListAppendInt(", "rt.ListIsEmptyRead("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing direct %s:\n%s", operation, result.Source)
 		}
@@ -163,8 +191,7 @@ fn grow(values: List[Int]) -> Bool:
 }
 
 func TestDirectKeyedAndStringLowering(t *testing.T) {
-	result := compiler.CompileSource("keyed.ms", `import {List, Map, Set} from "@std/collections.ms"
-fn use(l: List[Int], m: Map[String, Int], s: Set[Int], t: String) -> Unit:
+	result := compiler.CompileSource("keyed.ms", `fn use(l: List[Int], m: Map[String, Int], s: Set[Int], t: String) -> Unit:
     l.contains(1)
     m.contains("a")
     m.get("a")
@@ -177,12 +204,12 @@ fn use(l: List[Int], m: Map[String, Int], s: Set[Int], t: String) -> Unit:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListContains(", "rt.MapContains(", "rt.MapGet(", "rt.MapWithEntry(", "rt.SetContains(", "rt.SetWithValue(", "rt.StringAt("} {
+	for _, operation := range []string{"rt.ListContains(", "rt.MapContains(", "rt.MapGet(", "rt.MapWithEntryString(", "rt.SetContains(", "rt.SetWithValue(", "rt.StringAt("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing direct %s", operation)
 		}
 	}
-	if strings.Count(result.Source, "rt.MapWithEntry(") != 1 || !strings.Contains(result.Source, `"add"`) {
+	if strings.Count(result.Source, "rt.MapWithEntryString(") != 1 || !strings.Contains(result.Source, `"add"`) {
 		t.Fatalf("reordered labels must keep ordinary dispatch:\n%s", result.Source)
 	}
 }
@@ -213,7 +240,7 @@ fn reordered(c: Counter) -> Int:
 	if strings.Count(result.Source, "rt.CallMethod(") != 0 || !strings.Contains(result.Source, "func method_") || !strings.Contains(result.Source, "return method_") && !strings.Contains(result.Source, "= method_") {
 		t.Fatalf("the in-order concrete call is a direct Go call:\n%s", result.Source)
 	}
-	if strings.Count(result.Source, "rt.Bind(") != 3 {
-		t.Fatalf("views, omitted defaults, and reordered labels keep Bind:\n%s", result.Source)
+	if strings.Count(result.Source, "rt.Bind(") != 2 || strings.Count(result.Source, "rt.CallInterface(") != 1 {
+		t.Fatalf("omitted defaults and reordered labels keep Bind; the view call is cached per site:\n%s", result.Source)
 	}
 }

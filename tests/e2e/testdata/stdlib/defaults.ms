@@ -1,8 +1,13 @@
 import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
 import {base64_encode, base64_decode, EncodingError} from "@std/encoding.ms"
-import {Commands, CommandOutput, CommandError, commands} from "@std/process.ms"
+import {
+    Commands,
+    Subprocess,
+    CommandOutput,
+    CommandError,
+    commands
+} from "@std/process.ms"
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -23,6 +28,12 @@ impl Commands for Capture:
         self.last = input
         self.calls = self.calls + 1
         return ok(CommandOutput(0, input, "".to_bytes()))
+
+    fn spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]:
+        return error(CommandError.Unavailable)
 
 import Duration from "@std/time.ms"
 
@@ -48,7 +59,7 @@ test "bound receiver is captured before supplied arguments":
             arguments: []
         )
     )
-    if (first.calls != 1 or second.calls != 0 or output.stdout.length() != 0):
+    if (first.calls != 1 or second.calls != 0 or output.stdout.length != 0):
         return panic("receiver capture order changed")
 
 impl Commands for Override:
@@ -61,6 +72,12 @@ impl Commands for Override:
     ) -> Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))
 
+    fn spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]:
+        return error(CommandError.Unavailable)
+
 test "concrete implementation defaults and interface defaults stay distinct":
     let service = Override("custom".to_bytes())
     let concrete = service.run
@@ -68,7 +85,7 @@ test "concrete implementation defaults and interface defaults stay distinct":
         return panic("concrete input override")
 
     let viewed = Commands(service).run
-    if value(viewed(program: "fake", arguments: [])).stdout.length() != 0:
+    if value(viewed(program: "fake", arguments: [])).stdout.length != 0:
         return panic("interface input default")
 
     let explicit = "explicit".to_bytes()
@@ -146,16 +163,16 @@ test "Base64 defaults support stored functions and explicit alphabets":
 test "Commands defaults cross concrete bound view and generic boundaries":
     let capture = Capture("x".to_bytes(), 0)
     let bound = capture.run
-    if value(bound(program: "fake", arguments: [])).stdout.length() != 0:
+    if value(bound(program: "fake", arguments: [])).stdout.length != 0:
         return panic("bound input default")
-    if value(capture.run(program: "fake", arguments: [])).stdout.length() != 0:
+    if value(capture.run(program: "fake", arguments: [])).stdout.length != 0:
         return panic("concrete input default")
 
     let view = Commands(capture)
     let viewed = view.run
-    if value(viewed(program: "fake", arguments: [])).stdout.length() != 0:
+    if value(viewed(program: "fake", arguments: [])).stdout.length != 0:
         return panic("viewed input default")
-    if generic_run(capture).length() != 0: return panic("bounded generic input default")
+    if generic_run(capture).length != 0: return panic("bounded generic input default")
 
     let input = Bytes([42])
     let output = value(view.run(program: "fake", arguments: [], input: input)).stdout

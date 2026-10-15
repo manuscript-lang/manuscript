@@ -6,9 +6,6 @@ import {
     HtmlLimits,
     HtmlError
 } from "@std/html.ms"
-import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -102,7 +99,7 @@ test "HTML recovers unclosed tags and inserts document and table structure":
     let nodes = body_nodes(doc)
     let entries = children(nodes.at(0).unwrap())
     if (
-        entries.length() != 2
+        entries.length != 2
         or text_content(entries.at(0).unwrap()) != "one"
         or text_content((entries.at(1).unwrap())) != "two"
     ): return panic("implicit li closure")
@@ -116,7 +113,7 @@ test "HTML recovers unclosed tags and inserts document and table structure":
     if text_content(nodes.at(1).unwrap()) != "cell": return panic("unclosed table")
 
     let empty = value(parse(text: ""))
-    if children(children(empty).at(0).unwrap()).length() != 2: return panic(
+    if children(children(empty).at(0).unwrap()).length != 2: return panic(
         "implicit head and body"
     )
 

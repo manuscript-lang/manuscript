@@ -1,8 +1,6 @@
 import {filesystem, FileSystemError, FileHandle} from "@std/fs.ms"
 import {files, read_all, IoError} from "@std/io.ms"
-import {List, Map} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -19,8 +17,8 @@ test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()
 
     with temporary = value(fs.temporary("manuscript-errors-")):
-        let directory = "{temporary.path()}/directory"
-        let file = "{temporary.path()}/file"
+        let directory = "{temporary.path}/directory"
+        let file = "{temporary.path}/file"
         let created = value(fs.create_directory(path: directory, recursive: false))
         let child = value(
             fs.write_file(
@@ -82,7 +80,7 @@ test "filesystem scoped temporary directories and bounded file reads":
     var directory = ""
 
     with temporary = value(fs.temporary("manuscript-stdlib-")):
-        directory = temporary.path()
+        directory = temporary.path
         let path = "{directory}/data.txt"
         let written = value(
             fs.write_file(
@@ -113,7 +111,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         if value(fs.stat(path: path, follow_links: true)).size != 5: return panic(
             "file stat"
         )
-        if value(fs.list(path: directory)).length() != 1: return panic("directory list")
+        if value(fs.list(path: directory)).length != 1: return panic("directory list")
 
         with input = value(files().open(path)):
             if value(input.read(5)).unwrap() != "hello".to_bytes(): return panic(
@@ -132,7 +130,7 @@ test "file handles positional I/O stream adapters and closed errors":
     let fs = filesystem()
 
     with temporary = value(fs.temporary("manuscript-handles-")):
-        let path = "{temporary.path()}/data.txt"
+        let path = "{temporary.path}/data.txt"
         let written = value(
             fs.write_file(
                 path: path,

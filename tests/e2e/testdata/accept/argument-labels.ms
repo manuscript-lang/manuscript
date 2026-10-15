@@ -1,10 +1,7 @@
 import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import abs_int from "@std/math.ms"
 
 import Scheduler from "@std/tasks.ms"
-import Result from "@std/result.ms"
 import Synchronized from "@std/sync.ms"
 
 fn increment(value: Int) -> Int:
@@ -42,7 +39,7 @@ impl Increment for Offset:
 
 fn next(state: Synchronized[Int]) -> Int:
     with locked = state.lock():
-        let value = locked.get()
+        let value = locked.value
         locked.set(value + 1)
         return value
 
@@ -157,26 +154,26 @@ test "omitted labels preserve evaluation order":
         return panic(message: "check failed")
 
     with locked = state.lock():
-        if not (locked.get() == 2):
+        if not (locked.value == 2):
             return panic(message: "check failed")
 
     if not (subtract(deduction: next(state), amount: next(state)) == 1):
         return panic(message: "check failed")
 
     with locked = state.lock():
-        if not (locked.get() == 4):
+        if not (locked.value == 4):
             return panic(message: "check failed")
 
     if not (prepare_function(state)(next(state)) == 6):
         return panic(message: "check failed")
 
     with locked = state.lock():
-        if not (locked.get() == 6):
+        if not (locked.value == 6):
             return panic(message: "check failed")
 
     if not (sum([next(state), next(state)]) == 13):
         return panic(message: "check failed")
 
     with locked = state.lock():
-        if not (locked.get() == 8):
+        if not (locked.value == 8):
             return panic(message: "check failed")

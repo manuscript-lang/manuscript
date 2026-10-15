@@ -8,8 +8,7 @@ import (
 )
 
 func TestMutationRejections(t *testing.T) {
-	declarations := `import List from "@std/collections.ms"
-import stdout from "@std/io.ms"
+	declarations := `import stdout from "@std/io.ms"
 import File from "@std/io.ms"
 import Synchronized from "@std/sync.ms"
 import SynchronizedGuard from "@std/sync.ms"

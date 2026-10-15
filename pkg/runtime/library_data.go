@@ -23,10 +23,10 @@ type libraryRegex struct{ pattern *regexp.Regexp }
 func init() {
 	p := func(name, typ string) LibraryParam { return LibraryParam{name, typ} }
 	add := libraryAdd
-	for name, f := range map[string]func(float64) float64{"abs": math.Abs, "floor": math.Floor, "ceil": math.Ceil, "round": roundHalfUp, "sqrt": math.Sqrt, "exp": math.Exp, "log": math.Log, "log2": math.Log2, "log10": math.Log10, "sin": math.Sin, "cos": math.Cos, "tan": math.Tan, "asin": math.Asin, "acos": math.Acos, "atan": math.Atan, "sinh": math.Sinh, "cosh": math.Cosh, "tanh": math.Tanh, "truncate": math.Trunc} {
+	for name, f := range map[string]func(float64) float64{"abs": MathAbs, "floor": MathFloor, "ceil": MathCeil, "round": MathRound, "sqrt": MathSqrt, "exp": MathExp, "log": MathLog, "log2": MathLog2, "log10": MathLog10, "sin": MathSin, "cos": MathCos, "tan": MathTan, "asin": MathAsin, "acos": MathAcos, "atan": MathAtan, "sinh": MathSinh, "cosh": MathCosh, "tanh": MathTanh, "truncate": MathTruncate} {
 		add("math", name, "Float", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(float64)) })
 	}
-	for name, f := range map[string]func(float64, float64) float64{"pow": math.Pow, "min": math.Min, "max": math.Max, "hypot": math.Hypot, "atan2": math.Atan2, "remainder": math.Mod} {
+	for name, f := range map[string]func(float64, float64) float64{"pow": MathPow, "min": MathMin, "max": MathMax, "hypot": MathHypot, "atan2": MathAtan2, "remainder": MathRemainder} {
 		labels := []LibraryParam{p("left", "Float"), p("right", "Float")}
 		if name == "pow" {
 			labels = []LibraryParam{p("base", "Float"), p("exponent", "Float")}
@@ -36,28 +36,16 @@ func init() {
 		}
 		add("math", name, "Float", labels, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(float64), a[1].(float64)) })
 	}
-	add("math", "is_nan", "Bool", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return math.IsNaN(a[0].(float64)) })
-	add("math", "is_finite", "Bool", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value {
-		v := a[0].(float64)
-		return !math.IsNaN(v) && !math.IsInf(v, 0)
-	})
+	add("math", "is_nan", "Bool", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return MathIsNaN(a[0].(float64)) })
+	add("math", "is_finite", "Bool", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return MathIsFinite(a[0].(float64)) })
 	for name, value := range map[string]float64{"pi": math.Pi, "e": math.E} {
 		add("math", name, "Float", nil, func(_ *Execution, _ string, _ []Value) Value { return value })
 	}
-	add("math", "abs_int", "Int", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		n := a[0].(int64)
-		if n == math.MinInt64 {
-			return Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
-		}
-		if n < 0 {
-			n = -n
-		}
-		return n
-	})
-	for name, f := range map[string]func(string) string{"trim": strings.TrimSpace, "upper": libraryUpper, "lower": libraryLower} {
+	add("math", "abs_int", "Int", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value { return MathAbsInt(a[0].(int64)) })
+	for name, f := range map[string]func(string) string{"trim": StringTrim, "upper": StringUpper, "lower": StringLower} {
 		add("string", name, "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string)) })
 	}
-	for name, f := range map[string]func(string, string) bool{"contains": strings.Contains, "starts_with": strings.HasPrefix, "ends_with": strings.HasSuffix} {
+	for name, f := range map[string]func(string, string) bool{"contains": StringContains, "starts_with": StringStartsWith, "ends_with": StringEndsWith} {
 		label := "value"
 		if name == "starts_with" {
 			label = "prefix"
@@ -68,38 +56,13 @@ func init() {
 		add("string", name, "Bool", []LibraryParam{p("value", "String"), p(label, "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string), a[1].(string)) })
 	}
 	add("string", "split", "List[String]", []LibraryParam{p("text", "String"), p("separator", "String"), p("max_parts", "Optional[Int]")}, func(_ *Execution, _ string, a []Value) Value {
-		n := a[2].(int64)
-		if n < 0 {
-			return Panic("split requires nonnegative max_parts; pass 0 or a positive count")
-		}
-		if n == 0 {
-			return libraryStrings(nil)
-		}
-		if n > int64(len(a[0].(string)))+1 {
-			n = int64(len(a[0].(string))) + 1
-		}
-		parts := strings.Split(a[0].(string), a[1].(string))
-		if int64(len(parts)) > n {
-			parts = parts[:n]
-		}
-		return libraryStrings(parts)
+		return stringSplitLimit(a[0].(string), a[1].(string), a[2].(int64))
 	})
 	add("string", "join", "String", []LibraryParam{p("parts", "List[String]"), p("separator", "String")}, func(_ *Execution, _ string, a []Value) Value {
-		return strings.Join(libraryStringValues(a[0]), a[1].(string))
+		return StringJoin(a[0], a[1].(string))
 	})
 	add("string", "replace", "String", []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_replacements", "Optional[Int]")}, func(_ *Execution, _ string, a []Value) Value {
-		n := a[3].(int64)
-		if n < 0 {
-			return Panic("invalid replacement bounds")
-		}
-		bound := int64(len(a[0].(string)))
-		if a[1].(string) == "" {
-			bound = int64(utf8.RuneCountInString(a[0].(string))) + 1
-		}
-		if n > bound {
-			n = bound
-		}
-		return strings.Replace(a[0].(string), a[1].(string), a[2].(string), int(n))
+		return stringReplaceLimit(a[0].(string), a[1].(string), a[2].(string), a[3].(int64))
 	})
 	libraryAlias("string", "replace_first", "replace")
 	// A required count has its own ABI shape, while the prepared legacy body

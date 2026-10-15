@@ -1,5 +1,4 @@
 import Bytes from "@std/bytes.ms"
-import List from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 test "Bytes split is binary safe":
@@ -26,7 +25,7 @@ test "Bytes split handles exact and nonoverlapping separators":
 
 test "Bytes empty separator splits bytes without decoding":
     let empty = Bytes([])
-    if not (empty.split(empty).is_empty()): return panic("empty binary explosion")
+    if not (empty.split(empty).is_empty): return panic("empty binary explosion")
     if Bytes([0, 255, 128]).split(empty) != [Bytes([0]), Bytes([255]), Bytes([128])]: return panic(
         "binary explosion"
     )
@@ -35,7 +34,7 @@ test "Bytes empty separator splits bytes without decoding":
     if scalars != [Bytes([195]), Bytes([169])]: return panic(
         "byte split used scalar indexes"
     )
-    if scalars.at(0).unwrap().to_text().is_some(): return panic(
+    if scalars.at(0).unwrap().to_text().is_some: return panic(
         "byte split repaired invalid UTF-8"
     )
     if "é".to_bytes().split(Bytes([169])) != [Bytes([195]), empty]: return panic(
@@ -56,8 +55,8 @@ test "Bytes split optional limits truncate parts":
         "split retained unsplit remainder"
     )
     if (
-        not (data.split(separator, 0).is_empty())
-        or not (Bytes([]).split(separator, 0).is_empty())
+        not (data.split(separator, 0).is_empty)
+        or not (Bytes([]).split(separator, 0).is_empty)
     ): return panic("zero split cap")
     if data.split(separator, 9999999) != expected: return panic("large split cap")
     if data.split(Bytes([]), 2) != [Bytes([1]), Bytes([0])]: return panic(
@@ -94,7 +93,7 @@ test "Bytes split bound methods and generic forwarding retain contracts":
         split_then[Bool](
             Bytes([1, 0, 2]),
             Bytes([0]),
-            fn(value): value.length() == 2
+            fn(value): value.length == 2
         ) != true
     ): return panic("generic split result")
 
@@ -115,10 +114,10 @@ test "Bytes split returns independent List storage and immutable views":
     let empty = Bytes([])
     let zero_parts = data.split(Bytes([0]), 0)
     zero_parts.append(empty)
-    if not (data.split(Bytes([0]), 0).is_empty()): return panic(
+    if not (data.split(Bytes([0]), 0).is_empty): return panic(
         "zero split storage alias"
     )
 
     let no_parts = empty.split(empty)
     no_parts.append(Bytes([1]))
-    if not (empty.split(empty).is_empty()): return panic("empty split storage alias")
+    if not (empty.split(empty).is_empty): return panic("empty split storage alias")

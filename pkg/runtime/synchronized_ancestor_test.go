@@ -209,7 +209,7 @@ func TestSynchronizedAncestorContentionWaits(t *testing.T) {
 				child = inherit(child, &synchronizedWaitContext{Context: child.Context, entered: blocked})
 				locked := lockCell(child, cell)
 				defer locked.close()
-				return Invoke(child, locked.Operation("get"), nil)
+				return SynchronizedGuardValueRead(child, locked)
 			})
 			callback := read
 			if mode == "nested child" {

@@ -15,9 +15,7 @@ import {
     ArchiveLimits,
     ArchiveError
 } from "@std/archive.ms"
-import {List, Map} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -95,14 +93,14 @@ test "typed compression preserves bytes limits errors and optional arguments":
             if value(format.decompress(encoded, none)) != data: return panic(
                 "typed decompression"
             )
-            if value(format.decompress(encoded, data.length())) != data: return panic(
+            if value(format.decompress(encoded, data.length)) != data: return panic(
                 "typed exact budget"
             )
 
             let limited: Result[Bytes, CompressionError] = error(
                 CompressionError.LimitExceeded
             )
-            if format.decompress(encoded, data.length() - 1) != limited: return panic(
+            if format.decompress(encoded, data.length - 1) != limited: return panic(
                 "typed byte limit"
             )
 

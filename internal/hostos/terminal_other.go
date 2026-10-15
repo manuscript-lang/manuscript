@@ -1,4 +1,4 @@
-//go:build !linux && !darwin
+//go:build !linux && !darwin && !windows
 
 package hostos
 
@@ -8,8 +8,11 @@ import (
 	"time"
 )
 
-// ResizeSignal is nil where resize notification is unavailable.
-var ResizeSignal os.Signal
+// ResizeSupported reports whether WatchResize can observe window changes.
+const ResizeSupported = false
+
+func WatchResize(*os.File, <-chan struct{}) <-chan struct{} { return nil }
+func EnableANSI(*os.File) (func() error, error)             { return nil, errors.ErrUnsupported }
 
 // TerminalSupported reports whether raw terminal control exists on this host.
 const TerminalSupported = false

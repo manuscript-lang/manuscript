@@ -13,7 +13,7 @@ func TestFieldDefaultBoundaries(t *testing.T) {
 		{"type Options:\n    count: Int = count\n", "unknown binding count"},
 		{"type Options:\n    count: Int = 1\n    required: Int\nfn f() -> Options: return Options()\n", "missing argument required"},
 		{"type Box[T]:\n    value: T = 1\n", "expected T, found Int"},
-		{"import List from \"@std/collections.ms\"\ntype Growing[T]:\n    value: T\n    next: Int = grow([value])\nfn grow[T](value: T) -> Int:\n    let item = Growing(value: value)\n    return 0\n", "recursive generic applications must preserve their parameters"},
+		{"type Growing[T]:\n    value: T\n    next: Int = grow([value])\nfn grow[T](value: T) -> Int:\n    let item = Growing(value: value)\n    return 0\n", "recursive generic applications must preserve their parameters"},
 		{"fn missing() -> Int:\n", "reachable fallthrough"},
 		{"type Handle:\n    fn read() -> Int:\n", "receiver operation declarations require standard-library bindings"},
 	} {

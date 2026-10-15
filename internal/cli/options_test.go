@@ -103,7 +103,7 @@ func TestCLIInlineValuesKeepValidationAndForwarding(t *testing.T) {
 		{[]string{"check", "missing.ms", "--filter=name=value"}, "valid only for ms test"},
 		{[]string{"test", "missing.ms", "--timeout=-1s"}, "invalid --timeout"},
 		{[]string{"test", "missing.ms", "--timeout=bad=value"}, "invalid --timeout \"bad=value\""},
-		{[]string{"test", "missing.ms", "--cpu-profile=cpu=1.pprof"}, "require run, not test"},
+		{[]string{"check", "missing.ms", "--cpu-profile=cpu=1.pprof"}, "require run or test, not check"},
 		{[]string{"profile", "missing.ms", "--trace=trace=1.out"}, "unknown option --trace=trace=1.out for ms profile"},
 		{[]string{"run", "missing.ms", "--watch", "--trace=trace=1.out"}, "--watch cannot be combined"},
 	} {
@@ -177,7 +177,7 @@ func TestDocProjectDirectoryAndUsage(t *testing.T) {
 	}
 }
 
-func TestStdlibDeclarationsAndInlineDocOutput(t *testing.T) {
+func TestStdlibInlineDocOutput(t *testing.T) {
 	root := t.TempDir()
 	docs := filepath.Join(root, "stdlib=a=b.json")
 	status, stdout, stderr := invoke(t, "doc", "--output="+docs, "--stdlib", "--json")
@@ -185,14 +185,22 @@ func TestStdlibDeclarationsAndInlineDocOutput(t *testing.T) {
 	if status != 0 || stdout != "" || stderr != "" || err != nil || !strings.Contains(string(data), `"modules"`) {
 		t.Fatalf("stdlib docs: %d, %q, %q, %v", status, stdout, stderr, err)
 	}
-	declarations := filepath.Join(root, "declarations=a=b")
-	status, _, stderr = invoke(t, "stdlib", declarations)
-	if status != 0 || stderr != "" {
-		t.Fatalf("stdlib declarations: %d, %q", status, stderr)
+}
+
+func TestTestProfilePathsUseInvocationDirectory(t *testing.T) {
+	inv, status, ok := parseInvocation([]string{"test", "missing.ms", "--heap-profile=heap.pprof"})
+	if !ok {
+		t.Fatalf("parse status %d", status)
 	}
-	for _, name := range []string{"cli.ms", "bindings.json"} {
-		if _, err := os.Stat(filepath.Join(declarations, name)); err != nil {
-			t.Fatal(err)
-		}
+	plan, status, ok := inv.validate()
+	if !ok || status != 0 {
+		t.Fatalf("validate status %d", status)
+	}
+	want, err := filepath.Abs("heap.pprof")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.options.HeapProfile != want {
+		t.Fatalf("profile path %q want %q", plan.options.HeapProfile, want)
 	}
 }

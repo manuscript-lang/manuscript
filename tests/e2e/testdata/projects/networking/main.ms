@@ -2,10 +2,6 @@ import {headers, HttpMethod} from "@std/http.ms"
 import network from "@std/net.ms"
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import Map from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import HttpError from "@std/http.ms"
 import WebSocketError from "@std/websocket.ms"
 import IoError from "@std/io.ms"
@@ -47,7 +43,7 @@ fn socket_result[T](result: Result[T, WebSocketError]) -> Result[T, HttpError]:
             return error(websocket_error(cause))
 
 fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    if exchange.path() == "/ws":
+    if exchange.path == "/ws":
         with socket = try socket_result(
             result: exchange.upgrade(
                 allowed_origins: [],
@@ -117,13 +113,13 @@ fn exercise() -> Result[Unit, HttpError]:
         with client = try network().http_client(options: client_options):
             with response = try client.request(
                 method: HttpMethod.Get,
-                url: "http://{server.address()}/",
+                url: "http://{server.address}/",
                 headers: headers(),
                 body: "".to_bytes(),
                 max_response_bytes: 1024,
                 timeout: 2.seconds
             ):
-                if not (response.metadata().status == 200):
+                if not (response.metadata.status == 200):
                     return panic(message: "check failed")
 
                 let part = match response.read(max_bytes: 1024):
@@ -152,13 +148,13 @@ fn exercise() -> Result[Unit, HttpError]:
 
         with socket = try socket_result(
             result: network().web_socket(
-                url: "ws://{server.address()}/ws",
+                url: "ws://{server.address}/ws",
                 headers: headers(),
                 subprotocols: ["echo"],
                 options: websocket_options
             )
         ):
-            if not (socket.subprotocol() == "echo"):
+            if not (socket.subprotocol == "echo"):
                 return panic(message: "check failed")
 
             let sent = try socket_result(

@@ -1,0 +1,73 @@
+{
+  "code_commit": "12a26d19687f371c18d11cdf1db1b7b35720bc71",
+  "reconstruction": "Remove each chunk first line, the following blank line, and the final [End of part ...] line; concatenate remaining bodies in manifest order.",
+  "reconstructed_record_sha256": "c68ae79b1772af26a92044a6a99ba0fdbc4b5fcdf8078427c4da808a301aafac",
+  "sources": [
+    {
+      "path": "documentation/contributing/read-only-accessors-verification.md",
+      "bytes": 22090,
+      "sha256": "205b5ec3b86cb055fc81f40dec67b41930c0fc8820a5ae6e2bbb562c66a81e73"
+    },
+    {
+      "path": "scripts/bench-accessors/results/verification/review-5107114e.md",
+      "bytes": 8510,
+      "sha256": "22325bcaf28180a9531aad2fc8daf4115dda92b7fc17f5e12e4a5f5e89118d80"
+    },
+    {
+      "path": "scripts/bench-accessors/results/verification/rereview-12a26d19.md",
+      "bytes": 2064,
+      "sha256": "684a67262a75bb8e7699069337d002df8761e896da78f598d7b7d5addb265e54"
+    }
+  ],
+  "chunks": [
+    {
+      "order": 1,
+      "path": "scripts/bench-accessors/results/verification/chunks/part-01.txt",
+      "characters": 5251,
+      "bytes": 5253,
+      "sha256": "72ea285910d03a079cb4d11236624b0ec5e90426f5d925f1b5a640b67506c96d"
+    },
+    {
+      "order": 2,
+      "path": "scripts/bench-accessors/results/verification/chunks/part-02.txt",
+      "characters": 5441,
+      "bytes": 5443,
+      "sha256": "3415a55d2ee3061287dd0203754753f7d0fd245a1f2d37e5f33f654ccf410da1"
+    },
+    {
+      "order": 3,
+      "path": "scripts/bench-accessors/results/verification/chunks/part-03.txt",
+      "characters": 5460,
+      "bytes": 5462,
+      "sha256": "102c9950da24ba1f5b7765b544f23a04a6fcff202f10bb267281fc923d607c6e"
+    },
+    {
+      "order": 4,
+      "path": "scripts/bench-accessors/results/verification/chunks/part-04.txt",
+      "characters": 5238,
+      "bytes": 5240,
+      "sha256": "5e65227529e39850eb532dbf5ee105d73b085fbf1a062234593f7a80f2b54019"
+    },
+    {
+      "order": 5,
+      "path": "scripts/bench-accessors/results/verification/chunks/part-05.txt",
+      "characters": 5433,
+      "bytes": 5437,
+      "sha256": "40dd744799dde017a410ce35037ee8220b74a734222b2ddc26eb9ce7ee7d1514"
+    },
+    {
+      "order": 6,
+      "path": "scripts/bench-accessors/results/verification/chunks/part-06.txt",
+      "characters": 5312,
+      "bytes": 5314,
+      "sha256": "b6a405a152d4e9e8a8f12b7688cb7d1606b1cc6afc70b0731e31bee20f242182"
+    },
+    {
+      "order": 7,
+      "path": "scripts/bench-accessors/results/verification/chunks/part-07.txt",
+      "characters": 1220,
+      "bytes": 1222,
+      "sha256": "a3b6645d570959afb346e8800ee2524bae4af981b38d933f7f695d3685280c4b"
+    }
+  ]
+}

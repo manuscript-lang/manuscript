@@ -1,6 +1,3 @@
-import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import Closeable from "@std/cleanup.ms"
 import panic from "@std/faults.ms"
 
@@ -78,11 +75,11 @@ test "empty list constructors have fresh typed storage":
     let contextual: List[Int] = List()
     let other = List[String]()
     empty.append("a")
-    if (empty[0].unwrap() != "a" or other.length() != 0 or contextual.length() != 0):
+    if (empty[0].unwrap() != "a" or other.length != 0 or contextual.length != 0):
         return panic("fresh list construction")
 
     let map = Map[String, Int]()
-    if map.length() != 0: return panic("map construction")
+    if map.length != 0: return panic("map construction")
 
 test "string concatenation and scalar ordering":
     let lines = ["a", "b"]
@@ -139,7 +136,7 @@ test "match expressions preserve returns and cleanup":
         some(value): [value]
         none: []
 
-    if contextual.length() != 0: return panic("contextual arms")
+    if contextual.length != 0: return panic("contextual arms")
 
     let result = identity[Int](
         match present:
@@ -158,15 +155,11 @@ test "match expressions preserve returns and cleanup":
 
 test "missing indexes are optional":
     let values = [1, 2]
-    if (
-        values[2].is_some()
-        or values[-3].is_some()
-        or values[-9223372036854775808].is_some()
-    ):
+    if (values[2].is_some or values[-3].is_some or values[-9223372036854775808].is_some):
         return panic("out of range must be none")
     if values[0] != values.at(0) or values[-1] != values.at(-1):
         return panic("index parity")
-    if List[Int]() [0].is_some(): return panic("empty indexing")
+    if List[Int]() [0].is_some: return panic("empty indexing")
 
 test "match blocks produce their final value":
     let present: Optional[Int] = some(value: 5)
@@ -295,13 +288,13 @@ test "match in a loop header exits its lexical enclosing loop":
 
 test "indexing preserves zero and nested optionals":
     let numbers = [0]
-    if numbers[0].is_none() or numbers[0].unwrap_or(99) != 0:
+    if numbers[0].is_none or numbers[0].unwrap_or(99) != 0:
         return panic("zero must be present")
 
     let nested: List[Optional[Int]] = [none, some(value: 0)]
-    if nested[0].is_none() or nested[0].unwrap().is_some():
+    if nested[0].is_none or nested[0].unwrap().is_some:
         return panic("present none must retain both optional layers")
-    if nested[1].unwrap().unwrap() != 0 or nested[2].is_some():
+    if nested[1].unwrap().unwrap() != 0 or nested[2].is_some:
         return panic("nested optional indexing")
 
 fn observed_optional(counter: Counter) -> Optional[Int]:

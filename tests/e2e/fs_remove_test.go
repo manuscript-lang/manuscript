@@ -15,7 +15,6 @@ func TestFileSystemRemoveProtectsWorkingDirectory(t *testing.T) {
 	// The native executable runs only in a disposable directory. Never run this
 	// regression in the source checkout: on an unfixed runtime it deletes cwd.
 	source := `import {filesystem, FileSystemError} from "@std/fs.ms"
-import Result from "@std/result.ms"
 
 export fn main() -> Int:
     let fs = filesystem()

@@ -3,6 +3,7 @@ package terminal
 //lint:file-ignore ST1005 errors here can be capitalized
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -213,8 +214,20 @@ func (t *Term) Close() {
 	}
 }
 
-func (t *Term) sigintGuard(ch <-chan os.Signal, multiClient bool) {
-	for range ch {
+// WaitForInput joins liner's prompt readers after the caller interrupts owned
+// input. Close cancels pending deliveries; it does not close borrowed stdin.
+func (t *Term) WaitForInput() { t.line.WaitForInput() }
+
+func (t *Term) sigintGuard(ctx context.Context, ch <-chan os.Signal, multiClient bool) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ch:
+		}
+		if ctx.Err() != nil {
+			return
+		}
 		t.longCommandCancel()
 		t.starlarkEnv.Cancel()
 		state, err := t.client.GetStateNonBlocking()
@@ -272,14 +285,37 @@ func (t *Term) sigintGuard(ch <-chan os.Signal, multiClient bool) {
 
 // Run begins running dlv in the terminal.
 func (t *Term) Run() (int, error) {
+	return t.RunWithContext(context.Background())
+}
+
+// RunWithContext is Manuscript's embedded-terminal lifecycle entrypoint. The
+// caller interrupts owned terminal I/O on cancellation; Run joins its signal
+// guard before restoring terminal modes and closing the transcript.
+func (t *Term) RunWithContext(ctx context.Context) (status int, err error) {
 	defer t.Close()
+	defer func() {
+		if t.historyFile != nil {
+			if closeErr := t.historyFile.Close(); closeErr != nil {
+				status, err = 1, errors.Join(err, closeErr)
+			}
+			t.historyFile = nil
+		}
+	}()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	multiClient := t.client.IsMulticlient()
 
 	// Send the debugger a halt command on SIGINT
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT)
-	go t.sigintGuard(ch, multiClient)
+	guardDone := make(chan struct{})
+	go func() { defer close(guardDone); t.sigintGuard(ctx, ch, multiClient) }()
+	defer func() {
+		signal.Stop(ch)
+		cancel()
+		<-guardDone
+	}()
 
 	fns := trie.New()
 	cmds := trie.New()
@@ -369,9 +405,15 @@ func (t *Term) Run() (int, error) {
 	_, _ = t.client.GetState()
 
 	for {
+		if err := ctx.Err(); err != nil {
+			return 1, err
+		}
 		locs = nil
 
 		cmdstr, err := t.promptForInput()
+		if ctx.Err() != nil {
+			return 1, ctx.Err()
+		}
 		if err != nil {
 			if err == io.EOF {
 				fmt.Fprintln(t.stdout, "exit")
@@ -387,6 +429,9 @@ func (t *Term) Run() (int, error) {
 
 		lastCmd = cmdstr
 
+		if err := ctx.Err(); err != nil {
+			return 1, err
+		}
 		if err := t.cmds.Call(cmdstr, t); err != nil {
 			if _, ok := err.(ExitRequestError); ok {
 				return t.handleExit()
@@ -497,6 +542,7 @@ func (t *Term) handleExit() (int, error) {
 		if err := t.historyFile.Close(); err != nil {
 			fmt.Printf("error closing history file: %s\n", err)
 		}
+		t.historyFile = nil
 	}
 
 	t.quittingMutex.Lock()

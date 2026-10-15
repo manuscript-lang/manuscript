@@ -33,10 +33,13 @@ func patchDelve() error {
 `
 	source := string(data)
 	if strings.Contains(source, after) {
-		return nil
+		return patchDelveTerminal("")
 	}
 	if strings.Count(source, before) != 1 {
 		return fmt.Errorf("Delve compatibility probe changed; review the no-external-Go patch")
 	}
-	return os.WriteFile(path, []byte(strings.Replace(source, before, after, 1)), 0644)
+	if err := os.WriteFile(path, []byte(strings.Replace(source, before, after, 1)), 0644); err != nil {
+		return err
+	}
+	return patchDelveTerminal("")
 }

@@ -34,10 +34,7 @@ func TestLargeListLiteralSemantics(t *testing.T) {
 	ints = append(ints, "-9223372036854775808", "9223372036854775807")
 	early := repeated(n, func(int) string { return "next(counter)" })
 	early[150] = "match value:\n        some(v): v\n        none: return -counter.count\n    "
-	source := `import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
-import panic from "@std/faults.ms"
+	source := `import panic from "@std/faults.ms"
 
 type Counter:
     count: Int
@@ -64,7 +61,7 @@ fn propagated(counter: Counter, bad: Int) -> Result[List[Int], String]:
 
 fn early(counter: Counter, value: Optional[Int]) -> Int:
     let items = ` + listOf(early) + `
-    return items.length()
+    return items.length
 
 test "large constant literals are fresh per evaluation":
     let first = ints()
@@ -72,7 +69,7 @@ test "large constant literals are fresh per evaluation":
     let alias = first
     first.set(index: 0, value: 99)
     alias.append(1)
-    if second.at(0).unwrap() != 0 or ints().at(0).unwrap() != 0 or second.length() != 300 or first.length() != 301:
+    if second.at(0).unwrap() != 0 or ints().at(0).unwrap() != 0 or second.length != 300 or first.length != 301:
         return panic("constant table storage is shared")
     if second.at(1).unwrap() != -1 or second.at(298).unwrap() != -9223372036854775807 - 1 or second.at(299).unwrap() != 9223372036854775807:
         return panic("Int values changed")
@@ -102,10 +99,10 @@ test "large computed literals evaluate in order":
 test "propagation stops a large literal":
     let counter = Counter(count: 0)
     let failed = propagated(counter, 200)
-    if failed.is_ok() or counter.count != 201:
+    if failed.is_ok or counter.count != 201:
         return panic("propagation did not stop evaluation")
     let whole = propagated(counter, -1)
-    if not whole.is_ok() or counter.count != 501:
+    if not whole.is_ok or counter.count != 501:
         return panic("complete evaluation failed")
 
 test "a return inside a large literal leaves the function":
@@ -139,7 +136,7 @@ test "a return inside a large literal leaves the function":
 func TestLargeListLiteralFaultFrames(t *testing.T) {
 	items := repeated(300, func(i int) string { return fmt.Sprintf("value(%d)", i) })
 	items[200] = "fail()"
-	source := "import List from \"@std/collections.ms\"\nfn value(i: Int) -> Int: i\nfn fail() -> Int:\n    return 1 / 0\nexport fn main() -> Int:\n    let data = " + listOf(items) + "\n    return data.length()\n"
+	source := "fn value(i: Int) -> Int: i\nfn fail() -> Int:\n    return 1 / 0\nexport fn main() -> Int:\n    let data = " + listOf(items) + "\n    return data.length\n"
 	var transcripts []string
 	for _, kind := range []compiler.BuildType{compiler.Release, compiler.Debug} {
 		r := compiler.CompileSourceForBuild("fault.ms", source, compiler.Options{Entry: true}, kind)
@@ -156,7 +153,7 @@ func TestLargeListLiteralFaultFrames(t *testing.T) {
 		}
 		transcripts = append(transcripts, string(data))
 	}
-	if transcripts[0] != transcripts[1] || !strings.Contains(transcripts[0], "fault.ms:4 in fail") || !strings.Contains(transcripts[0], "fault.ms:6 in main") {
+	if transcripts[0] != transcripts[1] || !strings.Contains(transcripts[0], "fault.ms:3 in fail") || !strings.Contains(transcripts[0], "fault.ms:5 in main") {
 		t.Fatalf("fault frames changed: %q", transcripts)
 	}
 }

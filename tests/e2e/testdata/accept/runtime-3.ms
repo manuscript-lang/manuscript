@@ -1,6 +1,5 @@
 import panic from "@std/faults.ms"
 
-import Result from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
 

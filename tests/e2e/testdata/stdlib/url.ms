@@ -10,9 +10,6 @@ import {
     Url,
     UrlError
 } from "@std/url.ms"
-import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -34,7 +31,7 @@ test "URL canonicalization and relative references":
 
 test "URL query retains duplicate keys empty values and spaces":
     let entries = value(parse_query(text: "a=1&a=2&empty=&space=hello+world"))
-    if entries.length() != 4 or entries.at(3).unwrap().value != "hello world": return panic(
+    if entries.length != 4 or entries.at(3).unwrap().value != "hello world": return panic(
         "query values"
     )
     if format_query(entries) != "a=1&a=2&empty=&space=hello+world": return panic(
@@ -52,10 +49,10 @@ test "URL query retains duplicate keys empty values and spaces":
 test "URL query skips empty segments":
     let entries = value(parse_query(text: "&a=1&&b=2&"))
     if format_query(entries) != "a=1&b=2": return panic("empty segments kept")
-    if not value(parse_query(text: "&&")).is_empty(): return panic("only separators")
+    if not value(parse_query(text: "&&")).is_empty: return panic("only separators")
 
     let bounded = value(parse_query(text: "a=1&&b=2", max_entries: 2))
-    if bounded.length() != 2: return panic("empty segments counted")
+    if bounded.length != 2: return panic("empty segments counted")
 
 test "URL format rejects queries that would not round trip":
     let base = value(parse("http://h/p"))

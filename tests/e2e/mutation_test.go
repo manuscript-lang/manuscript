@@ -53,7 +53,6 @@ func TestClonedRecordRetainsFileHandleLifetime(t *testing.T) {
 	const source = `import files from "@std/io.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
-import Optional from "@std/optional.ms"
 type Holder:
     file: File
     label: String

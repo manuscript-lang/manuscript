@@ -4,14 +4,42 @@ package hostos
 
 import (
 	"os"
+	"os/signal"
 	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
 )
 
-// ResizeSignal is delivered when the controlling terminal changes size.
-var ResizeSignal os.Signal = syscall.SIGWINCH
+// ResizeSupported reports whether WatchResize can observe window changes.
+const ResizeSupported = true
+
+// WatchResize returns a channel that receives a value after the terminal size
+// changes, until done closes. Several quick changes may coalesce.
+func WatchResize(_ *os.File, done <-chan struct{}) <-chan struct{} {
+	changed := make(chan struct{}, 1)
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGWINCH)
+	go func() {
+		defer signal.Stop(signals)
+		for {
+			select {
+			case <-signals:
+				select {
+				case changed <- struct{}{}:
+				default:
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+	return changed
+}
+
+// EnableANSI makes file interpret terminal escape sequences, which Unix
+// terminals always do, and returns the function that undoes the change.
+func EnableANSI(*os.File) (func() error, error) { return func() error { return nil }, nil }
 
 // TerminalSupported reports whether raw terminal control exists on this host.
 const TerminalSupported = true

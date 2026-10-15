@@ -25,7 +25,7 @@ func TestSynchronizedConcurrentUpdates(t *testing.T) {
 			child := newExecution(root, root.Context)
 			for range 100 {
 				guard := lockCell(child, cell)
-				value := Invoke(child, guard.Operation("get"), nil).(int64)
+				value := SynchronizedGuardValueRead(child, guard).(int64)
 				Invoke(child, guard.Operation("set"), []Argument{{"value", value + 1}})
 				guard.close()
 			}
@@ -34,7 +34,7 @@ func TestSynchronizedConcurrentUpdates(t *testing.T) {
 	wait.Wait()
 	guard := lockCell(root, cell)
 	defer guard.close()
-	if value := Invoke(root, guard.Operation("get"), nil); value != int64(2000) {
+	if value := SynchronizedGuardValueRead(root, guard); value != int64(2000) {
 		t.Fatalf("lost update: %v", value)
 	}
 }
@@ -97,7 +97,7 @@ func TestSynchronizedReentryAndClosedAliases(t *testing.T) {
 	if _, ok := failure.(Fault); !ok {
 		t.Fatal("stale alias remained usable", failure)
 	}
-	if Invoke(root, next.Operation("get"), nil) != int64(0) {
+	if SynchronizedGuardValueRead(root, next) != int64(0) {
 		t.Fatal("stale alias modified new lock's value")
 	}
 }
@@ -123,7 +123,7 @@ func TestSynchronizedCloseRacesAccess(t *testing.T) {
 	next := lockCell(root, cell)
 	Invoke(root, next.Operation("set"), []Argument{{"value", int64(2)}})
 	wait.Wait()
-	if Invoke(root, next.Operation("get"), nil) != int64(2) {
+	if SynchronizedGuardValueRead(root, next) != int64(2) {
 		t.Fatal("old guard accessed reacquired value")
 	}
 	next.close()
@@ -179,4 +179,132 @@ func TestSynchronizedUndeliveredAcquisition(t *testing.T) {
 	}
 	guard := lockCell(root, cell)
 	guard.close()
+}
+
+func guardOp(ctx *Execution, g *SynchronizedGuard, name string) any {
+	return recovered(func() { Invoke(ctx, g.Operation(name), nil) })
+}
+
+func TestSynchronizedWaitNotifyAll(t *testing.T) {
+	root := RootExecution()
+	cell := synchronizedInt()
+	waiterCtx := newExecution(root, root.Context)
+	guard := lockCell(waiterCtx, cell)
+	done := make(chan any, 1)
+	go func() { done <- guardOp(waiterCtx, guard, "wait") }()
+	// The lock is free while waiting: another task can lock and notify.
+	var notifier *SynchronizedGuard
+	notifierCtx := newExecution(root, root.Context)
+	notifier = lockCell(notifierCtx, cell)
+	for {
+		cell.mu.Lock()
+		n := len(cell.waiters)
+		cell.mu.Unlock()
+		if n == 1 {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if failure := guardOp(notifierCtx, notifier, "notify_all"); failure != nil {
+		t.Fatal(failure)
+	}
+	select {
+	case <-done:
+		t.Fatal("wait returned before the lock was released")
+	case <-time.After(20 * time.Millisecond):
+	}
+	notifier.close()
+	if failure := <-done; failure != nil {
+		t.Fatal(failure)
+	}
+	if value := SynchronizedGuardValueRead(waiterCtx, guard); value != int64(0) {
+		t.Fatalf("guard unusable after wait: %v", value)
+	}
+	guard.close()
+}
+
+func TestSynchronizedWaitCancelledDoesNotReacquire(t *testing.T) {
+	root := RootExecution()
+	cell := synchronizedInt()
+	ctxCancel, cancel := context.WithCancel(root.Context)
+	waiterCtx := newExecution(root, ctxCancel)
+	guard := lockCell(waiterCtx, cell)
+	done := make(chan any, 1)
+	go func() { done <- guardOp(waiterCtx, guard, "wait") }()
+	for {
+		cell.mu.Lock()
+		n := len(cell.waiters)
+		cell.mu.Unlock()
+		if n == 1 {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	// Another operation holds the lock; cancellation must not wait for it.
+	holder := lockCell(newExecution(root, root.Context), cell)
+	cancel()
+	select {
+	case failure := <-done:
+		if _, ok := failure.(cancelled); !ok {
+			t.Fatal(failure)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("cancelled wait blocked on the held lock")
+	}
+	guard.close() // no-op: must not release the other holder
+	if cell.holder != holder {
+		t.Fatal("cancelled waiter's close released another acquisition")
+	}
+	holder.close()
+	if len(cell.waiters) != 0 {
+		t.Fatal("waiter leaked")
+	}
+}
+
+func TestSynchronizedWaitRequiresOwner(t *testing.T) {
+	root := RootExecution()
+	cell := synchronizedInt()
+	owner := newExecution(root, root.Context)
+	guard := lockCell(owner, cell)
+	other := newExecution(root, root.Context)
+	for _, name := range []string{"wait", "notify_all"} {
+		if guardOp(other, guard, name) == nil {
+			t.Fatalf("%s through another operation must fault", name)
+		}
+	}
+	guard.close()
+	for _, name := range []string{"wait", "notify_all"} {
+		if guardOp(owner, guard, name) == nil {
+			t.Fatalf("%s on a closed guard must fault", name)
+		}
+	}
+}
+
+func TestSynchronizedAliasCloseDuringWaitFaults(t *testing.T) {
+	root := RootExecution()
+	cell := synchronizedInt()
+	waiterCtx := newExecution(root, root.Context)
+	guard := lockCell(waiterCtx, cell)
+	done := make(chan any, 1)
+	go func() { done <- guardOp(waiterCtx, guard, "wait") }()
+	for {
+		cell.mu.Lock()
+		n := len(cell.waiters)
+		cell.mu.Unlock()
+		if n == 1 {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	guard.close() // alias close while the owner waits
+	notifierCtx := newExecution(root, root.Context)
+	notifier := lockCell(notifierCtx, cell)
+	Invoke(notifierCtx, notifier.Operation("notify_all"), nil)
+	notifier.close()
+	if failure := <-done; failure == nil {
+		t.Fatal("wait must fault after the guard was closed during the wait")
+	}
+	if cell.holder != nil {
+		t.Fatal("closed guard was reinstalled as holder")
+	}
 }

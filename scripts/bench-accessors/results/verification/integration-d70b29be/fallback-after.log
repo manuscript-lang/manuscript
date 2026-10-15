@@ -1,0 +1,20 @@
+=== RUN   TestListTransformResultsPreserveDynamicFallbackAndAccessorReads
+=== RUN   TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Int]/map
+=== RUN   TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Int]/filter
+=== RUN   TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Float]/map
+=== RUN   TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Float]/filter
+=== RUN   TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Bool]/map
+=== RUN   TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Bool]/filter
+=== RUN   TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[String]/map
+=== RUN   TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[String]/filter
+--- PASS: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads (0.00s)
+    --- PASS: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Int]/map (0.00s)
+    --- PASS: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Int]/filter (0.00s)
+    --- PASS: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Float]/map (0.00s)
+    --- PASS: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Float]/filter (0.00s)
+    --- PASS: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Bool]/map (0.00s)
+    --- PASS: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Bool]/filter (0.00s)
+    --- PASS: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[String]/map (0.00s)
+    --- PASS: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[String]/filter (0.00s)
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.005s

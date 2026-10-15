@@ -3,7 +3,6 @@ package msruntime
 import (
 	"errors"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
@@ -92,7 +91,7 @@ func (libraryTerminal) Operation(name string) Function {
 		case "capabilities":
 			in, out := hostos.IsTerminal(os.Stdin), hostos.IsTerminal(os.Stdout)
 			raw := hostos.TerminalSupported && in && out
-			return Record{"@std/TerminalCapabilities", map[string]Value{"input_is_terminal": in, "output_is_terminal": out, "error_is_terminal": hostos.IsTerminal(os.Stderr), "raw_mode": raw, "resize_events": raw && hostos.ResizeSignal != nil, "colors": terminalColors(out)}}
+			return Record{"@std/TerminalCapabilities", map[string]Value{"input_is_terminal": in, "output_is_terminal": out, "error_is_terminal": hostos.IsTerminal(os.Stderr), "raw_mode": raw, "resize_events": raw && hostos.ResizeSupported, "colors": terminalColors(out)}}
 		case "size":
 			return terminalSize(r, os.Stdout, os.Stdin, os.Stderr)
 		}
@@ -109,7 +108,7 @@ type libraryRawTerminal struct {
 	done      chan struct{}
 	pumped    chan struct{}
 	input     chan terminalEvent
-	resize    chan os.Signal
+	resize    <-chan struct{}
 	gate      chan struct{}
 }
 
@@ -125,13 +124,19 @@ func libraryNewRawTerminal(ctx *Execution, r string, alternate bool) Value {
 	if terminalActive.current != nil {
 		return libraryError(r, "Busy", "")
 	}
-	restore, err := hostos.MakeRaw(os.Stdin)
+	restoreInput, err := hostos.MakeRaw(os.Stdin)
 	if err != nil {
 		return libraryError(r, terminalError(err), err.Error())
 	}
-	t := &libraryRawTerminal{restore: restore, alternate: alternate, done: make(chan struct{}), pumped: make(chan struct{}), input: make(chan terminalEvent, 256), resize: make(chan os.Signal, 1), gate: make(chan struct{}, 1)}
-	if hostos.ResizeSignal != nil {
-		signal.Notify(t.resize, hostos.ResizeSignal)
+	restoreOutput, err := hostos.EnableANSI(os.Stdout)
+	if err != nil {
+		restoreInput()
+		return libraryError(r, terminalError(err), err.Error())
+	}
+	restore := func() error { return errors.Join(restoreOutput(), restoreInput()) }
+	t := &libraryRawTerminal{restore: restore, alternate: alternate, done: make(chan struct{}), pumped: make(chan struct{}), input: make(chan terminalEvent, 256), gate: make(chan struct{}, 1)}
+	if hostos.ResizeSupported {
+		t.resize = hostos.WatchResize(os.Stdout, t.done)
 	}
 	if alternate {
 		t.write("\x1b[?1049h")
@@ -203,7 +208,6 @@ func (t *libraryRawTerminal) close() {
 	close(t.done)
 	t.mu.Unlock()
 	<-t.pumped
-	signal.Stop(t.resize)
 	if t.hidden {
 		t.write("\x1b[?25h")
 	}

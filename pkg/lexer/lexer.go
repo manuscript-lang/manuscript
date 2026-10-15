@@ -28,7 +28,7 @@ const (
 var reserved = map[string]bool{}
 
 func init() {
-	for _, s := range strings.Fields("and break case continue else export false fn for if impl import in interface let match not or return self test true try type unit var while with") {
+	for _, s := range strings.Fields("and break case continue else export false fixture fn for if impl import in interface let match not or return self test true try type unit var while with") {
 		reserved[s] = true
 	}
 }
