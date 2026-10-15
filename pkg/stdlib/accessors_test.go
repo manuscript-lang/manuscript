@@ -248,8 +248,8 @@ func accessorModules(t *testing.T) map[string]*syntax.Module {
 		}
 		modules[file.Name()] = module
 	}
-	if len(modules) != 45 {
-		t.Fatalf("parsed %d pinned standard modules; want the audited 45 (including testing.ms)", len(modules))
+	if len(modules) != 46 {
+		t.Fatalf("parsed %d pinned standard modules; want the audited 46 (including testing.ms)", len(modules))
 	}
 	return modules
 }
