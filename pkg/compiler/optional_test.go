@@ -74,7 +74,7 @@ fn wrong(value: Optional[Int]) -> Int:
     return value.unwrap()
 `,
 		"result does not inherit optional predicates": `fn wrong(value: Result[Int, String]) -> Bool:
-    return value.is_some()
+    return value.is_some
 `,
 		"local names do not inherit native methods": `type Optional[T]:
     case some(value: T)

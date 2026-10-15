@@ -24,11 +24,7 @@ fn csv_explicit() -> CsvOptions: CsvOptions(",", "\n")
 fn csv_omitted() -> CsvOptions: CsvOptions()
 
 fn command_explicit() -> Result[CommandOutput, CommandError]:
-    return commands().run(
-        program: "",
-        arguments: [],
-        input: "".to_bytes()
-    )
+    return commands().run(program: "", arguments: [], input: "".to_bytes())
 
 fn command_omitted() -> Result[CommandOutput, CommandError]:
     return commands().run(program: "", arguments: [])
@@ -50,5 +46,9 @@ fn filesystem_explicit(fs: FileSystem, data: Bytes) -> Result[Unit, FileSystemEr
 fn filesystem_omitted(fs: FileSystem, data: Bytes) -> Result[Unit, FileSystemError]:
     return fs.write_file("", data)
 
-fn filesystem_bind(fs: FileSystem) -> fn(path: String, data: Bytes, replace: Bool) -> Result[Unit, FileSystemError]:
+fn filesystem_bind(fs: FileSystem) -> fn(
+    path: String,
+    data: Bytes,
+    replace: Bool
+) -> Result[Unit, FileSystemError]:
     return fs.write_file

@@ -42,6 +42,7 @@ An implementation must match the contract exactly. After substituting generic ty
 
 - every operation appears exactly once;
 - operation names match;
+- operation kinds match: `get` implements an accessor, and `fn` implements a method;
 - parameter labels, their declaration order, and parameter types match;
 - result types match.
 
@@ -55,6 +56,63 @@ impl Increment for Offset:
 ```
 
 The rejected block is an alternative negative example, not a second block to add to the valid example.
+
+## Read-only accessors
+
+Declare an accessor with `get name -> Type` and read it with `receiver.name`.
+This fragment defines a live size observation through an explicit interface:
+
+```manuscript
+interface Sized:
+    get length -> Int
+
+type Bag:
+    items: List[Int]
+
+impl Sized for Bag:
+    get length -> Int:
+        return self.items.length
+
+fn size[T: Sized](bag: T) -> Int:
+    return bag.length
+```
+
+An accessor has no parameter list, defaults, setter, or member-specific type
+parameters. Its result type is explicit; receiver type parameters remain in
+scope. Bodies follow ordinary function return, cleanup, error, suspension and
+cancellation rules. Source accessors belong in `impl` blocks, and interface
+signatures have no body. `get` remains usable as an ordinary identifier elsewhere.
+
+A read evaluates its receiver once and runs the getter every time that expression
+is evaluated. Short-circuiting skips untaken reads. The result has the declared
+value type; no unwrap, clone, freeze or implicit cache is added. Accessors may
+execute code and fault, so their evaluation cannot be moved past earlier or later
+observable operations. A field or zero-argument method does not satisfy an
+accessor contract. The usual visibility, generic evidence and explicit-view
+rules apply. A field/accessor name collision is rejected.
+
+Assigning `bag.length = 3` is rejected, including through an interface or generic
+bound and when the receiver is bound with `var`. Read-only does not freeze a
+returned reference: `response.metadata.status = 201` can update shared metadata.
+Each `response.metadata` read returns the current head; replacing `response.head`
+leaves earlier aliases attached to the old record. A guard's `value` read checks
+that the guard remains open; use `guard.set(value)` to replace its payload.
+Retaining an accessor result does not extend a resource or guard lifetime.
+
+Methods still bind function values: `err.message` is a callable and
+`err.message()` invokes it. `Error.message()` and every implementation remain
+methods. An accessor expression immediately reads a value. To defer a read,
+capture the receiver explicitly:
+
+```manuscript
+let receiver = items
+let count_later: fn() -> Int = fn() -> Int: receiver.length
+```
+
+When the receiver is an expression such as `make_items()`, bind it before creating
+the closure to preserve its original evaluation time and count. If an accessor's
+declared result is a function, ordinary call syntax invokes that returned function
+after the getter has run; it does not pass arguments to the getter.
 
 ## Coherence and visibility
 

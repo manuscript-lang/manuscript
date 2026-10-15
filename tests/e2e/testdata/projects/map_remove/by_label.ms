@@ -8,7 +8,7 @@ impl Equal for Key:
             _: return false
 
 impl Hashable for Key:
-    fn hash() -> Int: self.label.scalar_length()
+    fn hash() -> Int: self.label.scalar_length
 
 export fn label_map() -> Map[Key, Int]:
     return (

@@ -8,6 +8,10 @@ import (
 
 func init() {
 	p := func(name, typ string) LibraryParam { return LibraryParam{name, typ} }
+	for _, unit := range []string{"milliseconds", "seconds", "minutes"} {
+		name := unit
+		libraryAdd("time", "int_"+name, "Duration", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, args []Value) Value { return duration(args[0], name) })
+	}
 	libraryAdd("time", "duration", "Duration", []LibraryParam{p("nanoseconds", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		return Duration(a[0].(int64))
 	})

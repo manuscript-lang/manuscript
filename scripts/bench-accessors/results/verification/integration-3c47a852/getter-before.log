@@ -1,0 +1,5 @@
+--- FAIL: TestStringKeyedMapCallsKeepSemantics (0.02s)
+    int_map_calls_test.go:77: source rejected: [string-map.ms:19:17: type: length is a read-only accessor, not a method; write m.length without () string-map.ms:19:26: type: operator operands require the same independently known type, found <invalid> == Int; convert one side so both have one type (e.g. toString() for text, or an Int/Float conversion) string-map.ms:29:31: type: length is a read-only accessor, not a method; write m.length without ()]
+FAIL
+FAIL	github.com/manuscript-lang/manuscript/tests/e2e	1.057s
+FAIL

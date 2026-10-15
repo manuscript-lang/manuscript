@@ -18,10 +18,10 @@ fn decode(input: Bytes, size: Int) -> List[String]:
     let result: List[String] = []
     var offset = 0
 
-    while offset < input.length():
+    while offset < input.length:
         var end = offset + size
 
-        if end > input.length(): end = input.length()
+        if end > input.length: end = input.length
 
         for text in texts(value(reader.feed(value(input.slice(offset, end))))):
             result.append(text)
@@ -45,7 +45,7 @@ test "JSON decoder preserves values split at every chunk size":
     let input = source.to_bytes()
     var size = 1
 
-    while size <= input.length():
+    while size <= input.length:
         if decode(input, size) != expected: return panic("chunk size {size}")
 
         size = size + 1

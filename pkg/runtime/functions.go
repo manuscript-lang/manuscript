@@ -374,3 +374,51 @@ func LoopBody(body func() Value) (exit int) {
 // Seq returns value after evaluating it in place, which orders the operand
 // before the calls that follow it in a Go expression.
 func Seq[T any](value T) T { return value }
+
+// SourceAccessorRead is the executable-read boundary for source implementation
+// thunks. Its receiver and evidence are already evaluated; it never constructs a
+// callable value. Direct source reads retain their own sampled entry behavior.
+func SourceAccessorRead(ctx *Execution, receiver Value, result, position string, typeArgs map[string]string, typeScopes map[string]TypeScope, body func(*Execution, Value, map[string]string, map[string]TypeScope) Value) (value Value) {
+	defer func() {
+		if controlPanics.Load() == 0 {
+			return
+		}
+		if failure := recover(); failure != nil {
+			if p, ok := failure.(propagation); ok {
+				controlPanics.Add(-1)
+				CheckCancelled(ctx)
+				value = Alternative{Type: result, Tag: "error", Fields: []Value{p.Cause}}
+			} else {
+				panic(failure)
+			}
+		}
+	}()
+	value = sourceAccessorBody(ctx, receiver, position, typeArgs, typeScopes, body)
+	CheckCancelled(ctx)
+	return value
+}
+func sourceAccessorBody(ctx *Execution, receiver Value, position string, typeArgs map[string]string, typeScopes map[string]TypeScope, body func(*Execution, Value, map[string]string, map[string]TypeScope) Value) (value Value) {
+	if ctx != nil && ctx.calls != nil {
+		calls := ctx.calls
+		if calls.depth++; calls.depth > MaxCallDepth {
+			sourceDepthFault(calls)
+		}
+		defer func() { calls.depth-- }()
+	}
+	defer func() {
+		if controlPanics.Load() == 0 {
+			return
+		}
+		if failure := recover(); failure != nil {
+			if returned, ok := consumeSourceReturn(failure); ok {
+				value = returned
+				return
+			}
+			panic(failure)
+		}
+	}()
+	if sourceProfiling.Load() {
+		return profileSource(ctx, position, nil, func(ctx *Execution, _ []Value) Value { return body(ctx, receiver, typeArgs, typeScopes) })
+	}
+	return body(ctx, receiver, typeArgs, typeScopes)
+}

@@ -346,7 +346,7 @@ func (o IntOptional) Box(result string) Alternative {
 func (o IntOptional) Unwrap(ctx *Execution) int64 {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -404,7 +404,7 @@ func (o FloatOptional) Box(result string) Alternative {
 func (o FloatOptional) Unwrap(ctx *Execution) float64 {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -462,7 +462,7 @@ func (o BoolOptional) Box(result string) Alternative {
 func (o BoolOptional) Unwrap(ctx *Execution) bool {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -520,7 +520,7 @@ func (o StringOptional) Box(result string) Alternative {
 func (o StringOptional) Unwrap(ctx *Execution) string {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -662,14 +662,20 @@ func (l *List) copySliceChecked(ctx *Execution, start, end int) *List {
 // value does not fit its typed storage.
 func (l *List) store(i int, v Value) {
 	if !l.accepts(v) {
-		boxed := make([]Value, l.Len())
-		for j := range boxed {
-			boxed[j] = l.Get(j)
-		}
-		l.kind, l.ints, l.floats, l.bools, l.strings = listBoxed, nil, nil, nil, nil
-		l.Items = boxed
+		l.boxStorage()
 	}
 	l.Set(i, v)
+}
+
+// boxStorage retains current values when private result construction discovers
+// a payload outside its selected primitive storage.
+func (l *List) boxStorage() {
+	boxed := make([]Value, l.Len())
+	for i := range boxed {
+		boxed[i] = l.Get(i)
+	}
+	l.kind, l.ints, l.floats, l.bools, l.strings = listBoxed, nil, nil, nil, nil
+	l.Items = boxed
 }
 
 func (l *List) allocate(n int) {

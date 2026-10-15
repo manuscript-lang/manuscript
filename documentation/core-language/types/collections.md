@@ -72,7 +72,7 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 ## Mutation and copies
 
-`append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `insert(index:, value:)` places a value before `index`, accepting `-length()` through `length()`; `length()` appends, and other indexes fault with the valid range. `pop()` also updates the list: it removes the last element and returns it as `some(value)`, or returns `none` for an empty list. `splice(start:, delete_count:, replacement:)` requires nonnegative bounds with `start <= length()` and `delete_count <= length() - start`; it stages a self-replacement and retains shallow references. Invalid bounds fault without clamping. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
+`append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, and `reverse_in_place` update a list and return the same instance. `set(index:, value:)` replaces an element; `remove(index:)` removes one. Both accept negative indexes relative to the end and fault on invalid indexes. `insert(index:, value:)` places a value before `index`, accepting `-length` through `length`; `length` appends, and other indexes fault with the valid range. `pop()` also updates the list: it removes the last element and returns it as `some(value)`, or returns `none` for an empty list. `splice(start:, delete_count:, replacement:)` requires nonnegative bounds with `start <= length` and `delete_count <= length - start`; it stages a self-replacement and retains shallow references. Invalid bounds fault without clamping. Append reuses available capacity and grows storage when necessary; it does not copy the full list on each call.
 
 Map `add`, `remove`, `add_default`, `add_default_from`, `merge`, and `clear` update the receiver. Set `add`, `remove`, and `clear` update the receiver. Map `remove` is a no-op for an absent key and keeps scoped lookup and insertion order. Their return values retain that instance for chaining.
 
@@ -86,7 +86,7 @@ values.append(3)
 
 Clones have independent outer storage and retain nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra construct new results. List `reversed()` returns a reversed shallow copy with independent outer storage. Bytes `reversed()` also returns a copy. Text and Bytes retain their existing nonmutating operations.
 
-List `slice` returns `Result[List[T], CollectionError]` and uses strict element bounds after resolving negative bounds relative to the end: `0 <= start <= end <= length()`. Invalid bounds return `CollectionError.OutOfRange`. Successful slices copy outer storage and retain nested references. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
+List `slice` returns `Result[List[T], CollectionError]` and uses strict element bounds after resolving negative bounds relative to the end: `0 <= start <= end <= length`. Invalid bounds return `CollectionError.OutOfRange`. Successful slices copy outer storage and retain nested references. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices) for the distinct String, List, and Bytes contracts.
 
 A List `for` loop or callback traversal evaluates its backing slice and initial length once, without copying or freezing elements. In-place writes can change values read later in that traversal. Append never extends the current traversal. If a mutation reallocates storage, the running traversal keeps its original backing array; shrinking or shifting storage does not reduce its captured length. Use an explicit `.clone()` before traversal when stable, separate outer storage is needed. Nested elements retain their references.
 
@@ -136,13 +136,13 @@ and the measured constructor/access/comparator paths.
 | Receiver or constructor | Signature/result |
 | --- | --- |
 | `List[T]()` | Empty `List[T]` |
-| `List[T]` | `length() -> Int`; `at(index: Int) -> Optional[T]`; `[index] -> Optional[T]` |
+| `List[T]` | `length: Int`; `at(index: Int) -> Optional[T]`; `[index] -> Optional[T]` |
 | `List[T]` | `append(value: T) -> List[T]`; `concat(values: List[T]) -> List[T]` |
 | `List[T]` | `set(index: Int, value: T) -> List[T]`; `remove(index: Int) -> List[T]` |
 | `List[T]` | `insert(index: Int, value: T) -> List[T]`; `pop() -> Optional[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
-| `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
-| `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
+| `Map[K, V]` | `length: Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
+| `Map[K, V]` | `is_empty: Bool`; `get_or(key: K, fallback: V) -> V` |
 | `Map[K, V]` | `filter(predicate: fn(key: K, value: V) -> Bool) -> Map[K, V]` |
 | `Map[K, V]` | `map[W](transform: fn(key: K, value: V) -> W) -> Map[K, W]` |
 | `Map[K, V]` | `map_keys[W: Hashable](transform: fn(key: K, value: V) -> W) -> Map[W, V]` |
@@ -153,8 +153,8 @@ and the measured constructor/access/comparator paths.
 | `Map[K, V]` | `some(predicate: fn(key: K, value: V) -> Bool) -> Bool`; `every` uses the same predicate |
 | `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `remove(key: K) -> Map[K, V]` |
 | `Set[T]()` | Empty `Set[T]` |
-| `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
-| `Set[T]` | `is_empty() -> Bool`; `filter(predicate: fn(value: T) -> Bool) -> Set[T]` |
+| `Set[T]` | `length: Int`; `contains(value: T) -> Bool` |
+| `Set[T]` | `is_empty: Bool`; `filter(predicate: fn(value: T) -> Bool) -> Set[T]` |
 | `Set[T]` | `map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]` |
 | `Set[T]` | `add(value: T) -> Set[T]`; `remove(value: T) -> Set[T]` |
 | `Set[T]` | `fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A` |

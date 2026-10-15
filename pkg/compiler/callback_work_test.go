@@ -54,7 +54,7 @@ func TestCallbackProbeRetainsContextBoundaries(t *testing.T) {
 func TestCallbackProbeRetainsDiagnostics(t *testing.T) {
 	for _, body := range []string{
 		`let values = [1].map(fn(outer): [2].map(fn(inner): missing))`,
-		`let callback = apply(value: 1, transform: fn(item: String): item.length())`,
+		`let callback = apply(value: 1, transform: fn(item: String): item.length)`,
 		`let callback = choose(first: fn(): 1, second: fn(): "wrong")`,
 		`let callback = Callback(fn(item: Int = "wrong"): item)`,
 		`var value = 1

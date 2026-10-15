@@ -279,7 +279,7 @@ func TestTimeReceiverCompletion(t *testing.T) {
 		typ     string
 		methods []string
 	}{
-		{"Duration", []string{"add", "multiply", "to_nanoseconds", "to_seconds"}},
+		{"Duration", []string{"add", "multiply", "nanoseconds", "seconds"}},
 		{"Instant", []string{"shift", "difference", "compare"}},
 		{"Timestamp", []string{"to_string", "unix_seconds", "nanoseconds", "shift", "difference", "compare"}},
 	} {

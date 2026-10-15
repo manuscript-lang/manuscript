@@ -2,7 +2,7 @@ import {stdin, stdout, read_line} from "@std/io.ms"
 
 # True when s is a non-empty run of ASCII digits.
 fn all_digits(s: String) -> Bool:
-    if s.is_empty():
+    if s.is_empty:
         return false
     for c in s.scalar_values():
         if c < 48 or c > 57:
@@ -12,18 +12,18 @@ fn all_digits(s: String) -> Bool:
 # Parses digits with an optional one- or two-digit fraction into cents.
 fn parse_amount(s: String) -> Optional[Int]:
     let parts = s.split(".")
-    if parts.length() > 2:
+    if parts.length > 2:
         return none
     let whole = parts.at(0).unwrap()
     if not all_digits(whole):
         return none
     var cents = whole.parse_int().unwrap() * 100
-    if parts.length() == 2:
+    if parts.length == 2:
         let frac = parts.at(1).unwrap()
-        if not all_digits(frac) or frac.length() > 2:
+        if not all_digits(frac) or frac.length > 2:
             return none
         let digits = frac.parse_int().unwrap()
-        if frac.length() == 1:
+        if frac.length == 1:
             cents = cents + digits * 10
         else:
             cents = cents + digits
@@ -37,26 +37,26 @@ fn parse_line(line: String) -> Optional[Record]:
     var category = ""
     var amount = ""
     if line.starts_with("\""):
-        let rest = line.slice(1, line.length()).unwrap()
+        let rest = line.slice(1, line.length).unwrap()
         let close = rest.index_of("\"")
-        if close.is_none():
+        if close.is_none:
             return none
         let at = close.unwrap()
         category = rest.slice(0, at).unwrap()
-        let after = rest.slice(at + 1, rest.length()).unwrap()
+        let after = rest.slice(at + 1, rest.length).unwrap()
         if not after.starts_with(","):
             return none
-        amount = after.slice(1, after.length()).unwrap()
+        amount = after.slice(1, after.length).unwrap()
     else:
         let parts = line.split(",")
-        if parts.length() != 2:
+        if parts.length != 2:
             return none
         category = parts.at(0).unwrap()
         amount = parts.at(1).unwrap()
-    if category.is_empty() or category.contains("\"") or amount.contains(","):
+    if category.is_empty or category.contains("\"") or amount.contains(","):
         return none
     let cents = parse_amount(amount)
-    if cents.is_none():
+    if cents.is_none:
         return none
     return some(Record(category: category, cents: cents.unwrap()))
 
@@ -70,13 +70,13 @@ fn run() -> Result[Unit, Error]:
     var bad = 0
     while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
-        if next.is_none():
+        if next.is_none:
             break
         let line = next.unwrap().replace(old: "\r", new: "")
-        if line.trim().is_empty():
+        if line.trim().is_empty:
             continue
         let rec = parse_line(line)
-        if rec.is_none():
+        if rec.is_none:
             bad = bad + 1
         else:
             let r = rec.unwrap()

@@ -93,7 +93,7 @@ fn replace_first[T](xs: List[T], value: T) -> List[T]:
     return xs.set(index: 0, value: value)
 
 test "string members":
-    check(ok: "  a,b ".trim().split(separator: ",").length() == 2, name: "trim split")
+    check(ok: "  a,b ".trim().split(separator: ",").length == 2, name: "trim split")
     check(ok: "abc".upper() == "ABC", name: "upper")
 test "list members":
     let xs = [1, 2, 3]
@@ -105,9 +105,9 @@ test "custom equality is kept for bound members":
     let a = Set[Folded]()
     a.add(value: Folded(name: "x"))
     a.add(value: Folded(name: "y"))
-    check(ok: a.length() == 1, name: "set add uses Equal")
+    check(ok: a.length == 1, name: "set add uses Equal")
     let mapped = a.map(transform: fn(value: Folded) -> Folded: return Folded(name: "z"))
-    check(ok: mapped.length() == 1, name: "set map deduplicates")
+    check(ok: mapped.length == 1, name: "set map deduplicates")
 test "builder":
     let sb = StringBuilder()
     sb.append("a")

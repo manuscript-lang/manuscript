@@ -207,7 +207,7 @@ func TestPrimitiveListAppendAndRangeAreUnboxed(t *testing.T) {
 func TestTextLengthAndMapGetLowerWithoutBoxing(t *testing.T) {
 	r := compileSource("strings.ms", `fn label(n: Int, f: Float, ok: Bool, s: String) -> Int:
     let text = "n={n} f={f} ok={ok} s={s}"
-    return text.length()
+    return text.length
 
 fn lookup(m: Map[Int, Int], key: Int) -> Int:
     match m.get(key: key):
@@ -219,7 +219,7 @@ fn lookup(m: Map[Int, Int], key: Int) -> Int:
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	for _, want := range []string{"rt.FormatInt(", "rt.FormatFloat(", "rt.FormatBool(", "rt.StringLengthScalar(", "rt.MapGetPartsInt("} {
+	for _, want := range []string{"rt.FormatInt(", "rt.FormatFloat(", "rt.FormatBool(", "rt.StringLengthRead(", "rt.MapGetPartsInt("} {
 		if !strings.Contains(r.Source, want) {
 			t.Fatalf("missing %q\n%s", want, r.Source)
 		}
@@ -262,14 +262,14 @@ func TestListCallbacksInlineAsGoLoops(t *testing.T) {
 
 func TestOptionalMembersLowerWithoutDynamicDispatch(t *testing.T) {
 	r := compileSource("optional.ms", `fn run(o: Optional[Int]) -> Int:
-    if o.is_some():
+    if o.is_some:
         return o.unwrap_or(fallback: 0)
     return 1
 `)
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	for _, want := range []string{"rt.OptionalIsSome(", "rt.OptionalUnwrapOr("} {
+	for _, want := range []string{"rt.OptionalSomeRead(", "rt.OptionalUnwrapOr("} {
 		if !strings.Contains(r.Source, want) {
 			t.Fatalf("missing %q\n%s", want, r.Source)
 		}

@@ -27,7 +27,7 @@ import panic from "@std/faults.ms"
 test "mapped output keeps lexical Hashable and Equal evidence":
     let by_id = first_mapped()
     let by_label = second_mapped()
-    if by_id.length() != 1 or by_label.length() != 2:
+    if by_id.length != 1 or by_label.length != 2:
         return panic("generic result scope was replaced by input scope")
     if by_id.values().at(0).unwrap().label != "1": return panic(
         "first mapped payload lost"
@@ -35,10 +35,10 @@ test "mapped output keeps lexical Hashable and Equal evidence":
 
     let bound = first_bound_map()
     let mapped = bound(fn(n): Key(0, n.toString()))
-    if mapped.length() != 1: return panic("bound map lost defining module")
+    if mapped.length != 1: return panic("bound map lost defining module")
 
     let input = Set[Int]().add(1).add(2)
-    if first_generic_map(input).length() != 1:
+    if first_generic_map(input).length != 1:
         return panic("mapped generic output used receiver's module")
     if first_lookup() != "found": return panic("generic get_or lost key scope")
 
@@ -75,7 +75,7 @@ test "conversions and queries retain scoped generic evidence and Error identity"
         or two.unwrap_error().message() != "second 3"
     ):
         return panic("conversion copied concrete Error")
-    if not (one.to_optional().is_none()): return panic("error converted to success")
+    if not (one.to_optional().is_none): return panic("error converted to success")
 
 test "generic folds preserve scoped interface accumulators":
     let cause = Cause(4)
@@ -92,16 +92,16 @@ test "Map transformations preserve input and output equality evidence":
     let input: Map[Int, Int] = {1: 10, 2: 20}
     let one = first_key_transform(input)
     let two = second_key_transform(input)
-    if one.length() != 1 or two.length() != 2:
+    if one.length != 1 or two.length != 2:
         return panic("Map key transform used input scope for output keys")
     if one.keys().at(0).unwrap().label != "1" or one.values() != [20]:
         return panic("Map key transform collision identity")
 
     let bound_one = first_bound_keys()
     let bound_two = second_bound_keys()
-    if bound_one(fn(key, value): Key(0, key.toString())).length() != 1:
+    if bound_one(fn(key, value): Key(0, key.toString())).length != 1:
         return panic("bound key transform lost first scope")
-    if bound_two(fn(key, value): Key(0, key.toString())).length() != 2:
+    if bound_two(fn(key, value): Key(0, key.toString())).length != 2:
         return panic("bound key transform lost second scope")
     if first_value_transform() != 3 or second_value_transform() != 0:
         return panic("value transform changed key equality scope")

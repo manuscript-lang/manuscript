@@ -1,0 +1,230 @@
+{
+  "code_commit": "12a26d19687f371c18d11cdf1db1b7b35720bc71",
+  "base_commit": "1383851ebb24d2dc8a0a13d8cec0021bf32e833d",
+  "aggregate_exit_code": 0,
+  "go_version": "go1.25.1",
+  "goos": "linux",
+  "goarch": "amd64",
+  "test_flags": [
+    "-exec /tmp/manuscript-accessor-native-go/test-env",
+    "-json",
+    "-timeout 30m",
+    "-count=1",
+    "-covermode=atomic",
+    "-coverpkg=<all packages from go list ./...>",
+    "-coverprofile=.artifacts/coverage/coverage.out",
+    "./..."
+  ],
+  "environment": {
+    "GOFLAGS": "-buildvcs=false -p=2",
+    "MANUSCRIPT_EXAMPLES_NATIVE": "1",
+    "PATH": "pinned Go SDK; test-exec wrapper also adds helper-build VCS-stamp shim"
+  },
+  "package_results": [
+    {
+      "package": "github.com/manuscript-lang/manuscript",
+      "action": "pass",
+      "elapsed_seconds": 0.324
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/cmd/ms",
+      "action": "pass",
+      "elapsed_seconds": 0.279
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/internal/cli",
+      "action": "pass",
+      "elapsed_seconds": 2.594
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/internal/debugger",
+      "action": "pass",
+      "elapsed_seconds": 2.62
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/internal/decimal",
+      "action": "pass",
+      "elapsed_seconds": 0.238
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/internal/hostos",
+      "action": "pass",
+      "elapsed_seconds": 0.25
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/internal/nativeabi",
+      "action": "pass",
+      "elapsed_seconds": 0.031
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/checker",
+      "action": "pass",
+      "elapsed_seconds": 2.109
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/compiler",
+      "action": "pass",
+      "elapsed_seconds": 0.958
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/frontend",
+      "action": "pass",
+      "elapsed_seconds": 0.045
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/lexer",
+      "action": "pass",
+      "elapsed_seconds": 0.043
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/lower",
+      "action": "pass",
+      "elapsed_seconds": 0.387
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/parser",
+      "action": "pass",
+      "elapsed_seconds": 5.261
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/project",
+      "action": "pass",
+      "elapsed_seconds": 0.246
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/runtime",
+      "action": "pass",
+      "elapsed_seconds": 14.69
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/stdlib",
+      "action": "pass",
+      "elapsed_seconds": 1.958
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/syntax",
+      "action": "pass",
+      "elapsed_seconds": 0.074
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/tooling",
+      "action": "pass",
+      "elapsed_seconds": 8.746
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/tooling/docgen",
+      "action": "pass",
+      "elapsed_seconds": 0.392
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/tooling/lsp",
+      "action": "pass",
+      "elapsed_seconds": 35.956
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/scripts/bench-accessors",
+      "action": "pass",
+      "elapsed_seconds": 0.622
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/scripts/bench-lists",
+      "action": "pass",
+      "elapsed_seconds": 0.409
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/scripts/bench-lowering",
+      "action": "pass",
+      "elapsed_seconds": 0.212
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/scripts/distcheck",
+      "action": "pass",
+      "elapsed_seconds": 0.198
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/scripts/docgen",
+      "action": "pass",
+      "elapsed_seconds": 0.461
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/scripts/internal/devtool",
+      "action": "pass",
+      "elapsed_seconds": 0.144
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/scripts/maintenance",
+      "action": "pass",
+      "elapsed_seconds": 0.305
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/scripts/mktoolchain",
+      "action": "pass",
+      "elapsed_seconds": 0.262
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/scripts/repo-check",
+      "action": "pass",
+      "elapsed_seconds": 1.835
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/build",
+      "action": "pass",
+      "elapsed_seconds": 196.168
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/tests/examples",
+      "action": "pass",
+      "elapsed_seconds": 11.604
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/tests/e2e",
+      "action": "pass",
+      "elapsed_seconds": 297.664
+    }
+  ],
+  "test_event_counts": {
+    "pass": 5554,
+    "skip": 2
+  },
+  "skips": [
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/runtime",
+      "test": "TestPrimitiveListMemory"
+    },
+    {
+      "package": "github.com/manuscript-lang/manuscript/pkg/runtime",
+      "test": "FuzzCSVRoundTrip/seed#3"
+    }
+  ],
+  "failures": [],
+  "combined_statement_coverage_percent": 78.0,
+  "cover_function_report_exit_code": 0,
+  "cover_html_report_exit_code": 0,
+  "artifacts": [
+    {
+      "path": ".artifacts/verification/coverage-12a26d19-final.jsonl",
+      "bytes": 5004324,
+      "sha256": "5b78f1105015628423aaa729cd9949d26be15e8baca749bf75b661ce66ffb4b9"
+    },
+    {
+      "path": ".artifacts/verification/coverage-12a26d19-final.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".artifacts/coverage/coverage.out",
+      "bytes": 31616592,
+      "sha256": "f7d8f01c98fe422f05f2fe96ea7268f7b2fe07594802ef293d3362ac9677dc7a"
+    },
+    {
+      "path": ".artifacts/coverage/functions.txt",
+      "bytes": 170376,
+      "sha256": "cb34b52a57cb6ac7d2cced790938aeb34a185a6e16491a0c716191784818164e"
+    },
+    {
+      "path": ".artifacts/coverage/index.html",
+      "bytes": 2871458,
+      "sha256": "3e23b7ff252bfe662041f069b48ac8f822fbca374ddd38406e1aaa44e9d94667"
+    }
+  ]
+}

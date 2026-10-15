@@ -10,6 +10,9 @@ import (
 // documentDeclaration keeps source names and declaration order, omitting function
 // bodies. Native declarations use the same declaration-only syntax as stdlib/*.ms.
 func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...string) string {
+	if d.Accessor {
+		return "get " + name + " -> " + documentType(d.Result) + ":\n"
+	}
 	if d.Kind == syntax.KindFn {
 		return "fn " + name + documentTypeParameters(d.TypeParams) + documentParameters(d.Params, source...) + " -> " + documentType(d.Result) + ":\n"
 	}

@@ -113,8 +113,8 @@ export fn truncate(value: Float) -> Float:
 # | `to_fixed(digits:)` | Request 0–100 fractional digits; for magnitudes at least 1e21, use the ordinary round-trip representation instead. |
 # | `to_exponential(digits:)` | Request 0–100 fractional digits in scientific notation, with an explicit exponent sign. |
 # | `to_precision(precision:)` | Request 1–100 significant digits. Use plain notation when the first significant digit's exponent is at least -6 and below `precision`; otherwise use scientific notation. |
-# | `is_nan()` | True exactly for NaN. |
-# | `is_finite()` | False for NaN and either infinity. |
+# | `is_nan` | True exactly for NaN. |
+# | `is_finite` | False for NaN and either infinity. |
 #
 # The three precision-formatting operations return `Result[String, NumberError]`; an out-of-range digit count returns `NumberError.InvalidInput`. They round the stored binary64 value with ties to even, preserve requested trailing zeros and signed zero, and format nonfinite values as `NaN`, `Infinity`, or `-Infinity` after validating the count. For example, `1.5.to_fixed(digits: 3)` returns `ok("1.500")` and `1.5.to_exponential(digits: 2)` returns `ok("1.50e+0")`. These methods differ from the shortest representation used by [interpolation and `toString()`](../core-language/basics/text-and-bytes.md#deterministic-formatting).
 #

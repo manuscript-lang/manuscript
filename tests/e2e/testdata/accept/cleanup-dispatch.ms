@@ -40,11 +40,11 @@ test "cleanup uses the selected contract":
 
     with resource = Resource(closed):
         with locked = closed.lock():
-            if not (not locked.get()):
+            if not (not locked.value):
                 return panic(message: "check failed")
 
     with locked = closed.lock():
-        if not (locked.get()):
+        if not (locked.value):
             return panic(message: "check failed")
 
     with locked = closed.lock():
@@ -53,7 +53,7 @@ test "cleanup uses the selected contract":
     bound_cleanup(resource: Resource(closed))
 
     with locked = closed.lock():
-        if not (locked.get()):
+        if not (locked.value):
             return panic(message: "check failed")
 
     with locked = closed.lock():
@@ -62,5 +62,5 @@ test "cleanup uses the selected contract":
     canonical_cleanup(resource: Resource(closed))
 
     with locked = closed.lock():
-        if not (locked.get()):
+        if not (locked.value):
             return panic(message: "check failed")

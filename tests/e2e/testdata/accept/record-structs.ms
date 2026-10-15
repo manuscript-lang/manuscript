@@ -56,7 +56,7 @@ test "struct records with mixed field types":
         and shape.name == "disc!"
         and shape.solid
         and shape.corner.x == 4
-        and shape.tags.length() == 2
+        and shape.tags.length == 2
     ):
         return panic(message: "mixed field access failed")
 
@@ -65,7 +65,7 @@ test "struct records as keys and defaults":
     set.add(Point(x: 1, y: 1))
     set.add(Point(x: 1, y: 1))
     set.add(Point(x: 2, y: 1))
-    if set.length() != 2:
+    if set.length != 2:
         return panic(message: "record keys must hash structurally")
 
     let sized = Sized(width: 3)

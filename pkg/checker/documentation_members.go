@@ -31,7 +31,11 @@ func documentMembers(decl *syntax.Declaration, source string, receiver *Type) []
 		if decl.Kind == "interface" {
 			signature = strings.TrimSuffix(signature, ":")
 		}
-		members = append(members, APIMember{Name: name, Kind: "operation", Signature: signature, Doc: leadingComment(source, method.Pos.Offset)})
+		kind := "operation"
+		if method.Accessor {
+			kind = "accessor"
+		}
+		members = append(members, APIMember{Name: name, Kind: kind, Signature: signature, Doc: leadingComment(source, method.Pos.Offset)})
 	}
 	sortAPIMembers(members)
 	return members

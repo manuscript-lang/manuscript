@@ -42,7 +42,7 @@ test "compression omission equals explicit level six for every format":
         if value(method(data, level: 6)) != expected: return panic(
             "explicit bound level"
         )
-        if value(format.compress(data, max_bytes: expected.length())) != expected: return panic(
+        if value(format.compress(data, max_bytes: expected.length)) != expected: return panic(
             "exact output budget"
         )
         if value(format.decompress(expected)) != data: return panic("typed round trip")

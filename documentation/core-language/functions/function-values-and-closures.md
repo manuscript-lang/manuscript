@@ -66,7 +66,7 @@ Capturing a record or collection keeps a reference to the same object. Changes t
 fn tag_count() -> Int:
     let tags = ["docs"]
     let count = fn():
-        return tags.length()
+        return tags.length
     tags.append("release")
     return count()
 # tag_count() returns 2.

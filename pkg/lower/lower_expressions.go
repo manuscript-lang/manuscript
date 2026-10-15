@@ -188,6 +188,9 @@ func (g *generator) nameValue(e *syntax.Expression, info *checker.Info) ast.Expr
 // memberValue lowers a member read: constructor, method value, native
 // member, struct field, or dynamic field.
 func (g *generator) memberValue(e *syntax.Expression, info *checker.Info) ast.Expr {
+	if info.Method != nil && info.Method.Accessor {
+		return g.accessorValue(e, info)
+	}
 	if info.Constructor != nil {
 		return runtimeCall("NewAlternative", g.key(info.Constructor), textLiteral(info.Case), ident("nil"), ident("nil"))
 	}
@@ -198,9 +201,6 @@ func (g *generator) memberValue(e *syntax.Expression, info *checker.Info) ast.Ex
 		return g.methodDefaults(info.Method, runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Info(e.Left).Type)))
 	}
 	if info.Native != "" {
-		if info.Native == "milliseconds" || info.Native == "seconds" || info.Native == "minutes" {
-			return orderedCall(runtimeName("NativeMember"), g.expression(e.Left), textLiteral(e.Text))
-		}
 		return runtimeCall("NativeMember", g.expression(e.Left), textLiteral(e.Text))
 	}
 	if st, _ := g.structFieldOf(e); st != nil {

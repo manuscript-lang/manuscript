@@ -11,7 +11,7 @@ fn mutate[T](values: List[T], mode: String, replacement: T) -> Unit:
         values.splice(start: 1, delete_count: 2, replacement: [replacement])
 
     if mode == "clear" or mode == "clear_append":
-        values.splice(start: 0, delete_count: values.length(), replacement: [])
+        values.splice(start: 0, delete_count: values.length, replacement: [])
 
     if mode == "clear_append":
         values.append(replacement)
@@ -159,10 +159,7 @@ test "record consumers retain shallow references after shrink":
                 return panic("record shrink consumer lost a valid reference")
 
             last.value = 11
-            if not (
-                seen.last().unwrap().value == 11
-                and clone.last().unwrap().value == 11
-            ):
+            if not (seen.last.unwrap().value == 11 and clone.last.unwrap().value == 11):
                 return panic("record references were deep copied")
 
 type Choice:
@@ -172,7 +169,7 @@ type Choice:
 fn score(value: Choice) -> Int:
     match value:
         number(count): return count
-        label(text): return text.length()
+        label(text): return text.length
 
 test "alternative consumers retain tags and payloads after shrink":
     for callback in [false, true]:
@@ -218,9 +215,9 @@ test "nested list consumers retain inner handles after shrink":
             var total = 0
             var wanted = 0
 
-            for value in seen: total = total + value.first().unwrap()
+            for value in seen: total = total + value.first.unwrap()
 
-            for value in want: wanted = wanted + value.first().unwrap()
+            for value in want: wanted = wanted + value.first.unwrap()
 
             if not (
                 total == wanted
@@ -236,10 +233,7 @@ test "nested list consumers retain inner handles after shrink":
                 return panic("nested shrink consumer lost an inner handle")
 
             last.append(11)
-            if not (
-                seen.last().unwrap() == [3, 11]
-                and clone.last().unwrap() == [3, 11]
-            ):
+            if not (seen.last.unwrap() == [3, 11] and clone.last.unwrap() == [3, 11]):
                 return panic("nested references were deep copied")
 
 test "map and folds consume valid retained cells":
@@ -269,7 +263,7 @@ test "map and folds consume valid retained cells":
             visits.count = visits.count + 1
             return accumulator + value
     )
-    if not (total == 6 and folded.is_empty() and visits.count == 3):
+    if not (total == 6 and folded.is_empty and visits.count == 3):
         return panic("fold clear changed captured values or length")
 
     let reversed = [1, 2, 3]
@@ -312,20 +306,20 @@ test "interface view consumers dispatch after shrink":
 
             if not (
                 total == wanted
-                and values.length() == remaining(
+                and values.length == remaining(
                     mode,
                     first,
                     second,
                     last,
                     replacement
-                ).length()
+                ).length
             ):
                 return panic("interface dispatch after shrink lost its receiver")
 
             last_record.value = 11
             if not (
-                seen.last().unwrap().read() == 11
-                and clone.last().unwrap().read() == 11
+                seen.last.unwrap().read() == 11
+                and clone.last.unwrap().read() == 11
             ):
                 return panic("interface views did not retain shallow references")
 
@@ -399,7 +393,7 @@ test "find returns the value passed to a mutating predicate":
     if not (
         retained.value == 7
         and record.value == 7
-        and records.first().unwrap().value == 9
+        and records.first.unwrap().value == 9
     ):
         return panic("find copied its matching shallow reference")
 
@@ -414,7 +408,7 @@ test "preferred List mutators and explicit reversed copy preserve aliases":
     for value in values:
         seen.append(value)
 
-        if seen.length() == 1:
+        if seen.length == 1:
             set(index: 1, value: 9)
             remove(index: 0)
 
@@ -438,5 +432,5 @@ test "preferred List mutators and explicit reversed copy preserve aliases":
     let shallow = children.reversed()
     child.value = 7
     children.remove(0)
-    if not (shallow.last().unwrap().value == 7 and children.length() == 1):
+    if not (shallow.last.unwrap().value == 7 and children.length == 1):
         return panic("reversed changed shallow child reference sharing")

@@ -57,7 +57,7 @@ export fn ` + name + `() -> Int:
     if m.get(Key(1.0)).unwrap()!=3: return panic("replacement")
     original.code=9.0
     if m.keys()[0].unwrap().code!=9.0: return panic("original key identity")
-    return m.length()
+    return m.length
 `
 	}
 	for name, source := range sources {

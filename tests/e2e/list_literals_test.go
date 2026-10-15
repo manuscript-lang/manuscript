@@ -21,12 +21,12 @@ test "literals":
     let a = fresh()
     let b = fresh()
     a.append(value: 4)
-    check(ok: a.length() == 4 and b.length() == 3, name: "each evaluation is fresh")
+    check(ok: a.length == 4 and b.length == 3, name: "each evaluation is fresh")
     let floats = [1.5, 2.5]
     let flags = [true, false, true]
     let words = ["a", "b"]
     let empty = List[Int]()
-    check(ok: floats.length() == 2 and flags.length() == 3 and words.length() == 2 and empty.length() == 0, name: "lengths")
+    check(ok: floats.length == 2 and flags.length == 3 and words.length == 2 and empty.length == 0, name: "lengths")
     floats.append(value: 3.5)
     words.append(value: "c")
     check(ok: floats.at(index: 2) == some(3.5) and words.at(index: 2) == some("c"), name: "append typed")

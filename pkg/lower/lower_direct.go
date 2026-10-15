@@ -371,8 +371,15 @@ func (g *generator) directCall(e *syntax.Expression) ast.Expr {
 	return value
 }
 
-// typedDirectCall lowers a direct call without boxing its typed result.
+// typedDirectCall lowers a direct invocation (call or accessor read) without
+// boxing its typed result.
 func (g *generator) typedDirectCall(e *syntax.Expression) (ast.Expr, *directFunction) {
+	if e.Kind == syntax.KindMember {
+		if direct := g.directAccessorTarget(e, g.program.Info(e)); direct != nil {
+			return orderedCall(ident(direct.name), ident("ctx"), g.expression(e.Left)), direct
+		}
+		return nil, nil
+	}
 	direct := g.directTarget(e)
 	if direct == nil {
 		return nil, nil
@@ -428,7 +435,7 @@ func (g *generator) directMethodTarget(e *syntax.Expression, info *checker.Info)
 		return nil, nil
 	}
 	callee := g.program.Info(e.Left)
-	if callee == nil || callee.Method == nil {
+	if callee == nil || callee.Method == nil || callee.Method.Accessor {
 		return nil, nil
 	}
 	direct := g.directMethods[callee.Method.ID]

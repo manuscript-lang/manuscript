@@ -80,7 +80,7 @@ func (g *generator) scalarNativeCall(e *syntax.Expression) (scalarNative, []*syn
 	switch {
 	case info.Symbol != nil && info.Symbol.Native != "":
 		native = info.Symbol.Native
-	case e.Left.Kind == syntax.KindMember && callee.Method != nil && callee.Method.Contract == nil:
+	case e.Left.Kind == syntax.KindMember && callee.Method != nil && !callee.Method.Accessor && callee.Method.Contract == nil:
 		native = callee.Method.Native
 		entry, ok := scalarNatives[native]
 		receiver := g.program.Info(e.Left.Left)

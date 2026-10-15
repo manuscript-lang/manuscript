@@ -105,7 +105,13 @@ func TestDirectNativeListAtAndUnwrap(t *testing.T) {
 		if method == "at" {
 			args = []Argument{{"index", int64(-1)}}
 		}
-		if Invoke(ctx, NativeMemberResult(empty, method, result), args).(Alternative).Tag != "none" {
+		var got Value
+		if method == "first" || method == "last" {
+			got = NativeAccessorRead(ctx, empty, method)
+		} else {
+			got = Invoke(ctx, NativeMemberResult(empty, method, result), args)
+		}
+		if got.(Alternative).Tag != "none" {
 			t.Fatalf("empty %s", method)
 		}
 	}

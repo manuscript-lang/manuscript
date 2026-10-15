@@ -53,6 +53,26 @@ func libraryParseType(s string, vars map[string]*Type) *Type {
 
 func validateStandardNativeBindings() error {
 	ensureStandard()
+	// Direct native operations (for example List.length) need no LibrarySpec
+	// function binding, but their member category remains an ABI contract.
+	intrinsicReceivers := map[string]string{}
+	for receiver, operations := range intrinsicOperations {
+		intrinsicReceivers[operations.ID] = receiver
+	}
+	for _, symbol := range standardSymbols {
+		if symbol.Type == nil || symbol.Type.Def == nil {
+			continue
+		}
+		receiver := symbol.Name
+		if primitive := intrinsicReceivers[symbol.ID]; primitive != "" {
+			receiver = primitive
+		}
+		for _, operation := range symbol.Type.Def.Operations {
+			if operation.Accessor != rt.NativeLibraryAccessor(receiver, operation.Name) {
+				return fmt.Errorf("native member kind does not match source: %s.%s", receiver, operation.Name)
+			}
+		}
+	}
 	receivers := map[string][2]string{}
 	for receiver, operations := range rt.NativeLibraryBindings {
 		typ := standardSymbols[receiver]
@@ -101,6 +121,9 @@ func validateStandardNativeBindings() error {
 		return fmt.Errorf("missing native receiver implementation %s", identity)
 	}
 	for _, method := range standardImplementations {
+		if method.Accessor {
+			return fmt.Errorf("native implementation must remain a method: %s", method.Decl.Pos)
+		}
 		found := false
 		for _, spec := range rt.NativeImplementations {
 			if spec.Name != method.Native {
@@ -127,6 +150,9 @@ func validateStandardNativeBindings() error {
 		var actual *Type
 		for _, op := range s.Type.Def.Operations {
 			if op.Name == spec.Name {
+				if op.Accessor != spec.IsAccessor() {
+					return fmt.Errorf("native member kind does not match source: %s.%s", spec.Receiver, spec.Name)
+				}
 				actual = op.Type
 			}
 		}
@@ -153,6 +179,9 @@ func validateNativeReceiverSignature(receiver, name string, spec rt.LibrarySpec)
 	method := nativeMethod(receiverType, name)
 	if method == nil || len(spec.Params) == 0 {
 		return fmt.Errorf("missing native member declaration %s.%s", receiver, name)
+	}
+	if method.Accessor != rt.NativeLibraryAccessor(receiver, name) {
+		return fmt.Errorf("native member kind does not match source: %s.%s", receiver, name)
 	}
 	vars := map[string]*Type{}
 	for i, variable := range typ.Variables {

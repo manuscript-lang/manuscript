@@ -56,11 +56,11 @@ func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argum
 // already be in declaration order so the labels carry no information.
 func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
 	callee := g.program.Info(e.Left)
+	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Contract == nil || (callee.Method.Native != "" && callee.Method.Native != "contract") {
+		return nil
+	}
 	if value := g.standardContractCall(e, callee, args); value != nil {
 		return value
-	}
-	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Contract == nil || (callee.Method.Native != "" && callee.Method.Native != "contract") {
-		return nil
 	}
 	receiverType := g.program.Info(e.Left.Left).Type
 	viaInterface := receiverType.Kind == "contract"
@@ -100,7 +100,7 @@ func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argum
 // WriteStream.write, ...) with every argument supplied in declaration order to
 // rt.CallOperation. Calls that need prepared defaults keep ordinary dispatch.
 func (g *generator) standardContractCall(e *syntax.Expression, callee *checker.Info, args []syntax.Argument) ast.Expr {
-	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Native != "contract" || callee.Method.Contract == nil {
+	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Native != "contract" || callee.Method.Contract == nil {
 		return nil
 	}
 	receiverType := g.program.Info(e.Left.Left).Type
@@ -116,10 +116,9 @@ func (g *generator) standardContractCall(e *syntax.Expression, callee *checker.I
 			return nil
 		}
 	}
-	bound := runtimeCall("Bind", g.expression(e.Left.Left), g.key(callee.Method.Contract), textLiteral(e.Left.Text), g.typeScope(receiverType))
-	if g.methodDefaults(callee.Method, bound, args) != ast.Expr(bound) {
-		return nil
-	}
+	// Every parameter is supplied, so no default preparation is needed. Keep
+	// eligibility free of receiver lowering: a discarded bound callee would
+	// abandon source markers from nested callables in that receiver.
 	values := make([]ast.Expr, len(args))
 	for i, arg := range args {
 		values[i] = sequence(g.argumentValue(arg))

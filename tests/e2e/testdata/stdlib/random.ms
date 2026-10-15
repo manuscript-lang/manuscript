@@ -48,7 +48,7 @@ test "random errors propagate and invalid ranges do not read entropy":
     if uuid_v4(Entropy(FailedEntropy("source failed"))) != failed: return panic(
         "entropy error lost"
     )
-    if value(entropy().bytes(16)).length() != 16: return panic("host entropy")
+    if value(entropy().bytes(16)).length != 16: return panic("host entropy")
 
 test "random accepts negative exclusive upper bounds":
     let source = ZeroEntropy(0)

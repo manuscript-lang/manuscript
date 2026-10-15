@@ -8,18 +8,18 @@ test "List take and drop copy prefix and remainder":
 
 test "List take and drop clamp positive counts and preserve empty boundaries":
     let values = [1, 2, 3]
-    if not (values.take(0).is_empty()) or values.drop(0) != values: return panic(
+    if not (values.take(0).is_empty) or values.drop(0) != values: return panic(
         "zero copy count"
     )
-    if values.take(3) != values or not (values.drop(3).is_empty()): return panic(
+    if values.take(3) != values or not (values.drop(3).is_empty): return panic(
         "exact copy count"
     )
-    if values.take(9999999) != values or not (values.drop(9999999).is_empty()): return panic(
+    if values.take(9999999) != values or not (values.drop(9999999).is_empty): return panic(
         "oversized copy count"
     )
 
     let empty: List[Int] = []
-    if not (empty.take(0).is_empty()) or not (empty.drop(7).is_empty()): return panic(
+    if not (empty.take(0).is_empty) or not (empty.drop(7).is_empty): return panic(
         "empty list copies"
     )
 
@@ -37,7 +37,7 @@ test "List take and drop allocate independent outer storage":
     let empty_drop = values.drop(3)
     empty_take.append(5)
     empty_drop.append(6)
-    if not (values.take(0).is_empty()) or not (values.drop(3).is_empty()): return panic(
+    if not (values.take(0).is_empty) or not (values.drop(3).is_empty): return panic(
         "empty copy storage alias"
     )
 

@@ -41,7 +41,7 @@ func TestDeclarationKindPresentation(t *testing.T) {
 			if err := json.Unmarshal(data, &decoded); err != nil {
 				t.Fatal(err)
 			}
-			if decoded.Format != 1 || decoded.Modules[0].Declarations[0].Kind != tc.kind || decoded.Modules[0].Declarations[0].Type != "fn(value: String)->Bool" || strings.Contains(string(data), "Declaration") {
+			if decoded.Format != 2 || decoded.Modules[0].Declarations[0].Kind != tc.kind || decoded.Modules[0].Declarations[0].Type != "fn(value: String)->Bool" || strings.Contains(string(data), "Declaration") {
 				t.Fatalf("JSON must retain the raw compiler classification: %s", data)
 			}
 		})

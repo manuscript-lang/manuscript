@@ -56,7 +56,7 @@ test "contextual callbacks and inline returns":
 
     let nested = fn(value: Int):
         let inner = fn(): "text"
-        return value + inner().scalar_length()
+        return value + inner().scalar_length
     if nested(2) != 6: return panic("nested return inference")
 
     let success = with_result(fn(): ok(4))

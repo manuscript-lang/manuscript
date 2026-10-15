@@ -1,0 +1,65 @@
+Accessor verification record — part 2 of 7
+
+| Checker and lowering | Full checker/lower/compiler suites pass; focused cases cover kind mismatches, visibility, generic evidence, read-only assignment, safe migration edits, callable results, effects, `try` order, recursion and typed flags. |
+| Native build suite | The full `pkg/build` suite passes after #503 integration, including the final combined run at exact `12a26d19` (196.168 s). All four accessor native integration cases cover source scopes, standard-contract implementations, fault frames, depth and cancellation. |
+| End-to-end suite | Complete fresh post-format suites pass at `5107114e` (288.394 s) and `12a26d19` (290.146 s and final 297.664 s). The earlier formatting failure is fixed; these later results are whole-suite passes. |
+| Combined coverage | The final clean all-package run at `12a26d19` passes all 32 packages, with 5,554 passing test/subtest events, two intentional skips, no failures and 78.0% combined statement coverage. Function and HTML reports generate successfully. |
+| #503 integration | Optional member, scalar standard function, overflow, CLI documentation and exported standard-source tests pass after rebase. |
+| Tooling | Full tooling suites, full LSP race suite, accessor-focused race checks, and API/inspection regressions pass. |
+| Runtime race | The complete runtime race suite passes in isolation after #503 integration, including the final Optional cancellation regression. |
+| Native debugger | Opt-in extension checks: 24 passed, zero skipped. A source getter stops at its named body; field expansion and plain record watches do not invoke it. |
+| Standard source formatting | `ms fmt pkg/stdlib --check` passes for all 44 modules. |
+| Changed benchmark references | All 10 Manuscript references and 152 hidden oracle cases pass; the five Python harness tests pass. |
+| CLI and examples | Remaining internal/CLI, scripts, ABI, standard inventory and native tutorial-example suites pass after integration. |
+| Standalone distribution | Linux/amd64 package verification passes with empty caches, system Go and dlv absent, and downloads disabled: compilation, source tools, LSP, terminal/DAP debugging and profiles. The verifier now expects the deliberate API JSON format 2. |
+| Formatter/compiler fuzz smoke | Ten-second runs pass with explicit accessor declarations and old-call diagnostic seeds. The formatter run executes only seven inputs on this host, so it is a bounded smoke check rather than broad fuzz coverage. |
+| Book | Source descriptions, generated API references, highlighting, strict Hugo build and publication/link checks pass. |
+
+The called accessor fixtures cover live reads, receiver count and order, short
+circuiting, function-valued getters, mutable and nested Optional aliases,
+ClientResponse head replacement, units and rounding, validated guards, source
+implementations of native-looking interfaces, local generic implementation scopes,
+fault lines, recursive depth and cancellation. Resource metadata remains available
+after close according to each existing contract.
+
+## Performance evidence
+
+The historical audit in the design predates #503. Actual emitted Go from the
+comparison base partitions the 20 core workloads into **8 direct helpers,
+7 hoisted native calls and 5 fully bound calls**. Optional presence checks are
+already direct on this base; Bytes.length, Result flags and Float classifiers
+remain fully bound. All 20 current core reads use direct typed helpers. The
+emission check rejects bound Function construction, Invoke, Bind, CallNative,
+BindNativeCall and dynamic ReadAccessor in these statically resolved reads.
+
+The harness and reproduction commands live in `scripts/bench-accessors/` in this
+checkout.
+It retains checked source, emitted Go, escape analysis, parity/cancellation tests,
+native samples, source/output hashes, SDK/environment metadata, and an emitted
+call inventory. Each measured operation performs **1024 reads**. Native samples
+use one CPU; compilation and startup are measured separately from read loops.
+
+Measurement host: Linux/amd64, Intel Xeon Platinum 8573C, five available cores,
+Go 1.25.1. Results are specific to this host and the retained inputs. The
+comparison script reports medians, allocations and an exploratory exact
+permutation test without a multiple-comparison correction; this is not a general
+claim that property spelling alone improves performance.
+
+Both revisions pass native parity and cancellation checks. The quiet paired run
+contains five 200 ms samples for each of 52 workload/data variants. Representative
+medians follow; times and allocations are **per 1024-read operation**, including
+the source wrapper, loop, setup and nested work in that workload.
+
+| Workload | Baseline ns/op | Accessor ns/op | Baseline allocs/op | Accessor allocs/op |
+| --- | ---: | ---: | ---: | ---: |
+| List.length | 6,188 | 4,157 | 1 | 1 |
+| Bytes.length | 357,076 | 5,755 | 7,169 | 1 |
+| Optional.is_some, present | 5,531 | 4,262 | 1 | 1 |
+| Result.is_ok, ok | 525,739 | 5,938 | 9,217 | 1 |
+| Float.is_finite, finite | 490,663 | 6,087 | 9,217 | 1 |
+| Source interface view | 221,740 | 90,232 | 3,075 | 3 |
+| Generic source read | 279,870 | 143,873 | 4,098 | 1,026 |
+| Guard payload plus length | 474,172 | 24,011 | 10,268 | 28 |
+| ClientResponse metadata/status | 489,381 | 25,460 | 8,208 | 16 |
+| Unchanged method control | 8,654 | 8,735 | 1 | 1 |
+[End of part 2 of 7]

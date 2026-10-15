@@ -1,5 +1,20 @@
 # Compiler and build lessons
 
+### Dispatch caches retain lexical view evidence
+
+Verified: interface views of the same concrete receiver can select different
+module-local implementations at one call site. Receiver type and registration
+generation alone do not identify the target. Cache the lexical module as well;
+argument scopes retain the ordinary specialization path rather than reusing a
+previous no-argument entry. Cached targets must never capture receiver values.
+
+Apply when: changing method/accessor dispatch, interface views or call-site caches.
+Evidence: [method dispatch](../pkg/runtime/methods.go),
+[scope/cache regressions](../pkg/runtime/performance_test.go), and
+[mixed method/accessor views](../tests/e2e/testdata/projects/accessors/main.ms).
+Verify: alternate same-type views from two local implementation modules at one
+nongeneric interface call site, including concurrent calls, under the race detector.
+
 ### Generated Go serves performance; lowering code serves maintainability
 
 Decision: the user wants highly optimized generated Go, on par with
@@ -166,6 +181,14 @@ Verified: a function's return-type position identifies its declaration, not a fa
 Apply when: adding or specializing lowered runtime operations, source fault traces, native call fast paths, or anything that tempts per-call recovery or position tracking.
 Evidence: [located lowering](../pkg/lower/lower_expressions.go), [frame capture](../pkg/runtime/frames.go), [recursive-cycle admission](../pkg/lower/lower_recursion.go), [lowering page](../documentation/contributing/compiler/lowering/_index.md#structured-go-generation), and [native location regressions](../tests/e2e/fault_locations_test.go).
 Verify: run `TestFaultSourceLocations`, including multiline operands, argument faults, default arguments, bound methods, and destructuring; preserve frame order, line numbers, and names. Do not reintroduce columns or `defer`-based recording without a new decision.
+
+Verified: making default-bearing functions direct also makes their default
+expressions part of the direct-call graph. Omitting defaults let a cycle through
+an accessor exceed MaxCallDepth after integrating #507, even though body-only
+recursion tests passed. Walk the declaration's parameters and body with the common
+Callable visitor. [Default-cycle lowering](../pkg/lower/lower_accessors_test.go)
+and [bounded native depth/cancellation](../pkg/build/accessors_native_test.go)
+regressions distinguish this from merely accepting the source.
 
 Verified: Go orders calls in an expression, but that does not establish when an
 earlier plain local read occurs relative to a later call. A right-hand match can

@@ -29,7 +29,7 @@ test "closed codec strings reject spelling changes with their domain errors":
         )
 
     for algorithm in ["sha256", "sha384", "sha512"]:
-        if value(hmac(key: data, data: data, algorithm: algorithm)).is_empty(): return panic(
+        if value(hmac(key: data, data: data, algorithm: algorithm)).is_empty: return panic(
             "HMAC algorithm"
         )
 
@@ -91,7 +91,7 @@ test "all ten string open modes are accepted and changed spellings are invalid":
 
     with temporary = value(fs.temporary("manuscript-open-modes-")):
         for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
-            let path = "{temporary.path()}/{mode}"
+            let path = "{temporary.path}/{mode}"
 
             if mode == "r" or mode == "r+":
                 let created = value(
@@ -106,7 +106,7 @@ test "all ten string open modes are accepted and changed spellings are invalid":
                 let info = value(handle.stat())
 
         for mode in ["R", "rs", "w+x", " r", ""]:
-            match fs.open(path: "{temporary.path()}/invalid", flags: mode, mode: 384):
+            match fs.open(path: "{temporary.path}/invalid", flags: mode, mode: 384):
                 ok(_): return panic("open spelling")
                 error(cause):
                     if cause != FileSystemError.InvalidInput: return panic(
@@ -117,7 +117,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
     let fs = filesystem()
 
     with temporary = value(fs.temporary("manuscript-write-contract-")):
-        let path = "{temporary.path()}/data"
+        let path = "{temporary.path}/data"
         let data = value("é".repeat(40000)).to_bytes()
 
         with handle = value(fs.open(path: path, flags: "w+", mode: 384)):
@@ -125,23 +125,21 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
             if value(handle.stat()).size != 80000: return panic(
                 "write did not write all bytes"
             )
-            if value(handle.read()).is_some(): return panic("sequential EOF")
-            if value(handle.read_at(offset: 80000)).length() != 0: return panic(
+            if value(handle.read()).is_some: return panic("sequential EOF")
+            if value(handle.read_at(offset: 80000)).length != 0: return panic(
                 "positional EOF"
             )
-            if value(handle.read_at(offset: 0, max_bytes: 80000)).length() != 65536: return panic(
+            if value(handle.read_at(offset: 0, max_bytes: 80000)).length != 65536: return panic(
                 "chunk cap"
             )
-            if value(handle.read_file()).length() != 0: return panic(
+            if value(handle.read_file()).length != 0: return panic(
                 "positional read moved sequential position"
             )
             if value(handle.seek(offset: 0, origin: 0)) != 0: return panic("seek start")
-            if value(handle.read()).unwrap().length() != 65536: return panic(
+            if value(handle.read()).unwrap().length != 65536: return panic(
                 "default read chunk"
             )
-            if value(handle.read_file()).length() != 14464: return panic(
-                "remaining read"
-            )
+            if value(handle.read_file()).length != 14464: return panic("remaining read")
 
             let rewind = value(handle.seek(offset: 0, origin: 0))
             let overwritten = value(handle.append_file("XY".to_bytes()))
@@ -180,7 +178,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
                         "adapter Closed translation"
                     )
 
-        let missing = "{temporary.path()}/missing"
+        let missing = "{temporary.path}/missing"
 
         match fs.open(path: missing, flags: "r", mode: 384):
             ok(_): return panic("missing filesystem file opened")

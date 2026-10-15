@@ -35,7 +35,7 @@ test "HTTP response bodies decode as SSE without being closed by the reader":
             with response = value(
                 client.request(
                     method: HttpMethod.Get,
-                    url: "http://{server.address()}/",
+                    url: "http://{server.address}/",
                     headers: headers()
                 )
             ):
@@ -52,8 +52,8 @@ test "HTTP response bodies decode as SSE without being closed by the reader":
                     "second event"
                 )
 
-                if value(next_event(events)).is_some(): panic("end of response")
+                if value(next_event(events)).is_some: panic("end of response")
 
-                if response.metadata().status != 200: panic(
+                if response.metadata.status != 200: panic(
                     "the response stays usable after decoding"
                 )

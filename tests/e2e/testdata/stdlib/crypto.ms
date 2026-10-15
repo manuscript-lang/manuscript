@@ -23,10 +23,9 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
             sha256("abc".to_bytes())
         ) != "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     ): return panic("SHA256 vector")
-    if (
-        sha384("abc".to_bytes()).length() != 48
-        or sha512("abc".to_bytes()).length() != 64
-    ): return panic("digest sizes")
+    if (sha384("abc".to_bytes()).length != 48 or sha512("abc".to_bytes()).length != 64): return panic(
+        "digest sizes"
+    )
 
     let mac = value(
         hmac(

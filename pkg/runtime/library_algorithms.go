@@ -20,6 +20,9 @@ func init() {
 		for _, v := range a[0].(*List).Capture().Values() {
 			CheckCancelled(ctx)
 			if predicate.call1(ctx, a[1], v).(bool) {
+				if !out.accepts(v) {
+					out.boxStorage()
+				}
 				out.Append(v)
 			}
 		}
