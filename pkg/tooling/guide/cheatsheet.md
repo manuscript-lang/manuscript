@@ -23,7 +23,7 @@ test "addition":
     expect_equal(add(1, 2), 3)
 ```
 
-- Workflow: `ms search_std <words>` before using a std API (`ms search_std <module>` lists one); `ms check`, `ms fmt`, `ms test` after each edit; `ms symbol file:line:col` for a type or definition.
+- Workflow: `ms search_std <words>` before using a std API (`ms search_std <module>` lists one); `ms check`, `ms fmt`, `ms test` after each edit; `ms search_symbol <name>` for a symbol's definition and uses (project or std).
 - `main() -> Int` returns the exit status. `test "name":` blocks run under `ms test`.
 - Imports: `import {a, b} from "@std/x.ms"` or `"./local.ms"`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import.
 - `let` binds once, `var` reassigns. Types `Int Float Bool String Unit`; `"{expr}"` interpolates. No implicit conversion or truthiness.

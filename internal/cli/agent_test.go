@@ -48,47 +48,55 @@ func TestSearchRejectsBadArguments(t *testing.T) {
 	}
 }
 
-func TestSymbolReportsTypeDefinitionAndReferences(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "main.ms")
-	source := "fn double(value: Int) -> Int:\n    return value * 2\n\nexport fn main() -> Int:\n    return double(4) - 8\n"
-	if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
-		t.Fatal(err)
+func TestSearchSymbolFindsDefinitionAndUses(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"ms.toml":      "[project]\nname = \"demo\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
+		"src/main.ms":  "# Doubles a number.\nexport fn double(value: Int) -> Int:\n    return value * 2\n\nexport fn main() -> Int:\n    return double(4) - 8\n",
+		"src/other.ms": "import {double} from \"./main.ms\"\nfn quad(v: Int) -> Int:\n    return double(double(v))\n",
 	}
-	status, output, errors := invoke(t, "symbol", path+":5:12")
-	if status != 0 || errors != "" || !strings.Contains(output, "type: double") || !strings.Contains(output, "defined: ") || !strings.Contains(output, "references (2)") {
-		t.Fatalf("symbol: %d, %q, %q", status, output, errors)
+	for name, text := range files {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
-	status, output, _ = invoke(t, "symbol", path+":5:12", "--json")
+	t.Chdir(root)
+	status, output, errors := invoke(t, "search_symbol", "DOUBLE")
+	want := filepath.Join("src", "main.ms") + ":2:11"
+	if status != 0 || errors != "" || !strings.HasPrefix(output, "double  fn  "+want) || !strings.Contains(output, "# Doubles a number.") || !strings.Contains(output, "used (4)") || !strings.Contains(output, "other.ms:3:12") {
+		t.Fatalf("search_symbol: %d, %q, %q", status, output, errors)
+	}
+	_, output, _ = invoke(t, "search_symbol", "double", "--json")
 	var document struct {
-		Format     int
-		Type       string
-		Definition string
-		References []string
+		Format       int
+		ProjectTotal int `json:"project_total"`
+		Matches      []struct {
+			Name, Kind, Definition, Doc string
+			Uses                        []string
+		}
 	}
-	if err := json.Unmarshal([]byte(output), &document); err != nil || status != 0 || document.Format != 1 || len(document.References) != 2 || !strings.HasSuffix(document.Definition, "main.ms:1:4") {
-		t.Fatalf("symbol --json: %d, %v, %+v", status, err, document)
+	if err := json.Unmarshal([]byte(output), &document); err != nil || document.Format != 1 || document.ProjectTotal != 1 || len(document.Matches) < 1 || len(document.Matches[0].Uses) != 4 {
+		t.Fatalf("search_symbol --json: %v, %+v", err, document)
 	}
-}
-
-func TestSymbolRejectsBadLocations(t *testing.T) {
-	path := sourceFile(t, "export fn main() -> Int:\n    return 0\n")
-	for _, args := range [][]string{{"symbol"}, {"symbol", "main.ms"}, {"symbol", "main.ms:0:1"}, {"symbol", "main.ms:x:1"}, {"symbol", path + ":1:1", "extra"}, {"symbol", path + ":1:1", "--bogus"}} {
+	status, output, _ = invoke(t, "search_symbol", "dubel")
+	if status != 0 || !strings.HasPrefix(output, "double  fn  ") {
+		t.Errorf("fuzzy typo: %q", output)
+	}
+	status, output, _ = invoke(t, "search_symbol", "JSON_PARSE")
+	if status != 0 || !strings.Contains(output, "json.parse") || !strings.Contains(output, "details: ms search_std json.parse") || len(output) > 3500 {
+		t.Errorf("std symbol: %q", output)
+	}
+	if _, output, _ = invoke(t, "search_symbol", "zzqxjv"); !strings.Contains(output, "No project or standard-library symbol") {
+		t.Errorf("no match: %q", output)
+	}
+	for _, args := range [][]string{{"search_symbol"}, {"search_symbol", "a", "b"}, {"search_symbol", "a", "--limit", "0"}, {"search_symbol", "a", "--bogus"}} {
 		if status, _, errors := invoke(t, args...); status != 2 || errors == "" {
 			t.Errorf("%v = %d, %q", args, status, errors)
 		}
-	}
-	if status, _, errors := invoke(t, "symbol", path+":99:1"); status != 1 || !strings.Contains(errors, "past the end") {
-		t.Errorf("past end = %d, %q", status, errors)
-	}
-	if status, _, errors := invoke(t, "symbol", "missing.ms:1:1"); status != 1 || !strings.Contains(errors, "file not found") {
-		t.Errorf("missing = %d, %q", status, errors)
-	}
-}
-
-func TestParseLocationAllowsColonsInPaths(t *testing.T) {
-	file, line, column, ok := parseLocation(`C:\work\main.ms:12:7`)
-	if !ok || file != `C:\work\main.ms` || line != 12 || column != 7 {
-		t.Fatalf("parseLocation = %q %d %d %v", file, line, column, ok)
 	}
 }
 

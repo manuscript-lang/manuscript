@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -41,18 +42,22 @@ Examples:
   ms search_std json
 `
 
-const symbolHelp = `Usage: ms symbol <file.ms>:<line>:<column> [--json]
+const searchSymbolHelp = `Usage: ms search_symbol <name> [--limit n] [--json]
 
-Report the type, definition, and references of the symbol at a 1-based line and
-column (a column counts characters). The file is analyzed with its project, the
-same way the language server does. A file with errors can give partial answers.
+Find declarations by name, ignoring case and tolerating partial names, small
+typos and missing underscores. Project declarations print where they are defined,
+their type, description, and uses; standard-library symbols (such as json.parse)
+print their signature and the ms search_std path for details. Exact names rank
+first. Run it from the project directory, or any folder under its ms.toml.
 
 Options:
-  --json      Emit versioned JSON
-  -h, --help  Show this help
+  --limit <n>  Maximum matches (default 5, at most 10)
+  --json       Emit versioned JSON
+  -h, --help   Show this help
 
 Examples:
-  ms symbol src/main.ms:5:18
+  ms search_symbol parse_config
+  ms search_symbol Config --limit 3
 `
 
 const guideHelp = `Usage: ms guide
@@ -132,90 +137,139 @@ func stdSearch(words []string, limit int, structured bool) int {
 	return 0
 }
 
-// parseLocation splits file:line:column from the right, so a path may contain colons.
-func parseLocation(text string) (file string, line, column int, ok bool) {
-	rest, columnText, found := cutLast(text, ":")
-	if !found {
-		return "", 0, 0, false
-	}
-	file, lineText, found := cutLast(rest, ":")
-	if !found || file == "" {
-		return "", 0, 0, false
-	}
-	line, lineErr := strconv.Atoi(lineText)
-	column, columnErr := strconv.Atoi(columnText)
-	return file, line, column, lineErr == nil && columnErr == nil && line > 0 && column > 0
-}
+const (
+	defaultSymbolLimit = 5
+	maxSymbolLimit     = 10
+	maxSymbolUses      = 5
+	symbolBudget       = 3500
+)
 
-func cutLast(s, sep string) (before, after string, found bool) {
-	i := strings.LastIndex(s, sep)
-	if i < 0 {
-		return s, "", false
-	}
-	return s[:i], s[i+len(sep):], true
-}
-
-func runSymbol(args []string, _ string) int {
-	var location string
-	structured := false
-	for _, arg := range args[1:] {
-		switch {
-		case arg == "--json":
+func runSearchSymbol(args []string, _ string) int {
+	var names []string
+	limit, structured := defaultSymbolLimit, false
+	for i := 1; i < len(args); i++ {
+		flag, value, inline := splitValueOption(args[i], "--limit")
+		switch flag {
+		case "--json":
 			structured = true
-		case strings.HasPrefix(arg, "-"):
-			return usageError("unknown option %s for ms symbol; run 'ms help symbol' for its options", arg)
-		case location != "":
-			return usageError("ms symbol takes one <file.ms>:<line>:<column>, got a second argument %s", arg)
+		case "--limit":
+			text, ok := requiredValue(args, &i, value, inline)
+			n, err := strconv.Atoi(text)
+			if !ok || err != nil || n < 1 {
+				return usageError("ms search_symbol: --limit needs a positive number, e.g. ms search_symbol Config --limit 3")
+			}
+			limit = min(n, maxSymbolLimit)
 		default:
-			location = arg
+			if strings.HasPrefix(flag, "-") {
+				return usageError("unknown option %s for ms search_symbol; run 'ms help search_symbol' for its options", flag)
+			}
+			names = append(names, flag)
 		}
 	}
-	file, line, column, ok := parseLocation(location)
-	if !ok {
-		return usageError("ms symbol: pass <file.ms>:<line>:<column> with a 1-based line and column, e.g. ms symbol src/main.ms:5:18")
+	if len(names) != 1 {
+		return usageError("ms search_symbol takes one name, e.g. ms search_symbol parse_config")
 	}
-	info, err := lsp.QuerySymbol(file, line, column)
+	query := names[0]
+	matches, total, err := lsp.SearchSymbols(".", query, limit)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "ms symbol:", fileError(err))
+		fmt.Fprintln(os.Stderr, "ms search_symbol:", fileError(err))
 		return 1
 	}
-	symbolType, docs := splitHover(info.Hover)
+	type match struct {
+		Name       string   `json:"name"`
+		Kind       string   `json:"kind"`
+		Definition string   `json:"definition"`
+		Type       string   `json:"type,omitempty"`
+		Doc        string   `json:"doc,omitempty"`
+		Uses       []string `json:"uses,omitempty"`
+		Origin     string   `json:"origin"`
+	}
+	described := make([]match, 0, len(matches))
+	projectCount, projectTotal := len(matches), total
+	for _, m := range matches {
+		symbolType, docs := splitHover(m.Hover)
+		definition := displayPath(m.Definition)
+		uses := []string{}
+		for _, ref := range m.References {
+			if ref != m.Definition {
+				uses = append(uses, displayPath(ref))
+			}
+		}
+		described = append(described, match{m.Name, m.Kind, definition, symbolType, docs, uses, "project"})
+	}
+	// Standard-library symbols follow, matched on names only and leaving room
+	// for at least two even when the project fills the limit.
+	type ranked struct {
+		match guide.Match
+		rank  int
+	}
+	var library []ranked
+	for _, m := range guide.Search(query, 50) {
+		rank := lsp.NameRank(m.Path, query)
+		if own := lsp.NameRank(m.Name, query); own >= 0 && (rank < 0 || own < rank) {
+			rank = own
+		}
+		if rank >= 0 {
+			library = append(library, ranked{m, rank})
+		}
+	}
+	sort.SliceStable(library, func(i, j int) bool { return library[i].rank < library[j].rank })
+	for _, r := range library[:min(len(library), max(limit-projectCount, 2))] {
+		m := r.match
+		signature := strings.Join(strings.Fields(m.Signature), " ")
+		described = append(described, match{m.Path, m.Kind, "std:" + m.Module, signature, m.Doc, nil, "std"})
+	}
 	if structured {
 		return emitJSON(struct {
-			Format     int      `json:"format"`
-			Type       string   `json:"type,omitempty"`
-			Doc        string   `json:"doc,omitempty"`
-			Definition string   `json:"definition,omitempty"`
-			References []string `json:"references"`
-			Errors     int      `json:"errors"`
-		}{1, symbolType, docs, info.Definition, append([]string{}, info.References...), info.Diagnostics}, 0)
+			Format  int     `json:"format"`
+			Query   string  `json:"query"`
+			Total   int     `json:"project_total"`
+			Matches []match `json:"matches"`
+		}{1, query, projectTotal, described}, 0)
 	}
-	if symbolType == "" {
-		fmt.Println("no symbol at this position")
+	if len(described) == 0 {
+		fmt.Printf("No project or standard-library symbol like %q. Try a shorter name.\n", query)
 		return 0
 	}
-	fmt.Println("type: " + symbolType)
-	if docs != "" {
-		fmt.Println(docs)
-	}
-	if info.Definition != "" {
-		fmt.Println("defined: " + displayPath(info.Definition))
-	}
-	if n := len(info.References); n > 0 {
-		shown := make([]string, 0, min(n, 15))
-		for _, ref := range info.References[:min(n, 15)] {
-			shown = append(shown, displayPath(ref))
+	var out strings.Builder
+	for _, m := range described {
+		fmt.Fprintf(&out, "%s  %s  %s\n", m.Name, m.Kind, m.Definition)
+		if m.Type != "" && m.Type != m.Name+": "+m.Name {
+			out.WriteString("  " + clipRunes(m.Type, 200) + "\n")
 		}
-		line := fmt.Sprintf("references (%d): %s", n, strings.Join(shown, ", "))
-		if n > len(shown) {
+		if m.Doc != "" {
+			out.WriteString("  # " + clipRunes(m.Doc, 160) + "\n")
+		}
+		if m.Origin == "std" {
+			out.WriteString("  details: ms search_std " + m.Name + "\n")
+			continue
+		}
+		shown := m.Uses[:min(len(m.Uses), maxSymbolUses)]
+		line := fmt.Sprintf("  used (%d)", len(m.Uses))
+		if len(shown) > 0 {
+			line += ": " + strings.Join(shown, ", ")
+		}
+		if len(m.Uses) > len(shown) {
 			line += ", ..."
 		}
-		fmt.Println(line)
+		out.WriteString(line + "\n")
 	}
-	if info.Diagnostics > 0 {
-		fmt.Printf("note: file has %d errors, results may be partial\n", info.Diagnostics)
+	if projectTotal > projectCount {
+		fmt.Fprintf(&out, "+%d more project matches; use a longer name or --limit\n", projectTotal-projectCount)
 	}
+	text := out.String()
+	if len(text) > symbolBudget {
+		text = text[:symbolBudget] + "\n[... output cut; use a longer name ...]\n"
+	}
+	fmt.Print(text)
 	return 0
+}
+
+func clipRunes(text string, limit int) string {
+	if r := []rune(text); len(r) > limit {
+		return string(r[:limit-1]) + "…"
+	}
+	return text
 }
 
 // splitHover separates the language server's hover Markdown into a type line and a description.

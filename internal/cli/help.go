@@ -11,28 +11,28 @@ const help = `Usage: ms <command> [arguments] [options]
 Manuscript checks, builds, and runs .ms source and ms.toml projects.
 
 Commands:
-  check    Parse and type-check without executing
-  lint     Check source hygiene and semantic lint rules
-  build    Build a native executable
-  emit     Emit standalone Go source with the runtime
-  run      Build and run an application
-  test     Execute test blocks, including imported modules
-  fmt      Format source files or a project
-  inspect  Emit checked source metadata as JSON
-  diagram  Emit a static call graph as Mermaid
-  profile  Run with CPU and heap capture; optionally trace
-  pprof    Inspect captured CPU or heap profiles
-  trace    Inspect captured execution traces
-  debug    Start an application in the embedded Delve debugger
-  dap      Serve one native debugger session on stdin/stdout
-  lock     Create or update project build pins
-  init     Create a new project with a manifest, entry, test, and .gitignore
-  lsp      Serve the language server on stdin/stdout
-  search_std  Look up the standard library: modules, signatures, search
-  symbol   Show the type, definition, and references at a position
-  guide    Print the language cheat sheet
-  help     Show help for a command
-  version  Print the compiler version
+  check          Parse and type-check without executing
+  lint           Check source hygiene and semantic lint rules
+  build          Build a native executable
+  emit           Emit standalone Go source with the runtime
+  run            Build and run an application
+  test           Execute test blocks, including imported modules
+  fmt            Format source files or a project
+  inspect        Emit checked source metadata as JSON
+  diagram        Emit a static call graph as Mermaid
+  profile        Run with CPU and heap capture; optionally trace
+  pprof          Inspect captured CPU or heap profiles
+  trace          Inspect captured execution traces
+  debug          Start an application in the embedded Delve debugger
+  dap            Serve one native debugger session on stdin/stdout
+  lock           Create or update project build pins
+  init           Create a new project with a manifest, entry, test, and .gitignore
+  lsp            Serve the language server on stdin/stdout
+  search_std     Look up the standard library: modules, signatures, search
+  search_symbol  Find a symbol by name: definition, type, uses
+  guide          Print the language cheat sheet
+  help           Show help for a command
+  version        Print the compiler version
 
 Options:
   -h, --help  Show help
@@ -131,8 +131,8 @@ func commandHelp(command string) (string, bool) {
 		return initHelp, true
 	case "search_std":
 		return stdHelp, true
-	case "symbol":
-		return symbolHelp, true
+	case "search_symbol":
+		return searchSymbolHelp, true
 	case "guide":
 		return guideHelp, true
 	case "lsp":

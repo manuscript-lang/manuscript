@@ -54,8 +54,8 @@ func standaloneCommand(name string) (func(args []string, usage string) int, bool
 		return runLSP, true
 	case "search_std":
 		return runStd, true
-	case "symbol":
-		return runSymbol, true
+	case "search_symbol":
+		return runSearchSymbol, true
 	case "guide":
 		return runGuide, true
 	}
