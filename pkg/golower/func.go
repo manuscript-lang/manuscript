@@ -24,6 +24,17 @@ type funcDecl struct {
 	out    *ast.FuncDecl
 }
 
+// sourceName is the name fault traces show for f.
+func (f *funcDecl) sourceName() string {
+	if f.method != nil && f.method.Receiver != nil {
+		return f.method.Receiver.Name + "." + f.decl.Name
+	}
+	if f.decl != nil {
+		return f.decl.Name
+	}
+	return f.name
+}
+
 // function returns the Go function for symbol at typeArgs, queueing its body
 // for lowering. typeArgs are concrete: the caller has applied its own
 // substitution.
@@ -97,6 +108,9 @@ func (g *gen) lowerFunction(f *funcDecl) {
 		_ = i
 	}
 	body := g.body(d.Body, g.fn.result)
+	if g.recursive[d] {
+		prologue = append(prologue, evaluated(rtCall("Enter", ident("ctx"))), &ast.DeferStmt{Call: rtCall("Exit", ident("ctx"))})
+	}
 	body = append(prologue, body...)
 	body = g.finishBody(body, g.fn.result)
 	body = g.cleanupPrologue(body)
@@ -159,7 +173,46 @@ func (g *gen) bindingName(b *checker.Binding) string {
 	if name, ok := g.captured[b]; ok {
 		return name
 	}
-	return sanitize(b.ID)
+	if name, ok := g.locals[b]; ok {
+		return name
+	}
+	base := sanitize(b.Name)
+	if base == "" || reservedLocal(base) {
+		base += "_"
+	}
+	name := base
+	for n := 2; g.localNames[name]; n++ {
+		name = base + "_" + itoa(n)
+	}
+	if g.locals == nil {
+		g.locals, g.localNames = map[*checker.Binding]string{}, map[string]bool{}
+	}
+	g.locals[b], g.localNames[name] = name, true
+	return name
+}
+
+// reservedLocal reports names a local variable must not take: the generated
+// code's own identifiers, Go keywords, and predeclared names it relies on.
+func reservedLocal(name string) bool {
+	if goKeywords[name] || reserved[name] || predeclared[name] || name == "cs" {
+		return true
+	}
+	if len(name) > 1 && name[0] == 't' {
+		for _, r := range name[1:] {
+			if r < '0' || r > '9' {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+var predeclared = map[string]bool{
+	"bool": true, "byte": true, "error": true, "float64": true, "int": true, "int64": true, "string": true,
+	"uint32": true, "true": true, "false": true, "nil": true, "len": true, "append": true, "copy": true,
+	"make": true, "new": true, "panic": true, "recover": true, "clear": true, "min": true, "max": true,
+	"iota": true, "any": true, "rune": true, "uint8": true, "uint64": true, "cap": true, "delete": true,
 }
 
 // markUsed records which bindings the body reads, so declarations of the

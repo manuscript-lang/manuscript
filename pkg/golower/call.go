@@ -182,9 +182,19 @@ func (g *gen) construct(t *checker.Type, values []ast.Expr) ast.Expr {
 
 func (g *gen) stdRecord(t *checker.Type, values []ast.Expr) ast.Expr {
 	name := strings.TrimPrefix(t.ID, "@std/")
+	if name == "Bytes" {
+		name = "BytesFromValues"
+	}
 	var typeArgs []ast.Expr
 	for _, a := range t.Args {
 		typeArgs = append(typeArgs, g.goType(a))
+	}
+	if t.Kind == "record" {
+		var elements []ast.Expr
+		for i, f := range checker.Fields(t) {
+			elements = append(elements, keyed(fieldName(f.Name), values[i]))
+		}
+		return address(composite(generic(rtName(name), typeArgs...), elements...))
 	}
 	return call(generic(rtName("New"+name), typeArgs...), values...)
 }
@@ -250,6 +260,25 @@ func camel(snake string) string {
 		b.WriteRune(r)
 	}
 	return b.String()
+}
+
+// cloneValue lowers the built-in clone of a record or alternative. A record
+// copies its outer storage; nested references stay shared. An alternative is
+// immutable, so its clone is itself.
+func (g *gen) cloneValue(t *checker.Type, receiver ast.Expr) ast.Expr {
+	t = g.sub(t)
+	if t.Kind != "record" {
+		return receiver
+	}
+	goT := g.goType(t)
+	fn := g.helperFunc("clone:"+checker.TypeKey(t), "clone_"+g.nameOf(t), func(name string) ast.Decl {
+		body := []ast.Stmt{
+			define("c", &ast.StarExpr{X: ident("v")}),
+			returned(address(ident("c"))),
+		}
+		return &ast.FuncDecl{Name: ident(name), Type: functionType([]*ast.Field{field("v", goT)}, goT), Body: block(body...)}
+	})
+	return call(fn, receiver)
 }
 
 // nativeCall calls a runtime function for a standard module function.
@@ -371,6 +400,8 @@ func (g *gen) resolveMethod(m *checker.Method, receiver *checker.Type, name stri
 func (g *gen) invokeMethod(m *checker.Method, receiverType *checker.Type, receiver ast.Expr, name string, args []ast.Expr, calleeInfo *checker.Info) ast.Expr {
 	receiverType = g.sub(receiverType)
 	switch {
+	case m.Decl != nil && m.Decl.Name == "toString" && len(args) == 0:
+		return g.format(receiverType, receiver)
 	case m.Native == "contract":
 		return call(selector(receiver, camel(name)), append([]ast.Expr{ident("ctx")}, args...)...)
 	case m.Native != "" && m.Contract == nil:
@@ -387,6 +418,9 @@ func (g *gen) invokeMethod(m *checker.Method, receiverType *checker.Type, receiv
 // operation, named Type_Operation and instantiated at the receiver's and the
 // operation's type arguments.
 func (g *gen) nativeMethodCall(m *checker.Method, receiverType *checker.Type, receiver ast.Expr, name string, args []ast.Expr, calleeInfo *checker.Info) ast.Expr {
+	if m.Decl.Name == "clone" && (receiverType.Kind == "record" || receiverType.Kind == "alternative") {
+		return g.cloneValue(receiverType, receiver)
+	}
 	fn := g.nativeMethodName(m, receiverType)
 	g.noteNative(fn)
 	targs, bind := g.nativeTypeArguments(m, receiverType, calleeInfo)

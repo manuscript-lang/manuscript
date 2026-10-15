@@ -67,7 +67,14 @@ func (g *gen) exprValue(e *syntax.Expression, info *checker.Info) ast.Expr {
 		return g.unit()
 	case syntax.KindText:
 		return g.text(e)
-	case syntax.KindName, syntax.KindApply:
+	case syntax.KindApply:
+		// An explicit type application of a member, such as xs.map[String],
+		// carries the member's own facts.
+		if e.Left != nil && e.Left.Kind == syntax.KindMember {
+			return g.member(e.Left, g.info(e.Left))
+		}
+		return g.name(e, info)
+	case syntax.KindName:
 		return g.name(e, info)
 	case syntax.KindMember:
 		return g.member(e, info)

@@ -31,13 +31,10 @@ var goKeywords = map[string]bool{
 	"range": true, "return": true, "select": true, "struct": true, "switch": true, "type": true, "var": true,
 }
 
-// fieldName is the Go field for a Manuscript field.
-func fieldName(name string) string {
-	if goKeywords[name] {
-		return name + "_"
-	}
-	return name
-}
+// fieldName is the exported Go field for a Manuscript field: generated user
+// types and the runtime's generated standard types name fields alike, so code
+// reads either.
+func fieldName(name string) string { return camel(name) }
 
 // scalarGo is the Go spelling of a primitive type, or "".
 func scalarGo(t *checker.Type) string {

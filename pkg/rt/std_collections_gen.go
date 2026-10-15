@@ -131,7 +131,7 @@ func check_List_Fill[T any]() {
 func check_List_CopyWithin[T any]() {
 	var _ func(*Execution, *List[T], int64, int64, int64) *List[T] = List_CopyWithin[T]
 }
-func check_List_ToSet[T any]() {
+func check_List_ToSet[T comparable]() {
 	var _ func(*Execution, *List[T]) *Set[T] = List_ToSet[T]
 }
 func check_List_Keys[T any]() {

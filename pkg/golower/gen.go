@@ -21,7 +21,11 @@ import (
 // Options selects the entry point lowered into the generated main function.
 type Options struct {
 	// Tests lowers test blocks into the generated main; Entry lowers main().
-	Tests, Entry bool
+	Tests, Entry                   bool
+	CPUProfile, HeapProfile, Trace string
+	// DebugLiterals trades repeated literal construction cost for faster
+	// native compilation, as Debug builds do.
+	DebugLiterals bool
 }
 
 // Go lowers a checked program to Go source.
@@ -46,6 +50,7 @@ func newGen(program *checker.Program) *gen {
 		}
 	}
 	sh.dup = duplicateNames(program)
+	sh.recursive = recursiveDeclarations(program)
 	return &gen{shared: sh, stack: []*node{{}}}
 }
 
@@ -84,9 +89,10 @@ func duplicateNames(program *checker.Program) map[string]bool {
 type shared struct {
 	program    *checker.Program
 	err        error
-	inRuntime  bool            // generating the runtime package itself: type variables stay variables
-	localEq    bool            // some module declares an extension Equal implementation
-	dup        map[string]bool // source names more than one declaration uses
+	inRuntime  bool                         // generating the runtime package itself: type variables stay variables
+	localEq    bool                         // some module declares an extension Equal implementation
+	dup        map[string]bool              // source names more than one declaration uses
+	recursive  map[*syntax.Declaration]bool // functions on a call cycle
 	methodByID map[string]*checker.Method
 
 	mu      sync.Mutex
@@ -143,9 +149,11 @@ type gen struct {
 	infoCache map[*syntax.Expression]*checker.Info
 	serial    int
 
-	aliases  map[*checker.Binding]*checker.Symbol
-	captured map[*checker.Binding]string // snapshot names of captured variables
-	used     map[*checker.Binding]bool   // variables some expression reads
+	locals     map[*checker.Binding]string // Go names of this unit's variables
+	localNames map[string]bool
+	aliases    map[*checker.Binding]*checker.Symbol
+	captured   map[*checker.Binding]string // snapshot names of captured variables
+	used       map[*checker.Binding]bool   // variables some expression reads
 
 	// stack holds the nodes being built, innermost last; items the unit
 	// touches become dependencies of the innermost.
@@ -281,7 +289,11 @@ func (g *gen) file(entry string, options Options) *ast.File {
 			&ast.IfStmt{Cond: binary(rtCall("RunTests", ident("tests"), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}), token.GTR, intLiteral(0)),
 				Body: block(evaluated(call(selector(ident("os"), "Exit"), intLiteral(1))))})
 	case options.Entry && main != nil:
-		body = append(body, evaluated(call(selector(ident("os"), "Exit"), rtCall("RunMain", ident(main.name), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}))))
+		run := ast.Expr(rtCall("RunMain", ident(main.name), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}))
+		if options.CPUProfile != "" || options.HeapProfile != "" || options.Trace != "" {
+			run = rtCall("Profile", textLiteral(options.CPUProfile), textLiteral(options.HeapProfile), textLiteral(options.Trace), closure(nil, ident("int"), returned(run)))
+		}
+		body = append(body, evaluated(call(selector(ident("os"), "Exit"), run)))
 	default:
 		body = append(body, discard(selector(ident("os"), "Args")))
 	}
@@ -310,7 +322,7 @@ func (g *gen) test(module string, d *syntax.Declaration) ast.Expr {
 // their results merge in the order they were first requested, so the output
 // does not depend on scheduling.
 func (g *gen) assemble() (types, out []ast.Decl) {
-	var next []*funcDecl
+	var next, order []*funcDecl
 	var emit func(n *node)
 	emit = func(n *node) {
 		if n.done {
@@ -338,6 +350,7 @@ func (g *gen) assemble() (types, out []ast.Decl) {
 		next = nil
 		g.lowerWave(wave)
 		for _, f := range wave {
+			order = append(order, f)
 			out = append(out, f.out)
 			g.numberLabels(&f.node)
 			for _, d := range f.deps {
@@ -345,7 +358,19 @@ func (g *gen) assemble() (types, out []ast.Decl) {
 			}
 		}
 	}
-	return types, out
+	return types, append(out, g.registration(order))
+}
+
+// registration names every lowered function for fault traces.
+func (g *gen) registration(order []*funcDecl) ast.Decl {
+	var body []ast.Stmt
+	for _, f := range order {
+		if f.out == nil {
+			continue
+		}
+		body = append(body, evaluated(rtCall("RegisterSource", ident(f.name), textLiteral(f.sourceName()))))
+	}
+	return &ast.FuncDecl{Name: ident("init"), Type: functionType(nil, nil), Body: block(body...)}
 }
 
 // numberLabels gives the node's located-statement labels their global names.
@@ -386,7 +411,7 @@ func (g *gen) lowerWave(wave []*funcDecl) {
 // source, with a hash of the identity wherever source names repeat, so no two
 // keys meet in one name and no name depends on scheduling.
 func (g *gen) claim(name, key string) string {
-	if reserved[name] {
+	if reserved[name] || goKeywords[name] {
 		name += "_"
 	}
 	g.mu.Lock()

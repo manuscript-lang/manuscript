@@ -1,9 +1,5 @@
 package rt
 
-import (
-	"fmt"
-)
-
 // CleanupAction is one registered `with` close operation.
 type CleanupAction struct {
 	ctx   *Execution
@@ -35,7 +31,9 @@ func (s *CleanupStack) remove(action *CleanupAction) {
 }
 
 // Run closes the resource once. A fault in the close becomes primary unless a
-// fault is already pending, in which case it is recorded as secondary.
+// fault is already pending, in which case it is recorded as secondary. The
+// close runs shielded from cancellation. Run is deferred directly (or called
+// by Unwind, which keeps the pending panic for itself).
 func (a *CleanupAction) Run() {
 	pending := recover()
 	var failure any
@@ -44,21 +42,32 @@ func (a *CleanupAction) Run() {
 		a.stack.remove(a)
 		close := a.close
 		a.close = nil
-		func() {
-			defer func() { failure = recover() }()
-			close(Shield(a.ctx))
-		}()
+		failure = runShielded(a.ctx, close)
 	}
 	if failure != nil {
-		if primary, ok := pending.(Fault); ok {
-			primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
-			panic(primary)
-		}
-		panic(Fault{Message: fmt.Sprint(failure)})
+		panic(addSecondary(pending, failure))
 	}
 	if pending != nil {
 		panic(pending)
 	}
+}
+
+// Cleanup runs close shielded from cancellation at scope exit, for a single
+// resource that needs no stack. It is deferred directly: `defer Cleanup(ctx, f)`.
+func Cleanup(ctx *Execution, close func(*Execution)) {
+	pending := recover()
+	if failure := runShielded(ctx, close); failure != nil {
+		panic(addSecondary(pending, failure))
+	}
+	if pending != nil {
+		panic(pending)
+	}
+}
+
+func runShielded(ctx *Execution, close func(*Execution)) (failure any) {
+	defer func() { failure = recover() }()
+	close(Shield(ctx))
+	return nil
 }
 
 // Unwind runs every registered action, innermost first.
@@ -80,12 +89,7 @@ func (s *CleanupStack) Unwind() {
 	}
 	pending := recover()
 	for _, failure := range failures {
-		if primary, ok := pending.(Fault); ok {
-			primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
-			pending = primary
-		} else {
-			pending = Fault{Message: fmt.Sprint(failure)}
-		}
+		pending = addSecondary(pending, failure)
 	}
 	panic(pending)
 }

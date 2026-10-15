@@ -6,9 +6,13 @@ type Entry[K comparable, V any] struct {
 	Value V
 }
 
-// Map is Manuscript's insertion-ordered mutable map. Keys match as Go
-// compares them: scalar values and scalar-only records by value, everything
-// else by reference.
+// Map is Manuscript's insertion-ordered mutable map.
+//
+// KEY MATCHING IS GO EQUALITY (==). Scalar keys (Int, Float, Bool, String) and
+// scalar-only records match by value; every other key (records with reference
+// fields, lists, maps, sets, handles) matches by reference identity. This
+// replaces the old runtime's structural Hashable keys. Float NaN never matches
+// itself. The same rule applies to Set elements.
 type Map[K comparable, V any] struct {
 	index   map[K]int
 	entries []*MapEntry[K, V] // nil marks a removed entry until compaction
@@ -43,7 +47,9 @@ func (m *Map[K, V]) Lookup(key K) (V, bool) {
 // Put stores value under key, appending a new key.
 func (m *Map[K, V]) Put(key K, value V) {
 	if i, ok := m.index[key]; ok {
-		m.entries[i] = &MapEntry[K, V]{Key: key, Value: value}
+		// Replacement retains the original key and insertion position. The
+		// entry is replaced, not mutated, so a Snapshot taken earlier is stable.
+		m.entries[i] = &MapEntry[K, V]{Key: m.entries[i].Key, Value: value}
 		return
 	}
 	m.index[key] = len(m.entries)
