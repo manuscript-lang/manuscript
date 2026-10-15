@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/manuscript-lang/manuscript/internal/nativeabi"
-	"math/rand"
+	mathrand "math/rand"
 	"os"
 	"os/signal"
 	"regexp"
@@ -152,7 +152,7 @@ func runTestsContext(tests []Test, options TestOptions, reporter *testReporter, 
 		}
 	}
 	if options.Shuffle {
-		rand.New(rand.NewSource(options.Seed)).Shuffle(len(selected), func(i, j int) { selected[i], selected[j] = selected[j], selected[i] })
+		mathrand.New(mathrand.NewSource(options.Seed)).Shuffle(len(selected), func(i, j int) { selected[i], selected[j] = selected[j], selected[i] })
 		fmt.Printf("shuffle seed: %d\n", options.Seed)
 	}
 	repeat := options.Repeat

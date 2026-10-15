@@ -336,6 +336,10 @@ Evidence: [event reader checks](../internal/cli/test_result_test.go),
 [helper contracts](../pkg/stdlib/testing.ms).
 Verify: list executes no bodies, fail-fast retains later not_run entries, repeated
 names retain indices, and fault assertions propagate cancellation and skip.
+Standalone builds combine runtime imports into one file: alias math/rand as
+mathrand so shuffle does not collide with crypto/rand. Run the existing native
+Standalone regressions when adding runtime imports; ordinary package builds
+do not expose this collision.
 
 ### Testing helpers do not duplicate test blocks
 
