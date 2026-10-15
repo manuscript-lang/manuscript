@@ -35,6 +35,13 @@ var scalarNatives = map[string]scalarNative{
 	"math/remainder": floats("MathRemainder", 2),
 	"math/abs_int":   {"MathAbsInt", []string{"int64"}, "int64"},
 
+	"math/is_nan":    {"MathIsNaN", []string{"float64"}, "bool"},
+	"math/is_finite": {"MathIsFinite", []string{"float64"}, "bool"},
+
+	"string/length":      {"StringLengthScalar", []string{"string"}, "int64"},
+	"string/is_empty":    {"StringIsEmpty", []string{"string"}, "bool"},
+	"string/compare":     {"StringCompare", []string{"string", "string"}, "int64"},
+	"string/concat":      {"StringConcat", []string{"string", "string"}, "string"},
 	"string/trim":        {"StringTrim", []string{"string"}, "string"},
 	"string/upper":       {"StringUpper", []string{"string"}, "string"},
 	"string/lower":       {"StringLower", []string{"string"}, "string"},
@@ -42,6 +49,8 @@ var scalarNatives = map[string]scalarNative{
 	"string/starts_with": {"StringStartsWith", []string{"string", "string"}, "bool"},
 	"string/ends_with":   {"StringEndsWith", []string{"string", "string"}, "bool"},
 }
+
+var scalarTypeNames = map[string]string{"string": "String", "float64": "Float", "int64": "Int", "bool": "Bool"}
 
 // scalarNativeCall returns the table entry when e calls a typed standard
 // function or String member with every argument supplied in declaration order,
@@ -64,7 +73,9 @@ func (g *generator) scalarNativeCall(e *syntax.Expression) (scalarNative, []*syn
 		native = info.Symbol.Native
 	case e.Left.Kind == syntax.KindMember && callee.Method != nil && callee.Method.Contract == nil:
 		native = callee.Method.Native
-		if receiver := g.program.Info(e.Left.Left); receiver == nil || receiver.Type == nil || receiver.Type.ID != "String" {
+		entry, ok := scalarNatives[native]
+		receiver := g.program.Info(e.Left.Left)
+		if !ok || receiver == nil || receiver.Type == nil || len(entry.params) == 0 || receiver.Type.ID != scalarTypeNames[entry.params[0]] {
 			return scalarNative{}, nil, false
 		}
 		operands = append(operands, e.Left.Left)
