@@ -4,16 +4,16 @@ title = "Read-only accessors: design proposal"
 
 # Read-only accessors and the approved standard-library migration
 
-Status: **approved design; implementation independently reviewed; publication held**.
+Status: **approved design; implementation independently reviewed; draft PR authorized; merge held**.
 Baseline: `main` at `477b4c916cd772f0f7f7229dc502e99385c855d0` (2026-10-14).
 The earlier audit used `4eda0e22`; both checkouts contain 44 standard modules.
-The independent reviewer approved revised design commit `46c46a29105e1aabb969d22cce96825b52dc0b8a`; the parent relayed approval before implementation. Implementation integrates `main` at `1383851e`, including #497, source-owned standard documentation from #501, and the independent scalar/native-call improvements from #503. The performance comparison uses that merged revision as its method-era baseline; the original audit partition below remains historical evidence. See the [implementation verification record](read-only-accessors-verification.md) for executed checks and measurements.
+The independent reviewer approved revised design commit `46c46a29105e1aabb969d22cce96825b52dc0b8a`; the parent relayed approval before implementation. The initial implementation integrated `main` at `1383851e`, including #497, source-owned standard documentation from #501, and the independent scalar/native-call improvements from #503. The performance comparison uses that revision as its method-era baseline; the original audit partition below remains historical evidence. Pre-publication integration also includes main through #515 (`b2a288b1`). See the [implementation verification record](read-only-accessors-verification.md) for executed checks and measurements.
 
 The user approved designing consistent live read-only accessors for the precise
 inventory below. `Error.message()` and **every implementation of it remain
 methods**. The parent appointed an independent skeptical reviewer and relayed explicit
 approval before implementation. The design author did not self-approve.
-PR publication remains stopped until final review of the tested result. Keep the work separate from collection
+The user authorized pushing the branch and opening a draft PR; merge remains held for parent coordination. Keep the work separate from collection
 prelude PR497, debugger work, and the stopped broad performance branch.
 
 ## Problem and decision
@@ -735,4 +735,4 @@ with unrelated PR497/debugger/performance changes.
 
 All naming choices and the migration boundary are resolved above. The independent
 design approval gate is satisfied. Implementation remains within this approved
-scope; PR publication awaits final review of the tested result.
+scope; draft PR publication is authorized and merge awaits parent clearance.
