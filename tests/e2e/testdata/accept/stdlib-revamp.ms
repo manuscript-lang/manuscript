@@ -29,7 +29,7 @@ test "domain equality and hashing select interfaces":
     if not (a.hash() == b.hash()): return panic("custom hash ignored")
 
     let values = (Map[Key, String]().add(key: a, value: "a").add(key: b, value: "b"))
-    if values.length() != 1: return panic("custom key lookup ignored")
+    if values.length != 1: return panic("custom key lookup ignored")
     if values.get(a) != some("b"): return panic("custom key update ignored")
     if not ([a].contains(b)): return panic("custom search ignored")
 

@@ -324,7 +324,7 @@ func TestLibraryDatagramBoundaries(t *testing.T) {
 	defer n.Operation("close").Body(ctx, nil)
 	left := librarySuccess(t, n.Operation("bind_datagram").Body(ctx, []Value{"127.0.0.1:0"}))
 	right := librarySuccess(t, n.Operation("bind_datagram").Body(ctx, []Value{"127.0.0.1:0"}))
-	address := Invoke(ctx, Bind(right, "", "address"), nil).(string)
+	address := NativeAccessorRead(ctx, right, "address").(string)
 	for _, data := range [][]byte{{}, []byte("ok")} {
 		librarySuccess(t, Invoke(ctx, Bind(left, "", "send"), []Argument{{"data", Bytes{data}}, {"address", address}}))
 		packet := librarySuccess(t, Invoke(ctx, Bind(right, "", "receive"), []Argument{{"max_bytes", int64(2)}})).(Record)
@@ -359,7 +359,7 @@ func TestLibraryTCPRoundTrip(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(ctx, nil)
 	listener := librarySuccess(t, n.Operation("listen").Body(ctx, []Value{"127.0.0.1:0"}))
-	address := Invoke(ctx, Bind(listener, "", "address"), nil).(string)
+	address := NativeAccessorRead(ctx, listener, "address").(string)
 	client := librarySuccess(t, n.Operation("connect").Body(ctx, []Value{address, Duration(time.Second)}))
 	server := librarySuccess(t, Invoke(ctx, Bind(listener, "", "accept"), nil))
 	librarySuccess(t, Invoke(ctx, Bind(client, "", "write"), []Argument{{"data", Bytes{[]byte("ping")}}}))

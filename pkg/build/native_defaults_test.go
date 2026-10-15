@@ -77,7 +77,7 @@ test "native preparation order skip repetition and propagation":
     if callable(third) != Result[String, CsvError].ok("3\n4\n"):
         return panic("fresh evaluation on repeat")
     let explicit: List[List[String]] = []
-    if callable(explicit, chosen, none) != Result[String, CsvError].ok("") or explicit.length() != 0:
+    if callable(explicit, chosen, none) != Result[String, CsvError].ok("") or explicit.length != 0:
         return panic("present values skip all defaults including explicit none")
     let options_only: List[List[String]] = []
     if native(options_only, max_bytes: none) != Result[String, CsvError].ok("3\n"):

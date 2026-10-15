@@ -45,8 +45,8 @@ export fn first_queries() -> Bool:
     let map = Map[Key, String]().add(key, "found")
     let set = Set[Key]().add(key)
     return (
-        locate_map(map, Key(5, "different")).is_some()
-        and locate_set(set, Key(5, "different")).is_some()
+        locate_map(map, Key(5, "different")).is_some
+        and locate_set(set, Key(5, "different")).is_some
     )
 
 export fn first_converted(cause: Cause) -> Result[Int, Error]:

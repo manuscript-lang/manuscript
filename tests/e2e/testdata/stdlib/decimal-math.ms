@@ -35,4 +35,4 @@ test "math rounding signs and exact identities":
         "extrema"
     )
     if (sin(0.0) != 0.0 or cos(0.0) != 1.0 or pi() < 3.14): return panic("trigonometry")
-    if not sqrt(-1.0).is_nan(): return panic("NaN predicate")
+    if not sqrt(-1.0).is_nan: return panic("NaN predicate")

@@ -13,7 +13,7 @@ let LIMIT = MAX_ITEMS * 2
 fn is_full(count: Int) -> Bool:
     return count >= LIMIT
 fn names() -> Int:
-    return NAMES.length()
+    return NAMES.length
 `
 
 func TestConstantHoverShowsValueType(t *testing.T) {

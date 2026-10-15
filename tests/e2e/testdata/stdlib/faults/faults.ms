@@ -43,7 +43,7 @@ test "stale synchronized guard faults":
     let state = Synchronized(1)
     let guard = state.lock()
     guard.close()
-    let impossible = guard.get()
+    let impossible = guard.value
 
 test "unwrapping an out of range slice faults":
     let impossible = ([1, 2]).slice(start: 0, end: 3).unwrap()

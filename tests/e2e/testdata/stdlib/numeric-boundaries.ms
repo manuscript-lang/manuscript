@@ -10,7 +10,7 @@ test "integer division retains signed boundary and remainder rules":
     if 7 / -2 != -3 or 7 % -3 != 1: return panic("negative divisor")
     if 0 / minimum != 0 or 1 / minimum != 0: return panic("minimum divisor")
     if 1d / -1d != -1d: return panic("decimal division")
-    if (1.0 / 0.0).is_finite() or not (0.0 / 0.0).is_nan(): return panic(
+    if (1.0 / 0.0).is_finite or not (0.0 / 0.0).is_nan: return panic(
         "IEEE zero division"
     )
 
@@ -62,17 +62,17 @@ test "duration safe addition subtraction negation and unit edges":
     if duration(0).negate() != duration(0) or duration(0).abs() != duration(0): return panic(
         "zero unary"
     )
-    if (9223372036854).milliseconds.to_nanoseconds() != 9223372036854000000: return panic(
+    if (9223372036854).milliseconds.nanoseconds != 9223372036854000000: return panic(
         "milliseconds maximum"
     )
-    if (-9223372036854).milliseconds.to_nanoseconds() != -9223372036854000000: return panic(
+    if (-9223372036854).milliseconds.nanoseconds != -9223372036854000000: return panic(
         "milliseconds minimum"
     )
     if (
-        (9223372036).seconds.to_nanoseconds() != 9223372036000000000
-        or (-9223372036).seconds.to_nanoseconds() != -9223372036000000000
+        (9223372036).seconds.nanoseconds != 9223372036000000000
+        or (-9223372036).seconds.nanoseconds != -9223372036000000000
     ): return panic("seconds edges")
     if (
-        (153722867).minutes.to_nanoseconds() != 9223372020000000000
-        or (-153722867).minutes.to_nanoseconds() != -9223372020000000000
+        (153722867).minutes.nanoseconds != 9223372020000000000
+        or (-153722867).minutes.nanoseconds != -9223372020000000000
     ): return panic("minutes edges")

@@ -28,6 +28,6 @@ export fn main() -> Int:
 
         ok(acquired):
             with server = acquired:
-                stdout().write(data: "{server.address()}\n".to_bytes())
+                stdout().write(data: "{server.address}\n".to_bytes())
                 let outcome = server.wait()
                 return 0

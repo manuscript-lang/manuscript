@@ -12,7 +12,7 @@ import value from "./support/results.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
     let epoch = value(timestamp(seconds: 0, nanoseconds: 123))
-    if epoch.unix_seconds() != 0 or epoch.nanoseconds() != 123: return panic(
+    if epoch.unix_seconds != 0 or epoch.nanoseconds != 123: return panic(
         "timestamp units"
     )
     if value(parse_timestamp(epoch.to_string())) != epoch: return panic(

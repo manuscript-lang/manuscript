@@ -24,13 +24,22 @@ type Param struct {
 	Name string
 	Type *Type
 }
+
+// Operation retains the public member category and source identity alongside its
+// implementation signature. Accessor member reads project Type.Result.
+type Operation struct {
+	Name     string
+	Type     *Type
+	Accessor bool
+	Decl     *syntax.Declaration
+}
 type Definition struct {
 	Symbol     *Symbol
 	Kind       string
 	Variables  []*Type
 	Fields     []Param
 	Cases      []Case
-	Operations []Param
+	Operations []Operation
 }
 type Case struct {
 	Name   string
@@ -50,6 +59,7 @@ type Binding struct {
 	Function int
 }
 type Method struct {
+	Accessor                 bool
 	ID                       string
 	Module                   string
 	Local                    bool

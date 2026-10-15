@@ -39,9 +39,7 @@ test "list search callbacks empty identities and folding":
     if empty.some(positive) or not empty.every(positive): return panic(
         "empty predicate identities"
     )
-    if not empty.first().is_none() or not empty.last().is_none(): return panic(
-        "empty search"
-    )
+    if not empty.first.is_none or not empty.last.is_none: return panic("empty search")
 
     let groups = ([1, 2, 3]).group_by(parity)
     if groups.get(1) != some([1, 3]) or groups.get(0) != some([2]): return panic(
@@ -75,7 +73,7 @@ test "maps preserve insertion order and overwrite duplicate keys":
 
     let copy = map.clone().remove("a")
     if copy.keys() != ["b"] or map.keys() != ["a", "b"]: return panic("map clone")
-    if not map.get("missing").is_none(): return panic("missing key")
+    if not map.get("missing").is_none: return panic("missing key")
 
 test "set algebra removes duplicates and preserves values":
     let left = ([1, 2, 2]).to_set()

@@ -11,7 +11,7 @@ import (
 )
 
 func debugLiteralSource() string {
-	return "fn values() -> List[Int]:\n    return [" + strings.TrimSuffix(strings.Repeat("7, ", 1100), ", ") + "]\nexport fn main() -> Int:\n    return values().length() - 1100\n"
+	return "fn values() -> List[Int]:\n    return [" + strings.TrimSuffix(strings.Repeat("7, ", 1100), ", ") + "]\nexport fn main() -> Int:\n    return values().length - 1100\n"
 }
 
 func TestDebugLiteralBuildSelection(t *testing.T) {
@@ -173,7 +173,7 @@ func TestDebugLiteralFreshStorageAndFaultOrder(t *testing.T) {
     let copied = first.clone()
     first.set(index: 0, value: 99)
     alias.append(42)
-    if alias.length() != 1101 or second.length() != 1100 or copied.length() != 1100:
+    if alias.length != 1101 or second.length != 1100 or copied.length != 1100:
         return panic("outer storage is shared across evaluations")
     if second.at(0).unwrap() != 7 or copied.at(0).unwrap() != 7 or values().at(0).unwrap() != 7:
         return panic("data table or clone was mutated")

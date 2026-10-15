@@ -104,7 +104,7 @@ func (g *generator) methodDefaults(m *checker.Method, callee ast.Expr, supplied 
 // receive exactly the slots they handled before this feature.
 func (g *generator) methodCallable(e *syntax.Expression, arguments []syntax.Argument) ast.Expr {
 	info := g.program.Info(e)
-	if e.Kind != syntax.KindMember || info.Method == nil {
+	if e.Kind != syntax.KindMember || info.Method == nil || info.Method.Accessor {
 		return g.expression(e)
 	}
 	m := info.Method

@@ -1,0 +1,20 @@
+=== RUN   TestCoreConformance
+=== RUN   TestCoreConformance/collection-call-order.ms
+=== RUN   TestCoreConformance/direct-collection-conversions.ms
+=== RUN   TestCoreConformance/library-errors.ms
+=== RUN   TestCoreConformance/list-equality-mutation.ms
+=== RUN   TestCoreConformance/list-go-range.ms
+=== RUN   TestCoreConformance/list-shrink-consumers.ms
+=== RUN   TestCoreConformance/optional-methods.ms
+=== RUN   TestCoreConformance/primitive-list-storage.ms
+--- PASS: TestCoreConformance (8.68s)
+    --- PASS: TestCoreConformance/collection-call-order.ms (0.83s)
+    --- PASS: TestCoreConformance/direct-collection-conversions.ms (0.94s)
+    --- PASS: TestCoreConformance/library-errors.ms (1.13s)
+    --- PASS: TestCoreConformance/list-equality-mutation.ms (0.71s)
+    --- PASS: TestCoreConformance/list-go-range.ms (1.35s)
+    --- PASS: TestCoreConformance/list-shrink-consumers.ms (1.76s)
+    --- PASS: TestCoreConformance/optional-methods.ms (0.92s)
+    --- PASS: TestCoreConformance/primitive-list-storage.ms (1.02s)
+PASS
+ok  	github.com/manuscript-lang/manuscript/tests/e2e	10.741s

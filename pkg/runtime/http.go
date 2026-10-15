@@ -267,7 +267,7 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 func (s *httpService) Operation(name string) Function {
 	if name == "address" {
-		return NewFunction(nil, "String", func(_ *Execution, _ []Value) Value { return s.listener.Addr().String() })
+		Panic("read-only accessor address is not a method")
 	}
 	if name == "wait" {
 		result := "@std/Result[Unit][@std/IoError]"

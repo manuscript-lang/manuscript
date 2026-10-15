@@ -25,7 +25,7 @@ fn write_line(text: String) -> Unit:
 export fn main() -> Int:
     let args = arguments()
     var index = 0
-    while index < args.length():
+    while index < args.length:
         write_line(args[index].unwrap())
         index = index + 1
     return 0

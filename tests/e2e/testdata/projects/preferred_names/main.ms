@@ -6,10 +6,10 @@ import panic from "@std/faults.ms"
 test "direct bound and forwarded calls retain defining equality scopes":
     let first = first_run().values()
     let second = second_run().values()
-    if first.length() != 1 or first.at(0).unwrap().id != 2:
+    if first.length != 1 or first.at(0).unwrap().id != 2:
         return panic("first equality scope")
     if (
-        second.length() != 1
+        second.length != 1
         or second.at(0).unwrap().id != 1
         or second.at(0).unwrap().label != "original"
     ):
@@ -20,8 +20,8 @@ test "direct bound and forwarded calls retain defining equality scopes":
     let remove = first_remove(items)
     add(Key(1, "original"))
     add(Key(1, "duplicate"))
-    if items.length() != 1 or items.values().at(0).unwrap().label != "original":
+    if items.length != 1 or items.values().at(0).unwrap().label != "original":
         return panic("returned bound add scope")
 
     remove(Key(1, "different"))
-    if not items.is_empty(): return panic("returned bound remove scope")
+    if not items.is_empty: return panic("returned bound remove scope")

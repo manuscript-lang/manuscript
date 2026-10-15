@@ -90,7 +90,7 @@ func TestTypedAlternativeLets(t *testing.T) {
 	}{
 		{"match only", "    let found = halve(n)\n    match found:\n        some(v):\n            return v\n        none:\n            return 0\n", true},
 		{"matched twice", "    let found = halve(n)\n    match found:\n        some(v):\n            return v\n        none:\n            unit\n    match found:\n        some(v):\n            return v\n        none:\n            return 0\n", true},
-		{"formatted", "    let found = halve(n)\n    match found:\n        some(v):\n            return v\n        none:\n            unit\n    return \"{found}\".length()\n", false},
+		{"formatted", "    let found = halve(n)\n    match found:\n        some(v):\n            return v\n        none:\n            unit\n    return \"{found}\".length\n", false},
 		{"captured", "    let found = halve(n)\n    let read = fn() -> Int:\n        match found:\n            some(v):\n                return v\n            none:\n                return 0\n    return read()\n", false},
 		{"variable", "    var found = halve(n)\n    match found:\n        some(v):\n            return v\n        none:\n            return 0\n", false},
 	} {

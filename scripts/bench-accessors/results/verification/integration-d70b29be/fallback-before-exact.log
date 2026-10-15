@@ -1,0 +1,41 @@
+--- FAIL: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads (0.00s)
+    --- FAIL: TestListTransformResultsPreserveDynamicFallbackAndAccessorReads/@std/List[Int]/filter (0.00s)
+panic: interface conversion: interface {} is msruntime.Alternative, not int64 [recovered, repanicked]
+
+goroutine 24 [running]:
+testing.tRunner.func1.2({0xcaa7c0, 0xc0001c4cf0})
+	/workspace/manuscript-accessor-design/toolchain/go/src/testing/testing.go:1872 +0x237
+testing.tRunner.func1()
+	/workspace/manuscript-accessor-design/toolchain/go/src/testing/testing.go:1875 +0x35b
+panic({0xcaa7c0?, 0xc0001c4cf0?})
+	/workspace/manuscript-accessor-design/toolchain/go/src/runtime/panic.go:783 +0x132
+github.com/manuscript-lang/manuscript/pkg/runtime.FinishExecution(0xc0001c93b0)
+	/workspace/manuscript-accessor-design/pkg/runtime/lifetime.go:82 +0x57
+panic({0xcaa7c0?, 0xc0001c4cf0?})
+	/workspace/manuscript-accessor-design/toolchain/go/src/runtime/panic.go:783 +0x132
+github.com/manuscript-lang/manuscript/pkg/runtime.(*List).Append(...)
+	/workspace/manuscript-accessor-design/pkg/runtime/list_storage.go:195
+github.com/manuscript-lang/manuscript/pkg/runtime.init.2.func3-range1(...)
+	/workspace/manuscript-accessor-design/pkg/runtime/library_algorithms.go:23
+github.com/manuscript-lang/manuscript/pkg/runtime.init.2.func3.ListRange.Values.1(...)
+	/workspace/manuscript-accessor-design/pkg/runtime/list_storage.go:18
+github.com/manuscript-lang/manuscript/pkg/runtime.init.2.func3(0xc0001c93b0, {0xd58ce6, 0xe}, {0xc0002286c0, 0x2, 0x41aab4?})
+	/workspace/manuscript-accessor-design/pkg/runtime/library_algorithms.go:20 +0xab5
+github.com/manuscript-lang/manuscript/pkg/runtime.libraryAdd.func1(0xc0001c93b0, {0xd58ce6, 0xe}, {0xc0002286c0?, 0xc000065ac0?, 0x4812e9?})
+	/workspace/manuscript-accessor-design/pkg/runtime/library.go:30 +0x143
+github.com/manuscript-lang/manuscript/pkg/runtime.invokeLibrary({{0xd555bc, 0xb}, {0xd4f0c7, 0x6}, {0xd505c0, 0x7}, {0xc000140900, 0x2, 0x2}, {0xc00011e9e0, ...}, ...}, ...)
+	/workspace/manuscript-accessor-design/pkg/runtime/library.go:84 +0x5f1
+github.com/manuscript-lang/manuscript/pkg/runtime.nativeLibraryMember.func1(0xc0001c93b0, {0xc00013aa20, 0x1, 0xc00013aa20?})
+	/workspace/manuscript-accessor-design/pkg/runtime/native_library_members.go:127 +0x166
+github.com/manuscript-lang/manuscript/pkg/runtime.nativeLibraryMember.NewFunction.newFunction.func2(0xc0001c93b0, {0xc00013aa20, 0x1, 0x1})
+	/workspace/manuscript-accessor-design/pkg/runtime/functions.go:63 +0xc4
+github.com/manuscript-lang/manuscript/pkg/runtime.Invoke(0xc0001c93b0, {0xd1ae40?, 0xc00024e820?}, {0xc000065f18, 0x1, 0xe?})
+	/workspace/manuscript-accessor-design/pkg/runtime/functions.go:90 +0x204
+github.com/manuscript-lang/manuscript/pkg/runtime.TestListTransformResultsPreserveDynamicFallbackAndAccessorReads.func1(0xc000103880)
+	/workspace/manuscript-accessor-design/pkg/runtime/accessors_test.go:34 +0x552
+testing.tRunner(0xc000103880, 0xc000228680)
+	/workspace/manuscript-accessor-design/toolchain/go/src/testing/testing.go:1934 +0xea
+created by testing.(*T).Run in goroutine 22
+	/workspace/manuscript-accessor-design/toolchain/go/src/testing/testing.go:1997 +0x465
+FAIL	github.com/manuscript-lang/manuscript/pkg/runtime	0.007s
+FAIL

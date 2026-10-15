@@ -4,7 +4,7 @@ import StringBuilder from "@std/string.ms"
 fn fields(line: String) -> List[String]:
     let spaced = line.replace_all(old: "\t", new: " ").unwrap()
     return spaced.split(" ").filter(fn(part: String) -> Bool:
-        return not part.is_empty()
+        return not part.is_empty
     )
 
 fn range_text(start: Int, len: Int) -> String:
@@ -42,7 +42,7 @@ fn count_between(kinds: List[Int], start: Int, end: Int, skip: Int) -> Int:
 
 fn run() -> Result[Unit, Error]:
     let first = try read_line(input: stdin(), max_bytes: 1048576)
-    if first.is_none():
+    if first.is_none:
         return ok(unit)
     let h = fields(first.unwrap())
     let name_a = h.at(0).unwrap()
@@ -55,7 +55,7 @@ fn run() -> Result[Unit, Error]:
     var count = 0
     while count < n + m:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
-        if next.is_none():
+        if next.is_none:
             break
         if count < n:
             a.append(next.unwrap())
@@ -108,11 +108,11 @@ fn run() -> Result[Unit, Error]:
 
     let changes = List[Int]()
     var k = 0
-    while k < kinds.length():
+    while k < kinds.length:
         if kinds.at(k).unwrap() != 0:
             changes.append(k)
         k = k + 1
-    if changes.is_empty():
+    if changes.is_empty:
         return ok(unit)
 
     let out = StringBuilder()
@@ -120,8 +120,8 @@ fn run() -> Result[Unit, Error]:
     var lo_change = changes.at(0).unwrap()
     var prev = lo_change
     var idx = 1
-    while idx <= changes.length():
-        var split = idx == changes.length()
+    while idx <= changes.length:
+        var split = idx == changes.length
         if not split:
             let cur = changes.at(idx).unwrap()
             split = cur - prev - 1 > 2 * ctx
@@ -132,8 +132,8 @@ fn run() -> Result[Unit, Error]:
             if lo < 0:
                 lo = 0
             var hi = prev + 1 + ctx
-            if hi > kinds.length():
-                hi = kinds.length()
+            if hi > kinds.length:
+                hi = kinds.length
             let sa = count_before(kinds, lo, 2)
             let sb = count_before(kinds, lo, 1)
             let la = count_between(kinds, lo, hi, 2)
@@ -145,7 +145,7 @@ fn run() -> Result[Unit, Error]:
                 out.append(texts.at(q).unwrap())
                 out.append("\n")
                 q = q + 1
-            if idx < changes.length():
+            if idx < changes.length:
                 lo_change = changes.at(idx).unwrap()
                 prev = lo_change
         idx = idx + 1

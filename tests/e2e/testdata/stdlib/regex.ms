@@ -7,7 +7,7 @@ test "regex receivers execute matching replacement and empty results":
     if not regex.matches("a12b"): return panic("match")
     if regex.matches("abc"): return panic("false match")
     if value(regex.find_all(text: "a12b3")) != ["12", "3"]: return panic("find all")
-    if not value(regex.find_all(text: "abc", max_matches: 0)).is_empty(): return panic(
+    if not value(regex.find_all(text: "abc", max_matches: 0)).is_empty: return panic(
         "empty match budget"
     )
     if value(regex.replace_all(text: "a12b3", replacement: "#")) != "a#b#": return panic(

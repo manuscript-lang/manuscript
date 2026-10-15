@@ -13,26 +13,34 @@ import (
 func (g *generator) markCounted() {
 	type node struct {
 		direct *directFunction
-		body   []*syntax.Statement
+		decl   *syntax.Declaration
 		edges  []*directFunction
 	}
 	nodes := map[*directFunction]*node{}
 	var order []*node
-	add := func(direct *directFunction, body []*syntax.Statement) {
-		n := &node{direct: direct, body: body}
+	add := func(direct *directFunction, decl *syntax.Declaration) {
+		n := &node{direct: direct, decl: decl}
 		nodes[direct] = n
 		order = append(order, n)
 	}
 	for s, direct := range g.direct {
-		add(direct, s.Decl.Body)
+		add(direct, s.Decl)
 	}
 	for _, m := range g.program.Methods {
 		if direct := g.directMethods[m.ID]; direct != nil {
-			add(direct, m.Decl.Body)
+			add(direct, m.Decl)
 		}
 	}
 	for _, n := range order {
 		syntax.Visitor{Expression: func(e *syntax.Expression) {
+			if e.Kind == syntax.KindMember {
+				if info := g.program.Info(e); info != nil && info.Method != nil && info.Method.Accessor {
+					if direct := g.directMethods[info.Method.ID]; direct != nil {
+						n.edges = append(n.edges, direct)
+					}
+				}
+				return
+			}
 			if e.Kind != syntax.KindCall {
 				return
 			}
@@ -44,11 +52,11 @@ func (g *generator) markCounted() {
 				n.edges = append(n.edges, g.direct[info.Symbol])
 			}
 			if e.Left != nil && e.Left.Kind == syntax.KindMember {
-				if callee := g.program.Info(e.Left); callee != nil && callee.Method != nil && g.directMethods[callee.Method.ID] != nil {
+				if callee := g.program.Info(e.Left); callee != nil && callee.Method != nil && !callee.Method.Accessor && g.directMethods[callee.Method.ID] != nil {
 					n.edges = append(n.edges, g.directMethods[callee.Method.ID])
 				}
 			}
-		}}.Callable(nil, n.body)
+		}}.Callable(n.decl.Params, n.decl.Body)
 	}
 	// Tarjan's strongly connected components.
 	index := map[*node]int{}

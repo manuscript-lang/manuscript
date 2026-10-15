@@ -277,6 +277,14 @@ Verify: fresh constructors and effectful sized initialization use two allocation
 typed at/unwrap uses none, generic forwarding retains identity, and comparator
 profiling/returns/cancellation/depth/fault frames match ordinary source calls.
 
+Verified: private map/filter result construction must preserve `NewList`'s boxed
+fallback when a primitive-labelled List holds nonmatching dynamic payloads.
+Convert the partial result to boxed storage before storing such a payload;
+the ordinary typed path remains direct. Evidence: the four primitive map/filter
+cases in [fallback and live accessor regression](../pkg/runtime/accessors_test.go).
+Verify accepted payload order, fresh outer storage, Optional payloads and live
+endpoint/length reads after mutation.
+
 Verified: source-return consumption can be shared, but recovery must run directly
 in a deferred function. Boxed returns retain nil Values without a type assertion;
 typed comparator returns still assert Int and check delivery cancellation before

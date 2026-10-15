@@ -7,7 +7,7 @@ fn is_upper(c: Int) -> Bool:
 fn is_lower(c: Int) -> Bool:
     return c >= 97 and c <= 122
 
-# Shifts letters by keys[position % keys.length()] * sign; position counts letters only.
+# Shifts letters by keys[position % keys.length] * sign; position counts letters only.
 fn transform(text: String, keys: List[Int], sign: Int) -> String:
     let out = List[Int]()
     var i = 0
@@ -16,7 +16,7 @@ fn transform(text: String, keys: List[Int], sign: Int) -> String:
             var base = 97
             if is_upper(c):
                 base = 65
-            let k = keys.at(i % keys.length()).unwrap()
+            let k = keys.at(i % keys.length).unwrap()
             let v = ((c - base + sign * k) % 26 + 26) % 26
             out.append(v + base)
             i = i + 1
@@ -28,15 +28,15 @@ fn parse_caesar_key(key: String) -> Optional[Int]:
     let codes = key.scalar_values()
     var start = 0
     var negative = false
-    if codes.length() > 0 and codes.at(0).unwrap() == 45:
+    if codes.length > 0 and codes.at(0).unwrap() == 45:
         negative = true
         start = 1
-    let digits = codes.length() - start
+    let digits = codes.length - start
     if digits < 1 or digits > 7:
         return none
     var k = 0
     var i = start
-    while i < codes.length():
+    while i < codes.length:
         let c = codes.at(i).unwrap()
         if c < 48 or c > 57:
             return none
@@ -49,13 +49,13 @@ fn parse_caesar_key(key: String) -> Optional[Int]:
 fn solve_line(line: String) -> String:
     var parts = List[String]()
     var rest = line
-    while parts.length() < 3:
+    while parts.length < 3:
         let at = rest.index_of(" ")
-        if at.is_none():
+        if at.is_none:
             return "error: bad command"
         parts.append(rest.slice(0, at.unwrap()).unwrap())
-        rest = rest.slice(at.unwrap() + 1, rest.length()).unwrap()
-    if rest.is_empty():
+        rest = rest.slice(at.unwrap() + 1, rest.length).unwrap()
+    if rest.is_empty:
         return "error: bad command"
     let cipher = parts.at(0).unwrap()
     let mode = parts.at(1).unwrap()
@@ -69,10 +69,10 @@ fn solve_line(line: String) -> String:
         sign = -1
     if cipher == "caesar":
         let k = parse_caesar_key(key)
-        if k.is_none():
+        if k.is_none:
             return "error: bad key"
         return transform(rest, [k.unwrap()], sign)
-    if key.is_empty():
+    if key.is_empty:
         return "error: bad key"
     let keys = List[Int]()
     for c in key.scalar_values():
@@ -87,10 +87,10 @@ fn solve_line(line: String) -> String:
 fn run() -> Result[Unit, Error]:
     while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
-        if next.is_none():
+        if next.is_none:
             break
         let line = next.unwrap()
-        if line.replace_all(old: " ", new: "").unwrap().is_empty():
+        if line.replace_all(old: " ", new: "").unwrap().is_empty:
             continue
         try stdout().write("{solve_line(line)}\n".to_bytes())
     return stdout().flush()

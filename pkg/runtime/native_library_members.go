@@ -10,6 +10,8 @@ import (
 // The first native parameter is bound to the receiver; remaining labels are unchanged.
 var NativeLibraryBindings = nativeabi.ReceiverBindings
 
+func NativeLibraryAccessor(receiver, name string) bool { return nativeabi.IsAccessor(receiver, name) }
+
 func NativeLibrarySpec(receiver, name string) (LibrarySpec, bool) {
 	function, ok := NativeLibraryBindings[receiver][name]
 	if !ok {
@@ -95,6 +97,9 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	case Decimal:
 		kind = "Decimal"
 	default:
+		return nil, false
+	}
+	if nativeabi.IsAccessor(kind, name) {
 		return nil, false
 	}
 	spec, ok := NativeLibrarySpec(kind, name)

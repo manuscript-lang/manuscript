@@ -98,10 +98,11 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		}
 	}
 	seen := map[string]bool{}
-	ops := []Param{}
+	ops := []Operation{}
 	if contract.Def != nil {
 		for _, op := range contract.Def.Operations {
-			ops = append(ops, Param{op.Name, Sub(op.Type, substitution(contract))})
+			op.Type = Sub(op.Type, substitution(contract))
+			ops = append(ops, op)
 		}
 	}
 	for _, method := range d.Methods {
@@ -122,20 +123,29 @@ func (c *checker) implementation(d *syntax.Declaration) {
 						t.Defaults[name] = allowed
 					}
 				}
-				if !Same(t, op.Type) {
-					c.error(method.Pos, "type", "implementation operation signature does not match contract; "+method.Name+" must be declared as fn "+method.Name+signatureText(op.Type))
+				if method.Accessor != op.Accessor {
+					c.error(method.Pos, "type", "implementation operation kind does not match contract; "+method.Name+" must be declared as "+operationDeclaration(op))
+				} else if !Same(t, op.Type) {
+					c.error(method.Pos, "type", "implementation operation signature does not match contract; "+method.Name+" must be declared as "+operationDeclaration(op))
 				}
 			}
 		}
 		if !found {
-			c.error(method.Pos, "type", "extra operation "+method.Name+"; "+contract.String()+" declares: "+list(paramNames(ops), 12)+" (remove it or add it to the interface)")
+			c.error(method.Pos, "type", "extra operation "+method.Name+"; "+contract.String()+" declares: "+list(operationNames(ops), 12)+" (remove it or add it to the interface)")
+		}
+		if method.Accessor {
+			for _, field := range Fields(receiver) {
+				if field.Name == method.Name {
+					c.error(method.Pos, "type", "accessor "+method.Name+" conflicts with a stored field; rename the accessor or the field")
+				}
+			}
 		}
 		local := receiver.Def != nil && receiver.Def.Symbol != nil && receiver.Def.Symbol.Module != c.module.File
-		c.Methods = append(c.Methods, &Method{ID: c.unique("method"), Module: c.module.File, Local: local, Receiver: receiver, Contract: contract, Variables: vars, Decl: method, Type: t})
+		c.Methods = append(c.Methods, &Method{Accessor: method.Accessor, ID: c.unique("method"), Module: c.module.File, Local: local, Receiver: receiver, Contract: contract, Variables: vars, Decl: method, Type: t})
 	}
 	for _, op := range ops {
 		if !seen[op.Name] {
-			c.error(d.Pos, "type", "missing implementation operation "+op.Name+"; add fn "+op.Name+signatureText(op.Type)+" to this impl")
+			c.error(d.Pos, "type", "missing implementation operation "+op.Name+"; add "+operationDeclaration(op)+" to this impl")
 		}
 	}
 	c.wellFormed(receiver, d.Pos, map[string]bool{})
@@ -384,7 +394,7 @@ func (c *checker) methods(receiver *Type, name string) []*Method {
 	if receiver.Kind == "contract" && receiver.Def != nil {
 		for _, op := range receiver.Def.Operations {
 			if op.Name == name {
-				return []*Method{{Contract: receiver, Receiver: receiver, Type: Sub(op.Type, substitution(receiver)), Native: "contract", Decl: standardMethodDeclaration(receiver, name), Variables: standardOperationVariables[receiver.ID+"/"+name]}}
+				return []*Method{{Contract: receiver, Receiver: receiver, Type: Sub(op.Type, substitution(receiver)), Accessor: op.Accessor, Native: "contract", Decl: op.Decl, Variables: standardOperationVariables[receiver.ID+"/"+name]}}
 			}
 		}
 	}
@@ -460,7 +470,7 @@ func nativeMethod(t *Type, name string) *Method {
 				if identity := standardReceiverBindings[receiver.ID+"/"+name]; identity != "" {
 					native = identity
 				}
-				return &Method{Receiver: t, Type: Sub(operation.Type, substitution(t)), Native: native, Decl: standardMethodDeclaration(receiver, name), Variables: standardOperationVariables[receiver.ID+"/"+name]}
+				return &Method{Receiver: t, Type: Sub(operation.Type, substitution(t)), Accessor: operation.Accessor, Native: native, Decl: operation.Decl, Variables: standardOperationVariables[receiver.ID+"/"+name]}
 			}
 		}
 	}
@@ -473,7 +483,7 @@ func (c *checker) closeable(t *Type) bool {
 	}
 	if t.Kind == "contract" || t.Kind == "variable" {
 		for _, m := range c.methods(t, "close") {
-			if len(m.Type.Params) == 0 && m.Type.Result.ID == "Unit" {
+			if !m.Accessor && len(m.Type.Params) == 0 && m.Type.Result.ID == "Unit" {
 				return true
 			}
 		}

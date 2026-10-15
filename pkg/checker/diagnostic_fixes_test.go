@@ -75,7 +75,7 @@ func TestStatementMatchDiscardsArmValues(t *testing.T) {
 	}{
 		{"mixed arm values", prefix + "fn f(counts: Map[String, Int], names: List[String], found: Optional[Int]) -> Unit:\n    match found:\n        some(n):\n            counts.add(key: \"a\", value: n)\n        none:\n            names.append(\"x\")\n", 0},
 		{"value arm and assignment arm", prefix + "fn f(xs: List[Int], o: Optional[Int]) -> Unit:\n    var n = 0\n    match o:\n        some(v):\n            n = v\n            xs.set(index: 0, value: 5)\n        none:\n            n = 2\n    xs.append(n)\n", 0},
-		{"used match still unifies", prefix + "fn f(xs: List[Int], o: Optional[Int]) -> Unit:\n    let r = match o:\n        some(v):\n            xs.set(index: 0, value: v)\n        none:\n            xs.length()\n", 1},
+		{"used match still unifies", prefix + "fn f(xs: List[Int], o: Optional[Int]) -> Unit:\n    let r = match o:\n        some(v):\n            xs.set(index: 0, value: v)\n        none:\n            xs.length\n", 1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("match.ms", tt.source)

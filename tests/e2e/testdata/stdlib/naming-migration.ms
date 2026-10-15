@@ -45,7 +45,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 
     let create = fn(key: String) -> Int:
         counter.calls = counter.calls + 1
-        return key.length()
+        return key.length
     let lazy: fn(key: String, create: fn(key: String) -> Int) -> Map[String, Int] = values.add_default_from
     lazy("a", create)
     if counter.calls != 1: return panic("existing key called creator")

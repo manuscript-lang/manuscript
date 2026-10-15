@@ -110,8 +110,8 @@ impl Error for JsonError:
 #     let first = reader.feed("\{\"id\":1\}\n\{\"id".to_bytes()).unwrap()
 #     let second = reader.feed("\":2\}\n".to_bytes()).unwrap()
 #
-#     if first.length() != 1 or second.length() != 1: return panic("expected one value per feed")
-#     if reader.finish().unwrap().length() != 0: return panic("unexpected trailing value")
+#     if first.length != 1 or second.length != 1: return panic("expected one value per feed")
+#     if reader.finish().unwrap().length != 0: return panic("unexpected trailing value")
 # ```
 #
 # Stringify produces compact JSON and escapes `<`, `>`, and `&` as `\u003c`, `\u003e`, and `\u0026`. It is not a canonical format for signing.

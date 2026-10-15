@@ -60,6 +60,9 @@ func FuzzParse(f *testing.F) {
 	for _, s := range []string{"fn f() -> Unit:\n    return\n", "import panic from \"@std/faults.ms\"\n\ntest \"text\":\n    if not (\"{1}\" == \"1\"):\n        return panic(message: \"check failed\")\n", "type Item:\n    value: Int\n"} {
 		f.Add(s)
 	}
+	f.Add("interface Read[T]:\n    get value -> T\nimpl Read[Int] for Box:\n    get value -> Int: self.get\n")
+	f.Add("type Box[T]:\n    get: T\n    get value -> T:\n    fn get() -> T:\n")
+	f.Add("interface Read:\n    get value() -> Int\n    get callback -> fn(value: Int) -> Int\n")
 	f.Fuzz(func(t *testing.T, source string) {
 		if len(source) > 16000 {
 			t.Skip()

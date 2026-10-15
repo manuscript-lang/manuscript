@@ -42,7 +42,7 @@ test "generic records":
     let nested = Box[Box[Int]](v: a, n: 3)
     check(ok: nested.v.v == 4 and nested.v == a, name: "nested box")
     let items = Box[List[Int]](v: [1, 2, 3], n: 0)
-    check(ok: items.v.length() == 3, name: "list field")
+    check(ok: items.v.length == 3, name: "list field")
     let pair = Pair[Int, String](first: 1, second: "x")
     check(ok: pair.first == 1 and pair.second == "x", name: "two params")
     check(ok: Box[Int](v: 4, n: 2) == a, name: "equality")

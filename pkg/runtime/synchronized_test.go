@@ -25,7 +25,7 @@ func TestSynchronizedConcurrentUpdates(t *testing.T) {
 			child := newExecution(root, root.Context)
 			for range 100 {
 				guard := lockCell(child, cell)
-				value := Invoke(child, guard.Operation("get"), nil).(int64)
+				value := SynchronizedGuardValueRead(child, guard).(int64)
 				Invoke(child, guard.Operation("set"), []Argument{{"value", value + 1}})
 				guard.close()
 			}
@@ -34,7 +34,7 @@ func TestSynchronizedConcurrentUpdates(t *testing.T) {
 	wait.Wait()
 	guard := lockCell(root, cell)
 	defer guard.close()
-	if value := Invoke(root, guard.Operation("get"), nil); value != int64(2000) {
+	if value := SynchronizedGuardValueRead(root, guard); value != int64(2000) {
 		t.Fatalf("lost update: %v", value)
 	}
 }
@@ -97,7 +97,7 @@ func TestSynchronizedReentryAndClosedAliases(t *testing.T) {
 	if _, ok := failure.(Fault); !ok {
 		t.Fatal("stale alias remained usable", failure)
 	}
-	if Invoke(root, next.Operation("get"), nil) != int64(0) {
+	if SynchronizedGuardValueRead(root, next) != int64(0) {
 		t.Fatal("stale alias modified new lock's value")
 	}
 }
@@ -123,7 +123,7 @@ func TestSynchronizedCloseRacesAccess(t *testing.T) {
 	next := lockCell(root, cell)
 	Invoke(root, next.Operation("set"), []Argument{{"value", int64(2)}})
 	wait.Wait()
-	if Invoke(root, next.Operation("get"), nil) != int64(2) {
+	if SynchronizedGuardValueRead(root, next) != int64(2) {
 		t.Fatal("old guard accessed reacquired value")
 	}
 	next.close()
@@ -217,7 +217,7 @@ func TestSynchronizedWaitNotifyAll(t *testing.T) {
 	if failure := <-done; failure != nil {
 		t.Fatal(failure)
 	}
-	if value := Invoke(waiterCtx, guard.Operation("get"), nil); value != int64(0) {
+	if value := SynchronizedGuardValueRead(waiterCtx, guard); value != int64(0) {
 		t.Fatalf("guard unusable after wait: %v", value)
 	}
 	guard.close()

@@ -14,7 +14,7 @@ func TestQueueWithoutCapacityGrowsAndReuses(t *testing.T) {
 				t.Fatal("unbounded queue rejected an item", i)
 			}
 		}
-		if Invoke(ctx, q.Operation("length"), nil) != int64(4096) {
+		if NativeAccessorRead(ctx, q, "length") != int64(4096) {
 			t.Fatal("unbounded queue lost items")
 		}
 		for i := range 4096 {
@@ -33,7 +33,7 @@ func TestQueueFIFOEmptyAndReuse(t *testing.T) {
 	ctx := RootExecution()
 	q := ConstructWithContext(ctx, "@std/Queue[Int]", []Argument{{"capacity", int64(100)}}).(*Queue)
 	for range 2 {
-		if Invoke(ctx, q.Operation("dequeue"), nil).(Alternative).Tag != "none" || Invoke(ctx, q.Operation("peek"), nil).(Alternative).Tag != "none" {
+		if Invoke(ctx, q.Operation("dequeue"), nil).(Alternative).Tag != "none" || NativeAccessorRead(ctx, q, "peek").(Alternative).Tag != "none" {
 			t.Fatal("empty queue must return none immediately")
 		}
 	}
@@ -49,10 +49,10 @@ func TestQueueFIFOEmptyAndReuse(t *testing.T) {
 			t.Fatal("full queue must reject without waiting")
 		}
 		for i := range 100 {
-			if Invoke(ctx, q.Operation("length"), nil) != int64(100-i) || Invoke(ctx, q.Operation("is_empty"), nil) != false {
+			if NativeAccessorRead(ctx, q, "length") != int64(100-i) || NativeAccessorRead(ctx, q, "is_empty") != false {
 				t.Fatal("incorrect queue size")
 			}
-			peek := Invoke(ctx, q.Operation("peek"), nil).(Alternative)
+			peek := NativeAccessorRead(ctx, q, "peek").(Alternative)
 			storage := q.items
 			value := Invoke(ctx, dequeue, nil).(Alternative)
 			if value.Tag != "some" || value.Fields[0] != int64(round*100+i) || !Equal(peek, value) {
@@ -62,7 +62,7 @@ func TestQueueFIFOEmptyAndReuse(t *testing.T) {
 				t.Fatal("dequeued slot retained its value")
 			}
 		}
-		if Invoke(ctx, q.Operation("is_empty"), nil) != true || q.items != nil {
+		if NativeAccessorRead(ctx, q, "is_empty") != true || q.items != nil {
 			t.Fatal("drained queue retained storage")
 		}
 	}
@@ -81,7 +81,7 @@ func TestQueueSharedThroughSynchronized(t *testing.T) {
 			ctx := newExecution(root, root.Context)
 			for i := range count {
 				guard := lockCell(ctx, cell)
-				queue := Invoke(ctx, guard.Operation("get"), nil).(*Queue)
+				queue := SynchronizedGuardValueRead(ctx, guard).(*Queue)
 				Invoke(ctx, queue.Operation("enqueue"), []Argument{{"value", int64(worker*count + i)}})
 				guard.close()
 			}
@@ -90,8 +90,8 @@ func TestQueueSharedThroughSynchronized(t *testing.T) {
 	wait.Wait()
 	guard := lockCell(root, cell)
 	defer guard.close()
-	queue := Invoke(root, guard.Operation("get"), nil).(*Queue)
-	if Invoke(root, queue.Operation("length"), nil) != int64(workers*count) {
+	queue := SynchronizedGuardValueRead(root, guard).(*Queue)
+	if NativeAccessorRead(root, queue, "length") != int64(workers*count) {
 		t.Fatal("lost concurrent enqueue")
 	}
 	seen := make(map[int64]bool)

@@ -11,7 +11,7 @@ export type Synchronized[T]:
 # Holds a synchronization lock. Closing the guard releases the lock.
 export type SynchronizedGuard[T]:
     # Returns the original guarded payload, without cloning; a closed guard faults.
-    fn get() -> T:
+    get value -> T:
     # Replaces the guarded payload without copying it; a closed guard faults.
     fn set(value: T) -> Unit:
     # Releases the lock, waits for notify_all, then reacquires it before returning; re-check state in a loop.
@@ -61,7 +61,7 @@ export type SynchronizedGuard[T]:
 # let counts = Synchronized({"hits": 0})
 # let task = tasks.start(fn():
 #     with locked = counts.lock():
-#         let values = locked.get()
+#         let values = locked.value
 #         values.add(key: "hits", value: values.get("hits").unwrap_or(0) + 1)
 # )
 # ```
@@ -105,13 +105,13 @@ export type SynchronizedGuard[T]:
 # test "a complete update holds one lock":
 #     let counter = Synchronized(0)
 #     with locked = counter.lock():
-#         locked.set(value: locked.get() + 1)
+#         locked.set(value: locked.value + 1)
 #     with locked = counter.lock():
-#         if not (locked.get() == 1):
+#         if not (locked.value == 1):
 #             return panic(message: "check failed")
 # ```
 #
-# `lock()` waits cancellably for exclusive admission. The guard exposes `get() -> T`, `set(value: T) -> Unit`, and `close() -> Unit`; it has no source constructor and implements `Closeable`. Use `with` to release it on normal exit, return, loop exits, propagated errors, faults, and cancellation. The synchronized container itself has no close operation. Neither type has equality or hashing.
+# `lock()` waits cancellably for exclusive admission. The guard exposes the read-only accessor `value: T`, `set(value: T) -> Unit`, and `close() -> Unit`; it has no source constructor and implements `Closeable`. Use `with` to release it on normal exit, return, loop exits, propagated errors, faults, and cancellation. The synchronized container itself has no close operation. Neither type has equality or hashing.
 #
 # The lock remains held across ordinary calls and suspension until the guard closes. Cancellation never forcibly releases an executing critical section: the holder unwinds and performs shielded cleanup first. An acquisition that loses to cancellation before delivery releases the undelivered guard. There is no FIFO or starvation-freedom guarantee.
 #
@@ -130,7 +130,7 @@ export type SynchronizedGuard[T]:
 # ```manuscript
 # fn wait_until_ready(ready: Synchronized[Bool]) -> Unit:
 #     with locked = ready.lock():
-#         while not locked.get():
+#         while not locked.value:
 #             locked.wait()
 #
 # fn mark_ready(ready: Synchronized[Bool]) -> Unit:

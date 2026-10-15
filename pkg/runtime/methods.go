@@ -92,6 +92,10 @@ func matchType(pattern, actual string, vars map[string]bool, sub map[string]stri
 
 type Implementation struct {
 	Receiver, Contract, Name string
+	// Accessor distinguishes executable reads from callable members.
+	Accessor bool
+	// Read executes an accessor without constructing a bound Function.
+	Read func(*Execution, Value, map[string]string, map[string]TypeScope) Value
 	// Scope is empty for implementations in the receiver's defining module.
 	Scope     string
 	Variables []string
@@ -172,6 +176,9 @@ func Bind(receiver Value, contract, name string, scopes ...TypeScope) Value {
 		return method
 	}
 
+	if resolveMemberImplementation(ConcreteType(receiver), contract, name, scope, true) != nil {
+		return Panic("read-only accessor " + name + " is not a method; read it without ()")
+	}
 	return NativeMember(receiver, name)
 }
 
@@ -192,6 +199,7 @@ func implementationScopes(pattern string, scope TypeScope, vars map[string]bool,
 
 type implementationKey struct {
 	typ, contract, name, module, args string
+	accessor                          bool
 }
 
 // resolvedImplementation is the receiver-independent outcome of a lookup.
@@ -214,12 +222,12 @@ type MethodSite struct {
 	operation atomic.Pointer[operationEntry]
 }
 
-func (site *MethodSite) lookup(typ string) *methodEntry {
+func (site *MethodSite) lookup(typ, module string) *methodEntry {
 	generation := implementationGeneration.Load()
-	if e := site.entry.Load(); e != nil && e.typ == typ && e.generation == generation {
+	if e := site.entry.Load(); e != nil && e.typ == typ && e.module == module && e.generation == generation {
 		return e
 	}
-	if e := site.second.Load(); e != nil && e.typ == typ && e.generation == generation {
+	if e := site.second.Load(); e != nil && e.typ == typ && e.module == module && e.generation == generation {
 		return e
 	}
 	return nil
@@ -227,7 +235,7 @@ func (site *MethodSite) lookup(typ string) *methodEntry {
 
 // remember keeps the newest resolution first and demotes the previous one.
 func (site *MethodSite) remember(e *methodEntry) {
-	if old := site.entry.Load(); old != nil && old.generation == e.generation && old.typ != e.typ {
+	if old := site.entry.Load(); old != nil && old.generation == e.generation && (old.typ != e.typ || old.module != e.module) {
 		site.second.Store(old)
 	}
 	site.entry.Store(e)
@@ -236,6 +244,7 @@ func (site *MethodSite) remember(e *methodEntry) {
 type methodEntry struct {
 	generation uint64
 	typ        string
+	module     string
 	direct     func(*Execution, Value, []Value) Value
 }
 
@@ -243,9 +252,13 @@ type methodEntry struct {
 // alternative type. Arguments are already in declaration order.
 func CallMethod(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
 	typ := ConcreteType(receiver)
-	if e := site.lookup(typ); e != nil {
-		CheckCancelled(ctx)
-		return e.direct(ctx, receiver, args)
+	// Interface views can bring different lexical evidence to one call site.
+	// Argument scopes require the ordinary specialization path below.
+	if len(scope.Args) == 0 {
+		if e := site.lookup(typ, scope.Module); e != nil {
+			CheckCancelled(ctx)
+			return e.direct(ctx, receiver, args)
+		}
 	}
 	return callMethodSlow(ctx, site, receiver, contract, name, scope, args)
 }
@@ -309,7 +322,7 @@ func callMethodSlow(ctx *Execution, site *MethodSite, receiver Value, contract, 
 				implementationCache.Store(key, resolved)
 			}
 			if resolved != nil && resolved.impl.Direct != nil {
-				site.remember(&methodEntry{generation: generation, typ: typ, direct: resolved.impl.Direct})
+				site.remember(&methodEntry{generation: generation, typ: typ, module: scope.Module, direct: resolved.impl.Direct})
 				CheckCancelled(ctx)
 				return resolved.impl.Direct(ctx, receiver, args)
 			}
@@ -349,8 +362,15 @@ func implementationFunction(receiver Value, contract, name string, scope TypeSco
 }
 
 func resolveImplementation(typ, contract, name string, scope TypeScope) *resolvedImplementation {
+	return resolveMemberImplementation(typ, contract, name, scope, false)
+}
+
+func resolveMemberImplementation(typ, contract, name string, scope TypeScope, accessor bool) *resolvedImplementation {
 	for _, at := range implementationsByName[name] {
 		m := &implementations[at]
+		if m.Accessor != accessor {
+			continue
+		}
 		if m.Scope != "" && m.Scope != scope.Module {
 			continue
 		}

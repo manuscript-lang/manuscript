@@ -264,6 +264,48 @@ func (p *Parser) typ() *syntax.Type {
 	}
 	return p.namedType()
 }
+
+// accessorHead recognizes contextual `get` only at an operation head. A field
+// named get still uses the ordinary `get: Type` grammar.
+func (p *Parser) accessorHead() bool {
+	return p.peek().Kind == lexer.Name && p.peek().Text == "get" && p.tokens[p.at+1].Kind != ":"
+}
+
+// operation shares the ordinary callable syntax tree for methods and accessors.
+// Only native receiver methods may declare their own type parameters; checking
+// authorizes their empty bodies rather than adding a special parser mode.
+func (p *Parser) operation(generic, signature bool) *syntax.Declaration {
+	accessor := p.accessorHead()
+	if accessor {
+		p.at++
+	} else {
+		p.need("fn")
+	}
+	name := p.need(lexer.Name)
+	m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text, Accessor: accessor}
+	if accessor {
+		switch p.peek().Kind {
+		case "[":
+			p.fail(p.peek(), "accessors cannot declare type parameters; use the receiver's type parameters in 'get "+name.Text+" -> Type'")
+		case "(":
+			p.fail(p.peek(), "accessors have no parameter list; write 'get "+name.Text+" -> Type' without parentheses")
+		}
+	} else {
+		if generic {
+			m.TypeParams = p.typeParams()
+		}
+		m.Params = p.parameters(true, false)
+	}
+	p.need("->")
+	m.Result = p.typ()
+	if signature {
+		p.end()
+	} else {
+		m.Body = p.statementSuite(false, true)
+	}
+	return m
+}
+
 func (p *Parser) declaration() *syntax.Declaration {
 	token := p.peek()
 	d := &syntax.Declaration{Pos: token.Pos, Kind: token.Kind}
@@ -313,14 +355,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 			if p.peek().Kind == lexer.Dedent {
 				break
 			}
-			p.need("fn")
-			name := p.need(lexer.Name)
-			m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text}
-			m.Params = p.parameters(true, false)
-			p.need("->")
-			m.Result = p.typ()
-			m.Body = p.statementSuite(false, true)
-			d.Methods = append(d.Methods, m)
+			d.Methods = append(d.Methods, p.operation(false, false))
 		}
 		p.need(lexer.Dedent)
 		if len(d.Methods) == 0 {
@@ -345,7 +380,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 			if p.peek().Kind == "case" {
 				next = "alternative"
 			}
-			if p.peek().Kind == syntax.KindFn {
+			if p.peek().Kind == syntax.KindFn || p.accessorHead() {
 				next = "interface"
 			}
 			if token.Kind == syntax.KindInterface && next != "interface" {
@@ -368,21 +403,8 @@ func (p *Parser) declaration() *syntax.Declaration {
 				}
 				d.Cases = append(d.Cases, c)
 				p.end()
-			} else if p.take("fn") {
-				name := p.need(lexer.Name)
-				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: syntax.KindFn}
-				if token.Kind == "type" {
-					m.TypeParams = p.typeParams()
-				}
-				m.Params = p.parameters(true, false)
-				p.need("->")
-				m.Result = p.typ()
-				if token.Kind == "interface" {
-					p.end()
-				} else {
-					m.Body = p.statementSuite(false, true)
-				}
-				d.Methods = append(d.Methods, m)
+			} else if p.peek().Kind == syntax.KindFn || p.accessorHead() {
+				d.Methods = append(d.Methods, p.operation(token.Kind == "type", token.Kind == "interface"))
 			} else {
 				name := p.need(lexer.Name)
 				p.need(":")

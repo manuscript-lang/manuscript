@@ -173,6 +173,9 @@ func (k *completer) memberItems() {
 			for _, member := range checker.Members(result.Program, info.Type, left.Pos.File) {
 				kind := 5
 				insert := member.Name
+				if member.Kind == "accessor" {
+					kind = 10 // CompletionItemKind.Property
+				}
 				if member.Kind == "method" {
 					kind = 2
 					insert = callableText(member.Name, member.Type, nil, k.snippets)

@@ -76,7 +76,7 @@ test "recursive records retain aliases and clone only outer storage":
 
     copy.next = none
 
-    if root.next.is_none():
+    if root.next.is_none:
         panic("clone shared its outer fields")
 
 test "recursive structural equality terminates and checks unequal fields":
@@ -119,11 +119,7 @@ test "recursive domain hashing uses explicit implementations":
     values.add(key: right, value: 10)
     members.add(right)
 
-    if (
-        values.length() != 1
-        or members.length() != 1
-        or values.get(left).unwrap() != 10
-    ):
+    if (values.length != 1 or members.length != 1 or values.get(left).unwrap() != 10):
         panic("equivalent recursive keys were not deduplicated")
 
 test "recursive defaults construct independent complete objects":
@@ -131,7 +127,7 @@ test "recursive defaults construct independent complete objects":
     let second = DefaultNode(value: 2)
     first.next = some(first)
 
-    if second.next.is_some() or first.next.unwrap().value != 1:
+    if second.next.is_some or first.next.unwrap().value != 1:
         panic("recursive default initialization failed")
 
 type Entry:

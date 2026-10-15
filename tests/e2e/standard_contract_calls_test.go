@@ -30,7 +30,7 @@ test "repeated calls through one site":
     while i < 3:
         let a = c.now()
         let b = c.now()
-        check(ok: b.difference(other: a).to_milliseconds() >= 0, name: "monotonic")
+        check(ok: b.difference(other: a).milliseconds >= 0, name: "monotonic")
         i = i + 1
     let out = stdout()
     var n = 0

@@ -39,7 +39,7 @@ test "public collection support types retain their standard runtime identities":
 
     let invalid: Result[List[Int], CollectionError] = values.slice(0, 9)
     let cause: CollectionError = invalid.unwrap_error()
-    if cause != CollectionError.OutOfRange or explain(cause).is_empty(): return panic(
+    if cause != CollectionError.OutOfRange or explain(cause).is_empty: return panic(
         "collection error"
     )
 

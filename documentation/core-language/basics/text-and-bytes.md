@@ -69,11 +69,11 @@ The built-in method takes precedence over a field or interface operation named `
 
 ## Indexing and character boundaries
 
-There is no `text[index]` or slicing syntax. String `at`, `scalar_at`, `index_of`, `last_index_of`, `slice`, and `slice_scalars` use Unicode scalar indexes, not byte offsets. `at` returns a one-scalar String; `scalar_at` returns its integer code point. Both accept negative indexes relative to the end and return `none` out of range. Search returns the first or last matching scalar index, or `none`; an empty search matches at zero for `index_of` and at `scalar_length()` for `last_index_of`.
+There is no `text[index]` or slicing syntax. String `at`, `scalar_at`, `index_of`, `last_index_of`, `slice`, and `slice_scalars` use Unicode scalar indexes, not byte offsets. `at` returns a one-scalar String; `scalar_at` returns its integer code point. Both accept negative indexes relative to the end and return `none` out of range. Search returns the first or last matching scalar index, or `none`; an empty search matches at zero for `index_of` and at `scalar_length` for `last_index_of`.
 
 A byte position, a Unicode scalar, and a user-visible grapheme are different units. For example, `"é"` has two UTF-8 bytes; `"e\u{301}"` has two scalars but can display as one grapheme. Byte lookup alone cannot select a character.
 
-`length()` and `scalar_length()` count scalars; `is_empty()` reports whether that count is zero. `chars()` returns a fresh `List[String]` with one scalar per item, while `scalar_values()` returns their integer code points in order. `reverse()` reverses scalar order without normalization: `"e\u{301}".reverse()` is `"\u{301}e"`, so combining sequences and graphemes may change. Bytes use byte indexes and Lists use element indexes. Grapheme indexing is unsupported.
+`length` and `scalar_length` count scalars; `is_empty` reports whether that count is zero. `chars()` returns a fresh `List[String]` with one scalar per item, while `scalar_values()` returns their integer code points in order. `reverse()` reverses scalar order without normalization: `"e\u{301}".reverse()` is `"\u{301}e"`, so combining sequences and graphemes may change. Bytes use byte indexes and Lists use element indexes. Grapheme indexing is unsupported.
 
 `compare(other:)` returns exactly `-1`, `0`, or `1` in lexical Unicode scalar order. It compares case-sensitive contents without locale rules or normalization; a proper prefix sorts before the longer text. For example, `"Z".compare("a")` is `-1`, while `"é".compare("e\u{301}")` is `1`.
 
@@ -96,9 +96,9 @@ Equal valid bounds select an empty range. Slices never clamp or swap bounds, so 
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]` |
+| `String` | `byte_length: Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]` |
 | `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
-| `Bytes` | `length() -> Int`; `at(index: Int) -> Optional[Int]`; `concat(values: Bytes) -> Bytes` |
+| `Bytes` | `length: Int`; `at(index: Int) -> Optional[Int]`; `concat(values: Bytes) -> Bytes` |
 | `Bytes` | `to_text() -> Optional[String]` |
 | `Bytes` | `values() -> List[Int]`; a fresh mutable list of unsigned byte values |
 
@@ -114,7 +114,7 @@ import panic from "@std/faults.ms"
 import Bytes from "@std/bytes.ms"
 
 test "explicit byte conversion":
-    if not ("é".byte_length() == 2):
+    if not ("é".byte_length == 2):
         return panic(message: "check failed")
     if not ("é".to_bytes().to_text() == some("é")):
         return panic(message: "check failed")

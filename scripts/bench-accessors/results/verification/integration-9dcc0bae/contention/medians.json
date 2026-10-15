@@ -1,0 +1,82 @@
+{
+  "baseline/BenchmarkAccessorUncontended/GuardValue/Public-2": {
+    "ns_op": 158.3,
+    "bytes_op": 176.0,
+    "allocs_op": 4.0
+  },
+  "baseline/BenchmarkAccessorUncontended/GuardValue/SafetyControl-2": {
+    "ns_op": 19.42,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  "baseline/BenchmarkAccessorUncontended/LoggerLevel/Public-2": {
+    "ns_op": 341.5,
+    "bytes_op": 376.0,
+    "allocs_op": 7.0
+  },
+  "baseline/BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2": {
+    "ns_op": 51.27,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  "baseline/BenchmarkAccessorReleaseLatency/GuardValue/Public-2": {
+    "ns_op": 1198.0,
+    "bytes_op": 2.0,
+    "allocs_op": 0.0
+  },
+  "baseline/BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2": {
+    "ns_op": 1120.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  "baseline/BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2": {
+    "ns_op": 2388.0,
+    "bytes_op": 65.0,
+    "allocs_op": 1.0
+  },
+  "baseline/BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2": {
+    "ns_op": 1344.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  "current/BenchmarkAccessorUncontended/GuardValue/Public-2": {
+    "ns_op": 19.87,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  "current/BenchmarkAccessorUncontended/GuardValue/SafetyControl-2": {
+    "ns_op": 21.58,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  "current/BenchmarkAccessorUncontended/LoggerLevel/Public-2": {
+    "ns_op": 52.8,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  "current/BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2": {
+    "ns_op": 51.41,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  "current/BenchmarkAccessorReleaseLatency/GuardValue/Public-2": {
+    "ns_op": 995.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  "current/BenchmarkAccessorReleaseLatency/GuardValue/SafetyControl-2": {
+    "ns_op": 1022.0,
+    "bytes_op": 0.0,
+    "allocs_op": 0.0
+  },
+  "current/BenchmarkAccessorReleaseLatency/LoggerLevel/Public-2": {
+    "ns_op": 1339.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  },
+  "current/BenchmarkAccessorReleaseLatency/LoggerLevel/SafetyControl-2": {
+    "ns_op": 1332.0,
+    "bytes_op": 64.0,
+    "allocs_op": 1.0
+  }
+}
