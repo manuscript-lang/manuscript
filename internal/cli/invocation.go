@@ -246,7 +246,7 @@ func (inv *invocation) validate() (plan, int, bool) {
 		return p, 2, false
 	}
 	if inv.output != "" && !inv.isOneOf("build", "emit", "inspect", "diagram", "profile") {
-		return p, usageError("-o and --output are valid only for ms build, emit, inspect, diagram, doc, or profile, not ms %s; run 'ms help %s' for its options", command, command), false
+		return p, usageError("-o and --output are valid only for ms build, emit, inspect, diagram, or profile, not ms %s; run 'ms help %s' for its options", command, command), false
 	}
 	if (inv.testTimeout != "" || inv.testFilter != "" || len(inv.testOptions) > 0) && command != "test" {
 		return p, usageError("test selection options are valid only for ms test, not ms %s; run 'ms help %s' for the options this command accepts", command, command), false
