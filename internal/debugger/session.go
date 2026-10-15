@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/service"
@@ -47,6 +49,10 @@ type Names struct {
 type Options struct {
 	// Script supplies commands, one per line. A nil Script runs Breaks once.
 	Script io.Reader
+	// CancelIO interrupts owned command input and event output on cancellation.
+	// It is also called after fatal I/O errors. Borrowed streams are never closed
+	// automatically; *os.File streams use owned, interruptible duplicates.
+	CancelIO func()
 	// Breaks are breakpoint specifications installed before a one-shot run.
 	Breaks []string
 	JSON   bool
@@ -99,62 +105,119 @@ var loadConfig = api.LoadConfig{FollowPointers: true, MaxVariableRecurse: 1, Max
 // Script runs commands against a Debug build without a terminal. It returns 0
 // when every command succeeded, 1 when a command failed or a one-shot run
 // ended without reaching a breakpoint.
-func Script(ctx context.Context, executable string, opts Options) (int, error) {
+func Script(ctx context.Context, executable string, opts Options) (status int, err error) {
+	if err := ctx.Err(); err != nil {
+		return 1, err
+	}
 	listener, conn := service.ListenerPipe()
 	defer listener.Close()
 	defer conn.Close()
 	config := delve.Config{Backend: "default", WorkingDir: ".", CheckGoVersion: true, ExecuteKind: delve.ExecutingExistingFile, Stdin: os.DevNull}
 	if opts.JSON {
 		// Standard output carries only events.
-		config.Stdout, config.Stderr = redirectToStderr(), redirectToStderr()
+		for _, output := range []*proc.OutputRedirect{&config.Stdout, &config.Stderr} {
+			redirect, cleanup, redirectErr := redirectToStderr()
+			if redirectErr != nil {
+				return 1, redirectErr
+			}
+			*output = redirect
+			defer func() {
+				if closeErr := cleanup(); closeErr != nil {
+					status, err = 1, errors.Join(err, closeErr)
+				}
+			}()
+		}
 	}
 	server := rpccommon.NewServer(&service.Config{Listener: listener, ProcessArgs: append([]string{executable}, opts.Args...), APIVersion: 2, Debugger: config})
+	if err := ctx.Err(); err != nil {
+		return 1, err
+	}
 	if err := server.Run(); err != nil {
 		return 1, err
 	}
-	defer server.Stop()
-	s := &session{client: rpc2.NewClientFromConn(conn), opts: opts, names: opts.Names}
-	stopped := make(chan struct{})
-	defer close(stopped)
-	go func() {
-		select {
-		case <-ctx.Done():
-			_, _ = s.client.Halt()
-		case <-stopped:
+	restoreIO := func() error { return nil }
+	var s *session
+	var interrupt func()
+	callerCanInterruptOutput := opts.CancelIO != nil
+	defer func() {
+		stopErr := server.Stop()
+		var reportErr error
+		if s != nil && s.inputErr != nil {
+			// Reporting cannot delay target cleanup. Only a transport whose
+			// write can be interrupted gets a best-effort error event.
+			reportErr = reportBounded(ctx, s.opts.Out, callerCanInterruptOutput, interrupt, func() error {
+				return writeEvent(s.opts.Out, s.opts.JSON, Event{Event: "error", Message: s.inputErr.Error()})
+			})
+			interrupt()
+		}
+		if closeErr := errors.Join(stopErr, reportErr, restoreIO()); closeErr != nil {
+			status, err = 1, errors.Join(err, closeErr)
 		}
 	}()
-	if opts.Script == nil {
-		s.oneShot()
-	} else {
-		s.script(opts.Script)
+	// Launch can call Fd on inherited files, clearing their shared nonblocking
+	// flag. Prepare owned I/O afterward, before any target command can run.
+	opts, restoreIO, err = ownScriptIO(opts)
+	if err != nil {
+		return 1, err
 	}
-	if !s.exited {
-		_ = s.client.Detach(true)
+	s = &session{client: rpc2.NewClientFromConn(conn), opts: opts, names: opts.Names, ctx: ctx}
+	defer s.client.Disconnect(false)
+	var cancelIO sync.Once
+	interrupt = func() {
+		_ = s.client.Disconnect(false)
+		if opts.CancelIO != nil {
+			cancelIO.Do(opts.CancelIO)
+		}
 	}
-	if s.failed {
-		return 1, nil
-	}
-	return 0, nil
+	return runCancelable(ctx, interrupt, func() (int, error) {
+		if opts.Script == nil {
+			s.oneShot()
+		} else {
+			s.script(opts.Script)
+		}
+		if s.failed || s.ioErr != nil {
+			if s.ioErr != nil && s.inputErr == nil {
+				interrupt()
+			}
+			return 1, s.ioErr
+		}
+		return 0, nil
+	})
 }
 
-func redirectToStderr() proc.OutputRedirect {
-	if runtime.GOOS == "windows" {
-		return proc.OutputRedirect{File: os.Stderr}
+func redirectToStderr() (proc.OutputRedirect, func() error, error) {
+	if runtime.GOOS != "windows" {
+		return proc.OutputRedirect{Path: "/dev/stderr"}, func() error { return nil }, nil
 	}
-	return proc.OutputRedirect{Path: "/dev/stderr"}
+	// Delve consumes and closes supplied files after launch. Give it a distinct
+	// owned handle for each target stream, retaining cleanup for launch failures.
+	file, restore, err := duplicateIO(os.Stderr)
+	if err != nil {
+		return proc.OutputRedirect{}, nil, err
+	}
+	return proc.OutputRedirect{File: file}, func() error {
+		err := file.Close()
+		if errors.Is(err, os.ErrClosed) {
+			err = nil
+		}
+		return errors.Join(err, restore())
+	}, nil
 }
 
 type session struct {
-	client *rpc2.RPCClient
-	opts   Options
-	names  Names
-	exited bool
-	failed bool
+	client   service.Client
+	opts     Options
+	names    Names
+	exited   bool
+	failed   bool
+	ctx      context.Context
+	ioErr    error
+	inputErr error
 }
 
 func (s *session) oneShot() {
 	for _, spec := range s.opts.Breaks {
-		if !s.command("break " + spec) {
+		if !s.command("break "+spec) || s.failed {
 			return
 		}
 	}
@@ -165,9 +228,15 @@ func (s *session) oneShot() {
 }
 
 func (s *session) script(input io.Reader) {
+	if !s.ready() {
+		return
+	}
 	lines := bufio.NewScanner(input)
 	lines.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for lines.Scan() {
+		if !s.ready() {
+			return
+		}
 		line := strings.TrimSpace(lines.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -179,10 +248,22 @@ func (s *session) script(input io.Reader) {
 			return
 		}
 	}
+	if err := lines.Err(); err != nil {
+		s.failed = true
+		s.inputErr = fmt.Errorf("read debug commands: %w", err)
+		s.ioErr = s.inputErr
+	}
+}
+
+func (s *session) ready() bool {
+	return s.ioErr == nil && (s.ctx == nil || s.ctx.Err() == nil)
 }
 
 // command runs one command and reports whether the session can continue.
 func (s *session) command(line string) bool {
+	if !s.ready() {
+		return false
+	}
 	fields := strings.Fields(line)
 	name, rest := fields[0], strings.TrimSpace(strings.TrimPrefix(line, fields[0]))
 	if s.exited && name != "breakpoints" {
@@ -197,7 +278,12 @@ func (s *session) command(line string) bool {
 	case "breakpoints":
 		s.listBreakpoints()
 	case "continue":
-		s.resume(<-s.client.Continue(), nil, "continue")
+		// Drain tracepoint results too, joining the public client's producer.
+		var state *api.DebuggerState
+		for next := range s.client.Continue() {
+			state = next
+		}
+		s.resume(state, nil, "continue")
 	case "next", "step", "stepout":
 		s.step(name)
 	case "stack", "locals":
@@ -207,7 +293,7 @@ func (s *session) command(line string) bool {
 	default:
 		s.fail("unknown command " + strconv.Quote(name) + "; use break, clear, breakpoints, continue, next, step, stepout, stack, locals, print, or exit")
 	}
-	return true
+	return s.ready()
 }
 
 func (s *session) fail(message string) {
@@ -264,7 +350,7 @@ func (s *session) listBreakpoints() {
 func (s *session) step(kind string) {
 	run := map[string]func() (*api.DebuggerState, error){"next": s.client.Next, "step": s.client.Step, "stepout": s.client.StepOut}[kind]
 	state, err := run()
-	for attempts := 0; attempts < 16 && err == nil && state != nil && !state.Exited; attempts++ {
+	for attempts := 0; attempts < 16 && s.ready() && err == nil && state != nil && !state.Exited; attempts++ {
 		if state.CurrentThread != nil && state.CurrentThread.Breakpoint != nil {
 			break
 		}
@@ -467,12 +553,32 @@ func render(v *api.Variable) string {
 }
 
 func (s *session) emit(e Event) {
-	if s.opts.JSON {
-		data, _ := json.Marshal(e)
-		fmt.Fprintf(s.opts.Out, "%s\n", data)
+	if !s.ready() {
 		return
 	}
-	fmt.Fprint(s.opts.Out, e.text())
+	s.ioErr = writeEvent(s.opts.Out, s.opts.JSON, e)
+}
+
+func writeEvent(out io.Writer, structured bool, e Event) error {
+	var data []byte
+	if structured {
+		var err error
+		data, err = json.Marshal(e)
+		if err != nil {
+			return fmt.Errorf("encode debug event: %w", err)
+		}
+		data = append(data, '\n')
+	} else {
+		data = []byte(e.text())
+	}
+	n, err := out.Write(data)
+	if err == nil && n != len(data) {
+		err = io.ErrShortWrite
+	}
+	if err != nil {
+		return fmt.Errorf("write debug event: %w", err)
+	}
+	return nil
 }
 
 func (e Event) text() string {
