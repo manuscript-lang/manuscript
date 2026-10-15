@@ -30,7 +30,7 @@ entry = "./src/main.ms"
 | --- | --- |
 | `ms check <ms.toml>` | Check all source modules and discovered tests; validate entry when present |
 | `ms build <ms.toml>` | Check, generate Go, and build the executable; requires entry |
-| `ms lint <ms.toml>` / `ms doc <ms.toml>` | Check and lint or document reachable modules; libraries include all source modules and discovered tests |
+| `ms lint <ms.toml>` | Check and lint reachable modules; libraries include all source modules and discovered tests |
 | `ms test <ms.toml>` | Execute tests from entry and discovered test files; libraries include all source modules too |
 | `ms lock <ms.toml>` | Record compiler/runtime, bundled SDK, and target pins; valid for libraries |
 
@@ -70,7 +70,7 @@ name = "graph"
 source = "src"
 ```
 
-`ms check ms.toml`, `ms lint ms.toml`, and `ms test ms.toml` include every source module and discovered test file, even when no other module imports them. `ms doc ms.toml` documents their module-owned exports. The discovery exclusions above still apply. `ms lock ms.toml` records build pins for library tests. `run`, `build`, `emit`, `debug`, and `profile` require an executable entry; add `entry = "src/main.ms"` under `[project]` and export `fn main() -> Int` from that file to make an executable.
+`ms check ms.toml`, `ms lint ms.toml`, and `ms test ms.toml` include every source module and discovered test file, even when no other module imports them. The discovery exclusions above still apply. `ms lock ms.toml` records build pins for library tests. `run`, `build`, `emit`, `debug`, and `profile` require an executable entry; add `entry = "src/main.ms"` under `[project]` and export `fn main() -> Int` from that file to make an executable.
 
 To share library code today, copy its sources into each consuming project, for example `src/graph/`, and use relative imports or an alias:
 

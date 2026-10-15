@@ -25,17 +25,14 @@ func TestLibrarySourceCommandsDiscoverExportsAndErrors(t *testing.T) {
 	write("src/other.ms", "export fn other() -> Int: return 4\n")
 	write("tests/value_test.ms", "test \"value\":\n    return unit\n")
 	manifest := filepath.Join(root, "ms.toml")
-	for _, command := range []string{"check", "lint", "doc", "inspect", "diagram"} {
+	for _, command := range []string{"check", "lint", "inspect", "diagram"} {
 		status, output, errs := invoke(t, command, manifest)
 		if status != 0 || errs != "" {
 			t.Fatalf("%s: %d %s %s", command, status, output, errs)
 		}
-		if command == "doc" && (!strings.Contains(output, "fn value()") || !strings.Contains(output, "fn other()")) {
-			t.Fatal("unimported exports missing:", output)
-		}
 	}
 	write("src/other.ms", "export fn other() -> Int: return \"bad\"\n")
-	for _, command := range []string{"check", "lint", "doc"} {
+	for _, command := range []string{"check", "lint"} {
 		status, _, errs := invoke(t, command, manifest)
 		if status != 1 || !strings.Contains(errs, "other.ms:1:") {
 			t.Fatalf("%s skipped unimported error: %d %s", command, status, errs)

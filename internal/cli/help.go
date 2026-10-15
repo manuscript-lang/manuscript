@@ -8,7 +8,7 @@ import (
 const help = `Usage: ms <command> [arguments] [options]
        ms help [command]
 
-Manuscript checks, builds, runs, and documents .ms source and ms.toml projects.
+Manuscript checks, builds, and runs .ms source and ms.toml projects.
 
 Commands:
   check    Parse and type-check without executing
@@ -27,7 +27,6 @@ Commands:
   dap      Serve one native debugger session on stdin/stdout
   lock     Create or update project build pins
   init     Create a new project with a manifest, entry, test, and .gitignore
-  doc      Generate public API documentation
   lsp      Serve the language server on stdin/stdout
   help     Show help for a command
   version  Print the compiler version
@@ -125,8 +124,6 @@ func commandHelp(command string) (string, bool) {
 		options = jsonErrorsHelp
 		description = "Create or update project-root ms.lock with compiler/runtime, Go toolchain,\nand target pins. Run again after changing the compiler or toolchain.\nRequires a project manifest, rather than a standalone source file."
 		examples = "ms lock ms.toml"
-	case "doc":
-		return docHelp, true
 	case "init":
 		return initHelp, true
 	case "lsp":
@@ -135,7 +132,7 @@ func commandHelp(command string) (string, bool) {
 	case "help":
 		usage = "[command]"
 		description = "Show the command list, or detailed usage for one command."
-		examples = "ms help\n  ms help run\n  ms doc --stdlib --help"
+		examples = "ms help\n  ms help run"
 	case "version":
 		description = "Print the compiler version. Equivalent to ms --version. Takes no arguments."
 		examples = "ms version\n  ms --version"
