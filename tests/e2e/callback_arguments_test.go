@@ -53,3 +53,47 @@ test "list callbacks":
 		t.Fatalf("list callbacks changed: %v\n%s", err, output)
 	}
 }
+
+func TestMapSetAndSortCallbacksKeepSemantics(t *testing.T) {
+	result := compiler.CompileSource("map-set-callbacks.ms", `import panic from "@std/faults.ms"
+
+fn check(ok: Bool, name: String) -> Unit:
+    if not ok:
+        return panic(message: name)
+
+fn byLength(left: String, right: String) -> Int: left.length() - right.length()
+
+fn record(into: List[Int], value: Int) -> Unit:
+    into.append(value: value)
+    return unit
+
+test "map callbacks":
+    let m = {"a": 1, "bb": 2, "ccc": 3}
+    let sums = m.map(fn(key: String, value: Int) -> Int: key.length() + value)
+    check(ok: sums.get("bb") == some(4), name: "map")
+    check(ok: m.filter(fn(key: String, value: Int) -> Bool: value > 1).length() == 2, name: "filter")
+    check(ok: m.fold(initial: 0, step: fn(accumulator: Int, key: String, value: Int) -> Int: accumulator + value) == 6, name: "fold")
+    check(ok: m.fold_right(initial: 0, step: fn(accumulator: Int, key: String, value: Int) -> Int: accumulator * 10 + value) == 321, name: "fold_right")
+    let visited = List[Int]()
+    m.for_each(fn(key: String, value: Int) -> Unit: record(into: visited, value: value))
+    check(ok: visited.length() == 3, name: "for_each")
+
+test "set callbacks":
+    let s = [1, 2, 3].to_set()
+    check(ok: s.map(fn(value: Int) -> Int: value % 2).length() == 2, name: "set map")
+    check(ok: s.filter(fn(value: Int) -> Bool: value > 1).length() == 2, name: "set filter")
+    check(ok: s.fold(initial: 0, step: fn(accumulator: Int, value: Int) -> Int: accumulator + value) == 6, name: "set fold")
+    check(ok: s.fold_right(initial: 0, step: fn(accumulator: Int, value: Int) -> Int: accumulator * 10 + value) == 321, name: "set fold_right")
+
+test "sort with a comparator":
+    let words = ["ccc", "a", "bb"]
+    let sorted = words.sorted(compare: byLength)
+    check(ok: sorted.at(index: 0) == some("a") and sorted.at(index: 2) == some("ccc"), name: "sorted")
+    let lambda = words.sorted(compare: fn(left: String, right: String) -> Int: right.length() - left.length())
+    check(ok: lambda.at(index: 0) == some("ccc"), name: "sorted lambda")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "PASS") {
+		t.Fatalf("map/set/sort callbacks changed: %v\n%s", err, output)
+	}
+}

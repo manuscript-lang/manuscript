@@ -35,9 +35,10 @@ func ListSorted(ctx *Execution, receiver, compare Value) *List {
 	// inside Less regressed the earlier storage-only experiment by 2.26x.
 	// This temporary array never becomes a persistent List mirror.
 	out := list.Boxed()
+	call := newCallback2(compare, "left", "right")
 	sort.SliceStable(out, func(i, j int) bool {
 		CheckCancelled(ctx)
-		return Invoke(ctx, compare, []Argument{{"left", out[i]}, {"right", out[j]}}).(int64) < 0
+		return call.call2(ctx, compare, out[i], out[j]).(int64) < 0
 	})
 	return NewList(list.Type, out)
 }
@@ -75,6 +76,7 @@ type listSorter struct {
 	list    List
 	compare Value
 	natural uint8
+	call    callback
 }
 
 func (s *listSorter) Len() int      { return s.list.Len() }
@@ -100,7 +102,10 @@ func (s *listSorter) Less(i, j int) bool {
 	if s.list.kind == listFloat && fn.FloatCompare != nil && ordinaryCompareLabels(fn) {
 		return fn.FloatCompare(s.ctx, s.list.floats[i], s.list.floats[j]) < 0
 	}
-	return Invoke(s.ctx, fn, []Argument{{"left", s.list.Get(i)}, {"right", s.list.Get(j)}}).(int64) < 0
+	if s.call.first == "" {
+		s.call = newCallback2(fn, "left", "right")
+	}
+	return s.call.call2(s.ctx, fn, s.list.Get(i), s.list.Get(j)).(int64) < 0
 }
 func naturalFloatLess(left, right float64) bool {
 	return left < right || math.IsNaN(left) && !math.IsNaN(right)

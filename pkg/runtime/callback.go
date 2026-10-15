@@ -10,6 +10,7 @@ type callback struct {
 	args   []Value
 	first  string
 	second string
+	third  string
 }
 
 func newCallback(operation Value, first string) callback {
@@ -23,6 +24,14 @@ func newCallback(operation Value, first string) callback {
 func newCallback2(operation Value, first, second string) callback {
 	c := callback{first: first, second: second}
 	if function, ok := operation.(Function); ok && function.BorrowedArguments && len(function.Labels) == 2 && function.Labels[0] == first && function.Labels[1] == second {
+		c.body = function.Body
+	}
+	return c
+}
+
+func newCallback3(operation Value, first, second, third string) callback {
+	c := callback{first: first, second: second, third: third}
+	if function, ok := operation.(Function); ok && function.BorrowedArguments && len(function.Labels) == 3 && function.Labels[0] == first && function.Labels[1] == second && function.Labels[2] == third {
 		c.body = function.Body
 	}
 	return c
@@ -49,6 +58,18 @@ func (c *callback) call2(ctx *Execution, operation, first, second Value) Value {
 		c.args = make([]Value, 2)
 	}
 	c.args[0], c.args[1] = first, second
+	CheckCancelled(ctx)
+	return c.body(ctx, c.args)
+}
+
+func (c *callback) call3(ctx *Execution, operation, first, second, third Value) Value {
+	if c.body == nil {
+		return Invoke(ctx, operation, []Argument{{c.first, first}, {c.second, second}, {c.third, third}})
+	}
+	if c.args == nil {
+		c.args = make([]Value, 3)
+	}
+	c.args[0], c.args[1], c.args[2] = first, second, third
 	CheckCancelled(ctx)
 	return c.body(ctx, c.args)
 }
