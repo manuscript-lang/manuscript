@@ -14,21 +14,29 @@ import (
 // Agents read these commands' output directly, so each prints only what is needed
 // to act: ranked matches, one symbol, or one page of reference.
 
-const searchHelp = `Usage: ms search <words>... [--limit n] [--json]
+const stdHelp = `Usage: ms std [search <words>... | <path>] [--limit n] [--json]
 
-Fuzzy-search the bundled standard library for functions, types, and members.
-Typos, partial words, synonyms, and any word order work. Each match prints its
-module, name, signature, and a one-line description. Run it before calling a
-standard API you have not seen.
+Look up the bundled standard library. Output is short by design.
+  ms std                  Modules, each with a few of its names
+  ms std <module>         One module: a line per declaration, with its import
+  ms std <module>.<Name>  A type or function, with its members as signatures
+  ms std <module>.<Name>.<member>
+                          One member's full signature and doc
+  ms std search <words>   Fuzzy-search every function, type, and member
+
+Paths accept json, @std/json.ms, json.parse, and prelude.List.sorted. Search
+tolerates typos, partial words, synonyms, and any word order; run it before
+calling a standard API you have not seen.
 
 Options:
-  --limit <n>  Maximum matches (default 5, at most 15)
-  --json       Emit versioned JSON matches
+  --limit <n>  Maximum search matches (default 5, at most 15)
+  --json       Emit versioned JSON search matches
   -h, --help   Show this help
 
 Examples:
-  ms search read file lines
-  ms search jsn parse --limit 3
+  ms std search read file lines
+  ms std prelude.List.sorted
+  ms std json
 `
 
 const symbolHelp = `Usage: ms symbol <file.ms>:<line>:<column> [--json]
@@ -45,19 +53,16 @@ Examples:
   ms symbol src/main.ms:5:18
 `
 
-const guideHelp = `Usage: ms guide [stdlib [module]]
+const guideHelp = `Usage: ms guide
 
-Print reference Markdown for writing Manuscript.
-  ms guide                 The language cheat sheet
-  ms guide stdlib          Every standard module and its exported names
-  ms guide stdlib <module> One module's declarations and docs (json or @std/json.ms)
+Print the language cheat sheet: syntax, types, errors, and a checked example
+program. Standard-library lookups are in ms std.
 
 Options:
   -h, --help  Show this help
 
 Examples:
   ms guide
-  ms guide stdlib json
 `
 
 const (
@@ -65,10 +70,36 @@ const (
 	maxSearchLimit     = 15
 )
 
-func runSearch(args []string, _ string) int {
+func runStd(args []string, _ string) int {
+	if len(args) > 1 && args[1] == "search" {
+		return runStdSearch(args[2:])
+	}
+	var paths []string
+	for _, arg := range args[1:] {
+		if strings.HasPrefix(arg, "-") {
+			return usageError("unknown option %s for ms std; run 'ms help std' for its options", arg)
+		}
+		paths = append(paths, arg)
+	}
+	switch len(paths) {
+	case 0:
+		fmt.Print(guide.Index())
+	case 1:
+		page, err := guide.Page(paths[0])
+		if err != nil {
+			return usageError("ms std: %v", err)
+		}
+		fmt.Print(page)
+	default:
+		return usageError("ms std takes one path, got %d; to search use 'ms std search <words>'", len(paths))
+	}
+	return 0
+}
+
+func runStdSearch(args []string) int {
 	var words []string
 	limit, structured := defaultSearchLimit, false
-	for i := 1; i < len(args); i++ {
+	for i := 0; i < len(args); i++ {
 		flag, value, inline := splitValueOption(args[i], "--limit")
 		switch flag {
 		case "--json":
@@ -77,25 +108,25 @@ func runSearch(args []string, _ string) int {
 			text, ok := requiredValue(args, &i, value, inline)
 			n, err := strconv.Atoi(text)
 			if !ok || err != nil || n < 1 {
-				return usageError("ms search: --limit needs a positive number, e.g. ms search read file --limit 3")
+				return usageError("ms std search: --limit needs a positive number, e.g. ms std search read file --limit 3")
 			}
 			limit = min(n, maxSearchLimit)
 		default:
 			if strings.HasPrefix(flag, "-") {
-				return usageError("unknown option %s for ms search; run 'ms help search' for its options", flag)
+				return usageError("unknown option %s for ms std search; run 'ms help std' for its options", flag)
 			}
 			words = append(words, flag)
 		}
 	}
 	if len(words) == 0 {
-		return usageError("ms search: pass the words to look for, e.g. ms search read file lines")
+		return usageError("ms std search: pass the words to look for, e.g. ms std search read file lines")
 	}
 	query := strings.Join(words, " ")
 	matches := guide.Search(query, limit)
 	if structured {
 		type match struct {
+			Path      string `json:"path"`
 			Module    string `json:"module"`
-			Name      string `json:"name"`
 			Kind      string `json:"kind"`
 			Signature string `json:"signature"`
 			Doc       string `json:"doc,omitempty"`
@@ -106,7 +137,7 @@ func runSearch(args []string, _ string) int {
 			Matches []match `json:"matches"`
 		}{1, query, []match{}}
 		for _, m := range matches {
-			out.Matches = append(out.Matches, match{m.Module, m.Name, m.Kind, m.Signature, m.Doc})
+			out.Matches = append(out.Matches, match{m.Path, m.Module, m.Kind, m.Signature, m.Doc})
 		}
 		return emitJSON(out, 0)
 	}
@@ -231,22 +262,9 @@ func displayPath(path string) string {
 }
 
 func runGuide(args []string, _ string) int {
-	rest := args[1:]
-	switch {
-	case len(rest) == 0:
-		fmt.Print(guide.Cheatsheet())
-	case rest[0] != "stdlib":
-		return usageError("ms guide: unknown topic %q; use 'ms guide', 'ms guide stdlib', or 'ms guide stdlib <module>'", rest[0])
-	case len(rest) == 1:
-		fmt.Print(guide.StdlibIndex())
-	case len(rest) == 2:
-		doc, ok := guide.Module(rest[1])
-		if !ok {
-			return usageError("ms guide: no standard module %q; modules: %s", rest[1], strings.Join(guide.ModuleNames(), ", "))
-		}
-		fmt.Print(doc)
-	default:
-		return usageError("ms guide stdlib takes at most one module, got %d", len(rest)-1)
+	if len(args) > 1 {
+		return usageError("ms guide takes no arguments; for the standard library use 'ms std'")
 	}
+	fmt.Print(guide.Cheatsheet())
 	return 0
 }
