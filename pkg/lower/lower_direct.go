@@ -42,6 +42,10 @@ func (g *generator) planDirect(functions []*checker.Symbol, options Options) {
 		return
 	}
 	for _, s := range functions {
+		if direct := g.planDirectConstructor(s); direct != nil {
+			g.direct[s] = direct
+			continue
+		}
 		d := s.Decl
 		if s.Native != "" || len(s.Variables) != 0 || d == nil || d.Kind != syntax.KindFn {
 			continue
@@ -69,6 +73,61 @@ func (g *generator) planDirect(functions []*checker.Symbol, options Options) {
 		}
 	}
 	g.markCounted()
+	// Defaults can call back into the program, and markCounted sees no body here.
+	for s, direct := range g.direct {
+		if s.Decl.Kind == syntax.KindRecord {
+			direct.counted = true
+		}
+	}
+}
+
+// planDirectConstructor plans a nongeneric source record whose fields have
+// defaults as a direct function over its fields, so constructor calls do not
+// go through Invoke. Defaulted fields arrive nil when omitted.
+func (g *generator) planDirectConstructor(s *checker.Symbol) *directFunction {
+	d := s.Decl
+	if s.Native != "" || len(s.Variables) != 0 || d == nil || !recordDefaults(d) || s.Type == nil {
+		return nil
+	}
+	st := g.structFor(s.Type)
+	bindings := g.program.ParameterBindings(d)
+	signature := checker.ConstructorSignature(s.Type)
+	if st == nil || len(bindings) != len(d.Fields) || len(signature.Params) != len(d.Fields) || len(st.fields) != len(d.Fields) {
+		return nil
+	}
+	direct := &directFunction{name: "call_" + s.ID}
+	for i, f := range d.Fields {
+		direct.defaulted = append(direct.defaulted, f.Default != nil)
+		if f.Default != nil {
+			direct.params = append(direct.params, "")
+			continue
+		}
+		typ := scalarBinding(bindings[i])
+		if typ != "" && typ != st.fields[i].scalar {
+			return nil
+		}
+		direct.params = append(direct.params, typ)
+	}
+	return direct
+}
+
+// constructorStruct returns the record value built from the constructor's
+// parameters, in field declaration order.
+func (g *generator) constructorStruct(s *checker.Symbol, direct *directFunction) ast.Stmt {
+	st := g.structFor(s.Type)
+	bindings := g.program.ParameterBindings(s.Decl)
+	var elements []ast.Expr
+	for i, f := range st.fields {
+		var value ast.Expr = ident(bindings[i].ID)
+		switch {
+		case f.scalar != "" && direct.params[i] == "":
+			value = unbox(value, f.scalar)
+		case f.scalar == "" && direct.params[i] != "":
+			value = call(runtimeName("Value"), value)
+		}
+		elements = append(elements, keyed(fieldName(f.name), value))
+	}
+	return returned(call(runtimeName("Value"), address(composite(ident(st.name), elements...))))
 }
 
 // planDirectMethod decides whether a source method of a nongeneric record or
@@ -141,11 +200,22 @@ func (g *generator) directMethodDeclaration(m *checker.Method, direct *directFun
 func (g *generator) directDeclaration(s *checker.Symbol) (*ast.FuncDecl, ast.Expr) {
 	d := s.Decl
 	direct := g.direct[s]
-	literal := g.directFunctionLiteral(direct, d.Name, d.Params, d.Result, d.Body, g.program.ParameterBindings(d), nil, s.Type).(*ast.FuncLit)
+	signature := s.Type
+	resultPos := ""
+	var literal *ast.FuncLit
+	if d.Kind == syntax.KindRecord {
+		signature = checker.ConstructorSignature(s.Type)
+		resultPos = d.Pos.String()
+		_, _, _, _, lit := g.functionPieces(direct, d.Name, d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.ParameterBindings(d), nil, signature, g.constructorStruct(s, direct))
+		literal = lit.(*ast.FuncLit)
+	} else {
+		resultPos = d.Result.Pos.String()
+		literal = g.directFunctionLiteral(direct, d.Name, d.Params, d.Result, d.Body, g.program.ParameterBindings(d), nil, s.Type).(*ast.FuncLit)
+	}
 	decl := &ast.FuncDecl{Name: ident(direct.name), Type: literal.Type, Body: literal.Body}
 	var forwarded []ast.Expr
 	var labels []string
-	for i, p := range s.Type.Params {
+	for i, p := range signature.Params {
 		labels = append(labels, p.Name)
 		var arg ast.Expr = index(ident("args"), intLiteral(i))
 		if direct.params[i] != "" {
@@ -155,11 +225,11 @@ func (g *generator) directDeclaration(s *checker.Symbol) (*ast.FuncDecl, ast.Exp
 	}
 	var forwardCall ast.Expr = call(ident(direct.name), append([]ast.Expr{ident("ctx")}, forwarded...)...)
 	if direct.shape != nil {
-		forwardCall = call(selector(forwardCall, "Box"), g.key(s.Type.Result))
+		forwardCall = call(selector(forwardCall, "Box"), g.key(signature.Result))
 	}
 	forward := closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"),
 		returned(forwardCall))
-	wrapper := runtimeCall("NewDirectFunction", stringSlice(labels), g.key(s.Type.Result), textLiteral(d.Result.Pos.String()), forward)
+	wrapper := runtimeCall("NewDirectFunction", stringSlice(labels), g.key(signature.Result), textLiteral(resultPos), forward)
 	return decl, concreteFunction(wrapper)
 }
 
@@ -250,15 +320,26 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 	if direct := g.localClosureTarget(e, info); direct != nil {
 		return direct
 	}
-	if info.Symbol == nil || info.Constructor != nil || info.ErrorSource != nil {
+	var symbol *checker.Symbol
+	var params []checker.Param
+	switch {
+	case info.Constructor != nil && info.Case == "" && info.Native != "view" && info.Constructor.Def != nil:
+		symbol = info.Constructor.Def.Symbol
+		if symbol == nil || g.direct[symbol] == nil || symbol.Decl.Kind != syntax.KindRecord {
+			return nil
+		}
+		params = checker.ConstructorSignature(symbol.Type).Params
+	case info.Symbol != nil && info.Constructor == nil && info.ErrorSource == nil:
+		symbol = info.Symbol
+		params = symbol.Type.Params
+	default:
 		return nil
 	}
-	direct := g.direct[info.Symbol]
+	direct := g.direct[symbol]
 	if direct == nil {
 		return nil
 	}
 	args := info.Arguments
-	params := info.Symbol.Type.Params
 	if len(args) > len(params) {
 		return nil
 	}
