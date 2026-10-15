@@ -2,7 +2,6 @@ package rt
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"os"
@@ -172,28 +171,6 @@ func Time_WallClock(ctx *Execution) WallClock { return hostRoots(ctx).WallClock 
 
 // System_System is the system.system root accessor.
 func System_System(ctx *Execution) System { return hostRoots(ctx).System }
-
-// osEntropy is the operating system's secure random source. The random module
-// reaches it through HostRoots.Entropy.
-type osEntropy struct{}
-
-var _ Entropy = osEntropy{}
-
-func (osEntropy) Bytes(ctx *Execution, count int64) Result[*Bytes, RandomError] {
-	if count < 0 || count > 16*1024*1024 {
-		return Fail[*Bytes, RandomError](RandomError_InvalidInput{})
-	}
-	b := make([]byte, int(count))
-	for offset := 0; offset < len(b); {
-		CheckCancelled(ctx)
-		end := min(offset+65536, len(b))
-		if _, err := rand.Read(b[offset:end]); err != nil {
-			return Fail[*Bytes, RandomError](RandomError_Failed{Message: err.Error()})
-		}
-		offset = end
-	}
-	return Ok[*Bytes, RandomError](NewBytes(b))
-}
 
 // osWallClock reads the host's calendar time.
 type osWallClock struct{}

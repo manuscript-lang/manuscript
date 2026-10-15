@@ -655,7 +655,7 @@ func TestFileTransport(t *testing.T) {
 	}
 }
 
-func TestErrorMessages(t *testing.T) {
+func TestHostErrorMessages(t *testing.T) {
 	ctx := testCtx(t)
 	cases := []struct{ got, want string }{
 		{Errors_Message_IoError(ctx, IoError_Failed{Message: "secret path /x"}), "secret path /x"},

@@ -32,9 +32,8 @@ func constantsMap(values map[string]int64) *Map[string, int64] {
 	return result
 }
 
-// bigIntOf builds the BigInt a FileInfo.Exact entry holds. The bigint module
-// replaces it with its constructor.
-var bigIntOf = func(*big.Int) *BigInt { return &BigInt{} }
+// bigIntOf builds the BigInt a FileInfo.Exact entry holds.
+func bigIntOf(n *big.Int) *BigInt { return &BigInt{n} }
 
 type osErrorKind int
 

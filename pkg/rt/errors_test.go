@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+// hostErrorTypes are the error types whose messages errors_messages.go holds;
+// other modules define their own.
+var hostErrorTypes = map[string]bool{"IoError": true, "FileSystemError": true, "SystemError": true, "ProcessError": true, "CommandError": true, "LogError": true, "TimeError": true}
+
 var errorCaseDeclaration = regexp.MustCompile(`(?m)^type ([A-Za-z]+Error)_([A-Za-z]+) struct`)
 
 // TestErrorMessageCoverage keeps the generated message and category tables in
@@ -21,7 +25,7 @@ func TestErrorMessageCoverage(t *testing.T) {
 	for _, m := range errorCaseDeclaration.FindAllStringSubmatch(string(types), -1) {
 		typ, tag := m[1], m[2]
 		name := typ + "_" + tag
-		if typ != "TextError" && !strings.Contains(string(messages), "case "+name+":") {
+		if hostErrorTypes[typ] && !strings.Contains(string(messages), "case "+name+":") {
 			t.Errorf("errors_messages.go lacks %s", name)
 		}
 		if shared[tag] && !strings.Contains(string(categories), "func ("+name+") errorCategory()") {
