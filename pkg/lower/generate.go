@@ -43,7 +43,6 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		&ast.GenDecl{Tok: token.IMPORT, Specs: []ast.Spec{imports[0], imports[1]}},
 	}}
 	g.planStructs()
-	file.Decls = append(file.Decls, g.structDeclarations()...)
 	var functions []*checker.Symbol
 	for _, module := range program.Modules {
 		for _, d := range module.Declarations {
@@ -138,10 +137,6 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		initialize = append(initialize, evaluated(runtimeCall("Register", composite(runtimeName("Implementation"), fields...))))
 	}
 	flushNatives()
-	for _, st := range g.structOrder {
-		initialize = append(initialize, evaluated(runtimeCall("RegisterStruct", textLiteral(st.key), closure(nil, runtimeName("Struct"), returned(address(composite(ident(st.name))))))))
-	}
-	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("initialize"), Type: functionType(nil, nil), Body: block(initialize...)})
 	main := []ast.Stmt{evaluated(call(ident("initialize")))}
 	if options.Tests {
 		var tests []ast.Expr
@@ -166,6 +161,13 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		main = append(main, discard(selector(ident("os"), "Args")))
 	}
 	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("main"), Type: functionType(nil, nil), Body: block(main...)})
+	// Generic record instantiations are discovered while bodies and tests are
+	// lowered, so their declarations and registrations come last.
+	for _, st := range g.structOrder {
+		initialize = append(initialize, evaluated(runtimeCall("RegisterStruct", textLiteral(st.key), closure(nil, runtimeName("Struct"), returned(address(composite(ident(st.name))))))))
+	}
+	file.Decls = append(file.Decls, g.structDeclarations()...)
+	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("initialize"), Type: functionType(nil, nil), Body: block(initialize...)})
 	for _, name := range g.hoisted {
 		file.Decls = append(file.Decls, variable(name, runtimeName("Lazy"), nil))
 	}
