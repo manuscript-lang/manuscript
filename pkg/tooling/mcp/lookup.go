@@ -41,11 +41,17 @@ func standardIndex() []entry {
 	return index
 }
 
+// firstBlock keeps the leading paragraph and at most 8 lines, so a native type
+// with dozens of members cannot flood a result.
 func firstBlock(s string) string {
 	if before, _, found := strings.Cut(s, "\n\n"); found {
-		return before
+		s = before
 	}
-	return s
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	if len(lines) > 8 {
+		lines = append(lines[:8], "    ...")
+	}
+	return strings.Join(lines, "\n")
 }
 
 func newEntry(path, short, name, kind, signature, doc string) entry {
@@ -98,22 +104,27 @@ func Lookup(query string, limit int) []Match {
 	if limit <= 0 {
 		limit = 8
 	}
+	// Prefer entries matching every word; when none do, fall back to the
+	// entries matching the most words so "read stdin lines" still finds help.
 	var matches []Match
+	best := 0
 	for _, e := range standardIndex() {
-		total := 0
+		total, matched := 0, 0
 		for _, token := range tokens {
-			score := scoreToken(token, e)
-			if score == 0 {
-				total = 0
-				break
+			if score := scoreToken(token, e); score > 0 {
+				total += score
+				matched++
 			}
-			total += score
 		}
-		if total > 0 {
-			// Shorter names read as more central, so break ties toward them.
-			total = total*10 + nameCoverage(tokens, e) - min(len(e.name), 9)
-			matches = append(matches, Match{e.module, e.name, e.kind, e.signature, firstSentence(e.doc), total})
+		if matched == 0 || matched < best {
+			continue
 		}
+		if matched > best {
+			best, matches = matched, nil
+		}
+		// Shorter names read as more central, so break ties toward them.
+		total = total*10 + nameCoverage(tokens, e) - min(len(e.name), 9)
+		matches = append(matches, Match{e.module, e.name, e.kind, e.signature, firstSentence(e.doc), total})
 	}
 	sort.SliceStable(matches, func(i, j int) bool {
 		if matches[i].Score != matches[j].Score {

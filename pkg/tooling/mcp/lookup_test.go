@@ -60,6 +60,10 @@ func TestLookupRejectsNoiseAndEmptyQueries(t *testing.T) {
 	if got := Lookup("   ", 5); got != nil {
 		t.Errorf("blank query matched %v", got)
 	}
+	partial := Lookup("split zzqxjv", 3)
+	if len(partial) == 0 || partial[0].Name != "String.split" {
+		t.Errorf("partial query = %v", summaries(partial))
+	}
 	if got := Lookup("zzqxjv", 5); len(got) != 0 {
 		t.Errorf("nonsense matched %v", summaries(got))
 	}
