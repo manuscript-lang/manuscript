@@ -44,6 +44,19 @@ type HostRoots struct {
 	arguments []string
 }
 
+func init() {
+	// RunMain and RunTests hand the program arguments to the host before main
+	// runs. A startup failure (non-UTF-8 arguments or environment) is reported
+	// by the first accessor that needs the roots.
+	hostArguments = func(ctx *Execution, args []string) {
+		if ctx.State.Host == nil {
+			ctx.State.Host = &HostRoots{}
+		}
+		ctx.State.Host.Initialize(args)
+	}
+	hostShutdown = func(ctx *Execution) { ctx.State.Host.Shutdown(ctx) }
+}
+
 // NewHostRoots returns uninitialized roots for a run with arguments.
 func NewHostRoots(arguments []string) *HostRoots { return &HostRoots{arguments: arguments} }
 
