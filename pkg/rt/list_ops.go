@@ -216,32 +216,38 @@ func List_Filter[T any](ctx *Execution, l *List[T], keep func(*Execution, T) boo
 
 // findIn returns the index of the first (or last) element pred accepts in the
 // header captured at entry.
-func findIn[T any](ctx *Execution, items []T, pred func(*Execution, T) bool, reverse bool) (int, bool) {
+func findIn[T any](ctx *Execution, items []T, pred func(*Execution, T) bool, reverse bool) (int, T, bool) {
 	tick := uint32(0)
 	CheckCancelled(ctx)
+	// The value passed to the predicate is the one returned: the predicate may
+	// mutate the list, so the cell is not read again.
 	if reverse {
 		for i := len(items) - 1; i >= 0; i-- {
 			Poll(ctx, &tick)
-			if pred(ctx, items[i]) {
-				return i, true
+			v := items[i]
+			if pred(ctx, v) {
+				return i, v, true
 			}
 		}
-		return 0, false
+		var zero T
+		return 0, zero, false
 	}
 	for i := range items {
 		Poll(ctx, &tick)
-		if pred(ctx, items[i]) {
-			return i, true
+		v := items[i]
+		if pred(ctx, v) {
+			return i, v, true
 		}
 	}
-	return 0, false
+	var zero T
+	return 0, zero, false
 }
 
 // List_Find returns the first element the predicate accepts.
 func List_Find[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) Option[T] {
 	items := l.Items
-	if i, ok := findIn(ctx, items, pred, false); ok {
-		return Some(items[i])
+	if _, v, ok := findIn(ctx, items, pred, false); ok {
+		return Some(v)
 	}
 	return Option[T]{}
 }
@@ -249,15 +255,15 @@ func List_Find[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool)
 // List_FindLast returns the last element the predicate accepts.
 func List_FindLast[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) Option[T] {
 	items := l.Items
-	if i, ok := findIn(ctx, items, pred, true); ok {
-		return Some(items[i])
+	if _, v, ok := findIn(ctx, items, pred, true); ok {
+		return Some(v)
 	}
 	return Option[T]{}
 }
 
 // List_FindIndex returns the first index the predicate accepts.
 func List_FindIndex[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) Option[int64] {
-	if i, ok := findIn(ctx, l.Items, pred, false); ok {
+	if i, _, ok := findIn(ctx, l.Items, pred, false); ok {
 		return Some(int64(i))
 	}
 	return Option[int64]{}
@@ -265,7 +271,7 @@ func List_FindIndex[T any](ctx *Execution, l *List[T], pred func(*Execution, T) 
 
 // List_FindLastIndex returns the last index the predicate accepts.
 func List_FindLastIndex[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) Option[int64] {
-	if i, ok := findIn(ctx, l.Items, pred, true); ok {
+	if i, _, ok := findIn(ctx, l.Items, pred, true); ok {
 		return Some(int64(i))
 	}
 	return Option[int64]{}
@@ -273,13 +279,13 @@ func List_FindLastIndex[T any](ctx *Execution, l *List[T], pred func(*Execution,
 
 // List_Some reports whether the predicate accepts any element.
 func List_Some[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) bool {
-	_, ok := findIn(ctx, l.Items, pred, false)
+	_, _, ok := findIn(ctx, l.Items, pred, false)
 	return ok
 }
 
 // List_Every reports whether the predicate accepts every element.
 func List_Every[T any](ctx *Execution, l *List[T], pred func(*Execution, T) bool) bool {
-	_, found := findIn(ctx, l.Items, func(ctx *Execution, v T) bool { return !pred(ctx, v) }, false)
+	_, _, found := findIn(ctx, l.Items, func(ctx *Execution, v T) bool { return !pred(ctx, v) }, false)
 	return !found
 }
 

@@ -221,7 +221,14 @@ func (g *gen) loopStatements(s *syntax.Statement) []ast.Stmt {
 	if s.Kind == syntax.KindWhile {
 		saved := g.fn.pre
 		g.fn.pre = nil
+		// The header belongs to the enclosing loop, not to this one, but its
+		// statements run inside this loop's Go for, so exits must be labeled.
+		loops := g.fn.loops
+		g.fn.loops = loops[:len(loops)-1]
+		g.fn.switches++
 		cond := g.valueAs(s.Value, boolType)
+		g.fn.switches--
+		g.fn.loops = loops
 		pre := g.fn.pre
 		g.fn.pre = saved
 		body := g.body(s.Body, nil)

@@ -391,7 +391,7 @@ func (g *gen) methodCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 	receiverType := g.info(member.Left).Type
 	m := g.resolveMethod(info.Method, receiverType, member.Text)
 	signature := g.sub(calleeInfo.Type)
-	c := callee{params: signature.Params, defaults: signature.Defaults, module: g.module, siteDefaults: m.Native != ""}
+	c := callee{params: signature.Params, defaults: signature.Defaults, module: g.module, siteDefaults: m.Native != "" && (m.Native != "contract" || isStdType(g.sub(receiverType)))}
 	if m.Decl != nil {
 		c.decls = m.Decl.Params
 		c.bindings = g.program.ParameterBindings(m.Decl)

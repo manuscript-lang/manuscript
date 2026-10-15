@@ -104,6 +104,12 @@ func (g *gen) view(from, contract *checker.Type) string {
 }
 
 func (g *gen) viewMethod(view string, from, contract *checker.Type, op checker.Operation) ast.Decl {
+	if isStdType(contract) {
+		// Runtime contracts take every argument; the caller fills defaults.
+		plain := *op.Type
+		plain.Defaults = nil
+		op.Type = &plain
+	}
 	m := g.resolveContractMethod(from, contract, op.Name)
 	params := []*ast.Field{field("ctx", pointerTo(rtName("Execution")))}
 	var args []ast.Expr
@@ -137,6 +143,14 @@ func (g *gen) resolveContractMethod(from, contract *checker.Type, name string) *
 	for _, m := range g.program.ResolveMethods(g.module, from, name) {
 		if m.Contract != nil && m.Contract.ID == contract.ID {
 			return m
+		}
+	}
+	// A standard type's own native operation can satisfy a runtime contract.
+	if isStdType(from) {
+		for _, m := range g.program.ResolveMethods(g.module, from, name) {
+			if m.Native != "" {
+				return m
+			}
 		}
 	}
 	g.fail("%s has no implementation of %s.%s", from, contract, name)

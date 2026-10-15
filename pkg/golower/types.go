@@ -212,6 +212,16 @@ func (g *gen) nameOf(t *checker.Type) string {
 		b.WriteString("_")
 		b.WriteString(g.nameOf(a))
 	}
+	if t.Kind == "function" {
+		for _, p := range t.Params {
+			b.WriteString("_")
+			b.WriteString(g.nameOf(p.Type))
+		}
+		if t.Result != nil {
+			b.WriteString("_to_")
+			b.WriteString(g.nameOf(t.Result))
+		}
+	}
 	return b.String()
 }
 

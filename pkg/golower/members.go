@@ -15,6 +15,10 @@ func (g *gen) methodFunction(m *checker.Method, receiver *checker.Type) *funcDec
 	if original == nil {
 		original = m
 	}
+	if original.Decl == nil {
+		g.fail("method %s of %s has no source declaration (native %q, contract %v)", m.ID, receiver, m.Native, m.Contract)
+		return &funcDecl{}
+	}
 	subst := map[string]*checker.Type{}
 	key := original.ID
 	if len(original.Variables) > 0 {

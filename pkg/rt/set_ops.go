@@ -60,8 +60,8 @@ func Set_FoldRight[T comparable, A any](ctx *Execution, s *Set[T], initial A, st
 // Set_Find returns the first element the predicate accepts.
 func Set_Find[T comparable](ctx *Execution, s *Set[T], pred func(*Execution, T) bool) Option[T] {
 	items := s.Snapshot()
-	if i, ok := findIn(ctx, items, pred, false); ok {
-		return Some(items[i])
+	if _, v, ok := findIn(ctx, items, pred, false); ok {
+		return Some(v)
 	}
 	return Option[T]{}
 }
@@ -69,21 +69,21 @@ func Set_Find[T comparable](ctx *Execution, s *Set[T], pred func(*Execution, T) 
 // Set_FindLast returns the last element the predicate accepts.
 func Set_FindLast[T comparable](ctx *Execution, s *Set[T], pred func(*Execution, T) bool) Option[T] {
 	items := s.Snapshot()
-	if i, ok := findIn(ctx, items, pred, true); ok {
-		return Some(items[i])
+	if _, v, ok := findIn(ctx, items, pred, true); ok {
+		return Some(v)
 	}
 	return Option[T]{}
 }
 
 // Set_Some reports whether the predicate accepts any element.
 func Set_Some[T comparable](ctx *Execution, s *Set[T], pred func(*Execution, T) bool) bool {
-	_, ok := findIn(ctx, s.Snapshot(), pred, false)
+	_, _, ok := findIn(ctx, s.Snapshot(), pred, false)
 	return ok
 }
 
 // Set_Every reports whether the predicate accepts every element.
 func Set_Every[T comparable](ctx *Execution, s *Set[T], pred func(*Execution, T) bool) bool {
-	_, found := findIn(ctx, s.Snapshot(), func(ctx *Execution, v T) bool { return !pred(ctx, v) }, false)
+	_, _, found := findIn(ctx, s.Snapshot(), func(ctx *Execution, v T) bool { return !pred(ctx, v) }, false)
 	return !found
 }
 
