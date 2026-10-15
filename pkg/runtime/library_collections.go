@@ -70,54 +70,60 @@ func init() {
 	}
 	add("map_transform", "Map[K][W]", []LibraryParam{p("K", "Hashable"), p("V", ""), p("W", "")}, []LibraryParam{p("values", "Map[K][V]"), p("transform", "fn(key:K;value:V)->W")}, func(ctx *Execution, result string, args []Value) Value {
 		out := &Map{Type: result}
+		call := newCallback2(args[1], "key", "value")
 		for _, entry := range args[0].(*Map).Entries {
 			CheckCancelled(ctx)
-			value := Invoke(ctx, args[1], []Argument{{"key", entry.Key}, {"value", entry.Value}})
+			value := call.call2(ctx, args[1], entry.Key, entry.Value)
 			out.Entries = append(out.Entries, Entry{Key: entry.Key, Value: value})
 		}
 		return out
 	})
 	add("map_transform_keys", "Map[W][V]", []LibraryParam{p("K", "Hashable"), p("V", ""), p("W", "Hashable")}, []LibraryParam{p("values", "Map[K][V]"), p("transform", "fn(key:K;value:V)->W")}, func(ctx *Execution, result string, args []Value) Value {
 		out := &Map{Type: result}
+		call := newCallback2(args[1], "key", "value")
 		for _, entry := range args[0].(*Map).Entries {
 			CheckCancelled(ctx)
-			key := Invoke(ctx, args[1], []Argument{{"key", entry.Key}, {"value", entry.Value}})
+			key := call.call2(ctx, args[1], entry.Key, entry.Value)
 			out.put(ctx, key, entry.Value)
 		}
 		return out
 	})
 	add("map_fold_right", "A", []LibraryParam{p("K", "Hashable"), p("V", ""), p("A", "")}, []LibraryParam{p("values", "Map[K][V]"), p("initial", "A"), p("step", "fn(accumulator:A;key:K;value:V)->A")}, func(ctx *Execution, _ string, args []Value) Value {
 		accumulator := args[1]
+		call := newCallback3(args[2], "accumulator", "key", "value")
 		entries := args[0].(*Map).Entries
 		for i := len(entries) - 1; i >= 0; i-- {
 			CheckCancelled(ctx)
 			entry := entries[i]
-			accumulator = Invoke(ctx, args[2], []Argument{{"accumulator", accumulator}, {"key", entry.Key}, {"value", entry.Value}})
+			accumulator = call.call3(ctx, args[2], accumulator, entry.Key, entry.Value)
 		}
 		return accumulator
 	})
 	add("set_fold_right", "A", []LibraryParam{p("T", "Hashable"), p("A", "")}, []LibraryParam{p("values", "Set[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, args []Value) Value {
 		accumulator := args[1]
+		call := newCallback2(args[2], "accumulator", "value")
 		items := args[0].(*Set).Items
 		for i := len(items) - 1; i >= 0; i-- {
 			CheckCancelled(ctx)
-			accumulator = Invoke(ctx, args[2], []Argument{{"accumulator", accumulator}, {"value", items[i]}})
+			accumulator = call.call2(ctx, args[2], accumulator, items[i])
 		}
 		return accumulator
 	})
 	add("map_fold", "A", []LibraryParam{p("K", "Hashable"), p("V", ""), p("A", "")}, []LibraryParam{p("values", "Map[K][V]"), p("initial", "A"), p("step", "fn(accumulator:A;key:K;value:V)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		accumulator := a[1]
+		call := newCallback3(a[2], "accumulator", "key", "value")
 		for _, entry := range a[0].(*Map).Entries {
 			CheckCancelled(ctx)
-			accumulator = Invoke(ctx, a[2], []Argument{{"accumulator", accumulator}, {"key", entry.Key}, {"value", entry.Value}})
+			accumulator = call.call3(ctx, a[2], accumulator, entry.Key, entry.Value)
 		}
 		return accumulator
 	})
 	add("set_fold", "A", []LibraryParam{p("T", "Hashable"), p("A", "")}, []LibraryParam{p("values", "Set[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		accumulator := a[1]
+		call := newCallback2(a[2], "accumulator", "value")
 		for _, value := range a[0].(*Set).Items {
 			CheckCancelled(ctx)
-			accumulator = Invoke(ctx, a[2], []Argument{{"accumulator", accumulator}, {"value", value}})
+			accumulator = call.call2(ctx, a[2], accumulator, value)
 		}
 		return accumulator
 	})
@@ -157,9 +163,10 @@ func init() {
 	})
 	add("map_filter", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("predicate", "fn(key:K;value:V)->Bool")}, func(ctx *Execution, result string, a []Value) Value {
 		out := &Map{Type: result}
+		call := newCallback2(a[1], "key", "value")
 		for _, entry := range a[0].(*Map).Entries {
 			CheckCancelled(ctx)
-			if Invoke(ctx, a[1], []Argument{{"key", entry.Key}, {"value", entry.Value}}).(bool) {
+			if call.call2(ctx, a[1], entry.Key, entry.Value).(bool) {
 				out.Entries = append(out.Entries, entry)
 			}
 		}
@@ -170,9 +177,10 @@ func init() {
 	})
 	add("set_filter", "Set[T]", hash, []LibraryParam{p("values", "Set[T]"), p("predicate", "fn(value:T)->Bool")}, func(ctx *Execution, result string, a []Value) Value {
 		out := &Set{Type: result}
+		call := newCallback(a[1], "value")
 		for _, value := range a[0].(*Set).Items {
 			CheckCancelled(ctx)
-			if Invoke(ctx, a[1], []Argument{{"value", value}}).(bool) {
+			if call.call1(ctx, a[1], value).(bool) {
 				out.Items = append(out.Items, value)
 			}
 		}
@@ -180,9 +188,10 @@ func init() {
 	})
 	add("set_map", "Set[U]", []LibraryParam{p("T", "Hashable"), p("U", "Hashable")}, []LibraryParam{p("values", "Set[T]"), p("transform", "fn(value:T)->U")}, func(ctx *Execution, result string, a []Value) Value {
 		out := &Set{Type: result}
+		call := newCallback(a[1], "value")
 		for _, value := range a[0].(*Set).Items {
 			CheckCancelled(ctx)
-			out.add(ctx, Invoke(ctx, a[1], []Argument{{"value", value}}))
+			out.add(ctx, call.call1(ctx, a[1], value))
 		}
 		return out
 	})
@@ -576,9 +585,10 @@ func init() {
 		return out
 	})
 	add("map_for_each", "Unit", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("operation", "fn(key:K;value:V)->Unit")}, func(ctx *Execution, _ string, a []Value) Value {
+		call := newCallback2(a[1], "key", "value")
 		for _, e := range a[0].(*Map).Entries {
 			CheckCancelled(ctx)
-			Invoke(ctx, a[1], []Argument{{"key", e.Key}, {"value", e.Value}})
+			call.call2(ctx, a[1], e.Key, e.Value)
 		}
 		return Unit{}
 	})
@@ -597,9 +607,10 @@ func init() {
 		return NewList(r, out)
 	})
 	add("set_for_each", "Unit", hash, []LibraryParam{p("values", "Set[T]"), p("operation", "fn(value:T)->Unit")}, func(ctx *Execution, _ string, a []Value) Value {
+		call := newCallback(a[1], "value")
 		for _, v := range a[0].(*Set).Items {
 			CheckCancelled(ctx)
-			Invoke(ctx, a[1], []Argument{{"value", v}})
+			call.call1(ctx, a[1], v)
 		}
 		return Unit{}
 	})
