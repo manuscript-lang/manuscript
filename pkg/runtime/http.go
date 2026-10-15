@@ -1,340 +1,258 @@
-//go:build !ms_lean
-
 package msruntime
 
 import (
-	"context"
-	"errors"
-	"io"
-	"net"
 	"net/http"
+	"net/url"
 	"path"
+	"sort"
+	"strconv"
 	"strings"
-	"sync"
-	"time"
 	"unicode/utf8"
 )
 
-type network struct {
-	mu        sync.Mutex
-	policy    *networkPolicy
-	resolver  *net.Resolver
-	parent    *network
-	released  chan struct{}
-	servers   []*httpService
-	resources []Value
-	closed    bool
-	calls     map[*libraryNetworkCall]bool
-	active    sync.WaitGroup
+// HttpHeaders is an ordered multimap of header names to byte values. Names
+// compare with ASCII case folding and keep the spelling of their first use.
+// Each name's value list is shared membership: reading headers does not copy
+// it.
+type HttpHeaders struct {
+	entries []headerEntry
+	index   map[string]*List[*Bytes]
 }
 
-func (n *network) Operation(name string) Function {
-	if fn, ok := n.extendedOperation(name); ok {
-		return fn
-	}
-	if fn, ok := n.httpOperation(name); ok {
-		return fn
-	}
-	if name == "connect" || name == "connect_tls" || name == "listen" || name == "bind_datagram" {
-		return libraryNetworkAcquire(n, name)
-	}
-	if name == "request" {
-		return libraryMethod("Network", name, func(ctx *Execution, r string, a []Value) Value { return libraryNetworkRequest(n, ctx, r, a) })
-	}
-	if name == "lookup" {
-		return libraryMethod("Network", name, func(ctx *Execution, r string, a []Value) Value { return libraryNetworkLookup(n, ctx, r, a) })
-	}
-	if name == "close" {
-		return NewFunction(nil, "Unit", func(ctx *Execution, _ []Value) Value {
-			for service := range ctx.HostServices {
-				if service.owner == n {
-					Panic("network cannot close from its own request")
-				}
-			}
-			n.mu.Lock()
-			if n.closed {
-				done := n.released
-				n.mu.Unlock()
-				if done != nil {
-					<-done
-				}
-				return Unit{}
-			}
-			n.closed = true
-			n.released = make(chan struct{})
-			defer close(n.released)
-			if n.parent != nil {
-				defer n.parent.forgetResource(n)
-			}
-			servers := append([]*httpService{}, n.servers...)
-			resources := append([]Value{}, n.resources...)
-			for call := range n.calls {
-				call.cancel()
-			}
-			n.mu.Unlock()
-			stack := NewCleanupStack()
-			defer n.active.Wait()
-			defer stack.Unwind()
-			for _, resource := range resources {
-				stack.Push(ctx, resource)
-			}
-			for _, server := range servers {
-				stack.Push(ctx, server)
-			}
-			return Unit{}
-		})
-	}
-	result := "@std/Result[@std/HttpServer][@std/IoError]"
-	return NewAcquisition([]string{"address", "handler", "max_requests", "max_body_bytes", "max_response_bytes", "timeout", "grace"}, result, func(ctx *Execution, args []Value) Value {
-		params := []LibraryParam{{"address", "String"}, {"handler", ""}, {"max_requests", "Optional[Int]"}, {"max_body_bytes", "Optional[Int]"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}, {"grace", "Optional[Duration]"}}
-		normalized, valid := nativeOptions("serve", params, args)
-		if !valid {
-			return ioError(result, "InvalidInput", "")
-		}
-		args = normalized
-		limit, bodyLimit, responseLimit := args[2].(int64), args[3].(int64), args[4].(int64)
-		timeout, grace := args[5].(Duration), args[6].(Duration)
-		if limit <= 0 || limit > int64(^uint(0)>>1) || bodyLimit < 0 || responseLimit < 0 || timeout < nativeNoTimeout || grace < nativeNoTimeout {
-			return ioError(result, "InvalidInput", "")
-		}
-		call, finish, admitted := n.beginCall(ctx.Context)
-		if !admitted {
-			return ioError(result, "Closed", "")
-		}
-		defer finish()
-		if !n.listenAllowed(args[0].(string)) {
-			return ioError(result, "Unavailable", "")
-		}
-		listener, err := (&net.ListenConfig{}).Listen(call, "tcp", args[0].(string))
-		if err != nil {
-			return ioError(result, "Unavailable", "")
-		}
-		server := &httpService{listener: listener, parent: ctx, owner: n, handler: args[1], admissionLimit: limit, bodyLimit: bodyLimit, responseLimit: responseLimit, timeout: time.Duration(timeout), grace: time.Duration(grace), done: make(chan struct{}), closed: make(chan struct{})}
-		server.context, server.cancel = context.WithCancel(ctx.Context)
-		server.server = &http.Server{Handler: server, ReadHeaderTimeout: server.timeout, MaxHeaderBytes: nativeHTTPHeaderBytes(nativeUnlimited), BaseContext: func(net.Listener) context.Context { return server.context }}
-		n.mu.Lock()
-		if n.closed {
-			n.mu.Unlock()
-			listener.Close()
-			server.cancel()
-			return ioError(result, "Closed", "")
-		}
-		n.servers = append(n.servers, server)
-		n.mu.Unlock()
-		registerResource(ctx, server)
-		markConcurrent()
-		go func() { server.err = server.server.Serve(listener); close(server.done) }()
-		return Alternative{result, "ok", []Value{ViewOf("@std/HttpServer", server)}}
-	}, func(ctx *Execution, value Value) {
-		result := value.(Alternative)
-		if result.Tag == "ok" {
-			Invoke(Shield(ctx), Bind(result.Fields[0], "", "close"), nil)
-		}
-	})
+type headerEntry struct {
+	name   string
+	values *List[*Bytes]
 }
 
-type httpService struct {
-	mu                       sync.Mutex
-	streaming                bool
-	headerLimit              int64
-	listener                 net.Listener
-	server                   *http.Server
-	parent                   *Execution
-	owner                    *network
-	context                  context.Context
-	cancel                   context.CancelFunc
-	handler                  Value
-	admissionLimit           int64
-	admitted                 int64
-	bodyLimit, responseLimit int64
-	timeout, grace           time.Duration
-	done, closed             chan struct{}
-	err                      error
-	closing                  bool
-	fault                    any
-	requests                 sync.WaitGroup
+func (h *HttpHeaders) lookup(name string) (*List[*Bytes], bool) {
+	values, ok := h.index[headerKey(name)]
+	return values, ok
 }
 
-// admitRequest pairs with releaseRequest. Admission and closing share the mutex
-// so shutdown cannot begin waiting before an admitted request is counted.
-func (s *httpService) admitRequest(w http.ResponseWriter) bool {
-	s.mu.Lock()
-	if s.closing {
-		s.mu.Unlock()
-		http.Error(w, "server closed", http.StatusServiceUnavailable)
+func (h *HttpHeaders) add(name string, value *Bytes) {
+	key := headerKey(name)
+	values, ok := h.index[key]
+	if !ok {
+		if h.index == nil {
+			h.index = map[string]*List[*Bytes]{}
+		}
+		values = NewList[*Bytes]()
+		h.index[key] = values
+		h.entries = append(h.entries, headerEntry{name, values})
+	}
+	values.Items = append(values.Items, value)
+}
+
+// Http_Headers returns an empty header collection.
+func Http_Headers(_ *Execution) *HttpHeaders { return &HttpHeaders{} }
+
+// HttpHeaders_Append adds a value under name; the name must be a token.
+func HttpHeaders_Append(_ *Execution, h *HttpHeaders, name string, value *Bytes) Result[Unit, HttpError] {
+	if !validHeaderName(name) {
+		return httpFail[Unit](errHTTPInvalidInput)
+	}
+	h.add(name, value)
+	return Ok[Unit, HttpError](Unit{})
+}
+
+// HttpHeaders_Values returns the shared value list of name, or none.
+func HttpHeaders_Values(_ *Execution, h *HttpHeaders, name string) Option[*List[*Bytes]] {
+	values, present := h.lookup(name)
+	if !present {
+		return None[*List[*Bytes]]()
+	}
+	return Some(values)
+}
+
+// HttpHeaders_Text returns the values of name as UTF-8 text.
+func HttpHeaders_Text(ctx *Execution, h *HttpHeaders, name string) Result[Option[*List[string]], HttpError] {
+	values, present := h.lookup(name)
+	if !present {
+		return Ok[Option[*List[string]], HttpError](None[*List[string]]())
+	}
+	out := NewList[string]()
+	for _, value := range values.Items {
+		CheckCancelled(ctx)
+		if !utf8.Valid(value.Data) {
+			return httpFail[Option[*List[string]]](errHTTPInvalidData)
+		}
+		out.Items = append(out.Items, string(value.Data))
+	}
+	return Ok[Option[*List[string]], HttpError](Some(out))
+}
+
+// HttpHeaders_Names returns each distinct name in first-use order.
+func HttpHeaders_Names(_ *Execution, h *HttpHeaders) *List[string] {
+	out := NewList[string]()
+	for _, entry := range h.entries {
+		out.Items = append(out.Items, entry.name)
+	}
+	return out
+}
+
+// HttpHeaders_Clone returns an independent collection with copied value lists.
+func HttpHeaders_Clone(ctx *Execution, h *HttpHeaders) *HttpHeaders {
+	CheckCancelled(ctx)
+	out := &HttpHeaders{index: map[string]*List[*Bytes]{}}
+	for _, entry := range h.entries {
+		values := NewList(append([]*Bytes(nil), entry.values.Items...)...)
+		out.entries = append(out.entries, headerEntry{entry.name, values})
+		out.index[headerKey(entry.name)] = values
+	}
+	return out
+}
+
+// HttpHeaders_Remove deletes name and reports whether it was present.
+func HttpHeaders_Remove(_ *Execution, h *HttpHeaders, name string) bool {
+	key := headerKey(name)
+	if _, present := h.index[key]; !present {
 		return false
 	}
-	if s.admissionLimit != nativeUnlimited && s.admitted >= s.admissionLimit {
-		s.mu.Unlock()
-		http.Error(w, "server busy", http.StatusServiceUnavailable)
-		return false
-	}
-	s.admitted++
-	s.requests.Add(1)
-	s.mu.Unlock()
-	return true
-}
-
-func (s *httpService) releaseRequest() {
-	s.mu.Lock()
-	s.admitted--
-	s.mu.Unlock()
-	s.requests.Done()
-}
-
-func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if s.streaming {
-		s.serveStreamingRequest(w, r)
-		return
-	}
-	if !s.admitRequest(w) {
-		return
-	}
-	defer s.releaseRequest()
-
-	execution, cancel := nativeContextTimeout(r.Context(), s.timeout)
-	defer cancel()
-	controller := http.NewResponseController(w)
-	if s.timeout >= 0 {
-		controller.SetReadDeadline(time.Now().Add(s.timeout))
-		controller.SetWriteDeadline(time.Now().Add(s.timeout))
-	}
-	if !utf8.ValidString(r.URL.Path) || !utf8.ValidString(r.URL.RawQuery) {
-		http.Error(w, "invalid UTF-8 URL", 400)
-		return
-	}
-	if !normalizeHTTPRequestPath(r) {
-		http.Error(w, "invalid request path", 400)
-		return
-	}
-	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, s.bodyLimit))
-	if err != nil {
-		http.Error(w, "invalid or oversized request body", 413)
-		return
-	}
-	headers := libraryHTTPHeaders(requestHeaders(r))
-	request := Record{"@std/HttpRequest", map[string]Value{"method": libraryHTTPMethod(r.Method), "path": r.URL.Path, "query": r.URL.RawQuery, "headers": headers, "body": Bytes{data}}}
-	var response Value
-	var failure any
-	func() {
-		defer func() { failure = recover() }()
-		child := newExecution(s.parent, execution)
-		child.HostServices = map[*httpService]bool{}
-		for service, owned := range s.parent.HostServices {
-			child.HostServices[service] = owned
-		}
-		child.HostServices[s] = true
-		defer FinishExecution(child)
-		response = Invoke(child, s.handler, []Argument{{"request", request}})
-	}()
-	if failure != nil || execution.Err() != nil {
-		if _, stopped := failure.(cancelled); stopped || execution.Err() != nil {
-			http.Error(w, "request cancelled", 504)
-		} else {
-			reportDiagnostic("HTTP handler fault: " + fmtFault(failure))
-			http.Error(w, "handler fault", 500)
-		}
-		return
-	}
-	record := response.(Record)
-	status := record.Fields["status"].(int64)
-	body := record.Fields["body"].(Bytes).Items
-	if status < 200 || status > 599 || int64(len(body)) > s.responseLimit {
-		http.Error(w, "invalid response", 500)
-		return
-	}
-	headers = record.Fields["headers"].(*libraryHeaders)
-	for _, entry := range headers.Entries {
-		key := entry.Key.(string)
-		if !validHeaderName(key) || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Connection") {
-			http.Error(w, "invalid response header", 500)
-			return
-		}
-		for _, value := range entry.Value.(*List).Items {
-			if !validHeaderValue(string(value.(Bytes).Items)) {
-				http.Error(w, "invalid response header", 500)
-				return
-			}
-		}
-	}
-	for _, entry := range headers.Entries {
-		for _, value := range entry.Value.(*List).Items {
-			w.Header().Add(entry.Key.(string), string(value.(Bytes).Items))
-		}
-	}
-	w.WriteHeader(int(status))
-	w.Write(body)
-}
-func (s *httpService) Operation(name string) Function {
-	if name == "address" {
-		Panic("read-only accessor address is not a method")
-	}
-	if name == "wait" {
-		result := "@std/Result[Unit][@std/IoError]"
-		return NewFunction(nil, result, func(ctx *Execution, _ []Value) Value {
-			select {
-			case <-s.done:
-				if s.err != nil && s.err != http.ErrServerClosed {
-					return ioError(result, "Failed", s.err.Error())
-				}
-				return Alternative{result, "ok", []Value{Unit{}}}
-			case <-ctx.Context.Done():
-				CheckCancelled(ctx)
-				return Unit{}
-			}
-		})
-	}
-	return NewFunction(nil, "Unit", func(ctx *Execution, _ []Value) Value { s.close(ctx); return Unit{} })
-}
-func (s *httpService) close(ctx *Execution) {
-	if ctx.HostServices[s] {
-		Panic("HTTP server cannot close from its own request")
-	}
-	s.mu.Lock()
-	if s.closing {
-		done := s.closed
-		s.mu.Unlock()
-		<-done
-		if s.fault != nil {
-			panic(s.fault)
-		}
-		return
-	}
-	s.closing = true
-	s.mu.Unlock()
-	grace, cancel := nativeContextTimeout(context.Background(), s.grace)
-	shutdownError := s.server.Shutdown(grace)
-	cancel()
-	s.cancel()
-	closeError := s.server.Close()
-	for _, failure := range []error{shutdownError, closeError} {
-		if failure != nil && failure != context.DeadlineExceeded && failure != context.Canceled && failure != http.ErrServerClosed && !errors.Is(failure, net.ErrClosed) {
-			if primary, ok := s.fault.(Fault); ok {
-				primary.Secondary = append(primary.Secondary, failure.Error())
-				s.fault = primary
-			} else {
-				s.fault = Fault{Message: failure.Error()}
-			}
-		}
-	}
-	<-s.done
-	s.requests.Wait()
-	unregisterResource(s.parent, s)
-	s.owner.mu.Lock()
-	for i, server := range s.owner.servers {
-		if server == s {
-			copy(s.owner.servers[i:], s.owner.servers[i+1:])
-			last := len(s.owner.servers) - 1
-			s.owner.servers[last] = nil
-			s.owner.servers = s.owner.servers[:last]
+	delete(h.index, key)
+	for i, entry := range h.entries {
+		if headerKey(entry.name) == key {
+			copy(h.entries[i:], h.entries[i+1:])
+			last := len(h.entries) - 1
+			h.entries[last] = headerEntry{}
+			h.entries = h.entries[:last]
 			break
 		}
 	}
-	s.owner.mu.Unlock()
-	close(s.closed)
-	if s.fault != nil {
-		panic(s.fault)
+	return true
+}
+
+// ClientResponse_Metadata returns the status and headers of a buffered response.
+func ClientResponse_Metadata(_ *Execution, r *ClientResponse) *HttpResponseMetadata { return r.Head }
+
+// HttpMethod_Text returns the method token.
+func HttpMethod_Text(_ *Execution, m HttpMethod) string { return methodToken(m) }
+
+func methodToken(m HttpMethod) string {
+	switch m := m.(type) {
+	case HttpMethod_Get:
+		return "GET"
+	case HttpMethod_Head:
+		return "HEAD"
+	case HttpMethod_Post:
+		return "POST"
+	case HttpMethod_Put:
+		return "PUT"
+	case HttpMethod_Patch:
+		return "PATCH"
+	case HttpMethod_Delete:
+		return "DELETE"
+	case HttpMethod_Connect:
+		return "CONNECT"
+	case HttpMethod_Options:
+		return "OPTIONS"
+	case HttpMethod_Trace:
+		return "TRACE"
+	case HttpMethod_Custom:
+		return m.Value
 	}
+	return ""
+}
+
+func methodOf(token string) HttpMethod {
+	switch token {
+	case "GET":
+		return HttpMethod_Get{}
+	case "HEAD":
+		return HttpMethod_Head{}
+	case "POST":
+		return HttpMethod_Post{}
+	case "PUT":
+		return HttpMethod_Put{}
+	case "PATCH":
+		return HttpMethod_Patch{}
+	case "DELETE":
+		return HttpMethod_Delete{}
+	case "CONNECT":
+		return HttpMethod_Connect{}
+	case "OPTIONS":
+		return HttpMethod_Options{}
+	case "TRACE":
+		return HttpMethod_Trace{}
+	}
+	return HttpMethod_Custom{Value: token}
+}
+
+func validHeaderName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("!#$%&'*+-.^_`|~", r)) {
+			return false
+		}
+	}
+	return true
+}
+
+// Source header values are UTF-8 text. HTTP permits HTAB, visible bytes and
+// non-ASCII text, but no other control bytes or DEL.
+func validHeaderValue(value string) bool {
+	if !utf8.ValidString(value) {
+		return false
+	}
+	for i := range len(value) {
+		if value[i] < 32 && value[i] != '\t' || value[i] == 127 {
+			return false
+		}
+	}
+	return true
+}
+
+// headerKey folds ASCII case; HTTP field names are not Unicode-folded.
+func headerKey(name string) string {
+	for i := range len(name) {
+		if name[i] >= 'A' && name[i] <= 'Z' {
+			data := []byte(name)
+			for j := i; j < len(data); j++ {
+				if data[j] >= 'A' && data[j] <= 'Z' {
+					data[j] += 'a' - 'A'
+				}
+			}
+			return string(data)
+		}
+	}
+	return name
+}
+
+// headersFrom converts net/http headers, sorted by name.
+func headersFrom(headers http.Header) *HttpHeaders {
+	out := &HttpHeaders{}
+	names := make([]string, 0, len(headers))
+	for name := range headers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, key := range names {
+		for _, value := range headers[key] {
+			out.add(key, NewBytes([]byte(value)))
+		}
+		if len(headers[key]) == 0 {
+			out.add(key, nil)
+			values, _ := out.lookup(key)
+			values.Items = values.Items[:0]
+		}
+	}
+	return out
+}
+
+// textHeaders reports whether every received name and value is UTF-8.
+func textHeaders(headers http.Header) bool {
+	for key, values := range headers {
+		if !utf8.ValidString(key) {
+			return false
+		}
+		for _, value := range values {
+			if !utf8.ValidString(value) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // requestHeaders returns the request headers including Host, which net/http
@@ -349,19 +267,11 @@ func requestHeaders(r *http.Request) http.Header {
 	}
 	return headers
 }
-func sortedHeaderNames(headers http.Header) []string {
-	names := make([]string, 0, len(headers))
-	for name := range headers {
-		names = append(names, name)
-	}
-	sortStrings(names)
-	return names
-}
 
-// normalizeHTTPRequestPath makes the decoded path safe to route on: an
-// encoded slash or NUL is rejected, and dot segments (including encoded ones)
-// are resolved so no spelling can climb above the root.
-func normalizeHTTPRequestPath(r *http.Request) bool {
+// normalizeRequestPath makes the decoded path safe to route on: an encoded
+// slash or NUL is rejected, and dot segments (including encoded ones) are
+// resolved so no spelling can climb above the root.
+func normalizeRequestPath(r *http.Request) bool {
 	raw := r.URL.EscapedPath()
 	if strings.Contains(raw, "%00") || strings.Contains(strings.ToLower(raw), "%2f") || strings.Contains(r.URL.Path, "\x00") {
 		return false
@@ -376,15 +286,37 @@ func normalizeHTTPRequestPath(r *http.Request) bool {
 	return true
 }
 
-// Source header values are UTF-8 text. HTTP permits HTAB, visible bytes and
-// non-ASCII text, but no other control bytes or DEL.
-func validHeaderValue(value string) bool {
-	if !utf8.ValidString(value) {
-		return false
+func validPort(u *url.URL) bool {
+	port := u.Port()
+	if port == "" {
+		return true
 	}
-	for i := range len(value) {
-		if value[i] < 32 && value[i] != '\t' || value[i] == 127 {
+	n, err := strconv.Atoi(port)
+	return err == nil && n <= 65535
+}
+
+func sameOrigin(a, b *url.URL) bool {
+	return strings.EqualFold(a.Scheme, b.Scheme) && strings.EqualFold(a.Host, b.Host)
+}
+
+// outgoingHeaders copies caller headers into req, rejecting names the
+// transport manages. It reports false for any malformed field.
+func outgoingHeaders(dst http.Header, src *HttpHeaders, managed ...string) bool {
+	for _, entry := range src.entries {
+		if !validHeaderName(entry.name) {
 			return false
+		}
+		for _, m := range managed {
+			if strings.EqualFold(entry.name, m) {
+				return false
+			}
+		}
+		for _, item := range entry.values.Items {
+			value := string(item.Data)
+			if !validHeaderValue(value) {
+				return false
+			}
+			dst.Add(entry.name, value)
 		}
 	}
 	return true

@@ -35,8 +35,10 @@ type Entity struct {
 // Names maps generated Go identifiers and positions back to Manuscript source.
 // Files are slash-separated paths relative to Root.
 type Names struct {
-	Root     string
-	Locals   map[string]Local
+	Root string
+	// Locals maps a function (as frames name it) and the Go name of one of
+	// its locals to the source binding.
+	Locals   map[string]map[string]Local
 	Entities []Entity
 	Sources  map[string]bool
 	// Lines holds, per file, the lines that begin a statement or declaration.
@@ -332,7 +334,7 @@ func (s *session) stop(state *api.DebuggerState, reason string) {
 	event.Function, event.File, event.Line = top.Function, top.File, top.Line
 	event.Source = s.names.sourceLine(top.File, top.Line)
 	event.Stack = toFrames(user)
-	event.Locals = s.locals(gid, top.index)
+	event.Locals = s.locals(gid, top.index, top.Function)
 	s.emit(event)
 }
 
@@ -356,7 +358,7 @@ func (s *session) inspect(command string) {
 	if command == "stack" {
 		event.Stack = toFrames(user)
 	} else {
-		event.Locals = s.locals(gid, user[0].index)
+		event.Locals = s.locals(gid, user[0].index, user[0].Function)
 	}
 	s.emit(event)
 }
@@ -381,7 +383,7 @@ func (s *session) print(name string) {
 		s.fail("print: the program is not stopped in Manuscript source")
 		return
 	}
-	for _, value := range s.locals(gid, user[0].index) {
+	for _, value := range s.locals(gid, user[0].index, user[0].Function) {
 		if value.Name == name {
 			s.emit(Event{Event: "value", Command: "print", Locals: []Value{value}})
 			return
@@ -436,7 +438,7 @@ func toFrames(frames []frame) []Frame {
 	return out
 }
 
-func (s *session) locals(gid int64, frame int) []Value {
+func (s *session) locals(gid int64, frame int, function string) []Value {
 	variables, err := s.client.ListLocalVariables(api.EvalScope{GoroutineID: gid, Frame: frame}, loadConfig)
 	if err != nil {
 		s.fail(err.Error())
@@ -444,7 +446,7 @@ func (s *session) locals(gid int64, frame int) []Value {
 	}
 	var values []Value
 	for i := range variables {
-		if local, ok := s.names.Locals[variables[i].Name]; ok {
+		if local, ok := s.names.Locals[function][variables[i].Name]; ok {
 			values = append(values, Value{Name: local.Name, Type: local.Type, Value: render(&variables[i])})
 		}
 	}

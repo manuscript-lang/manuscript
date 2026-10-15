@@ -1,212 +1,125 @@
 package msruntime
 
 import (
-	"context"
 	"fmt"
+	"os"
 	goruntime "runtime"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
-type Execution struct {
-	EqualityScope TypeScope
-	Context       context.Context
-	Owners        map[*Scheduler]bool
-	TaskGroups    map[*TaskGroup]bool
-	HostServices  map[*httpService]bool
-	Lifetime      *workLifetime
-	Host          *hostRoots
-	calls         *callState
+// TaskState is the per-program task state an Execution reaches. The work
+// lifetime, schedulers and task groups of an operation hang off its
+// Execution (lifetime.go); TaskState holds what the whole program shares.
+type TaskState struct {
+	// Arguments are the program arguments given to RunMain. The host module
+	// reads them from here (or from the hostArguments hook, run at startup).
+	Arguments []string
 }
 
-// callState tracks one goroutine's nested source calls. Copies of an
-// Execution made for equality scopes or cancellation share it.
-type callState struct {
-	depth int64
-	ticks uint8
+// hostArguments is set by the host module. RunMain/RunTests call it with the
+// program arguments when they create the root execution, before main runs, so
+// the host can fill State.Host. Arguments are also kept in State.Tasks.
+var hostArguments func(*Execution, []string)
+
+// hostShutdown is set by the host module. RunMain/RunTests call it after main
+// and every joined operation finished, to close standard streams and
+// network roots. It runs shielded and a fault in it is reported like any
+// cleanup fault.
+var hostShutdown func(*Execution)
+
+// OperationId identifies work for diagnostics, status and cancellation. It
+// has identity: each id is a distinct pointer and ids are never reused.
+type OperationId struct{ number uint64 }
+
+var nextOperation atomic.Uint64
+
+func newOperationId() *OperationId { return &OperationId{nextOperation.Add(1)} }
+
+// Tasks_YieldNow suspends the current task briefly so other ready work runs.
+func Tasks_YieldNow(ctx *Execution) Unit {
+	CheckCancelled(ctx)
+	goruntime.Gosched()
+	CheckCancelled(ctx)
+	return Unit{}
 }
 
-type cancelled struct{}
-
-func RootExecution() *Execution {
-	return &Execution{Context: context.Background(), Lifetime: &workLifetime{}, Host: &hostRoots{}, calls: &callState{}}
-}
-func CheckCancelled(ctx *Execution) {
-	if ctx != nil && isDone(ctx.Context) {
-		panic(cancelled{})
+// sleepFor waits for d or until the execution is cancelled.
+func sleepFor(ctx *Execution, d time.Duration) {
+	if d <= 0 {
+		CheckCancelled(ctx)
+		return
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-ctx.Context.Done():
+		CheckCancelled(ctx)
 	}
 }
 
-func isDone(ctx context.Context) bool  { return ctx.Err() != nil }
-func Shield(ctx *Execution) *Execution { return inherit(ctx, context.WithoutCancel(ctx.Context)) }
-func Cleanup(ctx *Execution, resource Value) {
-	pending := recover()
-	var cleanup any
-	func() {
-		defer func() { cleanup = recover() }()
-		Invoke(Shield(ctx), CleanupOperation(resource, ""), nil)
-	}()
-	if cleanup != nil {
-		if primary, ok := pending.(Fault); ok {
-			primary.Secondary = append(primary.Secondary, fmt.Sprint(cleanup))
-			panic(primary)
-		}
-		panic(Fault{Message: fmt.Sprint(cleanup)})
-	}
-	if pending != nil {
-		panic(pending)
-	}
+// durationFault raises the fault for an out-of-range duration parameter.
+func durationFault(operation, parameter string, nanoseconds int64) {
+	Raise(fmt.Sprintf("%s: %s (nanoseconds) must be between 0 and %d, found %d", operation, parameter, int64(^uint64(0)>>1), nanoseconds))
 }
-func StandardFunction(name, result string) Value {
-	if value, ok := libraryFunction(name, result); ok {
-		return value
+
+// minRangeFault raises the fault for an out-of-range integer parameter.
+func minRangeFault(operation, parameter string, minimum, value int64) {
+	Raise(fmt.Sprintf("%s: %s must be between %d and %d, found %d", operation, parameter, minimum, int64(^uint64(0)>>1), value))
+}
+
+// Errors_Message_ExecutionError is the Error message of an ExecutionError.
+func Errors_Message_ExecutionError(_ *Execution, e ExecutionError) string {
+	switch e := e.(type) {
+	case ExecutionError_Crashed:
+		return e.Message
+	case ExecutionError_Timeout:
+		return "task execution: operation timed out"
 	}
-	switch name {
-	case "panic":
-		return NewFunction([]string{"message"}, "Never", func(_ *Execution, args []Value) Value { return Panic(args[0].(string)) })
-	case "check_cancelled":
-		return NewFunction(nil, "Unit", func(ctx *Execution, _ []Value) Value { CheckCancelled(ctx); return Unit{} })
-	case "sleep":
-		return NewFunction([]string{"duration"}, "Unit", func(ctx *Execution, args []Value) Value {
-			delay := args[0].(Duration)
-			if delay < 0 {
-				return durationParameterFault("sleep", "duration", args[0])
+	return "task execution: operation cancelled"
+}
+
+// Errors_Message_StartError is the Error message of a StartError.
+func Errors_Message_StartError(_ *Execution, e StartError) string {
+	switch e.(type) {
+	case StartError_Closed:
+		return "scheduler: resource is closed"
+	case StartError_Full:
+		return "scheduler: capacity exhausted"
+	}
+	return "scheduler: invalid input"
+}
+
+// diagnosticOutput writes one diagnostic line; tests replace it.
+var diagnosticOutput = func(message string) { fmt.Fprintln(os.Stderr, message) }
+
+// diagnostics serializes runtime diagnostics to standard error so scheduler
+// failure reports never interleave. The writer touches only strings.
+var diagnostics = struct {
+	once  sync.Once
+	queue chan string
+	work  sync.WaitGroup
+}{queue: make(chan string, 128)}
+
+func reportDiagnostic(message string) {
+	diagnostics.once.Do(func() {
+		go func() {
+			for m := range diagnostics.queue {
+				diagnosticOutput(m)
+				diagnostics.work.Done()
 			}
-			timer := time.NewTimer(time.Duration(delay))
-			defer timer.Stop()
-			select {
-			case <-timer.C:
-				return Unit{}
-			case <-ctx.Context.Done():
-				CheckCancelled(ctx)
-				return Unit{}
-			}
-		})
-
-	}
-	return Panic("unavailable standard function " + name)
-}
-
-type CleanupAction struct {
-	contract  string
-	scope     TypeScope
-	execution *Execution
-	resource  Value
-	done      bool
-	stack     *CleanupStack
-}
-
-func NewCleanup(ctx *Execution, resource Value) *CleanupAction {
-	return &CleanupAction{execution: ctx, resource: resource}
-}
-func (action *CleanupAction) Run() {
-	defer profileRegion(action.execution, "with.cleanup")()
-	pending := recover()
-	var cleanup any
-	if !action.done {
-		action.done = true
-		if action.stack != nil {
-			action.stack.remove(action)
-		}
-		func() {
-			defer func() { cleanup = recover() }()
-			resource := action.resource
-			action.resource = nil
-			Invoke(Shield(action.execution), CleanupOperation(resource, action.contract, action.scope), nil)
 		}()
-	}
-	if cleanup != nil {
-		if primary, ok := pending.(Fault); ok {
-			primary.Secondary = append(primary.Secondary, fmt.Sprint(cleanup))
-			panic(primary)
-		}
-		panic(Fault{Message: fmt.Sprint(cleanup)})
-	}
-	if pending != nil {
-		panic(pending)
-	}
-}
-
-type CleanupStack struct{ actions []*CleanupAction }
-
-func NewCleanupStack() *CleanupStack { return &CleanupStack{} }
-func (stack *CleanupStack) Push(ctx *Execution, resource Value) *CleanupAction {
-	return stack.PushContract(ctx, resource, "")
-}
-func (stack *CleanupStack) PushContract(ctx *Execution, resource Value, contract string, scopes ...TypeScope) *CleanupAction {
-	action := NewCleanup(ctx, resource)
-	action.contract = contract
-	if len(scopes) > 0 {
-		action.scope = scopes[0]
-	}
-	action.stack = stack
-	stack.actions = append(stack.actions, action)
-	return action
-}
-func (stack *CleanupStack) remove(action *CleanupAction) {
-	for i := len(stack.actions) - 1; i >= 0; i-- {
-		if stack.actions[i] == action {
-			stack.actions = append(stack.actions[:i], stack.actions[i+1:]...)
-			return
-		}
-	}
-}
-func (stack *CleanupStack) Unwind() {
-	// Without actions there is nothing to run, and recovering only to
-	// re-raise makes unwinding a deep stack quadratic.
-	if len(stack.actions) == 0 {
-		return
-	}
-	// Run every action without touching the pending panic. Recovering and
-	// re-raising it at each scope nests one panic inside another per frame,
-	// which makes a fault through deeply nested scopes super-linear. Only a
-	// failing action needs the pending value, to record it as secondary.
-	var failures []any
-	for len(stack.actions) > 0 {
-		action := stack.actions[len(stack.actions)-1]
-		var failure any
-		func() { defer func() { failure = recover() }(); action.Run() }()
-		if failure != nil {
-			failures = append(failures, failure)
-		}
-	}
-	if len(failures) == 0 {
-		return
-	}
-	pending := recover()
-	for _, failure := range failures {
-		if primary, ok := pending.(Fault); ok {
-			primary.Secondary = append(primary.Secondary, fmt.Sprint(failure))
-			pending = primary
-		} else {
-			pending = Fault{Message: fmt.Sprint(failure)}
-		}
-	}
-	panic(pending)
-}
-
-func CleanupOperation(resource Value, contract string, scopes ...TypeScope) Value {
-	if contract == "" {
-		switch resource.(type) {
-		case Struct, Record, Alternative:
-			contract = "@std/Closeable"
-		}
-	}
-	return Bind(resource, contract, "close", scopes...)
-}
-
-func init() {
-	libraryAdd("tasks", "yield_now", "Unit", nil, func(ctx *Execution, _ string, _ []Value) Value {
-		CheckCancelled(ctx)
-		goruntime.Gosched()
-		CheckCancelled(ctx)
-		return Unit{}
 	})
+	diagnostics.work.Add(1)
+	select {
+	case diagnostics.queue <- message:
+	default:
+		diagnostics.work.Done()
+		diagnosticOutput("runtime diagnostic buffer overflow")
+	}
 }
 
-// Duration limits are displayed as their original signed nanosecond count.
-func durationParameterFault(operation, parameter string, value Value) Value {
-	if option, ok := value.(Alternative); ok && option.Tag == "some" {
-		value = option.Fields[0]
-	}
-	return libraryRangeFault(operation, parameter+" (nanoseconds)", int64(value.(Duration)), 0, nativeUnlimited)
-}
+// FlushDiagnostics waits until every queued diagnostic has been written.
+func FlushDiagnostics() { diagnostics.work.Wait() }

@@ -90,7 +90,7 @@ func (inv *Inventory) addOperations(s *Symbol) {
 		}
 		n := NativeOperation{Receiver: s.Type, Name: op.Name, Type: op.Type, Accessor: op.Accessor, Variables: standardOperationVariables[s.ID+"/"+op.Name], Decl: op.Decl}
 		for _, r := range standardReceiverRequirements[s.ID+"/"+op.Name] {
-			n.Requirements = append(n.Requirements, Requirement{Variable: r.Variable, Constraint: r.Constraint})
+			n.Requirements = append(n.Requirements, Requirement(r))
 		}
 		inv.Operations = append(inv.Operations, n)
 	}
@@ -152,7 +152,7 @@ func NativeOperationFor(receiver *Type, name string) (NativeOperation, bool) {
 		if op.Name == name {
 			n := NativeOperation{Receiver: receiver, Name: name, Type: op.Type, Accessor: op.Accessor, Variables: standardOperationVariables[r.ID+"/"+name], Decl: op.Decl}
 			for _, req := range standardReceiverRequirements[r.ID+"/"+name] {
-				n.Requirements = append(n.Requirements, Requirement{Variable: req.Variable, Constraint: req.Constraint})
+				n.Requirements = append(n.Requirements, Requirement(req))
 			}
 			return n, true
 		}

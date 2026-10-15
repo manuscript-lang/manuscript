@@ -1,7 +1,6 @@
 package msruntime
 
 import (
-	"context"
 	"fmt"
 	"os"
 	goruntime "runtime"
@@ -54,9 +53,6 @@ func Profile(cpuPath, heapPath, tracePath string, run func() int) (exit int) {
 	}
 	cpuStarted, traceStarted, ran := false, false, false
 	defer func() {
-		sourceProfiling.Store(false)
-		cpuProfiling.Store(false)
-		traceProfiling.Store(false)
 		if traceStarted {
 			trace.Stop()
 		}
@@ -86,75 +82,8 @@ func Profile(cpuPath, heapPath, tracePath string, run func() int) (exit int) {
 		}
 		traceStarted = true
 	}
-	cpuProfiling.Store(cpuStarted)
-	traceProfiling.Store(traceStarted)
-	sourceProfiling.Store(cpuStarted || traceStarted)
 	ran = true
 	return run()
 }
 
-// Source profiling is opt-in. Normal calls take one inexpensive atomic branch.
-var sourceProfiling atomic.Bool
-var profiling, cpuProfiling, traceProfiling atomic.Bool
-
-// A source boundary follows context inheritance, including cancellation
-// shielding, but a work operation starts a fresh boundary. Nested source calls
-// use Go's sampled stacks rather than allocating labels and regions per call.
-type sourceProfileKey struct{}
-
-func profileSource(ctx *Execution, position string, args []Value, body func(*Execution, []Value) Value) (value Value) {
-	if ctx == nil || ctx.Context == nil {
-		return body(ctx, args)
-	}
-	if active, _ := ctx.Context.Value(sourceProfileKey{}).(bool); active {
-		return body(ctx, args)
-	}
-	run := func(labeled context.Context) {
-		boundary := context.WithValue(labeled, sourceProfileKey{}, true)
-		if traceProfiling.Load() {
-			region := trace.StartRegion(boundary, "source:"+position)
-			defer region.End()
-		}
-		// Attribution stays on the same execution/goroutine. Inherit creates
-		// fresh call accounting for work; profiling must keep that state.
-		execution := *ctx
-		execution.Context = boundary
-		value = body(&execution, args)
-	}
-	if cpuProfiling.Load() {
-		pprof.Do(ctx.Context, pprof.Labels("ms.source", position), run)
-	} else {
-		run(ctx.Context)
-	}
-	return value
-}
-func profileWork(ctx *Execution, kind, id string, body func(*Execution) Value) (value Value) {
-	if !sourceProfiling.Load() || ctx == nil || ctx.Context == nil {
-		return body(ctx)
-	}
-	taskContext := context.WithValue(ctx.Context, sourceProfileKey{}, false)
-	if traceProfiling.Load() {
-		var task *trace.Task
-		taskContext, task = trace.NewTask(taskContext, kind)
-		defer task.End()
-		trace.Log(taskContext, "ms.operation", id)
-	}
-	run := func(labeled context.Context) {
-		execution := *ctx
-		execution.Context = labeled
-		value = body(&execution)
-	}
-	if cpuProfiling.Load() {
-		pprof.Do(taskContext, pprof.Labels("ms.work", kind, "ms.operation", id), run)
-	} else {
-		run(taskContext)
-	}
-	return value
-}
-func profileRegion(ctx *Execution, name string) func() {
-	if !traceProfiling.Load() || ctx == nil || ctx.Context == nil {
-		return func() {}
-	}
-	region := trace.StartRegion(ctx.Context, name)
-	return region.End
-}
+var profiling atomic.Bool

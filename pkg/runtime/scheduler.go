@@ -3,385 +3,422 @@ package msruntime
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
-type OperationId struct{ number uint64 }
+// Scheduler runs immediate, delayed, and repeating operations under the
+// lifetime of the execution that first uses it. All state transitions share mu;
+// user callbacks, reporters and cleanup run outside it.
+//
+// The constructor receives only the declared fields (the lowerer's
+// New<Type> calls carry no execution), so the scheduler adopts the execution
+// of its first operation as its fixed parent.
+type Scheduler struct {
+	limit        Option[int64]
+	historyLimit Option[int64]
+	drain        Option[Duration]
+	reporter     Option[func(*Execution, SchedulerFailure) Unit]
 
-var nextOperation atomic.Uint64
-
-func newOperationId() OperationId { return OperationId{nextOperation.Add(1)} }
+	mu              sync.Mutex
+	parent          *Execution
+	context         context.Context
+	cancel          context.CancelFunc
+	closing, closed bool
+	active          map[*OperationId]*schedulerJob
+	history         map[*OperationId]WorkStatus
+	schedules       map[*OperationId]scheduledOperation
+	order           []*OperationId
+	changed         chan struct{}
+	done            chan struct{}
+	jobs            sync.WaitGroup
+	reports         []SchedulerFailure
+	reportReady     chan struct{}
+	reportClosed    bool
+	reporting       sync.WaitGroup
+	pending         int
+}
 
 type schedulerJob struct {
-	id      OperationId
+	id      *OperationId
 	stop    context.CancelFunc
 	stopped bool
 	done    chan struct{}
 }
-type completionReport struct{ failure Alternative }
-type Scheduler struct {
-	mu                  sync.Mutex
-	parent              *Execution
-	context             context.Context
-	cancel              context.CancelFunc
-	limit, historyLimit int
-	drain               time.Duration
-	reporter            Value
-	closing, closed     bool
-	active              map[OperationId]*schedulerJob
-	history             map[OperationId]string
-	schedules           map[OperationId]scheduledOperation
-	order               []OperationId
-	changed             chan struct{}
-	done                chan struct{}
-	jobs                sync.WaitGroup
-	reports             []completionReport
-	reportReady         chan struct{}
-	reportClosed        bool
-	reporting           sync.WaitGroup
-	pending             int
+
+type scheduledOperation struct {
+	delay     Duration
+	repeating bool
+	operation func(*Execution) Result[Unit, Error]
 }
 
-func inherit(parent *Execution, ctx context.Context) *Execution {
-	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: parent.Owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host, calls: &callState{}}
+// NewScheduler constructs a Scheduler from its declared fields in order.
+func NewScheduler(limit, historyLimit Option[int64], drain Option[Duration], reporter Option[func(*Execution, SchedulerFailure) Unit]) *Scheduler {
+	if limit.Some && limit.Val < 1 {
+		minRangeFault("Scheduler", "limit", 1, limit.Val)
+	}
+	if historyLimit.Some && historyLimit.Val < 0 {
+		minRangeFault("Scheduler", "history_limit", 0, historyLimit.Val)
+	}
+	if drain.Some && drain.Val < 0 {
+		durationFault("Scheduler", "drain", int64(drain.Val))
+	}
+	return &Scheduler{limit: limit, historyLimit: historyLimit, drain: drain, reporter: reporter}
 }
-func owned(parent *Execution, ctx context.Context, owner *Scheduler) *Execution {
-	owners := map[*Scheduler]bool{}
-	for key, value := range parent.Owners {
-		owners[key] = value
+
+// adopt fixes the scheduler's parent execution on first use and starts its
+// reporter. Caller holds no lock.
+func (s *Scheduler) adopt(ctx *Execution) {
+	s.mu.Lock()
+	if s.parent != nil {
+		s.mu.Unlock()
+		return
 	}
-	owners[owner] = true
-	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host, calls: &callState{}}
+	s.parent = ctx
+	s.context, s.cancel = context.WithCancel(ctx.Context)
+	s.active = map[*OperationId]*schedulerJob{}
+	s.history = map[*OperationId]WorkStatus{}
+	s.schedules = map[*OperationId]scheduledOperation{}
+	s.changed = make(chan struct{}, 1)
+	s.done = make(chan struct{})
+	s.reportReady = make(chan struct{}, 1)
+	s.reporting.Add(1)
+	s.mu.Unlock()
+	registerResource(ctx, s)
+	go s.reportLoop()
 }
-func NewScheduler(ctx *Execution, args []Argument) Value {
-	limit, historyLimit := int64(0), int64(-1)
-	drain := Duration(0)
-	var reporter Value
-	for _, a := range args {
-		switch a.Name {
-		case "limit":
-			value, valid := nativeOption(a.Value, "Int", int64(0))
-			if !valid {
-				return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(^uint(0)>>1))
-			}
-			limit = value.(int64)
-			if limit == 0 && a.Value != nil {
-				if v, ok := a.Value.(Alternative); !ok || v.Tag != "none" {
-					return libraryRangeFault("Scheduler", "limit", a.Value, 1, int64(^uint(0)>>1))
-				}
-			}
-		case "history_limit":
-			value, valid := nativeOption(a.Value, "Int", int64(-1))
-			if !valid {
-				return libraryRangeFault("Scheduler", "history_limit", a.Value, 0, int64(^uint(0)>>1))
-			}
-			historyLimit = value.(int64)
-		case "drain":
-			value, valid := nativeOption(a.Value, "Duration", Duration(0))
-			if !valid {
-				return durationParameterFault("Scheduler", "drain", a.Value)
-			}
-			drain = value.(Duration)
-		case "reporter":
-			reporter, _ = nativeOption(a.Value, "fn", nil)
-		}
+
+func (s *Scheduler) limitN() int {
+	if s.limit.Some {
+		return int(s.limit.Val)
 	}
-	if limit < 0 || limit > int64(^uint(0)>>1) {
-		return libraryRangeFault("Scheduler", "limit", limit, 1, int64(^uint(0)>>1))
-	}
-	if historyLimit < -1 || historyLimit > int64(^uint(0)>>1) {
-		return libraryRangeFault("Scheduler", "history_limit", historyLimit, 0, int64(^uint(0)>>1))
-	}
-	if drain < 0 {
-		return durationParameterFault("Scheduler", "drain", drain)
-	}
-	parent, cancel := context.WithCancel(ctx.Context)
-	b := &Scheduler{parent: ctx, context: parent, cancel: cancel, limit: int(limit), historyLimit: int(historyLimit), drain: time.Duration(drain), reporter: reporter, active: map[OperationId]*schedulerJob{}, history: map[OperationId]string{}, schedules: map[OperationId]scheduledOperation{}, changed: make(chan struct{}, 1), done: make(chan struct{}), reportReady: make(chan struct{}, 1)}
-	registerService(ctx, b)
-	b.reporting.Add(1)
-	markConcurrent()
-	go b.reportLoop()
-	return b
+	return 0
 }
-func (b *Scheduler) Operation(name string) Function {
-	switch name {
-	case "after", "every":
-		label := "duration"
-		if name == "every" {
-			label = "interval"
-		}
-		return NewFunction([]string{label, "operation"}, "@std/Result[@std/OperationId][@std/StartError]", func(ctx *Execution, args []Value) Value {
-			return b.schedule(ctx, args[0].(Duration), name == "every", args[1])
-		})
-	case "restart":
-		return NewFunction([]string{"id"}, "@std/Result[@std/OperationId][@std/StartError]", func(ctx *Execution, args []Value) Value { return b.restart(ctx, args[0].(OperationId)) })
-	case "start":
-		return NewFunction([]string{"operation"}, "@std/Result[@std/OperationId][@std/StartError]", func(ctx *Execution, args []Value) Value { return b.start(ctx, args[0]) })
-	case "status":
-		return NewFunction([]string{"id"}, "@std/WorkStatus", func(_ *Execution, args []Value) Value {
-			b.mu.Lock()
-			defer b.mu.Unlock()
-			id := args[0].(OperationId)
-			status := "Unknown"
-			if b.active[id] != nil {
-				status = "Running"
-			} else if s := b.history[id]; s != "" {
-				status = s
-			}
-			return Alternative{Type: "@std/WorkStatus", Tag: status}
-		})
-	case "cancel":
-		return NewFunction([]string{"id"}, "Unit", func(_ *Execution, args []Value) Value {
-			b.mu.Lock()
-			defer b.mu.Unlock()
-			if job := b.active[args[0].(OperationId)]; job != nil {
-				job.stopped = true
-				job.stop()
-			}
-			return Unit{}
-		})
-	case "close":
-		return NewFunction(nil, "Unit", func(ctx *Execution, _ []Value) Value { b.close(ctx); return Unit{} })
+
+func startFailed(e StartError) Result[*OperationId, StartError] {
+	return Fail[*OperationId, StartError](e)
+}
+
+// Scheduler_Start runs operation right away as a background task.
+func Scheduler_Start(ctx *Execution, s *Scheduler, operation func(*Execution) Result[Unit, Error]) Result[*OperationId, StartError] {
+	return s.startScheduled(ctx, operation, nil)
+}
+
+// Scheduler_After runs operation once after duration.
+func Scheduler_After(ctx *Execution, s *Scheduler, duration Duration, operation func(*Execution) Result[Unit, Error]) Result[*OperationId, StartError] {
+	return s.schedule(ctx, duration, false, operation)
+}
+
+// Scheduler_Every runs operation repeatedly, sleeping interval between runs.
+func Scheduler_Every(ctx *Execution, s *Scheduler, interval Duration, operation func(*Execution) Result[Unit, Error]) Result[*OperationId, StartError] {
+	return s.schedule(ctx, interval, true, operation)
+}
+
+// Scheduler_Status reports the current or final status of an operation.
+func Scheduler_Status(_ *Execution, s *Scheduler, id *OperationId) WorkStatus {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.parent == nil {
+		return WorkStatus_Unknown{}
 	}
-	return NewFunction(nil, "Never", func(_ *Execution, _ []Value) Value { return Panic("unavailable Scheduler operation") })
+	if s.active[id] != nil {
+		return WorkStatus_Running{}
+	}
+	if status, ok := s.history[id]; ok {
+		return status
+	}
+	return WorkStatus_Unknown{}
 }
-func (b *Scheduler) start(ctx *Execution, operation Value) Value {
-	return b.startScheduled(ctx, operation, nil)
+
+// Scheduler_Cancel requests cancellation without waiting.
+func Scheduler_Cancel(_ *Execution, s *Scheduler, id *OperationId) Unit {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.parent == nil {
+		return Unit{}
+	}
+	if job := s.active[id]; job != nil {
+		job.stopped = true
+		job.stop()
+	}
+	return Unit{}
 }
-func (b *Scheduler) startScheduled(ctx *Execution, operation Value, schedule *scheduledOperation) Value {
+
+// Scheduler_Close stops admission, drains, cancels the rest and joins.
+func Scheduler_Close(ctx *Execution, s *Scheduler) Unit {
+	s.adopt(ctx)
+	s.close(ctx)
+	return Unit{}
+}
+
+func (s *Scheduler) closeWork(ctx *Execution) { s.close(ctx) }
+
+func (s *Scheduler) startScheduled(ctx *Execution, operation func(*Execution) Result[Unit, Error], schedule *scheduledOperation) Result[*OperationId, StartError] {
 	CheckCancelled(ctx)
-	result := "@std/Result[@std/OperationId][@std/StartError]"
-	b.mu.Lock()
-	if b.closing || b.context.Err() != nil {
-		b.mu.Unlock()
-		return Alternative{result, "error", []Value{Alternative{Type: "@std/StartError", Tag: "Closed"}}}
+	s.adopt(ctx)
+	s.mu.Lock()
+	if s.closing || s.context.Err() != nil {
+		s.mu.Unlock()
+		return startFailed(StartError_Closed{})
 	}
-	if b.limit > 0 && len(b.active) >= b.limit {
-		b.mu.Unlock()
-		return Alternative{result, "error", []Value{Alternative{Type: "@std/StartError", Tag: "Full"}}}
+	if n := s.limitN(); n > 0 && len(s.active) >= n {
+		s.mu.Unlock()
+		return startFailed(StartError_Full{})
 	}
 	id := newOperationId()
-	jobContext, cancel := context.WithCancel(b.context)
+	jobContext, cancel := context.WithCancel(s.context)
 	job := &schedulerJob{id: id, stop: cancel, done: make(chan struct{})}
 	if schedule != nil {
-		b.schedules[id] = *schedule
+		s.schedules[id] = *schedule
 	}
-	b.active[id] = job
-	b.jobs.Add(1)
-	b.mu.Unlock()
-	markConcurrent()
+	s.active[id] = job
+	s.jobs.Add(1)
+	s.mu.Unlock()
 	go func() {
-		defer b.jobs.Done()
+		defer s.jobs.Done()
 		defer close(job.done)
-		var outcome Value
+		var outcome Result[Unit, Error]
 		var failed any
 		func() {
 			defer func() { failed = recover() }()
-			child := newExecution(owned(b.parent, jobContext, b), jobContext)
+			child := s.parent.child(jobContext).ownedBy(s)
 			defer FinishExecution(child)
-			outcome = profileWork(child, "scheduler.operation", fmt.Sprint(id), func(execution *Execution) Value { return Invoke(execution, operation, nil) })
+			outcome = operation(child)
 		}()
-		b.commit(job, jobContext, outcome, failed)
+		s.commit(job, jobContext, outcome, failed)
 		cancel()
 	}()
-	return Alternative{result, "ok", []Value{id}}
+	return Ok[*OperationId, StartError](id)
 }
-func (b *Scheduler) commit(job *schedulerJob, ctx context.Context, outcome Value, fault any) {
-	b.mu.Lock()
-	status := "Succeeded"
-	var report *completionReport
+
+func (s *Scheduler) commit(job *schedulerJob, ctx context.Context, outcome Result[Unit, Error], fault any) {
+	s.mu.Lock()
+	var status WorkStatus = WorkStatus_Succeeded{}
+	var report SchedulerFailure
 	if fault != nil {
 		if _, stopped := fault.(cancelled); stopped {
-			status = "Cancelled"
+			status = WorkStatus_Cancelled{}
 		} else {
-			status = "Crashed"
-			report = &completionReport{Alternative{"@std/SchedulerFailure", "Crashed", []Value{job.id, fmt.Sprint(fault)}}}
+			status = WorkStatus_Crashed{}
+			report = SchedulerFailure_Crashed{Operation: job.id, Message: fmt.Sprint(fault)}
 		}
 	} else if job.stopped || ctx.Err() != nil {
-		status = "Cancelled"
-	} else if result, ok := outcome.(Alternative); ok && result.Tag == "error" {
-		status = "Failed"
-		report = &completionReport{Alternative{"@std/SchedulerFailure", "Failed", []Value{job.id, result.Fields[0]}}}
+		status = WorkStatus_Cancelled{}
+	} else if outcome.Failed {
+		status = WorkStatus_Failed{}
+		report = SchedulerFailure_Failed{Operation: job.id, Cause: outcome.Err}
 	}
-	delete(b.active, job.id)
-	if b.historyLimit != 0 {
-		b.history[job.id] = status
-		b.order = append(b.order, job.id)
-		if b.historyLimit > 0 && len(b.order) > b.historyLimit {
-			delete(b.schedules, b.order[0])
-			delete(b.history, b.order[0])
-			b.order = b.order[1:]
+	delete(s.active, job.id)
+	history := int64(-1)
+	if s.historyLimit.Some {
+		history = s.historyLimit.Val
+	}
+	if history != 0 {
+		s.history[job.id] = status
+		s.order = append(s.order, job.id)
+		if history > 0 && int64(len(s.order)) > history {
+			delete(s.schedules, s.order[0])
+			delete(s.history, s.order[0])
+			s.order = s.order[1:]
 		}
-	}
-	if b.historyLimit == 0 {
-		delete(b.schedules, job.id)
+	} else {
+		delete(s.schedules, job.id)
 	}
 	overflow := false
 	if report != nil {
-		if b.limit > 0 && b.pending >= b.limit {
+		if n := s.limitN(); n > 0 && s.pending >= n {
 			overflow = true
 		} else {
-			b.pending++
-			b.reports = append(b.reports, *report)
+			s.pending++
+			s.reports = append(s.reports, report)
 		}
 	}
-	b.mu.Unlock()
+	s.mu.Unlock()
 	select {
-	case b.changed <- struct{}{}:
+	case s.changed <- struct{}{}:
 	default:
 	}
 	if report != nil {
 		if overflow {
-			reportDiagnostic(fmt.Sprintf("scheduler %d: %v", job.id.number, report.failure.Fields[1]))
+			reportDiagnostic(fmt.Sprintf("scheduler %d: %s", job.id.number, failureText(report)))
 			reportDiagnostic("Scheduler reporting capacity exceeded")
 		} else {
 			select {
-			case b.reportReady <- struct{}{}:
+			case s.reportReady <- struct{}{}:
 			default:
 			}
 		}
 	}
 }
-func (b *Scheduler) reportLoop() {
-	defer b.reporting.Done()
+
+func failureOperation(f SchedulerFailure) *OperationId {
+	switch f := f.(type) {
+	case SchedulerFailure_Failed:
+		return f.Operation
+	case SchedulerFailure_Crashed:
+		return f.Operation
+	}
+	return nil
+}
+
+// failureText renders a failure through its Error message. A faulting message
+// implementation must not stop failure reporting.
+func failureText(f SchedulerFailure) (text string) {
+	switch f := f.(type) {
+	case SchedulerFailure_Crashed:
+		return f.Message
+	case SchedulerFailure_Failed:
+		defer func() {
+			if recover() != nil {
+				text = fmt.Sprint(f.Cause)
+			}
+		}()
+		return f.Cause.Message(RootExecution())
+	}
+	return ""
+}
+
+func (s *Scheduler) reportLoop() {
+	defer s.reporting.Done()
 	for {
-		b.mu.Lock()
-		if len(b.reports) == 0 {
-			closed := b.reportClosed
-			b.mu.Unlock()
+		s.mu.Lock()
+		if len(s.reports) == 0 {
+			closed := s.reportClosed
+			s.mu.Unlock()
 			if closed {
 				return
 			}
-			<-b.reportReady
+			<-s.reportReady
 			continue
 		}
-		report := b.reports[0]
-		b.reports[0] = completionReport{}
-		b.reports = b.reports[1:]
-		b.mu.Unlock()
+		report := s.reports[0]
+		s.reports[0] = nil
+		s.reports = s.reports[1:]
+		s.mu.Unlock()
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					reportDiagnostic(fmt.Sprintf("scheduler %v: %v", report.failure.Fields[0], schedulerCauseText(report.failure.Fields[1])))
+					reportDiagnostic(fmt.Sprintf("scheduler %d: %s", failureOperation(report).number, failureText(report)))
 					reportDiagnostic(fmt.Sprint("Scheduler reporter fault: ", r))
 				}
 			}()
-			if b.reporter == nil {
-				reportDiagnostic(fmt.Sprint("Scheduler failure: ", schedulerCauseText(report.failure.Fields[1])))
-			} else {
-				child := newExecution(owned(b.parent, context.WithoutCancel(b.context), b), context.WithoutCancel(b.context))
-				defer FinishExecution(child)
-				Invoke(child, b.reporter, []Argument{{"failure", report.failure}})
+			if !s.reporter.Some {
+				reportDiagnostic("Scheduler failure: " + failureText(report))
+				return
 			}
+			detached := context.WithoutCancel(s.context)
+			child := s.parent.child(detached).ownedBy(s)
+			defer FinishExecution(child)
+			s.reporter.Val(child, report)
 		}()
-		b.mu.Lock()
-		b.pending--
-		b.mu.Unlock()
+		s.mu.Lock()
+		s.pending--
+		s.mu.Unlock()
 	}
 }
-func (b *Scheduler) close(ctx *Execution) {
-	if ctx.Owners[b] {
-		Panic("a Scheduler operation or reporter cannot close its own service")
+
+func (s *Scheduler) close(ctx *Execution) {
+	if ctx.isOwnedBy(s) {
+		Raise("a Scheduler operation or reporter cannot close its own service")
 	}
-	b.mu.Lock()
-	if b.closing {
-		done := b.done
-		b.mu.Unlock()
+	s.mu.Lock()
+	if s.closing {
+		done := s.done
+		s.mu.Unlock()
 		<-done
 		return
 	}
-	b.closing = true
-	b.mu.Unlock()
-	if b.drain > 0 {
-		timer := time.NewTimer(b.drain)
+	s.closing = true
+	s.mu.Unlock()
+	if s.drain.Some && s.drain.Val > 0 {
+		timer := time.NewTimer(time.Duration(s.drain.Val))
 		draining := true
 		for draining {
-			b.mu.Lock()
-			empty := len(b.active) == 0
-			b.mu.Unlock()
+			s.mu.Lock()
+			empty := len(s.active) == 0
+			s.mu.Unlock()
 			if empty {
 				break
 			}
 			select {
-			case <-b.context.Done():
+			case <-s.context.Done():
 				draining = false
 			case <-timer.C:
 				draining = false
-			case <-b.changed:
+			case <-s.changed:
 			}
 		}
-		if !timer.Stop() {
-			select {
-			case <-timer.C:
-			default:
-			}
-		}
+		timer.Stop()
 	}
-	b.mu.Lock()
-	for _, job := range b.active {
+	s.mu.Lock()
+	for _, job := range s.active {
 		job.stopped = true
 		job.stop()
 	}
-	b.mu.Unlock()
-	b.cancel()
-	b.jobs.Wait()
-	b.mu.Lock()
-	b.reportClosed = true
-	b.mu.Unlock()
+	s.mu.Unlock()
+	s.cancel()
+	s.jobs.Wait()
+	s.mu.Lock()
+	s.reportClosed = true
+	s.mu.Unlock()
 	select {
-	case b.reportReady <- struct{}{}:
+	case s.reportReady <- struct{}{}:
 	default:
 	}
-	b.reporting.Wait()
-	b.mu.Lock()
-	b.closed = true
-	unregisterService(b.parent, b)
-	close(b.done)
-	b.mu.Unlock()
+	s.reporting.Wait()
+	s.mu.Lock()
+	s.closed = true
+	close(s.done)
+	s.mu.Unlock()
+	unregisterResource(s.parent, s)
 }
 
-var diagnostics = struct {
-	queue    chan string
-	work     sync.WaitGroup
-	overflow atomic.Uint64
-}{queue: make(chan string, 128)}
-
-func init() {
-	// The writer touches only strings, never records, so it does not mark
-	// concurrent work; every goroutine that runs user code marks it itself.
-	go func() {
-		for message := range diagnostics.queue {
-			fmt.Fprintln(os.Stderr, message)
-			diagnostics.work.Done()
-		}
-	}()
-}
-func reportDiagnostic(message string) {
-	diagnostics.work.Add(1)
-	select {
-	case diagnostics.queue <- message:
-	default:
-		diagnostics.work.Done()
-		diagnostics.overflow.Add(1)
-		fmt.Fprintln(os.Stderr, "runtime diagnostic buffer overflow")
+// schedule starts delayed (once) or repeating work through the same
+// admission, reporting, cancellation, status and joining path as start.
+func (s *Scheduler) schedule(ctx *Execution, delay Duration, repeating bool, operation func(*Execution) Result[Unit, Error]) Result[*OperationId, StartError] {
+	if delay < 0 || repeating && delay == 0 {
+		return startFailed(StartError_InvalidInput{})
 	}
-}
-func FlushDiagnostics() { diagnostics.work.Wait() }
-
-// schedulerCauseText renders a Failed cause through its Error message. Crashed
-// reports already carry text. A faulting message implementation must not stop
-// failure reporting.
-func schedulerCauseText(cause Value) (text string) {
-	if text, ok := cause.(string); ok {
-		return text
-	}
-	defer func() {
-		if recover() != nil {
-			text = fmt.Sprint(cause)
+	return s.startScheduled(ctx, func(child *Execution) Result[Unit, Error] {
+		for {
+			sleepFor(child, time.Duration(delay))
+			outcome := operation(child)
+			if !repeating || outcome.Failed {
+				return outcome
+			}
 		}
-	}()
-	return fmt.Sprint(Invoke(RootExecution(), Bind(cause, "@std/Error", "message"), nil))
+	}, &scheduledOperation{delay, repeating, operation})
+}
+
+// Scheduler_Restart cancels and joins an after/every operation, then starts
+// its original schedule with a fresh id.
+func Scheduler_Restart(ctx *Execution, s *Scheduler, id *OperationId) Result[*OperationId, StartError] {
+	if ctx.isOwnedBy(s) {
+		Raise("a Scheduler operation cannot restart work in its own service")
+	}
+	s.adopt(ctx)
+	s.mu.Lock()
+	schedule, exists := s.schedules[id]
+	if s.closing {
+		s.mu.Unlock()
+		return startFailed(StartError_Closed{})
+	}
+	if !exists {
+		s.mu.Unlock()
+		return startFailed(StartError_InvalidInput{})
+	}
+	job := s.active[id]
+	if job != nil {
+		job.stopped = true
+		job.stop()
+	}
+	s.mu.Unlock()
+	if job != nil {
+		select {
+		case <-job.done:
+		case <-ctx.Context.Done():
+			CheckCancelled(ctx)
+		}
+	}
+	return s.schedule(ctx, schedule.delay, schedule.repeating, schedule.operation)
 }

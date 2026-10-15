@@ -2,18 +2,15 @@ package msruntime
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 	"os"
 	goruntime "runtime"
 	"strings"
 	"time"
-)
 
-type Test struct {
-	Name string
-	Run  Function
-}
+	"github.com/manuscript-lang/manuscript/internal/nativeabi"
+)
 
 // DefaultTestTimeout bounds each test run by the generated test executable
 // so one deadlocked test cannot hang the whole run silently.
@@ -50,8 +47,9 @@ func ParseTestArgs(args []string) (TestOptions, error) {
 	return options, nil
 }
 
-// RunTestsArgs runs tests with the options encoded in the executable's arguments.
-func RunTestsArgs(tests []Test, args []string) int {
+// RunTests runs the test blocks with the options encoded in the executable's
+// arguments and returns the number that failed (2 for an argument error).
+func RunTests(tests []Test, args []string) int {
 	reporter, err := openTestReporter()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -64,14 +62,15 @@ func RunTestsArgs(tests []Test, args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
-	return runTestsWith(tests, options, reporter)
+	return runTestsWith(tests, options, args, reporter)
 }
 
+// RunTestsWith runs tests with explicit options and no structured reporter.
 func RunTestsWith(tests []Test, options TestOptions) int {
-	return runTestsWith(tests, options, nil)
+	return runTestsWith(tests, options, nil, nil)
 }
 
-func runTestsWith(tests []Test, options TestOptions, reporter *testReporter) int {
+func runTestsWith(tests []Test, options TestOptions, args []string, reporter *testReporter) int {
 	total := len(tests)
 	if options.Filter != "" {
 		var selected []Test
@@ -89,22 +88,18 @@ func runTestsWith(tests []Test, options TestOptions, reporter *testReporter) int
 		}
 		reporter.emit(nativeabi.TestEvent{Event: "plan", Format: 1, Available: total, Names: names})
 	}
-	if options.Filter != "" {
-		if len(tests) == 0 {
-			reporter.emit(nativeabi.TestEvent{Event: "done", Reason: "no_match"})
-			fmt.Printf("no tests match filter %q (%d tests available); the filter matches any part of a test's module::name\n", options.Filter, total)
-			return 1
-		}
+	if options.Filter != "" && len(tests) == 0 {
+		reporter.emit(nativeabi.TestEvent{Event: "done", Reason: "no_match"})
+		fmt.Printf("no tests match filter %q (%d tests available); the filter matches any part of a test's module::name\n", options.Filter, total)
+		return 1
 	}
 	failed := 0
 	for i, test := range tests {
 		reporter.emit(nativeabi.TestEvent{Event: "run", Index: i})
 		fmt.Printf("RUN %s\n", test.Name)
-		if failure := runTest(test, options.Timeout); failure != nil {
+		if failure := runTest(test, options.Timeout, args); failure != nil {
 			failed++
-			if reporter != nil {
-				reporter.emit(nativeabi.TestEvent{Event: "failed", Index: i, Failure: fmt.Sprint(failure)})
-			}
+			reporter.emit(nativeabi.TestEvent{Event: "failed", Index: i, Failure: fmt.Sprint(failure)})
 			fmt.Printf("FAIL %s: %v\n", test.Name, failure)
 			continue
 		}
@@ -120,20 +115,19 @@ func runTestsWith(tests []Test, options TestOptions, reporter *testReporter) int
 		reason = "no_tests"
 	}
 	reporter.emit(nativeabi.TestEvent{Event: "done", Reason: reason})
+	FlushDiagnostics()
 	return failed
 }
 
 // runTest executes one test on its own root execution and returns its failure.
 // When the timeout elapses the execution is cancelled; a test that still does
 // not stop is abandoned after a goroutine dump so later tests can run.
-func runTest(test Test, timeout time.Duration) any {
-	execution := RootExecution()
-	cancelled, cancel := context.WithCancel(execution.Context)
+func runTest(test Test, timeout time.Duration, args []string) any {
+	testContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	execution.Context = cancelled
+	execution := rootExecution(testContext, args)
 	done := make(chan any, 1)
 	// An abandoned test keeps running beside later tests.
-	markConcurrent()
 	go func() {
 		var failure any
 		defer func() { done <- failure }()
@@ -142,15 +136,11 @@ func runTest(test Test, timeout time.Duration) any {
 				failure = r
 			}
 		}()
-		if err := execution.Host.initialize(); err != nil {
-			Panic(err.Error())
+		if hostShutdown != nil {
+			defer Cleanup(execution, hostShutdown)
 		}
-		defer Cleanup(execution, hostValue(execution, "stdin"))
-		defer Cleanup(execution, hostValue(execution, "stdout"))
-		defer Cleanup(execution, hostValue(execution, "stderr"))
-		defer Cleanup(execution, hostValue(execution, "network"))
 		defer FinishExecution(execution)
-		Invoke(execution, test.Run, nil)
+		test.Run(execution)
 	}()
 	if timeout <= 0 {
 		return <-done
@@ -172,4 +162,39 @@ func runTest(test Test, timeout time.Duration) any {
 	stacks = stacks[:goruntime.Stack(stacks, true)]
 	fmt.Fprintf(os.Stderr, "goroutines after timeout in %s:\n%s\n", test.Name, stacks)
 	return fmt.Sprintf("timed out after %s and did not stop when cancelled; goroutine dump is on stderr", timeout)
+}
+
+type testReporter struct {
+	file   *os.File
+	failed bool
+}
+
+func openTestReporter() (*testReporter, error) {
+	path := os.Getenv(nativeabi.TestEventsEnv)
+	if path == "" {
+		return nil, nil
+	}
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return nil, fmt.Errorf("cannot record structured test results: %w", err)
+	}
+	return &testReporter{file: file}, nil
+}
+
+func (r *testReporter) emit(event nativeabi.TestEvent) {
+	if r == nil || r.failed {
+		return
+	}
+	if err := json.NewEncoder(r.file).Encode(event); err != nil {
+		r.failed = true
+		fmt.Fprintf(os.Stderr, "cannot record structured test results: %v\n", err)
+	}
+}
+
+func (r *testReporter) close() {
+	if r != nil {
+		if err := r.file.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "cannot close structured test results: %v\n", err)
+		}
+	}
 }

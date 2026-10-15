@@ -5,7 +5,9 @@ import (
 	"sort"
 
 	"github.com/manuscript-lang/manuscript/internal/debugger"
+	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/lower"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
@@ -14,16 +16,22 @@ import (
 // source using the same inspection that ms inspect reports.
 func debugNames(result compiler.Result) debugger.Names {
 	root, _ := filepath.Abs(result.SourceRoot)
-	return namesFromInspection(root, tooling.Inspect(result.Program))
+	names := namesFromInspection(root, tooling.Inspect(result.Program))
+	// Lowering again names the Go local of every binding; the Go it produces
+	// is the same as the Debug build's for every function both reach.
+	_, _ = lower.Go(result.Program, "", lower.Options{Tests: true, Locals: func(function, goName string, b *checker.Binding) {
+		if names.Locals[function] == nil {
+			names.Locals[function] = map[string]debugger.Local{}
+		}
+		names.Locals[function][goName] = debugger.Local{Name: b.Name, Type: b.Type.String()}
+	}})
+	return names
 }
 
 func namesFromInspection(root string, inspection tooling.Inspection) debugger.Names {
-	names := debugger.Names{Root: root, Locals: map[string]debugger.Local{}, Sources: map[string]bool{}, Lines: map[string]map[int]bool{}}
+	names := debugger.Names{Root: root, Locals: map[string]map[string]debugger.Local{}, Sources: map[string]bool{}, Lines: map[string]map[int]bool{}}
 	for _, source := range inspection.Sources {
 		names.Sources[filepath.ToSlash(source.File)] = true
-	}
-	for _, local := range inspection.Locals {
-		names.Locals[local.GoID] = debugger.Local{Name: local.Name, Type: local.Type}
 	}
 	for _, entity := range inspection.Entities {
 		file := filepath.ToSlash(entity.Span.File)
