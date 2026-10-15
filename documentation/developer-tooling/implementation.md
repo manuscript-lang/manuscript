@@ -13,7 +13,9 @@ ms lint ms.toml --json
 ms fmt source.ms --check
 ms fmt ms.toml --check
 ms lsp
-ms mcp
+ms search read file lines
+ms symbol src/main.ms:5:18
+ms guide stdlib json
 ms debug source.ms -- arg1
 ms debug source.ms --break source.ms:7 --json
 ms debug ms.toml --script commands.txt
@@ -34,7 +36,7 @@ to their existing consumers.
 extra arguments with usage status 2; `ms version --help` shows command help.
 
 Commands that take one source input also accept a project directory containing
-`ms.toml`, including `doc`; native commands select one application entrypoint.
+`ms.toml`; native commands select one application entrypoint.
 `fmt` selects multiple files or recursively discovers directories as described
 in [formatting](source/formatting.md).
 
@@ -51,46 +53,31 @@ ms test test.ms --watch
 
 Project lint checks hygiene in every reachable local module and runs semantic rules on the checked program. [Library projects](builds/project-configuration.md#library-projects-and-copied-dependencies) include all source modules and discovered tests. `--json` reports stable rule codes and module-relative positions.
 
-## Source inspection and API documentation
+## Source inspection
 
 ```sh
 ms check ms.toml --json
 ms inspect ms.toml -o inspection.json
 ms diagram ms.toml -o calls.mmd
-ms doc src/library.ms -o api.md
-ms doc ms.toml --json -o api.json
-ms doc --stdlib -o stdlib.md
-ms doc --stdlib --json -o stdlib.json
-ms stdlib exported-standard-sources
 ```
 
-These commands use source checking and embedded declarations without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
+These commands use source checking without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
 
-`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. A contiguous `#` comment block directly above a declaration or member, at the same indentation and with no intervening blank line, is its description. Markdown renders these descriptions beside the corresponding signatures; JSON carries declaration `doc` strings and an additive `members` array with `name`, `kind`, `signature`, `doc`, and an optional implementation `contract`. Schema version 2 retains string arrays for `fields`, `cases`, and method `operations`, and adds `accessors` plus member kind `accessor` for read-only value members. Empty member descriptions stay visible as empty `doc` strings; the tool does not invent text from a signature. Inline case payloads do not inherit the case's description. Project docs include reachable local modules; library projects include all source modules and discovered tests. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
+## Commands for agents
 
-`ms stdlib <directory>` writes source declarations and bindings for tooling;
-`ms doc --stdlib` renders API documentation. These outputs serve different tasks.
+Agents with a shell need no protocol server: three small commands answer what the compiler commands do not, and each prints only what is needed to act.
 
-## Agent tools over MCP
-
-`ms mcp` serves the Model Context Protocol over stdin/stdout (newline-delimited JSON-RPC) until the client disconnects; register it with `claude mcp add manuscript -- ms mcp` or any MCP client. It takes no arguments.
-
-| Tool | Behavior |
+| Command | Behavior |
 | --- | --- |
-| `check`, `lint` | Diagnostics (`file:line:col CODE message`, at most 40) for `paths` (files, directories, `ms.toml`) or a `source` snippet checked as a standalone `main.ms`; `ok: no diagnostics` when clean |
-| `fmt` | Formatted text for `source`; for `paths`, the files that need formatting, or an in-place rewrite when `write` is true |
-| `test`, `run`, `build` | Act only on a project: an `ms.toml` or its directory. They reject single files, program arguments, and stdin, so the manifest alone decides what runs. `test` returns a count line plus failing tests only (optional `filter`); `run` returns the exit status and clipped stdout/stderr; `build` keeps the binary at `<project>/.ms-cache/bin/program` (git-ignored by `ms init`) and returns that path, or the errors; each build clears that directory first, so only the latest binary remains. `timeout` (seconds) is bounded, and a client that sends a progress token gets `notifications/progress` while they run |
-| `search_stdlib` | Fuzzy search over bundled standard declarations and members (typos, partial words, synonyms, any word order), returning module, name, signature, and a one-line doc. Built from the checker's definitions, not from another command |
-| `symbol_info` | Type, definition, and references at a 1-based `line` and `column`, from the language server's analysis |
-| `inspect` | Declarations with types and locations for a file or project (at most 120) |
+| `ms search <words>...` | Fuzzy search over bundled standard declarations and members (typos, partial words, synonyms, any word order). Each match prints module, name, signature, and a one-line description; `--limit n` (default 5, at most 15) and `--json` |
+| `ms symbol <file.ms>:<line>:<column>` | Type, definition, and references at a 1-based position, from the language server's analysis; `--json` |
+| `ms guide [stdlib [module]]` | Markdown reference: the language cheat sheet, the standard-library index (generated, so it cannot drift), or one module's declarations and docs |
 
-Every result is compact on purpose: failures, locations, and counts, never whole JSON documents, and no result exceeds 12,000 characters (long text keeps its head and tail). Use the CLI's `--json` for complete documents. Tool schemas stay under 2,800 bytes in total.
-
-The prompts `manuscript_cheatsheet`, `write_idiomatic_manuscript`, and `fix_diagnostic` are each under 800 bytes, because agents rediscover them every session. The longer references are resources read on demand: `manuscript://cheatsheet`, `manuscript://stdlib` (generated index), and `manuscript://stdlib/<module>`. A test pins the size limits and checks the cheat sheet's complete program. Results are derived from the CLI's JSON documents and the language server's analysis.
+Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which already print compact diagnostics and failures (`--json` for complete documents). The index is built from the checker's definitions, so it does not depend on any exported declaration files. The cheat sheet stays under 2,500 bytes because agents read it every session, and a test checks its complete program.
 
 ## Selecting independent analysis inputs
 
-`check`, `lint`, and `doc` accept multiple `.ms` files, directories, and `ms.toml`
+`check` and `lint` accept multiple `.ms` files, directories, and `ms.toml`
 projects. For example, `ms check src utilities.ms --json` checks each selected
 input independently. It does not combine their declarations or execute their
 `main` functions or test blocks. Native commands still take one entrypoint.

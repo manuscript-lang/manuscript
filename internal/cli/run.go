@@ -8,12 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	support "github.com/manuscript-lang/manuscript"
 	"github.com/manuscript-lang/manuscript/internal/debugger"
 	"github.com/manuscript-lang/manuscript/pkg/build"
-	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/tooling/lsp"
-	"github.com/manuscript-lang/manuscript/pkg/tooling/mcp"
 )
 
 // Run executes a command and returns its process exit status.
@@ -47,8 +44,6 @@ func standaloneCommand(name string) (func(args []string, usage string) int, bool
 		return runProfileTool, true
 	case "help":
 		return func(args []string, _ string) int { return runHelp(args[1:]) }, true
-	case "doc":
-		return func(args []string, _ string) int { return runDoc(args[1:]) }, true
 	case "init":
 		return func(args []string, _ string) int { return runInit(args[1:]) }, true
 	case "fmt":
@@ -57,10 +52,12 @@ func standaloneCommand(name string) (func(args []string, usage string) int, bool
 		return runDAP, true
 	case "lsp":
 		return runLSP, true
-	case "mcp":
-		return runMCP, true
-	case "stdlib":
-		return runStdlib, true
+	case "search":
+		return runSearch, true
+	case "symbol":
+		return runSymbol, true
+	case "guide":
+		return runGuide, true
 	}
 	return nil, false
 }
@@ -111,35 +108,6 @@ func runLSP(args []string, _ string) int {
 	}
 	if err := lsp.Serve(os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	return 0
-}
-
-func runMCP(args []string, _ string) int {
-	if len(args) != 1 {
-		fmt.Fprintln(os.Stderr, "ms mcp takes no arguments; it serves MCP tools on stdin/stdout")
-		return 2
-	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	server := &mcp.Server{Version: support.Version()}
-	if err := server.Serve(ctx, os.Stdin, os.Stdout); err != nil && ctx.Err() == nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	return 0
-}
-
-func runStdlib(args []string, usage string) int {
-	if len(args) != 2 {
-		fmt.Fprintln(os.Stderr, "ms stdlib: pass exactly one directory to write the standard declarations into, e.g. ms stdlib ./declarations")
-		fmt.Fprintln(os.Stderr)
-		fmt.Fprint(os.Stderr, usage)
-		return 2
-	}
-	if err := stdlib.Materialize(args[1]); err != nil {
-		fmt.Fprintf(os.Stderr, "ms stdlib: cannot write declarations to %s: %v\n", args[1], err)
 		return 1
 	}
 	return 0

@@ -8,7 +8,7 @@ import (
 const help = `Usage: ms <command> [arguments] [options]
        ms help [command]
 
-Manuscript checks, builds, runs, and documents .ms source and ms.toml projects.
+Manuscript checks, builds, and runs .ms source and ms.toml projects.
 
 Commands:
   check    Parse and type-check without executing
@@ -27,10 +27,10 @@ Commands:
   dap      Serve one native debugger session on stdin/stdout
   lock     Create or update project build pins
   init     Create a new project with a manifest, entry, test, and .gitignore
-  doc      Generate public API documentation
-  stdlib   Write bundled standard library declarations to a directory
   lsp      Serve the language server on stdin/stdout
-  mcp      Serve Manuscript tools to agents over MCP on stdin/stdout
+  search   Fuzzy-search the standard library
+  symbol   Show the type, definition, and references at a position
+  guide    Print the language cheat sheet and standard-library reference
   help     Show help for a command
   version  Print the compiler version
 
@@ -127,24 +127,21 @@ func commandHelp(command string) (string, bool) {
 		options = jsonErrorsHelp
 		description = "Create or update project-root ms.lock with compiler/runtime, Go toolchain,\nand target pins. Run again after changing the compiler or toolchain.\nRequires a project manifest, rather than a standalone source file."
 		examples = "ms lock ms.toml"
-	case "doc":
-		return docHelp, true
 	case "init":
 		return initHelp, true
-	case "stdlib":
-		usage = "<directory>"
-		description = "Materialize bundled standard library .ms declarations and bindings.json.\nCreate the directory if needed and replace matching files already in it.\nThese are API declarations for tooling, rather than executable implementations."
-		examples = "ms stdlib ./stdlib"
+	case "search":
+		return searchHelp, true
+	case "symbol":
+		return symbolHelp, true
+	case "guide":
+		return guideHelp, true
 	case "lsp":
 		description = "Serve the language server over stdin/stdout until the client disconnects.\nConfigure an LSP-capable editor to launch ms lsp. No file argument is needed."
 		examples = "ms lsp"
-	case "mcp":
-		description = "Serve the Model Context Protocol over stdin/stdout until the client disconnects.\nTools: check, lint, fmt, test, run, build, search_stdlib, symbol_info, inspect. test, run, and build act only on a project's ms.toml.\nResources and prompts carry a language cheat sheet and the standard-library index.\nConfigure an MCP client to launch ms mcp. No file argument is needed."
-		examples = "ms mcp\n  claude mcp add manuscript -- ms mcp"
 	case "help":
 		usage = "[command]"
 		description = "Show the command list, or detailed usage for one command."
-		examples = "ms help\n  ms help run\n  ms doc --stdlib --help"
+		examples = "ms help\n  ms help run"
 	case "version":
 		description = "Print the compiler version. Equivalent to ms --version. Takes no arguments."
 		examples = "ms version\n  ms --version"
@@ -207,7 +204,7 @@ func requestsHelp(command string, args []string) bool {
 			if command != "profile" {
 				i++
 			}
-		case "-o", "--output", "--out-dir", "--cpu-profile", "--heap-profile", "--build-type", "--timeout", "--filter", "--test", "--match", "--exclude", "--repeat", "--shuffle":
+		case "-o", "--output", "--out-dir", "--cpu-profile", "--heap-profile", "--build-type", "--limit", "--timeout", "--filter", "--test", "--match", "--exclude", "--repeat", "--shuffle":
 			// A flag value is not a help request, even if it is spelled --help.
 			i++
 		}

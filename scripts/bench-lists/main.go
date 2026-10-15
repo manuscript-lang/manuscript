@@ -72,7 +72,7 @@ func run() error {
 			return err
 		}
 	}
-	command := exec.Command(devtool.Go(), "test", "-mod=vendor", "-tags=ms_lean", "-c", "-o", filepath.Join(directory, "lists.test"), directory)
+	command := exec.Command(devtool.Go(), "test", "-mod=vendor", "-c", "-o", filepath.Join(directory, "lists.test"), directory)
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	if err := command.Run(); err != nil {
 		return err

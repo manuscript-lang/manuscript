@@ -54,7 +54,7 @@ test "root":
 		data, err := c.CombinedOutput()
 		return string(data), err
 	}
-	for _, command := range []string{"check", "lint", "doc", "lock"} {
+	for _, command := range []string{"check", "lint", "lock"} {
 		data, err := run(command, manifest)
 		if err != nil {
 			t.Fatalf("%s: %v %s", command, err, data)

@@ -16,7 +16,6 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
-	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
 type nativeResult struct {
@@ -257,7 +256,7 @@ func writeProfileReference(directory, executable string, result compiler.Result,
 	if err := os.WriteFile(filepath.Join(directory, "manifest.json"), manifest, 0600); err != nil {
 		return err
 	}
-	inspection, err := json.MarshalIndent(tooling.Inspect(result.Program), "", "  ")
+	inspection, err := json.MarshalIndent(inspectionWithGoLocals(result), "", "  ")
 	if err == nil {
 		err = os.WriteFile(filepath.Join(directory, "inspection.json"), inspection, 0600)
 	}

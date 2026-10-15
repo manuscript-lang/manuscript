@@ -17,7 +17,7 @@ Use for `pkg/runtime/`, `internal/hostos/`, `pkg/stdlib/*.ms`, `bindings.json`, 
 - Map and Set are hash-indexed and iterate in insertion order. Key and element types must be `Hashable`; an unhashable key type is a compile error, never a linear-scan fallback. `Equal` and `Hashable` are ordinary source interfaces.
 - Preserve declared error types/cases/causes and checked binding identities.
 - Include new runtime/platform sources in standalone bundles and implementation identity; aliases must agree when runtime files are merged. Verify emitted programs as well as ordinary package compilation.
-- Keep implementations needing `net/http`, `crypto/tls`, gopsutil, or similar heavy dependencies in `//go:build !ms_lean` files, and list their standard modules in the compiler's full-runtime set; `TestLeanRuntimeImplementsLeanModules` checks the lean runtime still serves every other module.
+- The standard declarations in `pkg/runtime/std_*_gen.go` come from `make stdgen`; change the `.ms` declaration, regenerate, and implement the signature the `rtcheck` build reports. See [runtime conventions](../../documentation/contributing/runtime-conventions.md).
 - Run affected runtime tests and called native conformance; concurrency/lifetime changes need relevant race checks and bounded coordinated cancellation/shutdown cases. Report material untested platform limits.
 
 ## Standard library

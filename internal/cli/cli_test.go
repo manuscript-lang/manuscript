@@ -52,7 +52,7 @@ func sourceFile(t *testing.T, source string) string {
 }
 
 func TestUsageAndInvalidOptions(t *testing.T) {
-	for _, args := range [][]string{nil, {"--help"}, {"-h"}, {"--version"}, {"doc", "--help"}} {
+	for _, args := range [][]string{nil, {"--help"}, {"-h"}, {"--version"}, {"lock", "--help"}} {
 		status, output, errors := invoke(t, args...)
 		if status != 0 || output == "" || errors != "" {
 			t.Fatalf("%v: %d, %q, %q", args, status, output, errors)
@@ -63,7 +63,6 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 		{"check", "missing.ms", "-o"}, {"check", "missing.ms", "--cpu-profile"},
 		{"check", "missing.ms", "--check"}, {"fmt", "missing.ms", "--json"},
 		{"check", "missing.ms", "--debug"}, {"check", "missing.ms", "--trace", "trace.out"},
-		{"stdlib", "out", "extra"},
 		{"build", "missing.ms", "--build-type"},
 		{"build", "missing.ms", "--build-type", ""},
 		{"build", "missing.ms", "--build-type", "Fast"},
@@ -88,7 +87,7 @@ func TestHelpForEveryCommand(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	for _, command := range []string{
 		"check", "lint", "lsp", "profile", "debug", "build", "emit", "run",
-		"test", "fmt", "inspect", "diagram", "lock", "init", "doc", "stdlib", "help",
+		"test", "fmt", "inspect", "diagram", "lock", "init", "help",
 	} {
 		for _, args := range [][]string{
 			{command, "--help"}, {command, "-h"}, {"help", command},
@@ -107,11 +106,7 @@ func TestHelpForEveryCommand(t *testing.T) {
 			t.Fatalf("build types missing from %s help: %d, %q, %q", command, status, output, errors)
 		}
 	}
-	status, output, errors := invoke(t, "doc", "--stdlib", "--help")
-	if status != 0 || errors != "" || !strings.Contains(output, "ms doc --stdlib --json") {
-		t.Fatalf("stdlib documentation help: %d, %q, %q", status, output, errors)
-	}
-	for _, command := range []string{"check", "build", "stdlib", "doc"} {
+	for _, command := range []string{"check", "build"} {
 		status, output, errors := invoke(t, command)
 		if status != 2 || output != "" || !strings.Contains(errors, "Usage: ms "+command) {
 			t.Fatalf("missing arguments for %s: %d, %q, %q", command, status, output, errors)
@@ -263,7 +258,7 @@ func TestProjectLintChecksImportedSource(t *testing.T) {
 func TestSourceCommandsNeedNoNativeToolchain(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	file := sourceFile(t, "export fn value() -> Int:\n    return 3\n")
-	for _, command := range []string{"check", "inspect", "diagram", "emit", "doc"} {
+	for _, command := range []string{"check", "inspect", "diagram", "emit"} {
 		status, output, errors := invoke(t, command, file)
 		if status != 0 || output == "" || errors != "" {
 			t.Fatalf("%s: %d, %q", command, status, errors)
@@ -282,7 +277,7 @@ func TestSourceCommandsRetainProjectEntryValidation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte("export fn helper() -> Int:\n    return 1\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	for _, command := range []string{"check", "inspect", "diagram", "doc", "lock"} {
+	for _, command := range []string{"check", "inspect", "diagram", "lock"} {
 		status, _, errors := invoke(t, command, filepath.Join(root, "ms.toml"))
 		if status != 1 || !strings.Contains(errors, "entry must export") {
 			t.Fatalf("%s lost application entry checking: %d, %s", command, status, errors)
@@ -365,10 +360,6 @@ func TestArgumentMistakesNameTheProblem(t *testing.T) {
 	status, _, errors = invoke(t, "build", "--bogus", source)
 	if status != 2 || !strings.Contains(errors, "unknown option --bogus for ms build") {
 		t.Fatalf("unknown flag: %d, %q", status, errors)
-	}
-	status, _, errors = invoke(t, "stdlib")
-	if status != 2 || strings.Contains(errors, "file argument") || !strings.Contains(errors, "ms stdlib: pass exactly one directory") {
-		t.Fatalf("stdlib usage: %d, %q", status, errors)
 	}
 	directory := t.TempDir()
 	status, _, errors = invoke(t, "build", source, "-o", directory)

@@ -114,7 +114,7 @@ func run() error {
 		return nil
 	}
 	binary := filepath.Join(directory, "accessors.test")
-	command := exec.Command(*goTool, "test", "-mod=vendor", "-buildvcs=false", "-tags=ms_lean", "-gcflags=-m=2", "-c", "-o", binary, directory)
+	command := exec.Command(*goTool, "test", "-mod=vendor", "-buildvcs=false", "-gcflags=-m=2", "-c", "-o", binary, directory)
 	var buildOutput bytes.Buffer
 	command.Stdout, command.Stderr = &buildOutput, &buildOutput
 	buildErr := command.Run()

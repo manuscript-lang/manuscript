@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/manuscript-lang/manuscript/pkg/checker"
 )
 
 func analysisFiles(t *testing.T, root string, files map[string]string) {
@@ -131,13 +129,10 @@ func TestAnalysisStandaloneDirectoryBoundariesAndEmpty(t *testing.T) {
 	if err := os.Symlink(filepath.Join(root, "outside"), filepath.Join(root, "sources", "linked")); err != nil {
 		t.Logf("directory symlink unavailable: %v", err)
 	}
-	for _, command := range []string{"check", "lint", "doc"} {
+	for _, command := range []string{"check", "lint"} {
 		status, stdout, stderr := invoke(t, command, "sources", "--json")
 		if status != 0 || stderr != "" || strings.Contains(stdout, "invalid") {
 			t.Fatalf("%s discovery: %d, %q, %q", command, status, stdout, stderr)
-		}
-		if command == "doc" && (!strings.Contains(stdout, "sources/a.ms") || !strings.Contains(stdout, "sources/sub/b.ms")) {
-			t.Fatalf("missing independent docs: %s", stdout)
 		}
 	}
 	status, stdout, stderr := invoke(t, "check", "sources", "sources/nested", "--json")
@@ -147,7 +142,7 @@ func TestAnalysisStandaloneDirectoryBoundariesAndEmpty(t *testing.T) {
 	if err := os.Mkdir("empty", 0755); err != nil {
 		t.Fatal(err)
 	}
-	for _, command := range []string{"check", "lint", "doc"} {
+	for _, command := range []string{"check", "lint"} {
 		status, stdout, stderr := invoke(t, command, "empty", "--json")
 		if status != 0 || stderr != "" || !strings.Contains(stdout, "[]") {
 			t.Fatalf("%s empty: %d, %q, %q", command, status, stdout, stderr)
@@ -163,7 +158,7 @@ func TestAnalysisStandaloneDirectoryBoundariesAndEmpty(t *testing.T) {
 	}
 }
 
-func TestAnalysisProjectScopesAndDocsAtomicFailure(t *testing.T) {
+func TestAnalysisProjectScopes(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
 	for _, name := range []string{"left", "right"} {
@@ -173,32 +168,11 @@ func TestAnalysisProjectScopesAndDocsAtomicFailure(t *testing.T) {
 			name + "/src/library.ms": "# Local value.\nexport fn value() -> Int:\n    return 0\n",
 		})
 	}
-	for _, command := range []string{"check", "lint", "doc"} {
+	for _, command := range []string{"check", "lint"} {
 		status, stdout, stderr := invoke(t, command, "right", "left/ms.toml", "left", "--json")
 		if status != 0 || stderr != "" {
 			t.Fatalf("%s independent alias scopes: %d, %q, %q", command, status, stdout, stderr)
 		}
-		if command == "doc" {
-			var document struct{ Modules []checker.APIModule }
-			if json.Unmarshal([]byte(stdout), &document) != nil || len(document.Modules) != 4 || document.Modules[0].Path != "left/src/library.ms" || document.Modules[2].Path != "right/src/library.ms" {
-				t.Fatalf("distinct module identity: %s", stdout)
-			}
-		}
-	}
-	status, stdout, stderr := invoke(t, "doc", "left", "left/src/library.ms", "--json")
-	var document struct{ Modules []checker.APIModule }
-	if status != 0 || stderr != "" || json.Unmarshal([]byte(stdout), &document) != nil || len(document.Modules) != 2 {
-		t.Fatalf("overlapping module docs: %d, %q, %q", status, stdout, stderr)
-	}
-	analysisFiles(t, root, map[string]string{
-		"left/src/library.ms":  "export fn value() -> Int:\n    return missing_left\n",
-		"right/src/library.ms": "export fn value() -> Int:\n    return missing_right\n",
-		"api.md":               "keep previous artifact\n",
-	})
-	status, stdout, stderr = invoke(t, "doc", "right", "left", "-o", "api.md")
-	data, err := os.ReadFile("api.md")
-	if status != 1 || stdout != "" || err != nil || string(data) != "keep previous artifact\n" || !strings.Contains(stderr, "missing_left") || !strings.Contains(stderr, "missing_right") {
-		t.Fatalf("partial docs published: %d, %q, %q, %q, %v", status, stdout, stderr, data, err)
 	}
 }
 
@@ -209,7 +183,7 @@ func TestAnalysisLiteralTargetsAndNativeArity(t *testing.T) {
 		"-flag=a=b.ms": "export fn main() -> Int:\n    return 0\n",
 		"plain.ms":     "export fn main() -> Int:\n    return 0\n",
 	})
-	for _, command := range []string{"check", "lint", "doc"} {
+	for _, command := range []string{"check", "lint"} {
 		status, _, stderr := invoke(t, command, "--", "-flag=a=b.ms", "plain.ms")
 		if status != 0 || stderr != "" {
 			t.Fatalf("%s literal targets: %d, %q", command, status, stderr)
@@ -267,42 +241,6 @@ func TestAnalysisCollectionRangesAndSymlinkConfinement(t *testing.T) {
 	status, stdout, stderr = invoke(t, "check", "sources/main.ms", filepath.Join(outside, "good.ms"), "--json")
 	if status != 0 || stderr != "" {
 		t.Fatalf("explicit outside input rejected: %d, %q, %q", status, stdout, stderr)
-	}
-}
-
-func TestAnalysisDocRejectsConflictingModuleSnapshots(t *testing.T) {
-	root := t.TempDir()
-	t.Chdir(root)
-	analysisFiles(t, root, map[string]string{
-		"shared.ms": "export type Item:\n    value: Int\n",
-		"left.ms":   "import Item from \"./shared.ms\"\nexport interface Left:\n    fn left() -> Int\nimpl Left for Item:\n    fn left() -> Int:\n        return 0\n",
-		"right.ms":  "import Item from \"./shared.ms\"\nexport interface Right:\n    fn right() -> Int\nimpl Right for Item:\n    fn right() -> Int:\n        return 0\n",
-		"api.json":  "preserve previous reference",
-	})
-	for _, target := range []string{"left.ms", "right.ms"} {
-		status, _, stderr := invoke(t, "doc", target, "--json")
-		if status != 0 || stderr != "" {
-			t.Fatalf("single %s snapshot: %d, %q", target, status, stderr)
-		}
-	}
-	status, stdout, stderr := invoke(t, "doc", "right.ms", "left.ms", "--json", "-o", "api.json")
-	data, err := os.ReadFile("api.json")
-	if status != 1 || stdout != "" || !strings.Contains(stderr, "conflicting API descriptions for shared.ms") || err != nil || string(data) != "preserve previous reference" {
-		t.Fatalf("silently selected one module context: %d, %q, %q, %s, %v", status, stdout, stderr, data, err)
-	}
-	// Equivalent complete graphs may load implementations in different orders.
-	analysisFiles(t, root, map[string]string{
-		"first.ms":  "import Left from \"./left.ms\"\nimport Right from \"./right.ms\"\nexport fn main() -> Int:\n    return 0\n",
-		"second.ms": "import Right from \"./right.ms\"\nimport Left from \"./left.ms\"\nexport fn main() -> Int:\n    return 0\n",
-	})
-	status, stdout, stderr = invoke(t, "doc", "second.ms", "first.ms", "--json")
-	var reference struct{ Modules []checker.APIModule }
-	if status != 0 || stderr != "" || json.Unmarshal([]byte(stdout), &reference) != nil || len(reference.Modules) != 5 {
-		t.Fatalf("equivalent graphs conflicted: %d, %q, %q", status, stdout, stderr)
-	}
-	shared := reference.Modules[4]
-	if shared.Path != "shared.ms" || len(shared.Declarations) != 1 || len(shared.Declarations[0].Implements) != 2 {
-		t.Fatalf("missing complete shared snapshot: %+v", shared)
 	}
 }
 

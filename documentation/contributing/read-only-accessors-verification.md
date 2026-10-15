@@ -5,6 +5,8 @@ weight = 28
 
 # Read-only accessor implementation evidence
 
+> Historical record. Implementation details here (the `Value` ABI, `CallMethod`, and the old runtime files) describe the lowering before the typed Go representation; see [Go representation](go-lowering-representation.md) for the current one.
+
 The implementation follows the [approved design](read-only-accessors-design.md).
 The feature and its review corrections have independent code-review approval.
 The user authorized pushing the branch and opening a draft PR; merge remains held.

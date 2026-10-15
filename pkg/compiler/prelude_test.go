@@ -121,22 +121,6 @@ fn use() -> Int: List(3) + Map(4) + Set(5)
 	}
 }
 
-func TestMapAddDirectAndReorderedLowering(t *testing.T) {
-	r := CompileSource("add.ms", `fn use(m: Map[String, Int]) -> Unit:
-    m.add("a", 1)
-    m.add(key: "b", value: 2)
-    m.add(value: 3, key: "c")
-    let add = m.add
-    add("d", 4)
-`, Options{})
-	if !r.Success() {
-		t.Fatal(r.Diagnostics)
-	}
-	if strings.Count(r.Source, "rt.MapWithEntryString(") != 2 || strings.Count(r.Source, `"add"`) != 2 {
-		t.Fatal(r.Source)
-	}
-}
-
 func TestCollectionPreludeImportedNamesRetainIdentity(t *testing.T) {
 	root := t.TempDir()
 	for name, source := range map[string]string{

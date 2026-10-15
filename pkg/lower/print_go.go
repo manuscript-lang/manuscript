@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/format"
 	"go/token"
-	"strconv"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -16,13 +15,11 @@ import (
 // source directive to its statement through printing, including nested closures.
 // Only the output boundary replaces these labels with column-one directives.
 // Labels use a separate counter so source mapping never changes temporary IDs.
-func (g *generator) locatedStatement(pos syntax.Position, statement ast.Stmt) ast.Stmt {
-	name := "manuscriptSourceLine" + strconv.Itoa(len(g.sourceLines))
-	if g.sourceLines == nil {
-		g.sourceLines = map[string]syntax.Position{}
-	}
-	g.sourceLines[name] = pos
-	return &ast.LabeledStmt{Label: ident(name), Stmt: statement}
+func (g *gen) locatedStatement(pos syntax.Position, statement ast.Stmt) ast.Stmt {
+	label := ident("manuscriptSourceLine")
+	top := g.stack[len(g.stack)-1]
+	top.labels = append(top.labels, labelRef{id: label, pos: pos})
+	return &ast.LabeledStmt{Label: label, Stmt: statement}
 }
 
 func sourceDirective(pos syntax.Position) string {
@@ -33,7 +30,7 @@ func sourceDirective(pos syntax.Position) string {
 // printGo is the sole source serialization boundary of checked Go lowering.
 // Formatting owns Go spelling and precedence; the only textual emission here is
 // source directives, whose payload is metadata rather than executable syntax.
-func (g *generator) printGo(file *ast.File) (string, error) {
+func (g *gen) printGo(file *ast.File) (string, error) {
 	var out bytes.Buffer
 	if err := format.Node(&out, token.NewFileSet(), file); err != nil {
 		return "", fmt.Errorf("printing generated Go: %w", err)
@@ -50,6 +47,11 @@ func (g *generator) printGo(file *ast.File) (string, error) {
 	var printed []string
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
+		if !g.inRuntime && (strings.HasPrefix(line, "func ") || strings.HasPrefix(line, "type ") || strings.HasPrefix(line, "var ")) {
+			// Generated declarations are not source: end the previous
+			// function's mapping.
+			printed = append(printed, "//line generated.go:1")
+		}
 		name, label := strings.CutSuffix(trimmed, ":")
 		if pos, ok := g.sourceLines[name]; label && ok {
 			if seen[name] {

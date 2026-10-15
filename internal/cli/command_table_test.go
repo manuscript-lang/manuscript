@@ -92,10 +92,3 @@ func TestFailurePositionReadsTheFirstLocation(t *testing.T) {
 		t.Fatal("text without a location produced a position")
 	}
 }
-
-func TestMCPRejectsArguments(t *testing.T) {
-	status, _, errors := invoke(t, "mcp", "extra")
-	if status != 2 || !strings.Contains(errors, "ms mcp takes no arguments") {
-		t.Fatalf("mcp extra = %d, %q", status, errors)
-	}
-}

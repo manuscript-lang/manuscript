@@ -215,10 +215,10 @@ Evidence: [guide extraction](../pkg/tooling/docgen/guides.go),
 Verify: source checks and tutorial discovery work without generated Markdown;
 `make book-check` generates the mounted pages and validates routes and downloads.
 
-### The MCP server wraps the CLI and never depends on `ms stdlib`
+### Agent help is CLI commands, not a protocol server
 
-Decision: the user chose `ms mcp` as a thin adapter. Execution tools (`test`, `run`, `build`) accept only a project's `ms.toml`, never a file, argument list, or stdin, so the manifest decides what runs. `search_stdlib` is fuzzy. Prompts stay under about 150 tokens because agents rediscover them every session; long references are resources. Tool results are compact (failures, locations, counts), tool schemas stay small, and the user rejected `fmt` diffs, `structuredContent`, and an `init` tool (`ms init` exists). The user is removing `ms stdlib` and `ms doc`: build the lookup index and resources from `checker.StandardLibrary()`, not from those commands or their renderer.
+Decision: the user evaluated an MCP server (PR #528), judged the CLI the better surface for coding agents, and had it removed. Agents with a shell already get compact output from `check`, `lint`, `fmt`, and `test`; the gaps became `ms search`, `ms symbol`, and `ms guide`. Keep the command set small and useful. Search is fuzzy, the guide stays short because agents reread it, and the standard-library index is built from `checker.StandardLibrary()`, never from `ms doc` or `ms stdlib` (both removed). A new `--json` command must join `jsonCommands`.
 
-Apply when: adding an MCP tool or changing what an existing one accepts, or touching the standard-library index.
-Evidence: [server](../pkg/tooling/mcp/server.go), [tools](../pkg/tooling/mcp/tools.go), [lookup](../pkg/tooling/mcp/lookup.go), [tests](../pkg/tooling/mcp/server_test.go), and [agent tools](../documentation/developer-tooling/implementation.md#agent-tools-over-mcp).
-Verify: `go test ./pkg/tooling/mcp ./internal/cli`; the tests pin that execution tools reject non-project paths and unknown arguments, that `fmt` with `source` starts no subprocess, and that the cheat sheet's program checks.
+Apply when: adding agent-facing commands, changing search ranking, or touching the cheat sheet or standard-library index.
+Evidence: [search](../pkg/tooling/guide/search.go), [guide](../pkg/tooling/guide/guide.go), [cheat sheet](../pkg/tooling/guide/cheatsheet.md), [commands](../internal/cli/agent.go), and [agent commands](../documentation/developer-tooling/implementation.md#commands-for-agents).
+Verify: `go test ./pkg/tooling/guide ./internal/cli`; search tests pin typo, synonym, partial, and dedup behavior; the cheat sheet's program must check and stay under 2,500 bytes.

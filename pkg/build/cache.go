@@ -340,7 +340,7 @@ func BuildCheckedWithType(result compiler.Result, output string, kind compiler.B
 		source = debugSource(result)
 		metadata.SourceRoot = result.SourceRoot
 	}
-	tags := runtimeTags(result.Program)
+	var tags []string
 	identity, _ := json.Marshal(struct {
 		Metadata        BuildMetadata
 		GeneratedSHA256 string

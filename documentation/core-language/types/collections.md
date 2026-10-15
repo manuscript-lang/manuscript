@@ -128,7 +128,7 @@ stored operation preserves its mutable identity and backing kind. Generic access
 boxes a primitive only when it crosses the ordinary value boundary. Explicit
 copies preserve shallow references and receive independent backing.
 
-See the [runtime ABI migration](../../contributing/list-storage.md) for Go callers
+See [Go representation](../../contributing/go-lowering-representation.md) for Go callers
 and the measured constructor/access/comparator paths.
 
 ## Lookup and updates

@@ -101,13 +101,10 @@ test "copied native defaults":
 }
 
 func checkLibrarySource(cli, manifest string, run func(string, ...string) (string, error)) error {
-	for _, command := range []string{"check", "lint", "doc"} {
-		data, err := run(cli, command, manifest)
+	for _, command := range []string{"check", "lint"} {
+		_, err := run(cli, command, manifest)
 		if err != nil {
 			return err
-		}
-		if command == "doc" && (!strings.Contains(data, "fn value()") || !strings.Contains(data, "fn other()")) {
-			return fmt.Errorf("packaged library docs omit exports: %s", data)
 		}
 	}
 	return nil
