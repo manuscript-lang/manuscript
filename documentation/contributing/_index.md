@@ -9,6 +9,7 @@ Start with the [repository architecture](architecture.md), then use the [develop
 
 - [Compiler internals](compiler/_index.md) explain parsing, checking, and lowering.
 - [Go representation](go-lowering-representation.md) states when a type lowers to a Go reference or a value.
+- [Go lowering units](go-lowering-units.md) explain how lowering splits into independent, parallel units.
 - [Compiler conformance](compiler/conformance/_index.md) specifies acceptance and runtime cases.
 - [Maintenance and compatibility](maintenance.md) cover pins, licenses, releases, and public contract changes.
 

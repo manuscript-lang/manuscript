@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 	"sort"
+	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -39,35 +40,37 @@ func (g *gen) equalFunc(t *checker.Type) ast.Expr {
 		return generic(rtName("Equals"), g.goType(t))
 	}
 	key := "equal:" + checker.TypeKey(t)
-	if g.localEquality() {
+	if g.localEq {
 		key += "@" + g.module
 	}
-	if d := g.helpers[key]; d != "" {
-		return ident(d)
-	}
-	name := g.unique("equal_" + g.nameOf(t))
-	if g.helpers == nil {
-		g.helpers = map[string]string{}
-	}
-	g.helpers[key] = name
-	body := g.equalBody(t)
-	params := []*ast.Field{field("ctx", pointerTo(rtName("Execution"))), field("a", g.goType(t)), field("b", g.goType(t))}
-	g.decls = append(g.decls, &ast.FuncDecl{Name: ident(name), Type: functionType(params, ident("bool")), Body: block(body...)})
-	return ident(name)
+	return g.helperFunc(key, "equal_"+g.nameOf(t), func(name string) ast.Decl {
+		body := g.equalBody(t)
+		params := []*ast.Field{field("ctx", pointerTo(rtName("Execution"))), field("a", g.goType(t)), field("b", g.goType(t))}
+		return &ast.FuncDecl{Name: ident(name), Type: functionType(params, ident("bool")), Body: block(body...)}
+	})
 }
 
-// localEquality reports whether some module declares an extension Equal
-// implementation, which makes the chosen equality depend on the module.
-func (g *gen) localEquality() bool {
-	if g.localEq == 0 {
-		g.localEq = -1
-		for _, m := range g.program.Methods {
-			if m.Local && m.Contract != nil && m.Contract.ID == "@std/Equal" {
-				g.localEq = 1
-			}
-		}
+// helperFunc is the generated function for key, built once by the first unit
+// that needs it. A module-scoped key makes the name module-scoped too.
+func (g *gen) helperFunc(key, base string, build func(name string) ast.Decl) ast.Expr {
+	name := base
+	if strings.Contains(key, "@") {
+		name += "_" + shortHash(key)
 	}
-	return g.localEq > 0
+	name = g.claim(name, key)
+	g.mu.Lock()
+	h := g.helpers[key]
+	created := h == nil
+	if created {
+		h = &helper{name: name}
+		g.helpers[key] = h
+	}
+	g.mu.Unlock()
+	g.touch(&h.node)
+	if created {
+		g.building(&h.node, func() { h.decl = []ast.Decl{build(name)} })
+	}
+	return ident(name)
 }
 
 func (g *gen) equalBody(t *checker.Type) []ast.Stmt {

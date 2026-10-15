@@ -177,11 +177,7 @@ func (g *gen) construct(t *checker.Type, values []ast.Expr) ast.Expr {
 	for i, f := range checker.Fields(t) {
 		elements = append(elements, keyed(fieldName(f.Name), values[i]))
 	}
-	value := composite(ident(d.name), elements...)
-	if g.valueRecord(t) {
-		return value
-	}
-	return address(value)
+	return address(composite(ident(d.name), elements...))
 }
 
 func (g *gen) stdRecord(t *checker.Type, values []ast.Expr) ast.Expr {
@@ -279,6 +275,8 @@ func (g *gen) nativeFunctionValue(s *checker.Symbol, typeArgs []*checker.Type, i
 // noteNative records a runtime function the program uses, for the
 // completeness check between standard declarations and the runtime.
 func (g *gen) noteNative(name string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if g.natives == nil {
 		g.natives = map[string]bool{}
 	}

@@ -72,17 +72,26 @@ func (g *gen) viewOf(value ast.Expr, from, contract *checker.Type) ast.Expr {
 // view declares the struct that adapts from to contract.
 func (g *gen) view(from, contract *checker.Type) string {
 	key := "view:" + checker.TypeKey(contract) + ":" + checker.TypeKey(from)
-	if d := g.types[key]; d != nil {
+	name := g.claim(g.nameOf(contract)+"_"+g.nameOf(from), key)
+	g.mu.Lock()
+	d := g.types[key]
+	created := d == nil
+	if created {
+		d = &typeDecl{key: key, name: name, t: from}
+		d.typ = true
+		g.types[key] = d
+	}
+	g.mu.Unlock()
+	g.touch(&d.node)
+	if !created {
 		return d.name
 	}
-	name := g.unique(sanitize(contract.Name) + "_" + g.nameOf(from))
-	d := &typeDecl{key: key, name: name, t: from}
-	g.types[key] = d
-	g.typeOrder = append(g.typeOrder, d)
-	d.decl = append(d.decl, typeSpec(name, &ast.StructType{Fields: &ast.FieldList{List: []*ast.Field{field("self", g.goType(from))}}}))
-	for _, op := range g.operations(contract) {
-		d.decl = append(d.decl, g.viewMethod(name, from, contract, op))
-	}
+	g.building(&d.node, func() {
+		d.decl = append(d.decl, typeSpec(name, &ast.StructType{Fields: &ast.FieldList{List: []*ast.Field{field("self", g.goType(from))}}}))
+		for _, op := range g.operations(contract) {
+			d.decl = append(d.decl, g.viewMethod(name, from, contract, op))
+		}
+	})
 	return name
 }
 

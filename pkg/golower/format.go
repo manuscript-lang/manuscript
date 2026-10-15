@@ -32,18 +32,11 @@ func (g *gen) format(t *checker.Type, v ast.Expr) ast.Expr {
 func (g *gen) formatFunc(t *checker.Type) ast.Expr {
 	t = g.sub(t)
 	key := "format:" + checker.TypeKey(t)
-	if name := g.helpers[key]; name != "" {
-		return ident(name)
-	}
-	name := g.unique("format_" + g.nameOf(t))
-	if g.helpers == nil {
-		g.helpers = map[string]string{}
-	}
-	g.helpers[key] = name
-	params := []*ast.Field{field("v", g.goType(t)), field("depth", ident("int"))}
-	body := g.formatBody(t)
-	g.decls = append(g.decls, &ast.FuncDecl{Name: ident(name), Type: functionType(params, ident("string")), Body: block(body...)})
-	return ident(name)
+	return g.helperFunc(key, "format_"+g.nameOf(t), func(name string) ast.Decl {
+		params := []*ast.Field{field("v", g.goType(t)), field("depth", ident("int"))}
+		body := g.formatBody(t)
+		return &ast.FuncDecl{Name: ident(name), Type: functionType(params, ident("string")), Body: block(body...)}
+	})
 }
 
 // nested formats a part one level deeper, guarding against cyclic values.

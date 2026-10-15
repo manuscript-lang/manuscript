@@ -15,8 +15,7 @@ A type is a **reference** (Go pointer, or a type holding one) when the language 
 | --- | --- | --- | --- |
 | `Int`, `Float`, `Bool`, `String` | `int64`, `float64`, `bool`, `string` | value | Immutable. |
 | `Unit` | `rt.Unit` | value | One value. |
-| record some code assigns a field of | `*Name` | reference | Fields mutate; aliases observe; `.clone()` copies. |
-| record no code assigns a field of, with only scalar or value-record fields | `Name` | value | Identity is unobservable; equality is structural. Decided per type for the whole program (`mutatedRecords`). |
+| record | `*Name` | reference | Fields mutate; aliases observe; `.clone()` copies. |
 | `List`, `Map`, `Set`, `Bytes` | `*rt.List[T]`, `*rt.Map[K,V]`, `*rt.Set[T]`, `*rt.Bytes` | reference | Mutable storage shared by aliases. |
 | native handle (file, socket, task, guard, ...) | `*rt.Handle` | reference | Identity; closing affects all aliases. |
 | function value | `func(*rt.Execution, ...) R` | value | Closures snapshot captured locals; captured reference values stay shared. |

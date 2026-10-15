@@ -12,6 +12,7 @@ import (
 // funcDecl is one Go function: a source function or method instantiated at
 // concrete type arguments.
 type funcDecl struct {
+	node
 	key    string
 	name   string
 	module string
@@ -31,7 +32,11 @@ func (g *gen) function(symbol *checker.Symbol, typeArgs []*checker.Type) *funcDe
 	for _, a := range typeArgs {
 		key += "[" + checker.TypeKey(a) + "]"
 	}
-	if f := g.funcs[key]; f != nil {
+	g.mu.Lock()
+	f := g.funcs[key]
+	g.mu.Unlock()
+	if f != nil {
+		g.touch(&f.node)
 		return f
 	}
 	subst := map[string]*checker.Type{}
@@ -40,23 +45,38 @@ func (g *gen) function(symbol *checker.Symbol, typeArgs []*checker.Type) *funcDe
 			subst[v.ID] = typeArgs[i]
 		}
 	}
-	name := sanitize(symbol.Name)
+	base := sanitize(symbol.Name)
+	name := base
+	if g.dup[base] {
+		name += "_" + shortHash(symbol.ID)
+	}
 	for _, a := range typeArgs {
 		name += "_" + g.nameOf(a)
 	}
-	f := &funcDecl{key: key, name: g.unique(name), module: symbol.Module, symbol: symbol, decl: symbol.Decl, subst: subst}
-	f.typ = checker.Sub(symbol.Type, subst)
-	g.funcs[key] = f
-	g.queue = append(g.queue, f)
+	created := &funcDecl{key: key, name: g.claim(name, key), module: symbol.Module, symbol: symbol, decl: symbol.Decl, subst: subst}
+	created.typ = checker.Sub(symbol.Type, subst)
+	created.fn = created
+	return g.intern(created)
+}
+
+// intern registers f unless an equal instance already exists, and notes that
+// the node being built needs the instance either way.
+func (g *gen) intern(f *funcDecl) *funcDecl {
+	g.mu.Lock()
+	if existing := g.funcs[f.key]; existing != nil {
+		f = existing
+	} else {
+		g.funcs[f.key] = f
+	}
+	g.mu.Unlock()
+	g.touch(&f.node)
 	return f
 }
 
 // lowerFunction produces the Go declaration of f.
 func (g *gen) lowerFunction(f *funcDecl) {
-	savedModule, savedSubst, savedFn := g.module, g.subst, g.fn
 	g.module, g.subst = f.module, f.subst
-	g.infoCache = nil
-	defer func() { g.module, g.subst, g.fn = savedModule, savedSubst, savedFn; g.infoCache = nil }()
+	g.stack = []*node{&f.node}
 
 	d := f.decl
 	g.fn = &funcState{decl: f, result: g.sub(f.typ.Result)}
@@ -81,7 +101,6 @@ func (g *gen) lowerFunction(f *funcDecl) {
 	body = g.finishBody(body, g.fn.result)
 	body = g.cleanupPrologue(body)
 	f.out = &ast.FuncDecl{Name: ident(f.name), Type: functionType(params, g.goType(g.fn.result)), Body: block(body...)}
-	g.decls = append(g.decls, f.out)
 }
 
 // cleanupPrologue creates the function's cleanup stack when its body uses with.

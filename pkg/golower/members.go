@@ -27,18 +27,25 @@ func (g *gen) methodFunction(m *checker.Method, receiver *checker.Type) *funcDec
 			key += "[" + checker.TypeKey(found[v.ID]) + "]"
 		}
 	}
-	if f := g.funcs[key]; f != nil {
+	g.mu.Lock()
+	f := g.funcs[key]
+	g.mu.Unlock()
+	if f != nil {
+		g.touch(&f.node)
 		return f
 	}
-	name := sanitize(receiver.Name) + "_" + sanitize(original.Decl.Name)
+	base := sanitize(receiver.Name) + "_" + sanitize(original.Decl.Name)
+	name := base
+	if g.dup[base] {
+		name += "_" + shortHash(original.ID)
+	}
 	for _, v := range original.Variables {
 		name += "_" + g.nameOf(subst[v.ID])
 	}
-	f := &funcDecl{key: key, name: g.unique(name), module: original.Module, method: original, decl: original.Decl, subst: subst}
-	f.typ = checker.Sub(original.Type, subst)
-	g.funcs[key] = f
-	g.queue = append(g.queue, f)
-	return f
+	created := &funcDecl{key: key, name: g.claim(name, key), module: original.Module, method: original, decl: original.Decl, subst: subst}
+	created.typ = checker.Sub(original.Type, subst)
+	created.fn = created
+	return g.intern(created)
 }
 
 // accessor reads a computed member declared with `get`.

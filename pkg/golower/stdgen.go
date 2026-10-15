@@ -21,7 +21,8 @@ import (
 // complete and consistent with the .ms declarations.
 func StandardRuntime() (string, error) {
 	inv := checker.StandardInventory()
-	g := &gen{types: map[string]*typeDecl{}, funcs: map[string]*funcDecl{}, inRuntime: true}
+	g := newGen(nil)
+	g.inRuntime = true
 	file := &ast.File{Name: ident("rt")}
 	var decls []ast.Decl
 	handWritten := map[string]bool{}
@@ -196,6 +197,8 @@ func (g *gen) functionCheck(name string, vars []*checker.Type, params []*ast.Fie
 // checkName keeps check names unique when one native implements a contract
 // for several receivers.
 func (g *gen) checkName(name string) string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if g.checks == nil {
 		g.checks = map[string]int{}
 	}

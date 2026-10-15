@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/format"
 	"go/token"
-	"strconv"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -17,12 +16,10 @@ import (
 // Only the output boundary replaces these labels with column-one directives.
 // Labels use a separate counter so source mapping never changes temporary IDs.
 func (g *gen) locatedStatement(pos syntax.Position, statement ast.Stmt) ast.Stmt {
-	name := "manuscriptSourceLine" + strconv.Itoa(len(g.sourceLines))
-	if g.sourceLines == nil {
-		g.sourceLines = map[string]syntax.Position{}
-	}
-	g.sourceLines[name] = pos
-	return &ast.LabeledStmt{Label: ident(name), Stmt: statement}
+	label := ident("manuscriptSourceLine")
+	top := g.stack[len(g.stack)-1]
+	top.labels = append(top.labels, labelRef{id: label, pos: pos})
+	return &ast.LabeledStmt{Label: label, Stmt: statement}
 }
 
 func sourceDirective(pos syntax.Position) string {

@@ -7,17 +7,16 @@ import (
 	"unicode"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
 // typeDecl is one Go type the program declares: a record struct, the sealed
 // interface and case structs of a sum type, or the interface of a contract.
 // Generic declarations get one typeDecl per instantiation.
 type typeDecl struct {
+	node
 	key  string
 	name string
 	t    *checker.Type
-	decl []ast.Decl
 }
 
 func isStd(t *checker.Type, name string) bool { return t != nil && t.ID == "@std/"+name }
@@ -56,48 +55,6 @@ func scalarGo(t *checker.Type) string {
 		return "string"
 	}
 	return ""
-}
-
-// mutatedRecords collects the record types whose fields the program ever
-// assigns. A record type outside this set is immutable everywhere, so sharing
-// and copying it are indistinguishable.
-func mutatedRecords(program *checker.Program) map[string]bool {
-	out := map[string]bool{}
-	visitor := syntax.Visitor{Statement: func(s *syntax.Statement) {
-		if s.Target == nil {
-			return
-		}
-		if info := program.Info(s.Target.Left); info != nil && info.Type != nil {
-			out[info.Type.ID] = true
-		}
-	}}
-	for _, module := range program.Modules {
-		for _, d := range module.Declarations {
-			visitor.Walk(d)
-		}
-	}
-	return out
-}
-
-// valueRecord reports whether record t lowers to a Go struct value: no code
-// assigns its fields and every field is itself a scalar or value record, so
-// identity can never be observed and equality is structural.
-func (g *gen) valueRecord(t *checker.Type) bool {
-	return g.valueRecordIn(g.sub(t), map[string]bool{})
-}
-
-func (g *gen) valueRecordIn(t *checker.Type, seen map[string]bool) bool {
-	if t == nil || t.Kind != "record" || isStdType(t) || g.mutated[t.ID] || seen[t.ID] {
-		return false
-	}
-	seen[t.ID] = true
-	for _, f := range checker.Fields(t) {
-		ft := g.sub(f.Type)
-		if scalarGo(ft) == "" && !g.valueRecordIn(ft, seen) {
-			return false
-		}
-	}
-	return true
 }
 
 // isReference reports whether t lowers to a Go pointer: a type whose holders
@@ -151,7 +108,7 @@ func (g *gen) goType(t *checker.Type) ast.Expr {
 		return g.stdType(t)
 	}
 	decl := g.declare(t)
-	if isReference(t) && !g.valueRecord(t) {
+	if isReference(t) {
 		return pointerTo(ident(decl.name))
 	}
 	return ident(decl.name)
@@ -185,63 +142,59 @@ func (g *gen) funcType(t *checker.Type) *ast.FuncType {
 func itoa(i int) string { return intLiteral(i).(*ast.BasicLit).Value }
 
 // declare registers the Go declarations for a user record, sum type, or
-// contract type, instantiated at t's arguments, and returns them.
+// contract type, instantiated at t's arguments, and returns them. The first
+// unit to ask builds the declaration; the others only name it.
 func (g *gen) declare(t *checker.Type) *typeDecl {
 	t = g.sub(t)
 	key := checker.TypeKey(t)
-	if d := g.types[key]; d != nil {
+	name := g.typeName(t)
+	g.mu.Lock()
+	d := g.types[key]
+	created := d == nil
+	if created {
+		d = &typeDecl{key: key, t: t, name: name}
+		d.typ = true
+		g.types[key] = d
+	}
+	g.mu.Unlock()
+	g.touch(&d.node)
+	if !created {
 		return d
 	}
-	d := &typeDecl{key: key, t: t, name: g.typeName(t)}
-	g.types[key] = d
-	g.typeOrder = append(g.typeOrder, d)
-	switch t.Kind {
-	case "record":
-		d.decl = g.recordDecl(d)
-	case "alternative":
-		d.decl = g.alternativeDecl(d)
-	case "contract":
-		d.decl = g.contractDecl(d)
-	default:
-		g.fail("no Go type for %s (%s)", t.String(), t.Kind)
-	}
+	g.building(&d.node, func() {
+		switch t.Kind {
+		case "record":
+			d.decl = g.recordDecl(d)
+		case "alternative":
+			d.decl = g.alternativeDecl(d)
+		case "contract":
+			d.decl = g.contractDecl(d)
+		default:
+			g.fail("no Go type for %s (%s)", t.String(), t.Kind)
+		}
+	})
 	return d
 }
 
 // typeName makes a unique readable Go name: the source name, then the
 // instantiation's argument names.
 func (g *gen) typeName(t *checker.Type) string {
-	var b strings.Builder
-	b.WriteString(sanitize(t.Name))
-	for _, a := range t.Args {
-		b.WriteString("_")
-		b.WriteString(g.nameOf(a))
-	}
-	return g.unique(b.String())
+	return g.claim(g.nameOf(t), checker.TypeKey(t))
 }
 
 func (g *gen) nameOf(t *checker.Type) string {
 	t = g.sub(t)
 	var b strings.Builder
 	b.WriteString(sanitize(t.Name))
+	if g.dup[sanitize(t.Name)] {
+		b.WriteString("_")
+		b.WriteString(shortHash(t.ID))
+	}
 	for _, a := range t.Args {
 		b.WriteString("_")
 		b.WriteString(g.nameOf(a))
 	}
 	return b.String()
-}
-
-// unique returns name, suffixed if another declaration already uses it.
-func (g *gen) unique(name string) string {
-	if g.names == nil {
-		g.names = map[string]bool{}
-	}
-	candidate := name
-	for n := 2; g.names[candidate] || reserved[candidate]; n++ {
-		candidate = name + "_" + itoa(n)
-	}
-	g.names[candidate] = true
-	return candidate
 }
 
 var reserved = map[string]bool{"main": true, "init": true, "rt": true, "os": true, "ctx": true}
@@ -291,13 +244,4 @@ func (g *gen) alternativeDecl(d *typeDecl) []ast.Decl {
 
 func typeSpec(name string, typ ast.Expr) ast.Decl {
 	return &ast.GenDecl{Tok: token.TYPE, Specs: []ast.Spec{&ast.TypeSpec{Name: ident(name), Type: typ}}}
-}
-
-// typeDecls are the declarations of every type discovered while lowering.
-func (g *gen) typeDecls() []ast.Decl {
-	var out []ast.Decl
-	for _, d := range g.typeOrder {
-		out = append(out, d.decl...)
-	}
-	return out
 }
