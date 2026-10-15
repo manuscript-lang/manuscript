@@ -1,6 +1,6 @@
 # Final accessor integration and bounded verification
 
-Publication remains held: no push or PR. Implementation fb66c3b4 and recursion correction 789a4452 remain intact.
+No push or PR. Implementation fb66c3b4 and recursion fix 789a4452 remain intact.
 
 Integrated main: `9dcc0bae6f6e269dafe794b4ff3b8def9825d6bb` (#509–#512).
 Final reviewed code/harness: `800547bb60c0b7926f77572b1236a2c198043b12`.
@@ -27,10 +27,13 @@ Merge resolution preserves accessor exclusions, typed emission, default-expressi
 recursion and cancellation. String/Float getters reuse main's algorithms.
 The Error.message contract and every implementation remain methods.
 
+[Final evidence audit](integration-9dcc0bae/final-evidence-review-ca03ecf1.md): APPROVE ca03ecf1; zero code delta.
+
 ## Fresh local checks
 
 [gates.json](integration-9dcc0bae/gates.json) records results on the final code.
 Pinned Go 1.25.1, Node 24.13.0, Linux/amd64; Go compile concurrency limited to 2.
+Runtime race launched at 1ff193c0; its runtime source/tests equal 800547bb byte for byte.
 
 | Gate | Result |
 | --- | --- |
