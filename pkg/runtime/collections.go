@@ -361,25 +361,9 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 		case string:
 			switch name {
 			case "to_bytes":
-				return Bytes{[]byte(v)}
+				return StringToBytes(v)
 			case "parse_int":
-				if v == "" {
-					return optional("Int", nil, false)
-				}
-				start := 0
-				if v[0] == '+' || v[0] == '-' {
-					start = 1
-				}
-				if start == len(v) {
-					return optional("Int", nil, false)
-				}
-				for i := start; i < len(v); i++ {
-					if v[i] < '0' || v[i] > '9' {
-						return optional("Int", nil, false)
-					}
-				}
-				n, err := strconv.ParseInt(v, 10, 64)
-				return optional("Int", n, err == nil)
+				return StringParseInt(v)
 			}
 		case Bytes:
 			switch name {

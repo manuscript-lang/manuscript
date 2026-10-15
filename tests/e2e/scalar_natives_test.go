@@ -146,3 +146,30 @@ test "omitted none defaults":
 		t.Fatalf("omitted none defaults changed: %v\n%s", err, output)
 	}
 }
+
+func TestStringParseIntAndToBytesMatchDynamicCalls(t *testing.T) {
+	result := compiler.CompileSource("parse-int.ms", `import panic from "@std/faults.ms"
+
+fn check(ok: Bool, name: String) -> Unit:
+    if not ok:
+        return panic(message: name)
+
+fn parsed(text: String) -> Int:
+    match text.parse_int():
+        some(v):
+            return v
+        none:
+            return 0 - 1
+
+test "parse_int":
+    check(ok: parsed(text: "123") == 123, name: "plain")
+    check(ok: parsed(text: "-7") == 0 - 7 and parsed(text: "+8") == 8, name: "signs")
+    check(ok: parsed(text: "") == 0 - 1 and parsed(text: "-") == 0 - 1 and parsed(text: "1x") == 0 - 1, name: "invalid")
+    check(ok: parsed(text: "99999999999999999999") == 0 - 1, name: "overflow")
+    check(ok: "héllo".to_bytes().length == 6, name: "to_bytes")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "PASS") {
+		t.Fatalf("parse_int/to_bytes changed: %v\n%s", err, output)
+	}
+}

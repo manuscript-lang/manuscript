@@ -7,6 +7,49 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
+func TestAccessorReceiversComposeWithStandardContractOperations(t *testing.T) {
+	result := compiler.CompileSource("accessor-contract-operations.ms", `import panic from "@std/faults.ms"
+import {Clock, Instant, clock} from "@std/time.ms"
+
+type ClockReader:
+    operation: fn() -> Instant
+
+impl Clock for ClockReader:
+    fn now() -> Instant: self.operation()
+
+interface Selection:
+    get current -> Clock
+
+type State:
+    selected: Clock
+    reads: Int
+
+impl Selection for State:
+    get current -> Clock:
+        self.reads = self.reads + 1
+        return self.selected
+
+fn observe(value: Selection) -> Instant: value.current.now()
+
+test "standard operations read accessor receivers once and retain current values":
+    let native = clock()
+    let first = Clock(ClockReader(fn() -> Instant: native.now())).now()
+    let state = State(native, 0)
+    let view = Selection(state)
+    let second = observe(view)
+    state.selected = Clock(ClockReader(fn() -> Instant: native.now()))
+    let third = observe(view)
+    state.selected = native
+    let fourth = observe(view)
+    if state.reads != 3 or second.difference(first).nanoseconds < 0 or third.difference(second).nanoseconds < 0 or fourth.difference(third).nanoseconds < 0:
+        return panic("operation lowering repeated an accessor or cached its result")
+`, compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "1 tests, 0 failed") {
+		t.Fatalf("accessor standard-contract integration: %v\n%s", err, output)
+	}
+}
+
 func TestAccessorLocalImplementationEvidence(t *testing.T) {
 	result := compiler.CompileFile("testdata/projects/accessors/main.ms", compiler.Options{Tests: true})
 	output, err := execute(t, result)

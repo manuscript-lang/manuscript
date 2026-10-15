@@ -48,6 +48,9 @@ var scalarNatives = map[string]scalarNative{
 	"string/replace_first": {function: "StringReplaceFirst", params: []string{"string", "string", "string"}, result: "string"},
 	"string/join":          {function: "StringJoin", params: []string{"", "string"}, result: "string", receiver: "@std/List"},
 
+	"parse_int": {function: "StringParseInt", params: []string{"string"}},
+	"to_bytes":  {function: "StringToBytes", params: []string{"string"}},
+
 	"string/trim":        {function: "StringTrim", params: []string{"string"}, result: "string"},
 	"string/upper":       {function: "StringUpper", params: []string{"string"}, result: "string"},
 	"string/lower":       {function: "StringLower", params: []string{"string"}, result: "string"},
