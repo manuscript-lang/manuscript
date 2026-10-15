@@ -4,17 +4,12 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Csv_Parse() {
 	var _ func(*Execution, string, *CsvOptions, Option[int64], Option[int64]) Result[*List[*List[string]], CsvError] = Csv_Parse
 }
-
-//line generated.go:1
 func check_Csv_Stringify() {
 	var _ func(*Execution, *List[*List[string]], *CsvOptions, Option[int64]) Result[string, CsvError] = Csv_Stringify
 }
-
-//line generated.go:1
 func check_Errors_Message_CsvError() {
 	var _ func(*Execution, CsvError) string = Errors_Message_CsvError
 }

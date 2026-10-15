@@ -4,72 +4,45 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Crypto_ConstantTimeEqual() {
 	var _ func(*Execution, *Bytes, *Bytes) bool = Crypto_ConstantTimeEqual
 }
-
-//line generated.go:1
 func check_Crypto_DeriveKey() {
 	var _ func(*Execution, *Bytes, *Bytes, int64, int64) Result[*Bytes, CryptoError] = Crypto_DeriveKey
 }
-
-//line generated.go:1
 func check_Crypto_Hmac() {
 	var _ func(*Execution, *Bytes, *Bytes, string) Result[*Bytes, CryptoError] = Crypto_Hmac
 }
-
-//line generated.go:1
 func check_Crypto_Open() {
 	var _ func(*Execution, *Bytes, *Bytes, *Bytes, *Bytes) Result[*Bytes, CryptoError] = Crypto_Open
 }
-
-//line generated.go:1
 func check_Crypto_PublicKey() {
 	var _ func(*Execution, *Bytes) Result[*Bytes, CryptoError] = Crypto_PublicKey
 }
-
-//line generated.go:1
 func check_Crypto_Seal() {
 	var _ func(*Execution, *Bytes, *Bytes, *Bytes, *Bytes) Result[*Bytes, CryptoError] = Crypto_Seal
 }
-
-//line generated.go:1
 func check_Crypto_Sha256() {
 	var _ func(*Execution, *Bytes) *Bytes = Crypto_Sha256
 }
-
-//line generated.go:1
 func check_Crypto_Sha384() {
 	var _ func(*Execution, *Bytes) *Bytes = Crypto_Sha384
 }
-
-//line generated.go:1
 func check_Crypto_Sha512() {
 	var _ func(*Execution, *Bytes) *Bytes = Crypto_Sha512
 }
-
-//line generated.go:1
 func check_Crypto_Sign() {
 	var _ func(*Execution, *Bytes, *Bytes) Result[*Bytes, CryptoError] = Crypto_Sign
 }
-
-//line generated.go:1
 func check_Crypto_Verify() {
 	var _ func(*Execution, *Bytes, *Bytes, *Bytes) bool = Crypto_Verify
 }
-
-//line generated.go:1
 func check_HashAlgorithm_Digest() {
 	var _ func(*Execution, HashAlgorithm, *Bytes) *Bytes = HashAlgorithm_Digest
 }
-
-//line generated.go:1
 func check_HashAlgorithm_Hmac() {
 	var _ func(*Execution, HashAlgorithm, *Bytes, *Bytes) Result[*Bytes, CryptoError] = HashAlgorithm_Hmac
 }
-
-//line generated.go:1
 func check_Errors_Message_CryptoError() {
 	var _ func(*Execution, CryptoError) string = Errors_Message_CryptoError
 }

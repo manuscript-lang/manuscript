@@ -4,27 +4,18 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Binary_ReadFloat() {
 	var _ func(*Execution, *Bytes, int64, bool) Result[float64, BinaryError] = Binary_ReadFloat
 }
-
-//line generated.go:1
 func check_Binary_ReadInteger() {
 	var _ func(*Execution, *Bytes, int64, int64, bool, bool) Result[int64, BinaryError] = Binary_ReadInteger
 }
-
-//line generated.go:1
 func check_Binary_WriteFloat() {
 	var _ func(*Execution, float64, bool) *Bytes = Binary_WriteFloat
 }
-
-//line generated.go:1
 func check_Binary_WriteInteger() {
 	var _ func(*Execution, int64, int64, bool, bool) Result[*Bytes, BinaryError] = Binary_WriteInteger
 }
-
-//line generated.go:1
 func check_Errors_Message_BinaryError() {
 	var _ func(*Execution, BinaryError) string = Errors_Message_BinaryError
 }

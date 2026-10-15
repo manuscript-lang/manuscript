@@ -4,17 +4,12 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Numbers_ParseFloat() {
 	var _ func(*Execution, string) Result[float64, NumberError] = Numbers_ParseFloat
 }
-
-//line generated.go:1
 func check_Numbers_ParseInt() {
 	var _ func(*Execution, string, int64) Result[int64, NumberError] = Numbers_ParseInt
 }
-
-//line generated.go:1
 func check_Errors_Message_NumberError() {
 	var _ func(*Execution, NumberError) string = Errors_Message_NumberError
 }

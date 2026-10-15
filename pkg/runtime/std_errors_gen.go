@@ -4,17 +4,12 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Errors_Category() {
 	var _ func(*Execution, Error) Option[ErrorCategory] = Errors_Category
 }
-
-//line generated.go:1
 func check_Errors_Message_TextError() {
 	var _ func(*Execution, TextError) string = Errors_Message_TextError
 }
-
-//line generated.go:1
 func check_Errors_Message_MissingValue() {
 	var _ func(*Execution, MissingValue) string = Errors_Message_MissingValue
 }

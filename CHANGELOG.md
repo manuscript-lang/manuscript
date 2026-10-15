@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Builds: generated Go is fully typed. `Int`, `Float`, `Bool`, `String` and every record, collection, alternative, `Optional`, `Result`, contract and function lower to their own Go type with no boxing, and the lean runtime variant is gone. Reusable packages are now `pkg/lower` (was `pkg/golower`) and `pkg/runtime` (the typed `rt`).
+- Language: a `Map` or `Set` matches keys with the `Equal`/`Hashable` implementations visible where it was created; an operation obtained from another module no longer switches a collection to that module's implementations.
+- Tooling: `make stdgen` regenerates the standard-runtime declarations from the `@std` sources.
 - Language: `CollectionError`, `ListEntry`, `MapEntry`, and `MissingValue` join the source-backed collection prelude. Explicit imports of canonical prelude types now report MS2003 with a removal fix; remove those bindings, retaining imports for builders and unrelated APIs. Application types with the same names keep ordinary import and shadowing behavior.
 - Standard library: `Optional.ok_or` takes an optional cause (`ok_or[E = MissingValue]`); without one it returns a `MissingValue` (`@std/errors.ms`) whose message names the calling file and line.
 - Standard library: `@std/sse.ms` decodes Server-Sent Events from byte chunks or any `ReadStream`, including HTTP response bodies, with line and event budgets and `SseError` (#470).

@@ -26,5 +26,6 @@ test "bound and forwarded calls keep the equality of the collection creator":
 
     remove(Key(1, "different"))
     if items.length != 2: return panic("remove matches with the creator's equality")
+
     remove(Key(1, "original"))
     if items.length != 1: return panic("remove with the creator's equality")

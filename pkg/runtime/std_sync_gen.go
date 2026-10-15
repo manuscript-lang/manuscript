@@ -4,38 +4,24 @@
 
 package msruntime
 
-//line generated.go:1
 type check_Synchronized[T any] = *Synchronized[T]
-
-//line generated.go:1
 type check_SynchronizedGuard[T any] = *SynchronizedGuard[T]
 
-//line generated.go:1
 func check_Synchronized_Lock[T any]() {
 	var _ func(*Execution, *Synchronized[T]) *SynchronizedGuard[T] = Synchronized_Lock[T]
 }
-
-//line generated.go:1
 func check_SynchronizedGuard_Value[T any]() {
 	var _ func(*Execution, *SynchronizedGuard[T]) T = SynchronizedGuard_Value[T]
 }
-
-//line generated.go:1
 func check_SynchronizedGuard_Set[T any]() {
 	var _ func(*Execution, *SynchronizedGuard[T], T) Unit = SynchronizedGuard_Set[T]
 }
-
-//line generated.go:1
 func check_SynchronizedGuard_Wait[T any]() {
 	var _ func(*Execution, *SynchronizedGuard[T]) Unit = SynchronizedGuard_Wait[T]
 }
-
-//line generated.go:1
 func check_SynchronizedGuard_NotifyAll[T any]() {
 	var _ func(*Execution, *SynchronizedGuard[T]) Unit = SynchronizedGuard_NotifyAll[T]
 }
-
-//line generated.go:1
 func check_SynchronizedGuard_Close[T any]() {
 	var _ func(*Execution, *SynchronizedGuard[T]) Unit = SynchronizedGuard_Close[T]
 }

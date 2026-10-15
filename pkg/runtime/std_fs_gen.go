@@ -4,17 +4,12 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Fs_Constants() {
 	var _ func(*Execution) *Map[string, int64] = Fs_Constants
 }
-
-//line generated.go:1
 func check_Fs_Filesystem() {
 	var _ func(*Execution) FileSystem = Fs_Filesystem
 }
-
-//line generated.go:1
 func check_Errors_Message_FileSystemError() {
 	var _ func(*Execution, FileSystemError) string = Errors_Message_FileSystemError
 }

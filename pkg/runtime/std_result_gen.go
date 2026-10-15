@@ -4,47 +4,30 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Result_IsOk[T any, E any]() {
 	var _ func(*Execution, Result[T, E]) bool = Result_IsOk[T, E]
 }
-
-//line generated.go:1
 func check_Result_IsError[T any, E any]() {
 	var _ func(*Execution, Result[T, E]) bool = Result_IsError[T, E]
 }
-
-//line generated.go:1
 func check_Result_Unwrap[T any, E any]() {
 	var _ func(*Execution, Result[T, E]) T = Result_Unwrap[T, E]
 }
-
-//line generated.go:1
 func check_Result_UnwrapError[T any, E any]() {
 	var _ func(*Execution, Result[T, E]) E = Result_UnwrapError[T, E]
 }
-
-//line generated.go:1
 func check_Result_UnwrapOr[T any, E any]() {
 	var _ func(*Execution, Result[T, E], T) T = Result_UnwrapOr[T, E]
 }
-
-//line generated.go:1
 func check_Result_UnwrapOrElse[T any, E any]() {
 	var _ func(*Execution, Result[T, E], func(ctx *Execution, a0 E) T) T = Result_UnwrapOrElse[T, E]
 }
-
-//line generated.go:1
 func check_Result_Map[T any, E any, U any]() {
 	var _ func(*Execution, Result[T, E], func(ctx *Execution, a0 T) U) Result[U, E] = Result_Map[T, E, U]
 }
-
-//line generated.go:1
 func check_Result_AndThen[T any, E any, U any]() {
 	var _ func(*Execution, Result[T, E], func(ctx *Execution, a0 T) Result[U, E]) Result[U, E] = Result_AndThen[T, E, U]
 }
-
-//line generated.go:1
 func check_Result_ToOptional[T any, E any]() {
 	var _ func(*Execution, Result[T, E]) Option[T] = Result_ToOptional[T, E]
 }

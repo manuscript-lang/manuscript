@@ -4,540 +4,322 @@
 
 package msruntime
 
-//line generated.go:1
 type check_List[T any] = *List[T]
-
-//line generated.go:1
 type check_Map[T comparable, U any] = *Map[T, U]
-
-//line generated.go:1
 type check_Set[T comparable] = *Set[T]
-
-//line generated.go:1
 type check_ListBuilder[T any] = *ListBuilder[T]
-
-//line generated.go:1
 type check_MapBuilder[T comparable, U any] = *MapBuilder[T, U]
-
-//line generated.go:1
 type check_SetBuilder[T comparable] = *SetBuilder[T]
 
-//line generated.go:1
 func check_Collections_Filled[T any]() {
 	var _ func(*Execution, T, int64, Option[int64]) Result[*List[T], CollectionError] = Collections_Filled[T]
 }
-
-//line generated.go:1
 func check_Collections_Range() {
 	var _ func(*Execution, int64, int64, int64, Option[int64]) Result[*List[int64], CollectionError] = Collections_Range
 }
-
-//line generated.go:1
 func check_Collections_MapFromEntries[K comparable, V any]() {
 	var _ func(*Execution, *Keys[K], *List[*MapEntry[K, V]]) *Map[K, V] = Collections_MapFromEntries[K, V]
 }
-
-//line generated.go:1
 func check_List_Clone[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_Clone[T]
 }
-
-//line generated.go:1
 func check_List_At[T any]() {
 	var _ func(*Execution, *List[T], int64) Option[T] = List_At[T]
 }
-
-//line generated.go:1
 func check_List_Contains[T any]() {
 	var _ func(*Execution, Eq[T], *List[T], T) bool = List_Contains[T]
 }
-
-//line generated.go:1
 func check_List_IndexOf[T any]() {
 	var _ func(*Execution, Eq[T], *List[T], T) Option[int64] = List_IndexOf[T]
 }
-
-//line generated.go:1
 func check_List_LastIndexOf[T any]() {
 	var _ func(*Execution, Eq[T], *List[T], T) Option[int64] = List_LastIndexOf[T]
 }
-
-//line generated.go:1
 func check_List_First[T any]() {
 	var _ func(*Execution, *List[T]) Option[T] = List_First[T]
 }
-
-//line generated.go:1
 func check_List_Last[T any]() {
 	var _ func(*Execution, *List[T]) Option[T] = List_Last[T]
 }
-
-//line generated.go:1
 func check_List_IsEmpty[T any]() {
 	var _ func(*Execution, *List[T]) bool = List_IsEmpty[T]
 }
-
-//line generated.go:1
 func check_List_Prepend[T any]() {
 	var _ func(*Execution, *List[T], T) *List[T] = List_Prepend[T]
 }
-
-//line generated.go:1
 func check_List_Insert[T any]() {
 	var _ func(*Execution, *List[T], int64, T) *List[T] = List_Insert[T]
 }
-
-//line generated.go:1
 func check_List_Pop[T any]() {
 	var _ func(*Execution, *List[T]) Option[T] = List_Pop[T]
 }
-
-//line generated.go:1
 func check_List_Set[T any]() {
 	var _ func(*Execution, *List[T], int64, T) *List[T] = List_Set[T]
 }
-
-//line generated.go:1
 func check_List_Remove[T any]() {
 	var _ func(*Execution, *List[T], int64) *List[T] = List_Remove[T]
 }
-
-//line generated.go:1
 func check_List_Slice[T any]() {
 	var _ func(*Execution, *List[T], int64, int64) Result[*List[T], CollectionError] = List_Slice[T]
 }
-
-//line generated.go:1
 func check_List_Take[T any]() {
 	var _ func(*Execution, *List[T], int64) *List[T] = List_Take[T]
 }
-
-//line generated.go:1
 func check_List_Drop[T any]() {
 	var _ func(*Execution, *List[T], int64) *List[T] = List_Drop[T]
 }
-
-//line generated.go:1
 func check_List_ReverseInPlace[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_ReverseInPlace[T]
 }
-
-//line generated.go:1
 func check_List_Reversed[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_Reversed[T]
 }
-
-//line generated.go:1
 func check_List_Sorted[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T, a1 T) int64) *List[T] = List_Sorted[T]
 }
-
-//line generated.go:1
 func check_List_Filter[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) *List[T] = List_Filter[T]
 }
-
-//line generated.go:1
 func check_List_Find[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) Option[T] = List_Find[T]
 }
-
-//line generated.go:1
 func check_List_FindLast[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) Option[T] = List_FindLast[T]
 }
-
-//line generated.go:1
 func check_List_FindIndex[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) Option[int64] = List_FindIndex[T]
 }
-
-//line generated.go:1
 func check_List_FindLastIndex[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) Option[int64] = List_FindLastIndex[T]
 }
-
-//line generated.go:1
 func check_List_Count[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) int64 = List_Count[T]
 }
-
-//line generated.go:1
 func check_List_Distinct[T any]() {
 	var _ func(*Execution, Eq[T], *List[T]) *List[T] = List_Distinct[T]
 }
-
-//line generated.go:1
 func check_List_Some[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) bool = List_Some[T]
 }
-
-//line generated.go:1
 func check_List_Every[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) bool = List_Every[T]
 }
-
-//line generated.go:1
 func check_List_ForEach[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) Unit) Unit = List_ForEach[T]
 }
-
-//line generated.go:1
 func check_List_GroupBy[T any, K comparable]() {
 	var _ func(*Execution, *Keys[K], *List[T], func(ctx *Execution, a0 T) K) *Map[K, *List[T]] = List_GroupBy[T, K]
 }
-
-//line generated.go:1
 func check_List_Map[T any, U any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) U) *List[U] = List_Map[T, U]
 }
-
-//line generated.go:1
 func check_List_FlatMap[T any, U any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) *List[U]) *List[U] = List_FlatMap[T, U]
 }
-
-//line generated.go:1
 func check_List_Fold[T any, A any]() {
 	var _ func(*Execution, *List[T], A, func(ctx *Execution, a0 A, a1 T) A) A = List_Fold[T, A]
 }
-
-//line generated.go:1
 func check_List_FoldRight[T any, A any]() {
 	var _ func(*Execution, *List[T], A, func(ctx *Execution, a0 A, a1 T) A) A = List_FoldRight[T, A]
 }
-
-//line generated.go:1
 func check_List_Splice[T any]() {
 	var _ func(*Execution, *List[T], int64, int64, *List[T]) *List[T] = List_Splice[T]
 }
-
-//line generated.go:1
 func check_List_Fill[T any]() {
 	var _ func(*Execution, *List[T], T, int64, int64) *List[T] = List_Fill[T]
 }
-
-//line generated.go:1
 func check_List_CopyWithin[T any]() {
 	var _ func(*Execution, *List[T], int64, int64, int64) *List[T] = List_CopyWithin[T]
 }
-
-//line generated.go:1
 func check_List_ToSet[T comparable]() {
 	var _ func(*Execution, *Keys[T], *List[T]) *Set[T] = List_ToSet[T]
 }
-
-//line generated.go:1
 func check_List_Keys[T any]() {
 	var _ func(*Execution, *List[T]) *List[int64] = List_Keys[T]
 }
-
-//line generated.go:1
 func check_List_Entries[T any]() {
 	var _ func(*Execution, *List[T]) *List[*ListEntry[T]] = List_Entries[T]
 }
-
-//line generated.go:1
 func check_List_Join[T any]() {
 	var _ func(*Execution, *List[T], string) string = List_Join[T]
 }
-
-//line generated.go:1
 func check_List_Append[T any]() {
 	var _ func(*Execution, *List[T], T) *List[T] = List_Append[T]
 }
-
-//line generated.go:1
 func check_List_Concat[T any]() {
 	var _ func(*Execution, *List[T], *List[T]) *List[T] = List_Concat[T]
 }
-
-//line generated.go:1
 func check_List_Length[T any]() {
 	var _ func(*Execution, *List[T]) int64 = List_Length[T]
 }
-
-//line generated.go:1
 func check_Map_Clone[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) *Map[T, U] = Map_Clone[T, U]
 }
-
-//line generated.go:1
 func check_Map_IsEmpty[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) bool = Map_IsEmpty[T, U]
 }
-
-//line generated.go:1
 func check_Map_Filter[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) bool) *Map[T, U] = Map_Filter[T, U]
 }
-
-//line generated.go:1
 func check_Map_Map[T comparable, U any, W any]() {
 	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) W) *Map[T, W] = Map_Map[T, U, W]
 }
-
-//line generated.go:1
 func check_Map_MapKeys[T comparable, U any, W comparable]() {
 	var _ func(*Execution, *Keys[W], *Map[T, U], func(ctx *Execution, a0 T, a1 U) W) *Map[W, U] = Map_MapKeys[T, U, W]
 }
-
-//line generated.go:1
 func check_Map_GetOr[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], T, U) U = Map_GetOr[T, U]
 }
-
-//line generated.go:1
 func check_Map_Fold[T comparable, U any, A any]() {
 	var _ func(*Execution, *Map[T, U], A, func(ctx *Execution, a0 A, a1 T, a2 U) A) A = Map_Fold[T, U, A]
 }
-
-//line generated.go:1
 func check_Map_FoldRight[T comparable, U any, A any]() {
 	var _ func(*Execution, *Map[T, U], A, func(ctx *Execution, a0 A, a1 T, a2 U) A) A = Map_FoldRight[T, U, A]
 }
-
-//line generated.go:1
 func check_Map_Find[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) bool) Option[*MapEntry[T, U]] = Map_Find[T, U]
 }
-
-//line generated.go:1
 func check_Map_FindLast[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) bool) Option[*MapEntry[T, U]] = Map_FindLast[T, U]
 }
-
-//line generated.go:1
 func check_Map_Some[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) bool) bool = Map_Some[T, U]
 }
-
-//line generated.go:1
 func check_Map_Every[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) bool) bool = Map_Every[T, U]
 }
-
-//line generated.go:1
 func check_Map_AddDefault[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], T, U) *Map[T, U] = Map_AddDefault[T, U]
 }
-
-//line generated.go:1
 func check_Map_AddDefaultFrom[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], T, func(ctx *Execution, a0 T) U) *Map[T, U] = Map_AddDefaultFrom[T, U]
 }
-
-//line generated.go:1
 func check_Map_Clear[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) *Map[T, U] = Map_Clear[T, U]
 }
-
-//line generated.go:1
 func check_Map_Keys[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) *List[T] = Map_Keys[T, U]
 }
-
-//line generated.go:1
 func check_Map_Values[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) *List[U] = Map_Values[T, U]
 }
-
-//line generated.go:1
 func check_Map_Entries[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) *List[*MapEntry[T, U]] = Map_Entries[T, U]
 }
-
-//line generated.go:1
 func check_Map_Merge[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], *Map[T, U]) *Map[T, U] = Map_Merge[T, U]
 }
-
-//line generated.go:1
 func check_Map_ForEach[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) Unit) Unit = Map_ForEach[T, U]
 }
-
-//line generated.go:1
 func check_Map_Contains[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], T) bool = Map_Contains[T, U]
 }
-
-//line generated.go:1
 func check_Map_Get[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], T) Option[U] = Map_Get[T, U]
 }
-
-//line generated.go:1
 func check_Map_Length[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) int64 = Map_Length[T, U]
 }
-
-//line generated.go:1
 func check_Map_Add[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], T, U) *Map[T, U] = Map_Add[T, U]
 }
-
-//line generated.go:1
 func check_Map_Remove[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], T) *Map[T, U] = Map_Remove[T, U]
 }
-
-//line generated.go:1
 func check_Set_Clone[T comparable]() {
 	var _ func(*Execution, *Set[T]) *Set[T] = Set_Clone[T]
 }
-
-//line generated.go:1
 func check_Set_IsEmpty[T comparable]() {
 	var _ func(*Execution, *Set[T]) bool = Set_IsEmpty[T]
 }
-
-//line generated.go:1
 func check_Set_Filter[T comparable]() {
 	var _ func(*Execution, *Set[T], func(ctx *Execution, a0 T) bool) *Set[T] = Set_Filter[T]
 }
-
-//line generated.go:1
 func check_Set_Map[T comparable, U comparable]() {
 	var _ func(*Execution, *Keys[U], *Set[T], func(ctx *Execution, a0 T) U) *Set[U] = Set_Map[T, U]
 }
-
-//line generated.go:1
 func check_Set_Fold[T comparable, A any]() {
 	var _ func(*Execution, *Set[T], A, func(ctx *Execution, a0 A, a1 T) A) A = Set_Fold[T, A]
 }
-
-//line generated.go:1
 func check_Set_FoldRight[T comparable, A any]() {
 	var _ func(*Execution, *Set[T], A, func(ctx *Execution, a0 A, a1 T) A) A = Set_FoldRight[T, A]
 }
-
-//line generated.go:1
 func check_Set_Find[T comparable]() {
 	var _ func(*Execution, *Set[T], func(ctx *Execution, a0 T) bool) Option[T] = Set_Find[T]
 }
-
-//line generated.go:1
 func check_Set_FindLast[T comparable]() {
 	var _ func(*Execution, *Set[T], func(ctx *Execution, a0 T) bool) Option[T] = Set_FindLast[T]
 }
-
-//line generated.go:1
 func check_Set_Some[T comparable]() {
 	var _ func(*Execution, *Set[T], func(ctx *Execution, a0 T) bool) bool = Set_Some[T]
 }
-
-//line generated.go:1
 func check_Set_Every[T comparable]() {
 	var _ func(*Execution, *Set[T], func(ctx *Execution, a0 T) bool) bool = Set_Every[T]
 }
-
-//line generated.go:1
 func check_Set_Union[T comparable]() {
 	var _ func(*Execution, *Set[T], *Set[T]) *Set[T] = Set_Union[T]
 }
-
-//line generated.go:1
 func check_Set_Intersection[T comparable]() {
 	var _ func(*Execution, *Set[T], *Set[T]) *Set[T] = Set_Intersection[T]
 }
-
-//line generated.go:1
 func check_Set_Difference[T comparable]() {
 	var _ func(*Execution, *Set[T], *Set[T]) *Set[T] = Set_Difference[T]
 }
-
-//line generated.go:1
 func check_Set_SymmetricDifference[T comparable]() {
 	var _ func(*Execution, *Set[T], *Set[T]) *Set[T] = Set_SymmetricDifference[T]
 }
-
-//line generated.go:1
 func check_Set_IsSubsetOf[T comparable]() {
 	var _ func(*Execution, *Set[T], *Set[T]) bool = Set_IsSubsetOf[T]
 }
-
-//line generated.go:1
 func check_Set_IsSupersetOf[T comparable]() {
 	var _ func(*Execution, *Set[T], *Set[T]) bool = Set_IsSupersetOf[T]
 }
-
-//line generated.go:1
 func check_Set_IsDisjointFrom[T comparable]() {
 	var _ func(*Execution, *Set[T], *Set[T]) bool = Set_IsDisjointFrom[T]
 }
-
-//line generated.go:1
 func check_Set_Clear[T comparable]() {
 	var _ func(*Execution, *Set[T]) *Set[T] = Set_Clear[T]
 }
-
-//line generated.go:1
 func check_Set_Values[T comparable]() {
 	var _ func(*Execution, *Set[T]) *List[T] = Set_Values[T]
 }
-
-//line generated.go:1
 func check_Set_Entries[T comparable]() {
 	var _ func(*Execution, *Set[T]) *List[*List[T]] = Set_Entries[T]
 }
-
-//line generated.go:1
 func check_Set_ForEach[T comparable]() {
 	var _ func(*Execution, *Set[T], func(ctx *Execution, a0 T) Unit) Unit = Set_ForEach[T]
 }
-
-//line generated.go:1
 func check_Set_Contains[T comparable]() {
 	var _ func(*Execution, *Set[T], T) bool = Set_Contains[T]
 }
-
-//line generated.go:1
 func check_Set_Length[T comparable]() {
 	var _ func(*Execution, *Set[T]) int64 = Set_Length[T]
 }
-
-//line generated.go:1
 func check_Set_Add[T comparable]() {
 	var _ func(*Execution, *Set[T], T) *Set[T] = Set_Add[T]
 }
-
-//line generated.go:1
 func check_Set_Remove[T comparable]() {
 	var _ func(*Execution, *Set[T], T) *Set[T] = Set_Remove[T]
 }
-
-//line generated.go:1
 func check_ListBuilder_Append[T any]() {
 	var _ func(*Execution, *ListBuilder[T], T) Unit = ListBuilder_Append[T]
 }
-
-//line generated.go:1
 func check_ListBuilder_Freeze[T any]() {
 	var _ func(*Execution, *ListBuilder[T]) *List[T] = ListBuilder_Freeze[T]
 }
-
-//line generated.go:1
 func check_MapBuilder_Freeze[T comparable, U any]() {
 	var _ func(*Execution, *MapBuilder[T, U]) *Map[T, U] = MapBuilder_Freeze[T, U]
 }
-
-//line generated.go:1
 func check_MapBuilder_Add[T comparable, U any]() {
 	var _ func(*Execution, *MapBuilder[T, U], T, U) Unit = MapBuilder_Add[T, U]
 }
-
-//line generated.go:1
 func check_SetBuilder_Freeze[T comparable]() {
 	var _ func(*Execution, *SetBuilder[T]) *Set[T] = SetBuilder_Freeze[T]
 }
-
-//line generated.go:1
 func check_SetBuilder_Add[T comparable]() {
 	var _ func(*Execution, *SetBuilder[T], T) Unit = SetBuilder_Add[T]
 }
-
-//line generated.go:1
 func check_Errors_Message_CollectionError() {
 	var _ func(*Execution, CollectionError) string = Errors_Message_CollectionError
 }

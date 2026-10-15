@@ -4,27 +4,18 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Log_Create() {
 	var _ func(*Execution, Transport, Option[LogLevel], Option[*Map[string, JsonValue]], Option[bool], Option[int64]) Result[Logger, LogError] = Log_Create
 }
-
-//line generated.go:1
 func check_Log_StreamTransport() {
 	var _ func(*Execution, WriteStream) Transport = Log_StreamTransport
 }
-
-//line generated.go:1
 func check_Log_StdoutTransport() {
 	var _ func(*Execution) Transport = Log_StdoutTransport
 }
-
-//line generated.go:1
 func check_Log_FileTransport() {
 	var _ func(*Execution, string) Result[Transport, LogError] = Log_FileTransport
 }
-
-//line generated.go:1
 func check_Errors_Message_LogError() {
 	var _ func(*Execution, LogError) string = Errors_Message_LogError
 }

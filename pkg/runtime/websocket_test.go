@@ -19,7 +19,11 @@ func (f logSink) Write(p []byte) (int, error) { return f(p) }
 
 func upgradeHandler(t *testing.T, max int64, protocols ...string) func(*Execution, HttpExchange) Result[Unit, HttpError] {
 	return func(child *Execution, e HttpExchange) Result[Unit, HttpError] {
-		socket := must(t, e.Upgrade(child, NewList[string](), NewList(protocols...), Some(max)))
+		upgraded := e.Upgrade(child, NewList[string](), NewList(protocols...), Some(max))
+		if upgraded.Failed { // the test already finished and closed the network
+			return Ok[Unit, HttpError](Unit{})
+		}
+		socket := upgraded.Val
 		if message := must(t, socket.Receive(child)); message.Some {
 			must(t, socket.Send(child, message.Val.Data, message.Val.Text))
 		}
@@ -59,7 +63,11 @@ func TestWebSocketSendValidationAndPing(t *testing.T) {
 	ctx, n := newTestNetwork(t)
 	release := make(chan struct{})
 	server := must(t, n.ServeStream(ctx, "127.0.0.1:0", func(child *Execution, e HttpExchange) Result[Unit, HttpError] {
-		socket := must(t, e.Upgrade(child, NewList[string](), NewList[string](), None[int64]()))
+		upgraded := e.Upgrade(child, NewList[string](), NewList[string](), None[int64]())
+		if upgraded.Failed { // the test already finished and closed the network
+			return Ok[Unit, HttpError](Unit{})
+		}
+		socket := upgraded.Val
 		<-release
 		socket.Close(child)
 		return Ok[Unit, HttpError](Unit{})
@@ -169,7 +177,11 @@ func TestWebSocketOriginPolicy(t *testing.T) {
 func TestWebSocketInvalidUTF8TextClosesWith1007(t *testing.T) {
 	ctx, n := newTestNetwork(t)
 	server := must(t, n.ServeStream(ctx, "127.0.0.1:0", func(child *Execution, e HttpExchange) Result[Unit, HttpError] {
-		socket := must(t, e.Upgrade(child, NewList[string](), NewList[string](), Some(int64(32))))
+		upgraded := e.Upgrade(child, NewList[string](), NewList[string](), Some(int64(32)))
+		if upgraded.Failed { // the test already finished and closed the network
+			return Ok[Unit, HttpError](Unit{})
+		}
+		socket := upgraded.Val
 		failedWith(t, socket.Receive(child), "WebSocketError_InvalidData")
 		failedWith(t, socket.Receive(child), "WebSocketError_Closed")
 		return Ok[Unit, HttpError](Unit{})
@@ -193,7 +205,11 @@ func TestWebSocketServerShutdownJoinsSession(t *testing.T) {
 	ctx, n := newTestNetwork(t)
 	started := make(chan struct{})
 	server := must(t, n.ServeStream(ctx, "127.0.0.1:0", func(child *Execution, e HttpExchange) Result[Unit, HttpError] {
-		socket := must(t, e.Upgrade(child, NewList[string](), NewList[string](), Some(int64(32))))
+		upgraded := e.Upgrade(child, NewList[string](), NewList[string](), Some(int64(32)))
+		if upgraded.Failed { // the test already finished and closed the network
+			return Ok[Unit, HttpError](Unit{})
+		}
+		socket := upgraded.Val
 		close(started)
 		socket.Receive(child)
 		return Ok[Unit, HttpError](Unit{})
@@ -231,7 +247,11 @@ func TestWebSocketReceiveCancellationAndNetworkClose(t *testing.T) {
 	ctx := testExec()
 	n := NewOSNetwork()
 	server := must(t, n.ServeStream(ctx, "127.0.0.1:0", func(child *Execution, e HttpExchange) Result[Unit, HttpError] {
-		socket := must(t, e.Upgrade(child, NewList[string](), NewList[string](), None[int64]()))
+		upgraded := e.Upgrade(child, NewList[string](), NewList[string](), None[int64]())
+		if upgraded.Failed { // the test already finished and closed the network
+			return Ok[Unit, HttpError](Unit{})
+		}
+		socket := upgraded.Val
 		socket.Receive(child)
 		return Ok[Unit, HttpError](Unit{})
 	}, serverOptions()))

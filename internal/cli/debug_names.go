@@ -5,9 +5,7 @@ import (
 	"sort"
 
 	"github.com/manuscript-lang/manuscript/internal/debugger"
-	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
-	"github.com/manuscript-lang/manuscript/pkg/lower"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
@@ -17,14 +15,12 @@ import (
 func debugNames(result compiler.Result) debugger.Names {
 	root, _ := filepath.Abs(result.SourceRoot)
 	names := namesFromInspection(root, tooling.Inspect(result.Program))
-	// Lowering again names the Go local of every binding; the Go it produces
-	// is the same as the Debug build's for every function both reach.
-	_, _ = lower.Go(result.Program, "", lower.Options{Tests: true, Locals: func(function, goName string, b *checker.Binding) {
-		if names.Locals[function] == nil {
-			names.Locals[function] = map[string]debugger.Local{}
+	for _, local := range compiler.DebugLocals(result.Program) {
+		if names.Locals[local.Function] == nil {
+			names.Locals[local.Function] = map[string]debugger.Local{}
 		}
-		names.Locals[function][goName] = debugger.Local{Name: b.Name, Type: b.Type.String()}
-	}})
+		names.Locals[local.Function][local.Go] = debugger.Local{Name: local.Name, Type: local.Type}
+	}
 	return names
 }
 

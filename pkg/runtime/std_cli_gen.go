@@ -4,12 +4,9 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Cli_Arguments() {
 	var _ func(*Execution) *List[string] = Cli_Arguments
 }
-
-//line generated.go:1
 func check_Cli_Environment() {
 	var _ func(*Execution) *Map[string, string] = Cli_Environment
 }

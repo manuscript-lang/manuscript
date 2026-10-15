@@ -4,30 +4,20 @@
 
 package msruntime
 
-//line generated.go:1
 type check_Regex = *Regex
 
-//line generated.go:1
 func check_Regex_Compile() {
 	var _ func(*Execution, string) Result[*Regex, RegexError] = Regex_Compile
 }
-
-//line generated.go:1
 func check_Regex_Matches() {
 	var _ func(*Execution, *Regex, string) bool = Regex_Matches
 }
-
-//line generated.go:1
 func check_Regex_FindAll() {
 	var _ func(*Execution, *Regex, string, Option[int64]) Result[*List[string], RegexError] = Regex_FindAll
 }
-
-//line generated.go:1
 func check_Regex_ReplaceAll() {
 	var _ func(*Execution, *Regex, string, string, Option[int64]) Result[string, RegexError] = Regex_ReplaceAll
 }
-
-//line generated.go:1
 func check_Errors_Message_RegexError() {
 	var _ func(*Execution, RegexError) string = Errors_Message_RegexError
 }

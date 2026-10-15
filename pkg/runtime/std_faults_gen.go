@@ -4,7 +4,6 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Panic() {
 	var _ func(*Execution, string) Unit = Panic
 }

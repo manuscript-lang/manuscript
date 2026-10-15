@@ -4,142 +4,87 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Math_Abs() {
 	var _ func(*Execution, float64) float64 = Math_Abs
 }
-
-//line generated.go:1
 func check_Math_AbsInt() {
 	var _ func(*Execution, int64) int64 = Math_AbsInt
 }
-
-//line generated.go:1
 func check_Math_Acos() {
 	var _ func(*Execution, float64) float64 = Math_Acos
 }
-
-//line generated.go:1
 func check_Math_Asin() {
 	var _ func(*Execution, float64) float64 = Math_Asin
 }
-
-//line generated.go:1
 func check_Math_Atan() {
 	var _ func(*Execution, float64) float64 = Math_Atan
 }
-
-//line generated.go:1
 func check_Math_Atan2() {
 	var _ func(*Execution, float64, float64) float64 = Math_Atan2
 }
-
-//line generated.go:1
 func check_Math_Ceil() {
 	var _ func(*Execution, float64) float64 = Math_Ceil
 }
-
-//line generated.go:1
 func check_Math_Cos() {
 	var _ func(*Execution, float64) float64 = Math_Cos
 }
-
-//line generated.go:1
 func check_Math_Cosh() {
 	var _ func(*Execution, float64) float64 = Math_Cosh
 }
-
-//line generated.go:1
 func check_Math_E() {
 	var _ func(*Execution) float64 = Math_E
 }
-
-//line generated.go:1
 func check_Math_Exp() {
 	var _ func(*Execution, float64) float64 = Math_Exp
 }
-
-//line generated.go:1
 func check_Math_Floor() {
 	var _ func(*Execution, float64) float64 = Math_Floor
 }
-
-//line generated.go:1
 func check_Math_Hypot() {
 	var _ func(*Execution, float64, float64) float64 = Math_Hypot
 }
-
-//line generated.go:1
 func check_Math_Log() {
 	var _ func(*Execution, float64) float64 = Math_Log
 }
-
-//line generated.go:1
 func check_Math_Log10() {
 	var _ func(*Execution, float64) float64 = Math_Log10
 }
-
-//line generated.go:1
 func check_Math_Log2() {
 	var _ func(*Execution, float64) float64 = Math_Log2
 }
-
-//line generated.go:1
 func check_Math_Max() {
 	var _ func(*Execution, float64, float64) float64 = Math_Max
 }
-
-//line generated.go:1
 func check_Math_Min() {
 	var _ func(*Execution, float64, float64) float64 = Math_Min
 }
-
-//line generated.go:1
 func check_Math_Pi() {
 	var _ func(*Execution) float64 = Math_Pi
 }
-
-//line generated.go:1
 func check_Math_Pow() {
 	var _ func(*Execution, float64, float64) float64 = Math_Pow
 }
-
-//line generated.go:1
 func check_Math_Remainder() {
 	var _ func(*Execution, float64, float64) float64 = Math_Remainder
 }
-
-//line generated.go:1
 func check_Math_Round() {
 	var _ func(*Execution, float64) float64 = Math_Round
 }
-
-//line generated.go:1
 func check_Math_Sin() {
 	var _ func(*Execution, float64) float64 = Math_Sin
 }
-
-//line generated.go:1
 func check_Math_Sinh() {
 	var _ func(*Execution, float64) float64 = Math_Sinh
 }
-
-//line generated.go:1
 func check_Math_Sqrt() {
 	var _ func(*Execution, float64) float64 = Math_Sqrt
 }
-
-//line generated.go:1
 func check_Math_Tan() {
 	var _ func(*Execution, float64) float64 = Math_Tan
 }
-
-//line generated.go:1
 func check_Math_Tanh() {
 	var _ func(*Execution, float64) float64 = Math_Tanh
 }
-
-//line generated.go:1
 func check_Math_Truncate() {
 	var _ func(*Execution, float64) float64 = Math_Truncate
 }

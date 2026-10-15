@@ -4,42 +4,27 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Io_Copy() {
 	var _ func(*Execution, ReadStream, WriteStream, Option[int64]) Result[int64, IoError] = Io_Copy
 }
-
-//line generated.go:1
 func check_Io_ReadAll() {
 	var _ func(*Execution, ReadStream, Option[int64]) Result[*Bytes, IoError] = Io_ReadAll
 }
-
-//line generated.go:1
 func check_Io_ReadLine() {
 	var _ func(*Execution, ReadStream, Option[int64]) Result[Option[string], IoError] = Io_ReadLine
 }
-
-//line generated.go:1
 func check_Io_Stdin() {
 	var _ func(*Execution) ReadStream = Io_Stdin
 }
-
-//line generated.go:1
 func check_Io_Stdout() {
 	var _ func(*Execution) WriteStream = Io_Stdout
 }
-
-//line generated.go:1
 func check_Io_Stderr() {
 	var _ func(*Execution) WriteStream = Io_Stderr
 }
-
-//line generated.go:1
 func check_Io_Files() {
 	var _ func(*Execution) Files = Io_Files
 }
-
-//line generated.go:1
 func check_Errors_Message_IoError() {
 	var _ func(*Execution, IoError) string = Errors_Message_IoError
 }

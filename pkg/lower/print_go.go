@@ -47,7 +47,7 @@ func (g *gen) printGo(file *ast.File) (string, error) {
 	var printed []string
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(line, "func ") || strings.HasPrefix(line, "type ") || strings.HasPrefix(line, "var ") {
+		if !g.inRuntime && (strings.HasPrefix(line, "func ") || strings.HasPrefix(line, "type ") || strings.HasPrefix(line, "var ")) {
 			// Generated declarations are not source: end the previous
 			// function's mapping.
 			printed = append(printed, "//line generated.go:1")

@@ -4,58 +4,36 @@
 
 package msruntime
 
-//line generated.go:1
 type check_IpAddress = *IpAddress
-
-//line generated.go:1
 type check_Cidr = *Cidr
 
-//line generated.go:1
 func check_Net_ContainsIp() {
 	var _ func(*Execution, *Cidr, *IpAddress) Result[bool, NetworkError] = Net_ContainsIp
 }
-
-//line generated.go:1
 func check_Net_ParseCidr() {
 	var _ func(*Execution, string) Result[*Cidr, NetworkError] = Net_ParseCidr
 }
-
-//line generated.go:1
 func check_Net_ParseIp() {
 	var _ func(*Execution, string) Result[*IpAddress, NetworkError] = Net_ParseIp
 }
-
-//line generated.go:1
 func check_Net_Network() {
 	var _ func(*Execution) Network = Net_Network
 }
-
-//line generated.go:1
 func check_DnsKind_Text() {
 	var _ func(*Execution, DnsKind) string = DnsKind_Text
 }
-
-//line generated.go:1
 func check_IpFamily_Text() {
 	var _ func(*Execution, IpFamily) string = IpFamily_Text
 }
-
-//line generated.go:1
 func check_IpAddress_Text() {
 	var _ func(*Execution, *IpAddress) string = IpAddress_Text
 }
-
-//line generated.go:1
 func check_IpAddress_Family() {
 	var _ func(*Execution, *IpAddress) IpFamily = IpAddress_Family
 }
-
-//line generated.go:1
 func check_Cidr_Text() {
 	var _ func(*Execution, *Cidr) string = Cidr_Text
 }
-
-//line generated.go:1
 func check_Errors_Message_NetworkError() {
 	var _ func(*Execution, NetworkError) string = Errors_Message_NetworkError
 }

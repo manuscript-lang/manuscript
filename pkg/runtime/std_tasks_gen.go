@@ -4,89 +4,53 @@
 
 package msruntime
 
-//line generated.go:1
 type check_Scheduler = *Scheduler
-
-//line generated.go:1
 type check_OperationId = *OperationId
-
-//line generated.go:1
 type check_TaskGroup = *TaskGroup
-
-//line generated.go:1
 type check_Task[T any] = *Task[T]
 
-//line generated.go:1
 func check_CheckCancelled() {
 	var _ func(*Execution) Unit = CheckCancelled
 }
-
-//line generated.go:1
 func check_Tasks_YieldNow() {
 	var _ func(*Execution) Unit = Tasks_YieldNow
 }
-
-//line generated.go:1
 func check_Scheduler_After() {
 	var _ func(*Execution, *Scheduler, Duration, func(ctx *Execution) Result[Unit, Error]) Result[*OperationId, StartError] = Scheduler_After
 }
-
-//line generated.go:1
 func check_Scheduler_Every() {
 	var _ func(*Execution, *Scheduler, Duration, func(ctx *Execution) Result[Unit, Error]) Result[*OperationId, StartError] = Scheduler_Every
 }
-
-//line generated.go:1
 func check_Scheduler_Restart() {
 	var _ func(*Execution, *Scheduler, *OperationId) Result[*OperationId, StartError] = Scheduler_Restart
 }
-
-//line generated.go:1
 func check_Scheduler_Cancel() {
 	var _ func(*Execution, *Scheduler, *OperationId) Unit = Scheduler_Cancel
 }
-
-//line generated.go:1
 func check_Scheduler_Close() {
 	var _ func(*Execution, *Scheduler) Unit = Scheduler_Close
 }
-
-//line generated.go:1
 func check_Scheduler_Start() {
 	var _ func(*Execution, *Scheduler, func(ctx *Execution) Result[Unit, Error]) Result[*OperationId, StartError] = Scheduler_Start
 }
-
-//line generated.go:1
 func check_Scheduler_Status() {
 	var _ func(*Execution, *Scheduler, *OperationId) WorkStatus = Scheduler_Status
 }
-
-//line generated.go:1
 func check_TaskGroup_Start[T any]() {
 	var _ func(*Execution, *TaskGroup, func(ctx *Execution) T) *Task[T] = TaskGroup_Start[T]
 }
-
-//line generated.go:1
 func check_TaskGroup_Join() {
 	var _ func(*Execution, *TaskGroup) Result[Unit, ExecutionError] = TaskGroup_Join
 }
-
-//line generated.go:1
 func check_TaskGroup_Close() {
 	var _ func(*Execution, *TaskGroup) Unit = TaskGroup_Close
 }
-
-//line generated.go:1
 func check_Task_Join[T any]() {
 	var _ func(*Execution, *Task[T]) Result[T, ExecutionError] = Task_Join[T]
 }
-
-//line generated.go:1
 func check_Errors_Message_ExecutionError() {
 	var _ func(*Execution, ExecutionError) string = Errors_Message_ExecutionError
 }
-
-//line generated.go:1
 func check_Errors_Message_StartError() {
 	var _ func(*Execution, StartError) string = Errors_Message_StartError
 }

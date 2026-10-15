@@ -4,7 +4,6 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Errors_Message_WebSocketError() {
 	var _ func(*Execution, WebSocketError) string = Errors_Message_WebSocketError
 }

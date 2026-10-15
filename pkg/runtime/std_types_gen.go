@@ -2,637 +2,464 @@
 
 package msruntime
 
-//line generated.go:1
 type ArchiveError interface {
 	isArchiveError()
 }
-
-//line generated.go:1
 type ArchiveError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (ArchiveError_InvalidInput) isArchiveError() {
 }
 
-//line generated.go:1
 type ArchiveError_InvalidData struct {
 }
 
-//line generated.go:1
 func (ArchiveError_InvalidData) isArchiveError() {
 }
 
-//line generated.go:1
 type ArchiveError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (ArchiveError_LimitExceeded) isArchiveError() {
 }
 
-//line generated.go:1
 type ArchiveError_Unsupported struct {
 }
 
-//line generated.go:1
 func (ArchiveError_Unsupported) isArchiveError() {
 }
 
-//line generated.go:1
 type ArchiveError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (ArchiveError_Failed) isArchiveError() {
 }
 
-//line generated.go:1
 type ArchiveEntry struct {
 	Path      string
 	Data      *Bytes
 	Directory bool
 }
-
-//line generated.go:1
 type ArchiveLimits struct {
 	MaxEntries    Option[int64]
 	MaxEntryBytes Option[int64]
 	MaxTotalBytes Option[int64]
 }
-
-//line generated.go:1
 type ArchiveFormat interface {
 	isArchiveFormat()
 }
-
-//line generated.go:1
 type ArchiveFormat_Zip struct {
 }
 
-//line generated.go:1
 func (ArchiveFormat_Zip) isArchiveFormat() {
 }
 
-//line generated.go:1
 type ArchiveFormat_Tar struct {
 }
 
-//line generated.go:1
 func (ArchiveFormat_Tar) isArchiveFormat() {
 }
 
-//line generated.go:1
 type BigIntError interface {
 	isBigIntError()
 }
-
-//line generated.go:1
 type BigIntError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (BigIntError_InvalidInput) isBigIntError() {
 }
 
-//line generated.go:1
 type BigIntError_InvalidData struct {
 }
 
-//line generated.go:1
 func (BigIntError_InvalidData) isBigIntError() {
 }
 
-//line generated.go:1
 type BigIntError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (BigIntError_LimitExceeded) isBigIntError() {
 }
 
-//line generated.go:1
 type BinaryError interface {
 	isBinaryError()
 }
-
-//line generated.go:1
 type BinaryError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (BinaryError_InvalidInput) isBinaryError() {
 }
 
-//line generated.go:1
 type BinaryError_OutOfRange struct {
 }
 
-//line generated.go:1
 func (BinaryError_OutOfRange) isBinaryError() {
 }
 
-//line generated.go:1
 type Closeable interface {
 	Close(ctx *Execution) Unit
 }
-
-//line generated.go:1
 type CollectionError interface {
 	isCollectionError()
 }
-
-//line generated.go:1
 type CollectionError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (CollectionError_InvalidInput) isCollectionError() {
 }
 
-//line generated.go:1
 type CollectionError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (CollectionError_LimitExceeded) isCollectionError() {
 }
 
-//line generated.go:1
 type CollectionError_OutOfRange struct {
 }
 
-//line generated.go:1
 func (CollectionError_OutOfRange) isCollectionError() {
 }
 
-//line generated.go:1
 type MapEntry[T comparable, U any] struct {
 	Key   T
 	Value U
 }
-
-//line generated.go:1
 type ListEntry[T any] struct {
 	Index int64
 	Value T
 }
-
-//line generated.go:1
 type CompressionError interface {
 	isCompressionError()
 }
-
-//line generated.go:1
 type CompressionError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (CompressionError_InvalidInput) isCompressionError() {
 }
 
-//line generated.go:1
 type CompressionError_InvalidData struct {
 }
 
-//line generated.go:1
 func (CompressionError_InvalidData) isCompressionError() {
 }
 
-//line generated.go:1
 type CompressionError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (CompressionError_LimitExceeded) isCompressionError() {
 }
 
-//line generated.go:1
 type CompressionError_Unsupported struct {
 }
 
-//line generated.go:1
 func (CompressionError_Unsupported) isCompressionError() {
 }
 
-//line generated.go:1
 type CompressionError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (CompressionError_Failed) isCompressionError() {
 }
 
-//line generated.go:1
 type CompressionFormat interface {
 	isCompressionFormat()
 }
-
-//line generated.go:1
 type CompressionFormat_Gzip struct {
 }
 
-//line generated.go:1
 func (CompressionFormat_Gzip) isCompressionFormat() {
 }
 
-//line generated.go:1
 type CompressionFormat_Zlib struct {
 }
 
-//line generated.go:1
 func (CompressionFormat_Zlib) isCompressionFormat() {
 }
 
-//line generated.go:1
 type CompressionFormat_Deflate struct {
 }
 
-//line generated.go:1
 func (CompressionFormat_Deflate) isCompressionFormat() {
 }
 
-//line generated.go:1
 type CryptoError interface {
 	isCryptoError()
 }
-
-//line generated.go:1
 type CryptoError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (CryptoError_InvalidInput) isCryptoError() {
 }
 
-//line generated.go:1
 type CryptoError_Unsupported struct {
 }
 
-//line generated.go:1
 func (CryptoError_Unsupported) isCryptoError() {
 }
 
-//line generated.go:1
 type CryptoError_AuthenticationFailed struct {
 }
 
-//line generated.go:1
 func (CryptoError_AuthenticationFailed) isCryptoError() {
 }
 
-//line generated.go:1
 type HashAlgorithm interface {
 	isHashAlgorithm()
 }
-
-//line generated.go:1
 type HashAlgorithm_Sha256 struct {
 }
 
-//line generated.go:1
 func (HashAlgorithm_Sha256) isHashAlgorithm() {
 }
 
-//line generated.go:1
 type HashAlgorithm_Sha384 struct {
 }
 
-//line generated.go:1
 func (HashAlgorithm_Sha384) isHashAlgorithm() {
 }
 
-//line generated.go:1
 type HashAlgorithm_Sha512 struct {
 }
 
-//line generated.go:1
 func (HashAlgorithm_Sha512) isHashAlgorithm() {
 }
 
-//line generated.go:1
 type CsvError interface {
 	isCsvError()
 }
-
-//line generated.go:1
 type CsvError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (CsvError_InvalidInput) isCsvError() {
 }
 
-//line generated.go:1
 type CsvError_InvalidData struct {
 }
 
-//line generated.go:1
 func (CsvError_InvalidData) isCsvError() {
 }
 
-//line generated.go:1
 type CsvError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (CsvError_LimitExceeded) isCsvError() {
 }
 
-//line generated.go:1
 type CsvOptions struct {
 	Delimiter  string
 	LineEnding string
 }
-
-//line generated.go:1
 type RoundingMode interface {
 	isRoundingMode()
 }
-
-//line generated.go:1
 type RoundingMode_HalfEven struct {
 }
 
-//line generated.go:1
 func (RoundingMode_HalfEven) isRoundingMode() {
 }
 
-//line generated.go:1
 type RoundingMode_HalfAwayFromZero struct {
 }
 
-//line generated.go:1
 func (RoundingMode_HalfAwayFromZero) isRoundingMode() {
 }
 
-//line generated.go:1
 type RoundingMode_TowardZero struct {
 }
 
-//line generated.go:1
 func (RoundingMode_TowardZero) isRoundingMode() {
 }
 
-//line generated.go:1
 type RoundingMode_Floor struct {
 }
 
-//line generated.go:1
 func (RoundingMode_Floor) isRoundingMode() {
 }
 
-//line generated.go:1
 type RoundingMode_Ceil struct {
 }
 
-//line generated.go:1
 func (RoundingMode_Ceil) isRoundingMode() {
 }
 
-//line generated.go:1
 type EncodingError interface {
 	isEncodingError()
 }
-
-//line generated.go:1
 type EncodingError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (EncodingError_InvalidInput) isEncodingError() {
 }
 
-//line generated.go:1
 type EncodingError_InvalidData struct {
 }
 
-//line generated.go:1
 func (EncodingError_InvalidData) isEncodingError() {
 }
 
-//line generated.go:1
 type EncodingError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (EncodingError_LimitExceeded) isEncodingError() {
 }
 
-//line generated.go:1
 type Error interface {
 	Message(ctx *Execution) string
 }
-
-//line generated.go:1
 type TextError interface {
 	isTextError()
 }
-
-//line generated.go:1
 type TextError_Text struct {
 	Message string
 }
 
-//line generated.go:1
 func (TextError_Text) isTextError() {
 }
 
-//line generated.go:1
 type MissingValue interface {
 	isMissingValue()
 }
-
-//line generated.go:1
 type MissingValue_Missing struct {
 	Location string
 }
 
-//line generated.go:1
 func (MissingValue_Missing) isMissingValue() {
 }
 
-//line generated.go:1
 type ErrorCategory interface {
 	isErrorCategory()
 }
-
-//line generated.go:1
 type ErrorCategory_InvalidInput struct {
 }
 
-//line generated.go:1
 func (ErrorCategory_InvalidInput) isErrorCategory() {
 }
 
-//line generated.go:1
 type ErrorCategory_InvalidData struct {
 }
 
-//line generated.go:1
 func (ErrorCategory_InvalidData) isErrorCategory() {
 }
 
-//line generated.go:1
 type ErrorCategory_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (ErrorCategory_LimitExceeded) isErrorCategory() {
 }
 
-//line generated.go:1
 type ErrorCategory_NotFound struct {
 }
 
-//line generated.go:1
 func (ErrorCategory_NotFound) isErrorCategory() {
 }
 
-//line generated.go:1
 type ErrorCategory_AlreadyExists struct {
 }
 
-//line generated.go:1
 func (ErrorCategory_AlreadyExists) isErrorCategory() {
 }
 
-//line generated.go:1
 type ErrorCategory_PermissionDenied struct {
 }
 
-//line generated.go:1
 func (ErrorCategory_PermissionDenied) isErrorCategory() {
 }
 
-//line generated.go:1
 type ErrorCategory_Unsupported struct {
 }
 
-//line generated.go:1
 func (ErrorCategory_Unsupported) isErrorCategory() {
 }
 
-//line generated.go:1
 type ErrorCategory_Closed struct {
 }
 
-//line generated.go:1
 func (ErrorCategory_Closed) isErrorCategory() {
 }
 
-//line generated.go:1
 type ErrorCategory_Timeout struct {
 }
 
-//line generated.go:1
 func (ErrorCategory_Timeout) isErrorCategory() {
 }
 
-//line generated.go:1
 type ErrorCategory_Unavailable struct {
 }
 
-//line generated.go:1
 func (ErrorCategory_Unavailable) isErrorCategory() {
 }
 
-//line generated.go:1
 type FileSystemError interface {
 	isFileSystemError()
 }
-
-//line generated.go:1
 type FileSystemError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (FileSystemError_InvalidInput) isFileSystemError() {
 }
 
-//line generated.go:1
 type FileSystemError_InvalidData struct {
 }
 
-//line generated.go:1
 func (FileSystemError_InvalidData) isFileSystemError() {
 }
 
-//line generated.go:1
 type FileSystemError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (FileSystemError_LimitExceeded) isFileSystemError() {
 }
 
-//line generated.go:1
 type FileSystemError_NotFound struct {
 }
 
-//line generated.go:1
 func (FileSystemError_NotFound) isFileSystemError() {
 }
 
-//line generated.go:1
 type FileSystemError_AlreadyExists struct {
 }
 
-//line generated.go:1
 func (FileSystemError_AlreadyExists) isFileSystemError() {
 }
 
-//line generated.go:1
 type FileSystemError_NotEmpty struct {
 }
 
-//line generated.go:1
 func (FileSystemError_NotEmpty) isFileSystemError() {
 }
 
-//line generated.go:1
 type FileSystemError_PermissionDenied struct {
 }
 
-//line generated.go:1
 func (FileSystemError_PermissionDenied) isFileSystemError() {
 }
 
-//line generated.go:1
 type FileSystemError_Unsupported struct {
 }
 
-//line generated.go:1
 func (FileSystemError_Unsupported) isFileSystemError() {
 }
 
-//line generated.go:1
 type FileSystemError_Closed struct {
 }
 
-//line generated.go:1
 func (FileSystemError_Closed) isFileSystemError() {
 }
 
-//line generated.go:1
 type FileSystemError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (FileSystemError_Failed) isFileSystemError() {
 }
 
-//line generated.go:1
 type DirectoryEntry struct {
 	Name      string
 	Directory bool
 	Symlink   bool
 }
-
-//line generated.go:1
 type FileInfo struct {
 	Name        string
 	Size        int64
@@ -659,8 +486,6 @@ type FileInfo struct {
 	Uid         int64
 	Gid         int64
 }
-
-//line generated.go:1
 type FileSystem interface {
 	OpenFlags(ctx *Execution, a0 string, a1 int64, a2 int64) Result[FileHandle, FileSystemError]
 	GlobEntries(ctx *Execution, a0 string, a1 *GlobOptions, a2 Option[func(ctx *Execution, a0 *PathEntry) bool]) Result[*List[*PathEntry], FileSystemError]
@@ -694,8 +519,6 @@ type FileSystem interface {
 	StatFilesystem(ctx *Execution, a0 string) Result[*FileSystemInfo, FileSystemError]
 	ChmodLink(ctx *Execution, a0 string, a1 int64) Result[Unit, FileSystemError]
 }
-
-//line generated.go:1
 type FileHandle interface {
 	Reader(ctx *Execution) ReadStream
 	Writer(ctx *Execution) WriteStream
@@ -718,33 +541,23 @@ type FileHandle interface {
 	SetTimes(ctx *Execution, a0 Timestamp, a1 Timestamp) Result[Unit, FileSystemError]
 	ReadLines(ctx *Execution, a0 Option[int64], a1 Option[int64]) Result[*List[string], FileSystemError]
 }
-
-//line generated.go:1
 type Directory interface {
 	Path(ctx *Execution) string
 	Close(ctx *Execution) Unit
 	Read(ctx *Execution) Result[Option[*DirectoryEntry], FileSystemError]
 }
-
-//line generated.go:1
 type FileWatcher interface {
 	Close(ctx *Execution) Unit
 	Next(ctx *Execution) Result[*List[*FileEvent], FileSystemError]
 }
-
-//line generated.go:1
 type TemporaryDirectory interface {
 	Close(ctx *Execution) Unit
 	Path(ctx *Execution) string
 }
-
-//line generated.go:1
 type FileEvent struct {
 	Path string
 	Kind string
 }
-
-//line generated.go:1
 type FileSystemInfo struct {
 	TypeId          int64
 	BlockSize       int64
@@ -754,8 +567,6 @@ type FileSystemInfo struct {
 	Files           int64
 	FilesFree       int64
 }
-
-//line generated.go:1
 type CopyOptions struct {
 	Recursive          bool
 	Replace            bool
@@ -767,14 +578,10 @@ type CopyOptions struct {
 	MaxEntries         Option[int64]
 	MaxBytes           Option[int64]
 }
-
-//line generated.go:1
 type PathEntry struct {
 	Path  string
 	Entry *DirectoryEntry
 }
-
-//line generated.go:1
 type GlobOptions struct {
 	Patterns    *List[string]
 	Exclude     *List[string]
@@ -782,65 +589,47 @@ type GlobOptions struct {
 	MaxEntries  Option[int64]
 	MaxResults  Option[int64]
 }
-
-//line generated.go:1
 type HtmlError interface {
 	isHtmlError()
 }
-
-//line generated.go:1
 type HtmlError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (HtmlError_InvalidInput) isHtmlError() {
 }
 
-//line generated.go:1
 type HtmlError_InvalidData struct {
 }
 
-//line generated.go:1
 func (HtmlError_InvalidData) isHtmlError() {
 }
 
-//line generated.go:1
 type HtmlError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (HtmlError_LimitExceeded) isHtmlError() {
 }
 
-//line generated.go:1
 type HtmlLimits struct {
 	MaxBytes Option[int64]
 	MaxDepth Option[int64]
 	MaxNodes Option[int64]
 }
-
-//line generated.go:1
 type HtmlAttribute struct {
 	Name      string
 	Namespace string
 	Value     string
 }
-
-//line generated.go:1
 type HtmlNode interface {
 	isHtmlNode()
 }
-
-//line generated.go:1
 type HtmlNode_Document struct {
 	Children *List[HtmlNode]
 }
 
-//line generated.go:1
 func (HtmlNode_Document) isHtmlNode() {
 }
 
-//line generated.go:1
 type HtmlNode_Element struct {
 	Tag        string
 	Namespace  string
@@ -848,207 +637,155 @@ type HtmlNode_Element struct {
 	Children   *List[HtmlNode]
 }
 
-//line generated.go:1
 func (HtmlNode_Element) isHtmlNode() {
 }
 
-//line generated.go:1
 type HtmlNode_Text struct {
 	Text string
 }
 
-//line generated.go:1
 func (HtmlNode_Text) isHtmlNode() {
 }
 
-//line generated.go:1
 type HtmlNode_Comment struct {
 	Text string
 }
 
-//line generated.go:1
 func (HtmlNode_Comment) isHtmlNode() {
 }
 
-//line generated.go:1
 type HtmlNode_Doctype struct {
 	Name     string
 	PublicId string
 	SystemId string
 }
 
-//line generated.go:1
 func (HtmlNode_Doctype) isHtmlNode() {
 }
 
-//line generated.go:1
 type HttpError interface {
 	isHttpError()
 }
-
-//line generated.go:1
 type HttpError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (HttpError_InvalidInput) isHttpError() {
 }
 
-//line generated.go:1
 type HttpError_InvalidData struct {
 }
 
-//line generated.go:1
 func (HttpError_InvalidData) isHttpError() {
 }
 
-//line generated.go:1
 type HttpError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (HttpError_LimitExceeded) isHttpError() {
 }
 
-//line generated.go:1
 type HttpError_PermissionDenied struct {
 }
 
-//line generated.go:1
 func (HttpError_PermissionDenied) isHttpError() {
 }
 
-//line generated.go:1
 type HttpError_Closed struct {
 }
 
-//line generated.go:1
 func (HttpError_Closed) isHttpError() {
 }
 
-//line generated.go:1
 type HttpError_Timeout struct {
 }
 
-//line generated.go:1
 func (HttpError_Timeout) isHttpError() {
 }
 
-//line generated.go:1
 type HttpError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (HttpError_Failed) isHttpError() {
 }
 
-//line generated.go:1
 type HttpResponseMetadata struct {
 	Status  int64
 	Headers *HttpHeaders
 }
-
-//line generated.go:1
 type ClientResponse struct {
 	Head *HttpResponseMetadata
 	Body *Bytes
 }
-
-//line generated.go:1
 type HttpMethod interface {
 	isHttpMethod()
 }
-
-//line generated.go:1
 type HttpMethod_Get struct {
 }
 
-//line generated.go:1
 func (HttpMethod_Get) isHttpMethod() {
 }
 
-//line generated.go:1
 type HttpMethod_Head struct {
 }
 
-//line generated.go:1
 func (HttpMethod_Head) isHttpMethod() {
 }
 
-//line generated.go:1
 type HttpMethod_Post struct {
 }
 
-//line generated.go:1
 func (HttpMethod_Post) isHttpMethod() {
 }
 
-//line generated.go:1
 type HttpMethod_Put struct {
 }
 
-//line generated.go:1
 func (HttpMethod_Put) isHttpMethod() {
 }
 
-//line generated.go:1
 type HttpMethod_Patch struct {
 }
 
-//line generated.go:1
 func (HttpMethod_Patch) isHttpMethod() {
 }
 
-//line generated.go:1
 type HttpMethod_Delete struct {
 }
 
-//line generated.go:1
 func (HttpMethod_Delete) isHttpMethod() {
 }
 
-//line generated.go:1
 type HttpMethod_Connect struct {
 }
 
-//line generated.go:1
 func (HttpMethod_Connect) isHttpMethod() {
 }
 
-//line generated.go:1
 type HttpMethod_Options struct {
 }
 
-//line generated.go:1
 func (HttpMethod_Options) isHttpMethod() {
 }
 
-//line generated.go:1
 type HttpMethod_Trace struct {
 }
 
-//line generated.go:1
 func (HttpMethod_Trace) isHttpMethod() {
 }
 
-//line generated.go:1
 type HttpMethod_Custom struct {
 	Value string
 }
 
-//line generated.go:1
 func (HttpMethod_Custom) isHttpMethod() {
 }
 
-//line generated.go:1
 type HttpClient interface {
 	Close(ctx *Execution) Unit
 	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int64], a5 Option[Duration]) Result[ResponseBody, HttpError]
 	RequestStream(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 ReadStream, a4 Option[int64], a5 Option[Duration]) Result[ResponseBody, HttpError]
 }
-
-//line generated.go:1
 type HttpClientOptions struct {
 	MaxRedirects       Option[int64]
 	MaxIdleConnections Option[int64]
@@ -1058,8 +795,6 @@ type HttpClientOptions struct {
 	Cookies            bool
 	Tls                *TlsOptions
 }
-
-//line generated.go:1
 type HttpExchange interface {
 	Close(ctx *Execution) Unit
 	Headers(ctx *Execution) *HttpHeaders
@@ -1071,8 +806,6 @@ type HttpExchange interface {
 	Upgrade(ctx *Execution, a0 *List[string], a1 *List[string], a2 Option[int64]) Result[WebSocket, WebSocketError]
 	Write(ctx *Execution, a0 *Bytes) Result[Unit, IoError]
 }
-
-//line generated.go:1
 type HttpRequest struct {
 	Method  HttpMethod
 	Path    string
@@ -1080,22 +813,16 @@ type HttpRequest struct {
 	Headers *HttpHeaders
 	Body    *Bytes
 }
-
-//line generated.go:1
 type HttpResponse struct {
 	Status  int64
 	Headers *HttpHeaders
 	Body    *Bytes
 }
-
-//line generated.go:1
 type HttpServer interface {
 	Address(ctx *Execution) string
 	Close(ctx *Execution) Unit
 	Wait(ctx *Execution) Result[Unit, IoError]
 }
-
-//line generated.go:1
 type HttpServerOptions struct {
 	MaxRequests      Option[int64]
 	MaxBodyBytes     Option[int64]
@@ -1105,310 +832,228 @@ type HttpServerOptions struct {
 	Grace            Option[Duration]
 	Tls              Option[*TlsOptions]
 }
-
-//line generated.go:1
 type ResponseBody interface {
 	Close(ctx *Execution) Unit
 	Metadata(ctx *Execution) *HttpResponseMetadata
 	Read(ctx *Execution, a0 Option[int64]) Result[Option[*Bytes], IoError]
 }
-
-//line generated.go:1
 type File interface {
 	Close(ctx *Execution) Unit
 	Read(ctx *Execution, a0 Option[int64]) Result[Option[*Bytes], IoError]
 }
-
-//line generated.go:1
 type Files interface {
 	Open(ctx *Execution, a0 string) Result[File, IoError]
 }
-
-//line generated.go:1
 type IoError interface {
 	isIoError()
 }
-
-//line generated.go:1
 type IoError_Closed struct {
 }
 
-//line generated.go:1
 func (IoError_Closed) isIoError() {
 }
 
-//line generated.go:1
 type IoError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (IoError_InvalidInput) isIoError() {
 }
 
-//line generated.go:1
 type IoError_Unavailable struct {
 }
 
-//line generated.go:1
 func (IoError_Unavailable) isIoError() {
 }
 
-//line generated.go:1
 type IoError_InvalidData struct {
 }
 
-//line generated.go:1
 func (IoError_InvalidData) isIoError() {
 }
 
-//line generated.go:1
 type IoError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (IoError_LimitExceeded) isIoError() {
 }
 
-//line generated.go:1
 type IoError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (IoError_Failed) isIoError() {
 }
 
-//line generated.go:1
 type ReadStream interface {
 	Close(ctx *Execution) Unit
 	Read(ctx *Execution, a0 Option[int64]) Result[Option[*Bytes], IoError]
 }
-
-//line generated.go:1
 type WriteStream interface {
 	Close(ctx *Execution) Unit
 	Flush(ctx *Execution) Result[Unit, IoError]
 	Write(ctx *Execution, a0 *Bytes) Result[Unit, IoError]
 }
-
-//line generated.go:1
 type JsonError interface {
 	isJsonError()
 }
-
-//line generated.go:1
 type JsonError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (JsonError_InvalidInput) isJsonError() {
 }
 
-//line generated.go:1
 type JsonError_InvalidData struct {
 }
 
-//line generated.go:1
 func (JsonError_InvalidData) isJsonError() {
 }
 
-//line generated.go:1
 type JsonError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (JsonError_LimitExceeded) isJsonError() {
 }
 
-//line generated.go:1
 type JsonLimits struct {
 	MaxBytes  Option[int64]
 	MaxDepth  Option[int64]
 	MaxValues Option[int64]
 }
-
-//line generated.go:1
 type JsonValue interface {
 	isJsonValue()
 }
-
-//line generated.go:1
 type JsonValue_Null struct {
 }
 
-//line generated.go:1
 func (JsonValue_Null) isJsonValue() {
 }
 
-//line generated.go:1
 type JsonValue_BoolValue struct {
 	Value bool
 }
 
-//line generated.go:1
 func (JsonValue_BoolValue) isJsonValue() {
 }
 
-//line generated.go:1
 type JsonValue_NumberValue struct {
 	Text string
 }
 
-//line generated.go:1
 func (JsonValue_NumberValue) isJsonValue() {
 }
 
-//line generated.go:1
 type JsonValue_StringValue struct {
 	Value string
 }
 
-//line generated.go:1
 func (JsonValue_StringValue) isJsonValue() {
 }
 
-//line generated.go:1
 type JsonValue_ArrayValue struct {
 	Values *List[JsonValue]
 }
 
-//line generated.go:1
 func (JsonValue_ArrayValue) isJsonValue() {
 }
 
-//line generated.go:1
 type JsonValue_ObjectValue struct {
 	Values *Map[string, JsonValue]
 }
 
-//line generated.go:1
 func (JsonValue_ObjectValue) isJsonValue() {
 }
 
-//line generated.go:1
 type LogError interface {
 	isLogError()
 }
-
-//line generated.go:1
 type LogError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (LogError_InvalidInput) isLogError() {
 }
 
-//line generated.go:1
 type LogError_InvalidData struct {
 }
 
-//line generated.go:1
 func (LogError_InvalidData) isLogError() {
 }
 
-//line generated.go:1
 type LogError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (LogError_LimitExceeded) isLogError() {
 }
 
-//line generated.go:1
 type LogError_Closed struct {
 }
 
-//line generated.go:1
 func (LogError_Closed) isLogError() {
 }
 
-//line generated.go:1
 type LogError_Io struct {
 	Cause IoError
 }
 
-//line generated.go:1
 func (LogError_Io) isLogError() {
 }
 
-//line generated.go:1
 type LogError_FileSystem struct {
 	Cause FileSystemError
 }
 
-//line generated.go:1
 func (LogError_FileSystem) isLogError() {
 }
 
-//line generated.go:1
 type LogLevel interface {
 	isLogLevel()
 }
-
-//line generated.go:1
 type LogLevel_Trace struct {
 }
 
-//line generated.go:1
 func (LogLevel_Trace) isLogLevel() {
 }
 
-//line generated.go:1
 type LogLevel_Debug struct {
 }
 
-//line generated.go:1
 func (LogLevel_Debug) isLogLevel() {
 }
 
-//line generated.go:1
 type LogLevel_Info struct {
 }
 
-//line generated.go:1
 func (LogLevel_Info) isLogLevel() {
 }
 
-//line generated.go:1
 type LogLevel_Warn struct {
 }
 
-//line generated.go:1
 func (LogLevel_Warn) isLogLevel() {
 }
 
-//line generated.go:1
 type LogLevel_Error struct {
 }
 
-//line generated.go:1
 func (LogLevel_Error) isLogLevel() {
 }
 
-//line generated.go:1
 type LogLevel_Fatal struct {
 }
 
-//line generated.go:1
 func (LogLevel_Fatal) isLogLevel() {
 }
 
-//line generated.go:1
 type LogLevel_Silent struct {
 }
 
-//line generated.go:1
 func (LogLevel_Silent) isLogLevel() {
 }
 
-//line generated.go:1
 type Transport interface {
 	Write(ctx *Execution, a0 *Bytes) Result[Unit, LogError]
 	Flush(ctx *Execution) Result[Unit, LogError]
 	Close(ctx *Execution) Unit
 }
-
-//line generated.go:1
 type Logger interface {
 	Log(ctx *Execution, a0 LogLevel, a1 string, a2 Option[*Map[string, JsonValue]]) Result[Unit, LogError]
 	Trace(ctx *Execution, a0 string, a1 Option[*Map[string, JsonValue]]) Result[Unit, LogError]
@@ -1423,78 +1068,58 @@ type Logger interface {
 	Child(ctx *Execution, a0 *Map[string, JsonValue]) Logger
 	Flush(ctx *Execution) Result[Unit, LogError]
 }
-
-//line generated.go:1
 type NetworkError interface {
 	isNetworkError()
 }
-
-//line generated.go:1
 type NetworkError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (NetworkError_InvalidInput) isNetworkError() {
 }
 
-//line generated.go:1
 type NetworkError_InvalidData struct {
 }
 
-//line generated.go:1
 func (NetworkError_InvalidData) isNetworkError() {
 }
 
-//line generated.go:1
 type NetworkError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (NetworkError_LimitExceeded) isNetworkError() {
 }
 
-//line generated.go:1
 type NetworkError_PermissionDenied struct {
 }
 
-//line generated.go:1
 func (NetworkError_PermissionDenied) isNetworkError() {
 }
 
-//line generated.go:1
 type NetworkError_Unsupported struct {
 }
 
-//line generated.go:1
 func (NetworkError_Unsupported) isNetworkError() {
 }
 
-//line generated.go:1
 type NetworkError_Closed struct {
 }
 
-//line generated.go:1
 func (NetworkError_Closed) isNetworkError() {
 }
 
-//line generated.go:1
 type NetworkError_Timeout struct {
 }
 
-//line generated.go:1
 func (NetworkError_Timeout) isNetworkError() {
 }
 
-//line generated.go:1
 type NetworkError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (NetworkError_Failed) isNetworkError() {
 }
 
-//line generated.go:1
 type Connection interface {
 	Close(ctx *Execution) Unit
 	LocalAddress(ctx *Execution) string
@@ -1504,112 +1129,82 @@ type Connection interface {
 	TlsInfo(ctx *Execution) Result[*TlsInfo, TlsError]
 	Write(ctx *Execution, a0 *Bytes, a1 Option[Duration]) Result[Unit, IoError]
 }
-
-//line generated.go:1
 type Datagram struct {
 	Data   *Bytes
 	Sender string
 }
-
-//line generated.go:1
 type DatagramSocket interface {
 	Address(ctx *Execution) string
 	Close(ctx *Execution) Unit
 	Receive(ctx *Execution, a0 Option[int64], a1 Option[Duration]) Result[*Datagram, NetworkError]
 	Send(ctx *Execution, a0 *Bytes, a1 string, a2 Option[Duration]) Result[Unit, NetworkError]
 }
-
-//line generated.go:1
 type DnsKind interface {
 	isDnsKind()
 }
-
-//line generated.go:1
 type DnsKind_A struct {
 }
 
-//line generated.go:1
 func (DnsKind_A) isDnsKind() {
 }
 
-//line generated.go:1
 type DnsKind_AAAA struct {
 }
 
-//line generated.go:1
 func (DnsKind_AAAA) isDnsKind() {
 }
 
-//line generated.go:1
 type DnsKind_CNAME struct {
 }
 
-//line generated.go:1
 func (DnsKind_CNAME) isDnsKind() {
 }
 
-//line generated.go:1
 type DnsKind_MX struct {
 }
 
-//line generated.go:1
 func (DnsKind_MX) isDnsKind() {
 }
 
-//line generated.go:1
 type DnsKind_NS struct {
 }
 
-//line generated.go:1
 func (DnsKind_NS) isDnsKind() {
 }
 
-//line generated.go:1
 type DnsKind_TXT struct {
 }
 
-//line generated.go:1
 func (DnsKind_TXT) isDnsKind() {
 }
 
-//line generated.go:1
 type DnsKind_PTR struct {
 }
 
-//line generated.go:1
 func (DnsKind_PTR) isDnsKind() {
 }
 
-//line generated.go:1
 type DnsKind_SRV struct {
 }
 
-//line generated.go:1
 func (DnsKind_SRV) isDnsKind() {
 }
 
-//line generated.go:1
 type IpFamily interface {
 	isIpFamily()
 }
-
-//line generated.go:1
 type IpFamily_IPv4 struct {
 }
 
-//line generated.go:1
 func (IpFamily_IPv4) isIpFamily() {
 }
 
-//line generated.go:1
 type IpFamily_IPv6 struct {
 }
 
-//line generated.go:1
 func (IpFamily_IPv6) isIpFamily() {
 }
 
-//line generated.go:1
 type DnsRecord struct {
 	Kind     DnsKind
 	Value    string
@@ -1617,15 +1212,11 @@ type DnsRecord struct {
 	Weight   int64
 	Port     int64
 }
-
-//line generated.go:1
 type Listener interface {
 	Accept(ctx *Execution, a0 Option[Duration]) Result[Connection, NetworkError]
 	Address(ctx *Execution) string
 	Close(ctx *Execution) Unit
 }
-
-//line generated.go:1
 type Network interface {
 	BindDatagram(ctx *Execution, a0 string) Result[DatagramSocket, NetworkError]
 	Close(ctx *Execution) Unit
@@ -1646,50 +1237,36 @@ type Network interface {
 	WebSocket(ctx *Execution, a0 string, a1 *HttpHeaders, a2 *List[string], a3 *WebSocketOptions) Result[WebSocket, WebSocketError]
 	WithResolver(ctx *Execution, a0 string) Result[Network, NetworkError]
 }
-
-//line generated.go:1
 type NumberError interface {
 	isNumberError()
 }
-
-//line generated.go:1
 type NumberError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (NumberError_InvalidInput) isNumberError() {
 }
 
-//line generated.go:1
 type NumberError_InvalidData struct {
 }
 
-//line generated.go:1
 func (NumberError_InvalidData) isNumberError() {
 }
 
-//line generated.go:1
 type NumberError_OutOfRange struct {
 }
 
-//line generated.go:1
 func (NumberError_OutOfRange) isNumberError() {
 }
 
-//line generated.go:1
 type PathError interface {
 	isPathError()
 }
-
-//line generated.go:1
 type PathError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (PathError_InvalidInput) isPathError() {
 }
 
-//line generated.go:1
 type PathParts struct {
 	Root      string
 	Directory string
@@ -1697,8 +1274,6 @@ type PathParts struct {
 	Extension string
 	Name      string
 }
-
-//line generated.go:1
 type PathOperations interface {
 	Basename(ctx *Execution, a0 string) string
 	BasenameWithout(ctx *Execution, a0 string, a1 string) string
@@ -1716,67 +1291,49 @@ type PathOperations interface {
 	ToNamespacedPath(ctx *Execution, a0 string) string
 	MatchesGlob(ctx *Execution, a0 string, a1 string) Result[bool, PathError]
 }
-
-//line generated.go:1
 type CommandError interface {
 	isCommandError()
 }
-
-//line generated.go:1
 type CommandError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (CommandError_InvalidInput) isCommandError() {
 }
 
-//line generated.go:1
 type CommandError_Unavailable struct {
 }
 
-//line generated.go:1
 func (CommandError_Unavailable) isCommandError() {
 }
 
-//line generated.go:1
 type CommandError_Timeout struct {
 }
 
-//line generated.go:1
 func (CommandError_Timeout) isCommandError() {
 }
 
-//line generated.go:1
 type CommandError_OutputLimit struct {
 }
 
-//line generated.go:1
 func (CommandError_OutputLimit) isCommandError() {
 }
 
-//line generated.go:1
 type CommandError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (CommandError_Failed) isCommandError() {
 }
 
-//line generated.go:1
 type CommandOutput struct {
 	ExitCode int64
 	Stdout   *Bytes
 	Stderr   *Bytes
 }
-
-//line generated.go:1
 type Commands interface {
 	Run(ctx *Execution, a0 string, a1 *List[string], a2 *Bytes, a3 Option[int64], a4 Option[Duration]) Result[*CommandOutput, CommandError]
 	Spawn(ctx *Execution, a0 string, a1 *List[string]) Result[Subprocess, CommandError]
 }
-
-//line generated.go:1
 type Subprocess interface {
 	Stdin(ctx *Execution) WriteStream
 	Stdout(ctx *Execution) ReadStream
@@ -1786,8 +1343,6 @@ type Subprocess interface {
 	Kill(ctx *Execution) Unit
 	Close(ctx *Execution) Unit
 }
-
-//line generated.go:1
 type ProcessControl interface {
 	MonotonicTime(ctx *Execution) int64
 	WatchSignals(ctx *Execution, a0 *List[int64], a1 Option[int64]) Result[SignalStream, ProcessError]
@@ -1813,8 +1368,6 @@ type ProcessControl interface {
 	SetIdentity(ctx *Execution, a0 string, a1 int64) Result[Unit, ProcessError]
 	SetGroups(ctx *Execution, a0 *List[int64]) Result[Unit, ProcessError]
 }
-
-//line generated.go:1
 type ProcessInfo struct {
 	Pid          int64
 	ParentPid    int64
@@ -1827,8 +1380,6 @@ type ProcessInfo struct {
 	EffectiveUid int64
 	EffectiveGid int64
 }
-
-//line generated.go:1
 type MemoryUsage struct {
 	HeapUsed   int64
 	HeapTotal  int64
@@ -1836,14 +1387,10 @@ type MemoryUsage struct {
 	External   int64
 	Resident   int64
 }
-
-//line generated.go:1
 type CpuUsage struct {
 	UserMicroseconds   int64
 	SystemMicroseconds int64
 }
-
-//line generated.go:1
 type ResourceUsage struct {
 	UserMicroseconds    int64
 	SystemMicroseconds  int64
@@ -1855,231 +1402,169 @@ type ResourceUsage struct {
 	VoluntarySwitches   int64
 	InvoluntarySwitches int64
 }
-
-//line generated.go:1
 type SignalStream interface {
 	Close(ctx *Execution) Unit
 	Next(ctx *Execution) Result[int64, ProcessError]
 }
-
-//line generated.go:1
 type ProcessError interface {
 	isProcessError()
 }
-
-//line generated.go:1
 type ProcessError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (ProcessError_InvalidInput) isProcessError() {
 }
 
-//line generated.go:1
 type ProcessError_InvalidData struct {
 }
 
-//line generated.go:1
 func (ProcessError_InvalidData) isProcessError() {
 }
 
-//line generated.go:1
 type ProcessError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (ProcessError_LimitExceeded) isProcessError() {
 }
 
-//line generated.go:1
 type ProcessError_NotFound struct {
 }
 
-//line generated.go:1
 func (ProcessError_NotFound) isProcessError() {
 }
 
-//line generated.go:1
 type ProcessError_AlreadyExists struct {
 }
 
-//line generated.go:1
 func (ProcessError_AlreadyExists) isProcessError() {
 }
 
-//line generated.go:1
 type ProcessError_PermissionDenied struct {
 }
 
-//line generated.go:1
 func (ProcessError_PermissionDenied) isProcessError() {
 }
 
-//line generated.go:1
 type ProcessError_Unsupported struct {
 }
 
-//line generated.go:1
 func (ProcessError_Unsupported) isProcessError() {
 }
 
-//line generated.go:1
 type ProcessError_Closed struct {
 }
 
-//line generated.go:1
 func (ProcessError_Closed) isProcessError() {
 }
 
-//line generated.go:1
 type ProcessError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (ProcessError_Failed) isProcessError() {
 }
 
-//line generated.go:1
 type RandomError interface {
 	isRandomError()
 }
-
-//line generated.go:1
 type RandomError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (RandomError_InvalidInput) isRandomError() {
 }
 
-//line generated.go:1
 type RandomError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (RandomError_LimitExceeded) isRandomError() {
 }
 
-//line generated.go:1
 type RandomError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (RandomError_Failed) isRandomError() {
 }
 
-//line generated.go:1
 type Entropy interface {
 	Bytes(ctx *Execution, a0 int64) Result[*Bytes, RandomError]
 }
-
-//line generated.go:1
 type RegexError interface {
 	isRegexError()
 }
-
-//line generated.go:1
 type RegexError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (RegexError_InvalidInput) isRegexError() {
 }
 
-//line generated.go:1
 type RegexError_InvalidData struct {
 }
 
-//line generated.go:1
 func (RegexError_InvalidData) isRegexError() {
 }
 
-//line generated.go:1
 type RegexError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (RegexError_LimitExceeded) isRegexError() {
 }
 
-//line generated.go:1
 type StringError interface {
 	isStringError()
 }
-
-//line generated.go:1
 type StringError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (StringError_InvalidInput) isStringError() {
 }
 
-//line generated.go:1
 type StringError_OutOfRange struct {
 }
 
-//line generated.go:1
 func (StringError_OutOfRange) isStringError() {
 }
 
-//line generated.go:1
 type StringError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (StringError_LimitExceeded) isStringError() {
 }
 
-//line generated.go:1
 type StringError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (StringError_Failed) isStringError() {
 }
 
-//line generated.go:1
 type NormalizationForm interface {
 	isNormalizationForm()
 }
-
-//line generated.go:1
 type NormalizationForm_Nfc struct {
 }
 
-//line generated.go:1
 func (NormalizationForm_Nfc) isNormalizationForm() {
 }
 
-//line generated.go:1
 type NormalizationForm_Nfd struct {
 }
 
-//line generated.go:1
 func (NormalizationForm_Nfd) isNormalizationForm() {
 }
 
-//line generated.go:1
 type NormalizationForm_Nfkc struct {
 }
 
-//line generated.go:1
 func (NormalizationForm_Nfkc) isNormalizationForm() {
 }
 
-//line generated.go:1
 type NormalizationForm_Nfkd struct {
 }
 
-//line generated.go:1
 func (NormalizationForm_Nfkd) isNormalizationForm() {
 }
 
-//line generated.go:1
 type System interface {
 	Environment(ctx *Execution, a0 string) Option[string]
 	Info(ctx *Execution) *SystemInfo
@@ -2097,15 +1582,11 @@ type System interface {
 	GetPriority(ctx *Execution, a0 int64) Result[int64, SystemError]
 	SetPriority(ctx *Execution, a0 int64, a1 int64) Result[Unit, SystemError]
 }
-
-//line generated.go:1
 type SystemInfo struct {
 	Os           string
 	Architecture string
 	CpuCount     int64
 }
-
-//line generated.go:1
 type UserInfo struct {
 	Username string
 	Uid      int64
@@ -2113,8 +1594,6 @@ type UserInfo struct {
 	Home     string
 	Shell    string
 }
-
-//line generated.go:1
 type NetworkInterface struct {
 	Name     string
 	Address  string
@@ -2124,8 +1603,6 @@ type NetworkInterface struct {
 	Internal bool
 	ScopeId  int64
 }
-
-//line generated.go:1
 type CpuInfo struct {
 	Model    string
 	SpeedMhz int64
@@ -2135,8 +1612,6 @@ type CpuInfo struct {
 	Idle     int64
 	Irq      int64
 }
-
-//line generated.go:1
 type SystemMetrics struct {
 	TotalMemory          int64
 	FreeMemory           int64
@@ -2145,308 +1620,226 @@ type SystemMetrics struct {
 	LoadAverage          *List[float64]
 	AvailableParallelism int64
 }
-
-//line generated.go:1
 type SystemError interface {
 	isSystemError()
 }
-
-//line generated.go:1
 type SystemError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (SystemError_InvalidInput) isSystemError() {
 }
 
-//line generated.go:1
 type SystemError_InvalidData struct {
 }
 
-//line generated.go:1
 func (SystemError_InvalidData) isSystemError() {
 }
 
-//line generated.go:1
 type SystemError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (SystemError_LimitExceeded) isSystemError() {
 }
 
-//line generated.go:1
 type SystemError_NotFound struct {
 }
 
-//line generated.go:1
 func (SystemError_NotFound) isSystemError() {
 }
 
-//line generated.go:1
 type SystemError_AlreadyExists struct {
 }
 
-//line generated.go:1
 func (SystemError_AlreadyExists) isSystemError() {
 }
 
-//line generated.go:1
 type SystemError_PermissionDenied struct {
 }
 
-//line generated.go:1
 func (SystemError_PermissionDenied) isSystemError() {
 }
 
-//line generated.go:1
 type SystemError_Unsupported struct {
 }
 
-//line generated.go:1
 func (SystemError_Unsupported) isSystemError() {
 }
 
-//line generated.go:1
 type SystemError_Closed struct {
 }
 
-//line generated.go:1
 func (SystemError_Closed) isSystemError() {
 }
 
-//line generated.go:1
 type SystemError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (SystemError_Failed) isSystemError() {
 }
 
-//line generated.go:1
 type SchedulerFailure interface {
 	isSchedulerFailure()
 }
-
-//line generated.go:1
 type SchedulerFailure_Failed struct {
 	Operation *OperationId
 	Cause     Error
 }
 
-//line generated.go:1
 func (SchedulerFailure_Failed) isSchedulerFailure() {
 }
 
-//line generated.go:1
 type SchedulerFailure_Crashed struct {
 	Operation *OperationId
 	Message   string
 }
 
-//line generated.go:1
 func (SchedulerFailure_Crashed) isSchedulerFailure() {
 }
 
-//line generated.go:1
 type ExecutionError interface {
 	isExecutionError()
 }
-
-//line generated.go:1
 type ExecutionError_Timeout struct {
 }
 
-//line generated.go:1
 func (ExecutionError_Timeout) isExecutionError() {
 }
 
-//line generated.go:1
 type ExecutionError_Cancelled struct {
 }
 
-//line generated.go:1
 func (ExecutionError_Cancelled) isExecutionError() {
 }
 
-//line generated.go:1
 type ExecutionError_Crashed struct {
 	Operation *OperationId
 	Message   string
 }
 
-//line generated.go:1
 func (ExecutionError_Crashed) isExecutionError() {
 }
 
-//line generated.go:1
 type StartError interface {
 	isStartError()
 }
-
-//line generated.go:1
 type StartError_Closed struct {
 }
 
-//line generated.go:1
 func (StartError_Closed) isStartError() {
 }
 
-//line generated.go:1
 type StartError_Full struct {
 }
 
-//line generated.go:1
 func (StartError_Full) isStartError() {
 }
 
-//line generated.go:1
 type StartError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (StartError_InvalidInput) isStartError() {
 }
 
-//line generated.go:1
 type WorkStatus interface {
 	isWorkStatus()
 }
-
-//line generated.go:1
 type WorkStatus_Running struct {
 }
 
-//line generated.go:1
 func (WorkStatus_Running) isWorkStatus() {
 }
 
-//line generated.go:1
 type WorkStatus_Succeeded struct {
 }
 
-//line generated.go:1
 func (WorkStatus_Succeeded) isWorkStatus() {
 }
 
-//line generated.go:1
 type WorkStatus_Failed struct {
 }
 
-//line generated.go:1
 func (WorkStatus_Failed) isWorkStatus() {
 }
 
-//line generated.go:1
 type WorkStatus_Cancelled struct {
 }
 
-//line generated.go:1
 func (WorkStatus_Cancelled) isWorkStatus() {
 }
 
-//line generated.go:1
 type WorkStatus_Crashed struct {
 }
 
-//line generated.go:1
 func (WorkStatus_Crashed) isWorkStatus() {
 }
 
-//line generated.go:1
 type WorkStatus_Unknown struct {
 }
 
-//line generated.go:1
 func (WorkStatus_Unknown) isWorkStatus() {
 }
 
-//line generated.go:1
 type TimeError interface {
 	isTimeError()
 }
-
-//line generated.go:1
 type TimeError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (TimeError_InvalidInput) isTimeError() {
 }
 
-//line generated.go:1
 type TimeError_Closed struct {
 }
 
-//line generated.go:1
 func (TimeError_Closed) isTimeError() {
 }
 
-//line generated.go:1
 type TimeError_InvalidData struct {
 }
 
-//line generated.go:1
 func (TimeError_InvalidData) isTimeError() {
 }
 
-//line generated.go:1
 type TimeError_OutOfRange struct {
 }
 
-//line generated.go:1
 func (TimeError_OutOfRange) isTimeError() {
 }
 
-//line generated.go:1
 type Clock interface {
 	Now(ctx *Execution) Instant
 }
-
-//line generated.go:1
 type WallClock interface {
 	Now(ctx *Execution) Timestamp
 }
-
-//line generated.go:1
 type TlsError interface {
 	isTlsError()
 }
-
-//line generated.go:1
 type TlsError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (TlsError_InvalidInput) isTlsError() {
 }
 
-//line generated.go:1
 type TlsError_InvalidData struct {
 }
 
-//line generated.go:1
 func (TlsError_InvalidData) isTlsError() {
 }
 
-//line generated.go:1
 type TlsError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (TlsError_LimitExceeded) isTlsError() {
 }
 
-//line generated.go:1
 type TlsError_AuthenticationFailed struct {
 }
 
-//line generated.go:1
 func (TlsError_AuthenticationFailed) isTlsError() {
 }
 
-//line generated.go:1
 type CertificateInfo struct {
 	Subject   string
 	Issuer    string
@@ -2455,8 +1848,6 @@ type CertificateInfo struct {
 	NotAfter  Timestamp
 	Der       *Bytes
 }
-
-//line generated.go:1
 type TlsInfo struct {
 	Version          int64
 	CipherSuite      int64
@@ -2464,8 +1855,6 @@ type TlsInfo struct {
 	PeerCertificates *List[*Bytes]
 	Verified         bool
 }
-
-//line generated.go:1
 type TlsOptions struct {
 	ServerName               string
 	RootsPem                 string
@@ -2474,43 +1863,31 @@ type TlsOptions struct {
 	Alpn                     *List[string]
 	RequireClientCertificate bool
 }
-
-//line generated.go:1
 type UrlError interface {
 	isUrlError()
 }
-
-//line generated.go:1
 type UrlError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (UrlError_InvalidInput) isUrlError() {
 }
 
-//line generated.go:1
 type UrlError_InvalidData struct {
 }
 
-//line generated.go:1
 func (UrlError_InvalidData) isUrlError() {
 }
 
-//line generated.go:1
 type UrlError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (UrlError_LimitExceeded) isUrlError() {
 }
 
-//line generated.go:1
 type QueryEntry struct {
 	Key   string
 	Value string
 }
-
-//line generated.go:1
 type Url struct {
 	Scheme   string
 	Host     string
@@ -2519,70 +1896,52 @@ type Url struct {
 	Query    string
 	Fragment string
 }
-
-//line generated.go:1
 type WebSocketError interface {
 	isWebSocketError()
 }
-
-//line generated.go:1
 type WebSocketError_InvalidInput struct {
 }
 
-//line generated.go:1
 func (WebSocketError_InvalidInput) isWebSocketError() {
 }
 
-//line generated.go:1
 type WebSocketError_InvalidData struct {
 }
 
-//line generated.go:1
 func (WebSocketError_InvalidData) isWebSocketError() {
 }
 
-//line generated.go:1
 type WebSocketError_LimitExceeded struct {
 }
 
-//line generated.go:1
 func (WebSocketError_LimitExceeded) isWebSocketError() {
 }
 
-//line generated.go:1
 type WebSocketError_PermissionDenied struct {
 }
 
-//line generated.go:1
 func (WebSocketError_PermissionDenied) isWebSocketError() {
 }
 
-//line generated.go:1
 type WebSocketError_Closed struct {
 }
 
-//line generated.go:1
 func (WebSocketError_Closed) isWebSocketError() {
 }
 
-//line generated.go:1
 type WebSocketError_Timeout struct {
 }
 
-//line generated.go:1
 func (WebSocketError_Timeout) isWebSocketError() {
 }
 
-//line generated.go:1
 type WebSocketError_Failed struct {
 	Message string
 }
 
-//line generated.go:1
 func (WebSocketError_Failed) isWebSocketError() {
 }
 
-//line generated.go:1
 type WebSocket interface {
 	Close(ctx *Execution) Unit
 	Ping(ctx *Execution, a0 *Bytes) Result[Unit, WebSocketError]
@@ -2590,14 +1949,10 @@ type WebSocket interface {
 	Send(ctx *Execution, a0 *Bytes, a1 bool) Result[Unit, WebSocketError]
 	Subprotocol(ctx *Execution) string
 }
-
-//line generated.go:1
 type WebSocketMessage struct {
 	Data *Bytes
 	Text bool
 }
-
-//line generated.go:1
 type WebSocketOptions struct {
 	MaxMessageBytes Option[int64]
 	Timeout         Option[Duration]

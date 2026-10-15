@@ -4,22 +4,15 @@
 
 package msruntime
 
-//line generated.go:1
 func check_Random_SecureInt() {
 	var _ func(*Execution, Entropy, int64, Option[int64]) Result[int64, RandomError] = Random_SecureInt
 }
-
-//line generated.go:1
 func check_Random_UuidV4() {
 	var _ func(*Execution, Entropy) Result[string, RandomError] = Random_UuidV4
 }
-
-//line generated.go:1
 func check_Random_Entropy() {
 	var _ func(*Execution) Entropy = Random_Entropy
 }
-
-//line generated.go:1
 func check_Errors_Message_RandomError() {
 	var _ func(*Execution, RandomError) string = Errors_Message_RandomError
 }

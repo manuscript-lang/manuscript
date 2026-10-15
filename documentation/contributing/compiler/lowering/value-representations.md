@@ -14,12 +14,12 @@ The frontend enforces semantics that Go representations do not provide:
 | Checked `Int` | `int64` with checked operations and conversions |
 | `Decimal` | Versioned finite decimal implementation honoring the coefficient/exponent grid, exact literals, and per-operator rounding in the numeric contract |
 | Valid UTF-8 `String` | Validated construction and conversion; no raw string escape |
-| Mutable records and collections | Shared record field storage and pointer-backed collection headers; explicit shallow clone |
+| Mutable records and collections | `*Name` structs and `*rt.List/Map/Set`; explicit shallow clone |
 | Immutable bytes | Encapsulated storage; copies or exclusive adapter transfer |
-| Ordered maps and sets | Ordered wrappers |
-| Tagged alternatives | Generated typed tags and payloads; exhaustive frontend checking |
-| Recursive data | Record maps and alternative payload slices retain references; direct and mutual recursion require no extra wrapper; reject expanding generic families before Go emission |
-| Value equality and hashing | Generated operations for eligible types |
+| Ordered maps and sets | `rt.Map`/`rt.Set`, insertion ordered, matching keys with an `rt.Keys` |
+| Tagged alternatives | Sealed interface with one `Name_Case` struct per case; exhaustive frontend checking |
+| Recursive data | Records are pointers, so direct and mutual recursion need no wrapper; reject expanding generic families before Go emission |
+| Value equality and hashing | `==` where Go equality is Manuscript equality; otherwise generated `equal_T`/`key_T` helpers |
 | Explicit contract implementation | Frontend selection of a unique applicable concrete/generic implementation, then Go interfaces and wrappers |
 | Closures and resource references | GC-retained environments, snapshot captures, and synchronized native closed-state checks |
 | Lexical cleanup | Explicit `with` registrations, shielded `Closeable.close()`, and scope unwind operations |
@@ -29,28 +29,9 @@ The frontend checks Task[T] through ordinary generics. Native handles retain run
 
 ## Representation boundaries
 
-The current shared runtime ABI boxes locals, captures, arguments, and return
-values as Go `any`. Within statically checked `Int` and `Float` expressions,
-lowering emits typed literals and scalar operations; integer arithmetic retains
-overflow and zero-divisor checks, and floating arithmetic rounds at each source
-operation. Equality still uses the selected implementation scope.
+Locals, captures, arguments, and results have their Go types ([Go representation](../../go-lowering-representation.md)); nothing is boxed. `Int` and `Float` operations are typed Go operations with overflow and zero-divisor checks, and floating arithmetic rounds at each source operation. Library members called on a statically typed receiver are direct calls of `rt` functions such as `List_At` or `Map_Get`, instantiated at the receiver's type arguments. Indexing still returns an Optional; it does not introduce unchecked access.
 
-Direct calls to the checked native `List.at` and `Optional.unwrap` operations
-share runtime helpers with bound-method dispatch, avoiding temporary callable
-wrappers. Indexing still returns an Optional, including `none` for out-of-range
-indexes; it does not introduce unchecked access. Library members of `String`,
-`Bytes`, `List`, `Map`, and `Set` called on a statically typed receiver with
-every argument supplied in order bind once per call site and run the same
-library body, equality scope, and cancellation checkpoints without building a
-bound Function per call. `StringBuilder.append` and `freeze`, standard free
-functions without default expressions, and generic functions with static type
-arguments are likewise resolved once. Unary minus over `Int` and `Float` stays
-typed. Bound methods, callbacks, and calls with dynamic type arguments retain
-the ordinary ABI. The reproducible native workloads in
-`scripts/benchmarks/` measure numeric loops, calls, list reads, and Game of Life;
-they do not establish that values or source functions are fully unboxed.
-
-For example, emitting a raw `int64` does not supply checked arithmetic. A raw Go slice does not establish immutable source bytes. The frontend and runtime cooperate with generated wrappers and operations to preserve those contracts.
+Emitting a raw `int64` does not supply checked arithmetic, and a raw Go slice does not establish immutable source bytes. The lowerer calls the checked `rt` operation for each; the reproducible native workloads in `scripts/benchmarks/` measure numeric loops, calls, list reads, and Game of Life.
 
 Explicit [view constructors](../../../core-language/types/contracts.md#explicit-contract-views) create ordinary contract wrappers. There is one contract-view identity and no sharing proof in the frontend or IR. Native services synchronize their internals. Local queues rely on caller-managed Synchronized guards for concurrent access.
 

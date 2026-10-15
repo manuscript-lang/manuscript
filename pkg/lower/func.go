@@ -120,11 +120,13 @@ func (g *gen) lowerFunction(f *funcDecl) {
 		prologue = append(prologue, fill...)
 	}
 	body := g.body(d.Body, g.fn.result)
-	if g.recursive[d] {
-		prologue = append(prologue, evaluated(rtCall("Enter", ident("ctx"))), &ast.DeferStmt{Call: rtCall("Exit", ident("ctx"))})
-	}
 	body = append(prologue, body...)
 	body = g.finishBody(body, g.fn.result)
+	if g.recursive[d] {
+		// Depth is counted without a defer: every normal return leaves, and
+		// code that recovers a panic restores the depth it saw.
+		body = append([]ast.Stmt{evaluated(rtCall("Enter", ident("ctx")))}, exitBeforeReturns(body)...)
+	}
 	body = g.cleanupPrologue(body)
 	f.out = &ast.FuncDecl{Name: ident(f.name), Type: functionType(params, g.goType(g.fn.result)), Body: block(body...)}
 }
@@ -359,4 +361,66 @@ func (g *gen) resolve(t *checker.Type, name string) []*checker.Method {
 		}
 	}
 	return append(out, g.program.ResolveMethods(g.module, t, name)...)
+}
+
+// exitBeforeReturns makes every return of the function leave the call-depth
+// count first. The returned value is computed before the count drops, so the
+// callee's own calls still run inside it. Function literals are not entered.
+func exitBeforeReturns(stmts []ast.Stmt) []ast.Stmt {
+	out := make([]ast.Stmt, len(stmts))
+	for i, s := range stmts {
+		out[i] = exitBeforeReturn(s)
+	}
+	return out
+}
+
+func exitBeforeReturn(s ast.Stmt) ast.Stmt {
+	switch s := s.(type) {
+	case *ast.ReturnStmt:
+		leave := evaluated(rtCall("Exit", ident("ctx")))
+		if _, name := s.Results[0].(*ast.Ident); len(s.Results) != 1 || name || trivial(s.Results[0]) {
+			return block(leave, s)
+		}
+		return block(define("r__", s.Results[0]), leave, returned(ident("r__")))
+	case *ast.BlockStmt:
+		return &ast.BlockStmt{List: exitBeforeReturns(s.List)}
+	case *ast.IfStmt:
+		out := *s
+		out.Body = &ast.BlockStmt{List: exitBeforeReturns(s.Body.List)}
+		if s.Else != nil {
+			out.Else = exitBeforeReturn(s.Else)
+		}
+		return &out
+	case *ast.ForStmt:
+		out := *s
+		out.Body = &ast.BlockStmt{List: exitBeforeReturns(s.Body.List)}
+		return &out
+	case *ast.RangeStmt:
+		out := *s
+		out.Body = &ast.BlockStmt{List: exitBeforeReturns(s.Body.List)}
+		return &out
+	case *ast.LabeledStmt:
+		out := *s
+		out.Stmt = exitBeforeReturn(s.Stmt)
+		return &out
+	case *ast.SwitchStmt:
+		out := *s
+		out.Body = exitBeforeClauses(s.Body)
+		return &out
+	case *ast.TypeSwitchStmt:
+		out := *s
+		out.Body = exitBeforeClauses(s.Body)
+		return &out
+	}
+	return s
+}
+
+func exitBeforeClauses(body *ast.BlockStmt) *ast.BlockStmt {
+	out := &ast.BlockStmt{}
+	for _, c := range body.List {
+		clause := *c.(*ast.CaseClause)
+		clause.Body = exitBeforeReturns(clause.Body)
+		out.List = append(out.List, &clause)
+	}
+	return out
 }

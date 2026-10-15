@@ -5,7 +5,7 @@ weight = 20
 
 # Go representation: reference or value
 
-Every Manuscript type lowers to exactly one Go type, chosen by `goType` in `pkg/golower/types.go`. The choice is a language rule, not an optimization: Manuscript aliases mutable data, so a Go value copy where the language promises sharing is a silent semantic bug.
+Every Manuscript type lowers to exactly one Go type, chosen by `goType` in `pkg/lower/types.go`. The choice is a language rule, not an optimization: Manuscript aliases mutable data, so a Go value copy where the language promises sharing is a silent semantic bug.
 
 ## The rule
 
@@ -36,7 +36,13 @@ A value type holding a reference type shares that reference. `Optional[List[Int]
 
 ## Adding a type
 
-New runtime types classify themselves with this table first. Add the row, then `goType`, then the `TestRepresentation` row in `pkg/golower`. A type that fits neither class needs a language decision, not a lowering decision.
+New runtime types classify themselves with this table first. Add the row, then `goType`, then the `TestRepresentation` row in `pkg/lower`. A type that fits neither class needs a language decision, not a lowering decision.
+
+## Parameters, defaults, and equality
+
+- A parameter that declares a default is an `rt.Arg[T]{Val, Set}`. The callee fills in an omitted argument in its own scope; native functions, record constructors, and standard contracts take plain parameters and the caller evaluates their defaults.
+- A `Map` or `Set` carries an `*rt.Keys[K]`. `nil` means Go equality; structural keys project to a comparable array; an explicit `Equal`/`Hashable` becomes `rt.CustomKeys`. The collection keeps the keys it was built with.
+- A contract value is a generated view struct holding its receiver (`self`), plus `Describe` and `Receiver`. Views are per implementation scope when any module declares a local implementation.
 
 ## Local records need no special case
 

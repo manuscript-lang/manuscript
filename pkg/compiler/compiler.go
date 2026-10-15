@@ -162,3 +162,17 @@ func checkEntry(program *checker.Program, entry string) *syntax.Diagnostic {
 	}
 	return &syntax.Diagnostic{Position: position, Phase: "type", Message: "entry must export fn main() -> Int; " + detail}
 }
+
+// Local names the Go variable a source binding became in a function.
+type Local struct{ Function, Go, Name, Type string }
+
+// DebugLocals lowers a checked program again to learn which Go local each
+// source binding became, for debuggers. Function is the source name frames
+// show. The names match those of a Debug build of the same program.
+func DebugLocals(program *checker.Program) []Local {
+	var locals []Local
+	_, _ = lower.Go(program, "", lower.Options{Tests: true, Locals: func(function, goName string, b *checker.Binding) {
+		locals = append(locals, Local{function, goName, b.Name, b.Type.String()})
+	}})
+	return locals
+}
