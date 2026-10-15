@@ -232,14 +232,31 @@ fn lookup(m: Map[Int, Int], key: Int) -> Int:
 func TestLambdasBorrowCallbackArguments(t *testing.T) {
 	r := compileSource("lambdas.ms", `fn double(value: Int) -> Int: value * 2
 
-fn run(items: List[Int]) -> List[Int]:
-    return items.map(fn(value: Int) -> Int: double(value: value))
+fn run(items: List[Int]) -> Map[Int, List[Int]]:
+    return items.group_by(key: fn(value: Int) -> Int: double(value: value))
 `)
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
 	if !strings.Contains(r.Source, "rt.NewCompiledSourceFunction(") {
 		t.Fatalf("lambda does not borrow arguments\n%s", r.Source)
+	}
+}
+
+func TestListCallbacksInlineAsGoLoops(t *testing.T) {
+	r := compileSource("inline.ms", `fn run(items: List[Int]) -> List[Int]:
+    return items.map(fn(value: Int) -> Int: value * 2)
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.IterateInt(", "rt.OwnIntList("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, "rt.NewCompiledSourceFunction(") {
+		t.Fatalf("callback still boxed\n%s", r.Source)
 	}
 }
 

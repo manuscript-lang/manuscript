@@ -223,6 +223,9 @@ func (g *generator) callValue(e *syntax.Expression, info *checker.Info) ast.Expr
 	if value := g.scalarNativeValue(e); value != nil {
 		return value
 	}
+	if value := g.listCallbackCall(e, arguments); value != nil {
+		return value
+	}
 	if value := g.directCollectionCall(e, arguments); value != nil {
 		return value
 	}
