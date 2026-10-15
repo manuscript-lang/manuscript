@@ -209,7 +209,7 @@ fn reordered(c: Counter) -> Int:
 	if strings.Count(result.Source, "rt.CallMethod(") != 0 || !strings.Contains(result.Source, "func method_") || !strings.Contains(result.Source, "return method_") && !strings.Contains(result.Source, "= method_") {
 		t.Fatalf("the in-order concrete call is a direct Go call:\n%s", result.Source)
 	}
-	if strings.Count(result.Source, "rt.Bind(") != 3 {
-		t.Fatalf("views, omitted defaults, and reordered labels keep Bind:\n%s", result.Source)
+	if strings.Count(result.Source, "rt.Bind(") != 2 || strings.Count(result.Source, "rt.CallInterface(") != 1 {
+		t.Fatalf("omitted defaults and reordered labels keep Bind; the view call is cached per site:\n%s", result.Source)
 	}
 }
