@@ -184,6 +184,21 @@ func lookupKey(ctx *Execution, c keyed, key Value) int {
 	return -1
 }
 
+// lookupInt is lookupKey for an Int key.
+func lookupInt(ctx *Execution, c keyed, key int64) int {
+	if c.count() == 0 {
+		return -1
+	}
+	ix := c.index()
+	if !ix.valid(c) {
+		ix.rebuild(ctx, c)
+	}
+	if id, ok := ix.ints[key]; ok {
+		return ix.pos(id)
+	}
+	return -1
+}
+
 // keyAppended updates the index after the key at the end of c was appended.
 // The index was synchronized by the lookup that preceded the append.
 func keyAppended(ctx *Execution, c keyed) {
