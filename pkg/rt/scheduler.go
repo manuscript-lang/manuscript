@@ -55,10 +55,10 @@ type scheduledOperation struct {
 // NewScheduler constructs a Scheduler from its declared fields in order.
 func NewScheduler(limit, historyLimit Option[int64], drain Option[Duration], reporter Option[func(*Execution, SchedulerFailure) Unit]) *Scheduler {
 	if limit.Some && limit.Val < 1 {
-		rangeFault("Scheduler", "limit", 1, limit.Val)
+		minRangeFault("Scheduler", "limit", 1, limit.Val)
 	}
 	if historyLimit.Some && historyLimit.Val < 0 {
-		rangeFault("Scheduler", "history_limit", 0, historyLimit.Val)
+		minRangeFault("Scheduler", "history_limit", 0, historyLimit.Val)
 	}
 	if drain.Some && drain.Val < 0 {
 		durationFault("Scheduler", "drain", int64(drain.Val))

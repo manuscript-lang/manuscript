@@ -7,7 +7,7 @@ func queueCapacity(name string, capacity Option[int64]) int {
 		return 0
 	}
 	if capacity.Val <= 0 || capacity.Val > int64(^uint(0)>>1) {
-		rangeFault(name, "capacity", 1, capacity.Val)
+		minRangeFault(name, "capacity", 1, capacity.Val)
 	}
 	return int(capacity.Val)
 }
