@@ -1,5 +1,7 @@
 package rt
 
+import "fmt"
+
 // Test is one test block of the generated program.
 type Test struct {
 	Name string
@@ -18,14 +20,20 @@ func RunMain(main func(*Execution) int64, args []string) int {
 func RunTests(tests []Test, args []string) int {
 	failed := 0
 	for _, t := range tests {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					failed++
-				}
-			}()
-			t.Run(RootExecution())
-		}()
+		fmt.Printf("RUN %s\n", t.Name)
+		if failure := runTest(t); failure != nil {
+			failed++
+			fmt.Printf("FAIL %s: %v\n", t.Name, failure)
+			continue
+		}
+		fmt.Printf("PASS %s\n", t.Name)
 	}
+	fmt.Printf("%d tests, %d failed\n", len(tests), failed)
 	return failed
+}
+
+func runTest(t Test) (failure any) {
+	defer func() { failure = recover() }()
+	t.Run(RootExecution())
+	return nil
 }

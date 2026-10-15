@@ -46,6 +46,7 @@ func newGen(program *checker.Program) *gen {
 		}
 	}
 	sh.dup = duplicateNames(program)
+	sh.recursive = recursiveDeclarations(program)
 	return &gen{shared: sh, stack: []*node{{}}}
 }
 
@@ -84,9 +85,10 @@ func duplicateNames(program *checker.Program) map[string]bool {
 type shared struct {
 	program    *checker.Program
 	err        error
-	inRuntime  bool            // generating the runtime package itself: type variables stay variables
-	localEq    bool            // some module declares an extension Equal implementation
-	dup        map[string]bool // source names more than one declaration uses
+	inRuntime  bool                         // generating the runtime package itself: type variables stay variables
+	localEq    bool                         // some module declares an extension Equal implementation
+	dup        map[string]bool              // source names more than one declaration uses
+	recursive  map[*syntax.Declaration]bool // functions on a call cycle
 	methodByID map[string]*checker.Method
 
 	mu      sync.Mutex
@@ -310,7 +312,7 @@ func (g *gen) test(module string, d *syntax.Declaration) ast.Expr {
 // their results merge in the order they were first requested, so the output
 // does not depend on scheduling.
 func (g *gen) assemble() (types, out []ast.Decl) {
-	var next []*funcDecl
+	var next, order []*funcDecl
 	var emit func(n *node)
 	emit = func(n *node) {
 		if n.done {
@@ -338,6 +340,7 @@ func (g *gen) assemble() (types, out []ast.Decl) {
 		next = nil
 		g.lowerWave(wave)
 		for _, f := range wave {
+			order = append(order, f)
 			out = append(out, f.out)
 			g.numberLabels(&f.node)
 			for _, d := range f.deps {
@@ -345,7 +348,19 @@ func (g *gen) assemble() (types, out []ast.Decl) {
 			}
 		}
 	}
-	return types, out
+	return types, append(out, g.registration(order))
+}
+
+// registration names every lowered function for fault traces.
+func (g *gen) registration(order []*funcDecl) ast.Decl {
+	var body []ast.Stmt
+	for _, f := range order {
+		if f.out == nil {
+			continue
+		}
+		body = append(body, evaluated(rtCall("RegisterSource", ident(f.name), textLiteral(f.sourceName()))))
+	}
+	return &ast.FuncDecl{Name: ident("init"), Type: functionType(nil, nil), Body: block(body...)}
 }
 
 // numberLabels gives the node's located-statement labels their global names.
@@ -386,7 +401,7 @@ func (g *gen) lowerWave(wave []*funcDecl) {
 // source, with a hash of the identity wherever source names repeat, so no two
 // keys meet in one name and no name depends on scheduling.
 func (g *gen) claim(name, key string) string {
-	if reserved[name] {
+	if reserved[name] || goKeywords[name] {
 		name += "_"
 	}
 	g.mu.Lock()

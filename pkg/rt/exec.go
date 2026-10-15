@@ -54,3 +54,16 @@ func Poll(ctx *Execution, tick *uint32) {
 		CheckCancelled(ctx)
 	}
 }
+
+// Enter admits one nested call of a function on a call cycle. The runtime core
+// replaces this with the depth limit and periodic cancellation check.
+func Enter(ctx *Execution) {
+	ctx.calls.depth++
+}
+
+// Exit pairs with Enter.
+func Exit(ctx *Execution) { ctx.calls.depth-- }
+
+// RegisterSource names a source function in fault traces. The runtime core
+// implements it.
+func RegisterSource[F any](fn F, name string) {}

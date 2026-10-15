@@ -252,6 +252,25 @@ func camel(snake string) string {
 	return b.String()
 }
 
+// cloneValue lowers the built-in clone of a record or alternative. A record
+// copies its outer storage; nested references stay shared. An alternative is
+// immutable, so its clone is itself.
+func (g *gen) cloneValue(t *checker.Type, receiver ast.Expr) ast.Expr {
+	t = g.sub(t)
+	if t.Kind != "record" {
+		return receiver
+	}
+	goT := g.goType(t)
+	fn := g.helperFunc("clone:"+checker.TypeKey(t), "clone_"+g.nameOf(t), func(name string) ast.Decl {
+		body := []ast.Stmt{
+			define("c", &ast.StarExpr{X: ident("v")}),
+			returned(address(ident("c"))),
+		}
+		return &ast.FuncDecl{Name: ident(name), Type: functionType([]*ast.Field{field("v", goT)}, goT), Body: block(body...)}
+	})
+	return call(fn, receiver)
+}
+
 // nativeCall calls a runtime function for a standard module function.
 func (g *gen) nativeCall(s *checker.Symbol, typeArgs []*checker.Type, args []ast.Expr) ast.Expr {
 	var targs []ast.Expr
@@ -387,6 +406,9 @@ func (g *gen) invokeMethod(m *checker.Method, receiverType *checker.Type, receiv
 // operation, named Type_Operation and instantiated at the receiver's and the
 // operation's type arguments.
 func (g *gen) nativeMethodCall(m *checker.Method, receiverType *checker.Type, receiver ast.Expr, name string, args []ast.Expr, calleeInfo *checker.Info) ast.Expr {
+	if m.Decl.Name == "clone" && (receiverType.Kind == "record" || receiverType.Kind == "alternative") {
+		return g.cloneValue(receiverType, receiver)
+	}
 	fn := g.nativeMethodName(m, receiverType)
 	g.noteNative(fn)
 	targs, bind := g.nativeTypeArguments(m, receiverType, calleeInfo)

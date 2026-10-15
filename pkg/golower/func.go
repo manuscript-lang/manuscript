@@ -24,6 +24,17 @@ type funcDecl struct {
 	out    *ast.FuncDecl
 }
 
+// sourceName is the name fault traces show for f.
+func (f *funcDecl) sourceName() string {
+	if f.method != nil && f.method.Receiver != nil {
+		return f.method.Receiver.Name + "." + f.decl.Name
+	}
+	if f.decl != nil {
+		return f.decl.Name
+	}
+	return f.name
+}
+
 // function returns the Go function for symbol at typeArgs, queueing its body
 // for lowering. typeArgs are concrete: the caller has applied its own
 // substitution.
@@ -97,6 +108,9 @@ func (g *gen) lowerFunction(f *funcDecl) {
 		_ = i
 	}
 	body := g.body(d.Body, g.fn.result)
+	if g.recursive[d] {
+		prologue = append(prologue, evaluated(rtCall("Enter", ident("ctx"))), &ast.DeferStmt{Call: rtCall("Exit", ident("ctx"))})
+	}
 	body = append(prologue, body...)
 	body = g.finishBody(body, g.fn.result)
 	body = g.cleanupPrologue(body)

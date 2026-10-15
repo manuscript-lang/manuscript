@@ -54,3 +54,14 @@ func Panic(_ *Execution, message string) Unit {
 	Raise(message)
 	return Unit{}
 }
+
+// Equal and Hashable are the standard contracts a program may implement for
+// its own types. A value of contract type Equal is a generated view that
+// forwards to the implementation.
+type Equal interface {
+	Equals(*Execution, Equal) bool
+}
+
+type Hashable interface {
+	Hash(*Execution) int64
+}

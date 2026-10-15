@@ -143,7 +143,7 @@ func (g *gen) stdTypeReference(t *checker.Type) ast.Expr {
 func (g *gen) standardRecord(s *checker.Symbol) ast.Decl {
 	var fields []*ast.Field
 	for _, f := range s.Type.Def.Fields {
-		fields = append(fields, field(camel(f.Name), g.goType(f.Type)))
+		fields = append(fields, field(fieldName(f.Name), g.goType(f.Type)))
 	}
 	spec := &ast.TypeSpec{Name: ident(s.Name), TypeParams: g.typeParams(s.Variables), Type: &ast.StructType{Fields: &ast.FieldList{List: fields}}}
 	return &ast.GenDecl{Tok: token.TYPE, Specs: []ast.Spec{spec}}

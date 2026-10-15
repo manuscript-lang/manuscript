@@ -85,7 +85,7 @@ func (g *gen) formatBody(t *checker.Type) []ast.Stmt {
 		return []ast.Stmt{guard, returned(rtCall("FormatMap", v, k, val))}
 	case t.Kind == "function":
 		return []ast.Stmt{returned(textLiteral("[function]"))}
-	case isStdType(t):
+	case isStdType(t) && t.Kind == "native":
 		return []ast.Stmt{returned(call(selector(v, "String")))}
 	case t.Kind == "record":
 		fields := checker.Fields(t)
