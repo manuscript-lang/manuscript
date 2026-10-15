@@ -219,7 +219,7 @@ fn lookup(m: Map[Int, Int], key: Int) -> Int:
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	for _, want := range []string{"rt.FormatInt(", "rt.FormatFloat(", "rt.FormatBool(", "rt.StringLengthRead(", "rt.MapGetParts("} {
+	for _, want := range []string{"rt.FormatInt(", "rt.FormatFloat(", "rt.FormatBool(", "rt.StringLengthRead(", "rt.MapGetPartsInt("} {
 		if !strings.Contains(r.Source, want) {
 			t.Fatalf("missing %q\n%s", want, r.Source)
 		}

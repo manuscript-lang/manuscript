@@ -170,6 +170,11 @@ func (g *generator) directKeyedCall(e *syntax.Expression, native string, argumen
 	if name == "MapWithEntry" && (arguments[0].Name == "value" || arguments[1].Name == "key") {
 		return nil
 	}
+	if name == "MapWithEntry" && primitiveEqualityType(receiverType.Args[0]) == "int64" {
+		receiver := sequence(g.expression(e.Left.Left))
+		key := sequence(g.scalar(arguments[0].Value, "int64"))
+		return orderedCall(runtimeName("MapWithEntryInt"), ident("ctx"), receiver, key, sequence(g.argumentValue(arguments[1])))
+	}
 	// Read the receiver before the arguments, as for List.at.
 	args := []ast.Expr{ident("ctx"), sequence(g.expression(e.Left.Left))}
 	for _, argument := range arguments {
@@ -227,6 +232,9 @@ func (g *generator) mapGetMatch(value *syntax.Expression) bool {
 func (g *generator) mapGetParts(value *syntax.Expression) ast.Expr {
 	argument := g.program.Info(value).Arguments[0]
 	receiver := sequence(g.expression(value.Left.Left))
+	if keyType := g.program.Info(value.Left.Left).Type.Args[0]; primitiveEqualityType(keyType) == "int64" {
+		return orderedCall(runtimeName("MapGetPartsInt"), ident("ctx"), receiver, sequence(g.scalar(argument.Value, "int64")))
+	}
 	key := sequence(g.argumentValue(argument))
 	return orderedCall(runtimeName("MapGetParts"), ident("ctx"), receiver, key, g.typeScope(g.program.Info(value.Left.Left).Type.Args[0]))
 }

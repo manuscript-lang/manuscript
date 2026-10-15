@@ -415,3 +415,29 @@ func Index(value, index Value) Value {
 	}
 	return optional(types[0], list.Get(int(i)), true)
 }
+
+// MapGetPartsInt is MapGetParts for a Map with Int keys; the key is not boxed.
+func MapGetPartsInt(ctx *Execution, receiver Value, key int64) (Value, bool) {
+	CheckCancelled(ctx)
+	m := receiver.(*Map)
+	found := lookupInt(ctx, m, key)
+	if found < 0 {
+		return nil, false
+	}
+	return m.Entries[found].Value, true
+}
+
+// MapWithEntryInt is MapWithEntry for a Map with Int keys; an existing key is
+// replaced without boxing it.
+func MapWithEntryInt(ctx *Execution, receiver Value, key int64, value Value) Value {
+	CheckCancelled(ctx)
+	m := receiver.(*Map)
+	if found := lookupInt(ctx, m, key); found >= 0 {
+		m.ownEntries()
+		m.Entries[found].Value = value
+	} else {
+		m.Entries = append(m.Entries, Entry{key, value})
+		keyAppended(ctx, m)
+	}
+	return m
+}
