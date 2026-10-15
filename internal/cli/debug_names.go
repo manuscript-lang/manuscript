@@ -77,3 +77,26 @@ func markLine(names *debugger.Names, span tooling.Span) {
 	}
 	names.Lines[file][span.Line] = true
 }
+
+// debugInspection is the inspection document debugger front ends read: the
+// source inspection plus the Go local each source binding became, by the frame
+// name of its function.
+type debugInspection struct {
+	tooling.Inspection
+	GoLocals []goLocal `json:"go_locals"`
+}
+
+type goLocal struct {
+	Function string `json:"function"`
+	Go       string `json:"go"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+}
+
+func inspectionWithGoLocals(result compiler.Result) debugInspection {
+	out := debugInspection{Inspection: tooling.Inspect(result.Program), GoLocals: []goLocal{}}
+	for _, local := range compiler.DebugLocals(result.Program) {
+		out.GoLocals = append(out.GoLocals, goLocal(local))
+	}
+	return out
+}
