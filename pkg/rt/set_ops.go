@@ -3,7 +3,7 @@ package rt
 // Set operations. Elements match as Go compares them (see Map).
 
 // Set_Clone returns a shallow copy.
-func Set_Clone[T comparable](_ *Execution, s *Set[T]) *Set[T] { return NewSet(s.Snapshot()...) }
+func Set_Clone[T comparable](_ *Execution, s *Set[T]) *Set[T] { return NewSetWith(s.Keys(), s.Snapshot()...) }
 
 // Set_IsEmpty reports whether the set has no elements.
 func Set_IsEmpty[T comparable](_ *Execution, s *Set[T]) bool { return s.Len() == 0 }
@@ -13,7 +13,7 @@ func Set_Length[T comparable](_ *Execution, s *Set[T]) int64 { return int64(s.Le
 
 // Set_Filter returns a new set of the elements the predicate accepts.
 func Set_Filter[T comparable](ctx *Execution, s *Set[T], keep func(*Execution, T) bool) *Set[T] {
-	out, tick := NewSet[T](), uint32(0)
+	out, tick := NewSetWith[T](s.Keys()), uint32(0)
 	CheckCancelled(ctx)
 	for _, v := range s.Snapshot() {
 		Poll(ctx, &tick)
@@ -25,8 +25,8 @@ func Set_Filter[T comparable](ctx *Execution, s *Set[T], keep func(*Execution, T
 }
 
 // Set_Map transforms each element; equal results collapse to the first.
-func Set_Map[T, U comparable](ctx *Execution, s *Set[T], transform func(*Execution, T) U) *Set[U] {
-	out, tick := NewSet[U](), uint32(0)
+func Set_Map[T, U comparable](ctx *Execution, keys *Keys[U], s *Set[T], transform func(*Execution, T) U) *Set[U] {
+	out, tick := NewSetWith[U](keys), uint32(0)
 	CheckCancelled(ctx)
 	for _, v := range s.Snapshot() {
 		Poll(ctx, &tick)
@@ -89,7 +89,7 @@ func Set_Every[T comparable](ctx *Execution, s *Set[T], pred func(*Execution, T)
 
 // Set_Union returns a new set of the elements of either set.
 func Set_Union[T comparable](ctx *Execution, left, right *Set[T]) *Set[T] {
-	out, tick := NewSet(left.Snapshot()...), uint32(0)
+	out, tick := NewSetWith(left.Keys(), left.Snapshot()...), uint32(0)
 	CheckCancelled(ctx)
 	for _, v := range right.Snapshot() {
 		Poll(ctx, &tick)
@@ -109,7 +109,7 @@ func Set_Difference[T comparable](ctx *Execution, left, right *Set[T]) *Set[T] {
 }
 
 func setFilter[T comparable](ctx *Execution, s *Set[T], keep func(T) bool) *Set[T] {
-	out, tick := NewSet[T](), uint32(0)
+	out, tick := NewSetWith[T](s.Keys()), uint32(0)
 	CheckCancelled(ctx)
 	for _, v := range s.Snapshot() {
 		Poll(ctx, &tick)

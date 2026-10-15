@@ -18,7 +18,7 @@ func check_Collections_Range() {
 	var _ func(*Execution, int64, int64, int64, Option[int64]) Result[*List[int64], CollectionError] = Collections_Range
 }
 func check_Collections_MapFromEntries[K comparable, V any]() {
-	var _ func(*Execution, *List[*MapEntry[K, V]]) *Map[K, V] = Collections_MapFromEntries[K, V]
+	var _ func(*Execution, *Keys[K], *List[*MapEntry[K, V]]) *Map[K, V] = Collections_MapFromEntries[K, V]
 }
 func check_List_Clone[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_Clone[T]
@@ -108,7 +108,7 @@ func check_List_ForEach[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) Unit) Unit = List_ForEach[T]
 }
 func check_List_GroupBy[T any, K comparable]() {
-	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) K) *Map[K, *List[T]] = List_GroupBy[T, K]
+	var _ func(*Execution, *Keys[K], *List[T], func(ctx *Execution, a0 T) K) *Map[K, *List[T]] = List_GroupBy[T, K]
 }
 func check_List_Map[T any, U any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) U) *List[U] = List_Map[T, U]
@@ -132,7 +132,7 @@ func check_List_CopyWithin[T any]() {
 	var _ func(*Execution, *List[T], int64, int64, int64) *List[T] = List_CopyWithin[T]
 }
 func check_List_ToSet[T comparable]() {
-	var _ func(*Execution, *List[T]) *Set[T] = List_ToSet[T]
+	var _ func(*Execution, *Keys[T], *List[T]) *Set[T] = List_ToSet[T]
 }
 func check_List_Keys[T any]() {
 	var _ func(*Execution, *List[T]) *List[int64] = List_Keys[T]
@@ -165,7 +165,7 @@ func check_Map_Map[T comparable, U any, W any]() {
 	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) W) *Map[T, W] = Map_Map[T, U, W]
 }
 func check_Map_MapKeys[T comparable, U any, W comparable]() {
-	var _ func(*Execution, *Map[T, U], func(ctx *Execution, a0 T, a1 U) W) *Map[W, U] = Map_MapKeys[T, U, W]
+	var _ func(*Execution, *Keys[W], *Map[T, U], func(ctx *Execution, a0 T, a1 U) W) *Map[W, U] = Map_MapKeys[T, U, W]
 }
 func check_Map_GetOr[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], T, U) U = Map_GetOr[T, U]
@@ -237,7 +237,7 @@ func check_Set_Filter[T comparable]() {
 	var _ func(*Execution, *Set[T], func(ctx *Execution, a0 T) bool) *Set[T] = Set_Filter[T]
 }
 func check_Set_Map[T comparable, U comparable]() {
-	var _ func(*Execution, *Set[T], func(ctx *Execution, a0 T) U) *Set[U] = Set_Map[T, U]
+	var _ func(*Execution, *Keys[U], *Set[T], func(ctx *Execution, a0 T) U) *Set[U] = Set_Map[T, U]
 }
 func check_Set_Fold[T comparable, A any]() {
 	var _ func(*Execution, *Set[T], A, func(ctx *Execution, a0 A, a1 T) A) A = Set_Fold[T, A]

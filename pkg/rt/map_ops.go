@@ -4,7 +4,7 @@ package rt
 
 // Map_Clone returns a shallow copy.
 func Map_Clone[K comparable, V any](_ *Execution, m *Map[K, V]) *Map[K, V] {
-	out := NewMap[K, V]()
+	out := NewMapWith[K, V](m.keys)
 	for _, e := range m.Snapshot() {
 		out.Put(e.Key, e.Value)
 	}
@@ -19,7 +19,7 @@ func Map_Length[K comparable, V any](_ *Execution, m *Map[K, V]) int64 { return 
 
 // Map_Filter returns a new map of the entries the predicate accepts.
 func Map_Filter[K comparable, V any](ctx *Execution, m *Map[K, V], keep func(*Execution, K, V) bool) *Map[K, V] {
-	out, tick := NewMap[K, V](), uint32(0)
+	out, tick := NewMapWith[K, V](m.keys), uint32(0)
 	CheckCancelled(ctx)
 	for _, e := range m.Snapshot() {
 		Poll(ctx, &tick)
@@ -32,7 +32,7 @@ func Map_Filter[K comparable, V any](ctx *Execution, m *Map[K, V], keep func(*Ex
 
 // Map_Map transforms each value, keeping the keys.
 func Map_Map[K comparable, V, W any](ctx *Execution, m *Map[K, V], transform func(*Execution, K, V) W) *Map[K, W] {
-	out, tick := NewMap[K, W](), uint32(0)
+	out, tick := NewMapWith[K, W](m.keys), uint32(0)
 	CheckCancelled(ctx)
 	for _, e := range m.Snapshot() {
 		Poll(ctx, &tick)
@@ -43,8 +43,8 @@ func Map_Map[K comparable, V, W any](ctx *Execution, m *Map[K, V], transform fun
 
 // Map_MapKeys transforms each key; a repeated new key keeps its first
 // position and its last value.
-func Map_MapKeys[K comparable, V any, W comparable](ctx *Execution, m *Map[K, V], transform func(*Execution, K, V) W) *Map[W, V] {
-	out, tick := NewMap[W, V](), uint32(0)
+func Map_MapKeys[K comparable, V any, W comparable](ctx *Execution, keys *Keys[W], m *Map[K, V], transform func(*Execution, K, V) W) *Map[W, V] {
+	out, tick := NewMapWith[W, V](keys), uint32(0)
 	CheckCancelled(ctx)
 	for _, e := range m.Snapshot() {
 		Poll(ctx, &tick)

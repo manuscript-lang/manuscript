@@ -6,9 +6,15 @@ type Set[T comparable] struct {
 	m Map[T, Unit]
 }
 
-// NewSet returns a set holding items.
-func NewSet[T comparable](items ...T) *Set[T] {
-	s := &Set[T]{m: *NewMap[T, Unit]()}
+// NewSet returns a set holding items, matching elements by Go equality.
+func NewSet[T comparable](items ...T) *Set[T] { return NewSetWith(nil, items...) }
+
+// Keys is how the set matches elements.
+func (s *Set[T]) Keys() *Keys[T] { return s.m.keys }
+
+// NewSetWith returns a set holding items, matching elements as keys say.
+func NewSetWith[T comparable](keys *Keys[T], items ...T) *Set[T] {
+	s := &Set[T]{m: *NewMapWith[T, Unit](keys)}
 	for _, item := range items {
 		s.Add(item)
 	}

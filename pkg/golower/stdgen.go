@@ -202,14 +202,11 @@ func checkerOperationVariables(s *checker.Symbol, op checker.Operation) []*check
 func (g *gen) capabilityFields(caps []checker.Capability) []*ast.Field {
 	var out []*ast.Field
 	for _, c := range caps {
-		if c.Property == "Hashable" {
-			continue // Go's comparable constraint is the Hashable capability
-		}
 		name := "eq_" + c.Variable.Name
 		var typ ast.Expr = generic(rtName("Eq"), ident(c.Variable.Name))
 		if c.Property == "Hashable" {
-			name = "key_" + c.Variable.Name
-			typ = pointerTo(generic(rtName("Hasher"), ident(c.Variable.Name)))
+			name = "keys_" + c.Variable.Name
+			typ = pointerTo(generic(rtName("Keys"), ident(c.Variable.Name)))
 		}
 		out = append(out, field(name, typ))
 	}

@@ -349,9 +349,9 @@ func List_ForEach[T any](ctx *Execution, l *List[T], operation func(*Execution, 
 }
 
 // List_GroupBy groups elements by key, preserving first-seen key order.
-func List_GroupBy[T any, K comparable](ctx *Execution, l *List[T], key func(*Execution, T) K) *Map[K, *List[T]] {
+func List_GroupBy[T any, K comparable](ctx *Execution, keys *Keys[K], l *List[T], key func(*Execution, T) K) *Map[K, *List[T]] {
 	items, tick := l.Items, uint32(0)
-	out := NewMap[K, *List[T]]()
+	out := NewMapWith[K, *List[T]](keys)
 	CheckCancelled(ctx)
 	for _, item := range items {
 		Poll(ctx, &tick)
@@ -468,9 +468,9 @@ func List_CopyWithin[T any](_ *Execution, l *List[T], target, start, end int64) 
 
 // List_ToSet collects the distinct elements. Hashable elements are Go
 // comparable (see Map for the key matching rule).
-func List_ToSet[T comparable](ctx *Execution, l *List[T]) *Set[T] {
+func List_ToSet[T comparable](ctx *Execution, keys *Keys[T], l *List[T]) *Set[T] {
 	items, tick := l.Items, uint32(0)
-	out := NewSet[T]()
+	out := NewSetWith[T](keys)
 	CheckCancelled(ctx)
 	for _, item := range items {
 		Poll(ctx, &tick)

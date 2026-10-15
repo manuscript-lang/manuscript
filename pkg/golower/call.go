@@ -196,7 +196,21 @@ func (g *gen) stdRecord(t *checker.Type, values []ast.Expr) ast.Expr {
 		}
 		return address(composite(generic(rtName(name), typeArgs...), elements...))
 	}
-	return call(generic(rtName("New"+name), typeArgs...), values...)
+	// A Hashable type argument tells the collection how its keys match.
+	var keys []ast.Expr
+	if t.Def != nil {
+		for i, v := range t.Def.Variables {
+			for _, b := range v.Bounds {
+				if isStd(b, "Hashable") && i < len(t.Args) {
+					keys = append(keys, g.keysFor(t.Args[i]))
+				}
+			}
+		}
+	}
+	if len(keys) > 0 && (name == "Map" || name == "Set") {
+		name += "With"
+	}
+	return call(generic(rtName("New"+name), typeArgs...), append(keys, values...)...)
 }
 
 // caseCall constructs a sum-type case from its payload.
@@ -301,16 +315,17 @@ func (g *gen) nativeCall(s *checker.Symbol, typeArgs []*checker.Type, args []ast
 
 // capabilityArgs supplies the Equal capabilities a native operation takes
 // after the execution: the generated equality of each constrained type.
-// Hashable needs no argument; Go's comparable constraint is that capability.
+// Hashable supplies the *rt.Keys that tell a collection how keys match.
 func (g *gen) capabilityArgs(caps []checker.Capability, bind map[string]*checker.Type) []ast.Expr {
 	var out []ast.Expr
 	for _, c := range caps {
-		if c.Property != "Equal" {
-			continue
-		}
 		t := bind[c.Variable.ID]
 		if t == nil {
-			g.fail("equality capability for %s is not determined", c.Variable.Name)
+			g.fail("%s capability for %s is not determined", c.Property, c.Variable.Name)
+			continue
+		}
+		if c.Property == "Hashable" {
+			out = append(out, g.keysFor(t))
 			continue
 		}
 		out = append(out, g.equalFunc(t))
@@ -326,7 +341,7 @@ func (g *gen) nativeFunctionValue(s *checker.Symbol, typeArgs []*checker.Type, i
 	}
 	if len(checker.BoundCapabilities(s.Variables)) > 0 {
 		for _, c := range checker.BoundCapabilities(s.Variables) {
-			if c.Property == "Equal" {
+			if c.Property == "Equal" || c.Property == "Hashable" {
 				g.fail("%s needs an equality capability and cannot be used as a function value", s.Name)
 			}
 		}
@@ -367,7 +382,15 @@ func (g *gen) methodCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 	}
 	// The receiver is evaluated before the arguments.
 	receiver := g.spillIfCalls(g.expr(member.Left))
+	mark := len(g.fn.pre)
 	args := g.arguments(info.Arguments, c)
+	// An argument that runs code may reassign a mutable receiver variable.
+	if id, ok := receiver.(*ast.Ident); ok && g.fn.mutables[id.Name] && len(g.fn.pre) > mark {
+		name := g.temp()
+		snapshot := define(name, receiver)
+		g.fn.pre = append(g.fn.pre[:mark:mark], append([]ast.Stmt{snapshot}, g.fn.pre[mark:]...)...)
+		receiver = ident(name)
+	}
 	return g.invokeMethod(m, receiverType, receiver, member.Text, args, calleeInfo)
 }
 

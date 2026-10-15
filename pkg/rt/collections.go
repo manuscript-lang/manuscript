@@ -78,9 +78,9 @@ func Collections_Range(ctx *Execution, start, end, step int64, maxItems Option[i
 
 // Collections_MapFromEntries builds a map; later entries replace earlier
 // values for a repeated key.
-func Collections_MapFromEntries[K comparable, V any](ctx *Execution, entries *List[*MapEntry[K, V]]) *Map[K, V] {
+func Collections_MapFromEntries[K comparable, V any](ctx *Execution, keys *Keys[K], entries *List[*MapEntry[K, V]]) *Map[K, V] {
 	items, tick := entries.Items, uint32(0)
-	out := NewMap[K, V]()
+	out := NewMapWith[K, V](keys)
 	CheckCancelled(ctx)
 	for _, e := range items {
 		Poll(ctx, &tick)
@@ -129,8 +129,8 @@ type MapBuilder[T comparable, U any] struct {
 }
 
 // NewMapBuilder returns an empty builder.
-func NewMapBuilder[T comparable, U any]() *MapBuilder[T, U] {
-	return &MapBuilder[T, U]{m: NewMap[T, U]()}
+func NewMapBuilder[T comparable, U any](keys *Keys[T]) *MapBuilder[T, U] {
+	return &MapBuilder[T, U]{m: NewMapWith[T, U](keys)}
 }
 
 // MapBuilder_Add inserts or replaces an entry.
@@ -160,7 +160,9 @@ type SetBuilder[T comparable] struct {
 }
 
 // NewSetBuilder returns an empty builder.
-func NewSetBuilder[T comparable]() *SetBuilder[T] { return &SetBuilder[T]{s: NewSet[T]()} }
+func NewSetBuilder[T comparable](keys *Keys[T]) *SetBuilder[T] {
+	return &SetBuilder[T]{s: NewSetWith[T](keys)}
+}
 
 // SetBuilder_Add adds value; an equal value keeps the first payload.
 func SetBuilder_Add[T comparable](_ *Execution, b *SetBuilder[T], value T) Unit {

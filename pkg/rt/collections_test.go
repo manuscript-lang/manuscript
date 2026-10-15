@@ -142,7 +142,7 @@ func TestListQueriesAndCallbacks(t *testing.T) {
 	if len(flat.Items) != 8 {
 		t.Fatal(flat.Items)
 	}
-	groups := List_GroupBy(ctx, l, func(_ *Execution, v int64) bool { return v > 1 })
+	groups := List_GroupBy(ctx, nil, l, func(_ *Execution, v int64) bool { return v > 1 })
 	if keys := Map_Keys(ctx, groups).Items; !reflect.DeepEqual(keys, []bool{true, false}) {
 		t.Fatal(keys)
 	}
@@ -159,7 +159,7 @@ func TestListQueriesAndCallbacks(t *testing.T) {
 	if got := List_Concat(ctx, ints(1), ints(2)).Items; !reflect.DeepEqual(got, []int64{1, 2}) {
 		t.Fatal(got)
 	}
-	if got := List_ToSet(ctx, l).Len(); got != 3 {
+	if got := List_ToSet(ctx, nil, l).Len(); got != 3 {
 		t.Fatal(got)
 	}
 }
@@ -271,7 +271,7 @@ func TestCollectionsFilledAndRange(t *testing.T) {
 
 func TestMapOperations(t *testing.T) {
 	ctx := RootExecution()
-	m := MapOf([]Entry[string, int64]{{"a", 1}, {"b", 2}, {"a", 3}})
+	m := MapOf(nil, []Entry[string, int64]{{"a", 1}, {"b", 2}, {"a", 3}})
 	if Map_Length(ctx, m) != 2 || Map_GetOr(ctx, m, "a", 0) != 3 || Map_GetOr(ctx, m, "z", 9) != 9 {
 		t.Fatal("literal")
 	}
@@ -298,7 +298,7 @@ func TestMapOperations(t *testing.T) {
 	if Map_Get(ctx, doubled, "c") != Some(int64(8)) || Map_Get(ctx, doubled, "q").Some {
 		t.Fatal("map")
 	}
-	collapsed := Map_MapKeys(ctx, m, func(_ *Execution, k string, _ int64) int { return len(k) })
+	collapsed := Map_MapKeys(ctx, nil, m, func(_ *Execution, k string, _ int64) int { return len(k) })
 	if collapsed.Len() != 1 {
 		t.Fatal(collapsed.Len())
 	}
@@ -325,7 +325,7 @@ func TestMapOperations(t *testing.T) {
 		t.Fatal(fold, foldRight)
 	}
 	clone := Map_Clone(ctx, m)
-	Map_Merge(ctx, clone, MapOf([]Entry[string, int64]{{"b", 0}, {"z", 26}}))
+	Map_Merge(ctx, clone, MapOf(nil, []Entry[string, int64]{{"b", 0}, {"z", 26}}))
 	if Map_GetOr(ctx, m, "b", -1) != 2 || Map_GetOr(ctx, clone, "b", -1) != 0 || Map_Length(ctx, clone) != 5 {
 		t.Fatal("clone/merge")
 	}
@@ -336,14 +336,14 @@ func TestMapOperations(t *testing.T) {
 	if len(entries.Items) != 4 || *entries.Items[0] != (MapEntry[string, int64]{"b", 2}) {
 		t.Fatal(entries.Items)
 	}
-	round := Collections_MapFromEntries(ctx, entries)
+	round := Collections_MapFromEntries(ctx, nil, entries)
 	if !MapEqual(ctx, m, round, eqInt) {
 		t.Fatal("round trip")
 	}
 }
 
 func TestMapSnapshotIsStableAcrossMutation(t *testing.T) {
-	m := MapOf([]Entry[int64, int64]{{1, 10}, {2, 20}, {3, 30}})
+	m := MapOf(nil, []Entry[int64, int64]{{1, 10}, {2, 20}, {3, 30}})
 	var seen []int64
 	for _, e := range m.Snapshot() {
 		seen = append(seen, e.Value)
@@ -396,7 +396,7 @@ func TestSetOperations(t *testing.T) {
 	Set_Add(ctx, a, 0)
 	Set_Remove(ctx, a, 1)
 	check("add/remove", a, 2, 3, 0)
-	check("map", Set_Map(ctx, a, func(_ *Execution, v int) int { return v / 2 }), 1, 0)
+	check("map", Set_Map(ctx, nil, a, func(_ *Execution, v int) int { return v / 2 }), 1, 0)
 	check("filter", Set_Filter(ctx, a, func(_ *Execution, v int) bool { return v > 0 }), 2, 3)
 	if Set_Find(ctx, a, func(_ *Execution, v int) bool { return v > 1 }) != Some(2) || Set_FindLast(ctx, a, func(_ *Execution, v int) bool { return v > 1 }) != Some(3) {
 		t.Fatal("find")
@@ -447,7 +447,7 @@ func TestBuilders(t *testing.T) {
 		t.Fatal(l.Items)
 	}
 	fault(t, "builder is sealed", func() { ListBuilder_Append(ctx, lb, 3) })
-	mb := NewMapBuilder[string, int64]()
+	mb := NewMapBuilder[string, int64](nil)
 	MapBuilder_Add(ctx, mb, "a", 1)
 	MapBuilder_Add(ctx, mb, "b", 2)
 	MapBuilder_Add(ctx, mb, "a", 3)
@@ -456,7 +456,7 @@ func TestBuilders(t *testing.T) {
 		t.Fatal("map builder")
 	}
 	fault(t, "builder is sealed", func() { MapBuilder_Add(ctx, mb, "c", 1) })
-	sb := NewSetBuilder[int64]()
+	sb := NewSetBuilder[int64](nil)
 	SetBuilder_Add(ctx, sb, 2)
 	SetBuilder_Add(ctx, sb, 2)
 	if s := SetBuilder_Freeze(ctx, sb); s.Len() != 1 {
@@ -479,9 +479,9 @@ func TestEquality(t *testing.T) {
 	if !SetEqual(ctx, NewSet(1, 2), NewSet(2, 1)) || SetEqual(ctx, NewSet(1), NewSet(2)) || SetEqual(ctx, NewSet(1), NewSet(1, 2)) {
 		t.Fatal("set")
 	}
-	x := MapOf([]Entry[string, int64]{{"a", 1}, {"b", 2}})
-	y := MapOf([]Entry[string, int64]{{"b", 2}, {"a", 1}})
-	z := MapOf([]Entry[string, int64]{{"a", 1}, {"b", 3}})
+	x := MapOf(nil, []Entry[string, int64]{{"a", 1}, {"b", 2}})
+	y := MapOf(nil, []Entry[string, int64]{{"b", 2}, {"a", 1}})
+	z := MapOf(nil, []Entry[string, int64]{{"a", 1}, {"b", 3}})
 	if !MapEqual(ctx, x, y, eqInt) || MapEqual(ctx, x, z, eqInt) || MapEqual(ctx, x, NewMap[string, int64](), eqInt) {
 		t.Fatal("map")
 	}
@@ -513,7 +513,7 @@ func TestFormat(t *testing.T) {
 	if got := FormatSet(NewSet[int64](2, 1), str); got != "Set(2, 1)" {
 		t.Fatal(got)
 	}
-	m := MapOf([]Entry[string, int64]{{"a", 1}, {"b", 2}})
+	m := MapOf(nil, []Entry[string, int64]{{"a", 1}, {"b", 2}})
 	if got := FormatMap(m, func(s string) string { return s }, str); got != "Map(a: 1, b: 2)" {
 		t.Fatal(got)
 	}

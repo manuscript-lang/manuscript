@@ -269,7 +269,7 @@ func (g *gen) mapLiteral(e *syntax.Expression, info *checker.Info) ast.Expr {
 	for i := 0; i < len(operands); i += 2 {
 		entries = append(entries, composite(nil, operands[i], operands[i+1]))
 	}
-	return call(generic(rtName("MapOf"), g.goType(key), g.goType(value)), sliceLiteral(entry, entries...))
+	return call(generic(rtName("MapOf"), g.goType(key), g.goType(value)), g.keysFor(key), sliceLiteral(entry, entries...))
 }
 
 // unary lowers try, negation, and not.
