@@ -19,7 +19,7 @@ func textLiteral(value string) ast.Expr {
 func intLiteral(value int) ast.Expr {
 	return &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(value)}
 }
-func call(fn ast.Expr, args ...ast.Expr) *ast.CallExpr { return &ast.CallExpr{Fun: fn, Args: args} }
+func call(fn ast.Expr, args ...ast.Expr) *ast.CallExpr   { return &ast.CallExpr{Fun: fn, Args: args} }
 func rtCall(name string, args ...ast.Expr) *ast.CallExpr { return call(rtName(name), args...) }
 
 // generic instantiates a generic function or type with explicit arguments.

@@ -27,6 +27,7 @@ func Go(program *checker.Program, entry string, options Options) (string, error)
 	for _, m := range program.Methods {
 		g.methodByID[m.ID] = m
 	}
+	g.mutated = mutatedRecords(program)
 	file := g.file(entry, options)
 	if g.err != nil {
 		return "", g.err
@@ -53,16 +54,17 @@ type gen struct {
 
 	sourceLines map[string]syntax.Position
 
-	names      map[string]bool                // Go identifiers declared at package level
-	helpers    map[string]string              // generated per-type helper functions by key
-	natives    map[string]bool                // runtime functions the program calls
-	methodByID map[string]*checker.Method     // implementations by identity
+	names      map[string]bool            // Go identifiers declared at package level
+	helpers    map[string]string          // generated per-type helper functions by key
+	natives    map[string]bool            // runtime functions the program calls
+	methodByID map[string]*checker.Method // implementations by identity
 	aliases    map[*checker.Binding]*checker.Symbol
-	captured   map[*checker.Binding]string    // snapshot names of captured variables
-	used       map[*checker.Binding]bool      // variables some expression reads
+	captured   map[*checker.Binding]string // snapshot names of captured variables
+	used       map[*checker.Binding]bool   // variables some expression reads
 	localEq    int
-	checks    map[string]int
-	inRuntime  bool // generating the runtime package itself: type variables stay variables
+	checks     map[string]int
+	mutated    map[string]bool // record types some assignment writes a field of
+	inRuntime  bool            // generating the runtime package itself: type variables stay variables
 
 	// The function being lowered.
 	fn *funcState

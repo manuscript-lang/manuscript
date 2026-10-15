@@ -2,9 +2,9 @@ package golower
 
 import (
 	"fmt"
-	"regexp"
 	"go/ast"
 	"go/token"
+	"regexp"
 	"sort"
 	"strings"
 

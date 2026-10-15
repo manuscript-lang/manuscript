@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
 // typeDecl is one Go type the program declares: a record struct, the sealed
@@ -55,6 +56,48 @@ func scalarGo(t *checker.Type) string {
 		return "string"
 	}
 	return ""
+}
+
+// mutatedRecords collects the record types whose fields the program ever
+// assigns. A record type outside this set is immutable everywhere, so sharing
+// and copying it are indistinguishable.
+func mutatedRecords(program *checker.Program) map[string]bool {
+	out := map[string]bool{}
+	visitor := syntax.Visitor{Statement: func(s *syntax.Statement) {
+		if s.Target == nil {
+			return
+		}
+		if info := program.Info(s.Target.Left); info != nil && info.Type != nil {
+			out[info.Type.ID] = true
+		}
+	}}
+	for _, module := range program.Modules {
+		for _, d := range module.Declarations {
+			visitor.Walk(d)
+		}
+	}
+	return out
+}
+
+// valueRecord reports whether record t lowers to a Go struct value: no code
+// assigns its fields and every field is itself a scalar or value record, so
+// identity can never be observed and equality is structural.
+func (g *gen) valueRecord(t *checker.Type) bool {
+	return g.valueRecordIn(g.sub(t), map[string]bool{})
+}
+
+func (g *gen) valueRecordIn(t *checker.Type, seen map[string]bool) bool {
+	if t == nil || t.Kind != "record" || isStdType(t) || g.mutated[t.ID] || seen[t.ID] {
+		return false
+	}
+	seen[t.ID] = true
+	for _, f := range checker.Fields(t) {
+		ft := g.sub(f.Type)
+		if scalarGo(ft) == "" && !g.valueRecordIn(ft, seen) {
+			return false
+		}
+	}
+	return true
 }
 
 // isReference reports whether t lowers to a Go pointer: a type whose holders
@@ -108,7 +151,7 @@ func (g *gen) goType(t *checker.Type) ast.Expr {
 		return g.stdType(t)
 	}
 	decl := g.declare(t)
-	if isReference(t) {
+	if isReference(t) && !g.valueRecord(t) {
 		return pointerTo(ident(decl.name))
 	}
 	return ident(decl.name)

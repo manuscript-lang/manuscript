@@ -177,7 +177,11 @@ func (g *gen) construct(t *checker.Type, values []ast.Expr) ast.Expr {
 	for i, f := range checker.Fields(t) {
 		elements = append(elements, keyed(fieldName(f.Name), values[i]))
 	}
-	return address(composite(ident(d.name), elements...))
+	value := composite(ident(d.name), elements...)
+	if g.valueRecord(t) {
+		return value
+	}
+	return address(value)
 }
 
 func (g *gen) stdRecord(t *checker.Type, values []ast.Expr) ast.Expr {
