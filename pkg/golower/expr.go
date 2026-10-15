@@ -106,6 +106,25 @@ func (g *gen) number(e *syntax.Expression, info *checker.Info) ast.Expr {
 	return call(ident("int64"), signedInteger(e.Text))
 }
 
+// constantNumber reports whether e is a typed numeric literal Go folds.
+func constantNumber(e ast.Expr) bool {
+	c, ok := e.(*ast.CallExpr)
+	if !ok || len(c.Args) != 1 {
+		return false
+	}
+	if id, ok := c.Fun.(*ast.Ident); !ok || id.Name != "float64" {
+		return false
+	}
+	switch x := c.Args[0].(type) {
+	case *ast.BasicLit:
+		return true
+	case *ast.UnaryExpr:
+		_, lit := x.X.(*ast.BasicLit)
+		return lit
+	}
+	return false
+}
+
 func signedInteger(value string) ast.Expr {
 	if strings.HasPrefix(value, "-") {
 		return &ast.UnaryExpr{Op: token.SUB, X: &ast.BasicLit{Kind: token.INT, Value: value[1:]}}
@@ -157,14 +176,15 @@ func (g *gen) caseValue(t *checker.Type, name string, fields []ast.Expr) ast.Exp
 		}
 		return call(generic(rtName("Fail"), targs...), fields...)
 	case isStdType(t):
-		return g.stdCase(t, name, fields)
+		return call(g.goType(t), g.stdCase(t, name, fields))
 	}
 	d := g.declare(t)
 	var elements []ast.Expr
 	for i, f := range g.caseFields(t, name) {
 		elements = append(elements, keyed(fieldName(f.Name), fields[i]))
 	}
-	return composite(ident(g.caseName(d, name)), elements...)
+	// Converting to the sum type keeps inferred variable and payload types abstract.
+	return call(ident(d.name), composite(ident(g.caseName(d, name)), elements...))
 }
 
 // stdCase builds a case of a runtime-declared sum type.
@@ -288,7 +308,11 @@ func (g *gen) unary(e *syntax.Expression, info *checker.Info) ast.Expr {
 			}
 			return rtCall("IntNegate", g.valueAs(e.Right, operand))
 		case "Float":
-			return &ast.UnaryExpr{Op: token.SUB, X: paren(g.valueAs(e.Right, operand))}
+			x := g.valueAs(e.Right, operand)
+			if constantNumber(x) {
+				x = rtCall("Float", x) // -0.0 must stay negative zero, which a Go constant cannot be
+			}
+			return &ast.UnaryExpr{Op: token.SUB, X: paren(x)}
 		}
 		return rtCall(typeBase(operand)+"Negate", g.valueAs(e.Right, operand))
 	}
@@ -328,7 +352,13 @@ func (g *gen) binaryExpr(e *syntax.Expression, info *checker.Info) ast.Expr {
 			return binary(a, op, b)
 		}
 		if op, ok := arithmeticOps[e.Text]; ok {
-			// Explicit rounding keeps each source operation separate on FMA targets.
+			// Go folds constant operands exactly and rejects x / 0 and overflow;
+			// Manuscript Float follows IEEE, so a constant left operand is hidden
+			// from the compiler. Explicit rounding keeps each source operation
+			// separate on FMA targets.
+			if constantNumber(a) && constantNumber(b) {
+				a = rtCall("Float", a)
+			}
 			return call(ident("float64"), binary(a, op, b))
 		}
 	case leftType.ID == "String":
@@ -336,6 +366,23 @@ func (g *gen) binaryExpr(e *syntax.Expression, info *checker.Info) ast.Expr {
 			return binary(a, op, b)
 		}
 		return binary(a, token.ADD, b)
+	}
+	switch {
+	case leftType.ID == "@std/Duration" && rightType.ID == "@std/Duration":
+		if op, ok := comparisons[e.Text]; ok {
+			return binary(a, op, b)
+		}
+		return call(rtName("Duration_"+arithmetic[e.Text]), ident("ctx"), a, b)
+	case leftType.ID == "@std/Instant" && rightType.ID == "@std/Instant":
+		if op, ok := comparisons[e.Text]; ok {
+			return binary(call(rtName("Instant_Compare"), ident("ctx"), a, b), op, intLiteral(0))
+		}
+		return call(rtName("Instant_Difference"), ident("ctx"), a, b)
+	case leftType.ID == "@std/Instant" && rightType.ID == "@std/Duration":
+		if e.Text == "-" {
+			return call(rtName("Instant_Unshift"), ident("ctx"), a, b)
+		}
+		return call(rtName("Instant_Shift"), ident("ctx"), a, b)
 	}
 	name := typeBase(leftType)
 	if name2 := typeBase(rightType); name2 != name {

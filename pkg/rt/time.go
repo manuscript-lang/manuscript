@@ -259,3 +259,17 @@ func Timestamp_Difference(_ *Execution, left, other Timestamp) Result[Duration, 
 func Timestamp_Compare(_ *Execution, left, other Timestamp) int64 {
 	return int64(timeOf(left).Compare(timeOf(other)))
 }
+
+// Instant_Unshift is Instant - Duration.
+func Instant_Unshift(_ *Execution, value Instant, duration Duration) Instant {
+	return Instant{Domain: value.Domain, Tick: checkedTimeSub("Instant.-", "value", "duration", value.Tick, int64(duration))}
+}
+
+// Instant_Equal compares instants of one clock domain.
+func Instant_Equal(_ *Execution, a, b Instant) bool {
+	sameClock(a, b)
+	return a.Tick == b.Tick
+}
+
+// Equal makes Instant satisfy native equality; it faults across clock domains.
+func (i Instant) Equal(ctx *Execution, other Instant) bool { return Instant_Equal(ctx, i, other) }

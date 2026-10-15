@@ -18,7 +18,7 @@ import (
 // goComparable reports whether == on the Go representation of t is Manuscript
 // equality: scalars and strings.
 func goComparable(t *checker.Type) bool {
-	return scalarGo(t) != "" || t.ID == "Unit"
+	return scalarGo(t) != "" || t.ID == "Unit" || t.ID == "@std/Duration" || t.ID == "@std/Timestamp"
 }
 
 // equal compares a and b, both values of type t.

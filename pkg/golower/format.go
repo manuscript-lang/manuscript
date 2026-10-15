@@ -113,7 +113,7 @@ func (g *gen) formatBody(t *checker.Type) []ast.Stmt {
 		trimSwitch(sw, "x")
 		return []ast.Stmt{guard, sw, returned(textLiteral(""))}
 	case t.Kind == "contract":
-		return []ast.Stmt{returned(textLiteral("[" + t.Name + "]"))}
+		return []ast.Stmt{returned(rtCall("Describe", v, ident("depth")))}
 	}
 	g.fail("no text form for %s", t)
 	return []ast.Stmt{returned(textLiteral(""))}

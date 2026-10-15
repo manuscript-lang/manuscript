@@ -91,6 +91,13 @@ func (g *gen) view(from, contract *checker.Type) string {
 		for _, op := range g.operations(contract) {
 			d.decl = append(d.decl, g.viewMethod(name, from, contract, op))
 		}
+		// A view prints as its receiver.
+		describe := call(g.formatFunc(from), selector(ident("v"), "self"), ident("depth"))
+		d.decl = append(d.decl, &ast.FuncDecl{
+			Recv: &ast.FieldList{List: []*ast.Field{field("v", ident(name))}},
+			Name: ident("Describe"), Type: functionType([]*ast.Field{field("depth", ident("int"))}, ident("string")),
+			Body: block(returned(describe)),
+		})
 	})
 	return name
 }

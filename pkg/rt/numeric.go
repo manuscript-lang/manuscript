@@ -120,3 +120,7 @@ func intDivisionFault(a, b int64) {
 
 // Equals is == for types Go compares directly.
 func Equals[T comparable](_ *Execution, a, b T) bool { return a == b }
+
+// Float returns x unchanged; the compiler cannot fold a call to it, so IEEE
+// division by zero and overflow of literal operands happen at run time.
+func Float(x float64) float64 { return x }
