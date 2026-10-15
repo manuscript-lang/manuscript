@@ -457,3 +457,28 @@ func MapWithEntryInt(ctx *Execution, receiver Value, key int64, value Value) Val
 	}
 	return m
 }
+
+// MapGetPartsString is MapGetParts for a Map with String keys.
+func MapGetPartsString(ctx *Execution, receiver Value, key string) (Value, bool) {
+	CheckCancelled(ctx)
+	m := receiver.(*Map)
+	found := lookupString(ctx, m, key)
+	if found < 0 {
+		return nil, false
+	}
+	return m.Entries[found].Value, true
+}
+
+// MapWithEntryString is MapWithEntry for a Map with String keys.
+func MapWithEntryString(ctx *Execution, receiver Value, key string, value Value) Value {
+	CheckCancelled(ctx)
+	m := receiver.(*Map)
+	if found := lookupString(ctx, m, key); found >= 0 {
+		m.ownEntries()
+		m.Entries[found].Value = value
+	} else {
+		m.Entries = append(m.Entries, Entry{key, value})
+		keyAppended(ctx, m)
+	}
+	return m
+}

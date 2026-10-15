@@ -199,10 +199,10 @@ func (g *generator) directKeyedCall(e *syntax.Expression, native string, argumen
 	if name == "MapWithEntry" && (arguments[0].Name == "value" || arguments[1].Name == "key") {
 		return nil
 	}
-	if name == "MapWithEntry" && primitiveEqualityType(receiverType.Args[0]) == "int64" {
+	if typ := primitiveEqualityType(receiverType.Args[0]); name == "MapWithEntry" && (typ == "int64" || typ == "string") {
 		receiver := sequence(g.expression(e.Left.Left))
-		key := sequence(g.scalar(arguments[0].Value, "int64"))
-		return orderedCall(runtimeName("MapWithEntryInt"), ident("ctx"), receiver, key, sequence(g.argumentValue(arguments[1])))
+		key := sequence(g.scalar(arguments[0].Value, typ))
+		return orderedCall(runtimeName("MapWithEntry"+primitiveKinds[typ]), ident("ctx"), receiver, key, sequence(g.argumentValue(arguments[1])))
 	}
 	// Read the receiver before the arguments, as for List.at.
 	args := []ast.Expr{ident("ctx"), sequence(g.expression(e.Left.Left))}
@@ -261,8 +261,8 @@ func (g *generator) mapGetMatch(value *syntax.Expression) bool {
 func (g *generator) mapGetParts(value *syntax.Expression) ast.Expr {
 	argument := g.program.Info(value).Arguments[0]
 	receiver := sequence(g.expression(value.Left.Left))
-	if keyType := g.program.Info(value.Left.Left).Type.Args[0]; primitiveEqualityType(keyType) == "int64" {
-		return orderedCall(runtimeName("MapGetPartsInt"), ident("ctx"), receiver, sequence(g.scalar(argument.Value, "int64")))
+	if typ := primitiveEqualityType(g.program.Info(value.Left.Left).Type.Args[0]); typ == "int64" || typ == "string" {
+		return orderedCall(runtimeName("MapGetParts"+primitiveKinds[typ]), ident("ctx"), receiver, sequence(g.scalar(argument.Value, typ)))
 	}
 	key := sequence(g.argumentValue(argument))
 	return orderedCall(runtimeName("MapGetParts"), ident("ctx"), receiver, key, g.typeScope(g.program.Info(value.Left.Left).Type.Args[0]))
