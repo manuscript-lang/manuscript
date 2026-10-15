@@ -174,12 +174,12 @@ func TestDirectKeyedAndStringLowering(t *testing.T) {
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListContains(", "rt.MapContains(", "rt.MapGet(", "rt.MapWithEntry(", "rt.SetContains(", "rt.SetWithValue(", "rt.StringAt("} {
+	for _, operation := range []string{"rt.ListContains(", "rt.MapContains(", "rt.MapGet(", "rt.MapWithEntryString(", "rt.SetContains(", "rt.SetWithValue(", "rt.StringAt("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing direct %s", operation)
 		}
 	}
-	if strings.Count(result.Source, "rt.MapWithEntry(") != 1 || !strings.Contains(result.Source, `"add"`) {
+	if strings.Count(result.Source, "rt.MapWithEntryString(") != 1 || !strings.Contains(result.Source, `"add"`) {
 		t.Fatalf("reordered labels must keep ordinary dispatch:\n%s", result.Source)
 	}
 }
