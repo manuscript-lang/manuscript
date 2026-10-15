@@ -199,6 +199,21 @@ func lookupInt(ctx *Execution, c keyed, key int64) int {
 	return -1
 }
 
+// lookupString is lookupKey for a String key.
+func lookupString(ctx *Execution, c keyed, key string) int {
+	if c.count() == 0 {
+		return -1
+	}
+	ix := c.index()
+	if !ix.valid(c) {
+		ix.rebuild(ctx, c)
+	}
+	if id, ok := ix.strs[key]; ok {
+		return ix.pos(id)
+	}
+	return -1
+}
+
 // keyAppended updates the index after the key at the end of c was appended.
 // The index was synchronized by the lookup that preceded the append.
 func keyAppended(ctx *Execution, c keyed) {

@@ -132,7 +132,7 @@ func TestMapAddDirectAndReorderedLowering(t *testing.T) {
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	if strings.Count(r.Source, "rt.MapWithEntry(") != 2 || strings.Count(r.Source, `"add"`) != 2 {
+	if strings.Count(r.Source, "rt.MapWithEntryString(") != 2 || strings.Count(r.Source, `"add"`) != 2 {
 		t.Fatal(r.Source)
 	}
 }
