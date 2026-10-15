@@ -171,7 +171,7 @@ func (s *Server) initialize(params json.RawMessage) any {
 	}
 }
 
-const instructions = "Write and verify .ms source. Read the manuscript_cheatsheet prompt once, std_lookup any std API before use, check after every edit. test, run, and build take a project ms.toml only."
+const instructions = "Write and verify .ms source. Read the manuscript_cheatsheet prompt once, search_stdlib any std API before use, check after every edit. test, run, and build take a project ms.toml only."
 
 // progressInterval spaces progress notifications during slow tools.
 var progressInterval = 5 * time.Second

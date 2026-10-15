@@ -139,7 +139,7 @@ func commandHelp(command string) (string, bool) {
 		description = "Serve the language server over stdin/stdout until the client disconnects.\nConfigure an LSP-capable editor to launch ms lsp. No file argument is needed."
 		examples = "ms lsp"
 	case "mcp":
-		description = "Serve the Model Context Protocol over stdin/stdout until the client disconnects.\nTools: check, lint, fmt, test, run, build, std_lookup, symbol_info, inspect. test, run, and build act only on a project's ms.toml.\nResources and prompts carry a language cheat sheet and the standard-library index.\nConfigure an MCP client to launch ms mcp. No file argument is needed."
+		description = "Serve the Model Context Protocol over stdin/stdout until the client disconnects.\nTools: check, lint, fmt, test, run, build, search_stdlib, symbol_info, inspect. test, run, and build act only on a project's ms.toml.\nResources and prompts carry a language cheat sheet and the standard-library index.\nConfigure an MCP client to launch ms mcp. No file argument is needed."
 		examples = "ms mcp\n  claude mcp add manuscript -- ms mcp"
 	case "help":
 		usage = "[command]"

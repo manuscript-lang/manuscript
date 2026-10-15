@@ -94,11 +94,11 @@ var tools = []tool{
 		slow:        true,
 	},
 	{
-		Name:        "std_lookup",
-		Description: "Fuzzy-search the standard library (typos, loose words). Use before calling any std API.",
+		Name:        "search_stdlib",
+		Description: "Fuzzy-search the standard library (typos, loose words). Use before calling any std API. Example: query \"read file lines\".",
 		InputSchema: obj([]string{"query"}, map[string]any{"query": map[string]any{"type": "string"}, "limit": map[string]any{"type": "integer"}}),
 		Annotations: readOnly(),
-		handler:     (*Server).stdLookup,
+		handler:     (*Server).searchStdlib,
 	},
 	{
 		Name:        "symbol_info",
@@ -406,7 +406,12 @@ func (s *Server) build(ctx context.Context, raw json.RawMessage) (string, error)
 		return "", err
 	}
 	// .ms-cache is where `ms init` already tells git to ignore build output.
+	// Clearing it first keeps exactly one binary, and a failed build cannot
+	// leave a stale one behind.
 	directory := filepath.Join(dir, ".ms-cache", "bin")
+	if err := os.RemoveAll(directory); err != nil {
+		return "", toolError(err.Error())
+	}
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return "", toolError(err.Error())
 	}
@@ -421,7 +426,7 @@ func (s *Server) build(ctx context.Context, raw json.RawMessage) (string, error)
 	return reported(out, buildReport)
 }
 
-func (s *Server) stdLookup(_ context.Context, raw json.RawMessage) (string, error) {
+func (s *Server) searchStdlib(_ context.Context, raw json.RawMessage) (string, error) {
 	var in struct {
 		Query string `json:"query"`
 		Limit int    `json:"limit"`

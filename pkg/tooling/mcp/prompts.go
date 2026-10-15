@@ -32,7 +32,7 @@ const quickRules = `Manuscript rules:
 - let binds once, var reassigns; Optional is some(x)/none; no implicit conversions.
 - Errors: Result ok(v)/error(e); try unwraps or returns. Never nest match.
 - Methods only via interface + impl I for T. Tests: test "name": blocks.
-- std_lookup every std API before use; check after each edit. Full guide: manuscript://cheatsheet.`
+- search_stdlib every std API before use; check after each edit. Full guide: manuscript://cheatsheet.`
 
 var prompts = []prompt{
 	{
@@ -96,7 +96,7 @@ func getPrompt(params json.RawMessage) (any, *rpcError) {
 // declarations the checker uses so it cannot drift from the library.
 func stdlibIndex() string {
 	var b strings.Builder
-	b.WriteString("# Standard library\n\n`import Name from \"@std/<module>.ms\"`; `prelude` names need no import. std_lookup gives signatures.\n")
+	b.WriteString("# Standard library\n\n`import Name from \"@std/<module>.ms\"`; `prelude` names need no import. search_stdlib gives signatures.\n")
 	for _, module := range checker.StandardLibrary() {
 		fmt.Fprintf(&b, "\n## %s\n", module.Path)
 		names := make([]string, 0, len(module.Declarations))

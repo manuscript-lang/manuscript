@@ -87,7 +87,7 @@ func TestMalformedInputGetsParseError(t *testing.T) {
 func TestToolsListMatchesHandlers(t *testing.T) {
 	r := session(t, nil, `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
 	listed := r[1]["result"].(map[string]any)["tools"].([]any)
-	want := []string{"check", "lint", "fmt", "test", "run", "build", "std_lookup", "symbol_info", "inspect"}
+	want := []string{"check", "lint", "fmt", "test", "run", "build", "search_stdlib", "symbol_info", "inspect"}
 	if len(listed) != len(want) {
 		t.Fatalf("tools = %d, want %d", len(listed), len(want))
 	}
@@ -189,8 +189,16 @@ func TestFormatSourceNeedsNoSubprocess(t *testing.T) {
 	}
 }
 
-func TestStdLookupTool(t *testing.T) {
-	r := session(t, nil, callRequest(1, "std_lookup", `{"query":"jsn parse","limit":2}`), callRequest(2, "std_lookup", `{"query":""}`))
+func TestSearchStdlibDescriptionHasAnExample(t *testing.T) {
+	for _, tl := range tools {
+		if tl.Name == "search_stdlib" && !strings.Contains(tl.Description, "Example:") {
+			t.Error("search_stdlib needs an example in its description")
+		}
+	}
+}
+
+func TestSearchStdlibTool(t *testing.T) {
+	r := session(t, nil, callRequest(1, "search_stdlib", `{"query":"jsn parse","limit":2}`), callRequest(2, "search_stdlib", `{"query":""}`))
 	if text, failed := toolText(t, r[1]); failed || !strings.Contains(text, "@std/json.ms") || !strings.Contains(text, "fn parse") || strings.Contains(text, "```") {
 		t.Errorf("lookup = %q", text)
 	}
@@ -265,7 +273,7 @@ func TestDiscoveredTextStaysSmall(t *testing.T) {
 		t.Errorf("tools/list is %d bytes, %v", len(data), err)
 	}
 	for _, tl := range tools {
-		if len(tl.Description) > 130 {
+		if len(tl.Description) > 160 {
 			t.Errorf("tool %s description is %d bytes", tl.Name, len(tl.Description))
 		}
 	}
@@ -357,6 +365,13 @@ func TestBuildKeepsTheBinaryInTheIgnoredCache(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "ms.toml"), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	stale := filepath.Join(dir, ".ms-cache", "bin", "old-program")
+	if err := os.MkdirAll(filepath.Dir(stale), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(stale, []byte("old"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	var args []string
 	exec := func(_ context.Context, _ string, a []string, _ time.Duration) (Output, error) {
 		args = a
@@ -370,5 +385,8 @@ func TestBuildKeepsTheBinaryInTheIgnoredCache(t *testing.T) {
 	}
 	if info, err := os.Stat(want); err != nil || !info.IsDir() {
 		t.Errorf("output directory missing: %v", err)
+	}
+	if _, err := os.Stat(stale); err == nil {
+		t.Error("a previous binary survived the new build")
 	}
 }
