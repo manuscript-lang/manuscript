@@ -638,6 +638,20 @@ func (l *List) copySliceChecked(ctx *Execution, start, end int) *List {
 	return out
 }
 
+// store writes slot i of a list sized by allocate, boxing the whole list if the
+// value does not fit its typed storage.
+func (l *List) store(i int, v Value) {
+	if !l.accepts(v) {
+		boxed := make([]Value, l.Len())
+		for j := range boxed {
+			boxed[j] = l.Get(j)
+		}
+		l.kind, l.ints, l.floats, l.bools, l.strings = listBoxed, nil, nil, nil, nil
+		l.Items = boxed
+	}
+	l.Set(i, v)
+}
+
 func (l *List) allocate(n int) {
 	switch l.kind {
 	case listInt:
