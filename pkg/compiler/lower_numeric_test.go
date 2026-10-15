@@ -128,7 +128,8 @@ fn guarded(n: Int) -> Result[Bool, String]:
 
 func TestStaticSpecializationIsHoisted(t *testing.T) {
 	result := compiler.CompileSource("hoist.ms", `fn ident[T](x: T) -> T:
-    return x
+    let items = [x]
+    return items.at(index: 0).unwrap()
 fn twice[T](x: T) -> T:
     return ident(x: ident(x: x))
 fn use() -> Int:
@@ -142,6 +143,35 @@ fn use() -> Int:
 	}
 	if strings.Count(result.Source, "rt.Specialize(") != 4 {
 		t.Fatalf("static Int sites share a Lazy; type-variable sites stay dynamic:\n%s", result.Source)
+	}
+}
+
+func TestParametricGenericFunctionsAreInstantiatedPerType(t *testing.T) {
+	result := compiler.CompileSource("instance.ms", `fn ident[T](x: T) -> T:
+    return x
+fn pick[T](first: Bool, left: T, right: T) -> T:
+    var chosen = left
+    if not first:
+        chosen = right
+    return chosen
+fn use() -> String:
+    let number = ident(x: 1)
+    let ratio = pick(first: false, left: 1.5, right: 2.5)
+    let text = ident(x: "go")
+    if number == 1 and ratio == 2.5:
+        return text
+    return ""
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	for _, want := range []string{"directResult int64)", "directResult float64)", "directResult string)"} {
+		if strings.Count(result.Source, "_i") == 0 || !strings.Contains(result.Source, want) {
+			t.Fatalf("missing typed instance %q:\n%s", want, result.Source)
+		}
+	}
+	if strings.Contains(result.Source, "rt.Specialize(") {
+		t.Fatalf("instantiated calls must not build dynamic specializations:\n%s", result.Source)
 	}
 }
 

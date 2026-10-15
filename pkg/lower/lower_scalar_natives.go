@@ -65,14 +65,14 @@ var scalarTypeNames = map[string]string{"string": "String", "float64": "Float", 
 // function or String member with every argument supplied in declaration order,
 // and the argument expressions in call order (the receiver first).
 func (g *generator) scalarNativeCall(e *syntax.Expression) (scalarNative, []*syntax.Expression, bool) {
-	info := g.program.Info(e)
+	info := g.info(e)
 	if info == nil || info.Constructor != nil || e.Left == nil {
 		return scalarNative{}, nil, false
 	}
 	var native string
 	var operands []*syntax.Expression
 	var params []checker.Param
-	callee := g.program.Info(e.Left)
+	callee := g.info(e.Left)
 	if callee == nil || callee.Type == nil {
 		return scalarNative{}, nil, false
 	}
@@ -83,7 +83,7 @@ func (g *generator) scalarNativeCall(e *syntax.Expression) (scalarNative, []*syn
 	case e.Left.Kind == syntax.KindMember && callee.Method != nil && !callee.Method.Accessor && callee.Method.Contract == nil:
 		native = callee.Method.Native
 		entry, ok := scalarNatives[native]
-		receiver := g.program.Info(e.Left.Left)
+		receiver := g.info(e.Left.Left)
 		want := entry.receiver
 		if want == "" && len(entry.params) > 0 {
 			want = scalarTypeNames[entry.params[0]]

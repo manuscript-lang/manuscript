@@ -72,7 +72,7 @@ func (a *altShape) failed(tmp string) ast.Expr {
 // anything else is unboxed.
 func (g *generator) typedReturn(e *syntax.Expression) ast.Expr {
 	shape := g.resultShape
-	info := g.program.Info(e)
+	info := g.info(e)
 	if info.ErrorSource == nil && !info.Folded && checker.TypeKey(info.Type) == shape.key {
 		if value, direct := g.typedDirectCall(e); value != nil && direct.shape != nil && direct.shape.key == shape.key {
 			return value

@@ -39,7 +39,7 @@ func (g *generator) listCallbackCall(e *syntax.Expression, arguments []syntax.Ar
 	if !g.directOn || member.Kind != syntax.KindMember {
 		return nil
 	}
-	callee := g.program.Info(member)
+	callee := g.info(member)
 	if callee == nil || callee.Method == nil || callee.Method.Contract != nil {
 		return nil
 	}
@@ -56,8 +56,8 @@ func (g *generator) listCallbackCall(e *syntax.Expression, arguments []syntax.Ar
 			return nil
 		}
 	}
-	receiverType := g.program.Info(member.Left).Type
-	info := g.program.Info(e)
+	receiverType := g.info(member.Left).Type
+	info := g.info(e)
 	if receiverType == nil || receiverType.ID != "@std/List" || len(receiverType.Args) != 1 || hasTypeVariable(receiverType) || info == nil || hasTypeVariable(info.Type) || info.ErrorSource != nil {
 		return nil
 	}
@@ -65,7 +65,7 @@ func (g *generator) listCallbackCall(e *syntax.Expression, arguments []syntax.Ar
 	if lambda.Kind != syntax.KindLambda {
 		return nil
 	}
-	lambdaInfo := g.program.Info(lambda)
+	lambdaInfo := g.info(lambda)
 	if lambdaInfo == nil || lambdaInfo.Type == nil || lambdaInfo.Type.Kind != "function" || hasTypeVariable(lambdaInfo.Type) || lambdaInfo.ErrorSource != nil {
 		return nil
 	}
@@ -82,7 +82,7 @@ func (g *generator) listCallbackCall(e *syntax.Expression, arguments []syntax.Ar
 		if p.Default != nil || lambdaInfo.Type.Defaults[params[i].Name] {
 			return nil
 		}
-		direct.params = append(direct.params, scalarBinding(bindings[i]))
+		direct.params = append(direct.params, g.scalarBinding(bindings[i]))
 		direct.defaulted = append(direct.defaulted, false)
 	}
 	elem := primitiveEqualityType(receiverType.Args[0])

@@ -63,7 +63,7 @@ func (h *triedScan) visit(e *syntax.Expression) bool {
 	if e == nil {
 		return true
 	}
-	info := h.g.program.Info(e)
+	info := h.g.info(e)
 	if info == nil || info.Folded {
 		return true
 	}

@@ -15,7 +15,7 @@ func (g *generator) nativeAccessorHelper(e *syntax.Expression, info *checker.Inf
 	if info.Method == nil || !info.Method.Accessor || info.Method.Native == "" || info.Method.Native == "contract" {
 		return ""
 	}
-	receiver := g.program.Info(e.Left).Type
+	receiver := g.info(e.Left).Type
 	if receiver == nil {
 		return ""
 	}
@@ -59,7 +59,7 @@ func (g *generator) directAccessorTarget(e *syntax.Expression, info *checker.Inf
 	if direct == nil {
 		return nil
 	}
-	receiver := g.program.Info(e.Left).Type
+	receiver := g.info(e.Left).Type
 	if receiver == nil || (receiver.Kind != syntax.KindRecord && receiver.Kind != "alternative") || len(receiver.Args) != 0 || hasTypeVariable(receiver) || receiver.ID != info.Method.Receiver.ID {
 		return nil
 	}
@@ -94,7 +94,7 @@ func (g *generator) accessorValue(e *syntax.Expression, info *checker.Info) ast.
 		}
 		return value
 	}
-	return orderedCall(runtimeName("ReadAccessor"), ident("ctx"), g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Info(e.Left).Type))
+	return orderedCall(runtimeName("ReadAccessor"), ident("ctx"), g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.info(e.Left).Type))
 }
 
 // alternativePresence reads only the representation's tag. In particular it
@@ -118,7 +118,7 @@ func (g *generator) alternativePresence(e *syntax.Expression) ast.Expr {
 	}
 	value := &ast.TypeAssertExpr{X: g.expression(e), Type: runtimeName("Alternative")}
 	tag := "error"
-	if g.program.Info(e).Type.ID == "@std/Optional" {
+	if g.info(e).Type.ID == "@std/Optional" {
 		tag = "some"
 	}
 	return &ast.BinaryExpr{X: selector(value, "Tag"), Op: token.EQL, Y: textLiteral(tag)}

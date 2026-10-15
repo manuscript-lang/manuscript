@@ -28,8 +28,8 @@ func primitiveEqualityType(t *checker.Type) string {
 }
 
 func (g *generator) primitiveEquality(e *syntax.Expression) ast.Expr {
-	left := g.program.Info(e.Left).Type
-	right := g.program.Info(e.Right).Type
+	left := g.info(e.Left).Type
+	right := g.info(e.Right).Type
 	typ := primitiveEqualityType(left)
 	if typ == "" || left.ID != right.ID || primitiveEqualityType(right) != typ {
 		return nil
@@ -65,9 +65,9 @@ func isLiteral(e *syntax.Expression) bool {
 func (g *generator) effectFree(e *syntax.Expression) bool {
 	switch e.Kind {
 	case syntax.KindNumber, syntax.KindBool, syntax.KindName:
-		return g.program.Info(e).Method == nil
+		return g.info(e).Method == nil
 	case syntax.KindBinary:
-		info := g.program.Info(e)
+		info := g.info(e)
 		return info.ErrorSource == nil && g.nativeType(e) != "" && g.effectFree(e.Left) && g.effectFree(e.Right)
 	}
 	return false

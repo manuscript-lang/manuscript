@@ -15,7 +15,7 @@ import (
 // argument is already in declaration order, Invoke adds only redundant label
 // preparation and a cancellation check. Keep other callable paths unchanged.
 func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
-	info := g.program.Info(e)
+	info := g.info(e)
 	symbol := info.Symbol
 	if symbol == nil || symbol.Native != "" || symbol.Decl == nil || symbol.Decl.Kind != syntax.KindFn {
 		return nil
@@ -55,14 +55,14 @@ func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argum
 // and Argument slice that Bind and Invoke build for every call. Arguments must
 // already be in declaration order so the labels carry no information.
 func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
-	callee := g.program.Info(e.Left)
+	callee := g.info(e.Left)
 	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Contract == nil || (callee.Method.Native != "" && callee.Method.Native != "contract") {
 		return nil
 	}
 	if value := g.standardContractCall(e, callee, args); value != nil {
 		return value
 	}
-	receiverType := g.program.Info(e.Left.Left).Type
+	receiverType := g.info(e.Left.Left).Type
 	viaInterface := receiverType.Kind == "contract"
 	if callee.Method.Native == "contract" && !viaInterface {
 		return nil
@@ -103,7 +103,7 @@ func (g *generator) standardContractCall(e *syntax.Expression, callee *checker.I
 	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Native != "contract" || callee.Method.Contract == nil {
 		return nil
 	}
-	receiverType := g.program.Info(e.Left.Left).Type
+	receiverType := g.info(e.Left.Left).Type
 	if receiverType.Kind != "contract" || !strings.HasPrefix(receiverType.ID, "@std/") || len(receiverType.Args) != 0 || hasTypeVariable(receiverType) {
 		return nil
 	}

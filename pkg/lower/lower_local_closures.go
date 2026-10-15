@@ -25,7 +25,7 @@ func (g *generator) localClosure(s *syntax.Statement) []ast.Stmt {
 		return nil
 	}
 	e := s.Value
-	info := g.program.Info(e)
+	info := g.info(e)
 	if info == nil || info.Type == nil || info.Type.Kind != "function" || hasTypeVariable(info.Type) || info.ErrorSource != nil {
 		return nil
 	}
@@ -38,7 +38,7 @@ func (g *generator) localClosure(s *syntax.Statement) []ast.Stmt {
 		if p.Default != nil || info.Type.Defaults[info.Type.Params[i].Name] {
 			return nil
 		}
-		direct.params = append(direct.params, scalarBinding(bindings[i]))
+		direct.params = append(direct.params, g.scalarBinding(bindings[i]))
 		direct.defaulted = append(direct.defaulted, false)
 	}
 	for _, site := range u.callSites {
@@ -93,8 +93,8 @@ func (g *generator) directLambda(e *syntax.Expression, info *checker.Info, direc
 // closureCallMatches reports whether a call supplies every argument in
 // declaration order with the types the typed closure takes.
 func (g *generator) closureCallMatches(e *syntax.Expression, direct *directFunction) bool {
-	info := g.program.Info(e)
-	callee := g.program.Info(e.Left)
+	info := g.info(e)
+	callee := g.info(e.Left)
 	if info == nil || callee == nil || callee.Type == nil || info.Constructor != nil || info.ErrorSource != nil || len(info.Arguments) != len(callee.Type.Params) || len(info.Arguments) != len(direct.params) {
 		return false
 	}
@@ -102,7 +102,7 @@ func (g *generator) closureCallMatches(e *syntax.Expression, direct *directFunct
 		if arg.Name != callee.Type.Params[i].Name {
 			return false
 		}
-		if typ := direct.params[i]; typ != "" && primitiveEqualityType(g.program.Info(arg.Value).Type) != typ {
+		if typ := direct.params[i]; typ != "" && primitiveEqualityType(g.info(arg.Value).Type) != typ {
 			return false
 		}
 	}
@@ -114,7 +114,7 @@ func (g *generator) localClosureTarget(e *syntax.Expression, info *checker.Info)
 	if len(g.localClosures) == 0 || e.Left == nil || e.Left.Kind != syntax.KindName {
 		return nil
 	}
-	callee := g.program.Info(e.Left)
+	callee := g.info(e.Left)
 	if callee == nil || callee.Binding == nil {
 		return nil
 	}

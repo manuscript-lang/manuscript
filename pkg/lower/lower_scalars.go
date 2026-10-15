@@ -17,15 +17,15 @@ import (
 // primitiveKinds names the runtime entry points of each Go scalar type.
 var primitiveKinds = map[string]string{"int64": "Int", "float64": "Float", "bool": "Bool", "string": "String"}
 
-func scalarBinding(b *checker.Binding) string {
+func (g *generator) scalarBinding(b *checker.Binding) string {
 	if b == nil {
 		return ""
 	}
-	return primitiveEqualityType(b.Type)
+	return primitiveEqualityType(g.sub(b.Type))
 }
 
 func (g *generator) declareTyped(b *checker.Binding) string {
-	typ := scalarBinding(b)
+	typ := g.scalarBinding(b)
 	if typ != "" {
 		g.typed[b] = typ
 	}
@@ -38,7 +38,7 @@ func (g *generator) typedLocal(e *syntax.Expression) string {
 	if e.Kind != syntax.KindName {
 		return ""
 	}
-	info := g.program.Info(e)
+	info := g.info(e)
 	if info.Method != nil || info.Binding == nil || g.captures[info.Binding] != "" {
 		return ""
 	}
@@ -54,7 +54,7 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 	if g.constantBool(e) {
 		return "bool"
 	}
-	info := g.program.Info(e)
+	info := g.info(e)
 	if info.ErrorSource != nil {
 		return ""
 	}
@@ -119,8 +119,8 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 }
 
 func (g *generator) equalityIsPrimitive(e *syntax.Expression) bool {
-	left := g.program.Info(e.Left).Type
-	right := g.program.Info(e.Right).Type
+	left := g.info(e.Left).Type
+	right := g.info(e.Right).Type
 	typ := primitiveEqualityType(left)
 	return typ != "" && left.ID == right.ID && primitiveEqualityType(right) == typ
 }

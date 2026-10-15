@@ -23,7 +23,7 @@ func (g *generator) arguments(args []syntax.Argument) ast.Expr {
 }
 func (g *generator) argumentValue(a syntax.Argument) ast.Expr {
 	value := g.expression(a.Value)
-	if target := g.program.Info(a.Value).OptionalArgument; target != nil {
+	if target := g.info(a.Value).OptionalArgument; target != nil {
 		value = runtimeCall("NewAlternative", g.key(target), textLiteral("some"), stringSlice([]string{"value"}), sliceLiteral(runtimeName("Argument"), composite(nil, keyed("Name", textLiteral("value")), keyed("Value", value))))
 	}
 	return value
@@ -32,7 +32,7 @@ func (g *generator) expression(e *syntax.Expression) ast.Expr {
 	if t, ok := g.tried[e]; ok {
 		return t.value
 	}
-	info := g.program.Info(e)
+	info := g.info(e)
 	if info != nil && info.Folded {
 		return ident(strconv.FormatBool(info.Constant))
 	}
@@ -198,7 +198,7 @@ func (g *generator) memberValue(e *syntax.Expression, info *checker.Info) ast.Ex
 		return g.methodDefaults(info.Method, g.nativeReceiverMember(e, info))
 	}
 	if info.Method != nil {
-		return g.methodDefaults(info.Method, runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Info(e.Left).Type)))
+		return g.methodDefaults(info.Method, runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.info(e.Left).Type)))
 	}
 	if info.Native != "" {
 		return runtimeCall("NativeMember", g.expression(e.Left), textLiteral(e.Text))
@@ -217,7 +217,7 @@ func (g *generator) callValue(e *syntax.Expression, info *checker.Info) ast.Expr
 		// Lowering a discarded receiver tree would strand source markers
 		// and other generator state from its nested callable/match bodies.
 		receiver := e.Args[0].Value
-		return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.program.Info(receiver).Type))
+		return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.info(receiver).Type))
 	}
 	arguments := info.Arguments
 	if value := g.scalarNativeValue(e); value != nil {
@@ -287,7 +287,7 @@ func (g *generator) functionCall(e *syntax.Expression, info *checker.Info, argum
 	if info.Symbol != nil {
 		if info.Symbol.Native != "" {
 			standard := runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type))
-			callable = g.nativeDefaults(info.Symbol.Decl, g.program.Info(e.Left).Type, standard, arguments)
+			callable = g.nativeDefaults(info.Symbol.Decl, g.info(e.Left).Type, standard, arguments)
 			if callable == ast.Expr(standard) && !hasTypeVariable(info.Type) {
 				// A standard function with no default expressions is stateless:
 				// resolve it once instead of rebuilding its Function per call.
@@ -373,7 +373,7 @@ func (g *generator) binaryValue(e *syntax.Expression) ast.Expr {
 			return value
 		}
 		operands := g.siblings([]*syntax.Expression{e.Left, e.Right})
-		return orderedCall(runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), operands[0], operands[1], g.typeScope(g.program.Info(e.Left).Type))
+		return orderedCall(runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), operands[0], operands[1], g.typeScope(g.info(e.Left).Type))
 	}
 	if value := g.numericBinary(e); value != nil {
 		return value

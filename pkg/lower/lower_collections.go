@@ -9,7 +9,7 @@ import (
 )
 
 func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checker.Info) ast.Expr {
-	args := []ast.Expr{g.expression(member.Left), textLiteral(member.Text), g.key(info.Type.Result), g.typeScope(g.program.Info(member.Left).Type)}
+	args := []ast.Expr{g.expression(member.Left), textLiteral(member.Text), g.key(info.Type.Result), g.typeScope(g.info(member.Left).Type)}
 	if info.Method.Native == "collections/set_map" || info.Method.Native == "collections/map_transform_keys" {
 		// Output deduplication needs the mapped key/element's lexical evidence,
 		// including when a generic receiver method is explicitly specialized.
@@ -23,7 +23,7 @@ func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checke
 // constructing a bound Function, resolving labels, or changing Optional storage.
 // References to bound methods still use ordinary callable dispatch.
 func (g *generator) directCollectionCall(e *syntax.Expression, arguments []syntax.Argument) ast.Expr {
-	callee := g.program.Info(e.Left)
+	callee := g.info(e.Left)
 	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Contract != nil {
 		return nil
 	}
@@ -31,33 +31,33 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 	case "collections/at":
 		if len(arguments) == 1 {
 			receiver, index := g.listAtOperands(e, arguments)
-			return orderedCall(runtimeName("ListAt"), ident("ctx"), receiver, index, g.key(g.program.Info(e).Type))
+			return orderedCall(runtimeName("ListAt"), ident("ctx"), receiver, index, g.key(g.info(e).Type))
 		}
 	case "append":
-		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
+		if len(arguments) == 1 && g.info(e.Left.Left).Type.ID == "@std/List" {
 			receiver := sequence(g.expression(e.Left.Left))
-			if typ := primitiveEqualityType(g.program.Info(e.Left.Left).Type.Args[0]); typ != "" {
+			if typ := primitiveEqualityType(g.info(e.Left.Left).Type.Args[0]); typ != "" {
 				return orderedCall(runtimeName("ListAppend"+primitiveKinds[typ]), ident("ctx"), receiver, g.scalar(arguments[0].Value, typ))
 			}
 			return orderedCall(runtimeName("ListAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}
-		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/StringBuilder" {
+		if len(arguments) == 1 && g.info(e.Left.Left).Type.ID == "@std/StringBuilder" {
 			receiver := sequence(g.expression(e.Left.Left))
 			return orderedCall(runtimeName("StringBuilderAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}
 	case "freeze":
-		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/StringBuilder" {
+		if len(arguments) == 0 && g.info(e.Left.Left).Type.ID == "@std/StringBuilder" {
 			return orderedCall(runtimeName("StringBuilderFreeze"), ident("ctx"), g.expression(e.Left.Left))
 		}
 	case "collections/contains", "contains", "get", "collections/set_add", "collections/set_remove", "collections/map_add", "collections/map_remove":
 		return g.directKeyedCall(e, callee.Method.Native, arguments)
 	case "string/at":
-		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "String" {
+		if len(arguments) == 1 && g.info(e.Left.Left).Type.ID == "String" {
 			receiver := sequence(g.expression(e.Left.Left))
-			return orderedCall(runtimeName("StringAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Info(e).Type))
+			return orderedCall(runtimeName("StringAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.info(e).Type))
 		}
 	case "optional/unwrap_or":
-		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/Optional" {
+		if len(arguments) == 1 && g.info(e.Left.Left).Type.ID == "@std/Optional" {
 			receiver := sequence(g.expression(e.Left.Left))
 			return orderedCall(runtimeName("OptionalUnwrapOr"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}
@@ -65,7 +65,7 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 		if len(arguments) == 0 && g.listAtMatch(e.Left.Left) {
 			// list.at(i).unwrap() needs no Optional: read the element and fault
 			// at the unwrap site when it is absent.
-			receiver, index := g.listAtOperands(e.Left.Left, g.program.Info(e.Left.Left).Arguments)
+			receiver, index := g.listAtOperands(e.Left.Left, g.info(e.Left.Left).Arguments)
 			return orderedCall(runtimeName("ListAtUnwrap"), ident("ctx"), receiver, index)
 		}
 		if len(arguments) == 0 {
@@ -91,7 +91,7 @@ var nativeKinds = map[string]struct{ kind, module string }{
 // equality scope are static, so a hoisted NativeCall replaces the bound
 // Function and Argument slice that ordinary dispatch builds per call.
 func (g *generator) boundNativeCall(e *syntax.Expression, callee *checker.Info, arguments []syntax.Argument) ast.Expr {
-	receiverType := g.program.Info(e.Left.Left).Type
+	receiverType := g.info(e.Left.Left).Type
 	native, ok := nativeKinds[receiverType.ID]
 	name := e.Left.Text
 	joinsList := receiverType.ID == "@std/List" && callee.Method.Native == "string/join"
@@ -139,7 +139,7 @@ func (g *generator) boundNativeCall(e *syntax.Expression, callee *checker.Info, 
 // and Set receivers. The element or key scope travels as data, replacing the
 // per-call Execution copy of a bound native member.
 func (g *generator) directKeyedCall(e *syntax.Expression, native string, arguments []syntax.Argument) ast.Expr {
-	receiverType := g.program.Info(e.Left.Left).Type
+	receiverType := g.info(e.Left.Left).Type
 	if len(receiverType.Args) == 0 {
 		return nil
 	}
@@ -184,7 +184,7 @@ func (g *generator) directKeyedCall(e *syntax.Expression, native string, argumen
 	}
 	args = append(args, g.typeScope(receiverType.Args[0]))
 	if name == "MapGet" {
-		args = append(args, g.key(g.program.Info(e).Type))
+		args = append(args, g.key(g.info(e).Type))
 	}
 	return orderedCall(runtimeName(name), args...)
 }
@@ -203,14 +203,14 @@ func (g *generator) listAtMatch(value *syntax.Expression) bool {
 	if value.Kind != syntax.KindCall {
 		return false
 	}
-	arguments := g.program.Info(value).Arguments
-	callee := g.program.Info(value.Left)
+	arguments := g.info(value).Arguments
+	callee := g.info(value.Left)
 	return value.Left.Kind == syntax.KindMember && callee != nil && callee.Method != nil && callee.Method.Contract == nil && callee.Method.Native == "collections/at" && len(arguments) == 1
 }
 
 // listAtParts lowers a List.at call to the element and its presence.
 func (g *generator) listAtParts(value *syntax.Expression) ast.Expr {
-	receiver, index := g.listAtOperands(value, g.program.Info(value).Arguments)
+	receiver, index := g.listAtOperands(value, g.info(value).Arguments)
 	return orderedCall(runtimeName("ListAtParts"), ident("ctx"), receiver, index)
 }
 
@@ -220,23 +220,23 @@ func (g *generator) mapGetMatch(value *syntax.Expression) bool {
 	if value.Kind != syntax.KindCall || value.Left.Kind != syntax.KindMember {
 		return false
 	}
-	callee := g.program.Info(value.Left)
-	if callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Contract != nil || callee.Method.Native != "get" || len(g.program.Info(value).Arguments) != 1 {
+	callee := g.info(value.Left)
+	if callee == nil || callee.Method == nil || callee.Method.Accessor || callee.Method.Contract != nil || callee.Method.Native != "get" || len(g.info(value).Arguments) != 1 {
 		return false
 	}
-	receiver := g.program.Info(value.Left.Left)
+	receiver := g.info(value.Left.Left)
 	return receiver != nil && receiver.Type != nil && receiver.Type.ID == "@std/Map" && len(receiver.Type.Args) > 0
 }
 
 // mapGetParts lowers a Map.get call to the value and its presence.
 func (g *generator) mapGetParts(value *syntax.Expression) ast.Expr {
-	argument := g.program.Info(value).Arguments[0]
+	argument := g.info(value).Arguments[0]
 	receiver := sequence(g.expression(value.Left.Left))
-	if typ := primitiveEqualityType(g.program.Info(value.Left.Left).Type.Args[0]); typ == "int64" || typ == "string" {
+	if typ := primitiveEqualityType(g.info(value.Left.Left).Type.Args[0]); typ == "int64" || typ == "string" {
 		return orderedCall(runtimeName("MapGetParts"+primitiveKinds[typ]), ident("ctx"), receiver, sequence(g.scalar(argument.Value, typ)))
 	}
 	key := sequence(g.argumentValue(argument))
-	return orderedCall(runtimeName("MapGetParts"), ident("ctx"), receiver, key, g.typeScope(g.program.Info(value.Left.Left).Type.Args[0]))
+	return orderedCall(runtimeName("MapGetParts"), ident("ctx"), receiver, key, g.typeScope(g.info(value.Left.Left).Type.Args[0]))
 }
 
 // optionalParts reports whether value is a direct lookup a match consumes as
