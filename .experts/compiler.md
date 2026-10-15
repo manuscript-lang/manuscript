@@ -77,7 +77,7 @@ See [the explicit allocation ledger](../scripts/bench-lists/typed-storage.md#rev
 mutable handle across typed and generic aliases rather than keeping a boxed mirror.
 
 Apply when: optimizing Go lowering, representations, calls, or collection access.
-Evidence: [lowering direction and what it already does](../documentation/contributing/compiler/lowering/_index.md#structured-go-generation),
+Evidence: [lowering direction and what it already does](../documentation/contributing/compiler/lowering/_index.md#typed-go),
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),
 and [generated/handwritten comparison](../scripts/bench-lowering/harness.go.txt).
 Verify: run `go run ./scripts/bench-lowering` with the pinned SDK, inspect the
@@ -203,7 +203,7 @@ Decision: the user rejected per-call bookkeeping (`Enter`/`defer Leave` cost abo
 Verified: a function's return-type position identifies its declaration, not a failing expression, so the located statement carries the directive. Keep statement line directives on the operation, not on an inserted bookkeeping line, and keep operands lowered before the operation that can fault so a successful nested call does not take over the enclosing site.
 
 Apply when: adding or specializing lowered runtime operations, source fault traces, native call fast paths, or anything that tempts per-call recovery or position tracking.
-Evidence: located lowering, [frame capture](../pkg/runtime/frames.go), recursive-cycle admission, [lowering page](../documentation/contributing/compiler/lowering/_index.md#structured-go-generation), and [native location regressions](../tests/e2e/fault_locations_test.go).
+Evidence: located lowering, [frame capture](../pkg/runtime/frames.go), recursive-cycle admission, [lowering page](../documentation/contributing/compiler/lowering/_index.md#typed-go), and [native location regressions](../tests/e2e/fault_locations_test.go).
 Verify: run `TestFaultSourceLocations`, including multiline operands, argument faults, default arguments, bound methods, and destructuring; preserve frame order, line numbers, and names. Do not reintroduce columns or `defer`-based recording without a new decision.
 
 Verified: making default-bearing functions direct also makes their default
