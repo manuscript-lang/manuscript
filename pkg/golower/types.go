@@ -136,10 +136,25 @@ func (g *gen) stdType(t *checker.Type) ast.Expr {
 // not part of the Go type; every function takes the execution first.
 func (g *gen) funcType(t *checker.Type) *ast.FuncType {
 	params := []*ast.Field{field("ctx", pointerTo(rtName("Execution")))}
-	for i, p := range t.Params {
-		params = append(params, field("a"+itoa(i), g.goType(p.Type)))
+	for i := range t.Params {
+		params = append(params, field("a"+itoa(i), g.paramType(t, i)))
 	}
 	return functionType(params, g.goType(t.Result))
+}
+
+// defaulted reports whether parameter i of the callable type sig may be omitted.
+func defaulted(sig *checker.Type, i int) bool {
+	return sig.Defaults != nil && sig.Defaults[sig.Params[i].Name]
+}
+
+// paramType is the Go type of parameter i of a callable: defaulted parameters
+// arrive as rt.Arg so the callee can tell an omitted argument from a supplied one.
+func (g *gen) paramType(sig *checker.Type, i int) ast.Expr {
+	t := g.goType(sig.Params[i].Type)
+	if defaulted(sig, i) {
+		return generic(rtName("Arg"), t)
+	}
+	return t
 }
 
 func itoa(i int) string { return intLiteral(i).(*ast.BasicLit).Value }

@@ -16,6 +16,8 @@ type Execution struct {
 	lifetime *workLifetime // services opened by this operation (lifetime.go)
 	owners   []*Scheduler  // schedulers whose operation or reporter this is
 	groups   []*TaskGroup  // task groups this operation runs inside
+
+	comparing map[[2]any]struct{} // pairs under structural comparison (equality.go)
 }
 
 // State is the per-program runtime state an Execution reaches: work

@@ -24,9 +24,6 @@ func goComparable(t *checker.Type) bool {
 // equal compares a and b, both values of type t.
 func (g *gen) equal(t *checker.Type, a, b ast.Expr, at *syntax.Expression) ast.Expr {
 	t = g.sub(t)
-	if t.ID == "Unit" {
-		return ident("true")
-	}
 	if goComparable(t) {
 		return binary(a, token.EQL, b)
 	}
@@ -74,6 +71,72 @@ func (g *gen) helperFunc(key, base string, build func(name string) ast.Decl) ast
 }
 
 func (g *gen) equalBody(t *checker.Type) []ast.Stmt {
+	body := g.equalBodyOf(t)
+	// Structural equality of data that can reach itself assumes a pair equal
+	// while it is being compared, so cyclic values terminate.
+	if g.explicit(t, "equals", "@std/Equal") == nil && g.reference(t) && g.mayCycle(t, map[string]bool{}, t) {
+		guard := []ast.Stmt{
+			&ast.IfStmt{Cond: not(rtCall("EnterEqual", ident("ctx"), ident("a"), ident("b"))), Body: block(returned(ident("true")))},
+			&ast.DeferStmt{Call: rtCall("LeaveEqual", ident("ctx"), ident("a"), ident("b"))},
+		}
+		if t.Kind == "record" {
+			// The identity shortcut comes before the guard.
+			return append(body[:1:1], append(guard, body[1:]...)...)
+		}
+		return append(guard, body...)
+	}
+	return body
+}
+
+// reference reports whether the Go representation of t is a pointer.
+func (g *gen) reference(t *checker.Type) bool {
+	return t.Kind == "record" || isStd(t, "List") || isStd(t, "Map") || isStd(t, "Set")
+}
+
+// mayCycle reports whether a value of type t can contain a reference back to a
+// value of type root: whether following fields and type arguments returns to it.
+func (g *gen) mayCycle(t *checker.Type, seen map[string]bool, root *checker.Type) bool {
+	t = g.sub(t)
+	for _, next := range g.components(t) {
+		next = g.sub(next)
+		if next.ID == root.ID && checker.TypeKey(next) == checker.TypeKey(root) {
+			return true
+		}
+		key := checker.TypeKey(next)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		if g.mayCycle(next, seen, root) {
+			return true
+		}
+	}
+	return false
+}
+
+// components are the types a value of t directly holds.
+func (g *gen) components(t *checker.Type) []*checker.Type {
+	var out []*checker.Type
+	switch {
+	case t.Kind == "record":
+		for _, f := range checker.Fields(t) {
+			out = append(out, f.Type)
+		}
+	case t.Kind == "alternative" && !isStdType(t):
+		for _, c := range checker.Cases(t) {
+			for _, f := range c.Fields {
+				out = append(out, f.Type)
+			}
+		}
+	case isStdType(t) && t.Kind != "native":
+		out = append(out, t.Args...)
+	case isStd(t, "List"), isStd(t, "Map"), isStd(t, "Set"):
+		out = append(out, t.Args...)
+	}
+	return out
+}
+
+func (g *gen) equalBodyOf(t *checker.Type) []ast.Stmt {
 	// An explicit implementation overrides structure.
 	for _, m := range g.program.ResolveMethods(g.module, t, "equals") {
 		if m.Contract != nil && m.Contract.ID == "@std/Equal" && m.Native == "" {

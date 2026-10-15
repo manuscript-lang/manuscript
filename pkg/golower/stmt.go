@@ -96,7 +96,12 @@ func (g *gen) returnStatement(s *syntax.Statement) []ast.Stmt {
 }
 
 func (g *gen) bind(s *syntax.Statement) []ast.Stmt {
-	value := g.expr(s.Value)
+	var value ast.Expr
+	if b := g.program.PatternBinding(s.Pattern); s.Pattern.Kind == syntax.KindName && b != nil {
+		value = g.valueAs(s.Value, b.Type)
+	} else {
+		value = g.expr(s.Value)
+	}
 	return g.pattern(s.Pattern, value, g.info(s.Value).Type)
 }
 

@@ -38,7 +38,45 @@ func (g *gen) valueAs(e *syntax.Expression, want *checker.Type) ast.Expr {
 		g.fn.pre = append(g.fn.pre, evaluated(value))
 		return g.zero(want)
 	}
-	return g.wrapOptional(e, value)
+	value = g.wrapOptional(e, value)
+	if want != nil && info != nil && info.Type != nil {
+		value = g.convertFunction(value, g.sub(info.Type), g.sub(want))
+	}
+	return value
+}
+
+// convertFunction adapts a function value to the Go type of the function type
+// it is used as when their defaulted parameters differ: a function that
+// accepts omitted arguments is passed where every argument is supplied.
+func (g *gen) convertFunction(value ast.Expr, from, want *checker.Type) ast.Expr {
+	if from.Kind != "function" || want.Kind != "function" || len(from.Params) != len(want.Params) {
+		return value
+	}
+	same := true
+	for i := range want.Params {
+		if defaulted(from, i) != defaulted(want, i) {
+			same = false
+		}
+	}
+	if same {
+		return value
+	}
+	params := []*ast.Field{field("ctx", pointerTo(rtName("Execution")))}
+	args := []ast.Expr{ident("ctx")}
+	for i := range want.Params {
+		name := "a" + itoa(i)
+		params = append(params, field(name, g.paramType(want, i)))
+		switch {
+		case defaulted(from, i) && !defaulted(want, i):
+			args = append(args, rtCall("Given", ident(name)))
+		case !defaulted(from, i) && defaulted(want, i):
+			args = append(args, selector(ident(name), "Val"))
+		default:
+			args = append(args, ident(name))
+		}
+	}
+	target := g.spill(value)
+	return closure(params, g.goType(want.Result), returned(call(target, args...)))
 }
 
 // wrapOptional wraps a supplied argument once as some(value) when the checker
@@ -157,7 +195,9 @@ func (g *gen) symbolValue(s *checker.Symbol, typeArgs []*checker.Type, info *che
 		return g.nativeFunctionValue(s, typeArgs, info)
 	}
 	f := g.function(s, typeArgs)
-	return ident(f.name)
+	// The Go function has the signature it was declared with; the use site may
+	// have a type with fewer defaults.
+	return g.convertFunction(ident(f.name), g.sub(f.typ), g.sub(info.Type))
 }
 
 // caseValue builds a sum-type case or a standard Optional/Result constructor.
@@ -450,9 +490,10 @@ func (g *gen) lambda(e *syntax.Expression, info *checker.Info) ast.Expr {
 	}
 	params := []*ast.Field{field("ctx", pointerTo(rtName("Execution")))}
 	var prologue []ast.Stmt
-	for _, b := range g.program.LambdaBindings(e) {
-		params = append(params, field(g.bindingName(b), g.goType(b.Type)))
-		prologue = append(prologue, g.keepUnused(b)...)
+	for i, b := range g.program.LambdaBindings(e) {
+		fld, fill := g.parameter(b, info.Type, i, e.Params)
+		params = append(params, fld)
+		prologue = append(prologue, fill...)
 	}
 	g.markUsed(e.Params, e.Body)
 	body := append(prologue, g.body(e.Body, result)...)

@@ -103,9 +103,9 @@ func (g *gen) lowerFunction(f *funcDecl) {
 		}
 	}
 	for i, b := range bindings {
-		params = append(params, field(g.bindingName(b), g.goType(b.Type)))
-		prologue = append(prologue, g.keepUnused(b)...)
-		_ = i
+		fld, fill := g.parameter(b, f.typ, i, d.Params)
+		params = append(params, fld)
+		prologue = append(prologue, fill...)
 	}
 	body := g.body(d.Body, g.fn.result)
 	if g.recursive[d] {
@@ -115,6 +115,39 @@ func (g *gen) lowerFunction(f *funcDecl) {
 	body = g.finishBody(body, g.fn.result)
 	body = g.cleanupPrologue(body)
 	f.out = &ast.FuncDecl{Name: ident(f.name), Type: functionType(params, g.goType(g.fn.result)), Body: block(body...)}
+}
+
+// parameter declares parameter i of a function or lambda. A defaulted
+// parameter arrives as rt.Arg; its prologue binds the supplied value or, when
+// the argument was omitted, evaluates the default here, in the callee's scope,
+// so a default may read earlier parameters and `try` returns from the callee.
+func (g *gen) parameter(b *checker.Binding, sig *checker.Type, i int, decls []syntax.Parameter) (*ast.Field, []ast.Stmt) {
+	name := g.bindingName(b)
+	if sig == nil || i >= len(sig.Params) || !defaulted(sig, i) {
+		return field(name, g.goType(b.Type)), g.keepUnused(b)
+	}
+	arg := "arg_" + name
+	typ := g.goType(b.Type)
+	var absent []ast.Stmt
+	if i < len(decls) && decls[i].Default != nil {
+		saved := g.fn.pre
+		g.fn.pre = nil
+		value := g.valueAs(decls[i].Default, b.Type)
+		absent = append(g.fn.pre, assign(ident(name), token.ASSIGN, value))
+		g.fn.pre = saved
+	} else {
+		// An omittable parameter without a default expression is none.
+		absent = []ast.Stmt{assign(ident(name), token.ASSIGN, composite(typ))}
+	}
+	stmts := []ast.Stmt{
+		varDecl(name, typ, nil),
+		&ast.IfStmt{
+			Cond: selector(ident(arg), "Set"),
+			Body: block(assign(ident(name), token.ASSIGN, selector(ident(arg), "Val"))),
+			Else: block(absent...),
+		},
+	}
+	return field(arg, generic(rtName("Arg"), typ)), append(stmts, g.keepUnused(b)...)
 }
 
 // cleanupPrologue creates the function's cleanup stack when its body uses with.

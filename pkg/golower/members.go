@@ -78,10 +78,10 @@ func (g *gen) boundMethod(e *syntax.Expression, info *checker.Info) ast.Expr {
 	receiver := g.spill(g.expr(e.Left))
 	params := []*ast.Field{field("ctx", pointerTo(rtName("Execution")))}
 	var args []ast.Expr
-	for i, p := range t.Params {
+	for i := range t.Params {
 		name := "a" + itoa(i)
-		params = append(params, field(name, g.goType(p.Type)))
-		args = append(args, ident(name))
+		params = append(params, field(name, g.paramType(t, i)))
+		args = append(args, g.forwardArg(ident(name), t, i, m))
 	}
 	body := g.invokeMethod(m, receiverType, receiver, e.Text, args, info)
 	return closure(params, g.goType(t.Result), returned(body))

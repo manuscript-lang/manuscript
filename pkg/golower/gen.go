@@ -151,7 +151,6 @@ type gen struct {
 
 	locals     map[*checker.Binding]string // Go names of this unit's variables
 	localNames map[string]bool
-	aliases    map[*checker.Binding]*checker.Symbol
 	captured   map[*checker.Binding]string // snapshot names of captured variables
 	used       map[*checker.Binding]bool   // variables some expression reads
 

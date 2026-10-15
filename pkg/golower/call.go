@@ -34,6 +34,10 @@ type callee struct {
 	bindings []*checker.Binding
 	defaults map[string]bool
 	module   string
+	// siteDefaults means omitted arguments are evaluated by the caller, as
+	// for native operations and record fields. Otherwise the callee fills
+	// them in and receives rt.Arg for each defaulted parameter.
+	siteDefaults bool
 }
 
 // arguments lowers the supplied arguments in written order, fills omitted
@@ -75,7 +79,15 @@ func (g *gen) arguments(args []syntax.Argument, c callee) []ast.Expr {
 		}
 	}
 	for i, p := range c.params {
+		callerFills := c.siteDefaults || !c.defaults[p.Name]
 		if slots[i] != nil {
+			if !callerFills {
+				slots[i] = rtCall("Given", slots[i])
+			}
+			continue
+		}
+		if !callerFills {
+			slots[i] = composite(generic(rtName("Arg"), g.goType(p.Type)))
 			continue
 		}
 		slots[i] = g.defaultArgument(i, p, c, slots)
@@ -133,7 +145,7 @@ func (g *gen) defaultArgument(i int, p checker.Param, c callee, slots []ast.Expr
 }
 
 func (g *gen) calleeOf(s *checker.Symbol, t *checker.Type) callee {
-	c := callee{params: t.Params, defaults: t.Defaults, module: s.Module}
+	c := callee{params: t.Params, defaults: t.Defaults, module: s.Module, siteDefaults: s.Native != ""}
 	if d := s.Decl; d != nil {
 		c.decls = d.Params
 		c.bindings = g.program.ParameterBindings(d)
@@ -157,7 +169,7 @@ func (g *gen) symbolCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 func (g *gen) recordCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 	t := g.sub(info.Constructor)
 	signature := checker.ConstructorSignature(t)
-	c := callee{params: signature.Params, defaults: signature.Defaults}
+	c := callee{params: signature.Params, defaults: signature.Defaults, siteDefaults: true}
 	if t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Decl != nil {
 		d := t.Def.Symbol.Decl
 		c.decls, c.module = d.Fields, t.Def.Symbol.Module
@@ -232,15 +244,19 @@ func (g *gen) dynamicCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 	signature := calleeInfo.Type
 	target := g.expr(e.Left)
 	c := callee{params: signature.Params, defaults: signature.Defaults}
-	if alias := g.aliases[calleeInfo.Binding]; alias != nil && calleeInfo.Binding != nil {
-		c = g.calleeOf(alias, signature)
-	}
 	if !trivial(target) && effectsOf(target).calls {
 		name := g.temp()
 		g.fn.pre = append(g.fn.pre, define(name, target))
 		target = ident(name)
 	}
+	mark := len(g.fn.pre)
 	args := g.arguments(info.Arguments, c)
+	// An argument that runs code may reassign a mutable callee variable.
+	if id, ok := target.(*ast.Ident); ok && g.fn.mutables[id.Name] && len(g.fn.pre) > mark {
+		name := g.temp()
+		g.fn.pre = append(g.fn.pre[:mark:mark], append([]ast.Stmt{define(name, target)}, g.fn.pre[mark:]...)...)
+		target = ident(name)
+	}
 	return call(target, append([]ast.Expr{ident("ctx")}, args...)...)
 }
 
@@ -375,7 +391,7 @@ func (g *gen) methodCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 	receiverType := g.info(member.Left).Type
 	m := g.resolveMethod(info.Method, receiverType, member.Text)
 	signature := g.sub(calleeInfo.Type)
-	c := callee{params: signature.Params, defaults: signature.Defaults, module: g.module}
+	c := callee{params: signature.Params, defaults: signature.Defaults, module: g.module, siteDefaults: m.Native != ""}
 	if m.Decl != nil {
 		c.decls = m.Decl.Params
 		c.bindings = g.program.ParameterBindings(m.Decl)

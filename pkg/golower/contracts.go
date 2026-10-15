@@ -45,8 +45,8 @@ func (g *gen) operations(contract *checker.Type) []checker.Operation {
 // operationType is the Go method type of an operation.
 func (g *gen) operationType(t *checker.Type) *ast.FuncType {
 	params := []*ast.Field{field("ctx", pointerTo(rtName("Execution")))}
-	for i, p := range t.Params {
-		params = append(params, field("a"+itoa(i), g.goType(p.Type)))
+	for i := range t.Params {
+		params = append(params, field("a"+itoa(i), g.paramType(t, i)))
 	}
 	return functionType(params, g.goType(t.Result))
 }
@@ -66,7 +66,8 @@ func (g *gen) viewOf(value ast.Expr, from, contract *checker.Type) ast.Expr {
 		return value
 	}
 	view := g.view(from, contract)
-	return composite(ident(view), keyed("self", value))
+	// Converting to the contract type keeps inferred types abstract.
+	return call(g.contractType(contract), composite(ident(view), keyed("self", value)))
 }
 
 // view declares the struct that adapts from to contract.
@@ -106,10 +107,10 @@ func (g *gen) viewMethod(view string, from, contract *checker.Type, op checker.O
 	m := g.resolveContractMethod(from, contract, op.Name)
 	params := []*ast.Field{field("ctx", pointerTo(rtName("Execution")))}
 	var args []ast.Expr
-	for i, p := range op.Type.Params {
+	for i := range op.Type.Params {
 		name := "a" + itoa(i)
-		params = append(params, field(name, g.goType(p.Type)))
-		args = append(args, ident(name))
+		params = append(params, field(name, g.paramType(op.Type, i)))
+		args = append(args, g.forwardArg(ident(name), op.Type, i, m))
 	}
 	body := g.invokeMethod(m, from, selector(ident("v"), "self"), op.Name, args, &checker.Info{Type: m.Type})
 	if op.Accessor {
@@ -198,3 +199,18 @@ func (g *gen) try(e *syntax.Expression, info *checker.Info) ast.Expr {
 }
 
 var _ = token.ADD
+
+// forwardArg passes parameter i of a wrapper with signature from to the
+// method m it forwards to. Both take rt.Arg for a defaulted parameter, so the
+// callee still fills in an omitted argument; natives take the plain value.
+func (g *gen) forwardArg(arg ast.Expr, from *checker.Type, i int, m *checker.Method) ast.Expr {
+	fromDefault := defaulted(from, i)
+	toDefault := (m.Native == "" || m.Native == "contract") && m.Type != nil && i < len(m.Type.Params) && defaulted(m.Type, i)
+	switch {
+	case fromDefault == toDefault:
+		return arg
+	case toDefault:
+		return rtCall("Given", arg)
+	}
+	return selector(arg, "Val")
+}

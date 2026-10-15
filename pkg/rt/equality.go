@@ -50,3 +50,21 @@ func MapEqual[K comparable, V any](ctx *Execution, a, b *Map[K, V], eq Eq[V]) bo
 	}
 	return true
 }
+
+// EnterEqual records that a and b are being compared structurally and reports
+// whether the comparison should proceed. A pair already under comparison is
+// assumed equal, which makes equality of cyclic data terminate.
+func EnterEqual[T comparable](ctx *Execution, a, b T) bool {
+	key := [2]any{a, b}
+	if _, again := ctx.comparing[key]; again {
+		return false
+	}
+	if ctx.comparing == nil {
+		ctx.comparing = map[[2]any]struct{}{}
+	}
+	ctx.comparing[key] = struct{}{}
+	return true
+}
+
+// LeaveEqual ends the comparison EnterEqual began.
+func LeaveEqual[T comparable](ctx *Execution, a, b T) { delete(ctx.comparing, [2]any{a, b}) }
