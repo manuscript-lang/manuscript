@@ -149,9 +149,11 @@ type gen struct {
 	infoCache map[*syntax.Expression]*checker.Info
 	serial    int
 
-	aliases  map[*checker.Binding]*checker.Symbol
-	captured map[*checker.Binding]string // snapshot names of captured variables
-	used     map[*checker.Binding]bool   // variables some expression reads
+	locals     map[*checker.Binding]string // Go names of this unit's variables
+	localNames map[string]bool
+	aliases    map[*checker.Binding]*checker.Symbol
+	captured   map[*checker.Binding]string // snapshot names of captured variables
+	used       map[*checker.Binding]bool   // variables some expression reads
 
 	// stack holds the nodes being built, innermost last; items the unit
 	// touches become dependencies of the innermost.
