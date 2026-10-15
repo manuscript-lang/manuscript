@@ -43,15 +43,15 @@ func standardIndex() []entry {
 	return index
 }
 
-// firstBlock keeps the leading paragraph and at most 5 lines, so a native type
+// firstBlock keeps the leading paragraph and at most 3 lines, so a native type
 // with dozens of members cannot flood a result.
 func firstBlock(s string) string {
 	if before, _, found := strings.Cut(s, "\n\n"); found {
 		s = before
 	}
 	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
-	if len(lines) > 5 {
-		lines = append(lines[:5], "    ...")
+	if len(lines) > 3 {
+		lines = append(lines[:3], "    ...")
 	}
 	return strings.Join(lines, "\n")
 }
@@ -109,6 +109,7 @@ func significantWords(query string) []string {
 // Match is one ranked lookup result.
 type Match struct {
 	Module, Name, Kind, Signature, Doc string
+	Path                               string // the `ms search_std` path, such as json.parse
 	Score                              int
 }
 
@@ -147,7 +148,7 @@ func Search(query string, limit int) []Match {
 		}
 		// Shorter names read as more central, so break ties toward them.
 		total = total*10 + nameCoverage(tokens, e) - min(len(e.name), 9)
-		matches = append(matches, Match{e.module, e.name, e.kind, e.signature, firstSentence(e.doc), total})
+		matches = append(matches, Match{e.module, e.name, e.kind, e.signature, firstLine(e.doc, 120), stdPath(e.module, e.name), total})
 	}
 	sort.SliceStable(matches, func(i, j int) bool {
 		if matches[i].Score != matches[j].Score {
@@ -302,27 +303,27 @@ func abs(n int) int {
 	return n
 }
 
-func firstSentence(doc string) string {
-	doc = strings.Join(strings.Fields(doc), " ")
-	if i := strings.Index(doc, ". "); i >= 0 {
-		return doc[:i+1]
-	}
-	return doc
-}
-
-// FormatMatches renders matches as module, name, signature, and a one-line doc.
+// FormatMatches renders matches as an `ms search_std` path, a signature, and a one-line doc.
 func FormatMatches(query string, matches []Match) string {
 	if len(matches) == 0 {
-		return fmt.Sprintf("No standard-library match for %q. Try fewer or broader words.", query)
+		return fmt.Sprintf("No standard-library match for %q. Try fewer or broader words, or list modules with `ms search_std`.", query)
 	}
 	var b strings.Builder
 	for _, m := range matches {
-		fmt.Fprintf(&b, "%s %s\n%s\n", m.Module, m.Name, strings.TrimRight(m.Signature, "\n"))
+		fmt.Fprintf(&b, "%s  (%s)\n%s\n", m.Path, m.Module, indent(strings.TrimRight(m.Signature, "\n"), "  "))
 		if m.Doc != "" {
-			fmt.Fprintf(&b, "  %s\n", m.Doc)
+			fmt.Fprintf(&b, "  # %s\n", m.Doc)
 		}
 	}
-	return clipText(strings.TrimRight(b.String(), "\n"), 4000)
+	fmt.Fprintf(&b, "Details: ms search_std <path>, e.g. ms search_std %s", matches[0].Path)
+	return clipText(b.String(), searchBudget)
+}
+
+// searchBudget bounds search output to roughly 800 tokens.
+const searchBudget = 3000
+
+func indent(text, prefix string) string {
+	return prefix + strings.ReplaceAll(text, "\n", "\n"+prefix)
 }
 
 // clipText keeps the head and tail of long text, where errors and summaries usually sit.
