@@ -29,7 +29,7 @@ func bare(name string) string {
 	return name
 }
 
-// stdPath is the path that `ms std` accepts for a declaration or member.
+// stdPath is the path that `ms search_std` accepts for a declaration or member.
 func stdPath(modulePath, name string) string { return shortName(modulePath) + "." + bare(name) }
 
 // oneLine collapses a signature to a single line of at most limit runes.
@@ -94,7 +94,7 @@ func ModuleNames() []string {
 // Index lists each module with a few of its names.
 func Index() string {
 	var b strings.Builder
-	b.WriteString("Standard library modules (prelude needs no import).\n`ms std <module>` lists one, `ms std <module>.<Name>` shows a declaration, `ms std search <words>` searches.\n\n")
+	b.WriteString("Standard library modules (prelude needs no import).\n`ms search_std <module>` lists one, `ms search_std <module>.<Name>` shows a declaration, `ms search_std <words>` searches.\n\n")
 	for _, m := range modules() {
 		head := fmt.Sprintf("%-12s", shortName(m.Path))
 		line := head
@@ -115,7 +115,7 @@ func Index() string {
 	return b.String()
 }
 
-// Page renders `ms std <path>`: a module ("json"), a declaration ("json.parse"),
+// Page renders `ms search_std <path>`: a module ("json"), a declaration ("json.parse"),
 // or one member ("prelude.List.sorted"). A leading "@std/" and ".ms" are accepted.
 func Page(path string) (string, error) {
 	parts := splitPath(path)
@@ -134,7 +134,7 @@ func Page(path string) (string, error) {
 		}
 	}
 	if found == nil {
-		return "", fmt.Errorf("%s has no declaration %q; see `ms std %s` (or `ms std search %s`)", shortName(module.Path), parts[1], shortName(module.Path), parts[1])
+		return "", fmt.Errorf("%s has no declaration %q; see `ms search_std %s` (or `ms search_std %s`)", shortName(module.Path), parts[1], shortName(module.Path), parts[1])
 	}
 	if len(parts) == 2 {
 		return declarationPage(*module, *found), nil
@@ -175,7 +175,7 @@ func modulePage(m checker.APIModule) string {
 	fmt.Fprintf(&b, "%s: %s\n", m.Path, importLine(m))
 	for i, d := range m.Declarations {
 		if i == moduleLines {
-			fmt.Fprintf(&b, "... %d more; narrow with `ms std search <words>`\n", len(m.Declarations)-moduleLines)
+			fmt.Fprintf(&b, "... %d more; narrow with `ms search_std <words>`\n", len(m.Declarations)-moduleLines)
 			break
 		}
 		if d.Kind == "fn" && d.Declaration != "" {
@@ -188,7 +188,7 @@ func modulePage(m checker.APIModule) string {
 		}
 		b.WriteString("\n")
 	}
-	b.WriteString("Details: ms std " + shortName(m.Path) + ".<Name>\n")
+	b.WriteString("Details: ms search_std " + shortName(m.Path) + ".<Name>\n")
 	return clipText(b.String(), pageBudget)
 }
 
@@ -211,12 +211,12 @@ func declarationPage(m checker.APIModule, d checker.APIDeclaration) string {
 	for i, member := range d.Members {
 		line := "  " + oneLine(member.Signature, lineWidth) + "\n"
 		if b.Len()+len(line) > pageBudget-160 {
-			fmt.Fprintf(&b, "  ... %d more; use `ms std %s.%s.<member>`\n", len(d.Members)-i, shortName(m.Path), bare(d.Name))
+			fmt.Fprintf(&b, "  ... %d more; use `ms search_std %s.%s.<member>`\n", len(d.Members)-i, shortName(m.Path), bare(d.Name))
 			break
 		}
 		b.WriteString(line)
 	}
-	fmt.Fprintf(&b, "Details: ms std %s.%s.<member>\n", shortName(m.Path), bare(d.Name))
+	fmt.Fprintf(&b, "Details: ms search_std %s.%s.<member>\n", shortName(m.Path), bare(d.Name))
 	return b.String()
 }
 
@@ -236,7 +236,7 @@ func memberPage(m checker.APIModule, d checker.APIDeclaration, name string) (str
 		}
 	}
 	if count == 0 {
-		return "", fmt.Errorf("%s has no member %q; see `ms std %s.%s`", d.Name, name, shortName(m.Path), bare(d.Name))
+		return "", fmt.Errorf("%s has no member %q; see `ms search_std %s.%s`", d.Name, name, shortName(m.Path), bare(d.Name))
 	}
 	return clipText(b.String(), pageBudget), nil
 }

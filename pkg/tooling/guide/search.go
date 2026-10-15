@@ -109,7 +109,7 @@ func significantWords(query string) []string {
 // Match is one ranked lookup result.
 type Match struct {
 	Module, Name, Kind, Signature, Doc string
-	Path                               string // the `ms std` path, such as json.parse
+	Path                               string // the `ms search_std` path, such as json.parse
 	Score                              int
 }
 
@@ -303,10 +303,10 @@ func abs(n int) int {
 	return n
 }
 
-// FormatMatches renders matches as an `ms std` path, a signature, and a one-line doc.
+// FormatMatches renders matches as an `ms search_std` path, a signature, and a one-line doc.
 func FormatMatches(query string, matches []Match) string {
 	if len(matches) == 0 {
-		return fmt.Sprintf("No standard-library match for %q. Try fewer or broader words, or list modules with `ms std`.", query)
+		return fmt.Sprintf("No standard-library match for %q. Try fewer or broader words, or list modules with `ms search_std`.", query)
 	}
 	var b strings.Builder
 	for _, m := range matches {
@@ -315,7 +315,7 @@ func FormatMatches(query string, matches []Match) string {
 			fmt.Fprintf(&b, "  # %s\n", m.Doc)
 		}
 	}
-	fmt.Fprintf(&b, "Details: ms std <path>, e.g. ms std %s", matches[0].Path)
+	fmt.Fprintf(&b, "Details: ms search_std <path>, e.g. ms search_std %s", matches[0].Path)
 	return clipText(b.String(), searchBudget)
 }
 
