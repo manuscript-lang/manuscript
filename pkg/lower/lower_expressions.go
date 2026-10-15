@@ -311,6 +311,11 @@ func (g *generator) listValue(e *syntax.Expression, info *checker.Info) ast.Expr
 	if value := g.largeListValue(e, info); value != nil {
 		return value
 	}
+	if len(e.Elements) <= debugListThreshold && len(info.Type.Args) == 1 {
+		if typ := primitiveEqualityType(info.Type.Args[0]); typ != "" {
+			return runtimeCall("Own"+primitiveKinds[typ]+"List", g.key(info.Type), sliceLiteral(ident(typ), g.scalarSiblings(e.Elements, typ)...))
+		}
+	}
 	elements := g.siblings(e.Elements)
 	// Large literals keep the separately owned boxed route and its oracle.
 	if len(elements) > debugListThreshold {
@@ -383,6 +388,20 @@ func (g *generator) siblings(items []*syntax.Expression) []ast.Expr {
 	later := false
 	for i := len(items) - 1; i >= 0; i-- {
 		out[i] = g.expression(items[i])
+		if later && !g.constant(items[i]) {
+			out[i] = sequence(out[i])
+		}
+		later = later || containsMatch(items[i])
+	}
+	return out
+}
+
+// scalarSiblings is siblings for elements known to be the primitive typ.
+func (g *generator) scalarSiblings(items []*syntax.Expression, typ string) []ast.Expr {
+	out := make([]ast.Expr, len(items))
+	later := false
+	for i := len(items) - 1; i >= 0; i-- {
+		out[i] = g.scalar(items[i], typ)
 		if later && !g.constant(items[i]) {
 			out[i] = sequence(out[i])
 		}
