@@ -465,7 +465,7 @@ func (f *osFileSystem) GlobEntries(ctx *Execution, path string, options *GlobOpt
 		if !utf8.ValidString(rel) || !utf8.ValidString(info.Name()) {
 			return errEncoding
 		}
-		value := &PathEntry{Path: rel, Entry: directoryEntryOf(info.Name(), info.IsDir(), info.Mode()&os.ModeSymlink != 0)}
+		value := &PathEntry{Path: filepath.ToSlash(rel), Entry: directoryEntryOf(info.Name(), info.IsDir(), info.Mode()&os.ModeSymlink != 0)}
 		candidate := filepath.ToSlash(rel)
 		absolute := filepath.ToSlash(path)
 		for _, pattern := range excluded {
@@ -486,11 +486,11 @@ func (f *osFileSystem) GlobEntries(ctx *Execution, path string, options *GlobOpt
 				target = absolute
 			}
 			if fsGlobMatch(target, filepath.ToSlash(pattern)) {
-				if _, exists := items[rel]; !exists {
+				if _, exists := items[value.Path]; !exists {
 					if int64(len(items)) >= maxResults {
 						return errLimit
 					}
-					items[rel] = value
+					items[value.Path] = value
 				}
 				break
 			}
