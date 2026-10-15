@@ -161,6 +161,9 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		main = append(main, discard(selector(ident("os"), "Args")))
 	}
 	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("main"), Type: functionType(nil, nil), Body: block(main...)})
+	instances, registrations := g.lowerInstances()
+	file.Decls = append(file.Decls, instances...)
+	initialize = append(initialize, registrations...)
 	// Generic record instantiations are discovered while bodies and tests are
 	// lowered, so their declarations and registrations come last.
 	for _, st := range g.structOrder {

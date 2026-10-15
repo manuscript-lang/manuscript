@@ -34,7 +34,7 @@ func (g *generator) markCounted() {
 	for _, n := range order {
 		syntax.Visitor{Expression: func(e *syntax.Expression) {
 			if e.Kind == syntax.KindMember {
-				if info := g.program.Info(e); info != nil && info.Method != nil && info.Method.Accessor {
+				if info := g.info(e); info != nil && info.Method != nil && info.Method.Accessor {
 					if direct := g.directMethods[info.Method.ID]; direct != nil {
 						n.edges = append(n.edges, direct)
 					}
@@ -44,7 +44,7 @@ func (g *generator) markCounted() {
 			if e.Kind != syntax.KindCall {
 				return
 			}
-			info := g.program.Info(e)
+			info := g.info(e)
 			if info == nil {
 				return
 			}
@@ -52,7 +52,7 @@ func (g *generator) markCounted() {
 				n.edges = append(n.edges, g.direct[info.Symbol])
 			}
 			if e.Left != nil && e.Left.Kind == syntax.KindMember {
-				if callee := g.program.Info(e.Left); callee != nil && callee.Method != nil && !callee.Method.Accessor && g.directMethods[callee.Method.ID] != nil {
+				if callee := g.info(e.Left); callee != nil && callee.Method != nil && !callee.Method.Accessor && g.directMethods[callee.Method.ID] != nil {
 					n.edges = append(n.edges, g.directMethods[callee.Method.ID])
 				}
 			}

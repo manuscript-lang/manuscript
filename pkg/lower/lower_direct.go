@@ -63,7 +63,7 @@ func (g *generator) planDirect(functions []*checker.Symbol, options Options) {
 				direct.params = append(direct.params, "")
 				continue
 			}
-			direct.params = append(direct.params, scalarBinding(bindings[i]))
+			direct.params = append(direct.params, g.scalarBinding(bindings[i]))
 		}
 		g.direct[s] = direct
 	}
@@ -102,7 +102,7 @@ func (g *generator) planDirectConstructor(s *checker.Symbol) *directFunction {
 			direct.params = append(direct.params, "")
 			continue
 		}
-		typ := scalarBinding(bindings[i])
+		typ := g.scalarBinding(bindings[i])
 		if typ != "" && typ != st.fields[i].scalar {
 			return nil
 		}
@@ -150,7 +150,7 @@ func (g *generator) planDirectMethod(m *checker.Method, index int) *directFuncti
 		if p.Default != nil || m.Type.Defaults[m.Type.Params[i].Name] {
 			return nil
 		}
-		direct.params = append(direct.params, scalarBinding(bindings[i]))
+		direct.params = append(direct.params, g.scalarBinding(bindings[i]))
 	}
 	// A standard interface can grant omission to parameters the source method
 	// declares without a default; those are prepared before the call.
@@ -313,7 +313,7 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 	if e.Kind != syntax.KindCall || g.direct == nil {
 		return nil
 	}
-	info := g.program.Info(e)
+	info := g.info(e)
 	if direct, _ := g.directMethodTarget(e, info); direct != nil {
 		return direct
 	}
@@ -336,6 +336,9 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 		return nil
 	}
 	direct := g.direct[symbol]
+	if direct == nil && info.Constructor == nil {
+		direct = g.instanceFor(symbol, info.TypeArgs)
+	}
 	if direct == nil {
 		return nil
 	}
@@ -353,7 +356,7 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 		if arg.Name != params[i].Name {
 			return nil
 		}
-		if typ := direct.params[i]; typ != "" && primitiveEqualityType(g.program.Info(arg.Value).Type) != typ {
+		if typ := direct.params[i]; typ != "" && primitiveEqualityType(g.info(arg.Value).Type) != typ {
 			return nil
 		}
 	}
@@ -366,7 +369,7 @@ func (g *generator) directTarget(e *syntax.Expression) *directFunction {
 func (g *generator) directCall(e *syntax.Expression) ast.Expr {
 	value, direct := g.typedDirectCall(e)
 	if value != nil && direct.shape != nil {
-		return call(selector(value, "Box"), g.key(g.program.Info(e).Type))
+		return call(selector(value, "Box"), g.key(g.info(e).Type))
 	}
 	return value
 }
@@ -375,7 +378,7 @@ func (g *generator) directCall(e *syntax.Expression) ast.Expr {
 // boxing its typed result.
 func (g *generator) typedDirectCall(e *syntax.Expression) (ast.Expr, *directFunction) {
 	if e.Kind == syntax.KindMember {
-		if direct := g.directAccessorTarget(e, g.program.Info(e)); direct != nil {
+		if direct := g.directAccessorTarget(e, g.info(e)); direct != nil {
 			return orderedCall(ident(direct.name), ident("ctx"), g.expression(e.Left)), direct
 		}
 		return nil, nil
@@ -384,7 +387,7 @@ func (g *generator) typedDirectCall(e *syntax.Expression) (ast.Expr, *directFunc
 	if direct == nil {
 		return nil, nil
 	}
-	info := g.program.Info(e)
+	info := g.info(e)
 	args := info.Arguments
 	values := []ast.Expr{ident("ctx")}
 	if direct.receiver {
@@ -434,7 +437,7 @@ func (g *generator) directMethodTarget(e *syntax.Expression, info *checker.Info)
 	if len(g.directMethods) == 0 || e.Left == nil || e.Left.Kind != syntax.KindMember || info.ErrorSource != nil || info.Constructor != nil {
 		return nil, nil
 	}
-	callee := g.program.Info(e.Left)
+	callee := g.info(e.Left)
 	if callee == nil || callee.Method == nil || callee.Method.Accessor {
 		return nil, nil
 	}
@@ -442,7 +445,7 @@ func (g *generator) directMethodTarget(e *syntax.Expression, info *checker.Info)
 	if direct == nil {
 		return nil, nil
 	}
-	receiverType := g.program.Info(e.Left.Left).Type
+	receiverType := g.info(e.Left.Left).Type
 	if (receiverType.Kind != syntax.KindRecord && receiverType.Kind != "alternative") || len(receiverType.Args) != 0 || hasTypeVariable(receiverType) || receiverType.ID != callee.Method.Receiver.ID {
 		return nil, nil
 	}
@@ -455,7 +458,7 @@ func (g *generator) directMethodTarget(e *syntax.Expression, info *checker.Info)
 		if arg.Name != params[i].Name {
 			return nil, nil
 		}
-		if typ := direct.params[i]; typ != "" && primitiveEqualityType(g.program.Info(arg.Value).Type) != typ {
+		if typ := direct.params[i]; typ != "" && primitiveEqualityType(g.info(arg.Value).Type) != typ {
 			return nil, nil
 		}
 	}

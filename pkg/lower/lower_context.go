@@ -51,7 +51,13 @@ type generator struct {
 	dispatchOrder    []*dispatcher
 	sites            []string // package-level MethodSite variables, one per direct method call
 	debugLiterals    bool
-	literalData      []ast.Decl // immutable scalar input, never source collection storage
+	literalData      []ast.Decl               // immutable scalar input, never source collection storage
+	subst            map[string]*checker.Type // type variables of the generic instance being lowered
+	infoCache        map[*syntax.Expression]*checker.Info
+	instances        map[string]*instance
+	instanceQueue    []*instance
+	instanceOrder    []*instance
+	instanceChecked  map[*checker.Symbol]bool
 }
 
 func newGenerator(program *checker.Program) *generator {
@@ -60,7 +66,7 @@ func newGenerator(program *checker.Program) *generator {
 
 // constantBool reports whether e folds to a Bool constant.
 func (g *generator) constantBool(e *syntax.Expression) bool {
-	info := g.program.Info(e)
+	info := g.info(e)
 	return info != nil && info.Folded
 }
 

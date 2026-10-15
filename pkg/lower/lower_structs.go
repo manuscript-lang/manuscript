@@ -178,7 +178,7 @@ func (g *generator) structPointer(st *structType, value ast.Expr) ast.Expr {
 
 // structField resolves a source field access on a record-typed operand.
 func (g *generator) structFieldOf(e *syntax.Expression) (*structType, *structField) {
-	st := g.structFor(g.program.Info(e.Left).Type)
+	st := g.structFor(g.info(e.Left).Type)
 	if st == nil {
 		return nil, nil
 	}

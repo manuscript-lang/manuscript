@@ -26,7 +26,7 @@ func (g *generator) planAltLets() {
 		return g.altUses[b]
 	}
 	nodes := syntax.Nodes{Expression: func(e *syntax.Expression) {
-		info := g.program.Info(e)
+		info := g.info(e)
 		if info == nil {
 			return
 		}
@@ -39,20 +39,20 @@ func (g *generator) planAltLets() {
 		if e.Kind == syntax.KindMember && info.Method != nil && info.Method.Accessor && e.Left != nil && e.Left.Kind == syntax.KindName {
 			switch info.Method.Native {
 			case "optional/is_some", "optional/is_none", "result/is_ok", "result/is_error":
-				if b := g.program.Info(e.Left).Binding; b != nil {
+				if b := g.info(e.Left).Binding; b != nil {
 					uses(b).flags++
 				}
 			}
 		}
 		if e.Kind == syntax.KindCall && e.Left != nil && e.Left.Kind == syntax.KindName {
-			if callee := g.program.Info(e.Left); callee != nil && callee.Binding != nil {
+			if callee := g.info(e.Left); callee != nil && callee.Binding != nil {
 				u := uses(callee.Binding)
 				u.calls++
 				u.callSites = append(u.callSites, e)
 			}
 		}
 		if e.Kind == syntax.KindMatch && e.Left != nil && e.Left.Kind == syntax.KindName {
-			if b := g.program.Info(e.Left).Binding; b != nil {
+			if b := g.info(e.Left).Binding; b != nil {
 				uses(b).scrutinees++
 			}
 		}
@@ -88,7 +88,7 @@ func (g *generator) altLocalOf(e *syntax.Expression) (*checker.Binding, *altShap
 	if e.Kind != syntax.KindName {
 		return nil, nil
 	}
-	info := g.program.Info(e)
+	info := g.info(e)
 	if info == nil || info.Binding == nil || g.captures[info.Binding] != "" {
 		return nil, nil
 	}
