@@ -2,6 +2,7 @@ package msruntime
 
 import (
 	"math"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -102,4 +103,28 @@ func stringReplaceLimit(text, old, new string, n int64) string {
 		n = bound
 	}
 	return strings.Replace(text, old, new, int(n))
+}
+
+func StringToBytes(text string) Value { return Bytes{[]byte(text)} }
+
+// StringParseInt parses signed ASCII decimal digits; anything else, including
+// overflow, is none.
+func StringParseInt(text string) Value {
+	if text == "" {
+		return optional("Int", nil, false)
+	}
+	start := 0
+	if text[0] == '+' || text[0] == '-' {
+		start = 1
+	}
+	if start == len(text) {
+		return optional("Int", nil, false)
+	}
+	for i := start; i < len(text); i++ {
+		if text[i] < '0' || text[i] > '9' {
+			return optional("Int", nil, false)
+		}
+	}
+	n, err := strconv.ParseInt(text, 10, 64)
+	return optional("Int", n, err == nil)
 }
