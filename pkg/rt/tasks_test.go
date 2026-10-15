@@ -319,7 +319,7 @@ func TestSchedulerConstructorFaults(t *testing.T) {
 	mustFault(t, "Scheduler: drain (nanoseconds)", func() { NewScheduler(None[int64](), None[int64](), Some(Duration(-1)), none) })
 }
 
-func TestErrorMessages(t *testing.T) {
+func TestTaskErrorMessages(t *testing.T) {
 	ctx := RootExecution()
 	for want, got := range map[string]string{
 		"task execution: operation timed out": Errors_Message_ExecutionError(ctx, ExecutionError_Timeout{}),
