@@ -12,6 +12,29 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+func diagnosticPipeCapacity(file *os.File) (int, error) {
+	raw, err := file.SyscallConn()
+	if err != nil {
+		return 0, err
+	}
+	var flags, output, input uint32
+	var queryErr error
+	err = raw.Control(func(fd uintptr) {
+		queryErr = windows.GetNamedPipeInfo(windows.Handle(fd), &flags, &output, &input, nil)
+	})
+	if err := errors.Join(err, queryErr); err != nil {
+		return 0, err
+	}
+	capacity := input // The server read end consumes its inbound buffer.
+	if flags&windows.PIPE_SERVER_END == 0 {
+		capacity = output
+	}
+	if capacity == 0 {
+		return 0, fmt.Errorf("output pipe has no fixed buffer capacity")
+	}
+	return int(capacity), nil
+}
+
 func processAlive(pid int) bool {
 	process, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(pid))
 	if err != nil {

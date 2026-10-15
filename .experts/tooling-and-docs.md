@@ -134,6 +134,16 @@ and [borrowed descriptor/deadline regressions](../internal/debugger/io_unix_test
 These are debugger-owned CLI transports; they do not change the runtime/stdlib
 stdio cancellation contract.
 
+Verified: Delve consumes `OutputRedirect.File` and closes it after Windows
+launch. Scripted JSON redirects must pass distinct owned stderr duplicates,
+with fallback cleanup for failed launches; passing borrowed `os.Stderr` closes
+the caller's diagnostics. Evidence: [Delve redirect ownership](../vendor/github.com/go-delve/delve/pkg/proc/native/proc.go),
+[Windows launch](../vendor/github.com/go-delve/delve/pkg/proc/native/proc_windows.go),
+and [borrowed stderr regression](../internal/debugger/io_windows_test.go).
+For full-pipe Windows tests, complete writes up to the queried pipe capacity;
+a canceled oversized write does not establish retained buffer contents. Keep
+test failure diagnostics on a separate file when stdio is unread or null.
+
 Open: disconnecting the client joins client calls but does not stop an active
 backend operation. Public service Stop still owns target cleanup. Delve resets
 manual-stop requests before Continue, and gdbserial ignores manual stops while

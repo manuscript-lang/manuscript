@@ -12,6 +12,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func diagnosticPipeCapacity(*os.File) (int, error) { return 0, nil }
+
 func processAlive(pid int) bool { return unix.Kill(pid, 0) == nil }
 
 func nativeConsole(context.Context, context.CancelFunc) (func() error, error) {

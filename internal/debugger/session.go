@@ -115,7 +115,18 @@ func Script(ctx context.Context, executable string, opts Options) (status int, e
 	config := delve.Config{Backend: "default", WorkingDir: ".", CheckGoVersion: true, ExecuteKind: delve.ExecutingExistingFile, Stdin: os.DevNull}
 	if opts.JSON {
 		// Standard output carries only events.
-		config.Stdout, config.Stderr = redirectToStderr(), redirectToStderr()
+		for _, output := range []*proc.OutputRedirect{&config.Stdout, &config.Stderr} {
+			redirect, cleanup, redirectErr := redirectToStderr()
+			if redirectErr != nil {
+				return 1, redirectErr
+			}
+			*output = redirect
+			defer func() {
+				if closeErr := cleanup(); closeErr != nil {
+					status, err = 1, errors.Join(err, closeErr)
+				}
+			}()
+		}
 	}
 	server := rpccommon.NewServer(&service.Config{Listener: listener, ProcessArgs: append([]string{executable}, opts.Args...), APIVersion: 2, Debugger: config})
 	if err := ctx.Err(); err != nil {
@@ -174,11 +185,23 @@ func Script(ctx context.Context, executable string, opts Options) (status int, e
 	})
 }
 
-func redirectToStderr() proc.OutputRedirect {
-	if runtime.GOOS == "windows" {
-		return proc.OutputRedirect{File: os.Stderr}
+func redirectToStderr() (proc.OutputRedirect, func() error, error) {
+	if runtime.GOOS != "windows" {
+		return proc.OutputRedirect{Path: "/dev/stderr"}, func() error { return nil }, nil
 	}
-	return proc.OutputRedirect{Path: "/dev/stderr"}
+	// Delve consumes and closes supplied files after launch. Give it a distinct
+	// owned handle for each target stream, retaining cleanup for launch failures.
+	file, restore, err := duplicateIO(os.Stderr)
+	if err != nil {
+		return proc.OutputRedirect{}, nil, err
+	}
+	return proc.OutputRedirect{File: file}, func() error {
+		err := file.Close()
+		if errors.Is(err, os.ErrClosed) {
+			err = nil
+		}
+		return errors.Join(err, restore())
+	}, nil
 }
 
 type session struct {

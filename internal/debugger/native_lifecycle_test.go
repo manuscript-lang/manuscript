@@ -54,10 +54,27 @@ func TestNativeDebugLifecycle(t *testing.T) {
 	for _, mode := range modes {
 		t.Run(mode, func(t *testing.T) {
 			pidFile, cancelFile := filepath.Join(t.TempDir(), "pid"), filepath.Join(t.TempDir(), "cancel")
+			diagnosticFile := filepath.Join(t.TempDir(), "diagnostic")
+			t.Cleanup(func() {
+				// A failed helper must not leave its target or inherited pipe open.
+				// Assertions run before this fallback, so cleanup cannot hide a leak.
+				if !t.Failed() {
+					return
+				}
+				data, _ := os.ReadFile(pidFile)
+				pid, err := strconv.Atoi(string(data))
+				if err == nil && pid > 0 && processAlive(pid) {
+					if process, err := os.FindProcess(pid); err == nil {
+						_ = process.Kill()
+						_ = process.Release()
+					}
+				}
+			})
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, self, "-test.run=^TestNativeDebugLifecycleChild$", "-test.timeout=18s")
-			cmd.Env = append(os.Environ(), "XDG_CONFIG_HOME="+filepath.Join(root, "config"), "MANUSCRIPT_DEBUG_CHILD="+mode, "MANUSCRIPT_DEBUG_TARGET="+target, "MANUSCRIPT_DEBUG_SOURCE="+source, "MANUSCRIPT_DEBUG_PID="+pidFile, "MANUSCRIPT_DEBUG_CANCEL="+cancelFile)
+			cmd.WaitDelay = time.Second
+			cmd.Env = append(os.Environ(), "XDG_CONFIG_HOME="+filepath.Join(root, "config"), "MANUSCRIPT_DEBUG_CHILD="+mode, "MANUSCRIPT_DEBUG_TARGET="+target, "MANUSCRIPT_DEBUG_SOURCE="+source, "MANUSCRIPT_DEBUG_PID="+pidFile, "MANUSCRIPT_DEBUG_CANCEL="+cancelFile, "MANUSCRIPT_DEBUG_DIAGNOSTIC="+diagnosticFile)
 			if strings.Contains(mode, "null-") {
 				null, err := os.OpenFile(os.DevNull, os.O_RDWR, 0)
 				if err != nil {
@@ -66,7 +83,8 @@ func TestNativeDebugLifecycle(t *testing.T) {
 				defer null.Close()
 				cmd.Stdin, cmd.Stdout, cmd.Stderr = null, null, null
 				if err := cmd.Run(); err != nil {
-					t.Fatalf("native redirected null streams: %v", err)
+					data, _ := os.ReadFile(diagnosticFile)
+					t.Fatalf("native redirected null streams: %v\n%s", err, data)
 				}
 				if mode == "script-null-stdio" {
 					assertTargetExited(t, pidFile)
@@ -83,6 +101,15 @@ func TestNativeDebugLifecycle(t *testing.T) {
 			output, err := cmd.StdoutPipe()
 			if err != nil {
 				t.Fatal(err)
+			}
+			if strings.HasPrefix(mode, "script-full-output-") {
+				capacity, err := diagnosticPipeCapacity(output.(*os.File))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if capacity > 0 {
+					cmd.Env = append(cmd.Env, "MANUSCRIPT_DEBUG_PIPE_CAPACITY="+strconv.Itoa(capacity))
+				}
 			}
 			var stderr bytes.Buffer
 			var errorPipe io.ReadCloser
@@ -151,7 +178,8 @@ func TestNativeDebugLifecycle(t *testing.T) {
 				_, _ = io.Copy(&captured, reader)
 			}
 			if err := cmd.Wait(); err != nil {
-				t.Fatalf("native %s: %v\n%s\n%s", mode, err, &captured, &stderr)
+				data, _ := os.ReadFile(diagnosticFile)
+				t.Fatalf("native %s: %v\n%s\n%s\n%s", mode, err, &captured, &stderr, data)
 			}
 			if mode == "one-shot-invalid" || mode == "terminal-console-cancel" {
 				if fileExists(pidFile) {
@@ -249,25 +277,55 @@ func fullDiagnosticOutput(t *testing.T, pidFile string) (io.Writer, func(), func
 	t.Helper()
 	prime, restorePrime, err := duplicateIO(os.Stdout)
 	if err != nil {
-		t.Fatal(err)
+		childFailure(t, "prepare full output: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
-	_, err = runCancelable(ctx, func() { _ = prime.Close() }, func() (int, error) {
-		_, err := prime.Write(make([]byte, 512*1024))
-		return 1, err
-	})
-	cancel()
-	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("output pipe did not fill: %v", err)
+	if size := os.Getenv("MANUSCRIPT_DEBUG_PIPE_CAPACITY"); size != "" {
+		capacity, err := strconv.Atoi(size)
+		if err != nil || capacity <= 0 {
+			childFailure(t, "invalid output pipe capacity %q: %v", size, err)
+		}
+		// A canceled Windows WriteFile can discard pending data. Complete a
+		// write of the queried capacity instead, so the diagnostic meets a full pipe.
+		n, err := prime.Write(make([]byte, capacity))
+		if err != nil || n != capacity {
+			childFailure(t, "fill output pipe: %d of %d bytes, %v", n, capacity, err)
+		}
+		if err := prime.Close(); err != nil {
+			childFailure(t, "close priming output: %v", err)
+		}
+	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+		_, err = runCancelable(ctx, func() { _ = prime.Close() }, func() (int, error) {
+			_, err := prime.Write(make([]byte, 512*1024))
+			return 1, err
+		})
+		cancel()
+		if !errors.Is(err, context.DeadlineExceeded) {
+			childFailure(t, "output pipe did not fill: %v", err)
+		}
 	}
 	if err := restorePrime(); err != nil {
-		t.Fatal(err)
+		childFailure(t, "restore priming output: %v", err)
 	}
 	output, restore, err := duplicateIO(os.Stdout)
 	if err != nil {
-		t.Fatal(err)
+		childFailure(t, "prepare diagnostic output: %v", err)
 	}
 	return inputDiagnosticWriter{output: output, pidFile: pidFile}, func() { _ = output.Close() }, restore
+}
+
+func childFailure(t *testing.T, format string, args ...any) {
+	t.Helper()
+	message := fmt.Sprintf(format, args...)
+	// The protocol streams may be deliberately unread, null, or already broken.
+	// Keep failure evidence on an independent transport owned by the test.
+	if path := os.Getenv("MANUSCRIPT_DEBUG_DIAGNOSTIC"); path != "" {
+		_ = os.WriteFile(path, []byte(message), 0600)
+	}
+	if unreadSessionOutput(os.Getenv("MANUSCRIPT_DEBUG_CHILD")) {
+		os.Exit(1)
+	}
+	t.Fatal(message)
 }
 
 func TestNativeDebugLifecycleChild(t *testing.T) {
@@ -376,28 +434,23 @@ func TestNativeDebugLifecycleChild(t *testing.T) {
 		wantStatus = 1
 	}
 	if status != wantStatus || (wantErr == nil && err != nil) || (wantErr != nil && !errors.Is(err, wantErr)) {
-		if unreadSessionOutput(mode) {
-			fmt.Fprintf(os.Stderr, "session result %d, %v; want %d, %v\n", status, err, wantStatus, wantErr)
-			os.Exit(1)
-		}
-		t.Fatalf("session result %d, %v; want %d, %v", status, err, wantStatus, wantErr)
+		childFailure(t, "session result %d, %v; want %d, %v", status, err, wantStatus, wantErr)
 	}
 	if strings.HasPrefix(mode, "script-full-output-") {
 		if ctx.Err() != nil || !errors.Is(err, context.DeadlineExceeded) || cleanupCalls != 1 {
-			fmt.Fprintf(os.Stderr, "fatal input did not return with its own diagnostic budget: ctx %v, err %v, cleanup %d\n", ctx.Err(), err, cleanupCalls)
-			os.Exit(1)
+			childFailure(t, "fatal input did not return with its own diagnostic budget: ctx %v, err %v, cleanup %d", ctx.Err(), err, cleanupCalls)
 		}
 	}
 	if mode == "script-read-error" && cleanupCalls != 1 {
-		t.Fatalf("healthy input diagnostic invoked cleanup %d times", cleanupCalls)
+		childFailure(t, "healthy input diagnostic invoked cleanup %d times", cleanupCalls)
 	}
 	if strings.Contains(mode, "null-") {
 		for _, file := range []*os.File{os.Stdin, os.Stdout, os.Stderr} {
 			if _, err := file.Write([]byte("borrowed handle still open")); err != nil {
-				t.Fatal(err)
+				childFailure(t, "borrowed null handle write: %v", err)
 			}
 			if _, err := file.Read(make([]byte, 1)); !errors.Is(err, io.EOF) {
-				t.Fatalf("borrowed null handle no longer reads EOF: %v", err)
+				childFailure(t, "borrowed null handle no longer reads EOF: %v", err)
 			}
 		}
 	}
