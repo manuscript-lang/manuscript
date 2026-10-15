@@ -1,8 +1,5 @@
 # Incremental JSON decoder implemented in Manuscript.
-import List from "@std/collections.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import {parse, JsonValue, JsonLimits, JsonError} from "@std/json.ms"
 import check_cancelled from "@std/tasks.ms"
 
@@ -35,9 +32,7 @@ export fn decoder(limits: Optional[JsonLimits] = none) -> Result[JsonDecoder, Js
         bounds.max_bytes.unwrap_or(0) < 0
         or bounds.max_depth.unwrap_or(0) < 0
         or bounds.max_values.unwrap_or(0) < 0
-    ): return error(
-        JsonError.InvalidInput
-    )
+    ): return error(JsonError.InvalidInput)
 
     return ok(
         JsonDecoder(
@@ -69,12 +64,7 @@ type Decoder:
     failure: Optional[JsonError]
 
 fn is_space(byte: Int) -> Bool:
-    return (
-        byte == 32
-        or byte == 9
-        or byte == 10
-        or byte == 13
-    )
+    return (byte == 32 or byte == 9 or byte == 10 or byte == 13)
 
 fn starts_value(byte: Int) -> Bool:
     # Object, array, string, minus sign, digits, and the first letters of the literals.
@@ -109,10 +99,7 @@ fn complete(state: Decoder) -> Result[JsonValue, JsonError]:
     reset(state)
 
     match bytes.to_text():
-        some(text): return parse(
-            text,
-            some(state.limits)
-        )
+        some(text): return parse(text, some(state.limits))
         none: return error(JsonError.InvalidData)
 
 # Consumes one byte and reports whether it finished a value.
@@ -181,7 +168,7 @@ impl JsonDecoder for Decoder:
         check_cancelled()
 
         if self.finished: return error(JsonError.InvalidInput)
-        if self.failure.is_some(): return error(self.failure.unwrap())
+        if self.failure.is_some: return error(self.failure.unwrap())
 
         let values: List[JsonValue] = []
 
@@ -189,13 +176,13 @@ impl JsonDecoder for Decoder:
             match step(self, byte):
                 error(cause): return fail(self, cause)
                 ok(found):
-                    if found.is_some(): values.append(found.unwrap())
+                    if found.is_some: values.append(found.unwrap())
 
         return ok(values)
 
     fn finish() -> Result[List[JsonValue], JsonError]:
         if self.finished: return error(JsonError.InvalidInput)
-        if self.failure.is_some(): return error(self.failure.unwrap())
+        if self.failure.is_some: return error(self.failure.unwrap())
 
         self.finished = true
         let values: List[JsonValue] = []

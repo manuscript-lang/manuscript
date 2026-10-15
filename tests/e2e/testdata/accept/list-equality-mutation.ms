@@ -1,4 +1,3 @@
-import Equal from "@std/equality.ms"
 import panic from "@std/faults.ms"
 
 type Element:
@@ -36,11 +35,7 @@ fn check_equality(side: String, mutation: String) -> Unit:
         let next_action = target[1].unwrap().on_equal
 
         if mutation == "shrink" or mutation == "shrink_mismatch":
-            target.splice(
-                0,
-                target.length(),
-                []
-            )
+            target.splice(0, target.length, [])
             return
 
         if mutation == "append":
@@ -49,10 +44,7 @@ fn check_equality(side: String, mutation: String) -> Unit:
 
         if mutation == "append_write":
             target.append(Element(7, noop))
-            target.set(
-                1,
-                Element(77, next_action)
-            )
+            target.set(1, Element(77, next_action))
             return
 
         if mutation == "grow_write":
@@ -62,26 +54,17 @@ fn check_equality(side: String, mutation: String) -> Unit:
                 target.append(Element(7, noop))
                 index = index + 1
 
-            target.set(
-                1,
-                Element(77, next_action)
-            )
+            target.set(1, Element(77, next_action))
             return
 
-        target.set(
-            1,
-            Element(77, next_action)
-        )
+        target.set(1, Element(77, next_action))
 
     for id in [1, 2, 3]:
         left.append(Element(id, visit))
         right.append(Element(id, visit))
 
     if mutation == "shrink_mismatch":
-        right.set(
-            2,
-            Element(99, visit)
-        )
+        right.set(2, Element(99, visit))
 
     let expected = (
         mutation != "shrink_mismatch"

@@ -19,25 +19,20 @@ func (q *PriorityQueue) before(ctx *Execution, left, right priorityEntry) bool {
 	return order < 0 || order == 0 && left.sequence < right.sequence
 }
 func (q *PriorityQueue) Operation(name string) Function {
+	if name == "length" || name == "is_empty" || name == "peek" {
+		Panic("read-only accessor is not a method")
+	}
 	element := typeArguments(q.typ)[0]
 	labels, result := []string{}, "@std/Optional["+element+"]"
 	switch name {
 	case "enqueue":
 		labels, result = []string{"value"}, "Bool"
-	case "length":
-		result = "Int"
-	case "is_empty":
-		result = "Bool"
-	case "dequeue", "peek":
+	case "dequeue":
 	default:
 		return NewFunction(nil, "Never", func(_ *Execution, _ []Value) Value { return Panic("unknown PriorityQueue operation") })
 	}
 	return NewFunction(labels, result, func(ctx *Execution, args []Value) Value {
 		switch name {
-		case "length":
-			return int64(len(q.items))
-		case "is_empty":
-			return len(q.items) == 0
 		case "enqueue":
 			if q.capacity > 0 && len(q.items) >= q.capacity {
 				return false

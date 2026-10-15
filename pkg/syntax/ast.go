@@ -50,6 +50,8 @@ type TypeParameter struct {
 	Pos    Position
 	Name   string
 	Bounds []*Type
+	// Default is the type argument used when none is supplied or inferred; nil when required.
+	Default *Type
 }
 type Module struct {
 	File         string
@@ -82,7 +84,11 @@ type Declaration struct {
 	// without parameters whose body returns the initializer, and every use
 	// evaluates that initializer. Result is the annotation, or a placeholder
 	// at the initializer's position until the checker infers the type.
-	Constant                   bool
+	Constant bool
+	// Accessor marks a read-only computed member declared with `get`. It retains
+	// KindFn and an ordinary callable body, but a member read evaluates its result
+	// rather than binding a function. Params and TypeParams are always empty.
+	Accessor                   bool
 	TypeParams                 []TypeParameter
 	Fields                     []Parameter
 	Cases                      []Case

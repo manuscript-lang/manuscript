@@ -27,14 +27,14 @@ func TestRecursiveFieldsKeepEditorNavigation(t *testing.T) {
 }
 
 func TestRecursiveGenericEditorDiagnostic(t *testing.T) {
-	source := "import List from \"@std/collections.ms\"\ntype Grow[T]:\n    next: fn() -> Grow[List[T]]\n"
+	source := "type Grow[T]:\n    next: fn() -> Grow[List[T]]\n"
 	d := document{"file:///tmp/recursive-editor.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})
 	if len(result.Diagnostics) != 1 {
 		t.Fatal(result.Diagnostics)
 	}
 	diagnostic := result.Diagnostics[0]
-	if diagnostic.Position.Line != 3 || diagnostic.Position.Column != 5 || !strings.Contains(diagnostic.Message, "Grow.next") {
+	if diagnostic.Position.Line != 2 || diagnostic.Position.Column != 5 || !strings.Contains(diagnostic.Message, "Grow.next") {
 		t.Fatal(diagnostic)
 	}
 }

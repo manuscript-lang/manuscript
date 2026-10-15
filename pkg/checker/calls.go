@@ -58,7 +58,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		i.Arguments = constructorArguments(e.Args, fields)
 		typ = c.instantiate(typ, fields, i.Arguments, expected, e.Pos)
 		fields = ConstructorSignature(typ).Params
-		if std(typ, "Queue") && len(e.Args) == 0 {
+		if (std(typ, "Queue") || std(typ, "BlockingQueue")) && len(e.Args) == 0 {
 			fields = nil
 		}
 		i.NoReturn = c.argumentsFor(typ.Name, e.Pos, i.Arguments, fields, ConstructorSignature(typ).Defaults)
@@ -136,6 +136,9 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 					supplied = append(supplied, sub[v.ID])
 				}
 			}
+			if len(supplied) >= requiredTypeArguments(s.Variables) {
+				supplied = completeTypeArguments(s.Variables, supplied)
+			}
 			signature = c.specialize(signature, s.Variables, supplied, e.Pos, calleeName(callee))
 			if context.conflict {
 				signature.Result = primitive("<invalid>")
@@ -160,15 +163,21 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			callable = c.expression(callee, nil)
 		}
 		signature = callable.Type
-		i.Method = callable.Method
-		i.Native = callable.Native
+		if callable.Method == nil || !callable.Method.Accessor {
+			i.Method = callable.Method
+			i.Native = callable.Native
+		}
 	}
 	if signature != nil && signature.ID == "<invalid>" {
 		i.Type = signature
 		return i
 	}
 	if signature == nil || signature.Kind != "function" {
-		c.notCallable(e, signature)
+		if callable != nil && callable.Method != nil && callable.Method.Accessor {
+			c.calledAccessor(e, callable.Method)
+		} else {
+			c.notCallable(e, signature)
+		}
 		return i
 	}
 	i.Arguments = functionArguments(e.Args, signature.Params)
@@ -314,6 +323,9 @@ func (c *checker) modulePosition() syntax.Position {
 }
 func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, name string) *Type {
 	sub := map[string]*Type{}
+	if len(args) < len(vars) && len(args) >= requiredTypeArguments(vars) {
+		args = withDefaultArguments(vars, args)
+	}
 	if len(vars) != len(args) {
 		c.error(pos, "type", fmt.Sprintf("generic arity mismatch; expected %d type arguments, found %d", len(vars), len(args)))
 	}
@@ -321,6 +333,9 @@ func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, n
 		var a *Type
 		if index < len(args) {
 			a = args[index]
+		}
+		if a == nil && v.Default != nil {
+			a = Sub(v.Default, sub)
 		}
 		if a == nil {
 			if !c.labelMismatch {
@@ -366,6 +381,10 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 	actualArgs := []*Type{}
 	for _, v := range vars {
 		a := sub[v.ID]
+		if a == nil && v.Default != nil {
+			a = Sub(v.Default, sub)
+			sub[v.ID] = a
+		}
 		if a == nil {
 			c.error(pos, "type", "cannot infer constructor type argument "+v.Name+"; write the type arguments, e.g. Box[Int](...), or annotate the binding")
 			a = primitive("<invalid>")

@@ -1,5 +1,3 @@
-import List from "@std/collections.ms"
-
 fn build(count: Int) -> List[Int]:
     let values: List[Int] = []
     var i = 0
@@ -15,7 +13,7 @@ fn index(values: List[Int], count: Int) -> Int:
     var i = 0
 
     while i < count:
-        total = total + values.at(i % values.length()).unwrap()
+        total = total + values.at(i % values.length).unwrap()
         i = i + 1
 
     return total

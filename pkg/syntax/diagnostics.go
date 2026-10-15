@@ -22,6 +22,9 @@ func (d Diagnostic) Code() string {
 		}
 		return "MS1000"
 	case "resolution":
+		if strings.HasPrefix(message, "redundant prelude import ") {
+			return "MS2003"
+		}
 		if strings.Contains(message, "module") || strings.Contains(message, "import") || strings.Contains(message, "path") || strings.Contains(message, "alias") {
 			return "MS2002"
 		}

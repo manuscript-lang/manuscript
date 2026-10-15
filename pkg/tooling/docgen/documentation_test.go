@@ -41,7 +41,7 @@ func TestDeclarationKindPresentation(t *testing.T) {
 			if err := json.Unmarshal(data, &decoded); err != nil {
 				t.Fatal(err)
 			}
-			if decoded.Format != 1 || decoded.Modules[0].Declarations[0].Kind != tc.kind || decoded.Modules[0].Declarations[0].Type != "fn(value: String)->Bool" || strings.Contains(string(data), "Declaration") {
+			if decoded.Format != 2 || decoded.Modules[0].Declarations[0].Kind != tc.kind || decoded.Modules[0].Declarations[0].Type != "fn(value: String)->Bool" || strings.Contains(string(data), "Declaration") {
 				t.Fatalf("JSON must retain the raw compiler classification: %s", data)
 			}
 		})
@@ -66,5 +66,17 @@ func TestSourceDeclarationsReachDocumentation(t *testing.T) {
 			t.Error("native receiver signatures must not label List as a source interface")
 		}
 
+	}
+}
+
+func TestMixedPreludeModuleImportGuidance(t *testing.T) {
+	for path, guidance := range map[string][2]string{
+		"@std/errors.ms":      {"`Error` and `MissingValue` are prelude declarations", "Import other names"},
+		"@std/collections.ms": {"`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry`", "Import other names"},
+	} {
+		text := RenderModule(checker.APIModule{Path: path})
+		if !strings.Contains(text, guidance[0]) || !strings.Contains(text, guidance[1]) || !strings.Contains(text, "explicit imports") || strings.Contains(text, "These names are available") {
+			t.Fatal(path, text)
+		}
 	}
 }

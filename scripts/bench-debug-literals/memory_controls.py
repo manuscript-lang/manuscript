@@ -64,7 +64,7 @@ def main():
     args = parser.parse_args()
     root = Path(args.output).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    parts = ['import List from "@std/collections.ms"\n']
+    parts = []
     expected = []
     for j in range(args.literals):
         if args.kind == "Int":

@@ -1,6 +1,7 @@
 package msruntime
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
 	"context"
@@ -143,6 +144,57 @@ func TestLibraryCompressionAndArchives(t *testing.T) {
 		libraryFailure(t, libraryCall(t, "archive/pack", entries, "zip", int64(1000)), "InvalidInput")
 	}
 }
+func TestLibraryZipPackRejectsOverlongName(t *testing.T) {
+	entry := func(path string, directory bool) Value {
+		return Record{"@std/ArchiveEntry", map[string]Value{"path": path, "data": Bytes{}, "directory": directory}}
+	}
+	long := strings.Repeat("a", 65536)
+	// A 65535-byte name is the largest ZIP can store; a directory's trailing slash counts toward the limit.
+	librarySuccess(t, libraryCall(t, "archive/pack", libraryList("@std/ArchiveEntry", []Value{entry(long[:65535], false)}), "zip", int64(1<<30)))
+	libraryFailure(t, libraryCall(t, "archive/pack", libraryList("@std/ArchiveEntry", []Value{entry(long, false)}), "zip", int64(1<<30)), "InvalidInput")
+	libraryFailure(t, libraryCall(t, "archive/pack", libraryList("@std/ArchiveEntry", []Value{entry(long[:65535], true)}), "zip", int64(1<<30)), "InvalidInput")
+	librarySuccess(t, libraryCall(t, "archive/pack", libraryList("@std/ArchiveEntry", []Value{entry(long, false)}), "tar", int64(1<<30)))
+}
+func TestLibraryArchiveRejectsFileDirectoryConflict(t *testing.T) {
+	entry := func(path string, directory bool) Value {
+		return Record{"@std/ArchiveEntry", map[string]Value{"path": path, "data": Bytes{}, "directory": directory}}
+	}
+	list := func(entries ...Value) Value { return libraryList("@std/ArchiveEntry", entries) }
+	limits := Record{"@std/ArchiveLimits", map[string]Value{"max_entries": int64(10), "max_entry_bytes": int64(10), "max_total_bytes": int64(10)}}
+	for _, format := range []string{"zip", "tar"} {
+		for _, entries := range map[string]Value{
+			"file then child": list(entry("a", false), entry("a/b", false)),
+			"child then file": list(entry("a/b", false), entry("a", false)),
+			"deep descendant": list(entry("a", false), entry("a/b/c", false)),
+			"file with dir":   list(entry("a", false), entry("a/", true)),
+		} {
+			libraryFailure(t, libraryCall(t, "archive/pack", entries, format, int64(10000)), "InvalidData")
+		}
+		// Unpack rejects the same conflict in archives built outside pack.
+		var buffer bytes.Buffer
+		if format == "zip" {
+			writer := zip.NewWriter(&buffer)
+			for _, name := range []string{"a", "a/b"} {
+				out, err := writer.Create(name)
+				if err != nil {
+					t.Fatal(err)
+				}
+				out.Write([]byte("x"))
+			}
+			writer.Close()
+		} else {
+			writer := tar.NewWriter(&buffer)
+			for _, name := range []string{"a", "a/b"} {
+				writer.WriteHeader(&tar.Header{Name: name, Mode: 0600, Size: 1})
+				writer.Write([]byte("x"))
+			}
+			writer.Close()
+		}
+		libraryFailure(t, libraryCall(t, "archive/unpack", Bytes{buffer.Bytes()}, format, limits), "InvalidData")
+		// Sibling and implicit-parent layouts remain valid.
+		librarySuccess(t, libraryCall(t, "archive/pack", list(entry("a", false), entry("ab", false), entry("d", true), entry("d/b", false), entry("x/y", false)), format, int64(10000)))
+	}
+}
 func TestLibraryZipNamesWithoutUTF8Flag(t *testing.T) {
 	// Info-ZIP and other writers store UTF-8 names without general-purpose flag 0x800.
 	// Go's reader marks names containing `~`, control bytes, or non-ASCII as NonUTF8
@@ -272,7 +324,7 @@ func TestLibraryDatagramBoundaries(t *testing.T) {
 	defer n.Operation("close").Body(ctx, nil)
 	left := librarySuccess(t, n.Operation("bind_datagram").Body(ctx, []Value{"127.0.0.1:0"}))
 	right := librarySuccess(t, n.Operation("bind_datagram").Body(ctx, []Value{"127.0.0.1:0"}))
-	address := Invoke(ctx, Bind(right, "", "address"), nil).(string)
+	address := NativeAccessorRead(ctx, right, "address").(string)
 	for _, data := range [][]byte{{}, []byte("ok")} {
 		librarySuccess(t, Invoke(ctx, Bind(left, "", "send"), []Argument{{"data", Bytes{data}}, {"address", address}}))
 		packet := librarySuccess(t, Invoke(ctx, Bind(right, "", "receive"), []Argument{{"max_bytes", int64(2)}})).(Record)
@@ -307,7 +359,7 @@ func TestLibraryTCPRoundTrip(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(ctx, nil)
 	listener := librarySuccess(t, n.Operation("listen").Body(ctx, []Value{"127.0.0.1:0"}))
-	address := Invoke(ctx, Bind(listener, "", "address"), nil).(string)
+	address := NativeAccessorRead(ctx, listener, "address").(string)
 	client := librarySuccess(t, n.Operation("connect").Body(ctx, []Value{address, Duration(time.Second)}))
 	server := librarySuccess(t, Invoke(ctx, Bind(listener, "", "accept"), nil))
 	librarySuccess(t, Invoke(ctx, Bind(client, "", "write"), []Argument{{"data", Bytes{[]byte("ping")}}}))

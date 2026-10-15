@@ -77,8 +77,7 @@ func BenchmarkConcreteTypeKey(b *testing.B) {
 }
 
 func BenchmarkGenerateConcreteCollections(b *testing.B) {
-	result := analyzeSource("benchmark.ms", `import List from "@std/collections.ms"
-fn nested(value: Int) -> List[List[Int]]:
+	result := analyzeSource("benchmark.ms", `fn nested(value: Int) -> List[List[Int]]:
     return [[value], [value]]
 export fn main() -> Int:
     let values = nested(42)

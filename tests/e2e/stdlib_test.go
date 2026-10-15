@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
@@ -15,7 +16,7 @@ import (
 
 // Keep source checking cheap enough for make verify and require an explicit
 // source-level home for every public module as the standard library grows.
-// Imports establish module coverage, not exhaustive operation/branch coverage.
+// Imports and checked prelude type uses establish module coverage, not exhaustive operation/branch coverage.
 func TestStandardLibrarySources(t *testing.T) {
 	covered := map[string]bool{}
 	files := append(standardLibraryFixtures(t), "testdata/stdlib/faults/faults.ms")
@@ -29,6 +30,15 @@ func TestStandardLibrarySources(t *testing.T) {
 		result := compiler.CompileFile(file, compiler.Options{Tests: true, AnalyzeOnly: true})
 		if !result.Success() {
 			t.Errorf("%s: %v", file, result.Diagnostics)
+		}
+		// Prelude-only modules cannot be covered by imports. Count source uses
+		// of their checked canonical types, rather than every ambient symbol.
+		for _, checked := range result.Program.Modules {
+			syntax.Nodes{Type: func(node *syntax.Type) {
+				if typ, ok := node.Fact.(*checker.Type); ok && typ.Def != nil && checker.IsPreludeSymbol(typ.Def.Symbol) {
+					covered[strings.TrimPrefix(typ.Def.Symbol.Module, "@std/")] = true
+				}
+			}}.Module(checked)
 		}
 	}
 	entries, err := stdlib.Sources.ReadDir(".")

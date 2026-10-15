@@ -30,6 +30,7 @@ func (n Nodes) declaration(d *Declaration) {
 		for _, b := range p.Bounds {
 			n.typ(b)
 		}
+		n.typ(p.Default)
 	}
 	n.parameters(d.Fields)
 	for _, c := range d.Cases {

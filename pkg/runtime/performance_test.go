@@ -362,6 +362,51 @@ func TestMethodSiteFollowsReceiverTypeAndRegistration(t *testing.T) {
 	}
 }
 
+func TestInterfaceMethodSiteRetainsLexicalViewScope(t *testing.T) {
+	for i, module := range []string{"scope-left.ms", "scope-right.ms", "scope-third.ms"} {
+		value := int64(i + 1)
+		Register(Implementation{Receiver: "probe/Scoped", Contract: "probe/ScopedRead", Name: "read", Scope: module,
+			Direct: func(*Execution, Value, []Value) Value { return value },
+			Build: func(Value, map[string]string, map[string]TypeScope) Function {
+				return NewFunction(nil, "Int", func(*Execution, []Value) Value { return value })
+			}})
+	}
+	var site MethodSite
+	read := func(ctx *Execution, index int) Value {
+		module := []string{"scope-left.ms", "scope-right.ms", "scope-third.ms"}[index]
+		view := View{Type: "probe/ScopedRead", Receiver: Record{Type: "probe/Scoped"}, Scope: TypeScope{Module: module}}
+		return CallInterface(ctx, &site, view, "probe/ScopedRead", "read", TypeScope{Module: "caller.ms"}, nil)
+	}
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	for round := 0; round < 3; round++ {
+		for index := 0; index < 3; index++ {
+			if got := read(ctx, index); got != int64(index+1) {
+				t.Fatalf("view %d read %v", index, got)
+			}
+		}
+	}
+	done := make(chan error, 2)
+	for index := 0; index < 2; index++ {
+		go func(index int) {
+			ctx := RootExecution()
+			defer FinishExecution(ctx)
+			for n := 0; n < 1000; n++ {
+				if got := read(ctx, index); got != int64(index+1) {
+					done <- fmt.Errorf("concurrent view %d read %v", index, got)
+					return
+				}
+			}
+			done <- nil
+		}(index)
+	}
+	for n := 0; n < 2; n++ {
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkCallMethodSite(b *testing.B) {
 	ctx := RootExecution()
 	registerDirectProbe("probe/Bench", 1)
@@ -384,6 +429,16 @@ func BenchmarkBindInvokeMethod(b *testing.B) {
 }
 
 func TestSourceDirectMatchesBoundFunctionContract(t *testing.T) {
+	for _, returned := range []Value{nil, Unit{}, int64(42)} {
+		boxed := NewSourceFunction(nil, "Int", "p.ms:1:1", func(*Execution, []Value) Value { return Return(returned) })
+		direct := SourceDirect("p.ms:1:1", "Int", func(*Execution, Value, []Value) Value { return Return(returned) })
+		if got := boxed.Body(RootExecution(), nil); got != returned {
+			t.Fatalf("boxed source return: got %#v, want %#v", got, returned)
+		}
+		if got := direct(RootExecution(), nil, nil); got != returned {
+			t.Fatalf("direct source return: got %#v, want %#v", got, returned)
+		}
+	}
 	result := "@std/Result[Int][String]"
 	propagating := func(*Execution, Value, []Value) Value { return raisePropagation("bad") }
 	got := SourceDirect("p.ms:1:1", result, propagating)(RootExecution(), nil, nil)

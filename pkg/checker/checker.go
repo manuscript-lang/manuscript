@@ -48,6 +48,7 @@ type checker struct {
 	returnInference         *callbackReturns
 	inferenceVariables      map[string]bool
 	checkedArguments        map[*syntax.Expression]checkedArgument
+	accessorSource          *accessorSourceTokens
 	function, serial, loops int
 	testFunction            int
 	rejectedNames           map[string]bool
@@ -143,6 +144,7 @@ func (c *checker) checkModule(module *syntax.Module, imports map[*syntax.Import]
 			c.implementation(d)
 		}
 	}
+	c.checkTestFixture(module)
 	c.checkDefaults(module)
 	c.checkBodies(module)
 	c.declarationChecks(module)
@@ -171,6 +173,11 @@ func (c *checker) importSymbols(module *syntax.Module, imports map[*syntax.Impor
 			c.Diagnostics = append(c.Diagnostics, syntax.Diagnostic{Position: item.NamePos, End: &end, Phase: "resolution", Message: c.exportMessage(item, imports)})
 			continue
 		}
+		if isPreludeSymbol(found) {
+			c.redundantPreludeImport(module, item)
+		}
+		// Keep the resolved identity for recovery, so the import diagnostic does
+		// not cascade into errors in otherwise valid collection API usage.
 		c.addSymbol(item.Name, found, item.NamePos)
 	}
 }
@@ -211,6 +218,45 @@ func (c *checker) declareTypeVariables(module *syntax.Module) {
 			s.Type.Args = s.Variables
 		}
 		c.scope = old
+	}
+	// Defaults resolve after every declaration has its variables, so a default may name
+	// a generic type declared later in the module.
+	for _, d := range module.Declarations {
+		if d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest {
+			continue
+		}
+		if s := c.names[d.Name]; s.Decl == d {
+			c.typeDefaults(d.TypeParams, s.Variables)
+		}
+	}
+}
+
+// typeDefaults resolves default type arguments. A default may use only earlier
+// parameters, must satisfy its parameter's bounds, and every parameter after the
+// first default must have one, so omitted arguments are always a suffix.
+func (c *checker) typeDefaults(params []syntax.TypeParameter, vars []*Type) {
+	defaulted := false
+	old := c.scope
+	defer func() { c.scope = old }()
+	for index, p := range params {
+		if p.Default == nil {
+			if defaulted {
+				c.error(p.Pos, "type", "type parameter "+p.Name+" needs a default because an earlier parameter has one; give "+p.Name+" a default or move it before the defaulted parameters")
+			}
+			continue
+		}
+		defaulted = true
+		c.scope = c.variableScope(vars[:index])
+		resolved := c.resolve(p.Default, false)
+		if invalidType(resolved) {
+			continue
+		}
+		for _, bound := range vars[index].Bounds {
+			if !c.satisfies(resolved, bound) {
+				c.error(p.Default.Pos, "type", c.unsatisfiedMessage(resolved, bound, "choose a default that already implements it"))
+			}
+		}
+		vars[index].Default = resolved
 	}
 }
 
@@ -257,7 +303,7 @@ func (c *checker) resolveSignaturePass(module *syntax.Module, constants bool) {
 					c.error(m.Pos, "type", "duplicate operation "+m.Name+"; rename or remove one of them")
 				}
 				seen[m.Name] = true
-				def.Operations = append(def.Operations, Param{m.Name, c.signature(m.Params, m.Result)})
+				def.Operations = append(def.Operations, Operation{Name: m.Name, Type: c.signature(m.Params, m.Result), Accessor: m.Accessor, Decl: m})
 			}
 		}
 		c.scope = old
@@ -312,7 +358,7 @@ func (c *checker) checkBodies(module *syntax.Module) {
 }
 
 func newProgram(modules []*syntax.Module) *Program {
-	return &Program{Modules: modules, symbols: map[string]map[string]*Symbol{}}
+	return &Program{Modules: modules, TestFixtures: map[string]*TestFixture{}, symbols: map[string]map[string]*Symbol{}}
 }
 func (c *checker) unique(prefix string) string {
 	c.serial++
@@ -444,8 +490,19 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 	if base.Def != nil {
 		arity = len(base.Def.Variables)
 	}
+	required := arity
+	if base.Def != nil {
+		required = requiredTypeArguments(base.Def.Variables)
+	}
+	if len(r.Args) < arity && len(r.Args) >= required {
+		r.Args = withDefaultArguments(base.Def.Variables, r.Args)
+	}
 	if len(r.Args) != arity {
-		c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments, found %d; write %s", base.Name, arity, len(r.Args), typeSketch(base.Name, arity)))
+		if required < arity {
+			c.error(t.Pos, "type", fmt.Sprintf("%s takes %d to %d type arguments, found %d; write %s", base.Name, required, arity, len(r.Args), typeSketch(base.Name, arity)))
+		} else {
+			c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments, found %d; write %s", base.Name, arity, len(r.Args), typeSketch(base.Name, arity)))
+		}
 	}
 	t.Fact = &r
 	return &r
@@ -502,6 +559,11 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 	c.testFunction = 0
 	if d.Kind == syntax.KindTest {
 		c.testFunction = c.function
+	}
+	if d.Kind == syntax.KindTest {
+		if fixture := c.TestFixtures[c.module.File]; fixture != nil {
+			writableDeclarationFacts(d).fixture = c.bind("fixture", fixture.Type, false, d.Pos)
+		}
 	}
 	if receiver != nil {
 		setSelf(d, c.bind("self", receiver, false, d.Pos))
@@ -621,7 +683,13 @@ func (c *checker) checkAssign(s *syntax.Statement) (bool, bool) {
 		target := c.expression(s.Target, nil)
 		target.Write = true
 		receiver := infoOf(s.Target.Left)
-		if !opaqueField(receiver, s.Target.Text) && (receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || (receiver.Symbol != nil && receiver.Symbol.Kind == syntax.KindType) || target.Method != nil) {
+		if target.Method != nil && target.Method.Accessor {
+			fix := "read it as a value instead"
+			if std(target.Method.Receiver, "SynchronizedGuard") && s.Target.Text == "value" {
+				fix = "use guard.set(value: ...) to replace the guarded value"
+			}
+			c.error(s.Target.Pos, "type", "cannot assign to read-only accessor "+s.Target.Text+"; "+fix)
+		} else if !opaqueField(receiver, s.Target.Text) && (receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || (receiver.Symbol != nil && receiver.Symbol.Kind == syntax.KindType) || target.Method != nil) {
 			c.error(s.Target.Pos, "type", "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'")
 		}
 		value := c.expression(s.Value, target.Type)
@@ -743,7 +811,7 @@ func (c *checker) checkWith(s *syntax.Statement) (bool, bool) {
 	methods := c.methods(i.Type, "close")
 	var candidates []*Method
 	for _, method := range methods {
-		if len(method.Type.Params) == 0 && method.Type.Result.ID == "Unit" {
+		if !method.Accessor && len(method.Type.Params) == 0 && method.Type.Result.ID == "Unit" {
 			if method.Contract != nil && std(method.Contract, "Closeable") {
 				candidates = []*Method{method}
 				break
@@ -983,8 +1051,11 @@ func (c *checker) typeExpression(e *syntax.Expression) *Type {
 		if t != nil {
 			r := *t
 			r.Args = c.resolveArguments(e.Types)
+			if r.Def != nil && len(r.Args) < len(r.Def.Variables) && len(r.Args) >= requiredTypeArguments(r.Def.Variables) {
+				r.Args = withDefaultArguments(r.Def.Variables, r.Args)
+			}
 			if r.Def == nil || len(r.Args) != len(r.Def.Variables) {
-				c.error(e.Pos, "type", "generic type arity mismatch; supply exactly the type arguments the declaration lists")
+				c.error(e.Pos, "type", "generic type arity mismatch; supply the type arguments the declaration lists, omitting only trailing ones that have defaults")
 			}
 			return &r
 		}

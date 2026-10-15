@@ -88,8 +88,7 @@ func TestLocalExtensionValidation(t *testing.T) {
     fn get() -> Int:
         return self
 `, "nominal source data"},
-		{"native", extensionDomain, extensionImports + `import List from "@std/collections.ms"
-impl Read[Int] for List[Int]:
+		{"native", extensionDomain, extensionImports + `impl Read[Int] for List[Int]:
     fn get() -> Int:
         return 0
 `, "nominal source data"},

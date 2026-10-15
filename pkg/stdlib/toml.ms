@@ -1,5 +1,4 @@
 # TOML 1.0 parser implemented in Manuscript.
-import {List, Map} from "@std/collections.ms"
 import {parse_int, parse_float} from "@std/numbers.ms"
 import {from_scalars, StringBuilder} from "@std/string.ms"
 import {log, sqrt} from "@std/math.ms"
@@ -134,11 +133,7 @@ fn space(reader: Reader, multiline: Bool) -> Unit:
     while true:
         let c = peek(reader)
 
-        if (
-            c == " "
-            or c == "\t"
-            or (multiline and c == "\n")
-        ):
+        if (c == " " or c == "\t" or (multiline and c == "\n")):
             advance(reader)
         else if multiline and c == "#":
             while peek(reader) != "" and peek(reader) != "\n": advance(reader)
@@ -170,11 +165,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
     let quote = advance(reader)
     var multiline = false
 
-    if (
-        not key
-        and peek(reader) == quote
-        and ahead(reader: reader, offset: 1) == quote
-    ):
+    if (not key and peek(reader) == quote and ahead(reader: reader, offset: 1) == quote):
         advance(reader)
         advance(reader)
         multiline = true
@@ -186,9 +177,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
 
     while true:
         let c = advance(reader)
-        if c == "": return error(
-            invalid(reader: reader, reason: "unterminated string")
-        )
+        if c == "": return error(invalid(reader: reader, reason: "unterminated string"))
 
         if c == quote:
             if not multiline: return ok(result.freeze())
@@ -208,17 +197,8 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
             continue
 
         let code = c.scalar_at(0).unwrap()
-        if (
-            code < 32
-            and c != "\t"
-            and not (multiline and c == "\n")
-        ) or code == 127:
-            return error(
-                invalid(
-                    reader: reader,
-                    reason: "control character in string"
-                )
-            )
+        if (code < 32 and c != "\t" and not (multiline and c == "\n")) or code == 127:
+            return error(invalid(reader: reader, reason: "control character in string"))
 
         if c != "\\" or quote == "'":
             result.append(c)
@@ -241,11 +221,9 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                 )
             )
 
-            while (
-                peek(reader) == " "
-                or peek(reader) == "\t"
-                or peek(reader) == "\n"
-            ): advance(reader)
+            while (peek(reader) == " " or peek(reader) == "\t" or peek(reader) == "\n"): advance(
+                reader
+            )
 
             continue
 
@@ -297,12 +275,7 @@ fn string_value(reader: Reader, key: Bool) -> Result[String, TomlError]:
                 ok(text): result.append(text)
 
         else:
-            return error(
-                invalid(
-                    reader: reader,
-                    reason: "invalid string escape"
-                )
-            )
+            return error(invalid(reader: reader, reason: "invalid string escape"))
 
 fn key_path(reader: Reader) -> Result[List[String], TomlError]:
     let keys: List[String] = []
@@ -322,9 +295,7 @@ fn key_path(reader: Reader) -> Result[List[String], TomlError]:
             ):
                 key = key.concat(advance(reader))
 
-            if key == "": return error(
-                invalid(reader: reader, reason: "expected key")
-            )
+            if key == "": return error(invalid(reader: reader, reason: "expected key"))
 
         keys.append(key)
         space(reader: reader, multiline: false)
@@ -346,10 +317,7 @@ fn child(
         none:
             let allocated = try allocate(reader)
             let created = table(explicit: false, dotted: dotted)
-            parent.entries.add(
-                key: key,
-                value: Node.TableNode(created)
-            )
+            parent.entries.add(key: key, value: Node.TableNode(created))
             return ok(created)
 
         some(node): node
@@ -379,14 +347,9 @@ fn child(
                 )
             )
 
-            return ok(tables.last().unwrap())
+            return ok(tables.last.unwrap())
 
-        _: return error(
-            invalid(
-                reader: reader,
-                reason: "key is already a value"
-            )
-        )
+        _: return error(invalid(reader: reader, reason: "key is already a value"))
 
 fn append_table(
     reader: Reader,
@@ -397,10 +360,7 @@ fn append_table(
     let node = match parent.entries.get(key):
         none:
             let allocated_array = try allocate(reader)
-            parent.entries.add(
-                key: key,
-                value: Node.TableArray([next])
-            )
+            parent.entries.add(key: key, value: Node.TableArray([next]))
             return ok(unit)
         some(node): node
 
@@ -424,7 +384,7 @@ fn assign(
     var current = parent
     var index = 0
 
-    while index < keys.length() - 1:
+    while index < keys.length - 1:
         current = try child(
             reader: reader,
             parent: current,
@@ -433,7 +393,7 @@ fn assign(
         )
         index = index + 1
 
-    let key = keys.last().unwrap()
+    let key = keys.last.unwrap()
     if current.sealed or current.entries.contains(key): return error(
         invalid(reader: reader, reason: "duplicate or closed key")
     )
@@ -476,11 +436,7 @@ fn decimal_digits(text: String) -> Bool:
 fn decimal_part(text: String) -> Bool:
     if not decimal_digits(text): return false
 
-    let clean = text.replace(
-        old: "_",
-        new: "",
-        max_replacements: text.byte_length()
-    )
+    let clean = text.replace(old: "_", new: "", max_replacements: text.byte_length)
     return clean == "0" or not clean.starts_with("0")
 
 fn date_number(text: String, minimum: Int, maximum: Int) -> Bool:
@@ -492,7 +448,7 @@ fn date_number(text: String, minimum: Int, maximum: Int) -> Bool:
 
 fn date_valid(text: String) -> Bool:
     if (
-        text.scalar_length() != 10
+        text.scalar_length != 10
         or text.at(4).unwrap_or("") != "-"
         or text.at(7).unwrap_or("") != "-"
     ): return false
@@ -508,12 +464,7 @@ fn date_valid(text: String) -> Bool:
     let m = month.parse_int().unwrap()
     var maximum = 31
 
-    if (
-        m == 4
-        or m == 6
-        or m == 9
-        or m == 11
-    ): maximum = 30
+    if (m == 4 or m == 6 or m == 9 or m == 11): maximum = 30
 
     if m == 2:
         maximum = 28
@@ -525,7 +476,7 @@ fn date_valid(text: String) -> Bool:
 
 fn time_valid(text: String) -> Bool:
     if (
-        text.scalar_length() < 8
+        text.scalar_length < 8
         or text.at(2).unwrap_or("") != ":"
         or text.at(5).unwrap_or("") != ":"
     ): return false
@@ -544,12 +495,9 @@ fn time_valid(text: String) -> Bool:
         minimum: 0,
         maximum: 60
     ): return false
-    if text.scalar_length() == 8: return true
+    if text.scalar_length == 8: return true
 
-    let fraction = text.slice(
-        start: 9,
-        end: text.scalar_length()
-    ).unwrap_or("")
+    let fraction = text.slice(start: 9, end: text.scalar_length).unwrap_or("")
     return (
         text.at(8).unwrap_or("") == "."
         and decimal_digits(fraction)
@@ -560,34 +508,24 @@ fn datetime_valid(text: String) -> Bool:
     if date_valid(text): return true
     if time_valid(text): return true
     if (
-        text.scalar_length() < 19
+        text.scalar_length < 19
         or not date_valid((text.slice(start: 0, end: 10).unwrap_or("")))
     ): return false
 
     let separator = text.at(10).unwrap_or("")
-    if (
-        separator != "T"
-        and separator != "t"
-        and separator != " "
-    ): return false
+    if (separator != "T" and separator != "t" and separator != " "): return false
 
-    var rest = text.slice(
-        start: 11,
-        end: text.scalar_length()
-    ).unwrap_or("")
+    var rest = text.slice(start: 11, end: text.scalar_length).unwrap_or("")
 
     if rest.ends_with("Z") or rest.ends_with("z"):
-        rest = rest.slice(start: 0, end: rest.scalar_length() - 1).unwrap_or("")
+        rest = rest.slice(start: 0, end: rest.scalar_length - 1).unwrap_or("")
     else if rest.contains("+") or rest.contains("-"):
         var index = rest.index_of("+").unwrap_or(-1)
 
         if index < 0: index = rest.index_of("-").unwrap_or(-1)
 
-        let zone = rest.slice(
-            start: index + 1,
-            end: rest.scalar_length()
-        ).unwrap_or("")
-        if zone.scalar_length() != 5 or zone.at(2).unwrap_or("") != ":": return false
+        let zone = rest.slice(start: index + 1, end: rest.scalar_length).unwrap_or("")
+        if zone.scalar_length != 5 or zone.at(2).unwrap_or("") != ":": return false
         if not date_number(
             text: zone.slice(start: 0, end: 2).unwrap_or(""),
             minimum: 0,
@@ -604,25 +542,16 @@ fn datetime_valid(text: String) -> Bool:
     return time_valid(rest)
 
 fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
-    if text == "true": return ok(
-        Node.Leaf(TomlValue.BoolValue(true))
-    )
-    if text == "false": return ok(
-        Node.Leaf(TomlValue.BoolValue(false))
-    )
-    if datetime_valid(text): return ok(
-        Node.Leaf(TomlValue.DateTimeValue(text))
-    )
+    if text == "true": return ok(Node.Leaf(TomlValue.BoolValue(true)))
+    if text == "false": return ok(Node.Leaf(TomlValue.BoolValue(false)))
+    if datetime_valid(text): return ok(Node.Leaf(TomlValue.DateTimeValue(text)))
 
     var clean = text
     var signed = false
 
     if clean.starts_with("+") or clean.starts_with("-"):
         signed = true
-        clean = clean.slice(
-            start: 1,
-            end: clean.scalar_length()
-        ).unwrap_or("")
+        clean = clean.slice(start: 1, end: clean.scalar_length).unwrap_or("")
 
     var radix = 10
     var alphabet = "0123456789"
@@ -643,7 +572,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
             or not digits(
                 text: clean.slice(
                     start: 2,
-                    end: clean.scalar_length()
+                    end: clean.scalar_length
                 ).unwrap_or(""),
                 alphabet: alphabet
             )
@@ -653,29 +582,19 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         match parse_int(
             text: (
                 clean
-                .slice(
-                    start: 2,
-                    end: clean.scalar_length()
-                )
+                .slice(start: 2, end: clean.scalar_length)
                 .unwrap_or("")
                 .replace(
                     old: "_",
                     new: "",
-                    max_replacements: text.byte_length()
+                    max_replacements: text.byte_length
                 )
             ),
             radix: radix
         ):
-            ok(value): return ok(
-                Node.Leaf(
-                    TomlValue.IntValue(value)
-                )
-            )
+            ok(value): return ok(Node.Leaf(TomlValue.IntValue(value)))
             error(_): return error(
-                invalid(
-                    reader: reader,
-                    reason: "integer out of range"
-                )
+                invalid(reader: reader, reason: "integer out of range")
             )
 
     # Bare words such as True, yes, or abc are not numbers, even when they
@@ -695,19 +614,16 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
     ):
         if clean != "inf" and clean != "nan":
             let parts = clean.lower().split(separator: "e")
-            if parts.length() > 2: return error(
+            if parts.length > 2: return error(
                 invalid(reader: reader, reason: "invalid float")
             )
 
-            if parts.length() == 2:
+            if parts.length == 2:
                 var exponent = parts.at(1).unwrap()
 
                 if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
                     exponent
-                    .slice(
-                        start: 1,
-                        end: exponent.scalar_length()
-                    )
+                    .slice(start: 1, end: exponent.scalar_length)
                     .unwrap_or("")
                 )
 
@@ -718,15 +634,12 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
                     )
                 )
 
-            let fraction = parts.first().unwrap().split(separator: ".")
-            if fraction.length() > 2 or not decimal_part(fraction.first().unwrap()): return error(
+            let fraction = parts.first.unwrap().split(separator: ".")
+            if fraction.length > 2 or not decimal_part(fraction.first.unwrap()): return error(
                 invalid(reader: reader, reason: "invalid float")
             )
-            if fraction.length() == 2 and not decimal_digits(fraction.at(1).unwrap()): return error(
-                invalid(
-                    reader: reader,
-                    reason: "invalid fraction"
-                )
+            if fraction.length == 2 and not decimal_digits(fraction.at(1).unwrap()): return error(
+                invalid(reader: reader, reason: "invalid fraction")
             )
 
         if clean == "inf":
@@ -734,35 +647,16 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
 
             if text.starts_with("-"): infinity = -infinity
 
-            return ok(
-                Node.Leaf(
-                    TomlValue.FloatValue(infinity)
-                )
-            )
+            return ok(Node.Leaf(TomlValue.FloatValue(infinity)))
 
-        if clean == "nan": return ok(
-            Node.Leaf(
-                TomlValue.FloatValue(sqrt((-1.0)))
-            )
-        )
+        if clean == "nan": return ok(Node.Leaf(TomlValue.FloatValue(sqrt((-1.0)))))
 
-        let number = text.replace(
-            old: "_",
-            new: "",
-            max_replacements: text.byte_length()
-        )
+        let number = text.replace(old: "_", new: "", max_replacements: text.byte_length)
 
         match parse_float(number):
-            ok(value): return ok(
-                Node.Leaf(
-                    TomlValue.FloatValue(value)
-                )
-            )
+            ok(value): return ok(Node.Leaf(TomlValue.FloatValue(value)))
             error(_): return error(
-                invalid(
-                    reader: reader,
-                    reason: "float out of range"
-                )
+                invalid(reader: reader, reason: "float out of range")
             )
 
     if not decimal_part(clean): return error(
@@ -773,16 +667,12 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         text: text.replace(
             old: "_",
             new: "",
-            max_replacements: text.byte_length()
+            max_replacements: text.byte_length
         ),
         radix: 10
     ):
-        ok(value): return ok(
-            Node.Leaf(TomlValue.IntValue(value))
-        )
-        error(_): return error(
-            invalid(reader: reader, reason: "integer out of range")
-        )
+        ok(value): return ok(Node.Leaf(TomlValue.IntValue(value)))
+        error(_): return error(invalid(reader: reader, reason: "integer out of range"))
 
 fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
     let allocated = try allocate(reader)
@@ -807,10 +697,7 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
             space(reader: reader, multiline: true)
             if peek(reader) == "]": break
             if advance(reader) != ",": return error(
-                invalid(
-                    reader: reader,
-                    reason: "expected array comma"
-                )
+                invalid(reader: reader, reason: "expected array comma")
             )
 
             space(reader: reader, multiline: true)
@@ -833,7 +720,7 @@ fn read_value(reader: Reader, depth: Int) -> Result[Node, TomlError]:
                     )
                 )
 
-                let value = try read_value(reader: reader, depth: depth + keys.length())
+                let value = try read_value(reader: reader, depth: depth + keys.length)
                 let assigned = try assign(
                     reader: reader,
                     parent: result,
@@ -969,17 +856,16 @@ export fn parse(
             some(value):
                 if value < 0: return error(TomlError.InvalidInput)
 
-    if not within(
-        value: text.byte_length(),
-        limit: options.max_bytes
-    ): return error(TomlError.LimitExceeded)
+    if not within(value: text.byte_length, limit: options.max_bytes): return error(
+        TomlError.LimitExceeded
+    )
 
     # TOML permits CR only as part of CRLF. Report the first offending scalar
     # at its own line and column.
     let normalized = text.replace(
         old: "\r\n",
         new: "\n",
-        max_replacements: text.byte_length()
+        max_replacements: text.byte_length
     )
     var scan_line = 1
     var scan_column = 1
@@ -993,11 +879,7 @@ export fn parse(
             )
         )
 
-        if (
-            code < 32
-            and code != 9
-            and code != 10
-        ) or code == 127: return error(
+        if (code < 32 and code != 9 and code != 10) or code == 127: return error(
             TomlError.InvalidData(
                 line: scan_line,
                 column: scan_column,
@@ -1046,7 +928,7 @@ export fn parse(
             var parent = root
             var index = 0
 
-            while index < keys.length() - 1:
+            while index < keys.length - 1:
                 parent = try child(
                     reader: reader,
                     parent: parent,
@@ -1055,7 +937,7 @@ export fn parse(
                 )
                 index = index + 1
 
-            let key = keys.last().unwrap()
+            let key = keys.last.unwrap()
             if parent.sealed: return error(
                 invalid(
                     reader: reader,
@@ -1091,7 +973,7 @@ export fn parse(
 
                 current.explicit = true
 
-            current_depth = keys.length() + 1
+            current_depth = keys.length + 1
 
             if array: current_depth = current_depth + 1
 
@@ -1099,15 +981,12 @@ export fn parse(
         else:
             let keys = try key_path(reader)
             if advance(reader) != "=": return error(
-                invalid(
-                    reader: reader,
-                    reason: "expected equals"
-                )
+                invalid(reader: reader, reason: "expected equals")
             )
 
             let value = try read_value(
                 reader: reader,
-                depth: (current_depth + keys.length())
+                depth: (current_depth + keys.length)
             )
             let assigned = try assign(
                 reader: reader,
@@ -1122,18 +1001,11 @@ export fn parse(
             while peek(reader) != "" and peek(reader) != "\n": advance(reader)
 
         if peek(reader) != "" and advance(reader) != "\n": return error(
-            invalid(
-                reader: reader,
-                reason: "unexpected trailing text"
-            )
+            invalid(reader: reader, reason: "unexpected trailing text")
         )
 
     reader.values = 0
-    return materialize(
-        reader: reader,
-        node: Node.TableNode(root),
-        depth: 1
-    )
+    return materialize(reader: reader, node: Node.TableNode(root), depth: 1)
 
 type Writer:
     out: StringBuilder
@@ -1142,7 +1014,7 @@ type Writer:
 fn hex4(code: Int) -> String:
     var digits = code.to_string(16)
 
-    while digits.length() < 4: digits = "0".concat(digits)
+    while digits.length < 4: digits = "0".concat(digits)
 
     return digits
 
@@ -1181,20 +1053,16 @@ fn format_key(key: String) -> String:
     return quote_text(key)
 
 fn format_float(value: Float) -> String:
-    if value.is_nan(): return "nan"
+    if value.is_nan: return "nan"
 
-    if not value.is_finite():
+    if not value.is_finite:
         if value < 0.0: return "-inf"
 
         return "inf"
 
     let text = value.to_string()
 
-    if (
-        text.contains(".")
-        or text.contains("e")
-        or text.contains("E")
-    ): return text
+    if (text.contains(".") or text.contains("e") or text.contains("E")): return text
 
     return text.concat(".0")
 
@@ -1222,7 +1090,7 @@ fn inline_value(value: TomlValue) -> String:
                 )
             )
 
-            if parts.is_empty(): return "\{\}"
+            if parts.is_empty: return "\{\}"
 
             return "\{ ".concat(parts.join(", ")).concat(" \}")
 
@@ -1256,8 +1124,8 @@ fn section_kind(value: TomlValue) -> Int:
 
         ArrayValue(elements):
             if (
-                not elements.is_empty()
-                and table_items(elements).length() == elements.length()
+                not elements.is_empty
+                and table_items(elements).length == elements.length
             ): return 2
 
             return 0
@@ -1270,14 +1138,8 @@ fn emit_one(
     brackets: String,
     table: Map[String, TomlValue]
 ) -> Unit:
-    if brackets == "[[": emit_header(
-        writer,
-        "[[".concat(dotted(path)).concat("]]")
-    )
-    else: emit_header(
-        writer,
-        "[".concat(dotted(path)).concat("]")
-    )
+    if brackets == "[[": emit_header(writer, "[[".concat(dotted(path)).concat("]]"))
+    else: emit_header(writer, "[".concat(dotted(path)).concat("]"))
 
     emit_table(writer: writer, path: path, values: table)
 
@@ -1294,9 +1156,7 @@ fn emit_table(
                 (
                     format_key(entry.key)
                     .concat(" = ")
-                    .concat(
-                        inline_value(entry.value)
-                    )
+                    .concat(inline_value(entry.value))
                     .concat("\n")
                 )
             )
@@ -1340,16 +1200,12 @@ export fn stringify(
         TableValue(values): values
         _: return error(TomlError.InvalidInput)
 
-    let writer = Writer(
-        out: StringBuilder(),
-        started: false
-    )
+    let writer = Writer(out: StringBuilder(), started: false)
     emit_table(writer: writer, path: [], values: root)
     let text = writer.out.freeze()
 
-    if not within(
-        value: text.byte_length(),
-        limit: max_bytes
-    ): return error(TomlError.LimitExceeded)
+    if not within(value: text.byte_length, limit: max_bytes): return error(
+        TomlError.LimitExceeded
+    )
 
     return ok(text)

@@ -120,6 +120,9 @@ func (c *checker) typeNames() []string {
 
 // importHint names the standard module that exports name, if any.
 func importHint(name string) string {
+	if symbol := standardSymbols[name]; isPreludeSymbol(symbol) {
+		return "; use the prelude " + name + " declaration directly; rename any shadowing binding or declaration"
+	}
 	var modules []string
 	for _, module := range StandardModuleNames() {
 		if _, ok := StandardExports(module)[name]; ok {
@@ -402,7 +405,7 @@ func optionalUseHint(actual, expected *Type) string {
 	if actual == nil || expected == nil || !std(actual, "Optional") || len(actual.Args) != 1 || std(expected, "Optional") {
 		return ""
 	}
-	return actual.String() + " may be absent; unwrap it first with unwrap_or(default), is_some() before unwrap(), or match"
+	return actual.String() + " may be absent; unwrap it first with unwrap_or(default), is_some before unwrap(), or match"
 }
 
 // numberConversionHint names the explicit conversion between Int and Float;
@@ -421,10 +424,25 @@ func numberConversionHint(actual, expected *Type) string {
 }
 
 // uncalledFunctionHint covers a no-argument operation named without
-// parentheses, such as items.length where items.length() is meant.
+// parentheses, such as reader.read where reader.read() is meant.
 func uncalledFunctionHint(actual, expected *Type) string {
 	if actual == nil || expected == nil || actual.Kind != "function" || expected.Kind == "function" || len(actual.Params) != 0 || actual.Result == nil || !Same(actual.Result, expected) {
 		return ""
 	}
 	return "this is a function; call it with parentheses to get its " + expected.String() + " result"
+}
+
+func operationNames(operations []Operation) []string {
+	names := make([]string, 0, len(operations))
+	for _, operation := range operations {
+		names = append(names, operation.Name)
+	}
+	return names
+}
+
+func operationDeclaration(operation Operation) string {
+	if operation.Accessor {
+		return "get " + operation.Name + " -> " + operation.Type.Result.String()
+	}
+	return "fn " + operation.Name + signatureText(operation.Type)
 }

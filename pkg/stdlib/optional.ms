@@ -10,9 +10,9 @@ export type Optional[T]:
     # An absent value with no payload; no T needs to be constructed.
     case none
     # Returns true for some(value), and false for none.
-    fn is_some() -> Bool:
+    get is_some -> Bool:
     # Reports whether this value is absent.
-    fn is_none() -> Bool:
+    get is_none -> Bool:
     # Returns the payload. Calling this on `none` raises a fault.
     fn unwrap() -> T:
     # Returns the contained value, or `fallback` when this is `none`.
@@ -26,6 +26,7 @@ export type Optional[T]:
     # Calls create once only when absent, returning its Optional unchanged.
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
     # Returns ok with the original payload, or error with the eager cause.
-    fn ok_or[E](cause: E) -> Result[T, E]:
+    # Without a cause, E is MissingValue and the error names the calling source file and line.
+    fn ok_or[E = MissingValue](cause: Optional[E] = none) -> Result[T, E]:
     # Constructs an error once only for none; present payloads remain unchanged.
     fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:

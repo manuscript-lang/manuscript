@@ -47,9 +47,7 @@ impl Read[Int] for DefaultReader:
 
 test "nested view receiver prepares once and calls later":
     let log = Log("")
-    let view = Read[Int](
-        Reader(prepare(log, 7))
-    )
+    let view = Read[Int](Reader(prepare(log, 7)))
     if log.events != "prepare;": return panic("receiver preparation count")
     if view.read() != 7: return panic("view result")
     if log.events != "prepare;call;": return panic("callable evaluation count/order")
@@ -63,11 +61,7 @@ test "constructor arguments retain written order and capture snapshots":
             operation: (
                 fn() -> Int:
                     let nested = fn() -> Int: value
-                    return mark(
-                        log,
-                        "call;",
-                        nested()
-                    )
+                    return mark(log, "call;", nested())
             ),
             first: match some(2):
                 some(number):
@@ -94,26 +88,14 @@ test "explicit nested views and bound methods retain generic dispatch":
     let bound = view.read
     if bound() != 5: return panic("bound interface method")
     if invoke(view) != 5: return panic("bounded generic method")
-    if Read[Int](
-        Read[Int](
-            Reader(
-                fn() -> Int: 6
-            )
-        )
-    ).read() != 6:
+    if Read[Int](Read[Int](Reader(fn() -> Int: 6))).read() != 6:
         return panic("nested explicit views")
-    if Reader(
-        fn() -> Int: 8
-    ).read() != 8: return panic("concrete method")
-    if wrap(
-        fn() -> String: "text"
-    ).read() != "text": return panic("generic result")
+    if Reader(fn() -> Int: 8).read() != 8: return panic("concrete method")
+    if wrap(fn() -> String: "text").read() != "text": return panic("generic result")
 
 test "source constructors with callable defaults prepare once":
     let log = Log("")
-    let view = Read[Int](
-        DefaultReader(mark(log, "base;", 12))
-    )
+    let view = Read[Int](DefaultReader(mark(log, "base;", 12)))
     if log.events != "base;": return panic("default constructor preparation count")
     if view.read() != 12: return panic("default callable capture")
     if log.events != "base;": return panic("default repeated supplied argument")
@@ -124,14 +106,10 @@ test "match receiver side effects and callable body remain ordered":
         match some(mark(log, "select;", 1)):
             some(value):
                 mark(log, "chosen;", 0)
-                Reader(
-                    fn() -> Int: mark(log, "call;", 9)
-                )
+                Reader(fn() -> Int: mark(log, "call;", 9))
             none:
                 mark(log, "wrong;", 0)
-                Reader(
-                    fn() -> Int: 0
-                )
+                Reader(fn() -> Int: 0)
     )
     if log.events != "select;chosen;": return panic("match receiver count/order")
     if view.read() != 9: return panic("match view result")

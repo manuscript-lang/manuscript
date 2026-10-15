@@ -16,8 +16,8 @@ flowchart LR
   CLI[CLI or compiler API] --> Parse[frontend: parse and resolve imports]
   Parse --> AST[syntax: AST graph]
   AST --> Check[checker: types and semantic facts]
-  Check --> Optimize[compiler: optimization facts]
-  Optimize --> Lower[compiler: Go lowering]
+  Check --> Optimize[lower: optimization facts]
+  Optimize --> Lower[lower: Go generation]
   Lower --> Native[native build and runtime]
   SyntaxTools[formatting and declaration completion] --> Parse
   Check --> SourceTools[lint, inspection, docs, and LSP]
@@ -59,7 +59,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/parser/` | Strict source parsing; editor recovery |
 | `pkg/frontend/` | Shared parsing and in-memory AST loading; project/module graph loading, canonical snapshots, and import diagnostics |
 | `pkg/checker/` | Checking entry point and per-module passes (imports, names, type variables, signatures, defaults, bodies); expression kinds; calls, contracts, recursion, effects, standard loading, editor queries, and declaration documentation in focused files |
-| `pkg/project/` | Manifest parsing; confined import and overlay resolution |
+| `pkg/project/` | Manifest parsing; confined import resolution and canonical editor overlays |
 | `pkg/compiler/` | Source-to-checked-program pipeline (frontend, checker, entry validation, then `lower.Go`); build kinds. It never touches native tools |
 | `pkg/lower/` | Checked program to Go source: literal-boolean folding, module assembly, lowering, and Go AST printing. It consumes only checker identities |
 | `pkg/build/` | Native builds from compiler results: source assembly; pin/artifact identity; command replay; shared workspace; runtime variant; SDK selection/materialization |
@@ -67,7 +67,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native function identities (receiver identities live in `internal/nativeabi`), and embedded sources. This is the standard signature authority |
 | `pkg/tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
 | `pkg/tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
-| `pkg/tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. `call-rules.md` is the embedded source for special compiler-bound calls |
+| `pkg/tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. guides and special call rules are extracted from comments in `pkg/stdlib/*.ms` |
 | `internal/decimal/`, `internal/nativeabi/` | Lightweight shared decimal literal rules, receiver-to-function identities, and the CLI/native test-event protocol; checked `.ms` declarations retain signature authority |
 | `internal/hostos/` | Platform helpers for native filesystem, process, and OS operations, included in the embedded dependency bundle |
 | `internal/cli/` | CLI command orchestration, status codes, signal forwarding, and shipped documentation commands |
@@ -81,16 +81,20 @@ Public Go imports use `github.com/manuscript-lang/manuscript/pkg/<package>`, inc
 
 Semantic lint consumes the checker's resolved symbol and type identities. It does not re-lex checked source to guess whether a name is an import, shadowing local, or field label. Import usage is tracked within each module.
 
+`project.CanonicalOverlay` applies the same path identity and confinement as imports, accepting equivalent snapshots and rejecting conflicting spellings of one file. The frontend consumes that snapshot when loading its module graph.
+
 Editor navigation and references reuse one source index per request. An implicit receiver resolves directly to its checked method declaration; finding it does not generate an entire inspection document and hash. Analysis, completion, and workspace enumeration use the same nearest-manifest discovery rule. A malformed nested manifest cannot silently select a parent's aliases.
 
 The CLI classifies each command's compiler mode in one switch, then checks source once and shares terminal diagnostics and output delivery. Native build/run/test/debug/profile retain one build path and one project cache selection. Profile output directories are created only after source checking succeeds.
+
+Within `runtime`, `values.go` owns value representation and construction; `format.go` and `equality.go` own display and comparison. `functions.go` owns callable adaptation, defaults, source returns, and callback admission; `methods.go` owns type-key resolution, lexical implementation selection, and dispatch caches. `frames.go` owns direct-call recursion checks and fault frames. Native test execution lives in `test_runner.go`, with structured reporting in `test_events.go`. Buffered and streaming HTTP handlers share admission and release accounting while retaining their own request and response lifetimes.
 
 ## Keep source and generated output distinct
 
 | Location | Ownership |
 | --- | --- |
 | `documentation/` | Authored tutorials, exact language rules, compiler/runtime semantics, tooling limits, contributor workflow |
-| `documentation/standard-library/reference/` and `documentation/standard-library/call-rules.md` | Generated from checked standard declarations and the embedded call rules by `make docs` |
+| `.artifacts/docs/documentation/standard-library/` and `.artifacts/docs/documentation/concurrency/` | Ignored guides and references generated from `pkg/stdlib/*.ms` by `make docs`, mounted into Hugo content |
 | `website/` | Hugo configuration, custom layouts/assets, static resources, version archives, and the vendored Hugo Book theme with its license and upstream revision |
 | `website/static/stdlib.md` and `stdlib.json` | Generated API downloads, built by `make docs` and `make book-check` and not committed. Hugo mounts the root version and extension grammar directly; neither needs a copied source |
 | `.artifacts/book/` | Ignored generated HTML, search data, and downloads uploaded/deployed as a Pages artifact |

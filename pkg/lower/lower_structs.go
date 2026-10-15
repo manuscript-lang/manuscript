@@ -3,6 +3,7 @@ package lower
 import (
 	"go/ast"
 	"go/token"
+	"strconv"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
@@ -67,10 +68,52 @@ func (g *generator) planStructs() {
 
 // structFor returns the Go struct for a record type, or nil.
 func (g *generator) structFor(t *checker.Type) *structType {
-	if t == nil || t.Def == nil || t.Kind != syntax.KindRecord || len(t.Args) != 0 {
+	if t == nil || t.Def == nil || t.Kind != syntax.KindRecord {
 		return nil
 	}
-	return g.structs[checker.TypeKey(t)]
+	key := checker.TypeKey(t)
+	if st := g.structs[key]; st != nil || len(t.Args) == 0 {
+		return st
+	}
+	return g.instantiateStruct(t, key)
+}
+
+// instantiateStruct plans the Go struct of one concrete instantiation of a
+// generic source record, such as Box[Int]. Instantiations are found while
+// bodies are lowered, so their declarations are emitted last.
+func (g *generator) instantiateStruct(t *checker.Type, key string) *structType {
+	symbol := t.Def.Symbol
+	if symbol == nil || symbol.Native != "" || len(symbol.Variables) == 0 || strings.HasPrefix(t.ID, "@std/") || !concreteType(t) {
+		return nil
+	}
+	st := &structType{name: "record_" + symbol.ID + "_" + strconv.Itoa(len(g.structOrder)), key: key}
+	for _, f := range checker.Fields(t) {
+		st.fields = append(st.fields, structField{name: f.Name, scalar: primitiveEqualityType(f.Type)})
+	}
+	g.structs[key] = st
+	g.structOrder = append(g.structOrder, st)
+	return st
+}
+
+// concreteType reports whether t mentions no type variable.
+func concreteType(t *checker.Type) bool {
+	if t == nil {
+		return true
+	}
+	if t.Kind == "variable" {
+		return false
+	}
+	for _, arg := range t.Args {
+		if !concreteType(arg) {
+			return false
+		}
+	}
+	for _, param := range t.Params {
+		if !concreteType(param.Type) {
+			return false
+		}
+	}
+	return concreteType(t.Result)
 }
 
 // structDeclarations emits every planned struct with its accessors and the
@@ -135,7 +178,7 @@ func (g *generator) structPointer(st *structType, value ast.Expr) ast.Expr {
 
 // structField resolves a source field access on a record-typed operand.
 func (g *generator) structFieldOf(e *syntax.Expression) (*structType, *structField) {
-	st := g.structFor(g.program.Info(e.Left).Type)
+	st := g.structFor(g.info(e.Left).Type)
 	if st == nil {
 		return nil, nil
 	}
@@ -167,7 +210,7 @@ func (g *generator) constructStruct(st *structType, args []syntax.Argument) ast.
 		} else {
 			value = g.argumentValue(a)
 		}
-		elements = append(elements, keyed(fieldName(a.Name), sourceAt(a.Pos, value)))
+		elements = append(elements, keyed(fieldName(a.Name), sequence(value)))
 	}
 	return call(runtimeName("Value"), address(composite(ident(st.name), elements...)))
 }

@@ -39,6 +39,7 @@ type armFacts struct {
 type declarationFacts struct {
 	parameters []*Binding
 	self       *Binding
+	fixture    *Binding
 }
 
 func exprFactsOf(e *syntax.Expression) *exprFacts {
@@ -406,4 +407,23 @@ func (p *Program) AllTypeReferences() iter.Seq2[*syntax.Type, *Type] {
 			nodes.Module(module)
 		}
 	}
+}
+
+// FixtureBinding is the implicit concrete fixture variable in a test block.
+func (p *Program) FixtureBinding(d *syntax.Declaration) *Binding {
+	if facts := declarationFactsOf(d); facts != nil {
+		return facts.fixture
+	}
+	return nil
+}
+
+// FixtureBindings visits implicit variables owned by test declarations.
+func (p *Program) FixtureBindings() iter.Seq2[*syntax.Declaration, *Binding] {
+	return facts(p, func(n *syntax.Nodes, emit func(*syntax.Declaration, *Binding)) {
+		n.Declaration = func(d *syntax.Declaration) {
+			if binding := p.FixtureBinding(d); binding != nil {
+				emit(d, binding)
+			}
+		}
+	})
 }

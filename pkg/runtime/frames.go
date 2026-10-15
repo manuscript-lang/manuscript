@@ -8,6 +8,9 @@ import (
 	"sync"
 )
 
+// maxFaultFrames bounds the trace kept on a fault; deeper frames are counted.
+const maxFaultFrames = 32
+
 // Direct source functions are emitted as ordinary Go functions. A function in
 // a recursive cycle of direct calls admits itself with Enter and leaves with
 // Exit, which carry the call-depth limit and a periodic cancellation check;
@@ -82,6 +85,18 @@ func Named(name string, body func(*Execution, []Value) Value) func(*Execution, [
 		sourcePointers.Store(pointer, true)
 	}
 	return body
+}
+
+// NamedFunc is Named for a typed direct function literal.
+func NamedFunc[F any](name string, fn F) F {
+	pointer := reflect.ValueOf(fn).Pointer()
+	if _, seen := sourcePointers.Load(pointer); !seen {
+		if _, key := goFunctionName(fn); key != "" {
+			sourceNames.Store(key, name)
+		}
+		sourcePointers.Store(pointer, true)
+	}
+	return fn
 }
 
 // NamedMethod is Named for the receiver-first bodies of implementations.

@@ -24,3 +24,18 @@ func BenchmarkSourceCallDispatch(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkSourceDirectDispatch(b *testing.B) {
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	direct := SourceDirect("benchmark.ms:1:1", "Int", func(_ *Execution, receiver Value, args []Value) Value {
+		return IntAdd(receiver.(int64), args[0].(int64))
+	})
+	args := []Value{int64(301)}
+	b.ReportAllocs()
+	for b.Loop() {
+		if value := direct(ctx, int64(300), args); value != int64(601) {
+			b.Fatal(value)
+		}
+	}
+}

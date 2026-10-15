@@ -85,11 +85,11 @@ func TestCLIEntryAndNativeBuild(t *testing.T) {
 }
 func TestRuntimeFaults(t *testing.T) {
 	for name, source := range map[string]string{
-		"absent optional": "import Optional from \"@std/optional.ms\"\ntest \"fault\":\n    let missing: Optional[Int] = none\n    let impossible = missing.unwrap()\n",
+		"absent optional": "test \"fault\":\n    let missing: Optional[Int] = none\n    let impossible = missing.unwrap()\n",
 		"failed check":    "import panic from \"@std/faults.ms\"\ntest \"fault\":\n    if 2 + 3 != 6:\n        return panic(message: \"arithmetic check failed\")\n",
 		"overflow":        "fn sum(value: Int) -> Int:\n    return value + 1\ntest \"fault\":\n    let impossible = sum(value: 9223372036854775807)\n",
 		"division":        "fn divide(value: Int, divisor: Int) -> Int:\n    return value / divisor\ntest \"fault\":\n    let impossible = divide(value: 3, divisor: 0)\n",
-		"destructuring":   "import List from \"@std/collections.ms\"\nfn difference(values: List[Int]) -> Int:\n    let [first, second] = values\n    return first - second\ntest \"fault\":\n    let impossible = difference(values: [1])\n",
+		"destructuring":   "fn difference(values: List[Int]) -> Int:\n    let [first, second] = values\n    return first - second\ntest \"fault\":\n    let impossible = difference(values: [1])\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := compiler.CompileSource(name+".ms", source, compiler.Options{Tests: true})
@@ -462,13 +462,11 @@ export fn now() -> Instant:
 export fn close_output() -> Unit:
     stdout().close()
 `
-	main := `import Optional from "@std/optional.ms"
-import { now, close_output } from "./helper.ms"
+	main := `import { now, close_output } from "./helper.ms"
 import stdout from "@std/io.ms"
 import clock from "@std/time.ms"
 import Scheduler from "@std/tasks.ms"
 import sleep from "@std/time.ms"
-import Result from "@std/result.ms"
 
 export fn main() -> Int:
     let before = now()
@@ -579,8 +577,7 @@ test "defaults use their declaration module":
 func TestFieldDefaultsAcrossModules(t *testing.T) {
 	directory := t.TempDir()
 	sources := map[string]string{
-		"data.ms": `import List from "@std/collections.ms"
-fn copy[T](value: T) -> T: return value
+		"data.ms": `fn copy[T](value: T) -> T: return value
 export type Box[T]:
     value: T
     copied: T = copy(value)

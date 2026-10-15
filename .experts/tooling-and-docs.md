@@ -26,6 +26,11 @@ a callback body must not consume the parameter signature's width budget.
 The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
 exercises these boundaries alongside comments and literal spellings.
 
+Update: later feedback asks for compact output that reads well on a phone and a
+desktop. Wrap only when a group exceeds 88 columns or holds a comment or
+multi-statement suite; clause counts, argument counts, lambdas, and authored line
+breaks no longer force expansion. Reintroducing such rules spreads code again.
+
 ### Inspect active List backing in the debugger
 
 Verified: typed List storage adds inactive nil slice fields to the native header.
@@ -57,18 +62,18 @@ Verified: navigation must continue after the first jump into a standard declarat
 Verified: standard source syntax must also pass ordinary `parser.Parse` and formatting. A permissive library-only parser concealed missing bodies, mixed receiver signatures, and field-default errors. The user requires ordinary empty functions with colon headers, including receiver functions, and empty opaque schemas with colons. Do not replace these with a `native` modifier. Binding authorization belongs to checking. Disk editor documents reuse pinned bindings only for exact source matches, while syntax validity is independently tested. Both repo-check modes validate working-tree stdlib sources through the strict frontend and return a positioned error before checker initialization, so `make check`, `make repo-check`, and CI verification reject invalid syntax directly. Evidence: [all-source parsing and formatting](../pkg/stdlib/sources_test.go), [empty-function grammar boundaries](../pkg/parser/empty_declarations_test.go), [disk document checks](../pkg/tooling/lsp/standard_test.go), and [syntax gate regressions](../scripts/repo-check/main_test.go).
 
 Apply when: adding standard APIs, changing their signatures, or extending hover/navigation/documentation.
-Evidence: [declaration ownership](../pkg/stdlib/README.md); [embedded sources](../pkg/stdlib/sources.go); [documentation generator](../scripts/docgen/main.go).
+Evidence: [declaration ownership](../pkg/stdlib/intrinsics.ms); [embedded sources](../pkg/stdlib/sources.go); [documentation generator](../scripts/docgen/main.go).
 Evidence for continued navigation: [standard loader](../pkg/checker/standard.go), [virtual document analysis](../pkg/tooling/lsp/analysis.go), [navigation regression tests](../pkg/tooling/lsp/features_test.go), [read-only session test](../pkg/tooling/lsp/server_test.go), and [client restart test](../extensions/vscode/tests/extension.test.js).
-Verify: native calling signatures agree with the declarations, editor definitions reach the declaration and can follow imports and signature types from there, and generated references pass the existing freshness check. Update the source or generator when output changes. Regenerate from combined source after integration: adding List/Map to the prelude makes their receiver additions appear in the prelude reference as well as the collections reference. Conflict-free merges can still leave generated prelude/download artifacts stale; post-merge docs-check caught this for #262/#269, and combined generation restores those methods. Member-description extraction changes also require combined regeneration, even when merged signature strings remain current.
+Verify: native calling signatures agree with the declarations, editor definitions reach the declaration and can follow imports and signature types from there, and source documentation and the generated book pass their checks. Update the source or generator when output changes. Regenerate from combined source after integration: adding List/Map to the prelude makes their receiver additions appear in the prelude reference as well as the collections reference. Conflict-free merges can still leave generated prelude/download artifacts stale; post-merge docs-check caught this for #262/#269, and combined generation restores those methods. Member-description extraction changes also require combined regeneration, even when merged signature strings remain current.
 
-Decision: the string utility module is `@std/string.ms`, matching the intrinsic `String` type. The user requested this spelling when expanding built-in parity. Receiver operations need no module import; standalone string functions use this canonical module. Evidence: [declarations](../pkg/stdlib/string.ms), [native bindings](../pkg/stdlib/bindings.json), and [data package guide](../documentation/standard-library/data.md). When renaming a module, verify imports, native dispatch identities, virtual editor documents, and generated reference paths together.
+Decision: the string utility module is `@std/string.ms`, matching the intrinsic `String` type. The user requested this spelling when expanding built-in parity. Receiver operations need no module import; standalone string functions use this canonical module. Evidence: [declarations](../pkg/stdlib/string.ms), [native bindings](../pkg/stdlib/bindings.json), and [data package guide](../pkg/stdlib/collections.ms). When renaming a module, verify imports, native dispatch identities, virtual editor documents, and generated reference paths together.
 
 ### Keep CLI and HTTP documentation with their packages
 
 Decision: the user explicitly removed the “Application hosts” section. CLI entry/accessor/shutdown contracts belong in the CLI package guide, and HTTP request/shutdown contracts belong in the HTTP package guide. Do not recreate a separate host category in the standard-library navigation.
 
 Apply when: organizing the standard-library guide or adding application-entry documentation.
-Evidence: [standard-library navigation](../documentation/standard-library/_index.md), [CLI guide](../documentation/standard-library/cli.md), and [HTTP guide](../documentation/standard-library/http.md).
+Evidence: [standard-library navigation](../pkg/stdlib/intrinsics.ms), [CLI guide](../pkg/stdlib/cli.ms), and [HTTP guide](../pkg/stdlib/http.ms).
 Verify: build the book with destination cleanup and confirm there is no standard-library/hosts route or sidebar section; existing entry and request links resolve to package pages.
 
 ### Teach a runnable path before formal reference
@@ -79,7 +84,7 @@ Apply when: adding tutorials, revising design chapters, or explaining new syntax
 Evidence: [learn index](../documentation/learn/_index.md).
 Verify: run the displayed source and commands with the stated prerequisites; check that the reading path introduces dependencies before using them. Sidebar and previous/next links use the same [navigation order](../website/data/navigation.toml); the [publication checks](../tests/docs/publication.test.cjs) compare their rendered order. Build the book with its current strict checks and link to canonical rules instead of repeating them.
 
-Verified: a `manuscript-example` annotation alone does not put a chapter into the executable example suite. The harness discovers introductory tutorials and explicitly listed guides; the logging guide needed an inventory entry before its annotated stdout example was checked or run. See [the example inventory](../tests/examples/examples_test.go) and [the logging example](../documentation/standard-library/logging.md). When adding complete examples outside the introductory chapters, confirm that their file appears in the harness and run its named subtest with `MANUSCRIPT_EXAMPLES_NATIVE=1`.
+Verified: a `manuscript-example` annotation alone does not put a chapter into the executable example suite. The harness discovers introductory tutorials and explicitly listed guides; the logging guide needed an inventory entry before its annotated stdout example was checked or run. See [the example inventory](../tests/examples/examples_test.go) and [the logging example](../pkg/stdlib/log.ms). When adding complete examples outside the introductory chapters, confirm that their file appears in the harness and run its named subtest with `MANUSCRIPT_EXAMPLES_NATIVE=1`.
 
 Task recipes must also preserve I/O failure: matching a failed stdout write and returning success hides an undelivered result. [Common tasks](../documentation/learn/common-tasks.md) forwards write/flush errors to a nonzero entry status. The same [example harness](../tests/examples/examples_test.go) supplies isolated files, stdin, and loopback HTTP plus additional expected-failure cases; type checking alone cannot establish the displayed output, EOF handling, or failure status. See [annotation fields and native execution](../documentation/contributing/development.md#conformance-and-coverage).
 
@@ -164,7 +169,7 @@ Verify: compare authored Markdown with the base branch, keep semantic changes ou
 
 Verified: after the concurrency simplification, source declarations and generated Markdown were current while the checked-in website still exposed retired bounds and a removed module route. The user found this in the API reference. A source-generation check alone cannot verify the HTML, downloadable schemas, or search index that readers receive.
 
-Verified: integration can expose an API in an additional reference without changing its declaration. Adding Map to the prelude and then adding Map methods required regenerating the prelude page and both downloads as well as the collections page. GitHub tested the combined merge tree while the local branch still passed freshness; [the failed freshness gate](https://github.com/manuscript-lang/manuscript/actions/runs/38431272729) identified this drift. Run `make docs` and freshness checks after latest-main integration, using the canonical registry rather than editing generated pages by hand.
+Verified: integration can expose an API in an additional reference without changing its declaration. Adding Map to the prelude and then adding Map methods required regenerating the prelude page and both downloads as well as the collections page. GitHub tested the combined merge tree while the local branch still passed freshness; [the failed freshness gate](https://github.com/manuscript-lang/manuscript/actions/runs/38431272729) identified this drift. Run `make docs` and `make book-check` after latest-main integration, using the canonical registry rather than editing generated pages by hand.
 
 Apply when: removing or renaming public language/API surface, or reporting a documentation update complete.
 Evidence: the user's follow-up to [the concurrency change](https://github.com/manuscript-lang/manuscript/pull/24); [publication checks](../tests/docs/publication.test.cjs); [publishing workflow](../.github/workflows/cicd.yml).
@@ -184,3 +189,18 @@ Verified: in a Debug build `main.main` is generated glue (`initialize()` then th
 Apply when: changing source maps, line directives, inspection spans, or the scripted debugger.
 Evidence: [session driver](../internal/debugger/session.go), [name mapping](../internal/cli/debug_names.go), [end-to-end debug tests](../tests/e2e/debug_script_test.go), [scripted debugging](../documentation/developer-tooling/debugging/debugger-integration.md#scripted-debugging-for-agents).
 Verify: `go test ./tests/e2e -run TestDebug`; a `next` over a statement must land on the next statement line, not a blank line.
+
+### Standard-library prose has the same owner as declarations
+
+Decision: the user requires `.ms` standard-library sources to own all library
+documentation. Guide and special-call-rule comment blocks ship with the pinned
+sources; generated Markdown is disposable and lives under `.artifacts/docs/`.
+Keep existing routes when moving prose. Concurrency API contracts belong with
+`tasks.ms`, `sync.ms`, `queues.ms`, and `process.ms`.
+
+Apply when: changing library docs or the book pipeline.
+Evidence: [guide extraction](../pkg/tooling/docgen/guides.go),
+[generation](../scripts/docgen/main.go), and
+[source example discovery](../tests/examples/examples_test.go).
+Verify: source checks and tutorial discovery work without generated Markdown;
+`make book-check` generates the mounted pages and validates routes and downloads.

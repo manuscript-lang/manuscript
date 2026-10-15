@@ -8,7 +8,7 @@ fn pad2(n: Int) -> String:
 # Parses s when it is lo to hi ASCII digits.
 fn digits(s: String, lo: Int, hi: Int) -> Optional[Int]:
     let codes = s.scalar_values()
-    if codes.length() < lo or codes.length() > hi:
+    if codes.length < lo or codes.length > hi:
         return none
     var n = 0
     for c in codes:
@@ -55,13 +55,13 @@ fn parse_field(text: String, lo: Int, hi: Int) -> Optional[List[Bool]]:
         i = i + 1
     for item in text.split(","):
         let parts = item.split("/")
-        if parts.length() > 2:
+        if parts.length > 2:
             return none
         let body = parts.at(0).unwrap()
         var step = 1
-        if parts.length() == 2:
+        if parts.length == 2:
             let s = digits(parts.at(1).unwrap(), 1, 2)
-            if s.is_none() or s.unwrap() < 1:
+            if s.is_none or s.unwrap() < 1:
                 return none
             step = s.unwrap()
         var a = 0
@@ -70,18 +70,18 @@ fn parse_field(text: String, lo: Int, hi: Int) -> Optional[List[Bool]]:
         if body == "*":
             a = lo
             b = hi
-        else if single.is_some():
-            if parts.length() == 2:
+        else if single.is_some:
+            if parts.length == 2:
                 return none
             a = single.unwrap()
             b = single.unwrap()
         else:
             let r = body.split("-")
-            if r.length() != 2:
+            if r.length != 2:
                 return none
             let x = digits(r.at(0).unwrap(), 1, 2)
             let y = digits(r.at(1).unwrap(), 1, 2)
-            if x.is_none() or y.is_none() or x.unwrap() > y.unwrap():
+            if x.is_none or y.is_none or x.unwrap() > y.unwrap():
                 return none
             a = x.unwrap()
             b = y.unwrap()
@@ -97,7 +97,7 @@ fn parse_field(text: String, lo: Int, hi: Int) -> Optional[List[Bool]]:
 fn parse_start(s: String) -> List[Int]:
     let codes = s.scalar_values()
     let empty = List[Int]()
-    if codes.length() != 16:
+    if codes.length != 16:
         return empty
     # '-' 45, 'T' 84, ':' 58
     if codes.at(4).unwrap() != 45 or codes.at(7).unwrap() != 45 or codes.at(10).unwrap() != 84 or codes.at(13).unwrap() != 58:
@@ -107,7 +107,7 @@ fn parse_start(s: String) -> List[Int]:
     let d = digits(s.slice(8, 10).unwrap(), 2, 2)
     let h = digits(s.slice(11, 13).unwrap(), 2, 2)
     let mi = digits(s.slice(14, 16).unwrap(), 2, 2)
-    if y.is_none() or mo.is_none() or d.is_none() or h.is_none() or mi.is_none():
+    if y.is_none or mo.is_none or d.is_none or h.is_none or mi.is_none:
         return empty
     let year = y.unwrap()
     let month = mo.unwrap()
@@ -130,23 +130,23 @@ fn run() -> Result[Unit, Error]:
     var n = 0
     while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
-        if next.is_none():
+        if next.is_none:
             break
         n = n + 1
         let l = next.unwrap()
-        if l.replace_all(old: " ", new: "").unwrap().is_empty():
+        if l.replace_all(old: " ", new: "").unwrap().is_empty:
             continue
         let pre = "line {n}:"
         let t = l.split(" ")
-        if t.length() != 7:
+        if t.length != 7:
             try stdout().write("{pre} error: bad line\n".to_bytes())
             continue
         let start = parse_start(t.at(0).unwrap())
-        if start.is_empty():
+        if start.is_empty:
             try stdout().write("{pre} error: bad start\n".to_bytes())
             continue
         let count_opt = digits(t.at(1).unwrap(), 1, 2)
-        if count_opt.is_none() or count_opt.unwrap() < 1 or count_opt.unwrap() > 20:
+        if count_opt.is_none or count_opt.unwrap() < 1 or count_opt.unwrap() > 20:
             try stdout().write("{pre} error: bad count\n".to_bytes())
             continue
         let count = count_opt.unwrap()
@@ -155,12 +155,12 @@ fn run() -> Result[Unit, Error]:
         var i = 0
         while i < 5:
             let s = parse_field(t.at(2 + i).unwrap(), lows.at(i).unwrap(), highs.at(i).unwrap())
-            if s.is_none():
+            if s.is_none:
                 bad = names.at(i).unwrap()
                 break
             sets.append(s.unwrap())
             i = i + 1
-        if not bad.is_empty():
+        if not bad.is_empty:
             try stdout().write("{pre} error: bad {bad}\n".to_bytes())
             continue
         let minutes = sets.at(0).unwrap()
@@ -170,24 +170,24 @@ fn run() -> Result[Unit, Error]:
         let dows = sets.at(4).unwrap()
         let runs = List[String]()
         var k = 0
-        while k <= 3000 and runs.length() < count:
+        while k <= 3000 and runs.length < count:
             let day = start.at(0).unwrap() + k
             let ymd = civil_from_days(day)
             if months.at(ymd.at(1).unwrap()).unwrap() and doms.at(ymd.at(2).unwrap()).unwrap() and dows.at((day + 4) % 7).unwrap():
                 var h = 0
-                while h < 24 and runs.length() < count:
+                while h < 24 and runs.length < count:
                     if hours.at(h).unwrap():
                         var mn = 0
-                        while mn < 60 and runs.length() < count:
+                        while mn < 60 and runs.length < count:
                             if minutes.at(mn).unwrap() and not (k == 0 and h * 60 + mn <= start.at(1).unwrap()):
                                 runs.append("{ymd.at(0).unwrap()}-{pad2(ymd.at(1).unwrap())}-{pad2(ymd.at(2).unwrap())} {pad2(h)}:{pad2(mn)}")
                             mn = mn + 1
                     h = h + 1
             k = k + 1
-        if runs.is_empty():
+        if runs.is_empty:
             try stdout().write("{pre} never\n".to_bytes())
             continue
-        try stdout().write("{pre} {runs.length()} runs\n".to_bytes())
+        try stdout().write("{pre} {runs.length} runs\n".to_bytes())
         for r in runs:
             try stdout().write("{r}\n".to_bytes())
     return stdout().flush()

@@ -72,7 +72,7 @@ func (a *altShape) failed(tmp string) ast.Expr {
 // anything else is unboxed.
 func (g *generator) typedReturn(e *syntax.Expression) ast.Expr {
 	shape := g.resultShape
-	info := g.program.Info(e)
+	info := g.info(e)
 	if info.ErrorSource == nil && !info.Folded && checker.TypeKey(info.Type) == shape.key {
 		if value, direct := g.typedDirectCall(e); value != nil && direct.shape != nil && direct.shape.key == shape.key {
 			return value
@@ -110,13 +110,13 @@ func (g *generator) alternativeLiteral(e *syntax.Expression, info *checker.Info,
 		} else {
 			value = g.argumentValue(arg)
 		}
-		fields := []ast.Expr{keyed("Val", sourceAt(arg.Pos, value))}
+		fields := []ast.Expr{keyed("Val", sequence(value))}
 		if shape.optional {
 			fields = append(fields, keyed("Some", ident("true")))
 		}
 		return composite(typ, fields...)
 	case info.Case == "error" && !shape.optional:
-		return composite(typ, keyed("Cause", sourceAt(arg.Pos, g.argumentValue(arg))), keyed("Failed", ident("true")))
+		return composite(typ, keyed("Cause", sequence(g.argumentValue(arg))), keyed("Failed", ident("true")))
 	}
 	return nil
 }

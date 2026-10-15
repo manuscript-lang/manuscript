@@ -142,7 +142,9 @@ func workspaceSymbols(docs map[string]document, roots []string, query string) []
 			}
 			seen[id] = true
 			kind := 12
-			if entry.info.Symbol != nil && entry.info.Symbol.Kind == "type" {
+			if entry.info.Method != nil && entry.info.Method.Accessor {
+				kind = 7
+			} else if entry.info.Symbol != nil && entry.info.Symbol.Kind == "type" {
 				kind = 5
 			} else if entry.info.Symbol != nil && entry.info.Symbol.IsConstant() {
 				kind = 14

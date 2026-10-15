@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -38,8 +39,11 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	// Direct functions are top-level declarations, so directives keep their
 	// order within a function but no longer interleave with registration order.
 	want, got := sourceDirectives(string(baseline)), sourceDirectives(result.Source)
+	// A generic function instantiated per concrete type repeats its body's
+	// directives, so compare the targets as sets.
 	sort.Strings(want)
 	sort.Strings(got)
+	want, got = slices.Compact(want), slices.Compact(got)
 	if !reflect.DeepEqual(want, got) {
 		t.Fatal("lowering changed source directive targets")
 	}

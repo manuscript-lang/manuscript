@@ -116,8 +116,7 @@ docs-coverage:
 book: docs
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir
 
-book-check: docs-check
-	"$(GO)" run ./scripts/docgen -downloads
+book-check: docs-check docs
 	node --test tests/docs/highlighting.test.cjs
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir --destination "$(BOOK_CHECK_DIR)" --baseURL "https://example.org/manuscript/"
 	MANUSCRIPT_BOOK_DIR="$(BOOK_CHECK_DIR)" node --test tests/docs/publication.test.cjs

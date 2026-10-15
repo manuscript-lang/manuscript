@@ -29,7 +29,7 @@ const initMain = `import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"
 
 export fn main() -> Int:
-    let message = "Arguments: {arguments().length()}\n"
+    let message = "Arguments: {arguments().length}\n"
 
     match stdout().write(data: message.to_bytes()):
         ok(_):

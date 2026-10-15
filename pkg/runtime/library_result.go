@@ -31,7 +31,7 @@ func init() {
 				return value.Tag == "error"
 			case "unwrap_error":
 				if value.Tag != "error" {
-					return Panic("called Result.unwrap_error() on ok; check is_error() first")
+					return Panic("called Result.unwrap_error() on ok; check is_error first")
 				}
 				return value.Fields[0]
 			}
@@ -44,7 +44,7 @@ func init() {
 			case "unwrap_or_else":
 				return Invoke(ctx, args[1], []Argument{{"cause", value.Fields[0]}})
 			default:
-				return Panic("called Result.unwrap() on error; check is_ok() first, or use unwrap_or(fallback: ...) to supply a default")
+				return Panic("called Result.unwrap() on error; check is_ok first, or use unwrap_or(fallback: ...) to supply a default")
 			}
 		})
 	}

@@ -33,6 +33,16 @@ a typed `Result[T]`/`Option[T]` variable when every use of the name is the
 scrutinee of a `match` in its own function and no closure captures it. Any other
 use, a `var`, or a capture keeps the boxed `Alternative`.
 
+A generic source function whose body only moves values of its type variables
+(parameters, `let`/`var`, assignment, `if`, `return`, and literals; no calls,
+member access, constructors, or operators on a type variable) is emitted once
+per concrete instantiation as a direct Go function with the type variables
+substituted, so a scalar type argument stays an unboxed Go scalar. Such bodies
+select no implementation by type, so lowering them with substituted types
+cannot change which implementation runs. Every other generic function keeps the
+dynamic `rt.Generic` path, which also remains the symbol's value for function
+references and calls with dynamic type arguments.
+
 Source functions carry no per-call frame bookkeeping. A fault captures its frames
 once, where it is created, from the Go stack: `RegisterSource` and `Named` map
 each generated function to its source name, and the `//line` directives give the

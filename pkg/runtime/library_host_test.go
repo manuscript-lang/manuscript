@@ -194,7 +194,7 @@ func TestExpandedFileSystem(t *testing.T) {
 	Invoke(ctx, Bind(d, "", "close"), nil)
 	libraryFailure(t, read(), "Closed")
 	temp := librarySuccess(t, call("temporary", "manuscript-test-"))
-	path := Invoke(ctx, Bind(temp, "", "path"), nil).(string)
+	path := NativeAccessorRead(ctx, temp, "path").(string)
 	if _, err := os.Stat(path); err != nil {
 		t.Fatal(err)
 	}

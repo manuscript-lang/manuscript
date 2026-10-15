@@ -39,7 +39,7 @@ Options:
 
 Native build levels:
   --build-type <Debug|Release|RelWithDebInfo|MinSizeRel>
-  Default: Release; profile defaults to RelWithDebInfo; debug always uses Debug
+  Default: Release; profile and profiled tests default to RelWithDebInfo; debug always uses Debug
 
 Start with:
   ms init hello
@@ -88,7 +88,7 @@ func commandHelp(command string) (string, bool) {
 	case "test":
 		usage = "<file.ms|ms.toml> [--json] [--filter text] [--timeout duration] [--build-type level] [--debug] [--watch] [-- program arguments]"
 		description = "Build and execute test blocks in the module and its imported modules.\nTests run with the project directory (or the test file's directory) as the working directory, so relative fixture paths resolve there.\nEach test prints RUN before it starts and PASS or FAIL after; a test that exceeds the timeout fails by name.\nArguments after -- are passed to the test executable; its exit status is returned."
-		options = "  --json              Emit one versioned result; stdout is captured, stderr stays live (no --watch)\n  --filter <text>      Run only tests whose module::name contains text\n  --timeout <duration> Fail a test that runs longer (default 60s; 0 disables)\n  --debug              Alias for --build-type Debug\n  --watch              Rebuild and rerun after each saved source change\n"
+		options = "  --json              Emit one versioned result; stdout is captured, stderr stays live (no --watch)\n  --filter <text>      Run only tests whose module::name contains text\n  --timeout <duration> Fail a test that runs longer (default 60s; 0 disables)\n  --test <full-name>   Select exact module::name (repeatable)\n  --match <regex>      Include names matching a regular expression\n  --exclude <regex>    Exclude names matching a regular expression\n  --list              List selected tests without running them\n  --fail-fast         Stop after the first failed test\n  --repeat <count>     Run the selected tests count times\n  --shuffle <seed>     Shuffle with a reproducible integer seed\n  --cpu-profile <path> Write a CPU profile of selected tests\n  --heap-profile <path> Write a heap profile\n  --trace <path>       Write an execution trace\n  --debug              Alias for --build-type Debug\n  --watch              Rebuild and rerun after each saved source change\n"
 		examples = "ms test test.ms\n  ms test ms.toml --debug\n  ms test ms.toml --filter \"nick collisions\" --timeout 10s"
 	case "fmt":
 		usage = "<file.ms|directory|ms.toml>... [--check [--json]]"
@@ -203,7 +203,7 @@ func requestsHelp(command string, args []string) bool {
 			if command != "profile" {
 				i++
 			}
-		case "-o", "--output", "--out-dir", "--cpu-profile", "--heap-profile", "--build-type", "--timeout", "--filter":
+		case "-o", "--output", "--out-dir", "--cpu-profile", "--heap-profile", "--build-type", "--timeout", "--filter", "--test", "--match", "--exclude", "--repeat", "--shuffle":
 			// A flag value is not a help request, even if it is spelled --help.
 			i++
 		}

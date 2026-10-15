@@ -9,8 +9,6 @@ import (
 
 func TestPrimitiveListAppendAndRangeKeepSemantics(t *testing.T) {
 	result := compiler.CompileSource("list-loops.ms", `import panic from "@std/faults.ms"
-import List from "@std/collections.ms"
-import Set from "@std/collections.ms"
 
 fn check(ok: Bool, name: String) -> Unit:
     if not ok:
@@ -34,7 +32,7 @@ test "primitive list loops":
         if v == 2:
             ints.append(value: 100)
     check(ok: sum == 10, name: "range sees the captured length")
-    check(ok: ints.length() == 6, name: "append during range")
+    check(ok: ints.length == 6, name: "append during range")
     var total = 0.0
     for f in floats:
         total = total + f

@@ -9,6 +9,9 @@ import (
 func TestOptionalReceiverMethods(t *testing.T) {
 	ctx := RootExecution()
 	call := func(value Value, method string, args ...Argument) Value {
+		if method == "is_some" || method == "is_none" {
+			return NativeAccessorRead(ctx, value, method)
+		}
 		return Invoke(ctx, NativeMemberResult(value, method, ""), args)
 	}
 	for _, test := range []struct {

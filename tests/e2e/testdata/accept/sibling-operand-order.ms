@@ -1,4 +1,3 @@
-import {List, Map} from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
 import panic from "@std/faults.ms"
 
@@ -38,7 +37,7 @@ test "map keys read before a later match assigns them":
         ,
         key: key
     }
-    if entries.length() != 2: return panic("map key read after a later match")
+    if entries.length != 2: return panic("map key read after a later match")
     if entries.get(key: 1) != some(5): return panic(
         "first map key changed by a later match"
     )

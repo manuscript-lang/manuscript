@@ -1,8 +1,6 @@
 import {decoder, JsonDecoder} from "@std/jsonstream.ms"
 import {stringify, JsonValue, JsonLimits, JsonError} from "@std/json.ms"
-import List from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -10,9 +8,7 @@ fn texts(values: List[JsonValue]) -> List[String]:
     let result: List[String] = []
 
     for item in values:
-        result.append(
-            value(stringify(item))
-        )
+        result.append(value(stringify(item)))
 
     return result
 
@@ -22,25 +18,17 @@ fn decode(input: Bytes, size: Int) -> List[String]:
     let result: List[String] = []
     var offset = 0
 
-    while offset < input.length():
+    while offset < input.length:
         var end = offset + size
 
-        if end > input.length(): end = input.length()
+        if end > input.length: end = input.length
 
-        for text in texts(
-            value(
-                reader.feed(
-                    value(input.slice(offset, end))
-                )
-            )
-        ):
+        for text in texts(value(reader.feed(value(input.slice(offset, end))))):
             result.append(text)
 
         offset = end
 
-    for text in texts(
-        value(reader.finish())
-    ):
+    for text in texts(value(reader.finish())):
         result.append(text)
 
     return result
@@ -57,7 +45,7 @@ test "JSON decoder preserves values split at every chunk size":
     let input = source.to_bytes()
     var size = 1
 
-    while size <= input.length():
+    while size <= input.length:
         if decode(input, size) != expected: return panic("chunk size {size}")
 
         size = size + 1
@@ -91,17 +79,13 @@ test "JSON decoder rejects invalid UTF-8 and stays failed":
 
 test "JSON decoder applies per-value budgets":
     let limited: Result[List[JsonValue], JsonError] = error(JsonError.LimitExceeded)
-    let bytes = value(
-        decoder(JsonLimits(max_bytes: 5))
-    )
+    let bytes = value(decoder(JsonLimits(max_bytes: 5)))
     if bytes.feed("[1,2]".to_bytes()) == limited: return panic(
         "value at the byte limit"
     )
     if bytes.feed("[1,2,3]".to_bytes()) != limited: return panic("byte limit")
 
-    let depth = value(
-        decoder(JsonLimits(max_depth: 2))
-    )
+    let depth = value(decoder(JsonLimits(max_depth: 2)))
     if depth.feed("[[[".to_bytes()) != limited: return panic("depth limit")
 
     match decoder(JsonLimits(max_values: -1)):

@@ -86,7 +86,7 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 		ast.Inspect(body, func(node ast.Node) bool {
 			if c, ok := node.(*ast.CallExpr); ok {
 				if s, ok := c.Fun.(*ast.SelectorExpr); ok {
-					if s.Sel.Name == "NewSourceFunction" || s.Sel.Name == "NewCompiledSourceFunction" || s.Sel.Name == "SourceDirect" {
+					if s.Sel.Name == "NewSourceFunction" || s.Sel.Name == "NewCompiledSourceFunction" || s.Sel.Name == "NamedFunc" || s.Sel.Name == "SourceDirect" {
 						return false
 					}
 					if s.Sel.Name == "NewCleanupStack" {
@@ -114,7 +114,7 @@ func callableCleanupCounts(t *testing.T, source string) map[string]int {
 				measure(name, n.Body)
 			}
 		case *ast.CallExpr:
-			if s, ok := n.Fun.(*ast.SelectorExpr); ok && (s.Sel.Name == "Named" || s.Sel.Name == "NamedMethod") {
+			if s, ok := n.Fun.(*ast.SelectorExpr); ok && (s.Sel.Name == "Named" || s.Sel.Name == "NamedMethod" || s.Sel.Name == "NamedFunc") {
 				measure(unquote(n.Args[0]), n.Args[1].(*ast.FuncLit).Body)
 			}
 		}

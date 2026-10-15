@@ -100,8 +100,7 @@ func TestNegationOfScalarsStaysTyped(t *testing.T) {
 }
 
 func TestStaticNativeMembersBindOncePerCallSite(t *testing.T) {
-	r := compileSource("native.ms", `import {List, Set} from "@std/collections.ms"
-import StringBuilder from "@std/string.ms"
+	r := compileSource("native.ms", `import StringBuilder from "@std/string.ms"
 
 fn f(xs: List[Int], text: String, seen: Set[Int]) -> String:
     xs.set(index: 0, value: 1)
@@ -116,7 +115,7 @@ fn generic[T](xs: List[T], value: T) -> List[T]:
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	for _, want := range []string{`BindNativeCall("List", "set"`, `BindNativeCall("String", "trim"`, `BindNativeCall("Set", "map"`, "StringBuilderAppend(", "StringBuilderFreeze("} {
+	for _, want := range []string{`BindNativeCall("List", "set"`, `BindNativeCall("Set", "map"`, "StringBuilderAppend(", "StringBuilderFreeze(", "rt.StringTrim("} {
 		if !strings.Contains(r.Source, want) {
 			t.Errorf("missing %q", want)
 		}
@@ -178,8 +177,7 @@ fn id(x: Int) -> Int:
 // Appending to and ranging over a List of a primitive element type neither
 // boxes the element nor asserts it back.
 func TestPrimitiveListAppendAndRangeAreUnboxed(t *testing.T) {
-	r := compileSource("list.ms", `import List from "@std/collections.ms"
-fn sum(count: Int) -> Int:
+	r := compileSource("list.ms", `fn sum(count: Int) -> Int:
     let items = List[Int]()
     var i = 0
     while i < count:
@@ -207,10 +205,9 @@ fn sum(count: Int) -> Int:
 // call, and a Map.get consumed by match reads the value and presence without
 // building an Optional.
 func TestTextLengthAndMapGetLowerWithoutBoxing(t *testing.T) {
-	r := compileSource("strings.ms", `import Map from "@std/collections.ms"
-fn label(n: Int, f: Float, ok: Bool, s: String) -> Int:
+	r := compileSource("strings.ms", `fn label(n: Int, f: Float, ok: Bool, s: String) -> Int:
     let text = "n={n} f={f} ok={ok} s={s}"
-    return text.length()
+    return text.length
 
 fn lookup(m: Map[Int, Int], key: Int) -> Int:
     match m.get(key: key):
@@ -222,7 +219,7 @@ fn lookup(m: Map[Int, Int], key: Int) -> Int:
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	for _, want := range []string{"rt.FormatInt(", "rt.FormatFloat(", "rt.FormatBool(", "rt.StringLength(", "rt.MapGetParts("} {
+	for _, want := range []string{"rt.FormatInt(", "rt.FormatFloat(", "rt.FormatBool(", "rt.StringLengthRead(", "rt.MapGetPartsInt("} {
 		if !strings.Contains(r.Source, want) {
 			t.Fatalf("missing %q\n%s", want, r.Source)
 		}
@@ -233,16 +230,103 @@ fn lookup(m: Map[Int, Int], key: Int) -> Int:
 }
 
 func TestLambdasBorrowCallbackArguments(t *testing.T) {
-	r := compileSource("lambdas.ms", `import List from "@std/collections.ms"
-fn double(value: Int) -> Int: value * 2
+	r := compileSource("lambdas.ms", `fn double(value: Int) -> Int: value * 2
 
-fn run(items: List[Int]) -> List[Int]:
-    return items.map(fn(value: Int) -> Int: double(value: value))
+fn run(items: List[Int]) -> Map[Int, List[Int]]:
+    return items.group_by(key: fn(value: Int) -> Int: double(value: value))
 `)
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
 	if !strings.Contains(r.Source, "rt.NewCompiledSourceFunction(") {
 		t.Fatalf("lambda does not borrow arguments\n%s", r.Source)
+	}
+}
+
+func TestListCallbacksInlineAsGoLoops(t *testing.T) {
+	r := compileSource("inline.ms", `fn run(items: List[Int]) -> List[Int]:
+    return items.map(fn(value: Int) -> Int: value * 2)
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.IterateInt(", "rt.OwnIntList("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, "rt.NewCompiledSourceFunction(") {
+		t.Fatalf("callback still boxed\n%s", r.Source)
+	}
+}
+
+func TestOptionalMembersLowerWithoutDynamicDispatch(t *testing.T) {
+	r := compileSource("optional.ms", `fn run(o: Optional[Int]) -> Int:
+    if o.is_some:
+        return o.unwrap_or(fallback: 0)
+    return 1
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.OptionalSomeRead(", "rt.OptionalUnwrapOr("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, `"is_some"`) {
+		t.Fatalf("Optional member still dispatches by name\n%s", r.Source)
+	}
+}
+
+func TestPureStandardCallsLowerToPlainRuntimeCalls(t *testing.T) {
+	r := compileSource("scalar.ms", `import {sqrt} from "@std/math.ms"
+fn run(x: Float, s: String) -> Bool:
+    return sqrt(value: x) > 1.0 and s.contains(value: "a")
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	for _, want := range []string{"rt.MathSqrt(", "rt.StringContains("} {
+		if !strings.Contains(r.Source, want) {
+			t.Fatalf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, "math/sqrt") {
+		t.Fatalf("sqrt still resolves dynamically\n%s", r.Source)
+	}
+}
+
+func TestOmittedDefaultsCallDirectFunctions(t *testing.T) {
+	r := compileSource("defaults.ms", `fn scaled(base: Int, factor: Int = 2) -> Int: base * factor
+fn run() -> Int: scaled(base: 3)
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	if !strings.Contains(r.Source, "call_symbol") || strings.Contains(r.Source, "rt.Invoke(") {
+		t.Fatalf("omitted default call still dispatches dynamically\n%s", r.Source)
+	}
+}
+
+func TestDirectOnlyLambdasLowerToTypedFunctions(t *testing.T) {
+	r := compileSource("closure.ms", `fn run(count: Int) -> Int:
+    let add = fn(a: Int, b: Int) -> Int: a + b
+    var total = 0
+    var i = 0
+    while i < count:
+        total = add(a: total, b: i)
+        i = i + 1
+    return total
+
+fn shared() -> List[Int]:
+    let double = fn(value: Int) -> Int: value * 2
+    return [1].map(double)
+`)
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	if strings.Count(r.Source, "rt.NamedFunc(") != 1 {
+		t.Fatalf("exactly the direct-only lambda should be typed\n%s", r.Source)
 	}
 }

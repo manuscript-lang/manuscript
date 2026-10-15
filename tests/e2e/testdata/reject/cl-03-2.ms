@@ -1,5 +1,3 @@
-import List from "@std/collections.ms"
-
 type PrivateId:
     value: String
 

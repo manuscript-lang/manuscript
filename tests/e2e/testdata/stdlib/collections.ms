@@ -1,18 +1,11 @@
 import {
-    List,
-    Map,
-    Set,
     ListBuilder,
     MapBuilder,
     SetBuilder,
     range,
     filled,
-    CollectionError,
-    MapEntry,
     map_from_entries
 } from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -28,10 +21,9 @@ fn parity(value: Int) -> Int: value % 2
 
 test "list search callbacks empty identities and folding":
     let list = [-1, 2, 0, 3]
-    if (
-        list.find(positive) != some(2)
-        or list.find_last(positive) != some(3)
-    ): return panic("find")
+    if (list.find(positive) != some(2) or list.find_last(positive) != some(3)): return panic(
+        "find"
+    )
     if (
         list.find_index(positive) != some(1)
         or list.find_last_index(positive) != some(3)
@@ -47,9 +39,7 @@ test "list search callbacks empty identities and folding":
     if empty.some(positive) or not empty.every(positive): return panic(
         "empty predicate identities"
     )
-    if not empty.first().is_none() or not empty.last().is_none(): return panic(
-        "empty search"
-    )
+    if not empty.first.is_none or not empty.last.is_none: return panic("empty search")
 
     let groups = ([1, 2, 3]).group_by(parity)
     if groups.get(1) != some([1, 3]) or groups.get(0) != some([2]): return panic(
@@ -83,7 +73,7 @@ test "maps preserve insertion order and overwrite duplicate keys":
 
     let copy = map.clone().remove("a")
     if copy.keys() != ["b"] or map.keys() != ["a", "b"]: return panic("map clone")
-    if not map.get("missing").is_none(): return panic("missing key")
+    if not map.get("missing").is_none: return panic("missing key")
 
 test "set algebra removes duplicates and preserves values":
     let left = ([1, 2, 2]).to_set()
@@ -99,16 +89,9 @@ test "set algebra removes duplicates and preserves values":
     if not left.is_disjoint_from(([3]).to_set()): return panic("disjoint")
 
 test "collection constructors validate bounds and exact limits":
-    if (
-        value(
-            range(
-                start: 3,
-                end: -1,
-                step: -1,
-                max_items: 4
-            )
-        ) != [3, 2, 1, 0]
-    ): return panic("descending range")
+    if (value(range(start: 3, end: -1, step: -1, max_items: 4)) != [3, 2, 1, 0]): return panic(
+        "descending range"
+    )
     if value(filled(value: "x", count: 2)) != ["x", "x"]: return panic("filled")
 
     let invalid: Result[List[Int], CollectionError] = error(
@@ -119,12 +102,9 @@ test "collection constructors validate bounds and exact limits":
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
-    if range(
-        start: 0,
-        end: 3,
-        step: 1,
-        max_items: 2
-    ) != limited: return panic("range budget")
+    if range(start: 0, end: 3, step: 1, max_items: 2) != limited: return panic(
+        "range budget"
+    )
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
     let limited: Result[List[Int], CollectionError] = error(
@@ -140,11 +120,9 @@ test "huge sizes return LimitExceeded instead of exhausting memory":
             max_items: 9223372036854775807
         ) != limited
     ): return panic("filled huge explicit limit")
-    if range(
-        start: 0,
-        end: 9223372036854775807,
-        step: 1
-    ) != limited: return panic("range huge")
+    if range(start: 0, end: 9223372036854775807, step: 1) != limited: return panic(
+        "range huge"
+    )
 
 test "collection builders freeze all accumulated values":
     let list = ListBuilder[Int]()

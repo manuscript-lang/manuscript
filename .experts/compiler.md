@@ -1,5 +1,20 @@
 # Compiler and build lessons
 
+### Dispatch caches retain lexical view evidence
+
+Verified: interface views of the same concrete receiver can select different
+module-local implementations at one call site. Receiver type and registration
+generation alone do not identify the target. Cache the lexical module as well;
+argument scopes retain the ordinary specialization path rather than reusing a
+previous no-argument entry. Cached targets must never capture receiver values.
+
+Apply when: changing method/accessor dispatch, interface views or call-site caches.
+Evidence: [method dispatch](../pkg/runtime/methods.go),
+[scope/cache regressions](../pkg/runtime/performance_test.go), and
+[mixed method/accessor views](../tests/e2e/testdata/projects/accessors/main.ms).
+Verify: alternate same-type views from two local implementation modules at one
+nongeneric interface call site, including concurrent calls, under the race detector.
+
 ### Generated Go serves performance; lowering code serves maintainability
 
 Decision: the user wants highly optimized generated Go, on par with
@@ -167,6 +182,14 @@ Apply when: adding or specializing lowered runtime operations, source fault trac
 Evidence: [located lowering](../pkg/lower/lower_expressions.go), [frame capture](../pkg/runtime/frames.go), [recursive-cycle admission](../pkg/lower/lower_recursion.go), [lowering page](../documentation/contributing/compiler/lowering/_index.md#structured-go-generation), and [native location regressions](../tests/e2e/fault_locations_test.go).
 Verify: run `TestFaultSourceLocations`, including multiline operands, argument faults, default arguments, bound methods, and destructuring; preserve frame order, line numbers, and names. Do not reintroduce columns or `defer`-based recording without a new decision.
 
+Verified: making default-bearing functions direct also makes their default
+expressions part of the direct-call graph. Omitting defaults let a cycle through
+an accessor exceed MaxCallDepth after integrating #507, even though body-only
+recursion tests passed. Walk the declaration's parameters and body with the common
+Callable visitor. [Default-cycle lowering](../pkg/lower/lower_accessors_test.go)
+and [bounded native depth/cancellation](../pkg/build/accessors_native_test.go)
+regressions distinguish this from merely accepting the source.
+
 Verified: Go orders calls in an expression, but that does not establish when an
 earlier plain local read occurs relative to a later call. A right-hand match can
 mutate the left local. Direct primitive equality therefore captures its operands
@@ -183,3 +206,31 @@ Verified: executable manifests previously required an explicit entry and had no 
 Apply when: changing manifest modes, project discovery, editor overlays, or entry validation.
 Evidence: [manifest validation](../pkg/project/manifest.go), [graph loading](../pkg/frontend/modules.go), [library contracts](../documentation/developer-tooling/builds/project-configuration.md#library-projects-and-copied-dependencies), and [native regressions](../tests/e2e/library_project_test.go).
 Verify: an omitted entry checks unimported modules and executes their tests; an explicit bad entry still fails. Check unsaved unimported library files, canonical symlink entry identities, confined alias targets, and test cache invalidation after an unimported source edit. `ms.lock` pins build inputs and never claims to pin copied package content.
+
+### Compiler passes use the right algorithm and data structure for their input size
+
+Decision: the user wants parsing, checking, and lowering to use the correct
+algorithms and data structures so compile time stays linear (or n log n) in
+source size, with no ad-hoc special cases. A pass that re-walks a shared graph
+per root, scans a list per lookup, or allocates per-byte tables is a defect even
+when small inputs hide it.
+
+Verified: scaling probes found these before they reached users. Walking the type
+dependency graph from every declaration made N chained types O(N²) (8k types:
+18.9 s, 0.35 s once the visited set was shared across roots; #490). A per-byte
+offset table was allocated for every lexed file though only CRLF needs one
+(#491). Lowering matches on typed `Result`/`Optional` as `switch x.Tag()` on
+strings made Go's SSA passes superlinear (4k matches in one function: 135 s to
+build, 15.6 s with a bool-flag switch; #492). Remaining superlinear cost in very
+large functions is inside the Go compiler.
+
+Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a
+cache or table they share.
+Evidence: #490, #491, #492; `pkg/checker/type_recursion.go`.
+Verify: generate inputs at N, 2N, 4N (chained declarations, long function
+bodies, many matches, deep nesting), time `ms check`, `ms emit`, and `ms build`
+separately, and profile any step that grows faster than 2x per doubling. Prefer a
+global memo or index over a per-query rescan, keep cycle checks ahead of memo
+hits, and measure the emitted Go with `go build -gcflags=-cpuprofile`, since
+`emit` can stay linear while the Go build does not.
+

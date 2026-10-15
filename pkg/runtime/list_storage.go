@@ -315,6 +315,11 @@ func NewIntList(typ string, values []int64) *List {
 	return &List{Type: typ, kind: listInt, ints: append([]int64(nil), values...)}
 }
 
+// OwnIntList adopts values, which a list literal freshly allocated, as its backing.
+func OwnIntList(typ string, values []int64) *List {
+	return &List{Type: typ, kind: listInt, ints: values}
+}
+
 // ListAppendInt is the unboxed primitive append boundary.
 func ListAppendInt(ctx *Execution, receiver Value, value int64) Value {
 	CheckCancelled(ctx)
@@ -341,7 +346,7 @@ func (o IntOptional) Box(result string) Alternative {
 func (o IntOptional) Unwrap(ctx *Execution) int64 {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -366,6 +371,11 @@ func ListAtInt(ctx *Execution, receiver Value, index int64) IntOptional {
 // NewFloatList copies values into fresh mutable backing; typ is the exact checked key.
 func NewFloatList(typ string, values []float64) *List {
 	return &List{Type: typ, kind: listFloat, floats: append([]float64(nil), values...)}
+}
+
+// OwnFloatList adopts values, which a list literal freshly allocated, as its backing.
+func OwnFloatList(typ string, values []float64) *List {
+	return &List{Type: typ, kind: listFloat, floats: values}
 }
 
 // ListAppendFloat is the unboxed primitive append boundary.
@@ -394,7 +404,7 @@ func (o FloatOptional) Box(result string) Alternative {
 func (o FloatOptional) Unwrap(ctx *Execution) float64 {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -419,6 +429,11 @@ func ListAtFloat(ctx *Execution, receiver Value, index int64) FloatOptional {
 // NewBoolList copies values into fresh mutable backing; typ is the exact checked key.
 func NewBoolList(typ string, values []bool) *List {
 	return &List{Type: typ, kind: listBool, bools: append([]bool(nil), values...)}
+}
+
+// OwnBoolList adopts values, which a list literal freshly allocated, as its backing.
+func OwnBoolList(typ string, values []bool) *List {
+	return &List{Type: typ, kind: listBool, bools: values}
 }
 
 // ListAppendBool is the unboxed primitive append boundary.
@@ -447,7 +462,7 @@ func (o BoolOptional) Box(result string) Alternative {
 func (o BoolOptional) Unwrap(ctx *Execution) bool {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -472,6 +487,11 @@ func ListAtBool(ctx *Execution, receiver Value, index int64) BoolOptional {
 // NewStringList copies values into fresh mutable backing; typ is the exact checked key.
 func NewStringList(typ string, values []string) *List {
 	return &List{Type: typ, kind: listString, strings: append([]string(nil), values...)}
+}
+
+// OwnStringList adopts values, which a list literal freshly allocated, as its backing.
+func OwnStringList(typ string, values []string) *List {
+	return &List{Type: typ, kind: listString, strings: values}
 }
 
 // ListAppendString is the unboxed primitive append boundary.
@@ -500,7 +520,7 @@ func (o StringOptional) Box(result string) Alternative {
 func (o StringOptional) Unwrap(ctx *Execution) string {
 	CheckCancelled(ctx)
 	if !o.Present {
-		Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
+		Panic("called Optional.unwrap() on none; check is_some first, or use unwrap_or(fallback: ...) to supply a default")
 	}
 	CheckCancelled(ctx)
 	return o.Value
@@ -636,6 +656,26 @@ func (l *List) copySliceChecked(ctx *Execution, start, end int) *List {
 		out.Items = copyListItems(ctx, l.Items[start:end])
 	}
 	return out
+}
+
+// store writes slot i of a list sized by allocate, boxing the whole list if the
+// value does not fit its typed storage.
+func (l *List) store(i int, v Value) {
+	if !l.accepts(v) {
+		l.boxStorage()
+	}
+	l.Set(i, v)
+}
+
+// boxStorage retains current values when private result construction discovers
+// a payload outside its selected primitive storage.
+func (l *List) boxStorage() {
+	boxed := make([]Value, l.Len())
+	for i := range boxed {
+		boxed[i] = l.Get(i)
+	}
+	l.kind, l.ints, l.floats, l.bools, l.strings = listBoxed, nil, nil, nil, nil
+	l.Items = boxed
 }
 
 func (l *List) allocate(n int) {

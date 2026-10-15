@@ -1,7 +1,5 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-
 type Shape:
     case Circle(r: Int)
     case Rect(w: Int, h: Int)
@@ -18,7 +16,7 @@ fn area(shape: Shape) -> Int:
 fn first_positive(values: List[Optional[Int]]) -> Int:
     var index = 0
 
-    while index < values.length():
+    while index < values.length:
         let item = values.at(index).unwrap()
         index = index + 1
 

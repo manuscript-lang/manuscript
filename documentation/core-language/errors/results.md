@@ -45,9 +45,9 @@ This caller chooses a response for either outcome. Another caller could inspect 
 
 ## Checking, extracting, and composing
 
-| Method | Behavior |
+| Member | Behavior |
 | --- | --- |
-| `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Unit values |
+| `is_ok`, `is_error` | Test the case, including successful zero, false, or Unit values |
 | `unwrap() -> T` | Return the successful payload; [fault](faults.md) on an error |
 | `unwrap_error() -> E` | Return the error payload; fault on success |
 | `unwrap_or(fallback: T) -> T` | Return success or the eagerly evaluated fallback |

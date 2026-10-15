@@ -29,7 +29,7 @@ fn wrong(value: Result[Int, String]) -> Optional[Int]: value.to_optional()`, "no
 		{"native helpers stay private", `import ok_or from "@std/optional.ms"`, "ok_or"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			result := CompileSource("queries.ms", "import {Map, Set} from \"@std/collections.ms\"\n"+test.source+"\n", Options{AnalyzeOnly: true})
+			result := CompileSource("queries.ms", ""+test.source+"\n", Options{AnalyzeOnly: true})
 			if result.Success() {
 				t.Fatal("accepted invalid contract")
 			}

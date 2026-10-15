@@ -4,9 +4,6 @@ import network from "@std/net.ms"
 import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@std/http.ms"
 import {WebSocketOptions, WebSocketError} from "@std/websocket.ms"
 import TlsOptions from "@std/tls.ms"
-import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -21,7 +18,7 @@ fn tls_options() -> TlsOptions:
     )
 
 fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    if exchange.path() == "/ws":
+    if exchange.path == "/ws":
         with socket = value(
             exchange.upgrade(
                 allowed_origins: [],
@@ -35,15 +32,10 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         return ok(unit)
 
     let headers = list_headers(
-        Map[String, List[String]]().add(
-            key: "X-Test",
-            value: ["manuscript"]
-        )
+        Map[String, List[String]]().add(key: "X-Test", value: ["manuscript"])
     )
     let started = value(exchange.send_headers(status: 201, headers: headers))
-    let written = value(
-        exchange.write("hello".to_bytes())
-    )
+    let written = value(exchange.write("hello".to_bytes()))
     return ok(unit)
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
@@ -62,7 +54,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             options: options
         )
     ):
-        let url = "http://{server.address()}/"
+        let url = "http://{server.address}/"
         let response = value(
             net.request(
                 method: HttpMethod.Get,
@@ -72,10 +64,10 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                 timeout: 2.seconds
             )
         )
-        if response.metadata().status != 201 or response.body != "hello".to_bytes(): return panic(
+        if response.metadata.status != 201 or response.body != "hello".to_bytes(): return panic(
             "buffered HTTP"
         )
-        if value(response.metadata().headers.text("X-Test")) != some(["manuscript"]): return panic(
+        if value(response.metadata.headers.text("X-Test")) != some(["manuscript"]): return panic(
             "HTTP header"
         )
 
@@ -96,13 +88,17 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                     timeout: 2.seconds
                 )
             ):
-                if body.metadata().status != 201: return panic("streaming status")
-                if value(
-                    body.read(5)
-                ).unwrap() != "hello".to_bytes(): return panic("streaming bytes")
-                if not value(
-                    body.read(5)
-                ).is_none(): return panic("streaming EOF")
+                if body.metadata.status != 201: return panic("streaming status")
+                if value(body.read(5)).unwrap() != "hello".to_bytes(): return panic(
+                    "streaming bytes"
+                )
+                if not value(body.read(5)).is_none: return panic("streaming EOF")
+
+                let saved_metadata = body.metadata
+                body.close()
+                body.metadata.status = 202
+                if body.metadata.status != 202 or saved_metadata.status != 202:
+                    return panic("closed response body metadata lost its live alias")
 
         let limited: Result[Unit, HttpError] = error(HttpError.LimitExceeded)
 
@@ -121,11 +117,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 
 test "WebSocket negotiates a protocol and echoes a text frame":
     let net = network()
-    let options = HttpServerOptions(
-        timeout: 3.seconds,
-        grace: 0.seconds,
-        tls: none
-    )
+    let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
 
     with server = value(
         net.serve_stream(
@@ -143,36 +135,24 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 
         with socket = value(
             net.web_socket(
-                url: "ws://{server.address()}/ws",
+                url: "ws://{server.address}/ws",
                 headers: text_headers(Map[String, String]()),
                 subprotocols: ["echo"],
                 options: client_options
             )
         ):
-            if socket.subprotocol() != "echo": return panic("WebSocket subprotocol")
+            if socket.subprotocol != "echo": return panic("WebSocket subprotocol")
 
-            let sent = value(
-                socket.send(
-                    data: "é🙂".to_bytes(),
-                    text: true
-                )
-            )
+            let sent = value(socket.send(data: "é🙂".to_bytes(), text: true))
             let message = value(socket.receive()).unwrap()
             if not message.text or message.data != "é🙂".to_bytes(): return panic(
                 "WebSocket echo"
             )
 
 fn report_host(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let hosts = value(exchange.headers().text("Host")).unwrap_or([])
-    let started = value(
-        exchange.send_headers(
-            status: 200,
-            headers: headers()
-        )
-    )
-    let written = value(
-        exchange.write(hosts.join(",").to_bytes())
-    )
+    let hosts = value(exchange.headers.text("Host")).unwrap_or([])
+    let started = value(exchange.send_headers(status: 200, headers: headers()))
+    let written = value(exchange.write(hosts.join(",").to_bytes()))
     return ok(unit)
 
 test "HTTP streaming handlers see the Host request header":
@@ -194,13 +174,13 @@ test "HTTP streaming handlers see the Host request header":
         let response = value(
             net.request(
                 method: HttpMethod.Get,
-                url: "http://{server.address()}/",
+                url: "http://{server.address}/",
                 headers: text_headers(Map[String, String]()),
                 body: "".to_bytes(),
                 timeout: 2.seconds
             )
         )
-        if response.body != server.address().to_bytes(): return panic(
+        if response.body != server.address.to_bytes(): return panic(
             "Host header missing"
         )
 

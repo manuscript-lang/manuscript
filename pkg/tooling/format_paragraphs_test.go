@@ -30,8 +30,8 @@ fn last() -> Int: return 2
 			name: "bindings guards and outcome handling",
 			source: `fn process(input: String) -> Int:
     let records = parse(input)
-    if records.length() == 0: return 0
-    if records.length() > 100: return 1
+    if records.length == 0: return 0
+    if records.length > 100: return 1
     let report = summarize(records)
     let payload = encode(report)
     match save(payload):
@@ -42,8 +42,8 @@ fn last() -> Int: return 2
 `,
 			want: `fn process(input: String) -> Int:
     let records = parse(input)
-    if records.length() == 0: return 0
-    if records.length() > 100: return 1
+    if records.length == 0: return 0
+    if records.length > 100: return 1
 
     let report = summarize(records)
     let payload = encode(report)
@@ -127,8 +127,7 @@ fn last() -> Int: return 2
 		},
 		{
 			name: "comments stay attached",
-			source: `import List from "@std/collections.ms"
-# A public contract.
+			source: `# A public contract.
 export interface Run:
     fn first() -> Int
     fn second() -> Int
@@ -148,9 +147,7 @@ impl Run for Runner:
 # Application entry.
 fn main() -> Int: return 0
 `,
-			want: `import List from "@std/collections.ms"
-
-# A public contract.
+			want: `# A public contract.
 export interface Run:
     fn first() -> Int
     fn second() -> Int
@@ -234,7 +231,7 @@ fn example() -> Int:
 `,
 		},
 		{
-			name: "multiline expressions remain intact",
+			name: "multiline expressions collapse unless commented",
 			source: `fn example(
     value: Int = choose(
         first: 1,
@@ -253,22 +250,14 @@ fn example() -> Int:
     ): return next
     return 0
 `,
-			want: `fn example(
-    value: Int = choose(
-        first: 1,
-        second: 2
-    )
-) -> Int:
+			want: `fn example(value: Int = choose(first: 1, second: 2)) -> Int:
     let text = "# if value: return {value}"
     let next = choose(
         first: value,
         # Explain this argument.
         second: 2
     )
-    if (
-        next > 0
-        and value > 0
-    ): return next
+    if (next > 0 and value > 0): return next
 
     return 0
 `,

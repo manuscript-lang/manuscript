@@ -12,6 +12,9 @@ func TestResultPayloadIdentityAndSpecialization(t *testing.T) {
 	failed := Alternative{Type: "@std/Result[Int][@std/List[Int]]", Tag: "error", Fields: []Value{cause}}
 	success := Alternative{Type: failed.Type, Tag: "ok", Fields: []Value{int64(0)}}
 	call := func(value Value, name, result string, args ...Argument) Value {
+		if len(args) == 0 && nativeAccessorMember(value, name) {
+			return NativeAccessorRead(ctx, value, name)
+		}
 		return Invoke(ctx, NativeMemberResult(value, name, result), args)
 	}
 	if call(failed, "unwrap_error", "") != cause || call(success, "unwrap", "") != int64(0) {

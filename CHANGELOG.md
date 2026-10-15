@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Language: `CollectionError`, `ListEntry`, `MapEntry`, and `MissingValue` join the source-backed collection prelude. Explicit imports of canonical prelude types now report MS2003 with a removal fix; remove those bindings, retaining imports for builders and unrelated APIs. Application types with the same names keep ordinary import and shadowing behavior.
+- Standard library: `Optional.ok_or` takes an optional cause (`ok_or[E = MissingValue]`); without one it returns a `MissingValue` (`@std/errors.ms`) whose message names the calling file and line.
 - Standard library: `@std/sse.ms` decodes Server-Sent Events from byte chunks or any `ReadStream`, including HTTP response bodies, with line and event budgets and `SseError` (#470).
 - Standard library: documented one failure-mode rule (absence is `Optional`, invalid external data is `Result`, violated preconditions fault) in the errors and limits contract (#168).
 - Debugging: `ms debug` and `ms dap` embed Delve; VS Code no longer needs `dlv`.
@@ -14,6 +16,7 @@
 - Lint: MSL107 warns on nested `match`.
 - Lint: MSL109 warns when a bare identifier argument is redirected by matching-name shorthand to a parameter other than the next positional slot (#452); binding is unchanged.
 - Collections: `List.set`/`remove`/`splice`/`reverse_in_place`, `Set.add`/`remove`, `Map.remove`/`add_default`, `Bytes.reversed` and `Regex.replace_all` replace the removed copy-sounding spellings `List.with_value`/`without`/`with_values`/`reverse`, `Map.with_entry`/`without`/`with_default`/`with_default_from`, `Set.with_value`/`without`, `MapBuilder.with_entry`, `SetBuilder.with_value`, `Bytes.reverse` and `Regex.replace`; the MSL108 advisory is gone. Faults name the surviving method.
+- Concurrency: `BlockingQueue[T]` in `@std/queues.ms` waits in `put` and `take` and ends with `close`; `SynchronizedGuard.wait()` and `notify_all()` let tasks block until shared state changes.
 - Collections: `List.count`, `List.distinct`, in-place `List.insert` and `List.pop`.
 - Standard library: `String.replace_n`, HTML parsing into `HtmlNode`, structured `Logger`/`Transport` replacing `log.write`, `http.header_values`, typed filesystem errors, full Unicode `upper`/`lower`.
 - Standard library: `toml.stringify` and `yaml.stringify`; `TomlLimits` and `YamlLimits` fields default to `none`.

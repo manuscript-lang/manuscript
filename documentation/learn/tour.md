@@ -71,7 +71,6 @@ List, Map, and Set are available without imports. Lists preserve order, maps loo
 ## Conditions and loops
 
 ```manuscript
-import List from "@std/collections.ms"
 
 let prices = [12, 8, 25]
 var total = 0
@@ -122,7 +121,6 @@ Functions declare parameter and return types. Call with positional arguments or 
 Pass functions to transform collections:
 
 ```manuscript
-import List from "@std/collections.ms"
 
 let prices = [12, 8, 25]
 let discounted = prices.map(transform: fn(value: Int) -> Int:
@@ -243,7 +241,6 @@ Import standard APIs from `@std/…`, and local code with a relative path. [Modu
 ## Closures and shared data
 
 ```manuscript
-import List from "@std/collections.ms"
 
 var subject = "Weekly update"
 let headline = fn() -> String:
@@ -253,7 +250,7 @@ subject = "Launch announcement"
 
 let tags = ["docs"]
 let tag_count = fn() -> Int:
-    return tags.length()
+    return tags.length
 tags.append("release")
 # tag_count() returns 2.
 ```

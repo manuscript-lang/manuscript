@@ -3,8 +3,6 @@ import panic from "@std/faults.ms"
 import Bytes from "@std/bytes.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
-import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
 type ClosedFile:
     marker: Unit

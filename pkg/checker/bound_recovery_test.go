@@ -77,7 +77,7 @@ func checkCyclicBoundMembers(t *testing.T) {
 	t.Helper()
 	first := &Type{Kind: "variable", Name: "T", ID: "T"}
 	second := &Type{Kind: "variable", Name: "U", ID: "U"}
-	contract := &Type{Kind: "contract", Name: "Show", ID: "Show", Def: &Definition{Operations: []Param{{Name: "show", Type: &Type{Kind: "function", ID: "fn", Result: primitive("String")}}}}}
+	contract := &Type{Kind: "contract", Name: "Show", ID: "Show", Def: &Definition{Operations: []Operation{{Name: "show", Type: &Type{Kind: "function", ID: "fn", Result: primitive("String")}}}}}
 	first.Bounds = []*Type{first, second, contract}
 	second.Bounds = []*Type{first}
 	program := &Program{}

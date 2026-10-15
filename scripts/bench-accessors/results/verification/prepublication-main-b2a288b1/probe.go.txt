@@ -1,0 +1,12 @@
+package main
+import("fmt";"github.com/manuscript-lang/manuscript/pkg/compiler")
+func main(){r:=compiler.CompileSource("contract-receiver.ms",`import {Clock, Instant, clock} from "@std/time.ms"
+type ClockReader:
+    operation: fn() -> Instant
+impl Clock for ClockReader:
+    fn now() -> Instant: self.operation()
+export fn main() -> Int:
+    let native = clock()
+    let moment = Clock(ClockReader(fn() -> Instant: native.now())).now()
+    return 0
+`,compiler.Options{});fmt.Println(r.Diagnostics);fmt.Println(r.Success())}

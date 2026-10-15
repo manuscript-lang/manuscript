@@ -17,22 +17,35 @@ import (
 )
 
 type testResult struct {
-	Format       int                 `json:"format"`
-	SourceRoot   string              `json:"source_root"`
-	Tests        []testCaseResult    `json:"tests"`
-	Summary      testSummary         `json:"summary"`
-	Completed    bool                `json:"completed"`
-	ExitCode     int                 `json:"exit_code"`
-	Reason       string              `json:"reason,omitempty"`
-	Stdout       string              `json:"stdout"`
-	StdoutBase64 string              `json:"stdout_base64,omitempty"`
-	Diagnostics  []commandDiagnostic `json:"diagnostics"`
+	FixtureErrors []testFixtureError  `json:"fixture_errors,omitempty"`
+	Listed        bool                `json:"listed,omitempty"`
+	Repeat        int                 `json:"repeat,omitempty"`
+	ShuffleSeed   *int64              `json:"shuffle_seed,omitempty"`
+	Format        int                 `json:"format"`
+	SourceRoot    string              `json:"source_root"`
+	Tests         []testCaseResult    `json:"tests"`
+	Summary       testSummary         `json:"summary"`
+	Completed     bool                `json:"completed"`
+	ExitCode      int                 `json:"exit_code"`
+	Reason        string              `json:"reason,omitempty"`
+	Stdout        string              `json:"stdout"`
+	StdoutBase64  string              `json:"stdout_base64,omitempty"`
+	Diagnostics   []commandDiagnostic `json:"diagnostics"`
+}
+
+type testFixtureError struct {
+	File     string           `json:"file"`
+	Phase    string           `json:"phase"`
+	Failure  string           `json:"failure"`
+	Position *syntax.Position `json:"position,omitempty"`
 }
 
 type testCaseResult struct {
-	Name    string `json:"name"`
-	Status  string `json:"status"`
-	Failure string `json:"failure,omitempty"`
+	Index      int    `json:"index"`
+	DurationNS int64  `json:"duration_ns"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Failure    string `json:"failure,omitempty"`
 	// Position is the first source location named by Failure ("at file:line:col"), so agents need not parse the text.
 	Position *syntax.Position `json:"position,omitempty"`
 }
@@ -50,10 +63,13 @@ func failurePosition(failure string) *syntax.Position {
 }
 
 type testSummary struct {
-	Available int `json:"available"`
-	Selected  int `json:"selected"`
-	Passed    int `json:"passed"`
-	Failed    int `json:"failed"`
+	Available  int   `json:"available"`
+	Selected   int   `json:"selected"`
+	Passed     int   `json:"passed"`
+	Failed     int   `json:"failed"`
+	Skipped    int   `json:"skipped"`
+	NotRun     int   `json:"not_run"`
+	DurationNS int64 `json:"duration_ns"`
 }
 
 func newTestResult(result compiler.Result) testResult {
@@ -125,6 +141,9 @@ func runTestJSON(child *exec.Cmd, result compiler.Result) int {
 		document.Reason = "execution_error"
 	}
 	for i := range document.Tests {
+		if document.Tests[i].Status == "not_run" && !document.Completed {
+			document.Summary.NotRun++
+		}
 		if document.Tests[i].Status == "running" {
 			document.Tests[i].Status = "incomplete"
 		}
@@ -153,15 +172,20 @@ func readTestEvents(path string, document *testResult) error {
 		}
 		switch event.Event {
 		case "plan":
-			if planned || event.Format != 1 || event.Available < len(event.Names) {
+			if planned || event.Format != 1 || event.Available < 0 || (event.Repeat <= 1 && event.Available < len(event.Names)) {
 				return fmt.Errorf("invalid test plan")
 			}
 			planned = true
+			document.Repeat = event.Repeat
+			if event.Shuffled {
+				seed := event.Seed
+				document.ShuffleSeed = &seed
+			}
 			document.Summary.Available, document.Summary.Selected = event.Available, len(event.Names)
 			for _, name := range event.Names {
-				document.Tests = append(document.Tests, testCaseResult{Name: name, Status: "not_run"})
+				document.Tests = append(document.Tests, testCaseResult{Index: len(document.Tests), Name: name, Status: "not_run"})
 			}
-		case "run", "passed", "failed":
+		case "run", "passed", "failed", "skipped":
 			if !planned || event.Index < 0 || event.Index >= len(document.Tests) {
 				return fmt.Errorf("invalid test event index")
 			}
@@ -175,18 +199,37 @@ func readTestEvents(path string, document *testResult) error {
 				if item.Status != "running" {
 					return fmt.Errorf("test result without a start")
 				}
-				item.Status, item.Failure = event.Event, event.Failure
+				item.Status, item.Failure, item.DurationNS = event.Event, event.Failure, event.DurationNS
 				item.Position = failurePosition(event.Failure)
 				if event.Event == "passed" {
 					document.Summary.Passed++
+				} else if event.Event == "skipped" {
+					document.Summary.Skipped++
 				} else {
 					document.Summary.Failed++
 				}
 			}
+		case "fixture_failed":
+			if !planned || event.File == "" || event.Phase == "" {
+				return fmt.Errorf("invalid fixture failure")
+			}
+			document.FixtureErrors = append(document.FixtureErrors, testFixtureError{File: event.File, Phase: event.Phase, Failure: event.Failure, Position: failurePosition(event.Failure)})
 		case "done":
-			if !planned || document.Summary.Passed+document.Summary.Failed != document.Summary.Selected {
+			finished := document.Summary.Passed + document.Summary.Failed + document.Summary.Skipped
+			if (event.Reason == "listed" && finished != 0) || (event.Reason == "fail_fast" && document.Summary.Failed == 0 && len(document.FixtureErrors) == 0) {
+				return fmt.Errorf("invalid test completion reason")
+			}
+			if !planned || (finished != document.Summary.Selected && event.Reason != "listed" && event.Reason != "fail_fast" && event.Reason != "cancelled" && !((event.Reason == "fixture_error" || event.Reason == "fixture_abandoned") && len(document.FixtureErrors) > 0)) {
 				return fmt.Errorf("test completion before all results")
 			}
+			for _, item := range document.Tests {
+				if item.Status == "running" {
+					return fmt.Errorf("test completion with a running test")
+				}
+			}
+			document.Summary.NotRun = document.Summary.Selected - finished
+			document.Summary.DurationNS = event.DurationNS
+			document.Listed = event.Reason == "listed"
 			document.Completed, document.Reason = true, event.Reason
 		case "error":
 			document.Reason = event.Reason

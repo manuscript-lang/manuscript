@@ -1,4 +1,3 @@
-import Optional from "@std/optional.ms"
 import {Item, Box, Holder, Choice} from "./domain.ms"
 import {Read, invoke, relay, as_view} from "./contracts.ms"
 import Closeable from "@std/cleanup.ms"
@@ -44,21 +43,13 @@ export fn first_generic() -> fn(value: Item) -> Int:
 
 test "first local extensions":
     let item = Item(2)
-    if (
-        item.get() != 12
-        or invoke(item) != 12
-        or relay(item) != 12
-    ):
+    if (item.get() != 12 or invoke(item) != 12 or relay(item) != 12):
         return panic("local dispatch")
     if as_view(item).get() != 12:
         return panic("generic view")
 
     let holder = Holder(item)
-    if (
-        holder.get() != 12
-        or invoke(holder) != 12
-        or holder.extract() != 12
-    ):
+    if (holder.get() != 12 or invoke(holder) != 12 or holder.extract() != 12):
         return panic("nested generic dispatch")
     if Box("hello").get() != "hello":
         return panic("generic extension")

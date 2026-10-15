@@ -22,7 +22,7 @@ test('published API downloads match the current generated reference', () => {
 });
 
 test('published API routes contain exactly the current modules', () => {
-  const source = path.join(root, 'documentation/standard-library/reference');
+  const source = path.join(root, '.artifacts/docs/documentation/standard-library/reference');
   const expected = fs.readdirSync(source)
     .filter(name => name.endsWith('.md') && name !== '_index.md')
     .map(name => name.slice(0, -3)).sort();
@@ -36,7 +36,7 @@ test('published API routes contain exactly the current modules', () => {
 });
 
 test('rendered API signatures match the generated module pages', () => {
-  const source = path.join(root, 'documentation/standard-library/reference');
+  const source = path.join(root, '.artifacts/docs/documentation/standard-library/reference');
   const entities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#34': '"', '#39': "'" };
   for (const file of fs.readdirSync(source).filter(name => name.endsWith('.md') && name !== '_index.md')) {
     const markdown = fs.readFileSync(path.join(source, file), 'utf8');

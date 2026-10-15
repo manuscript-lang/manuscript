@@ -59,7 +59,7 @@ func (g *generator) listTable(e *syntax.Expression, typ *checker.Type) ast.Expr 
 // checked primitive id, or nil. Conversions, interpolation, and Decimal keep
 // normal lowering. Negative Floats do too: Go folds -0.0 to positive zero.
 func (g *generator) constantScalar(item *syntax.Expression, id, goType string) ast.Expr {
-	info := g.program.Info(item)
+	info := g.info(item)
 	if info == nil || info.ErrorSource != nil || info.Type == nil || info.Type.Kind != "primitive" || info.Type.ID != id {
 		return nil
 	}

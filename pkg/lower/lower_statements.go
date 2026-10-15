@@ -39,7 +39,7 @@ func (g *generator) pattern(p *syntax.Pattern, value ast.Expr, native string) []
 	}
 	if p.Kind == syntax.KindList {
 		positions := g.temp()
-		out = append(out, define(positions, runtimeCall("Positions", ident(tmp), sourceAt(p.Pos, intLiteral(len(p.Elements))))), discard(ident(positions)))
+		out = append(out, define(positions, runtimeCall("Positions", ident(tmp), sequence(intLiteral(len(p.Elements))))), discard(ident(positions)))
 		for i, child := range p.Elements {
 			out = append(out, g.pattern(child, index(ident(positions), intLiteral(i)), "")...)
 		}
@@ -56,6 +56,9 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 	switch s.Kind {
 	case syntax.KindBind:
 		if out := g.altLet(s); out != nil {
+			return out
+		}
+		if out := g.localClosure(s); out != nil {
 			return out
 		}
 		return g.pattern(s.Pattern, g.expression(s.Value), g.nativeType(s.Value))
@@ -112,7 +115,7 @@ func (g *generator) assignment(s *syntax.Statement) []ast.Stmt {
 		// order that variable read before the later call.
 		receiverValue := g.expression(s.Target.Left)
 		if containsMatch(s.Value) && !g.constant(s.Target.Left) {
-			receiverValue = sourceAt(s.Target.Left.Pos, receiverValue)
+			receiverValue = sequence(receiverValue)
 		}
 		if st, f := g.structFieldOf(s.Target); st != nil {
 			receiver := g.structPointer(st, receiverValue)
@@ -218,7 +221,7 @@ func (g *generator) with(s *syntax.Statement) []ast.Stmt {
 	if method := g.program.Cleanup(s); method != nil && method.Contract != nil {
 		contract = g.key(method.Contract)
 	}
-	out := []ast.Stmt{define(b.ID, g.expression(s.Value)), discard(ident(b.ID)), define(cleanup, call(selector(ident("cleanupStack"), "PushContract"), ident("ctx"), ident(b.ID), contract, g.typeScope(b.Type)))}
+	out := []ast.Stmt{define(b.ID, g.expression(s.Value)), discard(ident(b.ID)), define(cleanup, call(selector(ident("cleanupStack"), "PushContract"), ident("ctx"), ident(b.ID), contract, g.typeScope(g.sub(b.Type))))}
 	g.needsCleanup = true
 	out = append(out, body...)
 	out = append(out, evaluated(call(selector(ident(cleanup), "Run"))))
@@ -226,7 +229,7 @@ func (g *generator) with(s *syntax.Statement) []ast.Stmt {
 }
 func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func(*syntax.Arm) []ast.Stmt) []ast.Stmt {
 	tmp := g.temp()
-	contractMatch := g.program.Info(value).Type.Kind == "contract"
+	contractMatch := g.info(value).Type.Kind == "contract"
 	if b, shape := g.altLocalOf(value); shape != nil {
 		return g.typedMatch(tmp, ident(b.ID), shape, arms, body)
 	}
@@ -341,7 +344,7 @@ func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr, string
 // error result on failure, and the expression that yields the success value
 // with its Go type ("" for a boxed Value).
 func (g *generator) tryReturn(e *syntax.Expression) ([]ast.Stmt, ast.Expr, string) {
-	info := g.program.Info(e)
+	info := g.info(e)
 	tmp := g.temp()
 	if typed, direct := g.typedDirectCall(e.Right); typed != nil && direct.shape != nil && !direct.shape.optional {
 		var propagated ast.Expr = selector(ident(tmp), "Cause")

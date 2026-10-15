@@ -36,17 +36,9 @@ test "a payload identifier binds every alternative without changing semantics":
     )
     let missing: Result[Int, Failure[String]] = error(Failure[String].NotFound)
     let success: Result[Int, Failure[String]] = ok(7)
-    if (
-        captured(denied) != 1
-        or captured(missing) != 1
-        or captured(success) != 7
-    ):
+    if (captured(denied) != 1 or captured(missing) != 1 or captured(success) != 7):
         return panic(message: "payload binding semantics changed")
-    if (
-        precise(denied) != 2
-        or precise(missing) != 1
-        or precise(success) != 7
-    ):
+    if (precise(denied) != 2 or precise(missing) != 1 or precise(success) != 7):
         return panic(
             message: "separate payload helper did not distinguish alternatives"
         )
