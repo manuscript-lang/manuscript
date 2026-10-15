@@ -11,6 +11,9 @@ The user authorized pushing the branch and opening a draft PR; merge remains hel
 The parent relayed explicit independent approval of design commit
 `46c46a29105e1aabb969d22cce96825b52dc0b8a` before implementation began.
 
+Post-publication #517 composition, the boxed List fallback correction, and its
+fresh checks are recorded in
+`scripts/bench-accessors/results/verification/main-integration-d70b29be.md`.
 Pre-publication main #513–#515 integration is recorded in
 `scripts/bench-accessors/results/verification/prepublication-main-b2a288b1.md`.
 The preceding integrated checks and measured guard/Logger evidence are recorded
