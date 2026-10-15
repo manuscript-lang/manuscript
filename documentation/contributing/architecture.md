@@ -45,7 +45,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 4. `lower`: checked program to Go source (no native tools, no runtime import)
 5. `compiler`: the source-to-Go pipeline facade
 6. `build`: native builds, caches, pins, and toolchains
-7. Tooling: `tooling`, `tooling/docgen`, `tooling/lsp`
+7. Tooling: `tooling`, `tooling/docgen`, `tooling/lsp`, `tooling/mcp`
 8. `internal/cli` and `cmd/ms`
 
 `runtime` and the `internal/` helpers it embeds form a separate leaf stack that generated programs link against.
@@ -67,6 +67,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native function identities (receiver identities live in `internal/nativeabi`), and embedded sources. This is the standard signature authority |
 | `pkg/tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
 | `pkg/tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
+| `pkg/tooling/mcp/` | Model Context Protocol server behind `ms mcp`: tool schemas, a fuzzy standard-library index, prompts, and resources. It runs the same `ms` binary for check, lint, test, run, and build instead of reimplementing them |
 | `pkg/tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. guides and special call rules are extracted from comments in `pkg/stdlib/*.ms` |
 | `internal/decimal/`, `internal/nativeabi/` | Lightweight shared decimal literal rules, receiver-to-function identities, and the CLI/native test-event protocol; checked `.ms` declarations retain signature authority |
 | `internal/hostos/` | Platform helpers for native filesystem, process, and OS operations, included in the embedded dependency bundle |

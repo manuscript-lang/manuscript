@@ -13,6 +13,7 @@ ms lint ms.toml --json
 ms fmt source.ms --check
 ms fmt ms.toml --check
 ms lsp
+ms mcp
 ms debug source.ms -- arg1
 ms debug source.ms --break source.ms:7 --json
 ms debug ms.toml --script commands.txt
@@ -69,6 +70,20 @@ These commands use source checking and embedded declarations without a Go instal
 
 `ms stdlib <directory>` writes source declarations and bindings for tooling;
 `ms doc --stdlib` renders API documentation. These outputs serve different tasks.
+
+## Agent tools over MCP
+
+`ms mcp` serves the Model Context Protocol over stdin/stdout (newline-delimited JSON-RPC) until the client disconnects; register it with `claude mcp add manuscript -- ms mcp` or any MCP client. It takes no arguments.
+
+| Tool | Behavior |
+| --- | --- |
+| `check`, `lint` | The `--json` diagnostics of `ms check` and `ms lint` for `paths` (files, directories, `ms.toml`) or a `source` snippet checked as a standalone `main.ms` |
+| `fmt` | Formatted text for `source`; for `paths`, a `--check --json` report, or an in-place rewrite when `write` is true |
+| `test`, `run`, `build` | Act only on a project: an `ms.toml` or its directory. They reject single files, program arguments, and stdin, so the manifest alone decides what runs. `test` takes an optional `filter`; every call takes a bounded `timeout_seconds` and output is capped at 256 KiB per stream |
+| `std_lookup` | Fuzzy search over bundled standard declarations and members (typos, partial words, any word order), returning import path, signature, and doc. Built from the checker's definitions, not from `ms stdlib` |
+| `inspect` | The `ms inspect --json` document for a file or project |
+
+The prompts `manuscript_cheatsheet`, `stdlib_cheatsheet`, `write_idiomatic_manuscript`, and `fix_diagnostic`, and the resources `manuscript://cheatsheet`, `manuscript://stdlib`, and `manuscript://stdlib/<module>` give agents the language rules and API index. The cheat sheet's complete program is checked by the package tests; the standard-library index is generated, so it cannot drift. Tool results are the CLI's own JSON documents, so their schemas follow the CLI's format versions.
 
 ## Selecting independent analysis inputs
 

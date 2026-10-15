@@ -8,10 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	support "github.com/manuscript-lang/manuscript"
 	"github.com/manuscript-lang/manuscript/internal/debugger"
 	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/tooling/lsp"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/mcp"
 )
 
 // Run executes a command and returns its process exit status.
@@ -55,6 +57,8 @@ func standaloneCommand(name string) (func(args []string, usage string) int, bool
 		return runDAP, true
 	case "lsp":
 		return runLSP, true
+	case "mcp":
+		return runMCP, true
 	case "stdlib":
 		return runStdlib, true
 	}
@@ -106,6 +110,21 @@ func runLSP(args []string, _ string) int {
 		return 2
 	}
 	if err := lsp.Serve(os.Stdin, os.Stdout); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
+func runMCP(args []string, _ string) int {
+	if len(args) != 1 {
+		fmt.Fprintln(os.Stderr, "ms mcp takes no arguments; it serves MCP tools on stdin/stdout")
+		return 2
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	server := &mcp.Server{Version: support.Version()}
+	if err := server.Serve(ctx, os.Stdin, os.Stdout); err != nil && ctx.Err() == nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}

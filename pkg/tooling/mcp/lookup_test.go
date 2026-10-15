@@ -1,0 +1,77 @@
+package mcp
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestLookupFindsAPIsFromLooseQueries(t *testing.T) {
+	cases := []struct{ query, module, name string }{
+		{"jsn parse", "@std/json.ms", "parse"},
+		{"read file", "@std/fs.ms", "FileSystem.read_file"},
+		{"JSON PARSE", "@std/json.ms", "parse"},
+		{"http server", "@std/http.ms", "HttpServer"},
+		{"parse_int", "@std/numbers.ms", "parse_int"},
+		{"sleep", "@std/time.ms", "sleep"},
+		{"regex replace", "@std/regex.ms", "Regex.replace_all"},
+		{"base64 encode", "@std/encoding.ms", "base64_encode"},
+		{"sorted", "prelude", "List.sorted"},
+	}
+	for _, c := range cases {
+		matches := Lookup(c.query, 3)
+		found := false
+		for _, m := range matches {
+			found = found || m.Module == c.module && m.Name == c.name
+		}
+		if !found {
+			t.Errorf("Lookup(%q) top 3 = %v, want %s %s", c.query, summaries(matches), c.module, c.name)
+		}
+	}
+}
+
+func TestLookupExactNameOutranksFuzzyNames(t *testing.T) {
+	matches := Lookup("sleep", 5)
+	if len(matches) == 0 || matches[0].Name != "sleep" {
+		t.Fatalf("Lookup(sleep) = %v", summaries(matches))
+	}
+}
+
+func TestLookupIsStableAndBounded(t *testing.T) {
+	a, b := Lookup("list", 5), Lookup("list", 5)
+	if len(a) != 5 || len(a) != len(b) {
+		t.Fatalf("lengths %d %d", len(a), len(b))
+	}
+	for i := range a {
+		if a[i].Module != b[i].Module || a[i].Name != b[i].Name {
+			t.Fatalf("unstable order at %d: %v vs %v", i, a[i], b[i])
+		}
+	}
+	seen := map[string]bool{}
+	for _, m := range Lookup("sorted", 25) {
+		key := m.Name + m.Signature
+		if seen[key] {
+			t.Errorf("duplicate declaration %s from %s", m.Name, m.Module)
+		}
+		seen[key] = true
+	}
+}
+
+func TestLookupRejectsNoiseAndEmptyQueries(t *testing.T) {
+	if got := Lookup("   ", 5); got != nil {
+		t.Errorf("blank query matched %v", got)
+	}
+	if got := Lookup("zzqxjv", 5); len(got) != 0 {
+		t.Errorf("nonsense matched %v", summaries(got))
+	}
+	if text := formatMatches("zzqxjv", nil); !strings.Contains(text, "No standard-library match") {
+		t.Errorf("empty message: %q", text)
+	}
+}
+
+func summaries(matches []Match) []string {
+	var out []string
+	for _, m := range matches {
+		out = append(out, m.Module+" "+m.Name)
+	}
+	return out
+}

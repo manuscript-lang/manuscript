@@ -214,3 +214,11 @@ Evidence: [guide extraction](../pkg/tooling/docgen/guides.go),
 [source example discovery](../tests/examples/examples_test.go).
 Verify: source checks and tutorial discovery work without generated Markdown;
 `make book-check` generates the mounted pages and validates routes and downloads.
+
+### The MCP server wraps the CLI and never depends on `ms stdlib`
+
+Decision: the user chose `ms mcp` as a thin adapter. Execution tools (`test`, `run`, `build`) accept only a project's `ms.toml`, never a file, argument list, or stdin, so the manifest decides what runs. `std_lookup` is fuzzy. Cheat sheets ship as prompts and resources. The user said `ms stdlib` will be removed: build the lookup index from `checker.StandardLibrary()` and the embedded sources, not from that command's output.
+
+Apply when: adding an MCP tool or changing what an existing one accepts, or touching the standard-library index.
+Evidence: [server](../pkg/tooling/mcp/server.go), [tools](../pkg/tooling/mcp/tools.go), [lookup](../pkg/tooling/mcp/lookup.go), [tests](../pkg/tooling/mcp/server_test.go), and [agent tools](../documentation/developer-tooling/implementation.md#agent-tools-over-mcp).
+Verify: `go test ./pkg/tooling/mcp ./internal/cli`; the tests pin that execution tools reject non-project paths and unknown arguments, that `fmt` with `source` starts no subprocess, and that the cheat sheet's program checks.

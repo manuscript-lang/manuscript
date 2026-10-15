@@ -30,6 +30,7 @@ Commands:
   doc      Generate public API documentation
   stdlib   Write bundled standard library declarations to a directory
   lsp      Serve the language server on stdin/stdout
+  mcp      Serve Manuscript tools to agents over MCP on stdin/stdout
   help     Show help for a command
   version  Print the compiler version
 
@@ -137,6 +138,9 @@ func commandHelp(command string) (string, bool) {
 	case "lsp":
 		description = "Serve the language server over stdin/stdout until the client disconnects.\nConfigure an LSP-capable editor to launch ms lsp. No file argument is needed."
 		examples = "ms lsp"
+	case "mcp":
+		description = "Serve the Model Context Protocol over stdin/stdout until the client disconnects.\nTools: check, lint, fmt, test, run, build, std_lookup, inspect. test, run, and build act only on a project's ms.toml.\nResources and prompts carry a language cheat sheet and the standard-library index.\nConfigure an MCP client to launch ms mcp. No file argument is needed."
+		examples = "ms mcp\n  claude mcp add manuscript -- ms mcp"
 	case "help":
 		usage = "[command]"
 		description = "Show the command list, or detailed usage for one command."
