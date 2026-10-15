@@ -1,6 +1,6 @@
-import {Item, Read, generic} from "./domain.ms"
-import {first_view, first_read, first_capture} from "./first.ms"
-import {second_view, second_read, second_capture} from "./second.ms"
+import {Item, Read, generic, invoke_observed} from "./domain.ms"
+import {first_view, first_read, first_capture, first_observed} from "./first.ms"
+import {second_view, second_read, second_capture, second_observed} from "./second.ms"
 import panic from "@std/faults.ms"
 
 test "accessor views and closures retain local implementation evidence":
@@ -21,3 +21,8 @@ test "accessor views and closures retain local implementation evidence":
         return panic("view accessor cached its value")
     if captured_first() != 14 or captured_second() != 24:
         return panic("captured accessor lost receiver or scope")
+
+    let first_methods = first_observed(item)
+    let second_methods = second_observed(item)
+    if invoke_observed(first_methods) != 18 or invoke_observed(second_methods) != 28 or invoke_observed(first_methods) != 18:
+        return panic("cached methods and accessor reads lost view evidence")

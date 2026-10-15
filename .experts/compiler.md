@@ -1,5 +1,20 @@
 # Compiler and build lessons
 
+### Dispatch caches retain lexical view evidence
+
+Verified: interface views of the same concrete receiver can select different
+module-local implementations at one call site. Receiver type and registration
+generation alone do not identify the target. Cache the lexical module as well;
+argument scopes retain the ordinary specialization path rather than reusing a
+previous no-argument entry. Cached targets must never capture receiver values.
+
+Apply when: changing method/accessor dispatch, interface views or call-site caches.
+Evidence: [method dispatch](../pkg/runtime/methods.go),
+[scope/cache regressions](../pkg/runtime/performance_test.go), and
+[mixed method/accessor views](../tests/e2e/testdata/projects/accessors/main.ms).
+Verify: alternate same-type views from two local implementation modules at one
+nongeneric interface call site, including concurrent calls, under the race detector.
+
 ### Generated Go serves performance; lowering code serves maintainability
 
 Decision: the user wants highly optimized generated Go, on par with

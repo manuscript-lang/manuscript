@@ -219,12 +219,12 @@ type MethodSite struct {
 	second atomic.Pointer[methodEntry]
 }
 
-func (site *MethodSite) lookup(typ string) *methodEntry {
+func (site *MethodSite) lookup(typ, module string) *methodEntry {
 	generation := implementationGeneration.Load()
-	if e := site.entry.Load(); e != nil && e.typ == typ && e.generation == generation {
+	if e := site.entry.Load(); e != nil && e.typ == typ && e.module == module && e.generation == generation {
 		return e
 	}
-	if e := site.second.Load(); e != nil && e.typ == typ && e.generation == generation {
+	if e := site.second.Load(); e != nil && e.typ == typ && e.module == module && e.generation == generation {
 		return e
 	}
 	return nil
@@ -232,7 +232,7 @@ func (site *MethodSite) lookup(typ string) *methodEntry {
 
 // remember keeps the newest resolution first and demotes the previous one.
 func (site *MethodSite) remember(e *methodEntry) {
-	if old := site.entry.Load(); old != nil && old.generation == e.generation && old.typ != e.typ {
+	if old := site.entry.Load(); old != nil && old.generation == e.generation && (old.typ != e.typ || old.module != e.module) {
 		site.second.Store(old)
 	}
 	site.entry.Store(e)
@@ -241,6 +241,7 @@ func (site *MethodSite) remember(e *methodEntry) {
 type methodEntry struct {
 	generation uint64
 	typ        string
+	module     string
 	direct     func(*Execution, Value, []Value) Value
 }
 
@@ -248,9 +249,13 @@ type methodEntry struct {
 // alternative type. Arguments are already in declaration order.
 func CallMethod(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
 	typ := ConcreteType(receiver)
-	if e := site.lookup(typ); e != nil {
-		CheckCancelled(ctx)
-		return e.direct(ctx, receiver, args)
+	// Interface views can bring different lexical evidence to one call site.
+	// Argument scopes require the ordinary specialization path below.
+	if len(scope.Args) == 0 {
+		if e := site.lookup(typ, scope.Module); e != nil {
+			CheckCancelled(ctx)
+			return e.direct(ctx, receiver, args)
+		}
 	}
 	return callMethodSlow(ctx, site, receiver, contract, name, scope, args)
 }
@@ -281,7 +286,7 @@ func callMethodSlow(ctx *Execution, site *MethodSite, receiver Value, contract, 
 				implementationCache.Store(key, resolved)
 			}
 			if resolved != nil && resolved.impl.Direct != nil {
-				site.remember(&methodEntry{generation: generation, typ: typ, direct: resolved.impl.Direct})
+				site.remember(&methodEntry{generation: generation, typ: typ, module: scope.Module, direct: resolved.impl.Direct})
 				CheckCancelled(ctx)
 				return resolved.impl.Direct(ctx, receiver, args)
 			}
