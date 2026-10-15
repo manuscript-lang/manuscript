@@ -37,3 +37,7 @@ func runTest(t Test) (failure any) {
 	t.Run(RootExecution())
 	return nil
 }
+
+// Profile runs run under the requested CPU, heap and execution-trace
+// profiles. The runtime core implements it (profile.go).
+func Profile(cpu, heap, trace string, run func() int) int { return run() }

@@ -21,7 +21,11 @@ import (
 // Options selects the entry point lowered into the generated main function.
 type Options struct {
 	// Tests lowers test blocks into the generated main; Entry lowers main().
-	Tests, Entry bool
+	Tests, Entry                   bool
+	CPUProfile, HeapProfile, Trace string
+	// DebugLiterals trades repeated literal construction cost for faster
+	// native compilation, as Debug builds do.
+	DebugLiterals bool
 }
 
 // Go lowers a checked program to Go source.
@@ -283,7 +287,11 @@ func (g *gen) file(entry string, options Options) *ast.File {
 			&ast.IfStmt{Cond: binary(rtCall("RunTests", ident("tests"), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}), token.GTR, intLiteral(0)),
 				Body: block(evaluated(call(selector(ident("os"), "Exit"), intLiteral(1))))})
 	case options.Entry && main != nil:
-		body = append(body, evaluated(call(selector(ident("os"), "Exit"), rtCall("RunMain", ident(main.name), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}))))
+		run := ast.Expr(rtCall("RunMain", ident(main.name), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}))
+		if options.CPUProfile != "" || options.HeapProfile != "" || options.Trace != "" {
+			run = rtCall("Profile", textLiteral(options.CPUProfile), textLiteral(options.HeapProfile), textLiteral(options.Trace), closure(nil, ident("int"), returned(run)))
+		}
+		body = append(body, evaluated(call(selector(ident("os"), "Exit"), run)))
 	default:
 		body = append(body, discard(selector(ident("os"), "Args")))
 	}
