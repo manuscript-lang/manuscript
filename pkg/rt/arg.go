@@ -11,3 +11,11 @@ type Arg[T any] struct {
 
 // Given is a supplied argument.
 func Given[T any](v T) Arg[T] { return Arg[T]{Val: v, Set: true} }
+
+// ArgOr is the supplied argument, or the value def computes when it was omitted.
+func ArgOr[T any](a Arg[T], def func() T) T {
+	if a.Set {
+		return a.Val
+	}
+	return def()
+}

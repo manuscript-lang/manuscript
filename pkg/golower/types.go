@@ -266,8 +266,30 @@ func (g *gen) alternativeDecl(d *typeDecl) []ast.Decl {
 				Recv: &ast.FieldList{List: []*ast.Field{{Type: ident(name)}}},
 				Name: ident(marker), Type: functionType(nil, nil), Body: block(),
 			})
+		if sharedCategory[c.Name] && g.standardSource(d.t) {
+			decls = append(decls, &ast.FuncDecl{
+				Recv: &ast.FieldList{List: []*ast.Field{{Type: ident(name)}}},
+				Name: ident("Category"), Type: functionType(nil, rtName("ErrorCategory")),
+				Body: block(returned(composite(rtName("ErrorCategory_" + c.Name)))),
+			})
+		}
 	}
 	return decls
+}
+
+// sharedCategory names the cases of the standard ErrorCategory type
+// (pkg/stdlib/errors.ms). A standard error case written in source whose name
+// is one of them has that category.
+var sharedCategory = map[string]bool{
+	"InvalidInput": true, "InvalidData": true, "LimitExceeded": true, "NotFound": true,
+	"AlreadyExists": true, "PermissionDenied": true, "Unsupported": true, "Closed": true,
+	"Timeout": true, "Unavailable": true,
+}
+
+// standardSource reports whether t is a standard type implemented in source
+// rather than by the runtime.
+func (g *gen) standardSource(t *checker.Type) bool {
+	return t.Def != nil && t.Def.Symbol != nil && strings.HasPrefix(t.Def.Symbol.Module, "@std/") && !isStdType(t) || isStdType(t) && t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Native == ""
 }
 
 func typeSpec(name string, typ ast.Expr) ast.Decl {

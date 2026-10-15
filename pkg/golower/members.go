@@ -79,14 +79,25 @@ func (g *gen) boundMethod(e *syntax.Expression, info *checker.Info) ast.Expr {
 	t := g.sub(info.Type)
 	receiverType := g.info(e.Left).Type
 	m := g.resolveMethod(info.Method, receiverType, e.Text)
-	receiver := g.spill(g.expr(e.Left))
+	receiver := g.snapshot(g.expr(e.Left))
 	params := []*ast.Field{field("ctx", pointerTo(rtName("Execution")))}
 	var args []ast.Expr
 	for i := range t.Params {
 		name := "a" + itoa(i)
 		params = append(params, field(name, g.paramType(t, i)))
-		args = append(args, g.forwardArg(ident(name), t, i, m))
+		args = append(args, g.forwardArg(ident(name), t, i, m, receiverType))
 	}
 	body := g.invokeMethod(m, receiverType, receiver, e.Text, args, info)
 	return closure(params, g.goType(t.Result), returned(body))
+}
+
+// snapshot captures e now: a mutable variable may be reassigned before the
+// closure that uses it runs.
+func (g *gen) snapshot(e ast.Expr) ast.Expr {
+	if id, ok := e.(*ast.Ident); ok && g.fn.mutables[id.Name] {
+		name := g.temp()
+		g.fn.pre = append(g.fn.pre, define(name, e))
+		return ident(name)
+	}
+	return g.spill(e)
 }

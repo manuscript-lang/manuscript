@@ -40,9 +40,36 @@ func (g *gen) valueAs(e *syntax.Expression, want *checker.Type) ast.Expr {
 	}
 	value = g.wrapOptional(e, value)
 	if want != nil && info != nil && info.Type != nil {
-		value = g.convertFunction(value, g.sub(info.Type), g.sub(want))
+		// A variable keeps the type it was declared with, whatever type the
+		// use site expects.
+		actual := info.Type
+		if e.Kind == syntax.KindName && info.Binding != nil && info.Binding.Type != nil {
+			actual = info.Binding.Type
+		}
+		value = g.convertFunction(value, g.sub(actual), g.sub(want))
 	}
 	return value
+}
+
+// adaptNative gives a native function the Go type of its function type when
+// that type has defaulted parameters: natives take plain values, so the
+// closure fills omitted arguments from the declaration.
+func (g *gen) adaptNative(value ast.Expr, decl *syntax.Declaration, module string, t *checker.Type) ast.Expr {
+	if t.Kind != "function" || len(t.Defaults) == 0 || decl == nil {
+		return value
+	}
+	params := []*ast.Field{field("ctx", pointerTo(rtName("Execution")))}
+	args := []ast.Expr{ident("ctx")}
+	for i := range t.Params {
+		name := "a" + itoa(i)
+		params = append(params, field(name, g.paramType(t, i)))
+		if defaulted(t, i) {
+			args = append(args, g.nativeFill(ident(name), t.Params[i].Type, decl, i, module))
+		} else {
+			args = append(args, ident(name))
+		}
+	}
+	return closure(params, g.goType(t.Result), returned(call(value, args...)))
 }
 
 // convertFunction adapts a function value to the Go type of the function type
@@ -192,7 +219,7 @@ func (g *gen) symbolValue(s *checker.Symbol, typeArgs []*checker.Type, info *che
 		return call(ident(f.name), ident("ctx"))
 	}
 	if s.Native != "" {
-		return g.nativeFunctionValue(s, typeArgs, info)
+		return g.adaptNative(g.nativeFunctionValue(s, typeArgs, info), s.Decl, s.Module, g.sub(info.Type))
 	}
 	f := g.function(s, typeArgs)
 	// The Go function has the signature it was declared with; the use site may

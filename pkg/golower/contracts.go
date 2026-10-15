@@ -92,6 +92,13 @@ func (g *gen) view(from, contract *checker.Type) string {
 		for _, op := range g.operations(contract) {
 			d.decl = append(d.decl, g.viewMethod(name, from, contract, op))
 		}
+		// A view exposes its receiver, so the runtime can classify a wrapped
+		// standard error without invoking it.
+		d.decl = append(d.decl, &ast.FuncDecl{
+			Recv: &ast.FieldList{List: []*ast.Field{field("v", ident(name))}},
+			Name: ident("Receiver"), Type: functionType(nil, ident("any")),
+			Body: block(returned(selector(ident("v"), "self"))),
+		})
 		// A view prints as its receiver.
 		describe := call(g.formatFunc(from), selector(ident("v"), "self"), ident("depth"))
 		d.decl = append(d.decl, &ast.FuncDecl{
@@ -116,7 +123,7 @@ func (g *gen) viewMethod(view string, from, contract *checker.Type, op checker.O
 	for i := range op.Type.Params {
 		name := "a" + itoa(i)
 		params = append(params, field(name, g.paramType(op.Type, i)))
-		args = append(args, g.forwardArg(ident(name), op.Type, i, m))
+		args = append(args, g.forwardArg(ident(name), op.Type, i, m, from))
 	}
 	body := g.invokeMethod(m, from, selector(ident("v"), "self"), op.Name, args, &checker.Info{Type: m.Type})
 	if op.Accessor {
@@ -217,14 +224,36 @@ var _ = token.ADD
 // forwardArg passes parameter i of a wrapper with signature from to the
 // method m it forwards to. Both take rt.Arg for a defaulted parameter, so the
 // callee still fills in an omitted argument; natives take the plain value.
-func (g *gen) forwardArg(arg ast.Expr, from *checker.Type, i int, m *checker.Method) ast.Expr {
+func (g *gen) forwardArg(arg ast.Expr, from *checker.Type, i int, m *checker.Method, receiver *checker.Type) ast.Expr {
 	fromDefault := defaulted(from, i)
-	toDefault := (m.Native == "" || m.Native == "contract") && m.Type != nil && i < len(m.Type.Params) && defaulted(m.Type, i)
+	native := m.Native != "" && (m.Native != "contract" || isStdType(g.sub(receiver)))
+	toDefault := !native && m.Type != nil && i < len(m.Type.Params) && defaulted(m.Type, i)
 	switch {
 	case fromDefault == toDefault:
 		return arg
 	case toDefault:
 		return rtCall("Given", arg)
+	case native && m.Decl != nil:
+		return g.nativeFill(arg, from.Params[i].Type, m.Decl, i, g.module)
 	}
 	return selector(arg, "Val")
+}
+
+// nativeFill turns an rt.Arg into the plain value a native operation takes:
+// an omitted argument becomes the operation's declared default, or none.
+func (g *gen) nativeFill(arg ast.Expr, typ *checker.Type, decl *syntax.Declaration, i int, module string) ast.Expr {
+	var expr *syntax.Expression
+	if i < len(decl.Params) {
+		expr = decl.Params[i].Default
+	}
+	if expr == nil || g.program.Info(expr) == nil && expr.Kind == syntax.KindName && expr.Text == "none" {
+		return selector(arg, "Val") // an omitted Optional is the zero Option
+	}
+	saved, savedModule, savedPre := g.fn.pre, g.module, g.fn.pre
+	g.fn.pre, g.module = nil, module
+	value := g.valueAs(expr, typ)
+	body := append(g.fn.pre, returned(value))
+	g.fn.pre, g.module = savedPre, savedModule
+	_ = saved
+	return rtCall("ArgOr", arg, closure(nil, g.goType(typ), body...))
 }

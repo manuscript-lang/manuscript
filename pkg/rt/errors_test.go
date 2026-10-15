@@ -28,10 +28,10 @@ func TestErrorMessageCoverage(t *testing.T) {
 		if hostErrorTypes[typ] && !strings.Contains(string(messages), "case "+name+":") {
 			t.Errorf("errors_messages.go lacks %s", name)
 		}
-		if shared[tag] && !strings.Contains(string(categories), "func ("+name+") errorCategory()") {
+		if shared[tag] && !strings.Contains(string(categories), "func ("+name+") Category()") {
 			t.Errorf("errors_category.go lacks %s", name)
 		}
-		if !shared[tag] && strings.Contains(string(categories), "func ("+name+") errorCategory()") {
+		if !shared[tag] && strings.Contains(string(categories), "func ("+name+") Category()") {
 			t.Errorf("%s must not have a shared category", name)
 		}
 	}

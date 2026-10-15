@@ -708,7 +708,7 @@ func TestErrorCategory(t *testing.T) {
 		t.Fatal("nil")
 	}
 	direct := []struct {
-		e    errorCategorized
+		e    Categorized
 		want ErrorCategory
 	}{
 		{IoError_Unavailable{}, ErrorCategory_Unavailable{}},
@@ -719,15 +719,16 @@ func TestErrorCategory(t *testing.T) {
 		{ExecutionError_Timeout{}, ErrorCategory_Timeout{}},
 	}
 	for _, d := range direct {
-		if d.e.errorCategory() != d.want {
+		if d.e.Category() != d.want {
 			t.Errorf("%T", d.e)
 		}
 	}
-	var _ errorCategorized = categorizedError{}
-	if _, ok := any(IoError_Failed{}).(errorCategorized); ok {
+	if _, ok := any(IoError_Failed{}).(Categorized); ok {
 		t.Fatal("Failed has no category")
 	}
-	if _, ok := any(CommandError_OutputLimit{}).(errorCategorized); ok {
+	if _, ok := any(CommandError_OutputLimit{}).(Categorized); ok {
 		t.Fatal("OutputLimit has no category")
 	}
 }
+
+func (v viewOf) Receiver() any { return v.self }

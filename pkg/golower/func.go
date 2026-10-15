@@ -129,12 +129,13 @@ func (g *gen) parameter(b *checker.Binding, sig *checker.Type, i int, decls []sy
 	arg := "arg_" + name
 	typ := g.goType(b.Type)
 	var absent []ast.Stmt
-	if i < len(decls) && decls[i].Default != nil {
-		saved := g.fn.pre
-		g.fn.pre = nil
-		value := g.valueAs(decls[i].Default, b.Type)
+	expr, module := g.defaultExpression(sig, i, decls)
+	if expr != nil {
+		saved, savedModule := g.fn.pre, g.module
+		g.fn.pre, g.module = nil, module
+		value := g.valueAs(expr, b.Type)
 		absent = append(g.fn.pre, assign(ident(name), token.ASSIGN, value))
-		g.fn.pre = saved
+		g.fn.pre, g.module = saved, savedModule
 	} else {
 		// An omittable parameter without a default expression is none.
 		absent = []ast.Stmt{assign(ident(name), token.ASSIGN, composite(typ))}
@@ -148,6 +149,31 @@ func (g *gen) parameter(b *checker.Binding, sig *checker.Type, i int, decls []sy
 		},
 	}
 	return field(arg, generic(rtName("Arg"), typ)), append(stmts, g.keepUnused(b)...)
+}
+
+// defaultExpression finds the default of parameter i: the one it declares, or
+// for a method implementing a contract operation, the one the operation
+// declares in the contract's module.
+func (g *gen) defaultExpression(sig *checker.Type, i int, decls []syntax.Parameter) (*syntax.Expression, string) {
+	if i < len(decls) && decls[i].Default != nil {
+		return decls[i].Default, g.module
+	}
+	if f := g.fn.decl; f != nil && f.method != nil && f.method.Contract != nil && f.method.Contract.Def != nil {
+		for _, op := range f.method.Contract.Def.Operations {
+			if op.Name == f.method.Decl.Name && op.Decl != nil && i < len(op.Decl.Params) && op.Decl.Params[i].Default != nil {
+				module := g.module
+				if sym := f.method.Contract.Def.Symbol; sym != nil {
+					module = sym.Module
+				}
+				def := op.Decl.Params[i].Default
+				if g.program.Info(def) == nil && def.Kind == syntax.KindName && def.Text == "none" {
+					return nil, module // standard declarations spell the omitted Optional as none
+				}
+				return def, module
+			}
+		}
+	}
+	return nil, g.module
 }
 
 // cleanupPrologue creates the function's cleanup stack when its body uses with.
