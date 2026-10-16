@@ -278,7 +278,13 @@ func (g *gen) rangeLoop(s *syntax.Statement, binding *checker.Binding, iterable 
 	case isStd(t, "Set"):
 		return []ast.Stmt{&ast.RangeStmt{Key: ident("_"), Value: ident(name), Tok: token.DEFINE, X: call(selector(iterable, "Snapshot")), Body: block(body...)}}
 	case isStd(t, "Map"):
-		return []ast.Stmt{&ast.RangeStmt{Key: ident("_"), Value: ident(name), Tok: token.DEFINE, X: call(selector(iterable, "Snapshot")), Body: block(body...)}}
+		// One copy of the entries; each iteration binds a pointer into it.
+		entries, at := g.temp(), g.temp()
+		body = append([]ast.Stmt{define(name, address(index(ident(entries), ident(at))))}, body...)
+		return []ast.Stmt{
+			define(entries, call(selector(iterable, "Copies"))),
+			&ast.RangeStmt{Key: ident(at), Tok: token.DEFINE, X: ident(entries), Body: block(body...)},
+		}
 	}
 	g.fail("cannot iterate %s", t)
 	return nil

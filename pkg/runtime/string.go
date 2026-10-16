@@ -71,12 +71,17 @@ func String_IsEmpty(_ *Execution, text string) bool { return len(text) == 0 }
 func String_ByteLength(_ *Execution, text string) int { return len(text) }
 
 func String_Chars(ctx *Execution, text string) *List[string] {
-	items := make([]string, 0, len(text))
-	for _, scalar := range text {
+	items := make([]string, 0, utf8.RuneCountInString(text))
+	for i, scalar := range text {
 		if len(items)%1024 == 0 {
 			CheckCancelled(ctx)
 		}
-		items = append(items, string(scalar))
+		if scalar == utf8.RuneError {
+			items = append(items, string(scalar))
+			continue
+		}
+		// A valid scalar is a substring of its text: no allocation.
+		items = append(items, text[i:i+utf8.RuneLen(scalar)])
 	}
 	return NewList(items...)
 }
@@ -201,8 +206,22 @@ func String_TrimEnd(_ *Execution, text string) string {
 
 // Full Unicode case mapping, independent of locale: the German sharp s becomes
 // SS, ligatures expand, final sigma lowers to its final form.
-func String_Upper(_ *Execution, text string) string { return cases.Upper(language.Und).String(text) }
-func String_Lower(_ *Execution, text string) string { return cases.Lower(language.Und).String(text) }
+// String_Upper and String_Lower map ASCII text with the standard library: the
+// root-locale mapping of ASCII is the same and much cheaper than the cases
+// transformer, which non-ASCII text needs.
+func String_Upper(_ *Execution, text string) string {
+	if stringIsASCII(text) {
+		return strings.ToUpper(text)
+	}
+	return cases.Upper(language.Und).String(text)
+}
+
+func String_Lower(_ *Execution, text string) string {
+	if stringIsASCII(text) {
+		return strings.ToLower(text)
+	}
+	return cases.Lower(language.Und).String(text)
+}
 
 func String_Repeat(_ *Execution, text string, count int, maxBytes Option[int]) Result[string, StringError] {
 	max := txLimit(maxBytes)
@@ -317,11 +336,20 @@ func String_Split(ctx *Execution, text, separator string, maxParts Option[int]) 
 }
 
 func String_At(_ *Execution, text string, index int) Option[string] {
-	scalar, ok := stringScalarAt(text, index)
-	if !ok {
+	count, ascii := stringShape(text)
+	i := txRelative(count, index)
+	if i < 0 || i >= count {
 		return None[string]()
 	}
-	return Some(string(scalar))
+	if ascii {
+		return Some(text[i : i+1])
+	}
+	offset := scalarIndexOffset(text, i)
+	scalar, width := utf8.DecodeRuneInString(text[offset:])
+	if scalar == utf8.RuneError {
+		return Some(string(scalar))
+	}
+	return Some(text[offset : offset+width])
 }
 
 func String_ScalarAt(_ *Execution, text string, index int) Option[int] {

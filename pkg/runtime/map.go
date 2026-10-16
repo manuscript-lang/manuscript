@@ -19,8 +19,16 @@ type Map[K comparable, V any] struct {
 	index   map[K]int
 	project map[any]int
 	buckets map[int][]int
-	entries []*MapEntry[K, V] // nil marks a removed entry until compaction
+	entries []mapSlot[K, V] // a slot with live false marks a removed entry until compaction
 	live    int
+}
+
+// mapSlot stores an entry by value, so adding or replacing one allocates
+// nothing; Snapshot copies the live slots, which keeps earlier snapshots stable.
+type mapSlot[K comparable, V any] struct {
+	Key   K
+	Value V
+	live  bool
 }
 
 // NewMap returns an empty map whose keys match by Go equality.
@@ -37,11 +45,20 @@ func NewMapWith[K comparable, V any](keys *Keys[K]) *Map[K, V] {
 func (m *Map[K, V]) reset() {
 	switch {
 	case m.keys == nil:
-		m.index = map[K]int{}
+		if m.index == nil {
+			m.index = map[K]int{}
+		}
+		clear(m.index)
 	case m.keys.Project != nil:
-		m.project = map[any]int{}
+		if m.project == nil {
+			m.project = map[any]int{}
+		}
+		clear(m.project)
 	default:
-		m.buckets = map[int][]int{}
+		if m.buckets == nil {
+			m.buckets = map[int][]int{}
+		}
+		clear(m.buckets)
 	}
 }
 
@@ -125,13 +142,13 @@ func (m *Map[K, V]) Lookup(key K) (V, bool) {
 // Put stores value under key, appending a new key.
 func (m *Map[K, V]) Put(key K, value V) {
 	if i, ok := m.find(key); ok {
-		// Replacement retains the original key and insertion position. The
-		// entry is replaced, not mutated, so a Snapshot taken earlier is stable.
-		m.entries[i] = &MapEntry[K, V]{Key: m.entries[i].Key, Value: value}
+		// Replacement retains the original key and insertion position. A
+		// Snapshot holds copies, so it is unaffected.
+		m.entries[i].Value = value
 		return
 	}
 	m.bind(key, len(m.entries))
-	m.entries = append(m.entries, &MapEntry[K, V]{Key: key, Value: value})
+	m.entries = append(m.entries, mapSlot[K, V]{Key: key, Value: value, live: true})
 	m.live++
 }
 
@@ -142,7 +159,7 @@ func (m *Map[K, V]) Delete(key K) bool {
 		return false
 	}
 	m.unbind(m.entries[i].Key, i)
-	m.entries[i] = nil
+	m.entries[i] = mapSlot[K, V]{}
 	m.live--
 	if len(m.entries) > 32 && m.live < len(m.entries)/2 {
 		m.compact()
@@ -153,7 +170,7 @@ func (m *Map[K, V]) Delete(key K) bool {
 func (m *Map[K, V]) compact() {
 	kept := m.entries[:0]
 	for _, e := range m.entries {
-		if e != nil {
+		if e.live {
 			kept = append(kept, e)
 		}
 	}
@@ -175,10 +192,22 @@ func (m *Map[K, V]) Clear() {
 // Snapshot returns the live entries in insertion order. A loop over a map
 // ranges over it, so the loop sees the map as it was when the loop began.
 func (m *Map[K, V]) Snapshot() []*MapEntry[K, V] {
-	out := make([]*MapEntry[K, V], 0, m.live)
+	copies := m.Copies()
+	out := make([]*MapEntry[K, V], len(copies))
+	for i := range copies {
+		out[i] = &copies[i]
+	}
+	return out
+}
+
+// Copies returns the live entries in insertion order as values the caller
+// owns, in one allocation. A for loop over a map ranges over them, so it sees
+// the map as it was when the loop began.
+func (m *Map[K, V]) Copies() []MapEntry[K, V] {
+	out := make([]MapEntry[K, V], 0, m.live)
 	for _, e := range m.entries {
-		if e != nil {
-			out = append(out, e)
+		if e.live {
+			out = append(out, MapEntry[K, V]{Key: e.Key, Value: e.Value})
 		}
 	}
 	return out
