@@ -7,7 +7,8 @@ import {
     bind,
     stream_transport,
     stdout_transport,
-    file_transport
+    file_transport,
+    async_file_transport
 } from "@std/log.ms"
 import {WriteStream, IoError} from "@std/io.ms"
 import JsonValue from "@std/json.ms"
@@ -243,6 +244,37 @@ test "file transport appends and flushes with scoped cleanup":
                 if cause != LogError.FileSystem(FileSystemError.NotFound): return panic(
                     "file error cause"
                 )
+
+test "async file transport queues, rotates, and keeps a bounded number of files":
+    let fs = filesystem()
+
+    with directory = value(fs.temporary("manuscript-async-log-")):
+        let path = "{directory.path()}/events.ndjson"
+
+        with transport = value(async_file_transport(path, max_bytes: 30, max_files: 2)):
+            let logger = value(create(transport: transport, timestamp: false))
+            let first = value(logger.info(message: "a"))
+            let second = value(logger.info(message: "b"))
+            let third = value(logger.info(message: "c"))
+            let flushed = value(logger.flush())
+
+        let current = value(fs.read_file(path: path))
+        if current.to_string() != some("\{\"level\":30,\"msg\":\"c\"\}\n"): return panic("active file")
+
+        let previous = value(fs.read_file(path: "{path}.1"))
+        if (
+            previous.to_string() != some("\{\"level\":30,\"msg\":\"b\"\}\n")
+        ): return panic("rotated file")
+
+        match fs.stat(path: "{path}.2", follow_links: false):
+            ok(_): return panic("file beyond max_files kept")
+            error(_): return unit
+
+        match async_file_transport(path, max_files: 0):
+            ok(_): return panic("zero max_files accepted")
+
+            error(cause):
+                if cause != LogError.InvalidInput: return panic("max_files error")
 
 test "stdout transport accepts records and leaves stdout open":
     with transport = stdout_transport():

@@ -22,6 +22,9 @@ func check_Log_StdoutTransport() {
 func check_Log_FileTransport() {
 	var _ func(*Execution, string) Result[Transport, LogError] = Log_FileTransport
 }
+func check_Log_AsyncFileTransport() {
+	var _ func(*Execution, string, Option[int], Option[Duration], Option[int], Option[int]) Result[Transport, LogError] = Log_AsyncFileTransport
+}
 func check_Errors_Message_LogError() {
 	var _ func(*Execution, LogError) string = Errors_Message_LogError
 }
