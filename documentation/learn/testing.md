@@ -54,17 +54,28 @@ source diagnostics and captured stdout. Stderr remains stderr; failures keep
 their exit status. It supports one run and cannot be combined with `--watch`.
 See the [JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests).
 
-A test can propagate a failing call with `try`, or match the result and return a custom failure with `fail` (also from `@std/testing.ms`):
+Use `try expect_ok` to check success and keep its payload. This complete example
+also checks a failure and unwraps an Optional without an unchecked `unwrap()`:
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-match result:
-    ok(value):
-        try expect_equal(value, 3)
-    error(cause):
-        return fail("Expected success, got {cause.message()}")
+import {parse, JsonError} from "@std/json.ms"
+import {expect_equal, expect_ok, expect_error, expect_some} from "@std/testing.ms"
+
+test "typed JSON and Optional payloads":
+    let number = try expect_ok(parse[Int]("3"))
+    try expect_equal(number, 3)
+    let cause = try expect_error(parse[Int]("true"))
+    try expect_equal(cause, JsonError.InvalidData)
+    let first = try expect_some([number].at(0))
+    try expect_equal(first, 3)
 ```
 
-The fragment assumes `Result[Int, Error]` and the imported equality helper above. `try` works in a test whenever the failing error is an `Error` (or implements it); a different error type must be matched and converted. Handle domain-specific error cases explicitly when a test is meant to check a failure. See [Results](../core-language/errors/results.md) and [programming faults](../core-language/errors/faults.md).
+Use `try` on every expectation to return a failed check as the test’s error.
+Tests can also propagate errors from other calls when their error type implements
+`Error`; match and convert other error types explicitly. See
+[Results](../core-language/errors/results.md) and the
+[testing helper reference](../standard-library/testing.md) for other assertions.
 
 ## Select, repeat, and profile
 

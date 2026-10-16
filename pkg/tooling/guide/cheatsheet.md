@@ -29,9 +29,9 @@ test "addition":
 - `let` binds once, `var` reassigns. Types `Int Float Bool String Unit`; `"{expr}"` interpolates. No implicit conversion or truthiness.
 - `[1, 2]` List; `Map[K, V]()`, `Set[T]()` mutate in place; assignment shares, `.clone()` is shallow.
 - `type T:` with fields, built `T(a: 1)`; alternatives use `case A` and `case B(x: Int)`; types are nominal.
-- `Optional`: `some(x)` / `none`; read with `match`, `.unwrap_or(d)`.
+- `Optional`: `some(x)` / `none`; unwrap with `if let x = value:` and optional `else:`, or `.unwrap_or(d)`.
 - `match v:` arms `Case(x):`, `_:`; exhaustive. Keep it flat: never nest `match`; early-return, `try`, or a helper.
-- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `try e` unwraps or returns the error. `Error` is the common boundary (`.message()`). Faults (`panic`, `unwrap()` on `none`) abort.
+- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `Error` is the common boundary (`.message()`). Faults (`panic`, `unwrap()` on `none`) abort.
 - Methods only via `interface I:` + `impl I for T:` (no `impl T:`); other functions are `f(x)`.
 - Closures snapshot bindings; shared collections stay shared. `with f = try ...:` closes `f` at block end.
 - Common rejects: reassigning a `let`; mixed list types; missing arguments; bare `none` without type context; indentation not a multiple of four.

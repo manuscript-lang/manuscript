@@ -124,9 +124,9 @@ old arrays alive, so retained heap and peak process RSS exceed the element budge
 Int remains the platform-sized signed integer and Float remains binary64; storage does not narrow values.
 
 Passing a List through a generic function, record, Optional, Result, closure, or
-stored operation preserves its mutable identity and backing kind. Generic access
-boxes a primitive only when it crosses the ordinary value boundary. Explicit
-copies preserve shallow references and receive independent backing.
+stored operation preserves its mutable identity and backing kind. Generic
+applications retain concrete element types in generated Go. Explicit copies
+preserve shallow references and receive independent backing.
 
 See [Go representation](../../contributing/go-lowering-representation.md) for Go callers
 and the measured constructor/access/comparator paths.
@@ -163,7 +163,7 @@ and the measured constructor/access/comparator paths.
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
 | `Set[T]` | `some(predicate: fn(value: T) -> Bool) -> Bool`; `every` uses the same predicate |
 
-All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. The checker narrows a bracket lookup to `T` only where it proves the index in range; see [Proven indexes](#proven-indexes). Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding MaxInt64 faults.
+All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. The checker narrows a bracket lookup to `T` only where it proves the index in range; see [Proven indexes](#proven-indexes). Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding the target platform’s maximum `Int` faults.
 
 ### Proven indexes
 

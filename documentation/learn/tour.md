@@ -54,8 +54,8 @@ let original = tags.clone()
 tags.append("news")
 # original still has three tags.
 
-let visits = Map[String, Int]()
-visits.add(key: "/help", value: 12)
+let visits = {"/help": 12}
+visits.add(key: "/tour", value: 4)
 let subscribers = Set[String]()
 subscribers.add("sam@example.com")
 
@@ -105,17 +105,18 @@ The index visits 0 through 4. Update the counter on every path that continues th
 ## Functions
 
 ```manuscript
-fn greeting(name: String) -> String:
+fn greeting(name: String = "world") -> String:
     return "Hello, {name}!"
 
 fn line_total(price: Int, quantity: Int) -> Int:
     return price * quantity
 
 let welcome = greeting("Sam")
+let default_welcome = greeting()  # "Hello, world!"
 let subtotal = line_total(12, 3)
 ```
 
-Functions declare parameter and return types. Call with positional arguments or add labels for clarity. Use `Unit` when a function has no result to return.
+Functions declare parameter and return types. Call with positional arguments or add labels for clarity. A parameter with a default can be omitted; other parameters are required. Use `Unit` when a function has no result to return.
 
 Pass functions to transform collections:
 
@@ -139,7 +140,7 @@ import panic from "@std/faults.ms"
 
 type Todo:
     title: String
-    completed: Bool
+    completed: Bool = false
 
 type Status:
     case Draft
@@ -153,7 +154,7 @@ fn status_label(status: Status) -> String:
             return "Published at {url}"
 
 test "publish a help page":
-    let todo = Todo(title: "Update the help page", completed: false)
+    let todo = Todo(title: "Update the help page")
     todo.completed = true
     let backup = todo.clone()
     todo.title = "Update the contact page"
@@ -162,7 +163,7 @@ test "publish a help page":
         return panic(message: "Unexpected page data")
 ```
 
-Records group named fields. Fields can change even when the binding uses `let`. Alternatives describe a choice of cases; `match` handles every case. A type's name identifies it, so two record declarations with the same fields remain distinct types.
+Records group named fields. Omitted fields use their declared defaults. Fields can change even when the binding uses `let`. Alternatives describe a choice of cases; `match` handles every case. A type's name identifies it, so two record declarations with the same fields remain distinct types.
 
 ## Behavior on types
 
@@ -222,8 +223,10 @@ Each `.ms` file is a module. Export declarations other files need.
 `pricing.ms`:
 
 ```manuscript
-export fn line_total(price: Int, quantity: Int) -> Int:
-    return price * quantity
+export let UNIT_PRICE = 12
+
+export fn line_total(quantity: Int) -> Int:
+    return UNIT_PRICE * quantity
 ```
 
 In another file in the same directory:
@@ -232,10 +235,10 @@ In another file in the same directory:
 import line_total from "./pricing.ms"
 
 export fn checkout_total() -> Int:
-    return line_total(price: 12, quantity: 3)
+    return line_total(quantity: 3)
 ```
 
-Import standard APIs from `@std/…`, and local code with a relative path. [Module rules](../core-language/modules/declarations.md) cover grouped imports and visibility.
+A module-level `let` declares a constant; use its name without `()`. Collection constants create fresh storage on each use. Import standard APIs from `@std/…`, and local code with a relative path. [Module rules](../core-language/modules/declarations.md) cover grouped imports and visibility.
 
 ## Closures and shared data
 
