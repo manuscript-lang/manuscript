@@ -1,10 +1,14 @@
 [[groups]]
-label = "Read the docs"
-paths = ["learn/getting-started", "learn/tour", "learn/common-tasks", "learn/testing", "core-language", "standard-library", "concurrency", "developer-tooling"]
+label = "Learn Manuscript"
+paths = ["learn"]
 
 [[groups]]
-label = "Look up a rule"
-paths = ["standard-library/reference", "standard-library/call-rules", "glossary"]
+label = "Build with Manuscript"
+paths = ["learn/common-tasks", "standard-library", "concurrency", "developer-tooling"]
+
+[[groups]]
+label = "Reference"
+paths = ["core-language", "standard-library/reference", "standard-library/call-rules", "glossary"]
 
 [[groups]]
 label = "Contribute"

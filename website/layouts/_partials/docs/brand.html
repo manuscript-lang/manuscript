@@ -1,4 +1,4 @@
-<a class="docs-brand" href="{{ .Site.Home.RelPermalink }}" aria-label="Manuscript documentation home">
+<a class="docs-brand" href="{{ .Site.Home.RelPermalink }}" aria-label="Manuscript home">
   <span class="brand-mark" aria-hidden="true">ms</span>
-  <span>Manuscript <span class="brand-subtitle">Documentation</span></span>
+  <span>Manuscript {{ if not .IsHome }}<span class="brand-subtitle">Documentation</span>{{ end }}</span>
 </a>

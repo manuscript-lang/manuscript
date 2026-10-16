@@ -1,9 +1,9 @@
 +++
-title = "Common tasks"
-weight = 3
+title = "Task recipes"
+weight = 5
 +++
 
-# Common tasks
+# Task recipes
 
 Each program below is a complete `.ms` file. Use a current `ms` build, save the code under the shown filename, and run the command from that directory. Follow [getting started](getting-started.md) to install or build the CLI.
 

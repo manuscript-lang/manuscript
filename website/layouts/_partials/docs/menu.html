@@ -1,6 +1,6 @@
 <nav aria-label="Documentation">
   {{ partial "docs/search" . }}
-  <a href="{{ .Site.Home.RelPermalink }}" class="nav-overview{{ if .IsHome }} active{{ end }}" {{ if .IsHome }}aria-current="page"{{ end }}><span aria-hidden="true">⌂</span> Overview</a>
+  <a href="{{ .Site.Home.RelPermalink }}" class="nav-overview{{ if .IsHome }} active{{ end }}" {{ if .IsHome }}aria-current="page"{{ end }}><span aria-hidden="true">⌂</span> Manuscript home</a>
   {{ $current := . }}
   {{ range .Site.Data.navigation.groups }}
   <div class="nav-group">

@@ -161,29 +161,36 @@ interface FloatOperations:
 #
 # # Standard library
 #
-# Start with [imports](imports.md), then learn how to obtain [external services](services.md). [Errors and limits](contracts.md) apply across the library.
+# Find the APIs for what you want to build. For a complete first example,
+# start with the [task recipes](../learn/common-tasks.md); use these guides to
+# understand the behavior and tradeoffs behind each API.
 #
-# Start a [command-line program](cli.md) to use those services in an application.
-# Use [testing helpers](testing.md) for assertions.
+# ## Choose a task
 #
-# ## Work with data
+# | You want to… | Start with |
+# | --- | --- |
+# | Write a command-line tool | [Command-line programs](cli.md), [files and paths](filesystem.md), and [byte streams](streams.md) |
+# | Transform data | [Text and collections](data.md), [building values](builders.md), and [numbers](math.md) |
+# | Read or write structured documents | [Data formats](formats.md): JSON, YAML, TOML, CSV, URLs, and HTML |
+# | Connect to a service | [HTTP](http.md), [WebSockets](websocket.md), or [sockets and TLS](network.md) |
+# | Run an external command | [Commands and processes](process.md) |
+# | Handle compressed files | [Compression and archives](archive.md) |
+# | Use clocks, system information, or random values | [Time and system information](system.md) and [cryptography](crypto.md) |
+# | Observe and test behavior | [Logging](logging.md) and [testing helpers](testing.md) |
+# | Run operations together | [Concurrent work](../concurrency/_index.md) |
 #
-# - [Text and collections](data.md)
-# - [Building values](builders.md)
-# - [Numbers and mathematics](math.md)
-# - [Data formats](formats.md): JSON, YAML, TOML, CSV, URLs, and HTML
-# - [Compression and archives](archive.md)
+# ## Read a guide, then look up a signature
 #
-# ## Read, write, and connect
+# Guides explain common use, errors, limits, and resource lifetimes. The
+# [API reference](reference/_index.md) gives exact declarations and member
+# documentation. From a terminal, use `ms search_symbol <name or words>` to
+# find an API, or `ms search_symbol json.parse` to read one declaration.
 #
-# - [Files and paths](filesystem.md), followed by [byte streams](streams.md)
-# - [Commands and processes](process.md)
-# - [Time and system information](system.md)
-# - [Cryptography and randomness](crypto.md)
-# - [Sockets and TLS](network.md), then [HTTP](http.md) and [WebSockets](websocket.md)
-# - [Logging](logging.md)
-#
-# Continue with [concurrent work](../concurrency/_index.md) when operations need to run together. Use the [API reference](reference/_index.md) to look up exact declarations and [special call rules](call-rules.md) for additional compiler checks.
+# Standard [imports](imports.md) select the APIs in scope.
+# [External services](services.md) explains how to obtain filesystem, network,
+# and clock services. [Errors and limits](contracts.md) describes the contracts
+# shared across the library; [special call rules](call-rules.md) covers the few
+# APIs with additional compiler checks.
 # end-documentation
 # documentation documentation/standard-library/call-rules.md
 # +++

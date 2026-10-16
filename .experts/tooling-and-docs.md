@@ -170,7 +170,7 @@ six-target standalone distribution checks after changing Delve or its transport.
 
 ### Polish the documentation design without expanding its prose
 
-Decision: for the documentation redesign, the user selected Tailwind CSS and Vercel as visual references and explicitly asked, “don't just randomly keep adding text.” Favor consistent navigation, typography, spacing, and reading layouts; preserve authored explanations rather than introducing promotional copy to fill the page.
+Decision: the user selected Tailwind CSS and Vercel as documentation design references and asked not to add filler. The later direction makes the landing page a marketing page whose goal is getting people to try Manuscript: lead with a concrete value proposition, a runnable example, and a clear first-run action. Keep learning pages focused on teaching and organize lessons, task guides, and reference by reader intent. This supersedes the earlier restriction on promotional homepage copy; it does not authorize unsupported claims or padded reference prose.
 
 Decision: use `ms` as the documentation logo, including the header and favicon, rather than a single `m`. Check the mark at desktop and mobile sizes when changing [branding](../website/layouts/_partials/docs/brand.html) or the [favicon](../website/static/favicon.svg).
 

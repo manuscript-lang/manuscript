@@ -1,9 +1,9 @@
 +++
-title = "Testing"
-weight = 4
+title = "Test your code"
+weight = 3
 +++
 
-# Testing
+# Test your code
 
 A `test "name":` block runs when you invoke `ms test`. A block passes when it finishes normally. A block fails when it returns an `error(...)`: the helpers in `@std/testing.ms` return `Result` values, and `try` returns a failed check as the test's error. A test body behaves as if it returns `Result[Unit, Error]`; you never need to write that, and completing without a `return` is success. A programming fault (including `panic`) or a timeout also fails the test, but prefer returning errors. Import reusable TDD assertions or BDD expectations from `@std/testing.ms`.
 

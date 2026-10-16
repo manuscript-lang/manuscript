@@ -1,6 +1,6 @@
 {{ if not .IsHome }}
 <nav class="docs-breadcrumb" aria-label="Breadcrumb">
-  <a href="{{ .Site.Home.RelPermalink }}">Docs</a>
+  <a href="{{ with .Site.GetPage "learn" }}{{ .RelPermalink }}{{ end }}">Docs</a>
   {{ range .Ancestors.Reverse }}{{ if not .IsHome }}<span aria-hidden="true">/</span><a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end }}{{ end }}
   <span aria-hidden="true">/</span><span aria-current="page">{{ .Title }}</span>
 </nav>

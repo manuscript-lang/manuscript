@@ -8,7 +8,7 @@ resourceDir = '.hugo-resources'
 disableKinds = ['taxonomy', 'term', 'RSS']
 
 [params]
-  description = 'Learn Manuscript: readable native programs, explicit contracts, and predictable work lifetimes.'
+  description = 'Build with agents. Ship something real. Discover Manuscript, a language with readable code, explicit types, and a complete native toolchain.'
   BookSection = '/'
   BookToC = true
   BookSearch = true

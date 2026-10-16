@@ -95,11 +95,15 @@ test('previous and next links follow the rendered sidebar reading order', () => 
   const canonical = [...home.matchAll(/<link\b[^>]*>/g)]
     .map(match => match[0]).find(tag => attribute(tag, 'rel') === 'canonical');
   const prefix = new URL(attribute(canonical, 'href')).pathname;
-  const nav = home.match(/<nav\b[^>]*aria-label=(?:"Documentation"|'Documentation'|Documentation)[^>]*>[\s\S]*?<\/nav>/)[0];
+  const start = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
+  const nav = start.match(/<nav\b[^>]*aria-label=(?:"Documentation"|'Documentation'|Documentation)[^>]*>[\s\S]*?<\/nav>/)[0];
   const groups = [...nav.matchAll(/<div\b[^>]*class=(?:"nav-group"|'nav-group'|nav-group)[^>]*>([\s\S]*?)<\/div>/g)];
   const routes = groups.flatMap(group => [...group[1].matchAll(/<a\b[^>]*>/g)]
     .map(match => attribute(match[0], 'href')));
-  assert.ok(routes.length > 0, 'The sidebar must expose a reading path');
+  assert.deepEqual(routes.slice(0, 6), [
+    'learn/', 'learn/getting-started/', 'learn/tour/', 'learn/testing/',
+    'learn/best-practices/', 'learn/common-tasks/',
+  ].map(route => prefix + route), 'Teach running, reading, and testing before task recipes');
   assert.equal(new Set(routes).size, routes.length, 'Each page belongs to one sidebar position');
 
   for (const [index, route] of routes.entries()) {
@@ -112,4 +116,19 @@ test('previous and next links follow the rendered sidebar reading order', () => 
       assert.equal(tag && attribute(tag, 'href') || undefined, expected, `${route}: ${rel} skips the sidebar order`);
     }
   }
+});
+
+
+test('the landing page offers a trial while documentation keeps its reading navigation', () => {
+  const home = fs.readFileSync(path.join(book, 'index.html'), 'utf8');
+  assert.equal((home.match(/<h1\b/g) || []).length, 1, 'Use one clear landing-page headline');
+  assert.ok(!/<aside\b[^>]*aria-label=(?:"Documentation navigation"|'Documentation navigation')/.test(home),
+    'The landing page should not look like a documentation chapter');
+  const primary = [...home.matchAll(/<a\b[^>]*>/g)].map(match => match[0])
+    .find(tag => (attribute(tag, 'class') || '').split(' ').includes('home-button-primary'));
+  assert.ok(primary, 'Offer a primary trial action');
+  assert.ok(attribute(primary, 'href').endsWith('/learn/getting-started/'), 'Start the trial with a runnable guide');
+  assert.ok(home.includes('ms run hello.ms -- Ada'), 'Show how to run the displayed program');
+  const docs = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
+  assert.ok(docs.includes('Documentation navigation'), 'Readers need a documentation sidebar');
 });

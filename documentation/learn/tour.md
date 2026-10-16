@@ -1,9 +1,9 @@
 +++
-title = "A language tour"
+title = "Language tour"
 weight = 2
 +++
 
-# A language tour
+# Language tour
 
 Start with [a running program](getting-started.md). Read these examples in order; local statements go inside a function or test. Imports and declarations go at the top of the file. Indentation defines blocks, and `#` starts a comment.
 
@@ -15,23 +15,28 @@ Save this complete program as `hello.ms` and run `ms run hello.ms`:
 ```manuscript
 import stdout from "@std/io.ms"
 
-fn say(text: String) -> Result[Unit, Error]:
-    try stdout().write("{text}\n".to_bytes())
-    return stdout().flush()
-
 export fn main() -> Int:
-    match say("Hello, Manuscript!"):
+    match stdout().write("Hello, Manuscript!\n".to_bytes()):
         ok(_): return 0
         error(_): return 1
 ```
 
-`main` returns the exit status: 0 for success, 1 for a failed write or flush. `try` forwards an error to the caller; the [expected errors](#expected-errors) section explains that pattern. There is no built-in `print` function. See [common tasks](common-tasks.md) for files, input, arguments, and HTTP, and [testing](testing.md) for the `panic` checks used below.
+`main` returns the exit status: 0 for success, 1 for a failed write.
+`match` handles the write's two outcomes; the [expected errors](#expected-errors)
+section explains them in more detail. The import selects the output API.
+
+The complete examples below use `test` blocks. Save one as `example.ms` and run
+`ms test example.ms`. `try expect_equal(actual, expected)` checks a value and
+fails the test if it differs. This lets you try the language without adding
+output code to every example; [test your code](testing.md) explains the helpers.
+Other blocks are fragments to place inside a function or test, unless they
+declare a type, function, or import.
 
 ## Variables and text
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/faults.ms"
+import expect_equal from "@std/testing.ms"
 
 test "unread message count":
     let customer = "Sam"
@@ -39,8 +44,8 @@ test "unread message count":
     unread = unread + 1
     let message = "{customer}, you have {unread} unread messages."
     let enabled: Bool = true
-    if not (enabled and message == "Sam, you have 3 unread messages."):
-        return panic(message: "Unexpected message")
+    try expect_equal(enabled, true)
+    try expect_equal(message, "Sam, you have 3 unread messages.")
 ```
 
 `let` keeps the same binding; `var` allows reassignment. Local types are inferred unless you write an annotation. Use `Int` for whole numbers, `Float` for decimals, `Bool` for true or false, and `String` for text. `{expression}` inserts a value into a string.
@@ -65,7 +70,7 @@ else:
     let label = "No visits yet"
 ```
 
-List, Map, and Set are available without imports. Lists preserve order, maps look up values by key, and sets keep distinct values. Updates mutate the collection. Assignment shares the same collection; `.clone()` makes a shallow copy. Lookup returns an `Optional`: `some(value)` or `none`.
+List, Map, and Set are available without imports. Lists preserve order, maps look up values by key, and sets keep distinct values. Updates mutate the collection. Assignment shares the same collection; `.clone()` makes a shallow copy. Lookup returns an `Optional`: `some(value)` or `none`. `if let` binds a present value inside its block; `else` handles absence.
 
 ## Conditions and loops
 
@@ -88,7 +93,7 @@ To repeat a task five times without building a collection, count with `while`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/faults.ms"
+import expect_equal from "@std/testing.ms"
 
 test "count five iterations":
     var index = 0
@@ -96,8 +101,7 @@ test "count five iterations":
     while index < 5:
         total = total + index
         index = index + 1
-    if total != 10:
-        return panic("Expected 10, got {total}")
+    try expect_equal(total, 10)
 ```
 
 The index visits 0 through 4. Update the counter on every path that continues the loop. To build a list of integers, handle `range(start: 0, end: 5, step: 1)`'s `Result` before iterating; see [counting loops](../core-language/control-flow/loops.md#counting-loops).
@@ -136,7 +140,7 @@ let affordable = discounted.filter(predicate: fn(value: Int) -> Bool:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/faults.ms"
+import expect_equal from "@std/testing.ms"
 
 type Todo:
     title: String
@@ -159,44 +163,12 @@ test "publish a help page":
     let backup = todo.clone()
     todo.title = "Update the contact page"
     let label = status_label(Status.Published("/help"))
-    if not (backup.title == "Update the help page" and backup.completed and label == "Published at /help"):
-        return panic(message: "Unexpected page data")
+    try expect_equal(backup.title, "Update the help page")
+    try expect_equal(backup.completed, true)
+    try expect_equal(label, "Published at /help")
 ```
 
 Records group named fields. Omitted fields use their declared defaults. Fields can change even when the binding uses `let`. Alternatives describe a choice of cases; `match` handles every case. A type's name identifies it, so two record declarations with the same fields remain distinct types.
-
-## Behavior on types
-
-Declare an interface for user-defined methods, then implement it with `impl Interface for Type:`. The method's `self` is its receiver:
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
-import panic from "@std/faults.ms"
-
-interface Increment:
-    fn increment() -> Unit
-
-type Counter:
-    value: Int
-
-impl Increment for Counter:
-    fn increment() -> Unit:
-        self.value = self.value + 1
-
-fn reset(counter: Counter) -> Unit:
-    counter.value = 0
-
-test "counter behavior":
-    let counter = Counter(0)
-    counter.increment()
-    if counter.value != 1:
-        return panic("Expected 1, got {counter.value}")
-    reset(counter)
-    if counter.value != 0:
-        return panic("Expected 0, got {counter.value}")
-```
-
-Manuscript has no user-defined inherent methods: `impl Counter:` is unsupported. A free function is called as `reset(counter)`, not `counter.reset()`. Interface operations can be called on a concrete receiver when exactly one visible interface implementation supplies that name. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations) for signatures, visibility, and selecting an interface view when names are ambiguous.
 
 ## Expected errors
 
@@ -259,6 +231,37 @@ tags.append("release")
 
 A closure remembers each binding's value when created. Reassigning a local variable does not change that value. Capturing a collection or record keeps the same object, so later mutations are visible. See [closure examples](../core-language/functions/function-values-and-closures.md#snapshot-captures).
 
+## Behavior on types
+
+Declare an interface for user-defined methods, then implement it with `impl Interface for Type:`. The method's `self` is its receiver:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import expect_equal from "@std/testing.ms"
+
+interface Increment:
+    fn increment() -> Unit
+
+type Counter:
+    value: Int
+
+impl Increment for Counter:
+    fn increment() -> Unit:
+        self.value = self.value + 1
+
+fn reset(counter: Counter) -> Unit:
+    counter.value = 0
+
+test "counter behavior":
+    let counter = Counter(0)
+    counter.increment()
+    try expect_equal(counter.value, 1)
+    reset(counter)
+    try expect_equal(counter.value, 0)
+```
+
+Manuscript has no user-defined inherent methods: `impl Counter:` is unsupported. A free function is called as `reset(counter)`, not `counter.reset()`. Interface operations can be called on a concrete receiver when exactly one visible interface implementation supplies that name. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations) for signatures, visibility, and selecting an interface view when names are ambiguous.
+
 ## Files and cleanup
 
 ```manuscript
@@ -267,7 +270,7 @@ import {filesystem, FileSystemError} from "@std/fs.ms"
 fn copy_notes() -> Result[Unit, FileSystemError]:
     with source = try filesystem().open(path: "notes.txt", flags: "r", mode: 0):
         let contents = try source.read_file(max_bytes: 1048576)
-        let written = try filesystem().write_file(path: "backup.txt", data: contents, replace: true)
+        try filesystem().write_file(path: "backup.txt", data: contents, replace: true)
     return ok(unit)
 ```
 
@@ -284,4 +287,7 @@ let mixed = [1, "two"]    # List elements need a common type.
 line_total(12)            # Supply the required quantity.
 ```
 
-Keep these cases separate from runnable examples. Continue with the [language guide](../core-language/_index.md) or find an API in the [API reference](../standard-library/reference/_index.md).
+Keep these cases separate from runnable examples. Next, [test your code](testing.md), then put these ideas to work in the
+[task recipes](common-tasks.md). Use the [language reference](../core-language/_index.md)
+when you need an exact rule, or the [API reference](../standard-library/reference/_index.md)
+when you need a particular function.
