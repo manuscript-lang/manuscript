@@ -9,42 +9,45 @@ import (
 )
 
 func TestSearchFindsStandardAPIs(t *testing.T) {
-	status, output, errors := invoke(t, "search_std", "jsn", "parse", "--limit", "2")
+	t.Chdir(t.TempDir())
+	status, output, errors := invoke(t, "search_symbol", "jsn", "parse", "--limit", "2")
 	if status != 0 || errors != "" || !strings.Contains(output, "json.parse") || !strings.Contains(output, "fn parse(") {
 		t.Fatalf("search: %d, %q, %q", status, output, errors)
 	}
-	status, output, _ = invoke(t, "search_std", "read", "file", "--json")
+	status, output, _ = invoke(t, "search_symbol", "read", "file", "--json")
 	var document struct {
 		Format  int
 		Query   string
-		Matches []struct{ Path, Module, Signature string }
+		Matches []struct{ Name, Origin, Signature string }
 	}
-	if err := json.Unmarshal([]byte(output), &document); err != nil || status != 0 || document.Format != 1 || document.Query != "read file" || len(document.Matches) != defaultSearchLimit {
+	if err := json.Unmarshal([]byte(output), &document); err != nil || status != 0 || document.Format != 1 || document.Query != "read file" || len(document.Matches) != defaultSymbolLimit {
 		t.Fatalf("search --json: %d, %v, %+v", status, err, document)
 	}
-	status, output, _ = invoke(t, "search_std", "zzqxjv")
-	if status != 0 || !strings.Contains(output, "No standard-library match") {
+	status, output, _ = invoke(t, "search_symbol", "zzqxjv")
+	if status != 0 || !strings.Contains(output, "No project or standard-library symbol") {
 		t.Fatalf("no match: %d, %q", status, output)
 	}
 }
 
 func TestSingleWordFallsBackToSearch(t *testing.T) {
-	status, output, _ := invoke(t, "search_std", "sleep")
+	t.Chdir(t.TempDir())
+	status, output, _ := invoke(t, "search_symbol", "sleep")
 	if status != 0 || !strings.Contains(output, "time.sleep") {
-		t.Fatalf("search_std sleep: %d, %.120q", status, output)
+		t.Fatalf("search_symbol sleep: %d, %.120q", status, output)
 	}
 }
 
 func TestSearchRejectsBadArguments(t *testing.T) {
-	for _, args := range [][]string{{"search_std", "x", "--limit"}, {"search_std", "x", "--limit", "0"}, {"search_std", "x", "--bogus"}} {
+	t.Chdir(t.TempDir())
+	for _, args := range [][]string{{"search_symbol", "x", "--limit"}, {"search_symbol", "x", "--limit", "0"}, {"search_symbol", "x", "--bogus"}} {
 		if status, _, errors := invoke(t, args...); status != 2 || errors == "" {
 			t.Errorf("%v = %d, %q", args, status, errors)
 		}
 	}
-	_, output, _ := invoke(t, "search_std", "list", "--limit=99", "--json")
-	var document struct{ Matches []struct{ Path string } }
-	if err := json.Unmarshal([]byte(output), &document); err != nil || len(document.Matches) != maxSearchLimit {
-		t.Errorf("limit not capped at %d: %d matches, %v", maxSearchLimit, len(document.Matches), err)
+	_, output, _ := invoke(t, "search_symbol", "list", "--limit=99", "--json")
+	var document struct{ Matches []struct{ Name string } }
+	if err := json.Unmarshal([]byte(output), &document); err != nil || len(document.Matches) != maxSymbolLimit {
+		t.Errorf("limit not capped at %d: %d matches, %v", maxSymbolLimit, len(document.Matches), err)
 	}
 }
 
@@ -87,13 +90,13 @@ func TestSearchSymbolFindsDefinitionAndUses(t *testing.T) {
 		t.Errorf("fuzzy typo: %q", output)
 	}
 	status, output, _ = invoke(t, "search_symbol", "JSON_PARSE")
-	if status != 0 || !strings.Contains(output, "json.parse") || !strings.Contains(output, "details: ms search_std json.parse") || len(output) > 3500 {
+	if status != 0 || !strings.Contains(output, "json.parse") || !strings.Contains(output, "details: ms search_symbol json.parse") || len(output) > 3500 {
 		t.Errorf("std symbol: %q", output)
 	}
 	if _, output, _ = invoke(t, "search_symbol", "zzqxjv"); !strings.Contains(output, "No project or standard-library symbol") {
 		t.Errorf("no match: %q", output)
 	}
-	for _, args := range [][]string{{"search_symbol"}, {"search_symbol", "a", "b"}, {"search_symbol", "a", "--limit", "0"}, {"search_symbol", "a", "--bogus"}} {
+	for _, args := range [][]string{{"search_symbol", "a", "--limit", "0"}, {"search_symbol", "a", "--bogus"}} {
 		if status, _, errors := invoke(t, args...); status != 2 || errors == "" {
 			t.Errorf("%v = %d, %q", args, status, errors)
 		}
@@ -102,16 +105,17 @@ func TestSearchSymbolFindsDefinitionAndUses(t *testing.T) {
 
 func TestGuideIsOnlyTheCheatSheet(t *testing.T) {
 	status, output, _ := invoke(t, "guide")
-	if status != 0 || !strings.Contains(output, "# Manuscript cheat sheet") || !strings.Contains(output, "ms search_std") {
+	if status != 0 || !strings.Contains(output, "# Manuscript cheat sheet") || !strings.Contains(output, "ms search_symbol") {
 		t.Fatalf("guide: %d, %.80q", status, output)
 	}
-	if status, _, errors := invoke(t, "guide", "stdlib"); status != 2 || !strings.Contains(errors, "ms search_std") {
+	if status, _, errors := invoke(t, "guide", "stdlib"); status != 2 || !strings.Contains(errors, "ms search_symbol") {
 		t.Errorf("guide stdlib = %d, %q", status, errors)
 	}
 }
 
 func TestStdPagesAreBoundedAndNavigable(t *testing.T) {
-	status, output, errors := invoke(t, "search_std")
+	t.Chdir(t.TempDir())
+	status, output, errors := invoke(t, "search_symbol")
 	if status != 0 || errors != "" || !strings.Contains(output, "prelude") || len(output) > 3500 {
 		t.Fatalf("std: %d, %d bytes, %q", status, len(output), errors)
 	}
@@ -121,12 +125,12 @@ func TestStdPagesAreBoundedAndNavigable(t *testing.T) {
 		{"prelude.List", "members ("},
 		{"prelude.List.sorted", "sorted"},
 	} {
-		status, output, errors := invoke(t, "search_std", c.arg)
+		status, output, errors := invoke(t, "search_symbol", c.arg)
 		if status != 0 || errors != "" || !strings.Contains(output, c.want) || len(output) > 4000 {
 			t.Errorf("std %s: %d, %d bytes, %.80q, %q", c.arg, status, len(output), output, errors)
 		}
 	}
-	for _, args := range [][]string{{"search_std", "--bogus"}, {"search_std", "x", "--limit", "0"}} {
+	for _, args := range [][]string{{"search_symbol", "--bogus"}, {"search_symbol", "x", "--limit", "0"}} {
 		if status, _, errors := invoke(t, args...); status != 2 || errors == "" {
 			t.Errorf("%v = %d, %q", args, status, errors)
 		}

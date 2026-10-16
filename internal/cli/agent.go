@@ -15,55 +15,36 @@ import (
 // Agents read these commands' output directly, so each prints only what is needed
 // to act: ranked matches, one symbol, or one page of reference.
 
-const stdHelp = `Usage: ms search_std [<words>... | <path>] [--limit n] [--json]
+const searchSymbolHelp = `Usage: ms search_symbol [<name or words>... | <path>] [--limit n] [--json]
 
-Search and read the bundled standard library. Output is short by design.
-  ms search_std <words>       Fuzzy-search every function, type, and member
-  ms search_std               Modules, each with a few of its names
-  ms search_std <module>      One module: a line per declaration, with its import
-  ms search_std <module>.<Name>
-                              A type or function, with its members as signatures
-  ms search_std <module>.<Name>.<member>
-                              One member's full signature and doc
-
-A single argument that names a module or declaration shows its page; anything
-else searches. Paths accept json, @std/json.ms, json.parse, and
-prelude.List.sorted. Search tolerates typos, partial words, synonyms, and any
-word order; run it before calling a standard API you have not seen.
-
-Options:
-  --limit <n>  Maximum search matches (default 5, at most 15)
-  --json       Always search, and emit versioned JSON matches
-  -h, --help   Show this help
-
-Examples:
-  ms search_std read file lines
-  ms search_std prelude.List.sorted
-  ms search_std json
-`
-
-const searchSymbolHelp = `Usage: ms search_symbol <name> [--limit n] [--json]
-
-Find declarations by name, ignoring case and tolerating partial names, small
-typos and missing underscores. Project declarations print where they are defined,
-their type, description, and uses; standard-library symbols (such as json.parse)
-print their signature and the ms search_std path for details. Exact names rank
-first. Run it from the project directory, or any folder under its ms.toml.
+Find a symbol, in the project or the standard library. Matching ignores case
+and tolerates partial names, small typos, missing underscores, and plain words
+(read file lines). Exact names rank first.
+  A project match prints its definition, type, description, and uses.
+  A standard-library match prints its signature and a path for details.
+  A lone module or declaration path shows its page, in bounded size:
+    ms search_symbol                 Standard modules, each with a few names
+    ms search_symbol json            One module: a line per declaration
+    ms search_symbol prelude.List    A declaration with its members
+    ms search_symbol prelude.List.sorted
+                                     One member's signature and doc
+Run it from the project directory, or any folder under its ms.toml.
 
 Options:
   --limit <n>  Maximum matches (default 5, at most 10)
-  --json       Emit versioned JSON
+  --json       Always search, and emit versioned JSON
   -h, --help   Show this help
 
 Examples:
   ms search_symbol parse_config
-  ms search_symbol Config --limit 3
+  ms search_symbol read file lines
+  ms search_symbol json.parse
 `
 
 const guideHelp = `Usage: ms guide
 
 Print the language cheat sheet: syntax, types, errors, and a checked example
-program. Standard-library lookups are in ms search_std.
+program. Look symbols up with ms search_symbol.
 
 Options:
   -h, --help  Show this help
@@ -71,71 +52,6 @@ Options:
 Examples:
   ms guide
 `
-
-const (
-	defaultSearchLimit = 5
-	maxSearchLimit     = 15
-)
-
-func runStd(args []string, _ string) int {
-	var words []string
-	limit, structured := defaultSearchLimit, false
-	for i := 1; i < len(args); i++ {
-		flag, value, inline := splitValueOption(args[i], "--limit")
-		switch flag {
-		case "--json":
-			structured = true
-		case "--limit":
-			text, ok := requiredValue(args, &i, value, inline)
-			n, err := strconv.Atoi(text)
-			if !ok || err != nil || n < 1 {
-				return usageError("ms search_std: --limit needs a positive number, e.g. ms search_std read file --limit 3")
-			}
-			limit = min(n, maxSearchLimit)
-		default:
-			if strings.HasPrefix(flag, "-") {
-				return usageError("unknown option %s for ms search_std; run 'ms help search_std' for its options", flag)
-			}
-			words = append(words, flag)
-		}
-	}
-	if len(words) == 0 {
-		fmt.Print(guide.Index())
-		return 0
-	}
-	if len(words) == 1 && !structured {
-		if page, err := guide.Page(words[0]); err == nil {
-			fmt.Print(page)
-			return 0
-		}
-	}
-	return stdSearch(words, limit, structured)
-}
-
-func stdSearch(words []string, limit int, structured bool) int {
-	query := strings.Join(words, " ")
-	matches := guide.Search(query, limit)
-	if structured {
-		type match struct {
-			Path      string `json:"path"`
-			Module    string `json:"module"`
-			Kind      string `json:"kind"`
-			Signature string `json:"signature"`
-			Doc       string `json:"doc,omitempty"`
-		}
-		out := struct {
-			Format  int     `json:"format"`
-			Query   string  `json:"query"`
-			Matches []match `json:"matches"`
-		}{1, query, []match{}}
-		for _, m := range matches {
-			out.Matches = append(out.Matches, match{m.Path, m.Module, m.Kind, m.Signature, m.Doc})
-		}
-		return emitJSON(out, 0)
-	}
-	fmt.Println(guide.FormatMatches(query, matches))
-	return 0
-}
 
 const (
 	defaultSymbolLimit = 5
@@ -166,14 +82,21 @@ func runSearchSymbol(args []string, _ string) int {
 			names = append(names, flag)
 		}
 	}
-	if len(names) != 1 {
-		return usageError("ms search_symbol takes one name, e.g. ms search_symbol parse_config")
+	if len(names) == 0 {
+		fmt.Print(guide.Index())
+		return 0
 	}
-	query := names[0]
-	matches, total, err := lsp.SearchSymbols(".", query, limit)
+	query := strings.Join(names, " ")
+	matches, total, err := lsp.SearchSymbols(".", strings.Join(names, ""), limit)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ms search_symbol:", fileError(err))
 		return 1
+	}
+	if len(names) == 1 && !structured && !hasExactName(matches, query) {
+		if page, err := guide.Page(query); err == nil {
+			fmt.Print(page)
+			return 0
+		}
 	}
 	type match struct {
 		Name       string   `json:"name"`
@@ -204,13 +127,26 @@ func runSearchSymbol(args []string, _ string) int {
 		rank  int
 	}
 	var library []ranked
-	for _, m := range guide.Search(query, 50) {
+	concept := guide.Search(query, 50)
+	for _, m := range concept {
 		rank := lsp.NameRank(m.Path, query)
 		if own := lsp.NameRank(m.Name, query); own >= 0 && (rank < 0 || own < rank) {
 			rank = own
 		}
 		if rank >= 0 {
 			library = append(library, ranked{m, rank})
+		}
+	}
+	if projectCount == 0 && (len(names) > 1 || len(library) == 0) {
+		// Words rather than a name: top up with the meaning-based ranking, as for read file lines.
+		seen := map[string]bool{}
+		for _, r := range library {
+			seen[r.match.Path] = true
+		}
+		for _, m := range concept {
+			if !seen[m.Path] {
+				library = append(library, ranked{m, 5})
+			}
 		}
 	}
 	sort.SliceStable(library, func(i, j int) bool { return library[i].rank < library[j].rank })
@@ -241,7 +177,7 @@ func runSearchSymbol(args []string, _ string) int {
 			out.WriteString("  # " + clipRunes(m.Doc, 160) + "\n")
 		}
 		if m.Origin == "std" {
-			out.WriteString("  details: ms search_std " + m.Name + "\n")
+			out.WriteString("  details: ms search_symbol " + m.Name + "\n")
 			continue
 		}
 		shown := m.Uses[:min(len(m.Uses), maxSymbolUses)]
@@ -304,8 +240,19 @@ func displayPath(path string) string {
 
 func runGuide(args []string, _ string) int {
 	if len(args) > 1 {
-		return usageError("ms guide takes no arguments; for the standard library use 'ms search_std'")
+		return usageError("ms guide takes no arguments; use 'ms search_symbol' to look symbols up")
 	}
 	fmt.Print(guide.Cheatsheet())
 	return 0
+}
+
+// hasExactName reports whether a project match is named exactly like the query, which then
+// wins over a standard module or declaration of the same name.
+func hasExactName(matches []lsp.SymbolMatch, query string) bool {
+	for _, m := range matches {
+		if lsp.NameRank(m.Name, query) == 0 {
+			return true
+		}
+	}
+	return false
 }

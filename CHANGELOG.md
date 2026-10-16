@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Tooling: `ms search_std` looks up the standard library in bounded pages (`ms search_std`, `ms search_std json`, `ms search_std prelude.List.sorted`, `ms search_std read file lines`), `ms search_symbol <name>` finds project and standard-library symbols by name, fuzzy and case-insensitive, with their definition, type, and uses, and `ms guide` prints the language cheat sheet, so agents need no protocol server.
+- Tooling: `ms search_symbol` finds project and standard-library symbols by name or plain words, fuzzy and case-insensitive, with their definition, type, and uses, and shows bounded module, declaration, and member pages (`ms search_symbol json`, `ms search_symbol prelude.List.sorted`), and `ms guide` prints the language cheat sheet, so agents need no protocol server.
 - Builds: generated Go is fully typed. `Int`, `Float`, `Bool`, `String` and every record, collection, alternative, `Optional`, `Result`, contract and function lower to their own Go type with no boxing, and the lean runtime variant is gone. Reusable packages are now `pkg/lower` (was `pkg/golower`) and `pkg/runtime` (the typed `rt`).
 - Language: a `Map` or `Set` matches keys with the `Equal`/`Hashable` implementations visible where it was created; an operation obtained from another module no longer switches a collection to that module's implementations.
 - Tooling: `make stdgen` regenerates the standard-runtime declarations from the `@std` sources.

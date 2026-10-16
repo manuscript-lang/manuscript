@@ -28,8 +28,7 @@ Commands:
   lock           Create or update project build pins
   init           Create a new project with a manifest, entry, test, and .gitignore
   lsp            Serve the language server on stdin/stdout
-  search_std     Look up the standard library: modules, signatures, search
-  search_symbol  Find a symbol by name: definition, type, uses
+  search_symbol  Find a project or standard-library symbol: definition, type, uses
   guide          Print the language cheat sheet
   help           Show help for a command
   version        Print the compiler version
@@ -129,8 +128,6 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms lock ms.toml"
 	case "init":
 		return initHelp, true
-	case "search_std":
-		return stdHelp, true
 	case "search_symbol":
 		return searchSymbolHelp, true
 	case "guide":
