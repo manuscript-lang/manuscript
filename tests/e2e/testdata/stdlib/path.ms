@@ -1,10 +1,4 @@
-import {
-    posix,
-    win32,
-    PathError,
-    dirname,
-    basename_without
-} from "@std/path.ms"
+import {posix, win32, PathError, dirname, basename_without} from "@std/path.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

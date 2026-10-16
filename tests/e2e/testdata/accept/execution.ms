@@ -1,5 +1,4 @@
 import panic from "@std/faults.ms"
-
 import check_cancelled from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
@@ -29,7 +28,6 @@ fn run() -> Result[Unit, ExecutionError]:
 
     with empty = TaskGroup(0.seconds):
         let joined = try empty.join()
-
     return ok(unit)
 
 fn scheduler_probe() -> Unit:
@@ -41,7 +39,6 @@ fn scheduler_probe() -> Unit:
         match launch(operation: task):
             ok(id):
                 let completed = unit
-
             error(_):
                 return panic(message: "Unexpected case")
 
@@ -50,7 +47,6 @@ fn scheduler_probe() -> Unit:
         match launch(operation: task):
             ok(_):
                 return panic(message: "Unexpected case")
-
             error(cause):
                 if not (cause == StartError.Closed):
                     return panic(message: "check failed")
@@ -59,7 +55,6 @@ test "joined work and snapshot captures":
     match run():
         ok(_):
             let completed = unit
-
         error(_):
             return panic(message: "Unexpected case")
 
@@ -68,7 +63,6 @@ test "joined work and snapshot captures":
 fn standard_task() -> Result[Unit, ExecutionError]:
     with empty = TaskGroup():
         let joined = try empty.join()
-
     let checkpoint = check_cancelled
 
     with group = TaskGroup():
@@ -83,6 +77,5 @@ test "standard functions can run concurrently":
     match standard_task():
         ok(_):
             let completed = unit
-
         error(_):
             return panic(message: "Unexpected case")

@@ -26,6 +26,7 @@ type layoutGroup struct {
 	force       bool
 	parameters  bool
 	items       bool
+	list        bool
 }
 
 type expressionLayout struct {
@@ -68,9 +69,9 @@ func formatExpressionLayout(filename, source string) (string, error) {
 					g.force = true
 				}
 			}
-		case syntax.KindMap:
+		case syntax.KindList:
 			if g := layout.byOpen[e.Pos.Offset]; g != nil {
-				g.force = g.force || len(e.Elements) >= 10
+				g.list = true
 			}
 		case syntax.KindLambda:
 			layout.parameters(e.Params)
@@ -234,10 +235,6 @@ func (l *expressionLayout) tree(tokens []lexer.Token) []layoutNode {
 						break
 					}
 				}
-				if len(code) > 1 && token.Kind == "{" {
-					// Imports, record patterns, and map literals use braces.
-					g.force = g.force || len(splitLayout(g.nodes, ",")) >= 5
-				}
 				node.group = g
 			}
 			nodes = append(nodes, node)
@@ -367,6 +364,9 @@ func (l *expressionLayout) group(g *layoutGroup, indent, column, following int) 
 	if force && len(parts) == 1 && operator != "" {
 		parts = splitLayout(g.nodes, operator)
 	}
+	if g.list && !g.force && simpleLayoutItems(parts) {
+		return packedLayout(g, parts, indent)
+	}
 	// Keep an opener's trailing comment on its original line.
 	opening := g.open.Text
 	if len(g.nodes) > 0 && g.nodes[0].token.Kind == formatComment &&
@@ -386,6 +386,52 @@ func (l *expressionLayout) group(g *layoutGroup, indent, column, following int) 
 			output.WriteByte('\n')
 			output.WriteString(text)
 		}
+	}
+	output.WriteByte('\n')
+	output.WriteString(strings.Repeat(" ", indent))
+	output.WriteString(g.close.Text)
+	return output.String()
+}
+
+// Pack atomic list values into rows using their printed width. Expressions,
+// nested groups, comments, and suites keep their own structural boundaries.
+func simpleLayoutItems(parts [][]layoutNode) bool {
+	for _, part := range parts {
+		values := 0
+		for _, node := range part {
+			if layoutToken(node.token.Kind) || node.token.Kind == "," {
+				continue
+			}
+			if node.group != nil || node.token.Kind == formatComment {
+				return false
+			}
+			values++
+		}
+		if values != 1 {
+			return false
+		}
+	}
+	return len(parts) > 1
+}
+
+func packedLayout(g *layoutGroup, parts [][]layoutNode, indent int) string {
+	padding := strings.Repeat(" ", indent+4)
+	var output strings.Builder
+	output.WriteString(g.open.Text)
+	column := 0
+	for _, part := range parts {
+		text := flatLayout(part)
+		width := utf8.RuneCountInString(text)
+		if column == 0 || column+1+width > formatWidth {
+			output.WriteByte('\n')
+			output.WriteString(padding)
+			column = indent + 4
+		} else {
+			output.WriteByte(' ')
+			column++
+		}
+		output.WriteString(text)
+		column += width
 	}
 	output.WriteByte('\n')
 	output.WriteString(strings.Repeat(" ", indent))

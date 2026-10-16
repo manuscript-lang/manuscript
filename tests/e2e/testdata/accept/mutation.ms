@@ -105,7 +105,6 @@ test "Synchronized protects record mutation without replacement":
         while remaining > 0:
             with guard = counter.lock():
                 guard.get().increment()
-
             remaining = remaining - 1
 
     with group = TaskGroup():
@@ -119,7 +118,6 @@ test "Synchronized protects record mutation without replacement":
                 with guard = counter.lock():
                     if not (guard.get().val == 400):
                         return panic(message: "synchronized mutation lost updates")
-
             error(_):
                 return panic(message: "task mutation failed")
 
@@ -169,11 +167,9 @@ test "collection clones retain nested object references":
     let entries = Map[String, Val]().add(key: "child", value: child)
     let copied_entries = entries.clone()
     copied_entries.add(key: "other", value: Val(3))
-
     for entry in copied_entries.entries():
         if entry.key == "child":
             entry.value.val = 7
-
     if not (
         values.length() == 1
         and copied_values.length() == 2
@@ -190,7 +186,6 @@ test "collection clones retain nested object references":
         some(value):
             if not (value.val == 7):
                 return panic(message: "map clone unexpectedly copied nested records")
-
         none:
             return panic(message: "cloning removed an original map entry")
 
@@ -235,7 +230,6 @@ test "alternative clones retain tags and shared payload references":
     match copy:
         Choice.Present(value):
             value.val = 9
-
         Choice.Missing:
             return panic(message: "clone changed the alternative tag")
 
@@ -243,7 +237,6 @@ test "alternative clones retain tags and shared payload references":
         Choice.Present(value):
             if not (value.val == 9):
                 return panic(message: "clone duplicated a nested payload record")
-
         Choice.Missing:
             return panic(message: "clone changed the original alternative")
 

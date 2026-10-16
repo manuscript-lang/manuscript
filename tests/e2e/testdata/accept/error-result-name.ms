@@ -19,7 +19,6 @@ test "an application error named Result retains its nominal identity":
     match cause:
         Result(receiver):
             receiver.diagnostic = "changed diagnostic"
-
         _:
             return panic(message: "application Result lost concrete type")
 

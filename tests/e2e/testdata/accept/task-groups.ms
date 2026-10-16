@@ -36,7 +36,6 @@ fn exercise() -> Result[Unit, ExecutionError]:
             error(cause):
                 if cause != "expected":
                     return panic("domain error changed")
-
             ok(_):
                 return panic("domain error flattened")
 
@@ -60,7 +59,6 @@ test "typed tasks group joins and cached outcomes":
     match exercise():
         ok(_):
             return
-
         error(_):
             return panic("task group failed")
 
@@ -70,7 +68,6 @@ test "empty group joins and closes repeatedly":
             ok(_):
                 group.close()
                 group.close()
-
             error(_):
                 return panic("empty group timed out")
 
@@ -86,6 +83,5 @@ test "zero timeout starts no callback":
         match cause:
             Timeout:
                 return
-
             _:
                 return panic("wrong timeout outcome")

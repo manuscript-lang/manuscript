@@ -1,11 +1,5 @@
 import {compress, decompress, CompressionError} from "@std/compress.ms"
-import {
-    pack,
-    unpack,
-    ArchiveEntry,
-    ArchiveLimits,
-    ArchiveError
-} from "@std/archive.ms"
+import {pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"

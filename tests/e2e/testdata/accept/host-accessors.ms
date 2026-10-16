@@ -25,7 +25,6 @@ fn check_services() -> Unit:
             some(value):
                 if value != entry.value:
                     return panic("environment snapshot differs")
-
             none:
                 return panic("environment entry missing")
 
@@ -33,7 +32,6 @@ fn check_services() -> Unit:
         ok(data):
             if data.length() != 0:
                 return panic("unexpected entropy size")
-
         error(_):
             return panic("entropy unavailable")
 
@@ -48,7 +46,6 @@ test "host accessors work in callbacks and task executions":
         match group.join():
             ok(_):
                 return
-
             error(_):
                 return panic("task host access failed")
 
@@ -61,13 +58,11 @@ test "repeated accessors retain closed root state":
     let cause = match stdout().write("".to_bytes()):
         ok(_):
             return panic("accessor reopened stdout")
-
         error(cause): cause
 
     match cause:
         Closed:
             return
-
         _:
             return panic("unexpected closed-stream error")
 
@@ -75,6 +70,5 @@ test "a later test receives fresh standard output":
     match stdout().write("".to_bytes()):
         ok(_):
             return
-
         error(_):
             return panic("another test closed this test's stdout")

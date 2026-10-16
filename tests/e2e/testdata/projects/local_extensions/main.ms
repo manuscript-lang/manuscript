@@ -29,13 +29,10 @@ test "views and functions retain local implementations across modules":
 
     let events = ListBuilder[Int]()
     let resource = Resource(events)
-
     with first_close = first_resource(resource):
         let active = true
-
     with second_close = second_resource(resource):
         let active = true
-
     let values = events.freeze()
     if values.at(index: 0) != some(10) or values.at(index: 1) != some(20):
         return panic("cleanup views")

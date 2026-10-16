@@ -1,11 +1,4 @@
-import {
-    duration,
-    clock,
-    wall_clock,
-    timestamp,
-    parse_timestamp,
-    TimeError
-} from "@std/time.ms"
+import {duration, clock, wall_clock, timestamp, parse_timestamp, TimeError} from "@std/time.ms"
 import panic from "@std/faults.ms"
 
 test "duration arithmetic and conversion":
@@ -92,7 +85,6 @@ test "timestamp methods and expected range failures":
         ok(delta):
             if delta != 1500.milliseconds:
                 return panic("timestamp difference")
-
         error(_):
             return panic("timestamp difference failed")
 
@@ -100,7 +92,6 @@ test "timestamp methods and expected range failures":
         ok(value):
             if value.to_string() != "2026-10-12T00:00:00Z" or value.compare(value) != 0:
                 return panic("timestamp UTC normalization")
-
         error(_):
             return panic("timestamp parse failed")
 
@@ -113,7 +104,6 @@ test "timestamp methods and expected range failures":
         error(cause):
             if cause != TimeError.OutOfRange:
                 return panic("unexpected timestamp range error")
-
         _:
             return panic("timestamp shift must reject year 10000")
 
@@ -126,7 +116,6 @@ test "timestamp methods and expected range failures":
         error(cause):
             if cause != TimeError.OutOfRange:
                 return panic("unexpected timestamp difference error")
-
         _:
             return panic("timestamp difference must reject duration overflow")
 
@@ -139,6 +128,5 @@ test "timestamp methods and expected range failures":
         ok(value):
             if value != now:
                 return panic("wall clock roundtrip")
-
         error(_):
             return panic("wall clock formatting failed")

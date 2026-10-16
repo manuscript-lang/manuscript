@@ -27,9 +27,7 @@ test "inline functions and branches":
     if result != 12: return panic("inline callback failed")
 
     var count = 0
-
     while count < 3: count = count + 1
-
     if count != 3: return panic("inline assignment failed")
 
 test "inline test": return

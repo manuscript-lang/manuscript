@@ -13,7 +13,6 @@ fn decode_bad_input() -> Result[Unit, ApplicationError]:
     match hex_decode(text: "zz", max_bytes: 10):
         ok(_):
             return ok(unit)
-
         error(cause):
             return error(encoding_error(cause))
 
@@ -21,10 +20,8 @@ fn json_error_code(cause: JsonError) -> Int:
     match cause:
         InvalidInput:
             return 1
-
         InvalidData:
             return 2
-
         LimitExceeded:
             return 3
 
@@ -34,7 +31,6 @@ test "JSON errors need only JSON cases":
     match parse(text: "[", limits: limits):
         ok(_):
             return panic(message: "malformed JSON succeeded")
-
         error(cause):
             if json_error_code(cause) != 2:
                 return panic(message: "wrong JSON cause")
@@ -93,10 +89,8 @@ fn tagged_detail(cause: Error) -> String:
     match cause:
         TaggedError[Int](item):
             return "integer {item.detail}"
-
         TaggedError[String](item):
             return item.detail
-
         _:
             return cause.message()
 
@@ -104,7 +98,6 @@ fn generic_type_pattern[T](cause: Error, expected: T) -> Bool:
     match cause:
         TaggedError[T](_):
             return true
-
         _:
             return false
 
@@ -128,14 +121,12 @@ test "generic handling preserves the concrete error and its payload":
     let cause = match propagate_generic():
         ok(_):
             return panic(message: "invalid data succeeded")
-
         error(cause): cause
 
     match cause:
         EncodingError(encoding):
             if encoding != EncodingError.InvalidData:
                 return panic(message: "generic propagation lost original cause")
-
         _:
             return panic(message: "generic propagation lost concrete type")
 
@@ -165,7 +156,6 @@ test "Error views can be stored and matched":
         CustomError(custom):
             if custom.detail != "shared diagnostic":
                 return panic(message: "shared view lost receiver")
-
         _:
             return panic(message: "shared view lost type")
 
@@ -197,7 +187,6 @@ test "domain error fields survive propagation without a wrapper":
     let cause = match propagate_read():
         ok(_):
             return panic(message: "failed read succeeded")
-
         error(cause): cause
 
     if (cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable):
@@ -213,7 +202,6 @@ test "domain error fields survive propagation without a wrapper":
         ReadError(read):
             if (read.path != "settings.json" or read.attempt != 2 or not read.retryable):
                 return panic(message: "generic boundary lost typed fields")
-
         _:
             return panic(message: "generic boundary lost concrete error")
 
@@ -260,7 +248,6 @@ test "specific errors pass directly into Error boundaries":
         let cause = match result:
             ok(_):
                 return panic(message: "failed read succeeded")
-
             error(cause): cause
 
         match cause:
@@ -274,14 +261,12 @@ test "specific errors pass directly into Error boundaries":
 
                 read.path = "changed.json"
                 read.path = "settings.json"
-
             _:
                 return panic(message: "Error boundary lost original type")
 
     match shared:
         ReadError(read):
             read.path = "changed.json"
-
         _:
             return panic(message: "shared Error lost concrete type")
 
@@ -299,7 +284,6 @@ test "Error Result forwarding preserves successful payloads":
         ok(value):
             if value != 7:
                 return panic(message: "Error Result changed success")
-
         error(_):
             return panic(message: "Error Result turned success into failure")
 
@@ -313,7 +297,6 @@ test "domain case payloads need no Error implementation":
     let cause = match invalid_field():
         ok(_):
             return panic(message: "invalid field succeeded")
-
         error(cause): cause
 
     match cause:
@@ -372,7 +355,6 @@ fn match_label(view: Label[String]) -> String:
     match view:
         Labelled[String](receiver):
             return receiver.value
-
         _:
             return view.label()
 
@@ -381,7 +363,6 @@ import Synchronized from "@std/sync.ms"
 fn counted_view(count: Synchronized[Int]) -> Label[String]:
     with locked = count.lock():
         locked.set(value: locked.get() + 1)
-
     return Label[String](Labelled("label diagnostic"))
 
 test "contract matches evaluate once and preserve ordinary contract semantics":
@@ -391,14 +372,12 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
         Labelled[String](receiver):
             if receiver.value != "label diagnostic":
                 return panic(message: "unrelated contract pattern lost receiver")
-
         _:
             return panic(message: "unrelated contract pattern did not run")
 
     with locked = count.lock():
         if locked.get() != 1:
             return panic(message: "contract scrutinee was evaluated more than once")
-
     let view = Label[String](Labelled("separate handler"))
     if match_label(view) != "separate handler":
         return panic(message: "contract match depended on Error identity")
@@ -413,7 +392,6 @@ fn check_missing_file() -> Result[Unit, FileSystemError]:
     let cause = match fs.read_file(path: missing):
         ok(_):
             return panic(message: "missing file read succeeded")
-
         error(cause): cause
 
     match cause:
@@ -425,14 +403,12 @@ fn check_missing_file() -> Result[Unit, FileSystemError]:
                 or shared.message() != diagnostic()
             ):
                 return panic(message: "missing file diagnostic lost")
-
         _:
             return panic(message: "missing file changed error case")
 
     match fs.stat(path: missing, follow_links: true):
         ok(_):
             return panic(message: "missing file stat succeeded")
-
         error(cause):
             if cause.message() != "filesystem: file or directory not found":
                 return panic(message: "stat diagnostic lost")
@@ -444,6 +420,5 @@ test "missing file diagnostics preserve the filesystem case":
     match check_missing_file():
         ok(_):
             return unit
-
         error(cause):
             return panic(message: cause.message())

@@ -1,10 +1,4 @@
-import {
-    Logger,
-    LogError,
-    LogLevel,
-    record,
-    bind
-} from "@std/log.ms"
+import {Logger, LogError, LogLevel, record, bind} from "@std/log.ms"
 import JsonValue from "@std/json.ms"
 
 type Request:

@@ -36,7 +36,6 @@ test "contextual callbacks and inline returns":
 
     let result = apply(transform: fn(item): item + offset, value: 2)
     if result != 5: return panic("generic callback")
-
     if chain(second: fn(item): item + 2, first: fn(): 3) != 5: return panic(
         "deferred callback"
     )
@@ -46,7 +45,6 @@ test "contextual callbacks and inline returns":
 
     let view = Read(Box(7))
     if view.get() != 7: return panic("constructor payloads")
-
     if invoke() != 0 or invoke(fn(item): item + 1) != 5: return panic(
         "optional callback"
     )

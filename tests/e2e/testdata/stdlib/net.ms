@@ -90,7 +90,6 @@ test "network restriction denies admission and close rejects acquisitions":
     with scoped = restricted:
         match restricted.listen("127.0.0.1:0"):
             ok(_): return panic("listen permission ignored")
-
             error(cause):
                 if cause != NetworkError.PermissionDenied: return panic(
                     "listen denial identity"
@@ -98,7 +97,6 @@ test "network restriction denies admission and close rejects acquisitions":
 
     match restricted.connect(address: "127.0.0.1:1", timeout: 1.seconds):
         ok(_): return panic("closed network admitted connection")
-
         error(cause):
             if cause != NetworkError.Closed: return panic("network close identity")
 

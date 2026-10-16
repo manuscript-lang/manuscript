@@ -1,5 +1,4 @@
 import panic from "@std/faults.ms"
-
 import TaskGroup from "@std/tasks.ms"
 
 type Transform:
@@ -39,6 +38,5 @@ test "inline callbacks survive contextual rechecking":
             ok(value):
                 if value != 4:
                     return panic(message: "check failed")
-
             error(_):
                 return panic("task result unavailable")

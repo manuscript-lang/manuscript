@@ -1,5 +1,4 @@
 import panic from "@std/faults.ms"
-
 import Synchronized from "@std/sync.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
@@ -22,7 +21,6 @@ test "atomic state and sealed builders":
     with locked = state.lock():
         if not (locked.get() == 4):
             return panic(message: "check failed")
-
     let list = ListBuilder[Int]()
     list.append(value: 1)
     list.append(value: 2)

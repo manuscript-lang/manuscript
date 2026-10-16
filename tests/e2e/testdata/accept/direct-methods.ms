@@ -49,10 +49,8 @@ test "method calls on concrete receivers":
 test "one call site sees different receiver types":
     let counters: List[Counter] = [Counter(n: 1), Counter(n: 2), Counter(n: 3)]
     var total = 0
-
     for counter in counters:
         total = total + guarded(c: counter, by: 10)
-
     if not (total == 36):
         return panic(message: "loop")
 

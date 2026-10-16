@@ -1,11 +1,5 @@
 import {arguments, environment} from "@std/cli.ms"
-import {
-    system,
-    endianness,
-    end_of_line,
-    os_type,
-    dev_null
-} from "@std/system.ms"
+import {system, endianness, end_of_line, os_type, dev_null} from "@std/system.ms"
 import {control, commands, CommandError, CommandOutput} from "@std/process.ms"
 import {read_line} from "@std/io.ms"
 import panic from "@std/faults.ms"

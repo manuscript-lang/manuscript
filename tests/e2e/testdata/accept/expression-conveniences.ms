@@ -18,7 +18,6 @@ fn amount(text: String, counter: Counter) -> Result[Int, String]:
         let cents = match text.parse_int():
             some(value):
                 value
-
             none:
                 return error(cause: "Invalid amount")
 
@@ -127,7 +126,6 @@ test "match expressions preserve returns and cleanup":
             match absent:
                 some(other): value + other
                 none: value
-
         none: 0
 
     if nested != 4: return panic("nested match")
@@ -172,7 +170,6 @@ test "match blocks produce their final value":
         some(value):
             let doubled = value * 2
             doubled + 1
-
         none: 0
 
     if result != 11: return panic("arm block")
@@ -187,7 +184,6 @@ test "match blocks produce their final value":
                 if count < value: continue
 
                 break
-
             none: break
 
     if count != 5: return panic("match loop exits")
@@ -223,7 +219,6 @@ fn propagated(text: String) -> Result[Int, String]:
     let result = match text.parse_int():
         some(value):
             try Result[Int, String].ok(value: value)
-
         none:
             try Result[Int, String].error(cause: "missing")
 
@@ -239,7 +234,6 @@ fn returned_loop(value: Optional[Int]) -> Int:
             some(number):
                 index = index + 1
                 continue
-
             none: break
 
     return 24
@@ -268,7 +262,6 @@ test "expression exits preserve caller boundaries and evaluation order":
                     if iterations == 2: continue
                     if iterations == 3: break
                 number
-
             none: break
 
         if value == 1: break
@@ -312,7 +305,6 @@ test "match evaluates its input once and only the selected arm":
         some(value):
             counter.count = counter.count + 10
             value + 1
-
         none: panic("unselected arm ran")
 
     if result != 6 or counter.count != 11:
@@ -339,6 +331,5 @@ test "match composes with inferred callbacks and map literals":
     }
     if lookup.get("value").unwrap() != 3:
         return panic("match in map literal")
-
     if inline_match(none) != 0 or inline_match(some(5)) != 5:
         return panic("inline match result")

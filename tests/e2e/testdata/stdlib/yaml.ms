@@ -1,10 +1,4 @@
-import {
-    parse,
-    stringify,
-    YamlValue,
-    YamlError,
-    YamlLimits
-} from "@std/yaml.ms"
+import {parse, stringify, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -68,7 +62,6 @@ test "YAML quoted folding trims physical whitespace and preserves escapes":
             expected: "x\n\"y\""
         )
     ]
-
     for example in cases:
         for ending in ["\n", "\r\n", "\r"]:
             scalar(
@@ -87,7 +80,6 @@ test "YAML quoted folding trims physical whitespace and preserves escapes":
                 ),
                 expected: example.expected
             )
-
     if value(parse(text: "'x\n\n  y'")) != YamlValue.StringValue("x\ny"):
         return panic("root quoted paragraph")
 
@@ -124,7 +116,6 @@ test "YAML folded and literal blocks respect paragraphs indentation and chomping
         ScalarCase(text: "a: >2+\n   \n", expected: " \n"),
         ScalarCase(text: "a: >\n \t\n", expected: "\t\n")
     ]
-
     for example in cases:
         for ending in ["\n", "\r\n", "\r"]:
             scalar(
@@ -213,16 +204,9 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         return panic("folding does not alter value counting")
 
     for text in [
-        "a: 'x\n\n  y",
-        "a: \"x\n\n  y",
-        "a: \"x\\\n\n  y\\q\"",
-        "a: x\n\n  b: y",
-        "a: x\n\n  - y",
-        "a: x\n\n \ty",
-        "a: x\n # comment\n  y",
-        "a: >--\n\n  x",
-        "a: >\n  x\n \t\n  y",
-        "a: >2\n  x\n y"
+        "a: 'x\n\n  y", "a: \"x\n\n  y", "a: \"x\\\n\n  y\\q\"", "a: x\n\n  b: y",
+        "a: x\n\n  - y", "a: x\n\n \ty", "a: x\n # comment\n  y", "a: >--\n\n  x",
+        "a: >\n  x\n \t\n  y", "a: >2\n  x\n y"
     ]:
         let cause = match parse(text: text):
             ok(_): return panic("malformed multiline scalar accepted: {text}")
@@ -390,26 +374,13 @@ test "YAML documents BOM CRLF empty input and version directive":
 
 test "YAML rejects duplicates invalid indentation malformed flow and aliases":
     for text in [
-        "a: 1\na: 2",
-        "\{a: 1, a: 2\}",
-        "a:\n\tb: 1",
-        "a: 1\n  b: 2",
-        "a:\n  b: 1\n c: 2",
-        "[1,",
-        "[1,,2]",
-        "\{a: 1 b: 2\}",
-        "\"\\uD800\"",
-        "\"\\q\"",
-        "'unterminated",
-        "*missing",
-        "a: &loop [*loop]",
-        "<<: 1",
-        "---\na: 1\n---\nb: 2",
-        "a: |0\n  text"
+        "a: 1\na: 2", "\{a: 1, a: 2\}", "a:\n\tb: 1", "a: 1\n  b: 2",
+        "a:\n  b: 1\n c: 2", "[1,", "[1,,2]", "\{a: 1 b: 2\}", "\"\\uD800\"", "\"\\q\"",
+        "'unterminated", "*missing", "a: &loop [*loop]", "<<: 1",
+        "---\na: 1\n---\nb: 2", "a: |0\n  text"
     ]:
         let cause = match parse(text: text):
             ok(_): return panic("invalid YAML accepted: {text}")
-
             error(cause): cause
 
         match cause:
@@ -422,17 +393,13 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
                 if not boundary.message().starts_with("YAML "): return panic(
                     "source YAML Error"
                 )
-
             _: return panic("wrong YAML error")
 
     for text in [
-        "!custom value",
-        "? complex\n: value",
-        "%TAG ! tag:example.org\n---\na: 1"
+        "!custom value", "? complex\n: value", "%TAG ! tag:example.org\n---\na: 1"
     ]:
         let cause = match parse(text: text):
             ok(_): return panic("unsupported YAML accepted")
-
             error(cause): cause
 
         match cause:
@@ -498,15 +465,8 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
         if value(parse(text: text)) != YamlValue.NumberValue(text): return panic(
             "YAML number treated as string: {text}"
         )
-
     for text in [
-        ".",
-        "1e",
-        "1_000",
-        "+0xFF",
-        "-.nan",
-        ".iNF",
-        "it's plain",
+        ".", "1e", "1_000", "+0xFF", "-.nan", ".iNF", "it's plain",
         "text [with] punctuation"
     ]:
         if value(parse(text: text)) != YamlValue.StringValue(text): return panic(

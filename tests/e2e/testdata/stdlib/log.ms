@@ -49,7 +49,6 @@ test "logger writes typed escaped records and protects metadata":
                 fields: fields
             )
         )
-
         let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
         if output.data.to_string() != some(expected): return panic("typed log record")
 
@@ -182,7 +181,6 @@ test "limits and unencodable values reject before writing":
 
         match create(transport: transport, max_bytes: -1):
             ok(_): return panic("negative budget accepted")
-
             error(cause):
                 if cause != LogError.InvalidInput: return panic("negative budget")
 
@@ -238,7 +236,6 @@ test "file transport appends and flushes with scoped cleanup":
 
         match file_transport("{directory.path()}/missing/events.ndjson"):
             ok(_): return panic("missing parent accepted")
-
             error(cause):
                 if cause != LogError.FileSystem(FileSystemError.NotFound): return panic(
                     "file error cause"

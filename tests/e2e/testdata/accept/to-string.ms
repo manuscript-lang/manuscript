@@ -117,6 +117,5 @@ test "interpolation and bound conversion evaluate each receiver once":
     let convert = next(state).toString
     check(value: convert(), expected: "Person(age: 3, name: Ada)")
     check(value: convert(), expected: "Person(age: 3, name: Ada)")
-
     with locked = state.lock():
         check(value: locked.get().toString(), expected: "4")

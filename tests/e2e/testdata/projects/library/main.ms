@@ -5,7 +5,6 @@ import filesystem from "@std/fs.ms"
 import system from "@std/system.ms"
 import wall_clock from "@std/time.ms"
 import panic from "@std/faults.ms"
-
 import uuid_v4 from "@std/random.ms"
 import secure_int from "@std/random.ms"
 import parse_timestamp from "@std/time.ms"
@@ -21,7 +20,6 @@ fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
     match result:
         ok(value):
             return ok(value)
-
         error(cause):
             return error(Error(cause))
 
@@ -117,10 +115,8 @@ fn exercise(path: String) -> Result[Unit, Error]:
         match scheduler.status(id):
             Succeeded:
                 let restarted = try common_result(result: scheduler.restart(id))
-
             Running:
                 let restarted = try common_result(result: scheduler.restart(id))
-
             _:
                 return panic(message: "scheduled work failed")
 
@@ -158,6 +154,5 @@ export fn main() -> Int:
     match exercise(path: path):
         ok(_):
             return 0
-
         error(_):
             return 1

@@ -1,5 +1,4 @@
 import panic from "@std/faults.ms"
-
 import Bytes from "@std/bytes.ms"
 
 test "explicit byte conversion":

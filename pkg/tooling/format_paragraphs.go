@@ -11,11 +11,15 @@ import (
 func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 	breaks := map[int]bool{}
 	before := func(line int) {
-		// Keep contiguous leading comments with the node they describe. Stop at
-		// an existing paragraph or a different indentation level.
+		// Keep leading comments with the node they describe, ignoring authored
+		// blank lines. Stop at code or a different indentation level.
 		indent := len(lines[line-1]) - len(strings.TrimLeft(lines[line-1], " "))
 		for line > 1 {
 			previous := lines[line-2]
+			if strings.TrimSpace(previous) == "" {
+				line--
+				continue
+			}
 			if !strings.HasPrefix(strings.TrimSpace(previous), "#") ||
 				len(previous)-len(strings.TrimLeft(previous, " ")) != indent {
 				break
@@ -86,14 +90,18 @@ func guardStatement(statement *syntax.Statement) bool {
 }
 
 func paragraphBlock(statement *syntax.Statement) bool {
+	// Single-step blocks belong to the surrounding cluster. Count syntax,
+	// rather than source lines, so wrapping a header cannot add paragraphs on
+	// the next formatting pass.
 	if statement.Value != nil && statement.Value.Kind == syntax.KindMatch {
 		return true
 	}
 	switch statement.Kind {
 	case syntax.KindIf:
-		return !guardStatement(statement)
+		return !guardStatement(statement) && (len(statement.Body) > 1 || len(statement.Else) > 0 ||
+			(len(statement.Body) == 1 && paragraphBlock(statement.Body[0])))
 	case syntax.KindWhile, syntax.KindFor, syntax.KindWith:
-		return true
+		return len(statement.Body) > 1 || (len(statement.Body) == 1 && paragraphBlock(statement.Body[0]))
 	}
 	return false
 }

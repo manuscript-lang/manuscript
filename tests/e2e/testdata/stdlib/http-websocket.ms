@@ -105,7 +105,6 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             timeout: 2.seconds
         ):
             ok(_): return panic("HTTP output budget ignored")
-
             error(cause):
                 if cause != HttpError.LimitExceeded: return panic("HTTP output error")
 
@@ -189,6 +188,5 @@ test "HTTP requests reject an empty method":
         timeout: 1.seconds
     ):
         ok(_): return panic("empty method accepted")
-
         error(cause):
             if cause != HttpError.InvalidInput: return panic("empty method error")

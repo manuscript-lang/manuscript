@@ -1,12 +1,4 @@
-import {
-    Logger,
-    LogLevel,
-    create,
-    bind,
-    record,
-    stdout_transport,
-    file_transport
-} from "@std/log.ms"
+import {Logger, LogLevel, create, bind, record, stdout_transport, file_transport} from "@std/log.ms"
 import JsonValue from "@std/json.ms"
 import arguments from "@std/cli.ms"
 import stderr from "@std/io.ms"
@@ -33,7 +25,6 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
                         logger: logger,
                         bindings: Worker(worker: worker)
                     )
-
                     for sequence in [0, 1, 2, 3, 4, 5, 6, 7]:
                         let logged = try record(
                             logger: child,
@@ -43,7 +34,6 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
                                 sequence: sequence
                             )
                         )
-
                     return ok(unit)
             )
             tasks.append(task)
@@ -108,7 +98,6 @@ export fn main() -> Int:
 
     match exercise(mode: mode, path: path):
         ok(_): return 0
-
         error(cause):
             let diagnostic = stderr().write("{cause.message()}\n".to_bytes())
             return 1

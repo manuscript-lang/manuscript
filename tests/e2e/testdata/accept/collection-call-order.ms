@@ -8,7 +8,6 @@ test "receiver before index":
             some(i):
                 values = [9]
                 i
-
             none: 0
     ).unwrap()
     if result != 7: return panic("receiver evaluated after index")

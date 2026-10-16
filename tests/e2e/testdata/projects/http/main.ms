@@ -25,7 +25,6 @@ export fn main() -> Int:
     ):
         error(_):
             return 1
-
         ok(acquired):
             with server = acquired:
                 stdout().write(data: "{server.address()}\n".to_bytes())

@@ -22,7 +22,6 @@ test "HTML unescape recognizes named numeric and multi-scalar references":
         EntityCase("&NewLine;", "\n"),
         EntityCase("a\u{0}b", "a\u{0}b")
     ]
-
     for entity in cases:
         if unescape(text: entity.encoded) != entity.decoded: return panic(
             "HTML reference: {entity.encoded}"
@@ -62,10 +61,8 @@ test "HTML unescape stored and generic calls preserve labels":
 
 test "HTML escape and unescape retain immutable text":
     let texts = ["", "<&>\"'é🙂", "&amp;lt;", "e\u{301}", "a\u{0}b", "\n\r\t"]
-
     for text in texts:
         if unescape(escape(text)) != text: return panic("HTML escape round trip")
-
     let original = "&lt;é&gt;"
     let alias = original
     let decoded = unescape(original)

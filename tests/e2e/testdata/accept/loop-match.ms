@@ -13,7 +13,6 @@ fn loop(state: State) -> Int:
         match state:
             Ready:
                 break
-
             Waiting:
                 continue
 

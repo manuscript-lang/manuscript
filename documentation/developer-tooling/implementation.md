@@ -248,18 +248,20 @@ paragraphs:
 - Separate top-level declarations from each other and from imports. Separate
   implementation methods; keep interface signatures, record fields, and
   alternative cases compact.
-- Separate conditionals, loops, resource scopes, and matches from neighboring
-  statements. An `if` with no `else` and exactly one `return`, `break`, or
-  `continue` is a guard: keep it with preceding setup and consecutive guards,
+- Separate substantial conditionals, loops, resource scopes, and matches from
+  neighboring statements. A single-step branch or loop without an `else` stays
+  with adjacent work; a block containing multiple statements or a substantial
+  nested block gains a paragraph boundary. An `if` with no `else` and exactly
+  one `return`, `break`, or `continue` is a guard: keep it with preceding setup and consecutive guards,
   then add a blank line before the next statement.
 - Keep each `if`/`else if`/`else` family together. Preserve inline bodies.
-- Preserve authored spacing between match arms, including compact indented arms.
+- Keep match arms together, including compact indented arms.
 - Put inserted breaks before contiguous leading comments at the same indentation,
   keeping those comments with the following code.
 
-These rules also apply inside anonymous functions. Existing paragraph breaks are
-preserved, with consecutive blank lines reduced to one. The formatter does not
-infer stages from the names of calls or bindings.
+These rules also apply inside anonymous functions. Authored blank lines are
+discarded; paragraph breaks come from these structural rules. The formatter
+does not infer stages from the names of calls or bindings.
 
 Expression layout uses a soft limit of 88 columns:
 
@@ -268,10 +270,12 @@ Expression layout uses a soft limit of 88 columns:
   anonymous function whose body is a multi-statement suite always expands its
   call. Include the return type when deciding whether a signature fits,
   excluding callback bodies and enclosing arguments.
-- Keep lists compact when they fit, including nested lists. Expand grouped
-  imports with five or more names and maps with ten or more entries. Later call arguments do not count toward
-  the width of a preceding list or call in a chain.
-- Once a group expands, put every argument, parameter, or element on its own line.
+- Keep lists, grouped imports, and maps compact when they fit, regardless of
+  item count. Later call arguments do not count toward the width of a preceding
+  list or call in a chain.
+- Pack simple list elements into rows of up to 88 columns when the list wraps.
+  Nested groups, expressions, and commented items retain separate lines.
+- When other groups expand, put every argument, parameter, or element on its own line.
   Use four spaces beyond the containing line and align the closing delimiter with
   that line. An authored multiline group collapses when it fits and holds no
   comment or suite; an authored trailing comma is dropped when it does.

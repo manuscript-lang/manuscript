@@ -1,11 +1,4 @@
-import {
-    ReadStream,
-    WriteStream,
-    IoError,
-    read_all,
-    read_line,
-    copy
-} from "@std/io.ms"
+import {ReadStream, WriteStream, IoError, read_all, read_line, copy} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import MemoryStream from "./support/streams.ms"

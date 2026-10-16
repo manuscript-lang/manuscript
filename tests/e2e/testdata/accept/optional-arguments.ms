@@ -141,10 +141,8 @@ test "wrapping evaluates arguments once in written order":
 
 test "queue capacity accepts a plain value or omission":
     let bounded = Queue[Int](4)
-
     for value in [1, 2, 3, 4]:
         if not (bounded.enqueue(value)): return panic("capacity rejected a value")
-
     if bounded.enqueue(5): return panic("capacity bound was lost")
     if bounded.dequeue().unwrap() != 1: return panic("queue order changed")
 

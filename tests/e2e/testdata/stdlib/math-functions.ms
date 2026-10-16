@@ -1,18 +1,4 @@
-import {
-    acos,
-    asin,
-    atan,
-    atan2,
-    cosh,
-    exp,
-    log10,
-    sinh,
-    tan,
-    tanh,
-    abs,
-    pi,
-    e
-} from "@std/math.ms"
+import {acos, asin, atan, atan2, cosh, exp, log10, sinh, tan, tanh, abs, pi, e} from "@std/math.ms"
 import panic from "@std/faults.ms"
 
 fn near(actual: Float, expected: Float) -> Bool:

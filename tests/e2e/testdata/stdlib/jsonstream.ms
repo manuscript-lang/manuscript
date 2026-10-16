@@ -6,10 +6,8 @@ import value from "./support/results.ms"
 
 fn texts(values: List[JsonValue]) -> List[String]:
     let result: List[String] = []
-
     for item in values:
         result.append(value(stringify(item)))
-
     return result
 
 # Feeds the input in chunks of `size` bytes and returns every decoded value as text.
@@ -20,27 +18,20 @@ fn decode(input: Bytes, size: Int) -> List[String]:
 
     while offset < input.length():
         var end = offset + size
-
         if end > input.length(): end = input.length()
-
         for text in texts(value(reader.feed(value(input.slice(offset, end))))):
             result.append(text)
-
         offset = end
 
     for text in texts(value(reader.finish())):
         result.append(text)
-
     return result
 
 test "JSON decoder preserves values split at every chunk size":
     let source = "\{\"a\":\"é🙂\\u00e9\\\"x\}\{\",\"n\":9007199254740993,\"l\":[1,[true,null]]\}\n\"s\"[1]\{\"b\":2\}  42"
     let expected = [
         "\{\"a\":\"é🙂é\\\"x\}\{\",\"n\":9007199254740993,\"l\":[1,[true,null]]\}",
-        "\"s\"",
-        "[1]",
-        "\{\"b\":2\}",
-        "42"
+        "\"s\"", "[1]", "\{\"b\":2\}", "42"
     ]
     let input = source.to_bytes()
     var size = 1
@@ -68,7 +59,6 @@ test "JSON decoder rejects invalid UTF-8 and stays failed":
     let closed: Result[List[JsonValue], JsonError] = error(JsonError.InvalidInput)
     let reader = value(decoder())
     let bad = "\"a\"".to_bytes()
-
     if reader.feed(bad.with_value(1, 255)) != invalid: return panic("invalid UTF-8")
     if reader.feed("1 ".to_bytes()) != invalid: return panic("sticky failure")
 

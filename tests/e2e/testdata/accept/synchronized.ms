@@ -65,7 +65,6 @@ test "shared counter protects complete updates":
                 with locked = counter.lock():
                     if not (locked.get() == 100):
                         return panic(message: "check failed")
-
             error(_):
                 if not (false):
                     return panic(message: "check failed")
@@ -74,7 +73,6 @@ test "shared counter protects complete updates":
         return panic(message: "check failed")
 
     let outcome = release_on_error(counter: counter)
-
     with locked = counter.lock():
         if not (locked.get() == 102):
             return panic(message: "check failed")
@@ -91,7 +89,6 @@ test "function fields collections and interface views share freely":
             ok(value):
                 if not (value == 7):
                     return panic(message: "check failed")
-
             error(_):
                 if not (false):
                     return panic(message: "check failed")
@@ -103,7 +100,6 @@ test "function fields collections and interface views share freely":
             ok(value):
                 if not (value == 7):
                     return panic(message: "check failed")
-
             error(_):
                 if not (false):
                     return panic(message: "check failed")
@@ -124,7 +120,6 @@ test "function fields collections and interface views share freely":
             ok(returned):
                 if not (returned(value: 3) == 4):
                     return panic(message: "check failed")
-
             error(_):
                 return panic("task result unavailable")
 
@@ -136,7 +131,6 @@ test "builders can be captured and stored callbacks can map":
     append_item(item: 2)
     append_item(item: 3)
     append_item(item: 4)
-
     if not (builder.freeze().length() == 4):
         return panic(message: "check failed")
 
@@ -154,7 +148,6 @@ test "fault releases guard and preserves committed writes":
             ok(_):
                 if not (false):
                     return panic(message: "check failed")
-
             error(_):
                 with locked = counter.lock():
                     if not (locked.get() == 8):
@@ -178,7 +171,6 @@ test "guard aliases close once and stale methods fault":
                 ok(_):
                     if not (false):
                         return panic(message: "check failed")
-
                 error(_):
                     if not (second.get() == 2):
                         return panic(message: "check failed")
@@ -196,7 +188,6 @@ test "same-task reentry faults and releases its guard":
         match group.join():
             ok(_):
                 return panic(message: "reentry did not fault")
-
             error(_):
                 with locked = counter.lock():
                     locked.set(value: 3)
@@ -212,7 +203,6 @@ test "parent holds lock while a running child waits for it":
         let child = tasks.start(
             fn() -> Int:
                 sleep(duration: 20.milliseconds)
-
                 with locked = cell.lock():
                     return locked.get()
         )
@@ -225,7 +215,6 @@ test "parent holds lock while a running child waits for it":
             ok(value):
                 if value != 7:
                     return panic(message: "got {value}")
-
             error(_):
                 return panic(message: "child failed")
 
@@ -243,13 +232,11 @@ test "ordinary cross-task lock cycle stops at the group timeout":
             let cause = match child.join():
                 ok(_):
                     return panic(message: "cycle acquired before release")
-
                 error(cause): cause
 
             match cause:
                 Timeout:
                     locked.set(value: 3)
-
                 _:
                     return panic(message: "unexpected failure {cause}")
 
@@ -282,14 +269,12 @@ test "native collection methods preserve ordinary function values":
         match callbacks.at(index: 0):
             some(callback):
                 return callback()
-
             none:
                 return panic(message: "missing callback")
     let second = fn():
         match callbacks.at(index: 1):
             some(callback):
                 return callback()
-
             none:
                 return panic(message: "missing callback")
 
@@ -311,6 +296,5 @@ test "native collection methods preserve ordinary function values":
             ok(second_value):
                 if first_value != 1 or second_value != 2:
                     return panic(message: "check failed")
-
             error(_):
                 return panic("task result unavailable")

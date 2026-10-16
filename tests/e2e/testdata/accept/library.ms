@@ -1,5 +1,4 @@
 import panic from "@std/faults.ms"
-
 import Bytes from "@std/bytes.ms"
 import parse from "@std/json.ms"
 import stringify from "@std/json.ms"
@@ -9,14 +8,11 @@ import hex_encode from "@std/encoding.ms"
 import hex_decode from "@std/encoding.ms"
 import base64_decode from "@std/encoding.ms"
 import sha256 from "@std/crypto.ms"
-
 import from_scalars from "@std/string.ms"
-
 import parse_query from "@std/url.ms"
 import format_query from "@std/url.ms"
 import sqrt from "@std/math.ms"
 import round from "@std/math.ms"
-
 import read_integer from "@std/binary.ms"
 import write_integer from "@std/binary.ms"
 import compress from "@std/compress.ms"
@@ -28,7 +24,6 @@ import UrlError from "@std/url.ms"
 import BinaryError from "@std/binary.ms"
 import CompressionError from "@std/compress.ms"
 import ArchiveError from "@std/archive.ms"
-
 import pack from "@std/archive.ms"
 import unpack from "@std/archive.ms"
 import ArchiveEntry from "@std/archive.ms"
@@ -155,42 +150,36 @@ test "expanded packages run through compiler":
     match verify_json():
         ok(_):
             let verified = unit
-
         error(_):
             return panic(message: "json failed")
 
     match verify_encoding():
         ok(_):
             let verified = unit
-
         error(_):
             return panic(message: "encoding failed")
 
     match verify_url():
         ok(_):
             let verified = unit
-
         error(_):
             return panic(message: "url failed")
 
     match verify_binary():
         ok(_):
             let verified = unit
-
         error(_):
             return panic(message: "binary failed")
 
     match verify_compression():
         ok(_):
             let verified = unit
-
         error(_):
             return panic(message: "compression failed")
 
     match verify_archive():
         ok(_):
             let verified = unit
-
         error(_):
             return panic(message: "archive failed")
 

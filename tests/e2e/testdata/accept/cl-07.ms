@@ -8,7 +8,6 @@ fn score(outcome: Outcome) -> Int:
     match outcome:
         Ready(value):
             return value
-
         Failed(_):
             return 0
 

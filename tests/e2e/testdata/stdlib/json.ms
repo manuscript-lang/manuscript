@@ -1,19 +1,5 @@
-import {
-    parse,
-    stringify,
-    JsonValue,
-    JsonLimits,
-    JsonError,
-    JsonEncode
-} from "@std/json.ms"
-import {
-    timestamp,
-    duration,
-    clock,
-    Timestamp,
-    Duration,
-    Instant
-} from "@std/time.ms"
+import {parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode} from "@std/json.ms"
+import {timestamp, duration, clock, Timestamp, Duration, Instant} from "@std/time.ms"
 import {Url} from "@std/url.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
@@ -35,14 +21,8 @@ test "JSON exact numbers Unicode and nested roundtrip":
 
 test "JSON rejects duplicate keys malformed Unicode and trailing values":
     let invalid: Result[JsonValue, JsonError] = error(JsonError.InvalidData)
-
     for text in [
-        "\{\"a\":1,\"\\u0061\":2\}",
-        "\"\\uD800\"",
-        "\"\\uDC00\"",
-        "1 2",
-        "NaN",
-        "[1,]"
+        "\{\"a\":1,\"\\u0061\":2\}", "\"\\uD800\"", "\"\\uDC00\"", "1 2", "NaN", "[1,]"
     ]:
         if parse(text: text) != invalid: return panic("malformed JSON accepted")
 
@@ -258,7 +238,6 @@ test "JSON stringify encodes standard-library values":
     let item = Stamped(at: at, took: duration(1500), data: "hi".to_bytes(), link: link)
     let expected = "\{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"\}"
     if encoded(item) != expected: return panic("timestamp duration bytes url")
-
     if encoded(TextError.Text("boom")) != "\{\"Text\":\{\"message\":\"boom\"\}\}": return panic(
         "concrete error is structural"
     )
@@ -454,7 +433,6 @@ test "JSON parse rejects shape mismatches as InvalidData":
 
     let overflow = "\{\"name\":\"A\",\"age\":9223372036854775808,\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
     if parse[Profile](text: overflow) != invalid: return panic("Int overflow")
-
     if parse[Profile](text: "[]") != invalid: return panic("array is not a record")
 
     let malformed: Result[Profile, JsonError] = error(JsonError.InvalidData)

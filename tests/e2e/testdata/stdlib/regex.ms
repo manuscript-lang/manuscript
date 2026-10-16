@@ -17,7 +17,6 @@ test "regex receivers execute matching replacement and empty results":
 test "regex rejects invalid expressions and exhausted budgets":
     match compile("["):
         ok(_): return panic("invalid pattern accepted")
-
         error(cause):
             if cause != RegexError.InvalidData: return panic("pattern error identity")
 

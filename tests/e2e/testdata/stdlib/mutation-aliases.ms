@@ -153,9 +153,7 @@ test "List splice through a dispatched view follows reviewed Go range shrink sem
 
     for value in values:
         total = total + value
-
         if visited == 0: view.splice(0, 1, [])
-
         visited = visited + 1
 
     if (total != 7 or visited != 3 or values != [2, 3]):

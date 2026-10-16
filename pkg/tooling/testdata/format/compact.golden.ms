@@ -14,7 +14,6 @@ fn choose(value: Choice) -> String:
         # Keep this comment with the arm.
         One:
             return "one"
-
         Other(number):
             return "value {number}"
 

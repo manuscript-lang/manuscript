@@ -7,7 +7,6 @@ fn outcome_value(outcome: Result[Int, String]) -> Int:
     match outcome:
         ok(value):
             return value
-
         error(_):
             return -1
 
@@ -39,13 +38,11 @@ test "nested constructor arguments receive inferred context":
     match selected.value:
         none:
             let completed = unit
-
         some(_):
             return panic(message: "Unexpected case")
 
     match request.box.value:
         none:
             let completed = unit
-
         some(_):
             return panic(message: "Unexpected case")
