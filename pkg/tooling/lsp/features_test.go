@@ -379,7 +379,7 @@ func TestGroupedImportFixKeepsUsedBindingAndRenameUsesNameOffsets(t *testing.T) 
 	}
 }
 
-func TestShorthandRenamePreservesBothNames(t *testing.T) {
+func TestBareArgumentRenameAddsNoLabels(t *testing.T) {
 	source := "fn subtract(amount: Int, deduction: Int) -> Int: return amount - deduction\nfn call() -> Int:\n    let amount = 10\n    let deduction = 3\n    return subtract(deduction, amount)\n"
 	d := document{fileURI(filepath.Join(t.TempDir(), "shorthand.ms")), source, 1}
 	docs := map[string]document{d.URI: d}
@@ -388,19 +388,19 @@ func TestShorthandRenamePreservesBothNames(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 	for _, tc := range []struct {
-		pos            position
-		name, expanded string
+		pos  position
+		name string
 	}{
-		{position{2, 9}, "total", "amount: total"},
-		{position{0, 13}, "total", "total: amount"},
+		{position{2, 9}, "total"},
+		{position{0, 13}, "total"},
 	} {
 		edit, err := rename(result, d, tc.pos, tc.name, docs)
 		if err != nil {
 			t.Fatal(err)
 		}
 		data, _ := json.Marshal(edit)
-		if !strings.Contains(string(data), tc.expanded) {
-			t.Fatalf("missing %q in %s", tc.expanded, data)
+		if strings.Contains(string(data), ": ") && strings.Contains(string(data), `"newText":"`+tc.name+`:`) || strings.Contains(string(data), `: `+tc.name) {
+			t.Fatalf("rename added a label: %s", data)
 		}
 	}
 }
