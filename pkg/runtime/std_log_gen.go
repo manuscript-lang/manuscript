@@ -4,8 +4,14 @@
 
 package msruntime
 
+func check_Log_Record[T any]() {
+	var _ func(*Execution, func(*JsonScope, T) (JsonValue, bool), Logger, LogLevel, string, T) Result[Unit, LogError] = Log_Record[T]
+}
+func check_Log_Bind[T any]() {
+	var _ func(*Execution, func(*JsonScope, T) (JsonValue, bool), Logger, T) Result[Logger, LogError] = Log_Bind[T]
+}
 func check_Log_Create() {
-	var _ func(*Execution, Transport, Option[LogLevel], Option[*Map[string, JsonValue]], Option[bool], Option[int]) Result[Logger, LogError] = Log_Create
+	var _ func(*Execution, Transport, Option[LogLevel], Option[bool], Option[int]) Result[Logger, LogError] = Log_Create
 }
 func check_Log_StreamTransport() {
 	var _ func(*Execution, WriteStream) Transport = Log_StreamTransport
