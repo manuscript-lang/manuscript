@@ -180,6 +180,13 @@ func (g *gen) symbolCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 // recordCall constructs a record. Omitted fields take their defaults.
 func (g *gen) recordCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 	t := g.sub(info.Constructor)
+	args := g.arguments(info.Arguments, g.recordCallee(t))
+	return g.construct(t, args)
+}
+
+// recordCallee describes a record's constructor: its fields, their defaults
+// and the scope those defaults are written in.
+func (g *gen) recordCallee(t *checker.Type) callee {
 	signature := checker.ConstructorSignature(t)
 	c := callee{params: signature.Params, defaults: signature.Defaults, siteDefaults: true}
 	if t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Decl != nil {
@@ -193,8 +200,7 @@ func (g *gen) recordCall(e *syntax.Expression, info *checker.Info) ast.Expr {
 			}
 		}
 	}
-	args := g.arguments(info.Arguments, c)
-	return g.construct(t, args)
+	return c
 }
 
 // construct builds a record from field values in declaration order.
@@ -344,6 +350,7 @@ func (g *gen) nativeCall(s *checker.Symbol, typeArgs []*checker.Type, args []ast
 		}
 	}
 	leading := append([]ast.Expr{ident("ctx")}, g.capabilityArgs(checker.BoundCapabilities(s.Variables), bind)...)
+	leading = append(leading, g.jsonCodecArgs(nativeName(s.Native), typeArgs)...)
 	return call(generic(rtName(nativeName(s.Native)), targs...), append(leading, args...)...)
 }
 
@@ -379,6 +386,9 @@ func (g *gen) nativeFunctionValue(s *checker.Symbol, typeArgs []*checker.Type, i
 				g.fail("%s needs an equality capability and cannot be used as a function value", s.Name)
 			}
 		}
+	}
+	if len(g.jsonCodecArgs(nativeName(s.Native), typeArgs)) > 0 {
+		g.fail("%s needs the generated codec of its type and cannot be used as a function value", s.Name)
 	}
 	g.noteNative(nativeName(s.Native))
 	return generic(rtName(nativeName(s.Native)), targs...)

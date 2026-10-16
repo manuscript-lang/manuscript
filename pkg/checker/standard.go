@@ -315,6 +315,7 @@ func (l *standardLoader) resolveDeclarations() {
 					s.Variables[i].Bounds = append(s.Variables[i].Bounds, c.resolve(bound, true))
 				}
 			}
+			c.typeDefaults(d.TypeParams, s.Variables)
 			if s.Kind == syntax.KindFn {
 				s.Type = c.signature(d.Params, d.Result)
 				continue

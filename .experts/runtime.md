@@ -375,3 +375,13 @@ Evidence: [checked fixtures](../pkg/checker/test_fixture.go),
 Verify: no setup for --list, one construction across repetitions, per-file
 isolation, ordinary interface calls to omitted hooks, and failure/cancellation
 cleanup with preserved machine outcomes.
+
+### Typed JSON is generated per type, like format and equality
+
+Decision: the owner asked for `json.parse` and `json.stringify` themselves to work with types, with no separate `decode` and no new syntax, and for JavaScript's `JSON.stringify` behavior: every type is accepted and nothing is rejected at compile time. Two interfaces customize shapes: `JsonEncode.to_json` exists; the `JsonDecode` counterpart is undecided (a record implementing it was proposed because contracts have no static operations). Typed lowering (#531) removed the dynamic value model the first designs walked, so the lowerer generates `json_enc_T` and `json_dec_T` helpers per concrete type (the `format` pattern) and `nativeCall` passes them to `Json_Stringify[T]` and `Json_Parse[T]`; `stdgen` checks the extra parameter.
+
+Verified: `try` gives its operand no backward context (conformance rule CL-14), so write `try parse[T](text)`. A record decode builds the struct through `defaultArgument`, so field defaults run in the record's module with earlier fields in scope; an absent `Optional` field without a default is `none`. Map keys are parsed per key type, and two members that read as one key (`"1"`, `"01"`) are `InvalidData`. A cycle is found by tracking pointer-typed containers only for types that can reach themselves (`mayCycle`). Interface values have no JSON form: a view's concrete type is unknown to the encoder, and giving every view an encoder would pull JSON into every program that uses a contract.
+
+Apply when: adding a standard value type with its own text or number form (extend `JsonEncNative` and `JsonDecNative` together), changing the encoding, or adding typed YAML/TOML encoding.
+Evidence: [declarations and guide](../pkg/stdlib/json.ms), [generator](../pkg/lower/json.go), [runtime helpers](../pkg/runtime/json_codec.go), [accepted forms](../pkg/checker/json_parse_test.go), [native conformance](../tests/e2e/testdata/stdlib/json.ms).
+Verify: a record with a function field and a `none` field encodes without them; `Wrapper[Wrapper[String]]` with a defaulted field decodes; a round trip through `stringify` returns identical text.

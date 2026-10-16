@@ -48,7 +48,7 @@ func jsonLimits(bytes, depth, values Option[int64]) Option[*JsonLimits] {
 
 func TestJsonParseValues(t *testing.T) {
 	ctx := RootExecution()
-	v := mustOk(t, Json_Parse(ctx, `{"a":[1,2.50,true,null,"x"],"n":9007199254740993}`, None[*JsonLimits]()))
+	v := mustOk(t, Json_Parse(ctx, JsonDecValue, `{"a":[1,2.50,true,null,"x"],"n":9007199254740993}`, None[*JsonLimits]()))
 	obj := v.(JsonValue_ObjectValue).Values
 	if obj.Len() != 2 {
 		t.Fatalf("entries = %d", obj.Len())
@@ -62,7 +62,7 @@ func TestJsonParseValues(t *testing.T) {
 	if n.(JsonValue_NumberValue).Text != "9007199254740993" {
 		t.Fatalf("number lost precision: %#v", n)
 	}
-	out := mustOk(t, Json_Stringify(ctx, v, None[int64]()))
+	out := mustOk(t, stringifyTree(ctx, v, None[int64]()))
 	if out != `{"a":[1,2.50,true,null,"x"],"n":9007199254740993}` {
 		t.Fatalf("stringify = %s", out)
 	}
@@ -71,9 +71,9 @@ func TestJsonParseValues(t *testing.T) {
 func TestJsonParseErrors(t *testing.T) {
 	ctx := RootExecution()
 	for _, text := range []string{``, `{`, `[1,]`, `{"a":1,"a":2}`, `1 2`, `"\ud800"`, `"\udc00"`, `"\ud800\u0041"`, `{"a" 1}`, `01`, `tru`, `[1}`} {
-		mustFail(t, Json_Parse(ctx, text, None[*JsonLimits]()), JsonError(JsonError_InvalidData{}))
+		mustFail(t, Json_Parse(ctx, JsonDecValue, text, None[*JsonLimits]()), JsonError(JsonError_InvalidData{}))
 	}
-	mustOk(t, Json_Parse(ctx, `"\ud83d\ude00"`, None[*JsonLimits]()))
+	mustOk(t, Json_Parse(ctx, JsonDecValue, `"\ud83d\ude00"`, None[*JsonLimits]()))
 }
 
 func TestJsonLimits(t *testing.T) {
@@ -81,48 +81,48 @@ func TestJsonLimits(t *testing.T) {
 	some := func(n int64) Option[int64] { return Some(n) }
 	none := None[int64]()
 	var limit JsonError = JsonError_LimitExceeded{}
-	mustFail(t, Json_Parse(ctx, `[1]`, jsonLimits(some(2), none, none)), limit)
-	mustOk(t, Json_Parse(ctx, `[1]`, jsonLimits(some(3), none, none)))
-	mustFail(t, Json_Parse(ctx, `[[1]]`, jsonLimits(none, some(1), none)), limit)
-	mustOk(t, Json_Parse(ctx, `[[1]]`, jsonLimits(none, some(2), none)))
-	mustOk(t, Json_Parse(ctx, `1`, jsonLimits(none, some(0), none)))
-	mustFail(t, Json_Parse(ctx, `[]`, jsonLimits(none, some(0), none)), limit)
-	mustFail(t, Json_Parse(ctx, `[1,2]`, jsonLimits(none, none, some(2))), limit)
-	mustOk(t, Json_Parse(ctx, `[1,2]`, jsonLimits(none, none, some(3))))
+	mustFail(t, Json_Parse(ctx, JsonDecValue, `[1]`, jsonLimits(some(2), none, none)), limit)
+	mustOk(t, Json_Parse(ctx, JsonDecValue, `[1]`, jsonLimits(some(3), none, none)))
+	mustFail(t, Json_Parse(ctx, JsonDecValue, `[[1]]`, jsonLimits(none, some(1), none)), limit)
+	mustOk(t, Json_Parse(ctx, JsonDecValue, `[[1]]`, jsonLimits(none, some(2), none)))
+	mustOk(t, Json_Parse(ctx, JsonDecValue, `1`, jsonLimits(none, some(0), none)))
+	mustFail(t, Json_Parse(ctx, JsonDecValue, `[]`, jsonLimits(none, some(0), none)), limit)
+	mustFail(t, Json_Parse(ctx, JsonDecValue, `[1,2]`, jsonLimits(none, none, some(2))), limit)
+	mustOk(t, Json_Parse(ctx, JsonDecValue, `[1,2]`, jsonLimits(none, none, some(3))))
 	for _, l := range []Option[*JsonLimits]{jsonLimits(some(-1), none, none), jsonLimits(none, some(-1), none), jsonLimits(none, none, some(-1))} {
-		mustFail(t, Json_Parse(ctx, `1`, l), JsonError(JsonError_InvalidInput{}))
+		mustFail(t, Json_Parse(ctx, JsonDecValue, `1`, l), JsonError(JsonError_InvalidInput{}))
 	}
 	// Unset depth stops at the ceiling instead of overflowing the stack.
 	deep := strings.Repeat("[", jsonDepthCeiling+1) + strings.Repeat("]", jsonDepthCeiling+1)
-	mustFail(t, Json_Parse(ctx, deep, None[*JsonLimits]()), limit)
+	mustFail(t, Json_Parse(ctx, JsonDecValue, deep, None[*JsonLimits]()), limit)
 }
 
 func TestJsonStringify(t *testing.T) {
 	ctx := RootExecution()
 	str := func(s string) JsonValue { return JsonValue_StringValue{Value: s} }
-	got := mustOk(t, Json_Stringify(ctx, str("<a&b>\u2028\"\n"), None[int64]()))
+	got := mustOk(t, stringifyTree(ctx, str("<a&b>\u2028\"\n"), None[int64]()))
 	if got != `"\u003ca\u0026b\u003e\u2028\"\n"` {
 		t.Fatalf("got %s", got)
 	}
 	for _, bad := range []string{"", "-", "1.", "01", "+1", "1e", "NaN", " 1", "0x1", ".5"} {
-		mustFail(t, Json_Stringify(ctx, JsonValue_NumberValue{Text: bad}, None[int64]()), JsonError(JsonError_InvalidData{}))
+		mustFail(t, stringifyTree(ctx, JsonValue_NumberValue{Text: bad}, None[int64]()), JsonError(JsonError_InvalidData{}))
 	}
-	mustOk(t, Json_Stringify(ctx, JsonValue_NumberValue{Text: "-1.5e+10"}, None[int64]()))
-	mustFail(t, Json_Stringify(ctx, str("hello"), Some(int64(6))), JsonError(JsonError_LimitExceeded{}))
-	mustOk(t, Json_Stringify(ctx, str("hello"), Some(int64(7))))
-	mustFail(t, Json_Stringify(ctx, str("x"), Some(int64(-1))), JsonError(JsonError_InvalidInput{}))
+	mustOk(t, stringifyTree(ctx, JsonValue_NumberValue{Text: "-1.5e+10"}, None[int64]()))
+	mustFail(t, stringifyTree(ctx, str("hello"), Some(int64(6))), JsonError(JsonError_LimitExceeded{}))
+	mustOk(t, stringifyTree(ctx, str("hello"), Some(int64(7))))
+	mustFail(t, stringifyTree(ctx, str("x"), Some(int64(-1))), JsonError(JsonError_InvalidInput{}))
 	// Cyclic values are rejected, shared acyclic values are not.
 	list := NewList[JsonValue]()
 	list.Items = append(list.Items, JsonValue_ArrayValue{Values: list})
-	mustFail(t, Json_Stringify(ctx, JsonValue_ArrayValue{Values: list}, None[int64]()), JsonError(JsonError_InvalidData{}))
+	mustFail(t, stringifyTree(ctx, JsonValue_ArrayValue{Values: list}, None[int64]()), JsonError(JsonError_InvalidData{}))
 	m := NewMap[string, JsonValue]()
 	m.Put("self", JsonValue_ObjectValue{Values: m})
-	mustFail(t, Json_Stringify(ctx, JsonValue_ObjectValue{Values: m}, None[int64]()), JsonError(JsonError_InvalidData{}))
+	mustFail(t, stringifyTree(ctx, JsonValue_ObjectValue{Values: m}, None[int64]()), JsonError(JsonError_InvalidData{}))
 	shared := JsonValue_ArrayValue{Values: NewList[JsonValue](JsonValue_Null{})}
-	if got := mustOk(t, Json_Stringify(ctx, JsonValue_ArrayValue{Values: NewList[JsonValue](shared, shared)}, None[int64]())); got != "[[null],[null]]" {
+	if got := mustOk(t, stringifyTree(ctx, JsonValue_ArrayValue{Values: NewList[JsonValue](shared, shared)}, None[int64]())); got != "[[null],[null]]" {
 		t.Fatalf("shared = %s", got)
 	}
-	if !wasCancelled(func() { Json_Stringify(cancelledExec(), JsonValue_Null{}, None[int64]()) }) {
+	if !wasCancelled(func() { stringifyTree(cancelledExec(), JsonValue_Null{}, None[int64]()) }) {
 		t.Fatal("stringify ignored cancellation")
 	}
 }
@@ -165,15 +165,15 @@ func FuzzJsonRoundTrip(f *testing.F) {
 	ctx := RootExecution()
 	limits := jsonLimits(Some(int64(1<<16)), Some(int64(32)), Some(int64(1<<12)))
 	f.Fuzz(func(t *testing.T, text string) {
-		parsed := Json_Parse(ctx, text, limits)
+		parsed := Json_Parse(ctx, JsonDecValue, text, limits)
 		if parsed.Failed {
 			return
 		}
-		out := Json_Stringify(ctx, parsed.Val, Some(int64(1<<20)))
+		out := stringifyTree(ctx, parsed.Val, Some(int64(1<<20)))
 		if out.Failed {
 			t.Fatalf("parsed value does not stringify: %q -> %#v", text, out.Err)
 		}
-		again := Json_Parse(ctx, out.Val, limits)
+		again := Json_Parse(ctx, JsonDecValue, out.Val, limits)
 		if again.Failed || !jsonEqual(parsed.Val, again.Val) {
 			t.Fatalf("round trip changed value: %q -> %q", text, out.Val)
 		}
@@ -896,4 +896,9 @@ func TestDataErrorMessages(t *testing.T) {
 			t.Errorf("message = %q, want %q", got, want)
 		}
 	}
+}
+
+// stringifyTree serializes an already-built JsonValue compactly.
+func stringifyTree(ctx *Execution, v JsonValue, max Option[int64]) Result[string, JsonError] {
+	return Json_Stringify(ctx, JsonEncValue, v, max, None[int64]())
 }
