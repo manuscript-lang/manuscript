@@ -8,7 +8,7 @@ func check_Math_Abs() {
 	var _ func(*Execution, float64) float64 = Math_Abs
 }
 func check_Math_AbsInt() {
-	var _ func(*Execution, int64) int64 = Math_AbsInt
+	var _ func(*Execution, int) int = Math_AbsInt
 }
 func check_Math_Acos() {
 	var _ func(*Execution, float64) float64 = Math_Acos

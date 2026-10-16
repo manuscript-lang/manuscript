@@ -17,17 +17,17 @@ import (
 )
 
 // Fs_Constants is the fs.constants table of host file constants.
-func Fs_Constants(*Execution) *Map[string, int64] { return constantsMap(hostos.FileConstants()) }
+func Fs_Constants(*Execution) *Map[string, int] { return constantsMap(hostos.FileConstants()) }
 
-func constantsMap(values map[string]int64) *Map[string, int64] {
+func constantsMap(values map[string]int64) *Map[string, int] {
 	keys := make([]string, 0, len(values))
 	for key := range values {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	result := NewMap[string, int64]()
+	result := NewMap[string, int]()
 	for _, key := range keys {
-		result.Put(key, values[key])
+		result.Put(key, int(values[key]))
 	}
 	return result
 }
@@ -128,18 +128,18 @@ func readFailure(code string) FileSystemError {
 
 // readBounded reads reader to its end, failing when more than max bytes
 // arrive. The code names the failure: LimitExceeded, InvalidData, or Failed.
-func readBounded(ctx *Execution, reader io.Reader, max int64) ([]byte, string) {
+func readBounded(ctx *Execution, reader io.Reader, max int) ([]byte, string) {
 	var out []byte
 	buffer := make([]byte, 32768)
 	for {
 		CheckCancelled(ctx)
-		remaining := max - int64(len(out))
+		remaining := max - len(out)
 		chunk := buffer
-		if remaining < int64(len(buffer)) {
+		if remaining < len(buffer) {
 			chunk = buffer[:int(remaining)+1]
 		}
 		n, err := reader.Read(chunk)
-		if int64(n) > remaining {
+		if int(n) > remaining {
 			return nil, "LimitExceeded"
 		}
 		out = append(out, chunk[:n]...)
@@ -155,8 +155,8 @@ func readBounded(ctx *Execution, reader io.Reader, max int64) ([]byte, string) {
 	}
 }
 
-func permissionBits(mode os.FileMode) int64 {
-	bits := int64(mode.Perm())
+func permissionBits(mode os.FileMode) int {
+	bits := int(mode.Perm())
 	if mode&os.ModeSetuid != 0 {
 		bits |= 04000
 	}
@@ -169,7 +169,7 @@ func permissionBits(mode os.FileMode) int64 {
 	return bits
 }
 
-func fileMode(bits int64) os.FileMode {
+func fileMode(bits int) os.FileMode {
 	mode := os.FileMode(bits & 0777)
 	if bits&04000 != 0 {
 		mode |= os.ModeSetuid
@@ -226,11 +226,11 @@ func fileInfoOf(info os.FileInfo, birth time.Time) *FileInfo {
 		created = birth
 	}
 	result := &FileInfo{
-		Name: info.Name(), Size: info.Size(), Directory: info.IsDir(), Symlink: info.Mode()&os.ModeSymlink != 0,
+		Name: info.Name(), Size: FitInt(info.Size()), Directory: info.IsDir(), Symlink: info.Mode()&os.ModeSymlink != 0,
 		Regular: info.Mode().IsRegular(), Modified: timestampOf(info.ModTime()), Accessed: timestampOf(accessed), Changed: timestampOf(changed),
 		Mode: mode, Permissions: permissionBits(info.Mode()),
-		BlockSize: stat.Blksize.Int(), Blocks: stat.Blocks.Int(), Rdev: stat.Rdev.Int(), Device: stat.Dev.Int(), Inode: stat.Ino.Int(),
-		Links: stat.Nlink.Int(), Uid: stat.Uid.Int(), Gid: stat.Gid.Int(),
+		BlockSize: FitInt(stat.Blksize.Int()), Blocks: FitInt(stat.Blocks.Int()), Rdev: FitInt(stat.Rdev.Int()), Device: FitInt(stat.Dev.Int()), Inode: FitInt(stat.Ino.Int()),
+		Links: FitInt(stat.Nlink.Int()), Uid: FitInt(stat.Uid.Int()), Gid: FitInt(stat.Gid.Int()),
 		Fifo: info.Mode()&os.ModeNamedPipe != 0, Socket: info.Mode()&os.ModeSocket != 0,
 		BlockDevice: info.Mode()&os.ModeDevice != 0 && info.Mode()&os.ModeCharDevice == 0,
 		CharDevice:  info.Mode()&os.ModeCharDevice != 0,
@@ -240,9 +240,9 @@ func fileInfoOf(info os.FileInfo, birth time.Time) *FileInfo {
 	}
 	exact := NewMap[string, *BigInt]()
 	natives := map[string]hostos.Number{"device": stat.Dev, "inode": stat.Ino, "links": stat.Nlink, "uid": stat.Uid, "gid": stat.Gid, "rdev": stat.Rdev, "blocks": stat.Blocks, "block_size": stat.Blksize}
-	values := map[string]int64{"size": result.Size, "mode": result.Mode, "device": result.Device, "inode": result.Inode, "links": result.Links, "uid": result.Uid, "gid": result.Gid, "block_size": result.BlockSize, "blocks": result.Blocks, "rdev": result.Rdev}
+	values := map[string]int{"size": result.Size, "mode": result.Mode, "device": result.Device, "inode": result.Inode, "links": result.Links, "uid": result.Uid, "gid": result.Gid, "block_size": result.BlockSize, "blocks": result.Blocks, "rdev": result.Rdev}
 	for _, name := range []string{"size", "mode", "device", "inode", "links", "uid", "gid", "block_size", "blocks", "rdev"} {
-		number := big.NewInt(values[name])
+		number := big.NewInt(int64(values[name]))
 		if native, ok := natives[name]; ok && stat.Valid && native.IsUnsigned {
 			number = new(big.Int).SetUint64(native.Unsigned)
 		}
@@ -273,7 +273,7 @@ func (f *osFileSystem) path(s string) (string, bool) {
 	return hostPath(f.directory, s)
 }
 
-func (f *osFileSystem) ReadFile(ctx *Execution, path string, maxBytes Option[int64]) Result[*Bytes, FileSystemError] {
+func (f *osFileSystem) ReadFile(ctx *Execution, path string, maxBytes Option[int]) Result[*Bytes, FileSystemError] {
 	n, ok := optionLimit(maxBytes, unlimited)
 	p, pathOK := f.path(path)
 	if !ok || !pathOK {
@@ -344,7 +344,7 @@ func (f *osFileSystem) Stat(ctx *Execution, path string, followLinks bool) Resul
 	return fsOK(fileInfoOf(info, hostos.BirthPath(p, followLinks)))
 }
 
-func (f *osFileSystem) List(ctx *Execution, path string, maxEntries Option[int64]) Result[*List[*DirectoryEntry], FileSystemError] {
+func (f *osFileSystem) List(ctx *Execution, path string, maxEntries Option[int]) Result[*List[*DirectoryEntry], FileSystemError] {
 	n, ok := optionLimit(maxEntries, unlimited)
 	p, pathOK := f.path(path)
 	if !ok || !pathOK {
@@ -363,7 +363,7 @@ func (f *osFileSystem) List(ctx *Execution, path string, maxEntries Option[int64
 		CheckCancelled(ctx)
 		batch, err := directory.ReadDir(64)
 		for _, e := range batch {
-			if int64(len(entries)) >= n {
+			if len(entries) >= n {
 				return fsFail[*List[*DirectoryEntry]](FileSystemError_LimitExceeded{})
 			}
 			if !utf8.ValidString(e.Name()) {
@@ -418,7 +418,7 @@ func (f *osFileSystem) Rename(ctx *Execution, source, destination string) Result
 	return fsUnit(os.Rename(p, dest))
 }
 
-func (f *osFileSystem) CopyFile(ctx *Execution, source, destination string, replace bool, maxBytes Option[int64]) Result[Unit, FileSystemError] {
+func (f *osFileSystem) CopyFile(ctx *Execution, source, destination string, replace bool, maxBytes Option[int]) Result[Unit, FileSystemError] {
 	n, okLimit := optionLimit(maxBytes, unlimited)
 	p, ok := f.path(source)
 	dest, ok2 := f.path(destination)
@@ -509,10 +509,10 @@ func (f *osFileSystem) StatFilesystem(ctx *Execution, path string) Result[*FileS
 	if err != nil {
 		return fsDone[*FileSystemInfo](nil, err)
 	}
-	return fsOK(&FileSystemInfo{TypeId: info.Type, BlockSize: info.BlockSize, Blocks: info.Blocks, BlocksFree: info.BlocksFree, BlocksAvailable: info.BlocksAvailable, Files: info.Files, FilesFree: info.FilesFree})
+	return fsOK(&FileSystemInfo{TypeId: FitInt(info.Type), BlockSize: FitInt(info.BlockSize), Blocks: FitInt(info.Blocks), BlocksFree: FitInt(info.BlocksFree), BlocksAvailable: FitInt(info.BlocksAvailable), Files: FitInt(info.Files), FilesFree: FitInt(info.FilesFree)})
 }
 
-func (f *osFileSystem) ChmodLink(ctx *Execution, path string, mode int64) Result[Unit, FileSystemError] {
+func (f *osFileSystem) ChmodLink(ctx *Execution, path string, mode int) Result[Unit, FileSystemError] {
 	p, ok := f.path(path)
 	if !ok || mode < 0 || mode > 07777 {
 		return fsInvalid[Unit]()
@@ -520,7 +520,7 @@ func (f *osFileSystem) ChmodLink(ctx *Execution, path string, mode int64) Result
 	return fsUnit(hostos.LinkMode(p, uint32(mode)))
 }
 
-func (f *osFileSystem) Access(ctx *Execution, path string, mode int64) Result[Unit, FileSystemError] {
+func (f *osFileSystem) Access(ctx *Execution, path string, mode int) Result[Unit, FileSystemError] {
 	p, ok := f.path(path)
 	if !ok || mode < 0 || mode > 7 {
 		return fsInvalid[Unit]()
@@ -545,7 +545,7 @@ func (f *osFileSystem) AppendFile(ctx *Execution, path string, data *Bytes) Resu
 	return fsUnit(err)
 }
 
-func (f *osFileSystem) Chmod(ctx *Execution, path string, mode int64) Result[Unit, FileSystemError] {
+func (f *osFileSystem) Chmod(ctx *Execution, path string, mode int) Result[Unit, FileSystemError] {
 	p, ok := f.path(path)
 	if !ok || mode < 0 || mode > 07777 {
 		return fsInvalid[Unit]()
@@ -553,7 +553,7 @@ func (f *osFileSystem) Chmod(ctx *Execution, path string, mode int64) Result[Uni
 	return fsUnit(os.Chmod(p, fileMode(mode)))
 }
 
-func (f *osFileSystem) Chown(ctx *Execution, path string, uid, gid int64, followLinks bool) Result[Unit, FileSystemError] {
+func (f *osFileSystem) Chown(ctx *Execution, path string, uid, gid int, followLinks bool) Result[Unit, FileSystemError] {
 	p, ok := f.path(path)
 	if !ok || uid < -1 || gid < -1 || uid > 2147483647 || gid > 2147483647 {
 		return fsInvalid[Unit]()
@@ -564,12 +564,12 @@ func (f *osFileSystem) Chown(ctx *Execution, path string, uid, gid int64, follow
 	return fsUnit(os.Lchown(p, int(uid), int(gid)))
 }
 
-func (f *osFileSystem) Truncate(ctx *Execution, path string, size int64) Result[Unit, FileSystemError] {
+func (f *osFileSystem) Truncate(ctx *Execution, path string, size int) Result[Unit, FileSystemError] {
 	p, ok := f.path(path)
 	if !ok || size < 0 {
 		return fsInvalid[Unit]()
 	}
-	return fsUnit(os.Truncate(p, size))
+	return fsUnit(os.Truncate(p, int64(size)))
 }
 
 func (f *osFileSystem) SetTimes(ctx *Execution, path string, accessed, modified Timestamp, followLinks bool) Result[Unit, FileSystemError] {
@@ -594,7 +594,7 @@ func (f *osFileSystem) HardLink(ctx *Execution, source, destination string) Resu
 
 var openModes = map[string]int{"r": os.O_RDONLY, "r+": os.O_RDWR, "w": os.O_WRONLY | os.O_CREATE | os.O_TRUNC, "wx": os.O_WRONLY | os.O_CREATE | os.O_EXCL, "w+": os.O_RDWR | os.O_CREATE | os.O_TRUNC, "wx+": os.O_RDWR | os.O_CREATE | os.O_EXCL, "a": os.O_WRONLY | os.O_CREATE | os.O_APPEND, "ax": os.O_WRONLY | os.O_CREATE | os.O_APPEND | os.O_EXCL, "a+": os.O_RDWR | os.O_CREATE | os.O_APPEND, "ax+": os.O_RDWR | os.O_CREATE | os.O_APPEND | os.O_EXCL}
 
-func (f *osFileSystem) Open(ctx *Execution, path, flags string, mode int64) Result[FileHandle, FileSystemError] {
+func (f *osFileSystem) Open(ctx *Execution, path, flags string, mode int) Result[FileHandle, FileSystemError] {
 	value, ok := openModes[flags]
 	if !ok {
 		return fsInvalid[FileHandle]()
@@ -602,14 +602,14 @@ func (f *osFileSystem) Open(ctx *Execution, path, flags string, mode int64) Resu
 	return f.openFile(ctx, path, value, mode)
 }
 
-func (f *osFileSystem) OpenFlags(ctx *Execution, path string, flags, mode int64) Result[FileHandle, FileSystemError] {
+func (f *osFileSystem) OpenFlags(ctx *Execution, path string, flags, mode int) Result[FileHandle, FileSystemError] {
 	if flags < 0 || flags > 2147483647 {
 		return fsInvalid[FileHandle]()
 	}
 	return f.openFile(ctx, path, int(flags), mode)
 }
 
-func (f *osFileSystem) openFile(ctx *Execution, path string, flags int, mode int64) Result[FileHandle, FileSystemError] {
+func (f *osFileSystem) openFile(ctx *Execution, path string, flags int, mode int) Result[FileHandle, FileSystemError] {
 	p, ok := f.path(path)
 	if !ok || mode < 0 || mode > 07777 {
 		return fsInvalid[FileHandle]()
@@ -649,7 +649,7 @@ func (f *osFileSystem) OpenDirectory(ctx *Execution, path string) Result[Directo
 	return fsOK[Directory](&osDirectory{file: file})
 }
 
-func (f *osFileSystem) Glob(ctx *Execution, path, pattern string, maxEntries Option[int64]) Result[*List[string], FileSystemError] {
+func (f *osFileSystem) Glob(ctx *Execution, path, pattern string, maxEntries Option[int]) Result[*List[string], FileSystemError] {
 	max, okLimit := optionLimit(maxEntries, unlimited)
 	p, ok := f.path(path)
 	if !ok || !okLimit || !fsValidGlob(pattern) {
@@ -669,7 +669,7 @@ func (f *osFileSystem) Glob(ctx *Execution, path, pattern string, maxEntries Opt
 			return errEncoding
 		}
 		if rel != "." && fsGlobMatch(filepath.ToSlash(rel), pattern) {
-			if int64(len(items)) >= max {
+			if len(items) >= max {
 				return errLimit
 			}
 			items = append(items, filepath.ToSlash(rel))
@@ -688,7 +688,7 @@ func (f *osFileSystem) Glob(ctx *Execution, path, pattern string, maxEntries Opt
 	return fsOK(NewList(items...))
 }
 
-func (f *osFileSystem) Watch(ctx *Execution, path string, recursive bool, interval Duration, maxEntries Option[int64]) Result[FileWatcher, FileSystemError] {
+func (f *osFileSystem) Watch(ctx *Execution, path string, recursive bool, interval Duration, maxEntries Option[int]) Result[FileWatcher, FileSystemError] {
 	max, okLimit := optionLimit(maxEntries, unlimited)
 	p, ok := f.path(path)
 	if !ok || !okLimit || interval <= 0 {
@@ -830,8 +830,8 @@ func removeRoot(ctx *Execution, root *os.Root, p string) error {
 	return root.Remove(p)
 }
 
-func writeChunks(ctx *Execution, file *os.File, data []byte, offset *int64) (int64, error) {
-	var total int64
+func writeChunks(ctx *Execution, file *os.File, data []byte, offset *int) (int, error) {
+	var total int
 	for len(data) > 0 {
 		CheckCancelled(ctx)
 		end := min(len(data), 65536)
@@ -840,9 +840,9 @@ func writeChunks(ctx *Execution, file *os.File, data []byte, offset *int64) (int
 		if offset == nil {
 			n, err = file.Write(data[:end])
 		} else {
-			n, err = file.WriteAt(data[:end], *offset+total)
+			n, err = file.WriteAt(data[:end], int64(*offset+total))
 		}
-		total += int64(n)
+		total += int(n)
 		data = data[n:]
 		if err != nil {
 			return total, err

@@ -7,10 +7,10 @@ package msruntime
 type check_StringBuilder = *StringBuilder
 
 func check_String_FromScalars() {
-	var _ func(*Execution, *List[int64]) Result[string, StringError] = String_FromScalars
+	var _ func(*Execution, *List[int]) Result[string, StringError] = String_FromScalars
 }
 func check_NormalizationForm_Normalize() {
-	var _ func(*Execution, NormalizationForm, string, Option[int64]) Result[string, StringError] = NormalizationForm_Normalize
+	var _ func(*Execution, NormalizationForm, string, Option[int]) Result[string, StringError] = NormalizationForm_Normalize
 }
 func check_StringBuilder_Append() {
 	var _ func(*Execution, *StringBuilder, string) Unit = StringBuilder_Append

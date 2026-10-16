@@ -5,7 +5,7 @@
 package msruntime
 
 func check_Fs_Constants() {
-	var _ func(*Execution) *Map[string, int64] = Fs_Constants
+	var _ func(*Execution) *Map[string, int] = Fs_Constants
 }
 func check_Fs_Filesystem() {
 	var _ func(*Execution) FileSystem = Fs_Filesystem

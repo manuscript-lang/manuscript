@@ -11,7 +11,7 @@ The frontend enforces semantics that Go representations do not provide:
 
 | Source guarantee | Go lowering |
 | --- | --- |
-| Checked `Int` | `int64` with checked operations and conversions |
+| Checked `Int` | `int` (platform-sized) with checked operations and conversions |
 | `Decimal` | Versioned finite decimal implementation honoring the coefficient/exponent grid, exact literals, and per-operator rounding in the numeric contract |
 | Valid UTF-8 `String` | Validated construction and conversion; no raw string escape |
 | Mutable records and collections | `*Name` structs and `*rt.List/Map/Set`; explicit shallow clone |
@@ -31,7 +31,7 @@ The frontend checks Task[T] through ordinary generics. Native handles retain run
 
 Locals, captures, arguments, and results have their Go types ([Go representation](../../go-lowering-representation.md)); nothing is boxed. `Int` and `Float` operations are typed Go operations with overflow and zero-divisor checks, and floating arithmetic rounds at each source operation. Library members called on a statically typed receiver are direct calls of `rt` functions such as `List_At` or `Map_Get`, instantiated at the receiver's type arguments. Indexing still returns an Optional; it does not introduce unchecked access.
 
-Emitting a raw `int64` does not supply checked arithmetic, and a raw Go slice does not establish immutable source bytes. The lowerer calls the checked `rt` operation for each; the reproducible native workloads in `scripts/benchmarks/` measure numeric loops, calls, list reads, and Game of Life.
+Emitting a raw `int` does not supply checked arithmetic, and a raw Go slice does not establish immutable source bytes. The lowerer calls the checked `rt` operation for each; the reproducible native workloads in `scripts/benchmarks/` measure numeric loops, calls, list reads, and Game of Life.
 
 Explicit [view constructors](../../../core-language/types/contracts.md#explicit-contract-views) create ordinary contract wrappers. There is one contract-view identity and no sharing proof in the frontend or IR. Native services synchronize their internals. Local queues rely on caller-managed Synchronized guards for concurrent access.
 

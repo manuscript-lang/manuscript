@@ -72,14 +72,14 @@ func TestRunnerSelectionRepeatListAndFailFast(t *testing.T) {
 }
 
 func TestRunnerShuffleIsReproducible(t *testing.T) {
-	run := func(seed int64) []string {
+	run := func(seed int) []string {
 		var ran []string
 		tests := make([]Test, 10)
 		for i := range tests {
 			name := string(rune('a' + i))
 			tests[i] = Test{Name: name, Run: func(*Execution) Unit { ran = append(ran, name); return Unit{} }}
 		}
-		RunTestsWith(tests, TestOptions{Shuffle: true, Seed: seed})
+		RunTestsWith(tests, TestOptions{Shuffle: true, Seed: int64(seed)})
 		return ran
 	}
 	a, b := run(17), run(17)

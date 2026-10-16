@@ -34,7 +34,7 @@ var goKeywords = map[string]bool{
 // fieldName is the exported Go field for a Manuscript field: generated user
 // types and the runtime's generated standard types name fields alike, so code
 // reads either.
-func fieldName(name string) string { return camel(name) }
+func fieldName(name string) string { return exportName(name) }
 
 // scalarGo is the Go spelling of a primitive type, or "".
 func scalarGo(t *checker.Type) string {
@@ -43,7 +43,7 @@ func scalarGo(t *checker.Type) string {
 	}
 	switch t.ID {
 	case "Int":
-		return "int64"
+		return "int"
 	case "Float":
 		return "float64"
 	case "Bool":
@@ -197,6 +197,9 @@ func (g *gen) declare(t *checker.Type) *typeDecl {
 // typeName makes a unique readable Go name: the source name, then the
 // instantiation's argument names.
 func (g *gen) typeName(t *checker.Type) string {
+	if len(g.sub(t).Args) > 0 {
+		return g.derived(g.nameOf(t), checker.TypeKey(t))
+	}
 	return g.claim(g.nameOf(t), checker.TypeKey(t))
 }
 
@@ -238,7 +241,9 @@ func sanitize(name string) string {
 }
 
 // caseName is the Go struct of one case of a sum type.
-func (g *gen) caseName(d *typeDecl, c string) string { return d.name + "_" + sanitize(c) }
+func (g *gen) caseName(d *typeDecl, c string) string {
+	return g.derived(d.name+"_"+sanitize(c), "case:"+d.name+"/"+c)
+}
 
 func (g *gen) recordDecl(d *typeDecl) []ast.Decl {
 	var fields []*ast.Field

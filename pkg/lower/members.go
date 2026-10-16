@@ -53,7 +53,7 @@ func (g *gen) methodFunction(m *checker.Method, receiver *checker.Type) *funcDec
 	if scope != "" {
 		name += "_" + shortHash(scope)
 	}
-	created := &funcDecl{key: key, name: g.claim(name, key), module: original.Module, scope: scope, method: original, decl: original.Decl, subst: subst}
+	created := &funcDecl{key: key, name: g.derivedOrClaim(name, key, len(original.Variables) > 0 || scope != ""), module: original.Module, scope: scope, method: original, decl: original.Decl, subst: subst}
 	created.typ = checker.Sub(original.Type, subst)
 	created.fn = created
 	return g.intern(created)

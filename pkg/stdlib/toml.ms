@@ -141,9 +141,10 @@ fn space(reader: Reader, multiline: Bool) -> Unit:
             break
 
 fn within(value: Int, limit: Optional[Int]) -> Bool:
-    match limit:
-        none: return true
-        some(maximum): return value <= maximum
+    if let maximum = limit:
+        return value <= maximum
+
+    return true
 
 fn allocate(reader: Reader) -> Result[Unit, TomlError]:
     reader.values = reader.values + 1
@@ -313,14 +314,15 @@ fn child(
         invalid(reader: reader, reason: "inline table is closed")
     )
 
-    let node = match parent.entries.get(key):
-        none:
-            let allocated = try allocate(reader)
-            let created = table(explicit: false, dotted: dotted)
-            parent.entries.add(key: key, value: Node.TableNode(created))
-            return ok(created)
+    let existing = parent.entries.get(key)
 
-        some(node): node
+    if existing.is_none():
+        let allocated = try allocate(reader)
+        let created = table(explicit: false, dotted: dotted)
+        parent.entries.add(key: key, value: Node.TableNode(created))
+        return ok(created)
+
+    let node = existing.unwrap()
 
     match node:
         TableNode(value):
@@ -357,12 +359,14 @@ fn append_table(
     key: String,
     next: Table
 ) -> Result[Unit, TomlError]:
-    let node = match parent.entries.get(key):
-        none:
-            let allocated_array = try allocate(reader)
-            parent.entries.add(key: key, value: Node.TableArray([next]))
-            return ok(unit)
-        some(node): node
+    let existing = parent.entries.get(key)
+
+    if existing.is_none():
+        let allocated_array = try allocate(reader)
+        parent.entries.add(key: key, value: Node.TableArray([next]))
+        return ok(unit)
+
+    let node = existing.unwrap()
 
     match node:
         TableArray(tables):
@@ -849,16 +853,12 @@ export fn parse(
 ) -> Result[TomlValue, TomlError]:
     var options = TomlLimits()
 
-    match limits:
-        none: let ignored = unit
-        some(value): options = value
+    if let value = limits:
+        options = value
 
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
-        match limit:
-            none: let ignored = unit
-
-            some(value):
-                if value < 0: return error(TomlError.InvalidInput)
+        if let value = limit:
+            if value < 0: return error(TomlError.InvalidInput)
 
     if not within(value: text.byte_length(), limit: options.max_bytes): return error(
         TomlError.LimitExceeded
@@ -1194,11 +1194,8 @@ export fn stringify(
     value: TomlValue,
     max_bytes: Optional[Int] = none
 ) -> Result[String, TomlError]:
-    match max_bytes:
-        none: let ignored = unit
-
-        some(limit):
-            if limit < 0: return error(TomlError.InvalidInput)
+    if let limit = max_bytes:
+        if limit < 0: return error(TomlError.InvalidInput)
 
     let root = match value:
         TableValue(values): values

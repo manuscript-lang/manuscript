@@ -5,16 +5,16 @@
 package msruntime
 
 func check_Compress_Compress() {
-	var _ func(*Execution, *Bytes, string, int64, Option[int64]) Result[*Bytes, CompressionError] = Compress_Compress
+	var _ func(*Execution, *Bytes, string, int, Option[int]) Result[*Bytes, CompressionError] = Compress_Compress
 }
 func check_Compress_Decompress() {
-	var _ func(*Execution, *Bytes, string, Option[int64]) Result[*Bytes, CompressionError] = Compress_Decompress
+	var _ func(*Execution, *Bytes, string, Option[int]) Result[*Bytes, CompressionError] = Compress_Decompress
 }
 func check_CompressionFormat_Compress() {
-	var _ func(*Execution, CompressionFormat, *Bytes, int64, Option[int64]) Result[*Bytes, CompressionError] = CompressionFormat_Compress
+	var _ func(*Execution, CompressionFormat, *Bytes, int, Option[int]) Result[*Bytes, CompressionError] = CompressionFormat_Compress
 }
 func check_CompressionFormat_Decompress() {
-	var _ func(*Execution, CompressionFormat, *Bytes, Option[int64]) Result[*Bytes, CompressionError] = CompressionFormat_Decompress
+	var _ func(*Execution, CompressionFormat, *Bytes, Option[int]) Result[*Bytes, CompressionError] = CompressionFormat_Decompress
 }
 func check_Errors_Message_CompressionError() {
 	var _ func(*Execution, CompressionError) string = Errors_Message_CompressionError

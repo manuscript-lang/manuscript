@@ -20,6 +20,10 @@ Decision: a defaulted parameter of a source function, method, lambda, or functio
 Evidence: [parameter prologue](../pkg/lower/func.go), [call-site defaults](../pkg/lower/call.go), and [field defaults across modules](../tests/e2e/e2e_test.go).
 Verify: `TestFieldDefaultsAcrossModules`, `TestFaultSourceLocations/default_argument`, and a function used as a value whose defaulted-ness differs from its type.
 
+### Int is Go `int`; 64-bit host values convert explicitly
+
+Requested by Chinmay: `Int` lowers to Go `int` so it follows the platform width. Runtime natives take `int`; values that are inherently 64-bit (`Duration` nanoseconds, `Instant` ticks, `Timestamp` seconds, file sizes, hostos counters) stay `int64` and cross into Int with `FitInt` (faults when it does not fit) or `clampInt` (saturating counters). A blanket `int64`->`int` rewrite hides two traps: `any`/generic type switches (`JsonParseKey`, `JsonDecNative`) must match the new Go type, and `Duration(n)` must not pass through `int`. The checker still bounds literals at 64 bits, so a literal wider than the target `int` fails the Go build. Only 64-bit targets are exercised; `internal/hostos` does not build for 32-bit.
+
 ### The standard runtime declarations are generated
 
 Decision: `pkg/runtime/std_*_gen.go` are written by `make stdgen` from the `@std` sources; `TestGeneratedRuntimeIsFresh` fails when they drift. Signatures belong to the declaration, so fix the `.ms` or the lowerer, regenerate, and implement what the `rtcheck` build reports. Do not edit generated files.

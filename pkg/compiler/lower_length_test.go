@@ -14,7 +14,7 @@ func TestLengthLowersToGoLen(t *testing.T) {
 	if !result.Success() {
 		t.Fatalf("diagnostics: %v", result.Diagnostics)
 	}
-	for _, want := range []string{"int64(len(items.Items))", "int64(len(data.Data))"} {
+	for _, want := range []string{"len(items.Items)", "len(data.Data)"} {
 		if !strings.Contains(result.Source, want) {
 			t.Errorf("generated Go lacks %s:\n%s", want, result.Source)
 		}

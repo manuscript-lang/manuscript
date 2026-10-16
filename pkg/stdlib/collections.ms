@@ -10,7 +10,7 @@ export type CollectionError:
     case OutOfRange
 
 # An ordered mutable collection with indexing, iteration, and transformations.
-# Primitive backing stores Int and Float values at 64 bits, Bool values as bytes, and String references without an element box.
+# Primitive backing stores Int values at the platform's Int width and Float values at 64 bits, Bool values as bytes, and String references without an element box.
 # Generic forwarding retains the same List identity; clone and slice copy outer storage.
 export type List[T]:
     # Returns a shallow copy with independent list storage.

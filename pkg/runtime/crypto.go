@@ -89,20 +89,20 @@ func Crypto_ConstantTimeEqual(_ *Execution, left, right *Bytes) bool {
 }
 
 // Crypto_DeriveKey derives a key with PBKDF2-HMAC-SHA256.
-func Crypto_DeriveKey(ctx *Execution, password, salt *Bytes, iterations, length int64) Result[*Bytes, CryptoError] {
+func Crypto_DeriveKey(ctx *Execution, password, salt *Bytes, iterations, length int) Result[*Bytes, CryptoError] {
 	if iterations <= 0 || length <= 0 || length > 1048576 {
 		return Fail[*Bytes, CryptoError](CryptoError_InvalidInput{})
 	}
 	pw, sl := dfBytes(password), dfBytes(salt)
 	out := make([]byte, 0, int(length))
-	for block := uint32(1); int64(len(out)) < length; block++ {
+	for block := uint32(1); len(out) < length; block++ {
 		CheckCancelled(ctx)
 		h := hmac.New(sha256.New, pw)
 		h.Write(sl)
 		h.Write([]byte{byte(block >> 24), byte(block >> 16), byte(block >> 8), byte(block)})
 		u := h.Sum(nil)
 		t := append([]byte{}, u...)
-		for i := int64(1); i < iterations; i++ {
+		for i := 1; i < iterations; i++ {
 			if i%256 == 0 {
 				CheckCancelled(ctx)
 			}
@@ -113,7 +113,7 @@ func Crypto_DeriveKey(ctx *Execution, password, salt *Bytes, iterations, length 
 				t[j] ^= u[j]
 			}
 		}
-		n := min(int64(len(t)), length-int64(len(out)))
+		n := min(len(t), length-len(out))
 		out = append(out, t[:n]...)
 	}
 	return Ok[*Bytes, CryptoError](NewBytes(out))

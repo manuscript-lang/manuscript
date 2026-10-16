@@ -43,6 +43,20 @@ fn classify(value: Int) -> String:
 
 `if 1:` is rejected because its condition is `Int`. `let result = if active: ...` is rejected because `if` is not an expression. Use branch-local assignment to a declared `var` or explicit returns to select a result. The [function return rules](../functions/declarations-and-calls.md#unit-and-never) determine whether all reachable paths return.
 
+## Unwrapping an Optional
+
+`if let name = expression:` runs its block only when an [Optional](../types/optionals.md) holds a value, and binds `name` to that value inside the block. The optional evaluates once. An `else` block runs when it is `none`, and `name` is not visible there or after the conditional. The binding is immutable and `expression` must be an `Optional`; a `Bool` condition or a `Result` is rejected.
+
+```manuscript
+fn greeting(name: Optional[String]) -> String:
+    if let value = name:
+        return "Hello, " + value
+    else:
+        return "Hello!"
+```
+
+A present payload such as `0`, `false`, or an empty string still takes the first branch. The binding takes one name; destructure the payload inside the block. Prefer `if let` to a two-arm `match` on `some` and `none`, which `ms lint` reports as **MSL108**.
+
 ## Validating inputs
 
 Validation uses the same ordinary control flow as any other decision:

@@ -119,11 +119,11 @@ func TestListenerReuseAfterTimeout(t *testing.T) {
 	client := must(t, n.Connect(ctx, address, Some(Duration(time.Second))))
 	accepted := must(t, listener.Accept(ctx, Some(Duration(time.Second))))
 	must(t, client.Write(ctx, NewBytes([]byte("x")), None[Duration]()))
-	if got := someBytes(t, accepted.Read(ctx, Some(int64(1)), Some(Duration(time.Second)))); got != "x" {
+	if got := someBytes(t, accepted.Read(ctx, Some(int(1)), Some(Duration(time.Second)))); got != "x" {
 		t.Fatal(got)
 	}
 	// A local read timeout is IoError.Failed, never NetworkError.Timeout.
-	failedWith(t, accepted.Read(ctx, Some(int64(1)), Some(Duration(time.Millisecond))), "IoError_Failed")
+	failedWith(t, accepted.Read(ctx, Some(int(1)), Some(Duration(time.Millisecond))), "IoError_Failed")
 	if client.PeerAddress(ctx) != address || client.LocalAddress(ctx) != accepted.PeerAddress(ctx) {
 		t.Fatal("addresses")
 	}
@@ -134,17 +134,17 @@ func TestNegativeLimitsAreInvalidInput(t *testing.T) {
 	neg := Some(Duration(-1))
 	failedWith(t, n.Connect(ctx, "127.0.0.1:1", neg), "NetworkError_InvalidInput")
 	failedWith(t, n.ConnectTls(ctx, "127.0.0.1:1", "", None[Duration]()), "NetworkError_InvalidInput")
-	failedWith(t, n.Lookup(ctx, "localhost", Some(int64(-1)), None[Duration]()), "NetworkError_InvalidInput")
-	failedWith(t, n.Resolve(ctx, "localhost", DnsKind_A{}, None[int64](), neg), "NetworkError_InvalidInput")
+	failedWith(t, n.Lookup(ctx, "localhost", Some(int(-1)), None[Duration]()), "NetworkError_InvalidInput")
+	failedWith(t, n.Resolve(ctx, "localhost", DnsKind_A{}, None[int](), neg), "NetworkError_InvalidInput")
 	listener := must(t, n.Listen(ctx, "127.0.0.1:0"))
 	failedWith(t, listener.Accept(ctx, neg), "NetworkError_InvalidInput")
 	conn := must(t, n.Connect(ctx, listener.Address(ctx), None[Duration]()))
-	failedWith(t, conn.Read(ctx, Some(int64(0)), None[Duration]()), "IoError_InvalidInput")
-	failedWith(t, conn.Read(ctx, Some(int64(-1)), None[Duration]()), "IoError_InvalidInput")
+	failedWith(t, conn.Read(ctx, Some(int(0)), None[Duration]()), "IoError_InvalidInput")
+	failedWith(t, conn.Read(ctx, Some(int(-1)), None[Duration]()), "IoError_InvalidInput")
 	failedWith(t, conn.Write(ctx, NewBytes(nil), neg), "IoError_InvalidInput")
 	socket := must(t, n.BindDatagram(ctx, "127.0.0.1:0"))
-	failedWith(t, socket.Receive(ctx, Some(int64(0)), None[Duration]()), "NetworkError_InvalidInput")
-	failedWith(t, socket.Receive(ctx, Some(int64(65536)), None[Duration]()), "NetworkError_InvalidInput")
+	failedWith(t, socket.Receive(ctx, Some(int(0)), None[Duration]()), "NetworkError_InvalidInput")
+	failedWith(t, socket.Receive(ctx, Some(int(65536)), None[Duration]()), "NetworkError_InvalidInput")
 	failedWith(t, n.Listen(ctx, "not-an-address"), "NetworkError_Failed")
 }
 
@@ -161,7 +161,7 @@ func TestConnectionCloseIsIdempotentAndReportsClosed(t *testing.T) {
 	}
 	wg.Wait()
 	client.Close(ctx)
-	failedWith(t, client.Read(ctx, Some(int64(1)), None[Duration]()), "IoError_Closed")
+	failedWith(t, client.Read(ctx, Some(int(1)), None[Duration]()), "IoError_Closed")
 	failedWith(t, client.Write(ctx, NewBytes([]byte("x")), None[Duration]()), "IoError_Closed")
 	failedWith(t, client.ShutdownWrite(ctx), "NetworkError_Closed")
 	// Metadata remains readable after close.
@@ -169,7 +169,7 @@ func TestConnectionCloseIsIdempotentAndReportsClosed(t *testing.T) {
 		t.Fatal("addresses changed after close")
 	}
 	// The peer sees end of stream.
-	if o := must(t, server.Read(ctx, Some(int64(1)), Some(Duration(time.Second)))); o.Some {
+	if o := must(t, server.Read(ctx, Some(int(1)), Some(Duration(time.Second)))); o.Some {
 		t.Fatal("expected EOF")
 	}
 	listener.Close(ctx)
@@ -186,7 +186,7 @@ func TestCloseInterruptsBlockedRead(t *testing.T) {
 	client := must(t, n.Connect(ctx, listener.Address(ctx), None[Duration]()))
 	must(t, listener.Accept(ctx, Some(Duration(time.Second))))
 	done := make(chan Result[Option[*Bytes], IoError], 1)
-	go func() { done <- client.Read(ctx, Some(int64(1)), None[Duration]()) }()
+	go func() { done <- client.Read(ctx, Some(int(1)), None[Duration]()) }()
 	time.Sleep(20 * time.Millisecond)
 	client.Close(ctx)
 	select {
@@ -211,7 +211,7 @@ func TestCancellationUnwindsBlockedCalls(t *testing.T) {
 	must(t, listener.Accept(ctx, Some(Duration(time.Second))))
 	child, cancel = netCancelledExec(ctx)
 	go func() { time.Sleep(20 * time.Millisecond); cancel() }()
-	if !expectCancelled(func() { client.Read(child, Some(int64(1)), None[Duration]()) }) {
+	if !expectCancelled(func() { client.Read(child, Some(int(1)), None[Duration]()) }) {
 		t.Fatal("read did not unwind on cancellation")
 	}
 }
@@ -223,12 +223,12 @@ func TestUnixSocketsAndHalfClose(t *testing.T) {
 	client := must(t, n.ConnectUnix(ctx, path, Some(Duration(time.Second))))
 	server := must(t, unix.Accept(ctx, Some(Duration(time.Second))))
 	must(t, client.ShutdownWrite(ctx))
-	if o := must(t, server.Read(ctx, Some(int64(1)), Some(Duration(time.Second)))); o.Some {
+	if o := must(t, server.Read(ctx, Some(int(1)), Some(Duration(time.Second)))); o.Some {
 		t.Fatal("expected EOF after half close")
 	}
 	// The closing side can still read.
 	must(t, server.Write(ctx, NewBytes([]byte("reply")), None[Duration]()))
-	if got := someBytes(t, client.Read(ctx, Some(int64(10)), Some(Duration(time.Second)))); got != "reply" {
+	if got := someBytes(t, client.Read(ctx, Some(int(10)), Some(Duration(time.Second)))); got != "reply" {
 		t.Fatal(got)
 	}
 }
@@ -240,7 +240,7 @@ func TestRestrictedNetworkPolicy(t *testing.T) {
 	address := listener.Address(ctx)
 	must(t, restricted.Connect(ctx, address, Some(Duration(time.Second))))
 	failedWith(t, restricted.Connect(ctx, "192.0.2.1:443", Some(Duration(time.Second))), "NetworkError_PermissionDenied")
-	failedWith(t, restricted.Lookup(ctx, "example.invalid", Some(int64(10)), Some(Duration(time.Second))), "NetworkError_PermissionDenied")
+	failedWith(t, restricted.Lookup(ctx, "example.invalid", Some(int(10)), Some(Duration(time.Second))), "NetworkError_PermissionDenied")
 	failedWith(t, restricted.Listen(ctx, "192.0.2.1:0"), "NetworkError_PermissionDenied")
 	failedWith(t, restricted.ListenUnix(ctx, filepath.Join(t.TempDir(), "s")), "NetworkError_PermissionDenied")
 	failedWith(t, restricted.ConnectUnix(ctx, filepath.Join(t.TempDir(), "s"), None[Duration]()), "NetworkError_PermissionDenied")
@@ -267,12 +267,12 @@ func TestNetworkCloseClosesDerivedAndOwnedResources(t *testing.T) {
 	socket := must(t, n.BindDatagram(ctx, "127.0.0.1:0"))
 	n.Close(ctx)
 	n.Close(ctx)
-	failedWith(t, conn.Read(ctx, Some(int64(1)), None[Duration]()), "IoError_Closed")
+	failedWith(t, conn.Read(ctx, Some(int(1)), None[Duration]()), "IoError_Closed")
 	failedWith(t, listener.Accept(ctx, None[Duration]()), "NetworkError_Closed")
-	failedWith(t, socket.Receive(ctx, None[int64](), None[Duration]()), "NetworkError_Closed")
+	failedWith(t, socket.Receive(ctx, None[int](), None[Duration]()), "NetworkError_Closed")
 	failedWith(t, child.Connect(ctx, address, None[Duration]()), "NetworkError_Closed")
 	failedWith(t, n.Listen(ctx, "127.0.0.1:0"), "NetworkError_Closed")
-	failedWith(t, n.Lookup(ctx, "localhost", None[int64](), None[Duration]()), "NetworkError_Closed")
+	failedWith(t, n.Lookup(ctx, "localhost", None[int](), None[Duration]()), "NetworkError_Closed")
 	failedWith(t, n.Restrict(ctx, NewList("a"), NewList[string](), false), "NetworkError_Closed")
 }
 
@@ -304,22 +304,22 @@ func TestDatagramSockets(t *testing.T) {
 	a := must(t, n.BindDatagram(ctx, "127.0.0.1:0"))
 	b := must(t, n.BindDatagram(ctx, "127.0.0.1:0"))
 	must(t, a.Send(ctx, NewBytes([]byte("hello")), b.Address(ctx), None[Duration]()))
-	d := must(t, b.Receive(ctx, None[int64](), Some(Duration(time.Second))))
+	d := must(t, b.Receive(ctx, None[int](), Some(Duration(time.Second))))
 	if str(d.Data) != "hello" || d.Sender != a.Address(ctx) {
 		t.Fatal(str(d.Data), d.Sender)
 	}
 	// Message boundaries include empty messages.
 	must(t, a.Send(ctx, NewBytes(nil), b.Address(ctx), None[Duration]()))
-	if d := must(t, b.Receive(ctx, None[int64](), Some(Duration(time.Second)))); len(d.Data.Data) != 0 {
+	if d := must(t, b.Receive(ctx, None[int](), Some(Duration(time.Second)))); len(d.Data.Data) != 0 {
 		t.Fatal("empty datagram")
 	}
 	// An oversized datagram is discarded with LimitExceeded, never truncated.
 	must(t, a.Send(ctx, NewBytes([]byte("0123456789")), b.Address(ctx), None[Duration]()))
-	failedWith(t, b.Receive(ctx, Some(int64(4)), Some(Duration(time.Second))), "NetworkError_LimitExceeded")
-	failedWith(t, b.Receive(ctx, None[int64](), Some(Duration(10*time.Millisecond))), "NetworkError_Timeout")
+	failedWith(t, b.Receive(ctx, Some(int(4)), Some(Duration(time.Second))), "NetworkError_LimitExceeded")
+	failedWith(t, b.Receive(ctx, None[int](), Some(Duration(10*time.Millisecond))), "NetworkError_Timeout")
 	b.Close(ctx)
 	b.Close(ctx)
-	failedWith(t, b.Receive(ctx, None[int64](), None[Duration]()), "NetworkError_Closed")
+	failedWith(t, b.Receive(ctx, None[int](), None[Duration]()), "NetworkError_Closed")
 	failedWith(t, b.Send(ctx, NewBytes(nil), a.Address(ctx), None[Duration]()), "NetworkError_Closed")
 	if b.Address(ctx) == "" {
 		t.Fatal("address after close")
@@ -392,7 +392,7 @@ func TestDnsRecordsThroughExplicitResolver(t *testing.T) {
 		if _, ptr := kind.(DnsKind_PTR); ptr {
 			name = "127.0.0.1"
 		}
-		records := must(t, resolver.Resolve(ctx, name, kind, Some(int64(8)), Some(Duration(time.Second))))
+		records := must(t, resolver.Resolve(ctx, name, kind, Some(int(8)), Some(Duration(time.Second))))
 		if len(records.Items) == 0 {
 			t.Fatalf("%s: no records", DnsKind_Text(ctx, kind))
 		}
@@ -402,18 +402,18 @@ func TestDnsRecordsThroughExplicitResolver(t *testing.T) {
 			}
 		}
 	}
-	mx := must(t, resolver.Resolve(ctx, "test.", DnsKind_MX{}, None[int64](), None[Duration]())).Items[0]
+	mx := must(t, resolver.Resolve(ctx, "test.", DnsKind_MX{}, None[int](), None[Duration]())).Items[0]
 	if mx.Value != "mail.test." || mx.Priority != 10 || mx.Weight != 0 || mx.Port != 0 {
 		t.Fatalf("%+v", mx)
 	}
-	srv := must(t, resolver.Resolve(ctx, "test.", DnsKind_SRV{}, None[int64](), None[Duration]())).Items[0]
+	srv := must(t, resolver.Resolve(ctx, "test.", DnsKind_SRV{}, None[int](), None[Duration]())).Items[0]
 	if srv.Value != "service.test." || srv.Priority != 1 || srv.Weight != 2 || srv.Port != 443 {
 		t.Fatalf("%+v", srv)
 	}
-	failedWith(t, resolver.Resolve(ctx, "test.", DnsKind_A{}, Some(int64(0)), None[Duration]()), "NetworkError_LimitExceeded")
-	addresses := must(t, resolver.Lookup(ctx, "test.", Some(int64(8)), Some(Duration(time.Second))))
+	failedWith(t, resolver.Resolve(ctx, "test.", DnsKind_A{}, Some(int(0)), None[Duration]()), "NetworkError_LimitExceeded")
+	addresses := must(t, resolver.Lookup(ctx, "test.", Some(int(8)), Some(Duration(time.Second))))
 	if len(addresses.Items) == 0 {
 		t.Fatal("lookup")
 	}
-	failedWith(t, resolver.Lookup(ctx, "test.", Some(int64(0)), Some(Duration(time.Second))), "NetworkError_LimitExceeded")
+	failedWith(t, resolver.Lookup(ctx, "test.", Some(int(0)), Some(Duration(time.Second))), "NetworkError_LimitExceeded")
 }

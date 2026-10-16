@@ -67,7 +67,7 @@ func Url_Format(_ *Execution, value *Url) Result[string, UrlError] {
 }
 
 // Url_ParseQuery parses a query string, preserving duplicate keys and order.
-func Url_ParseQuery(ctx *Execution, text string, maxEntries Option[int64]) Result[*List[*QueryEntry], UrlError] {
+func Url_ParseQuery(ctx *Execution, text string, maxEntries Option[int]) Result[*List[*QueryEntry], UrlError] {
 	limit, ok := optLimit(maxEntries, netUnlimited)
 	if !ok {
 		return Fail[*List[*QueryEntry], UrlError](UrlError_InvalidInput{})
@@ -79,7 +79,7 @@ func Url_ParseQuery(ctx *Execution, text string, maxEntries Option[int64]) Resul
 			if part == "" {
 				continue
 			}
-			if int64(len(items)) >= limit {
+			if len(items) >= limit {
 				return Fail[*List[*QueryEntry], UrlError](UrlError_LimitExceeded{})
 			}
 			k, v, _ := strings.Cut(part, "=")
@@ -104,7 +104,7 @@ func Url_FormatQuery(_ *Execution, entries *List[*QueryEntry]) string {
 }
 
 func urlValue(u *url.URL) Result[*Url, UrlError] {
-	port := Option[int64]{}
+	port := Option[int]{}
 	if u.User != nil || u.Opaque != "" || u.Scheme == "" {
 		return Fail[*Url, UrlError](UrlError_InvalidData{})
 	}
@@ -113,7 +113,7 @@ func urlValue(u *url.URL) Result[*Url, UrlError] {
 		if err != nil || n < 0 || n > 65535 {
 			return Fail[*Url, UrlError](UrlError_InvalidData{})
 		}
-		port = Some(n)
+		port = Some(int(n))
 	}
 	if !utf8.ValidString(u.Path) || !utf8.ValidString(u.Fragment) {
 		return Fail[*Url, UrlError](UrlError_InvalidData{})
@@ -131,7 +131,7 @@ func goURL(v *Url) (*url.URL, error) {
 		if n < 0 || n > 65535 {
 			return nil, io.ErrUnexpectedEOF
 		}
-		host = net.JoinHostPort(v.Host, strconv.FormatInt(n, 10))
+		host = net.JoinHostPort(v.Host, strconv.Itoa(n))
 	}
 	raw := v.Path
 	decoded, err := url.PathUnescape(raw)

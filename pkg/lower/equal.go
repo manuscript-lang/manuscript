@@ -54,7 +54,7 @@ func (g *gen) helperFunc(key, base string, build func(name string) ast.Decl) ast
 	if strings.Contains(key, "@") {
 		name += "_" + shortHash(key)
 	}
-	name = g.claim(name, key)
+	name = g.derived(name, key)
 	g.mu.Lock()
 	h := g.helpers[key]
 	created := h == nil

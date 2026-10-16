@@ -19,6 +19,11 @@ export type Queue[T]:
 # A FIFO queue that waits instead of failing: put blocks while a bounded queue is full,
 # and take blocks while the queue is empty. It synchronizes itself, so tasks share it directly.
 # Waiting stops at cancellation, so a TaskGroup close unblocks every waiting task.
+#
+# Usage: create it with `BlockingQueue[Int](8)` (omit capacity for an unbounded queue), start workers in a
+# TaskGroup that loop on `jobs.take()` until it returns none, then call `jobs.put(value)` to hand them work
+# (it waits while full and returns false once closed) and `jobs.close()` when done; workers drain the queued
+# values and then see none.
 export type BlockingQueue[T]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Optional[Int] = none

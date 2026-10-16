@@ -12,10 +12,10 @@ type check_MapBuilder[T comparable, U any] = *MapBuilder[T, U]
 type check_SetBuilder[T comparable] = *SetBuilder[T]
 
 func check_Collections_Filled[T any]() {
-	var _ func(*Execution, T, int64, Option[int64]) Result[*List[T], CollectionError] = Collections_Filled[T]
+	var _ func(*Execution, T, int, Option[int]) Result[*List[T], CollectionError] = Collections_Filled[T]
 }
 func check_Collections_Range() {
-	var _ func(*Execution, int64, int64, int64, Option[int64]) Result[*List[int64], CollectionError] = Collections_Range
+	var _ func(*Execution, int, int, int, Option[int]) Result[*List[int], CollectionError] = Collections_Range
 }
 func check_Collections_MapFromEntries[K comparable, V any]() {
 	var _ func(*Execution, *Keys[K], *List[*MapEntry[K, V]]) *Map[K, V] = Collections_MapFromEntries[K, V]
@@ -24,16 +24,16 @@ func check_List_Clone[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_Clone[T]
 }
 func check_List_At[T any]() {
-	var _ func(*Execution, *List[T], int64) Option[T] = List_At[T]
+	var _ func(*Execution, *List[T], int) Option[T] = List_At[T]
 }
 func check_List_Contains[T any]() {
 	var _ func(*Execution, Eq[T], *List[T], T) bool = List_Contains[T]
 }
 func check_List_IndexOf[T any]() {
-	var _ func(*Execution, Eq[T], *List[T], T) Option[int64] = List_IndexOf[T]
+	var _ func(*Execution, Eq[T], *List[T], T) Option[int] = List_IndexOf[T]
 }
 func check_List_LastIndexOf[T any]() {
-	var _ func(*Execution, Eq[T], *List[T], T) Option[int64] = List_LastIndexOf[T]
+	var _ func(*Execution, Eq[T], *List[T], T) Option[int] = List_LastIndexOf[T]
 }
 func check_List_First[T any]() {
 	var _ func(*Execution, *List[T]) Option[T] = List_First[T]
@@ -48,25 +48,25 @@ func check_List_Prepend[T any]() {
 	var _ func(*Execution, *List[T], T) *List[T] = List_Prepend[T]
 }
 func check_List_Insert[T any]() {
-	var _ func(*Execution, *List[T], int64, T) *List[T] = List_Insert[T]
+	var _ func(*Execution, *List[T], int, T) *List[T] = List_Insert[T]
 }
 func check_List_Pop[T any]() {
 	var _ func(*Execution, *List[T]) Option[T] = List_Pop[T]
 }
 func check_List_Set[T any]() {
-	var _ func(*Execution, *List[T], int64, T) *List[T] = List_Set[T]
+	var _ func(*Execution, *List[T], int, T) *List[T] = List_Set[T]
 }
 func check_List_Remove[T any]() {
-	var _ func(*Execution, *List[T], int64) *List[T] = List_Remove[T]
+	var _ func(*Execution, *List[T], int) *List[T] = List_Remove[T]
 }
 func check_List_Slice[T any]() {
-	var _ func(*Execution, *List[T], int64, int64) Result[*List[T], CollectionError] = List_Slice[T]
+	var _ func(*Execution, *List[T], int, int) Result[*List[T], CollectionError] = List_Slice[T]
 }
 func check_List_Take[T any]() {
-	var _ func(*Execution, *List[T], int64) *List[T] = List_Take[T]
+	var _ func(*Execution, *List[T], int) *List[T] = List_Take[T]
 }
 func check_List_Drop[T any]() {
-	var _ func(*Execution, *List[T], int64) *List[T] = List_Drop[T]
+	var _ func(*Execution, *List[T], int) *List[T] = List_Drop[T]
 }
 func check_List_ReverseInPlace[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_ReverseInPlace[T]
@@ -75,7 +75,7 @@ func check_List_Reversed[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_Reversed[T]
 }
 func check_List_Sorted[T any]() {
-	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T, a1 T) int64) *List[T] = List_Sorted[T]
+	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T, a1 T) int) *List[T] = List_Sorted[T]
 }
 func check_List_Filter[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) *List[T] = List_Filter[T]
@@ -87,13 +87,13 @@ func check_List_FindLast[T any]() {
 	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) Option[T] = List_FindLast[T]
 }
 func check_List_FindIndex[T any]() {
-	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) Option[int64] = List_FindIndex[T]
+	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) Option[int] = List_FindIndex[T]
 }
 func check_List_FindLastIndex[T any]() {
-	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) Option[int64] = List_FindLastIndex[T]
+	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) Option[int] = List_FindLastIndex[T]
 }
 func check_List_Count[T any]() {
-	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) int64 = List_Count[T]
+	var _ func(*Execution, *List[T], func(ctx *Execution, a0 T) bool) int = List_Count[T]
 }
 func check_List_Distinct[T any]() {
 	var _ func(*Execution, Eq[T], *List[T]) *List[T] = List_Distinct[T]
@@ -123,19 +123,19 @@ func check_List_FoldRight[T any, A any]() {
 	var _ func(*Execution, *List[T], A, func(ctx *Execution, a0 A, a1 T) A) A = List_FoldRight[T, A]
 }
 func check_List_Splice[T any]() {
-	var _ func(*Execution, *List[T], int64, int64, *List[T]) *List[T] = List_Splice[T]
+	var _ func(*Execution, *List[T], int, int, *List[T]) *List[T] = List_Splice[T]
 }
 func check_List_Fill[T any]() {
-	var _ func(*Execution, *List[T], T, int64, int64) *List[T] = List_Fill[T]
+	var _ func(*Execution, *List[T], T, int, int) *List[T] = List_Fill[T]
 }
 func check_List_CopyWithin[T any]() {
-	var _ func(*Execution, *List[T], int64, int64, int64) *List[T] = List_CopyWithin[T]
+	var _ func(*Execution, *List[T], int, int, int) *List[T] = List_CopyWithin[T]
 }
 func check_List_ToSet[T comparable]() {
 	var _ func(*Execution, *Keys[T], *List[T]) *Set[T] = List_ToSet[T]
 }
 func check_List_Keys[T any]() {
-	var _ func(*Execution, *List[T]) *List[int64] = List_Keys[T]
+	var _ func(*Execution, *List[T]) *List[int] = List_Keys[T]
 }
 func check_List_Entries[T any]() {
 	var _ func(*Execution, *List[T]) *List[*ListEntry[T]] = List_Entries[T]
@@ -150,7 +150,7 @@ func check_List_Concat[T any]() {
 	var _ func(*Execution, *List[T], *List[T]) *List[T] = List_Concat[T]
 }
 func check_List_Length[T any]() {
-	var _ func(*Execution, *List[T]) int64 = List_Length[T]
+	var _ func(*Execution, *List[T]) int = List_Length[T]
 }
 func check_Map_Clone[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U]) *Map[T, U] = Map_Clone[T, U]
@@ -219,7 +219,7 @@ func check_Map_Get[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], T) Option[U] = Map_Get[T, U]
 }
 func check_Map_Length[T comparable, U any]() {
-	var _ func(*Execution, *Map[T, U]) int64 = Map_Length[T, U]
+	var _ func(*Execution, *Map[T, U]) int = Map_Length[T, U]
 }
 func check_Map_Add[T comparable, U any]() {
 	var _ func(*Execution, *Map[T, U], T, U) *Map[T, U] = Map_Add[T, U]
@@ -294,7 +294,7 @@ func check_Set_Contains[T comparable]() {
 	var _ func(*Execution, *Set[T], T) bool = Set_Contains[T]
 }
 func check_Set_Length[T comparable]() {
-	var _ func(*Execution, *Set[T]) int64 = Set_Length[T]
+	var _ func(*Execution, *Set[T]) int = Set_Length[T]
 }
 func check_Set_Add[T comparable]() {
 	var _ func(*Execution, *Set[T], T) *Set[T] = Set_Add[T]

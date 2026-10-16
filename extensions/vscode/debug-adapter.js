@@ -32,7 +32,7 @@ function exec(command, args) {
   return new Promise((resolve, reject) => execFile(command, args, { maxBuffer: 32 * 1024 * 1024 },
     (error, stdout, stderr) => error ? reject(new Error(stderr || error.message)) : resolve(stdout)));
 }
-const PRIMITIVES = { int64: 'Int', float64: 'Float', bool: 'Bool', string: 'String' };
+const PRIMITIVES = { int: 'Int', float64: 'Float', bool: 'Bool', string: 'String' };
 // Standard values lower to generic Go types in the runtime package, whatever
 // its import path or vendored package name.
 const RUNTIME_TYPE = /^\*?(?:[\w.\/-]*\/)?(?:ms)?runtime\.(\w+)(?:\[.*)?$/;
@@ -51,7 +51,7 @@ function sourceType(native) {
   native = (native || '').replace(/^\*/, '');
   if (PRIMITIVES[native]) return PRIMITIVES[native];
   return native.replace(/(?:[\w.-]+\/)*(?:ms)?runtime\./g, '').replace(/\bmain\./g, '').replace(/\*/g, '')
-    .replace(/\b(int64|float64|bool|string)\b/g, name => PRIMITIVES[name]).replace(/\bOption\b/g, 'Optional');
+    .replace(/\b(int|float64|bool|string)\b/g, name => PRIMITIVES[name]).replace(/\bOption\b/g, 'Optional');
 }
 // Go field names are the CamelCase of the source field names.
 function sourceField(goName) { return goName.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/^./, c => c.toLowerCase()).toLowerCase(); }

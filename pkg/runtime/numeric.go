@@ -11,7 +11,7 @@ import (
 // Checked Int arithmetic: overflow and division faults are Manuscript faults.
 // Each operation is small enough for the compiler to inline.
 
-func IntAdd(a, b int64) int64 {
+func IntAdd(a, b int) int {
 	r := a + b
 	if (a^r)&(b^r) < 0 {
 		intOverflow()
@@ -19,7 +19,7 @@ func IntAdd(a, b int64) int64 {
 	return r
 }
 
-func IntSubtract(a, b int64) int64 {
+func IntSubtract(a, b int) int {
 	r := a - b
 	if (a^b)&(a^r) < 0 {
 		intOverflow()
@@ -27,23 +27,31 @@ func IntSubtract(a, b int64) int64 {
 	return r
 }
 
-func IntMultiply(a, b int64) int64 {
-	hi, lo := bits.Mul64(uint64(a), uint64(b))
-	hi -= uint64((a>>63)&b) + uint64((b>>63)&a)
+func IntMultiply(a, b int) int {
+	if bits.UintSize == 32 {
+		r := int64(a) * int64(b)
+		if r != int64(int(r)) {
+			intOverflow()
+		}
+		return int(r)
+	}
+	x, y := int64(a), int64(b)
+	hi, lo := bits.Mul64(uint64(x), uint64(y))
+	hi -= uint64((x>>63)&y) + uint64((y>>63)&x)
 	if int64(hi) != int64(lo)>>63 {
 		intOverflow()
 	}
-	return int64(lo)
+	return int(lo)
 }
 
-func IntDivide(a, b int64) int64 {
-	if b == 0 || a == math.MinInt64 && b == -1 {
+func IntDivide(a, b int) int {
+	if b == 0 || a == math.MinInt && b == -1 {
 		intDivisionFault(a, b)
 	}
 	return a / b
 }
 
-func IntRemainder(a, b int64) int64 {
+func IntRemainder(a, b int) int {
 	if b == 0 {
 		Raise("Int.%: remainder by zero; right must be nonzero, found 0")
 	}
@@ -53,18 +61,39 @@ func IntRemainder(a, b int64) int64 {
 	return a % b
 }
 
-func IntNegate(a int64) int64 {
-	if a == math.MinInt64 {
+func IntNegate(a int) int {
+	if a == math.MinInt {
 		intOverflow()
 	}
 	return -a
 }
 
 func intOverflow() {
-	Raise("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+	Raise(fmt.Sprintf("Int overflow; the result does not fit in signed %d bits, so bound the operands or use BigInt", bits.UintSize))
 }
 
-func FormatInt(v int64) string { return strconv.FormatInt(v, 10) }
+// FitInt converts a 64-bit host value (a size, count, or nanosecond tick) to
+// Int, faulting where the platform's Int is narrower and cannot hold it.
+func FitInt(v int64) int {
+	if int64(int(v)) != v {
+		intOverflow()
+	}
+	return int(v)
+}
+
+// clampInt is v limited to the platform's Int range, for host counters where
+// saturation is more useful than a fault.
+func clampInt(v int64) int {
+	if int64(int(v)) != v {
+		if v < 0 {
+			return math.MinInt
+		}
+		return math.MaxInt
+	}
+	return int(v)
+}
+
+func FormatInt(v int) string   { return strconv.Itoa(v) }
 func FormatBool(v bool) string { return strconv.FormatBool(v) }
 func FormatFloat(v float64) string {
 	switch {
@@ -111,11 +140,11 @@ func renderDecimal(digits string, exponent int, negative bool) string {
 	return out + "e" + exp
 }
 
-func intDivisionFault(a, b int64) {
+func intDivisionFault(a, b int) {
 	if b == 0 {
 		Raise("Int./: division by zero; right must be nonzero, found 0")
 	}
-	Raise(fmt.Sprintf("Int./: overflow; found left %d and right %d; result must be between %d and %d", a, b, int64(math.MinInt64), int64(math.MaxInt64)))
+	Raise(fmt.Sprintf("Int./: overflow; found left %d and right %d; result must be between %d and %d", a, b, math.MinInt, math.MaxInt))
 }
 
 // Equals is == for types Go compares directly.

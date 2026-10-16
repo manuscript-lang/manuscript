@@ -139,12 +139,9 @@ func Decimal_ToFloat(_ *Execution, d *Decimal) float64 {
 }
 
 // Decimal_TruncateToInt discards the fraction toward zero.
-func Decimal_TruncateToInt(_ *Execution, d *Decimal) Option[int64] {
+func Decimal_TruncateToInt(_ *Execution, d *Decimal) Option[int] {
 	q := new(big.Int).Quo(d.Value.Num(), d.Value.Denom())
-	if !q.IsInt64() {
-		return None[int64]()
-	}
-	return Some(q.Int64())
+	return bigToInt(q)
 }
 
 // decimalRoundedCoefficient rounds the exact scaled value once. Callers
@@ -195,7 +192,7 @@ func decimalMode(o Option[RoundingMode]) RoundingMode {
 	return o.Val
 }
 
-func Decimal_Round(_ *Execution, d *Decimal, places int64, mode Option[RoundingMode]) Result[*Decimal, NumberError] {
+func Decimal_Round(_ *Execution, d *Decimal, places int, mode Option[RoundingMode]) Result[*Decimal, NumberError] {
 	if places < -6144 || places > 6176 {
 		return numberFail[*Decimal](NumberError_InvalidInput{})
 	}
@@ -205,14 +202,14 @@ func Decimal_Round(_ *Execution, d *Decimal, places int64, mode Option[RoundingM
 	}
 	// Check exact representability rather than applying the arithmetic
 	// context, which would introduce a second rounding step.
-	text := coefficient.String() + "e" + strconv.FormatInt(-places, 10)
+	text := coefficient.String() + "e" + strconv.Itoa(-places)
 	if !decimal.Valid(text) {
 		return numberFail[*Decimal](NumberError_OutOfRange{})
 	}
 	return Ok[*Decimal, NumberError](DecimalLiteral(text))
 }
 
-func Decimal_ToFixed(_ *Execution, d *Decimal, digits int64, mode Option[RoundingMode]) Result[string, NumberError] {
+func Decimal_ToFixed(_ *Execution, d *Decimal, digits int, mode Option[RoundingMode]) Result[string, NumberError] {
 	if digits < 0 || digits > 6176 {
 		return numberFail[string](NumberError_InvalidInput{})
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -177,7 +178,7 @@ func testFormatValue(b *strings.Builder, v reflect.Value, depth int) {
 		}
 		testFormatValue(b, v.Elem(), depth)
 	case reflect.Int, reflect.Int64:
-		b.WriteString(FormatInt(v.Int()))
+		b.WriteString(strconv.FormatInt(v.Int(), 10))
 	case reflect.Float64:
 		b.WriteString(FormatFloat(v.Float()))
 	case reflect.Bool:

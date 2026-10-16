@@ -31,7 +31,7 @@ type State struct {
 // callState tracks one goroutine's nested calls. Copies of an Execution made
 // for cancellation scopes share it.
 type callState struct {
-	depth int64
+	depth int
 	ticks uint8
 }
 

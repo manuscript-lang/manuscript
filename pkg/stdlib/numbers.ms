@@ -6,7 +6,7 @@ export type NumberError:
     case InvalidInput
     # The text does not match the numeric syntax, such as an empty string, stray characters, or digits invalid for the radix.
     case InvalidData
-    # The text is well formed but the value does not fit, such as an integer beyond signed 64 bits or a float beyond the finite range.
+    # The text is well formed but the value does not fit, such as an integer beyond the platform's Int range or a float beyond the finite range.
     case OutOfRange
 
 # Parses a decimal floating-point number using Manuscript's numeric syntax.

@@ -144,10 +144,13 @@ Decision: the user rejected the `get name -> Type` accessor syntax merged in #51
 
 Apply when: proposing property-like syntax, a read-only member kind, or a standard-library migration from methods to properties.
 Evidence: [`nativeMethodCall`](../pkg/lower/call.go), which inlines `length`.
-Verify: `get` is an ordinary identifier everywhere; a List `length()` call lowers to `int64(len(...))` with no runtime call.
+Verify: `get` is an ordinary identifier everywhere; a List `length()` call lowers to `len(...)` with no runtime call.
 
 Decision: the later request to accept `Queue[Int](capacity: 4)` permits a plain payload at standard Optional argument boundaries. Routine calls and current examples use plain values rather than redundant `some(...)` arguments. Keep this separate from omission permissions and ordinary assignment/return compatibility. Lower the supplied argument to a real `some` value so source implementations and native APIs receive the same representation; preserve written evaluation order and payload identity.
 
+
+Decision: the user asked for `if let name = optional:` (with `else`) and that a match with only two arms is an anti-pattern. `if let` unwraps Optional only (a Result is rejected); the binding is immutable and scoped to the then-branch. MSL108 advises on Optional matches whose only arms are some and none; two-case Result and user alternatives are not covered. Stdlib sources use `if let`; accepted conformance fixtures keep their some/none matches because they exercise match-expression semantics.
+Evidence: [if let rules](../documentation/core-language/control-flow/conditionals.md#unwrapping-an-optional), [native fixture](../tests/e2e/testdata/accept/if-let.ms), [lint](../pkg/tooling/optional_match_lint.go).
 Apply when: changing Optional declarations, alternative method lookup, fallback evaluation, or introductory examples.
 Evidence: [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [optional argument rules](../documentation/core-language/types/optionals.md#passing-optional-arguments), [canonical declaration](../pkg/stdlib/optional.ms), [compiled method fixture](../tests/e2e/testdata/accept/optional-methods.ms), and [argument conformance](../tests/e2e/testdata/accept/optional-arguments.ms).
 Verify: false and zero are present; eager defaults evaluate normally; lazy defaults run exactly once only for none; unwrap on none faults clearly. Extraction retains nested type arguments and payload identity, stored receiver methods still work, and local alternatives with the same spelling receive no native methods.

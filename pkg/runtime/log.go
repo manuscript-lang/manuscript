@@ -38,7 +38,7 @@ func logLevelIndex(level LogLevel) int {
 func logFail[T any](e LogError) Result[T, LogError] { return Fail[T, LogError](e) }
 
 // Log_Create builds a logger that writes JSON lines to transport.
-func Log_Create(_ *Execution, transport Transport, level Option[LogLevel], bindings Option[*Map[string, JsonValue]], timestamp Option[bool], maxBytes Option[int64]) Result[Logger, LogError] {
+func Log_Create(_ *Execution, transport Transport, level Option[LogLevel], bindings Option[*Map[string, JsonValue]], timestamp Option[bool], maxBytes Option[int]) Result[Logger, LogError] {
 	threshold := 2
 	if level.Some {
 		threshold = logLevelIndex(level.Val)
@@ -98,7 +98,7 @@ type jsonLogger struct {
 	threshold int
 	bindings  *Map[string, JsonValue]
 	timestamp bool
-	max       int64
+	max       int
 }
 
 var _ Logger = (*jsonLogger)(nil)
@@ -196,11 +196,11 @@ func (l *jsonLogger) emit(ctx *Execution, level int, message string, fields Opti
 
 // logEncode renders a JSON value as compact text within max bytes. Numbers are
 // carried as text and must be valid JSON numbers; cycles are invalid data.
-func logEncode(ctx *Execution, value JsonValue, max int64) (string, LogError) {
+func logEncode(ctx *Execution, value JsonValue, max int) (string, LogError) {
 	var out bytes.Buffer
 	overflow := false
 	write := func(b []byte) error {
-		if int64(len(b)) > max-int64(out.Len()) {
+		if len(b) > max-int(out.Len()) {
 			overflow = true
 			return io.ErrShortBuffer
 		}
@@ -219,7 +219,7 @@ func logEncode(ctx *Execution, value JsonValue, max int64) (string, LogError) {
 		case JsonValue_BoolValue:
 			return writeString(strconv.FormatBool(v.Value))
 		case JsonValue_StringValue:
-			if int64(len(v.Value)) > max-int64(out.Len()) {
+			if len(v.Value) > max-int(out.Len()) {
 				overflow = true
 				return io.ErrShortBuffer
 			}

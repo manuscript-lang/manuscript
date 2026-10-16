@@ -93,14 +93,16 @@ fn first_number(text: Optional[String]) -> Optional[Int]:
 
 `map` retains nesting when its callback returns another Optional. `and_then` returns that Optional directly. `or_else` supplies another Optional only on absence. These callbacks run sequentially in the caller's execution context and preserve ordinary fault, cancellation, and payload-reference behavior.
 
-[Pattern matching](../control-flow/pattern-matching.md) remains available when distinct branches make the logic clearer:
+Use [`if let`](../control-flow/conditionals.md#unwrapping-an-optional) to bind the payload for a block, with an optional `else` for absence:
 
 ```manuscript
 fn display_name(name: Optional[String]) -> String:
-    match name:
-        some(value): return value
-        none: return "Anonymous"
+    if let value = name:
+        return value
+    return "Anonymous"
 ```
+
+[Pattern matching](../control-flow/pattern-matching.md) still handles `some` and `none`, but a match with only those two arms is reported by `ms lint` as MSL108; use `if let` or an Optional method instead.
 
 Use [Result](../errors/results.md) when a failure needs an explanation. An absent value and a failed operation express different contracts. `try` propagates a `Result` error; the design specifies no corresponding implicit propagation for an optional.
 

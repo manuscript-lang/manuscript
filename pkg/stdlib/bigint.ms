@@ -31,7 +31,7 @@ export type BigInt:
     fn bit_or(other: BigInt) -> BigInt:
     # Returns the bitwise XOR using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
     fn bit_xor(other: BigInt) -> BigInt:
-    # Returns the value as an Int when it fits in signed 64 bits, or none when it is outside that range.
+    # Returns the value as an Int when it fits in the platform's Int, or none when it is outside that range.
     fn to_int() -> Optional[Int]:
     # Formats the value in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
     # A radix outside 2 through 36 is a programming fault.

@@ -27,7 +27,7 @@ The lowering package's `TestGeneratedRuntimeIsFresh` fails while the checked-in 
 - Long-running operations call `CheckCancelled(ctx)` and honor `ctx.Context`. Blocking calls select on `ctx.Context.Done()`.
 - Constructors of native types are `New<Type>`. Native types that are handles are pointers; `Duration`, `Instant` and `Timestamp` are values.
 - Contract values (`Files`, `Clock`, ...) are Go interfaces. Provide concrete types and a `var _ Files = (*osFiles)(nil)` assertion.
-- Strings are Go strings (UTF-8); `Int` is `int64`; `List[T]` is `*List[T]` with an `Items` slice; `Map` and `Set` preserve insertion order and match keys with their `*Keys[K]`.
+- Strings are Go strings (UTF-8); `Int` is Go `int` (platform-sized); host values that are always 64-bit, such as `Duration` nanoseconds, stay `int64` and convert with `FitInt` or `clampInt`; `List[T]` is `*List[T]` with an `Items` slice; `Map` and `Set` preserve insertion order and match keys with their `*Keys[K]`.
 
 ## Representation
 

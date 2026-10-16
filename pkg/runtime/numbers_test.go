@@ -11,8 +11,8 @@ import (
 func TestParseNumbers(t *testing.T) {
 	for _, tt := range []struct {
 		text  string
-		radix int64
-		want  int64
+		radix int
+		want  int
 		err   string
 	}{
 		{"-ff", 16, -255, ""}, {"+z", 36, 35, ""}, {"1", 1, 0, "InvalidInput"}, {"1", 37, 0, "InvalidInput"},
@@ -76,7 +76,7 @@ func TestFloatFormatting(t *testing.T) {
 	if Float_ToString(tctx, tenth+fifth) != "0.30000000000000004" || Float_ToString(tctx, math.Copysign(0, -1)) != "-0" {
 		t.Fatal("to_string")
 	}
-	if Float_TruncateToInt(tctx, -2.9) != Some(int64(-2)) || Float_TruncateToInt(tctx, 9223372036854775808.0).Some || Float_TruncateToInt(tctx, math.NaN()).Some || !Float_TruncateToInt(tctx, -9223372036854775808.0).Some {
+	if Float_TruncateToInt(tctx, -2.9) != Some(int(-2)) || Float_TruncateToInt(tctx, 9223372036854775808.0).Some || Float_TruncateToInt(tctx, math.NaN()).Some || !Float_TruncateToInt(tctx, -9223372036854775808.0).Some {
 		t.Fatal("truncate_to_int")
 	}
 	if !Float_IsNan(tctx, math.NaN()) || Float_IsFinite(tctx, math.Inf(1)) || !Float_IsFinite(tctx, 1) {
@@ -119,7 +119,7 @@ func TestMath(t *testing.T) {
 
 func TestBigInt(t *testing.T) {
 	big := func(text string) *BigInt {
-		r := Bigint_Parse(tctx, text, 10, None[int64]())
+		r := Bigint_Parse(tctx, text, 10, None[int]())
 		if r.Failed {
 			t.Fatalf("parse %q", text)
 		}
@@ -139,7 +139,7 @@ func TestBigInt(t *testing.T) {
 		t.Fatal("bit ops")
 	}
 	huge := BigInt_Multiply(tctx, big("9223372036854775807"), big("9223372036854775807"))
-	if BigInt_ToInt(tctx, huge).Some || BigInt_ToInt(tctx, a) != Some(int64(-7)) {
+	if BigInt_ToInt(tctx, huge).Some || BigInt_ToInt(tctx, a) != Some(int(-7)) {
 		t.Fatal("to_int")
 	}
 	if BigInt_Compare(tctx, a, b) != -1 || BigInt_Compare(tctx, b, b) != 0 || BigInt_Add(tctx, a, b).String() != "-5" || BigInt_Subtract(tctx, a, b).String() != "-9" {
@@ -153,27 +153,27 @@ func TestBigInt(t *testing.T) {
 	}
 	for _, tt := range []struct {
 		text  string
-		radix int64
-		max   Option[int64]
+		radix int
+		max   Option[int]
 		err   string
 	}{
-		{"12", 1, None[int64](), "BigIntError_InvalidInput"}, {"12", 10, Some(int64(-1)), "BigIntError_InvalidInput"},
-		{"-123", 10, Some(int64(2)), "BigIntError_LimitExceeded"}, {"zz!", 10, Some(int64(1)), "BigIntError_LimitExceeded"},
-		{"1x", 10, None[int64](), "BigIntError_InvalidData"}, {"", 10, None[int64](), "BigIntError_InvalidData"},
+		{"12", 1, None[int](), "BigIntError_InvalidInput"}, {"12", 10, Some(int(-1)), "BigIntError_InvalidInput"},
+		{"-123", 10, Some(int(2)), "BigIntError_LimitExceeded"}, {"zz!", 10, Some(int(1)), "BigIntError_LimitExceeded"},
+		{"1x", 10, None[int](), "BigIntError_InvalidData"}, {"", 10, None[int](), "BigIntError_InvalidData"},
 	} {
 		r := Bigint_Parse(tctx, tt.text, tt.radix, tt.max)
 		if !r.Failed || reflect.TypeOf(r.Err).Name() != tt.err {
 			t.Errorf("%q: %v", tt.text, r)
 		}
 	}
-	if r := Bigint_Parse(tctx, "-123", 10, Some(int64(3))); r.Failed || r.Val.String() != "-123" {
+	if r := Bigint_Parse(tctx, "-123", 10, Some(int(3))); r.Failed || r.Val.String() != "-123" {
 		t.Fatal("sign is not a digit")
 	}
 }
 
 func TestBytesOperations(t *testing.T) {
 	data := NewBytes([]byte{1, 0, 2, 0, 3})
-	if Bytes_At(tctx, data, -1) != Some(int64(3)) || Bytes_At(tctx, data, 5).Some || Bytes_At(tctx, data, -6).Some {
+	if Bytes_At(tctx, data, -1) != Some(int(3)) || Bytes_At(tctx, data, 5).Some || Bytes_At(tctx, data, -6).Some {
 		t.Fatal("at")
 	}
 	if r := Bytes_Slice(tctx, data, 1, -1); r.Failed || !reflect.DeepEqual(r.Val.Data, []byte{0, 2, 0}) || cap(r.Val.Data) != 3 {
@@ -196,13 +196,13 @@ func TestBytesOperations(t *testing.T) {
 		t.Fatalf("value fault %q", got)
 	}
 	zero := NewBytes([]byte{0})
-	if Bytes_IndexOf(tctx, data, zero) != Some(int64(1)) || Bytes_LastIndexOf(tctx, data, zero) != Some(int64(3)) || Bytes_IndexOf(tctx, data, NewBytes(nil)) != Some(int64(0)) || Bytes_LastIndexOf(tctx, data, NewBytes(nil)) != Some(int64(5)) {
+	if Bytes_IndexOf(tctx, data, zero) != Some(int(1)) || Bytes_LastIndexOf(tctx, data, zero) != Some(int(3)) || Bytes_IndexOf(tctx, data, NewBytes(nil)) != Some(int(0)) || Bytes_LastIndexOf(tctx, data, NewBytes(nil)) != Some(int(5)) {
 		t.Fatal("index_of")
 	}
 	if !Bytes_StartsWith(tctx, data, NewBytes([]byte{1, 0})) || !Bytes_EndsWith(tctx, data, NewBytes([]byte{0, 3})) || !Bytes_Contains(tctx, data, NewBytes([]byte{2, 0})) {
 		t.Fatal("affixes")
 	}
-	if !reflect.DeepEqual(Bytes_Reversed(tctx, data).Data, []byte{3, 0, 2, 0, 1}) || !reflect.DeepEqual(Bytes_Values(tctx, data).Items, []int64{1, 0, 2, 0, 3}) {
+	if !reflect.DeepEqual(Bytes_Reversed(tctx, data).Data, []byte{3, 0, 2, 0, 1}) || !reflect.DeepEqual(Bytes_Values(tctx, data).Items, []int{1, 0, 2, 0, 3}) {
 		t.Fatal("reversed/values")
 	}
 	if !reflect.DeepEqual(Bytes_Concat(tctx, data, zero).Data, []byte{1, 0, 2, 0, 3, 0}) || Bytes_Length(tctx, data) != 5 || Bytes_IsEmpty(tctx, data) {
@@ -218,8 +218,8 @@ func TestBytesOperations(t *testing.T) {
 
 func TestBytesSplitSharesImmutableViewsAndCopiesOuterStorage(t *testing.T) {
 	data := NewBytes([]byte{1, 0, 2})
-	first := Bytes_Split(tctx, data, NewBytes([]byte{0}), None[int64]())
-	second := Bytes_Split(tctx, data, NewBytes([]byte{0}), None[int64]())
+	first := Bytes_Split(tctx, data, NewBytes([]byte{0}), None[int]())
+	second := Bytes_Split(tctx, data, NewBytes([]byte{0}), None[int]())
 	if first == second || &first.Items[0] == &second.Items[0] {
 		t.Fatal("byte parts share outer storage")
 	}
@@ -229,19 +229,19 @@ func TestBytesSplitSharesImmutableViewsAndCopiesOuterStorage(t *testing.T) {
 			t.Fatal("byte part copied immutable backing storage", i)
 		}
 	}
-	if got := Bytes_Split(tctx, NewBytes(nil), NewBytes([]byte{0}), None[int64]()); len(got.Items) != 1 || len(got.Items[0].Data) != 0 {
+	if got := Bytes_Split(tctx, NewBytes(nil), NewBytes([]byte{0}), None[int]()); len(got.Items) != 1 || len(got.Items[0].Data) != 0 {
 		t.Fatal("empty data, nonempty separator yields one empty part")
 	}
-	if got := Bytes_Split(tctx, NewBytes(nil), NewBytes(nil), None[int64]()); len(got.Items) != 0 {
+	if got := Bytes_Split(tctx, NewBytes(nil), NewBytes(nil), None[int]()); len(got.Items) != 0 {
 		t.Fatal("empty data, empty separator yields none")
 	}
-	if got := Bytes_Split(tctx, NewBytes([]byte{1, 2, 3}), NewBytes(nil), Some(int64(2))); len(got.Items) != 2 {
+	if got := Bytes_Split(tctx, NewBytes([]byte{1, 2, 3}), NewBytes(nil), Some(int(2))); len(got.Items) != 2 {
 		t.Fatal("empty separator capped")
 	}
-	if got := Bytes_Split(tctx, NewBytes([]byte{1, 0, 2, 0, 3}), NewBytes([]byte{0}), Some(int64(2))); len(got.Items) != 2 {
+	if got := Bytes_Split(tctx, NewBytes([]byte{1, 0, 2, 0, 3}), NewBytes([]byte{0}), Some(int(2))); len(got.Items) != 2 {
 		t.Fatal("cap truncates")
 	}
-	if got := faultMessage(func() { Bytes_Split(tctx, data, NewBytes([]byte{0}), Some(int64(-7))) }); got != "split: max_parts must be nonnegative, found -7" {
+	if got := faultMessage(func() { Bytes_Split(tctx, data, NewBytes([]byte{0}), Some(int(-7))) }); got != "split: max_parts must be nonnegative, found -7" {
 		t.Fatalf("split fault %q", got)
 	}
 }
@@ -258,7 +258,7 @@ func TestBytesSplitCancellation(t *testing.T) {
 					t.Fatal("cancelled split did not unwind")
 				}
 			}()
-			Bytes_Split(ctx, NewBytes([]byte(strings.Repeat("a\x00", 4096))), NewBytes(separator), None[int64]())
+			Bytes_Split(ctx, NewBytes([]byte(strings.Repeat("a\x00", 4096))), NewBytes(separator), None[int]())
 		}()
 	}
 }
@@ -285,41 +285,41 @@ func TestEncoding(t *testing.T) {
 	if Encoding_HexEncode(tctx, data) != "fbff00" || Encoding_Base64Encode(tctx, data, false) != "+/8A" || Encoding_Base64Encode(tctx, data, true) != "-_8A" {
 		t.Fatal("encode")
 	}
-	if r := Encoding_HexDecode(tctx, "FBff00", None[int64]()); r.Failed || !reflect.DeepEqual(r.Val.Data, data.Data) {
+	if r := Encoding_HexDecode(tctx, "FBff00", None[int]()); r.Failed || !reflect.DeepEqual(r.Val.Data, data.Data) {
 		t.Fatal("hex decode")
 	}
-	if r := Encoding_HexDecode(tctx, "abc", None[int64]()); !r.Failed {
+	if r := Encoding_HexDecode(tctx, "abc", None[int]()); !r.Failed {
 		t.Fatal("odd hex")
 	} else if _, ok := r.Err.(EncodingError_InvalidData); !ok {
 		t.Fatal("odd hex case")
 	}
-	if r := Encoding_HexDecode(tctx, "aabb", Some(int64(1))); !r.Failed {
+	if r := Encoding_HexDecode(tctx, "aabb", Some(int(1))); !r.Failed {
 		t.Fatal("hex budget")
 	} else if _, ok := r.Err.(EncodingError_LimitExceeded); !ok {
 		t.Fatal("hex budget case")
 	}
-	if r := Encoding_HexDecode(tctx, "aa", Some(int64(-1))); !r.Failed {
+	if r := Encoding_HexDecode(tctx, "aa", Some(int(-1))); !r.Failed {
 		t.Fatal("negative budget")
 	} else if _, ok := r.Err.(EncodingError_InvalidInput); !ok {
 		t.Fatal("negative budget case")
 	}
-	if r := Encoding_Base64Decode(tctx, "+/8A", false, None[int64]()); r.Failed || !reflect.DeepEqual(r.Val.Data, data.Data) {
+	if r := Encoding_Base64Decode(tctx, "+/8A", false, None[int]()); r.Failed || !reflect.DeepEqual(r.Val.Data, data.Data) {
 		t.Fatal("base64 decode")
 	}
-	if r := Encoding_Base64Decode(tctx, "-_8A", true, None[int64]()); r.Failed || !reflect.DeepEqual(r.Val.Data, data.Data) {
+	if r := Encoding_Base64Decode(tctx, "-_8A", true, None[int]()); r.Failed || !reflect.DeepEqual(r.Val.Data, data.Data) {
 		t.Fatal("url-safe decode")
 	}
 	for _, bad := range []string{"-_8A", "+/8", "+/8A\n", "====", "QQ=", "QR=="} {
-		if r := Encoding_Base64Decode(tctx, bad, false, None[int64]()); !r.Failed {
+		if r := Encoding_Base64Decode(tctx, bad, false, None[int]()); !r.Failed {
 			t.Errorf("accepted %q", bad)
 		}
 	}
-	if r := Encoding_Base64Decode(tctx, "+/8A", false, Some(int64(2))); !r.Failed {
+	if r := Encoding_Base64Decode(tctx, "+/8A", false, Some(int(2))); !r.Failed {
 		t.Fatal("base64 budget")
 	} else if _, ok := r.Err.(EncodingError_LimitExceeded); !ok {
 		t.Fatal("base64 budget case")
 	}
-	if r := Encoding_Base64Decode(tctx, "QQ==", false, Some(int64(1))); r.Failed {
+	if r := Encoding_Base64Decode(tctx, "QQ==", false, Some(int(1))); r.Failed {
 		t.Fatal("padding is not counted against the budget")
 	}
 }
@@ -354,7 +354,7 @@ func TestBinary(t *testing.T) {
 		t.Fatalf("write little endian: %v", r)
 	}
 	for _, tt := range []struct {
-		value, width int64
+		value, width int
 		signed       bool
 	}{{128, 1, true}, {-129, 1, true}, {256, 1, false}, {-1, 8, false}, {-1, 4, false}} {
 		if r := Binary_WriteInteger(tctx, tt.value, tt.width, tt.signed, false); !r.Failed {
@@ -381,33 +381,33 @@ func TestRegex(t *testing.T) {
 	if !Regex_Matches(tctx, re, "baab") || Regex_Matches(tctx, re, "bbb") {
 		t.Fatal("matches")
 	}
-	if r := Regex_FindAll(tctx, re, "a aa aaa", None[int64]()); r.Failed || !reflect.DeepEqual(r.Val.Items, []string{"a", "aa", "aaa"}) {
+	if r := Regex_FindAll(tctx, re, "a aa aaa", None[int]()); r.Failed || !reflect.DeepEqual(r.Val.Items, []string{"a", "aa", "aaa"}) {
 		t.Fatalf("find_all %v", r)
 	}
-	if r := Regex_FindAll(tctx, re, "a aa aaa", Some(int64(3))); r.Failed {
+	if r := Regex_FindAll(tctx, re, "a aa aaa", Some(int(3))); r.Failed {
 		t.Fatal("exact cap")
 	}
-	if r := Regex_FindAll(tctx, re, "a aa aaa", Some(int64(2))); !r.Failed {
+	if r := Regex_FindAll(tctx, re, "a aa aaa", Some(int(2))); !r.Failed {
 		t.Fatal("cap exceeded")
 	} else if _, ok := r.Err.(RegexError_LimitExceeded); !ok {
 		t.Fatal("cap case")
 	}
-	if r := Regex_FindAll(tctx, re, "b", Some(int64(0))); r.Failed || len(r.Val.Items) != 0 {
+	if r := Regex_FindAll(tctx, re, "b", Some(int(0))); r.Failed || len(r.Val.Items) != 0 {
 		t.Fatalf("zero cap without matches: %v", r)
 	}
-	if r := Regex_FindAll(tctx, re, "a", Some(int64(-1))); !r.Failed {
+	if r := Regex_FindAll(tctx, re, "a", Some(int(-1))); !r.Failed {
 		t.Fatal("negative cap")
 	}
-	if r := Regex_ReplaceAll(tctx, re, "xaay", "<>", None[int64]()); r.Failed || r.Val != "x<>y" {
+	if r := Regex_ReplaceAll(tctx, re, "xaay", "<>", None[int]()); r.Failed || r.Val != "x<>y" {
 		t.Fatalf("replace_all %v", r)
 	}
-	if r := Regex_ReplaceAll(tctx, re, "xaay", "<$0>", None[int64]()); r.Val != "x<$0>y" {
+	if r := Regex_ReplaceAll(tctx, re, "xaay", "<$0>", None[int]()); r.Val != "x<$0>y" {
 		t.Fatal("replacement is literal")
 	}
-	if r := Regex_ReplaceAll(tctx, re, "xaay", "<>", Some(int64(3))); !r.Failed {
+	if r := Regex_ReplaceAll(tctx, re, "xaay", "<>", Some(int(3))); !r.Failed {
 		t.Fatal("replace budget")
 	}
-	if r := Regex_ReplaceAll(tctx, re, "xaay", "<>", Some(int64(4))); r.Failed {
+	if r := Regex_ReplaceAll(tctx, re, "xaay", "<>", Some(int(4))); r.Failed {
 		t.Fatal("exact replace budget")
 	}
 }

@@ -42,7 +42,7 @@ func wasCancelled(f func()) (ok bool) {
 	return false
 }
 
-func jsonLimits(bytes, depth, values Option[int64]) Option[*JsonLimits] {
+func jsonLimits(bytes, depth, values Option[int]) Option[*JsonLimits] {
 	return Some(&JsonLimits{MaxBytes: bytes, MaxDepth: depth, MaxValues: values})
 }
 
@@ -62,7 +62,7 @@ func TestJsonParseValues(t *testing.T) {
 	if n.(JsonValue_NumberValue).Text != "9007199254740993" {
 		t.Fatalf("number lost precision: %#v", n)
 	}
-	out := mustOk(t, stringifyTree(ctx, v, None[int64]()))
+	out := mustOk(t, stringifyTree(ctx, v, None[int]()))
 	if out != `{"a":[1,2.50,true,null,"x"],"n":9007199254740993}` {
 		t.Fatalf("stringify = %s", out)
 	}
@@ -78,8 +78,8 @@ func TestJsonParseErrors(t *testing.T) {
 
 func TestJsonLimits(t *testing.T) {
 	ctx := RootExecution()
-	some := func(n int64) Option[int64] { return Some(n) }
-	none := None[int64]()
+	some := func(n int) Option[int] { return Some(n) }
+	none := None[int]()
 	var limit JsonError = JsonError_LimitExceeded{}
 	mustFail(t, parseTree(ctx, `[1]`, jsonLimits(some(2), none, none)), limit)
 	mustOk(t, parseTree(ctx, `[1]`, jsonLimits(some(3), none, none)))
@@ -100,29 +100,29 @@ func TestJsonLimits(t *testing.T) {
 func TestJsonStringify(t *testing.T) {
 	ctx := RootExecution()
 	str := func(s string) JsonValue { return JsonValue_StringValue{Value: s} }
-	got := mustOk(t, stringifyTree(ctx, str("<a&b>\u2028\"\n"), None[int64]()))
+	got := mustOk(t, stringifyTree(ctx, str("<a&b>\u2028\"\n"), None[int]()))
 	if got != `"\u003ca\u0026b\u003e\u2028\"\n"` {
 		t.Fatalf("got %s", got)
 	}
 	for _, bad := range []string{"", "-", "1.", "01", "+1", "1e", "NaN", " 1", "0x1", ".5"} {
-		mustFail(t, stringifyTree(ctx, JsonValue_NumberValue{Text: bad}, None[int64]()), JsonError(JsonError_InvalidData{}))
+		mustFail(t, stringifyTree(ctx, JsonValue_NumberValue{Text: bad}, None[int]()), JsonError(JsonError_InvalidData{}))
 	}
-	mustOk(t, stringifyTree(ctx, JsonValue_NumberValue{Text: "-1.5e+10"}, None[int64]()))
-	mustFail(t, stringifyTree(ctx, str("hello"), Some(int64(6))), JsonError(JsonError_LimitExceeded{}))
-	mustOk(t, stringifyTree(ctx, str("hello"), Some(int64(7))))
-	mustFail(t, stringifyTree(ctx, str("x"), Some(int64(-1))), JsonError(JsonError_InvalidInput{}))
+	mustOk(t, stringifyTree(ctx, JsonValue_NumberValue{Text: "-1.5e+10"}, None[int]()))
+	mustFail(t, stringifyTree(ctx, str("hello"), Some(int(6))), JsonError(JsonError_LimitExceeded{}))
+	mustOk(t, stringifyTree(ctx, str("hello"), Some(int(7))))
+	mustFail(t, stringifyTree(ctx, str("x"), Some(int(-1))), JsonError(JsonError_InvalidInput{}))
 	// Cyclic values are rejected, shared acyclic values are not.
 	list := NewList[JsonValue]()
 	list.Items = append(list.Items, JsonValue_ArrayValue{Values: list})
-	mustFail(t, stringifyTree(ctx, JsonValue_ArrayValue{Values: list}, None[int64]()), JsonError(JsonError_InvalidData{}))
+	mustFail(t, stringifyTree(ctx, JsonValue_ArrayValue{Values: list}, None[int]()), JsonError(JsonError_InvalidData{}))
 	m := NewMap[string, JsonValue]()
 	m.Put("self", JsonValue_ObjectValue{Values: m})
-	mustFail(t, stringifyTree(ctx, JsonValue_ObjectValue{Values: m}, None[int64]()), JsonError(JsonError_InvalidData{}))
+	mustFail(t, stringifyTree(ctx, JsonValue_ObjectValue{Values: m}, None[int]()), JsonError(JsonError_InvalidData{}))
 	shared := JsonValue_ArrayValue{Values: NewList[JsonValue](JsonValue_Null{})}
-	if got := mustOk(t, stringifyTree(ctx, JsonValue_ArrayValue{Values: NewList[JsonValue](shared, shared)}, None[int64]())); got != "[[null],[null]]" {
+	if got := mustOk(t, stringifyTree(ctx, JsonValue_ArrayValue{Values: NewList[JsonValue](shared, shared)}, None[int]())); got != "[[null],[null]]" {
 		t.Fatalf("shared = %s", got)
 	}
-	if !wasCancelled(func() { stringifyTree(cancelledExec(), JsonValue_Null{}, None[int64]()) }) {
+	if !wasCancelled(func() { stringifyTree(cancelledExec(), JsonValue_Null{}, None[int]()) }) {
 		t.Fatal("stringify ignored cancellation")
 	}
 }
@@ -163,13 +163,13 @@ func FuzzJsonRoundTrip(f *testing.F) {
 		f.Add(s)
 	}
 	ctx := RootExecution()
-	limits := jsonLimits(Some(int64(1<<16)), Some(int64(32)), Some(int64(1<<12)))
+	limits := jsonLimits(Some(int(1<<16)), Some(int(32)), Some(int(1<<12)))
 	f.Fuzz(func(t *testing.T, text string) {
 		parsed := parseTree(ctx, text, limits)
 		if parsed.Failed {
 			return
 		}
-		out := stringifyTree(ctx, parsed.Val, Some(int64(1<<20)))
+		out := stringifyTree(ctx, parsed.Val, Some(int(1<<20)))
 		if out.Failed {
 			t.Fatalf("parsed value does not stringify: %q -> %#v", text, out.Err)
 		}
@@ -213,35 +213,35 @@ func rowsEqual(a, b *List[*List[string]]) bool {
 func TestCsvParseAndStringify(t *testing.T) {
 	ctx := RootExecution()
 	def := csvOpts(",", "\n")
-	rows := mustOk(t, Csv_Parse(ctx, "a,b\n\n\"q\"\"x\",\r\nc\r\n", def, None[int64](), None[int64]()))
+	rows := mustOk(t, Csv_Parse(ctx, "a,b\n\n\"q\"\"x\",\r\nc\r\n", def, None[int](), None[int]()))
 	if !rowsEqual(rows, rowsOf([]string{"a", "b"}, []string{`q"x`, ""}, []string{"c"})) {
 		t.Fatalf("rows = %v", rows)
 	}
-	if got := mustOk(t, Csv_Stringify(ctx, rowsOf([]string{"a", "b c", " d", `e"f`}, []string{""}, []string{}), def, None[int64]())); got != "a,b c,\" d\",\"e\"\"f\"\n\"\"\n\n" {
+	if got := mustOk(t, Csv_Stringify(ctx, rowsOf([]string{"a", "b c", " d", `e"f`}, []string{""}, []string{}), def, None[int]())); got != "a,b c,\" d\",\"e\"\"f\"\n\"\"\n\n" {
 		t.Fatalf("stringify = %q", got)
 	}
-	if got := mustOk(t, Csv_Stringify(ctx, rowsOf([]string{"a", "x\ny"}), csvOpts(";", "\r\n"), None[int64]())); got != "a;\"x\r\ny\"\r\n" {
+	if got := mustOk(t, Csv_Stringify(ctx, rowsOf([]string{"a", "x\ny"}), csvOpts(";", "\r\n"), None[int]())); got != "a;\"x\r\ny\"\r\n" {
 		t.Fatalf("crlf = %q", got)
 	}
 }
 
 func TestCsvErrorsAndLimits(t *testing.T) {
 	ctx := RootExecution()
-	none := None[int64]()
+	none := None[int]()
 	for _, o := range []*CsvOptions{csvOpts("", "\n"), csvOpts(",,", "\n"), csvOpts("\"", "\n"), csvOpts("\n", "\n"), csvOpts("\x00", "\n"), csvOpts("é", "\n"), csvOpts(",", "\r"), csvOpts(",", "")} {
 		mustFail(t, Csv_Parse(ctx, "a", o, none, none), CsvError(CsvError_InvalidInput{}))
 		mustFail(t, Csv_Stringify(ctx, rowsOf(), o, none), CsvError(CsvError_InvalidInput{}))
 	}
-	mustFail(t, Csv_Parse(ctx, "a", csvOpts(",", "\n"), Some(int64(-1)), none), CsvError(CsvError_InvalidInput{}))
-	mustFail(t, Csv_Parse(ctx, "a", csvOpts(",", "\n"), none, Some(int64(-1))), CsvError(CsvError_InvalidInput{}))
+	mustFail(t, Csv_Parse(ctx, "a", csvOpts(",", "\n"), Some(int(-1)), none), CsvError(CsvError_InvalidInput{}))
+	mustFail(t, Csv_Parse(ctx, "a", csvOpts(",", "\n"), none, Some(int(-1))), CsvError(CsvError_InvalidInput{}))
 	mustFail(t, Csv_Parse(ctx, "a,\"b", csvOpts(",", "\n"), none, none), CsvError(CsvError_InvalidData{}))
-	mustFail(t, Csv_Parse(ctx, "a\nb\n", csvOpts(",", "\n"), Some(int64(1)), none), CsvError(CsvError_LimitExceeded{}))
-	mustOk(t, Csv_Parse(ctx, "a\nb\n", csvOpts(",", "\n"), Some(int64(2)), none))
-	mustFail(t, Csv_Parse(ctx, "a,b\nc\n", csvOpts(",", "\n"), none, Some(int64(2))), CsvError(CsvError_LimitExceeded{}))
-	mustOk(t, Csv_Parse(ctx, "a,b\nc\n", csvOpts(",", "\n"), none, Some(int64(3))))
-	mustFail(t, Csv_Stringify(ctx, rowsOf([]string{"abc"}), csvOpts(",", "\n"), Some(int64(3))), CsvError(CsvError_LimitExceeded{}))
-	mustOk(t, Csv_Stringify(ctx, rowsOf([]string{"abc"}), csvOpts(",", "\n"), Some(int64(4))))
-	mustFail(t, Csv_Stringify(ctx, rowsOf(), csvOpts(",", "\n"), Some(int64(-1))), CsvError(CsvError_InvalidInput{}))
+	mustFail(t, Csv_Parse(ctx, "a\nb\n", csvOpts(",", "\n"), Some(int(1)), none), CsvError(CsvError_LimitExceeded{}))
+	mustOk(t, Csv_Parse(ctx, "a\nb\n", csvOpts(",", "\n"), Some(int(2)), none))
+	mustFail(t, Csv_Parse(ctx, "a,b\nc\n", csvOpts(",", "\n"), none, Some(int(2))), CsvError(CsvError_LimitExceeded{}))
+	mustOk(t, Csv_Parse(ctx, "a,b\nc\n", csvOpts(",", "\n"), none, Some(int(3))))
+	mustFail(t, Csv_Stringify(ctx, rowsOf([]string{"abc"}), csvOpts(",", "\n"), Some(int(3))), CsvError(CsvError_LimitExceeded{}))
+	mustOk(t, Csv_Stringify(ctx, rowsOf([]string{"abc"}), csvOpts(",", "\n"), Some(int(4))))
+	mustFail(t, Csv_Stringify(ctx, rowsOf(), csvOpts(",", "\n"), Some(int(-1))), CsvError(CsvError_InvalidInput{}))
 }
 
 func TestCsvStringifyKeepsCarriageReturns(t *testing.T) {
@@ -249,8 +249,8 @@ func TestCsvStringifyKeepsCarriageReturns(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n"} {
 		options := csvOpts(",", ending)
 		rows := rowsOf([]string{"a\rb", "\r", "x\ny", ""}, []string{""})
-		out := mustOk(t, Csv_Stringify(ctx, rows, options, Some(int64(1000))))
-		back := mustOk(t, Csv_Parse(ctx, out, options, Some(int64(10)), Some(int64(10))))
+		out := mustOk(t, Csv_Stringify(ctx, rows, options, Some(int(1000))))
+		back := mustOk(t, Csv_Parse(ctx, out, options, Some(int(10)), Some(int(10))))
 		if !rowsEqual(rows, back) {
 			t.Fatalf("%q: %q changed rows", ending, out)
 		}
@@ -277,11 +277,11 @@ func FuzzCsvRoundTrip(f *testing.F) {
 			lines = append(lines, strings.Split(line, string([]byte{delimiter})))
 		}
 		rows := rowsOf(lines...)
-		out := Csv_Stringify(ctx, rows, options, Some(int64(1<<20)))
+		out := Csv_Stringify(ctx, rows, options, Some(int(1<<20)))
 		if out.Failed {
 			t.Fatalf("stringify failed: %#v", out.Err)
 		}
-		back := Csv_Parse(ctx, out.Val, options, Some(int64(1<<20)), Some(int64(1<<20)))
+		back := Csv_Parse(ctx, out.Val, options, Some(int(1<<20)), Some(int(1<<20)))
 		if back.Failed || !rowsEqual(rows, back.Val) {
 			t.Fatalf("round trip changed rows: %q -> %q", text, out.Val)
 		}
@@ -292,51 +292,51 @@ func TestCompressRoundTripAndErrors(t *testing.T) {
 	ctx := RootExecution()
 	data := NewBytes([]byte(strings.Repeat("hello manuscript ", 200)))
 	for _, f := range []string{"gzip", "zlib", "deflate"} {
-		for _, level := range []int64{0, 1, 6, 9} {
-			enc := mustOk(t, Compress_Compress(ctx, data, f, level, None[int64]()))
-			dec := mustOk(t, Compress_Decompress(ctx, enc, f, Some(int64(len(data.Data)))))
+		for _, level := range []int{0, 1, 6, 9} {
+			enc := mustOk(t, Compress_Compress(ctx, data, f, level, None[int]()))
+			dec := mustOk(t, Compress_Decompress(ctx, enc, f, Some(int(len(data.Data)))))
 			if string(dec.Data) != string(data.Data) {
 				t.Fatalf("%s level %d round trip", f, level)
 			}
-			mustFail(t, Compress_Decompress(ctx, enc, f, Some(int64(len(data.Data)-1))), CompressionError(CompressionError_LimitExceeded{}))
+			mustFail(t, Compress_Decompress(ctx, enc, f, Some(int(len(data.Data)-1))), CompressionError(CompressionError_LimitExceeded{}))
 		}
 	}
-	for _, level := range []int64{-1, 10} {
-		mustFail(t, Compress_Compress(ctx, data, "gzip", level, None[int64]()), CompressionError(CompressionError_InvalidInput{}))
+	for _, level := range []int{-1, 10} {
+		mustFail(t, Compress_Compress(ctx, data, "gzip", level, None[int]()), CompressionError(CompressionError_InvalidInput{}))
 	}
-	mustFail(t, Compress_Compress(ctx, data, "gzip", 6, Some(int64(-1))), CompressionError(CompressionError_InvalidInput{}))
-	mustFail(t, Compress_Decompress(ctx, data, "gzip", Some(int64(-1))), CompressionError(CompressionError_InvalidInput{}))
-	mustFail(t, Compress_Compress(ctx, data, "GZIP", 6, None[int64]()), CompressionError(CompressionError_Unsupported{}))
-	mustFail(t, Compress_Decompress(ctx, data, "br", None[int64]()), CompressionError(CompressionError_Unsupported{}))
-	mustFail(t, Compress_Compress(ctx, data, "gzip", 6, Some(int64(10))), CompressionError(CompressionError_LimitExceeded{}))
-	mustFail(t, Compress_Decompress(ctx, data, "gzip", None[int64]()), CompressionError(CompressionError_InvalidData{}))
-	enc := mustOk(t, Compress_Compress(ctx, data, "zlib", 6, None[int64]()))
-	mustFail(t, Compress_Decompress(ctx, NewBytes(append(append([]byte{}, enc.Data...), 0)), "zlib", None[int64]()), CompressionError(CompressionError_InvalidData{}))
+	mustFail(t, Compress_Compress(ctx, data, "gzip", 6, Some(int(-1))), CompressionError(CompressionError_InvalidInput{}))
+	mustFail(t, Compress_Decompress(ctx, data, "gzip", Some(int(-1))), CompressionError(CompressionError_InvalidInput{}))
+	mustFail(t, Compress_Compress(ctx, data, "GZIP", 6, None[int]()), CompressionError(CompressionError_Unsupported{}))
+	mustFail(t, Compress_Decompress(ctx, data, "br", None[int]()), CompressionError(CompressionError_Unsupported{}))
+	mustFail(t, Compress_Compress(ctx, data, "gzip", 6, Some(int(10))), CompressionError(CompressionError_LimitExceeded{}))
+	mustFail(t, Compress_Decompress(ctx, data, "gzip", None[int]()), CompressionError(CompressionError_InvalidData{}))
+	enc := mustOk(t, Compress_Compress(ctx, data, "zlib", 6, None[int]()))
+	mustFail(t, Compress_Decompress(ctx, NewBytes(append(append([]byte{}, enc.Data...), 0)), "zlib", None[int]()), CompressionError(CompressionError_InvalidData{}))
 	// Concatenated gzip members share one cumulative limit.
-	one := mustOk(t, Compress_Compress(ctx, NewBytes([]byte("abcd")), "gzip", 6, None[int64]()))
+	one := mustOk(t, Compress_Compress(ctx, NewBytes([]byte("abcd")), "gzip", 6, None[int]()))
 	two := NewBytes(append(append([]byte{}, one.Data...), one.Data...))
-	if got := mustOk(t, Compress_Decompress(ctx, two, "gzip", Some(int64(8)))); string(got.Data) != "abcdabcd" {
+	if got := mustOk(t, Compress_Decompress(ctx, two, "gzip", Some(int(8)))); string(got.Data) != "abcdabcd" {
 		t.Fatalf("members = %q", got.Data)
 	}
-	mustFail(t, Compress_Decompress(ctx, two, "gzip", Some(int64(7))), CompressionError(CompressionError_LimitExceeded{}))
+	mustFail(t, Compress_Decompress(ctx, two, "gzip", Some(int(7))), CompressionError(CompressionError_LimitExceeded{}))
 }
 
 func TestCompressionFormatSelectors(t *testing.T) {
 	ctx := RootExecution()
 	in := NewBytes([]byte("hello"))
 	for _, f := range []CompressionFormat{CompressionFormat_Gzip{}, CompressionFormat_Zlib{}, CompressionFormat_Deflate{}} {
-		enc := mustOk(t, CompressionFormat_Compress(ctx, f, in, 6, None[int64]()))
-		dec := mustOk(t, CompressionFormat_Decompress(ctx, f, enc, Some(int64(5))))
+		enc := mustOk(t, CompressionFormat_Compress(ctx, f, in, 6, None[int]()))
+		dec := mustOk(t, CompressionFormat_Decompress(ctx, f, enc, Some(int(5))))
 		if string(dec.Data) != "hello" {
 			t.Fatalf("%T", f)
 		}
 	}
 	// Gzip output has a zero timestamp and no name metadata.
-	enc := mustOk(t, Compress_Compress(ctx, in, "gzip", 6, None[int64]()))
+	enc := mustOk(t, Compress_Compress(ctx, in, "gzip", 6, None[int]()))
 	if hex.EncodeToString(enc.Data[:8]) != "1f8b080000000000" {
 		t.Fatalf("header = %x", enc.Data[:10])
 	}
-	if !wasCancelled(func() { CompressionFormat_Compress(cancelledExec(), CompressionFormat_Gzip{}, in, 6, None[int64]()) }) {
+	if !wasCancelled(func() { CompressionFormat_Compress(cancelledExec(), CompressionFormat_Gzip{}, in, 6, None[int]()) }) {
 		t.Fatal("selector ignored cancellation")
 	}
 }
@@ -349,8 +349,8 @@ func TestArchiveRoundTrip(t *testing.T) {
 		&ArchiveEntry{Path: "empty", Data: NewBytes([]byte{}), Directory: false},
 	)
 	for _, format := range []ArchiveFormat{ArchiveFormat_Zip{}, ArchiveFormat_Tar{}} {
-		packed := mustOk(t, ArchiveFormat_Pack(ctx, format, entries, None[int64]()))
-		again := mustOk(t, ArchiveFormat_Pack(ctx, format, entries, None[int64]()))
+		packed := mustOk(t, ArchiveFormat_Pack(ctx, format, entries, None[int]()))
+		again := mustOk(t, ArchiveFormat_Pack(ctx, format, entries, None[int]()))
 		if string(packed.Data) != string(again.Data) {
 			t.Fatalf("%T pack is not deterministic", format)
 		}
@@ -367,7 +367,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 	}
 	// A trailing slash on a directory is accepted and dropped.
 	slash := NewList(&ArchiveEntry{Path: "d/", Data: NewBytes(nil), Directory: true})
-	packed := mustOk(t, Archive_Pack(ctx, slash, "tar", None[int64]()))
+	packed := mustOk(t, Archive_Pack(ctx, slash, "tar", None[int]()))
 	if got := mustOk(t, Archive_Unpack(ctx, packed, "tar", None[*ArchiveLimits]())); got.Items[0].Path != "d" {
 		t.Fatalf("path = %q", got.Items[0].Path)
 	}
@@ -377,7 +377,7 @@ func TestArchivePackValidation(t *testing.T) {
 	ctx := RootExecution()
 	file := func(p string) *ArchiveEntry { return &ArchiveEntry{Path: p, Data: NewBytes([]byte("x"))} }
 	pack := func(format string, e ...*ArchiveEntry) Result[*Bytes, ArchiveError] {
-		return Archive_Pack(ctx, NewList(e...), format, None[int64]())
+		return Archive_Pack(ctx, NewList(e...), format, None[int]())
 	}
 	var invalidInput ArchiveError = ArchiveError_InvalidInput{}
 	for _, p := range []string{"", "/abs", "a/../b", "..", ".", "a//b", "a\\b", "c:x", "a\x00", "dir/", "\xff"} {
@@ -391,8 +391,8 @@ func TestArchivePackValidation(t *testing.T) {
 	long := file(strings.Repeat("a", 1<<16))
 	mustFail(t, pack("zip", long), invalidInput)
 	mustOk(t, pack("tar", long))
-	mustFail(t, Archive_Pack(ctx, NewList(file("a")), "tar", Some(int64(-1))), invalidInput)
-	mustFail(t, Archive_Pack(ctx, NewList(file("a")), "tar", Some(int64(100))), ArchiveError(ArchiveError_LimitExceeded{}))
+	mustFail(t, Archive_Pack(ctx, NewList(file("a")), "tar", Some(int(-1))), invalidInput)
+	mustFail(t, Archive_Pack(ctx, NewList(file("a")), "tar", Some(int(100))), ArchiveError(ArchiveError_LimitExceeded{}))
 }
 
 func TestArchiveUnpackLimitsAndMalformed(t *testing.T) {
@@ -401,24 +401,24 @@ func TestArchiveUnpackLimitsAndMalformed(t *testing.T) {
 		&ArchiveEntry{Path: "a", Data: NewBytes([]byte("12345"))},
 		&ArchiveEntry{Path: "b", Data: NewBytes([]byte("678"))},
 	)
-	limits := func(n, e, tot Option[int64]) Option[*ArchiveLimits] {
+	limits := func(n, e, tot Option[int]) Option[*ArchiveLimits] {
 		return Some(&ArchiveLimits{MaxEntries: n, MaxEntryBytes: e, MaxTotalBytes: tot})
 	}
-	none := None[int64]()
+	none := None[int]()
 	var limit ArchiveError = ArchiveError_LimitExceeded{}
 	for _, format := range []string{"zip", "tar"} {
-		packed := mustOk(t, Archive_Pack(ctx, entries, format, None[int64]()))
-		mustFail(t, Archive_Unpack(ctx, packed, format, limits(Some(int64(1)), none, none)), limit)
-		mustOk(t, Archive_Unpack(ctx, packed, format, limits(Some(int64(2)), none, none)))
-		mustFail(t, Archive_Unpack(ctx, packed, format, limits(none, Some(int64(4)), none)), limit)
-		mustOk(t, Archive_Unpack(ctx, packed, format, limits(none, Some(int64(5)), none)))
-		mustFail(t, Archive_Unpack(ctx, packed, format, limits(none, none, Some(int64(7)))), limit)
-		mustOk(t, Archive_Unpack(ctx, packed, format, limits(none, none, Some(int64(8)))))
-		mustFail(t, Archive_Unpack(ctx, packed, format, limits(Some(int64(-1)), none, none)), ArchiveError(ArchiveError_InvalidInput{}))
+		packed := mustOk(t, Archive_Pack(ctx, entries, format, None[int]()))
+		mustFail(t, Archive_Unpack(ctx, packed, format, limits(Some(int(1)), none, none)), limit)
+		mustOk(t, Archive_Unpack(ctx, packed, format, limits(Some(int(2)), none, none)))
+		mustFail(t, Archive_Unpack(ctx, packed, format, limits(none, Some(int(4)), none)), limit)
+		mustOk(t, Archive_Unpack(ctx, packed, format, limits(none, Some(int(5)), none)))
+		mustFail(t, Archive_Unpack(ctx, packed, format, limits(none, none, Some(int(7)))), limit)
+		mustOk(t, Archive_Unpack(ctx, packed, format, limits(none, none, Some(int(8)))))
+		mustFail(t, Archive_Unpack(ctx, packed, format, limits(Some(int(-1)), none, none)), ArchiveError(ArchiveError_InvalidInput{}))
 		mustFail(t, Archive_Unpack(ctx, NewBytes([]byte("garbage that is not an archive")), format, None[*ArchiveLimits]()), ArchiveError(ArchiveError_InvalidData{}))
 	}
 	mustFail(t, Archive_Unpack(ctx, NewBytes(nil), "7z", None[*ArchiveLimits]()), ArchiveError(ArchiveError_Unsupported{}))
-	if !wasCancelled(func() { Archive_Pack(cancelledExec(), entries, "zip", None[int64]()) }) {
+	if !wasCancelled(func() { Archive_Pack(cancelledExec(), entries, "zip", None[int]()) }) {
 		t.Fatal("pack ignored cancellation")
 	}
 }
@@ -478,7 +478,7 @@ func TestCryptoDeriveKey(t *testing.T) {
 	if len(long.Data) != 50 {
 		t.Fatalf("len = %d", len(long.Data))
 	}
-	for _, c := range [][2]int64{{0, 32}, {1, 0}, {1, -1}, {1, 1048577}} {
+	for _, c := range [][2]int{{0, 32}, {1, 0}, {1, -1}, {1, 1048577}} {
 		mustFail(t, Crypto_DeriveKey(ctx, NewBytes(nil), NewBytes(nil), c[0], c[1]), CryptoError(CryptoError_InvalidInput{}))
 	}
 }
@@ -514,10 +514,10 @@ type fixedEntropy struct {
 	stream []byte
 	short  bool
 	err    RandomError
-	asked  []int64
+	asked  []int
 }
 
-func (e *fixedEntropy) Bytes(_ *Execution, count int64) Result[*Bytes, RandomError] {
+func (e *fixedEntropy) Bytes(_ *Execution, count int) Result[*Bytes, RandomError] {
 	e.asked = append(e.asked, count)
 	if e.err != nil {
 		return Fail[*Bytes, RandomError](e.err)
@@ -558,26 +558,26 @@ func TestRandomSecureInt(t *testing.T) {
 	ctx := RootExecution()
 	// Width 10 needs 4 bits; the first draw 0x1f&0x0f=15 is rejected, then 7.
 	e := &fixedEntropy{stream: []byte{0x1f, 0x07}}
-	if got := mustOk(t, Random_SecureInt(ctx, e, 100, Some(int64(110)))); got != 107 {
+	if got := mustOk(t, Random_SecureInt(ctx, e, 100, Some(int(110)))); got != 107 {
 		t.Fatalf("got %d", got)
 	}
 	if len(e.asked) != 2 || e.asked[0] != 1 {
 		t.Fatalf("asked = %v", e.asked)
 	}
-	mustFail(t, Random_SecureInt(ctx, e, 5, Some(int64(5))), RandomError(RandomError_InvalidInput{}))
-	mustFail(t, Random_SecureInt(ctx, e, 6, Some(int64(5))), RandomError(RandomError_InvalidInput{}))
-	mustFail(t, Random_SecureInt(ctx, &fixedEntropy{stream: []byte{1}, short: true}, 0, Some(int64(10))), RandomError(RandomError_Failed{Message: "entropy source returned incorrect length"}))
-	mustFail(t, Random_SecureInt(ctx, &fixedEntropy{err: RandomError_LimitExceeded{}}, 0, Some(int64(10))), RandomError(RandomError_LimitExceeded{}))
+	mustFail(t, Random_SecureInt(ctx, e, 5, Some(int(5))), RandomError(RandomError_InvalidInput{}))
+	mustFail(t, Random_SecureInt(ctx, e, 6, Some(int(5))), RandomError(RandomError_InvalidInput{}))
+	mustFail(t, Random_SecureInt(ctx, &fixedEntropy{stream: []byte{1}, short: true}, 0, Some(int(10))), RandomError(RandomError_Failed{Message: "entropy source returned incorrect length"}))
+	mustFail(t, Random_SecureInt(ctx, &fixedEntropy{err: RandomError_LimitExceeded{}}, 0, Some(int(10))), RandomError(RandomError_LimitExceeded{}))
 	// Full range and wide spans need eight bytes and stay in range.
 	for i := 0; i < 200; i++ {
-		v := mustOk(t, Random_SecureInt(ctx, Random_Entropy(ctx), math.MinInt64, None[int64]()))
+		v := mustOk(t, Random_SecureInt(ctx, Random_Entropy(ctx), math.MinInt64, None[int]()))
 		_ = v
-		w := mustOk(t, Random_SecureInt(ctx, Random_Entropy(ctx), -3, Some(int64(4))))
+		w := mustOk(t, Random_SecureInt(ctx, Random_Entropy(ctx), -3, Some(int(4))))
 		if w < -3 || w >= 4 {
 			t.Fatalf("out of range: %d", w)
 		}
 	}
-	if !wasCancelled(func() { Random_SecureInt(cancelledExec(), e, 0, Some(int64(10))) }) {
+	if !wasCancelled(func() { Random_SecureInt(cancelledExec(), e, 0, Some(int(10))) }) {
 		t.Fatal("secure_int ignored cancellation")
 	}
 }
@@ -741,14 +741,14 @@ func TestGlobStarMatching(t *testing.T) {
 	}
 }
 
-func htmlLimits(bytes, depth, nodes Option[int64]) Option[*HtmlLimits] {
+func htmlLimits(bytes, depth, nodes Option[int]) Option[*HtmlLimits] {
 	return Some(&HtmlLimits{MaxBytes: bytes, MaxDepth: depth, MaxNodes: nodes})
 }
 
 func TestHtmlParseLimitsAndInvalidUTF8(t *testing.T) {
 	ctx := RootExecution()
-	none := None[int64]()
-	i := func(n int64) Option[int64] { return Some(n) }
+	none := None[int]()
+	i := func(n int) Option[int] { return Some(n) }
 	// An empty document has Document, html, head and body nodes; head and
 	// body have depth two.
 	for _, test := range []struct {
@@ -899,8 +899,8 @@ func TestDataErrorMessages(t *testing.T) {
 }
 
 // stringifyTree serializes an already-built JsonValue compactly.
-func stringifyTree(ctx *Execution, v JsonValue, max Option[int64]) Result[string, JsonError] {
-	return Json_Stringify(ctx, JsonEncValue, v, max, None[int64]())
+func stringifyTree(ctx *Execution, v JsonValue, max Option[int]) Result[string, JsonError] {
+	return Json_Stringify(ctx, JsonEncValue, v, max, None[int]())
 }
 
 // parseTree parses text into an untyped JsonValue.

@@ -18,7 +18,7 @@ Decimal literals require `import Decimal from "@std/decimal.ms"`; Decimal is an 
 
 | Type | Representation |
 | --- | --- |
-| `Int` | Signed 64-bit integer with checked arithmetic |
+| `Int` | Platform-sized signed integer (Go `int`: 64 bits on 64-bit targets, 32 bits on 32-bit targets) with checked arithmetic |
 | `Float` | IEEE 754 binary64 |
 | `Decimal` | Base-10, 34 significant digits, round half to even |
 | `Bool` | `true` or `false` |
@@ -29,7 +29,7 @@ Numeric conversions are explicit. Int overflow and invalid Int/Decimal operation
 
 Arithmetic operands must have the same exact numeric type, and the result has that type. Unary signs retain their operand type. `%` accepts only `Int` operands. Ordering comparisons accept matching numeric types and return `Bool`; equality additionally follows the [Equal rules](../types/equality-and-hashing.md). The [expression table](expressions.md#operand-and-result-types) is authoritative for operator typing.
 
-Integer literals are checked against the signed 64-bit range at compile time. The magnitude `9223372036854775808` is accepted only as a directly negated integer literal, giving `-9223372036854775808`; parentheses immediately around that literal do not change the check. The positive literal and magnitudes outside either signed boundary are rejected. A Float literal rounds to binary64 using nearest, ties to even; one whose rounded magnitude would be infinite is rejected. Expected numeric types do not change literal types.
+`Int` has the width of the target platform's Go `int`. Every example and fault message in this guide assumes a 64-bit target; on a 32-bit target the range, overflow faults, and conversion limits shrink to signed 32 bits, and a literal outside the target range fails the Go build. Integer literals are checked against the signed 64-bit range at compile time. The magnitude `9223372036854775808` is accepted only as a directly negated integer literal, giving `-9223372036854775808`; parentheses immediately around that literal do not change the check. The positive literal and magnitudes outside either signed boundary are rejected. A Float literal rounds to binary64 using nearest, ties to even; one whose rounded magnitude would be infinite is rejected. Expected numeric types do not change literal types.
 
 ```manuscript
 fn literals() -> Unit:
@@ -56,7 +56,7 @@ For example, `1e300.truncate_to_int()` is `none`. Float +2^63 cannot convert to 
 
 ### Int
 
-Int addition, subtraction, multiplication, and unary negation fault when the mathematical result is outside the signed 64-bit range. Division truncates toward zero. Remainder has the sign of the dividend (or is zero), satisfying `a = (a / b) * b + a % b` mathematically. A zero divisor faults for both operations. Minimum Int divided by -1 faults, while Minimum Int modulo -1 is zero. Unary negation of Minimum Int faults. Thus `-7 / 2` is -3 and `-7 % 3` is -1.
+Int addition, subtraction, multiplication, and unary negation fault when the mathematical result is outside the target `Int` range (signed 64 bits on 64-bit targets). Division truncates toward zero. Remainder has the sign of the dividend (or is zero), satisfying `a = (a / b) * b + a % b` mathematically. A zero divisor faults for both operations. Minimum Int divided by -1 faults, while Minimum Int modulo -1 is zero. Unary negation of Minimum Int faults. Thus `-7 / 2` is -3 and `-7 % 3` is -1.
 
 Int `/` and `%` faults name the operator and the invalid right operand. Division overflow also gives both operands and the signed 64-bit result range. These remain programming faults, while BigInt division returns its declared Result error.
 

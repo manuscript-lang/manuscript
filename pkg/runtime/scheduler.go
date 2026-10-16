@@ -15,8 +15,8 @@ import (
 // New<Type> calls carry no execution), so the scheduler adopts the execution
 // of its first operation as its fixed parent.
 type Scheduler struct {
-	limit        Option[int64]
-	historyLimit Option[int64]
+	limit        Option[int]
+	historyLimit Option[int]
 	drain        Option[Duration]
 	reporter     Option[func(*Execution, SchedulerFailure) Unit]
 
@@ -53,7 +53,7 @@ type scheduledOperation struct {
 }
 
 // NewScheduler constructs a Scheduler from its declared fields in order.
-func NewScheduler(limit, historyLimit Option[int64], drain Option[Duration], reporter Option[func(*Execution, SchedulerFailure) Unit]) *Scheduler {
+func NewScheduler(limit, historyLimit Option[int], drain Option[Duration], reporter Option[func(*Execution, SchedulerFailure) Unit]) *Scheduler {
 	if limit.Some && limit.Val < 1 {
 		minRangeFault("Scheduler", "limit", 1, limit.Val)
 	}
@@ -61,7 +61,7 @@ func NewScheduler(limit, historyLimit Option[int64], drain Option[Duration], rep
 		minRangeFault("Scheduler", "history_limit", 0, historyLimit.Val)
 	}
 	if drain.Some && drain.Val < 0 {
-		durationFault("Scheduler", "drain", int64(drain.Val))
+		durationFault("Scheduler", "drain", int(drain.Val))
 	}
 	return &Scheduler{limit: limit, historyLimit: historyLimit, drain: drain, reporter: reporter}
 }
@@ -209,14 +209,14 @@ func (s *Scheduler) commit(job *schedulerJob, ctx context.Context, outcome Resul
 		report = SchedulerFailure_Failed{Operation: job.id, Cause: outcome.Err}
 	}
 	delete(s.active, job.id)
-	history := int64(-1)
+	history := int(-1)
 	if s.historyLimit.Some {
 		history = s.historyLimit.Val
 	}
 	if history != 0 {
 		s.history[job.id] = status
 		s.order = append(s.order, job.id)
-		if history > 0 && int64(len(s.order)) > history {
+		if history > 0 && len(s.order) > history {
 			delete(s.schedules, s.order[0])
 			delete(s.history, s.order[0])
 			s.order = s.order[1:]

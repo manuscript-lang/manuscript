@@ -168,7 +168,7 @@ func (g *gen) number(e *syntax.Expression, info *checker.Info) ast.Expr {
 		value, _ := strconv.ParseFloat(e.Text, 64)
 		return call(ident("float64"), &ast.BasicLit{Kind: token.FLOAT, Value: strconv.FormatFloat(value, 'g', -1, 64)})
 	}
-	return call(ident("int64"), signedInteger(e.Text))
+	return call(ident("int"), signedInteger(e.Text))
 }
 
 // constantNumber reports whether e is a typed numeric literal Go folds.
@@ -374,7 +374,7 @@ func (g *gen) unary(e *syntax.Expression, info *checker.Info) ast.Expr {
 		switch operand.ID {
 		case "Int":
 			if e.Right.Kind == syntax.KindNumber {
-				return call(ident("int64"), signedInteger("-"+e.Right.Text))
+				return call(ident("int"), signedInteger("-"+e.Right.Text))
 			}
 			return rtCall("IntNegate", g.valueAs(e.Right, operand))
 		case "Float":

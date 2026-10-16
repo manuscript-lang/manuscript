@@ -36,14 +36,14 @@ func (r htmlReader) Read(p []byte) (int, error) {
 // Html_Parse parses a document with the HTML5 algorithm and converts the tree
 // iteratively, applying byte, depth and node limits.
 func Html_Parse(ctx *Execution, text string, limits Option[*HtmlLimits]) Result[HtmlNode, HtmlError] {
-	maxBytes, maxDepth, maxNodes := dfBudget(None[int64]()), dfBudget(None[int64]()), dfBudget(None[int64]())
+	maxBytes, maxDepth, maxNodes := dfBudget(None[int]()), dfBudget(None[int]()), dfBudget(None[int]())
 	if limits.Some {
 		maxBytes, maxDepth, maxNodes = dfBudget(limits.Val.MaxBytes), dfBudget(limits.Val.MaxDepth), dfBudget(limits.Val.MaxNodes)
 	}
 	if maxBytes < 0 || maxDepth < 0 || maxNodes < 0 {
 		return Fail[HtmlNode, HtmlError](HtmlError_InvalidInput{})
 	}
-	if int64(len(text)) > maxBytes {
+	if len(text) > maxBytes {
 		return Fail[HtmlNode, HtmlError](HtmlError_LimitExceeded{})
 	}
 	if !utf8.ValidString(text) {
@@ -59,7 +59,7 @@ func Html_Parse(ctx *Execution, text string, limits Option[*HtmlLimits]) Result[
 		children []HtmlNode
 	}
 	stack := []frame{{node: doc, next: doc.FirstChild}}
-	count := int64(1)
+	count := 1
 	if count > maxNodes {
 		return Fail[HtmlNode, HtmlError](HtmlError_LimitExceeded{})
 	}
@@ -67,7 +67,7 @@ func Html_Parse(ctx *Execution, text string, limits Option[*HtmlLimits]) Result[
 		CheckCancelled(ctx)
 		current := &stack[len(stack)-1]
 		if child := current.next; child != nil {
-			if int64(len(stack)) > maxDepth || count >= maxNodes {
+			if len(stack) > maxDepth || count >= maxNodes {
 				return Fail[HtmlNode, HtmlError](HtmlError_LimitExceeded{})
 			}
 			count++

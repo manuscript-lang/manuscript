@@ -89,9 +89,10 @@ type Flow:
     delimited: Bool
 
 fn within(value: Int, limit: Optional[Int]) -> Bool:
-    match limit:
-        none: return true
-        some(maximum): return value <= maximum
+    if let maximum = limit:
+        return value <= maximum
+
+    return true
 
 fn count(context: Context, depth: Int) -> Result[Unit, YamlError]:
     if not within(value: depth, limit: context.limits.max_depth): return error(
@@ -422,14 +423,10 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
         advance(flow)
         let name = try anchor_name(flow)
 
-        match flow.context.anchors.get(name):
-            some(value): return ok(value)
-            none: return error(
-                flow_invalid(
-                    flow: flow,
-                    reason: "unknown or recursive alias"
-                )
-            )
+        if let value = flow.context.anchors.get(name):
+            return ok(value)
+
+        return error(flow_invalid(flow: flow, reason: "unknown or recursive alias"))
 
     if c == "!": return error(
         YamlError.UnsupportedFeature(
@@ -1307,16 +1304,12 @@ export fn parse(
 ) -> Result[YamlValue, YamlError]:
     var options = YamlLimits()
 
-    match limits:
-        none: let ignored = unit
-        some(value): options = value
+    if let value = limits:
+        options = value
 
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
-        match limit:
-            none: let ignored = unit
-
-            some(value):
-                if value < 0: return error(YamlError.InvalidInput)
+        if let value = limit:
+            if value < 0: return error(YamlError.InvalidInput)
 
     if not within(value: text.byte_length(), limit: options.max_bytes): return error(
         YamlError.LimitExceeded
@@ -1583,11 +1576,8 @@ export fn stringify(
     value: YamlValue,
     max_bytes: Optional[Int] = none
 ) -> Result[String, YamlError]:
-    match max_bytes:
-        none: let ignored = unit
-
-        some(limit):
-            if limit < 0: return error(YamlError.InvalidInput)
+    if let limit = max_bytes:
+        if limit < 0: return error(YamlError.InvalidInput)
 
     let out = StringBuilder()
 

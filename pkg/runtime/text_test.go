@@ -22,7 +22,7 @@ func TestScalarOffsetCacheMatchesFreshScan(t *testing.T) {
 	text := strings.Repeat("aé€😀", 600)
 	runes := []rune(text)
 	for _, n := range []int{0, 5, 5, 3, 1000, 1001, 2399, 7, 2399} {
-		got := String_At(tctx, text, int64(n))
+		got := String_At(tctx, text, int(n))
 		if !got.Some || got.Val != string(runes[n]) {
 			t.Fatalf("scalar %d: got %v, want %q", n, got, string(runes[n]))
 		}
@@ -48,25 +48,25 @@ func TestStringBasics(t *testing.T) {
 	if got := String_Lines(tctx, "").Items; got == nil || len(got) != 0 {
 		t.Fatalf("empty lines %v", got)
 	}
-	if got := String_Split(tctx, "a,b,c", ",", Some(int64(2))).Items; !reflect.DeepEqual(got, []string{"a", "b"}) {
+	if got := String_Split(tctx, "a,b,c", ",", Some(int(2))).Items; !reflect.DeepEqual(got, []string{"a", "b"}) {
 		t.Fatalf("split cap %q", got)
 	}
-	if got := String_Split(tctx, "", ",", None[int64]()).Items; !reflect.DeepEqual(got, []string{""}) {
+	if got := String_Split(tctx, "", ",", None[int]()).Items; !reflect.DeepEqual(got, []string{""}) {
 		t.Fatalf("split empty %q", got)
 	}
-	if got := String_Split(tctx, "aé", "", None[int64]()).Items; !reflect.DeepEqual(got, []string{"a", "é"}) {
+	if got := String_Split(tctx, "aé", "", None[int]()).Items; !reflect.DeepEqual(got, []string{"a", "é"}) {
 		t.Fatalf("split scalars %q", got)
 	}
-	if len(String_Split(tctx, "a,b", ",", Some(int64(0))).Items) != 0 {
+	if len(String_Split(tctx, "a,b", ",", Some(int(0))).Items) != 0 {
 		t.Fatal("split zero")
 	}
-	if got := faultMessage(func() { String_Split(tctx, "a", ",", Some(int64(-7))) }); got != "split: max_parts must be nonnegative, found -7" {
+	if got := faultMessage(func() { String_Split(tctx, "a", ",", Some(int(-7))) }); got != "split: max_parts must be nonnegative, found -7" {
 		t.Fatalf("split fault %q", got)
 	}
 	if String_IndexOf(tctx, "éé😀", "😀").Val != 2 || String_LastIndexOf(tctx, "aa", "").Val != 2 || String_IndexOf(tctx, "a", "b").Some {
 		t.Fatal("index_of")
 	}
-	if got := String_ParseInt(tctx, "+12"); got != Some(int64(12)) {
+	if got := String_ParseInt(tctx, "+12"); got != Some(int(12)) {
 		t.Fatal(got)
 	}
 	for _, bad := range []string{"", "+", "1_0", " 1", "9223372036854775808"} {
@@ -85,7 +85,7 @@ func TestStringBasics(t *testing.T) {
 func TestStringReplaceCaps(t *testing.T) {
 	for _, tt := range []struct {
 		text, old, new string
-		n              int64
+		n              int
 		want           string
 	}{
 		{"aaaa", "a", "b", 0, "aaaa"}, {"aaaa", "a", "b", 2, "bbaa"}, {"aaaa", "a", "b", 999, "bbbb"},
@@ -96,7 +96,7 @@ func TestStringReplaceCaps(t *testing.T) {
 			t.Errorf("replace_n(%q,%q,%q,%d) = %q, want %q", tt.text, tt.old, tt.new, tt.n, got, tt.want)
 		}
 	}
-	if String_Replace(tctx, "aaaa", "a", "b", None[int64]()) != "baaa" || String_ReplaceFirst(tctx, "aaaa", "a", "b", Some(int64(2))) != "bbaa" {
+	if String_Replace(tctx, "aaaa", "a", "b", None[int]()) != "baaa" || String_ReplaceFirst(tctx, "aaaa", "a", "b", Some(int(2))) != "bbaa" {
 		t.Fatal("compatibility names")
 	}
 	if got := faultMessage(func() { String_ReplaceN(tctx, "a", "a", "b", -3) }); got != "replace: max_replacements must be nonnegative, found -3" {
@@ -120,60 +120,60 @@ func TestStringSlicesAndScalars(t *testing.T) {
 		t.Fatal("slice_scalars")
 	}
 	values := String_ScalarValues(tctx, "a😀")
-	if !reflect.DeepEqual(values.Items, []int64{97, 0x1F600}) {
+	if !reflect.DeepEqual(values.Items, []int{97, 0x1F600}) {
 		t.Fatal(values.Items)
 	}
 	if okString(t, String_FromScalars(tctx, values)) != "a😀" {
 		t.Fatal("from_scalars")
 	}
-	for _, bad := range []int64{-1, 0xD800, 0x110000} {
+	for _, bad := range []int{-1, 0xD800, 0x110000} {
 		if !String_FromScalars(tctx, NewList(bad)).Failed {
 			t.Errorf("accepted scalar %d", bad)
 		}
 	}
-	if String_ScalarAt(tctx, "a😀", -1) != Some(int64(0x1F600)) {
+	if String_ScalarAt(tctx, "a😀", -1) != Some(int(0x1F600)) {
 		t.Fatal("scalar_at")
 	}
 }
 
 func TestStringBudgets(t *testing.T) {
-	if r := String_Repeat(tctx, "ab", 3, Some(int64(5))); !r.Failed {
+	if r := String_Repeat(tctx, "ab", 3, Some(int(5))); !r.Failed {
 		t.Fatal("repeat over budget")
 	}
-	if okString(t, String_Repeat(tctx, "ab", 3, Some(int64(6)))) != "ababab" || okString(t, String_Repeat(tctx, "", math.MaxInt64, None[int64]())) != "" {
+	if okString(t, String_Repeat(tctx, "ab", 3, Some(int(6)))) != "ababab" || okString(t, String_Repeat(tctx, "", math.MaxInt64, None[int]())) != "" {
 		t.Fatal("repeat")
 	}
-	if r := String_Repeat(tctx, "a", -1, None[int64]()); !r.Failed {
+	if r := String_Repeat(tctx, "a", -1, None[int]()); !r.Failed {
 		t.Fatal("negative count")
 	}
-	if okString(t, String_PadStart(tctx, "7", 3, "ab", None[int64]())) != "aba7" && okString(t, String_PadStart(tctx, "7", 3, "ab", None[int64]())) != "ab7" {
+	if okString(t, String_PadStart(tctx, "7", 3, "ab", None[int]())) != "aba7" && okString(t, String_PadStart(tctx, "7", 3, "ab", None[int]())) != "ab7" {
 		t.Fatal("pad_start")
 	}
-	if got := okString(t, String_PadEnd(tctx, "é", 4, "xy", None[int64]())); got != "éxyx" {
+	if got := okString(t, String_PadEnd(tctx, "é", 4, "xy", None[int]())); got != "éxyx" {
 		t.Fatalf("pad_end %q", got)
 	}
-	if r := String_PadEnd(tctx, "a", 10, "x", Some(int64(5))); !r.Failed {
+	if r := String_PadEnd(tctx, "a", 10, "x", Some(int(5))); !r.Failed {
 		t.Fatal("pad budget")
 	}
-	if got := okString(t, String_ReplaceAll(tctx, "a-b-c", "-", "+", Some(int64(5)))); got != "a+b+c" {
+	if got := okString(t, String_ReplaceAll(tctx, "a-b-c", "-", "+", Some(int(5)))); got != "a+b+c" {
 		t.Fatal(got)
 	}
-	if r := String_ReplaceAll(tctx, "a-b-c", "-", "++", Some(int64(5))); !r.Failed {
+	if r := String_ReplaceAll(tctx, "a-b-c", "-", "++", Some(int(5))); !r.Failed {
 		t.Fatal("replace_all budget")
 	}
-	if got := okString(t, String_ReplaceAll(tctx, "ab", "", "|", None[int64]())); got != "|a|b|" {
+	if got := okString(t, String_ReplaceAll(tctx, "ab", "", "|", None[int]())); got != "|a|b|" {
 		t.Fatal(got)
 	}
-	if got := okString(t, String_Normalize(tctx, "é", "NFC", None[int64]())); got != "é" {
+	if got := okString(t, String_Normalize(tctx, "é", "NFC", None[int]())); got != "é" {
 		t.Fatal("normalize")
 	}
-	if r := String_Normalize(tctx, "e", "nfc", None[int64]()); !r.Failed {
+	if r := String_Normalize(tctx, "e", "nfc", None[int]()); !r.Failed {
 		t.Fatal("form spelling is case sensitive")
 	}
-	if r := String_Normalize(tctx, "éé", "NFD", Some(int64(3))); !r.Failed {
+	if r := String_Normalize(tctx, "éé", "NFD", Some(int(3))); !r.Failed {
 		t.Fatal("normalize budget")
 	}
-	if got := okString(t, NormalizationForm_Normalize(tctx, NormalizationForm_Nfkc{}, "ﬁ", None[int64]())); got != "fi" {
+	if got := okString(t, NormalizationForm_Normalize(tctx, NormalizationForm_Nfkc{}, "ﬁ", None[int]())); got != "fi" {
 		t.Fatal("nfkc")
 	}
 }
@@ -188,7 +188,7 @@ func TestStringCancellation(t *testing.T) {
 			t.Fatal("cancelled normalize did not unwind")
 		}
 	}()
-	String_Normalize(ctx, "text", "NFC", None[int64]())
+	String_Normalize(ctx, "text", "NFC", None[int]())
 }
 
 func TestStringBuilder(t *testing.T) {

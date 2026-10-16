@@ -63,5 +63,5 @@ type Equal interface {
 }
 
 type Hashable interface {
-	Hash(*Execution) int64
+	Hash(*Execution) int
 }

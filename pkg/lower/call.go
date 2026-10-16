@@ -317,6 +317,37 @@ func camel(snake string) string {
 	return b.String()
 }
 
+// exportName is the exported Go name of a record field or interface
+// operation. camel is not injective (x_ and x, or a_b and aB, both give X and
+// AB), so names outside the canonical snake form keep their full spelling
+// behind a prefix whose underscore no canonical result has.
+func exportName(name string) string {
+	if canonicalSnake(name) && name != "receiver" && name != "describe" {
+		// receiver and describe are methods every interface view carries.
+		return camel(name)
+	}
+	return "Z_" + name
+}
+
+// canonicalSnake reports whether camel is injective for name: lowercase ASCII
+// words joined by single underscores, each starting with a letter.
+func canonicalSnake(name string) bool {
+	word := 0
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z':
+			word++
+		case r >= '0' && r <= '9' && word > 0:
+			word++
+		case r == '_' && word > 0:
+			word = 0
+		default:
+			return false
+		}
+	}
+	return word > 0
+}
+
 // cloneValue lowers the built-in clone of a record or alternative. A record
 // copies its outer storage; nested references stay shared. An alternative is
 // immutable, so its clone is itself.
@@ -478,7 +509,7 @@ func (g *gen) invokeMethod(m *checker.Method, receiverType *checker.Type, receiv
 	case m.Decl != nil && m.Decl.Name == "toString" && len(args) == 0:
 		return g.format(receiverType, receiver)
 	case m.Native == "contract":
-		return call(selector(receiver, camel(name)), append([]ast.Expr{ident("ctx")}, args...)...)
+		return call(selector(receiver, exportName(name)), append([]ast.Expr{ident("ctx")}, args...)...)
 	case m.Native != "" && m.Contract == nil:
 		return g.nativeMethodCall(m, receiverType, receiver, name, args, calleeInfo)
 	case m.Native != "":
@@ -499,10 +530,10 @@ func (g *gen) nativeMethodCall(m *checker.Method, receiverType *checker.Type, re
 	if m.Decl.Name == "length" && len(args) == 0 {
 		// A List or Bytes length is Go's len on the backing slice.
 		if isStd(receiverType, "List") {
-			return call(ident("int64"), call(ident("len"), selector(receiver, "Items")))
+			return call(ident("len"), selector(receiver, "Items"))
 		}
 		if isStd(receiverType, "Bytes") {
-			return call(ident("int64"), call(ident("len"), selector(receiver, "Data")))
+			return call(ident("len"), selector(receiver, "Data"))
 		}
 	}
 	fn := g.nativeMethodName(m, receiverType)

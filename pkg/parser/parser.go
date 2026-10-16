@@ -470,6 +470,13 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 	case p.take("break") || p.take("continue"):
 		p.end()
 	case p.take("if"):
+		if p.take("let") {
+			s.Pattern = p.pattern()
+			if s.Pattern.Kind != syntax.KindName {
+				p.fail(t, "if let binds one name; write 'if let value = optional:' and destructure the value inside the branch")
+			}
+			p.need("=")
+		}
 		s.Value = p.expression(0)
 		s.Body = p.suite()
 		p.newlines()

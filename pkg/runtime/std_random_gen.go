@@ -5,7 +5,7 @@
 package msruntime
 
 func check_Random_SecureInt() {
-	var _ func(*Execution, Entropy, int64, Option[int64]) Result[int64, RandomError] = Random_SecureInt
+	var _ func(*Execution, Entropy, int, Option[int]) Result[int, RandomError] = Random_SecureInt
 }
 func check_Random_UuidV4() {
 	var _ func(*Execution, Entropy) Result[string, RandomError] = Random_UuidV4

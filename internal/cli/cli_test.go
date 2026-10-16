@@ -426,7 +426,7 @@ func TestDirectoryArgumentUsesManifestOrExplains(t *testing.T) {
 }
 
 func TestLintIgnoresBundledStandardModules(t *testing.T) {
-	source := sourceFile(t, "import TomlValue from \"@std/toml.ms\"\n\nexport fn main() -> Int:\n    let v: Optional[TomlValue] = none\n    match v:\n        some(_):\n            return 1\n        none:\n            return 0\n")
+	source := sourceFile(t, "import TomlValue from \"@std/toml.ms\"\n\nexport fn main() -> Int:\n    let v: Optional[TomlValue] = none\n    if v.is_some():\n        return 1\n    return 0\n")
 	status, output, errors := invoke(t, "lint", source)
 	if status != 0 || strings.Contains(errors, "@std/") || output != "" {
 		t.Fatalf("%d, %q, %q", status, output, errors)

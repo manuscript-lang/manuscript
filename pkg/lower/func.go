@@ -76,7 +76,7 @@ func (g *gen) function(symbol *checker.Symbol, typeArgs []*checker.Type) *funcDe
 	if scope != "" {
 		name += "_" + shortHash(scope)
 	}
-	created := &funcDecl{key: key, name: g.claim(name, key), module: symbol.Module, scope: scope, symbol: symbol, decl: symbol.Decl, subst: subst}
+	created := &funcDecl{key: key, name: g.derivedOrClaim(name, key, len(typeArgs) > 0 || scope != ""), module: symbol.Module, scope: scope, symbol: symbol, decl: symbol.Decl, subst: subst}
 	created.typ = checker.Sub(symbol.Type, subst)
 	created.fn = created
 	return g.intern(created)
@@ -238,7 +238,7 @@ func (g *gen) unit() ast.Expr { return composite(rtName("Unit")) }
 func (g *gen) zero(t *checker.Type) ast.Expr {
 	t = g.sub(t)
 	switch scalarGo(t) {
-	case "int64", "float64":
+	case "int", "float64":
 		return call(ident(scalarGo(t)), intLiteral(0))
 	case "bool":
 		return ident("false")
@@ -298,6 +298,9 @@ var predeclared = map[string]bool{
 	"uint32": true, "true": true, "false": true, "nil": true, "len": true, "append": true, "copy": true,
 	"make": true, "new": true, "panic": true, "recover": true, "clear": true, "min": true, "max": true,
 	"iota": true, "any": true, "rune": true, "uint8": true, "uint64": true, "cap": true, "delete": true,
+	"int8": true, "int16": true, "int32": true, "uint": true, "uint16": true, "uintptr": true, "float32": true,
+	"complex64": true, "complex128": true, "complex": true, "real": true, "imag": true, "close": true,
+	"print": true, "println": true, "comparable": true,
 }
 
 // markUsed records which bindings the body reads, so declarations of the

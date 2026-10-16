@@ -8,7 +8,7 @@ func check_Numbers_ParseFloat() {
 	var _ func(*Execution, string) Result[float64, NumberError] = Numbers_ParseFloat
 }
 func check_Numbers_ParseInt() {
-	var _ func(*Execution, string, int64) Result[int64, NumberError] = Numbers_ParseInt
+	var _ func(*Execution, string, int) Result[int, NumberError] = Numbers_ParseInt
 }
 func check_Errors_Message_NumberError() {
 	var _ func(*Execution, NumberError) string = Errors_Message_NumberError

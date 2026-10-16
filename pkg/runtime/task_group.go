@@ -41,7 +41,7 @@ type Task[T any] struct {
 // NewTaskGroup constructs a TaskGroup with an optional time budget.
 func NewTaskGroup(timeout Option[Duration]) *TaskGroup {
 	if timeout.Some && timeout.Val < 0 {
-		durationFault("TaskGroup", "timeout", int64(timeout.Val))
+		durationFault("TaskGroup", "timeout", int(timeout.Val))
 	}
 	return &TaskGroup{timeout: timeout}
 }

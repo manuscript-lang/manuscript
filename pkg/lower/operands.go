@@ -61,7 +61,7 @@ func pureCall(c *ast.CallExpr) bool {
 	switch fn := fun.(type) {
 	case *ast.Ident:
 		switch fn.Name {
-		case "int64", "float64", "string", "bool", "len", "cap", "uint32":
+		case "int", "float64", "string", "bool", "len", "cap", "uint32":
 			return true
 		}
 	case *ast.SelectorExpr:
@@ -89,7 +89,7 @@ func trivial(e ast.Expr) bool {
 	case *ast.CallExpr:
 		if id, ok := e.Fun.(*ast.Ident); ok && len(e.Args) == 1 {
 			switch id.Name {
-			case "int64", "float64", "string", "bool":
+			case "int", "float64", "string", "bool":
 				return trivial(e.Args[0])
 			}
 		}

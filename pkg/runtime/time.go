@@ -54,14 +54,15 @@ func timeFail[T any](e TimeError) Result[T, TimeError] { return Fail[T, TimeErro
 func inTimestampRange(t time.Time) bool { return t.UTC().Year() >= 1 && t.UTC().Year() <= 9999 }
 
 // Time_Duration is a duration of nanoseconds.
-func Time_Duration(_ *Execution, nanoseconds int64) Duration { return Duration(nanoseconds) }
+func Time_Duration(_ *Execution, nanoseconds int) Duration { return Duration(int64(nanoseconds)) }
 
 // Time_Timestamp builds a timestamp from Unix seconds and a nanosecond part.
-func Time_Timestamp(_ *Execution, seconds, nanoseconds int64) Result[Timestamp, TimeError] {
-	if nanoseconds < 0 || nanoseconds >= 1e9 || seconds < -62135596800 || seconds > 253402300799 {
+func Time_Timestamp(_ *Execution, seconds, nanoseconds int) Result[Timestamp, TimeError] {
+	s, n := int64(seconds), int64(nanoseconds)
+	if n < 0 || n >= 1e9 || s < -62135596800 || s > 253402300799 {
 		return timeFail[Timestamp](TimeError_OutOfRange{})
 	}
-	return Ok[Timestamp, TimeError](Timestamp{Seconds: seconds, Nanos: int32(nanoseconds)})
+	return Ok[Timestamp, TimeError](Timestamp{Seconds: s, Nanos: int32(n)})
 }
 
 // Time_ParseTimestamp parses an RFC 3339 timestamp.
@@ -101,7 +102,7 @@ func Sleep(ctx *Execution, duration Duration) Unit {
 	return Unit{}
 }
 
-func compareInt64(left, right int64) int64 {
+func compareInt64(left, right int64) int {
 	if left < right {
 		return -1
 	}
@@ -169,18 +170,19 @@ func Duration_Subtract(_ *Execution, left, other Duration) Duration {
 	return Duration(checkedTimeSub("Duration.subtract", "value", "other", int64(left), int64(other)))
 }
 
-func Duration_Multiply(_ *Execution, value Duration, factor int64) Duration {
-	return Duration(checkedTimeMul("Duration.multiply", int64(value), factor))
+func Duration_Multiply(_ *Execution, value Duration, factor int) Duration {
+	return Duration(checkedTimeMul("Duration.multiply", int64(value), int64(factor)))
 }
 
-func Duration_Divide(_ *Execution, value Duration, divisor int64) Duration {
-	if divisor == 0 {
+func Duration_Divide(_ *Execution, value Duration, divisor int) Duration {
+	d := int64(divisor)
+	if d == 0 {
 		Raise("Duration.divide: division by zero; divisor must be nonzero, found 0")
 	}
-	if int64(value) == math.MinInt64 && divisor == -1 {
-		timeArithmeticFault("Duration.divide", "value", "divisor", int64(value), divisor)
+	if int64(value) == math.MinInt64 && d == -1 {
+		timeArithmeticFault("Duration.divide", "value", "divisor", int64(value), d)
 	}
-	return Duration(int64(value) / divisor)
+	return Duration(int64(value) / d)
 }
 
 func durationRangeFault(operation string, value Duration) {
@@ -204,16 +206,16 @@ func Duration_Abs(_ *Execution, value Duration) Duration {
 	return value
 }
 
-func Duration_Compare(_ *Execution, left, other Duration) int64 {
+func Duration_Compare(_ *Execution, left, other Duration) int {
 	return compareInt64(int64(left), int64(other))
 }
 
-func Duration_ToNanoseconds(_ *Execution, value Duration) int64 { return int64(value) }
-func Duration_ToMicroseconds(_ *Execution, value Duration) int64 {
-	return int64(value) / int64(time.Microsecond)
+func Duration_ToNanoseconds(_ *Execution, value Duration) int { return FitInt(int64(value)) }
+func Duration_ToMicroseconds(_ *Execution, value Duration) int {
+	return FitInt(int64(value) / int64(time.Microsecond))
 }
-func Duration_ToMilliseconds(_ *Execution, value Duration) int64 {
-	return int64(value) / int64(time.Millisecond)
+func Duration_ToMilliseconds(_ *Execution, value Duration) int {
+	return FitInt(int64(value) / int64(time.Millisecond))
 }
 func Duration_ToSeconds(_ *Execution, value Duration) float64 {
 	return float64(value) / float64(time.Second)
@@ -240,7 +242,7 @@ func Instant_Difference(_ *Execution, left, other Instant) Duration {
 	return Duration(checkedTimeSub("Instant.difference", "value", "other", left.Tick, other.Tick))
 }
 
-func Instant_Compare(_ *Execution, left, other Instant) int64 {
+func Instant_Compare(_ *Execution, left, other Instant) int {
 	sameClock(left, other)
 	return compareInt64(left.Tick, other.Tick)
 }
@@ -248,8 +250,8 @@ func Instant_Compare(_ *Execution, left, other Instant) int64 {
 func Timestamp_ToString(_ *Execution, value Timestamp) string {
 	return timeOf(value).Format(time.RFC3339Nano)
 }
-func Timestamp_UnixSeconds(_ *Execution, value Timestamp) int64 { return value.Seconds }
-func Timestamp_Nanoseconds(_ *Execution, value Timestamp) int64 { return int64(value.Nanos) }
+func Timestamp_UnixSeconds(_ *Execution, value Timestamp) int { return FitInt(value.Seconds) }
+func Timestamp_Nanoseconds(_ *Execution, value Timestamp) int { return int(value.Nanos) }
 
 func Timestamp_Shift(_ *Execution, value Timestamp, duration Duration) Result[Timestamp, TimeError] {
 	t := timeOf(value).Add(time.Duration(duration))
@@ -268,8 +270,8 @@ func Timestamp_Difference(_ *Execution, left, other Timestamp) Result[Duration, 
 	return Ok[Duration, TimeError](Duration(d))
 }
 
-func Timestamp_Compare(_ *Execution, left, other Timestamp) int64 {
-	return int64(timeOf(left).Compare(timeOf(other)))
+func Timestamp_Compare(_ *Execution, left, other Timestamp) int {
+	return int(timeOf(left).Compare(timeOf(other)))
 }
 
 // Instant_Unshift is Instant - Duration.

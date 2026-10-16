@@ -24,12 +24,12 @@ func binaryOrder(little bool) binary.ByteOrder {
 	return binary.BigEndian
 }
 
-func Binary_ReadInteger(_ *Execution, data *Bytes, offset, width int64, signed, little bool) Result[int64, BinaryError] {
+func Binary_ReadInteger(_ *Execution, data *Bytes, offset, width int, signed, little bool) Result[int, BinaryError] {
 	if width != 1 && width != 2 && width != 4 && width != 8 {
-		return binaryFail[int64](BinaryError_InvalidInput{})
+		return binaryFail[int](BinaryError_InvalidInput{})
 	}
-	if offset < 0 || offset > int64(len(data.Data))-width {
-		return binaryFail[int64](BinaryError_OutOfRange{})
+	if offset < 0 || offset > len(data.Data)-width {
+		return binaryFail[int](BinaryError_OutOfRange{})
 	}
 	var n uint64
 	chunk := data.Data[offset : offset+width]
@@ -45,17 +45,24 @@ func Binary_ReadInteger(_ *Execution, data *Bytes, offset, width int64, signed, 
 	if signed && width < 8 && n&(uint64(1)<<(width*8-1)) != 0 {
 		n |= ^uint64(0) << (width * 8)
 	}
-	if !signed && n > math.MaxInt64 {
-		return binaryFail[int64](BinaryError_OutOfRange{})
+	if signed {
+		v := int64(n)
+		if int64(int(v)) != v {
+			return binaryFail[int](BinaryError_OutOfRange{})
+		}
+		return Ok[int, BinaryError](int(v))
 	}
-	return Ok[int64, BinaryError](int64(n))
+	if n > math.MaxInt {
+		return binaryFail[int](BinaryError_OutOfRange{})
+	}
+	return Ok[int, BinaryError](int(n))
 }
 
-func Binary_WriteInteger(_ *Execution, value, width int64, signed, little bool) Result[*Bytes, BinaryError] {
+func Binary_WriteInteger(_ *Execution, value, width int, signed, little bool) Result[*Bytes, BinaryError] {
 	if width != 1 && width != 2 && width != 4 && width != 8 {
 		return binaryFail[*Bytes](BinaryError_InvalidInput{})
 	}
-	if !signed && value < 0 || width < 8 && (signed && (value < -(int64(1)<<(width*8-1)) || value >= (int64(1)<<(width*8-1))) || !signed && uint64(value) >= (uint64(1)<<(width*8))) {
+	if !signed && value < 0 || width < 8 && (signed && (int64(value) < -(int64(1)<<(width*8-1)) || int64(value) >= (int64(1)<<(width*8-1))) || !signed && uint64(value) >= (uint64(1)<<(width*8))) {
 		return binaryFail[*Bytes](BinaryError_OutOfRange{})
 	}
 	b := make([]byte, width)
@@ -71,8 +78,8 @@ func Binary_WriteInteger(_ *Execution, value, width int64, signed, little bool) 
 	return Ok[*Bytes, BinaryError](NewBytes(b))
 }
 
-func Binary_ReadFloat(_ *Execution, data *Bytes, offset int64, little bool) Result[float64, BinaryError] {
-	if offset < 0 || offset > int64(len(data.Data))-8 {
+func Binary_ReadFloat(_ *Execution, data *Bytes, offset int, little bool) Result[float64, BinaryError] {
+	if offset < 0 || offset > len(data.Data)-8 {
 		return binaryFail[float64](BinaryError_OutOfRange{})
 	}
 	return Ok[float64, BinaryError](math.Float64frombits(binaryOrder(little).Uint64(data.Data[offset : offset+8])))

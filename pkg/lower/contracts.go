@@ -17,7 +17,7 @@ import (
 func (g *gen) contractDecl(d *typeDecl) []ast.Decl {
 	var methods []*ast.Field
 	for _, op := range g.operations(d.t) {
-		methods = append(methods, &ast.Field{Names: []*ast.Ident{ident(camel(op.Name))}, Type: g.operationType(op.Type)})
+		methods = append(methods, &ast.Field{Names: []*ast.Ident{ident(exportName(op.Name))}, Type: g.operationType(op.Type)})
 	}
 	return []ast.Decl{typeSpec(d.name, &ast.InterfaceType{Methods: &ast.FieldList{List: methods}})}
 }
@@ -87,7 +87,7 @@ func (g *gen) view(from, contract *checker.Type) string {
 		key += "@" + scope
 		name += "_" + shortHash(scope)
 	}
-	name = g.claim(name, key)
+	name = g.derived(name, key)
 	g.mu.Lock()
 	d := g.types[key]
 	created := d == nil
@@ -142,7 +142,7 @@ func (g *gen) viewMethod(view string, from, contract *checker.Type, op checker.O
 	body := g.invokeMethod(m, from, selector(ident("v"), "self"), op.Name, args, &checker.Info{Type: m.Type})
 	return &ast.FuncDecl{
 		Recv: &ast.FieldList{List: []*ast.Field{field("v", ident(view))}},
-		Name: ident(camel(op.Name)), Type: functionType(params, g.goType(op.Type.Result)),
+		Name: ident(exportName(op.Name)), Type: functionType(params, g.goType(op.Type.Result)),
 		Body: block(returned(body)),
 	}
 }

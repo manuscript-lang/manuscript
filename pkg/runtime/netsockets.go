@@ -217,7 +217,7 @@ func (c *osConnection) close() {
 func (c *osConnection) LocalAddress(*Execution) string { return c.conn.LocalAddr().String() }
 func (c *osConnection) PeerAddress(*Execution) string  { return c.conn.RemoteAddr().String() }
 
-func (c *osConnection) Read(ctx *Execution, maxBytes Option[int64], timeout Option[Duration]) Result[Option[*Bytes], IoError] {
+func (c *osConnection) Read(ctx *Execution, maxBytes Option[int], timeout Option[Duration]) Result[Option[*Bytes], IoError] {
 	n, okSize := optLimit(maxBytes, 65536)
 	limit, okTimeout := optTimeout(timeout)
 	if !okSize || !okTimeout {
@@ -340,7 +340,7 @@ func (c *osConnection) TlsInfo(*Execution) Result[*TlsInfo, TlsError] {
 	for _, cert := range state.PeerCertificates {
 		certs = append(certs, NewBytes(append([]byte{}, cert.Raw...)))
 	}
-	return Ok[*TlsInfo, TlsError](&TlsInfo{Version: int64(state.Version), CipherSuite: int64(state.CipherSuite), Alpn: state.NegotiatedProtocol, PeerCertificates: NewList(certs...), Verified: len(state.VerifiedChains) > 0})
+	return Ok[*TlsInfo, TlsError](&TlsInfo{Version: int(state.Version), CipherSuite: int(state.CipherSuite), Alpn: state.NegotiatedProtocol, PeerCertificates: NewList(certs...), Verified: len(state.VerifiedChains) > 0})
 }
 
 // osListener accepts one connection at a time. Cancelling or timing out an
@@ -491,7 +491,7 @@ func (d *osDatagram) close() {
 	d.owner.forget(d)
 }
 
-func (d *osDatagram) Receive(ctx *Execution, maxBytes Option[int64], timeout Option[Duration]) Result[*Datagram, NetworkError] {
+func (d *osDatagram) Receive(ctx *Execution, maxBytes Option[int], timeout Option[Duration]) Result[*Datagram, NetworkError] {
 	max, okSize := optLimit(maxBytes, 65535)
 	limit, okTimeout := optTimeout(timeout)
 	if !okSize || !okTimeout {
@@ -524,7 +524,7 @@ func (d *osDatagram) Receive(ctx *Execution, maxBytes Option[int64], timeout Opt
 		}
 		return netFail[*Datagram](netFailed(err.Error()))
 	}
-	if int64(count) > max {
+	if int(count) > max {
 		return netFail[*Datagram](errNetLimit)
 	}
 	return Ok[*Datagram, NetworkError](&Datagram{Data: NewBytes(b[:count]), Sender: from.String()})

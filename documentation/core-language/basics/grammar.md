@@ -184,7 +184,7 @@ Binding       = ("let" | "var"), (Name, [ ":", Type ] | PositionalPattern | Reco
 Assignment    = (Name | Expression, ".", Name), "=", Expression ;
 ReturnStatement = "return", [ Expression ] ;
 CallStatement = Expression ;
-IfStatement   = "if", Expression, Suite,
+IfStatement   = "if", [ "let", Name, "=" ], Expression, Suite,
                 [ "else", (Suite | IfStatement) ] ;
 WhileStatement = "while", Expression, Suite ;
 ForStatement  = "for", Name, "in", Expression, Suite ;

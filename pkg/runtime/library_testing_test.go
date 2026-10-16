@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func testEqInt(_ *Execution, a, b int64) bool { return a == b }
+func testEqInt(_ *Execution, a, b int) bool { return a == b }
 
 func faultOf(ctx *Execution, operation func(*Execution) Unit) (message string) {
 	defer func() {
@@ -55,11 +55,11 @@ func TestTestingFormatsLoweredValues(t *testing.T) {
 	ctx := RootExecution()
 	cases := map[string]any{
 		`"bad"`:             "bad",
-		"some(7)":           Some(int64(7)),
-		"none":              None[int64](),
-		"ok(9)":             Ok[int64, string](9),
-		`error("bad")`:      Fail[int64, string]("bad"),
-		"[1, 2]":            NewList[int64](1, 2),
+		"some(7)":           Some(int(7)),
+		"none":              None[int](),
+		"ok(9)":             Ok[int, string](9),
+		`error("bad")`:      Fail[int, string]("bad"),
+		"[1, 2]":            NewList[int](1, 2),
 		"Text(text: \"a\")": TerminalEvent_Text{Text: "a"},
 	}
 	for want, value := range cases {

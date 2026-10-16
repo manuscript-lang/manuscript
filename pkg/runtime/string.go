@@ -62,13 +62,13 @@ func Errors_Message_StringError(_ *Execution, e StringError) string {
 func stringFail[T any](e StringError) Result[T, StringError] { return Fail[T, StringError](e) }
 
 // String_Length counts Unicode scalars.
-func String_Length(_ *Execution, text string) int64 { return stringScalarCount(text) }
+func String_Length(_ *Execution, text string) int { return stringScalarCount(text) }
 
-func String_ScalarLength(_ *Execution, text string) int64 { return stringScalarCount(text) }
+func String_ScalarLength(_ *Execution, text string) int { return stringScalarCount(text) }
 
 func String_IsEmpty(_ *Execution, text string) bool { return len(text) == 0 }
 
-func String_ByteLength(_ *Execution, text string) int64 { return int64(len(text)) }
+func String_ByteLength(_ *Execution, text string) int { return len(text) }
 
 func String_Chars(ctx *Execution, text string) *List[string] {
 	items := make([]string, 0, len(text))
@@ -95,7 +95,7 @@ func String_Reverse(ctx *Execution, text string) string {
 	return out.String()
 }
 
-func String_Compare(_ *Execution, a, b string) int64 { return int64(strings.Compare(a, b)) }
+func String_Compare(_ *Execution, a, b string) int { return int(strings.Compare(a, b)) }
 
 func String_Lines(ctx *Execution, text string) *List[string] {
 	items := []string{}
@@ -120,7 +120,7 @@ func String_Lines(ctx *Execution, text string) *List[string] {
 	return NewList(items...)
 }
 
-func normalizeText(ctx *Execution, form norm.Form, text string, maxBytes Option[int64]) Result[string, StringError] {
+func normalizeText(ctx *Execution, form norm.Form, text string, maxBytes Option[int]) Result[string, StringError] {
 	max := txLimit(maxBytes)
 	if max < 0 {
 		return stringFail[string](StringError_InvalidInput{})
@@ -131,7 +131,7 @@ func normalizeText(ctx *Execution, form norm.Form, text string, maxBytes Option[
 	for {
 		CheckCancelled(ctx)
 		n, err := reader.Read(chunk[:])
-		if int64(n) > max-int64(out.Len()) {
+		if int(n) > max-int(out.Len()) {
 			return stringFail[string](StringError_LimitExceeded{})
 		}
 		out.Write(chunk[:n])
@@ -146,7 +146,7 @@ func normalizeText(ctx *Execution, form norm.Form, text string, maxBytes Option[
 }
 
 // String_Normalize takes the form's spelling: NFC, NFD, NFKC or NFKD.
-func String_Normalize(ctx *Execution, text, form string, maxBytes Option[int64]) Result[string, StringError] {
+func String_Normalize(ctx *Execution, text, form string, maxBytes Option[int]) Result[string, StringError] {
 	if txLimit(maxBytes) < 0 {
 		return stringFail[string](StringError_InvalidInput{})
 	}
@@ -163,7 +163,7 @@ func String_Normalize(ctx *Execution, text, form string, maxBytes Option[int64])
 	return stringFail[string](StringError_InvalidInput{})
 }
 
-func NormalizationForm_Normalize(ctx *Execution, form NormalizationForm, text string, maxBytes Option[int64]) Result[string, StringError] {
+func NormalizationForm_Normalize(ctx *Execution, form NormalizationForm, text string, maxBytes Option[int]) Result[string, StringError] {
 	switch form.(type) {
 	case NormalizationForm_Nfc:
 		return normalizeText(ctx, norm.NFC, text, maxBytes)
@@ -204,7 +204,7 @@ func String_TrimEnd(_ *Execution, text string) string {
 func String_Upper(_ *Execution, text string) string { return cases.Upper(language.Und).String(text) }
 func String_Lower(_ *Execution, text string) string { return cases.Lower(language.Und).String(text) }
 
-func String_Repeat(_ *Execution, text string, count int64, maxBytes Option[int64]) Result[string, StringError] {
+func String_Repeat(_ *Execution, text string, count int, maxBytes Option[int]) Result[string, StringError] {
 	max := txLimit(maxBytes)
 	if count < 0 || max < 0 {
 		return stringFail[string](StringError_InvalidInput{})
@@ -213,19 +213,19 @@ func String_Repeat(_ *Execution, text string, count int64, maxBytes Option[int64
 		return Ok[string, StringError]("")
 	}
 	max = min(max, txMaxBytes)
-	if count > max/int64(len(text)) {
+	if count > max/len(text) {
 		return stringFail[string](StringError_LimitExceeded{})
 	}
 	return Ok[string, StringError](strings.Repeat(text, int(count)))
 }
 
-func stringReplaceLimit(text, old, replacement string, n int64) string {
+func stringReplaceLimit(text, old, replacement string, n int) string {
 	if n < 0 {
 		txFaultNegative("replace", "max_replacements", n)
 	}
-	bound := int64(len(text))
+	bound := len(text)
 	if old == "" {
-		bound = int64(utf8.RuneCountInString(text)) + 1
+		bound = int(utf8.RuneCountInString(text)) + 1
 	}
 	if n > bound {
 		n = bound
@@ -234,34 +234,34 @@ func stringReplaceLimit(text, old, replacement string, n int64) string {
 }
 
 // String_ReplaceFirst replaces the first occurrence, or up to the supplied cap.
-func String_ReplaceFirst(_ *Execution, text, old, replacement string, max Option[int64]) string {
-	n := int64(1)
+func String_ReplaceFirst(_ *Execution, text, old, replacement string, max Option[int]) string {
+	n := 1
 	if max.Some {
 		n = max.Val
 	}
 	return stringReplaceLimit(text, old, replacement, n)
 }
 
-func String_Replace(ctx *Execution, text, old, replacement string, max Option[int64]) string {
+func String_Replace(ctx *Execution, text, old, replacement string, max Option[int]) string {
 	return String_ReplaceFirst(ctx, text, old, replacement, max)
 }
 
-func String_ReplaceN(_ *Execution, text, old, replacement string, max int64) string {
+func String_ReplaceN(_ *Execution, text, old, replacement string, max int) string {
 	return stringReplaceLimit(text, old, replacement, max)
 }
 
-func String_ScalarValues(ctx *Execution, text string) *List[int64] {
-	items := make([]int64, 0, len(text))
+func String_ScalarValues(ctx *Execution, text string) *List[int] {
+	items := make([]int, 0, len(text))
 	for i, r := range text {
 		if i%4096 == 0 {
 			CheckCancelled(ctx)
 		}
-		items = append(items, int64(r))
+		items = append(items, int(r))
 	}
 	return NewList(items...)
 }
 
-func String_FromScalars(ctx *Execution, values *List[int64]) Result[string, StringError] {
+func String_FromScalars(ctx *Execution, values *List[int]) Result[string, StringError] {
 	var b strings.Builder
 	for i, n := range values.Items {
 		if i%4096 == 0 {
@@ -275,7 +275,7 @@ func String_FromScalars(ctx *Execution, values *List[int64]) Result[string, Stri
 	return Ok[string, StringError](b.String())
 }
 
-func String_SliceScalars(_ *Execution, text string, start, end int64) Result[string, StringError] {
+func String_SliceScalars(_ *Execution, text string, start, end int) Result[string, StringError] {
 	count, ascii := stringShape(text)
 	if start < 0 || end < start || end > count {
 		return stringFail[string](StringError_OutOfRange{})
@@ -286,7 +286,7 @@ func String_SliceScalars(_ *Execution, text string, start, end int64) Result[str
 	return Ok[string, StringError](text[scalarIndexOffset(text, int(start)):scalarIndexOffset(text, int(end))])
 }
 
-func String_Slice(_ *Execution, text string, start, end int64) Result[string, StringError] {
+func String_Slice(_ *Execution, text string, start, end int) Result[string, StringError] {
 	count, ascii := stringShape(text)
 	s, e, ok := txSliceBounds(int(count), start, end)
 	if !ok {
@@ -298,7 +298,7 @@ func String_Slice(_ *Execution, text string, start, end int64) Result[string, St
 	return Ok[string, StringError](text[scalarIndexOffset(text, int(s)):scalarIndexOffset(text, int(e))])
 }
 
-func String_Split(ctx *Execution, text, separator string, maxParts Option[int64]) *List[string] {
+func String_Split(ctx *Execution, text, separator string, maxParts Option[int]) *List[string] {
 	n := txLimit(maxParts)
 	if n < 0 {
 		txFaultNegative("split", "max_parts", n)
@@ -306,17 +306,17 @@ func String_Split(ctx *Execution, text, separator string, maxParts Option[int64]
 	if n == 0 {
 		return NewList[string]()
 	}
-	if n > int64(len(text))+1 {
-		n = int64(len(text)) + 1
+	if n > len(text)+1 {
+		n = len(text) + 1
 	}
 	parts := strings.Split(text, separator)
-	if int64(len(parts)) > n {
+	if len(parts) > n {
 		parts = parts[:n]
 	}
 	return NewList(parts...)
 }
 
-func String_At(_ *Execution, text string, index int64) Option[string] {
+func String_At(_ *Execution, text string, index int) Option[string] {
 	scalar, ok := stringScalarAt(text, index)
 	if !ok {
 		return None[string]()
@@ -324,15 +324,15 @@ func String_At(_ *Execution, text string, index int64) Option[string] {
 	return Some(string(scalar))
 }
 
-func String_ScalarAt(_ *Execution, text string, index int64) Option[int64] {
+func String_ScalarAt(_ *Execution, text string, index int) Option[int] {
 	scalar, ok := stringScalarAt(text, index)
 	if !ok {
-		return None[int64]()
+		return None[int]()
 	}
-	return Some(int64(scalar))
+	return Some(int(scalar))
 }
 
-func stringScalarAt(text string, index int64) (rune, bool) {
+func stringScalarAt(text string, index int) (rune, bool) {
 	count, ascii := stringShape(text)
 	i := txRelative(int(count), index)
 	if i < 0 || i >= count {
@@ -345,44 +345,44 @@ func stringScalarAt(text string, index int64) (rune, bool) {
 	return scalar, true
 }
 
-func String_IndexOf(_ *Execution, text, value string) Option[int64] {
+func String_IndexOf(_ *Execution, text, value string) Option[int] {
 	i := strings.Index(text, value)
 	if i < 0 {
-		return None[int64]()
+		return None[int]()
 	}
-	return Some(int64(utf8.RuneCountInString(text[:i])))
+	return Some(int(utf8.RuneCountInString(text[:i])))
 }
 
-func String_LastIndexOf(_ *Execution, text, value string) Option[int64] {
+func String_LastIndexOf(_ *Execution, text, value string) Option[int] {
 	i := strings.LastIndex(text, value)
 	if i < 0 {
-		return None[int64]()
+		return None[int]()
 	}
-	return Some(int64(utf8.RuneCountInString(text[:i])))
+	return Some(int(utf8.RuneCountInString(text[:i])))
 }
 
-func stringPad(ctx *Execution, atStart bool, text string, target int64, padding string, maxBytes Option[int64]) Result[string, StringError] {
+func stringPad(ctx *Execution, atStart bool, text string, target int, padding string, maxBytes Option[int]) Result[string, StringError] {
 	max := txLimit(maxBytes)
 	if target < 0 || max < 0 {
 		return stringFail[string](StringError_InvalidInput{})
 	}
 	max = min(max, txMaxBytes)
-	if int64(len(text)) > max {
+	if len(text) > max {
 		return stringFail[string](StringError_LimitExceeded{})
 	}
-	needed := target - int64(utf8.RuneCountInString(text))
+	needed := target - int(utf8.RuneCountInString(text))
 	if needed <= 0 || padding == "" {
 		return Ok[string, StringError](text)
 	}
 	// Each scalar occupies at least one byte; reject excessive targets before work.
-	if needed > max-int64(len(text)) {
+	if needed > max-len(text) {
 		return stringFail[string](StringError_LimitExceeded{})
 	}
-	count := int64(utf8.RuneCountInString(padding))
+	count := int(utf8.RuneCountInString(padding))
 	cycles, remainder := needed/count, needed%count
 	prefixEnd := 0
 	if remainder > 0 {
-		seen := int64(0)
+		seen := 0
 		prefixEnd = len(padding)
 		for i := range padding {
 			if seen == remainder {
@@ -392,15 +392,15 @@ func stringPad(ctx *Execution, atStart bool, text string, target int64, padding 
 			seen++
 		}
 	}
-	remaining := max - int64(len(text)) - int64(prefixEnd)
-	if remaining < 0 || cycles > remaining/int64(len(padding)) {
+	remaining := max - len(text) - int(prefixEnd)
+	if remaining < 0 || cycles > remaining/len(padding) {
 		return stringFail[string](StringError_LimitExceeded{})
 	}
 	var b strings.Builder
 	if !atStart {
 		b.WriteString(text)
 	}
-	for i := int64(0); i < cycles; i++ {
+	for i := 0; i < cycles; i++ {
 		CheckCancelled(ctx)
 		b.WriteString(padding)
 	}
@@ -411,22 +411,22 @@ func stringPad(ctx *Execution, atStart bool, text string, target int64, padding 
 	return Ok[string, StringError](b.String())
 }
 
-func String_PadStart(ctx *Execution, text string, target int64, padding string, maxBytes Option[int64]) Result[string, StringError] {
+func String_PadStart(ctx *Execution, text string, target int, padding string, maxBytes Option[int]) Result[string, StringError] {
 	return stringPad(ctx, true, text, target, padding, maxBytes)
 }
 
-func String_PadEnd(ctx *Execution, text string, target int64, padding string, maxBytes Option[int64]) Result[string, StringError] {
+func String_PadEnd(ctx *Execution, text string, target int, padding string, maxBytes Option[int]) Result[string, StringError] {
 	return stringPad(ctx, false, text, target, padding, maxBytes)
 }
 
-func String_ReplaceAll(ctx *Execution, text, old, replacement string, maxBytes Option[int64]) Result[string, StringError] {
+func String_ReplaceAll(ctx *Execution, text, old, replacement string, maxBytes Option[int]) Result[string, StringError] {
 	max := txLimit(maxBytes)
 	if max < 0 {
 		return stringFail[string](StringError_InvalidInput{})
 	}
 	var b strings.Builder
 	write := func(s string) bool {
-		if int64(len(s)) > max-int64(b.Len()) {
+		if len(s) > max-int(b.Len()) {
 			return false
 		}
 		b.WriteString(s)
@@ -465,24 +465,24 @@ func String_ToBytes(_ *Execution, text string) *Bytes { return NewBytes([]byte(t
 
 // String_ParseInt parses signed ASCII decimal digits; anything else,
 // including overflow, is none.
-func String_ParseInt(_ *Execution, text string) Option[int64] {
+func String_ParseInt(_ *Execution, text string) Option[int] {
 	start := 0
 	if text != "" && (text[0] == '+' || text[0] == '-') {
 		start = 1
 	}
 	if start == len(text) {
-		return None[int64]()
+		return None[int]()
 	}
 	for i := start; i < len(text); i++ {
 		if text[i] < '0' || text[i] > '9' {
-			return None[int64]()
+			return None[int]()
 		}
 	}
-	n, err := strconv.ParseInt(text, 10, 64)
+	n, err := strconv.ParseInt(text, 10, strconv.IntSize)
 	if err != nil {
-		return None[int64]()
+		return None[int]()
 	}
-	return Some(n)
+	return Some(int(n))
 }
 
 func stringIsASCII(text string) bool {
@@ -513,7 +513,7 @@ const stringShapeCacheMin = 1024
 
 type stringShapeEntry struct {
 	text  string
-	count int64
+	count int
 	ascii bool
 }
 
@@ -524,27 +524,27 @@ func stringSameText(a, b string) bool {
 }
 
 // stringShape returns the scalar count of text and whether it is all ASCII.
-func stringShape(text string) (count int64, ascii bool) {
+func stringShape(text string) (count int, ascii bool) {
 	if len(text) < stringShapeCacheMin {
 		if ascii = stringIsASCII(text); ascii {
-			return int64(len(text)), true
+			return len(text), true
 		}
-		return int64(utf8.RuneCountInString(text)), false
+		return int(utf8.RuneCountInString(text)), false
 	}
 	if e := stringShapeCache.Load(); e != nil && stringSameText(e.text, text) {
 		return e.count, e.ascii
 	}
 	e := &stringShapeEntry{text: text, ascii: stringIsASCII(text)}
 	if e.ascii {
-		e.count = int64(len(text))
+		e.count = len(text)
 	} else {
-		e.count = int64(utf8.RuneCountInString(text))
+		e.count = int(utf8.RuneCountInString(text))
 	}
 	stringShapeCache.Store(e)
 	return e.count, e.ascii
 }
 
-func stringScalarCount(text string) int64 {
+func stringScalarCount(text string) int {
 	count, _ := stringShape(text)
 	return count
 }

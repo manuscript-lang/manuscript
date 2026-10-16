@@ -13,13 +13,11 @@ export fn main() -> Int:
     let values = [10, 20, 30]
     let optional = Optional[Int].some(5)
 
-    match optional:
-        some(value):
-            if value != 5:
-                return 1
-
-        none:
+    if let value = optional:
+        if value != 5:
             return 1
+    else:
+        return 1
 
     let sum = total(first: values.length(), second: 20, third: 30)
     let queue = Queue[Int](capacity: 4)

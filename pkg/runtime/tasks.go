@@ -2,6 +2,7 @@ package msruntime
 
 import (
 	"fmt"
+	"math"
 	"os"
 	goruntime "runtime"
 	"sync"
@@ -61,13 +62,13 @@ func sleepFor(ctx *Execution, d time.Duration) {
 }
 
 // durationFault raises the fault for an out-of-range duration parameter.
-func durationFault(operation, parameter string, nanoseconds int64) {
-	Raise(fmt.Sprintf("%s: %s (nanoseconds) must be between 0 and %d, found %d", operation, parameter, int64(^uint64(0)>>1), nanoseconds))
+func durationFault(operation, parameter string, nanoseconds int) {
+	Raise(fmt.Sprintf("%s: %s (nanoseconds) must be between 0 and %d, found %d", operation, parameter, math.MaxInt, nanoseconds))
 }
 
 // minRangeFault raises the fault for an out-of-range integer parameter.
-func minRangeFault(operation, parameter string, minimum, value int64) {
-	Raise(fmt.Sprintf("%s: %s must be between %d and %d, found %d", operation, parameter, minimum, int64(^uint64(0)>>1), value))
+func minRangeFault(operation, parameter string, minimum, value int) {
+	Raise(fmt.Sprintf("%s: %s must be between %d and %d, found %d", operation, parameter, minimum, math.MaxInt, value))
 }
 
 // Errors_Message_ExecutionError is the Error message of an ExecutionError.

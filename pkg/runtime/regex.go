@@ -32,17 +32,17 @@ func Regex_Compile(_ *Execution, pattern string) Result[*Regex, RegexError] {
 
 func Regex_Matches(_ *Execution, re *Regex, text string) bool { return re.pattern.MatchString(text) }
 
-func Regex_FindAll(ctx *Execution, re *Regex, text string, maxMatches Option[int64]) Result[*List[string], RegexError] {
+func Regex_FindAll(ctx *Execution, re *Regex, text string, maxMatches Option[int]) Result[*List[string], RegexError] {
 	n := txLimit(maxMatches)
 	if n < 0 {
 		return regexFail[*List[string]](RegexError_InvalidInput{})
 	}
-	if n > int64(len(text))+1 {
-		n = int64(len(text)) + 1
+	if n > len(text)+1 {
+		n = len(text) + 1
 	}
 	matches := re.pattern.FindAllString(text, int(n)+1)
 	CheckCancelled(ctx)
-	if int64(len(matches)) > n {
+	if len(matches) > n {
 		return regexFail[*List[string]](RegexError_LimitExceeded{})
 	}
 	if matches == nil {
@@ -51,7 +51,7 @@ func Regex_FindAll(ctx *Execution, re *Regex, text string, maxMatches Option[int
 	return Ok[*List[string], RegexError](NewList(matches...))
 }
 
-func Regex_ReplaceAll(ctx *Execution, re *Regex, text, replacement string, maxBytes Option[int64]) Result[string, RegexError] {
+func Regex_ReplaceAll(ctx *Execution, re *Regex, text, replacement string, maxBytes Option[int]) Result[string, RegexError] {
 	max := txLimit(maxBytes)
 	if max < 0 {
 		return regexFail[string](RegexError_InvalidInput{})
@@ -60,17 +60,17 @@ func Regex_ReplaceAll(ctx *Execution, re *Regex, text, replacement string, maxBy
 	at := 0
 	for _, index := range re.pattern.FindAllStringIndex(text, -1) {
 		CheckCancelled(ctx)
-		if int64(index[0]-at) > max-int64(out.Len()) {
+		if int(index[0]-at) > max-int(out.Len()) {
 			return regexFail[string](RegexError_LimitExceeded{})
 		}
 		out.WriteString(text[at:index[0]])
-		if int64(len(replacement)) > max-int64(out.Len()) {
+		if len(replacement) > max-int(out.Len()) {
 			return regexFail[string](RegexError_LimitExceeded{})
 		}
 		out.WriteString(replacement)
 		at = index[1]
 	}
-	if int64(len(text)-at) > max-int64(out.Len()) {
+	if int(len(text)-at) > max-int(out.Len()) {
 		return regexFail[string](RegexError_LimitExceeded{})
 	}
 	out.WriteString(text[at:])

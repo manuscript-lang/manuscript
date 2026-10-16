@@ -28,14 +28,14 @@ func Json_Parse[T any](ctx *Execution, dec func(*JsonReader, JsonValue) (T, bool
 }
 
 func jsonParseTree(ctx *Execution, text string, limits Option[*JsonLimits]) Result[JsonValue, JsonError] {
-	maxBytes, maxDepth, maxValues := int64(math.MaxInt64), int64(math.MaxInt64), int64(math.MaxInt64)
+	maxBytes, maxDepth, maxValues := math.MaxInt, math.MaxInt, math.MaxInt
 	if limits.Some {
 		maxBytes, maxDepth, maxValues = dfBudget(limits.Val.MaxBytes), dfBudget(limits.Val.MaxDepth), dfBudget(limits.Val.MaxValues)
 	}
 	if maxBytes < 0 || maxDepth < 0 || maxValues < 0 {
 		return Fail[JsonValue, JsonError](JsonError_InvalidInput{})
 	}
-	if int64(len(text)) > maxBytes {
+	if len(text) > maxBytes {
 		return Fail[JsonValue, JsonError](JsonError_LimitExceeded{})
 	}
 	if maxDepth > jsonDepthCeiling {
@@ -47,10 +47,10 @@ func jsonParseTree(ctx *Execution, text string, limits Option[*JsonLimits]) Resu
 	}
 	decoder := json.NewDecoder(strings.NewReader(text))
 	decoder.UseNumber()
-	count := int64(0)
+	count := 0
 	limitHit := false
-	var parse func(int64) (JsonValue, error)
-	parse = func(depth int64) (JsonValue, error) {
+	var parse func(int) (JsonValue, error)
+	parse = func(depth int) (JsonValue, error) {
 		CheckCancelled(ctx)
 		count++
 		if count > maxValues {
@@ -178,9 +178,9 @@ func jsonUnicodeValid(ctx *Execution, s string) bool {
 // as JSON, escaping <, > and &, validating number text and rejecting cyclic
 // values. maxBytes bounds the output; indent is the spaces per level, clamped
 // to 10, with none or 0 giving compact output.
-func Json_Stringify[T any](ctx *Execution, enc func(*JsonScope, T) (JsonValue, bool), value T, maxBytes Option[int64], indent Option[int64]) Result[string, JsonError] {
+func Json_Stringify[T any](ctx *Execution, enc func(*JsonScope, T) (JsonValue, bool), value T, maxBytes Option[int], indent Option[int]) Result[string, JsonError] {
 	max := dfBudget(maxBytes)
-	width := int64(0)
+	width := 0
 	if indent.Some {
 		width = indent.Val
 	}
@@ -201,7 +201,7 @@ func Json_Stringify[T any](ctx *Execution, enc func(*JsonScope, T) (JsonValue, b
 // jsonIndentCeiling is the widest indent Json_Stringify honors.
 const jsonIndentCeiling = 10
 
-func jsonEmit(ctx *Execution, value JsonValue, max int64, width int) Result[string, JsonError] {
+func jsonEmit(ctx *Execution, value JsonValue, max int, width int) Result[string, JsonError] {
 	w := &dfLimitedWriter{max: max}
 	activeLists := map[*List[JsonValue]]bool{}
 	activeMaps := map[*Map[string, JsonValue]]bool{}
@@ -310,7 +310,7 @@ func jsonEmit(ctx *Execution, value JsonValue, max int64, width int) Result[stri
 }
 
 func jsonString(w *dfLimitedWriter, s string) error {
-	if int64(len(s)) > w.max-int64(w.Len()) {
+	if len(s) > w.max-int(w.Len()) {
 		w.overflow = true
 		return io.ErrShortBuffer
 	}

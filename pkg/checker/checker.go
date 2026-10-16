@@ -751,8 +751,32 @@ func (c *checker) checkCallStatement(s *syntax.Statement) (bool, bool) {
 
 // checkIf checks an if and reports whether control falls through and whether it breaks.
 func (c *checker) checkIf(s *syntax.Statement) (bool, bool) {
+	if s.Pattern != nil {
+		return c.checkIfLet(s)
+	}
 	i := c.expression(s.Value, primitive("Bool"))
 	a, ab := c.block(s.Body, true)
+	b, bb := true, false
+	if len(s.Else) > 0 {
+		b, bb = c.block(s.Else, true)
+	}
+	return !i.NoReturn && (a || b), i.Breaks || ab || bb
+}
+
+// checkIfLet checks `if let name = optional`, which binds the payload in the then-branch only.
+func (c *checker) checkIfLet(s *syntax.Statement) (bool, bool) {
+	i := c.expression(s.Value, nil)
+	payload := primitive("<invalid>")
+	if std(i.Type, "Optional") && len(i.Type.Args) == 1 {
+		payload = i.Type.Args[0]
+	} else if i.Type.ID != "<invalid>" {
+		c.error(s.Value.Pos, "type", "if let requires an Optional, found "+i.Type.String()+"; use 'if' for a Bool condition or 'match' for other alternatives")
+	}
+	old := c.scope
+	c.scope = newScope(old)
+	c.pattern(s.Pattern, payload, false, s.Value)
+	a, ab := c.block(s.Body, true)
+	c.scope = old
 	b, bb := true, false
 	if len(s.Else) > 0 {
 		b, bb = c.block(s.Else, true)
