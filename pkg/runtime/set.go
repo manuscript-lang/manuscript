@@ -44,10 +44,11 @@ func (s *Set[T]) Clear() { s.m.Clear() }
 
 // Snapshot returns the elements in insertion order.
 func (s *Set[T]) Snapshot() []T {
-	entries := s.m.Snapshot()
-	out := make([]T, len(entries))
-	for i, e := range entries {
-		out[i] = e.Key
+	out := make([]T, 0, s.m.live)
+	for _, e := range s.m.entries {
+		if e.live {
+			out = append(out, e.Key)
+		}
 	}
 	return out
 }
