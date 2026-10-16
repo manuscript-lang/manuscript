@@ -2,8 +2,6 @@ package cli
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -53,33 +51,6 @@ func TestSourceCommandsReportFailuresAsJSON(t *testing.T) {
 		if err := json.Unmarshal([]byte(output), &document); err != nil || status != 1 || document.Format != 1 || len(document.Diagnostics) == 0 || errors != "" {
 			t.Errorf("%s --json: %d, %q, %q, %v", command, status, output, errors, err)
 		}
-	}
-}
-
-func TestLockRequiresAProjectAndPinsOne(t *testing.T) {
-	status, _, errors := invoke(t, "lock", sourceFile(t, "export fn main() -> Int:\n    return 0\n"))
-	if status != 2 || !strings.Contains(errors, "lock requires a project ms.toml") {
-		t.Fatalf("single-file lock: %d, %q", status, errors)
-	}
-	root := t.TempDir()
-	for name, source := range map[string]string{
-		"ms.toml":     "[project]\nname = \"pinned\"\nsource = \"src\"\nentry = \"src/main.ms\"\n",
-		"src/main.ms": "export fn main() -> Int:\n    return 0\n",
-	} {
-		path := filepath.Join(root, name)
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(source), 0600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	status, output, errors := invoke(t, "lock", filepath.Join(root, "ms.toml"))
-	if status != 0 || !strings.Contains(output, "Pinned") {
-		t.Skipf("pinning needs the bundled toolchain: %d, %q, %q", status, output, errors)
-	}
-	if _, err := os.Stat(filepath.Join(root, "ms.lock")); err != nil {
-		t.Fatal(err)
 	}
 }
 

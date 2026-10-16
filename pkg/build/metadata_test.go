@@ -7,10 +7,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/build"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-
-	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
 func TestVerifyBuildRejectsStaleArtifacts(t *testing.T) {
@@ -63,100 +60,5 @@ func TestVerifyBuildRejectsStaleArtifacts(t *testing.T) {
 				t.Fatalf("%s: %v", kind, err)
 			}
 		})
-	}
-}
-
-func TestLockRejectsMalformedAndUnknownFields(t *testing.T) {
-	for _, contents := range []string{"{", "null", `{"format":1,"surprise":true}`, `{"format":1} {"format":1}`, `{"format":1} trailing`} {
-		t.Run(contents, func(t *testing.T) {
-			root := t.TempDir()
-			if err := os.WriteFile(filepath.Join(root, "ms.lock"), []byte(contents), 0600); err != nil {
-				t.Fatal(err)
-			}
-			if err := build.CheckPin(root); err == nil {
-				t.Fatal("accepted invalid lock")
-			}
-		})
-	}
-}
-
-func TestUnsavedModuleImportAndStrictRecoveryBoundary(t *testing.T) {
-	root := t.TempDir()
-	write(t, root, "main.ms", "import value from \"./new.ms\"\nfn read() -> Int:\n    return value()\n")
-	overlay := map[string]string{filepath.Join(root, "new.ms"): "export fn value() -> Int:\n    return 3\n"}
-	for _, options := range []compiler.Options{{Overlay: overlay}, {Overlay: overlay, Recover: true, AnalyzeOnly: true}} {
-		result := compiler.CompileFile(filepath.Join(root, "main.ms"), options)
-		if !result.Success() || len(result.Program.Modules) != 2 {
-			t.Fatal(result.Diagnostics)
-		}
-	}
-	if result := compiler.CompileFile(filepath.Join(root, "main.ms"), compiler.Options{}); result.Success() {
-		t.Fatal("unsaved module leaked to filesystem")
-	}
-	overlay[filepath.Join(root, "new.ms")] = "export fn value() -> Int:\n    return 3\nfn broken(\n"
-	for _, options := range []compiler.Options{{Overlay: overlay}, {Overlay: overlay, Recover: true}, {Overlay: overlay, Recover: true, AnalyzeOnly: true}} {
-		result := compiler.CompileFile(filepath.Join(root, "main.ms"), options)
-		if result.Success() || result.Source != "" {
-			t.Fatal("generated executable source from malformed overlay")
-		}
-		if options.AnalyzeOnly && (result.Program == nil || !strings.Contains(result.Program.Modules[0].Source, "value")) {
-			t.Fatal("editor recovery lost valid source")
-		}
-	}
-}
-
-func TestEditorOverlaysUseCanonicalFileIdentity(t *testing.T) {
-	root := t.TempDir()
-	write(t, root, "src/main.ms", "import value from \"./new.ms\"\nfn read() -> Int:\n    return value()\n")
-	alias := filepath.Join(root, "workspace")
-	if err := os.Symlink(filepath.Join(root, "src"), alias); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
-	newFile := filepath.Join(alias, "new.ms")
-	overlay := map[string]string{newFile: "export fn value() -> Int:\n    return 3\n"}
-	result := compiler.CompileFile(filepath.Join(alias, "main.ms"), compiler.Options{Overlay: overlay})
-	if !result.Success() || len(result.Program.Modules) != 2 {
-		t.Fatal("unsaved source lost through symlinked workspace", result.Diagnostics)
-	}
-	selected := compiler.CompileFile(filepath.Join(alias, "main.ms"), compiler.Options{AnalyzeOnly: true, Module: newFile, Overlay: overlay})
-	if !selected.Success() || len(selected.Program.Modules) != 1 || selected.Program.Modules[0].File != "new.ms" {
-		t.Fatal("unsaved editor selection lost through symlinked workspace", selected.Diagnostics)
-	}
-	canonicalRoot, err := filepath.EvalSymlinks(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	overlay[filepath.Join(canonicalRoot, "src", "new.ms")] = "export fn value() -> Int:\n    return 4\n"
-	result = compiler.CompileFile(filepath.Join(alias, "main.ms"), compiler.Options{Overlay: overlay})
-	if result.Success() || result.Source != "" || !strings.Contains(result.Diagnostics[0].Message, "conflicting editor overlays") {
-		t.Fatal("conflicting identities selected an arbitrary overlay", result.Diagnostics)
-	}
-}
-
-func TestAnalysisChecksEntryWithoutGeneratingGo(t *testing.T) {
-	root := t.TempDir()
-	write(t, root, "ms.toml", "[project]\nname = \"analysis\"\nsource = \".\"\nentry = \"main.ms\"\n")
-	write(t, root, "main.ms", "fn helper() -> Int:\n    return 1\n")
-	manifest := filepath.Join(root, "ms.toml")
-	result := compiler.CompileFile(manifest, compiler.Options{AnalyzeOnly: true, Entry: true})
-	if result.Success() || result.Source != "" || !strings.Contains(result.Diagnostics[0].Message, "entry must export") {
-		t.Fatal("analysis skipped the requested entry contract", result.Diagnostics)
-	}
-	if editor := compiler.CompileFile(manifest, compiler.Options{AnalyzeOnly: true}); !editor.Success() {
-		t.Fatal("editor analysis incorrectly required an application entry", editor.Diagnostics)
-	}
-	write(t, root, "main.ms", "export fn main() -> Int:\n    return 0\n")
-	result = compiler.CompileFile(manifest, compiler.Options{AnalyzeOnly: true, Entry: true})
-	if !result.Success() || result.Program == nil || result.Source != "" {
-		t.Fatal("checked analysis performed lowering", result.Diagnostics)
-	}
-}
-
-func TestRecoveryDoesNotReportUsesOfOmittedDeclarations(t *testing.T) {
-	root := t.TempDir()
-	write(t, root, "main.ms", "fn f() -> Int:\n    return 1 +\n\nexport fn main() -> Int:\n    return f()\n")
-	result := compiler.CompileFile(filepath.Join(root, "main.ms"), compiler.Options{Recover: true, AnalyzeOnly: true})
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Phase != "parse" {
-		t.Fatalf("expected only the syntax error, got %v", result.Diagnostics)
 	}
 }

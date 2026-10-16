@@ -43,7 +43,7 @@ func runSourceCommand(args []string, usage string) int {
 		return runNativeCommand(inv.command, inv.filename, inv.output, p.options, p.kind, inv.arguments, inv.profileTrace, inv.structured)
 	}
 	if inv.isOneOf("run", "test", "debug") {
-		// Native commands need the build pin; query the toolchain and hash
+		// Native commands need the build identity; query the toolchain and hash
 		// embedded inputs while the source is parsed and checked.
 		go build.CurrentPin()
 	}
@@ -69,27 +69,12 @@ func runSourceCommand(args []string, usage string) int {
 		}
 	}
 	switch inv.command {
-	case "lock":
-		return lockProject(inv.filename, result)
 	case "inspect", "diagram":
 		return inspectProgram(inv.command, inv.output, result)
 	case "emit":
 		return emitSource(inv.output, result)
 	}
 	return runNativeProgram(inv, p.kind, result)
-}
-
-func lockProject(filename string, result compiler.Result) int {
-	if result.ProjectRoot == "" {
-		fmt.Fprintln(os.Stderr, "lock requires a project ms.toml, not a single .ms file; run ms lock path/to/ms.toml (a manifest declares [project] name and source, plus entry for an executable)")
-		return 2
-	}
-	if err := build.WritePin(result.ProjectRoot); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	fmt.Println("Pinned", filename)
-	return 0
 }
 
 func inspectProgram(command, output string, result compiler.Result) int {

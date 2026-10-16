@@ -25,7 +25,6 @@ Commands:
   trace          Inspect captured execution traces
   debug          Start an application in the embedded Delve debugger
   dap            Serve one native debugger session on stdin/stdout
-  lock           Create or update project build pins
   init           Create a new project with a manifest, entry, test, and .gitignore
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
@@ -44,7 +43,6 @@ Native build levels:
 Start with:
   ms init hello
   ms check ms.toml
-  ms lock ms.toml
   ms run ms.toml -- first second
 
 Bare ms prints this help and exits successfully.
@@ -121,11 +119,6 @@ func commandHelp(command string) (string, bool) {
 		usage = "<file.ms|ms.toml> [-- program arguments]"
 		description = "Build without optimization or inlining, then start the embedded Delve terminal.\nNo dlv executable is needed. On macOS, Xcode command line tools supply debugserver. Arguments after -- are passed to the application.\nWith --script or --break the session is non-interactive and reports Manuscript names, lines, and only Manuscript stack frames."
 		examples = "ms debug ms.toml\n  ms debug main.ms -- first second\n  ms debug ms.toml --break src/main.ms:7 --json\n  ms debug ms.toml --script commands.txt"
-	case "lock":
-		usage = "<ms.toml> [--json]"
-		options = jsonErrorsHelp
-		description = "Create or update project-root ms.lock with compiler/runtime, Go toolchain,\nand target pins. Run again after changing the compiler or toolchain.\nRequires a project manifest, rather than a standalone source file."
-		examples = "ms lock ms.toml"
 	case "init":
 		return initHelp, true
 	case "search_symbol":
@@ -162,8 +155,8 @@ func commandHelp(command string) (string, bool) {
 		text += " " + usage
 	}
 	switch command {
-	case "build", "run", "test", "profile", "debug", "lock":
-		description += "\nAll builds use the embedded Go toolchain; no Go installation is needed. Project builds require matching\nms.lock pins; use 'ms lock ms.toml' to create or update them."
+	case "build", "run", "test", "profile", "debug":
+		description += "\nAll builds use the embedded Go toolchain; no Go installation is needed."
 	}
 	return text + "\n\n" + description + "\n\nOptions:\n" + options +
 		"  -h, --help  Show this help without executing the command\n\nExamples:\n  " + examples + "\n", true

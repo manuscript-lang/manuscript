@@ -77,7 +77,7 @@ func TestProfileOutDirSpellingsUsageAndHelp(t *testing.T) {
 	if status != 1 || stdout != "" || !strings.Contains(stderr, "file not found") {
 		t.Fatalf("out-dir value consumed as help: %d, %q, %q", status, stdout, stderr)
 	}
-	for _, command := range []string{"build", "run", "test", "check", "lint", "inspect", "diagram", "debug", "lock"} {
+	for _, command := range []string{"build", "run", "test", "check", "lint", "inspect", "diagram", "debug"} {
 		status, stdout, stderr := invoke(t, command, file, "--out-dir="+output)
 		if status != 2 || stdout != "" || !strings.Contains(stderr, "valid only for ms profile") {
 			t.Fatalf("unsupported out-dir %s: %d, %q, %q", command, status, stdout, stderr)

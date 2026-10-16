@@ -111,9 +111,6 @@ func checkLibrarySource(cli, manifest string, run func(string, ...string) (strin
 }
 
 func checkLibraryNative(cli, manifest string, run func(string, ...string) (string, error)) error {
-	if _, err := run(cli, "lock", manifest); err != nil {
-		return err
-	}
 	data, err := run(cli, "test", manifest)
 	if err != nil {
 		return err

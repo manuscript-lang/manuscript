@@ -13,8 +13,7 @@ credentials or security settings. Linux/Windows use Delve native backends.
 CGO is disabled. MANUSCRIPT_CACHE_DIR selects a different writable cache directory.
 
 From this directory on macOS/Linux:
-  ./ms lock examples/hello/ms.toml
-  ./ms run examples/hello/ms.toml -- first second
+    ./ms run examples/hello/ms.toml -- first second
   ./ms build examples/hello/ms.toml -o hello
   ./hello first second
   ./ms test examples/hello/test.ms

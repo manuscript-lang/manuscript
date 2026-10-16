@@ -123,7 +123,7 @@ func TestCLICommands(t *testing.T) {
 		}
 	}
 	manifest := filepath.Join(project, "ms.toml")
-	for _, args := range [][]string{{"check", "testdata/accept/cl-01.ms"}, {"test", "testdata/accept/cl-01.ms"}, {"lock", manifest}, {"run", manifest, "--", "a", "b"}} {
+	for _, args := range [][]string{{"check", "testdata/accept/cl-01.ms"}, {"test", "testdata/accept/cl-01.ms"}, {"run", manifest, "--", "a", "b"}} {
 		data, err := commandOutput(t, binary, args...)
 		if err != nil {
 			t.Fatalf("%v: %v\n%s", args, err, data)

@@ -456,13 +456,7 @@ func TestPinsAndBuildMetadata(t *testing.T) {
 	}
 	binary := filepath.Join(root, "program")
 	if _, err := build.BuildChecked(result, binary, false); err != nil {
-		t.Fatal("project did not build without ms.lock", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, "ms.lock")); err != nil {
-		t.Fatal("missing ms.lock was not created", err)
-	}
-	if err := build.CheckPin(root); err != nil {
-		t.Fatal(err)
+		t.Fatal("project did not build", err)
 	}
 	first, err := build.BuildChecked(result, binary, false)
 	if err != nil {
@@ -484,10 +478,6 @@ func TestPinsAndBuildMetadata(t *testing.T) {
 	write(t, root, "program", "corrupt")
 	if err := build.VerifyBuild(binary, map[string]string{"src/main.ms": source, "ms.toml": result.Configuration}); err == nil {
 		t.Fatal("wrong executable accepted")
-	}
-	write(t, root, "ms.lock", "{}\n")
-	if err := build.CheckPin(root); err == nil {
-		t.Fatal("mismatched pins accepted")
 	}
 }
 

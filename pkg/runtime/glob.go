@@ -7,14 +7,16 @@ import (
 	"unicode/utf8"
 )
 
-type pathGlobAtom struct {
+// Glob syntax and matching are shared by path predicates and filesystem queries.
+// Callers own path normalization, traversal, and domain-specific errors.
+type globAtom struct {
 	kind         byte
 	text         string
-	alternatives [][]pathGlobAtom
+	alternatives [][]globAtom
 }
 
-func pathGlobSequence(pattern string) ([]pathGlobAtom, bool) {
-	var atoms []pathGlobAtom
+func globSequence(pattern string) ([]globAtom, bool) {
+	var atoms []globAtom
 	for len(pattern) > 0 {
 		ch := pattern[0]
 		if strings.ContainsRune("@+?!*", rune(ch)) && len(pattern) > 1 && pattern[1] == '(' {
@@ -54,24 +56,24 @@ func pathGlobSequence(pattern string) ([]pathGlobAtom, bool) {
 			}
 			parts = append(parts, inside[at:])
 
-			alternatives := make([][]pathGlobAtom, 0, len(parts))
+			alternatives := make([][]globAtom, 0, len(parts))
 			for _, part := range parts {
-				sequence, ok := pathGlobSequence(part)
+				sequence, ok := globSequence(part)
 				if !ok {
 					return nil, false
 				}
 				alternatives = append(alternatives, sequence)
 			}
-			atoms = append(atoms, pathGlobAtom{kind: kind, alternatives: alternatives})
+			atoms = append(atoms, globAtom{kind: kind, alternatives: alternatives})
 			pattern = pattern[end+1:]
 			continue
 		}
 		switch ch {
 		case '*':
-			atoms = append(atoms, pathGlobAtom{kind: 's'})
+			atoms = append(atoms, globAtom{kind: 's'})
 			pattern = pattern[1:]
 		case '?':
-			atoms = append(atoms, pathGlobAtom{kind: 'q'})
+			atoms = append(atoms, globAtom{kind: 'q'})
 			pattern = pattern[1:]
 		case '[':
 			end := strings.IndexByte(pattern, ']')
@@ -85,24 +87,24 @@ func pathGlobSequence(pattern string) ([]pathGlobAtom, bool) {
 			if _, err := path.Match(token, "a"); err != nil {
 				return nil, false
 			}
-			atoms = append(atoms, pathGlobAtom{kind: 'c', text: token})
+			atoms = append(atoms, globAtom{kind: 'c', text: token})
 			pattern = pattern[end+1:]
 		case '\\':
 			if len(pattern) < 2 {
 				return nil, false
 			}
 			_, size := utf8.DecodeRuneInString(pattern[1:])
-			atoms = append(atoms, pathGlobAtom{kind: 'l', text: pattern[1 : 1+size]})
+			atoms = append(atoms, globAtom{kind: 'l', text: pattern[1 : 1+size]})
 			pattern = pattern[1+size:]
 		default:
 			_, size := utf8.DecodeRuneInString(pattern)
-			atoms = append(atoms, pathGlobAtom{kind: 'l', text: pattern[:size]})
+			atoms = append(atoms, globAtom{kind: 'l', text: pattern[:size]})
 			pattern = pattern[size:]
 		}
 	}
 	return atoms, true
 }
-func pathGlobEnds(atoms []pathGlobAtom, value []rune, start int) map[int]bool {
+func globEnds(atoms []globAtom, value []rune, start int) map[int]bool {
 	positions := map[int]bool{start: true}
 	for _, atom := range atoms {
 		next := map[int]bool{}
@@ -143,7 +145,7 @@ func pathGlobEnds(atoms []pathGlobAtom, value []rune, start int) map[int]bool {
 			default:
 				accepted := map[int]bool{}
 				for _, alternative := range atom.alternatives {
-					for end := range pathGlobEnds(alternative, value, at) {
+					for end := range globEnds(alternative, value, at) {
 						accepted[end] = true
 					}
 				}
@@ -174,7 +176,7 @@ func pathGlobEnds(atoms []pathGlobAtom, value []rune, start int) map[int]bool {
 						position := queue[0]
 						queue = queue[1:]
 						for _, alternative := range atom.alternatives {
-							for end := range pathGlobEnds(alternative, value, position) {
+							for end := range globEnds(alternative, value, position) {
 								next[end] = true
 								if !seen[end] {
 									seen[end] = true
@@ -193,11 +195,11 @@ func pathGlobEnds(atoms []pathGlobAtom, value []rune, start int) map[int]bool {
 	}
 	return positions
 }
-func pathGlobValid(pattern string) bool {
+func globValid(pattern string) bool {
 	if len(pattern) > 4096 || strings.ContainsRune(pattern, 0) {
 		return false
 	}
-	patterns, ok := pathExpandBraces(pattern)
+	patterns, ok := globExpandBraces(pattern)
 	if !ok {
 		return false
 	}
@@ -206,26 +208,26 @@ func pathGlobValid(pattern string) bool {
 			if part == "**" {
 				continue
 			}
-			if _, ok := pathGlobSequence(part); !ok {
+			if _, ok := globSequence(part); !ok {
 				return false
 			}
 		}
 	}
 	return true
 }
-func pathGlobMatch(value, pattern string) bool {
-	patterns, ok := pathExpandBraces(pattern)
+func globMatch(value, pattern string) bool {
+	patterns, ok := globExpandBraces(pattern)
 	if !ok {
 		return false
 	}
 	for _, pattern := range patterns {
-		if pathGlobMatchSegments(value, pattern) {
+		if globMatchSegments(value, pattern) {
 			return true
 		}
 	}
 	return false
 }
-func pathGlobMatchSegments(value, pattern string) bool {
+func globMatchSegments(value, pattern string) bool {
 	vs, ps := strings.Split(value, "/"), strings.Split(pattern, "/")
 	previous := make([]bool, len(vs)+1)
 	previous[0] = true
@@ -237,13 +239,13 @@ func pathGlobMatchSegments(value, pattern string) bool {
 				next[j] = previous[j] || next[j-1] && !strings.HasPrefix(vs[j-1], ".")
 			}
 		} else {
-			atoms, ok := pathGlobSequence(part)
+			atoms, ok := globSequence(part)
 			if !ok {
 				return false
 			}
 			for j := 1; j <= len(vs); j++ {
 				if previous[j-1] && (!strings.HasPrefix(vs[j-1], ".") || strings.HasPrefix(part, ".")) {
-					next[j] = pathGlobEnds(atoms, []rune(vs[j-1]), 0)[len([]rune(vs[j-1]))]
+					next[j] = globEnds(atoms, []rune(vs[j-1]), 0)[len([]rune(vs[j-1]))]
 				}
 			}
 		}
@@ -254,7 +256,7 @@ func pathGlobMatchSegments(value, pattern string) bool {
 
 // Brace expansion runs before segmentation, allowing alternatives to cross
 // directory boundaries. The expansion bound avoids combinatorial allocation.
-func pathExpandBraces(pattern string) ([]string, bool) {
+func globExpandBraces(pattern string) ([]string, bool) {
 	open := -1
 	escaped, bracket := false, false
 	for i := 0; i < len(pattern); i++ {
@@ -316,7 +318,7 @@ func pathExpandBraces(pattern string) ([]string, bool) {
 	if len(parts) == 1 {
 		fields := strings.Split(inside, "..")
 		if len(fields) == 1 {
-			tails, ok := pathExpandBraces(pattern[end+1:])
+			tails, ok := globExpandBraces(pattern[end+1:])
 			if !ok {
 				return nil, false
 			}
@@ -343,12 +345,12 @@ func pathExpandBraces(pattern string) ([]string, bool) {
 		hi, e2 := strconv.Atoi(fields[1])
 		alpha := false
 		if e1 != nil || e2 != nil {
-			if len(fields[0]) != 1 || len(fields[1]) != 1 || !pathBraceLetter(fields[0][0]) || !pathBraceLetter(fields[1][0]) {
+			if len(fields[0]) != 1 || len(fields[1]) != 1 || !globBraceLetter(fields[0][0]) || !globBraceLetter(fields[1][0]) {
 				return nil, false
 			}
 			lo, hi, alpha = int(fields[0][0]), int(fields[1][0]), true
 		}
-		if lo < -100000 || lo > 100000 || hi < -100000 || hi > 100000 || pathAbs(lo-hi)/step > 1024 {
+		if lo < -100000 || lo > 100000 || hi < -100000 || hi > 100000 || globAbs(lo-hi)/step > 1024 {
 			return nil, false
 		}
 		width := 0
@@ -367,7 +369,7 @@ func pathExpandBraces(pattern string) ([]string, bool) {
 			if alpha {
 				value = string(rune(n))
 			} else if width > 0 {
-				unsigned := strconv.Itoa(pathAbs(n))
+				unsigned := strconv.Itoa(globAbs(n))
 				value = strings.Repeat("0", max(width-len(unsigned), 0)) + unsigned
 				if n < 0 {
 					value = "-" + value
@@ -378,7 +380,7 @@ func pathExpandBraces(pattern string) ([]string, bool) {
 	}
 	var result []string
 	for _, part := range parts {
-		expanded, ok := pathExpandBraces(pattern[:open] + part + pattern[end+1:])
+		expanded, ok := globExpandBraces(pattern[:open] + part + pattern[end+1:])
 		if !ok || len(result)+len(expanded) > 1025 {
 			return nil, false
 		}
@@ -386,8 +388,8 @@ func pathExpandBraces(pattern string) ([]string, bool) {
 	}
 	return result, true
 }
-func pathBraceLetter(ch byte) bool { return ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' }
-func pathAbs(n int) int {
+func globBraceLetter(ch byte) bool { return ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' }
+func globAbs(n int) int {
 	if n < 0 {
 		return -n
 	}

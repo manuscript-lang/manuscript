@@ -52,7 +52,7 @@ func sourceFile(t *testing.T, source string) string {
 }
 
 func TestUsageAndInvalidOptions(t *testing.T) {
-	for _, args := range [][]string{nil, {"--help"}, {"-h"}, {"--version"}, {"lock", "--help"}} {
+	for _, args := range [][]string{nil, {"--help"}, {"-h"}, {"--version"}} {
 		status, output, errors := invoke(t, args...)
 		if status != 0 || output == "" || errors != "" {
 			t.Fatalf("%v: %d, %q, %q", args, status, output, errors)
@@ -87,7 +87,7 @@ func TestHelpForEveryCommand(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	for _, command := range []string{
 		"check", "lint", "lsp", "profile", "debug", "build", "emit", "run",
-		"test", "fmt", "inspect", "diagram", "lock", "init", "help",
+		"test", "fmt", "inspect", "diagram", "init", "help",
 	} {
 		for _, args := range [][]string{
 			{command, "--help"}, {command, "-h"}, {"help", command},
@@ -277,7 +277,7 @@ func TestSourceCommandsRetainProjectEntryValidation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte("export fn helper() -> Int:\n    return 1\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	for _, command := range []string{"check", "inspect", "diagram", "lock"} {
+	for _, command := range []string{"check", "inspect", "diagram"} {
 		status, _, errors := invoke(t, command, filepath.Join(root, "ms.toml"))
 		if status != 1 || !strings.Contains(errors, "entry must export") {
 			t.Fatalf("%s lost application entry checking: %d, %s", command, status, errors)
@@ -305,13 +305,16 @@ func TestFailedProfileBuildRemovesItsArtifactDirectory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "main.ms"), []byte("export fn main() -> Int:\n    return 0\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "ms.lock"), []byte("stale\n"), 0600); err != nil {
+	// A cache directory that is a regular file makes the native build fail.
+	blocked := filepath.Join(t.TempDir(), "cache")
+	if err := os.WriteFile(blocked, []byte("not a directory"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	t.Setenv("MANUSCRIPT_CACHE_DIR", blocked)
 	output := filepath.Join(t.TempDir(), "profile")
 	status, _, errors := invoke(t, "profile", filepath.Join(root, "ms.toml"), "-o", output)
 	if status != 1 || errors == "" {
-		t.Fatalf("stale lock profile: %d, %q", status, errors)
+		t.Fatalf("blocked cache profile: %d, %q", status, errors)
 	}
 	if _, err := os.Stat(output); !os.IsNotExist(err) {
 		t.Fatal("failed build left a profile directory that blocks a retry", err)

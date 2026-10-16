@@ -30,9 +30,7 @@ Arguments: 2
 The values after `--` are your program's arguments. `run` builds a temporary
 executable and starts it. You have just run your first Manuscript program.
 
-Building from a source checkout? Run `make build` in the repository root first,
-then `./ms lock examples/hello/ms.toml` to update the example’s build pins for
-your local compiler. Keep that local lock-file update out of your commit.
+Building from a source checkout? Run `make build` in the repository root first.
 [Development setup](../contributing/development.md) lists the prerequisites.
 
 ## 2. Read the code {#read-the-program}
@@ -108,9 +106,8 @@ ms test ms.toml
 ```
 
 `init` creates a project manifest, `src/main.ms`, a test file, and a `.gitignore`.
-The manifest tells `ms` where your source and entry file live. The first build
-also creates `ms.lock`; commit it to keep your project's compiler and toolchain
-pins explicit. [Project configuration](../developer-tooling/builds/project-configuration.md)
+The manifest tells `ms` where your source and entry file live.
+[Project configuration](../developer-tooling/builds/project-configuration.md)
 explains these files when you need to change them.
 
 While you work, use these commands from your new project's directory:

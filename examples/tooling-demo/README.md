@@ -3,7 +3,6 @@
 This project exercises typed completions, source navigation/refactoring, native debugging, and profiling. Build `ms`, install the [VS Code extension](../../extensions/vscode/README.md), install Delve, and open this folder in a trusted workspace. Set executable paths in VS Code if `ms` and `dlv` are not on PATH.
 
 ```sh
-ms lock ms.toml
 ms check ms.toml
 ms test ms.toml
 ms run ms.toml
