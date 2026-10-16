@@ -44,7 +44,7 @@ func netReportDiagnostic(message string) { fmt.Fprintln(os.Stderr, message) }
 type httpServer struct {
 	mu                       sync.Mutex
 	streaming                bool
-	headerLimit              int64
+	headerLimit              int
 	listener                 net.Listener
 	server                   *http.Server
 	parent                   *Execution
@@ -53,9 +53,9 @@ type httpServer struct {
 	cancel                   context.CancelFunc
 	handler                  func(*Execution, *HttpRequest) *HttpResponse
 	stream                   func(*Execution, HttpExchange) Result[Unit, HttpError]
-	admissionLimit           int64
-	admitted                 int64
-	bodyLimit, responseLimit int64
+	admissionLimit           int
+	admitted                 int
+	bodyLimit, responseLimit int
 	timeout, grace           time.Duration
 	done, closed             chan struct{}
 	err                      error
@@ -67,7 +67,7 @@ type httpServer struct {
 var _ HttpServer = (*httpServer)(nil)
 
 // Serve starts a server whose handler receives each fully buffered request.
-func (n *osNetwork) Serve(ctx *Execution, address string, handler func(*Execution, *HttpRequest) *HttpResponse, maxRequests, maxBodyBytes, maxResponseBytes Option[int64], timeout, grace Option[Duration]) Result[HttpServer, IoError] {
+func (n *osNetwork) Serve(ctx *Execution, address string, handler func(*Execution, *HttpRequest) *HttpResponse, maxRequests, maxBodyBytes, maxResponseBytes Option[int], timeout, grace Option[Duration]) Result[HttpServer, IoError] {
 	limit, ok1 := optLimit(maxRequests, netUnlimited)
 	bodyLimit, ok2 := optLimit(maxBodyBytes, netUnlimited)
 	responseLimit, ok3 := optLimit(maxResponseBytes, netUnlimited)
@@ -218,7 +218,7 @@ func (s *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request path", 400)
 		return
 	}
-	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, s.bodyLimit))
+	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, int64(s.bodyLimit)))
 	if err != nil {
 		http.Error(w, "invalid or oversized request body", 413)
 		return
@@ -240,7 +240,7 @@ func (s *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if response == nil || response.Status < 200 || response.Status > 599 || int64(len(responseBody(response))) > s.responseLimit {
+	if response == nil || response.Status < 200 || response.Status > 599 || int(len(responseBody(response))) > s.responseLimit {
 		http.Error(w, "invalid response", 500)
 		return
 	}
@@ -365,8 +365,8 @@ type httpExchange struct {
 	rejected                      bool
 	readGate, writeGate           gate
 	active                        sync.WaitGroup
-	remainingRead, remainingWrite int64
-	status                        int64
+	remainingRead, remainingWrite int
+	status                        int
 	websocket                     *osWebSocket
 }
 
@@ -509,7 +509,7 @@ func (e *httpExchange) leaveIO(g gate) {
 	g.release()
 }
 
-func (e *httpExchange) Read(ctx *Execution, maxBytes Option[int64]) Result[Option[*Bytes], IoError] {
+func (e *httpExchange) Read(ctx *Execution, maxBytes Option[int]) Result[Option[*Bytes], IoError] {
 	max, ok := optLimit(maxBytes, 65536)
 	if !ok || max <= 0 {
 		return ioFail[Option[*Bytes]](errIoInvalidInput)
@@ -529,10 +529,10 @@ func (e *httpExchange) Read(ctx *Execution, maxBytes Option[int64]) Result[Optio
 	n, err := e.request.Body.Read(buffer)
 	CheckCancelled(ctx)
 	CheckCancelled(e.ctx)
-	if int64(n) > e.remainingRead {
+	if int(n) > e.remainingRead {
 		return ioFail[Option[*Bytes]](ioFailed("request body limit exceeded"))
 	}
-	e.remainingRead -= int64(n)
+	e.remainingRead -= int(n)
 	if n > 0 {
 		return Ok[Option[*Bytes], IoError](Some(NewBytes(buffer[:n])))
 	}
@@ -545,7 +545,7 @@ func (e *httpExchange) Read(ctx *Execution, maxBytes Option[int64]) Result[Optio
 	return ioFail[Option[*Bytes]](ioFailed("empty request read"))
 }
 
-func (e *httpExchange) SendHeaders(ctx *Execution, status int64, headers *HttpHeaders) Result[Unit, HttpError] {
+func (e *httpExchange) SendHeaders(ctx *Execution, status int, headers *HttpHeaders) Result[Unit, HttpError] {
 	if !e.admitIO(ctx, e.writeGate) {
 		return httpFail[Unit](errHTTPClosed)
 	}
@@ -557,14 +557,14 @@ func (e *httpExchange) SendHeaders(ctx *Execution, status int64, headers *HttpHe
 	if sent || status < 200 || status > 599 {
 		return httpFail[Unit](errHTTPInvalidInput)
 	}
-	headerBytes := int64(0)
+	headerBytes := 0
 	for _, entry := range headers.entries {
 		if !validHeaderName(entry.name) || strings.EqualFold(entry.name, "Content-Length") || strings.EqualFold(entry.name, "Transfer-Encoding") || strings.EqualFold(entry.name, "Connection") {
 			return httpFail[Unit](errHTTPInvalidInput)
 		}
 		for _, item := range entry.values.Items {
 			value := string(item.Data)
-			headerBytes += int64(len(entry.name)) + int64(len(value)) + 4
+			headerBytes += len(entry.name) + len(value) + 4
 			if headerBytes > e.owner.headerLimit {
 				return httpFail[Unit](errHTTPLimit)
 			}
@@ -598,14 +598,14 @@ func (e *httpExchange) Write(ctx *Execution, data *Bytes) Result[Unit, IoError] 
 	if !sent {
 		return ioFail[Unit](errIoInvalidInput)
 	}
-	if int64(len(data.Data)) > e.remainingWrite {
+	if len(data.Data) > e.remainingWrite {
 		return ioFail[Unit](ioFailed("response body limit exceeded"))
 	}
 	if e.request.Method == "HEAD" || status == 204 || status == 304 {
 		return ioFail[Unit](errIoInvalidInput)
 	}
 	n, err := e.writer.Write(data.Data)
-	e.remainingWrite -= int64(n)
+	e.remainingWrite -= int(n)
 	if err == nil && n != len(data.Data) {
 		err = io.ErrShortWrite
 	}

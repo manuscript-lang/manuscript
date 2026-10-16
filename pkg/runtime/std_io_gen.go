@@ -5,13 +5,13 @@
 package msruntime
 
 func check_Io_Copy() {
-	var _ func(*Execution, ReadStream, WriteStream, Option[int64]) Result[int64, IoError] = Io_Copy
+	var _ func(*Execution, ReadStream, WriteStream, Option[int]) Result[int, IoError] = Io_Copy
 }
 func check_Io_ReadAll() {
-	var _ func(*Execution, ReadStream, Option[int64]) Result[*Bytes, IoError] = Io_ReadAll
+	var _ func(*Execution, ReadStream, Option[int]) Result[*Bytes, IoError] = Io_ReadAll
 }
 func check_Io_ReadLine() {
-	var _ func(*Execution, ReadStream, Option[int64]) Result[Option[string], IoError] = Io_ReadLine
+	var _ func(*Execution, ReadStream, Option[int]) Result[Option[string], IoError] = Io_ReadLine
 }
 func check_Io_Stdin() {
 	var _ func(*Execution) ReadStream = Io_Stdin

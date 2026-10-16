@@ -39,7 +39,7 @@ func httpURL(text string) (*url.URL, bool) {
 
 // Request performs one buffered HTTP request. Redirects are returned, not
 // followed, and no cookies or proxy settings apply.
-func (n *osNetwork) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int64], timeout Option[Duration]) Result[*ClientResponse, HttpError] {
+func (n *osNetwork) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int], timeout Option[Duration]) Result[*ClientResponse, HttpError] {
 	if n.isClosed() {
 		return httpFail[*ClientResponse](errHTTPClosed)
 	}
@@ -75,7 +75,7 @@ func (n *osNetwork) Request(ctx *Execution, method HttpMethod, address string, h
 		return httpFail[*ClientResponse](errHTTPInvalidInput)
 	}
 	// No ambient proxy or cookie jar. Redirects go back to the caller.
-	transport := &http.Transport{TLSHandshakeTimeout: transportTimeout(limit), MaxResponseHeaderBytes: netUnlimited, DisableCompression: true, DisableKeepAlives: true, DialContext: n.dial}
+	transport := &http.Transport{TLSHandshakeTimeout: transportTimeout(limit), MaxResponseHeaderBytes: int64(netUnlimited), DisableCompression: true, DisableKeepAlives: true, DialContext: n.dial}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	response, err := client.Do(req)
@@ -103,7 +103,7 @@ func (n *osNetwork) Request(ctx *Execution, method HttpMethod, address string, h
 	if !textHeaders(response.Header) {
 		return httpFail[*ClientResponse](errHTTPInvalidData)
 	}
-	return Ok[*ClientResponse, HttpError](&ClientResponse{Head: &HttpResponseMetadata{Status: int64(response.StatusCode), Headers: headersFrom(response.Header)}, Body: NewBytes(payload)})
+	return Ok[*ClientResponse, HttpError](&ClientResponse{Head: &HttpResponseMetadata{Status: int(response.StatusCode), Headers: headersFrom(response.Header)}, Body: NewBytes(payload)})
 }
 
 // osHTTPClient is a reusable client with connection pooling that dials
@@ -141,7 +141,7 @@ func (n *osNetwork) HttpClient(_ *Execution, options *HttpClientOptions) Result[
 	if idle == netUnlimited {
 		idle = 0
 	}
-	transport := &http.Transport{DialContext: n.dial, TLSClientConfig: config, ForceAttemptHTTP2: true, MaxResponseHeaderBytes: headerMax, MaxIdleConns: int(idle), MaxIdleConnsPerHost: int(idle), IdleConnTimeout: transportTimeout(idleTimeout), DisableCompression: !options.Decompress}
+	transport := &http.Transport{DialContext: n.dial, TLSClientConfig: config, ForceAttemptHTTP2: true, MaxResponseHeaderBytes: int64(headerMax), MaxIdleConns: int(idle), MaxIdleConnsPerHost: int(idle), IdleConnTimeout: transportTimeout(idleTimeout), DisableCompression: !options.Decompress}
 	client := &http.Client{Transport: transport}
 	if options.Cookies {
 		client.Jar, _ = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
@@ -150,7 +150,7 @@ func (n *osNetwork) HttpClient(_ *Execution, options *HttpClientOptions) Result[
 		if redirects == 0 {
 			return http.ErrUseLastResponse
 		}
-		if int64(len(previous)) > redirects {
+		if len(previous) > redirects {
 			return errors.New("redirect limit exceeded")
 		}
 		old := previous[len(previous)-1]
@@ -205,7 +205,7 @@ func (c *osHTTPClient) close() {
 	close(c.released)
 }
 
-func (c *osHTTPClient) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int64], timeout Option[Duration]) Result[ResponseBody, HttpError] {
+func (c *osHTTPClient) Request(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body *Bytes, maxResponseBytes Option[int], timeout Option[Duration]) Result[ResponseBody, HttpError] {
 	var data []byte
 	if body != nil {
 		data = body.Data
@@ -213,11 +213,11 @@ func (c *osHTTPClient) Request(ctx *Execution, method HttpMethod, address string
 	return c.do(ctx, method, address, headers, bytes.NewReader(data), nil, maxResponseBytes, timeout)
 }
 
-func (c *osHTTPClient) RequestStream(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body ReadStream, maxResponseBytes Option[int64], timeout Option[Duration]) Result[ResponseBody, HttpError] {
+func (c *osHTTPClient) RequestStream(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, body ReadStream, maxResponseBytes Option[int], timeout Option[Duration]) Result[ResponseBody, HttpError] {
 	return c.do(ctx, method, address, headers, nil, body, maxResponseBytes, timeout)
 }
 
-func (c *osHTTPClient) do(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, buffered io.Reader, stream ReadStream, maxResponseBytes Option[int64], timeout Option[Duration]) Result[ResponseBody, HttpError] {
+func (c *osHTTPClient) do(ctx *Execution, method HttpMethod, address string, headers *HttpHeaders, buffered io.Reader, stream ReadStream, maxResponseBytes Option[int], timeout Option[Duration]) Result[ResponseBody, HttpError] {
 	max, okMax := optLimit(maxResponseBytes, netUnlimited)
 	limit, okTimeout := optTimeout(timeout)
 	if !okMax || !okTimeout {
@@ -293,7 +293,7 @@ func (c *osHTTPClient) do(ctx *Execution, method HttpMethod, address string, hea
 		response.Body.Close()
 		return httpFail[ResponseBody](errHTTPInvalidData)
 	}
-	resource := &osResponseBody{owner: c.owner, client: c, upload: bridge, response: response, metadata: &HttpResponseMetadata{Status: int64(response.StatusCode), Headers: headersFrom(response.Header)}, reader: response.Body, remaining: max, finish: finish, gate: newGate(), released: make(chan struct{})}
+	resource := &osResponseBody{owner: c.owner, client: c, upload: bridge, response: response, metadata: &HttpResponseMetadata{Status: int(response.StatusCode), Headers: headersFrom(response.Header)}, reader: response.Body, remaining: max, finish: finish, gate: newGate(), released: make(chan struct{})}
 	c.owner.mu.Lock()
 	c.mu.Lock()
 	if c.closed || c.owner.closed {
@@ -319,7 +319,7 @@ type osResponseBody struct {
 	response  *http.Response
 	metadata  *HttpResponseMetadata
 	reader    io.ReadCloser
-	remaining int64
+	remaining int
 	mu        sync.Mutex
 	closed    bool
 	active    sync.WaitGroup
@@ -367,7 +367,7 @@ func (b *osResponseBody) close() {
 	}
 }
 
-func (b *osResponseBody) Read(ctx *Execution, maxBytes Option[int64]) Result[Option[*Bytes], IoError] {
+func (b *osResponseBody) Read(ctx *Execution, maxBytes Option[int]) Result[Option[*Bytes], IoError] {
 	max, ok := optLimit(maxBytes, 65536)
 	if !ok || max <= 0 {
 		return ioFail[Option[*Bytes]](errIoInvalidInput)
@@ -396,11 +396,11 @@ func (b *osResponseBody) Read(ctx *Execution, maxBytes Option[int64]) Result[Opt
 	}
 	stop()
 	CheckCancelled(ctx)
-	if int64(count) > b.remaining {
+	if int(count) > b.remaining {
 		b.response.Body.Close()
 		return ioFail[Option[*Bytes]](ioFailed("response body limit exceeded"))
 	}
-	b.remaining -= int64(count)
+	b.remaining -= int(count)
 	if count > 0 {
 		return Ok[Option[*Bytes], IoError](Some(NewBytes(data[:count])))
 	}
@@ -461,7 +461,7 @@ func (b *streamReader) Read(p []byte) (count int, err error) {
 		return 0, nil
 	}
 	if len(b.remainder) == 0 {
-		r := b.stream.Read(b.ctx, Some(int64(len(p))))
+		r := b.stream.Read(b.ctx, Some(len(p)))
 		if r.Failed {
 			return 0, errors.New("source stream read failed")
 		}

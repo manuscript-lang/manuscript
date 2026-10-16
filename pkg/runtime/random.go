@@ -16,7 +16,7 @@ type osEntropy struct{}
 var _ Entropy = osEntropy{}
 
 // Bytes returns exactly count bytes, checking cancellation every 64 KiB.
-func (osEntropy) Bytes(ctx *Execution, count int64) Result[*Bytes, RandomError] {
+func (osEntropy) Bytes(ctx *Execution, count int) Result[*Bytes, RandomError] {
 	if count < 0 || count > randomMaxBytes {
 		return Fail[*Bytes, RandomError](RandomError_InvalidInput{})
 	}
@@ -41,31 +41,31 @@ func randomIncorrectLength() RandomError {
 
 // Random_SecureInt returns an unbiased integer in [min, maxExclusive), with
 // maxExclusive defaulting to the largest Int plus one.
-func Random_SecureInt(ctx *Execution, entropy Entropy, min int64, maxExclusive Option[int64]) Result[int64, RandomError] {
-	max := int64(math.MaxInt64)
+func Random_SecureInt(ctx *Execution, entropy Entropy, min int, maxExclusive Option[int]) Result[int, RandomError] {
+	max := math.MaxInt
 	if maxExclusive.Some {
 		max = maxExclusive.Val
 	}
 	if min >= max {
-		return Fail[int64, RandomError](RandomError_InvalidInput{})
+		return Fail[int, RandomError](RandomError_InvalidInput{})
 	}
-	width := new(big.Int).Sub(big.NewInt(max), big.NewInt(min))
+	width := new(big.Int).Sub(big.NewInt(int64(max)), big.NewInt(int64(min)))
 	bits := width.BitLen()
 	count := (bits + 7) / 8
 	for {
 		CheckCancelled(ctx)
-		v := entropy.Bytes(ctx, int64(count))
+		v := entropy.Bytes(ctx, int(count))
 		if v.Failed {
-			return Fail[int64, RandomError](v.Err)
+			return Fail[int, RandomError](v.Err)
 		}
 		data := append([]byte{}, dfBytes(v.Val)...)
 		if len(data) != count {
-			return Fail[int64, RandomError](randomIncorrectLength())
+			return Fail[int, RandomError](randomIncorrectLength())
 		}
 		data[0] &= byte(255 >> uint(count*8-bits))
 		n := new(big.Int).SetBytes(data)
 		if n.Cmp(width) < 0 {
-			return Ok[int64, RandomError](n.Add(n, big.NewInt(min)).Int64())
+			return Ok[int, RandomError](int(n.Add(n, big.NewInt(int64(min))).Int64()))
 		}
 	}
 }

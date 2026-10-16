@@ -390,7 +390,7 @@ func (n *osNetwork) WithResolver(_ *Execution, address string) Result[Network, N
 }
 
 // Lookup resolves a host name to its address strings.
-func (n *osNetwork) Lookup(ctx *Execution, name string, maxRecords Option[int64], timeout Option[Duration]) Result[*List[string], NetworkError] {
+func (n *osNetwork) Lookup(ctx *Execution, name string, maxRecords Option[int], timeout Option[Duration]) Result[*List[string], NetworkError] {
 	if n.isClosed() {
 		return netFail[*List[string]](errNetClosed)
 	}
@@ -420,14 +420,14 @@ func (n *osNetwork) Lookup(ctx *Execution, name string, maxRecords Option[int64]
 		}
 		return netFail[*List[string]](netFailed(err.Error()))
 	}
-	if int64(len(records)) > max {
+	if len(records) > max {
 		return netFail[*List[string]](errNetLimit)
 	}
 	return Ok[*List[string], NetworkError](NewList(records...))
 }
 
 // Resolve resolves the selected record category.
-func (n *osNetwork) Resolve(ctx *Execution, name string, kind DnsKind, maxRecords Option[int64], timeout Option[Duration]) Result[*List[*DnsRecord], NetworkError] {
+func (n *osNetwork) Resolve(ctx *Execution, name string, kind DnsKind, maxRecords Option[int], timeout Option[Duration]) Result[*List[*DnsRecord], NetworkError] {
 	max, ok := optLimit(maxRecords, netUnlimited)
 	limit, valid := optTimeout(timeout)
 	if !ok || !valid {
@@ -445,7 +445,7 @@ func (n *osNetwork) Resolve(ctx *Execution, name string, kind DnsKind, maxRecord
 	defer finish()
 	resolver := n.resolverInstance()
 	out := []*DnsRecord{}
-	add := func(value string, priority, weight, port int64) {
+	add := func(value string, priority, weight, port int) {
 		out = append(out, &DnsRecord{Kind: kind, Value: value, Priority: priority, Weight: weight, Port: port})
 	}
 	var err error
@@ -470,7 +470,7 @@ func (n *osNetwork) Resolve(ctx *Execution, name string, kind DnsKind, maxRecord
 		var records []*net.MX
 		records, err = resolver.LookupMX(call, name)
 		for _, v := range records {
-			add(v.Host, int64(v.Pref), 0, 0)
+			add(v.Host, int(v.Pref), 0, 0)
 		}
 	case DnsKind_NS:
 		var records []*net.NS
@@ -492,7 +492,7 @@ func (n *osNetwork) Resolve(ctx *Execution, name string, kind DnsKind, maxRecord
 		var records []*net.SRV
 		_, records, err = resolver.LookupSRV(call, "", "", name)
 		for _, v := range records {
-			add(v.Target, int64(v.Priority), int64(v.Weight), int64(v.Port))
+			add(v.Target, int(v.Priority), int(v.Weight), int(v.Port))
 		}
 	default:
 		return netFail[*List[*DnsRecord]](errNetInvalidInput)
@@ -505,7 +505,7 @@ func (n *osNetwork) Resolve(ctx *Execution, name string, kind DnsKind, maxRecord
 			return netFail[*List[*DnsRecord]](errNetInvalidData)
 		}
 	}
-	if int64(len(out)) > max {
+	if len(out) > max {
 		return netFail[*List[*DnsRecord]](errNetLimit)
 	}
 	return Ok[*List[*DnsRecord], NetworkError](NewList(out...))

@@ -20,7 +20,7 @@ func check_Url_Parse() {
 	var _ func(*Execution, string) Result[*Url, UrlError] = Url_Parse
 }
 func check_Url_ParseQuery() {
-	var _ func(*Execution, string, Option[int64]) Result[*List[*QueryEntry], UrlError] = Url_ParseQuery
+	var _ func(*Execution, string, Option[int]) Result[*List[*QueryEntry], UrlError] = Url_ParseQuery
 }
 func check_Url_Resolve() {
 	var _ func(*Execution, *Url, string) Result[*Url, UrlError] = Url_Resolve

@@ -128,7 +128,7 @@ export fn truncate(value: Float) -> Float:
 # | Divide | Truncates toward zero; division by zero returns `InvalidInput`. |
 # | Remainder | Has the dividend's sign; a zero divisor returns `InvalidInput`. |
 # | Compare | Returns -1, 0, or 1. |
-# | Convert to Int | Returns `none` outside the signed 64-bit range. |
+# | Convert to Int | Returns `none` outside the platform's Int range. |
 # | Bit operations | Use mathematical two's-complement semantics. |
 #
 # A very large native arithmetic operation can delay cancellation until it returns. Bound input magnitudes where that matters. Decimal keeps its [34-digit arithmetic and explicit scale rounding](../core-language/basics/numbers-and-booleans.md#decimal) contract. Its `to_fixed` method formats exact decimal values with stable trailing zeros. Decimal text parsing remains unsupported.

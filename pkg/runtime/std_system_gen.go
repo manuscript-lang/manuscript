@@ -17,7 +17,7 @@ func check_System_OsType() {
 	var _ func(*Execution) string = System_OsType
 }
 func check_System_Constants() {
-	var _ func(*Execution) *Map[string, int64] = System_Constants
+	var _ func(*Execution) *Map[string, int] = System_Constants
 }
 func check_System_System() {
 	var _ func(*Execution) System = System_System

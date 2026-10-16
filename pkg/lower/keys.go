@@ -20,7 +20,7 @@ func (g *gen) keysFor(t *checker.Type) ast.Expr {
 	if h := g.explicit(t, "hash", "@std/Hashable"); h != nil {
 		hash := g.methodFunction(h, t)
 		in := []*ast.Field{field("a", g.goType(t))}
-		hashFn := closure(in, ident("int64"), returned(call(ident(hash.name), ident("ctx"), ident("a"))))
+		hashFn := closure(in, ident("int"), returned(call(ident(hash.name), ident("ctx"), ident("a"))))
 		return rtCall("CustomKeys", hashFn, g.equalClosure(t))
 	}
 	if g.identityKeys(t) {

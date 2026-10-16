@@ -5,13 +5,13 @@
 package msruntime
 
 func check_Float_ToPrecision() {
-	var _ func(*Execution, float64, int64) Result[string, NumberError] = Float_ToPrecision
+	var _ func(*Execution, float64, int) Result[string, NumberError] = Float_ToPrecision
 }
 func check_Float_ToExponential() {
-	var _ func(*Execution, float64, int64) Result[string, NumberError] = Float_ToExponential
+	var _ func(*Execution, float64, int) Result[string, NumberError] = Float_ToExponential
 }
 func check_Float_ToFixed() {
-	var _ func(*Execution, float64, int64) Result[string, NumberError] = Float_ToFixed
+	var _ func(*Execution, float64, int) Result[string, NumberError] = Float_ToFixed
 }
 func check_Float_ToString() {
 	var _ func(*Execution, float64) string = Float_ToString
@@ -23,28 +23,28 @@ func check_Float_IsFinite() {
 	var _ func(*Execution, float64) bool = Float_IsFinite
 }
 func check_Float_TruncateToInt() {
-	var _ func(*Execution, float64) Option[int64] = Float_TruncateToInt
+	var _ func(*Execution, float64) Option[int] = Float_TruncateToInt
 }
 func check_Int_Milliseconds() {
-	var _ func(*Execution, int64) Duration = Int_Milliseconds
+	var _ func(*Execution, int) Duration = Int_Milliseconds
 }
 func check_Int_Seconds() {
-	var _ func(*Execution, int64) Duration = Int_Seconds
+	var _ func(*Execution, int) Duration = Int_Seconds
 }
 func check_Int_Minutes() {
-	var _ func(*Execution, int64) Duration = Int_Minutes
+	var _ func(*Execution, int) Duration = Int_Minutes
 }
 func check_Int_ToString() {
-	var _ func(*Execution, int64, int64) string = Int_ToString
+	var _ func(*Execution, int, int) string = Int_ToString
 }
 func check_Int_ToFloat() {
-	var _ func(*Execution, int64) float64 = Int_ToFloat
+	var _ func(*Execution, int) float64 = Int_ToFloat
 }
 func check_Int_ToDecimal() {
-	var _ func(*Execution, int64) *Decimal = Int_ToDecimal
+	var _ func(*Execution, int) *Decimal = Int_ToDecimal
 }
 func check_String_Length() {
-	var _ func(*Execution, string) int64 = String_Length
+	var _ func(*Execution, string) int = String_Length
 }
 func check_String_IsEmpty() {
 	var _ func(*Execution, string) bool = String_IsEmpty
@@ -56,13 +56,13 @@ func check_String_Reverse() {
 	var _ func(*Execution, string) string = String_Reverse
 }
 func check_String_Compare() {
-	var _ func(*Execution, string, string) int64 = String_Compare
+	var _ func(*Execution, string, string) int = String_Compare
 }
 func check_String_Lines() {
 	var _ func(*Execution, string) *List[string] = String_Lines
 }
 func check_String_Normalize() {
-	var _ func(*Execution, string, string, Option[int64]) Result[string, StringError] = String_Normalize
+	var _ func(*Execution, string, string, Option[int]) Result[string, StringError] = String_Normalize
 }
 func check_String_Concat() {
 	var _ func(*Execution, string, string) string = String_Concat
@@ -77,28 +77,28 @@ func check_String_Lower() {
 	var _ func(*Execution, string) string = String_Lower
 }
 func check_String_Repeat() {
-	var _ func(*Execution, string, int64, Option[int64]) Result[string, StringError] = String_Repeat
+	var _ func(*Execution, string, int, Option[int]) Result[string, StringError] = String_Repeat
 }
 func check_String_ReplaceFirst() {
-	var _ func(*Execution, string, string, string, Option[int64]) string = String_ReplaceFirst
+	var _ func(*Execution, string, string, string, Option[int]) string = String_ReplaceFirst
 }
 func check_String_ReplaceN() {
-	var _ func(*Execution, string, string, string, int64) string = String_ReplaceN
+	var _ func(*Execution, string, string, string, int) string = String_ReplaceN
 }
 func check_String_Replace() {
-	var _ func(*Execution, string, string, string, Option[int64]) string = String_Replace
+	var _ func(*Execution, string, string, string, Option[int]) string = String_Replace
 }
 func check_String_ScalarLength() {
-	var _ func(*Execution, string) int64 = String_ScalarLength
+	var _ func(*Execution, string) int = String_ScalarLength
 }
 func check_String_ScalarValues() {
-	var _ func(*Execution, string) *List[int64] = String_ScalarValues
+	var _ func(*Execution, string) *List[int] = String_ScalarValues
 }
 func check_String_SliceScalars() {
-	var _ func(*Execution, string, int64, int64) Result[string, StringError] = String_SliceScalars
+	var _ func(*Execution, string, int, int) Result[string, StringError] = String_SliceScalars
 }
 func check_String_Split() {
-	var _ func(*Execution, string, string, Option[int64]) *List[string] = String_Split
+	var _ func(*Execution, string, string, Option[int]) *List[string] = String_Split
 }
 func check_String_StartsWith() {
 	var _ func(*Execution, string, string) bool = String_StartsWith
@@ -110,16 +110,16 @@ func check_String_Upper() {
 	var _ func(*Execution, string) string = String_Upper
 }
 func check_String_At() {
-	var _ func(*Execution, string, int64) Option[string] = String_At
+	var _ func(*Execution, string, int) Option[string] = String_At
 }
 func check_String_ScalarAt() {
-	var _ func(*Execution, string, int64) Option[int64] = String_ScalarAt
+	var _ func(*Execution, string, int) Option[int] = String_ScalarAt
 }
 func check_String_IndexOf() {
-	var _ func(*Execution, string, string) Option[int64] = String_IndexOf
+	var _ func(*Execution, string, string) Option[int] = String_IndexOf
 }
 func check_String_LastIndexOf() {
-	var _ func(*Execution, string, string) Option[int64] = String_LastIndexOf
+	var _ func(*Execution, string, string) Option[int] = String_LastIndexOf
 }
 func check_String_TrimStart() {
 	var _ func(*Execution, string) string = String_TrimStart
@@ -128,23 +128,23 @@ func check_String_TrimEnd() {
 	var _ func(*Execution, string) string = String_TrimEnd
 }
 func check_String_PadStart() {
-	var _ func(*Execution, string, int64, string, Option[int64]) Result[string, StringError] = String_PadStart
+	var _ func(*Execution, string, int, string, Option[int]) Result[string, StringError] = String_PadStart
 }
 func check_String_PadEnd() {
-	var _ func(*Execution, string, int64, string, Option[int64]) Result[string, StringError] = String_PadEnd
+	var _ func(*Execution, string, int, string, Option[int]) Result[string, StringError] = String_PadEnd
 }
 func check_String_ReplaceAll() {
-	var _ func(*Execution, string, string, string, Option[int64]) Result[string, StringError] = String_ReplaceAll
+	var _ func(*Execution, string, string, string, Option[int]) Result[string, StringError] = String_ReplaceAll
 }
 func check_String_Slice() {
-	var _ func(*Execution, string, int64, int64) Result[string, StringError] = String_Slice
+	var _ func(*Execution, string, int, int) Result[string, StringError] = String_Slice
 }
 func check_String_ByteLength() {
-	var _ func(*Execution, string) int64 = String_ByteLength
+	var _ func(*Execution, string) int = String_ByteLength
 }
 func check_String_ToBytes() {
 	var _ func(*Execution, string) *Bytes = String_ToBytes
 }
 func check_String_ParseInt() {
-	var _ func(*Execution, string) Option[int64] = String_ParseInt
+	var _ func(*Execution, string) Option[int] = String_ParseInt
 }

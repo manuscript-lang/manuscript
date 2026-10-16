@@ -22,20 +22,20 @@ func compressionName(f CompressionFormat) string {
 }
 
 // CompressionFormat_Compress compresses data with a typed format selector.
-func CompressionFormat_Compress(ctx *Execution, format CompressionFormat, data *Bytes, level int64, maxBytes Option[int64]) Result[*Bytes, CompressionError] {
+func CompressionFormat_Compress(ctx *Execution, format CompressionFormat, data *Bytes, level int, maxBytes Option[int]) Result[*Bytes, CompressionError] {
 	CheckCancelled(ctx)
 	return Compress_Compress(ctx, data, compressionName(format), level, maxBytes)
 }
 
 // CompressionFormat_Decompress decompresses data with a typed format selector.
-func CompressionFormat_Decompress(ctx *Execution, format CompressionFormat, data *Bytes, maxBytes Option[int64]) Result[*Bytes, CompressionError] {
+func CompressionFormat_Decompress(ctx *Execution, format CompressionFormat, data *Bytes, maxBytes Option[int]) Result[*Bytes, CompressionError] {
 	CheckCancelled(ctx)
 	return Compress_Decompress(ctx, data, compressionName(format), maxBytes)
 }
 
 // Compress_Compress compresses with exactly "gzip", "zlib" or "deflate".
 // Level must be 0..9 and maxBytes bounds the encoded output.
-func Compress_Compress(ctx *Execution, data *Bytes, format string, level int64, maxBytes Option[int64]) Result[*Bytes, CompressionError] {
+func Compress_Compress(ctx *Execution, data *Bytes, format string, level int, maxBytes Option[int]) Result[*Bytes, CompressionError] {
 	max := dfBudget(maxBytes)
 	if level < 0 || level > 9 || max < 0 {
 		return Fail[*Bytes, CompressionError](CompressionError_InvalidInput{})
@@ -74,7 +74,7 @@ func Compress_Compress(ctx *Execution, data *Bytes, format string, level int64, 
 
 // Compress_Decompress decompresses exactly "gzip", "zlib" or "deflate",
 // rejecting trailing bytes and bounding the cumulative output.
-func Compress_Decompress(ctx *Execution, data *Bytes, format string, maxBytes Option[int64]) Result[*Bytes, CompressionError] {
+func Compress_Decompress(ctx *Execution, data *Bytes, format string, maxBytes Option[int]) Result[*Bytes, CompressionError] {
 	max := dfBudget(maxBytes)
 	if max < 0 {
 		return Fail[*Bytes, CompressionError](CompressionError_InvalidInput{})

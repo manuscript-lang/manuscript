@@ -9,7 +9,7 @@ type check_Instant = Instant
 type check_Timestamp = Timestamp
 
 func check_Time_Duration() {
-	var _ func(*Execution, int64) Duration = Time_Duration
+	var _ func(*Execution, int) Duration = Time_Duration
 }
 func check_Time_ParseTimestamp() {
 	var _ func(*Execution, string) Result[Timestamp, TimeError] = Time_ParseTimestamp
@@ -18,7 +18,7 @@ func check_Sleep() {
 	var _ func(*Execution, Duration) Unit = Sleep
 }
 func check_Time_Timestamp() {
-	var _ func(*Execution, int64, int64) Result[Timestamp, TimeError] = Time_Timestamp
+	var _ func(*Execution, int, int) Result[Timestamp, TimeError] = Time_Timestamp
 }
 func check_Time_Clock() {
 	var _ func(*Execution) Clock = Time_Clock
@@ -33,10 +33,10 @@ func check_Duration_Subtract() {
 	var _ func(*Execution, Duration, Duration) Duration = Duration_Subtract
 }
 func check_Duration_Multiply() {
-	var _ func(*Execution, Duration, int64) Duration = Duration_Multiply
+	var _ func(*Execution, Duration, int) Duration = Duration_Multiply
 }
 func check_Duration_Divide() {
-	var _ func(*Execution, Duration, int64) Duration = Duration_Divide
+	var _ func(*Execution, Duration, int) Duration = Duration_Divide
 }
 func check_Duration_Negate() {
 	var _ func(*Execution, Duration) Duration = Duration_Negate
@@ -45,16 +45,16 @@ func check_Duration_Abs() {
 	var _ func(*Execution, Duration) Duration = Duration_Abs
 }
 func check_Duration_Compare() {
-	var _ func(*Execution, Duration, Duration) int64 = Duration_Compare
+	var _ func(*Execution, Duration, Duration) int = Duration_Compare
 }
 func check_Duration_Nanoseconds() {
-	var _ func(*Execution, Duration) int64 = Duration_Nanoseconds
+	var _ func(*Execution, Duration) int = Duration_Nanoseconds
 }
 func check_Duration_Microseconds() {
-	var _ func(*Execution, Duration) int64 = Duration_Microseconds
+	var _ func(*Execution, Duration) int = Duration_Microseconds
 }
 func check_Duration_Milliseconds() {
-	var _ func(*Execution, Duration) int64 = Duration_Milliseconds
+	var _ func(*Execution, Duration) int = Duration_Milliseconds
 }
 func check_Duration_Seconds() {
 	var _ func(*Execution, Duration) float64 = Duration_Seconds
@@ -72,16 +72,16 @@ func check_Instant_Difference() {
 	var _ func(*Execution, Instant, Instant) Duration = Instant_Difference
 }
 func check_Instant_Compare() {
-	var _ func(*Execution, Instant, Instant) int64 = Instant_Compare
+	var _ func(*Execution, Instant, Instant) int = Instant_Compare
 }
 func check_Timestamp_ToString() {
 	var _ func(*Execution, Timestamp) string = Timestamp_ToString
 }
 func check_Timestamp_UnixSeconds() {
-	var _ func(*Execution, Timestamp) int64 = Timestamp_UnixSeconds
+	var _ func(*Execution, Timestamp) int = Timestamp_UnixSeconds
 }
 func check_Timestamp_Nanoseconds() {
-	var _ func(*Execution, Timestamp) int64 = Timestamp_Nanoseconds
+	var _ func(*Execution, Timestamp) int = Timestamp_Nanoseconds
 }
 func check_Timestamp_Shift() {
 	var _ func(*Execution, Timestamp, Duration) Result[Timestamp, TimeError] = Timestamp_Shift
@@ -90,7 +90,7 @@ func check_Timestamp_Difference() {
 	var _ func(*Execution, Timestamp, Timestamp) Result[Duration, TimeError] = Timestamp_Difference
 }
 func check_Timestamp_Compare() {
-	var _ func(*Execution, Timestamp, Timestamp) int64 = Timestamp_Compare
+	var _ func(*Execution, Timestamp, Timestamp) int = Timestamp_Compare
 }
 func check_Errors_Message_TimeError() {
 	var _ func(*Execution, TimeError) string = Errors_Message_TimeError

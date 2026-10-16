@@ -63,7 +63,7 @@ type copier struct {
 	ctx                                                                *Execution
 	recursive, replace, errorOnExists, dereference, preserve, verbatim bool
 	clone                                                              string
-	entries, bytes                                                     int64
+	entries, bytes                                                     int
 	filter                                                             func(*Execution, string, string) bool
 	ancestors                                                          map[string]bool
 }
@@ -162,7 +162,7 @@ func (c *copier) copy(source, dest string) error {
 	if !info.Mode().IsRegular() {
 		return errInvalidInput
 	}
-	if info.Size() > c.bytes {
+	if info.Size() > int64(c.bytes) {
 		return errLimit
 	}
 	return c.copyFile(source, dest, info, exists)
@@ -245,10 +245,10 @@ func (c *copier) copyFile(source, dest string, info os.FileInfo, exists bool) er
 			if err != nil {
 				return err
 			}
-			if cloned.Size() > c.bytes {
+			if cloned.Size() > int64(c.bytes) {
 				return errLimit
 			}
-			c.bytes -= cloned.Size()
+			c.bytes -= int(cloned.Size())
 			if err = os.Chmod(dest, info.Mode()); err != nil {
 				return err
 			}
@@ -275,14 +275,14 @@ func (c *copier) copyFile(source, dest string, info os.FileInfo, exists bool) er
 	for {
 		CheckCancelled(c.ctx)
 		n, err := input.Read(buffer)
-		if int64(n) > c.bytes {
+		if int(n) > c.bytes {
 			return errLimit
 		}
 		if n > 0 {
 			if _, err := writeChunks(c.ctx, output, buffer[:n], nil); err != nil {
 				return err
 			}
-			c.bytes -= int64(n)
+			c.bytes -= int(n)
 		}
 		if err == io.EOF {
 			break
@@ -303,7 +303,7 @@ func (c *copier) copyFile(source, dest string, info os.FileInfo, exists bool) er
 	return nil
 }
 
-func (f *osFileSystem) CopyTree(ctx *Execution, source, destination string, replace bool, maxEntries, maxBytes Option[int64]) Result[Unit, FileSystemError] {
+func (f *osFileSystem) CopyTree(ctx *Execution, source, destination string, replace bool, maxEntries, maxBytes Option[int]) Result[Unit, FileSystemError] {
 	entries, ok1 := optionLimit(maxEntries, unlimited)
 	bytes, ok2 := optionLimit(maxBytes, unlimited)
 	p, ok := f.path(source)
@@ -327,7 +327,7 @@ func (f *osFileSystem) CopyTree(ctx *Execution, source, destination string, repl
 	return copyError(copyTree(ctx, p, dest, replace, &entries, &bytes))
 }
 
-func copyTree(ctx *Execution, source, dest string, replace bool, entries, bytes *int64) error {
+func copyTree(ctx *Execution, source, dest string, replace bool, entries, bytes *int) error {
 	CheckCancelled(ctx)
 	if *entries == 0 {
 		return errLimit
@@ -409,14 +409,14 @@ func copyTree(ctx *Execution, source, dest string, replace bool, entries, bytes 
 	for {
 		CheckCancelled(ctx)
 		n, err := in.Read(buffer)
-		if int64(n) > *bytes {
+		if int(n) > *bytes {
 			return errLimit
 		}
 		if n > 0 {
 			if _, e := writeChunks(ctx, out, buffer[:n], nil); e != nil {
 				return e
 			}
-			*bytes -= int64(n)
+			*bytes -= int(n)
 		}
 		if err == io.EOF {
 			break
@@ -487,7 +487,7 @@ func (f *osFileSystem) GlobEntries(ctx *Execution, path string, options *GlobOpt
 			}
 			if fsGlobMatch(target, filepath.ToSlash(pattern)) {
 				if _, exists := items[value.Path]; !exists {
-					if int64(len(items)) >= maxResults {
+					if len(items) >= maxResults {
 						return errLimit
 					}
 					items[value.Path] = value

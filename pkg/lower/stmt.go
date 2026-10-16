@@ -80,7 +80,7 @@ func (g *gen) statementCall(e ast.Expr) bool {
 	}
 	if id, ok := c.Fun.(*ast.Ident); ok {
 		switch id.Name {
-		case "int64", "float64", "string", "bool", "len", "cap":
+		case "int", "float64", "string", "bool", "len", "cap":
 			return false
 		}
 	}

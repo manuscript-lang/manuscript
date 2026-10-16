@@ -13,7 +13,7 @@ A type is a **reference** (Go pointer, or a type holding one) when the language 
 
 | Manuscript type | Go type | Class | Why |
 | --- | --- | --- | --- |
-| `Int`, `Float`, `Bool`, `String` | `int64`, `float64`, `bool`, `string` | value | Immutable. |
+| `Int`, `Float`, `Bool`, `String` | `int`, `float64`, `bool`, `string` | value | Immutable. |
 | `Unit` | `rt.Unit` | value | One value. |
 | record | `*Name` | reference | Fields mutate; aliases observe; `.clone()` copies. |
 | `List`, `Map`, `Set`, `Bytes` | `*rt.List[T]`, `*rt.Map[K,V]`, `*rt.Set[T]`, `*rt.Bytes` | reference | Mutable storage shared by aliases. |

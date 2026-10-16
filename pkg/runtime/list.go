@@ -13,14 +13,14 @@ func NewList[T any](items ...T) *List[T] { return &List[T]{Items: items} }
 // Positions checks that a list has exactly n elements, for destructuring.
 func Positions[T any](l *List[T], n int) []T {
 	if len(l.Items) != n {
-		Raise("destructuring length mismatch; the pattern binds " + FormatInt(int64(n)) + " names but the list has " + FormatInt(int64(len(l.Items))) + " elements")
+		Raise("destructuring length mismatch; the pattern binds " + FormatInt(int(n)) + " names but the list has " + FormatInt(len(l.Items)) + " elements")
 	}
 	return l.Items
 }
 
 // List_At returns the element at a possibly negative index, or none.
-func List_At[T any](_ *Execution, l *List[T], index int64) Option[T] {
-	n := int64(len(l.Items))
+func List_At[T any](_ *Execution, l *List[T], index int) Option[T] {
+	n := len(l.Items)
 	if index < 0 {
 		index += n
 	}

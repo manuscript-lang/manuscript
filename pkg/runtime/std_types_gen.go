@@ -42,9 +42,9 @@ type ArchiveEntry struct {
 	Directory bool
 }
 type ArchiveLimits struct {
-	MaxEntries    Option[int64]
-	MaxEntryBytes Option[int64]
-	MaxTotalBytes Option[int64]
+	MaxEntries    Option[int]
+	MaxEntryBytes Option[int]
+	MaxTotalBytes Option[int]
 }
 type ArchiveFormat interface {
 	isArchiveFormat()
@@ -126,7 +126,7 @@ type MapEntry[T comparable, U any] struct {
 	Value U
 }
 type ListEntry[T any] struct {
-	Index int64
+	Index int
 	Value T
 }
 type CompressionError interface {
@@ -462,84 +462,84 @@ type DirectoryEntry struct {
 }
 type FileInfo struct {
 	Name        string
-	Size        int64
+	Size        int
 	Directory   bool
 	Symlink     bool
 	Modified    Timestamp
 	Accessed    Timestamp
 	Changed     Timestamp
-	Mode        int64
-	Permissions int64
+	Mode        int
+	Permissions int
 	Created     Option[Timestamp]
-	BlockSize   int64
-	Blocks      int64
-	Rdev        int64
+	BlockSize   int
+	Blocks      int
+	Rdev        int
 	Fifo        bool
 	Socket      bool
 	BlockDevice bool
 	CharDevice  bool
 	Exact       *Map[string, *BigInt]
 	Regular     bool
-	Device      int64
-	Inode       int64
-	Links       int64
-	Uid         int64
-	Gid         int64
+	Device      int
+	Inode       int
+	Links       int
+	Uid         int
+	Gid         int
 }
 type FileSystem interface {
-	OpenFlags(ctx *Execution, a0 string, a1 int64, a2 int64) Result[FileHandle, FileSystemError]
+	OpenFlags(ctx *Execution, a0 string, a1 int, a2 int) Result[FileHandle, FileSystemError]
 	GlobEntries(ctx *Execution, a0 string, a1 *GlobOptions, a2 Option[func(ctx *Execution, a0 *PathEntry) bool]) Result[*List[*PathEntry], FileSystemError]
 	Copy(ctx *Execution, a0 string, a1 string, a2 *CopyOptions, a3 Option[func(ctx *Execution, a0 string, a1 string) bool]) Result[Unit, FileSystemError]
-	WatchNative(ctx *Execution, a0 string, a1 bool, a2 Option[int64], a3 Option[int64], a4 string) Result[FileWatcher, FileSystemError]
+	WatchNative(ctx *Execution, a0 string, a1 bool, a2 Option[int], a3 Option[int], a4 string) Result[FileWatcher, FileSystemError]
 	Canonicalize(ctx *Execution, a0 string) Result[string, FileSystemError]
-	CopyFile(ctx *Execution, a0 string, a1 string, a2 bool, a3 Option[int64]) Result[Unit, FileSystemError]
+	CopyFile(ctx *Execution, a0 string, a1 string, a2 bool, a3 Option[int]) Result[Unit, FileSystemError]
 	CreateDirectory(ctx *Execution, a0 string, a1 bool) Result[Unit, FileSystemError]
 	CreateLink(ctx *Execution, a0 string, a1 string) Result[Unit, FileSystemError]
-	List(ctx *Execution, a0 string, a1 Option[int64]) Result[*List[*DirectoryEntry], FileSystemError]
-	ReadFile(ctx *Execution, a0 string, a1 Option[int64]) Result[*Bytes, FileSystemError]
+	List(ctx *Execution, a0 string, a1 Option[int]) Result[*List[*DirectoryEntry], FileSystemError]
+	ReadFile(ctx *Execution, a0 string, a1 Option[int]) Result[*Bytes, FileSystemError]
 	ReadLink(ctx *Execution, a0 string) Result[string, FileSystemError]
 	Remove(ctx *Execution, a0 string, a1 bool) Result[Unit, FileSystemError]
 	Rename(ctx *Execution, a0 string, a1 string) Result[Unit, FileSystemError]
 	Stat(ctx *Execution, a0 string, a1 bool) Result[*FileInfo, FileSystemError]
 	TemporaryDirectory(ctx *Execution, a0 string) Result[string, FileSystemError]
 	WriteFile(ctx *Execution, a0 string, a1 *Bytes, a2 bool) Result[Unit, FileSystemError]
-	Access(ctx *Execution, a0 string, a1 int64) Result[Unit, FileSystemError]
+	Access(ctx *Execution, a0 string, a1 int) Result[Unit, FileSystemError]
 	AppendFile(ctx *Execution, a0 string, a1 *Bytes) Result[Unit, FileSystemError]
-	Chmod(ctx *Execution, a0 string, a1 int64) Result[Unit, FileSystemError]
-	Chown(ctx *Execution, a0 string, a1 int64, a2 int64, a3 bool) Result[Unit, FileSystemError]
-	Truncate(ctx *Execution, a0 string, a1 int64) Result[Unit, FileSystemError]
+	Chmod(ctx *Execution, a0 string, a1 int) Result[Unit, FileSystemError]
+	Chown(ctx *Execution, a0 string, a1 int, a2 int, a3 bool) Result[Unit, FileSystemError]
+	Truncate(ctx *Execution, a0 string, a1 int) Result[Unit, FileSystemError]
 	SetTimes(ctx *Execution, a0 string, a1 Timestamp, a2 Timestamp, a3 bool) Result[Unit, FileSystemError]
 	HardLink(ctx *Execution, a0 string, a1 string) Result[Unit, FileSystemError]
-	Open(ctx *Execution, a0 string, a1 string, a2 int64) Result[FileHandle, FileSystemError]
+	Open(ctx *Execution, a0 string, a1 string, a2 int) Result[FileHandle, FileSystemError]
 	OpenDirectory(ctx *Execution, a0 string) Result[Directory, FileSystemError]
-	CopyTree(ctx *Execution, a0 string, a1 string, a2 bool, a3 Option[int64], a4 Option[int64]) Result[Unit, FileSystemError]
-	Glob(ctx *Execution, a0 string, a1 string, a2 Option[int64]) Result[*List[string], FileSystemError]
-	Watch(ctx *Execution, a0 string, a1 bool, a2 Duration, a3 Option[int64]) Result[FileWatcher, FileSystemError]
+	CopyTree(ctx *Execution, a0 string, a1 string, a2 bool, a3 Option[int], a4 Option[int]) Result[Unit, FileSystemError]
+	Glob(ctx *Execution, a0 string, a1 string, a2 Option[int]) Result[*List[string], FileSystemError]
+	Watch(ctx *Execution, a0 string, a1 bool, a2 Duration, a3 Option[int]) Result[FileWatcher, FileSystemError]
 	Temporary(ctx *Execution, a0 string) Result[TemporaryDirectory, FileSystemError]
 	StatFilesystem(ctx *Execution, a0 string) Result[*FileSystemInfo, FileSystemError]
-	ChmodLink(ctx *Execution, a0 string, a1 int64) Result[Unit, FileSystemError]
+	ChmodLink(ctx *Execution, a0 string, a1 int) Result[Unit, FileSystemError]
 }
 type FileHandle interface {
 	Reader(ctx *Execution) ReadStream
 	Writer(ctx *Execution) WriteStream
 	Close(ctx *Execution) Unit
-	Read(ctx *Execution, a0 Option[int64]) Result[Option[*Bytes], FileSystemError]
+	Read(ctx *Execution, a0 Option[int]) Result[Option[*Bytes], FileSystemError]
 	Write(ctx *Execution, a0 *Bytes) Result[Unit, FileSystemError]
 	AppendFile(ctx *Execution, a0 *Bytes) Result[Unit, FileSystemError]
-	ReadAt(ctx *Execution, a0 int64, a1 Option[int64]) Result[*Bytes, FileSystemError]
-	WriteAt(ctx *Execution, a0 int64, a1 *Bytes) Result[Unit, FileSystemError]
-	ReadFile(ctx *Execution, a0 Option[int64]) Result[*Bytes, FileSystemError]
-	ReadVectors(ctx *Execution, a0 *List[int64], a1 int64) Result[*List[*Bytes], FileSystemError]
-	WriteVectors(ctx *Execution, a0 *List[*Bytes], a1 int64) Result[Unit, FileSystemError]
-	Seek(ctx *Execution, a0 int64, a1 int64) Result[int64, FileSystemError]
+	ReadAt(ctx *Execution, a0 int, a1 Option[int]) Result[*Bytes, FileSystemError]
+	WriteAt(ctx *Execution, a0 int, a1 *Bytes) Result[Unit, FileSystemError]
+	ReadFile(ctx *Execution, a0 Option[int]) Result[*Bytes, FileSystemError]
+	ReadVectors(ctx *Execution, a0 *List[int], a1 int) Result[*List[*Bytes], FileSystemError]
+	WriteVectors(ctx *Execution, a0 *List[*Bytes], a1 int) Result[Unit, FileSystemError]
+	Seek(ctx *Execution, a0 int, a1 int) Result[int, FileSystemError]
 	Stat(ctx *Execution) Result[*FileInfo, FileSystemError]
-	Truncate(ctx *Execution, a0 int64) Result[Unit, FileSystemError]
+	Truncate(ctx *Execution, a0 int) Result[Unit, FileSystemError]
 	Sync(ctx *Execution) Result[Unit, FileSystemError]
 	DataSync(ctx *Execution) Result[Unit, FileSystemError]
-	Chmod(ctx *Execution, a0 int64) Result[Unit, FileSystemError]
-	Chown(ctx *Execution, a0 int64, a1 int64) Result[Unit, FileSystemError]
+	Chmod(ctx *Execution, a0 int) Result[Unit, FileSystemError]
+	Chown(ctx *Execution, a0 int, a1 int) Result[Unit, FileSystemError]
 	SetTimes(ctx *Execution, a0 Timestamp, a1 Timestamp) Result[Unit, FileSystemError]
-	ReadLines(ctx *Execution, a0 Option[int64], a1 Option[int64]) Result[*List[string], FileSystemError]
+	ReadLines(ctx *Execution, a0 Option[int], a1 Option[int]) Result[*List[string], FileSystemError]
 }
 type Directory interface {
 	Path(ctx *Execution) string
@@ -559,13 +559,13 @@ type FileEvent struct {
 	Kind string
 }
 type FileSystemInfo struct {
-	TypeId          int64
-	BlockSize       int64
-	Blocks          int64
-	BlocksFree      int64
-	BlocksAvailable int64
-	Files           int64
-	FilesFree       int64
+	TypeId          int
+	BlockSize       int
+	Blocks          int
+	BlocksFree      int
+	BlocksAvailable int
+	Files           int
+	FilesFree       int
 }
 type CopyOptions struct {
 	Recursive          bool
@@ -575,8 +575,8 @@ type CopyOptions struct {
 	PreserveTimestamps bool
 	VerbatimSymlinks   bool
 	Clone              string
-	MaxEntries         Option[int64]
-	MaxBytes           Option[int64]
+	MaxEntries         Option[int]
+	MaxBytes           Option[int]
 }
 type PathEntry struct {
 	Path  string
@@ -586,8 +586,8 @@ type GlobOptions struct {
 	Patterns    *List[string]
 	Exclude     *List[string]
 	FollowLinks bool
-	MaxEntries  Option[int64]
-	MaxResults  Option[int64]
+	MaxEntries  Option[int]
+	MaxResults  Option[int]
 }
 type HtmlError interface {
 	isHtmlError()
@@ -611,9 +611,9 @@ func (HtmlError_LimitExceeded) isHtmlError() {
 }
 
 type HtmlLimits struct {
-	MaxBytes Option[int64]
-	MaxDepth Option[int64]
-	MaxNodes Option[int64]
+	MaxBytes Option[int]
+	MaxDepth Option[int]
+	MaxNodes Option[int]
 }
 type HtmlAttribute struct {
 	Name      string
@@ -710,7 +710,7 @@ func (HttpError_Failed) isHttpError() {
 }
 
 type HttpResponseMetadata struct {
-	Status  int64
+	Status  int
 	Headers *HttpHeaders
 }
 type ClientResponse struct {
@@ -783,13 +783,13 @@ func (HttpMethod_Custom) isHttpMethod() {
 
 type HttpClient interface {
 	Close(ctx *Execution) Unit
-	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int64], a5 Option[Duration]) Result[ResponseBody, HttpError]
-	RequestStream(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 ReadStream, a4 Option[int64], a5 Option[Duration]) Result[ResponseBody, HttpError]
+	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int], a5 Option[Duration]) Result[ResponseBody, HttpError]
+	RequestStream(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 ReadStream, a4 Option[int], a5 Option[Duration]) Result[ResponseBody, HttpError]
 }
 type HttpClientOptions struct {
-	MaxRedirects       Option[int64]
-	MaxIdleConnections Option[int64]
-	MaxHeaderBytes     Option[int64]
+	MaxRedirects       Option[int]
+	MaxIdleConnections Option[int]
+	MaxHeaderBytes     Option[int]
 	IdleTimeout        Option[Duration]
 	Decompress         bool
 	Cookies            bool
@@ -801,9 +801,9 @@ type HttpExchange interface {
 	Method(ctx *Execution) HttpMethod
 	Path(ctx *Execution) string
 	Query(ctx *Execution) string
-	Read(ctx *Execution, a0 Option[int64]) Result[Option[*Bytes], IoError]
-	SendHeaders(ctx *Execution, a0 int64, a1 *HttpHeaders) Result[Unit, HttpError]
-	Upgrade(ctx *Execution, a0 *List[string], a1 *List[string], a2 Option[int64]) Result[WebSocket, WebSocketError]
+	Read(ctx *Execution, a0 Option[int]) Result[Option[*Bytes], IoError]
+	SendHeaders(ctx *Execution, a0 int, a1 *HttpHeaders) Result[Unit, HttpError]
+	Upgrade(ctx *Execution, a0 *List[string], a1 *List[string], a2 Option[int]) Result[WebSocket, WebSocketError]
 	Write(ctx *Execution, a0 *Bytes) Result[Unit, IoError]
 }
 type HttpRequest struct {
@@ -814,7 +814,7 @@ type HttpRequest struct {
 	Body    *Bytes
 }
 type HttpResponse struct {
-	Status  int64
+	Status  int
 	Headers *HttpHeaders
 	Body    *Bytes
 }
@@ -824,10 +824,10 @@ type HttpServer interface {
 	Wait(ctx *Execution) Result[Unit, IoError]
 }
 type HttpServerOptions struct {
-	MaxRequests      Option[int64]
-	MaxBodyBytes     Option[int64]
-	MaxResponseBytes Option[int64]
-	MaxHeaderBytes   Option[int64]
+	MaxRequests      Option[int]
+	MaxBodyBytes     Option[int]
+	MaxResponseBytes Option[int]
+	MaxHeaderBytes   Option[int]
 	Timeout          Option[Duration]
 	Grace            Option[Duration]
 	Tls              Option[*TlsOptions]
@@ -835,11 +835,11 @@ type HttpServerOptions struct {
 type ResponseBody interface {
 	Close(ctx *Execution) Unit
 	Metadata(ctx *Execution) *HttpResponseMetadata
-	Read(ctx *Execution, a0 Option[int64]) Result[Option[*Bytes], IoError]
+	Read(ctx *Execution, a0 Option[int]) Result[Option[*Bytes], IoError]
 }
 type File interface {
 	Close(ctx *Execution) Unit
-	Read(ctx *Execution, a0 Option[int64]) Result[Option[*Bytes], IoError]
+	Read(ctx *Execution, a0 Option[int]) Result[Option[*Bytes], IoError]
 }
 type Files interface {
 	Open(ctx *Execution, a0 string) Result[File, IoError]
@@ -886,7 +886,7 @@ func (IoError_Failed) isIoError() {
 
 type ReadStream interface {
 	Close(ctx *Execution) Unit
-	Read(ctx *Execution, a0 Option[int64]) Result[Option[*Bytes], IoError]
+	Read(ctx *Execution, a0 Option[int]) Result[Option[*Bytes], IoError]
 }
 type WriteStream interface {
 	Close(ctx *Execution) Unit
@@ -915,9 +915,9 @@ func (JsonError_LimitExceeded) isJsonError() {
 }
 
 type JsonLimits struct {
-	MaxBytes  Option[int64]
-	MaxDepth  Option[int64]
-	MaxValues Option[int64]
+	MaxBytes  Option[int]
+	MaxDepth  Option[int]
+	MaxValues Option[int]
 }
 type JsonValue interface {
 	isJsonValue()
@@ -1127,7 +1127,7 @@ type Connection interface {
 	Close(ctx *Execution) Unit
 	LocalAddress(ctx *Execution) string
 	PeerAddress(ctx *Execution) string
-	Read(ctx *Execution, a0 Option[int64], a1 Option[Duration]) Result[Option[*Bytes], IoError]
+	Read(ctx *Execution, a0 Option[int], a1 Option[Duration]) Result[Option[*Bytes], IoError]
 	ShutdownWrite(ctx *Execution) Result[Unit, NetworkError]
 	TlsInfo(ctx *Execution) Result[*TlsInfo, TlsError]
 	Write(ctx *Execution, a0 *Bytes, a1 Option[Duration]) Result[Unit, IoError]
@@ -1139,7 +1139,7 @@ type Datagram struct {
 type DatagramSocket interface {
 	Address(ctx *Execution) string
 	Close(ctx *Execution) Unit
-	Receive(ctx *Execution, a0 Option[int64], a1 Option[Duration]) Result[*Datagram, NetworkError]
+	Receive(ctx *Execution, a0 Option[int], a1 Option[Duration]) Result[*Datagram, NetworkError]
 	Send(ctx *Execution, a0 *Bytes, a1 string, a2 Option[Duration]) Result[Unit, NetworkError]
 }
 type DnsKind interface {
@@ -1211,9 +1211,9 @@ func (IpFamily_IPv6) isIpFamily() {
 type DnsRecord struct {
 	Kind     DnsKind
 	Value    string
-	Priority int64
-	Weight   int64
-	Port     int64
+	Priority int
+	Weight   int
+	Port     int
 }
 type Listener interface {
 	Accept(ctx *Execution, a0 Option[Duration]) Result[Connection, NetworkError]
@@ -1231,11 +1231,11 @@ type Network interface {
 	Listen(ctx *Execution, a0 string) Result[Listener, NetworkError]
 	ListenTls(ctx *Execution, a0 string, a1 *TlsOptions, a2 Option[Duration]) Result[Listener, NetworkError]
 	ListenUnix(ctx *Execution, a0 string) Result[Listener, NetworkError]
-	Lookup(ctx *Execution, a0 string, a1 Option[int64], a2 Option[Duration]) Result[*List[string], NetworkError]
-	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int64], a5 Option[Duration]) Result[*ClientResponse, HttpError]
-	Resolve(ctx *Execution, a0 string, a1 DnsKind, a2 Option[int64], a3 Option[Duration]) Result[*List[*DnsRecord], NetworkError]
+	Lookup(ctx *Execution, a0 string, a1 Option[int], a2 Option[Duration]) Result[*List[string], NetworkError]
+	Request(ctx *Execution, a0 HttpMethod, a1 string, a2 *HttpHeaders, a3 *Bytes, a4 Option[int], a5 Option[Duration]) Result[*ClientResponse, HttpError]
+	Resolve(ctx *Execution, a0 string, a1 DnsKind, a2 Option[int], a3 Option[Duration]) Result[*List[*DnsRecord], NetworkError]
 	Restrict(ctx *Execution, a0 *List[string], a1 *List[string], a2 bool) Result[Network, NetworkError]
-	Serve(ctx *Execution, a0 string, a1 func(ctx *Execution, a0 *HttpRequest) *HttpResponse, a2 Option[int64], a3 Option[int64], a4 Option[int64], a5 Option[Duration], a6 Option[Duration]) Result[HttpServer, IoError]
+	Serve(ctx *Execution, a0 string, a1 func(ctx *Execution, a0 *HttpRequest) *HttpResponse, a2 Option[int], a3 Option[int], a4 Option[int], a5 Option[Duration], a6 Option[Duration]) Result[HttpServer, IoError]
 	ServeStream(ctx *Execution, a0 string, a1 func(ctx *Execution, a0 HttpExchange) Result[Unit, HttpError], a2 *HttpServerOptions) Result[HttpServer, HttpError]
 	WebSocket(ctx *Execution, a0 string, a1 *HttpHeaders, a2 *List[string], a3 *WebSocketOptions) Result[WebSocket, WebSocketError]
 	WithResolver(ctx *Execution, a0 string) Result[Network, NetworkError]
@@ -1329,31 +1329,31 @@ func (CommandError_Failed) isCommandError() {
 }
 
 type CommandOutput struct {
-	ExitCode int64
+	ExitCode int
 	Stdout   *Bytes
 	Stderr   *Bytes
 }
 type Commands interface {
-	Run(ctx *Execution, a0 string, a1 *List[string], a2 *Bytes, a3 Option[int64], a4 Option[Duration]) Result[*CommandOutput, CommandError]
+	Run(ctx *Execution, a0 string, a1 *List[string], a2 *Bytes, a3 Option[int], a4 Option[Duration]) Result[*CommandOutput, CommandError]
 	Spawn(ctx *Execution, a0 string, a1 *List[string]) Result[Subprocess, CommandError]
 }
 type Subprocess interface {
 	Stdin(ctx *Execution) WriteStream
 	Stdout(ctx *Execution) ReadStream
 	Stderr(ctx *Execution) ReadStream
-	Wait(ctx *Execution, a0 Option[Duration]) Result[int64, CommandError]
+	Wait(ctx *Execution, a0 Option[Duration]) Result[int, CommandError]
 	Terminate(ctx *Execution) Unit
 	Kill(ctx *Execution) Unit
 	Close(ctx *Execution) Unit
 }
 type ProcessControl interface {
-	MonotonicTime(ctx *Execution) int64
-	WatchSignals(ctx *Execution, a0 *List[int64], a1 Option[int64]) Result[SignalStream, ProcessError]
-	ConstrainedMemory(ctx *Execution) Result[int64, ProcessError]
-	AvailableMemory(ctx *Execution) Result[int64, ProcessError]
+	MonotonicTime(ctx *Execution) int
+	WatchSignals(ctx *Execution, a0 *List[int], a1 Option[int]) Result[SignalStream, ProcessError]
+	ConstrainedMemory(ctx *Execution) Result[int, ProcessError]
+	AvailableMemory(ctx *Execution) Result[int, ProcessError]
 	Title(ctx *Execution) Result[string, ProcessError]
 	SetTitle(ctx *Execution, a0 string) Result[Unit, ProcessError]
-	InitializeGroups(ctx *Execution, a0 string, a1 int64) Result[Unit, ProcessError]
+	InitializeGroups(ctx *Execution, a0 string, a1 int) Result[Unit, ProcessError]
 	Replace(ctx *Execution, a0 string, a1 *List[string], a2 *Map[string, string]) Result[Unit, ProcessError]
 	Info(ctx *Execution) Result[*ProcessInfo, ProcessError]
 	MemoryUsage(ctx *Execution) Result[*MemoryUsage, ProcessError]
@@ -1361,53 +1361,53 @@ type ProcessControl interface {
 	Uptime(ctx *Execution) Result[Duration, ProcessError]
 	Environment(ctx *Execution) Result[*Map[string, string], ProcessError]
 	SetEnvironment(ctx *Execution, a0 string, a1 Option[string]) Result[Unit, ProcessError]
-	LoadEnvironment(ctx *Execution, a0 string, a1 Option[int64]) Result[Unit, ProcessError]
+	LoadEnvironment(ctx *Execution, a0 string, a1 Option[int]) Result[Unit, ProcessError]
 	WorkingDirectory(ctx *Execution) Result[string, ProcessError]
 	ChangeDirectory(ctx *Execution, a0 string) Result[Unit, ProcessError]
-	SendSignal(ctx *Execution, a0 int64, a1 int64) Result[Unit, ProcessError]
-	Groups(ctx *Execution) Result[*List[int64], ProcessError]
+	SendSignal(ctx *Execution, a0 int, a1 int) Result[Unit, ProcessError]
+	Groups(ctx *Execution) Result[*List[int], ProcessError]
 	ResourceUsage(ctx *Execution) Result[*ResourceUsage, ProcessError]
-	Umask(ctx *Execution, a0 int64) Result[int64, ProcessError]
-	SetIdentity(ctx *Execution, a0 string, a1 int64) Result[Unit, ProcessError]
-	SetGroups(ctx *Execution, a0 *List[int64]) Result[Unit, ProcessError]
+	Umask(ctx *Execution, a0 int) Result[int, ProcessError]
+	SetIdentity(ctx *Execution, a0 string, a1 int) Result[Unit, ProcessError]
+	SetGroups(ctx *Execution, a0 *List[int]) Result[Unit, ProcessError]
 }
 type ProcessInfo struct {
-	Pid          int64
-	ParentPid    int64
+	Pid          int
+	ParentPid    int
 	Executable   string
 	Arguments    *List[string]
 	Os           string
 	Architecture string
-	Uid          int64
-	Gid          int64
-	EffectiveUid int64
-	EffectiveGid int64
+	Uid          int
+	Gid          int
+	EffectiveUid int
+	EffectiveGid int
 }
 type MemoryUsage struct {
-	HeapUsed   int64
-	HeapTotal  int64
-	HeapSystem int64
-	External   int64
-	Resident   int64
+	HeapUsed   int
+	HeapTotal  int
+	HeapSystem int
+	External   int
+	Resident   int
 }
 type CpuUsage struct {
-	UserMicroseconds   int64
-	SystemMicroseconds int64
+	UserMicroseconds   int
+	SystemMicroseconds int
 }
 type ResourceUsage struct {
-	UserMicroseconds    int64
-	SystemMicroseconds  int64
-	MaxResidentBytes    int64
-	MinorFaults         int64
-	MajorFaults         int64
-	FilesystemReads     int64
-	FilesystemWrites    int64
-	VoluntarySwitches   int64
-	InvoluntarySwitches int64
+	UserMicroseconds    int
+	SystemMicroseconds  int
+	MaxResidentBytes    int
+	MinorFaults         int
+	MajorFaults         int
+	FilesystemReads     int
+	FilesystemWrites    int
+	VoluntarySwitches   int
+	InvoluntarySwitches int
 }
 type SignalStream interface {
 	Close(ctx *Execution) Unit
-	Next(ctx *Execution) Result[int64, ProcessError]
+	Next(ctx *Execution) Result[int, ProcessError]
 }
 type ProcessError interface {
 	isProcessError()
@@ -1490,7 +1490,7 @@ func (RandomError_Failed) isRandomError() {
 }
 
 type Entropy interface {
-	Bytes(ctx *Execution, a0 int64) Result[*Bytes, RandomError]
+	Bytes(ctx *Execution, a0 int) Result[*Bytes, RandomError]
 }
 type RegexError interface {
 	isRegexError()
@@ -1582,18 +1582,18 @@ type System interface {
 	OsRelease(ctx *Execution) Result[string, SystemError]
 	OsVersion(ctx *Execution) Result[string, SystemError]
 	Machine(ctx *Execution) Result[string, SystemError]
-	GetPriority(ctx *Execution, a0 int64) Result[int64, SystemError]
-	SetPriority(ctx *Execution, a0 int64, a1 int64) Result[Unit, SystemError]
+	GetPriority(ctx *Execution, a0 int) Result[int, SystemError]
+	SetPriority(ctx *Execution, a0 int, a1 int) Result[Unit, SystemError]
 }
 type SystemInfo struct {
 	Os           string
 	Architecture string
-	CpuCount     int64
+	CpuCount     int
 }
 type UserInfo struct {
 	Username string
-	Uid      int64
-	Gid      int64
+	Uid      int
+	Gid      int
 	Home     string
 	Shell    string
 }
@@ -1604,24 +1604,24 @@ type NetworkInterface struct {
 	Family   IpFamily
 	Mac      string
 	Internal bool
-	ScopeId  int64
+	ScopeId  int
 }
 type CpuInfo struct {
 	Model    string
-	SpeedMhz int64
-	User     int64
-	Nice     int64
-	System   int64
-	Idle     int64
-	Irq      int64
+	SpeedMhz int
+	User     int
+	Nice     int
+	System   int
+	Idle     int
+	Irq      int
 }
 type SystemMetrics struct {
-	TotalMemory          int64
-	FreeMemory           int64
-	AvailableMemory      int64
+	TotalMemory          int
+	FreeMemory           int
+	AvailableMemory      int
 	Uptime               Duration
 	LoadAverage          *List[float64]
-	AvailableParallelism int64
+	AvailableParallelism int
 }
 type SystemError interface {
 	isSystemError()
@@ -1824,8 +1824,8 @@ func (TerminalError_Failed) isTerminalError() {
 }
 
 type TerminalSize struct {
-	Columns int64
-	Rows    int64
+	Columns int
+	Rows    int
 }
 type TerminalCapabilities struct {
 	InputIsTerminal  bool
@@ -1833,7 +1833,7 @@ type TerminalCapabilities struct {
 	ErrorIsTerminal  bool
 	RawMode          bool
 	ResizeEvents     bool
-	Colors           int64
+	Colors           int
 }
 type TerminalEvent interface {
 	isTerminalEvent()
@@ -1856,8 +1856,8 @@ func (TerminalEvent_Key) isTerminalEvent() {
 }
 
 type TerminalEvent_Resize struct {
-	Columns int64
-	Rows    int64
+	Columns int
+	Rows    int
 }
 
 func (TerminalEvent_Resize) isTerminalEvent() {
@@ -1899,7 +1899,7 @@ type RawTerminal interface {
 	Close(ctx *Execution) Unit
 	NextEvent(ctx *Execution, a0 Option[Duration]) Result[Option[TerminalEvent], TerminalError]
 	Size(ctx *Execution) Result[*TerminalSize, TerminalError]
-	MoveCursor(ctx *Execution, a0 int64, a1 int64) Result[Unit, TerminalError]
+	MoveCursor(ctx *Execution, a0 int, a1 int) Result[Unit, TerminalError]
 	ShowCursor(ctx *Execution, a0 bool) Result[Unit, TerminalError]
 	Erase(ctx *Execution, a0 EraseRegion) Result[Unit, TerminalError]
 }
@@ -1978,8 +1978,8 @@ type CertificateInfo struct {
 	Der       *Bytes
 }
 type TlsInfo struct {
-	Version          int64
-	CipherSuite      int64
+	Version          int
+	CipherSuite      int
 	Alpn             string
 	PeerCertificates *List[*Bytes]
 	Verified         bool
@@ -2020,7 +2020,7 @@ type QueryEntry struct {
 type Url struct {
 	Scheme   string
 	Host     string
-	Port     Option[int64]
+	Port     Option[int]
 	Path     string
 	Query    string
 	Fragment string
@@ -2083,7 +2083,7 @@ type WebSocketMessage struct {
 	Text bool
 }
 type WebSocketOptions struct {
-	MaxMessageBytes Option[int64]
+	MaxMessageBytes Option[int]
 	Timeout         Option[Duration]
 	Tls             *TlsOptions
 	Compression     bool

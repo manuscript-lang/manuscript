@@ -27,7 +27,7 @@ type BytesBuilder struct {
 // NewBytesBuilder returns an empty builder.
 func NewBytesBuilder() *BytesBuilder { return &BytesBuilder{} }
 
-func BytesBuilder_Append(ctx *Execution, b *BytesBuilder, value int64) Unit {
+func BytesBuilder_Append(ctx *Execution, b *BytesBuilder, value int) Unit {
 	CheckCancelled(ctx)
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -63,10 +63,10 @@ func BytesBuilder_Freeze(ctx *Execution, b *BytesBuilder) *Bytes {
 	return NewBytes(b.data)
 }
 
-func Bytes_Values(_ *Execution, b *Bytes) *List[int64] {
-	out := make([]int64, len(b.Data))
+func Bytes_Values(_ *Execution, b *Bytes) *List[int] {
+	out := make([]int, len(b.Data))
 	for i, v := range b.Data {
-		out[i] = int64(v)
+		out[i] = int(v)
 	}
 	return NewList(out...)
 }
@@ -75,7 +75,7 @@ func Bytes_Clone(_ *Execution, b *Bytes) *Bytes { return NewBytes(append([]byte{
 
 func Bytes_Contains(_ *Execution, b, value *Bytes) bool { return bytes.Contains(b.Data, value.Data) }
 
-func Bytes_Split(ctx *Execution, b, separator *Bytes, maxParts Option[int64]) *List[*Bytes] {
+func Bytes_Split(ctx *Execution, b, separator *Bytes, maxParts Option[int]) *List[*Bytes] {
 	limit := txLimit(maxParts)
 	if limit < 0 {
 		txFaultNegative("split", "max_parts", limit)
@@ -83,7 +83,7 @@ func Bytes_Split(ctx *Execution, b, separator *Bytes, maxParts Option[int64]) *L
 	data, sep := b.Data, separator.Data
 	out := NewList[*Bytes]()
 	if len(sep) == 0 {
-		for i := 0; i < len(data) && int64(len(out.Items)) < limit; i++ {
+		for i := 0; i < len(data) && len(out.Items) < limit; i++ {
 			if i%1024 == 0 {
 				CheckCancelled(ctx)
 			}
@@ -92,7 +92,7 @@ func Bytes_Split(ctx *Execution, b, separator *Bytes, maxParts Option[int64]) *L
 		return out
 	}
 	start := 0
-	for int64(len(out.Items)) < limit {
+	for len(out.Items) < limit {
 		CheckCancelled(ctx)
 		offset := bytes.Index(data[start:], sep)
 		CheckCancelled(ctx)
@@ -109,7 +109,7 @@ func Bytes_Split(ctx *Execution, b, separator *Bytes, maxParts Option[int64]) *L
 
 // Bytes_Slice shares storage with the receiver; the capacity limit keeps
 // appends from touching the parent.
-func Bytes_Slice(_ *Execution, b *Bytes, start, end int64) Result[*Bytes, CollectionError] {
+func Bytes_Slice(_ *Execution, b *Bytes, start, end int) Result[*Bytes, CollectionError] {
 	s, e, ok := txSliceBounds(len(b.Data), start, end)
 	if !ok {
 		return Fail[*Bytes, CollectionError](CollectionError_OutOfRange{})
@@ -117,26 +117,26 @@ func Bytes_Slice(_ *Execution, b *Bytes, start, end int64) Result[*Bytes, Collec
 	return Ok[*Bytes, CollectionError](NewBytes(b.Data[s:e:e]))
 }
 
-func Bytes_At(_ *Execution, b *Bytes, index int64) Option[int64] {
+func Bytes_At(_ *Execution, b *Bytes, index int) Option[int] {
 	i := txRelative(len(b.Data), index)
-	if i < 0 || i >= int64(len(b.Data)) {
-		return None[int64]()
+	if i < 0 || i >= len(b.Data) {
+		return None[int]()
 	}
-	return Some(int64(b.Data[i]))
+	return Some(int(b.Data[i]))
 }
 
-func Bytes_IndexOf(_ *Execution, b, value *Bytes) Option[int64] {
+func Bytes_IndexOf(_ *Execution, b, value *Bytes) Option[int] {
 	if i := bytes.Index(b.Data, value.Data); i >= 0 {
-		return Some(int64(i))
+		return Some(int(i))
 	}
-	return None[int64]()
+	return None[int]()
 }
 
-func Bytes_LastIndexOf(_ *Execution, b, value *Bytes) Option[int64] {
+func Bytes_LastIndexOf(_ *Execution, b, value *Bytes) Option[int] {
 	if i := bytes.LastIndex(b.Data, value.Data); i >= 0 {
-		return Some(int64(i))
+		return Some(int(i))
 	}
-	return None[int64]()
+	return None[int]()
 }
 
 func Bytes_StartsWith(_ *Execution, b, prefix *Bytes) bool {
@@ -157,9 +157,9 @@ func Bytes_Reversed(ctx *Execution, b *Bytes) *Bytes {
 
 // Bytes_WithValue returns a copy with one byte replaced; the index is checked
 // before the value.
-func Bytes_WithValue(_ *Execution, b *Bytes, index, value int64) *Bytes {
+func Bytes_WithValue(_ *Execution, b *Bytes, index, value int) *Bytes {
 	i := txRelative(len(b.Data), index)
-	if i < 0 || i >= int64(len(b.Data)) {
+	if i < 0 || i >= len(b.Data) {
 		txIndexFault("Bytes.with_value", len(b.Data), index)
 	}
 	if value < 0 || value > 255 {
@@ -177,7 +177,7 @@ func Bytes_Concat(_ *Execution, a, b *Bytes) *Bytes {
 	return NewBytes(append(append(out, a.Data...), b.Data...))
 }
 
-func Bytes_Length(_ *Execution, b *Bytes) int64 { return int64(len(b.Data)) }
+func Bytes_Length(_ *Execution, b *Bytes) int { return len(b.Data) }
 
 func Bytes_ToText(_ *Execution, b *Bytes) Option[string] {
 	if !utf8.Valid(b.Data) {
@@ -187,11 +187,11 @@ func Bytes_ToText(_ *Execution, b *Bytes) Option[string] {
 }
 
 // NewBytesFromValues is the Bytes constructor: every value must fit a byte.
-func NewBytesFromValues(values *List[int64]) *Bytes {
+func NewBytesFromValues(values *List[int]) *Bytes {
 	data := make([]byte, len(values.Items))
 	for i, v := range values.Items {
 		if v < 0 || v > 255 {
-			rangeFault("Bytes", "values["+FormatInt(int64(i))+"]", v, 0, 255)
+			rangeFault("Bytes", "values["+FormatInt(int(i))+"]", v, 0, 255)
 		}
 		data[i] = byte(v)
 	}

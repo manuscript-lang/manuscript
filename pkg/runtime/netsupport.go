@@ -4,19 +4,20 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"sync"
 	"time"
 )
 
 // netUnlimited is the budget of an omitted optional limit.
-const netUnlimited = int64(^uint64(0) >> 1)
+const netUnlimited = math.MaxInt
 
 // netNoTimeout is the timeout of an omitted optional deadline.
 const netNoTimeout = Duration(-1)
 
 // optLimit resolves an optional nonnegative limit. A supplied negative value
 // is invalid.
-func optLimit(o Option[int64], fallback int64) (int64, bool) {
+func optLimit(o Option[int], fallback int) (int, bool) {
 	if !o.Some {
 		return fallback, true
 	}
@@ -46,8 +47,8 @@ func transportTimeout(timeout Duration) time.Duration {
 }
 
 // headerBytesLimit saturates before net/http adds its 4 KiB framing allowance.
-func headerBytesLimit(limit int64) int {
-	largest := int64(^uint(0)>>1) - 4096
+func headerBytesLimit(limit int) int {
+	largest := int(^uint(0)>>1) - 4096
 	if limit > largest {
 		limit = largest
 	}
@@ -198,18 +199,18 @@ func joinFaults(failures []any) any {
 
 // netReadBounded reads reader to EOF within max bytes. The code names the
 // failure: LimitExceeded, InvalidData for a read error, Failed for no progress.
-func netReadBounded(ctx *Execution, reader io.Reader, max int64) ([]byte, string) {
+func netReadBounded(ctx *Execution, reader io.Reader, max int) ([]byte, string) {
 	var out []byte
 	buffer := make([]byte, 32768)
 	for {
 		CheckCancelled(ctx)
-		remaining := max - int64(len(out))
+		remaining := max - len(out)
 		chunk := buffer
-		if remaining < int64(len(buffer)) {
+		if remaining < len(buffer) {
 			chunk = buffer[:int(remaining)+1]
 		}
 		n, err := reader.Read(chunk)
-		if int64(n) > remaining {
+		if int(n) > remaining {
 			return nil, "LimitExceeded"
 		}
 		out = append(out, chunk[:n]...)

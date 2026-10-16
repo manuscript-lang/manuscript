@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -263,11 +264,11 @@ func interruptDeadline(ctx *Execution, deadline func(time.Time) error) func() {
 
 // optionLimit resolves an optional limit: none selects fallback, a negative
 // value is invalid.
-func optionLimit(v Option[int64], fallback int64) (int64, bool) {
+func optionLimit(v Option[int], fallback int) (int, bool) {
 	if !v.Some {
 		return fallback, true
 	}
 	return v.Val, v.Val >= 0
 }
 
-const unlimited = int64(^uint64(0) >> 1)
+const unlimited = math.MaxInt

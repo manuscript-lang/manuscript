@@ -59,7 +59,7 @@ func someBytes(t *testing.T, r Result[Option[*Bytes], IoError]) string {
 	return str(o.Val)
 }
 
-func readAll(t *testing.T, ctx *Execution, read func(*Execution, Option[int64]) Result[Option[*Bytes], IoError], chunk int64) string {
+func readAll(t *testing.T, ctx *Execution, read func(*Execution, Option[int]) Result[Option[*Bytes], IoError], chunk int) string {
 	t.Helper()
 	var out strings.Builder
 	for {
@@ -95,14 +95,14 @@ func get() HttpMethod  { return HttpMethod_Get{} }
 func post() HttpMethod { return HttpMethod_Post{} }
 
 func clientOptions() *HttpClientOptions {
-	return &HttpClientOptions{MaxRedirects: Some(int64(4)), MaxIdleConnections: Some(int64(8)), MaxHeaderBytes: Some(int64(65536)), IdleTimeout: Some(Duration(time.Minute)), Decompress: true, Cookies: true, Tls: &TlsOptions{Alpn: NewList[string]()}}
+	return &HttpClientOptions{MaxRedirects: Some(int(4)), MaxIdleConnections: Some(int(8)), MaxHeaderBytes: Some(int(65536)), IdleTimeout: Some(Duration(time.Minute)), Decompress: true, Cookies: true, Tls: &TlsOptions{Alpn: NewList[string]()}}
 }
 
 func serverOptions() *HttpServerOptions {
-	return &HttpServerOptions{MaxRequests: Some(int64(8)), MaxBodyBytes: Some(int64(1 << 20)), MaxResponseBytes: Some(int64(1 << 20)), MaxHeaderBytes: Some(int64(65536)), Timeout: Some(Duration(3 * time.Second)), Grace: Some(Duration(10 * time.Millisecond))}
+	return &HttpServerOptions{MaxRequests: Some(int(8)), MaxBodyBytes: Some(int(1 << 20)), MaxResponseBytes: Some(int(1 << 20)), MaxHeaderBytes: Some(int(65536)), Timeout: Some(Duration(3 * time.Second)), Grace: Some(Duration(10 * time.Millisecond))}
 }
 
-func wsOptions(max int64, compression bool) *WebSocketOptions {
+func wsOptions(max int, compression bool) *WebSocketOptions {
 	return &WebSocketOptions{MaxMessageBytes: Some(max), Timeout: Some(Duration(time.Second)), Tls: &TlsOptions{}, Compression: compression}
 }
 
@@ -121,7 +121,7 @@ func (s *sliceStream) Close(*Execution) Unit {
 	return Unit{}
 }
 
-func (s *sliceStream) Read(_ *Execution, maxBytes Option[int64]) Result[Option[*Bytes], IoError] {
+func (s *sliceStream) Read(_ *Execution, maxBytes Option[int]) Result[Option[*Bytes], IoError] {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.data) == 0 {
@@ -168,13 +168,13 @@ func (p *pki) rootsPEM() string {
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: p.rootDER}))
 }
 
-func (p *pki) issue(serial int64, name string, usage x509.ExtKeyUsage) (certPEM, keyPEM string) {
+func (p *pki) issue(serial int, name string, usage x509.ExtKeyUsage) (certPEM, keyPEM string) {
 	p.t.Helper()
 	pub, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		p.t.Fatal(err)
 	}
-	template := &x509.Certificate{SerialNumber: big.NewInt(serial), Subject: pkix.Name{CommonName: name}, DNSNames: []string{name}, NotBefore: p.now.Add(-time.Minute), NotAfter: p.now.Add(time.Hour), ExtKeyUsage: []x509.ExtKeyUsage{usage}, KeyUsage: x509.KeyUsageDigitalSignature}
+	template := &x509.Certificate{SerialNumber: big.NewInt(int64(serial)), Subject: pkix.Name{CommonName: name}, DNSNames: []string{name}, NotBefore: p.now.Add(-time.Minute), NotAfter: p.now.Add(time.Hour), ExtKeyUsage: []x509.ExtKeyUsage{usage}, KeyUsage: x509.KeyUsageDigitalSignature}
 	der, err := x509.CreateCertificate(rand.Reader, template, p.root, pub, p.key)
 	if err != nil {
 		p.t.Fatal(err)

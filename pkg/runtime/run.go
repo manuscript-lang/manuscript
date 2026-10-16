@@ -28,7 +28,7 @@ const (
 // cancels the root execution on SIGINT/SIGTERM (exit 130/143), reports faults
 // on standard error (exit 70), waits for every joined operation, runs the
 // host shutdown hook, and flushes runtime diagnostics.
-func RunMain(main func(*Execution) int64, args []string) (exit int) {
+func RunMain(main func(*Execution) int, args []string) (exit int) {
 	exit = exitFault
 	defer FlushDiagnostics()
 	ctx, cancel := context.WithCancel(context.Background())

@@ -13,7 +13,7 @@ type terminalEvent struct {
 	Text          string
 	Ctrl, Alt     bool
 	Shift         bool
-	Columns, Rows int64
+	Columns, Rows int
 }
 
 // terminalDecoder turns terminal input bytes into events. Bytes of an

@@ -175,7 +175,7 @@ func withClosed[T any](h *osFileHandle, fn func() (T, error)) (T, bool, error) {
 func (h *osFileHandle) Reader(*Execution) ReadStream  { return handleReader{h} }
 func (h *osFileHandle) Writer(*Execution) WriteStream { return handleWriter{h} }
 
-func (h *osFileHandle) Read(ctx *Execution, maxBytes Option[int64]) Result[Option[*Bytes], FileSystemError] {
+func (h *osFileHandle) Read(ctx *Execution, maxBytes Option[int]) Result[Option[*Bytes], FileSystemError] {
 	n, ok := optionLimit(maxBytes, 65536)
 	if !ok {
 		return fsInvalid[Option[*Bytes]]()
@@ -194,7 +194,7 @@ func (h *osFileHandle) Read(ctx *Execution, maxBytes Option[int64]) Result[Optio
 	})
 }
 
-func (h *osFileHandle) ReadAt(ctx *Execution, offset int64, maxBytes Option[int64]) Result[*Bytes, FileSystemError] {
+func (h *osFileHandle) ReadAt(ctx *Execution, offset int, maxBytes Option[int]) Result[*Bytes, FileSystemError] {
 	n, ok := optionLimit(maxBytes, 65536)
 	if !ok {
 		return fsInvalid[*Bytes]()
@@ -204,7 +204,7 @@ func (h *osFileHandle) ReadAt(ctx *Execution, offset int64, maxBytes Option[int6
 			return fsInvalid[*Bytes]()
 		}
 		data := make([]byte, int(min(n, 65536)))
-		count, err := h.file.ReadAt(data, offset)
+		count, err := h.file.ReadAt(data, int64(offset))
 		if err == io.EOF {
 			err = nil
 		}
@@ -212,7 +212,7 @@ func (h *osFileHandle) ReadAt(ctx *Execution, offset int64, maxBytes Option[int6
 	})
 }
 
-func (h *osFileHandle) ReadFile(ctx *Execution, maxBytes Option[int64]) Result[*Bytes, FileSystemError] {
+func (h *osFileHandle) ReadFile(ctx *Execution, maxBytes Option[int]) Result[*Bytes, FileSystemError] {
 	n, ok := optionLimit(maxBytes, unlimited)
 	if !ok {
 		return fsInvalid[*Bytes]()
@@ -237,7 +237,7 @@ func (h *osFileHandle) AppendFile(ctx *Execution, data *Bytes) Result[Unit, File
 	return h.Write(ctx, data)
 }
 
-func (h *osFileHandle) WriteAt(ctx *Execution, offset int64, data *Bytes) Result[Unit, FileSystemError] {
+func (h *osFileHandle) WriteAt(ctx *Execution, offset int, data *Bytes) Result[Unit, FileSystemError] {
 	return handleOp(h, ctx, opWrite, func(finish func(Unit, error) Result[Unit, FileSystemError]) Result[Unit, FileSystemError] {
 		if offset < 0 {
 			return fsInvalid[Unit]()
@@ -247,9 +247,9 @@ func (h *osFileHandle) WriteAt(ctx *Execution, offset int64, data *Bytes) Result
 	})
 }
 
-func (h *osFileHandle) ReadVectors(ctx *Execution, sizes *List[int64], offset int64) Result[*List[*Bytes], FileSystemError] {
+func (h *osFileHandle) ReadVectors(ctx *Execution, sizes *List[int], offset int) Result[*List[*Bytes], FileSystemError] {
 	return handleOp(h, ctx, opRead, func(finish func(*List[*Bytes], error) Result[*List[*Bytes], FileSystemError]) Result[*List[*Bytes], FileSystemError] {
-		var total int64
+		var total int
 		if offset < -1 {
 			return fsInvalid[*List[*Bytes]]()
 		}
@@ -268,8 +268,8 @@ func (h *osFileHandle) ReadVectors(ctx *Execution, sizes *List[int64], offset in
 			if offset == -1 {
 				n, err = h.file.Read(b)
 			} else {
-				n, err = h.file.ReadAt(b, offset)
-				offset += int64(n)
+				n, err = h.file.ReadAt(b, int64(offset))
+				offset += int(n)
 			}
 			result = append(result, NewBytes(b[:n]))
 			if err != nil && err != io.EOF {
@@ -280,13 +280,13 @@ func (h *osFileHandle) ReadVectors(ctx *Execution, sizes *List[int64], offset in
 	})
 }
 
-func (h *osFileHandle) WriteVectors(ctx *Execution, buffers *List[*Bytes], offset int64) Result[Unit, FileSystemError] {
+func (h *osFileHandle) WriteVectors(ctx *Execution, buffers *List[*Bytes], offset int) Result[Unit, FileSystemError] {
 	return handleOp(h, ctx, opWrite, func(finish func(Unit, error) Result[Unit, FileSystemError]) Result[Unit, FileSystemError] {
 		if offset < -1 {
 			return fsInvalid[Unit]()
 		}
 		for _, v := range buffers.Items {
-			var ptr *int64
+			var ptr *int
 			if offset != -1 {
 				ptr = &offset
 			}
@@ -302,13 +302,16 @@ func (h *osFileHandle) WriteVectors(ctx *Execution, buffers *List[*Bytes], offse
 	})
 }
 
-func (h *osFileHandle) Seek(ctx *Execution, offset, origin int64) Result[int64, FileSystemError] {
-	return handleOp(h, ctx, opAny, func(finish func(int64, error) Result[int64, FileSystemError]) Result[int64, FileSystemError] {
+func (h *osFileHandle) Seek(ctx *Execution, offset, origin int) Result[int, FileSystemError] {
+	return handleOp(h, ctx, opAny, func(finish func(int, error) Result[int, FileSystemError]) Result[int, FileSystemError] {
 		if origin < 0 || origin > 2 || offset < 0 && origin == 0 {
-			return fsInvalid[int64]()
+			return fsInvalid[int]()
 		}
-		n, err := h.file.Seek(offset, int(origin))
-		return finish(n, err)
+		n, err := h.file.Seek(int64(offset), origin)
+		if err == nil {
+			n = int64(FitInt(n))
+		}
+		return finish(int(n), err)
 	})
 }
 
@@ -329,12 +332,12 @@ func (h *osFileHandle) Stat(ctx *Execution) Result[*FileInfo, FileSystemError] {
 	})
 }
 
-func (h *osFileHandle) Truncate(ctx *Execution, size int64) Result[Unit, FileSystemError] {
+func (h *osFileHandle) Truncate(ctx *Execution, size int) Result[Unit, FileSystemError] {
 	return handleOp(h, ctx, opWrite, func(finish func(Unit, error) Result[Unit, FileSystemError]) Result[Unit, FileSystemError] {
 		if size < 0 {
 			return fsInvalid[Unit]()
 		}
-		return finish(Unit{}, h.file.Truncate(size))
+		return finish(Unit{}, h.file.Truncate(int64(size)))
 	})
 }
 
@@ -354,7 +357,7 @@ func (h *osFileHandle) DataSync(ctx *Execution) Result[Unit, FileSystemError] {
 	})
 }
 
-func (h *osFileHandle) Chmod(ctx *Execution, mode int64) Result[Unit, FileSystemError] {
+func (h *osFileHandle) Chmod(ctx *Execution, mode int) Result[Unit, FileSystemError] {
 	return handleOp(h, ctx, opAny, func(finish func(Unit, error) Result[Unit, FileSystemError]) Result[Unit, FileSystemError] {
 		if mode < 0 || mode > 07777 {
 			return fsInvalid[Unit]()
@@ -363,7 +366,7 @@ func (h *osFileHandle) Chmod(ctx *Execution, mode int64) Result[Unit, FileSystem
 	})
 }
 
-func (h *osFileHandle) Chown(ctx *Execution, uid, gid int64) Result[Unit, FileSystemError] {
+func (h *osFileHandle) Chown(ctx *Execution, uid, gid int) Result[Unit, FileSystemError] {
 	return handleOp(h, ctx, opAny, func(finish func(Unit, error) Result[Unit, FileSystemError]) Result[Unit, FileSystemError] {
 		if uid < -1 || gid < -1 || uid > 2147483647 || gid > 2147483647 {
 			return fsInvalid[Unit]()
@@ -385,7 +388,7 @@ func (h *osFileHandle) SetTimes(ctx *Execution, accessed, modified Timestamp) Re
 	})
 }
 
-func (h *osFileHandle) ReadLines(ctx *Execution, maxBytes Option[int64], maxLines Option[int64]) Result[*List[string], FileSystemError] {
+func (h *osFileHandle) ReadLines(ctx *Execution, maxBytes Option[int], maxLines Option[int]) Result[*List[string], FileSystemError] {
 	max, ok := optionLimit(maxBytes, unlimited)
 	lines, ok2 := optionLimit(maxLines, unlimited)
 	if !ok || !ok2 {
@@ -405,7 +408,7 @@ func (h *osFileHandle) ReadLines(ctx *Execution, maxBytes Option[int64], maxLine
 		if parts[len(parts)-1] == "" {
 			parts = parts[:len(parts)-1]
 		}
-		if int64(len(parts)) > lines {
+		if len(parts) > lines {
 			return fsFail[*List[string]](FileSystemError_LimitExceeded{})
 		}
 		for _, line := range parts {
@@ -429,8 +432,8 @@ func (r handleReader) lineBuffer() (*sync.Mutex, *readAhead) { return &r.h.mu, &
 
 func (r handleReader) Close(ctx *Execution) Unit { return r.h.Close(ctx) }
 
-func (r handleReader) Read(ctx *Execution, maxBytes Option[int64]) Result[Option[*Bytes], IoError] {
-	n := int64(65536)
+func (r handleReader) Read(ctx *Execution, maxBytes Option[int]) Result[Option[*Bytes], IoError] {
+	n := 65536
 	if maxBytes.Some && maxBytes.Val >= 0 {
 		n = maxBytes.Val
 	}
@@ -553,7 +556,7 @@ type pollWatcher struct {
 	path      string
 	recursive bool
 	interval  time.Duration
-	max       int64
+	max       int
 	snapshot  map[string]watchStamp
 	done      chan struct{}
 	closed    bool
@@ -562,14 +565,14 @@ type pollWatcher struct {
 
 var _ FileWatcher = (*pollWatcher)(nil)
 
-func watchSnapshot(ctx *Execution, p string, recursive bool, max int64) (map[string]watchStamp, error) {
+func watchSnapshot(ctx *Execution, p string, recursive bool, max int) (map[string]watchStamp, error) {
 	snapshot := map[string]watchStamp{}
 	err := filepath.WalkDir(p, func(child string, e os.DirEntry, err error) error {
 		CheckCancelled(ctx)
 		if err != nil {
 			return err
 		}
-		if int64(len(snapshot)) >= max {
+		if len(snapshot) >= max {
 			return errLimit
 		}
 		if !utf8.ValidString(child) {
@@ -663,7 +666,7 @@ func (w *pollWatcher) Next(ctx *Execution) Result[*List[*FileEvent], FileSystemE
 type nativeWatcher struct {
 	native           *fsnotify.Watcher
 	recursive        bool
-	max              int64
+	max              int
 	overflow         string
 	watched          map[string]bool
 	mu               sync.Mutex
@@ -676,7 +679,7 @@ type nativeWatcher struct {
 
 var _ FileWatcher = (*nativeWatcher)(nil)
 
-func (f *osFileSystem) WatchNative(ctx *Execution, path string, recursive bool, maxEntries, maxEvents Option[int64], overflow string) Result[FileWatcher, FileSystemError] {
+func (f *osFileSystem) WatchNative(ctx *Execution, path string, recursive bool, maxEntries, maxEvents Option[int], overflow string) Result[FileWatcher, FileSystemError] {
 	max, ok := optionLimit(maxEntries, unlimited)
 	events, ok2 := optionLimit(maxEvents, 128)
 	p, ok3 := f.path(path)
@@ -720,7 +723,7 @@ func (w *nativeWatcher) addTree(root string) error {
 			return nil
 		}
 		if !w.watched[path] {
-			if int64(len(w.watched)) >= w.max {
+			if len(w.watched) >= w.max {
 				return errLimit
 			}
 			if err = w.native.Add(path); err != nil {

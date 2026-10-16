@@ -5,7 +5,7 @@
 package msruntime
 
 func check_Log_Create() {
-	var _ func(*Execution, Transport, Option[LogLevel], Option[*Map[string, JsonValue]], Option[bool], Option[int64]) Result[Logger, LogError] = Log_Create
+	var _ func(*Execution, Transport, Option[LogLevel], Option[*Map[string, JsonValue]], Option[bool], Option[int]) Result[Logger, LogError] = Log_Create
 }
 func check_Log_StreamTransport() {
 	var _ func(*Execution, WriteStream) Transport = Log_StreamTransport

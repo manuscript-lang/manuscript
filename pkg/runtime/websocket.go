@@ -95,7 +95,7 @@ func (n *osNetwork) WebSocket(ctx *Execution, address string, headers *HttpHeade
 }
 
 // Upgrade turns the exchange into a WebSocket session inside the request.
-func (e *httpExchange) Upgrade(ctx *Execution, allowedOrigins, subprotocols *List[string], maxMessageBytes Option[int64]) Result[WebSocket, WebSocketError] {
+func (e *httpExchange) Upgrade(ctx *Execution, allowedOrigins, subprotocols *List[string], maxMessageBytes Option[int]) Result[WebSocket, WebSocketError] {
 	max, ok := optLimit(maxMessageBytes, netUnlimited)
 	if !ok || max <= 0 {
 		return wsFail[WebSocket](errWSInvalidInput)
@@ -164,15 +164,15 @@ type osWebSocket struct {
 	failed      bool
 	owner       *osNetwork
 	conn        *websocket.Conn
-	max         int64
+	max         int
 	life        lifecycle
 	read, write gate
 }
 
 var _ WebSocket = (*osWebSocket)(nil)
 
-func newWebSocket(conn *websocket.Conn, owner *osNetwork, max int64) *osWebSocket {
-	conn.SetReadLimit(max)
+func newWebSocket(conn *websocket.Conn, owner *osNetwork, max int) *osWebSocket {
+	conn.SetReadLimit(int64(max))
 	return &osWebSocket{conn: conn, owner: owner, max: max, read: newGate(), write: newGate(), life: newLifecycle()}
 }
 
@@ -290,7 +290,7 @@ func (w *osWebSocket) Send(ctx *Execution, data *Bytes, text bool) Result[Unit, 
 	defer w.write.release()
 	defer w.life.leave()
 	defer interruptWith(ctx, func() { w.conn.Close() })()
-	if int64(len(data.Data)) > w.max {
+	if len(data.Data) > w.max {
 		return wsFail[Unit](errWSLimit)
 	}
 	kind := websocket.BinaryMessage

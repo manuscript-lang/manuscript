@@ -72,7 +72,7 @@ func archiveConflict(kinds map[string]bool) bool {
 }
 
 // ArchiveFormat_Pack encodes entries with a typed format selector.
-func ArchiveFormat_Pack(ctx *Execution, format ArchiveFormat, entries *List[*ArchiveEntry], maxBytes Option[int64]) Result[*Bytes, ArchiveError] {
+func ArchiveFormat_Pack(ctx *Execution, format ArchiveFormat, entries *List[*ArchiveEntry], maxBytes Option[int]) Result[*Bytes, ArchiveError] {
 	CheckCancelled(ctx)
 	return Archive_Pack(ctx, entries, archiveFormatName(format), maxBytes)
 }
@@ -85,7 +85,7 @@ func ArchiveFormat_Unpack(ctx *Execution, format ArchiveFormat, data *Bytes, lim
 
 // Archive_Pack encodes entries as exactly "zip" or "tar", validating paths,
 // duplicates and conflicts, with deterministic metadata.
-func Archive_Pack(ctx *Execution, entries *List[*ArchiveEntry], format string, maxBytes Option[int64]) Result[*Bytes, ArchiveError] {
+func Archive_Pack(ctx *Execution, entries *List[*ArchiveEntry], format string, maxBytes Option[int]) Result[*Bytes, ArchiveError] {
 	max := dfBudget(maxBytes)
 	if max < 0 {
 		return archiveFail[*Bytes]("InvalidInput")
@@ -186,7 +186,7 @@ func Archive_Pack(ctx *Execution, entries *List[*ArchiveEntry], format string, m
 // Archive_Unpack decodes exactly "zip" or "tar" in memory, applying the entry
 // count, per-entry and total byte limits.
 func Archive_Unpack(ctx *Execution, data *Bytes, format string, limits Option[*ArchiveLimits]) Result[*List[*ArchiveEntry], ArchiveError] {
-	count, entryMax, total := int64(math.MaxInt64), int64(math.MaxInt64), int64(math.MaxInt64)
+	count, entryMax, total := math.MaxInt, math.MaxInt, math.MaxInt
 	if limits.Some {
 		count, entryMax, total = dfBudget(limits.Val.MaxEntries), dfBudget(limits.Val.MaxEntryBytes), dfBudget(limits.Val.MaxTotalBytes)
 	}
@@ -196,7 +196,7 @@ func Archive_Unpack(ctx *Execution, data *Bytes, format string, limits Option[*A
 	out := []*ArchiveEntry{}
 	seen := map[string]bool{}
 	kinds := map[string]bool{}
-	add := func(name string, directory bool, size int64, reader io.Reader) string {
+	add := func(name string, directory bool, size int, reader io.Reader) string {
 		CheckCancelled(ctx)
 		if !archivePathValid(name, directory) {
 			return "InvalidData"
@@ -207,7 +207,7 @@ func Archive_Unpack(ctx *Execution, data *Bytes, format string, limits Option[*A
 		}
 		seen[key] = true
 		kinds[key] = directory
-		if int64(len(out)) >= count || size > entryMax || size > total {
+		if len(out) >= count || size > entryMax || size > total {
 			return "LimitExceeded"
 		}
 		limit := min(entryMax, total)
@@ -218,7 +218,7 @@ func Archive_Unpack(ctx *Execution, data *Bytes, format string, limits Option[*A
 		if directory && len(body) != 0 {
 			return "InvalidData"
 		}
-		total -= int64(len(body))
+		total -= len(body)
 		if directory {
 			name = strings.TrimSuffix(name, "/") // canonical directory path has no trailing slash
 		}
@@ -241,7 +241,7 @@ func Archive_Unpack(ctx *Execution, data *Bytes, format string, limits Option[*A
 			if header.Typeflag != tar.TypeReg && header.Typeflag != 0 /* legacy regular-file encoding */ && header.Typeflag != tar.TypeDir {
 				return archiveFail[*List[*ArchiveEntry]]("Unsupported")
 			}
-			if code := add(header.Name, header.Typeflag == tar.TypeDir, header.Size, reader); code != "" {
+			if code := add(header.Name, header.Typeflag == tar.TypeDir, FitInt(header.Size), reader); code != "" {
 				return archiveFail[*List[*ArchiveEntry]](code)
 			}
 		}
@@ -250,7 +250,7 @@ func Archive_Unpack(ctx *Execution, data *Bytes, format string, limits Option[*A
 		if err != nil {
 			return archiveFail[*List[*ArchiveEntry]]("InvalidData")
 		}
-		if int64(len(reader.File)) > count {
+		if len(reader.File) > count {
 			return archiveFail[*List[*ArchiveEntry]]("LimitExceeded")
 		}
 		for _, file := range reader.File {
@@ -265,7 +265,7 @@ func Archive_Unpack(ctx *Execution, data *Bytes, format string, limits Option[*A
 			if err != nil {
 				return archiveFail[*List[*ArchiveEntry]]("InvalidData")
 			}
-			code := add(file.Name, file.FileInfo().IsDir(), int64(file.UncompressedSize64), entry)
+			code := add(file.Name, file.FileInfo().IsDir(), int(file.UncompressedSize64), entry)
 			closeErr := entry.Close()
 			if code != "" {
 				return archiveFail[*List[*ArchiveEntry]](code)

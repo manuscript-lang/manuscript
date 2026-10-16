@@ -11,7 +11,7 @@ func Set_Clone[T comparable](_ *Execution, s *Set[T]) *Set[T] {
 func Set_IsEmpty[T comparable](_ *Execution, s *Set[T]) bool { return s.Len() == 0 }
 
 // Set_Length is the element count.
-func Set_Length[T comparable](_ *Execution, s *Set[T]) int64 { return int64(s.Len()) }
+func Set_Length[T comparable](_ *Execution, s *Set[T]) int { return int(s.Len()) }
 
 // Set_Filter returns a new set of the elements the predicate accepts.
 func Set_Filter[T comparable](ctx *Execution, s *Set[T], keep func(*Execution, T) bool) *Set[T] {

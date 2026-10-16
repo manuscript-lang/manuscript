@@ -20,8 +20,8 @@ func Errors_Message_CollectionError(_ *Execution, e CollectionError) string {
 
 // Collections_Filled creates a list of count copies of value. An omitted
 // maxItems leaves only the runtime ceiling.
-func Collections_Filled[T any](ctx *Execution, value T, count int64, maxItems Option[int64]) Result[*List[T], CollectionError] {
-	limit := int64(math.MaxInt64)
+func Collections_Filled[T any](ctx *Execution, value T, count int, maxItems Option[int]) Result[*List[T], CollectionError] {
+	limit := math.MaxInt
 	if maxItems.Some {
 		limit = maxItems.Val
 	}
@@ -40,13 +40,13 @@ func Collections_Filled[T any](ctx *Execution, value T, count int64, maxItems Op
 }
 
 // Collections_Range creates the integers from start up to but excluding end.
-func Collections_Range(ctx *Execution, start, end, step int64, maxItems Option[int64]) Result[*List[int64], CollectionError] {
-	limit := int64(math.MaxInt64)
+func Collections_Range(ctx *Execution, start, end, step int, maxItems Option[int]) Result[*List[int], CollectionError] {
+	limit := math.MaxInt
 	if maxItems.Some {
 		limit = maxItems.Val
 	}
 	if step == 0 || limit < 0 {
-		return Fail[*List[int64], CollectionError](CollectionError_InvalidInput{})
+		return Fail[*List[int], CollectionError](CollectionError_InvalidInput{})
 	}
 	limit = min(limit, nativeMaxItems)
 	// Count the terms first so a huge range fails before allocating.
@@ -57,23 +57,23 @@ func Collections_Range(ctx *Execution, start, end, step int64, maxItems Option[i
 		span, size = uint64(start)-uint64(end), -uint64(step)
 	}
 	if span > 0 && (span-1)/size >= uint64(limit) {
-		return Fail[*List[int64], CollectionError](CollectionError_LimitExceeded{})
+		return Fail[*List[int], CollectionError](CollectionError_LimitExceeded{})
 	}
-	var out []int64
+	var out []int
 	tick := uint32(0)
 	for n := start; step > 0 && n < end || step < 0 && n > end; {
 		Poll(ctx, &tick)
-		if int64(len(out)) == limit {
-			return Fail[*List[int64], CollectionError](CollectionError_LimitExceeded{})
+		if len(out) == limit {
+			return Fail[*List[int], CollectionError](CollectionError_LimitExceeded{})
 		}
 		out = append(out, n)
 		// An overflowing next term lies outside every representable end.
-		if step > 0 && n > math.MaxInt64-step || step < 0 && n < math.MinInt64-step {
+		if step > 0 && n > math.MaxInt-step || step < 0 && n < math.MinInt-step {
 			break
 		}
 		n += step
 	}
-	return Ok[*List[int64], CollectionError](&List[int64]{Items: out})
+	return Ok[*List[int], CollectionError](&List[int]{Items: out})
 }
 
 // Collections_MapFromEntries builds a map; later entries replace earlier
