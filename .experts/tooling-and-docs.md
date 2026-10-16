@@ -172,6 +172,17 @@ six-target standalone distribution checks after changing Delve or its transport.
 
 Decision: the user selected Tailwind CSS and Vercel as documentation design references and asked not to add filler. The later direction makes the landing page a marketing page whose goal is getting people to try Manuscript: lead with “The language for the agentic era.” as the hero headline, a runnable example, and a clear first-run action. The follow-up correction asks for a hero instead of a wall of text: use one compact focal area with a headline, short promise, primary action, and code preview; avoid stacking repeated benefit paragraphs and card sections on the homepage. Explain why Manuscript through the vision and README: agents write and humans understand, with compact evidence from API-first design, minimal syntax, and compiler-backed tools. Keep learning pages focused on teaching and organize lessons, task guides, and reference by reader intent. This supersedes the earlier restriction on promotional homepage copy; it does not authorize unsupported claims or padded reference prose.
 
+Decision: after the broader reader-journey redesign, the user asked, “can we do
+landing page as hero instead of wall text?” Use a focused hero with a large
+headline, short description, prominent trial action, secondary tour link, and
+compact code/output preview. Remove repeated benefit paragraphs and stacked
+cards when applying this direction. Evidence: the request in **Update docs for
+current language**, following [the reader-journey change](https://github.com/manuscript-lang/manuscript/pull/570),
+and [the resulting hero revision](https://github.com/manuscript-lang/manuscript/pull/573).
+Verify: inspect desktop and narrow mobile renders in both themes; the first
+action and example remain readable with brief supporting copy. This records
+the requested direction; verify its implementation in the checkout being edited.
+
 Decision: use `ms` as the documentation logo, including the header and favicon, rather than a single `m`. Check the mark at desktop and mobile sizes when changing [branding](../website/layouts/_partials/docs/brand.html) or the [favicon](../website/static/favicon.svg).
 
 Apply when: redesigning the documentation shell or overview, or extending its visual system.
