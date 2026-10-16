@@ -81,7 +81,7 @@ Follow [your first program](documentation/learn/getting-started.md) for a walkth
 | You want to… | Start here |
 | --- | --- |
 | Learn the language | [Language tour](documentation/learn/tour.md) and [core language](documentation/core-language/_index.md) |
-| Find a standard type or function | [Standard library](https://manuscript-lang.github.io/manuscript/standard-library/) and [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/) |
+| Find a standard type or function | `ms search_symbol <name or words>`, [Standard library](https://manuscript-lang.github.io/manuscript/standard-library/) and [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/) |
 | Understand cleanup and concurrent work | [Resource lifetimes](documentation/core-language/cleanup/_index.md) and [concurrency](https://manuscript-lang.github.io/manuscript/concurrency/) |
 | Set up your editor or use source tools | [VS Code extension](extensions/vscode/README.md) and [tooling guide](documentation/developer-tooling/implementation.md) |
 | Understand build pins and caches | [Reproducible builds](documentation/developer-tooling/builds/reproducibility.md) |

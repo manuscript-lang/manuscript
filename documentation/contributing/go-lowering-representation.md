@@ -32,7 +32,7 @@ A value type holding a reference type shares that reference. `Optional[List[Int]
 - Assignment, argument passing, capture, and `return` copy the Go value as is. Do not add copies for references and never share a copy of a value-class struct that something later mutates.
 - `.clone()` is the only operation that copies a reference type, and it is shallow.
 - A zero-valued pointer is a bug: construction always allocates. `nil` never represents `none`; use `rt.Option`.
-- Equality and hashing: scalar-only records compare by value, all other reference types by identity unless an explicit `Equal` exists; see [equality and hashing](../core-language/types/equality-and-hashing.md).
+- Reference representation does not determine equality. Records and collections follow their structural equality rules; explicit `Equal` and `Hashable` implementations can override them. See [equality and hashing](../core-language/types/equality-and-hashing.md).
 
 ## Adding a type
 

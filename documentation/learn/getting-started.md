@@ -75,7 +75,7 @@ ms test ms.toml
 
 `ms init [directory]` writes `ms.toml`, `src/main.ms` (the program above), `test.ms`, and a `.gitignore`. It stops without writing anything if one of those files already exists. A project is just that manifest plus an entry module exporting `main() -> Int`, so you can also create the files by hand.
 
-The first `ms run` or `ms build` writes `ms.lock` next to `ms.toml`. It records the compiler, runtime, and toolchain pins the build used: commit it. Earlier versions also wrote a `.ms-cache/` of executables (`ms init` still ignores it); it is safe to delete. A `ms` built from a source checkout has different pins than a release, so running `ms lock` or `ms run` on a project such as `examples/hello` with it rewrites the checked-in `ms.lock`; discard that change rather than committing it.
+The first `ms run` or `ms build` writes `ms.lock` next to `ms.toml`. It records the compiler, runtime, and toolchain pins the build used: commit it. A `ms` built from a source checkout has different pins than a release, so running `ms lock` or `ms run` on a project such as `examples/hello` with it rewrites the checked-in `ms.lock`; discard that change rather than committing it.
 
 ## Build and test
 
@@ -88,4 +88,18 @@ The first `ms run` or `ms build` writes `ms.lock` next to `ms.toml`. It records 
 
 `build` leaves a native executable that runs independently of Manuscript. `test` runs test blocks in the given module, with the project directory (the one holding `ms.toml`, or the test file's directory for a single file) as the working directory, so fixtures such as `golden/input.txt` resolve the same wherever you invoke `ms`; `ms test ms.toml` also runs every `test.ms` and `*_test.ms` file in the project. Each test prints `RUN` before it starts; a test that exceeds `--timeout` (default 60s, `0` disables) fails by name, and `--filter text` runs only tests whose `module::name` contains the text. `fmt --check` reports formatting changes without writing them. Use `./ms --help` to list commands or `./ms help run` for a command's options.
 
-Continue with [the language tour](tour.md). The [developer tools](../developer-tooling/implementation.md) cover editor setup, inspection, API documentation, and debugging.
+## Find language and library help
+
+```sh
+./ms guide
+./ms search_symbol read file
+./ms search_symbol json
+./ms search_symbol json.parse
+```
+
+`guide` prints a short language reference. `search_symbol` searches project and
+standard-library symbols by name or words; a module or declaration path shows
+its documentation and signature. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents)
+for project references and structured output.
+
+Continue with [the language tour](tour.md). The [developer tools](../developer-tooling/implementation.md) cover editor setup, symbol search, inspection, and debugging.

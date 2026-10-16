@@ -100,7 +100,7 @@ export fn truncate(value: Float) -> Float:
 #
 # Math functions use IEEE binary64 arithmetic. An invalid Float domain yields NaN; overflow can yield infinity. The last bits of transcendental results may differ across targets, so tests should use tolerances.
 #
-# `round` rounds to the nearest integer, with ties toward positive infinity: `round(1.5)` is `2.0`, and `round(-1.5)` is `-1.0`. It preserves negative zero for negative inputs that round to zero. `min` and `max` propagate NaN and preserve signed-zero conventions. `abs_int(MinInt64)` faults because the positive result cannot fit in an `Int`. `pi()` and `e()` are ordinary zero-argument functions.
+# `round` rounds to the nearest integer, with ties toward positive infinity: `round(1.5)` is `2.0`, and `round(-1.5)` is `-1.0`. It preserves negative zero for negative inputs that round to zero. `min` and `max` propagate NaN and preserve signed-zero conventions. `abs_int` of the target platform’s minimum `Int` faults because the positive result cannot fit in an `Int`. `pi()` and `e()` are ordinary zero-argument functions.
 #
 # ## Parsing and formatting numbers
 #

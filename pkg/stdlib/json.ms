@@ -51,8 +51,8 @@ export type JsonValue:
 # Parses one JSON value and applies the supplied input, depth, and value limits.
 #
 # With the default `T = JsonValue` the result is the parsed tree. Any other `T` is read from the
-# document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `let request: Request = parse(text)`
-# build a `Request` directly (`try` passes no expected type, so write `try parse[Request](text)`). A value whose shape does not match `T` returns
+# document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `let result: Result[Request, JsonError] = parse(text)`
+# return a decoded `Request` in a `Result` (`try` passes no expected type, so write `try parse[Request](text)`). A value whose shape does not match `T` returns
 # `InvalidData`; nothing is rejected at compile time, as with `stringify`. Input, depth and value limits
 # apply to the document before decoding.
 #
@@ -83,14 +83,13 @@ export fn parse[T = JsonValue](
     ignore_unknown_fields: Bool = true
 ) -> Result[T, JsonError]:
 
-# Customizes how `stringify` encodes a type, like JavaScript's `toJSON`. It takes precedence over the
+# Customizes how `stringify` encodes a type. It takes precedence over the
 # structural encoding for every record and alternative, so it is the way to choose a tagged or
 # discriminator encoding, or any other shape. A value whose type implements it is encoded as the
 # `JsonValue` its `to_json` returns, wherever it appears: at the root, in a field, in a list, or as a map
 # value. The returned `JsonValue` is written as stored and is not customized again. Implement it in the
-# module that defines the type. A planned counterpart, `JsonDecode` with a static
-# `from_json(value: JsonValue) -> Result[Self, JsonError]`, will let a type choose its own typed parse;
-# it does not exist yet.
+# module that defines the type. Custom typed decoding is not supported; parse a `JsonValue`
+# and handle its cases when the input needs a different shape.
 #
 # The default encoding of an alternative is externally tagged, `{"Created":{"id":1}}`, so a structural
 # encoding round-trips. This implementation writes an internal `type` discriminator instead, a common
@@ -115,7 +114,7 @@ export interface JsonEncode:
     # Returns the JSON form of this value.
     fn to_json() -> JsonValue
 
-# Encodes any value as JSON text, the way JavaScript's `JSON.stringify` does. Every type is accepted;
+# Encodes any value as JSON text. Every type is accepted;
 # a value with no JSON form is omitted or written as `null` rather than rejected at compile time.
 #
 # - Record fields appear in declaration order. A field holding `none` is omitted; so is a field
@@ -215,7 +214,7 @@ impl Error for JsonError:
 #
 # ### Writing JSON from Manuscript values
 #
-# `stringify` accepts a value of any type and writes it directly, so a request body needs no `JsonValue` wrapping. It follows JavaScript's `JSON.stringify` where Manuscript has a sound analogue: nothing is rejected at compile time, a value with no JSON form is left out or written as `null`, and a type customizes its encoding with `JsonEncode`, the analogue of `toJSON`.
+# `stringify` accepts a value of any type and writes it directly, so a request body needs no `JsonValue` wrapping. Every type is accepted at compile time. A value with no JSON form is omitted or written as `null` according to the rules below. Implement `JsonEncode` to customize a type’s encoding.
 #
 # <!-- manuscript-example: {"mode":"test"} -->
 # ```manuscript
@@ -252,34 +251,34 @@ impl Error for JsonError:
 #     if stringify(value: [1], indent: 2).unwrap() != "[\n  1\n]": return panic("indent")
 # ```
 #
-# How each value is written, and the JavaScript behavior it follows:
+# How each value is written:
 #
 # | Value | JSON |
 # | --- | --- |
 # | Record | Object with fields in declaration order. |
-# | Field holding `none`, a function, a resource, `Unit`, or an `Instant` | The member is omitted, as JavaScript omits `undefined` and functions. |
+# | Field holding `none`, a function, a resource, `Unit`, or an `Instant` | The member is omitted. |
 # | `none` anywhere else (root, list element, map value) | `null`. `some(x)` encodes as `x`; `Optional[Optional[T]]` is allowed, and `some(none)` is `null`. |
 # | List element or Set element with no JSON form | `null`. |
 # | Map value with no JSON form | The entry is omitted. |
-# | Root value with no JSON form | `Result.error(InvalidData)`, where JavaScript returns `undefined`. |
+# | Root value with no JSON form | `error(JsonError.InvalidData)`. |
 # | Alternative case without payload | The case name as a string: `"Dot"`. |
 # | Alternative case with payload | Externally tagged: `{"Circle":{"radius":2}}`, the case name keying an object of its labeled fields under the record rules. Cases with identical labels stay distinct, and the form can be decoded back. Use `JsonEncode` for a different shape. |
 # | `List`, `Set` | Array in list order or set insertion order. |
-# | `Map` | Object in insertion order. A key becomes its string form, as in JavaScript: `String` as is; `Int`, `BigInt`, `Decimal`, `Float` and `Bool` as text; `Timestamp` as RFC 3339; `Duration` as nanoseconds; a case without payload as its name. Any other key type returns `InvalidData`. |
+# | `Map` | Object in insertion order. A key becomes its string form: `String` as is; `Int`, `BigInt`, `Decimal`, `Float` and `Bool` as text; `Timestamp` as RFC 3339; `Duration` as nanoseconds; a case without payload as its name. Any other key type returns `InvalidData`. |
 # | `Int`, `BigInt`, `Decimal` | Exact decimal digits. |
 # | `Float` | Shortest decimal that parses back to the same `Float`, without a trailing `.0`; an exponent only below `1e-6` or from `1e21`. `NaN` and infinities are `null`. |
 # | `Timestamp` | RFC 3339 string in UTC, the analogue of `Date.toJSON`. An `Instant` is a monotonic clock reading with no calendar meaning, so it has no JSON form. |
 # | `Duration` | Integer nanoseconds. |
 # | `Bytes` | Standard base64 string with padding. |
 # | `Url`, `IpAddress`, `Cidr` | Their string form. |
-# # | `Result` and other standard records and alternatives | Ordinary record and alternative rules: `ok(5)` is `{"ok":{"value":5}}` and `error(cause)` is `{"error":{"cause":...}}`. |
+# | `Result` and other standard records and alternatives | Ordinary record and alternative rules: `ok(5)` is `{"ok":{"value":5}}` and `error(cause)` is `{"error":{"cause":...}}`. |
 # | A value held through an interface (including `Error`) | No JSON form. |
 # | `JsonValue` | Written as stored, validating `NumberValue` text. |
 # | A type implementing `JsonEncode` | The `JsonValue` its `to_json` returns, written as stored. It overrides every other row, including the alternative rows, so it is how to write a tagged encoding. |
 #
-# `stringify` reads the value when it runs and returns a new `String`, so later mutation does not change the text. A value that reaches itself returns `InvalidData`, where JavaScript throws; one value referenced twice without a cycle is written twice. `max_bytes` bounds the output, indentation included, and returns `LimitExceeded` when exceeded.
+# `stringify` reads the value when it runs and returns a new `String`, so later mutation does not change the text. A value that reaches itself returns `InvalidData`; one value referenced twice without a cycle is written twice. `max_bytes` bounds the output, indentation included, and returns `LimitExceeded` when exceeded.
 #
-# `indent` is the analogue of the `space` argument: it pretty-prints with that many spaces per level, up to 10 as in JavaScript. `none` and `0` are compact; a negative value returns `InvalidInput`. Empty arrays and objects stay `[]` and `{}`. There is no replacer function; build the shape you want as a record or a `JsonEncode` implementation. A `JsonDecode` interface to customize typed parsing is planned and not available yet.
+# `indent` pretty-prints with that many spaces per level, up to 10. `none` and `0` are compact; a negative value returns `InvalidInput`. Empty arrays and objects stay `[]` and `{}`. Build a custom output shape as a record or a `JsonEncode` implementation. Custom typed decoding is not supported; parse a `JsonValue` and handle its cases for other input shapes.
 #
 # ### Reading JSON into Manuscript values
 #
@@ -307,6 +306,8 @@ impl Error for JsonError:
 # test "parse builds typed values":
 #     let text = "\{\"model\":\"example\",\"messages\":[\{\"role\":\"user\",\"content\":\"hi\"\}]\}"
 #     let request = read_request(text).unwrap()
+#     let inferred: Result[Request, JsonError] = parse(text)
+#     if inferred.unwrap().model != "example": return panic("expected result type")
 #     if request.model != "example" or request.stream or not request.user.is_none(): return panic("unexpected request")
 #     if parse[Request](text: "\{\"model\":1\}").is_ok(): return panic("wrong member type was accepted")
 # ```

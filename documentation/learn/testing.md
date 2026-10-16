@@ -54,17 +54,26 @@ source diagnostics and captured stdout. Stderr remains stderr; failures keep
 their exit status. It supports one run and cannot be combined with `--watch`.
 See the [JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests).
 
-For example, this fragment belongs inside a test after calling a fallible function:
+Use `expect_ok` to check success and keep its payload. This complete example
+also checks a failure and unwraps an Optional without an unchecked `unwrap()`:
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-match result:
-    ok(value):
-        expect_equal(value, 3)
-    error(cause):
-        return panic("Expected success, got {cause.message()}")
+import {parse, JsonError} from "@std/json.ms"
+import {expect_equal, expect_ok, expect_error, expect_some} from "@std/testing.ms"
+
+test "typed JSON and Optional payloads":
+    let number = expect_ok(parse[Int]("3"))
+    expect_equal(number, 3)
+    let cause = expect_error(parse[Int]("true"))
+    expect_equal(cause, JsonError.InvalidData)
+    let first = expect_some([number].at(0))
+    expect_equal(first, 3)
 ```
 
-The fragment assumes `Result[Int, Error]` and the imported equality helper above. Handle domain-specific error cases explicitly when a test is meant to check a failure. See [Results](../core-language/errors/results.md) and [programming faults](../core-language/errors/faults.md).
+A failed expectation stops the test and reports the unexpected outcome. See
+[Results](../core-language/errors/results.md) and the
+[testing helper reference](../standard-library/testing.md) for other assertions.
 
 ## Select, repeat, and profile
 

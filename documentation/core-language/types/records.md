@@ -19,7 +19,7 @@ A record declaration may have an empty schema, written as `type Marker:` followe
 
 ## Construction
 
-Constructors supply required fields by name exactly once and may omit fields with defaults. Missing required fields, duplicate fields, and unknown fields are compile errors. Call order may differ from declaration order; supplied expressions evaluate in written call order, followed by omitted defaults in field declaration order. Each expression is checked against its declared field type, including expected-type checking for `none` and empty lists.
+Constructors supply each required field exactly once, positionally or by label, and may omit fields with defaults. Missing required fields, duplicate fields, and unknown fields are compile errors. Call order may differ from declaration order; supplied expressions evaluate in written call order, followed by omitted defaults in field declaration order. Each expression is checked against its declared field type, including expected-type checking for `none` and empty lists.
 
 ```manuscript
 let customer = Customer(name: "Ada", email: none)
