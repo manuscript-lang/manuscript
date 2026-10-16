@@ -28,6 +28,8 @@ Nested `match` is an anti-pattern: another match inside a scrutinee or arm makes
 
 `ms lint` reports advisory **MSL107** at each inner match, including matches inside an inline callback or its default expressions beneath another match. Separate helpers and sequential matches do not trigger it. Checking and execution still accept nested matches; the advisory is a style rule and adds no grammar restriction.
 
+Matching an `Optional` with only `some` and `none` arms is also an anti-pattern: `ms lint` reports advisory **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional) with an optional `else`, or an Optional method such as `unwrap_or` or `map`. Checking and execution still accept the match.
+
 ## Arm values
 
 An arm may contain statements followed by a final expression. That expression supplies the arm's value. An arm ending in an ordinary statement produces `Unit` when it reaches the end. All arms that produce values must have a compatible type; an annotation or expected argument/return type supplies context. Without context, independently typed value-producing arms establish the result type, including for earlier contextual values such as `none` or `[]`. An inferred function result requires all arguments; it does not inherit omission permissions from one selected callable. Arms that exit through `return`, `break`, `continue`, or a `Never` expression do not contribute a result value.
