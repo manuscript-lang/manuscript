@@ -304,7 +304,7 @@ export type SetBuilder[T: Hashable]:
 #
 # Ordinary collections already support mutation. Use a builder when construction needs a sealed result. A builder returns its result when sealed. Builder aliases are ordinary references; freezing may seal the builder so later mutation reports a runtime error.
 #
-# Builders are not synchronized, like ordinary collections: use one builder from one task at a time, or guard it with [Synchronized](synchronization.md#synchronized). There is no ownership-transfer or consuming function type.
+# Builders are not synchronized, like ordinary collections: use one builder from one task at a time, or guard it with [Synchronized](../concurrency/synchronization.md#synchronized). There is no ownership-transfer or consuming function type.
 #
 # ## API
 #
