@@ -1514,6 +1514,28 @@ type RegexError_LimitExceeded struct {
 func (RegexError_LimitExceeded) isRegexError() {
 }
 
+type SemverError interface {
+	isSemverError()
+}
+type SemverError_InvalidData struct {
+}
+
+func (SemverError_InvalidData) isSemverError() {
+}
+
+type SemverError_OutOfRange struct {
+}
+
+func (SemverError_OutOfRange) isSemverError() {
+}
+
+type Version struct {
+	Major      int
+	Minor      int
+	Patch      int
+	Prerelease *List[string]
+	Build      *List[string]
+}
 type StringError interface {
 	isStringError()
 }
