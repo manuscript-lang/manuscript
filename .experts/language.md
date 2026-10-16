@@ -74,11 +74,11 @@ Evidence: [sharing rules](../pkg/stdlib/sync.ms).
 
 ### Syntax improvements need examples across their boundaries
 
-Decision: support grouped symbol imports and brace Map literals. The user's newer explicit request to “remove mandatory labels for invoking functions” supersedes the prior restriction to single-parameter unlabeled calls. Invocation labels are optional across functions, methods, function values and constructors. Preserve existing matching-name shorthand; changing every bare identifier to positional would silently change valid reordered calls. Keep callback function-type label identity separate from invocation syntax, including the contextual-lambda label adoption rule.
+Decision: support grouped symbol imports and brace Map literals. The user's newer explicit request to “remove mandatory labels for invoking functions” supersedes the prior restriction to single-parameter unlabeled calls. Invocation labels are optional across functions, methods, function values and constructors. Superseded by issue #452 (user direction): an unlabeled argument, including a bare identifier, is always positional and never selects a parameter by its spelling; only `name: value` selects by name. Matching-name shorthand and its MSL109 advisory were removed. Keep callback function-type label identity separate from invocation syntax, including the contextual-lambda label adoption rule.
 
 Apply when: changing calls, grammar, inference or editor assistance.
 Evidence: [canonical call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names); [binding/source preservation tests](../pkg/checker/positional_arguments_test.go); [native calls](../tests/e2e/testdata/accept/positional-arguments.ms).
-Verify: positional/labeled/mixed calls bind deterministically, old reordered shorthand retains its meaning, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename must make implicit argument labels explicit when renaming could change binding. Open (issue #452): a bare identifier can silently select another parameter; [MSL109](../pkg/tooling/bare_argument_lint.go) warns without changing binding and errors it causes name the selected parameter, while making bare arguments positional remains an undecided language change needing a migration for reordered shorthand calls.
+Verify: positional/labeled/mixed calls bind deterministically, a bare identifier fills the next unfilled slot whatever its name, supplied values execute once in written order before defaults, and callback mismatched names remain rejected. Editor rename adds no labels, since a rename can no longer change binding.
 
 ### Recover concrete contract receivers through checked matching
 

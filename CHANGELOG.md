@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Language (breaking): an unlabeled argument, including a bare identifier, always fills the next unfilled parameter in declaration order; only `name: value` selects a parameter by name. Calls that relied on matching-name shorthand to reorder arguments (`subtract(right, amount)` for `subtract(left, right)`) now bind positionally; write `right: right` to keep the old meaning. Lint MSL109 and the editor's implicit-label rename are removed (#452).
 - Tooling: `ms search_symbol` finds project and standard-library symbols by name or plain words, fuzzy and case-insensitive, with their definition, type, and uses, and shows bounded module, declaration, and member pages (`ms search_symbol json`, `ms search_symbol prelude.List.sorted`), and `ms guide` prints the language cheat sheet, so agents need no protocol server.
 - Builds: generated Go is fully typed. `Int`, `Float`, `Bool`, `String` and every record, collection, alternative, `Optional`, `Result`, contract and function lower to their own Go type with no boxing, and the lean runtime variant is gone. Reusable packages are now `pkg/lower` (was `pkg/golower`) and `pkg/runtime` (the typed `rt`).
 - Language: a `Map` or `Set` matches keys with the `Equal`/`Hashable` implementations visible where it was created; an operation obtained from another module no longer switches a collection to that module's implementations.
@@ -19,8 +20,6 @@
 - Builds: executables are no longer cached (every edit used to leave an unremoved 5 MB file in `.ms-cache`; delete existing ones) and `BuildChecked*` lose their cache argument; faster rebuilds through a content-addressed workspace and command replay; validated toolchain archives.
 - Builds: list literals with 256 or more items compile in time proportional to their size (100,000 Int constants: about 24 s to 2 s); deeply nested List and Map literals check in near-linear time and report an uninferable element type once.
 - Lint: MSL107 warns on nested `match`.
-- Lint: MSL109 warns when a bare identifier argument is redirected by matching-name shorthand to a parameter other than the next positional slot (#452); binding is unchanged.
-- Diagnostics: a type or duplicate-argument error caused by a redirected bare identifier names the parameter it selected and the positional rewrite (#452).
 - Collections: `List.set`/`remove`/`splice`/`reverse_in_place`, `Set.add`/`remove`, `Map.remove`/`add_default`, `Bytes.reversed` and `Regex.replace_all` replace the removed copy-sounding spellings `List.with_value`/`without`/`with_values`/`reverse`, `Map.with_entry`/`without`/`with_default`/`with_default_from`, `Set.with_value`/`without`, `MapBuilder.with_entry`, `SetBuilder.with_value`, `Bytes.reverse` and `Regex.replace`; the MSL108 advisory is gone. Faults name the surviving method.
 - Concurrency: `BlockingQueue[T]` in `@std/queues.ms` waits in `put` and `take` and ends with `close`; `SynchronizedGuard.wait()` and `notify_all()` let tasks block until shared state changes.
 - Collections: `List.count`, `List.distinct`, in-place `List.insert` and `List.pop`.

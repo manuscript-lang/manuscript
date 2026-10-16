@@ -15,8 +15,7 @@ func TestArgumentBindingPreservesWrittenOrderAndSource(t *testing.T) {
 		{"f(third: 3, 1, 2)", "third,first,second"},
 		{"f(1, third: 3, 2)", "first,third,second"},
 		{"f(second: 2, third: 3, first: 1)", "second,third,first"},
-		{"f(third, first, second)", "third,first,second"},
-		{"f(third, 1, second: 2)", "third,first,second"},
+		{"f(third, first, second)", "first,second,third"},
 		{"f((third), (first), (second))", "first,second,third"},
 		{"f(first + 1, second, third)", "first,second,third"},
 		{"f(1)", "first"},
@@ -79,32 +78,6 @@ func TestPositionalArgumentDiagnostics(t *testing.T) {
 			}
 			if p.Diagnostics[0].Position.File != "arguments.ms" {
 				t.Fatal(p.Diagnostics[0])
-			}
-		})
-	}
-}
-
-func TestRedirectedShorthandDiagnosticNamesSelectedParameter(t *testing.T) {
-	for _, tc := range []struct {
-		name, call string
-		want       bool
-	}{
-		{"redirected", "f(count, n)", true},
-		{"parenthesized", "f((count), n)", false},
-		{"explicit", "f(name: count, count: n)", false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			source := "fn f(name: String, count: Int) -> Int: count\nfn run(count: String, n: Int) -> Int: " + tc.call + "\n"
-			m, err := parser.Parse("redirect.ms", source)
-			if err != nil {
-				t.Fatal(err)
-			}
-			hinted := false
-			for _, d := range checker.Check([]*syntax.Module{m}, nil).Diagnostics {
-				hinted = hinted || strings.Contains(d.Message, "bare count selected parameter count, not the next positional parameter name")
-			}
-			if hinted != tc.want {
-				t.Fatalf("hint = %v, want %v", hinted, tc.want)
 			}
 		})
 	}
