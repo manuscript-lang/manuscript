@@ -62,7 +62,10 @@ licenses-check:
 stdgen: | toolchain
 	"$(GO)" run ./scripts/stdgen pkg/runtime
 
-payload: | toolchain
+payload: .build-payload.tar.gz
+
+# Rebuilt only when the pinned SDK, packaging code, or runtime imports change.
+.build-payload.tar.gz: .go-version go.mod $(wildcard scripts/mktoolchain/*.go scripts/internal/devtool/*.go pkg/runtime/*.go) | toolchain
 	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz $$("$(GO)" env GOHOSTOS) $$("$(GO)" env GOHOSTARCH)
 
 build: payload

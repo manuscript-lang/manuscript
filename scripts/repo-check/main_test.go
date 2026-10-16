@@ -98,7 +98,7 @@ func TestVerificationTargetsExecuteTheirContracts(t *testing.T) {
 		"race":     {"test -race"}, "fuzz": {"test ./pkg/build -list '^FuzzCompile$'", "test ./pkg/build -run '^$' -fuzz '^FuzzCompile$'"}, "e2e": {"test  ./tests/e2e"},
 	} {
 		t.Run(target, func(t *testing.T) {
-			output, err := exec.Command("make", "--dry-run", target).CombinedOutput()
+			output, err := exec.Command("make", "--dry-run", "--always-make", target).CombinedOutput()
 			if err != nil {
 				t.Fatal(err, string(output))
 			}
