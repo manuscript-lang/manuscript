@@ -217,10 +217,16 @@ func JsonTagged(s *JsonScope, name string, payload *Map[string, JsonValue]) (Jso
 func JsonCase(name string) (JsonValue, bool) { return JsonValue_StringValue{Value: name}, true }
 
 // JsonReader carries one parse call's execution for generated decoders.
-type JsonReader struct{ ctx *Execution }
+type JsonReader struct {
+	ctx *Execution
+	// Lenient ignores object members that are not fields.
+	Lenient bool
+}
 
 // NewJsonReader starts a decode.
-func NewJsonReader(ctx *Execution) *JsonReader { return &JsonReader{ctx: ctx} }
+func NewJsonReader(ctx *Execution, lenient bool) *JsonReader {
+	return &JsonReader{ctx: ctx, Lenient: lenient}
+}
 
 // Ctx is the execution the decode runs in, for field default expressions.
 func (r *JsonReader) Ctx() *Execution { return r.ctx }

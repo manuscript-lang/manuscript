@@ -48,7 +48,7 @@ func jsonLimits(bytes, depth, values Option[int64]) Option[*JsonLimits] {
 
 func TestJsonParseValues(t *testing.T) {
 	ctx := RootExecution()
-	v := mustOk(t, Json_Parse(ctx, JsonDecValue, `{"a":[1,2.50,true,null,"x"],"n":9007199254740993}`, None[*JsonLimits]()))
+	v := mustOk(t, parseTree(ctx, `{"a":[1,2.50,true,null,"x"],"n":9007199254740993}`, None[*JsonLimits]()))
 	obj := v.(JsonValue_ObjectValue).Values
 	if obj.Len() != 2 {
 		t.Fatalf("entries = %d", obj.Len())
@@ -71,9 +71,9 @@ func TestJsonParseValues(t *testing.T) {
 func TestJsonParseErrors(t *testing.T) {
 	ctx := RootExecution()
 	for _, text := range []string{``, `{`, `[1,]`, `{"a":1,"a":2}`, `1 2`, `"\ud800"`, `"\udc00"`, `"\ud800\u0041"`, `{"a" 1}`, `01`, `tru`, `[1}`} {
-		mustFail(t, Json_Parse(ctx, JsonDecValue, text, None[*JsonLimits]()), JsonError(JsonError_InvalidData{}))
+		mustFail(t, parseTree(ctx, text, None[*JsonLimits]()), JsonError(JsonError_InvalidData{}))
 	}
-	mustOk(t, Json_Parse(ctx, JsonDecValue, `"\ud83d\ude00"`, None[*JsonLimits]()))
+	mustOk(t, parseTree(ctx, `"\ud83d\ude00"`, None[*JsonLimits]()))
 }
 
 func TestJsonLimits(t *testing.T) {
@@ -81,20 +81,20 @@ func TestJsonLimits(t *testing.T) {
 	some := func(n int64) Option[int64] { return Some(n) }
 	none := None[int64]()
 	var limit JsonError = JsonError_LimitExceeded{}
-	mustFail(t, Json_Parse(ctx, JsonDecValue, `[1]`, jsonLimits(some(2), none, none)), limit)
-	mustOk(t, Json_Parse(ctx, JsonDecValue, `[1]`, jsonLimits(some(3), none, none)))
-	mustFail(t, Json_Parse(ctx, JsonDecValue, `[[1]]`, jsonLimits(none, some(1), none)), limit)
-	mustOk(t, Json_Parse(ctx, JsonDecValue, `[[1]]`, jsonLimits(none, some(2), none)))
-	mustOk(t, Json_Parse(ctx, JsonDecValue, `1`, jsonLimits(none, some(0), none)))
-	mustFail(t, Json_Parse(ctx, JsonDecValue, `[]`, jsonLimits(none, some(0), none)), limit)
-	mustFail(t, Json_Parse(ctx, JsonDecValue, `[1,2]`, jsonLimits(none, none, some(2))), limit)
-	mustOk(t, Json_Parse(ctx, JsonDecValue, `[1,2]`, jsonLimits(none, none, some(3))))
+	mustFail(t, parseTree(ctx, `[1]`, jsonLimits(some(2), none, none)), limit)
+	mustOk(t, parseTree(ctx, `[1]`, jsonLimits(some(3), none, none)))
+	mustFail(t, parseTree(ctx, `[[1]]`, jsonLimits(none, some(1), none)), limit)
+	mustOk(t, parseTree(ctx, `[[1]]`, jsonLimits(none, some(2), none)))
+	mustOk(t, parseTree(ctx, `1`, jsonLimits(none, some(0), none)))
+	mustFail(t, parseTree(ctx, `[]`, jsonLimits(none, some(0), none)), limit)
+	mustFail(t, parseTree(ctx, `[1,2]`, jsonLimits(none, none, some(2))), limit)
+	mustOk(t, parseTree(ctx, `[1,2]`, jsonLimits(none, none, some(3))))
 	for _, l := range []Option[*JsonLimits]{jsonLimits(some(-1), none, none), jsonLimits(none, some(-1), none), jsonLimits(none, none, some(-1))} {
-		mustFail(t, Json_Parse(ctx, JsonDecValue, `1`, l), JsonError(JsonError_InvalidInput{}))
+		mustFail(t, parseTree(ctx, `1`, l), JsonError(JsonError_InvalidInput{}))
 	}
 	// Unset depth stops at the ceiling instead of overflowing the stack.
 	deep := strings.Repeat("[", jsonDepthCeiling+1) + strings.Repeat("]", jsonDepthCeiling+1)
-	mustFail(t, Json_Parse(ctx, JsonDecValue, deep, None[*JsonLimits]()), limit)
+	mustFail(t, parseTree(ctx, deep, None[*JsonLimits]()), limit)
 }
 
 func TestJsonStringify(t *testing.T) {
@@ -165,7 +165,7 @@ func FuzzJsonRoundTrip(f *testing.F) {
 	ctx := RootExecution()
 	limits := jsonLimits(Some(int64(1<<16)), Some(int64(32)), Some(int64(1<<12)))
 	f.Fuzz(func(t *testing.T, text string) {
-		parsed := Json_Parse(ctx, JsonDecValue, text, limits)
+		parsed := parseTree(ctx, text, limits)
 		if parsed.Failed {
 			return
 		}
@@ -173,7 +173,7 @@ func FuzzJsonRoundTrip(f *testing.F) {
 		if out.Failed {
 			t.Fatalf("parsed value does not stringify: %q -> %#v", text, out.Err)
 		}
-		again := Json_Parse(ctx, JsonDecValue, out.Val, limits)
+		again := parseTree(ctx, out.Val, limits)
 		if again.Failed || !jsonEqual(parsed.Val, again.Val) {
 			t.Fatalf("round trip changed value: %q -> %q", text, out.Val)
 		}
@@ -901,4 +901,9 @@ func TestDataErrorMessages(t *testing.T) {
 // stringifyTree serializes an already-built JsonValue compactly.
 func stringifyTree(ctx *Execution, v JsonValue, max Option[int64]) Result[string, JsonError] {
 	return Json_Stringify(ctx, JsonEncValue, v, max, None[int64]())
+}
+
+// parseTree parses text into an untyped JsonValue.
+func parseTree(ctx *Execution, text string, limits Option[*JsonLimits]) Result[JsonValue, JsonError] {
+	return Json_Parse(ctx, JsonDecValue, text, limits, true)
 }

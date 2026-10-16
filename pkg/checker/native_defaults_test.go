@@ -18,6 +18,8 @@ func TestNativeDefaultsAreCheckedInParameterScope(t *testing.T) {
 		{"fn f(value: Int = value) -> Int:\n", "unknown binding value"},
 		{"fn f(value: Bool = none) -> Bool:\n", "none default requires Optional"},
 		{"fn f[T](value: T, copy: T = value) -> T:\n", "native generic expression defaults are not supported"},
+		{"fn f[T](value: T, flag: Bool = true) -> T:\n", ""},
+		{"fn f[T](value: T, flag: Int = 1 + 1) -> T:\n", "native generic expression defaults are not supported"},
 		{"fn f[T](value: Optional[T] = none) -> Optional[T]:\n", ""},
 	} {
 		m, err := parser.Parse("@std/default-test.ms", item.source)

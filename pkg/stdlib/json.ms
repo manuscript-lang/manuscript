@@ -57,8 +57,9 @@ export type JsonValue:
 # apply to the document before decoding.
 #
 # - A record is an object. Members may appear in any order. An absent member takes the field's default,
-#   else `none` for an `Optional` field; an absent required field or an unknown member returns
-#   `InvalidData`, so a field with no JSON form (a function, say) needs a default to be readable.
+#   else `none` for an `Optional` field; an absent required field returns `InvalidData`, so a field
+#   with no JSON form (a function, say) needs a default to be readable. A member that is not a field
+#   is ignored, unless `ignore_unknown_fields` is `false`, which makes it return `InvalidData`.
 # - An alternative case without payload is its name as a string; one with payload is externally tagged,
 #   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
 #   as `Result` and the error types follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
@@ -78,7 +79,8 @@ export type JsonValue:
 # record and `parse[Map[String, Int]]` reads the same object as a map.
 export fn parse[T = JsonValue](
     text: String,
-    limits: Optional[JsonLimits] = none
+    limits: Optional[JsonLimits] = none,
+    ignore_unknown_fields: Bool = true
 ) -> Result[T, JsonError]:
 
 # Customizes how `stringify` encodes a type, like JavaScript's `toJSON`. It takes precedence over the
@@ -311,7 +313,7 @@ impl Error for JsonError:
 #
 # | JSON | Decoded as |
 # | --- | --- |
-# | Object | A record, members in any order. An absent member takes the field's default, else `none` for an `Optional` field. An absent required field or an unknown member returns `InvalidData`, so a field with no JSON form needs a default to be readable. |
+# | Object | A record, members in any order. An absent member takes the field's default, else `none` for an `Optional` field. An absent required field returns `InvalidData`, so a field with no JSON form needs a default to be readable. A member that is not a field is ignored unless `ignore_unknown_fields: false`, which returns `InvalidData`. |
 # | `"Case"` or `{"Case":{"label":value}}` | An alternative case without or with payload, under the same member rules. Another case name, a payload on a case without one, or a missing payload returns `InvalidData`. |
 # | `null` | `none` for `Optional`; anything else returns `InvalidData`. |
 # | Array | `List`, or `Set` (repeated elements are dropped). |

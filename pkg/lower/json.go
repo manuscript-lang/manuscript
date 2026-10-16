@@ -231,7 +231,7 @@ func (g *gen) jsonDecFields(fields []checker.Param, fill func(i int, f checker.P
 				Else: block(fill(i, f)...)},
 		)
 	}
-	out = append(out, &ast.IfStmt{Cond: binary(call(selector(ident("o"), "Len")), token.NEQ, ident("matched")), Body: block(jsonFail())})
+	out = append(out, &ast.IfStmt{Cond: binary(not(selector(ident("r"), "Lenient")), token.LAND, binary(call(selector(ident("o"), "Len")), token.NEQ, ident("matched"))), Body: block(jsonFail())})
 	return out
 }
 
