@@ -763,14 +763,15 @@ func (c *checker) checkIf(s *syntax.Statement) (bool, bool) {
 	return !i.NoReturn && (a || b), i.Breaks || ab || bb
 }
 
-// checkIfLet checks `if let name = optional`, which binds the payload in the then-branch only.
+// checkIfLet checks `if let name = optional` or `if let name = result`, which binds the
+// present or Ok payload in the then-branch only. A Result's error is not captured.
 func (c *checker) checkIfLet(s *syntax.Statement) (bool, bool) {
 	i := c.expression(s.Value, nil)
 	payload := primitive("<invalid>")
-	if std(i.Type, "Optional") && len(i.Type.Args) == 1 {
+	if (std(i.Type, "Optional") && len(i.Type.Args) == 1) || (std(i.Type, "Result") && len(i.Type.Args) == 2) {
 		payload = i.Type.Args[0]
 	} else if i.Type.ID != "<invalid>" {
-		c.error(s.Value.Pos, "type", "if let requires an Optional, found "+i.Type.String()+"; use 'if' for a Bool condition or 'match' for other alternatives")
+		c.error(s.Value.Pos, "type", "if let requires an Optional or Result, found "+i.Type.String()+"; use 'if' for a Bool condition or 'match' for other alternatives")
 	}
 	old := c.scope
 	c.scope = newScope(old)
