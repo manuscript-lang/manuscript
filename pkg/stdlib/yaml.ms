@@ -585,8 +585,49 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
     return ok(plain(text))
 
+fn quoted_or_nested(text: String) -> Bool:
+    return (
+        text.contains("\"")
+        or text.contains("'")
+        or text.contains("[")
+        or text.contains("\{")
+    )
+
+# boundary for text with no quotes or brackets: the first marker that follows a blank (or ends the text) wins.
+fn plain_boundary(text: String, colon: Bool) -> Int:
+    var marker = "#"
+
+    if colon: marker = ":"
+
+    var offset = 0
+
+    while true:
+        let rest = (
+            text
+            .slice_scalars(start: offset, end: text.scalar_length())
+            .unwrap_or("")
+        )
+        let found = rest.index_of(marker).unwrap_or(-1)
+        if found < 0: return -1
+
+        let at = offset + found
+        let before = text.at(at - 1).unwrap_or("")
+        let after = text.at(at + 1).unwrap_or("")
+
+        if colon and (after == "" or after == " " or after == "\t"): return at
+        if not colon and (at == 0 or before == " " or before == "\t"): return at
+
+        offset = at + 1
+
+    return -1
+
 # Find a mapping colon or comment outside quoted/flow values.
 fn boundary(text: String, colon: Bool) -> Int:
+    # Without the marker nothing can match; without quotes or brackets the first candidate decides.
+    if colon and not text.contains(":"): return -1
+    if not colon and not text.contains("#"): return -1
+    if not quoted_or_nested(text): return plain_boundary(text: text, colon: colon)
+
     let chars = text.split(separator: "")
     var quote = ""
     var depth = 0
@@ -653,10 +694,7 @@ fn uncomment(text: String) -> String:
 fn indent(text: String) -> Int:
     var result = 0
 
-    for c in text.split(separator: ""):
-        if c != " ": break
-
-        result = result + 1
+    while text.at(result).unwrap_or("") == " ": result = result + 1
 
     return result
 
@@ -679,6 +717,8 @@ fn sequence(text: String) -> Bool:
 
 # A flow collection or quoted scalar can continue across physical lines.
 fn complete(text: String) -> Bool:
+    if not quoted_or_nested(text): return true
+
     var quote = ""
     var depth = 0
     var index = 0

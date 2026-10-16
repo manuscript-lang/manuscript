@@ -2,7 +2,6 @@ package msruntime
 
 import (
 	"math"
-	"sync"
 )
 
 // Errors_Message_CollectionError is the fixed diagnostic `collection: <reason>`.
@@ -94,7 +93,6 @@ func builderSealed() { Raise("builder is sealed") }
 
 // ListBuilder appends values before freezing them into a list.
 type ListBuilder[T any] struct {
-	mu     sync.Mutex
 	list   *List[T]
 	sealed bool
 }
@@ -104,8 +102,6 @@ func NewListBuilder[T any]() *ListBuilder[T] { return &ListBuilder[T]{list: &Lis
 
 // ListBuilder_Append adds value to the end.
 func ListBuilder_Append[T any](_ *Execution, b *ListBuilder[T], value T) Unit {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	if b.sealed {
 		builderSealed()
 	}
@@ -115,15 +111,12 @@ func ListBuilder_Append[T any](_ *Execution, b *ListBuilder[T], value T) Unit {
 
 // ListBuilder_Freeze seals the builder and returns its list without copying.
 func ListBuilder_Freeze[T any](_ *Execution, b *ListBuilder[T]) *List[T] {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	b.sealed = true
 	return b.list
 }
 
 // MapBuilder adds entries before freezing them into a map.
 type MapBuilder[T comparable, U any] struct {
-	mu     sync.Mutex
 	m      *Map[T, U]
 	sealed bool
 }
@@ -135,8 +128,6 @@ func NewMapBuilder[T comparable, U any](keys *Keys[T]) *MapBuilder[T, U] {
 
 // MapBuilder_Add inserts or replaces an entry.
 func MapBuilder_Add[T comparable, U any](_ *Execution, b *MapBuilder[T, U], key T, value U) Unit {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	if b.sealed {
 		builderSealed()
 	}
@@ -146,15 +137,12 @@ func MapBuilder_Add[T comparable, U any](_ *Execution, b *MapBuilder[T, U], key 
 
 // MapBuilder_Freeze seals the builder and returns its map without copying.
 func MapBuilder_Freeze[T comparable, U any](_ *Execution, b *MapBuilder[T, U]) *Map[T, U] {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	b.sealed = true
 	return b.m
 }
 
 // SetBuilder adds unique values before freezing them into a set.
 type SetBuilder[T comparable] struct {
-	mu     sync.Mutex
 	s      *Set[T]
 	sealed bool
 }
@@ -166,8 +154,6 @@ func NewSetBuilder[T comparable](keys *Keys[T]) *SetBuilder[T] {
 
 // SetBuilder_Add adds value; an equal value keeps the first payload.
 func SetBuilder_Add[T comparable](_ *Execution, b *SetBuilder[T], value T) Unit {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	if b.sealed {
 		builderSealed()
 	}
@@ -177,8 +163,6 @@ func SetBuilder_Add[T comparable](_ *Execution, b *SetBuilder[T], value T) Unit 
 
 // SetBuilder_Freeze seals the builder and returns its set without copying.
 func SetBuilder_Freeze[T comparable](_ *Execution, b *SetBuilder[T]) *Set[T] {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	b.sealed = true
 	return b.s
 }

@@ -195,7 +195,7 @@ Narrowing only changes the type. The generated read still checks the index, so a
 
 `Map.add(key, value)` inserts or replaces a value and returns the same map.
 
-Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
+Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for construction with a sealed result.
 
 Map `get`, `contains`, and `add` and Set `contains` and `add` look keys up by hash, so they take constant time on average for built-in keys and for records whose fields hash. Map and Set `remove` keep insertion order by shifting later entries in memory, without re-indexing them, so removal costs a fast copy proportional to the collection size rather than a re-hash. List `contains` and `index_of` compare elements one by one. A key that is mutated in place while stored becomes unreachable by its old and new values; remove it before mutating it, or store a `.clone()`. See [key consistency](equality-and-hashing.md#key-consistency).
 
@@ -271,6 +271,6 @@ Map and Set `fold` visit a snapshot in insertion order. The callback receives th
 
 ## Building data
 
-The [collection reference](../../standard-library/reference/collections.md) lists all methods and constructors. [Builders](../../standard-library/builders.md) provide synchronized construction and sealed builder results.
+The [collection reference](../../standard-library/reference/collections.md) lists all methods and constructors. [Builders](../../standard-library/builders.md) provide construction with sealed builder results.
 
 See [generics and bounds](generics.md) for type arguments and [equality and hashing](equality-and-hashing.md) for key eligibility.

@@ -4,7 +4,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
@@ -16,9 +15,8 @@ import (
 )
 
 // StringBuilder accumulates text. Freeze seals it; appending afterwards is a
-// fault. All operations hold the builder's lock.
+// fault. A builder is an ordinary mutable reference: it is not synchronized.
 type StringBuilder struct {
-	mu     sync.Mutex
 	text   strings.Builder
 	sealed bool
 }
@@ -28,8 +26,6 @@ func NewStringBuilder() *StringBuilder { return &StringBuilder{} }
 
 func StringBuilder_Append(ctx *Execution, b *StringBuilder, value string) Unit {
 	CheckCancelled(ctx)
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	if b.sealed {
 		Raise("builder is sealed")
 	}
@@ -39,8 +35,6 @@ func StringBuilder_Append(ctx *Execution, b *StringBuilder, value string) Unit {
 
 func StringBuilder_Freeze(ctx *Execution, b *StringBuilder) string {
 	CheckCancelled(ctx)
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	b.sealed = true
 	return b.text.String()
 }

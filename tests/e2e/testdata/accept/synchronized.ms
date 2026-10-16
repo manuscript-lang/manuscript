@@ -132,29 +132,13 @@ test "builders can be captured and stored callbacks can map":
     let builder = ListBuilder[Int]()
     let append_item = fn(item: Int):
         builder.append(value: item)
-    let task1 = fn():
-        append_item(item: 1)
-    let task2 = fn():
-        append_item(item: 2)
-    let task3 = fn():
-        append_item(item: 3)
-    let task4 = fn():
-        append_item(item: 4)
+    append_item(item: 1)
+    append_item(item: 2)
+    append_item(item: 3)
+    append_item(item: 4)
 
-    with group = TaskGroup():
-        let first_task = group.start(task1)
-        let second_task = group.start(task2)
-        group.start(task3)
-        group.start(task4)
-
-        match group.join():
-            ok(_):
-                if not (builder.freeze().length() == 4):
-                    return panic(message: "check failed")
-
-            error(_):
-                if not (false):
-                    return panic(message: "check failed")
+    if not (builder.freeze().length() == 4):
+        return panic(message: "check failed")
 
 test "fault releases guard and preserves committed writes":
     let counter = Synchronized(0)

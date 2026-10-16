@@ -2,7 +2,6 @@ package msruntime
 
 import (
 	"bytes"
-	"sync"
 	"unicode/utf8"
 )
 
@@ -19,7 +18,6 @@ func (b *Bytes) Equal(_ *Execution, other *Bytes) bool { return bytes.Equal(b.Da
 
 // BytesBuilder accumulates bytes. Freeze seals it; further writes fault.
 type BytesBuilder struct {
-	mu     sync.Mutex
 	data   []byte
 	sealed bool
 }
@@ -29,8 +27,6 @@ func NewBytesBuilder() *BytesBuilder { return &BytesBuilder{} }
 
 func BytesBuilder_Append(ctx *Execution, b *BytesBuilder, value int) Unit {
 	CheckCancelled(ctx)
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	if b.sealed {
 		Raise("builder is sealed")
 	}
@@ -43,8 +39,6 @@ func BytesBuilder_Append(ctx *Execution, b *BytesBuilder, value int) Unit {
 
 func BytesBuilder_Concat(ctx *Execution, b *BytesBuilder, values *Bytes) Unit {
 	CheckCancelled(ctx)
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	if b.sealed {
 		Raise("builder is sealed")
 	}
@@ -54,8 +48,6 @@ func BytesBuilder_Concat(ctx *Execution, b *BytesBuilder, values *Bytes) Unit {
 
 func BytesBuilder_Freeze(ctx *Execution, b *BytesBuilder) *Bytes {
 	CheckCancelled(ctx)
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	if !b.sealed {
 		b.sealed = true
 		b.data = b.data[:len(b.data):len(b.data)]
