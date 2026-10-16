@@ -10,6 +10,7 @@ Manuscript is a statically typed language implemented in Go. Source `.ms` files 
 - Apply [language-design-taste](skills/language-design-taste/SKILL.md) for language, standard-library, runtime, compiler, or tooling design choices.
 - The user's latest explicit direction and current canonical design take precedence over remembered preferences. Historical proposals and assistant completion reports do not establish current behavior. Identify material differences between a newer decision and this checkout.
 - Use [manuscript-change](skills/manuscript-change/SKILL.md#record-durable-lessons) when a correction or verified lesson would change future work. Update existing entries rather than accumulating duplicate or superseded advice.
+- Find code and standard-library APIs with `ms search_symbol <name or words>` (project and standard library, fuzzy, bounded output) before reading files or guessing signatures; `ms search_symbol <module>` or `<module>.<Name>` shows a page. `ms guide` prints the language cheat sheet.
 
 ## Domain skills
 
