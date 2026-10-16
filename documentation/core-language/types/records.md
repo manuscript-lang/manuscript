@@ -93,7 +93,34 @@ A nominal identity includes its defining module, declaration, and type arguments
 
 ## Public data surfaces
 
-Exporting a record exports its constructor and every field. Field visibility modifiers and opaque exports are unsupported. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including types nested inside Optional or collections. Importing a record does not import the names of its field types.
+Exporting a record exports its constructor and every field. Field visibility modifiers and opaque exports are unsupported; to hide a representation, see [hiding representation](#hiding-representation). Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including types nested inside Optional or collections. Importing a record does not import the names of its field types.
+
+## Hiding representation
+
+To keep an invariant, export an `interface` and keep the record that implements it private. Clients can hold, pass, and call the interface, but cannot construct the record, read or write its fields, or name its type. Create the interface view from the private record with `Counter(value: ...)`:
+
+```manuscript
+export interface Counter:
+    fn value() -> Int
+    fn increment() -> Unit
+
+type CounterState:
+    count: Int
+
+impl Counter for CounterState:
+    fn value() -> Int:
+        return self.count
+
+    fn increment() -> Unit:
+        self.count = self.count + 1
+
+export fn new_counter(start: Int) -> Result[Counter, String]:
+    if start < 0:
+        return error("start must be nonnegative")
+    return ok(Counter(value: CounterState(count: start)))
+```
+
+Only `new_counter` can create a `Counter`, so every `Counter` produced by this module satisfies the check. A client cannot decode JSON into the interface, and aliases share one state. Clone input collections when the factory stores them, and return `.clone()` snapshots from operations that expose nested lists, maps, or sets. The cost is that clients work with the interface rather than a concrete type: equality and hashing go through the interface, and a public signature cannot name the private record.
 
 ## Recursive data
 
