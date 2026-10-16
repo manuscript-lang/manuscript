@@ -9,6 +9,6 @@ Write command-line tools, process data, and build services with Manuscript.
 
 Start with [your first program](getting-started.md), then follow the [language tour](tour.md): variables, collections, functions, types, errors, and modules. Each example shows a task you can reuse in an application.
 
-Find complete programs in [common tasks](common-tasks.md), and learn to check their behavior in [testing](testing.md).
+Find complete programs in [common tasks](common-tasks.md), learn to check their behavior in [testing](testing.md), and write concise code with [best practices](best-practices.md).
 
 Use the [API reference](../standard-library/reference/_index.md) to look up an API, or [language guide](../core-language/_index.md) for exact rules.
