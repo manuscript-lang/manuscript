@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/manuscript-lang/manuscript/internal/decimal"
 )
@@ -25,9 +26,15 @@ func DecimalLiteral(text string) *Decimal {
 	if negative {
 		coefficient = "-" + coefficient
 	}
-	value, ok := new(big.Rat).SetString(coefficient + "e" + strconv.Itoa(exponent))
+	n, ok := new(big.Int).SetString(coefficient, 10)
 	if !ok {
 		Raise("invalid Decimal literal")
+	}
+	value := new(big.Rat).SetInt(n)
+	if exponent > 0 {
+		value.SetInt(n.Mul(n, decimalPow10(exponent)))
+	} else if exponent < 0 {
+		value.SetFrac(n, decimalPow10(-exponent))
 	}
 	return &Decimal{value}
 }
@@ -48,7 +55,35 @@ func FormatDecimal(d *Decimal) string { return d.String() }
 // Equal compares exactly.
 func (d *Decimal) Equal(_ *Execution, other *Decimal) bool { return d.Value.Cmp(other.Value) == 0 }
 
-func decimalPow10(n int) *big.Int { return new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(n)), nil) }
+// decimalPow10Cache holds the powers of ten a Decimal can need (up to the
+// format's largest scale), built on first use. Callers must treat the result
+// as read-only.
+var decimalPow10Cache [6400]atomic.Pointer[big.Int]
+
+func decimalPow10(n int) *big.Int {
+	if n < 0 || n >= len(decimalPow10Cache) {
+		return new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(n)), nil)
+	}
+	if p := decimalPow10Cache[n].Load(); p != nil {
+		return p
+	}
+	p := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(n)), nil)
+	decimalPow10Cache[n].Store(p)
+	return p
+}
+
+// decimalDigits is the number of decimal digits of a positive integer.
+func decimalDigits(n *big.Int) int {
+	if n.IsInt64() {
+		return len(strconv.FormatInt(n.Int64(), 10))
+	}
+	// 2^(bits-1) <= n < 2^bits, so the digit count is estimate or estimate+1.
+	estimate := int(float64(n.BitLen()-1)*0.30102999566398120) + 1
+	if n.Cmp(decimalPow10(estimate)) >= 0 {
+		estimate++
+	}
+	return estimate
+}
 
 // decimalScaled returns r / 10^q.
 func decimalScaled(r *big.Rat, q int) *big.Rat {
@@ -65,7 +100,7 @@ func decimalExponent(r *big.Rat) int {
 	}
 	n := new(big.Int).Abs(r.Num())
 	d := r.Denom()
-	e := len(n.String()) - len(d.String())
+	e := decimalDigits(n) - decimalDigits(d)
 	if e >= 0 {
 		if n.Cmp(new(big.Int).Mul(d, decimalPow10(e))) < 0 {
 			e--
@@ -82,7 +117,15 @@ func decimalRound34(r *big.Rat, operation string, left, right *Decimal) *Decimal
 	if r.Sign() == 0 {
 		return &Decimal{new(big.Rat)}
 	}
-	q := max(decimalExponent(r)-33, -6176)
+	exponent := decimalExponent(r)
+	q := max(exponent-33, -6176)
+	if decimalScalesExactly(r, q) {
+		// The value already has at most 34 significant digits: nothing to round.
+		if exponent > 6144 {
+			decimalOverflow(operation, left, right)
+		}
+		return &Decimal{r}
+	}
 	scaled := decimalScaled(new(big.Rat).Abs(r), q)
 	coefficient, remainder := new(big.Int), new(big.Int)
 	coefficient.QuoRem(scaled.Num(), scaled.Denom(), remainder)
@@ -100,9 +143,23 @@ func decimalRound34(r *big.Rat, operation string, left, right *Decimal) *Decimal
 		out.Quo(out, new(big.Rat).SetInt(decimalPow10(-q)))
 	}
 	if out.Sign() != 0 && decimalExponent(out) > 6144 {
-		Raise(fmt.Sprintf("Decimal.%s: overflow; found left %s and right %s; rounded magnitude must be at most 9.999999999999999999999999999999999e6144 (34 significant digits)", operation, left.String(), right.String()))
+		decimalOverflow(operation, left, right)
 	}
 	return &Decimal{out}
+}
+
+func decimalOverflow(operation string, left, right *Decimal) {
+	Raise(fmt.Sprintf("Decimal.%s: overflow; found left %s and right %s; rounded magnitude must be at most 9.999999999999999999999999999999999e6144 (34 significant digits)", operation, left.String(), right.String()))
+}
+
+// decimalScalesExactly reports whether r / 10^q is an integer, so rounding to
+// that quantum changes nothing.
+func decimalScalesExactly(r *big.Rat, q int) bool {
+	num, denom := r.Num(), r.Denom()
+	if q >= 0 {
+		return denom.IsInt64() && denom.Int64() == 1 && new(big.Int).Rem(num, decimalPow10(q)).Sign() == 0
+	}
+	return new(big.Int).Rem(decimalPow10(-q), denom).Sign() == 0
 }
 
 // Operators. The lowerer calls these for Decimal operands.
@@ -161,14 +218,21 @@ func decimalRoundedCoefficient(value *Decimal, places int, mode RoundingMode) (*
 	default:
 		return nil, false
 	}
-	scaled := decimalScaled(new(big.Rat).Abs(value.Value), -places)
+	// |value| * 10^places as numerator over denominator, left unreduced: the
+	// quotient, and the remainder's ratio to the denominator, are the same.
+	numerator, denominator := new(big.Int).Abs(value.Value.Num()), value.Value.Denom()
+	if places >= 0 {
+		numerator.Mul(numerator, decimalPow10(places))
+	} else {
+		denominator = new(big.Int).Mul(denominator, decimalPow10(-places))
+	}
 	coefficient, remainder := new(big.Int), new(big.Int)
-	coefficient.QuoRem(scaled.Num(), scaled.Denom(), remainder)
+	coefficient.QuoRem(numerator, denominator, remainder)
 	if remainder.Sign() != 0 {
 		increment := false
 		switch {
 		case halfEven || halfAway:
-			cmp := new(big.Int).Lsh(remainder, 1).Cmp(scaled.Denom())
+			cmp := new(big.Int).Lsh(remainder, 1).Cmp(denominator)
 			increment = cmp > 0 || cmp == 0 && (halfAway || coefficient.Bit(0) == 1)
 		case floor:
 			increment = value.Value.Sign() < 0
