@@ -525,7 +525,7 @@ func (c *checker) checkNativeDefaults(d *syntax.Declaration, params []syntax.Par
 	// Keep this first native-default slice bounded. Source generic defaults and
 	// generic calls through nongeneric standard contracts retain their existing
 	// rules; native generic expression defaults need a substitution design.
-	if len(variables) != 0 {
+	if len(variables) != 0 && !closedLiteralDefaults(params) {
 		c.error(d.Pos, "type", "native generic expression defaults are not supported; keep '= none' on Optional parameters or use a source wrapper")
 		return
 	}
@@ -752,4 +752,24 @@ func standardMethodDeclaration(t *Type, name string) *syntax.Declaration {
 		}
 	}
 	return nil
+}
+
+// closedLiteralDefaults reports whether every expression default is a literal,
+// which does not depend on the declaration's type variables.
+func closedLiteralDefaults(params []syntax.Parameter) bool {
+	for _, p := range params {
+		if p.Default == nil {
+			continue
+		}
+		switch p.Default.Kind {
+		case syntax.KindBool, syntax.KindNumber, syntax.KindUnit:
+		case syntax.KindName:
+			if p.Default.Text != "none" {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }

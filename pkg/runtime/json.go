@@ -15,12 +15,12 @@ const jsonDepthCeiling = 100000
 // Json_Parse parses one JSON value, retaining exact number text and rejecting
 // duplicate object keys, trailing values and unpaired surrogate escapes, then
 // decodes it as T with the generated decoder dec.
-func Json_Parse[T any](ctx *Execution, dec func(*JsonReader, JsonValue) (T, bool), text string, limits Option[*JsonLimits]) Result[T, JsonError] {
+func Json_Parse[T any](ctx *Execution, dec func(*JsonReader, JsonValue) (T, bool), text string, limits Option[*JsonLimits], ignoreUnknown bool) Result[T, JsonError] {
 	tree := jsonParseTree(ctx, text, limits)
 	if tree.Failed {
 		return Fail[T, JsonError](tree.Err)
 	}
-	value, ok := dec(NewJsonReader(ctx), tree.Val)
+	value, ok := dec(NewJsonReader(ctx, ignoreUnknown), tree.Val)
 	if !ok {
 		return Fail[T, JsonError](JsonError_InvalidData{})
 	}

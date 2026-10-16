@@ -437,7 +437,12 @@ test "JSON parse rejects shape mismatches as InvalidData":
     if parse[Profile](text: missing) != invalid: return panic("missing required field")
 
     let unknown = "\{\"name\":\"A\",\"scores\":[],\"labels\":\{\},\"ids\":[],\"extra\":1\}"
-    if parse[Profile](text: unknown) != invalid: return panic("unknown member")
+    if parse[Profile](text: unknown, ignore_unknown_fields: false) != invalid: return panic(
+        "unknown member in strict mode"
+    )
+
+    let lenient: Profile = value(parse[Profile](text: unknown))
+    if lenient.name != "A": return panic("unknown members are ignored by default")
 
     let wrong = "\{\"name\":1,\"scores\":[],\"labels\":\{\},\"ids\":[]\}"
     if parse[Profile](text: wrong) != invalid: return panic("wrong member type")

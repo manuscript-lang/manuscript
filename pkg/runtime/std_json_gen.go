@@ -5,7 +5,7 @@
 package msruntime
 
 func check_Json_Parse[T any]() {
-	var _ func(*Execution, func(*JsonReader, JsonValue) (T, bool), string, Option[*JsonLimits]) Result[T, JsonError] = Json_Parse[T]
+	var _ func(*Execution, func(*JsonReader, JsonValue) (T, bool), string, Option[*JsonLimits], bool) Result[T, JsonError] = Json_Parse[T]
 }
 func check_Json_Stringify[T any]() {
 	var _ func(*Execution, func(*JsonScope, T) (JsonValue, bool), T, Option[int64], Option[int64]) Result[string, JsonError] = Json_Stringify[T]
