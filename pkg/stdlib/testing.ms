@@ -1,6 +1,5 @@
 # Assertions for declared test blocks. Each returns a Result whose error describes the failed expectation;
 # apply `try` so a test block returns that error and fails. Implementations are native.
-
 # File-level test lifecycle. A local make_fixture() returns its concrete implementer.
 # Missing hooks are no-ops. All supplied hooks take no arguments and return Unit.
 # Example: a file declares fn make_fixture() -> ApiFixture and impl TestHooks for ApiFixture;
@@ -94,7 +93,6 @@ export fn assert_error[T, E](actual: Result[T, E]) -> Result[E, Error]:
 
 # TDD spelling of `expect_fault`; checks a programming fault and returns its message.
 export fn assert_fault(operation: fn() -> Unit) -> Result[String, Error]:
-
 # documentation documentation/standard-library/testing.md
 # +++
 # title = "Testing helpers"

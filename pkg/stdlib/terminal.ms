@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Duration from "@std/time.ms"
 
 # Errors returned by terminal queries and raw-mode operations.
@@ -120,7 +118,6 @@ impl Error for TerminalError:
 
 # Returns terminal operations for the current process.
 export fn terminal() -> Terminal:
-
 # documentation documentation/standard-library/terminal.md
 # +++
 # title = "Terminal input and cursor control"

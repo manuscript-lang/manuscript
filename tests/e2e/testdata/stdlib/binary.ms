@@ -1,10 +1,4 @@
-import {
-    read_integer,
-    write_integer,
-    read_float,
-    write_float,
-    BinaryError
-} from "@std/binary.ms"
+import {read_integer, write_integer, read_float, write_float, BinaryError} from "@std/binary.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"

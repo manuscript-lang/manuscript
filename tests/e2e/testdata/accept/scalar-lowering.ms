@@ -49,7 +49,6 @@ test "primitive equality captures operands once in order":
 fn conditional(counter: Counter, take: Bool) -> Int:
     if take:
         with resource = Resource(counter): return 7
-
     return 8
 
 fn matched(counter: Counter) -> Int:

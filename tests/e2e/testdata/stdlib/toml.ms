@@ -1,10 +1,4 @@
-import {
-    parse,
-    stringify,
-    TomlValue,
-    TomlError,
-    TomlLimits
-} from "@std/toml.ms"
+import {parse, stringify, TomlValue, TomlError, TomlLimits} from "@std/toml.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -111,37 +105,14 @@ test "TOML implicit parents dotted keys and arrays of tables":
 
 test "TOML rejects malformed data redefinitions and closed inline tables":
     for text in [
-        "a=1\na=2",
-        "[a]\n[a]",
-        "a=1\n[a]",
-        "a=\{b=1\}\na.c=2",
-        "a.b=1\n[a]",
-        "a=[1 2]",
-        "a=[,]",
-        "a=\{b=1,\}",
-        "a=\{b=1\nb=2\}",
-        "a=01",
-        "a=1_",
-        "a=_1",
-        "a=1__2",
-        "a=+0x1",
-        "a=1.",
-        "a=.1",
-        "a=1e",
-        "a=9223372036854775808",
-        "a=2023-02-29",
-        "a=24:00:00",
-        "a='unterminated",
-        "a=\"\\uD800\"",
-        "a=\"\\q\"",
-        "a=true false",
-        "a=1\rb=2",
-        "[a.b.c]\nz=9\n[a]\nb.c.t=1",
-        "[[a.b]]\n[a]\nb.y=2"
+        "a=1\na=2", "[a]\n[a]", "a=1\n[a]", "a=\{b=1\}\na.c=2", "a.b=1\n[a]", "a=[1 2]",
+        "a=[,]", "a=\{b=1,\}", "a=\{b=1\nb=2\}", "a=01", "a=1_", "a=_1", "a=1__2",
+        "a=+0x1", "a=1.", "a=.1", "a=1e", "a=9223372036854775808", "a=2023-02-29",
+        "a=24:00:00", "a='unterminated", "a=\"\\uD800\"", "a=\"\\q\"", "a=true false",
+        "a=1\rb=2", "[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
     ]:
         let cause = match parse(text: text):
             ok(_): return panic("invalid TOML accepted: {text}")
-
             error(cause): cause
 
         match cause:
@@ -154,7 +125,6 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
                 if not boundary.message().starts_with("TOML "): return panic(
                     "source Error implementation"
                 )
-
             _: return panic("wrong TOML error")
 
 test "TOML optional limits include implicit tables and zero":
@@ -211,19 +181,16 @@ test "TOML nonfinite floats CRLF and repeated separators":
     match root.get("positive").unwrap():
         FloatValue(number):
             if number.is_finite() or number < 0.0: return panic("positive infinity")
-
         _: return panic("expected float")
 
     match root.get("negative").unwrap():
         FloatValue(number):
             if number.is_finite() or number > 0.0: return panic("negative infinity")
-
         _: return panic("expected float")
 
     match root.get("nan").unwrap():
         FloatValue(number):
             if not number.is_nan(): return panic("NaN")
-
         _: return panic("expected float")
 
     if root.get("integer").unwrap() != TomlValue.IntValue(1000000): return panic(

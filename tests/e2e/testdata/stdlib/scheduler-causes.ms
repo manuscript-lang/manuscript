@@ -20,7 +20,6 @@ test "scheduler failures retain typed and text causes":
                 with guard = seen.lock():
                     if category(cause) == some(ErrorCategory.Unavailable):
                         guard.set(guard.get() + 1)
-
                     if cause.message() == "intentional text":
                         guard.set(guard.get() + 10)
             _: unit

@@ -109,7 +109,6 @@ test "timeout classification keeps timeout spelling out of generic handling":
         ExecutionError.Timeout
     ]
     let query = category
-
     for cause in causes:
         if query(cause) != some(ErrorCategory.Timeout): return panic("timeout category")
 
@@ -135,6 +134,5 @@ test "classification does not parse messages invoke user code or guess domain-sp
         YamlError.UnsupportedFeature(line: 7, reason: "detail"),
         LogError.Io(IoError.Closed)
     ]
-
     for cause in causes:
         if category(cause).is_some(): return panic("domain-specific cause guessed")

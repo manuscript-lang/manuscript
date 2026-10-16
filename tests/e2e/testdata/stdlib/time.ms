@@ -1,12 +1,4 @@
-import {
-    timestamp,
-    parse_timestamp,
-    Timestamp,
-    TimeError,
-    clock,
-    wall_clock,
-    sleep
-} from "@std/time.ms"
+import {timestamp, parse_timestamp, Timestamp, TimeError, clock, wall_clock, sleep} from "@std/time.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

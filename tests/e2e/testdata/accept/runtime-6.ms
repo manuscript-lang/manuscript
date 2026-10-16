@@ -1,5 +1,4 @@
 import panic from "@std/faults.ms"
-
 import Decimal from "@std/decimal.ms"
 
 fn quotient(value: Int, divisor: Int) -> Int:

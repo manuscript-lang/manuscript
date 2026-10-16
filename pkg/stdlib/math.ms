@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # Returns the absolute value of a floating-point number.
 export fn abs(value: Float) -> Float:
 
@@ -83,7 +81,6 @@ export fn tanh(value: Float) -> Float:
 
 # Truncates a value toward zero.
 export fn truncate(value: Float) -> Float:
-
 # documentation documentation/standard-library/math.md
 # +++
 # title = "Numbers and mathematics"

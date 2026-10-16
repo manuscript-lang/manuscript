@@ -22,29 +22,23 @@ test "raw monotonic nanoseconds share the typed process uptime origin":
 test "closed codec strings reject spelling changes with their domain errors":
     let data = "text".to_bytes()
     let hash_error: Result[Bytes, CryptoError] = error(CryptoError.Unsupported)
-
     for algorithm in ["SHA256", "sha-256", ""]:
         if hmac(key: data, data: data, algorithm: algorithm) != hash_error: return panic(
             "HMAC spelling"
         )
-
     for algorithm in ["sha256", "sha384", "sha512"]:
         if value(hmac(key: data, data: data, algorithm: algorithm)).is_empty(): return panic(
             "HMAC algorithm"
         )
-
     let normalization_error: Result[String, StringError] = error(
         StringError.InvalidInput
     )
-
     for form in ["nfc", "NFC ", ""]:
         if "text".normalize(form) != normalization_error: return panic(
             "normalization spelling"
         )
-
     for form in ["NFC", "NFD", "NFKC", "NFKD"]:
         if value("text".normalize(form)) != "text": return panic("normalization form")
-
     let compression_error: Result[Bytes, CompressionError] = error(
         CompressionError.Unsupported
     )
@@ -67,12 +61,10 @@ test "closed codec strings reject spelling changes with their domain errors":
     let level_error: Result[Bytes, CompressionError] = error(
         CompressionError.InvalidInput
     )
-
     for level in [-1, 10]:
         if compress(data: data, format: "gzip", level: level) != level_error: return panic(
             "compression level range"
         )
-
     let pack_error: Result[Bytes, ArchiveError] = error(ArchiveError.Unsupported)
     let unpack_error: Result[List[ArchiveEntry], ArchiveError] = error(
         ArchiveError.Unsupported
@@ -92,7 +84,6 @@ test "all ten string open modes are accepted and changed spellings are invalid":
     with temporary = value(fs.temporary("manuscript-open-modes-")):
         for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
             let path = "{temporary.path()}/{mode}"
-
             if mode == "r" or mode == "r+":
                 let created = value(
                     fs.write_file(
@@ -101,7 +92,6 @@ test "all ten string open modes are accepted and changed spellings are invalid":
                         replace: false
                     )
                 )
-
             with handle = value(fs.open(path: path, flags: mode, mode: 384)):
                 let info = value(handle.stat())
 

@@ -1,11 +1,4 @@
-import {
-    escape,
-    parse,
-    HtmlNode,
-    HtmlAttribute,
-    HtmlLimits,
-    HtmlError
-} from "@std/html.ms"
+import {escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError} from "@std/html.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
@@ -18,21 +11,14 @@ fn children(node: HtmlNode) -> List[HtmlNode]:
 fn text_content(node: HtmlNode) -> String:
     match node:
         Text(text): return text
-
         Document(items):
             var text = ""
-
             for item in items: text = "{text}{text_content(item)}"
-
             return text
-
         Element(_, _, _, items):
             var text = ""
-
             for item in items: text = "{text}{text_content(item)}"
-
             return text
-
         _: return ""
 
 fn body_nodes(node: HtmlNode) -> List[HtmlNode]:
@@ -89,7 +75,6 @@ test "HTML parses nested elements attributes entities and comments":
                     children: []
                 )
             ): return panic("void element")
-
         _: return panic("expected element")
 
     if text_content(doc) != "Hello é🙂 <world>": return panic("tree traversal")
@@ -107,7 +92,6 @@ test "HTML recovers unclosed tags and inserts document and table structure":
     match children(nodes.at(1).unwrap()).at(0).unwrap():
         Element(tag, _, _, _):
             if tag != "tbody": return panic("implicit tbody")
-
         _: return panic("expected tbody")
 
     if text_content(nodes.at(1).unwrap()) != "cell": return panic("unclosed table")

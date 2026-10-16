@@ -1,11 +1,5 @@
 import Key from "./key.ms"
-import {
-    id_map,
-    id_direct,
-    id_bound,
-    id_generic,
-    id_returned
-} from "./by_id.ms"
+import {id_map, id_direct, id_bound, id_generic, id_returned} from "./by_id.ms"
 import {label_map, label_direct, label_bound, label_generic} from "./by_label.ms"
 import panic from "@std/faults.ms"
 

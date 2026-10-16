@@ -1,11 +1,4 @@
-import {
-    ListBuilder,
-    MapBuilder,
-    SetBuilder,
-    range,
-    filled,
-    map_from_entries
-} from "@std/collections.ms"
+import {ListBuilder, MapBuilder, SetBuilder, range, filled, map_from_entries} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 

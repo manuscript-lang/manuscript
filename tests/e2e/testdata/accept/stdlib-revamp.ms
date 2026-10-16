@@ -45,13 +45,11 @@ test "stable priority queue and optional capacity":
     match queue.dequeue():
         some(value):
             if value.label != "first": return panic("priority order")
-
         none: return panic("missing item")
 
     match queue.dequeue():
         some(value):
             if value.label != "second": return panic("unstable priority order")
-
         none: return panic("missing item")
 
     let bounded = PriorityQueue(compare: compare, capacity: 1)
@@ -62,7 +60,6 @@ test "limits can be omitted or supplied":
     match "ab".repeat(count: 3):
         ok(value):
             if value != "ababab": return panic("omitted limit failed")
-
         error(_): return panic("omitted limit rejected")
 
     match "ab".repeat(count: 3, max_bytes: 5):

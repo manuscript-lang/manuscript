@@ -1,13 +1,6 @@
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
-import {
-    Scheduler,
-    StartError,
-    WorkStatus,
-    check_cancelled,
-    yield_now,
-    TaskGroup
-} from "@std/tasks.ms"
+import {Scheduler, StartError, WorkStatus, check_cancelled, yield_now, TaskGroup} from "@std/tasks.ms"
 import {ListBuilder} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -42,7 +35,6 @@ test "priority queue orders values and honors capacity":
 
     for expected in [1, 2, 3]:
         if queue.dequeue() != some(expected): return panic("priority order")
-
     if not queue.is_empty(): return panic("priority drain")
 
 test "synchronized guards update and release for later acquisition":
@@ -63,7 +55,6 @@ test "scheduler delayed cancellation capacity and closed admission":
 
     match scheduler.start(operation):
         ok(_): return panic("scheduler capacity ignored")
-
         error(cause):
             if cause != StartError.Full: return panic("scheduler capacity error")
 
@@ -77,7 +68,6 @@ test "scheduler delayed cancellation capacity and closed admission":
 
     match scheduler.start(operation):
         ok(_): return panic("closed scheduler admitted work")
-
         error(cause):
             if cause != StartError.Closed: return panic("closed scheduler error")
 

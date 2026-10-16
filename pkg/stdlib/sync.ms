@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # Protects a value shared across tasks. Lock before reading or updating the value.
 export type Synchronized[T]:
     # Initial constructor payload; retain its mutable aliases only with the same guarded access policy.
@@ -21,7 +19,6 @@ export type SynchronizedGuard[T]:
     fn notify_all() -> Unit:
     # Releases the lock for every alias of this guard; repeated close does nothing.
     fn close() -> Unit:
-
 # documentation documentation/concurrency/sharing.md
 # +++
 # title = "Sharing data"
@@ -82,7 +79,6 @@ export type SynchronizedGuard[T]:
 #
 # Capture application services and job data for scheduled work, and acquire job resources inside that work's own `with` scopes. A resource captured beyond its `with` scope remains a valid reference, but subsequent operations report closed state. Sharing, resource lifetime, and work lifetime remain separate guarantees.
 # end-documentation
-
 # documentation documentation/concurrency/synchronization.md
 # +++
 # title = "Synchronizing updates"

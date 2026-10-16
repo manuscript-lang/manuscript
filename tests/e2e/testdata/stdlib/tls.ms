@@ -1,12 +1,6 @@
 import {headers, HttpMethod} from "@std/http.ms"
 import {text_headers, list_headers} from "./support/http.ms"
-import {
-    parse_certificates,
-    verify_certificates,
-    CertificateInfo,
-    TlsError,
-    TlsOptions
-} from "@std/tls.ms"
+import {parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions} from "@std/tls.ms"
 import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@std/http.ms"
 import network from "@std/net.ms"
 import timestamp from "@std/time.ms"
@@ -102,7 +96,6 @@ test "HTTPS trusts only the explicitly supplied local test root":
             alpn: ["http/1.1"],
             require_client_certificate: false
         )
-
         with client = value(
             net.http_client(
                 HttpClientOptions(

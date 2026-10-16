@@ -12,10 +12,8 @@ test "range observes backing writes and keeps initial length":
 
     for value in values:
         seen.append(value)
-
         if index == 0:
             values.fill(value: 9, start: 0, end: 3)
-
         values.append(4)
         index = index + 1
 
@@ -79,7 +77,6 @@ test "nested reverse copy shrink and self splice follow initial headers":
 
         if index == 0:
             values.reverse_in_place()
-
             for item in values:
                 inner.append(item)
 
@@ -96,20 +93,16 @@ test "nested reverse copy shrink and self splice follow initial headers":
 
     for value in backward:
         seen_backward.append(value)
-
         if count == 0:
             backward.copy_within(target: 0, start: 1, end: 3)
-
         count = count + 1
 
     count = 0
 
     for value in truncated:
         seen_truncated.append(value)
-
         if count == 0:
             truncated.copy_within(target: 2, start: 0, end: 3)
-
         count = count + 1
 
     if not (seen_backward == [1, 3, 3] and seen_truncated == [1, 2, 1]):
@@ -121,10 +114,8 @@ test "nested reverse copy shrink and self splice follow initial headers":
 
     for value in shrinking:
         seen_shrinking.append(value + 1)
-
         if not shrinking.is_empty():
             shrinking.remove(0)
-
         count = count + 1
 
     if not (count == 3 and shrinking.is_empty() and seen_shrinking == [2, 4, 4]):
@@ -136,10 +127,8 @@ test "nested reverse copy shrink and self splice follow initial headers":
 
     for value in self_list:
         seen_self.append(value)
-
         if count == 0:
             self_list.splice(start: 1, delete_count: 1, replacement: self_list)
-
         count = count + 1
 
     if not (seen_self == [1, 2, 3] and self_list == [1, 1, 2, 3, 3]):
@@ -179,10 +168,8 @@ test "clone slice and nested references retain their own contracts":
         fn(value):
             value.children.append(value)
     )
-
     for ignored in children:
         count = count + 1
-
     if not (count == 2 and node.children.length() == 2):
         return panic("recursive callback extended its own range")
 

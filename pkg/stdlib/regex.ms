@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # Errors returned for invalid patterns or configured result limits.
 export type RegexError:
     # A supplied match-count or output-byte budget is negative.

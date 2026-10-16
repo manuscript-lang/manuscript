@@ -12,7 +12,6 @@ export fn main() -> Int:
     ):
         error(_):
             return 1
-
         ok(output):
             if not (output.exit_code == 0):
                 return panic(message: "check failed")

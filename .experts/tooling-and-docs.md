@@ -5,8 +5,9 @@
 Decision: the user's formatter request keeps inline `if` bodies and introduces
 natural reading boundaries around declarations, guard sections, substantial
 control flow. Later feedback in [issue #102](https://github.com/manuscript-lang/manuscript/issues/102)
-requires preserving authored spacing between match arms and keeping short lists
-and callback signatures compact. This also requires wrapping complex
+requested authored spacing between match arms and compact short lists and
+callback signatures. The latest user direction supersedes authored spacing:
+discard authored blank lines and derive paragraphs from syntax. This also requires wrapping complex
 expressions; paragraph breaks alone leave dense calls and conditions unreadable.
 Do not expand inline bodies to create readability or guess business stages from
 adjacent call names.
@@ -27,9 +28,19 @@ The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
 exercises these boundaries alongside comments and literal spellings.
 
 Update: later feedback asks for compact output that reads well on a phone and a
-desktop. Wrap only when a group exceeds 88 columns or holds a comment or
+desktop. Use syntax and printed width to keep single-step blocks with adjacent work and
+pack simple list elements into width-limited rows. Discard authored blank lines,
+including those between match arms; derive paragraphs from structural rules.
+Wrap only when a group exceeds 88 columns or holds a comment or
 multi-statement suite; clause counts, argument counts, lambdas, and authored line
 breaks no longer force expansion. Reintroducing such rules spreads code again.
+
+Verified: formatter policy changes also require refreshing the pinned standard
+sources, because exported editor files must pass `ms fmt --check`.
+[TestPinnedSources](../pkg/stdlib/sources_test.go) checks canonical source text
+in the fast unit gate; the exported-source integration test verifies the CLI and
+editor surfaces. Keep generic file headers out of declaration documentation when
+blank lines are discarded.
 
 ### Inspect active List backing in the debugger
 

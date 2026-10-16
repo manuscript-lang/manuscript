@@ -34,10 +34,11 @@ Formatting preserves program meaning and comments. It uses four-space indentatio
 The current formatter applies these layout rules:
 
 - Keep token spellings; wrap expressions only when they exceed a soft limit of 88 columns; groups that fit stay on one line.
-- Keep short lists and callback signatures compact, and preserve authored spacing between match arms.
+- Keep imports, maps, lists, and callback signatures compact when they fit. Pack simple list elements into width-limited rows when they wrap.
+- Keep single-step blocks beside adjacent work; separate substantial blocks and guard sections with blank lines. Keep match arms together.
 - Put one space around operators and after argument/type colons and commas.
 - Remove spaces next to delimiters and put two spaces before inline comments.
-- Collapse blank runs to one line and remove leading and trailing blank lines.
+- Discard authored blank lines and insert paragraph breaks at structural boundaries.
 - Keep comment text but remove trailing whitespace.
 - Round comment-only indentation down to a multiple of four.
 

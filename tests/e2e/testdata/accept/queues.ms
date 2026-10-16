@@ -11,7 +11,6 @@ test "omitted capacity creates an unbounded queue":
         for value in [1, 2, 3, 4, 5]:
             if not queue.enqueue(value):
                 return panic("unbounded queue rejected an item")
-
         if queue.length() != 5:
             return panic("unbounded queue lost items")
 
@@ -66,7 +65,6 @@ test "queue elements include ordinary functions":
         some(callback):
             if not (callback() == 7):
                 return panic("callback changed")
-
         none:
             return panic("callback missing")
 
@@ -102,6 +100,5 @@ test "shared queue uses explicit lock scopes":
                 with locked = shared.lock():
                     if not locked.get().is_empty():
                         return panic("shared queue did not drain")
-
             error(_):
                 return panic("shared work failed")

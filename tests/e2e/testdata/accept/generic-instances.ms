@@ -8,10 +8,8 @@ fn ident[T](x: T) -> T:
 
 fn pick[T](first: Bool, left: T, right: T) -> T:
     var chosen = left
-
     if not first:
         chosen = right
-
     return chosen
 
 fn keep[T](value: T) -> T:

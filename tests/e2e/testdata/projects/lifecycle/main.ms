@@ -1,6 +1,5 @@
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
-
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
 
@@ -61,7 +60,6 @@ export fn main() -> Int:
 
     with resource = Resource(label: "normal", output: stdout()):
         let completed = unit
-
     stdout().write(data: "after normal\n".to_bytes())
     var count = 0
 
@@ -77,7 +75,6 @@ export fn main() -> Int:
     match propagate(output: stdout()):
         ok(_):
             return panic(message: "Unexpected case")
-
         error(_):
             let completed = unit
 

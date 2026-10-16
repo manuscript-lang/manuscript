@@ -153,7 +153,6 @@ interface FloatOperations:
     fn is_finite() -> Bool
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
     fn truncate_to_int() -> Optional[Int]
-
 # documentation documentation/standard-library/_index.md
 # +++
 # title = "Standard library"
@@ -186,7 +185,6 @@ interface FloatOperations:
 #
 # Continue with [concurrent work](../concurrency/_index.md) when operations need to run together. Use the [API reference](reference/_index.md) to look up exact declarations and [special call rules](call-rules.md) for additional compiler checks.
 # end-documentation
-
 # documentation documentation/standard-library/call-rules.md
 # +++
 # title = "Special call rules"
@@ -214,7 +212,6 @@ interface FloatOperations:
 #
 # For lifetime, cancellation, defaults, and host behavior, read the standard library guides. A type signature alone does not establish these guarantees.
 # end-documentation
-
 # documentation documentation/standard-library/contracts.md
 # +++
 # title = "Errors and limits"
@@ -414,7 +411,6 @@ interface FloatOperations:
 #
 # Networking includes DNS, Unix sockets, verified TLS, streaming HTTP, and WebSockets. HTTP/3 is outside the supported scope. Native builds bundle pinned dependency sources and licenses rather than fetching packages.
 # end-documentation
-
 # documentation documentation/standard-library/imports.md
 # +++
 # title = "Standard imports"
@@ -456,7 +452,6 @@ interface FloatOperations:
 #
 # Importing `FileSystem` supplies a type. Calling the imported `filesystem()` function obtains the current execution's filesystem service. The same distinction applies to clocks, network access, and process services. Continue with [external services](services.md).
 # end-documentation
-
 # Contributor notes: source ownership and editor integration.
 # # Standard-library declarations
 #

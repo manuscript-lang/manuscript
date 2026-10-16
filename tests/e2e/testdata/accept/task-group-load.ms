@@ -20,6 +20,5 @@ test "load independent typed values":
         ok(summary):
             if summary.count != 3 or summary.label != "ready":
                 return panic("task values changed")
-
         error(_):
             return panic("task group failed")

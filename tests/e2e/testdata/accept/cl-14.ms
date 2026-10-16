@@ -20,7 +20,6 @@ fn summarize(outcome: Result[Int, Problem]) -> Int:
     match outcome:
         ok(value):
             return value
-
         error(_):
             return -1
 

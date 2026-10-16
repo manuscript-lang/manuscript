@@ -12,6 +12,29 @@ func TestFormatParagraphs(t *testing.T) {
 		name, source, want string
 	}{
 		{
+			name: "single step blocks cluster with adjacent work",
+			source: `fn work(enabled: Bool) -> Int:
+    let count = 2
+    if enabled:
+        run(count)
+    for item in [1, 2]:
+        run(item)
+    with resource = acquire():
+        run(resource)
+    return count
+`,
+			want: `fn work(enabled: Bool) -> Int:
+    let count = 2
+    if enabled:
+        run(count)
+    for item in [1, 2]:
+        run(item)
+    with resource = acquire():
+        run(resource)
+    return count
+`,
+		},
+		{
 			name: "interleaved import sections",
 			source: `fn first() -> Int: return 1
 import Value from "./value.ms"
@@ -97,7 +120,6 @@ fn last() -> Int: return 2
 
     with resource = acquire():
         run(resource)
-
     return count
 `,
 		},
@@ -201,7 +223,7 @@ fn main() -> Int: return 0
 `,
 		},
 		{
-			name: "author paragraphs and different indent comments",
+			name: "discard author paragraphs and retain different indent comments",
 			source: `# File introduction.
 fn example() -> Int:
     let first = 1
@@ -218,14 +240,11 @@ fn example() -> Int:
 			want: `# File introduction.
 fn example() -> Int:
     let first = 1
-
     # A deliberate new step.
     let second = first + 1
-
     if second > 2:
         run(second)
         # A comment inside the branch.
-
     # A comment on the next step.
     return second
 `,
@@ -264,10 +283,12 @@ fn example() -> Int:
 		},
 	}
 	for _, tc := range cases {
-		for _, newline := range []string{"\n", "\r\n"} {
+		for _, newline := range []string{"\n", "\r\n", "\n\n\n"} {
 			name := tc.name + "/LF"
 			if newline == "\r\n" {
 				name = tc.name + "/CRLF"
+			} else if newline == "\n\n\n" {
+				name = tc.name + "/extra_blank_lines"
 			}
 			t.Run(name, func(t *testing.T) {
 				source := strings.ReplaceAll(tc.source, "\n", newline)

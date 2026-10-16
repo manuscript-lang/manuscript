@@ -1,10 +1,4 @@
-import {
-    base64_encode,
-    base64_decode,
-    hex_encode,
-    hex_decode,
-    EncodingError
-} from "@std/encoding.ms"
+import {base64_encode, base64_decode, hex_encode, hex_decode, EncodingError} from "@std/encoding.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"

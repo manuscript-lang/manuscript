@@ -1,6 +1,5 @@
 import panic from "@std/faults.ms"
 import abs_int from "@std/math.ms"
-
 import Scheduler from "@std/tasks.ms"
 import Synchronized from "@std/sync.ms"
 
@@ -12,10 +11,8 @@ fn identity[T](value: T) -> T:
 
 fn sum(values: List[Int]) -> Int:
     var total = 0
-
     for value in values:
         total = total + value
-
     return total
 
 fn apply(transform: fn(value: Int) -> Int) -> Int:
@@ -143,7 +140,6 @@ test "optional labels on methods and native functions":
             ok(_):
                 if not (true):
                     return panic(message: "check failed")
-
             error(_):
                 if not (false):
                     return panic(message: "check failed")
@@ -156,21 +152,18 @@ test "omitted labels preserve evaluation order":
     with locked = state.lock():
         if not (locked.get() == 2):
             return panic(message: "check failed")
-
     if not (subtract(deduction: next(state), amount: next(state)) == 1):
         return panic(message: "check failed")
 
     with locked = state.lock():
         if not (locked.get() == 4):
             return panic(message: "check failed")
-
     if not (prepare_function(state)(next(state)) == 6):
         return panic(message: "check failed")
 
     with locked = state.lock():
         if not (locked.get() == 6):
             return panic(message: "check failed")
-
     if not (sum([next(state), next(state)]) == 13):
         return panic(message: "check failed")
 

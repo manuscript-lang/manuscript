@@ -5,11 +5,8 @@ import {Rng, next, text, mutate} from "./support/generator.ms"
 
 fn generated(rng: Rng, depth: Int) -> YamlValue:
     var choices = 6
-
     if depth > 2: choices = 4
-
     let kind = next(rng, choices)
-
     if kind == 0: return YamlValue.Null
     if kind == 1: return YamlValue.BoolValue(next(rng, 2) == 0)
     if kind == 2: return YamlValue.NumberValue("{next(rng, 2000) - 1000}")

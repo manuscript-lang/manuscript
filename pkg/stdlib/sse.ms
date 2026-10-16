@@ -114,9 +114,7 @@ fn exceeds(value: Int, limit: Optional[Int]) -> Bool:
 # Chunks may split any line, line ending or UTF-8 scalar. An error is final for the decoder.
 export fn feed(decoder: SseDecoder, chunk: Bytes) -> Result[List[SseEvent], SseError]:
     let events = List[SseEvent]()
-
     if decoder.failure.is_some(): return error(decoder.failure.unwrap())
-
     if decoder.closed: return error(SseError.InvalidInput)
 
     var index = 0
@@ -141,7 +139,6 @@ export fn feed(decoder: SseDecoder, chunk: Bytes) -> Result[List[SseEvent], SseE
 # otherwise the result is Truncated and the unfinished event is never dispatched.
 export fn finish(decoder: SseDecoder) -> Result[Unit, SseError]:
     if decoder.failure.is_some(): return error(decoder.failure.unwrap())
-
     if decoder.closed: return error(SseError.InvalidInput)
 
     decoder.closed = true
@@ -159,7 +156,6 @@ fn consume(
 ) -> Result[Unit, SseError]:
     let after_carriage = decoder.carriage
     decoder.carriage = false
-
     if byte == 10 and after_carriage: return ok(unit)
 
     if byte == 10 or byte == 13:
@@ -168,7 +164,6 @@ fn consume(
 
     decoder.line.append(byte)
     decoder.line_bytes = decoder.line_bytes + 1
-
     if exceeds(value: decoder.line_bytes, limit: decoder.limits.max_line_bytes): return error(
         SseError.LimitExceeded
     )
@@ -182,7 +177,6 @@ fn end_line(decoder: SseDecoder, events: List[SseEvent]) -> Result[Unit, SseErro
 
     if not decoder.started:
         decoder.started = true
-
         if bytes.starts_with("\u{feff}".to_bytes()): bytes = (
             bytes
             .slice(3, bytes.length())
@@ -216,7 +210,6 @@ fn apply(decoder: SseDecoder, line: String) -> Unit:
     if colon.is_some():
         name = line.slice(0, colon.unwrap()).unwrap()
         value = line.slice(colon.unwrap() + 1, line.length()).unwrap()
-
         if value.starts_with(" "): value = value.slice(1, value.length()).unwrap()
 
     if name == "event": decoder.event_type = value
@@ -235,15 +228,12 @@ fn reconnect(decoder: SseDecoder, value: String) -> Unit:
     if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return unit
 
     let milliseconds = value.parse_int()
-
     if milliseconds.is_some(): decoder.retry = milliseconds
 
 fn dispatch(decoder: SseDecoder, events: List[SseEvent]) -> Unit:
     if decoder.data.length() > 0:
         var name = decoder.event_type
-
         if name == "": name = "message"
-
         events.append(
             SseEvent(
                 event: name,
@@ -297,7 +287,6 @@ export fn reader(
     if not positive(chunk_bytes): return error(SseError.InvalidInput)
 
     let created = try decoder(limits: limits)
-
     return ok(
         SseReader(
             input: input,
@@ -322,7 +311,6 @@ export fn next_event(reader: SseReader) -> Result[Optional[SseEvent], SseError]:
 
         reader.ready = List[SseEvent]()
         reader.next = 0
-
         let read = reader.input.read(max_bytes: reader.chunk_bytes)
         if read.is_error(): return error(
             SseError.ReadFailed(cause: read.unwrap_error())

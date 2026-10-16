@@ -1,6 +1,5 @@
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
-
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
 import TaskGroup from "@std/tasks.ms"
@@ -18,7 +17,6 @@ export fn main() -> Int:
     let child = fn():
         with resource = Resource(label: "child", output: output):
             output.write(data: "ready\n".to_bytes())
-
             while true:
                 continue
 

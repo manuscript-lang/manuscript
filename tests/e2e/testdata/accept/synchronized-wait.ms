@@ -6,7 +6,6 @@ fn wait_until_ready(ready: Synchronized[Bool]) -> Bool:
     with locked = ready.lock():
         while not locked.get():
             locked.wait()
-
         return locked.get()
 
 fn mark_ready(ready: Synchronized[Bool]) -> Unit:
@@ -30,6 +29,5 @@ test "wait returns after another task notifies":
 
 test "group close cancels a waiting task":
     let ready = Synchronized(false)
-
     with group = TaskGroup():
         group.start(fn(): wait_until_ready(ready: ready))

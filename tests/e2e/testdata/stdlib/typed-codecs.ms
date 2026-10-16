@@ -1,20 +1,6 @@
-import {
-    HashAlgorithm,
-    sha256,
-    sha384,
-    sha512,
-    hmac,
-    CryptoError
-} from "@std/crypto.ms"
+import {HashAlgorithm, sha256, sha384, sha512, hmac, CryptoError} from "@std/crypto.ms"
 import {CompressionFormat, compress, decompress, CompressionError} from "@std/compress.ms"
-import {
-    ArchiveFormat,
-    pack,
-    unpack,
-    ArchiveEntry,
-    ArchiveLimits,
-    ArchiveError
-} from "@std/archive.ms"
+import {ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -49,7 +35,6 @@ test "typed SHA selectors match their algorithms and retain bound operations":
 
     let stored = HashAlgorithm.Sha384.digest
     if stored(data) != sha384(data): return panic("stored digest")
-
     if call_digest(stored, data) != sha384(data): return panic("generic stored digest")
 
     let key = "key".to_bytes()

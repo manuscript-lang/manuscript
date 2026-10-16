@@ -120,7 +120,6 @@ test "filesystem scoped temporary directories and bounded file reads":
 
     match fs.stat(path: directory, follow_links: true):
         ok(_): return panic("temporary directory not removed")
-
         error(cause):
             if cause != FileSystemError.NotFound: return panic(
                 "temporary cleanup error"
@@ -146,7 +145,6 @@ test "file handles positional I/O stream adapters and closed errors":
             )
 
             value(handle.write_at(offset: 1, data: "XY".to_bytes()))
-
             let resized = value(handle.truncate(4))
             if value(handle.stat()).size != 4: return panic("handle stat")
 
@@ -179,7 +177,6 @@ test "empty paths are rejected instead of resolving to the working directory":
 
     match fs.stat(path: "", follow_links: true):
         ok(_): return panic("stat empty path")
-
         error(cause):
             if cause != FileSystemError.InvalidInput: return panic(
                 "stat empty path error"

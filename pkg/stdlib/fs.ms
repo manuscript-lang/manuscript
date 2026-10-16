@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import BigInt from "@std/bigint.ms"
 import Bytes from "@std/bytes.ms"
 import ReadStream from "@std/io.ms"
@@ -407,7 +405,6 @@ impl Error for FileSystemError:
 
 # Returns filesystem operations for the current host.
 export fn filesystem() -> FileSystem:
-
 # documentation documentation/standard-library/filesystem.md
 # +++
 # title = "Files and paths"

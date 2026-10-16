@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # An immutable sequence of bytes. Indices and slice bounds are zero-based.
 export type Bytes:
     # Copies byte storage without changing the receiver.

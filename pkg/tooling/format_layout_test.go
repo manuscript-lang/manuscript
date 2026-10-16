@@ -20,7 +20,8 @@ func TestFormatCompactGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, newline := range []string{"\n", "\r\n"} {
+	for _, newline := range []string{"\n", "\r\n", "\n\n\n"} {
+		// Authored blank lines do not affect canonical paragraph boundaries.
 		source := strings.ReplaceAll(string(input), "\n", newline)
 		got, err := tooling.Format("compact.ms", source)
 		if err != nil {
@@ -47,6 +48,42 @@ func TestFormatExpressionLayouts(t *testing.T) {
 	cases := []struct {
 		name, source, want string
 	}{
+		{
+			name: "list comments retain item boundaries",
+			source: `fn work() -> Unit:
+    let values = [1, # Keep the first value explained.
+        2, 3, 4]
+`,
+			want: `fn work() -> Unit:
+    let values = [
+        1,  # Keep the first value explained.
+        2,
+        3,
+        4
+    ]
+`,
+		},
+		{
+			name: "simple list rows use available width",
+			source: `fn work() -> Unit:
+    let values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+`,
+			want: `fn work() -> Unit:
+    let values = [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+        23, 24, 25, 26, 27, 28, 29, 30
+    ]
+`,
+		},
+		{
+			name: "many short map entries stay compact",
+			source: `fn work() -> Unit:
+    let values = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 0: 0}
+`,
+			want: `fn work() -> Unit:
+    let values = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 0: 0}
+`,
+		},
 		{
 			name: "module constant initializer starting before its operator",
 			source: `let prices = [12, 8, 25]
@@ -205,13 +242,7 @@ let affordable = (
 			source: `import {First, Second, Third, Fourth, Fifth} from "./contracts.ms"
 fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 `,
-			want: `import {
-    First,
-    Second,
-    Third,
-    Fourth,
-    Fifth
-} from "./contracts.ms"
+			want: `import {First, Second, Third, Fourth, Fifth} from "./contracts.ms"
 
 fn work(first: Int, second: Int, third: Int, fourth: Int) -> Int: return first
 `,

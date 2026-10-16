@@ -1,5 +1,4 @@
 import panic from "@std/faults.ms"
-
 import Decimal from "@std/decimal.ms"
 
 fn amount() -> Result[Decimal, String]:
@@ -13,6 +12,5 @@ test "explicit standard imports":
         ok(value):
             if not (value == 12.50d):
                 return panic(message: "check failed")
-
         error(_):
             return panic(message: "Unexpected case")

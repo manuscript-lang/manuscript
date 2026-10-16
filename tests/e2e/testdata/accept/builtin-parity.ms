@@ -46,7 +46,6 @@ fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
     match result:
         ok(value):
             return ok(value)
-
         error(cause):
             return error(Error(cause))
 
@@ -199,14 +198,7 @@ test "list methods mutate explicit clones and remain typed":
         return panic(message: "check failed")
     if not (
         original.flat_map(transform: expand) == [
-            "3",
-            "x",
-            "1",
-            "x",
-            "2",
-            "x",
-            "1",
-            "x"
+            "3", "x", "1", "x", "2", "x", "1", "x"
         ]
     ):
         return panic(message: "check failed")
@@ -391,7 +383,6 @@ test "string methods use Unicode scalars":
     match checked_expansion():
         ok(_):
             let completed = unit
-
         error(cause):
             return panic(message: cause.message())
 
@@ -554,7 +545,6 @@ test "normalization, empty separators, and precision formatting":
     match verify_text_and_numbers():
         ok(_):
             let completed = unit
-
         error(cause):
             return panic(message: cause.message())
 
@@ -631,7 +621,6 @@ test "BigInt and Regex share function implementations with methods":
     match verify_bigint_and_regex():
         ok(_):
             let completed = unit
-
         error(cause):
             return panic(message: cause.message())
 

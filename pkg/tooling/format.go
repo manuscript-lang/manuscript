@@ -51,10 +51,6 @@ func Format(filename, source string) (string, error) {
 		if len(parts) == 0 {
 			trimmed := strings.TrimSpace(line)
 			if trimmed == "" {
-				if !blank {
-					output = append(output, "")
-					blank = true
-				}
 				continue
 			}
 			indent := len(line) - len(strings.TrimLeft(line, " "))

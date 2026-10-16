@@ -68,7 +68,6 @@ test "Result propagation and Error views preserve concrete causes":
     match view:
         JsonError(cause):
             if cause != JsonError.InvalidData: return panic("concrete error lost")
-
         _: return panic("error receiver erased")
 
 test "custom equality and hashing define map key identity":

@@ -1,5 +1,4 @@
 import panic from "@std/faults.ms"
-
 import ExecutionError from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
 
@@ -24,7 +23,6 @@ fn probe() -> Result[Unit, ExecutionError]:
             ok(value):
                 if not (value == 3):
                     return panic(message: "check failed")
-
             error(_):
                 return panic(message: "Unexpected case")
 
@@ -34,7 +32,6 @@ test "typed task helper":
     match probe():
         ok(_):
             let completed = unit
-
         error(_):
             return panic(message: "Unexpected case")
 
@@ -42,7 +39,6 @@ fn describe(outcome: Result[Int, Int]) -> Result[Int, String]:
     match outcome:
         ok(value):
             return ok(value)
-
         error(cause):
             return error("Error {cause}")
 

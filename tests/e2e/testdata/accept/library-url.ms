@@ -1,5 +1,4 @@
 import panic from "@std/faults.ms"
-
 import parse from "@std/url.ms"
 import format from "@std/url.ms"
 import encode_component from "@std/url.ms"

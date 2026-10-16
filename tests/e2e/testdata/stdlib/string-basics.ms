@@ -79,7 +79,6 @@ test "lines preserve interior empties and recognize LF and CRLF only":
         LineCase("a\u{0}\nb", ["a\u{0}", "b"]),
         LineCase("a\u{85}b\u{2028}c\u{2029}d", ["a\u{85}b\u{2028}c\u{2029}d"])
     ]
-
     for line_case in cases:
         if line_case.text.lines() != line_case.expected: return panic(
             "line boundary: {line_case.text.toString()}"

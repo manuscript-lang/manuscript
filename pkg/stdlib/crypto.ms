@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Bytes from "@std/bytes.ms"
 
 # Errors returned when cryptographic input is invalid or an algorithm is unavailable.
@@ -77,7 +75,6 @@ export type HashAlgorithm:
     fn digest(data: Bytes) -> Bytes:
     # Computes HMAC with this algorithm and retains CryptoError results.
     fn hmac(key: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:
-
 # documentation documentation/standard-library/crypto.md
 # +++
 # title = "Cryptography and randomness"

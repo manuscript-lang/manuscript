@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Bytes from "@std/bytes.ms"
 
 # Errors returned when an archive cannot be read or written.
@@ -72,7 +70,6 @@ export type ArchiveFormat:
         data: Bytes,
         limits: Optional[ArchiveLimits] = none
     ) -> Result[List[ArchiveEntry], ArchiveError]:
-
 # documentation documentation/standard-library/archive.md
 # +++
 # title = "Compression and archives"

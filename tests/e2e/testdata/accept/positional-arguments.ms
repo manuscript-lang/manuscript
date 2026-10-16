@@ -7,7 +7,6 @@ fn first[T](left: T, right: T) -> T: left
 fn pick[T](items: List[T], keep: fn(value: T) -> Bool) -> Optional[T]:
     for item in items:
         if keep(item): return some(item)
-
     return none
 
 type Counter:

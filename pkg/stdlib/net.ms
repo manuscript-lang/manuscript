@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import WebSocketError from "@std/websocket.ms"
 import WebSocketOptions from "@std/websocket.ms"
 import WebSocket from "@std/websocket.ms"
@@ -286,7 +284,6 @@ export interface Network:
 
 # Returns network operations for the current host.
 export fn network() -> Network:
-
 # documentation documentation/standard-library/network.md
 # +++
 # title = "Sockets and TLS"

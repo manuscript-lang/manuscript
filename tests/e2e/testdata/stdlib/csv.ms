@@ -133,7 +133,6 @@ test "CSV rejects malformed records invalid options and limits":
         if parse(text: text, options: options) != malformed: return panic(
             "malformed quoting"
         )
-
     let limited: Result[List[List[String]], CsvError] = error(CsvError.LimitExceeded)
     if parse(text: "a,b\n", options: options, max_cells: 1) != limited: return panic(
         "cell budget"

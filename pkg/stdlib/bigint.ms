@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 # Errors returned while parsing or converting arbitrary-precision integers.
 export type BigIntError:
     # The radix is outside 2 through 36, `max_digits` is negative, or a division or remainder has a zero divisor.

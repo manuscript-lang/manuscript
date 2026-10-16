@@ -126,7 +126,6 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
         alpn: [],
         require_client_certificate: false
     )
-
     with client = value(
         network().http_client(
             HttpClientOptions(decompress: false, cookies: false, tls: tls)

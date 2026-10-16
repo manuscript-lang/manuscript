@@ -1,5 +1,3 @@
-# Canonical standard-library declarations. Implementations are native.
-
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import ReadStream from "@std/io.ms"
@@ -263,7 +261,6 @@ export fn commands() -> Commands:
 
 # Returns controls and process information for the current process.
 export fn control() -> ProcessControl:
-
 # documentation documentation/standard-library/process.md
 # +++
 # title = "Commands and processes"
@@ -368,7 +365,6 @@ export fn control() -> ProcessControl:
 #
 # Process titles use Linux kernel names (at most 15 UTF-8 bytes), macOS program names, or Windows console titles. They do not rewrite argv. Linux constrained-memory queries inspect the current cgroup v1/v2 memory controller; zero means no known limit. Available memory is the lesser of host available memory and the remaining known cgroup budget. On other hosts, constrained memory is zero (unknown), and available memory uses the native host query. `initialize_groups` resolves a user's supplementary groups and applies them under native privilege checks. Unix `replace` supplies an explicit argv and environment and replaces the executable; success never returns and bypasses scoped cleanup, just as native exec does. Use ordinary `Commands.run` when the caller must retain its execution lifetime.
 # end-documentation
-
 # documentation documentation/concurrency/shutdown.md
 # +++
 # title = "Shutdown on SIGINT and SIGTERM"

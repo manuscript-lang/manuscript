@@ -1,6 +1,5 @@
 import IpFamily from "@std/net.ms"
 # Canonical standard-library declarations. Implementations are native.
-
 import Duration from "@std/time.ms"
 
 # Read-only host details and selected controls for the current operating system.
@@ -165,7 +164,6 @@ impl Error for SystemError:
 
 # Returns system information and controls for the current host.
 export fn system() -> System:
-
 # documentation documentation/standard-library/services.md
 # +++
 # title = "External services"
@@ -186,7 +184,6 @@ export fn system() -> System:
 #
 # See [sharing data](../concurrency/sharing.md).
 # end-documentation
-
 # documentation documentation/standard-library/system.md
 # +++
 # title = "Time and system information"

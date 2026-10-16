@@ -20,7 +20,6 @@ impl Read[Int] for Choice:
         match self:
             Some(value):
                 return value + delta()
-
             Empty:
                 return delta()
 
