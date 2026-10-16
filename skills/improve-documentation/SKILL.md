@@ -16,18 +16,30 @@ The user's current direction takes precedence over older preferences. The
 landing page is a marketing page intended to get people to try Manuscript;
 learning pages help them succeed after that click.
 
+Choose the relevant steps for the requested scope. A homepage revision uses the
+marketing and rendered checks; a language refresh starts with behavior and
+examples. Before editing, name the reader's task, the concrete obstacle, and the
+observable result that would remove it. Improve quality through clearer structure,
+examples, and deletion as well as new prose.
+
 ## 1. Establish what ships
 
 - Compare the working branch with current `main` and inspect recent language,
   library, runtime, and CLI changes. Use implementation, declarations, and tests
   as evidence; a vision or historical completion report does not prove a feature
-  exists. Preserve unrelated work.
+  exists. Record the revision used; report when current main is unavailable.
+  Preserve unrelated work.
 - Use `ms guide` and `ms search_symbol <name or words>` to discover current
   syntax and APIs, then follow relevant source and tests. Check whole behaviors:
   argument binding, defaults, mutation, error handling, and resource lifetimes.
 - Remove obsolete guidance, commands, and pending designs that no longer apply.
   Check prose as well as code: examples can compile while their explanation is
-  stale. Edit library prose in `pkg/stdlib/*.ms` and regenerate derived output.
+  stale. Trace changed concepts through the README, tutorials, exact rules,
+  library comments, CLI help, and agent cheat sheet where relevant; searching an
+  old spelling alone misses obsolete claims and recommended patterns. Edit
+  library prose in `pkg/stdlib/*.ms` and regenerate derived output. Check incoming
+  links before deleting superseded design or verification records; retain useful
+  current architecture and evidence.
 
 ## 2. Audit the reader's journey
 
@@ -35,6 +47,8 @@ Read the homepage, docs hub, quickstart, tour, task recipes, and section indexes
 in sequence. Inspect [navigation](../../website/data/navigation.toml), page
 titles/weights, breadcrumbs, and previous/next links alongside the prose.
 Identify a few concrete obstacles and choose changes that remove them.
+Use the same reading order in the sidebar, section indexes, and previous/next
+links; keep navigation data as the shared source of ordering.
 
 | Page's job | What a reader should get |
 | --- | --- |
@@ -53,6 +67,10 @@ and anchors; update incoming links and add redirects when a move needs them.
 
 ## 3. Make the homepage worth acting on
 
+- Use a focused visual hero: a large headline, a short description, the primary
+  trial action, a secondary tour link, and a compact code/output preview. The
+  user's later request for a hero replaces the earlier stacked benefit sections
+  and cards. Keep supporting copy brief and remove repeated sales paragraphs.
 - Lead with a concrete value proposition grounded in shipped features. Show a
   small runnable program, how to run it, and its actual output. Explain benefits
   through readable code, useful tools, and things people can build.
@@ -72,6 +90,8 @@ and anchors; update incoming links and add redirects when a move needs them.
   Let readers change something and see the result, then build an executable.
   State working directories, prerequisites, platform differences, and what to
   expect. Link deeper explanations where they become useful.
+  Check that the installed release supports the documented syntax and commands;
+  identify any checkout-only prerequisites when teaching unreleased behavior.
 - Use small, focused examples and plain explanations. Simplify the scenario
   before adding helper layers, domain models, or error hierarchies. Keep matches
   flat. Use current testing helpers and propagate failed assertions with `try`.
@@ -81,6 +101,10 @@ and anchors; update incoming links and add redirects when a move needs them.
 - Trim filler, repeated inventories, and obsolete implementation details.
   Keep coverage reports and review bookkeeping out of reader-facing pages.
   Write about Manuscript without language-comparison pages.
+- For visual work, compare authored content with the base branch and preserve
+  its meaning. For API references, show ordinary Manuscript declarations and
+  readable classifications; keep generated JSON contracts and symbol anchors
+  stable. Follow the existing documentation lessons for presentation details.
 
 ## 5. Verify the experience
 
@@ -89,6 +113,9 @@ and anchors; update incoming links and add redirects when a move needs them.
   discovery, including homepage shortcodes and filename-attributed fences;
   an annotation alone does not register a new source. Run the published examples
   natively and exercise the actual displayed commands in disposable directories.
+  Follow the complete first-run sequence, including downloads, paths, edits,
+  arguments, and executable output. Use isolated files, stdin, and loopback
+  fixtures for recipes; verify failure status and propagate write/flush errors.
 - Run applicable `make docs-check`, `make repo-check`, and `make book-check`.
   Use `make book` for production output. The
   [publication checks](../../tests/docs/publication.test.cjs) validate prefixed
@@ -99,13 +126,16 @@ and anchors; update incoming links and add redirects when a move needs them.
   navigation, and page overflow. A successful HTML build does not establish
   visual quality. Use the environment's available browser tooling.
 - Recheck against latest `main` before integration; resolve new API or command
-  changes and repeat affected checks. When publishing is requested, verify the
-  deployed site and reader artifacts separately from source generation or merge.
+  changes and repeat affected checks. After removals, generate with destination
+  cleanup and search rendered pages, search data, and downloads for retired
+  routes and terminology. When publishing is requested, verify the deployed site
+  and reader artifacts separately from source generation or merge.
 
 ## 6. Leave durable guidance
 
-Summarize the concrete reader improvements and verification, distinguishing local
-changes, a merged PR, and a deployed site. Follow
+Summarize the reader obstacles removed and the evidence for each improvement;
+do not claim increased conversion without measurement. Report unavailable checks
+and distinguish local changes, a merged PR, and a deployed site. Follow
 [create-pr](../create-pr/SKILL.md) when PR work is requested.
 Update the closest existing expert entry when a new user decision supersedes
 older advice; keep exact rules and enforceable regressions in their canonical
