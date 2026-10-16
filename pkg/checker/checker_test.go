@@ -103,7 +103,7 @@ type Node:
 	}
 }
 
-func TestMatchingLabelPreservesSourceAST(t *testing.T) {
+func TestBareIdentifiersArePositionalAndPreserveSourceAST(t *testing.T) {
 	source := "fn first[T](left: T, right: T) -> T: return left\nfn call(left: Int, right: Int) -> Int: return first(right, left)\n"
 	module, err := parser.Parse("shorthand.ms", source)
 	if err != nil {
@@ -115,9 +115,9 @@ func TestMatchingLabelPreservesSourceAST(t *testing.T) {
 		if len(program.Diagnostics) != 0 {
 			t.Fatal(program.Diagnostics)
 		}
-		for at, label := range []string{"right", "left"} {
+		for at, label := range []string{"left", "right"} {
 			if call.Args[at].Name != "" || program.Info(call).Arguments[at].Name != label {
-				t.Fatal("incorrect shorthand mapping")
+				t.Fatal("bare identifiers must bind positionally")
 			}
 		}
 	}

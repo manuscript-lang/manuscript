@@ -20,7 +20,7 @@ let decrement = fn(value: Int) -> Int:
 let result = apply(value: 3, transform: decrement)
 ```
 
-Function types retain parameter names. Calls through values accept positional, labeled, and mixed arguments, with matching-name shorthand preserved under the ordinary [call rules](declarations-and-calls.md#argument-names). Labels remain part of function-type identity and compatibility even when a call omits one. A contextual anonymous function adopts those labels while keeping its own local parameter names. Calls have the same suspension and evaluation rules as declared functions. Inferred immutable copies retain [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
+Function types retain parameter names. Calls through values accept positional, labeled, and mixed arguments under the ordinary [call rules](declarations-and-calls.md#argument-names). Labels remain part of function-type identity and compatibility even when a call omits one. A contextual anonymous function adopts those labels while keeping its own local parameter names. Calls have the same suspension and evaluation rules as declared functions. Inferred immutable copies retain [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
 
 ## Function type compatibility
 

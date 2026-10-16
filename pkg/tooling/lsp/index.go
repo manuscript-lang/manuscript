@@ -11,13 +11,11 @@ import (
 )
 
 type occurrence struct {
-	key, name                  string
-	pos                        syntax.Position
-	end                        int
-	declaration, write         bool
-	info                       *checker.Info
-	renamePrefix, renameSuffix string
-	implicitLabel              bool
+	key, name          string
+	pos                syntax.Position
+	end                int
+	declaration, write bool
+	info               *checker.Info
 }
 
 func symbolKey(s *checker.Symbol) string {
@@ -319,78 +317,6 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 	}
 
-	// An unlabeled identifier names a caller binding and supplies a callee parameter.
-	// Renaming either side makes the label explicit to preserve argument binding.
-	for call, info := range program.Expressions() {
-		if call.Kind != syntax.KindCall || len(info.Arguments) != len(call.Args) {
-			continue
-		}
-		called := program.Info(call.Left)
-		var decl *syntax.Declaration
-		arity := 0
-		if info.Constructor != nil {
-			if info.Case == "" {
-				arity = len(checker.Fields(info.Constructor))
-			} else {
-				for _, cs := range checker.Cases(info.Constructor) {
-					if cs.Name == info.Case {
-						arity = len(cs.Fields)
-					}
-				}
-			}
-		} else if called != nil && called.Type != nil {
-			arity = len(called.Type.Params)
-			if called.Symbol != nil {
-				decl = called.Symbol.Decl
-			}
-			if called.Method != nil {
-				decl = called.Method.Decl
-			}
-		}
-		if arity <= 1 {
-			continue
-		}
-		for at, arg := range call.Args {
-			label := info.Arguments[at].Name
-			if arg.Name != "" || label == "" || arg.Value.Kind != syntax.KindName || arg.Pos != arg.Value.Pos {
-				continue
-			}
-			value := program.Info(arg.Value)
-			if value == nil {
-				continue
-			}
-			valueKey := ""
-			if value.Binding != nil {
-				valueKey = localKey(value.Binding)
-			}
-			if value.Symbol != nil {
-				valueKey = symbolKey(value.Symbol)
-			}
-			labelKey := ""
-			if info.Constructor != nil && info.Constructor.Kind == syntax.KindRecord && info.Constructor.Def != nil {
-				labelKey = "field:" + symbolKey(info.Constructor.Def.Symbol) + ":" + label
-			}
-			if decl != nil {
-				for n, param := range decl.Params {
-					if param.Name == label && n < len(program.ParameterBindings(decl)) {
-						labelKey = localKey(program.ParameterBindings(decl)[n])
-					}
-				}
-			}
-			if valueKey == labelKey {
-				continue
-			}
-			for n := range index {
-				if index[n].key == valueKey && index[n].pos == arg.Value.Pos {
-					index[n].renamePrefix = label + ": "
-				}
-			}
-			if labelKey != "" {
-				index = append(index, occurrence{key: labelKey, name: label, pos: arg.Value.Pos, end: arg.Value.Pos.Offset + len(arg.Value.Text), renameSuffix: ": " + arg.Value.Text, implicitLabel: true})
-			}
-		}
-	}
-
 	sort.Slice(index, func(i, j int) bool {
 		a, b := index[i], index[j]
 		if a.pos.File != b.pos.File {
@@ -398,9 +324,6 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 		if a.pos.Offset != b.pos.Offset {
 			return a.pos.Offset < b.pos.Offset
-		}
-		if a.implicitLabel != b.implicitLabel {
-			return !a.implicitLabel
 		}
 		return a.key < b.key
 	})

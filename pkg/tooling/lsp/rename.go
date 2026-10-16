@@ -75,7 +75,7 @@ func rename(result compiler.Result, d document, p position, name string, open ..
 				}
 			}
 			if !exists {
-				byURI[uri] = append(byURI[uri], replacement{entry.pos.Offset, entry.end, entry.renamePrefix + name + entry.renameSuffix})
+				byURI[uri] = append(byURI[uri], replacement{entry.pos.Offset, entry.end, name})
 			}
 		}
 	}
