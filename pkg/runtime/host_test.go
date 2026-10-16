@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -584,18 +585,37 @@ func TestLogger(t *testing.T) {
 	ctx := testCtx(t)
 	sink := &captureStream{}
 	transport := Log_StreamTransport(ctx, sink)
-	bindings := NewMap[string, JsonValue]()
-	bindings.Put("app", JsonValue_StringValue{Value: "demo"})
-	logger := mustOK(t, Log_Create(ctx, transport, Some[LogLevel](LogLevel_Info{}), Some(bindings), Some(false), None[int]()))
-	if r := logger.Debug(ctx, "hidden", None[*Map[string, JsonValue]]()); r.Failed || len(sink.data) != 0 {
+	base := mustOK(t, Log_Create(ctx, transport, Some[LogLevel](LogLevel_Info{}), Some(false), None[int]()))
+	enc := func(s *JsonScope, v map[string]int) (JsonValue, bool) {
+		out := NewMap[string, JsonValue]()
+		for k, n := range v {
+			out.Put(k, JsonValue_NumberValue{Text: strconv.Itoa(n)})
+		}
+		return JsonValue_ObjectValue{Values: out}, true
+	}
+	logger := mustOK(t, Log_Bind(ctx, JsonEncString, base, "demo"))
+	if string(sink.data) != "" {
+		t.Fatal("bind writes nothing")
+	}
+	if r := logger.Debug(ctx, "hidden"); r.Failed || len(sink.data) != 0 {
 		t.Fatal("debug below threshold")
 	}
-	fields := NewMap[string, JsonValue]()
-	fields.Put("n", JsonValue_NumberValue{Text: "5"})
-	fields.Put("msg", JsonValue_StringValue{Value: "ignored"})
-	mustOK(t, logger.Warn(ctx, "careful \"x\"", Some(fields)))
-	if got, want := string(sink.data), `{"level":40,"msg":"careful \"x\"","app":"demo","n":5}`+"\n"; got != want {
+	mustOK(t, Log_Record(ctx, enc, logger, LogLevel_Warn{}, "careful \"x\"", map[string]int{"n": 5}))
+	if got, want := string(sink.data), `{"level":40,"msg":"careful \"x\"","data":"demo","n":5}`+"\n"; got != want {
 		t.Fatalf("record %q want %q", got, want)
+	}
+	sink.data = nil
+	mustOK(t, Log_Record(ctx, JsonEncInt, base, LogLevel_Info{}, "scalar", 7))
+	if got, want := string(sink.data), `{"level":30,"msg":"scalar","data":7}`+"\n"; got != want {
+		t.Fatalf("record %q want %q", got, want)
+	}
+	sink.data = nil
+	mustOK(t, Log_Record(ctx, enc, base, LogLevel_Info{}, "reserved", map[string]int{"msg": 1, "level": 2}))
+	if got, want := string(sink.data), `{"level":30,"msg":"reserved"}`+"\n"; got != want {
+		t.Fatalf("record %q want %q", got, want)
+	}
+	if r := base.LogJson(ctx, LogLevel_Info{}, "bad", "{"); !r.Failed || r.Err != (LogError_InvalidData{}) {
+		t.Fatalf("%#v", r)
 	}
 	if !logger.Enabled(ctx, LogLevel_Error{}) || logger.Enabled(ctx, LogLevel_Trace{}) || logger.Enabled(ctx, LogLevel_Silent{}) {
 		t.Fatal("enabled")
@@ -604,19 +624,22 @@ func TestLogger(t *testing.T) {
 	if _, ok := logger.Level(ctx).(LogLevel_Silent); !ok {
 		t.Fatal("level")
 	}
-	if r := logger.Log(ctx, LogLevel_Silent{}, "x", None[*Map[string, JsonValue]]()); !r.Failed || r.Err != (LogError_InvalidInput{}) {
+	if r := logger.Log(ctx, LogLevel_Silent{}, "x"); !r.Failed || r.Err != (LogError_InvalidInput{}) {
 		t.Fatalf("%#v", r)
 	}
-	child := logger.Child(ctx, bindings)
+	if r := Log_Record(ctx, JsonEncInt, logger, LogLevel_Silent{}, "x", 1); !r.Failed || r.Err != (LogError_InvalidInput{}) {
+		t.Fatalf("%#v", r)
+	}
+	child := mustOK(t, Log_Bind(ctx, JsonEncInt, logger, 1))
 	if _, ok := child.Level(ctx).(LogLevel_Silent); !ok {
 		t.Fatal("child level")
 	}
 	mustOK(t, logger.Flush(ctx))
-	limited := mustOK(t, Log_Create(ctx, transport, None[LogLevel](), None[*Map[string, JsonValue]](), Some(false), Some(int(10))))
-	if r := limited.Info(ctx, "this message is far too long", None[*Map[string, JsonValue]]()); !r.Failed || r.Err != (LogError_LimitExceeded{}) {
+	limited := mustOK(t, Log_Create(ctx, transport, None[LogLevel](), Some(false), Some(int(10))))
+	if r := limited.Info(ctx, "this message is far too long"); !r.Failed || r.Err != (LogError_LimitExceeded{}) {
 		t.Fatalf("%#v", r)
 	}
-	if r := Log_Create(ctx, transport, None[LogLevel](), None[*Map[string, JsonValue]](), None[bool](), Some(int(-1))); !r.Failed {
+	if r := Log_Create(ctx, transport, None[LogLevel](), None[bool](), Some(int(-1))); !r.Failed {
 		t.Fatal("negative budget")
 	}
 	transport.Close(ctx)
@@ -624,7 +647,7 @@ func TestLogger(t *testing.T) {
 	if sink.closed {
 		t.Fatal("borrowed stream must stay open")
 	}
-	if r := logger.Child(ctx, bindings).Flush(ctx); !r.Failed || r.Err != (LogError_Closed{}) {
+	if r := child.Flush(ctx); !r.Failed || r.Err != (LogError_Closed{}) {
 		t.Fatalf("%#v", r)
 	}
 }
@@ -633,8 +656,8 @@ func TestFileTransport(t *testing.T) {
 	ctx := testCtx(t)
 	path := filepath.Join(t.TempDir(), "log.jsonl")
 	transport := mustOK(t, Log_FileTransport(ctx, path))
-	logger := mustOK(t, Log_Create(ctx, transport, None[LogLevel](), None[*Map[string, JsonValue]](), Some(false), None[int]()))
-	mustOK(t, logger.Info(ctx, "one", None[*Map[string, JsonValue]]()))
+	logger := mustOK(t, Log_Create(ctx, transport, None[LogLevel](), Some(false), None[int]()))
+	mustOK(t, logger.Info(ctx, "one"))
 	transport.Close(ctx)
 	data, err := os.ReadFile(path)
 	if err != nil || string(data) != `{"level":30,"msg":"one"}`+"\n" {

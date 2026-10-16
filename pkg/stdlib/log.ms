@@ -3,7 +3,6 @@
 import IoError from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import JsonValue from "@std/json.ms"
 import FileSystemError from "@std/fs.ms"
 
 # Errors returned while validating or writing a structured log record.
@@ -55,59 +54,65 @@ export interface Transport:
     fn close() -> Unit
 
 # A structured logger with level filtering, bound fields, and pluggable transports.
+#
+# Methods that take only a message write a record without fields. To attach fields of any
+# type, use `record` and `bind`, which encode the value with `stringify`.
 export interface Logger:
-    # Writes a record at the selected level with optional JSON fields.
-    fn log(
+    # Writes a record at the selected level with no fields.
+    fn log(level: LogLevel, message: String) -> Result[Unit, LogError]
+    # Logs at Trace when enabled; a filtered call returns ok without encoding or transport access.
+    fn trace(message: String) -> Result[Unit, LogError]
+    # Logs at Debug when enabled, including the logger's bound fields.
+    fn debug(message: String) -> Result[Unit, LogError]
+    # Logs at Info when enabled; reserved level, msg, and time fields remain controlled by the logger.
+    fn info(message: String) -> Result[Unit, LogError]
+    # Logs at Warn when enabled, returning encoding, size-budget, or transport errors unchanged.
+    fn warn(message: String) -> Result[Unit, LogError]
+    # Logs at Error when enabled; it records an expected diagnostic rather than raising a fault.
+    fn error(message: String) -> Result[Unit, LogError]
+    # Logs at Fatal when enabled; the caller remains responsible for process termination.
+    fn fatal(message: String) -> Result[Unit, LogError]
+    # Writes a record whose fields are the members of `fields`, a JSON object in text form.
+    # Text that is not a JSON object returns `InvalidData`. Prefer `record`, which builds the text.
+    fn log_json(
         level: LogLevel,
         message: String,
-        fields: Optional[Map[String, JsonValue]] = none
+        fields: String
     ) -> Result[Unit, LogError]
-    # Logs at Trace when enabled; a filtered call returns ok without encoding or transport access.
-    fn trace(
-        message: String,
-        fields: Optional[Map[String, JsonValue]] = none
-    ) -> Result[Unit, LogError]
-    # Logs at Debug when enabled, with call fields overriding child bindings for duplicate keys.
-    fn debug(
-        message: String,
-        fields: Optional[Map[String, JsonValue]] = none
-    ) -> Result[Unit, LogError]
-    # Logs at Info when enabled; reserved level, msg, and time fields remain controlled by the logger.
-    fn info(
-        message: String,
-        fields: Optional[Map[String, JsonValue]] = none
-    ) -> Result[Unit, LogError]
-    # Logs at Warn when enabled, returning encoding, size-budget, or transport errors unchanged.
-    fn warn(
-        message: String,
-        fields: Optional[Map[String, JsonValue]] = none
-    ) -> Result[Unit, LogError]
-    # Logs at Error when enabled; it records an expected diagnostic rather than raising a fault.
-    fn error(
-        message: String,
-        fields: Optional[Map[String, JsonValue]] = none
-    ) -> Result[Unit, LogError]
-    # Logs at Fatal when enabled; the caller remains responsible for process termination.
-    fn fatal(
-        message: String,
-        fields: Optional[Map[String, JsonValue]] = none
-    ) -> Result[Unit, LogError]
+    # Returns a logger that adds the members of `fields`, a JSON object in text form, to each
+    # record. Text that is not a JSON object returns `InvalidData`. Prefer `bind`.
+    fn child_json(fields: String) -> Result[Logger, LogError]
     # Tests the current filtering threshold; Silent is never enabled as a record level.
     fn enabled(level: LogLevel) -> Bool
     # Returns this logger's current threshold, independent of its parent or children.
     fn level() -> LogLevel
     # Changes only this logger's threshold; existing child loggers retain their copied threshold.
     fn set_level(level: LogLevel) -> Unit
-    # Returns a logger that adds these fields to each record.
-    fn child(bindings: Map[String, JsonValue]) -> Logger
     # Flushes the logger's transport.
     fn flush() -> Result[Unit, LogError]
 
-# Creates a logger. Defaults to `Info`, no bound fields, timestamps enabled, and no record-size limit.
+# Writes a record whose fields come from `fields`, which can be any value `stringify` accepts.
+#
+# A record, map, or `JsonValue` object contributes its members at the top level of the record.
+# Any other value, such as a number, string, list, or `none`, is written under the key `data`.
+# A value that cannot be encoded, such as a cyclic one, returns `InvalidData`; encoding happens
+# only when the level is enabled. The reserved keys `level`, `msg`, and `time` are ignored.
+export fn record[T](
+    logger: Logger,
+    level: LogLevel,
+    message: String,
+    fields: T
+) -> Result[Unit, LogError]:
+
+# Returns a logger that adds `bindings` to each record, with the same field rules as `record`.
+# The child copies this logger's threshold, timestamp setting, record limit, and transport;
+# bound fields merge parent, then child, then per-call fields, with later values winning.
+export fn bind[T](logger: Logger, bindings: T) -> Result[Logger, LogError]:
+
+# Creates a logger. Defaults to `Info`, timestamps enabled, and no record-size limit.
 export fn create(
     transport: Transport,
     level: Optional[LogLevel] = none,
-    bindings: Optional[Map[String, JsonValue]] = none,
     timestamp: Optional[Bool] = none,
     max_bytes: Optional[Int] = none
 ) -> Result[Logger, LogError]:
@@ -135,7 +140,7 @@ impl Error for LogError:
 #
 # API reference: [log](reference/log.md).
 #
-# Import `create` and a transport from `@std/log.ms`. A logger combines level filtering, structured JSON fields, and reusable context. Transports send complete records to stdout, an append-only file, or a supplied `WriteStream`. Logging failures are returned as `Result` errors.
+# Import `create` and a transport from `@std/log.ms`. A logger combines level filtering, structured fields, and reusable context. Transports send complete records to stdout, an append-only file, or a supplied `WriteStream`. Logging failures are returned as `Result` errors.
 #
 # ## Write a record
 #
@@ -143,17 +148,20 @@ impl Error for LogError:
 #
 # <!-- manuscript-example: {"mode":"run","stdout":"{\"level\":30,\"msg\":\"listening\",\"port\":8080}\n"} -->
 # ```manuscript
-# import {create, stdout_transport} from "@std/log.ms"
-# import JsonValue from "@std/json.ms"
+# import {create, record, stdout_transport, LogLevel} from "@std/log.ms"
+#
+# type Listening:
+#     port: Int
 #
 # fn announce() -> Result[Unit, Error]:
 #     with transport = stdout_transport():
 #         let logger = try create(transport: transport, timestamp: false)
-#         let fields = Map[String, JsonValue]().add(
-#             key: "port",
-#             value: JsonValue.NumberValue("8080")
+#         let written = try record(
+#             logger: logger,
+#             level: LogLevel.Info,
+#             message: "listening",
+#             fields: Listening(port: 8080)
 #         )
-#         let written = try logger.info(message: "listening", fields: fields)
 #         return ok(unit)
 #
 # export fn main() -> Int:
@@ -162,17 +170,17 @@ impl Error for LogError:
 #         error(_): return 1
 # ```
 #
-# `fields` is optional; `logger.info(message: "started")` emits a message without additional fields. JSON fields support null, booleans, exact numbers, strings, arrays, and nested objects through `JsonValue`. See the [JSON reference](reference/json.md) for construction and parsing. Invalid numeric text or cyclic JSON values return `LogError.InvalidData` before the transport receives data.
+# `logger.info(message: "started")` and the other level methods emit a message without fields. `record` attaches fields of any type: it encodes them with `stringify` from `@std/json.ms`, so records, lists, maps, optionals, and types that implement `JsonEncode` follow the [JSON reference](reference/json.md) rules. A record or map contributes its members at the top level; any other value, such as a number or list, is written under the key `data`. A value `stringify` rejects, such as a cyclic one, returns `LogError.InvalidData` before the transport receives data.
 #
-# Each record is compact UTF-8 JSON followed by LF. The top-level envelope contains numeric `level`, `msg`, and, by default, `time` as Unix epoch milliseconds. Additional fields appear at the top level in map insertion order. The envelope owns `level`, `msg`, and `time`; supplied bindings or fields with those keys are ignored, including `time` when timestamps are disabled. Embedded newlines and quotes are escaped, keeping one record per physical line.
+# Each record is compact UTF-8 JSON followed by LF. The top-level envelope contains numeric `level`, `msg`, and, by default, `time` as Unix epoch milliseconds. Additional fields appear at the top level in encoding order. The envelope owns `level`, `msg`, and `time`; supplied bindings or fields with those keys are ignored, including `time` when timestamps are disabled. Embedded newlines and quotes are escaped, keeping one record per physical line.
 #
 # ## Levels and context
 #
-# `trace`, `debug`, `info`, `warn`, `error`, and `fatal` return `Result[Unit, LogError]`. Their levels are 10, 20, 30, 40, 50, and 60 respectively. `log(level: level, message: message, fields: fields)` selects a method's level dynamically. `LogLevel.Silent` is a filtering threshold; using it as a record level returns `InvalidInput`. `fatal` emits a record and leaves process termination to the caller.
+# `trace`, `debug`, `info`, `warn`, `error`, and `fatal` return `Result[Unit, LogError]`. Their levels are 10, 20, 30, 40, 50, and 60 respectively. `log(level: level, message: message)` selects a method's level dynamically, and `record(logger: logger, level: level, message: message, fields: fields)` does the same for a record with fields. `LogLevel.Silent` is a filtering threshold; using it as a record level returns `InvalidInput`. `fatal` emits a record and leaves process termination to the caller.
 #
 # The default threshold is `LogLevel.Info`. Pass `level: LogLevel.Debug` to `create`, or use `logger.set_level(LogLevel.Debug)` later. `logger.level()` returns the current threshold and `logger.enabled(LogLevel.Debug)` checks whether that level passes it. `LogLevel.Silent` disables all logging. Filtered calls return `ok(unit)` without serialization or transport access, even if the transport is closed; arguments still evaluate normally.
 #
-# Pass `bindings: bindings` to `create` for persistent fields. `logger.child(bindings)` makes a logger with extra context and the parent's current threshold, timestamp setting, record limit, and transport. Parent level changes do not change existing children. Bindings merge in parent → child → per-call order; later values win. Construction and child creation copy top-level map membership, preserving ordinary references to nested JSON collections. Logging does not mutate supplied maps. Synchronize externally if nested collections are modified concurrently.
+# `bind(logger: logger, bindings: bindings)` returns a logger with persistent fields, encoded like `record` fields at the time of the call, and the parent's current threshold, timestamp setting, record limit, and transport. Later changes to the bound value do not affect the logger, and parent level changes do not change existing children. Bindings merge in parent → child → per-call order; later values win.
 #
 # ## Transports and cleanup
 #

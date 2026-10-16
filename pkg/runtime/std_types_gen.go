@@ -1058,17 +1058,18 @@ type Transport interface {
 	Close(ctx *Execution) Unit
 }
 type Logger interface {
-	Log(ctx *Execution, a0 LogLevel, a1 string, a2 Option[*Map[string, JsonValue]]) Result[Unit, LogError]
-	Trace(ctx *Execution, a0 string, a1 Option[*Map[string, JsonValue]]) Result[Unit, LogError]
-	Debug(ctx *Execution, a0 string, a1 Option[*Map[string, JsonValue]]) Result[Unit, LogError]
-	Info(ctx *Execution, a0 string, a1 Option[*Map[string, JsonValue]]) Result[Unit, LogError]
-	Warn(ctx *Execution, a0 string, a1 Option[*Map[string, JsonValue]]) Result[Unit, LogError]
-	Error(ctx *Execution, a0 string, a1 Option[*Map[string, JsonValue]]) Result[Unit, LogError]
-	Fatal(ctx *Execution, a0 string, a1 Option[*Map[string, JsonValue]]) Result[Unit, LogError]
+	Log(ctx *Execution, a0 LogLevel, a1 string) Result[Unit, LogError]
+	Trace(ctx *Execution, a0 string) Result[Unit, LogError]
+	Debug(ctx *Execution, a0 string) Result[Unit, LogError]
+	Info(ctx *Execution, a0 string) Result[Unit, LogError]
+	Warn(ctx *Execution, a0 string) Result[Unit, LogError]
+	Error(ctx *Execution, a0 string) Result[Unit, LogError]
+	Fatal(ctx *Execution, a0 string) Result[Unit, LogError]
+	LogJson(ctx *Execution, a0 LogLevel, a1 string, a2 string) Result[Unit, LogError]
+	ChildJson(ctx *Execution, a0 string) Result[Logger, LogError]
 	Enabled(ctx *Execution, a0 LogLevel) bool
 	Level(ctx *Execution) LogLevel
 	SetLevel(ctx *Execution, a0 LogLevel) Unit
-	Child(ctx *Execution, a0 *Map[string, JsonValue]) Logger
 	Flush(ctx *Execution) Result[Unit, LogError]
 }
 type NetworkError interface {
