@@ -210,7 +210,7 @@ func NameRank(name, query string) int {
 }
 
 func fold(s string) string {
-	return strings.NewReplacer("_", "", ".", "").Replace(strings.ToLower(s))
+	return strings.NewReplacer("_", "", ".", "", " ", "").Replace(strings.ToLower(s))
 }
 
 func looseRank(name, query string) int {

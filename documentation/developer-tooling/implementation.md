@@ -13,9 +13,9 @@ ms lint ms.toml --json
 ms fmt source.ms --check
 ms fmt ms.toml --check
 ms lsp
-ms search_std read file lines
+ms search_symbol read file lines
 ms search_symbol parse_config
-ms search_std json
+ms search_symbol json
 ms debug source.ms -- arg1
 ms debug source.ms --break source.ms:7 --json
 ms debug ms.toml --script commands.txt
@@ -69,8 +69,7 @@ Agents with a shell need no protocol server: three small commands answer what th
 
 | Command | Behavior |
 | --- | --- |
-| `ms search_std [<words>... \| <path>]` | Bounded standard-library lookup. Words fuzzy-search declarations and members (typos, partial words, synonyms, any word order; `--limit n` default 5, at most 15; `--json`). A single `<module>`, `<module>.<Name>`, or `<module>.<Name>.<member>` prints that page (each capped near 3.5 KB); no argument lists modules |
-| `ms search_symbol <name>` | Fuzzy, case-insensitive search by name (partial names, missing underscores, small typos; exact names first) over project declarations and standard-library symbols. A project match prints its definition `file:line:column`, type, one-line description, and up to five uses, from the language server's analysis; a standard match prints its signature and the `ms search_std` path; `--limit n` (default 5, at most 10) and `--json` |
+| `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project declarations and standard-library symbols (partial names, missing underscores, small typos, plain words; exact names first; `--limit n` default 5, at most 10; `--json`). A project match prints its definition `file:line:column`, type, one-line description, and up to five uses, from the language server's analysis; a standard match prints its signature and a path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, each capped near 3.5 KB; no argument lists modules |
 | `ms guide` | The language cheat sheet (under 2.5 KB) with a checked example program |
 
 Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which already print compact diagnostics and failures (`--json` for complete documents). The index is built from the checker's definitions, so it does not depend on any exported declaration files. The cheat sheet stays under 2,500 bytes because agents read it every session, and a test checks its complete program.

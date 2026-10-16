@@ -67,7 +67,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native function identities (receiver identities live in `internal/nativeabi`), and embedded sources. This is the standard signature authority |
 | `pkg/tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
 | `pkg/tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
-| `pkg/tooling/guide/` | Agent reference behind `ms search_std` and `ms guide`: a fuzzy standard-library index, bounded module, declaration, and member pages, and the language cheat sheet, all generated from the checker's definitions |
+| `pkg/tooling/guide/` | Agent reference behind `ms search_symbol` and `ms guide`: a fuzzy standard-library index, bounded module, declaration, and member pages, and the language cheat sheet, all generated from the checker's definitions |
 | `pkg/tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. guides and special call rules are extracted from comments in `pkg/stdlib/*.ms` |
 | `internal/decimal/`, `internal/nativeabi/` | Lightweight shared decimal literal rules, receiver-to-function identities, and the CLI/native test-event protocol; checked `.ms` declarations retain signature authority |
 | `internal/hostos/` | Platform helpers for native filesystem, process, and OS operations, included in the embedded dependency bundle |
