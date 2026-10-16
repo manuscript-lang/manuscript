@@ -183,7 +183,7 @@ Verify: inspect desktop and narrow mobile renders in both themes; the first
 action and example remain readable with brief supporting copy. This records
 the requested direction; verify its implementation in the checkout being edited.
 
-Decision: use `ms` as the documentation logo, including the header and favicon, rather than a single `m`. Check the mark at desktop and mobile sizes when changing [branding](../website/layouts/_partials/docs/brand.html) or the [favicon](../website/static/favicon.svg).
+Decision: the user requested an orange brand tint and a professional logo to replace the italic badge. Use the custom orange `ms` lettermark with two separate lowercase characters and a visible gap (no ligature) consistently in the header and favicon, with orange accents and readable foreground/background pairs in both themes. Check the mark at desktop and mobile sizes when changing [branding](../website/layouts/_partials/docs/brand.html) or [favicon generation](../website/layouts/_partials/docs/html-head-favicon.html).
 
 Apply when: redesigning the documentation shell or overview, or extending its visual system.
 Evidence: the user's documentation redesign correction; [Tailwind docs](https://tailwindcss.com/docs/installation/using-vite); [Vercel docs](https://vercel.com/docs); [site-owned visual system](../website/assets/_custom.scss); [overview presentation](../website/layouts/_shortcodes/docs-home.html).
@@ -195,7 +195,7 @@ Decision: show API excerpts in regular Manuscript declaration syntax, rather tha
 
 Verified: styling a code container did not highlight Manuscript examples fenced as `text`. Explicit `manuscript` fences now use the shared grammar, with [tokenization checks](../tests/docs/highlighting.test.cjs). The [documentation generator](../pkg/tooling/docgen/documentation.go) emits the same language label so regenerated API pages retain highlighting.
 
-Verify: compare authored Markdown with the base branch, keep semantic changes out of visual work, check desktop and mobile reading pages, and run the strict Hugo build with a repository URL prefix. Verify actual token colors in light and dark mode, unchanged copied text, and plain terminal output. Build `.artifacts/book/` from the current sources; never resolve generated-page conflicts by retaining stale output.
+Verify: compare authored Markdown with the base branch, keep semantic changes out of visual work, check desktop and mobile reading pages, and run the strict Hugo build with a repository URL prefix. Verify actual token colors in light and dark mode, unchanged copied text, and plain terminal output. Exercise the primary CTA as a visited link: the theme’s `.markdown a[href]:visited` rule can override a less-specific button selector and hide its label. Give the component explicit visited colors and check the rendered state. Build `.artifacts/book/` from the current sources; never resolve generated-page conflicts by retaining stale output.
 
 ### Source freshness does not establish published freshness
 

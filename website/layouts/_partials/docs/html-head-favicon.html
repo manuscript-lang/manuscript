@@ -1,0 +1,3 @@
+{{ $favicon := (resources.Get "brand/manuscript-mark.png").Resize "64x png" }}
+{{ $favicon = $favicon.Filter (images.Padding 16 0 "#00000000") }}
+<link rel="icon" type="image/png" sizes="64x64" href="{{ $favicon.RelPermalink }}">

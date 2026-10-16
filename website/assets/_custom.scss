@@ -1,41 +1,47 @@
 @font-face { font-family: "Geist"; src: url("fonts/geist-latin-wght-normal.woff2") format("woff2"); font-style: normal; font-weight: 100 900; font-display: swap; }
 // Site-owned overrides keep the vendored Hugo Book theme upgradeable.
 @mixin docs-light {
-  --body-background: #fff;
-  --body-font-color: #262626;
-  --color-link: #171717;
-  --color-visited-link: #171717;
-  --docs-prose-link: #006bdb;
-  --gray-100: #f5f5f5;
-  --gray-200: #e5e5e5;
-  --gray-500: #737373;
-  --docs-heading: #171717;
-  --docs-muted: #737373;
-  --docs-rail: #fafafa;
-  --docs-accent-bg: #f2f2f2;
-  --docs-code-bg: #fafafa;
-  --docs-code-keyword: #7856a6;
+  --body-background: #fffaf5;
+  --body-font-color: #33261e;
+  --color-link: #b9400b;
+  --color-visited-link: #b9400b;
+  --docs-prose-link: #b9400b;
+  --docs-button-bg: #c2410c;
+  --docs-button-hover: #9a3412;
+  --docs-button-fg: #fff;
+  --gray-100: #fcf0e5;
+  --gray-200: #ecded2;
+  --gray-500: #79685b;
+  --docs-heading: #2b1b11;
+  --docs-muted: #79685b;
+  --docs-rail: #fff6ed;
+  --docs-accent-bg: #ffedd8;
+  --docs-code-bg: #fffdf9;
+  --docs-code-keyword: #a54916;
   --docs-code-string: #187360;
-  --docs-code-function: #2465a0;
+  --docs-code-function: #9d3b13;
   --icon-filter: none;
 }
 @mixin docs-dark {
-  --body-background: #0a0a0a;
-  --body-font-color: #d4d4d4;
-  --color-link: #ededed;
-  --color-visited-link: #ededed;
-  --docs-prose-link: #70b8ff;
-  --gray-100: #171717;
-  --gray-200: #262626;
-  --gray-500: #a3a3a3;
-  --docs-heading: #fafafa;
-  --docs-muted: #a3a3a3;
-  --docs-rail: #0a0a0a;
-  --docs-accent-bg: #1c1c1c;
-  --docs-code-bg: #111111;
-  --docs-code-keyword: #c4a4ee;
+  --body-background: #140f0b;
+  --body-font-color: #e6d9cc;
+  --color-link: #ffad66;
+  --color-visited-link: #ffad66;
+  --docs-prose-link: #ffad66;
+  --docs-button-bg: #fb923c;
+  --docs-button-hover: #fdba74;
+  --docs-button-fg: #271306;
+  --gray-100: #211810;
+  --gray-200: #3b2c20;
+  --gray-500: #b6a292;
+  --docs-heading: #fff2e7;
+  --docs-muted: #b6a292;
+  --docs-rail: #140f0b;
+  --docs-accent-bg: #352111;
+  --docs-code-bg: #1b140e;
+  --docs-code-keyword: #ffb875;
   --docs-code-string: #88d5b4;
-  --docs-code-function: #8abce9;
+  --docs-code-function: #f9c08c;
   --icon-filter: brightness(0) invert(1);
 }
 html:root { @include docs-light; --border-radius: 6px; --docs-header-height: 64px; }
@@ -54,7 +60,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .docs-topbar { position: sticky; top: 0; z-index: 5; height: var(--docs-header-height); background: var(--body-background); border-bottom: 1px solid var(--gray-200); }
 .topbar-inner { max-width: 90rem; height: 100%; margin: auto; padding: 0 2rem; display: flex; align-items: center; gap: 2.5rem; }
 .docs-brand { display: flex; align-items: center; gap: .75rem; flex: none; color: var(--docs-heading) !important; font-size: 1.1rem; font-weight: 700; letter-spacing: -.035em; }
-.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #171717; color: #fff; font: italic bold 22px Georgia, serif; letter-spacing: -.075em; padding: 0 2px 3px 0; }
+.brand-mark { display: block; flex: none; width: 46px; height: 23px; object-fit: contain; }
 .brand-subtitle { display: block; font-size: .7rem; font-weight: 500; letter-spacing: .02em; color: var(--docs-muted); margin-top: 2px; }
 .docs-versions { position: relative; flex: none; margin-left: -1.5rem; font-size: .75rem; }
 .docs-versions summary { display: flex; align-items: center; gap: .6rem; padding: .4rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; color: var(--docs-muted); cursor: pointer; list-style: none; }
@@ -161,17 +167,18 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .docs-home-layout .book-page { width: 100%; padding: 0 3rem 1rem; }
 .docs-home-layout .book-article, .docs-home-layout .book-footer { max-width: 76rem; }
 .home-hero { position: relative; isolation: isolate; display: grid; justify-items: center; padding: 4rem 0 1.5rem; text-align: center; }
-.home-hero::before { content: ""; position: absolute; z-index: -1; inset: 0 -2rem 0; pointer-events: none; background: radial-gradient(ellipse at 50% 10%, rgba(88, 142, 255, .12), transparent 55%); }
+.home-hero::before { content: ""; position: absolute; z-index: -1; inset: 0 -2rem 0; pointer-events: none; background: radial-gradient(ellipse at 50% 10%, rgba(234, 88, 12, .14), transparent 55%); }
 .home-pitch { width: 100%; }
 .markdown .home-eyebrow { display: inline-flex; align-items: center; gap: .6rem; color: var(--docs-muted); font-size: .75rem; font-weight: 500; margin: 0 0 1.5rem; }
-.home-eyebrow > span { width: 6px; height: 6px; background: var(--docs-prose-link); border-radius: 50%; box-shadow: 0 0 0 4px rgba(88, 142, 255, .1); }
+.home-eyebrow > span { width: 6px; height: 6px; background: var(--docs-prose-link); border-radius: 50%; box-shadow: 0 0 0 4px rgba(234, 88, 12, .12); }
 .markdown .home-hero h1 { font-size: clamp(3rem, 6.6vw, 6rem); font-weight: 650; line-height: 1.02; letter-spacing: -.065em; margin: 0 0 1.5rem; }
 .home-hero h1 span { color: var(--docs-prose-link); }
 .markdown .home-description { margin: 0 auto; font-size: clamp(.95rem, 1.7vw, 1.15rem); line-height: 1.65; color: var(--docs-muted); }
 .home-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1.75rem; margin-top: 1.75rem; }
 .markdown .home-button[href] { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 1.5rem; border-radius: 7px; padding: .8rem 1.4rem; font-size: .88rem; font-weight: 600; text-decoration: none; }
-.markdown .home-button-primary[href] { background: var(--docs-heading); color: var(--body-background); box-shadow: 0 4px 14px rgba(0, 0, 0, .1); }
-.markdown .home-button:hover { opacity: .88; }
+.markdown a.home-button-primary[href],
+.markdown a.home-button-primary[href]:visited { background: var(--docs-button-bg); color: var(--docs-button-fg); box-shadow: 0 4px 14px rgba(194, 65, 12, .16); }
+.markdown a.home-button-primary[href]:hover { background: var(--docs-button-hover); }
 .markdown .home-explore[href] { flex: none; color: var(--docs-heading); font-size: .85rem; font-weight: 500; }
 .markdown .home-platforms { color: var(--docs-muted); font-size: .68rem; margin: 1rem 0 0; }
 .home-platforms span { margin-inline: .4rem; }
@@ -236,7 +243,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
   .version-menu { left: auto; right: 0; }
   .brand-subtitle { display: none; }
   .docs-brand { font-size: 1rem; gap: .5rem; }
-  .brand-mark { width: 29px; height: 29px; font-size: 19px; }
+  .brand-mark { width: 36px; height: 18px; }
   .theme-toggle { width: 29px; height: 29px; }
   .book-page, .docs-home-layout .book-page { padding: 1.1rem 1.25rem; }
   .docs-footer-meta { font-size: .63rem; }

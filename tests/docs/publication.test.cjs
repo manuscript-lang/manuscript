@@ -132,3 +132,27 @@ test('the landing page offers a trial while documentation keeps its reading navi
   const docs = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
   assert.ok(docs.includes('Documentation navigation'), 'Readers need a documentation sidebar');
 });
+
+
+test('landing and documentation pages share one favicon and a loadable brand mark', () => {
+  const home = fs.readFileSync(path.join(book, 'index.html'), 'utf8');
+  const canonical = [...home.matchAll(/<link\b[^>]*>/g)].map(match => match[0])
+    .find(tag => attribute(tag, 'rel') === 'canonical');
+  const prefix = new URL(attribute(canonical, 'href')).pathname;
+  const icons = [];
+  for (const route of ['index.html', 'learn/index.html']) {
+    const html = fs.readFileSync(path.join(book, route), 'utf8');
+    const favicons = [...html.matchAll(/<link\b[^>]*>/g)].map(match => match[0])
+      .filter(tag => attribute(tag, 'rel') === 'icon');
+    assert.equal(favicons.length, 1, `${route}: avoid competing theme and project favicons`);
+    icons.push(attribute(favicons[0], 'href'));
+    const brand = [...html.matchAll(/<img\b[^>]*>/g)].map(match => match[0])
+      .find(tag => (attribute(tag, 'class') || '').split(' ').includes('brand-mark'));
+    assert.ok(brand, `${route}: include the brand mark`);
+    for (const url of [icons.at(-1), attribute(brand, 'src')]) {
+      assert.ok(url.startsWith(prefix), `${route}: branding must respect the site prefix`);
+      assert.ok(fs.statSync(path.join(book, url.slice(prefix.length))).size > 0, `${route}: branding asset missing`);
+    }
+  }
+  assert.equal(icons[0], icons[1], 'Use a consistent favicon across the site');
+});
