@@ -1,8 +1,8 @@
 +++
-title = "Manuscript — a language for the agentic era"
+title = "Manuscript — The language for the agentic era."
 weight = 1
 bookToC = false
-description = "Readable code. Native executables. One complete toolchain."
+description = "Build with agents. Ship something real."
 +++
 
 {{< docs-home >}}
