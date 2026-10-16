@@ -91,7 +91,6 @@ test "age rotation starts a new file":
 test "an existing file's size counts toward rotation":
     with directory = value(filesystem().temporary("alog-")):
         let path = "{directory.path()}/events.ndjson"
-        let seeded = "{path}"
         value(
             filesystem().write_file(
                 path: path,

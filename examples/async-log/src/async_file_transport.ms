@@ -204,8 +204,6 @@ fn run(w: Writer, queue: BlockingQueue[Item], failures: BlockingQueue[LogError])
         else:
             return close_file(w)
 
-    return unit
-
 # Queues a record without waiting. The queue holds 4096 items of headroom beyond `capacity`, so a put never waits
 # even when concurrent producers pass the length check together; only the writer removes items.
 fn admit(t: AsyncFileTransport, data: Bytes) -> Result[Unit, LogError]:
@@ -241,7 +239,7 @@ impl Transport for AsyncFileTransport:
 
     fn close() -> Unit:
         self.queue.close()
-        let joined = self.writer.join()
+        let _ignored = self.writer.join()
         self.group.close()
 
 fn not_positive(limit: Optional[Int]) -> Bool:
