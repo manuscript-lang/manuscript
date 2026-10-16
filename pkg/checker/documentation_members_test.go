@@ -135,7 +135,7 @@ func TestEveryCheckedStandardMemberHasInventoryMetadata(t *testing.T) {
 			for _, m := range d.Members {
 				members[m.Kind+"/"+m.Name] = true
 			}
-			for kind, signatures := range map[string][]string{"field": d.Fields, "case": d.Cases, "operation": d.Operations, "accessor": d.Accessors} {
+			for kind, signatures := range map[string][]string{"field": d.Fields, "case": d.Cases, "operation": d.Operations} {
 				for _, signature := range signatures {
 					name, _, _ := strings.Cut(signature, ":")
 					if kind == "operation" {

@@ -4,9 +4,9 @@ fn subtract(amount: Int, deduction: Int = 1) -> Int: amount - deduction
 
 fn first[T](left: T, right: T) -> T: left
 
-fn size(values: Map[String, Int]) -> Int: values.length
+fn size(values: Map[String, Int]) -> Int: values.length()
 
-fn optional_size(values: Optional[Map[String, Int]]) -> Int: (values.unwrap().length)
+fn optional_size(values: Optional[Map[String, Int]]) -> Int: (values.unwrap().length())
 
 fn mark(log: List[Int], value: Int) -> Int:
     log.append(value)
@@ -27,7 +27,7 @@ test "map literals and positional identifier arguments":
     if stored(amount, deduction) != 7: return panic("function value")
 
     let values = {"a": 1, "b": 2, "a": 3}
-    if values.length != 2 or values.get("a").unwrap() != 3: return panic(
+    if values.length() != 2 or values.get("a").unwrap() != 3: return panic(
         "duplicate key"
     )
 
@@ -37,7 +37,7 @@ test "map literals and positional identifier arguments":
     )
 
     let empty: Map[String, Int] = {}
-    if (empty.length != 0 or size({}) != 0 or optional_size({}) != 0): return panic(
+    if (empty.length() != 0 or size({}) != 0 or optional_size({}) != 0): return panic(
         "empty context"
     )
 
@@ -45,7 +45,7 @@ test "map literals and positional identifier arguments":
     if nested.get("b").unwrap().get("c").unwrap() != 1: return panic("nested map")
 
     let optional: Map[String, Optional[Int]] = {"a": none, "b": some(2)}
-    if not optional.get("a").unwrap().is_none: return panic("context")
+    if not optional.get("a").unwrap().is_none(): return panic("context")
 
     let key = "c"
     let value = 5
@@ -84,6 +84,6 @@ test "map literal uses custom key equality":
     let a = Key(id: 1, label: "first")
     let b = Key(id: 1, label: "second")
     let values = {a: "a", b: "b"}
-    if values.length != 1 or values.get(a).unwrap() != "b": return panic(
+    if values.length() != 1 or values.get(a).unwrap() != "b": return panic(
         "custom key equality"
     )

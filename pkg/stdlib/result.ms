@@ -13,9 +13,9 @@ export type Result[T, E]:
         cause: E
     )
     # Reports whether this result contains a successful value.
-    get is_ok -> Bool:
+    fn is_ok() -> Bool:
     # Reports whether this result contains an expected error.
-    get is_error -> Bool:
+    fn is_error() -> Bool:
     # Returns the successful payload; faults when this is an error.
     fn unwrap() -> T:
     # Returns the error payload; faults when this is successful.

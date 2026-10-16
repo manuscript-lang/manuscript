@@ -41,7 +41,7 @@ fn parse(text: String) -> Result[Int, String]:
         if number < 0:
             return Result[Int, String].error("negative")
         return Result[Int, String].ok(number)
-    let checked = try guard(number: text.length)
+    let checked = try guard(number: text.length())
     return Result[Int, String].ok(checked + 1)
 
 fn labels(prefix: String) -> String:
@@ -67,7 +67,7 @@ test "local closures":
     check(ok: parse(text: "abc") == Result[Int, String].ok(4), name: "result with try")
     check(ok: labels(prefix: ">") == ">a-b", name: "string params and captures")
     check(ok: reordered() == 5, name: "reordered arguments")
-    check(ok: passed().length == 3 and passed().at(index: 2) == some(6), name: "closure passed as a value")
+    check(ok: passed().length() == 3 and passed().at(index: 2) == some(6), name: "closure passed as a value")
     check(ok: nested(n: 4) == 10, name: "closure calling closure")
 `, compiler.Options{Tests: true})
 	output, err := execute(t, result)

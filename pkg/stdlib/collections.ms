@@ -6,7 +6,7 @@ export type CollectionError:
     case InvalidInput
     # The result would hold more items than `max_items`, or more than the runtime's ceiling of 268435456 (2^28) items when `max_items` is omitted.
     case LimitExceeded
-    # A slice bound lies outside 0 <= start <= end <= length after negative bounds are resolved from the end.
+    # A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
     case OutOfRange
 
 # An ordered mutable collection with indexing, iteration, and transformations.
@@ -24,15 +24,15 @@ export type List[T]:
     # Returns the last equal element's zero-based index, or none; elements require Equal.
     fn last_index_of(value: T) -> Optional[Int]:
     # Returns the first element, or none when the list is empty.
-    get first -> Optional[T]:
+    fn first() -> Optional[T]:
     # Returns the last element, or none when the list is empty.
-    get last -> Optional[T]:
+    fn last() -> Optional[T]:
     # Reports whether the list has no elements.
-    get is_empty -> Bool:
+    fn is_empty() -> Bool:
     # Inserts `value` at index 0 in place, shifting existing elements one position later, and returns this same list.
     fn prepend(value: T) -> List[T]:
     # Inserts value before index in place and returns this list; negative indexes count from the end.
-    # Requires -length <= index <= length; index length appends, and invalid indexes fault.
+    # Requires -length() <= index <= length(); index length() appends, and invalid indexes fault.
     fn insert(index: Int, value: T) -> List[T]:
     # Removes and returns the last element in place, or none for an empty list.
     fn pop() -> Optional[T]:
@@ -44,7 +44,7 @@ export type List[T]:
     # Shifts the suffix without clearing prior values retained in spare backing capacity.
     fn remove(index: Int) -> List[T]:
     # Returns a new shallow List containing [start, end); outer storage is independent.
-    # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length return CollectionError.OutOfRange.
+    # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     # Copies the first min(count, length) elements into fresh shallow List storage.
     # Leaves the receiver unchanged; negative count is a programming fault.
@@ -95,14 +95,14 @@ export type List[T]:
     # Shrinking retains prior values in spare backing capacity, following captured Go slice traversal.
     fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     # Sets elements in [start, end) to `value` in place and returns this list.
-    # Bounds must satisfy 0 <= start <= end <= length; negative or larger bounds fault rather than counting from the end, and an empty range changes nothing.
+    # Bounds must satisfy 0 <= start <= end <= length(); negative or larger bounds fault rather than counting from the end, and an empty range changes nothing.
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     # Copies the elements in [start, end) to begin at index `target`, in place, and returns this list.
-    # The list never grows: copying stops at the end of the list. Source bounds must satisfy 0 <= start <= end <= length and a target must be within 0 through length; otherwise the call faults.
+    # The list never grows: copying stops at the end of the list. Source bounds must satisfy 0 <= start <= end <= length() and a target must be within 0 through length(); otherwise the call faults.
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
     # Returns a new set of the distinct elements, using Hashable equality; the first of equal elements is kept in insertion order.
     fn to_set() -> Set[T]:
-    # Returns a new list of the zero-based indexes 0 through length - 1.
+    # Returns a new list of the zero-based indexes 0 through length() - 1.
     fn keys() -> List[Int]:
     # Returns a new list of `ListEntry` records pairing each zero-based index with its element, in order.
     fn entries() -> List[ListEntry[T]]:
@@ -114,14 +114,14 @@ export type List[T]:
     # Returns a new list holding this list's elements followed by `other`; neither operand is changed.
     fn concat(other: List[T]) -> List[T]:
     # Returns the number of elements.
-    get length -> Int:
+    fn length() -> Int:
 
 # A mutable key-value collection. Keys use explicit `Hashable` value semantics.
 export type Map[T: Hashable, U]:
     # Returns a shallow copy with independent map storage.
     fn clone() -> Map[T, U]:
     # Reports whether this map has no entries.
-    get is_empty -> Bool:
+    fn is_empty() -> Bool:
     # Copies matching entries in insertion order, retaining payload references.
     # Callbacks traverse a snapshot even when they mutate the receiver.
     fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
@@ -170,7 +170,7 @@ export type Map[T: Hashable, U]:
     # Returns the value stored for an equal key, or none when the key is absent.
     fn get(key: T) -> Optional[U]:
     # Returns the number of entries.
-    get length -> Int:
+    fn length() -> Int:
     # Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position.
     fn add(key: T, value: U) -> Map[T, U]:
     # Removes an equal key and returns this same Map; remaining entries retain insertion order.
@@ -189,7 +189,7 @@ export type Set[T: Hashable]:
     # Copies outer storage, retaining element references and insertion order.
     fn clone() -> Set[T]:
     # Reports whether this set has no elements.
-    get is_empty -> Bool:
+    fn is_empty() -> Bool:
     # Copies matching elements in insertion order, retaining payload references.
     # Callbacks traverse a snapshot even when they mutate the receiver.
     fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
@@ -232,7 +232,7 @@ export type Set[T: Hashable]:
     # Reports whether an equal value is present, using the element's Hashable implementation.
     fn contains(value: T) -> Bool:
     # Returns the number of distinct values currently stored.
-    get length -> Int:
+    fn length() -> Int:
     # Adds a value in place and returns this set; an equal value retains its original payload and position.
     fn add(value: T) -> Set[T]:
     # Removes an equal value in place and returns this set; an absent value leaves it unchanged.
@@ -364,9 +364,9 @@ export type SetBuilder[T: Hashable]:
 #
 # ## Transform and search lists
 #
-# `take(count:)` returns a shallow copy of the first `count` elements; `drop(count:)` returns a shallow copy after them. Counts above `length` are clamped: taking copies the whole list, dropping returns an empty list. Zero takes an empty list or drops nothing; a negative count produces a programming fault naming the operation, parameter and original count. Both return fresh mutable List storage even for empty or whole-list copies, preserve element order and payload references, and leave the receiver unchanged. They are explicit copy operations and do not change loop or callback traversal behavior.
+# `take(count:)` returns a shallow copy of the first `count` elements; `drop(count:)` returns a shallow copy after them. Counts above `length()` are clamped: taking copies the whole list, dropping returns an empty list. Zero takes an empty list or drops nothing; a negative count produces a programming fault naming the operation, parameter and original count. Both return fresh mutable List storage even for empty or whole-list copies, preserve element order and payload references, and leave the receiver unchanged. They are explicit copy operations and do not change loop or callback traversal behavior.
 #
-# `count(predicate:)` returns how many elements match, and `distinct()` returns a new shallow list keeping the first of each group of equal elements in their original order; like `contains`, it requires `Equal` elements and compares each element with those already kept. `insert(index:, value:)` and `pop()` mutate the receiver: `insert` accepts `-length` through `length` and returns the same list, while `pop` removes the last element and returns it, or `none` for an empty list.
+# `count(predicate:)` returns how many elements match, and `distinct()` returns a new shallow list keeping the first of each group of equal elements in their original order; like `contains`, it requires `Equal` elements and compares each element with those already kept. `insert(index:, value:)` and `pop()` mutate the receiver: `insert` accepts `-length()` through `length()` and returns the same list, while `pop` removes the last element and returns it, or `none` for an empty list.
 #
 # `map` transforms each element, `filter` keeps matching elements, and `flat_map` combines the lists returned by its callback. These operations return new lists. Callbacks run sequentially and may wait for operations.
 #
@@ -435,7 +435,7 @@ export type SetBuilder[T: Hashable]:
 # | --- | --- |
 # | `length`, `is_empty`, `at` | Count bytes, test emptiness, or read an unsigned byte; negative lookup indexes are relative to the end. |
 # | `contains`, `starts_with`, `ends_with` | Test byte subsequences, prefixes, or suffixes. |
-# | `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length` respectively. |
+# | `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length()` respectively. |
 # | `split` | Split exact binary separators into a fresh List of immutable Bytes views. `max_parts` truncates returned parts; omitted/`none` is unlimited, zero returns no parts, negatives fault. |
 # | `slice` | Select a half-open byte range, returning `OutOfRange` for invalid bounds, under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
 # | `with_value`, `reversed`, `concat`, `clone` | Return Bytes without changing the receiver. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |

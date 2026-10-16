@@ -168,7 +168,7 @@ impl JsonDecoder for Decoder:
         check_cancelled()
 
         if self.finished: return error(JsonError.InvalidInput)
-        if self.failure.is_some: return error(self.failure.unwrap())
+        if self.failure.is_some(): return error(self.failure.unwrap())
 
         let values: List[JsonValue] = []
 
@@ -176,13 +176,13 @@ impl JsonDecoder for Decoder:
             match step(self, byte):
                 error(cause): return fail(self, cause)
                 ok(found):
-                    if found.is_some: values.append(found.unwrap())
+                    if found.is_some(): values.append(found.unwrap())
 
         return ok(values)
 
     fn finish() -> Result[List[JsonValue], JsonError]:
         if self.finished: return error(JsonError.InvalidInput)
-        if self.failure.is_some: return error(self.failure.unwrap())
+        if self.failure.is_some(): return error(self.failure.unwrap())
 
         self.finished = true
         let values: List[JsonValue] = []

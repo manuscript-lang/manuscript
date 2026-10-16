@@ -140,22 +140,11 @@ func (g *gen) viewMethod(view string, from, contract *checker.Type, op checker.O
 		args = append(args, g.forwardArg(ident(name), op.Type, i, m, from))
 	}
 	body := g.invokeMethod(m, from, selector(ident("v"), "self"), op.Name, args, &checker.Info{Type: m.Type})
-	if op.Accessor {
-		body = g.invokeAccessorBody(m, from, selector(ident("v"), "self"), op.Name)
-	}
 	return &ast.FuncDecl{
 		Recv: &ast.FieldList{List: []*ast.Field{field("v", ident(view))}},
 		Name: ident(camel(op.Name)), Type: functionType(params, g.goType(op.Type.Result)),
 		Body: block(returned(body)),
 	}
-}
-
-func (g *gen) invokeAccessorBody(m *checker.Method, from *checker.Type, receiver ast.Expr, name string) ast.Expr {
-	if m.Native != "" && m.Contract != nil {
-		return call(rtName(implName(m, g.sub(from))), ident("ctx"), receiver)
-	}
-	f := g.methodFunction(m, from)
-	return call(ident(f.name), ident("ctx"), receiver)
 }
 
 // resolveContractMethod finds the implementation of an operation of contract

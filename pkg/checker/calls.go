@@ -163,21 +163,15 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			callable = c.expression(callee, nil)
 		}
 		signature = callable.Type
-		if callable.Method == nil || !callable.Method.Accessor {
-			i.Method = callable.Method
-			i.Native = callable.Native
-		}
+		i.Method = callable.Method
+		i.Native = callable.Native
 	}
 	if signature != nil && signature.ID == "<invalid>" {
 		i.Type = signature
 		return i
 	}
 	if signature == nil || signature.Kind != "function" {
-		if callable != nil && callable.Method != nil && callable.Method.Accessor {
-			c.calledAccessor(e, callable.Method)
-		} else {
-			c.notCallable(e, signature)
-		}
+		c.notCallable(e, signature)
 		return i
 	}
 	i.Arguments = functionArguments(e.Args, signature.Params)

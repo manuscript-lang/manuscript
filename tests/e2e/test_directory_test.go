@@ -30,7 +30,7 @@ import panic from "@std/faults.ms"
 test "fixture next to the manifest":
     match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
         ok(data):
-            if data.length != 7:
+            if data.length() != 7:
                 return panic(message: "wrong fixture size")
         error(_):
             return panic(message: "fixture not found")

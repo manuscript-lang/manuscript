@@ -1,7 +1,7 @@
 import {stdin, stdout, read_all} from "@std/io.ms"
 
 fn all_digits(s: String) -> Bool:
-    if s.is_empty:
+    if s.is_empty():
         return false
     for c in s.scalar_values():
         if c < 48 or c > 57:
@@ -30,16 +30,16 @@ fn run() -> Result[Unit, Error]:
     let levels = Map[String, Int]()
     let stats = Map[String, Stat]()
     for line in text.split("\n"):
-        if line.trim().is_empty:
+        if line.trim().is_empty():
             continue
         let f = line.split(" ")
-        var ok = f.length == 6
+        var ok = f.length() == 6
         if ok:
-            ok = not f.at(0).unwrap().is_empty and is_level(f.at(1).unwrap()) and is_method(f.at(2).unwrap())
+            ok = not f.at(0).unwrap().is_empty() and is_level(f.at(1).unwrap()) and is_method(f.at(2).unwrap())
         if ok:
             let status = f.at(4).unwrap()
             let latency = f.at(5).unwrap()
-            ok = f.at(3).unwrap().starts_with("/") and status.length == 3 and all_digits(status) and all_digits(latency) and latency.length <= 9
+            ok = f.at(3).unwrap().starts_with("/") and status.length() == 3 and all_digits(status) and all_digits(latency) and latency.length() <= 9
         if not ok:
             malformed = malformed + 1
             continue
@@ -68,8 +68,8 @@ fn run() -> Result[Unit, Error]:
         return left - right
     )
     var p95 = 0
-    if sorted_lat.length > 0:
-        p95 = sorted_lat.at((95 * sorted_lat.length + 99) / 100 - 1).unwrap()
+    if sorted_lat.length() > 0:
+        p95 = sorted_lat.at((95 * sorted_lat.length() + 99) / 100 - 1).unwrap()
     out.append("status: 2xx={classes.at(0).unwrap()} 3xx={classes.at(1).unwrap()} 4xx={classes.at(2).unwrap()} 5xx={classes.at(3).unwrap()} other={classes.at(4).unwrap()}")
     out.append("p95: {p95}")
     if slowest >= 0:

@@ -20,7 +20,7 @@ test "prelude cases and optional methods need no imports":
     let inferred = some(value: 3)
     let absent: Optional[Int] = none
     let qualified = Optional[Int].some(value: 5)
-    if not inferred.is_some or not absent.is_none:
+    if not inferred.is_some() or not absent.is_none():
         return panic("presence check failed")
     if inferred.unwrap() != 3 or qualified.unwrap() != 5:
         return panic("payload changed")

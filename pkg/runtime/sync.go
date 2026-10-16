@@ -83,8 +83,8 @@ func SynchronizedGuard_Close[T any](_ *Execution, g *SynchronizedGuard[T]) Unit 
 	return Unit{}
 }
 
-// SynchronizedGuard_Value returns the guarded payload without cloning.
-func SynchronizedGuard_Value[T any](_ *Execution, g *SynchronizedGuard[T]) T {
+// SynchronizedGuard_Get returns the guarded payload without cloning.
+func SynchronizedGuard_Get[T any](_ *Execution, g *SynchronizedGuard[T]) T {
 	s := g.cell
 	s.mu.Lock()
 	defer s.mu.Unlock()

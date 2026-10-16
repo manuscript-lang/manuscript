@@ -69,11 +69,11 @@ import stdout from "@std/io.ms"
 
 fn run() -> Result[Unit, Error]:
     let path = arguments().at(0)
-    if path.is_none:
+    if path.is_none():
         return error(FileSystemError.InvalidInput)
     let bytes = try filesystem().read_file(path.unwrap(), max_bytes: 1048576)
     let text = bytes.to_text()
-    if text.is_none:
+    if text.is_none():
         return error(FileSystemError.InvalidData)
     try stdout().write(text.unwrap().to_bytes())
     return stdout().flush()
@@ -102,7 +102,7 @@ import {filesystem, FileSystemError} from "@std/fs.ms"
 
 fn run() -> Result[Unit, Error]:
     let path = arguments().at(0)
-    if path.is_none:
+    if path.is_none():
         return error(FileSystemError.InvalidInput)
     return filesystem().write_file(path.unwrap(), "saved notes\n".to_bytes(), replace: false)
 
@@ -131,7 +131,7 @@ fn run() -> Result[Unit, Error]:
     let input = stdin()
     while true:
         let line = try read_line(input, max_bytes: 4096)
-        if line.is_none:
+        if line.is_none():
             break
         try stdout().write("{line.unwrap()}\n".to_bytes())
     return stdout().flush()
@@ -163,7 +163,7 @@ fn show(number: Int) -> Result[Unit, Error]:
 
 export fn main() -> Int:
     let number = arguments().at(0).unwrap_or("42").parse_int()
-    if number.is_none:
+    if number.is_none():
         return 1
     match show(number.unwrap()):
         ok(_): return 0
@@ -219,16 +219,16 @@ import stdout from "@std/io.ms"
 
 fn run() -> Result[Unit, Error]:
     let url = arguments().at(0)
-    if url.is_none:
+    if url.is_none():
         return error(HttpError.InvalidInput)
     let response = try network().request(
         HttpMethod.Get, url.unwrap(), headers(), "".to_bytes(),
         max_response_bytes: 1048576
     )
-    if response.metadata.status != 200:
+    if response.metadata().status != 200:
         return error(HttpError.InvalidData)
     let text = response.body.to_text()
-    if text.is_none:
+    if text.is_none():
         return error(HttpError.InvalidData)
     try stdout().write(text.unwrap().to_bytes())
     return stdout().flush()

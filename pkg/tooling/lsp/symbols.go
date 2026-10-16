@@ -78,10 +78,6 @@ func documentSymbols(result compiler.Result, d document) []any {
 			}
 			child := symbol(method, methodEnd).(map[string]any)
 			child["kind"] = 6
-			if method.Accessor {
-				child["kind"] = 7 // SymbolKind.Property
-				child["detail"] = "read-only"
-			}
 			children = append(children, child)
 		}
 		value := map[string]any{"name": name, "detail": detail, "kind": kind, "range": span{Position(d.Text, decl.Pos.Offset), Position(d.Text, end)}, "selectionRange": selection(decl.Pos, decl.Name)}

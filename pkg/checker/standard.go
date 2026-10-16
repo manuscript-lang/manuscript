@@ -353,7 +353,7 @@ func (l *standardLoader) resolveDeclarations() {
 				}
 				c.typeDefaults(method.TypeParams, variables)
 				standardOperationVariables[s.ID+"/"+method.Name] = variables
-				def.Operations = append(def.Operations, Operation{Name: method.Name, Type: c.signature(method.Params, method.Result), Accessor: method.Accessor, Decl: method})
+				def.Operations = append(def.Operations, Operation{Name: method.Name, Type: c.signature(method.Params, method.Result), Decl: method})
 			}
 		}
 	}
@@ -429,9 +429,6 @@ func (l *standardLoader) bindReceivers() error {
 			for _, method := range declaration.Methods {
 				key := module.File + "/" + declaration.Name + "/" + method.Name
 				if native := nativeabi.ReceiverBindings[receiver][method.Name]; native != "" {
-					if method.Accessor != nativeabi.IsAccessor(receiver, method.Name) {
-						return fmt.Errorf("native member kind does not match source: %s.%s", receiver, method.Name)
-					}
 					standardReceiverBindings[symbol.ID+"/"+method.Name] = native
 					bound[receiver+"."+method.Name] = true
 				}

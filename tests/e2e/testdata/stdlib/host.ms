@@ -12,13 +12,13 @@ import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
 test "CLI test roots have empty arguments and host metadata agrees":
-    if not arguments().is_empty: return panic("test arguments")
+    if not arguments().is_empty(): return panic("test arguments")
 
     let info = system().info()
     if (
         info.cpu_count <= 0
-        or info.os.byte_length == 0
-        or info.architecture.byte_length == 0
+        or info.os.byte_length() == 0
+        or info.architecture.byte_length() == 0
     ): return panic("system info")
 
     let process = value(control().info())
@@ -32,8 +32,8 @@ test "CLI test roots have empty arguments and host metadata agrees":
     )
     if endianness() != "LE" and endianness() != "BE": return panic("endianness")
     if end_of_line() != "\n" and end_of_line() != "\r\n": return panic("line ending")
-    if os_type().byte_length == 0: return panic("os type")
-    if dev_null().byte_length == 0: return panic("null device")
+    if os_type().byte_length() == 0: return panic("os type")
+    if dev_null().byte_length() == 0: return panic("null device")
 
 test "process environment is live while CLI environment retains its snapshot":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
@@ -77,4 +77,4 @@ test "managed subprocess streams incrementally and cleans up on scope exit":
 
         child.stdin().close()
         if value(child.wait()) != 0: return panic("exit status")
-        if value(child.stdout().read()).is_some: return panic("stdout eof")
+        if value(child.stdout().read()).is_some(): return panic("stdout eof")

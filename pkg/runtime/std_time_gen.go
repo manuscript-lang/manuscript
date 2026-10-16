@@ -47,23 +47,23 @@ func check_Duration_Abs() {
 func check_Duration_Compare() {
 	var _ func(*Execution, Duration, Duration) int64 = Duration_Compare
 }
-func check_Duration_Nanoseconds() {
-	var _ func(*Execution, Duration) int64 = Duration_Nanoseconds
+func check_Duration_ToNanoseconds() {
+	var _ func(*Execution, Duration) int64 = Duration_ToNanoseconds
 }
-func check_Duration_Microseconds() {
-	var _ func(*Execution, Duration) int64 = Duration_Microseconds
+func check_Duration_ToMicroseconds() {
+	var _ func(*Execution, Duration) int64 = Duration_ToMicroseconds
 }
-func check_Duration_Milliseconds() {
-	var _ func(*Execution, Duration) int64 = Duration_Milliseconds
+func check_Duration_ToMilliseconds() {
+	var _ func(*Execution, Duration) int64 = Duration_ToMilliseconds
 }
-func check_Duration_Seconds() {
-	var _ func(*Execution, Duration) float64 = Duration_Seconds
+func check_Duration_ToSeconds() {
+	var _ func(*Execution, Duration) float64 = Duration_ToSeconds
 }
-func check_Duration_Minutes() {
-	var _ func(*Execution, Duration) float64 = Duration_Minutes
+func check_Duration_ToMinutes() {
+	var _ func(*Execution, Duration) float64 = Duration_ToMinutes
 }
-func check_Duration_Hours() {
-	var _ func(*Execution, Duration) float64 = Duration_Hours
+func check_Duration_ToHours() {
+	var _ func(*Execution, Duration) float64 = Duration_ToHours
 }
 func check_Instant_Shift() {
 	var _ func(*Execution, Instant, Duration) Instant = Instant_Shift

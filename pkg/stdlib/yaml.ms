@@ -256,7 +256,7 @@ fn numeric(text: String) -> Bool:
 
     if clean.starts_with("+") or clean.starts_with("-"): clean = (
         clean
-        .slice(start: 1, end: clean.scalar_length)
+        .slice(start: 1, end: clean.scalar_length())
         .unwrap_or("")
     )
 
@@ -270,7 +270,7 @@ fn numeric(text: String) -> Bool:
 
         if clean.starts_with("0x"): alphabet = "0123456789abcdefABCDEF"
 
-        let digits = clean.slice(start: 2, end: clean.scalar_length).unwrap_or("")
+        let digits = clean.slice(start: 2, end: clean.scalar_length()).unwrap_or("")
         if digits == "": return false
 
         for c in digits.split(separator: ""):
@@ -279,25 +279,25 @@ fn numeric(text: String) -> Bool:
         return true
 
     let exponent = clean.lower().split(separator: "e")
-    if exponent.length > 2: return false
+    if exponent.length() > 2: return false
 
-    if exponent.length == 2:
-        var power = exponent.last.unwrap()
+    if exponent.length() == 2:
+        var power = exponent.last().unwrap()
 
         if power.starts_with("+") or power.starts_with("-"): power = (
             power
-            .slice(start: 1, end: power.scalar_length)
+            .slice(start: 1, end: power.scalar_length())
             .unwrap_or("")
         )
 
         if not digit_text(power): return false
 
-    let mantissa = exponent.first.unwrap().split(separator: ".")
-    if mantissa.length > 2: return false
-    if mantissa.length == 1: return digit_text(mantissa.first.unwrap())
+    let mantissa = exponent.first().unwrap().split(separator: ".")
+    if mantissa.length() > 2: return false
+    if mantissa.length() == 1: return digit_text(mantissa.first().unwrap())
 
-    let whole = mantissa.first.unwrap()
-    let fraction = mantissa.last.unwrap()
+    let whole = mantissa.first().unwrap()
+    let fraction = mantissa.last().unwrap()
     if whole == "" and fraction == "": return false
 
     return (
@@ -595,7 +595,7 @@ fn boundary(text: String, colon: Bool) -> Int:
     var depth = 0
     var index = 0
 
-    while index < chars.length:
+    while index < chars.length():
         let c = chars.at(index).unwrap()
 
         if quote != "":
@@ -622,7 +622,7 @@ fn boundary(text: String, colon: Bool) -> Int:
             and c == ":"
             and depth == 0
             and (
-                index + 1 == chars.length
+                index + 1 == chars.length()
                 or chars.at((index + 1)).unwrap_or("") == " "
                 or chars.at((index + 1)).unwrap_or("") == "\t"
             )
@@ -673,7 +673,7 @@ fn indentation(context: Context, text: String) -> Result[Int, YamlError]:
 
 fn skip(context: Context) -> Unit:
     while (
-        context.index < context.lines.length
+        context.index < context.lines.length()
         and uncomment((context.lines.at(context.index).unwrap())).trim() == ""
     ): context.index = (context.index + 1)
 
@@ -687,7 +687,7 @@ fn complete(text: String) -> Bool:
     var index = 0
     let chars = text.split(separator: "")
 
-    while index < chars.length:
+    while index < chars.length():
         let c = chars.at(index).unwrap()
 
         if quote != "":
@@ -729,7 +729,11 @@ fn inline_value(
         or text.starts_with("&")
     )
 
-    while (structured and not complete(joined) and context.index < context.lines.length):
+    while (
+        structured
+        and not complete(joined)
+        and context.index < context.lines.length()
+    ):
         let next = context.lines.at(context.index).unwrap()
         # Keep quote state and physical empty lines when removing comments.
         let combined = joined.concat("\n").concat(next)
@@ -774,7 +778,7 @@ fn block_string(
 
     for c in (
         header
-        .slice(start: 1, end: header.scalar_length)
+        .slice(start: 1, end: header.scalar_length())
         .unwrap_or("")
         .split(separator: "")
     ):
@@ -801,10 +805,10 @@ fn block_string(
         var blank_indent = base + 1
 
         while (
-            probe < context.lines.length
+            probe < context.lines.length()
             and context.lines.at(probe).unwrap().slice(
                 start: indent(context.lines.at(probe).unwrap()),
-                end: context.lines.at(probe).unwrap().scalar_length
+                end: context.lines.at(probe).unwrap().scalar_length()
             ).unwrap_or("") == ""
         ):
             let spaces = indent(context.lines.at(probe).unwrap())
@@ -813,7 +817,7 @@ fn block_string(
 
             probe = probe + 1
 
-        if probe < context.lines.length: content_indent = indent(
+        if probe < context.lines.length(): content_indent = indent(
             (context.lines.at(probe).unwrap())
         )
 
@@ -821,11 +825,11 @@ fn block_string(
 
     let parts: List[String] = []
 
-    while context.index < context.lines.length:
+    while context.index < context.lines.length():
         let line = context.lines.at(context.index).unwrap()
         let spaces = indent(line)
         if (
-            line.slice(start: spaces, end: line.scalar_length).unwrap_or(
+            line.slice(start: spaces, end: line.scalar_length()).unwrap_or(
                 ""
             ) != ""
             and spaces < content_indent
@@ -835,7 +839,7 @@ fn block_string(
         parts.append(
             line.slice(
                 start: content_indent,
-                end: line.scalar_length
+                end: line.scalar_length()
             ).unwrap_or("")
         )
         context.index = context.index + 1
@@ -844,7 +848,7 @@ fn block_string(
     var index = 0
     var content = false
 
-    while index < parts.length:
+    while index < parts.length():
         let part = parts.at(index).unwrap()
 
         if part != "": content = true
@@ -857,14 +861,14 @@ fn block_string(
             and part != ""
             and not part.starts_with(" ")
             and not part.starts_with("\t")
-            and index + 1 < parts.length
+            and index + 1 < parts.length()
         ):
             var next_index = index + 1
 
-            while next_index < parts.length and parts.at(next_index).unwrap() == "":
+            while next_index < parts.length() and parts.at(next_index).unwrap() == "":
                 next_index = next_index + 1
 
-            if next_index < parts.length:
+            if next_index < parts.length():
                 let next = parts.at(next_index).unwrap()
 
                 if not next.starts_with(" ") and not next.starts_with("\t"):
@@ -872,8 +876,8 @@ fn block_string(
                     else: separator = ""
 
         if (
-            index + 1 == parts.length
-            and context.index == context.lines.length
+            index + 1 == parts.length()
+            and context.index == context.lines.length()
             and not context.final_break
         ): separator = ""
 
@@ -890,15 +894,15 @@ fn block_string(
         var trailing = 0
 
         while (
-            trailing < pieces.length
+            trailing < pieces.length()
             and pieces.at(-1 - trailing).unwrap_or("x") == ""
         ): trailing = trailing + 1
 
-        if trailing == pieces.length: trailing = trailing - 1
+        if trailing == pieces.length(): trailing = trailing - 1
 
         result = (
             result
-            .slice(start: 0, end: (result.scalar_length - trailing))
+            .slice(start: 0, end: (result.scalar_length() - trailing))
             .unwrap_or("")
         )
 
@@ -927,7 +931,7 @@ fn block_value(
         anchor = try anchor_name(flow)
         remainder = (
             remainder
-            .slice(start: flow.pos, end: remainder.scalar_length)
+            .slice(start: flow.pos, end: remainder.scalar_length())
             .unwrap_or("")
             .trim_start()
         )
@@ -949,7 +953,7 @@ fn block_value(
             var probe = context.index
             var blanks = 0
 
-            while probe < context.lines.length:
+            while probe < context.lines.length():
                 let line = context.lines.at(probe).unwrap()
 
                 if line.trim() == "":
@@ -992,7 +996,7 @@ fn block_value(
     else:
         skip(context)
 
-        if context.index < context.lines.length:
+        if context.index < context.lines.length():
             let line = uncomment(context.lines.at(context.index).unwrap())
             let next_indent = try indentation(context: context, text: line)
 
@@ -1051,9 +1055,9 @@ fn sequence_items(
     base: Int,
     depth: Int
 ) -> Result[Unit, YamlError]:
-    while context.index < context.lines.length:
+    while context.index < context.lines.length():
         skip(context)
-        if context.index >= context.lines.length: break
+        if context.index >= context.lines.length(): break
 
         let line = uncomment(context.lines.at(context.index).unwrap())
         let line_indent = try indentation(context: context, text: line)
@@ -1063,21 +1067,21 @@ fn sequence_items(
         let item = (
             line
             .trim_start()
-            .slice(start: 1, end: (line.trim_start().scalar_length))
+            .slice(start: 1, end: (line.trim_start().scalar_length()))
             .unwrap_or("")
             .trim_start()
         )
 
         let chain = nested_columns(line: line, base: base)
 
-        if chain.length > 0:
+        if chain.length() > 0:
             # A run of compact sequence indicators (`- - x`) opens one level per
             # indicator. Scan the line once and rewrite it once instead of per level.
-            let innermost = chain.at(chain.length - 1).unwrap()
+            let innermost = chain.at(chain.length() - 1).unwrap()
             let frames: List[List[YamlValue]] = []
             var level = 1
 
-            while level <= chain.length:
+            while level <= chain.length():
                 let counted = try count(context: context, depth: (depth + level))
                 frames.append([])
                 level = level + 1
@@ -1092,14 +1096,14 @@ fn sequence_items(
                             line
                             .slice(
                                 start: innermost,
-                                end: line.scalar_length
+                                end: line.scalar_length()
                             )
                             .unwrap_or("")
                         )
                     )
                 )
             )
-            level = chain.length
+            level = chain.length()
             var nested = frames.at(level - 1).unwrap()
             let ran = try sequence_items(
                 context: context,
@@ -1129,7 +1133,10 @@ fn sequence_items(
             let marker = (
                 line
                 .trim_start()
-                .slice(start: 1, end: (line.trim_start().scalar_length))
+                .slice(
+                    start: 1,
+                    end: (line.trim_start().scalar_length())
+                )
                 .unwrap_or("")
             )
             var gap = indent(marker)
@@ -1179,9 +1186,9 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
         let values = Map[String, YamlValue]()
         let explicit = Set[String]()
 
-        while context.index < context.lines.length:
+        while context.index < context.lines.length():
             skip(context)
-            if context.index >= context.lines.length: break
+            if context.index >= context.lines.length(): break
 
             let line = uncomment(context.lines.at(context.index).unwrap())
             let line_indent = try indentation(context: context, text: line)
@@ -1204,7 +1211,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                     delimited: false
                 )
                 name = try quoted(flow)
-                if flow.pos != flow.chars.length: return error(
+                if flow.pos != flow.chars.length(): return error(
                     invalid(
                         context: context,
                         reason: "invalid quoted key"
@@ -1235,7 +1242,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
             explicit.add(name)
             let text = (
                 content
-                .slice(start: colon + 1, end: content.scalar_length)
+                .slice(start: colon + 1, end: content.scalar_length())
                 .unwrap_or("")
                 .trim_start()
             )
@@ -1311,19 +1318,19 @@ export fn parse(
             some(value):
                 if value < 0: return error(YamlError.InvalidInput)
 
-    if not within(value: text.byte_length, limit: options.max_bytes): return error(
+    if not within(value: text.byte_length(), limit: options.max_bytes): return error(
         YamlError.LimitExceeded
     )
 
     var normalized = (
         text
-        .replace(old: "\r\n", new: "\n", max_replacements: text.byte_length)
-        .replace(old: "\r", new: "\n", max_replacements: text.byte_length)
+        .replace(old: "\r\n", new: "\n", max_replacements: text.byte_length())
+        .replace(old: "\r", new: "\n", max_replacements: text.byte_length())
     )
 
     if normalized.starts_with("\u{feff}"): normalized = (
         normalized
-        .slice(start: 1, end: normalized.scalar_length)
+        .slice(start: 1, end: normalized.scalar_length())
         .unwrap_or("")
     )
 
@@ -1350,12 +1357,12 @@ export fn parse(
     )
 
     # split's synthetic terminal empty line is not scalar content.
-    if normalized.ends_with("\n"): context.lines.remove(context.lines.length - 1)
+    if normalized.ends_with("\n"): context.lines.remove(context.lines.length() - 1)
 
     skip(context)
 
     if (
-        context.index < context.lines.length
+        context.index < context.lines.length()
         and context.lines.at(context.index).unwrap().starts_with("%")
     ):
         if uncomment(context.lines.at(context.index).unwrap()) != "%YAML 1.2": return error(
@@ -1368,7 +1375,7 @@ export fn parse(
         context.index = context.index + 1
         skip(context)
         if (
-            context.index >= context.lines.length
+            context.index >= context.lines.length()
             or uncomment(
                 (context.lines.at(context.index).unwrap())
             ) != "---"
@@ -1381,11 +1388,11 @@ export fn parse(
 
     # Content after the marker on the same line starts the document body.
     if (
-        context.index < context.lines.length
+        context.index < context.lines.length()
         and context.lines.at(context.index).unwrap().starts_with("--- ")
     ):
         let line = context.lines.at(context.index).unwrap()
-        let rest = line.slice(start: 4, end: line.scalar_length).unwrap_or("")
+        let rest = line.slice(start: 4, end: line.scalar_length()).unwrap_or("")
 
         if not rest.trim().starts_with("#"): (
             context
@@ -1398,7 +1405,7 @@ export fn parse(
         )
 
     if (
-        context.index < context.lines.length
+        context.index < context.lines.length()
         and uncomment((context.lines.at(context.index).unwrap())) == "---"
     ):
         context.index = context.index + 1
@@ -1407,7 +1414,7 @@ export fn parse(
     var result = YamlValue.Null
 
     if (
-        context.index < context.lines.length
+        context.index < context.lines.length()
         and uncomment((context.lines.at(context.index).unwrap())) != "..."
     ):
         result = try block(
@@ -1422,19 +1429,19 @@ export fn parse(
     skip(context)
 
     if (
-        context.index < context.lines.length
+        context.index < context.lines.length()
         and uncomment((context.lines.at(context.index).unwrap())) == "..."
     ):
         context.index = context.index + 1
         skip(context)
 
-    if context.index != context.lines.length: return error(
+    if context.index != context.lines.length(): return error(
         invalid(
             context: context,
             reason: "unexpected indentation or additional document"
         )
     )
-    if options.max_depth.is_none and options.max_values.is_none: return ok(result)
+    if options.max_depth.is_none() and options.max_values.is_none(): return ok(result)
 
     context.values = 0
     let valid = try validate(context: context, value: result, depth: 1)
@@ -1443,7 +1450,7 @@ export fn parse(
 fn hex4(code: Int) -> String:
     var digits = code.to_string(16)
 
-    while digits.length < 4: digits = "0".concat(digits)
+    while digits.length() < 4: digits = "0".concat(digits)
 
     return digits
 
@@ -1477,7 +1484,7 @@ fn format_key(key: String) -> String:
             c
         ): plain = false
 
-    if plain and "0123456789-".contains(key.chars().first.unwrap()): plain = false
+    if plain and "0123456789-".contains(key.chars().first().unwrap()): plain = false
 
     if (
         plain
@@ -1516,19 +1523,19 @@ fn scalar_text(value: YamlValue) -> Result[String, YamlError]:
             return ok(text)
 
         ArrayValue(values):
-            if values.is_empty: return ok("[]")
+            if values.is_empty(): return ok("[]")
 
             return ok("")
 
         ObjectValue(values):
-            if values.is_empty: return ok("\{\}")
+            if values.is_empty(): return ok("\{\}")
 
             return ok("")
 
 fn is_block(value: YamlValue) -> Bool:
     match value:
-        ArrayValue(values): return not values.is_empty
-        ObjectValue(values): return not values.is_empty
+        ArrayValue(values): return not values.is_empty()
+        ObjectValue(values): return not values.is_empty()
         _: return false
 
 fn emit_block(
@@ -1591,7 +1598,7 @@ export fn stringify(
 
     let text = out.freeze()
 
-    if not within(value: text.byte_length, limit: max_bytes): return error(
+    if not within(value: text.byte_length(), limit: max_bytes): return error(
         YamlError.LimitExceeded
     )
 

@@ -29,7 +29,7 @@ test "TLS certificate parsing verification hostname and expiration":
         parse_certificates(pem: certificate(), max_certificates: 1)
     )
     if (
-        certificates.length != 1
+        certificates.length() != 1
         or certificates.at(0).unwrap().dns_names != ["stdlib.test"]
     ): return panic("certificate metadata")
 
@@ -115,14 +115,14 @@ test "HTTPS trusts only the explicitly supplied local test root":
             with response = value(
                 client.request(
                     method: HttpMethod.Get,
-                    url: "https://{server.address}/",
+                    url: "https://{server.address()}/",
                     headers: text_headers(Map[String, String]()),
                     body: "".to_bytes(),
                     timeout: 2.seconds
                 )
             ):
                 if (
-                    response.metadata.status != 200
+                    response.metadata().status != 200
                     or value(
                         response.read()
                     ).unwrap() != "secure".to_bytes()

@@ -10,9 +10,9 @@ export type Optional[T]:
     # An absent value with no payload; no T needs to be constructed.
     case none
     # Returns true for some(value), and false for none.
-    get is_some -> Bool:
+    fn is_some() -> Bool:
     # Reports whether this value is absent.
-    get is_none -> Bool:
+    fn is_none() -> Bool:
     # Returns the payload. Calling this on `none` raises a fault.
     fn unwrap() -> T:
     # Returns the contained value, or `fallback` when this is `none`.

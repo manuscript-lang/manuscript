@@ -135,7 +135,7 @@ func JSON(modules []checker.APIModule) ([]byte, error) {
 	data, err := json.MarshalIndent(struct {
 		Format  int                 `json:"format"`
 		Modules []checker.APIModule `json:"modules"`
-	}{2, modules}, "", "  ")
+	}{1, modules}, "", "  ")
 	if err != nil {
 		return nil, err
 	}

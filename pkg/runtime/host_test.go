@@ -428,7 +428,7 @@ func TestTimeOperations(t *testing.T) {
 	if m := fault(func() { Duration_Negate(ctx, Duration(-1<<63)) }); !strings.HasPrefix(m, "Duration.negate: value (nanoseconds) must be between -9223372036854775807") {
 		t.Fatal(m)
 	}
-	if Duration_Seconds(ctx, Duration(1500*time.Millisecond)) != 1.5 || Duration_Milliseconds(ctx, Duration(1500*time.Millisecond)) != 1500 {
+	if Duration_ToSeconds(ctx, Duration(1500*time.Millisecond)) != 1.5 || Duration_ToMilliseconds(ctx, Duration(1500*time.Millisecond)) != 1500 {
 		t.Fatal("units")
 	}
 	start := time.Now()

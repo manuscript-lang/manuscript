@@ -16,7 +16,7 @@ func TestDefaultClosureAssignmentReferencesAndListHints(t *testing.T) {
             let nested = 1
             return nested
     ]
-    return value + callbacks.length
+    return value + callbacks.length()
 `
 	d := document{"file:///tmp/nested-defaults.ms", source, 1}
 	result := analyze(d, map[string]document{d.URI: d})

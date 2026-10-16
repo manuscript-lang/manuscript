@@ -200,7 +200,7 @@ func TestWildcardBindingsRemainSafeAcrossEditorFeatures(t *testing.T) {
 }
 
 func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
-	source := "fn count(values: List[String]) -> Int:\n    return values.length\n"
+	source := "fn count(values: List[String]) -> Int:\n    return values.length()\n"
 	d := document{"file:///tmp/standard-navigation.ms", source, 1}
 	docs := map[string]document{d.URI: d}
 	standardURI := "manuscript-stdlib:///collections.ms"

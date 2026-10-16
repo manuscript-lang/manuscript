@@ -21,7 +21,7 @@ export fn main() -> Int:
         none:
             return 1
 
-    let sum = total(first: values.length, second: 20, third: 30)
+    let sum = total(first: values.length(), second: 20, third: 30)
     let queue = Queue[Int](capacity: 4)
     if not queue.enqueue(package.count):
         return 1

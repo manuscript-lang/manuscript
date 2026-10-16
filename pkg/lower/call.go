@@ -496,6 +496,15 @@ func (g *gen) nativeMethodCall(m *checker.Method, receiverType *checker.Type, re
 	if m.Decl.Name == "clone" && (receiverType.Kind == "record" || receiverType.Kind == "alternative") {
 		return g.cloneValue(receiverType, receiver)
 	}
+	if m.Decl.Name == "length" && len(args) == 0 {
+		// A List or Bytes length is Go's len on the backing slice.
+		if isStd(receiverType, "List") {
+			return call(ident("int64"), call(ident("len"), selector(receiver, "Items")))
+		}
+		if isStd(receiverType, "Bytes") {
+			return call(ident("int64"), call(ident("len"), selector(receiver, "Data")))
+		}
+	}
 	fn := g.nativeMethodName(m, receiverType)
 	g.noteNative(fn)
 	targs, bind := g.nativeTypeArguments(m, receiverType, calleeInfo)

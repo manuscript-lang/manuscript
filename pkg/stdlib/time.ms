@@ -34,17 +34,17 @@ export type Duration:
     # Returns -1, 0, or 1.
     fn compare(other: Duration) -> Int:
     # Converts this duration to an integer number of nanoseconds.
-    get nanoseconds -> Int:
+    fn to_nanoseconds() -> Int:
     # Converts this duration to an integer number of microseconds.
-    get microseconds -> Int:
+    fn to_microseconds() -> Int:
     # Converts this duration to an integer number of milliseconds.
-    get milliseconds -> Int:
+    fn to_milliseconds() -> Int:
     # Converts this duration to floating-point seconds.
-    get seconds -> Float:
+    fn to_seconds() -> Float:
     # Converts this duration to floating-point minutes.
-    get minutes -> Float:
+    fn to_minutes() -> Float:
     # Converts this duration to floating-point hours.
-    get hours -> Float:
+    fn to_hours() -> Float:
 
 # An instant on a monotonic clock; it is not a calendar timestamp.
 export type Instant:
@@ -60,9 +60,9 @@ export type Timestamp:
     # Formats this timestamp in RFC 3339 form.
     fn to_string() -> String:
     # Returns the whole Unix seconds represented by this timestamp.
-    get unix_seconds -> Int:
+    fn unix_seconds() -> Int:
     # Returns this timestamp's nanosecond component.
-    get nanoseconds -> Int:
+    fn nanoseconds() -> Int:
     # Adds a duration to this wall-clock timestamp.
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
     # Returns `self - right` as a duration.

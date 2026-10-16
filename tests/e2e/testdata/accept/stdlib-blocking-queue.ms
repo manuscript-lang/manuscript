@@ -59,7 +59,7 @@ test "close drains queued values then ends takers":
         none:
             return panic(message: "queued value lost")
 
-    if jobs.take().is_some:
+    if jobs.take().is_some():
         return panic(message: "closed empty queue returned a value")
 
 test "group close cancels a blocked taker":

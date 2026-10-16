@@ -11,16 +11,20 @@ import panic from "@std/faults.ms"
 test "duration arithmetic and conversion":
     let interval = duration(nanoseconds: 1500000000)
     if (
-        interval.nanoseconds != 1500000000
-        or interval.microseconds != 1500000
-        or interval.milliseconds != 1500
+        interval.to_nanoseconds() != 1500000000
+        or interval.to_microseconds() != 1500000
+        or interval.to_milliseconds() != 1500
     ):
         return panic("duration integer conversion")
-    if (interval.seconds != 1.5 or 90.seconds.minutes != 1.5 or 90.minutes.hours != 1.5):
+    if (
+        interval.to_seconds() != 1.5
+        or 90.seconds.to_minutes() != 1.5
+        or 90.minutes.to_hours() != 1.5
+    ):
         return panic("duration fractional conversion")
 
     let negative = duration(-1500001)
-    if negative.microseconds != -1500 or negative.milliseconds != -1:
+    if negative.to_microseconds() != -1500 or negative.to_milliseconds() != -1:
         return panic("duration truncation")
     if (
         interval.add(1.seconds).subtract(500.milliseconds).multiply(3).divide(
@@ -37,10 +41,9 @@ test "duration arithmetic and conversion":
     ):
         return panic("duration comparison")
 
-    let captured_interval = interval
-    let convert: fn() -> Float = fn() -> Float: captured_interval.seconds
+    let convert = interval.to_seconds
     if convert() != 1.5:
-        return panic("captured duration accessor")
+        return panic("bound duration method")
 
 test "monotonic instant methods":
     let start = clock().now()
@@ -66,8 +69,8 @@ test "timestamp methods and expected range failures":
             return panic("timestamp construction failed")
 
     if (
-        value.unix_seconds != -1
-        or value.nanoseconds != 500000000
+        value.unix_seconds() != -1
+        or value.nanoseconds() != 500000000
         or value.to_string() != "1969-12-31T23:59:59.5Z"
     ):
         return panic("timestamp components")
@@ -78,8 +81,8 @@ test "timestamp methods and expected range failures":
             return panic("timestamp shift failed")
 
     if (
-        later.unix_seconds != 1
-        or later.nanoseconds != 0
+        later.unix_seconds() != 1
+        or later.nanoseconds() != 0
         or later.compare(value) != 1
         or value.compare(later) != -1
     ):

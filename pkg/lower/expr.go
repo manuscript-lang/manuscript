@@ -278,13 +278,16 @@ func (g *gen) caseFields(t *checker.Type, name string) []checker.Param {
 	return nil
 }
 
-// member lowers a field read, accessor, bound method, or qualified case.
+// member lowers a field read, bound method, or qualified case.
 func (g *gen) member(e *syntax.Expression, info *checker.Info) ast.Expr {
-	if info.Method != nil && info.Method.Accessor {
-		return g.accessor(e, info)
-	}
 	if info.Constructor != nil {
 		return g.caseValue(info.Constructor, info.Case, nil)
+	}
+	if info.Method == nil && info.Native != "" && g.info(e.Left).Type.ID == "Int" {
+		// An Int duration unit property such as 2.seconds.
+		fn := "Int_" + strings.ToUpper(info.Native[:1]) + info.Native[1:]
+		g.noteNative(fn)
+		return call(rtName(fn), ident("ctx"), g.expr(e.Left))
 	}
 	if info.Method != nil {
 		return g.boundMethod(e, info)

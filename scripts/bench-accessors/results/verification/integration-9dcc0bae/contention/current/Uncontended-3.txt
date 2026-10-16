@@ -1,9 +1,0 @@
-goos: linux
-goarch: amd64
-pkg: github.com/manuscript-lang/manuscript/pkg/runtime
-cpu: INTEL(R) XEON(R) PLATINUM 8573C
-BenchmarkAccessorUncontended/GuardValue/Public-2         	11473186	        19.81 ns/op	       0 B/op	       0 allocs/op
-BenchmarkAccessorUncontended/GuardValue/SafetyControl-2  	12649058	        18.97 ns/op	       0 B/op	       0 allocs/op
-BenchmarkAccessorUncontended/LoggerLevel/Public-2        	 4303048	        57.09 ns/op	      64 B/op	       1 allocs/op
-BenchmarkAccessorUncontended/LoggerLevel/SafetyControl-2 	 4582639	        51.41 ns/op	      64 B/op	       1 allocs/op
-PASS

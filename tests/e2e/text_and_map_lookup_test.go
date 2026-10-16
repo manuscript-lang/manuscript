@@ -38,13 +38,13 @@ test "text interpolation":
     check(ok: "n={n} f={f} ok={ok} s={s}" == "n=42 f=1.5 ok=true s=hi", name: "scalars")
     check(ok: "{n}" == "42", name: "single part")
     check(ok: "{s}{s}" == "hihi", name: "adjacent")
-    check(ok: "".length == 0, name: "empty")
-    check(ok: "héllo {n}".length == 8, name: "length counts scalars")
+    check(ok: "".length() == 0, name: "empty")
+    check(ok: "héllo {n}".length() == 8, name: "length counts scalars")
     check(ok: "{halve(n: 8)}" == "{halve(n: 8)}", name: "optional")
     let items = List[Int]()
     items.append(value: 1)
     check(ok: "{items}" == "[1]", name: "list")
-    check(ok: "{Point(x: 1, y: 2)}".length > 0, name: "record")
+    check(ok: "{Point(x: 1, y: 2)}".length() > 0, name: "record")
 
 test "map lookup":
     let m = Map[Int, Int]()

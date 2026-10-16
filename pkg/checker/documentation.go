@@ -22,13 +22,12 @@ type APIDeclaration struct {
 	Fields                     []string    `json:"fields,omitempty"`
 	Cases                      []string    `json:"cases,omitempty"`
 	Operations                 []string    `json:"operations,omitempty"`
-	Accessors                  []string    `json:"accessors,omitempty"`
 	Members                    []APIMember `json:"members,omitempty"`
 	Implements                 []string    `json:"implements,omitempty"`
 	ImplementationDeclarations []string    `json:"-"`
 }
 
-// APIMember describes source fields, cases, callable operations and read-only accessors.
+// APIMember adds source descriptions without changing the legacy member arrays.
 // Empty Doc values remain visible to documentation coverage consumers.
 type APIMember struct {
 	Name      string `json:"name"`
@@ -84,20 +83,11 @@ func documentImplementations(d *APIDeclaration, symbol *Symbol, methods []*Metho
 		}
 		contracts[method.Contract.String()] = true
 		d.ImplementationDeclarations = append(d.ImplementationDeclarations, "impl "+method.Contract.String()+" for "+method.Receiver.String()+":\n    "+documentDeclaration(method.Decl, "fn", method.Decl.Name))
-		kind, typ := "operation", method.Type
-		if method.Accessor {
-			kind, typ = "accessor", method.Type.Result
-		}
-		operation := method.Decl.Name + ": " + typ.String()
-		d.Members = append(d.Members, APIMember{Name: method.Decl.Name, Kind: kind, Signature: strings.TrimSpace(documentDeclaration(method.Decl, "fn", method.Decl.Name, sources[method.Decl.Pos.File])), Doc: leadingComment(sources[method.Decl.Pos.File], method.Decl.Pos.Offset), Contract: method.Contract.String()})
-		key := kind + ":" + operation
-		if !operations[key] {
-			if method.Accessor {
-				d.Accessors = append(d.Accessors, operation)
-			} else {
-				d.Operations = append(d.Operations, operation)
-			}
-			operations[key] = true
+		operation := method.Decl.Name + ": " + method.Type.String()
+		d.Members = append(d.Members, APIMember{Name: method.Decl.Name, Kind: "operation", Signature: strings.TrimSpace(documentDeclaration(method.Decl, "fn", method.Decl.Name, sources[method.Decl.Pos.File])), Doc: leadingComment(sources[method.Decl.Pos.File], method.Decl.Pos.Offset), Contract: method.Contract.String()})
+		if !operations[operation] {
+			d.Operations = append(d.Operations, operation)
+			operations[operation] = true
 		}
 	}
 	for contract := range contracts {
@@ -105,7 +95,6 @@ func documentImplementations(d *APIDeclaration, symbol *Symbol, methods []*Metho
 	}
 	sort.Strings(d.Implements)
 	sort.Strings(d.Operations)
-	sort.Strings(d.Accessors)
 	sortAPIMembers(d.Members)
 }
 
@@ -148,14 +137,6 @@ func documentSymbol(symbol *Symbol, sources map[string]string) APIDeclaration {
 		d.Parameters = append(d.Parameters, parameter)
 	}
 	operations := map[string]string{}
-	accessors := map[string]string{}
-	addOperation := func(receiver *Type, op Operation) {
-		if op.Accessor {
-			accessors[op.Name] = op.Type.Result.String()
-		} else {
-			operations[documentOperationName(receiver, op.Name)] = op.Type.String()
-		}
-	}
 	if def := symbol.Type.Def; def != nil {
 		d.Kind = def.Kind
 		if symbol.Decl != nil && symbol.Decl.Kind == "interface" {
@@ -179,22 +160,18 @@ func documentSymbol(symbol *Symbol, sources map[string]string) APIDeclaration {
 			d.Cases = append(d.Cases, value)
 		}
 		for _, op := range def.Operations {
-			addOperation(symbol.Type, op)
+			operations[documentOperationName(symbol.Type, op.Name)] = op.Type.String()
 		}
 	}
 	if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
 		for _, op := range intrinsic.Def.Operations {
-			addOperation(symbol.Type, op)
+			operations[op.Name] = op.Type.String()
 		}
 	}
 	for name, signature := range operations {
 		d.Operations = append(d.Operations, name+": "+signature)
 	}
-	for name, signature := range accessors {
-		d.Accessors = append(d.Accessors, name+": "+signature)
-	}
 	sort.Strings(d.Operations)
-	sort.Strings(d.Accessors)
 	return d
 }
 
@@ -272,7 +249,7 @@ func leadingComment(source string, offset int) string {
 	// Names of cases and operations follow their keyword; inline payload fields
 	// do not begin a declaration line and must not inherit a case description.
 	switch strings.TrimSpace(ownLine) {
-	case "", "export", "fn", "get", "case":
+	case "", "export", "fn", "case":
 	default:
 		return ""
 	}

@@ -1,8 +1,0 @@
-import invoke from "./domain.ms"
-import left from "./left.ms"
-import right from "./right.ms"
-export fn main() -> Int:
-    if invoke(left()) != 11: return 1
-    if invoke(right()) != 22: return 2
-    if invoke(left()) != 11: return 3
-    return 0

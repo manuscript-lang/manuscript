@@ -250,7 +250,7 @@ subject = "Launch announcement"
 
 let tags = ["docs"]
 let tag_count = fn() -> Int:
-    return tags.length
+    return tags.length()
 tags.append("release")
 # tag_count() returns 2.
 ```

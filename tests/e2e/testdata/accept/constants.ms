@@ -20,7 +20,7 @@ test "constants stand for their initializers":
     if not (GREETING == "limit 10"):
         return panic(message: "check failed")
 
-    if not (NOTHING.is_none):
+    if not (NOTHING.is_none()):
         return panic(message: "check failed")
 
     if not (from == 4):
@@ -30,7 +30,7 @@ test "each use starts from a fresh collection":
     var names = NAMES
     names = names.append(value: "c")
 
-    if not (names.length == 3 and NAMES.length == 2):
+    if not (names.length() == 3 and NAMES.length() == 2):
         return panic(message: "check failed")
 
 test "a local binding shadows a constant":

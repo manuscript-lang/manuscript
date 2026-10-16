@@ -1,3 +1,0 @@
-GitHub run 38665989875 for main 9dcc0bae: read-only connector lookup 2026-10-15.
-Build design book, Static/CLI/fuzz/editor, macOS host, Windows host, Go shards 0/1/2, aggregate language test, and Pages deployment: all completed success.
-This is upstream main evidence, not accessor-branch CI or publication.

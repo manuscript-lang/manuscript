@@ -1,5 +1,0 @@
-import {Read, Reader} from "./domain.ms"
-impl Read for Reader:
-    fn read() -> Int: self.value + 10
-export fn left() -> Read:
-    return Read(Reader(value: 1))

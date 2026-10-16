@@ -40,7 +40,9 @@ fn stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
             )
         )
     )
-    let written = value(exchange.write("{exchange.path}|{exchange.query}".to_bytes()))
+    let written = value(
+        exchange.write("{exchange.path()}|{exchange.query()}".to_bytes())
+    )
     return ok(unit)
 
 fn check_route(url: String, expected: String) -> Unit:
@@ -53,10 +55,10 @@ fn check_route(url: String, expected: String) -> Unit:
             timeout: 2.seconds
         )
     )
-    if response.metadata.status != 200 or response.body != expected.to_bytes(): return panic(
+    if response.metadata().status != 200 or response.body != expected.to_bytes(): return panic(
         "path or raw query changed"
     )
-    if (value(response.metadata.headers.text("SET-cookie")) != some(["a=1", "b=2"])): return panic(
+    if (value(response.metadata().headers.text("SET-cookie")) != some(["a=1", "b=2"])): return panic(
         "#257 repeated cookies regressed"
     )
 
@@ -70,7 +72,7 @@ fn check_rejected(url: String) -> Unit:
             timeout: 2.seconds
         )
     )
-    if response.metadata.status != 400: return panic(
+    if response.metadata().status != 400: return panic(
         "unsafe or invalid path was dispatched"
     )
 
@@ -85,7 +87,7 @@ fn check_paths(base: String) -> Unit:
 
 test "buffered routes validate original input and decode once":
     with server = value(network().serve(address: "127.0.0.1:0", handler: route)):
-        check_paths("http://{server.address}")
+        check_paths("http://{server.address()}")
 
 test "streaming routes validate original input and decode once":
     with server = value(
@@ -95,7 +97,7 @@ test "streaming routes validate original input and decode once":
             options: HttpServerOptions(tls: none)
         )
     ):
-        check_paths("http://{server.address}")
+        check_paths("http://{server.address()}")
 
 fn expect_http_error[T](outcome: Result[T, HttpError]) -> Unit:
     match outcome:

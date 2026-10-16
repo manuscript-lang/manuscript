@@ -6,10 +6,10 @@ import panic from "@std/faults.ms"
 test "bound and forwarded calls keep the equality of the collection creator":
     let first = first_run().values()
     let second = second_run().values()
-    if first.length != 1 or first.at(0).unwrap().id != 2:
+    if first.length() != 1 or first.at(0).unwrap().id != 2:
         return panic("first equality scope")
     if (
-        second.length != 1
+        second.length() != 1
         or second.at(0).unwrap().id != 1
         or second.at(0).unwrap().label != "original"
     ):
@@ -22,10 +22,10 @@ test "bound and forwarded calls keep the equality of the collection creator":
     let remove = first_remove(items)
     add(Key(1, "original"))
     add(Key(1, "duplicate"))
-    if items.length != 2: return panic("collection equality follows its creator")
+    if items.length() != 2: return panic("collection equality follows its creator")
 
     remove(Key(1, "different"))
-    if items.length != 2: return panic("remove matches with the creator's equality")
+    if items.length() != 2: return panic("remove matches with the creator's equality")
 
     remove(Key(1, "original"))
-    if items.length != 1: return panic("remove with the creator's equality")
+    if items.length() != 1: return panic("remove with the creator's equality")

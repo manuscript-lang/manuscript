@@ -25,13 +25,12 @@ type Param struct {
 	Type *Type
 }
 
-// Operation retains the public member category and source identity alongside its
-// implementation signature. Accessor member reads project Type.Result.
+// Operation retains a receiver or contract operation's signature and source
+// identity, so defaults declared by a contract reach its implementations.
 type Operation struct {
-	Name     string
-	Type     *Type
-	Accessor bool
-	Decl     *syntax.Declaration
+	Name string
+	Type *Type
+	Decl *syntax.Declaration
 }
 type Definition struct {
 	Symbol     *Symbol
@@ -59,7 +58,6 @@ type Binding struct {
 	Function int
 }
 type Method struct {
-	Accessor                 bool
 	ID                       string
 	Module                   string
 	Local                    bool

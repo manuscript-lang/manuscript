@@ -1,6 +1,0 @@
-export interface Read:
-    fn read() -> Int
-export type Reader:
-    value: Int
-export fn invoke(view: Read) -> Int:
-    return view.read()

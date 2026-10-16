@@ -102,6 +102,11 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 			fields[field.Name] = true
 		}
 	}
+	if receiver.ID == "Int" {
+		for _, name := range []string{"seconds", "milliseconds", "minutes"} {
+			result = append(result, Member{name, "field", standard("Duration"), nil})
+		}
+	}
 	for name := range candidates {
 		if fields[name] {
 			continue
@@ -109,11 +114,7 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 		methods := c.methods(receiver, name)
 		if len(methods) == 1 {
 			m := methods[0]
-			kind, typ := "method", m.Type
-			if m.Accessor {
-				kind, typ = "accessor", m.Type.Result
-			}
-			result = append(result, Member{name, kind, typ, m.Decl})
+			result = append(result, Member{name, "method", m.Type, m.Decl})
 		}
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })

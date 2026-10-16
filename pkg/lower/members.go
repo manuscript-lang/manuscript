@@ -59,28 +59,6 @@ func (g *gen) methodFunction(m *checker.Method, receiver *checker.Type) *funcDec
 	return g.intern(created)
 }
 
-// accessor reads a computed member declared with `get`.
-func (g *gen) accessor(e *syntax.Expression, info *checker.Info) ast.Expr {
-	receiverType := g.info(e.Left).Type
-	receiver := g.expr(e.Left)
-	m := g.resolveMethod(info.Method, receiverType, e.Text)
-	receiverType = g.sub(receiverType)
-	switch {
-	case m.Native == "contract":
-		return call(selector(receiver, camel(e.Text)), ident("ctx"))
-	case m.Native != "" && m.Contract == nil:
-		fn := g.nativeMethodName(m, receiverType)
-		g.noteNative(fn)
-		targs, _ := g.nativeTypeArguments(m, receiverType, nil)
-		return call(generic(rtName(fn), targs...), ident("ctx"), receiver)
-	case m.Native != "":
-		g.noteNative(implName(m, receiverType))
-		return call(rtName(implName(m, receiverType)), ident("ctx"), receiver)
-	}
-	f := g.methodFunction(m, receiverType)
-	return call(ident(f.name), ident("ctx"), receiver)
-}
-
 // boundMethod is a method used as a value: a function with the receiver bound.
 func (g *gen) boundMethod(e *syntax.Expression, info *checker.Info) ast.Expr {
 	t := g.sub(info.Type)

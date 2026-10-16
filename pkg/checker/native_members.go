@@ -49,11 +49,6 @@ func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 		return nil
 	}
 	m := methods[0]
-	if m.Accessor {
-		// A read projects the result, even when its native body is callable.
-		// Let ordinary member inference retain the accessor identity.
-		return nil
-	}
 	info := &Info{Type: m.Type, Method: m, Native: m.Native, NoReturn: receiver.NoReturn}
 	setInfo(member, info)
 	return info

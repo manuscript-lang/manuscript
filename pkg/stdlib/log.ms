@@ -95,7 +95,7 @@ export interface Logger:
     # Tests the current filtering threshold; Silent is never enabled as a record level.
     fn enabled(level: LogLevel) -> Bool
     # Returns this logger's current threshold, independent of its parent or children.
-    get level -> LogLevel
+    fn level() -> LogLevel
     # Changes only this logger's threshold; existing child loggers retain their copied threshold.
     fn set_level(level: LogLevel) -> Unit
     # Returns a logger that adds these fields to each record.
@@ -170,7 +170,7 @@ impl Error for LogError:
 #
 # `trace`, `debug`, `info`, `warn`, `error`, and `fatal` return `Result[Unit, LogError]`. Their levels are 10, 20, 30, 40, 50, and 60 respectively. `log(level: level, message: message, fields: fields)` selects a method's level dynamically. `LogLevel.Silent` is a filtering threshold; using it as a record level returns `InvalidInput`. `fatal` emits a record and leaves process termination to the caller.
 #
-# The default threshold is `LogLevel.Info`. Pass `level: LogLevel.Debug` to `create`, or use `logger.set_level(LogLevel.Debug)` later. `logger.level` returns the current threshold and `logger.enabled(LogLevel.Debug)` checks whether that level passes it. `LogLevel.Silent` disables all logging. Filtered calls return `ok(unit)` without serialization or transport access, even if the transport is closed; arguments still evaluate normally.
+# The default threshold is `LogLevel.Info`. Pass `level: LogLevel.Debug` to `create`, or use `logger.set_level(LogLevel.Debug)` later. `logger.level()` returns the current threshold and `logger.enabled(LogLevel.Debug)` checks whether that level passes it. `LogLevel.Silent` disables all logging. Filtered calls return `ok(unit)` without serialization or transport access, even if the transport is closed; arguments still evaluate normally.
 #
 # Pass `bindings: bindings` to `create` for persistent fields. `logger.child(bindings)` makes a logger with extra context and the parent's current threshold, timestamp setting, record limit, and transport. Parent level changes do not change existing children. Bindings merge in parent → child → per-call order; later values win. Construction and child creation copy top-level map membership, preserving ordinary references to nested JSON collections. Logging does not mutate supplied maps. Synchronize externally if nested collections are modified concurrently.
 #

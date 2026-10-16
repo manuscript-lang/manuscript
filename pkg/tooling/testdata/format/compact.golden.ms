@@ -34,7 +34,7 @@ test "compact formatting preserves behavior":
     )
     if values != [1, 2, 2, 4, 3, 6]: return panic("list changed")
     if nested != [[1, 2], [3, 4]]: return panic("nested list changed")
-    if invalid.length != 6: return panic("literal list changed")
+    if invalid.length() != 6: return panic("literal list changed")
     if mapped != [2, 3, 4, 5, 6, 7]: return panic("callback changed")
     if count() != 102: return panic("inline callback changed")
     if choose(Choice.Zero) != "zero # unchanged": return panic("match changed")

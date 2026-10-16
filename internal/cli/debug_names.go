@@ -31,7 +31,7 @@ func namesFromInspection(root string, inspection tooling.Inspection) debugger.Na
 	}
 	for _, entity := range inspection.Entities {
 		file := filepath.ToSlash(entity.Span.File)
-		function := entity.Kind == syntax.KindFn || entity.Kind == syntax.KindTest || entity.Kind == "method" || entity.Kind == "accessor" && entity.GoID != ""
+		function := entity.Kind == syntax.KindFn || entity.Kind == syntax.KindTest || entity.Kind == "method"
 		names.Entities = append(names.Entities, debugger.Entity{
 			Name: entity.Name, File: file, Line: entity.Span.Line, Function: function,
 			Body: firstStatementAfter(inspection.Statements, entity.Span),

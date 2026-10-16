@@ -340,13 +340,13 @@ func TestSynchronizedLockSetWait(t *testing.T) {
 	cell := NewSynchronized(int64(0))
 	g := Synchronized_Lock(ctx, cell)
 	SynchronizedGuard_Set(ctx, g, 5)
-	if SynchronizedGuard_Value(ctx, g) != 5 {
+	if SynchronizedGuard_Get(ctx, g) != 5 {
 		t.Fatal("value")
 	}
 	mustFault(t, "held by this operation", func() { Synchronized_Lock(ctx, cell) })
 	SynchronizedGuard_Close(ctx, g)
 	SynchronizedGuard_Close(ctx, g)
-	mustFault(t, "Synchronized guard is closed", func() { SynchronizedGuard_Value(ctx, g) })
+	mustFault(t, "Synchronized guard is closed", func() { SynchronizedGuard_Get(ctx, g) })
 	mustFault(t, "Synchronized guard is closed", func() { SynchronizedGuard_Set(ctx, g, 1) })
 }
 
@@ -358,7 +358,7 @@ func TestSynchronizedConcurrentCounter(t *testing.T) {
 		TaskGroup_Start(ctx, group, func(c *Execution) Unit {
 			for j := 0; j < 100; j++ {
 				g := Synchronized_Lock(c, cell)
-				SynchronizedGuard_Set(c, g, SynchronizedGuard_Value(c, g)+1)
+				SynchronizedGuard_Set(c, g, SynchronizedGuard_Get(c, g)+1)
 				SynchronizedGuard_Close(c, g)
 			}
 			return Unit{}
@@ -369,7 +369,7 @@ func TestSynchronizedConcurrentCounter(t *testing.T) {
 	}
 	g := Synchronized_Lock(ctx, cell)
 	defer SynchronizedGuard_Close(ctx, g)
-	if v := SynchronizedGuard_Value(ctx, g); v != 800 {
+	if v := SynchronizedGuard_Get(ctx, g); v != 800 {
 		t.Fatalf("counter = %d", v)
 	}
 }
@@ -381,7 +381,7 @@ func TestSynchronizedWaitNotify(t *testing.T) {
 	woke := TaskGroup_Start(ctx, group, func(c *Execution) bool {
 		g := Synchronized_Lock(c, ready)
 		defer SynchronizedGuard_Close(c, g)
-		for !SynchronizedGuard_Value(c, g) {
+		for !SynchronizedGuard_Get(c, g) {
 			SynchronizedGuard_Wait(c, g)
 		}
 		return true

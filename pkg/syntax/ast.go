@@ -84,11 +84,7 @@ type Declaration struct {
 	// without parameters whose body returns the initializer, and every use
 	// evaluates that initializer. Result is the annotation, or a placeholder
 	// at the initializer's position until the checker infers the type.
-	Constant bool
-	// Accessor marks a read-only computed member declared with `get`. It retains
-	// KindFn and an ordinary callable body, but a member read evaluates its result
-	// rather than binding a function. Params and TypeParams are always empty.
-	Accessor                   bool
+	Constant                   bool
 	TypeParams                 []TypeParameter
 	Fields                     []Parameter
 	Cases                      []Case

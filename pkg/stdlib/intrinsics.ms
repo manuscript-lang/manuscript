@@ -3,7 +3,6 @@ import StringError from "@std/string.ms"
 import NumberError from "@std/numbers.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
-import Duration from "@std/time.ms"
 
 # Every value has this operation, including unconstrained type parameters.
 interface ValueOperations:
@@ -13,14 +12,14 @@ interface ValueOperations:
 interface CloneOperations[T]:
     fn clone() -> T
 
-# String receiver operations use UTF-8 text. Members named `scalar_*` count Unicode
+# String receiver operations use UTF-8 text. Methods named `scalar_*` count Unicode
 # scalar values; ordinary indices and lengths count Unicode scalar positions unless
-# the member explicitly refers to bytes.
+# the method explicitly refers to bytes.
 interface StringOperations:
     # Counts Unicode scalars, with the same unit as scalar_length.
-    get length -> Int
+    fn length() -> Int
     # Reports whether the text contains no scalars.
-    get is_empty -> Bool
+    fn is_empty() -> Bool
     # Returns a fresh list with one String for each Unicode scalar, in order.
     fn chars() -> List[String]
     # Reverses Unicode scalar order; combining sequences/graphemes may change.
@@ -69,10 +68,10 @@ interface StringOperations:
         max_replacements: Optional[Int] = none
     ) -> String
     # Returns the number of Unicode scalar values in the string.
-    get scalar_length -> Int
+    fn scalar_length() -> Int
     # Returns each Unicode scalar value as an integer.
     fn scalar_values() -> List[Int]
-    # Selects [start, end) in Unicode scalars; requires 0 <= start <= end <= scalar_length.
+    # Selects [start, end) in Unicode scalars; requires 0 <= start <= end <= scalar_length().
     # Negative, inverted, or out-of-range bounds return StringError.OutOfRange.
     fn slice_scalars(start: Int, end: Int) -> Result[String, StringError]
     # Splits exact separators, truncating parts to a supplied nonnegative cap; zero returns [], negatives fault.
@@ -90,7 +89,7 @@ interface StringOperations:
     fn scalar_at(index: Int) -> Optional[Int]
     # Returns the first matching Unicode scalar index or none; empty value matches at zero.
     fn index_of(value: String) -> Optional[Int]
-    # Returns the last matching Unicode scalar index or none; empty value matches at scalar_length.
+    # Returns the last matching Unicode scalar index or none; empty value matches at scalar_length().
     fn last_index_of(value: String) -> Optional[Int]
     # Removes Unicode whitespace at the start.
     fn trim_start() -> String
@@ -118,10 +117,10 @@ interface StringOperations:
         max_bytes: Optional[Int] = none
     ) -> Result[String, StringError]
     # Selects [start, end) in Unicode scalars; negative bounds are relative to the end.
-    # Bounds outside 0 <= start <= end <= scalar_length return StringError.OutOfRange; the receiver is unchanged.
+    # Bounds outside 0 <= start <= end <= scalar_length() return StringError.OutOfRange; the receiver is unchanged.
     fn slice(start: Int, end: Int) -> Result[String, StringError]
     # Returns the UTF-8 encoded byte length.
-    get byte_length -> Int
+    fn byte_length() -> Int
     # Encodes the string as UTF-8 bytes.
     fn to_bytes() -> Bytes
     # Parses signed ASCII decimal digits; invalid text or Int overflow returns none.
@@ -129,12 +128,6 @@ interface StringOperations:
 
 # Conversion operations for machine-sized integers.
 interface IntOperations:
-    # Scales this integer to a Duration in milliseconds; out-of-range values fault.
-    get milliseconds -> Duration
-    # Scales this integer to a Duration in seconds; out-of-range values fault.
-    get seconds -> Duration
-    # Scales this integer to a Duration in minutes; out-of-range values fault.
-    get minutes -> Duration
     # Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
     # A radix outside 2 through 36 is a programming fault.
     fn to_string(radix: Int) -> String
@@ -155,9 +148,9 @@ interface FloatOperations:
     # Returns the shortest round-trip representation, including NaN and signed infinities.
     fn to_string() -> String
     # Tests whether the value is NaN.
-    get is_nan -> Bool
+    fn is_nan() -> Bool
     # Tests whether the value is neither NaN nor an infinity.
-    get is_finite -> Bool
+    fn is_finite() -> Bool
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
     fn truncate_to_int() -> Optional[Int]
 

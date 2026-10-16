@@ -270,7 +270,7 @@ class ManuscriptAdapter {
       if (!this.locals.has(local.go)) this.locals.set(local.go, []);
       this.locals.get(local.go).push(local);
     }
-    this.entities = inspection.entities.filter(e => e.kind === 'fn' || e.kind === 'method' || e.kind === 'accessor' && e.go_id);
+    this.entities = inspection.entities.filter(e => e.kind === 'fn' || e.kind === 'method');
   }
   async launch(args) {
     args = { ...args };

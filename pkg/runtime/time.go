@@ -208,20 +208,22 @@ func Duration_Compare(_ *Execution, left, other Duration) int64 {
 	return compareInt64(int64(left), int64(other))
 }
 
-func Duration_Nanoseconds(_ *Execution, value Duration) int64 { return int64(value) }
-func Duration_Microseconds(_ *Execution, value Duration) int64 {
+func Duration_ToNanoseconds(_ *Execution, value Duration) int64 { return int64(value) }
+func Duration_ToMicroseconds(_ *Execution, value Duration) int64 {
 	return int64(value) / int64(time.Microsecond)
 }
-func Duration_Milliseconds(_ *Execution, value Duration) int64 {
+func Duration_ToMilliseconds(_ *Execution, value Duration) int64 {
 	return int64(value) / int64(time.Millisecond)
 }
-func Duration_Seconds(_ *Execution, value Duration) float64 {
+func Duration_ToSeconds(_ *Execution, value Duration) float64 {
 	return float64(value) / float64(time.Second)
 }
-func Duration_Minutes(_ *Execution, value Duration) float64 {
+func Duration_ToMinutes(_ *Execution, value Duration) float64 {
 	return float64(value) / float64(time.Minute)
 }
-func Duration_Hours(_ *Execution, value Duration) float64 { return float64(value) / float64(time.Hour) }
+func Duration_ToHours(_ *Execution, value Duration) float64 {
+	return float64(value) / float64(time.Hour)
+}
 
 func sameClock(a, b Instant) {
 	if a.Domain != b.Domain {

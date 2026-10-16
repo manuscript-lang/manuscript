@@ -38,7 +38,7 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 		if !ok {
 			t.Fatalf("missing %s", key)
 		}
-		if key == "prelude#String" && (!slices.Contains(d.Operations, "trim: fn()->String") || !slices.Contains(d.Accessors, "byte_length: Int")) {
+		if key == "prelude#String" && (!slices.Contains(d.Operations, "trim: fn()->String") || !slices.Contains(d.Operations, "byte_length: fn()->Int")) {
 			t.Fatalf("missing intrinsic operation: %+v", d)
 		}
 		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T" || !slices.Contains(d.Operations, "map[U]: fn(transform: fn(value: T)->U)->List[U]") || !slices.Contains(d.Operations, "at: fn(index: Int)->Optional[T]")) {
@@ -82,16 +82,16 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 		}
 	}
 	for key, want := range map[string]string{
-		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    get address -> String\n    fn close() -> Unit\n    fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]\n    fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) -> Result[Unit, NetworkError]\n",
+		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    fn address() -> String\n    fn close() -> Unit\n    fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]\n    fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) -> Result[Unit, NetworkError]\n",
 		"@std/net.ms#DnsRecord":      "type DnsRecord:\n    kind: DnsKind\n    value: String\n    priority: Int\n    weight: Int\n    port: Int\n",
-		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n    get is_some -> Bool:\n    get is_none -> Bool:\n    fn unwrap() -> T:\n    fn unwrap_or(fallback: T) -> T:\n    fn unwrap_or_else(create: fn() -> T) -> T:\n    fn map[U](transform: fn(value: T) -> U) -> Optional[U]:\n    fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:\n    fn or_else(create: fn() -> Optional[T]) -> Optional[T]:\n    fn ok_or[E = MissingValue](cause: Optional[E] = none) -> Result[T, E]:\n    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:\n",
+		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n    fn is_some() -> Bool:\n    fn is_none() -> Bool:\n    fn unwrap() -> T:\n    fn unwrap_or(fallback: T) -> T:\n    fn unwrap_or_else(create: fn() -> T) -> T:\n    fn map[U](transform: fn(value: T) -> U) -> Optional[U]:\n    fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:\n    fn or_else(create: fn() -> Optional[T]) -> Optional[T]:\n    fn ok_or[E = MissingValue](cause: Optional[E] = none) -> Result[T, E]:\n    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:\n",
 	} {
 		if got := exports[key].Declaration; got != want {
 			t.Errorf("%s declaration:\ngot %s\nwant %s", key, got, want)
 		}
 	}
 	for key, want := range map[string]string{
-		"@std/time.ms#Duration":    "    get nanoseconds -> Int",
+		"@std/time.ms#Duration":    "    fn to_nanoseconds() -> Int",
 		"@std/time.ms#Instant":     "    fn difference(other: Instant) -> Duration",
 		"@std/time.ms#Timestamp":   "    fn shift(duration: Duration) -> Result[Timestamp, TimeError]",
 		"@std/collections.ms#Map":  "type Map[T: Hashable, U]:",

@@ -12,12 +12,12 @@ func TestListInsertFaultLocations(t *testing.T) {
 		{"past end", `export fn main() -> Int:
     let values = [1, 2]
     values.insert(3, 9)
-    return values.length
+    return values.length()
 `, "list-insert-fault.ms:3 in main", "List.insert: index must be between -2 and 2 (negative indexes count from the end), found 3"},
 		{"before start", `export fn main() -> Int:
     let values = [1, 2]
     values.insert(-3, 9)
-    return values.length
+    return values.length()
 `, "list-insert-fault.ms:3 in main", "List.insert: index must be between -2 and 2 (negative indexes count from the end), found -3"},
 		{"bound", `export fn main() -> Int:
     let insert = [1].insert
