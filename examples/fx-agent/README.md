@@ -44,11 +44,15 @@ The same source becomes a native executable without a package/runtime install.
 Alternative types and exhaustive `match` also make protocol decoding easier to
 audit than unchecked object access.
 
-The main friction is dynamic protocol work. Extracting fields from `JsonValue`
-is repetitive, and constructing request/schema objects through nested
-`Map[String, JsonValue]` values is visually heavy. Typed JSON decoding and
-encoding for records and alternatives would remove much of that code while
-retaining explicit failures.
+Typed JSON encoding and decoding now make protocol code safer. This example
+serializes its model request and decodes each tool's arguments directly as
+records, eliminating manual field and kind checks for shapes it owns. The
+remaining dynamic JSON code handles provider responses: typed record decoding
+rejects unknown members, while OpenAI-compatible providers can add metadata the
+agent does not consume. The planned custom `JsonDecode` hook or an explicit
+unknown-member policy would let that boundary become typed without making it
+brittle. Tool-schema construction also remains verbose because property names
+are dynamic JSON object keys.
 
 The standard library has improved since the first version of this example. It
 now includes incremental JSON and SSE decoders, managed subprocesses with live
@@ -65,6 +69,6 @@ handlers.
 
 The language's small core is pleasant here: ordinary functions cover waiting,
 callbacks, and the loop without async syntax. I would preserve that. The best
-improvement opportunity is typed JSON protocol ergonomics rather than new
-control-flow syntax.
+remaining improvement is tolerant/custom typed decoding for evolving external
+protocols rather than new control-flow syntax.
 

@@ -33,6 +33,32 @@ type ModelReply:
     calls: List[ToolCall]
     raw_message: JsonValue
 
+type ModelRequest:
+    model: String
+    messages: List[JsonValue]
+    tools: List[JsonValue]
+    tool_choice: String
+
+type PathArguments:
+    path: String
+
+type WriteArguments:
+    path: String
+    content: String
+
+type CommandArguments:
+    command: String
+
+type SearchArguments:
+    query: String
+    path: String
+
+type UrlArguments:
+    url: String
+
+type DelegateArguments:
+    prompt: String
+
 fn failure(message: String) -> Result[Unit, Error]:
     return error(AgentError(message))
 
@@ -346,10 +372,9 @@ fn approve(config: Config, action: String, mutating: Bool) -> Result[Bool, Error
     return ok(normalized == "y" or normalized == "yes")
 
 fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
-    let arguments_value = try parse(call.arguments)
-
     if call.name == "read_file":
-        let path = try text(arguments_value, "path")
+        let arguments = try parse[PathArguments](call.arguments)
+        let path = arguments.path
         if not (try approve(config, "read {path}", false)):
             return ok("permission denied")
 
@@ -360,8 +385,9 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
         return ok(decoded.unwrap())
 
     if call.name == "write_file":
-        let path = try text(arguments_value, "path")
-        let content = try text(arguments_value, "content")
+        let arguments = try parse[WriteArguments](call.arguments)
+        let path = arguments.path
+        let content = arguments.content
         if not (try approve(config, "replace {path}", true)):
             return ok("permission denied")
 
@@ -369,7 +395,8 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
         return ok("wrote {content.to_bytes().length} bytes to {path}")
 
     if call.name == "shell":
-        let command = try text(arguments_value, "command")
+        let arguments = try parse[CommandArguments](call.arguments)
+        let command = arguments.command
         if not (try approve(config, "run `{command}`", true)):
             return ok("permission denied")
 
@@ -384,7 +411,8 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
         return ok("exit {output.exit_code}\nstdout:\n{out}\nstderr:\n{err}")
 
     if call.name == "list_files":
-        let path = try text(arguments_value, "path")
+        let arguments = try parse[PathArguments](call.arguments)
+        let path = arguments.path
         if not (try approve(config, "list {path}", false)):
             return ok("permission denied")
 
@@ -401,8 +429,9 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
         return ok(names.join("\n"))
 
     if call.name == "search":
-        let query = try text(arguments_value, "query")
-        let path = try text(arguments_value, "path")
+        let arguments = try parse[SearchArguments](call.arguments)
+        let query = arguments.query
+        let path = arguments.path
         if not (try approve(config, "search {path} for {query}", false)):
             return ok("permission denied")
 
@@ -416,7 +445,8 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
         return ok("exit {output.exit_code}\n{out}{err}")
 
     if call.name == "web_fetch":
-        let url = try text(arguments_value, "url")
+        let arguments = try parse[UrlArguments](call.arguments)
+        let url = arguments.url
         if not (try approve(config, "fetch {url}", false)):
             return ok("permission denied")
 
@@ -433,7 +463,8 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
                 return ok(data.unwrap().to_text().unwrap_or("<response was not UTF-8>"))
 
     if call.name == "delegate":
-        let prompt = try text(arguments_value, "prompt")
+        let arguments = try parse[DelegateArguments](call.arguments)
+        let prompt = arguments.prompt
         let child_messages = [
             message(
                 "system",
@@ -452,14 +483,11 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
     return ok("unknown tool: {call.name}")
 
 fn request(config: Config, messages: List[JsonValue]) -> Result[ModelReply, Error]:
-    let body = object(
-        (
-            Map[String, JsonValue]()
-            .add("model", JsonValue.StringValue(config.model))
-            .add("messages", JsonValue.ArrayValue(messages))
-            .add("tools", JsonValue.ArrayValue(tools()))
-            .add("tool_choice", JsonValue.StringValue("auto"))
-        )
+    let body = ModelRequest(
+        model: config.model,
+        messages: messages,
+        tools: tools(),
+        tool_choice: "auto"
     )
     let encoded = try stringify(body, max_bytes: 8388608)
     let request_headers = headers()

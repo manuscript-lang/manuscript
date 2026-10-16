@@ -1,7 +1,7 @@
 {
   "format": 1,
   "compiler": "0.1.0",
-  "implementation_sha256": "f6360e6e9d2583b798433cab319e47a36ea458ca6c27952e4a4003979a1ae4e6",
+  "implementation_sha256": "58265d6edc45f24494f6e01bca0cdcd1409fd3f0dcc510147aea8dc761f600c1",
   "toolchain": {
     "CGO_ENABLED": "0",
     "GOAMD64": "v1",
