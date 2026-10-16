@@ -193,28 +193,19 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 }
 
 // Resolve labels without changing source syntax or written evaluation order.
-// Explicit labels and existing matching-name shorthand select their parameter.
-// Other values fill the first parameter not supplied by an earlier argument.
+// Only an explicit `name: value` selects a named parameter. Every other value,
+// including a bare identifier, fills the first parameter not supplied by an
+// earlier argument.
 func functionArguments(args []syntax.Argument, params []Param) []syntax.Argument {
 	resolved := append([]syntax.Argument(nil), args...)
 	seen := make(map[string]bool, len(params))
 	for index := range resolved {
 		arg := &resolved[index]
 		if arg.Name == "" {
-			if value := arg.Value; len(params) > 1 && value.Kind == syntax.KindName && value.Pos == arg.Pos {
-				for _, param := range params {
-					if param.Name == value.Text {
-						arg.Name = value.Text
-						break
-					}
-				}
-			}
-			if arg.Name == "" {
-				for _, param := range params {
-					if !seen[param.Name] {
-						arg.Name = param.Name
-						break
-					}
+			for _, param := range params {
+				if !seen[param.Name] {
+					arg.Name = param.Name
+					break
 				}
 			}
 		}
@@ -290,7 +281,6 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 		if seen[arg.Name] {
 			c.error(arg.Pos, "type", "duplicate argument "+arg.Name+"; pass each argument once")
 		}
-		seen[arg.Name] = true
 		var expected *Type
 		for _, param := range params {
 			if param.Name == arg.Name {
@@ -303,6 +293,7 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 		}
 		v := c.argumentExpression(arg.Value, expected)
 		noReturn = noReturn || v.NoReturn
+		seen[arg.Name] = true
 	}
 	for _, param := range params {
 		if !seen[param.Name] && (len(defaults) == 0 || !defaults[0][param.Name]) {
@@ -318,6 +309,7 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 	}
 	return noReturn
 }
+
 func (c *checker) modulePosition() syntax.Position {
 	return syntax.Position{File: c.module.File, Line: 1, Column: 1}
 }

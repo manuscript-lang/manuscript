@@ -963,6 +963,9 @@ type JsonValue_ObjectValue struct {
 func (JsonValue_ObjectValue) isJsonValue() {
 }
 
+type JsonEncode interface {
+	ToJson(ctx *Execution) JsonValue
+}
 type LogError interface {
 	isLogError()
 }

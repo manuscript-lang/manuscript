@@ -13,8 +13,21 @@ import (
 const jsonDepthCeiling = 100000
 
 // Json_Parse parses one JSON value, retaining exact number text and rejecting
-// duplicate object keys, trailing values and unpaired surrogate escapes.
-func Json_Parse(ctx *Execution, text string, limits Option[*JsonLimits]) Result[JsonValue, JsonError] {
+// duplicate object keys, trailing values and unpaired surrogate escapes, then
+// decodes it as T with the generated decoder dec.
+func Json_Parse[T any](ctx *Execution, dec func(*JsonReader, JsonValue) (T, bool), text string, limits Option[*JsonLimits]) Result[T, JsonError] {
+	tree := jsonParseTree(ctx, text, limits)
+	if tree.Failed {
+		return Fail[T, JsonError](tree.Err)
+	}
+	value, ok := dec(NewJsonReader(ctx), tree.Val)
+	if !ok {
+		return Fail[T, JsonError](JsonError_InvalidData{})
+	}
+	return Ok[T, JsonError](value)
+}
+
+func jsonParseTree(ctx *Execution, text string, limits Option[*JsonLimits]) Result[JsonValue, JsonError] {
 	maxBytes, maxDepth, maxValues := int64(math.MaxInt64), int64(math.MaxInt64), int64(math.MaxInt64)
 	if limits.Some {
 		maxBytes, maxDepth, maxValues = dfBudget(limits.Val.MaxBytes), dfBudget(limits.Val.MaxDepth), dfBudget(limits.Val.MaxValues)
@@ -161,19 +174,46 @@ func jsonUnicodeValid(ctx *Execution, s string) bool {
 	return true
 }
 
-// Json_Stringify serializes compact JSON, escaping <, > and &, validating
-// number text and rejecting cyclic values. maxBytes bounds the output.
-func Json_Stringify(ctx *Execution, value JsonValue, maxBytes Option[int64]) Result[string, JsonError] {
+// Json_Stringify encodes value with the generated encoder enc and serializes it
+// as JSON, escaping <, > and &, validating number text and rejecting cyclic
+// values. maxBytes bounds the output; indent is the spaces per level, clamped
+// to 10, with none or 0 giving compact output.
+func Json_Stringify[T any](ctx *Execution, enc func(*JsonScope, T) (JsonValue, bool), value T, maxBytes Option[int64], indent Option[int64]) Result[string, JsonError] {
 	max := dfBudget(maxBytes)
-	if max < 0 {
+	width := int64(0)
+	if indent.Some {
+		width = indent.Val
+	}
+	if max < 0 || width < 0 {
 		return Fail[string, JsonError](JsonError_InvalidInput{})
 	}
+	if width > jsonIndentCeiling {
+		width = jsonIndentCeiling
+	}
+	scope := NewJsonScope(ctx)
+	tree, ok := enc(scope, value)
+	if scope.Failed || !ok {
+		return Fail[string, JsonError](JsonError_InvalidData{})
+	}
+	return jsonEmit(ctx, tree, max, int(width))
+}
+
+// jsonIndentCeiling is the widest indent Json_Stringify honors.
+const jsonIndentCeiling = 10
+
+func jsonEmit(ctx *Execution, value JsonValue, max int64, width int) Result[string, JsonError] {
 	w := &dfLimitedWriter{max: max}
 	activeLists := map[*List[JsonValue]]bool{}
 	activeMaps := map[*Map[string, JsonValue]]bool{}
 	write := func(s string) error { _, err := w.Write([]byte(s)); return err }
-	var emit func(JsonValue) error
-	emit = func(value JsonValue) error {
+	newline := func(level int) error {
+		if width == 0 {
+			return nil
+		}
+		return write("\n" + strings.Repeat(" ", width*level))
+	}
+	var emit func(JsonValue, int) error
+	emit = func(value JsonValue, level int) error {
 		CheckCancelled(ctx)
 		switch v := value.(type) {
 		case JsonValue_Null:
@@ -181,13 +221,7 @@ func Json_Stringify(ctx *Execution, value JsonValue, maxBytes Option[int64]) Res
 		case JsonValue_BoolValue:
 			return write(strconv.FormatBool(v.Value))
 		case JsonValue_StringValue:
-			if int64(len(v.Value)) > w.max-int64(w.Len()) {
-				w.overflow = true
-				return io.ErrShortBuffer
-			}
-			b, _ := json.Marshal(v.Value)
-			_, err := w.Write(b)
-			return err
+			return jsonString(w, v.Value)
 		case JsonValue_NumberValue:
 			s := v.Text
 			if !json.Valid([]byte(s)) || s == "" || s[0] != '-' && (s[0] < '0' || s[0] > '9') || s[len(s)-1] < '0' || s[len(s)-1] > '9' {
@@ -200,6 +234,9 @@ func Json_Stringify(ctx *Execution, value JsonValue, maxBytes Option[int64]) Res
 			}
 			activeLists[v.Values] = true
 			defer delete(activeLists, v.Values)
+			if len(v.Values.Items) == 0 {
+				return write("[]")
+			}
 			if err := write("["); err != nil {
 				return err
 			}
@@ -209,9 +246,15 @@ func Json_Stringify(ctx *Execution, value JsonValue, maxBytes Option[int64]) Res
 						return err
 					}
 				}
-				if err := emit(x); err != nil {
+				if err := newline(level + 1); err != nil {
 					return err
 				}
+				if err := emit(x, level+1); err != nil {
+					return err
+				}
+			}
+			if err := newline(level); err != nil {
+				return err
 			}
 			return write("]")
 		case JsonValue_ObjectValue:
@@ -220,37 +263,60 @@ func Json_Stringify(ctx *Execution, value JsonValue, maxBytes Option[int64]) Res
 			}
 			activeMaps[v.Values] = true
 			defer delete(activeMaps, v.Values)
+			entries := v.Values.Snapshot()
+			if len(entries) == 0 {
+				return write("{}")
+			}
 			if err := write("{"); err != nil {
 				return err
 			}
-			for i, e := range v.Values.Snapshot() {
+			for i, e := range entries {
 				if i > 0 {
 					if err := write(","); err != nil {
 						return err
 					}
 				}
-				key, _ := json.Marshal(e.Key)
-				if _, err := w.Write(key); err != nil {
+				if err := newline(level + 1); err != nil {
 					return err
 				}
-				if err := write(":"); err != nil {
+				if err := jsonString(w, e.Key); err != nil {
 					return err
 				}
-				if err := emit(e.Value); err != nil {
+				colon := ":"
+				if width > 0 {
+					colon = ": "
+				}
+				if err := write(colon); err != nil {
 					return err
 				}
+				if err := emit(e.Value, level+1); err != nil {
+					return err
+				}
+			}
+			if err := newline(level); err != nil {
+				return err
 			}
 			return write("}")
 		}
 		return io.ErrUnexpectedEOF
 	}
-	if err := emit(value); err != nil {
+	if err := emit(value, 0); err != nil {
 		if w.overflow {
 			return Fail[string, JsonError](JsonError_LimitExceeded{})
 		}
 		return Fail[string, JsonError](JsonError_InvalidData{})
 	}
 	return Ok[string, JsonError](w.String())
+}
+
+func jsonString(w *dfLimitedWriter, s string) error {
+	if int64(len(s)) > w.max-int64(w.Len()) {
+		w.overflow = true
+		return io.ErrShortBuffer
+	}
+	b, _ := json.Marshal(s)
+	_, err := w.Write(b)
+	return err
 }
 
 // Errors_Message_JsonError returns the fixed JSON diagnostic.

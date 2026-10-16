@@ -18,7 +18,7 @@ Accept source according to the [normative grammar](../../../core-language/basics
 | Operators | Use the closed precedence and operand table; enforce Bool conditions and short-circuit evaluation without implicit numeric conversion |
 | Function values | Preserve parameter labels/order and exact types; require explicit specialization of generic function values and contextual anonymous parameter types and inferred anonymous results |
 | Return completeness | Allow Unit fallthrough/bare returns; reject reachable non-Unit fallthrough; track Never and function-local loop/return boundaries |
-| Argument labels | Resolve optional labels and positional arguments left to right to unfilled parameters, preserving matching-name shorthand; apply the same rule to constructors, methods and function values; reject unknown labels, duplicate arguments, excess positional arguments, and missing required arguments |
+| Argument labels | Resolve optional labels and positional arguments left to right to unfilled parameters (an unlabeled argument never selects a parameter by its spelling); apply the same rule to constructors, methods and function values; reject unknown labels, duplicate arguments, excess positional arguments, and missing required arguments |
 | List literals | Use the canonical standard List from the prelude; check homogeneous element types and use annotations or the expected parameter type for empty lists |
 | Typed tasks | Infer Task[T] from the ordinary generic start signature; check each join against Result[T, ExecutionError] |
 | Destructuring bindings | Check positional arity, record fields, renaming, nesting, and duplicate bindings; infer each local's type independently; see [destructuring bindings](../../../core-language/types/destructuring.md) |

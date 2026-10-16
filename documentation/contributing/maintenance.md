@@ -26,16 +26,15 @@ Dependabot groups weekly Go, extension, and Actions updates into reviewable PRs.
 
 Treat Manuscript syntax and standard signatures, exported frontend Go APIs, CLI flags/statuses, diagnostic codes and JSON schemas, project configuration, and artifact metadata as contracts. Correcting diagnostic prose may change wording while retaining the code's meaning. Internal package structure and generated Go identifiers are implementation details, except where the debugger's checked metadata exposes a mapping.
 
-Before 1.0, an intentional incompatible public change belongs in a minor release; patch releases contain compatible fixes. From 1.0 onward, incompatible changes require a major release. State the affected source or command and its migration in the PR and changelog. For a deprecation, document the replacement and intended removal release, and test both during the transition. Explicit user-directed removals take precedence; this policy does not restore retired APIs.
+Before 1.0, an intentional incompatible public change belongs in a minor release; patch releases contain compatible fixes. From 1.0 onward, incompatible changes require a major release. State the affected source or command and its migration in the PR. For a deprecation, document the replacement and intended removal release, and test both during the transition. Explicit user-directed removals take precedence; this policy does not restore retired APIs.
 
 Build pins are intentionally strict: compiler/runtime/target changes can require `ms lock` even without a source-language compatibility change. Do not claim native binary reproducibility across environments or compatibility for undocumented internal layouts.
 
 ## Prepare a release
 
-1. Describe user-visible changes and migrations under `Unreleased` in the root [changelog](https://github.com/manuscript-lang/manuscript/blob/main/CHANGELOG.md).
-2. Run `toolchain/go/bin/go run ./scripts/maintenance version 0.1.1`, substituting the release version. It moves the changelog entries under that version and updates `.msversion`. The CLI, build pins, and book read this single version.
-3. Run `make verify-full`, extension packaging/debugger checks, and review the six-target distribution workflow. Refresh example pins when compiler inputs change.
-4. Merge the release changes, then create the matching `v<version>` tag. Tagging publishes only after all six packaged binaries pass standalone verification. Use the changelog and migration notes when reviewing GitHub's generated release notes.
+1. Run `toolchain/go/bin/go run ./scripts/maintenance version 0.1.1`, substituting the release version. It updates `.msversion`. The CLI, build pins, and book read this single version.
+2. Run `make verify-full`, extension packaging/debugger checks, and review the six-target distribution workflow. Refresh example pins when compiler inputs change.
+3. Merge the release changes, then create the matching `v<version>` tag. Tagging publishes only after all six packaged binaries pass standalone verification. Review GitHub's generated release notes.
 
 A version update does not create a tag or publish anything. Documentation archives are separate preserved sites; adding a dropdown entry does not create an archive.
 

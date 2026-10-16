@@ -28,7 +28,7 @@ Parameters belong to the function body's lexical scope. A local declaration cann
 
 Argument labels are optional. An unlabeled expression supplies the first parameter not filled by an earlier argument, in declaration order. An explicit `name: value` supplies that named parameter in any order.
 
-For compatibility, a bare identifier matching a parameter name remains shorthand for `name: name` when the callable has multiple parameters. This selects the named parameter even when it is already filled, in which case the call is rejected as a duplicate. Parenthesizing an identifier makes it positional: `(name)` is an ordinary expression. `ms lint` reports advisory **MSL109** when shorthand selects a parameter other than the next unfilled positional one; write `left: right` or `(right)` for positional intent, or `right: right` to keep the binding explicit. Binding itself is unchanged.
+A bare identifier is an ordinary expression: `reduce(deduction, amount)` supplies `deduction` to the first parameter and `amount` to the second, whatever the parameters are named. Only an explicit `name: value` label selects a parameter by name, so renaming a local variable never changes which parameter it fills.
 
 ```manuscript
 fn reduce(amount: Int, deduction: Int) -> Int:
@@ -39,12 +39,12 @@ let explicit_remaining = reduce(amount: 10, deduction: 3)
 let mixed = reduce(deduction: 3, 10)
 let amount = 10
 let deduction = 3
-let shorthand = reduce(deduction, amount)
+let swapped = reduce(deduction: deduction, amount: amount)
 ```
 
 All four results are `7`. Resolve each argument from left to right; labels do not reserve parameters for later arguments. For example, `reduce(10, amount: 3)` supplies `amount` twice and fails, while `reduce(amount: 10, 3)` supplies `deduction` positionally. Unknown labels do not fill a declared parameter. Once every parameter is filled, another positional argument is an error. Arguments never skip a parameter merely because it has a default.
 
-The rule applies to ordinary and generic functions, methods, function values, library APIs, record and alternative-case constructors, and explicit contract views. A method's implicit receiver is evaluated before its arguments and does not consume a positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Existing labeled calls and function matching-name shorthand retain their meaning. Function-type parameter names remain part of [type identity](function-values-and-closures.md); omitting invocation labels does not make differently named callback signatures compatible.
+The rule applies to ordinary and generic functions, methods, function values, library APIs, record and alternative-case constructors, and explicit contract views. A method's implicit receiver is evaluated before its arguments and does not consume a positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Labeled calls retain their meaning. Function-type parameter names remain part of [type identity](function-values-and-closures.md); omitting invocation labels does not make differently named callback signatures compatible.
 
 TaskGroup.start accepts one zero-argument function and infers a typed Task[T] handle. Task and group joins use ordinary receiver calls; see [task groups](../../concurrency/task-groups.md).
 

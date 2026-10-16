@@ -51,7 +51,7 @@ fn optional(value: Optional[Int], fallback: Int = 0) -> Int: value.unwrap_or(fal
 
 fn default_before_required(first: Int = 9, second: Int) -> Int: first - second
 
-test "positional labeled mixed and legacy shorthand calls":
+test "positional labeled mixed and identifier calls":
     let amount = 10
     let deduction = 3
     if (
@@ -60,7 +60,7 @@ test "positional labeled mixed and legacy shorthand calls":
         or subtract(deduction: 3, amount: 10) != 7
         or subtract(deduction: 3, 10) != 7
         or subtract(10, deduction: 3) != 7
-        or subtract(deduction, amount) != 7
+        or subtract(deduction, amount) != -7
         or subtract((deduction), (amount)) != -7
         or subtract(amount + 1, deduction) != 8
     ): return panic("call binding")
@@ -88,8 +88,8 @@ test "generic calls constructors and callback inference":
     let first = 4
     let second = 3
     let shorthand = Record(second, first)
-    if shorthand.first != 4 or shorthand.second != 3: return panic(
-        "constructor shorthand"
+    if shorthand.first != 3 or shorthand.second != 4: return panic(
+        "constructor identifiers are positional"
     )
 
     match Choice.Pair(second: "right", "left"):

@@ -12,16 +12,16 @@ fn mark(log: List[Int], value: Int) -> Int:
     log.append(value)
     return value
 
-test "map literals and matching argument names":
+test "map literals and positional identifier arguments":
     let amount = 10
     let deduction = 3
-    if subtract(deduction, amount) != 7: return panic("argument order")
+    if subtract(amount, deduction) != 7: return panic("argument order")
     if subtract(amount, deduction: 2) != 8: return panic("mixed labels")
     if subtract(amount) != 9: return panic("default")
 
     let left = 4
     let right = 8
-    if first(right, left) != 4: return panic("generic inference")
+    if first(left, right) != 4: return panic("generic inference")
 
     let stored: fn(amount: Int, deduction: Int) -> Int = subtract
     if stored(amount, deduction) != 7: return panic("function value")
@@ -49,8 +49,8 @@ test "map literals and matching argument names":
 
     let key = "c"
     let value = 5
-    values.add(value, key)
-    if values.get(key).unwrap() != value: return panic("method shorthand")
+    values.add(key, value)
+    if values.get(key).unwrap() != value: return panic("method identifiers")
 
     let log: List[Int] = []
     let ordered = {
