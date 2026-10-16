@@ -9,11 +9,13 @@
     </div>
     <p class="home-platforms">Linux, macOS &amp; Windows <span aria-hidden="true">·</span> One download</p>
   </div>
+  <ul class="home-proof" aria-label="Why Manuscript">
+    <li><strong>API first</strong><span>Ordinary calls, even for concurrency.</span></li>
+    <li><strong>Minimal syntax</strong><span>Less to generate. Less to review.</span></li>
+    <li><strong>Tools that understand</strong><span>Search, check, test, and inspect.</span></li>
+  </ul>
   <div class="home-example" aria-label="A complete Manuscript program">
     {{ .Page.RenderString (dict "display" "block") .Inner }}
     <div class="home-output"><code><span aria-hidden="true">$ </span>ms run hello.ms -- Ada</code><samp>Hello, Ada!</samp><span class="home-run-status"><span aria-hidden="true">✓</span> Native. Ready to run.</span></div>
   </div>
-  <ul class="home-proof" aria-label="Included with Manuscript">
-    <li>Static types</li><li>Built-in tooling</li><li>Standalone binaries</li>
-  </ul>
 </section>

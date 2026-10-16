@@ -2,7 +2,7 @@
 title = "Manuscript — The language for the agentic era."
 weight = 1
 bookToC = false
-description = "Build with agents. Ship something real."
+description = "Agents write. Humans understand."
 +++
 
 {{< docs-home >}}
