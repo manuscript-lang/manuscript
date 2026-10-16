@@ -53,7 +53,7 @@ func (g *gen) methodFunction(m *checker.Method, receiver *checker.Type) *funcDec
 	if scope != "" {
 		name += "_" + shortHash(scope)
 	}
-	created := &funcDecl{key: key, name: g.claim(name, key), module: original.Module, scope: scope, method: original, decl: original.Decl, subst: subst}
+	created := &funcDecl{key: key, name: g.derivedOrClaim(name, key, len(original.Variables) > 0 || scope != ""), module: original.Module, scope: scope, method: original, decl: original.Decl, subst: subst}
 	created.typ = checker.Sub(original.Type, subst)
 	created.fn = created
 	return g.intern(created)
@@ -67,7 +67,7 @@ func (g *gen) accessor(e *syntax.Expression, info *checker.Info) ast.Expr {
 	receiverType = g.sub(receiverType)
 	switch {
 	case m.Native == "contract":
-		return call(selector(receiver, camel(e.Text)), ident("ctx"))
+		return call(selector(receiver, exportName(e.Text)), ident("ctx"))
 	case m.Native != "" && m.Contract == nil:
 		fn := g.nativeMethodName(m, receiverType)
 		g.noteNative(fn)

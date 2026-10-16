@@ -159,7 +159,7 @@ func (g *gen) standardAlternative(s *checker.Symbol) []ast.Decl {
 	for _, c := range s.Type.Def.Cases {
 		var fields []*ast.Field
 		for _, f := range c.Fields {
-			fields = append(fields, field(camel(f.Name), g.goType(f.Type)))
+			fields = append(fields, field(exportName(f.Name), g.goType(f.Type)))
 		}
 		name := s.Name + "_" + sanitize(c.Name)
 		spec := &ast.TypeSpec{Name: ident(name), TypeParams: g.typeParams(s.Variables), Type: &ast.StructType{Fields: &ast.FieldList{List: fields}}}
@@ -180,7 +180,7 @@ func (g *gen) standardContract(s *checker.Symbol) ast.Decl {
 		if len(checkerOperationVariables(s, op)) > 0 {
 			g.fail("contract operation %s.%s has type variables, which a Go interface method cannot", s.Name, op.Name)
 		}
-		methods = append(methods, &ast.Field{Names: []*ast.Ident{ident(camel(op.Name))}, Type: g.operationType(op.Type)})
+		methods = append(methods, &ast.Field{Names: []*ast.Ident{ident(exportName(op.Name))}, Type: g.operationType(op.Type)})
 	}
 	spec := &ast.TypeSpec{Name: ident(s.Name), TypeParams: g.typeParams(s.Variables), Type: &ast.InterfaceType{Methods: &ast.FieldList{List: methods}}}
 	return &ast.GenDecl{Tok: token.TYPE, Specs: []ast.Spec{spec}}
