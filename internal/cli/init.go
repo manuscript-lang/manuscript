@@ -14,7 +14,7 @@ Writes ms.toml, src/main.ms (a hello program), test.ms, and a .gitignore that
 excludes the .ms-cache/ build cache. An existing file is never overwritten; the
 command fails before writing anything when ms.toml, src/main.ms, or test.ms exist.
 
-Commit ms.lock, which the first build creates, and keep .ms-cache/ out of version control.
+Keep .ms-cache/ out of version control.
 
 Options:
   -h, --help  Show this help without creating files

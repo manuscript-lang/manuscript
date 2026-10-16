@@ -2,15 +2,12 @@ package e2e_test
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/manuscript-lang/manuscript/pkg/build"
 )
 
 func TestLibraryProjectCommandsAndCache(t *testing.T) {
@@ -54,22 +51,11 @@ test "root":
 		data, err := c.CombinedOutput()
 		return string(data), err
 	}
-	for _, command := range []string{"check", "lint", "lock"} {
+	for _, command := range []string{"check", "lint"} {
 		data, err := run(command, manifest)
 		if err != nil {
 			t.Fatalf("%s: %v %s", command, err, data)
 		}
-	}
-	pinData, err := os.ReadFile(filepath.Join(root, "ms.lock"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var pin build.BuildPin
-	if err := json.Unmarshal(pinData, &pin); err != nil || pin.Format != 1 || pin.Compiler == "" || pin.ImplementationSHA256 == "" || pin.Toolchain["CGO_ENABLED"] != "0" {
-		t.Fatalf("invalid library lock: %+v %v", pin, err)
-	}
-	if err := build.CheckPin(root); err != nil {
-		t.Fatal(err)
 	}
 	for range 2 {
 		data, err := run("test", manifest)

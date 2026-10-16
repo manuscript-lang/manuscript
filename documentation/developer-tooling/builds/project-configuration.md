@@ -9,7 +9,7 @@ A project has an `ms.toml` file at its root. The compiler reads this file to loc
 
 ## A project manifest
 
-`ms init [directory]` creates a manifest, an entry module, a `test.ms`, and a `.gitignore` excluding `.ms-cache/`. Commit `ms.lock`, which the first build creates, and do not commit `.ms-cache/`.
+`ms init [directory]` creates a manifest, an entry module, a `test.ms`, and a `.gitignore` excluding `.ms-cache/`. Do not commit `.ms-cache/`.
 
 ```toml
 [project]
@@ -32,7 +32,6 @@ entry = "./src/main.ms"
 | `ms build <ms.toml>` | Check, generate Go, and build the executable; requires entry |
 | `ms lint <ms.toml>` | Check and lint reachable modules; libraries include all source modules and discovered tests |
 | `ms test <ms.toml>` | Execute tests from entry and discovered test files; libraries include all source modules too |
-| `ms lock <ms.toml>` | Record compiler/runtime, bundled SDK, and target pins; valid for libraries |
 
 A relative manifest argument resolves from the invocation directory. Its containing directory then becomes the project root for configuration paths. The entry follows the [CLI main contract](../../standard-library/cli.md).
 
@@ -70,7 +69,7 @@ name = "graph"
 source = "src"
 ```
 
-`ms check ms.toml`, `ms lint ms.toml`, and `ms test ms.toml` include every source module and discovered test file, even when no other module imports them. The discovery exclusions above still apply. `ms lock ms.toml` records build pins for library tests. `run`, `build`, `emit`, `debug`, and `profile` require an executable entry; add `entry = "src/main.ms"` under `[project]` and export `fn main() -> Int` from that file to make an executable.
+`ms check ms.toml`, `ms lint ms.toml`, and `ms test ms.toml` include every source module and discovered test file, even when no other module imports them. The discovery exclusions above still apply. `run`, `build`, `emit`, `debug`, and `profile` require an executable entry; add `entry = "src/main.ms"` under `[project]` and export `fn main() -> Int` from that file to make an executable.
 
 To share library code today, copy its sources into each consuming project, for example `src/graph/`, and use relative imports or an alias:
 
@@ -81,7 +80,7 @@ To share library code today, copy its sources into each consuming project, for e
 
 Keep the copied sources under version control. Alongside the copy, record the upstream URL and exact revision, SHA-256 checksums of the copied files, and the upstream license and notices. Preserve relative imports and configure any aliases used by those sources in the consuming manifest. Update the copy deliberately from a chosen upstream revision and review its changes and checksums. This is a manual copy workflow; the compiler does not fetch packages or verify these recorded checksums.
 
-`ms.lock` pins the compiler/runtime and standard declarations through their implementation identity, the bundled Go SDK, and the target. It does **not** pin copied Manuscript package content. Native artifact metadata hashes the source modules actually checked for a build, so editing a library module invalidates its test artifact; that cache identity is not a package lock. An alias to a sibling project or an external symlink remains rejected after canonical path resolution. Alias definition errors point at the key; invalid targets point at the value in `ms.toml`.
+Copied Manuscript package content is not pinned. Native artifact metadata hashes the source modules actually checked for a build, so editing a library module invalidates its test artifact; that cache identity is not a package lock. An alias to a sibling project or an external symlink remains rejected after canonical path resolution. Alias definition errors point at the key; invalid targets point at the value in `ms.toml`.
 
 ## Resolving an import
 

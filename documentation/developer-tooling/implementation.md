@@ -290,7 +290,7 @@ They can exceed the soft limit; the formatter does not split or rewrite them.
 
 ## Debugging and profiling
 
-`ms debug` is also available for Delve's terminal UI. Existing project pin validation remains in effect; use `ms lock ms.toml` explicitly after a toolchain/compiler change.
+`ms debug` is also available for Delve's terminal UI.
 
 `ms debug --break <location>` and `ms debug --script <file>` are non-interactive and meant for agents and scripts; see [scripted debugging](debugging/debugger-integration.md#scripted-debugging-for-agents).
 

@@ -149,7 +149,7 @@ func check() error {
 		return fmt.Errorf("source-only commands unexpectedly prepared the native toolchain: %v", err)
 	}
 	for _, arguments := range [][]string{
-		{"lock", manifest}, {"build", manifest, "-o", output},
+		{"build", manifest, "-o", output},
 		{"run", manifest, "--", "first", "second"}, {"test", filepath.Join(project, "test.ms")},
 	} {
 		data, err := run(cli, arguments...)
@@ -165,17 +165,6 @@ func check() error {
 	}
 	if err := checkLibraryNative(cli, library, run); err != nil {
 		return err
-	}
-	data, err = os.ReadFile(filepath.Join(project, "ms.lock"))
-	if err != nil {
-		return err
-	}
-	var pin struct{ Toolchain map[string]string }
-	if err := json.Unmarshal(data, &pin); err != nil {
-		return err
-	}
-	if pin.Toolchain["CGO_ENABLED"] != "0" {
-		return fmt.Errorf("lock did not use the bundled environment: %s", data)
 	}
 	if data, err := run(output, "first", "second"); err != nil {
 		return err

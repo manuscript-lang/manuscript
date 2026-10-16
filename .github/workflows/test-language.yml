@@ -81,7 +81,6 @@ jobs:
         run: |
           make build
           ./ms check examples/hello/ms.toml
-          ./ms lock examples/hello/ms.toml
           ./ms run examples/hello/ms.toml -- first second
       # Standalone distribution checks run once, per target, in release.yml.
       - name: Parser and compiler fuzzing

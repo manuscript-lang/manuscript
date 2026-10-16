@@ -1,7 +1,6 @@
 package build
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -20,7 +19,6 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"io"
 	"io/fs"
-	"maps"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -124,104 +122,6 @@ func CurrentPin() (BuildPin, error) {
 	}
 	return BuildPin{1, support.Version(), implementationDigest(), toolchain}, nil
 }
-func WritePin(root string) error {
-	pin, err := CurrentPin()
-	if err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(pin, "", "  ")
-	if err != nil {
-		return err
-	}
-	path := filepath.Join(root, "ms.lock")
-	if info, err := os.Stat(path); err == nil && info.IsDir() {
-		return fmt.Errorf("cannot write %s: it is a directory; remove it and run ms lock again", path)
-	}
-	// Write through a symlinked lock so a shared lock file stays shared.
-	if resolved, err := filepath.EvalSymlinks(path); err == nil {
-		path = resolved
-	}
-	return atomicWrite(path, append(data, '\n'), 0644)
-}
-
-var errMissingPin = errors.New("ms.lock not found")
-
-func readPin(root string) (BuildPin, error) {
-	data, err := os.ReadFile(filepath.Join(root, "ms.lock"))
-	if errors.Is(err, os.ErrNotExist) {
-		return BuildPin{}, errMissingPin
-	}
-	if err != nil {
-		return BuildPin{}, fmt.Errorf("project build requires ms.lock; run ms lock %s: %w", shellQuote(filepath.Join(root, "ms.toml")), err)
-	}
-	var pin BuildPin
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&pin); err != nil {
-		reason := "it is not a valid lock file"
-		if errors.Is(err, io.EOF) {
-			reason = "it is empty"
-		}
-		return BuildPin{}, fmt.Errorf("invalid ms.lock: %s; it is generated, so delete it and run ms lock %s to recreate it", reason, shellQuote(filepath.Join(root, "ms.toml")))
-	}
-	if err := decoder.Decode(new(any)); err != io.EOF {
-		return BuildPin{}, fmt.Errorf("ms.lock must contain exactly one JSON object; it is generated, so delete it and run ms lock ms.toml to recreate it")
-	}
-	return pin, nil
-}
-
-func CheckPin(root string) error {
-	expected, err := readPin(root)
-	if err != nil {
-		return err
-	}
-	actual, err := CurrentPin()
-	if err != nil {
-		return err
-	}
-	return comparePin(root, expected, actual)
-}
-
-func comparePin(root string, expected, actual BuildPin) error {
-	if expected.Format == actual.Format && expected.Compiler == actual.Compiler && expected.ImplementationSHA256 == actual.ImplementationSHA256 && maps.Equal(expected.Toolchain, actual.Toolchain) {
-		return nil
-	}
-	return fmt.Errorf("ms.lock does not match %s; run ms lock %s to explicitly update", strings.Join(pinDifferences(expected, actual), ", "), shellQuote(filepath.Join(root, "ms.toml")))
-}
-
-// pinDifferences names what changed in the vocabulary of the lock file.
-func pinDifferences(expected, actual BuildPin) []string {
-	var changed []string
-	if expected.Format != actual.Format {
-		changed = append(changed, "the lock format")
-	}
-	if expected.Compiler != actual.Compiler {
-		changed = append(changed, fmt.Sprintf("the compiler version (locked %s, current %s)", expected.Compiler, actual.Compiler))
-	}
-	if expected.ImplementationSHA256 != actual.ImplementationSHA256 {
-		changed = append(changed, "the compiler/runtime implementation")
-	}
-	var keys []string
-	for key := range expected.Toolchain {
-		keys = append(keys, key)
-	}
-	for key := range actual.Toolchain {
-		if _, ok := expected.Toolchain[key]; !ok {
-			keys = append(keys, key)
-		}
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		if expected.Toolchain[key] != actual.Toolchain[key] {
-			changed = append(changed, fmt.Sprintf("toolchain %s (locked %q, current %q)", key, expected.Toolchain[key], actual.Toolchain[key]))
-		}
-	}
-	if len(changed) == 0 {
-		changed = append(changed, "the compiler/runtime, Go toolchain, or target")
-	}
-	return changed
-}
-
 func atomicWrite(filename string, data []byte, mode os.FileMode) error {
 	return writeReplacing(filename, data, mode, true)
 }
@@ -304,29 +204,9 @@ func BuildCheckedWithType(result compiler.Result, output string, kind compiler.B
 	if err := checkOutputDirectory(output); err != nil {
 		return BuildMetadata{}, err
 	}
-	var expected BuildPin
-	if result.ProjectRoot != "" {
-		var err error
-		expected, err = readPin(result.ProjectRoot)
-		if errors.Is(err, errMissingPin) {
-			// A project without ms.lock is pinned on first build; an existing
-			// pin that no longer matches still needs an explicit ms lock.
-			if err = WritePin(result.ProjectRoot); err == nil {
-				expected, err = readPin(result.ProjectRoot)
-			}
-		}
-		if err != nil {
-			return BuildMetadata{}, err
-		}
-	}
 	pin, err := CurrentPin()
 	if err != nil {
 		return BuildMetadata{}, err
-	}
-	if result.ProjectRoot != "" {
-		if err := comparePin(result.ProjectRoot, expected, pin); err != nil {
-			return BuildMetadata{}, err
-		}
 	}
 	metadata := BuildMetadata{BuildPin: pin, Sources: map[string]string{}, ConfigurationSHA256: digest([]byte(result.Configuration)), BuildType: kind, Debug: kind == compiler.Debug}
 	if result.ProjectRoot != "" {
@@ -408,12 +288,4 @@ func VerifyBuild(output string, sources map[string]string) error {
 		}
 	}
 	return nil
-}
-
-// shellQuote makes a path safe to paste into a command hint.
-func shellQuote(path string) string {
-	if path != "" && !strings.ContainsAny(path, " \t\n'\"\\$`&;|<>()*?[]{}!#~") {
-		return path
-	}
-	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, "$", `\$`, "`", "\\`").Replace(path) + `"`
 }

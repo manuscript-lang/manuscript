@@ -233,7 +233,7 @@ func (inv *invocation) validate() (plan, int, bool) {
 	var p plan
 	switch command {
 	case "check", "lint": // Independent source requests run after flag validation.
-	case "inspect", "diagram", "lock":
+	case "inspect", "diagram":
 		p.options.AnalyzeOnly = true
 		p.options.Entry = filepath.Base(inv.filename) == "ms.toml"
 	case "emit": // Only source emission needs lowering without an entry launcher.
