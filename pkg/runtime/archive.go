@@ -155,9 +155,11 @@ func Archive_Pack(ctx *Execution, entries *List[*ArchiveEntry], format string, m
 			header := &zip.FileHeader{Name: f.Path, Method: zip.Deflate}
 			header.Modified = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
 			header.SetMode(0600)
+			if f.Directory || len(dfBytes(f.Data)) < 64 {
+				header.Method = zip.Store
+			}
 			if f.Directory {
 				header.Name = strings.TrimSuffix(header.Name, "/") + "/"
-				header.Method = zip.Store
 				header.SetMode(0700 | 1<<31)
 			}
 			entry, err := writer.CreateHeader(header)
@@ -211,7 +213,7 @@ func Archive_Unpack(ctx *Execution, data *Bytes, format string, limits Option[*A
 			return "LimitExceeded"
 		}
 		limit := min(entryMax, total)
-		body, code := dfReadBounded(ctx, reader, limit)
+		body, code := dfReadBounded(ctx, reader, limit, size)
 		if code != "" {
 			return code
 		}

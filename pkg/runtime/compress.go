@@ -96,7 +96,7 @@ func Compress_Decompress(ctx *Execution, data *Bytes, format string, maxBytes Op
 		return Fail[*Bytes, CompressionError](CompressionError_InvalidData{})
 	}
 	defer reader.Close()
-	b, code := dfReadBounded(ctx, reader, max)
+	b, code := dfReadBounded(ctx, reader, max, 0)
 	switch code {
 	case "":
 	case "LimitExceeded":
