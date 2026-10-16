@@ -100,6 +100,7 @@ fn complete(state: Decoder) -> Result[JsonValue, JsonError]:
 
     if let text = bytes.to_text():
         return parse(text, some(state.limits))
+
     return error(JsonError.InvalidData)
 
 # Consumes one byte and reports whether it finished a value.
