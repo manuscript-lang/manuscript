@@ -99,14 +99,16 @@ export fn decoder(limits: SseLimits = SseLimits()) -> Result[SseDecoder, SseErro
     )
 
 fn positive(limit: Optional[Int]) -> Bool:
-    match limit:
-        none: return true
-        some(maximum): return maximum > 0
+    if let maximum = limit:
+        return maximum > 0
+
+    return true
 
 fn exceeds(value: Int, limit: Optional[Int]) -> Bool:
-    match limit:
-        none: return false
-        some(maximum): return value > maximum
+    if let maximum = limit:
+        return value > maximum
+
+    return false
 
 # Decodes one chunk and returns the events it completed, in order.
 # Chunks may split any line, line ending or UTF-8 scalar. An error is final for the decoder.

@@ -59,11 +59,10 @@ visits.add(key: "/help", value: 12)
 let subscribers = Set[String]()
 subscribers.add("sam@example.com")
 
-match visits.get("/help"):
-    some(count):
-        let label = "{count} visits"
-    none:
-        let label = "No visits yet"
+if let count = visits.get("/help"):
+    let label = "{count} visits"
+else:
+    let label = "No visits yet"
 ```
 
 List, Map, and Set are available without imports. Lists preserve order, maps look up values by key, and sets keep distinct values. Updates mutate the collection. Assignment shares the same collection; `.clone()` makes a shallow copy. Lookup returns an `Optional`: `some(value)` or `none`.
