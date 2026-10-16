@@ -5,7 +5,7 @@ weight = 4
 
 # Testing
 
-A `test "name":` block runs when you invoke `ms test`. A block passes when it finishes normally; `panic` from `@std/faults.ms` fails it with a message. Import reusable TDD assertions or BDD expectations from `@std/testing.ms`.
+A `test "name":` block runs when you invoke `ms test`. A block passes when it finishes normally. A block fails when it returns an `error(...)`: the helpers in `@std/testing.ms` return `Result` values, and `try` returns a failed check as the test's error. A test body behaves as if it returns `Result[Unit, Error]`; you never need to write that, and completing without a `return` is success. A programming fault (including `panic`) or a timeout also fails the test, but prefer returning errors. Import reusable TDD assertions or BDD expectations from `@std/testing.ms`.
 
 Save this complete file as `test.ms`:
 
@@ -17,10 +17,10 @@ fn add(a: Int, b: Int) -> Int:
     return a + b
 
 test "addition":
-    expect_equal(add(1, 2), 3)
+    try expect_equal(add(1, 2), 3)
 
 test "zero is unchanged":
-    expect_equal(add(0, 7), 7)
+    try expect_equal(add(0, 7), 7)
 ```
 
 ```sh
@@ -47,24 +47,24 @@ Tests run from the manifest's directory, or from the selected source file's dire
 
 Put reusable application functions in an exported module and import them into a test file with a relative path, for example `import add from "./src/math.ms"`. Keep the import consistent with your project's actual files; see [modules](../core-language/modules/declarations.md).
 
-`--filter` selects tests whose `module::name` contains the supplied text. `--timeout` bounds each test (60 seconds by default; `0` disables it). A programming fault or timeout fails the test; a function returning `error(...)` is still an ordinary value that you must check. Do not discard a `Result` when testing success or failure.
+`--filter` selects tests whose `module::name` contains the supplied text. `--timeout` bounds each test (60 seconds by default; `0` disables it). A programming fault or timeout fails the test; a function returning `error(...)` is still an ordinary value that you must check. Do not discard a `Result` when testing success or failure; assertions are `Result`s too, so a bare `expect_equal(...)` statement checks nothing. Write `try expect_equal(...)`.
 
 For automation, `--json` emits a versioned result with per-test outcomes, counts,
 source diagnostics and captured stdout. Stderr remains stderr; failures keep
 their exit status. It supports one run and cannot be combined with `--watch`.
 See the [JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests).
 
-For example, this fragment belongs inside a test after calling a fallible function:
+A test can propagate a failing call with `try`, or match the result and return a custom failure with `fail` (also from `@std/testing.ms`):
 
 ```manuscript
 match result:
     ok(value):
-        expect_equal(value, 3)
+        try expect_equal(value, 3)
     error(cause):
-        return panic("Expected success, got {cause.message()}")
+        return fail("Expected success, got {cause.message()}")
 ```
 
-The fragment assumes `Result[Int, Error]` and the imported equality helper above. Handle domain-specific error cases explicitly when a test is meant to check a failure. See [Results](../core-language/errors/results.md) and [programming faults](../core-language/errors/faults.md).
+The fragment assumes `Result[Int, Error]` and the imported equality helper above. `try` works in a test whenever the failing error is an `Error` (or implements it); a different error type must be matched and converted. Handle domain-specific error cases explicitly when a test is meant to check a failure. See [Results](../core-language/errors/results.md) and [programming faults](../core-language/errors/faults.md).
 
 ## Select, repeat, and profile
 
@@ -92,8 +92,8 @@ cost. Capture paths resolve from the CLI invocation directory and must be new. P
 useful CPU samples; profiling adds overhead. Profiled tests default to
 `RelWithDebInfo`; `--build-type` can select another build.
 
-`expect_some`, `expect_ok`, and `expect_error` return checked payloads;
-`expect_fault` checks programming faults. `skip(reason)` marks a test skipped
+Every assertion returns `Result[..., Error]`, so use `try`. `try expect_some(x)`, `try expect_ok(x)`, and `try expect_error(x)` yield the checked payloads;
+`try expect_fault(operation)` checks programming faults. `try fail(message)` fails a test explicitly. `skip(reason)` marks a test skipped
 while running lexical cleanup. Write each independently selected and reported
 case as a `test` block. See the
 [testing helper reference](../standard-library/testing.md) for contracts and examples.

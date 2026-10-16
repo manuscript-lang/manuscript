@@ -51,7 +51,7 @@ func TestFileFixtureKeepsOwnerAndTestHostsSeparate(t *testing.T) {
 		"after_each": func(*Execution) { after++ },
 		"after_all":  func(*Execution) { closed++ },
 	})
-	tests := []Test{{Name: "first", Run: body, Fixture: fixture}, {Name: "second", Run: body, Fixture: fixture}}
+	tests := []Test{{Name: "first", Run: unitRun(body), Fixture: fixture}, {Name: "second", Run: unitRun(body), Fixture: fixture}}
 	if status := RunTestsWith(tests, TestOptions{Repeat: 2, Shuffle: true, Seed: 4}); status != 0 {
 		t.Fatal(status)
 	}
@@ -71,7 +71,7 @@ func TestFileFixtureSetupFailuresAreReportedAndNotRetried(t *testing.T) {
 				t.Fatal(err)
 			}
 			reporter := &testReporter{file: file}
-			status := runTestsWith([]Test{{Name: "one", Run: body, Fixture: fixture}, {Name: "two", Run: body, Fixture: fixture}}, TestOptions{}, nil, reporter)
+			status := runTestsWith([]Test{{Name: "one", Run: unitRun(body), Fixture: fixture}, {Name: "two", Run: unitRun(body), Fixture: fixture}}, TestOptions{}, nil, reporter)
 			reporter.close()
 			data, _ := os.ReadFile(path)
 			if status != 1 || calls != 1 || closed != map[bool]int{true: 1, false: 0}[phase == "before_all"] || strings.Contains(string(data), `"event":"run"`) {
@@ -107,7 +107,7 @@ func TestFileFixtureCancellationRunsTeardown(t *testing.T) {
 		<-ctx.Context.Done()
 		return CheckCancelled(ctx)
 	}
-	if status := runTestsContext([]Test{{Name: "cancelled", Run: body, Fixture: fixture}, {Name: "later", Run: body, Fixture: fixture}}, TestOptions{Timeout: time.Second}, nil, nil, ctx); status == 0 || !closed {
+	if status := runTestsContext([]Test{{Name: "cancelled", Run: unitRun(body), Fixture: fixture}, {Name: "later", Run: unitRun(body), Fixture: fixture}}, TestOptions{Timeout: time.Second}, nil, nil, ctx); status == 0 || !closed {
 		t.Fatalf("status %d closed %v", status, closed)
 	}
 }
@@ -119,7 +119,7 @@ func TestFileFixtureTimeoutDoesNotReuseUnjoinedState(t *testing.T) {
 	fixture, _ := fixtureForTest(t, map[string]func(*Execution){"after_all": func(*Execution) { closed = true }})
 	body := func(*Execution) Unit { <-release; close(finished); return Unit{} }
 	later := func(*Execution) Unit { ranLater = true; return Unit{} }
-	status := RunTestsWith([]Test{{Name: "stuck", Run: body, Fixture: fixture}, {Name: "later", Run: later, Fixture: fixture}}, TestOptions{Timeout: 10 * time.Millisecond})
+	status := RunTestsWith([]Test{{Name: "stuck", Run: unitRun(body), Fixture: fixture}, {Name: "later", Run: unitRun(later), Fixture: fixture}}, TestOptions{Timeout: 10 * time.Millisecond})
 	if status == 0 || closed || ranLater {
 		t.Fatalf("status %d closed %v later %v", status, closed, ranLater)
 	}
@@ -129,7 +129,7 @@ func TestFileFixtureTimeoutRetainsCleanupFault(t *testing.T) {
 	fixture, _ := fixtureForTest(t, map[string]func(*Execution){"after_each": func(*Execution) { Raise("cleanup failed") }})
 	state := &fixtureState{definition: fixture, hooks: testFixtureValue{map[string]func(*Execution){"after_each": func(*Execution) { Raise("cleanup failed") }}}}
 	body := func(ctx *Execution) Unit { <-ctx.Context.Done(); return CheckCancelled(ctx) }
-	failure := runTest(state.test(Test{Name: "timeout", Run: body}), 10*time.Millisecond, nil)
+	failure := runTest(state.test(Test{Name: "timeout", Run: unitRun(body)}), 10*time.Millisecond, nil)
 	if !strings.Contains(fmt.Sprint(failure), "timed out") || !strings.Contains(fmt.Sprint(failure), "cleanup failed") {
 		t.Fatalf("lost cleanup fault: %v", failure)
 	}
@@ -154,7 +154,7 @@ func TestFileFixtureJoinsTestWorkBeforeAfterEach(t *testing.T) {
 		<-started
 		return Unit{}
 	}
-	if status := RunTestsWith([]Test{{Name: "joins", Run: body, Fixture: fixture}}, TestOptions{Timeout: time.Second}); status != 0 {
+	if status := RunTestsWith([]Test{{Name: "joins", Run: unitRun(body), Fixture: fixture}}, TestOptions{Timeout: time.Second}); status != 0 {
 		t.Fatal(status)
 	}
 }
@@ -169,8 +169,8 @@ func TestFileFixtureAbandonedJoinDoesNotRunAfterEach(t *testing.T) {
 		<-started
 		return Unit{}
 	}
-	wrapped := state.test(Test{Name: "join", Run: body})
-	test := Test{Name: "join", Run: func(ctx *Execution) Unit { defer close(finished); return wrapped.Run(ctx) }}
+	wrapped := state.test(Test{Name: "join", Run: unitRun(body)})
+	test := Test{Name: "join", Run: func(ctx *Execution) Result[Unit, Error] { defer close(finished); return wrapped.Run(ctx) }}
 	failure := runTest(test, 10*time.Millisecond, nil)
 	state.poisoned.Store(true)
 	close(release)

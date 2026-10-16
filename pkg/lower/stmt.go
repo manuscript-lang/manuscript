@@ -89,7 +89,10 @@ func (g *gen) statementCall(e ast.Expr) bool {
 
 func (g *gen) returnStatement(s *syntax.Statement) []ast.Stmt {
 	var value ast.Expr = g.unit()
-	if s.Value != nil {
+	if g.testBody() && (s.Value == nil || s.Value.Kind == syntax.KindUnit) {
+		value = g.testSuccess()
+	}
+	if s.Value != nil && !(g.testBody() && s.Value.Kind == syntax.KindUnit) {
 		value = g.valueAs(s.Value, g.fn.result)
 	}
 	return []ast.Stmt{returned(value)}

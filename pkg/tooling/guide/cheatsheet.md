@@ -20,11 +20,11 @@ export fn main() -> Int:
         error(_): return 1
 
 test "addition":
-    expect_equal(add(1, 2), 3)
+    try expect_equal(add(1, 2), 3)
 ```
 
 - Workflow: `ms search_symbol <name or words>` finds a project or std symbol (`ms search_symbol <module>` lists a module); `ms check`, `ms fmt`, `ms test` after each edit.
-- `main() -> Int` returns the exit status. `test "name":` blocks run under `ms test`.
+- `main() -> Int` returns the exit status. `test "name":` blocks run under `ms test`: finishing passes, returning `error(...)` (or `try` on a failing check) fails.
 - Imports: `import {a, b} from "@std/x.ms"` or `"./local.ms"`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import.
 - `let` binds once, `var` reassigns. Types `Int Float Bool String Unit`; `"{expr}"` interpolates. No implicit conversion or truthiness.
 - `[1, 2]` List; `Map[K, V]()`, `Set[T]()` mutate in place; assignment shares, `.clone()` is shallow.

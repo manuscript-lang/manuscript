@@ -12,7 +12,9 @@ func TestStandaloneTry(t *testing.T) {
 		{"wrong error", "fn operation() -> Result[Unit, Int]: ok(unit)\nfn f() -> Result[Int, String]:\n    try operation()\n    return ok(1)\n", "try requires the same error type"},
 		{"unit enclosing", "fn operation() -> Result[Unit, String]: ok(unit)\nfn f() -> Unit:\n    try operation()\n", "try requires an enclosing Result"},
 		{"not result", "fn operation() -> Unit: unit\nfn f() -> Result[Int, String]:\n    try operation()\n    return ok(1)\n", "try requires Result"},
-		{"test enclosing", "fn operation() -> Result[Unit, String]: ok(unit)\ntest \"invalid\":\n    try operation()\n", "try is not available in a test"},
+		{"test enclosing", "fn operation() -> Result[Unit, String]: ok(unit)\ntest \"invalid\":\n    try operation()\n", "operand fails with String"},
+		{"test with Error boundary", "fn operation() -> Result[Unit, Error]: ok(unit)\ntest \"valid\":\n    try operation()\n", ""},
+		{"test completes or returns", "test \"bare\":\n    return\ntest \"unit\":\n    return unit\ntest \"fall\":\n    let x = 1\n", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			result := CompileSource("try.ms", tc.source, Options{Tests: true})

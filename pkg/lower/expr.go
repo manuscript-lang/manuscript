@@ -498,7 +498,7 @@ func (g *gen) lambda(e *syntax.Expression, info *checker.Info) ast.Expr {
 	saved := g.fn
 	defer func() { g.fn = saved }()
 	result := g.sub(info.Type.Result)
-	g.fn = &funcState{decl: saved.decl, result: result}
+	g.fn = &funcState{decl: saved.decl, result: result, lambda: true}
 	var snapshots []ast.Stmt
 	restore := map[*checker.Binding]*string{}
 	for _, b := range sortedBindings(info.Captures) {
