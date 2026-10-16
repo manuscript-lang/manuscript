@@ -639,3 +639,72 @@ test "JSON parse reads standard alternatives and rejects keys that collide":
     if parse[Map[Int, String]](text: "\{\"1\":\"a\",\"01\":\"b\"\}") != collide: return panic(
         "1 and 01 are one Int key"
     )
+
+type Link:
+    next: Optional[Link]
+    n: Int
+
+type Defaults:
+    a: Int = 1
+    b: Int = a + 1
+    c: String = "x{b}"
+
+type Kw:
+    type_: Int
+    func: Int
+    range: Int
+
+type Pair[A, B]:
+    left: A
+    right: B
+
+type Op:
+    case Add(left: Int, right: Int)
+    case Neg(v: Optional[Int])
+    case Nop
+
+type Wrap:
+    ops: List[Op]
+    pairs: List[Pair[Int, Op]]
+    byTime: Map[Duration, String]
+
+test "JSON stringify fails on nesting deeper than parse accepts":
+    var head = Link(next: none, n: 0)
+    var i = 1
+
+    while i < 300000:
+        head = Link(next: some(head), n: i)
+        i = i + 1
+
+    let r = stringify(head)
+    if r.is_ok: return panic("nesting beyond the parse ceiling must fail")
+
+test "JSON parse runs field defaults that read earlier fields":
+    let d = value(parse[Defaults](text: "\{\"a\":5\}"))
+    if d.b != 6 or d.c != "x6": return panic("default chain {d.b} {d.c}")
+
+test "JSON round trips fields named like Go keywords":
+    let k = Kw(type_: 1, func: 2, range: 3)
+    let t = value(stringify(k))
+    let back = value(parse[Kw](text: t))
+    if back.range != 3: return panic(t)
+
+test "JSON round trips generic records alternatives and Duration keys":
+    let w = Wrap(
+        ops: [Op.Add(1, 2), Op.Neg(none), Op.Neg(some(3)), Op.Nop],
+        pairs: [Pair(left: 1, right: Op.Nop)],
+        byTime: Map[Duration, String]().add(duration(5), "five")
+    )
+    let t = value(stringify(w))
+    let back = value(parse[Wrap](text: t))
+    if value(stringify(back)) != t: return panic(t)
+
+test "JSON parse returns InvalidData for targets that cannot be read":
+    if parse[Unit](text: "null").is_ok: return panic("unit")
+
+    let f = parse[fn() -> Int](text: "1")
+    if f.is_ok: return panic("fn")
+    if parse[Int](text: "-0").is_error: return panic("-0")
+    if parse[Float](text: "1e999").is_ok: return panic("inf")
+    if parse[String](text: "1").is_ok: return panic("str")
+    if parse[List[Int]](text: "[1,\"a\"]").is_ok: return panic("elem")

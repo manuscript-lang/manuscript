@@ -26,10 +26,10 @@ func NewJsonScope(ctx *Execution) *JsonScope {
 }
 
 // Enter marks container p active. It reports false, and fails the encode, when
-// p is already being encoded.
+// p is already being encoded or the nesting is deeper than parse accepts.
 func (s *JsonScope) Enter(p any) bool {
 	CheckCancelled(s.ctx)
-	if _, seen := s.active[p]; seen {
+	if _, seen := s.active[p]; seen || len(s.active) >= jsonDepthCeiling {
 		s.Failed = true
 		return false
 	}
