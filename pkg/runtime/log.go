@@ -38,7 +38,7 @@ func logLevelIndex(level LogLevel) int {
 func logFail[T any](e LogError) Result[T, LogError] { return Fail[T, LogError](e) }
 
 // Log_Create builds a logger that writes JSON lines to transport.
-func Log_Create(_ *Execution, transport Transport, level Option[LogLevel], bindings Option[*Map[string, JsonValue]], timestamp Option[bool], maxBytes Option[int]) Result[Logger, LogError] {
+func Log_Create(_ *Execution, transport Transport, level Option[LogLevel], timestamp Option[bool], maxBytes Option[int]) Result[Logger, LogError] {
 	threshold := 2
 	if level.Some {
 		threshold = logLevelIndex(level.Val)
@@ -47,15 +47,11 @@ func Log_Create(_ *Execution, transport Transport, level Option[LogLevel], bindi
 	if threshold < 0 || !ok {
 		return logFail[Logger](LogError_InvalidInput{})
 	}
-	merged := NewMap[string, JsonValue]()
-	if bindings.Some {
-		merged = logMerge(bindings.Val)
-	}
 	stamp := true
 	if timestamp.Some {
 		stamp = timestamp.Val
 	}
-	return Ok[Logger, LogError](&jsonLogger{transport: transport, threshold: threshold, bindings: merged, timestamp: stamp, max: max})
+	return Ok[Logger, LogError](&jsonLogger{transport: transport, threshold: threshold, bindings: NewMap[string, JsonValue](), timestamp: stamp, max: max})
 }
 
 // Log_StreamTransport writes records to a borrowed stream; closing the
@@ -78,6 +74,42 @@ func Log_FileTransport(ctx *Execution, path string) Result[Transport, LogError] 
 	handle := opened.Val
 	// Delivery and cancellation cleanup belong to the outer acquisition.
 	return Ok[Transport, LogError](newLogTransport(handle.Writer(Shield(ctx)), handle))
+}
+
+// Log_Record writes a record whose fields are the JSON form of fields.
+func Log_Record[T any](ctx *Execution, enc func(*JsonScope, T) (JsonValue, bool), logger Logger, level LogLevel, message string, fields T) Result[Unit, LogError] {
+	if !logger.Enabled(ctx, level) {
+		return logger.Log(ctx, level, message)
+	}
+	text := Json_Stringify(ctx, enc, fields, None[int](), None[int]())
+	if text.Failed {
+		return logFail[Unit](LogError_InvalidData{})
+	}
+	return logger.LogJson(ctx, level, message, text.Val)
+}
+
+// Log_Bind returns a logger that adds the JSON form of bindings to each record.
+func Log_Bind[T any](ctx *Execution, enc func(*JsonScope, T) (JsonValue, bool), logger Logger, bindings T) Result[Logger, LogError] {
+	text := Json_Stringify(ctx, enc, bindings, None[int](), None[int]())
+	if text.Failed {
+		return logFail[Logger](LogError_InvalidData{})
+	}
+	return logger.ChildJson(ctx, text.Val)
+}
+
+// logFields reads the JSON text of a record's fields. An object contributes its
+// members; any other value is carried under the key "data".
+func logFields(ctx *Execution, text string) (*Map[string, JsonValue], bool) {
+	tree := jsonParseTree(ctx, text, None[*JsonLimits]())
+	if tree.Failed {
+		return nil, false
+	}
+	if object, ok := tree.Val.(JsonValue_ObjectValue); ok {
+		return object.Values, true
+	}
+	fields := NewMap[string, JsonValue]()
+	fields.Put("data", tree.Val)
+	return fields, true
 }
 
 // logMerge copies top-level membership; later maps override earlier values
@@ -124,39 +156,58 @@ func (l *jsonLogger) Enabled(_ *Execution, level LogLevel) bool {
 	return index >= threshold && index >= 0 && index < 6
 }
 
-func (l *jsonLogger) Child(_ *Execution, bindings *Map[string, JsonValue]) Logger {
+func (l *jsonLogger) ChildJson(ctx *Execution, fields string) Result[Logger, LogError] {
+	bindings, ok := logFields(ctx, fields)
+	if !ok {
+		return logFail[Logger](LogError_InvalidData{})
+	}
 	l.mu.Lock()
 	threshold := l.threshold
 	l.mu.Unlock()
-	return &jsonLogger{transport: l.transport, threshold: threshold, bindings: logMerge(l.bindings, bindings), timestamp: l.timestamp, max: l.max}
+	return Ok[Logger, LogError](&jsonLogger{transport: l.transport, threshold: threshold, bindings: logMerge(l.bindings, bindings), timestamp: l.timestamp, max: l.max})
 }
 
 func (l *jsonLogger) Flush(ctx *Execution) Result[Unit, LogError] { return l.transport.Flush(ctx) }
 
-func (l *jsonLogger) Log(ctx *Execution, level LogLevel, message string, fields Option[*Map[string, JsonValue]]) Result[Unit, LogError] {
-	return l.emit(ctx, logLevelIndex(level), message, fields)
+func (l *jsonLogger) Log(ctx *Execution, level LogLevel, message string) Result[Unit, LogError] {
+	return l.emit(ctx, logLevelIndex(level), message, nil)
 }
 
-func (l *jsonLogger) Trace(ctx *Execution, m string, f Option[*Map[string, JsonValue]]) Result[Unit, LogError] {
-	return l.emit(ctx, 0, m, f)
-}
-func (l *jsonLogger) Debug(ctx *Execution, m string, f Option[*Map[string, JsonValue]]) Result[Unit, LogError] {
-	return l.emit(ctx, 1, m, f)
-}
-func (l *jsonLogger) Info(ctx *Execution, m string, f Option[*Map[string, JsonValue]]) Result[Unit, LogError] {
-	return l.emit(ctx, 2, m, f)
-}
-func (l *jsonLogger) Warn(ctx *Execution, m string, f Option[*Map[string, JsonValue]]) Result[Unit, LogError] {
-	return l.emit(ctx, 3, m, f)
-}
-func (l *jsonLogger) Error(ctx *Execution, m string, f Option[*Map[string, JsonValue]]) Result[Unit, LogError] {
-	return l.emit(ctx, 4, m, f)
-}
-func (l *jsonLogger) Fatal(ctx *Execution, m string, f Option[*Map[string, JsonValue]]) Result[Unit, LogError] {
-	return l.emit(ctx, 5, m, f)
+func (l *jsonLogger) LogJson(ctx *Execution, level LogLevel, message string, fields string) Result[Unit, LogError] {
+	index := logLevelIndex(level)
+	if index < 0 || index >= 6 {
+		return logFail[Unit](LogError_InvalidInput{})
+	}
+	if !l.Enabled(ctx, level) {
+		return Ok[Unit, LogError](Unit{})
+	}
+	parsed, ok := logFields(ctx, fields)
+	if !ok {
+		return logFail[Unit](LogError_InvalidData{})
+	}
+	return l.emit(ctx, index, message, parsed)
 }
 
-func (l *jsonLogger) emit(ctx *Execution, level int, message string, fields Option[*Map[string, JsonValue]]) Result[Unit, LogError] {
+func (l *jsonLogger) Trace(ctx *Execution, m string) Result[Unit, LogError] {
+	return l.emit(ctx, 0, m, nil)
+}
+func (l *jsonLogger) Debug(ctx *Execution, m string) Result[Unit, LogError] {
+	return l.emit(ctx, 1, m, nil)
+}
+func (l *jsonLogger) Info(ctx *Execution, m string) Result[Unit, LogError] {
+	return l.emit(ctx, 2, m, nil)
+}
+func (l *jsonLogger) Warn(ctx *Execution, m string) Result[Unit, LogError] {
+	return l.emit(ctx, 3, m, nil)
+}
+func (l *jsonLogger) Error(ctx *Execution, m string) Result[Unit, LogError] {
+	return l.emit(ctx, 4, m, nil)
+}
+func (l *jsonLogger) Fatal(ctx *Execution, m string) Result[Unit, LogError] {
+	return l.emit(ctx, 5, m, nil)
+}
+
+func (l *jsonLogger) emit(ctx *Execution, level int, message string, fields *Map[string, JsonValue]) Result[Unit, LogError] {
 	l.mu.Lock()
 	threshold := l.threshold
 	l.mu.Unlock()
@@ -169,9 +220,9 @@ func (l *jsonLogger) emit(ctx *Execution, level int, message string, fields Opti
 	metadata := NewMap[string, JsonValue]()
 	metadata.Put("level", JsonValue_NumberValue{Text: strconv.Itoa((level + 1) * 10)})
 	metadata.Put("msg", JsonValue_StringValue{Value: message})
-	extra := NewMap[string, JsonValue]()
-	if fields.Some {
-		extra = fields.Val
+	extra := fields
+	if extra == nil {
+		extra = NewMap[string, JsonValue]()
 	}
 	merged := logMerge(l.bindings, extra)
 	// These keys belong to the record envelope even when time is disabled.

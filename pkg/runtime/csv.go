@@ -63,18 +63,24 @@ func Csv_Stringify(ctx *Execution, rows *List[*List[string]], options *CsvOption
 	if crlf {
 		ending = "\r\n"
 	}
+	sep := string(delimiter)
+	special := "\"\r\n" + sep
+	var line []byte
 	for _, row := range rows.Items {
 		CheckCancelled(ctx)
-		record := append([]string{}, row.Items...)
-		if len(record) == 1 && record[0] == "" {
-			record[0] = "\"\""
+		line = line[:0]
+		if len(row.Items) == 1 && row.Items[0] == "" {
+			line = append(line, "\"\""...)
 		} else {
-			for i, field := range record {
-				record[i] = csvField(field, delimiter, crlf)
+			for i, field := range row.Items {
+				if i > 0 {
+					line = append(line, sep...)
+				}
+				line = append(line, csvField(field, special, crlf)...)
 			}
 		}
-		line := strings.Join(record, string(delimiter)) + ending
-		if _, err := w.Write([]byte(line)); err != nil {
+		line = append(line, ending...)
+		if _, err := w.Write(line); err != nil {
 			return Fail[string, CsvError](CsvError_LimitExceeded{})
 		}
 	}
@@ -84,12 +90,12 @@ func Csv_Stringify(ctx *Execution, rows *List[*List[string]], options *CsvOption
 // csvField quotes a cell when the reader could not otherwise recover it.
 // Unlike encoding/csv's writer, a lone carriage return stays in a quoted cell
 // in CRLF mode.
-func csvField(field string, delimiter rune, crlf bool) string {
+func csvField(field string, special string, crlf bool) string {
 	if field == "" {
 		return field
 	}
 	first, _ := utf8.DecodeRuneInString(field)
-	if field != `\.` && !strings.ContainsAny(field, "\"\r\n"+string(delimiter)) && !unicode.IsSpace(first) {
+	if field != `\.` && !strings.ContainsAny(field, special) && !unicode.IsSpace(first) {
 		return field
 	}
 	field = strings.ReplaceAll(field, "\"", "\"\"")

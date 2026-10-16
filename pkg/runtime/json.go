@@ -45,85 +45,16 @@ func jsonParseTree(ctx *Execution, text string, limits Option[*JsonLimits]) Resu
 	if !jsonUnicodeValid(ctx, text) {
 		return Fail[JsonValue, JsonError](JsonError_InvalidData{})
 	}
-	decoder := json.NewDecoder(strings.NewReader(text))
-	decoder.UseNumber()
-	count := 0
-	limitHit := false
-	var parse func(int) (JsonValue, error)
-	parse = func(depth int) (JsonValue, error) {
-		CheckCancelled(ctx)
-		count++
-		if count > maxValues {
-			limitHit = true
-			return nil, io.ErrShortBuffer
-		}
-		token, err := decoder.Token()
-		if err != nil {
-			return nil, err
-		}
-		switch v := token.(type) {
-		case nil:
-			return JsonValue_Null{}, nil
-		case bool:
-			return JsonValue_BoolValue{Value: v}, nil
-		case string:
-			return JsonValue_StringValue{Value: v}, nil
-		case json.Number:
-			return JsonValue_NumberValue{Text: string(v)}, nil
-		case json.Delim:
-			if depth+1 > maxDepth {
-				limitHit = true
-				return nil, io.ErrShortBuffer
-			}
-			if v == '[' {
-				var items []JsonValue
-				for decoder.More() {
-					item, err := parse(depth + 1)
-					if err != nil {
-						return nil, err
-					}
-					items = append(items, item)
-				}
-				end, err := decoder.Token()
-				if err != nil || end != json.Delim(']') {
-					return nil, io.ErrUnexpectedEOF
-				}
-				return JsonValue_ArrayValue{Values: NewList(items...)}, nil
-			}
-			if v == '{' {
-				m := NewMap[string, JsonValue]()
-				for decoder.More() {
-					key, err := decoder.Token()
-					if err != nil {
-						return nil, err
-					}
-					s, ok := key.(string)
-					if _, seen := m.Lookup(s); !ok || seen {
-						return nil, io.ErrUnexpectedEOF
-					}
-					value, err := parse(depth + 1)
-					if err != nil {
-						return nil, err
-					}
-					m.Put(s, value)
-				}
-				end, err := decoder.Token()
-				if err != nil || end != json.Delim('}') {
-					return nil, io.ErrUnexpectedEOF
-				}
-				return JsonValue_ObjectValue{Values: m}, nil
-			}
-		}
-		return nil, io.ErrUnexpectedEOF
+	p := jsonScanner{ctx: ctx, text: text, maxDepth: maxDepth, maxValues: maxValues}
+	value, ok := p.value(0)
+	if ok {
+		p.skipSpace()
+		ok = p.pos == len(text)
 	}
-	value, err := parse(0)
-	if err != nil {
-		if limitHit {
+	if !ok {
+		if p.limitHit {
 			return Fail[JsonValue, JsonError](JsonError_LimitExceeded{})
 		}
-		return Fail[JsonValue, JsonError](JsonError_InvalidData{})
-	}
-	if _, err := decoder.Token(); err != io.EOF {
 		return Fail[JsonValue, JsonError](JsonError_InvalidData{})
 	}
 	return Ok[JsonValue, JsonError](value)
@@ -224,7 +155,7 @@ func jsonEmit(ctx *Execution, value JsonValue, max int, width int) Result[string
 			return jsonString(w, v.Value)
 		case JsonValue_NumberValue:
 			s := v.Text
-			if !json.Valid([]byte(s)) || s == "" || s[0] != '-' && (s[0] < '0' || s[0] > '9') || s[len(s)-1] < '0' || s[len(s)-1] > '9' {
+			if !jsonNumberText(s) {
 				return io.ErrUnexpectedEOF
 			}
 			return write(s)
@@ -314,9 +245,29 @@ func jsonString(w *dfLimitedWriter, s string) error {
 		w.overflow = true
 		return io.ErrShortBuffer
 	}
+	if jsonPlainASCII(s) {
+		if len(s)+2 > w.max-int(w.Len()) {
+			w.overflow = true
+			return io.ErrShortBuffer
+		}
+		w.Buffer.WriteByte('"')
+		w.Buffer.WriteString(s)
+		return w.Buffer.WriteByte('"')
+	}
 	b, _ := json.Marshal(s)
 	_, err := w.Write(b)
 	return err
+}
+
+// jsonPlainASCII reports whether json.Marshal would emit s unchanged between quotes.
+func jsonPlainASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c < 0x20 || c >= 0x7f || c == '"' || c == '\\' || c == '<' || c == '>' || c == '&' {
+			return false
+		}
+	}
+	return true
 }
 
 // Errors_Message_JsonError returns the fixed JSON diagnostic.
@@ -330,4 +281,10 @@ func Errors_Message_JsonError(_ *Execution, e JsonError) string {
 		return dfMessage("JSON", reasonLimitExceeded)
 	}
 	return dfMessage("JSON", "operation failed")
+}
+
+// jsonNumberText reports whether s is exactly one JSON number.
+func jsonNumberText(s string) bool {
+	p := jsonScanner{text: s}
+	return s != "" && p.number() && p.pos == len(s)
 }

@@ -39,7 +39,7 @@ export type Bytes:
     # Returns the number of bytes, not the number of Unicode characters.
     fn length() -> Int:
     # Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
-    fn to_text() -> Optional[String]:
+    fn to_string() -> Optional[String]:
 
 # Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().
 export fn values(data: Bytes) -> List[Int]:

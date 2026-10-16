@@ -12,7 +12,7 @@ import (
 // Test is one test block of the generated program.
 type Test struct {
 	Name    string
-	Run     func(*Execution) Unit
+	Run     func(*Execution) Result[Unit, Error]
 	Fixture *TestFixture
 }
 

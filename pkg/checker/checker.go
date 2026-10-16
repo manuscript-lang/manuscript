@@ -58,6 +58,8 @@ type checker struct {
 	captures                map[int]map[*Binding]bool
 	constantsVisiting       map[*Symbol]bool
 	cycleReported           map[*Symbol]bool
+	facts                   []*boundFact
+	allowedLookups          map[*syntax.Expression]bool
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
@@ -346,7 +348,7 @@ func (c *checker) checkBodies(module *syntax.Module) {
 			}
 		}
 		if d.Kind == syntax.KindTest {
-			c.checkFunction(d, function(nil, primitive("Unit")), nil, nil)
+			c.checkFunction(d, function(nil, testOutcome()), nil, nil)
 		}
 	}
 	for _, m := range c.Methods {
@@ -569,7 +571,7 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 	}
 	c.checkParameters(d, d.Params, t.Params)
 	fall, _ := c.block(d.Body, false)
-	if fall && t.Result.ID != "Unit" && t.Result.ID != "<invalid>" {
+	if fall && d.Kind != syntax.KindTest && t.Result.ID != "Unit" && t.Result.ID != "<invalid>" {
 		c.error(d.Pos, "type", "reachable fallthrough in function returning "+t.Result.String()+"; end every path with 'return <"+t.Result.String()+">' (or make the last branch return)")
 	}
 	c.scope, c.result, c.function, c.loops = oldScope, oldResult, oldFunction, oldLoops
@@ -617,6 +619,8 @@ func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks boo
 		c.scope = newScope(old)
 	}
 	fall = true
+	facts := len(c.facts)
+	defer func() { c.facts = c.facts[:facts] }()
 	for _, s := range body {
 		normal, br := c.statement(s)
 		if fall {
@@ -629,7 +633,15 @@ func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks boo
 }
 func (c *checker) statement(s *syntax.Statement) (fall, breaks bool) {
 	defer func() { setFlow(s, Flow{fall}) }()
-	return c.checkStatement(s)
+	outer := c.allowedLookups
+	allowed, mutates := c.analyzeStatement(s)
+	c.allowedLookups = allowed
+	fall, breaks = c.checkStatement(s)
+	c.allowedLookups = outer
+	if mutates {
+		c.killMutations()
+	}
+	return fall, breaks
 }
 func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 	switch s.Kind {
@@ -673,6 +685,11 @@ func (c *checker) checkBind(s *syntax.Statement) (bool, bool) {
 		bound = expected
 	}
 	c.pattern(s.Pattern, bound, s.Mutable, s.Value)
+	if b, ok := s.Pattern.Fact.(*Binding); ok && s.Pattern.Kind == syntax.KindName && bound.ID == "Int" {
+		if n, constant := intConstant(s.Value); constant && n >= 0 {
+			b.nonNegative = true
+		}
+	}
 	return !info.NoReturn, info.Breaks
 }
 
@@ -706,6 +723,10 @@ func (c *checker) checkAssign(s *syntax.Statement) (bool, bool) {
 		c.error(s.Pos, "type", "cannot assign a captured binding; closures cannot reassign outer variables, so return the new value or keep state in a record field")
 	}
 	i := c.expression(s.Value, b.Type)
+	if b.nonNegative && !safeIncrement(s.Name, s.Value) {
+		b.nonNegative = false
+	}
+	c.killAssigned(b)
 	return !i.NoReturn, i.Breaks
 }
 
@@ -722,9 +743,11 @@ func (c *checker) checkReturn(s *syntax.Statement) (bool, bool) {
 		return false, breaks
 	}
 	if s.Value == nil {
-		if c.result.ID != "Unit" {
+		if c.result.ID != "Unit" && !(c.testFunction != 0 && c.function == c.testFunction) {
 			c.error(s.Pos, "type", "bare return requires Unit; this function returns "+c.result.String()+", so write 'return <value>'")
 		}
+	} else if s.Value.Kind == syntax.KindUnit && c.testFunction != 0 && c.function == c.testFunction {
+		c.expression(s.Value, nil) // returning unit from a test is success
 	} else {
 		i := c.expression(s.Value, c.result)
 		return false, i.Breaks
@@ -755,22 +778,32 @@ func (c *checker) checkIf(s *syntax.Statement) (bool, bool) {
 		return c.checkIfLet(s)
 	}
 	i := c.expression(s.Value, primitive("Bool"))
+	facts := len(c.facts)
+	c.pushFacts(c.guardFacts(s.Value, true))
 	a, ab := c.block(s.Body, true)
+	c.facts = c.facts[:facts]
 	b, bb := true, false
+	// When the guard is false, or the then-branch cannot continue, the
+	// negated guard holds in the else-branch and after the statement.
+	c.pushFacts(c.guardFacts(s.Value, false))
 	if len(s.Else) > 0 {
 		b, bb = c.block(s.Else, true)
+	}
+	if a {
+		c.facts = c.facts[:facts]
 	}
 	return !i.NoReturn && (a || b), i.Breaks || ab || bb
 }
 
-// checkIfLet checks `if let name = optional`, which binds the payload in the then-branch only.
+// checkIfLet checks `if let name = optional` or `if let name = result`, which binds the
+// present or Ok payload in the then-branch only. A Result's error is not captured.
 func (c *checker) checkIfLet(s *syntax.Statement) (bool, bool) {
 	i := c.expression(s.Value, nil)
 	payload := primitive("<invalid>")
-	if std(i.Type, "Optional") && len(i.Type.Args) == 1 {
+	if (std(i.Type, "Optional") && len(i.Type.Args) == 1) || (std(i.Type, "Result") && len(i.Type.Args) == 2) {
 		payload = i.Type.Args[0]
 	} else if i.Type.ID != "<invalid>" {
-		c.error(s.Value.Pos, "type", "if let requires an Optional, found "+i.Type.String()+"; use 'if' for a Bool condition or 'match' for other alternatives")
+		c.error(s.Value.Pos, "type", "if let requires an Optional or Result, found "+i.Type.String()+"; use 'if' for a Bool condition or 'match' for other alternatives")
 	}
 	old := c.scope
 	c.scope = newScope(old)
@@ -786,9 +819,13 @@ func (c *checker) checkIfLet(s *syntax.Statement) (bool, bool) {
 
 // checkWhile checks a while loop and reports whether control falls through and whether it breaks.
 func (c *checker) checkWhile(s *syntax.Statement) (bool, bool) {
+	c.enterLoop(s.Body)
 	i := c.expression(s.Value, primitive("Bool"))
 	c.loops++
+	facts := len(c.facts)
+	c.pushFacts(c.guardFacts(s.Value, true))
 	_, br := c.block(s.Body, true)
+	c.facts = c.facts[:facts]
 	c.loops--
 	literalTrue := s.Value.Kind == syntax.KindBool && s.Value.Text == "true"
 	return !i.NoReturn && (!literalTrue || br), i.Breaks
@@ -812,6 +849,7 @@ func (c *checker) checkFor(s *syntax.Statement) (bool, bool) {
 	old := c.scope
 	c.scope = newScope(old)
 	setLoopBinding(s, c.bind(s.Name, element, false, s.Pos))
+	c.enterLoop(s.Body)
 	c.loops++
 	c.block(s.Body, false)
 	c.loops--
@@ -1153,6 +1191,9 @@ func (c *checker) index(e *syntax.Expression) *Info {
 		c.error(e.Pos, "type", "indexing requires List[T]; use the receiver's lookup method for other types")
 	} else {
 		info.Type = standard("Optional", receiver.Type.Args[0])
+		if c.proven(e) {
+			info.Type, info.Proven = receiver.Type.Args[0], true
+		}
 	}
 	return info
 }

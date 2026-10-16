@@ -302,9 +302,9 @@ export type SetBuilder[T: Hashable]:
 #
 # # Building values
 #
-# Ordinary collections already support mutation. Use a builder when construction needs synchronized access and an atomic sealed result. A builder returns its result when sealed. Builder aliases are ordinary references; freezing may seal the builder so later mutation reports a runtime error.
+# Ordinary collections already support mutation. Use a builder when construction needs a sealed result. A builder returns its result when sealed. Builder aliases are ordinary references; freezing may seal the builder so later mutation reports a runtime error.
 #
-# Builders synchronize mutation and freeze across all aliases. Freezing seals the object atomically; an append racing with freeze either contributes to the snapshot or faults after sealing. Concurrent appends have nondeterministic order. There is no ownership-transfer or consuming function type.
+# Builders are not synchronized, like ordinary collections: use one builder from one task at a time, or guard it with [Synchronized](../concurrency/synchronization.md#synchronized). There is no ownership-transfer or consuming function type.
 #
 # ## API
 #
@@ -440,7 +440,7 @@ export type SetBuilder[T: Hashable]:
 # | `slice` | Select a half-open byte range, returning `OutOfRange` for invalid bounds, under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
 # | `with_value`, `reversed`, `concat`, `clone` | Return Bytes without changing the receiver. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
 # | `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
-# | `to_text` | Decode valid UTF-8 or return `none`. |
+# | `to_string` | Decode valid UTF-8 or return `none`. |
 #
 # Bytes stay immutable even when a native slice shares storage. Construction and extraction copy values, as described in [encoding and parsing](../core-language/basics/text-and-bytes.md#encoding-and-parsing).
 #

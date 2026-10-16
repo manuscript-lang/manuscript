@@ -3,46 +3,85 @@ import {
     LogLevel,
     LogError,
     create,
+    record,
+    bind,
     stream_transport,
     stdout_transport,
     file_transport
 } from "@std/log.ms"
 import {WriteStream, IoError} from "@std/io.ms"
-import {JsonValue, parse} from "@std/json.ms"
+import JsonValue from "@std/json.ms"
 import {filesystem, FileSystemError} from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
 import MemoryStream from "./support/streams.ms"
 import value from "./support/results.ms"
 
+type Items:
+    items: List[Optional[Int]]
+
+type Payload:
+    count: Int
+    ok: Bool
+    nested: Items
+    level: Int
+    msg: String
+    time: Int
+
 test "logger writes typed escaped records and protects metadata":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
 
     with transport = stream_transport(WriteStream(output)):
         let logger = value(create(transport: transport, timestamp: false))
-        let fields = value(
-            parse(
-                text: "\{\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\},\"level\":0,\"msg\":\"fake\",\"time\":0\}"
+        let fields = Payload(
+            count: 9007199254740993,
+            ok: true,
+            nested: Items(items: [none, some(1)]),
+            level: 0,
+            msg: "fake",
+            time: 0
+        )
+        let written = value(
+            record(
+                logger: logger,
+                level: LogLevel.Info,
+                message: "say \"hi\"\nnext",
+                fields: fields
             )
         )
 
-        match fields:
-            ObjectValue(values):
-                let written = value(
-                    logger.info(
-                        message: "say \"hi\"\nnext",
-                        fields: values
-                    )
-                )
-
-            _: return panic("object fields")
-
         let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
-        if output.data.to_text() != some(expected): return panic("typed log record")
+        if output.data.to_string() != some(expected): return panic("typed log record")
 
         let flushed = value(logger.flush())
 
     if output.closed: return panic("borrowed stream closed")
+
+test "non-object values are written under data":
+    let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
+
+    with transport = stream_transport(WriteStream(output)):
+        let logger = value(create(transport: transport, timestamp: false))
+        let counted = value(
+            record(
+                logger: logger,
+                level: LogLevel.Info,
+                message: "n",
+                fields: 7
+            )
+        )
+        let listed = value(
+            record(
+                logger: logger,
+                level: LogLevel.Warn,
+                message: "l",
+                fields: ["a", "b"]
+            )
+        )
+        let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
+        if output.data.to_string() != some(expected): return panic(
+            "scalar and list fields"
+        )
 
 test "levels filter methods and function values":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
@@ -75,7 +114,7 @@ test "levels filter methods and function values":
         let debugged = value(logger.debug(message: "debug"))
         let informed = value(logger.info(message: "info"))
         let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
-        if output.data.to_text() != some(expected): return panic("level records")
+        if output.data.to_string() != some(expected): return panic("level records")
 
         logger.set_level(LogLevel.Silent)
         if logger.enabled(LogLevel.Fatal) or logger.enabled(LogLevel.Silent): return panic(
@@ -91,55 +130,48 @@ test "levels filter methods and function values":
             "silent message level"
         )
 
-test "child bindings snapshot membership and merge without mutating inputs":
+type Service:
+    service: String
+
+type Request:
+    request: Int
+
+test "child bindings snapshot values and merge without mutating inputs":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
 
     with transport = stream_transport(WriteStream(output)):
-        let bindings = Map[String, JsonValue]().add(
-            key: "service",
-            value: JsonValue.StringValue("api")
-        )
-        let logger = value(
-            create(
-                transport: transport,
-                bindings: bindings,
-                timestamp: false
-            )
-        )
-        bindings.add(key: "service", value: JsonValue.StringValue("changed"))
-        let child_fields = Map[String, JsonValue]().add(
-            key: "request",
-            value: JsonValue.NumberValue("7")
-        )
-        let child = logger.child(child_fields)
-        child_fields.add(key: "request", value: JsonValue.NumberValue("9"))
+        let root = value(create(transport: transport, timestamp: false))
+        let logger = value(bind(logger: root, bindings: Service(service: "api")))
+        let child = value(bind(logger: logger, bindings: Request(request: 7)))
         logger.set_level(LogLevel.Fatal)
         if child.level() != LogLevel.Info: return panic("child level snapshot")
 
-        let fields = Map[String, JsonValue]().add(
-            key: "service",
-            value: JsonValue.StringValue("worker")
+        let child_log = value(
+            record(
+                logger: child,
+                level: LogLevel.Info,
+                message: "child",
+                fields: Service(service: "worker")
+            )
         )
-        let child_log = value(child.info(message: "child", fields: fields))
         let parent_log = value(logger.fatal(message: "parent"))
         let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
-        if output.data.to_text() != some(expected): return panic("binding precedence")
-        if fields.length() != 1: return panic("log mutated fields")
+        if output.data.to_string() != some(expected): return panic("binding precedence")
 
-test "limits and invalid JSON reject before writing":
+test "limits and unencodable values reject before writing":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
 
     with transport = stream_transport(WriteStream(output)):
-        let record = "\{\"level\":30,\"msg\":\"x\"\}\n"
+        let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
         let logger = value(
             create(
                 transport: transport,
                 timestamp: false,
-                max_bytes: (record.to_bytes().length())
+                max_bytes: (line.to_bytes().length())
             )
         )
         let written = value(logger.info(message: "x"))
-        if output.data.to_text() != some(record): return panic("exact byte budget")
+        if output.data.to_string() != some(line): return panic("exact byte budget")
 
         let before = output.data.clone()
         let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
@@ -155,14 +187,16 @@ test "limits and invalid JSON reject before writing":
                 if cause != LogError.InvalidInput: return panic("negative budget")
 
         let unlimited = value(create(transport: transport, timestamp: false))
-        let bad = Map[String, JsonValue]().add(
-            key: "n",
-            value: JsonValue.NumberValue("NaN")
-        )
+        let bad = JsonValue.NumberValue("NaN")
         let invalid_data: Result[Unit, LogError] = error(LogError.InvalidData)
-        if unlimited.info(message: "bad", fields: bad) != invalid_data: return panic(
-            "invalid JSON"
-        )
+        if (
+            record(
+                logger: unlimited,
+                level: LogLevel.Info,
+                message: "bad",
+                fields: bad
+            ) != invalid_data
+        ): return panic("invalid JSON")
         if output.data != before: return panic("failed log wrote bytes")
 
 test "transport closure and stream errors preserve identity":
@@ -197,7 +231,7 @@ test "file transport appends and flushes with scoped cleanup":
 
         let data = value(fs.read_file(path: path))
         if (
-            data.to_text() != some(
+            data.to_string() != some(
                 "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
             )
         ): return panic("file append")
@@ -242,7 +276,7 @@ test "source transports receive complete records and close through their contrac
         let written = value(logger.info(message: "source transport"))
         let flushed = value(logger.flush())
         if (
-            output.data.to_text() != some(
+            output.data.to_string() != some(
                 "\{\"level\":30,\"msg\":\"source transport\"\}\n"
             )
         ): return panic("source transport record")

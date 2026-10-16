@@ -1,4 +1,5 @@
-# Assertions for declared test blocks. Implementations are native.
+# Assertions for declared test blocks. Each returns a Result whose error describes the failed expectation;
+# apply `try` so a test block returns that error and fails. Implementations are native.
 
 # File-level test lifecycle. A local make_fixture() returns its concrete implementer.
 # Missing hooks are no-ops. All supplied hooks take no arguments and return Unit.
@@ -15,76 +16,84 @@ export interface TestHooks:
     fn after_all() -> Unit
 
 # Fails unless actual is true.
-export fn expect_true(actual: Bool) -> Unit:
+export fn expect_true(actual: Bool) -> Result[Unit, Error]:
 
 # Fails unless actual is false.
-export fn expect_false(actual: Bool) -> Unit:
+export fn expect_false(actual: Bool) -> Result[Unit, Error]:
 
 # Compares using ordinary Equal semantics; reports expected and actual values on failure.
-export fn expect_equal[T: Equal](actual: T, expected: T) -> Unit:
+export fn expect_equal[T: Equal](actual: T, expected: T) -> Result[Unit, Error]:
 
 # Fails when values are equal under ordinary Equal semantics.
-export fn expect_not_equal[T: Equal](actual: T, expected: T) -> Unit:
+export fn expect_not_equal[T: Equal](actual: T, expected: T) -> Result[Unit, Error]:
 
 # Checks absolute difference against a finite nonnegative tolerance. NaN fails; identical infinities pass.
-export fn expect_close(actual: Float, expected: Float, tolerance: Float) -> Unit:
+export fn expect_close(
+    actual: Float,
+    expected: Float,
+    tolerance: Float
+) -> Result[Unit, Error]:
 
 # Checks for an exact substring without Unicode normalization.
-export fn expect_contains(actual: String, expected: String) -> Unit:
+export fn expect_contains(actual: String, expected: String) -> Result[Unit, Error]:
 
 # Requires some and returns its original payload; fails on none.
-export fn expect_some[T](actual: Optional[T]) -> T:
+export fn expect_some[T](actual: Optional[T]) -> Result[T, Error]:
 
 # Requires none; fails when a payload is present.
-export fn expect_none[T](actual: Optional[T]) -> Unit:
+export fn expect_none[T](actual: Optional[T]) -> Result[Unit, Error]:
 
 # Requires ok and returns its original payload; reports an unexpected error.
-export fn expect_ok[T, E](actual: Result[T, E]) -> T:
+export fn expect_ok[T, E](actual: Result[T, E]) -> Result[T, Error]:
 
 # Requires error and returns its original cause; fails on success.
-export fn expect_error[T, E](actual: Result[T, E]) -> E:
+export fn expect_error[T, E](actual: Result[T, E]) -> Result[E, Error]:
 
 # Calls operation once, requires a programming fault, and returns its message. Cancellation and skip propagate.
-export fn expect_fault(operation: fn() -> Unit) -> String:
+export fn expect_fault(operation: fn() -> Unit) -> Result[String, Error]:
 
-# Fails the current test with a programming fault containing message.
-export fn fail(message: String) -> Never:
+# Returns an error with message; `try fail(message)` fails the current test.
+export fn fail(message: String) -> Result[Unit, Error]:
 
 # Stops and skips the current test, unwinding lexical cleanup. A cleanup failure overrides the skip.
 export fn skip(reason: String) -> Never:
 
 # TDD spelling of `expect_true` with the same comparison and failure behavior.
-export fn assert_true(actual: Bool) -> Unit:
+export fn assert_true(actual: Bool) -> Result[Unit, Error]:
 
 # TDD spelling of `expect_false` with the same comparison and failure behavior.
-export fn assert_false(actual: Bool) -> Unit:
+export fn assert_false(actual: Bool) -> Result[Unit, Error]:
 
 # TDD spelling of `expect_equal` with the same comparison and failure behavior.
-export fn assert_equal[T: Equal](actual: T, expected: T) -> Unit:
+export fn assert_equal[T: Equal](actual: T, expected: T) -> Result[Unit, Error]:
 
 # TDD spelling of `expect_not_equal` with the same comparison and failure behavior.
-export fn assert_not_equal[T: Equal](actual: T, expected: T) -> Unit:
+export fn assert_not_equal[T: Equal](actual: T, expected: T) -> Result[Unit, Error]:
 
 # TDD spelling of `expect_close` with the same comparison and failure behavior.
-export fn assert_close(actual: Float, expected: Float, tolerance: Float) -> Unit:
+export fn assert_close(
+    actual: Float,
+    expected: Float,
+    tolerance: Float
+) -> Result[Unit, Error]:
 
 # TDD spelling of `expect_contains` with the same comparison and failure behavior.
-export fn assert_contains(actual: String, expected: String) -> Unit:
+export fn assert_contains(actual: String, expected: String) -> Result[Unit, Error]:
 
 # TDD spelling of `expect_some` with the same comparison and failure behavior.
-export fn assert_some[T](actual: Optional[T]) -> T:
+export fn assert_some[T](actual: Optional[T]) -> Result[T, Error]:
 
 # TDD spelling of `expect_none` with the same comparison and failure behavior.
-export fn assert_none[T](actual: Optional[T]) -> Unit:
+export fn assert_none[T](actual: Optional[T]) -> Result[Unit, Error]:
 
 # TDD spelling of `expect_ok` with the same comparison and failure behavior.
-export fn assert_ok[T, E](actual: Result[T, E]) -> T:
+export fn assert_ok[T, E](actual: Result[T, E]) -> Result[T, Error]:
 
 # TDD spelling of `expect_error` with the same comparison and failure behavior.
-export fn assert_error[T, E](actual: Result[T, E]) -> E:
+export fn assert_error[T, E](actual: Result[T, E]) -> Result[E, Error]:
 
 # TDD spelling of `expect_fault`; checks a programming fault and returns its message.
-export fn assert_fault(operation: fn() -> Unit) -> String:
+export fn assert_fault(operation: fn() -> Unit) -> Result[String, Error]:
 
 # documentation documentation/standard-library/testing.md
 # +++
@@ -93,8 +102,10 @@ export fn assert_fault(operation: fn() -> Unit) -> String:
 #
 # # Testing helpers
 #
-# Import assertions from `@std/testing.ms`. Assertions stop the declared test on
-# failure and retain a source fault location. Equal checks honor user-defined
+# Import assertions from `@std/testing.ms`. Assertions return a `Result` whose error
+# describes the failed expectation; apply `try` so the declared test stops and fails
+# with that message. A test block completing normally, or returning `unit`, passes;
+# it behaves as if it returns `Result[Unit, Error]`, so `try` and `return error(...)` fail it. Equal checks honor user-defined
 # equality; Optional and Result assertions return the payload for further checks.
 # The `assert_*` functions provide TDD spellings of the corresponding `expect_*` checks.
 #
@@ -103,7 +114,7 @@ export fn assert_fault(operation: fn() -> Unit) -> String:
 # import expect_equal from "@std/testing.ms"
 #
 # test "adding two numbers returns their sum":
-#     expect_equal(1 + 2, 3)
+#     try expect_equal(1 + 2, 3)
 # ```
 #
 # Use independent `test` blocks for independently selected and reported cases.
@@ -141,7 +152,7 @@ export fn assert_fault(operation: fn() -> Unit) -> String:
 #         self.count = 0
 #
 # test "sees initialized state":
-#     expect_equal(fixture.count, 1)
+#     try expect_equal(fixture.count, 1)
 # ```
 #
 # The runner constructs one fixture on first selected use, calls before_all,

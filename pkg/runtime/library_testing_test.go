@@ -8,35 +8,39 @@ import (
 
 func testEqInt(_ *Execution, a, b int) bool { return a == b }
 
-func faultOf(ctx *Execution, operation func(*Execution) Unit) (message string) {
-	defer func() {
-		if failure := recover(); failure != nil {
-			message = failure.(Fault).Message
-		}
-	}()
-	operation(ctx)
-	return ""
+func failureOf[T any](ctx *Execution, outcome Result[T, Error]) string {
+	if !outcome.Failed {
+		return ""
+	}
+	return outcome.Err.Message(ctx)
 }
 
-func TestTestingAssertionsAndFaultBoundaries(t *testing.T) {
+func TestTestingAssertionsReturnErrors(t *testing.T) {
 	ctx := RootExecution()
-	Testing_ExpectEqual(ctx, testEqInt, 1, 1)
-	Testing_ExpectClose(ctx, math.Inf(1), math.Inf(1), 0)
+	if got := failureOf(ctx, Testing_ExpectEqual(ctx, testEqInt, 1, 1)); got != "" {
+		t.Fatalf("equal failed: %q", got)
+	}
+	if got := failureOf(ctx, Testing_ExpectClose(ctx, math.Inf(1), math.Inf(1), 0)); got != "" {
+		t.Fatalf("close failed: %q", got)
+	}
 	for _, args := range [][3]float64{{math.NaN(), 1, 0.1}, {1, 1, -0.1}, {1, 1, math.Inf(1)}} {
-		if faultOf(ctx, func(c *Execution) Unit { return Testing_ExpectClose(c, args[0], args[1], args[2]) }) == "" {
+		if failureOf(ctx, Testing_ExpectClose(ctx, args[0], args[1], args[2])) == "" {
 			t.Fatalf("accepted close %v", args)
 		}
 	}
-	if got := faultOf(ctx, func(c *Execution) Unit { return Testing_ExpectEqual(c, testEqInt, 1, 2) }); got != "expected 2, got 1" {
+	if got := failureOf(ctx, Testing_ExpectEqual(ctx, testEqInt, 1, 2)); got != "expected 2, got 1" {
 		t.Fatalf("message %q", got)
 	}
-	if got := Testing_ExpectFault(ctx, func(c *Execution) Unit { Raise("boom"); return Unit{} }); got != "boom" {
-		t.Fatalf("fault message %q", got)
+	if got := failureOf(ctx, Testing_Fail(ctx, "no")); got != "no" {
+		t.Fatalf("fail message %q", got)
 	}
-	if got := faultOf(ctx, func(c *Execution) Unit {
-		Testing_ExpectFault(c, func(*Execution) Unit { return Unit{} })
-		return Unit{}
-	}); !strings.Contains(got, "returned normally") {
+	if got := failureOf(ctx, Testing_ExpectSome(ctx, None[int]())); got != "expected some, got none" {
+		t.Fatalf("some message %q", got)
+	}
+	if got := Testing_ExpectFault(ctx, func(c *Execution) Unit { Raise("boom"); return Unit{} }); got.Failed || got.Val != "boom" {
+		t.Fatalf("fault message %+v", got)
+	}
+	if got := failureOf(ctx, Testing_ExpectFault(ctx, func(*Execution) Unit { return Unit{} })); !strings.Contains(got, "returned normally") {
 		t.Fatalf("message %q", got)
 	}
 	for _, failure := range []any{testSkip{"reason"}, cancelled{}} {

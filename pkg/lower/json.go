@@ -125,7 +125,7 @@ func (g *gen) cycleGuard(t *checker.Type) []ast.Stmt {
 // after the execution.
 func (g *gen) jsonCodecArgs(native string, typeArgs []*checker.Type) []ast.Expr {
 	switch {
-	case native == "Json_Stringify" && len(typeArgs) == 1:
+	case (native == "Json_Stringify" || native == "Log_Record" || native == "Log_Bind") && len(typeArgs) == 1:
 		return []ast.Expr{g.jsonEncFunc(typeArgs[0])}
 	case native == "Json_Parse" && len(typeArgs) == 1:
 		return []ast.Expr{g.jsonDecFunc(typeArgs[0])}
@@ -140,7 +140,7 @@ func (g *gen) jsonCodecFields(native string, vars []*checker.Type) []*ast.Field 
 		return nil
 	}
 	switch native {
-	case "Json_Stringify":
+	case "Json_Stringify", "Log_Record", "Log_Bind":
 		ft := functionType([]*ast.Field{{Type: jsonScopeType()}, {Type: ident(vars[0].Name)}}, nil)
 		ft.Results = &ast.FieldList{List: []*ast.Field{{Type: ident("JsonValue")}, {Type: ident("bool")}}}
 		return []*ast.Field{field("enc", ft)}

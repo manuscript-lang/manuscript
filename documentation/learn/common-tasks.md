@@ -59,7 +59,7 @@ ms run args.ms -- Sam Ada
 
 ## Read a UTF-8 text file
 
-Save as `read.ms`. The path comes from the first argument. `read_file` returns bytes; `to_text()` returns `none` when they are not valid UTF-8.
+Save as `read.ms`. The path comes from the first argument. `read_file` returns bytes; `to_string()` returns `none` when they are not valid UTF-8.
 
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
@@ -72,7 +72,7 @@ fn run() -> Result[Unit, Error]:
     if path.is_none():
         return error(FileSystemError.InvalidInput)
     let bytes = try filesystem().read_file(path.unwrap(), max_bytes: 1048576)
-    let text = bytes.to_text()
+    let text = bytes.to_string()
     if text.is_none():
         return error(FileSystemError.InvalidData)
     try stdout().write(text.unwrap().to_bytes())
@@ -266,7 +266,7 @@ fn run() -> Result[Unit, Error]:
     )
     if response.metadata().status != 200:
         return error(HttpError.InvalidData)
-    let text = response.body.to_text()
+    let text = response.body.to_string()
     if text.is_none():
         return error(HttpError.InvalidData)
     try stdout().write(text.unwrap().to_bytes())

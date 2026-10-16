@@ -34,3 +34,20 @@ test "if let takes else when absent and keeps falsy payloads":
 
     if let value = empty.first():
         panic(message: "unexpected {value}")
+
+fn parse(text: String) -> Result[Int, String]:
+    if text == "":
+        return error("empty")
+
+    return ok(text.length())
+
+test "if let unwraps an ok result and takes else on error":
+    if let value = parse("abc"):
+        check(value: value == 3, message: "ok value")
+    else:
+        panic(message: "expected ok")
+
+    if let value = parse(""):
+        panic(message: "unexpected {value}")
+    else:
+        check(value: true, message: "error branch")

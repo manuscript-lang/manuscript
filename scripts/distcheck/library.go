@@ -48,7 +48,7 @@ test "copied native defaults":
     match base64_decode("Zg=="):
         error(_): return panic("default Base64 decode failed")
         ok(bytes):
-            if bytes.to_text().unwrap() != "f": return panic("default decoded bytes")
+            if bytes.to_string().unwrap() != "f": return panic("default decoded bytes")
     let run = commands().run
     match run(program: %q, arguments: ["--version"]):
         error(_): return panic("default command stdin failed")

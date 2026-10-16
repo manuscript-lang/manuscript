@@ -99,10 +99,10 @@ Equal valid bounds select an empty range. Slices never clamp or swap bounds, so 
 | `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]` |
 | `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
 | `Bytes` | `length() -> Int`; `at(index: Int) -> Optional[Int]`; `concat(values: Bytes) -> Bytes` |
-| `Bytes` | `to_text() -> Optional[String]` |
+| `Bytes` | `to_string() -> Optional[String]` |
 | `Bytes` | `values() -> List[Int]`; a fresh mutable list of unsigned byte values |
 
-`String.to_bytes` uses UTF-8. `Bytes.to_text` succeeds exactly for valid UTF-8, preserving contents without normalization; invalid bytes produce `none`. Byte `at` follows list index behavior and returns the unsigned byte as Int. An empty `Bytes(values: [])` is valid.
+`String.to_bytes` uses UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8, preserving contents without normalization; invalid bytes produce `none`. Byte `at` follows list index behavior and returns the unsigned byte as Int. An empty `Bytes(values: [])` is valid.
 
 `Bytes(values:)` copies the supplied list; subsequent list mutation does not change the Bytes. `data.values()` returns a fresh list, so editing that result does not change `data`. The existing free function `values(data:)` from `@std/bytes.ms` returns the same kind of copy. `values` is a receiver operation, not a readable data field; the constructor's `values:` argument remains a List.
 
@@ -116,10 +116,10 @@ import Bytes from "@std/bytes.ms"
 test "explicit byte conversion":
     if not ("é".byte_length() == 2):
         return panic(message: "check failed")
-    if not ("é".to_bytes().to_text() == some("é")):
+    if not ("é".to_bytes().to_string() == some("é")):
         return panic(message: "check failed")
     let invalid: Optional[String] = none
-    if not (Bytes([255]).to_text() == invalid):
+    if not (Bytes([255]).to_string() == invalid):
         return panic(message: "check failed")
     if not ("-007".parse_int() == some(-7)):
         return panic(message: "check failed")

@@ -1,0 +1,4 @@
+[project]
+name = "async-log"
+source = "./src"
+entry = "./src/main.ms"

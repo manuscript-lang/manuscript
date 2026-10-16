@@ -17,10 +17,10 @@ func TestStructuredTestEventsRetainFailuresTimeoutsAndDuplicateNames(t *testing.
 	t.Setenv(nativeabi.TestEventsEnv, path)
 	pass := func(*Execution) Unit { return Unit{} }
 	tests := []Test{
-		{Name: "same.ms::duplicate", Run: pass},
-		{Name: "same.ms::duplicate", Run: func(*Execution) Unit { return Panic(nil, "named failure") }},
-		{Name: "same.ms::timeout", Run: func(ctx *Execution) Unit { <-ctx.Context.Done(); return CheckCancelled(ctx) }},
-		{Name: "same.ms::after", Run: pass},
+		{Name: "same.ms::duplicate", Run: unitRun(pass)},
+		{Name: "same.ms::duplicate", Run: unitRun(func(*Execution) Unit { return Panic(nil, "named failure") })},
+		{Name: "same.ms::timeout", Run: unitRun(func(ctx *Execution) Unit { <-ctx.Context.Done(); return CheckCancelled(ctx) })},
+		{Name: "same.ms::after", Run: unitRun(pass)},
 	}
 	if failed := RunTests(tests, []string{"--timeout=20ms"}); failed != 2 {
 		t.Fatalf("failed=%d", failed)

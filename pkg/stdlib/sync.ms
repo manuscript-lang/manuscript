@@ -36,7 +36,7 @@ export type SynchronizedGuard[T]:
 #
 # Records and collections are mutable. Alternative tags, strings, and bytes retain their value behavior. `let` fixes a binding, while `var` permits reassignment; neither freezes a referenced record or collection. Closures snapshot captured bindings, including a mutable local's current value, and cannot assign to captured outer locals.
 #
-# Native services and builders synchronize their mutable internals and resource lifecycles. Resource APIs may serialize simultaneous calls or report unsupported overlapping use. Race safety does not make several calls atomic or establish their execution order. Use [Synchronized](synchronization.md#synchronized) when related reads and writes must run under one lock.
+# Native services synchronize their mutable internals and resource lifecycles. Resource APIs may serialize simultaneous calls or report unsupported overlapping use. Race safety does not make several calls atomic or establish their execution order. Use [Synchronized](synchronization.md#synchronized) when related reads and writes must run under one lock.
 #
 # Wrappers coordinate the closed-state check, access to the underlying handle, and closure as one lifecycle protocol. A flag check followed by unprotected I/O is insufficient. A stale lock guard must never access a resource or protected value after release.
 #

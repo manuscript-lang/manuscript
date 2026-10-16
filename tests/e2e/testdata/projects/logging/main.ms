@@ -1,9 +1,26 @@
-import {Logger, create, stdout_transport, file_transport} from "@std/log.ms"
+import {
+    Logger,
+    LogLevel,
+    create,
+    bind,
+    record,
+    stdout_transport,
+    file_transport
+} from "@std/log.ms"
 import JsonValue from "@std/json.ms"
 import arguments from "@std/cli.ms"
 import stderr from "@std/io.ms"
 import {TaskGroup, Task} from "@std/tasks.ms"
 import emit from "./records.ms"
+
+type Worker:
+    worker: Int
+
+type Sequence:
+    sequence: Int
+
+type Service:
+    service: String
 
 fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
     with group = TaskGroup():
@@ -12,24 +29,19 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
         for worker in [0, 1, 2, 3, 4, 5, 6, 7]:
             let task = group.start(
                 fn() -> Result[Unit, Error]:
-                    let bindings = Map[String, JsonValue]().add(
-                        key: "worker",
-                        value: JsonValue.NumberValue(
-                            worker.toString()
-                        )
+                    let child = try bind(
+                        logger: logger,
+                        bindings: Worker(worker: worker)
                     )
-                    let child = logger.child(bindings)
 
                     for sequence in [0, 1, 2, 3, 4, 5, 6, 7]:
-                        let fields = Map[String, JsonValue]().add(
-                            key: "sequence",
-                            value: JsonValue.NumberValue(
-                                sequence.toString()
-                            )
-                        )
-                        let logged = try child.info(
+                        let logged = try record(
+                            logger: child,
+                            level: LogLevel.Info,
                             message: "concurrent",
-                            fields: fields
+                            fields: Sequence(
+                                sequence: sequence
+                            )
                         )
 
                     return ok(unit)
@@ -45,18 +57,12 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
     return ok(unit)
 
 fn exercise(mode: String, path: String) -> Result[Unit, Error]:
-    let bindings = Map[String, JsonValue]().add(
-        key: "service",
-        value: JsonValue.StringValue("api")
-    )
+    let bindings = Service(service: "api")
 
     if (mode == "file" or mode == "concurrent" or mode == "missing"):
         with transport = try file_transport(path):
-            let logger = try create(
-                transport: transport,
-                bindings: bindings,
-                timestamp: false
-            )
+            let root = try create(transport: transport, timestamp: false)
+            let logger = try bind(logger: root, bindings: bindings)
 
             if mode == "concurrent":
                 let logged = try concurrent_records(logger)
@@ -72,14 +78,16 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
             let logger = try create(transport: transport, max_bytes: 1)
             let logged = try logger.info(message: "too large")
         else:
-            let logger = try create(transport: transport, bindings: bindings)
+            let root = try create(transport: transport)
+            let logger = try bind(logger: root, bindings: bindings)
 
             if mode == "invalid":
-                let fields = Map[String, JsonValue]().add(
-                    key: "bad",
-                    value: JsonValue.NumberValue("NaN")
+                let logged = try record(
+                    logger: logger,
+                    level: LogLevel.Info,
+                    message: "invalid",
+                    fields: JsonValue.NumberValue("NaN")
                 )
-                let logged = try logger.info(message: "invalid", fields: fields)
             else if mode == "closed":
                 transport.close()
                 let logged = try logger.info(message: "closed")

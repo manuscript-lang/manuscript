@@ -140,6 +140,7 @@ Implementation = "impl", NamedType, "for", NamedType, ":", NEWLINE,
 MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, FunctionSuite ;
 FunctionSuite = ":", (Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
+(* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or return unit succeeds; try or return error(...) fails it. *)
 (* Only canonical TestHooks implementations may omit operations; missing hooks are no-ops. *)
 Parameters    = Parameter, { ",", Parameter }, [ "," ] ;
 Parameter     = Name, ":", Type ;

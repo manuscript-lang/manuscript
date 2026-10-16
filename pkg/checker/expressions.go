@@ -430,11 +430,7 @@ func (c *checker) checkTry(e *syntax.Expression, operand, i *Info) {
 	}
 	i.Type = result.Args[0]
 	if !std(c.result, "Result") || len(c.result.Args) != 2 {
-		if c.testFunction != 0 && c.function == c.testFunction {
-			c.error(e.Pos, "type", "try is not available in a test, which cannot return Result; match the result and end the failing arm with 'return panic(message: ...)'")
-		} else {
-			c.error(e.Pos, "type", "try requires an enclosing Result; declare this function to return Result[T, E] or handle the error with match")
-		}
+		c.error(e.Pos, "type", "try requires an enclosing Result; declare this function to return Result[T, E] or handle the error with match")
 		return
 	}
 	failure, returned := result.Args[1], c.result.Args[1]
@@ -453,7 +449,13 @@ func isOrdering(op string) bool { return op == "<" || op == "<=" || op == ">" ||
 
 func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *Info {
 	a := c.expression(e.Left, nil)
+	// The right operand runs only when the left is true (and) or false (or).
+	facts := len(c.facts)
+	if e.Text == "and" || e.Text == "or" {
+		c.pushFacts(c.guardFacts(e.Left, e.Text == "and"))
+	}
 	b := c.expression(e.Right, nil)
+	c.facts = c.facts[:facts]
 	logical := e.Text == "and" || e.Text == "or"
 	i.NoReturn = a.NoReturn || (!logical && b.NoReturn)
 	switch {

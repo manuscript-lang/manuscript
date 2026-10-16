@@ -109,7 +109,7 @@ Accept a function parameter as a TaskGroup callback, a function-bearing record b
 
 Accept stored `Scheduler.start` and HTTP serve methods, and ordinary wrappers forwarding callbacks. TaskGroup.start requires explicit specialization when stored as a generic method value; Task.join and TaskGroup.join may be stored directly.
 
-Run `tests/e2e/testdata/accept/synchronized.ms` for complete updates, forwarding, explicit shallow copies, builders, fault cleanup, stale guards, and ancestor reentry. Runtime tests must exercise simultaneous increments, cancellation while waiting and holding, concurrent release, access racing with release/reacquisition, undelivered acquisition disposal, and builder freeze racing with mutation. Reject direct Synchronized get/set, guard construction, and equality/hashing of either synchronized type.
+Run `tests/e2e/testdata/accept/synchronized.ms` for complete updates, forwarding, explicit shallow copies, builders, fault cleanup, stale guards, and ancestor reentry. Runtime tests must exercise simultaneous increments, cancellation while waiting and holding, concurrent release, access racing with release/reacquisition, undelivered acquisition disposal. Reject direct Synchronized get/set, guard construction, and equality/hashing of either synchronized type.
 
 ## Data and numeric outcomes
 

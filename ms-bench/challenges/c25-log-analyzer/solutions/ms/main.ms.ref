@@ -20,7 +20,7 @@ type Stat:
 
 fn run() -> Result[Unit, Error]:
     let data = try read_all(input: stdin())
-    let text = data.to_text().unwrap_or("")
+    let text = data.to_string().unwrap_or("")
     var valid = 0
     var malformed = 0
     let classes = [0, 0, 0, 0, 0]

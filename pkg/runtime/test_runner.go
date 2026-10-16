@@ -314,7 +314,9 @@ func runTestContext(test Test, timeout time.Duration, parent context.Context, ar
 			defer Cleanup(execution, hostShutdown)
 		}
 		defer FinishExecution(execution)
-		test.Run(execution)
+		if outcome := test.Run(execution); outcome.Failed {
+			failure = testReturnedError(execution, outcome.Err)
+		}
 	}()
 	var timer *time.Timer
 	var elapsed <-chan time.Time

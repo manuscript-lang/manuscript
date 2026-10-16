@@ -89,7 +89,10 @@ func (g *gen) statementCall(e ast.Expr) bool {
 
 func (g *gen) returnStatement(s *syntax.Statement) []ast.Stmt {
 	var value ast.Expr = g.unit()
-	if s.Value != nil {
+	if g.testBody() && (s.Value == nil || s.Value.Kind == syntax.KindUnit) {
+		value = g.testSuccess()
+	}
+	if s.Value != nil && !(g.testBody() && s.Value.Kind == syntax.KindUnit) {
 		value = g.valueAs(s.Value, g.fn.result)
 	}
 	return []ast.Stmt{returned(value)}
@@ -182,13 +185,18 @@ func (g *gen) ifStatement(s *syntax.Statement) []ast.Stmt {
 	return []ast.Stmt{stmt}
 }
 
-// ifLet lowers `if let name = optional` to a presence test around the payload binding.
+// ifLet lowers `if let name = optional` to a presence test, and `if let name = result` to a
+// success test, around the payload binding.
 func (g *gen) ifLet(s *syntax.Statement) []ast.Stmt {
 	tmp := g.temp()
 	value := g.expr(s.Value)
 	body := g.pattern(s.Pattern, selector(ident(tmp), "Val"), g.sub(g.info(s.Value).Type).Args[0])
 	body = append(body, g.body(s.Body, nil)...)
-	stmt := &ast.IfStmt{Cond: selector(ident(tmp), "Some"), Body: block(body...)}
+	cond := ast.Expr(selector(ident(tmp), "Some"))
+	if g.sub(g.info(s.Value).Type).ID == "@std/Result" {
+		cond = not(selector(ident(tmp), "Failed"))
+	}
+	stmt := &ast.IfStmt{Cond: cond, Body: block(body...)}
 	if len(s.Else) > 0 {
 		stmt.Else = block(g.body(s.Else, nil)...)
 	}

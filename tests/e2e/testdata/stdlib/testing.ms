@@ -13,35 +13,40 @@ import {
     fail,
     assert_equal
 } from "@std/testing.ms"
+import panic from "@std/faults.ms"
 
 fn identity[T](value: T) -> T:
     return value
 
 test "testing assertions":
-    expect_true(true)
-    expect_false(false)
-    expect_equal(identity(3), 3)
-    assert_equal("hello", "hello")
-    expect_equal([1, 2], [1, 2])
-    expect_not_equal(1, 2)
-    expect_close(1.01, 1.0, 0.02)
-    expect_contains("Manuscript", "script")
+    try expect_true(true)
+    try expect_false(false)
+    try expect_equal(identity(3), 3)
+    try assert_equal("hello", "hello")
+    try expect_equal([1, 2], [1, 2])
+    try expect_not_equal(1, 2)
+    try expect_close(1.01, 1.0, 0.02)
+    try expect_contains("Manuscript", "script")
     let present: Optional[Int] = some(7)
     let absent: Optional[Int] = none
-    expect_equal(expect_some(present), 7)
-    expect_none(absent)
+    try expect_equal(try expect_some(present), 7)
+    try expect_none(absent)
     let success: Result[Int, String] = ok(9)
     let failure: Result[Int, String] = error("bad")
-    expect_equal(expect_ok(success), 9)
-    expect_equal(expect_error(failure), "bad")
-    expect_contains(expect_fault(fn(): expect_equal(1, 2)), "expected 2, got 1")
-    expect_contains(
-        expect_fault(
-            fn():
-                let message = expect_fault(fn(): expect_true(true))
-        ),
-        "returned normally"
-    )
+    try expect_equal(try expect_ok(success), 9)
+    try expect_equal(try expect_error(failure), "bad")
+    let mismatch = expect_equal(1, 2)
+    let mismatch_cause = try expect_error(mismatch)
+    try expect_contains(mismatch_cause.message(), "expected 2, got 1")
+    try expect_contains(try expect_fault(fn(): panic("boom")), "boom")
+    let quiet = expect_fault(fn(): unit)
+    let quiet_cause = try expect_error(quiet)
+    try expect_contains(quiet_cause.message(), "returned normally")
+
+test "failure helpers return errors":
+    let failed = fail("custom failure")
+    let failed_cause = try expect_error(failed)
+    try expect_contains(failed_cause.message(), "custom failure")
 
 type Key:
     id: Int
@@ -54,5 +59,5 @@ impl Equal for Key:
             _: return false
 
 test "assertions preserve domain equality":
-    expect_equal(Key(id: 1, label: "first"), Key(id: 1, label: "second"))
-    expect_not_equal(Key(id: 1, label: "first"), Key(id: 2, label: "first"))
+    try expect_equal(Key(id: 1, label: "first"), Key(id: 1, label: "second"))
+    try expect_not_equal(Key(id: 1, label: "first"), Key(id: 2, label: "first"))

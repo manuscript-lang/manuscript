@@ -56,6 +56,9 @@ type Binding struct {
 	Type     *Type
 	Mutable  bool
 	Function int
+	// nonNegative: an Int that starts at a written nonnegative value and is
+	// only assigned nonnegative values or incremented by one.
+	nonNegative bool
 }
 type Method struct {
 	ID                       string
@@ -99,6 +102,9 @@ type Info struct {
 	// value is Constant. The fold pass sets both.
 	Folded, Constant bool
 	foldDone         bool
+	// Proven reports an index expression the checker proved in range, so its
+	// type is the element type; lowering keeps a faulting read.
+	Proven bool
 	// inferenceDeferred records body checks that need a later callback result context.
 	inferenceDeferred bool
 }
@@ -264,6 +270,13 @@ func Cases(t *Type) []Case {
 func function(params []Param, result *Type) *Type {
 	return &Type{Kind: "function", ID: "fn", Name: "fn", Params: params, Result: result}
 }
+
+// testOutcome is the implicit result of a test block: completing normally
+// succeeds, and returning an error fails the test with that error's message.
+func testOutcome() *Type { return TestOutcome() }
+
+// TestOutcome returns the Result[Unit, Error] type of a test block.
+func TestOutcome() *Type          { return standard("Result", primitive("Unit"), standard("Error")) }
 func primitive(name string) *Type { return &Type{Name: name, ID: name, Kind: "primitive"} }
 func standard(name string, args ...*Type) *Type {
 	t := *standardSymbols[name].Type

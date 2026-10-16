@@ -176,9 +176,9 @@ func TestRunMainArgumentsHooksAndJoin(t *testing.T) {
 }
 
 func TestRunTests(t *testing.T) {
-	pass := Test{Name: "m::pass", Run: func(*Execution) Unit { return Unit{} }}
-	fail := Test{Name: "m::fail", Run: func(*Execution) Unit { Raise("nope"); return Unit{} }}
-	hang := Test{Name: "m::hang", Run: func(c *Execution) Unit { <-c.Context.Done(); return CheckCancelled(c) }}
+	pass := Test{Name: "m::pass", Run: unitRun(func(*Execution) Unit { return Unit{} })}
+	fail := Test{Name: "m::fail", Run: unitRun(func(*Execution) Unit { Raise("nope"); return Unit{} })}
+	hang := Test{Name: "m::hang", Run: unitRun(func(c *Execution) Unit { <-c.Context.Done(); return CheckCancelled(c) })}
 	if got := RunTests([]Test{pass, fail, pass}, nil); got != 1 {
 		t.Fatalf("failed = %d", got)
 	}
