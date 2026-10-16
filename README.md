@@ -80,7 +80,7 @@ In Windows PowerShell, use `.\ms.exe` instead of `./ms`.
 Arguments: 2
 ```
 
-`check` validates the source. `lock` records the project's build pins; rerun it after changing Manuscript or the target toolchain. `run` builds a temporary executable and passes it the arguments after `--`.
+`check` validates the source. `run` builds a temporary executable and passes it the arguments after `--`.
 
 To start your own project, run `./ms init my-app`. To keep a standalone executable or run the included test:
 

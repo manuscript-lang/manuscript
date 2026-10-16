@@ -1,28 +1,21 @@
 <section class="home-hero" aria-labelledby="home-title">
   <div class="home-pitch">
-    <p class="home-eyebrow">A language for the agentic era</p>
-    <h1 id="home-title">Build with agents.<br><span>Ship something real.</span></h1>
+    <p class="home-eyebrow"><span aria-hidden="true"></span>Manuscript</p>
+    <h1 id="home-title">The language<br> <span>for the agentic era.</span></h1>
     <p class="home-description">{{ .Page.Description }}</p>
     <div class="home-actions">
       <a class="home-button home-button-primary" href="{{ with .Site.GetPage "learn/getting-started" }}{{ .RelPermalink }}{{ end }}">Try Manuscript <span aria-hidden="true">→</span></a>
-      <a class="home-button" href="{{ with .Site.GetPage "learn/tour" }}{{ .RelPermalink }}{{ end }}">Explore the language</a>
+      <a class="home-explore" href="{{ with .Site.GetPage "learn/tour" }}{{ .RelPermalink }}{{ end }}">Explore the language</a>
     </div>
-    <p class="home-platforms">Linux, macOS &amp; Windows · One download, complete toolchain</p>
-    <p class="home-status"><span class="version-badge">v{{ partialCached "docs/version" . }}</span> Early development. Come build with us.</p>
+    <p class="home-platforms">Linux, macOS &amp; Windows <span aria-hidden="true">·</span> One download</p>
   </div>
+  <ul class="home-proof" aria-label="Why Manuscript">
+    <li><strong>API first</strong><span>Ordinary calls, even for concurrency.</span></li>
+    <li><strong>Minimal syntax</strong><span>Less to generate. Less to review.</span></li>
+    <li><strong>Tools that understand</strong><span>Search, check, test, and inspect.</span></li>
+  </ul>
   <div class="home-example" aria-label="A complete Manuscript program">
     {{ .Page.RenderString (dict "display" "block") .Inner }}
-    <div class="home-output"><span>Run it</span><code>ms run hello.ms -- Ada</code><samp>Hello, Ada!</samp></div>
-  </div>
-</section>
-<section class="home-reasons" aria-labelledby="home-reasons-title">
-  <div class="home-section-heading">
-    <p class="home-eyebrow">Less friction. More building.</p>
-    <h2 id="home-reasons-title">An idea deserves a clear path to a working program.</h2>
-  </div>
-  <div class="home-feature-grid">
-    <article><span class="home-feature-number" aria-hidden="true">01 / READ</span><h3>Code you can follow</h3><p>Explicit types, familiar control flow, and a small syntax keep the program readable as it grows. Expected errors are values you can handle.</p><a href="{{ with .Site.GetPage "learn/tour" }}{{ .RelPermalink }}{{ end }}">Meet the language <span aria-hidden="true">→</span></a></article>
-    <article><span class="home-feature-number" aria-hidden="true">02 / ITERATE</span><h3>Tools that understand your code</h3><p>Check, format, test, debug, and profile with <code>ms</code>. Coding agents get searchable APIs and structured diagnostics; editors get typed completion and navigation.</p><a href="{{ with .Site.GetPage "developer-tooling/implementation" }}{{ .RelPermalink }}{{ end }}">Explore the toolchain <span aria-hidden="true">→</span></a></article>
-    <article><span class="home-feature-number" aria-hidden="true">03 / SHIP</span><h3>A native program, ready to share</h3><p>Build a standalone executable. Work with files, JSON, HTTP, and concurrent tasks through the standard library, with scoped cleanup for resources.</p><a href="{{ with .Site.GetPage "learn/common-tasks" }}{{ .RelPermalink }}{{ end }}">Build something useful <span aria-hidden="true">→</span></a></article>
+    <div class="home-output"><code><span aria-hidden="true">$ </span>ms run hello.ms -- Ada</code><samp>Hello, Ada!</samp><span class="home-run-status"><span aria-hidden="true">✓</span> Native. Ready to run.</span></div>
   </div>
 </section>
