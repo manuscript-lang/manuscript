@@ -42,7 +42,7 @@ let deduction = 3
 let swapped = reduce(deduction: deduction, amount: amount)
 ```
 
-All four results are `7`. Resolve each argument from left to right; labels do not reserve parameters for later arguments. For example, `reduce(10, amount: 3)` supplies `amount` twice and fails, while `reduce(amount: 10, 3)` supplies `deduction` positionally. Unknown labels do not fill a declared parameter. Once every parameter is filled, another positional argument is an error. Arguments never skip a parameter merely because it has a default.
+All five results are `7`. Resolve each argument from left to right; labels do not reserve parameters for later arguments. For example, `reduce(10, amount: 3)` supplies `amount` twice and fails, while `reduce(amount: 10, 3)` supplies `deduction` positionally. Unknown labels do not fill a declared parameter. Once every parameter is filled, another positional argument is an error. Arguments never skip a parameter merely because it has a default.
 
 The rule applies to ordinary and generic functions, methods, function values, library APIs, record and alternative-case constructors, and explicit contract views. A method's implicit receiver is evaluated before its arguments and does not consume a positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Labeled calls retain their meaning. Function-type parameter names remain part of [type identity](function-values-and-closures.md); omitting invocation labels does not make differently named callback signatures compatible.
 

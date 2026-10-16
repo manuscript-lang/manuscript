@@ -48,7 +48,7 @@ fn literals() -> Unit:
 | `Float` | `truncate_to_int() -> Optional[Int]` |
 | `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
 
-Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. Decimal→Float may produce signed infinity or signed zero under the Float rules. Truncation discards the fractional part toward zero, then checks the mathematical integer against the exact signed 64-bit limits before conversion. NaN, infinities, or an out-of-range integer yield `none`.
+Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. Decimal→Float may produce signed infinity or signed zero under the Float rules. Truncation discards the fractional part toward zero, then checks the mathematical integer against the target platform’s `Int` range before conversion. NaN, infinities, or an out-of-range integer yield `none`.
 
 For example, `1e300.truncate_to_int()` is `none`. Float +2^63 cannot convert to Int, while Float -2^63 can.
 
@@ -58,7 +58,7 @@ For example, `1e300.truncate_to_int()` is `none`. Float +2^63 cannot convert to 
 
 Int addition, subtraction, multiplication, and unary negation fault when the mathematical result is outside the target `Int` range (signed 64 bits on 64-bit targets). Division truncates toward zero. Remainder has the sign of the dividend (or is zero), satisfying `a = (a / b) * b + a % b` mathematically. A zero divisor faults for both operations. Minimum Int divided by -1 faults, while Minimum Int modulo -1 is zero. Unary negation of Minimum Int faults. Thus `-7 / 2` is -3 and `-7 % 3` is -1.
 
-Int `/` and `%` faults name the operator and the invalid right operand. Division overflow also gives both operands and the signed 64-bit result range. These remain programming faults, while BigInt division returns its declared Result error.
+Int `/` and `%` faults name the operator and the invalid right operand. Division overflow also gives both operands and the target `Int` result range. These remain programming faults, while BigInt division returns its declared Result error.
 
 ### Float
 

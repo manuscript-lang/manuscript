@@ -5,7 +5,7 @@ weight = 3
 
 # Common tasks
 
-Each program below is a complete `.ms` file. Use a current `ms` build, save the code under the shown filename, and run the command from that directory. These examples use the current [optional argument-label rules](../core-language/functions/declarations-and-calls.md#argument-names); older compilers may require explicit labels. Follow [getting started](getting-started.md) to install or build the CLI.
+Each program below is a complete `.ms` file. Use a current `ms` build, save the code under the shown filename, and run the command from that directory. Follow [getting started](getting-started.md) to install or build the CLI.
 
 The shell commands assume a POSIX shell; in PowerShell, create the same input files or pipe the same text using its commands. The HTTP recipe additionally uses Python 3 as a local server. Imports name the standard APIs used, and `main` returns the process exit status.
 
@@ -131,9 +131,10 @@ fn run() -> Result[Unit, Error]:
     let input = stdin()
     while true:
         let line = try read_line(input, max_bytes: 4096)
-        if line.is_none():
+        if let text = line:
+            try stdout().write("{text}\n".to_bytes())
+        else:
             break
-        try stdout().write("{line.unwrap()}\n".to_bytes())
     return stdout().flush()
 
 export fn main() -> Int:
@@ -163,34 +164,32 @@ fn show(number: Int) -> Result[Unit, Error]:
 
 export fn main() -> Int:
     let number = arguments().at(0).unwrap_or("42").parse_int()
-    if number.is_none():
+    if let value = number:
+        match show(value):
+            ok(_): return 0
+            error(_): return 1
+    else:
         return 1
-    match show(number.unwrap()):
-        ok(_): return 0
-        error(_): return 1
 ```
 
 ```sh
 ms run number.ms -- 42
 ```
 
-Use `unwrap_or` when absence has a sensible default; use `is_none` and a failure path when invalid input should stop the task. See [Optional values](../core-language/types/optionals.md).
+Use `unwrap_or` when absence has a sensible default; use `if let` with an `else` failure path when invalid input should stop the task. See [Optional values](../core-language/types/optionals.md).
 
 ## Parse JSON
 
-Save as `json.ms`. This task accepts a JSON string and writes the decoded text. `parse` can also return objects, arrays, numbers, booleans, or null; this program rejects those shapes explicitly.
+Save as `json.ms`. `parse[String]` decodes a JSON string directly and returns an error for malformed JSON or a different value type.
 
 <!-- manuscript-example: {"mode":"run","args":["\"hello\""],"stdout":"hello\n","cases":[{"args":["{"],"exit_code":1},{"args":["42"],"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/cli.ms"
-import {parse, JsonError} from "@std/json.ms"
+import parse from "@std/json.ms"
 import stdout from "@std/io.ms"
 
 fn run() -> Result[Unit, Error]:
-    let value = try parse(arguments().at(0).unwrap_or("\"hello\""))
-    let text = match value:
-        StringValue(text): text
-        _: return error(JsonError.InvalidData)
+    let text = try parse[String](arguments().at(0).unwrap_or("\"hello\""))
     try stdout().write("{text}\n".to_bytes())
     return stdout().flush()
 
@@ -204,11 +203,51 @@ export fn main() -> Int:
 ms run json.ms -- '"hello"'
 ```
 
-The parse error and a valid value with the wrong shape are separate checks. See [JSON declarations](../standard-library/reference/json.md) for the other `JsonValue` cases and optional parsing limits.
+Without a type argument or an expected result type, `parse` returns a `JsonValue` tree. Use it for documents whose shape is not known in advance. See [JSON encoding and decoding](../standard-library/formats.md#json-behavior) for value mappings and parsing limits.
+
+## Read and write typed JSON
+
+Save as `config.ms`. Parse a record directly, then serialize it without building
+a `JsonValue` tree by hand.
+
+<!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1},{"args":["{\"name\":42}"],"exit_code":1}]} -->
+```manuscript
+import arguments from "@std/cli.ms"
+import {parse, stringify} from "@std/json.ms"
+import stdout from "@std/io.ms"
+
+type Config:
+    name: String
+    enabled: Bool = true
+
+fn run() -> Result[Unit, Error]:
+    let text = arguments().at(0).unwrap_or("\{\"name\":\"Sam\"\}")
+    let config = try parse[Config](text)
+    let encoded = try stringify(config)
+    try stdout().write("{encoded}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1
+```
+
+```sh
+ms run config.ms -- '{"name":"Sam"}'
+```
+
+A missing `enabled` takes the field default. A missing required `name` or a
+wrong member type returns an error. Unknown members are ignored by default;
+pass `ignore_unknown_fields: false` to reject them. Write `parse[Config]`
+explicitly after `try`, which supplies no expected type to its operand.
+`stringify` writes record fields in declaration order. See the
+[serialization guide](../standard-library/formats.md#json-behavior)
+for Optional fields, alternatives, and custom encoding.
 
 ## Make an HTTP GET request
 
-Save as `get.ms`. Import `network` from `@std/net.ms`; the buffered response has `status` and `body` fields. This task requires a 200 response containing UTF-8 text.
+Save as `get.ms`. Import `network` from `@std/net.ms`; read the status through `response.metadata().status` and the buffered bytes through `response.body`. This task requires a 200 response containing UTF-8 text.
 
 <!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from HTTP\n"},"stdout":"hello from HTTP\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1},{"args":["invalid URL"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
