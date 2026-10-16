@@ -1,12 +1,14 @@
 GO ?= $(CURDIR)/toolchain/go/bin/go
 HUGO ?= hugo
 FUZZTIME ?= 10s
+BENCHREPEATS ?= 5
+BENCHFILTER ?=
 E2EFLAGS ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: stdgen ms-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage book book-check vendor-refresh
+.PHONY: stdgen ms-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
@@ -72,6 +74,9 @@ test:
 ms-bench-check: build
 	PATH="$(CURDIR):$$PATH" python3 ms-bench/run.py oracle
 	python3 -m unittest discover -s ms-bench/tests
+
+stdlib-bench: build
+	scripts/stdlib-bench.sh $(BENCHREPEATS) $(BENCHFILTER)
 
 e2e:
 	"$(GO)" test $(E2EFLAGS) ./tests/e2e
