@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -29,6 +30,13 @@ func TestRequiredWorkflowTriggers(t *testing.T) {
 	}
 }
 
+func TestStandardLibrarySyntax(t *testing.T) {
+	t.Chdir("../..")
+	if err := checkStandardSyntax(os.DirFS("pkg/stdlib"), "pkg/stdlib"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestStandardSyntaxGate(t *testing.T) {
 	valid := fstest.MapFS{
 		"process.ms":    {Data: []byte("export fn commands() -> Commands:\n")},
@@ -44,6 +52,7 @@ func TestStandardSyntaxGate(t *testing.T) {
 		"schema":   "type Data:\n    count Int\n",
 		"default":  "type Data:\n    count: Int =\n",
 		"trailing": "fn valid() -> Unit:\nvar invalid = 3\n",
+		"lexer":    "fn broken() -> String: return \"unterminated\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			files := fstest.MapFS{"broken.ms": {Data: []byte(source)}}
@@ -83,6 +92,7 @@ func TestVerificationTargetsExecuteTheirContracts(t *testing.T) {
 	t.Chdir("../..")
 	for target, expected := range map[string][]string{
 		"verify":   {"vet ./...", "staticcheck ./...", "run ./scripts/repo-check\n", "test ./tests/examples", "maintenance licenses -check"},
+		"unit":     {"./pkg/stdlib", "./scripts/repo-check"},
 		"coverage": {"test -covermode=atomic", "-coverprofile=", "tool cover -html"},
 		"build":    {"run ./scripts/mktoolchain", "-tags exp.winarm64"},
 		"race":     {"test -race"}, "fuzz": {"test ./pkg/build -list '^FuzzCompile$'", "test ./pkg/build -run '^$' -fuzz '^FuzzCompile$'"}, "e2e": {"test  ./tests/e2e"},
