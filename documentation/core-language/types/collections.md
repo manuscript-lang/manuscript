@@ -193,7 +193,6 @@ A proof ends at an assignment to the index or list binding, at a statement conta
 
 Narrowing only changes the type. The generated read still checks the index, so a list resized by a concurrent task after the guard faults like `unwrap()` on `none` and never reads out of range. A `List[Optional[T]]` lookup narrows to `Optional[T]`, without flattening the element.
 
-
 `Map.add(key, value)` inserts or replaces a value and returns the same map.
 
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for construction with a sealed result.

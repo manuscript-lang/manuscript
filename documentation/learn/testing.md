@@ -54,7 +54,7 @@ source diagnostics and captured stdout. Stderr remains stderr; failures keep
 their exit status. It supports one run and cannot be combined with `--watch`.
 See the [JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests).
 
-Use `expect_ok` to check success and keep its payload. This complete example
+Use `try expect_ok` to check success and keep its payload. This complete example
 also checks a failure and unwraps an Optional without an unchecked `unwrap()`:
 
 <!-- manuscript-example: {"mode":"test"} -->
