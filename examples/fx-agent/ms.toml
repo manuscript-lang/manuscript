@@ -1,0 +1,5 @@
+[project]
+name = "fx-agent"
+source = "./src"
+entry = "./src/main.ms"
+
