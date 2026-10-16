@@ -2,6 +2,10 @@
 
 [AGENTS.md](../AGENTS.md#domain-skills) routes future sessions to repository-specific workflows. `skills/` is the shared source; `.agents/skills/` and `.claude/skills/` hold discovery symlinks. The imported general-purpose collection, installer, lockfile, and license were removed with that collection.
 
+[Improve documentation](improve-documentation/SKILL.md) handles broad accuracy,
+marketing, and reader-journey improvements. [Documentation](documentation/SKILL.md)
+owns the shared authoring and publication rules, including narrow edits.
+
 ## Maintain the catalog
 
 - Each skill needs `SKILL.md` with `name` and `description` frontmatter, a concrete trigger, repository entry points, and applicable checks. Match the folder and frontmatter names.
