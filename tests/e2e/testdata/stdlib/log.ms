@@ -259,12 +259,14 @@ test "async file transport queues, rotates, and keeps a bounded number of files"
             let flushed = value(logger.flush())
 
         let current = value(fs.read_file(path: path))
-        if current.to_string() != some("\{\"level\":30,\"msg\":\"c\"\}\n"): return panic("active file")
+        if current.to_string() != some("\{\"level\":30,\"msg\":\"c\"\}\n"): return panic(
+            "active file"
+        )
 
         let previous = value(fs.read_file(path: "{path}.1"))
-        if (
-            previous.to_string() != some("\{\"level\":30,\"msg\":\"b\"\}\n")
-        ): return panic("rotated file")
+        if (previous.to_string() != some("\{\"level\":30,\"msg\":\"b\"\}\n")): return panic(
+            "rotated file"
+        )
 
         match fs.stat(path: "{path}.2", follow_links: false):
             ok(_): return panic("file beyond max_files kept")
