@@ -11,41 +11,51 @@ import (
 // testSkip deliberately remains distinct from faults and cancellation.
 type testSkip struct{ Reason string }
 
-func testingCheck(ok bool, message func() string) Unit {
+// testingError is the error an unmet expectation returns; the runner reports its
+// message as the failure of the test that returns it.
+type testingError struct{ message string }
+
+func (e testingError) Message(*Execution) string { return e.message }
+
+func testingFail[T any](message string) Result[T, Error] {
+	return Fail[T, Error](testingError{message})
+}
+
+func testingCheck(ok bool, message func() string) Result[Unit, Error] {
 	if !ok {
-		Raise(message())
+		return testingFail[Unit](message())
 	}
-	return Unit{}
+	return Ok[Unit, Error](Unit{})
 }
 
 // Testing_ExpectTrue fails unless actual is true.
-func Testing_ExpectTrue(_ *Execution, actual bool) Unit {
+func Testing_ExpectTrue(_ *Execution, actual bool) Result[Unit, Error] {
 	return testingCheck(actual, func() string { return "expected true, got false" })
 }
 
 // Testing_ExpectFalse fails unless actual is false.
-func Testing_ExpectFalse(_ *Execution, actual bool) Unit {
+func Testing_ExpectFalse(_ *Execution, actual bool) Result[Unit, Error] {
 	return testingCheck(!actual, func() string { return "expected false, got true" })
 }
 
 // Testing_ExpectEqual compares with the program's equality of T.
-func Testing_ExpectEqual[T any](ctx *Execution, eq Eq[T], actual, expected T) Unit {
+func Testing_ExpectEqual[T any](ctx *Execution, eq Eq[T], actual, expected T) Result[Unit, Error] {
 	return testingCheck(eq(ctx, actual, expected), func() string {
 		return "expected " + testFormat(expected) + ", got " + testFormat(actual)
 	})
 }
 
 // Testing_ExpectNotEqual fails when the values are equal.
-func Testing_ExpectNotEqual[T any](ctx *Execution, eq Eq[T], actual, expected T) Unit {
+func Testing_ExpectNotEqual[T any](ctx *Execution, eq Eq[T], actual, expected T) Result[Unit, Error] {
 	return testingCheck(!eq(ctx, actual, expected), func() string {
 		return "expected different values, got " + testFormat(actual)
 	})
 }
 
 // Testing_ExpectClose checks the absolute difference against tolerance.
-func Testing_ExpectClose(_ *Execution, actual, expected, tolerance float64) Unit {
+func Testing_ExpectClose(_ *Execution, actual, expected, tolerance float64) Result[Unit, Error] {
 	if tolerance < 0 || math.IsNaN(tolerance) || math.IsInf(tolerance, 0) {
-		Raise("expect_close: tolerance must be finite and nonnegative")
+		return testingFail[Unit]("expect_close: tolerance must be finite and nonnegative")
 	}
 	ok := !math.IsNaN(actual) && !math.IsNaN(expected) && (actual == expected || math.Abs(actual-expected) <= tolerance)
 	return testingCheck(ok, func() string {
@@ -54,46 +64,47 @@ func Testing_ExpectClose(_ *Execution, actual, expected, tolerance float64) Unit
 }
 
 // Testing_ExpectContains checks for an exact substring.
-func Testing_ExpectContains(_ *Execution, actual, expected string) Unit {
+func Testing_ExpectContains(_ *Execution, actual, expected string) Result[Unit, Error] {
 	return testingCheck(strings.Contains(actual, expected), func() string {
 		return fmt.Sprintf("expected %q to contain %q", actual, expected)
 	})
 }
 
 // Testing_ExpectSome requires some and returns its payload.
-func Testing_ExpectSome[T any](_ *Execution, actual Option[T]) T {
+func Testing_ExpectSome[T any](_ *Execution, actual Option[T]) Result[T, Error] {
 	if !actual.Some {
-		Raise("expected some, got none")
+		return testingFail[T]("expected some, got none")
 	}
-	return actual.Val
+	return Ok[T, Error](actual.Val)
 }
 
 // Testing_ExpectNone requires none.
-func Testing_ExpectNone[T any](_ *Execution, actual Option[T]) Unit {
+func Testing_ExpectNone[T any](_ *Execution, actual Option[T]) Result[Unit, Error] {
 	return testingCheck(!actual.Some, func() string { return "expected none, got " + testFormat(actual) })
 }
 
 // Testing_ExpectOk requires ok and returns its payload.
-func Testing_ExpectOk[T, E any](_ *Execution, actual Result[T, E]) T {
+func Testing_ExpectOk[T, E any](_ *Execution, actual Result[T, E]) Result[T, Error] {
 	if actual.Failed {
-		Raise("expected ok, got " + testFormat(actual))
+		return testingFail[T]("expected ok, got " + testFormat(actual))
 	}
-	return actual.Val
+	return Ok[T, Error](actual.Val)
 }
 
 // Testing_ExpectError requires error and returns its cause.
-func Testing_ExpectError[T, E any](_ *Execution, actual Result[T, E]) E {
+func Testing_ExpectError[T, E any](_ *Execution, actual Result[T, E]) Result[E, Error] {
 	if !actual.Failed {
-		Raise("expected error, got " + testFormat(actual))
+		return testingFail[E]("expected error, got " + testFormat(actual))
 	}
-	return actual.Err
+	return Ok[E, Error](actual.Err)
 }
 
 // Testing_ExpectFault runs operation, requires a programming fault, and
 // returns its message. Cancellation and skips propagate.
-func Testing_ExpectFault(ctx *Execution, operation func(*Execution) Unit) (message string) {
+func Testing_ExpectFault(ctx *Execution, operation func(*Execution) Unit) Result[string, Error] {
 	depth := Depth(ctx)
 	caught := false
+	var message string
 	func() {
 		defer func() {
 			if failure := recover(); failure != nil {
@@ -108,48 +119,51 @@ func Testing_ExpectFault(ctx *Execution, operation func(*Execution) Unit) (messa
 		operation(ctx)
 	}()
 	if !caught {
-		Raise("expected a programming fault, operation returned normally")
+		return testingFail[string]("expected a programming fault, operation returned normally")
 	}
-	return message
+	return Ok[string, Error](message)
 }
 
 // Testing_Fail fails the test with message.
-func Testing_Fail(_ *Execution, message string) Unit {
-	Raise(message)
-	return Unit{}
+func Testing_Fail(_ *Execution, message string) Result[Unit, Error] {
+	return testingFail[Unit](message)
 }
 
 // Testing_Skip ends the test as skipped.
 func Testing_Skip(_ *Execution, reason string) Unit { panic(testSkip{reason}) }
 
 // The assert_* names are aliases of expect_*.
-func Testing_AssertTrue(ctx *Execution, actual bool) Unit  { return Testing_ExpectTrue(ctx, actual) }
-func Testing_AssertFalse(ctx *Execution, actual bool) Unit { return Testing_ExpectFalse(ctx, actual) }
-func Testing_AssertEqual[T any](ctx *Execution, eq Eq[T], actual, expected T) Unit {
+func Testing_AssertTrue(ctx *Execution, actual bool) Result[Unit, Error] {
+	return Testing_ExpectTrue(ctx, actual)
+}
+func Testing_AssertFalse(ctx *Execution, actual bool) Result[Unit, Error] {
+	return Testing_ExpectFalse(ctx, actual)
+}
+func Testing_AssertEqual[T any](ctx *Execution, eq Eq[T], actual, expected T) Result[Unit, Error] {
 	return Testing_ExpectEqual(ctx, eq, actual, expected)
 }
-func Testing_AssertNotEqual[T any](ctx *Execution, eq Eq[T], actual, expected T) Unit {
+func Testing_AssertNotEqual[T any](ctx *Execution, eq Eq[T], actual, expected T) Result[Unit, Error] {
 	return Testing_ExpectNotEqual(ctx, eq, actual, expected)
 }
-func Testing_AssertClose(ctx *Execution, actual, expected, tolerance float64) Unit {
+func Testing_AssertClose(ctx *Execution, actual, expected, tolerance float64) Result[Unit, Error] {
 	return Testing_ExpectClose(ctx, actual, expected, tolerance)
 }
-func Testing_AssertContains(ctx *Execution, actual, expected string) Unit {
+func Testing_AssertContains(ctx *Execution, actual, expected string) Result[Unit, Error] {
 	return Testing_ExpectContains(ctx, actual, expected)
 }
-func Testing_AssertSome[T any](ctx *Execution, actual Option[T]) T {
+func Testing_AssertSome[T any](ctx *Execution, actual Option[T]) Result[T, Error] {
 	return Testing_ExpectSome(ctx, actual)
 }
-func Testing_AssertNone[T any](ctx *Execution, actual Option[T]) Unit {
+func Testing_AssertNone[T any](ctx *Execution, actual Option[T]) Result[Unit, Error] {
 	return Testing_ExpectNone(ctx, actual)
 }
-func Testing_AssertOk[T, E any](ctx *Execution, actual Result[T, E]) T {
+func Testing_AssertOk[T, E any](ctx *Execution, actual Result[T, E]) Result[T, Error] {
 	return Testing_ExpectOk(ctx, actual)
 }
-func Testing_AssertError[T, E any](ctx *Execution, actual Result[T, E]) E {
+func Testing_AssertError[T, E any](ctx *Execution, actual Result[T, E]) Result[E, Error] {
 	return Testing_ExpectError(ctx, actual)
 }
-func Testing_AssertFault(ctx *Execution, operation func(*Execution) Unit) string {
+func Testing_AssertFault(ctx *Execution, operation func(*Execution) Unit) Result[string, Error] {
 	return Testing_ExpectFault(ctx, operation)
 }
 

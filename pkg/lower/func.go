@@ -216,6 +216,9 @@ func (g *gen) finishBody(body []ast.Stmt, result *checker.Type) []ast.Stmt {
 			return body
 		}
 	}
+	if g.testBody() {
+		return append(body, returned(g.testSuccess()))
+	}
 	if result.ID == "Unit" || result.ID == "Never" {
 		return append(body, returned(g.unit()))
 	}
@@ -230,6 +233,17 @@ func unlabel(s ast.Stmt) ast.Stmt {
 		}
 		s = l.Stmt
 	}
+}
+
+// testBody reports whether the function being lowered is a test block, whose
+// completion without an error is a successful outcome.
+func (g *gen) testBody() bool {
+	return g.fn != nil && !g.fn.lambda && g.fn.decl != nil && g.fn.decl.decl != nil && g.fn.decl.decl.Kind == syntax.KindTest
+}
+
+// testSuccess is the ok outcome of a test block.
+func (g *gen) testSuccess() ast.Expr {
+	return call(generic(rtName("Ok"), rtName("Unit"), rtName("Error")), g.unit())
 }
 
 func (g *gen) unit() ast.Expr { return composite(rtName("Unit")) }

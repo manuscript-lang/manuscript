@@ -38,9 +38,9 @@ impl TestHooks for State:
     fn after_all() -> Unit:
         println("after_all {self.value}")
 test "first":
-    expect_equal(fixture.value, 1)
+    try expect_equal(fixture.value, 1)
 test "second":
-    expect_equal(fixture.value, 2)
+    try expect_equal(fixture.value, 2)
 `
 
 type fixtureReport struct {
@@ -64,16 +64,16 @@ func TestCLITestFileFixtureLifecycle(t *testing.T) {
 		want                           []string
 	}{
 		{name: "success", source: fileFixtureSource, passed: 2, want: []string{"factory", "before_all", "after_all 2"}},
-		{name: "repeat", source: strings.ReplaceAll(fileFixtureSource, "expect_equal(fixture.value, 1)", "expect_equal(fixture.value > 0, true)"), args: []string{"--filter=first", "--repeat=2"}, passed: 2, want: []string{"after_all 2"}},
-		{name: "selection", source: strings.ReplaceAll(fileFixtureSource, "expect_equal(fixture.value, 2)", "expect_equal(fixture.value, 1)"), args: []string{"--filter=second"}, passed: 1, want: []string{"after_all 1"}},
-		{name: "failfast", source: strings.ReplaceAll(fileFixtureSource, "expect_equal(fixture.value, 1)", "fail(\"broken\")"), args: []string{"--fail-fast"}, status: 1, failed: 1, unrun: 1, want: []string{"after_each", "after_all 1"}},
-		{name: "skip", source: strings.ReplaceAll(fileFixtureSource, "expect_equal(fixture.value, 1)", "skip(\"unavailable\")"), passed: 1, skipped: 1, want: []string{"after_each", "after_all 2"}},
-		{name: "factory fails", source: strings.ReplaceAll(fileFixtureSource, "return State(0)", "return fail(\"setup failed\")"), status: 1, unrun: 2, phase: "make_fixture", want: []string{"setup failed"}},
-		{name: "before all fails", source: strings.ReplaceAll(fileFixtureSource, "println(\"before_all\")", "fail(\"before failed\")"), status: 1, unrun: 2, phase: "before_all", want: []string{"after_all 0"}},
-		{name: "after all fails", source: strings.ReplaceAll(fileFixtureSource, "println(\"after_all {self.value}\")", "fail(\"teardown failed\")"), status: 1, passed: 2, phase: "after_all", want: []string{"teardown failed"}},
-		{name: "before each fails", source: strings.ReplaceAll(fileFixtureSource, "println(\"before_each\")", "fail(\"before each failed\")"), status: 1, failed: 2, want: []string{"after_each", "after_all 2"}},
+		{name: "repeat", source: strings.ReplaceAll(fileFixtureSource, "try expect_equal(fixture.value, 1)", "try expect_equal(fixture.value > 0, true)"), args: []string{"--filter=first", "--repeat=2"}, passed: 2, want: []string{"after_all 2"}},
+		{name: "selection", source: strings.ReplaceAll(fileFixtureSource, "try expect_equal(fixture.value, 2)", "try expect_equal(fixture.value, 1)"), args: []string{"--filter=second"}, passed: 1, want: []string{"after_all 1"}},
+		{name: "failfast", source: strings.ReplaceAll(fileFixtureSource, "try expect_equal(fixture.value, 1)", "try fail(\"broken\")"), args: []string{"--fail-fast"}, status: 1, failed: 1, unrun: 1, want: []string{"after_each", "after_all 1"}},
+		{name: "skip", source: strings.ReplaceAll(fileFixtureSource, "try expect_equal(fixture.value, 1)", "skip(\"unavailable\")"), passed: 1, skipped: 1, want: []string{"after_each", "after_all 2"}},
+		{name: "factory fails", source: strings.ReplaceAll(fileFixtureSource, "return State(0)", "return panic(\"setup failed\")"), status: 1, unrun: 2, phase: "make_fixture", want: []string{"setup failed"}},
+		{name: "before all fails", source: strings.ReplaceAll(fileFixtureSource, "println(\"before_all\")", "panic(\"before failed\")"), status: 1, unrun: 2, phase: "before_all", want: []string{"after_all 0"}},
+		{name: "after all fails", source: strings.ReplaceAll(fileFixtureSource, "println(\"after_all {self.value}\")", "panic(\"teardown failed\")"), status: 1, passed: 2, phase: "after_all", want: []string{"teardown failed"}},
+		{name: "before each fails", source: strings.ReplaceAll(fileFixtureSource, "println(\"before_each\")", "panic(\"before each failed\")"), status: 1, failed: 2, want: []string{"after_each", "after_all 2"}},
 		{name: "after each cannot skip", source: strings.ReplaceAll(fileFixtureSource, "println(\"after_each\")", "skip(\"teardown skipped\")"), status: 1, failed: 2, want: []string{"after_each cannot skip", "after_all 2"}},
-		{name: "after each fails", source: strings.ReplaceAll(fileFixtureSource, "println(\"after_each\")", "fail(\"after each failed\")"), status: 1, failed: 2, want: []string{"after_all 2"}},
+		{name: "after each fails", source: strings.ReplaceAll(fileFixtureSource, "println(\"after_each\")", "panic(\"after each failed\")"), status: 1, failed: 2, want: []string{"after_all 2"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -122,7 +122,7 @@ impl TestHooks for State:
 test "one":
     let hooks = TestHooks(value: fixture)
     hooks.before_all()
-    expect_equal(fixture.value, 7)
+    try expect_equal(fixture.value, 7)
 `
 	file := filepath.Join(t.TempDir(), "test.ms")
 	os.WriteFile(file, []byte(source), 0600)
@@ -150,16 +150,16 @@ type ApiFixture:
 fn handle(request: HttpRequest) -> HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "shared".to_bytes())
 fn make_fixture() -> ApiFixture:
-    return ApiFixture(server: expect_ok(network().serve(address: "127.0.0.1:0", handler: handle)))
+    return ApiFixture(server: network().serve(address: "127.0.0.1:0", handler: handle).unwrap())
 impl TestHooks for ApiFixture:
     fn after_all() -> Unit:
         self.server.close()
 test "first request":
-    let response = expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: "".to_bytes()))
-    expect_equal(response.metadata().status, 200)
+    let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: "".to_bytes()))
+    try expect_equal(response.metadata().status, 200)
 test "second request uses same server":
-    let response = expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: "".to_bytes()))
-    expect_equal(response.body, "shared".to_bytes())
+    let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: "".to_bytes()))
+    try expect_equal(response.body, "shared".to_bytes())
 `
 	file := filepath.Join(t.TempDir(), "test.ms")
 	if err := os.WriteFile(file, []byte(source), 0600); err != nil {
@@ -174,8 +174,8 @@ test "second request uses same server":
 
 func TestCLITestFixturesStayLocalToEachFile(t *testing.T) {
 	root := t.TempDir()
-	source := strings.ReplaceAll(fileFixtureSource, "expect_equal(fixture.value, 1)", "expect_equal(fixture.value > 0, true)")
-	source = strings.ReplaceAll(source, "expect_equal(fixture.value, 2)", "expect_equal(fixture.value > 0, true)")
+	source := strings.ReplaceAll(fileFixtureSource, "try expect_equal(fixture.value, 1)", "try expect_equal(fixture.value > 0, true)")
+	source = strings.ReplaceAll(source, "try expect_equal(fixture.value, 2)", "try expect_equal(fixture.value > 0, true)")
 	a := strings.ReplaceAll(source, `println("factory")`, `println("factory A")`)
 	b := strings.ReplaceAll(source, `println("factory")`, `println("factory B")`)
 	a = "import helper from \"./other.ms\"\n" + a
@@ -201,9 +201,9 @@ func TestCLITestFixtureInterruptCleansUp(t *testing.T) {
 	source := fileFixtureSource[:strings.Index(fileFixtureSource, `test "first":`)] + `test "interruptible":
     println("READY")
     while true:
-        expect_equal(1, 1)
+        try expect_equal(1, 1)
 test "later":
-    fail("must not run")
+    try fail("must not run")
 `
 	path := filepath.Join(t.TempDir(), "test.ms")
 	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
@@ -259,20 +259,21 @@ test "later":
 }
 
 func TestCLITestWithoutFactoryDoesNotRunHooks(t *testing.T) {
-	source := `import {TestHooks, expect_equal, fail} from "@std/testing.ms"
+	source := `import {TestHooks, expect_equal} from "@std/testing.ms"
+import panic from "@std/faults.ms"
 type UnusedFixture:
     value: Int
 impl TestHooks for UnusedFixture:
     fn before_all() -> Unit:
-        fail("unused before_all must not run")
+        panic("unused before_all must not run")
     fn before_each() -> Unit:
-        fail("unused before_each must not run")
+        panic("unused before_each must not run")
     fn after_each() -> Unit:
-        fail("unused after_each must not run")
+        panic("unused after_each must not run")
     fn after_all() -> Unit:
-        fail("unused after_all must not run")
+        panic("unused after_all must not run")
 test "plain test":
-    expect_equal(1 + 1, 2)
+    try expect_equal(1 + 1, 2)
 `
 	file := filepath.Join(t.TempDir(), "test.ms")
 	if err := os.WriteFile(file, []byte(source), 0600); err != nil {

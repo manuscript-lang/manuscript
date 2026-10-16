@@ -12,13 +12,13 @@ func TestCLIRobustTestRunner(t *testing.T) {
 	path := filepath.Join(root, "test.ms")
 	source := `import {expect_equal, skip} from "@std/testing.ms"
 test "passing":
-    expect_equal(2 + 2, 4)
+    try expect_equal(2 + 2, 4)
 test "skipped":
     skip("fixture unavailable")
 test "failing":
-    expect_equal(1, 2)
+    try expect_equal(1, 2)
 test "later":
-    expect_equal(true, true)
+    try expect_equal(true, true)
 `
 	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
 		t.Fatal(err)

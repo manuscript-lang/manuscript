@@ -346,7 +346,7 @@ func (c *checker) checkBodies(module *syntax.Module) {
 			}
 		}
 		if d.Kind == syntax.KindTest {
-			c.checkFunction(d, function(nil, primitive("Unit")), nil, nil)
+			c.checkFunction(d, function(nil, testOutcome()), nil, nil)
 		}
 	}
 	for _, m := range c.Methods {
@@ -569,7 +569,7 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 	}
 	c.checkParameters(d, d.Params, t.Params)
 	fall, _ := c.block(d.Body, false)
-	if fall && t.Result.ID != "Unit" && t.Result.ID != "<invalid>" {
+	if fall && d.Kind != syntax.KindTest && t.Result.ID != "Unit" && t.Result.ID != "<invalid>" {
 		c.error(d.Pos, "type", "reachable fallthrough in function returning "+t.Result.String()+"; end every path with 'return <"+t.Result.String()+">' (or make the last branch return)")
 	}
 	c.scope, c.result, c.function, c.loops = oldScope, oldResult, oldFunction, oldLoops
@@ -722,9 +722,11 @@ func (c *checker) checkReturn(s *syntax.Statement) (bool, bool) {
 		return false, breaks
 	}
 	if s.Value == nil {
-		if c.result.ID != "Unit" {
+		if c.result.ID != "Unit" && !(c.testFunction != 0 && c.function == c.testFunction) {
 			c.error(s.Pos, "type", "bare return requires Unit; this function returns "+c.result.String()+", so write 'return <value>'")
 		}
+	} else if s.Value.Kind == syntax.KindUnit && c.testFunction != 0 && c.function == c.testFunction {
+		c.expression(s.Value, nil) // returning unit from a test is success
 	} else {
 		i := c.expression(s.Value, c.result)
 		return false, i.Breaks

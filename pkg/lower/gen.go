@@ -241,6 +241,7 @@ type funcState struct {
 	result  *checker.Type
 	pre     []ast.Stmt // statements the current statement needs first
 	cleanup bool       // the body registers lexical cleanups
+	lambda  bool       // a lambda nested in decl, not decl itself
 	loops   []*loopState
 	// switches counts the Go switches enclosing the statement being lowered.
 	switches int
@@ -402,13 +403,13 @@ func (g *gen) test(module string, d *syntax.Declaration, fixture *fixture) ast.E
 		name += "_" + shortHash(key)
 	}
 	f := &funcDecl{key: key, name: g.claim(name, key), module: module, decl: d,
-		typ: &checker.Type{Kind: "function", ID: "fn", Name: "fn", Result: unitType}}
+		typ: &checker.Type{Kind: "function", ID: "fn", Name: "fn", Result: checker.TestOutcome()}}
 	f.fn = f
 	g.touch(&f.node)
 	var run ast.Expr = ident(f.name)
 	entry := []ast.Expr{keyed("Name", textLiteral(module+"::"+d.Name))}
 	if fixture != nil {
-		run = closure([]*ast.Field{field("ctx", pointerTo(rtName("Execution")))}, rtName("Unit"),
+		run = closure([]*ast.Field{field("ctx", pointerTo(rtName("Execution")))}, g.goType(checker.TestOutcome()),
 			returned(call(ident(f.name), ident("ctx"), ident(fixture.holder))))
 		entry = append(entry, keyed("Run", run), keyed("Fixture", ident(fixture.runtime)))
 		return composite(nil, entry...)

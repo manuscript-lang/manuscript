@@ -151,7 +151,7 @@ func testCleanupFailure(primary, cleanup any) any {
 
 func (s *fixtureState) test(test Test) Test {
 	original := test.Run
-	test.Run = func(ctx *Execution) (value Unit) {
+	test.Run = func(ctx *Execution) (value Result[Unit, Error]) {
 		defer func() {
 			failure := recover()
 			if s.poisoned.Load() {
@@ -180,6 +180,14 @@ func (s *fixtureState) test(test Test) Test {
 		return original(ctx)
 	}
 	return test
+}
+
+// testReturnedError reports an error returned by a test body as its failure.
+func testReturnedError(ctx *Execution, cause Error) Fault {
+	if cause == nil {
+		return Fault{Message: "test returned an error"}
+	}
+	return Fault{Message: cause.Message(ctx)}
 }
 
 func testFailureText(failure any) string {
