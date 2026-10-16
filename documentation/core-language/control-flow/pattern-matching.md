@@ -28,7 +28,7 @@ Nested `match` is an anti-pattern: another match inside a scrutinee or arm makes
 
 `ms lint` reports advisory **MSL107** at each inner match, including matches inside an inline callback or its default expressions beneath another match. Separate helpers and sequential matches do not trigger it. Checking and execution still accept nested matches; the advisory is a style rule and adds no grammar restriction.
 
-Matching an `Optional` with only `some` and `none` arms is also an anti-pattern: `ms lint` reports advisory **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional) with an optional `else`, or an Optional method such as `unwrap_or` or `map`. Checking and execution still accept the match.
+Matching an `Optional` with only `some` and `none` arms is also an anti-pattern: `ms lint` reports advisory **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result) with an optional `else`, or an Optional method such as `unwrap_or` or `map`. Checking and execution still accept the match.
 
 ## Arm values
 
