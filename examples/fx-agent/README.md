@@ -45,17 +45,26 @@ Alternative types and exhaustive `match` also make protocol decoding easier to
 audit than unchecked object access.
 
 The main friction is dynamic protocol work. Extracting fields from `JsonValue`
-is repetitive, and the lack of a concise object literal makes request/schema
-construction visually heavy. A typed JSON decoding facility, or derived codecs
-for records and alternatives, would remove much of that code while retaining
-explicit failures. Streaming HTTP responses also need an SSE parser in source;
-a standard incremental event-stream decoder would help agents and other CLI
-clients. Finally, a reusable permission/tool abstraction would let applications
-state policy separately from command execution instead of mixing prompts with
-tool handlers.
+is repetitive, and constructing request/schema objects through nested
+`Map[String, JsonValue]` values is visually heavy. Typed JSON decoding and
+encoding for records and alternatives would remove much of that code while
+retaining explicit failures.
+
+The standard library has improved since the first version of this example. It
+now includes incremental JSON and SSE decoders, managed subprocesses with live
+pipes and process-group cleanup, and scoped raw-terminal input with resize and
+cursor operations. These APIs remove the largest systems-integration blockers
+for streaming providers, MCP servers, and interactive clients. Read-only
+accessors also make collection and optional queries shorter, although migrating
+the example from method spellings required a mechanical source update. The
+compiler identified each obsolete call and its replacement precisely.
+
+A reusable permission/tool abstraction would still let applications state
+policy separately from command execution instead of mixing prompts with tool
+handlers.
 
 The language's small core is pleasant here: ordinary functions cover waiting,
 callbacks, and the loop without async syntax. I would preserve that. The best
-improvement opportunity is library-level protocol ergonomics, especially typed
-JSON and streaming codecs, rather than new language syntax.
+improvement opportunity is typed JSON protocol ergonomics rather than new
+control-flow syntax.
 

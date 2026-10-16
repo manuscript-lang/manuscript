@@ -1,6 +1,5 @@
 import arguments from "@std/cli.ms"
 import Bytes from "@std/bytes.ms"
-import Map from "@std/collections.ms"
 import filesystem from "@std/fs.ms"
 import {headers, HttpClientOptions, HttpMethod} from "@std/http.ms"
 import {stdin, stdout, stderr, read_line} from "@std/io.ms"
@@ -46,13 +45,10 @@ fn text(value: JsonValue, field: String) -> Result[String, Error]:
     match value:
         JsonValue.ObjectValue(fields):
             let item = fields.get(field)
-            if item.is_none():
+            if item.is_none:
                 return error(AgentError("missing JSON field: {field}"))
 
-            return string_value(
-                item.unwrap(),
-                field
-            )
+            return string_value(item.unwrap(), field)
         _:
             return error(AgentError("expected a JSON object"))
 
@@ -60,7 +56,7 @@ fn member(value: JsonValue, field: String) -> Result[JsonValue, Error]:
     match value:
         JsonValue.ObjectValue(fields):
             let item = fields.get(field)
-            if item.is_none():
+            if item.is_none:
                 return error(AgentError("missing JSON field: {field}"))
 
             return ok(item.unwrap())
@@ -81,14 +77,8 @@ fn message(role: String, content: String) -> JsonValue:
     return object(
         (
             Map[String, JsonValue]()
-            .add(
-                "role",
-                JsonValue.StringValue(role)
-            )
-            .add(
-                "content",
-                JsonValue.StringValue(content)
-            )
+            .add("role", JsonValue.StringValue(role))
+            .add("content", JsonValue.StringValue(content))
         )
     )
 
@@ -96,18 +86,9 @@ fn tool_message(call: ToolCall, output: String) -> JsonValue:
     return object(
         (
             Map[String, JsonValue]()
-            .add(
-                "role",
-                JsonValue.StringValue("tool")
-            )
-            .add(
-                "tool_call_id",
-                JsonValue.StringValue(call.id)
-            )
-            .add(
-                "content",
-                JsonValue.StringValue(output)
-            )
+            .add("role", JsonValue.StringValue("tool"))
+            .add("tool_call_id", JsonValue.StringValue(call.id))
+            .add("content", JsonValue.StringValue(output))
         )
     )
 
@@ -115,7 +96,7 @@ fn optional_content(value: JsonValue) -> Result[String, Error]:
     match value:
         JsonValue.ObjectValue(fields):
             let content = fields.get("content")
-            if content.is_none(): return ok("")
+            if content.is_none: return ok("")
 
             return nullable_content(content.unwrap())
         _: return error(AgentError("model message was not an object"))
@@ -164,42 +145,24 @@ fn function_tool(
     let parameters = object(
         (
             Map[String, JsonValue]()
-            .add(
-                "type",
-                JsonValue.StringValue("object")
-            )
+            .add("type", JsonValue.StringValue("object"))
             .add("properties", properties)
-            .add(
-                "required",
-                JsonValue.ArrayValue(required)
-            )
-            .add(
-                "additionalProperties",
-                JsonValue.BoolValue(false)
-            )
+            .add("required", JsonValue.ArrayValue(required))
+            .add("additionalProperties", JsonValue.BoolValue(false))
         )
     )
     let function = object(
         (
             Map[String, JsonValue]()
-            .add(
-                "name",
-                JsonValue.StringValue(name)
-            )
-            .add(
-                "description",
-                JsonValue.StringValue(description)
-            )
+            .add("name", JsonValue.StringValue(name))
+            .add("description", JsonValue.StringValue(description))
             .add("parameters", parameters)
         )
     )
     return object(
         (
             Map[String, JsonValue]()
-            .add(
-                "type",
-                JsonValue.StringValue("function")
-            )
+            .add("type", JsonValue.StringValue("function"))
             .add("function", function)
         )
     )
@@ -208,14 +171,8 @@ fn string_property(description: String) -> JsonValue:
     return object(
         (
             Map[String, JsonValue]()
-            .add(
-                "type",
-                JsonValue.StringValue("string")
-            )
-            .add(
-                "description",
-                JsonValue.StringValue(description)
-            )
+            .add("type", JsonValue.StringValue("string"))
+            .add("description", JsonValue.StringValue(description))
         )
     )
 
@@ -328,7 +285,7 @@ fn tools() -> List[JsonValue]:
 fn load_config() -> Result[Config, Error]:
     let host = system()
     let key = host.environment("FX_API_KEY")
-    if key.is_none():
+    if key.is_none:
         return error(AgentError("FX_API_KEY is required"))
 
     let endpoint = (
@@ -338,16 +295,12 @@ fn load_config() -> Result[Config, Error]:
     )
     let model = host.environment("FX_MODEL").unwrap_or("gpt-4.1-mini")
     let permission = host.environment("FX_PERMISSION").unwrap_or("ask")
-    if (
-        permission != "ask"
-        and permission != "auto"
-        and permission != "full-access"
-    ):
+    if (permission != "ask" and permission != "auto" and permission != "full-access"):
         return error(AgentError("FX_PERMISSION must be ask, auto, or full-access"))
 
     let steps_text = host.environment("FX_MAX_STEPS").unwrap_or("32")
     let steps = steps_text.parse_int()
-    if steps.is_none() or steps.unwrap() < 1:
+    if steps.is_none or steps.unwrap() < 1:
         return error(AgentError("FX_MAX_STEPS must be a positive integer"))
 
     return ok(
@@ -372,15 +325,12 @@ fn read_instructions() -> String:
 
 fn prompt_from_args() -> Result[String, Error]:
     let supplied = arguments()
-    if supplied.length() > 0:
+    if supplied.length > 0:
         return ok(supplied.join(" "))
 
     try stdout().write("fx> ".to_bytes())
-    let line = try read_line(
-        stdin(),
-        max_bytes: 1048576
-    )
-    if line.is_none(): return error(AgentError("no prompt supplied"))
+    let line = try read_line(stdin(), max_bytes: 1048576)
+    if line.is_none: return error(AgentError("no prompt supplied"))
 
     return ok(line.unwrap())
 
@@ -389,11 +339,8 @@ fn approve(config: Config, action: String, mutating: Bool) -> Result[Bool, Error
     if config.permission == "auto" and not mutating: return ok(true)
 
     try stderr().write("Allow {action}? [y/N] ".to_bytes())
-    let answer = try read_line(
-        stdin(),
-        max_bytes: 32
-    )
-    if answer.is_none(): return ok(false)
+    let answer = try read_line(stdin(), max_bytes: 32)
+    if answer.is_none: return ok(false)
 
     let normalized = answer.unwrap().trim().lower()
     return ok(normalized == "y" or normalized == "yes")
@@ -408,7 +355,7 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
 
         let data = try filesystem().read_file(path, max_bytes: 1048576)
         let decoded = data.to_text()
-        if decoded.is_none(): return ok("file is not valid UTF-8")
+        if decoded.is_none: return ok("file is not valid UTF-8")
 
         return ok(decoded.unwrap())
 
@@ -418,12 +365,8 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
         if not (try approve(config, "replace {path}", true)):
             return ok("permission denied")
 
-        try filesystem().write_file(
-            path,
-            content.to_bytes(),
-            replace: true
-        )
-        return ok("wrote {content.to_bytes().length()} bytes to {path}")
+        try filesystem().write_file(path, content.to_bytes(), replace: true)
+        return ok("wrote {content.to_bytes().length} bytes to {path}")
 
     if call.name == "shell":
         let command = try text(arguments_value, "command")
@@ -485,7 +428,7 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
                 max_response_bytes: 2097152
             ):
                 let data = try response.read(max_bytes: 2097152)
-                if data.is_none(): return ok("")
+                if data.is_none: return ok("")
 
                 return ok(data.unwrap().to_text().unwrap_or("<response was not UTF-8>"))
 
@@ -499,7 +442,7 @@ fn execute(call: ToolCall, config: Config) -> Result[String, Error]:
             message("user", prompt)
         ]
         let reply = try request(config, child_messages)
-        if not reply.calls.is_empty():
+        if not reply.calls.is_empty:
             return ok(
                 "subagent requested tools; narrow the task or investigate directly"
             )
@@ -512,22 +455,10 @@ fn request(config: Config, messages: List[JsonValue]) -> Result[ModelReply, Erro
     let body = object(
         (
             Map[String, JsonValue]()
-            .add(
-                "model",
-                JsonValue.StringValue(config.model)
-            )
-            .add(
-                "messages",
-                JsonValue.ArrayValue(messages)
-            )
-            .add(
-                "tools",
-                JsonValue.ArrayValue(tools())
-            )
-            .add(
-                "tool_choice",
-                JsonValue.StringValue("auto")
-            )
+            .add("model", JsonValue.StringValue(config.model))
+            .add("messages", JsonValue.ArrayValue(messages))
+            .add("tools", JsonValue.ArrayValue(tools()))
+            .add("tool_choice", JsonValue.StringValue("auto"))
         )
     )
     let encoded = try stringify(body, max_bytes: 8388608)
@@ -550,46 +481,36 @@ fn request(config: Config, messages: List[JsonValue]) -> Result[ModelReply, Erro
             max_response_bytes: 16777216
         ):
             let response_body = try response.read(max_bytes: 16777216)
-            if response_body.is_none(): return error(
+            if response_body.is_none: return error(
                 AgentError("model returned an empty body")
             )
 
             let response_text = response_body.unwrap().to_text()
-            if response_text.is_none(): return error(
+            if response_text.is_none: return error(
                 AgentError("model response was not UTF-8")
             )
-            if response.metadata().status < 200 or response.metadata().status >= 300:
+            if response.metadata.status < 200 or response.metadata.status >= 300:
                 return error(
                     AgentError(
-                        "model HTTP {response.metadata().status}: {response_text.unwrap()}"
+                        "model HTTP {response.metadata.status}: {response_text.unwrap()}"
                     )
                 )
 
             let root = try parse(response_text.unwrap())
             let choices = try array(root, "choices")
-            if choices.is_empty(): return error(
+            if choices.is_empty: return error(
                 AgentError("model response had no choices")
             )
 
-            let response_message = try member(
-                choices.first().unwrap(),
-                "message"
-            )
+            let response_message = try member(choices.first.unwrap(), "message")
             let content = try optional_content(response_message)
             let calls = try optional_tool_calls(response_message)
 
             return ok(ModelReply(content, calls, response_message))
 
 fn save_session(config: Config, messages: List[JsonValue]) -> Result[Unit, Error]:
-    let encoded = try stringify(
-        JsonValue.ArrayValue(messages),
-        max_bytes: 16777216
-    )
-    try filesystem().write_file(
-        config.session_path,
-        encoded.to_bytes(),
-        replace: true
-    )
+    let encoded = try stringify(JsonValue.ArrayValue(messages), max_bytes: 16777216)
+    try filesystem().write_file(config.session_path, encoded.to_bytes(), replace: true)
     return ok(unit)
 
 fn decoded_session(value: JsonValue) -> List[JsonValue]:
@@ -604,7 +525,7 @@ fn parsed_session(text: String) -> List[JsonValue]:
 
 fn session_bytes(data: Bytes) -> List[JsonValue]:
     let decoded = data.to_text()
-    if decoded.is_none(): return []
+    if decoded.is_none: return []
 
     return parsed_session(decoded.unwrap())
 
@@ -621,7 +542,7 @@ fn run() -> Result[Unit, Error]:
     let instructions = "You are a concise coding agent. Inspect before editing, use tools to complete the request, and report checks run. Workspace instructions follow:\n{read_instructions()}"
     let messages = load_session(config)
 
-    if messages.is_empty(): messages.append(message("system", instructions))
+    if messages.is_empty: messages.append(message("system", instructions))
 
     messages.append(message("user", user_prompt))
     var step = 0
@@ -630,10 +551,10 @@ fn run() -> Result[Unit, Error]:
         let reply = try request(config, messages)
         messages.append(reply.raw_message)
 
-        if not reply.content.is_empty():
+        if not reply.content.is_empty:
             try stdout().write("{reply.content}\n".to_bytes())
 
-        if reply.calls.is_empty():
+        if reply.calls.is_empty:
             return save_session(config, messages)
 
         for call in reply.calls:
