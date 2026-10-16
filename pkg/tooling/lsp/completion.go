@@ -333,6 +333,9 @@ func (k *completer) keywordItems() {
 			}
 			k.add(word, 14, nil, 5, insert, nil)
 		}
+		if lineStart != c.start && k.snippets {
+			k.add("if let", 14, nil, 5, "if let ${1:value} = ${2:optional}:\n    $0", nil)
+		}
 	}
 	for _, word := range []string{"true", "false", "unit", "fn", "not", "try"} {
 		if !c.typeContext {

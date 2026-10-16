@@ -171,12 +171,28 @@ func (g *gen) assignment(s *syntax.Statement) []ast.Stmt {
 }
 
 func (g *gen) ifStatement(s *syntax.Statement) []ast.Stmt {
+	if s.Pattern != nil {
+		return g.ifLet(s)
+	}
 	cond := g.valueAs(s.Value, boolType)
 	stmt := &ast.IfStmt{Cond: cond, Body: block(g.body(s.Body, nil)...)}
 	if len(s.Else) > 0 {
 		stmt.Else = block(g.body(s.Else, nil)...)
 	}
 	return []ast.Stmt{stmt}
+}
+
+// ifLet lowers `if let name = optional` to a presence test around the payload binding.
+func (g *gen) ifLet(s *syntax.Statement) []ast.Stmt {
+	tmp := g.temp()
+	value := g.expr(s.Value)
+	body := g.pattern(s.Pattern, selector(ident(tmp), "Val"), g.sub(g.info(s.Value).Type).Args[0])
+	body = append(body, g.body(s.Body, nil)...)
+	stmt := &ast.IfStmt{Cond: selector(ident(tmp), "Some"), Body: block(body...)}
+	if len(s.Else) > 0 {
+		stmt.Else = block(g.body(s.Else, nil)...)
+	}
+	return []ast.Stmt{block(define(tmp, value), stmt)}
 }
 
 var (
