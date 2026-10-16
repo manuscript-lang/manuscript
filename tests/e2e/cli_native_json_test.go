@@ -81,7 +81,7 @@ import {stdout, stderr} from "@std/io.ms"
 
 export fn main() -> Int:
     let args = arguments()
-    if args.length() > 0 and args[0].unwrap() == "binary":
+    if args.length() > 0 and args[0] == "binary":
         let _raw = stdout().write(data: "x".to_bytes().with_value(index: 0, value: 255))
         return 0
     let _out = stdout().write(data: "stdout\n".to_bytes())
@@ -90,7 +90,7 @@ export fn main() -> Int:
     while index < args.length():
         let _arg = stdout().write(data: "arg={args[index].unwrap()}\n".to_bytes())
         index = index + 1
-    if args.length() > 0 and args[0].unwrap() == "fail":
+    if args.length() > 0 and args[0] == "fail":
         return 23
     return 0
 `

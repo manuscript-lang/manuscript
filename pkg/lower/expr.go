@@ -330,7 +330,13 @@ func (g *gen) text(e *syntax.Expression) ast.Expr {
 func (g *gen) indexValue(e *syntax.Expression) ast.Expr {
 	t := g.info(e.Left).Type
 	operands := g.operandsAs([]*syntax.Expression{e.Left, e.Right}, []*checker.Type{t, intType})
-	return call(generic(rtName("List_At"), g.goType(t.Args[0])), ident("ctx"), operands[0], operands[1])
+	lookup := call(generic(rtName("List_At"), g.goType(t.Args[0])), ident("ctx"), operands[0], operands[1])
+	if g.info(e).Proven {
+		// The checker proved the index in range; keep a faulting read for
+		// bounds invalidated by a concurrent task.
+		return call(generic(rtName("Optional_Unwrap"), g.goType(t.Args[0])), ident("ctx"), lookup)
+	}
+	return lookup
 }
 
 func (g *gen) list(e *syntax.Expression, info *checker.Info) ast.Expr {

@@ -26,7 +26,7 @@ export fn main() -> Int:
     let args = arguments()
     var index = 0
     while index < args.length():
-        write_line(args[index].unwrap())
+        write_line(args[index])
         index = index + 1
     return 0
 

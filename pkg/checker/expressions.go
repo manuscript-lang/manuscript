@@ -449,7 +449,13 @@ func isOrdering(op string) bool { return op == "<" || op == "<=" || op == ">" ||
 
 func (c *checker) inferBinary(e *syntax.Expression, expected *Type, i *Info) *Info {
 	a := c.expression(e.Left, nil)
+	// The right operand runs only when the left is true (and) or false (or).
+	facts := len(c.facts)
+	if e.Text == "and" || e.Text == "or" {
+		c.pushFacts(c.guardFacts(e.Left, e.Text == "and"))
+	}
 	b := c.expression(e.Right, nil)
+	c.facts = c.facts[:facts]
 	logical := e.Text == "and" || e.Text == "or"
 	i.NoReturn = a.NoReturn || (!logical && b.NoReturn)
 	switch {

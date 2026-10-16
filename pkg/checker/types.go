@@ -56,6 +56,9 @@ type Binding struct {
 	Type     *Type
 	Mutable  bool
 	Function int
+	// nonNegative: an Int that starts at a written nonnegative value and is
+	// only assigned nonnegative values or incremented by one.
+	nonNegative bool
 }
 type Method struct {
 	ID                       string
@@ -99,6 +102,9 @@ type Info struct {
 	// value is Constant. The fold pass sets both.
 	Folded, Constant bool
 	foldDone         bool
+	// Proven reports an index expression the checker proved in range, so its
+	// type is the element type; lowering keeps a faulting read.
+	Proven bool
 	// inferenceDeferred records body checks that need a later callback result context.
 	inferenceDeferred bool
 }

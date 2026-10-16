@@ -163,7 +163,35 @@ and the measured constructor/access/comparator paths.
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
 | `Set[T]` | `some(predicate: fn(value: T) -> Bool) -> Bool`; `every` uses the same predicate |
 
-All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding MaxInt64 faults.
+All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. The checker narrows a bracket lookup to `T` only where it proves the index in range; see [Proven indexes](#proven-indexes). Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding MaxInt64 faults.
+
+### Proven indexes
+
+A bracket lookup `values[index]` has type `T`, not `Optional[T]`, when the checker proves the access in range from a call-free guard on the same local bindings:
+
+```manuscript
+fn weighted(values: List[Int], index: Int) -> Int:
+    if index < 0 or index >= values.length():
+        return 0
+
+    return values[index] * 2
+
+fn total(values: List[Int]) -> Int:
+    var sum = 0
+    var i = 0
+
+    while i < values.length():
+        sum = sum + values[i]
+        i = i + 1
+
+    return sum
+```
+
+Both bounds are required. The lower bound comes from `index >= 0` (or an equivalent comparison), or from an `Int` that starts at a written nonnegative literal and is only reassigned nonnegative literals or `itself + literal`. The upper bound comes from `index < values.length()` on the same `List` binding. A literal index `n` needs `values.length() > n` (or `>= n + 1`). Guards combine with `and`, with `or` in a negated early exit, in the right operand of `and`/`or`, in `if`/`else` branches, and in `while` conditions.
+
+A proof ends at an assignment to the index or list binding, at a statement containing any call other than `length()` (the call may mutate an alias), and at a closure boundary. A lookup in a statement with a call that does not enclose it stays optional. The proof does not cover other lists, copied lengths, a length from another binding, or arithmetic indexes such as `row * cols + col`. Equivalent `.at(index)` calls remain `Optional[T]`.
+
+Narrowing only changes the type. The generated read still checks the index, so a list resized by a concurrent task after the guard faults like `unwrap()` on `none` and never reads out of range. A `List[Optional[T]]` lookup narrows to `Optional[T]`, without flattening the element.
 
 `Map.add(key, value)` inserts or replaces a value and returns the same map.
 
