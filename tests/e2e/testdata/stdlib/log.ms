@@ -51,7 +51,7 @@ test "logger writes typed escaped records and protects metadata":
         )
 
         let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
-        if output.data.to_text() != some(expected): return panic("typed log record")
+        if output.data.to_string() != some(expected): return panic("typed log record")
 
         let flushed = value(logger.flush())
 
@@ -79,7 +79,7 @@ test "non-object values are written under data":
             )
         )
         let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
-        if output.data.to_text() != some(expected): return panic(
+        if output.data.to_string() != some(expected): return panic(
             "scalar and list fields"
         )
 
@@ -114,7 +114,7 @@ test "levels filter methods and function values":
         let debugged = value(logger.debug(message: "debug"))
         let informed = value(logger.info(message: "info"))
         let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
-        if output.data.to_text() != some(expected): return panic("level records")
+        if output.data.to_string() != some(expected): return panic("level records")
 
         logger.set_level(LogLevel.Silent)
         if logger.enabled(LogLevel.Fatal) or logger.enabled(LogLevel.Silent): return panic(
@@ -156,7 +156,7 @@ test "child bindings snapshot values and merge without mutating inputs":
         )
         let parent_log = value(logger.fatal(message: "parent"))
         let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
-        if output.data.to_text() != some(expected): return panic("binding precedence")
+        if output.data.to_string() != some(expected): return panic("binding precedence")
 
 test "limits and unencodable values reject before writing":
     let output = MemoryStream(data: "".to_bytes(), offset: 0, closed: false)
@@ -171,7 +171,7 @@ test "limits and unencodable values reject before writing":
             )
         )
         let written = value(logger.info(message: "x"))
-        if output.data.to_text() != some(line): return panic("exact byte budget")
+        if output.data.to_string() != some(line): return panic("exact byte budget")
 
         let before = output.data.clone()
         let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
@@ -231,7 +231,7 @@ test "file transport appends and flushes with scoped cleanup":
 
         let data = value(fs.read_file(path: path))
         if (
-            data.to_text() != some(
+            data.to_string() != some(
                 "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
             )
         ): return panic("file append")
@@ -276,7 +276,7 @@ test "source transports receive complete records and close through their contrac
         let written = value(logger.info(message: "source transport"))
         let flushed = value(logger.flush())
         if (
-            output.data.to_text() != some(
+            output.data.to_string() != some(
                 "\{\"level\":30,\"msg\":\"source transport\"\}\n"
             )
         ): return panic("source transport record")

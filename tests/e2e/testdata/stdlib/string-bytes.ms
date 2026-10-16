@@ -81,8 +81,8 @@ test "bytes copy slice search and UTF8 validation":
 
     let copied = data.clone().with_value(index: 0, value: 42)
     if copied.at(0) != some(42) or data.at(0) != some(0): return panic("clone storage")
-    if not Bytes([255]).to_text().is_none(): return panic("invalid UTF8 accepted")
-    if "é".to_bytes().to_text() != some("é"): return panic("UTF8 roundtrip")
+    if not Bytes([255]).to_string().is_none(): return panic("invalid UTF8 accepted")
+    if "é".to_bytes().to_string() != some("é"): return panic("UTF8 roundtrip")
 
 test "Bytes values direct bound and free calls return independent lists":
     let input = [0, 1, 255]
