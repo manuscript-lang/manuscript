@@ -65,18 +65,6 @@ func run(args []string) error {
 			return updateGo(args[1])
 		}
 		if args[0] == "version" {
-			data, err := os.ReadFile("CHANGELOG.md")
-			if err != nil {
-				return err
-			}
-			heading := "## Unreleased"
-			if !strings.Contains(string(data), heading) {
-				return fmt.Errorf("CHANGELOG.md needs an Unreleased section")
-			}
-			replacement := heading + "\n\n## " + args[1]
-			if err := os.WriteFile("CHANGELOG.md", []byte(strings.Replace(string(data), heading, replacement, 1)), 0644); err != nil {
-				return err
-			}
 			return os.WriteFile(".msversion", []byte(args[1]+"\n"), 0644)
 		}
 		if err := os.WriteFile(".node-version", []byte(args[1]+"\n"), 0644); err != nil {
